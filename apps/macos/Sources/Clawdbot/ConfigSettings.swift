@@ -25,13 +25,13 @@ struct ConfigSettings: View {
     @State private var heartbeatMinutes: Int?
     @State private var heartbeatBody: String = "HEARTBEAT"
 
-    // clawd browser settings (stored in ~/.clawdbot/clawdbot.json under "browser")
+    // clawd browser settings (stored in ~/.zee/zee.json under "browser")
     @State private var browserEnabled: Bool = true
     @State private var browserControlUrl: String = "http://127.0.0.1:18791"
     @State private var browserColorHex: String = "#FF4500"
     @State private var browserAttachOnly: Bool = false
 
-    // Talk mode settings (stored in ~/.clawdbot/clawdbot.json under "talk")
+    // Talk mode settings (stored in ~/.zee/zee.json under "talk")
     @State private var talkVoiceId: String = ""
     @State private var talkInterruptOnSpeech: Bool = true
     @State private var talkApiKey: String = ""
@@ -91,11 +91,11 @@ struct ConfigSettings: View {
 
     @ViewBuilder
     private var header: some View {
-        Text("Clawdbot CLI config")
+        Text("Zee CLI config")
             .font(.title3.weight(.semibold))
         Text(self.isNixMode
             ? "This tab is read-only in Nix mode. Edit config via Nix and rebuild."
-            : "Edit ~/.clawdbot/clawdbot.json (agent / session / routing / messages).")
+            : "Edit ~/.zee/zee.json (agent / session / routing / messages).")
             .font(.callout)
             .foregroundStyle(.secondary)
     }
@@ -181,7 +181,7 @@ struct ConfigSettings: View {
     }
 
     private var anthropicAuthHelpText: String {
-        "Determined from Clawdbot OAuth token file (~/.clawdbot/credentials/oauth.json) " +
+        "Determined from Zee OAuth token file (~/.zee/credentials/oauth.json) " +
             "or environment variables (ANTHROPIC_OAUTH_TOKEN / ANTHROPIC_API_KEY)."
     }
 

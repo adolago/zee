@@ -147,7 +147,7 @@ export async function runTui(opts: TuiOptions) {
   const updateHeader = () => {
     header.setText(
       theme.header(
-        `clawdbot tui - ${client.connection.url} - session ${currentSessionKey}`,
+        `zee tui - ${client.connection.url} - session ${currentSessionKey}`,
       ),
     );
   };

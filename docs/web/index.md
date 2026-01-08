@@ -9,7 +9,7 @@ read_when:
 The Gateway serves a small **browser Control UI** (Vite + Lit) from the same port as the Gateway WebSocket:
 
 - default: `http://<host>:18789/`
-- optional prefix: set `gateway.controlUi.basePath` (e.g. `/clawdbot`)
+- optional prefix: set `gateway.controlUi.basePath` (e.g. `/zee`)
 
 Capabilities live in [`docs/control-ui.md`](https://docs.clawd.bot/web/control-ui).
 This page focuses on bind modes, security, and web-facing surfaces.
@@ -27,7 +27,7 @@ You can control it via config:
 ```json5
 {
   gateway: {
-    controlUi: { enabled: true, basePath: "/clawdbot" } // basePath optional
+    controlUi: { enabled: true, basePath: "/zee" } // basePath optional
   }
 }
 ```
@@ -50,7 +50,7 @@ Keep the Gateway on loopback and let Tailscale Serve proxy it:
 Then start the gateway:
 
 ```bash
-clawdbot gateway
+zee gateway
 ```
 
 Open:
@@ -70,8 +70,8 @@ Open:
 Then start the gateway (token required for non-loopback binds):
 
 ```bash
-export CLAWDBOT_GATEWAY_TOKEN="…your token…"
-clawdbot gateway
+export ZEE_GATEWAY_TOKEN="…your token…"
+zee gateway
 ```
 
 Open:
@@ -84,14 +84,14 @@ Open:
   gateway: {
     bind: "loopback",
     tailscale: { mode: "funnel" },
-    auth: { mode: "password" } // or CLAWDBOT_GATEWAY_PASSWORD
+    auth: { mode: "password" } // or ZEE_GATEWAY_PASSWORD
   }
 }
 ```
 
 ## Security notes
 
-- Binding the Gateway to a non-loopback address **requires** auth (`CLAWDBOT_GATEWAY_TOKEN` or `gateway.auth`).
+- Binding the Gateway to a non-loopback address **requires** auth (`ZEE_GATEWAY_TOKEN` or `gateway.auth`).
 - The UI sends `connect.params.auth.token` or `connect.params.auth.password`.
 - Use `gateway.auth.allowTailscale: false` to require explicit credentials even in Serve mode.
 - `gateway.tailscale.mode: "funnel"` requires `gateway.auth.mode: "password"` (shared password).

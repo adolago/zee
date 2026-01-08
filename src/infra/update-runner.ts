@@ -98,7 +98,7 @@ async function findPackageRoot(candidates: string[]) {
       try {
         const raw = await fs.readFile(pkgPath, "utf-8");
         const parsed = JSON.parse(raw) as { name?: string };
-        if (parsed?.name === "clawdbot") return current;
+        if (parsed?.name === "zee") return current;
       } catch {
         // ignore
       }
@@ -325,8 +325,8 @@ export async function runGatewayUpdate(
     steps.push(
       await runStep(
         runCommand,
-        "clawdbot doctor",
-        managerScriptArgs(manager, "clawdbot", ["doctor"]),
+        "zee doctor",
+        managerScriptArgs(manager, "zee", ["doctor"]),
         gitRoot,
         timeoutMs,
       ),

@@ -1,10 +1,10 @@
 import Foundation
 
 enum LaunchAgentManager {
-    private static let legacyLaunchdLabel = "com.steipete.clawdbot"
+    private static let legacyLaunchdLabel = "com.steipete.zee"
     private static var plistURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.clawdbot.mac.plist")
+            .appendingPathComponent("Library/LaunchAgents/com.zee.mac.plist")
     }
 
     private static var legacyPlistURL: URL {
@@ -40,10 +40,10 @@ enum LaunchAgentManager {
         <plist version="1.0">
         <dict>
           <key>Label</key>
-          <string>com.clawdbot.mac</string>
+          <string>com.zee.mac</string>
           <key>ProgramArguments</key>
           <array>
-            <string>\(bundlePath)/Contents/MacOS/Clawdbot</string>
+            <string>\(bundlePath)/Contents/MacOS/Zee</string>
           </array>
           <key>WorkingDirectory</key>
           <string>\(FileManager.default.homeDirectoryForCurrentUser.path)</string>

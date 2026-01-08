@@ -176,7 +176,7 @@ export async function ensureFunnel(
     );
     runtime.error(
       info(
-        "Tip: Funnel is optional for CLAWDBOT. You can keep running the web gateway without it: `pnpm clawdbot gateway`",
+        "Tip: Funnel is optional for ZEE. You can keep running the web gateway without it: `pnpm zee gateway`",
       ),
     );
     if (shouldLogVerbose()) {

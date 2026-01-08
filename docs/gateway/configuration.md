@@ -1,13 +1,13 @@
 ---
-summary: "All configuration options for ~/.clawdbot/clawdbot.json with examples"
+summary: "All configuration options for ~/.zee/zee.json with examples"
 read_when:
   - Adding or modifying config fields
 ---
 # Configuration 🔧
 
-CLAWDBOT reads an optional **JSON5** config from `~/.clawdbot/clawdbot.json` (comments + trailing commas allowed).
+ZEE reads an optional **JSON5** config from `~/.zee/zee.json` (comments + trailing commas allowed).
 
-If the file is missing, CLAWDBOT uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/clawd`). You usually only need a config to:
+If the file is missing, ZEE uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/clawd`). You usually only need a config to:
 - restrict who can trigger the bot (`whatsapp.allowFrom`, `telegram.allowFrom`, etc.)
 - control group allowlists + mention behavior (`whatsapp.groups`, `telegram.groups`, `discord.guilds`, `routing.groupChat`)
 - customize message prefixes (`messages`)
@@ -38,7 +38,7 @@ Params:
 Example (via `gateway call`):
 
 ```bash
-clawdbot gateway call config.apply --params '{
+zee gateway call config.apply --params '{
   "raw": "{\\n  agent: { workspace: \\"~/clawd\\" }\\n}\\n",
   "sessionKey": "agent:main:whatsapp:dm:+15555550123",
   "restartDelayMs": 1000
@@ -83,17 +83,17 @@ To prevent the bot from responding to WhatsApp @-mentions in groups (only respon
 
 ### Env vars + `.env`
 
-CLAWDBOT reads env vars from the parent process (shell, launchd/systemd, CI, etc.).
+ZEE reads env vars from the parent process (shell, launchd/systemd, CI, etc.).
 
 Additionally, it loads:
 - `.env` from the current working directory (if present)
-- a global fallback `.env` from `~/.clawdbot/.env` (aka `$CLAWDBOT_STATE_DIR/.env`)
+- a global fallback `.env` from `~/.zee/.env` (aka `$ZEE_STATE_DIR/.env`)
 
 Neither `.env` file overrides existing env vars.
 
 ### `env.shellEnv` (optional)
 
-Opt-in convenience: if enabled and none of the expected keys are set yet, CLAWDBOT runs your login shell and imports only the missing expected keys (never overrides).
+Opt-in convenience: if enabled and none of the expected keys are set yet, ZEE runs your login shell and imports only the missing expected keys (never overrides).
 This effectively sources your shell profile.
 
 ```json5
@@ -108,32 +108,32 @@ This effectively sources your shell profile.
 ```
 
 Env var equivalent:
-- `CLAWDBOT_LOAD_SHELL_ENV=1`
-- `CLAWDBOT_SHELL_ENV_TIMEOUT_MS=15000`
+- `ZEE_LOAD_SHELL_ENV=1`
+- `ZEE_SHELL_ENV_TIMEOUT_MS=15000`
 
 ### Auth storage (OAuth + API keys)
 
-Clawdbot stores **per-agent** auth profiles (OAuth + API keys) in:
-- `<agentDir>/auth-profiles.json` (default: `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`)
+Zee stores **per-agent** auth profiles (OAuth + API keys) in:
+- `<agentDir>/auth-profiles.json` (default: `~/.zee/agents/<agentId>/agent/auth-profiles.json`)
 
 See also: [/concepts/oauth](/concepts/oauth)
 
 Legacy OAuth imports:
-- `~/.clawdbot/credentials/oauth.json` (or `$CLAWDBOT_STATE_DIR/credentials/oauth.json`)
+- `~/.zee/credentials/oauth.json` (or `$ZEE_STATE_DIR/credentials/oauth.json`)
 
 The embedded Pi agent maintains a runtime cache at:
 - `<agentDir>/auth.json` (managed automatically; don’t edit manually)
 
 Legacy agent dir (pre multi-agent):
-- `~/.clawdbot/agent/*` (migrated by `clawdbot doctor` into `~/.clawdbot/agents/<defaultAgentId>/agent/*`)
+- `~/.zee/agent/*` (migrated by `zee doctor` into `~/.zee/agents/<defaultAgentId>/agent/*`)
 
 Overrides:
-- OAuth dir (legacy import only): `CLAWDBOT_OAUTH_DIR`
-- Agent dir (default agent root override): `CLAWDBOT_AGENT_DIR` (preferred), `PI_CODING_AGENT_DIR` (legacy)
+- OAuth dir (legacy import only): `ZEE_OAUTH_DIR`
+- Agent dir (default agent root override): `ZEE_AGENT_DIR` (preferred), `PI_CODING_AGENT_DIR` (legacy)
 
-On first use, Clawdbot imports `oauth.json` entries into `auth-profiles.json`.
+On first use, Zee imports `oauth.json` entries into `auth-profiles.json`.
 
-Clawdbot also auto-syncs OAuth tokens from external CLIs into `auth-profiles.json` (when present on the gateway host):
+Zee also auto-syncs OAuth tokens from external CLIs into `auth-profiles.json` (when present on the gateway host):
 - `~/.claude/.credentials.json` (Claude Code) → `anthropic:claude-cli`
 - `~/.codex/auth.json` (Codex CLI) → `openai-codex:codex-cli`
 
@@ -161,7 +161,7 @@ rotation order used for failover.
 
 Optional agent identity used for defaults and UX. This is written by the macOS onboarding assistant.
 
-If set, CLAWDBOT derives defaults (only when you haven’t set them explicitly):
+If set, ZEE derives defaults (only when you haven’t set them explicitly):
 - `messages.ackReaction` from `identity.emoji` (falls back to 👀)
 - `routing.groupChat.mentionPatterns` from `identity.name` (so “@Samantha” works in groups across Telegram/Slack/Discord/iMessage/WhatsApp)
 
@@ -189,8 +189,8 @@ Metadata written by CLI wizards (`onboard`, `configure`, `doctor`).
 
 ### `logging`
 
-- Default log file: `/tmp/clawdbot/clawdbot-YYYY-MM-DD.log`
-- If you want a stable path, set `logging.file` to `/tmp/clawdbot/clawdbot.log`.
+- Default log file: `/tmp/zee/zee-YYYY-MM-DD.log`
+- If you want a stable path, set `logging.file` to `/tmp/zee/zee.log`.
 - Console output can be tuned separately via:
   - `logging.consoleLevel` (defaults to `info`, bumps to `debug` when `--verbose`)
   - `logging.consoleStyle` (`pretty` | `compact` | `json`)
@@ -202,7 +202,7 @@ Metadata written by CLI wizards (`onboard`, `configure`, `doctor`).
 {
   logging: {
     level: "info",
-    file: "/tmp/clawdbot/clawdbot.log",
+    file: "/tmp/zee/zee.log",
     consoleLevel: "info",
     consoleStyle: "pretty",
     redactSensitive: "tools",
@@ -226,8 +226,8 @@ Controls how WhatsApp direct chats (DMs) are handled:
 Pairing codes expire after 1 hour; the bot only sends a pairing code when a new request is created.
 
 Pairing approvals:
-- `clawdbot pairing list --provider whatsapp`
-- `clawdbot pairing approve --provider whatsapp <code>`
+- `zee pairing list --provider whatsapp`
+- `zee pairing approve --provider whatsapp <code>`
 
 ### `whatsapp.allowFrom`
 
@@ -256,8 +256,8 @@ Run multiple WhatsApp accounts in one gateway:
       default: {}, // optional; keeps the default id stable
       personal: {},
       biz: {
-        // Optional override. Default: ~/.clawdbot/credentials/whatsapp/biz
-        // authDir: "~/.clawdbot/credentials/whatsapp/biz",
+        // Optional override. Default: ~/.zee/credentials/whatsapp/biz
+        // authDir: "~/.zee/credentials/whatsapp/biz",
       }
     }
   }
@@ -266,7 +266,7 @@ Run multiple WhatsApp accounts in one gateway:
 
 Notes:
 - Outbound commands default to account `default` if present; otherwise the first configured account id (sorted).
-- The legacy single-account Baileys auth dir is migrated by `clawdbot doctor` into `whatsapp/default`.
+- The legacy single-account Baileys auth dir is migrated by `zee doctor` into `whatsapp/default`.
 
 ### `telegram.accounts` / `discord.accounts` / `slack.accounts` / `signal.accounts` / `imessage.accounts`
 
@@ -308,7 +308,7 @@ Group messages default to **require mention** (either metadata mention or regex 
 {
   routing: {
     groupChat: {
-      mentionPatterns: ["@clawd", "clawdbot", "clawd"],
+      mentionPatterns: ["@clawd", "zee", "clawd"],
       historyLimit: 50
     }
   }
@@ -387,7 +387,7 @@ Run multiple isolated agents (separate workspace, `agentDir`, sessions) inside o
 - `routing.agents.<agentId>`: per-agent overrides.
   - `name`: display name for the agent.
   - `workspace`: default `~/clawd-<agentId>` (for `main`, falls back to legacy `agent.workspace`).
-  - `agentDir`: default `~/.clawdbot/agents/<agentId>/agent`.
+  - `agentDir`: default `~/.zee/agents/<agentId>/agent`.
   - `model`: per-agent default model (provider/model), overrides `agent.model` for that agent.
   - `sandbox`: per-agent sandbox config (overrides `agent.sandbox`).
     - `mode`: `"off"` | `"non-main"` | `"all"`
@@ -595,7 +595,7 @@ Set `web.enabled: false` to keep it off by default.
 
 ### `telegram` (bot transport)
 
-Clawdbot starts Telegram only when a `telegram` config section exists. The bot token is resolved from `TELEGRAM_BOT_TOKEN` or `telegram.botToken`.
+Zee starts Telegram only when a `telegram` config section exists. The bot token is resolved from `TELEGRAM_BOT_TOKEN` or `telegram.botToken`.
 Set `telegram.enabled: false` to disable automatic startup.
 Multi-account support lives under `telegram.accounts` (see the multi-account section above). Env tokens only apply to the default account.
 
@@ -711,7 +711,7 @@ Multi-account support lives under `discord.accounts` (see the multi-account sect
 }
 ```
 
-Clawdbot starts Discord only when a `discord` config section exists. The token is resolved from `DISCORD_BOT_TOKEN` or `discord.token` (unless `discord.enabled` is `false`). Use `user:<id>` (DM) or `channel:<id>` (guild channel) when specifying delivery targets for cron/CLI commands.
+Zee starts Discord only when a `discord` config section exists. The token is resolved from `DISCORD_BOT_TOKEN` or `discord.token` (unless `discord.enabled` is `false`). Use `user:<id>` (DM) or `channel:<id>` (guild channel) when specifying delivery targets for cron/CLI commands.
 Guild slugs are lowercase with spaces replaced by `-`; channel keys use the slugged channel name (no leading `#`). Prefer guild ids as keys to avoid rename ambiguity.
 Reaction notification modes:
 - `off`: no reaction events.
@@ -774,7 +774,7 @@ Slack runs in Socket Mode and requires both a bot token and app token:
 
 Multi-account support lives under `slack.accounts` (see the multi-account section above). Env tokens only apply to the default account.
 
-Clawdbot starts Slack when the provider is enabled and both tokens are set (via config or `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN`). Use `user:<id>` (DM) or `channel:<id>` when specifying delivery targets for cron/CLI commands.
+Zee starts Slack when the provider is enabled and both tokens are set (via config or `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN`). Use `user:<id>` (DM) or `channel:<id>` when specifying delivery targets for cron/CLI commands.
 
 Bot-authored messages are ignored by default. Enable with `slack.allowBots` or `slack.channels.<id>.allowBots`.
 
@@ -794,7 +794,7 @@ Slack action groups (gate `slack` tool actions):
 | emojiList | enabled | Custom emoji list |
 ### `imessage` (imsg CLI)
 
-Clawdbot spawns `imsg rpc` (JSON-RPC over stdio). No daemon or port required.
+Zee spawns `imsg rpc` (JSON-RPC over stdio). No daemon or port required.
 
 ```json5
 {
@@ -856,7 +856,7 @@ Use this for pre-seeded deployments where your workspace files come from a repo.
 ### `agent.userTimezone`
 
 Sets the user’s timezone for **system prompt context** (not for timestamps in
-message envelopes). If unset, Clawdbot uses the host timezone at runtime.
+message envelopes). If unset, Zee uses the host timezone at runtime.
 
 ```json5
 {
@@ -871,7 +871,7 @@ Controls inbound/outbound prefixes and optional ack reactions.
 ```json5
 {
   messages: {
-    messagePrefix: "[clawdbot]",
+    messagePrefix: "[zee]",
     responsePrefix: "🦞",
     ackReaction: "👀",
     ackReactionScope: "group-mentions"
@@ -928,7 +928,7 @@ Z.AI GLM-4.x models automatically enable thinking mode unless you:
 - set `--thinking off`, or
 - define `agent.models["zai/<model>"].params.thinking` yourself.
 
-Clawdbot also ships a few built-in alias shorthands. Defaults only apply when the model
+Zee also ships a few built-in alias shorthands. Defaults only apply when the model
 is already present in `agent.models`:
 
 - `opus` -> `anthropic/claude-opus-4-5`
@@ -1101,7 +1101,7 @@ See [/concepts/typing-indicators](/concepts/typing-indicators) for behavior deta
 
 `agent.model.primary` should be set as `provider/model` (e.g. `anthropic/claude-opus-4-5`).
 Aliases come from `agent.models.*.alias` (e.g. `Opus`).
-If you omit the provider, CLAWDBOT currently assumes `anthropic` as a temporary
+If you omit the provider, ZEE currently assumes `anthropic` as a temporary
 deprecation fallback.
 Z.AI models are available as `zai/<model>` (e.g. `zai/glm-4.7`) and require
 `ZAI_API_KEY` (or legacy `Z_AI_API_KEY`) in the environment.
@@ -1180,7 +1180,7 @@ Defaults (if enabled):
 - scope: `"agent"` (one container + workspace per agent)
 - Debian bookworm-slim based image
 - agent workspace access: `workspaceAccess: "none"` (default)
-  - `"none"`: use a per-scope sandbox workspace under `~/.clawdbot/sandboxes`
+  - `"none"`: use a per-scope sandbox workspace under `~/.zee/sandboxes`
   - `"ro"`: keep the sandbox workspace at `/workspace`, and mount the agent workspace read-only at `/agent` (disables `write`/`edit`)
   - `"rw"`: mount the agent workspace read/write at `/workspace`
 - auto-prune: idle > 24h OR age > 7d
@@ -1201,10 +1201,10 @@ Legacy: `perSession` is still supported (`true` → `scope: "session"`,
       mode: "non-main", // off | non-main | all
       scope: "agent", // session | agent | shared (agent is default)
       workspaceAccess: "none", // none | ro | rw
-      workspaceRoot: "~/.clawdbot/sandboxes",
+      workspaceRoot: "~/.zee/sandboxes",
       docker: {
-        image: "clawdbot-sandbox:bookworm-slim",
-        containerPrefix: "clawdbot-sbx-",
+        image: "zee-sandbox:bookworm-slim",
+        containerPrefix: "zee-sbx-",
         workdir: "/workspace",
         readOnlyRoot: true,
         tmpfs: ["/tmp", "/var/tmp", "/run"],
@@ -1223,14 +1223,14 @@ Legacy: `perSession` is still supported (`true` → `scope: "session"`,
           nproc: 256
         },
         seccompProfile: "/path/to/seccomp.json",
-        apparmorProfile: "clawdbot-sandbox",
+        apparmorProfile: "zee-sandbox",
         dns: ["1.1.1.1", "8.8.8.8"],
         extraHosts: ["internal.service:10.0.0.5"]
       },
       browser: {
         enabled: false,
-        image: "clawdbot-sandbox-browser:bookworm-slim",
-        containerPrefix: "clawdbot-sbx-browser-",
+        image: "zee-sandbox-browser:bookworm-slim",
+        containerPrefix: "zee-sbx-browser-",
         cdpPort: 9222,
         vncPort: 5900,
         noVncPort: 6080,
@@ -1273,13 +1273,13 @@ URL is injected per session.
 
 ### `models` (custom providers + base URLs)
 
-Clawdbot uses the **pi-coding-agent** model catalog. You can add custom providers
+Zee uses the **pi-coding-agent** model catalog. You can add custom providers
 (LiteLLM, local OpenAI-compatible servers, Anthropic proxies, etc.) by writing
-`~/.clawdbot/agents/<agentId>/agent/models.json` or by defining the same schema inside your
-Clawdbot config under `models.providers`.
+`~/.zee/agents/<agentId>/agent/models.json` or by defining the same schema inside your
+Zee config under `models.providers`.
 
-When `models.providers` is present, Clawdbot writes/merges a `models.json` into
-`~/.clawdbot/agents/<agentId>/agent/` on startup:
+When `models.providers` is present, Zee writes/merges a `models.json` into
+`~/.zee/agents/<agentId>/agent/` on startup:
 - default behavior: **merge** (keeps existing providers, overrides on name)
 - set `models.mode: "replace"` to overwrite the file contents
 
@@ -1389,8 +1389,8 @@ Notes:
 - Supported APIs: `openai-completions`, `openai-responses`, `anthropic-messages`,
   `google-generative-ai`
 - Use `authHeader: true` + `headers` for custom auth needs.
-- Override the agent config root with `CLAWDBOT_AGENT_DIR` (or `PI_CODING_AGENT_DIR`)
-  if you want `models.json` stored elsewhere (default: `~/.clawdbot/agents/main/agent`).
+- Override the agent config root with `ZEE_AGENT_DIR` (or `PI_CODING_AGENT_DIR`)
+  if you want `models.json` stored elsewhere (default: `~/.zee/agents/main/agent`).
 
 ### `session`
 
@@ -1402,9 +1402,9 @@ Controls session scoping, idle expiry, reset triggers, and where the session sto
     scope: "per-sender",
     idleMinutes: 60,
     resetTriggers: ["/new", "/reset"],
-    // Default is already per-agent under ~/.clawdbot/agents/<agentId>/sessions/sessions.json
+    // Default is already per-agent under ~/.zee/agents/<agentId>/sessions/sessions.json
     // You can override with {agentId} templating:
-    store: "~/.clawdbot/agents/{agentId}/sessions/sessions.json",
+    store: "~/.zee/agents/{agentId}/sessions/sessions.json",
     // Direct chats collapse to agent:<agentId>:<mainKey> (default: "main").
     mainKey: "main",
     agentToAgent: {
@@ -1430,7 +1430,7 @@ Fields:
 ### `skills` (skills config)
 
 Controls bundled allowlist, install preferences, extra skill folders, and per-skill
-overrides. Applies to **bundled** skills and `~/.clawdbot/skills` (workspace skills
+overrides. Applies to **bundled** skills and `~/.zee/skills` (workspace skills
 still win on name conflicts).
 
 Fields:
@@ -1478,7 +1478,7 @@ Example:
 
 ### `browser` (clawd-managed Chrome)
 
-Clawdbot can start a **dedicated, isolated** Chrome/Chromium instance for clawd and expose a small loopback control server.
+Zee can start a **dedicated, isolated** Chrome/Chromium instance for clawd and expose a small loopback control server.
 Profiles can point at a **remote** Chrome via `profiles.<name>.cdpUrl`. Remote
 profiles are attach-only (start/stop/reset are disabled).
 
@@ -1490,7 +1490,7 @@ Defaults:
 - control URL: `http://127.0.0.1:18791` (CDP uses `18792`)
 - CDP URL: `http://127.0.0.1:18792` (control URL + 1, legacy single-profile)
 - profile color: `#FF4500` (lobster-orange)
-- Note: the control server is started by the running gateway (Clawdbot.app menubar, or `clawdbot gateway`).
+- Note: the control server is started by the running gateway (Zee.app menubar, or `zee gateway`).
 
 ```json5
 {
@@ -1543,7 +1543,7 @@ Defaults:
     mode: "local", // or "remote"
     port: 18789, // WS + HTTP multiplex
     bind: "loopback",
-    // controlUi: { enabled: true, basePath: "/clawdbot" }
+    // controlUi: { enabled: true, basePath: "/zee" }
     // auth: { mode: "token", token: "your-token" } // token is for multi-machine CLI access
     // tailscale: { mode: "off" | "serve" | "funnel" }
   }
@@ -1552,7 +1552,7 @@ Defaults:
 
 Control UI base path:
 - `gateway.controlUi.basePath` sets the URL prefix where the Control UI is served.
-- Examples: `"/ui"`, `"/clawdbot"`, `"/apps/clawdbot"`.
+- Examples: `"/ui"`, `"/zee"`, `"/apps/zee"`.
 - Default: root (`/`) (unchanged).
 
 Related docs:
@@ -1562,17 +1562,17 @@ Related docs:
 - [Remote access](/gateway/remote)
 
 Notes:
-- `clawdbot gateway` refuses to start unless `gateway.mode` is set to `local` (or you pass the override flag).
+- `zee gateway` refuses to start unless `gateway.mode` is set to `local` (or you pass the override flag).
 - `gateway.port` controls the single multiplexed port used for WebSocket + HTTP (control UI, hooks, A2UI).
-- Precedence: `--port` > `CLAWDBOT_GATEWAY_PORT` > `gateway.port` > default `18789`.
-- Non-loopback binds (`lan`/`tailnet`/`auto`) require auth. Use `gateway.auth.token` (or `CLAWDBOT_GATEWAY_TOKEN`).
+- Precedence: `--port` > `ZEE_GATEWAY_PORT` > `gateway.port` > default `18789`.
+- Non-loopback binds (`lan`/`tailnet`/`auto`) require auth. Use `gateway.auth.token` (or `ZEE_GATEWAY_TOKEN`).
 - `gateway.remote.token` is **only** for remote CLI calls; it does not enable local gateway auth. `gateway.token` is ignored.
 
 Auth and Tailscale:
 - `gateway.auth.mode` sets the handshake requirements (`token` or `password`).
 - `gateway.auth.token` stores the shared token for token auth (used by the CLI on the same machine).
 - When `gateway.auth.mode` is set, only that method is accepted (plus optional Tailscale headers).
-- `gateway.auth.password` can be set here, or via `CLAWDBOT_GATEWAY_PASSWORD` (recommended).
+- `gateway.auth.password` can be set here, or via `ZEE_GATEWAY_PASSWORD` (recommended).
 - `gateway.auth.allowTailscale` controls whether Tailscale identity headers can satisfy auth.
 - `gateway.tailscale.mode: "serve"` uses Tailscale Serve (tailnet only, loopback bind).
 - `gateway.tailscale.mode: "funnel"` exposes the dashboard publicly; requires auth.
@@ -1584,7 +1584,7 @@ Remote client defaults (CLI):
 - `gateway.remote.password` supplies the password for remote calls (leave unset for no auth).
 
 macOS app behavior:
-- Clawdbot.app watches `~/.clawdbot/clawdbot.json` and switches modes live when `gateway.mode` or `gateway.remote.url` changes.
+- Zee.app watches `~/.zee/zee.json` and switches modes live when `gateway.mode` or `gateway.remote.url` changes.
 - If `gateway.mode` is unset but `gateway.remote.url` is set, the macOS app treats it as remote mode.
 - When you change connection mode in the macOS app, it writes `gateway.mode` (and `gateway.remote.url` in remote mode) back to the config file.
 
@@ -1603,7 +1603,7 @@ macOS app behavior:
 
 ### `gateway.reload` (Config hot reload)
 
-The Gateway watches `~/.clawdbot/clawdbot.json` (or `CLAWDBOT_CONFIG_PATH`) and applies changes automatically.
+The Gateway watches `~/.zee/zee.json` (or `ZEE_CONFIG_PATH`) and applies changes automatically.
 
 Modes:
 - `hybrid` (default): hot-apply safe changes; restart the Gateway for critical changes.
@@ -1625,7 +1625,7 @@ Modes:
 #### Hot reload matrix (files + impact)
 
 Files watched:
-- `~/.clawdbot/clawdbot.json` (or `CLAWDBOT_CONFIG_PATH`)
+- `~/.zee/zee.json` (or `ZEE_CONFIG_PATH`)
 
 Hot-applied (no full gateway restart):
 - `hooks` (webhook auth/path/mappings) + `hooks.gmail` (Gmail watcher restarted)
@@ -1646,22 +1646,22 @@ Requires full Gateway restart:
 ### Multi-instance isolation
 
 To run multiple gateways on one host, isolate per-instance state + config and use unique ports:
-- `CLAWDBOT_CONFIG_PATH` (per-instance config)
-- `CLAWDBOT_STATE_DIR` (sessions/creds)
+- `ZEE_CONFIG_PATH` (per-instance config)
+- `ZEE_STATE_DIR` (sessions/creds)
 - `agent.workspace` (memories)
 - `gateway.port` (unique per instance)
 
 Convenience flags (CLI):
-- `clawdbot --dev …` → uses `~/.clawdbot-dev` + shifts ports from base `19001`
-- `clawdbot --profile <name> …` → uses `~/.clawdbot-<name>` (port via config/env/flags)
+- `zee --dev …` → uses `~/.zee-dev` + shifts ports from base `19001`
+- `zee --profile <name> …` → uses `~/.zee-<name>` (port via config/env/flags)
 
 See [`docs/gateway.md`](/gateway) for the derived port mapping (gateway/bridge/browser/canvas).
 
 Example:
 ```bash
-CLAWDBOT_CONFIG_PATH=~/.clawdbot/a.json \
-CLAWDBOT_STATE_DIR=~/.clawdbot-a \
-clawdbot gateway --port 19001
+ZEE_CONFIG_PATH=~/.zee/a.json \
+ZEE_STATE_DIR=~/.zee-a \
+zee gateway --port 19001
 ```
 
 ### `hooks` (Gateway webhooks)
@@ -1680,7 +1680,7 @@ Defaults:
     token: "shared-secret",
     path: "/hooks",
     presets: ["gmail"],
-    transformsDir: "~/.clawdbot/hooks",
+    transformsDir: "~/.zee/hooks",
     mappings: [
       {
         match: { path: "gmail" },
@@ -1701,7 +1701,7 @@ Defaults:
 
 Requests must include the hook token:
 - `Authorization: Bearer <token>` **or**
-- `x-clawdbot-token: <token>` **or**
+- `x-zee-token: <token>` **or**
 - `?token=<token>`
 
 Endpoints:
@@ -1720,13 +1720,13 @@ Mapping notes:
 - If there is no prior delivery route, set `provider` + `to` explicitly (required for Telegram/Discord/Slack/Signal/iMessage).
 - `model` overrides the LLM for this hook run (`provider/model` or alias; must be allowed if `agent.models` is set).
 
-Gmail helper config (used by `clawdbot hooks gmail setup` / `run`):
+Gmail helper config (used by `zee hooks gmail setup` / `run`):
 
 ```json5
 {
   hooks: {
     gmail: {
-      account: "clawdbot@gmail.com",
+      account: "zee@gmail.com",
       topic: "projects/<project-id>/topics/gog-gmail-watch",
       subscription: "gog-gmail-watch-push",
       pushToken: "shared-push-token",
@@ -1744,11 +1744,11 @@ Gmail helper config (used by `clawdbot hooks gmail setup` / `run`):
 Gateway auto-start:
 - If `hooks.enabled=true` and `hooks.gmail.account` is set, the Gateway starts
   `gog gmail watch serve` on boot and auto-renews the watch.
-- Set `CLAWDBOT_SKIP_GMAIL_WATCHER=1` to disable the auto-start (for manual runs).
+- Set `ZEE_SKIP_GMAIL_WATCHER=1` to disable the auto-start (for manual runs).
 - Avoid running a separate `gog gmail watch serve` alongside the Gateway; it will
   fail with `listen tcp 127.0.0.1:8788: bind: address already in use`.
 
-Note: when `tailscale.mode` is on, Clawdbot defaults `serve.path` to `/` so
+Note: when `tailscale.mode` is on, Zee defaults `serve.path` to `/` so
 Tailscale can proxy `/gmail-pubsub` correctly (it strips the set-path prefix).
 
 ### `canvasHost` (LAN/tailnet Canvas file server + live reload)
@@ -1762,9 +1762,9 @@ The server listens on the **bridge bind host** (LAN or Tailnet) so nodes can rea
 The server:
 - serves files under `canvasHost.root`
 - injects a tiny live-reload client into served HTML
-- watches the directory and broadcasts reloads over a WebSocket endpoint at `/__clawdbot/ws`
+- watches the directory and broadcasts reloads over a WebSocket endpoint at `/__zee/ws`
 - auto-creates a starter `index.html` when the directory is empty (so you see something immediately)
-- also serves A2UI at `/__clawdbot__/a2ui/` and is advertised to nodes as `canvasHostUrl`
+- also serves A2UI at `/__zee__/a2ui/` and is advertised to nodes as `canvasHostUrl`
   (always used by nodes for Canvas/A2UI)
 
 Disable live reload (and file watching) if the directory is large or you hit `EMFILE`:
@@ -1784,7 +1784,7 @@ Changes to `canvasHost.*` require a gateway restart (config reload will restart)
 
 Disable with:
 - config: `canvasHost: { enabled: false }`
-- env: `CLAWDBOT_SKIP_CANVAS_HOST=1`
+- env: `ZEE_SKIP_CANVAS_HOST=1`
 
 ### `bridge` (node bridge server)
 
@@ -1813,16 +1813,16 @@ Bind modes:
 
 ### `discovery.wideArea` (Wide-Area Bonjour / unicast DNS‑SD)
 
-When enabled, the Gateway writes a unicast DNS-SD zone for `_clawdbot-bridge._tcp` under `~/.clawdbot/dns/` using the standard discovery domain `clawdbot.internal.`
+When enabled, the Gateway writes a unicast DNS-SD zone for `_zee-bridge._tcp` under `~/.zee/dns/` using the standard discovery domain `zee.internal.`
 
 To make iOS/Android discover across networks (Vienna ⇄ London), pair this with:
-- a DNS server on the gateway host serving `clawdbot.internal.` (CoreDNS is recommended)
-- Tailscale **split DNS** so clients resolve `clawdbot.internal` via that server
+- a DNS server on the gateway host serving `zee.internal.` (CoreDNS is recommended)
+- Tailscale **split DNS** so clients resolve `zee.internal` via that server
 
 One-time setup helper (gateway host):
 
 ```bash
-clawdbot dns setup --apply
+zee dns setup --apply
 ```
 
 ```json5

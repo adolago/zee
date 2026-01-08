@@ -13,16 +13,16 @@ export type ResolveBonjourCliPathOptions = {
 
 export function formatBonjourInstanceName(displayName: string) {
   const trimmed = displayName.trim();
-  if (!trimmed) return "Clawdbot";
-  if (/clawdbot/i.test(trimmed)) return trimmed;
-  return `${trimmed} (Clawdbot)`;
+  if (!trimmed) return "Zee";
+  if (/zee/i.test(trimmed)) return trimmed;
+  return `${trimmed} (Zee)`;
 }
 
 export function resolveBonjourCliPath(
   opts: ResolveBonjourCliPathOptions = {},
 ): string | undefined {
   const env = opts.env ?? process.env;
-  const envPath = env.CLAWDBOT_CLI_PATH?.trim();
+  const envPath = env.ZEE_CLI_PATH?.trim();
   if (envPath) return envPath;
 
   const statSync = opts.statSync ?? fs.statSync;
@@ -36,7 +36,7 @@ export function resolveBonjourCliPath(
 
   const execPath = opts.execPath ?? process.execPath;
   const execDir = path.dirname(execPath);
-  const siblingCli = path.join(execDir, "clawdbot");
+  const siblingCli = path.join(execDir, "zee");
   if (isFile(siblingCli)) return siblingCli;
 
   const argv = opts.argv ?? process.argv;
@@ -48,7 +48,7 @@ export function resolveBonjourCliPath(
   const cwd = opts.cwd ?? process.cwd();
   const distCli = path.join(cwd, "dist", "index.js");
   if (isFile(distCli)) return distCli;
-  const binCli = path.join(cwd, "bin", "clawdbot.js");
+  const binCli = path.join(cwd, "bin", "zee.js");
   if (isFile(binCli)) return binCli;
 
   return undefined;
@@ -59,7 +59,7 @@ export async function resolveTailnetDnsHint(opts?: {
   exec?: typeof runExec;
 }): Promise<string | undefined> {
   const env = opts?.env ?? process.env;
-  const envRaw = env.CLAWDBOT_TAILNET_DNS?.trim();
+  const envRaw = env.ZEE_TAILNET_DNS?.trim();
   const envValue = envRaw && envRaw.length > 0 ? envRaw.replace(/\.$/, "") : "";
   if (envValue) return envValue;
 

@@ -47,14 +47,14 @@ function normalizeSystemdUnit(raw?: string): string {
   return unit.endsWith(".service") ? unit : `${unit}.service`;
 }
 
-export function triggerClawdbotRestart(): RestartAttempt {
+export function triggerZeeRestart(): RestartAttempt {
   if (process.env.VITEST || process.env.NODE_ENV === "test") {
     return { ok: true, method: "supervisor", detail: "test mode" };
   }
   const tried: string[] = [];
   if (process.platform !== "darwin") {
     if (process.platform === "linux") {
-      const unit = normalizeSystemdUnit(process.env.CLAWDBOT_SYSTEMD_UNIT);
+      const unit = normalizeSystemdUnit(process.env.ZEE_SYSTEMD_UNIT);
       const userArgs = ["--user", "restart", unit];
       tried.push(`systemctl ${userArgs.join(" ")}`);
       const userRestart = spawnSync("systemctl", userArgs, {
@@ -87,7 +87,7 @@ export function triggerClawdbotRestart(): RestartAttempt {
   }
 
   const label =
-    process.env.CLAWDBOT_LAUNCHD_LABEL || GATEWAY_LAUNCH_AGENT_LABEL;
+    process.env.ZEE_LAUNCHD_LABEL || GATEWAY_LAUNCH_AGENT_LABEL;
   const uid =
     typeof process.getuid === "function" ? process.getuid() : undefined;
   const target = uid !== undefined ? `gui/${uid}/${label}` : label;

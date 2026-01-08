@@ -118,7 +118,7 @@ describe("web session", () => {
 
   it("does not clobber creds backup when creds.json is corrupted", async () => {
     const credsSuffix = path.join(
-      ".clawdbot",
+      ".zee",
       "credentials",
       "whatsapp",
       "default",
@@ -204,14 +204,14 @@ describe("web session", () => {
 
   it("rotates creds backup when creds.json is valid JSON", async () => {
     const credsSuffix = path.join(
-      ".clawdbot",
+      ".zee",
       "credentials",
       "whatsapp",
       "default",
       "creds.json",
     );
     const backupSuffix = path.join(
-      ".clawdbot",
+      ".zee",
       "credentials",
       "whatsapp",
       "default",

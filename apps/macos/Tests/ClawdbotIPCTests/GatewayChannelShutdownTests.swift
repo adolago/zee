@@ -1,7 +1,7 @@
 import Foundation
 import os
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct GatewayChannelShutdownTests {
     private final class FakeWebSocketTask: WebSocketTasking, @unchecked Sendable {

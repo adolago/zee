@@ -6,7 +6,7 @@ import { applyCliProfileEnv, parseCliProfileArgs } from "./cli/profile.js";
 const parsed = parseCliProfileArgs(process.argv);
 if (!parsed.ok) {
   // Keep it simple; Commander will handle rich help/errors after we strip flags.
-  console.error(`[clawdbot] ${parsed.error}`);
+  console.error(`[zee] ${parsed.error}`);
   process.exit(2);
 }
 

@@ -18,14 +18,14 @@ installGatewayTestHooks();
 
 describe("gateway server misc", () => {
   test("hello-ok advertises the gateway port for canvas host", async () => {
-    const prevToken = process.env.CLAWDBOT_GATEWAY_TOKEN;
-    const prevCanvasPort = process.env.CLAWDBOT_CANVAS_HOST_PORT;
-    process.env.CLAWDBOT_GATEWAY_TOKEN = "secret";
+    const prevToken = process.env.ZEE_GATEWAY_TOKEN;
+    const prevCanvasPort = process.env.ZEE_CANVAS_HOST_PORT;
+    process.env.ZEE_GATEWAY_TOKEN = "secret";
     testTailnetIPv4.value = "100.64.0.1";
     testState.gatewayBind = "lan";
     const canvasPort = await getFreePort();
     testState.canvasHostPort = canvasPort;
-    process.env.CLAWDBOT_CANVAS_HOST_PORT = String(canvasPort);
+    process.env.ZEE_CANVAS_HOST_PORT = String(canvasPort);
 
     const port = await getFreePort();
     const canvasHostUrl = resolveCanvasHostUrl({
@@ -35,14 +35,14 @@ describe("gateway server misc", () => {
     });
     expect(canvasHostUrl).toBe(`http://100.64.0.1:${canvasPort}`);
     if (prevToken === undefined) {
-      delete process.env.CLAWDBOT_GATEWAY_TOKEN;
+      delete process.env.ZEE_GATEWAY_TOKEN;
     } else {
-      process.env.CLAWDBOT_GATEWAY_TOKEN = prevToken;
+      process.env.ZEE_GATEWAY_TOKEN = prevToken;
     }
     if (prevCanvasPort === undefined) {
-      delete process.env.CLAWDBOT_CANVAS_HOST_PORT;
+      delete process.env.ZEE_CANVAS_HOST_PORT;
     } else {
-      process.env.CLAWDBOT_CANVAS_HOST_PORT = prevCanvasPort;
+      process.env.ZEE_CANVAS_HOST_PORT = prevCanvasPort;
     }
   });
 

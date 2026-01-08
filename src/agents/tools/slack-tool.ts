@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { loadConfig } from "../../config/config.js";
 import { logVerbose } from "../../globals.js";
 import { normalizeAccountId } from "../../routing/session-key.js";
@@ -8,7 +8,7 @@ import { SlackToolSchema } from "./slack-schema.js";
 
 type SlackToolOptions = {
   agentAccountId?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 };
 
 function resolveAgentAccountId(value?: string): string | undefined {
@@ -18,7 +18,7 @@ function resolveAgentAccountId(value?: string): string | undefined {
 }
 
 function resolveConfiguredAccountId(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): string | undefined {
   if (accountId === "default") return accountId;

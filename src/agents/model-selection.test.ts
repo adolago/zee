@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./defaults.js";
 import {
   normalizeProviderId,
@@ -11,7 +11,7 @@ describe("resolveConfiguredModelRef", () => {
   it("parses provider/model from agent.model.primary", () => {
     const cfg = {
       agent: { model: { primary: "openai/gpt-4.1-mini" } },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -25,7 +25,7 @@ describe("resolveConfiguredModelRef", () => {
   it("falls back to anthropic when agent.model.primary omits provider", () => {
     const cfg = {
       agent: { model: { primary: "claude-opus-4-5" } },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -40,7 +40,7 @@ describe("resolveConfiguredModelRef", () => {
   });
 
   it("falls back to defaults when agent.model is missing", () => {
-    const cfg = {} satisfies ClawdbotConfig;
+    const cfg = {} satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -62,7 +62,7 @@ describe("resolveConfiguredModelRef", () => {
           "anthropic/claude-opus-4-5": { alias: "Opus" },
         },
       },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -79,7 +79,7 @@ describe("resolveConfiguredModelRef", () => {
   it("normalizes z.ai provider in agent.model", () => {
     const cfg = {
       agent: { model: "z.ai/glm-4.7" },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -93,7 +93,7 @@ describe("resolveConfiguredModelRef", () => {
   it("normalizes z-ai provider in agent.model", () => {
     const cfg = {
       agent: { model: "z-ai/glm-4.7" },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -107,7 +107,7 @@ describe("resolveConfiguredModelRef", () => {
   it("normalizes provider casing in agent.model", () => {
     const cfg = {
       agent: { model: "OpenAI/gpt-4.1-mini" },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,
@@ -121,7 +121,7 @@ describe("resolveConfiguredModelRef", () => {
   it("normalizes z.ai casing in agent.model", () => {
     const cfg = {
       agent: { model: "Z.AI/glm-4.7" },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const resolved = resolveConfiguredModelRef({
       cfg,

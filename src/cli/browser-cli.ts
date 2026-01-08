@@ -18,7 +18,7 @@ export function registerBrowserCli(program: Command) {
     .description("Manage clawd's dedicated browser (Chrome/Chromium)")
     .option(
       "--url <url>",
-      "Override browser control URL (default from ~/.clawdbot/clawdbot.json)",
+      "Override browser control URL (default from ~/.zee/zee.json)",
     )
     .option(
       "--browser-profile <name>",
@@ -32,7 +32,7 @@ export function registerBrowserCli(program: Command) {
     .action(() => {
       browser.outputHelp();
       defaultRuntime.error(
-        danger('Missing subcommand. Try: "clawdbot browser status"'),
+        danger('Missing subcommand. Try: "zee browser status"'),
       );
       defaultRuntime.exit(1);
     });

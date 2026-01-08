@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
 import { normalizeE164 } from "../../utils.js";
 
@@ -107,13 +107,13 @@ export function resolveOutboundTarget(params: {
   return {
     ok: false,
     error: new Error(
-      "Delivering to WebChat is not supported via `clawdbot agent`; use WhatsApp/Telegram or run with --deliver=false.",
+      "Delivering to WebChat is not supported via `zee agent`; use WhatsApp/Telegram or run with --deliver=false.",
     ),
   };
 }
 
 export function resolveHeartbeatDeliveryTarget(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   entry?: SessionEntry;
 }): OutboundTarget {
   const { cfg, entry } = params;

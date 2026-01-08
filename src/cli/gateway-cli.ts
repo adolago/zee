@@ -2,7 +2,7 @@ import fs from "node:fs";
 
 import type { Command } from "commander";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   type GatewayAuthMode,
   loadConfig,
   readConfigFileSnapshot,
@@ -97,21 +97,21 @@ function renderGatewayServiceStopHints(): string[] {
   switch (process.platform) {
     case "darwin":
       return [
-        "Tip: clawdbot daemon stop",
+        "Tip: zee daemon stop",
         `Or: launchctl bootout gui/$UID/${GATEWAY_LAUNCH_AGENT_LABEL}`,
       ];
     case "linux":
       return [
-        "Tip: clawdbot daemon stop",
+        "Tip: zee daemon stop",
         `Or: systemctl --user stop ${GATEWAY_SYSTEMD_SERVICE_NAME}.service`,
       ];
     case "win32":
       return [
-        "Tip: clawdbot daemon stop",
+        "Tip: zee daemon stop",
         `Or: schtasks /End /TN "${GATEWAY_WINDOWS_TASK_NAME}"`,
       ];
     default:
-      return ["Tip: clawdbot daemon stop"];
+      return ["Tip: zee daemon stop"];
   }
 }
 
@@ -257,7 +257,7 @@ export function registerGatewayCli(program: Command) {
     )
     .option(
       "--token <token>",
-      "Shared token required in connect.params.auth.token (default: CLAWDBOT_GATEWAY_TOKEN env if set)",
+      "Shared token required in connect.params.auth.token (default: ZEE_GATEWAY_TOKEN env if set)",
     )
     .option("--auth <mode>", 'Gateway auth mode ("token"|"password")')
     .option("--password <password>", "Password for auth mode=password")
@@ -356,7 +356,7 @@ export function registerGatewayCli(program: Command) {
         }
       }
       if (opts.token) {
-        process.env.CLAWDBOT_GATEWAY_TOKEN = String(opts.token);
+        process.env.ZEE_GATEWAY_TOKEN = String(opts.token);
       }
       const authModeRaw = opts.auth ? String(opts.auth) : undefined;
       const authMode: GatewayAuthMode | null =
@@ -382,12 +382,12 @@ export function registerGatewayCli(program: Command) {
         defaultRuntime.exit(1);
         return;
       }
-      const configExists = fs.existsSync(CONFIG_PATH_CLAWDBOT);
+      const configExists = fs.existsSync(CONFIG_PATH_ZEE);
       const mode = cfg.gateway?.mode;
       if (!opts.allowUnconfigured && mode !== "local") {
         if (!configExists) {
           defaultRuntime.error(
-            "Missing config. Run `clawdbot setup` or set gateway.mode=local (or pass --allow-unconfigured).",
+            "Missing config. Run `zee setup` or set gateway.mode=local (or pass --allow-unconfigured).",
           );
         } else {
           defaultRuntime.error(
@@ -444,7 +444,7 @@ export function registerGatewayCli(program: Command) {
         defaultRuntime.error(
           [
             "Gateway auth is set to token, but no token is configured.",
-            "Set gateway.auth.token (or CLAWDBOT_GATEWAY_TOKEN), or pass --token.",
+            "Set gateway.auth.token (or ZEE_GATEWAY_TOKEN), or pass --token.",
             ...authHints,
           ]
             .filter(Boolean)
@@ -457,7 +457,7 @@ export function registerGatewayCli(program: Command) {
         defaultRuntime.error(
           [
             "Gateway auth is set to password, but no password is configured.",
-            "Set gateway.auth.password (or CLAWDBOT_GATEWAY_PASSWORD), or pass --password.",
+            "Set gateway.auth.password (or ZEE_GATEWAY_PASSWORD), or pass --password.",
             ...authHints,
           ]
             .filter(Boolean)
@@ -470,7 +470,7 @@ export function registerGatewayCli(program: Command) {
         defaultRuntime.error(
           [
             `Refusing to bind gateway to ${bind} without auth.`,
-            "Set gateway.auth.token (or CLAWDBOT_GATEWAY_TOKEN) or pass --token.",
+            "Set gateway.auth.token (or ZEE_GATEWAY_TOKEN) or pass --token.",
             ...authHints,
           ]
             .filter(Boolean)
@@ -514,7 +514,7 @@ export function registerGatewayCli(program: Command) {
         ) {
           const errMessage = describeUnknownError(err);
           defaultRuntime.error(
-            `Gateway failed to start: ${errMessage}\nIf the gateway is supervised, stop it with: clawdbot daemon stop`,
+            `Gateway failed to start: ${errMessage}\nIf the gateway is supervised, stop it with: zee daemon stop`,
           );
           try {
             const diagnostics = await inspectPortUsage(port);

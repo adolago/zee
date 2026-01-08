@@ -3,7 +3,7 @@ import { formatAgentEnvelope } from "../auto-reply/envelope.js";
 import { dispatchReplyFromConfig } from "../auto-reply/reply/dispatch-from-config.js";
 import { createReplyDispatcher } from "../auto-reply/reply/reply-dispatcher.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import { resolveStorePath, updateLastRoute } from "../config/sessions.js";
 import { danger, logVerbose, shouldLogVerbose } from "../globals.js";
@@ -54,7 +54,7 @@ export type MonitorSignalOpts = {
   abortSignal?: AbortSignal;
   account?: string;
   accountId?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   baseUrl?: string;
   autoStart?: boolean;
   cliPath?: string;
@@ -353,12 +353,12 @@ export async function monitorSignalProvider(
                 await sendMessageSignal(
                   senderId,
                   [
-                    "Clawdbot: access not configured.",
+                    "Zee: access not configured.",
                     "",
                     `Pairing code: ${code}`,
                     "",
                     "Ask the bot owner to approve with:",
-                    "clawdbot pairing approve --provider signal <code>",
+                    "zee pairing approve --provider signal <code>",
                   ].join("\n"),
                   {
                     baseUrl,

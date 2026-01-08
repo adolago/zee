@@ -145,7 +145,7 @@ export async function createWaSocket(
     version,
     logger,
     printQRInTerminal: false,
-    browser: ["clawdbot", "cli", VERSION],
+    browser: ["zee", "cli", VERSION],
     syncFullHistory: false,
     markOnlineOnConnect: false,
   });
@@ -170,7 +170,7 @@ export async function createWaSocket(
           if (status === DisconnectReason.loggedOut) {
             console.error(
               danger(
-                "WhatsApp session logged out. Run: clawdbot providers login",
+                "WhatsApp session logged out. Run: zee providers login",
               ),
             );
           }
@@ -456,7 +456,7 @@ export async function pickProvider(
   const hasWeb = await webAuthExists(authDir);
   if (!hasWeb) {
     throw new Error(
-      "No WhatsApp Web session found. Run `clawdbot providers login --verbose` to link.",
+      "No WhatsApp Web session found. Run `zee providers login --verbose` to link.",
     );
   }
   return choice;

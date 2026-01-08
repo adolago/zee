@@ -9,33 +9,33 @@ Last updated: 2025-12-09
 
 ## What it is
 - The always-on process that owns the single Baileys/Telegram connection and the control/event plane.
-- Replaces the legacy `gateway` command. CLI entry point: `clawdbot gateway`.
+- Replaces the legacy `gateway` command. CLI entry point: `zee gateway`.
 - Runs until stopped; exits non-zero on fatal errors so the supervisor restarts it.
 
 ## How to run (local)
 ```bash
-clawdbot gateway --port 18789
+zee gateway --port 18789
 # for full debug/trace logs in stdio:
-clawdbot gateway --port 18789 --verbose
+zee gateway --port 18789 --verbose
 # if the port is busy, terminate listeners then start:
-clawdbot gateway --force
+zee gateway --force
 # dev loop (auto-reload on TS changes):
 pnpm gateway:watch
 ```
-- Config hot reload watches `~/.clawdbot/clawdbot.json` (or `CLAWDBOT_CONFIG_PATH`).
+- Config hot reload watches `~/.zee/zee.json` (or `ZEE_CONFIG_PATH`).
   - Default mode: `gateway.reload.mode="hybrid"` (hot-apply safe changes, restart on critical).
   - Hot reload uses in-process restart via **SIGUSR1** when needed.
   - Disable with `gateway.reload.mode="off"`.
 - Binds WebSocket control plane to `127.0.0.1:<port>` (default 18789).
 - The same port also serves HTTP (control UI, hooks, A2UI). Single-port multiplex.
-- Starts a Canvas file server by default on `canvasHost.port` (default `18793`), serving `http://<gateway-host>:18793/__clawdbot__/canvas/` from `~/clawd/canvas`. Disable with `canvasHost.enabled=false` or `CLAWDBOT_SKIP_CANVAS_HOST=1`.
+- Starts a Canvas file server by default on `canvasHost.port` (default `18793`), serving `http://<gateway-host>:18793/__zee__/canvas/` from `~/clawd/canvas`. Disable with `canvasHost.enabled=false` or `ZEE_SKIP_CANVAS_HOST=1`.
 - Logs to stdout; use launchd/systemd to keep it alive and rotate logs.
 - Pass `--verbose` to mirror debug logging (handshakes, req/res, events) from the log file into stdio when troubleshooting.
 - `--force` uses `lsof` to find listeners on the chosen port, sends SIGTERM, logs what it killed, then starts the gateway (fails fast if `lsof` is missing).
 - If you run under a supervisor (launchd/systemd/mac app child-process mode), a stop/restart typically sends **SIGTERM**; older builds may surface this as `pnpm` `ELIFECYCLE` exit code **143** (SIGTERM), which is a normal shutdown, not a crash.
 - **SIGUSR1** triggers an in-process restart (no external supervisor required). This is what the `gateway` agent tool uses.
-- Optional shared secret: pass `--token <value>` or set `CLAWDBOT_GATEWAY_TOKEN` to require clients to send `connect.params.auth.token`.
-- Port precedence: `--port` > `CLAWDBOT_GATEWAY_PORT` > `gateway.port` > default `18789`.
+- Optional shared secret: pass `--token <value>` or set `ZEE_GATEWAY_TOKEN` to require clients to send `connect.params.auth.token`.
+- Port precedence: `--port` > `ZEE_GATEWAY_PORT` > `gateway.port` > default `18789`.
 
 ## Remote access
 - Tailscale/VPN preferred; otherwise SSH tunnel:
@@ -54,40 +54,40 @@ Supported if you isolate state + config and use unique ports.
 Fast path: run a fully-isolated dev instance (config/state/workspace) without touching your primary setup.
 
 ```bash
-clawdbot --dev setup
-clawdbot --dev gateway --allow-unconfigured
+zee --dev setup
+zee --dev gateway --allow-unconfigured
 # then target the dev instance:
-clawdbot --dev status
-clawdbot --dev health
+zee --dev status
+zee --dev health
 ```
 
 Defaults (can be overridden via env/flags/config):
-- `CLAWDBOT_STATE_DIR=~/.clawdbot-dev`
-- `CLAWDBOT_CONFIG_PATH=~/.clawdbot-dev/clawdbot.json`
-- `CLAWDBOT_GATEWAY_PORT=19001` (Gateway WS + HTTP)
+- `ZEE_STATE_DIR=~/.zee-dev`
+- `ZEE_CONFIG_PATH=~/.zee-dev/zee.json`
+- `ZEE_GATEWAY_PORT=19001` (Gateway WS + HTTP)
 - `bridge.port=19002` (derived: `gateway.port+1`)
 - `browser.controlUrl=http://127.0.0.1:19003` (derived: `gateway.port+2`)
 - `canvasHost.port=19005` (derived: `gateway.port+4`)
 - `agent.workspace` default becomes `~/clawd-dev` when you run `setup`/`onboard` under `--dev`.
 
 Derived ports (rules of thumb):
-- Base port = `gateway.port` (or `CLAWDBOT_GATEWAY_PORT` / `--port`)
-- `bridge.port = base + 1` (or `CLAWDBOT_BRIDGE_PORT` / config override)
-- `browser.controlUrl port = base + 2` (or `CLAWDBOT_BROWSER_CONTROL_URL` / config override)
-- `canvasHost.port = base + 4` (or `CLAWDBOT_CANVAS_HOST_PORT` / config override)
+- Base port = `gateway.port` (or `ZEE_GATEWAY_PORT` / `--port`)
+- `bridge.port = base + 1` (or `ZEE_BRIDGE_PORT` / config override)
+- `browser.controlUrl port = base + 2` (or `ZEE_BROWSER_CONTROL_URL` / config override)
+- `canvasHost.port = base + 4` (or `ZEE_CANVAS_HOST_PORT` / config override)
 - Browser profile CDP ports auto-allocate from `browser.controlPort + 9 .. + 108` (persisted per profile).
 
 Checklist per instance:
 - unique `gateway.port`
-- unique `CLAWDBOT_CONFIG_PATH`
-- unique `CLAWDBOT_STATE_DIR`
+- unique `ZEE_CONFIG_PATH`
+- unique `ZEE_STATE_DIR`
 - unique `agent.workspace`
 - separate WhatsApp numbers (if using WA)
 
 Example:
 ```bash
-CLAWDBOT_CONFIG_PATH=~/.clawdbot/a.json CLAWDBOT_STATE_DIR=~/.clawdbot-a clawdbot gateway --port 19001
-CLAWDBOT_CONFIG_PATH=~/.clawdbot/b.json CLAWDBOT_STATE_DIR=~/.clawdbot-b clawdbot gateway --port 19002
+ZEE_CONFIG_PATH=~/.zee/a.json ZEE_STATE_DIR=~/.zee-a zee gateway --port 19001
+ZEE_CONFIG_PATH=~/.zee/b.json ZEE_STATE_DIR=~/.zee-b zee gateway --port 19002
 ```
 
 ## Protocol (operator view)
@@ -100,7 +100,7 @@ CLAWDBOT_CONFIG_PATH=~/.clawdbot/b.json CLAWDBOT_STATE_DIR=~/.clawdbot-b clawdbo
 - `agent` responses are two-stage: first `res` ack `{runId,status:"accepted"}`, then a final `res` `{runId,status:"ok"|"error",summary}` after the run finishes; streamed output arrives as `event:"agent"`.
 
 ## Methods (initial set)
-- `health` — full health snapshot (same shape as `clawdbot health --json`).
+- `health` — full health snapshot (same shape as `zee health --json`).
 - `status` — short summary.
 - `system-presence` — current presence list.
 - `system-event` — post a presence/system note (structured).
@@ -127,7 +127,7 @@ See also: [`docs/presence.md`](/concepts/presence) for how presence is produced/
 ## Typing and validation
 - Server validates every inbound frame with AJV against JSON Schema emitted from the protocol definitions.
 - Clients (TS/Swift) consume generated types (TS directly; Swift via the repo’s generator).
-- Types live in [`src/gateway/protocol/*.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/protocol/*.ts); regenerate schemas/models with `pnpm protocol:gen` (writes [`dist/protocol.schema.json`](https://github.com/clawdbot/clawdbot/blob/main/dist/protocol.schema.json)) and `pnpm protocol:gen:swift` (writes [`apps/macos/Sources/ClawdbotProtocol/GatewayModels.swift`](https://github.com/clawdbot/clawdbot/blob/main/apps/macos/Sources/ClawdbotProtocol/GatewayModels.swift)).
+- Types live in [`src/gateway/protocol/*.ts`](https://github.com/zee/zee/blob/main/src/gateway/protocol/*.ts); regenerate schemas/models with `pnpm protocol:gen` (writes [`dist/protocol.schema.json`](https://github.com/zee/zee/blob/main/dist/protocol.schema.json)) and `pnpm protocol:gen:swift` (writes [`apps/macos/Sources/ZeeProtocol/GatewayModels.swift`](https://github.com/zee/zee/blob/main/apps/macos/Sources/ZeeProtocol/GatewayModels.swift)).
 
 ## Connection snapshot
 - `hello-ok` includes a `snapshot` with `presence`, `health`, `stateVersion`, and `uptimeMs` plus `policy {maxPayload,maxBufferedBytes,tickIntervalMs}` so clients can render immediately without extra requests.
@@ -150,7 +150,7 @@ See also: [`docs/presence.md`](/concepts/presence) for how presence is produced/
 
 ## Supervision (macOS example)
 - Use launchd to keep the daemon alive:
-  - Program: path to `clawdbot`
+  - Program: path to `zee`
   - Arguments: `gateway`
   - KeepAlive: true
   - StandardOut/Err: file paths or `syslog`
@@ -162,11 +162,11 @@ See also: [`docs/presence.md`](/concepts/presence) for how presence is produced/
 Use the CLI daemon manager for install/start/stop/restart/status:
 
 ```bash
-clawdbot daemon status
-clawdbot daemon install
-clawdbot daemon stop
-clawdbot daemon restart
-clawdbot logs --follow
+zee daemon status
+zee daemon install
+zee daemon stop
+zee daemon restart
+zee logs --follow
 ```
 
 Notes:
@@ -179,28 +179,28 @@ Notes:
 - `daemon status` includes the last gateway error line when the service looks running but the port is closed.
 - `logs` tails the Gateway file log via RPC (no manual `tail`/`grep` needed).
 - If other gateway-like services are detected, the CLI warns. We recommend **one gateway per machine**; one gateway can host multiple agents.
-  - Cleanup: `clawdbot daemon uninstall` (current service) and `clawdbot doctor` (legacy migrations).
-- `daemon install` is a no-op when already installed; use `clawdbot daemon install --force` to reinstall (profile/env/path changes).
+  - Cleanup: `zee daemon uninstall` (current service) and `zee doctor` (legacy migrations).
+- `daemon install` is a no-op when already installed; use `zee daemon install --force` to reinstall (profile/env/path changes).
 
 Bundled mac app:
-- Clawdbot.app can bundle a bun-compiled gateway binary and install a per-user LaunchAgent labeled `com.clawdbot.gateway`.
-- To stop it cleanly, use `clawdbot daemon stop` (or `launchctl bootout gui/$UID/com.clawdbot.gateway`).
-- To restart, use `clawdbot daemon restart` (or `launchctl kickstart -k gui/$UID/com.clawdbot.gateway`).
-  - `launchctl` only works if the LaunchAgent is installed; otherwise use `clawdbot daemon install` first.
+- Zee.app can bundle a bun-compiled gateway binary and install a per-user LaunchAgent labeled `com.zee.gateway`.
+- To stop it cleanly, use `zee daemon stop` (or `launchctl bootout gui/$UID/com.zee.gateway`).
+- To restart, use `zee daemon restart` (or `launchctl kickstart -k gui/$UID/com.zee.gateway`).
+  - `launchctl` only works if the LaunchAgent is installed; otherwise use `zee daemon install` first.
 
 ## Supervision (systemd user unit)
-Create `~/.config/systemd/user/clawdbot-gateway.service`:
+Create `~/.config/systemd/user/zee-gateway.service`:
 ```
 [Unit]
-Description=Clawdbot Gateway
+Description=Zee Gateway
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/clawdbot gateway --port 18789
+ExecStart=/usr/local/bin/zee gateway --port 18789
 Restart=always
 RestartSec=5
-Environment=CLAWDBOT_GATEWAY_TOKEN=
+Environment=ZEE_GATEWAY_TOKEN=
 WorkingDirectory=/home/youruser
 
 [Install]
@@ -213,16 +213,16 @@ sudo loginctl enable-linger youruser
 Onboarding runs this on Linux/WSL2 (may prompt for sudo; writes `/var/lib/systemd/linger`).
 Then enable the service:
 ```
-systemctl --user enable --now clawdbot-gateway.service
+systemctl --user enable --now zee-gateway.service
 ```
 
 **Alternative (system service)** - for always-on or multi-user servers, you can
 install a systemd **system** unit instead of a user unit (no lingering needed).
-Create `/etc/systemd/system/clawdbot-gateway.service` (copy the unit above,
+Create `/etc/systemd/system/zee-gateway.service` (copy the unit above,
 switch `WantedBy=multi-user.target`, set `User=` + `WorkingDirectory=`), then:
 ```
 sudo systemctl daemon-reload
-sudo systemctl enable --now clawdbot-gateway.service
+sudo systemctl enable --now zee-gateway.service
 ```
 
 ## Windows (WSL2)
@@ -241,13 +241,13 @@ Windows installs should use **WSL2** and follow the Linux systemd section above.
 - Graceful shutdown: emit `shutdown` event before closing; clients must handle close + reconnect.
 
 ## CLI helpers
-- `clawdbot gateway health|status` — request health/status over the Gateway WS.
-- `clawdbot send --to <num> --message "hi" [--media ...]` — send via Gateway (idempotent for WhatsApp).
-- `clawdbot agent --message "hi" --to <num>` — run an agent turn (waits for final by default).
-- `clawdbot gateway call <method> --params '{"k":"v"}'` — raw method invoker for debugging.
-- `clawdbot daemon stop|restart` — stop/restart the supervised gateway service (launchd/systemd).
+- `zee gateway health|status` — request health/status over the Gateway WS.
+- `zee send --to <num> --message "hi" [--media ...]` — send via Gateway (idempotent for WhatsApp).
+- `zee agent --message "hi" --to <num>` — run an agent turn (waits for final by default).
+- `zee gateway call <method> --params '{"k":"v"}'` — raw method invoker for debugging.
+- `zee daemon stop|restart` — stop/restart the supervised gateway service (launchd/systemd).
 - Gateway helper subcommands assume a running gateway on `--url`; they no longer auto-spawn one.
 
 ## Migration guidance
-- Retire uses of `clawdbot gateway` and the legacy TCP control port.
+- Retire uses of `zee gateway` and the legacy TCP control port.
 - Update clients to speak the WS protocol with mandatory connect and structured presence.

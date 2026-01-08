@@ -77,7 +77,7 @@ enum HealthState: Equatable {
 final class HealthStore {
     static let shared = HealthStore()
 
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "health")
+    private static let logger = Logger(subsystem: "com.zee", category: "health")
 
     private(set) var snapshot: HealthSnapshot?
     private(set) var lastSuccess: Date?
@@ -171,9 +171,9 @@ final class HealthStore {
         if !snap.web.linked {
             if let tg = snap.telegram, tg.configured {
                 let tgLabel = (tg.probe?.ok ?? true) ? "Telegram ok" : "Telegram degraded"
-                return "\(tgLabel) · Not linked — run clawdbot login"
+                return "\(tgLabel) · Not linked — run zee login"
             }
-            return "Not linked — run clawdbot login"
+            return "Not linked — run zee login"
         }
         let auth = snap.web.authAgeMs.map { msToAge($0) } ?? "unknown"
         if let connect = snap.web.connect, !connect.ok {
@@ -190,7 +190,7 @@ final class HealthStore {
             if lower.contains("connection refused") {
                 let port = GatewayEnvironment.gatewayPort()
                 return "The gateway control port (127.0.0.1:\(port)) isn’t listening — " +
-                    "restart Clawdbot to bring it back."
+                    "restart Zee to bring it back."
             }
             if lower.contains("timeout") {
                 return "Timed out waiting for the control server; the gateway may be crashed or still starting."
@@ -202,7 +202,7 @@ final class HealthStore {
 
     func describeFailure(from snap: HealthSnapshot, fallback: String?) -> String {
         if !snap.web.linked {
-            return "Not linked — run clawdbot login"
+            return "Not linked — run zee login"
         }
         if let connect = snap.web.connect, !connect.ok {
             let elapsed = connect.elapsedMs.map { "\(Int($0))ms" } ?? "unknown duration"

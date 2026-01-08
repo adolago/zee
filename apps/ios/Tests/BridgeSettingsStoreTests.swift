@@ -1,14 +1,14 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 private struct KeychainEntry: Hashable {
     let service: String
     let account: String
 }
 
-private let bridgeService = "com.clawdbot.bridge"
-private let nodeService = "com.clawdbot.node"
+private let bridgeService = "com.zee.bridge"
+private let nodeService = "com.zee.node"
 private let instanceIdEntry = KeychainEntry(service: nodeService, account: "instanceId")
 private let preferredBridgeEntry = KeychainEntry(service: bridgeService, account: "preferredStableID")
 private let lastBridgeEntry = KeychainEntry(service: bridgeService, account: "lastDiscoveredStableID")

@@ -26,7 +26,7 @@ describe("runGatewayUpdate", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-update-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-update-"));
   });
 
   afterEach(async () => {
@@ -37,7 +37,7 @@ describe("runGatewayUpdate", () => {
     await fs.mkdir(path.join(tempDir, ".git"));
     await fs.writeFile(
       path.join(tempDir, "package.json"),
-      JSON.stringify({ name: "clawdbot", version: "1.0.0" }),
+      JSON.stringify({ name: "zee", version: "1.0.0" }),
       "utf-8",
     );
     const { runner, calls } = createRunner({
@@ -61,7 +61,7 @@ describe("runGatewayUpdate", () => {
     await fs.mkdir(path.join(tempDir, ".git"));
     await fs.writeFile(
       path.join(tempDir, "package.json"),
-      JSON.stringify({ name: "clawdbot", version: "1.0.0" }),
+      JSON.stringify({ name: "zee", version: "1.0.0" }),
       "utf-8",
     );
     const { runner, calls } = createRunner({
@@ -89,7 +89,7 @@ describe("runGatewayUpdate", () => {
   it("runs package manager update when no git root", async () => {
     await fs.writeFile(
       path.join(tempDir, "package.json"),
-      JSON.stringify({ name: "clawdbot", packageManager: "pnpm@8.0.0" }),
+      JSON.stringify({ name: "zee", packageManager: "pnpm@8.0.0" }),
       "utf-8",
     );
     await fs.writeFile(path.join(tempDir, "pnpm-lock.yaml"), "", "utf-8");

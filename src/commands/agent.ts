@@ -31,7 +31,7 @@ import {
   type VerboseLevel,
 } from "../auto-reply/thinking.js";
 import { type CliDeps, createDefaultDeps } from "../cli/deps.js";
-import { type ClawdbotConfig, loadConfig } from "../config/config.js";
+import { type ZeeConfig, loadConfig } from "../config/config.js";
 import {
   DEFAULT_IDLE_MINUTES,
   loadSessionStore,
@@ -96,7 +96,7 @@ type SessionResolution = {
 };
 
 function resolveSession(opts: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   to?: string;
   sessionId?: string;
   sessionKey?: string;

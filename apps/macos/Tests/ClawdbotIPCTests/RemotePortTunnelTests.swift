@@ -1,5 +1,5 @@
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 #if canImport(Darwin)
 import Darwin

@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 
 enum ChatPayloadDecoding {

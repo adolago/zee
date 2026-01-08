@@ -22,7 +22,7 @@ import {
 } from "../agents/workspace.js";
 import {
   type AgentElevatedAllowFromConfig,
-  type ClawdbotConfig,
+  type ZeeConfig,
   loadConfig,
 } from "../config/config.js";
 import { resolveSessionFilePath } from "../config/sessions.js";
@@ -204,7 +204,7 @@ function isApprovedElevatedSender(params: {
 export async function getReplyFromConfig(
   ctx: MsgContext,
   opts?: GetReplyOptions,
-  configOverride?: ClawdbotConfig,
+  configOverride?: ZeeConfig,
 ): Promise<ReplyPayload | ReplyPayload[] | undefined> {
   const cfg = configOverride ?? loadConfig();
   const agentId = resolveAgentIdFromSessionKey(ctx.SessionKey);
@@ -852,7 +852,7 @@ export async function getReplyFromConfig(
 async function stageSandboxMedia(params: {
   ctx: MsgContext;
   sessionCtx: TemplateContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   sessionKey?: string;
   workspaceDir: string;
 }) {

@@ -5,8 +5,8 @@ import {
   ensureAuthProfileStore,
 } from "../agents/auth-profiles.js";
 import {
-  type ClawdbotConfig,
-  CONFIG_PATH_CLAWDBOT,
+  type ZeeConfig,
+  CONFIG_PATH_ZEE,
   readConfigFileSnapshot,
   resolveGatewayPort,
   writeConfigFile,
@@ -42,7 +42,7 @@ export async function runNonInteractiveOnboarding(
   runtime: RuntimeEnv = defaultRuntime,
 ) {
   const snapshot = await readConfigFileSnapshot();
-  const baseConfig: ClawdbotConfig = snapshot.valid ? snapshot.config : {};
+  const baseConfig: ZeeConfig = snapshot.valid ? snapshot.config : {};
   const mode = opts.mode ?? "local";
   if (mode !== "local" && mode !== "remote") {
     runtime.error(`Invalid --mode "${String(mode)}" (use local|remote).`);
@@ -58,7 +58,7 @@ export async function runNonInteractiveOnboarding(
       return;
     }
 
-    let nextConfig: ClawdbotConfig = {
+    let nextConfig: ZeeConfig = {
       ...baseConfig,
       gateway: {
         ...baseConfig.gateway,
@@ -71,7 +71,7 @@ export async function runNonInteractiveOnboarding(
     };
     nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
     await writeConfigFile(nextConfig);
-    runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+    runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
 
     const payload = {
       mode,
@@ -91,7 +91,7 @@ export async function runNonInteractiveOnboarding(
     (opts.workspace ?? baseConfig.agent?.workspace ?? DEFAULT_WORKSPACE).trim(),
   );
 
-  let nextConfig: ClawdbotConfig = {
+  let nextConfig: ZeeConfig = {
     ...baseConfig,
     agent: {
       ...baseConfig.agent,
@@ -255,7 +255,7 @@ export async function runNonInteractiveOnboarding(
 
   nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
   await writeConfigFile(nextConfig);
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   await ensureWorkspaceAndSessions(workspaceDir, runtime, {
     skipBootstrap: Boolean(nextConfig.agent?.skipBootstrap),
   });
@@ -280,8 +280,8 @@ export async function runNonInteractiveOnboarding(
       });
     const environment: Record<string, string | undefined> = {
       PATH: process.env.PATH,
-      CLAWDBOT_GATEWAY_TOKEN: gatewayToken,
-      CLAWDBOT_LAUNCHD_LABEL:
+      ZEE_GATEWAY_TOKEN: gatewayToken,
+      ZEE_LAUNCHD_LABEL:
         process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
     };
     await service.install({

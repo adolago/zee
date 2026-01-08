@@ -1,4 +1,4 @@
-import { resolveClawdbotAgentDir } from "../../agents/agent-paths.js";
+import { resolveZeeAgentDir } from "../../agents/agent-paths.js";
 import { resolveAgentConfig } from "../../agents/agent-scope.js";
 import {
   resolveAuthProfileDisplayLabel,
@@ -23,7 +23,7 @@ import {
   resolveConfiguredModelRef,
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { type SessionEntry, saveSessionStore } from "../../config/sessions.js";
 import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { shortenHomePath } from "../../utils.js";
@@ -64,7 +64,7 @@ const maskApiKey = (value: string): string => {
 
 const resolveAuthLabel = async (
   provider: string,
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   modelsPath: string,
 ): Promise<{ label: string; source: string }> => {
   const formatPath = (value: string) => shortenHomePath(value);
@@ -134,7 +134,7 @@ const formatAuthLabel = (auth: { label: string; source: string }) => {
 const resolveProfileOverride = (params: {
   rawProfile?: string;
   provider: string;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
 }): { profileId?: string; error?: string } => {
   const raw = params.rawProfile?.trim();
   if (!raw) return {};
@@ -271,7 +271,7 @@ export function isDirectiveOnly(params: {
   directives: InlineDirectives;
   cleanedBody: string;
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   isGroup: boolean;
 }): boolean {
   const { directives, cleanedBody, ctx, cfg, isGroup } = params;
@@ -290,7 +290,7 @@ export function isDirectiveOnly(params: {
 }
 
 export async function handleDirectiveOnly(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   directives: InlineDirectives;
   sessionEntry?: SessionEntry;
   sessionStore?: Record<string, SessionEntry>;
@@ -346,7 +346,7 @@ export async function handleDirectiveOnly(params: {
       if (allowedModelCatalog.length === 0) {
         return { text: "No models available." };
       }
-      const agentDir = resolveClawdbotAgentDir();
+      const agentDir = resolveZeeAgentDir();
       const modelsPath = `${agentDir}/models.json`;
       const formatPath = (value: string) => shortenHomePath(value);
       const authByProvider = new Map<string, string>();
@@ -692,7 +692,7 @@ export async function handleDirectiveOnly(params: {
 export async function persistInlineDirectives(params: {
   directives: InlineDirectives;
   effectiveModelDirective?: string;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   sessionEntry?: SessionEntry;
   sessionStore?: Record<string, SessionEntry>;
   sessionKey?: string;
@@ -707,7 +707,7 @@ export async function persistInlineDirectives(params: {
   model: string;
   initialModelLabel: string;
   formatModelSwitchEvent: (label: string, alias?: string) => string;
-  agentCfg: ClawdbotConfig["agent"] | undefined;
+  agentCfg: ZeeConfig["agent"] | undefined;
 }): Promise<{ provider: string; model: string; contextTokens: number }> {
   const {
     directives,
@@ -849,7 +849,7 @@ export async function persistInlineDirectives(params: {
 }
 
 export function resolveDefaultModel(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   agentId?: string;
 }): {
   defaultProvider: string;

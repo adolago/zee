@@ -1,9 +1,9 @@
 import os from "node:os";
 import path from "node:path";
-import type { ClawdbotConfig } from "./types.js";
+import type { ZeeConfig } from "./types.js";
 
 /**
- * Nix mode detection: When CLAWDBOT_NIX_MODE=1, the gateway is running under Nix.
+ * Nix mode detection: When ZEE_NIX_MODE=1, the gateway is running under Nix.
  * In this mode:
  * - No auto-install flows should be attempted
  * - Missing dependencies should produce actionable Nix-specific error messages
@@ -12,24 +12,24 @@ import type { ClawdbotConfig } from "./types.js";
 export function resolveIsNixMode(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return env.CLAWDBOT_NIX_MODE === "1";
+  return env.ZEE_NIX_MODE === "1";
 }
 
 export const isNixMode = resolveIsNixMode();
 
 /**
  * State directory for mutable data (sessions, logs, caches).
- * Can be overridden via CLAWDBOT_STATE_DIR environment variable.
- * Default: ~/.clawdbot
+ * Can be overridden via ZEE_STATE_DIR environment variable.
+ * Default: ~/.zee
  */
 export function resolveStateDir(
   env: NodeJS.ProcessEnv = process.env,
   homedir: () => string = os.homedir,
 ): string {
   const override =
-    env.CLAWDBOT_STATE_DIR?.trim() || env.CLAWDIS_STATE_DIR?.trim();
+    env.ZEE_STATE_DIR?.trim() || env.CLAWDIS_STATE_DIR?.trim();
   if (override) return resolveUserPath(override);
-  return path.join(homedir(), ".clawdbot");
+  return path.join(homedir(), ".zee");
 }
 
 function resolveUserPath(input: string): string {
@@ -42,23 +42,23 @@ function resolveUserPath(input: string): string {
   return path.resolve(trimmed);
 }
 
-export const STATE_DIR_CLAWDBOT = resolveStateDir();
+export const STATE_DIR_ZEE = resolveStateDir();
 
 /**
  * Config file path (JSON5).
- * Can be overridden via CLAWDBOT_CONFIG_PATH environment variable.
- * Default: ~/.clawdbot/clawdbot.json (or $CLAWDBOT_STATE_DIR/clawdbot.json)
+ * Can be overridden via ZEE_CONFIG_PATH environment variable.
+ * Default: ~/.zee/zee.json (or $ZEE_STATE_DIR/zee.json)
  */
 export function resolveConfigPath(
   env: NodeJS.ProcessEnv = process.env,
   stateDir: string = resolveStateDir(env, os.homedir),
 ): string {
-  const override = env.CLAWDBOT_CONFIG_PATH?.trim();
+  const override = env.ZEE_CONFIG_PATH?.trim();
   if (override) return override;
-  return path.join(stateDir, "clawdbot.json");
+  return path.join(stateDir, "zee.json");
 }
 
-export const CONFIG_PATH_CLAWDBOT = resolveConfigPath();
+export const CONFIG_PATH_ZEE = resolveConfigPath();
 
 export const DEFAULT_GATEWAY_PORT = 18789;
 
@@ -68,15 +68,15 @@ const OAUTH_FILENAME = "oauth.json";
  * OAuth credentials storage directory.
  *
  * Precedence:
- * - `CLAWDBOT_OAUTH_DIR` (explicit override)
- * - `CLAWDBOT_STATE_DIR/credentials` (canonical server/default)
- * - `~/.clawdbot/credentials` (legacy default)
+ * - `ZEE_OAUTH_DIR` (explicit override)
+ * - `ZEE_STATE_DIR/credentials` (canonical server/default)
+ * - `~/.zee/credentials` (legacy default)
  */
 export function resolveOAuthDir(
   env: NodeJS.ProcessEnv = process.env,
   stateDir: string = resolveStateDir(env, os.homedir),
 ): string {
-  const override = env.CLAWDBOT_OAUTH_DIR?.trim();
+  const override = env.ZEE_OAUTH_DIR?.trim();
   if (override) return resolveUserPath(override);
   return path.join(stateDir, "credentials");
 }
@@ -89,10 +89,10 @@ export function resolveOAuthPath(
 }
 
 export function resolveGatewayPort(
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
   env: NodeJS.ProcessEnv = process.env,
 ): number {
-  const envRaw = env.CLAWDBOT_GATEWAY_PORT?.trim();
+  const envRaw = env.ZEE_GATEWAY_PORT?.trim();
   if (envRaw) {
     const parsed = Number.parseInt(envRaw, 10);
     if (Number.isFinite(parsed) && parsed > 0) return parsed;

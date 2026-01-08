@@ -2,7 +2,7 @@ import {
   buildModelAliasIndex,
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
-import { CONFIG_PATH_CLAWDBOT, loadConfig } from "../../config/config.js";
+import { CONFIG_PATH_ZEE, loadConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import {
   DEFAULT_PROVIDER,
@@ -83,7 +83,7 @@ export async function modelsFallbacksAddCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(
     `Fallbacks: ${(updated.agent?.model?.fallbacks ?? []).join(", ")}`,
   );
@@ -136,7 +136,7 @@ export async function modelsFallbacksRemoveCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(
     `Fallbacks: ${(updated.agent?.model?.fallbacks ?? []).join(", ")}`,
   );
@@ -161,6 +161,6 @@ export async function modelsFallbacksClearCommand(runtime: RuntimeEnv) {
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log("Fallback list cleared.");
 }

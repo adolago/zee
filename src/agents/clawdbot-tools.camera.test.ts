@@ -10,7 +10,7 @@ vi.mock("../media/image-ops.js", () => ({
   resizeToJpeg: vi.fn(async () => Buffer.from("jpeg")),
 }));
 
-import { createClawdbotTools } from "./clawdbot-tools.js";
+import { createZeeTools } from "./zee-tools.js";
 
 describe("nodes camera_snap", () => {
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe("nodes camera_snap", () => {
       throw new Error(`unexpected method: ${String(method)}`);
     });
 
-    const tool = createClawdbotTools().find(
+    const tool = createZeeTools().find(
       (candidate) => candidate.name === "nodes",
     );
     if (!tool) throw new Error("missing nodes tool");
@@ -75,7 +75,7 @@ describe("nodes camera_snap", () => {
       throw new Error(`unexpected method: ${String(method)}`);
     });
 
-    const tool = createClawdbotTools().find(
+    const tool = createZeeTools().find(
       (candidate) => candidate.name === "nodes",
     );
     if (!tool) throw new Error("missing nodes tool");
@@ -118,7 +118,7 @@ describe("nodes run", () => {
       throw new Error(`unexpected method: ${String(method)}`);
     });
 
-    const tool = createClawdbotTools().find(
+    const tool = createZeeTools().find(
       (candidate) => candidate.name === "nodes",
     );
     if (!tool) throw new Error("missing nodes tool");

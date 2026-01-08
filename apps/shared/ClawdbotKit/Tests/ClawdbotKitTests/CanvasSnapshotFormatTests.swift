@@ -1,11 +1,11 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Testing
 
 @Suite struct CanvasSnapshotFormatTests {
     @Test func acceptsJpgAlias() throws {
         struct Wrapper: Codable {
-            var format: ClawdbotCanvasSnapshotFormat
+            var format: ZeeCanvasSnapshotFormat
         }
 
         let data = try #require("{\"format\":\"jpg\"}".data(using: .utf8))

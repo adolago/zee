@@ -2,7 +2,7 @@
 // unintentionally breaking on newlines. Using [\s\S] keeps newlines inside
 // the chunk so messages are only split when they truly exceed the limit.
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   findFenceSpanAt,
   isSafeFenceBreak,
@@ -30,7 +30,7 @@ const DEFAULT_CHUNK_LIMIT_BY_PROVIDER: Record<TextChunkProvider, number> = {
 };
 
 export function resolveTextChunkLimit(
-  cfg: ClawdbotConfig | undefined,
+  cfg: ZeeConfig | undefined,
   provider?: TextChunkProvider,
   accountId?: string | null,
 ): number {

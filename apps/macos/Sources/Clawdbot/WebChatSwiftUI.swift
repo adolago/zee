@@ -1,12 +1,12 @@
 import AppKit
-import ClawdbotChatUI
-import ClawdbotProtocol
+import ZeeChatUI
+import ZeeProtocol
 import Foundation
 import OSLog
 import QuartzCore
 import SwiftUI
 
-private let webChatSwiftLogger = Logger(subsystem: "com.clawdbot", category: "WebChatSwiftUI")
+private let webChatSwiftLogger = Logger(subsystem: "com.zee", category: "WebChatSwiftUI")
 
 private enum WebChatSwiftUILayout {
     static let windowSize = NSSize(width: 500, height: 840)
@@ -15,8 +15,8 @@ private enum WebChatSwiftUILayout {
     static let anchorPadding: CGFloat = 8
 }
 
-struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
-    func requestHistory(sessionKey: String) async throws -> ClawdbotChatHistoryPayload {
+struct MacGatewayChatTransport: ZeeChatTransport, Sendable {
+    func requestHistory(sessionKey: String) async throws -> ZeeChatHistoryPayload {
         try await GatewayConnection.shared.chatHistory(sessionKey: sessionKey)
     }
 
@@ -30,7 +30,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
             timeoutMs: 10000)
     }
 
-    func listSessions(limit: Int?) async throws -> ClawdbotChatSessionsListResponse {
+    func listSessions(limit: Int?) async throws -> ZeeChatSessionsListResponse {
         var params: [String: AnyCodable] = [
             "includeGlobal": AnyCodable(true),
             "includeUnknown": AnyCodable(false),
@@ -42,7 +42,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
             method: "sessions.list",
             params: params,
             timeoutMs: 15000)
-        return try JSONDecoder().decode(ClawdbotChatSessionsListResponse.self, from: data)
+        return try JSONDecoder().decode(ZeeChatSessionsListResponse.self, from: data)
     }
 
     func sendMessage(
@@ -50,7 +50,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
         message: String,
         thinking: String,
         idempotencyKey: String,
-        attachments: [ClawdbotChatAttachmentPayload]) async throws -> ClawdbotChatSendResponse
+        attachments: [ZeeChatAttachmentPayload]) async throws -> ZeeChatSendResponse
     {
         try await GatewayConnection.shared.chatSend(
             sessionKey: sessionKey,
@@ -64,7 +64,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
         try await GatewayConnection.shared.healthOK(timeoutMs: timeoutMs)
     }
 
-    func events() -> AsyncStream<ClawdbotChatTransportEvent> {
+    func events() -> AsyncStream<ZeeChatTransportEvent> {
         AsyncStream { continuation in
             let task = Task {
                 do {
@@ -88,11 +88,11 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
         }
     }
 
-    static func mapPushToTransportEvent(_ push: GatewayPush) -> ClawdbotChatTransportEvent? {
+    static func mapPushToTransportEvent(_ push: GatewayPush) -> ZeeChatTransportEvent? {
         switch push {
         case let .snapshot(hello):
             let ok = (try? JSONDecoder().decode(
-                ClawdbotGatewayHealthOK.self,
+                ZeeGatewayHealthOK.self,
                 from: JSONEncoder().encode(hello.snapshot.health)))?.ok ?? true
             return .health(ok: ok)
 
@@ -101,7 +101,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
             case "health":
                 guard let payload = evt.payload else { return nil }
                 let ok = (try? JSONDecoder().decode(
-                    ClawdbotGatewayHealthOK.self,
+                    ZeeGatewayHealthOK.self,
                     from: JSONEncoder().encode(payload)))?.ok ?? true
                 return .health(ok: ok)
             case "tick":
@@ -109,7 +109,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
             case "chat":
                 guard let payload = evt.payload else { return nil }
                 guard let chat = try? JSONDecoder().decode(
-                    ClawdbotChatEventPayload.self,
+                    ZeeChatEventPayload.self,
                     from: JSONEncoder().encode(payload))
                 else {
                     return nil
@@ -118,7 +118,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
             case "agent":
                 guard let payload = evt.payload else { return nil }
                 guard let agent = try? JSONDecoder().decode(
-                    ClawdbotAgentEventPayload.self,
+                    ZeeAgentEventPayload.self,
                     from: JSONEncoder().encode(payload))
                 else {
                     return nil
@@ -140,7 +140,7 @@ struct MacGatewayChatTransport: ClawdbotChatTransport, Sendable {
 final class WebChatSwiftUIWindowController {
     private let presentation: WebChatPresentation
     private let sessionKey: String
-    private let hosting: NSHostingController<ClawdbotChatView>
+    private let hosting: NSHostingController<ZeeChatView>
     private let contentController: NSViewController
     private var window: NSWindow?
     private var dismissMonitor: Any?
@@ -151,12 +151,12 @@ final class WebChatSwiftUIWindowController {
         self.init(sessionKey: sessionKey, presentation: presentation, transport: MacGatewayChatTransport())
     }
 
-    init(sessionKey: String, presentation: WebChatPresentation, transport: any ClawdbotChatTransport) {
+    init(sessionKey: String, presentation: WebChatPresentation, transport: any ZeeChatTransport) {
         self.sessionKey = sessionKey
         self.presentation = presentation
-        let vm = ClawdbotChatViewModel(sessionKey: sessionKey, transport: transport)
+        let vm = ZeeChatViewModel(sessionKey: sessionKey, transport: transport)
         let accent = Self.color(fromHex: AppStateStore.shared.seamColorHex)
-        self.hosting = NSHostingController(rootView: ClawdbotChatView(
+        self.hosting = NSHostingController(rootView: ZeeChatView(
             viewModel: vm,
             showsSessionSwitcher: true,
             userAccent: accent))
@@ -267,7 +267,7 @@ final class WebChatSwiftUIWindowController {
                 styleMask: [.titled, .closable, .resizable, .miniaturizable],
                 backing: .buffered,
                 defer: false)
-            window.title = "Clawdbot Chat"
+            window.title = "Zee Chat"
             window.contentViewController = contentViewController
             window.isReleasedWhenClosed = false
             window.titleVisibility = .visible
@@ -310,7 +310,7 @@ final class WebChatSwiftUIWindowController {
 
     private static func makeContentController(
         for presentation: WebChatPresentation,
-        hosting: NSHostingController<ClawdbotChatView>) -> NSViewController
+        hosting: NSHostingController<ZeeChatView>) -> NSViewController
     {
         let controller = NSViewController()
         let effectView = NSVisualEffectView()

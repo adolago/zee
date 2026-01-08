@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 
 import { buildWorkspaceSkillSnapshot } from "../../agents/skills.js";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { type SessionEntry, saveSessionStore } from "../../config/sessions.js";
 import { buildProviderSummary } from "../../infra/provider-summary.js";
 import { drainSystemEvents } from "../../infra/system-events.js";
 
 export async function prependSystemEvents(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   sessionKey: string;
   isMainSession: boolean;
   isNewSession: boolean;
@@ -48,7 +48,7 @@ export async function ensureSkillSnapshot(params: {
   sessionId?: string;
   isFirstTurnInSession: boolean;
   workspaceDir: string;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   /** If provided, only load skills with these names (for per-channel skill filtering) */
   skillFilter?: string[];
 }): Promise<{

@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import {
   DEFAULT_AGENT_ID,
@@ -19,7 +19,7 @@ export function resolveAgentIdFromSessionKey(
 }
 
 export function resolveAgentConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   agentId: string,
 ):
   | {
@@ -67,7 +67,7 @@ export function resolveAgentConfig(
   };
 }
 
-export function resolveAgentWorkspaceDir(cfg: ClawdbotConfig, agentId: string) {
+export function resolveAgentWorkspaceDir(cfg: ZeeConfig, agentId: string) {
   const id = normalizeAgentId(agentId);
   const configured = resolveAgentConfig(cfg, id)?.workspace?.trim();
   if (configured) return resolveUserPath(configured);
@@ -79,7 +79,7 @@ export function resolveAgentWorkspaceDir(cfg: ClawdbotConfig, agentId: string) {
   return path.join(os.homedir(), `clawd-${id}`);
 }
 
-export function resolveAgentDir(cfg: ClawdbotConfig, agentId: string) {
+export function resolveAgentDir(cfg: ZeeConfig, agentId: string) {
   const id = normalizeAgentId(agentId);
   const configured = resolveAgentConfig(cfg, id)?.agentDir?.trim();
   if (configured) return resolveUserPath(configured);

@@ -11,7 +11,7 @@ export function classifyPortListener(
   const raw = `${listener.commandLine ?? ""} ${listener.command ?? ""}`
     .trim()
     .toLowerCase();
-  if (raw.includes("clawdbot") || raw.includes("clawdis")) return "gateway";
+  if (raw.includes("zee") || raw.includes("clawdis")) return "gateway";
   if (raw.includes("ssh")) {
     const portToken = String(port);
     const tunnelPattern = new RegExp(
@@ -34,7 +34,7 @@ export function buildPortHints(
   const hints: string[] = [];
   if (kinds.has("gateway")) {
     hints.push(
-      "Gateway already running locally. Stop it (clawdbot daemon stop) or use a different port.",
+      "Gateway already running locally. Stop it (zee daemon stop) or use a different port.",
     );
   }
   if (kinds.has("ssh")) {

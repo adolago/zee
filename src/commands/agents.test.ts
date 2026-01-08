@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { DEFAULT_AGENT_ID } from "../routing/session-key.js";
 import {
   applyAgentBindings,
@@ -13,7 +13,7 @@ import {
 
 describe("agents helpers", () => {
   it("buildAgentSummaries includes default + routing agents", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: { workspace: "/main-ws", model: { primary: "anthropic/claude" } },
       routing: {
         defaultAgentId: "work",
@@ -56,7 +56,7 @@ describe("agents helpers", () => {
   });
 
   it("applyAgentConfig merges updates", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           work: { workspace: "/old-ws", model: "anthropic/claude" },
@@ -79,7 +79,7 @@ describe("agents helpers", () => {
   });
 
   it("applyAgentBindings skips duplicates and reports conflicts", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         bindings: [
           {
@@ -112,7 +112,7 @@ describe("agents helpers", () => {
   });
 
   it("pruneAgentConfig removes agent, bindings, and allowlist entries", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         defaultAgentId: "work",
         agents: {

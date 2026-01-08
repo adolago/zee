@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 enum CLIInstaller {
     private static func embeddedHelperURL() -> URL {
-        Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/Relay/clawdbot")
+        Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/Relay/zee")
     }
 
     static func installedLocation() -> String? {
@@ -21,7 +21,7 @@ enum CLIInstaller {
         let embedded = embeddedHelper.resolvingSymlinksInPath()
 
         for basePath in searchPaths {
-            let candidate = URL(fileURLWithPath: basePath).appendingPathComponent("clawdbot").path
+            let candidate = URL(fileURLWithPath: basePath).appendingPathComponent("zee").path
             var isDirectory: ObjCBool = false
 
             guard fileManager.fileExists(atPath: candidate, isDirectory: &isDirectory),
@@ -54,7 +54,7 @@ enum CLIInstaller {
             return
         }
 
-        let targets = cliHelperSearchPaths.map { "\($0)/clawdbot" }
+        let targets = cliHelperSearchPaths.map { "\($0)/zee" }
         let result = await self.privilegedSymlink(source: helper.path, targets: targets)
         await statusHandler(result)
     }

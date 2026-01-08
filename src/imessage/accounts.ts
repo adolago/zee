@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { IMessageAccountConfig } from "../config/types.js";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -13,26 +13,26 @@ export type ResolvedIMessageAccount = {
   configured: boolean;
 };
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: ZeeConfig): string[] {
   const accounts = cfg.imessage?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listIMessageAccountIds(cfg: ClawdbotConfig): string[] {
+export function listIMessageAccountIds(cfg: ZeeConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultIMessageAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultIMessageAccountId(cfg: ZeeConfig): string {
   const ids = listIMessageAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): IMessageAccountConfig | undefined {
   const accounts = cfg.imessage?.accounts;
@@ -41,7 +41,7 @@ function resolveAccountConfig(
 }
 
 function mergeIMessageAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): IMessageAccountConfig {
   const { accounts: _ignored, ...base } = (cfg.imessage ??
@@ -51,7 +51,7 @@ function mergeIMessageAccountConfig(
 }
 
 export function resolveIMessageAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   accountId?: string | null;
 }): ResolvedIMessageAccount {
   const accountId = normalizeAccountId(params.accountId);
@@ -82,7 +82,7 @@ export function resolveIMessageAccount(params: {
 }
 
 export function listEnabledIMessageAccounts(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): ResolvedIMessageAccount[] {
   return listIMessageAccountIds(cfg)
     .map((accountId) => resolveIMessageAccount({ cfg, accountId }))

@@ -14,8 +14,8 @@ import {
   resolveProfile,
 } from "../browser/config.js";
 import { DEFAULT_CLAWD_BROWSER_COLOR } from "../browser/constants.js";
-import type { ClawdbotConfig } from "../config/config.js";
-import { STATE_DIR_CLAWDBOT } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
+import { STATE_DIR_ZEE } from "../config/config.js";
 import { defaultRuntime } from "../runtime.js";
 import { resolveUserPath } from "../utils.js";
 import { resolveAgentIdFromSessionKey } from "./agent-scope.js";
@@ -115,11 +115,11 @@ export type SandboxWorkspaceInfo = {
 
 const DEFAULT_SANDBOX_WORKSPACE_ROOT = path.join(
   os.homedir(),
-  ".clawdbot",
+  ".zee",
   "sandboxes",
 );
-export const DEFAULT_SANDBOX_IMAGE = "clawdbot-sandbox:bookworm-slim";
-const DEFAULT_SANDBOX_CONTAINER_PREFIX = "clawdbot-sbx-";
+export const DEFAULT_SANDBOX_IMAGE = "zee-sandbox:bookworm-slim";
+const DEFAULT_SANDBOX_CONTAINER_PREFIX = "zee-sbx-";
 const DEFAULT_SANDBOX_WORKDIR = "/workspace";
 const DEFAULT_SANDBOX_IDLE_HOURS = 24;
 const DEFAULT_SANDBOX_MAX_AGE_DAYS = 7;
@@ -143,16 +143,16 @@ const DEFAULT_TOOL_DENY = [
   "gateway",
 ];
 export const DEFAULT_SANDBOX_BROWSER_IMAGE =
-  "clawdbot-sandbox-browser:bookworm-slim";
+  "zee-sandbox-browser:bookworm-slim";
 export const DEFAULT_SANDBOX_COMMON_IMAGE =
-  "clawdbot-sandbox-common:bookworm-slim";
-const DEFAULT_SANDBOX_BROWSER_PREFIX = "clawdbot-sbx-browser-";
+  "zee-sandbox-common:bookworm-slim";
+const DEFAULT_SANDBOX_BROWSER_PREFIX = "zee-sbx-browser-";
 const DEFAULT_SANDBOX_BROWSER_CDP_PORT = 9222;
 const DEFAULT_SANDBOX_BROWSER_VNC_PORT = 5900;
 const DEFAULT_SANDBOX_BROWSER_NOVNC_PORT = 6080;
 const SANDBOX_AGENT_WORKSPACE_MOUNT = "/agent";
 
-const SANDBOX_STATE_DIR = path.join(STATE_DIR_CLAWDBOT, "sandbox");
+const SANDBOX_STATE_DIR = path.join(STATE_DIR_ZEE, "sandbox");
 const SANDBOX_REGISTRY_PATH = path.join(SANDBOX_STATE_DIR, "containers.json");
 const SANDBOX_BROWSER_REGISTRY_PATH = path.join(
   SANDBOX_STATE_DIR,
@@ -329,7 +329,7 @@ function resolveSandboxScopeKey(scope: SandboxScope, sessionKey: string) {
 }
 
 export function resolveSandboxConfigForAgent(
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
   agentId?: string,
 ): SandboxConfig {
   const agent = cfg?.agent?.sandbox;
@@ -642,9 +642,9 @@ export function buildSandboxCreateArgs(params: {
 }) {
   const createdAtMs = params.createdAtMs ?? Date.now();
   const args = ["create", "--name", params.name];
-  args.push("--label", "clawdbot.sandbox=1");
-  args.push("--label", `clawdbot.sessionKey=${params.scopeKey}`);
-  args.push("--label", `clawdbot.createdAtMs=${createdAtMs}`);
+  args.push("--label", "zee.sandbox=1");
+  args.push("--label", `zee.sessionKey=${params.scopeKey}`);
+  args.push("--label", `zee.createdAtMs=${createdAtMs}`);
   for (const [key, value] of Object.entries(params.labels ?? {})) {
     if (key && value) args.push("--label", `${key}=${value}`);
   }
@@ -822,7 +822,7 @@ async function ensureSandboxBrowser(params: {
       name: containerName,
       cfg: params.cfg.docker,
       scopeKey: params.scopeKey,
-      labels: { "clawdbot.sandboxBrowser": "1" },
+      labels: { "zee.sandboxBrowser": "1" },
     });
     const mainMountSuffix =
       params.cfg.workspaceAccess === "ro" &&
@@ -849,19 +849,19 @@ async function ensureSandboxBrowser(params: {
     }
     args.push(
       "-e",
-      `CLAWDBOT_BROWSER_HEADLESS=${params.cfg.browser.headless ? "1" : "0"}`,
+      `ZEE_BROWSER_HEADLESS=${params.cfg.browser.headless ? "1" : "0"}`,
     );
     args.push(
       "-e",
-      `CLAWDBOT_BROWSER_ENABLE_NOVNC=${
+      `ZEE_BROWSER_ENABLE_NOVNC=${
         params.cfg.browser.enableNoVnc ? "1" : "0"
       }`,
     );
-    args.push("-e", `CLAWDBOT_BROWSER_CDP_PORT=${params.cfg.browser.cdpPort}`);
-    args.push("-e", `CLAWDBOT_BROWSER_VNC_PORT=${params.cfg.browser.vncPort}`);
+    args.push("-e", `ZEE_BROWSER_CDP_PORT=${params.cfg.browser.cdpPort}`);
+    args.push("-e", `ZEE_BROWSER_VNC_PORT=${params.cfg.browser.vncPort}`);
     args.push(
       "-e",
-      `CLAWDBOT_BROWSER_NOVNC_PORT=${params.cfg.browser.noVncPort}`,
+      `ZEE_BROWSER_NOVNC_PORT=${params.cfg.browser.noVncPort}`,
     );
     args.push(params.cfg.browser.image);
     await execDocker(args);
@@ -1018,7 +1018,7 @@ async function maybePruneSandboxes(cfg: SandboxConfig) {
 }
 
 export async function resolveSandboxContext(params: {
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   sessionKey?: string;
   workspaceDir?: string;
 }): Promise<SandboxContext | null> {
@@ -1081,7 +1081,7 @@ export async function resolveSandboxContext(params: {
 }
 
 export async function ensureSandboxWorkspaceForSession(params: {
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   sessionKey?: string;
   workspaceDir?: string;
 }): Promise<SandboxWorkspaceInfo | null> {

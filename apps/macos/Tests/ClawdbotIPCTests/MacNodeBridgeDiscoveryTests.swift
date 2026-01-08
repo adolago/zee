@@ -2,18 +2,18 @@ import Darwin
 import Foundation
 import Network
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct MacNodeBridgeDiscoveryTests {
     @MainActor
     @Test func loopbackBridgePortDefaultsAndOverrides() {
-        withEnv("CLAWDBOT_BRIDGE_PORT", value: nil) {
+        withEnv("ZEE_BRIDGE_PORT", value: nil) {
             #expect(MacNodeModeCoordinator.loopbackBridgePort() == 18790)
         }
-        withEnv("CLAWDBOT_BRIDGE_PORT", value: "19991") {
+        withEnv("ZEE_BRIDGE_PORT", value: "19991") {
             #expect(MacNodeModeCoordinator.loopbackBridgePort() == 19991)
         }
-        withEnv("CLAWDBOT_BRIDGE_PORT", value: "not-a-port") {
+        withEnv("ZEE_BRIDGE_PORT", value: "not-a-port") {
             #expect(MacNodeModeCoordinator.loopbackBridgePort() == 18790)
         }
     }
@@ -24,7 +24,7 @@ import Testing
         listener.newConnectionHandler = { connection in
             connection.cancel()
         }
-        listener.start(queue: DispatchQueue(label: "com.clawdbot.tests.bridge-listener"))
+        listener.start(queue: DispatchQueue(label: "com.zee.tests.bridge-listener"))
         try await waitForListenerReady(listener, timeoutSeconds: 1.0)
 
         guard let port = listener.port else {
@@ -49,8 +49,8 @@ import Testing
     @MainActor
     @Test func remoteBridgePortUsesMatchingRemoteUrlPort() {
         let configPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
-            .appendingPathComponent("clawdbot.json")
+            .appendingPathComponent("zee-config-\(UUID().uuidString)")
+            .appendingPathComponent("zee.json")
             .path
 
         let defaults = UserDefaults.standard
@@ -63,10 +63,10 @@ import Testing
             }
         }
 
-        withEnv("CLAWDBOT_CONFIG_PATH", value: configPath) {
-            withEnv("CLAWDBOT_GATEWAY_PORT", value: "20000") {
+        withEnv("ZEE_CONFIG_PATH", value: configPath) {
+            withEnv("ZEE_GATEWAY_PORT", value: "20000") {
                 defaults.set("user@bridge.ts.net", forKey: remoteTargetKey)
-                ClawdbotConfigFile.saveDict([
+                ZeeConfigFile.saveDict([
                     "gateway": [
                         "remote": [
                             "url": "ws://bridge.ts.net:25000",
@@ -81,8 +81,8 @@ import Testing
     @MainActor
     @Test func remoteBridgePortFallsBackWhenRemoteUrlHostMismatch() {
         let configPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
-            .appendingPathComponent("clawdbot.json")
+            .appendingPathComponent("zee-config-\(UUID().uuidString)")
+            .appendingPathComponent("zee.json")
             .path
 
         let defaults = UserDefaults.standard
@@ -95,10 +95,10 @@ import Testing
             }
         }
 
-        withEnv("CLAWDBOT_CONFIG_PATH", value: configPath) {
-            withEnv("CLAWDBOT_GATEWAY_PORT", value: "20000") {
+        withEnv("ZEE_CONFIG_PATH", value: configPath) {
+            withEnv("ZEE_GATEWAY_PORT", value: "20000") {
                 defaults.set("user@other.ts.net", forKey: remoteTargetKey)
-                ClawdbotConfigFile.saveDict([
+                ZeeConfigFile.saveDict([
                     "gateway": [
                         "remote": [
                             "url": "ws://bridge.ts.net:25000",

@@ -1,15 +1,15 @@
-import ClawdbotChatUI
+import ZeeChatUI
 import SwiftUI
 
 struct ChatSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var viewModel: ClawdbotChatViewModel
+    @State private var viewModel: ZeeChatViewModel
     private let userAccent: Color?
 
     init(bridge: BridgeSession, sessionKey: String = "main", userAccent: Color? = nil) {
         let transport = IOSBridgeChatTransport(bridge: bridge)
         self._viewModel = State(
-            initialValue: ClawdbotChatViewModel(
+            initialValue: ZeeChatViewModel(
                 sessionKey: sessionKey,
                 transport: transport))
         self.userAccent = userAccent
@@ -17,7 +17,7 @@ struct ChatSheet: View {
 
     var body: some View {
         NavigationStack {
-            ClawdbotChatView(
+            ZeeChatView(
                 viewModel: self.viewModel,
                 showsSessionSwitcher: true,
                 userAccent: self.userAccent)

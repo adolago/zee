@@ -22,9 +22,9 @@ import {
   ensureAuthProfileStore,
 } from "../agents/auth-profiles.js";
 import { createCliProgress } from "../cli/progress.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   readConfigFileSnapshot,
   resolveGatewayPort,
   writeConfigFile,
@@ -114,10 +114,10 @@ const startOscSpinner = (label: string) => {
 };
 
 async function promptGatewayConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   runtime: RuntimeEnv,
 ): Promise<{
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   port: number;
   token?: string;
 }> {
@@ -277,9 +277,9 @@ async function promptGatewayConfig(
 }
 
 async function promptAuthConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   runtime: RuntimeEnv,
-): Promise<ClawdbotConfig> {
+): Promise<ZeeConfig> {
   const authChoice = guardCancel(
     await select({
       message: "Model/auth choice",
@@ -619,8 +619,8 @@ async function maybeInstallDaemon(params: {
       });
     const environment: Record<string, string | undefined> = {
       PATH: process.env.PATH,
-      CLAWDBOT_GATEWAY_TOKEN: params.gatewayToken,
-      CLAWDBOT_LAUNCHD_LABEL:
+      ZEE_GATEWAY_TOKEN: params.gatewayToken,
+      ZEE_LAUNCHD_LABEL:
         process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
     };
     await service.install({
@@ -654,12 +654,12 @@ export async function runConfigureWizard(
 ) {
   printWizardHeader(runtime);
   intro(
-    opts.command === "update" ? "Clawdbot update wizard" : "Clawdbot configure",
+    opts.command === "update" ? "Zee update wizard" : "Zee configure",
   );
   const prompter = createClackPrompter();
 
   const snapshot = await readConfigFileSnapshot();
-  let baseConfig: ClawdbotConfig = snapshot.valid ? snapshot.config : {};
+  let baseConfig: ZeeConfig = snapshot.valid ? snapshot.config : {};
 
   if (snapshot.exists) {
     const title = snapshot.valid
@@ -692,10 +692,10 @@ export async function runConfigureWizard(
   const localProbe = await probeGatewayReachable({
     url: localUrl,
     token:
-      baseConfig.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
+      baseConfig.gateway?.auth?.token ?? process.env.ZEE_GATEWAY_TOKEN,
     password:
       baseConfig.gateway?.auth?.password ??
-      process.env.CLAWDBOT_GATEWAY_PASSWORD,
+      process.env.ZEE_GATEWAY_PASSWORD,
   });
   const remoteUrl = baseConfig.gateway?.remote?.url?.trim() ?? "";
   const remoteProbe = remoteUrl
@@ -737,7 +737,7 @@ export async function runConfigureWizard(
       mode,
     });
     await writeConfigFile(remoteConfig);
-    runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+    runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
     outro("Remote gateway configured.");
     return;
   }
@@ -822,7 +822,7 @@ export async function runConfigureWizard(
     mode,
   });
   await writeConfigFile(nextConfig);
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
 
   if (selected.includes("daemon")) {
     if (!selected.includes("gateway")) {

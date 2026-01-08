@@ -1,12 +1,12 @@
 import Foundation
 import os
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized) struct CanvasFileWatcherTests {
     private func makeTempDir() throws -> URL {
         let base = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        let dir = base.appendingPathComponent("clawdbot-canvaswatch-\(UUID().uuidString)", isDirectory: true)
+        let dir = base.appendingPathComponent("zee-canvaswatch-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }

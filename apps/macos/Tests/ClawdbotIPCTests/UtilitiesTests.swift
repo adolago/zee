@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized) struct UtilitiesTests {
     @Test func ageStringsCoverCommonWindows() {
@@ -46,7 +46,7 @@ import Testing
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let dist = tmp.appendingPathComponent("dist/index.js")
-        let bin = tmp.appendingPathComponent("bin/clawdbot.js")
+        let bin = tmp.appendingPathComponent("bin/zee.js")
         try FileManager.default.createDirectory(at: dist.deletingLastPathComponent(), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: bin.deletingLastPathComponent(), withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: dist.path, contents: Data())
@@ -58,11 +58,11 @@ import Testing
 
     @Test func logLocatorPicksNewestLogFile() throws {
         let fm = FileManager.default
-        let dir = URL(fileURLWithPath: "/tmp/clawdbot", isDirectory: true)
+        let dir = URL(fileURLWithPath: "/tmp/zee", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        let older = dir.appendingPathComponent("clawdbot-old-\(UUID().uuidString).log")
-        let newer = dir.appendingPathComponent("clawdbot-new-\(UUID().uuidString).log")
+        let older = dir.appendingPathComponent("zee-old-\(UUID().uuidString).log")
+        let newer = dir.appendingPathComponent("zee-new-\(UUID().uuidString).log")
         fm.createFile(atPath: older.path, contents: Data("old".utf8))
         fm.createFile(atPath: newer.path, contents: Data("new".utf8))
         try fm.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -100)], ofItemAtPath: older.path)

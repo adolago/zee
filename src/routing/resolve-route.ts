@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   buildAgentMainSessionKey,
   buildAgentPeerSessionKey,
@@ -16,7 +16,7 @@ export type RoutePeer = {
 };
 
 export type ResolveAgentRouteInput = {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: string;
   accountId?: string | null;
   peer?: RoutePeer | null;
@@ -80,24 +80,24 @@ export function buildAgentSessionKey(params: {
   });
 }
 
-function listBindings(cfg: ClawdbotConfig) {
+function listBindings(cfg: ZeeConfig) {
   const bindings = cfg.routing?.bindings;
   return Array.isArray(bindings) ? bindings : [];
 }
 
-function listAgents(cfg: ClawdbotConfig) {
+function listAgents(cfg: ZeeConfig) {
   const agents = cfg.routing?.agents;
   return agents && typeof agents === "object" ? agents : undefined;
 }
 
-function resolveDefaultAgentId(cfg: ClawdbotConfig): string {
+function resolveDefaultAgentId(cfg: ZeeConfig): string {
   const explicit = cfg.routing?.defaultAgentId?.trim();
   if (explicit) return explicit;
   return DEFAULT_AGENT_ID;
 }
 
 function pickFirstExistingAgentId(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   agentId: string,
 ): string {
   const normalized = normalizeAgentId(agentId);

@@ -1,4 +1,4 @@
-package com.clawdbot.android.node
+package com.zee.android.node
 
 import android.Manifest
 import android.content.Context

@@ -1,5 +1,5 @@
 import AppKit
-import ClawdbotIPC
+import ZeeIPC
 import Foundation
 import OSLog
 
@@ -7,7 +7,7 @@ import OSLog
 final class CanvasManager {
     static let shared = CanvasManager()
 
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "CanvasManager")
+    private static let logger = Logger(subsystem: "com.zee", category: "CanvasManager")
 
     private var panelController: CanvasWindowController?
     private var panelSessionKey: String?
@@ -25,7 +25,7 @@ final class CanvasManager {
 
     private nonisolated static let canvasRoot: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return base.appendingPathComponent("Clawdbot/canvas", isDirectory: true)
+        return base.appendingPathComponent("Zee/canvas", isDirectory: true)
     }()
 
     func show(sessionKey: String, path: String? = nil, placement: CanvasPlacement? = nil) throws -> String {
@@ -230,7 +230,7 @@ final class CanvasManager {
     private static func resolveA2UIHostUrl(from raw: String?) -> String? {
         let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !trimmed.isEmpty, let base = URL(string: trimmed) else { return nil }
-        return base.appendingPathComponent("__clawdbot__/a2ui/").absoluteString + "?platform=macos"
+        return base.appendingPathComponent("__zee__/a2ui/").absoluteString + "?platform=macos"
     }
 
     // MARK: - Anchoring

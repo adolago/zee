@@ -36,9 +36,9 @@ import type {
   ResetScope,
 } from "../commands/onboard-types.js";
 import { ensureSystemdUserLingerInteractive } from "../commands/systemd-linger.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   DEFAULT_GATEWAY_PORT,
   readConfigFileSnapshot,
   resolveGatewayPort,
@@ -59,10 +59,10 @@ export async function runOnboardingWizard(
   prompter: WizardPrompter,
 ) {
   printWizardHeader(runtime);
-  await prompter.intro("Clawdbot onboarding");
+  await prompter.intro("Zee onboarding");
 
   const snapshot = await readConfigFileSnapshot();
-  let baseConfig: ClawdbotConfig = snapshot.valid ? snapshot.config : {};
+  let baseConfig: ZeeConfig = snapshot.valid ? snapshot.config : {};
 
   if (snapshot.exists) {
     const title = snapshot.valid
@@ -112,7 +112,7 @@ export async function runOnboardingWizard(
     }
   }
 
-  const quickstartHint = "Configure details later via clawdbot configure.";
+  const quickstartHint = "Configure details later via zee configure.";
   const advancedHint = "Configure port, network, Tailscale, and auth options.";
   let flow = (await prompter.select({
     message: "Onboarding mode",
@@ -148,10 +148,10 @@ export async function runOnboardingWizard(
   const localUrl = `ws://127.0.0.1:${localPort}`;
   const localProbe = await probeGatewayReachable({
     url: localUrl,
-    token: process.env.CLAWDBOT_GATEWAY_TOKEN,
+    token: process.env.ZEE_GATEWAY_TOKEN,
     password:
       baseConfig.gateway?.auth?.password ??
-      process.env.CLAWDBOT_GATEWAY_PASSWORD,
+      process.env.ZEE_GATEWAY_PASSWORD,
   });
   const remoteUrl = baseConfig.gateway?.remote?.url?.trim() ?? "";
   const remoteProbe = remoteUrl
@@ -191,7 +191,7 @@ export async function runOnboardingWizard(
     let nextConfig = await promptRemoteGatewayConfig(baseConfig, prompter);
     nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
     await writeConfigFile(nextConfig);
-    runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+    runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
     await prompter.outro("Remote gateway configured.");
     return;
   }
@@ -209,7 +209,7 @@ export async function runOnboardingWizard(
     workspaceInput.trim() || DEFAULT_WORKSPACE,
   );
 
-  let nextConfig: ClawdbotConfig = {
+  let nextConfig: ZeeConfig = {
     ...baseConfig,
     agent: {
       ...baseConfig.agent,
@@ -412,7 +412,7 @@ export async function runOnboardingWizard(
   });
 
   await writeConfigFile(nextConfig);
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   await ensureWorkspaceAndSessions(workspaceDir, runtime, {
     skipBootstrap: Boolean(nextConfig.agent?.skipBootstrap),
   });
@@ -488,8 +488,8 @@ export async function runOnboardingWizard(
         });
       const environment: Record<string, string | undefined> = {
         PATH: process.env.PATH,
-        CLAWDBOT_GATEWAY_TOKEN: gatewayToken,
-        CLAWDBOT_LAUNCHD_LABEL:
+        ZEE_GATEWAY_TOKEN: gatewayToken,
+        ZEE_LAUNCHD_LABEL:
           process.platform === "darwin"
             ? GATEWAY_LAUNCH_AGENT_LABEL
             : undefined,

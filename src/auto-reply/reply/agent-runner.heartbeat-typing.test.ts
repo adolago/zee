@@ -223,7 +223,7 @@ describe("runReplyAgent typing (heartbeat)", () => {
 
   it("announces auto-compaction in verbose mode and tracks count", async () => {
     const storePath = path.join(
-      await fs.mkdtemp(path.join(tmpdir(), "clawdbot-compaction-")),
+      await fs.mkdtemp(path.join(tmpdir(), "zee-compaction-")),
       "sessions.json",
     );
     const sessionEntry = { sessionId: "session", updatedAt: Date.now() };
@@ -259,11 +259,11 @@ describe("runReplyAgent typing (heartbeat)", () => {
     expect(sessionStore.main.compactionCount).toBe(1);
   });
   it("resets corrupted Gemini sessions and deletes transcripts", async () => {
-    const prevStateDir = process.env.CLAWDBOT_STATE_DIR;
+    const prevStateDir = process.env.ZEE_STATE_DIR;
     const stateDir = await fs.mkdtemp(
-      path.join(tmpdir(), "clawdbot-session-reset-"),
+      path.join(tmpdir(), "zee-session-reset-"),
     );
-    process.env.CLAWDBOT_STATE_DIR = stateDir;
+    process.env.ZEE_STATE_DIR = stateDir;
     try {
       const sessionId = "session-corrupt";
       const storePath = path.join(stateDir, "sessions", "sessions.json");
@@ -301,19 +301,19 @@ describe("runReplyAgent typing (heartbeat)", () => {
       expect(persisted.main).toBeUndefined();
     } finally {
       if (prevStateDir) {
-        process.env.CLAWDBOT_STATE_DIR = prevStateDir;
+        process.env.ZEE_STATE_DIR = prevStateDir;
       } else {
-        delete process.env.CLAWDBOT_STATE_DIR;
+        delete process.env.ZEE_STATE_DIR;
       }
     }
   });
 
   it("keeps sessions intact on other errors", async () => {
-    const prevStateDir = process.env.CLAWDBOT_STATE_DIR;
+    const prevStateDir = process.env.ZEE_STATE_DIR;
     const stateDir = await fs.mkdtemp(
-      path.join(tmpdir(), "clawdbot-session-noreset-"),
+      path.join(tmpdir(), "zee-session-noreset-"),
     );
-    process.env.CLAWDBOT_STATE_DIR = stateDir;
+    process.env.ZEE_STATE_DIR = stateDir;
     try {
       const sessionId = "session-ok";
       const storePath = path.join(stateDir, "sessions", "sessions.json");
@@ -349,19 +349,19 @@ describe("runReplyAgent typing (heartbeat)", () => {
       expect(persisted.main).toBeDefined();
     } finally {
       if (prevStateDir) {
-        process.env.CLAWDBOT_STATE_DIR = prevStateDir;
+        process.env.ZEE_STATE_DIR = prevStateDir;
       } else {
-        delete process.env.CLAWDBOT_STATE_DIR;
+        delete process.env.ZEE_STATE_DIR;
       }
     }
   });
 
   it("still replies even if session reset fails to persist", async () => {
-    const prevStateDir = process.env.CLAWDBOT_STATE_DIR;
+    const prevStateDir = process.env.ZEE_STATE_DIR;
     const stateDir = await fs.mkdtemp(
-      path.join(tmpdir(), "clawdbot-session-reset-fail-"),
+      path.join(tmpdir(), "zee-session-reset-fail-"),
     );
-    process.env.CLAWDBOT_STATE_DIR = stateDir;
+    process.env.ZEE_STATE_DIR = stateDir;
     const saveSpy = vi
       .spyOn(sessions, "saveSessionStore")
       .mockRejectedValueOnce(new Error("boom"));
@@ -397,9 +397,9 @@ describe("runReplyAgent typing (heartbeat)", () => {
     } finally {
       saveSpy.mockRestore();
       if (prevStateDir) {
-        process.env.CLAWDBOT_STATE_DIR = prevStateDir;
+        process.env.ZEE_STATE_DIR = prevStateDir;
       } else {
-        delete process.env.CLAWDBOT_STATE_DIR;
+        delete process.env.ZEE_STATE_DIR;
       }
     }
   });

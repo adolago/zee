@@ -1,4 +1,4 @@
-import ClawdbotIPC
+import ZeeIPC
 import Foundation
 import OSLog
 
@@ -62,21 +62,21 @@ struct GatewayCommandResolution {
 }
 
 enum GatewayEnvironment {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "gateway.env")
+    private static let logger = Logger(subsystem: "com.zee", category: "gateway.env")
     private static let supportedBindModes: Set<String> = ["loopback", "tailnet", "lan", "auto"]
 
     static func bundledGatewayExecutable() -> String? {
         guard let res = Bundle.main.resourceURL else { return nil }
-        let path = res.appendingPathComponent("Relay/clawdbot").path
+        let path = res.appendingPathComponent("Relay/zee").path
         return FileManager.default.isExecutableFile(atPath: path) ? path : nil
     }
 
     static func gatewayPort() -> Int {
-        if let raw = ProcessInfo.processInfo.environment["CLAWDBOT_GATEWAY_PORT"] {
+        if let raw = ProcessInfo.processInfo.environment["ZEE_GATEWAY_PORT"] {
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             if let parsed = Int(trimmed), parsed > 0 { return parsed }
         }
-        if let configPort = ClawdbotConfigFile.gatewayPort(), configPort > 0 {
+        if let configPort = ZeeConfigFile.gatewayPort(), configPort > 0 {
             return configPort
         }
         let stored = UserDefaults.standard.integer(forKey: "gatewayPort")
@@ -139,7 +139,7 @@ enum GatewayEnvironment {
                 requiredGateway: expected?.description,
                 message: RuntimeLocator.describeFailure(err))
         case let .success(runtime):
-            let gatewayBin = CommandResolver.clawdbotExecutable()
+            let gatewayBin = CommandResolver.zeeExecutable()
 
             if gatewayBin == nil, projectEntrypoint == nil {
                 return GatewayEnvironmentStatus(
@@ -147,7 +147,7 @@ enum GatewayEnvironment {
                     nodeVersion: runtime.version.description,
                     gatewayVersion: nil,
                     requiredGateway: expected?.description,
-                    message: "clawdbot CLI not found in PATH; install the global package.")
+                    message: "zee CLI not found in PATH; install the global package.")
             }
 
             let installed = gatewayBin.flatMap { self.readGatewayVersion(binary: $0) }
@@ -196,7 +196,7 @@ enum GatewayEnvironment {
         let projectRoot = CommandResolver.projectRoot()
         let projectEntrypoint = CommandResolver.gatewayEntrypoint(in: projectRoot)
         let status = self.check()
-        let gatewayBin = CommandResolver.clawdbotExecutable()
+        let gatewayBin = CommandResolver.zeeExecutable()
         let bundled = self.bundledGatewayExecutable()
         let runtime = RuntimeLocator.resolve(searchPaths: CommandResolver.preferredPaths())
 
@@ -229,14 +229,14 @@ enum GatewayEnvironment {
         if CommandResolver.connectionModeIsRemote() {
             return nil
         }
-        if let env = ProcessInfo.processInfo.environment["CLAWDBOT_GATEWAY_BIND"] {
+        if let env = ProcessInfo.processInfo.environment["ZEE_GATEWAY_BIND"] {
             let trimmed = env.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if self.supportedBindModes.contains(trimmed) {
                 return trimmed
             }
         }
 
-        let root = ClawdbotConfigFile.loadDict()
+        let root = ZeeConfigFile.loadDict()
         if let gateway = root["gateway"] as? [String: Any],
            let bind = gateway["bind"] as? String
         {
@@ -257,16 +257,16 @@ enum GatewayEnvironment {
         let bun = CommandResolver.findExecutable(named: "bun")
         let (label, cmd): (String, [String]) =
             if let npm {
-                ("npm", [npm, "install", "-g", "clawdbot@\(target)"])
+                ("npm", [npm, "install", "-g", "zee@\(target)"])
             } else if let pnpm {
-                ("pnpm", [pnpm, "add", "-g", "clawdbot@\(target)"])
+                ("pnpm", [pnpm, "add", "-g", "zee@\(target)"])
             } else if let bun {
-                ("bun", [bun, "add", "-g", "clawdbot@\(target)"])
+                ("bun", [bun, "add", "-g", "zee@\(target)"])
             } else {
-                ("npm", ["npm", "install", "-g", "clawdbot@\(target)"])
+                ("npm", ["npm", "install", "-g", "zee@\(target)"])
             }
 
-        statusHandler("Installing clawdbot@\(target) via \(label)…")
+        statusHandler("Installing zee@\(target) via \(label)…")
 
         func summarize(_ text: String) -> String? {
             let lines = text
@@ -280,7 +280,7 @@ enum GatewayEnvironment {
 
         let response = await ShellExecutor.runDetailed(command: cmd, cwd: nil, env: ["PATH": preferred], timeout: 300)
         if response.success {
-            statusHandler("Installed clawdbot@\(target)")
+            statusHandler("Installed zee@\(target)")
         } else {
             if response.timedOut {
                 statusHandler("Install failed: timed out. Check your internet connection and try again.")

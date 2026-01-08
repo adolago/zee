@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { mergeWhatsAppConfig } from "../config/merge-config.js";
 import type { DmPolicy } from "../config/types.js";
 import {
@@ -52,11 +52,11 @@ import type { ProviderChoice } from "./onboard-types.js";
 import { installSignalCli } from "./signal-install.js";
 
 async function promptAccountId(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   prompter: WizardPrompter;
   label: string;
   currentId?: string;
-  listAccountIds: (cfg: ClawdbotConfig) => string[];
+  listAccountIds: (cfg: ZeeConfig) => string[];
   defaultAccountId: string;
 }): Promise<string> {
   const existingIds = params.listAccountIds(params.cfg);
@@ -108,7 +108,7 @@ async function pathExists(filePath: string): Promise<boolean> {
 }
 
 async function detectWhatsAppLinked(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): Promise<boolean> {
   const { authDir } = resolveWhatsAppAuthDir({ cfg, accountId });
@@ -123,7 +123,7 @@ async function noteProviderPrimer(prompter: WizardPrompter): Promise<void> {
   await prompter.note(
     [
       "DM security: default is pairing; unknown DMs get a pairing code.",
-      "Approve with: clawdbot pairing approve --provider <provider> <code>",
+      "Approve with: zee pairing approve --provider <provider> <code>",
       'Public DMs require dmPolicy="open" + allowFrom=["*"].',
       `Docs: ${formatDocsLink("/start/pairing", "start/pairing")}`,
       "",
@@ -161,11 +161,11 @@ async function noteDiscordTokenHelp(prompter: WizardPrompter): Promise<void> {
 }
 
 function buildSlackManifest(botName: string) {
-  const safeName = botName.trim() || "Clawdbot";
+  const safeName = botName.trim() || "Zee";
   const manifest = {
     display_information: {
       name: safeName,
-      description: `${safeName} connector for Clawdbot`,
+      description: `${safeName} connector for Zee`,
     },
     features: {
       bot_user: {
@@ -179,7 +179,7 @@ function buildSlackManifest(botName: string) {
       slash_commands: [
         {
           command: "/clawd",
-          description: "Send a message to Clawdbot",
+          description: "Send a message to Zee",
           should_escape: false,
         },
       ],
@@ -254,16 +254,16 @@ async function noteSlackTokenHelp(
 export { mergeWhatsAppConfig };
 
 export function setWhatsAppDmPolicy(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   dmPolicy: DmPolicy,
-): ClawdbotConfig {
+): ZeeConfig {
   return mergeWhatsAppConfig(cfg, { dmPolicy });
 }
 
 export function setWhatsAppAllowFrom(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   allowFrom?: string[],
-): ClawdbotConfig {
+): ZeeConfig {
   return mergeWhatsAppConfig(
     cfg,
     { allowFrom },
@@ -272,9 +272,9 @@ export function setWhatsAppAllowFrom(
 }
 
 function setMessagesResponsePrefix(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   responsePrefix?: string,
-): ClawdbotConfig {
+): ZeeConfig {
   return {
     ...cfg,
     messages: {
@@ -285,13 +285,13 @@ function setMessagesResponsePrefix(
 }
 
 export function setWhatsAppSelfChatMode(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   selfChatMode: boolean,
-): ClawdbotConfig {
+): ZeeConfig {
   return mergeWhatsAppConfig(cfg, { selfChatMode });
 }
 
-function setTelegramDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
+function setTelegramDmPolicy(cfg: ZeeConfig, dmPolicy: DmPolicy) {
   const allowFrom =
     dmPolicy === "open"
       ? addWildcardAllowFrom(cfg.telegram?.allowFrom)
@@ -306,7 +306,7 @@ function setTelegramDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
   };
 }
 
-function setDiscordDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
+function setDiscordDmPolicy(cfg: ZeeConfig, dmPolicy: DmPolicy) {
   const allowFrom =
     dmPolicy === "open"
       ? addWildcardAllowFrom(cfg.discord?.dm?.allowFrom)
@@ -325,7 +325,7 @@ function setDiscordDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
   };
 }
 
-function setSlackDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
+function setSlackDmPolicy(cfg: ZeeConfig, dmPolicy: DmPolicy) {
   const allowFrom =
     dmPolicy === "open"
       ? addWildcardAllowFrom(cfg.slack?.dm?.allowFrom)
@@ -344,7 +344,7 @@ function setSlackDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
   };
 }
 
-function setSignalDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
+function setSignalDmPolicy(cfg: ZeeConfig, dmPolicy: DmPolicy) {
   const allowFrom =
     dmPolicy === "open"
       ? addWildcardAllowFrom(cfg.signal?.allowFrom)
@@ -359,7 +359,7 @@ function setSignalDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
   };
 }
 
-function setIMessageDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
+function setIMessageDmPolicy(cfg: ZeeConfig, dmPolicy: DmPolicy) {
   const allowFrom =
     dmPolicy === "open"
       ? addWildcardAllowFrom(cfg.imessage?.allowFrom)
@@ -375,10 +375,10 @@ function setIMessageDmPolicy(cfg: ClawdbotConfig, dmPolicy: DmPolicy) {
 }
 
 async function maybeConfigureDmPolicies(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   selection: ProviderChoice[];
   prompter: WizardPrompter;
-}): Promise<ClawdbotConfig> {
+}): Promise<ZeeConfig> {
   const { selection, prompter } = params;
   const supportsDmPolicy = selection.some((p) =>
     ["telegram", "discord", "slack", "signal", "imessage"].includes(p),
@@ -401,7 +401,7 @@ async function maybeConfigureDmPolicies(params: {
     await prompter.note(
       [
         "Default: pairing (unknown DMs get a pairing code).",
-        `Approve: clawdbot pairing approve --provider ${params.provider} <code>`,
+        `Approve: zee pairing approve --provider ${params.provider} <code>`,
         `Public DMs: ${params.policyKey}="open" + ${params.allowFromKey} includes "*".`,
         `Docs: ${formatDocsLink("/start/pairing", "start/pairing")}`,
       ].join("\n"),
@@ -471,10 +471,10 @@ async function maybeConfigureDmPolicies(params: {
 }
 
 async function promptTelegramAllowFrom(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   prompter: WizardPrompter;
   accountId: string;
-}): Promise<ClawdbotConfig> {
+}): Promise<ZeeConfig> {
   const { cfg, prompter, accountId } = params;
   const resolved = resolveTelegramAccount({ cfg, accountId });
   const existingAllowFrom = resolved.config.allowFrom ?? [];
@@ -529,11 +529,11 @@ async function promptTelegramAllowFrom(params: {
 }
 
 async function promptWhatsAppAllowFrom(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   _runtime: RuntimeEnv,
   prompter: WizardPrompter,
   options?: { forceAllowlist?: boolean },
-): Promise<ClawdbotConfig> {
+): Promise<ZeeConfig> {
   const existingPolicy = cfg.whatsapp?.dmPolicy ?? "pairing";
   const existingAllowFrom = cfg.whatsapp?.allowFrom ?? [];
   const existingLabel =
@@ -566,14 +566,14 @@ async function promptWhatsAppAllowFrom(
     next = setWhatsAppDmPolicy(next, "allowlist");
     next = setWhatsAppAllowFrom(next, unique);
     if (existingResponsePrefix === undefined) {
-      next = setMessagesResponsePrefix(next, "[clawdbot]");
+      next = setMessagesResponsePrefix(next, "[zee]");
     }
     await prompter.note(
       [
         "Allowlist mode enabled.",
         `- allowFrom includes ${normalized}`,
         existingResponsePrefix === undefined
-          ? "- responsePrefix set to [clawdbot]"
+          ? "- responsePrefix set to [zee]"
           : "- responsePrefix left unchanged",
       ].join("\n"),
       "WhatsApp allowlist",
@@ -599,7 +599,7 @@ async function promptWhatsAppAllowFrom(
     message: "WhatsApp phone setup",
     options: [
       { value: "personal", label: "This is my personal phone number" },
-      { value: "separate", label: "Separate phone just for Clawdbot" },
+      { value: "separate", label: "Separate phone just for Zee" },
     ],
   })) as "personal" | "separate";
 
@@ -629,7 +629,7 @@ async function promptWhatsAppAllowFrom(
     next = setWhatsAppDmPolicy(next, "allowlist");
     next = setWhatsAppAllowFrom(next, unique);
     if (existingResponsePrefix === undefined) {
-      next = setMessagesResponsePrefix(next, "[clawdbot]");
+      next = setMessagesResponsePrefix(next, "[zee]");
     }
     await prompter.note(
       [
@@ -637,7 +637,7 @@ async function promptWhatsAppAllowFrom(
         "- dmPolicy set to allowlist (pairing skipped)",
         `- allowFrom includes ${normalized}`,
         existingResponsePrefix === undefined
-          ? "- responsePrefix set to [clawdbot]"
+          ? "- responsePrefix set to [zee]"
           : "- responsePrefix left unchanged",
       ].join("\n"),
       "WhatsApp personal phone",
@@ -742,11 +742,11 @@ type SetupProvidersOptions = {
 };
 
 export async function setupProviders(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   runtime: RuntimeEnv,
   prompter: WizardPrompter,
   options?: SetupProvidersOptions,
-): Promise<ClawdbotConfig> {
+): Promise<ZeeConfig> {
   const forceAllowFromProviders = new Set(
     options?.forceAllowFromProviders ?? [],
   );
@@ -969,7 +969,7 @@ export async function setupProviders(
       }
     } else if (!whatsappLinked) {
       await prompter.note(
-        "Run `clawdbot providers login` later to link WhatsApp.",
+        "Run `zee providers login` later to link WhatsApp.",
         "WhatsApp",
       );
     }
@@ -1235,7 +1235,7 @@ export async function setupProviders(
     const slackBotName = String(
       await prompter.text({
         message: "Slack bot display name (used for manifest)",
-        initialValue: "Clawdbot",
+        initialValue: "Zee",
       }),
     ).trim();
     if (!accountConfigured) {
@@ -1454,9 +1454,9 @@ export async function setupProviders(
 
     await prompter.note(
       [
-        'Link device with: signal-cli link -n "Clawdbot"',
+        'Link device with: signal-cli link -n "Zee"',
         "Scan QR in Signal → Linked Devices",
-        "Then run: clawdbot gateway call providers.status --params '{\"probe\":true}'",
+        "Then run: zee gateway call providers.status --params '{\"probe\":true}'",
         `Docs: ${formatDocsLink("/signal", "signal")}`,
       ].join("\n"),
       "Signal next steps",
@@ -1535,7 +1535,7 @@ export async function setupProviders(
     await prompter.note(
       [
         "This is still a work in progress.",
-        "Ensure Clawdbot has Full Disk Access to Messages DB.",
+        "Ensure Zee has Full Disk Access to Messages DB.",
         "Grant Automation permission for Messages when prompted.",
         "List chats with: imsg chats --limit 20",
         `Docs: ${formatDocsLink("/imessage", "imessage")}`,

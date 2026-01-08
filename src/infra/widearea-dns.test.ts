@@ -6,11 +6,11 @@ import {
 } from "./widearea-dns.js";
 
 describe("wide-area DNS-SD zone rendering", () => {
-  it("renders a clawdbot.internal zone with bridge PTR/SRV/TXT records", () => {
+  it("renders a zee.internal zone with bridge PTR/SRV/TXT records", () => {
     const txt = renderWideAreaBridgeZoneText({
       serial: 2025121701,
       bridgePort: 18790,
-      displayName: "Mac Studio (Clawdbot)",
+      displayName: "Mac Studio (Zee)",
       tailnetIPv4: "100.123.224.76",
       tailnetIPv6: "fd7a:115c:a1e0::8801:e04c",
       hostLabel: "studio-london",
@@ -21,19 +21,19 @@ describe("wide-area DNS-SD zone rendering", () => {
     expect(txt).toContain(`studio-london IN A 100.123.224.76`);
     expect(txt).toContain(`studio-london IN AAAA fd7a:115c:a1e0::8801:e04c`);
     expect(txt).toContain(
-      `_clawdbot-bridge._tcp IN PTR studio-london._clawdbot-bridge._tcp`,
+      `_zee-bridge._tcp IN PTR studio-london._zee-bridge._tcp`,
     );
     expect(txt).toContain(
-      `studio-london._clawdbot-bridge._tcp IN SRV 0 0 18790 studio-london`,
+      `studio-london._zee-bridge._tcp IN SRV 0 0 18790 studio-london`,
     );
-    expect(txt).toContain(`displayName=Mac Studio (Clawdbot)`);
+    expect(txt).toContain(`displayName=Mac Studio (Zee)`);
   });
 
   it("includes tailnetDns when provided", () => {
     const txt = renderWideAreaBridgeZoneText({
       serial: 2025121701,
       bridgePort: 18790,
-      displayName: "Mac Studio (Clawdbot)",
+      displayName: "Mac Studio (Zee)",
       tailnetIPv4: "100.123.224.76",
       tailnetDns: "peters-mac-studio-1.sheep-coho.ts.net",
       hostLabel: "studio-london",

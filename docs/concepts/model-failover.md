@@ -1,5 +1,5 @@
 ---
-summary: "How Clawdbot rotates auth profiles and falls back across models"
+summary: "How Zee rotates auth profiles and falls back across models"
 read_when:
   - Diagnosing auth profile rotation, cooldowns, or model fallback behavior
   - Updating failover rules for auth profiles or models
@@ -7,7 +7,7 @@ read_when:
 
 # Model failover
 
-Clawdbot handles failures in two stages:
+Zee handles failures in two stages:
 1) **Auth profile rotation** within the current provider.
 2) **Model fallback** to the next model in `agent.model.fallbacks`.
 
@@ -15,11 +15,11 @@ This doc explains the runtime rules and the data that backs them.
 
 ## Auth storage (keys + OAuth)
 
-Clawdbot uses **auth profiles** for both API keys and OAuth tokens.
+Zee uses **auth profiles** for both API keys and OAuth tokens.
 
-- Secrets live in `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json` (legacy: `~/.clawdbot/agent/auth-profiles.json`).
+- Secrets live in `~/.zee/agents/<agentId>/agent/auth-profiles.json` (legacy: `~/.zee/agent/auth-profiles.json`).
 - Config `auth.profiles` / `auth.order` are **metadata + routing only** (no secrets).
-- Legacy import-only OAuth file: `~/.clawdbot/credentials/oauth.json` (imported into `auth-profiles.json` on first use).
+- Legacy import-only OAuth file: `~/.zee/credentials/oauth.json` (imported into `auth-profiles.json` on first use).
 
 More detail: [/concepts/oauth](/concepts/oauth)
 
@@ -33,17 +33,17 @@ OAuth logins create distinct profiles so multiple accounts can coexist.
 - Default: `provider:default` when no email is available.
 - OAuth with email: `provider:<email>` (for example `google-antigravity:user@gmail.com`).
 
-Profiles live in `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json` under `profiles`.
+Profiles live in `~/.zee/agents/<agentId>/agent/auth-profiles.json` under `profiles`.
 
 ## Rotation order
 
-When a provider has multiple profiles, Clawdbot chooses an order like this:
+When a provider has multiple profiles, Zee chooses an order like this:
 
 1) **Explicit config**: `auth.order[provider]` (if set).
 2) **Configured profiles**: `auth.profiles` filtered by provider.
 3) **Stored profiles**: entries in `auth-profiles.json` for the provider.
 
-If no explicit order is configured, Clawdbot uses a round‑robin order:
+If no explicit order is configured, Zee uses a round‑robin order:
 - **Primary key:** profile type (**OAuth before API keys**).
 - **Secondary key:** `usageStats.lastUsed` (oldest first, within each type).
 - **Cooldown profiles** are moved to the end, ordered by soonest cooldown expiry.
@@ -57,7 +57,7 @@ If you have both an OAuth profile and an API key profile for the same provider, 
 ## Cooldowns
 
 When a profile fails due to auth/rate‑limit errors (or a timeout that looks
-like rate limiting), Clawdbot marks it in cooldown and moves to the next profile.
+like rate limiting), Zee marks it in cooldown and moves to the next profile.
 
 Cooldowns use exponential backoff:
 - 1 minute
@@ -81,7 +81,7 @@ State is stored in `auth-profiles.json` under `usageStats`:
 
 ## Model fallback
 
-If all profiles for a provider fail, Clawdbot moves to the next model in
+If all profiles for a provider fail, Zee moves to the next model in
 `agent.model.fallbacks`. This applies to auth failures, rate limits, and
 timeouts that exhausted profile rotation.
 

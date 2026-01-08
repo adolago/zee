@@ -33,13 +33,13 @@ final class AppState {
     }
 
     var onboardingSeen: Bool {
-        didSet { self.ifNotPreview { UserDefaults.standard.set(self.onboardingSeen, forKey: "clawdbot.onboardingSeen") }
+        didSet { self.ifNotPreview { UserDefaults.standard.set(self.onboardingSeen, forKey: "zee.onboardingSeen") }
         }
     }
 
     var debugPaneEnabled: Bool {
         didSet {
-            self.ifNotPreview { UserDefaults.standard.set(self.debugPaneEnabled, forKey: "clawdbot.debugPaneEnabled") }
+            self.ifNotPreview { UserDefaults.standard.set(self.debugPaneEnabled, forKey: "zee.debugPaneEnabled") }
             CanvasManager.shared.refreshDebugStatus()
         }
     }
@@ -210,11 +210,11 @@ final class AppState {
 
     init(preview: Bool = false) {
         self.isPreview = preview
-        let onboardingSeen = UserDefaults.standard.bool(forKey: "clawdbot.onboardingSeen")
+        let onboardingSeen = UserDefaults.standard.bool(forKey: "zee.onboardingSeen")
         self.isPaused = UserDefaults.standard.bool(forKey: pauseDefaultsKey)
         self.launchAtLogin = false
         self.onboardingSeen = onboardingSeen
-        self.debugPaneEnabled = UserDefaults.standard.bool(forKey: "clawdbot.debugPaneEnabled")
+        self.debugPaneEnabled = UserDefaults.standard.bool(forKey: "zee.debugPaneEnabled")
         let savedVoiceWake = UserDefaults.standard.bool(forKey: swabbleEnabledKey)
         self.swabbleEnabled = voiceWakeSupported ? savedVoiceWake : false
         self.swabbleTriggerWords = UserDefaults.standard
@@ -256,7 +256,7 @@ final class AppState {
             UserDefaults.standard.set(IconOverrideSelection.system.rawValue, forKey: iconOverrideKey)
         }
 
-        let configRoot = ClawdbotConfigFile.loadDict()
+        let configRoot = ZeeConfigFile.loadDict()
         let configGateway = configRoot["gateway"] as? [String: Any]
         let configModeRaw = (configGateway?["mode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let configMode: ConnectionMode? = switch configModeRaw {
@@ -344,7 +344,7 @@ final class AppState {
     }
 
     private func startConfigWatcher() {
-        let configUrl = ClawdbotConfigFile.url()
+        let configUrl = ZeeConfigFile.url()
         self.configWatcher = ConfigFileWatcher(url: configUrl) { [weak self] in
             Task { @MainActor in
                 self?.applyConfigFromDisk()
@@ -354,7 +354,7 @@ final class AppState {
     }
 
     private func applyConfigFromDisk() {
-        let root = ClawdbotConfigFile.loadDict()
+        let root = ZeeConfigFile.loadDict()
         self.applyConfigOverrides(root)
     }
 
@@ -422,7 +422,7 @@ final class AppState {
 
         Task { @MainActor in
             // Keep app-only connection settings local to avoid overwriting remote gateway config.
-            var root = ClawdbotConfigFile.loadDict()
+            var root = ZeeConfigFile.loadDict()
             var gateway = root["gateway"] as? [String: Any] ?? [:]
             var changed = false
 
@@ -457,7 +457,7 @@ final class AppState {
             } else {
                 root["gateway"] = gateway
             }
-            ClawdbotConfigFile.saveDict(root)
+            ZeeConfigFile.saveDict(root)
         }
     }
 
@@ -599,7 +599,7 @@ extension AppState {
         state.canvasEnabled = true
         state.remoteTarget = "user@example.com"
         state.remoteIdentity = "~/.ssh/id_ed25519"
-        state.remoteProjectRoot = "~/Projects/clawdbot"
+        state.remoteProjectRoot = "~/Projects/zee"
         state.remoteCliPath = ""
         state.attachExistingGatewayOnly = false
         return state

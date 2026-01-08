@@ -20,7 +20,7 @@ vi.mock("../config/config.js", async (importOriginal) => {
   };
 });
 
-import { createClawdbotTools } from "./clawdbot-tools.js";
+import { createZeeTools } from "./zee-tools.js";
 
 describe("sessions tools", () => {
   it("sessions_list filters kinds and includes messages", async () => {
@@ -71,7 +71,7 @@ describe("sessions tools", () => {
       return {};
     });
 
-    const tool = createClawdbotTools().find(
+    const tool = createZeeTools().find(
       (candidate) => candidate.name === "sessions_list",
     );
     expect(tool).toBeDefined();
@@ -110,7 +110,7 @@ describe("sessions tools", () => {
       return {};
     });
 
-    const tool = createClawdbotTools().find(
+    const tool = createZeeTools().find(
       (candidate) => candidate.name === "sessions_history",
     );
     expect(tool).toBeDefined();
@@ -194,7 +194,7 @@ describe("sessions tools", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: requesterKey,
       agentProvider: "discord",
     }).find((candidate) => candidate.name === "sessions_send");
@@ -338,7 +338,7 @@ describe("sessions tools", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: requesterKey,
       agentProvider: "discord",
     }).find((candidate) => candidate.name === "sessions_send");

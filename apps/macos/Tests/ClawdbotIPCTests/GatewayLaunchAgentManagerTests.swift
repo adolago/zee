@@ -1,16 +1,16 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct GatewayLaunchAgentManagerTests {
     @Test func launchAgentPlistSnapshotParsesArgsAndEnv() throws {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-launchd-\(UUID().uuidString).plist")
+            .appendingPathComponent("zee-launchd-\(UUID().uuidString).plist")
         let plist: [String: Any] = [
-            "ProgramArguments": ["clawdbot", "gateway-daemon", "--port", "18789", "--bind", "loopback"],
+            "ProgramArguments": ["zee", "gateway-daemon", "--port", "18789", "--bind", "loopback"],
             "EnvironmentVariables": [
-                "CLAWDBOT_GATEWAY_TOKEN": " secret ",
-                "CLAWDBOT_GATEWAY_PASSWORD": "pw",
+                "ZEE_GATEWAY_TOKEN": " secret ",
+                "ZEE_GATEWAY_PASSWORD": "pw",
             ],
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
@@ -26,9 +26,9 @@ import Testing
 
     @Test func launchAgentPlistSnapshotAllowsMissingBind() throws {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-launchd-\(UUID().uuidString).plist")
+            .appendingPathComponent("zee-launchd-\(UUID().uuidString).plist")
         let plist: [String: Any] = [
-            "ProgramArguments": ["clawdbot", "gateway-daemon", "--port", "18789"],
+            "ProgramArguments": ["zee", "gateway-daemon", "--port", "18789"],
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try data.write(to: url, options: [.atomic])

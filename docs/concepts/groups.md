@@ -5,7 +5,7 @@ read_when:
 ---
 # Groups
 
-Clawdbot treats group chats consistently across surfaces: WhatsApp, Telegram, Discord, Slack, Signal, iMessage.
+Zee treats group chats consistently across surfaces: WhatsApp, Telegram, Discord, Slack, Signal, iMessage.
 
 ## Session keys
 - Group sessions use `agent:<agentId>:<provider>:group:<id>` session keys (rooms/channels use `agent:<agentId>:<provider>:channel:<id>`).
@@ -90,7 +90,7 @@ Group messages require a mention unless overridden per group. Defaults live per 
   },
   routing: {
     groupChat: {
-      mentionPatterns: ["@clawd", "clawdbot", "\\+15555550123"],
+      mentionPatterns: ["@clawd", "zee", "\\+15555550123"],
       historyLimit: 50
     }
   }

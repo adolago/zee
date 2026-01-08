@@ -5,7 +5,7 @@ import { parseSchtasksQuery } from "./schtasks.js";
 describe("schtasks runtime parsing", () => {
   it("parses status and last run info", () => {
     const output = [
-      "TaskName: \\Clawdbot Gateway",
+      "TaskName: \\Zee Gateway",
       "Status: Ready",
       "Last Run Time: 1/8/2026 1:23:45 AM",
       "Last Run Result: 0x0",

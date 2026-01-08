@@ -9,10 +9,10 @@ import Security
 final class PeekabooBridgeHostCoordinator {
     static let shared = PeekabooBridgeHostCoordinator()
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "PeekabooBridge")
+    private let logger = Logger(subsystem: "com.zee", category: "PeekabooBridge")
 
     private var host: PeekabooBridgeHost?
-    private var services: ClawdbotPeekabooBridgeServices?
+    private var services: ZeePeekabooBridgeServices?
 
     func setEnabled(_ enabled: Bool) async {
         if enabled {
@@ -39,7 +39,7 @@ final class PeekabooBridgeHostCoordinator {
         }
         let allowlistedBundles: Set<String> = []
 
-        let services = ClawdbotPeekabooBridgeServices()
+        let services = ZeePeekabooBridgeServices()
         let server = PeekabooBridgeServer(
             services: services,
             hostKind: .gui,
@@ -47,7 +47,7 @@ final class PeekabooBridgeHostCoordinator {
             allowlistedBundles: allowlistedBundles)
 
         let host = PeekabooBridgeHost(
-            socketPath: PeekabooBridgeConstants.clawdbotSocketPath,
+            socketPath: PeekabooBridgeConstants.zeeSocketPath,
             server: server,
             allowedTeamIDs: allowlistedTeamIDs,
             requestTimeoutSec: 10)
@@ -57,7 +57,7 @@ final class PeekabooBridgeHostCoordinator {
 
         await host.start()
         self.logger
-            .info("PeekabooBridge host started at \(PeekabooBridgeConstants.clawdbotSocketPath, privacy: .public)")
+            .info("PeekabooBridge host started at \(PeekabooBridgeConstants.zeeSocketPath, privacy: .public)")
     }
 
     private static func currentTeamID() -> String? {
@@ -90,7 +90,7 @@ final class PeekabooBridgeHostCoordinator {
 }
 
 @MainActor
-private final class ClawdbotPeekabooBridgeServices: PeekabooBridgeServiceProviding {
+private final class ZeePeekabooBridgeServices: PeekabooBridgeServiceProviding {
     let permissions: PermissionsService
     let screenCapture: any ScreenCaptureServiceProtocol
     let automation: any UIAutomationServiceProtocol
@@ -102,7 +102,7 @@ private final class ClawdbotPeekabooBridgeServices: PeekabooBridgeServiceProvidi
     let snapshots: any SnapshotManagerProtocol
 
     init() {
-        let logging = LoggingService(subsystem: "com.clawdbot.peekaboo")
+        let logging = LoggingService(subsystem: "com.zee.peekaboo")
         let feedbackClient: any AutomationFeedbackClient = NoopAutomationFeedbackClient()
 
         let snapshots = InMemorySnapshotManager(options: .init(

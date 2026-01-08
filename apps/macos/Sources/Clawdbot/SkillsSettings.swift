@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Observation
 import SwiftUI
 
@@ -231,13 +231,13 @@ private struct SkillRow: View {
 
     private var sourceLabel: String {
         switch self.skill.source {
-        case "clawdbot-bundled":
+        case "zee-bundled":
             "Bundled"
-        case "clawdbot-managed":
+        case "zee-managed":
             "Managed"
-        case "clawdbot-workspace":
+        case "zee-workspace":
             "Workspace"
-        case "clawdbot-extra":
+        case "zee-extra":
             "Extra"
         default:
             self.skill.source
@@ -578,7 +578,7 @@ extension SkillsSettings {
         let skill = SkillStatus(
             name: "Test Skill",
             description: "Test description",
-            source: "clawdbot-bundled",
+            source: "zee-bundled",
             filePath: "/tmp/skills/test",
             baseDir: "/tmp/skills",
             skillKey: "test",

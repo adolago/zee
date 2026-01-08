@@ -4,7 +4,7 @@ enum ChatMarkdownSplitter {
     struct InlineImage: Identifiable {
         let id = UUID()
         let label: String
-        let image: ClawdbotPlatformImage?
+        let image: ZeePlatformImage?
     }
 
     struct Block: Identifiable {
@@ -93,11 +93,11 @@ enum ChatMarkdownSplitter {
             let label = ns.substring(with: match.range(at: 1))
             let dataURL = ns.substring(with: match.range(at: 2))
 
-            let image: ClawdbotPlatformImage? = {
+            let image: ZeePlatformImage? = {
                 guard let comma = dataURL.firstIndex(of: ",") else { return nil }
                 let b64 = String(dataURL[dataURL.index(after: comma)...])
                 guard let data = Data(base64Encoded: b64) else { return nil }
-                return ClawdbotPlatformImage(data: data)
+                return ZeePlatformImage(data: data)
             }()
             images.append(InlineImage(label: label, image: image))
 

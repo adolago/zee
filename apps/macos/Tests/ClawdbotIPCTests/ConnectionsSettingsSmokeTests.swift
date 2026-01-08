@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized)
 @MainActor
@@ -41,7 +41,7 @@ struct ConnectionsSettingsSmokeTests {
                     status: 200,
                     error: nil,
                     elapsedMs: 120,
-                    bot: ProvidersStatusSnapshot.TelegramBot(id: 123, username: "clawdbotbot"),
+                    bot: ProvidersStatusSnapshot.TelegramBot(id: 123, username: "zeebot"),
                     webhook: ProvidersStatusSnapshot.TelegramWebhook(
                         url: "https://example.com/hook",
                         hasCustomCert: false)),

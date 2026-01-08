@@ -1,6 +1,6 @@
 import AVFoundation
-import ClawdbotIPC
-import ClawdbotKit
+import ZeeIPC
+import ZeeKit
 import CoreGraphics
 import Foundation
 import OSLog
@@ -36,7 +36,7 @@ actor CameraCaptureService {
         }
     }
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "camera")
+    private let logger = Logger(subsystem: "com.zee", category: "camera")
 
     func listDevices() -> [CameraDeviceInfo] {
         Self.availableCameras().map { device in
@@ -168,7 +168,7 @@ actor CameraCaptureService {
         await Self.warmUpCaptureSession()
 
         let tmpMovURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-camera-\(UUID().uuidString).mov")
+            .appendingPathComponent("zee-camera-\(UUID().uuidString).mov")
         defer { try? FileManager.default.removeItem(at: tmpMovURL) }
 
         let outputURL: URL = {
@@ -176,7 +176,7 @@ actor CameraCaptureService {
                 return URL(fileURLWithPath: outPath)
             }
             return FileManager.default.temporaryDirectory
-                .appendingPathComponent("clawdbot-camera-\(UUID().uuidString).mp4")
+                .appendingPathComponent("zee-camera-\(UUID().uuidString).mp4")
         }()
 
         // Ensure we don't fail exporting due to an existing file.

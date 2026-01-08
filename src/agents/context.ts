@@ -2,8 +2,8 @@
 // the agent reports a model id. This includes custom models.json entries.
 
 import { loadConfig } from "../config/config.js";
-import { resolveClawdbotAgentDir } from "./agent-paths.js";
-import { ensureClawdbotModelsJson } from "./models-config.js";
+import { resolveZeeAgentDir } from "./agent-paths.js";
+import { ensureZeeModelsJson } from "./models-config.js";
 
 type ModelEntry = { id: string; contextWindow?: number };
 
@@ -14,8 +14,8 @@ const loadPromise = (async () => {
       "@mariozechner/pi-coding-agent"
     );
     const cfg = loadConfig();
-    await ensureClawdbotModelsJson(cfg);
-    const agentDir = resolveClawdbotAgentDir();
+    await ensureZeeModelsJson(cfg);
+    const agentDir = resolveZeeAgentDir();
     const authStorage = discoverAuthStorage(agentDir);
     const modelRegistry = discoverModels(authStorage, agentDir);
     const models = modelRegistry.getAll() as ModelEntry[];

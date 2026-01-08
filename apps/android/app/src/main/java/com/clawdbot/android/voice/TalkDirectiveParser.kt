@@ -1,4 +1,4 @@
-package com.clawdbot.android.voice
+package com.zee.android.voice
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement

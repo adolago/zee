@@ -1,5 +1,5 @@
 ---
-summary: "Hubs that link to every Clawdbot doc"
+summary: "Hubs that link to every Zee doc"
 read_when:
   - You want a complete map of the documentation
 ---

@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import CoreLocation
 import Foundation
 
@@ -14,7 +14,7 @@ protocol MacNodeRuntimeMainActorServices: Sendable {
     func locationAuthorizationStatus() -> CLAuthorizationStatus
     func locationAccuracyAuthorization() -> CLAccuracyAuthorization
     func currentLocation(
-        desiredAccuracy: ClawdbotLocationAccuracy,
+        desiredAccuracy: ZeeLocationAccuracy,
         maxAgeMs: Int?,
         timeoutMs: Int?) async throws -> CLLocation
 }
@@ -48,7 +48,7 @@ final class LiveMacNodeRuntimeMainActorServices: MacNodeRuntimeMainActorServices
     }
 
     func currentLocation(
-        desiredAccuracy: ClawdbotLocationAccuracy,
+        desiredAccuracy: ZeeLocationAccuracy,
         maxAgeMs: Int?,
         timeoutMs: Int?) async throws -> CLLocation
     {

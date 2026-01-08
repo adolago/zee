@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Network
 import Observation
 import SwiftUI
@@ -23,7 +23,7 @@ struct SettingsTab: View {
     @AppStorage("talk.enabled") private var talkEnabled: Bool = false
     @AppStorage("talk.button.enabled") private var talkButtonEnabled: Bool = true
     @AppStorage("camera.enabled") private var cameraEnabled: Bool = true
-    @AppStorage("location.enabledMode") private var locationEnabledModeRaw: String = ClawdbotLocationMode.off.rawValue
+    @AppStorage("location.enabledMode") private var locationEnabledModeRaw: String = ZeeLocationMode.off.rawValue
     @AppStorage("location.preciseEnabled") private var locationPreciseEnabled: Bool = true
     @AppStorage("screen.preventSleep") private var preventSleep: Bool = true
     @AppStorage("bridge.preferredStableID") private var preferredBridgeStableID: String = ""
@@ -36,7 +36,7 @@ struct SettingsTab: View {
     @State private var connectStatus = ConnectStatusStore()
     @State private var connectingBridgeID: String?
     @State private var localIPAddress: String?
-    @State private var lastLocationModeRaw: String = ClawdbotLocationMode.off.rawValue
+    @State private var lastLocationModeRaw: String = ZeeLocationMode.off.rawValue
 
     var body: some View {
         NavigationStack {
@@ -186,9 +186,9 @@ struct SettingsTab: View {
 
                 Section("Location") {
                     Picker("Location Access", selection: self.$locationEnabledModeRaw) {
-                        Text("Off").tag(ClawdbotLocationMode.off.rawValue)
-                        Text("While Using").tag(ClawdbotLocationMode.whileUsing.rawValue)
-                        Text("Always").tag(ClawdbotLocationMode.always.rawValue)
+                        Text("Off").tag(ZeeLocationMode.off.rawValue)
+                        Text("While Using").tag(ZeeLocationMode.whileUsing.rawValue)
+                        Text("Always").tag(ZeeLocationMode.always.rawValue)
                     }
                     .pickerStyle(.segmented)
 
@@ -202,7 +202,7 @@ struct SettingsTab: View {
 
                 Section("Screen") {
                     Toggle("Prevent Sleep", isOn: self.$preventSleep)
-                    Text("Keeps the screen awake while Clawdbot is open.")
+                    Text("Keeps the screen awake while Zee is open.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -233,7 +233,7 @@ struct SettingsTab: View {
             .onChange(of: self.locationEnabledModeRaw) { _, newValue in
                 let previous = self.lastLocationModeRaw
                 self.lastLocationModeRaw = newValue
-                guard let mode = ClawdbotLocationMode(rawValue: newValue) else { return }
+                guard let mode = ZeeLocationMode(rawValue: newValue) else { return }
                 Task {
                     let granted = await self.appModel.requestLocationPermissions(mode: mode)
                     if !granted {
@@ -312,8 +312,8 @@ struct SettingsTab: View {
         return "iOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
     }
 
-    private var locationMode: ClawdbotLocationMode {
-        ClawdbotLocationMode(rawValue: self.locationEnabledModeRaw) ?? .off
+    private var locationMode: ZeeLocationMode {
+        ZeeLocationMode(rawValue: self.locationEnabledModeRaw) ?? .off
     }
 
     private func appVersion() -> String {
@@ -342,38 +342,38 @@ struct SettingsTab: View {
     }
 
     private func currentCaps() -> [String] {
-        var caps = [ClawdbotCapability.canvas.rawValue, ClawdbotCapability.screen.rawValue]
+        var caps = [ZeeCapability.canvas.rawValue, ZeeCapability.screen.rawValue]
 
         let cameraEnabled =
             UserDefaults.standard.object(forKey: "camera.enabled") == nil
                 ? true
                 : UserDefaults.standard.bool(forKey: "camera.enabled")
-        if cameraEnabled { caps.append(ClawdbotCapability.camera.rawValue) }
+        if cameraEnabled { caps.append(ZeeCapability.camera.rawValue) }
 
         let voiceWakeEnabled = UserDefaults.standard.bool(forKey: VoiceWakePreferences.enabledKey)
-        if voiceWakeEnabled { caps.append(ClawdbotCapability.voiceWake.rawValue) }
+        if voiceWakeEnabled { caps.append(ZeeCapability.voiceWake.rawValue) }
 
         return caps
     }
 
     private func currentCommands() -> [String] {
         var commands: [String] = [
-            ClawdbotCanvasCommand.present.rawValue,
-            ClawdbotCanvasCommand.hide.rawValue,
-            ClawdbotCanvasCommand.navigate.rawValue,
-            ClawdbotCanvasCommand.evalJS.rawValue,
-            ClawdbotCanvasCommand.snapshot.rawValue,
-            ClawdbotCanvasA2UICommand.push.rawValue,
-            ClawdbotCanvasA2UICommand.pushJSONL.rawValue,
-            ClawdbotCanvasA2UICommand.reset.rawValue,
-            ClawdbotScreenCommand.record.rawValue,
+            ZeeCanvasCommand.present.rawValue,
+            ZeeCanvasCommand.hide.rawValue,
+            ZeeCanvasCommand.navigate.rawValue,
+            ZeeCanvasCommand.evalJS.rawValue,
+            ZeeCanvasCommand.snapshot.rawValue,
+            ZeeCanvasA2UICommand.push.rawValue,
+            ZeeCanvasA2UICommand.pushJSONL.rawValue,
+            ZeeCanvasA2UICommand.reset.rawValue,
+            ZeeScreenCommand.record.rawValue,
         ]
 
         let caps = Set(self.currentCaps())
-        if caps.contains(ClawdbotCapability.camera.rawValue) {
-            commands.append(ClawdbotCameraCommand.list.rawValue)
-            commands.append(ClawdbotCameraCommand.snap.rawValue)
-            commands.append(ClawdbotCameraCommand.clip.rawValue)
+        if caps.contains(ZeeCapability.camera.rawValue) {
+            commands.append(ZeeCameraCommand.list.rawValue)
+            commands.append(ZeeCameraCommand.snap.rawValue)
+            commands.append(ZeeCameraCommand.clip.rawValue)
         }
 
         return commands
@@ -391,7 +391,7 @@ struct SettingsTab: View {
         do {
             let statusStore = self.connectStatus
             let existing = KeychainStore.loadString(
-                service: "com.clawdbot.bridge",
+                service: "com.zee.bridge",
                 account: self.keychainAccount())
             let existingToken = (existing?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ?
                 existing :
@@ -419,7 +419,7 @@ struct SettingsTab: View {
             if !token.isEmpty, token != existingToken {
                 _ = KeychainStore.saveString(
                     token,
-                    service: "com.clawdbot.bridge",
+                    service: "com.zee.bridge",
                     account: self.keychainAccount())
             }
 
@@ -465,7 +465,7 @@ struct SettingsTab: View {
         do {
             let statusStore = self.connectStatus
             let existing = KeychainStore.loadString(
-                service: "com.clawdbot.bridge",
+                service: "com.zee.bridge",
                 account: self.keychainAccount())
             let existingToken = (existing?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ?
                 existing :
@@ -493,7 +493,7 @@ struct SettingsTab: View {
             if !token.isEmpty, token != existingToken {
                 _ = KeychainStore.saveString(
                     token,
-                    service: "com.clawdbot.bridge",
+                    service: "com.zee.bridge",
                     account: self.keychainAccount())
             }
 

@@ -1,6 +1,6 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import {
   reactMessageTelegram,
   sendMessageTelegram,
@@ -17,7 +17,7 @@ import {
 
 export async function handleTelegramAction(
   params: Record<string, unknown>,
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): Promise<AgentToolResult<unknown>> {
   const action = readStringParam(params, "action", { required: true });
   const isActionEnabled = createActionGate(cfg.telegram?.actions);

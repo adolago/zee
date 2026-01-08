@@ -140,7 +140,7 @@ function buildSystemdUnit({
   const envLines = renderEnvLines(environment);
   return [
     "[Unit]",
-    "Description=Clawdbot Gateway",
+    "Description=Zee Gateway",
     "",
     "[Service]",
     `ExecStart=${execStart}`,

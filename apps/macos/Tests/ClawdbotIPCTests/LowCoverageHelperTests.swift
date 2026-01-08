@@ -1,9 +1,9 @@
 import AppKit
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 import Testing
 
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized)
 struct LowCoverageHelperTests {
@@ -96,8 +96,8 @@ struct LowCoverageHelperTests {
     @Test func gatewayLaunchAgentHelpers() async throws {
         await TestIsolation.withEnvValues(
             [
-                "CLAWDBOT_GATEWAY_BIND": "Lan",
-                "CLAWDBOT_GATEWAY_TOKEN": " secret ",
+                "ZEE_GATEWAY_BIND": "Lan",
+                "ZEE_GATEWAY_TOKEN": " secret ",
             ]) {
                 #expect(GatewayLaunchAgentManager._testPreferredGatewayBind() == "lan")
                 #expect(GatewayLaunchAgentManager._testPreferredGatewayToken() == "secret")
@@ -106,7 +106,7 @@ struct LowCoverageHelperTests {
                         "a&amp;b&lt;c&gt;&quot;&apos;")
 
                 #expect(GatewayLaunchAgentManager
-                    ._testGatewayExecutablePath(bundlePath: "/App") == "/App/Contents/Resources/Relay/clawdbot")
+                    ._testGatewayExecutablePath(bundlePath: "/App") == "/App/Contents/Resources/Relay/zee")
                 #expect(GatewayLaunchAgentManager._testRelayDir(bundlePath: "/App") == "/App/Contents/Resources/Relay")
             }
     }

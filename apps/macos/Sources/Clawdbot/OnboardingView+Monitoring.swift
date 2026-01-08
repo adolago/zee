@@ -1,4 +1,4 @@
-import ClawdbotIPC
+import ZeeIPC
 import Foundation
 
 extension OnboardingView {
@@ -115,7 +115,7 @@ extension OnboardingView {
                 return
             }
             let command = desc.command.trimmingCharacters(in: .whitespacesAndNewlines)
-            let expectedTokens = ["node", "clawdbot", "tsx", "pnpm", "bun"]
+            let expectedTokens = ["node", "zee", "tsx", "pnpm", "bun"]
             let lower = command.lowercased()
             let expected = expectedTokens.contains { lower.contains($0) }
             self.localGatewayProbe = LocalGatewayProbe(
@@ -127,9 +127,9 @@ extension OnboardingView {
     }
 
     func refreshAnthropicOAuthStatus() {
-        _ = ClawdbotOAuthStore.importLegacyAnthropicOAuthIfNeeded()
+        _ = ZeeOAuthStore.importLegacyAnthropicOAuthIfNeeded()
         let previous = self.anthropicAuthDetectedStatus
-        let status = ClawdbotOAuthStore.anthropicOAuthStatus()
+        let status = ZeeOAuthStore.anthropicOAuthStatus()
         self.anthropicAuthDetectedStatus = status
         self.anthropicAuthConnected = status.isConnected
 
@@ -154,7 +154,7 @@ extension OnboardingView {
         self.anthropicAuthVerificationFailed = false
         defer { self.anthropicAuthVerifying = false }
 
-        guard let refresh = ClawdbotOAuthStore.loadAnthropicOAuthRefreshToken(), !refresh.isEmpty else {
+        guard let refresh = ZeeOAuthStore.loadAnthropicOAuthRefreshToken(), !refresh.isEmpty else {
             self.anthropicAuthStatus = "OAuth verification failed: missing refresh token."
             self.anthropicAuthVerificationFailed = true
             return
@@ -162,7 +162,7 @@ extension OnboardingView {
 
         do {
             let updated = try await AnthropicOAuth.refresh(refreshToken: refresh)
-            try ClawdbotOAuthStore.saveAnthropicOAuth(updated)
+            try ZeeOAuthStore.saveAnthropicOAuth(updated)
             self.refreshAnthropicOAuthStatus()
             self.anthropicAuthVerified = true
             self.anthropicAuthVerifiedAt = Date()

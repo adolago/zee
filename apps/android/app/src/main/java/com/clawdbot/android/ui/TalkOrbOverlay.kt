@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui
+package com.zee.android.ui
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode

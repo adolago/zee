@@ -1,37 +1,37 @@
 ---
 summary: "Bundled bun gateway: packaging, launchd, signing, and bytecode"
 read_when:
-  - Packaging Clawdbot.app
+  - Packaging Zee.app
   - Debugging the bundled gateway binary
   - Changing bun build flags or codesigning
 ---
 
 # Bundled bun Gateway (macOS)
 
-Goal: ship **Clawdbot.app** with a self-contained relay binary that can run both the CLI and the Gateway daemon. No global `npm install -g clawdbot`, no system Node requirement.
+Goal: ship **Zee.app** with a self-contained relay binary that can run both the CLI and the Gateway daemon. No global `npm install -g zee`, no system Node requirement.
 
 ## What gets bundled
 
 App bundle layout:
 
-- `Clawdbot.app/Contents/Resources/Relay/clawdbot`
-  - bun `--compile` relay executable built from [`dist/macos/relay.js`](https://github.com/clawdbot/clawdbot/blob/main/dist/macos/relay.js)
+- `Zee.app/Contents/Resources/Relay/zee`
+  - bun `--compile` relay executable built from [`dist/macos/relay.js`](https://github.com/zee/zee/blob/main/dist/macos/relay.js)
   - Supports:
-    - `clawdbot …` (CLI)
-    - `clawdbot gateway …` (LaunchAgent daemon)
-- `Clawdbot.app/Contents/Resources/Relay/package.json`
+    - `zee …` (CLI)
+    - `zee gateway …` (LaunchAgent daemon)
+- `Zee.app/Contents/Resources/Relay/package.json`
   - tiny “p runtime compatibility” file (see below)
-- `Clawdbot.app/Contents/Resources/Relay/theme/`
+- `Zee.app/Contents/Resources/Relay/theme/`
   - p TUI theme payload (optional, but strongly recommended)
 
 Why the sidecar files matter:
-- The embedded p runtime detects “bun binary mode” and then looks for `package.json` + `theme/` **next to `process.execPath`** (i.e. next to `clawdbot`).
+- The embedded p runtime detects “bun binary mode” and then looks for `package.json` + `theme/` **next to `process.execPath`** (i.e. next to `zee`).
 - So even if bun can embed assets, the runtime expects filesystem paths. Keep the sidecar files.
 
 ## Build pipeline
 
 Packaging script:
-- [`scripts/package-mac-app.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/package-mac-app.sh)
+- [`scripts/package-mac-app.sh`](https://github.com/zee/zee/blob/main/scripts/package-mac-app.sh)
 
 It builds:
 - TS: `pnpm exec tsc`
@@ -46,29 +46,29 @@ Important bundler flags:
   - Reason: avoid bundling Electron stubs in the relay binary
 
 Version injection:
-- `--define "__CLAWDBOT_VERSION__=\"<pkg version>\""`
-- [`src/version.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/version.ts) also supports `__CLAWDBOT_VERSION__` (and `CLAWDBOT_BUNDLED_VERSION`) so `--version` doesn’t depend on reading `package.json` at runtime.
+- `--define "__ZEE_VERSION__=\"<pkg version>\""`
+- [`src/version.ts`](https://github.com/zee/zee/blob/main/src/version.ts) also supports `__ZEE_VERSION__` (and `ZEE_BUNDLED_VERSION`) so `--version` doesn’t depend on reading `package.json` at runtime.
 
 ## Launchd (Gateway as LaunchAgent)
 
 Label:
-- `com.clawdbot.gateway`
+- `com.zee.gateway`
 
 Plist location (per-user):
-- `~/Library/LaunchAgents/com.clawdbot.gateway.plist`
+- `~/Library/LaunchAgents/com.zee.gateway.plist`
 
 Manager:
-- [`apps/macos/Sources/Clawdbot/GatewayLaunchAgentManager.swift`](https://github.com/clawdbot/clawdbot/blob/main/apps/macos/Sources/Clawdbot/GatewayLaunchAgentManager.swift)
+- [`apps/macos/Sources/Zee/GatewayLaunchAgentManager.swift`](https://github.com/zee/zee/blob/main/apps/macos/Sources/Zee/GatewayLaunchAgentManager.swift)
 
 Behavior:
-- “Clawdbot Active” enables/disables the LaunchAgent.
+- “Zee Active” enables/disables the LaunchAgent.
 - App quit does **not** stop the gateway (launchd keeps it alive).
 
 Logging:
-- launchd stdout/err: `/tmp/clawdbot/clawdbot-gateway.log`
+- launchd stdout/err: `/tmp/zee/zee-gateway.log`
 
 Default LaunchAgent env:
-- `CLAWDBOT_IMAGE_BACKEND=sips` (avoid sharp native addon under bun)
+- `ZEE_IMAGE_BACKEND=sips` (avoid sharp native addon under bun)
 
 ## Codesigning (hardened runtime + bun)
 
@@ -77,7 +77,7 @@ Symptom (when mis-signed):
 
 Fix:
 - The bun executable needs JIT-ish permissions under hardened runtime.
-- [`scripts/codesign-mac-app.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/codesign-mac-app.sh) signs `Relay/clawdbot` with:
+- [`scripts/codesign-mac-app.sh`](https://github.com/zee/zee/blob/main/scripts/codesign-mac-app.sh) signs `Relay/zee` with:
   - `com.apple.security.cs.allow-jit`
   - `com.apple.security.cs.allow-unsigned-executable-memory`
 
@@ -87,17 +87,17 @@ Problem:
 - bun can’t load some native Node addons like `sharp` (and we don’t want to ship native addon trees for the gateway).
 
 Solution:
-- Central helper [`src/media/image-ops.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/media/image-ops.ts)
+- Central helper [`src/media/image-ops.ts`](https://github.com/zee/zee/blob/main/src/media/image-ops.ts)
   - Prefers `/usr/bin/sips` on macOS (esp. when running under bun)
   - Falls back to `sharp` when available (Node/dev)
 - Used by:
-  - [`src/web/media.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/web/media.ts) (optimize inbound/outbound images)
-  - [`src/browser/screenshot.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/browser/screenshot.ts)
-  - [`src/agents/pi-tools.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/agents/pi-tools.ts) (image sanitization)
+  - [`src/web/media.ts`](https://github.com/zee/zee/blob/main/src/web/media.ts) (optimize inbound/outbound images)
+  - [`src/browser/screenshot.ts`](https://github.com/zee/zee/blob/main/src/browser/screenshot.ts)
+  - [`src/agents/pi-tools.ts`](https://github.com/zee/zee/blob/main/src/agents/pi-tools.ts) (image sanitization)
 
 ## Browser control server
 
-The Gateway starts the browser control server (loopback only) from [`src/gateway/server.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/server.ts).
+The Gateway starts the browser control server (loopback only) from [`src/gateway/server.ts`](https://github.com/zee/zee/blob/main/src/gateway/server.ts).
 It’s started from the relay daemon process, so the relay binary includes Playwright deps.
 
 ## Tests / smoke checks
@@ -105,17 +105,17 @@ It’s started from the relay daemon process, so the relay binary includes Playw
 From a packaged app (local build):
 
 ```bash
-dist/Clawdbot.app/Contents/Resources/Relay/clawdbot --version
+dist/Zee.app/Contents/Resources/Relay/zee --version
 
-CLAWDBOT_SKIP_PROVIDERS=1 \
-CLAWDBOT_SKIP_CANVAS_HOST=1 \
-dist/Clawdbot.app/Contents/Resources/Relay/clawdbot gateway --port 18999 --bind loopback
+ZEE_SKIP_PROVIDERS=1 \
+ZEE_SKIP_CANVAS_HOST=1 \
+dist/Zee.app/Contents/Resources/Relay/zee gateway --port 18999 --bind loopback
 ```
 
 Then, in another shell:
 
 ```bash
-pnpm -s clawdbot gateway call health --url ws://127.0.0.1:18999 --timeout 3000
+pnpm -s zee gateway call health --url ws://127.0.0.1:18999 --timeout 3000
 ```
 
 ## Repo hygiene
@@ -125,7 +125,7 @@ Bun may leave dotfiles like `*.bun-build` in the repo root or subfolders.
 
 ## DMG styling (human installer)
 
-[`scripts/create-dmg.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/create-dmg.sh) styles the DMG via Finder AppleScript.
+[`scripts/create-dmg.sh`](https://github.com/zee/zee/blob/main/scripts/create-dmg.sh) styles the DMG via Finder AppleScript.
 
 Rules of thumb:
 - Use a **72dpi** background image that matches the Finder window size in points.

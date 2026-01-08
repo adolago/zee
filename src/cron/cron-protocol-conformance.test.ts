@@ -33,7 +33,7 @@ const UI_FILES = [
   "ui/src/ui/views/cron.ts",
 ];
 
-const SWIFT_FILES = ["apps/macos/Sources/Clawdbot/GatewayConnection.swift"];
+const SWIFT_FILES = ["apps/macos/Sources/Zee/GatewayConnection.swift"];
 
 describe("cron protocol conformance", () => {
   it("ui + swift include all cron providers from gateway schema", async () => {
@@ -74,7 +74,7 @@ describe("cron protocol conformance", () => {
     expect(uiTypes.includes("jobCount")).toBe(false);
 
     const swift = await fs.readFile(
-      path.join(cwd, "apps/macos/Sources/Clawdbot/GatewayConnection.swift"),
+      path.join(cwd, "apps/macos/Sources/Zee/GatewayConnection.swift"),
       "utf-8",
     );
     expect(swift.includes("struct CronSchedulerStatus")).toBe(true);

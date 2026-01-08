@@ -19,14 +19,14 @@ describe("buildEmbeddedSandboxInfo", () => {
     const sandbox = {
       enabled: true,
       sessionKey: "session:test",
-      workspaceDir: "/tmp/clawdbot-sandbox",
-      agentWorkspaceDir: "/tmp/clawdbot-workspace",
+      workspaceDir: "/tmp/zee-sandbox",
+      agentWorkspaceDir: "/tmp/zee-workspace",
       workspaceAccess: "none",
-      containerName: "clawdbot-sbx-test",
+      containerName: "zee-sbx-test",
       containerWorkdir: "/workspace",
       docker: {
-        image: "clawdbot-sandbox:bookworm-slim",
-        containerPrefix: "clawdbot-sbx-",
+        image: "zee-sandbox:bookworm-slim",
+        containerPrefix: "zee-sbx-",
         workdir: "/workspace",
         readOnlyRoot: true,
         tmpfs: ["/tmp"],
@@ -42,13 +42,13 @@ describe("buildEmbeddedSandboxInfo", () => {
       browser: {
         controlUrl: "http://localhost:9222",
         noVncUrl: "http://localhost:6080",
-        containerName: "clawdbot-sbx-browser-test",
+        containerName: "zee-sbx-browser-test",
       },
     } satisfies SandboxContext;
 
     expect(buildEmbeddedSandboxInfo(sandbox)).toEqual({
       enabled: true,
-      workspaceDir: "/tmp/clawdbot-sandbox",
+      workspaceDir: "/tmp/zee-sandbox",
       workspaceAccess: "none",
       agentWorkspaceMount: undefined,
       browserControlUrl: "http://localhost:9222",

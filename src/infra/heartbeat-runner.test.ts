@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { HEARTBEAT_PROMPT } from "../auto-reply/heartbeat.js";
 import * as replyModule from "../auto-reply/reply.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   resolveAgentIdFromSessionKey,
   resolveMainSessionKey,
@@ -50,7 +50,7 @@ describe("resolveHeartbeatPrompt", () => {
   });
 
   it("uses a trimmed override when configured", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: { heartbeat: { prompt: "  ping  " } },
     };
     expect(resolveHeartbeatPrompt(cfg)).toBe("ping");
@@ -64,7 +64,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
   };
 
   it("respects target none", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: { heartbeat: { target: "none" } },
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry: baseEntry })).toEqual({
@@ -74,7 +74,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
   });
 
   it("uses last route by default", () => {
-    const cfg: ClawdbotConfig = {};
+    const cfg: ZeeConfig = {};
     const entry = {
       ...baseEntry,
       lastProvider: "whatsapp" as const,
@@ -87,7 +87,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
   });
 
   it("skips when last route is webchat", () => {
-    const cfg: ClawdbotConfig = {};
+    const cfg: ZeeConfig = {};
     const entry = {
       ...baseEntry,
       lastProvider: "webchat" as const,
@@ -100,7 +100,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
   });
 
   it("applies allowFrom fallback for WhatsApp targets", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: { heartbeat: { target: "whatsapp", to: "+1999" } },
       whatsapp: { allowFrom: ["+1555", "+1666"] },
     };
@@ -117,7 +117,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
   });
 
   it("keeps explicit telegram targets", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: { heartbeat: { target: "telegram", to: "123" } },
     };
     expect(resolveHeartbeatDeliveryTarget({ cfg, entry: baseEntry })).toEqual({
@@ -129,7 +129,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
 
 describe("runHeartbeatOnce", () => {
   it("uses the last non-empty payload for delivery", async () => {
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-hb-"));
     const storePath = path.join(tmpDir, "sessions.json");
     const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
     try {
@@ -149,7 +149,7 @@ describe("runHeartbeatOnce", () => {
         ),
       );
 
-      const cfg: ClawdbotConfig = {
+      const cfg: ZeeConfig = {
         agent: {
           heartbeat: { every: "5m", target: "whatsapp", to: "+1555" },
         },
@@ -190,7 +190,7 @@ describe("runHeartbeatOnce", () => {
   });
 
   it("loads the default agent session from templated stores", async () => {
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-hb-"));
     const storeTemplate = path.join(
       tmpDir,
       "agents",
@@ -199,7 +199,7 @@ describe("runHeartbeatOnce", () => {
     );
     const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
     try {
-      const cfg: ClawdbotConfig = {
+      const cfg: ZeeConfig = {
         routing: { defaultAgentId: "work" },
         agent: { heartbeat: { every: "5m" } },
         whatsapp: { allowFrom: ["*"] },
@@ -256,7 +256,7 @@ describe("runHeartbeatOnce", () => {
   });
 
   it("respects ackMaxChars for heartbeat acks", async () => {
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-hb-"));
     const storePath = path.join(tmpDir, "sessions.json");
     const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
     try {
@@ -276,7 +276,7 @@ describe("runHeartbeatOnce", () => {
         ),
       );
 
-      const cfg: ClawdbotConfig = {
+      const cfg: ZeeConfig = {
         agent: {
           heartbeat: {
             every: "5m",
@@ -314,7 +314,7 @@ describe("runHeartbeatOnce", () => {
   });
 
   it("skips WhatsApp delivery when not linked or running", async () => {
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-hb-"));
     const storePath = path.join(tmpDir, "sessions.json");
     const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
     try {
@@ -334,7 +334,7 @@ describe("runHeartbeatOnce", () => {
         ),
       );
 
-      const cfg: ClawdbotConfig = {
+      const cfg: ZeeConfig = {
         agent: {
           heartbeat: { every: "5m", target: "whatsapp", to: "+1555" },
         },
@@ -369,7 +369,7 @@ describe("runHeartbeatOnce", () => {
   });
 
   it("passes telegram token from config to sendTelegram", async () => {
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-hb-"));
     const storePath = path.join(tmpDir, "sessions.json");
     const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
     const prevTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -391,7 +391,7 @@ describe("runHeartbeatOnce", () => {
         ),
       );
 
-      const cfg: ClawdbotConfig = {
+      const cfg: ZeeConfig = {
         agent: {
           heartbeat: { every: "5m", target: "telegram", to: "123456" },
         },

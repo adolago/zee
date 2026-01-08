@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 import android.content.Context
 import android.os.Build

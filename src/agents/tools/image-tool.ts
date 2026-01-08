@@ -11,18 +11,18 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { resolveUserPath } from "../../utils.js";
 import { loadWebMedia } from "../../web/media.js";
 import { getApiKeyForModel } from "../model-auth.js";
 import { runWithImageModelFallback } from "../model-fallback.js";
-import { ensureClawdbotModelsJson } from "../models-config.js";
+import { ensureZeeModelsJson } from "../models-config.js";
 import { extractAssistantText } from "../pi-embedded-utils.js";
 import type { AnyAgentTool } from "./common.js";
 
 const DEFAULT_PROMPT = "Describe the image.";
 
-function ensureImageToolConfigured(cfg?: ClawdbotConfig): boolean {
+function ensureImageToolConfigured(cfg?: ZeeConfig): boolean {
   const imageModel = cfg?.agent?.imageModel as
     | { primary?: string; fallbacks?: string[] }
     | string
@@ -35,7 +35,7 @@ function ensureImageToolConfigured(cfg?: ClawdbotConfig): boolean {
 }
 
 function pickMaxBytes(
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
   maxBytesMb?: number,
 ): number | undefined {
   if (
@@ -76,14 +76,14 @@ function buildImageContext(
 }
 
 async function runImagePrompt(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   agentDir: string;
   modelOverride?: string;
   prompt: string;
   base64: string;
   mimeType: string;
 }): Promise<{ text: string; provider: string; model: string }> {
-  await ensureClawdbotModelsJson(params.cfg, params.agentDir);
+  await ensureZeeModelsJson(params.cfg, params.agentDir);
   const authStorage = discoverAuthStorage(params.agentDir);
   const modelRegistry = discoverModels(authStorage, params.agentDir);
 
@@ -129,7 +129,7 @@ async function runImagePrompt(params: {
 }
 
 export function createImageTool(options?: {
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   agentDir?: string;
 }): AnyAgentTool | null {
   if (!ensureImageToolConfigured(options?.config)) return null;

@@ -1,5 +1,5 @@
 import Testing
-@testable import ClawdbotChatUI
+@testable import ZeeChatUI
 
 @Suite struct AssistantTextParserTests {
     @Test func splitsThinkAndFinalSegments() {

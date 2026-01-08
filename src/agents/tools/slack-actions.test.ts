@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { handleSlackAction } from "./slack-actions.js";
 
 const deleteSlackMessage = vi.fn(async () => ({}));
@@ -36,7 +36,7 @@ vi.mock("../../slack/actions.js", () => ({
 
 describe("handleSlackAction", () => {
   it("adds reactions", async () => {
-    const cfg = { slack: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { slack: { botToken: "tok" } } as ZeeConfig;
     await handleSlackAction(
       {
         action: "react",
@@ -50,7 +50,7 @@ describe("handleSlackAction", () => {
   });
 
   it("removes reactions on empty emoji", async () => {
-    const cfg = { slack: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { slack: { botToken: "tok" } } as ZeeConfig;
     await handleSlackAction(
       {
         action: "react",
@@ -64,7 +64,7 @@ describe("handleSlackAction", () => {
   });
 
   it("removes reactions when remove flag set", async () => {
-    const cfg = { slack: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { slack: { botToken: "tok" } } as ZeeConfig;
     await handleSlackAction(
       {
         action: "react",
@@ -79,7 +79,7 @@ describe("handleSlackAction", () => {
   });
 
   it("rejects removes without emoji", async () => {
-    const cfg = { slack: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { slack: { botToken: "tok" } } as ZeeConfig;
     await expect(
       handleSlackAction(
         {
@@ -97,7 +97,7 @@ describe("handleSlackAction", () => {
   it("respects reaction gating", async () => {
     const cfg = {
       slack: { botToken: "tok", actions: { reactions: false } },
-    } as ClawdbotConfig;
+    } as ZeeConfig;
     await expect(
       handleSlackAction(
         {

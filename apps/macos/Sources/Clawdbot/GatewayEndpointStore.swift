@@ -26,9 +26,9 @@ actor GatewayEndpointStore {
 
         static let live = Deps(
             mode: { await MainActor.run { AppStateStore.shared.connectionMode } },
-            token: { ProcessInfo.processInfo.environment["CLAWDBOT_GATEWAY_TOKEN"] },
+            token: { ProcessInfo.processInfo.environment["ZEE_GATEWAY_TOKEN"] },
             password: {
-                let root = ClawdbotConfigFile.loadDict()
+                let root = ZeeConfigFile.loadDict()
                 return GatewayEndpointStore.resolveGatewayPassword(
                     isRemote: CommandResolver.connectionModeIsRemote(),
                     root: root,
@@ -36,7 +36,7 @@ actor GatewayEndpointStore {
             },
             localPort: { GatewayEnvironment.gatewayPort() },
             localHost: {
-                let root = ClawdbotConfigFile.loadDict()
+                let root = ZeeConfigFile.loadDict()
                 let bind = GatewayEndpointStore.resolveGatewayBindMode(
                     root: root,
                     env: ProcessInfo.processInfo.environment)
@@ -54,7 +54,7 @@ actor GatewayEndpointStore {
         root: [String: Any],
         env: [String: String]) -> String?
     {
-        let raw = env["CLAWDBOT_GATEWAY_PASSWORD"] ?? ""
+        let raw = env["ZEE_GATEWAY_PASSWORD"] ?? ""
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             return trimmed
@@ -84,7 +84,7 @@ actor GatewayEndpointStore {
     }
 
     private let deps: Deps
-    private let logger = Logger(subsystem: "com.clawdbot", category: "gateway-endpoint")
+    private let logger = Logger(subsystem: "com.zee", category: "gateway-endpoint")
 
     private var state: GatewayEndpointState
     private var subscribers: [UUID: AsyncStream<GatewayEndpointState>.Continuation] = [:]
@@ -96,13 +96,13 @@ actor GatewayEndpointStore {
         if let modeRaw {
             initialMode = AppState.ConnectionMode(rawValue: modeRaw) ?? .local
         } else {
-            let seen = UserDefaults.standard.bool(forKey: "clawdbot.onboardingSeen")
+            let seen = UserDefaults.standard.bool(forKey: "zee.onboardingSeen")
             initialMode = seen ? .local : .unconfigured
         }
 
         let port = deps.localPort()
         let bind = GatewayEndpointStore.resolveGatewayBindMode(
-            root: ClawdbotConfigFile.loadDict(),
+            root: ZeeConfigFile.loadDict(),
             env: ProcessInfo.processInfo.environment)
         let host = GatewayEndpointStore.resolveLocalGatewayHost(bindMode: bind, tailscaleIP: nil)
         let token = deps.token()
@@ -240,7 +240,7 @@ actor GatewayEndpointStore {
         root: [String: Any],
         env: [String: String]) -> String?
     {
-        if let envBind = env["CLAWDBOT_GATEWAY_BIND"] {
+        if let envBind = env["ZEE_GATEWAY_BIND"] {
             let trimmed = envBind.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if self.supportedBindModes.contains(trimmed) {
                 return trimmed

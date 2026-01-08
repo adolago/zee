@@ -7,7 +7,7 @@ import {
 import { getReplyFromConfig } from "../auto-reply/reply.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
 import { parseDurationMs } from "../cli/parse-duration.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import {
   loadSessionStore,
@@ -49,7 +49,7 @@ export function setHeartbeatsEnabled(enabled: boolean) {
 }
 
 export function resolveHeartbeatIntervalMs(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   overrideEvery?: string,
 ) {
   const raw =
@@ -67,18 +67,18 @@ export function resolveHeartbeatIntervalMs(
   return ms;
 }
 
-export function resolveHeartbeatPrompt(cfg: ClawdbotConfig) {
+export function resolveHeartbeatPrompt(cfg: ZeeConfig) {
   return resolveHeartbeatPromptText(cfg.agent?.heartbeat?.prompt);
 }
 
-function resolveHeartbeatAckMaxChars(cfg: ClawdbotConfig) {
+function resolveHeartbeatAckMaxChars(cfg: ZeeConfig) {
   return Math.max(
     0,
     cfg.agent?.heartbeat?.ackMaxChars ?? DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   );
 }
 
-function resolveHeartbeatSession(cfg: ClawdbotConfig) {
+function resolveHeartbeatSession(cfg: ZeeConfig) {
   const sessionCfg = cfg.session;
   const scope = sessionCfg?.scope ?? "per-sender";
   const sessionKey = scope === "global" ? "global" : resolveMainSessionKey(cfg);
@@ -140,7 +140,7 @@ function resolveHeartbeatSender(params: {
 }
 
 async function resolveWhatsAppReadiness(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   deps?: HeartbeatDeps,
 ): Promise<{ ok: boolean; reason: string }> {
   if (cfg.web?.enabled === false) {
@@ -201,7 +201,7 @@ function normalizeHeartbeatReply(
 }
 
 export async function runHeartbeatOnce(opts: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   reason?: string;
   deps?: HeartbeatDeps;
 }): Promise<HeartbeatRunResult> {
@@ -349,7 +349,7 @@ export async function runHeartbeatOnce(opts: {
 }
 
 export function startHeartbeatRunner(opts: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
 }) {

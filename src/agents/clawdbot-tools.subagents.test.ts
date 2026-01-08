@@ -24,7 +24,7 @@ vi.mock("../config/config.js", async (importOriginal) => {
 });
 
 import { emitAgentEvent } from "../infra/agent-events.js";
-import { createClawdbotTools } from "./clawdbot-tools.js";
+import { createZeeTools } from "./zee-tools.js";
 import { resetSubagentRegistryForTests } from "./subagent-registry.js";
 
 describe("subagents", () => {
@@ -121,7 +121,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "discord:group:req",
       agentProvider: "discord",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -249,7 +249,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -290,7 +290,7 @@ describe("subagents", () => {
     resetSubagentRegistryForTests();
     callGatewayMock.mockReset();
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -339,7 +339,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -390,7 +390,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -441,7 +441,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -478,7 +478,7 @@ describe("subagents", () => {
       },
     };
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -526,7 +526,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "discord:group:req",
       agentSurface: "discord",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -589,7 +589,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");
@@ -625,7 +625,7 @@ describe("subagents", () => {
       return {};
     });
 
-    const tool = createClawdbotTools({
+    const tool = createZeeTools({
       agentSessionKey: "main",
       agentProvider: "whatsapp",
     }).find((candidate) => candidate.name === "sessions_spawn");

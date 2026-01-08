@@ -81,7 +81,7 @@ export function cameraTempPath(opts: {
   const ext = opts.ext.startsWith(".") ? opts.ext : `.${opts.ext}`;
   return path.join(
     tmpDir,
-    `clawdbot-camera-${opts.kind}${facingPart}-${id}${ext}`,
+    `zee-camera-${opts.kind}${facingPart}-${id}${ext}`,
   );
 }
 

@@ -30,14 +30,14 @@ The Gateway WebSocket stays loopback-only (`ws://127.0.0.1:18789`). Android talk
   - Same LAN with mDNS/NSD, **or**
   - Same Tailscale tailnet using Wide-Area Bonjour / unicast DNS-SD (see below), **or**
   - Manual bridge host/port (fallback)
-- You can run the CLI (`clawdbot`) on the gateway machine (or via SSH).
+- You can run the CLI (`zee`) on the gateway machine (or via SSH).
 
 ### 1) Start the Gateway (with bridge enabled)
 
-Bridge is enabled by default (disable via `CLAWDBOT_BRIDGE_ENABLED=0`).
+Bridge is enabled by default (disable via `ZEE_BRIDGE_ENABLED=0`).
 
 ```bash
-clawdbot gateway --port 18789 --verbose
+zee gateway --port 18789 --verbose
 ```
 
 Confirm in logs you see something like:
@@ -45,7 +45,7 @@ Confirm in logs you see something like:
 
 For tailnet-only setups (recommended for Vienna ⇄ London), bind the bridge to the gateway machine’s Tailscale IP instead:
 
-- Set `bridge.bind: "tailnet"` in `~/.clawdbot/clawdbot.json` on the gateway host.
+- Set `bridge.bind: "tailnet"` in `~/.zee/zee.json` on the gateway host.
 - Restart the Gateway / macOS menubar app.
 
 ### 2) Verify discovery (optional)
@@ -53,7 +53,7 @@ For tailnet-only setups (recommended for Vienna ⇄ London), bind the bridge to 
 From the gateway machine:
 
 ```bash
-dns-sd -B _clawdbot-bridge._tcp local.
+dns-sd -B _zee-bridge._tcp local.
 ```
 
 More debugging notes: [`docs/bonjour.md`](/gateway/bonjour).
@@ -62,8 +62,8 @@ More debugging notes: [`docs/bonjour.md`](/gateway/bonjour).
 
 Android NSD/mDNS discovery won’t cross networks. If your Android node and the gateway are on different networks but connected via Tailscale, use Wide-Area Bonjour / unicast DNS-SD instead:
 
-1) Set up a DNS-SD zone (example `clawdbot.internal.`) on the gateway host and publish `_clawdbot-bridge._tcp` records.
-2) Configure Tailscale split DNS for `clawdbot.internal` pointing at that DNS server.
+1) Set up a DNS-SD zone (example `zee.internal.`) on the gateway host and publish `_zee-bridge._tcp` records.
+2) Configure Tailscale split DNS for `zee.internal` pointing at that DNS server.
 
 Details and example CoreDNS config: [`docs/bonjour.md`](/gateway/bonjour).
 
@@ -85,8 +85,8 @@ After the first successful pairing, Android auto-reconnects on launch:
 On the gateway machine:
 
 ```bash
-clawdbot nodes pending
-clawdbot nodes approve <requestId>
+zee nodes pending
+zee nodes approve <requestId>
 ```
 
 Pairing details: [`docs/gateway/pairing.md`](/gateway/pairing).
@@ -95,11 +95,11 @@ Pairing details: [`docs/gateway/pairing.md`](/gateway/pairing).
 
 - Via nodes status:
   ```bash
-  clawdbot nodes status
+  zee nodes status
   ```
 - Via Gateway:
   ```bash
-  clawdbot gateway call node.list --params "{}"
+  zee gateway call node.list --params "{}"
   ```
 
 ### 6) Chat + history
@@ -123,13 +123,13 @@ Note: nodes always use the standalone canvas host on `canvasHost.port` (default 
 2) Navigate the node to it (LAN):
 
 ```bash
-clawdbot nodes invoke --node "<Android Node>" --command canvas.navigate --params '{"url":"http://<gateway-hostname>.local:18793/__clawdbot__/canvas/"}'
+zee nodes invoke --node "<Android Node>" --command canvas.navigate --params '{"url":"http://<gateway-hostname>.local:18793/__zee__/canvas/"}'
 ```
 
-Tailnet (optional): if both devices are on Tailscale, use a MagicDNS name or tailnet IP instead of `.local`, e.g. `http://<gateway-magicdns>:18793/__clawdbot__/canvas/`.
+Tailnet (optional): if both devices are on Tailscale, use a MagicDNS name or tailnet IP instead of `.local`, e.g. `http://<gateway-magicdns>:18793/__zee__/canvas/`.
 
 This server injects a live-reload client into HTML and reloads on file changes.
-The A2UI host lives at `http://<gateway-host>:18793/__clawdbot__/a2ui/`.
+The A2UI host lives at `http://<gateway-host>:18793/__zee__/a2ui/`.
 
 Canvas commands (foreground only):
 - `canvas.eval`, `canvas.snapshot`, `canvas.navigate` (use `{"url":""}` or `{"url":"/"}` to return to the default scaffold). `canvas.snapshot` returns `{ format, base64 }` (default `format="jpeg"`).

@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { resolveOAuthDir, resolveOAuthPath } from "./paths.js";
 
 describe("oauth paths", () => {
-  it("prefers CLAWDBOT_OAUTH_DIR over CLAWDBOT_STATE_DIR", () => {
+  it("prefers ZEE_OAUTH_DIR over ZEE_STATE_DIR", () => {
     const env = {
-      CLAWDBOT_OAUTH_DIR: "/custom/oauth",
-      CLAWDBOT_STATE_DIR: "/custom/state",
+      ZEE_OAUTH_DIR: "/custom/oauth",
+      ZEE_STATE_DIR: "/custom/state",
     } as NodeJS.ProcessEnv;
 
     expect(resolveOAuthDir(env, "/custom/state")).toBe(
@@ -18,9 +18,9 @@ describe("oauth paths", () => {
     );
   });
 
-  it("derives oauth path from CLAWDBOT_STATE_DIR when unset", () => {
+  it("derives oauth path from ZEE_STATE_DIR when unset", () => {
     const env = {
-      CLAWDBOT_STATE_DIR: "/custom/state",
+      ZEE_STATE_DIR: "/custom/state",
     } as NodeJS.ProcessEnv;
 
     expect(resolveOAuthDir(env, "/custom/state")).toBe(

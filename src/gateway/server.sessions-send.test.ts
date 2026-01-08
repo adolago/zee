@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { createClawdbotTools } from "../agents/clawdbot-tools.js";
+import { createZeeTools } from "../agents/zee-tools.js";
 import { resolveSessionTranscriptPath } from "../config/sessions.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import {
@@ -16,8 +16,8 @@ installGatewayTestHooks();
 describe("sessions_send gateway loopback", () => {
   it("returns reply when lifecycle ends before agent.wait", async () => {
     const port = await getFreePort();
-    const prevPort = process.env.CLAWDBOT_GATEWAY_PORT;
-    process.env.CLAWDBOT_GATEWAY_PORT = String(port);
+    const prevPort = process.env.ZEE_GATEWAY_PORT;
+    process.env.ZEE_GATEWAY_PORT = String(port);
 
     const server = await startGatewayServer(port);
     const spy = vi.mocked(agentCommand);
@@ -70,7 +70,7 @@ describe("sessions_send gateway loopback", () => {
     });
 
     try {
-      const tool = createClawdbotTools().find(
+      const tool = createZeeTools().find(
         (candidate) => candidate.name === "sessions_send",
       );
       if (!tool) throw new Error("missing sessions_send tool");
@@ -93,9 +93,9 @@ describe("sessions_send gateway loopback", () => {
       expect(firstCall?.lane).toBe("nested");
     } finally {
       if (prevPort === undefined) {
-        delete process.env.CLAWDBOT_GATEWAY_PORT;
+        delete process.env.ZEE_GATEWAY_PORT;
       } else {
-        process.env.CLAWDBOT_GATEWAY_PORT = prevPort;
+        process.env.ZEE_GATEWAY_PORT = prevPort;
       }
       await server.close();
     }

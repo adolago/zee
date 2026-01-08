@@ -8,13 +8,13 @@ import {
   applySessionDefaults,
 } from "./defaults.js";
 import { findLegacyConfigIssues } from "./legacy.js";
-import type { ClawdbotConfig, ConfigValidationIssue } from "./types.js";
-import { ClawdbotSchema } from "./zod-schema.js";
+import type { ZeeConfig, ConfigValidationIssue } from "./types.js";
+import { ZeeSchema } from "./zod-schema.js";
 
 export function validateConfigObject(
   raw: unknown,
 ):
-  | { ok: true; config: ClawdbotConfig }
+  | { ok: true; config: ZeeConfig }
   | { ok: false; issues: ConfigValidationIssue[] } {
   const legacyIssues = findLegacyConfigIssues(raw);
   if (legacyIssues.length > 0) {
@@ -26,7 +26,7 @@ export function validateConfigObject(
       })),
     };
   }
-  const validated = ClawdbotSchema.safeParse(raw);
+  const validated = ZeeSchema.safeParse(raw);
   if (!validated.success) {
     return {
       ok: false,
@@ -36,7 +36,7 @@ export function validateConfigObject(
       })),
     };
   }
-  const duplicates = findDuplicateAgentDirs(validated.data as ClawdbotConfig);
+  const duplicates = findDuplicateAgentDirs(validated.data as ZeeConfig);
   if (duplicates.length > 0) {
     return {
       ok: false,
@@ -52,7 +52,7 @@ export function validateConfigObject(
     ok: true,
     config: applyModelDefaults(
       applySessionDefaults(
-        applyIdentityDefaults(validated.data as ClawdbotConfig),
+        applyIdentityDefaults(validated.data as ZeeConfig),
       ),
     ),
   };

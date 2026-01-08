@@ -1,5 +1,5 @@
 ---
-summary: "CLI reference for clawdbot commands, subcommands, and options"
+summary: "CLI reference for zee commands, subcommands, and options"
 read_when:
   - Adding or modifying CLI commands or options
   - Documenting new command surfaces
@@ -12,8 +12,8 @@ If you change the CLI code, update this doc.
 
 ## Global flags
 
-- `--dev`: isolate state under `~/.clawdbot-dev` and shift default ports.
-- `--profile <name>`: isolate state under `~/.clawdbot-<name>`.
+- `--dev`: isolate state under `~/.zee-dev` and shift default ports.
+- `--profile <name>`: isolate state under `~/.zee-<name>`.
 - `-V`, `--version`, `-v`: print version and exit.
 
 ## Output styling
@@ -25,7 +25,7 @@ If you change the CLI code, update this doc.
 
 ## Color palette
 
-Clawdbot uses a lobster palette for CLI output. Source of truth: `src/terminal/theme.ts`.
+Zee uses a lobster palette for CLI output. Source of truth: `src/terminal/theme.ts`.
 
 - `accent` (#FF5A2D): headings, provider labels, primary highlights.
 - `accentBright` (#FF7A3D): command names, emphasis.
@@ -39,7 +39,7 @@ Clawdbot uses a lobster palette for CLI output. Source of truth: `src/terminal/t
 ## Command tree
 
 ```
-clawdbot [--dev] [--profile <name>] <command>
+zee [--dev] [--profile <name>] <command>
   setup
   onboard
   configure (alias: config)
@@ -235,11 +235,11 @@ More detail: [/concepts/oauth](/concepts/oauth)
 
 Examples:
 ```bash
-clawdbot providers add --provider telegram --account alerts --name "Alerts Bot" --token $TELEGRAM_BOT_TOKEN
-clawdbot providers add --provider discord --account work --name "Work Bot" --token $DISCORD_BOT_TOKEN
-clawdbot providers remove --provider discord --account work --delete
-clawdbot providers status --probe
-clawdbot status --deep
+zee providers add --provider telegram --account alerts --name "Alerts Bot" --token $TELEGRAM_BOT_TOKEN
+zee providers add --provider discord --account work --name "Work Bot" --token $DISCORD_BOT_TOKEN
+zee providers remove --provider discord --account work --delete
+zee providers status --probe
+zee status --deep
 ```
 
 ### `skills`
@@ -369,11 +369,11 @@ Options:
 - `--verbose`
 
 ### Usage tracking
-Clawdbot can surface provider usage/quota when OAuth/API creds are available.
+Zee can surface provider usage/quota when OAuth/API creds are available.
 
 Surfaces:
 - `/status` (adds a short usage line when available)
-- `clawdbot status --usage` (prints full provider breakdown)
+- `zee status --usage` (prints full provider breakdown)
 - macOS menu bar (Usage section under Context)
 
 Notes:
@@ -442,8 +442,8 @@ Tail Gateway file logs via RPC.
 
 Examples:
 ```bash
-clawdbot logs --follow
-clawdbot logs --limit 200
+zee logs --follow
+zee logs --limit 200
 ```
 
 ### `gateway <subcommand>`
@@ -463,7 +463,7 @@ Common RPCs:
 See [/concepts/models](/concepts/models) for fallback behavior and scanning strategy.
 
 ### `models` (root)
-`clawdbot models` is an alias for `models status`.
+`zee models` is an alias for `models status`.
 
 ### `models list`
 Options:

@@ -1,14 +1,14 @@
 ---
 title: "Showcase"
-description: "Real-world Clawdbot projects from the community"
+description: "Real-world Zee projects from the community"
 ---
 
 # Showcase
 
-Real projects from the community. See what people are building with Clawdbot.
+Real projects from the community. See what people are building with Zee.
 
 <Info>
-**Want to be featured?** Share your project in [#showcase on Discord](https://discord.gg/clawdbot) or [tag @clawdbot on X](https://x.com/clawdbot).
+**Want to be featured?** Share your project in [#showcase on Discord](https://discord.gg/zee) or [tag @zee on X](https://x.com/zee).
 </Info>
 
 ## 🤖 Automation & Workflows
@@ -56,7 +56,7 @@ Real projects from the community. See what people are building with Clawdbot.
 <Card title="xuezh Chinese Learning" icon="language" href="https://github.com/joshp123/xuezh">
   **@joshp123** • `learning` `voice` `skill`
   
-  Chinese learning engine with pronunciation feedback and study flows via Clawdbot.
+  Chinese learning engine with pronunciation feedback and study flows via Zee.
   
   <img src="/assets/showcase/xuezh-pronunciation.jpeg" alt="xuezh pronunciation feedback" />
 </Card>
@@ -88,7 +88,7 @@ Real projects from the community. See what people are building with Clawdbot.
 <Card title="Clawdia Phone Bridge" icon="phone" href="https://github.com/alejandroOPI/clawdia-bridge">
   **@alejandroOPI** • `voice` `vapi` `bridge`
   
-  Vapi voice assistant ↔ Clawdbot HTTP bridge. Near real-time phone calls with your agent.
+  Vapi voice assistant ↔ Zee HTTP bridge. Near real-time phone calls with your agent.
 </Card>
 
 <Card title="OpenRouter Transcription" icon="microphone" href="https://clawdhub.com/obviyus/openrouter-transcribe">
@@ -109,10 +109,10 @@ Real projects from the community. See what people are building with Clawdbot.
 
 <CardGroup cols={2}>
 
-<Card title="Home Assistant Add-on" icon="home" href="https://github.com/ngutman/clawdbot-ha-addon">
+<Card title="Home Assistant Add-on" icon="home" href="https://github.com/ngutman/zee-ha-addon">
   **@ngutman** • `homeassistant` `docker` `raspberry-pi`
   
-  Clawdbot gateway running on Home Assistant OS with SSH tunnel support and persistent state.
+  Zee gateway running on Home Assistant OS with SSH tunnel support and persistent state.
 </Card>
 
 <Card title="Home Assistant Skill" icon="toggle-on" href="https://clawdhub.com/skills/homeassistant">
@@ -121,10 +121,10 @@ Real projects from the community. See what people are building with Clawdbot.
   Control and automate Home Assistant devices via natural language.
 </Card>
 
-<Card title="Nix Packaging" icon="snowflake" href="https://github.com/clawdbot/nix-clawdbot">
-  **@clawdbot** • `nix` `packaging` `deployment`
+<Card title="Nix Packaging" icon="snowflake" href="https://github.com/zee/nix-zee">
+  **@zee** • `nix` `packaging` `deployment`
   
-  Batteries-included nixified Clawdbot configuration for reproducible deployments.
+  Batteries-included nixified Zee configuration for reproducible deployments.
 </Card>
 
 <Card title="CalDAV Calendar" icon="calendar" href="https://clawdhub.com/skills/caldav-calendar">
@@ -142,7 +142,7 @@ Real projects from the community. See what people are building with Clawdbot.
 <Card title="GoHome Automation" icon="house-signal" href="https://github.com/joshp123/gohome">
   **@joshp123** • `home` `nix` `grafana`
   
-  Nix-native home automation with Clawdbot as the interface, plus beautiful Grafana dashboards.
+  Nix-native home automation with Zee as the interface, plus beautiful Grafana dashboards.
   
   <img src="/assets/showcase/gohome-grafana.png" alt="GoHome Grafana dashboard" />
 </Card>
@@ -164,7 +164,7 @@ Real projects from the community. See what people are building with Clawdbot.
 <Card title="StarSwap Marketplace" icon="star" href="https://star-swap.com/">
   **Community** • `marketplace` `astronomy` `webapp`
   
-  Full astronomy gear marketplace. Built with/around the Clawdbot ecosystem.
+  Full astronomy gear marketplace. Built with/around the Zee ecosystem.
 </Card>
 
 </CardGroup>
@@ -177,7 +177,7 @@ Have something to share? We'd love to feature it!
 
 <Steps>
   <Step title="Share It">
-    Post in [#showcase on Discord](https://discord.gg/clawdbot) or [tweet @clawdbot](https://x.com/clawdbot)
+    Post in [#showcase on Discord](https://discord.gg/zee) or [tweet @zee](https://x.com/zee)
   </Step>
   <Step title="Include Details">
     Tell us what it does, link to the repo/demo, share a screenshot if you have one

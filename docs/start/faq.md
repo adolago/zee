@@ -1,5 +1,5 @@
 ---
-summary: "Frequently asked questions about Clawdbot setup, configuration, and usage"
+summary: "Frequently asked questions about Zee setup, configuration, and usage"
 ---
 # FAQ
 
@@ -9,50 +9,50 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
 
 1) **Run the doctor**
    ```bash
-   clawdbot doctor
+   zee doctor
    ```
    Repairs/migrates config/state + runs health checks. See [Doctor](/gateway/doctor).
 
 2) **Daemon + port state**
    ```bash
-   clawdbot daemon status
+   zee daemon status
    ```
    Shows supervisor runtime vs RPC reachability, the probe target URL, and which config the daemon likely used.
 
 3) **Local probes**
    ```bash
-   clawdbot status --deep
+   zee status --deep
    ```
    Checks provider connectivity and local health. See [Health](/gateway/health).
 
 4) **Gateway snapshot**
    ```bash
-   clawdbot health --json
-   clawdbot health --verbose   # shows the target URL + config path on errors
+   zee health --json
+   zee health --verbose   # shows the target URL + config path on errors
    ```
    Asks the running gateway for a full snapshot (WS-only). See [Health](/gateway/health).
 
 5) **Tail the latest log**
    ```bash
-   tail -f "$(ls -t /tmp/clawdbot/clawdbot-*.log | head -1)"
+   tail -f "$(ls -t /tmp/zee/zee-*.log | head -1)"
    ```
    File logs are separate from service logs; see [Logging](/gateway/logging) and [Troubleshooting](/gateway/troubleshooting).
 
-## What is Clawdbot?
+## What is Zee?
 
-### What is Clawdbot, in one paragraph?
+### What is Zee, in one paragraph?
 
-Clawdbot is a personal AI assistant you run on your own devices. It replies on the messaging surfaces you already use (WhatsApp, Telegram, Slack, Discord, Signal, iMessage, WebChat) and can also do voice + a live Canvas on supported platforms. The **Gateway** is the always‑on control plane; the assistant is the product.
+Zee is a personal AI assistant you run on your own devices. It replies on the messaging surfaces you already use (WhatsApp, Telegram, Slack, Discord, Signal, iMessage, WebChat) and can also do voice + a live Canvas on supported platforms. The **Gateway** is the always‑on control plane; the assistant is the product.
 
 ## Quick start and first‑run setup
 
-### What’s the recommended way to install and set up Clawdbot?
+### What’s the recommended way to install and set up Zee?
 
 The repo recommends running from source and using the onboarding wizard:
 
 ```bash
-git clone https://github.com/clawdbot/clawdbot.git
-cd clawdbot
+git clone https://github.com/zee/zee.git
+cd zee
 
 pnpm install
 
@@ -63,7 +63,7 @@ pnpm build
 pnpm ui:install
 pnpm ui:build
 
-pnpm clawdbot onboard
+pnpm zee onboard
 ```
 
 The wizard can also build UI assets automatically. After onboarding, you typically run the Gateway on port **18789**.
@@ -74,7 +74,7 @@ Node **>= 22** is required. `pnpm` is recommended; `bun` is optional.
 
 ### What does the onboarding wizard actually do?
 
-`clawdbot onboard` is the recommended setup path. In **local mode** it walks you through:
+`zee onboard` is the recommended setup path. In **local mode** it walks you through:
 
 - **Model/auth setup** (Anthropic OAuth recommended, OpenAI Codex OAuth supported, API keys optional, LM Studio local models supported)
 - **Workspace** location + bootstrap files
@@ -91,22 +91,22 @@ Bun is supported for faster TypeScript execution, but **WhatsApp requires Node**
 
 ## Where things live on disk
 
-### Where does Clawdbot store its data?
+### Where does Zee store its data?
 
-Everything lives under `$CLAWDBOT_STATE_DIR` (default: `~/.clawdbot`):
+Everything lives under `$ZEE_STATE_DIR` (default: `~/.zee`):
 
 | Path | Purpose |
 |------|---------|
-| `$CLAWDBOT_STATE_DIR/clawdbot.json` | Main config (JSON5) |
-| `$CLAWDBOT_STATE_DIR/credentials/oauth.json` | Legacy OAuth import (copied into auth profiles on first use) |
-| `$CLAWDBOT_STATE_DIR/agents/<agentId>/agent/auth-profiles.json` | Auth profiles (OAuth + API keys) |
-| `$CLAWDBOT_STATE_DIR/agents/<agentId>/agent/auth.json` | Runtime auth cache (managed automatically) |
-| `$CLAWDBOT_STATE_DIR/credentials/` | Provider state (e.g. `whatsapp/<accountId>/creds.json`) |
-| `$CLAWDBOT_STATE_DIR/agents/` | Per‑agent state (agentDir + sessions) |
-| `$CLAWDBOT_STATE_DIR/agents/<agentId>/sessions/` | Conversation history & state (per agent) |
-| `$CLAWDBOT_STATE_DIR/agents/<agentId>/sessions/sessions.json` | Session metadata (per agent) |
+| `$ZEE_STATE_DIR/zee.json` | Main config (JSON5) |
+| `$ZEE_STATE_DIR/credentials/oauth.json` | Legacy OAuth import (copied into auth profiles on first use) |
+| `$ZEE_STATE_DIR/agents/<agentId>/agent/auth-profiles.json` | Auth profiles (OAuth + API keys) |
+| `$ZEE_STATE_DIR/agents/<agentId>/agent/auth.json` | Runtime auth cache (managed automatically) |
+| `$ZEE_STATE_DIR/credentials/` | Provider state (e.g. `whatsapp/<accountId>/creds.json`) |
+| `$ZEE_STATE_DIR/agents/` | Per‑agent state (agentDir + sessions) |
+| `$ZEE_STATE_DIR/agents/<agentId>/sessions/` | Conversation history & state (per agent) |
+| `$ZEE_STATE_DIR/agents/<agentId>/sessions/sessions.json` | Session metadata (per agent) |
 
-Legacy single‑agent path: `~/.clawdbot/agent/*` (migrated by `clawdbot doctor`).
+Legacy single‑agent path: `~/.zee/agent/*` (migrated by `zee doctor`).
 
 Your **workspace** (AGENTS.md, memory files, skills, etc.) is separate and configured via `agent.workspace` (default: `~/clawd`).
 
@@ -118,17 +118,17 @@ Session state is owned by the **gateway host**. If you’re in remote mode, the 
 
 ### What format is the config? Where is it?
 
-Clawdbot reads an optional **JSON5** config from `$CLAWDBOT_CONFIG_PATH` (default: `~/.clawdbot/clawdbot.json`):
+Zee reads an optional **JSON5** config from `$ZEE_CONFIG_PATH` (default: `~/.zee/zee.json`):
 
 ```
-$CLAWDBOT_CONFIG_PATH
+$ZEE_CONFIG_PATH
 ```
 
 If the file is missing, it uses safe‑ish defaults (including a default workspace of `~/clawd`).
 
 ### I set `gateway.bind: "lan"` (or `"tailnet"`) and now nothing listens / the UI says unauthorized
 
-Non-loopback binds **require auth**. Configure `gateway.auth.mode` + `gateway.auth.token` (or use `CLAWDBOT_GATEWAY_TOKEN`).
+Non-loopback binds **require auth**. Configure `gateway.auth.mode` + `gateway.auth.token` (or use `ZEE_GATEWAY_TOKEN`).
 
 ```json5
 {
@@ -172,12 +172,12 @@ This sets your workspace and restricts who can trigger the bot.
 
 ## Env vars and .env loading
 
-### How does Clawdbot load environment variables?
+### How does Zee load environment variables?
 
-Clawdbot reads env vars from the parent process (shell, launchd/systemd, CI, etc.) and additionally loads:
+Zee reads env vars from the parent process (shell, launchd/systemd, CI, etc.) and additionally loads:
 
 - `.env` from the current working directory
-- a global fallback `.env` from `~/.clawdbot/.env` (aka `$CLAWDBOT_STATE_DIR/.env`)
+- a global fallback `.env` from `~/.zee/.env` (aka `$ZEE_STATE_DIR/.env`)
 
 Neither `.env` file overrides existing env vars.
 
@@ -185,7 +185,7 @@ Neither `.env` file overrides existing env vars.
 
 Two common fixes:
 
-1) Put the missing keys in `~/.clawdbot/.env` so they’re picked up even when the daemon doesn’t inherit your shell env.
+1) Put the missing keys in `~/.zee/.env` so they’re picked up even when the daemon doesn’t inherit your shell env.
 2) Enable shell import (opt‑in convenience):
 
 ```json5
@@ -200,7 +200,7 @@ Two common fixes:
 ```
 
 This runs your login shell and imports only missing expected keys (never overrides). Env var equivalents:
-`CLAWDBOT_LOAD_SHELL_ENV=1`, `CLAWDBOT_SHELL_ENV_TIMEOUT_MS=15000`.
+`ZEE_LOAD_SHELL_ENV=1`, `ZEE_SHELL_ENV_TIMEOUT_MS=15000`.
 
 ## Sessions & multiple chats
 
@@ -216,13 +216,13 @@ Direct chats collapse to the main session by default. Groups/channels have their
 
 ### What is the “default model”?
 
-Clawdbot’s default model is whatever you set as:
+Zee’s default model is whatever you set as:
 
 ```
 agent.model.primary
 ```
 
-Models are referenced as `provider/model` (example: `anthropic/claude-opus-4-5`). If you omit the provider, Clawdbot currently assumes `anthropic` as a temporary deprecation fallback — but you should still **explicitly** set `provider/model`.
+Models are referenced as `provider/model` (example: `anthropic/claude-opus-4-5`). If you omit the provider, Zee currently assumes `anthropic` as a temporary deprecation fallback — but you should still **explicitly** set `provider/model`.
 
 ### How do I switch models on the fly (without restarting)?
 
@@ -242,7 +242,7 @@ You can list available models with `/model`, `/model list`, or `/model status`.
 
 ### Are opus / sonnet / gpt built‑in shortcuts?
 
-Yes. Clawdbot ships a few default shorthands (only applied when the model exists in `agent.models`):
+Yes. Zee ships a few default shorthands (only applied when the model exists in `agent.models`):
 
 - `opus` → `anthropic/claude-opus-4-5`
 - `sonnet` → `anthropic/claude-sonnet-4-5`
@@ -309,7 +309,7 @@ Failover happens in two stages:
 1) **Auth profile rotation** within the same provider.
 2) **Model fallback** to the next model in `agent.model.fallbacks`.
 
-Cooldowns apply to failing profiles (exponential backoff), so Clawdbot can keep responding even when a provider is rate‑limited or temporarily failing.
+Cooldowns apply to failing profiles (exponential backoff), so Zee can keep responding even when a provider is rate‑limited or temporarily failing.
 
 ### What does this error mean?
 
@@ -322,10 +322,10 @@ It means the system attempted to use the auth profile ID `anthropic:default`, bu
 ### Fix checklist for `No credentials found for profile "anthropic:default"`
 
 - **Confirm where auth profiles live** (new vs legacy paths)
-  - Current: `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`
-  - Legacy: `~/.clawdbot/agent/*` (migrated by `clawdbot doctor`)
+  - Current: `~/.zee/agents/<agentId>/agent/auth-profiles.json`
+  - Legacy: `~/.zee/agent/*` (migrated by `zee doctor`)
 - **Confirm your env var is loaded by the Gateway**
-  - If you set `ANTHROPIC_API_KEY` in your shell but run the Gateway via systemd/launchd, it may not inherit it. Put it in `~/.clawdbot/.env` or enable `env.shellEnv`.
+  - If you set `ANTHROPIC_API_KEY` in your shell but run the Gateway via systemd/launchd, it may not inherit it. Put it in `~/.zee/.env` or enable `env.shellEnv`.
 - **Make sure you’re editing the correct agent**
   - Multi‑agent setups mean there can be multiple `auth-profiles.json` files.
 - **Sanity‑check model/auth status**
@@ -333,7 +333,7 @@ It means the system attempted to use the auth profile ID `anthropic:default`, bu
 
 ### Why did it also try Google Gemini and fail?
 
-If your model config includes Google Gemini as a fallback (or you switched to a Gemini shorthand), Clawdbot will try it during model fallback. If you haven’t configured Google credentials, you’ll see `No API key found for provider "google"`.
+If your model config includes Google Gemini as a fallback (or you switched to a Gemini shorthand), Zee will try it during model fallback. If you haven’t configured Google credentials, you’ll see `No API key found for provider "google"`.
 
 Fix: either provide Google auth, or remove/avoid Google models in `agent.model.fallbacks` / aliases so fallback doesn’t route there.
 
@@ -346,12 +346,12 @@ Related: [/concepts/oauth](/concepts/oauth) (OAuth flows, token storage, multi-a
 An auth profile is a named credential record (OAuth or API key) tied to a provider. Profiles live in:
 
 ```
-~/.clawdbot/agents/<agentId>/agent/auth-profiles.json
+~/.zee/agents/<agentId>/agent/auth-profiles.json
 ```
 
 ### What are typical profile IDs?
 
-Clawdbot uses provider‑prefixed IDs like:
+Zee uses provider‑prefixed IDs like:
 
 - `anthropic:default` (common when no email identity exists)
 - `anthropic:<email>` for OAuth identities
@@ -363,7 +363,7 @@ Yes. Config supports optional metadata for profiles and an ordering per provider
 
 ### OAuth vs API key: what’s the difference?
 
-Clawdbot supports both:
+Zee supports both:
 
 - **OAuth** often leverages subscription access (where applicable).
 - **API keys** use pay‑per‑token billing.
@@ -379,35 +379,35 @@ The wizard explicitly supports Anthropic OAuth and OpenAI Codex OAuth and can st
 Precedence:
 
 ```
---port > CLAWDBOT_GATEWAY_PORT > gateway.port > default 18789
+--port > ZEE_GATEWAY_PORT > gateway.port > default 18789
 ```
 
-### Why does `clawdbot daemon status` say `Runtime: running` but `RPC probe: failed`?
+### Why does `zee daemon status` say `Runtime: running` but `RPC probe: failed`?
 
 Because “running” is the **supervisor’s** view (launchd/systemd/schtasks). The RPC probe is the CLI actually connecting to the gateway WebSocket and calling `status`.
 
-Use `clawdbot daemon status` and trust these lines:
+Use `zee daemon status` and trust these lines:
 - `Probe target:` (the URL the probe actually used)
 - `Listening:` (what’s actually bound on the port)
 - `Last gateway error:` (common root cause when the process is alive but the port isn’t listening)
 
-### Why does `clawdbot daemon status` show `Config (cli)` and `Config (daemon)` different?
+### Why does `zee daemon status` show `Config (cli)` and `Config (daemon)` different?
 
-You’re editing one config file while the daemon is running another (often a `--profile` / `CLAWDBOT_STATE_DIR` mismatch).
+You’re editing one config file while the daemon is running another (often a `--profile` / `ZEE_STATE_DIR` mismatch).
 
 Fix:
 ```bash
-clawdbot daemon install --force
+zee daemon install --force
 ```
 Run that from the same `--profile` / environment you want the daemon to use.
 
 ### What does “another gateway instance is already listening” mean?
 
-Clawdbot enforces a runtime lock by binding the WebSocket listener immediately on startup (default `ws://127.0.0.1:18789`). If the bind fails with `EADDRINUSE`, it throws `GatewayLockError` indicating another instance is already listening.
+Zee enforces a runtime lock by binding the WebSocket listener immediately on startup (default `ws://127.0.0.1:18789`). If the bind fails with `EADDRINUSE`, it throws `GatewayLockError` indicating another instance is already listening.
 
-Fix: stop the other instance, free the port, or run with `clawdbot gateway --port <port>`.
+Fix: stop the other instance, free the port, or run with `zee gateway --port <port>`.
 
-### How do I run Clawdbot in remote mode (client connects to a Gateway elsewhere)?
+### How do I run Zee in remote mode (client connects to a Gateway elsewhere)?
 
 Set `gateway.mode: "remote"` and point to a remote WebSocket URL, optionally with a token/password:
 
@@ -425,7 +425,7 @@ Set `gateway.mode: "remote"` and point to a remote WebSocket URL, optionally wit
 ```
 
 Notes:
-- `clawdbot gateway` only starts when `gateway.mode` is `local` (or you pass the override flag).
+- `zee gateway` only starts when `gateway.mode` is `local` (or you pass the override flag).
 - The macOS app watches the config file and switches modes live when these values change.
 
 ### The Control UI says “unauthorized” (or keeps reconnecting). What now?
@@ -433,11 +433,11 @@ Notes:
 Your gateway is running with auth enabled (`gateway.auth.*`), but the UI is not sending the matching token/password.
 
 Facts (from code):
-- The Control UI stores the token in browser localStorage key `clawdbot.control.settings.v1`.
+- The Control UI stores the token in browser localStorage key `zee.control.settings.v1`.
 - The UI can import `?token=...` (and/or `?password=...`) once, then strips it from the URL.
 
 Fix:
-- Set `gateway.auth.token` (or `CLAWDBOT_GATEWAY_TOKEN`) on the gateway host.
+- Set `gateway.auth.token` (or `ZEE_GATEWAY_TOKEN`) on the gateway host.
 - In the Control UI settings, paste the same token (or refresh with a one-time `?token=...` link).
 
 ### I set `gateway.bind: "tailnet"` but it can’t bind / nothing listens
@@ -452,8 +452,8 @@ Fix:
 
 Yes, but you must isolate:
 
-- `CLAWDBOT_CONFIG_PATH` (per‑instance config)
-- `CLAWDBOT_STATE_DIR` (per‑instance state)
+- `ZEE_CONFIG_PATH` (per‑instance config)
+- `ZEE_STATE_DIR` (per‑instance state)
 - `agent.workspace` (workspace isolation)
 - `gateway.port` (unique ports)
 
@@ -466,7 +466,7 @@ There are convenience CLI flags like `--dev` and `--profile <name>` that shift s
 File logs (structured):
 
 ```
-/tmp/clawdbot/clawdbot-YYYY-MM-DD.log
+/tmp/zee/zee-YYYY-MM-DD.log
 ```
 
 You can set a stable path via `logging.file`. File log level is controlled by `logging.level`. Console verbosity is controlled by `--verbose` and `logging.consoleLevel`.
@@ -474,13 +474,13 @@ You can set a stable path via `logging.file`. File log level is controlled by `l
 Fastest log tail:
 
 ```bash
-clawdbot logs --follow
+zee logs --follow
 ```
 
 Service/supervisor logs (when the gateway runs via launchd/systemd):
-- macOS: `$CLAWDBOT_STATE_DIR/logs/gateway.log` and `gateway.err.log` (default: `~/.clawdbot/logs/...`; profiles use `~/.clawdbot-<profile>/logs/...`)
-- Linux: `journalctl --user -u clawdbot-gateway.service -n 200 --no-pager`
-- Windows: `schtasks /Query /TN "Clawdbot Gateway" /V /FO LIST`
+- macOS: `$ZEE_STATE_DIR/logs/gateway.log` and `gateway.err.log` (default: `~/.zee/logs/...`; profiles use `~/.zee-<profile>/logs/...`)
+- Linux: `journalctl --user -u zee-gateway.service -n 200 --no-pager`
+- Windows: `schtasks /Query /TN "Zee Gateway" /V /FO LIST`
 
 See [Troubleshooting](/gateway/troubleshooting#log-locations) for more.
 
@@ -489,11 +489,11 @@ See [Troubleshooting](/gateway/troubleshooting#log-locations) for more.
 Use the daemon helpers:
 
 ```bash
-clawdbot daemon status
-clawdbot daemon restart
+zee daemon status
+zee daemon restart
 ```
 
-If you run the gateway manually, `clawdbot gateway --force` can reclaim the port. See [Gateway](/gateway).
+If you run the gateway manually, `zee gateway --force` can reclaim the port. See [Gateway](/gateway).
 
 ### What’s the fastest way to get more details when something fails?
 
@@ -508,23 +508,23 @@ Outbound attachments from the agent must include a `MEDIA:<path-or-url>` line (o
 CLI sending:
 
 ```bash
-clawdbot send --to +15555550123 --message "Here you go" --media /path/to/file.png
+zee send --to +15555550123 --message "Here you go" --media /path/to/file.png
 ```
 
 Note: images are resized/recompressed (max side 2048px) to hit size limits. See [Images](/nodes/images).
 
 ## Security and access control
 
-### Is it safe to expose Clawdbot to inbound DMs?
+### Is it safe to expose Zee to inbound DMs?
 
 Treat inbound DMs as untrusted input. Defaults are designed to reduce risk:
 
 - Default behavior on DM‑capable providers is **pairing**:
   - Unknown senders receive a pairing code; the bot does not process their message.
-  - Approve with: `clawdbot pairing approve --provider <provider> <code>`
+  - Approve with: `zee pairing approve --provider <provider> <code>`
 - Opening DMs publicly requires explicit opt‑in (`dmPolicy: "open"` and allowlist `"*"`).
 
-Run `clawdbot doctor` to surface risky DM policies.
+Run `zee doctor` to surface risky DM policies.
 
 ## Chat commands, aborting tasks, and “it won’t stop”
 
@@ -568,7 +568,7 @@ You can add options like `debounce:2s cap:25 drop:summarize` for followup modes.
 
 - **Credentials** present for the provider(s) being tried (auth profiles + env vars).
 - **Model routing**: confirm `agent.model.primary` and fallbacks are models you can access.
-- **Gateway logs** in `/tmp/clawdbot/…` for the exact provider error.
+- **Gateway logs** in `/tmp/zee/…` for the exact provider error.
 - **`/model status`** to see current configured models + shorthands.
 
 ### I’m running on my personal WhatsApp number — why is self-chat weird?
@@ -592,13 +592,13 @@ See [WhatsApp setup](/providers/whatsapp).
 Run the login command again and scan the QR code:
 
 ```bash
-clawdbot providers login
+zee providers login
 ```
 
 ### Build errors on `main` — what’s the standard fix path?
 
 1) `git pull origin main && pnpm install`
-2) `pnpm clawdbot doctor`
+2) `pnpm zee doctor`
 3) Check GitHub issues or Discord
 4) Temporary workaround: check out an older commit
 
@@ -606,7 +606,7 @@ clawdbot providers login
 
 **Q: “What’s the default model for Anthropic with an API key?”**
 
-**A:** In Clawdbot, credentials and model selection are separate. Setting `ANTHROPIC_API_KEY` (or storing an Anthropic API key in auth profiles) enables authentication, but the actual default model is whatever you configure in `agent.model.primary` (for example, `anthropic/claude-sonnet-4-5` or `anthropic/claude-opus-4-5`). If you see `No credentials found for profile "anthropic:default"`, it means the Gateway couldn’t find Anthropic credentials in the expected `auth-profiles.json` for the agent that’s running.
+**A:** In Zee, credentials and model selection are separate. Setting `ANTHROPIC_API_KEY` (or storing an Anthropic API key in auth profiles) enables authentication, but the actual default model is whatever you configure in `agent.model.primary` (for example, `anthropic/claude-sonnet-4-5` or `anthropic/claude-opus-4-5`). If you see `No credentials found for profile "anthropic:default"`, it means the Gateway couldn’t find Anthropic credentials in the expected `auth-profiles.json` for the agent that’s running.
 
 ---
 

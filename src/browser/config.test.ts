@@ -19,9 +19,9 @@ describe("browser config", () => {
     expect(profile?.cdpIsLoopback).toBe(true);
   });
 
-  it("derives default ports from CLAWDBOT_GATEWAY_PORT when unset", () => {
-    const prev = process.env.CLAWDBOT_GATEWAY_PORT;
-    process.env.CLAWDBOT_GATEWAY_PORT = "19001";
+  it("derives default ports from ZEE_GATEWAY_PORT when unset", () => {
+    const prev = process.env.ZEE_GATEWAY_PORT;
+    process.env.ZEE_GATEWAY_PORT = "19001";
     try {
       const resolved = resolveBrowserConfig(undefined);
       expect(resolved.controlPort).toBe(19003);
@@ -30,9 +30,9 @@ describe("browser config", () => {
       expect(profile?.cdpUrl).toBe("http://127.0.0.1:19012");
     } finally {
       if (prev === undefined) {
-        delete process.env.CLAWDBOT_GATEWAY_PORT;
+        delete process.env.ZEE_GATEWAY_PORT;
       } else {
-        process.env.CLAWDBOT_GATEWAY_PORT = prev;
+        process.env.ZEE_GATEWAY_PORT = prev;
       }
     }
   });

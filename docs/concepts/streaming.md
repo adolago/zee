@@ -7,7 +7,7 @@ read_when:
 ---
 # Streaming + chunking
 
-Clawdbot has two separate “streaming” layers:
+Zee has two separate “streaming” layers:
 - **Block streaming (providers):** emit completed **blocks** as the assistant writes. These are normal provider messages (not token deltas).
 - **Token-ish streaming (Telegram only):** update a **draft bubble** with partial text while generating; final message is sent at the end.
 
@@ -72,7 +72,7 @@ Telegram is the only provider with draft streaming:
 - Final reply is still a normal message.
 - `/reasoning stream` writes reasoning into the draft bubble (Telegram only).
 
-When draft streaming is active, Clawdbot disables block streaming for that reply to avoid double-streaming.
+When draft streaming is active, Zee disables block streaming for that reply to avoid double-streaming.
 
 ```
 Telegram (private + topics)

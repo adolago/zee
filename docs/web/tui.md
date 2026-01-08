@@ -1,5 +1,5 @@
 ---
-summary: "Terminal UI (TUI) for Clawdbot via the Gateway"
+summary: "Terminal UI (TUI) for Zee via the Gateway"
 read_when:
   - You want a terminal UI that connects to the Gateway from any machine
   - You are debugging the TUI client or Gateway chat stream
@@ -15,12 +15,12 @@ Updated: 2026-01-07
 
 ## Run
 ```bash
-clawdbot tui
+zee tui
 ```
 
 ### Remote
 ```bash
-clawdbot tui --url ws://127.0.0.1:18789 --token <gateway-token>
+zee tui --url ws://127.0.0.1:18789 --token <gateway-token>
 ```
 Use SSH tunneling or Tailscale to reach the Gateway WS.
 
@@ -67,6 +67,6 @@ Use SSH tunneling or Tailscale to reach the Gateway WS.
 - It registers as a Gateway client with `mode: "tui"` for presence and debugging.
 
 ## Files
-- CLI: [`src/cli/tui-cli.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/cli/tui-cli.ts)
-- Runner: [`src/tui/tui.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/tui/tui.ts)
-- Gateway client: [`src/tui/gateway-chat.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/tui/gateway-chat.ts)
+- CLI: [`src/cli/tui-cli.ts`](https://github.com/zee/zee/blob/main/src/cli/tui-cli.ts)
+- Runner: [`src/tui/tui.ts`](https://github.com/zee/zee/blob/main/src/tui/tui.ts)
+- Gateway client: [`src/tui/gateway-chat.ts`](https://github.com/zee/zee/blob/main/src/tui/gateway-chat.ts)

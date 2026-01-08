@@ -248,12 +248,12 @@ After configuring multi-agent sandbox and tools:
 
 1. **Check agent resolution:**
    ```bash
-   clawdbot agents list --bindings
+   zee agents list --bindings
    ```
 
 2. **Verify sandbox containers:**
    ```bash
-   docker ps --filter "label=clawdbot.sandbox=1"
+   docker ps --filter "label=zee.sandbox=1"
    ```
 
 3. **Test tool restrictions:**
@@ -262,7 +262,7 @@ After configuring multi-agent sandbox and tools:
 
 4. **Monitor logs:**
    ```bash
-   tail -f "${CLAWDBOT_STATE_DIR:-$HOME/.clawdbot}/logs/gateway.log" | grep -E "routing|sandbox|tools"
+   tail -f "${ZEE_STATE_DIR:-$HOME/.zee}/logs/gateway.log" | grep -E "routing|sandbox|tools"
    ```
 
 ---

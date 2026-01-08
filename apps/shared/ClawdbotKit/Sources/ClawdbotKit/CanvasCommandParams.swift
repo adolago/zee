@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ClawdbotCanvasNavigateParams: Codable, Sendable, Equatable {
+public struct ZeeCanvasNavigateParams: Codable, Sendable, Equatable {
     public var url: String
 
     public init(url: String) {
@@ -8,7 +8,7 @@ public struct ClawdbotCanvasNavigateParams: Codable, Sendable, Equatable {
     }
 }
 
-public struct ClawdbotCanvasPlacement: Codable, Sendable, Equatable {
+public struct ZeeCanvasPlacement: Codable, Sendable, Equatable {
     public var x: Double?
     public var y: Double?
     public var width: Double?
@@ -22,17 +22,17 @@ public struct ClawdbotCanvasPlacement: Codable, Sendable, Equatable {
     }
 }
 
-public struct ClawdbotCanvasPresentParams: Codable, Sendable, Equatable {
+public struct ZeeCanvasPresentParams: Codable, Sendable, Equatable {
     public var url: String?
-    public var placement: ClawdbotCanvasPlacement?
+    public var placement: ZeeCanvasPlacement?
 
-    public init(url: String? = nil, placement: ClawdbotCanvasPlacement? = nil) {
+    public init(url: String? = nil, placement: ZeeCanvasPlacement? = nil) {
         self.url = url
         self.placement = placement
     }
 }
 
-public struct ClawdbotCanvasEvalParams: Codable, Sendable, Equatable {
+public struct ZeeCanvasEvalParams: Codable, Sendable, Equatable {
     public var javaScript: String
 
     public init(javaScript: String) {
@@ -40,7 +40,7 @@ public struct ClawdbotCanvasEvalParams: Codable, Sendable, Equatable {
     }
 }
 
-public enum ClawdbotCanvasSnapshotFormat: String, Codable, Sendable {
+public enum ZeeCanvasSnapshotFormat: String, Codable, Sendable {
     case png
     case jpeg
 
@@ -63,12 +63,12 @@ public enum ClawdbotCanvasSnapshotFormat: String, Codable, Sendable {
     }
 }
 
-public struct ClawdbotCanvasSnapshotParams: Codable, Sendable, Equatable {
+public struct ZeeCanvasSnapshotParams: Codable, Sendable, Equatable {
     public var maxWidth: Int?
     public var quality: Double?
-    public var format: ClawdbotCanvasSnapshotFormat?
+    public var format: ZeeCanvasSnapshotFormat?
 
-    public init(maxWidth: Int? = nil, quality: Double? = nil, format: ClawdbotCanvasSnapshotFormat? = nil) {
+    public init(maxWidth: Int? = nil, quality: Double? = nil, format: ZeeCanvasSnapshotFormat? = nil) {
         self.maxWidth = maxWidth
         self.quality = quality
         self.format = format

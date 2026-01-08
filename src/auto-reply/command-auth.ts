@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { normalizeE164 } from "../utils.js";
 import type { MsgContext } from "./templating.js";
 
@@ -13,7 +13,7 @@ export type CommandAuthorization = {
 
 export function resolveCommandAuthorization(params: {
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   commandAuthorized: boolean;
 }): CommandAuthorization {
   const { ctx, cfg, commandAuthorized } = params;

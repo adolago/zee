@@ -1,11 +1,11 @@
 ---
-summary: "Design notes for a direct `clawdbot agent` CLI subcommand without WhatsApp delivery"
+summary: "Design notes for a direct `zee agent` CLI subcommand without WhatsApp delivery"
 read_when:
   - Adding or modifying the agent CLI entrypoint
 ---
-# `clawdbot agent` (direct-to-agent invocation)
+# `zee agent` (direct-to-agent invocation)
 
-`clawdbot agent` lets you talk to the **embedded** agent runtime directly (no chat send unless you opt in), while reusing the same session store and thinking/verbose persistence as inbound auto-replies.
+`zee agent` lets you talk to the **embedded** agent runtime directly (no chat send unless you opt in), while reusing the same session store and thinking/verbose persistence as inbound auto-replies.
 
 ## Behavior
 - Required: `--message <text>`

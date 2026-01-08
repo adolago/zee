@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 import android.Manifest
 import android.content.Context
@@ -7,31 +7,31 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
-import com.clawdbot.android.chat.ChatController
-import com.clawdbot.android.chat.ChatMessage
-import com.clawdbot.android.chat.ChatPendingToolCall
-import com.clawdbot.android.chat.ChatSessionEntry
-import com.clawdbot.android.chat.OutgoingAttachment
-import com.clawdbot.android.bridge.BridgeDiscovery
-import com.clawdbot.android.bridge.BridgeEndpoint
-import com.clawdbot.android.bridge.BridgePairingClient
-import com.clawdbot.android.bridge.BridgeSession
-import com.clawdbot.android.node.CameraCaptureManager
-import com.clawdbot.android.node.LocationCaptureManager
-import com.clawdbot.android.BuildConfig
-import com.clawdbot.android.node.CanvasController
-import com.clawdbot.android.node.ScreenRecordManager
-import com.clawdbot.android.node.SmsManager
-import com.clawdbot.android.protocol.ClawdbotCapability
-import com.clawdbot.android.protocol.ClawdbotCameraCommand
-import com.clawdbot.android.protocol.ClawdbotCanvasA2UIAction
-import com.clawdbot.android.protocol.ClawdbotCanvasA2UICommand
-import com.clawdbot.android.protocol.ClawdbotCanvasCommand
-import com.clawdbot.android.protocol.ClawdbotScreenCommand
-import com.clawdbot.android.protocol.ClawdbotLocationCommand
-import com.clawdbot.android.protocol.ClawdbotSmsCommand
-import com.clawdbot.android.voice.TalkModeManager
-import com.clawdbot.android.voice.VoiceWakeManager
+import com.zee.android.chat.ChatController
+import com.zee.android.chat.ChatMessage
+import com.zee.android.chat.ChatPendingToolCall
+import com.zee.android.chat.ChatSessionEntry
+import com.zee.android.chat.OutgoingAttachment
+import com.zee.android.bridge.BridgeDiscovery
+import com.zee.android.bridge.BridgeEndpoint
+import com.zee.android.bridge.BridgePairingClient
+import com.zee.android.bridge.BridgeSession
+import com.zee.android.node.CameraCaptureManager
+import com.zee.android.node.LocationCaptureManager
+import com.zee.android.BuildConfig
+import com.zee.android.node.CanvasController
+import com.zee.android.node.ScreenRecordManager
+import com.zee.android.node.SmsManager
+import com.zee.android.protocol.ZeeCapability
+import com.zee.android.protocol.ZeeCameraCommand
+import com.zee.android.protocol.ZeeCanvasA2UIAction
+import com.zee.android.protocol.ZeeCanvasA2UICommand
+import com.zee.android.protocol.ZeeCanvasCommand
+import com.zee.android.protocol.ZeeScreenCommand
+import com.zee.android.protocol.ZeeLocationCommand
+import com.zee.android.protocol.ZeeSmsCommand
+import com.zee.android.voice.TalkModeManager
+import com.zee.android.voice.VoiceWakeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -369,38 +369,38 @@ class NodeRuntime(context: Context) {
 
   private fun buildInvokeCommands(): List<String> =
     buildList {
-      add(ClawdbotCanvasCommand.Present.rawValue)
-      add(ClawdbotCanvasCommand.Hide.rawValue)
-      add(ClawdbotCanvasCommand.Navigate.rawValue)
-      add(ClawdbotCanvasCommand.Eval.rawValue)
-      add(ClawdbotCanvasCommand.Snapshot.rawValue)
-      add(ClawdbotCanvasA2UICommand.Push.rawValue)
-      add(ClawdbotCanvasA2UICommand.PushJSONL.rawValue)
-      add(ClawdbotCanvasA2UICommand.Reset.rawValue)
-      add(ClawdbotScreenCommand.Record.rawValue)
+      add(ZeeCanvasCommand.Present.rawValue)
+      add(ZeeCanvasCommand.Hide.rawValue)
+      add(ZeeCanvasCommand.Navigate.rawValue)
+      add(ZeeCanvasCommand.Eval.rawValue)
+      add(ZeeCanvasCommand.Snapshot.rawValue)
+      add(ZeeCanvasA2UICommand.Push.rawValue)
+      add(ZeeCanvasA2UICommand.PushJSONL.rawValue)
+      add(ZeeCanvasA2UICommand.Reset.rawValue)
+      add(ZeeScreenCommand.Record.rawValue)
       if (cameraEnabled.value) {
-        add(ClawdbotCameraCommand.Snap.rawValue)
-        add(ClawdbotCameraCommand.Clip.rawValue)
+        add(ZeeCameraCommand.Snap.rawValue)
+        add(ZeeCameraCommand.Clip.rawValue)
       }
       if (locationMode.value != LocationMode.Off) {
-        add(ClawdbotLocationCommand.Get.rawValue)
+        add(ZeeLocationCommand.Get.rawValue)
       }
       if (sms.canSendSms()) {
-        add(ClawdbotSmsCommand.Send.rawValue)
+        add(ZeeSmsCommand.Send.rawValue)
       }
     }
 
   private fun buildCapabilities(): List<String> =
     buildList {
-      add(ClawdbotCapability.Canvas.rawValue)
-      add(ClawdbotCapability.Screen.rawValue)
-      if (cameraEnabled.value) add(ClawdbotCapability.Camera.rawValue)
-      if (sms.canSendSms()) add(ClawdbotCapability.Sms.rawValue)
+      add(ZeeCapability.Canvas.rawValue)
+      add(ZeeCapability.Screen.rawValue)
+      if (cameraEnabled.value) add(ZeeCapability.Camera.rawValue)
+      if (sms.canSendSms()) add(ZeeCapability.Sms.rawValue)
       if (voiceWakeMode.value != VoiceWakeMode.Off && hasRecordAudioPermission()) {
-        add(ClawdbotCapability.VoiceWake.rawValue)
+        add(ZeeCapability.VoiceWake.rawValue)
       }
       if (locationMode.value != LocationMode.Off) {
-        add(ClawdbotCapability.Location.rawValue)
+        add(ZeeCapability.Location.rawValue)
       }
     }
 
@@ -551,7 +551,7 @@ class NodeRuntime(context: Context) {
       val actionId = (userActionObj["id"] as? JsonPrimitive)?.content?.trim().orEmpty().ifEmpty {
         java.util.UUID.randomUUID().toString()
       }
-      val name = ClawdbotCanvasA2UIAction.extractActionName(userActionObj) ?: return@launch
+      val name = ZeeCanvasA2UIAction.extractActionName(userActionObj) ?: return@launch
 
       val surfaceId =
         (userActionObj["surfaceId"] as? JsonPrimitive)?.content?.trim().orEmpty().ifEmpty { "main" }
@@ -561,7 +561,7 @@ class NodeRuntime(context: Context) {
 
       val sessionKey = "main"
       val message =
-        ClawdbotCanvasA2UIAction.formatAgentMessage(
+        ZeeCanvasA2UIAction.formatAgentMessage(
           actionName = name,
           sessionKey = sessionKey,
           surfaceId = surfaceId,
@@ -595,7 +595,7 @@ class NodeRuntime(context: Context) {
 
       try {
         canvas.eval(
-          ClawdbotCanvasA2UIAction.jsDispatchA2UIActionStatus(
+          ZeeCanvasA2UIAction.jsDispatchA2UIActionStatus(
             actionId = actionId,
             ok = connected && error == null,
             error = error,
@@ -712,10 +712,10 @@ class NodeRuntime(context: Context) {
 
   private suspend fun handleInvoke(command: String, paramsJson: String?): BridgeSession.InvokeResult {
     if (
-      command.startsWith(ClawdbotCanvasCommand.NamespacePrefix) ||
-        command.startsWith(ClawdbotCanvasA2UICommand.NamespacePrefix) ||
-        command.startsWith(ClawdbotCameraCommand.NamespacePrefix) ||
-        command.startsWith(ClawdbotScreenCommand.NamespacePrefix)
+      command.startsWith(ZeeCanvasCommand.NamespacePrefix) ||
+        command.startsWith(ZeeCanvasA2UICommand.NamespacePrefix) ||
+        command.startsWith(ZeeCameraCommand.NamespacePrefix) ||
+        command.startsWith(ZeeScreenCommand.NamespacePrefix)
       ) {
       if (!isForeground.value) {
         return BridgeSession.InvokeResult.error(
@@ -724,13 +724,13 @@ class NodeRuntime(context: Context) {
         )
       }
     }
-    if (command.startsWith(ClawdbotCameraCommand.NamespacePrefix) && !cameraEnabled.value) {
+    if (command.startsWith(ZeeCameraCommand.NamespacePrefix) && !cameraEnabled.value) {
       return BridgeSession.InvokeResult.error(
         code = "CAMERA_DISABLED",
         message = "CAMERA_DISABLED: enable Camera in Settings",
       )
     }
-    if (command.startsWith(ClawdbotLocationCommand.NamespacePrefix) &&
+    if (command.startsWith(ZeeLocationCommand.NamespacePrefix) &&
       locationMode.value == LocationMode.Off
     ) {
       return BridgeSession.InvokeResult.error(
@@ -740,18 +740,18 @@ class NodeRuntime(context: Context) {
     }
 
     return when (command) {
-      ClawdbotCanvasCommand.Present.rawValue -> {
+      ZeeCanvasCommand.Present.rawValue -> {
         val url = CanvasController.parseNavigateUrl(paramsJson)
         canvas.navigate(url)
         BridgeSession.InvokeResult.ok(null)
       }
-      ClawdbotCanvasCommand.Hide.rawValue -> BridgeSession.InvokeResult.ok(null)
-      ClawdbotCanvasCommand.Navigate.rawValue -> {
+      ZeeCanvasCommand.Hide.rawValue -> BridgeSession.InvokeResult.ok(null)
+      ZeeCanvasCommand.Navigate.rawValue -> {
         val url = CanvasController.parseNavigateUrl(paramsJson)
         canvas.navigate(url)
         BridgeSession.InvokeResult.ok(null)
       }
-      ClawdbotCanvasCommand.Eval.rawValue -> {
+      ZeeCanvasCommand.Eval.rawValue -> {
         val js =
           CanvasController.parseEvalJs(paramsJson)
             ?: return BridgeSession.InvokeResult.error(
@@ -769,7 +769,7 @@ class NodeRuntime(context: Context) {
           }
         BridgeSession.InvokeResult.ok("""{"result":${result.toJsonString()}}""")
       }
-      ClawdbotCanvasCommand.Snapshot.rawValue -> {
+      ZeeCanvasCommand.Snapshot.rawValue -> {
         val snapshotParams = CanvasController.parseSnapshotParams(paramsJson)
         val base64 =
           try {
@@ -786,7 +786,7 @@ class NodeRuntime(context: Context) {
           }
         BridgeSession.InvokeResult.ok("""{"format":"${snapshotParams.format.rawValue}","base64":"$base64"}""")
       }
-      ClawdbotCanvasA2UICommand.Reset.rawValue -> {
+      ZeeCanvasA2UICommand.Reset.rawValue -> {
         val a2uiUrl = resolveA2uiHostUrl()
           ?: return BridgeSession.InvokeResult.error(
             code = "A2UI_HOST_NOT_CONFIGURED",
@@ -802,7 +802,7 @@ class NodeRuntime(context: Context) {
         val res = canvas.eval(a2uiResetJS)
         BridgeSession.InvokeResult.ok(res)
       }
-      ClawdbotCanvasA2UICommand.Push.rawValue, ClawdbotCanvasA2UICommand.PushJSONL.rawValue -> {
+      ZeeCanvasA2UICommand.Push.rawValue, ZeeCanvasA2UICommand.PushJSONL.rawValue -> {
         val messages =
           try {
             decodeA2uiMessages(command, paramsJson)
@@ -825,7 +825,7 @@ class NodeRuntime(context: Context) {
         val res = canvas.eval(js)
         BridgeSession.InvokeResult.ok(res)
       }
-      ClawdbotCameraCommand.Snap.rawValue -> {
+      ZeeCameraCommand.Snap.rawValue -> {
         showCameraHud(message = "Taking photo…", kind = CameraHudKind.Photo)
         triggerCameraFlash()
         val res =
@@ -839,7 +839,7 @@ class NodeRuntime(context: Context) {
         showCameraHud(message = "Photo captured", kind = CameraHudKind.Success, autoHideMs = 1600)
         BridgeSession.InvokeResult.ok(res.payloadJson)
       }
-      ClawdbotCameraCommand.Clip.rawValue -> {
+      ZeeCameraCommand.Clip.rawValue -> {
         val includeAudio = paramsJson?.contains("\"includeAudio\":true") != false
         if (includeAudio) externalAudioCaptureActive.value = true
         try {
@@ -858,7 +858,7 @@ class NodeRuntime(context: Context) {
           if (includeAudio) externalAudioCaptureActive.value = false
         }
       }
-      ClawdbotLocationCommand.Get.rawValue -> {
+      ZeeLocationCommand.Get.rawValue -> {
         val mode = locationMode.value
         if (!isForeground.value && mode != LocationMode.Always) {
           return BridgeSession.InvokeResult.error(
@@ -911,7 +911,7 @@ class NodeRuntime(context: Context) {
           BridgeSession.InvokeResult.error(code = "LOCATION_UNAVAILABLE", message = message)
         }
       }
-      ClawdbotScreenCommand.Record.rawValue -> {
+      ZeeScreenCommand.Record.rawValue -> {
         // Status pill mirrors screen recording state so it stays visible without overlay stacking.
         _screenRecordActive.value = true
         try {
@@ -927,7 +927,7 @@ class NodeRuntime(context: Context) {
           _screenRecordActive.value = false
         }
       }
-      ClawdbotSmsCommand.Send.rawValue -> {
+      ZeeSmsCommand.Send.rawValue -> {
         val res = sms.send(paramsJson)
         if (res.ok) {
           BridgeSession.InvokeResult.ok(res.payloadJson)
@@ -998,7 +998,7 @@ class NodeRuntime(context: Context) {
     val raw = session.currentCanvasHostUrl()?.trim().orEmpty()
     if (raw.isBlank()) return null
     val base = raw.trimEnd('/')
-    return "${base}/__clawdbot__/a2ui/?platform=android"
+    return "${base}/__zee__/a2ui/?platform=android"
   }
 
   private suspend fun ensureA2uiReady(a2uiUrl: String): Boolean {
@@ -1033,7 +1033,7 @@ class NodeRuntime(context: Context) {
     val jsonlField = (obj["jsonl"] as? JsonPrimitive)?.content?.trim().orEmpty()
     val hasMessagesArray = obj["messages"] is JsonArray
 
-    if (command == ClawdbotCanvasA2UICommand.PushJSONL.rawValue || (!hasMessagesArray && jsonlField.isNotBlank())) {
+    if (command == ZeeCanvasA2UICommand.PushJSONL.rawValue || (!hasMessagesArray && jsonlField.isNotBlank())) {
       val jsonl = jsonlField
       if (jsonl.isBlank()) throw IllegalArgumentException("INVALID_REQUEST: jsonl required")
       val messages =
@@ -1090,7 +1090,7 @@ private const val a2uiReadyCheckJS: String =
   """
   (() => {
     try {
-      return !!globalThis.clawdbotA2UI && typeof globalThis.clawdbotA2UI.applyMessages === 'function';
+      return !!globalThis.zeeA2UI && typeof globalThis.zeeA2UI.applyMessages === 'function';
     } catch (_) {
       return false;
     }
@@ -1101,8 +1101,8 @@ private const val a2uiResetJS: String =
   """
   (() => {
     try {
-      if (!globalThis.clawdbotA2UI) return { ok: false, error: "missing clawdbotA2UI" };
-      return globalThis.clawdbotA2UI.reset();
+      if (!globalThis.zeeA2UI) return { ok: false, error: "missing zeeA2UI" };
+      return globalThis.zeeA2UI.reset();
     } catch (e) {
       return { ok: false, error: String(e?.message ?? e) };
     }
@@ -1113,9 +1113,9 @@ private fun a2uiApplyMessagesJS(messagesJson: String): String {
   return """
     (() => {
       try {
-        if (!globalThis.clawdbotA2UI) return { ok: false, error: "missing clawdbotA2UI" };
+        if (!globalThis.zeeA2UI) return { ok: false, error: "missing zeeA2UI" };
         const messages = $messagesJson;
-        return globalThis.clawdbotA2UI.applyMessages(messages);
+        return globalThis.zeeA2UI.applyMessages(messages);
       } catch (e) {
         return { ok: false, error: String(e?.message ?? e) };
       }

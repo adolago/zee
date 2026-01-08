@@ -11,7 +11,7 @@ export type VoiceWakeConfig = {
 const DEFAULT_TRIGGERS = ["clawd", "claude", "computer"];
 
 function defaultBaseDir() {
-  return path.join(os.homedir(), ".clawdbot");
+  return path.join(os.homedir(), ".zee");
 }
 
 function resolvePath(baseDir?: string) {

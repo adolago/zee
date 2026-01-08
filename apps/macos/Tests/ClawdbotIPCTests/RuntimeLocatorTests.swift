@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct RuntimeLocatorTests {
     private func makeTempExecutable(contents: String) throws -> URL {

@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   DEFAULT_ACCOUNT_ID,
   normalizeAccountId,
@@ -19,7 +19,7 @@ export function normalizeDiscordToken(raw?: string | null): string | undefined {
 }
 
 export function resolveDiscordToken(
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
   opts: { accountId?: string | null; envToken?: string | null } = {},
 ): DiscordTokenResolution {
   const accountId = normalizeAccountId(opts.accountId);

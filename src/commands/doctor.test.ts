@@ -21,11 +21,11 @@ function setStdinTty(value: boolean | undefined) {
 beforeEach(() => {
   originalIsTTY = process.stdin.isTTY;
   setStdinTty(true);
-  originalStateDir = process.env.CLAWDBOT_STATE_DIR;
+  originalStateDir = process.env.ZEE_STATE_DIR;
   tempStateDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "clawdbot-doctor-state-"),
+    path.join(os.tmpdir(), "zee-doctor-state-"),
   );
-  process.env.CLAWDBOT_STATE_DIR = tempStateDir;
+  process.env.ZEE_STATE_DIR = tempStateDir;
   fs.mkdirSync(path.join(tempStateDir, "agents", "main", "sessions"), {
     recursive: true,
   });
@@ -35,9 +35,9 @@ beforeEach(() => {
 afterEach(() => {
   setStdinTty(originalIsTTY);
   if (originalStateDir === undefined) {
-    delete process.env.CLAWDBOT_STATE_DIR;
+    delete process.env.ZEE_STATE_DIR;
   } else {
-    process.env.CLAWDBOT_STATE_DIR = originalStateDir;
+    process.env.ZEE_STATE_DIR = originalStateDir;
   }
   if (tempStateDir) {
     fs.rmSync(tempStateDir, { recursive: true, force: true });
@@ -111,7 +111,7 @@ vi.mock("../config/config.js", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    CONFIG_PATH_CLAWDBOT: "/tmp/clawdbot.json",
+    CONFIG_PATH_ZEE: "/tmp/zee.json",
     createConfigIO,
     readConfigFileSnapshot,
     writeConfigFile,
@@ -237,7 +237,7 @@ vi.mock("./doctor-state-migrations.js", () => ({
 describe("doctor", () => {
   it("migrates routing.allowFrom to whatsapp.allowFrom", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: { routing: { allowFrom: ["+15555550123"] } },
@@ -284,7 +284,7 @@ describe("doctor", () => {
 
   it("migrates legacy Clawdis services", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -320,7 +320,7 @@ describe("doctor", () => {
   it("migrates legacy config file", async () => {
     readConfigFileSnapshot
       .mockResolvedValueOnce({
-        path: "/tmp/clawdbot.json",
+        path: "/tmp/zee.json",
         exists: false,
         raw: null,
         parsed: {},
@@ -330,7 +330,7 @@ describe("doctor", () => {
         legacyIssues: [],
       })
       .mockResolvedValueOnce({
-        path: "/tmp/clawdbot.json",
+        path: "/tmp/zee.json",
         exists: true,
         raw: "{}",
         parsed: {
@@ -340,8 +340,8 @@ describe("doctor", () => {
             sandbox: {
               workspaceRoot: "/Users/steipete/clawd/sandboxes",
               docker: {
-                image: "clawdbot-sandbox",
-                containerPrefix: "clawdbot-sbx",
+                image: "zee-sandbox",
+                containerPrefix: "zee-sbx",
               },
             },
           },
@@ -354,8 +354,8 @@ describe("doctor", () => {
             sandbox: {
               workspaceRoot: "/Users/steipete/clawd/sandboxes",
               docker: {
-                image: "clawdbot-sandbox",
-                containerPrefix: "clawdbot-sbx",
+                image: "zee-sandbox",
+                containerPrefix: "zee-sbx",
               },
             },
           },
@@ -435,13 +435,13 @@ describe("doctor", () => {
 
     expect(agent.workspace).toBe("/Users/steipete/clawd");
     expect(sandbox.workspaceRoot).toBe("/Users/steipete/clawd/sandboxes");
-    expect(docker.image).toBe("clawdbot-sandbox");
-    expect(docker.containerPrefix).toBe("clawdbot-sbx");
+    expect(docker.image).toBe("zee-sandbox");
+    expect(docker.containerPrefix).toBe("zee-sbx");
   });
 
   it("warns when per-agent sandbox docker/browser/prune overrides are ignored under shared scope", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -496,7 +496,7 @@ describe("doctor", () => {
 
   it("warns when legacy workspace directories exist", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -543,7 +543,7 @@ describe("doctor", () => {
   });
   it("falls back to legacy sandbox image when missing", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {
@@ -551,7 +551,7 @@ describe("doctor", () => {
           sandbox: {
             mode: "non-main",
             docker: {
-              image: "clawdbot-sandbox-common:bookworm-slim",
+              image: "zee-sandbox-common:bookworm-slim",
             },
           },
         },
@@ -562,7 +562,7 @@ describe("doctor", () => {
           sandbox: {
             mode: "non-main",
             docker: {
-              image: "clawdbot-sandbox-common:bookworm-slim",
+              image: "zee-sandbox-common:bookworm-slim",
             },
           },
         },
@@ -580,7 +580,7 @@ describe("doctor", () => {
       }
       if (args[0] === "image" && args[1] === "inspect") {
         const image = args[2];
-        if (image === "clawdbot-sandbox-common:bookworm-slim") {
+        if (image === "zee-sandbox-common:bookworm-slim") {
           return Promise.reject(new Error("missing"));
         }
         if (image === "clawdis-sandbox-common:bookworm-slim") {
@@ -615,7 +615,7 @@ describe("doctor", () => {
 
   it("runs legacy state migrations in non-interactive mode without prompting", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -673,7 +673,7 @@ describe("doctor", () => {
 
   it("runs legacy state migrations in yes mode without prompting", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -732,7 +732,7 @@ describe("doctor", () => {
 
   it("skips gateway restarts in non-interactive mode", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -764,7 +764,7 @@ describe("doctor", () => {
 
   it("migrates anthropic oauth config profile id when only email profile exists", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -812,7 +812,7 @@ describe("doctor", () => {
 
   it("warns when the state directory is missing", async () => {
     readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/clawdbot.json",
+      path: "/tmp/zee.json",
       exists: true,
       raw: "{}",
       parsed: {},
@@ -823,10 +823,10 @@ describe("doctor", () => {
     });
 
     const missingDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-missing-state-"),
+      path.join(os.tmpdir(), "zee-missing-state-"),
     );
     fs.rmSync(missingDir, { recursive: true, force: true });
-    process.env.CLAWDBOT_STATE_DIR = missingDir;
+    process.env.ZEE_STATE_DIR = missingDir;
     note.mockClear();
 
     const { doctorCommand } = await import("./doctor.js");

@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const REPO = "clawdbot/clawdbot";
+const REPO = "zee/zee";
 const PER_LINE = 10;
 
 type MapConfig = {

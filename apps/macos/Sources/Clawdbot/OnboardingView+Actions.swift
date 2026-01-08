@@ -1,5 +1,5 @@
 import AppKit
-import ClawdbotIPC
+import ZeeIPC
 import SwiftUI
 
 extension OnboardingView {
@@ -29,7 +29,7 @@ extension OnboardingView {
                 user: user,
                 host: host,
                 port: gateway.sshPort)
-            ClawdbotConfigFile.setRemoteGatewayUrl(host: host, port: gateway.gatewayPort)
+            ZeeConfigFile.setRemoteGatewayUrl(host: host, port: gateway.gatewayPort)
         }
         self.state.remoteCliPath = gateway.cliPath ?? ""
 
@@ -40,7 +40,7 @@ extension OnboardingView {
     func openSettings(tab: SettingsTab) {
         SettingsTabRouter.request(tab)
         self.openSettings()
-        NotificationCenter.default.post(name: .clawdbotSelectSettingsTab, object: tab)
+        NotificationCenter.default.post(name: .zeeSelectSettingsTab, object: tab)
     }
 
     func handleBack() {
@@ -59,7 +59,7 @@ extension OnboardingView {
     }
 
     func finish() {
-        UserDefaults.standard.set(true, forKey: "clawdbot.onboardingSeen")
+        UserDefaults.standard.set(true, forKey: "zee.onboardingSeen")
         UserDefaults.standard.set(currentOnboardingVersion, forKey: onboardingVersionKey)
         OnboardingController.shared.close()
     }
@@ -105,9 +105,9 @@ extension OnboardingView {
                 code: parsed.code,
                 state: parsed.state,
                 verifier: pkce.verifier)
-            try ClawdbotOAuthStore.saveAnthropicOAuth(creds)
+            try ZeeOAuthStore.saveAnthropicOAuth(creds)
             self.refreshAnthropicOAuthStatus()
-            self.anthropicAuthStatus = "Connected. Clawdbot can now use Claude."
+            self.anthropicAuthStatus = "Connected. Zee can now use Claude."
         } catch {
             self.anthropicAuthStatus = "OAuth failed: \(error.localizedDescription)"
         }

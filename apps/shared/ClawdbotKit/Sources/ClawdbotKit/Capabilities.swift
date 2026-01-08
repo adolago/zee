@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ClawdbotCapability: String, Codable, Sendable {
+public enum ZeeCapability: String, Codable, Sendable {
     case canvas
     case camera
     case screen

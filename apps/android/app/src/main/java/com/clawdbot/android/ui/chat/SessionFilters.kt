@@ -1,6 +1,6 @@
-package com.clawdbot.android.ui.chat
+package com.zee.android.ui.chat
 
-import com.clawdbot.android.chat.ChatSessionEntry
+import com.zee.android.chat.ChatSessionEntry
 
 private const val MAIN_SESSION_KEY = "main"
 private const val RECENT_WINDOW_MS = 24 * 60 * 60 * 1000L

@@ -2,7 +2,7 @@ import {
   buildModelAliasIndex,
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
-import { CONFIG_PATH_CLAWDBOT, loadConfig } from "../../config/config.js";
+import { CONFIG_PATH_ZEE, loadConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import {
   DEFAULT_PROVIDER,
@@ -83,7 +83,7 @@ export async function modelsImageFallbacksAddCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(
     `Image fallbacks: ${(updated.agent?.imageModel?.fallbacks ?? []).join(", ")}`,
   );
@@ -136,7 +136,7 @@ export async function modelsImageFallbacksRemoveCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(
     `Image fallbacks: ${(updated.agent?.imageModel?.fallbacks ?? []).join(", ")}`,
   );
@@ -161,6 +161,6 @@ export async function modelsImageFallbacksClearCommand(runtime: RuntimeEnv) {
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log("Image fallback list cleared.");
 }

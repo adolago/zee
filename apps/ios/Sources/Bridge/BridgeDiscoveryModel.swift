@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 import Observation
@@ -51,11 +51,11 @@ final class BridgeDiscoveryModel {
         if !self.browsers.isEmpty { return }
         self.appendDebugLog("start()")
 
-        for domain in ClawdbotBonjour.bridgeServiceDomains {
+        for domain in ZeeBonjour.bridgeServiceDomains {
             let params = NWParameters.tcp
             params.includePeerToPeer = true
             let browser = NWBrowser(
-                for: .bonjour(type: ClawdbotBonjour.bridgeServiceType, domain: domain),
+                for: .bonjour(type: ZeeBonjour.bridgeServiceType, domain: domain),
                 using: params)
 
             browser.stateUpdateHandler = { [weak self] state in
@@ -102,7 +102,7 @@ final class BridgeDiscoveryModel {
             }
 
             self.browsers[domain] = browser
-            browser.start(queue: DispatchQueue(label: "com.clawdbot.ios.bridge-discovery.\(domain)"))
+            browser.start(queue: DispatchQueue(label: "com.zee.ios.bridge-discovery.\(domain)"))
         }
     }
 
@@ -200,7 +200,7 @@ final class BridgeDiscoveryModel {
 
     private static func prettifyInstanceName(_ decodedName: String) -> String {
         let normalized = decodedName.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        let stripped = normalized.replacingOccurrences(of: " (Clawdbot)", with: "")
+        let stripped = normalized.replacingOccurrences(of: " (Zee)", with: "")
             .replacingOccurrences(of: #"\s+\(\d+\)$"#, with: "", options: .regularExpression)
         return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
     }

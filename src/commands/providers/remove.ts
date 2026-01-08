@@ -1,4 +1,4 @@
-import { type ClawdbotConfig, writeConfigFile } from "../../config/config.js";
+import { type ZeeConfig, writeConfigFile } from "../../config/config.js";
 import { listDiscordAccountIds } from "../../discord/accounts.js";
 import { listIMessageAccountIds } from "../../imessage/accounts.js";
 import {
@@ -28,7 +28,7 @@ export type ProvidersRemoveOptions = {
   delete?: boolean;
 };
 
-function listAccountIds(cfg: ClawdbotConfig, provider: ChatProvider): string[] {
+function listAccountIds(cfg: ZeeConfig, provider: ChatProvider): string[] {
   switch (provider) {
     case "whatsapp":
       return listWhatsAppAccountIds(cfg);
@@ -146,7 +146,7 @@ export async function providersRemoveCommand(
           ...base,
           enabled,
         },
-      } as ClawdbotConfig;
+      } as ZeeConfig;
       return;
     }
     next = {
@@ -161,7 +161,7 @@ export async function providersRemoveCommand(
           },
         },
       },
-    } as ClawdbotConfig;
+    } as ZeeConfig;
   };
 
   const deleteAccount = (key: ChatProvider) => {
@@ -192,7 +192,7 @@ export async function providersRemoveCommand(
           ...base,
           accounts: Object.keys(accounts).length ? accounts : undefined,
         },
-      } as ClawdbotConfig;
+      } as ZeeConfig;
       return;
     }
     if (base?.accounts && Object.keys(base.accounts).length > 0) {
@@ -228,13 +228,13 @@ export async function providersRemoveCommand(
                       }
                     : {}),
         },
-      } as ClawdbotConfig;
+      } as ZeeConfig;
       return;
     }
     // No accounts map: remove entire provider section.
     const clone = { ...next } as Record<string, unknown>;
     delete clone[key];
-    next = clone as ClawdbotConfig;
+    next = clone as ZeeConfig;
   };
 
   if (deleteConfig) {

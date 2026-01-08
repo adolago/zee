@@ -12,14 +12,14 @@ surface anything that needs attention without spamming the user.
 - Interval: `30m` (set `agent.heartbeat.every` to change, `0m` disables).
 - Prompt body (configurable via `agent.heartbeat.prompt`):
   `Read HEARTBEAT.md if exists. Consider outstanding tasks. Checkup sometimes on your human during (user local) day time.`
-- Heartbeat prompt text is sent **verbatim** as the user message. Clawdbot does
+- Heartbeat prompt text is sent **verbatim** as the user message. Zee does
   not append extra body text. The system prompt includes a Heartbeats section
   and the run is flagged as a heartbeat internally.
 
 ## Prompt contract
 - If nothing needs attention, the model should reply `HEARTBEAT_OK`.
-- During heartbeat runs, Clawdbot treats `HEARTBEAT_OK` as an ack when it appears at
-  the **start or end** of the reply. Clawdbot strips the token and discards the
+- During heartbeat runs, Zee treats `HEARTBEAT_OK` as an ack when it appears at
+  the **start or end** of the reply. Zee strips the token and discards the
   reply if the remaining content is **≤ `ackMaxChars`** (default: 30).
 - If `HEARTBEAT_OK` is in the **middle** of a reply, it is not treated specially.
 - For alerts, do **not** include `HEARTBEAT_OK`; return only the alert text.
@@ -33,12 +33,12 @@ surface anything that needs attention without spamming the user.
 
 ### Stray `HEARTBEAT_OK` outside heartbeats
 If the model accidentally includes `HEARTBEAT_OK` at the start or end of a
-normal (non-heartbeat) reply, Clawdbot strips the token and logs a verbose
+normal (non-heartbeat) reply, Zee strips the token and logs a verbose
 message. If the reply is only `HEARTBEAT_OK`, it is dropped.
 
 ### Outbound normalization (all providers)
 For **all providers** (WhatsApp/Web, Telegram, Slack, Discord, Signal, iMessage),
-Clawdbot applies the same filtering to tool summaries, streaming block replies,
+Zee applies the same filtering to tool summaries, streaming block replies,
 and final replies:
 - drop payloads that are only `HEARTBEAT_OK` with no media
 - strip `HEARTBEAT_OK` at the edges when mixed with other text

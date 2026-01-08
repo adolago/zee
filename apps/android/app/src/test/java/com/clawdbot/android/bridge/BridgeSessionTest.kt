@@ -1,4 +1,4 @@
-package com.clawdbot.android.bridge
+package com.zee.android.bridge
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

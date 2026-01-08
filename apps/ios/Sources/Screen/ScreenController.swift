@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Observation
 import SwiftUI
 import WebKit
@@ -13,7 +13,7 @@ final class ScreenController {
     var urlString: String = ""
     var errorText: String?
 
-    /// Callback invoked when a clawdbot:// deep link is tapped in the canvas
+    /// Callback invoked when a zee:// deep link is tapped in the canvas
     var onDeepLink: ((URL) -> Void)?
 
     /// Callback invoked when the user clicks an A2UI action (e.g. button) inside the canvas web UI.
@@ -101,7 +101,7 @@ final class ScreenController {
         let js = """
         (() => {
           try {
-            const api = globalThis.__clawdbot;
+            const api = globalThis.__zee;
             if (!api) return;
             if (typeof api.setDebugStatusEnabled === 'function') {
               api.setDebugStatusEnabled(\(enabled ? "true" : "false"));
@@ -124,7 +124,7 @@ final class ScreenController {
                 let res = try await self.eval(javaScript: """
                 (() => {
                   try {
-                    return !!globalThis.clawdbotA2UI && typeof globalThis.clawdbotA2UI.applyMessages === 'function';
+                    return !!globalThis.zeeA2UI && typeof globalThis.zeeA2UI.applyMessages === 'function';
                   } catch (_) { return false; }
                 })()
                 """)
@@ -184,7 +184,7 @@ final class ScreenController {
 
     func snapshotBase64(
         maxWidth: CGFloat? = nil,
-        format: ClawdbotCanvasSnapshotFormat,
+        format: ZeeCanvasSnapshotFormat,
         quality: Double? = nil) async throws -> String
     {
         let config = WKSnapshotConfiguration()
@@ -229,7 +229,7 @@ final class ScreenController {
         subdirectory: String)
         -> URL?
     {
-        let bundle = ClawdbotKitResources.bundle
+        let bundle = ZeeKitResources.bundle
         return bundle.url(forResource: name, withExtension: ext, subdirectory: subdirectory)
             ?? bundle.url(forResource: name, withExtension: ext)
     }
@@ -342,7 +342,7 @@ extension Double {
 
 // MARK: - Navigation Delegate
 
-/// Handles navigation policy to intercept clawdbot:// deep links from canvas
+/// Handles navigation policy to intercept zee:// deep links from canvas
 @MainActor
 private final class ScreenNavigationDelegate: NSObject, WKNavigationDelegate {
     weak var controller: ScreenController?
@@ -357,8 +357,8 @@ private final class ScreenNavigationDelegate: NSObject, WKNavigationDelegate {
             return
         }
 
-        // Intercept clawdbot:// deep links
-        if url.scheme == "clawdbot" {
+        // Intercept zee:// deep links
+        if url.scheme == "zee" {
             decisionHandler(.cancel)
             self.controller?.onDeepLink?(url)
             return
@@ -386,7 +386,7 @@ private final class ScreenNavigationDelegate: NSObject, WKNavigationDelegate {
 }
 
 private final class CanvasA2UIActionMessageHandler: NSObject, WKScriptMessageHandler {
-    static let messageName = "clawdbotCanvasA2UIAction"
+    static let messageName = "zeeCanvasA2UIAction"
     static let legacyMessageNames = ["canvas", "a2ui", "userAction", "action"]
     static let handlerNames = [messageName] + legacyMessageNames
 

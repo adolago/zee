@@ -1,5 +1,5 @@
-import ClawdbotKit
-import ClawdbotProtocol
+import ZeeKit
+import ZeeProtocol
 import Foundation
 import Observation
 import SwiftUI
@@ -54,7 +54,7 @@ final class WorkActivityStore {
         phase: String,
         name: String?,
         meta: String?,
-        args: [String: ClawdbotProtocol.AnyCodable]?)
+        args: [String: ZeeProtocol.AnyCodable]?)
     {
         let toolKind = Self.mapToolKind(name)
         let label = Self.buildLabel(name: name, meta: meta, args: args)
@@ -212,7 +212,7 @@ final class WorkActivityStore {
     private static func buildLabel(
         name: String?,
         meta: String?,
-        args: [String: ClawdbotProtocol.AnyCodable]?) -> String
+        args: [String: ZeeProtocol.AnyCodable]?) -> String
     {
         let wrappedArgs = self.wrapToolArgs(args)
         let display = ToolDisplayRegistry.resolve(name: name ?? "tool", args: wrappedArgs, meta: meta)
@@ -222,17 +222,17 @@ final class WorkActivityStore {
         return display.label
     }
 
-    private static func wrapToolArgs(_ args: [String: ClawdbotProtocol.AnyCodable]?) -> ClawdbotKit.AnyCodable? {
+    private static func wrapToolArgs(_ args: [String: ZeeProtocol.AnyCodable]?) -> ZeeKit.AnyCodable? {
         guard let args else { return nil }
         let converted: [String: Any] = args.mapValues { self.unwrapJSONValue($0.value) }
-        return ClawdbotKit.AnyCodable(converted)
+        return ZeeKit.AnyCodable(converted)
     }
 
     private static func unwrapJSONValue(_ value: Any) -> Any {
-        if let dict = value as? [String: ClawdbotProtocol.AnyCodable] {
+        if let dict = value as? [String: ZeeProtocol.AnyCodable] {
             return dict.mapValues { self.unwrapJSONValue($0.value) }
         }
-        if let array = value as? [ClawdbotProtocol.AnyCodable] {
+        if let array = value as? [ZeeProtocol.AnyCodable] {
             return array.map { self.unwrapJSONValue($0.value) }
         }
         if let dict = value as? [String: Any] {

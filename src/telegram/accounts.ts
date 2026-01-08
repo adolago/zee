@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { TelegramAccountConfig } from "../config/types.js";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -15,26 +15,26 @@ export type ResolvedTelegramAccount = {
   config: TelegramAccountConfig;
 };
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: ZeeConfig): string[] {
   const accounts = cfg.telegram?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listTelegramAccountIds(cfg: ClawdbotConfig): string[] {
+export function listTelegramAccountIds(cfg: ZeeConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultTelegramAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultTelegramAccountId(cfg: ZeeConfig): string {
   const ids = listTelegramAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): TelegramAccountConfig | undefined {
   const accounts = cfg.telegram?.accounts;
@@ -43,7 +43,7 @@ function resolveAccountConfig(
 }
 
 function mergeTelegramAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): TelegramAccountConfig {
   const { accounts: _ignored, ...base } = (cfg.telegram ??
@@ -53,7 +53,7 @@ function mergeTelegramAccountConfig(
 }
 
 export function resolveTelegramAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   accountId?: string | null;
 }): ResolvedTelegramAccount {
   const accountId = normalizeAccountId(params.accountId);
@@ -73,7 +73,7 @@ export function resolveTelegramAccount(params: {
 }
 
 export function listEnabledTelegramAccounts(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): ResolvedTelegramAccount[] {
   return listTelegramAccountIds(cfg)
     .map((accountId) => resolveTelegramAccount({ cfg, accountId }))

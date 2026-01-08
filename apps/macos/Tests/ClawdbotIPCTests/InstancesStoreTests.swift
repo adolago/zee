@@ -1,6 +1,6 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct InstancesStoreTests {
     @Test
@@ -8,7 +8,7 @@ import Testing
     func presenceEventPayloadDecodesViaJSONEncoder() {
         // Build a payload that mirrors the gateway's presence event shape:
         // { "presence": [ PresenceEntry ] }
-        let entry: [String: ClawdbotProtocol.AnyCodable] = [
+        let entry: [String: ZeeProtocol.AnyCodable] = [
             "host": .init("gw"),
             "ip": .init("10.0.0.1"),
             "version": .init("2.0.0"),
@@ -18,10 +18,10 @@ import Testing
             "text": .init("Gateway node"),
             "ts": .init(1_730_000_000),
         ]
-        let payloadMap: [String: ClawdbotProtocol.AnyCodable] = [
-            "presence": .init([ClawdbotProtocol.AnyCodable(entry)]),
+        let payloadMap: [String: ZeeProtocol.AnyCodable] = [
+            "presence": .init([ZeeProtocol.AnyCodable(entry)]),
         ]
-        let payload = ClawdbotProtocol.AnyCodable(payloadMap)
+        let payload = ZeeProtocol.AnyCodable(payloadMap)
 
         let store = InstancesStore(isPreview: true)
         store.handlePresenceEventPayload(payload)

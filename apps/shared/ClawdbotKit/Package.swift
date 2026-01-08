@@ -3,21 +3,21 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClawdbotKit",
+    name: "ZeeKit",
     platforms: [
         .iOS(.v17),
         .macOS(.v15),
     ],
     products: [
-        .library(name: "ClawdbotKit", targets: ["ClawdbotKit"]),
-        .library(name: "ClawdbotChatUI", targets: ["ClawdbotChatUI"]),
+        .library(name: "ZeeKit", targets: ["ZeeKit"]),
+        .library(name: "ZeeChatUI", targets: ["ZeeChatUI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/steipete/ElevenLabsKit", exact: "0.1.0"),
     ],
     targets: [
         .target(
-            name: "ClawdbotKit",
+            name: "ZeeKit",
             dependencies: [
                 .product(name: "ElevenLabsKit", package: "ElevenLabsKit"),
             ],
@@ -28,14 +28,14 @@ let package = Package(
                 .enableUpcomingFeature("StrictConcurrency"),
             ]),
         .target(
-            name: "ClawdbotChatUI",
-            dependencies: ["ClawdbotKit"],
+            name: "ZeeChatUI",
+            dependencies: ["ZeeKit"],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]),
         .testTarget(
-            name: "ClawdbotKitTests",
-            dependencies: ["ClawdbotKit", "ClawdbotChatUI"],
+            name: "ZeeKitTests",
+            dependencies: ["ZeeKit", "ZeeChatUI"],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
                 .enableExperimentalFeature("SwiftTesting"),

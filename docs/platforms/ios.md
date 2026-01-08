@@ -36,14 +36,14 @@ The Gateway WebSocket stays loopback-only (`ws://127.0.0.1:18789`). The iOS node
   - Same LAN with Bonjour/mDNS, **or**
   - Same Tailscale tailnet using Wide-Area Bonjour / unicast DNS-SD (see below), **or**
   - Manual bridge host/port (fallback)
-- You can run the CLI (`clawdbot`) on the gateway machine (or via SSH).
+- You can run the CLI (`zee`) on the gateway machine (or via SSH).
 
 ### 1) Start the Gateway (with bridge enabled)
 
-Bridge is enabled by default (disable via `CLAWDBOT_BRIDGE_ENABLED=0`).
+Bridge is enabled by default (disable via `ZEE_BRIDGE_ENABLED=0`).
 
 ```bash
-clawdbot gateway --port 18789 --verbose
+zee gateway --port 18789 --verbose
 ```
 
 Confirm in logs you see something like:
@@ -51,7 +51,7 @@ Confirm in logs you see something like:
 
 For tailnet-only setups (recommended for Vienna ⇄ London), bind the bridge to the gateway machine’s Tailscale IP instead:
 
-- Set `bridge.bind: "tailnet"` in `~/.clawdbot/clawdbot.json` on the gateway host.
+- Set `bridge.bind: "tailnet"` in `~/.zee/zee.json` on the gateway host.
 - Restart the Gateway / macOS menubar app.
 
 ### 2) Verify Bonjour discovery (optional but recommended)
@@ -59,15 +59,15 @@ For tailnet-only setups (recommended for Vienna ⇄ London), bind the bridge to 
 From the gateway machine:
 
 ```bash
-dns-sd -B _clawdbot-bridge._tcp local.
+dns-sd -B _zee-bridge._tcp local.
 ```
 
-You should see your gateway advertising `_clawdbot-bridge._tcp`.
+You should see your gateway advertising `_zee-bridge._tcp`.
 
 If browse works, but the iOS node can’t connect, try resolving one instance:
 
 ```bash
-dns-sd -L "<instance name>" _clawdbot-bridge._tcp local.
+dns-sd -L "<instance name>" _zee-bridge._tcp local.
 ```
 
 More debugging notes: [`docs/bonjour.md`](/gateway/bonjour).
@@ -76,8 +76,8 @@ More debugging notes: [`docs/bonjour.md`](/gateway/bonjour).
 
 If the iOS node and the gateway are on different networks but connected via Tailscale, multicast mDNS won’t cross the boundary. Use Wide-Area Bonjour / unicast DNS-SD instead:
 
-1) Set up a DNS-SD zone (example `clawdbot.internal.`) on the gateway host and publish `_clawdbot-bridge._tcp` records.
-2) Configure Tailscale split DNS for `clawdbot.internal` pointing at that DNS server.
+1) Set up a DNS-SD zone (example `zee.internal.`) on the gateway host and publish `_zee-bridge._tcp` records.
+2) Configure Tailscale split DNS for `zee.internal` pointing at that DNS server.
 
 Details and example CoreDNS config: [`docs/bonjour.md`](/gateway/bonjour).
 
@@ -100,13 +100,13 @@ The Settings tab icon shows a small status dot:
 On the gateway machine:
 
 ```bash
-clawdbot nodes pending
+zee nodes pending
 ```
 
 Approve the request:
 
 ```bash
-clawdbot nodes approve <requestId>
+zee nodes approve <requestId>
 ```
 
 After approval, the iOS node receives/stores the token and reconnects authenticated.
@@ -118,24 +118,24 @@ Pairing details: [`docs/gateway/pairing.md`](/gateway/pairing).
 - In the macOS app: **Instances** tab should show something like `iOS Node (...)` with a green “Active” presence dot shortly after connect.
 - Via nodes status (paired + connected):
   ```bash
-  clawdbot nodes status
+  zee nodes status
   ```
 - Via Gateway (paired + connected):
   ```bash
-  clawdbot gateway call node.list --params "{}"
+  zee gateway call node.list --params "{}"
   ```
 - Via Gateway presence (legacy-ish, still useful):
   ```bash
-  clawdbot gateway call system-presence --params "{}"
+  zee gateway call system-presence --params "{}"
   ```
   Look for the node `instanceId` (often a UUID).
 
 ### 6) Drive the iOS Canvas (draw / snapshot)
 
 The iOS node runs a WKWebView “Canvas” scaffold which exposes:
-- `window.__clawdbot.canvas`
-- `window.__clawdbot.ctx` (2D context)
-- `window.__clawdbot.setStatus(title, subtitle)`
+- `window.__zee.canvas`
+- `window.__zee.ctx` (2D context)
+- `window.__zee.setStatus(title, subtitle)`
 
 #### Gateway Canvas Host (recommended for web content)
 
@@ -148,20 +148,20 @@ Note: nodes always use the standalone canvas host on `canvasHost.port` (default 
 2) Navigate the node to it (LAN):
 
 ```bash
-clawdbot nodes invoke --node "iOS Node" --command canvas.navigate --params '{"url":"http://<gateway-hostname>.local:18793/__clawdbot__/canvas/"}'
+zee nodes invoke --node "iOS Node" --command canvas.navigate --params '{"url":"http://<gateway-hostname>.local:18793/__zee__/canvas/"}'
 ```
 
 Notes:
 - The server injects a live-reload client into HTML and reloads on file changes.
-- A2UI is hosted on the same canvas host at `http://<gateway-host>:18793/__clawdbot__/a2ui/`.
-- Tailnet (optional): if both devices are on Tailscale, use a MagicDNS name or tailnet IP instead of `.local`, e.g. `http://<gateway-magicdns>:18793/__clawdbot__/canvas/`.
+- A2UI is hosted on the same canvas host at `http://<gateway-host>:18793/__zee__/a2ui/`.
+- Tailnet (optional): if both devices are on Tailscale, use a MagicDNS name or tailnet IP instead of `.local`, e.g. `http://<gateway-magicdns>:18793/__zee__/canvas/`.
 - iOS may require App Transport Security allowances to load plain `http://` URLs; if it fails to load, prefer HTTPS or adjust the iOS app’s ATS config.
 
 #### Draw with `canvas.eval`
 
 ```bash
-clawdbot nodes invoke --node "iOS Node" --command canvas.eval --params "$(cat <<'JSON'
-{"javaScript":"(() => { const {ctx,setStatus} = window.__clawdbot; setStatus('Drawing','…'); ctx.clearRect(0,0,innerWidth,innerHeight); ctx.lineWidth=6; ctx.strokeStyle='#ff2d55'; ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(innerWidth-40, innerHeight-40); ctx.stroke(); setStatus(null,null); return 'ok'; })()"}
+zee nodes invoke --node "iOS Node" --command canvas.eval --params "$(cat <<'JSON'
+{"javaScript":"(() => { const {ctx,setStatus} = window.__zee; setStatus('Drawing','…'); ctx.clearRect(0,0,innerWidth,innerHeight); ctx.lineWidth=6; ctx.strokeStyle='#ff2d55'; ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(innerWidth-40, innerHeight-40); ctx.stroke(); setStatus(null,null); return 'ok'; })()"}
 JSON
 )"
 ```
@@ -169,7 +169,7 @@ JSON
 #### Snapshot with `canvas.snapshot`
 
 ```bash
-clawdbot nodes invoke --node 192.168.0.88 --command canvas.snapshot --params '{"maxWidth":900}'
+zee nodes invoke --node 192.168.0.88 --command canvas.snapshot --params '{"maxWidth":900}'
 ```
 
 The response includes `{ format, base64 }` image data (default `format="jpeg"`; pass `{"format":"png"}` when you specifically need lossless PNG).
@@ -186,7 +186,7 @@ The response includes `{ format, base64 }` image data (default `format="jpeg"`; 
 ## Design + Architecture
 
 ### Goals
-- Build an **iOS app** that acts as a **remote node** for Clawdbot:
+- Build an **iOS app** that acts as a **remote node** for Zee:
   - **Voice trigger** (wake-word / always-listening intent) that forwards transcripts to the Gateway `agent` method.
   - **Canvas** surface that the agent can control: navigate, draw/render, evaluate JS, snapshot.
 - **Dead-simple setup**:
@@ -203,8 +203,8 @@ Non-goals (v1):
 - Perfect App Store compliance; this is **internal-only** initially.
 
 ### Current repo reality (constraints we respect)
-- The Gateway WebSocket server binds to `127.0.0.1:18789` ([`src/gateway/server.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/server.ts)) with an optional `CLAWDBOT_GATEWAY_TOKEN`.
-- The Gateway exposes a Canvas file server (`canvasHost`) on `canvasHost.port` (default `18793`), so nodes can `canvas.navigate` to `http://<lanHost>:18793/__clawdbot__/canvas/` and auto-reload on file changes ([`docs/configuration.md`](/gateway/configuration)).
+- The Gateway WebSocket server binds to `127.0.0.1:18789` ([`src/gateway/server.ts`](https://github.com/zee/zee/blob/main/src/gateway/server.ts)) with an optional `ZEE_GATEWAY_TOKEN`.
+- The Gateway exposes a Canvas file server (`canvasHost`) on `canvasHost.port` (default `18793`), so nodes can `canvas.navigate` to `http://<lanHost>:18793/__zee__/canvas/` and auto-reload on file changes ([`docs/configuration.md`](/gateway/configuration)).
 - macOS “Canvas” is controlled via the Gateway node protocol (`canvas.*`), matching iOS/Android ([`docs/mac/canvas.md`](/platforms/mac/canvas)).
 - Voice wake forwards via `GatewayChannel` to Gateway `agent` (mac app: `VoiceWakeForwarder` → `GatewayConnection.sendAgent`).
 
@@ -224,13 +224,13 @@ Why:
 - **Next:** wrap the bridge in **TLS** and prefer key-pinned or mTLS-like auth after pairing.
 
 #### Pairing
-- Bonjour discovery shows a candidate “Clawdbot Bridge” on the LAN.
+- Bonjour discovery shows a candidate “Zee Bridge” on the LAN.
 - First connection:
   1) iOS generates a keypair (Secure Enclave if available).
   2) iOS connects to the bridge and requests pairing.
   3) The bridge forwards the pairing request to the **Gateway** as a *pending request*.
   4) Approval can happen via:
-     - **macOS UI** (Clawdbot shows an alert with Approve/Reject/Later, including the node IP), or
+     - **macOS UI** (Zee shows an alert with Approve/Reject/Later, including the node IP), or
      - **Terminal/CLI** (headless flows).
   5) Once approved, the bridge returns a token to iOS; iOS stores it in Keychain.
 - Subsequent connections:
@@ -244,14 +244,14 @@ Key idea:
 
 Desired behavior:
 - If the Swift UI is present: show alert with Approve/Reject/Later.
-- If the Swift UI is not present: `clawdbot` CLI can list pending requests and approve/reject.
+- If the Swift UI is not present: `zee` CLI can list pending requests and approve/reject.
 
 See [`docs/gateway/pairing.md`](/gateway/pairing) for the API/events and storage.
 
 CLI (headless approvals):
-- `clawdbot nodes pending`
-- `clawdbot nodes approve <requestId>`
-- `clawdbot nodes reject <requestId>`
+- `zee nodes pending`
+- `zee nodes approve <requestId>`
+- `zee nodes reject <requestId>`
 
 #### Authorization / scope control (bridge-side ACL)
 The bridge must not be a raw proxy to every gateway method.
@@ -276,7 +276,7 @@ Unify mac Canvas + iOS Canvas under a single conceptual surface:
   - remote iOS node via the bridge
 
 #### Minimal protocol additions (v1)
-Add to [`src/gateway/protocol/schema.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/protocol/schema.ts) (and regenerate Swift models):
+Add to [`src/gateway/protocol/schema.ts`](https://github.com/zee/zee/blob/main/src/gateway/protocol/schema.ts) (and regenerate Swift models):
 
 **Identity**
 - Node identity comes from `connect.params.client.instanceId` (stable), and `connect.params.client.mode = "node"` (or `"ios-node"`).
@@ -301,7 +301,7 @@ These are values for `node.invoke.command`:
   - `canvas.a2ui.push` with `{ messages: [...] }` (A2UI v0.8 server→client messages)
   - `canvas.a2ui.pushJSONL` with `{ jsonl: "..." }` (legacy alias)
   - `canvas.a2ui.reset`
-  - A2UI is hosted by the Gateway canvas host (`/__clawdbot__/a2ui/`) on `canvasHost.port`. Commands fail if the host is unreachable.
+  - A2UI is hosted by the Gateway canvas host (`/__zee__/a2ui/`) on `canvasHost.port`. Commands fail if the host is unreachable.
 
 Result pattern:
 - Request is a standard `req/res` with `ok` / `error`.
@@ -312,7 +312,7 @@ As of 2025-12-13, the Gateway supports `node.invoke` for bridge-connected nodes.
 
 Example: draw a diagonal line on the iOS Canvas:
 ```bash
-clawdbot nodes invoke --node ios-node --command canvas.eval --params '{"javaScript":"(() => { const {ctx} = window.__clawdbot; ctx.clearRect(0,0,innerWidth,innerHeight); ctx.lineWidth=6; ctx.strokeStyle=\"#ff2d55\"; ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(innerWidth-40, innerHeight-40); ctx.stroke(); return \"ok\"; })()"}'
+zee nodes invoke --node ios-node --command canvas.eval --params '{"javaScript":"(() => { const {ctx} = window.__zee; ctx.clearRect(0,0,innerWidth,innerHeight); ctx.lineWidth=6; ctx.strokeStyle=\"#ff2d55\"; ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(innerWidth-40, innerHeight-40); ctx.stroke(); return \"ok\"; })()"}'
 ```
 
 ### Background behavior requirement
@@ -342,9 +342,9 @@ When iOS is backgrounded:
 
 ## Code sharing (macOS + iOS)
 Create/expand SwiftPM targets so both apps share:
-- `ClawdbotProtocol` (generated models; platform-neutral)
-- `ClawdbotGatewayClient` (shared WS framing + connect/req/res + seq-gap handling)
-- `ClawdbotKit` (node/canvas command types + deep links + shared utilities)
+- `ZeeProtocol` (generated models; platform-neutral)
+- `ZeeGatewayClient` (shared WS framing + connect/req/res + seq-gap handling)
+- `ZeeKit` (node/canvas command types + deep links + shared utilities)
 
 macOS continues to own:
 - local Canvas implementation details (custom scheme handler serving on-disk HTML, window/panel presentation)
@@ -361,15 +361,15 @@ Generate the Xcode project:
 ```bash
 cd apps/ios
 xcodegen generate
-open Clawdbot.xcodeproj
+open Zee.xcodeproj
 ```
 
 ## Storage plan (private by default)
 ### iOS
 - Canvas/workspace files (persistent, private):
-  - `Application Support/Clawdbot/canvas/<sessionKey>/...`
+  - `Application Support/Zee/canvas/<sessionKey>/...`
 - Snapshots / temp exports (evictable):
-  - `Library/Caches/Clawdbot/canvas-snapshots/<sessionKey>/...`
+  - `Library/Caches/Zee/canvas-snapshots/<sessionKey>/...`
 - Credentials:
   - Keychain (paired identity + bridge trust anchor)
 

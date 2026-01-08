@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui
+package com.zee.android.ui
 
 import android.Manifest
 import android.content.Context
@@ -52,11 +52,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.clawdbot.android.BuildConfig
-import com.clawdbot.android.LocationMode
-import com.clawdbot.android.MainViewModel
-import com.clawdbot.android.NodeForegroundService
-import com.clawdbot.android.VoiceWakeMode
+import com.zee.android.BuildConfig
+import com.zee.android.LocationMode
+import com.zee.android.MainViewModel
+import com.zee.android.NodeForegroundService
+import com.zee.android.VoiceWakeMode
 
 @Composable
 fun SettingsSheet(viewModel: MainViewModel) {
@@ -436,7 +436,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
           ListItem(
             headlineContent = { Text("Foreground Only") },
-            supportingContent = { Text("Listens only while Clawdbot is open.") },
+            supportingContent = { Text("Listens only while Zee is open.") },
             trailingContent = {
               RadioButton(
                 selected = voiceWakeMode == VoiceWakeMode.Foreground,
@@ -482,7 +482,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
       Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
           onClick = {
-            val parsed = com.clawdbot.android.WakeWords.parseCommaSeparated(wakeWordsText)
+            val parsed = com.zee.android.WakeWords.parseCommaSeparated(wakeWordsText)
             viewModel.setWakeWords(parsed)
           },
           enabled = isConnected,
@@ -580,7 +580,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
         )
         ListItem(
           headlineContent = { Text("While Using") },
-          supportingContent = { Text("Only while Clawdbot is open.") },
+          supportingContent = { Text("Only while Zee is open.") },
           trailingContent = {
             RadioButton(
               selected = locationMode == LocationMode.WhileUsing,
@@ -627,7 +627,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     item {
       ListItem(
         headlineContent = { Text("Prevent Sleep") },
-        supportingContent = { Text("Keeps the screen awake while Clawdbot is open.") },
+        supportingContent = { Text("Keeps the screen awake while Zee is open.") },
         trailingContent = { Switch(checked = preventSleep, onCheckedChange = viewModel::setPreventSleep) },
       )
     }

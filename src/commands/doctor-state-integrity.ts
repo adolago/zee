@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { note } from "@clack/prompts";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveOAuthDir, resolveStateDir } from "../config/paths.js";
 import {
   loadSessionStore,
@@ -112,7 +112,7 @@ function findOtherStateDirs(stateDir: string): string[] {
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       if (entry.name.startsWith(".")) continue;
-      const candidate = path.resolve(root, entry.name, ".clawdbot");
+      const candidate = path.resolve(root, entry.name, ".zee");
       if (candidate === resolvedState) continue;
       if (existsDir(candidate)) found.push(candidate);
     }
@@ -121,7 +121,7 @@ function findOtherStateDirs(stateDir: string): string[] {
 }
 
 export async function noteStateIntegrity(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   prompter: DoctorPrompterLike,
 ) {
   const warnings: string[] = [];
@@ -129,7 +129,7 @@ export async function noteStateIntegrity(
   const env = process.env;
   const homedir = os.homedir;
   const stateDir = resolveStateDir(env, homedir);
-  const defaultStateDir = path.join(homedir(), ".clawdbot");
+  const defaultStateDir = path.join(homedir(), ".zee");
   const oauthDir = resolveOAuthDir(env, stateDir);
   const agentId = normalizeAgentId(
     cfg.routing?.defaultAgentId ?? DEFAULT_AGENT_ID,
@@ -316,7 +316,7 @@ export function noteWorkspaceBackupTip(workspaceDir: string) {
   note(
     [
       "- Tip: back up the workspace in a private git repo (GitHub or GitLab).",
-      "- Keep ~/.clawdbot out of git; it contains credentials and session history.",
+      "- Keep ~/.zee out of git; it contains credentials and session history.",
       "- Details: /concepts/agent-workspace#git-backup-recommended",
     ].join("\n"),
     "Workspace",

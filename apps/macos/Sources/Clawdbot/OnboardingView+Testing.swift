@@ -13,7 +13,7 @@ extension OnboardingView {
             tailnetDns: "bridge.ts.net",
             sshPort: 2222,
             gatewayPort: 18789,
-            cliPath: "/usr/local/bin/clawdbot",
+            cliPath: "/usr/local/bin/zee",
             stableID: "bridge-1",
             debugID: "bridge-1",
             isLocal: false)
@@ -27,14 +27,14 @@ extension OnboardingView {
         view.localGatewayProbe = LocalGatewayProbe(
             port: GatewayEnvironment.gatewayPort(),
             pid: 123,
-            command: "clawdbot-gateway",
+            command: "zee-gateway",
             expected: true)
         view.showAdvancedConnection = true
         view.preferredGatewayID = gateway.stableID
         view.cliInstalled = true
-        view.cliInstallLocation = "/usr/local/bin/clawdbot"
+        view.cliInstallLocation = "/usr/local/bin/zee"
         view.cliStatus = "Installed"
-        view.workspacePath = "/tmp/clawdbot"
+        view.workspacePath = "/tmp/zee"
         view.workspaceStatus = "Saved workspace"
         view.anthropicAuthPKCE = AnthropicOAuth.PKCE(verifier: "verifier", challenge: "challenge")
         view.anthropicAuthCode = "code#state"

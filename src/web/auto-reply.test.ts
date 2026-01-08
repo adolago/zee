@@ -18,7 +18,7 @@ vi.mock("../agents/pi-embedded.js", () => ({
 
 import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
 import { getReplyFromConfig } from "../auto-reply/reply.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resetLogger, setLoggerOverride } from "../logging.js";
 import {
   HEARTBEAT_TOKEN,
@@ -58,7 +58,7 @@ const rmDirWithRetries = async (dir: string): Promise<void> => {
 
 beforeEach(async () => {
   previousHome = process.env.HOME;
-  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-web-home-"));
+  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "zee-web-home-"));
   process.env.HOME = tempHome;
 });
 
@@ -73,7 +73,7 @@ afterEach(async () => {
 const makeSessionStore = async (
   entries: Record<string, unknown> = {},
 ): Promise<{ storePath: string; cleanup: () => Promise<void> }> => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-session-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-session-"));
   const storePath = path.join(dir, "sessions.json");
   await fs.writeFile(storePath, JSON.stringify(entries));
   const cleanup = async () => {
@@ -112,7 +112,7 @@ describe("partial reply gating", () => {
 
     const replyResolver = vi.fn().mockResolvedValue({ text: "final reply" });
 
-    const mockConfig: ClawdbotConfig = {
+    const mockConfig: ZeeConfig = {
       whatsapp: {
         allowFrom: ["*"],
       },
@@ -160,7 +160,7 @@ describe("partial reply gating", () => {
 
     const replyResolver = vi.fn().mockResolvedValue(undefined);
 
-    const mockConfig: ClawdbotConfig = {
+    const mockConfig: ZeeConfig = {
       whatsapp: {
         allowFrom: ["*"],
       },
@@ -224,7 +224,7 @@ describe("partial reply gating", () => {
 
     const replyResolver = vi.fn().mockResolvedValue(undefined);
 
-    const mockConfig: ClawdbotConfig = {
+    const mockConfig: ZeeConfig = {
       whatsapp: {
         allowFrom: ["*"],
       },
@@ -344,7 +344,7 @@ describe("typing controller idle", () => {
       return { text: "final reply" };
     });
 
-    const mockConfig: ClawdbotConfig = {
+    const mockConfig: ZeeConfig = {
       whatsapp: {
         allowFrom: ["*"],
       },
@@ -633,11 +633,11 @@ describe("web auto-reply", () => {
       const firstArgs = resolver.mock.calls[0][0];
       const secondArgs = resolver.mock.calls[1][0];
       expect(firstArgs.Body).toContain(
-        "[WhatsApp +1 2025-01-01T00:00Z] [clawdbot] first",
+        "[WhatsApp +1 2025-01-01T00:00Z] [zee] first",
       );
       expect(firstArgs.Body).not.toContain("second");
       expect(secondArgs.Body).toContain(
-        "[WhatsApp +1 2025-01-01T01:00Z] [clawdbot] second",
+        "[WhatsApp +1 2025-01-01T01:00Z] [zee] second",
       );
       expect(secondArgs.Body).not.toContain("first");
 
@@ -1449,7 +1449,7 @@ describe("web auto-reply", () => {
 
   it("emits heartbeat logs with connection metadata", async () => {
     vi.useFakeTimers();
-    const logPath = `/tmp/clawdbot-heartbeat-${crypto.randomUUID()}.log`;
+    const logPath = `/tmp/zee-heartbeat-${crypto.randomUUID()}.log`;
     setLoggerOverride({ level: "trace", file: logPath });
 
     const runtime = {
@@ -1491,7 +1491,7 @@ describe("web auto-reply", () => {
   });
 
   it("logs outbound replies to file", async () => {
-    const logPath = `/tmp/clawdbot-log-test-${crypto.randomUUID()}.log`;
+    const logPath = `/tmp/zee-log-test-${crypto.randomUUID()}.log`;
     setLoggerOverride({ level: "trace", file: logPath });
 
     let capturedOnMessage:

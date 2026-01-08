@@ -5,7 +5,7 @@ import {
   scanOpenRouterModels,
 } from "../../agents/model-scan.js";
 import { withProgressTotals } from "../../cli/progress.js";
-import { CONFIG_PATH_CLAWDBOT, loadConfig } from "../../config/config.js";
+import { CONFIG_PATH_ZEE, loadConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { formatMs, formatTokenK, updateConfig } from "./shared.js";
 
@@ -362,7 +362,7 @@ export async function modelsScanCommand(
     return;
   }
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(`Fallbacks: ${selected.join(", ")}`);
   if (selectedImages.length > 0) {
     runtime.log(`Image fallbacks: ${selectedImages.join(", ")}`);

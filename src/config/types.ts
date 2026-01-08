@@ -774,7 +774,7 @@ export type RoutingConfig = {
 };
 
 export type MessagesConfig = {
-  messagePrefix?: string; // Prefix added to all inbound messages (default: "[clawdbot]" if no allowFrom, else "")
+  messagePrefix?: string; // Prefix added to all inbound messages (default: "[zee]" if no allowFrom, else "")
   responsePrefix?: string; // Prefix auto-added to all outbound replies (e.g., "🦞")
   /** Emoji reaction used to acknowledge inbound messages (empty disables). */
   ackReaction?: string;
@@ -842,7 +842,7 @@ export type TalkConfig = {
 export type GatewayControlUiConfig = {
   /** If false, the Gateway will not serve the Control UI (default /). */
   enabled?: boolean;
-  /** Optional base path prefix for the Control UI (e.g. "/clawdbot"). */
+  /** Optional base path prefix for the Control UI (e.g. "/zee"). */
   basePath?: string;
 };
 
@@ -1022,7 +1022,7 @@ export type AgentContextPruningConfig = {
   };
 };
 
-export type ClawdbotConfig = {
+export type ZeeConfig = {
   auth?: AuthConfig;
   env?: {
     /** Opt-in: import missing secrets from a login shell environment (exec `$SHELL -l -c 'env -0'`). */
@@ -1047,7 +1047,7 @@ export type ClawdbotConfig = {
   logging?: LoggingConfig;
   browser?: BrowserConfig;
   ui?: {
-    /** Accent color for Clawdbot UI chrome (hex). */
+    /** Accent color for Zee UI chrome (hex). */
     seamColor?: string;
   };
   skills?: SkillsConfig;
@@ -1225,7 +1225,7 @@ export type ConfigFileSnapshot = {
   raw: string | null;
   parsed: unknown;
   valid: boolean;
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   issues: ConfigValidationIssue[];
   legacyIssues: LegacyConfigIssue[];
 };

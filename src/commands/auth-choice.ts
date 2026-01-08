@@ -18,7 +18,7 @@ import {
 } from "../agents/model-auth.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter } from "../wizard/prompts.js";
 import {
@@ -40,7 +40,7 @@ import {
 } from "./openai-codex-model-default.js";
 
 export async function warnIfModelConfigLooksOff(
-  config: ClawdbotConfig,
+  config: ZeeConfig,
   prompter: WizardPrompter,
   options?: { agentId?: string; agentDir?: string },
 ) {
@@ -109,13 +109,13 @@ export async function warnIfModelConfigLooksOff(
 
 export async function applyAuthChoice(params: {
   authChoice: AuthChoice;
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   prompter: WizardPrompter;
   runtime: RuntimeEnv;
   agentDir?: string;
   setDefaultModel: boolean;
   agentId?: string;
-}): Promise<{ config: ClawdbotConfig; agentModelOverride?: string }> {
+}): Promise<{ config: ZeeConfig; agentModelOverride?: string }> {
   let nextConfig = params.config;
   let agentModelOverride: string | undefined;
 

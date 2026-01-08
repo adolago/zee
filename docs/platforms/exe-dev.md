@@ -1,5 +1,5 @@
 ---
-summary: "Run Clawdbot Gateway on exe.dev (VM + HTTPS proxy) for remote access"
+summary: "Run Zee Gateway on exe.dev (VM + HTTPS proxy) for remote access"
 read_when:
   - You want a cheap always-on Linux host for the Gateway
   - You want remote Control UI access without running your own VPS
@@ -7,7 +7,7 @@ read_when:
 
 # exe.dev
 
-Goal: Clawdbot Gateway running on an exe.dev VM, reachable from your laptop via:
+Goal: Zee Gateway running on an exe.dev VM, reachable from your laptop via:
 - **exe.dev HTTPS proxy** (easy, no tunnel) or
 - **SSH tunnel** (most secure; loopback-only Gateway)
 
@@ -25,16 +25,16 @@ This page assumes **Ubuntu/Debian**. If you picked a different distro, map packa
 From your laptop:
 
 ```bash
-ssh exe.dev new --name=clawdbot
+ssh exe.dev new --name=zee
 ```
 
 Then connect:
 
 ```bash
-ssh clawdbot.exe.xyz
+ssh zee.exe.xyz
 ```
 
-Tip: keep this VM **stateful**. Clawdbot stores state under `~/.clawdbot/` and `~/clawd/`.
+Tip: keep this VM **stateful**. Zee stores state under `~/.zee/` and `~/clawd/`.
 
 ## 2) Install prerequisites (on the VM)
 
@@ -60,13 +60,13 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
-## 3) Install Clawdbot
+## 3) Install Zee
 
 Recommended on servers: npm global install.
 
 ```bash
-npm i -g clawdbot@latest
-clawdbot --version
+npm i -g zee@latest
+zee --version
 ```
 
 If native deps fail to install (rare; usually `sharp`), add build tools:
@@ -80,12 +80,12 @@ sudo apt-get install -y build-essential python3
 Run the onboarding wizard on the VM:
 
 ```bash
-clawdbot onboard --install-daemon
+zee onboard --install-daemon
 ```
 
 It can set up:
 - `~/clawd` workspace bootstrap
-- `~/.clawdbot/clawdbot.json` config
+- `~/.zee/zee.json` config
 - model auth profiles
 - provider config/login
 - Linux systemd **user** service (daemon)
@@ -99,7 +99,7 @@ If you’re doing OAuth on a headless VM: do OAuth on a normal machine first, th
 Keep Gateway on loopback (default) and tunnel it from your laptop:
 
 ```bash
-ssh -N -L 18789:127.0.0.1:18789 clawdbot.exe.xyz
+ssh -N -L 18789:127.0.0.1:18789 zee.exe.xyz
 ```
 
 Open locally:
@@ -112,11 +112,11 @@ Runbook: [Remote access](/gateway/remote)
 To let exe.dev proxy traffic to the VM, bind the Gateway to the LAN interface and set a token:
 
 ```bash
-export CLAWDBOT_GATEWAY_TOKEN="$(openssl rand -hex 32)"
-clawdbot gateway --bind lan --port 8080 --token "$CLAWDBOT_GATEWAY_TOKEN"
+export ZEE_GATEWAY_TOKEN="$(openssl rand -hex 32)"
+zee gateway --bind lan --port 8080 --token "$ZEE_GATEWAY_TOKEN"
 ```
 
-For daemon runs, persist it in `~/.clawdbot/clawdbot.json`:
+For daemon runs, persist it in `~/.zee/zee.json`:
 
 ```json5
 {
@@ -130,17 +130,17 @@ For daemon runs, persist it in `~/.clawdbot/clawdbot.json`:
 ```
 
 Notes:
-- Non-loopback binds require `gateway.auth.token` (or `CLAWDBOT_GATEWAY_TOKEN`).
+- Non-loopback binds require `gateway.auth.token` (or `ZEE_GATEWAY_TOKEN`).
 - `gateway.remote.token` is only for remote CLI calls; it does not enable local auth.
 
 Then point exe.dev’s proxy at `8080` (or whatever port you chose) and open your VM’s HTTPS URL:
 
 ```bash
-ssh exe.dev share port clawdbot 8080
+ssh exe.dev share port zee 8080
 ```
 
 Open:
-- `https://clawdbot.exe.xyz/`
+- `https://zee.exe.xyz/`
 
 In the Control UI, paste the token (UI → Settings → token). The UI sends it as `connect.params.auth.token`.
 
@@ -152,10 +152,10 @@ Control UI details: [Control UI](/web/control-ui)
 
 ## 6) Keep it running (daemon)
 
-On Linux, Clawdbot uses a systemd **user** service. After `--install-daemon`, verify:
+On Linux, Zee uses a systemd **user** service. After `--install-daemon`, verify:
 
 ```bash
-systemctl --user status clawdbot-gateway.service
+systemctl --user status zee-gateway.service
 ```
 
 If the service dies after logout, enable lingering:
@@ -169,10 +169,10 @@ More: [Linux](/platforms/linux)
 ## 7) Updates
 
 ```bash
-npm i -g clawdbot@latest
-clawdbot doctor
-clawdbot daemon restart
-clawdbot health
+npm i -g zee@latest
+zee doctor
+zee daemon restart
+zee health
 ```
 
 Guide: [Updating](/install/updating)

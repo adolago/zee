@@ -1,13 +1,13 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite
 struct AnthropicAuthResolverTests {
     @Test
     func prefersOAuthFileOverEnv() throws {
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-oauth-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("zee-oauth-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let oauthFile = dir.appendingPathComponent("oauth.json")
         let payload = [
@@ -21,7 +21,7 @@ struct AnthropicAuthResolverTests {
         let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: oauthFile, options: [.atomic])
 
-        let status = ClawdbotOAuthStore.anthropicOAuthStatus(at: oauthFile)
+        let status = ZeeOAuthStore.anthropicOAuthStatus(at: oauthFile)
         let mode = AnthropicAuthResolver.resolve(environment: [
             "ANTHROPIC_API_KEY": "sk-ant-ignored",
         ], oauthStatus: status)

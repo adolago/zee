@@ -1,9 +1,9 @@
 import AppKit
-import ClawdbotProtocol
+import ZeeProtocol
 import SwiftUI
 import Testing
 
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized)
 @MainActor

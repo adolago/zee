@@ -6,7 +6,7 @@ import {
   discoverModels,
 } from "@mariozechner/pi-coding-agent";
 
-import { resolveClawdbotAgentDir } from "../../agents/agent-paths.js";
+import { resolveZeeAgentDir } from "../../agents/agent-paths.js";
 import {
   type AuthProfileStore,
   ensureAuthProfileStore,
@@ -24,10 +24,10 @@ import {
   resolveConfiguredModelRef,
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
-import { ensureClawdbotModelsJson } from "../../agents/models-config.js";
+import { ensureZeeModelsJson } from "../../agents/models-config.js";
 import {
-  type ClawdbotConfig,
-  CONFIG_PATH_CLAWDBOT,
+  type ZeeConfig,
+  CONFIG_PATH_ZEE,
   loadConfig,
 } from "../../config/config.js";
 import {
@@ -136,7 +136,7 @@ const isLocalBaseUrl = (baseUrl: string) => {
 
 const hasAuthForProvider = (
   provider: string,
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   authStore: AuthProfileStore,
 ): boolean => {
   if (listProfilesForProvider(authStore, provider).length > 0) return true;
@@ -163,7 +163,7 @@ type ProviderAuthOverview = {
 
 function resolveProviderAuthOverview(params: {
   provider: string;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   store: AuthProfileStore;
   modelsPath: string;
 }): ProviderAuthOverview {
@@ -248,7 +248,7 @@ function resolveProviderAuthOverview(params: {
   };
 }
 
-const resolveConfiguredEntries = (cfg: ClawdbotConfig) => {
+const resolveConfiguredEntries = (cfg: ZeeConfig) => {
   const resolvedDefault = resolveConfiguredModelRef({
     cfg,
     defaultProvider: DEFAULT_PROVIDER,
@@ -341,9 +341,9 @@ const resolveConfiguredEntries = (cfg: ClawdbotConfig) => {
   return { entries };
 };
 
-async function loadModelRegistry(cfg: ClawdbotConfig) {
-  await ensureClawdbotModelsJson(cfg);
-  const agentDir = resolveClawdbotAgentDir();
+async function loadModelRegistry(cfg: ZeeConfig) {
+  await ensureZeeModelsJson(cfg);
+  const agentDir = resolveZeeAgentDir();
   const authStorage = discoverAuthStorage(agentDir);
   const registry = discoverModels(authStorage, agentDir);
   const models = registry.getAll() as Model<Api>[];
@@ -360,7 +360,7 @@ function toModelRow(params: {
   tags: string[];
   aliases?: string[];
   availableKeys?: Set<string>;
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   authStore?: AuthProfileStore;
 }): ModelRow {
   const {
@@ -641,7 +641,7 @@ export async function modelsStatusCommand(
   }, {});
   const allowed = Object.keys(cfg.agent?.models ?? {});
 
-  const agentDir = resolveClawdbotAgentDir();
+  const agentDir = resolveZeeAgentDir();
   const store = ensureAuthProfileStore();
   const modelsPath = path.join(agentDir, "models.json");
 
@@ -730,7 +730,7 @@ export async function modelsStatusCommand(
     runtime.log(
       JSON.stringify(
         {
-          configPath: CONFIG_PATH_CLAWDBOT,
+          configPath: CONFIG_PATH_ZEE,
           agentDir,
           defaultModel: defaultLabel,
           resolvedDefault: resolvedLabel,
@@ -770,7 +770,7 @@ export async function modelsStatusCommand(
       : resolvedLabel;
 
   runtime.log(
-    `${label("Config")}${colorize(rich, theme.muted, ":")} ${colorize(rich, theme.info, CONFIG_PATH_CLAWDBOT)}`,
+    `${label("Config")}${colorize(rich, theme.muted, ":")} ${colorize(rich, theme.info, CONFIG_PATH_ZEE)}`,
   );
   runtime.log(
     `${label("Agent dir")}${colorize(rich, theme.muted, ":")} ${colorize(

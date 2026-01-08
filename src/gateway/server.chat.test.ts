@@ -22,7 +22,7 @@ describe("gateway server chat", () => {
     const { server, ws } = await startServerWithClient();
     await connectOk(ws, {
       client: {
-        name: "clawdbot-control-ui",
+        name: "zee-control-ui",
         version: "dev",
         platform: "web",
         mode: "webchat",
@@ -82,7 +82,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.send blocked by send policy", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     testState.sessionConfig = {
       sendPolicy: {
@@ -131,7 +131,7 @@ describe("gateway server chat", () => {
   });
 
   test("agent blocked by send policy for sessionKey", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     testState.sessionConfig = {
       sendPolicy: {
@@ -221,7 +221,7 @@ describe("gateway server chat", () => {
       return typeof text === "string" ? text : undefined;
     };
 
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -328,7 +328,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.history prefers sessionFile when set", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
 
     const forkedPath = path.join(dir, "sess-forked.jsonl");
@@ -398,7 +398,7 @@ describe("gateway server chat", () => {
         reasoning: true,
       },
     ];
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -440,7 +440,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.history caps payload bytes", { timeout: 15_000 }, async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -495,7 +495,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.send does not overwrite last delivery route", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -540,7 +540,7 @@ describe("gateway server chat", () => {
     "chat.abort cancels an in-flight chat.send",
     { timeout: 15000 },
     async () => {
-      const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
       testState.sessionStorePath = path.join(dir, "sessions.json");
       await fs.writeFile(
         testState.sessionStorePath,
@@ -645,7 +645,7 @@ describe("gateway server chat", () => {
   );
 
   test("chat.abort cancels while saving the session store", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -732,7 +732,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.abort returns aborted=false for unknown runId", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -756,7 +756,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.abort rejects mismatched sessionKey", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -833,7 +833,7 @@ describe("gateway server chat", () => {
   }, 15_000);
 
   test("chat.abort is a no-op after chat.send completes", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,
@@ -888,7 +888,7 @@ describe("gateway server chat", () => {
   });
 
   test("chat.send preserves run ordering for queued runs", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-gw-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-"));
     testState.sessionStorePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       testState.sessionStorePath,

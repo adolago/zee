@@ -1,7 +1,7 @@
-import ClawdbotIPC
+import ZeeIPC
 import CoreLocation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized)
 @MainActor

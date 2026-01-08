@@ -40,7 +40,7 @@ function parseProvider(raw: unknown): PairingProvider {
 
 async function notifyApproved(provider: PairingProvider, id: string) {
   const message =
-    "✅ Clawdbot access approved. Send a message to start chatting.";
+    "✅ Zee access approved. Send a message to start chatting.";
   if (provider === "telegram") {
     const cfg = loadConfig();
     const { token } = resolveTelegramToken(cfg);

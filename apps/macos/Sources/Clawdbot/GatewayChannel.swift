@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 import OSLog
 
@@ -55,10 +55,10 @@ struct WebSocketSessionBox: @unchecked Sendable {
 }
 
 // Avoid ambiguity with the app's own AnyCodable type.
-private typealias ProtoAnyCodable = ClawdbotProtocol.AnyCodable
+private typealias ProtoAnyCodable = ZeeProtocol.AnyCodable
 
 actor GatewayChannelActor {
-    private let logger = Logger(subsystem: "com.clawdbot", category: "gateway")
+    private let logger = Logger(subsystem: "com.zee", category: "gateway")
     private var task: WebSocketTaskBox?
     private var pending: [String: CheckedContinuation<GatewayFrame, Error>] = [:]
     private var connected = false

@@ -43,7 +43,7 @@ const runtime: RuntimeEnv = {
 };
 
 const baseSnapshot = {
-  path: "/tmp/clawdbot.json",
+  path: "/tmp/zee.json",
   exists: true,
   raw: "{}",
   parsed: {},

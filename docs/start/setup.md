@@ -1,5 +1,5 @@
 ---
-summary: "Setup guide: keep your Clawdbot setup tailored while staying up-to-date"
+summary: "Setup guide: keep your Zee setup tailored while staying up-to-date"
 read_when:
   - Setting up a new machine
   - You want “latest + greatest” without breaking your personal setup
@@ -10,7 +10,7 @@ read_when:
 Last updated: 2026-01-01
 
 ## TL;DR
-- **Tailoring lives outside the repo:** `~/clawd` (workspace) + `~/.clawdbot/clawdbot.json` (config).
+- **Tailoring lives outside the repo:** `~/clawd` (workspace) + `~/.zee/zee.json` (config).
 - **Stable workflow:** install the macOS app; let it run the bundled Gateway.
 - **Bleeding edge workflow:** run the Gateway yourself via `pnpm gateway:watch`, then point the macOS app at it using **Debug Settings → Gateway → Attach only**.
 
@@ -23,40 +23,40 @@ Last updated: 2026-01-01
 
 If you want “100% tailored to me” *and* easy updates, keep your customization in:
 
-- **Config:** `~/.clawdbot/clawdbot.json` (JSON/JSON5-ish)
+- **Config:** `~/.zee/zee.json` (JSON/JSON5-ish)
 - **Workspace:** `~/clawd` (skills, prompts, memories; make it a private git repo)
 
 Bootstrap once:
 
 ```bash
-clawdbot setup
+zee setup
 ```
 
 From inside this repo, use the local CLI entry:
 
 ```bash
-pnpm clawdbot setup
+pnpm zee setup
 ```
 
 ## Stable workflow (macOS app first)
 
-1) Install + launch **Clawdbot.app** (menu bar).
+1) Install + launch **Zee.app** (menu bar).
 2) Complete the onboarding/permissions checklist (TCC prompts).
 3) Ensure Gateway is **Local** and running (the app manages it).
 4) Link surfaces (example: WhatsApp):
 
 ```bash
-clawdbot providers login
+zee providers login
 ```
 
 5) Sanity check:
 
 ```bash
-clawdbot health
+zee health
 ```
 
 If onboarding is still WIP/broken on your build:
-- Run `clawdbot setup`, then `clawdbot providers login`, then start the Gateway manually (`clawdbot gateway`).
+- Run `zee setup`, then `zee providers login`, then start the Gateway manually (`zee gateway`).
 
 ## Bleeding edge workflow (Gateway in a terminal)
 
@@ -77,11 +77,11 @@ pnpm install
 pnpm gateway:watch
 ```
 
-`gateway:watch` runs `src/entry.ts gateway --force` and reloads on [`src/**/*.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/**/*.ts) changes.
+`gateway:watch` runs `src/entry.ts gateway --force` and reloads on [`src/**/*.ts`](https://github.com/zee/zee/blob/main/src/**/*.ts) changes.
 
 ### 2) Point the macOS app at your running Gateway
 
-In **Clawdbot.app**:
+In **Zee.app**:
 
 - Connection Mode: **Local**
 - Settings → **Debug Settings** → **Gateway** → enable **Attach only**
@@ -94,20 +94,20 @@ This makes the app **only connect to an already-running gateway** and **never sp
 - Or via CLI:
 
 ```bash
-pnpm clawdbot health
+pnpm zee health
 ```
 
 ### Common footguns
 - **Attach only enabled, but nothing is running:** app shows “Attach-only enabled; no gateway to attach”.
 - **Wrong port:** Gateway WS defaults to `ws://127.0.0.1:18789`; keep app + CLI on the same port.
 - **Where state lives:**
-  - Credentials: `~/.clawdbot/credentials/`
-  - Sessions: `~/.clawdbot/agents/<agentId>/sessions/`
-  - Logs: `/tmp/clawdbot/`
+  - Credentials: `~/.zee/credentials/`
+  - Sessions: `~/.zee/agents/<agentId>/sessions/`
+  - Logs: `/tmp/zee/`
 
 ## Updating (without wrecking your setup)
 
-- Keep `~/clawd` and `~/.clawdbot/` as “your stuff”; don’t put personal prompts/config into the `clawdbot` repo.
+- Keep `~/clawd` and `~/.zee/` as “your stuff”; don’t put personal prompts/config into the `zee` repo.
 - Updating source: `git pull` + `pnpm install` (when lockfile changed) + keep using `pnpm gateway:watch`.
 
 ## Linux (systemd user service)

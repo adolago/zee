@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Cocoa
 import Foundation
 import Observation
@@ -40,7 +40,7 @@ final class InstancesStore {
     var statusMessage: String?
     var isLoading = false
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "instances")
+    private let logger = Logger(subsystem: "com.zee", category: "instances")
     private var task: Task<Void, Never>?
     private let interval: TimeInterval = 30
     private var eventTask: Task<Void, Never>?
@@ -280,7 +280,7 @@ final class InstancesStore {
         }
     }
 
-    func handlePresenceEventPayload(_ payload: ClawdbotProtocol.AnyCodable) {
+    func handlePresenceEventPayload(_ payload: ZeeProtocol.AnyCodable) {
         do {
             let wrapper = try GatewayPayloadDecoding.decode(payload, as: PresenceEventPayload.self)
             self.applyPresence(wrapper.presence)

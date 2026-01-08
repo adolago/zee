@@ -1,6 +1,6 @@
 import { installSkill } from "../agents/skills-install.js";
 import { buildWorkspaceSkillStatus } from "../agents/skills-status.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter } from "../wizard/prompts.js";
 import { detectBinary, resolveNodeManagerOptions } from "./onboard-helpers.js";
@@ -30,10 +30,10 @@ function formatSkillHint(skill: {
 }
 
 function upsertSkillEntry(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   skillKey: string,
   patch: { apiKey?: string },
-): ClawdbotConfig {
+): ZeeConfig {
   const entries = { ...cfg.skills?.entries };
   const existing = (entries[skillKey] as { apiKey?: string } | undefined) ?? {};
   entries[skillKey] = { ...existing, ...patch };
@@ -47,11 +47,11 @@ function upsertSkillEntry(
 }
 
 export async function setupSkills(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   workspaceDir: string,
   runtime: RuntimeEnv,
   prompter: WizardPrompter,
-): Promise<ClawdbotConfig> {
+): Promise<ZeeConfig> {
   const report = buildWorkspaceSkillStatus(workspaceDir, { config: cfg });
   const eligible = report.skills.filter((s) => s.eligible);
   const missing = report.skills.filter(
@@ -109,7 +109,7 @@ export async function setupSkills(
     options: resolveNodeManagerOptions(),
   })) as "npm" | "pnpm" | "bun";
 
-  let next: ClawdbotConfig = {
+  let next: ZeeConfig = {
     ...cfg,
     skills: {
       ...cfg.skills,
@@ -166,7 +166,7 @@ export async function setupSkills(
         if (result.stderr) runtime.log(result.stderr.trim());
         else if (result.stdout) runtime.log(result.stdout.trim());
         runtime.log(
-          "Tip: run `clawdbot doctor` to review skills + requirements.",
+          "Tip: run `zee doctor` to review skills + requirements.",
         );
         runtime.log("Docs: https://docs.clawd.bot/skills");
       }

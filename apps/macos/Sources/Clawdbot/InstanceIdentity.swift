@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 
 enum InstanceIdentity {
-    private static let suiteName = "com.clawdbot.shared"
+    private static let suiteName = "com.zee.shared"
     private static let instanceIdKey = "instanceId"
 
     private static var defaults: UserDefaults {
@@ -29,7 +29,7 @@ enum InstanceIdentity {
         {
             return name
         }
-        return "clawdbot"
+        return "zee"
     }()
 
     static let modelIdentifier: String? = {

@@ -108,7 +108,7 @@ export function formatSkillsList(
 
   if (skills.length === 0) {
     const message = opts.eligible
-      ? "No eligible skills found. Run `clawdbot skills list` to see all skills."
+      ? "No eligible skills found. Run `zee skills list` to see all skills."
       : "No skills found.";
     return appendClawdHubHint(message, opts.json);
   }
@@ -158,7 +158,7 @@ export function formatSkillInfo(
       return JSON.stringify({ error: "not found", skill: skillName }, null, 2);
     }
     return appendClawdHubHint(
-      `Skill "${skillName}" not found. Run \`clawdbot skills list\` to see available skills.`,
+      `Skill "${skillName}" not found. Run \`zee skills list\` to see available skills.`,
       opts.json,
     );
   }

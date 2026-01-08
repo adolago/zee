@@ -1,11 +1,11 @@
-import ClawdbotIPC
+import ZeeIPC
 import Foundation
 import Security
 import UserNotifications
 
 @MainActor
 struct NotificationManager {
-    private let logger = Logger(subsystem: "com.clawdbot", category: "notifications")
+    private let logger = Logger(subsystem: "com.zee", category: "notifications")
 
     private static let hasTimeSensitiveEntitlement: Bool = {
         guard let task = SecTaskCreateFromSelf(nil) else { return false }

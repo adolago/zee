@@ -1,4 +1,4 @@
-package com.clawdbot.android.bridge
+package com.zee.android.bridge
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -51,9 +51,9 @@ class BridgeDiscovery(
   private val nsd = context.getSystemService(NsdManager::class.java)
   private val connectivity = context.getSystemService(ConnectivityManager::class.java)
   private val dns = DnsResolver.getInstance()
-  private val serviceType = "_clawdbot-bridge._tcp."
-  private val wideAreaDomain = "clawdbot.internal."
-  private val logTag = "Clawdbot/BridgeDiscovery"
+  private val serviceType = "_zee-bridge._tcp."
+  private val wideAreaDomain = "zee.internal."
+  private val logTag = "Zee/BridgeDiscovery"
 
   private val localById = ConcurrentHashMap<String, BridgeEndpoint>()
   private val unicastById = ConcurrentHashMap<String, BridgeEndpoint>()

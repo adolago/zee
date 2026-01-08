@@ -7,7 +7,7 @@
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { hasBinary } from "../agents/skills.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { createSubsystemLogger } from "../logging.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import {
@@ -97,7 +97,7 @@ function spawnGogServe(cfg: GmailHookRuntimeConfig): ChildProcess {
     if (addressInUse) {
       log.warn(
         "gog serve failed to bind (address already in use); stopping restarts. " +
-          "Another watcher is likely running. Set CLAWDBOT_SKIP_GMAIL_WATCHER=1 or stop the other process.",
+          "Another watcher is likely running. Set ZEE_SKIP_GMAIL_WATCHER=1 or stop the other process.",
       );
       watcherProcess = null;
       return;
@@ -123,7 +123,7 @@ export type GmailWatcherStartResult = {
  * Called automatically by the gateway if hooks.gmail is configured.
  */
 export async function startGmailWatcher(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): Promise<GmailWatcherStartResult> {
   // Check if gmail hooks are configured
   if (!cfg.hooks?.enabled) {

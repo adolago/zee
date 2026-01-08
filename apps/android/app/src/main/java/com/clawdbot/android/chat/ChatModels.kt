@@ -1,4 +1,4 @@
-package com.clawdbot.android.chat
+package com.zee.android.chat
 
 data class ChatMessage(
   val id: String,

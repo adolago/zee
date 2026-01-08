@@ -1,12 +1,12 @@
 ---
-summary: "Context window + compaction: how Clawdbot keeps sessions under model limits"
+summary: "Context window + compaction: how Zee keeps sessions under model limits"
 read_when:
   - You want to understand auto-compaction and /compact
   - You are debugging long sessions hitting context limits
 ---
 # Context Window & Compaction
 
-Every model has a **context window** (max tokens it can see). Long-running chats accumulate messages and tool results; once the window is tight, Clawdbot **compacts** older history to stay within limits.
+Every model has a **context window** (max tokens it can see). Long-running chats accumulate messages and tool results; once the window is tight, Zee **compacts** older history to stay within limits.
 
 ## What compaction is
 Compaction **summarizes older conversation** into a compact summary entry and keeps recent messages intact. The summary is stored in the session history, so future requests use:
@@ -16,7 +16,7 @@ Compaction **summarizes older conversation** into a compact summary entry and ke
 Compaction **persists** in the session’s JSONL history.
 
 ## Auto-compaction (default on)
-When a session nears or exceeds the model’s context window, Clawdbot triggers auto-compaction and may retry the original request using the compacted context.
+When a session nears or exceeds the model’s context window, Zee triggers auto-compaction and may retry the original request using the compacted context.
 
 You’ll see:
 - `🧹 Auto-compaction complete` in verbose mode
@@ -29,7 +29,7 @@ Use `/compact` (optionally with instructions) to force a compaction pass:
 ```
 
 ## Context window source
-Context window is model-specific. Clawdbot uses the model definition from the configured provider catalog to determine limits.
+Context window is model-specific. Zee uses the model definition from the configured provider catalog to determine limits.
 
 ## Compaction vs pruning
 - **Compaction**: summarises and **persists** in JSONL.

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import {
   deliverOutboundPayloads,
   normalizeOutboundPayloads,
@@ -11,7 +11,7 @@ describe("deliverOutboundPayloads", () => {
     const sendTelegram = vi
       .fn()
       .mockResolvedValue({ messageId: "m1", chatId: "c1" });
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       telegram: { botToken: "tok-1", textChunkLimit: 2 },
     };
     const prevTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -46,7 +46,7 @@ describe("deliverOutboundPayloads", () => {
     const sendSignal = vi
       .fn()
       .mockResolvedValue({ messageId: "s1", timestamp: 123 });
-    const cfg: ClawdbotConfig = { signal: { mediaMaxMb: 2 } };
+    const cfg: ZeeConfig = { signal: { mediaMaxMb: 2 } };
 
     const results = await deliverOutboundPayloads({
       cfg,
@@ -72,7 +72,7 @@ describe("deliverOutboundPayloads", () => {
       .fn()
       .mockResolvedValueOnce({ messageId: "w1", toJid: "jid" })
       .mockResolvedValueOnce({ messageId: "w2", toJid: "jid" });
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       whatsapp: { textChunkLimit: 2 },
     };
 
@@ -90,7 +90,7 @@ describe("deliverOutboundPayloads", () => {
 
   it("uses iMessage media maxBytes from agent fallback", async () => {
     const sendIMessage = vi.fn().mockResolvedValue({ messageId: "i1" });
-    const cfg: ClawdbotConfig = { agent: { mediaMaxMb: 3 } };
+    const cfg: ZeeConfig = { agent: { mediaMaxMb: 3 } };
 
     await deliverOutboundPayloads({
       cfg,
@@ -126,7 +126,7 @@ describe("deliverOutboundPayloads", () => {
       .mockRejectedValueOnce(new Error("fail"))
       .mockResolvedValueOnce({ messageId: "w2", toJid: "jid" });
     const onError = vi.fn();
-    const cfg: ClawdbotConfig = {};
+    const cfg: ZeeConfig = {};
 
     const results = await deliverOutboundPayloads({
       cfg,

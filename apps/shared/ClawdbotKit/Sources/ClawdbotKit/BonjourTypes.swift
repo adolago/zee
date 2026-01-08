@@ -1,10 +1,10 @@
 import Foundation
 
-public enum ClawdbotBonjour {
+public enum ZeeBonjour {
     // v0: internal-only, subject to rename.
-    public static let bridgeServiceType = "_clawdbot-bridge._tcp"
+    public static let bridgeServiceType = "_zee-bridge._tcp"
     public static let bridgeServiceDomain = "local."
-    public static let wideAreaBridgeServiceDomain = "clawdbot.internal."
+    public static let wideAreaBridgeServiceDomain = "zee.internal."
 
     public static let bridgeServiceDomains = [
         bridgeServiceDomain,

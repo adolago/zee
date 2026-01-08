@@ -1,7 +1,7 @@
 import chokidar from "chokidar";
 
 import type {
-  ClawdbotConfig,
+  ZeeConfig,
   ConfigFileSnapshot,
   GatewayReloadMode,
 } from "../config/config.js";
@@ -142,7 +142,7 @@ export function diffConfigPaths(
 }
 
 export function resolveGatewayReloadSettings(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): GatewayReloadSettings {
   const rawMode = cfg.gateway?.reload?.mode;
   const mode =
@@ -251,13 +251,13 @@ export type GatewayConfigReloader = {
 };
 
 export function startGatewayConfigReloader(opts: {
-  initialConfig: ClawdbotConfig;
+  initialConfig: ZeeConfig;
   readSnapshot: () => Promise<ConfigFileSnapshot>;
   onHotReload: (
     plan: GatewayReloadPlan,
-    nextConfig: ClawdbotConfig,
+    nextConfig: ZeeConfig,
   ) => Promise<void>;
-  onRestart: (plan: GatewayReloadPlan, nextConfig: ClawdbotConfig) => void;
+  onRestart: (plan: GatewayReloadPlan, nextConfig: ZeeConfig) => void;
   log: {
     info: (msg: string) => void;
     warn: (msg: string) => void;

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveOAuthDir } from "../config/paths.js";
 import type {
   DmPolicy,
@@ -26,26 +26,26 @@ export type ResolvedWhatsAppAccount = {
   groups?: WhatsAppAccountConfig["groups"];
 };
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: ZeeConfig): string[] {
   const accounts = cfg.whatsapp?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listWhatsAppAccountIds(cfg: ClawdbotConfig): string[] {
+export function listWhatsAppAccountIds(cfg: ZeeConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultWhatsAppAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultWhatsAppAccountId(cfg: ZeeConfig): string {
   const ids = listWhatsAppAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): WhatsAppAccountConfig | undefined {
   const accounts = cfg.whatsapp?.accounts;
@@ -72,7 +72,7 @@ function legacyAuthExists(authDir: string): boolean {
 }
 
 export function resolveWhatsAppAuthDir(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   accountId: string;
 }): { authDir: string; isLegacy: boolean } {
   const accountId = params.accountId.trim() || DEFAULT_ACCOUNT_ID;
@@ -94,7 +94,7 @@ export function resolveWhatsAppAuthDir(params: {
 }
 
 export function resolveWhatsAppAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   accountId?: string | null;
 }): ResolvedWhatsAppAccount {
   const accountId =
@@ -124,7 +124,7 @@ export function resolveWhatsAppAccount(params: {
 }
 
 export function listEnabledWhatsAppAccounts(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): ResolvedWhatsAppAccount[] {
   return listWhatsAppAccountIds(cfg)
     .map((accountId) => resolveWhatsAppAccount({ cfg, accountId }))

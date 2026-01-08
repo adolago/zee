@@ -23,7 +23,7 @@ Status: external CLI integration. Gateway talks to `signal-cli` over HTTP JSON-R
 ## Setup (fast path)
 1) Install `signal-cli` (Java required).
 2) Link a bot account:
-   - `signal-cli link -n "Clawdbot"` then scan the QR in Signal.
+   - `signal-cli link -n "Zee"` then scan the QR in Signal.
 3) Configure Signal and start the gateway.
 
 Example:
@@ -46,8 +46,8 @@ DMs:
 - Default: `signal.dmPolicy = "pairing"`.
 - Unknown senders receive a pairing code; messages are ignored until approved (codes expire after 1 hour).
 - Approve via:
-  - `clawdbot pairing list --provider signal`
-  - `clawdbot pairing approve --provider signal <CODE>`
+  - `zee pairing list --provider signal`
+  - `zee pairing approve --provider signal <CODE>`
 - Pairing is the default token exchange for Signal DMs. Details: [Pairing](/start/pairing)
 
 Groups:

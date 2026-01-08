@@ -1,36 +1,36 @@
-name: Clawdbot
+name: Zee
 options:
-  bundleIdPrefix: com.clawdbot
+  bundleIdPrefix: com.zee
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "16.0"
 
 packages:
-  ClawdbotKit:
-    path: ../shared/ClawdbotKit
+  ZeeKit:
+    path: ../shared/ZeeKit
   Swabble:
     path: ../../Swabble
 
 schemes:
-  Clawdbot:
+  Zee:
     shared: true
     build:
       targets:
-        Clawdbot: all
+        Zee: all
     test:
       targets:
-        - ClawdbotTests
+        - ZeeTests
 
 targets:
-  Clawdbot:
+  Zee:
     type: application
     platform: iOS
     sources:
       - path: Sources
     dependencies:
-      - package: ClawdbotKit
-      - package: ClawdbotKit
-        product: ClawdbotChatUI
+      - package: ZeeKit
+      - package: ZeeKit
+        product: ZeeChatUI
       - package: Swabble
         product: SwabbleKit
       - sdk: AppIntents.framework
@@ -65,44 +65,44 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Development"
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: Y5PE65HELJ
-        PRODUCT_BUNDLE_IDENTIFIER: com.clawdbot.ios
-        PROVISIONING_PROFILE_SPECIFIER: "com.clawdbot.ios Development"
+        PRODUCT_BUNDLE_IDENTIFIER: com.zee.ios
+        PROVISIONING_PROFILE_SPECIFIER: "com.zee.ios Development"
         SWIFT_VERSION: "6.0"
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleDisplayName: Clawdbot
+        CFBundleDisplayName: Zee
         CFBundleIconName: AppIcon
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UIBackgroundModes:
           - audio
-        NSLocalNetworkUsageDescription: Clawdbot discovers and connects to your Clawdbot bridge on the local network.
+        NSLocalNetworkUsageDescription: Zee discovers and connects to your Zee bridge on the local network.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true
         NSBonjourServices:
-          - _clawdbot-bridge._tcp
-        NSCameraUsageDescription: Clawdbot can capture photos or short video clips when requested via the bridge.
-        NSMicrophoneUsageDescription: Clawdbot needs microphone access for voice wake.
-        NSSpeechRecognitionUsageDescription: Clawdbot uses on-device speech recognition for voice wake.
+          - _zee-bridge._tcp
+        NSCameraUsageDescription: Zee can capture photos or short video clips when requested via the bridge.
+        NSMicrophoneUsageDescription: Zee needs microphone access for voice wake.
+        NSSpeechRecognitionUsageDescription: Zee uses on-device speech recognition for voice wake.
 
-  ClawdbotTests:
+  ZeeTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: Tests
     dependencies:
-      - target: Clawdbot
+      - target: Zee
       - package: Swabble
         product: SwabbleKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.clawdbot.ios.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.zee.ios.tests
         SWIFT_VERSION: "6.0"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Clawdbot.app/Clawdbot"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Zee.app/Zee"
         BUNDLE_LOADER: "$(TEST_HOST)"
     info:
       path: Tests/Info.plist
       properties:
-        CFBundleDisplayName: ClawdbotTests
+        CFBundleDisplayName: ZeeTests

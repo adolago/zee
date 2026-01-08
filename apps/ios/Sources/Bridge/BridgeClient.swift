@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 
@@ -14,7 +14,7 @@ actor BridgeClient {
     {
         self.lineBuffer = Data()
         let connection = NWConnection(to: endpoint, using: .tcp)
-        let queue = DispatchQueue(label: "com.clawdbot.ios.bridge-client")
+        let queue = DispatchQueue(label: "com.zee.ios.bridge-client")
         defer { connection.cancel() }
         try await self.withTimeout(seconds: 8, purpose: "connect") {
             try await self.startAndWaitForReady(connection, queue: queue)

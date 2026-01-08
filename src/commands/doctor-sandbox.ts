@@ -9,7 +9,7 @@ import {
   DEFAULT_SANDBOX_IMAGE,
   resolveSandboxScope,
 } from "../agents/sandbox.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { runCommandWithTimeout, runExec } from "../process/exec.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { replaceModernName } from "./doctor-legacy-config.js";
@@ -91,20 +91,20 @@ async function dockerImageExists(image: string): Promise<boolean> {
   }
 }
 
-function resolveSandboxDockerImage(cfg: ClawdbotConfig): string {
+function resolveSandboxDockerImage(cfg: ZeeConfig): string {
   const image = cfg.agent?.sandbox?.docker?.image?.trim();
   return image ? image : DEFAULT_SANDBOX_IMAGE;
 }
 
-function resolveSandboxBrowserImage(cfg: ClawdbotConfig): string {
+function resolveSandboxBrowserImage(cfg: ZeeConfig): string {
   const image = cfg.agent?.sandbox?.browser?.image?.trim();
   return image ? image : DEFAULT_SANDBOX_BROWSER_IMAGE;
 }
 
 function updateSandboxDockerImage(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   image: string,
-): ClawdbotConfig {
+): ZeeConfig {
   return {
     ...cfg,
     agent: {
@@ -121,9 +121,9 @@ function updateSandboxDockerImage(
 }
 
 function updateSandboxBrowserImage(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   image: string,
-): ClawdbotConfig {
+): ZeeConfig {
   return {
     ...cfg,
     agent: {
@@ -190,10 +190,10 @@ async function handleMissingSandboxImage(
 }
 
 export async function maybeRepairSandboxImages(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   runtime: RuntimeEnv,
   prompter: DoctorPrompter,
-): Promise<ClawdbotConfig> {
+): Promise<ZeeConfig> {
   const sandbox = cfg.agent?.sandbox;
   const mode = sandbox?.mode ?? "off";
   if (!sandbox || mode === "off") return cfg;
@@ -250,7 +250,7 @@ export async function maybeRepairSandboxImages(
   return next;
 }
 
-export function noteSandboxScopeWarnings(cfg: ClawdbotConfig) {
+export function noteSandboxScopeWarnings(cfg: ZeeConfig) {
   const globalSandbox = cfg.agent?.sandbox;
   const agents = cfg.routing?.agents ?? {};
   const warnings: string[] = [];

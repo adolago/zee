@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     store,
-    resolveClawdbotAgentDir: vi.fn().mockReturnValue("/tmp/clawdbot-agent"),
+    resolveZeeAgentDir: vi.fn().mockReturnValue("/tmp/zee-agent"),
     ensureAuthProfileStore: vi.fn().mockReturnValue(store),
     listProfilesForProvider: vi.fn((s: typeof store, provider: string) => {
       return Object.entries(s.profiles)
@@ -41,7 +41,7 @@ const mocks = vi.hoisted(() => {
     ),
     resolveAuthStorePathForDisplay: vi
       .fn()
-      .mockReturnValue("/tmp/clawdbot-agent/auth-profiles.json"),
+      .mockReturnValue("/tmp/zee-agent/auth-profiles.json"),
     resolveEnvApiKey: vi.fn((provider: string) => {
       if (provider === "openai") {
         return {
@@ -74,7 +74,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("../../agents/agent-paths.js", () => ({
-  resolveClawdbotAgentDir: mocks.resolveClawdbotAgentDir,
+  resolveZeeAgentDir: mocks.resolveZeeAgentDir,
 }));
 
 vi.mock("../../agents/auth-profiles.js", () => ({
@@ -120,7 +120,7 @@ describe("modelsStatusCommand auth overview", () => {
 
     expect(payload.defaultModel).toBe("anthropic/claude-opus-4-5");
     expect(payload.auth.storePath).toBe(
-      "/tmp/clawdbot-agent/auth-profiles.json",
+      "/tmp/zee-agent/auth-profiles.json",
     );
     expect(payload.auth.shellEnvFallback.enabled).toBe(true);
     expect(payload.auth.shellEnvFallback.appliedKeys).toContain(

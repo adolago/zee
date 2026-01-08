@@ -33,23 +33,23 @@ WhatsApp requires a real mobile number for verification. VoIP and virtual number
 
 **Tip:** The number only needs to receive one verification SMS. After that, WhatsApp Web sessions persist via `creds.json`.
 
-**WhatsApp Business:** You can use WhatsApp Business on the same phone with a different number. This is a great option if you want to keep your personal WhatsApp separate — just install WhatsApp Business and register it with Clawdbot's dedicated number.
+**WhatsApp Business:** You can use WhatsApp Business on the same phone with a different number. This is a great option if you want to keep your personal WhatsApp separate — just install WhatsApp Business and register it with Zee's dedicated number.
 
 ## Why Not Twilio?
-- Early Clawdbot builds supported Twilio’s WhatsApp Business integration.
+- Early Zee builds supported Twilio’s WhatsApp Business integration.
 - WhatsApp Business numbers are a poor fit for a personal assistant.
 - Meta enforces a 24‑hour reply window; if you haven’t responded in the last 24 hours, the business number can’t initiate new messages.
 - High-volume or “chatty” usage triggers aggressive blocking, because business accounts aren’t meant to send dozens of personal assistant messages.
 - Result: unreliable delivery and frequent blocks, so support was removed.
 
 ## Login + credentials
-- Login command: `clawdbot providers login` (QR via Linked Devices).
-- Multi-account login: `clawdbot providers login --account <id>` (`<id>` = `accountId`).
+- Login command: `zee providers login` (QR via Linked Devices).
+- Multi-account login: `zee providers login --account <id>` (`<id>` = `accountId`).
 - Default account (when `--account` is omitted): `default` if present, otherwise the first configured account id (sorted).
-- Credentials stored in `~/.clawdbot/credentials/whatsapp/<accountId>/creds.json`.
+- Credentials stored in `~/.zee/credentials/whatsapp/<accountId>/creds.json`.
 - Backup copy at `creds.json.bak` (restored on corruption).
-- Legacy compatibility: older installs stored Baileys files directly in `~/.clawdbot/credentials/`.
-- Logout: `clawdbot providers logout` (or `--account <id>`) deletes WhatsApp auth state (but keeps shared `oauth.json`).
+- Legacy compatibility: older installs stored Baileys files directly in `~/.zee/credentials/`.
+- Logout: `zee providers logout` (or `--account <id>`) deletes WhatsApp auth state (but keeps shared `oauth.json`).
 - Logged-out socket => error instructs re-link.
 
 ## Inbound flow (DM + group)
@@ -58,12 +58,12 @@ WhatsApp requires a real mobile number for verification. VoIP and virtual number
 - Status/broadcast chats are ignored.
 - Direct chats use E.164; groups use group JID.
 - **DM policy**: `whatsapp.dmPolicy` controls direct chat access (default: `pairing`).
-  - Pairing: unknown senders get a pairing code (approve via `clawdbot pairing approve --provider whatsapp <code>`; codes expire after 1 hour).
+  - Pairing: unknown senders get a pairing code (approve via `zee pairing approve --provider whatsapp <code>`; codes expire after 1 hour).
   - Open: requires `whatsapp.allowFrom` to include `"*"`.
   - Self messages are always allowed; “self-chat mode” still requires `whatsapp.allowFrom` to include your own number.
 
 ### Same-phone mode (personal number)
-If you run Clawdbot on your **personal WhatsApp number**, set:
+If you run Zee on your **personal WhatsApp number**, set:
 
 ```json
 {
@@ -79,7 +79,7 @@ Behavior:
 
 Recommended for personal numbers:
 - Set `whatsapp.dmPolicy="allowlist"` and add your number to `whatsapp.allowFrom`.
-- Set `messages.responsePrefix` (for example, `[clawdbot]`) so replies are clearly labeled.
+- Set `messages.responsePrefix` (for example, `[zee]`) so replies are clearly labeled.
 - **Group policy**: `whatsapp.groupPolicy` controls group handling (`open|disabled|allowlist`).
   - `allowlist` uses `whatsapp.groupAllowFrom` (fallback: explicit `whatsapp.allowFrom`).
 - **Self-chat mode**: avoids auto read receipts and ignores mention JIDs.
@@ -139,7 +139,7 @@ Recommended for personal numbers:
   - Caption only on first media item.
   - Media fetch supports HTTP(S) and local paths.
   - Animated GIFs: WhatsApp expects MP4 with `gifPlayback: true` for inline looping.
-    - CLI: `clawdbot send --media <mp4> --gif-playback`
+    - CLI: `zee send --media <mp4> --gif-playback`
     - Gateway: `send` params include `gifPlayback: true`
 
 ## Media limits + optimization
@@ -185,10 +185,10 @@ Recommended for personal numbers:
 
 ## Logs + troubleshooting
 - Subsystems: `whatsapp/inbound`, `whatsapp/outbound`, `web-heartbeat`, `web-reconnect`.
-- Log file: `/tmp/clawdbot/clawdbot-YYYY-MM-DD.log` (configurable).
+- Log file: `/tmp/zee/zee-YYYY-MM-DD.log` (configurable).
 - Troubleshooting guide: [`docs/troubleshooting.md`](/gateway/troubleshooting).
 
 ## Tests
-- [`src/web/auto-reply.test.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/web/auto-reply.test.ts) (mention gating, history injection, reply flow)
-- [`src/web/monitor-inbox.test.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/web/monitor-inbox.test.ts) (inbound parsing + reply context)
-- [`src/web/outbound.test.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/web/outbound.test.ts) (send mapping + media)
+- [`src/web/auto-reply.test.ts`](https://github.com/zee/zee/blob/main/src/web/auto-reply.test.ts) (mention gating, history injection, reply flow)
+- [`src/web/monitor-inbox.test.ts`](https://github.com/zee/zee/blob/main/src/web/monitor-inbox.test.ts) (inbound parsing + reply context)
+- [`src/web/outbound.test.ts`](https://github.com/zee/zee/blob/main/src/web/outbound.test.ts) (send mapping + media)

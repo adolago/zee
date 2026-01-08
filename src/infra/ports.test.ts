@@ -47,7 +47,7 @@ describe("ports helpers", () => {
     expect(
       classifyPortListener(
         {
-          commandLine: "node /Users/me/Projects/clawdbot/dist/entry.js gateway",
+          commandLine: "node /Users/me/Projects/zee/dist/entry.js gateway",
         },
         18789,
       ),

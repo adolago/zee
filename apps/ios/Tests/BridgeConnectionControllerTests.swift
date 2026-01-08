@@ -1,17 +1,17 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 import Testing
 import UIKit
-@testable import Clawdbot
+@testable import Zee
 
 private struct KeychainEntry: Hashable {
     let service: String
     let account: String
 }
 
-private let bridgeService = "com.clawdbot.bridge"
-private let nodeService = "com.clawdbot.node"
+private let bridgeService = "com.zee.bridge"
+private let nodeService = "com.zee.node"
 private let instanceIdEntry = KeychainEntry(service: nodeService, account: "instanceId")
 private let preferredBridgeEntry = KeychainEntry(service: bridgeService, account: "preferredStableID")
 private let lastBridgeEntry = KeychainEntry(service: bridgeService, account: "lastDiscoveredStableID")
@@ -194,15 +194,15 @@ private func withKeychainValues<T>(
                 #expect(hello.token == "token-123")
 
                 let caps = Set(hello.caps ?? [])
-                #expect(caps.contains(ClawdbotCapability.canvas.rawValue))
-                #expect(caps.contains(ClawdbotCapability.screen.rawValue))
-                #expect(caps.contains(ClawdbotCapability.voiceWake.rawValue))
-                #expect(!caps.contains(ClawdbotCapability.camera.rawValue))
+                #expect(caps.contains(ZeeCapability.canvas.rawValue))
+                #expect(caps.contains(ZeeCapability.screen.rawValue))
+                #expect(caps.contains(ZeeCapability.voiceWake.rawValue))
+                #expect(!caps.contains(ZeeCapability.camera.rawValue))
 
                 let commands = Set(hello.commands ?? [])
-                #expect(commands.contains(ClawdbotCanvasCommand.present.rawValue))
-                #expect(commands.contains(ClawdbotScreenCommand.record.rawValue))
-                #expect(!commands.contains(ClawdbotCameraCommand.snap.rawValue))
+                #expect(commands.contains(ZeeCanvasCommand.present.rawValue))
+                #expect(commands.contains(ZeeScreenCommand.record.rawValue))
+                #expect(!commands.contains(ZeeCameraCommand.snap.rawValue))
 
                 #expect(!(hello.platform ?? "").isEmpty)
                 #expect(!(hello.deviceFamily ?? "").isEmpty)
@@ -225,11 +225,11 @@ private func withKeychainValues<T>(
                 let hello = controller._test_makeHello(token: "token-456")
 
                 let caps = Set(hello.caps ?? [])
-                #expect(caps.contains(ClawdbotCapability.camera.rawValue))
+                #expect(caps.contains(ZeeCapability.camera.rawValue))
 
                 let commands = Set(hello.commands ?? [])
-                #expect(commands.contains(ClawdbotCameraCommand.snap.rawValue))
-                #expect(commands.contains(ClawdbotCameraCommand.clip.rawValue))
+                #expect(commands.contains(ZeeCameraCommand.snap.rawValue))
+                #expect(commands.contains(ZeeCameraCommand.clip.rawValue))
             }
         }
     }

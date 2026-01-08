@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import process from "node:process";
 
-declare const __CLAWDBOT_VERSION__: string | undefined;
+declare const __ZEE_VERSION__: string | undefined;
 
 const BUNDLED_VERSION =
-  typeof __CLAWDBOT_VERSION__ === "string" ? __CLAWDBOT_VERSION__ : "0.0.0";
+  typeof __ZEE_VERSION__ === "string" ? __ZEE_VERSION__ : "0.0.0";
 
 function hasFlag(args: string[], flag: string): boolean {
   return args.includes(flag);
@@ -51,8 +51,8 @@ async function main() {
   const { loadDotEnv } = await import("../infra/dotenv.js");
   loadDotEnv({ quiet: true });
 
-  const { ensureClawdbotCliOnPath } = await import("../infra/path-env.js");
-  ensureClawdbotCliOnPath();
+  const { ensureZeeCliOnPath } = await import("../infra/path-env.js");
+  ensureZeeCliOnPath();
 
   const { enableConsoleCapture } = await import("../logging.js");
   enableConsoleCapture();
@@ -70,7 +70,7 @@ async function main() {
 
   process.on("uncaughtException", (error) => {
     console.error(
-      "[clawdbot] Uncaught exception:",
+      "[zee] Uncaught exception:",
       error.stack ?? error.message,
     );
     process.exit(1);

@@ -6,31 +6,31 @@ read_when:
 ---
 # Doctor
 
-`clawdbot doctor` is the repair + migration tool for Clawdbot. It fixes stale
+`zee doctor` is the repair + migration tool for Zee. It fixes stale
 config/state, checks health, and provides actionable repair steps.
 
 ## Quick start
 
 ```bash
-clawdbot doctor
+zee doctor
 ```
 
 ### Headless / automation
 
 ```bash
-clawdbot doctor --yes
+zee doctor --yes
 ```
 
 Accept defaults without prompting (including restart/service/sandbox repair steps when applicable).
 
 ```bash
-clawdbot doctor --non-interactive
+zee doctor --non-interactive
 ```
 
 Run without prompts and only apply safe migrations (config normalization + on-disk state moves). Skips restart/service/sandbox actions that require human confirmation.
 
 ```bash
-clawdbot doctor --deep
+zee doctor --deep
 ```
 
 Scan system services for extra gateway installs (launchd/systemd/schtasks).
@@ -38,7 +38,7 @@ Scan system services for extra gateway installs (launchd/systemd/schtasks).
 If you want to review changes before writing, open the config file first:
 
 ```bash
-cat ~/.clawdbot/clawdbot.json
+cat ~/.zee/zee.json
 ```
 
 ## What it does (summary)
@@ -47,7 +47,7 @@ cat ~/.clawdbot/clawdbot.json
 - Legacy config migration and normalization.
 - Legacy on-disk state migration (sessions/agent dir/WhatsApp auth).
 - State integrity and permissions checks (sessions, transcripts, state dir).
-- Legacy workspace dir detection (`~/clawdis`, `~/clawdbot`).
+- Legacy workspace dir detection (`~/clawdis`, `~/zee`).
 - Sandbox image repair when sandboxing is enabled.
 - Legacy service migration and extra gateway detection.
 - Gateway runtime checks (service installed but not running; cached launchd label).
@@ -59,18 +59,18 @@ cat ~/.clawdbot/clawdbot.json
 ## Detailed behavior and rationale
 
 ### 1) Legacy config file migration
-If `~/.clawdis/clawdis.json` exists and `~/.clawdbot/clawdbot.json` does not,
+If `~/.clawdis/clawdis.json` exists and `~/.zee/zee.json` does not,
 doctor migrates the file and normalizes old paths/image names. This prevents
 new installs from silently booting with the wrong schema.
 
 ### 2) Legacy config key migrations
 When the config contains deprecated keys, other commands refuse to run and ask
-you to run `clawdbot doctor`.
+you to run `zee doctor`.
 
 Doctor will:
 - Explain which legacy keys were found.
 - Show the migration it applied.
-- Rewrite `~/.clawdbot/clawdbot.json` with the updated schema.
+- Rewrite `~/.zee/zee.json` with the updated schema.
 
 The Gateway also auto-runs doctor migrations on startup when it detects a
 legacy config format, so stale configs are repaired without manual intervention.
@@ -83,18 +83,18 @@ Current migrations:
 ### 3) Legacy state migrations (disk layout)
 Doctor can migrate older on-disk layouts into the current structure:
 - Sessions store + transcripts:
-  - from `~/.clawdbot/sessions/` to `~/.clawdbot/agents/<agentId>/sessions/`
+  - from `~/.zee/sessions/` to `~/.zee/agents/<agentId>/sessions/`
 - Agent dir:
-  - from `~/.clawdbot/agent/` to `~/.clawdbot/agents/<agentId>/agent/`
+  - from `~/.zee/agent/` to `~/.zee/agents/<agentId>/agent/`
 - WhatsApp auth state (Baileys):
-  - from legacy `~/.clawdbot/credentials/*.json` (except `oauth.json`)
-  - to `~/.clawdbot/credentials/whatsapp/<accountId>/...` (default account id: `default`)
+  - from legacy `~/.zee/credentials/*.json` (except `oauth.json`)
+  - to `~/.zee/credentials/whatsapp/<accountId>/...` (default account id: `default`)
 
 These migrations are best-effort and idempotent; doctor will emit warnings when
 it leaves any legacy folders behind as backups. The Gateway/CLI also auto-migrates
 the legacy sessions + agent dir on startup so history/auth/models land in the
 per-agent path without a manual doctor run. WhatsApp auth is intentionally only
-migrated via `clawdbot doctor`.
+migrated via `zee doctor`.
 
 ### 4) State integrity checks (session persistence, routing, and safety)
 The state directory is the operational brainstem. If it vanishes, you lose
@@ -111,8 +111,8 @@ Doctor checks:
   transcript files.
 - **Main session “1-line JSONL”**: flags when the main transcript has only one
   line (history is not accumulating).
-- **Multiple state dirs**: warns when multiple `~/.clawdbot` folders exist across
-  home directories or when `CLAWDBOT_STATE_DIR` points elsewhere (history can
+- **Multiple state dirs**: warns when multiple `~/.zee` folders exist across
+  home directories or when `ZEE_STATE_DIR` points elsewhere (history can
   split between installs).
 - **Remote mode reminder**: if `gateway.mode=remote`, doctor reminds you to run
   it on the remote host (the state lives there).
@@ -123,7 +123,7 @@ switch to legacy names if the current image is missing.
 
 ### 6) Gateway service migrations and cleanup hints
 Doctor detects legacy Clawdis gateway services (launchd/systemd/schtasks) and
-offers to remove them and install the Clawdbot service using the current gateway
+offers to remove them and install the Zee service using the current gateway
 port. It can also scan for extra gateway-like services and print cleanup hints
 to ensure only one gateway runs per machine.
 

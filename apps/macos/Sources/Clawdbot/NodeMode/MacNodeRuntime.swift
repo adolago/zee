@@ -1,6 +1,6 @@
 import AppKit
-import ClawdbotIPC
-import ClawdbotKit
+import ZeeIPC
+import ZeeKit
 import Foundation
 
 actor MacNodeRuntime {
@@ -22,33 +22,33 @@ actor MacNodeRuntime {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: ClawdbotNodeError(
+                error: ZeeNodeError(
                     code: .unavailable,
                     message: "CANVAS_DISABLED: enable Canvas in Settings"))
         }
         do {
             switch command {
-            case ClawdbotCanvasCommand.present.rawValue,
-                 ClawdbotCanvasCommand.hide.rawValue,
-                 ClawdbotCanvasCommand.navigate.rawValue,
-                 ClawdbotCanvasCommand.evalJS.rawValue,
-                 ClawdbotCanvasCommand.snapshot.rawValue:
+            case ZeeCanvasCommand.present.rawValue,
+                 ZeeCanvasCommand.hide.rawValue,
+                 ZeeCanvasCommand.navigate.rawValue,
+                 ZeeCanvasCommand.evalJS.rawValue,
+                 ZeeCanvasCommand.snapshot.rawValue:
                 return try await self.handleCanvasInvoke(req)
-            case ClawdbotCanvasA2UICommand.reset.rawValue,
-                 ClawdbotCanvasA2UICommand.push.rawValue,
-                 ClawdbotCanvasA2UICommand.pushJSONL.rawValue:
+            case ZeeCanvasA2UICommand.reset.rawValue,
+                 ZeeCanvasA2UICommand.push.rawValue,
+                 ZeeCanvasA2UICommand.pushJSONL.rawValue:
                 return try await self.handleA2UIInvoke(req)
-            case ClawdbotCameraCommand.snap.rawValue,
-                 ClawdbotCameraCommand.clip.rawValue,
-                 ClawdbotCameraCommand.list.rawValue:
+            case ZeeCameraCommand.snap.rawValue,
+                 ZeeCameraCommand.clip.rawValue,
+                 ZeeCameraCommand.list.rawValue:
                 return try await self.handleCameraInvoke(req)
-            case ClawdbotLocationCommand.get.rawValue:
+            case ZeeLocationCommand.get.rawValue:
                 return try await self.handleLocationInvoke(req)
             case MacNodeScreenCommand.record.rawValue:
                 return try await self.handleScreenRecordInvoke(req)
-            case ClawdbotSystemCommand.run.rawValue:
+            case ZeeSystemCommand.run.rawValue:
                 return try await self.handleSystemRun(req)
-            case ClawdbotSystemCommand.notify.rawValue:
+            case ZeeSystemCommand.notify.rawValue:
                 return try await self.handleSystemNotify(req)
             default:
                 return Self.errorResponse(req, code: .invalidRequest, message: "INVALID_REQUEST: unknown command")
@@ -64,9 +64,9 @@ actor MacNodeRuntime {
 
     private func handleCanvasInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         switch req.command {
-        case ClawdbotCanvasCommand.present.rawValue:
-            let params = (try? Self.decodeParams(ClawdbotCanvasPresentParams.self, from: req.paramsJSON)) ??
-                ClawdbotCanvasPresentParams()
+        case ZeeCanvasCommand.present.rawValue:
+            let params = (try? Self.decodeParams(ZeeCanvasPresentParams.self, from: req.paramsJSON)) ??
+                ZeeCanvasPresentParams()
             let urlTrimmed = params.url?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let url = urlTrimmed.isEmpty ? nil : urlTrimmed
             let placement = params.placement.map {
@@ -79,26 +79,26 @@ actor MacNodeRuntime {
                     placement: placement)
             }
             return BridgeInvokeResponse(id: req.id, ok: true)
-        case ClawdbotCanvasCommand.hide.rawValue:
+        case ZeeCanvasCommand.hide.rawValue:
             await MainActor.run {
                 CanvasManager.shared.hide(sessionKey: "main")
             }
             return BridgeInvokeResponse(id: req.id, ok: true)
-        case ClawdbotCanvasCommand.navigate.rawValue:
-            let params = try Self.decodeParams(ClawdbotCanvasNavigateParams.self, from: req.paramsJSON)
+        case ZeeCanvasCommand.navigate.rawValue:
+            let params = try Self.decodeParams(ZeeCanvasNavigateParams.self, from: req.paramsJSON)
             try await MainActor.run {
                 _ = try CanvasManager.shared.show(sessionKey: "main", path: params.url)
             }
             return BridgeInvokeResponse(id: req.id, ok: true)
-        case ClawdbotCanvasCommand.evalJS.rawValue:
-            let params = try Self.decodeParams(ClawdbotCanvasEvalParams.self, from: req.paramsJSON)
+        case ZeeCanvasCommand.evalJS.rawValue:
+            let params = try Self.decodeParams(ZeeCanvasEvalParams.self, from: req.paramsJSON)
             let result = try await CanvasManager.shared.eval(
                 sessionKey: "main",
                 javaScript: params.javaScript)
             let payload = try Self.encodePayload(["result": result] as [String: String])
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
-        case ClawdbotCanvasCommand.snapshot.rawValue:
-            let params = try? Self.decodeParams(ClawdbotCanvasSnapshotParams.self, from: req.paramsJSON)
+        case ZeeCanvasCommand.snapshot.rawValue:
+            let params = try? Self.decodeParams(ZeeCanvasSnapshotParams.self, from: req.paramsJSON)
             let format = params?.format ?? .jpeg
             let maxWidth: Int? = {
                 if let raw = params?.maxWidth, raw > 0 { return raw }
@@ -132,10 +132,10 @@ actor MacNodeRuntime {
 
     private func handleA2UIInvoke(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         switch req.command {
-        case ClawdbotCanvasA2UICommand.reset.rawValue:
+        case ZeeCanvasA2UICommand.reset.rawValue:
             try await self.handleA2UIReset(req)
-        case ClawdbotCanvasA2UICommand.push.rawValue,
-             ClawdbotCanvasA2UICommand.pushJSONL.rawValue:
+        case ZeeCanvasA2UICommand.push.rawValue,
+             ZeeCanvasA2UICommand.pushJSONL.rawValue:
             try await self.handleA2UIPush(req)
         default:
             Self.errorResponse(req, code: .invalidRequest, message: "INVALID_REQUEST: unknown command")
@@ -147,14 +147,14 @@ actor MacNodeRuntime {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: ClawdbotNodeError(
+                error: ZeeNodeError(
                     code: .unavailable,
                     message: "CAMERA_DISABLED: enable Camera in Settings"))
         }
         switch req.command {
-        case ClawdbotCameraCommand.snap.rawValue:
-            let params = (try? Self.decodeParams(ClawdbotCameraSnapParams.self, from: req.paramsJSON)) ??
-                ClawdbotCameraSnapParams()
+        case ZeeCameraCommand.snap.rawValue:
+            let params = (try? Self.decodeParams(ZeeCameraSnapParams.self, from: req.paramsJSON)) ??
+                ZeeCameraSnapParams()
             let delayMs = min(10000, max(0, params.delayMs ?? 2000))
             let res = try await self.cameraCapture.snap(
                 facing: CameraFacing(rawValue: params.facing?.rawValue ?? "") ?? .front,
@@ -174,9 +174,9 @@ actor MacNodeRuntime {
                 width: Int(res.size.width),
                 height: Int(res.size.height)))
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
-        case ClawdbotCameraCommand.clip.rawValue:
-            let params = (try? Self.decodeParams(ClawdbotCameraClipParams.self, from: req.paramsJSON)) ??
-                ClawdbotCameraClipParams()
+        case ZeeCameraCommand.clip.rawValue:
+            let params = (try? Self.decodeParams(ZeeCameraClipParams.self, from: req.paramsJSON)) ??
+                ZeeCameraClipParams()
             let res = try await self.cameraCapture.clip(
                 facing: CameraFacing(rawValue: params.facing?.rawValue ?? "") ?? .front,
                 durationMs: params.durationMs,
@@ -197,7 +197,7 @@ actor MacNodeRuntime {
                 durationMs: res.durationMs,
                 hasAudio: res.hasAudio))
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
-        case ClawdbotCameraCommand.list.rawValue:
+        case ZeeCameraCommand.list.rawValue:
             let devices = await self.cameraCapture.listDevices()
             let payload = try Self.encodePayload(["devices": devices])
             return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: payload)
@@ -212,12 +212,12 @@ actor MacNodeRuntime {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: ClawdbotNodeError(
+                error: ZeeNodeError(
                     code: .unavailable,
                     message: "LOCATION_DISABLED: enable Location in Settings"))
         }
-        let params = (try? Self.decodeParams(ClawdbotLocationGetParams.self, from: req.paramsJSON)) ??
-            ClawdbotLocationGetParams()
+        let params = (try? Self.decodeParams(ZeeLocationGetParams.self, from: req.paramsJSON)) ??
+            ZeeLocationGetParams()
         let desired = params.desiredAccuracy ??
             (Self.locationPreciseEnabled() ? .precise : .balanced)
         let services = await self.mainActorServices()
@@ -226,7 +226,7 @@ actor MacNodeRuntime {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: ClawdbotNodeError(
+                error: ZeeNodeError(
                     code: .unavailable,
                     message: "LOCATION_PERMISSION_REQUIRED: grant Location permission"))
         }
@@ -236,7 +236,7 @@ actor MacNodeRuntime {
                 maxAgeMs: params.maxAgeMs,
                 timeoutMs: params.timeoutMs)
             let isPrecise = await services.locationAccuracyAuthorization() == .fullAccuracy
-            let payload = ClawdbotLocationPayload(
+            let payload = ZeeLocationPayload(
                 lat: location.coordinate.latitude,
                 lon: location.coordinate.longitude,
                 accuracyMeters: location.horizontalAccuracy,
@@ -252,14 +252,14 @@ actor MacNodeRuntime {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: ClawdbotNodeError(
+                error: ZeeNodeError(
                     code: .unavailable,
                     message: "LOCATION_TIMEOUT: no fix in time"))
         } catch {
             return BridgeInvokeResponse(
                 id: req.id,
                 ok: false,
-                error: ClawdbotNodeError(
+                error: ZeeNodeError(
                     code: .unavailable,
                     message: "LOCATION_UNAVAILABLE: \(error.localizedDescription)"))
         }
@@ -313,8 +313,8 @@ actor MacNodeRuntime {
 
         let json = try await CanvasManager.shared.eval(sessionKey: "main", javaScript: """
         (() => {
-          if (!globalThis.clawdbotA2UI) return JSON.stringify({ ok: false, error: "missing clawdbotA2UI" });
-          return JSON.stringify(globalThis.clawdbotA2UI.reset());
+          if (!globalThis.zeeA2UI) return JSON.stringify({ ok: false, error: "missing zeeA2UI" });
+          return JSON.stringify(globalThis.zeeA2UI.reset());
         })()
         """)
         return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: json)
@@ -322,29 +322,29 @@ actor MacNodeRuntime {
 
     private func handleA2UIPush(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
         let command = req.command
-        let messages: [ClawdbotKit.AnyCodable]
-        if command == ClawdbotCanvasA2UICommand.pushJSONL.rawValue {
-            let params = try Self.decodeParams(ClawdbotCanvasA2UIPushJSONLParams.self, from: req.paramsJSON)
-            messages = try ClawdbotCanvasA2UIJSONL.decodeMessagesFromJSONL(params.jsonl)
+        let messages: [ZeeKit.AnyCodable]
+        if command == ZeeCanvasA2UICommand.pushJSONL.rawValue {
+            let params = try Self.decodeParams(ZeeCanvasA2UIPushJSONLParams.self, from: req.paramsJSON)
+            messages = try ZeeCanvasA2UIJSONL.decodeMessagesFromJSONL(params.jsonl)
         } else {
             do {
-                let params = try Self.decodeParams(ClawdbotCanvasA2UIPushParams.self, from: req.paramsJSON)
+                let params = try Self.decodeParams(ZeeCanvasA2UIPushParams.self, from: req.paramsJSON)
                 messages = params.messages
             } catch {
-                let params = try Self.decodeParams(ClawdbotCanvasA2UIPushJSONLParams.self, from: req.paramsJSON)
-                messages = try ClawdbotCanvasA2UIJSONL.decodeMessagesFromJSONL(params.jsonl)
+                let params = try Self.decodeParams(ZeeCanvasA2UIPushJSONLParams.self, from: req.paramsJSON)
+                messages = try ZeeCanvasA2UIJSONL.decodeMessagesFromJSONL(params.jsonl)
             }
         }
 
         try await self.ensureA2UIHost()
 
-        let messagesJSON = try ClawdbotCanvasA2UIJSONL.encodeMessagesJSONArray(messages)
+        let messagesJSON = try ZeeCanvasA2UIJSONL.encodeMessagesJSONArray(messages)
         let js = """
         (() => {
           try {
-            if (!globalThis.clawdbotA2UI) return JSON.stringify({ ok: false, error: "missing clawdbotA2UI" });
+            if (!globalThis.zeeA2UI) return JSON.stringify({ ok: false, error: "missing zeeA2UI" });
             const messages = \(messagesJSON);
-            return JSON.stringify(globalThis.clawdbotA2UI.applyMessages(messages));
+            return JSON.stringify(globalThis.zeeA2UI.applyMessages(messages));
           } catch (e) {
             return JSON.stringify({ ok: false, error: String(e?.message ?? e) });
           }
@@ -374,7 +374,7 @@ actor MacNodeRuntime {
         guard let raw = await GatewayConnection.shared.canvasHostUrl() else { return nil }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let baseUrl = URL(string: trimmed) else { return nil }
-        return baseUrl.appendingPathComponent("__clawdbot__/a2ui/").absoluteString + "?platform=macos"
+        return baseUrl.appendingPathComponent("__zee__/a2ui/").absoluteString + "?platform=macos"
     }
 
     private func isA2UIReady(poll: Bool = false) async -> Bool {
@@ -382,7 +382,7 @@ actor MacNodeRuntime {
         while true {
             do {
                 let ready = try await CanvasManager.shared.eval(sessionKey: "main", javaScript: """
-                (() => String(Boolean(globalThis.clawdbotA2UI)))()
+                (() => String(Boolean(globalThis.zeeA2UI)))()
                 """)
                 let trimmed = ready.trimmingCharacters(in: .whitespacesAndNewlines)
                 if trimmed == "true" { return true }
@@ -396,7 +396,7 @@ actor MacNodeRuntime {
     }
 
     private func handleSystemRun(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
-        let params = try Self.decodeParams(ClawdbotSystemRunParams.self, from: req.paramsJSON)
+        let params = try Self.decodeParams(ZeeSystemRunParams.self, from: req.paramsJSON)
         let command = params.command
         guard !command.isEmpty else {
             return Self.errorResponse(req, code: .invalidRequest, message: "INVALID_REQUEST: command required")
@@ -440,7 +440,7 @@ actor MacNodeRuntime {
     }
 
     private func handleSystemNotify(_ req: BridgeInvokeRequest) async throws -> BridgeInvokeResponse {
-        let params = try Self.decodeParams(ClawdbotSystemNotifyParams.self, from: req.paramsJSON)
+        let params = try Self.decodeParams(ZeeSystemNotifyParams.self, from: req.paramsJSON)
         let title = params.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = params.body.trimmingCharacters(in: .whitespacesAndNewlines)
         if title.isEmpty, body.isEmpty {
@@ -505,9 +505,9 @@ actor MacNodeRuntime {
         UserDefaults.standard.object(forKey: cameraEnabledKey) as? Bool ?? false
     }
 
-    private nonisolated static func locationMode() -> ClawdbotLocationMode {
+    private nonisolated static func locationMode() -> ZeeLocationMode {
         let raw = UserDefaults.standard.string(forKey: locationModeKey) ?? "off"
-        return ClawdbotLocationMode(rawValue: raw) ?? .off
+        return ZeeLocationMode(rawValue: raw) ?? .off
     }
 
     private nonisolated static func locationPreciseEnabled() -> Bool {
@@ -517,18 +517,18 @@ actor MacNodeRuntime {
 
     private static func errorResponse(
         _ req: BridgeInvokeRequest,
-        code: ClawdbotNodeErrorCode,
+        code: ZeeNodeErrorCode,
         message: String) -> BridgeInvokeResponse
     {
         BridgeInvokeResponse(
             id: req.id,
             ok: false,
-            error: ClawdbotNodeError(code: code, message: message))
+            error: ZeeNodeError(code: code, message: message))
     }
 
     private static func encodeCanvasSnapshot(
         image: NSImage,
-        format: ClawdbotCanvasSnapshotFormat,
+        format: ZeeCanvasSnapshotFormat,
         maxWidth: Int?,
         quality: Double) throws -> Data
     {

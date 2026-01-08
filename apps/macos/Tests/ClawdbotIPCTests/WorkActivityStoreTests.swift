@@ -1,7 +1,7 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite
 @MainActor
@@ -68,7 +68,7 @@ struct WorkActivityStoreTests {
             meta: nil,
             args: [
                 "command": AnyCodable("echo hi\necho bye"),
-                "path": AnyCodable("\(home)/Projects/clawdbot"),
+                "path": AnyCodable("\(home)/Projects/zee"),
             ])
 
         #expect(store.current?.label == "bash: echo hi")

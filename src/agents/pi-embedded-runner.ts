@@ -24,7 +24,7 @@ import type {
 } from "../auto-reply/thinking.js";
 import { formatToolAggregate } from "../auto-reply/tool-meta.js";
 import { isCacheEnabled, resolveCacheTtlMs } from "../config/cache-utils.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { getMachineDisplayName } from "../infra/machine-name.js";
 import { createSubsystemLogger } from "../logging.js";
 import { splitMediaFromOutput } from "../media/parse.js";
@@ -33,7 +33,7 @@ import {
   enqueueCommandInLane,
 } from "../process/command-queue.js";
 import { resolveUserPath } from "../utils.js";
-import { resolveClawdbotAgentDir } from "./agent-paths.js";
+import { resolveZeeAgentDir } from "./agent-paths.js";
 import {
   markAuthProfileCooldown,
   markAuthProfileGood,
@@ -50,7 +50,7 @@ import {
   getApiKeyForModel,
   resolveAuthProfileOrder,
 } from "./model-auth.js";
-import { ensureClawdbotModelsJson } from "./models-config.js";
+import { ensureZeeModelsJson } from "./models-config.js";
 import {
   buildBootstrapContextFiles,
   type EmbeddedContextFile,
@@ -80,7 +80,7 @@ import { setContextPruningRuntime } from "./pi-extensions/context-pruning/runtim
 import { computeEffectiveSettings } from "./pi-extensions/context-pruning/settings.js";
 import { makeToolPrunablePredicate } from "./pi-extensions/context-pruning/tools.js";
 import { toToolDefinitions } from "./pi-tool-definition-adapter.js";
-import { createClawdbotCodingTools } from "./pi-tools.js";
+import { createZeeCodingTools } from "./pi-tools.js";
 import { resolveSandboxContext } from "./sandbox.js";
 import {
   applySkillEnvOverrides,
@@ -113,7 +113,7 @@ import { loadWorkspaceBootstrapFiles } from "./workspace.js";
  * @internal Exported for testing only
  */
 export function resolveExtraParams(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   provider: string;
   modelId: string;
   thinkLevel?: string;
@@ -168,7 +168,7 @@ function resolvePiExtensionPath(id: string): string {
 }
 
 function resolveContextWindowTokens(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   provider: string;
   modelId: string;
   model: Model<Api> | undefined;
@@ -211,7 +211,7 @@ function resolveContextWindowTokens(params: {
 }
 
 function buildContextPruningExtension(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   sessionManager: SessionManager;
   provider: string;
   modelId: string;
@@ -253,7 +253,7 @@ export type EmbeddedPiRunMeta = {
   aborted?: boolean;
 };
 
-function buildModelAliasLines(cfg?: ClawdbotConfig) {
+function buildModelAliasLines(cfg?: ZeeConfig) {
   const models = cfg?.agent?.models ?? {};
   const entries: Array<{ alias: string; model: string }> = [];
   for (const [keyRaw, entryRaw] of Object.entries(models)) {
@@ -417,7 +417,7 @@ const DEFAULT_SESSION_MANAGER_TTL_MS = 45_000; // 45 seconds
 
 function getSessionManagerTtl(): number {
   return resolveCacheTtlMs({
-    envValue: process.env.CLAWDBOT_SESSION_MANAGER_CACHE_TTL_MS,
+    envValue: process.env.ZEE_SESSION_MANAGER_CACHE_TTL_MS,
     defaultTtlMs: DEFAULT_SESSION_MANAGER_TTL_MS,
   });
 }
@@ -713,7 +713,7 @@ export function resolveEmbeddedSessionLane(key: string) {
 }
 
 function mapThinkingLevel(level?: ThinkLevel): ThinkingLevel {
-  // pi-agent-core supports "xhigh" too; Clawdbot doesn't surface it for now.
+  // pi-agent-core supports "xhigh" too; Zee doesn't surface it for now.
   if (!level) return "off";
   return level;
 }
@@ -728,7 +728,7 @@ function resolveModel(
   authStorage: ReturnType<typeof discoverAuthStorage>;
   modelRegistry: ReturnType<typeof discoverModels>;
 } {
-  const resolvedAgentDir = agentDir ?? resolveClawdbotAgentDir();
+  const resolvedAgentDir = agentDir ?? resolveZeeAgentDir();
   const authStorage = discoverAuthStorage(resolvedAgentDir);
   const modelRegistry = discoverModels(authStorage, resolvedAgentDir);
   const model = modelRegistry.find(provider, modelId) as Model<Api> | null;
@@ -750,7 +750,7 @@ export async function compactEmbeddedPiSession(params: {
   sessionFile: string;
   workspaceDir: string;
   agentDir?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   skillsSnapshot?: SkillSnapshot;
   provider?: string;
   model?: string;
@@ -777,8 +777,8 @@ export async function compactEmbeddedPiSession(params: {
       const provider =
         (params.provider ?? DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER;
       const modelId = (params.model ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL;
-      await ensureClawdbotModelsJson(params.config);
-      const agentDir = params.agentDir ?? resolveClawdbotAgentDir();
+      await ensureZeeModelsJson(params.config);
+      const agentDir = params.agentDir ?? resolveZeeAgentDir();
       const { model, error, authStorage, modelRegistry } = resolveModel(
         provider,
         modelId,
@@ -845,7 +845,7 @@ export async function compactEmbeddedPiSession(params: {
         const bootstrapFiles =
           await loadWorkspaceBootstrapFiles(effectiveWorkspace);
         const contextFiles = buildBootstrapContextFiles(bootstrapFiles);
-        const tools = createClawdbotCodingTools({
+        const tools = createZeeCodingTools({
           bash: {
             ...params.config?.agent?.bash,
             elevated: params.bashElevated,
@@ -977,7 +977,7 @@ export async function runEmbeddedPiAgent(params: {
   sessionFile: string;
   workspaceDir: string;
   agentDir?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   skillsSnapshot?: SkillSnapshot;
   prompt: string;
   provider?: string;
@@ -1035,8 +1035,8 @@ export async function runEmbeddedPiAgent(params: {
       const provider =
         (params.provider ?? DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER;
       const modelId = (params.model ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL;
-      await ensureClawdbotModelsJson(params.config);
-      const agentDir = params.agentDir ?? resolveClawdbotAgentDir();
+      await ensureZeeModelsJson(params.config);
+      const agentDir = params.agentDir ?? resolveZeeAgentDir();
       const { model, error, authStorage, modelRegistry } = resolveModel(
         provider,
         modelId,
@@ -1157,8 +1157,8 @@ export async function runEmbeddedPiAgent(params: {
             await loadWorkspaceBootstrapFiles(effectiveWorkspace);
           const contextFiles = buildBootstrapContextFiles(bootstrapFiles);
           // Tool schemas must be provider-compatible (OpenAI requires top-level `type: "object"`).
-          // `createClawdbotCodingTools()` normalizes schemas so the session can pass them through unchanged.
-          const tools = createClawdbotCodingTools({
+          // `createZeeCodingTools()` normalizes schemas so the session can pass them through unchanged.
+          const tools = createZeeCodingTools({
             bash: {
               ...params.config?.agent?.bash,
               elevated: params.bashElevated,
@@ -1238,7 +1238,7 @@ export async function runEmbeddedPiAgent(params: {
             systemPrompt,
             // Built-in tools recognized by pi-coding-agent SDK
             tools: builtInTools,
-            // Custom clawdbot tools (browser, canvas, nodes, cron, etc.)
+            // Custom zee tools (browser, canvas, nodes, cron, etc.)
             customTools,
             sessionManager,
             settingsManager,

@@ -1,5 +1,5 @@
 import { VERSION } from "../version.js";
-import { ClawdbotSchema } from "./zod-schema.js";
+import { ZeeSchema } from "./zod-schema.js";
 
 export type ConfigUiHint = {
   label?: string;
@@ -14,7 +14,7 @@ export type ConfigUiHint = {
 
 export type ConfigUiHints = Record<string, ConfigUiHint>;
 
-export type ConfigSchema = ReturnType<typeof ClawdbotSchema.toJSONSchema>;
+export type ConfigSchema = ReturnType<typeof ZeeSchema.toJSONSchema>;
 
 export type ConfigSchemaResponse = {
   schema: ConfigSchema;
@@ -137,7 +137,7 @@ const FIELD_HELP: Record<string, string> = {
     "Required for multi-machine access or non-loopback binds.",
   "gateway.auth.password": "Required for Tailscale funnel.",
   "gateway.controlUi.basePath":
-    "Optional URL prefix where the Control UI is served (e.g. /clawdbot).",
+    "Optional URL prefix where the Control UI is served (e.g. /zee).",
   "gateway.reload.mode":
     'Hot reload strategy for config changes ("hybrid" recommended).',
   "gateway.reload.debounceMs":
@@ -205,7 +205,7 @@ const FIELD_HELP: Record<string, string> = {
 
 const FIELD_PLACEHOLDERS: Record<string, string> = {
   "gateway.remote.url": "ws://host:18789",
-  "gateway.controlUi.basePath": "/clawdbot",
+  "gateway.controlUi.basePath": "/zee",
 };
 
 const SENSITIVE_PATTERNS = [/token/i, /password/i, /secret/i, /api.?key/i];
@@ -252,11 +252,11 @@ let cached: ConfigSchemaResponse | null = null;
 
 export function buildConfigSchema(): ConfigSchemaResponse {
   if (cached) return cached;
-  const schema = ClawdbotSchema.toJSONSchema({
+  const schema = ZeeSchema.toJSONSchema({
     target: "draft-07",
     unrepresentable: "any",
   });
-  schema.title = "ClawdbotConfig";
+  schema.title = "ZeeConfig";
   const hints = applySensitiveHints(buildBaseHints());
   const next = {
     schema,

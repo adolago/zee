@@ -9,8 +9,8 @@ import {
   DEFAULT_AGENT_WORKSPACE_DIR,
   ensureAgentWorkspace,
 } from "../agents/workspace.js";
-import type { ClawdbotConfig } from "../config/config.js";
-import { CONFIG_PATH_CLAWDBOT } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
+import { CONFIG_PATH_ZEE } from "../config/config.js";
 import { resolveSessionTranscriptsDirForAgent } from "../config/sessions.js";
 import { callGateway } from "../gateway/call.js";
 import { normalizeControlUiBasePath } from "../gateway/control-ui.js";
@@ -33,7 +33,7 @@ export function guardCancel<T>(value: T, runtime: RuntimeEnv): T {
   return value;
 }
 
-export function summarizeExistingConfig(config: ClawdbotConfig): string {
+export function summarizeExistingConfig(config: ZeeConfig): string {
   const rows: string[] = [];
   if (config.agent?.workspace)
     rows.push(`workspace: ${config.agent.workspace}`);
@@ -75,9 +75,9 @@ export function printWizardHeader(runtime: RuntimeEnv) {
 }
 
 export function applyWizardMetadata(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   params: { command: string; mode: OnboardMode },
-): ClawdbotConfig {
+): ZeeConfig {
   const commit =
     process.env.GIT_COMMIT?.trim() || process.env.GIT_SHA?.trim() || undefined;
   return {
@@ -276,7 +276,7 @@ export async function handleReset(
   workspaceDir: string,
   runtime: RuntimeEnv,
 ) {
-  await moveToTrash(CONFIG_PATH_CLAWDBOT, runtime);
+  await moveToTrash(CONFIG_PATH_ZEE, runtime);
   if (scope === "config") return;
   await moveToTrash(path.join(CONFIG_DIR, "credentials"), runtime);
   await moveToTrash(resolveSessionTranscriptsDirForAgent(), runtime);
@@ -324,7 +324,7 @@ export async function probeGatewayReachable(params: {
       password: params.password,
       method: "health",
       timeoutMs,
-      clientName: "clawdbot-probe",
+      clientName: "zee-probe",
       mode: "probe",
     });
     return { ok: true };

@@ -1,5 +1,5 @@
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct CameraControllerErrorTests {
     @Test func errorDescriptionsAreStable() {

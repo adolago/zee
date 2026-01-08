@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 
 enum ConfigStore {
@@ -43,7 +43,7 @@ enum ConfigStore {
         if let gateway = await self.loadFromGateway() {
             return gateway
         }
-        return ClawdbotConfigFile.loadDict()
+        return ZeeConfigFile.loadDict()
     }
 
     @MainActor
@@ -62,7 +62,7 @@ enum ConfigStore {
                 do {
                     try await self.saveToGateway(root)
                 } catch {
-                    ClawdbotConfigFile.saveDict(root)
+                    ZeeConfigFile.saveDict(root)
                 }
             }
         }

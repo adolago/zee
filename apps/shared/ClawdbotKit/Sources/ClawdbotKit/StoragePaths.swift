@@ -1,14 +1,14 @@
 import Foundation
 
-public enum ClawdbotNodeStorage {
+public enum ZeeNodeStorage {
     public static func appSupportDir() throws -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         guard let base else {
-            throw NSError(domain: "ClawdbotNodeStorage", code: 1, userInfo: [
+            throw NSError(domain: "ZeeNodeStorage", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Application Support directory unavailable",
             ])
         }
-        return base.appendingPathComponent("Clawdbot", isDirectory: true)
+        return base.appendingPathComponent("Zee", isDirectory: true)
     }
 
     public static func canvasRoot(sessionKey: String) throws -> URL {
@@ -21,11 +21,11 @@ public enum ClawdbotNodeStorage {
     public static func cachesDir() throws -> URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
         guard let base else {
-            throw NSError(domain: "ClawdbotNodeStorage", code: 2, userInfo: [
+            throw NSError(domain: "ZeeNodeStorage", code: 2, userInfo: [
                 NSLocalizedDescriptionKey: "Caches directory unavailable",
             ])
         }
-        return base.appendingPathComponent("Clawdbot", isDirectory: true)
+        return base.appendingPathComponent("Zee", isDirectory: true)
     }
 
     public static func canvasSnapshotsRoot(sessionKey: String) throws -> URL {

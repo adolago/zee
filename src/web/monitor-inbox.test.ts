@@ -342,7 +342,7 @@ describe("web monitor inbox", () => {
   it("logs inbound bodies to file", async () => {
     const logPath = path.join(
       os.tmpdir(),
-      `clawdbot-log-test-${crypto.randomUUID()}.log`,
+      `zee-log-test-${crypto.randomUUID()}.log`,
     );
     setLoggerOverride({ level: "trace", file: logPath });
 

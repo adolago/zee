@@ -1,6 +1,6 @@
 import AppKit
-import ClawdbotKit
-import ClawdbotProtocol
+import ZeeKit
+import ZeeProtocol
 import Foundation
 import Network
 import OSLog
@@ -8,7 +8,7 @@ import OSLog
 actor BridgeServer {
     static let shared = BridgeServer()
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "bridge")
+    private let logger = Logger(subsystem: "com.zee", category: "bridge")
     private var listener: NWListener?
     private var isRunning = false
     private var store: PairedNodesStore?
@@ -42,7 +42,7 @@ actor BridgeServer {
                 Task { await self.handleListenerState(state) }
             }
 
-            listener.start(queue: DispatchQueue(label: "com.clawdbot.bridge"))
+            listener.start(queue: DispatchQueue(label: "com.zee.bridge"))
             self.listener = listener
         } catch {
             self.logger.error("bridge start failed: \(error.localizedDescription, privacy: .public)")
@@ -229,7 +229,7 @@ actor BridgeServer {
                 error: BridgeRPCError(code: "FORBIDDEN", message: "Method not allowed"))
         }
 
-        let params: [String: ClawdbotProtocol.AnyCodable]?
+        let params: [String: ZeeProtocol.AnyCodable]?
         if let json = req.paramsJSON?.trimmingCharacters(in: .whitespacesAndNewlines), !json.isEmpty {
             guard let data = json.data(using: .utf8) else {
                 return BridgeRPCResponse(
@@ -238,7 +238,7 @@ actor BridgeServer {
                     error: BridgeRPCError(code: "INVALID_REQUEST", message: "paramsJSON not UTF-8"))
             }
             do {
-                params = try JSONDecoder().decode([String: ClawdbotProtocol.AnyCodable].self, from: data)
+                params = try JSONDecoder().decode([String: ZeeProtocol.AnyCodable].self, from: data)
             } catch {
                 return BridgeRPCResponse(
                     id: req.id,
@@ -360,16 +360,16 @@ actor BridgeServer {
             "reason \(reason)",
         ].compactMap(\.self).joined(separator: " · ")
 
-        var params: [String: ClawdbotProtocol.AnyCodable] = [
-            "text": ClawdbotProtocol.AnyCodable(summary),
-            "instanceId": ClawdbotProtocol.AnyCodable(nodeId),
-            "host": ClawdbotProtocol.AnyCodable(host),
-            "mode": ClawdbotProtocol.AnyCodable("node"),
-            "reason": ClawdbotProtocol.AnyCodable(reason),
-            "tags": ClawdbotProtocol.AnyCodable(tags),
+        var params: [String: ZeeProtocol.AnyCodable] = [
+            "text": ZeeProtocol.AnyCodable(summary),
+            "instanceId": ZeeProtocol.AnyCodable(nodeId),
+            "host": ZeeProtocol.AnyCodable(host),
+            "mode": ZeeProtocol.AnyCodable("node"),
+            "reason": ZeeProtocol.AnyCodable(reason),
+            "tags": ZeeProtocol.AnyCodable(tags),
         ]
-        if let ip { params["ip"] = ClawdbotProtocol.AnyCodable(ip) }
-        if let version { params["version"] = ClawdbotProtocol.AnyCodable(version) }
+        if let ip { params["ip"] = ZeeProtocol.AnyCodable(ip) }
+        if let version { params["version"] = ZeeProtocol.AnyCodable(version) }
         await GatewayConnection.shared.sendSystemEvent(params)
     }
 
@@ -473,7 +473,7 @@ actor BridgeServer {
                 userInfo: [NSLocalizedDescriptionKey: "Application Support unavailable"])
         }
         return base
-            .appendingPathComponent("Clawdbot", isDirectory: true)
+            .appendingPathComponent("Zee", isDirectory: true)
             .appendingPathComponent("bridge", isDirectory: true)
             .appendingPathComponent("paired-nodes.json", isDirectory: false)
     }
@@ -486,7 +486,7 @@ enum BridgePairingApprover {
             let name = request.displayName ?? request.nodeId
             let remote = request.remoteAddress?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
             let alert = NSAlert()
-            alert.messageText = isRepair ? "Re-pair Clawdbot Node?" : "Pair Clawdbot Node?"
+            alert.messageText = isRepair ? "Re-pair Zee Node?" : "Pair Zee Node?"
             alert.informativeText = """
             Node: \(name)
             IP: \(remote ?? "unknown")

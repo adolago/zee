@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 
 extension ConnectionsStore {
@@ -9,7 +9,7 @@ extension ConnectionsStore {
                 params: nil,
                 timeoutMs: 10000)
             self.configStatus = snap.valid == false
-                ? "Config invalid; fix it in ~/.clawdbot/clawdbot.json."
+                ? "Config invalid; fix it in ~/.zee/zee.json."
                 : nil
             self.configRoot = snap.config?.mapValues { $0.foundationValue } ?? [:]
             self.configLoaded = true
@@ -441,7 +441,7 @@ extension ConnectionsStore {
                 method: .configSet,
                 params: params,
                 timeoutMs: 10000)
-            self.configStatus = "Saved to ~/.clawdbot/clawdbot.json."
+            self.configStatus = "Saved to ~/.zee/zee.json."
             await self.refresh(probe: true)
         } catch {
             self.configStatus = error.localizedDescription

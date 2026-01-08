@@ -7,9 +7,9 @@ import {
 } from "../agents/agent-scope.js";
 import { ensureAuthProfileStore } from "../agents/auth-profiles.js";
 import { DEFAULT_IDENTITY_FILENAME } from "../agents/workspace.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   readConfigFileSnapshot,
   writeConfigFile,
 } from "../config/config.js";
@@ -140,11 +140,11 @@ function createQuietRuntime(runtime: RuntimeEnv): RuntimeEnv {
   return { ...runtime, log: () => {} };
 }
 
-function resolveAgentName(cfg: ClawdbotConfig, agentId: string) {
+function resolveAgentName(cfg: ZeeConfig, agentId: string) {
   return cfg.routing?.agents?.[agentId]?.name?.trim() || undefined;
 }
 
-function resolveAgentModel(cfg: ClawdbotConfig, agentId: string) {
+function resolveAgentModel(cfg: ZeeConfig, agentId: string) {
   if (agentId !== DEFAULT_AGENT_ID) {
     return cfg.routing?.agents?.[agentId]?.model?.trim() || undefined;
   }
@@ -182,7 +182,7 @@ function loadAgentIdentity(workspace: string): AgentIdentity | null {
   }
 }
 
-export function buildAgentSummaries(cfg: ClawdbotConfig): AgentSummary[] {
+export function buildAgentSummaries(cfg: ZeeConfig): AgentSummary[] {
   const defaultAgentId = normalizeAgentId(
     cfg.routing?.defaultAgentId ?? DEFAULT_AGENT_ID,
   );
@@ -232,7 +232,7 @@ export function buildAgentSummaries(cfg: ClawdbotConfig): AgentSummary[] {
 }
 
 export function applyAgentConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   params: {
     agentId: string;
     name?: string;
@@ -240,7 +240,7 @@ export function applyAgentConfig(
     agentDir?: string;
     model?: string;
   },
-): ClawdbotConfig {
+): ZeeConfig {
   const agentId = normalizeAgentId(params.agentId);
   const existing = cfg.routing?.agents?.[agentId] ?? {};
   const name = params.name?.trim();
@@ -275,10 +275,10 @@ function bindingMatchKey(match: AgentBinding["match"]) {
 }
 
 export function applyAgentBindings(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   bindings: AgentBinding[],
 ): {
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   added: AgentBinding[];
   skipped: AgentBinding[];
   conflicts: Array<{ binding: AgentBinding; existingAgentId: string }>;
@@ -332,10 +332,10 @@ export function applyAgentBindings(
 }
 
 export function pruneAgentConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   agentId: string,
 ): {
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   removedBindings: number;
   removedAllow: number;
 } {
@@ -453,7 +453,7 @@ function formatProviderState(entry: ProviderAccountStatus): string {
 }
 
 async function buildProviderStatusIndex(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): Promise<Map<string, ProviderAccountStatus>> {
   const map = new Map<string, ProviderAccountStatus>();
 
@@ -540,7 +540,7 @@ async function buildProviderStatusIndex(
 }
 
 function resolveDefaultAccountId(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   provider: ChatProviderId,
 ): string {
   switch (provider) {
@@ -561,7 +561,7 @@ function resolveDefaultAccountId(
 
 function shouldShowProviderEntry(
   entry: ProviderAccountStatus,
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): boolean {
   if (entry.provider === "whatsapp") {
     return entry.state === "linked" || Boolean(cfg.whatsapp);
@@ -582,7 +582,7 @@ function formatProviderEntry(entry: ProviderAccountStatus): string {
 }
 
 function summarizeBindings(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   bindings: AgentBinding[],
 ): string[] {
   if (bindings.length === 0) return [];
@@ -606,7 +606,7 @@ function summarizeBindings(
 
 async function requireValidConfig(
   runtime: RuntimeEnv,
-): Promise<ClawdbotConfig | null> {
+): Promise<ZeeConfig | null> {
   const snapshot = await readConfigFileSnapshot();
   if (snapshot.exists && !snapshot.valid) {
     const issues =
@@ -616,7 +616,7 @@ async function requireValidConfig(
             .join("\n")
         : "Unknown validation issue.";
     runtime.error(`Config invalid:\n${issues}`);
-    runtime.error("Fix the config or run clawdbot doctor.");
+    runtime.error("Fix the config or run zee doctor.");
     runtime.exit(1);
     return null;
   }
@@ -704,7 +704,7 @@ export async function agentsListCommand(
     "Routing rules map provider/account/peer to an agent. Use --bindings for full rules.",
   );
   lines.push(
-    "Provider status reflects local config/creds. For live health: clawdbot providers status --probe.",
+    "Provider status reflects local config/creds. For live health: zee providers status --probe.",
   );
   runtime.log(lines.join("\n"));
 }
@@ -722,7 +722,7 @@ function describeBinding(binding: AgentBinding) {
 function buildProviderBindings(params: {
   agentId: string;
   selection: ProviderChoice[];
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   accountIds?: Partial<Record<ProviderChoice, string>>;
 }): AgentBinding[] {
   const bindings: AgentBinding[] = [];
@@ -744,7 +744,7 @@ function buildProviderBindings(params: {
 function parseBindingSpecs(params: {
   agentId: string;
   specs?: string[];
-  config: ClawdbotConfig;
+  config: ZeeConfig;
 }): { bindings: AgentBinding[]; errors: string[] } {
   const bindings: AgentBinding[] = [];
   const errors: string[] = [];
@@ -853,7 +853,7 @@ export async function agentsAddCommand(
         : { config: nextConfig, added: [], skipped: [], conflicts: [] };
 
     await writeConfigFile(bindingResult.config);
-    if (!opts.json) runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+    if (!opts.json) runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
     const quietRuntime = opts.json ? createQuietRuntime(runtime) : runtime;
     await ensureWorkspaceAndSessions(workspaceDir, quietRuntime, {
       skipBootstrap: Boolean(bindingResult.config.agent?.skipBootstrap),
@@ -899,7 +899,7 @@ export async function agentsAddCommand(
 
   const prompter = createClackPrompter();
   try {
-    await prompter.intro("Add Clawdbot agent");
+    await prompter.intro("Add Zee agent");
     const name =
       nameInput ??
       (await prompter.text({
@@ -1039,7 +1039,7 @@ export async function agentsAddCommand(
     }
 
     await writeConfigFile(nextConfig);
-    runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+    runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
     await ensureWorkspaceAndSessions(workspaceDir, runtime, {
       skipBootstrap: Boolean(nextConfig.agent?.skipBootstrap),
       agentId,
@@ -1117,7 +1117,7 @@ export async function agentsDeleteCommand(
 
   const result = pruneAgentConfig(cfg, agentId);
   await writeConfigFile(result.config);
-  if (!opts.json) runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  if (!opts.json) runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
 
   const quietRuntime = opts.json ? createQuietRuntime(runtime) : runtime;
   await moveToTrash(workspaceDir, quietRuntime);

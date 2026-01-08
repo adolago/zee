@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import CoreLocation
 import Foundation
 
@@ -30,7 +30,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         return .fullAccuracy
     }
 
-    func ensureAuthorization(mode: ClawdbotLocationMode) async -> CLAuthorizationStatus {
+    func ensureAuthorization(mode: ZeeLocationMode) async -> CLAuthorizationStatus {
         guard CLLocationManager.locationServicesEnabled() else { return .denied }
 
         let status = self.manager.authorizationStatus
@@ -53,8 +53,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func currentLocation(
-        params: ClawdbotLocationGetParams,
-        desiredAccuracy: ClawdbotLocationAccuracy,
+        params: ZeeLocationGetParams,
+        desiredAccuracy: ZeeLocationAccuracy,
         maxAgeMs: Int?,
         timeoutMs: Int?) async throws -> CLLocation
     {
@@ -106,7 +106,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    private static func accuracyValue(_ accuracy: ClawdbotLocationAccuracy) -> CLLocationAccuracy {
+    private static func accuracyValue(_ accuracy: ZeeLocationAccuracy) -> CLLocationAccuracy {
         switch accuracy {
         case .coarse:
             kCLLocationAccuracyKilometer

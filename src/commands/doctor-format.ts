@@ -54,10 +54,10 @@ export function buildGatewayRuntimeHints(
     hints.push(
       `LaunchAgent label cached but plist missing. Clear with: launchctl bootout gui/$UID/${GATEWAY_LAUNCH_AGENT_LABEL}`,
     );
-    hints.push("Then reinstall: clawdbot daemon install");
+    hints.push("Then reinstall: zee daemon install");
   }
   if (runtime.missingUnit) {
-    hints.push("Service not installed. Run: clawdbot daemon install");
+    hints.push("Service not installed. Run: zee daemon install");
     if (fileLog) hints.push(`File logs: ${fileLog}`);
     return hints;
   }
@@ -72,10 +72,10 @@ export function buildGatewayRuntimeHints(
       hints.push(`Launchd stderr (if installed): ${logs.stderrPath}`);
     } else if (platform === "linux") {
       hints.push(
-        "Logs: journalctl --user -u clawdbot-gateway.service -n 200 --no-pager",
+        "Logs: journalctl --user -u zee-gateway.service -n 200 --no-pager",
       );
     } else if (platform === "win32") {
-      hints.push('Logs: schtasks /Query /TN "Clawdbot Gateway" /V /FO LIST');
+      hints.push('Logs: schtasks /Query /TN "Zee Gateway" /V /FO LIST');
     }
   }
   return hints;

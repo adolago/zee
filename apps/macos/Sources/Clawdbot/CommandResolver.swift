@@ -1,13 +1,13 @@
 import Foundation
 
 enum CommandResolver {
-    private static let projectRootDefaultsKey = "clawdbot.gatewayProjectRootPath"
-    private static let helperName = "clawdbot"
+    private static let projectRootDefaultsKey = "zee.gatewayProjectRootPath"
+    private static let helperName = "zee"
 
     static func gatewayEntrypoint(in root: URL) -> String? {
         let distEntry = root.appendingPathComponent("dist/index.js").path
         if FileManager.default.isReadableFile(atPath: distEntry) { return distEntry }
-        let binEntry = root.appendingPathComponent("bin/clawdbot.js").path
+        let binEntry = root.appendingPathComponent("bin/zee.js").path
         if FileManager.default.isReadableFile(atPath: binEntry) { return binEntry }
         return nil
     }
@@ -36,9 +36,9 @@ enum CommandResolver {
 
     static func errorCommand(with message: String) -> [String] {
         let script = """
-        cat <<'__CLAWDBOT_ERR__' >&2
+        cat <<'__ZEE_ERR__' >&2
         \(message)
-        __CLAWDBOT_ERR__
+        __ZEE_ERR__
         exit 1
         """
         return ["/bin/sh", "-c", script]
@@ -52,7 +52,7 @@ enum CommandResolver {
             return url
         }
         let fallback = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Projects/clawdbot")
+            .appendingPathComponent("Projects/zee")
         if FileManager.default.fileExists(atPath: fallback.path) {
             return fallback
         }
@@ -166,23 +166,23 @@ enum CommandResolver {
         return nil
     }
 
-    static func clawdbotExecutable(searchPaths: [String]? = nil) -> String? {
+    static func zeeExecutable(searchPaths: [String]? = nil) -> String? {
         self.findExecutable(named: self.helperName, searchPaths: searchPaths)
     }
 
-    static func projectClawdbotExecutable(projectRoot: URL? = nil) -> String? {
+    static func projectZeeExecutable(projectRoot: URL? = nil) -> String? {
         let root = projectRoot ?? self.projectRoot()
         let candidate = root.appendingPathComponent("node_modules/.bin").appendingPathComponent(self.helperName).path
         return FileManager.default.isExecutableFile(atPath: candidate) ? candidate : nil
     }
 
     static func nodeCliPath() -> String? {
-        let candidate = self.projectRoot().appendingPathComponent("bin/clawdbot.js").path
+        let candidate = self.projectRoot().appendingPathComponent("bin/zee.js").path
         return FileManager.default.isReadableFile(atPath: candidate) ? candidate : nil
     }
 
-    static func hasAnyClawdbotInvoker(searchPaths: [String]? = nil) -> Bool {
-        if self.clawdbotExecutable(searchPaths: searchPaths) != nil { return true }
+    static func hasAnyZeeInvoker(searchPaths: [String]? = nil) -> Bool {
+        if self.zeeExecutable(searchPaths: searchPaths) != nil { return true }
         if self.findExecutable(named: "pnpm", searchPaths: searchPaths) != nil { return true }
         if self.findExecutable(named: "node", searchPaths: searchPaths) != nil,
            self.nodeCliPath() != nil
@@ -192,7 +192,7 @@ enum CommandResolver {
         return false
     }
 
-    static func clawdbotNodeCommand(
+    static func zeeNodeCommand(
         subcommand: String,
         extraArgs: [String] = [],
         defaults: UserDefaults = .standard,
@@ -212,8 +212,8 @@ enum CommandResolver {
         switch runtimeResult {
         case let .success(runtime):
             let root = self.projectRoot()
-            if let clawdbotPath = self.projectClawdbotExecutable(projectRoot: root) {
-                return [clawdbotPath, subcommand] + extraArgs
+            if let zeePath = self.projectZeeExecutable(projectRoot: root) {
+                return [zeePath, subcommand] + extraArgs
             }
 
             if let entry = self.gatewayEntrypoint(in: root) {
@@ -225,14 +225,14 @@ enum CommandResolver {
             }
             if let pnpm = self.findExecutable(named: "pnpm", searchPaths: searchPaths) {
                 // Use --silent to avoid pnpm lifecycle banners that would corrupt JSON outputs.
-                return [pnpm, "--silent", "clawdbot", subcommand] + extraArgs
+                return [pnpm, "--silent", "zee", subcommand] + extraArgs
             }
-            if let clawdbotPath = self.clawdbotExecutable(searchPaths: searchPaths) {
-                return [clawdbotPath, subcommand] + extraArgs
+            if let zeePath = self.zeeExecutable(searchPaths: searchPaths) {
+                return [zeePath, subcommand] + extraArgs
             }
 
             let missingEntry = """
-            clawdbot entrypoint missing (looked for dist/index.js or bin/clawdbot.js); run pnpm build.
+            zee entrypoint missing (looked for dist/index.js or bin/zee.js); run pnpm build.
             """
             return self.errorCommand(with: missingEntry)
 
@@ -241,14 +241,14 @@ enum CommandResolver {
         }
     }
 
-    // Existing callers still refer to clawdbotCommand; keep it as node alias.
-    static func clawdbotCommand(
+    // Existing callers still refer to zeeCommand; keep it as node alias.
+    static func zeeCommand(
         subcommand: String,
         extraArgs: [String] = [],
         defaults: UserDefaults = .standard,
         searchPaths: [String]? = nil) -> [String]
     {
-        self.clawdbotNodeCommand(
+        self.zeeNodeCommand(
             subcommand: subcommand,
             extraArgs: extraArgs,
             defaults: defaults,
@@ -274,7 +274,7 @@ enum CommandResolver {
         let userHost = parsed.user.map { "\($0)@\(parsed.host)" } ?? parsed.host
         args.append(userHost)
 
-        // Run the real clawdbot CLI on the remote host.
+        // Run the real zee CLI on the remote host.
         let exportedPath = [
             "/opt/homebrew/bin",
             "/usr/local/bin",
@@ -291,7 +291,7 @@ enum CommandResolver {
 
         let projectSection = if userPRJ.isEmpty {
             """
-            DEFAULT_PRJ="$HOME/Projects/clawdbot"
+            DEFAULT_PRJ="$HOME/Projects/zee"
             if [ -d "$DEFAULT_PRJ" ]; then
               PRJ="$DEFAULT_PRJ"
               cd "$PRJ" || { echo "Project root not found: $PRJ"; exit 127; }
@@ -330,9 +330,9 @@ enum CommandResolver {
         CLI="";
         \(cliSection)
         \(projectSection)
-        if command -v clawdbot >/dev/null 2>&1; then
-          CLI="$(command -v clawdbot)"
-          clawdbot \(quotedArgs);
+        if command -v zee >/dev/null 2>&1; then
+          CLI="$(command -v zee)"
+          zee \(quotedArgs);
         elif [ -n "${PRJ:-}" ] && [ -f "$PRJ/dist/index.js" ]; then
           if command -v node >/dev/null 2>&1; then
             CLI="node $PRJ/dist/index.js"
@@ -340,18 +340,18 @@ enum CommandResolver {
           else
             echo "Node >=22 required on remote host"; exit 127;
           fi
-        elif [ -n "${PRJ:-}" ] && [ -f "$PRJ/bin/clawdbot.js" ]; then
+        elif [ -n "${PRJ:-}" ] && [ -f "$PRJ/bin/zee.js" ]; then
           if command -v node >/dev/null 2>&1; then
-            CLI="node $PRJ/bin/clawdbot.js"
-            node "$PRJ/bin/clawdbot.js" \(quotedArgs);
+            CLI="node $PRJ/bin/zee.js"
+            node "$PRJ/bin/zee.js" \(quotedArgs);
           else
             echo "Node >=22 required on remote host"; exit 127;
           fi
         elif command -v pnpm >/dev/null 2>&1; then
-          CLI="pnpm --silent clawdbot"
-          pnpm --silent clawdbot \(quotedArgs);
+          CLI="pnpm --silent zee"
+          pnpm --silent zee \(quotedArgs);
         else
-          echo "clawdbot CLI missing on remote host"; exit 127;
+          echo "zee CLI missing on remote host"; exit 127;
         fi
         """
         args.append(contentsOf: ["/bin/sh", "-c", scriptBody])
@@ -372,7 +372,7 @@ enum CommandResolver {
         if let modeRaw {
             mode = AppState.ConnectionMode(rawValue: modeRaw) ?? .local
         } else {
-            let seen = defaults.bool(forKey: "clawdbot.onboardingSeen")
+            let seen = defaults.bool(forKey: "zee.onboardingSeen")
             mode = seen ? .local : .unconfigured
         }
         let target = defaults.string(forKey: remoteTargetKey) ?? ""

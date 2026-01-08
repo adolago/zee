@@ -6,22 +6,22 @@ read_when:
 ---
 # Tailscale (Gateway dashboard)
 
-Clawdbot can auto-configure Tailscale **Serve** (tailnet) or **Funnel** (public) for the
+Zee can auto-configure Tailscale **Serve** (tailnet) or **Funnel** (public) for the
 Gateway dashboard and WebSocket port. This keeps the Gateway bound to loopback while
 Tailscale provides HTTPS, routing, and (for Serve) identity headers.
 
 ## Modes
 
 - `serve`: Tailnet-only Serve via `tailscale serve`. The gateway stays on `127.0.0.1`.
-- `funnel`: Public HTTPS via `tailscale funnel`. Clawdbot requires a shared password.
+- `funnel`: Public HTTPS via `tailscale funnel`. Zee requires a shared password.
 - `off`: Default (no Tailscale automation).
 
 ## Auth
 
 Set `gateway.auth.mode` to control the handshake:
 
-- `token` (default when `CLAWDBOT_GATEWAY_TOKEN` is set)
-- `password` (shared secret via `CLAWDBOT_GATEWAY_PASSWORD` or config)
+- `token` (default when `ZEE_GATEWAY_TOKEN` is set)
+- `password` (shared secret via `ZEE_GATEWAY_PASSWORD` or config)
 
 When `tailscale.mode = "serve"`, the gateway trusts Tailscale identity headers by
 default unless you force `gateway.auth.mode` to `password` or set
@@ -54,20 +54,20 @@ Open: `https://<magicdns>/` (or your configured `gateway.controlUi.basePath`)
 }
 ```
 
-Prefer `CLAWDBOT_GATEWAY_PASSWORD` over committing a password to disk.
+Prefer `ZEE_GATEWAY_PASSWORD` over committing a password to disk.
 
 ## CLI examples
 
 ```bash
-clawdbot gateway --tailscale serve
-clawdbot gateway --tailscale funnel --auth password
+zee gateway --tailscale serve
+zee gateway --tailscale funnel --auth password
 ```
 
 ## Notes
 
 - Tailscale Serve/Funnel requires the `tailscale` CLI to be installed and logged in.
 - `tailscale.mode: "funnel"` refuses to start unless auth mode is `password` to avoid public exposure.
-- Set `gateway.tailscale.resetOnExit` if you want Clawdbot to undo `tailscale serve`
+- Set `gateway.tailscale.resetOnExit` if you want Zee to undo `tailscale serve`
   or `tailscale funnel` configuration on shutdown.
 
 ## Tailscale prerequisites + limits

@@ -5,13 +5,13 @@ read_when:
 ---
 # Agent Runtime 🤖
 
-CLAWDBOT runs a single embedded agent runtime derived from **p-mono** (internal name: **p**).
+ZEE runs a single embedded agent runtime derived from **p-mono** (internal name: **p**).
 
 ## Workspace (required)
 
-CLAWDBOT uses a single agent workspace directory (`agent.workspace`) as the agent’s **only** working directory (`cwd`) for tools and context.
+ZEE uses a single agent workspace directory (`agent.workspace`) as the agent’s **only** working directory (`cwd`) for tools and context.
 
-Recommended: use `clawdbot setup` to create `~/.clawdbot/clawdbot.json` if missing and initialize the workspace files.
+Recommended: use `zee setup` to create `~/.zee/zee.json` if missing and initialize the workspace files.
 
 Full workspace layout + backup guide: [`docs/agent-workspace.md`](/concepts/agent-workspace)
 
@@ -21,7 +21,7 @@ per-session workspaces under `agent.sandbox.workspaceRoot` (see
 
 ## Bootstrap files (injected)
 
-Inside `agent.workspace`, CLAWDBOT expects these user-editable files:
+Inside `agent.workspace`, ZEE expects these user-editable files:
 - `AGENTS.md` — operating instructions + “memory”
 - `SOUL.md` — persona, boundaries, tone
 - `TOOLS.md` — user-maintained tool notes (e.g. `imsg`, `sag`, conventions)
@@ -29,11 +29,11 @@ Inside `agent.workspace`, CLAWDBOT expects these user-editable files:
 - `IDENTITY.md` — agent name/vibe/emoji
 - `USER.md` — user profile + preferred address
 
-On the first turn of a new session, CLAWDBOT injects the contents of these files directly into the agent context.
+On the first turn of a new session, ZEE injects the contents of these files directly into the agent context.
 
 Blank files are skipped. Large files are trimmed and truncated with a marker so prompts stay lean (read the file for full content).
 
-If a file is missing, CLAWDBOT injects a single “missing file” marker line (and `clawdbot setup` will create a safe default template).
+If a file is missing, ZEE injects a single “missing file” marker line (and `zee setup` will create a safe default template).
 
 `BOOTSTRAP.md` is only created for a **brand new workspace** (no other bootstrap files present). If you delete it after completing the ritual, it should not be recreated on later restarts.
 
@@ -49,16 +49,16 @@ p’s embedded core tools (read/bash/edit/write and related internals) are defin
 
 ## Skills
 
-Clawdbot loads skills from three locations (workspace wins on name conflict):
+Zee loads skills from three locations (workspace wins on name conflict):
 - Bundled (shipped with the install)
-- Managed/local: `~/.clawdbot/skills`
+- Managed/local: `~/.zee/skills`
 - Workspace: `<workspace>/skills`
 
 Skills can be gated by config/env (see `skills` in [`docs/configuration.md`](/gateway/configuration)).
 
 ## p-mono integration
 
-Clawdbot reuses pieces of the p-mono codebase (models/tools), but **session management, discovery, and tool wiring are Clawdbot-owned**.
+Zee reuses pieces of the p-mono codebase (models/tools), but **session management, discovery, and tool wiring are Zee-owned**.
 
 - No p-coding agent runtime.
 - No `~/.pi/agent` or `<workspace>/.pi` settings are consulted.
@@ -72,15 +72,15 @@ Apply these notes **only** when the user is Peter Steinberger at steipete.
 - Peter travels between **Vienna** and **London**; there are two networks bridged via **Tailscale**.
 - For debugging, connect to the Mac Studio (London) or MacBook Pro (primary).
 - There is also an **M1 MacBook Pro** on the Vienna tailnet you can use to access the Vienna network.
-- Nodes can be accessed via the `clawdbot` binary (`pnpm clawdbot` in `~/Projects/clawdbot`).
-- See also `skills/clawdbot*` for node/browser/canvas/cron usage.
+- Nodes can be accessed via the `zee` binary (`pnpm zee` in `~/Projects/zee`).
+- See also `skills/zee*` for node/browser/canvas/cron usage.
 
 ## Sessions
 
 Session transcripts are stored as JSONL at:
-- `~/.clawdbot/agents/<agentId>/sessions/<SessionId>.jsonl`
+- `~/.zee/agents/<agentId>/sessions/<SessionId>.jsonl`
 
-The session ID is stable and chosen by CLAWDBOT.
+The session ID is stable and chosen by ZEE.
 Legacy Pi/Tau session folders are **not** read.
 
 ## Steering while streaming

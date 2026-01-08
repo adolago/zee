@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 
@@ -78,7 +78,7 @@ actor BridgeSession {
         let params = NWParameters.tcp
         params.includePeerToPeer = true
         let connection = NWConnection(to: endpoint, using: params)
-        let queue = DispatchQueue(label: "com.clawdbot.ios.bridge-session")
+        let queue = DispatchQueue(label: "com.zee.ios.bridge-session")
         self.connection = connection
         self.queue = queue
 

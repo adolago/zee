@@ -19,7 +19,7 @@ import { ensureBinary } from "./infra/binaries.js";
 import { loadDotEnv } from "./infra/dotenv.js";
 import { normalizeEnv } from "./infra/env.js";
 import { isMainModule } from "./infra/is-main.js";
-import { ensureClawdbotCliOnPath } from "./infra/path-env.js";
+import { ensureZeeCliOnPath } from "./infra/path-env.js";
 import {
   describePortOwner,
   ensurePortAvailable,
@@ -35,7 +35,7 @@ import { assertProvider, normalizeE164, toWhatsappJid } from "./utils.js";
 
 loadDotEnv({ quiet: true });
 normalizeEnv();
-ensureClawdbotCliOnPath();
+ensureZeeCliOnPath();
 
 // Capture all console output into structured logs while keeping stdout/stderr behavior.
 enableConsoleCapture();
@@ -83,7 +83,7 @@ if (isMain) {
 
   process.on("uncaughtException", (error) => {
     console.error(
-      "[clawdbot] Uncaught exception:",
+      "[zee] Uncaught exception:",
       error.stack ?? error.message,
     );
     process.exit(1);
@@ -91,7 +91,7 @@ if (isMain) {
 
   void program.parseAsync(process.argv).catch((err) => {
     console.error(
-      "[clawdbot] CLI failed:",
+      "[zee] CLI failed:",
       err instanceof Error ? (err.stack ?? err.message) : err,
     );
     process.exit(1);

@@ -7,7 +7,7 @@ import OSLog
 final class PresenceReporter {
     static let shared = PresenceReporter()
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "presence")
+    private let logger = Logger(subsystem: "com.zee", category: "presence")
     private var task: Task<Void, Never>?
     private let interval: TimeInterval = 180 // a few minutes
     private let instanceId: String = InstanceIdentity.instanceId

@@ -6,7 +6,7 @@ describe("parseCliProfileArgs", () => {
   it("strips --dev anywhere in argv", () => {
     const res = parseCliProfileArgs([
       "node",
-      "clawdbot",
+      "zee",
       "gateway",
       "--dev",
       "--allow-unconfigured",
@@ -15,7 +15,7 @@ describe("parseCliProfileArgs", () => {
     expect(res.profile).toBe("dev");
     expect(res.argv).toEqual([
       "node",
-      "clawdbot",
+      "zee",
       "gateway",
       "--allow-unconfigured",
     ]);
@@ -24,25 +24,25 @@ describe("parseCliProfileArgs", () => {
   it("parses --profile value and strips it", () => {
     const res = parseCliProfileArgs([
       "node",
-      "clawdbot",
+      "zee",
       "--profile",
       "work",
       "status",
     ]);
     if (!res.ok) throw new Error(res.error);
     expect(res.profile).toBe("work");
-    expect(res.argv).toEqual(["node", "clawdbot", "status"]);
+    expect(res.argv).toEqual(["node", "zee", "status"]);
   });
 
   it("rejects missing profile value", () => {
-    const res = parseCliProfileArgs(["node", "clawdbot", "--profile"]);
+    const res = parseCliProfileArgs(["node", "zee", "--profile"]);
     expect(res.ok).toBe(false);
   });
 
   it("rejects combining --dev with --profile (dev first)", () => {
     const res = parseCliProfileArgs([
       "node",
-      "clawdbot",
+      "zee",
       "--dev",
       "--profile",
       "work",
@@ -54,7 +54,7 @@ describe("parseCliProfileArgs", () => {
   it("rejects combining --dev with --profile (profile first)", () => {
     const res = parseCliProfileArgs([
       "node",
-      "clawdbot",
+      "zee",
       "--profile",
       "work",
       "--dev",
@@ -72,29 +72,29 @@ describe("applyCliProfileEnv", () => {
       env,
       homedir: () => "/home/peter",
     });
-    const expectedStateDir = path.join("/home/peter", ".clawdbot-dev");
-    expect(env.CLAWDBOT_PROFILE).toBe("dev");
-    expect(env.CLAWDBOT_STATE_DIR).toBe(expectedStateDir);
-    expect(env.CLAWDBOT_CONFIG_PATH).toBe(
-      path.join(expectedStateDir, "clawdbot.json"),
+    const expectedStateDir = path.join("/home/peter", ".zee-dev");
+    expect(env.ZEE_PROFILE).toBe("dev");
+    expect(env.ZEE_STATE_DIR).toBe(expectedStateDir);
+    expect(env.ZEE_CONFIG_PATH).toBe(
+      path.join(expectedStateDir, "zee.json"),
     );
-    expect(env.CLAWDBOT_GATEWAY_PORT).toBe("19001");
+    expect(env.ZEE_GATEWAY_PORT).toBe("19001");
   });
 
   it("does not override explicit env values", () => {
     const env: Record<string, string | undefined> = {
-      CLAWDBOT_STATE_DIR: "/custom",
-      CLAWDBOT_GATEWAY_PORT: "19099",
+      ZEE_STATE_DIR: "/custom",
+      ZEE_GATEWAY_PORT: "19099",
     };
     applyCliProfileEnv({
       profile: "dev",
       env,
       homedir: () => "/home/peter",
     });
-    expect(env.CLAWDBOT_STATE_DIR).toBe("/custom");
-    expect(env.CLAWDBOT_GATEWAY_PORT).toBe("19099");
-    expect(env.CLAWDBOT_CONFIG_PATH).toBe(
-      path.join("/custom", "clawdbot.json"),
+    expect(env.ZEE_STATE_DIR).toBe("/custom");
+    expect(env.ZEE_GATEWAY_PORT).toBe("19099");
+    expect(env.ZEE_CONFIG_PATH).toBe(
+      path.join("/custom", "zee.json"),
     );
   });
 });

@@ -1,5 +1,5 @@
 ---
-summary: "Fix Chrome/Chromium CDP startup issues for Clawdbot browser control on Linux"
+summary: "Fix Chrome/Chromium CDP startup issues for Zee browser control on Linux"
 read_when: "Browser control fails on Linux, especially with snap Chromium"
 ---
 
@@ -7,14 +7,14 @@ read_when: "Browser control fails on Linux, especially with snap Chromium"
 
 ## Problem: "Failed to start Chrome CDP on port 18800"
 
-Clawdbot's browser control server fails to launch Chrome/Chromium with the error:
+Zee's browser control server fails to launch Chrome/Chromium with the error:
 ```
 {"error":"Error: Failed to start Chrome CDP on port 18800 for profile \"clawd\"."}
 ```
 
 ### Root Cause
 
-On Ubuntu (and many Linux distros), the default Chromium installation is a **snap package**. Snap's AppArmor confinement interferes with how Clawdbot spawns and monitors the browser process.
+On Ubuntu (and many Linux distros), the default Chromium installation is a **snap package**. Snap's AppArmor confinement interferes with how Zee spawns and monitors the browser process.
 
 The `apt install chromium` command installs a stub package that redirects to snap:
 ```
@@ -34,7 +34,7 @@ sudo dpkg -i google-chrome-stable_current_amd64.deb
 sudo apt --fix-broken install -y  # if there are dependency errors
 ```
 
-Then update your Clawdbot config (`~/.clawdbot/clawdbot.json`):
+Then update your Zee config (`~/.zee/zee.json`):
 
 ```json
 {
@@ -49,7 +49,7 @@ Then update your Clawdbot config (`~/.clawdbot/clawdbot.json`):
 
 ### Solution 2: Use Snap Chromium with Attach-Only Mode
 
-If you must use snap Chromium, configure Clawdbot to attach to a manually-started browser:
+If you must use snap Chromium, configure Zee to attach to a manually-started browser:
 
 1. Update config:
 ```json
@@ -67,7 +67,7 @@ If you must use snap Chromium, configure Clawdbot to attach to a manually-starte
 ```bash
 chromium-browser --headless --no-sandbox --disable-gpu \
   --remote-debugging-port=18800 \
-  --user-data-dir=$HOME/.clawdbot/browser/clawd/user-data \
+  --user-data-dir=$HOME/.zee/browser/clawd/user-data \
   about:blank &
 ```
 
@@ -79,7 +79,7 @@ Description=Clawd Browser (Chrome CDP)
 After=network.target
 
 [Service]
-ExecStart=/snap/bin/chromium --headless --no-sandbox --disable-gpu --remote-debugging-port=18800 --user-data-dir=%h/.clawdbot/browser/clawd/user-data about:blank
+ExecStart=/snap/bin/chromium --headless --no-sandbox --disable-gpu --remote-debugging-port=18800 --user-data-dir=%h/.zee/browser/clawd/user-data about:blank
 Restart=on-failure
 RestartSec=5
 

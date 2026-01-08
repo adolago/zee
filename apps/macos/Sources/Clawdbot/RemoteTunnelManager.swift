@@ -5,7 +5,7 @@ import OSLog
 actor RemoteTunnelManager {
     static let shared = RemoteTunnelManager()
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "remote-tunnel")
+    private let logger = Logger(subsystem: "com.zee", category: "remote-tunnel")
     private var controlTunnel: RemotePortTunnel?
 
     func controlTunnelPortIfRunning() async -> UInt16? {
@@ -21,7 +21,7 @@ actor RemoteTunnelManager {
             tunnel.terminate()
             self.controlTunnel = nil
         }
-        // If a previous Clawdbot run already has an SSH listener on the expected port (common after restarts),
+        // If a previous Zee run already has an SSH listener on the expected port (common after restarts),
         // reuse it instead of spawning new ssh processes that immediately fail with "Address already in use".
         let desiredPort = UInt16(GatewayEnvironment.gatewayPort())
         if let desc = await PortGuardian.shared.describe(port: Int(desiredPort)),

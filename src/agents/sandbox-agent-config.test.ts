@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 
 // We need to test the internal defaultSandboxConfig function, but it's not exported.
 // Instead, we test the behavior through resolveSandboxContext which uses it.
@@ -55,7 +55,7 @@ describe("Agent-specific sandbox config", () => {
   it("should use global sandbox config when no agent-specific config exists", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",
@@ -84,7 +84,7 @@ describe("Agent-specific sandbox config", () => {
   it("should allow agent-specific docker setupCommand overrides", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",
@@ -132,7 +132,7 @@ describe("Agent-specific sandbox config", () => {
   it("should ignore agent-specific docker overrides when scope is shared", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",
@@ -181,7 +181,7 @@ describe("Agent-specific sandbox config", () => {
   it("should allow agent-specific docker settings beyond setupCommand", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",
@@ -223,7 +223,7 @@ describe("Agent-specific sandbox config", () => {
   it("should override with agent-specific sandbox mode 'off'", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all", // Global default
@@ -255,7 +255,7 @@ describe("Agent-specific sandbox config", () => {
   it("should use agent-specific sandbox mode 'all'", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "off", // Global default
@@ -287,7 +287,7 @@ describe("Agent-specific sandbox config", () => {
   it("should use agent-specific scope", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",
@@ -321,12 +321,12 @@ describe("Agent-specific sandbox config", () => {
   it("should use agent-specific workspaceRoot", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",
           scope: "agent",
-          workspaceRoot: "~/.clawdbot/sandboxes", // Global default
+          workspaceRoot: "~/.zee/sandboxes", // Global default
         },
       },
       routing: {
@@ -358,7 +358,7 @@ describe("Agent-specific sandbox config", () => {
   it("should prefer agent config over global for multiple agents", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "non-main",
@@ -405,7 +405,7 @@ describe("Agent-specific sandbox config", () => {
   it("should prefer agent-specific sandbox tool policy", async () => {
     const { resolveSandboxContext } = await import("./sandbox.js");
 
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       agent: {
         sandbox: {
           mode: "all",

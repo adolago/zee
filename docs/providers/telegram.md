@@ -73,7 +73,7 @@ group messages, so use admin if you need full visibility.
 - Outbound Telegram text uses `parse_mode: "HTML"` (Telegram’s supported tag subset).
 - Markdown-ish input is rendered into **Telegram-safe HTML** (bold/italic/strike/code/links); block elements are flattened to text with newlines/bullets.
 - Raw HTML from models is escaped to avoid Telegram parse errors.
-- If Telegram rejects the HTML payload, Clawdbot retries the same message as plain text.
+- If Telegram rejects the HTML payload, Zee retries the same message as plain text.
 
 ## Limits
 - Outbound text is chunked to `telegram.textChunkLimit` (default 4000).
@@ -132,13 +132,13 @@ Send in the group:
 Forward any message from the group to `@userinfobot` or `@getidsbot` on Telegram to see the chat ID (negative number like `-1001234567890`).
 
 ## Topics (forum supergroups)
-Telegram forum topics include a `message_thread_id` per message. Clawdbot:
+Telegram forum topics include a `message_thread_id` per message. Zee:
 - Appends `:topic:<threadId>` to the Telegram group session key so each topic is isolated.
 - Sends typing indicators and replies with `message_thread_id` so responses stay in the topic.
 - Exposes `MessageThreadId` + `IsForum` in template context for routing/templating.
 - Topic-specific configuration is available under `telegram.groups.<chatId>.topics.<threadId>` (skills, allowlists, auto-reply, system prompts, disable).
 
-Private topics (DM forum mode) also include `message_thread_id`. Clawdbot:
+Private topics (DM forum mode) also include `message_thread_id`. Zee:
 - Appends `:topic:<threadId>` to **DM** session keys for isolation.
 - Uses the thread id for draft streaming + replies.
 
@@ -147,8 +147,8 @@ Private topics (DM forum mode) also include `message_thread_id`. Clawdbot:
 ### DM access
 - Default: `telegram.dmPolicy = "pairing"`. Unknown senders receive a pairing code; messages are ignored until approved (codes expire after 1 hour).
 - Approve via:
-  - `clawdbot pairing list --provider telegram`
-  - `clawdbot pairing approve --provider telegram <CODE>`
+  - `zee pairing list --provider telegram`
+  - `zee pairing approve --provider telegram <CODE>`
 - Pairing is the default token exchange used for Telegram DMs. Details: [Pairing](/start/pairing)
 
 ### Group access
@@ -183,7 +183,7 @@ Controlled by `telegram.replyToMode`:
 
 ## Audio messages (voice vs file)
 Telegram distinguishes **voice notes** (round bubble) from **audio files** (metadata card).
-Clawdbot defaults to audio files for backward compatibility.
+Zee defaults to audio files for backward compatibility.
 
 To force a voice note bubble in agent replies, include this tag anywhere in the reply:
 - `[[audio_as_voice]]` — send audio as a voice note instead of a file.
@@ -192,7 +192,7 @@ The tag is stripped from the delivered text. Other providers ignore this tag.
 
 ## Streaming (drafts)
 Telegram can stream **draft bubbles** while the agent is generating a response.
-Clawdbot uses Bot API `sendMessageDraft` (not real messages) and then sends the
+Zee uses Bot API `sendMessageDraft` (not real messages) and then sends the
 final reply as a normal message.
 
 Requirements (Telegram Bot API 9.3+):
@@ -223,7 +223,7 @@ Outbound Telegram API calls retry on transient network/429 errors with exponenti
 
 ## Delivery targets (CLI/cron)
 - Use a chat id (`123456789`) or a username (`@name`) as the target.
-- Example: `clawdbot send --provider telegram --to 123456789 "hi"`.
+- Example: `zee send --provider telegram --to 123456789 "hi"`.
 
 ## Troubleshooting
 
@@ -236,7 +236,7 @@ Outbound Telegram API calls retry on transient network/429 errors with exponenti
 - If `telegram.groups` is set, the group must be listed or use `"*"`
 - Check Privacy Settings in @BotFather → "Group Privacy" should be **OFF**
 - Verify bot is actually a member (not just an admin with no read access)
-- Check gateway logs: `clawdbot logs --follow` (look for "skipping group message")
+- Check gateway logs: `zee logs --follow` (look for "skipping group message")
 
 **Bot responds to mentions but not `/activation always`:**
 - The `/activation` command updates session state but doesn't persist to config

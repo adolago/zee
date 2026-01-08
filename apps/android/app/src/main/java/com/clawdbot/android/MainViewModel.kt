@@ -1,13 +1,13 @@
-package com.clawdbot.android
+package com.zee.android
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import com.clawdbot.android.bridge.BridgeEndpoint
-import com.clawdbot.android.chat.OutgoingAttachment
-import com.clawdbot.android.node.CameraCaptureManager
-import com.clawdbot.android.node.CanvasController
-import com.clawdbot.android.node.ScreenRecordManager
-import com.clawdbot.android.node.SmsManager
+import com.zee.android.bridge.BridgeEndpoint
+import com.zee.android.chat.OutgoingAttachment
+import com.zee.android.node.CameraCaptureManager
+import com.zee.android.node.CanvasController
+import com.zee.android.node.ScreenRecordManager
+import com.zee.android.node.SmsManager
 import kotlinx.coroutines.flow.StateFlow
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {

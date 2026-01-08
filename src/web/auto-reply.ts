@@ -1027,7 +1027,7 @@ export async function monitorWebProvider(
       let messagePrefix = cfg.messages?.messagePrefix;
       if (messagePrefix === undefined) {
         const hasAllowFrom = (cfg.whatsapp?.allowFrom?.length ?? 0) > 0;
-        messagePrefix = hasAllowFrom ? "" : "[clawdbot]";
+        messagePrefix = hasAllowFrom ? "" : "[zee]";
       }
       const prefixStr = messagePrefix ? `${messagePrefix} ` : "";
       const senderLabel =
@@ -1611,7 +1611,7 @@ export async function monitorWebProvider(
 
     if (loggedOut) {
       runtime.error(
-        "WhatsApp session logged out. Run `clawdbot providers login --provider web` to relink.",
+        "WhatsApp session logged out. Run `zee providers login --provider web` to relink.",
       );
       await closeListener();
       break;

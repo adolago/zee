@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { AgentModelListConfig } from "../config/types.js";
 
 export const OPENAI_CODEX_DEFAULT_MODEL = "openai-codex/gpt-5.2";
@@ -22,8 +22,8 @@ function resolvePrimaryModel(
   return undefined;
 }
 
-export function applyOpenAICodexModelDefault(cfg: ClawdbotConfig): {
-  next: ClawdbotConfig;
+export function applyOpenAICodexModelDefault(cfg: ZeeConfig): {
+  next: ZeeConfig;
   changed: boolean;
 } {
   const current = resolvePrimaryModel(cfg.agent?.model);

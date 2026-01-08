@@ -60,7 +60,7 @@ describe("gateway server models + voicewake", () => {
     { timeout: 15_000 },
     async () => {
       const homeDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "clawdbot-home-"),
+        path.join(os.tmpdir(), "zee-home-"),
       );
       const restoreHome = setTempHome(homeDir);
 
@@ -99,7 +99,7 @@ describe("gateway server models + voicewake", () => {
 
       const onDisk = JSON.parse(
         await fs.readFile(
-          path.join(homeDir, ".clawdbot", "settings", "voicewake.json"),
+          path.join(homeDir, ".zee", "settings", "voicewake.json"),
           "utf8",
         ),
       ) as { triggers?: unknown; updatedAtMs?: unknown };
@@ -114,7 +114,7 @@ describe("gateway server models + voicewake", () => {
   );
 
   test("pushes voicewake.changed to nodes on connect and on updates", async () => {
-    const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-home-"));
+    const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-home-"));
     const restoreHome = setTempHome(homeDir);
 
     bridgeSendEvent.mockClear();

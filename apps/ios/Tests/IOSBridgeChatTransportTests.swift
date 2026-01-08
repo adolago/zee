@@ -1,5 +1,5 @@
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct IOSBridgeChatTransportTests {
     @Test func requestsFailFastWhenBridgeNotConnected() async {

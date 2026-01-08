@@ -9,7 +9,7 @@ export function resolveDefaultAgentWorkspaceDir(
   env: NodeJS.ProcessEnv = process.env,
   homedir: () => string = os.homedir,
 ): string {
-  const profile = env.CLAWDBOT_PROFILE?.trim();
+  const profile = env.ZEE_PROFILE?.trim();
   if (profile && profile.toLowerCase() !== "default") {
     return path.join(homedir(), `clawd-${profile}`);
   }
@@ -25,7 +25,7 @@ export const DEFAULT_USER_FILENAME = "USER.md";
 export const DEFAULT_HEARTBEAT_FILENAME = "HEARTBEAT.md";
 export const DEFAULT_BOOTSTRAP_FILENAME = "BOOTSTRAP.md";
 
-const DEFAULT_AGENTS_TEMPLATE = `# AGENTS.md - Clawdbot Workspace
+const DEFAULT_AGENTS_TEMPLATE = `# AGENTS.md - Zee Workspace
 
 This folder is the assistant's working directory.
 
@@ -73,7 +73,7 @@ Describe who the assistant is, tone, and boundaries.
 const DEFAULT_TOOLS_TEMPLATE = `# TOOLS.md - User Tool Notes (editable)
 
 This file is for *your* notes about external tools and conventions.
-It does not define which tools exist; Clawdbot provides built-in tools internally.
+It does not define which tools exist; Zee provides built-in tools internally.
 
 ## Examples
 
@@ -128,7 +128,7 @@ After the user chooses, update:
 - Timezone (optional)
 - Notes
 
-3) ~/.clawdbot/clawdbot.json
+3) ~/.zee/zee.json
 Set identity.name, identity.theme, identity.emoji to match IDENTITY.md.
 
 ## Cleanup

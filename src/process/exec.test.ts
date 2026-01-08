@@ -8,11 +8,11 @@ describe("runCommandWithTimeout", () => {
       [
         process.execPath,
         "-e",
-        'process.stdout.write(process.env.CLAWDBOT_TEST_ENV ?? "")',
+        'process.stdout.write(process.env.ZEE_TEST_ENV ?? "")',
       ],
       {
         timeoutMs: 5_000,
-        env: { CLAWDBOT_TEST_ENV: "ok" },
+        env: { ZEE_TEST_ENV: "ok" },
       },
     );
 

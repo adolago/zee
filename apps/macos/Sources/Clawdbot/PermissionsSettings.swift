@@ -1,4 +1,4 @@
-import ClawdbotIPC
+import ZeeIPC
 import SwiftUI
 
 struct PermissionsSettings: View {
@@ -8,7 +8,7 @@ struct PermissionsSettings: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Allow these so Clawdbot can notify and capture when needed.")
+            Text("Allow these so Zee can notify and capture when needed.")
                 .padding(.top, 4)
 
             PermissionStatusList(status: self.status, refresh: self.refresh)
@@ -49,15 +49,15 @@ struct PermissionStatusList: View {
             if (self.status[.accessibility] ?? false) == false || (self.status[.screenRecording] ?? false) == false {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
-                        "Note: macOS may require restarting Clawdbot after enabling Accessibility or Screen Recording.")
+                        "Note: macOS may require restarting Zee after enabling Accessibility or Screen Recording.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Button {
-                        LaunchdManager.startClawdbot()
+                        LaunchdManager.startZee()
                     } label: {
-                        Label("Restart Clawdbot", systemImage: "arrow.counterclockwise")
+                        Label("Restart Zee", systemImage: "arrow.counterclockwise")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)

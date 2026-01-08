@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   listDiscordAccountIds,
   resolveDefaultDiscordAccountId,
@@ -100,7 +100,7 @@ export type ProviderRuntimeSnapshot = {
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
 type ProviderManagerOptions = {
-  loadConfig: () => ClawdbotConfig;
+  loadConfig: () => ZeeConfig;
   logWhatsApp: SubsystemLogger;
   logTelegram: SubsystemLogger;
   logDiscord: SubsystemLogger;

@@ -1,4 +1,4 @@
-package com.clawdbot.android.voice
+package com.zee.android.voice
 
 object VoiceWakeCommandExtractor {
   fun extractCommand(text: String, triggerWords: List<String>): String? {

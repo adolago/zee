@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui.chat
+package com.zee.android.ui.chat
 
 import android.graphics.BitmapFactory
 import android.util.Base64

@@ -1,5 +1,5 @@
 import { type RunOptions, run } from "@grammyjs/runner";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import { computeBackoff, sleepWithAbort } from "../infra/backoff.js";
 import { formatDurationMs } from "../infra/format-duration.js";
@@ -12,7 +12,7 @@ import { startTelegramWebhook } from "./webhook.js";
 export type MonitorTelegramOpts = {
   token?: string;
   accountId?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
   useWebhook?: boolean;
@@ -24,7 +24,7 @@ export type MonitorTelegramOpts = {
 };
 
 export function createTelegramRunnerOptions(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): RunOptions<unknown> {
   return {
     sink: {

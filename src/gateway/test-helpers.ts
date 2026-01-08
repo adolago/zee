@@ -162,7 +162,7 @@ vi.mock("../config/config.js", async () => {
     "../config/config.js",
   );
   const resolveConfigPath = () =>
-    path.join(os.homedir(), ".clawdbot", "clawdbot.json");
+    path.join(os.homedir(), ".zee", "zee.json");
 
   const readConfigFileSnapshot = async () => {
     if (testState.legacyIssues.length > 0) {
@@ -231,8 +231,8 @@ vi.mock("../config/config.js", async () => {
 
   return {
     ...actual,
-    CONFIG_PATH_CLAWDBOT: resolveConfigPath(),
-    STATE_DIR_CLAWDBOT: path.dirname(resolveConfigPath()),
+    CONFIG_PATH_ZEE: resolveConfigPath(),
+    STATE_DIR_ZEE: path.dirname(resolveConfigPath()),
     get isNixMode() {
       return testIsNixMode.value;
     },
@@ -327,7 +327,7 @@ vi.mock("../commands/agent.js", () => ({
   agentCommand,
 }));
 
-process.env.CLAWDBOT_SKIP_PROVIDERS = "1";
+process.env.ZEE_SKIP_PROVIDERS = "1";
 
 let previousHome: string | undefined;
 let tempHome: string | undefined;
@@ -336,7 +336,7 @@ export function installGatewayTestHooks() {
   beforeEach(async () => {
     previousHome = process.env.HOME;
     tempHome = await fs.mkdtemp(
-      path.join(os.tmpdir(), "clawdbot-gateway-home-"),
+      path.join(os.tmpdir(), "zee-gateway-home-"),
     );
     process.env.HOME = tempHome;
     sessionStoreSaveDelayMs.value = 0;
@@ -443,11 +443,11 @@ export async function startServerWithClient(
   opts?: GatewayServerOptions,
 ) {
   const port = await getFreePort();
-  const prev = process.env.CLAWDBOT_GATEWAY_TOKEN;
+  const prev = process.env.ZEE_GATEWAY_TOKEN;
   if (token === undefined) {
-    delete process.env.CLAWDBOT_GATEWAY_TOKEN;
+    delete process.env.ZEE_GATEWAY_TOKEN;
   } else {
-    process.env.CLAWDBOT_GATEWAY_TOKEN = token;
+    process.env.ZEE_GATEWAY_TOKEN = token;
   }
   const server = await startGatewayServer(port, opts);
   const ws = new WebSocket(`ws://127.0.0.1:${port}`);

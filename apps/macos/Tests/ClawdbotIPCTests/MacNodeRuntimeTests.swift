@@ -1,8 +1,8 @@
-import ClawdbotKit
+import ZeeKit
 import CoreLocation
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 struct MacNodeRuntimeTests {
     @Test func handleInvokeRejectsUnknownCommand() async {
@@ -14,19 +14,19 @@ struct MacNodeRuntimeTests {
 
     @Test func handleInvokeRejectsEmptySystemRun() async throws {
         let runtime = MacNodeRuntime()
-        let params = ClawdbotSystemRunParams(command: [])
+        let params = ZeeSystemRunParams(command: [])
         let json = try String(data: JSONEncoder().encode(params), encoding: .utf8)
         let response = await runtime.handleInvoke(
-            BridgeInvokeRequest(id: "req-2", command: ClawdbotSystemCommand.run.rawValue, paramsJSON: json))
+            BridgeInvokeRequest(id: "req-2", command: ZeeSystemCommand.run.rawValue, paramsJSON: json))
         #expect(response.ok == false)
     }
 
     @Test func handleInvokeRejectsEmptyNotification() async throws {
         let runtime = MacNodeRuntime()
-        let params = ClawdbotSystemNotifyParams(title: "", body: "")
+        let params = ZeeSystemNotifyParams(title: "", body: "")
         let json = try String(data: JSONEncoder().encode(params), encoding: .utf8)
         let response = await runtime.handleInvoke(
-            BridgeInvokeRequest(id: "req-3", command: ClawdbotSystemCommand.notify.rawValue, paramsJSON: json))
+            BridgeInvokeRequest(id: "req-3", command: ZeeSystemCommand.notify.rawValue, paramsJSON: json))
         #expect(response.ok == false)
     }
 
@@ -34,7 +34,7 @@ struct MacNodeRuntimeTests {
         await TestIsolation.withUserDefaultsValues([cameraEnabledKey: false]) {
             let runtime = MacNodeRuntime()
             let response = await runtime.handleInvoke(
-                BridgeInvokeRequest(id: "req-4", command: ClawdbotCameraCommand.list.rawValue))
+                BridgeInvokeRequest(id: "req-4", command: ZeeCameraCommand.list.rawValue))
             #expect(response.ok == false)
             #expect(response.error?.message.contains("CAMERA_DISABLED") == true)
         }
@@ -51,7 +51,7 @@ struct MacNodeRuntimeTests {
                 outPath: String?) async throws -> (path: String, hasAudio: Bool)
             {
                 let url = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("clawdbot-test-screen-record-\(UUID().uuidString).mp4")
+                    .appendingPathComponent("zee-test-screen-record-\(UUID().uuidString).mp4")
                 try Data("ok".utf8).write(to: url)
                 return (path: url.path, hasAudio: false)
             }
@@ -59,7 +59,7 @@ struct MacNodeRuntimeTests {
             func locationAuthorizationStatus() -> CLAuthorizationStatus { .authorizedAlways }
             func locationAccuracyAuthorization() -> CLAccuracyAuthorization { .fullAccuracy }
             func currentLocation(
-                desiredAccuracy: ClawdbotLocationAccuracy,
+                desiredAccuracy: ZeeLocationAccuracy,
                 maxAgeMs: Int?,
                 timeoutMs: Int?) async throws -> CLLocation
             {

@@ -1,4 +1,4 @@
-package com.clawdbot.android.tools
+package com.zee.android.tools
 
 import android.content.Context
 import kotlinx.serialization.Serializable

@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 import android.app.Activity
 import android.content.Context
@@ -55,7 +55,7 @@ class ScreenCaptureRequester(private val activity: ComponentActivity) {
       suspendCancellableCoroutine { cont ->
         AlertDialog.Builder(activity)
           .setTitle("Screen recording required")
-          .setMessage("Clawdbot needs to record the screen for this command.")
+          .setMessage("Zee needs to record the screen for this command.")
           .setPositiveButton("Continue") { _, _ -> cont.resume(true) }
           .setNegativeButton("Not now") { _, _ -> cont.resume(false) }
           .setOnCancelListener { cont.resume(false) }

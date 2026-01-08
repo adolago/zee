@@ -4,10 +4,10 @@ import path from "node:path";
 
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { createClawdbotCodingTools } from "./pi-tools.js";
+import { createZeeCodingTools } from "./pi-tools.js";
 import { createBrowserTool } from "./tools/browser-tool.js";
 
-describe("createClawdbotCodingTools", () => {
+describe("createZeeCodingTools", () => {
   it("keeps browser tool schema OpenAI-compatible without normalization", () => {
     const browser = createBrowserTool();
     const schema = browser.parameters as { type?: unknown; anyOf?: unknown };
@@ -16,7 +16,7 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("merges properties for union tool schemas", () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     const browser = tools.find((tool) => tool.name === "browser");
     expect(browser).toBeDefined();
     const parameters = browser?.parameters as {
@@ -32,7 +32,7 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("flattens anyOf-of-literals to enum for provider compatibility", () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     const browser = tools.find((tool) => tool.name === "browser");
     expect(browser).toBeDefined();
 
@@ -65,7 +65,7 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("preserves action enums in normalized schemas", () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     const toolNames = ["browser", "canvas", "nodes", "cron", "gateway"];
 
     const collectActionValues = (
@@ -109,13 +109,13 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("includes bash and process tools", () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     expect(tools.some((tool) => tool.name === "bash")).toBe(true);
     expect(tools.some((tool) => tool.name === "process")).toBe(true);
   });
 
   it("provides top-level object schemas for all tools", () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     const offenders = tools
       .map((tool) => {
         const schema =
@@ -134,39 +134,39 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("scopes discord tool to discord provider", () => {
-    const other = createClawdbotCodingTools({ messageProvider: "whatsapp" });
+    const other = createZeeCodingTools({ messageProvider: "whatsapp" });
     expect(other.some((tool) => tool.name === "discord")).toBe(false);
 
-    const discord = createClawdbotCodingTools({ messageProvider: "discord" });
+    const discord = createZeeCodingTools({ messageProvider: "discord" });
     expect(discord.some((tool) => tool.name === "discord")).toBe(true);
   });
 
   it("scopes slack tool to slack provider", () => {
-    const other = createClawdbotCodingTools({ messageProvider: "whatsapp" });
+    const other = createZeeCodingTools({ messageProvider: "whatsapp" });
     expect(other.some((tool) => tool.name === "slack")).toBe(false);
 
-    const slack = createClawdbotCodingTools({ messageProvider: "slack" });
+    const slack = createZeeCodingTools({ messageProvider: "slack" });
     expect(slack.some((tool) => tool.name === "slack")).toBe(true);
   });
 
   it("scopes telegram tool to telegram provider", () => {
-    const other = createClawdbotCodingTools({ messageProvider: "whatsapp" });
+    const other = createZeeCodingTools({ messageProvider: "whatsapp" });
     expect(other.some((tool) => tool.name === "telegram")).toBe(false);
 
-    const telegram = createClawdbotCodingTools({ messageProvider: "telegram" });
+    const telegram = createZeeCodingTools({ messageProvider: "telegram" });
     expect(telegram.some((tool) => tool.name === "telegram")).toBe(true);
   });
 
   it("scopes whatsapp tool to whatsapp provider", () => {
-    const other = createClawdbotCodingTools({ messageProvider: "slack" });
+    const other = createZeeCodingTools({ messageProvider: "slack" });
     expect(other.some((tool) => tool.name === "whatsapp")).toBe(false);
 
-    const whatsapp = createClawdbotCodingTools({ messageProvider: "whatsapp" });
+    const whatsapp = createZeeCodingTools({ messageProvider: "whatsapp" });
     expect(whatsapp.some((tool) => tool.name === "whatsapp")).toBe(true);
   });
 
   it("filters session tools for sub-agent sessions by default", () => {
-    const tools = createClawdbotCodingTools({
+    const tools = createZeeCodingTools({
       sessionKey: "agent:main:subagent:test",
     });
     const names = new Set(tools.map((tool) => tool.name));
@@ -181,7 +181,7 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("supports allow-only sub-agent tool policy", () => {
-    const tools = createClawdbotCodingTools({
+    const tools = createZeeCodingTools({
       sessionKey: "agent:main:subagent:test",
       // Intentionally partial config; only fields used by pi-tools are provided.
       config: {
@@ -198,11 +198,11 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("keeps read tool image metadata intact", async () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     const readTool = tools.find((tool) => tool.name === "read");
     expect(readTool).toBeDefined();
 
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-read-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-read-"));
     try {
       const imagePath = path.join(tmpDir, "sample.png");
       const png = await sharp({
@@ -238,14 +238,14 @@ describe("createClawdbotCodingTools", () => {
   });
 
   it("returns text content without image blocks for text files", async () => {
-    const tools = createClawdbotCodingTools();
+    const tools = createZeeCodingTools();
     const readTool = tools.find((tool) => tool.name === "read");
     expect(readTool).toBeDefined();
 
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-read-"));
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-read-"));
     try {
       const textPath = path.join(tmpDir, "sample.txt");
-      const contents = "Hello from clawdbot read tool.";
+      const contents = "Hello from zee read tool.";
       await fs.writeFile(textPath, contents, "utf8");
 
       const result = await readTool?.execute("tool-2", {
@@ -272,14 +272,14 @@ describe("createClawdbotCodingTools", () => {
     const sandbox = {
       enabled: true,
       sessionKey: "sandbox:test",
-      workspaceDir: path.join(os.tmpdir(), "clawdbot-sandbox"),
-      agentWorkspaceDir: path.join(os.tmpdir(), "clawdbot-workspace"),
+      workspaceDir: path.join(os.tmpdir(), "zee-sandbox"),
+      agentWorkspaceDir: path.join(os.tmpdir(), "zee-workspace"),
       workspaceAccess: "none",
-      containerName: "clawdbot-sbx-test",
+      containerName: "zee-sbx-test",
       containerWorkdir: "/workspace",
       docker: {
-        image: "clawdbot-sandbox:bookworm-slim",
-        containerPrefix: "clawdbot-sbx-",
+        image: "zee-sandbox:bookworm-slim",
+        containerPrefix: "zee-sbx-",
         workdir: "/workspace",
         readOnlyRoot: true,
         tmpfs: [],
@@ -293,7 +293,7 @@ describe("createClawdbotCodingTools", () => {
         deny: ["browser"],
       },
     };
-    const tools = createClawdbotCodingTools({ sandbox });
+    const tools = createZeeCodingTools({ sandbox });
     expect(tools.some((tool) => tool.name === "bash")).toBe(true);
     expect(tools.some((tool) => tool.name === "read")).toBe(false);
     expect(tools.some((tool) => tool.name === "browser")).toBe(false);
@@ -303,14 +303,14 @@ describe("createClawdbotCodingTools", () => {
     const sandbox = {
       enabled: true,
       sessionKey: "sandbox:test",
-      workspaceDir: path.join(os.tmpdir(), "clawdbot-sandbox"),
-      agentWorkspaceDir: path.join(os.tmpdir(), "clawdbot-workspace"),
+      workspaceDir: path.join(os.tmpdir(), "zee-sandbox"),
+      agentWorkspaceDir: path.join(os.tmpdir(), "zee-workspace"),
       workspaceAccess: "ro",
-      containerName: "clawdbot-sbx-test",
+      containerName: "zee-sbx-test",
       containerWorkdir: "/workspace",
       docker: {
-        image: "clawdbot-sandbox:bookworm-slim",
-        containerPrefix: "clawdbot-sbx-",
+        image: "zee-sandbox:bookworm-slim",
+        containerPrefix: "zee-sbx-",
         workdir: "/workspace",
         readOnlyRoot: true,
         tmpfs: [],
@@ -324,14 +324,14 @@ describe("createClawdbotCodingTools", () => {
         deny: [],
       },
     };
-    const tools = createClawdbotCodingTools({ sandbox });
+    const tools = createZeeCodingTools({ sandbox });
     expect(tools.some((tool) => tool.name === "read")).toBe(true);
     expect(tools.some((tool) => tool.name === "write")).toBe(false);
     expect(tools.some((tool) => tool.name === "edit")).toBe(false);
   });
 
   it("filters tools by agent tool policy even without sandbox", () => {
-    const tools = createClawdbotCodingTools({
+    const tools = createZeeCodingTools({
       config: { agent: { tools: { deny: ["browser"] } } },
     });
     expect(tools.some((tool) => tool.name === "bash")).toBe(true);

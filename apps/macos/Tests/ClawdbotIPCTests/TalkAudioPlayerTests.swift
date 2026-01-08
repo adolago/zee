@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized) struct TalkAudioPlayerTests {
     @MainActor

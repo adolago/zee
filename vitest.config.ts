@@ -9,7 +9,7 @@ export default defineConfig({
       "apps/macos/**",
       "apps/macos/.build/**",
       "**/vendor/**",
-      "dist/Clawdbot.app/**",
+      "dist/Zee.app/**",
       "**/*.live.test.ts",
     ],
     coverage: {

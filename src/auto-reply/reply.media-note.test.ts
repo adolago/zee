@@ -28,7 +28,7 @@ function makeResult(text: string) {
 }
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
-  const base = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-media-note-"));
+  const base = await fs.mkdtemp(path.join(os.tmpdir(), "zee-media-note-"));
   const previousHome = process.env.HOME;
   process.env.HOME = base;
   try {

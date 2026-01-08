@@ -3,9 +3,9 @@ import path from "node:path";
 
 import { note } from "@clack/prompts";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   createConfigIO,
   migrateLegacyConfig,
   readConfigFileSnapshot,
@@ -30,7 +30,7 @@ function normalizeDefaultWorkspacePath(
 
   const next = [
     ["clawdis", "clawd"],
-    ["clawdbot", "clawd"],
+    ["zee", "clawd"],
   ].reduce((acc, [from, to]) => {
     const fromPrefix = path.join(home, from);
     if (acc === fromPrefix) return path.join(home, to);
@@ -48,24 +48,24 @@ export function replaceLegacyName(
   value: string | undefined,
 ): string | undefined {
   if (!value) return value;
-  const replacedClawdis = value.replace(/clawdis/g, "clawdbot");
-  return replacedClawdis.replace(/clawd(?!bot)/g, "clawdbot");
+  const replacedClawdis = value.replace(/clawdis/g, "zee");
+  return replacedClawdis.replace(/clawd(?!bot)/g, "zee");
 }
 
 export function replaceModernName(
   value: string | undefined,
 ): string | undefined {
   if (!value) return value;
-  if (!value.includes("clawdbot")) return value;
-  return value.replace(/clawdbot/g, "clawdis");
+  if (!value.includes("zee")) return value;
+  return value.replace(/zee/g, "clawdis");
 }
 
-export function normalizeLegacyConfigValues(cfg: ClawdbotConfig): {
-  config: ClawdbotConfig;
+export function normalizeLegacyConfigValues(cfg: ZeeConfig): {
+  config: ZeeConfig;
   changes: string[];
 } {
   const changes: string[] = [];
-  let next: ClawdbotConfig = cfg;
+  let next: ZeeConfig = cfg;
 
   const workspace = cfg.agent?.workspace;
   const updatedWorkspace = normalizeDefaultWorkspacePath(workspace);
@@ -143,7 +143,7 @@ export function normalizeLegacyConfigValues(cfg: ClawdbotConfig): {
 
 export async function maybeMigrateLegacyConfigFile(runtime: RuntimeEnv) {
   const legacyConfigPath = resolveLegacyConfigPath(process.env);
-  if (legacyConfigPath === CONFIG_PATH_CLAWDBOT) return;
+  if (legacyConfigPath === CONFIG_PATH_ZEE) return;
 
   const legacyIo = createConfigIO({ configPath: legacyConfigPath });
   const legacySnapshot = await legacyIo.readConfigFileSnapshot();
@@ -152,24 +152,24 @@ export async function maybeMigrateLegacyConfigFile(runtime: RuntimeEnv) {
   const currentSnapshot = await readConfigFileSnapshot();
   if (currentSnapshot.exists) {
     note(
-      `Legacy config still exists at ${legacyConfigPath}. Current config at ${CONFIG_PATH_CLAWDBOT}.`,
+      `Legacy config still exists at ${legacyConfigPath}. Current config at ${CONFIG_PATH_ZEE}.`,
       "Legacy config",
     );
     return;
   }
 
   const gatewayMode =
-    typeof (legacySnapshot.parsed as ClawdbotConfig)?.gateway?.mode === "string"
-      ? (legacySnapshot.parsed as ClawdbotConfig).gateway?.mode
+    typeof (legacySnapshot.parsed as ZeeConfig)?.gateway?.mode === "string"
+      ? (legacySnapshot.parsed as ZeeConfig).gateway?.mode
       : undefined;
   const gatewayBind =
-    typeof (legacySnapshot.parsed as ClawdbotConfig)?.gateway?.bind === "string"
-      ? (legacySnapshot.parsed as ClawdbotConfig).gateway?.bind
+    typeof (legacySnapshot.parsed as ZeeConfig)?.gateway?.bind === "string"
+      ? (legacySnapshot.parsed as ZeeConfig).gateway?.bind
       : undefined;
   const agentWorkspace =
-    typeof (legacySnapshot.parsed as ClawdbotConfig)?.agent?.workspace ===
+    typeof (legacySnapshot.parsed as ZeeConfig)?.agent?.workspace ===
     "string"
-      ? (legacySnapshot.parsed as ClawdbotConfig).agent?.workspace
+      ? (legacySnapshot.parsed as ZeeConfig).agent?.workspace
       : undefined;
 
   note(
@@ -205,5 +205,5 @@ export async function maybeMigrateLegacyConfigFile(runtime: RuntimeEnv) {
   }
 
   await writeConfigFile(normalized.config);
-  runtime.log(`Migrated legacy config to ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Migrated legacy config to ${CONFIG_PATH_ZEE}`);
 }

@@ -34,7 +34,7 @@ import {
 } from "../auto-reply/heartbeat.js";
 import { normalizeThinkLevel } from "../auto-reply/thinking.js";
 import type { CliDeps } from "../cli/deps.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   DEFAULT_IDLE_MINUTES,
   loadSessionStore,
@@ -126,7 +126,7 @@ function isHeartbeatOnlyResponse(
   });
 }
 function resolveDeliveryTarget(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   jobPayload: {
     provider?:
       | "last"
@@ -198,7 +198,7 @@ function resolveDeliveryTarget(
 }
 
 function resolveCronSession(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   sessionKey: string;
   nowMs: number;
 }) {
@@ -230,7 +230,7 @@ function resolveCronSession(params: {
 }
 
 export async function runCronIsolatedAgentTurn(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   deps: CliDeps;
   job: CronJob;
   message: string;

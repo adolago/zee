@@ -1,7 +1,7 @@
 import SwiftUI
 import Testing
 import UIKit
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct SwiftUIRenderSmokeTests {
     @MainActor private static func host(_ view: some View) -> UIWindow {
@@ -74,7 +74,7 @@ import UIKit
     }
 
     @Test @MainActor func voiceWakeToastBuildsAViewHierarchy() {
-        let root = VoiceWakeToast(command: "clawdbot: do something")
+        let root = VoiceWakeToast(command: "zee: do something")
         _ = Self.host(root)
     }
 }

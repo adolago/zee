@@ -1,11 +1,11 @@
 ---
-summary: "SSH tunnel setup for Clawdbot.app connecting to a remote gateway"
+summary: "SSH tunnel setup for Zee.app connecting to a remote gateway"
 read_when: "Connecting the macOS app to a remote gateway over SSH"
 ---
 
-# Running Clawdbot.app with a Remote Gateway
+# Running Zee.app with a Remote Gateway
 
-Clawdbot.app uses SSH tunneling to connect to a remote gateway. This guide shows you how to set it up.
+Zee.app uses SSH tunneling to connect to a remote gateway. This guide shows you how to set it up.
 
 ## Overview
 
@@ -13,7 +13,7 @@ Clawdbot.app uses SSH tunneling to connect to a remote gateway. This guide shows
 ┌─────────────────────────────────────────────────────────────┐
 │                          MacBook                              │
 │                                                              │
-│  Clawdbot.app ──► ws://127.0.0.1:18789 (local port)           │
+│  Zee.app ──► ws://127.0.0.1:18789 (local port)           │
 │                     │                                        │
 │                     ▼                                        │
 │  SSH Tunnel ────────────────────────────────────────────────│
@@ -56,7 +56,7 @@ ssh-copy-id -i ~/.ssh/id_rsa <REMOTE_USER>@<REMOTE_IP>
 ### Step 3: Set Gateway Token
 
 ```bash
-launchctl setenv CLAWDBOT_GATEWAY_TOKEN "<your-token>"
+launchctl setenv ZEE_GATEWAY_TOKEN "<your-token>"
 ```
 
 ### Step 4: Start SSH Tunnel
@@ -65,11 +65,11 @@ launchctl setenv CLAWDBOT_GATEWAY_TOKEN "<your-token>"
 ssh -N remote-gateway &
 ```
 
-### Step 5: Restart Clawdbot.app
+### Step 5: Restart Zee.app
 
 ```bash
-# Quit Clawdbot.app (⌘Q), then reopen:
-open /path/to/Clawdbot.app
+# Quit Zee.app (⌘Q), then reopen:
+open /path/to/Zee.app
 ```
 
 The app will now connect to the remote gateway through the SSH tunnel.
@@ -82,7 +82,7 @@ To have the SSH tunnel start automatically when you log in, create a Launch Agen
 
 ### Create the PLIST file
 
-Save this as `~/Library/LaunchAgents/com.clawdbot.ssh-tunnel.plist`:
+Save this as `~/Library/LaunchAgents/com.zee.ssh-tunnel.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -90,7 +90,7 @@ Save this as `~/Library/LaunchAgents/com.clawdbot.ssh-tunnel.plist`:
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.clawdbot.ssh-tunnel</string>
+    <string>com.zee.ssh-tunnel</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/ssh</string>
@@ -108,7 +108,7 @@ Save this as `~/Library/LaunchAgents/com.clawdbot.ssh-tunnel.plist`:
 ### Load the Launch Agent
 
 ```bash
-launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.clawdbot.ssh-tunnel.plist
+launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.zee.ssh-tunnel.plist
 ```
 
 The tunnel will now:
@@ -130,13 +130,13 @@ lsof -i :18789
 **Restart the tunnel:**
 
 ```bash
-launchctl kickstart -k gui/$UID/com.clawdbot.ssh-tunnel
+launchctl kickstart -k gui/$UID/com.zee.ssh-tunnel
 ```
 
 **Stop the tunnel:**
 
 ```bash
-launchctl bootout gui/$UID/com.clawdbot.ssh-tunnel
+launchctl bootout gui/$UID/com.zee.ssh-tunnel
 ```
 
 ---
@@ -150,4 +150,4 @@ launchctl bootout gui/$UID/com.clawdbot.ssh-tunnel
 | `KeepAlive` | Automatically restarts tunnel if it crashes |
 | `RunAtLoad` | Starts tunnel when the agent loads |
 
-Clawdbot.app connects to `ws://127.0.0.1:18789` on your MacBook. The SSH tunnel forwards that connection to port 18789 on the remote machine where the Gateway is running.
+Zee.app connects to `ws://127.0.0.1:18789` on your MacBook. The SSH tunnel forwards that connection to port 18789 on the remote machine where the Gateway is running.

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { BackoffPolicy } from "../infra/backoff.js";
 import { computeBackoff, sleepWithAbort } from "../infra/backoff.js";
 
@@ -21,7 +21,7 @@ const clamp = (val: number, min: number, max: number) =>
   Math.max(min, Math.min(max, val));
 
 export function resolveHeartbeatSeconds(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   overrideSeconds?: number,
 ): number {
   const candidate = overrideSeconds ?? cfg.web?.heartbeatSeconds;
@@ -30,7 +30,7 @@ export function resolveHeartbeatSeconds(
 }
 
 export function resolveReconnectPolicy(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   overrides?: Partial<ReconnectPolicy>,
 ): ReconnectPolicy {
   const reconnectOverrides = cfg.web?.reconnect ?? {};

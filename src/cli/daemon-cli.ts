@@ -184,11 +184,11 @@ function pickProbeHostForBind(
 function safeDaemonEnv(env: Record<string, string> | undefined): string[] {
   if (!env) return [];
   const allow = [
-    "CLAWDBOT_PROFILE",
-    "CLAWDBOT_STATE_DIR",
-    "CLAWDBOT_CONFIG_PATH",
-    "CLAWDBOT_GATEWAY_PORT",
-    "CLAWDBOT_NIX_MODE",
+    "ZEE_PROFILE",
+    "ZEE_STATE_DIR",
+    "ZEE_CONFIG_PATH",
+    "ZEE_GATEWAY_PORT",
+    "ZEE_NIX_MODE",
   ];
   const lines: string[] = [];
   for (const key of allow) {
@@ -291,7 +291,7 @@ function renderRuntimeHints(
     }
   })();
   if (runtime.missingUnit) {
-    hints.push("Service not installed. Run: clawdbot daemon install");
+    hints.push("Service not installed. Run: zee daemon install");
     if (fileLog) hints.push(`File logs: ${fileLog}`);
     return hints;
   }
@@ -303,17 +303,17 @@ function renderRuntimeHints(
       hints.push(`Launchd stderr (if installed): ${logs.stderrPath}`);
     } else if (process.platform === "linux") {
       hints.push(
-        "Logs: journalctl --user -u clawdbot-gateway.service -n 200 --no-pager",
+        "Logs: journalctl --user -u zee-gateway.service -n 200 --no-pager",
       );
     } else if (process.platform === "win32") {
-      hints.push('Logs: schtasks /Query /TN "Clawdbot Gateway" /V /FO LIST');
+      hints.push('Logs: schtasks /Query /TN "Zee Gateway" /V /FO LIST');
     }
   }
   return hints;
 }
 
 function renderGatewayServiceStartHints(): string[] {
-  const base = ["clawdbot daemon install", "clawdbot gateway"];
+  const base = ["zee daemon install", "zee gateway"];
   switch (process.platform) {
     case "darwin":
       return [
@@ -453,11 +453,11 @@ async function gatherDaemonStatus(opts: {
         url: probeUrl,
         token:
           opts.rpc.token ||
-          mergedDaemonEnv.CLAWDBOT_GATEWAY_TOKEN ||
+          mergedDaemonEnv.ZEE_GATEWAY_TOKEN ||
           daemonCfg.gateway?.auth?.token,
         password:
           opts.rpc.password ||
-          mergedDaemonEnv.CLAWDBOT_GATEWAY_PASSWORD ||
+          mergedDaemonEnv.ZEE_GATEWAY_PASSWORD ||
           daemonCfg.gateway?.auth?.password,
         timeoutMs,
         json: opts.rpc.json,
@@ -564,7 +564,7 @@ function printDaemonStatus(status: DaemonStatus, opts: { json: boolean }) {
         "Root cause: CLI and daemon are using different config paths (likely a profile/state-dir mismatch).",
       );
       defaultRuntime.error(
-        "Fix: rerun `clawdbot daemon install --force` from the same --profile / CLAWDBOT_STATE_DIR you expect.",
+        "Fix: rerun `zee daemon install --force` from the same --profile / ZEE_STATE_DIR you expect.",
       );
     }
   }
@@ -642,7 +642,7 @@ function printDaemonStatus(status: DaemonStatus, opts: { json: boolean }) {
     defaultRuntime.error(
       `LaunchAgent label cached but plist missing. Clear with: launchctl bootout gui/$UID/${GATEWAY_LAUNCH_AGENT_LABEL}`,
     );
-    defaultRuntime.error("Then reinstall: clawdbot daemon install");
+    defaultRuntime.error("Then reinstall: zee daemon install");
   }
   if (status.port && shouldReportPortUsage(status.port.status, rpc?.ok)) {
     for (const line of formatPortDiagnostics({
@@ -701,7 +701,7 @@ function printDaemonStatus(status: DaemonStatus, opts: { json: boolean }) {
     for (const svc of legacyServices) {
       defaultRuntime.error(`- ${svc.label} (${svc.detail})`);
     }
-    defaultRuntime.error("Cleanup: clawdbot doctor");
+    defaultRuntime.error("Cleanup: zee doctor");
   }
 
   if (extraServices.length > 0) {
@@ -722,7 +722,7 @@ function printDaemonStatus(status: DaemonStatus, opts: { json: boolean }) {
       "If you need multiple gateways, isolate ports + config/state (see docs: /gateway#multiple-gateways-same-host).",
     );
   }
-  defaultRuntime.log("Troubles: run clawdbot status");
+  defaultRuntime.log("Troubles: run zee status");
   defaultRuntime.log("Troubleshooting: https://docs.clawd.bot/troubleshooting");
 }
 
@@ -781,7 +781,7 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
   if (loaded) {
     if (!opts.force) {
       defaultRuntime.log(`Gateway service already ${service.loadedText}.`);
-      defaultRuntime.log("Reinstall with: clawdbot daemon install --force");
+      defaultRuntime.log("Reinstall with: zee daemon install --force");
       return;
     }
   }
@@ -797,15 +797,15 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
     });
   const environment: Record<string, string | undefined> = {
     PATH: process.env.PATH,
-    CLAWDBOT_PROFILE: process.env.CLAWDBOT_PROFILE,
-    CLAWDBOT_STATE_DIR: process.env.CLAWDBOT_STATE_DIR,
-    CLAWDBOT_CONFIG_PATH: process.env.CLAWDBOT_CONFIG_PATH,
-    CLAWDBOT_GATEWAY_PORT: String(port),
-    CLAWDBOT_GATEWAY_TOKEN:
+    ZEE_PROFILE: process.env.ZEE_PROFILE,
+    ZEE_STATE_DIR: process.env.ZEE_STATE_DIR,
+    ZEE_CONFIG_PATH: process.env.ZEE_CONFIG_PATH,
+    ZEE_GATEWAY_PORT: String(port),
+    ZEE_GATEWAY_TOKEN:
       opts.token ||
       cfg.gateway?.auth?.token ||
-      process.env.CLAWDBOT_GATEWAY_TOKEN,
-    CLAWDBOT_LAUNCHD_LABEL:
+      process.env.ZEE_GATEWAY_TOKEN,
+    ZEE_LAUNCHD_LABEL:
       process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
   };
 

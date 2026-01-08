@@ -7,7 +7,7 @@ import {
   DEFAULT_AGENT_WORKSPACE_DIR,
   ensureAgentWorkspace,
 } from "../agents/workspace.js";
-import { type ClawdbotConfig, CONFIG_PATH_CLAWDBOT } from "../config/config.js";
+import { type ZeeConfig, CONFIG_PATH_ZEE } from "../config/config.js";
 import { applyModelDefaults } from "../config/defaults.js";
 import { resolveSessionTranscriptsDir } from "../config/sessions.js";
 import type { RuntimeEnv } from "../runtime.js";
@@ -15,13 +15,13 @@ import { defaultRuntime } from "../runtime.js";
 
 async function readConfigFileRaw(): Promise<{
   exists: boolean;
-  parsed: ClawdbotConfig;
+  parsed: ZeeConfig;
 }> {
   try {
-    const raw = await fs.readFile(CONFIG_PATH_CLAWDBOT, "utf-8");
+    const raw = await fs.readFile(CONFIG_PATH_ZEE, "utf-8");
     const parsed = JSON5.parse(raw);
     if (parsed && typeof parsed === "object") {
-      return { exists: true, parsed: parsed as ClawdbotConfig };
+      return { exists: true, parsed: parsed as ZeeConfig };
     }
     return { exists: true, parsed: {} };
   } catch {
@@ -29,12 +29,12 @@ async function readConfigFileRaw(): Promise<{
   }
 }
 
-async function writeConfigFile(cfg: ClawdbotConfig) {
-  await fs.mkdir(path.dirname(CONFIG_PATH_CLAWDBOT), { recursive: true });
+async function writeConfigFile(cfg: ZeeConfig) {
+  await fs.mkdir(path.dirname(CONFIG_PATH_ZEE), { recursive: true });
   const json = JSON.stringify(applyModelDefaults(cfg), null, 2)
     .trimEnd()
     .concat("\n");
-  await fs.writeFile(CONFIG_PATH_CLAWDBOT, json, "utf-8");
+  await fs.writeFile(CONFIG_PATH_ZEE, json, "utf-8");
 }
 
 export async function setupCommand(
@@ -53,7 +53,7 @@ export async function setupCommand(
   const workspace =
     desiredWorkspace ?? agent.workspace ?? DEFAULT_AGENT_WORKSPACE_DIR;
 
-  const next: ClawdbotConfig = {
+  const next: ZeeConfig = {
     ...cfg,
     agent: {
       ...agent,
@@ -65,11 +65,11 @@ export async function setupCommand(
     await writeConfigFile(next);
     runtime.log(
       !existingRaw.exists
-        ? `Wrote ${CONFIG_PATH_CLAWDBOT}`
-        : `Updated ${CONFIG_PATH_CLAWDBOT} (set agent.workspace)`,
+        ? `Wrote ${CONFIG_PATH_ZEE}`
+        : `Updated ${CONFIG_PATH_ZEE} (set agent.workspace)`,
     );
   } else {
-    runtime.log(`Config OK: ${CONFIG_PATH_CLAWDBOT}`);
+    runtime.log(`Config OK: ${CONFIG_PATH_ZEE}`);
   }
 
   const ws = await ensureAgentWorkspace({

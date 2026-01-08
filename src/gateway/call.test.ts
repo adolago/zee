@@ -234,7 +234,7 @@ describe("callGateway error details", () => {
 });
 
 describe("callGateway password resolution", () => {
-  const originalEnvPassword = process.env.CLAWDBOT_GATEWAY_PASSWORD;
+  const originalEnvPassword = process.env.ZEE_GATEWAY_PASSWORD;
 
   beforeEach(() => {
     loadConfig.mockReset();
@@ -244,16 +244,16 @@ describe("callGateway password resolution", () => {
     startMode = "hello";
     closeCode = 1006;
     closeReason = "";
-    delete process.env.CLAWDBOT_GATEWAY_PASSWORD;
+    delete process.env.ZEE_GATEWAY_PASSWORD;
     resolveGatewayPort.mockReturnValue(18789);
     pickPrimaryTailnetIPv4.mockReturnValue(undefined);
   });
 
   afterEach(() => {
     if (originalEnvPassword == null) {
-      delete process.env.CLAWDBOT_GATEWAY_PASSWORD;
+      delete process.env.ZEE_GATEWAY_PASSWORD;
     } else {
-      process.env.CLAWDBOT_GATEWAY_PASSWORD = originalEnvPassword;
+      process.env.ZEE_GATEWAY_PASSWORD = originalEnvPassword;
     }
   });
 
@@ -272,7 +272,7 @@ describe("callGateway password resolution", () => {
   });
 
   it("prefers env password over local config password", async () => {
-    process.env.CLAWDBOT_GATEWAY_PASSWORD = "from-env";
+    process.env.ZEE_GATEWAY_PASSWORD = "from-env";
     loadConfig.mockReturnValue({
       gateway: {
         mode: "local",
@@ -301,7 +301,7 @@ describe("callGateway password resolution", () => {
   });
 
   it("prefers env password over remote password in remote mode", async () => {
-    process.env.CLAWDBOT_GATEWAY_PASSWORD = "from-env";
+    process.env.ZEE_GATEWAY_PASSWORD = "from-env";
     loadConfig.mockReturnValue({
       gateway: {
         mode: "remote",

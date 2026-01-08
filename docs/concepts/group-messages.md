@@ -19,7 +19,7 @@ Note: `routing.groupChat.mentionPatterns` is now used by Telegram/Discord/Slack/
 - Group system prompt: on the first turn of a group session (and whenever `/activation` changes the mode) we inject a short blurb into the system prompt like `You are replying inside the WhatsApp group "<subject>". Group members: Alice (+44...), Bob (+43...), … Activation: trigger-only … Address the specific sender noted in the message context.` If metadata isn’t available we still tell the agent it’s a group chat.
 
 ## Config for Clawd UK (+447700900123)
-Add a `groupChat` block to `~/.clawdbot/clawdbot.json` so display-name pings work even when WhatsApp strips the visual `@` in the text body:
+Add a `groupChat` block to `~/.zee/zee.json` so display-name pings work even when WhatsApp strips the visual `@` in the text body:
 
 ```json5
 {
@@ -34,7 +34,7 @@ Add a `groupChat` block to `~/.clawdbot/clawdbot.json` so display-name pings wor
       "mentionPatterns": [
         "@?clawd",
         "@?clawd\\s*uk",
-        "@?clawdbot",
+        "@?zee",
         "\\+?447700900123"
       ]
     }
@@ -43,7 +43,7 @@ Add a `groupChat` block to `~/.clawdbot/clawdbot.json` so display-name pings wor
 ```
 
 Notes:
-- The regexes are case-insensitive; they cover `@clawd`, `@clawd uk`, `clawdbot`, and the raw number with or without `+`/spaces.
+- The regexes are case-insensitive; they cover `@clawd`, `@clawd uk`, `zee`, and the raw number with or without `+`/spaces.
 - WhatsApp still sends canonical mentions via `mentionedJids` when someone taps the contact, so the number fallback is rarely needed but is a good safety net.
 
 ### Activation command (owner-only)
@@ -56,7 +56,7 @@ Only the owner number (from `whatsapp.allowFrom`, or the bot’s own E.164 when 
 
 ## How to use
 1) Add Clawd UK (`+447700900123`) to the group.
-2) Say `@clawd …` (or `@clawd uk`, `@clawdbot`, or include the number). Anyone in the group can trigger it.
+2) Say `@clawd …` (or `@clawd uk`, `@zee`, or include the number). Anyone in the group can trigger it.
 3) The agent prompt will include recent group context plus the trailing `[from: …]` marker so it can address the right person.
 4) Session-level directives (`/verbose on`, `/think high`, `/new` or `/reset`, `/compact`) apply only to that group’s session; send them as standalone messages so they register. Your personal DM session remains independent.
 
@@ -70,5 +70,5 @@ Only the owner number (from `whatsapp.allowFrom`, or the bot’s own E.164 when 
 ## Known considerations
 - Heartbeats are intentionally skipped for groups to avoid noisy broadcasts.
 - Echo suppression uses the combined batch string; if you send identical text twice without mentions, only the first will get a response.
-- Session store entries will appear as `agent:<agentId>:whatsapp:group:<jid>` in the session store (`~/.clawdbot/agents/<agentId>/sessions/sessions.json` by default); a missing entry just means the group hasn’t triggered a run yet.
+- Session store entries will appear as `agent:<agentId>:whatsapp:group:<jid>` in the session store (`~/.zee/agents/<agentId>/sessions/sessions.json` by default); a missing entry just means the group hasn’t triggered a run yet.
 - Typing indicators in groups follow `agent.typingMode` (default: `message` when unmentioned).

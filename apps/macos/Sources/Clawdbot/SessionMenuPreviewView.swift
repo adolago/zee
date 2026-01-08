@@ -1,5 +1,5 @@
-import ClawdbotChatUI
-import ClawdbotKit
+import ZeeChatUI
+import ZeeKit
 import OSLog
 import SwiftUI
 
@@ -53,7 +53,7 @@ private actor SessionPreviewCache {
 }
 
 struct SessionMenuPreviewView: View {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "SessionPreview")
+    private static let logger = Logger(subsystem: "com.zee", category: "SessionPreview")
     private static let previewTimeoutSeconds: Double = 4
 
     let sessionKey: String
@@ -207,10 +207,10 @@ struct SessionMenuPreviewView: View {
     }
 
     private static func previewItems(
-        from payload: ClawdbotChatHistoryPayload,
+        from payload: ZeeChatHistoryPayload,
         maxItems: Int) -> [SessionPreviewItem]
     {
-        let raw: [ClawdbotKit.AnyCodable] = payload.messages ?? []
+        let raw: [ZeeKit.AnyCodable] = payload.messages ?? []
         let messages = self.decodeMessages(raw)
         let built = messages.compactMap { message -> SessionPreviewItem? in
             guard let text = self.previewText(for: message) else { return nil }
@@ -224,10 +224,10 @@ struct SessionMenuPreviewView: View {
         return Array(trimmed.reversed())
     }
 
-    private static func decodeMessages(_ raw: [ClawdbotKit.AnyCodable]) -> [ClawdbotChatMessage] {
+    private static func decodeMessages(_ raw: [ZeeKit.AnyCodable]) -> [ZeeChatMessage] {
         raw.compactMap { item in
             guard let data = try? JSONEncoder().encode(item) else { return nil }
-            return try? JSONDecoder().decode(ClawdbotChatMessage.self, from: data)
+            return try? JSONDecoder().decode(ZeeChatMessage.self, from: data)
         }
     }
 
@@ -242,7 +242,7 @@ struct SessionMenuPreviewView: View {
         }
     }
 
-    private static func previewText(for message: ClawdbotChatMessage) -> String? {
+    private static func previewText(for message: ZeeChatMessage) -> String? {
         let text = message.content.compactMap(\.text).joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if !text.isEmpty { return text }
@@ -263,12 +263,12 @@ struct SessionMenuPreviewView: View {
         return nil
     }
 
-    private static func isToolCall(_ message: ClawdbotChatMessage) -> Bool {
+    private static func isToolCall(_ message: ZeeChatMessage) -> Bool {
         if message.toolName?.nonEmpty != nil { return true }
         return message.content.contains { $0.name?.nonEmpty != nil || $0.type?.lowercased() == "toolcall" }
     }
 
-    private static func toolNames(for message: ClawdbotChatMessage) -> [String] {
+    private static func toolNames(for message: ZeeChatMessage) -> [String] {
         var names: [String] = []
         for content in message.content {
             if let name = content.name?.nonEmpty {
@@ -281,7 +281,7 @@ struct SessionMenuPreviewView: View {
         return Self.dedupePreservingOrder(names)
     }
 
-    private static func mediaSummary(for message: ClawdbotChatMessage) -> String? {
+    private static func mediaSummary(for message: ZeeChatMessage) -> String? {
         let types = message.content.compactMap { content -> String? in
             let raw = content.type?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard let raw, !raw.isEmpty else { return nil }

@@ -7,7 +7,7 @@ import Security
 import SwiftUI
 
 @main
-struct ClawdbotApp: App {
+struct ZeeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var state: AppState
     private let gatewayManager = GatewayProcessManager.shared
@@ -29,7 +29,7 @@ struct ClawdbotApp: App {
     }
 
     init() {
-        ClawdbotLogging.bootstrapIfNeeded()
+        ZeeLogging.bootstrapIfNeeded()
         _state = State(initialValue: AppStateStore.shared)
     }
 
@@ -231,7 +231,7 @@ private final class StatusItemMouseHandlerView: NSView {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var state: AppState?
-    private let webChatAutoLogger = Logger(subsystem: "com.clawdbot", category: "Chat")
+    private let webChatAutoLogger = Logger(subsystem: "com.zee", category: "Chat")
     let updaterController: UpdaterProviding = makeUpdaterController()
 
     func application(_: NSApplication, open urls: [URL]) {

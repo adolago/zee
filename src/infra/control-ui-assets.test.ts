@@ -11,7 +11,7 @@ import {
 
 describe("control UI assets helpers", () => {
   it("resolves repo root from src argv1", async () => {
-    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-ui-"));
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "zee-ui-"));
     try {
       await fs.mkdir(path.join(tmp, "ui"), { recursive: true });
       await fs.writeFile(
@@ -31,7 +31,7 @@ describe("control UI assets helpers", () => {
   });
 
   it("resolves repo root from dist argv1", async () => {
-    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-ui-"));
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "zee-ui-"));
     try {
       await fs.mkdir(path.join(tmp, "ui"), { recursive: true });
       await fs.writeFile(

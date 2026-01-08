@@ -7,7 +7,7 @@ read_when:
 
 Running an AI agent with shell access on your machine is... *spicy*. Here’s how to not get pwned.
 
-Clawdbot is both a product and an experiment: you’re wiring frontier-model behavior into real messaging surfaces and real tools. **There is no “perfectly secure” setup.** The goal is to be deliberate about:
+Zee is both a product and an experiment: you’re wiring frontier-model behavior into real messaging surfaces and real tools. **There is no “perfectly secure” setup.** The goal is to be deliberate about:
 - who can talk to your bot
 - where the bot is allowed to act
 - what the bot can touch
@@ -29,7 +29,7 @@ People who message you can:
 
 Most failures here are not fancy exploits — they’re “someone messaged the bot and the bot did what they asked.”
 
-Clawdbot’s stance:
+Zee’s stance:
 - **Identity first:** decide who can talk to the bot (DM pairing / allowlists / explicit “open”).
 - **Scope next:** decide where the bot is allowed to act (group allowlists + mention gating, tools, sandboxing, device permissions).
 - **Model last:** assume the model can be manipulated; design so manipulation has limited blast radius.
@@ -46,18 +46,18 @@ All current DM-capable providers support a DM policy (`dmPolicy` or `*.dm.policy
 Approve via CLI:
 
 ```bash
-clawdbot pairing list --provider <provider>
-clawdbot pairing approve --provider <provider> <code>
+zee pairing list --provider <provider>
+zee pairing approve --provider <provider> <code>
 ```
 
 Details + files on disk: [Pairing](/start/pairing)
 
 ## Allowlists (DM + groups) — terminology
 
-Clawdbot has two separate “who can trigger me?” layers:
+Zee has two separate “who can trigger me?” layers:
 
 - **DM allowlist** (`allowFrom` / `discord.dm.allowFrom` / `slack.dm.allowFrom`): who is allowed to talk to the bot in direct messages.
-  - When `dmPolicy="pairing"`, approvals are written to `~/.clawdbot/credentials/<provider>-allowFrom.json` (merged with config allowlists).
+  - When `dmPolicy="pairing"`, approvals are written to `~/.zee/credentials/<provider>-allowFrom.json` (merged with config allowlists).
 - **Group allowlist** (provider-specific): which groups/channels/guilds the bot will accept messages from at all.
   - Common patterns:
     - `whatsapp.groups`, `telegram.groups`, `imessage.groups`: per-group defaults like `requireMention`; when set, it also acts as a group allowlist (include `"*"` to keep allow-all behavior).
@@ -148,7 +148,7 @@ or `"session"` for stricter per-session isolation. `scope: "shared"` uses a
 single container/workspace.
 
 Also consider agent workspace access inside the sandbox:
-- `agent.sandbox.workspaceAccess: "none"` (default) keeps the agent workspace off-limits; tools run against a sandbox workspace under `~/.clawdbot/sandboxes`
+- `agent.sandbox.workspaceAccess: "none"` (default) keeps the agent workspace off-limits; tools run against a sandbox workspace under `~/.zee/sandboxes`
 - `workspaceAccess: "ro"` mounts the agent workspace read-only at `/agent` (disables `write`/`edit`)
 - `workspaceAccess: "rw"` mounts the agent workspace read/write at `/workspace`
 
@@ -244,9 +244,9 @@ Include security guidelines in your agent's system prompt:
 
 If your AI does something bad:
 
-1. **Stop it:** stop the macOS app (if it’s supervising the Gateway) or terminate your `clawdbot gateway` process
-2. **Check logs:** `/tmp/clawdbot/clawdbot-YYYY-MM-DD.log` (or your configured `logging.file`)
-3. **Review session:** Check `~/.clawdbot/agents/<agentId>/sessions/` for what happened
+1. **Stop it:** stop the macOS app (if it’s supervising the Gateway) or terminate your `zee gateway` process
+2. **Check logs:** `/tmp/zee/zee-YYYY-MM-DD.log` (or your configured `logging.file`)
+3. **Review session:** Check `~/.zee/agents/<agentId>/sessions/` for what happened
 4. **Rotate secrets:** If credentials were exposed
 5. **Update rules:** Add to your security prompt
 
@@ -271,7 +271,7 @@ Mario asking for find ~
 
 ## Reporting Security Issues
 
-Found a vulnerability in CLAWDBOT? Please report responsibly:
+Found a vulnerability in ZEE? Please report responsibly:
 
 1. Email: security@clawd.bot
 2. Don't post publicly until fixed

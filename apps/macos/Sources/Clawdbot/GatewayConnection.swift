@@ -1,9 +1,9 @@
-import ClawdbotChatUI
-import ClawdbotProtocol
+import ZeeChatUI
+import ZeeProtocol
 import Foundation
 import OSLog
 
-private let gatewayConnectionLogger = Logger(subsystem: "com.clawdbot", category: "gateway.connection")
+private let gatewayConnectionLogger = Logger(subsystem: "com.zee", category: "gateway.connection")
 
 enum GatewayAgentProvider: String, Codable, CaseIterable, Sendable {
     case last
@@ -422,7 +422,7 @@ extension GatewayConnection {
 
     func healthOK(timeoutMs: Int = 8000) async throws -> Bool {
         let data = try await self.requestRaw(method: .health, timeoutMs: Double(timeoutMs))
-        return (try? self.decoder.decode(ClawdbotGatewayHealthOK.self, from: data))?.ok ?? true
+        return (try? self.decoder.decode(ZeeGatewayHealthOK.self, from: data))?.ok ?? true
     }
 
     // MARK: - Skills
@@ -466,7 +466,7 @@ extension GatewayConnection {
     func chatHistory(
         sessionKey: String,
         limit: Int? = nil,
-        timeoutMs: Int? = nil) async throws -> ClawdbotChatHistoryPayload
+        timeoutMs: Int? = nil) async throws -> ZeeChatHistoryPayload
     {
         var params: [String: AnyCodable] = ["sessionKey": AnyCodable(sessionKey)]
         if let limit { params["limit"] = AnyCodable(limit) }
@@ -482,8 +482,8 @@ extension GatewayConnection {
         message: String,
         thinking: String,
         idempotencyKey: String,
-        attachments: [ClawdbotChatAttachmentPayload],
-        timeoutMs: Int = 30000) async throws -> ClawdbotChatSendResponse
+        attachments: [ZeeChatAttachmentPayload],
+        timeoutMs: Int = 30000) async throws -> ZeeChatSendResponse
     {
         var params: [String: AnyCodable] = [
             "sessionKey": AnyCodable(sessionKey),

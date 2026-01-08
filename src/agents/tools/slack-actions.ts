@@ -1,6 +1,6 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { resolveSlackAccount } from "../../slack/accounts.js";
 import {
   deleteSlackMessage,
@@ -36,7 +36,7 @@ const pinActions = new Set(["pinMessage", "unpinMessage", "listPins"]);
 
 export async function handleSlackAction(
   params: Record<string, unknown>,
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): Promise<AgentToolResult<unknown>> {
   const action = readStringParam(params, "action", { required: true });
   const accountId = readStringParam(params, "accountId");

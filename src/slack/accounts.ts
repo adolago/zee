@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { SlackAccountConfig } from "../config/types.js";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -29,26 +29,26 @@ export type ResolvedSlackAccount = {
   channels?: SlackAccountConfig["channels"];
 };
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: ZeeConfig): string[] {
   const accounts = cfg.slack?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listSlackAccountIds(cfg: ClawdbotConfig): string[] {
+export function listSlackAccountIds(cfg: ZeeConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultSlackAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultSlackAccountId(cfg: ZeeConfig): string {
   const ids = listSlackAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): SlackAccountConfig | undefined {
   const accounts = cfg.slack?.accounts;
@@ -57,7 +57,7 @@ function resolveAccountConfig(
 }
 
 function mergeSlackAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): SlackAccountConfig {
   const { accounts: _ignored, ...base } = (cfg.slack ??
@@ -67,7 +67,7 @@ function mergeSlackAccountConfig(
 }
 
 export function resolveSlackAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   accountId?: string | null;
 }): ResolvedSlackAccount {
   const accountId = normalizeAccountId(params.accountId);
@@ -120,7 +120,7 @@ export function resolveSlackAccount(params: {
 }
 
 export function listEnabledSlackAccounts(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): ResolvedSlackAccount[] {
   return listSlackAccountIds(cfg)
     .map((accountId) => resolveSlackAccount({ cfg, accountId }))

@@ -1,12 +1,12 @@
 import AppKit
-import ClawdbotChatUI
-import ClawdbotIPC
+import ZeeChatUI
+import ZeeIPC
 import Combine
 import Observation
 import SwiftUI
 
 enum UIStrings {
-    static let welcomeTitle = "Welcome to Clawdbot"
+    static let welcomeTitle = "Welcome to Zee"
 }
 
 @MainActor
@@ -17,7 +17,7 @@ final class OnboardingController {
     func show() {
         if ProcessInfo.processInfo.isNixMode {
             // Nix mode is fully declarative; onboarding would suggest interactive setup that doesn't apply.
-            UserDefaults.standard.set(true, forKey: "clawdbot.onboardingSeen")
+            UserDefaults.standard.set(true, forKey: "zee.onboardingSeen")
             UserDefaults.standard.set(currentOnboardingVersion, forKey: onboardingVersionKey)
             AppStateStore.shared.onboardingSeen = true
             return
@@ -73,7 +73,7 @@ struct OnboardingView: View {
     @State var anthropicAuthVerificationAttempted = false
     @State var anthropicAuthVerificationFailed = false
     @State var anthropicAuthVerifiedAt: Date?
-    @State var anthropicAuthDetectedStatus: ClawdbotOAuthStore.AnthropicOAuthStatus = .missingFile
+    @State var anthropicAuthDetectedStatus: ZeeOAuthStore.AnthropicOAuthStatus = .missingFile
     @State var anthropicAuthAutoDetectClipboard = true
     @State var anthropicAuthAutoConnectClipboard = true
     @State var anthropicAuthLastPasteboardChangeCount = NSPasteboard.general.changeCount
@@ -84,7 +84,7 @@ struct OnboardingView: View {
     @State var showAdvancedConnection = false
     @State var preferredGatewayID: String?
     @State var gatewayDiscovery: GatewayDiscoveryModel
-    @State var onboardingChatModel: ClawdbotChatViewModel
+    @State var onboardingChatModel: ZeeChatViewModel
     @State var onboardingSkillsModel = SkillsSettingsModel()
     @State var onboardingWizard = OnboardingWizardModel()
     @State var didLoadOnboardingSkills = false
@@ -143,7 +143,7 @@ struct OnboardingView: View {
     var canAdvance: Bool { !self.isWizardBlocking }
     var devLinkCommand: String {
         let bundlePath = Bundle.main.bundlePath
-        return "ln -sf '\(bundlePath)/Contents/Resources/Relay/clawdbot' /usr/local/bin/clawdbot"
+        return "ln -sf '\(bundlePath)/Contents/Resources/Relay/zee' /usr/local/bin/zee"
     }
 
     struct LocalGatewayProbe: Equatable {
@@ -162,7 +162,7 @@ struct OnboardingView: View {
         self.permissionMonitor = permissionMonitor
         self._gatewayDiscovery = State(initialValue: discoveryModel)
         self._onboardingChatModel = State(
-            initialValue: ClawdbotChatViewModel(
+            initialValue: ZeeChatViewModel(
                 sessionKey: "onboarding",
                 transport: MacGatewayChatTransport()))
     }

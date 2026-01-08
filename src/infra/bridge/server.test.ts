@@ -61,13 +61,13 @@ describe("node bridge server", () => {
   };
 
   beforeAll(async () => {
-    process.env.CLAWDBOT_ENABLE_BRIDGE_IN_TESTS = "1";
-    baseDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-bridge-test-"));
+    process.env.ZEE_ENABLE_BRIDGE_IN_TESTS = "1";
+    baseDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-bridge-test-"));
   });
 
   afterAll(async () => {
     await fs.rm(baseDir, { recursive: true, force: true });
-    delete process.env.CLAWDBOT_ENABLE_BRIDGE_IN_TESTS;
+    delete process.env.ZEE_ENABLE_BRIDGE_IN_TESTS;
   });
 
   it("rejects hello when not paired", async () => {

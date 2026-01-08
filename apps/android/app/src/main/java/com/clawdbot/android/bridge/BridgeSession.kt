@@ -1,4 +1,4 @@
-package com.clawdbot.android.bridge
+package com.zee.android.bridge
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import com.clawdbot.android.BuildConfig
+import com.zee.android.BuildConfig
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -217,7 +217,7 @@ class BridgeSession(
               // Local JVM unit tests use android.jar stubs; Log.d can throw "not mocked".
               runCatching {
                 android.util.Log.d(
-                  "ClawdbotBridge",
+                  "ZeeBridge",
                   "canvasHostUrl resolved=${canvasHostUrl ?: "none"} (raw=${rawCanvasUrl ?: "none"})",
                 )
               }

@@ -1,5 +1,5 @@
 ---
-summary: "Optional Docker-based setup and onboarding for Clawdbot"
+summary: "Optional Docker-based setup and onboarding for Zee"
 read_when:
   - You want a containerized gateway instead of local installs
   - You are validating the Docker flow
@@ -10,7 +10,7 @@ read_when:
 Docker is **optional**. Use it only if you want a containerized gateway or to validate the Docker flow.
 
 This guide covers:
-- Containerized Gateway (full Clawdbot in Docker)
+- Containerized Gateway (full Zee in Docker)
 - Per-session Agent Sandbox (host gateway + Docker-isolated agent tools)
 
 ## Requirements
@@ -35,15 +35,15 @@ This script:
 - starts the gateway via Docker Compose
 
 It writes config/workspace on the host:
-- `~/.clawdbot/`
+- `~/.zee/`
 - `~/clawd`
 
 ### Manual flow (compose)
 
 ```bash
-docker build -t clawdbot:local -f Dockerfile .
-docker compose run --rm clawdbot-cli onboard
-docker compose up -d clawdbot-gateway
+docker build -t zee:local -f Dockerfile .
+docker compose run --rm zee-cli onboard
+docker compose up -d zee-gateway
 ```
 
 ### Provider setup (optional)
@@ -52,17 +52,17 @@ Use the CLI container to configure providers, then restart the gateway if needed
 
 WhatsApp (QR):
 ```bash
-docker compose run --rm clawdbot-cli providers login
+docker compose run --rm zee-cli providers login
 ```
 
 Telegram (bot token):
 ```bash
-docker compose run --rm clawdbot-cli providers add --provider telegram --token "<token>"
+docker compose run --rm zee-cli providers add --provider telegram --token "<token>"
 ```
 
 Discord (bot token):
 ```bash
-docker compose run --rm clawdbot-cli providers add --provider discord --token "<token>"
+docker compose run --rm zee-cli providers add --provider discord --token "<token>"
 ```
 
 Docs: [WhatsApp](/providers/whatsapp), [Telegram](/providers/telegram), [Discord](/providers/discord)
@@ -70,7 +70,7 @@ Docs: [WhatsApp](/providers/whatsapp), [Telegram](/providers/telegram), [Discord
 ### Health check
 
 ```bash
-docker compose exec clawdbot-gateway node dist/index.js health --token "$CLAWDBOT_GATEWAY_TOKEN"
+docker compose exec zee-gateway node dist/index.js health --token "$ZEE_GATEWAY_TOKEN"
 ```
 
 ### E2E smoke test (Docker)
@@ -88,7 +88,7 @@ pnpm test:docker:qr
 ### Notes
 
 - Gateway bind defaults to `lan` for container use.
-- The gateway container is the source of truth for sessions (`~/.clawdbot/agents/<agentId>/sessions/`).
+- The gateway container is the source of truth for sessions (`~/.zee/agents/<agentId>/sessions/`).
 
 ## Agent Sandbox (host gateway + Docker tools)
 
@@ -120,9 +120,9 @@ precedence, and troubleshooting.
 
 ### Default behavior
 
-- Image: `clawdbot-sandbox:bookworm-slim`
+- Image: `zee-sandbox:bookworm-slim`
 - One container per agent
-- Agent workspace access: `workspaceAccess: "none"` (default) uses `~/.clawdbot/sandboxes`
+- Agent workspace access: `workspaceAccess: "none"` (default) uses `~/.zee/sandboxes`
   - `"ro"` keeps the sandbox workspace at `/workspace` and mounts the agent workspace read-only at `/agent` (disables `write`/`edit`)
   - `"rw"` mounts the agent workspace read/write at `/workspace`
 - Auto-prune: idle > 24h OR age > 7d
@@ -139,9 +139,9 @@ precedence, and troubleshooting.
       mode: "non-main", // off | non-main | all
       scope: "agent", // session | agent | shared (agent is default)
       workspaceAccess: "none", // none | ro | rw
-      workspaceRoot: "~/.clawdbot/sandboxes",
+      workspaceRoot: "~/.zee/sandboxes",
       docker: {
-        image: "clawdbot-sandbox:bookworm-slim",
+        image: "zee-sandbox:bookworm-slim",
         workdir: "/workspace",
         readOnlyRoot: true,
         tmpfs: ["/tmp", "/var/tmp", "/run"],
@@ -159,7 +159,7 @@ precedence, and troubleshooting.
           nproc: 256
         },
         seccompProfile: "/path/to/seccomp.json",
-        apparmorProfile: "clawdbot-sandbox",
+        apparmorProfile: "zee-sandbox",
         dns: ["1.1.1.1", "8.8.8.8"],
         extraHosts: ["internal.service:10.0.0.5"]
       },
@@ -189,7 +189,7 @@ Multi-agent: override `agent.sandbox.{docker,browser,prune}.*` per agent via `ro
 scripts/sandbox-setup.sh
 ```
 
-This builds `clawdbot-sandbox:bookworm-slim` using `Dockerfile.sandbox`.
+This builds `zee-sandbox:bookworm-slim` using `Dockerfile.sandbox`.
 
 ### Sandbox common image (optional)
 If you want a sandbox image with common build tooling (Node, Go, Rust, etc.), build the common image:
@@ -198,11 +198,11 @@ If you want a sandbox image with common build tooling (Node, Go, Rust, etc.), bu
 scripts/sandbox-common-setup.sh
 ```
 
-This builds `clawdbot-sandbox-common:bookworm-slim`. To use it:
+This builds `zee-sandbox-common:bookworm-slim`. To use it:
 
 ```json5
 {
-  agent: { sandbox: { docker: { image: "clawdbot-sandbox-common:bookworm-slim" } } }
+  agent: { sandbox: { docker: { image: "zee-sandbox-common:bookworm-slim" } } }
 }
 ```
 
@@ -214,7 +214,7 @@ To run the browser tool inside the sandbox, build the browser image:
 scripts/sandbox-browser-setup.sh
 ```
 
-This builds `clawdbot-sandbox-browser:bookworm-slim` using
+This builds `zee-sandbox-browser:bookworm-slim` using
 `Dockerfile.sandbox-browser`. The container runs Chromium with CDP enabled and
 an optional noVNC observer (headful via Xvfb).
 
@@ -240,7 +240,7 @@ Custom browser image:
 ```json5
 {
   agent: {
-    sandbox: { browser: { image: "my-clawdbot-browser" } }
+    sandbox: { browser: { image: "my-zee-browser" } }
   }
 }
 ```
@@ -258,13 +258,13 @@ Prune rules (`agent.sandbox.prune`) apply to browser containers too.
 Build your own image and point config to it:
 
 ```bash
-docker build -t my-clawdbot-sbx -f Dockerfile.sandbox .
+docker build -t my-zee-sbx -f Dockerfile.sandbox .
 ```
 
 ```json5
 {
   agent: {
-    sandbox: { docker: { image: "my-clawdbot-sbx" } }
+    sandbox: { docker: { image: "my-zee-sbx" } }
   }
 }
 ```
@@ -295,7 +295,7 @@ Example:
 
 ## Troubleshooting
 
-- Image missing: build with [`scripts/sandbox-setup.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/sandbox-setup.sh) or set `agent.sandbox.docker.image`.
+- Image missing: build with [`scripts/sandbox-setup.sh`](https://github.com/zee/zee/blob/main/scripts/sandbox-setup.sh) or set `agent.sandbox.docker.image`.
 - Container not running: it will auto-create per session on demand.
 - Permission errors in sandbox: set `docker.user` to a UID:GID that matches your
   mounted workspace ownership (or chown the workspace folder).

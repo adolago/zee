@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import {
   loadConfig,
   readConfigFileSnapshot,
@@ -415,7 +415,7 @@ export const providersHandlers: GatewayRequestHandlers = {
       if (nextTelegram) {
         delete nextTelegram.botToken;
       }
-      const nextCfg = { ...cfg } as ClawdbotConfig;
+      const nextCfg = { ...cfg } as ZeeConfig;
       if (nextTelegram && Object.keys(nextTelegram).length > 0) {
         nextCfg.telegram = nextTelegram;
       } else {

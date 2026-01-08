@@ -6,7 +6,7 @@ import {
   CURRENT_SESSION_VERSION,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import {
   buildGroupDisplayName,
   DEFAULT_IDLE_MINUTES,
@@ -85,7 +85,7 @@ function forkSessionFromParent(params: {
 
 export async function initSessionState(params: {
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   commandAuthorized: boolean;
 }): Promise<SessionInitResult> {
   const { ctx, cfg, commandAuthorized } = params;

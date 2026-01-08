@@ -35,7 +35,7 @@ vi.mock("../pairing/pairing-store.js", () => ({
 
 const HOME = path.join(
   os.tmpdir(),
-  `clawdbot-inbound-media-${crypto.randomUUID()}`,
+  `zee-inbound-media-${crypto.randomUUID()}`,
 );
 process.env.HOME = HOME;
 

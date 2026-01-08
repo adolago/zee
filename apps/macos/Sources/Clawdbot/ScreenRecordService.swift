@@ -25,7 +25,7 @@ final class ScreenRecordService {
         }
     }
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "screenRecord")
+    private let logger = Logger(subsystem: "com.zee", category: "screenRecord")
 
     func record(
         screenIndex: Int?,
@@ -43,7 +43,7 @@ final class ScreenRecordService {
                 return URL(fileURLWithPath: outPath)
             }
             return FileManager.default.temporaryDirectory
-                .appendingPathComponent("clawdbot-screen-record-\(UUID().uuidString).mp4")
+                .appendingPathComponent("zee-screen-record-\(UUID().uuidString).mp4")
         }()
         try? FileManager.default.removeItem(at: outURL)
 
@@ -110,7 +110,7 @@ final class ScreenRecordService {
 }
 
 private final class StreamRecorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
-    let queue = DispatchQueue(label: "com.clawdbot.screenRecord.writer")
+    let queue = DispatchQueue(label: "com.zee.screenRecord.writer")
 
     private let logger: Logger
     private let writer: AVAssetWriter

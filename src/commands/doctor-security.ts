@@ -1,12 +1,12 @@
 import { note } from "@clack/prompts";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { readProviderAllowFromStore } from "../pairing/pairing-store.js";
 import { readTelegramAllowFromStore } from "../telegram/pairing-store.js";
 import { resolveTelegramToken } from "../telegram/token.js";
 import { normalizeE164 } from "../utils.js";
 
-export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
+export async function noteSecurityWarnings(cfg: ZeeConfig) {
   const warnings: string[] = [];
 
   const warnDmPolicy = async (params: {
@@ -111,7 +111,7 @@ export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
         `- Telegram DMs: locked (telegram.dmPolicy="${dmPolicy}") with no allowlist; unknown senders will be blocked / get a pairing code.`,
       );
       warnings.push(
-        `  Approve via: clawdbot pairing list --provider telegram / clawdbot pairing approve --provider telegram <code>`,
+        `  Approve via: zee pairing list --provider telegram / zee pairing approve --provider telegram <code>`,
       );
     }
 
@@ -133,7 +133,7 @@ export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
       allowFrom: cfg.discord?.dm?.allowFrom ?? [],
       allowFromPath: "discord.dm.",
       approveHint:
-        "Approve via: clawdbot pairing list --provider discord / clawdbot pairing approve --provider discord <code>",
+        "Approve via: zee pairing list --provider discord / zee pairing approve --provider discord <code>",
       normalizeEntry: (raw) =>
         raw.replace(/^(discord|user):/i, "").replace(/^<@!?(\d+)>$/, "$1"),
     });
@@ -147,7 +147,7 @@ export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
       allowFrom: cfg.slack?.dm?.allowFrom ?? [],
       allowFromPath: "slack.dm.",
       approveHint:
-        "Approve via: clawdbot pairing list --provider slack / clawdbot pairing approve --provider slack <code>",
+        "Approve via: zee pairing list --provider slack / zee pairing approve --provider slack <code>",
       normalizeEntry: (raw) => raw.replace(/^(slack|user):/i, ""),
     });
   }
@@ -160,7 +160,7 @@ export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
       allowFrom: cfg.signal?.allowFrom ?? [],
       allowFromPath: "signal.",
       approveHint:
-        "Approve via: clawdbot pairing list --provider signal / clawdbot pairing approve --provider signal <code>",
+        "Approve via: zee pairing list --provider signal / zee pairing approve --provider signal <code>",
       normalizeEntry: (raw) =>
         normalizeE164(raw.replace(/^signal:/i, "").trim()),
     });
@@ -174,7 +174,7 @@ export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
       allowFrom: cfg.imessage?.allowFrom ?? [],
       allowFromPath: "imessage.",
       approveHint:
-        "Approve via: clawdbot pairing list --provider imessage / clawdbot pairing approve --provider imessage <code>",
+        "Approve via: zee pairing list --provider imessage / zee pairing approve --provider imessage <code>",
     });
   }
 
@@ -186,7 +186,7 @@ export async function noteSecurityWarnings(cfg: ClawdbotConfig) {
       allowFrom: cfg.whatsapp?.allowFrom ?? [],
       allowFromPath: "whatsapp.",
       approveHint:
-        "Approve via: clawdbot pairing list --provider whatsapp / clawdbot pairing approve --provider whatsapp <code>",
+        "Approve via: zee pairing list --provider whatsapp / zee pairing approve --provider whatsapp <code>",
       normalizeEntry: (raw) => normalizeE164(raw),
     });
   }

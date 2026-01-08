@@ -51,7 +51,7 @@ enum RuntimeResolutionError: Error {
 }
 
 enum RuntimeLocator {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "runtime")
+    private static let logger = Logger(subsystem: "com.zee", category: "runtime")
     private static let minNode = RuntimeVersion(major: 22, minor: 0, patch: 0)
 
     static func resolve(
@@ -89,7 +89,7 @@ enum RuntimeLocator {
         switch error {
         case let .notFound(searchPaths):
             [
-                "clawdbot needs Node >=22.0.0 but found no runtime.",
+                "zee needs Node >=22.0.0 but found no runtime.",
                 "PATH searched: \(searchPaths.joined(separator: ":"))",
                 "Install Node: https://nodejs.org/en/download",
             ].joined(separator: "\n")
@@ -97,7 +97,7 @@ enum RuntimeLocator {
             [
                 "Found \(kind.rawValue) \(found) at \(path) but need >= \(required).",
                 "PATH searched: \(searchPaths.joined(separator: ":"))",
-                "Upgrade Node and rerun clawdbot.",
+                "Upgrade Node and rerun zee.",
             ].joined(separator: "\n")
         case let .versionParse(kind, raw, path, searchPaths):
             [

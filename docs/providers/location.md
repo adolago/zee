@@ -7,7 +7,7 @@ read_when:
 
 # Provider location parsing
 
-Clawdbot normalizes shared locations from chat providers into:
+Zee normalizes shared locations from chat providers into:
 - human-readable text appended to the inbound body, and
 - structured fields in the auto-reply context payload.
 

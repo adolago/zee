@@ -1,5 +1,5 @@
 import { normalizeAccountId } from "../routing/session-key.js";
-import type { ClawdbotConfig } from "./config.js";
+import type { ZeeConfig } from "./config.js";
 
 export type GroupPolicyProvider = "whatsapp" | "telegram" | "imessage";
 
@@ -17,7 +17,7 @@ export type ProviderGroupPolicy = {
 type ProviderGroups = Record<string, ProviderGroupConfig>;
 
 function resolveProviderGroups(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   provider: GroupPolicyProvider,
   accountId?: string | null,
 ): ProviderGroups | undefined {
@@ -39,7 +39,7 @@ function resolveProviderGroups(
 }
 
 export function resolveProviderGroupPolicy(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: GroupPolicyProvider;
   groupId?: string | null;
   accountId?: string | null;
@@ -67,7 +67,7 @@ export function resolveProviderGroupPolicy(params: {
 }
 
 export function resolveProviderGroupRequireMention(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: GroupPolicyProvider;
   groupId?: string | null;
   accountId?: string | null;

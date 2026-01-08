@@ -1,38 +1,38 @@
 import Foundation
 
-public enum ClawdbotCameraCommand: String, Codable, Sendable {
+public enum ZeeCameraCommand: String, Codable, Sendable {
     case list = "camera.list"
     case snap = "camera.snap"
     case clip = "camera.clip"
 }
 
-public enum ClawdbotCameraFacing: String, Codable, Sendable {
+public enum ZeeCameraFacing: String, Codable, Sendable {
     case back
     case front
 }
 
-public enum ClawdbotCameraImageFormat: String, Codable, Sendable {
+public enum ZeeCameraImageFormat: String, Codable, Sendable {
     case jpg
     case jpeg
 }
 
-public enum ClawdbotCameraVideoFormat: String, Codable, Sendable {
+public enum ZeeCameraVideoFormat: String, Codable, Sendable {
     case mp4
 }
 
-public struct ClawdbotCameraSnapParams: Codable, Sendable, Equatable {
-    public var facing: ClawdbotCameraFacing?
+public struct ZeeCameraSnapParams: Codable, Sendable, Equatable {
+    public var facing: ZeeCameraFacing?
     public var maxWidth: Int?
     public var quality: Double?
-    public var format: ClawdbotCameraImageFormat?
+    public var format: ZeeCameraImageFormat?
     public var deviceId: String?
     public var delayMs: Int?
 
     public init(
-        facing: ClawdbotCameraFacing? = nil,
+        facing: ZeeCameraFacing? = nil,
         maxWidth: Int? = nil,
         quality: Double? = nil,
-        format: ClawdbotCameraImageFormat? = nil,
+        format: ZeeCameraImageFormat? = nil,
         deviceId: String? = nil,
         delayMs: Int? = nil)
     {
@@ -45,18 +45,18 @@ public struct ClawdbotCameraSnapParams: Codable, Sendable, Equatable {
     }
 }
 
-public struct ClawdbotCameraClipParams: Codable, Sendable, Equatable {
-    public var facing: ClawdbotCameraFacing?
+public struct ZeeCameraClipParams: Codable, Sendable, Equatable {
+    public var facing: ZeeCameraFacing?
     public var durationMs: Int?
     public var includeAudio: Bool?
-    public var format: ClawdbotCameraVideoFormat?
+    public var format: ZeeCameraVideoFormat?
     public var deviceId: String?
 
     public init(
-        facing: ClawdbotCameraFacing? = nil,
+        facing: ZeeCameraFacing? = nil,
         durationMs: Int? = nil,
         includeAudio: Bool? = nil,
-        format: ClawdbotCameraVideoFormat? = nil,
+        format: ZeeCameraVideoFormat? = nil,
         deviceId: String? = nil)
     {
         self.facing = facing

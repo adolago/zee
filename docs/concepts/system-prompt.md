@@ -6,7 +6,7 @@ read_when:
 ---
 # System Prompt
 
-ClaudeBot builds a custom system prompt for every agent run. The prompt is **Clawdbot-owned** and does not use the p-coding-agent default prompt.
+ClaudeBot builds a custom system prompt for every agent run. The prompt is **Zee-owned** and does not use the p-coding-agent default prompt.
 
 The prompt is assembled in `src/agents/system-prompt.ts` and injected by `src/agents/pi-embedded-runner.ts`.
 
@@ -45,7 +45,7 @@ The Time line is compact and explicit:
 - Assume timestamps are **UTC** unless stated.
 - The listed **user time** is already converted to `agent.userTimezone` (if set).
 
-Use `agent.userTimezone` in `~/.clawdbot/clawdbot.json` to change the user time zone.
+Use `agent.userTimezone` in `~/.zee/zee.json` to change the user time zone.
 
 ## Skills
 

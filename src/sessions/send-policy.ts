@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { SessionChatType, SessionEntry } from "../config/sessions.js";
 
 export type SessionSendPolicyDecision = "allow" | "deny";
@@ -34,7 +34,7 @@ function deriveChatTypeFromKey(key?: string): SessionChatType | undefined {
 }
 
 export function resolveSendPolicy(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   entry?: SessionEntry;
   sessionKey?: string;
   provider?: string;

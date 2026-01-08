@@ -20,7 +20,7 @@ export function parseRelaySmokeTest(
   // to avoid surprising early-exit when users set env vars globally.
   if (
     args.length === 0 &&
-    (env.CLAWDBOT_SMOKE_QR === "1" || env.CLAWDBOT_SMOKE === "qr")
+    (env.ZEE_SMOKE_QR === "1" || env.ZEE_SMOKE === "qr")
   ) {
     return "qr";
   }

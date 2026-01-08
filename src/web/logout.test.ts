@@ -17,7 +17,7 @@ describe("web logout", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-logout-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-logout-"));
     vi.spyOn(os, "homedir").mockReturnValue(tmpDir);
     vi.resetModules();
     vi.doMock("../utils.js", async () => {
@@ -25,7 +25,7 @@ describe("web logout", () => {
         await vi.importActual<typeof import("../utils.js")>("../utils.js");
       return {
         ...actual,
-        CONFIG_DIR: path.join(tmpDir, ".clawdbot"),
+        CONFIG_DIR: path.join(tmpDir, ".zee"),
       };
     });
   });
@@ -66,7 +66,7 @@ describe("web logout", () => {
 
   it("keeps shared oauth.json when using legacy auth dir", async () => {
     const { logoutWeb } = await import("./session.js");
-    const credsDir = path.join(tmpDir, ".clawdbot", "credentials");
+    const credsDir = path.join(tmpDir, ".zee", "credentials");
     fs.mkdirSync(credsDir, { recursive: true });
     fs.writeFileSync(path.join(credsDir, "creds.json"), "{}");
     fs.writeFileSync(path.join(credsDir, "oauth.json"), '{"token":true}');

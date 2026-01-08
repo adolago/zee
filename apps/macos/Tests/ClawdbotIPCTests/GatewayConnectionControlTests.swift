@@ -1,6 +1,6 @@
 import Testing
-@testable import Clawdbot
-@testable import ClawdbotIPC
+@testable import Zee
+@testable import ZeeIPC
 
 @Suite(.serialized) struct GatewayConnectionControlTests {
     @Test func statusFailsWhenProcessMissing() async {

@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { createAgentsListTool } from "./tools/agents-list-tool.js";
 import { createBrowserTool } from "./tools/browser-tool.js";
 import { createCanvasTool } from "./tools/canvas-tool.js";
@@ -16,14 +16,14 @@ import { createSlackTool } from "./tools/slack-tool.js";
 import { createTelegramTool } from "./tools/telegram-tool.js";
 import { createWhatsAppTool } from "./tools/whatsapp-tool.js";
 
-export function createClawdbotTools(options?: {
+export function createZeeTools(options?: {
   browserControlUrl?: string;
   agentSessionKey?: string;
   agentProvider?: string;
   agentAccountId?: string;
   agentDir?: string;
   sandboxed?: boolean;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 }): AnyAgentTool[] {
   const imageTool = createImageTool({
     config: options?.config,

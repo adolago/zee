@@ -73,7 +73,7 @@ public enum CanvasShowStatus: String, Codable, Sendable {
 }
 
 public struct CanvasShowResult: Codable, Sendable {
-    /// Session directory on disk (e.g. `~/Library/Application Support/Clawdbot/canvas/<session>/`).
+    /// Session directory on disk (e.g. `~/Library/Application Support/Zee/canvas/<session>/`).
     public var directory: String
     /// Target as provided by the caller (may be nil/empty).
     public var target: String?
@@ -411,5 +411,5 @@ extension Request: Codable {
 public let controlSocketPath =
     FileManager.default
         .homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/clawdbot/control.sock")
+        .appendingPathComponent("Library/Application Support/zee/control.sock")
         .path

@@ -1098,7 +1098,7 @@ export function registerNodesCli(program: Command) {
           const { version, messageCount } = validateA2UIJsonl(jsonl);
           if (version === "v0.9") {
             throw new Error(
-              "Detected A2UI v0.9 JSONL (createSurface). Clawdbot currently supports v0.8 only.",
+              "Detected A2UI v0.9 JSONL (createSurface). Zee currently supports v0.8 only.",
             );
           }
           await invokeCanvas(opts, "canvas.a2ui.pushJSONL", { jsonl });

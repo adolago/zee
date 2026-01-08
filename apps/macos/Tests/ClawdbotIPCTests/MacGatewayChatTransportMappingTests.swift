@@ -1,13 +1,13 @@
-import ClawdbotChatUI
-import ClawdbotProtocol
+import ZeeChatUI
+import ZeeProtocol
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct MacGatewayChatTransportMappingTests {
     @Test func snapshotMapsToHealth() {
         let snapshot = Snapshot(
             presence: [],
-            health: ClawdbotProtocol.AnyCodable(["ok": ClawdbotProtocol.AnyCodable(false)]),
+            health: ZeeProtocol.AnyCodable(["ok": ZeeProtocol.AnyCodable(false)]),
             stateversion: StateVersion(presence: 1, health: 1),
             uptimems: 123,
             configpath: nil,
@@ -35,7 +35,7 @@ import Testing
         let frame = EventFrame(
             type: "event",
             event: "health",
-            payload: ClawdbotProtocol.AnyCodable(["ok": ClawdbotProtocol.AnyCodable(true)]),
+            payload: ZeeProtocol.AnyCodable(["ok": ZeeProtocol.AnyCodable(true)]),
             seq: 1,
             stateversion: nil)
 
@@ -58,10 +58,10 @@ import Testing
     }
 
     @Test func chatEventMapsToChat() {
-        let payload = ClawdbotProtocol.AnyCodable([
-            "runId": ClawdbotProtocol.AnyCodable("run-1"),
-            "sessionKey": ClawdbotProtocol.AnyCodable("main"),
-            "state": ClawdbotProtocol.AnyCodable("final"),
+        let payload = ZeeProtocol.AnyCodable([
+            "runId": ZeeProtocol.AnyCodable("run-1"),
+            "sessionKey": ZeeProtocol.AnyCodable("main"),
+            "state": ZeeProtocol.AnyCodable("final"),
         ])
         let frame = EventFrame(type: "event", event: "chat", payload: payload, seq: 1, stateversion: nil)
         let mapped = MacGatewayChatTransport.mapPushToTransportEvent(.event(frame))
@@ -80,7 +80,7 @@ import Testing
         let frame = EventFrame(
             type: "event",
             event: "unknown",
-            payload: ClawdbotProtocol.AnyCodable(["a": ClawdbotProtocol.AnyCodable(1)]),
+            payload: ZeeProtocol.AnyCodable(["a": ZeeProtocol.AnyCodable(1)]),
             seq: 1,
             stateversion: nil)
         let mapped = MacGatewayChatTransport.mapPushToTransportEvent(.event(frame))

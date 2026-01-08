@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyModelDefaults } from "./defaults.js";
-import type { ClawdbotConfig } from "./types.js";
+import type { ZeeConfig } from "./types.js";
 
 describe("applyModelDefaults", () => {
   it("adds default aliases when models are present", () => {
@@ -11,7 +11,7 @@ describe("applyModelDefaults", () => {
           "openai/gpt-5.2": {},
         },
       },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
     const next = applyModelDefaults(cfg);
 
     expect(next.agent?.models?.["anthropic/claude-opus-4-5"]?.alias).toBe(
@@ -27,7 +27,7 @@ describe("applyModelDefaults", () => {
           "anthropic/claude-opus-4-5": { alias: "Opus" },
         },
       },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const next = applyModelDefaults(cfg);
 
@@ -44,7 +44,7 @@ describe("applyModelDefaults", () => {
           "google/gemini-3-flash-preview": {},
         },
       },
-    } satisfies ClawdbotConfig;
+    } satisfies ZeeConfig;
 
     const next = applyModelDefaults(cfg);
 

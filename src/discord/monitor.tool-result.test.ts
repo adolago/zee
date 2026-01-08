@@ -16,7 +16,7 @@ vi.mock("../config/sessions.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../config/sessions.js")>();
   return {
     ...actual,
-    resolveStorePath: vi.fn(() => "/tmp/clawdbot-sessions.json"),
+    resolveStorePath: vi.fn(() => "/tmp/zee-sessions.json"),
     updateLastRoute: (...args: unknown[]) => updateLastRouteMock(...args),
     resolveSessionKey: vi.fn(),
   };
@@ -37,7 +37,7 @@ describe("discord tool result dispatch", () => {
     const { createDiscordMessageHandler } = await import("./monitor.js");
     const cfg = {
       agent: { model: "anthropic/claude-opus-4-5", workspace: "/tmp/clawd" },
-      session: { store: "/tmp/clawdbot-sessions.json" },
+      session: { store: "/tmp/zee-sessions.json" },
       messages: { responsePrefix: "PFX" },
       discord: { dm: { enabled: true, policy: "open" } },
       routing: { allowFrom: [] },
@@ -103,7 +103,7 @@ describe("discord tool result dispatch", () => {
     const { createDiscordMessageHandler } = await import("./monitor.js");
     const cfg = {
       agent: { model: "anthropic/claude-opus-4-5", workspace: "/tmp/clawd" },
-      session: { store: "/tmp/clawdbot-sessions.json" },
+      session: { store: "/tmp/zee-sessions.json" },
       messages: { responsePrefix: "PFX" },
       discord: {
         dm: { enabled: true, policy: "open" },
@@ -190,7 +190,7 @@ describe("discord tool result dispatch", () => {
 
     const cfg = {
       agent: { model: "anthropic/claude-opus-4-5", workspace: "/tmp/clawd" },
-      session: { store: "/tmp/clawdbot-sessions.json" },
+      session: { store: "/tmp/zee-sessions.json" },
       messages: { responsePrefix: "PFX" },
       discord: {
         dm: { enabled: true, policy: "open" },
@@ -296,7 +296,7 @@ describe("discord tool result dispatch", () => {
 
     const cfg = {
       agent: { model: "anthropic/claude-opus-4-5", workspace: "/tmp/clawd" },
-      session: { store: "/tmp/clawdbot-sessions.json" },
+      session: { store: "/tmp/zee-sessions.json" },
       messages: { responsePrefix: "PFX" },
       discord: {
         dm: { enabled: true, policy: "open" },

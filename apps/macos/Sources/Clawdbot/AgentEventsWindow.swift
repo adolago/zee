@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import SwiftUI
 
 @MainActor

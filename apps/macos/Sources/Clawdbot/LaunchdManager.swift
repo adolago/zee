@@ -8,12 +8,12 @@ enum LaunchdManager {
         try? process.run()
     }
 
-    static func startClawdbot() {
+    static func startZee() {
         let userTarget = "gui/\(getuid())/\(launchdLabel)"
         self.runLaunchctl(["kickstart", "-k", userTarget])
     }
 
-    static func stopClawdbot() {
+    static func stopZee() {
         let userTarget = "gui/\(getuid())/\(launchdLabel)"
         self.runLaunchctl(["stop", userTarget])
     }

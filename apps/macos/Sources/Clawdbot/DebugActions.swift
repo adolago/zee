@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 enum DebugActions {
-    private static let verboseDefaultsKey = "clawdbot.debug.verboseMain"
+    private static let verboseDefaultsKey = "zee.debug.verboseMain"
     private static let sessionMenuLimit = 12
 
     @MainActor
@@ -39,7 +39,7 @@ enum DebugActions {
     static func openConfigFolder() {
         let url = FileManager.default
             .homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot", isDirectory: true)
+            .appendingPathComponent(".zee", isDirectory: true)
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
@@ -62,7 +62,7 @@ enum DebugActions {
     }
 
     static func sendTestNotification() async {
-        _ = await NotificationManager().send(title: "Clawdbot", body: "Test notification", sound: nil)
+        _ = await NotificationManager().send(title: "Zee", body: "Test notification", sound: nil)
     }
 
     static func sendDebugVoice() async -> Result<String, DebugActionError> {
@@ -187,7 +187,7 @@ enum DebugActions {
     private static func resolveSessionStorePath() -> String {
         let defaultPath = SessionLoader.defaultStorePath
         let configURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot/clawdbot.json")
+            .appendingPathComponent(".zee/zee.json")
         guard
             let data = try? Data(contentsOf: configURL),
             let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

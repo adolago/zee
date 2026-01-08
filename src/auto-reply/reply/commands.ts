@@ -12,7 +12,7 @@ import {
   isEmbeddedPiRunActive,
   waitForEmbeddedPiRunEnd,
 } from "../../agents/pi-embedded.js";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import {
   resolveSessionFilePath,
   type SessionEntry,
@@ -26,7 +26,7 @@ import {
 } from "../../infra/provider-usage.js";
 import {
   scheduleGatewaySigusr1Restart,
-  triggerClawdbotRestart,
+  triggerZeeRestart,
 } from "../../infra/restart.js";
 import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { parseAgentSessionKey } from "../../routing/session-key.js";
@@ -93,7 +93,7 @@ export type CommandContext = {
 
 function resolveModelAuthLabel(
   provider?: string,
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
 ): string | undefined {
   const resolved = provider?.trim();
   if (!resolved) return undefined;
@@ -124,7 +124,7 @@ function resolveModelAuthLabel(
 function extractCompactInstructions(params: {
   rawBody?: string;
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   isGroup: boolean;
 }): string | undefined {
   const raw = stripStructuralPrefixes(params.rawBody ?? "");
@@ -143,7 +143,7 @@ function extractCompactInstructions(params: {
 
 export function buildCommandContext(params: {
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   sessionKey?: string;
   isGroup: boolean;
   triggerBodyNormalized: string;
@@ -204,7 +204,7 @@ function resolveAbortTarget(params: {
 
 export async function handleCommands(params: {
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   command: CommandContext;
   directives: InlineDirectives;
   sessionEntry?: SessionEntry;
@@ -369,11 +369,11 @@ export async function handleCommands(params: {
       return {
         shouldContinue: false,
         reply: {
-          text: "⚙️ Restarting clawdbot in-process (SIGUSR1); back in a few seconds.",
+          text: "⚙️ Restarting zee in-process (SIGUSR1); back in a few seconds.",
         },
       };
     }
-    const restartMethod = triggerClawdbotRestart();
+    const restartMethod = triggerZeeRestart();
     if (!restartMethod.ok) {
       const detail = restartMethod.detail
         ? ` Details: ${restartMethod.detail}`
@@ -388,7 +388,7 @@ export async function handleCommands(params: {
     return {
       shouldContinue: false,
       reply: {
-        text: `⚙️ Restarting clawdbot via ${restartMethod.method}; give me a few seconds to come back online.`,
+        text: `⚙️ Restarting zee via ${restartMethod.method}; give me a few seconds to come back online.`,
       },
     };
   }

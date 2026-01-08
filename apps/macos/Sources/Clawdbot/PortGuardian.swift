@@ -22,10 +22,10 @@ actor PortGuardian {
     }
 
     private var records: [Record] = []
-    private let logger = Logger(subsystem: "com.clawdbot", category: "portguard")
+    private let logger = Logger(subsystem: "com.zee", category: "portguard")
     private nonisolated static let appSupportDir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return base.appendingPathComponent("Clawdbot", isDirectory: true)
+        return base.appendingPathComponent("Zee", isDirectory: true)
     }()
 
     private nonisolated static var recordPath: URL {
@@ -257,7 +257,7 @@ actor PortGuardian {
     {
         let expectedDesc: String
         let okPredicate: (Listener) -> Bool
-        let expectedCommands = ["node", "clawdbot", "tsx", "pnpm", "bun"]
+        let expectedCommands = ["node", "zee", "tsx", "pnpm", "bun"]
 
         switch mode {
         case .remote:
@@ -344,7 +344,7 @@ actor PortGuardian {
 
     private func isExpected(_ listener: Listener, port: Int, mode: AppState.ConnectionMode) -> Bool {
         let cmd = listener.command.lowercased()
-        let expectedCommands = ["node", "clawdbot", "tsx", "pnpm", "bun"]
+        let expectedCommands = ["node", "zee", "tsx", "pnpm", "bun"]
         switch mode {
         case .remote:
             // Remote mode expects an SSH tunnel for the gateway WebSocket port.

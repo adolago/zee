@@ -9,7 +9,7 @@ import Darwin
 ///
 /// Uses `ssh -N -L` to forward the remote gateway ports to localhost.
 final class RemotePortTunnel {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "remote.tunnel")
+    private static let logger = Logger(subsystem: "com.zee", category: "remote.tunnel")
 
     let process: Process
     let localPort: UInt16?
@@ -134,7 +134,7 @@ final class RemotePortTunnel {
     }
 
     private static func resolveRemotePortOverride(for sshHost: String) -> Int? {
-        let root = ClawdbotConfigFile.loadDict()
+        let root = ZeeConfigFile.loadDict()
         guard let gateway = root["gateway"] as? [String: Any],
               let remote = gateway["remote"] as? [String: Any],
               let urlRaw = remote["url"] as? String
@@ -176,7 +176,7 @@ final class RemotePortTunnel {
         if let preferred, self.portIsFree(preferred) { return preferred }
 
         return try await withCheckedThrowingContinuation { cont in
-            let queue = DispatchQueue(label: "com.clawdbot.remote.tunnel.port", qos: .utility)
+            let queue = DispatchQueue(label: "com.zee.remote.tunnel.port", qos: .utility)
             do {
                 let listener = try NWListener(using: .tcp, on: .any)
                 listener.newConnectionHandler = { connection in connection.cancel() }

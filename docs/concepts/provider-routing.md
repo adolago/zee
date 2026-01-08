@@ -17,7 +17,7 @@ Goal: deterministic replies per provider, while supporting multi-agent + multi-a
   - group: `agent:<agentId>:<provider>:group:<id>`
   - channel/room: `agent:<agentId>:<provider>:channel:<id>`
   - Telegram forum topics: `agent:<agentId>:telegram:group:<chatId>:topic:<threadId>`
-- **Session store:** per-agent store lives under `~/.clawdbot/agents/<agentId>/sessions/sessions.json` (override via `session.store` with `{agentId}` templating). JSONL transcripts live next to it.
+- **Session store:** per-agent store lives under `~/.zee/agents/<agentId>/sessions/sessions.json` (override via `session.store` with `{agentId}` templating). JSONL transcripts live next to it.
 - **WebChat:** attaches to the selected agent’s main session (so desktop reflects cross-provider history for that agent).
 - **Implementation hints:**
   - Set `Provider` + `AccountId` in each ingress.

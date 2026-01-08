@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui.chat
+package com.zee.android.ui.chat
 
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -31,10 +31,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
-import com.clawdbot.android.chat.ChatMessage
-import com.clawdbot.android.chat.ChatMessageContent
-import com.clawdbot.android.chat.ChatPendingToolCall
-import com.clawdbot.android.tools.ToolDisplayRegistry
+import com.zee.android.chat.ChatMessage
+import com.zee.android.chat.ChatMessageContent
+import com.zee.android.chat.ChatPendingToolCall
+import com.zee.android.tools.ToolDisplayRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalContext

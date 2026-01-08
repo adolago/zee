@@ -1,4 +1,4 @@
-import { CONFIG_PATH_CLAWDBOT } from "../../config/config.js";
+import { CONFIG_PATH_ZEE } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { resolveModelTarget, updateConfig } from "./shared.js";
 
@@ -29,6 +29,6 @@ export async function modelsSetImageCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(`Image model: ${updated.agent?.imageModel?.primary ?? modelRaw}`);
 }

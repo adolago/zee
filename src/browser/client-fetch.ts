@@ -15,7 +15,7 @@ function enhanceBrowserFetchError(
   const code = extractErrorCode(cause) ?? extractErrorCode(err) ?? "";
 
   const hint =
-    "Start (or restart) the Clawdbot gateway (Clawdbot.app menubar, or `clawdbot gateway`) and try again.";
+    "Start (or restart) the Zee gateway (Zee.app menubar, or `zee gateway`) and try again.";
 
   if (code === "ECONNREFUSED") {
     return new Error(

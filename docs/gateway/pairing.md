@@ -20,7 +20,7 @@ This enables:
 - **Bridge**: direct transport endpoint owned by the gateway. The bridge does not decide membership.
 
 ## API surface (gateway protocol)
-These are conceptual method names; wire them into [`src/gateway/protocol/schema.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/protocol/schema.ts) and regenerate Swift types.
+These are conceptual method names; wire them into [`src/gateway/protocol/schema.ts`](https://github.com/zee/zee/blob/main/src/gateway/protocol/schema.ts) and regenerate Swift types.
 
 ### Events
 - `node.pair.requested`
@@ -69,26 +69,26 @@ These are conceptual method names; wire them into [`src/gateway/protocol/schema.
 
 ## CLI flows
 CLI must be able to fully operate without any GUI:
-- `clawdbot nodes pending`
-- `clawdbot nodes approve <requestId>`
-- `clawdbot nodes reject <requestId>`
-- `clawdbot nodes status` (paired nodes + connection status/capabilities)
+- `zee nodes pending`
+- `zee nodes approve <requestId>`
+- `zee nodes reject <requestId>`
+- `zee nodes status` (paired nodes + connection status/capabilities)
 
 Optional interactive helper:
-- `clawdbot nodes watch` (subscribe to `node.pair.requested` and prompt in-place)
+- `zee nodes watch` (subscribe to `node.pair.requested` and prompt in-place)
 
 Implementation pointers:
-- CLI commands: [`src/cli/nodes-cli.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/cli/nodes-cli.ts)
-- Gateway handlers + events: [`src/gateway/server.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/server.ts) + [`src/gateway/server-methods/nodes.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/gateway/server-methods/nodes.ts)
-- Pairing store: [`src/infra/node-pairing.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/infra/node-pairing.ts) (under `~/.clawdbot/nodes/`)
-- Optional macOS UI prompt (frontend only): [`apps/macos/Sources/Clawdbot/NodePairingApprovalPrompter.swift`](https://github.com/clawdbot/clawdbot/blob/main/apps/macos/Sources/Clawdbot/NodePairingApprovalPrompter.swift)
+- CLI commands: [`src/cli/nodes-cli.ts`](https://github.com/zee/zee/blob/main/src/cli/nodes-cli.ts)
+- Gateway handlers + events: [`src/gateway/server.ts`](https://github.com/zee/zee/blob/main/src/gateway/server.ts) + [`src/gateway/server-methods/nodes.ts`](https://github.com/zee/zee/blob/main/src/gateway/server-methods/nodes.ts)
+- Pairing store: [`src/infra/node-pairing.ts`](https://github.com/zee/zee/blob/main/src/infra/node-pairing.ts) (under `~/.zee/nodes/`)
+- Optional macOS UI prompt (frontend only): [`apps/macos/Sources/Zee/NodePairingApprovalPrompter.swift`](https://github.com/zee/zee/blob/main/apps/macos/Sources/Zee/NodePairingApprovalPrompter.swift)
   - Push-first: listens to `node.pair.requested`/`node.pair.resolved`, does a `node.pair.list` on startup/reconnect,
     and only runs a slow safety poll while a request is pending/visible.
 
 ## Storage (private, local)
-Gateway stores the authoritative state under `~/.clawdbot/`:
-- `~/.clawdbot/nodes/paired.json`
-- `~/.clawdbot/nodes/pending.json` (or `~/.clawdbot/nodes/pending/*.json`)
+Gateway stores the authoritative state under `~/.zee/`:
+- `~/.zee/nodes/paired.json`
+- `~/.zee/nodes/pending.json` (or `~/.zee/nodes/pending/*.json`)
 
 Notes:
 - Tokens are secrets. Treat `paired.json` as sensitive.

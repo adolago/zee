@@ -1,9 +1,9 @@
 import Foundation
 
 enum GatewayLaunchAgentManager {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "gateway.launchd")
+    private static let logger = Logger(subsystem: "com.zee", category: "gateway.launchd")
     private static let supportedBindModes: Set<String> = ["loopback", "tailnet", "lan", "auto"]
-    private static let legacyGatewayLaunchdLabel = "com.steipete.clawdbot.gateway"
+    private static let legacyGatewayLaunchdLabel = "com.steipete.zee.gateway"
 
     private static var plistURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -16,7 +16,7 @@ enum GatewayLaunchAgentManager {
     }
 
     private static func gatewayExecutablePath(bundlePath: String) -> String {
-        "\(bundlePath)/Contents/Resources/Relay/clawdbot"
+        "\(bundlePath)/Contents/Resources/Relay/zee"
     }
 
     private static func relayDir(bundlePath: String) -> String {
@@ -26,7 +26,7 @@ enum GatewayLaunchAgentManager {
     private static func gatewayProgramArguments(bundlePath: String, port: Int, bind: String) -> [String] {
         #if DEBUG
         let projectRoot = CommandResolver.projectRoot()
-        if let localBin = CommandResolver.projectClawdbotExecutable(projectRoot: projectRoot) {
+        if let localBin = CommandResolver.projectZeeExecutable(projectRoot: projectRoot) {
             return [localBin, "gateway", "--port", "\(port)", "--bind", bind]
         }
         if let entry = CommandResolver.gatewayEntrypoint(in: projectRoot),
@@ -122,20 +122,20 @@ enum GatewayLaunchAgentManager {
         var envEntries = """
             <key>PATH</key>
             <string>\(preferredPath)</string>
-            <key>CLAWDBOT_IMAGE_BACKEND</key>
+            <key>ZEE_IMAGE_BACKEND</key>
             <string>sips</string>
         """
         if let token {
             let escapedToken = self.escapePlistValue(token)
             envEntries += """
-                <key>CLAWDBOT_GATEWAY_TOKEN</key>
+                <key>ZEE_GATEWAY_TOKEN</key>
                 <string>\(escapedToken)</string>
             """
         }
         if let password {
             let escapedPassword = self.escapePlistValue(password)
             envEntries += """
-                <key>CLAWDBOT_GATEWAY_PASSWORD</key>
+                <key>ZEE_GATEWAY_PASSWORD</key>
                 <string>\(escapedPassword)</string>
             """
         }
@@ -181,14 +181,14 @@ enum GatewayLaunchAgentManager {
         if CommandResolver.connectionModeIsRemote() {
             return nil
         }
-        if let env = ProcessInfo.processInfo.environment["CLAWDBOT_GATEWAY_BIND"] {
+        if let env = ProcessInfo.processInfo.environment["ZEE_GATEWAY_BIND"] {
             let trimmed = env.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if self.supportedBindModes.contains(trimmed) {
                 return trimmed
             }
         }
 
-        let root = ClawdbotConfigFile.loadDict()
+        let root = ZeeConfigFile.loadDict()
         if let gateway = root["gateway"] as? [String: Any],
            let bind = gateway["bind"] as? String
         {
@@ -202,20 +202,20 @@ enum GatewayLaunchAgentManager {
     }
 
     private static func preferredGatewayToken() -> String? {
-        let raw = ProcessInfo.processInfo.environment["CLAWDBOT_GATEWAY_TOKEN"] ?? ""
+        let raw = ProcessInfo.processInfo.environment["ZEE_GATEWAY_TOKEN"] ?? ""
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 
     private static func preferredGatewayPassword() -> String? {
         // First check environment variable
-        let raw = ProcessInfo.processInfo.environment["CLAWDBOT_GATEWAY_PASSWORD"] ?? ""
+        let raw = ProcessInfo.processInfo.environment["ZEE_GATEWAY_PASSWORD"] ?? ""
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             return trimmed
         }
         // Then check config file (gateway.auth.password)
-        let root = ClawdbotConfigFile.loadDict()
+        let root = ZeeConfigFile.loadDict()
         if let gateway = root["gateway"] as? [String: Any],
            let auth = gateway["auth"] as? [String: Any],
            let password = auth["password"] as? String

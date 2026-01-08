@@ -1,15 +1,15 @@
 import Foundation
 
 enum LogLocator {
-    private static let logDir = URL(fileURLWithPath: "/tmp/clawdbot")
-    private static let stdoutLog = logDir.appendingPathComponent("clawdbot-stdout.log")
-    private static let gatewayLog = logDir.appendingPathComponent("clawdbot-gateway.log")
+    private static let logDir = URL(fileURLWithPath: "/tmp/zee")
+    private static let stdoutLog = logDir.appendingPathComponent("zee-stdout.log")
+    private static let gatewayLog = logDir.appendingPathComponent("zee-gateway.log")
 
     private static func modificationDate(for url: URL) -> Date {
         (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
     }
 
-    /// Returns the newest log file under /tmp/clawdbot/ (rolling or stdout), or nil if none exist.
+    /// Returns the newest log file under /tmp/zee/ (rolling or stdout), or nil if none exist.
     static func bestLogFile() -> URL? {
         let fm = FileManager.default
         let files = (try? fm.contentsOfDirectory(
@@ -18,7 +18,7 @@ enum LogLocator {
             options: [.skipsHiddenFiles])) ?? []
 
         return files
-            .filter { $0.lastPathComponent.hasPrefix("clawdbot") && $0.pathExtension == "log" }
+            .filter { $0.lastPathComponent.hasPrefix("zee") && $0.pathExtension == "log" }
             .max { lhs, rhs in
                 self.modificationDate(for: lhs) < self.modificationDate(for: rhs)
             }

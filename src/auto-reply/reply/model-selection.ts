@@ -8,7 +8,7 @@ import {
   resolveModelRefFromString,
   resolveThinkingDefault,
 } from "../../agents/model-selection.js";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { type SessionEntry, saveSessionStore } from "../../config/sessions.js";
 import type { ThinkLevel } from "./directives.js";
 
@@ -32,8 +32,8 @@ type ModelSelectionState = {
 };
 
 export async function createModelSelectionState(params: {
-  cfg: ClawdbotConfig;
-  agentCfg: ClawdbotConfig["agent"] | undefined;
+  cfg: ZeeConfig;
+  agentCfg: ZeeConfig["agent"] | undefined;
   sessionEntry?: SessionEntry;
   sessionStore?: Record<string, SessionEntry>;
   sessionKey?: string;
@@ -199,7 +199,7 @@ export function resolveModelDirectiveSelection(params: {
 }
 
 export function resolveContextTokens(params: {
-  agentCfg: ClawdbotConfig["agent"] | undefined;
+  agentCfg: ZeeConfig["agent"] | undefined;
   model: string;
 }): number {
   return (

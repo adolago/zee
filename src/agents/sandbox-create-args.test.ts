@@ -5,8 +5,8 @@ import { buildSandboxCreateArgs, type SandboxDockerConfig } from "./sandbox.js";
 describe("buildSandboxCreateArgs", () => {
   it("includes hardening and resource flags", () => {
     const cfg: SandboxDockerConfig = {
-      image: "clawdbot-sandbox:bookworm-slim",
-      containerPrefix: "clawdbot-sbx-",
+      image: "zee-sandbox:bookworm-slim",
+      containerPrefix: "zee-sbx-",
       workdir: "/workspace",
       readOnlyRoot: true,
       tmpfs: ["/tmp"],
@@ -24,32 +24,32 @@ describe("buildSandboxCreateArgs", () => {
         core: "0",
       },
       seccompProfile: "/tmp/seccomp.json",
-      apparmorProfile: "clawdbot-sandbox",
+      apparmorProfile: "zee-sandbox",
       dns: ["1.1.1.1"],
       extraHosts: ["internal.service:10.0.0.5"],
     };
 
     const args = buildSandboxCreateArgs({
-      name: "clawdbot-sbx-test",
+      name: "zee-sbx-test",
       cfg,
       scopeKey: "main",
       createdAtMs: 1700000000000,
-      labels: { "clawdbot.sandboxBrowser": "1" },
+      labels: { "zee.sandboxBrowser": "1" },
     });
 
     expect(args).toEqual(
       expect.arrayContaining([
         "create",
         "--name",
-        "clawdbot-sbx-test",
+        "zee-sbx-test",
         "--label",
-        "clawdbot.sandbox=1",
+        "zee.sandbox=1",
         "--label",
-        "clawdbot.sessionKey=main",
+        "zee.sessionKey=main",
         "--label",
-        "clawdbot.createdAtMs=1700000000000",
+        "zee.createdAtMs=1700000000000",
         "--label",
-        "clawdbot.sandboxBrowser=1",
+        "zee.sandboxBrowser=1",
         "--read-only",
         "--tmpfs",
         "/tmp",
@@ -64,7 +64,7 @@ describe("buildSandboxCreateArgs", () => {
         "--security-opt",
         "seccomp=/tmp/seccomp.json",
         "--security-opt",
-        "apparmor=clawdbot-sandbox",
+        "apparmor=zee-sandbox",
         "--dns",
         "1.1.1.1",
         "--add-host",

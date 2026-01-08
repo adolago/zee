@@ -1,14 +1,14 @@
 ---
-summary: "Top-level overview of Clawdbot, features, and purpose"
+summary: "Top-level overview of Zee, features, and purpose"
 read_when:
-  - Introducing Clawdbot to newcomers
+  - Introducing Zee to newcomers
 ---
-# CLAWDBOT 🦞
+# ZEE 🦞
 
 > *"EXFOLIATE! EXFOLIATE!"* — A space lobster, probably
 
 <p align="center">
-  <img src="whatsapp-clawd.jpg" alt="CLAWDBOT" width="420" />
+  <img src="whatsapp-clawd.jpg" alt="ZEE" width="420" />
 </p>
 
 <p align="center">
@@ -17,23 +17,23 @@ read_when:
 </p>
 
 <p align="center">
-  <a href="https://github.com/clawdbot/clawdbot">GitHub</a> ·
-  <a href="https://github.com/clawdbot/clawdbot/releases">Releases</a> ·
+  <a href="https://github.com/zee/zee">GitHub</a> ·
+  <a href="https://github.com/zee/zee/releases">Releases</a> ·
   <a href="https://docs.clawd.bot">Docs</a> ·
   <a href="https://docs.clawd.bot/start/clawd">Clawd setup</a>
 </p>
 
-CLAWDBOT bridges WhatsApp (via WhatsApp Web / Baileys), Telegram (Bot API / grammY), Discord (Bot API / discord.js), and iMessage (imsg CLI) to coding agents like [Pi](https://github.com/badlogic/pi-mono).
+ZEE bridges WhatsApp (via WhatsApp Web / Baileys), Telegram (Bot API / grammY), Discord (Bot API / discord.js), and iMessage (imsg CLI) to coding agents like [Pi](https://github.com/badlogic/pi-mono).
 It’s built for [Clawd](https://clawd.me), a space lobster who needed a TARDIS.
 
 ## Start here
 
 - **New install from zero:** https://docs.clawd.bot/start/getting-started
-- **Guided setup (recommended):** https://docs.clawd.bot/start/wizard (`clawdbot onboard`)
+- **Guided setup (recommended):** https://docs.clawd.bot/start/wizard (`zee onboard`)
 - **Open the dashboard (local Gateway):** http://127.0.0.1:18789/ (or http://localhost:18789/)
 
 If the Gateway is running on the same computer, that link opens the browser Control UI
-immediately. If it fails, start the Gateway first: `clawdbot gateway`.
+immediately. If it fails, start the Gateway first: `zee gateway`.
 
 ## Dashboard (browser Control UI)
 
@@ -51,26 +51,26 @@ WhatsApp / Telegram / Discord
   │          Gateway          │  ws://127.0.0.1:18789 (loopback-only)
   │     (single source)       │  tcp://0.0.0.0:18790 (Bridge)
   │                           │  http://<gateway-host>:18793
-  │                           │    /__clawdbot__/canvas/ (Canvas host)
+  │                           │    /__zee__/canvas/ (Canvas host)
   └───────────┬───────────────┘
               │
               ├─ Pi agent (RPC)
-              ├─ CLI (clawdbot …)
+              ├─ CLI (zee …)
               ├─ Chat UI (SwiftUI)
-              ├─ macOS app (Clawdbot.app)
+              ├─ macOS app (Zee.app)
               ├─ iOS node via Bridge + pairing
               └─ Android node via Bridge + pairing
 ```
 
-Most operations flow through the **Gateway** (`clawdbot gateway`), a single long-running process that owns provider connections and the WebSocket control plane.
+Most operations flow through the **Gateway** (`zee gateway`), a single long-running process that owns provider connections and the WebSocket control plane.
 
 ## Network model
 
 - **One Gateway per host**: it is the only process allowed to own the WhatsApp Web session.
 - **Loopback-first**: Gateway WS defaults to `ws://127.0.0.1:18789`.
-  - For Tailnet access, run `clawdbot gateway --bind tailnet --token ...` (token is required for non-loopback binds).
+  - For Tailnet access, run `zee gateway --bind tailnet --token ...` (token is required for non-loopback binds).
 - **Bridge for nodes**: optional LAN/tailnet-facing bridge on `tcp://0.0.0.0:18790` for paired nodes (Bonjour-discoverable).
-- **Canvas host**: HTTP file server on `canvasHost.port` (default `18793`), serving `/__clawdbot__/canvas/` for node WebViews; see [`docs/configuration.md`](https://docs.clawd.bot/gateway/configuration) (`canvasHost`).
+- **Canvas host**: HTTP file server on `canvasHost.port` (default `18793`), serving `/__zee__/canvas/` for node WebViews; see [`docs/configuration.md`](https://docs.clawd.bot/gateway/configuration) (`canvasHost`).
 - **Remote use**: SSH tunnel or tailnet/VPN; see [`docs/remote.md`](https://docs.clawd.bot/gateway/remote) and [`docs/discovery.md`](https://docs.clawd.bot/gateway/discovery).
 
 ## Features (high level)
@@ -99,50 +99,50 @@ Runtime requirement: **Node ≥ 22**.
 
 ```bash
 # Recommended: global install (npm/pnpm)
-npm install -g clawdbot@latest
-# or: pnpm add -g clawdbot@latest
+npm install -g zee@latest
+# or: pnpm add -g zee@latest
 
 # Onboard + install the daemon (launchd/systemd user service)
-clawdbot onboard --install-daemon
+zee onboard --install-daemon
 
 # Pair WhatsApp Web (shows QR)
-clawdbot providers login
+zee providers login
 
 # Gateway runs via daemon after onboarding; manual run is still possible:
-clawdbot gateway --port 18789
+zee gateway --port 18789
 ```
 
 From source (development):
 
 ```bash
-git clone https://github.com/clawdbot/clawdbot.git
-cd clawdbot
+git clone https://github.com/zee/zee.git
+cd zee
 pnpm install
 pnpm ui:install
 pnpm ui:build
 pnpm build
-pnpm clawdbot onboard --install-daemon
+pnpm zee onboard --install-daemon
 ```
 
 Multi-instance quickstart (optional):
 
 ```bash
-CLAWDBOT_CONFIG_PATH=~/.clawdbot/a.json \
-CLAWDBOT_STATE_DIR=~/.clawdbot-a \
-clawdbot gateway --port 19001
+ZEE_CONFIG_PATH=~/.zee/a.json \
+ZEE_STATE_DIR=~/.zee-a \
+zee gateway --port 19001
 ```
 
 Send a test message (requires a running Gateway):
 
 ```bash
-clawdbot send --to +15555550123 --message "Hello from CLAWDBOT"
+zee send --to +15555550123 --message "Hello from ZEE"
 ```
 
 ## Configuration (optional)
 
-Config lives at `~/.clawdbot/clawdbot.json`.
+Config lives at `~/.zee/zee.json`.
 
-- If you **do nothing**, CLAWDBOT uses the bundled Pi binary in RPC mode with per-sender sessions.
+- If you **do nothing**, ZEE uses the bundled Pi binary in RPC mode with per-sender sessions.
 - If you want to lock it down, start with `whatsapp.allowFrom` and (for groups) mention rules.
 
 Example:
@@ -205,7 +205,7 @@ Example:
 
 ## The name
 
-**CLAWDBOT = CLAW + TARDIS** — because every space lobster needs a time-and-space machine.
+**ZEE = CLAW + TARDIS** — because every space lobster needs a time-and-space machine.
 
 ---
 

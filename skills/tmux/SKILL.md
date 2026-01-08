@@ -1,20 +1,20 @@
 ---
 name: tmux
 description: Remote-control tmux sessions for interactive CLIs by sending keystrokes and scraping pane output.
-metadata: {"clawdbot":{"emoji":"🧵","os":["darwin","linux"],"requires":{"bins":["tmux"]}}}
+metadata: {"zee":{"emoji":"🧵","os":["darwin","linux"],"requires":{"bins":["tmux"]}}}
 ---
 
-# tmux Skill (Clawdbot)
+# tmux Skill (Zee)
 
 Use tmux only when you need an interactive TTY. Prefer bash background mode for long-running, non-interactive tasks.
 
 ## Quickstart (isolated socket, bash tool)
 
 ```bash
-SOCKET_DIR="${CLAWDBOT_TMUX_SOCKET_DIR:-${TMPDIR:-/tmp}/clawdbot-tmux-sockets}"
+SOCKET_DIR="${ZEE_TMUX_SOCKET_DIR:-${TMPDIR:-/tmp}/zee-tmux-sockets}"
 mkdir -p "$SOCKET_DIR"
-SOCKET="$SOCKET_DIR/clawdbot.sock"
-SESSION=clawdbot-python
+SOCKET="$SOCKET_DIR/zee.sock"
+SESSION=zee-python
 
 tmux -S "$SOCKET" new -d -s "$SESSION" -n shell
 tmux -S "$SOCKET" send-keys -t "$SESSION":0.0 -- 'PYTHON_BASIC_REPL=1 python3 -q' Enter
@@ -31,8 +31,8 @@ To monitor:
 
 ## Socket convention
 
-- Use `CLAWDBOT_TMUX_SOCKET_DIR` (default `${TMPDIR:-/tmp}/clawdbot-tmux-sockets`).
-- Default socket path: `"$CLAWDBOT_TMUX_SOCKET_DIR/clawdbot.sock"`.
+- Use `ZEE_TMUX_SOCKET_DIR` (default `${TMPDIR:-/tmp}/zee-tmux-sockets`).
+- Default socket path: `"$ZEE_TMUX_SOCKET_DIR/zee.sock"`.
 
 ## Targeting panes and naming
 
@@ -43,7 +43,7 @@ To monitor:
 ## Finding sessions
 
 - List sessions on your socket: `{baseDir}/scripts/find-sessions.sh -S "$SOCKET"`.
-- Scan all sockets: `{baseDir}/scripts/find-sessions.sh --all` (uses `CLAWDBOT_TMUX_SOCKET_DIR`).
+- Scan all sockets: `{baseDir}/scripts/find-sessions.sh --all` (uses `ZEE_TMUX_SOCKET_DIR`).
 
 ## Sending input safely
 

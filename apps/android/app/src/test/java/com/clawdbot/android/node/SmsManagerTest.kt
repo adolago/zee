@@ -1,4 +1,4 @@
-package com.clawdbot.android.node
+package com.zee.android.node
 
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

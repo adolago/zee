@@ -1,9 +1,9 @@
 import path from "node:path";
 import { intro, note, outro } from "@clack/prompts";
 import { buildWorkspaceSkillStatus } from "../agents/skills-status.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   migrateLegacyConfig,
   readConfigFileSnapshot,
   resolveGatewayPort,
@@ -64,7 +64,7 @@ import {
 } from "./onboard-helpers.js";
 import { ensureSystemdUserLingerInteractive } from "./systemd-linger.js";
 
-function resolveMode(cfg: ClawdbotConfig): "local" | "remote" {
+function resolveMode(cfg: ZeeConfig): "local" | "remote" {
   return cfg.gateway?.mode === "remote" ? "remote" : "local";
 }
 
@@ -74,12 +74,12 @@ export async function doctorCommand(
 ) {
   const prompter = createDoctorPrompter({ runtime, options });
   printWizardHeader(runtime);
-  intro("Clawdbot doctor");
+  intro("Zee doctor");
 
   await maybeMigrateLegacyConfigFile(runtime);
 
   const snapshot = await readConfigFileSnapshot();
-  let cfg: ClawdbotConfig = snapshot.valid ? snapshot.config : {};
+  let cfg: ZeeConfig = snapshot.valid ? snapshot.config : {};
   if (
     snapshot.exists &&
     !snapshot.valid &&
@@ -274,13 +274,13 @@ export async function doctorCommand(
             });
           const environment: Record<string, string | undefined> = {
             PATH: process.env.PATH,
-            CLAWDBOT_PROFILE: process.env.CLAWDBOT_PROFILE,
-            CLAWDBOT_STATE_DIR: process.env.CLAWDBOT_STATE_DIR,
-            CLAWDBOT_CONFIG_PATH: process.env.CLAWDBOT_CONFIG_PATH,
-            CLAWDBOT_GATEWAY_PORT: String(port),
-            CLAWDBOT_GATEWAY_TOKEN:
-              cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
-            CLAWDBOT_LAUNCHD_LABEL:
+            ZEE_PROFILE: process.env.ZEE_PROFILE,
+            ZEE_STATE_DIR: process.env.ZEE_STATE_DIR,
+            ZEE_CONFIG_PATH: process.env.ZEE_CONFIG_PATH,
+            ZEE_GATEWAY_PORT: String(port),
+            ZEE_GATEWAY_TOKEN:
+              cfg.gateway?.auth?.token ?? process.env.ZEE_GATEWAY_TOKEN,
+            ZEE_LAUNCHD_LABEL:
               process.platform === "darwin"
                 ? GATEWAY_LAUNCH_AGENT_LABEL
                 : undefined,
@@ -318,7 +318,7 @@ export async function doctorCommand(
       }
       if (process.platform === "darwin") {
         note(
-          `LaunchAgent loaded; stopping requires "clawdbot daemon stop" or launchctl bootout gui/$UID/${GATEWAY_LAUNCH_AGENT_LABEL}.`,
+          `LaunchAgent loaded; stopping requires "zee daemon stop" or launchctl bootout gui/$UID/${GATEWAY_LAUNCH_AGENT_LABEL}.`,
           "Gateway",
         );
       }
@@ -348,7 +348,7 @@ export async function doctorCommand(
 
   cfg = applyWizardMetadata(cfg, { command: "doctor", mode: resolveMode(cfg) });
   await writeConfigFile(cfg);
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
 
   if (options.workspaceSuggestions !== false) {
     const workspaceDir = resolveUserPath(

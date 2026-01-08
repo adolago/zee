@@ -14,7 +14,7 @@ extension NSAppearance {
 }
 #endif
 
-enum ClawdbotChatTheme {
+enum ZeeChatTheme {
     #if os(macOS)
     static func resolvedAssistantBubbleColor(for appearance: NSAppearance) -> NSColor {
         // NSColor semantic colors don't reliably resolve for arbitrary NSAppearance in SwiftPM.
@@ -31,11 +31,11 @@ enum ClawdbotChatTheme {
     }
 
     static let assistantBubbleDynamicNSColor = NSColor(
-        name: NSColor.Name("ClawdbotChatTheme.assistantBubble"),
+        name: NSColor.Name("ZeeChatTheme.assistantBubble"),
         dynamicProvider: resolvedAssistantBubbleColor(for:))
 
     static let onboardingAssistantBubbleDynamicNSColor = NSColor(
-        name: NSColor.Name("ClawdbotChatTheme.onboardingAssistantBubble"),
+        name: NSColor.Name("ZeeChatTheme.onboardingAssistantBubble"),
         dynamicProvider: resolvedOnboardingAssistantBubbleColor(for:))
     #endif
 
@@ -163,8 +163,8 @@ enum ClawdbotChatTheme {
     }
 }
 
-enum ClawdbotPlatformImageFactory {
-    static func image(_ image: ClawdbotPlatformImage) -> Image {
+enum ZeePlatformImageFactory {
+    static func image(_ image: ZeePlatformImage) -> Image {
         #if os(macOS)
         Image(nsImage: image)
         #else

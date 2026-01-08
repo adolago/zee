@@ -10,7 +10,7 @@ read_when:
 
 A **node** is a companion device (iOS/Android today) that connects to the Gateway over the **Bridge** and exposes a command surface (e.g. `canvas.*`, `camera.*`, `system.*`) via `node.invoke`.
 
-macOS can also run in **node mode**: the menubar app connects to the Gateway’s bridge and exposes its local canvas/camera commands as a node (so `clawdbot nodes …` works against this Mac).
+macOS can also run in **node mode**: the menubar app connects to the Gateway’s bridge and exposes its local canvas/camera commands as a node (so `zee nodes …` works against this Mac).
 
 ## Pairing + status
 
@@ -19,12 +19,12 @@ Pairing is gateway-owned and approval-based. See [`docs/gateway/pairing.md`](/ga
 Quick CLI:
 
 ```bash
-clawdbot nodes pending
-clawdbot nodes approve <requestId>
-clawdbot nodes reject <requestId>
-clawdbot nodes status
-clawdbot nodes describe --node <idOrNameOrIp>
-clawdbot nodes rename --node <idOrNameOrIp> --name "Kitchen iPad"
+zee nodes pending
+zee nodes approve <requestId>
+zee nodes reject <requestId>
+zee nodes status
+zee nodes describe --node <idOrNameOrIp>
+zee nodes rename --node <idOrNameOrIp> --name "Kitchen iPad"
 ```
 
 Notes:
@@ -35,7 +35,7 @@ Notes:
 Low-level (raw RPC):
 
 ```bash
-clawdbot nodes invoke --node <idOrNameOrIp> --command canvas.eval --params '{"javaScript":"location.href"}'
+zee nodes invoke --node <idOrNameOrIp> --command canvas.eval --params '{"javaScript":"location.href"}'
 ```
 
 Higher-level helpers exist for the common “give the agent a MEDIA attachment” workflows.
@@ -47,8 +47,8 @@ If the node is showing the Canvas (WebView), `canvas.snapshot` returns `{ format
 CLI helper (writes to a temp file and prints `MEDIA:<path>`):
 
 ```bash
-clawdbot nodes canvas snapshot --node <idOrNameOrIp> --format png
-clawdbot nodes canvas snapshot --node <idOrNameOrIp> --format jpg --max-width 1200 --quality 0.9
+zee nodes canvas snapshot --node <idOrNameOrIp> --format png
+zee nodes canvas snapshot --node <idOrNameOrIp> --format jpg --max-width 1200 --quality 0.9
 ```
 
 ## Photos + videos (node camera)
@@ -56,15 +56,15 @@ clawdbot nodes canvas snapshot --node <idOrNameOrIp> --format jpg --max-width 12
 Photos (`jpg`):
 
 ```bash
-clawdbot nodes camera snap --node <idOrNameOrIp>            # default: both facings (2 MEDIA lines)
-clawdbot nodes camera snap --node <idOrNameOrIp> --facing front
+zee nodes camera snap --node <idOrNameOrIp>            # default: both facings (2 MEDIA lines)
+zee nodes camera snap --node <idOrNameOrIp> --facing front
 ```
 
 Video clips (`mp4`):
 
 ```bash
-clawdbot nodes camera clip --node <idOrNameOrIp> --duration 10s
-clawdbot nodes camera clip --node <idOrNameOrIp> --duration 3000 --no-audio
+zee nodes camera clip --node <idOrNameOrIp> --duration 10s
+zee nodes camera clip --node <idOrNameOrIp> --duration 3000 --no-audio
 ```
 
 Notes:
@@ -77,8 +77,8 @@ Notes:
 Nodes expose `screen.record` (mp4). Example:
 
 ```bash
-clawdbot nodes screen record --node <idOrNameOrIp> --duration 10s --fps 10
-clawdbot nodes screen record --node <idOrNameOrIp> --duration 10s --fps 10 --no-audio
+zee nodes screen record --node <idOrNameOrIp> --duration 10s --fps 10
+zee nodes screen record --node <idOrNameOrIp> --duration 10s --fps 10 --no-audio
 ```
 
 Notes:
@@ -94,8 +94,8 @@ Nodes expose `location.get` when Location is enabled in settings.
 CLI helper:
 
 ```bash
-clawdbot nodes location get --node <idOrNameOrIp>
-clawdbot nodes location get --node <idOrNameOrIp> --accuracy precise --max-age 15000 --location-timeout 10000
+zee nodes location get --node <idOrNameOrIp>
+zee nodes location get --node <idOrNameOrIp> --accuracy precise --max-age 15000 --location-timeout 10000
 ```
 
 Notes:
@@ -110,7 +110,7 @@ Android nodes can expose `sms.send` when the user grants **SMS** permission and 
 Low-level invoke:
 
 ```bash
-clawdbot nodes invoke --node <idOrNameOrIp> --command sms.send --params '{"to":"+15555550123","message":"Hello from Clawdbot"}'
+zee nodes invoke --node <idOrNameOrIp> --command sms.send --params '{"to":"+15555550123","message":"Hello from Zee"}'
 ```
 
 Notes:
@@ -124,8 +124,8 @@ The macOS node exposes `system.run` and `system.notify`.
 Examples:
 
 ```bash
-clawdbot nodes run --node <idOrNameOrIp> -- echo "Hello from mac node"
-clawdbot nodes notify --node <idOrNameOrIp> --title "Ping" --body "Gateway ready"
+zee nodes run --node <idOrNameOrIp> -- echo "Hello from mac node"
+zee nodes notify --node <idOrNameOrIp> --title "Ping" --body "Gateway ready"
 ```
 
 Notes:
@@ -138,13 +138,13 @@ Nodes may include a `permissions` map in `node.list` / `node.describe`, keyed by
 
 ## Mac node mode
 
-- The macOS menubar app connects to the Gateway bridge as a node (so `clawdbot nodes …` works against this Mac).
+- The macOS menubar app connects to the Gateway bridge as a node (so `zee nodes …` works against this Mac).
 - In remote mode, the app opens an SSH tunnel for the bridge port and connects to `localhost`.
 
 ## Where to look in code
 
-- CLI wiring: [`src/cli/nodes-cli.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/cli/nodes-cli.ts)
-- Canvas snapshot decoding/temp paths: [`src/cli/nodes-canvas.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/cli/nodes-canvas.ts)
-- Duration parsing for CLI: [`src/cli/parse-duration.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/cli/parse-duration.ts)
-- iOS node commands: [`apps/ios/Sources/Model/NodeAppModel.swift`](https://github.com/clawdbot/clawdbot/blob/main/apps/ios/Sources/Model/NodeAppModel.swift)
-- Android node commands: `apps/android/app/src/main/java/com/clawdbot/android/node/*`
+- CLI wiring: [`src/cli/nodes-cli.ts`](https://github.com/zee/zee/blob/main/src/cli/nodes-cli.ts)
+- Canvas snapshot decoding/temp paths: [`src/cli/nodes-canvas.ts`](https://github.com/zee/zee/blob/main/src/cli/nodes-canvas.ts)
+- Duration parsing for CLI: [`src/cli/parse-duration.ts`](https://github.com/zee/zee/blob/main/src/cli/parse-duration.ts)
+- iOS node commands: [`apps/ios/Sources/Model/NodeAppModel.swift`](https://github.com/zee/zee/blob/main/apps/ios/Sources/Model/NodeAppModel.swift)
+- Android node commands: `apps/android/app/src/main/java/com/zee/android/node/*`

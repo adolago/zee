@@ -1,15 +1,15 @@
 import AppKit
-import ClawdbotIPC
+import ZeeIPC
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized)
 @MainActor
 struct CanvasWindowSmokeTests {
     @Test func panelControllerShowsAndHides() async throws {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-canvas-test-\(UUID().uuidString)")
+            .appendingPathComponent("zee-canvas-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
 
@@ -32,7 +32,7 @@ struct CanvasWindowSmokeTests {
 
     @Test func windowControllerShowsAndCloses() async throws {
         let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-canvas-test-\(UUID().uuidString)")
+            .appendingPathComponent("zee-canvas-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
 

@@ -26,7 +26,7 @@ Add a dedicated settings section (preferably under **Skills** or its own "Browse
   - When off: no browser is launched, and browser tools return "disabled".
 - **Browser control URL** (`default: http://127.0.0.1:18791`)
   - Interpreted as the base URL of the local/remote browser-control server.
-  - If the URL host is not loopback, Clawdbot must **not** attempt to launch a local
+  - If the URL host is not loopback, Zee must **not** attempt to launch a local
     browser; it only connects.
 - **CDP URL** (`default: controlUrl + 1`)
   - Base URL for Chrome DevTools Protocol (e.g. `http://127.0.0.1:18792`).
@@ -37,7 +37,7 @@ Add a dedicated settings section (preferably under **Skills** or its own "Browse
     avoid accidentally launching a local browser.
 - **Accent color** (`default: #FF4500`, "lobster-orange")
   - Used to theme the clawd browser profile (best-effort) and to tint UI indicators
-    in Clawdbot.
+    in Zee.
 
 Optional (advanced, can be hidden behind Debug initially):
 - **Use headless browser** (`default: off`)
@@ -48,14 +48,14 @@ Optional (advanced, can be hidden behind Debug initially):
 
 ### Port convention
 
-Clawdbot already uses:
+Zee already uses:
 - Gateway WebSocket: `18789`
 - Bridge (voice/node): `18790`
 
 For the clawd browser-control server, use "family" ports:
 - Browser control HTTP API: `18791` (bridge + 1)
 - Browser CDP/debugging port: `18792` (control + 1)
-- Canvas host HTTP: `18793` by default, mounted at `/__clawdbot__/canvas/`
+- Canvas host HTTP: `18793` by default, mounted at `/__zee__/canvas/`
 
 The user usually only configures the **control URL** (port `18791`). CDP is an
 internal detail.
@@ -65,8 +65,8 @@ internal detail.
 1) **Dedicated user data dir**
    - Never attach to or reuse the user's default Chrome profile.
    - Store clawd browser state under an app-owned directory, e.g.:
-     - `~/Library/Application Support/Clawdbot/browser/clawd/` (mac app)
-     - or `~/.clawdbot/browser/clawd/` (gateway/CLI)
+     - `~/Library/Application Support/Zee/browser/clawd/` (mac app)
+     - or `~/.zee/browser/clawd/` (gateway/CLI)
 
 2) **Dedicated ports**
    - Never use `9222` (reserved for ad-hoc dev workflows; avoids colliding with
@@ -79,7 +79,7 @@ internal detail.
 
 ## Browser selection (macOS + Linux)
 
-On startup (when enabled + local URL), Clawdbot chooses the browser executable
+On startup (when enabled + local URL), Zee chooses the browser executable
 in this order:
 1) **Google Chrome Canary** (if installed)
 2) **Chromium** (if installed)
@@ -150,14 +150,14 @@ Hooks (arming):
 "Closed" means:
 - control server not reachable, or server reports no browser.
 
-Clawdbot should treat "open/closed" as a health check (fast path), not by scanning
+Zee should treat "open/closed" as a health check (fast path), not by scanning
 global Chrome processes (avoid false positives).
 
 ## Multi-profile support
 
-Clawdbot supports multiple named browser profiles, each with:
+Zee supports multiple named browser profiles, each with:
 - Dedicated CDP port (auto-allocated from 18800-18899) **or** a per-profile CDP URL
-- Persistent user data directory (`~/.clawdbot/browser/<name>/user-data/`)
+- Persistent user data directory (`~/.zee/browser/<name>/user-data/`)
 - Unique color for visual distinction
 
 ### Configuration
@@ -240,44 +240,44 @@ The agent should not assume tabs are ephemeral. It should:
 All commands accept `--browser-profile <name>` to target a specific profile (default: `clawd`).
 
 Profile management:
-- `clawdbot browser profiles`
-- `clawdbot browser create-profile --name work`
-- `clawdbot browser create-profile --name remote --cdp-url http://10.0.0.42:9222`
-- `clawdbot browser delete-profile --name work`
+- `zee browser profiles`
+- `zee browser create-profile --name work`
+- `zee browser create-profile --name remote --cdp-url http://10.0.0.42:9222`
+- `zee browser delete-profile --name work`
 Basics:
-- `clawdbot browser status`
-- `clawdbot browser start`
-- `clawdbot browser stop`
-- `clawdbot browser reset-profile`
-- `clawdbot browser tabs`
-- `clawdbot browser open https://example.com`
-- `clawdbot browser focus abcd1234`
-- `clawdbot browser close abcd1234`
+- `zee browser status`
+- `zee browser start`
+- `zee browser stop`
+- `zee browser reset-profile`
+- `zee browser tabs`
+- `zee browser open https://example.com`
+- `zee browser focus abcd1234`
+- `zee browser close abcd1234`
 
 Inspection:
-- `clawdbot browser screenshot`
-- `clawdbot browser screenshot --full-page`
-- `clawdbot browser screenshot --ref 12`
-- `clawdbot browser snapshot`
-- `clawdbot browser snapshot --format aria --limit 200`
+- `zee browser screenshot`
+- `zee browser screenshot --full-page`
+- `zee browser screenshot --ref 12`
+- `zee browser snapshot`
+- `zee browser snapshot --format aria --limit 200`
 
 Actions:
-- `clawdbot browser navigate https://example.com`
-- `clawdbot browser resize 1280 720`
-- `clawdbot browser click 12 --double`
-- `clawdbot browser type 23 "hello" --submit`
-- `clawdbot browser press Enter`
-- `clawdbot browser hover 44`
-- `clawdbot browser drag 10 11`
-- `clawdbot browser select 9 OptionA OptionB`
-- `clawdbot browser upload /tmp/file.pdf`
-- `clawdbot browser fill --fields '[{\"ref\":\"1\",\"value\":\"Ada\"}]'`
-- `clawdbot browser dialog --accept`
-- `clawdbot browser wait --text "Done"`
-- `clawdbot browser evaluate --fn '(el) => el.textContent' --ref 7`
-- `clawdbot browser evaluate --fn "document.querySelector('.my-class').click()"`
-- `clawdbot browser console --level error`
-- `clawdbot browser pdf`
+- `zee browser navigate https://example.com`
+- `zee browser resize 1280 720`
+- `zee browser click 12 --double`
+- `zee browser type 23 "hello" --submit`
+- `zee browser press Enter`
+- `zee browser hover 44`
+- `zee browser drag 10 11`
+- `zee browser select 9 OptionA OptionB`
+- `zee browser upload /tmp/file.pdf`
+- `zee browser fill --fields '[{\"ref\":\"1\",\"value\":\"Ada\"}]'`
+- `zee browser dialog --accept`
+- `zee browser wait --text "Done"`
+- `zee browser evaluate --fn '(el) => el.textContent' --ref 7`
+- `zee browser evaluate --fn "document.querySelector('.my-class').click()"`
+- `zee browser console --level error`
+- `zee browser pdf`
 
 Notes:
 - `upload` and `dialog` are **arming** calls; run them before the click/press that triggers the chooser/dialog.

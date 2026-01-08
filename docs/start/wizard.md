@@ -7,7 +7,7 @@ read_when:
 
 # Onboarding Wizard (CLI)
 
-The onboarding wizard is the **recommended** way to set up Clawdbot on macOS,
+The onboarding wizard is the **recommended** way to set up Zee on macOS,
 Linux, or Windows (via WSL2; strongly recommended).
 It configures a local Gateway or a remote Gateway connection, plus providers, skills,
 and workspace defaults in one guided flow.
@@ -15,13 +15,13 @@ and workspace defaults in one guided flow.
 Primary entrypoint:
 
 ```bash
-clawdbot onboard
+zee onboard
 ```
 
 Follow‑up reconfiguration:
 
 ```bash
-clawdbot configure
+zee configure
 ```
 
 ## QuickStart vs Advanced
@@ -55,7 +55,7 @@ It does **not** install or change anything on the remote host.
 To add more isolated agents (separate workspace + sessions + auth), use:
 
 ```bash
-clawdbot agents add <name>
+zee agents add <name>
 ```
 
 Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (and `--workspace`) for scripts.
@@ -63,7 +63,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
 ## Flow details (local)
 
 1) **Existing config detection**
-   - If `~/.clawdbot/clawdbot.json` exists, choose **Keep / Modify / Reset**.
+   - If `~/.zee/zee.json` exists, choose **Keep / Modify / Reset**.
    - Reset uses `trash` (never `rm`) and offers scopes:
      - Config only
      - Config + credentials + sessions
@@ -79,7 +79,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - **Minimax M2.1 (LM Studio)**: config is auto‑written for the LM Studio endpoint.
    - **Skip**: no auth configured yet.
    - Wizard runs a model check and warns if the configured model is unknown or missing auth.
-  - OAuth credentials live in `~/.clawdbot/credentials/oauth.json`; auth profiles live in `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json` (API keys + OAuth).
+  - OAuth credentials live in `~/.zee/credentials/oauth.json`; auth profiles live in `~/.zee/agents/<agentId>/agent/auth-profiles.json` (API keys + OAuth).
    - More detail: [/concepts/oauth](/concepts/oauth)
 
 3) **Workspace**
@@ -98,7 +98,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - Discord: bot token.
    - Signal: optional `signal-cli` install + account config.
    - iMessage: local `imsg` CLI path + DB access.
-  - DM security: default is pairing. First DM sends a code; approve via `clawdbot pairing approve --provider <provider> <code>` or use allowlists.
+  - DM security: default is pairing. First DM sends a code; approve via `zee pairing approve --provider <provider> <code>` or use allowlists.
 
 6) **Daemon install**
    - macOS: LaunchAgent
@@ -109,8 +109,8 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - **Runtime selection:** Node (recommended; required for WhatsApp) or Bun (faster, but incompatible with WhatsApp).
 
 7) **Health check**
-   - Starts the Gateway (if needed) and runs `clawdbot health`.
-   - Tip: `clawdbot status --deep` runs local provider probes without a gateway.
+   - Starts the Gateway (if needed) and runs `zee health`.
+   - Tip: `zee status --deep` runs local provider probes without a gateway.
 
 8) **Skills (recommended)**
    - Reads the available skills and checks requirements.
@@ -139,7 +139,7 @@ Notes:
 
 ## Add another agent
 
-Use `clawdbot agents add <name>` to create a separate agent with its own workspace,
+Use `zee agents add <name>` to create a separate agent with its own workspace,
 sessions, and auth profiles. Running without `--workspace` launches the wizard.
 
 What it sets:
@@ -157,7 +157,7 @@ Notes:
 Use `--non-interactive` to automate or script onboarding:
 
 ```bash
-clawdbot onboard --non-interactive \
+zee onboard --non-interactive \
   --mode local \
   --auth-choice apiKey \
   --anthropic-api-key "$ANTHROPIC_API_KEY" \
@@ -173,7 +173,7 @@ Add `--json` for a machine‑readable summary.
 Add agent (non‑interactive) example:
 
 ```bash
-clawdbot agents add work \
+zee agents add work \
   --workspace ~/clawd-work \
   --model openai/gpt-5.2 \
   --bind whatsapp:biz \
@@ -190,7 +190,7 @@ Clients (macOS app, Control UI) can render steps without re‑implementing onboa
 
 The wizard can install `signal-cli` from GitHub releases:
 - Downloads the appropriate release asset.
-- Stores it under `~/.clawdbot/tools/signal-cli/<version>/`.
+- Stores it under `~/.zee/tools/signal-cli/<version>/`.
 - Writes `signal.cliPath` to your config.
 
 Notes:
@@ -200,7 +200,7 @@ Notes:
 
 ## What the wizard writes
 
-Typical fields in `~/.clawdbot/clawdbot.json`:
+Typical fields in `~/.zee/zee.json`:
 - `agent.workspace`
 - `agent.model` / `models.providers` (if Minimax chosen)
 - `gateway.*` (mode, bind, auth, tailscale)
@@ -212,10 +212,10 @@ Typical fields in `~/.clawdbot/clawdbot.json`:
 - `wizard.lastRunCommand`
 - `wizard.lastRunMode`
 
-`clawdbot agents add` writes `routing.agents.<agentId>` and optional `routing.bindings`.
+`zee agents add` writes `routing.agents.<agentId>` and optional `routing.bindings`.
 
-WhatsApp credentials go under `~/.clawdbot/credentials/whatsapp/<accountId>/`.
-Sessions are stored under `~/.clawdbot/agents/<agentId>/sessions/`.
+WhatsApp credentials go under `~/.zee/credentials/whatsapp/<accountId>/`.
+Sessions are stored under `~/.zee/agents/<agentId>/sessions/`.
 
 ## Related docs
 

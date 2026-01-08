@@ -35,7 +35,7 @@ const webMocks = vi.hoisted(() => ({
 vi.mock("../web/session.js", () => webMocks);
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
-  const base = await fs.mkdtemp(join(tmpdir(), "clawdbot-triggers-"));
+  const base = await fs.mkdtemp(join(tmpdir(), "zee-triggers-"));
   const previousHome = process.env.HOME;
   process.env.HOME = base;
   try {
@@ -708,7 +708,7 @@ describe("trigger handling", () => {
             allowFrom: ["*"],
           },
           session: {
-            store: join(tmpdir(), `clawdbot-session-test-${Date.now()}.json`),
+            store: join(tmpdir(), `zee-session-test-${Date.now()}.json`),
           },
         },
       );
@@ -747,7 +747,7 @@ describe("trigger handling", () => {
             allowFrom: ["*"],
           },
           session: {
-            store: join(tmpdir(), `clawdbot-session-test-${Date.now()}.json`),
+            store: join(tmpdir(), `zee-session-test-${Date.now()}.json`),
           },
         },
       );
@@ -779,7 +779,7 @@ describe("trigger handling", () => {
             allowFrom: ["+1999"],
           },
           session: {
-            store: join(tmpdir(), `clawdbot-session-test-${Date.now()}.json`),
+            store: join(tmpdir(), `zee-session-test-${Date.now()}.json`),
           },
         },
       );
@@ -806,7 +806,7 @@ describe("trigger handling", () => {
             allowFrom: ["+1999"],
           },
           session: {
-            store: join(tmpdir(), `clawdbot-session-test-${Date.now()}.json`),
+            store: join(tmpdir(), `zee-session-test-${Date.now()}.json`),
           },
         },
       );
@@ -819,7 +819,7 @@ describe("trigger handling", () => {
     await withTempHome(async (home) => {
       const storePath = join(
         tmpdir(),
-        `clawdbot-session-test-${Date.now()}.json`,
+        `zee-session-test-${Date.now()}.json`,
       );
       vi.mocked(compactEmbeddedPiSession).mockResolvedValue({
         ok: true,
@@ -930,7 +930,7 @@ describe("trigger handling", () => {
 
   it("stages inbound media into the sandbox workspace", async () => {
     await withTempHome(async (home) => {
-      const inboundDir = join(home, ".clawdbot", "media", "inbound");
+      const inboundDir = join(home, ".zee", "media", "inbound");
       await fs.mkdir(inboundDir, { recursive: true });
       const mediaPath = join(inboundDir, "photo.jpg");
       await fs.writeFile(mediaPath, "test");

@@ -22,17 +22,17 @@ import {
 } from "./defaults.js";
 import { findLegacyConfigIssues } from "./legacy.js";
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   resolveConfigPath,
   resolveStateDir,
 } from "./paths.js";
 import type {
-  ClawdbotConfig,
+  ZeeConfig,
   ConfigFileSnapshot,
   LegacyConfigIssue,
 } from "./types.js";
 import { validateConfigObject } from "./validation.js";
-import { ClawdbotSchema } from "./zod-schema.js";
+import { ZeeSchema } from "./zod-schema.js";
 
 const SHELL_ENV_EXPECTED_KEYS = [
   "OPENAI_API_KEY",
@@ -46,8 +46,8 @@ const SHELL_ENV_EXPECTED_KEYS = [
   "DISCORD_BOT_TOKEN",
   "SLACK_BOT_TOKEN",
   "SLACK_APP_TOKEN",
-  "CLAWDBOT_GATEWAY_TOKEN",
-  "CLAWDBOT_GATEWAY_PASSWORD",
+  "ZEE_GATEWAY_TOKEN",
+  "ZEE_GATEWAY_PASSWORD",
 ];
 
 export type ParseConfigJson5Result =
@@ -108,7 +108,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
   const deps = normalizeDeps(overrides);
   const configPath = resolveConfigPathForDeps(deps);
 
-  function loadConfig(): ClawdbotConfig {
+  function loadConfig(): ZeeConfig {
     try {
       if (!deps.fs.existsSync(configPath)) {
         if (shouldEnableShellEnvFallback(deps.env)) {
@@ -126,7 +126,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       const parsed = deps.json5.parse(raw);
       warnOnConfigMiskeys(parsed, deps.logger);
       if (typeof parsed !== "object" || parsed === null) return {};
-      const validated = ClawdbotSchema.safeParse(parsed);
+      const validated = ZeeSchema.safeParse(parsed);
       if (!validated.success) {
         deps.logger.error("Invalid config:");
         for (const iss of validated.error.issues) {
@@ -138,7 +138,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         applySessionDefaults(
           applyLoggingDefaults(
             applyMessageDefaults(
-              applyIdentityDefaults(validated.data as ClawdbotConfig),
+              applyIdentityDefaults(validated.data as ZeeConfig),
             ),
           ),
         ),
@@ -261,7 +261,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
     }
   }
 
-  async function writeConfigFile(cfg: ClawdbotConfig) {
+  async function writeConfigFile(cfg: ZeeConfig) {
     await deps.fs.promises.mkdir(path.dirname(configPath), {
       recursive: true,
     });
@@ -279,7 +279,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
   };
 }
 
-const defaultIO = createConfigIO({ configPath: CONFIG_PATH_CLAWDBOT });
+const defaultIO = createConfigIO({ configPath: CONFIG_PATH_ZEE });
 
 export const loadConfig = defaultIO.loadConfig;
 export const readConfigFileSnapshot = defaultIO.readConfigFileSnapshot;

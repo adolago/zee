@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import AVFoundation
-import ClawdbotIPC
+import ZeeIPC
 import CoreGraphics
 import CoreLocation
 import Foundation
@@ -304,14 +304,14 @@ final class LocationPermissionRequester: NSObject, CLLocationManagerDelegate {
 }
 
 enum AppleScriptPermission {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "AppleScriptPermission")
+    private static let logger = Logger(subsystem: "com.zee", category: "AppleScriptPermission")
 
     /// Sends a benign AppleScript to Terminal to verify Automation permission.
     @MainActor
     static func isAuthorized() -> Bool {
         let script = """
         tell application "Terminal"
-            return "clawdbot-ok"
+            return "zee-ok"
         end tell
         """
 

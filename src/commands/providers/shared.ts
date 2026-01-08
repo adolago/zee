@@ -1,5 +1,5 @@
 import {
-  type ClawdbotConfig,
+  type ZeeConfig,
   readConfigFileSnapshot,
 } from "../../config/config.js";
 import {
@@ -13,7 +13,7 @@ export type ChatProvider = ChatProviderId;
 
 export async function requireValidConfig(
   runtime: RuntimeEnv = defaultRuntime,
-): Promise<ClawdbotConfig | null> {
+): Promise<ZeeConfig | null> {
   const snapshot = await readConfigFileSnapshot();
   if (snapshot.exists && !snapshot.valid) {
     const issues =
@@ -23,7 +23,7 @@ export async function requireValidConfig(
             .join("\n")
         : "Unknown validation issue.";
     runtime.error(`Config invalid:\n${issues}`);
-    runtime.error("Fix the config or run clawdbot doctor.");
+    runtime.error("Fix the config or run zee doctor.");
     runtime.exit(1);
     return null;
   }

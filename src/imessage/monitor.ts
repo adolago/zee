@@ -8,7 +8,7 @@ import {
 } from "../auto-reply/reply/mentions.js";
 import { createReplyDispatcher } from "../auto-reply/reply/reply-dispatcher.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import {
   resolveProviderGroupPolicy,
@@ -59,7 +59,7 @@ export type MonitorIMessageOpts = {
   cliPath?: string;
   dbPath?: string;
   accountId?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   allowFrom?: Array<string | number>;
   groupAllowFrom?: Array<string | number>;
   includeAttachments?: boolean;
@@ -258,12 +258,12 @@ export async function monitorIMessageProvider(
               await sendMessageIMessage(
                 sender,
                 [
-                  "Clawdbot: access not configured.",
+                  "Zee: access not configured.",
                   "",
                   `Pairing code: ${code}`,
                   "",
                   "Ask the bot owner to approve with:",
-                  "clawdbot pairing approve --provider imessage <code>",
+                  "zee pairing approve --provider imessage <code>",
                 ].join("\n"),
                 {
                   client,

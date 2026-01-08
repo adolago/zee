@@ -1,6 +1,6 @@
-package com.clawdbot.android.ui.chat
+package com.zee.android.ui.chat
 
-import com.clawdbot.android.chat.ChatSessionEntry
+import com.zee.android.chat.ChatSessionEntry
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

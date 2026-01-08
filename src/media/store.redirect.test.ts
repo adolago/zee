@@ -14,7 +14,7 @@ import {
 } from "vitest";
 
 const realOs = await vi.importActual<typeof import("node:os")>("node:os");
-const HOME = path.join(realOs.tmpdir(), "clawdbot-home-redirect");
+const HOME = path.join(realOs.tmpdir(), "zee-home-redirect");
 const mockRequest = vi.fn();
 
 vi.doMock("node:os", () => ({

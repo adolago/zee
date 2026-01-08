@@ -1,11 +1,11 @@
-# Contributing to Clawdbot
+# Contributing to Zee
 
 Welcome to the lobster tank! 🦞
 
 ## Quick Links
-- **GitHub:** https://github.com/clawdbot/clawdbot
+- **GitHub:** https://github.com/zee/zee
 - **Discord:** https://discord.gg/qkhbAGHRBT
-- **X/Twitter:** [@steipete](https://x.com/steipete) / [@clawdbot](https://x.com/clawdbot)
+- **X/Twitter:** [@steipete](https://x.com/steipete) / [@zee](https://x.com/zee)
 
 ## Maintainers
 
@@ -20,11 +20,11 @@ Welcome to the lobster tank! 🦞
 
 ## How to Contribute
 1. **Bugs & small fixes** → Open a PR!
-2. **New features / architecture** → Start a [GitHub Discussion](https://github.com/clawdbot/clawdbot/discussions) or ask in Discord first
+2. **New features / architecture** → Start a [GitHub Discussion](https://github.com/zee/zee/discussions) or ask in Discord first
 3. **Questions** → Discord #setup-help
 
 ## Before You PR
-- Test locally with your Clawdbot instance
+- Test locally with your Zee instance
 - Run linter: `npm run lint`
 - Keep PRs focused (one thing per PR)
 - Describe what & why

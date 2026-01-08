@@ -1,4 +1,4 @@
-package com.clawdbot.android.node
+package com.zee.android.node
 
 import android.Manifest
 import android.content.Context
@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.encodeToString
-import com.clawdbot.android.PermissionRequester
+import com.zee.android.PermissionRequester
 
 /**
  * Sends SMS messages via the Android SMS API.

@@ -1,4 +1,4 @@
-import ClawdbotIPC
+import ZeeIPC
 import Foundation
 import Testing
 

@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 import Observation
 import SwiftUI
@@ -74,7 +74,7 @@ final class ControlChannel {
 
     private(set) var lastPingMs: Double?
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "control")
+    private let logger = Logger(subsystem: "com.zee", category: "control")
 
     private var eventTask: Task<Void, Never>?
     private var recoveryTask: Task<Void, Never>?
@@ -182,7 +182,7 @@ final class ControlChannel {
         {
             let reason = urlErr.failureURLString ?? urlErr.localizedDescription
             return
-                "Gateway rejected token; set CLAWDBOT_GATEWAY_TOKEN in the mac app environment " +
+                "Gateway rejected token; set ZEE_GATEWAY_TOKEN in the mac app environment " +
                 "or clear it on the gateway. " +
                 "Reason: \(reason)"
         }
@@ -364,6 +364,6 @@ final class ControlChannel {
 }
 
 extension Notification.Name {
-    static let controlHeartbeat = Notification.Name("clawdbot.control.heartbeat")
-    static let controlAgentEvent = Notification.Name("clawdbot.control.agent")
+    static let controlHeartbeat = Notification.Name("zee.control.heartbeat")
+    static let controlAgentEvent = Notification.Name("zee.control.agent")
 }

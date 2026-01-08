@@ -8,7 +8,7 @@ import {
   DEFAULT_PROVIDER,
 } from "../agents/defaults.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
-import { type ClawdbotConfig, loadConfig } from "../config/config.js";
+import { type ZeeConfig, loadConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import {
   buildGroupDisplayName,
@@ -117,7 +117,7 @@ export function resolveSessionTranscriptCandidates(
     candidates.push(resolveSessionTranscriptPath(sessionId, agentId));
   }
   candidates.push(
-    path.join(os.homedir(), ".clawdbot", "sessions", `${sessionId}.jsonl`),
+    path.join(os.homedir(), ".zee", "sessions", `${sessionId}.jsonl`),
   );
   return candidates;
 }
@@ -220,7 +220,7 @@ function listExistingAgentIdsFromDisk(): string[] {
   }
 }
 
-function listConfiguredAgentIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAgentIds(cfg: ZeeConfig): string[] {
   const ids = new Set<string>();
   const defaultId = normalizeAgentId(cfg.routing?.defaultAgentId);
   ids.add(defaultId);
@@ -255,7 +255,7 @@ function canonicalizeSpawnedByForAgent(
 }
 
 export function resolveGatewaySessionStoreTarget(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   key: string;
 }): {
   agentId: string;
@@ -301,7 +301,7 @@ export function resolveGatewaySessionStoreTarget(params: {
   };
 }
 
-export function loadCombinedSessionStoreForGateway(cfg: ClawdbotConfig): {
+export function loadCombinedSessionStoreForGateway(cfg: ZeeConfig): {
   storePath: string;
   store: Record<string, SessionEntry>;
 } {
@@ -346,7 +346,7 @@ export function loadCombinedSessionStoreForGateway(cfg: ClawdbotConfig): {
 }
 
 export function getSessionDefaults(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): GatewaySessionsDefaults {
   const resolved = resolveConfiguredModelRef({
     cfg,
@@ -364,7 +364,7 @@ export function getSessionDefaults(
 }
 
 export function resolveSessionModelRef(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   entry?: SessionEntry,
 ): { provider: string; model: string } {
   const resolved = resolveConfiguredModelRef({
@@ -383,7 +383,7 @@ export function resolveSessionModelRef(
 }
 
 export function listSessionsFromStore(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   storePath: string;
   store: Record<string, SessionEntry>;
   opts: import("./protocol/index.js").SessionsListParams;

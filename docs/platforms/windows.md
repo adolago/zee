@@ -1,13 +1,13 @@
 ---
 summary: "Windows (WSL2) support + companion app status"
 read_when:
-  - Installing Clawdbot on Windows
+  - Installing Zee on Windows
   - Looking for Windows companion app status
   - Planning platform coverage or contributions
 ---
 # Windows (WSL2)
 
-Clawdbot core is supported on Windows **via WSL2** (Ubuntu recommended). The
+Zee core is supported on Windows **via WSL2** (Ubuntu recommended). The
 CLI + Gateway run inside Linux, which keeps the runtime consistent. Native
 Windows installs are untested and more problematic.
 
@@ -25,25 +25,25 @@ Windows installs are untested and more problematic.
 Inside WSL2:
 
 ```
-clawdbot onboard --install-daemon
+zee onboard --install-daemon
 ```
 
 Or:
 
 ```
-clawdbot daemon install
+zee daemon install
 ```
 
 Or:
 
 ```
-clawdbot daemon install
+zee daemon install
 ```
 
 Or:
 
 ```
-clawdbot configure
+zee configure
 ```
 
 Select **Gateway daemon** when prompted.
@@ -51,7 +51,7 @@ Select **Gateway daemon** when prompted.
 Repair/migrate:
 
 ```
-clawdbot doctor
+zee doctor
 ```
 
 ## How to install this correctly
@@ -92,18 +92,18 @@ Re-open Ubuntu, then verify:
 systemctl --user status
 ```
 
-### 3) Install Clawdbot (inside WSL)
+### 3) Install Zee (inside WSL)
 
 Follow the Linux Getting Started flow inside WSL:
 
 ```bash
-git clone https://github.com/clawdbot/clawdbot.git
-cd clawdbot
+git clone https://github.com/zee/zee.git
+cd zee
 pnpm install
 pnpm ui:install
 pnpm ui:build
 pnpm build
-pnpm clawdbot onboard
+pnpm zee onboard
 ```
 
 Full guide: [Getting Started](/start/getting-started)

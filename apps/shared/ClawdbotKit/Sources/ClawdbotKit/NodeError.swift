@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ClawdbotNodeErrorCode: String, Codable, Sendable {
+public enum ZeeNodeErrorCode: String, Codable, Sendable {
     case notPaired = "NOT_PAIRED"
     case unauthorized = "UNAUTHORIZED"
     case backgroundUnavailable = "NODE_BACKGROUND_UNAVAILABLE"
@@ -8,14 +8,14 @@ public enum ClawdbotNodeErrorCode: String, Codable, Sendable {
     case unavailable = "UNAVAILABLE"
 }
 
-public struct ClawdbotNodeError: Error, Codable, Sendable, Equatable {
-    public var code: ClawdbotNodeErrorCode
+public struct ZeeNodeError: Error, Codable, Sendable, Equatable {
+    public var code: ZeeNodeErrorCode
     public var message: String
     public var retryable: Bool?
     public var retryAfterMs: Int?
 
     public init(
-        code: ClawdbotNodeErrorCode,
+        code: ZeeNodeErrorCode,
         message: String,
         retryable: Bool? = nil,
         retryAfterMs: Int? = nil)

@@ -57,16 +57,16 @@ export function buildProgram() {
   const PROGRAM_VERSION = VERSION;
 
   program
-    .name("clawdbot")
+    .name("zee")
     .description("")
     .version(PROGRAM_VERSION)
     .option(
       "--dev",
-      "Dev profile: isolate state under ~/.clawdbot-dev, default gateway port 19001, and shift derived ports (bridge/browser/canvas)",
+      "Dev profile: isolate state under ~/.zee-dev, default gateway port 19001, and shift derived ports (bridge/browser/canvas)",
     )
     .option(
       "--profile <name>",
-      "Use a named profile (isolates CLAWDBOT_STATE_DIR/CLAWDBOT_CONFIG_PATH under ~/.clawdbot-<name>)",
+      "Use a named profile (isolates ZEE_STATE_DIR/ZEE_CONFIG_PATH under ~/.zee-<name>)",
     );
 
   program.configureHelp({
@@ -130,7 +130,7 @@ export function buildProgram() {
       .join("\n");
     defaultRuntime.error(
       danger(
-        `Legacy config entries detected. Run "clawdbot doctor" (or ask your agent) to migrate.\n${issues}`,
+        `Legacy config entries detected. Run "zee doctor" (or ask your agent) to migrate.\n${issues}`,
       ),
     );
     process.exit(1);
@@ -142,29 +142,29 @@ export function buildProgram() {
   });
   const examples = [
     [
-      "clawdbot providers login --verbose",
+      "zee providers login --verbose",
       "Link personal WhatsApp Web and show QR + connection logs.",
     ],
     [
-      'clawdbot send --to +15555550123 --message "Hi" --json',
+      'zee send --to +15555550123 --message "Hi" --json',
       "Send via your web session and print JSON result.",
     ],
-    ["clawdbot gateway --port 18789", "Run the WebSocket Gateway locally."],
+    ["zee gateway --port 18789", "Run the WebSocket Gateway locally."],
     [
-      "clawdbot --dev gateway",
+      "zee --dev gateway",
       "Run a dev Gateway (isolated state/config) on ws://127.0.0.1:19001.",
     ],
     [
-      "clawdbot gateway --force",
+      "zee gateway --force",
       "Kill anything bound to the default gateway port, then start it.",
     ],
-    ["clawdbot gateway ...", "Gateway control via WebSocket."],
+    ["zee gateway ...", "Gateway control via WebSocket."],
     [
-      'clawdbot agent --to +15555550123 --message "Run summary" --deliver',
+      'zee agent --to +15555550123 --message "Run summary" --deliver',
       "Talk directly to the agent using the Gateway; optionally send the WhatsApp reply.",
     ],
     [
-      'clawdbot send --provider telegram --to @mychat --message "Hi"',
+      'zee send --provider telegram --to @mychat --message "Hi"',
       "Send via your Telegram bot.",
     ],
   ] as const;
@@ -180,7 +180,7 @@ export function buildProgram() {
 
   program
     .command("setup")
-    .description("Initialize ~/.clawdbot/clawdbot.json and the agent workspace")
+    .description("Initialize ~/.zee/zee.json and the agent workspace")
     .option(
       "--workspace <dir>",
       "Agent workspace directory (default: ~/clawd; stored as agent.workspace)",
@@ -348,7 +348,7 @@ export function buildProgram() {
       }
     });
 
-  // Deprecated hidden aliases: use `clawdbot providers login/logout`. Remove in a future major.
+  // Deprecated hidden aliases: use `zee providers login/logout`. Remove in a future major.
   program
     .command("login", { hidden: true })
     .description("Link your personal WhatsApp via QR (web provider)")
@@ -422,10 +422,10 @@ export function buildProgram() {
       "after",
       `
 Examples:
-  clawdbot send --to +15555550123 --message "Hi"
-  clawdbot send --to +15555550123 --message "Hi" --media photo.jpg
-  clawdbot send --to +15555550123 --message "Hi" --dry-run      # print payload only
-  clawdbot send --to +15555550123 --message "Hi" --json         # machine-readable result`,
+  zee send --to +15555550123 --message "Hi"
+  zee send --to +15555550123 --message "Hi" --media photo.jpg
+  zee send --to +15555550123 --message "Hi" --dry-run      # print payload only
+  zee send --to +15555550123 --message "Hi" --json         # machine-readable result`,
     )
     .action(async (opts) => {
       setVerbose(Boolean(opts.verbose));
@@ -478,10 +478,10 @@ Examples:
       "after",
       `
 Examples:
-  clawdbot poll --to +15555550123 -q "Lunch today?" -o "Yes" -o "No" -o "Maybe"
-  clawdbot poll --to 123456789@g.us -q "Meeting time?" -o "10am" -o "2pm" -o "4pm" -s 2
-  clawdbot poll --to channel:123456789 -q "Snack?" -o "Pizza" -o "Sushi" --provider discord
-  clawdbot poll --to channel:123456789 -q "Plan?" -o "A" -o "B" --provider discord --duration-hours 48`,
+  zee poll --to +15555550123 -q "Lunch today?" -o "Yes" -o "No" -o "Maybe"
+  zee poll --to 123456789@g.us -q "Meeting time?" -o "10am" -o "2pm" -o "4pm" -s 2
+  zee poll --to channel:123456789 -q "Snack?" -o "Pizza" -o "Sushi" --provider discord
+  zee poll --to channel:123456789 -q "Plan?" -o "A" -o "B" --provider discord --duration-hours 48`,
     )
     .action(async (opts) => {
       setVerbose(Boolean(opts.verbose));
@@ -531,10 +531,10 @@ Examples:
       "after",
       `
 Examples:
-  clawdbot agent --to +15555550123 --message "status update"
-  clawdbot agent --session-id 1234 --message "Summarize inbox" --thinking medium
-  clawdbot agent --to +15555550123 --message "Trace logs" --verbose on --json
-  clawdbot agent --to +15555550123 --message "Summon reply" --deliver
+  zee agent --to +15555550123 --message "status update"
+  zee agent --session-id 1234 --message "Summarize inbox" --thinking medium
+  zee agent --to +15555550123 --message "Trace logs" --verbose on --json
+  zee agent --to +15555550123 --message "Summon reply" --deliver
 `,
     )
     .action(async (opts) => {
@@ -677,12 +677,12 @@ Examples:
       "after",
       `
 Examples:
-  clawdbot status                   # show linked account + session store summary
-  clawdbot status --json            # machine-readable output
-  clawdbot status --usage           # show provider usage/quota snapshots
-  clawdbot status --deep            # run provider probes (WA + Telegram + Discord + Slack + Signal)
-  clawdbot status --deep --timeout 5000 # tighten probe timeout
-  clawdbot providers status         # gateway provider runtime + probes`,
+  zee status                   # show linked account + session store summary
+  zee status --json            # machine-readable output
+  zee status --usage           # show provider usage/quota snapshots
+  zee status --deep            # run provider probes (WA + Telegram + Discord + Slack + Signal)
+  zee status --deep --timeout 5000 # tighten probe timeout
+  zee providers status         # gateway provider runtime + probes`,
     )
     .action(async (opts) => {
       const verbose = Boolean(opts.verbose || opts.debug);
@@ -766,10 +766,10 @@ Examples:
       "after",
       `
 Examples:
-  clawdbot sessions                 # list all sessions
-  clawdbot sessions --active 120    # only last 2 hours
-  clawdbot sessions --json          # machine-readable output
-  clawdbot sessions --store ./tmp/sessions.json
+  zee sessions                 # list all sessions
+  zee sessions --active 120    # only last 2 hours
+  zee sessions --json          # machine-readable output
+  zee sessions --store ./tmp/sessions.json
 
 Shows token usage per session when the agent reports it; set agent.contextTokens to see % of your model window.`,
     )

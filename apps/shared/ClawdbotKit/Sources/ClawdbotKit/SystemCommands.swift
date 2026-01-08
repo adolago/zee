@@ -1,23 +1,23 @@
 import Foundation
 
-public enum ClawdbotSystemCommand: String, Codable, Sendable {
+public enum ZeeSystemCommand: String, Codable, Sendable {
     case run = "system.run"
     case notify = "system.notify"
 }
 
-public enum ClawdbotNotificationPriority: String, Codable, Sendable {
+public enum ZeeNotificationPriority: String, Codable, Sendable {
     case passive
     case active
     case timeSensitive
 }
 
-public enum ClawdbotNotificationDelivery: String, Codable, Sendable {
+public enum ZeeNotificationDelivery: String, Codable, Sendable {
     case system
     case overlay
     case auto
 }
 
-public struct ClawdbotSystemRunParams: Codable, Sendable, Equatable {
+public struct ZeeSystemRunParams: Codable, Sendable, Equatable {
     public var command: [String]
     public var cwd: String?
     public var env: [String: String]?
@@ -39,19 +39,19 @@ public struct ClawdbotSystemRunParams: Codable, Sendable, Equatable {
     }
 }
 
-public struct ClawdbotSystemNotifyParams: Codable, Sendable, Equatable {
+public struct ZeeSystemNotifyParams: Codable, Sendable, Equatable {
     public var title: String
     public var body: String
     public var sound: String?
-    public var priority: ClawdbotNotificationPriority?
-    public var delivery: ClawdbotNotificationDelivery?
+    public var priority: ZeeNotificationPriority?
+    public var delivery: ZeeNotificationDelivery?
 
     public init(
         title: String,
         body: String,
         sound: String? = nil,
-        priority: ClawdbotNotificationPriority? = nil,
-        delivery: ClawdbotNotificationDelivery? = nil)
+        priority: ZeeNotificationPriority? = nil,
+        delivery: ZeeNotificationDelivery? = nil)
     {
         self.title = title
         self.body = body

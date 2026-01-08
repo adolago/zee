@@ -1,11 +1,11 @@
 ---
-summary: "macOS IPC architecture for Clawdbot app, gateway node bridge, and PeekabooBridge"
+summary: "macOS IPC architecture for Zee app, gateway node bridge, and PeekabooBridge"
 read_when:
   - Editing IPC contracts or menu bar app IPC
 ---
-# Clawdbot macOS IPC architecture (Dec 2025)
+# Zee macOS IPC architecture (Dec 2025)
 
-**Current model:** there is **no local control socket** and no `clawdbot-mac` CLI. All agent actions go through the Gateway WebSocket and `node.invoke`. UI automation still uses PeekabooBridge.
+**Current model:** there is **no local control socket** and no `zee-mac` CLI. All agent actions go through the Gateway WebSocket and `node.invoke`. UI automation still uses PeekabooBridge.
 
 ## Goals
 - Single GUI app instance that owns all TCC-facing work (notifications, screen recording, mic, speech, AppleScript).
@@ -19,9 +19,9 @@ read_when:
 
 ### PeekabooBridge (UI automation)
 - UI automation uses a separate UNIX socket named `bridge.sock` and the PeekabooBridge JSON protocol.
-- Host preference order (client-side): Peekaboo.app → Claude.app → Clawdbot.app → local execution.
+- Host preference order (client-side): Peekaboo.app → Claude.app → Zee.app → local execution.
 - Security: bridge hosts require TeamID `Y5PE65HELJ`; DEBUG-only same-UID escape hatch is guarded by `PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1` (Peekaboo convention).
-- See: [`docs/mac/peekaboo.md`](/platforms/mac/peekaboo) for the Clawdbot plan and naming.
+- See: [`docs/mac/peekaboo.md`](/platforms/mac/peekaboo) for the Zee plan and naming.
 
 ### Mach/XPC (future direction)
 - Still optional for internal app services, but **not required** for automation now that node.invoke is the surface.
@@ -37,4 +37,4 @@ read_when:
 - Prefer requiring a TeamID match for all privileged surfaces.
 - PeekabooBridge: `PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1` (DEBUG-only) may allow same-UID callers for local development.
 - All communication remains local-only; no network sockets are exposed.
-- TCC prompts originate only from the GUI app bundle; run [`scripts/package-mac-app.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/package-mac-app.sh) so the signed bundle ID stays stable.
+- TCC prompts originate only from the GUI app bundle; run [`scripts/package-mac-app.sh`](https://github.com/zee/zee/blob/main/scripts/package-mac-app.sh) so the signed bundle ID stays stable.

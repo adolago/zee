@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 import android.Manifest
 import android.content.pm.ApplicationInfo
@@ -18,8 +18,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.clawdbot.android.ui.RootScreen
-import com.clawdbot.android.ui.ClawdbotTheme
+import com.zee.android.ui.RootScreen
+import com.zee.android.ui.ZeeTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
     }
 
     setContent {
-      ClawdbotTheme {
+      ZeeTheme {
         Surface(modifier = Modifier) {
           RootScreen(viewModel = viewModel)
         }

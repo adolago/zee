@@ -2,7 +2,7 @@
 summary: "Webhook ingress for wake and isolated agent runs"
 read_when:
   - Adding or changing webhook endpoints
-  - Wiring external systems into Clawdbot
+  - Wiring external systems into Zee
 ---
 
 # Webhooks
@@ -29,7 +29,7 @@ Notes:
 
 Every request must include the hook token:
 - `Authorization: Bearer <token>`
-- or `x-clawdbot-token: <token>`
+- or `x-zee-token: <token>`
 - or `?token=<token>`
 
 ## Endpoints
@@ -96,7 +96,7 @@ Mapping options (summary):
 - TS transforms require a TS loader (e.g. `bun` or `tsx`) or precompiled `.js` at runtime.
 - Set `deliver: true` + `provider`/`to` on mappings to route replies to a chat surface
   (`provider` defaults to `last` and falls back to WhatsApp).
-- `clawdbot hooks gmail setup` writes `hooks.gmail` config for `clawdbot hooks gmail run`.
+- `zee hooks gmail setup` writes `hooks.gmail` config for `zee hooks gmail run`.
 See [`docs/gmail-pubsub.md`](https://docs.clawd.bot/automation/gmail-pubsub) for the full Gmail watch flow.
 
 ## Responses
@@ -118,7 +118,7 @@ curl -X POST http://127.0.0.1:18789/hooks/wake \
 
 ```bash
 curl -X POST http://127.0.0.1:18789/hooks/agent \
-  -H 'x-clawdbot-token: SECRET' \
+  -H 'x-zee-token: SECRET' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Summarize inbox","name":"Email","wakeMode":"next-heartbeat"}'
 ```
@@ -129,7 +129,7 @@ Add `model` to the agent payload (or mapping) to override the model for that run
 
 ```bash
 curl -X POST http://127.0.0.1:18789/hooks/agent \
-  -H 'x-clawdbot-token: SECRET' \
+  -H 'x-zee-token: SECRET' \
   -H 'Content-Type: application/json' \
   -d '{"message":"Summarize inbox","name":"Email","model":"openai/gpt-5.2-mini"}'
 ```

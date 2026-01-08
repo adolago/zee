@@ -9,7 +9,7 @@ read_when:
 
 Goal: go from **zero** → **first working chat** (with sane defaults) as quickly as possible.
 
-Recommended path: use the **CLI onboarding wizard** (`clawdbot onboard`). It sets up:
+Recommended path: use the **CLI onboarding wizard** (`zee onboard`). It sets up:
 - model/auth (OAuth recommended)
 - gateway settings
 - providers (WhatsApp/Telegram/Discord/…)
@@ -30,14 +30,14 @@ Windows: use **WSL2** (Ubuntu recommended). WSL2 is strongly recommended; native
 ## 1) Install the CLI (recommended)
 
 ```bash
-npm install -g clawdbot@latest
-# or: pnpm add -g clawdbot@latest
+npm install -g zee@latest
+# or: pnpm add -g zee@latest
 ```
 
 ## 2) Run the onboarding wizard (and install the daemon)
 
 ```bash
-clawdbot onboard --install-daemon
+zee onboard --install-daemon
 ```
 
 What you’ll choose:
@@ -51,8 +51,8 @@ Wizard doc: [Wizard](/start/wizard)
 
 ### Auth: where it lives (important)
 
-- OAuth credentials (legacy import): `~/.clawdbot/credentials/oauth.json`
-- Auth profiles (OAuth + API keys): `~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`
+- OAuth credentials (legacy import): `~/.zee/credentials/oauth.json`
+- Auth profiles (OAuth + API keys): `~/.zee/agents/<agentId>/agent/auth-profiles.json`
 
 Headless/server tip: do OAuth on a normal machine first, then copy `oauth.json` to the gateway host.
 
@@ -61,13 +61,13 @@ Headless/server tip: do OAuth on a normal machine first, then copy `oauth.json` 
 If you installed the daemon during onboarding, the Gateway should already be running:
 
 ```bash
-clawdbot daemon status
+zee daemon status
 ```
 
 Manual run (foreground):
 
 ```bash
-clawdbot gateway --port 18789 --verbose
+zee gateway --port 18789 --verbose
 ```
 
 Dashboard (local loopback): `http://127.0.0.1:18789/`
@@ -83,7 +83,7 @@ https://github.com/oven-sh/bun/issues/5951
 ### WhatsApp (QR login)
 
 ```bash
-clawdbot providers login
+zee providers login
 ```
 
 Scan via WhatsApp → Settings → Linked Devices.
@@ -104,24 +104,24 @@ Default posture: unknown DMs get a short code and messages are not processed unt
 If your first DM gets no reply, approve the pairing:
 
 ```bash
-clawdbot pairing list --provider whatsapp
-clawdbot pairing approve --provider whatsapp <code>
+zee pairing list --provider whatsapp
+zee pairing approve --provider whatsapp <code>
 ```
 
 Pairing doc: [Pairing](/start/pairing)
 
 ## From source (development)
 
-If you’re hacking on Clawdbot itself, run from source:
+If you’re hacking on Zee itself, run from source:
 
 ```bash
-git clone https://github.com/clawdbot/clawdbot.git
-cd clawdbot
+git clone https://github.com/zee/zee.git
+cd zee
 pnpm install
 pnpm ui:install
 pnpm ui:build
 pnpm build
-pnpm clawdbot onboard --install-daemon
+pnpm zee onboard --install-daemon
 ```
 
 Gateway (from this repo):
@@ -135,14 +135,14 @@ node dist/entry.js gateway --port 18789 --verbose
 In a new terminal:
 
 ```bash
-clawdbot health
-clawdbot send --to +15555550123 --message "Hello from Clawdbot"
+zee health
+zee send --to +15555550123 --message "Hello from Zee"
 ```
 
 If `health` shows “no auth configured”, go back to the wizard and set OAuth/key auth — the agent won’t be able to respond without it.
 
-Local probe tip: `clawdbot status --deep` runs provider checks without needing a gateway connection.
-Gateway snapshot: `clawdbot providers status` shows what the gateway reports (use `status --deep` for local-only probes).
+Local probe tip: `zee status --deep` runs provider checks without needing a gateway connection.
+Gateway snapshot: `zee providers status` shows what the gateway reports (use `status --deep` for local-only probes).
 
 ## Next steps (optional, but great)
 

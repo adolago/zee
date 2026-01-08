@@ -54,7 +54,7 @@ describe("gateway update.run", () => {
 
     const sentinelPath = path.join(
       os.homedir(),
-      ".clawdbot",
+      ".zee",
       "restart-sentinel.json",
     );
     const raw = await fs.readFile(sentinelPath, "utf-8");

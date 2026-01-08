@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { resolveProviderGroupRequireMention } from "../../config/group-policy.js";
 import type {
   GroupKeyResolution,
@@ -46,7 +46,7 @@ function parseTelegramGroupId(value?: string | null) {
 }
 
 function resolveTelegramRequireMention(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   chatId?: string;
   topicId?: string;
 }): boolean | undefined {
@@ -74,7 +74,7 @@ function resolveTelegramRequireMention(params: {
 }
 
 function resolveDiscordGuildEntry(
-  guilds: NonNullable<ClawdbotConfig["discord"]>["guilds"],
+  guilds: NonNullable<ZeeConfig["discord"]>["guilds"],
   groupSpace?: string,
 ) {
   if (!guilds || Object.keys(guilds).length === 0) return null;
@@ -92,7 +92,7 @@ function resolveDiscordGuildEntry(
 }
 
 export function resolveGroupRequireMention(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   ctx: TemplateContext;
   groupResolution?: GroupKeyResolution;
 }): boolean {
@@ -215,7 +215,7 @@ export function buildGroupIntro(params: {
       : "Activation: trigger-only (you are invoked only when explicitly mentioned; recent context may be included).";
   const silenceLine =
     activation === "always"
-      ? `If no response is needed, reply with exactly "${params.silentToken}" (no other text) so Clawdbot stays silent.`
+      ? `If no response is needed, reply with exactly "${params.silentToken}" (no other text) so Zee stays silent.`
       : undefined;
   const cautionLine =
     activation === "always"

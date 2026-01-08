@@ -281,12 +281,12 @@ export async function monitorWebInbox(options: {
                 try {
                   await sock.sendMessage(remoteJid, {
                     text: [
-                      "Clawdbot: access not configured.",
+                      "Zee: access not configured.",
                       "",
                       `Pairing code: ${code}`,
                       "",
                       "Ask the bot owner to approve with:",
-                      "clawdbot pairing approve --provider whatsapp <code>",
+                      "zee pairing approve --provider whatsapp <code>",
                     ].join("\n"),
                   });
                 } catch (err) {

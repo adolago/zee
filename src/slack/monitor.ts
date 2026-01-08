@@ -28,7 +28,7 @@ import { getReplyFromConfig } from "../auto-reply/reply.js";
 import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
 import type {
-  ClawdbotConfig,
+  ZeeConfig,
   SlackReactionNotificationMode,
   SlackSlashCommandConfig,
 } from "../config/config.js";
@@ -59,7 +59,7 @@ export type MonitorSlackOpts = {
   botToken?: string;
   appToken?: string;
   accountId?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
   mediaMaxMb?: number;
@@ -826,12 +826,12 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
                 await sendMessageSlack(
                   message.channel,
                   [
-                    "Clawdbot: access not configured.",
+                    "Zee: access not configured.",
                     "",
                     `Pairing code: ${code}`,
                     "",
                     "Ask the bot owner to approve with:",
-                    "clawdbot pairing approve --provider slack <code>",
+                    "zee pairing approve --provider slack <code>",
                   ].join("\n"),
                   {
                     token: botToken,
@@ -1718,12 +1718,12 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
               if (created) {
                 await respond({
                   text: [
-                    "Clawdbot: access not configured.",
+                    "Zee: access not configured.",
                     "",
                     `Pairing code: ${code}`,
                     "",
                     "Ask the bot owner to approve with:",
-                    "clawdbot pairing approve --provider slack <code>",
+                    "zee pairing approve --provider slack <code>",
                   ].join("\n"),
                   response_type: "ephemeral",
                 });

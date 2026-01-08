@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   loadConfig,
   resolveConfigPath,
@@ -41,7 +41,7 @@ export type GatewayConnectionDetails = {
 };
 
 export function buildGatewayConnectionDetails(
-  options: { config?: ClawdbotConfig; url?: string; configPath?: string } = {},
+  options: { config?: ZeeConfig; url?: string; configPath?: string } = {},
 ): GatewayConnectionDetails {
   const config = options.config ?? loadConfig();
   const configPath =
@@ -122,7 +122,7 @@ export async function callGateway<T = unknown>(
       ? typeof remote?.token === "string" && remote.token.trim().length > 0
         ? remote.token.trim()
         : undefined
-      : process.env.CLAWDBOT_GATEWAY_TOKEN?.trim() ||
+      : process.env.ZEE_GATEWAY_TOKEN?.trim() ||
         (typeof authToken === "string" && authToken.trim().length > 0
           ? authToken.trim()
           : undefined));
@@ -130,7 +130,7 @@ export async function callGateway<T = unknown>(
     (typeof opts.password === "string" && opts.password.trim().length > 0
       ? opts.password.trim()
       : undefined) ||
-    process.env.CLAWDBOT_GATEWAY_PASSWORD?.trim() ||
+    process.env.ZEE_GATEWAY_PASSWORD?.trim() ||
     (isRemoteMode
       ? typeof remote?.password === "string" &&
         remote.password.trim().length > 0

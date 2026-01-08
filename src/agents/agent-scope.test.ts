@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveAgentConfig } from "./agent-scope.js";
 
 describe("resolveAgentConfig", () => {
   it("should return undefined when no agents config exists", () => {
-    const cfg: ClawdbotConfig = {};
+    const cfg: ZeeConfig = {};
     const result = resolveAgentConfig(cfg, "main");
     expect(result).toBeUndefined();
   });
 
   it("should return undefined when agent id does not exist", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           main: { workspace: "~/clawd" },
@@ -22,13 +22,13 @@ describe("resolveAgentConfig", () => {
   });
 
   it("should return basic agent config", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           main: {
             name: "Main Agent",
             workspace: "~/clawd",
-            agentDir: "~/.clawdbot/agents/main",
+            agentDir: "~/.zee/agents/main",
             model: "anthropic/claude-opus-4",
           },
         },
@@ -38,7 +38,7 @@ describe("resolveAgentConfig", () => {
     expect(result).toEqual({
       name: "Main Agent",
       workspace: "~/clawd",
-      agentDir: "~/.clawdbot/agents/main",
+      agentDir: "~/.zee/agents/main",
       model: "anthropic/claude-opus-4",
       sandbox: undefined,
       tools: undefined,
@@ -46,7 +46,7 @@ describe("resolveAgentConfig", () => {
   });
 
   it("should return agent-specific sandbox config", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           work: {
@@ -81,7 +81,7 @@ describe("resolveAgentConfig", () => {
   });
 
   it("should return agent-specific tools config", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           restricted: {
@@ -102,7 +102,7 @@ describe("resolveAgentConfig", () => {
   });
 
   it("should return both sandbox and tools config", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           family: {
@@ -125,7 +125,7 @@ describe("resolveAgentConfig", () => {
   });
 
   it("should normalize agent id", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         agents: {
           main: { workspace: "~/clawd" },

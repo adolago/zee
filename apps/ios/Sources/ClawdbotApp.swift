@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ClawdbotApp: App {
+struct ZeeApp: App {
     @State private var appModel: NodeAppModel
     @State private var bridgeController: BridgeConnectionController
     @Environment(\.scenePhase) private var scenePhase

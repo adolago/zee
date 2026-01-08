@@ -1,5 +1,5 @@
 import { resolveTalkApiKey } from "./talk.js";
-import type { ClawdbotConfig } from "./types.js";
+import type { ZeeConfig } from "./types.js";
 
 type WarnState = { warned: boolean };
 
@@ -28,7 +28,7 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function applyIdentityDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+export function applyIdentityDefaults(cfg: ZeeConfig): ZeeConfig {
   const identity = cfg.identity;
   if (!identity) return cfg;
 
@@ -38,7 +38,7 @@ export function applyIdentityDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
   const groupChat = routing.groupChat ?? {};
 
   let mutated = false;
-  const next: ClawdbotConfig = { ...cfg };
+  const next: ZeeConfig = { ...cfg };
 
   if (name && !groupChat.mentionPatterns) {
     const parts = name.split(/\s+/).filter(Boolean).map(escapeRegExp);
@@ -54,7 +54,7 @@ export function applyIdentityDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
   return mutated ? next : cfg;
 }
 
-export function applyMessageDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+export function applyMessageDefaults(cfg: ZeeConfig): ZeeConfig {
   const messages = cfg.messages;
   const hasAckReaction = messages?.ackReaction !== undefined;
   const hasAckScope = messages?.ackReactionScope !== undefined;
@@ -81,9 +81,9 @@ export function applyMessageDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
 }
 
 export function applySessionDefaults(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   options: SessionDefaultsOptions = {},
-): ClawdbotConfig {
+): ZeeConfig {
   const session = cfg.session;
   if (!session || session.mainKey === undefined) return cfg;
 
@@ -91,7 +91,7 @@ export function applySessionDefaults(
   const warn = options.warn ?? console.warn;
   const warnState = options.warnState ?? defaultWarnState;
 
-  const next: ClawdbotConfig = {
+  const next: ZeeConfig = {
     ...cfg,
     session: { ...session, mainKey: "main" },
   };
@@ -104,7 +104,7 @@ export function applySessionDefaults(
   return next;
 }
 
-export function applyTalkApiKey(config: ClawdbotConfig): ClawdbotConfig {
+export function applyTalkApiKey(config: ZeeConfig): ZeeConfig {
   const resolved = resolveTalkApiKey();
   if (!resolved) return config;
   const existing = config.talk?.apiKey?.trim();
@@ -118,7 +118,7 @@ export function applyTalkApiKey(config: ClawdbotConfig): ClawdbotConfig {
   };
 }
 
-export function applyModelDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+export function applyModelDefaults(cfg: ZeeConfig): ZeeConfig {
   const existingAgent = cfg.agent;
   if (!existingAgent) return cfg;
   const existingModels = existingAgent.models ?? {};
@@ -148,7 +148,7 @@ export function applyModelDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
   };
 }
 
-export function applyLoggingDefaults(cfg: ClawdbotConfig): ClawdbotConfig {
+export function applyLoggingDefaults(cfg: ZeeConfig): ZeeConfig {
   const logging = cfg.logging;
   if (!logging) return cfg;
   if (logging.redactSensitive) return cfg;

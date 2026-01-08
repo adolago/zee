@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import type { MsgContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import type { ReplyDispatcher } from "./reply-dispatcher.js";
@@ -40,7 +40,7 @@ function createDispatcher(): ReplyDispatcher {
 describe("dispatchReplyFromConfig", () => {
   it("does not route when Provider matches OriginatingChannel (even if Surface is missing)", async () => {
     mocks.routeReply.mockClear();
-    const cfg = {} as ClawdbotConfig;
+    const cfg = {} as ZeeConfig;
     const dispatcher = createDispatcher();
     const ctx: MsgContext = {
       Provider: "slack",
@@ -51,7 +51,7 @@ describe("dispatchReplyFromConfig", () => {
     const replyResolver = async (
       _ctx: MsgContext,
       _opts: GetReplyOptions | undefined,
-      _cfg: ClawdbotConfig,
+      _cfg: ZeeConfig,
     ) => ({ text: "hi" }) satisfies ReplyPayload;
     await dispatchReplyFromConfig({ ctx, cfg, dispatcher, replyResolver });
 
@@ -61,7 +61,7 @@ describe("dispatchReplyFromConfig", () => {
 
   it("routes when OriginatingChannel differs from Provider", async () => {
     mocks.routeReply.mockClear();
-    const cfg = {} as ClawdbotConfig;
+    const cfg = {} as ZeeConfig;
     const dispatcher = createDispatcher();
     const ctx: MsgContext = {
       Provider: "slack",
@@ -74,7 +74,7 @@ describe("dispatchReplyFromConfig", () => {
     const replyResolver = async (
       _ctx: MsgContext,
       _opts: GetReplyOptions | undefined,
-      _cfg: ClawdbotConfig,
+      _cfg: ZeeConfig,
     ) => ({ text: "hi" }) satisfies ReplyPayload;
     await dispatchReplyFromConfig({ ctx, cfg, dispatcher, replyResolver });
 

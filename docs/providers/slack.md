@@ -1,5 +1,5 @@
 ---
-summary: "Slack socket mode setup and Clawdbot config"
+summary: "Slack socket mode setup and Zee config"
 read_when: "Setting up Slack or debugging Slack socket mode"
 ---
 
@@ -30,12 +30,12 @@ Use this Slack app manifest to create the app quickly (adjust the name/command i
 ```json
 {
   "display_information": {
-    "name": "Clawdbot",
-    "description": "Slack connector for Clawdbot"
+    "name": "Zee",
+    "description": "Slack connector for Zee"
   },
   "features": {
     "bot_user": {
-      "display_name": "Clawdbot",
+      "display_name": "Zee",
       "always_online": false
     },
     "app_home": {
@@ -45,7 +45,7 @@ Use this Slack app manifest to create the app quickly (adjust the name/command i
     "slash_commands": [
       {
         "command": "/clawd",
-        "description": "Send a message to Clawdbot",
+        "description": "Send a message to Zee",
         "should_escape": false
       }
     ]
@@ -113,12 +113,12 @@ https://api.slack.com/docs/conversations-api for the overview.
 - `im:write` (open DMs via `conversations.open` for user DMs)
   https://api.slack.com/methods/conversations.open
 - `channels:history`, `groups:history`, `im:history`, `mpim:history`
-  (`conversations.history` in [`src/slack/actions.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/slack/actions.ts))
+  (`conversations.history` in [`src/slack/actions.ts`](https://github.com/zee/zee/blob/main/src/slack/actions.ts))
   https://api.slack.com/methods/conversations.history
 - `channels:read`, `groups:read`, `im:read`, `mpim:read`
-  (`conversations.info` in [`src/slack/monitor.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/slack/monitor.ts))
+  (`conversations.info` in [`src/slack/monitor.ts`](https://github.com/zee/zee/blob/main/src/slack/monitor.ts))
   https://api.slack.com/methods/conversations.info
-- `users:read` (`users.info` in [`src/slack/monitor.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/slack/monitor.ts) + [`src/slack/actions.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/slack/actions.ts))
+- `users:read` (`users.info` in [`src/slack/monitor.ts`](https://github.com/zee/zee/blob/main/src/slack/monitor.ts) + [`src/slack/actions.ts`](https://github.com/zee/zee/blob/main/src/slack/actions.ts))
   https://api.slack.com/methods/users.info
 - `reactions:read`, `reactions:write` (`reactions.get` / `reactions.add`)
   https://api.slack.com/methods/reactions.get
@@ -217,7 +217,7 @@ Controlled by `slack.replyToMode`:
 
 ## DM security (pairing)
 - Default: `slack.dm.policy="pairing"` — unknown DM senders get a pairing code (expires after 1 hour).
-- Approve via: `clawdbot pairing approve --provider slack <code>`.
+- Approve via: `zee pairing approve --provider slack <code>`.
 - To allow anyone: set `slack.dm.policy="open"` and `slack.dm.allowFrom=["*"]`.
 
 ## Group policy

@@ -1,7 +1,7 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import type { MsgContext } from "../templating.js";
 
-export function buildMentionRegexes(cfg: ClawdbotConfig | undefined): RegExp[] {
+export function buildMentionRegexes(cfg: ZeeConfig | undefined): RegExp[] {
   const patterns = cfg?.routing?.groupChat?.mentionPatterns ?? [];
   return patterns
     .map((pattern) => {
@@ -47,7 +47,7 @@ export function stripStructuralPrefixes(text: string): string {
 export function stripMentions(
   text: string,
   ctx: MsgContext,
-  cfg: ClawdbotConfig | undefined,
+  cfg: ZeeConfig | undefined,
 ): string {
   let result = text;
   const patterns = cfg?.routing?.groupChat?.mentionPatterns ?? [];

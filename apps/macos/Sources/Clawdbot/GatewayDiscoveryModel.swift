@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 import Observation
@@ -35,7 +35,7 @@ final class GatewayDiscoveryModel {
     private var localIdentity: LocalIdentity
     private var resolvedTXTByID: [String: [String: String]] = [:]
     private var pendingTXTResolvers: [String: GatewayTXTResolver] = [:]
-    private let logger = Logger(subsystem: "com.clawdbot", category: "gateway-discovery")
+    private let logger = Logger(subsystem: "com.zee", category: "gateway-discovery")
 
     init() {
         self.localIdentity = Self.buildLocalIdentityFast()
@@ -45,11 +45,11 @@ final class GatewayDiscoveryModel {
     func start() {
         if !self.browsers.isEmpty { return }
 
-        for domain in ClawdbotBonjour.bridgeServiceDomains {
+        for domain in ZeeBonjour.bridgeServiceDomains {
             let params = NWParameters.tcp
             params.includePeerToPeer = true
             let browser = NWBrowser(
-                for: .bonjour(type: ClawdbotBonjour.bridgeServiceType, domain: domain),
+                for: .bonjour(type: ZeeBonjour.bridgeServiceType, domain: domain),
                 using: params)
 
             browser.stateUpdateHandler = { [weak self] state in
@@ -70,7 +70,7 @@ final class GatewayDiscoveryModel {
             }
 
             self.browsers[domain] = browser
-            browser.start(queue: DispatchQueue(label: "com.clawdbot.macos.gateway-discovery.\(domain)"))
+            browser.start(queue: DispatchQueue(label: "com.zee.macos.gateway-discovery.\(domain)"))
         }
     }
 
@@ -299,7 +299,7 @@ final class GatewayDiscoveryModel {
 
     private nonisolated static func prettifyInstanceName(_ decodedName: String) -> String {
         let normalized = decodedName.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        let stripped = normalized.replacingOccurrences(of: " (Clawdbot)", with: "")
+        let stripped = normalized.replacingOccurrences(of: " (Zee)", with: "")
             .replacingOccurrences(of: #"\s+\(\d+\)$"#, with: "", options: .regularExpression)
         return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
     }

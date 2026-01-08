@@ -39,7 +39,7 @@ import {
 } from "../auto-reply/reply/reply-dispatcher.js";
 import { getReplyFromConfig } from "../auto-reply/reply.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
-import type { ClawdbotConfig, ReplyToMode } from "../config/config.js";
+import type { ZeeConfig, ReplyToMode } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import { resolveStorePath, updateLastRoute } from "../config/sessions.js";
 import { danger, logVerbose, shouldLogVerbose } from "../globals.js";
@@ -68,7 +68,7 @@ import { normalizeDiscordToken } from "./token.js";
 export type MonitorDiscordOpts = {
   token?: string;
   accountId?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
   mediaMaxMb?: number;
@@ -439,7 +439,7 @@ async function clearDiscordNativeCommands(params: {
 
 export function createDiscordMessageHandler(params: {
   cfg: ReturnType<typeof loadConfig>;
-  discordConfig: ClawdbotConfig["discord"];
+  discordConfig: ZeeConfig["discord"];
   accountId: string;
   token: string;
   runtime: RuntimeEnv;
@@ -544,12 +544,12 @@ export function createDiscordMessageHandler(params: {
                   await sendMessageDiscord(
                     `user:${author.id}`,
                     [
-                      "Clawdbot: access not configured.",
+                      "Zee: access not configured.",
                       "",
                       `Pairing code: ${code}`,
                       "",
                       "Ask the bot owner to approve with:",
-                      "clawdbot pairing approve --provider discord <code>",
+                      "zee pairing approve --provider discord <code>",
                     ].join("\n"),
                     { token, rest: client.rest, accountId },
                   );
@@ -1252,7 +1252,7 @@ function createDiscordNativeCommand(params: {
     acceptsArgs: boolean;
   };
   cfg: ReturnType<typeof loadConfig>;
-  discordConfig: ClawdbotConfig["discord"];
+  discordConfig: ZeeConfig["discord"];
   accountId: string;
   sessionPrefix: string;
   ephemeralDefault: boolean;
@@ -1380,12 +1380,12 @@ function createDiscordNativeCommand(params: {
               if (created) {
                 await interaction.reply({
                   content: [
-                    "Clawdbot: access not configured.",
+                    "Zee: access not configured.",
                     "",
                     `Pairing code: ${code}`,
                     "",
                     "Ask the bot owner to approve with:",
-                    "clawdbot pairing approve --provider discord <code>",
+                    "zee pairing approve --provider discord <code>",
                   ].join("\n"),
                   ephemeral: true,
                 });

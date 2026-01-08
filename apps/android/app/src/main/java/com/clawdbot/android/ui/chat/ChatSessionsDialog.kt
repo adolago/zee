@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui.chat
+package com.zee.android.ui.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.clawdbot.android.chat.ChatSessionEntry
+import com.zee.android.chat.ChatSessionEntry
 
 @Composable
 fun ChatSessionsDialog(

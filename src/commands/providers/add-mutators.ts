@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import type { ChatProviderId } from "../../providers/registry.js";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -7,7 +7,7 @@ import {
 
 type ChatProvider = ChatProviderId;
 
-function providerHasAccounts(cfg: ClawdbotConfig, provider: ChatProvider) {
+function providerHasAccounts(cfg: ZeeConfig, provider: ChatProvider) {
   if (provider === "whatsapp") return true;
   const base = (cfg as Record<string, unknown>)[provider] as
     | { accounts?: Record<string, unknown> }
@@ -16,7 +16,7 @@ function providerHasAccounts(cfg: ClawdbotConfig, provider: ChatProvider) {
 }
 
 function shouldStoreNameInAccounts(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   provider: ChatProvider,
   accountId: string,
 ): boolean {
@@ -26,9 +26,9 @@ function shouldStoreNameInAccounts(
 }
 
 function migrateBaseNameToDefaultAccount(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   provider: ChatProvider,
-): ClawdbotConfig {
+): ZeeConfig {
   if (provider === "whatsapp") return cfg;
   const base = (cfg as Record<string, unknown>)[provider] as
     | { name?: string; accounts?: Record<string, Record<string, unknown>> }
@@ -49,15 +49,15 @@ function migrateBaseNameToDefaultAccount(
       ...rest,
       accounts,
     },
-  } as ClawdbotConfig;
+  } as ZeeConfig;
 }
 
 export function applyAccountName(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: ChatProvider;
   accountId: string;
   name?: string;
-}): ClawdbotConfig {
+}): ZeeConfig {
   const trimmed = params.name?.trim();
   if (!trimmed) return params.cfg;
   const accountId = normalizeAccountId(params.accountId);
@@ -90,7 +90,7 @@ export function applyAccountName(params: {
         ...safeBase,
         name: trimmed,
       },
-    } as ClawdbotConfig;
+    } as ZeeConfig;
   }
   const base = (params.cfg as Record<string, unknown>)[key] as
     | { name?: string; accounts?: Record<string, Record<string, unknown>> }
@@ -116,11 +116,11 @@ export function applyAccountName(params: {
         },
       },
     },
-  } as ClawdbotConfig;
+  } as ZeeConfig;
 }
 
 export function applyProviderAccountConfig(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: ChatProvider;
   accountId: string;
   name?: string;
@@ -138,7 +138,7 @@ export function applyProviderAccountConfig(params: {
   httpHost?: string;
   httpPort?: string;
   useEnv?: boolean;
-}): ClawdbotConfig {
+}): ZeeConfig {
   const accountId = normalizeAccountId(params.accountId);
   const name = params.name?.trim() || undefined;
   const namedConfig = applyAccountName({

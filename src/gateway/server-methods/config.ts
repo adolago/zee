@@ -1,5 +1,5 @@
 import {
-  CONFIG_PATH_CLAWDBOT,
+  CONFIG_PATH_ZEE,
   parseConfigJson5,
   readConfigFileSnapshot,
   validateConfigObject,
@@ -102,7 +102,7 @@ export const configHandlers: GatewayRequestHandlers = {
       true,
       {
         ok: true,
-        path: CONFIG_PATH_CLAWDBOT,
+        path: CONFIG_PATH_ZEE,
         config: validated.config,
       },
       undefined,
@@ -178,7 +178,7 @@ export const configHandlers: GatewayRequestHandlers = {
       message: note ?? null,
       stats: {
         mode: "config.apply",
-        root: CONFIG_PATH_CLAWDBOT,
+        root: CONFIG_PATH_ZEE,
       },
     };
     let sentinelPath: string | null = null;
@@ -195,7 +195,7 @@ export const configHandlers: GatewayRequestHandlers = {
       true,
       {
         ok: true,
-        path: CONFIG_PATH_CLAWDBOT,
+        path: CONFIG_PATH_ZEE,
         config: validated.config,
         restart,
         sentinel: {

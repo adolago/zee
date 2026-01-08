@@ -1,4 +1,4 @@
-import ClawdbotProtocol
+import ZeeProtocol
 
 /// Server-push messages from the gateway websocket.
 ///

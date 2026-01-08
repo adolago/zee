@@ -2,7 +2,7 @@
 summary: "Proposal + research notes: offline memory system for Clawd workspaces (Markdown source-of-truth + derived index)"
 read_when:
   - Designing workspace memory (~/clawd) beyond daily Markdown logs
-  - Deciding: standalone CLI vs deep Clawdbot integration
+  - Deciding: standalone CLI vs deep Zee integration
   - Adding offline recall + reflection (retain/recall/reflect)
 ---
 
@@ -155,16 +155,16 @@ Opinion evolution (simple, explainable):
 
 ## CLI integration: standalone vs deep integration
 
-Recommendation: **deep integration in Clawdbot**, but keep a separable core library.
+Recommendation: **deep integration in Zee**, but keep a separable core library.
 
-### Why integrate into Clawdbot?
-- Clawdbot already knows:
+### Why integrate into Zee?
+- Zee already knows:
   - the workspace path (`agent.workspace`)
   - the session model + heartbeats
   - logging + troubleshooting patterns
 - You want the agent itself to call the tools:
-  - `clawdbot memory recall "…" --k 25 --since 30d`
-  - `clawdbot memory reflect --since 7d`
+  - `zee memory recall "…" --k 25 --since 30d`
+  - `zee memory reflect --since 7d`
 
 ### Why still split a library?
 - keep memory logic testable without gateway/runtime
@@ -172,7 +172,7 @@ Recommendation: **deep integration in Clawdbot**, but keep a separable core libr
 
 Shape:
 - `src/memory/*` (library-ish core; pure functions + sqlite adapter)
-- [`src/commands/memory/*.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/commands/memory/*.ts) (CLI glue)
+- [`src/commands/memory/*.ts`](https://github.com/zee/zee/blob/main/src/commands/memory/*.ts) (CLI glue)
 
 ## “S-Collide” / SuCo: when to use it (research)
 
@@ -202,7 +202,7 @@ Open question:
 - add `bank/` files + entity pages
 - add `## Retain` convention to daily logs
 
-### Phase 1: `clawdbot memory index|recall` (FTS-only)
+### Phase 1: `zee memory index|recall` (FTS-only)
 - parse Markdown (`memory/*.md`, `bank/*.md`) into chunks
 - write to SQLite: `facts`, `entities`, `fact_entities`, `opinions`
 - FTS5 table over `facts.content`

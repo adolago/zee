@@ -228,9 +228,9 @@ async function getDaemonShortLine(): Promise<string | null> {
     ]);
     const loadedText = loaded ? service.loadedText : service.notLoadedText;
     const runtimeShort = formatDaemonRuntimeShort(runtime);
-    return `Daemon: ${service.label} ${loadedText}${runtimeShort ? `, ${runtimeShort}` : ""}. Details: clawdbot daemon status`;
+    return `Daemon: ${service.label} ${loadedText}${runtimeShort ? `, ${runtimeShort}` : ""}. Details: zee daemon status`;
   } catch {
-    return "Daemon: unknown. Details: clawdbot daemon status";
+    return "Daemon: unknown. Details: zee daemon status";
   }
 }
 

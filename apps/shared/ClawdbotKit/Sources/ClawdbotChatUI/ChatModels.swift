@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 
 // NOTE: keep this file lightweight; decode must be resilient to varying transcript formats.
@@ -6,14 +6,14 @@ import Foundation
 #if canImport(AppKit)
 import AppKit
 
-public typealias ClawdbotPlatformImage = NSImage
+public typealias ZeePlatformImage = NSImage
 #elseif canImport(UIKit)
 import UIKit
 
-public typealias ClawdbotPlatformImage = UIImage
+public typealias ZeePlatformImage = UIImage
 #endif
 
-public struct ClawdbotChatUsageCost: Codable, Hashable, Sendable {
+public struct ZeeChatUsageCost: Codable, Hashable, Sendable {
     public let input: Double?
     public let output: Double?
     public let cacheRead: Double?
@@ -21,12 +21,12 @@ public struct ClawdbotChatUsageCost: Codable, Hashable, Sendable {
     public let total: Double?
 }
 
-public struct ClawdbotChatUsage: Codable, Hashable, Sendable {
+public struct ZeeChatUsage: Codable, Hashable, Sendable {
     public let input: Int?
     public let output: Int?
     public let cacheRead: Int?
     public let cacheWrite: Int?
-    public let cost: ClawdbotChatUsageCost?
+    public let cost: ZeeChatUsageCost?
     public let total: Int?
 
     enum CodingKeys: String, CodingKey {
@@ -45,7 +45,7 @@ public struct ClawdbotChatUsage: Codable, Hashable, Sendable {
         self.output = try container.decodeIfPresent(Int.self, forKey: .output)
         self.cacheRead = try container.decodeIfPresent(Int.self, forKey: .cacheRead)
         self.cacheWrite = try container.decodeIfPresent(Int.self, forKey: .cacheWrite)
-        self.cost = try container.decodeIfPresent(ClawdbotChatUsageCost.self, forKey: .cost)
+        self.cost = try container.decodeIfPresent(ZeeChatUsageCost.self, forKey: .cost)
         self.total =
             try container.decodeIfPresent(Int.self, forKey: .total) ??
             container.decodeIfPresent(Int.self, forKey: .totalTokens)
@@ -62,7 +62,7 @@ public struct ClawdbotChatUsage: Codable, Hashable, Sendable {
     }
 }
 
-public struct ClawdbotChatMessageContent: Codable, Hashable, Sendable {
+public struct ZeeChatMessageContent: Codable, Hashable, Sendable {
     public let type: String?
     public let text: String?
     public let thinking: String?
@@ -135,14 +135,14 @@ public struct ClawdbotChatMessageContent: Codable, Hashable, Sendable {
     }
 }
 
-public struct ClawdbotChatMessage: Codable, Identifiable, Sendable {
+public struct ZeeChatMessage: Codable, Identifiable, Sendable {
     public var id: UUID = .init()
     public let role: String
-    public let content: [ClawdbotChatMessageContent]
+    public let content: [ZeeChatMessageContent]
     public let timestamp: Double?
     public let toolCallId: String?
     public let toolName: String?
-    public let usage: ClawdbotChatUsage?
+    public let usage: ZeeChatUsage?
     public let stopReason: String?
 
     enum CodingKeys: String, CodingKey {
@@ -160,11 +160,11 @@ public struct ClawdbotChatMessage: Codable, Identifiable, Sendable {
     public init(
         id: UUID = .init(),
         role: String,
-        content: [ClawdbotChatMessageContent],
+        content: [ZeeChatMessageContent],
         timestamp: Double?,
         toolCallId: String? = nil,
         toolName: String? = nil,
-        usage: ClawdbotChatUsage? = nil,
+        usage: ZeeChatUsage? = nil,
         stopReason: String? = nil)
     {
         self.id = id
@@ -187,10 +187,10 @@ public struct ClawdbotChatMessage: Codable, Identifiable, Sendable {
         self.toolName =
             try container.decodeIfPresent(String.self, forKey: .toolName) ??
             container.decodeIfPresent(String.self, forKey: .tool_name)
-        self.usage = try container.decodeIfPresent(ClawdbotChatUsage.self, forKey: .usage)
+        self.usage = try container.decodeIfPresent(ZeeChatUsage.self, forKey: .usage)
         self.stopReason = try container.decodeIfPresent(String.self, forKey: .stopReason)
 
-        if let decoded = try? container.decode([ClawdbotChatMessageContent].self, forKey: .content) {
+        if let decoded = try? container.decode([ZeeChatMessageContent].self, forKey: .content) {
             self.content = decoded
             return
         }
@@ -198,7 +198,7 @@ public struct ClawdbotChatMessage: Codable, Identifiable, Sendable {
         // Some session log formats store `content` as a plain string.
         if let text = try? container.decode(String.self, forKey: .content) {
             self.content = [
-                ClawdbotChatMessageContent(
+                ZeeChatMessageContent(
                     type: "text",
                     text: text,
                     thinking: nil,
@@ -228,19 +228,19 @@ public struct ClawdbotChatMessage: Codable, Identifiable, Sendable {
     }
 }
 
-public struct ClawdbotChatHistoryPayload: Codable, Sendable {
+public struct ZeeChatHistoryPayload: Codable, Sendable {
     public let sessionKey: String
     public let sessionId: String?
     public let messages: [AnyCodable]?
     public let thinkingLevel: String?
 }
 
-public struct ClawdbotChatSendResponse: Codable, Sendable {
+public struct ZeeChatSendResponse: Codable, Sendable {
     public let runId: String
     public let status: String
 }
 
-public struct ClawdbotChatEventPayload: Codable, Sendable {
+public struct ZeeChatEventPayload: Codable, Sendable {
     public let runId: String?
     public let sessionKey: String?
     public let state: String?
@@ -248,7 +248,7 @@ public struct ClawdbotChatEventPayload: Codable, Sendable {
     public let errorMessage: String?
 }
 
-public struct ClawdbotAgentEventPayload: Codable, Sendable, Identifiable {
+public struct ZeeAgentEventPayload: Codable, Sendable, Identifiable {
     public var id: String { "\(self.runId)-\(self.seq ?? -1)" }
     public let runId: String
     public let seq: Int?
@@ -257,7 +257,7 @@ public struct ClawdbotAgentEventPayload: Codable, Sendable, Identifiable {
     public let data: [String: AnyCodable]
 }
 
-public struct ClawdbotChatPendingToolCall: Identifiable, Hashable, Sendable {
+public struct ZeeChatPendingToolCall: Identifiable, Hashable, Sendable {
     public var id: String { self.toolCallId }
     public let toolCallId: String
     public let name: String
@@ -266,18 +266,18 @@ public struct ClawdbotChatPendingToolCall: Identifiable, Hashable, Sendable {
     public let isError: Bool?
 }
 
-public struct ClawdbotGatewayHealthOK: Codable, Sendable {
+public struct ZeeGatewayHealthOK: Codable, Sendable {
     public let ok: Bool?
 }
 
-public struct ClawdbotPendingAttachment: Identifiable {
+public struct ZeePendingAttachment: Identifiable {
     public let id = UUID()
     public let url: URL?
     public let data: Data
     public let fileName: String
     public let mimeType: String
     public let type: String
-    public let preview: ClawdbotPlatformImage?
+    public let preview: ZeePlatformImage?
 
     public init(
         url: URL?,
@@ -285,7 +285,7 @@ public struct ClawdbotPendingAttachment: Identifiable {
         fileName: String,
         mimeType: String,
         type: String = "file",
-        preview: ClawdbotPlatformImage?)
+        preview: ZeePlatformImage?)
     {
         self.url = url
         self.data = data
@@ -296,7 +296,7 @@ public struct ClawdbotPendingAttachment: Identifiable {
     }
 }
 
-public struct ClawdbotChatAttachmentPayload: Codable, Sendable, Hashable {
+public struct ZeeChatAttachmentPayload: Codable, Sendable, Hashable {
     public let type: String
     public let mimeType: String
     public let fileName: String

@@ -40,11 +40,11 @@ export function resolveGatewayLogPaths(
 } {
   const home = resolveHomeDir(env);
   const stateOverride =
-    env.CLAWDBOT_STATE_DIR?.trim() || env.CLAWDIS_STATE_DIR?.trim();
-  const profile = env.CLAWDBOT_PROFILE?.trim();
+    env.ZEE_STATE_DIR?.trim() || env.CLAWDIS_STATE_DIR?.trim();
+  const profile = env.ZEE_PROFILE?.trim();
   const suffix =
     profile && profile.toLowerCase() !== "default" ? `-${profile}` : "";
-  const defaultStateDir = path.join(home, `.clawdbot${suffix}`);
+  const defaultStateDir = path.join(home, `.zee${suffix}`);
   const stateDir = stateOverride
     ? resolveUserPathWithHome(stateOverride, home)
     : defaultStateDir;

@@ -4,7 +4,7 @@ import {
   resolveTextChunkLimit,
 } from "../../auto-reply/chunk.js";
 import type { ReplyPayload } from "../../auto-reply/types.js";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { sendMessageDiscord } from "../../discord/send.js";
 import { sendMessageIMessage } from "../../imessage/send.js";
 import { normalizeAccountId } from "../../routing/session-key.js";
@@ -62,7 +62,7 @@ type ProviderHandler = {
 };
 
 function resolveMediaMaxBytes(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   provider: "signal" | "imessage",
   accountId?: string | null,
 ): number | undefined {
@@ -79,7 +79,7 @@ function resolveMediaMaxBytes(
 }
 
 function createProviderHandler(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: Exclude<OutboundProvider, "none">;
   to: string;
   accountId?: string;
@@ -209,7 +209,7 @@ function createProviderHandler(params: {
 }
 
 export async function deliverOutboundPayloads(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: Exclude<OutboundProvider, "none">;
   to: string;
   accountId?: string;

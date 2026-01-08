@@ -34,7 +34,7 @@ import { createFollowupRunner } from "./followup-runner.js";
 describe("createFollowupRunner compaction", () => {
   it("adds verbose auto-compaction notice and tracks count", async () => {
     const storePath = path.join(
-      await fs.mkdtemp(path.join(tmpdir(), "clawdbot-compaction-")),
+      await fs.mkdtemp(path.join(tmpdir(), "zee-compaction-")),
       "sessions.json",
     );
     const sessionEntry: SessionEntry = {

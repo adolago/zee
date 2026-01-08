@@ -4,13 +4,13 @@ import {
   ensureAuthProfileStore,
   repairOAuthProfileIdMismatch,
 } from "../agents/auth-profiles.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { DoctorPrompter } from "./doctor-prompter.js";
 
 export async function maybeRepairAnthropicOAuthProfileId(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   prompter: DoctorPrompter,
-): Promise<ClawdbotConfig> {
+): Promise<ZeeConfig> {
   const store = ensureAuthProfileStore();
   const repair = repairOAuthProfileIdMismatch({
     cfg,

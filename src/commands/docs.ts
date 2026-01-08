@@ -2,7 +2,7 @@ import { hasBinary } from "../agents/skills.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import type { RuntimeEnv } from "../runtime.js";
 
-const SEARCH_TOOL = "https://docs.clawd.bot/mcp.SearchClawdbot";
+const SEARCH_TOOL = "https://docs.clawd.bot/mcp.SearchZee";
 const SEARCH_TIMEOUT_MS = 30_000;
 const RENDER_TIMEOUT_MS = 10_000;
 const DEFAULT_SNIPPET_MAX = 220;
@@ -150,7 +150,7 @@ export async function docsSearchCommand(
   const query = queryParts.join(" ").trim();
   if (!query) {
     runtime.log("Docs: https://docs.clawd.bot/");
-    runtime.log('Search: clawdbot docs "your query"');
+    runtime.log('Search: zee docs "your query"');
     return;
   }
 

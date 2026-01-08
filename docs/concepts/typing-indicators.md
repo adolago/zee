@@ -1,5 +1,5 @@
 ---
-summary: "When Clawdbot shows typing indicators and how to tune them"
+summary: "When Zee shows typing indicators and how to tune them"
 read_when:
   - Changing typing indicator behavior or defaults
 ---
@@ -10,7 +10,7 @@ Typing indicators are sent to the chat provider while a run is active. Use
 to control **how often** it refreshes.
 
 ## Defaults
-When `agent.typingMode` is **unset**, Clawdbot keeps the legacy behavior:
+When `agent.typingMode` is **unset**, Zee keeps the legacy behavior:
 - **Direct chats**: typing starts immediately once the model loop begins.
 - **Group chats with a mention**: typing starts immediately.
 - **Group chats without a mention**: typing starts only when message text begins streaming.

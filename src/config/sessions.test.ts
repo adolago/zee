@@ -100,7 +100,7 @@ describe("sessions", () => {
 
   it("updateLastRoute persists provider and target", async () => {
     const mainSessionKey = "agent:main:main";
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-sessions-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-sessions-"));
     const storePath = path.join(dir, "sessions.json");
     await fs.writeFile(
       storePath,
@@ -133,9 +133,9 @@ describe("sessions", () => {
     expect(store[mainSessionKey]?.lastTo).toBe("12345");
   });
 
-  it("derives session transcripts dir from CLAWDBOT_STATE_DIR", () => {
+  it("derives session transcripts dir from ZEE_STATE_DIR", () => {
     const dir = resolveSessionTranscriptsDir(
-      { CLAWDBOT_STATE_DIR: "/custom/state" } as NodeJS.ProcessEnv,
+      { ZEE_STATE_DIR: "/custom/state" } as NodeJS.ProcessEnv,
       () => "/home/ignored",
     );
     expect(dir).toBe(
@@ -154,8 +154,8 @@ describe("sessions", () => {
   });
 
   it("includes topic ids in session transcript filenames", () => {
-    const prev = process.env.CLAWDBOT_STATE_DIR;
-    process.env.CLAWDBOT_STATE_DIR = "/custom/state";
+    const prev = process.env.ZEE_STATE_DIR;
+    process.env.ZEE_STATE_DIR = "/custom/state";
     try {
       const sessionFile = resolveSessionTranscriptPath("sess-1", "main", 123);
       expect(sessionFile).toBe(
@@ -169,9 +169,9 @@ describe("sessions", () => {
       );
     } finally {
       if (prev === undefined) {
-        delete process.env.CLAWDBOT_STATE_DIR;
+        delete process.env.ZEE_STATE_DIR;
       } else {
-        process.env.CLAWDBOT_STATE_DIR = prev;
+        process.env.ZEE_STATE_DIR = prev;
       }
     }
   });

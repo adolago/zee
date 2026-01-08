@@ -1,4 +1,4 @@
-package com.clawdbot.android.node
+package com.zee.android.node
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

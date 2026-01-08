@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { resolveTextChunkLimit, type TextChunkProvider } from "../chunk.js";
 
 const DEFAULT_BLOCK_STREAM_MIN = 800;
@@ -25,7 +25,7 @@ function normalizeChunkProvider(
 }
 
 export function resolveBlockStreamingChunking(
-  cfg: ClawdbotConfig | undefined,
+  cfg: ZeeConfig | undefined,
   provider?: string,
 ): {
   minChars: number;

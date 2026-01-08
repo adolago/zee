@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 enum class CameraHudKind {
   Photo,

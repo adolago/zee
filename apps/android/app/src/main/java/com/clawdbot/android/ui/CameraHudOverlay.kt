@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui
+package com.zee.android.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

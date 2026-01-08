@@ -1,16 +1,16 @@
 services:
-  clawdbot-gateway:
-    image: ${CLAWDBOT_IMAGE:-clawdbot:local}
+  zee-gateway:
+    image: ${ZEE_IMAGE:-zee:local}
     environment:
       HOME: /home/node
       TERM: xterm-256color
-      CLAWDBOT_GATEWAY_TOKEN: ${CLAWDBOT_GATEWAY_TOKEN}
+      ZEE_GATEWAY_TOKEN: ${ZEE_GATEWAY_TOKEN}
     volumes:
-      - ${CLAWDBOT_CONFIG_DIR}:/home/node/.clawdbot
-      - ${CLAWDBOT_WORKSPACE_DIR}:/home/node/clawd
+      - ${ZEE_CONFIG_DIR}:/home/node/.zee
+      - ${ZEE_WORKSPACE_DIR}:/home/node/clawd
     ports:
-      - "${CLAWDBOT_GATEWAY_PORT:-18789}:18789"
-      - "${CLAWDBOT_BRIDGE_PORT:-18790}:18790"
+      - "${ZEE_GATEWAY_PORT:-18789}:18789"
+      - "${ZEE_BRIDGE_PORT:-18790}:18790"
     init: true
     restart: unless-stopped
     command:
@@ -19,20 +19,20 @@ services:
         "dist/index.js",
         "gateway-daemon",
         "--bind",
-        "${CLAWDBOT_GATEWAY_BIND:-lan}",
+        "${ZEE_GATEWAY_BIND:-lan}",
         "--port",
-        "${CLAWDBOT_GATEWAY_PORT:-18789}"
+        "${ZEE_GATEWAY_PORT:-18789}"
       ]
 
-  clawdbot-cli:
-    image: ${CLAWDBOT_IMAGE:-clawdbot:local}
+  zee-cli:
+    image: ${ZEE_IMAGE:-zee:local}
     environment:
       HOME: /home/node
       TERM: xterm-256color
       BROWSER: echo
     volumes:
-      - ${CLAWDBOT_CONFIG_DIR}:/home/node/.clawdbot
-      - ${CLAWDBOT_WORKSPACE_DIR}:/home/node/clawd
+      - ${ZEE_CONFIG_DIR}:/home/node/.zee
+      - ${ZEE_WORKSPACE_DIR}:/home/node/clawd
     stdin_open: true
     tty: true
     init: true

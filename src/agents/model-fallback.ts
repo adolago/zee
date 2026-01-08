@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./defaults.js";
 import {
   buildModelAliasIndex,
@@ -30,7 +30,7 @@ function isAbortError(err: unknown): boolean {
 }
 
 function buildAllowedModelKeys(
-  cfg: ClawdbotConfig | undefined,
+  cfg: ZeeConfig | undefined,
   defaultProvider: string,
 ): Set<string> | null {
   const rawAllowlist = (() => {
@@ -48,7 +48,7 @@ function buildAllowedModelKeys(
 }
 
 function resolveImageFallbackCandidates(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   defaultProvider: string;
   modelOverride?: string;
 }): ModelCandidate[] {
@@ -113,7 +113,7 @@ function resolveImageFallbackCandidates(params: {
 }
 
 function resolveFallbackCandidates(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   provider: string;
   model: string;
 }): ModelCandidate[] {
@@ -164,7 +164,7 @@ function resolveFallbackCandidates(params: {
 }
 
 export async function runWithModelFallback<T>(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   provider: string;
   model: string;
   run: (provider: string, model: string) => Promise<T>;
@@ -230,7 +230,7 @@ export async function runWithModelFallback<T>(params: {
 }
 
 export async function runWithImageModelFallback<T>(params: {
-  cfg: ClawdbotConfig | undefined;
+  cfg: ZeeConfig | undefined;
   modelOverride?: string;
   run: (provider: string, model: string) => Promise<T>;
   onError?: (attempt: {

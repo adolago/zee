@@ -8,12 +8,12 @@ import {
 } from "@mariozechner/pi-ai";
 import lockfile from "proper-lockfile";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveOAuthPath } from "../config/paths.js";
 import type { AuthProfileConfig } from "../config/types.js";
 import { createSubsystemLogger } from "../logging.js";
 import { resolveUserPath } from "../utils.js";
-import { resolveClawdbotAgentDir } from "./agent-paths.js";
+import { resolveZeeAgentDir } from "./agent-paths.js";
 import { normalizeProviderId } from "./model-selection.js";
 
 const AUTH_STORE_VERSION = 1;
@@ -73,12 +73,12 @@ export type AuthProfileStore = {
 type LegacyAuthStore = Record<string, AuthProfileCredential>;
 
 function resolveAuthStorePath(agentDir?: string): string {
-  const resolved = resolveUserPath(agentDir ?? resolveClawdbotAgentDir());
+  const resolved = resolveUserPath(agentDir ?? resolveZeeAgentDir());
   return path.join(resolved, AUTH_PROFILE_FILENAME);
 }
 
 function resolveLegacyAuthStorePath(agentDir?: string): string {
-  const resolved = resolveUserPath(agentDir ?? resolveClawdbotAgentDir());
+  const resolved = resolveUserPath(agentDir ?? resolveZeeAgentDir());
   return path.join(resolved, LEGACY_AUTH_FILENAME);
 }
 
@@ -369,7 +369,7 @@ function shallowEqualOAuthCredentials(
 
 /**
  * Sync OAuth credentials from external CLI tools (Claude CLI, Codex CLI) into the store.
- * This allows clawdbot to use the same credentials as these tools without requiring
+ * This allows zee to use the same credentials as these tools without requiring
  * separate authentication, and keeps credentials in sync when CLI tools refresh tokens.
  *
  * Returns true if any credentials were updated.
@@ -742,7 +742,7 @@ export async function clearAuthProfileCooldown(params: {
 }
 
 export function resolveAuthProfileOrder(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   store: AuthProfileStore;
   provider: string;
   preferredProfile?: string;
@@ -856,7 +856,7 @@ function orderProfilesByMode(
 }
 
 export async function resolveApiKeyForProfile(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   store: AuthProfileStore;
   profileId: string;
   agentDir?: string;
@@ -967,7 +967,7 @@ export function resolveAuthStorePathForDisplay(): string {
 }
 
 export function resolveAuthProfileDisplayLabel(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   store: AuthProfileStore;
   profileId: string;
 }): string {
@@ -980,7 +980,7 @@ export function resolveAuthProfileDisplayLabel(params: {
 }
 
 async function tryResolveOAuthProfile(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   store: AuthProfileStore;
   profileId: string;
   agentDir?: string;
@@ -1026,7 +1026,7 @@ function isEmailLike(value: string): boolean {
 }
 
 export function suggestOAuthProfileIdForLegacyDefault(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   store: AuthProfileStore;
   provider: string;
   legacyProfileId: string;
@@ -1078,7 +1078,7 @@ export function suggestOAuthProfileIdForLegacyDefault(params: {
 }
 
 export type AuthProfileIdRepairResult = {
-  config: ClawdbotConfig;
+  config: ZeeConfig;
   changes: string[];
   migrated: boolean;
   fromProfileId?: string;
@@ -1086,7 +1086,7 @@ export type AuthProfileIdRepairResult = {
 };
 
 export function repairOAuthProfileIdMismatch(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   store: AuthProfileStore;
   provider: string;
   legacyProfileId?: string;
@@ -1153,7 +1153,7 @@ export function repairOAuthProfileIdMismatch(params: {
     return { ...order, [resolvedKey]: deduped };
   })();
 
-  const nextCfg: ClawdbotConfig = {
+  const nextCfg: ZeeConfig = {
     ...params.cfg,
     auth: {
       ...params.cfg.auth,
@@ -1176,7 +1176,7 @@ export function repairOAuthProfileIdMismatch(params: {
 }
 
 export function formatAuthDoctorHint(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   store: AuthProfileStore;
   provider: string;
   profileId?: string;
@@ -1206,6 +1206,6 @@ export function formatAuthDoctorHint(params: {
     `- config: ${legacyProfileId}${cfgProvider || cfgMode ? ` (provider=${cfgProvider ?? "?"}, mode=${cfgMode ?? "?"})` : ""}`,
     `- auth store oauth profiles: ${storeOauthProfiles || "(none)"}`,
     `- suggested profile: ${suggested}`,
-    'Fix: run "clawdbot doctor --yes"',
+    'Fix: run "zee doctor --yes"',
   ].join("\n");
 }

@@ -18,7 +18,7 @@ enum AnthropicAuthMode: Equatable {
 
     var shortLabel: String {
         switch self {
-        case .oauthFile: "OAuth (Clawdbot token file)"
+        case .oauthFile: "OAuth (Zee token file)"
         case .oauthEnv: "OAuth (env var)"
         case .apiKeyEnv: "API key (env var)"
         case .missing: "Missing credentials"
@@ -36,7 +36,7 @@ enum AnthropicAuthMode: Equatable {
 enum AnthropicAuthResolver {
     static func resolve(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        oauthStatus: ClawdbotOAuthStore.AnthropicOAuthStatus = ClawdbotOAuthStore
+        oauthStatus: ZeeOAuthStore.AnthropicOAuthStatus = ZeeOAuthStore
             .anthropicOAuthStatus()) -> AnthropicAuthMode
     {
         if oauthStatus.isConnected { return .oauthFile }
@@ -58,7 +58,7 @@ enum AnthropicAuthResolver {
 }
 
 enum AnthropicOAuth {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "anthropic-oauth")
+    private static let logger = Logger(subsystem: "com.zee", category: "anthropic-oauth")
 
     private static let clientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
     private static let authorizeURL = URL(string: "https://claude.ai/oauth/authorize")!
@@ -194,10 +194,10 @@ enum AnthropicOAuth {
     }
 }
 
-enum ClawdbotOAuthStore {
+enum ZeeOAuthStore {
     static let oauthFilename = "oauth.json"
     private static let providerKey = "anthropic"
-    private static let clawdbotOAuthDirEnv = "CLAWDBOT_OAUTH_DIR"
+    private static let zeeOAuthDirEnv = "ZEE_OAUTH_DIR"
     private static let legacyPiDirEnv = "PI_CODING_AGENT_DIR"
 
     enum AnthropicOAuthStatus: Equatable {
@@ -215,18 +215,18 @@ enum ClawdbotOAuthStore {
 
         var shortDescription: String {
             switch self {
-            case .missingFile: "Clawdbot OAuth token file not found"
-            case .unreadableFile: "Clawdbot OAuth token file not readable"
-            case .invalidJSON: "Clawdbot OAuth token file invalid"
-            case .missingProviderEntry: "No Anthropic entry in Clawdbot OAuth token file"
+            case .missingFile: "Zee OAuth token file not found"
+            case .unreadableFile: "Zee OAuth token file not readable"
+            case .invalidJSON: "Zee OAuth token file invalid"
+            case .missingProviderEntry: "No Anthropic entry in Zee OAuth token file"
             case .missingTokens: "Anthropic entry missing tokens"
-            case .connected: "Clawdbot OAuth credentials found"
+            case .connected: "Zee OAuth credentials found"
             }
         }
     }
 
     static func oauthDir() -> URL {
-        if let override = ProcessInfo.processInfo.environment[self.clawdbotOAuthDirEnv]?
+        if let override = ProcessInfo.processInfo.environment[self.zeeOAuthDirEnv]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
             !override.isEmpty
         {
@@ -235,7 +235,7 @@ enum ClawdbotOAuthStore {
         }
 
         return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot", isDirectory: true)
+            .appendingPathComponent(".zee", isDirectory: true)
             .appendingPathComponent("credentials", isDirectory: true)
     }
 

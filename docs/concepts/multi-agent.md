@@ -15,33 +15,33 @@ An **agent** is a fully scoped brain with its own:
 
 - **Workspace** (files, AGENTS.md/SOUL.md/USER.md, local notes, persona rules).
 - **State directory** (`agentDir`) for auth profiles, model registry, and per-agent config.
-- **Session store** (chat history + routing state) under `~/.clawdbot/agents/<agentId>/sessions`.
+- **Session store** (chat history + routing state) under `~/.zee/agents/<agentId>/sessions`.
 
 The Gateway can host **one agent** (default) or **many agents** side-by-side.
 
 ## Paths (quick map)
 
-- Config: `~/.clawdbot/clawdbot.json` (or `CLAWDBOT_CONFIG_PATH`)
-- State dir: `~/.clawdbot` (or `CLAWDBOT_STATE_DIR`)
+- Config: `~/.zee/zee.json` (or `ZEE_CONFIG_PATH`)
+- State dir: `~/.zee` (or `ZEE_STATE_DIR`)
 - Workspace: `~/clawd` (or `~/clawd-<agentId>`)
-- Agent dir: `~/.clawdbot/agents/<agentId>/agent` (or `routing.agents.<agentId>.agentDir`)
-- Sessions: `~/.clawdbot/agents/<agentId>/sessions`
+- Agent dir: `~/.zee/agents/<agentId>/agent` (or `routing.agents.<agentId>.agentDir`)
+- Sessions: `~/.zee/agents/<agentId>/sessions`
 
 ### Single-agent mode (default)
 
-If you do nothing, Clawdbot runs a single agent:
+If you do nothing, Zee runs a single agent:
 
 - `agentId` defaults to **`main`**.
 - Sessions are keyed as `agent:main:<mainKey>`.
-- Workspace defaults to `~/clawd` (or `~/clawd-<profile>` when `CLAWDBOT_PROFILE` is set).
-- State defaults to `~/.clawdbot/agents/main/agent`.
+- Workspace defaults to `~/clawd` (or `~/clawd-<profile>` when `ZEE_PROFILE` is set).
+- State defaults to `~/.zee/agents/main/agent`.
 
 ## Agent helper
 
 Use the agent wizard to add a new isolated agent:
 
 ```bash
-clawdbot agents add work
+zee agents add work
 ```
 
 Then add `routing.bindings` (or let the wizard do it) to route inbound messages.
@@ -49,7 +49,7 @@ Then add `routing.bindings` (or let the wizard do it) to route inbound messages.
 Verify with:
 
 ```bash
-clawdbot agents list --bindings
+zee agents list --bindings
 ```
 
 ## Multiple agents = multiple people, multiple personalities
@@ -88,7 +88,7 @@ multiple phone numbers without mixing sessions.
 
 ## Example: two WhatsApps → two agents
 
-`~/.clawdbot/clawdbot.json` (JSON5):
+`~/.zee/zee.json` (JSON5):
 
 ```js
 {
@@ -99,12 +99,12 @@ multiple phone numbers without mixing sessions.
       home: {
         name: "Home",
         workspace: "~/clawd-home",
-        agentDir: "~/.clawdbot/agents/home/agent",
+        agentDir: "~/.zee/agents/home/agent",
       },
       work: {
         name: "Work",
         workspace: "~/clawd-work",
-        agentDir: "~/.clawdbot/agents/work/agent",
+        agentDir: "~/.zee/agents/work/agent",
       },
     },
 
@@ -134,12 +134,12 @@ multiple phone numbers without mixing sessions.
   whatsapp: {
     accounts: {
       personal: {
-        // Optional override. Default: ~/.clawdbot/credentials/whatsapp/personal
-        // authDir: "~/.clawdbot/credentials/whatsapp/personal",
+        // Optional override. Default: ~/.zee/credentials/whatsapp/personal
+        // authDir: "~/.zee/credentials/whatsapp/personal",
       },
       biz: {
-        // Optional override. Default: ~/.clawdbot/credentials/whatsapp/biz
-        // authDir: "~/.clawdbot/credentials/whatsapp/biz",
+        // Optional override. Default: ~/.zee/credentials/whatsapp/biz
+        // authDir: "~/.zee/credentials/whatsapp/biz",
       },
     },
   },

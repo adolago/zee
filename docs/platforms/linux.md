@@ -6,7 +6,7 @@ read_when:
 ---
 # Linux App
 
-Clawdbot core is fully supported on Linux. The core is written in TypeScript, so it runs anywhere Node or Bun runs.
+Zee core is fully supported on Linux. The core is written in TypeScript, so it runs anywhere Node or Bun runs.
 
 We do not have a Linux companion app yet. It is planned, and we would love contributions to make it happen.
 
@@ -24,25 +24,25 @@ We do not have a Linux companion app yet. It is planned, and we would love contr
 Use one of these:
 
 ```
-clawdbot onboard --install-daemon
+zee onboard --install-daemon
 ```
 
 Or:
 
 ```
-clawdbot daemon install
+zee daemon install
 ```
 
 Or:
 
 ```
-clawdbot daemon install
+zee daemon install
 ```
 
 Or:
 
 ```
-clawdbot configure
+zee configure
 ```
 
 Select **Gateway daemon** when prompted.
@@ -50,22 +50,22 @@ Select **Gateway daemon** when prompted.
 Repair/migrate:
 
 ```
-clawdbot doctor
+zee doctor
 ```
 
 ## System control (systemd user unit)
 Full unit example lives in the [Gateway runbook](/gateway). Minimal setup:
 
-Create `~/.config/systemd/user/clawdbot-gateway.service`:
+Create `~/.config/systemd/user/zee-gateway.service`:
 
 ```
 [Unit]
-Description=Clawdbot Gateway
+Description=Zee Gateway
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/clawdbot gateway --port 18789
+ExecStart=/usr/local/bin/zee gateway --port 18789
 Restart=always
 RestartSec=5
 
@@ -76,5 +76,5 @@ WantedBy=default.target
 Enable it:
 
 ```
-systemctl --user enable --now clawdbot-gateway.service
+systemctl --user enable --now zee-gateway.service
 ```

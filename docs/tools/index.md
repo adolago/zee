@@ -1,19 +1,19 @@
 ---
-summary: "Agent tool surface for Clawdbot (browser, canvas, nodes, cron) replacing clawdbot-* skills"
+summary: "Agent tool surface for Zee (browser, canvas, nodes, cron) replacing zee-* skills"
 read_when:
   - Adding or modifying agent tools
-  - Retiring or changing clawdbot-* skills
+  - Retiring or changing zee-* skills
 ---
 
-# Tools (Clawdbot)
+# Tools (Zee)
 
-Clawdbot exposes **first-class agent tools** for browser, canvas, nodes, and cron.
-These replace the old `clawdbot-*` skills: the tools are typed, no shelling,
+Zee exposes **first-class agent tools** for browser, canvas, nodes, and cron.
+These replace the old `zee-*` skills: the tools are typed, no shelling,
 and the agent should rely on them directly.
 
 ## Disabling tools
 
-You can globally allow/deny tools via `agent.tools` in `clawdbot.json`
+You can globally allow/deny tools via `agent.tools` in `zee.json`
 (deny wins). This prevents disallowed tools from being sent to providers.
 
 ```json5
@@ -100,7 +100,7 @@ Notes:
 - Uses gateway `node.invoke` under the hood.
 - If no `node` is provided, the tool picks a default (single connected node or local mac node).
 - A2UI is v0.8 only (no `createSurface`); the CLI rejects v0.9 JSONL with line errors.
-- Quick smoke: `clawdbot nodes canvas a2ui push --node <id> --text "Hello from A2UI"`.
+- Quick smoke: `zee nodes canvas a2ui push --node <id> --text "Hello from A2UI"`.
 
 ### `nodes`
 Discover and target paired nodes; send notifications; capture camera/screen.
@@ -162,7 +162,7 @@ Notes:
 Restart or apply updates to the running Gateway process (in-place).
 
 Core actions:
-- `restart` (sends `SIGUSR1` to the current process; `clawdbot gateway` restart in-place)
+- `restart` (sends `SIGUSR1` to the current process; `zee gateway` restart in-place)
 - `config.get` / `config.schema`
 - `config.apply` (validate + write config + restart + wake)
 - `update.run` (run update + restart + wake)
@@ -312,6 +312,6 @@ In pi-mono:
   - Agent loop: [`packages/ai/src/agent/agent-loop.ts`](https://github.com/badlogic/pi-mono/blob/main/packages/ai/src/agent/agent-loop.ts)
   - Validates tool arguments and executes tools, then appends `toolResult` messages.
 
-In Clawdbot:
-- System prompt append: [`src/agents/system-prompt.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/agents/system-prompt.ts)
-- Tool list injected via `createClawdbotCodingTools()` in [`src/agents/pi-tools.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/agents/pi-tools.ts)
+In Zee:
+- System prompt append: [`src/agents/system-prompt.ts`](https://github.com/zee/zee/blob/main/src/agents/system-prompt.ts)
+- Tool list injected via `createZeeCodingTools()` in [`src/agents/pi-tools.ts`](https://github.com/zee/zee/blob/main/src/agents/pi-tools.ts)

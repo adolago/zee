@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 object WakeWords {
   const val maxWords: Int = 32

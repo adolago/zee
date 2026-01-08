@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import ClawdbotChatUI
+@testable import ZeeChatUI
 
 #if os(macOS)
 import AppKit
@@ -19,8 +19,8 @@ private func luminance(_ color: NSColor) throws -> CGFloat {
         let lightAppearance = try #require(NSAppearance(named: .aqua))
         let darkAppearance = try #require(NSAppearance(named: .darkAqua))
 
-        let lightResolved = ClawdbotChatTheme.resolvedAssistantBubbleColor(for: lightAppearance)
-        let darkResolved = ClawdbotChatTheme.resolvedAssistantBubbleColor(for: darkAppearance)
+        let lightResolved = ZeeChatTheme.resolvedAssistantBubbleColor(for: lightAppearance)
+        let darkResolved = ZeeChatTheme.resolvedAssistantBubbleColor(for: darkAppearance)
         #expect(try luminance(lightResolved) > luminance(darkResolved))
         #else
         #expect(Bool(true))

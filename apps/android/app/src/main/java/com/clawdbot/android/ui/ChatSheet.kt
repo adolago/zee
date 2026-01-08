@@ -1,8 +1,8 @@
-package com.clawdbot.android.ui
+package com.zee.android.ui
 
 import androidx.compose.runtime.Composable
-import com.clawdbot.android.MainViewModel
-import com.clawdbot.android.ui.chat.ChatSheetContent
+import com.zee.android.MainViewModel
+import com.zee.android.ui.chat.ChatSheetContent
 
 @Composable
 fun ChatSheet(viewModel: MainViewModel) {

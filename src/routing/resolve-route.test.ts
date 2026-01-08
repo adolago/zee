@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveAgentRoute } from "./resolve-route.js";
 
 describe("resolveAgentRoute", () => {
   test("defaults to main/default when no bindings exist", () => {
-    const cfg: ClawdbotConfig = {};
+    const cfg: ZeeConfig = {};
     const route = resolveAgentRoute({
       cfg,
       provider: "whatsapp",
@@ -19,7 +19,7 @@ describe("resolveAgentRoute", () => {
   });
 
   test("peer binding wins over account binding", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         bindings: [
           {
@@ -49,7 +49,7 @@ describe("resolveAgentRoute", () => {
   });
 
   test("discord channel peer binding wins over guild binding", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         bindings: [
           {
@@ -84,7 +84,7 @@ describe("resolveAgentRoute", () => {
   });
 
   test("guild binding wins over account binding when peer not bound", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         bindings: [
           {
@@ -114,7 +114,7 @@ describe("resolveAgentRoute", () => {
   });
 
   test("missing accountId in binding matches default account only", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         bindings: [{ agentId: "defaultAcct", match: { provider: "whatsapp" } }],
       },
@@ -139,7 +139,7 @@ describe("resolveAgentRoute", () => {
   });
 
   test("accountId=* matches any account as a provider fallback", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         bindings: [
           {
@@ -160,7 +160,7 @@ describe("resolveAgentRoute", () => {
   });
 
   test("defaultAgentId is used when no binding matches", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       routing: {
         defaultAgentId: "home",
         agents: { home: { workspace: "~/clawd-home" } },

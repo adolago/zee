@@ -1,19 +1,19 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 
-enum ClawdbotConfigFile {
-    private static let logger = Logger(subsystem: "com.clawdbot", category: "config")
+enum ZeeConfigFile {
+    private static let logger = Logger(subsystem: "com.zee", category: "config")
 
     static func url() -> URL {
-        ClawdbotPaths.configURL
+        ZeePaths.configURL
     }
 
     static func stateDirURL() -> URL {
-        ClawdbotPaths.stateDirURL
+        ZeePaths.stateDirURL
     }
 
     static func defaultWorkspaceURL() -> URL {
-        ClawdbotPaths.workspaceURL
+        ZeePaths.workspaceURL
     }
 
     static func loadDict() -> [String: Any] {

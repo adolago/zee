@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { note } from "@clack/prompts";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { resolveGatewayPort, resolveIsNixMode } from "../config/paths.js";
 import { GATEWAY_LAUNCH_AGENT_LABEL } from "../daemon/constants.js";
 import {
@@ -24,7 +24,7 @@ import {
 import type { DoctorOptions, DoctorPrompter } from "./doctor-prompter.js";
 
 export async function maybeMigrateLegacyGatewayService(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   mode: "local" | "remote",
   runtime: RuntimeEnv,
   prompter: DoctorPrompter,
@@ -40,7 +40,7 @@ export async function maybeMigrateLegacyGatewayService(
   );
 
   const migrate = await prompter.confirmSkipInNonInteractive({
-    message: "Migrate legacy Clawdis services to Clawdbot now?",
+    message: "Migrate legacy Clawdis services to Zee now?",
     initialValue: true,
   });
   if (!migrate) return;
@@ -68,12 +68,12 @@ export async function maybeMigrateLegacyGatewayService(
   const service = resolveGatewayService();
   const loaded = await service.isLoaded({ env: process.env });
   if (loaded) {
-    note(`Clawdbot ${service.label} already ${service.loadedText}.`, "Gateway");
+    note(`Zee ${service.label} already ${service.loadedText}.`, "Gateway");
     return;
   }
 
   const install = await prompter.confirmSkipInNonInteractive({
-    message: "Install Clawdbot gateway service now?",
+    message: "Install Zee gateway service now?",
     initialValue: true,
   });
   if (!install) return;
@@ -98,9 +98,9 @@ export async function maybeMigrateLegacyGatewayService(
     });
   const environment: Record<string, string | undefined> = {
     PATH: process.env.PATH,
-    CLAWDBOT_GATEWAY_TOKEN:
-      cfg.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
-    CLAWDBOT_LAUNCHD_LABEL:
+    ZEE_GATEWAY_TOKEN:
+      cfg.gateway?.auth?.token ?? process.env.ZEE_GATEWAY_TOKEN,
+    ZEE_LAUNCHD_LABEL:
       process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
   };
   await service.install({

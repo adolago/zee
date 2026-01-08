@@ -16,12 +16,12 @@ Updated: 2026-01-06
 
 ```bash
 # WhatsApp
-clawdbot poll --to +15555550123 -q "Lunch today?" -o "Yes" -o "No" -o "Maybe"
-clawdbot poll --to 123456789@g.us -q "Meeting time?" -o "10am" -o "2pm" -o "4pm" -s 2
+zee poll --to +15555550123 -q "Lunch today?" -o "Yes" -o "No" -o "Maybe"
+zee poll --to 123456789@g.us -q "Meeting time?" -o "10am" -o "2pm" -o "4pm" -s 2
 
 # Discord
-clawdbot poll --to channel:123456789 -q "Snack?" -o "Pizza" -o "Sushi" --provider discord
-clawdbot poll --to channel:123456789 -q "Plan?" -o "A" -o "B" --provider discord --duration-hours 48
+zee poll --to channel:123456789 -q "Snack?" -o "Pizza" -o "Sushi" --provider discord
+zee poll --to channel:123456789 -q "Plan?" -o "A" -o "B" --provider discord --duration-hours 48
 ```
 
 Options:

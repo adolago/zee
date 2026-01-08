@@ -7,7 +7,7 @@
  * across multiple providers.
  */
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { sendMessageDiscord } from "../../discord/send.js";
 import { sendMessageIMessage } from "../../imessage/send.js";
 import { sendMessageSignal } from "../../signal/send.js";
@@ -29,7 +29,7 @@ export type RouteReplyParams = {
   /** Telegram message thread id (forum topics). */
   threadId?: number;
   /** Config for provider-specific settings. */
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
 };
 
 export type RouteReplyResult = {

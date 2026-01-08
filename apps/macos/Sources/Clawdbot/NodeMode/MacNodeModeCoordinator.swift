@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 import OSLog
@@ -7,7 +7,7 @@ import OSLog
 final class MacNodeModeCoordinator {
     static let shared = MacNodeModeCoordinator()
 
-    private let logger = Logger(subsystem: "com.clawdbot", category: "mac-node")
+    private let logger = Logger(subsystem: "com.zee", category: "mac-node")
     private var task: Task<Void, Never>?
     private let runtime = MacNodeRuntime()
     private let session = MacNodeBridgeSession()
@@ -72,7 +72,7 @@ final class MacNodeModeCoordinator {
                             return BridgeInvokeResponse(
                                 id: req.id,
                                 ok: false,
-                                error: ClawdbotNodeError(code: .unavailable, message: "UNAVAILABLE: node not ready"))
+                                error: ZeeNodeError(code: .unavailable, message: "UNAVAILABLE: node not ready"))
                         }
                         return await self.runtime.handleInvoke(req)
                     })
@@ -106,13 +106,13 @@ final class MacNodeModeCoordinator {
     }
 
     private func currentCaps() -> [String] {
-        var caps: [String] = [ClawdbotCapability.canvas.rawValue, ClawdbotCapability.screen.rawValue]
+        var caps: [String] = [ZeeCapability.canvas.rawValue, ZeeCapability.screen.rawValue]
         if UserDefaults.standard.object(forKey: cameraEnabledKey) as? Bool ?? false {
-            caps.append(ClawdbotCapability.camera.rawValue)
+            caps.append(ZeeCapability.camera.rawValue)
         }
         let rawLocationMode = UserDefaults.standard.string(forKey: locationModeKey) ?? "off"
-        if ClawdbotLocationMode(rawValue: rawLocationMode) != .off {
-            caps.append(ClawdbotCapability.location.rawValue)
+        if ZeeLocationMode(rawValue: rawLocationMode) != .off {
+            caps.append(ZeeCapability.location.rawValue)
         }
         return caps
     }
@@ -124,27 +124,27 @@ final class MacNodeModeCoordinator {
 
     private func currentCommands(caps: [String]) -> [String] {
         var commands: [String] = [
-            ClawdbotCanvasCommand.present.rawValue,
-            ClawdbotCanvasCommand.hide.rawValue,
-            ClawdbotCanvasCommand.navigate.rawValue,
-            ClawdbotCanvasCommand.evalJS.rawValue,
-            ClawdbotCanvasCommand.snapshot.rawValue,
-            ClawdbotCanvasA2UICommand.push.rawValue,
-            ClawdbotCanvasA2UICommand.pushJSONL.rawValue,
-            ClawdbotCanvasA2UICommand.reset.rawValue,
+            ZeeCanvasCommand.present.rawValue,
+            ZeeCanvasCommand.hide.rawValue,
+            ZeeCanvasCommand.navigate.rawValue,
+            ZeeCanvasCommand.evalJS.rawValue,
+            ZeeCanvasCommand.snapshot.rawValue,
+            ZeeCanvasA2UICommand.push.rawValue,
+            ZeeCanvasA2UICommand.pushJSONL.rawValue,
+            ZeeCanvasA2UICommand.reset.rawValue,
             MacNodeScreenCommand.record.rawValue,
-            ClawdbotSystemCommand.run.rawValue,
-            ClawdbotSystemCommand.notify.rawValue,
+            ZeeSystemCommand.run.rawValue,
+            ZeeSystemCommand.notify.rawValue,
         ]
 
         let capsSet = Set(caps)
-        if capsSet.contains(ClawdbotCapability.camera.rawValue) {
-            commands.append(ClawdbotCameraCommand.list.rawValue)
-            commands.append(ClawdbotCameraCommand.snap.rawValue)
-            commands.append(ClawdbotCameraCommand.clip.rawValue)
+        if capsSet.contains(ZeeCapability.camera.rawValue) {
+            commands.append(ZeeCameraCommand.list.rawValue)
+            commands.append(ZeeCameraCommand.snap.rawValue)
+            commands.append(ZeeCameraCommand.clip.rawValue)
         }
-        if capsSet.contains(ClawdbotCapability.location.rawValue) {
-            commands.append(ClawdbotLocationCommand.get.rawValue)
+        if capsSet.contains(ZeeCapability.location.rawValue) {
+            commands.append(ZeeLocationCommand.get.rawValue)
         }
 
         return commands
@@ -192,7 +192,7 @@ final class MacNodeModeCoordinator {
     }
 
     static func loopbackBridgePort() -> UInt16? {
-        if let raw = ProcessInfo.processInfo.environment["CLAWDBOT_BRIDGE_PORT"],
+        if let raw = ProcessInfo.processInfo.environment["ZEE_BRIDGE_PORT"],
            let parsed = Int(raw.trimmingCharacters(in: .whitespacesAndNewlines)),
            parsed > 0,
            parsed <= Int(UInt16.max)
@@ -207,7 +207,7 @@ final class MacNodeModeCoordinator {
         let settings = CommandResolver.connectionSettings()
         let sshHost = CommandResolver.parseSSHTarget(settings.target)?.host ?? ""
         let base =
-            ClawdbotConfigFile.remoteGatewayPort(matchingHost: sshHost) ??
+            ZeeConfigFile.remoteGatewayPort(matchingHost: sshHost) ??
             GatewayEnvironment.gatewayPort()
         guard base > 0 else { return fallback }
         return Self.derivePort(base: base, offset: 1, fallback: fallback)
@@ -222,7 +222,7 @@ final class MacNodeModeCoordinator {
     static func probeEndpoint(_ endpoint: NWEndpoint, timeoutSeconds: Double) async -> Bool {
         let connection = NWConnection(to: endpoint, using: .tcp)
         let stream = Self.makeStateStream(for: connection)
-        connection.start(queue: DispatchQueue(label: "com.clawdbot.macos.bridge-loopback-probe"))
+        connection.start(queue: DispatchQueue(label: "com.zee.macos.bridge-loopback-probe"))
         do {
             try await Self.waitForReady(stream, timeoutSeconds: timeoutSeconds)
             connection.cancel()
@@ -338,9 +338,9 @@ final class MacNodeModeCoordinator {
             let params = NWParameters.tcp
             params.includePeerToPeer = true
 
-            for domain in ClawdbotBonjour.bridgeServiceDomains {
+            for domain in ZeeBonjour.bridgeServiceDomains {
                 let browser = NWBrowser(
-                    for: .bonjour(type: ClawdbotBonjour.bridgeServiceType, domain: domain),
+                    for: .bonjour(type: ZeeBonjour.bridgeServiceType, domain: domain),
                     using: params)
                 browser.browseResultsChangedHandler = { results, _ in
                     let preferred = BridgeDiscoveryPreferences.preferredStableID()
@@ -366,7 +366,7 @@ final class MacNodeModeCoordinator {
                     }
                 }
                 state.browsers.append(browser)
-                browser.start(queue: DispatchQueue(label: "com.clawdbot.macos.bridge-discovery.\(domain)"))
+                browser.start(queue: DispatchQueue(label: "com.zee.macos.bridge-discovery.\(domain)"))
             }
 
             Task {
@@ -378,7 +378,7 @@ final class MacNodeModeCoordinator {
 }
 
 enum MacNodeTokenStore {
-    private static let suiteName = "com.clawdbot.shared"
+    private static let suiteName = "com.zee.shared"
     private static let tokenKey = "mac.node.bridge.token"
 
     private static var defaults: UserDefaults {

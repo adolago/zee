@@ -9,10 +9,10 @@ import {
 describe("shell env fallback", () => {
   it("is disabled by default", () => {
     expect(shouldEnableShellEnvFallback({} as NodeJS.ProcessEnv)).toBe(false);
-    expect(shouldEnableShellEnvFallback({ CLAWDBOT_LOAD_SHELL_ENV: "0" })).toBe(
+    expect(shouldEnableShellEnvFallback({ ZEE_LOAD_SHELL_ENV: "0" })).toBe(
       false,
     );
-    expect(shouldEnableShellEnvFallback({ CLAWDBOT_LOAD_SHELL_ENV: "1" })).toBe(
+    expect(shouldEnableShellEnvFallback({ ZEE_LOAD_SHELL_ENV: "1" })).toBe(
       true,
     );
   });
@@ -22,11 +22,11 @@ describe("shell env fallback", () => {
       15000,
     );
     expect(
-      resolveShellEnvFallbackTimeoutMs({ CLAWDBOT_SHELL_ENV_TIMEOUT_MS: "42" }),
+      resolveShellEnvFallbackTimeoutMs({ ZEE_SHELL_ENV_TIMEOUT_MS: "42" }),
     ).toBe(42);
     expect(
       resolveShellEnvFallbackTimeoutMs({
-        CLAWDBOT_SHELL_ENV_TIMEOUT_MS: "nope",
+        ZEE_SHELL_ENV_TIMEOUT_MS: "nope",
       }),
     ).toBe(15000);
   });

@@ -52,14 +52,14 @@ enum AppLogLevel: String, CaseIterable, Identifiable {
     }
 }
 
-enum ClawdbotLogging {
+enum ZeeLogging {
     private static let labelSeparator = "::"
 
     private static let didBootstrap: Void = {
         LoggingSystem.bootstrap { label in
             let (subsystem, category) = Self.parseLabel(label)
-            let osHandler = ClawdbotOSLogHandler(subsystem: subsystem, category: category)
-            let fileHandler = ClawdbotFileLogHandler(label: label)
+            let osHandler = ZeeOSLogHandler(subsystem: subsystem, category: category)
+            let fileHandler = ZeeFileLogHandler(label: label)
             return MultiplexLogHandler([osHandler, fileHandler])
         }
     }()
@@ -74,7 +74,7 @@ enum ClawdbotLogging {
 
     static func parseLabel(_ label: String) -> (String, String) {
         guard let range = label.range(of: labelSeparator) else {
-            return ("com.clawdbot", label)
+            return ("com.zee", label)
         }
         let subsystem = String(label[..<range.lowerBound])
         let category = String(label[range.upperBound...])
@@ -84,8 +84,8 @@ enum ClawdbotLogging {
 
 extension Logging.Logger {
     init(subsystem: String, category: String) {
-        ClawdbotLogging.bootstrapIfNeeded()
-        let label = ClawdbotLogging.makeLabel(subsystem: subsystem, category: category)
+        ZeeLogging.bootstrapIfNeeded()
+        let label = ZeeLogging.makeLabel(subsystem: subsystem, category: category)
         self.init(label: label)
     }
 }
@@ -96,7 +96,7 @@ extension Logger.Message.StringInterpolation {
     }
 }
 
-struct ClawdbotOSLogHandler: LogHandler {
+struct ZeeOSLogHandler: LogHandler {
     private let osLogger: os.Logger
     var metadata: Logger.Metadata = [:]
 
@@ -174,7 +174,7 @@ struct ClawdbotOSLogHandler: LogHandler {
     }
 }
 
-struct ClawdbotFileLogHandler: LogHandler {
+struct ZeeFileLogHandler: LogHandler {
     let label: String
     var metadata: Logger.Metadata = [:]
 
@@ -198,7 +198,7 @@ struct ClawdbotFileLogHandler: LogHandler {
         line: UInt)
     {
         guard AppLogSettings.fileLoggingEnabled() else { return }
-        let (subsystem, category) = ClawdbotLogging.parseLabel(self.label)
+        let (subsystem, category) = ZeeLogging.parseLabel(self.label)
         var fields: [String: String] = [
             "subsystem": subsystem,
             "category": category,

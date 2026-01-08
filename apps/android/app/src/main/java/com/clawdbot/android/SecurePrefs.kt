@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package com.clawdbot.android
+package com.zee.android
 
 import android.content.Context
 import androidx.core.content.edit
@@ -31,7 +31,7 @@ class SecurePrefs(context: Context) {
   private val prefs =
     EncryptedSharedPreferences.create(
       context,
-      "clawdbot.node.secure",
+      "zee.node.secure",
       masterKey,
       EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
       EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

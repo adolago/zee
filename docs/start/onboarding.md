@@ -1,18 +1,18 @@
 ---
-summary: "Planned first-run onboarding flow for Clawdbot (local vs remote, OAuth auth, workspace bootstrap ritual)"
+summary: "Planned first-run onboarding flow for Zee (local vs remote, OAuth auth, workspace bootstrap ritual)"
 read_when:
   - Designing the macOS onboarding assistant
   - Implementing Anthropic/OpenAI auth or identity setup
 ---
 # Onboarding (macOS app)
 
-This doc describes the intended **first-run onboarding** for Clawdbot. The goal is a good “day 0” experience: pick where the Gateway runs, bind subscription auth (Anthropic or OpenAI) for the embedded agent runtime, and then let the **agent bootstrap itself** via a first-run ritual in the workspace.
+This doc describes the intended **first-run onboarding** for Zee. The goal is a good “day 0” experience: pick where the Gateway runs, bind subscription auth (Anthropic or OpenAI) for the embedded agent runtime, and then let the **agent bootstrap itself** via a first-run ritual in the workspace.
 
 ## Page order (high level)
 
 1) **Local vs Remote**
 2) **(Local only)** Connect subscription auth (Anthropic / OpenAI OAuth) — optional, but recommended
-3) **Connect Gmail (optional)** — run `clawdbot hooks gmail setup` to configure Pub/Sub hooks
+3) **Connect Gmail (optional)** — run `zee hooks gmail setup` to configure Pub/Sub hooks
 4) **Onboarding chat** — dedicated session where the agent introduces itself and guides setup
 
 ## 1) Local vs Remote
@@ -23,14 +23,14 @@ First question: where does the **Gateway** run?
 - **Remote (over SSH/tailnet):** onboarding must not run OAuth locally, because credentials must exist on the **gateway host**.
 
 Gateway auth tip:
-- If you only use Clawdbot on this Mac (loopback gateway), keep auth **Off**.
+- If you only use Zee on this Mac (loopback gateway), keep auth **Off**.
 - Use **Token** for multi-machine access or non-loopback binds.
 
 Implementation note (2025-12-19): in local mode, the macOS app bundles the Gateway and enables it via a per-user launchd LaunchAgent (no global npm install/Node requirement for the user).
 
 ## 2) Local-only: Connect subscription auth (Anthropic / OpenAI OAuth)
 
-This is the “bind Clawdbot to subscription auth” step. It is explicitly the **Anthropic (Claude Pro/Max)** or **OpenAI (ChatGPT/Codex)** OAuth flow, not a generic “login”.
+This is the “bind Zee to subscription auth” step. It is explicitly the **Anthropic (Claude Pro/Max)** or **OpenAI (ChatGPT/Codex)** OAuth flow, not a generic “login”.
 
 More detail: [/concepts/oauth](/concepts/oauth)
 
@@ -40,10 +40,10 @@ The macOS app should:
 - Start the Anthropic OAuth (PKCE) flow in the user’s browser.
 - Ask the user to paste the `code#state` value.
 - Exchange it for tokens and write credentials to:
-  - `~/.clawdbot/credentials/oauth.json` (file mode `0600`, directory mode `0700`)
+  - `~/.zee/credentials/oauth.json` (file mode `0600`, directory mode `0700`)
 
-Why this location matters: it’s the Clawdbot-owned OAuth store.
-Clawdbot also imports `oauth.json` into the agent auth profile store (`~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`) on first use.
+Why this location matters: it’s the Zee-owned OAuth store.
+Zee also imports `oauth.json` into the agent auth profile store (`~/.zee/agents/<agentId>/agent/auth-profiles.json`) on first use.
 
 ### Recommended: OAuth (OpenAI Codex)
 
@@ -51,25 +51,25 @@ The macOS app should:
 - Start the OpenAI Codex OAuth (PKCE) flow in the user’s browser.
 - Auto-capture the callback on `http://127.0.0.1:1455/auth/callback` when possible.
 - If the callback fails, prompt the user to paste the redirect URL or code.
-- Store credentials in `~/.clawdbot/credentials/oauth.json` (same OAuth store as Anthropic).
+- Store credentials in `~/.zee/credentials/oauth.json` (same OAuth store as Anthropic).
 - Set `agent.model` to `openai-codex/gpt-5.2` when the model is unset or `openai/*`.
 
 ### Alternative: API key (instructions only)
 
 Offer an “API key” option, but for now it is **instructions only**:
 - Get an Anthropic API key.
-- Provide it to Clawdbot via your preferred mechanism (env/config).
+- Provide it to Zee via your preferred mechanism (env/config).
 
 Note: environment variables are often confusing when the Gateway is launched by a GUI app (launchd environment != your shell).
 
 ### Model safety rule
 
-Clawdbot should **always pass** `--model` when invoking the embedded agent (don’t rely on defaults).
+Zee should **always pass** `--model` when invoking the embedded agent (don’t rely on defaults).
 
 Example (CLI):
 
 ```bash
-clawdbot agent --mode rpc --model anthropic/claude-opus-4-5 "<message>"
+zee agent --mode rpc --model anthropic/claude-opus-4-5 "<message>"
 ```
 
 If the user skips auth, onboarding should be clear: the agent likely won’t respond until auth is configured.
@@ -92,7 +92,7 @@ If the workspace bootstrap is already complete (BOOTSTRAP.md removed), the onboa
 The macOS onboarding includes an optional Gmail step. It runs:
 
 ```bash
-clawdbot hooks gmail setup --account you@gmail.com
+zee hooks gmail setup --account you@gmail.com
 ```
 
 This writes the full `hooks.gmail` config, installs `gcloud` / `gog` / `tailscale`
@@ -117,7 +117,7 @@ We no longer collect identity in the onboarding wizard. Instead, the **first age
   - `IDENTITY.md` (agent name, vibe/creature, emoji)
   - `USER.md` (who the user is + how they want to be addressed)
   - `SOUL.md` (identity, tone, boundaries — crafted from the soul.md prompt)
-  - `~/.clawdbot/clawdbot.json` (structured identity defaults)
+  - `~/.zee/zee.json` (structured identity defaults)
 - After the ritual, the agent **deletes `BOOTSTRAP.md`** so it only runs once.
 
 Identity data still feeds the same defaults as before:
@@ -151,12 +151,12 @@ If the Gateway runs on another machine, OAuth credentials must be created/stored
 
 For now, remote onboarding should:
 - explain why OAuth isn't shown
-- point the user at the credential location (`~/.clawdbot/credentials/oauth.json`) and the auth profile store (`~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`) on the gateway host
+- point the user at the credential location (`~/.zee/credentials/oauth.json`) and the auth profile store (`~/.zee/agents/<agentId>/agent/auth-profiles.json`) on the gateway host
 - mention that the **bootstrap ritual happens on the gateway host** (same BOOTSTRAP/IDENTITY/USER files)
 
 ### Manual credential setup
 
-On the gateway host, create `~/.clawdbot/credentials/oauth.json` with this exact format:
+On the gateway host, create `~/.zee/credentials/oauth.json` with this exact format:
 
 ```json
 {
@@ -165,13 +165,13 @@ On the gateway host, create `~/.clawdbot/credentials/oauth.json` with this exact
 }
 ```
 
-Set permissions: `chmod 600 ~/.clawdbot/credentials/oauth.json`
+Set permissions: `chmod 600 ~/.zee/credentials/oauth.json`
 
-**Note:** Clawdbot can import from legacy pi-coding-agent paths (`~/.pi/agent/oauth.json`, etc.), but Claude Code/Codex CLI credentials live in different files.
+**Note:** Zee can import from legacy pi-coding-agent paths (`~/.pi/agent/oauth.json`, etc.), but Claude Code/Codex CLI credentials live in different files.
 
 ### Using Claude Code + Codex CLI credentials (direct)
 
-If these CLIs are installed on the **gateway host** and you’ve already signed in, Clawdbot auto-syncs their OAuth tokens into the per-agent auth profile store (`~/.clawdbot/agents/<agentId>/agent/auth-profiles.json`) on load:
+If these CLIs are installed on the **gateway host** and you’ve already signed in, Zee auto-syncs their OAuth tokens into the per-agent auth profile store (`~/.zee/agents/<agentId>/agent/auth-profiles.json`) on load:
 
 - **Claude Code**: reads `~/.claude/.credentials.json` → profile `anthropic:claude-cli`
 - **Codex CLI**: reads `~/.codex/auth.json` → profile `openai-codex:codex-cli`
@@ -179,7 +179,7 @@ If these CLIs are installed on the **gateway host** and you’ve already signed 
 Verification:
 
 ```bash
-clawdbot providers list
+zee providers list
 ```
 
 ### Fallback: convert Claude Code credentials into `oauth.json`
@@ -194,8 +194,8 @@ cat ~/.claude/.credentials.json | jq '{
     refresh: .claudeAiOauth.refreshToken,
     expires: .claudeAiOauth.expiresAt
   }
-}' > ~/.clawdbot/credentials/oauth.json
-chmod 600 ~/.clawdbot/credentials/oauth.json
+}' > ~/.zee/credentials/oauth.json
+chmod 600 ~/.zee/credentials/oauth.json
 ```
 
 ## Workspace backup (recommended)

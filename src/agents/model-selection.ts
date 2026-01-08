@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { ModelCatalogEntry } from "./model-catalog.js";
 
 export type ModelRef = {
@@ -45,7 +45,7 @@ export function parseModelRef(
 }
 
 export function buildModelAliasIndex(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   defaultProvider: string;
 }): ModelAliasIndex {
   const byAlias = new Map<string, { alias: string; ref: ModelRef }>();
@@ -90,7 +90,7 @@ export function resolveModelRefFromString(params: {
 }
 
 export function resolveConfiguredModelRef(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   defaultProvider: string;
   defaultModel: string;
 }): ModelRef {
@@ -121,7 +121,7 @@ export function resolveConfiguredModelRef(params: {
 }
 
 export function buildAllowedModelSet(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   catalog: ModelCatalogEntry[];
   defaultProvider: string;
 }): {
@@ -172,7 +172,7 @@ export function buildAllowedModelSet(params: {
 }
 
 export function resolveThinkingDefault(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider: string;
   model: string;
   catalog?: ModelCatalogEntry[];

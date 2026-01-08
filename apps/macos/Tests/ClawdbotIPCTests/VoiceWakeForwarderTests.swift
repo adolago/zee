@@ -1,5 +1,5 @@
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized) struct VoiceWakeForwarderTests {
     @Test func prefixedTranscriptUsesMachineName() {

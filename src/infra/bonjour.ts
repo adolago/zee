@@ -21,7 +21,7 @@ export type GatewayBonjourAdvertiseOpts = {
 };
 
 function isDisabledByEnv() {
-  if (process.env.CLAWDBOT_DISABLE_BONJOUR === "1") return true;
+  if (process.env.ZEE_DISABLE_BONJOUR === "1") return true;
   if (process.env.NODE_ENV === "test") return true;
   if (process.env.VITEST) return true;
   return false;
@@ -29,12 +29,12 @@ function isDisabledByEnv() {
 
 function safeServiceName(name: string) {
   const trimmed = name.trim();
-  return trimmed.length > 0 ? trimmed : "Clawdbot";
+  return trimmed.length > 0 ? trimmed : "Zee";
 }
 
 function prettifyInstanceName(name: string) {
   const normalized = name.trim().replace(/\s+/g, " ");
-  return normalized.replace(/\s+\(Clawdbot\)\s*$/i, "").trim() || normalized;
+  return normalized.replace(/\s+\(Zee\)\s*$/i, "").trim() || normalized;
 }
 
 type BonjourService = {
@@ -89,11 +89,11 @@ export async function startGatewayBonjourAdvertiser(
       .hostname()
       .replace(/\.local$/i, "")
       .split(".")[0]
-      .trim() || "clawdbot";
+      .trim() || "zee";
   const instanceName =
     typeof opts.instanceName === "string" && opts.instanceName.trim()
       ? opts.instanceName.trim()
-      : `${hostname} (Clawdbot)`;
+      : `${hostname} (Zee)`;
   const displayName = prettifyInstanceName(instanceName);
 
   const txtBase: Record<string, string> = {
@@ -121,7 +121,7 @@ export async function startGatewayBonjourAdvertiser(
   if (typeof opts.bridgePort === "number" && opts.bridgePort > 0) {
     const bridge = responder.createService({
       name: safeServiceName(instanceName),
-      type: "clawdbot-bridge",
+      type: "zee-bridge",
       protocol: Protocol.TCP,
       port: opts.bridgePort,
       domain: "local",

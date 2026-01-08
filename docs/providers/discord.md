@@ -10,7 +10,7 @@ Updated: 2026-01-07
 Status: ready for DM and guild text channels via the official Discord bot gateway.
 
 ## Goals
-- Talk to Clawdbot via Discord DMs or guild channels.
+- Talk to Zee via Discord DMs or guild channels.
 - Direct chats collapse into the agent's main session (default `agent:main:main`); guild channels stay isolated as `agent:<agentId>:discord:channel:<channelId>` (display names use `discord:<guildSlug>#<channelSlug>`).
 - Group DMs are ignored by default; enable via `discord.dm.groupEnabled` and optionally restrict by `discord.dm.groupChannels`.
 - Keep routing deterministic: replies always go back to the provider they arrived on.
@@ -18,12 +18,12 @@ Status: ready for DM and guild text channels via the official Discord bot gatewa
 ## How it works
 1. Create a Discord application → Bot, enable the intents you need (DMs + guild messages + message content), and grab the bot token.
 2. Invite the bot to your server with the permissions required to read/send messages where you want to use it.
-3. Configure Clawdbot with `DISCORD_BOT_TOKEN` (or `discord.token` in `~/.clawdbot/clawdbot.json`).
+3. Configure Zee with `DISCORD_BOT_TOKEN` (or `discord.token` in `~/.zee/zee.json`).
 4. Run the gateway; it auto-starts the Discord provider only when a `discord` config section exists **and** the token is set (unless `discord.enabled = false`).
-   - If you prefer env vars, still add `discord: { enabled: true }` to `~/.clawdbot/clawdbot.json` and set `DISCORD_BOT_TOKEN`.
+   - If you prefer env vars, still add `discord: { enabled: true }` to `~/.zee/zee.json` and set `DISCORD_BOT_TOKEN`.
 5. Direct chats: use `user:<id>` (or a `<@id>` mention) when delivering; all turns land in the shared `main` session.
 6. Guild channels: use `channel:<channelId>` for delivery. Mentions are required by default and can be set per guild or per channel.
-7. Direct chats: secure by default via `discord.dm.policy` (default: `"pairing"`). Unknown senders get a pairing code (expires after 1 hour); approve via `clawdbot pairing approve --provider discord <code>`.
+7. Direct chats: secure by default via `discord.dm.policy` (default: `"pairing"`). Unknown senders get a pairing code (expires after 1 hour); approve via `zee pairing approve --provider discord <code>`.
    - To keep old “open to anyone” behavior: set `discord.dm.policy="open"` and `discord.dm.allowFrom=["*"]`.
    - To hard-allowlist: set `discord.dm.policy="allowlist"` and list senders in `discord.dm.allowFrom`.
    - To ignore all DMs: set `discord.dm.enabled=false` or `discord.dm.policy="disabled"`.
@@ -43,7 +43,7 @@ Note: Guild context `[from:]` lines include `author.tag` + `id` to make ping-rea
 
 ## How to create your own bot
 
-This is the “Discord Developer Portal” setup for running Clawdbot in a server (guild) channel like `#help`.
+This is the “Discord Developer Portal” setup for running Zee in a server (guild) channel like `#help`.
 
 ### 1) Create the Discord app + bot user
 1. Discord Developer Portal → **Applications** → **New Application**
@@ -51,7 +51,7 @@ This is the “Discord Developer Portal” setup for running Clawdbot in a serve
    - **Bot** → **Add Bot**
    - Copy the **Bot Token** (this is what you put in `DISCORD_BOT_TOKEN`)
 
-### 2) Enable the gateway intents Clawdbot needs
+### 2) Enable the gateway intents Zee needs
 Discord blocks “privileged intents” unless you explicitly enable them.
 
 In **Bot** → **Privileged Gateway Intents**, enable:
@@ -81,7 +81,7 @@ Avoid **Administrator** unless you’re debugging and fully trust the bot.
 Copy the generated URL, open it, pick your server, and install the bot.
 
 ### 4) Get the ids (guild/user/channel)
-Discord uses numeric ids everywhere; Clawdbot config prefers ids.
+Discord uses numeric ids everywhere; Zee config prefers ids.
 
 1. Discord (desktop/web) → **User Settings** → **Advanced** → enable **Developer Mode**
 2. Right-click:
@@ -89,7 +89,7 @@ Discord uses numeric ids everywhere; Clawdbot config prefers ids.
    - Channel (e.g. `#help`) → **Copy Channel ID**
    - Your user → **Copy User ID**
 
-### 5) Configure Clawdbot
+### 5) Configure Zee
 
 #### Token
 Set the bot token via env var (recommended on servers):
@@ -301,7 +301,7 @@ Allowlist matching notes:
 - When `guilds.<id>.channels` is present, channels not listed are denied by default.
 
 Native command notes:
-- The registered commands mirror Clawdbot’s chat commands.
+- The registered commands mirror Zee’s chat commands.
 - Native commands honor the same allowlists as DMs/guild messages (`discord.dm.allowFrom`, `discord.guilds`, per-channel rules).
 
 ## Tool actions
@@ -321,4 +321,4 @@ Emoji can be unicode (e.g., `✅`) or custom emoji syntax like `<:party_blob:123
 ## Safety & ops
 - Treat the bot token like a password; prefer the `DISCORD_BOT_TOKEN` env var on supervised hosts or lock down the config file permissions.
 - Only grant the bot permissions it needs (typically Read/Send Messages).
-- If the bot is stuck or rate limited, restart the gateway (`clawdbot gateway --force`) after confirming no other processes own the Discord session.
+- If the bot is stuck or rate limited, restart the gateway (`zee gateway --force`) after confirming no other processes own the Discord session.

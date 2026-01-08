@@ -6,7 +6,7 @@ read_when:
 ---
 # Cron jobs (Gateway scheduler)
 
-Cron runs inside the Gateway and schedules background work so Clawdbot can
+Cron runs inside the Gateway and schedules background work so Zee can
 wake itself up, run isolated agent jobs, and deliver reminders on time.
 
 ## Update checklist (internal)
@@ -18,7 +18,7 @@ wake itself up, run isolated agent jobs, and deliver reminders on time.
 - [x] Run full gate (lint/build/test/docs)
 
 ## What cron is
-- **Gateway-owned scheduler** that persists jobs under `~/.clawdbot/cron/`.
+- **Gateway-owned scheduler** that persists jobs under `~/.zee/cron/`.
 - **Two execution modes**:
   - **Main session jobs** enqueue `System:` events and rely on the heartbeat runner.
   - **Isolated jobs** run a dedicated agent turn in `cron:<jobId>` sessions.
@@ -61,8 +61,8 @@ Key behaviors:
 - `payload.deliver: true` sends output to a provider; otherwise it stays internal.
 
 ## Storage & history
-- Job store: `~/.clawdbot/cron/jobs.json` (JSON, Gateway-managed).
-- Run history: `~/.clawdbot/cron/runs/<jobId>.jsonl` (JSONL, auto-pruned).
+- Job store: `~/.zee/cron/jobs.json` (JSON, Gateway-managed).
+- Run history: `~/.zee/cron/runs/<jobId>.jsonl` (JSONL, auto-pruned).
 - Override store path: `cron.store` in config.
 
 ## Configuration
@@ -71,7 +71,7 @@ Key behaviors:
 {
   cron: {
     enabled: true,                // default true
-    store: "~/.clawdbot/cron/jobs.json",
+    store: "~/.zee/cron/jobs.json",
     maxConcurrentRuns: 1           // default 1
   }
 }
@@ -79,13 +79,13 @@ Key behaviors:
 
 Disable cron entirely:
 - `cron.enabled: false` (config)
-- or `CLAWDBOT_SKIP_CRON=1` (env)
+- or `ZEE_SKIP_CRON=1` (env)
 
 ## CLI quickstart
 
 One-shot reminder (main session, wake immediately):
 ```bash
-clawdbot cron add \
+zee cron add \
   --name "Calendar check" \
   --at "20m" \
   --session main \
@@ -95,7 +95,7 @@ clawdbot cron add \
 
 Recurring isolated job (deliver to WhatsApp):
 ```bash
-clawdbot cron add \
+zee cron add \
   --name "Morning status" \
   --cron "0 7 * * *" \
   --tz "America/Los_Angeles" \
@@ -108,17 +108,17 @@ clawdbot cron add \
 
 Manual run (debug):
 ```bash
-clawdbot cron run <jobId> --force
+zee cron run <jobId> --force
 ```
 
 Run history:
 ```bash
-clawdbot cron runs --id <jobId> --limit 50
+zee cron runs --id <jobId> --limit 50
 ```
 
 Immediate wake without creating a job:
 ```bash
-clawdbot wake --mode now --text "Next heartbeat: check battery."
+zee wake --mode now --text "Next heartbeat: check battery."
 ```
 
 ## API surface (Gateway)

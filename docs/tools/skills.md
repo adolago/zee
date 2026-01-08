@@ -4,24 +4,24 @@ read_when:
   - Adding or modifying skills
   - Changing skill gating or load rules
 ---
-# Skills (Clawdbot)
+# Skills (Zee)
 
-Clawdbot uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Clawdbot loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
+Zee uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Zee loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
 
 ## Locations and precedence
 
 Skills are loaded from **three** places:
 
-1) **Bundled skills**: shipped with the install (npm package or Clawdbot.app)
-2) **Managed/local skills**: `~/.clawdbot/skills`
+1) **Bundled skills**: shipped with the install (npm package or Zee.app)
+2) **Managed/local skills**: `~/.zee/skills`
 3) **Workspace skills**: `<workspace>/skills`
 
 If a skill name conflicts, precedence is:
 
-`<workspace>/skills` (highest) → `~/.clawdbot/skills` → bundled skills (lowest)
+`<workspace>/skills` (highest) → `~/.zee/skills` → bundled skills (lowest)
 
 Additionally, you can configure extra skill folders (lowest precedence) via
-`skills.load.extraDirs` in `~/.clawdbot/clawdbot.json`.
+`skills.load.extraDirs` in `~/.zee/zee.json`.
 
 ## Format (AgentSkills + Pi-compatible)
 
@@ -40,21 +40,21 @@ Notes:
 - `metadata` should be a **single-line JSON object**.
 - Use `{baseDir}` in instructions to reference the skill folder path.
 - Optional frontmatter keys:
-  - `homepage` — URL surfaced as “Website” in the macOS Skills UI (also supported via `metadata.clawdbot.homepage`).
+  - `homepage` — URL surfaced as “Website” in the macOS Skills UI (also supported via `metadata.zee.homepage`).
 
 ## Gating (load-time filters)
 
-Clawdbot **filters skills at load time** using `metadata` (single-line JSON):
+Zee **filters skills at load time** using `metadata` (single-line JSON):
 
 ```markdown
 ---
 name: nano-banana-pro
 description: Generate or edit images via Gemini 3 Pro Image
-metadata: {"clawdbot":{"requires":{"bins":["uv"],"env":["GEMINI_API_KEY"],"config":["browser.enabled"]},"primaryEnv":"GEMINI_API_KEY"}}
+metadata: {"zee":{"requires":{"bins":["uv"],"env":["GEMINI_API_KEY"],"config":["browser.enabled"]},"primaryEnv":"GEMINI_API_KEY"}}
 ---
 ```
 
-Fields under `metadata.clawdbot`:
+Fields under `metadata.zee`:
 - `always: true` — always include the skill (skip other gates).
 - `emoji` — optional emoji used by the macOS Skills UI.
 - `homepage` — optional URL shown as “Website” in the macOS Skills UI.
@@ -62,7 +62,7 @@ Fields under `metadata.clawdbot`:
 - `requires.bins` — list; each must exist on `PATH`.
 - `requires.anyBins` — list; at least one must exist on `PATH`.
 - `requires.env` — list; env var must exist **or** be provided in config.
-- `requires.config` — list of `clawdbot.json` paths that must be truthy.
+- `requires.config` — list of `zee.json` paths that must be truthy.
 - `primaryEnv` — env var name associated with `skills.entries.<name>.apiKey`.
 - `install` — optional array of installer specs used by the macOS Skills UI (brew/node/go/uv).
 
@@ -72,19 +72,19 @@ Installer example:
 ---
 name: gemini
 description: Use Gemini CLI for coding assistance and Google search lookups.
-metadata: {"clawdbot":{"emoji":"♊️","requires":{"bins":["gemini"]},"install":[{"id":"brew","kind":"brew","formula":"gemini-cli","bins":["gemini"],"label":"Install Gemini CLI (brew)"}]}}
+metadata: {"zee":{"emoji":"♊️","requires":{"bins":["gemini"]},"install":[{"id":"brew","kind":"brew","formula":"gemini-cli","bins":["gemini"],"label":"Install Gemini CLI (brew)"}]}}
 ---
 ```
 
 Notes:
 - If multiple installers are listed, the gateway picks a **single** preferred option (brew when available, otherwise node).
-- Node installs honor `skills.install.nodeManager` in `clawdbot.json` (default: npm; options: npm/pnpm/yarn/bun).
+- Node installs honor `skills.install.nodeManager` in `zee.json` (default: npm; options: npm/pnpm/yarn/bun).
 - Go installs: if `go` is missing and `brew` is available, the gateway installs Go via Homebrew first and sets `GOBIN` to Homebrew’s `bin` when possible.
 
-If no `metadata.clawdbot` is present, the skill is always eligible (unless
+If no `metadata.zee` is present, the skill is always eligible (unless
 disabled in config or blocked by `skills.allowBundled` for bundled skills).
 
-## Config overrides (`~/.clawdbot/clawdbot.json`)
+## Config overrides (`~/.zee/zee.json`)
 
 Bundled/managed skills can be toggled and supplied with env values:
 
@@ -109,18 +109,18 @@ Bundled/managed skills can be toggled and supplied with env values:
 Note: if the skill name contains hyphens, quote the key (JSON5 allows quoted keys).
 
 Config keys match the **skill name** by default. If a skill defines
-`metadata.clawdbot.skillKey`, use that key under `skills.entries`.
+`metadata.zee.skillKey`, use that key under `skills.entries`.
 
 Rules:
 - `enabled: false` disables the skill even if it’s bundled/installed.
 - `env`: injected **only if** the variable isn’t already set in the process.
-- `apiKey`: convenience for skills that declare `metadata.clawdbot.primaryEnv`.
+- `apiKey`: convenience for skills that declare `metadata.zee.primaryEnv`.
 - `allowBundled`: optional allowlist for **bundled** skills only. If set, only
   bundled skills in the list are eligible (managed/workspace skills unaffected).
 
 ## Environment injection (per agent run)
 
-When an agent run starts, Clawdbot:
+When an agent run starts, Zee:
 1) Reads skill metadata.
 2) Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
    `process.env`.
@@ -131,12 +131,12 @@ This is **scoped to the agent run**, not a global shell environment.
 
 ## Session snapshot (performance)
 
-Clawdbot snapshots the eligible skills **when a session starts** and reuses that list for subsequent turns in the same session. Changes to skills or config take effect on the next new session.
+Zee snapshots the eligible skills **when a session starts** and reuses that list for subsequent turns in the same session. Changes to skills or config take effect on the next new session.
 
 ## Managed skills lifecycle
 
-Clawdbot ships a baseline set of skills as **bundled skills** as part of the
-install (npm package or Clawdbot.app). `~/.clawdbot/skills` exists for local
+Zee ships a baseline set of skills as **bundled skills** as part of the
+install (npm package or Zee.app). `~/.zee/skills` exists for local
 overrides (for example, pinning/patching a skill without changing the bundled
 copy). Workspace skills are user-owned and override both on name conflicts.
 

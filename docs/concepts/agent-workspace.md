@@ -9,15 +9,15 @@ read_when:
 The workspace is the agent's home. It is the only working directory used for
 file tools and for workspace context. Keep it private and treat it as memory.
 
-This is separate from `~/.clawdbot/`, which stores config, credentials, and
+This is separate from `~/.zee/`, which stores config, credentials, and
 sessions.
 
 ## Default location
 
 - Default: `~/clawd`
-- If `CLAWDBOT_PROFILE` is set and not `"default"`, the default becomes
+- If `ZEE_PROFILE` is set and not `"default"`, the default becomes
   `~/clawd-<profile>`.
-- Override in `~/.clawdbot/clawdbot.json`:
+- Override in `~/.zee/zee.json`:
 
 ```json5
 {
@@ -27,7 +27,7 @@ sessions.
 }
 ```
 
-`clawdbot onboard`, `clawdbot configure`, or `clawdbot setup` will create the
+`zee onboard`, `zee configure`, or `zee setup` will create the
 workspace and seed the bootstrap files if they are missing.
 
 If you already manage the workspace files yourself, you can disable bootstrap
@@ -39,7 +39,7 @@ file creation:
 
 ## Legacy workspace folders
 
-Older installs may have created `~/clawdis` or `~/clawdbot`. Keeping multiple
+Older installs may have created `~/clawdis` or `~/zee`. Keeping multiple
 workspace directories around can cause confusing auth or state drift, because
 only one workspace is active at a time.
 
@@ -48,11 +48,11 @@ legacy folders, archive or move them to Trash (for example `trash ~/clawdis`).
 If you intentionally keep multiple workspaces, make sure
 `agent.workspace` points to the active one.
 
-`clawdbot doctor` warns when it detects legacy workspace directories.
+`zee doctor` warns when it detects legacy workspace directories.
 
 ## Workspace file map (what each file means)
 
-These are the standard files Clawdbot expects inside the workspace:
+These are the standard files Zee expects inside the workspace:
 
 - `AGENTS.md`
   - Operating instructions for the agent and how it should use memory.
@@ -99,18 +99,18 @@ These are the standard files Clawdbot expects inside the workspace:
 - `canvas/` (optional)
   - Canvas UI files for node displays (for example `canvas/index.html`).
 
-If any bootstrap file is missing, Clawdbot injects a "missing file" marker into
-the session and continues. `clawdbot setup` can recreate missing defaults
+If any bootstrap file is missing, Zee injects a "missing file" marker into
+the session and continues. `zee setup` can recreate missing defaults
 without overwriting existing files.
 
 ## What is NOT in the workspace
 
-These live under `~/.clawdbot/` and should NOT be committed to the workspace repo:
+These live under `~/.zee/` and should NOT be committed to the workspace repo:
 
-- `~/.clawdbot/clawdbot.json` (config)
-- `~/.clawdbot/credentials/` (OAuth tokens, API keys)
-- `~/.clawdbot/agents/<agentId>/sessions/` (session transcripts + metadata)
-- `~/.clawdbot/skills/` (managed skills)
+- `~/.zee/zee.json` (config)
+- `~/.zee/credentials/` (OAuth tokens, API keys)
+- `~/.zee/agents/<agentId>/sessions/` (session transcripts + metadata)
+- `~/.zee/skills/` (managed skills)
 
 If you need to migrate sessions or config, copy them separately and keep them
 out of version control.
@@ -181,11 +181,11 @@ git push
 Even in a private repo, avoid storing secrets in the workspace:
 
 - API keys, OAuth tokens, passwords, or private credentials.
-- Anything under `~/.clawdbot/`.
+- Anything under `~/.zee/`.
 - Raw dumps of chats or sensitive attachments.
 
 If you must store sensitive references, use placeholders and keep the real
-secret elsewhere (password manager, environment variables, or `~/.clawdbot/`).
+secret elsewhere (password manager, environment variables, or `~/.zee/`).
 
 Suggested `.gitignore` starter:
 
@@ -200,9 +200,9 @@ Suggested `.gitignore` starter:
 ## Moving the workspace to a new machine
 
 1. Clone the repo to the desired path (default `~/clawd`).
-2. Set `agent.workspace` to that path in `~/.clawdbot/clawdbot.json`.
-3. Run `clawdbot setup --workspace <path>` to seed any missing files.
-4. If you need sessions, copy `~/.clawdbot/agents/<agentId>/sessions/` from the
+2. Set `agent.workspace` to that path in `~/.zee/zee.json`.
+3. Run `zee setup --workspace <path>` to seed any missing files.
+4. If you need sessions, copy `~/.zee/agents/<agentId>/sessions/` from the
    old machine separately.
 
 ## Advanced notes

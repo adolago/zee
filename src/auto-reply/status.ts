@@ -12,7 +12,7 @@ import {
   normalizeUsage,
   type UsageLike,
 } from "../agents/usage.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   resolveMainSessionKey,
   resolveSessionFilePath,
@@ -28,7 +28,7 @@ import type {
   VerboseLevel,
 } from "./thinking.js";
 
-type AgentConfig = NonNullable<ClawdbotConfig["agent"]>;
+type AgentConfig = NonNullable<ZeeConfig["agent"]>;
 
 type QueueStatus = {
   mode?: string;
@@ -125,7 +125,7 @@ const readUsageFromSessionLog = (
       model?: string;
     }
   | undefined => {
-  // Transcripts are stored at the session file path (fallback: ~/.clawdbot/sessions/<SessionId>.jsonl)
+  // Transcripts are stored at the session file path (fallback: ~/.zee/sessions/<SessionId>.jsonl)
   if (!sessionId) return undefined;
   const logPath = resolveSessionFilePath(sessionId, sessionEntry);
   if (!fs.existsSync(logPath)) return undefined;

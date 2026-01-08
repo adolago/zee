@@ -324,7 +324,7 @@ describe("resolveAuthProfileOrder", () => {
 describe("ensureAuthProfileStore", () => {
   it("migrates legacy auth.json and deletes it (PR #368)", () => {
     const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-auth-profiles-"),
+      path.join(os.tmpdir(), "zee-auth-profiles-"),
     );
     try {
       const legacyPath = path.join(agentDir, "auth.json");
@@ -379,13 +379,13 @@ describe("auth profile cooldowns", () => {
 describe("external CLI credential sync", () => {
   it("syncs Claude CLI credentials into anthropic:claude-cli", () => {
     const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-cli-sync-"),
+      path.join(os.tmpdir(), "zee-cli-sync-"),
     );
     const originalHome = snapshotHomeEnv();
 
     try {
       // Create a temp home with Claude CLI credentials
-      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-home-"));
+      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "zee-home-"));
       setTempHome(tempHome);
 
       // Create Claude CLI credentials
@@ -441,12 +441,12 @@ describe("external CLI credential sync", () => {
 
   it("syncs Codex CLI credentials into openai-codex:codex-cli", () => {
     const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-codex-sync-"),
+      path.join(os.tmpdir(), "zee-codex-sync-"),
     );
     const originalHome = snapshotHomeEnv();
 
     try {
-      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-home-"));
+      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "zee-home-"));
       setTempHome(tempHome);
 
       // Create Codex CLI credentials
@@ -485,12 +485,12 @@ describe("external CLI credential sync", () => {
 
   it("does not overwrite API keys when syncing external CLI creds", () => {
     const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-no-overwrite-"),
+      path.join(os.tmpdir(), "zee-no-overwrite-"),
     );
     const originalHome = snapshotHomeEnv();
 
     try {
-      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-home-"));
+      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "zee-home-"));
       setTempHome(tempHome);
 
       // Create Claude CLI credentials
@@ -539,12 +539,12 @@ describe("external CLI credential sync", () => {
 
   it("does not overwrite fresher store OAuth with older Claude CLI credentials", () => {
     const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-cli-no-downgrade-"),
+      path.join(os.tmpdir(), "zee-cli-no-downgrade-"),
     );
     const originalHome = snapshotHomeEnv();
 
     try {
-      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-home-"));
+      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "zee-home-"));
       setTempHome(tempHome);
 
       const claudeDir = path.join(tempHome, ".claude");
@@ -589,12 +589,12 @@ describe("external CLI credential sync", () => {
 
   it("updates codex-cli profile when Codex CLI refresh token changes", () => {
     const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-codex-refresh-sync-"),
+      path.join(os.tmpdir(), "zee-codex-refresh-sync-"),
     );
     const originalHome = snapshotHomeEnv();
 
     try {
-      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-home-"));
+      const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "zee-home-"));
       setTempHome(tempHome);
 
       const codexDir = path.join(tempHome, ".codex");

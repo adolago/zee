@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { prependSystemEvents } from "../auto-reply/reply/session-updates.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   enqueueSystemEvent,
   peekSystemEvents,
   resetSystemEventsForTest,
 } from "./system-events.js";
 
-const cfg = {} as unknown as ClawdbotConfig;
+const cfg = {} as unknown as ZeeConfig;
 
 describe("system events (session routing)", () => {
   beforeEach(() => {

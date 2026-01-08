@@ -28,23 +28,23 @@ vi.mock("../agents/model-catalog.js", () => ({
 }));
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
-  const base = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-reply-"));
+  const base = await fs.mkdtemp(path.join(os.tmpdir(), "zee-reply-"));
   const previousHome = process.env.HOME;
-  const previousStateDir = process.env.CLAWDBOT_STATE_DIR;
-  const previousAgentDir = process.env.CLAWDBOT_AGENT_DIR;
+  const previousStateDir = process.env.ZEE_STATE_DIR;
+  const previousAgentDir = process.env.ZEE_AGENT_DIR;
   const previousPiAgentDir = process.env.PI_CODING_AGENT_DIR;
   process.env.HOME = base;
-  process.env.CLAWDBOT_STATE_DIR = path.join(base, ".clawdbot");
-  process.env.CLAWDBOT_AGENT_DIR = path.join(base, ".clawdbot", "agent");
-  process.env.PI_CODING_AGENT_DIR = process.env.CLAWDBOT_AGENT_DIR;
+  process.env.ZEE_STATE_DIR = path.join(base, ".zee");
+  process.env.ZEE_AGENT_DIR = path.join(base, ".zee", "agent");
+  process.env.PI_CODING_AGENT_DIR = process.env.ZEE_AGENT_DIR;
   try {
     return await fn(base);
   } finally {
     process.env.HOME = previousHome;
-    if (previousStateDir === undefined) delete process.env.CLAWDBOT_STATE_DIR;
-    else process.env.CLAWDBOT_STATE_DIR = previousStateDir;
-    if (previousAgentDir === undefined) delete process.env.CLAWDBOT_AGENT_DIR;
-    else process.env.CLAWDBOT_AGENT_DIR = previousAgentDir;
+    if (previousStateDir === undefined) delete process.env.ZEE_STATE_DIR;
+    else process.env.ZEE_STATE_DIR = previousStateDir;
+    if (previousAgentDir === undefined) delete process.env.ZEE_AGENT_DIR;
+    else process.env.ZEE_AGENT_DIR = previousAgentDir;
     if (previousPiAgentDir === undefined)
       delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = previousPiAgentDir;
@@ -917,7 +917,7 @@ describe("directive behavior", () => {
     await withTempHome(async (home) => {
       vi.mocked(runEmbeddedPiAgent).mockReset();
       const storePath = path.join(home, "sessions.json");
-      const authDir = path.join(home, ".clawdbot", "agent");
+      const authDir = path.join(home, ".zee", "agent");
       await fs.mkdir(authDir, { recursive: true, mode: 0o700 });
       await fs.writeFile(
         path.join(authDir, "auth-profiles.json"),

@@ -21,8 +21,8 @@ How to see whether the WhatsApp Web/Baileys bridge is healthy from the menu bar 
 - **Connections tab** surfaces provider status + controls for WhatsApp/Telegram (login QR, logout, probe, last disconnect/error).
 
 ## How the probe works
-- App runs `clawdbot health --json` via `ShellExecutor` every ~60s and on demand. The probe loads creds, attempts a short Baileys connect, and reports status without sending messages.
+- App runs `zee health --json` via `ShellExecutor` every ~60s and on demand. The probe loads creds, attempts a short Baileys connect, and reports status without sending messages.
 - Cache the last good snapshot and the last error separately to avoid flicker; show the timestamp of each.
 
 ## When in doubt
-- You can still use the CLI flow in [`docs/health.md`](/gateway/health) (`clawdbot status`, `clawdbot status --deep`, `clawdbot health --json`) and tail `/tmp/clawdbot/clawdbot-*.log` for `web-heartbeat` / `web-reconnect`.
+- You can still use the CLI flow in [`docs/health.md`](/gateway/health) (`zee status`, `zee status --deep`, `zee health --json`) and tail `/tmp/zee/zee-*.log` for `web-heartbeat` / `web-reconnect`.

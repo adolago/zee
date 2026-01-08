@@ -77,7 +77,7 @@ struct SettingsRootView: View {
         .padding(.vertical, 22)
         .frame(width: SettingsTab.windowWidth, height: SettingsTab.windowHeight, alignment: .topLeading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onReceive(NotificationCenter.default.publisher(for: .clawdbotSelectSettingsTab)) { note in
+        .onReceive(NotificationCenter.default.publisher(for: .zeeSelectSettingsTab)) { note in
             if let tab = note.object as? SettingsTab {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
                     self.selectedTab = tab
@@ -111,8 +111,8 @@ struct SettingsRootView: View {
 
     private var nixManagedBanner: some View {
         // Prefer gateway-resolved paths; fall back to local env defaults if disconnected.
-        let configPath = self.snapshotPaths.configPath ?? ClawdbotPaths.configURL.path
-        let stateDir = self.snapshotPaths.stateDir ?? ClawdbotPaths.stateDirURL.path
+        let configPath = self.snapshotPaths.configPath ?? ZeePaths.configURL.path
+        let stateDir = self.snapshotPaths.stateDir ?? ZeePaths.stateDirURL.path
 
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -227,7 +227,7 @@ enum SettingsTabRouter {
 }
 
 extension Notification.Name {
-    static let clawdbotSelectSettingsTab = Notification.Name("clawdbotSelectSettingsTab")
+    static let zeeSelectSettingsTab = Notification.Name("zeeSelectSettingsTab")
 }
 
 #if DEBUG

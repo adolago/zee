@@ -1,10 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { type ClawdbotConfig, loadConfig } from "../config/config.js";
-import { resolveClawdbotAgentDir } from "./agent-paths.js";
+import { type ZeeConfig, loadConfig } from "../config/config.js";
+import { resolveZeeAgentDir } from "./agent-paths.js";
 
-type ModelsConfig = NonNullable<ClawdbotConfig["models"]>;
+type ModelsConfig = NonNullable<ZeeConfig["models"]>;
 
 const DEFAULT_MODE: NonNullable<ModelsConfig["mode"]> = "merge";
 
@@ -21,8 +21,8 @@ async function readJson(pathname: string): Promise<unknown> {
   }
 }
 
-export async function ensureClawdbotModelsJson(
-  config?: ClawdbotConfig,
+export async function ensureZeeModelsJson(
+  config?: ZeeConfig,
   agentDirOverride?: string,
 ): Promise<{ agentDir: string; wrote: boolean }> {
   const cfg = config ?? loadConfig();
@@ -30,14 +30,14 @@ export async function ensureClawdbotModelsJson(
   if (!providers || Object.keys(providers).length === 0) {
     const agentDir = agentDirOverride?.trim()
       ? agentDirOverride.trim()
-      : resolveClawdbotAgentDir();
+      : resolveZeeAgentDir();
     return { agentDir, wrote: false };
   }
 
   const mode = cfg.models?.mode ?? DEFAULT_MODE;
   const agentDir = agentDirOverride?.trim()
     ? agentDirOverride.trim()
-    : resolveClawdbotAgentDir();
+    : resolveZeeAgentDir();
   const targetPath = path.join(agentDir, "models.json");
 
   let mergedProviders = providers;

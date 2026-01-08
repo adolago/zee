@@ -1,4 +1,4 @@
-import { CONFIG_PATH_CLAWDBOT, loadConfig } from "../../config/config.js";
+import { CONFIG_PATH_ZEE, loadConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import {
   ensureFlagCompatibility,
@@ -71,7 +71,7 @@ export async function modelsAliasesAddCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   runtime.log(`Alias ${alias} -> ${resolved.provider}/${resolved.model}`);
 }
 
@@ -102,7 +102,7 @@ export async function modelsAliasesRemoveCommand(
     };
   });
 
-  runtime.log(`Updated ${CONFIG_PATH_CLAWDBOT}`);
+  runtime.log(`Updated ${CONFIG_PATH_ZEE}`);
   if (
     !updated.agent?.models ||
     Object.values(updated.agent.models).every((entry) => !entry?.alias?.trim())

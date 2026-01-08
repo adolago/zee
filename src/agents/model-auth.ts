@@ -1,5 +1,5 @@
 import { type Api, getEnvApiKey, type Model } from "@mariozechner/pi-ai";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { ModelProviderConfig } from "../config/types.js";
 import { getShellEnvAppliedKeys } from "../infra/shell-env.js";
 import {
@@ -16,7 +16,7 @@ export {
 } from "./auth-profiles.js";
 
 export function getCustomProviderApiKey(
-  cfg: ClawdbotConfig | undefined,
+  cfg: ZeeConfig | undefined,
   provider: string,
 ): string | undefined {
   const providers = cfg?.models?.providers ?? {};
@@ -27,7 +27,7 @@ export function getCustomProviderApiKey(
 
 export async function resolveApiKeyForProvider(params: {
   provider: string;
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   profileId?: string;
   preferredProfile?: string;
   store?: AuthProfileStore;
@@ -145,7 +145,7 @@ export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
 
 export async function getApiKeyForModel(params: {
   model: Model<Api>;
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   profileId?: string;
   preferredProfile?: string;
   store?: AuthProfileStore;

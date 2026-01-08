@@ -43,7 +43,7 @@ vi.mock("../web/session.js", () => webMocks);
 import { getReplyFromConfig } from "./reply.js";
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
-  const base = await fs.mkdtemp(join(tmpdir(), "clawdbot-typing-"));
+  const base = await fs.mkdtemp(join(tmpdir(), "zee-typing-"));
   const previousHome = process.env.HOME;
   process.env.HOME = base;
   try {

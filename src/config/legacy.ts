@@ -16,54 +16,54 @@ const LEGACY_CONFIG_RULES: LegacyConfigRule[] = [
   {
     path: ["routing", "allowFrom"],
     message:
-      "routing.allowFrom was removed; use whatsapp.allowFrom instead (run `clawdbot doctor` to migrate).",
+      "routing.allowFrom was removed; use whatsapp.allowFrom instead (run `zee doctor` to migrate).",
   },
   {
     path: ["routing", "groupChat", "requireMention"],
     message:
-      'routing.groupChat.requireMention was removed; use whatsapp/telegram/imessage groups defaults (e.g. whatsapp.groups."*".requireMention) instead (run `clawdbot doctor` to migrate).',
+      'routing.groupChat.requireMention was removed; use whatsapp/telegram/imessage groups defaults (e.g. whatsapp.groups."*".requireMention) instead (run `zee doctor` to migrate).',
   },
   {
     path: ["telegram", "requireMention"],
     message:
-      'telegram.requireMention was removed; use telegram.groups."*".requireMention instead (run `clawdbot doctor` to migrate).',
+      'telegram.requireMention was removed; use telegram.groups."*".requireMention instead (run `zee doctor` to migrate).',
   },
   {
     path: ["agent", "model"],
     message:
-      "agent.model string was replaced by agent.model.primary/fallbacks and agent.models (run `clawdbot doctor` to migrate).",
+      "agent.model string was replaced by agent.model.primary/fallbacks and agent.models (run `zee doctor` to migrate).",
     match: (value) => typeof value === "string",
   },
   {
     path: ["agent", "imageModel"],
     message:
-      "agent.imageModel string was replaced by agent.imageModel.primary/fallbacks (run `clawdbot doctor` to migrate).",
+      "agent.imageModel string was replaced by agent.imageModel.primary/fallbacks (run `zee doctor` to migrate).",
     match: (value) => typeof value === "string",
   },
   {
     path: ["agent", "allowedModels"],
     message:
-      "agent.allowedModels was replaced by agent.models (run `clawdbot doctor` to migrate).",
+      "agent.allowedModels was replaced by agent.models (run `zee doctor` to migrate).",
   },
   {
     path: ["agent", "modelAliases"],
     message:
-      "agent.modelAliases was replaced by agent.models.*.alias (run `clawdbot doctor` to migrate).",
+      "agent.modelAliases was replaced by agent.models.*.alias (run `zee doctor` to migrate).",
   },
   {
     path: ["agent", "modelFallbacks"],
     message:
-      "agent.modelFallbacks was replaced by agent.model.fallbacks (run `clawdbot doctor` to migrate).",
+      "agent.modelFallbacks was replaced by agent.model.fallbacks (run `zee doctor` to migrate).",
   },
   {
     path: ["agent", "imageModelFallbacks"],
     message:
-      "agent.imageModelFallbacks was replaced by agent.imageModel.fallbacks (run `clawdbot doctor` to migrate).",
+      "agent.imageModelFallbacks was replaced by agent.imageModel.fallbacks (run `zee doctor` to migrate).",
   },
   {
     path: ["gateway", "token"],
     message:
-      "gateway.token is ignored; use gateway.auth.token instead (run `clawdbot doctor` to migrate).",
+      "gateway.token is ignored; use gateway.auth.token instead (run `zee doctor` to migrate).",
   },
 ];
 

@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Observation
 import OSLog
@@ -10,28 +10,28 @@ import AppKit
 import UIKit
 #endif
 
-private let chatUILogger = Logger(subsystem: "com.clawdbot", category: "ClawdbotChatUI")
+private let chatUILogger = Logger(subsystem: "com.zee", category: "ZeeChatUI")
 
 @MainActor
 @Observable
-public final class ClawdbotChatViewModel {
-    public private(set) var messages: [ClawdbotChatMessage] = []
+public final class ZeeChatViewModel {
+    public private(set) var messages: [ZeeChatMessage] = []
     public var input: String = ""
     public var thinkingLevel: String = "off"
     public private(set) var isLoading = false
     public private(set) var isSending = false
     public private(set) var isAborting = false
     public var errorText: String?
-    public var attachments: [ClawdbotPendingAttachment] = []
+    public var attachments: [ZeePendingAttachment] = []
     public private(set) var healthOK: Bool = false
     public private(set) var pendingRunCount: Int = 0
 
     public private(set) var sessionKey: String
     public private(set) var sessionId: String?
     public private(set) var streamingAssistantText: String?
-    public private(set) var pendingToolCalls: [ClawdbotChatPendingToolCall] = []
-    public private(set) var sessions: [ClawdbotChatSessionEntry] = []
-    private let transport: any ClawdbotChatTransport
+    public private(set) var pendingToolCalls: [ZeeChatPendingToolCall] = []
+    public private(set) var sessions: [ZeeChatSessionEntry] = []
+    private let transport: any ZeeChatTransport
 
     @ObservationIgnored
     private nonisolated(unsafe) var eventTask: Task<Void, Never>?
@@ -43,7 +43,7 @@ public final class ClawdbotChatViewModel {
     private nonisolated(unsafe) var pendingRunTimeoutTasks: [String: Task<Void, Never>] = [:]
     private let pendingRunTimeoutMs: UInt64 = 120_000
 
-    private var pendingToolCallsById: [String: ClawdbotChatPendingToolCall] = [:] {
+    private var pendingToolCallsById: [String: ZeeChatPendingToolCall] = [:] {
         didSet {
             self.pendingToolCalls = self.pendingToolCallsById.values
                 .sorted { ($0.startedAt ?? 0) < ($1.startedAt ?? 0) }
@@ -52,7 +52,7 @@ public final class ClawdbotChatViewModel {
 
     private var lastHealthPollAt: Date?
 
-    public init(sessionKey: String, transport: any ClawdbotChatTransport) {
+    public init(sessionKey: String, transport: any ZeeChatTransport) {
         self.sessionKey = sessionKey
         self.transport = transport
 
@@ -99,12 +99,12 @@ public final class ClawdbotChatViewModel {
         Task { await self.performSwitchSession(to: sessionKey) }
     }
 
-    public var sessionChoices: [ClawdbotChatSessionEntry] {
+    public var sessionChoices: [ZeeChatSessionEntry] {
         let now = Date().timeIntervalSince1970 * 1000
         let cutoff = now - (24 * 60 * 60 * 1000)
         let sorted = self.sessions.sorted { ($0.updatedAt ?? 0) > ($1.updatedAt ?? 0) }
         var seen = Set<String>()
-        var recent: [ClawdbotChatSessionEntry] = []
+        var recent: [ZeeChatSessionEntry] = []
         for entry in sorted {
             guard !seen.contains(entry.key) else { continue }
             seen.insert(entry.key)
@@ -113,7 +113,7 @@ public final class ClawdbotChatViewModel {
         }
 
         let mainKey = "main"
-        var result: [ClawdbotChatSessionEntry] = []
+        var result: [ZeeChatSessionEntry] = []
         var included = Set<String>()
         if let main = sorted.first(where: { $0.key == mainKey }) {
             result.append(main)
@@ -143,7 +143,7 @@ public final class ClawdbotChatViewModel {
         Task { await self.addImageAttachment(url: nil, data: data, fileName: fileName, mimeType: mimeType) }
     }
 
-    public func removeAttachment(_ id: ClawdbotPendingAttachment.ID) {
+    public func removeAttachment(_ id: ZeePendingAttachment.ID) {
         self.attachments.removeAll { $0.id == id }
     }
 
@@ -185,15 +185,15 @@ public final class ClawdbotChatViewModel {
         }
     }
 
-    private static func decodeMessages(_ raw: [AnyCodable]) -> [ClawdbotChatMessage] {
+    private static func decodeMessages(_ raw: [AnyCodable]) -> [ZeeChatMessage] {
         let decoded = raw.compactMap { item in
-            (try? ChatPayloadDecoding.decode(item, as: ClawdbotChatMessage.self))
+            (try? ChatPayloadDecoding.decode(item, as: ZeeChatMessage.self))
         }
         return Self.dedupeMessages(decoded)
     }
 
-    private static func dedupeMessages(_ messages: [ClawdbotChatMessage]) -> [ClawdbotChatMessage] {
-        var result: [ClawdbotChatMessage] = []
+    private static func dedupeMessages(_ messages: [ZeeChatMessage]) -> [ZeeChatMessage] {
+        var result: [ZeeChatMessage] = []
         result.reserveCapacity(messages.count)
         var seen = Set<String>()
 
@@ -210,7 +210,7 @@ public final class ClawdbotChatViewModel {
         return result
     }
 
-    private static func dedupeKey(for message: ClawdbotChatMessage) -> String? {
+    private static func dedupeKey(for message: ZeeChatMessage) -> String? {
         guard let timestamp = message.timestamp else { return nil }
         let text = message.content.compactMap(\.text).joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -238,8 +238,8 @@ public final class ClawdbotChatViewModel {
         self.streamingAssistantText = nil
 
         // Optimistically append user message to UI.
-        var userContent: [ClawdbotChatMessageContent] = [
-            ClawdbotChatMessageContent(
+        var userContent: [ZeeChatMessageContent] = [
+            ZeeChatMessageContent(
                 type: "text",
                 text: messageText,
                 thinking: nil,
@@ -251,8 +251,8 @@ public final class ClawdbotChatViewModel {
                 name: nil,
                 arguments: nil),
         ]
-        let encodedAttachments = self.attachments.map { att -> ClawdbotChatAttachmentPayload in
-            ClawdbotChatAttachmentPayload(
+        let encodedAttachments = self.attachments.map { att -> ZeeChatAttachmentPayload in
+            ZeeChatAttachmentPayload(
                 type: att.type,
                 mimeType: att.mimeType,
                 fileName: att.fileName,
@@ -260,7 +260,7 @@ public final class ClawdbotChatViewModel {
         }
         for att in encodedAttachments {
             userContent.append(
-                ClawdbotChatMessageContent(
+                ZeeChatMessageContent(
                     type: att.type,
                     text: nil,
                     thinking: nil,
@@ -273,7 +273,7 @@ public final class ClawdbotChatViewModel {
                     arguments: nil))
         }
         self.messages.append(
-            ClawdbotChatMessage(
+            ZeeChatMessage(
                 id: UUID(),
                 role: "user",
                 content: userContent,
@@ -337,8 +337,8 @@ public final class ClawdbotChatViewModel {
         await self.bootstrap()
     }
 
-    private func placeholderSession(key: String) -> ClawdbotChatSessionEntry {
-        ClawdbotChatSessionEntry(
+    private func placeholderSession(key: String) -> ZeeChatSessionEntry {
+        ZeeChatSessionEntry(
             key: key,
             kind: nil,
             displayName: nil,
@@ -359,7 +359,7 @@ public final class ClawdbotChatViewModel {
             contextTokens: nil)
     }
 
-    private func handleTransportEvent(_ evt: ClawdbotChatTransportEvent) {
+    private func handleTransportEvent(_ evt: ZeeChatTransportEvent) {
         switch evt {
         case let .health(ok):
             self.healthOK = ok
@@ -375,7 +375,7 @@ public final class ClawdbotChatViewModel {
         }
     }
 
-    private func handleChatEvent(_ chat: ClawdbotChatEventPayload) {
+    private func handleChatEvent(_ chat: ZeeChatEventPayload) {
         if let sessionKey = chat.sessionKey, sessionKey != self.sessionKey {
             return
         }
@@ -412,7 +412,7 @@ public final class ClawdbotChatViewModel {
         }
     }
 
-    private func handleAgentEvent(_ evt: ClawdbotAgentEventPayload) {
+    private func handleAgentEvent(_ evt: ZeeAgentEventPayload) {
         if let sessionId, evt.runId != sessionId {
             return
         }
@@ -428,7 +428,7 @@ public final class ClawdbotChatViewModel {
             guard let toolCallId = evt.data["toolCallId"]?.value as? String else { return }
             if phase == "start" {
                 let args = evt.data["args"]
-                self.pendingToolCallsById[toolCallId] = ClawdbotChatPendingToolCall(
+                self.pendingToolCallsById[toolCallId] = ZeeChatPendingToolCall(
                     toolCallId: toolCallId,
                     name: name,
                     args: args,
@@ -539,7 +539,7 @@ public final class ClawdbotChatViewModel {
 
         let preview = Self.previewImage(data: data)
         self.attachments.append(
-            ClawdbotPendingAttachment(
+            ZeePendingAttachment(
                 url: url,
                 data: data,
                 fileName: fileName,
@@ -547,7 +547,7 @@ public final class ClawdbotChatViewModel {
                 preview: preview))
     }
 
-    private static func previewImage(data: Data) -> ClawdbotPlatformImage? {
+    private static func previewImage(data: Data) -> ZeePlatformImage? {
         #if canImport(AppKit)
         NSImage(data: data)
         #elseif canImport(UIKit)

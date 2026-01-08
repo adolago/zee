@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/types.js";
+import type { ZeeConfig } from "../config/types.js";
 
 export type ChatCommandDefinition = {
   key: string;
@@ -36,7 +36,7 @@ const CHAT_COMMANDS: ChatCommandDefinition[] = [
   {
     key: "restart",
     nativeName: "restart",
-    description: "Restart Clawdbot.",
+    description: "Restart Zee.",
     textAliases: ["/restart"],
   },
   {
@@ -189,7 +189,7 @@ export function supportsNativeCommands(surface?: string): boolean {
 }
 
 export function shouldHandleTextCommands(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   surface?: string;
   commandSource?: "text" | "native";
 }): boolean {

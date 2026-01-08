@@ -1,4 +1,4 @@
-package com.clawdbot.android.voice
+package com.zee.android.voice
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

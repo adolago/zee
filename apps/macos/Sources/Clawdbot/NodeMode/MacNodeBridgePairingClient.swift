@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 
@@ -15,7 +15,7 @@ actor MacNodeBridgePairingClient {
     {
         self.lineBuffer = Data()
         let connection = NWConnection(to: endpoint, using: .tcp)
-        let queue = DispatchQueue(label: "com.clawdbot.macos.bridge-client")
+        let queue = DispatchQueue(label: "com.zee.macos.bridge-client")
         defer { connection.cancel() }
         try await AsyncTimeout.withTimeout(
             seconds: 8,

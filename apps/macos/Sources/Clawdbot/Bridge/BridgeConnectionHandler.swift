@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 import OSLog
@@ -19,7 +19,7 @@ actor BridgeConnectionHandler {
     private let logger: Logger
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
-    private let queue = DispatchQueue(label: "com.clawdbot.bridge.connection")
+    private let queue = DispatchQueue(label: "com.zee.bridge.connection")
 
     private var buffer = Data()
     private var isAuthenticated = false

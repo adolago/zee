@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { CONFIG_DIR } from "../utils.js";
 import {
   hasBinary,
@@ -68,7 +68,7 @@ export type SkillStatusReport = {
 };
 
 function resolveSkillKey(entry: SkillEntry): string {
-  return entry.clawdbot?.skillKey ?? entry.skill.name;
+  return entry.zee?.skillKey ?? entry.skill.name;
 }
 
 function selectPreferredInstallSpec(
@@ -97,7 +97,7 @@ function normalizeInstallOptions(
   entry: SkillEntry,
   prefs: SkillsInstallPreferences,
 ): SkillInstallOption[] {
-  const install = entry.clawdbot?.install ?? [];
+  const install = entry.zee?.install ?? [];
   if (install.length === 0) return [];
   const preferred = selectPreferredInstallSpec(install, prefs);
   if (!preferred) return [];
@@ -133,7 +133,7 @@ function normalizeInstallOptions(
 
 function buildSkillStatus(
   entry: SkillEntry,
-  config?: ClawdbotConfig,
+  config?: ZeeConfig,
   prefs?: SkillsInstallPreferences,
 ): SkillStatusEntry {
   const skillKey = resolveSkillKey(entry);
@@ -141,20 +141,20 @@ function buildSkillStatus(
   const disabled = skillConfig?.enabled === false;
   const allowBundled = resolveBundledAllowlist(config);
   const blockedByAllowlist = !isBundledSkillAllowed(entry, allowBundled);
-  const always = entry.clawdbot?.always === true;
-  const emoji = entry.clawdbot?.emoji ?? entry.frontmatter.emoji;
+  const always = entry.zee?.always === true;
+  const emoji = entry.zee?.emoji ?? entry.frontmatter.emoji;
   const homepageRaw =
-    entry.clawdbot?.homepage ??
+    entry.zee?.homepage ??
     entry.frontmatter.homepage ??
     entry.frontmatter.website ??
     entry.frontmatter.url;
   const homepage = homepageRaw?.trim() ? homepageRaw.trim() : undefined;
 
-  const requiredBins = entry.clawdbot?.requires?.bins ?? [];
-  const requiredAnyBins = entry.clawdbot?.requires?.anyBins ?? [];
-  const requiredEnv = entry.clawdbot?.requires?.env ?? [];
-  const requiredConfig = entry.clawdbot?.requires?.config ?? [];
-  const requiredOs = entry.clawdbot?.os ?? [];
+  const requiredBins = entry.zee?.requires?.bins ?? [];
+  const requiredAnyBins = entry.zee?.requires?.anyBins ?? [];
+  const requiredEnv = entry.zee?.requires?.env ?? [];
+  const requiredConfig = entry.zee?.requires?.config ?? [];
+  const requiredOs = entry.zee?.os ?? [];
 
   const missingBins = requiredBins.filter((bin) => !hasBinary(bin));
   const missingAnyBins =
@@ -170,7 +170,7 @@ function buildSkillStatus(
   for (const envName of requiredEnv) {
     if (process.env[envName]) continue;
     if (skillConfig?.env?.[envName]) continue;
-    if (skillConfig?.apiKey && entry.clawdbot?.primaryEnv === envName) {
+    if (skillConfig?.apiKey && entry.zee?.primaryEnv === envName) {
       continue;
     }
     missingEnv.push(envName);
@@ -213,7 +213,7 @@ function buildSkillStatus(
     filePath: entry.skill.filePath,
     baseDir: entry.skill.baseDir,
     skillKey,
-    primaryEnv: entry.clawdbot?.primaryEnv,
+    primaryEnv: entry.zee?.primaryEnv,
     emoji,
     homepage,
     always,
@@ -239,7 +239,7 @@ function buildSkillStatus(
 export function buildWorkspaceSkillStatus(
   workspaceDir: string,
   opts?: {
-    config?: ClawdbotConfig;
+    config?: ZeeConfig;
     managedSkillsDir?: string;
     entries?: SkillEntry[];
   },

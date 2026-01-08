@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   DEFAULT_ACCOUNT_ID,
   normalizeAccountId,
@@ -20,7 +20,7 @@ type ResolveTelegramTokenOpts = {
 };
 
 export function resolveTelegramToken(
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
   opts: ResolveTelegramTokenOpts = {},
 ): TelegramTokenResolution {
   const accountId = normalizeAccountId(opts.accountId);

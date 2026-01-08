@@ -78,9 +78,9 @@ describe("gateway SIGTERM", () => {
   it("exits 0 on SIGTERM", { timeout: 180_000 }, async () => {
     const port = await getFreePort();
     const stateDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "clawdbot-gateway-test-"),
+      path.join(os.tmpdir(), "zee-gateway-test-"),
     );
-    const configPath = path.join(stateDir, "clawdbot.json");
+    const configPath = path.join(stateDir, "zee.json");
     fs.writeFileSync(
       configPath,
       JSON.stringify({ gateway: { mode: "local", port } }, null, 2),
@@ -104,14 +104,14 @@ describe("gateway SIGTERM", () => {
         cwd: process.cwd(),
         env: {
           ...process.env,
-          CLAWDBOT_STATE_DIR: stateDir,
-          CLAWDBOT_CONFIG_PATH: configPath,
-          CLAWDBOT_SKIP_PROVIDERS: "1",
-          CLAWDBOT_SKIP_BROWSER_CONTROL_SERVER: "1",
-          CLAWDBOT_SKIP_CANVAS_HOST: "1",
+          ZEE_STATE_DIR: stateDir,
+          ZEE_CONFIG_PATH: configPath,
+          ZEE_SKIP_PROVIDERS: "1",
+          ZEE_SKIP_BROWSER_CONTROL_SERVER: "1",
+          ZEE_SKIP_CANVAS_HOST: "1",
           // Avoid port collisions with other test processes that may also start a bridge server.
-          CLAWDBOT_BRIDGE_HOST: "127.0.0.1",
-          CLAWDBOT_BRIDGE_PORT: "0",
+          ZEE_BRIDGE_HOST: "127.0.0.1",
+          ZEE_BRIDGE_PORT: "0",
         },
         stdio: ["ignore", "pipe", "pipe"],
       },

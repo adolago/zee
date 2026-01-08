@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 
@@ -39,7 +39,7 @@ actor MacNodeBridgeSession {
         let params = NWParameters.tcp
         params.includePeerToPeer = true
         let connection = NWConnection(to: endpoint, using: params)
-        let queue = DispatchQueue(label: "com.clawdbot.macos.bridge-session")
+        let queue = DispatchQueue(label: "com.zee.macos.bridge-session")
         self.connection = connection
         self.queue = queue
 

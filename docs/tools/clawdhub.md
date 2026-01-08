@@ -8,13 +8,13 @@ read_when:
 
 # ClawdHub
 
-ClawdHub is the **public skill registry for Clawdbot**. It is a free service: all skills are public, open, and visible to everyone for sharing and reuse. A skill is just a folder with a `SKILL.md` file (plus supporting text files). You can browse skills in the web app or use the CLI to search, install, update, and publish skills.
+ClawdHub is the **public skill registry for Zee**. It is a free service: all skills are public, open, and visible to everyone for sharing and reuse. A skill is just a folder with a `SKILL.md` file (plus supporting text files). You can browse skills in the web app or use the CLI to search, install, update, and publish skills.
 
 Site: [clawdhub.com](https://clawdhub.com)
 
 ## Who this is for (beginner-friendly)
 
-If you want to add new capabilities to your Clawdbot agent, ClawdHub is the easiest way to find and install skills. You do not need to know how the backend works. You can:
+If you want to add new capabilities to your Zee agent, ClawdHub is the easiest way to find and install skills. You do not need to know how the backend works. You can:
 
 - Search for skills by plain language.
 - Install a skill into your workspace.
@@ -28,7 +28,7 @@ If you want to add new capabilities to your Clawdbot agent, ClawdHub is the easi
    - `clawdhub search "calendar"`
 3) Install a skill:
    - `clawdhub install <skill-slug>`
-4) Start a new Clawdbot session so it picks up the new skill.
+4) Start a new Zee session so it picks up the new skill.
 
 ## Install the CLI
 
@@ -46,9 +46,9 @@ pnpm add -g clawdhub
 bun add -g clawdhub
 ```
 
-## How it fits into Clawdbot
+## How it fits into Zee
 
-By default, the CLI installs skills into `./skills` under your current working directory. Clawdbot loads workspace skills from `<workspace>/skills` and will pick them up in the **next** session. If you already use `~/.clawdbot/skills` or bundled skills, workspace skills take precedence.
+By default, the CLI installs skills into `./skills` under your current working directory. Zee loads workspace skills from `<workspace>/skills` and will pick them up in the **next** session. If you already use `~/.zee/skills` or bundled skills, workspace skills take precedence.
 
 For more detail on how skills are loaded and gated, see `docs/skills.md`.
 
@@ -180,7 +180,7 @@ Updates compare the local skill contents to registry versions using a content ha
 
 ### Sync scanning and fallback roots
 
-`clawdhub sync` scans your current workdir first. If no skills are found, it falls back to known legacy locations (for example `~/clawdbot/skills` and `~/.clawdbot/skills`). This is designed to find older skill installs without extra flags.
+`clawdhub sync` scans your current workdir first. If no skills are found, it falls back to known legacy locations (for example `~/zee/skills` and `~/.zee/skills`). This is designed to find older skill installs without extra flags.
 
 ### Storage and lockfile
 

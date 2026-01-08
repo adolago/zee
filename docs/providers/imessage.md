@@ -17,7 +17,7 @@ Status: external CLI integration. Gateway spawns `imsg rpc` (JSON-RPC over stdio
 
 ## Requirements
 - macOS with Messages signed in.
-- Full Disk Access for Clawdbot + `imsg` (Messages DB access).
+- Full Disk Access for Zee + `imsg` (Messages DB access).
 - Automation permission when sending.
 - `imessage.cliPath` can point to any command that proxies stdin/stdout (for example, a wrapper script that SSHes to another Mac and runs `imsg rpc`).
 
@@ -27,7 +27,7 @@ Status: external CLI integration. Gateway spawns `imsg rpc` (JSON-RPC over stdio
 
 ### Remote/SSH variant (optional)
 If you want iMessage on another Mac, set `imessage.cliPath` to a wrapper that
-execs `ssh` and runs `imsg rpc` on the remote host. Clawdbot only needs a
+execs `ssh` and runs `imsg rpc` on the remote host. Zee only needs a
 stdio stream; `imsg` still runs on the remote macOS host.
 
 Example wrapper (save somewhere in your PATH and `chmod +x`):
@@ -60,8 +60,8 @@ DMs:
 - Default: `imessage.dmPolicy = "pairing"`.
 - Unknown senders receive a pairing code; messages are ignored until approved (codes expire after 1 hour).
 - Approve via:
-  - `clawdbot pairing list --provider imessage`
-  - `clawdbot pairing approve --provider imessage <CODE>`
+  - `zee pairing list --provider imessage`
+  - `zee pairing approve --provider imessage <CODE>`
 - Pairing is the default token exchange for iMessage DMs. Details: [Pairing](/start/pairing)
 
 Groups:

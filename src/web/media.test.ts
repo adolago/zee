@@ -27,7 +27,7 @@ describe("web media loading", () => {
       .jpeg({ quality: 95 })
       .toBuffer();
 
-    const file = path.join(os.tmpdir(), `clawdbot-media-${Date.now()}.jpg`);
+    const file = path.join(os.tmpdir(), `zee-media-${Date.now()}.jpg`);
     tmpFiles.push(file);
     await fs.writeFile(file, buffer);
 
@@ -45,7 +45,7 @@ describe("web media loading", () => {
     })
       .png()
       .toBuffer();
-    const wrongExt = path.join(os.tmpdir(), `clawdbot-media-${Date.now()}.bin`);
+    const wrongExt = path.join(os.tmpdir(), `zee-media-${Date.now()}.bin`);
     tmpFiles.push(wrongExt);
     await fs.writeFile(wrongExt, pngBuffer);
 
@@ -138,7 +138,7 @@ describe("web media loading", () => {
       0x3b, // minimal LZW data + trailer
     ]);
 
-    const file = path.join(os.tmpdir(), `clawdbot-media-${Date.now()}.gif`);
+    const file = path.join(os.tmpdir(), `zee-media-${Date.now()}.gif`);
     tmpFiles.push(file);
     await fs.writeFile(file, gifBuffer);
 

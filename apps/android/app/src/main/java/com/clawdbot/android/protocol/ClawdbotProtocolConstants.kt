@@ -1,6 +1,6 @@
-package com.clawdbot.android.protocol
+package com.zee.android.protocol
 
-enum class ClawdbotCapability(val rawValue: String) {
+enum class ZeeCapability(val rawValue: String) {
   Canvas("canvas"),
   Camera("camera"),
   Screen("screen"),
@@ -9,7 +9,7 @@ enum class ClawdbotCapability(val rawValue: String) {
   Location("location"),
 }
 
-enum class ClawdbotCanvasCommand(val rawValue: String) {
+enum class ZeeCanvasCommand(val rawValue: String) {
   Present("canvas.present"),
   Hide("canvas.hide"),
   Navigate("canvas.navigate"),
@@ -22,7 +22,7 @@ enum class ClawdbotCanvasCommand(val rawValue: String) {
   }
 }
 
-enum class ClawdbotCanvasA2UICommand(val rawValue: String) {
+enum class ZeeCanvasA2UICommand(val rawValue: String) {
   Push("canvas.a2ui.push"),
   PushJSONL("canvas.a2ui.pushJSONL"),
   Reset("canvas.a2ui.reset"),
@@ -33,7 +33,7 @@ enum class ClawdbotCanvasA2UICommand(val rawValue: String) {
   }
 }
 
-enum class ClawdbotCameraCommand(val rawValue: String) {
+enum class ZeeCameraCommand(val rawValue: String) {
   Snap("camera.snap"),
   Clip("camera.clip"),
   ;
@@ -43,7 +43,7 @@ enum class ClawdbotCameraCommand(val rawValue: String) {
   }
 }
 
-enum class ClawdbotScreenCommand(val rawValue: String) {
+enum class ZeeScreenCommand(val rawValue: String) {
   Record("screen.record"),
   ;
 
@@ -52,7 +52,7 @@ enum class ClawdbotScreenCommand(val rawValue: String) {
   }
 }
 
-enum class ClawdbotSmsCommand(val rawValue: String) {
+enum class ZeeSmsCommand(val rawValue: String) {
   Send("sms.send"),
   ;
 
@@ -61,7 +61,7 @@ enum class ClawdbotSmsCommand(val rawValue: String) {
   }
 }
 
-enum class ClawdbotLocationCommand(val rawValue: String) {
+enum class ZeeLocationCommand(val rawValue: String) {
   Get("location.get"),
   ;
 

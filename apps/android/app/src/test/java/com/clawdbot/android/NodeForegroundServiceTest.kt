@@ -1,4 +1,4 @@
-package com.clawdbot.android
+package com.zee.android
 
 import android.app.Notification
 import android.content.Intent

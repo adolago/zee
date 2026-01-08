@@ -1,6 +1,6 @@
-package com.clawdbot.android.chat
+package com.zee.android.chat
 
-import com.clawdbot.android.bridge.BridgeSession
+import com.zee.android.bridge.BridgeSession
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope

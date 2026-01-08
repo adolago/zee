@@ -73,8 +73,8 @@ Notes
 ## CLI / UX
 
 Login
-- `clawdbot login anthropic` → create/replace `anthropic:default`.
-- `clawdbot login anthropic --profile work` → create/replace `anthropic:work`.
+- `zee login anthropic` → create/replace `anthropic:default`.
+- `zee login anthropic --profile work` → create/replace `anthropic:work`.
 
 Model selection
 - `/model Opus` → resolve alias to full id.

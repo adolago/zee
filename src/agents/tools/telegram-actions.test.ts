@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { handleTelegramAction } from "./telegram-actions.js";
 
 const reactMessageTelegram = vi.fn(async () => ({ ok: true }));
@@ -31,7 +31,7 @@ describe("handleTelegramAction", () => {
   });
 
   it("adds reactions", async () => {
-    const cfg = { telegram: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { telegram: { botToken: "tok" } } as ZeeConfig;
     await handleTelegramAction(
       {
         action: "react",
@@ -48,7 +48,7 @@ describe("handleTelegramAction", () => {
   });
 
   it("removes reactions on empty emoji", async () => {
-    const cfg = { telegram: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { telegram: { botToken: "tok" } } as ZeeConfig;
     await handleTelegramAction(
       {
         action: "react",
@@ -65,7 +65,7 @@ describe("handleTelegramAction", () => {
   });
 
   it("removes reactions when remove flag set", async () => {
-    const cfg = { telegram: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { telegram: { botToken: "tok" } } as ZeeConfig;
     await handleTelegramAction(
       {
         action: "react",
@@ -85,7 +85,7 @@ describe("handleTelegramAction", () => {
   it("respects reaction gating", async () => {
     const cfg = {
       telegram: { botToken: "tok", actions: { reactions: false } },
-    } as ClawdbotConfig;
+    } as ZeeConfig;
     await expect(
       handleTelegramAction(
         {
@@ -100,7 +100,7 @@ describe("handleTelegramAction", () => {
   });
 
   it("sends a text message", async () => {
-    const cfg = { telegram: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { telegram: { botToken: "tok" } } as ZeeConfig;
     const result = await handleTelegramAction(
       {
         action: "sendMessage",
@@ -121,7 +121,7 @@ describe("handleTelegramAction", () => {
   });
 
   it("sends a message with media", async () => {
-    const cfg = { telegram: { botToken: "tok" } } as ClawdbotConfig;
+    const cfg = { telegram: { botToken: "tok" } } as ZeeConfig;
     await handleTelegramAction(
       {
         action: "sendMessage",
@@ -141,7 +141,7 @@ describe("handleTelegramAction", () => {
   it("respects sendMessage gating", async () => {
     const cfg = {
       telegram: { botToken: "tok", actions: { sendMessage: false } },
-    } as ClawdbotConfig;
+    } as ZeeConfig;
     await expect(
       handleTelegramAction(
         {
@@ -156,7 +156,7 @@ describe("handleTelegramAction", () => {
 
   it("throws on missing bot token for sendMessage", async () => {
     delete process.env.TELEGRAM_BOT_TOKEN;
-    const cfg = {} as ClawdbotConfig;
+    const cfg = {} as ZeeConfig;
     await expect(
       handleTelegramAction(
         {

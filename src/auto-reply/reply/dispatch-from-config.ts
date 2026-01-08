@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import { logVerbose } from "../../globals.js";
 import { getReplyFromConfig } from "../reply.js";
 import type { MsgContext } from "../templating.js";
@@ -13,7 +13,7 @@ type DispatchFromConfigResult = {
 
 export async function dispatchReplyFromConfig(params: {
   ctx: MsgContext;
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   dispatcher: ReplyDispatcher;
   replyOptions?: Omit<GetReplyOptions, "onToolResult" | "onBlockReply">;
   replyResolver?: typeof getReplyFromConfig;

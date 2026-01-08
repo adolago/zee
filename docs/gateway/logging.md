@@ -7,17 +7,17 @@ read_when:
 
 # Logging
 
-Clawdbot has two log “surfaces”:
+Zee has two log “surfaces”:
 
 - **Console output** (what you see in the terminal / Debug UI).
 - **File logs** (JSON lines) written by the internal logger.
 
 ## File-based logger
 
-Clawdbot uses a file logger backed by `tslog` ([`src/logging.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/logging.ts)).
+Zee uses a file logger backed by `tslog` ([`src/logging.ts`](https://github.com/zee/zee/blob/main/src/logging.ts)).
 
-- Default rolling log file is under `/tmp/clawdbot/` (one file per day): `clawdbot-YYYY-MM-DD.log`
-- The log file path and level can be configured via `~/.clawdbot/clawdbot.json`:
+- Default rolling log file is under `/tmp/zee/` (one file per day): `zee-YYYY-MM-DD.log`
+- The log file path and level can be configured via `~/.zee/zee.json`:
   - `logging.file`
   - `logging.level`
 
@@ -27,7 +27,7 @@ The Control UI Logs tab tails this file via the gateway (`logs.tail`).
 CLI can do the same:
 
 ```bash
-clawdbot logs --follow
+zee logs --follow
 ```
 
 **Verbose vs. log levels**
@@ -40,7 +40,7 @@ clawdbot logs --follow
 
 ## Console capture
 
-The CLI entrypoint enables console capture ([`src/index.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/index.ts) calls `enableConsoleCapture()`).
+The CLI entrypoint enables console capture ([`src/index.ts`](https://github.com/zee/zee/blob/main/src/index.ts) calls `enableConsoleCapture()`).
 That means every `console.log/info/warn/error/debug/trace` is also written into the file logs,
 while still behaving normally on stdout/stderr.
 
@@ -72,7 +72,7 @@ The gateway prints WebSocket protocol logs in two modes:
 
 ### WS log style
 
-`clawdbot gateway` supports a per-gateway style switch:
+`zee gateway` supports a per-gateway style switch:
 
 - `--ws-log auto` (default): normal mode is optimized; verbose mode uses compact output
 - `--ws-log compact`: compact output (paired request/response) when verbose
@@ -83,21 +83,21 @@ Examples:
 
 ```bash
 # optimized (only errors/slow)
-clawdbot gateway
+zee gateway
 
 # show all WS traffic (paired)
-clawdbot gateway --verbose --ws-log compact
+zee gateway --verbose --ws-log compact
 
 # show all WS traffic (full meta)
-clawdbot gateway --verbose --ws-log full
+zee gateway --verbose --ws-log full
 ```
 
 ## Console formatting (subsystem logging)
 
-Clawdbot formats console logs via a small wrapper on top of the existing stack:
+Zee formats console logs via a small wrapper on top of the existing stack:
 
-- **tslog** for structured file logs ([`src/logging.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/logging.ts))
-- **chalk** for colors ([`src/globals.ts`](https://github.com/clawdbot/clawdbot/blob/main/src/globals.ts))
+- **tslog** for structured file logs ([`src/logging.ts`](https://github.com/zee/zee/blob/main/src/logging.ts))
+- **chalk** for colors ([`src/globals.ts`](https://github.com/zee/zee/blob/main/src/globals.ts))
 
 The console formatter is **TTY-aware** and prints consistent, prefixed lines.
 Subsystem loggers are created via `createSubsystemLogger("gateway")`.

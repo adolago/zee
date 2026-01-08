@@ -164,7 +164,7 @@ function formatToolOutput(value: unknown): string | null {
 
 declare global {
   interface Window {
-    __CLAWDBOT_CONTROL_UI_BASE_PATH__?: string;
+    __ZEE_CONTROL_UI_BASE_PATH__?: string;
   }
 }
 
@@ -189,8 +189,8 @@ const DEFAULT_CRON_FORM: CronFormState = {
   postToMainPrefix: "",
 };
 
-@customElement("clawdbot-app")
-export class ClawdbotApp extends LitElement {
+@customElement("zee-app")
+export class ZeeApp extends LitElement {
   @state() settings: UiSettings = loadSettings();
   @state() password = "";
   @state() tab: Tab = "chat";
@@ -465,7 +465,7 @@ export class ClawdbotApp extends LitElement {
       url: this.settings.gatewayUrl,
       token: this.settings.token.trim() ? this.settings.token : undefined,
       password: this.password.trim() ? this.password : undefined,
-      clientName: "clawdbot-control-ui",
+      clientName: "zee-control-ui",
       mode: "webchat",
       onHello: (hello) => {
         this.connected = true;
@@ -602,7 +602,7 @@ export class ClawdbotApp extends LitElement {
     const anchor = document.createElement("a");
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     anchor.href = url;
-    anchor.download = `clawdbot-logs-${label}-${stamp}.log`;
+    anchor.download = `zee-logs-${label}-${stamp}.log`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -896,7 +896,7 @@ export class ClawdbotApp extends LitElement {
 
   private inferBasePath() {
     if (typeof window === "undefined") return "";
-    const configured = window.__CLAWDBOT_CONTROL_UI_BASE_PATH__;
+    const configured = window.__ZEE_CONTROL_UI_BASE_PATH__;
     if (typeof configured === "string" && configured.trim()) {
       return normalizeBasePath(configured);
     }

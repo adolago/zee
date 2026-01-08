@@ -7,7 +7,7 @@ read_when:
 
 # Timezones
 
-Clawdbot standardizes timestamps so the model sees a **single reference time**.
+Zee standardizes timestamps so the model sees a **single reference time**.
 
 ## Message envelopes (UTC)
 
@@ -27,7 +27,7 @@ These are typically UTC ISO strings (Discord) or UTC epoch strings (Slack). We d
 ## User timezone for the system prompt
 
 Set `agent.userTimezone` to tell the model the user's local time zone. If it is
-unset, Clawdbot resolves the **host timezone at runtime** (no config write).
+unset, Zee resolves the **host timezone at runtime** (no config write).
 
 ```json5
 {

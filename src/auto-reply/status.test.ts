@@ -169,7 +169,7 @@ describe("buildStatusMessage", () => {
   });
 
   it("prefers cached prompt tokens from the session log", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-status-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-status-"));
     const previousHome = snapshotHomeEnv();
     setTempHome(dir);
     try {
@@ -181,7 +181,7 @@ describe("buildStatusMessage", () => {
       const sessionId = "sess-1";
       const logPath = path.join(
         dir,
-        ".clawdbot",
+        ".zee",
         "agents",
         "main",
         "sessions",

@@ -37,7 +37,7 @@ ${body ?? `# ${name}\n`}
 
 describe("buildWorkspaceSkillsPrompt", () => {
   it("returns empty prompt when skills dirs are missing", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
 
     const prompt = buildWorkspaceSkillsPrompt(workspaceDir, {
       managedSkillsDir: path.join(workspaceDir, ".managed"),
@@ -48,7 +48,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("loads bundled skills when present", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const bundledDir = path.join(workspaceDir, ".bundled");
     const bundledSkillDir = path.join(bundledDir, "peekaboo");
 
@@ -69,7 +69,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("loads extra skill folders from config (lowest precedence)", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const extraDir = path.join(workspaceDir, ".extra");
     const bundledDir = path.join(workspaceDir, ".bundled");
     const managedDir = path.join(workspaceDir, ".managed");
@@ -112,7 +112,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("loads skills from workspace skills/", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "demo-skill");
 
     await writeSkill({
@@ -131,7 +131,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("filters skills based on env/config gates", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "nano-banana-pro");
     const originalEnv = process.env.GEMINI_API_KEY;
     delete process.env.GEMINI_API_KEY;
@@ -142,7 +142,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
         name: "nano-banana-pro",
         description: "Generates images",
         metadata:
-          '{"clawdbot":{"requires":{"env":["GEMINI_API_KEY"]},"primaryEnv":"GEMINI_API_KEY"}}',
+          '{"zee":{"requires":{"env":["GEMINI_API_KEY"]},"primaryEnv":"GEMINI_API_KEY"}}',
         body: "# Nano Banana\n",
       });
 
@@ -166,7 +166,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("applies skill filters, including empty lists", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     await writeSkill({
       dir: path.join(workspaceDir, "skills", "alpha"),
       name: "alpha",
@@ -193,7 +193,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("prefers workspace skills over managed skills", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const managedDir = path.join(workspaceDir, ".managed");
     const bundledDir = path.join(workspaceDir, ".bundled");
     const managedSkillDir = path.join(managedDir, "demo-skill");
@@ -231,7 +231,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("gates by bins, config, and always", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillsDir = path.join(workspaceDir, "skills");
     const binDir = path.join(workspaceDir, "bin");
     const originalPath = process.env.PATH;
@@ -240,33 +240,33 @@ describe("buildWorkspaceSkillsPrompt", () => {
       dir: path.join(skillsDir, "bin-skill"),
       name: "bin-skill",
       description: "Needs a bin",
-      metadata: '{"clawdbot":{"requires":{"bins":["fakebin"]}}}',
+      metadata: '{"zee":{"requires":{"bins":["fakebin"]}}}',
     });
     await writeSkill({
       dir: path.join(skillsDir, "anybin-skill"),
       name: "anybin-skill",
       description: "Needs any bin",
       metadata:
-        '{"clawdbot":{"requires":{"anyBins":["missingbin","fakebin"]}}}',
+        '{"zee":{"requires":{"anyBins":["missingbin","fakebin"]}}}',
     });
     await writeSkill({
       dir: path.join(skillsDir, "config-skill"),
       name: "config-skill",
       description: "Needs config",
-      metadata: '{"clawdbot":{"requires":{"config":["browser.enabled"]}}}',
+      metadata: '{"zee":{"requires":{"config":["browser.enabled"]}}}',
     });
     await writeSkill({
       dir: path.join(skillsDir, "always-skill"),
       name: "always-skill",
       description: "Always on",
-      metadata: '{"clawdbot":{"always":true,"requires":{"env":["MISSING"]}}}',
+      metadata: '{"zee":{"always":true,"requires":{"env":["MISSING"]}}}',
     });
     await writeSkill({
       dir: path.join(skillsDir, "env-skill"),
       name: "env-skill",
       description: "Needs env",
       metadata:
-        '{"clawdbot":{"requires":{"env":["ENV_KEY"]},"primaryEnv":"ENV_KEY"}}',
+        '{"zee":{"requires":{"env":["ENV_KEY"]},"primaryEnv":"ENV_KEY"}}',
     });
 
     try {
@@ -303,13 +303,13 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("uses skillKey for config lookups", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "alias-skill");
     await writeSkill({
       dir: skillDir,
       name: "alias-skill",
       description: "Uses skillKey",
-      metadata: '{"clawdbot":{"skillKey":"alias"}}',
+      metadata: '{"zee":{"skillKey":"alias"}}',
     });
 
     const prompt = buildWorkspaceSkillsPrompt(workspaceDir, {
@@ -320,7 +320,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
   });
 
   it("applies bundled allowlist without affecting workspace skills", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const bundledDir = path.join(workspaceDir, ".bundled");
     const bundledSkillDir = path.join(bundledDir, "peekaboo");
     const workspaceSkillDir = path.join(workspaceDir, "skills", "demo-skill");
@@ -351,7 +351,7 @@ describe("buildWorkspaceSkillsPrompt", () => {
 
 describe("loadWorkspaceSkillEntries", () => {
   it("handles an empty managed skills dir without throwing", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const managedDir = path.join(workspaceDir, ".managed");
     await fs.mkdir(managedDir, { recursive: true });
 
@@ -366,7 +366,7 @@ describe("loadWorkspaceSkillEntries", () => {
 
 describe("buildWorkspaceSkillSnapshot", () => {
   it("returns an empty snapshot when skills dirs are missing", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
 
     const snapshot = buildWorkspaceSkillSnapshot(workspaceDir, {
       managedSkillsDir: path.join(workspaceDir, ".managed"),
@@ -380,7 +380,7 @@ describe("buildWorkspaceSkillSnapshot", () => {
 
 describe("buildWorkspaceSkillStatus", () => {
   it("reports missing requirements and install options", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "status-skill");
 
     await writeSkill({
@@ -388,7 +388,7 @@ describe("buildWorkspaceSkillStatus", () => {
       name: "status-skill",
       description: "Needs setup",
       metadata:
-        '{"clawdbot":{"requires":{"bins":["fakebin"],"env":["ENV_KEY"],"config":["browser.enabled"]},"install":[{"id":"brew","kind":"brew","formula":"fakebin","bins":["fakebin"],"label":"Install fakebin"}]}}',
+        '{"zee":{"requires":{"bins":["fakebin"],"env":["ENV_KEY"],"config":["browser.enabled"]},"install":[{"id":"brew","kind":"brew","formula":"fakebin","bins":["fakebin"],"label":"Install fakebin"}]}}',
     });
 
     const report = buildWorkspaceSkillStatus(workspaceDir, {
@@ -406,14 +406,14 @@ describe("buildWorkspaceSkillStatus", () => {
   });
 
   it("respects OS-gated skills", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "os-skill");
 
     await writeSkill({
       dir: skillDir,
       name: "os-skill",
       description: "Darwin only",
-      metadata: '{"clawdbot":{"os":["darwin"]}}',
+      metadata: '{"zee":{"os":["darwin"]}}',
     });
 
     const report = buildWorkspaceSkillStatus(workspaceDir, {
@@ -432,10 +432,10 @@ describe("buildWorkspaceSkillStatus", () => {
   });
 
   it("marks bundled skills blocked by allowlist", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const bundledDir = path.join(workspaceDir, ".bundled");
     const bundledSkillDir = path.join(bundledDir, "peekaboo");
-    const originalBundled = process.env.CLAWDBOT_BUNDLED_SKILLS_DIR;
+    const originalBundled = process.env.ZEE_BUNDLED_SKILLS_DIR;
 
     await writeSkill({
       dir: bundledSkillDir,
@@ -445,7 +445,7 @@ describe("buildWorkspaceSkillStatus", () => {
     });
 
     try {
-      process.env.CLAWDBOT_BUNDLED_SKILLS_DIR = bundledDir;
+      process.env.ZEE_BUNDLED_SKILLS_DIR = bundledDir;
       const report = buildWorkspaceSkillStatus(workspaceDir, {
         managedSkillsDir: path.join(workspaceDir, ".managed"),
         config: { skills: { allowBundled: ["other-skill"] } },
@@ -457,9 +457,9 @@ describe("buildWorkspaceSkillStatus", () => {
       expect(skill?.eligible).toBe(false);
     } finally {
       if (originalBundled === undefined) {
-        delete process.env.CLAWDBOT_BUNDLED_SKILLS_DIR;
+        delete process.env.ZEE_BUNDLED_SKILLS_DIR;
       } else {
-        process.env.CLAWDBOT_BUNDLED_SKILLS_DIR = originalBundled;
+        process.env.ZEE_BUNDLED_SKILLS_DIR = originalBundled;
       }
     }
   });
@@ -467,14 +467,14 @@ describe("buildWorkspaceSkillStatus", () => {
 
 describe("applySkillEnvOverrides", () => {
   it("sets and restores env vars", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "env-skill");
     await writeSkill({
       dir: skillDir,
       name: "env-skill",
       description: "Needs env",
       metadata:
-        '{"clawdbot":{"requires":{"env":["ENV_KEY"]},"primaryEnv":"ENV_KEY"}}',
+        '{"zee":{"requires":{"env":["ENV_KEY"]},"primaryEnv":"ENV_KEY"}}',
     });
 
     const entries = loadWorkspaceSkillEntries(workspaceDir, {
@@ -502,14 +502,14 @@ describe("applySkillEnvOverrides", () => {
   });
 
   it("applies env overrides from snapshots", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const skillDir = path.join(workspaceDir, "skills", "env-skill");
     await writeSkill({
       dir: skillDir,
       name: "env-skill",
       description: "Needs env",
       metadata:
-        '{"clawdbot":{"requires":{"env":["ENV_KEY"]},"primaryEnv":"ENV_KEY"}}',
+        '{"zee":{"requires":{"env":["ENV_KEY"]},"primaryEnv":"ENV_KEY"}}',
     });
 
     const snapshot = buildWorkspaceSkillSnapshot(workspaceDir, {

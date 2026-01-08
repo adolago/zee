@@ -1,48 +1,48 @@
 // swift-tools-version: 6.2
-// Package manifest for the Clawdbot macOS companion (menu bar app + IPC library).
+// Package manifest for the Zee macOS companion (menu bar app + IPC library).
 
 import PackageDescription
 
 let package = Package(
-    name: "Clawdbot",
+    name: "Zee",
     platforms: [
         .macOS(.v15),
     ],
     products: [
-        .library(name: "ClawdbotIPC", targets: ["ClawdbotIPC"]),
-        .executable(name: "Clawdbot", targets: ["Clawdbot"]),
+        .library(name: "ZeeIPC", targets: ["ZeeIPC"]),
+        .executable(name: "Zee", targets: ["Zee"]),
     ],
     dependencies: [
         .package(url: "https://github.com/orchetect/MenuBarExtraAccess", exact: "1.2.2"),
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "0.1.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.8.0"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
-        .package(path: "../shared/ClawdbotKit"),
+        .package(path: "../shared/ZeeKit"),
         .package(path: "../../Swabble"),
         .package(path: "../../Peekaboo/Core/PeekabooCore"),
         .package(path: "../../Peekaboo/Core/PeekabooAutomationKit"),
     ],
     targets: [
         .target(
-            name: "ClawdbotProtocol",
+            name: "ZeeProtocol",
             dependencies: [],
-            path: "Sources/ClawdbotProtocol",
+            path: "Sources/ZeeProtocol",
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]),
         .target(
-            name: "ClawdbotIPC",
+            name: "ZeeIPC",
             dependencies: [],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]),
         .executableTarget(
-            name: "Clawdbot",
+            name: "Zee",
             dependencies: [
-                "ClawdbotIPC",
-                "ClawdbotProtocol",
-                .product(name: "ClawdbotKit", package: "ClawdbotKit"),
-                .product(name: "ClawdbotChatUI", package: "ClawdbotKit"),
+                "ZeeIPC",
+                "ZeeProtocol",
+                .product(name: "ZeeKit", package: "ZeeKit"),
+                .product(name: "ZeeChatUI", package: "ZeeKit"),
                 .product(name: "SwabbleKit", package: "swabble"),
                 .product(name: "MenuBarExtraAccess", package: "MenuBarExtraAccess"),
                 .product(name: "Subprocess", package: "swift-subprocess"),
@@ -55,18 +55,18 @@ let package = Package(
                 "Resources/Info.plist",
             ],
             resources: [
-                .copy("Resources/Clawdbot.icns"),
+                .copy("Resources/Zee.icns"),
                 .copy("Resources/DeviceModels"),
             ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]),
         .testTarget(
-            name: "ClawdbotIPCTests",
+            name: "ZeeIPCTests",
             dependencies: [
-                "ClawdbotIPC",
-                "Clawdbot",
-                "ClawdbotProtocol",
+                "ZeeIPC",
+                "Zee",
+                "ZeeProtocol",
                 .product(name: "SwabbleKit", package: "swabble"),
             ],
             swiftSettings: [

@@ -1,12 +1,12 @@
-import ClawdbotKit
+import ZeeKit
 import Foundation
 import Network
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite struct BridgeClientTests {
     private final class LineServer: @unchecked Sendable {
-        private let queue = DispatchQueue(label: "com.clawdbot.tests.bridge-client-server")
+        private let queue = DispatchQueue(label: "com.zee.tests.bridge-client-server")
         private let listener: NWListener
         private var connection: NWConnection?
         private var buffer = Data()

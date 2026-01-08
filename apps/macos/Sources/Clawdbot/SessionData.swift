@@ -247,7 +247,7 @@ enum SessionLoader {
 
     static let defaultStorePath = standardize(
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot/sessions/sessions.json").path)
+            .appendingPathComponent(".zee/sessions/sessions.json").path)
 
     static func loadSnapshot(
         activeMinutes: Int? = nil,

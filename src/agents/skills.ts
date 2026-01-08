@@ -8,7 +8,7 @@ import {
   type Skill,
 } from "@mariozechner/pi-coding-agent";
 
-import type { ClawdbotConfig, SkillConfig } from "../config/config.js";
+import type { ZeeConfig, SkillConfig } from "../config/config.js";
 import { CONFIG_DIR, resolveUserPath } from "../utils.js";
 
 export type SkillInstallSpec = {
@@ -21,7 +21,7 @@ export type SkillInstallSpec = {
   module?: string;
 };
 
-export type ClawdbotSkillMetadata = {
+export type ZeeSkillMetadata = {
   always?: boolean;
   skillKey?: string;
   primaryEnv?: string;
@@ -47,7 +47,7 @@ type ParsedSkillFrontmatter = Record<string, string>;
 export type SkillEntry = {
   skill: Skill;
   frontmatter: ParsedSkillFrontmatter;
-  clawdbot?: ClawdbotSkillMetadata;
+  zee?: ZeeSkillMetadata;
 };
 
 export type SkillSnapshot = {
@@ -57,7 +57,7 @@ export type SkillSnapshot = {
 };
 
 function resolveBundledSkillsDir(): string | undefined {
-  const override = process.env.CLAWDBOT_BUNDLED_SKILLS_DIR?.trim();
+  const override = process.env.ZEE_BUNDLED_SKILLS_DIR?.trim();
   if (override) return override;
 
   // bun --compile: ship a sibling `skills/` next to the executable.
@@ -173,7 +173,7 @@ const DEFAULT_CONFIG_VALUES: Record<string, boolean> = {
 };
 
 export function resolveSkillsInstallPreferences(
-  config?: ClawdbotConfig,
+  config?: ZeeConfig,
 ): SkillsInstallPreferences {
   const raw = config?.skills?.install;
   const preferBrew = raw?.preferBrew ?? true;
@@ -195,7 +195,7 @@ export function resolveRuntimePlatform(): string {
 }
 
 export function resolveConfigPath(
-  config: ClawdbotConfig | undefined,
+  config: ZeeConfig | undefined,
   pathStr: string,
 ) {
   const parts = pathStr.split(".").filter(Boolean);
@@ -208,7 +208,7 @@ export function resolveConfigPath(
 }
 
 export function isConfigPathTruthy(
-  config: ClawdbotConfig | undefined,
+  config: ZeeConfig | undefined,
   pathStr: string,
 ): boolean {
   const value = resolveConfigPath(config, pathStr);
@@ -219,7 +219,7 @@ export function isConfigPathTruthy(
 }
 
 export function resolveSkillConfig(
-  config: ClawdbotConfig | undefined,
+  config: ZeeConfig | undefined,
   skillKey: string,
 ): SkillConfig | undefined {
   const skills = config?.skills?.entries;
@@ -237,7 +237,7 @@ function normalizeAllowlist(input: unknown): string[] | undefined {
 }
 
 function isBundledSkill(entry: SkillEntry): boolean {
-  return entry.skill.source === "clawdbot-bundled";
+  return entry.skill.source === "zee-bundled";
 }
 
 export function isBundledSkillAllowed(
@@ -265,46 +265,46 @@ export function hasBinary(bin: string): boolean {
   return false;
 }
 
-function resolveClawdbotMetadata(
+function resolveZeeMetadata(
   frontmatter: ParsedSkillFrontmatter,
-): ClawdbotSkillMetadata | undefined {
+): ZeeSkillMetadata | undefined {
   const raw = getFrontmatterValue(frontmatter, "metadata");
   if (!raw) return undefined;
   try {
-    const parsed = JSON.parse(raw) as { clawdbot?: unknown };
+    const parsed = JSON.parse(raw) as { zee?: unknown };
     if (!parsed || typeof parsed !== "object") return undefined;
-    const clawdbot = (parsed as { clawdbot?: unknown }).clawdbot;
-    if (!clawdbot || typeof clawdbot !== "object") return undefined;
-    const clawdbotObj = clawdbot as Record<string, unknown>;
+    const zee = (parsed as { zee?: unknown }).zee;
+    if (!zee || typeof zee !== "object") return undefined;
+    const zeeObj = zee as Record<string, unknown>;
     const requiresRaw =
-      typeof clawdbotObj.requires === "object" && clawdbotObj.requires !== null
-        ? (clawdbotObj.requires as Record<string, unknown>)
+      typeof zeeObj.requires === "object" && zeeObj.requires !== null
+        ? (zeeObj.requires as Record<string, unknown>)
         : undefined;
-    const installRaw = Array.isArray(clawdbotObj.install)
-      ? (clawdbotObj.install as unknown[])
+    const installRaw = Array.isArray(zeeObj.install)
+      ? (zeeObj.install as unknown[])
       : [];
     const install = installRaw
       .map((entry) => parseInstallSpec(entry))
       .filter((entry): entry is SkillInstallSpec => Boolean(entry));
-    const osRaw = normalizeStringList(clawdbotObj.os);
+    const osRaw = normalizeStringList(zeeObj.os);
     return {
       always:
-        typeof clawdbotObj.always === "boolean"
-          ? clawdbotObj.always
+        typeof zeeObj.always === "boolean"
+          ? zeeObj.always
           : undefined,
       emoji:
-        typeof clawdbotObj.emoji === "string" ? clawdbotObj.emoji : undefined,
+        typeof zeeObj.emoji === "string" ? zeeObj.emoji : undefined,
       homepage:
-        typeof clawdbotObj.homepage === "string"
-          ? clawdbotObj.homepage
+        typeof zeeObj.homepage === "string"
+          ? zeeObj.homepage
           : undefined,
       skillKey:
-        typeof clawdbotObj.skillKey === "string"
-          ? clawdbotObj.skillKey
+        typeof zeeObj.skillKey === "string"
+          ? zeeObj.skillKey
           : undefined,
       primaryEnv:
-        typeof clawdbotObj.primaryEnv === "string"
-          ? clawdbotObj.primaryEnv
+        typeof zeeObj.primaryEnv === "string"
+          ? zeeObj.primaryEnv
           : undefined,
       os: osRaw.length > 0 ? osRaw : undefined,
       requires: requiresRaw
@@ -323,53 +323,53 @@ function resolveClawdbotMetadata(
 }
 
 function resolveSkillKey(skill: Skill, entry?: SkillEntry): string {
-  return entry?.clawdbot?.skillKey ?? skill.name;
+  return entry?.zee?.skillKey ?? skill.name;
 }
 
 function shouldIncludeSkill(params: {
   entry: SkillEntry;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 }): boolean {
   const { entry, config } = params;
   const skillKey = resolveSkillKey(entry.skill, entry);
   const skillConfig = resolveSkillConfig(config, skillKey);
   const allowBundled = normalizeAllowlist(config?.skills?.allowBundled);
-  const osList = entry.clawdbot?.os ?? [];
+  const osList = entry.zee?.os ?? [];
 
   if (skillConfig?.enabled === false) return false;
   if (!isBundledSkillAllowed(entry, allowBundled)) return false;
   if (osList.length > 0 && !osList.includes(resolveRuntimePlatform())) {
     return false;
   }
-  if (entry.clawdbot?.always === true) {
+  if (entry.zee?.always === true) {
     return true;
   }
 
-  const requiredBins = entry.clawdbot?.requires?.bins ?? [];
+  const requiredBins = entry.zee?.requires?.bins ?? [];
   if (requiredBins.length > 0) {
     for (const bin of requiredBins) {
       if (!hasBinary(bin)) return false;
     }
   }
-  const requiredAnyBins = entry.clawdbot?.requires?.anyBins ?? [];
+  const requiredAnyBins = entry.zee?.requires?.anyBins ?? [];
   if (requiredAnyBins.length > 0) {
     const anyFound = requiredAnyBins.some((bin) => hasBinary(bin));
     if (!anyFound) return false;
   }
 
-  const requiredEnv = entry.clawdbot?.requires?.env ?? [];
+  const requiredEnv = entry.zee?.requires?.env ?? [];
   if (requiredEnv.length > 0) {
     for (const envName of requiredEnv) {
       if (process.env[envName]) continue;
       if (skillConfig?.env?.[envName]) continue;
-      if (skillConfig?.apiKey && entry.clawdbot?.primaryEnv === envName) {
+      if (skillConfig?.apiKey && entry.zee?.primaryEnv === envName) {
         continue;
       }
       return false;
     }
   }
 
-  const requiredConfig = entry.clawdbot?.requires?.config ?? [];
+  const requiredConfig = entry.zee?.requires?.config ?? [];
   if (requiredConfig.length > 0) {
     for (const configPath of requiredConfig) {
       if (!isConfigPathTruthy(config, configPath)) return false;
@@ -381,7 +381,7 @@ function shouldIncludeSkill(params: {
 
 function filterSkillEntries(
   entries: SkillEntry[],
-  config?: ClawdbotConfig,
+  config?: ZeeConfig,
   skillFilter?: string[],
 ): SkillEntry[] {
   let filtered = entries.filter((entry) =>
@@ -407,7 +407,7 @@ function filterSkillEntries(
 
 export function applySkillEnvOverrides(params: {
   skills: SkillEntry[];
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 }) {
   const { skills, config } = params;
   const updates: Array<{ key: string; prev: string | undefined }> = [];
@@ -425,7 +425,7 @@ export function applySkillEnvOverrides(params: {
       }
     }
 
-    const primaryEnv = entry.clawdbot?.primaryEnv;
+    const primaryEnv = entry.zee?.primaryEnv;
     if (primaryEnv && skillConfig.apiKey && !process.env[primaryEnv]) {
       updates.push({ key: primaryEnv, prev: process.env[primaryEnv] });
       process.env[primaryEnv] = skillConfig.apiKey;
@@ -442,7 +442,7 @@ export function applySkillEnvOverrides(params: {
 
 export function applySkillEnvOverridesFromSnapshot(params: {
   snapshot?: SkillSnapshot;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 }) {
   const { snapshot, config } = params;
   if (!snapshot) return () => {};
@@ -484,7 +484,7 @@ export function applySkillEnvOverridesFromSnapshot(params: {
 function loadSkillEntries(
   workspaceDir: string,
   opts?: {
-    config?: ClawdbotConfig;
+    config?: ZeeConfig;
     managedSkillsDir?: string;
     bundledSkillsDir?: string;
   },
@@ -515,23 +515,23 @@ function loadSkillEntries(
   const bundledSkills = bundledSkillsDir
     ? loadSkills({
         dir: bundledSkillsDir,
-        source: "clawdbot-bundled",
+        source: "zee-bundled",
       })
     : [];
   const extraSkills = extraDirs.flatMap((dir) => {
     const resolved = resolveUserPath(dir);
     return loadSkills({
       dir: resolved,
-      source: "clawdbot-extra",
+      source: "zee-extra",
     });
   });
   const managedSkills = loadSkills({
     dir: managedSkillsDir,
-    source: "clawdbot-managed",
+    source: "zee-managed",
   });
   const workspaceSkills = loadSkills({
     dir: workspaceSkillsDir,
-    source: "clawdbot-workspace",
+    source: "zee-workspace",
   });
 
   const merged = new Map<string, Skill>();
@@ -553,7 +553,7 @@ function loadSkillEntries(
       return {
         skill,
         frontmatter,
-        clawdbot: resolveClawdbotMetadata(frontmatter),
+        zee: resolveZeeMetadata(frontmatter),
       };
     },
   );
@@ -563,7 +563,7 @@ function loadSkillEntries(
 export function buildWorkspaceSkillSnapshot(
   workspaceDir: string,
   opts?: {
-    config?: ClawdbotConfig;
+    config?: ZeeConfig;
     managedSkillsDir?: string;
     bundledSkillsDir?: string;
     entries?: SkillEntry[];
@@ -582,7 +582,7 @@ export function buildWorkspaceSkillSnapshot(
     prompt: formatSkillsForPrompt(resolvedSkills),
     skills: eligible.map((entry) => ({
       name: entry.skill.name,
-      primaryEnv: entry.clawdbot?.primaryEnv,
+      primaryEnv: entry.zee?.primaryEnv,
     })),
     resolvedSkills,
   };
@@ -591,7 +591,7 @@ export function buildWorkspaceSkillSnapshot(
 export function buildWorkspaceSkillsPrompt(
   workspaceDir: string,
   opts?: {
-    config?: ClawdbotConfig;
+    config?: ZeeConfig;
     managedSkillsDir?: string;
     bundledSkillsDir?: string;
     entries?: SkillEntry[];
@@ -611,7 +611,7 @@ export function buildWorkspaceSkillsPrompt(
 export function loadWorkspaceSkillEntries(
   workspaceDir: string,
   opts?: {
-    config?: ClawdbotConfig;
+    config?: ZeeConfig;
     managedSkillsDir?: string;
     bundledSkillsDir?: string;
   },
@@ -621,12 +621,12 @@ export function loadWorkspaceSkillEntries(
 
 export function filterWorkspaceSkillEntries(
   entries: SkillEntry[],
-  config?: ClawdbotConfig,
+  config?: ZeeConfig,
 ): SkillEntry[] {
   return filterSkillEntries(entries, config);
 }
 export function resolveBundledAllowlist(
-  config?: ClawdbotConfig,
+  config?: ZeeConfig,
 ): string[] | undefined {
   return normalizeAllowlist(config?.skills?.allowBundled);
 }

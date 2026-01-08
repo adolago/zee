@@ -3,10 +3,10 @@
 Highlights from #showcase (Jan 2–5, 2026). Curated for “wow” factor + concrete links.
 
 ## Clawdhub projects (formerly Clawdis)
-- **xuezh** — Chinese learning engine + Clawdbot skill for pronunciation feedback and study flows. <span class="showcase-link"><a href="https://github.com/joshp123/xuezh">github.com/joshp123/xuezh</a><span class="showcase-preview"><img src="/assets/showcase/xuezh-pronunciation.jpeg" alt="xuezh pronunciation feedback in Clawdbot" loading="lazy" decoding="async" /></span></span>
-- **gohome** — Nix-native home automation with Clawdbot as the interface, plus Grafana dashboards. <span class="showcase-link"><a href="https://github.com/joshp123/gohome">github.com/joshp123/gohome</a><span class="showcase-preview"><img src="/assets/showcase/gohome-grafana.png" alt="GoHome Grafana dashboard" loading="lazy" decoding="async" /></span></span>
+- **xuezh** — Chinese learning engine + Zee skill for pronunciation feedback and study flows. <span class="showcase-link"><a href="https://github.com/joshp123/xuezh">github.com/joshp123/xuezh</a><span class="showcase-preview"><img src="/assets/showcase/xuezh-pronunciation.jpeg" alt="xuezh pronunciation feedback in Zee" loading="lazy" decoding="async" /></span></span>
+- **gohome** — Nix-native home automation with Zee as the interface, plus Grafana dashboards. <span class="showcase-link"><a href="https://github.com/joshp123/gohome">github.com/joshp123/gohome</a><span class="showcase-preview"><img src="/assets/showcase/gohome-grafana.png" alt="GoHome Grafana dashboard" loading="lazy" decoding="async" /></span></span>
 - **Roborock skill for GoHome** — Vacuum control plugin with gRPC actions + metrics. <span class="showcase-link"><a href="https://github.com/joshp123/gohome/tree/main/plugins/roborock">github.com/joshp123/gohome/tree/main/plugins/roborock</a><span class="showcase-preview"><img src="/assets/showcase/roborock-screenshot.jpg" alt="GoHome Roborock status screenshot" loading="lazy" decoding="async" /></span></span>
-- **padel-cli** — Playtomic availability + booking CLI with a Clawdbot plugin output. <span class="showcase-link"><a href="https://github.com/joshp123/padel-cli">github.com/joshp123/padel-cli</a><span class="showcase-preview"><img src="/assets/showcase/padel-screenshot.jpg" alt="padel-cli availability screenshot" loading="lazy" decoding="async" /></span></span>
+- **padel-cli** — Playtomic availability + booking CLI with a Zee plugin output. <span class="showcase-link"><a href="https://github.com/joshp123/padel-cli">github.com/joshp123/padel-cli</a><span class="showcase-preview"><img src="/assets/showcase/padel-screenshot.jpg" alt="padel-cli availability screenshot" loading="lazy" decoding="async" /></span></span>
 
 ## Automation & real-world outcomes
 - **Grocery autopilot (Picnic)** — Skill built around an unofficial Picnic API client. Pulls order history, infers preferred brands, maps recipes to cart, completes order in minutes. https://github.com/timkrase/clawdis-picnic-skill
@@ -25,7 +25,7 @@ Highlights from #showcase (Jan 2–5, 2026). Curated for “wow” factor + conc
 - **OpenRouter transcription skill** — Multi‑lingual audio transcription via OpenRouter (Gemini etc). ClawdHub: https://clawdhub.com/obviyus/openrouter-transcribe (user/slug link)
 
 ## Infrastructure & deployment
-- **Home Assistant OS gateway add‑on** — Clawdbot gateway running on HA OS (Raspberry Pi), with SSH tunnel support + persistent state in /config. https://github.com/ngutman/clawdbot-ha-addon
+- **Home Assistant OS gateway add‑on** — Zee gateway running on HA OS (Raspberry Pi), with SSH tunnel support + persistent state in /config. https://github.com/ngutman/zee-ha-addon
 - **Home Assistant skill** — Control/automate HA via ClawdHub. https://clawdhub.com/skills/homeassistant
 - **Nix packaging** — Batteries‑included nixified clawdis config. https://github.com/joshp123/nix-clawdis
 - **CalDAV skill** — khal/vdirsyncer based calendar skill. ClawdHub: caldav-calendar → https://clawdhub.com/skills/caldav-calendar

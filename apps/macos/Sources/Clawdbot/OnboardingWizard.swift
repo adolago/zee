@@ -1,17 +1,17 @@
-import ClawdbotProtocol
+import ZeeProtocol
 import Foundation
 import Observation
 import OSLog
 import SwiftUI
 
-private let onboardingWizardLogger = Logger(subsystem: "com.clawdbot", category: "onboarding.wizard")
+private let onboardingWizardLogger = Logger(subsystem: "com.zee", category: "onboarding.wizard")
 
 // MARK: - Swift 6 AnyCodable Bridging Helpers
 
-// Bridge between ClawdbotProtocol.AnyCodable and the local module to avoid
+// Bridge between ZeeProtocol.AnyCodable and the local module to avoid
 // Swift 6 strict concurrency type conflicts.
 
-private typealias ProtocolAnyCodable = ClawdbotProtocol.AnyCodable
+private typealias ProtocolAnyCodable = ZeeProtocol.AnyCodable
 
 private func bridgeToLocal(_ value: ProtocolAnyCodable) -> AnyCodable {
     if let data = try? JSONEncoder().encode(value),

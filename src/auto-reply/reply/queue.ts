@@ -1,6 +1,6 @@
 import type { SkillSnapshot } from "../../agents/skills.js";
 import { parseDurationMs } from "../../cli/parse-duration.js";
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
 import { defaultRuntime } from "../../runtime.js";
 import type { OriginatingChannelType } from "../templating.js";
@@ -53,7 +53,7 @@ export type FollowupRun = {
     agentAccountId?: string;
     sessionFile: string;
     workspaceDir: string;
-    config: ClawdbotConfig;
+    config: ZeeConfig;
     skillsSnapshot?: SkillSnapshot;
     provider: string;
     model: string;
@@ -545,7 +545,7 @@ function defaultQueueModeForProvider(provider?: string): QueueMode {
   return "collect";
 }
 export function resolveQueueSettings(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   provider?: string;
   sessionEntry?: SessionEntry;
   inlineMode?: QueueMode;

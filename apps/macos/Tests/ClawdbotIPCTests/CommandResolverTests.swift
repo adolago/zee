@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized) struct CommandResolverTests {
     private func makeDefaults() -> UserDefaults {
@@ -24,18 +24,18 @@ import Testing
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path.path)
     }
 
-    @Test func prefersClawdbotBinary() async throws {
+    @Test func prefersZeeBinary() async throws {
         let defaults = self.makeDefaults()
         defaults.set(AppState.ConnectionMode.local.rawValue, forKey: connectionModeKey)
 
         let tmp = try makeTempDir()
         CommandResolver.setProjectRoot(tmp.path)
 
-        let clawdbotPath = tmp.appendingPathComponent("node_modules/.bin/clawdbot")
-        try self.makeExec(at: clawdbotPath)
+        let zeePath = tmp.appendingPathComponent("node_modules/.bin/zee")
+        try self.makeExec(at: zeePath)
 
-        let cmd = CommandResolver.clawdbotCommand(subcommand: "gateway", defaults: defaults)
-        #expect(cmd.prefix(2).elementsEqual([clawdbotPath.path, "gateway"]))
+        let cmd = CommandResolver.zeeCommand(subcommand: "gateway", defaults: defaults)
+        #expect(cmd.prefix(2).elementsEqual([zeePath.path, "gateway"]))
     }
 
     @Test func fallsBackToNodeAndScript() async throws {
@@ -46,13 +46,13 @@ import Testing
         CommandResolver.setProjectRoot(tmp.path)
 
         let nodePath = tmp.appendingPathComponent("node_modules/.bin/node")
-        let scriptPath = tmp.appendingPathComponent("bin/clawdbot.js")
+        let scriptPath = tmp.appendingPathComponent("bin/zee.js")
         try self.makeExec(at: nodePath)
         try "#!/bin/sh\necho v22.0.0\n".write(to: nodePath, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: nodePath.path)
         try self.makeExec(at: scriptPath)
 
-        let cmd = CommandResolver.clawdbotCommand(
+        let cmd = CommandResolver.zeeCommand(
             subcommand: "rpc",
             defaults: defaults,
             searchPaths: [tmp.appendingPathComponent("node_modules/.bin").path])
@@ -75,9 +75,9 @@ import Testing
         let pnpmPath = tmp.appendingPathComponent("node_modules/.bin/pnpm")
         try self.makeExec(at: pnpmPath)
 
-        let cmd = CommandResolver.clawdbotCommand(subcommand: "rpc", defaults: defaults)
+        let cmd = CommandResolver.zeeCommand(subcommand: "rpc", defaults: defaults)
 
-        #expect(cmd.prefix(4).elementsEqual([pnpmPath.path, "--silent", "clawdbot", "rpc"]))
+        #expect(cmd.prefix(4).elementsEqual([pnpmPath.path, "--silent", "zee", "rpc"]))
     }
 
     @Test func pnpmKeepsExtraArgsAfterSubcommand() async throws {
@@ -90,12 +90,12 @@ import Testing
         let pnpmPath = tmp.appendingPathComponent("node_modules/.bin/pnpm")
         try self.makeExec(at: pnpmPath)
 
-        let cmd = CommandResolver.clawdbotCommand(
+        let cmd = CommandResolver.zeeCommand(
             subcommand: "health",
             extraArgs: ["--json", "--timeout", "5"],
             defaults: defaults)
 
-        #expect(cmd.prefix(5).elementsEqual([pnpmPath.path, "--silent", "clawdbot", "health", "--json"]))
+        #expect(cmd.prefix(5).elementsEqual([pnpmPath.path, "--silent", "zee", "health", "--json"]))
         #expect(cmd.suffix(2).elementsEqual(["--timeout", "5"]))
     }
 
@@ -112,17 +112,17 @@ import Testing
         defaults.set(AppState.ConnectionMode.remote.rawValue, forKey: connectionModeKey)
         defaults.set("clawd@example.com:2222", forKey: remoteTargetKey)
         defaults.set("/tmp/id_ed25519", forKey: remoteIdentityKey)
-        defaults.set("/srv/clawdbot", forKey: remoteProjectRootKey)
+        defaults.set("/srv/zee", forKey: remoteProjectRootKey)
 
-        let cmd = CommandResolver.clawdbotCommand(subcommand: "status", extraArgs: ["--json"], defaults: defaults)
+        let cmd = CommandResolver.zeeCommand(subcommand: "status", extraArgs: ["--json"], defaults: defaults)
 
         #expect(cmd.first == "/usr/bin/ssh")
         #expect(cmd.contains("clawd@example.com"))
         #expect(cmd.contains("-i"))
         #expect(cmd.contains("/tmp/id_ed25519"))
         if let script = cmd.last {
-            #expect(script.contains("cd '/srv/clawdbot'"))
-            #expect(script.contains("clawdbot"))
+            #expect(script.contains("cd '/srv/zee'"))
+            #expect(script.contains("zee"))
             #expect(script.contains("status"))
             #expect(script.contains("--json"))
             #expect(script.contains("CLI="))

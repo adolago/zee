@@ -25,7 +25,7 @@ import {
 import { createReplyDispatcherWithTyping } from "../auto-reply/reply/reply-dispatcher.js";
 import { getReplyFromConfig } from "../auto-reply/reply.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
-import type { ClawdbotConfig, ReplyToMode } from "../config/config.js";
+import type { ZeeConfig, ReplyToMode } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import {
   resolveProviderGroupPolicy,
@@ -116,7 +116,7 @@ export type TelegramBotOptions = {
   mediaMaxMb?: number;
   replyToMode?: ReplyToMode;
   proxyFetch?: typeof fetch;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 };
 
 export function getTelegramSequentialKey(ctx: {
@@ -405,12 +405,12 @@ export function createTelegramBot(opts: TelegramBotOptions) {
                 await bot.api.sendMessage(
                   chatId,
                   [
-                    "Clawdbot: access not configured.",
+                    "Zee: access not configured.",
                     "",
                     `Pairing code: ${code}`,
                     "",
                     "Ask the bot owner to approve with:",
-                    "clawdbot pairing approve --provider telegram <code>",
+                    "zee pairing approve --provider telegram <code>",
                   ].join("\n"),
                 );
               }
@@ -1283,7 +1283,7 @@ function buildTelegramThreadParams(messageThreadId?: number) {
 }
 
 function resolveTelegramStreamMode(
-  telegramCfg: ClawdbotConfig["telegram"],
+  telegramCfg: ZeeConfig["telegram"],
 ): TelegramStreamMode {
   const raw = telegramCfg?.streamMode?.trim().toLowerCase();
   if (raw === "off" || raw === "partial" || raw === "block") return raw;

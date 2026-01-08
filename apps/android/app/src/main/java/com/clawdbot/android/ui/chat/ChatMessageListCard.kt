@@ -1,4 +1,4 @@
-package com.clawdbot.android.ui.chat
+package com.zee.android.ui.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import com.clawdbot.android.chat.ChatMessage
-import com.clawdbot.android.chat.ChatPendingToolCall
+import com.zee.android.chat.ChatMessage
+import com.zee.android.chat.ChatPendingToolCall
 
 @Composable
 fun ChatMessageListCard(

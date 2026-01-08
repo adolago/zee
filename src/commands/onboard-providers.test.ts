@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import {
   mergeWhatsAppConfig,
   setWhatsAppAllowFrom,
@@ -10,7 +10,7 @@ import {
 
 describe("onboard-providers WhatsApp setters", () => {
   it("preserves existing WhatsApp fields when updating allowFrom", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       whatsapp: {
         selfChatMode: true,
         dmPolicy: "pairing",
@@ -30,7 +30,7 @@ describe("onboard-providers WhatsApp setters", () => {
   });
 
   it("updates dmPolicy without dropping selfChatMode", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       whatsapp: {
         selfChatMode: true,
         dmPolicy: "pairing",
@@ -44,7 +44,7 @@ describe("onboard-providers WhatsApp setters", () => {
   });
 
   it("updates selfChatMode without dropping allowFrom", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       whatsapp: {
         allowFrom: ["+15555550123"],
       },
@@ -57,7 +57,7 @@ describe("onboard-providers WhatsApp setters", () => {
   });
 
   it("merges WhatsApp config without clobbering fields", () => {
-    const cfg: ClawdbotConfig = {
+    const cfg: ZeeConfig = {
       whatsapp: {
         dmPolicy: "pairing",
         allowFrom: ["*"],

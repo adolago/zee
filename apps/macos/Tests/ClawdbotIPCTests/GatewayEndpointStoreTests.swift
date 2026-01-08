@@ -1,5 +1,5 @@
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized)
 struct GatewayEndpointStoreTests {
@@ -31,6 +31,6 @@ struct GatewayEndpointStoreTests {
             env: [:]) == "tailnet")
         #expect(GatewayEndpointStore._testResolveGatewayBindMode(
             root: root,
-            env: ["CLAWDBOT_GATEWAY_BIND": "lan"]) == "lan")
+            env: ["ZEE_GATEWAY_BIND": "lan"]) == "lan")
     }
 }

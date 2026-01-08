@@ -784,7 +784,7 @@ const HooksGmailSchema = z
   })
   .optional();
 
-export const ClawdbotSchema = z.object({
+export const ZeeSchema = z.object({
   env: z
     .object({
       shellEnv: z

@@ -1,35 +1,35 @@
-package com.clawdbot.android.protocol
+package com.zee.android.protocol
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class ClawdbotProtocolConstantsTest {
+class ZeeProtocolConstantsTest {
   @Test
   fun canvasCommandsUseStableStrings() {
-    assertEquals("canvas.present", ClawdbotCanvasCommand.Present.rawValue)
-    assertEquals("canvas.hide", ClawdbotCanvasCommand.Hide.rawValue)
-    assertEquals("canvas.navigate", ClawdbotCanvasCommand.Navigate.rawValue)
-    assertEquals("canvas.eval", ClawdbotCanvasCommand.Eval.rawValue)
-    assertEquals("canvas.snapshot", ClawdbotCanvasCommand.Snapshot.rawValue)
+    assertEquals("canvas.present", ZeeCanvasCommand.Present.rawValue)
+    assertEquals("canvas.hide", ZeeCanvasCommand.Hide.rawValue)
+    assertEquals("canvas.navigate", ZeeCanvasCommand.Navigate.rawValue)
+    assertEquals("canvas.eval", ZeeCanvasCommand.Eval.rawValue)
+    assertEquals("canvas.snapshot", ZeeCanvasCommand.Snapshot.rawValue)
   }
 
   @Test
   fun a2uiCommandsUseStableStrings() {
-    assertEquals("canvas.a2ui.push", ClawdbotCanvasA2UICommand.Push.rawValue)
-    assertEquals("canvas.a2ui.pushJSONL", ClawdbotCanvasA2UICommand.PushJSONL.rawValue)
-    assertEquals("canvas.a2ui.reset", ClawdbotCanvasA2UICommand.Reset.rawValue)
+    assertEquals("canvas.a2ui.push", ZeeCanvasA2UICommand.Push.rawValue)
+    assertEquals("canvas.a2ui.pushJSONL", ZeeCanvasA2UICommand.PushJSONL.rawValue)
+    assertEquals("canvas.a2ui.reset", ZeeCanvasA2UICommand.Reset.rawValue)
   }
 
   @Test
   fun capabilitiesUseStableStrings() {
-    assertEquals("canvas", ClawdbotCapability.Canvas.rawValue)
-    assertEquals("camera", ClawdbotCapability.Camera.rawValue)
-    assertEquals("screen", ClawdbotCapability.Screen.rawValue)
-    assertEquals("voiceWake", ClawdbotCapability.VoiceWake.rawValue)
+    assertEquals("canvas", ZeeCapability.Canvas.rawValue)
+    assertEquals("camera", ZeeCapability.Camera.rawValue)
+    assertEquals("screen", ZeeCapability.Screen.rawValue)
+    assertEquals("voiceWake", ZeeCapability.VoiceWake.rawValue)
   }
 
   @Test
   fun screenCommandsUseStableStrings() {
-    assertEquals("screen.record", ClawdbotScreenCommand.Record.rawValue)
+    assertEquals("screen.record", ZeeScreenCommand.Record.rawValue)
   }
 }

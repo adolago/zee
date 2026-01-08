@@ -7,7 +7,7 @@ import {
   readTool,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import { detectMime } from "../media/mime.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
 import { startWebLoginWithQr, waitForWebLogin } from "../web/login-qr.js";
@@ -21,7 +21,7 @@ import {
   createProcessTool,
   type ProcessToolDefaults,
 } from "./bash-tools.js";
-import { createClawdbotTools } from "./clawdbot-tools.js";
+import { createZeeTools } from "./zee-tools.js";
 import type { SandboxContext, SandboxToolPolicy } from "./sandbox.js";
 import { assertSandboxPath } from "./sandbox-paths.js";
 import { sanitizeToolResultImages } from "./tool-images.js";
@@ -406,7 +406,7 @@ const DEFAULT_SUBAGENT_TOOL_DENY = [
   "sessions_spawn",
 ];
 
-function resolveSubagentToolPolicy(cfg?: ClawdbotConfig): SandboxToolPolicy {
+function resolveSubagentToolPolicy(cfg?: ZeeConfig): SandboxToolPolicy {
   const configured = cfg?.agent?.subagents?.tools;
   const deny = [
     ...DEFAULT_SUBAGENT_TOOL_DENY,
@@ -433,7 +433,7 @@ function filterToolsByPolicy(
 }
 
 function resolveEffectiveToolPolicy(params: {
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
   sessionKey?: string;
 }) {
   const agentId = params.sessionKey
@@ -488,7 +488,7 @@ function wrapSandboxPathGuard(tool: AnyAgentTool, root: string): AnyAgentTool {
 
 function createSandboxedReadTool(root: string) {
   const base = createReadTool(root);
-  return wrapSandboxPathGuard(createClawdbotReadTool(base), root);
+  return wrapSandboxPathGuard(createZeeReadTool(base), root);
 }
 
 function createSandboxedWriteTool(root: string) {
@@ -570,7 +570,7 @@ function createWhatsAppLoginTool(): AnyAgentTool {
   };
 }
 
-function createClawdbotReadTool(base: AnyAgentTool): AnyAgentTool {
+function createZeeReadTool(base: AnyAgentTool): AnyAgentTool {
   return {
     ...base,
     execute: async (toolCallId, params, signal) => {
@@ -622,14 +622,14 @@ function shouldIncludeWhatsAppTool(messageProvider?: string): boolean {
   return normalized === "whatsapp" || normalized.startsWith("whatsapp:");
 }
 
-export function createClawdbotCodingTools(options?: {
+export function createZeeCodingTools(options?: {
   bash?: BashToolDefaults & ProcessToolDefaults;
   messageProvider?: string;
   agentAccountId?: string;
   sandbox?: SandboxContext | null;
   sessionKey?: string;
   agentDir?: string;
-  config?: ClawdbotConfig;
+  config?: ZeeConfig;
 }): AnyAgentTool[] {
   const bashToolName = "bash";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
@@ -654,7 +654,7 @@ export function createClawdbotCodingTools(options?: {
     if (tool.name === readTool.name) {
       return sandboxRoot
         ? [createSandboxedReadTool(sandboxRoot)]
-        : [createClawdbotReadTool(tool)];
+        : [createZeeReadTool(tool)];
     }
     if (tool.name === bashToolName) return [];
     if (sandboxRoot && (tool.name === "write" || tool.name === "edit")) {
@@ -692,7 +692,7 @@ export function createClawdbotCodingTools(options?: {
     bashTool as unknown as AnyAgentTool,
     processTool as unknown as AnyAgentTool,
     createWhatsAppLoginTool(),
-    ...createClawdbotTools({
+    ...createZeeTools({
       browserControlUrl: sandbox?.browser?.controlUrl,
       agentSessionKey: options?.sessionKey,
       agentProvider: options?.messageProvider,

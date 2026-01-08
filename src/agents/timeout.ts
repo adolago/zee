@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 
 const DEFAULT_AGENT_TIMEOUT_SECONDS = 600;
 
@@ -7,14 +7,14 @@ const normalizeNumber = (value: unknown): number | undefined =>
     ? Math.floor(value)
     : undefined;
 
-export function resolveAgentTimeoutSeconds(cfg?: ClawdbotConfig): number {
+export function resolveAgentTimeoutSeconds(cfg?: ZeeConfig): number {
   const raw = normalizeNumber(cfg?.agent?.timeoutSeconds);
   const seconds = raw ?? DEFAULT_AGENT_TIMEOUT_SECONDS;
   return Math.max(seconds, 1);
 }
 
 export function resolveAgentTimeoutMs(opts: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   overrideMs?: number | null;
   overrideSeconds?: number | null;
   minMs?: number;

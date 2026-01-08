@@ -1,7 +1,7 @@
 import type { OAuthCredentials, OAuthProvider } from "@mariozechner/pi-ai";
 import { resolveDefaultAgentDir } from "../agents/agent-scope.js";
 import { upsertAuthProfile } from "../agents/auth-profiles.js";
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 
 export async function writeOAuthCredentials(
   provider: OAuthProvider,
@@ -34,14 +34,14 @@ export async function setAnthropicApiKey(key: string, agentDir?: string) {
 }
 
 export function applyAuthProfileConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   params: {
     profileId: string;
     provider: string;
     mode: "api_key" | "oauth";
     email?: string;
   },
-): ClawdbotConfig {
+): ZeeConfig {
   const profiles = {
     ...cfg.auth?.profiles,
     [params.profileId]: {
@@ -74,8 +74,8 @@ export function applyAuthProfileConfig(
 }
 
 export function applyMinimaxProviderConfig(
-  cfg: ClawdbotConfig,
-): ClawdbotConfig {
+  cfg: ZeeConfig,
+): ZeeConfig {
   const models = { ...cfg.agent?.models };
   models["anthropic/claude-opus-4-5"] = {
     ...models["anthropic/claude-opus-4-5"],
@@ -119,7 +119,7 @@ export function applyMinimaxProviderConfig(
   };
 }
 
-export function applyMinimaxConfig(cfg: ClawdbotConfig): ClawdbotConfig {
+export function applyMinimaxConfig(cfg: ZeeConfig): ZeeConfig {
   const next = applyMinimaxProviderConfig(cfg);
   return {
     ...next,

@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite(.serialized) struct VoicePushToTalkHotkeyTests {
     actor Counter {

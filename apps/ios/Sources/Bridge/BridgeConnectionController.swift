@@ -1,4 +1,4 @@
-import ClawdbotKit
+import ZeeKit
 import Darwin
 import Foundation
 import Network
@@ -99,7 +99,7 @@ final class BridgeConnectionController {
         guard !instanceId.isEmpty else { return }
 
         let token = KeychainStore.loadString(
-            service: "com.clawdbot.bridge",
+            service: "com.zee.bridge",
             account: self.keychainAccount(instanceId: instanceId))?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !token.isEmpty else { return }
@@ -189,7 +189,7 @@ final class BridgeConnectionController {
                 if !refreshed.isEmpty, refreshed != token {
                     _ = KeychainStore.saveString(
                         refreshed,
-                        service: "com.clawdbot.bridge",
+                        service: "com.zee.bridge",
                         account: self.keychainAccount(instanceId: instanceId))
                 }
                 appModel.connectToBridge(endpoint: endpoint, hello: self.makeHello(token: resolvedToken))
@@ -217,46 +217,46 @@ final class BridgeConnectionController {
     }
 
     private func currentCaps() -> [String] {
-        var caps = [ClawdbotCapability.canvas.rawValue, ClawdbotCapability.screen.rawValue]
+        var caps = [ZeeCapability.canvas.rawValue, ZeeCapability.screen.rawValue]
 
         // Default-on: if the key doesn't exist yet, treat it as enabled.
         let cameraEnabled =
             UserDefaults.standard.object(forKey: "camera.enabled") == nil
                 ? true
                 : UserDefaults.standard.bool(forKey: "camera.enabled")
-        if cameraEnabled { caps.append(ClawdbotCapability.camera.rawValue) }
+        if cameraEnabled { caps.append(ZeeCapability.camera.rawValue) }
 
         let voiceWakeEnabled = UserDefaults.standard.bool(forKey: VoiceWakePreferences.enabledKey)
-        if voiceWakeEnabled { caps.append(ClawdbotCapability.voiceWake.rawValue) }
+        if voiceWakeEnabled { caps.append(ZeeCapability.voiceWake.rawValue) }
 
         let locationModeRaw = UserDefaults.standard.string(forKey: "location.enabledMode") ?? "off"
-        let locationMode = ClawdbotLocationMode(rawValue: locationModeRaw) ?? .off
-        if locationMode != .off { caps.append(ClawdbotCapability.location.rawValue) }
+        let locationMode = ZeeLocationMode(rawValue: locationModeRaw) ?? .off
+        if locationMode != .off { caps.append(ZeeCapability.location.rawValue) }
 
         return caps
     }
 
     private func currentCommands() -> [String] {
         var commands: [String] = [
-            ClawdbotCanvasCommand.present.rawValue,
-            ClawdbotCanvasCommand.hide.rawValue,
-            ClawdbotCanvasCommand.navigate.rawValue,
-            ClawdbotCanvasCommand.evalJS.rawValue,
-            ClawdbotCanvasCommand.snapshot.rawValue,
-            ClawdbotCanvasA2UICommand.push.rawValue,
-            ClawdbotCanvasA2UICommand.pushJSONL.rawValue,
-            ClawdbotCanvasA2UICommand.reset.rawValue,
-            ClawdbotScreenCommand.record.rawValue,
+            ZeeCanvasCommand.present.rawValue,
+            ZeeCanvasCommand.hide.rawValue,
+            ZeeCanvasCommand.navigate.rawValue,
+            ZeeCanvasCommand.evalJS.rawValue,
+            ZeeCanvasCommand.snapshot.rawValue,
+            ZeeCanvasA2UICommand.push.rawValue,
+            ZeeCanvasA2UICommand.pushJSONL.rawValue,
+            ZeeCanvasA2UICommand.reset.rawValue,
+            ZeeScreenCommand.record.rawValue,
         ]
 
         let caps = Set(self.currentCaps())
-        if caps.contains(ClawdbotCapability.camera.rawValue) {
-            commands.append(ClawdbotCameraCommand.list.rawValue)
-            commands.append(ClawdbotCameraCommand.snap.rawValue)
-            commands.append(ClawdbotCameraCommand.clip.rawValue)
+        if caps.contains(ZeeCapability.camera.rawValue) {
+            commands.append(ZeeCameraCommand.list.rawValue)
+            commands.append(ZeeCameraCommand.snap.rawValue)
+            commands.append(ZeeCameraCommand.clip.rawValue)
         }
-        if caps.contains(ClawdbotCapability.location.rawValue) {
-            commands.append(ClawdbotLocationCommand.get.rawValue)
+        if caps.contains(ZeeCapability.location.rawValue) {
+            commands.append(ZeeLocationCommand.get.rawValue)
         }
 
         return commands

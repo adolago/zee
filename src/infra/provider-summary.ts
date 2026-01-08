@@ -1,4 +1,4 @@
-import { type ClawdbotConfig, loadConfig } from "../config/config.js";
+import { type ZeeConfig, loadConfig } from "../config/config.js";
 import {
   listDiscordAccountIds,
   resolveDiscordAccount,
@@ -40,7 +40,7 @@ const DEFAULT_OPTIONS: Required<ProviderSummaryOptions> = {
 };
 
 export async function buildProviderSummary(
-  cfg?: ClawdbotConfig,
+  cfg?: ZeeConfig,
   options?: ProviderSummaryOptions,
 ): Promise<string[]> {
   const effective = cfg ?? loadConfig();

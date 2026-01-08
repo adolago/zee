@@ -1,6 +1,6 @@
 import { withProgress } from "../../cli/progress.js";
 import {
-  type ClawdbotConfig,
+  type ZeeConfig,
   readConfigFileSnapshot,
 } from "../../config/config.js";
 import {
@@ -157,7 +157,7 @@ export function formatGatewayProvidersStatusLines(
 }
 
 async function formatConfigProvidersStatusLines(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   meta: { path?: string; mode?: "local" | "remote" },
 ): Promise<string[]> {
   const lines: string[] = [];

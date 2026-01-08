@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "../config/config.js";
+import type { ZeeConfig } from "../config/config.js";
 import type { DiscordAccountConfig } from "../config/types.js";
 import {
   DEFAULT_ACCOUNT_ID,
@@ -15,26 +15,26 @@ export type ResolvedDiscordAccount = {
   config: DiscordAccountConfig;
 };
 
-function listConfiguredAccountIds(cfg: ClawdbotConfig): string[] {
+function listConfiguredAccountIds(cfg: ZeeConfig): string[] {
   const accounts = cfg.discord?.accounts;
   if (!accounts || typeof accounts !== "object") return [];
   return Object.keys(accounts).filter(Boolean);
 }
 
-export function listDiscordAccountIds(cfg: ClawdbotConfig): string[] {
+export function listDiscordAccountIds(cfg: ZeeConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   if (ids.length === 0) return [DEFAULT_ACCOUNT_ID];
   return ids.sort((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultDiscordAccountId(cfg: ClawdbotConfig): string {
+export function resolveDefaultDiscordAccountId(cfg: ZeeConfig): string {
   const ids = listDiscordAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 
 function resolveAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): DiscordAccountConfig | undefined {
   const accounts = cfg.discord?.accounts;
@@ -43,7 +43,7 @@ function resolveAccountConfig(
 }
 
 function mergeDiscordAccountConfig(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   accountId: string,
 ): DiscordAccountConfig {
   const { accounts: _ignored, ...base } = (cfg.discord ??
@@ -53,7 +53,7 @@ function mergeDiscordAccountConfig(
 }
 
 export function resolveDiscordAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: ZeeConfig;
   accountId?: string | null;
 }): ResolvedDiscordAccount {
   const accountId = normalizeAccountId(params.accountId);
@@ -73,7 +73,7 @@ export function resolveDiscordAccount(params: {
 }
 
 export function listEnabledDiscordAccounts(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
 ): ResolvedDiscordAccount[] {
   return listDiscordAccountIds(cfg)
     .map((accountId) => resolveDiscordAccount({ cfg, accountId }))

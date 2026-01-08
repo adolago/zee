@@ -108,9 +108,9 @@ export function resolveBrowserConfig(
   cfg: BrowserConfig | undefined,
 ): ResolvedBrowserConfig {
   const enabled = cfg?.enabled ?? DEFAULT_CLAWD_BROWSER_ENABLED;
-  const envControlUrl = process.env.CLAWDBOT_BROWSER_CONTROL_URL?.trim();
+  const envControlUrl = process.env.ZEE_BROWSER_CONTROL_URL?.trim();
   const derivedControlPort = (() => {
-    const raw = process.env.CLAWDBOT_GATEWAY_PORT?.trim();
+    const raw = process.env.ZEE_GATEWAY_PORT?.trim();
     if (!raw) return null;
     const gatewayPort = Number.parseInt(raw, 10);
     if (!Number.isFinite(gatewayPort) || gatewayPort <= 0) return null;

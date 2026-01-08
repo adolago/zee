@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { loadDotEnv } from "../infra/dotenv.js";
 import { normalizeEnv } from "../infra/env.js";
 import { isMainModule } from "../infra/is-main.js";
-import { ensureClawdbotCliOnPath } from "../infra/path-env.js";
+import { ensureZeeCliOnPath } from "../infra/path-env.js";
 import { assertSupportedRuntime } from "../infra/runtime-guard.js";
 import { installUnhandledRejectionHandler } from "../infra/unhandled-rejections.js";
 import { enableConsoleCapture } from "../logging.js";
@@ -12,7 +12,7 @@ import { enableConsoleCapture } from "../logging.js";
 export async function runCli(argv: string[] = process.argv) {
   loadDotEnv({ quiet: true });
   normalizeEnv();
-  ensureClawdbotCliOnPath();
+  ensureZeeCliOnPath();
 
   // Capture all console output into structured logs while keeping stdout/stderr behavior.
   enableConsoleCapture();
@@ -29,7 +29,7 @@ export async function runCli(argv: string[] = process.argv) {
 
   process.on("uncaughtException", (error) => {
     console.error(
-      "[clawdbot] Uncaught exception:",
+      "[zee] Uncaught exception:",
       error.stack ?? error.message,
     );
     process.exit(1);

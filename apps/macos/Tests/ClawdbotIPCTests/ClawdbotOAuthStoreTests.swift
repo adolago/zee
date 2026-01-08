@@ -1,20 +1,20 @@
 import Foundation
 import Testing
-@testable import Clawdbot
+@testable import Zee
 
 @Suite
-struct ClawdbotOAuthStoreTests {
+struct ZeeOAuthStoreTests {
     @Test
     func returnsMissingWhenFileAbsent() {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-oauth-\(UUID().uuidString)")
+            .appendingPathComponent("zee-oauth-\(UUID().uuidString)")
             .appendingPathComponent("oauth.json")
-        #expect(ClawdbotOAuthStore.anthropicOAuthStatus(at: url) == .missingFile)
+        #expect(ZeeOAuthStore.anthropicOAuthStatus(at: url) == .missingFile)
     }
 
     @Test
-    func usesEnvOverrideForClawdbotOAuthDir() throws {
-        let key = "CLAWDBOT_OAUTH_DIR"
+    func usesEnvOverrideForZeeOAuthDir() throws {
+        let key = "ZEE_OAUTH_DIR"
         let previous = ProcessInfo.processInfo.environment[key]
         defer {
             if let previous {
@@ -25,10 +25,10 @@ struct ClawdbotOAuthStoreTests {
         }
 
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-oauth-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("zee-oauth-\(UUID().uuidString)", isDirectory: true)
         setenv(key, dir.path, 1)
 
-        #expect(ClawdbotOAuthStore.oauthDir().standardizedFileURL == dir.standardizedFileURL)
+        #expect(ZeeOAuthStore.oauthDir().standardizedFileURL == dir.standardizedFileURL)
     }
 
     @Test
@@ -42,7 +42,7 @@ struct ClawdbotOAuthStoreTests {
             ],
         ])
 
-        #expect(ClawdbotOAuthStore.anthropicOAuthStatus(at: url).isConnected)
+        #expect(ZeeOAuthStore.anthropicOAuthStatus(at: url).isConnected)
     }
 
     @Test
@@ -55,7 +55,7 @@ struct ClawdbotOAuthStoreTests {
             ],
         ])
 
-        #expect(ClawdbotOAuthStore.anthropicOAuthStatus(at: url).isConnected)
+        #expect(ZeeOAuthStore.anthropicOAuthStatus(at: url).isConnected)
     }
 
     @Test
@@ -68,7 +68,7 @@ struct ClawdbotOAuthStoreTests {
             ],
         ])
 
-        #expect(ClawdbotOAuthStore.anthropicOAuthStatus(at: url) == .missingProviderEntry)
+        #expect(ZeeOAuthStore.anthropicOAuthStatus(at: url) == .missingProviderEntry)
     }
 
     @Test
@@ -81,12 +81,12 @@ struct ClawdbotOAuthStoreTests {
             ],
         ])
 
-        #expect(ClawdbotOAuthStore.anthropicOAuthStatus(at: url) == .missingTokens)
+        #expect(ZeeOAuthStore.anthropicOAuthStatus(at: url) == .missingTokens)
     }
 
     private func writeOAuthFile(_ json: [String: Any]) throws -> URL {
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("clawdbot-oauth-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("zee-oauth-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let url = dir.appendingPathComponent("oauth.json")

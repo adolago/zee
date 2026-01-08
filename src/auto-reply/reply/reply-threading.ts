@@ -1,10 +1,10 @@
-import type { ClawdbotConfig } from "../../config/config.js";
+import type { ZeeConfig } from "../../config/config.js";
 import type { ReplyToMode } from "../../config/types.js";
 import type { OriginatingChannelType } from "../templating.js";
 import type { ReplyPayload } from "../types.js";
 
 export function resolveReplyToMode(
-  cfg: ClawdbotConfig,
+  cfg: ZeeConfig,
   channel?: OriginatingChannelType,
 ): ReplyToMode {
   switch (channel) {

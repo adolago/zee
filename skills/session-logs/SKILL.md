@@ -1,7 +1,7 @@
 ---
 name: session-logs
 description: Search and analyze your own conversation history from session log files using jq.
-metadata: {"clawdbot":{"emoji":"📜","requires":{"bins":["jq"]}}}
+metadata: {"zee":{"emoji":"📜","requires":{"bins":["jq"]}}}
 ---
 
 # session-logs
@@ -10,7 +10,7 @@ Search your complete conversation history stored in session JSONL files. Use thi
 
 ## Location
 
-Session logs live at: `~/.clawdbot/agents/main/sessions/`
+Session logs live at: `~/.zee/agents/main/sessions/`
 
 - **`sessions.json`** - Index mapping session keys to session IDs
 - **`<session-id>.jsonl`** - Full conversation transcript per session
@@ -28,7 +28,7 @@ Each `.jsonl` file contains messages with:
 
 ### List all sessions by date and size
 ```bash
-for f in ~/.clawdbot/agents/main/sessions/*.jsonl; do
+for f in ~/.zee/agents/main/sessions/*.jsonl; do
   date=$(head -1 "$f" | jq -r '.timestamp' | cut -dT -f1)
   size=$(ls -lh "$f" | awk '{print $5}')
   echo "$date $size $(basename $f)"
@@ -37,7 +37,7 @@ done | sort -r
 
 ### Find sessions from a specific day
 ```bash
-for f in ~/.clawdbot/agents/main/sessions/*.jsonl; do
+for f in ~/.zee/agents/main/sessions/*.jsonl; do
   head -1 "$f" | jq -r '.timestamp' | grep -q "2026-01-06" && echo "$f"
 done
 ```
@@ -59,7 +59,7 @@ jq -s '[.[] | .message.usage.cost.total // 0] | add' <session>.jsonl
 
 ### Daily cost summary
 ```bash
-for f in ~/.clawdbot/agents/main/sessions/*.jsonl; do
+for f in ~/.zee/agents/main/sessions/*.jsonl; do
   date=$(head -1 "$f" | jq -r '.timestamp' | cut -dT -f1)
   cost=$(jq -s '[.[] | .message.usage.cost.total // 0] | add' "$f")
   echo "$date $cost"
@@ -84,7 +84,7 @@ jq -r '.message.content[]? | select(.type == "toolCall") | .name' <session>.json
 
 ### Search across ALL sessions for a phrase
 ```bash
-grep -l "phrase" ~/.clawdbot/agents/main/sessions/*.jsonl
+grep -l "phrase" ~/.zee/agents/main/sessions/*.jsonl
 ```
 
 ## Tips
