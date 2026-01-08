@@ -1479,6 +1479,7 @@ function createDiscordNativeCommand(params: {
       let didReply = false;
       const dispatcher = createReplyDispatcher({
         responsePrefix: cfg.messages?.responsePrefix,
+        humanDelay: cfg.agent?.humanDelay,
         deliver: async (payload, _info) => {
           await deliverDiscordInteractionReply({
             interaction,

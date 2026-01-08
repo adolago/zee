@@ -422,6 +422,7 @@ export async function monitorIMessageProvider(
 
     const dispatcher = createReplyDispatcher({
       responsePrefix: cfg.messages?.responsePrefix,
+      humanDelay: cfg.agent?.humanDelay,
       deliver: async (payload) => {
         await deliverReplies({
           replies: [payload],

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Agent: add human-like delay between block replies for natural rhythm. (#446) - thanks @tony-freedomology
 - Slack: expose threadTs in agent sendMessage tool for thread replies. (#464) - thanks @austinm911
 - UI: link sessions to chat page. (#471) - thanks @HazAT
 - macOS: prevent crash from missing ZeeKit resources and Swift 6.2 library. (#473) - thanks @gupsammy

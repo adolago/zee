@@ -1003,6 +1003,20 @@ export const ZeeSchema = z.object({
             .optional(),
         })
         .optional(),
+      /**
+       * Human-like delay between sending block replies.
+       * Adds natural rhythm to multi-bubble responses.
+       */
+      humanDelay: z
+        .object({
+          /** Enable human-like delays (default: false). */
+          enabled: z.boolean().optional(),
+          /** Minimum delay in milliseconds (default: 800). */
+          minMs: z.number().int().nonnegative().optional(),
+          /** Maximum delay in milliseconds (default: 2500). */
+          maxMs: z.number().int().nonnegative().optional(),
+        })
+        .optional(),
       timeoutSeconds: z.number().int().positive().optional(),
       mediaMaxMb: z.number().positive().optional(),
       typingIntervalSeconds: z.number().int().positive().optional(),

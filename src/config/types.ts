@@ -1103,6 +1103,18 @@ export type ZeeConfig = {
       maxChars?: number;
       breakPreference?: "paragraph" | "newline" | "sentence";
     };
+    /**
+     * Human-like delay between sending block replies.
+     * Adds natural rhythm to multi-bubble responses.
+     */
+    humanDelay?: {
+      /** Enable human-like delays (default: false). */
+      enabled?: boolean;
+      /** Minimum delay in milliseconds (default: 800). */
+      minMs?: number;
+      /** Maximum delay in milliseconds (default: 2500). */
+      maxMs?: number;
+    };
     timeoutSeconds?: number;
     /** Max inbound media size in MB for agent-visible attachments (text note or future image attach). */
     mediaMaxMb?: number;
