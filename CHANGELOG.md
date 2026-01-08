@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Onboarding: add Gemini API key option. (#489) - thanks @jonasjancarik
 - Agent: add human-like delay between block replies for natural rhythm. (#446) - thanks @tony-freedomology
 - Slack: expose threadTs in agent sendMessage tool for thread replies. (#464) - thanks @austinm911
 - UI: link sessions to chat page. (#471) - thanks @HazAT

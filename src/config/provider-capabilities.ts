@@ -1,5 +1,5 @@
 import { normalizeAccountId } from "../routing/session-key.js";
-import type { ClawdbotConfig } from "./config.js";
+import type { ZeeConfig } from "./config.js";
 
 function normalizeCapabilities(
   capabilities: string[] | undefined,
@@ -9,7 +9,7 @@ function normalizeCapabilities(
 }
 
 export function resolveProviderCapabilities(params: {
-  cfg?: ClawdbotConfig;
+  cfg?: ZeeConfig;
   provider?: string | null;
   accountId?: string | null;
 }): string[] | undefined {
@@ -37,7 +37,8 @@ export function resolveProviderCapabilities(params: {
       );
     case "slack":
       return normalizeCapabilities(
-        cfg.slack?.accounts?.[accountId]?.capabilities ?? cfg.slack?.capabilities,
+        cfg.slack?.accounts?.[accountId]?.capabilities ??
+          cfg.slack?.capabilities,
       );
     case "signal":
       return normalizeCapabilities(

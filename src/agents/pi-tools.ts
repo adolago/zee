@@ -21,10 +21,10 @@ import {
   createProcessTool,
   type ProcessToolDefaults,
 } from "./bash-tools.js";
-import { createZeeTools } from "./zee-tools.js";
 import type { SandboxContext, SandboxToolPolicy } from "./sandbox.js";
 import { assertSandboxPath } from "./sandbox-paths.js";
 import { sanitizeToolResultImages } from "./tool-images.js";
+import { createZeeTools } from "./clawdbot-tools.js";
 
 // NOTE(steipete): Upstream read now does file-magic MIME detection; we keep the wrapper
 // to normalize payloads and sanitize oversized images before they hit providers.

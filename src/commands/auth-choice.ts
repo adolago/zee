@@ -33,6 +33,7 @@ import {
   applyMinimaxProviderConfig,
   MINIMAX_HOSTED_MODEL_REF,
   setAnthropicApiKey,
+  setGeminiApiKey,
   setMinimaxApiKey,
   writeOAuthCredentials,
 } from "./onboard-auth.js";
@@ -390,6 +391,17 @@ export async function applyAuthChoice(params: {
         "OAuth help",
       );
     }
+  } else if (params.authChoice === "gemini-api-key") {
+    const key = await params.prompter.text({
+      message: "Enter Gemini API key",
+      validate: (value) => (value?.trim() ? undefined : "Required"),
+    });
+    await setGeminiApiKey(String(key).trim(), params.agentDir);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "google:default",
+      provider: "google",
+      mode: "api_key",
+    });
   } else if (params.authChoice === "apiKey") {
     const key = await params.prompter.text({
       message: "Enter Anthropic API key",
