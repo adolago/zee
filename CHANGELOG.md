@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Telegram: add `[[audio_as_voice]]` tag to render audio as voice notes. (#490) - thanks @jarvis-medmatic
 - Telegram: add inline keyboard buttons support and provider capabilities. (#491) - thanks @azade-c
 - Commands: add `/usage` alias for `/status`. (#492) - thanks @lc0rp
 - Onboarding: add hosted MiniMax M2.1 API key option. (#495) - thanks @tobiasbischoff
