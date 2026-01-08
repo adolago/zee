@@ -818,7 +818,9 @@ export class ZeeApp extends LitElement {
     const params = new URLSearchParams(window.location.search);
     const tokenRaw = params.get("token");
     const passwordRaw = params.get("password");
+    const sessionRaw = params.get("session");
     let changed = false;
+    let shouldCleanUrl = false;
 
     if (tokenRaw != null) {
       const token = tokenRaw.trim();
@@ -827,6 +829,7 @@ export class ZeeApp extends LitElement {
         changed = true;
       }
       params.delete("token");
+      shouldCleanUrl = true;
     }
 
     if (passwordRaw != null) {
@@ -836,9 +839,20 @@ export class ZeeApp extends LitElement {
         changed = true;
       }
       params.delete("password");
+      shouldCleanUrl = true;
     }
 
-    if (!changed && tokenRaw == null && passwordRaw == null) return;
+    if (sessionRaw != null) {
+      const session = sessionRaw.trim();
+      if (session) {
+        this.sessionKey = session;
+        changed = true;
+      }
+      params.delete("session");
+      shouldCleanUrl = true;
+    }
+
+    if (!shouldCleanUrl) return;
     const url = new URL(window.location.href);
     url.search = params.toString();
     window.history.replaceState({}, "", url.toString());
