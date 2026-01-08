@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Slack: expose threadTs in agent sendMessage tool for thread replies. (#464) - thanks @austinm911
 - UI: link sessions to chat page. (#471) - thanks @HazAT
 - macOS: prevent crash from missing ZeeKit resources and Swift 6.2 library. (#473) - thanks @gupsammy
 - Docs: add 3 community showcase entries from Discord. (#476) - thanks @gupsammy
