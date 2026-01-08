@@ -33,7 +33,7 @@ Inline text like `hello /status` is ignored.
 Text + native (when enabled):
 - `/help`
 - `/commands`
-- `/status`
+- `/status` (alias: `/usage`)
 - `/stop`
 - `/restart`
 - `/activation mention|always` (groups only)

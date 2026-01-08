@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Commands: add `/usage` alias for `/status`. (#492) - thanks @lc0rp
 - Onboarding: add hosted MiniMax M2.1 API key option. (#495) - thanks @tobiasbischoff
 - Commands: add `/commands` to list available slash commands. (#497) - thanks @lc0rp
 - Chunking: avoid splitting outbound messages inside parentheses. (#499) - thanks @philipp-spiess
