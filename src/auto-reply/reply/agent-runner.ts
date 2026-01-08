@@ -145,6 +145,7 @@ export async function runReplyAgent(params: {
   const pendingStreamedPayloadKeys = new Set<string>();
   const pendingBlockTasks = new Set<Promise<void>>();
   const pendingToolTasks = new Set<Promise<void>>();
+  let blockReplyChain: Promise<void> = Promise.resolve();
   let didStreamBlockReply = false;
 
   // Buffer audio blocks to apply [[audio_as_voice]] tag that may come later
@@ -406,10 +407,11 @@ export async function runReplyAgent(params: {
                       return;
                     }
                     pendingStreamedPayloadKeys.add(payloadKey);
-                    const task = (async () => {
-                      await typingSignals.signalTextDelta(taggedPayload.text);
-                      await opts.onBlockReply?.(blockPayload);
-                    })()
+                    blockReplyChain = blockReplyChain
+                      .then(async () => {
+                        await typingSignals.signalTextDelta(taggedPayload.text);
+                        await opts.onBlockReply?.(blockPayload);
+                      })
                       .then(() => {
                         streamedPayloadKeys.add(payloadKey);
                         didStreamBlockReply = true;
@@ -422,6 +424,7 @@ export async function runReplyAgent(params: {
                       .finally(() => {
                         pendingStreamedPayloadKeys.delete(payloadKey);
                       });
+                    const task = blockReplyChain;
                     pendingBlockTasks.add(task);
                     void task.finally(() => pendingBlockTasks.delete(task));
                   }
