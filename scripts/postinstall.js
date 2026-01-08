@@ -59,7 +59,8 @@ function applyPatchIfNeeded(opts) {
   }
 
   if (run("git", forwardCheck, { stdio: "ignore" }) !== 0) {
-    throw new Error(`patch does not apply cleanly: ${path.basename(patchPath)}`);
+    console.warn(`[postinstall] ⚠️ patch does not apply cleanly (skipping): ${path.basename(patchPath)}`);
+    return;
   }
 
   const status = run("git", apply);
