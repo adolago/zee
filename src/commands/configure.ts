@@ -52,7 +52,9 @@ import { healthCommand } from "./health.js";
 import {
   applyAuthProfileConfig,
   applyMinimaxConfig,
+  applyMinimaxHostedConfig,
   setAnthropicApiKey,
+  setMinimaxApiKey,
   writeOAuthCredentials,
 } from "./onboard-auth.js";
 import {
@@ -296,6 +298,7 @@ async function promptAuthConfig(
     | "codex-cli"
     | "antigravity"
     | "apiKey"
+    | "minimax-cloud"
     | "minimax"
     | "skip";
 
@@ -522,6 +525,21 @@ async function promptAuthConfig(
       provider: "anthropic",
       mode: "api_key",
     });
+  } else if (authChoice === "minimax-cloud") {
+    const key = guardCancel(
+      await text({
+        message: "Enter MiniMax API key",
+        validate: (value) => (value?.trim() ? undefined : "Required"),
+      }),
+      runtime,
+    );
+    await setMinimaxApiKey(String(key).trim());
+    next = applyAuthProfileConfig(next, {
+      profileId: "minimax:default",
+      provider: "minimax",
+      mode: "api_key",
+    });
+    next = applyMinimaxHostedConfig(next);
   } else if (authChoice === "minimax") {
     next = applyMinimaxConfig(next);
   }
@@ -653,9 +671,7 @@ export async function runConfigureWizard(
   runtime: RuntimeEnv = defaultRuntime,
 ) {
   printWizardHeader(runtime);
-  intro(
-    opts.command === "update" ? "Zee update wizard" : "Zee configure",
-  );
+  intro(opts.command === "update" ? "Zee update wizard" : "Zee configure");
   const prompter = createClackPrompter();
 
   const snapshot = await readConfigFileSnapshot();
@@ -691,11 +707,9 @@ export async function runConfigureWizard(
   const localUrl = "ws://127.0.0.1:18789";
   const localProbe = await probeGatewayReachable({
     url: localUrl,
-    token:
-      baseConfig.gateway?.auth?.token ?? process.env.ZEE_GATEWAY_TOKEN,
+    token: baseConfig.gateway?.auth?.token ?? process.env.ZEE_GATEWAY_TOKEN,
     password:
-      baseConfig.gateway?.auth?.password ??
-      process.env.ZEE_GATEWAY_PASSWORD,
+      baseConfig.gateway?.auth?.password ?? process.env.ZEE_GATEWAY_PASSWORD,
   });
   const remoteUrl = baseConfig.gateway?.remote?.url?.trim() ?? "";
   const remoteProbe = remoteUrl

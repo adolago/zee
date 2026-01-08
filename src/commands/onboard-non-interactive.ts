@@ -5,11 +5,11 @@ import {
   ensureAuthProfileStore,
 } from "../agents/auth-profiles.js";
 import {
-  type ZeeConfig,
   CONFIG_PATH_ZEE,
   readConfigFileSnapshot,
   resolveGatewayPort,
   writeConfigFile,
+  type ZeeConfig,
 } from "../config/config.js";
 import { GATEWAY_LAUNCH_AGENT_LABEL } from "../daemon/constants.js";
 import { resolveGatewayProgramArguments } from "../daemon/program-args.js";
@@ -25,7 +25,9 @@ import { healthCommand } from "./health.js";
 import {
   applyAuthProfileConfig,
   applyMinimaxConfig,
+  applyMinimaxHostedConfig,
   setAnthropicApiKey,
+  setMinimaxApiKey,
 } from "./onboard-auth.js";
 import {
   applyWizardMetadata,
@@ -117,6 +119,20 @@ export async function runNonInteractiveOnboarding(
       provider: "anthropic",
       mode: "api_key",
     });
+  } else if (authChoice === "minimax-cloud") {
+    const key = opts.minimaxApiKey?.trim();
+    if (!key) {
+      runtime.error("Missing --minimax-api-key");
+      runtime.exit(1);
+      return;
+    }
+    await setMinimaxApiKey(key);
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "minimax:default",
+      provider: "minimax",
+      mode: "api_key",
+    });
+    nextConfig = applyMinimaxHostedConfig(nextConfig);
   } else if (authChoice === "claude-cli") {
     const store = ensureAuthProfileStore();
     if (!store.profiles[CLAUDE_CLI_PROFILE_ID]) {
