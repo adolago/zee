@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Daemon: align systemd unit with documentation (network deps, restart delay). (#479) - thanks @azade-c
 - Scripts: add comprehensive backup script. (#480) - thanks @pasogott
 - Telegram: fix block reply message ordering. (#483) - thanks @AbhisekBasu1
 - Telegram: add `[[audio_as_voice]]` tag to render audio as voice notes. (#490) - thanks @jarvis-medmatic
