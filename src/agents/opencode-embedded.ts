@@ -1,9 +1,19 @@
+/**
+ * Compatibility layer for pi-embedded.
+ * Re-exports from opencode-runner.ts with the same interface.
+ */
 export type {
+  AgentEvent,
+  CompactSessionOptions,
   EmbeddedPiAgentMeta,
+  EmbeddedPiAgentOptions,
   EmbeddedPiCompactResult,
   EmbeddedPiRunMeta,
   EmbeddedPiRunResult,
-} from "./pi-embedded-runner.js";
+  MessagingToolSend,
+  UsageInfo,
+} from "./opencode-runner.js";
+
 export {
   abortEmbeddedPiRun,
   compactEmbeddedPiSession,
@@ -13,4 +23,4 @@ export {
   resolveEmbeddedSessionLane,
   runEmbeddedPiAgent,
   waitForEmbeddedPiRunEnd,
-} from "./pi-embedded-runner.js";
+} from "./opencode-runner.js";

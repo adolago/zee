@@ -138,9 +138,7 @@ describe("gateway server cron", () => {
   });
 
   test("writes cron run history to runs/<jobId>.jsonl", async () => {
-    const dir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "zee-gw-cron-log-"),
-    );
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gw-cron-log-"));
     testState.cronStorePath = path.join(dir, "cron", "jobs.json");
     await fs.mkdir(path.dirname(testState.cronStorePath), { recursive: true });
     await fs.writeFile(

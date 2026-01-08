@@ -79,10 +79,7 @@ export function cameraTempPath(opts: {
   const id = opts.id ?? randomUUID();
   const facingPart = opts.facing ? `-${opts.facing}` : "";
   const ext = opts.ext.startsWith(".") ? opts.ext : `.${opts.ext}`;
-  return path.join(
-    tmpDir,
-    `zee-camera-${opts.kind}${facingPart}-${id}${ext}`,
-  );
+  return path.join(tmpDir, `zee-camera-${opts.kind}${facingPart}-${id}${ext}`);
 }
 
 export async function writeBase64ToFile(filePath: string, base64: string) {

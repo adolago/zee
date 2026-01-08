@@ -31,10 +31,10 @@ export type SkillInstallOption = {
 
 export type SkillStatusEntry = {
   name: string;
-  description: string;
-  source: string;
-  filePath: string;
-  baseDir: string;
+  description?: string;
+  source?: string;
+  filePath?: string;
+  baseDir?: string;
   skillKey: string;
   primaryEnv?: string;
   emoji?: string;

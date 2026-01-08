@@ -69,8 +69,7 @@ function candidateBinDirs(opts: EnsureZeePathOpts): string[] {
   // Project-local installs (best effort): if a `node_modules/.bin/zee` exists near cwd,
   // include it. This helps when running under launchd or other minimal PATH environments.
   const localBinDir = path.join(cwd, "node_modules", ".bin");
-  if (isExecutable(path.join(localBinDir, "zee")))
-    candidates.push(localBinDir);
+  if (isExecutable(path.join(localBinDir, "zee"))) candidates.push(localBinDir);
 
   const miseDataDir =
     process.env.MISE_DATA_DIR ?? path.join(homeDir, ".local", "share", "mise");

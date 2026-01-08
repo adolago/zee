@@ -1,5 +1,5 @@
-import { isMessagingToolDuplicate } from "../../agents/pi-embedded-helpers.js";
-import type { MessagingToolSend } from "../../agents/pi-embedded-runner.js";
+import { isMessagingToolDuplicate } from "../../agents/opencode-helpers.js";
+import type { MessagingToolSend } from "../../agents/opencode-runner.js";
 import type { ReplyPayload } from "../types.js";
 import { extractReplyToTag } from "./reply-tags.js";
 

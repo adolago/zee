@@ -17,9 +17,7 @@ export type HooksConfigResolved = {
   mappings: HookMappingResolved[];
 };
 
-export function resolveHooksConfig(
-  cfg: ZeeConfig,
-): HooksConfigResolved | null {
+export function resolveHooksConfig(cfg: ZeeConfig): HooksConfigResolved | null {
   if (cfg.hooks?.enabled !== true) return null;
   const token = cfg.hooks?.token?.trim();
   if (!token) {

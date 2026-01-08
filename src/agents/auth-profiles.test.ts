@@ -378,9 +378,7 @@ describe("auth profile cooldowns", () => {
 
 describe("external CLI credential sync", () => {
   it("syncs Claude CLI credentials into anthropic:claude-cli", () => {
-    const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "zee-cli-sync-"),
-    );
+    const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-cli-sync-"));
     const originalHome = snapshotHomeEnv();
 
     try {
@@ -440,9 +438,7 @@ describe("external CLI credential sync", () => {
   });
 
   it("syncs Codex CLI credentials into openai-codex:codex-cli", () => {
-    const agentDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "zee-codex-sync-"),
-    );
+    const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-codex-sync-"));
     const originalHome = snapshotHomeEnv();
 
     try {

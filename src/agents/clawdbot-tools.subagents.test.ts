@@ -24,7 +24,7 @@ vi.mock("../config/config.js", async (importOriginal) => {
 });
 
 import { emitAgentEvent } from "../infra/agent-events.js";
-import { createZeeTools } from "./zee-tools.js";
+import { createZeeTools } from "./clawdbot-tools.js";
 import { resetSubagentRegistryForTests } from "./subagent-registry.js";
 
 describe("subagents", () => {

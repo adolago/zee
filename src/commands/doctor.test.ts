@@ -22,9 +22,7 @@ beforeEach(() => {
   originalIsTTY = process.stdin.isTTY;
   setStdinTty(true);
   originalStateDir = process.env.ZEE_STATE_DIR;
-  tempStateDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "zee-doctor-state-"),
-  );
+  tempStateDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-doctor-state-"));
   process.env.ZEE_STATE_DIR = tempStateDir;
   fs.mkdirSync(path.join(tempStateDir, "agents", "main", "sessions"), {
     recursive: true,

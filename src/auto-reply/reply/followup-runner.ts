@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
-import { lookupContextTokens } from "../../agents/context.js";
-import { DEFAULT_CONTEXT_TOKENS } from "../../agents/defaults.js";
+import {
+  DEFAULT_CONTEXT_TOKENS,
+  lookupContextTokens,
+} from "../../agents/defaults.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
-import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
+import { runEmbeddedPiAgent } from "../../agents/opencode-embedded.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
 import { type SessionEntry, saveSessionStore } from "../../config/sessions.js";
 import type { TypingMode } from "../../config/types.js";

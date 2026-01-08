@@ -8,6 +8,3 @@ onlyBuiltDependencies:
   - esbuild
   - protobufjs
   - sharp
-
-patchedDependencies:
-  '@mariozechner/pi-ai': patches/@mariozechner__pi-ai.patch

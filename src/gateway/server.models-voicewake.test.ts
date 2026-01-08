@@ -59,9 +59,7 @@ describe("gateway server models + voicewake", () => {
     "voicewake.get returns defaults and voicewake.set broadcasts",
     { timeout: 15_000 },
     async () => {
-      const homeDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "zee-home-"),
-      );
+      const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-home-"));
       const restoreHome = setTempHome(homeDir);
 
       const { server, ws } = await startServerWithClient();

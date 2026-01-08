@@ -1,4 +1,4 @@
-import { type ZeeConfig, loadConfig } from "../config/config.js";
+import { loadConfig, type ZeeConfig } from "../config/config.js";
 import {
   listDiscordAccountIds,
   resolveDiscordAccount,

@@ -61,6 +61,7 @@ const hoisted = vi.hoisted(() => ({
       contextWindow?: number;
       reasoning?: boolean;
     }>,
+    catalogPromise: null as Promise<unknown[]> | null,
   },
   cronIsolatedRun: vi.fn(async () => ({ status: "ok", summary: "ok" })),
   agentCommand: vi.fn().mockResolvedValue(undefined),
@@ -104,17 +105,44 @@ export const testIsNixMode = hoisted.testIsNixMode;
 export const sessionStoreSaveDelayMs = hoisted.sessionStoreSaveDelayMs;
 export const embeddedRunMock = hoisted.embeddedRunMock;
 
-vi.mock("@mariozechner/pi-coding-agent", async () => {
+vi.mock("../agents/model-catalog.js", async () => {
   const actual = await vi.importActual<
-    typeof import("@mariozechner/pi-coding-agent")
-  >("@mariozechner/pi-coding-agent");
+    typeof import("../agents/model-catalog.js")
+  >("../agents/model-catalog.js");
 
   return {
     ...actual,
-    discoverModels: () => {
-      if (!piSdkMock.enabled) return actual.discoverModels();
+    loadModelCatalog: async (params?: unknown) => {
+      if (!piSdkMock.enabled) return actual.loadModelCatalog(params);
+      // Use caching like the real implementation
+      if (piSdkMock.catalogPromise) return piSdkMock.catalogPromise;
       piSdkMock.discoverCalls += 1;
-      return piSdkMock.models;
+      // Transform and sort like the real implementation
+      piSdkMock.catalogPromise = Promise.resolve(
+        piSdkMock.models
+          .map((entry) => {
+            const id = String(entry?.id ?? "").trim();
+            const provider = String(entry?.provider ?? "").trim();
+            const name = String(entry?.name ?? id).trim() || id;
+            const contextWindow =
+              typeof entry?.contextWindow === "number" &&
+              entry.contextWindow > 0
+                ? entry.contextWindow
+                : undefined;
+            const reasoning =
+              typeof entry?.reasoning === "boolean"
+                ? entry.reasoning
+                : undefined;
+            return { id, name, provider, contextWindow, reasoning };
+          })
+          .filter((m) => m.id && m.provider)
+          .sort((a, b) => {
+            const p = a.provider.localeCompare(b.provider);
+            if (p !== 0) return p;
+            return a.name.localeCompare(b.name);
+          }),
+      );
+      return piSdkMock.catalogPromise;
     },
   };
 });
@@ -161,8 +189,7 @@ vi.mock("../config/config.js", async () => {
   const actual = await vi.importActual<typeof import("../config/config.js")>(
     "../config/config.js",
   );
-  const resolveConfigPath = () =>
-    path.join(os.homedir(), ".zee", "zee.json");
+  const resolveConfigPath = () => path.join(os.homedir(), ".zee", "zee.json");
 
   const readConfigFileSnapshot = async () => {
     if (testState.legacyIssues.length > 0) {
@@ -293,10 +320,10 @@ vi.mock("../config/config.js", async () => {
   };
 });
 
-vi.mock("../agents/pi-embedded.js", async () => {
+vi.mock("../agents/opencode-embedded.js", async () => {
   const actual = await vi.importActual<
-    typeof import("../agents/pi-embedded.js")
-  >("../agents/pi-embedded.js");
+    typeof import("../agents/opencode-embedded.js")
+  >("../agents/opencode-embedded.js");
   return {
     ...actual,
     isEmbeddedPiRunActive: (sessionId: string) =>
@@ -335,9 +362,7 @@ let tempHome: string | undefined;
 export function installGatewayTestHooks() {
   beforeEach(async () => {
     previousHome = process.env.HOME;
-    tempHome = await fs.mkdtemp(
-      path.join(os.tmpdir(), "zee-gateway-home-"),
-    );
+    tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gateway-home-"));
     process.env.HOME = tempHome;
     sessionStoreSaveDelayMs.value = 0;
     testTailnetIPv4.value = undefined;
@@ -369,6 +394,7 @@ export function installGatewayTestHooks() {
     piSdkMock.enabled = false;
     piSdkMock.discoverCalls = 0;
     piSdkMock.models = [];
+    piSdkMock.catalogPromise = null;
   }, 60_000);
 
   afterEach(async () => {

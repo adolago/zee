@@ -1,9 +1,3 @@
-import {
-  loginAnthropic,
-  loginOpenAICodex,
-  type OAuthCredentials,
-  type OAuthProvider,
-} from "@mariozechner/pi-ai";
 import { resolveAgentConfig } from "../agents/agent-scope.js";
 import {
   CLAUDE_CLI_PROFILE_ID,
@@ -18,6 +12,12 @@ import {
 } from "../agents/model-auth.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
+import {
+  loginAnthropic,
+  loginOpenAICodex,
+  type OAuthCredentials,
+  type OAuthProvider,
+} from "../agents/oauth-compat.js";
 import type { ZeeConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter } from "../wizard/prompts.js";

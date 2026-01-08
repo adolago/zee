@@ -96,10 +96,7 @@ function resolveDefaultAgentId(cfg: ZeeConfig): string {
   return DEFAULT_AGENT_ID;
 }
 
-function pickFirstExistingAgentId(
-  cfg: ZeeConfig,
-  agentId: string,
-): string {
+function pickFirstExistingAgentId(cfg: ZeeConfig, agentId: string): string {
   const normalized = normalizeAgentId(agentId);
   const agents = listAgents(cfg);
   if (!agents) return normalized;

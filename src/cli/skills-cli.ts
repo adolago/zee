@@ -45,9 +45,11 @@ function formatSkillLine(skill: SkillStatusEntry, verbose = false): string {
     : chalk.gray(skill.name);
 
   const desc = chalk.gray(
-    skill.description.length > 50
-      ? `${skill.description.slice(0, 47)}...`
-      : skill.description,
+    skill.description
+      ? skill.description.length > 50
+        ? `${skill.description.slice(0, 47)}...`
+        : skill.description
+      : "",
   );
 
   if (verbose) {

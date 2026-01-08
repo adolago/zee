@@ -20,7 +20,7 @@ vi.mock("../config/config.js", async (importOriginal) => {
   };
 });
 
-import { createZeeTools } from "./zee-tools.js";
+import { createZeeTools } from "./clawdbot-tools.js";
 
 describe("sessions tools", () => {
   it("sessions_list filters kinds and includes messages", async () => {

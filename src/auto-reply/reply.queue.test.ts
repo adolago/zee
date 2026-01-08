@@ -8,10 +8,10 @@ import {
   isEmbeddedPiRunActive,
   isEmbeddedPiRunStreaming,
   runEmbeddedPiAgent,
-} from "../agents/pi-embedded.js";
+} from "../agents/opencode-embedded.js";
 import { getReplyFromConfig } from "./reply.js";
 
-vi.mock("../agents/pi-embedded.js", () => ({
+vi.mock("../agents/opencode-embedded.js", () => ({
   abortEmbeddedPiRun: vi.fn().mockReturnValue(false),
   runEmbeddedPiAgent: vi.fn(),
   queueEmbeddedPiMessage: vi.fn().mockReturnValue(false),

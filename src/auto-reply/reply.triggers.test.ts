@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../agents/pi-embedded.js", () => ({
+vi.mock("../agents/opencode-embedded.js", () => ({
   abortEmbeddedPiRun: vi.fn().mockReturnValue(false),
   compactEmbeddedPiSession: vi.fn(),
   runEmbeddedPiAgent: vi.fn(),
@@ -18,7 +18,7 @@ import {
   abortEmbeddedPiRun,
   compactEmbeddedPiSession,
   runEmbeddedPiAgent,
-} from "../agents/pi-embedded.js";
+} from "../agents/opencode-embedded.js";
 import { ensureSandboxWorkspaceForSession } from "../agents/sandbox.js";
 import { loadSessionStore, resolveSessionKey } from "../config/sessions.js";
 import { getReplyFromConfig } from "./reply.js";
@@ -817,10 +817,7 @@ describe("trigger handling", () => {
 
   it("runs /compact as a gated command", async () => {
     await withTempHome(async (home) => {
-      const storePath = join(
-        tmpdir(),
-        `zee-session-test-${Date.now()}.json`,
-      );
+      const storePath = join(tmpdir(), `zee-session-test-${Date.now()}.json`);
       vi.mocked(compactEmbeddedPiSession).mockResolvedValue({
         ok: true,
         compacted: true,

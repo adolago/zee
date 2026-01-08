@@ -15,7 +15,7 @@ import {
   isEmbeddedPiRunActive,
   resolveEmbeddedSessionLane,
   waitForEmbeddedPiRunEnd,
-} from "../agents/pi-embedded.js";
+} from "../agents/opencode-embedded.js";
 import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import { normalizeGroupActivation } from "../auto-reply/group-activation.js";
 import {

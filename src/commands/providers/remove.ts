@@ -1,4 +1,4 @@
-import { type ZeeConfig, writeConfigFile } from "../../config/config.js";
+import { writeConfigFile, type ZeeConfig } from "../../config/config.js";
 import { listDiscordAccountIds } from "../../discord/accounts.js";
 import { listIMessageAccountIds } from "../../imessage/accounts.js";
 import {

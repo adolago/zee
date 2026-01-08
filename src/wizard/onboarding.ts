@@ -150,8 +150,7 @@ export async function runOnboardingWizard(
     url: localUrl,
     token: process.env.ZEE_GATEWAY_TOKEN,
     password:
-      baseConfig.gateway?.auth?.password ??
-      process.env.ZEE_GATEWAY_PASSWORD,
+      baseConfig.gateway?.auth?.password ?? process.env.ZEE_GATEWAY_PASSWORD,
   });
   const remoteUrl = baseConfig.gateway?.remote?.url?.trim() ?? "";
   const remoteProbe = remoteUrl

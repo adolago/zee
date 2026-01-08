@@ -15,9 +15,7 @@ import {
 let tempRoot: string | null = null;
 
 async function makeTempRoot() {
-  const root = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), "zee-doctor-"),
-  );
+  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "zee-doctor-"));
   tempRoot = root;
   return root;
 }

@@ -16,9 +16,7 @@ describe("parseRelaySmokeTest", () => {
 
   it("parses env var smoke mode only when no args", () => {
     expect(parseRelaySmokeTest([], { ZEE_SMOKE_QR: "1" })).toBe("qr");
-    expect(parseRelaySmokeTest(["send"], { ZEE_SMOKE_QR: "1" })).toBe(
-      null,
-    );
+    expect(parseRelaySmokeTest(["send"], { ZEE_SMOKE_QR: "1" })).toBe(null);
   });
 
   it("rejects unknown smoke values", () => {

@@ -28,10 +28,7 @@ export async function runCli(argv: string[] = process.argv) {
   installUnhandledRejectionHandler();
 
   process.on("uncaughtException", (error) => {
-    console.error(
-      "[zee] Uncaught exception:",
-      error.stack ?? error.message,
-    );
+    console.error("[zee] Uncaught exception:", error.stack ?? error.message);
     process.exit(1);
   });
 

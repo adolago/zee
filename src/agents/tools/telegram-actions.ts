@@ -1,11 +1,10 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-
 import type { ZeeConfig } from "../../config/config.js";
 import {
   reactMessageTelegram,
   sendMessageTelegram,
 } from "../../telegram/send.js";
 import { resolveTelegramToken } from "../../telegram/token.js";
+import type { AgentToolResult } from "../types.js";
 import {
   createActionGate,
   jsonResult,

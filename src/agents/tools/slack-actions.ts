@@ -1,5 +1,3 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-
 import type { ZeeConfig } from "../../config/config.js";
 import { resolveSlackAccount } from "../../slack/accounts.js";
 import {
@@ -17,6 +15,7 @@ import {
   sendSlackMessage,
   unpinSlackMessage,
 } from "../../slack/actions.js";
+import type { AgentToolResult } from "../types.js";
 import {
   createActionGate,
   jsonResult,

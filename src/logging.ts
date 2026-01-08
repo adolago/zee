@@ -4,7 +4,7 @@ import util from "node:util";
 
 import { Chalk } from "chalk";
 import { Logger as TsLogger } from "tslog";
-import { type ZeeConfig, loadConfig } from "./config/config.js";
+import { loadConfig, type ZeeConfig } from "./config/config.js";
 import { isVerbose } from "./globals.js";
 import { defaultRuntime, type RuntimeEnv } from "./runtime.js";
 

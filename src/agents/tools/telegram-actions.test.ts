@@ -178,9 +178,7 @@ describe("readTelegramButtons", () => {
     const result = readTelegramButtons({
       buttons: [[{ text: "  Option A ", callback_data: " cmd:a " }]],
     });
-    expect(result).toEqual([
-      [{ text: "Option A", callback_data: "cmd:a" }],
-    ]);
+    expect(result).toEqual([[{ text: "Option A", callback_data: "cmd:a" }]]);
   });
 
   it("rejects non-array inputs", () => {

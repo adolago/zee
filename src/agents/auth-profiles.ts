@@ -1,13 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-
-import {
-  getOAuthApiKey,
-  type OAuthCredentials,
-  type OAuthProvider,
-} from "@mariozechner/pi-ai";
 import lockfile from "proper-lockfile";
-
 import type { ZeeConfig } from "../config/config.js";
 import { resolveOAuthPath } from "../config/paths.js";
 import type { AuthProfileConfig } from "../config/types.js";
@@ -15,6 +8,11 @@ import { createSubsystemLogger } from "../logging.js";
 import { resolveUserPath } from "../utils.js";
 import { resolveZeeAgentDir } from "./agent-paths.js";
 import { normalizeProviderId } from "./model-selection.js";
+import {
+  getOAuthApiKey,
+  type OAuthCredentials,
+  type OAuthProvider,
+} from "./oauth-compat.js";
 
 const AUTH_STORE_VERSION = 1;
 const AUTH_PROFILE_FILENAME = "auth-profiles.json";

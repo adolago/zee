@@ -1,7 +1,4 @@
-import {
-  type ZeeConfig,
-  readConfigFileSnapshot,
-} from "../../config/config.js";
+import { readConfigFileSnapshot, type ZeeConfig } from "../../config/config.js";
 import {
   type ChatProviderId,
   getChatProviderMeta,

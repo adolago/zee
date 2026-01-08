@@ -84,9 +84,7 @@ describe("initSessionState thread forking", () => {
   });
 
   it("records topic-specific session files when MessageThreadId is present", async () => {
-    const root = await fs.mkdtemp(
-      path.join(os.tmpdir(), "zee-topic-session-"),
-    );
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "zee-topic-session-"));
     const storePath = path.join(root, "sessions.json");
 
     const cfg = {

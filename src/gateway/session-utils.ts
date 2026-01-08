@@ -8,7 +8,7 @@ import {
   DEFAULT_PROVIDER,
 } from "../agents/defaults.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
-import { type ZeeConfig, loadConfig } from "../config/config.js";
+import { loadConfig, type ZeeConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import {
   buildGroupDisplayName,
@@ -345,9 +345,7 @@ export function loadCombinedSessionStoreForGateway(cfg: ZeeConfig): {
   return { storePath, store: combined };
 }
 
-export function getSessionDefaults(
-  cfg: ZeeConfig,
-): GatewaySessionsDefaults {
+export function getSessionDefaults(cfg: ZeeConfig): GatewaySessionsDefaults {
   const resolved = resolveConfiguredModelRef({
     cfg,
     defaultProvider: DEFAULT_PROVIDER,

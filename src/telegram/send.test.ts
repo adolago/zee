@@ -107,7 +107,7 @@ describe("sendMessageTelegram", () => {
     expect(sendMessage).toHaveBeenNthCalledWith(1, chatId, "<i>oops</i>", {
       parse_mode: "HTML",
     });
-    expect(sendMessage).toHaveBeenNthCalledWith(2, chatId, "_oops_");
+    expect(sendMessage).toHaveBeenNthCalledWith(2, chatId, "_oops_", undefined);
     expect(res.chatId).toBe(chatId);
     expect(res.messageId).toBe("42");
   });

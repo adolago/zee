@@ -1,12 +1,9 @@
 import fs from "node:fs/promises";
-
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
-
 import { detectMime } from "../../media/mime.js";
 import { sanitizeToolResultImages } from "../tool-images.js";
+import type { AgentToolResult } from "../types.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: TypeBox schema type from pi-agent-core uses a different module instance.
-export type AnyAgentTool = AgentTool<any, unknown>;
+export type { AnyAgentTool } from "../types.js";
 
 export type StringParamOptions = {
   required?: boolean;

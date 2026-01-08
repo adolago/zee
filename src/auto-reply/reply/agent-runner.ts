@@ -1,12 +1,14 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
-import { lookupContextTokens } from "../../agents/context.js";
-import { DEFAULT_CONTEXT_TOKENS } from "../../agents/defaults.js";
+import {
+  DEFAULT_CONTEXT_TOKENS,
+  lookupContextTokens,
+} from "../../agents/defaults.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
 import {
   queueEmbeddedPiMessage,
   runEmbeddedPiAgent,
-} from "../../agents/pi-embedded.js";
+} from "../../agents/opencode-embedded.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
 import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import {
@@ -201,7 +203,7 @@ export async function runReplyAgent(params: {
   const applyReplyToMode = createReplyToModeFilter(replyToMode);
 
   if (shouldSteer && isStreaming) {
-    const steered = queueEmbeddedPiMessage(
+    const steered = await queueEmbeddedPiMessage(
       followupRun.run.sessionId,
       followupRun.prompt,
     );
@@ -479,7 +481,7 @@ export async function runReplyAgent(params: {
                 : undefined,
             shouldEmitToolResult,
             onToolResult: opts?.onToolResult
-              ? (payload) => {
+              ? (payload: ReplyPayload) => {
                   // `subscribeEmbeddedPiSession` may invoke tool callbacks without awaiting them.
                   // If a tool callback starts typing after the run finalized, we can end up with
                   // a typing loop that never sees a matching markRunComplete(). Track and drain.

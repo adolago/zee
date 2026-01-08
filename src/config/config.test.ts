@@ -439,9 +439,7 @@ describe("Nix integration (U3, U5, U9)", () => {
         { ZEE_CONFIG_PATH: undefined, ZEE_STATE_DIR: undefined },
         async () => {
           const { CONFIG_PATH_ZEE } = await import("./config.js");
-          expect(CONFIG_PATH_ZEE).toMatch(
-            /\.zee[\\/]zee\.json$/,
-          );
+          expect(CONFIG_PATH_ZEE).toMatch(/\.zee[\\/]zee\.json$/);
         },
       );
     });

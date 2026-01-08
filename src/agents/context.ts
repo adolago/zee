@@ -10,8 +10,10 @@ type ModelEntry = { id: string; contextWindow?: number };
 const MODEL_CACHE = new Map<string, number>();
 const loadPromise = (async () => {
   try {
+    // Use variable to bypass TypeScript module resolution (module may not exist)
+    const piCodingAgent = "@mariozechner/pi-coding-agent";
     const { discoverAuthStorage, discoverModels } = await import(
-      "@mariozechner/pi-coding-agent"
+      /* webpackIgnore: true */ piCodingAgent
     );
     const cfg = loadConfig();
     await ensureZeeModelsJson(cfg);

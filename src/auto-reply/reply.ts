@@ -13,7 +13,7 @@ import {
   isEmbeddedPiRunActive,
   isEmbeddedPiRunStreaming,
   resolveEmbeddedSessionLane,
-} from "../agents/pi-embedded.js";
+} from "../agents/opencode-embedded.js";
 import { ensureSandboxWorkspaceForSession } from "../agents/sandbox.js";
 import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import {
@@ -22,8 +22,8 @@ import {
 } from "../agents/workspace.js";
 import {
   type AgentElevatedAllowFromConfig,
-  type ZeeConfig,
   loadConfig,
+  type ZeeConfig,
 } from "../config/config.js";
 import { resolveSessionFilePath } from "../config/sessions.js";
 import { logVerbose } from "../globals.js";

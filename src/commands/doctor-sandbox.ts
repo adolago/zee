@@ -101,10 +101,7 @@ function resolveSandboxBrowserImage(cfg: ZeeConfig): string {
   return image ? image : DEFAULT_SANDBOX_BROWSER_IMAGE;
 }
 
-function updateSandboxDockerImage(
-  cfg: ZeeConfig,
-  image: string,
-): ZeeConfig {
+function updateSandboxDockerImage(cfg: ZeeConfig, image: string): ZeeConfig {
   return {
     ...cfg,
     agent: {
@@ -120,10 +117,7 @@ function updateSandboxDockerImage(
   };
 }
 
-function updateSandboxBrowserImage(
-  cfg: ZeeConfig,
-  image: string,
-): ZeeConfig {
+function updateSandboxBrowserImage(cfg: ZeeConfig, image: string): ZeeConfig {
   return {
     ...cfg,
     agent: {

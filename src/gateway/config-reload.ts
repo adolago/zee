@@ -1,9 +1,9 @@
 import chokidar from "chokidar";
 
 import type {
-  ZeeConfig,
   ConfigFileSnapshot,
   GatewayReloadMode,
+  ZeeConfig,
 } from "../config/config.js";
 
 export type GatewayReloadSettings = {

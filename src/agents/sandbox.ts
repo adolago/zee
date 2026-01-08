@@ -144,8 +144,7 @@ const DEFAULT_TOOL_DENY = [
 ];
 export const DEFAULT_SANDBOX_BROWSER_IMAGE =
   "zee-sandbox-browser:bookworm-slim";
-export const DEFAULT_SANDBOX_COMMON_IMAGE =
-  "zee-sandbox-common:bookworm-slim";
+export const DEFAULT_SANDBOX_COMMON_IMAGE = "zee-sandbox-common:bookworm-slim";
 const DEFAULT_SANDBOX_BROWSER_PREFIX = "zee-sbx-browser-";
 const DEFAULT_SANDBOX_BROWSER_CDP_PORT = 9222;
 const DEFAULT_SANDBOX_BROWSER_VNC_PORT = 5900;
@@ -853,16 +852,11 @@ async function ensureSandboxBrowser(params: {
     );
     args.push(
       "-e",
-      `ZEE_BROWSER_ENABLE_NOVNC=${
-        params.cfg.browser.enableNoVnc ? "1" : "0"
-      }`,
+      `ZEE_BROWSER_ENABLE_NOVNC=${params.cfg.browser.enableNoVnc ? "1" : "0"}`,
     );
     args.push("-e", `ZEE_BROWSER_CDP_PORT=${params.cfg.browser.cdpPort}`);
     args.push("-e", `ZEE_BROWSER_VNC_PORT=${params.cfg.browser.vncPort}`);
-    args.push(
-      "-e",
-      `ZEE_BROWSER_NOVNC_PORT=${params.cfg.browser.noVncPort}`,
-    );
+    args.push("-e", `ZEE_BROWSER_NOVNC_PORT=${params.cfg.browser.noVncPort}`);
     args.push(params.cfg.browser.image);
     await execDocker(args);
     await execDocker(["start", containerName]);

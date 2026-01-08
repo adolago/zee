@@ -1,24 +1,20 @@
-import {
-  type Api,
-  type AssistantMessage,
-  type Context,
-  complete,
-  type Model,
-} from "@mariozechner/pi-ai";
-import {
-  discoverAuthStorage,
-  discoverModels,
-} from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-
 import type { ZeeConfig } from "../../config/config.js";
 import { resolveUserPath } from "../../utils.js";
 import { loadWebMedia } from "../../web/media.js";
 import { getApiKeyForModel } from "../model-auth.js";
 import { runWithImageModelFallback } from "../model-fallback.js";
 import { ensureZeeModelsJson } from "../models-config.js";
-import { extractAssistantText } from "../pi-embedded-utils.js";
+import {
+  type Api,
+  type AssistantMessage,
+  type Context,
+  complete,
+  type Model,
+} from "../pi-ai-compat.js";
+import { discoverAuthStorage, discoverModels } from "../session-compat.js";
 import type { AnyAgentTool } from "./common.js";
+import { extractAssistantText } from "./sessions-helpers.js";
 
 const DEFAULT_PROMPT = "Describe the image.";
 

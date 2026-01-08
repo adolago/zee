@@ -27,9 +27,9 @@ import {
   resolveStateDir,
 } from "./paths.js";
 import type {
-  ZeeConfig,
   ConfigFileSnapshot,
   LegacyConfigIssue,
+  ZeeConfig,
 } from "./types.js";
 import { validateConfigObject } from "./validation.js";
 import { ZeeSchema } from "./zod-schema.js";

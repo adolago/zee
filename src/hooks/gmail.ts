@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 
 import {
-  type ZeeConfig,
   DEFAULT_GATEWAY_PORT,
   type HooksGmailTailscaleMode,
   resolveGatewayPort,
+  type ZeeConfig,
 } from "../config/config.js";
 
 export const DEFAULT_GMAIL_LABEL = "INBOX";

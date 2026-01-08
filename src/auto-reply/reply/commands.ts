@@ -11,15 +11,15 @@ import {
   compactEmbeddedPiSession,
   isEmbeddedPiRunActive,
   waitForEmbeddedPiRunEnd,
-} from "../../agents/pi-embedded.js";
+} from "../../agents/opencode-embedded.js";
 import type { ZeeConfig } from "../../config/config.js";
+import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import {
   resolveSessionFilePath,
   type SessionEntry,
   type SessionScope,
   saveSessionStore,
 } from "../../config/sessions.js";
-import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import { logVerbose } from "../../globals.js";
 import {
   formatUsageSummaryLine,

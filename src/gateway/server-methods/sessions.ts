@@ -14,7 +14,7 @@ import {
   isEmbeddedPiRunActive,
   resolveEmbeddedSessionLane,
   waitForEmbeddedPiRunEnd,
-} from "../../agents/pi-embedded.js";
+} from "../../agents/opencode-embedded.js";
 import { normalizeGroupActivation } from "../../auto-reply/group-activation.js";
 import {
   normalizeReasoningLevel,

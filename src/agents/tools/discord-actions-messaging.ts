@@ -1,4 +1,3 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { DiscordActionConfig } from "../../config/config.js";
 import {
   createThreadDiscord,
@@ -19,6 +18,7 @@ import {
   sendStickerDiscord,
   unpinMessageDiscord,
 } from "../../discord/send.js";
+import type { AgentToolResult } from "../types.js";
 import {
   type ActionGate,
   jsonResult,

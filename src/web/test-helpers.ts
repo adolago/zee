@@ -55,9 +55,8 @@ vi.mock("../media/store.js", () => ({
 
 vi.mock("@whiskeysockets/baileys", () => {
   const created = createMockBaileys();
-  (globalThis as Record<PropertyKey, unknown>)[
-    Symbol.for("zee:lastSocket")
-  ] = created.lastSocket;
+  (globalThis as Record<PropertyKey, unknown>)[Symbol.for("zee:lastSocket")] =
+    created.lastSocket;
   return created.mod;
 });
 
@@ -77,9 +76,8 @@ export const baileys = (await import(
 
 export function resetBaileysMocks() {
   const recreated = createMockBaileys();
-  (globalThis as Record<PropertyKey, unknown>)[
-    Symbol.for("zee:lastSocket")
-  ] = recreated.lastSocket;
+  (globalThis as Record<PropertyKey, unknown>)[Symbol.for("zee:lastSocket")] =
+    recreated.lastSocket;
   baileys.makeWASocket.mockImplementation(recreated.mod.makeWASocket);
   baileys.useMultiFileAuthState.mockImplementation(
     recreated.mod.useMultiFileAuthState,

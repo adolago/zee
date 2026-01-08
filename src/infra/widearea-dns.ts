@@ -108,9 +108,7 @@ function renderZone(opts: WideAreaBridgeZoneOpts & { serial: number }): string {
     records.push(`${hostLabel} IN AAAA ${opts.tailnetIPv6}`);
   }
 
-  records.push(
-    `_zee-bridge._tcp IN PTR ${instanceLabel}._zee-bridge._tcp`,
-  );
+  records.push(`_zee-bridge._tcp IN PTR ${instanceLabel}._zee-bridge._tcp`);
   records.push(
     `${instanceLabel}._zee-bridge._tcp IN SRV 0 0 ${opts.bridgePort} ${hostLabel}`,
   );

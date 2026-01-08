@@ -1,7 +1,6 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-
 import type { ZeeConfig } from "../../config/config.js";
 import { sendReactionWhatsApp } from "../../web/outbound.js";
+import type { AgentToolResult } from "../types.js";
 import {
   createActionGate,
   jsonResult,

@@ -1,6 +1,9 @@
-import type { OAuthCredentials, OAuthProvider } from "@mariozechner/pi-ai";
 import { resolveDefaultAgentDir } from "../agents/agent-scope.js";
 import { upsertAuthProfile } from "../agents/auth-profiles.js";
+import type {
+  OAuthCredentials,
+  OAuthProvider,
+} from "../agents/oauth-compat.js";
 import type { ZeeConfig } from "../config/config.js";
 
 const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";

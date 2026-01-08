@@ -55,8 +55,7 @@ describe("ensureZeeCliOnPath", () => {
       expect(process.env.PATH).toBe("/bin");
     } finally {
       process.env.PATH = originalPath;
-      if (originalFlag === undefined)
-        delete process.env.ZEE_PATH_BOOTSTRAPPED;
+      if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
       else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
     }
   });
@@ -103,8 +102,7 @@ describe("ensureZeeCliOnPath", () => {
       expect(shimsIndex).toBeGreaterThan(localIndex);
     } finally {
       process.env.PATH = originalPath;
-      if (originalFlag === undefined)
-        delete process.env.ZEE_PATH_BOOTSTRAPPED;
+      if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
       else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
       if (originalMiseDataDir === undefined) delete process.env.MISE_DATA_DIR;
       else process.env.MISE_DATA_DIR = originalMiseDataDir;
@@ -147,8 +145,7 @@ describe("ensureZeeCliOnPath", () => {
       expect(parts[1]).toBe(linuxbrewSbin);
     } finally {
       process.env.PATH = originalPath;
-      if (originalFlag === undefined)
-        delete process.env.ZEE_PATH_BOOTSTRAPPED;
+      if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
       else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
       if (originalHomebrewPrefix === undefined)
         delete process.env.HOMEBREW_PREFIX;

@@ -18,7 +18,7 @@ import {
   resolveConfiguredModelRef,
   resolveThinkingDefault,
 } from "../agents/model-selection.js";
-import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
+import { runEmbeddedPiAgent } from "../agents/opencode-embedded.js";
 import { buildWorkspaceSkillSnapshot } from "../agents/skills.js";
 import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import { hasNonzeroUsage } from "../agents/usage.js";
@@ -31,7 +31,7 @@ import {
   type VerboseLevel,
 } from "../auto-reply/thinking.js";
 import { type CliDeps, createDefaultDeps } from "../cli/deps.js";
-import { type ZeeConfig, loadConfig } from "../config/config.js";
+import { loadConfig, type ZeeConfig } from "../config/config.js";
 import {
   DEFAULT_IDLE_MINUTES,
   loadSessionStore,
@@ -427,7 +427,7 @@ export async function agentCommand(
           verboseLevel: resolvedVerboseLevel,
           timeoutMs,
           runId,
-          lane: opts.lane,
+          lane: opts.lane as "main" | "compact" | undefined,
           abortSignal: opts.abortSignal,
           extraSystemPrompt: opts.extraSystemPrompt,
           agentDir,

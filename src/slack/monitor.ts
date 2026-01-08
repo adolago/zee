@@ -28,9 +28,9 @@ import { getReplyFromConfig } from "../auto-reply/reply.js";
 import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
 import type {
-  ZeeConfig,
   SlackReactionNotificationMode,
   SlackSlashCommandConfig,
+  ZeeConfig,
 } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import {

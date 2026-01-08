@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   CURRENT_SESSION_VERSION,
   SessionManager,
-} from "@mariozechner/pi-coding-agent";
+} from "../../agents/session-compat.js";
 import type { ZeeConfig } from "../../config/config.js";
 import {
   buildGroupDisplayName,
@@ -58,7 +58,8 @@ function forkSessionFromParent(params: {
     if (leafId) {
       const sessionFile =
         manager.createBranchedSession(leafId) ?? manager.getSessionFile();
-      const sessionId = manager.getSessionId();
+      // Generate a new session ID for the forked session, not the parent's ID
+      const sessionId = crypto.randomUUID();
       if (sessionFile && sessionId) return { sessionId, sessionFile };
     }
     const sessionId = crypto.randomUUID();

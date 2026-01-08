@@ -1,4 +1,3 @@
-import { type Api, getEnvApiKey, type Model } from "@mariozechner/pi-ai";
 import type { ZeeConfig } from "../config/config.js";
 import type { ModelProviderConfig } from "../config/types.js";
 import { getShellEnvAppliedKeys } from "../infra/shell-env.js";
@@ -9,6 +8,7 @@ import {
   resolveApiKeyForProfile,
   resolveAuthProfileOrder,
 } from "./auth-profiles.js";
+import { type Api, getEnvApiKey, type Model } from "./pi-ai-compat.js";
 
 export {
   ensureAuthProfileStore,

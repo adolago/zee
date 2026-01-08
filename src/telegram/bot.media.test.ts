@@ -85,7 +85,7 @@ describe("telegram inbound media", () => {
         },
       },
     });
-    const handler = onSpy.mock.calls[0]?.[1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 
@@ -153,7 +153,7 @@ describe("telegram inbound media", () => {
         },
       },
     });
-    const handler = onSpy.mock.calls[0]?.[1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 
@@ -199,7 +199,7 @@ describe("telegram inbound media", () => {
         },
       },
     });
-    const handler = onSpy.mock.calls[0]?.[1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 
@@ -263,7 +263,7 @@ describe("telegram media groups", () => {
         },
       },
     });
-    const handler = onSpy.mock.calls[0][1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 
@@ -323,7 +323,7 @@ describe("telegram media groups", () => {
     } as Response);
 
     createTelegramBot({ token: "tok" });
-    const handler = onSpy.mock.calls[0][1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 
@@ -374,7 +374,7 @@ describe("telegram location parsing", () => {
     replySpy.mockReset();
 
     createTelegramBot({ token: "tok" });
-    const handler = onSpy.mock.calls[0]?.[1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 
@@ -415,7 +415,7 @@ describe("telegram location parsing", () => {
     replySpy.mockReset();
 
     createTelegramBot({ token: "tok" });
-    const handler = onSpy.mock.calls[0]?.[1] as (
+    const handler = onSpy.mock.calls.find((c) => c[0] === "message")?.[1] as (
       ctx: Record<string, unknown>,
     ) => Promise<void>;
 

@@ -50,9 +50,7 @@ describe("cron run log", () => {
   });
 
   it("reads newest entries and filters by jobId", async () => {
-    const dir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "zee-cron-log-read-"),
-    );
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-cron-log-read-"));
     const logPathA = path.join(dir, "runs", "a.jsonl");
     const logPathB = path.join(dir, "runs", "b.jsonl");
 

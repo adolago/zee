@@ -8,7 +8,7 @@ import {
   applySessionDefaults,
 } from "./defaults.js";
 import { findLegacyConfigIssues } from "./legacy.js";
-import type { ZeeConfig, ConfigValidationIssue } from "./types.js";
+import type { ConfigValidationIssue, ZeeConfig } from "./types.js";
 import { ZeeSchema } from "./zod-schema.js";
 
 export function validateConfigObject(
@@ -51,9 +51,7 @@ export function validateConfigObject(
   return {
     ok: true,
     config: applyModelDefaults(
-      applySessionDefaults(
-        applyIdentityDefaults(validated.data as ZeeConfig),
-      ),
+      applySessionDefaults(applyIdentityDefaults(validated.data as ZeeConfig)),
     ),
   };
 }

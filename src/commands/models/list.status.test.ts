@@ -119,9 +119,7 @@ describe("modelsStatusCommand auth overview", () => {
     );
 
     expect(payload.defaultModel).toBe("anthropic/claude-opus-4-5");
-    expect(payload.auth.storePath).toBe(
-      "/tmp/zee-agent/auth-profiles.json",
-    );
+    expect(payload.auth.storePath).toBe("/tmp/zee-agent/auth-profiles.json");
     expect(payload.auth.shellEnvFallback.enabled).toBe(true);
     expect(payload.auth.shellEnvFallback.appliedKeys).toContain(
       "OPENAI_API_KEY",

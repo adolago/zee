@@ -30,10 +30,7 @@ export async function transcribeInboundAudio(
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const arrayBuf = await res.arrayBuffer();
       const buffer = Buffer.from(arrayBuf);
-      tmpPath = path.join(
-        os.tmpdir(),
-        `zee-audio-${crypto.randomUUID()}.ogg`,
-      );
+      tmpPath = path.join(os.tmpdir(), `zee-audio-${crypto.randomUUID()}.ogg`);
       await fs.writeFile(tmpPath, buffer);
       mediaPath = tmpPath;
       if (shouldLogVerbose()) {

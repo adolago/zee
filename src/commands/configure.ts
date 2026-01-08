@@ -11,16 +11,16 @@ import {
   text,
 } from "@clack/prompts";
 import {
-  loginAnthropic,
-  loginOpenAICodex,
-  type OAuthCredentials,
-  type OAuthProvider,
-} from "@mariozechner/pi-ai";
-import {
   CLAUDE_CLI_PROFILE_ID,
   CODEX_CLI_PROFILE_ID,
   ensureAuthProfileStore,
 } from "../agents/auth-profiles.js";
+import {
+  loginAnthropic,
+  loginOpenAICodex,
+  type OAuthCredentials,
+  type OAuthProvider,
+} from "../agents/oauth-compat.js";
 import { createCliProgress } from "../cli/progress.js";
 import type { ZeeConfig } from "../config/config.js";
 import {

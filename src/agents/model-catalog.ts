@@ -1,4 +1,4 @@
-import { type ZeeConfig, loadConfig } from "../config/config.js";
+import { loadConfig, type ZeeConfig } from "../config/config.js";
 import { resolveZeeAgentDir } from "./agent-paths.js";
 import { ensureZeeModelsJson } from "./models-config.js";
 
@@ -34,10 +34,11 @@ export async function loadModelCatalog(params?: {
   if (modelCatalogPromise) return modelCatalogPromise;
 
   modelCatalogPromise = (async () => {
-    const piSdk = await import("@mariozechner/pi-coding-agent");
-
     const models: ModelCatalogEntry[] = [];
     try {
+      // Use variable to bypass TypeScript module resolution (module may not exist)
+      const piCodingAgent = "@mariozechner/pi-coding-agent";
+      const piSdk = await import(/* webpackIgnore: true */ piCodingAgent);
       const cfg = params?.config ?? loadConfig();
       await ensureZeeModelsJson(cfg);
       const agentDir = resolveZeeAgentDir();

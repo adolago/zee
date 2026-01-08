@@ -169,9 +169,7 @@ export async function createWaSocket(
           const status = getStatusCode(lastDisconnect?.error);
           if (status === DisconnectReason.loggedOut) {
             console.error(
-              danger(
-                "WhatsApp session logged out. Run: zee providers login",
-              ),
+              danger("WhatsApp session logged out. Run: zee providers login"),
             );
           }
         }

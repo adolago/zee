@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createZeeTools } from "./zee-tools.js";
+import { createZeeTools } from "./clawdbot-tools.js";
 
 vi.mock("./tools/gateway.js", () => ({
   callGatewayTool: vi.fn(async () => ({ ok: true })),

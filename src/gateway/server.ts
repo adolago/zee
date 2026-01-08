@@ -1800,9 +1800,7 @@ export async function startGatewayServer(
 
     if (plan.restartProviders.size > 0) {
       if (process.env.ZEE_SKIP_PROVIDERS === "1") {
-        logProviders.info(
-          "skipping provider reload (ZEE_SKIP_PROVIDERS=1)",
-        );
+        logProviders.info("skipping provider reload (ZEE_SKIP_PROVIDERS=1)");
       } else {
         const restartProvider = async (
           name: ProviderKind,

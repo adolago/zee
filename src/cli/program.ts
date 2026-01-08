@@ -37,14 +37,16 @@ import { registerDocsCli } from "./docs-cli.js";
 import { registerGatewayCli } from "./gateway-cli.js";
 import { registerHooksCli } from "./hooks-cli.js";
 import { registerLogsCli } from "./logs-cli.js";
-import { registerModelsCli } from "./models-cli.js";
+// Models CLI disabled during pi-ai migration
+// import { registerModelsCli } from "./models-cli.js";
 import { registerNodesCli } from "./nodes-cli.js";
 import { registerPairingCli } from "./pairing-cli.js";
 import { forceFreePort } from "./ports.js";
 import { runProviderLogin, runProviderLogout } from "./provider-auth.js";
 import { registerProvidersCli } from "./providers-cli.js";
 import { registerSkillsCli } from "./skills-cli.js";
-import { registerTuiCli } from "./tui-cli.js";
+// TUI disabled during pi-ai migration
+// import { registerTuiCli } from "./tui-cli.js";
 
 export { forceFreePort };
 
@@ -655,9 +657,11 @@ Examples:
   registerDaemonCli(program);
   registerGatewayCli(program);
   registerLogsCli(program);
-  registerModelsCli(program);
+  // Models CLI disabled during pi-ai migration
+  // registerModelsCli(program);
   registerNodesCli(program);
-  registerTuiCli(program);
+  // TUI disabled during pi-ai migration
+  // registerTuiCli(program);
   registerCronCli(program);
   registerDnsCli(program);
   registerDocsCli(program);

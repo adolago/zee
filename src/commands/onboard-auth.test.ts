@@ -1,9 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
-import type { OAuthCredentials } from "@mariozechner/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
+import type { OAuthCredentials } from "../agents/pi-ai-compat.js";
 
 import { writeOAuthCredentials } from "./onboard-auth.js";
 

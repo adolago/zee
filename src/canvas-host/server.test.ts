@@ -245,12 +245,10 @@ describe("canvas host", () => {
     });
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:${server.port}/__zee__/a2ui/`,
-      );
+      const res = await fetch(`http://127.0.0.1:${server.port}/__zee__/a2ui/`);
       const html = await res.text();
       expect(res.status).toBe(200);
-      expect(html).toContain("zee-a2ui-host");
+      expect(html).toContain("clawdbot-a2ui-host");
       expect(html).toContain("zeeCanvasA2UIAction");
 
       const bundleRes = await fetch(
@@ -258,7 +256,7 @@ describe("canvas host", () => {
       );
       const js = await bundleRes.text();
       expect(bundleRes.status).toBe(200);
-      expect(js).toContain("zeeA2UI");
+      expect(js).toContain("ClawdbotA2UIHost");
     } finally {
       await server.close();
       await fs.rm(dir, { recursive: true, force: true });

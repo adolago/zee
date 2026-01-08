@@ -75,9 +75,7 @@ describe("applyCliProfileEnv", () => {
     const expectedStateDir = path.join("/home/peter", ".zee-dev");
     expect(env.ZEE_PROFILE).toBe("dev");
     expect(env.ZEE_STATE_DIR).toBe(expectedStateDir);
-    expect(env.ZEE_CONFIG_PATH).toBe(
-      path.join(expectedStateDir, "zee.json"),
-    );
+    expect(env.ZEE_CONFIG_PATH).toBe(path.join(expectedStateDir, "zee.json"));
     expect(env.ZEE_GATEWAY_PORT).toBe("19001");
   });
 
@@ -93,8 +91,6 @@ describe("applyCliProfileEnv", () => {
     });
     expect(env.ZEE_STATE_DIR).toBe("/custom");
     expect(env.ZEE_GATEWAY_PORT).toBe("19099");
-    expect(env.ZEE_CONFIG_PATH).toBe(
-      path.join("/custom", "zee.json"),
-    );
+    expect(env.ZEE_CONFIG_PATH).toBe(path.join("/custom", "zee.json"));
   });
 });

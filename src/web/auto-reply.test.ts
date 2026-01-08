@@ -6,7 +6,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../agents/pi-embedded.js", () => ({
+vi.mock("../agents/opencode-embedded.js", () => ({
   abortEmbeddedPiRun: vi.fn().mockReturnValue(false),
   isEmbeddedPiRunActive: vi.fn().mockReturnValue(false),
   isEmbeddedPiRunStreaming: vi.fn().mockReturnValue(false),
@@ -16,7 +16,7 @@ vi.mock("../agents/pi-embedded.js", () => ({
     `session:${key.trim() || "main"}`,
 }));
 
-import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
+import { runEmbeddedPiAgent } from "../agents/opencode-embedded.js";
 import { getReplyFromConfig } from "../auto-reply/reply.js";
 import type { ZeeConfig } from "../config/config.js";
 import { resetLogger, setLoggerOverride } from "../logging.js";

@@ -1,5 +1,5 @@
 import type { ThinkLevel } from "../auto-reply/thinking.js";
-import type { EmbeddedContextFile } from "./pi-embedded-helpers.js";
+import type { EmbeddedContextFile } from "./opencode-helpers.js";
 
 export function buildAgentSystemPrompt(params: {
   workspaceDir: string;

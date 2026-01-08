@@ -167,8 +167,7 @@ export async function maybeMigrateLegacyConfigFile(runtime: RuntimeEnv) {
       ? (legacySnapshot.parsed as ZeeConfig).gateway?.bind
       : undefined;
   const agentWorkspace =
-    typeof (legacySnapshot.parsed as ZeeConfig)?.agent?.workspace ===
-    "string"
+    typeof (legacySnapshot.parsed as ZeeConfig)?.agent?.workspace === "string"
       ? (legacySnapshot.parsed as ZeeConfig).agent?.workspace
       : undefined;
 

@@ -1,8 +1,5 @@
 import crypto from "node:crypto";
-
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { Type } from "@sinclair/typebox";
-
 import {
   type CameraFacing,
   cameraTempPath,
@@ -19,6 +16,7 @@ import {
 import { parseDurationMs } from "../../cli/parse-duration.js";
 import { imageMimeFromFormat } from "../../media/mime.js";
 import { sanitizeToolResultImages } from "../tool-images.js";
+import type { AgentToolResult } from "../types.js";
 import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
 import { callGatewayTool, type GatewayCallOptions } from "./gateway.js";
 import { resolveNodeId } from "./nodes-utils.js";

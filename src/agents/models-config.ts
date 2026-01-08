@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { type ZeeConfig, loadConfig } from "../config/config.js";
+import { loadConfig, type ZeeConfig } from "../config/config.js";
 import { resolveZeeAgentDir } from "./agent-paths.js";
 
 type ModelsConfig = NonNullable<ZeeConfig["models"]>;

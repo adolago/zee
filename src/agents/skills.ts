@@ -2,13 +2,119 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  formatSkillsForPrompt,
-  loadSkillsFromDir,
-  type Skill,
-} from "@mariozechner/pi-coding-agent";
+import type { Skill } from "../config/sessions.js";
+export type { Skill };
 
-import type { ZeeConfig, SkillConfig } from "../config/config.js";
+// Local implementation of formatSkillsForPrompt (replaces pi-coding-agent)
+function formatSkillsForPrompt(skills: Skill[]): string {
+  if (skills.length === 0) return "";
+  const lines = skills.map((skill) => {
+    const desc = skill.description ? `: ${skill.description}` : "";
+    const filePath = skill.filePath ? ` (${skill.filePath})` : "";
+    return `- ${skill.name}${desc}${filePath}`;
+  });
+  return `Available skills:\n${lines.join("\n")}`;
+}
+
+// Local implementation of loadSkillsFromDir (replaces pi-coding-agent)
+function loadSkillsFromDir(
+  params: { dir: string; source?: string } | string,
+): Skill[] {
+  const dir = typeof params === "string" ? params : params.dir;
+  const source = typeof params === "object" ? params.source : undefined;
+  if (!fs.existsSync(dir)) return [];
+  const skills: Skill[] = [];
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const skillDir = path.join(dir, entry.name);
+        const skillPath = path.join(skillDir, "skill.json");
+        // Also check for SKILL.md (uppercase) and skill.md (lowercase)
+        const skillMdUpperPath = path.join(skillDir, "SKILL.md");
+        const skillMdLowerPath = path.join(skillDir, "skill.md");
+        const skillMdPath = fs.existsSync(skillMdUpperPath)
+          ? skillMdUpperPath
+          : skillMdLowerPath;
+        if (fs.existsSync(skillPath)) {
+          try {
+            const content = fs.readFileSync(skillPath, "utf-8");
+            const skill = JSON.parse(content) as Skill;
+            if (skill.name) {
+              skill.filePath = skillPath;
+              if (source) skill.source = source;
+              skills.push(skill);
+            }
+          } catch {
+            // Skip invalid skill files
+          }
+        } else if (fs.existsSync(skillMdPath)) {
+          // Handle SKILL.md files - parse YAML frontmatter
+          try {
+            const content = fs.readFileSync(skillMdPath, "utf-8");
+            const skill = parseSkillMd(content, entry.name, skillMdPath);
+            if (skill) {
+              if (source) skill.source = source;
+              skills.push(skill);
+            }
+          } catch {
+            // Skip invalid skill files
+          }
+        }
+      }
+    }
+  } catch {
+    // Return empty array on errors
+  }
+  return skills;
+}
+
+// Parse SKILL.md with YAML frontmatter
+function parseSkillMd(
+  content: string,
+  fallbackName: string,
+  filePath: string,
+): Skill | null {
+  // Check for YAML frontmatter (between --- markers)
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (frontmatterMatch) {
+    const frontmatter = frontmatterMatch[1];
+    // Simple YAML parsing for name, description, metadata
+    const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+    const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+    const metadataMatch = frontmatter.match(/^metadata:\s*(.+)$/m);
+
+    const name = nameMatch?.[1]?.trim() ?? fallbackName;
+    const description = descMatch?.[1]?.trim();
+    const skill: Skill = { name, filePath };
+    if (description) skill.description = description;
+
+    // Parse metadata JSON if present
+    if (metadataMatch?.[1]) {
+      try {
+        const metadata = JSON.parse(metadataMatch[1].trim());
+        if (metadata.zee) {
+          // Store zee metadata for later processing
+          (skill as unknown as { _zeeMetadata: unknown })._zeeMetadata =
+            metadata.zee;
+        }
+      } catch {
+        // Ignore invalid metadata JSON
+      }
+    }
+    return skill;
+  }
+
+  // Fallback: use directory name and extract description from heading
+  const skill: Skill = { name: fallbackName, filePath };
+  const headingMatch = content.match(/^#\s*(.+?)$/m);
+  if (headingMatch) {
+    skill.description = headingMatch[1].trim();
+  }
+  return skill;
+}
+
+import type { SkillConfig, ZeeConfig } from "../config/config.js";
 import { CONFIG_DIR, resolveUserPath } from "../utils.js";
 
 export type SkillInstallSpec = {
@@ -288,24 +394,14 @@ function resolveZeeMetadata(
       .filter((entry): entry is SkillInstallSpec => Boolean(entry));
     const osRaw = normalizeStringList(zeeObj.os);
     return {
-      always:
-        typeof zeeObj.always === "boolean"
-          ? zeeObj.always
-          : undefined,
-      emoji:
-        typeof zeeObj.emoji === "string" ? zeeObj.emoji : undefined,
+      always: typeof zeeObj.always === "boolean" ? zeeObj.always : undefined,
+      emoji: typeof zeeObj.emoji === "string" ? zeeObj.emoji : undefined,
       homepage:
-        typeof zeeObj.homepage === "string"
-          ? zeeObj.homepage
-          : undefined,
+        typeof zeeObj.homepage === "string" ? zeeObj.homepage : undefined,
       skillKey:
-        typeof zeeObj.skillKey === "string"
-          ? zeeObj.skillKey
-          : undefined,
+        typeof zeeObj.skillKey === "string" ? zeeObj.skillKey : undefined,
       primaryEnv:
-        typeof zeeObj.primaryEnv === "string"
-          ? zeeObj.primaryEnv
-          : undefined,
+        typeof zeeObj.primaryEnv === "string" ? zeeObj.primaryEnv : undefined,
       os: osRaw.length > 0 ? osRaw : undefined,
       requires: requiresRaw
         ? {
@@ -544,11 +640,13 @@ function loadSkillEntries(
   const skillEntries: SkillEntry[] = Array.from(merged.values()).map(
     (skill) => {
       let frontmatter: ParsedSkillFrontmatter = {};
-      try {
-        const raw = fs.readFileSync(skill.filePath, "utf-8");
-        frontmatter = parseFrontmatter(raw);
-      } catch {
-        // ignore malformed skills
+      if (skill.filePath) {
+        try {
+          const raw = fs.readFileSync(skill.filePath, "utf-8");
+          frontmatter = parseFrontmatter(raw);
+        } catch {
+          // ignore malformed skills
+        }
       }
       return {
         skill,

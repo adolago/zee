@@ -1,10 +1,14 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-
 import { getImageMetadata, resizeToJpeg } from "../media/image-ops.js";
+import type {
+  AgentToolResult,
+  ContentBlock,
+  ImageContent,
+  TextContent,
+} from "./types.js";
 
-type ToolContentBlock = AgentToolResult<unknown>["content"][number];
-type ImageContentBlock = Extract<ToolContentBlock, { type: "image" }>;
-type TextContentBlock = Extract<ToolContentBlock, { type: "text" }>;
+type ToolContentBlock = ContentBlock;
+type ImageContentBlock = ImageContent;
+type TextContentBlock = TextContent;
 
 // Anthropic Messages API limitations (observed in Zee sessions):
 // - Images over ~2000px per side can fail in multi-image requests.

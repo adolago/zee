@@ -86,8 +86,7 @@ export function triggerZeeRestart(): RestartAttempt {
     };
   }
 
-  const label =
-    process.env.ZEE_LAUNCHD_LABEL || GATEWAY_LAUNCH_AGENT_LABEL;
+  const label = process.env.ZEE_LAUNCHD_LABEL || GATEWAY_LAUNCH_AGENT_LABEL;
   const uid =
     typeof process.getuid === "function" ? process.getuid() : undefined;
   const target = uid !== undefined ? `gui/${uid}/${label}` : label;

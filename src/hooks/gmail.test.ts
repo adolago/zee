@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type ZeeConfig, DEFAULT_GATEWAY_PORT } from "../config/config.js";
+import { DEFAULT_GATEWAY_PORT, type ZeeConfig } from "../config/config.js";
 import {
   buildDefaultHookUrl,
   buildTopicPath,

@@ -43,7 +43,7 @@ vi.mock("../agents/model-auth.js", () => ({
   getCustomProviderApiKey,
 }));
 
-vi.mock("@mariozechner/pi-coding-agent", () => ({
+vi.mock("../agents/session-compat.js", () => ({
   discoverAuthStorage,
   discoverModels,
 }));

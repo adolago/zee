@@ -33,10 +33,7 @@ vi.mock("../pairing/pairing-store.js", () => ({
     upsertPairingRequestMock(...args),
 }));
 
-const HOME = path.join(
-  os.tmpdir(),
-  `zee-inbound-media-${crypto.randomUUID()}`,
-);
+const HOME = path.join(os.tmpdir(), `zee-inbound-media-${crypto.randomUUID()}`);
 process.env.HOME = HOME;
 
 vi.mock("@whiskeysockets/baileys", async () => {

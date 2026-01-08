@@ -1,5 +1,5 @@
-import { completeSimple, type Model } from "@mariozechner/pi-ai";
 import { describe, expect, it } from "vitest";
+import { completeSimple, type Model } from "./pi-ai-compat.js";
 
 const MINIMAX_KEY = process.env.MINIMAX_API_KEY ?? "";
 const MINIMAX_BASE_URL =

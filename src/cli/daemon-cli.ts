@@ -802,9 +802,7 @@ export async function runDaemonInstall(opts: DaemonInstallOptions) {
     ZEE_CONFIG_PATH: process.env.ZEE_CONFIG_PATH,
     ZEE_GATEWAY_PORT: String(port),
     ZEE_GATEWAY_TOKEN:
-      opts.token ||
-      cfg.gateway?.auth?.token ||
-      process.env.ZEE_GATEWAY_TOKEN,
+      opts.token || cfg.gateway?.auth?.token || process.env.ZEE_GATEWAY_TOKEN,
     ZEE_LAUNCHD_LABEL:
       process.platform === "darwin" ? GATEWAY_LAUNCH_AGENT_LABEL : undefined,
   };

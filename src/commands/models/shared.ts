@@ -6,9 +6,9 @@ import {
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
 import {
-  type ZeeConfig,
   readConfigFileSnapshot,
   writeConfigFile,
+  type ZeeConfig,
 } from "../../config/config.js";
 
 export const ensureFlagCompatibility = (opts: {
@@ -48,10 +48,10 @@ export async function updateConfig(
   return next;
 }
 
-export function resolveModelTarget(params: {
-  raw: string;
-  cfg: ZeeConfig;
-}): { provider: string; model: string } {
+export function resolveModelTarget(params: { raw: string; cfg: ZeeConfig }): {
+  provider: string;
+  model: string;
+} {
   const aliasIndex = buildModelAliasIndex({
     cfg: params.cfg,
     defaultProvider: DEFAULT_PROVIDER,

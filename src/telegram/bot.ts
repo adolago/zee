@@ -5,7 +5,7 @@ import { sequentialize } from "@grammyjs/runner";
 import { apiThrottler } from "@grammyjs/transformer-throttler";
 import type { ApiClientOptions, Message } from "grammy";
 import { Bot, InputFile, webhookCallback } from "grammy";
-import { EmbeddedBlockChunker } from "../agents/pi-embedded-block-chunker.js";
+import { EmbeddedBlockChunker } from "../agents/embedded-block-chunker.js";
 import {
   chunkMarkdownText,
   resolveTextChunkLimit,
@@ -25,7 +25,7 @@ import {
 import { createReplyDispatcherWithTyping } from "../auto-reply/reply/reply-dispatcher.js";
 import { getReplyFromConfig } from "../auto-reply/reply.js";
 import type { ReplyPayload } from "../auto-reply/types.js";
-import type { ZeeConfig, ReplyToMode } from "../config/config.js";
+import type { ReplyToMode, ZeeConfig } from "../config/config.js";
 import { loadConfig } from "../config/config.js";
 import {
   resolveProviderGroupPolicy,

@@ -10,7 +10,7 @@ vi.mock("../media/image-ops.js", () => ({
   resizeToJpeg: vi.fn(async () => Buffer.from("jpeg")),
 }));
 
-import { createZeeTools } from "./zee-tools.js";
+import { createZeeTools } from "./clawdbot-tools.js";
 
 describe("nodes camera_snap", () => {
   beforeEach(() => {

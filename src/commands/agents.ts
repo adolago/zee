@@ -581,10 +581,7 @@ function formatProviderEntry(entry: ProviderAccountStatus): string {
   return `${label}: ${formatProviderState(entry)}`;
 }
 
-function summarizeBindings(
-  cfg: ZeeConfig,
-  bindings: AgentBinding[],
-): string[] {
+function summarizeBindings(cfg: ZeeConfig, bindings: AgentBinding[]): string[] {
   if (bindings.length === 0) return [];
   const seen = new Map<string, string>();
   for (const binding of bindings) {

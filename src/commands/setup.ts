@@ -7,7 +7,7 @@ import {
   DEFAULT_AGENT_WORKSPACE_DIR,
   ensureAgentWorkspace,
 } from "../agents/workspace.js";
-import { type ZeeConfig, CONFIG_PATH_ZEE } from "../config/config.js";
+import { CONFIG_PATH_ZEE, type ZeeConfig } from "../config/config.js";
 import { applyModelDefaults } from "../config/defaults.js";
 import { resolveSessionTranscriptsDir } from "../config/sessions.js";
 import type { RuntimeEnv } from "../runtime.js";

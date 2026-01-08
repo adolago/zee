@@ -1,8 +1,5 @@
 import { withProgress } from "../../cli/progress.js";
-import {
-  type ZeeConfig,
-  readConfigFileSnapshot,
-} from "../../config/config.js";
+import { readConfigFileSnapshot, type ZeeConfig } from "../../config/config.js";
 import {
   listDiscordAccountIds,
   resolveDiscordAccount,

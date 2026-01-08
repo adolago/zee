@@ -1,4 +1,3 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { DiscordActionConfig } from "../../config/config.js";
 import {
   addRoleDiscord,
@@ -14,6 +13,7 @@ import {
   uploadEmojiDiscord,
   uploadStickerDiscord,
 } from "../../discord/send.js";
+import type { AgentToolResult } from "../types.js";
 import {
   type ActionGate,
   jsonResult,

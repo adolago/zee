@@ -110,8 +110,7 @@ export function resolveGatewayAuth(params: {
   const authConfig = params.authConfig ?? {};
   const env = params.env ?? process.env;
   const token = authConfig.token ?? env.ZEE_GATEWAY_TOKEN ?? undefined;
-  const password =
-    authConfig.password ?? env.ZEE_GATEWAY_PASSWORD ?? undefined;
+  const password = authConfig.password ?? env.ZEE_GATEWAY_PASSWORD ?? undefined;
   const mode: ResolvedGatewayAuth["mode"] =
     authConfig.mode ?? (password ? "password" : token ? "token" : "none");
   const allowTailscale =

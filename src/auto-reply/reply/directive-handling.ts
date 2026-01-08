@@ -4,11 +4,11 @@ import {
   resolveAuthProfileDisplayLabel,
   resolveAuthStorePathForDisplay,
 } from "../../agents/auth-profiles.js";
-import { lookupContextTokens } from "../../agents/context.js";
 import {
   DEFAULT_CONTEXT_TOKENS,
   DEFAULT_MODEL,
   DEFAULT_PROVIDER,
+  lookupContextTokens,
 } from "../../agents/defaults.js";
 import {
   ensureAuthProfileStore,

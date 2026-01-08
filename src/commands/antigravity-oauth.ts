@@ -9,7 +9,10 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
-import { loginAntigravity, type OAuthCredentials } from "@mariozechner/pi-ai";
+import {
+  loginAntigravity,
+  type OAuthCredentials,
+} from "../agents/oauth-compat.js";
 
 // OAuth constants - decoded from pi-ai's base64 encoded values to stay in sync
 const decode = (s: string) => Buffer.from(s, "base64").toString();

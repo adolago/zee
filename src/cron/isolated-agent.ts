@@ -15,7 +15,7 @@ import {
   resolveModelRefFromString,
   resolveThinkingDefault,
 } from "../agents/model-selection.js";
-import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
+import { runEmbeddedPiAgent } from "../agents/opencode-embedded.js";
 import { buildWorkspaceSkillSnapshot } from "../agents/skills.js";
 import { resolveAgentTimeoutMs } from "../agents/timeout.js";
 import { hasNonzeroUsage } from "../agents/usage.js";
@@ -406,7 +406,7 @@ export async function runCronIsolatedAgentTurn(params: {
           config: params.cfg,
           skillsSnapshot,
           prompt: commandBody,
-          lane: params.lane ?? "cron",
+          lane: (params.lane as "main" | "compact" | undefined) ?? "main",
           provider: providerOverride,
           model: modelOverride,
           thinkLevel,

@@ -3,7 +3,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type { Skill } from "@mariozechner/pi-coding-agent";
+// Local Skill type definition - replaces @mariozechner/pi-coding-agent import
+export interface Skill {
+  name: string;
+  description?: string;
+  filePath?: string;
+  source?: string;
+  baseDir?: string;
+  [key: string]: unknown;
+}
+
 import JSON5 from "json5";
 import type { MsgContext } from "../auto-reply/templating.js";
 import {
