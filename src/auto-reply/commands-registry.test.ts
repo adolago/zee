@@ -22,6 +22,7 @@ describe("commands registry", () => {
   it("detects known text commands", () => {
     const detection = getCommandDetection();
     expect(detection.exact.has("/help")).toBe(true);
+    expect(detection.exact.has("/commands")).toBe(true);
     expect(detection.regex.test("/status")).toBe(true);
     expect(detection.regex.test("/status:")).toBe(true);
     expect(detection.regex.test("/stop")).toBe(true);
