@@ -1,11 +1,4 @@
 import path from "node:path";
-
-import type { Api, Model } from "@mariozechner/pi-ai";
-import {
-  discoverAuthStorage,
-  discoverModels,
-} from "@mariozechner/pi-coding-agent";
-
 import { resolveZeeAgentDir } from "../../agents/agent-paths.js";
 import {
   type AuthProfileStore,
@@ -25,10 +18,15 @@ import {
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
 import { ensureZeeModelsJson } from "../../agents/models-config.js";
+import type { Api, Model } from "../../agents/pi-ai-compat.js";
 import {
-  type ZeeConfig,
+  discoverAuthStorage,
+  discoverModels,
+} from "../../agents/session-compat.js";
+import {
   CONFIG_PATH_ZEE,
   loadConfig,
+  type ZeeConfig,
 } from "../../config/config.js";
 import {
   getShellEnvAppliedKeys,
@@ -118,7 +116,8 @@ type ModelRow = {
   missing: boolean;
 };
 
-const isLocalBaseUrl = (baseUrl: string) => {
+const isLocalBaseUrl = (baseUrl: string | undefined) => {
+  if (!baseUrl) return false;
   try {
     const url = new URL(baseUrl);
     const host = url.hostname.toLowerCase();
@@ -385,7 +384,7 @@ function toModelRow(params: {
     };
   }
 
-  const input = model.input.join("+") || "text";
+  const input = (model.input ?? []).join("+") || "text";
   const local = isLocalBaseUrl(model.baseUrl);
   const available =
     availableKeys?.has(modelKey(model.provider, model.id)) ||

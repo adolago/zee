@@ -1,3 +1,4 @@
+import { Type } from "@sinclair/typebox";
 import {
   type Context,
   complete,
@@ -6,8 +7,7 @@ import {
   type Model,
   type OpenAICompletionsOptions,
   type Tool,
-} from "@mariozechner/pi-ai";
-import { Type } from "@sinclair/typebox";
+} from "./pi-ai-compat.js";
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 const DEFAULT_TIMEOUT_MS = 12_000;
@@ -327,10 +327,11 @@ async function probeImage(
 }
 
 function ensureImageInput(model: OpenAIModel): OpenAIModel {
-  if (model.input.includes("image")) return model;
+  const input = model.input ?? [];
+  if (input.includes("image")) return model;
   return {
     ...model,
-    input: Array.from(new Set([...model.input, "image"])),
+    input: Array.from(new Set([...input, "image"])),
   };
 }
 
@@ -456,7 +457,7 @@ export async function scanOpenRouterModels(
       };
 
       const toolResult = await probeTool(model, apiKey, timeoutMs);
-      const imageResult = model.input.includes("image")
+      const imageResult = model.input?.includes("image")
         ? await probeImage(ensureImageInput(model), apiKey, timeoutMs)
         : { ok: false, latencyMs: null, skipped: true };
 
