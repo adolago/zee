@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- macOS: prevent crash from missing ZeeKit resources and Swift 6.2 library. (#473) - thanks @gupsammy
 - Docs: add 3 community showcase entries from Discord. (#476) - thanks @gupsammy
 - Daemon: align systemd unit with documentation (network deps, restart delay). (#479) - thanks @azade-c
 - Scripts: add comprehensive backup script. (#480) - thanks @pasogott
