@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Agent: serialize block replies to preserve message ordering. (#503) - thanks @joshp123
 - Onboarding: add Gemini API key option. (#489) - thanks @jonasjancarik
 - Agent: add human-like delay between block replies for natural rhythm. (#446) - thanks @tony-freedomology
 - Slack: expose threadTs in agent sendMessage tool for thread replies. (#464) - thanks @austinm911

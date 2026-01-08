@@ -8,13 +8,13 @@ import {
   runEmbeddedPiAgent,
 } from "../../agents/pi-embedded.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
+import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import {
   loadSessionStore,
   resolveSessionTranscriptPath,
   type SessionEntry,
   saveSessionStore,
 } from "../../config/sessions.js";
-import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import type { TypingMode } from "../../config/types.js";
 import { logVerbose } from "../../globals.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
@@ -48,6 +48,7 @@ import type { TypingController } from "./typing.js";
 import { createTypingSignaler } from "./typing-mode.js";
 
 const BUN_FETCH_SOCKET_ERROR_RE = /socket connection was closed unexpectedly/i;
+const BLOCK_REPLY_SEND_TIMEOUT_MS = 15_000;
 
 const isBunFetchSocketError = (message?: string) =>
   Boolean(message && BUN_FETCH_SOCKET_ERROR_RE.test(message));
@@ -60,6 +61,23 @@ const formatBunFetchSocketError = (message: string) => {
     trimmed || "Unknown error",
     "```",
   ].join("\n");
+};
+
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutError: Error,
+): Promise<T> => {
+  if (!timeoutMs || timeoutMs <= 0) return promise;
+  let timer: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(timeoutError), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 };
 
 export async function runReplyAgent(params: {
@@ -146,6 +164,8 @@ export async function runReplyAgent(params: {
   const pendingBlockTasks = new Set<Promise<void>>();
   const pendingToolTasks = new Set<Promise<void>>();
   let blockReplyChain: Promise<void> = Promise.resolve();
+  let blockReplyAborted = false;
+  let didLogBlockReplyAbort = false;
   let didStreamBlockReply = false;
 
   // Buffer audio blocks to apply [[audio_as_voice]] tag that may come later
@@ -406,17 +426,45 @@ export async function runReplyAgent(params: {
                     ) {
                       return;
                     }
+                    if (blockReplyAborted) return;
                     pendingStreamedPayloadKeys.add(payloadKey);
+                    void typingSignals
+                      .signalTextDelta(taggedPayload.text)
+                      .catch((err) => {
+                        logVerbose(
+                          `block reply typing signal failed: ${String(err)}`,
+                        );
+                      });
+                    const timeoutError = new Error(
+                      `block reply delivery timed out after ${BLOCK_REPLY_SEND_TIMEOUT_MS}ms`,
+                    );
                     blockReplyChain = blockReplyChain
                       .then(async () => {
-                        await typingSignals.signalTextDelta(taggedPayload.text);
-                        await opts.onBlockReply?.(blockPayload);
+                        if (blockReplyAborted) return false;
+                        await withTimeout(
+                          opts.onBlockReply?.(blockPayload) ??
+                            Promise.resolve(),
+                          BLOCK_REPLY_SEND_TIMEOUT_MS,
+                          timeoutError,
+                        );
+                        return true;
                       })
-                      .then(() => {
+                      .then((didSend) => {
+                        if (!didSend) return;
                         streamedPayloadKeys.add(payloadKey);
                         didStreamBlockReply = true;
                       })
                       .catch((err) => {
+                        if (err === timeoutError) {
+                          blockReplyAborted = true;
+                          if (!didLogBlockReplyAbort) {
+                            didLogBlockReplyAbort = true;
+                            logVerbose(
+                              `block reply delivery timed out after ${BLOCK_REPLY_SEND_TIMEOUT_MS}ms; skipping remaining block replies to preserve ordering`,
+                            );
+                          }
+                          return;
+                        }
                         logVerbose(
                           `block reply delivery failed: ${String(err)}`,
                         );
@@ -616,10 +664,10 @@ export async function runReplyAgent(params: {
       })
       .filter(isRenderablePayload);
 
-    // Drop final payloads if block streaming is enabled and we already streamed
-    // block replies. Tool-sent duplicates are filtered below.
+    // Drop final payloads only when block streaming succeeded end-to-end.
+    // If streaming aborted (e.g., timeout), fall back to final payloads.
     const shouldDropFinalPayloads =
-      blockStreamingEnabled && didStreamBlockReply;
+      blockStreamingEnabled && didStreamBlockReply && !blockReplyAborted;
     const messagingToolSentTexts = runResult.messagingToolSentTexts ?? [];
     const messagingToolSentTargets = runResult.messagingToolSentTargets ?? [];
     const suppressMessagingToolReplies = shouldSuppressMessagingToolReplies({
