@@ -46,6 +46,7 @@ const onSpy = vi.fn();
 const stopSpy = vi.fn();
 const commandSpy = vi.fn();
 const botCtorSpy = vi.fn();
+const answerCallbackQuerySpy = vi.fn(async () => undefined);
 const sendChatActionSpy = vi.fn();
 const setMessageReactionSpy = vi.fn(async () => undefined);
 const setMyCommandsSpy = vi.fn(async () => undefined);
@@ -57,6 +58,7 @@ type ApiStub = {
   sendChatAction: typeof sendChatActionSpy;
   setMessageReaction: typeof setMessageReactionSpy;
   setMyCommands: typeof setMyCommandsSpy;
+  answerCallbackQuery: typeof answerCallbackQuerySpy;
   sendMessage: typeof sendMessageSpy;
   sendAnimation: typeof sendAnimationSpy;
   sendPhoto: typeof sendPhotoSpy;
@@ -66,6 +68,7 @@ const apiStub: ApiStub = {
   sendChatAction: sendChatActionSpy,
   setMessageReaction: setMessageReactionSpy,
   setMyCommands: setMyCommandsSpy,
+  answerCallbackQuery: answerCallbackQuerySpy,
   sendMessage: sendMessageSpy,
   sendAnimation: sendAnimationSpy,
   sendPhoto: sendPhotoSpy,
@@ -122,6 +125,7 @@ describe("createTelegramBot", () => {
     sendAnimationSpy.mockReset();
     sendPhotoSpy.mockReset();
     setMessageReactionSpy.mockReset();
+    answerCallbackQuerySpy.mockReset();
     setMyCommandsSpy.mockReset();
     middlewareUseSpy.mockReset();
     sequentializeSpy.mockReset();
@@ -204,6 +208,39 @@ describe("createTelegramBot", () => {
         update: { message: { chat: { id: 555 } } },
       }),
     ).toBe("telegram:555");
+  });
+
+  it("routes callback_query payloads as messages and answers callbacks", async () => {
+    onSpy.mockReset();
+    const replySpy = replyModule.__replySpy as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    replySpy.mockReset();
+
+    createTelegramBot({ token: "tok" });
+    const callbackHandler = onSpy.mock.calls.find(
+      (call) => call[0] === "callback_query",
+    )?.[1] as (ctx: Record<string, unknown>) => Promise<void>;
+
+    await callbackHandler({
+      callbackQuery: {
+        id: "cbq-1",
+        data: "cmd:option_a",
+        from: { id: 9, first_name: "Ada", username: "ada_bot" },
+        message: {
+          chat: { id: 1234, type: "private" },
+          date: 1736380800,
+          message_id: 10,
+        },
+      },
+      me: { username: "clawdbot_bot" },
+      getFile: async () => ({ download: async () => new Uint8Array() }),
+    });
+
+    expect(replySpy).toHaveBeenCalledTimes(1);
+    const payload = replySpy.mock.calls[0][0];
+    expect(payload.Body).toContain("cmd:option_a");
+    expect(answerCallbackQuerySpy).toHaveBeenCalledWith("cbq-1");
   });
 
   it("wraps inbound message with Telegram envelope", async () => {

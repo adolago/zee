@@ -160,6 +160,7 @@ const TelegramGroupSchema = z.object({
 
 const TelegramAccountSchemaBase = z.object({
   name: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
   enabled: z.boolean().optional(),
   dmPolicy: DmPolicySchema.optional().default("pairing"),
   botToken: z.string().optional(),
@@ -250,6 +251,7 @@ const DiscordGuildSchema = z.object({
 
 const DiscordAccountSchema = z.object({
   name: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
   enabled: z.boolean().optional(),
   token: z.string().optional(),
   groupPolicy: GroupPolicySchema.optional().default("open"),
@@ -317,6 +319,7 @@ const SlackChannelSchema = z.object({
 
 const SlackAccountSchema = z.object({
   name: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
   enabled: z.boolean().optional(),
   botToken: z.string().optional(),
   appToken: z.string().optional(),
@@ -357,6 +360,7 @@ const SlackConfigSchema = SlackAccountSchema.extend({
 
 const SignalAccountSchemaBase = z.object({
   name: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
   enabled: z.boolean().optional(),
   account: z.string().optional(),
   httpUrl: z.string().optional(),
@@ -403,6 +407,7 @@ const SignalConfigSchema = SignalAccountSchemaBase.extend({
 
 const IMessageAccountSchemaBase = z.object({
   name: z.string().optional(),
+  capabilities: z.array(z.string()).optional(),
   enabled: z.boolean().optional(),
   cliPath: z.string().optional(),
   dbPath: z.string().optional(),
@@ -1120,6 +1125,7 @@ export const ZeeSchema = z.object({
           z
             .object({
               name: z.string().optional(),
+              capabilities: z.array(z.string()).optional(),
               enabled: z.boolean().optional(),
               /** Override auth directory for this WhatsApp account (Baileys multi-file auth state). */
               authDir: z.string().optional(),
@@ -1156,6 +1162,7 @@ export const ZeeSchema = z.object({
             .optional(),
         )
         .optional(),
+      capabilities: z.array(z.string()).optional(),
       dmPolicy: DmPolicySchema.optional().default("pairing"),
       selfChatMode: z.boolean().optional(),
       allowFrom: z.array(z.string()).optional(),

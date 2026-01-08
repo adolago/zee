@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ZeeConfig } from "../../config/config.js";
-import { handleTelegramAction } from "./telegram-actions.js";
+import {
+  handleTelegramAction,
+  readTelegramButtons,
+} from "./telegram-actions.js";
 
 const reactMessageTelegram = vi.fn(async () => ({ ok: true }));
 const sendMessageTelegram = vi.fn(async () => ({
@@ -167,5 +170,46 @@ describe("handleTelegramAction", () => {
         cfg,
       ),
     ).rejects.toThrow(/Telegram bot token missing/);
+  });
+});
+
+describe("readTelegramButtons", () => {
+  it("returns trimmed button rows for valid input", () => {
+    const result = readTelegramButtons({
+      buttons: [[{ text: "  Option A ", callback_data: " cmd:a " }]],
+    });
+    expect(result).toEqual([
+      [{ text: "Option A", callback_data: "cmd:a" }],
+    ]);
+  });
+
+  it("rejects non-array inputs", () => {
+    expect(() => readTelegramButtons({ buttons: "nope" })).toThrow(
+      /buttons must be an array/i,
+    );
+  });
+
+  it("rejects non-array rows", () => {
+    expect(() => readTelegramButtons({ buttons: [{}] })).toThrow(
+      /buttons\[0\] must be an array/i,
+    );
+  });
+
+  it("rejects invalid buttons", () => {
+    expect(() =>
+      readTelegramButtons({
+        buttons: [[{ text: "Ok", callback_data: "" }]],
+      }),
+    ).toThrow(/requires text and callback_data/i);
+    expect(() =>
+      readTelegramButtons({
+        buttons: [[{ text: "", callback_data: "cmd:ok" }]],
+      }),
+    ).toThrow(/requires text and callback_data/i);
+    expect(() =>
+      readTelegramButtons({
+        buttons: [[null]],
+      }),
+    ).toThrow(/must be an object/i);
   });
 });

@@ -19,6 +19,8 @@ export function buildAgentSystemPrompt(params: {
     arch?: string;
     node?: string;
     model?: string;
+    provider?: string;
+    capabilities?: string[];
   };
   sandboxInfo?: {
     enabled: boolean;
@@ -127,6 +129,13 @@ export function buildAgentSystemPrompt(params: {
     ? `Heartbeat prompt: ${heartbeatPrompt}`
     : "Heartbeat prompt: (configured)";
   const runtimeInfo = params.runtimeInfo;
+  const runtimeCapabilities = (runtimeInfo?.capabilities ?? [])
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const runtimeProvider = runtimeInfo?.provider?.trim();
+  const runtimeCapabilitiesLine = runtimeInfo?.capabilities
+    ? `capabilities=${runtimeCapabilities.length > 0 ? runtimeCapabilities.join(",") : "none"}`
+    : "";
 
   const lines = [
     "You are a personal assistant running inside ClaudeBot.",
@@ -264,6 +273,8 @@ export function buildAgentSystemPrompt(params: {
           : "",
       runtimeInfo?.node ? `node=${runtimeInfo.node}` : "",
       runtimeInfo?.model ? `model=${runtimeInfo.model}` : "",
+      runtimeProvider ? `provider=${runtimeProvider}` : "",
+      runtimeCapabilitiesLine,
       `thinking=${params.defaultThinkLevel ?? "off"}`,
     ]
       .filter(Boolean)

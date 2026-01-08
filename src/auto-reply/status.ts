@@ -55,6 +55,8 @@ type StatusArgs = {
   queue?: QueueStatus;
   includeTranscriptUsage?: boolean;
   now?: number;
+  provider?: string;
+  providerCapabilities?: string[];
 };
 
 const formatAge = (ms?: number | null) => {
@@ -282,12 +284,20 @@ export function buildStatusMessage(args: StatusArgs): string {
   const modelLabel = model ? `${provider}/${model}` : "unknown";
   const authLabel = args.modelAuth ? ` · 🔑 ${args.modelAuth}` : "";
   const modelLine = `🧠 Model: ${modelLabel}${authLabel}`;
+  const capabilitiesLabel =
+    args.providerCapabilities && args.providerCapabilities.length > 0
+      ? args.providerCapabilities.join(", ")
+      : "none";
+  const providerLine = args.provider
+    ? `📡 Provider: ${args.provider} · Capabilities: ${capabilitiesLabel}`
+    : null;
   const commit = resolveCommitHash();
   const versionLine = `🦞 ClawdBot ${VERSION}${commit ? ` (${commit})` : ""}`;
 
   return [
     versionLine,
     modelLine,
+    providerLine,
     `📚 ${contextLine}`,
     args.usageLine,
     `🧵 ${sessionLine}`,

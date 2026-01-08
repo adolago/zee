@@ -14,6 +14,7 @@ import {
   type SessionEntry,
   saveSessionStore,
 } from "../../config/sessions.js";
+import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import type { TypingMode } from "../../config/types.js";
 import { logVerbose } from "../../globals.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
@@ -228,6 +229,13 @@ export async function runReplyAgent(params: {
     let fallbackProvider = followupRun.run.provider;
     let fallbackModel = followupRun.run.model;
     try {
+      const messageProvider = sessionCtx.Provider?.trim().toLowerCase();
+      const messageProviderCapabilities =
+        resolveProviderCapabilities({
+          cfg: followupRun.run.config,
+          provider: messageProvider,
+          accountId: sessionCtx.AccountId,
+        }) ?? (messageProvider ? [] : undefined);
       const allowPartialStream = !(
         followupRun.run.reasoningLevel === "stream" && opts?.onReasoningStream
       );
@@ -239,8 +247,8 @@ export async function runReplyAgent(params: {
           runEmbeddedPiAgent({
             sessionId: followupRun.run.sessionId,
             sessionKey,
-            messageProvider:
-              sessionCtx.Provider?.trim().toLowerCase() || undefined,
+            messageProvider: messageProvider || undefined,
+            messageProviderCapabilities,
             agentAccountId: sessionCtx.AccountId,
             sessionFile: followupRun.run.sessionFile,
             workspaceDir: followupRun.run.workspaceDir,

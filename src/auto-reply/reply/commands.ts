@@ -19,6 +19,7 @@ import {
   type SessionScope,
   saveSessionStore,
 } from "../../config/sessions.js";
+import { resolveProviderCapabilities } from "../../config/provider-capabilities.js";
 import { logVerbose } from "../../globals.js";
 import {
   formatUsageSummaryLine,
@@ -451,6 +452,11 @@ export async function handleCommands(params: {
       ? (normalizeGroupActivation(sessionEntry?.groupActivation) ??
         defaultGroupActivation())
       : undefined;
+    const statusProviderCapabilities = resolveProviderCapabilities({
+      cfg,
+      provider: command.provider,
+      accountId: ctx.AccountId,
+    });
     const statusText = buildStatusMessage({
       agent: {
         ...cfg.agent,
@@ -483,6 +489,8 @@ export async function handleCommands(params: {
         showDetails: queueOverrides,
       },
       includeTranscriptUsage: false,
+      provider: command.provider,
+      providerCapabilities: statusProviderCapabilities,
     });
     return { shouldContinue: false, reply: { text: statusText } };
   }
@@ -544,10 +552,18 @@ export async function handleCommands(params: {
       cfg,
       isGroup,
     });
+    const messageProvider = command.provider?.trim().toLowerCase();
+    const messageProviderCapabilities =
+      resolveProviderCapabilities({
+        cfg,
+        provider: messageProvider,
+        accountId: ctx.AccountId,
+      }) ?? (messageProvider ? [] : undefined);
     const result = await compactEmbeddedPiSession({
       sessionId,
       sessionKey,
-      messageProvider: command.provider,
+      messageProvider: messageProvider,
+      messageProviderCapabilities,
       sessionFile: resolveSessionFilePath(sessionId, sessionEntry),
       workspaceDir,
       config: cfg,

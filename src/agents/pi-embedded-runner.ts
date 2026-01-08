@@ -580,6 +580,8 @@ function buildEmbeddedSystemPrompt(params: {
     arch: string;
     node: string;
     model: string;
+    provider?: string;
+    capabilities?: string[];
   };
   sandboxInfo?: EmbeddedSandboxInfo;
   tools: AgentTool[];
@@ -746,6 +748,7 @@ export async function compactEmbeddedPiSession(params: {
   sessionId: string;
   sessionKey?: string;
   messageProvider?: string;
+  messageProviderCapabilities?: string[];
   agentAccountId?: string;
   sessionFile: string;
   workspaceDir: string;
@@ -864,6 +867,8 @@ export async function compactEmbeddedPiSession(params: {
           arch: os.arch(),
           node: process.version,
           model: `${provider}/${modelId}`,
+          provider: params.messageProvider?.trim().toLowerCase(),
+          capabilities: params.messageProviderCapabilities,
         };
         const sandboxInfo = buildEmbeddedSandboxInfo(sandbox);
         const reasoningTagHint = provider === "ollama";
@@ -973,6 +978,7 @@ export async function runEmbeddedPiAgent(params: {
   sessionId: string;
   sessionKey?: string;
   messageProvider?: string;
+  messageProviderCapabilities?: string[];
   agentAccountId?: string;
   sessionFile: string;
   workspaceDir: string;
@@ -1177,6 +1183,8 @@ export async function runEmbeddedPiAgent(params: {
             arch: os.arch(),
             node: process.version,
             model: `${provider}/${modelId}`,
+            provider: params.messageProvider?.trim().toLowerCase(),
+            capabilities: params.messageProviderCapabilities,
           };
           const sandboxInfo = buildEmbeddedSandboxInfo(sandbox);
           const reasoningTagHint = provider === "ollama";
