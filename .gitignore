@@ -51,3 +51,6 @@ apps/ios/*.dSYM.zip
 apps/ios/*.mobileprovision
 .env
 .swarm/
+
+# Local untracked files
+.local/
