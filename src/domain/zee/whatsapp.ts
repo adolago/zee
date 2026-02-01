@@ -42,6 +42,12 @@ export const zeeWhatsAppTool: ToolDefinition = {
   init: async () => ({
     description: `Send WhatsApp messages via Zee's dedicated bot number.
 
+**Recipient lookup workflow (ALWAYS follow this):**
+1. If the user says "message <name>" without a number, call zee:memory-agentic-search with domain "contacts" first to find their number/chatId.
+2. If no memory result, try zee:memory-search with the person's name as query.
+3. Only ask the user for a phone number if both searches return nothing.
+4. Then call this tool with the resolved \`to\` value.
+
 This uses Zee's own WhatsApp number (the bot line), not your personal number.
 
 **When to use:**
@@ -114,6 +120,12 @@ export const personalWhatsAppTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Send WhatsApp messages via YOUR personal WhatsApp number.
+
+**Recipient lookup workflow (ALWAYS follow this):**
+1. If the user says "message <name>" without a number, call zee:memory-agentic-search with domain "contacts" first to find their number/chatId.
+2. If no memory result, try zee:memory-search with the person's name as query.
+3. Only ask the user for a phone number if both searches return nothing.
+4. Then call this tool with the resolved \`to\` value.
 
 This uses your own WhatsApp number, not Zee's bot line.
 

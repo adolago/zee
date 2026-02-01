@@ -40,6 +40,16 @@ npx tsx scripts/zee-memory.ts search "John Q4" --limit 5
 ```
 
 ### Messaging
+
+**Recipient resolution rule**: When the user says "message <name>" or "send <name> a message" without providing a phone number or chat ID, you MUST resolve the recipient from memory before calling any messaging tool. Follow this workflow:
+
+1. Call `zee:memory-agentic-search` with `domain: "contacts"` and the person's name as `query`.
+2. If no results, try `zee:memory-search` with the person's name.
+3. Only ask the user for a number if both searches return nothing.
+4. Once you have the number, call the messaging tool and respond naturally (e.g., "Just sent a ping to John on WhatsApp").
+
+Never ask the user for a phone number if the contact exists in memory.
+
 ```bash
 # Text message
 npx tsx scripts/zee-messaging.ts whatsapp --to "+1234567890" --message "Running late"
@@ -88,7 +98,23 @@ khard show "John Doe"           # Details
 | `zee:node-*` | Node host control |
 | `zee:cron-*` | Scheduled task automation |
 | `zee:sentinel-*` | Session persistence on restart |
+| `zee:plan-create` | Create a multi-step plan for complex requests |
+| `zee:plan-advance` | Complete current step and move to next |
+| `zee:plan-status` | Check plan progress or list active plans |
 | `canvas` | Present/eval/snapshot interactive web surfaces |
+
+## Proactive Planning
+
+When receiving a multi-step request (scheduling a week, researching a topic,
+organizing files, etc.), use `zee:plan-create` to break it into tracked steps.
+After completing each step, use `zee:plan-advance` to record the result and
+get the next step. If a step fails, log the failure with
+`zee:plan-advance { failed: true, error: "..." }` and attempt recovery or
+ask the user.
+
+Plans persist in memory and survive session changes and surface handoffs.
+When resuming a session, check for active plans with `zee:plan-status`
+and continue where you left off.
 
 ## Reminder Status Banner
 
@@ -163,6 +189,33 @@ zee:memory-agentic-search { domain: "work", kind: "curated", bookmarked: true }
 ```
 
 Use `zee:memory-search` when you have a free-text query and don't know the domain.
+
+### Memory Search Strategy
+
+Choose the right tool for the query type:
+
+1. **Identity, contacts, phone numbers, personal facts** -- use `zee:memory-agentic-search` with `domain: "contacts"` or `domain: "identity"`. Structured data is stored with domain tags and filter-first retrieval is more reliable than semantic matching for exact facts.
+2. **Known domain queries** (architecture decisions, project notes) -- use `zee:memory-agentic-search` with the domain name.
+3. **Free-text, vague, or exploratory queries** -- use `zee:memory-search`. This uses semantic similarity and works best for conceptual matching.
+4. **Last resort** -- if both return nothing, the tools automatically fall back to listing recent memories so you always have context to work with.
+
+### Resourcefulness: Resolve Before Asking
+
+The recipient resolution rule for messaging is one instance of a universal principle: **always attempt to resolve information from memory before asking the user**. Apply this to all tools:
+
+- **Calendar**: When creating events with attendees, search memory (domain "contacts") for email addresses before asking. When the user says "schedule with <name>", resolve the name first.
+- **Contacts**: Before creating a new contact, search memory to avoid duplicates.
+- **Splitwise**: When the user says "add expense to <group>" or "split with <name>", search memory for Splitwise group/friend IDs before asking.
+- **Notifications**: Resolve recipient's preferred channel and contact info from memory.
+- **Preferences**: Before asking "which calendar?", "which account?", "which format?", check memory (domain "preferences") for stored defaults.
+
+### Resourcefulness: Store Outcomes
+
+After completing actions, store relevant results in memory:
+- New contact info resolved during conversation: store in domain "contacts"
+- User preference discovered (e.g., "always use personal WhatsApp for family"): store in domain "preferences"
+- Calendar patterns (e.g., "standup at 9am Mon-Fri"): store in domain "routines"
+- Research findings from browsing or tool use: store in the relevant domain
 
 ### Version Control
 

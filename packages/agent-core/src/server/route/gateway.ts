@@ -2,6 +2,12 @@ import { Hono } from "hono"
 import { describeRoute, resolver } from "hono-openapi"
 import { z } from "zod"
 import { Log } from "../../util/log"
+import {
+  formatForSurface,
+  WHATSAPP_CAPABILITIES,
+  TELEGRAM_CAPABILITIES,
+} from "../../surface/types"
+import type { SurfaceCapabilities } from "../../surface/types"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -248,6 +254,11 @@ async function callGateway<T = unknown>(
   })
 }
 
+const PLATFORM_CAPABILITIES: Record<string, SurfaceCapabilities> = {
+  whatsapp: WHATSAPP_CAPABILITIES,
+  telegram: TELEGRAM_CAPABILITIES,
+}
+
 async function sendViaGateway(input: {
   provider: "whatsapp" | "telegram"
   to: string
@@ -257,16 +268,30 @@ async function sendViaGateway(input: {
   mediaUrls?: string[]
   gifPlayback?: boolean
 }): Promise<unknown> {
-  return await callGateway("send", {
-    to: input.to,
-    message: input.message,
-    channel: input.provider,
-    ...(input.accountId ? { accountId: input.accountId } : {}),
-    ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
-    ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
-    ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
-    idempotencyKey: crypto.randomUUID(),
-  }, { timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS })
+  // Format message for the target platform's capabilities
+  const capabilities = PLATFORM_CAPABILITIES[input.provider]
+  let messages = [input.message]
+  if (capabilities && input.message) {
+    messages = formatForSurface(input.message, capabilities)
+  }
+
+  // Send each chunk (for platforms with message length limits)
+  let lastResult: unknown
+  for (const chunk of messages) {
+    lastResult = await callGateway("send", {
+      to: input.to,
+      message: chunk,
+      channel: input.provider,
+      ...(input.accountId ? { accountId: input.accountId } : {}),
+      ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
+      ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
+      ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
+      idempotencyKey: crypto.randomUUID(),
+    }, { timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS })
+    // Only attach media to the first chunk
+    input = { ...input, mediaUrl: undefined, mediaUrls: undefined }
+  }
+  return lastResult
 }
 
 export const GatewayRoute = new Hono()
@@ -412,6 +437,101 @@ export const GatewayRoute = new Hono()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         log.warn("telegram send failed", { error: message })
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+
+  // ---------------------------------------------------------------------------
+  // Gateway Method Bridge
+  //
+  // These endpoints bridge Zee gateway WS methods to REST so web/canvas
+  // clients can access gateway features without a WebSocket connection.
+  // ---------------------------------------------------------------------------
+
+  .get(
+    "/skills",
+    describeRoute({
+      summary: "List gateway skills",
+      description: "Get skill status from the Zee gateway (bridged from WS skills.status method).",
+      operationId: "gateway.skills.status",
+      responses: {
+        200: { description: "Skills status", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        500: { description: "Gateway error", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+      },
+    }),
+    async (c) => {
+      try {
+        const data = await callGateway("skills.status", {})
+        return c.json({ success: true, data } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn("gateway skills.status failed", { error: message })
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+  .get(
+    "/channels/status",
+    describeRoute({
+      summary: "Get channel status",
+      description: "Get messaging channel connection status from the Zee gateway.",
+      operationId: "gateway.channels.status",
+      responses: {
+        200: { description: "Channel status", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        500: { description: "Gateway error", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+      },
+    }),
+    async (c) => {
+      try {
+        const data = await callGateway("channels.status", {})
+        return c.json({ success: true, data } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn("gateway channels.status failed", { error: message })
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+  .get(
+    "/status",
+    describeRoute({
+      summary: "Gateway health status",
+      description: "Check whether the Zee gateway is reachable and responding.",
+      operationId: "gateway.health",
+      responses: {
+        200: { description: "Gateway healthy", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        500: { description: "Gateway unreachable", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+      },
+    }),
+    async (c) => {
+      try {
+        const data = await callGateway("health", {}, { timeoutMs: 5_000 })
+        return c.json({ success: true, data } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+  .get(
+    "/usage",
+    describeRoute({
+      summary: "Gateway usage statistics",
+      description: "Get message counts and token usage from the Zee gateway.",
+      operationId: "gateway.usage",
+      responses: {
+        200: { description: "Usage data", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        500: { description: "Gateway error", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+      },
+    }),
+    async (c) => {
+      try {
+        const data = await callGateway("usage", {})
+        return c.json({ success: true, data } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn("gateway usage failed", { error: message })
         return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
       }
     },

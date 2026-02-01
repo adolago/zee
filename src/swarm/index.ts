@@ -76,3 +76,23 @@ export {
   runWithLearning,
 } from "./neural";
 export type { Pattern, TrainingResult } from "./neural";
+
+// Planner (multi-step planning with persistence)
+export {
+  createPlan,
+  advancePlan,
+  failStep,
+  getPlan,
+  listPlans,
+  abandonPlan,
+  formatPlan,
+} from "./planner";
+export type { Plan, PlanStep } from "./planner";
+
+// Recovery (automatic error recovery strategies)
+export {
+  suggestRecovery,
+  withRetry,
+  buildEscalation,
+} from "./recovery";
+export type { RecoveryStrategy, RecoveryResult, RetryOptions } from "./recovery";

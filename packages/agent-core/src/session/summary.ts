@@ -120,6 +120,70 @@ export namespace SessionSummary {
     },
   )
 
+  /**
+   * Generate a compact handoff summary for cross-surface context preservation.
+   * Returns a text block suitable for injection as a system message on the receiving surface.
+   */
+  export async function handoffSummary(sessionID: string): Promise<string> {
+    const msgs = await Session.messages({ sessionID, limit: 50 })
+
+    // Extract last 5 user messages (truncated)
+    const recentUserMessages = msgs
+      .filter((m) => m.info.role === "user")
+      .slice(-5)
+      .map((m) => {
+        const text = m.parts
+          .filter((p): p is MessageV2.TextPart => p.type === "text")
+          .map((p) => p.text)
+          .join(" ")
+          .slice(0, 300)
+        return text
+      })
+      .filter(Boolean)
+
+    // Extract last assistant response summary
+    const lastAssistant = [...msgs]
+      .reverse()
+      .find((m) => m.info.role === "assistant")
+    const lastAssistantText = lastAssistant?.parts
+      .filter((p): p is MessageV2.TextPart => p.type === "text")
+      .map((p) => p.text)
+      .join(" ")
+      .slice(0, 500)
+
+    // Detect active persona from session info
+    const session = await Session.get(sessionID)
+    const lowerTitle = session.title.toLowerCase()
+    let persona = "zee"
+    if (lowerTitle.includes("stanley")) persona = "stanley"
+    else if (lowerTitle.includes("johny")) persona = "johny"
+
+    // Build the summary block
+    const parts: string[] = [
+      `[Handoff Context - Session ${sessionID.slice(0, 12)}...]`,
+      `Persona: ${persona}`,
+    ]
+
+    if (recentUserMessages.length > 0) {
+      parts.push("")
+      parts.push("Recent conversation:")
+      for (const msg of recentUserMessages) {
+        parts.push(`  User: ${msg}`)
+      }
+    }
+
+    if (lastAssistantText) {
+      parts.push(`  Assistant: ${lastAssistantText}`)
+    }
+
+    if (session.surface) {
+      parts.push("")
+      parts.push(`Previous surface: ${session.surface}`)
+    }
+
+    return parts.join("\n")
+  }
+
   export async function computeDiff(input: { messages: MessageV2.WithParts[] }) {
     let from: string | undefined
     let to: string | undefined

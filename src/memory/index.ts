@@ -37,3 +37,11 @@ export * from "./embedding";
 
 // Low-level storage (for advanced use cases)
 export { QdrantVectorStorage, QdrantMemoryStore } from "./qdrant";
+
+// SQLite FTS for keyword search
+export { SqliteFtsStore, buildFtsQuery, bm25RankToScore } from "./sqlite-fts";
+export type { FtsConfig, FtsEntry, FtsSearchResult, FtsSearchOptions } from "./sqlite-fts";
+
+// Hybrid search (vector + keyword)
+export { mergeHybridResults } from "./hybrid";
+export type { HybridSearchConfig, HybridSearchResult, HybridSearchParams } from "./hybrid";

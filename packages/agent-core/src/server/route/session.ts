@@ -468,6 +468,16 @@ export const SessionRoute = new Hono()
                   messageCount: z.number(),
                   lastMessage: z.string().optional(),
                   todos: Todo.Info.array(),
+                  context: z.object({
+                    recentMessages: z.array(z.string()),
+                    activeTodos: z.array(z.object({
+                      id: z.string(),
+                      content: z.string(),
+                      status: z.string(),
+                    })),
+                    previousSurface: z.string().optional(),
+                    persona: z.string().optional(),
+                  }),
                   resumeUrl: z.string(),
                 }),
               ),
@@ -478,21 +488,50 @@ export const SessionRoute = new Hono()
       },
     }),
     validator("param", z.object({ sessionID: z.string() })),
-    validator("json", z.object({ targetSurface: z.enum(["cli", "gui", "telegram", "whatsapp"]) })),
+    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "telegram", "whatsapp"]) })),
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const { targetSurface } = c.req.valid("json")
 
-      const session = await Session.get(sessionID)
+      // Update the session's surface to the target
+      const session = await Session.update(sessionID, (draft) => {
+        draft.surface = targetSurface
+      })
+
       const messages = await Array.fromAsync(MessageV2.stream(sessionID))
       const todos = await Todo.get(sessionID)
 
-      const lastUserMessage = [...messages].reverse().find((m) => m.info.role === "user")
-      const lastMessageText = lastUserMessage?.parts
-        .filter((p): p is MessageV2.TextPart => p.type === "text")
-        .map((p) => p.text)
-        .join(" ")
-        .slice(0, 200)
+      // Extract last N user messages for context
+      const recentUserMessages = [...messages]
+        .reverse()
+        .filter((m) => m.info.role === "user")
+        .slice(0, 5)
+        .map((m) => {
+          const text = m.parts
+            .filter((p): p is MessageV2.TextPart => p.type === "text")
+            .map((p) => p.text)
+            .join(" ")
+            .slice(0, 200)
+          return text
+        })
+        .filter(Boolean)
+
+      const lastMessageText = recentUserMessages[0]
+
+      // Build a compact context summary for the receiving surface
+      const activeTodos = todos.filter((t) => t.status !== "completed")
+      const context = {
+        recentMessages: recentUserMessages,
+        activeTodos: activeTodos.map((t) => ({ id: t.id, content: t.content, status: t.status })),
+        previousSurface: session.surface,
+        persona: undefined as string | undefined,
+      }
+
+      // Try to detect persona from session title
+      const lowerTitle = session.title.toLowerCase()
+      if (lowerTitle.includes("stanley")) context.persona = "stanley"
+      else if (lowerTitle.includes("johny")) context.persona = "johny"
+      else if (lowerTitle.includes("zee")) context.persona = "zee"
 
       const resumeUrl = `agentcore://session/${sessionID}`
 
@@ -504,6 +543,7 @@ export const SessionRoute = new Hono()
         messageCount: messages.length,
         lastMessage: lastMessageText,
         todos,
+        context,
         resumeUrl,
       })
     },

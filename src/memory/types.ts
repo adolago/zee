@@ -583,6 +583,14 @@ export interface MemoryConfig {
 
   /** Default TTL for memories in milliseconds (0 = permanent) */
   defaultTTL?: number;
+
+  /** SQLite FTS configuration for hybrid search */
+  fts?: {
+    /** Directory for the SQLite database file */
+    dbDir?: string;
+    /** Database file name */
+    dbName?: string;
+  };
 }
 
 // =============================================================================

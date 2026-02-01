@@ -20,6 +20,7 @@ import {
   startEmbeddedGateway,
   stopEmbeddedGateway,
 } from "../../gateway/embedded-gateway"
+import { setGatewayHealthState } from "../../gateway/supervisor-state"
 import {
   startTailscaleExposure,
   type TailscaleMode,
@@ -283,9 +284,11 @@ export namespace GatewaySupervisor {
   let lastPreflight: GatewayPreflight | null = null
   let gatewayDaemonUrl: string | undefined
   let retryTimer: NodeJS.Timeout | undefined
+  let healthCheckTimer: NodeJS.Timer | undefined
   let retryCount = 0
   const RETRY_BASE_MS = 1000
   const RETRY_MAX_MS = 30000
+  const HEALTH_CHECK_INTERVAL_MS = 60_000
 
   export interface GatewayPreflight {
     ok: boolean
@@ -389,6 +392,22 @@ export namespace GatewaySupervisor {
     retryTimer = undefined
   }
 
+  function startHealthCheck() {
+    if (healthCheckTimer) return
+    healthCheckTimer = setInterval(async () => {
+      if (isShuttingDown || !gatewayEnabled) return
+      if (getEmbeddedGatewayState().running) return
+      log.info("gateway health check: not running, attempting restart")
+      await start({ force: forceStart, daemonUrl: gatewayDaemonUrl })
+    }, HEALTH_CHECK_INTERVAL_MS)
+  }
+
+  function stopHealthCheck() {
+    if (!healthCheckTimer) return
+    clearInterval(healthCheckTimer)
+    healthCheckTimer = undefined
+  }
+
   function scheduleRetry(reason?: string) {
     if (isShuttingDown || !gatewayEnabled) return
     if (retryTimer) return
@@ -413,8 +432,18 @@ export namespace GatewaySupervisor {
     return result
   }
 
+  function syncHealthState() {
+    const embeddedState = getEmbeddedGatewayState()
+    setGatewayHealthState({
+      running: embeddedState.running,
+      enabled: gatewayEnabled,
+      error: lastError,
+    })
+  }
+
   export function getState(): GatewayState {
     const embeddedState = getEmbeddedGatewayState()
+    syncHealthState()
     return {
       running: embeddedState.running,
       pid: embeddedState.pid,
@@ -450,6 +479,8 @@ export namespace GatewaySupervisor {
     if (!preflight.ok) {
       lastError = preflight.issues[0] ?? preflight.warnings[0]
       if (lastError) log.warn("zee gateway preflight failed", { reason: lastError })
+      syncHealthState()
+      startHealthCheck()
       return false
     }
 
@@ -464,12 +495,15 @@ export namespace GatewaySupervisor {
       lastExit = undefined
       retryCount = 0
       log.info("embedded zee gateway started", { port: gatewayPort })
+      syncHealthState()
+      startHealthCheck()
       return true
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error)
       log.error("failed to start zee gateway", {
         error: lastError,
       })
+      syncHealthState()
       scheduleRetry(lastError)
       return false
     }
@@ -480,7 +514,9 @@ export namespace GatewaySupervisor {
     gatewayEnabled = false
     forceStart = false
     clearRetryTimer()
+    stopHealthCheck()
     await stopEmbeddedGateway({ reason: "gateway stopping" })
+    syncHealthState()
   }
 
   export function isEnabled(): boolean {

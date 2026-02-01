@@ -49,6 +49,8 @@ function bundlePersonas(distRoot: string) {
       if (srcPath.includes("/extensions/") && base === "node_modules") return false
       // Avoid recursive symlink loop in pnpm structure
       if (srcPath.includes("node_modules/zee")) return false
+      // Skip .pnpm store - has complex internal symlinks that break rm -rf on rebuild
+      if (base === ".pnpm") return false
       // Skip broken symlinks (e.g., skills -> absolute path that doesn't exist in CI)
       try {
         const stats = fs.lstatSync(srcPath)

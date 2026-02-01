@@ -91,6 +91,7 @@ export {
   WHATSAPP_CAPABILITIES,
   TELEGRAM_CAPABILITIES,
   API_CAPABILITIES,
+  formatForSurface,
 } from './types.js';
 
 // =============================================================================

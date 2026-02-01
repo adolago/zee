@@ -577,8 +577,16 @@ export namespace Config {
   })
   export type Command = z.infer<typeof Command>
 
+  export const SkillEntry = z.object({
+    enabled: z.boolean().optional().describe("Whether the skill is enabled (default: true)"),
+    apiKey: z.string().optional().describe("API key mapped to the skill's primaryEnv variable"),
+    env: z.record(z.string(), z.string()).optional().describe("Environment variable overrides for this skill"),
+  })
+  export type SkillEntry = z.infer<typeof SkillEntry>
+
   export const Skills = z.object({
     paths: z.array(z.string()).optional().describe("Additional paths to skill folders"),
+    entries: z.record(z.string(), SkillEntry).optional().describe("Per-skill configuration keyed by skill name"),
   })
   export type Skills = z.infer<typeof Skills>
 

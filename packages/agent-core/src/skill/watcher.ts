@@ -5,6 +5,7 @@ import path from "path"
 import { Log } from "../util/log"
 import { GlobalBus } from "../bus/global"
 import { Global } from "../global"
+import { Skill } from "./skill"
 
 const log = Log.create({ service: "skill:watcher" })
 
@@ -64,6 +65,29 @@ export function startSkillWatcher(opts: SkillWatcherOptions): void {
   // Global config skills
   const configSkills = path.join(Global.Path.config, "skills")
   watchPaths.push(configSkills)
+
+  // Project-level .claude/skills/
+  const projectClaudeSkills = path.join(opts.directory, ".claude", "skills")
+  watchPaths.push(projectClaudeSkills)
+
+  // Global ~/.claude/skills/
+  const globalClaudeSkills = path.join(Global.Path.home, ".claude", "skills")
+  watchPaths.push(globalClaudeSkills)
+
+  // Supplement with Skill.directories() when available (async, best-effort)
+  Skill.directories().then((dirs) => {
+    const newPaths = dirs.filter((d) => !watchPaths.includes(d))
+    if (newPaths.length > 0 && watcher) {
+      watcher.add(newPaths)
+      log.info("skill watcher: added directories from Skill.directories()", {
+        count: newPaths.length,
+      })
+    }
+  }).catch((err) => {
+    log.debug("skill watcher: could not load Skill.directories()", {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  })
 
   log.info("starting skill watcher", { paths: watchPaths })
 

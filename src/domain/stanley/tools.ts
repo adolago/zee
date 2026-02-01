@@ -161,6 +161,9 @@ export const portfolioTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Analyze and optimize investment portfolios.
+
+**Recall context**: Check zee:memory-agentic-search (domain "portfolio") for the user's current positions and recent changes before asking.
+
 Capabilities:
 - Portfolio performance analysis
 - Risk metrics (Sharpe ratio, Sortino, VaR, beta)
@@ -271,6 +274,9 @@ export const researchTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Conduct financial research across multiple sources.
+
+**Check memory first**: Before starting research, search zee:memory-agentic-search (domain "research") for previous analyses on the same ticker. Build on existing findings.
+
 Sources include:
 - SEC filings and disclosures
 - Financial news (Bloomberg, Reuters, etc.)

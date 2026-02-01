@@ -80,13 +80,14 @@ Any persona can use any skill. When the skill tool lists skills, cross-persona o
 
 ## Cross-Persona Memory
 
-All personas share the same Qdrant vector store. One persona can reference another's findings:
+All personas share the same Qdrant vector store. One persona can reference another's findings.
 
-```
-"Stanley's market analysis from earlier indicated..."
-"Johny's learning notes on this topic suggest..."
-"Zee's previous research found..."
-```
+**Resolve before asking, across personas**: If you need information another persona might have stored, search memory before asking the user:
+- Zee can check Stanley's research domain before asking about a stock.
+- Stanley can check Zee's contacts domain for a colleague's email.
+- Johny can check Zee's preferences domain for the user's schedule.
+
+**Store for others**: When you produce results another persona might need, store them with clear domain/topic tags.
 
 ## Delegation Quick Reference
 

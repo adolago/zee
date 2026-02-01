@@ -30,38 +30,49 @@ esac
 
 LOCAL_BINARY="$REPO_ROOT/dist/@agent-core/core-$PLATFORM/bin/agent-core"
 
-# Check if binary exists
-if [[ ! -f "$LOCAL_BINARY" ]]; then
-    echo "Binary not found: $LOCAL_BINARY"
-    echo "Run: cd packages/agent-core && bun run build"
-    exit 1
-fi
-
 # Check if source is newer than binary - auto-rebuild if needed
-STALE=""
-# Check source files
-STALE=$(find "$REPO_ROOT/src" \( -name "*.ts" -o -name "*.tsx" \) -type f -newer "$LOCAL_BINARY" -print -quit 2>/dev/null)
-# Check config files at repo root
-if [[ -z "$STALE" ]]; then
-    for f in "$REPO_ROOT/package.json" "$REPO_ROOT/tsconfig.json"; do
-        if [[ -f "$f" && "$f" -nt "$LOCAL_BINARY" ]]; then
-            STALE="$f"
-            break
-        fi
-    done
+NEEDS_BUILD=""
+if [[ ! -f "$LOCAL_BINARY" ]]; then
+    NEEDS_BUILD="binary missing"
+else
+    # Check source files
+    STALE=$(find "$REPO_ROOT/src" \( -name "*.ts" -o -name "*.tsx" \) -type f -newer "$LOCAL_BINARY" -print -quit 2>/dev/null)
+    if [[ -n "$STALE" ]]; then
+        NEEDS_BUILD="${STALE#$REPO_ROOT/}"
+    else
+        # Check config files at repo root
+        for f in "$REPO_ROOT/package.json" "$REPO_ROOT/tsconfig.json"; do
+            if [[ -f "$f" && "$f" -nt "$LOCAL_BINARY" ]]; then
+                NEEDS_BUILD="${f#$REPO_ROOT/}"
+                break
+            fi
+        done
+    fi
 fi
 
-if [[ -n "$STALE" ]]; then
-    echo -e "\033[1;33m[ac] Source newer than binary (${STALE#$REPO_ROOT/}) - rebuilding...\033[0m" >&2
+if [[ -n "$NEEDS_BUILD" ]]; then
+    echo -e "\033[1;33m[ac] Rebuilding ($NEEDS_BUILD)...\033[0m" >&2
     (cd "$REPO_ROOT" && bun run build) || { echo "[ac] Build failed"; exit 1; }
 fi
 
-# Nuke: kill all existing agent-core processes
-if pgrep -f "agent-core" > /dev/null 2>&1; then
-    echo -e "\033[1;36m[ac] Killing existing agent-core processes...\033[0m" >&2
-    pkill -9 -f "agent-core" 2>/dev/null || true
-    sleep 1
+# Verify binary exists after build
+if [[ ! -f "$LOCAL_BINARY" ]]; then
+    echo -e "\033[1;31m[ac] Binary not found after build: $LOCAL_BINARY\033[0m" >&2
+    echo "The build may have failed silently. Try: cd $REPO_ROOT && bun run build" >&2
+    exit 1
 fi
 
-# Boot: run the local binary
+# Nuke: kill all existing agent-core processes (excluding this script)
+SELF_PID=$$
+if pgrep -x "agent-core" > /dev/null 2>&1; then
+    echo -e "\033[1;36m[ac] Killing existing agent-core processes...\033[0m" >&2
+    # Kill only actual agent-core binaries, not scripts whose paths contain "agent-core"
+    pgrep -x "agent-core" | while read -r pid; do
+        [[ "$pid" -eq "$SELF_PID" ]] && continue
+        kill -9 "$pid" 2>/dev/null || true
+    done
+    sleep 0.5
+fi
+
+# Boot: run the local binary (starts daemon + gateway + TUI)
 exec "$LOCAL_BINARY" "$@"

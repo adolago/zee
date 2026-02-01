@@ -11,6 +11,7 @@
 import { z } from "zod";
 import type { ToolDefinition, ToolRuntime, ToolExecutionContext, ToolExecutionResult } from "../../mcp/types";
 import { Log } from "../../../packages/agent-core/src/util/log";
+import { validateMediaPath, PathValidationError } from "../../../packages/agent-core/src/security/validate-path.js";
 import {
   SPLITWISE_ACTIONS,
   buildSplitwiseRequest,
@@ -20,6 +21,7 @@ import {
   type SplitwiseValue,
 } from "./splitwise.js";
 import { resolveCodexbarConfig, runCodexbar } from "./codexbar.js";
+import { withRetry, suggestRecovery, buildEscalation } from "../../swarm/recovery.js";
 
 const log = Log.create({ service: "zee-tools" });
 
@@ -120,27 +122,43 @@ Examples:
 
       try {
         const store = getMemory();
-        const entry = await store.save({
-          category,
-          content,
-          metadata: {
-            importance,
-            tags,
-            surface: ctx.extra?.surface as string | undefined,
-            sessionId: ctx.extra?.sessionId as string | undefined,
-            agent: "zee",
-            extra: relatedTo ? { relatedTo } : undefined,
-          },
-          domain,
-          topic,
-          subtopic,
-          memoryId,
-          kind,
-          priority,
-          bookmarked,
-          memoryType,
-        });
 
+        // Memory store is idempotent for the same memoryId, so retry on transient failures
+        const saveResult = await withRetry(
+          () => store.save({
+            category,
+            content,
+            namespace: "zee",
+            metadata: {
+              importance,
+              tags,
+              surface: ctx.extra?.surface as string | undefined,
+              sessionId: ctx.extra?.sessionId as string | undefined,
+              agent: "zee",
+              extra: relatedTo ? { relatedTo } : undefined,
+            },
+            domain,
+            topic,
+            subtopic,
+            memoryId,
+            kind,
+            priority,
+            bookmarked,
+            memoryType,
+          }),
+          { toolName: "zee:memory-store", maxAttempts: 2 },
+        );
+
+        if ("error" in saveResult) {
+          const err = saveResult.error;
+          return {
+            title: `Memory Store Failed`,
+            metadata: { error: err.message, attempts: saveResult.attempts },
+            output: buildEscalation(err, "zee:memory-store"),
+          };
+        }
+
+        const entry = saveResult.result;
         const locationParts = [domain, topic, subtopic].filter(Boolean);
         const locationStr = locationParts.length > 0 ? `- Location: ${locationParts.join("/")}` : "";
         const versionStr = entry.version && entry.version > 1 ? `- Version: ${entry.version}` : "";
@@ -154,6 +172,7 @@ Examples:
             importance,
             tags,
             version: entry.version,
+            ...(saveResult.attempts > 1 ? { retries: saveResult.attempts - 1 } : {}),
           },
           output: `Remembered: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"
 
@@ -169,21 +188,6 @@ This memory can be recalled later using zee:memory-search or zee:memory-agentic-
         };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-
-        // Check if it's a connection error (Qdrant not running)
-        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-          return {
-            title: `Memory Store Unavailable`,
-            metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant).
-
-The memory was NOT saved. To enable memory:
-1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or configure a different backend in agent-core config
-
-Error: ${errorMsg}`,
-          };
-        }
 
         return {
           title: `Memory Store Error`,
@@ -204,7 +208,7 @@ const MemorySearchParams = z.object({
   category: z.enum(["conversation", "fact", "preference", "task", "decision", "note", "all"])
     .optional().describe("Filter by category"),
   limit: z.number().default(5).describe("Maximum results"),
-  threshold: z.number().min(0).max(1).default(0.7)
+  threshold: z.number().min(0).max(1).default(0.5)
     .describe("Minimum similarity threshold"),
   timeRange: z.object({
     start: z.string().optional(),
@@ -231,18 +235,64 @@ Examples:
 
       try {
         const store = getMemory();
-        const results = await store.search({
-          query,
-          limit: limit ?? 5,
-          threshold: threshold ?? 0.5,
-          category: category && category !== "all" ? category as any : undefined,
-          timeRange: timeRange ? {
-            start: timeRange.start ? new Date(timeRange.start).getTime() : undefined,
-            end: timeRange.end ? new Date(timeRange.end).getTime() : undefined,
-          } : undefined,
-        });
+
+        // Retry search on transient connection failures
+        const searchResult = await withRetry(
+          () => store.search({
+            query,
+            namespace: "zee",
+            limit: limit ?? 5,
+            threshold: threshold ?? 0.5,
+            category: category && category !== "all" ? category as any : undefined,
+            timeRange: timeRange ? {
+              start: timeRange.start ? new Date(timeRange.start).getTime() : undefined,
+              end: timeRange.end ? new Date(timeRange.end).getTime() : undefined,
+            } : undefined,
+          }),
+          { toolName: "zee:memory-search" },
+        );
+
+        if ("error" in searchResult) {
+          return {
+            title: `Memory Search Failed`,
+            metadata: { query, error: searchResult.error.message, attempts: searchResult.attempts },
+            output: buildEscalation(searchResult.error, "zee:memory-search"),
+          };
+        }
+
+        const results = searchResult.result;
 
         if (results.length === 0) {
+          // Fallback: list recent memories when semantic search misses
+          try {
+            const fallbackCategory = category && category !== "all" ? category as any : undefined;
+            const fallback = await store.list({ limit: limit ?? 5, category: fallbackCategory, namespace: "zee" });
+            if (fallback.length > 0) {
+              const formattedFallback = fallback
+                .map((entry: any, i: number) => {
+                  const preview = entry.content.substring(0, 150);
+                  const ellipsis = entry.content.length > 150 ? "..." : "";
+                  const date = new Date(entry.createdAt).toLocaleDateString();
+                  return `${i + 1}. [${entry.category}] (${date})
+   "${preview}${ellipsis}"
+   ID: ${entry.id}`;
+                })
+                .join("\n\n");
+
+              return {
+                title: `${fallback.length} Recent Memories (fallback)`,
+                metadata: { query, resultCount: fallback.length, fallback: true },
+                output: `No semantic matches for "${query}", showing ${fallback.length} recent memories instead:
+
+${formattedFallback}
+
+(These are recent memories, not similarity-ranked. Try zee:memory-agentic-search with a domain filter for structured lookups.)`,
+              };
+            }
+          } catch {
+            // fallback itself failed, return standard no-results message
+          }
+
           return {
             title: `No Memories Found`,
             metadata: { query, resultCount: 0 },
@@ -251,7 +301,7 @@ Examples:
 Try:
 - Using different keywords
 - Removing category filters
-- Expanding the time range`,
+- Using zee:memory-agentic-search with domain/topic filters for structured data`,
           };
         }
 
@@ -278,20 +328,6 @@ ${formattedResults}`,
         };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-
-        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-          return {
-            title: `Memory Search Unavailable`,
-            metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant).
-
-To enable memory search:
-1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or configure a different backend in agent-core config
-
-Error: ${errorMsg}`,
-          };
-        }
 
         return {
           title: `Memory Search Error`,
@@ -326,6 +362,14 @@ export const messagingTool: ToolDefinition = {
   init: async () => ({
     description: `Send messages via WhatsApp or Telegram gateways.
 
+**Recipient lookup workflow (ALWAYS follow this):**
+1. If the user says "message <name>" without a number, call zee:memory-agentic-search with domain "contacts" first to find their number/chatId.
+2. If no memory result, try zee:memory-search with the person's name as query.
+3. Only ask the user for a phone number if both searches return nothing.
+4. Then call this tool with the resolved \`to\` value.
+
+Never ask the user for a phone number without searching memory first.
+
 Channels:
 - **whatsapp**: Zee's WhatsApp gateway (requires `agent-core daemon` with gateway enabled)
 - **telegram**: Telegram bots (requires `agent-core daemon` with gateway enabled)
@@ -354,6 +398,29 @@ Examples:
       const hasMedia = Boolean(mediaUrl?.trim());
       ctx.metadata({ title: `Sending via ${channel}${hasMedia ? " (media)" : ""}` });
 
+      // Validate mediaUrl if it looks like a local file path
+      let validatedMediaUrl = mediaUrl?.trim();
+      if (validatedMediaUrl) {
+        try {
+          const result = validateMediaPath(validatedMediaUrl, {
+            cwd: process.cwd(),
+            permissive: true, // allow paths outside home, but block sensitive dirs
+          });
+          if (result) {
+            validatedMediaUrl = result.resolved;
+          }
+        } catch (err) {
+          if (err instanceof PathValidationError) {
+            return {
+              title: `${channel} Send Blocked`,
+              metadata: { channel, to, error: err.message },
+              output: `Media path blocked: ${err.message}`,
+            };
+          }
+          throw err;
+        }
+      }
+
       const rawBaseUrl =
         process.env.AGENT_CORE_URL ||
         process.env.AGENT_CORE_DAEMON_URL ||
@@ -372,7 +439,7 @@ Examples:
               chatId: to,
               message,
               accountId,
-              ...(mediaUrl?.trim() ? { mediaUrl: mediaUrl.trim() } : {}),
+              ...(validatedMediaUrl ? { mediaUrl: validatedMediaUrl } : {}),
             }),
           });
 
@@ -602,6 +669,8 @@ export const calendarTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Google Calendar with smart scheduling.
+
+**Attendee resolution**: When creating events with attendees, search zee:memory-agentic-search (domain "contacts") for email addresses before asking the user.
 
 **View Events:**
 - today/week/month/list/show: View events
@@ -874,6 +943,9 @@ export const contactsTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Manage contact information.
+
+**Deduplication**: Before creating a contact, search zee:memory-agentic-search (domain "contacts") to check if the person already exists.
+
 Actions:
 - search: Find contacts by name, email, or phone
 - get: Get specific contact details
@@ -938,6 +1010,8 @@ export const splitwiseTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Access Splitwise API for shared expenses and balances.
+
+**Group/friend resolution**: When the user refers to a group or friend by name, search zee:memory-agentic-search (domain "contacts" or "preferences") for their Splitwise IDs before asking.
 
 Requires configuration:
 - agent-core.jsonc: { "zee": { "splitwise": { "enabled": true, "token": "{env:SPLITWISE_TOKEN}" } } }
@@ -1382,6 +1456,7 @@ Examples:
             domain,
             topic,
             subtopic,
+            namespace: "zee",
             limit: limit ?? 20,
           });
           if (results.length === 0) {
@@ -1481,6 +1556,7 @@ Examples:
           topic,
           subtopic,
           query,
+          namespace: "zee",
           kind: kind as any,
           priority: priority as any,
           bookmarked,
@@ -1646,6 +1722,207 @@ Current content: "${result.content.substring(0, 150)}${result.content.length > 1
 };
 
 // =============================================================================
+// Plan Tools (Proactive Planning Loop)
+// =============================================================================
+
+import {
+  createPlan,
+  advancePlan,
+  failStep,
+  getPlan,
+  listPlans,
+  abandonPlan,
+  formatPlan,
+} from "../../swarm/planner.js";
+
+const PlanCreateParams = z.object({
+  objective: z.string().describe("What the plan aims to achieve"),
+  steps: z.array(z.string()).min(1).max(20)
+    .describe("Ordered list of step descriptions"),
+  persona: z.enum(["zee", "stanley", "johny"]).optional()
+    .describe("Persona owning this plan (default: current persona)"),
+});
+
+export const planCreateTool: ToolDefinition = {
+  id: "zee:plan-create",
+  category: "domain",
+  init: async () => ({
+    description: `Create a multi-step plan for a complex request.
+
+Use this when the user asks for something that requires multiple actions.
+The plan tracks progress across steps and persists in memory so work
+can be resumed across sessions and surfaces.
+
+Examples:
+- { objective: "Organize next week's schedule", steps: ["Review current calendar", "Identify conflicts", "Suggest rescheduling", "Create new events"] }
+- { objective: "Research competitor pricing", steps: ["List competitors", "Gather pricing data", "Compare features", "Write summary"] }`,
+    parameters: PlanCreateParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const persona = args.persona ?? (ctx.extra?.persona as string) ?? "zee";
+      const sessionId = ctx.extra?.sessionId as string | undefined;
+
+      ctx.metadata({ title: `Creating plan: ${args.objective.slice(0, 40)}...` });
+
+      try {
+        const plan = await createPlan(persona, args.objective, args.steps, sessionId);
+
+        // Auto-start the first step
+        const advanced = await advancePlan(plan.id);
+
+        return {
+          title: `Plan Created`,
+          metadata: { planId: plan.id, steps: plan.steps.length },
+          output: `${formatPlan(advanced.plan)}
+
+Next: Work on step 1, then call zee:plan-advance with planId "${plan.id}" and the result.`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return {
+          title: `Plan Creation Failed`,
+          metadata: { error: errorMsg },
+          output: `Failed to create plan: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+const PlanAdvanceParams = z.object({
+  planId: z.string().describe("Plan ID to advance"),
+  result: z.string().optional().describe("Result/output from the completed step"),
+  failed: z.boolean().optional().describe("Set true if the step failed"),
+  error: z.string().optional().describe("Error description if step failed"),
+});
+
+export const planAdvanceTool: ToolDefinition = {
+  id: "zee:plan-advance",
+  category: "domain",
+  init: async () => ({
+    description: `Advance a plan by completing the current step and moving to the next.
+
+After completing work on the current step, call this to record the result
+and get the next step. If a step failed, set failed=true with an error.
+
+Examples:
+- Success: { planId: "abc-123", result: "Found 3 schedule conflicts" }
+- Failure: { planId: "abc-123", failed: true, error: "Calendar API returned 401" }`,
+    parameters: PlanAdvanceParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      ctx.metadata({ title: `Advancing plan` });
+
+      try {
+        if (args.failed) {
+          const plan = await failStep(args.planId, args.error ?? "Step failed");
+          return {
+            title: `Step Failed`,
+            metadata: { planId: args.planId },
+            output: `${formatPlan(plan)}
+
+Step marked as failed. You can retry or move on to the next step.`,
+          };
+        }
+
+        const { plan, nextStep, completed } = await advancePlan(args.planId, args.result);
+
+        if (completed) {
+          return {
+            title: `Plan Completed`,
+            metadata: { planId: args.planId, completed: true },
+            output: `${formatPlan(plan)}
+
+All steps completed. Summarize the results to the user.`,
+          };
+        }
+
+        return {
+          title: `Step Completed`,
+          metadata: { planId: args.planId, nextStep: nextStep?.description },
+          output: `${formatPlan(plan)}
+
+Next: ${nextStep?.description ?? "No more steps"}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return {
+          title: `Plan Advance Failed`,
+          metadata: { error: errorMsg },
+          output: `Failed to advance plan: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+const PlanStatusParams = z.object({
+  planId: z.string().optional().describe("Specific plan ID to check"),
+  persona: z.enum(["zee", "stanley", "johny"]).optional()
+    .describe("List plans for a persona"),
+  status: z.enum(["active", "completed", "abandoned"]).optional()
+    .describe("Filter by plan status"),
+});
+
+export const planStatusTool: ToolDefinition = {
+  id: "zee:plan-status",
+  category: "domain",
+  init: async () => ({
+    description: `Check the status of plans. View a specific plan or list all plans for a persona.
+
+Examples:
+- Specific plan: { planId: "abc-123" }
+- Active plans: { persona: "zee", status: "active" }
+- All plans: { persona: "zee" }`,
+    parameters: PlanStatusParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      ctx.metadata({ title: `Plan status` });
+
+      try {
+        if (args.planId) {
+          const plan = await getPlan(args.planId);
+          if (!plan) {
+            return {
+              title: `Plan Not Found`,
+              metadata: { planId: args.planId },
+              output: `No plan found with ID: ${args.planId}`,
+            };
+          }
+          return {
+            title: `Plan: ${plan.objective.slice(0, 40)}`,
+            metadata: { planId: plan.id, status: plan.status },
+            output: formatPlan(plan),
+          };
+        }
+
+        const persona = args.persona ?? (ctx.extra?.persona as string) ?? "zee";
+        const plans = await listPlans(persona, { status: args.status });
+
+        if (plans.length === 0) {
+          return {
+            title: `No Plans`,
+            metadata: { persona, status: args.status },
+            output: `No ${args.status ?? ""} plans found for ${persona}.`,
+          };
+        }
+
+        const list = plans.map((p) => formatPlan(p)).join("\n\n---\n\n");
+        return {
+          title: `${plans.length} Plans`,
+          metadata: { persona, count: plans.length },
+          output: list,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return {
+          title: `Plan Status Error`,
+          metadata: { error: errorMsg },
+          output: `Failed to get plan status: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
 // Exports
 // =============================================================================
 
@@ -1663,6 +1940,9 @@ export const ZEE_TOOLS = [
   codexbarTool,
   whatsappReactionTool,
   reminderStatusTool,
+  planCreateTool,
+  planAdvanceTool,
+  planStatusTool,
   ...CLAUDE_CODE_TOOLS,
   ...RESTART_SENTINEL_TOOLS,
   ...CRON_TOOLS,

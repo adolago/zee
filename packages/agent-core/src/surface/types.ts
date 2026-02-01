@@ -385,3 +385,96 @@ export const API_CAPABILITIES: SurfaceCapabilities = {
   supportedMediaTypes: ["*/*"],
   showThinking: true,
 };
+
+// =============================================================================
+// Surface Response Formatting
+// =============================================================================
+
+/**
+ * Format content for a specific surface's capabilities.
+ *
+ * - Strips markdown when richText is false
+ * - Splits long responses when maxMessageLength > 0
+ * - Converts image references to text descriptions when media is false
+ */
+export function formatForSurface(
+  content: string,
+  capabilities: SurfaceCapabilities,
+): string[] {
+  let formatted = content;
+
+  // Strip markdown formatting if surface does not support rich text
+  if (!capabilities.richText) {
+    formatted = stripMarkdown(formatted);
+  }
+
+  // Convert image/media references to text descriptions if media not supported
+  if (!capabilities.media) {
+    formatted = formatted.replace(
+      /!\[([^\]]*)\]\([^)]+\)/g,
+      (_, alt) => alt ? `[Image: ${alt}]` : "[Image]",
+    );
+  }
+
+  // Split into chunks if max message length is set
+  if (capabilities.maxMessageLength > 0 && formatted.length > capabilities.maxMessageLength) {
+    return splitMessage(formatted, capabilities.maxMessageLength);
+  }
+
+  return [formatted];
+}
+
+/**
+ * Strip markdown formatting to plain text.
+ */
+function stripMarkdown(text: string): string {
+  return text
+    // Remove code blocks (``` ... ```) - replace with content only
+    .replace(/```[\w]*\n([\s\S]*?)```/g, (_, code) => code.trim())
+    // Remove inline code
+    .replace(/`([^`]+)`/g, "$1")
+    // Remove bold/italic
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    // Remove headings markers
+    .replace(/^#{1,6}\s+/gm, "")
+    // Remove link formatting, keep text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    // Remove horizontal rules
+    .replace(/^---+$/gm, "")
+    // Remove blockquotes markers
+    .replace(/^>\s*/gm, "")
+    // Remove bullet markers but keep indentation
+    .replace(/^(\s*)[-*+]\s+/gm, "$1- ");
+}
+
+/**
+ * Split a message into chunks respecting word boundaries.
+ */
+function splitMessage(text: string, maxLength: number): string[] {
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > maxLength) {
+    // Try to split at a newline or space near the limit
+    let splitIndex = remaining.lastIndexOf("\n", maxLength);
+    if (splitIndex < maxLength * 0.5) {
+      splitIndex = remaining.lastIndexOf(" ", maxLength);
+    }
+    if (splitIndex < maxLength * 0.3) {
+      // No good break point; hard split
+      splitIndex = maxLength;
+    }
+
+    chunks.push(remaining.slice(0, splitIndex).trimEnd());
+    remaining = remaining.slice(splitIndex).trimStart();
+  }
+
+  if (remaining.length > 0) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+}

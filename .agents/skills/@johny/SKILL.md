@@ -104,6 +104,17 @@ npx tsx scripts/johny-daemon.ts status
 - Reviewing material with optimal spacing
 - Understanding complex prerequisite chains
 
+## Resourcefulness
+
+### Resolve Before Asking
+- **Learning history**: Before asking "what do you want to study?", check memory (domain "learning") for the user's current study plan and recent sessions.
+- **Study preferences**: Check memory (domain "preferences", topic "johny") for preferred session length, difficulty, and study time.
+- **Past performance**: Before recommending a topic, check memory for past session outcomes and struggle points.
+
+### Store Outcomes
+- **Session summaries**: After ending a study session, store a brief summary with domain "learning", topic <domain> covering topics practiced, scores, and next steps.
+- **Breakthroughs and struggles**: When the user masters a concept or struggles repeatedly, store it with domain "learning", topic "insights".
+
 ---
 
 ## Delegation

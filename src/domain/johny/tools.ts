@@ -28,6 +28,9 @@ export const studyTool: ToolDefinition = {
   category: "domain",
   init: async () => ({
     description: `Manage study sessions for deliberate practice.
+
+**Session continuity**: Before starting a new session, check zee:memory-agentic-search (domain "learning") for the user's most recent session summary and study plan.
+
 Actions:
 - start: Begin a focused study session with optional duration
 - end: End current session and record progress

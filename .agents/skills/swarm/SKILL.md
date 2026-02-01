@@ -187,6 +187,23 @@ if (queen.isDone()) {
 }
 ```
 
+## Error Recovery
+
+The recovery module (`src/swarm/recovery.ts`) provides automatic error handling:
+
+- **Retry**: Network errors and rate limits are retried with exponential backoff (max 3 attempts)
+- **Escalate**: Auth errors, missing binaries, and permission denials generate user-facing guidance
+- **Safe retries only**: Only idempotent operations (searches, reads) are retried. Writes and deletes always escalate on failure.
+
+When a tool call fails:
+1. `suggestRecovery(error, toolName)` determines the strategy
+2. `withRetry(fn, options)` handles automatic retry with backoff
+3. `buildEscalation(error, toolName)` generates human-readable troubleshooting steps
+
+Personas should attempt recovery before giving up. If a memory search fails with
+ECONNREFUSED, the retry logic will attempt reconnection automatically. Only
+escalate to the user after retries are exhausted.
+
 ## Implementation
 
 The swarm module lives in `src/swarm/`:
@@ -198,7 +215,9 @@ src/swarm/
 ├── queen.ts    # Coordinator
 ├── worker.ts   # Persistent worker
 ├── panes.ts    # WezTerm integration
-└── sparc.ts    # SPARC methodology (Johny)
+├── sparc.ts    # SPARC methodology (Johny)
+├── planner.ts  # Multi-step planning with persistence
+└── recovery.ts # Error recovery strategies
 ```
 
 ## Migration from Tiara

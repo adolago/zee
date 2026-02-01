@@ -89,6 +89,33 @@ export function DialogStatus() {
         <Show when={mismatch()}>
           <text fg={theme.warning}>TUI and daemon are different builds. Restart both from the same install.</text>
         </Show>
+        <box flexDirection="row" gap={1}>
+          <text fg={theme.textMuted}>Gateway</text>
+          <Show
+            when={daemonRuntime()?.gateway}
+            fallback={<text fg={theme.textMuted}>Unknown</text>}
+          >
+            {(gw) => (
+              <text
+                fg={
+                  gw().running
+                    ? theme.success
+                    : gw().enabled
+                      ? theme.warning
+                      : theme.textMuted
+                }
+              >
+                {gw().running
+                  ? "Running"
+                  : gw().enabled
+                    ? gw().error
+                      ? `Error: ${gw().error}`
+                      : "Starting..."
+                    : "Disabled"}
+              </text>
+            )}
+          </Show>
+        </box>
       </box>
       <Show when={Object.keys(sync.data.mcp).length > 0} fallback={<text fg={theme.text}>No MCP Servers</text>}>
         <box>

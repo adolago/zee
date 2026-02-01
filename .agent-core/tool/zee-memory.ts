@@ -59,6 +59,7 @@ Examples:
       const entry = await store.save({
         category: args.category,
         content: args.content,
+        namespace: "zee",
         metadata: {
           importance: args.importance,
           tags: args.tags,
@@ -112,7 +113,7 @@ Examples:
       .number()
       .min(0)
       .max(1)
-      .default(0.7)
+      .default(0.5)
       .describe("Minimum similarity threshold"),
   },
   async execute(args) {
@@ -122,18 +123,41 @@ Examples:
       const store = getMemory()
       const results = await store.search({
         query: args.query,
+        namespace: "zee",
         limit: args.limit ?? 5,
         threshold: args.threshold ?? 0.5,
         category: args.category && args.category !== "all" ? (args.category as any) : undefined,
       })
 
       if (results.length === 0) {
+        // Fallback: list recent memories when semantic search misses
+        const fallbackCategory = args.category && args.category !== "all" ? args.category as any : undefined
+        const fallback = await store.list({ limit: args.limit ?? 5, category: fallbackCategory, namespace: "zee" })
+        if (fallback.length > 0) {
+          const formattedFallback = fallback
+            .map((entry: any, i: number) => {
+              const preview = entry.content.substring(0, 150)
+              const ellipsis = entry.content.length > 150 ? "..." : ""
+              const date = new Date(entry.createdAt).toLocaleDateString()
+              return `${i + 1}. [${entry.category}] (${date})
+   "${preview}${ellipsis}"
+   ID: ${entry.id}`
+            })
+            .join("\n\n")
+
+          return `No semantic matches for "${args.query}", showing ${fallback.length} recent memories instead:
+
+${formattedFallback}
+
+(These are recent memories, not similarity-ranked. Try zee:memory-agentic-search with a domain filter for structured lookups.)`
+        }
+
         return `No memories found matching: "${args.query}"
 
 Try:
 - Using different keywords
 - Removing category filters
-- Expanding the time range`
+- Using zee:memory-agentic-search with domain/topic filters for structured data`
       }
 
       const formattedResults = results

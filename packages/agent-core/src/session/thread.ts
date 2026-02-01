@@ -21,6 +21,16 @@ import { MessageV2 } from "./message-v2"
 import { Instance } from "../project/instance"
 import { Log } from "../util/log"
 import { Timestamp } from "../util/timestamp"
+import { SessionSummary } from "./summary"
+import { Identifier } from "../id/id"
+import {
+  WHATSAPP_CAPABILITIES,
+  TELEGRAM_CAPABILITIES,
+  CLI_CAPABILITIES,
+  API_CAPABILITIES,
+  WEB_CAPABILITIES,
+  type SurfaceCapabilities,
+} from "../surface/types"
 
 export namespace Thread {
   const log = Log.create({ service: "thread" })
@@ -77,6 +87,9 @@ export namespace Thread {
   ): Promise<Info> {
     const directory = options?.directory ?? Instance.directory
 
+    // Map channel to surface type
+    const surface = channelToSurface(channel)
+
     // For gateway channels, use daily session management
     if (channel === "whatsapp" || channel === "telegram") {
       // Persistence expects chatId as number (Telegram ID) but we also support strings (phone numbers)
@@ -84,6 +97,15 @@ export namespace Thread {
       const result = await Persistence.getOrCreateDailySession(persona, {
         chatId: Number.isNaN(chatIdNum) ? undefined : chatIdNum,
       })
+
+      // Tag the session with the originating surface
+      try {
+        await Session.update(result.sessionId, (draft) => {
+          if (!draft.surface) draft.surface = surface
+        }, { touch: false })
+      } catch {
+        // Session may not exist yet in storage race conditions; non-critical
+      }
 
       return {
         id: result.sessionId,
@@ -103,6 +125,7 @@ export namespace Thread {
     const session = await Session.createNext({
       title: `${persona.charAt(0).toUpperCase() + persona.slice(1)} - ${channel.toUpperCase()} - ${new Date().toISOString()}`,
       directory,
+      surface,
     })
 
     return {
@@ -455,6 +478,132 @@ export namespace Thread {
     }
 
     return Array.from(files)
+  }
+
+  /**
+   * Get the surface capabilities for a thread's channel.
+   * Useful for including in system prompts so the persona adapts its response style.
+   */
+  export function getCapabilities(channel: Channel): SurfaceCapabilities {
+    switch (channel) {
+      case "whatsapp": return WHATSAPP_CAPABILITIES
+      case "telegram": return TELEGRAM_CAPABILITIES
+      case "tui": return CLI_CAPABILITIES
+      case "api": return API_CAPABILITIES
+    }
+  }
+
+  /**
+   * Get a concise hint string describing surface constraints for persona prompts.
+   */
+  export function getSurfaceHint(channel: Channel): string {
+    const caps = getCapabilities(channel)
+    const hints: string[] = []
+
+    if (caps.maxMessageLength > 0) {
+      hints.push(`Keep responses under ${caps.maxMessageLength} characters.`)
+    }
+    if (!caps.richText) {
+      hints.push("Do not use markdown formatting (plain text only).")
+    }
+    if (!caps.media) {
+      hints.push("Cannot display images or media.")
+    }
+    if (!caps.streaming) {
+      hints.push("Response will be sent as a single message (no streaming).")
+    }
+    if (!caps.showThinking) {
+      hints.push("Thinking/reasoning output is hidden from the user.")
+    }
+
+    if (hints.length === 0) return ""
+    return `Surface constraints (${channel}): ${hints.join(" ")}`
+  }
+
+  /**
+   * Map a thread channel to a session surface type.
+   */
+  function channelToSurface(channel: Channel): "cli" | "web" | "api" | "whatsapp" | "telegram" {
+    switch (channel) {
+      case "whatsapp": return "whatsapp"
+      case "telegram": return "telegram"
+      case "tui": return "cli"
+      case "api": return "api"
+    }
+  }
+
+  /**
+   * Resume a thread on a different surface.
+   * Updates the session surface and injects a handoff summary as a system
+   * message so the persona has context from the previous surface.
+   */
+  export async function resume(
+    threadId: string,
+    surface: "cli" | "web" | "api" | "whatsapp" | "telegram",
+    options?: { injectSummary?: boolean },
+  ): Promise<Info | null> {
+    const thread = await get(threadId)
+    if (!thread) return null
+
+    // Update the session's surface
+    try {
+      await Session.update(threadId, (draft) => {
+        draft.surface = surface
+      })
+    } catch (error) {
+      log.debug("Failed to update session surface on resume", {
+        threadId,
+        surface,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+
+    // Inject handoff summary as a synthetic system message so the persona
+    // has context from the previous conversation on the other surface.
+    if (options?.injectSummary !== false) {
+      try {
+        const summary = await SessionSummary.handoffSummary(threadId)
+        if (summary) {
+          const messageID = Identifier.ascending("message")
+          const partID = Identifier.ascending("part")
+          await Session.updateMessage({
+            id: messageID,
+            sessionID: threadId,
+            role: "user",
+            model: { providerID: "system", modelID: "handoff" },
+            time: { created: Date.now(), completed: Date.now() },
+          } as any)
+          await Session.updatePart({
+            id: partID,
+            messageID,
+            sessionID: threadId,
+            type: "text",
+            text: summary,
+            synthetic: true,
+          } as any)
+        }
+      } catch (error) {
+        log.debug("Failed to inject handoff summary", {
+          threadId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+
+    // Derive channel from surface
+    const channelMap: Record<string, Channel> = {
+      cli: "tui",
+      web: "tui",
+      api: "api",
+      whatsapp: "whatsapp",
+      telegram: "telegram",
+    }
+
+    return {
+      ...thread,
+      channel: channelMap[surface] ?? "tui",
+      lastActiveAt: Date.now(),
+    }
   }
 
   /**

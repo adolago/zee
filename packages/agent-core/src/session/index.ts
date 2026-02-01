@@ -99,6 +99,9 @@ export namespace Session {
           reasoning: z.number(),
         })
         .optional(),
+      surface: z
+        .enum(["cli", "web", "api", "whatsapp", "telegram"])
+        .optional(),
     })
     .meta({
       ref: "Session",
@@ -222,6 +225,7 @@ export namespace Session {
     parentID?: string
     directory: string
     permission?: PermissionNext.Ruleset
+    surface?: Info["surface"]
   }) {
     const result: Info = {
       id: Identifier.descending("session", input.id),
@@ -232,6 +236,7 @@ export namespace Session {
       parentID: input.parentID,
       title: input.title ?? createDefaultTitle(!!input.parentID),
       permission: input.permission,
+      surface: input.surface,
       time: {
         created: Date.now(),
         updated: Date.now(),

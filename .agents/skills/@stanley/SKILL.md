@@ -181,6 +181,18 @@ skills will use that interpreter automatically.
 - Quantitative investing development
 - Morning/evening market briefings
 
+## Resourcefulness
+
+### Resolve Before Asking
+- **Previous research**: Before starting research on a ticker, search memory (domain "research") for past analyses. Say "I found your previous analysis from [date]" and build on it.
+- **User's positions and watchlist**: Check memory (domain "portfolio") for current holdings before asking what the user is tracking.
+- **Preferences**: Check memory (domain "preferences", topic "stanley") for preferred data sources, portfolio file location, etc.
+
+### Store Outcomes
+- **Market research**: Store key findings with domain "research", topic <ticker/sector>. Keep it to 2-3 sentences with thesis and key data.
+- **Trade decisions**: Store entry thesis, sizing rationale, and exit criteria with domain "trades".
+- **Portfolio changes**: When positions change, store an update with domain "portfolio".
+
 ---
 
 ## Delegation

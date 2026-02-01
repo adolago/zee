@@ -91,6 +91,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         entryModifiedAt?: string
         entryModifiedTs?: number
         legacy?: boolean
+        gateway?: { running: boolean; enabled: boolean; error?: string }
       }
       health: {
         internet: "ok" | "fail" | "checking"
@@ -153,6 +154,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           entryModifiedAt: typeof record.entryModifiedAt === "string" ? record.entryModifiedAt : undefined,
           entryModifiedTs: typeof record.entryModifiedTs === "number" ? record.entryModifiedTs : undefined,
           legacy: false,
+          gateway: record.gateway && typeof record.gateway === "object"
+            ? {
+                running: typeof (record.gateway as Record<string, unknown>).running === "boolean" ? (record.gateway as Record<string, unknown>).running as boolean : false,
+                enabled: typeof (record.gateway as Record<string, unknown>).enabled === "boolean" ? (record.gateway as Record<string, unknown>).enabled as boolean : false,
+                error: typeof (record.gateway as Record<string, unknown>).error === "string" ? (record.gateway as Record<string, unknown>).error as string : undefined,
+              }
+            : undefined,
         }
       }
       if (typeof data === "boolean") {

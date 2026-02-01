@@ -6,6 +6,7 @@ import { GlobalBus } from "@/bus/global"
 import { Instance } from "../../project/instance"
 import { Provider } from "@/provider/provider"
 import { Installation } from "@/installation"
+import { getGatewayHealthState } from "@/gateway/supervisor-state"
 
 // Health status schema for system monitoring
 const HealthStatus = z.object({
@@ -53,7 +54,12 @@ export const GlobalRoute = new Hono()
     }),
     async (c) => {
       const runtime = Installation.runtimeInfo()
-      return c.json({ healthy: true, ...runtime })
+      const gateway = getGatewayHealthState()
+      return c.json({
+        healthy: true,
+        ...runtime,
+        gateway,
+      })
     },
   )
   .get(

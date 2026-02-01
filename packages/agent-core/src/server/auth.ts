@@ -2,10 +2,104 @@ import { Flag } from "@/flag/flag"
 
 const DEFAULT_USERNAME = "agent-core"
 
+// ---------------------------------------------------------------------------
+// Scoped Permissions
+// ---------------------------------------------------------------------------
+
+/**
+ * Permission scopes matching OpenClaw's operator permission model.
+ * These control access to different API surface areas.
+ */
+export const AuthScope = {
+  /** Full administrative access */
+  ADMIN: "operator.admin",
+  /** Read-only access (list sessions, view models, read config) */
+  READ: "operator.read",
+  /** Write access (create sessions, send messages, modify config) */
+  WRITE: "operator.write",
+  /** Approve execution requests and permissions */
+  APPROVALS: "operator.approvals",
+  /** Device pairing and gateway pairing */
+  PAIRING: "operator.pairing",
+} as const
+
+export type AuthScopeValue = (typeof AuthScope)[keyof typeof AuthScope]
+
+/**
+ * Maps route prefixes to required scopes.
+ * Admin scope grants access to everything.
+ * Routes not listed here default to READ.
+ */
+const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
+  // Write operations
+  "POST /session": AuthScope.WRITE,
+  "DELETE /session": AuthScope.WRITE,
+  "POST /gateway": AuthScope.WRITE,
+  "POST /memory/store": AuthScope.WRITE,
+  "POST /memory/batch": AuthScope.WRITE,
+  "DELETE /memory": AuthScope.WRITE,
+  "POST /memory/delete-where": AuthScope.WRITE,
+  "POST /memory/reset": AuthScope.WRITE,
+  "PATCH /config": AuthScope.WRITE,
+  "POST /cron": AuthScope.WRITE,
+  "DELETE /cron": AuthScope.WRITE,
+  "POST /pty": AuthScope.WRITE,
+  "DELETE /pty": AuthScope.WRITE,
+
+  // Approval operations
+  "POST /session/*/permissions": AuthScope.APPROVALS,
+  "POST /permission": AuthScope.APPROVALS,
+  "POST /question": AuthScope.APPROVALS,
+
+  // Admin operations
+  "POST /dispose": AuthScope.ADMIN,
+  "PUT /auth": AuthScope.ADMIN,
+  "DELETE /auth": AuthScope.ADMIN,
+}
+
+/**
+ * Resolve the required scope for a given HTTP method + path combination.
+ */
+export function resolveRequiredScope(method: string, path: string): AuthScopeValue {
+  const upperMethod = method.toUpperCase()
+
+  // Check exact and prefix matches
+  for (const [pattern, scope] of Object.entries(ROUTE_SCOPE_MAP)) {
+    const [patternMethod, patternPath] = pattern.split(" ", 2)
+    if (upperMethod !== patternMethod) continue
+
+    // Wildcard matching
+    if (patternPath.includes("*")) {
+      const regex = new RegExp("^" + patternPath.replace(/\*/g, "[^/]+") + "(/|$)")
+      if (regex.test(path)) return scope
+    } else if (path.startsWith(patternPath)) {
+      return scope
+    }
+  }
+
+  // Default: GET = read, everything else = write
+  return upperMethod === "GET" || upperMethod === "HEAD" ? AuthScope.READ : AuthScope.WRITE
+}
+
+/**
+ * Check if a set of granted scopes satisfies the required scope.
+ * Admin scope implicitly includes all other scopes.
+ */
+export function hasScope(grantedScopes: AuthScopeValue[], required: AuthScopeValue): boolean {
+  if (grantedScopes.includes(AuthScope.ADMIN)) return true
+  return grantedScopes.includes(required)
+}
+
+// ---------------------------------------------------------------------------
+// Auth Config
+// ---------------------------------------------------------------------------
+
 type AuthConfig = {
   disabled: boolean
   username: string
   password?: string
+  /** Scopes granted to the authenticated user. Defaults to all scopes. */
+  scopes?: AuthScopeValue[]
 }
 
 export function getAuthConfig(): AuthConfig {
@@ -13,7 +107,22 @@ export function getAuthConfig(): AuthConfig {
   const disabled = !Flag.AGENT_CORE_ENABLE_SERVER_AUTH || Flag.AGENT_CORE_DISABLE_SERVER_AUTH
   const password = Flag.AGENT_CORE_SERVER_PASSWORD
   const username = Flag.AGENT_CORE_SERVER_USERNAME ?? DEFAULT_USERNAME
-  return { disabled, password, username }
+
+  // Parse scopes from AGENT_CORE_SERVER_SCOPES (comma-separated).
+  // If not set, default to admin (full access) for backward compatibility.
+  const scopeValues = Object.values(AuthScope)
+  const rawScopes = process.env.AGENT_CORE_SERVER_SCOPES?.trim()
+  let scopes: AuthScopeValue[]
+  if (rawScopes) {
+    scopes = rawScopes
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s): s is AuthScopeValue => scopeValues.includes(s as AuthScopeValue))
+  } else {
+    scopes = [AuthScope.ADMIN] // default: full access
+  }
+
+  return { disabled, password, username, scopes }
 }
 
 export function getAuthorizationHeader(): string | undefined {
@@ -58,6 +167,35 @@ export function isAuthorized(authorizationHeader?: string): boolean {
   const username = decoded.slice(0, separatorIndex)
   const providedPassword = decoded.slice(separatorIndex + 1)
   return secureEqual(username, expectedUsername) && secureEqual(providedPassword, password)
+}
+
+/**
+ * Check both authentication and scope authorization for a request.
+ * Returns { authorized: true } if allowed, or { authorized: false, reason } if denied.
+ */
+export function authorizeRequestScoped(
+  authHeader: string | undefined,
+  method: string,
+  path: string,
+): { authorized: true } | { authorized: false; reason: string } {
+  const config = getAuthConfig()
+
+  // Auth disabled = everything allowed
+  if (config.disabled) return { authorized: true }
+
+  // Check authentication
+  if (!isAuthorized(authHeader)) {
+    return { authorized: false, reason: "Authentication required" }
+  }
+
+  // Check scope
+  const required = resolveRequiredScope(method, path)
+  const granted = config.scopes ?? [AuthScope.ADMIN]
+  if (!hasScope(granted, required)) {
+    return { authorized: false, reason: `Insufficient scope: requires ${required}` }
+  }
+
+  return { authorized: true }
 }
 
 function secureEqual(a: string, b: string): boolean {
