@@ -1212,6 +1212,30 @@ export namespace Config {
       grammar: Grammar.optional().describe("Grammar checking configuration"),
       server: Server.optional().describe("Server configuration for agent-core serve and web commands"),
       daemon: Daemon.optional().describe("Daemon mode configuration for headless operation"),
+      heartbeat: z
+        .object({
+          enabled: z.boolean().optional().default(true).describe("Enable heartbeat check-ins"),
+          every: z.string().optional().default("30m").describe("Heartbeat interval (e.g. 30m, 1h, 2h)"),
+          prompt: z.string().optional().describe("Custom heartbeat prompt override"),
+          model: z.string().optional().describe("Model to use for heartbeat runs"),
+          activeHours: z
+            .object({
+              start: z.string().optional().default("08:00").describe("Active hours start (HH:MM)"),
+              end: z.string().optional().default("22:00").describe("Active hours end (HH:MM)"),
+              timezone: z.string().optional().describe("Timezone for active hours"),
+            })
+            .optional()
+            .describe("Restrict heartbeat to active hours"),
+        })
+        .optional()
+        .describe("Heartbeat configuration for proactive check-ins"),
+      cron: z
+        .object({
+          enabled: z.boolean().optional().default(true).describe("Enable cron job scheduler"),
+          storeDir: z.string().optional().describe("Directory for cron job store (default: ~/.config/agent-core/cron)"),
+        })
+        .optional()
+        .describe("Cron job scheduler configuration"),
       command: z
         .record(z.string(), Command)
         .optional()

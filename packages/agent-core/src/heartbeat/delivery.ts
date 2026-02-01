@@ -2,17 +2,21 @@
 
 import { Log } from "../util/log"
 import { Bus } from "../bus"
+import { BusEvent } from "../bus/bus-event"
 import { z } from "zod"
 
 const log = Log.create({ service: "heartbeat:delivery" })
 
 // Bus event for heartbeat delivery (TUI subscribes to this)
-export const HeartbeatDelivery = Bus.Event.define("heartbeat.delivery", {
-  text: z.string(),
-  persona: z.string().optional(),
-  channel: z.string().optional(),
-  suppressMessaging: z.boolean().optional(),
-})
+export const HeartbeatDelivery = BusEvent.define(
+  "heartbeat.delivery",
+  z.object({
+    text: z.string(),
+    persona: z.string().optional(),
+    channel: z.string().optional(),
+    suppressMessaging: z.boolean().optional(),
+  }),
+)
 
 export type DeliveryTarget = {
   /** Base URL for the agent-core server. */

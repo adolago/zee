@@ -1,28 +1,18 @@
-import { Server } from "../../server/server"
 import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Log } from "../../util/log"
 import { Global } from "../../global"
 import { Session } from "../../session"
 import { Todo } from "../../session/todo"
-import { Persistence } from "../../session/persistence"
-import { Bus } from "../../bus"
 import { Instance } from "../../project/instance"
-import { LifecycleHooks } from "../../hooks/lifecycle"
-import { WeztermOrchestration } from "../../orchestration/wezterm"
-import { initPersonas } from "../../bootstrap/personas"
-import { initSurfaces, shutdownSurfaces } from "../../bootstrap/surface"
-import { CircuitBreaker } from "../../provider/circuit-breaker"
-import * as UsageTracker from "../../usage/tracker"
-import { initWorkStealing, getWorkStealingService, initConsensus, getConsensusGate } from "../../coordination"
 import { execSync } from "child_process"
+import { startAlwaysOnProcess } from "./always-on"
 import fs from "fs/promises"
 import path from "path"
 import net from "net"
 import * as prompts from "@clack/prompts"
 import { UI } from "../ui"
 import { Output } from "../output"
-import { createAuthorizedFetch } from "../../server/auth"
 import {
   getEmbeddedGatewayState,
   readEmbeddedGatewayConfigSnapshot,
@@ -30,7 +20,6 @@ import {
   startEmbeddedGateway,
   stopEmbeddedGateway,
 } from "../../gateway/embedded-gateway"
-import { validateSetup, type SetupCheckResult } from "../setup-check"
 
 const log = Log.create({ service: "daemon" })
 
@@ -647,53 +636,6 @@ async function stopDaemonProcesses(reason: string): Promise<void> {
   }
 }
 
-async function verifyAgentEndpoint(daemonUrl: string, directory: string) {
-  const url = new URL("/agent", daemonUrl)
-  url.searchParams.set("directory", directory)
-
-  // Use authorized fetch to include server password if configured
-  const authorizedFetch = createAuthorizedFetch(fetch)
-
-  let lastError: Error | undefined
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    try {
-      const response = await authorizedFetch(url, { signal: AbortSignal.timeout(15000) })
-
-      if (!response.ok) {
-        throw new Error(`Agent endpoint returned ${response.status} ${response.statusText}`)
-      }
-
-      const contentType = response.headers.get("content-type") ?? ""
-      const body = await response.text()
-      if (!contentType.includes("json")) {
-        const preview = body.slice(0, 200)
-        throw new Error(`Agent endpoint returned ${contentType || "unknown content-type"}: ${preview}`)
-      }
-
-      let data: unknown
-      try {
-        data = JSON.parse(body)
-      } catch {
-        const preview = body.slice(0, 200)
-        throw new Error(`Agent endpoint returned invalid JSON: ${preview}`)
-      }
-
-      if (!Array.isArray(data) || data.length === 0) {
-        throw new Error("Agent endpoint returned no agents")
-      }
-
-      return
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
-      if (attempt < 2) {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
-    }
-  }
-
-  throw lastError ?? new Error("Agent endpoint check failed")
-}
-
 export const DaemonCommand = cmd({
   command: "daemon",
   builder: (yargs) =>
@@ -762,7 +704,6 @@ export const DaemonCommand = cmd({
       try {
         if (state?.pid) process.kill(state.pid, "SIGTERM")
         await Daemon.removePidFile()
-        // Wait a bit
         await new Promise(r => setTimeout(r, 1000))
       } catch (e) {
         UI.error(`Failed to stop daemon: ${e}`)
@@ -781,363 +722,27 @@ export const DaemonCommand = cmd({
     const opts = await resolveNetworkOptions(args)
     const directory = args.directory as string
 
-    // Run setup check before starting server - fail fast if infrastructure missing
-    const setupResult = await validateSetup({ exitOnFail: true, verbose: true })
-
-    log.info("starting daemon", {
-      directory,
+    const proc = await startAlwaysOnProcess({
       hostname: opts.hostname,
       port: opts.port,
-      restoreSessions: args["restore-sessions"],
-      setupOk: setupResult.ok,
+      directory,
+      gateway: Boolean(args.gateway),
+      gatewayForce: Boolean(args["gateway-force"]),
+      wezterm: Boolean(args.wezterm),
+      weztermLayout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",
+      restoreSessions: Boolean(args["restore-sessions"]),
     })
 
-    // Start the server
-    let server: ReturnType<typeof Server.listen>
-    try {
-      server = Server.listen(opts)
-    } catch (error) {
-      await Daemon.releaseLock()
-      const message = error instanceof Error ? error.message : String(error)
-      UI.error(`Failed to start daemon server: ${message}`)
-      process.exit(1)
-    }
-    const serverHost = server.hostname ?? opts.hostname
-    const daemonHost = serverHost === "0.0.0.0" ? "127.0.0.1" : serverHost
-    const daemonPort = server.port ?? opts.port
-    const daemonUrl = `http://${daemonHost}:${daemonPort}`
+    await Daemon.setupSignalHandlers(proc.cleanup)
 
-    try {
-      await verifyAgentEndpoint(daemonUrl, directory)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      log.error("startup sanity check failed", { error: message })
-      UI.error(`Failed to load agents (${message}).`)
-      await server.stop().catch((stopErr) => {
-        log.debug("failed to stop server after sanity check failure", { error: String(stopErr) })
-      })
-      await Daemon.releaseLock()
-      process.exit(1)
-    }
-
-    // Write PID file
-    const state: Daemon.DaemonState = {
-      pid: process.pid,
-      port: server.port ?? opts.port,
-      hostname: server.hostname ?? opts.hostname,
-      startTime: Date.now(),
-      directory,
-    }
-    await Daemon.writePidFile(state)
-
-    // Emit daemon.start hook
-    await LifecycleHooks.emitDaemonStart({
-      pid: process.pid,
-      port: state.port,
-      hostname: state.hostname,
-      directory,
-      startTime: state.startTime,
-    })
-
-    // Initialize session persistence (checkpoints, WAL, recovery)
-    let persistenceEnabled = false
-    try {
-      await Instance.provide({
-        directory,
-        async fn() {
-          await Persistence.init({
-            checkpointInterval: 5 * 60 * 1000, // 5 minutes
-            maxCheckpoints: 3,
-            enableWAL: true,
-          })
-          persistenceEnabled = true
-        },
-      })
-      Output.log("Persistence: Enabled (checkpoints + WAL)")
-    } catch (error) {
-      log.error("Failed to initialize persistence", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-      UI.warn(`Persistence initialization failed: ${error instanceof Error ? error.message : error}`)
-    }
-
-    // RELIABILITY: Initialize circuit breaker with persisted state
-    // This prevents immediate retries of failing providers after daemon restart
-    try {
-      await CircuitBreaker.init()
-      Output.log("Circuit Breaker: Initialized with persisted state")
-    } catch (error) {
-      log.error("Failed to initialize circuit breaker", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    // Initialize persona hooks (cross-session memory, fact extraction)
-    try {
-      await initPersonas()
-      Output.log("Personas:   Hooks initialized")
-    } catch (error) {
-      log.debug("Personas initialization skipped", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    // Initialize surface layer (CLI, messaging platforms)
-    let surfacesEnabled = false
-    try {
-      await initSurfaces()
-      surfacesEnabled = true
-      Output.log("Surfaces:   Multi-surface support enabled")
-    } catch (error) {
-      log.debug("Surface initialization skipped", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    // Initialize usage tracking
-    let usageEnabled = false
-    try {
-      await UsageTracker.init()
-      usageEnabled = true
-      Output.log("Usage:      Tracking enabled")
-    } catch (error) {
-      log.error("Failed to initialize usage tracking", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-      UI.warn(`Usage tracking initialization failed: ${error instanceof Error ? error.message : error}`)
-    }
-
-    // Initialize work stealing for load balancing
-    let workStealingEnabled = false
-    try {
-      const workStealingService = await initWorkStealing()
-      workStealingEnabled = workStealingService.getStats().enabled
-      if (workStealingEnabled) {
-        Output.log("WorkSteal:  Load balancing enabled")
-      }
-    } catch (error) {
-      log.debug("Work stealing initialization skipped", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    // Initialize consensus gate for side effect approval
-    let consensusEnabled = false
-    try {
-      const consensusGate = await initConsensus()
-      consensusEnabled = consensusGate.getStats().enabled
-      if (consensusEnabled) {
-        Output.log("Consensus:  Approval gate enabled")
-      }
-    } catch (error) {
-      log.debug("Consensus gate initialization skipped", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    // Initialize WezTerm orchestration if enabled
-    let weztermEnabled = false
-    if (args.wezterm) {
-      try {
-        weztermEnabled = await WeztermOrchestration.init({
-          enabled: true,
-          layout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",
-          showStatusPane: true,
-          statusPanePercent: 20,
-          statusRefreshInterval: 5000,
-        })
-        if (weztermEnabled) {
-          Output.log("WezTerm:   Visual orchestration enabled")
-        } else {
-          Output.log("WezTerm:   Not available (no display or WezTerm CLI)")
-        }
-      } catch (error) {
-        log.debug("WezTerm initialization failed", {
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
-    }
-
-    // Start zee gateway if enabled
-    let gatewayStarted = false
-    if (args.gateway) {
-      const gatewayForce = Boolean(args["gateway-force"])
-      gatewayStarted = await GatewaySupervisor.start({
-        force: gatewayForce,
-        daemonUrl,
-      })
-      const gatewayState = GatewaySupervisor.getState()
-      if (gatewayStarted) {
-        Output.log("Gateway:    Messaging gateway started")
-      } else {
-        const reason = gatewayState.error ?? "Not available"
-        Output.log(`Gateway:    Disabled (${reason})`)
-      }
-    }
-
-    // Setup cleanup handlers
-    const cleanup = async (signal?: NodeJS.Signals, error?: Error) => {
-      const cleanupStack = new Error("cleanup called from").stack
-      log.info("daemon shutting down", { signal, error: error?.message, cleanupStack })
-      Output.error(`[daemon] CLEANUP CALLED: ${JSON.stringify({ signal, error: error?.message, cleanupStack })}`)
-
-      const shutdownReason: "signal" | "error" | "manual" = error ? "error" : signal ? "signal" : "manual"
-
-      // Emit daemon.shutdown hook
-      await LifecycleHooks.emitDaemonShutdown({
-        pid: process.pid,
-        reason: shutdownReason,
-        signal: signal,
-        error: error?.message,
-      })
-
-      // Shutdown WezTerm orchestration
-      if (weztermEnabled) {
-        await WeztermOrchestration.shutdown()
-      }
-
-      // Shutdown usage tracking
-      if (usageEnabled) {
-        await UsageTracker.shutdown()
-      }
-
-      // Shutdown zee gateway
-      if (GatewaySupervisor.isEnabled()) {
-        await GatewaySupervisor.stop()
-      }
-
-      // Shutdown persistence (creates final checkpoint, removes recovery marker)
-      if (persistenceEnabled) {
-        await Instance.provide({
-          directory,
-          async fn() {
-            await Persistence.shutdown()
-          },
-        }).catch((e) => log.error("Persistence shutdown error", { error: String(e) }))
-      }
-
-      // RELIABILITY: Save circuit breaker state before shutdown
-      await CircuitBreaker.shutdown().catch((e) => log.error("Circuit breaker shutdown error", { error: String(e) }))
-
-      // Shutdown work stealing service
-      try {
-        const workStealingService = getWorkStealingService()
-        workStealingService.shutdown()
-      } catch {
-        // Ignore if not initialized
-      }
-
-      // Shutdown consensus gate
-      try {
-        const consensusGate = getConsensusGate()
-        consensusGate.shutdown()
-      } catch {
-        // Ignore if not initialized
-      }
-
-      // Shutdown surface layer
-      if (surfacesEnabled) {
-        await shutdownSurfaces()
-      }
-
-      await Daemon.removePidFile()
-      await Daemon.releaseLock()
-      await server.stop()
-    }
-
-    await Daemon.setupSignalHandlers(cleanup)
-
-    // Handle uncaught errors
     process.on("uncaughtException", async (error) => {
       log.error("uncaught exception", { error: error.message, stack: error.stack })
-      await cleanup(undefined, error)
+      await proc.cleanup(undefined, error)
       process.exit(1)
     })
 
     process.on("unhandledRejection", async (reason) => {
       log.error("unhandled rejection", { reason: String(reason) })
-    })
-
-    const persistenceStatus = persistenceEnabled ? "Active (checkpoints + WAL)" : "Disabled"
-    const usageStatus = usageEnabled ? "Active (SQLite)" : "Disabled"
-    const workStealingStatus = workStealingEnabled ? "Active (load balancing)" : "Disabled"
-    const consensusStatus = consensusEnabled ? "Active (approval gate)" : "Disabled"
-    const weztermStatus = weztermEnabled ? "Active (status pane)" : args.wezterm ? "No display" : "Disabled"
-    const surfacesStatus = surfacesEnabled ? "Active (multi-surface)" : "Disabled"
-    const gatewayState = GatewaySupervisor.getState()
-    const gatewayStatus = gatewayStarted
-      ? `Active (embedded${gatewayState.pid ? `, PID: ${gatewayState.pid}` : ""})`
-      : args.gateway
-        ? `Disabled (${gatewayState.error ?? "not configured"})`
-        : "Disabled"
-
-    // Format infrastructure status
-    const qdrantStatus = setupResult.qdrant.available
-      ? `OK (${setupResult.qdrant.url})`
-      : `MISSING - ${setupResult.qdrant.error}`
-    const googleStatus = setupResult.googleApiKey.available
-      ? `OK (${setupResult.googleApiKey.source})`
-      : "MISSING - embeddings disabled"
-    const memoryStatus = setupResult.ok ? "Ready" : "Degraded (some features disabled)"
-
-    Output.log(`
-Agent-Core Daemon Started
-========================
-PID:       ${process.pid}
-Port:      ${server.port}
-Hostname:  ${server.hostname}
-Directory: ${directory}
-URL:       http://${server.hostname}:${server.port}
-
-Infrastructure:
-  Qdrant:      ${qdrantStatus}
-  Google:      ${googleStatus}
-  Memory:      ${memoryStatus}
-
-Services:
-  Persistence: ${persistenceStatus}
-  Usage:       ${usageStatus}
-  WorkSteal:   ${workStealingStatus}
-  Consensus:   ${consensusStatus}
-  WezTerm:     ${weztermStatus}
-  Gateway:     ${gatewayStatus}
-  Surfaces:    ${surfacesStatus}
-
-API Endpoints:
-  Health:   GET  /global/health
-  Sessions: GET  /session
-  Events:   GET  /event (SSE)
-  Prompt:   POST /session/:id/message
-
-Press Ctrl+C to stop the daemon.
-`)
-
-    // Restore sessions with incomplete todos and emit daemon.ready hook
-    let sessionsWithIncompleteTodos = 0
-    if (args["restore-sessions"]) {
-      // Need to provide instance context for session operations
-      await Instance.provide({
-        directory,
-        async fn() {
-          sessionsWithIncompleteTodos = await Daemon.restoreSessionsWithTodos(directory)
-          if (sessionsWithIncompleteTodos > 0) {
-            Output.log(`Found ${sessionsWithIncompleteTodos} session(s) with incomplete todos ready for continuation.`)
-          }
-        },
-      })
-    }
-
-    // Emit daemon.ready hook - daemon is fully initialized
-    // Note: messaging is handled by the embedded Zee gateway (managed by the daemon)
-    await LifecycleHooks.emitDaemonReady({
-      pid: process.pid,
-      port: state.port,
-      services: {
-        persistence: persistenceEnabled,
-        telegram: false,
-        whatsapp: false,
-      },
-      sessionsWithIncompleteTodos,
     })
 
     // Keep the process running

@@ -4,16 +4,20 @@ import chokidar from "chokidar"
 import path from "path"
 import { Log } from "../util/log"
 import { Bus } from "../bus"
+import { BusEvent } from "../bus/bus-event"
 import { Global } from "../global"
 import { z } from "zod"
 
 const log = Log.create({ service: "skill:watcher" })
 
 // Bus event emitted when skills change
-export const SkillsChangeEvent = Bus.Event.define("skill.change", {
-  reason: z.enum(["watch", "manual"]),
-  paths: z.array(z.string()).optional(),
-})
+export const SkillsChangeEvent = BusEvent.define(
+  "skill.change",
+  z.object({
+    reason: z.enum(["watch", "manual"]),
+    paths: z.array(z.string()).optional(),
+  }),
+)
 
 let globalVersion = 0
 let watcher: ReturnType<typeof chokidar.watch> | null = null
