@@ -50,7 +50,7 @@ export type PromptProps = {
   onSubmit?: () => void
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
-  showPlaceholder?: boolean
+  showPlaceholder?: boolean | string
 }
 
 export type PromptRef = {
@@ -62,7 +62,6 @@ export type PromptRef = {
   focus(): void
   submit(): void
 }
-
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -101,7 +100,7 @@ export function Prompt(props: PromptProps) {
     return s.type === "busy" ? (s.streamHealth as StreamHealthExtended | undefined) : undefined
   })
   // Session for token counter
-  const session = createMemo(() => props.sessionID ? sync.session.get(props.sessionID) : undefined)
+  const session = createMemo(() => (props.sessionID ? sync.session.get(props.sessionID) : undefined))
   // Cumulative agent work time for COMPLETED assistant responses only
   const completedWorkTime = createMemo(() => {
     if (!props.sessionID) return 0
@@ -118,7 +117,8 @@ export function Prompt(props: PromptProps) {
   const sessionTokenTotals = createMemo(() => {
     if (!props.sessionID) return { snt: 0, rcvd: 0 }
     const msgs = sync.data.message[props.sessionID] ?? []
-    let snt = 0, rcvd = 0
+    let snt = 0,
+      rcvd = 0
     for (const m of msgs) {
       if (m.role !== "assistant" || !m.tokens) continue
       snt += m.tokens.input ?? 0
@@ -134,20 +134,20 @@ export function Prompt(props: PromptProps) {
     const messages = sync.data.message[props.sessionID] ?? []
     const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
     if (!lastAssistant?.tokens) return null
-    
+
     // Get current model limits
     const model = local.model.current()
     if (!model) return null
     const provider = sync.data.provider.find((p) => p.id === model.providerID)
     const modelInfo = provider?.models[model.modelID]
     if (!modelInfo?.limit?.context) return null
-    
+
     // Calculate usage (same formula as compaction.ts)
     const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
     const outputLimit = Math.min(modelInfo.limit.output ?? 8192, 16384)
-    const usable = modelInfo.limit.input ?? (modelInfo.limit.context - outputLimit)
+    const usable = modelInfo.limit.input ?? modelInfo.limit.context - outputLimit
     if (usable <= 0) return null
-    
+
     return {
       count,
       limit: usable,
@@ -213,6 +213,12 @@ export function Prompt(props: PromptProps) {
     if (state === "listening") return theme.warning
     if (state === "sending" || state === "receiving" || state === "transcribing") return theme.primary
     return theme.text
+  })
+
+  const placeholder = createMemo(() => {
+    if (typeof props.showPlaceholder === "string") return props.showPlaceholder
+    if (props.showPlaceholder === true) return "Send a message..."
+    return null
   })
 
   function promptModelWarning() {
@@ -371,7 +377,9 @@ export function Prompt(props: PromptProps) {
   function createVimContext(): VimCommands.VimCommandContext {
     return {
       getCursorOffset: () => input.cursorOffset,
-      setCursorOffset: (offset) => { input.cursorOffset = offset },
+      setCursorOffset: (offset) => {
+        input.cursorOffset = offset
+      },
       getText: () => input.plainText,
       setText: (text) => input.setText(text),
       insertText: (text) => input.insertText(text),
@@ -473,7 +481,11 @@ export function Prompt(props: PromptProps) {
 
     for (const error of errors) {
       const styleId =
-        error.category === "spelling" ? spellingStyleId : error.category === "style" ? styleErrorStyleId : grammarStyleId
+        error.category === "spelling"
+          ? spellingStyleId
+          : error.category === "style"
+            ? styleErrorStyleId
+            : grammarStyleId
 
       input.extmarks.create({
         start: error.start,
@@ -741,7 +753,7 @@ export function Prompt(props: PromptProps) {
         onSelect: async (d) => {
           if (!store.prompt.input) return
           d.clear()
-          
+
           toast.show({
             variant: "info",
             message: "Checking grammar...",
@@ -764,7 +776,7 @@ export function Prompt(props: PromptProps) {
               matches={matches}
               onApply={(content) => {
                 input.setText(content)
-                
+
                 // Try to preserve parts if possible (similar to editor logic)
                 const nonTextParts = store.prompt.parts.filter((p) => p.type !== "text")
                 const updatedNonTextParts = nonTextParts
@@ -821,7 +833,7 @@ export function Prompt(props: PromptProps) {
               }}
             />
           ))
-        }
+        },
       },
       {
         title: realtimeGrammarEnabled() ? "Disable real-time grammar" : "Enable real-time grammar",
@@ -861,7 +873,7 @@ export function Prompt(props: PromptProps) {
           const grammarExtmarks = input.extmarks.getAllForTypeId(grammarErrorTypeId)
           const errorAtCursor = grammarExtmarks.find(
             (em: { start: number; end: number; data?: GrammarError }) =>
-              cursorOffset >= em.start && cursorOffset <= em.end && em.data
+              cursorOffset >= em.start && cursorOffset <= em.end && em.data,
           )
 
           if (!errorAtCursor || !errorAtCursor.data) {
@@ -1396,13 +1408,7 @@ export function Prompt(props: PromptProps) {
     return [frame]
   })
   const chip = (content: JSX.Element) => (
-    <box
-      flexDirection="row"
-      alignItems="center"
-      gap={1}
-      paddingLeft={1}
-      paddingRight={1}
-    >
+    <box flexDirection="row" alignItems="center" gap={1} paddingLeft={1} paddingRight={1}>
       {content}
     </box>
   )
@@ -1431,383 +1437,417 @@ export function Prompt(props: PromptProps) {
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
         {/* Tips/billboard box with shared middle border (T-junctions) */}
-        <Tips billboard={billboard} bottomBorder={
-          <box height={1} flexDirection="row">
-            <text fg={theme.border} flexShrink={0}>├</text>
-            {/* Left side: context usage */}
-            <Show when={contextUsage()}>
-              {(ctx) => (
-                <>
-                  <text
-                    fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
-                    flexShrink={0}
-                  >
-                    {ctx().percent}% of {ctx().limit >= 1000000 ? `${(ctx().limit / 1000000).toFixed(1)}M` : ctx().limit >= 1000 ? `${Math.round(ctx().limit / 1000)}k` : ctx().limit}
-                  </text>
-                  <text fg={theme.border} flexShrink={0}>─</text>
-                </>
-              )}
-            </Show>
-            <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
-            <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
-            <text fg={theme.border} flexShrink={0}>─</text>
-            <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
-            <Show when={vim.enabled && store.mode !== "shell"}>
-              <text fg={theme.border} flexShrink={0}>─</text>
-              <text
-                fg={vim.isVisual ? theme.warning : vim.isNormal ? theme.accent : theme.success}
-                attributes={TextAttributes.BOLD}
-                flexShrink={0}
-              >
-                {vim.isVisual ? "V" : vim.isNormal ? "N" : "I"}
+        <Tips
+          billboard={billboard}
+          bottomBorder={
+            <box height={1} flexDirection="row">
+              <text fg={theme.border} flexShrink={0}>
+                ├
               </text>
-            </Show>
-            <text fg={theme.border} flexShrink={0}>─┤</text>
-          </box>
-        } />
-        
+              {/* Left side: context usage */}
+              <Show when={contextUsage()}>
+                {(ctx) => (
+                  <>
+                    <text
+                      fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
+                      flexShrink={0}
+                    >
+                      {ctx().percent}% of{" "}
+                      {ctx().limit >= 1000000
+                        ? `${(ctx().limit / 1000000).toFixed(1)}M`
+                        : ctx().limit >= 1000
+                          ? `${Math.round(ctx().limit / 1000)}k`
+                          : ctx().limit}
+                    </text>
+                    <text fg={theme.border} flexShrink={0}>
+                      ─
+                    </text>
+                  </>
+                )}
+              </Show>
+              <text fg={theme.border} flexGrow={1} flexShrink={1}>
+                {"─".repeat(200)}
+              </text>
+              <text fg={theme.textMuted} flexShrink={0}>
+                {Locale.titlecase(local.agent.current().name)}
+              </text>
+              <text fg={theme.border} flexShrink={0}>
+                ─
+              </text>
+              <text fg={theme.textMuted} flexShrink={0}>
+                {sync.data.agent?.length ?? 0} skills
+              </text>
+              <Show when={vim.enabled && store.mode !== "shell"}>
+                <text fg={theme.border} flexShrink={0}>
+                  ─
+                </text>
+                <text
+                  fg={vim.isVisual ? theme.warning : vim.isNormal ? theme.accent : theme.success}
+                  attributes={TextAttributes.BOLD}
+                  flexShrink={0}
+                >
+                  {vim.isVisual ? "V" : vim.isNormal ? "N" : "I"}
+                </text>
+              </Show>
+              <text fg={theme.border} flexShrink={0}>
+                ─┤
+              </text>
+            </box>
+          }
+        />
+
         {/* Input area with side borders (stacked box style) */}
         <box
           border={["left", "right"]}
           borderColor={theme.border}
           customBorderChars={{
             vertical: "│",
-            topLeft: "", bottomLeft: "", topRight: "", bottomRight: "",
-            horizontal: "", topT: "", bottomT: "", leftT: "", rightT: "", cross: "",
+            topLeft: "",
+            bottomLeft: "",
+            topRight: "",
+            bottomRight: "",
+            horizontal: "",
+            topT: "",
+            bottomT: "",
+            leftT: "",
+            rightT: "",
+            cross: "",
           }}
           paddingLeft={1}
           paddingRight={1}
         >
-            <textarea
-              placeholder={null}
-              textColor={keybind.leader ? theme.textMuted : theme.text}
-              focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
-              minHeight={1}
-              maxHeight={6}
-              onContentChange={() => {
-                const value = input.plainText
-                setStore("prompt", "input", value)
-                autocomplete.onInput(value)
-                syncExtmarksWithPromptParts()
-                // Trigger real-time grammar check
-                if (realtimeGrammarEnabled()) {
-                  grammarChecker.check(value)
-                }
-              }}
-              keyBindings={textareaKeybindings()}
-              onKeyDown={async (e) => {
-                if (props.disabled) {
+          <textarea
+            placeholder={placeholder()}
+            textColor={keybind.leader ? theme.textMuted : theme.text}
+            focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
+            minHeight={1}
+            maxHeight={6}
+            onContentChange={() => {
+              const value = input.plainText
+              setStore("prompt", "input", value)
+              autocomplete.onInput(value)
+              syncExtmarksWithPromptParts()
+              // Trigger real-time grammar check
+              if (realtimeGrammarEnabled()) {
+                grammarChecker.check(value)
+              }
+            }}
+            keyBindings={textareaKeybindings()}
+            onKeyDown={async (e) => {
+              if (props.disabled) {
+                e.preventDefault()
+                return
+              }
+
+              // Global abort: Ctrl+C always aborts, bypasses all mode/focus checks
+              if (e.ctrl && e.name === "c") {
+                if (status().type !== "idle" && props.sessionID) {
+                  sdk.client.session.abort({ sessionID: props.sessionID })
+                  setStore("interrupt", 0)
                   e.preventDefault()
                   return
                 }
+              }
 
-                // Global abort: Ctrl+C always aborts, bypasses all mode/focus checks
-                if (e.ctrl && e.name === "c") {
-                  if (status().type !== "idle" && props.sessionID) {
-                    sdk.client.session.abort({ sessionID: props.sessionID })
-                    setStore("interrupt", 0)
+              // Vim mode handling
+              if (vim.enabled) {
+                // In insert mode, Escape switches to normal mode
+                if (vim.isInsert && e.name === "escape" && !keybind.leader) {
+                  // Don't switch to vim normal if autocomplete is visible (let autocomplete handle escape)
+                  if (!autocomplete.visible) {
+                    vim.enterNormal()
                     e.preventDefault()
                     return
                   }
                 }
 
-                // Vim mode handling
-                if (vim.enabled) {
-                  // In insert mode, Escape switches to normal mode
-                  if (vim.isInsert && e.name === "escape" && !keybind.leader) {
-                    // Don't switch to vim normal if autocomplete is visible (let autocomplete handle escape)
-                    if (!autocomplete.visible) {
-                      vim.enterNormal()
-                      e.preventDefault()
-                      return
-                    }
+                // In visual mode, handle selection and exit keys
+                if (vim.isVisual && !keybind.leader) {
+                  if (e.name === "escape") {
+                    exitVisualMode()
+                    e.preventDefault()
+                    return
                   }
 
-                  // In visual mode, handle selection and exit keys
-                  if (vim.isVisual && !keybind.leader) {
-                    if (e.name === "escape") {
+                  if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
+                    const key = e.name
+
+                    if (key === "v") {
                       exitVisualMode()
                       e.preventDefault()
                       return
                     }
 
-                    if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
-                      const key = e.name
-
-                      if (key === "v") {
-                        exitVisualMode()
-                        e.preventDefault()
-                        return
-                      }
-
-                      if ((key === "x" || key === "d") && deleteVisualSelection()) {
-                        e.preventDefault()
-                        return
-                      }
-
-                      if (visualMotionKeys.has(key)) {
-                        const ctx = createVimContext()
-                        const result = VimCommands.handleNormalModeKey(ctx, key)
-                        if (result.handled) {
-                          updateVisualSelection()
-                          e.preventDefault()
-                          return
-                        }
-                      }
-
+                    if ((key === "x" || key === "d") && deleteVisualSelection()) {
                       e.preventDefault()
                       return
                     }
-                  }
 
-                  // In normal mode, handle vim commands
-                  if (vim.isNormal && !keybind.leader) {
-                    // Single character commands (no modifiers except shift for uppercase)
-                    if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
-                      const key = e.name
-
-                      if (key === "v") {
-                        enterVisualMode()
-                        e.preventDefault()
-                        return
-                      }
-
-                      // Allow `!` at position 0 to trigger shell mode
-                      // This must be checked before vim command handling
-                      if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
-                        // Enter insert mode first so user can type the shell command
-                        vim.enterInsert()
-                        setStore("mode", "shell")
-                        e.preventDefault()
-                        return
-                      }
-
-                      // Allow leader key to pass through to activate leader mode
-                      if (keybind.match("leader", e)) {
-                        // Don't block - let it propagate to the global leader handler
-                        return
-                      }
-
-                      // Use shared vim command handler
+                    if (visualMotionKeys.has(key)) {
                       const ctx = createVimContext()
                       const result = VimCommands.handleNormalModeKey(ctx, key)
-
                       if (result.handled) {
-                        if (result.enterInsert) {
-                          vim.enterInsert()
-                        }
+                        updateVisualSelection()
                         e.preventDefault()
                         return
                       }
+                    }
 
-                      // Block all other character input in normal mode
-                      // This prevents accidental typing
+                    e.preventDefault()
+                    return
+                  }
+                }
+
+                // In normal mode, handle vim commands
+                if (vim.isNormal && !keybind.leader) {
+                  // Single character commands (no modifiers except shift for uppercase)
+                  if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
+                    const key = e.name
+
+                    if (key === "v") {
+                      enterVisualMode()
                       e.preventDefault()
                       return
                     }
-                  }
-                }
 
-                // Handle clipboard paste (Ctrl+V) - check for images first on Windows
-                // This is needed because Windows terminal doesn't properly send image data
-                // through bracketed paste, so we need to intercept the keypress and
-                // directly read from clipboard before the terminal handles it
-                if (keybind.match("input_paste", e)) {
-                  const content = await Clipboard.read()
-                  if (content?.mime.startsWith("image/")) {
-                    e.preventDefault()
-                    await pasteImage({
-                      filename: "clipboard",
-                      mime: content.mime,
-                      content: content.data,
-                    })
-                    return
-                  }
-                  // If no image, let the default paste behavior continue
-                }
-                if (keybind.match("input_dictation_toggle", e)) {
-                  e.preventDefault()
-                  await toggleDictation()
-                  return
-                }
-                // Handle grammar quick-fix (Ctrl+.)
-                if (keybind.match("grammar_quickfix", e) && realtimeGrammarEnabled() && grammarErrorTypeId) {
-                  e.preventDefault()
-                  command.trigger("prompt.grammar.quickfix")
-                  return
-                }
-                if (keybind.match("input_clear", e) && store.prompt.input !== "") {
-                  input.clear()
-                  input.extmarks.clear()
-                  setStore("prompt", {
-                    input: "",
-                    parts: [],
-                  })
-                  setStore("extmarkToPartIndex", new Map())
-                  return
-                }
-                if (keybind.match("app_exit", e)) {
-                  if (store.prompt.input === "") {
-                    await exit()
-                    // Don't preventDefault - let textarea potentially handle the event
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (e.name === "!" && input.visualCursor.offset === 0) {
-                  setStore("mode", "shell")
-                  e.preventDefault()
-                  return
-                }
-                if (store.mode === "shell") {
-                  if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
-                    setStore("mode", "normal")
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (store.mode === "normal") autocomplete.onKeyDown(e)
-                if (!autocomplete.visible) {
-                  if (
-                    (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
-                    (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
-                  ) {
-                    const direction = keybind.match("history_previous", e) ? -1 : 1
-                    const item = history.move(direction, input.plainText)
-
-                    if (item) {
-                      input.setText(item.input)
-                      setStore("prompt", item)
-                      setStore("mode", item.mode ?? "normal")
-                      restoreExtmarksFromParts(item.parts)
+                    // Allow `!` at position 0 to trigger shell mode
+                    // This must be checked before vim command handling
+                    if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
+                      // Enter insert mode first so user can type the shell command
+                      vim.enterInsert()
+                      setStore("mode", "shell")
                       e.preventDefault()
-                      if (direction === -1) input.cursorOffset = 0
-                      if (direction === 1) input.cursorOffset = input.plainText.length
+                      return
                     }
+
+                    // Allow leader key to pass through to activate leader mode
+                    if (keybind.match("leader", e)) {
+                      // Don't block - let it propagate to the global leader handler
+                      return
+                    }
+
+                    // Use shared vim command handler
+                    const ctx = createVimContext()
+                    const result = VimCommands.handleNormalModeKey(ctx, key)
+
+                    if (result.handled) {
+                      if (result.enterInsert) {
+                        vim.enterInsert()
+                      }
+                      e.preventDefault()
+                      return
+                    }
+
+                    // Block all other character input in normal mode
+                    // This prevents accidental typing
+                    e.preventDefault()
                     return
                   }
-
-                  if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0) input.cursorOffset = 0
-                  if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
-                    input.cursorOffset = input.plainText.length
                 }
-              }}
-              onSubmit={submit}
-              onPaste={async (event: PasteEvent) => {
-                if (props.disabled) {
-                  event.preventDefault()
+              }
+
+              // Handle clipboard paste (Ctrl+V) - check for images first on Windows
+              // This is needed because Windows terminal doesn't properly send image data
+              // through bracketed paste, so we need to intercept the keypress and
+              // directly read from clipboard before the terminal handles it
+              if (keybind.match("input_paste", e)) {
+                const content = await Clipboard.read()
+                if (content?.mime.startsWith("image/")) {
+                  e.preventDefault()
+                  await pasteImage({
+                    filename: "clipboard",
+                    mime: content.mime,
+                    content: content.data,
+                  })
                   return
                 }
-
-                // Normalize line endings at the boundary
-                // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
-                // Replace CRLF first, then any remaining CR
-                const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-                const pastedContent = normalizedText.trim()
-                if (!pastedContent) {
-                  command.trigger("prompt.paste")
+                // If no image, let the default paste behavior continue
+              }
+              if (keybind.match("input_dictation_toggle", e)) {
+                e.preventDefault()
+                await toggleDictation()
+                return
+              }
+              // Handle grammar quick-fix (Ctrl+.)
+              if (keybind.match("grammar_quickfix", e) && realtimeGrammarEnabled() && grammarErrorTypeId) {
+                e.preventDefault()
+                command.trigger("prompt.grammar.quickfix")
+                return
+              }
+              if (keybind.match("input_clear", e) && store.prompt.input !== "") {
+                input.clear()
+                input.extmarks.clear()
+                setStore("prompt", {
+                  input: "",
+                  parts: [],
+                })
+                setStore("extmarkToPartIndex", new Map())
+                return
+              }
+              if (keybind.match("app_exit", e)) {
+                if (store.prompt.input === "") {
+                  await exit()
+                  // Don't preventDefault - let textarea potentially handle the event
+                  e.preventDefault()
                   return
                 }
-
-                // trim ' from the beginning and end of the pasted content. just
-                // ' and nothing else
-                const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
-                const isUrl = /^(https?):\/\//.test(filepath)
-                if (!isUrl) {
-                  try {
-                    const file = Bun.file(filepath)
-                    // Handle SVG as raw text content, not as base64 image
-                    if (file.type === "image/svg+xml") {
-                      event.preventDefault()
-                      const content = await file.text().catch(() => {})
-                      if (content) {
-                        pasteText(content, `[SVG: ${file.name ?? "image"}]`)
-                        return
-                      }
-                    }
-                    if (file.type.startsWith("image/")) {
-                      event.preventDefault()
-                      const content = await file
-                        .arrayBuffer()
-                        .then((buffer) => Buffer.from(buffer).toString("base64"))
-                        .catch(() => {})
-                      if (content) {
-                        await pasteImage({
-                          filename: file.name,
-                          mime: file.type,
-                          content,
-                        })
-                        return
-                      }
-                    }
-                  } catch {}
+              }
+              if (e.name === "!" && input.visualCursor.offset === 0) {
+                setStore("mode", "shell")
+                e.preventDefault()
+                return
+              }
+              if (store.mode === "shell") {
+                if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
+                  setStore("mode", "normal")
+                  e.preventDefault()
+                  return
                 }
-
-                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+              }
+              if (store.mode === "normal") autocomplete.onKeyDown(e)
+              if (!autocomplete.visible) {
                 if (
-                  (lineCount >= 3 || pastedContent.length > 150) &&
-                  !sync.data?.config?.experimental?.disable_paste_summary
+                  (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
+                  (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
                 ) {
-                  event.preventDefault()
-                  pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                  const direction = keybind.match("history_previous", e) ? -1 : 1
+                  const item = history.move(direction, input.plainText)
+
+                  if (item) {
+                    input.setText(item.input)
+                    setStore("prompt", item)
+                    setStore("mode", item.mode ?? "normal")
+                    restoreExtmarksFromParts(item.parts)
+                    e.preventDefault()
+                    if (direction === -1) input.cursorOffset = 0
+                    if (direction === 1) input.cursorOffset = input.plainText.length
+                  }
                   return
                 }
 
-                // Force layout update and render for the pasted content
-                setTimeout(() => {
-                  input.getLayoutNode().markDirty()
-                  renderer.requestRender()
-                }, 0)
-              }}
-              ref={(r: TextareaRenderable) => {
-                input = r
-                if (promptPartTypeId === 0) {
-                  promptPartTypeId = input.extmarks.registerType("prompt-part")
-                }
-                if (grammarErrorTypeId === 0) {
-                  grammarErrorTypeId = input.extmarks.registerType("grammar-error")
-                }
-                // Register focus callback for vim mode
-                vim.registerFocusCallback(() => input?.focus())
-                props.ref?.(ref)
-                setTimeout(() => {
-                  input.cursorColor = theme.primary
-                }, 0)
-              }}
-              onMouseDown={(r: MouseEvent) => r.target?.focus()}
-              focusedBackgroundColor={RGBA.fromInts(0, 0, 0, 0)}
-              cursorColor={theme.primary}
-              syntaxStyle={syntax()}
-            />
+                if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0) input.cursorOffset = 0
+                if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
+                  input.cursorOffset = input.plainText.length
+              }
+            }}
+            onSubmit={submit}
+            onPaste={async (event: PasteEvent) => {
+              if (props.disabled) {
+                event.preventDefault()
+                return
+              }
+
+              // Normalize line endings at the boundary
+              // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
+              // Replace CRLF first, then any remaining CR
+              const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+              const pastedContent = normalizedText.trim()
+              if (!pastedContent) {
+                command.trigger("prompt.paste")
+                return
+              }
+
+              // trim ' from the beginning and end of the pasted content. just
+              // ' and nothing else
+              const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
+              const isUrl = /^(https?):\/\//.test(filepath)
+              if (!isUrl) {
+                try {
+                  const file = Bun.file(filepath)
+                  // Handle SVG as raw text content, not as base64 image
+                  if (file.type === "image/svg+xml") {
+                    event.preventDefault()
+                    const content = await file.text().catch(() => {})
+                    if (content) {
+                      pasteText(content, `[SVG: ${file.name ?? "image"}]`)
+                      return
+                    }
+                  }
+                  if (file.type.startsWith("image/")) {
+                    event.preventDefault()
+                    const content = await file
+                      .arrayBuffer()
+                      .then((buffer) => Buffer.from(buffer).toString("base64"))
+                      .catch(() => {})
+                    if (content) {
+                      await pasteImage({
+                        filename: file.name,
+                        mime: file.type,
+                        content,
+                      })
+                      return
+                    }
+                  }
+                } catch {}
+              }
+
+              const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+              if (
+                (lineCount >= 3 || pastedContent.length > 150) &&
+                !sync.data?.config?.experimental?.disable_paste_summary
+              ) {
+                event.preventDefault()
+                pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                return
+              }
+
+              // Force layout update and render for the pasted content
+              setTimeout(() => {
+                input.getLayoutNode().markDirty()
+                renderer.requestRender()
+              }, 0)
+            }}
+            ref={(r: TextareaRenderable) => {
+              input = r
+              if (promptPartTypeId === 0) {
+                promptPartTypeId = input.extmarks.registerType("prompt-part")
+              }
+              if (grammarErrorTypeId === 0) {
+                grammarErrorTypeId = input.extmarks.registerType("grammar-error")
+              }
+              // Register focus callback for vim mode
+              vim.registerFocusCallback(() => input?.focus())
+              props.ref?.(ref)
+              setTimeout(() => {
+                input.cursorColor = theme.primary
+              }, 0)
+            }}
+            onMouseDown={(r: MouseEvent) => r.target?.focus()}
+            focusedBackgroundColor={RGBA.fromInts(0, 0, 0, 0)}
+            cursorColor={theme.primary}
+            syntaxStyle={syntax()}
+          />
         </box>
         {/* Bottom border with embedded status info */}
         <box height={1} flexDirection="row">
-          <text fg={theme.border} flexShrink={0}>╰</text>
+          <text fg={theme.border} flexShrink={0}>
+            ╰
+          </text>
           {/* Left: spinner only */}
-          <Show
-            when={status().type === "busy"}
-            fallback={<text fg={highlight()}>~</text>}
-          >
-            <spinner
-              color={spinnerDef().color}
-              frames={spinnerDef().frames}
-              interval={60}
-            />
+          <Show when={status().type === "busy"} fallback={<text fg={highlight()}>~</text>}>
+            <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={60} />
           </Show>
           <Show when={status().type === "busy"}>
             <text fg={theme.textMuted}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>
+            {"─".repeat(200)}
+          </text>
           {/* Right: model + path */}
           {(() => {
             const parsed = local.model.parsed()
             const variant = local.model.variant.current()
             return (
               <>
-                <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
+                <text fg={theme.textMuted} flexShrink={0}>
+                  {parsed.provider} {parsed.model}
+                </text>
                 <Show when={variant}>
-                  <text fg={theme.accent} flexShrink={0}> {variant}</text>
+                  <text fg={theme.accent} flexShrink={0}>
+                    {" "}
+                    {variant}
+                  </text>
                 </Show>
               </>
             )
@@ -1816,18 +1856,20 @@ export function Prompt(props: PromptProps) {
             <Show when={sync.data.path?.directory}>
               {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
             </Show>
-            <Show when={sync.data.vcs?.branch}>
-              {` (${sync.data.vcs?.branch})`}
-            </Show>
+            <Show when={sync.data.vcs?.branch}>{` (${sync.data.vcs?.branch})`}</Show>
           </text>
-          <text fg={theme.border} flexShrink={0}>─╯</text>
+          <text fg={theme.border} flexShrink={0}>
+            ─╯
+          </text>
         </box>
       </box>
       {/* Diff stats line outside box, below bottom border */}
       <Show when={diffStats()}>
         {(stats) => (
           <box height={1} flexDirection="row" justifyContent="flex-end" paddingRight={1}>
-            <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>
+            <text fg={theme.textMuted}>
+              {stats().files} file{stats().files !== 1 ? "s" : ""} changed{" "}
+            </text>
             <Show when={stats().additions > 0}>
               <text fg={theme.success}>+{stats().additions}</text>
             </Show>

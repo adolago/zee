@@ -1,0 +1,1998 @@
+bun test v1.2.14 (6a363a38)
+
+test/permission-task.test.ts:
+(pass) PermissionNext.evaluate for permission.task > returns ask when no match (default) [1.23ms]
+(pass) PermissionNext.evaluate for permission.task > returns deny for explicit deny [0.90ms]
+(pass) PermissionNext.evaluate for permission.task > returns allow for explicit allow [0.20ms]
+(pass) PermissionNext.evaluate for permission.task > returns ask for explicit ask [0.29ms]
+(pass) PermissionNext.evaluate for permission.task > matches wildcard patterns with deny [0.40ms]
+(pass) PermissionNext.evaluate for permission.task > matches wildcard patterns with allow [0.20ms]
+(pass) PermissionNext.evaluate for permission.task > matches wildcard patterns with ask [0.30ms]
+(pass) PermissionNext.evaluate for permission.task > later rules take precedence (last match wins) [0.23ms]
+(pass) PermissionNext.evaluate for permission.task > matches global wildcard [0.28ms]
+(pass) PermissionNext.disabled for task tool > task tool is disabled when global deny pattern exists (even with specific allows) [0.47ms]
+(pass) PermissionNext.disabled for task tool > task tool is disabled when global deny pattern exists (even with ask overrides) [0.12ms]
+(pass) PermissionNext.disabled for task tool > task tool is disabled when global deny pattern exists [0.14ms]
+(pass) PermissionNext.disabled for task tool > task tool is NOT disabled when only specific patterns are denied (no wildcard) [0.18ms]
+(pass) PermissionNext.disabled for task tool > task tool is enabled when no task rules exist (default ask) [0.07ms]
+(pass) PermissionNext.disabled for task tool > task tool is NOT disabled when last wildcard pattern is allow [0.14ms]
+(pass) permission.task with real config files > loads task permissions from agent-core.json config [713.33ms]
+(pass) permission.task with real config files > loads task permissions with wildcard patterns from config [48.71ms]
+(pass) permission.task with real config files > evaluate respects task permission from config [51.61ms]
+(pass) permission.task with real config files > mixed permission config with task and other tools [58.93ms]
+(pass) permission.task with real config files > task tool disabled when global deny comes last in config [55.79ms]
+(pass) permission.task with real config files > task tool NOT disabled when specific allow comes last in config [52.45ms]
+
+test/vim-mode-switching.integration.test.ts:
+(pass) Vim mode state machine > initial state > initial mode is 'normal' when start_in_insert is false [0.42ms]
+(pass) Vim mode state machine > initial state > initial mode is 'normal' when start_in_insert is undefined (default) [0.15ms]
+(pass) Vim mode state machine > initial state > initial mode is 'insert' when start_in_insert is true [0.14ms]
+(pass) Vim mode state machine > mode transitions > enterNormal() switches from insert to normal [0.10ms]
+(pass) Vim mode state machine > mode transitions > enterInsert() switches from normal to insert [0.11ms]
+(pass) Vim mode state machine > mode transitions > enterInsert() triggers the focus callback [0.11ms]
+(pass) Vim mode state machine > mode transitions > enterInsert() does not throw when no callback is registered [0.07ms]
+(pass) Vim mode state machine > mode transitions > setMode() works for switching to normal [0.10ms]
+(pass) Vim mode state machine > mode transitions > setMode() works for switching to insert [0.09ms]
+(pass) Vim mode state machine > mode transitions > multiple mode transitions work correctly [0.06ms]
+(pass) Vim mode state machine > disabled vim mode > mode always returns 'insert' when disabled [0.02ms]
+(pass) Vim mode state machine > disabled vim mode > isNormal is always false when disabled [0.04ms]
+(pass) Vim mode state machine > disabled vim mode > isInsert is always true when disabled [0.04ms]
+(pass) Vim mode state machine > disabled vim mode > enterNormal() is a no-op when disabled [0.09ms]
+(pass) Vim mode state machine > disabled vim mode > setMode() is a no-op when disabled [0.07ms]
+(pass) Vim mode state machine > disabled vim mode > enterInsert() still changes internal state when disabled [0.05ms]
+(pass) Vim mode state machine > disabled vim mode > focus callback is triggered by enterInsert() even when disabled [0.39ms]
+(pass) Vim mode state machine > default configuration > enabled defaults to true when not specified [0.10ms]
+(pass) Vim mode state machine > default configuration > start_in_insert defaults to false when not specified [0.06ms]
+(pass) Vim mode state machine > default configuration > empty config results in vim enabled, starting in normal mode [0.09ms]
+(pass) Vim mode state machine > edge cases > calling enterNormal() when already in normal mode is idempotent [0.08ms]
+(pass) Vim mode state machine > edge cases > calling enterInsert() when already in insert mode is idempotent [0.06ms]
+(pass) Vim mode state machine > edge cases > focus callback is invoked each time enterInsert() is called [0.14ms]
+(pass) Vim mode state machine > edge cases > replacing focus callback works correctly [0.12ms]
+(pass) Vim mode state machine > edge cases > setMode with same mode is idempotent [0.12ms]
+(pass) Vim mode state machine > config combinations > enabled: false, start_in_insert: true [0.09ms]
+(pass) Vim mode state machine > config combinations > enabled: false, start_in_insert: false [0.07ms]
+
+test/dictation.test.ts:
+(pass) Dictation.resolveConfig > returns undefined when disabled [0.68ms]
+(pass) Dictation.resolveConfig > returns undefined when no credentials are available and no ADC [0.75ms]
+(pass) Dictation.resolveConfig > uses GOOGLE_STT_API_KEY when present [0.29ms]
+(pass) Dictation.resolveConfig > uses OPENCODE_GOOGLE_STT_API_KEY when present [0.21ms]
+(pass) Dictation.resolveConfig > uses service account env vars when present [0.23ms]
+(pass) Dictation.resolveConfig > treats GOOGLE_APPLICATION_CREDENTIALS as configured (ADC) [0.15ms]
+(pass) Dictation.resolveConfig > reads service account JSON from stored google-stt auth [0.50ms]
+(pass) Dictation.resolveConfig > prefers env vars over stored auth [0.25ms]
+(pass) Dictation.resolveConfig > applies defaults for optional fields [0.24ms]
+(pass) Dictation.resolveConfig > respects provided optional field values [0.23ms]
+(pass) Dictation.transcribe > sends Google Speech-to-Text recognize request from WAV PCM data [4.05ms]
+
+test/bun.test.ts:
+(pass) BunProc registry configuration > should not contain hardcoded registry parameters [4.07ms]
+(pass) BunProc registry configuration > should use Bun's default registry resolution [0.80ms]
+(pass) BunProc registry configuration > should have correct command structure without registry [0.87ms]
+
+test/scheduler.test.ts:
+(pass) Scheduler.register > defaults to instance scope per directory [78.81ms]
+(pass) Scheduler.register > global scope runs once across instances [82.28ms]
+
+test/keybind.test.ts:
+(pass) Keybind.toString > should convert simple key to string [0.19ms]
+(pass) Keybind.toString > should convert ctrl modifier to string [0.11ms]
+(pass) Keybind.toString > should convert leader key to string [0.07ms]
+(pass) Keybind.toString > should convert multiple modifiers to string [0.07ms]
+(pass) Keybind.toString > should convert all modifiers to string [0.07ms]
+(pass) Keybind.toString > should convert shift modifier to string [0.07ms]
+(pass) Keybind.toString > should convert function key to string [0.05ms]
+(pass) Keybind.toString > should convert special key to string [0.05ms]
+(pass) Keybind.toString > should handle empty name [0.05ms]
+(pass) Keybind.toString > should handle only modifiers [0.04ms]
+(pass) Keybind.toString > should handle only leader with no other parts [0.06ms]
+(pass) Keybind.toString > should convert super modifier to string [0.06ms]
+(pass) Keybind.toString > should convert super+shift modifier to string [0.06ms]
+(pass) Keybind.toString > should handle super with ctrl modifier [0.06ms]
+(pass) Keybind.toString > should handle super with all modifiers [0.04ms]
+(pass) Keybind.toString > should handle undefined super field (omitted) [0.08ms]
+(pass) Keybind.match > should match identical keybinds [0.55ms]
+(pass) Keybind.match > should not match different key names [0.10ms]
+(pass) Keybind.match > should not match different modifiers [0.10ms]
+(pass) Keybind.match > should match leader keybinds [0.08ms]
+(pass) Keybind.match > should not match leader vs non-leader [0.06ms]
+(pass) Keybind.match > should match complex keybinds [0.12ms]
+(pass) Keybind.match > should not match with one modifier different [0.11ms]
+(pass) Keybind.match > should match simple key without modifiers [0.19ms]
+(pass) Keybind.match > should match super modifier keybinds [0.15ms]
+(pass) Keybind.match > should not match super vs non-super [0.11ms]
+(pass) Keybind.match > should match undefined super with false super [0.12ms]
+(pass) Keybind.match > should match super+shift combination [0.08ms]
+(pass) Keybind.match > should not match when only super differs [0.07ms]
+(pass) Keybind.parse > should parse simple key [0.32ms]
+(pass) Keybind.parse > should parse leader key syntax [0.16ms]
+(pass) Keybind.parse > should parse ctrl modifier [0.09ms]
+(pass) Keybind.parse > should parse multiple modifiers [0.07ms]
+(pass) Keybind.parse > should parse shift modifier [0.06ms]
+(pass) Keybind.parse > should parse meta/alt modifier [0.10ms]
+(pass) Keybind.parse > should parse leader with modifier [0.06ms]
+(pass) Keybind.parse > should parse multiple keybinds separated by comma [0.06ms]
+(pass) Keybind.parse > should parse shift+return combination [0.08ms]
+(pass) Keybind.parse > should parse ctrl+j combination [0.06ms]
+(pass) Keybind.parse > should handle 'none' value [0.05ms]
+(pass) Keybind.parse > should handle special keys [0.09ms]
+(pass) Keybind.parse > should handle function keys [0.11ms]
+(pass) Keybind.parse > should handle complex multi-modifier combination [0.12ms]
+(pass) Keybind.parse > should be case insensitive [0.06ms]
+(pass) Keybind.parse > should parse super modifier [0.07ms]
+(pass) Keybind.parse > should parse super with shift modifier [0.08ms]
+(pass) Keybind.parse > should parse multiple keybinds with super [0.08ms]
+(pass) vim mode switching > global vim mode switching > should switch to normal mode when Escape is pressed in insert mode [0.18ms]
+(pass) vim mode switching > global vim mode switching > should switch to insert mode when 'i' is pressed in normal mode [0.07ms]
+(pass) vim mode switching > global vim mode switching > should switch to insert mode when 'a' is pressed in normal mode [0.06ms]
+(pass) vim mode switching > global vim mode switching > should switch to insert mode when 'o' is pressed in normal mode [0.05ms]
+(pass) vim mode switching > vim mode edge cases > should not double-switch when pressing Escape in normal mode [0.05ms]
+(pass) vim mode switching > vim mode edge cases > should not double-switch when pressing 'i' in insert mode [0.06ms]
+
+test/cli/github-remote.test.ts:
+(pass) parses https URL with .git suffix [0.29ms]
+(pass) parses https URL without .git suffix [0.08ms]
+(pass) parses git@ URL with .git suffix [0.06ms]
+(pass) parses git@ URL without .git suffix [0.04ms]
+(pass) parses ssh:// URL with .git suffix [0.04ms]
+(pass) parses ssh:// URL without .git suffix [0.04ms]
+(pass) parses http URL [0.04ms]
+(pass) parses URL with hyphenated owner and repo names [0.04ms]
+(pass) parses URL with underscores in names [0.04ms]
+(pass) parses URL with numbers in names [0.05ms]
+(pass) parses repos with dots in the name [0.10ms]
+(pass) returns null for non-github URLs [0.07ms]
+(pass) returns null for invalid URLs [0.09ms]
+(pass) returns null for URLs with extra path segments [0.05ms]
+
+test/cli/github-action.test.ts:
+(pass) extractResponseText > returns text from text part [2.24ms]
+(pass) extractResponseText > returns last text part when multiple exist [0.23ms]
+(pass) extractResponseText > returns text even when tool parts follow [0.22ms]
+(pass) extractResponseText > returns null for reasoning-only response (signals summary needed) [0.18ms]
+(pass) extractResponseText > returns null for tool-only response (signals summary needed) [0.09ms]
+(pass) extractResponseText > returns null for multiple completed tools [0.07ms]
+(pass) extractResponseText > ignores running tool parts (throws since no completed tools) [0.19ms]
+(pass) extractResponseText > throws with part types on empty array [0.11ms]
+(pass) extractResponseText > throws with part types on unhandled parts [0.15ms]
+(pass) extractResponseText > prefers text over reasoning when both present [0.07ms]
+(pass) extractResponseText > prefers text over tools when both present [0.12ms]
+
+test/config/agent-color.test.ts:
+(pass) agent color parsed from project config [21.07ms]
+(pass) Agent.get includes color from config [25.67ms]
+(pass) Color.hexToAnsiBold converts valid hex to ANSI [0.35ms]
+(pass) Color.hexToAnsiBold returns undefined for invalid hex [0.13ms]
+
+test/config/config.test.ts:
+(pass) getPluginName > extracts name from file:// URL [0.32ms]
+(pass) getPluginName > extracts name from npm package with version [0.10ms]
+(pass) getPluginName > extracts name from scoped npm package [0.07ms]
+(pass) getPluginName > returns full string for package without version [0.04ms]
+(pass) deduplicatePlugins > removes duplicates keeping higher priority (later entries) [0.13ms]
+(pass) deduplicatePlugins > prefers local file over npm package with same name [0.10ms]
+(pass) deduplicatePlugins > preserves order of remaining plugins [0.06ms]
+(pass) deduplicatePlugins > local plugin directory overrides global agent-core.json plugin [542.45ms]
+(pass) loads config with defaults when no files exist [18.22ms]
+(pass) loads JSON config file [14.83ms]
+(pass) loads JSONC config file [16.02ms]
+(pass) merges multiple config files with correct precedence [28.29ms]
+(pass) handles environment variable substitution [17.96ms]
+(pass) preserves env variables when adding $schema to config [16.96ms]
+(pass) handles file inclusion substitution [17.63ms]
+(pass) validates config schema and throws on invalid fields [22.27ms]
+(pass) throws error for invalid JSON [10.56ms]
+(pass) handles agent configuration [20.81ms]
+(pass) handles command configuration [17.44ms]
+(pass) migrates mode field to agent field [22.31ms]
+(pass) loads config from .agent-core directory [592.93ms]
+(pass) loads agents from .agent-core/agents (plural) [570.96ms]
+(pass) loads commands from .agent-core/command (singular) [537.19ms]
+(pass) loads commands from .agent-core/commands (plural) [559.18ms]
+(pass) updates config and writes to file [9.54ms]
+(pass) gets config directories [13.21ms]
+(pass) resolves scoped npm plugins in config [17.92ms]
+(pass) merges plugin arrays from global and local configs [518.26ms]
+(pass) does not error when only custom agent is a subagent [524.36ms]
+(pass) merges instructions arrays from global and local configs [549.13ms]
+(pass) deduplicates duplicate instructions from global and local configs [570.40ms]
+(pass) deduplicates duplicate plugins from global and local configs [568.57ms]
+(pass) migrates legacy tools config to permissions - allow [16.42ms]
+(pass) migrates legacy tools config to permissions - deny [26.77ms]
+(pass) migrates legacy write tool to edit permission [21.53ms]
+(pass) migrates legacy edit tool to edit permission [24.83ms]
+(pass) migrates legacy patch tool to edit permission [8.03ms]
+(pass) migrates legacy multiedit tool to edit permission [31.72ms]
+(pass) migrates mixed legacy tools config [16.94ms]
+(pass) merges legacy tools with existing permission config [13.56ms]
+(pass) permission config preserves key order [27.94ms]
+(pass) project config can override MCP server enabled status [29.90ms]
+(pass) MCP config deep merges preserving base config properties [17.75ms]
+(pass) local .agent-core config can override MCP from project config [545.27ms]
+(pass) project config overrides remote well-known config [52.21ms]
+
+test/config/hold-mode.test.ts:
+(pass) HoldMode.matchesPattern > matches exact commands [3.48ms]
+(pass) HoldMode.matchesPattern > matches command prefixes [0.12ms]
+(pass) HoldMode.matchesPattern > matches wildcards [0.07ms]
+(pass) HoldMode.matchesPattern > is case insensitive [0.09ms]
+(pass) HoldMode.matchesPattern > returns false for empty patterns [0.05ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions bypasses always_block in hold mode [39.82ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions bypasses always_block in release mode [44.10ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions bypasses release_confirm in release mode [47.19ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows tools in hold mode [0.52ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows write in hold mode [0.13ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows apply_patch in hold mode [0.15ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows todowrite in hold mode [0.21ms]
+1 | import { AsyncLocalStorage } from "async_hooks"
+2 |
+3 | export namespace Context {
+4 |   export class NotFound extends Error {
+5 |     constructor(public override readonly name: string) {
+6 |       super(`No context found for ${name}`)
+          ^
+instance: No context found for instance
+      at new NotFound (/app/packages/agent-core/src/util/context.ts:6:7)
+      at use (/app/packages/agent-core/src/util/context.ts:16:17)
+      at directory (/app/packages/agent-core/src/project/instance.ts:43:20)
+      at projectConfigPath (/app/packages/agent-core/src/config/hold-mode.ts:64:22)
+      at load (/app/packages/agent-core/src/config/hold-mode.ts:137:46)
+(fail) HoldMode.skipPermissions bypass > skipPermissions false still respects hold mode restrictions [1.70ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions false still respects hold mode command blocks [78.37ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions true still blocks always_block when holdMode is false [38.50ms]
+(pass) HoldMode.findMatchingPattern > returns the matched pattern for command prefixes [0.15ms]
+(pass) HoldMode.findMatchingPattern > returns the matched pattern for wildcards [0.06ms]
+(pass) HoldMode.findMatchingPattern > preserves original pattern case in return value [0.07ms]
+(pass) HoldMode.findMatchingPattern > returns null for empty patterns [0.05ms]
+(pass) HoldMode.findMatchingPattern > returns first matching pattern when multiple match [0.03ms]
+(pass) HoldMode.getEffectiveBlocklist > normal profile includes standard blocklist [0.56ms]
+(pass) HoldMode.getEffectiveBlocklist > strict profile adds interpreters and network tools [0.28ms]
+(pass) HoldMode.getEffectiveBlocklist > permissive profile removes touch and mkdir [0.16ms]
+(pass) HoldMode.ConfigSchema > provides defaults for missing fields [0.16ms]
+(pass) HoldMode.ConfigSchema > accepts valid profiles [0.33ms]
+(pass) HoldMode.ConfigSchema > rejects invalid profiles [0.49ms]
+(pass) HoldMode.isToolAllowedInHold > returns false by default for unconfigured tools [43.67ms]
+(pass) HoldMode.isToolAllowedInHold > returns true when tools.edit: true is set [48.70ms]
+(pass) HoldMode.isToolAllowedInHold > returns false when tools.edit: false is set [46.03ms]
+(pass) HoldMode.isToolAllowedInHold > works for all four tool types [52.83ms]
+(pass) HoldMode.isToolAllowedInHold > handles mixed tool settings [45.82ms]
+(pass) HoldMode.checkCommand > always_block patterns block in hold mode [45.67ms]
+(pass) HoldMode.checkCommand > always_block patterns block in release mode [40.90ms]
+(pass) HoldMode.checkCommand > hold_allow patterns bypass blocklist in hold mode [45.70ms]
+(pass) HoldMode.checkCommand > hold_allow does NOT bypass always_block [47.48ms]
+333 |
+334 |   test("release_confirm returns requiresConfirmation: true in release mode", async () => {
+335 |     await withTempConfig({ release_confirm: ["confirm-cmd"] }, async () => {
+336 |       const result = await HoldMode.checkCommand("confirm-cmd --arg", { holdMode: false })
+337 |       expect(result.blocked).toBe(false)
+338 |       expect(result.requiresConfirmation).toBe(true)
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/app/packages/agent-core/test/config/hold-mode.test.ts:338:43)
+(fail) HoldMode.checkCommand > release_confirm returns requiresConfirmation: true in release mode [47.73ms]
+(pass) HoldMode.checkCommand > release_confirm does NOT trigger in hold mode [49.26ms]
+(pass) HoldMode.checkCommand > commands not matching any pattern are allowed [48.79ms]
+(pass) HoldMode.checkCommand > wildcard patterns work in always_block [47.66ms]
+(pass) HoldMode.checkCommand > wildcard patterns work in hold_allow [46.16ms]
+376 |
+377 |   test("wildcard patterns work in release_confirm", async () => {
+378 |     await withTempConfig({ release_confirm: ["deploy*"] }, async () => {
+379 |       const result = await HoldMode.checkCommand("deploy-production", { holdMode: false })
+380 |       expect(result.blocked).toBe(false)
+381 |       expect(result.requiresConfirmation).toBe(true)
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/app/packages/agent-core/test/config/hold-mode.test.ts:381:43)
+(fail) HoldMode.checkCommand > wildcard patterns work in release_confirm [50.43ms]
+(pass) HoldMode.checkCommand > case insensitivity works for always_block [47.15ms]
+(pass) HoldMode.checkCommand > case insensitivity works for hold_allow [48.69ms]
+398 |   })
+399 |
+400 |   test("case insensitivity works for release_confirm", async () => {
+401 |     await withTempConfig({ release_confirm: ["Confirm-Cmd"] }, async () => {
+402 |       const result = await HoldMode.checkCommand("confirm-cmd", { holdMode: false })
+403 |       expect(result.requiresConfirmation).toBe(true)
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/app/packages/agent-core/test/config/hold-mode.test.ts:403:43)
+(fail) HoldMode.checkCommand > case insensitivity works for release_confirm [48.07ms]
+(pass) HoldMode.checkCommand edge cases > empty command string is allowed [45.64ms]
+(pass) HoldMode.checkCommand edge cases > command with only whitespace is allowed [48.54ms]
+(pass) HoldMode.checkCommand edge cases > command with shell metacharacters is checked correctly [37.53ms]
+(pass) HoldMode.checkCommand edge cases > command with pipes is checked on first command only [43.71ms]
+(pass) HoldMode.checkCommand edge cases > command with semicolons is not split - pattern needs exact match or space after [39.64ms]
+(pass) HoldMode.checkCommand edge cases > command with leading whitespace is trimmed [41.80ms]
+(pass) HoldMode.checkCommand edge cases > multiple patterns in always_block all work [51.42ms]
+(pass) HoldMode.checkCommand edge cases > order of precedence: always_block checked before hold_allow [43.79ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions bypasses always_block in hold mode [35.06ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions bypasses always_block in release mode [46.58ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions bypasses release_confirm in release mode [46.78ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows tools in hold mode [0.23ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows write in hold mode [0.12ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows apply_patch in hold mode [0.15ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions allows todowrite in hold mode [0.09ms]
+1 | import { AsyncLocalStorage } from "async_hooks"
+2 |
+3 | export namespace Context {
+4 |   export class NotFound extends Error {
+5 |     constructor(public override readonly name: string) {
+6 |       super(`No context found for ${name}`)
+          ^
+instance: No context found for instance
+      at new NotFound (/app/packages/agent-core/src/util/context.ts:6:7)
+      at use (/app/packages/agent-core/src/util/context.ts:16:17)
+      at directory (/app/packages/agent-core/src/project/instance.ts:43:20)
+      at projectConfigPath (/app/packages/agent-core/src/config/hold-mode.ts:64:22)
+      at load (/app/packages/agent-core/src/config/hold-mode.ts:137:46)
+(fail) HoldMode.skipPermissions bypass > skipPermissions false still respects hold mode restrictions [0.34ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions false still respects hold mode command blocks [46.06ms]
+(pass) HoldMode.skipPermissions bypass > skipPermissions true still blocks always_block when holdMode is false [42.53ms]
+
+test/config/markdown.test.ts:
+(pass) ConfigMarkdown: normal template > should extract exactly 12 file references [0.06ms]
+(pass) ConfigMarkdown: normal template > should extract valid/path/to/a/file [0.06ms]
+(pass) ConfigMarkdown: normal template > should extract another-valid/path/to/a/file [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract paths ignoring comma after [0.05ms]
+(pass) ConfigMarkdown: normal template > should extract a path with a file extension and comma after [0.04ms]
+(pass) ConfigMarkdown: normal template > should extract a path with multiple dots and comma after [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract hidden directory [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract hidden file [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract a file ignoring period at end of sentence [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract an absolute path with an extension [0.04ms]
+(pass) ConfigMarkdown: normal template > should extract an absolute path without an extension [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract an absolute path in home directory [0.03ms]
+(pass) ConfigMarkdown: normal template > should extract an absolute path under home directory [0.04ms]
+(pass) ConfigMarkdown: normal template > should not match when preceded by backtick [0.14ms]
+(pass) ConfigMarkdown: normal template > should not match email addresses [0.08ms]
+(pass) ConfigMarkdown: frontmatter parsing > should parse without throwing [0.04ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract description field [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract occupation field with colon in value [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract title field with single quotes [0.02ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract name field with embedded quotes [0.05ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract family field with embedded single quotes [0.05ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract multiline summary field [0.04ms]
+(pass) ConfigMarkdown: frontmatter parsing > should not include commented fields in data [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract URL with port [0.04ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract time with colons [0.05ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract value with multiple colons [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should preserve already double-quoted values with colons [0.02ms]
+(pass) ConfigMarkdown: frontmatter parsing > should preserve already single-quoted values with colons [0.02ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract value with quotes and colons mixed [0.04ms]
+(pass) ConfigMarkdown: frontmatter parsing > should handle empty values [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should handle dollar sign replacement patterns literally [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should not parse fake yaml from content [0.03ms]
+(pass) ConfigMarkdown: frontmatter parsing > should extract content after frontmatter without modification [0.04ms]
+(pass) ConfigMarkdown: frontmatter parsing w/ empty frontmatter > should parse without throwing [0.07ms]
+(pass) ConfigMarkdown: frontmatter parsing w/ no frontmatter > should parse without throwing [0.04ms]
+(pass) ConfigMarkdown: frontmatter parsing w/ Markdown header > should parse and match [0.06ms]
+(pass) ConfigMarkdown: frontmatter has weird model id > should parse and match [0.08ms]
+
+test/plugin/codex.test.ts:
+(pass) plugin.codex > parseJwtClaims > parses valid JWT with claims [0.35ms]
+(pass) plugin.codex > parseJwtClaims > returns undefined for JWT with less than 3 parts [0.13ms]
+(pass) plugin.codex > parseJwtClaims > returns undefined for invalid base64 [0.14ms]
+(pass) plugin.codex > parseJwtClaims > returns undefined for invalid JSON payload [0.10ms]
+(pass) plugin.codex > extractAccountIdFromClaims > extracts chatgpt_account_id from root [0.10ms]
+(pass) plugin.codex > extractAccountIdFromClaims > extracts chatgpt_account_id from nested https://api.openai.com/auth [0.05ms]
+(pass) plugin.codex > extractAccountIdFromClaims > prefers root over nested [0.06ms]
+(pass) plugin.codex > extractAccountIdFromClaims > extracts from organizations array as fallback [0.05ms]
+(pass) plugin.codex > extractAccountIdFromClaims > returns undefined when no accountId found [0.04ms]
+(pass) plugin.codex > extractAccountId > extracts from id_token first [0.20ms]
+(pass) plugin.codex > extractAccountId > falls back to access_token when id_token has no accountId [0.14ms]
+(pass) plugin.codex > extractAccountId > returns undefined when no tokens have accountId [0.09ms]
+(pass) plugin.codex > extractAccountId > handles missing id_token [0.08ms]
+
+test/skill/skill.test.ts:
+(pass) discovers skills from .agent-core/skill/ directory [568.57ms]
+(pass) discovers multiple skills from .agent-core/skill/ directory [612.75ms]
+(pass) skips skills with missing frontmatter [575.58ms]
+139 |
+140 |   await Instance.provide({
+141 |     directory: tmp.path,
+142 |     fn: async () => {
+143 |       const skills = await Skill.all()
+144 |       expect(skills.length).toBe(1)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/app/packages/agent-core/test/skill/skill.test.ts:144:29)
+(fail) discovers skills from .claude/skills/ directory [46.83ms]
+159 |     await createGlobalSkill(tmp.path)
+160 |     await Instance.provide({
+161 |       directory: tmp.path,
+162 |       fn: async () => {
+163 |         const skills = await Skill.all()
+164 |         expect(skills.length).toBe(1)
+                                    ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/app/packages/agent-core/test/skill/skill.test.ts:164:31)
+(fail) discovers global skills from ~/.claude/skills/ directory [53.33ms]
+(pass) returns empty array when no skills exist [45.64ms]
+
+test/auth/auth.test.ts:
+(pass) Auth.isExpiringSoon > returns false for non-oauth auth [1.10ms]
+(pass) Auth.isExpiringSoon > returns false for oauth token not expiring soon [2.70ms]
+(pass) Auth.isExpiringSoon > returns true for oauth token expiring within buffer (10 min) [0.18ms]
+(pass) Auth.isExpiringSoon > returns true for already expired token [0.06ms]
+(pass) Auth.isExpired > returns false for non-oauth auth [0.12ms]
+(pass) Auth.isExpired > returns false for valid oauth token [0.05ms]
+(pass) Auth.isExpired > returns true for expired oauth token [0.04ms]
+(pass) Auth.isExpired > returns false for token expiring soon but not yet expired [0.07ms]
+(pass) Auth file operations > Auth.all > returns empty object when auth file does not exist [0.56ms]
+(pass) Auth file operations > Auth.all > returns empty object when auth file is invalid JSON [0.86ms]
+(pass) Auth file operations > Auth.all > parses valid oauth entries [2.34ms]
+(pass) Auth file operations > Auth.all > parses valid api entries [2.41ms]
+(pass) Auth file operations > Auth.all > parses valid wellknown entries [5.35ms]
+(pass) Auth file operations > Auth.all > skips invalid entries [1.32ms]
+(pass) Auth file operations > Auth.all > preserves extra fields on oauth (passthrough) [1.10ms]
+(pass) Auth file operations > Auth.get > returns undefined for non-existent provider [0.62ms]
+(pass) Auth file operations > Auth.get > returns auth info for existing provider [1.14ms]
+(pass) Auth file operations > Auth.set > creates auth file if it does not exist [1.33ms]
+(pass) Auth file operations > Auth.set > adds entry to existing auth file [5.24ms]
+(pass) Auth file operations > Auth.set > overwrites existing entry [2.23ms]
+(pass) Auth file operations > Auth.set > sets correct file permissions (0o600) [1.21ms]
+(pass) Auth file operations > Auth.remove > removes existing entry [1.87ms]
+(pass) Auth file operations > Auth.remove > does nothing for non-existent entry [1.59ms]
+(pass) Auth.status > returns empty object when no auth entries [0.72ms]
+(pass) Auth.status > returns valid=true for non-expired oauth token [1.35ms]
+(pass) Auth.status > returns valid=false for expired oauth token [1.28ms]
+(pass) Auth.status > returns expiringSoon=true for token expiring within 10 min [0.96ms]
+(pass) Auth.status > returns valid=true with null expiresIn for api auth [1.06ms]
+(pass) Auth.status > handles multiple providers [1.19ms]
+(pass) Auth.refreshToken > returns false for non-existent provider [0.83ms]
+(pass) Auth.refreshToken > returns false for api auth (non-oauth) [0.81ms]
+(pass) Auth.refreshToken > returns false for provider without refresh config [4.46ms]
+(pass) Auth.refreshAllExpiring > returns empty arrays when no tokens are expiring [1.62ms]
+(pass) Auth.refreshAllExpiring > returns empty arrays when no auth entries [0.55ms]
+(pass) Auth.refreshAllExpiring > skips api auth entries [1.15ms]
+(pass) Auth.refreshAllExpiring > skips providers without refresh config [1.17ms]
+(pass) Auth schema validation > Oauth schema validates correctly [0.21ms]
+(pass) Auth schema validation > Oauth schema allows extra fields [0.19ms]
+(pass) Auth schema validation > Oauth schema rejects missing required fields [0.47ms]
+(pass) Auth schema validation > Api schema validates correctly [0.11ms]
+(pass) Auth schema validation > Api schema rejects missing key [0.25ms]
+(pass) Auth schema validation > WellKnown schema validates correctly [0.08ms]
+(pass) Auth schema validation > Info union discriminates correctly [0.20ms]
+(pass) Auth schema validation > Info union rejects unknown type [0.20ms]
+
+test/snapshot/snapshot.test.ts:
+(pass) tracks deleted files correctly [96.42ms]
+(pass) revert should remove new files [108.29ms]
+(pass) revert in subdirectory [114.32ms]
+(pass) multiple file operations [129.92ms]
+(pass) empty directory handling [92.85ms]
+(pass) binary file handling [104.83ms]
+(pass) symlink handling [110.33ms]
+(pass) large file handling [132.40ms]
+(pass) nested directory revert [119.37ms]
+(pass) special characters in filenames [105.32ms]
+(pass) revert with empty patches [57.59ms]
+(pass) patch with invalid hash [93.66ms]
+(pass) revert non-existent file [97.71ms]
+(pass) unicode filenames [98.21ms]
+(pass) very long filenames [108.75ms]
+(pass) hidden files [94.10ms]
+(pass) nested symlinks [105.91ms]
+(pass) file permissions and ownership changes [111.13ms]
+(pass) circular symlinks [115.36ms]
+(pass) gitignore changes [103.74ms]
+(pass) concurrent file operations during patch [109.98ms]
+(pass) snapshot state isolation between projects [211.67ms]
+(pass) patch detects changes in secondary worktree [174.80ms]
+(pass) revert only removes files in invoking worktree [167.76ms]
+(pass) diff reports worktree-only/shared edits and ignores primary-only [156.12ms]
+(pass) track with no changes returns same hash [111.93ms]
+(pass) diff function with various changes [108.45ms]
+(pass) restore function [100.42ms]
+(pass) revert should not delete files that existed but were deleted in snapshot [128.41ms]
+(pass) revert preserves file that existed in snapshot when deleted then recreated [116.62ms]
+710 |       const diffs = await Snapshot.diffFull(before!, after!)
+711 |       expect(diffs.length).toBe(1)
+712 |
+713 |       const newFileDiff = diffs[0]
+714 |       expect(newFileDiff.file).toBe("new.txt")
+715 |       expect(newFileDiff.before).toBe("")
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: ""
+Received: "[DEBUG ERROR] git show 6e496b4cc29ea894a91f3c4d28c1f8d9555555ae:new.txt failed: fatal: path 'new.txt' does not exist in '6e496b4cc29ea894a91f3c4d28c1f8d9555555ae'\n"
+
+      at <anonymous> (/app/packages/agent-core/test/snapshot/snapshot.test.ts:715:34)
+(fail) diffFull with new file additions [119.02ms]
+(pass) diffFull with file modifications [113.97ms]
+763 |       expect(diffs.length).toBe(1)
+764 |
+765 |       const removedFileDiff = diffs[0]
+766 |       expect(removedFileDiff.file).toBe("a.txt")
+767 |       expect(removedFileDiff.before).toBe(tmp.extra.aContent)
+768 |       expect(removedFileDiff.after).toBe("")
+                                          ^
+error: expect(received).toBe(expected)
+
+Expected: ""
+Received: "[DEBUG ERROR] git show ca543a60ac87fa7210bacb9e545b2b1259dadf78:a.txt failed: fatal: path 'a.txt' does not exist in 'ca543a60ac87fa7210bacb9e545b2b1259dadf78'\n"
+
+      at <anonymous> (/app/packages/agent-core/test/snapshot/snapshot.test.ts:768:37)
+(fail) diffFull with file deletions [122.85ms]
+788 |       const diffs = await Snapshot.diffFull(before!, after!)
+789 |       expect(diffs.length).toBe(1)
+790 |
+791 |       const multiDiff = diffs[0]
+792 |       expect(multiDiff.file).toBe("multi.txt")
+793 |       expect(multiDiff.before).toBe("")
+                                     ^
+error: expect(received).toBe(expected)
+
+Expected: ""
+Received: "[DEBUG ERROR] git show 10e7cb574be4287aecc15e4e2871a080dadd1c79:multi.txt failed: fatal: path 'multi.txt' does not exist in '10e7cb574be4287aecc15e4e2871a080dadd1c79'\n"
+
+      at <anonymous> (/app/packages/agent-core/test/snapshot/snapshot.test.ts:793:32)
+(fail) diffFull with multiple line additions [105.62ms]
+815 |       const diffs = await Snapshot.diffFull(before!, after!)
+816 |       expect(diffs.length).toBe(2)
+817 |
+818 |       const addedFileDiff = diffs.find((d) => d.file === "added.txt")
+819 |       expect(addedFileDiff).toBeDefined()
+820 |       expect(addedFileDiff!.before).toBe("")
+                                          ^
+error: expect(received).toBe(expected)
+
+Expected: ""
+Received: "[DEBUG ERROR] git show a6338dc2b14f8b35373ee951033920e34f1b3b3b:added.txt failed: fatal: path 'added.txt' does not exist in 'a6338dc2b14f8b35373ee951033920e34f1b3b3b'\n"
+
+      at <anonymous> (/app/packages/agent-core/test/snapshot/snapshot.test.ts:820:37)
+(fail) diffFull with addition and deletion [129.80ms]
+(pass) diffFull with multiple additions and deletions [153.23ms]
+(pass) diffFull with no changes [109.52ms]
+(pass) diffFull with binary file changes [100.94ms]
+(pass) diffFull with whitespace changes [118.73ms]
+
+test/agent/agent.test.ts:
+(pass) agent config > returns default persona agents when no config [14.80ms]
+(pass) agent config > zee agent has correct default properties [16.23ms]
+(pass) agent config > zee agent starts the calendar mcp server [24.17ms]
+(pass) agent config > stanley agent has correct default properties [15.45ms]
+(pass) agent config > johny agent has correct default properties [15.57ms]
+(pass) agent config > compaction agent denies all permissions [16.92ms]
+(pass) agent config > custom agent from config creates new agent [18.82ms]
+(pass) agent config > custom agent config overrides native agent properties [17.93ms]
+(pass) agent config > agent disable removes agent from list [19.10ms]
+(pass) agent config > agent permission config merges with defaults [20.87ms]
+(pass) agent config > global permission config applies to all agents [16.34ms]
+(pass) agent config > agent steps/maxSteps config sets steps property [27.87ms]
+(pass) agent config > agent mode can be overridden [17.94ms]
+(pass) agent config > agent name can be overridden [21.43ms]
+(pass) agent config > agent prompt can be set from config [17.02ms]
+(pass) agent config > unknown agent properties are placed into options [10.78ms]
+(pass) agent config > agent options merge correctly [25.83ms]
+(pass) agent config > multiple custom agents can be defined [19.09ms]
+(pass) agent config > Agent.get returns undefined for non-existent agent [14.54ms]
+(pass) agent config > default permission includes doom_loop and external_directory as ask [17.71ms]
+(pass) agent config > webfetch is allowed by default [14.31ms]
+(pass) agent config > legacy tools config converts to permissions [17.30ms]
+(pass) agent config > legacy tools config maps write/edit/patch/multiedit to edit permission [26.75ms]
+(pass) agent config > Truncate.DIR is allowed when user denies external_directory globally [21.26ms]
+(pass) agent config > Truncate.DIR is allowed when user denies external_directory per-agent [30.51ms]
+(pass) agent config > explicit Truncate.DIR deny is respected [35.04ms]
+514 |   await using tmp = await tmpdir()
+515 |   await Instance.provide({
+516 |     directory: tmp.path,
+517 |     fn: async () => {
+518 |       const agent = await Agent.defaultAgent()
+519 |       expect(agent).toBe("stanley")
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: "stanley"
+Received: "zee"
+
+      at <anonymous> (/app/packages/agent-core/test/agent/agent.test.ts:519:21)
+(fail) agent config > defaultAgent returns stanley when no default_agent config [22.09ms]
+(pass) agent config > defaultAgent respects default_agent config set to zee [40.64ms]
+320 |     if (agent.hidden === true) throw new Error(`default agent "${defaultAgentName}" is hidden`)
+321 |
+322 |     // Persona is REQUIRED - agent name must map to zee, stanley, or johny
+323 |     const personaNames = ["zee", "stanley", "johny"]
+324 |     if (!personaNames.includes(agent.name)) {
+325 |       throw new Error(`default agent "${agent.name}" must be a persona (zee, stanley, or johny)`)
+                  ^
+error: default agent "my_custom" must be a persona (zee, stanley, or johny)
+      at defaultAgent (/app/packages/agent-core/src/agent/agent.ts:325:13)
+(fail) agent config > defaultAgent respects default_agent config set to custom agent with mode all [35.15ms]
+(pass) agent config > defaultAgent throws when default_agent points to subagent [35.33ms]
+(pass) agent config > defaultAgent throws when default_agent points to hidden agent [18.06ms]
+(pass) agent config > defaultAgent throws when default_agent points to non-existent agent [18.49ms]
+(pass) agent config > defaultAgent returns zee when stanley is disabled and default_agent not set [46.25ms]
+631 |     },
+632 |   })
+633 |   await Instance.provide({
+634 |     directory: tmp.path,
+635 |     fn: async () => {
+636 |       await expect(Agent.defaultAgent()).rejects.toThrow("no primary visible agent found")
+                                                       ^
+error: expect(received).toThrow(expected)
+
+Expected substring: "no primary visible agent found"
+Received message: "default agent \"zee\" not found"
+
+      at <anonymous> (/app/packages/agent-core/test/agent/agent.test.ts:636:50)
+      at fn (/app/packages/agent-core/test/agent/agent.test.ts:635:21)
+      at <anonymous> (/app/packages/agent-core/src/project/instance.ts:38:33)
+      at run (node:async_hooks:62:22)
+(fail) agent config > defaultAgent throws when all primary agents are disabled [17.73ms]
+
+test/project/project.test.ts:
+(pass) Project.fromDirectory > should handle git repository with no commits [32.63ms]
+(pass) Project.fromDirectory > should handle git repository with commits [97.04ms]
+(pass) Project.fromDirectory with worktrees > should set worktree to root when called from root [70.35ms]
+(pass) Project.fromDirectory with worktrees > should set worktree to root when called from a worktree [132.43ms]
+(pass) Project.fromDirectory with worktrees > should accumulate multiple worktrees in sandboxes [163.58ms]
+(pass) Project.discover > should discover favicon.png in root [74.23ms]
+(pass) Project.discover > should not discover non-image files [64.93ms]
+
+test/ide/ide.test.ts:
+(pass) ide > should detect Visual Studio Code [0.33ms]
+(pass) ide > should detect Visual Studio Code Insiders [0.27ms]
+(pass) ide > should detect Cursor [0.11ms]
+(pass) ide > should detect VSCodium [0.12ms]
+(pass) ide > should detect Windsurf [0.14ms]
+(pass) ide > should return unknown when TERM_PROGRAM is not vscode [0.18ms]
+(pass) ide > should return unknown when GIT_ASKPASS does not contain IDE name [0.10ms]
+(pass) ide > should recognize vscode-insiders OPENCODE_CALLER [0.13ms]
+(pass) ide > should recognize vscode OPENCODE_CALLER [0.07ms]
+(pass) ide > should return false for unknown OPENCODE_CALLER [0.08ms]
+
+test/util/lock.test.ts:
+(pass) util.lock > writer exclusivity: blocks reads and other writes while held [2.73ms]
+
+test/util/filesystem.test.ts:
+(pass) util.filesystem > exists() is true for files and directories [7.52ms]
+(pass) util.filesystem > isDir() is true only for directories [3.14ms]
+(pass) util.filesystem > findFirstUp() returns the closest match [4.18ms]
+(pass) util.filesystem > findFirstUp() returns undefined if not found [7.82ms]
+
+test/util/timeout.test.ts:
+(pass) util.timeout > should resolve when promise completes before timeout [12.07ms]
+(pass) util.timeout > should reject when promise exceeds timeout [52.62ms]
+
+test/util/path.test.ts:
+(pass) path utils > getFilename > extracts filename from path [6.04ms]
+(pass) path utils > getFilename > handles trailing slashes [0.25ms]
+(pass) path utils > getFilename > handles undefined [0.10ms]
+(pass) path utils > getDirectory > extracts directory from path [0.38ms]
+(pass) path utils > getDirectory > normalizes separators to forward slashes [0.09ms]
+(pass) path utils > getDirectory > handles undefined [0.09ms]
+(pass) path utils > getFileExtension > extracts extension [0.16ms]
+(pass) path utils > getFileExtension > returns full string if no extension [0.08ms]
+(pass) path utils > getFileExtension > handles empty extension [0.10ms]
+(pass) path utils > getFileExtension > handles undefined [0.07ms]
+
+test/util/iife.test.ts:
+(pass) util.iife > should execute function immediately and return result [0.34ms]
+(pass) util.iife > should work with async functions [0.36ms]
+(pass) util.iife > should handle functions with no return value [0.18ms]
+
+test/util/lazy.test.ts:
+(pass) util.lazy > should call function only once [3.81ms]
+(pass) util.lazy > should preserve the same reference [0.30ms]
+(pass) util.lazy > should work with different return types [0.26ms]
+
+test/util/format.test.ts:
+(pass) util.format > formatDuration > returns empty string for zero or negative values [5.51ms]
+(pass) util.format > formatDuration > formats seconds under a minute [0.24ms]
+(pass) util.format > formatDuration > formats minutes under an hour [0.15ms]
+(pass) util.format > formatDuration > formats hours under a day [0.11ms]
+(pass) util.format > formatDuration > formats days under a week [0.12ms]
+(pass) util.format > formatDuration > formats weeks [0.09ms]
+(pass) util.format > formatDuration > handles boundary values correctly [0.16ms]
+
+test/util/wildcard.test.ts:
+(pass) match handles glob tokens [0.35ms]
+(pass) match with trailing space+wildcard matches command with or without args [0.41ms]
+(pass) all picks the most specific pattern [0.97ms]
+(pass) allStructured matches command sequences [1.62ms]
+(pass) allStructured prioritizes flag-specific patterns [0.83ms]
+(pass) allStructured handles sed flags [0.74ms]
+
+test/acp/event-subscription.test.ts:
+ENOENT: no such file or directory, open '/tmp/opencode-test-data-7343/home/tmp/opencode-test-b5ba9a50-df94-4945-82a1-536c6adf29ff '
+    path: "/tmp/opencode-test-data-7343/home/tmp/opencode-test-b5ba9a50-df94-4945-82a1-536c6adf29ff\u0000",
+ syscall: "open",
+   errno: -2,
+    code: "ENOENT"
+
+(fail) acp.agent event subscription > routes message.part.updated by the event sessionID (no cross-session pollution) [22.14ms]
+(pass) acp.agent event subscription > keeps concurrent sessions isolated when message.part.updated events are interleaved [51.94ms]
+(pass) acp.agent event subscription > does not create additional event subscriptions on repeated loadSession() [44.87ms]
+(pass) acp.agent event subscription > permission.asked events are handled and replied [44.27ms]
+(pass) acp.agent event subscription > permission prompt on session A does not block message updates for session B [81.46ms]
+
+test/format/formatter_perf.test.ts:
+(pass) Formatter Performance > prettier.enabled() checks [9.54ms]
+(pass) Formatter Performance > oxfmt.enabled() checks [3.31ms]
+(pass) Formatter Performance > ruff.enabled() checks [2.76ms]
+
+test/security/external-content.test.ts:
+(pass) scanForInjection > detects instruction override attempts [1.19ms]
+(pass) scanForInjection > detects role switching attempts [0.24ms]
+(pass) scanForInjection > detects jailbreak patterns [0.20ms]
+(pass) scanForInjection > returns low risk for normal content [0.12ms]
+(pass) scanForInjection > assigns high risk for multiple patterns [0.12ms]
+(pass) wrapExternalContent > wraps content with boundaries [0.56ms]
+(pass) wrapExternalContent > includes security notice by default [0.16ms]
+(pass) wrapExternalContent > detects and warns about suspicious patterns [0.14ms]
+(pass) wrapExternalContent > respects includeNotice option [0.11ms]
+(pass) wrapExternalContent > respects custom boundaries [0.13ms]
+(pass) stripInjectionMarkers > removes role markers [0.42ms]
+(pass) stripInjectionMarkers > removes chat ML markers [0.11ms]
+(pass) stripInjectionMarkers > removes hidden instruction markers [0.08ms]
+(pass) stripInjectionMarkers > preserves normal content [0.09ms]
+(pass) pre-configured handlers > wrapEmailContent uses email source [0.26ms]
+(pass) pre-configured handlers > wrapWebhookContent uses webhook source [0.21ms]
+
+test/security/env-sanitize.test.ts:
+(pass) containsShellMetacharacters > detects command substitution [0.13ms]
+(pass) containsShellMetacharacters > detects shell operators [0.12ms]
+(pass) containsShellMetacharacters > allows safe values [0.05ms]
+(pass) sanitizeEnvValue > removes shell metacharacters [0.14ms]
+(pass) isValidPathValue > accepts valid Unix paths [0.10ms]
+(pass) isValidPathValue > accepts valid Windows paths [0.05ms]
+(pass) isValidPathValue > rejects command injection [0.04ms]
+(pass) createSafeEnv > passes through safe environment [0.36ms]
+(pass) createSafeEnv > sanitizes dangerous PATH [0.11ms]
+(pass) createSafeEnv > prepends paths via internal variable [0.08ms]
+(pass) createSafeEnv > respects blocklist [0.16ms]
+(pass) createSafeEnv > respects allowlist [0.10ms]
+(pass) auditEnv > returns empty for safe env [0.15ms]
+(pass) auditEnv > warns about command substitution [0.11ms]
+(pass) auditEnv > warns about shell metacharacters [0.07ms]
+
+test/security/timing-safe.test.ts:
+(pass) timingSafeEqual > returns true for equal strings [0.20ms]
+(pass) timingSafeEqual > returns false for different strings [0.13ms]
+(pass) timingSafeEqual > handles unicode [0.08ms]
+(pass) timingSafeEqual > handles different length strings [0.05ms]
+(pass) timingSafeEqualBuffer > returns true for equal buffers [0.14ms]
+(pass) timingSafeEqualBuffer > returns false for different buffers [0.09ms]
+(pass) timingSafeEqualBuffer > handles different length buffers [0.05ms]
+(pass) timingSafeEqualHex > compares hex strings case-insensitively [0.21ms]
+(pass) timingSafeEqualHex > returns false for different hex strings [0.06ms]
+(pass) verifySignature > verifies matching signatures [0.16ms]
+(pass) verifySignature > verifies signatures without prefix [0.05ms]
+(pass) verifySignature > handles mixed prefix/no-prefix [0.05ms]
+(pass) verifySignature > returns false for wrong signatures [0.03ms]
+(pass) verifySignature > is case-insensitive for hex values [0.04ms]
+(pass) verifySha256Signature > verifies sha256 signatures [0.15ms]
+(pass) timing attack resistance > comparison time is relatively constant [11.53ms]
+
+test/security/proxy-ssrf.test.ts:
+(pass) Proxy SSRF Security > should block access to different origin via SSRF [46.55ms]
+(pass) Proxy SSRF Security > should allow access to valid paths [31.04ms]
+
+test/permission/arity.test.ts:
+(pass) arity 1 - unknown commands default to first token [0.52ms]
+(pass) arity 2 - two token commands [0.10ms]
+(pass) arity 3 - three token commands [0.06ms]
+(pass) longest match wins - nested prefixes [0.09ms]
+(pass) exact length matches [0.05ms]
+(pass) edge cases [0.05ms]
+
+test/permission/next.test.ts:
+(pass) fromConfig - string value becomes wildcard rule [3.73ms]
+(pass) fromConfig - object value converts to rules array [0.20ms]
+(pass) fromConfig - mixed string and object values [0.10ms]
+(pass) fromConfig - empty object [0.05ms]
+(pass) merge - simple concatenation [0.07ms]
+(pass) merge - adds new permission [0.06ms]
+(pass) merge - concatenates rules for same permission [0.05ms]
+(pass) merge - multiple rulesets [0.09ms]
+(pass) merge - empty ruleset does nothing [0.06ms]
+(pass) merge - preserves rule order [0.07ms]
+(pass) merge - config permission overrides default ask [0.20ms]
+(pass) merge - config ask overrides default allow [0.09ms]
+(pass) evaluate - exact pattern match [0.22ms]
+(pass) evaluate - wildcard pattern match [0.13ms]
+(pass) evaluate - last matching rule wins [0.11ms]
+(pass) evaluate - last matching rule wins (wildcard after specific) [0.07ms]
+(pass) evaluate - glob pattern match [0.10ms]
+(pass) evaluate - last matching glob wins [0.13ms]
+(pass) evaluate - order matters for specificity [0.09ms]
+(pass) evaluate - unknown permission returns ask [0.09ms]
+(pass) evaluate - empty ruleset returns ask [0.08ms]
+(pass) evaluate - no matching pattern returns ask [0.07ms]
+(pass) evaluate - empty rules array returns ask [0.05ms]
+(pass) evaluate - multiple matching patterns, last wins [0.10ms]
+(pass) evaluate - non-matching patterns are skipped [0.09ms]
+(pass) evaluate - exact match at end wins over earlier wildcard [0.11ms]
+(pass) evaluate - wildcard at end overrides earlier exact match [0.07ms]
+(pass) evaluate - wildcard permission matches any permission [0.06ms]
+(pass) evaluate - wildcard permission with specific pattern [0.06ms]
+(pass) evaluate - glob permission pattern [0.10ms]
+(pass) evaluate - specific permission and wildcard permission combined [0.12ms]
+(pass) evaluate - wildcard permission does not match when specific exists [0.13ms]
+(pass) evaluate - multiple matching permission patterns combine rules [0.15ms]
+(pass) evaluate - wildcard permission fallback for unknown tool [0.13ms]
+(pass) evaluate - permission patterns sorted by length regardless of object order [0.12ms]
+(pass) evaluate - merges multiple rulesets [0.10ms]
+(pass) disabled - returns empty set when all tools allowed [0.28ms]
+(pass) disabled - disables tool when denied [0.35ms]
+(pass) disabled - disables edit/write/multiedit/apply_patch when edit denied [0.27ms]
+(pass) disabled - does not disable when partially denied [0.19ms]
+(pass) disabled - does not disable when action is ask [0.26ms]
+(pass) disabled - does not disable when specific allow after wildcard deny [0.11ms]
+(pass) disabled - does not disable when wildcard allow after deny [0.11ms]
+(pass) disabled - disables multiple tools [0.31ms]
+(pass) disabled - wildcard permission denies all tools [0.12ms]
+(pass) disabled - specific allow overrides wildcard deny [0.12ms]
+(pass) ask - resolves immediately when action is allow [58.34ms]
+(pass) ask - throws RejectedError when action is deny [58.50ms]
+(pass) ask - returns pending promise when action is ask [55.93ms]
+
+# Unhandled error between tests
+-------------------------------
+ENOENT: no such file or directory, open '/tmp/opencode-test-data-7343/home/tmp/opencode-test-2b8f7040-d0d3-4ccd-82b7-208649d4db93 '
+    path: "/tmp/opencode-test-data-7343/home/tmp/opencode-test-2b8f7040-d0d3-4ccd-82b7-208649d4db93\u0000",
+ syscall: "open",
+   errno: -2,
+    code: "ENOENT"
+
+-------------------------------
+
+(pass) reply - once resolves the pending ask [69.53ms]
+(pass) reply - reject throws RejectedError [61.72ms]
+(pass) reply - always persists approval and resolves [63.10ms]
+(pass) reply - reject cancels all pending for same session [66.33ms]
+(pass) ask - checks all patterns and stops on first deny [64.52ms]
+(pass) ask - allows all patterns when all match allow rules [61.37ms]
+
+test/mcp/calendar-free-slots.test.ts:
+(pass) calendar_free_slots forwards working hours to findFreeSlots [4.96ms]
+
+test/mcp/headers.test.ts:
+(pass) headers are passed to transports when oauth is enabled (default) [883.21ms]
+(pass) headers are passed to transports when oauth is explicitly disabled [553.53ms]
+(pass) no requestInit when headers are not provided [524.07ms]
+
+test/mcp/oauth-browser.test.ts:
+(pass) BrowserOpenFailed event is published when open() throws [213.92ms]
+(pass) BrowserOpenFailed event is NOT published when open() succeeds [705.68ms]
+(pass) open() is called with the authorization URL [707.33ms]
+
+test/integration/model-capabilities.test.ts:
+(pass) Model Tool Calling > single tool call > model requests single tool call [4.38ms]
+(pass) Model Tool Calling > single tool call > streaming tool call emits correct events [2.33ms]
+(pass) Model Tool Calling > parallel tool calls > model requests multiple tools in parallel [0.39ms]
+(pass) Model Tool Calling > parallel tool calls > streaming parallel tools emits all tool-call events [0.73ms]
+(pass) Model Tool Calling > tool call with text > model provides text before tool call [0.41ms]
+(pass) Model Tool Calling > tool call with text > streaming emits text-delta before tool-call [0.66ms]
+(pass) Tool Continuation Logic > continue when only tool calls present [0.14ms]
+(pass) Tool Continuation Logic > continue when tool is last meaningful part [0.07ms]
+(pass) Tool Continuation Logic > do not continue when text follows tool (synthesis complete) [0.06ms]
+(pass) Tool Continuation Logic > ignore empty text after tool [0.04ms]
+(pass) Stream Stalling Detection > detects no stall when events arrive regularly [57.73ms]
+(pass) Stream Stalling Detection > checkForStall returns false when events are recent [0.72ms]
+(pass) Stream Stalling Detection > stall detection ignores completed streams [0.31ms]
+(pass) Stream Stalling Detection > stall detection ignores errored streams [0.33ms]
+(pass) Stream Stalling Detection > stream health report tracks event types [0.14ms]
+(pass) Stream Stalling Detection > default stall thresholds are configured [0.12ms]
+(pass) Long Context Handling > provider accepts large prompt arrays [0.99ms]
+(pass) Long Context Handling > streaming handles large responses [3.94ms]
+(pass) Long Context Handling > tracking provider records all calls [1.17ms]
+(pass) Error Handling and Recovery > provider throws on configured error rate [0.21ms]
+(pass) Error Handling and Recovery > handles auth errors [0.17ms]
+(pass) Error Handling and Recovery > handles rate limit errors [0.13ms]
+(pass) Error Handling and Recovery > handles server errors [0.15ms]
+(pass) Error Handling and Recovery > stream error propagates to reader [0.26ms]
+(pass) Response Matching > matches response by prompt substring [0.30ms]
+(pass) Response Matching > first matching response wins [0.16ms]
+(pass) Usage Tracking > reports token usage from response [0.18ms]
+(pass) Usage Tracking > streaming reports usage in finish event [0.71ms]
+(pass) Usage Tracking > defaults to standard usage when not specified [0.18ms]
+(pass) Provider Delay Simulation > respects configured delay [100.70ms]
+(pass) Provider Delay Simulation > streaming respects delay before starting [51.11ms]
+
+test/integration/stream-stalling.test.ts:
+(pass) Stream Stall Detection Thresholds > stall warning threshold is 15 seconds [2.97ms]
+(pass) Stream Stall Detection Thresholds > stall timeout threshold is 60 seconds [0.13ms]
+(pass) Stream Stall Detection Thresholds > extended thinking timeout defaults to 120 seconds [0.05ms]
+(pass) Stream Event Recording > tracks all event types correctly [0.21ms]
+(pass) Stream Event Recording > updates lastEventType correctly [0.12ms]
+(pass) Stream Event Recording > timing info updates on each event [50.75ms]
+(pass) Stream Completion States > successful completion sets status to completed [0.40ms]
+(pass) Stream Completion States > completion sets completedAt timestamp [0.22ms]
+(pass) Stream Completion States > failure sets status to error with message [0.14ms]
+(pass) Stream Completion States > failure extracts message from Error object [0.12ms]
+(pass) Stream Completion States > duration is calculated correctly on completion [100.97ms]
+(pass) Stall Detection Behavior > isStalled returns false when events are recent [0.48ms]
+(pass) Stall Detection Behavior > checkForStall returns false for completed streams [0.14ms]
+(pass) Stall Detection Behavior > checkForStall returns false for errored streams [0.18ms]
+(pass) Stall Detection Behavior > timeSinceLastEvent increases when no events received [100.66ms]
+(pass) Stream Health Registry > getOrCreate creates new monitor if none exists [0.24ms]
+(pass) Stream Health Registry > getOrCreate returns existing monitor for same session/message [0.16ms]
+(pass) Stream Health Registry > different sessions get different monitors [0.12ms]
+(pass) Stream Health Registry > get returns undefined for nonexistent monitor [0.10ms]
+(pass) Stream Health Registry > get returns existing monitor [0.09ms]
+(pass) Stream Health Registry > getActive returns streaming monitor for session [0.17ms]
+(pass) Stream Health Registry > getActive returns undefined if monitor is completed [0.18ms]
+(pass) Stream Health Registry > remove disposes and removes monitor [0.18ms]
+(pass) Stream Health Registry > clear removes all monitors [0.18ms]
+(pass) Concurrent Streams > multiple concurrent streams are tracked independently [0.17ms]
+(pass) Concurrent Streams > completing one stream does not affect others [0.19ms]
+(pass) Concurrent Streams > error on one stream does not affect others [0.28ms]
+(pass) Stream Health Report Structure > report contains all required fields [0.36ms]
+(pass) Stream Health Report Structure > report updates in real-time [51.55ms]
+(pass) Dispose Behavior > dispose is idempotent [0.22ms]
+(pass) Dispose Behavior > methods work after dispose but may not update [0.22ms]
+(pass) Events Per Second Calculation > calculates events per second correctly [101.46ms]
+(pass) Events Per Second Calculation > events per second is 0 with no events [0.15ms]
+
+test/integration/extended-thinking.test.ts:
+(pass) Anthropic Claude Extended Thinking > Claude Opus 4.5 via Anthropic gets thinking config [0.92ms]
+(pass) Anthropic Claude Extended Thinking > Claude Sonnet 4.5 via Anthropic gets thinking config [0.15ms]
+106 |     })
+107 |
+108 |     const variants = ProviderTransform.variants(model)
+109 |
+110 |     // High variant should have budgetTokens
+111 |     expect(variants.high.thinking).toEqual({
+                                         ^
+error: expect(received).toEqual(expected)
+
+  {
++   budgetTokens: 32000,
+-   budgetTokens: 16000,
+    type: "enabled",
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:111:36)
+(fail) Anthropic Claude Extended Thinking > Anthropic thinking variants use budgetTokens [0.35ms]
+136 |     })
+137 |
+138 |     const variants = ProviderTransform.variants(model)
+139 |     expect(Object.keys(variants)).toContain("high")
+140 |     expect(Object.keys(variants)).toContain("max")
+141 |     expect(variants.high).toEqual({
+                                ^
+error: expect(received).toEqual(expected)
+
+  {
+    thinkingConfig: {
+      includeThoughts: true,
++     thinkingBudget: 32000,
+-     thinkingBudget: 16000,
+    },
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:141:27)
+(fail) Google Gemini Extended Thinking > Gemini 2.5 models get thinkingConfig with budget [0.23ms]
+156 |         npm: "@ai-sdk/google",
+157 |       },
+158 |     })
+159 |
+160 |     const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
+161 |     expect(result.thinkingConfig).toEqual({
+                                        ^
+error: expect(received).toEqual(expected)
+
+  {
+    includeThoughts: true,
++   thinkingBudget: 16000,
+    thinkingLevel: "high",
+  }
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:161:35)
+(fail) Google Gemini Extended Thinking > Gemini 3 models get thinkingLevel [0.64ms]
+174 |         npm: "@ai-sdk/google",
+175 |       },
+176 |     })
+177 |
+178 |     const variants = ProviderTransform.variants(model)
+179 |     expect(Object.keys(variants)).toEqual(["low", "high"])
+                                        ^
+error: expect(received).toEqual(expected)
+
+  [
+    "low",
++   "medium",
+    "high"
+  ]
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:179:35)
+(fail) Google Gemini Extended Thinking > Gemini models get low/high thinkingLevel variants [0.26ms]
+(pass) OpenAI GPT Extended Thinking > GPT-5 models get reasoning effort variants [0.25ms]
+(pass) OpenAI GPT Extended Thinking > GPT-5 models after 2025-11-13 include 'none' effort [0.12ms]
+(pass) OpenAI GPT Extended Thinking > GPT-5 models after 2025-12-04 include 'xhigh' effort [0.09ms]
+(pass) OpenAI GPT Extended Thinking > GPT-5-pro returns reasoning effort variants [0.22ms]
+(pass) xAI Grok Extended Thinking (via openai-compatible) > Grok 3 models get reasoning effort variants via openai-compatible [0.14ms]
+(pass) xAI Grok Extended Thinking (via openai-compatible) > Grok 3 Mini gets low/high variants only [0.12ms]
+(pass) OpenRouter Extended Thinking > GPT models via OpenRouter get OPENAI_EFFORTS [0.11ms]
+(pass) OpenRouter Extended Thinking > Gemini 3 via OpenRouter gets OPENAI_EFFORTS [0.08ms]
+(pass) OpenRouter Extended Thinking > Grok 4 via OpenRouter returns empty [0.08ms]
+(pass) Non-Reasoning Models > Models without reasoning capability return empty variants [0.06ms]
+375 |         npm: "@ai-sdk/openai-compatible",
+376 |       },
+377 |     })
+378 |
+379 |     const variants = ProviderTransform.variants(model)
+380 |     expect(variants).toEqual({})
+                           ^
+error: expect(received).toEqual(expected)
+
++ {
++   high: {
++     reasoningEffort: "high",
++   },
++   low: {
++     reasoningEffort: "low",
++   },
++   medium: {
++     reasoningEffort: "medium",
++   },
++ }
+- {}
+
+- Expected  - 1
++ Received  + 11
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:380:22)
+(fail) Non-Reasoning Models > MiniMax models return empty variants [0.23ms]
+395 |           npm: "@ai-sdk/openai-compatible",
+396 |         },
+397 |       })
+398 |
+399 |       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
+400 |       expect(result.thinking).toEqual({
+                                    ^
+error: expect(received).toEqual(expected)
+
+Expected: [32m{
+  type: "enabled",
+  clear_thinking: false,
+}[0m
+Received: [31mundefined[0m
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:400:31)
+(fail) Persona Thinking Configs > Zee (GLM via ZhipuAI) > ZhipuAI provider gets preserved thinking mode [0.20ms]
+413 |           npm: "@ai-sdk/openai-compatible",
+414 |         },
+415 |       })
+416 |
+417 |       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
+418 |       expect(result.thinking).toEqual({
+                                    ^
+error: expect(received).toEqual(expected)
+
+  {
++   budget_tokens: 16000,
+-   clear_thinking: false,
+    type: "enabled",
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/app/packages/agent-core/test/integration/extended-thinking.test.ts:418:31)
+(fail) Persona Thinking Configs > Zee (GLM via ZhipuAI) > Z.AI Coding Plan provider gets preserved thinking mode [0.18ms]
+(pass) Persona Thinking Configs > Johny (Google Antigravity) > Google provider gets thinkingConfig [0.09ms]
+
+test/server/gateway-route.test.ts:
+(pass) gateway routes > POST /gateway/whatsapp/send uses Zee gateway RPC [34.29ms]
+(pass) gateway routes > POST /gateway/telegram/send uses Zee gateway RPC [25.02ms]
+
+test/server/session-list.test.ts:
+(pass) session.list > filters by directory [45.28ms]
+
+test/server/session-select.test.ts:
+(pass) tui.selectSession endpoint > should return 200 when called with valid session [33.84ms]
+(pass) tui.selectSession endpoint > should return 404 when session does not exist [25.71ms]
+(pass) tui.selectSession endpoint > should return 400 when session ID format is invalid [22.34ms]
+
+test/server/auth-route.test.ts:
+(pass) auth.set endpoint > accepts Auth.Info payload and updates credentials at runtime [8.37ms]
+(pass) auth.set endpoint > accepts legacy api_key payload [2.98ms]
+
+test/server/agent-route.test.ts:
+(pass) app.agents endpoint > returns agents with instance context from request [69.98ms]
+
+test/server/model-route.test.ts:
+(pass) model route > skips defaults for providers without models [21.20ms]
+(pass) model route > filters blocked providers from provider list [17.46ms]
+(pass) model route > auth-only provider appears in list after credential is set [20.77ms]
+
+test/server/error-leak.test.ts:
+DEBUG RESPONSE BODY: {
+  "name": "UnknownError",
+  "data": {
+    "message": "Simulated unexpected error"
+  }
+}
+(pass) Error handling > Does not leak stack trace on 500 error [27.04ms]
+
+test/wiring/phase0.test.ts:
+(pass) wiring.phase0 > johny tools >  Johny domain exports expected tools [3.95ms]
+(pass) wiring.phase0 > johny tools >  Johny tools are registered via MCP domain [0.98ms]
+(pass) wiring.phase0 > zee tools >  Zee domain exports WhatsApp and Splitwise tools [1.31ms]
+(pass) wiring.phase0 > zee tools >  Zee full tools are registered via MCP domain [0.60ms]
+(pass) wiring.phase0 > memory reranker >  Memory search accepts rerank option [0.66ms]
+(pass) wiring.phase0 > memory reranker >  Reranker implementation exists [0.65ms]
+(pass) wiring.phase0 > retry safety >  getErrorMessage does not use JSON.stringify [0.54ms]
+(pass) wiring.phase0 > retry safety >  Retry module uses safe error extraction [1.07ms]
+(pass) wiring.phase0 > retry consolidation >  util/retry.ts is deleted (no duplicate implementation) [0.85ms]
+(pass) wiring.phase0 > retry consolidation >  No files import from util/retry.ts [106.40ms]
+(pass) wiring.phase0 > retry-after parsing >  parseRetryAfterHeader handles seconds format [0.60ms]
+(pass) wiring.phase0 > retry-after parsing >  Retry module handles provider-specific errors [0.61ms]
+(pass) wiring.phase0 > retry performance >  uses node:timers/promises for sleep [0.41ms]
+(pass) wiring.phase0 > tool registry wiring >  Tool registry can load custom tools [3021.06ms]
+
+test/session/processor-timeout.test.ts:
+(pass) SessionProcessor > errors if LLM stream never starts [69.40ms]
+
+test/session/compaction.test.ts:
+(pass) session.compaction.isOverflow > returns true when token count exceeds usable context [15.88ms]
+(pass) session.compaction.isOverflow > returns false when token count within usable context [15.37ms]
+(pass) session.compaction.isOverflow > includes cache.read in token count [15.67ms]
+(pass) session.compaction.isOverflow > respects input limit for input caps [15.86ms]
+(pass) session.compaction.isOverflow > returns false when input/output are within input caps [24.29ms]
+(pass) session.compaction.isOverflow > returns false when output within limit with input caps [13.29ms]
+(pass) session.compaction.isOverflow > returns false when model context limit is 0 [7.06ms]
+(pass) session.compaction.isOverflow > returns false when compaction.auto is disabled [18.12ms]
+(pass) util.token.estimate > estimates tokens from text (4 chars per token) [0.29ms]
+(pass) util.token.estimate > estimates tokens from larger text [0.10ms]
+(pass) util.token.estimate > returns 0 for empty string [0.06ms]
+(pass) session.getUsage > normalizes standard usage to token format [3.44ms]
+(pass) session.getUsage > extracts cached tokens to cache.read [0.49ms]
+(pass) session.getUsage > handles anthropic cache write metadata [0.27ms]
+(pass) session.getUsage > does not subtract cached tokens for anthropic provider [0.27ms]
+(pass) session.getUsage > handles reasoning tokens [0.22ms]
+(pass) session.getUsage > handles undefined optional values gracefully [0.21ms]
+(pass) session.getUsage > calculates cost correctly [0.74ms]
+
+test/session/stream-health-stall.test.ts:
+(pass) StreamHealth stall detection with timing > isStalled returns false immediately after event [0.40ms]
+(pass) StreamHealth stall detection with timing > records events prevent stall detection [500.77ms]
+(pass) StreamHealth stall detection with timing > checkForStall returns false when under threshold [101.63ms]
+(pass) StreamHealth stall detection with timing > recording events resets timing [100.72ms]
+(pass) StreamHealth stall detection with timing > completed stream does not trigger stall [101.79ms]
+(pass) StreamHealth stall detection with timing > failed stream does not trigger stall [100.90ms]
+(pass) StreamHealth stall detection with timing > getTimingInfo tracks time accurately [100.80ms]
+(pass) StreamHealth stall detection with timing > events per second calculation [100.91ms]
+(pass) StreamHealth stall detection with timing > stall thresholds are exposed [0.21ms]
+(pass) StreamHealth report generation > report includes all timing information [0.30ms]
+(pass) StreamHealth report generation > report includes accurate progress counters [0.26ms]
+
+test/session/session.test.ts:
+(pass) session.started event > should emit session.started event when session is created [120.69ms]
+(pass) session.started event > session.started event should be emitted before session.updated [115.18ms]
+
+test/session/llm.test.ts:
+(pass) session.llm.hasToolCalls > returns false for empty messages array [0.18ms]
+(pass) session.llm.hasToolCalls > returns false for messages with only text content [0.14ms]
+(pass) session.llm.hasToolCalls > returns true when messages contain tool-call [0.16ms]
+(pass) session.llm.hasToolCalls > returns true when messages contain tool-result [0.09ms]
+(pass) session.llm.hasToolCalls > returns false for messages with string content [0.07ms]
+(pass) session.llm.hasToolCalls > returns true when tool-call is mixed with text content [0.07ms]
+
+test/session/revert-compact.test.ts:
+(pass) revert + compact workflow > should properly handle compact command after revert [148.43ms]
+(pass) revert + compact workflow > should properly clean up revert state before creating compaction message [101.37ms]
+
+test/session/persistence.test.ts:
+(pass) Persistence > init and shutdown > should initialize without error [25.37ms]
+(pass) Persistence > init and shutdown > should create recovery marker on init [23.86ms]
+(pass) Persistence > init and shutdown > should remove recovery marker on clean shutdown [21.91ms]
+(pass) Persistence > last active tracking > should set and get last active session [25.07ms]
+(pass) Persistence > last active tracking > should return null for unknown persona [20.80ms]
+(pass) Persistence > last active tracking > should get all last active sessions [26.29ms]
+(pass) Persistence > checkpoint creation > should create checkpoint [28.19ms]
+
+test/session/stream-health.test.ts:
+(pass) StreamHealthMonitor > initialization > creates monitor with correct initial state [0.31ms]
+(pass) StreamHealthMonitor > initialization > sets timing.startedAt to current time [0.19ms]
+(pass) StreamHealthMonitor > recordEvent > increments eventsReceived counter [0.10ms]
+(pass) StreamHealthMonitor > recordEvent > tracks text-delta events separately [0.07ms]
+(pass) StreamHealthMonitor > recordEvent > tracks tool-call and tool-result events [0.08ms]
+(pass) StreamHealthMonitor > recordEvent > tracks bytes when provided [0.07ms]
+(pass) StreamHealthMonitor > recordEvent > updates lastEventType [0.13ms]
+(pass) StreamHealthMonitor > recordEvent > updates lastEventAt timestamp [10.46ms]
+(pass) StreamHealthMonitor > complete > sets status to completed [0.31ms]
+(pass) StreamHealthMonitor > complete > sets completedAt timestamp [0.18ms]
+(pass) StreamHealthMonitor > complete > calculates correct duration [51.79ms]
+(pass) StreamHealthMonitor > fail > sets status to error [0.39ms]
+(pass) StreamHealthMonitor > fail > stores error message from string [0.17ms]
+(pass) StreamHealthMonitor > fail > extracts message from Error object [0.12ms]
+(pass) StreamHealthMonitor > stall detection > isStalled returns false when events are recent [0.09ms]
+(pass) StreamHealthMonitor > stall detection > checkForStall returns false for completed streams [0.31ms]
+(pass) StreamHealthMonitor > stall detection > checkForStall returns false for errored streams [0.10ms]
+(pass) StreamHealthMonitor > getTimingInfo > calculates eventsPerSecond [101.42ms]
+(pass) StreamHealthMonitor > getTimingInfo > timeSinceLastEventMs increases over time [52.72ms]
+(pass) StreamHealthMonitor > dispose > stops stall detection timer [0.20ms]
+(pass) StreamHealth namespace > getOrCreate > creates new monitor if none exists [0.27ms]
+(pass) StreamHealth namespace > getOrCreate > returns existing monitor if already created [0.08ms]
+(pass) StreamHealth namespace > getOrCreate > creates separate monitors for different sessions [0.14ms]
+(pass) StreamHealth namespace > get > returns undefined if monitor does not exist [0.05ms]
+(pass) StreamHealth namespace > get > returns monitor if it exists [0.13ms]
+(pass) StreamHealth namespace > getActive > returns undefined if no active monitors [0.05ms]
+(pass) StreamHealth namespace > getActive > returns streaming monitor for session [0.13ms]
+(pass) StreamHealth namespace > getActive > returns undefined if monitor is completed [0.13ms]
+(pass) StreamHealth namespace > remove > removes monitor and disposes it [0.09ms]
+(pass) StreamHealth namespace > remove > handles removing nonexistent monitor gracefully [0.04ms]
+(pass) StreamHealth namespace > clear > removes all monitors [0.20ms]
+(pass) StreamHealth namespace > thresholds > returns default stall warning threshold [0.05ms]
+(pass) StreamHealth namespace > thresholds > returns default stall timeout threshold [0.04ms]
+(pass) StreamHealthReport structure > report contains all required fields [0.20ms]
+
+test/session/message-v2.test.ts:
+(pass) session.message-v2.toModelMessage > filters out messages with no parts [2.37ms]
+(pass) session.message-v2.toModelMessage > filters out messages with only ignored parts [0.32ms]
+(pass) session.message-v2.toModelMessage > includes synthetic text parts [1.79ms]
+(pass) session.message-v2.toModelMessage > converts user text/file parts and injects compaction/subtask prompts [0.47ms]
+(pass) session.message-v2.toModelMessage > converts assistant tool completion into tool-call + tool-result messages and emits attachment message [1.22ms]
+(pass) session.message-v2.toModelMessage > replaces compacted tool output with placeholder [0.39ms]
+(pass) session.message-v2.toModelMessage > converts assistant tool error into error-text tool result [0.41ms]
+(pass) session.message-v2.toModelMessage > filters assistant messages with non-abort errors [0.22ms]
+(pass) session.message-v2.toModelMessage > includes aborted assistant messages only when they have non-step-start/reasoning content [0.39ms]
+(pass) session.message-v2.toModelMessage > splits assistant messages on step-start boundaries [0.26ms]
+(pass) session.message-v2.toModelMessage > drops messages that only contain step-start parts [0.19ms]
+(pass) session.message-v2.toModelMessage > converts pending/running tool calls to error results to prevent dangling tool_use [0.54ms]
+
+test/session/tool-followup.test.ts:
+(pass) shouldContinueAfterTools > returns false (do not continue) > no parts at all [0.40ms]
+(pass) shouldContinueAfterTools > returns false (do not continue) > only text parts [0.14ms]
+(pass) shouldContinueAfterTools > returns false (do not continue) > text after tool (model already synthesized) [0.06ms]
+(pass) shouldContinueAfterTools > returns false (do not continue) > text after multiple tools [0.06ms]
+(pass) shouldContinueAfterTools > returns false (do not continue) > reasoning only (no tools) [0.05ms]
+(pass) shouldContinueAfterTools > returns false (do not continue) > empty text after tool does not count as synthesis [0.06ms]
+(pass) shouldContinueAfterTools > returns false (do not continue) > whitespace-only text after tool does not count [0.06ms]
+(pass) shouldContinueAfterTools > returns true (continue loop) > tool only, no text [0.04ms]
+(pass) shouldContinueAfterTools > returns true (continue loop) > multiple tools, no text [0.04ms]
+(pass) shouldContinueAfterTools > returns true (continue loop) > text before tool (tool is last) [0.08ms]
+(pass) shouldContinueAfterTools > returns true (continue loop) > reasoning then tool [0.04ms]
+(pass) shouldContinueAfterTools > returns true (continue loop) > text, tool, tool pattern (common with multi-tool calls) [0.06ms]
+(pass) shouldContinueAfterTools > returns true (continue loop) > complex sequence ending with tool [0.05ms]
+(pass) shouldContinueAfterTools > edge cases > interleaved text and tools, ending with text [0.05ms]
+(pass) shouldContinueAfterTools > edge cases > interleaved text and tools, ending with tool [0.11ms]
+
+test/session/retry.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+79 |     expect(warnings.some((w) => w.includes("TimeoutOverflowWarning"))).toBe(false)
+80 |   })
+81 | })
+82 |
+83 | describe("session.message-v2.fromError", () => {
+84 |   test.concurrent(
+            ^
+TypeError: test.concurrent is not a function. (In 'test.concurrent("converts ECONNRESET socket errors to retryable APIError", async () => {
+    let __bun_temp_ref_1$ = [];
+    try {
+      const server = __using_nccbhqtj(__bun_temp_ref_1$, Bun.serve({
+        port: 0,
+        idleTimeout: 8,
+        async fetch(req) {
+          return new Response(new ReadableStream({
+            async pull(controller) {
+              controller.enqueue("Hello,");
+              await Bun.sleep(1e4);
+              controller.enqueue(" World!");
+              controller.close();
+            }
+          }), { headers: { "Content-Type": "text/plain" } });
+        }
+      }), 0);
+      const error = await fetch(new URL("/", server.url.origin)).then((res) => res.text()).catch((e) => e);
+      const result = MessageV2.fromError(error, { providerID: "test" });
+      expect(MessageV2.APIError.isInstance(result)).toBe(true);
+      expect(result.data.isRetryable).toBe(true);
+      expect(result.data.message).toBe("Connection reset by server");
+      expect(result.data.metadata?.code).toBe("ECONNRESET");
+      expect(result.data.metadata?.message).toInclude("socket connection");
+    } catch (__bun_temp_ref_2$) {
+      var __bun_temp_ref_3$ = __bun_temp_ref_2$, __bun_temp_ref_4$ = 1;
+    } finally {
+      __callDispose_vyva085h(__bun_temp_ref_1$, __bun_temp_ref_3$, __bun_temp_ref_4$);
+    }
+  }, 15000)', 'test.concurrent' is undefined)
+      at <anonymous> (/app/packages/agent-core/test/session/retry.test.ts:84:8)
+      at /app/packages/agent-core/test/session/retry.test.ts:83:1
+-------------------------------
+
+(pass) session.retry.delay > caps delay at 30 seconds when headers missing [3.77ms]
+(pass) session.retry.delay > prefers retry-after-ms when shorter than exponential [0.11ms]
+(pass) session.retry.delay > uses retry-after seconds when reasonable [0.07ms]
+(pass) session.retry.delay > accepts http-date retry-after values [0.16ms]
+(pass) session.retry.delay > ignores invalid retry hints [0.07ms]
+(pass) session.retry.delay > ignores malformed date retry hints [0.07ms]
+(pass) session.retry.delay > ignores past date retry hints [0.09ms]
+(pass) session.retry.delay > uses retry-after values even when exceeding 10 minutes with headers [0.07ms]
+(pass) session.retry.delay > sleep caps delay to max 32-bit signed integer to avoid TimeoutOverflowWarning [0.73ms]
+
+test/gateway/whatsapp.test.ts:
+(pass) WhatsApp Gateway > Mock Client > should initialize successfully [0.57ms]
+(pass) WhatsApp Gateway > Mock Client > should emit ready event after initialization [10.43ms]
+(pass) WhatsApp Gateway > Mock Client > should send messages and track them [0.91ms]
+(pass) WhatsApp Gateway > Mock Client > should receive messages and emit events [0.35ms]
+(pass) WhatsApp Gateway > Mock Client > should handle message replies [0.44ms]
+(pass) WhatsApp Gateway > Mock Client > should get chat info from message [0.31ms]
+(pass) WhatsApp Gateway > Mock Client > should get contact info from message [0.27ms]
+(pass) WhatsApp Gateway > Mock Client > should handle destroy [0.40ms]
+(pass) WhatsApp Gateway > Mock Client > should list all contacts [0.34ms]
+(pass) WhatsApp Gateway > Error Handling > should throw on initialize error [0.18ms]
+(pass) WhatsApp Gateway > Error Handling > should throw on sendMessage error [0.17ms]
+(pass) WhatsApp Gateway > QR Code Flow > should emit QR code when required [11.51ms]
+(pass) WhatsApp Gateway > QR Code Flow > should authenticate after QR scan simulation [152.03ms]
+
+test/question/question.test.ts:
+(pass) ask - returns pending promise [42.38ms]
+(pass) ask - adds to pending list [46.54ms]
+(pass) reply - resolves the pending ask with answers [38.51ms]
+(pass) reply - removes from pending list [43.02ms]
+(pass) reply - does nothing for unknown requestID [37.89ms]
+(pass) reject - throws RejectedError [35.61ms]
+(pass) reject - removes from pending list [41.69ms]
+(pass) reject - does nothing for unknown requestID [37.89ms]
+(pass) ask - handles multiple questions [41.12ms]
+(pass) list - returns all pending requests [38.91ms]
+(pass) list - returns empty when no pending [40.09ms]
+
+test/tool/question.test.ts:
+(pass) tool.question > should successfully execute with valid question parameters [3.80ms]
+(pass) tool.question > should now pass with a header longer than 12 but less than 30 chars [0.47ms]
+(pass) tool.question > should accept header exceeding 30 characters (relaxed validation) [0.38ms]
+(pass) tool.question > should accept label exceeding 30 characters (relaxed validation) [0.39ms]
+
+test/tool/external-directory.test.ts:
+(pass) tool.assertExternalDirectory > no-ops for empty target [4.71ms]
+(pass) tool.assertExternalDirectory > no-ops for paths inside Instance.directory [1.60ms]
+(pass) tool.assertExternalDirectory > asks with a single canonical glob [1.61ms]
+(pass) tool.assertExternalDirectory > uses target directory when kind=directory [1.61ms]
+(pass) tool.assertExternalDirectory > skips prompting when bypass=true [1.98ms]
+
+test/tool/canvas-plugin.test.ts:
+(pass) canvas tool plugin > renders inline when WezTerm integration disabled [45.89ms]
+(pass) canvas tool plugin > ignores invalid configured pane id [82.65ms]
+(pass) canvas tool plugin > falls back inline when wezterm split-pane fails [39.93ms]
+
+test/tool/registry.test.ts:
+(pass) tool.registry > loads tools from .agent-core/tool (singular) [562.90ms]
+(pass) tool.registry > loads tools from .agent-core/tools (plural) [600.39ms]
+
+test/tool/bash.test.ts:
+(pass) tool.bash > basic [136.73ms]
+(pass) tool.bash permissions > asks for bash permission with correct pattern [125.88ms]
+(pass) tool.bash permissions > asks for bash permission with multiple commands [131.99ms]
+(pass) tool.bash permissions > asks for external_directory permission when cd to parent [132.31ms]
+(pass) tool.bash permissions > asks for external_directory permission when workdir is outside project [110.68ms]
+(pass) tool.bash permissions > does not ask for external_directory permission when rm inside project [124.22ms]
+(pass) tool.bash permissions > includes always patterns for auto-approval [119.91ms]
+(pass) tool.bash permissions > does not ask for bash permission when command is cd only [116.37ms]
+(pass) tool.bash truncation > truncates output exceeding line limit [76.25ms]
+(pass) tool.bash truncation > truncates output exceeding byte limit [79.16ms]
+(pass) tool.bash truncation > does not truncate small output [64.01ms]
+(pass) tool.bash truncation > full output is saved to file when truncated [67.80ms]
+(pass) tool.bash.isFileModifyingCommand > blocks process control commands [1.24ms]
+(pass) tool.bash.isFileModifyingCommand > blocks wrapped process control commands [0.92ms]
+(pass) tool.bash.isFileModifyingCommand > blocks system state commands [0.72ms]
+(pass) tool.bash.isFileModifyingCommand > blocks stderr and combined redirections [0.59ms]
+(pass) tool.bash.isFileModifyingCommand > allows read-only commands [1.25ms]
+
+test/tool/truncation.test.ts:
+(pass) Truncate > output > truncates large json file [6.85ms]
+(pass) Truncate > output > returns content unchanged when under limits [0.47ms]
+(pass) Truncate > output > truncates by line count [1.15ms]
+(pass) Truncate > output > truncates by byte count [1.57ms]
+(pass) Truncate > output > truncates from head by default [1.14ms]
+(pass) Truncate > output > truncates from tail when direction is tail [1.21ms]
+(pass) Truncate > output > uses default MAX_LINES and MAX_BYTES [0.13ms]
+(pass) Truncate > output > single-line file truncates with byte message [0.96ms]
+(pass) Truncate > output > writes full output to file when truncated [1.52ms]
+(pass) Truncate > output > suggests Task tool when agent has task permission [1.68ms]
+(pass) Truncate > output > omits Task tool hint when agent lacks task permission [1.38ms]
+(pass) Truncate > output > does not write file when not truncated [0.33ms]
+(pass) Truncate > cleanup > deletes files older than 7 days and preserves recent files [3.26ms]
+
+test/tool/apply_patch.test.ts:
+(pass) tool.apply_patch freeform > requires patchText [9.07ms]
+(pass) tool.apply_patch freeform > rejects invalid patch format [3.23ms]
+(pass) tool.apply_patch freeform > rejects empty patch [1.25ms]
+(pass) tool.apply_patch freeform > applies add/update/delete in one patch [127.61ms]
+(pass) tool.apply_patch freeform > permission metadata includes move file info [107.47ms]
+(pass) tool.apply_patch freeform > applies multiple hunks to one file [40.24ms]
+(pass) tool.apply_patch freeform > inserts lines with insert-only hunk [45.70ms]
+(pass) tool.apply_patch freeform > appends trailing newline on update [48.97ms]
+(pass) tool.apply_patch freeform > moves file to a new directory [68.67ms]
+(pass) tool.apply_patch freeform > moves file overwriting existing destination [62.45ms]
+(pass) tool.apply_patch freeform > adds file overwriting existing file [52.28ms]
+(pass) tool.apply_patch freeform > rejects update when target file is missing [18.93ms]
+(pass) tool.apply_patch freeform > rejects delete when file is missing [17.12ms]
+(pass) tool.apply_patch freeform > rejects delete when target is a directory [20.33ms]
+(pass) tool.apply_patch freeform > rejects invalid hunk header [17.13ms]
+(pass) tool.apply_patch freeform > rejects update with missing context [34.03ms]
+(pass) tool.apply_patch freeform > verification failure leaves no side effects [16.77ms]
+(pass) tool.apply_patch freeform > supports end of file anchor [48.05ms]
+(pass) tool.apply_patch freeform > rejects missing second chunk context [26.78ms]
+(pass) tool.apply_patch freeform > disambiguates change context with @@ header [33.17ms]
+(pass) tool.apply_patch freeform > EOF anchor matches from end of file first [68.00ms]
+(pass) tool.apply_patch freeform > parses heredoc-wrapped patch [49.12ms]
+(pass) tool.apply_patch freeform > parses heredoc-wrapped patch without cat [43.25ms]
+(pass) tool.apply_patch freeform > matches with trailing whitespace differences [33.31ms]
+(pass) tool.apply_patch freeform > matches with leading whitespace differences [51.99ms]
+(pass) tool.apply_patch freeform > matches with Unicode punctuation differences [45.35ms]
+
+test/tool/grep.test.ts:
+(pass) tool.grep > basic search [76.34ms]
+(pass) tool.grep > no matches returns correct output [21.32ms]
+(pass) tool.grep > handles CRLF line endings in output [31.22ms]
+(pass) CRLF regex handling > regex correctly splits Unix line endings [0.40ms]
+(pass) CRLF regex handling > regex correctly splits Windows CRLF line endings [0.22ms]
+(pass) CRLF regex handling > regex handles mixed line endings [0.18ms]
+
+test/tool/read.test.ts:
+(pass) tool.read external_directory permission > allows reading absolute path inside project directory [43.93ms]
+(pass) tool.read external_directory permission > allows reading file in subdirectory inside project directory [50.95ms]
+(pass) tool.read external_directory permission > asks for external_directory permission when reading absolute path outside project [81.67ms]
+(pass) tool.read external_directory permission > asks for external_directory permission when reading relative path outside project [58.91ms]
+(pass) tool.read external_directory permission > does not ask for external_directory permission when reading inside project [83.69ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [34.06ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [18.94ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [37.27ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [32.18ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [30.82ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [29.81ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [35.53ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [48.69ms]
+(pass) tool.read env file permissions > agent=zee > $filename $expected [44.54ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [35.37ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [30.34ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [32.08ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [43.27ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [23.59ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [31.94ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [56.66ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [33.18ms]
+(pass) tool.read env file permissions > agent=johny > $filename $expected [38.49ms]
+(pass) tool.read truncation > truncates large file by bytes and sets truncated metadata [49.51ms]
+(pass) tool.read truncation > truncates by line count when limit is specified [50.36ms]
+(pass) tool.read truncation > does not truncate small file [41.79ms]
+(pass) tool.read truncation > respects offset parameter [43.22ms]
+(pass) tool.read truncation > truncates long lines [33.40ms]
+(pass) tool.read truncation > image files set truncated to false [36.03ms]
+(pass) tool.read truncation > large image files are properly attached without error [112.30ms]
+(pass) tool.read truncation > .fbs files (FlatBuffers schema) are read as text, not images [32.15ms]
+
+test/provider/transform.test.ts:
+(pass) ProviderTransform.options - setCacheKey > should set promptCacheKey when providerOptions.setCacheKey is true [6.82ms]
+(pass) ProviderTransform.options - setCacheKey > should not set promptCacheKey when providerOptions.setCacheKey is false [0.28ms]
+(pass) ProviderTransform.options - setCacheKey > should not set promptCacheKey when providerOptions is undefined [0.22ms]
+(pass) ProviderTransform.options - setCacheKey > should not set promptCacheKey when providerOptions does not have setCacheKey [0.11ms]
+(pass) ProviderTransform.options - setCacheKey > should set promptCacheKey for openai provider regardless of setCacheKey [0.15ms]
+(pass) ProviderTransform.options - setCacheKey > should set store=false for openai provider [0.18ms]
+(pass) ProviderTransform.variants - mapping parity > minimax models return reasoning variants [0.33ms]
+(pass) ProviderTransform.variants - mapping parity > glm models from Z.AI/ZhipuAI return thinking variants [0.20ms]
+(pass) ProviderTransform.variants - mapping parity > xai and openai-compatible models return reasoning variants [0.18ms]
+(pass) ProviderTransform.variants - mapping parity > adds azure reasoning variants with minimal for gpt-5 [0.30ms]
+(pass) ProviderTransform.variants - mapping parity > anthropic thinking budgets match default limits [0.17ms]
+(pass) ProviderTransform.maxOutputTokens > anthropic without thinking options > returns 32k when modelLimit > 32k [0.33ms]
+(pass) ProviderTransform.maxOutputTokens > anthropic without thinking options > returns modelLimit when modelLimit < 32k [0.12ms]
+(pass) ProviderTransform.maxOutputTokens > anthropic with thinking options > returns 32k when budgetTokens + 32k <= modelLimit [0.13ms]
+(pass) ProviderTransform.maxOutputTokens > anthropic with thinking options > returns modelLimit - budgetTokens when budgetTokens + 32k > modelLimit [0.21ms]
+(pass) ProviderTransform.maxOutputTokens > anthropic with thinking options > returns 32k when thinking type is not enabled [0.13ms]
+(pass) ProviderTransform.maxOutputTokens > returns 32k when modelLimit > 32k [0.15ms]
+(pass) ProviderTransform.maxOutputTokens > returns modelLimit when modelLimit < 32k [0.10ms]
+(pass) ProviderTransform.schema - gemini array items > adds missing items for array properties [0.79ms]
+(pass) ProviderTransform.message - interleaved reasoning fields > Non-interleaved providers leave reasoning content unchanged [1.32ms]
+(pass) ProviderTransform.message - empty image handling > should replace empty base64 image with error text [2.28ms]
+(pass) ProviderTransform.message - empty image handling > should keep valid base64 images unchanged [0.65ms]
+(pass) ProviderTransform.message - empty image handling > should handle mixed valid and empty images [0.46ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > filters out messages with empty string content [0.26ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > filters out empty text parts from array content [0.52ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > filters out empty reasoning parts from array content [0.27ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > removes entire message when all parts are empty [0.28ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > keeps non-text/reasoning parts even if text parts are empty [0.39ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > keeps messages with valid text alongside empty parts [0.31ms]
+(pass) ProviderTransform.message - anthropic empty content filtering > does not filter for non-anthropic providers [0.31ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves itemId and reasoningEncryptedContent when store=false [0.39ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves itemId and reasoningEncryptedContent when store=false even when not openai [0.57ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves other openai options including itemId [0.19ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves metadata for openai package when store is true [0.17ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves metadata for non-openai packages when store is false [0.34ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves metadata using providerID key when store is false [0.20ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > preserves itemId across all providerOptions keys [0.24ms]
+(pass) ProviderTransform.message - strip openai metadata when store=false > does not strip metadata for non-openai packages when store is not false [0.43ms]
+(pass) ProviderTransform.message - claude w/bedrock custom inference profile > adds cachePoint [0.43ms]
+(pass) ProviderTransform.variants > @openrouter/ai-sdk-provider > returns empty object for non-qualifying models [0.37ms]
+(pass) ProviderTransform.variants > @openrouter/ai-sdk-provider > gpt models return OPENAI_EFFORTS with reasoning [0.38ms]
+(pass) ProviderTransform.variants > @openrouter/ai-sdk-provider > gemini-3 returns OPENAI_EFFORTS with reasoning [0.36ms]
+(pass) ProviderTransform.variants > @openrouter/ai-sdk-provider > grok-4 returns empty object [0.16ms]
+(pass) ProviderTransform.variants > @openrouter/ai-sdk-provider > grok-3-mini returns low and high with reasoning [0.17ms]
+(pass) ProviderTransform.variants > xai (via openai-compatible) > grok-3 returns WIDELY_SUPPORTED_EFFORTS with reasoningEffort [0.28ms]
+(pass) ProviderTransform.variants > xai (via openai-compatible) > grok-3-mini returns low and high with reasoningEffort [0.26ms]
+(pass) ProviderTransform.variants > @ai-sdk/openai-compatible > returns WIDELY_SUPPORTED_EFFORTS with reasoningEffort [0.15ms]
+(pass) ProviderTransform.variants > @ai-sdk/openai > gpt-5-pro returns empty object [0.10ms]
+(pass) ProviderTransform.variants > @ai-sdk/openai > standard openai models return custom efforts with reasoningSummary [0.36ms]
+(pass) ProviderTransform.variants > @ai-sdk/openai > models after 2025-11-13 include 'none' effort [0.25ms]
+(pass) ProviderTransform.variants > @ai-sdk/openai > models after 2025-12-04 include 'xhigh' effort [0.19ms]
+(pass) ProviderTransform.variants > @ai-sdk/anthropic > returns high and max with thinking config [0.34ms]
+(pass) ProviderTransform.variants > @ai-sdk/google > gemini-2.5 returns high and max with thinkingConfig and thinkingBudget [0.27ms]
+(pass) ProviderTransform.variants > @ai-sdk/google > other gemini models return low and high with thinkingLevel [0.38ms]
+(pass) ProviderTransform.variants > returns empty object when model has no reasoning capabilities [0.13ms]
+(pass) ProviderTransform.variants > minimax returns reasoning variants [0.28ms]
+(pass) ProviderTransform.variants > glm returns empty object [0.16ms]
+(pass) ProviderTransform.options - persona thinking configs > Zee (GLM-4.7 via Z.AI Coding Plan) > should enable preserved thinking mode for zai-coding-plan provider [0.14ms]
+(pass) ProviderTransform.options - persona thinking configs > Stanley (Grok 4.1 via xAI openai-compatible) > grok models return WIDELY_SUPPORTED_EFFORTS with reasoningEffort [0.24ms]
+(pass) ProviderTransform.options - persona thinking configs > Johny (Claude Opus 4.5 via Antigravity/Google) > should enable thinkingConfig for Google provider models [0.28ms]
+(pass) ProviderTransform.options - persona thinking configs > Johny (Claude Opus 4.5 via Antigravity/Google) > should set thinkingLevel high for Gemini 3 models [0.29ms]
+(pass) ProviderTransform.options - persona thinking configs > Fallback models (Gemini 3) > gemini-3-flash-preview gets thinkingLevel high [0.15ms]
+(pass) ProviderTransform.options - persona thinking configs > Fallback models (Gemini 3) > gemini-3-pro-preview gets thinkingLevel high [0.25ms]
+
+test/provider/provider.test.ts:
+(pass) provider loaded from env variable [219.46ms]
+(pass) provider loaded from config with apiKey option [150.92ms]
+(pass) disabled_providers excludes provider [125.01ms]
+(pass) model whitelist filters models for provider [117.61ms]
+(pass) model blacklist excludes specific models [128.16ms]
+(pass) custom model alias via config [147.06ms]
+(pass) custom provider with npm package [150.01ms]
+(pass) env variable takes precedence, config merges options [124.63ms]
+(pass) getModel returns model for valid provider/model [123.89ms]
+(pass) getModel throws ModelNotFoundError for invalid model [138.45ms]
+(pass) getModel throws ModelNotFoundError for invalid provider [133.61ms]
+(pass) parseModel correctly parses provider/model string [0.41ms]
+(pass) parseModel handles model IDs with slashes [0.24ms]
+(pass) defaultModel returns first available model when no config set [137.85ms]
+(pass) defaultModel respects config model setting [32.81ms]
+(pass) provider with baseURL from config [128.84ms]
+(pass) model cost defaults to zero when not specified [119.09ms]
+(pass) model options are merged from existing model [134.41ms]
+(pass) provider removed when all models filtered out [113.39ms]
+(pass) closest finds model by partial match [134.25ms]
+(pass) closest returns undefined for nonexistent provider [127.27ms]
+(pass) getModel uses realIdByKey for aliased models [125.07ms]
+(pass) provider api field sets model api.url [143.12ms]
+(pass) explicit baseURL overrides api field [126.95ms]
+(pass) model inherits properties from existing database model [92.49ms]
+(pass) disabled_providers prevents loading even with env var [82.86ms]
+(pass) whitelist and blacklist can be combined [77.83ms]
+(pass) model modalities default correctly [82.20ms]
+(pass) model with custom cost values [105.99ms]
+(pass) getSmallModel returns appropriate small model [80.32ms]
+(pass) getSmallModel respects config small_model override [84.92ms]
+(pass) provider.sort prioritizes preferred models [0.54ms]
+(pass) multiple providers can be configured simultaneously [90.05ms]
+(pass) provider with custom npm package [82.67ms]
+(pass) model alias name defaults to alias key when id differs [84.03ms]
+(pass) provider with multiple env var options only includes apiKey when single env [87.92ms]
+(pass) provider with single env var includes apiKey automatically [84.59ms]
+(pass) model cost overrides existing cost values [85.83ms]
+(pass) completely new provider not in database can be configured [87.32ms]
+(pass) model with tool_call false [88.58ms]
+(pass) model defaults tool_call to true when not specified [80.40ms]
+(pass) model headers are preserved [76.82ms]
+(pass) provider env fallback - second env var used if first missing [78.95ms]
+(pass) getModel returns consistent results [75.66ms]
+(pass) provider name defaults to id when not in database [80.34ms]
+(pass) ModelNotFoundError includes suggestions for typos [78.35ms]
+(pass) ModelNotFoundError for provider includes suggestions [76.45ms]
+(pass) getProvider returns undefined for nonexistent provider [80.88ms]
+(pass) getProvider returns provider info [77.04ms]
+(pass) closest returns undefined when no partial match found [73.60ms]
+(pass) closest checks multiple query terms in order [73.24ms]
+(pass) model limit defaults to zero when not specified [79.50ms]
+(pass) provider options are deeply merged [79.25ms]
+(pass) custom model inherits npm package from models.dev provider config [78.80ms]
+(pass) custom model inherits api.url from models.dev provider [86.27ms]
+(pass) model variants are generated for reasoning models [80.45ms]
+(pass) model variants can be disabled via config [85.20ms]
+(pass) model variants can be customized via config [92.23ms]
+(pass) disabled key is stripped from variant config [84.71ms]
+1928 |     },
+1929 |     fn: async () => {
+1930 |       const providers = await Provider.list()
+1931 |       const model = providers["anthropic"].models["claude-sonnet-4-5"]
+1932 |       expect(model.variants).toBeDefined()
+1933 |       expect(Object.keys(model.variants!).length).toBe(0)
+                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: 0
+Received: 2
+
+      at <anonymous> (/app/packages/agent-core/test/provider/provider.test.ts:1933:51)
+(fail) all variants can be disabled via config [82.41ms]
+(pass) variant config merges with generated variants [83.08ms]
+(pass) variants filtered in second pass for database models [86.09ms]
+(pass) custom model with variants enabled and disabled [85.33ms]
+
+test/provider/openai-responses-stream.test.ts:
+(pass) OpenAI Responses stream finish reason determination > tool-calls detection > function call with unknown finish → tool-calls [3.22ms]
+(pass) OpenAI Responses stream finish reason determination > tool-calls detection > function call with unknown finish, no usage → tool-calls [0.21ms]
+(pass) OpenAI Responses stream finish reason determination > tool-calls detection > multiple tool calls pattern [0.06ms]
+(pass) OpenAI Responses stream finish reason determination > successful stop detection > no function call, sufficient content → stop [0.12ms]
+(pass) OpenAI Responses stream finish reason determination > successful stop detection > no function call, minimal content but has usage → stop [0.05ms]
+(pass) OpenAI Responses stream finish reason determination > successful stop detection > no function call, long duration with content → stop [0.04ms]
+(pass) OpenAI Responses stream finish reason determination > error detection > no chunks at all → error [0.04ms]
+(pass) OpenAI Responses stream finish reason determination > error detection > single chunk, very short, no usage → error [0.03ms]
+(pass) OpenAI Responses stream finish reason determination > error detection > few chunks, short duration, no usage → error [0.04ms]
+(pass) OpenAI Responses stream finish reason determination > preserves existing finish reasons > already stop → stop [0.04ms]
+(pass) OpenAI Responses stream finish reason determination > preserves existing finish reasons > already tool-calls → tool-calls [0.05ms]
+(pass) OpenAI Responses stream finish reason determination > preserves existing finish reasons > already error → error [0.06ms]
+(pass) Incomplete response handling > critical reason 'server_error' should surface as error [0.04ms]
+(pass) Incomplete response handling > critical reason 'interruption' should surface as error [0.01ms]
+(pass) Incomplete response handling > critical reason 'cancelled' should surface as error
+(pass) Incomplete response handling > critical reason 'turn_limit' should surface as error
+(pass) Incomplete response handling > non-critical reason 'max_output_tokens' should not error [0.04ms]
+(pass) Incomplete response handling > non-critical reason 'content_filter' should not error
+
+test/provider/fallback-chain.test.ts:
+(pass) FallbackChain defaults > uses anthropic-first fallback order [0.08ms]
+(pass) FallbackChain defaults > any rule defaults to anthropic [0.11ms]
+
+test/lsp/client.test.ts:
+(pass) LSPClient interop > handles workspace/workspaceFolders request [631.80ms]
+(pass) LSPClient interop > handles client/registerCapability request [550.49ms]
+(pass) LSPClient interop > handles client/unregisterCapability request [555.30ms]
+
+test/patch/patch.test.ts:
+(pass) Patch namespace > parsePatch > should parse simple add file patch [0.34ms]
+(pass) Patch namespace > parsePatch > should parse delete file patch [0.32ms]
+(pass) Patch namespace > parsePatch > should parse patch with multiple hunks [0.51ms]
+(pass) Patch namespace > parsePatch > should parse file move operation [0.36ms]
+(pass) Patch namespace > parsePatch > should throw error for invalid patch format [0.20ms]
+(pass) Patch namespace > maybeParseApplyPatch > should parse direct apply_patch command [0.51ms]
+(pass) Patch namespace > maybeParseApplyPatch > should parse applypatch command [0.40ms]
+(pass) Patch namespace > maybeParseApplyPatch > should handle bash heredoc format [0.53ms]
+(pass) Patch namespace > maybeParseApplyPatch > should return NotApplyPatch for non-patch commands [0.14ms]
+(pass) Patch namespace > applyPatch > should add a new file [1.94ms]
+(pass) Patch namespace > applyPatch > should delete an existing file [1.22ms]
+(pass) Patch namespace > applyPatch > should update an existing file [1.35ms]
+(pass) Patch namespace > applyPatch > should move and update a file [5.87ms]
+(pass) Patch namespace > applyPatch > should handle multiple operations in one patch [2.31ms]
+(pass) Patch namespace > applyPatch > should create parent directories when adding files [1.25ms]
+(pass) Patch namespace > error handling > should throw error when updating non-existent file [0.73ms]
+(pass) Patch namespace > error handling > should throw error when deleting non-existent file [0.50ms]
+(pass) Patch namespace > edge cases > should handle empty files [0.95ms]
+(pass) Patch namespace > edge cases > should handle files with no trailing newline [1.15ms]
+(pass) Patch namespace > edge cases > should handle multiple update chunks in single file [1.45ms]
+
+test/file/ignore.test.ts:
+(pass) match nested and non-nested [0.30ms]
+
+test/file/path-traversal.test.ts:
+(pass) Filesystem.contains > allows paths within project [2.71ms]
+(pass) Filesystem.contains > blocks ../ traversal [0.15ms]
+(pass) Filesystem.contains > blocks absolute paths outside project [0.10ms]
+(pass) Filesystem.contains > handles prefix collision edge cases [0.10ms]
+(pass) File.read path traversal protection > rejects ../ traversal attempting to read /etc/passwd [10.64ms]
+(pass) File.read path traversal protection > rejects deeply nested traversal [8.25ms]
+(pass) File.read path traversal protection > allows valid paths within project [4.70ms]
+(pass) File.list path traversal protection > rejects ../ traversal attempting to list /etc [8.33ms]
+(pass) File.list path traversal protection > allows valid subdirectory listing [5.89ms]
+(pass) Instance.containsPath > returns true for path inside directory [46.76ms]
+(pass) Instance.containsPath > returns true for path inside worktree but outside directory (monorepo subdirectory scenario) [50.69ms]
+(pass) Instance.containsPath > returns false for path outside both directory and worktree [35.91ms]
+(pass) Instance.containsPath > returns false for path with .. escaping worktree [45.91ms]
+(pass) Instance.containsPath > handles directory === worktree (running from repo root) [43.07ms]
+(pass) Instance.containsPath > non-git project does not allow arbitrary paths via worktree='/' [4.07ms]
+
+test/cli/tui/spinner.test.ts:
+(pass) Carousel Spinner Animation > animation has correct number of frames (width + activeCount - 1) [6.67ms]
+(pass) Carousel Spinner Animation > blocks enter from right one-by-one [0.39ms]
+(pass) Carousel Spinner Animation > full group traverses right-to-left [0.30ms]
+(pass) Carousel Spinner Animation > blocks exit on left one-by-one [0.26ms]
+(pass) Carousel Spinner Animation > each frame has correct number of active blocks [0.42ms]
+
+test/cli/tui/dialog-command.test.ts:
+(pass) createCommandDialog filters undefined options from registrations [8.05ms]
+
+test/cli/tui/transcript.test.ts:
+(pass) transcript > formatAssistantHeader > includes metadata when enabled [0.52ms]
+(pass) transcript > formatAssistantHeader > excludes metadata when disabled [0.08ms]
+(pass) transcript > formatAssistantHeader > handles missing completed time [0.10ms]
+(pass) transcript > formatAssistantHeader > titlecases agent name [0.08ms]
+(pass) transcript > formatPart > formats text part [0.22ms]
+(pass) transcript > formatPart > skips synthetic text parts [0.09ms]
+(pass) transcript > formatPart > formats reasoning when thinking enabled [0.12ms]
+(pass) transcript > formatPart > skips reasoning when thinking disabled [0.06ms]
+(pass) transcript > formatPart > formats tool part with details [0.13ms]
+(pass) transcript > formatPart > formats tool part without details when disabled [0.10ms]
+(pass) transcript > formatPart > formats tool error [0.08ms]
+(pass) transcript > formatMessage > formats user message [0.21ms]
+(pass) transcript > formatMessage > formats assistant message with metadata [0.17ms]
+(pass) transcript > formatTranscript > formats complete transcript [0.74ms]
+(pass) transcript > formatTranscript > formats transcript without assistant metadata [0.59ms]
+
+23 tests failed:
+(fail) HoldMode.skipPermissions bypass > skipPermissions false still respects hold mode restrictions [1.70ms]
+(fail) HoldMode.checkCommand > release_confirm returns requiresConfirmation: true in release mode [47.73ms]
+(fail) HoldMode.checkCommand > wildcard patterns work in release_confirm [50.43ms]
+(fail) HoldMode.checkCommand > case insensitivity works for release_confirm [48.07ms]
+(fail) HoldMode.skipPermissions bypass > skipPermissions false still respects hold mode restrictions [0.34ms]
+(fail) discovers skills from .claude/skills/ directory [46.83ms]
+(fail) discovers global skills from ~/.claude/skills/ directory [53.33ms]
+(fail) diffFull with new file additions [119.02ms]
+(fail) diffFull with file deletions [122.85ms]
+(fail) diffFull with multiple line additions [105.62ms]
+(fail) diffFull with addition and deletion [129.80ms]
+(fail) agent config > defaultAgent returns stanley when no default_agent config [22.09ms]
+(fail) agent config > defaultAgent respects default_agent config set to custom agent with mode all [35.15ms]
+(fail) agent config > defaultAgent throws when all primary agents are disabled [17.73ms]
+(fail) acp.agent event subscription > routes message.part.updated by the event sessionID (no cross-session pollution) [22.14ms]
+(fail) Anthropic Claude Extended Thinking > Anthropic thinking variants use budgetTokens [0.35ms]
+(fail) Google Gemini Extended Thinking > Gemini 2.5 models get thinkingConfig with budget [0.23ms]
+(fail) Google Gemini Extended Thinking > Gemini 3 models get thinkingLevel [0.64ms]
+(fail) Google Gemini Extended Thinking > Gemini models get low/high thinkingLevel variants [0.26ms]
+(fail) Non-Reasoning Models > MiniMax models return empty variants [0.23ms]
+(fail) Persona Thinking Configs > Zee (GLM via ZhipuAI) > ZhipuAI provider gets preserved thinking mode [0.20ms]
+(fail) Persona Thinking Configs > Zee (GLM via ZhipuAI) > Z.AI Coding Plan provider gets preserved thinking mode [0.18ms]
+(fail) all variants can be disabled via config [82.41ms]
+--------------------------------------------------------------------------------------------------------------------------------|---------|---------|-------------------
+File                                                                                                                            | % Funcs | % Lines | Uncovered Line #s
+--------------------------------------------------------------------------------------------------------------------------------|---------|---------|-------------------
+All files                                                                                                                       |   45.40 |   58.32 |
+ ../../.agent-core/tool/canvas.ts                                                                                               |   77.61 |   53.27 | 38,57-59,61,63-69,82,89-90,92-93,95-96,99-100,103-105,107-113,116,118-120,130,197-198,202-206,221-224,228-229,247-253,258-264,274-277,293,295-298,315-316,340-343,345-347,364-367,378-381,394,397-419,427-438,444,446,468-469,471-473,476-477,479,482-485,588,633-662,672-691,699-737
+ src/acp/agent.ts                                                                                                               |   44.16 |   25.37 | 62-68,80-84,113,122-123,138,145-146,175-187,193-200,204-206,208-209,211-217,228,258-259,266-281,283-284,286-300,302-303,305-315,317-333,335-349,351-354,356-358,360,362-379,381-409,411-412,430,435,437-451,453-502,529-535,567-568,574-584,588-589,593-867,875,881-885,895-897,911-913,938-955,960-970,1004-1210,1220-1221,1223-1226,1228-1232,1234-1236,1246-1251,1255-1256,1267,1269-1277,1279-1281,1283,1285-1289,1291,1293-1296,1298,1300-1307,1312-1346,1351-1356
+ src/acp/session.ts                                                                                                             |   80.00 |   89.25 | 96-97,101-104,113-116
+ src/agent/agent.ts                                                                                                             |   95.00 |   81.82 | 39,44-47,49,215-216,331-376
+ src/auth/index.ts                                                                                                              |  100.00 |   77.18 | 121,123-124,126-134,136-139,141,147-153,155-158,176-180
+ src/bun/index.ts                                                                                                               |   80.00 |   88.79 | 47,111-116,124-128
+ src/bus/bus-event.ts                                                                                                           |   66.67 |   39.39 | 21-40
+ src/bus/global.ts                                                                                                              |  100.00 |  100.00 |
+ src/bus/index.ts                                                                                                               |   81.82 |   78.82 | 29-36,73-81
+ src/cli/bootstrap.ts                                                                                                           |    0.00 |   14.29 | 4-15
+ src/cli/cmd/cmd.ts                                                                                                             |  100.00 |  100.00 |
+ src/cli/cmd/github.ts                                                                                                          |   54.55 |    4.53 | 197,203-394,402-1537
+ src/cli/cmd/tui/component/dialog-command.tsx                                                                                   |   62.50 |   43.62 | 51-62,70-76,79-88,91,95,109-113,117-132
+ src/cli/cmd/tui/event.ts                                                                                                       |  100.00 |  100.00 |
+ src/cli/cmd/tui/ui/spinner.ts                                                                                                  |   50.00 |   21.53 | 96,102-178,183-214,218-265,316-319,375-379,400,402-406,408-419,421-423,425-433,436,439-454,456,458,464-488,498-533
+ src/cli/cmd/tui/util/dictation.ts                                                                                              |   54.55 |   43.05 | 107-181,185-213,228,236,256-257,259-261,273-274,281-335,339-354,423,428-438,442-464,499-501,522,524-533,556-574,578-579
+ src/cli/cmd/tui/util/transcript.ts                                                                                             |  100.00 |  100.00 |
+ src/cli/output.ts                                                                                                              |    0.00 |  100.00 |
+ src/cli/style.ts                                                                                                               |   10.00 |   70.05 | 158,160-162,186,188,191-194,197-204,207-214,415-425,448,458,468,478,488,498,508,518,536-537,555,569-571,639-642,653-659
+ src/cli/ui.ts                                                                                                                  |    7.69 |   45.36 | 158-159,168-169,180-182,191,200,209,216-218,227,252-262,291-305,327-338
+ src/command/index.ts                                                                                                           |   20.00 |   36.67 | 45-51,60-126,130
+ src/config/config.ts                                                                                                           |   84.31 |   93.45 | 51,70-71,84-85,87-93,107-111,133-134,171-178,188-189,255-261,279-280,295-301,326-327,341-347,349-350,352-364,522,1338-1339,1341-1343,1517-1522,1539,1559,1563,1569-1579,1618
+ src/config/hold-mode.ts                                                                                                        |   87.50 |   91.18 | 73-74,109,114,116,122-123,147-149,151-154,169-171,191,213,217,261-262,269-270,305,320
+ src/config/markdown.ts                                                                                                         |   85.71 |   85.29 | 13,42-43,78-84
+ src/coordination/consensus-gate.ts                                                                                             |    0.00 |    6.21 | 114-115,122-130,137-156,163-166,173-174,181-182,189-256,263-289,296-307,314,321-361,365-398,402-414,418-431,443-468,476,480-483,491-512
+ src/coordination/index.ts                                                                                                      |  100.00 |  100.00 |
+ src/coordination/work-stealing.ts                                                                                              |    0.00 |    5.51 | 90-91,98-107,114-162,169-178,185-195,202-263,270-297,304-316,328-360,368,372-375
+ src/env/index.ts                                                                                                               |   83.33 |   87.50 | 22-23
+ src/file/ignore.ts                                                                                                             |  100.00 |   90.48 | 68,74,76-79
+ src/file/index.ts                                                                                                              |   50.00 |   36.07 | 82,84-87,89-90,92-108,122-196,200,204-270,287,293-296,305-315,325-334,361-364,369-405
+ src/file/ripgrep.ts                                                                                                            |   62.50 |   26.03 | 126,128-132,134-136,138-139,141-145,147,149-170,172-177,179-191,193-194,203-296,300-400,404-472
+ src/file/time.ts                                                                                                               |   50.00 |   44.68 | 30,34-50,55-62
+ src/file/watcher.ts                                                                                                            |   20.00 |   28.44 | 35-38,43-110,113-114,119-122
+ src/flag/flag.ts                                                                                                               |   75.00 |   91.18 | 12-13
+ src/format/formatter.ts                                                                                                        |   23.08 |   70.26 | 18-19,27-28,76,135-143,151-152,160-162,170-171,185-186,190-195,203-221,230-237,245-246,254-255,263-264,272-273,281-284,292-293,301-302,310-311,319-320,328-329,337-338,349-359
+ src/format/index.ts                                                                                                            |   16.67 |   20.49 | 26-62,66-72,76-85,89-99,103-134
+ src/gateway/constants.ts                                                                                                       |  100.00 |  100.00 |
+ src/global/index.ts                                                                                                            |   78.95 |   66.29 | 8-16,20-34,57-59,115,118-119
+ src/hooks/lifecycle.ts                                                                                                         |   20.00 |   34.65 | 170-184,192-202,212-216,220-227,231-241,255-281,285-304,308-333,337-349,353-360,368-408,413-435,440-461,469-480,488-507,514-515
+ src/id/id.ts                                                                                                                   |  100.00 |   93.10 | 38,40-42
+ src/ide/index.ts                                                                                                               |   75.00 |   63.49 | 51-73
+ src/installation/index.ts                                                                                                      |   22.22 |   22.44 | 21-46,50-58,63-70,101-104,108,131-133,137,141-145,149-154,159-223,234-238,242-289,308-324,328-364
+ src/lsp/client.ts                                                                                                              |   60.00 |   46.12 | 52-60,63-64,67-68,117-135,142-144,152-153,159-215,218-248
+ src/lsp/index.ts                                                                                                               |   45.83 |   45.75 | 16-19,85-91,101-122,124,145,161-172,188-190,195,197-204,206,208-211,213-217,219,232-233,238-241,256-257,263-272,280-282,285,293-297,302-317,361-372,376-390,394-404,408-419,423-433,437-447,451-468,472-489,499-501,506-517
+ src/lsp/language.ts                                                                                                            |  100.00 |  100.00 |
+ src/lsp/server.ts                                                                                                              |   31.67 |   17.41 | 15-18,73-83,99-112,120-160,172-177,179-180,182-185,187-189,191-192,194-199,201-203,205-206,208-214,216-217,263-272,281-285,337-339,341-347,349-350,357-359,362-391,399-431,447-491,499-544,552-605,613-718,726-757,765-796,803-829,832-842,850-986,994-1025,1033-1075,1083-1173,1181-1266,1274-1313,1329-1453,1461-1491,1499-1509,1517-1527,1535-1545,1552-1582,1590-1671,1679-1764,1772-1802,1810-1820,1828-1841,1849-1872,1880-1965,1973-1983
+ src/mcp/auth.ts                                                                                                                |   60.00 |   57.61 | 43-52,66,72-76,80-82,86-88,92-94,98-102,117-121,129-132
+ src/mcp/index.ts                                                                                                               |   48.10 |    7.92 | 37-1243,1248-1272,1276-1299,1312,1316,1320,1324,1375,1389-1390,1396,1401,1424-1427,1444-1446,1448,1457-1493,1501-1505,1512-1516,1523-1524,1533-1536
+ src/mcp/oauth-callback.ts                                                                                                      |   55.00 |   36.05 | 26-41,64-65,70-131,141-144,152-157,167-168,171
+ src/mcp/oauth-provider.ts                                                                                                      |   23.08 |   11.72 | 31-119,125-148
+ src/patch/index.ts                                                                                                             |   96.55 |   72.52 | 127-129,154,240,268-272,293-297,299,359,381-385,436-446,520,581-676
+ src/paths.ts                                                                                                                   |    8.33 |   57.14 | 33,47,56,60,64,68,72,81,85,93-111,118-121,125,134,138,147,155,159,168,172,181,185,189,193
+ src/permission/arity.ts                                                                                                        |  100.00 |  100.00 |
+ src/permission/next.ts                                                                                                         |   87.50 |   93.33 | 139-140,218-219,221-229,273
+ src/pkg/sdk/client.ts                                                                                                          |   50.00 |   47.83 | 10-13,15-18,22-25
+ src/pkg/sdk/gen/client.gen.ts                                                                                                  |  100.00 |  100.00 |
+ src/pkg/sdk/gen/client/client.gen.ts                                                                                           |   25.00 |   15.93 | 25-26,32-62,66-177,183-190
+ src/pkg/sdk/gen/client/index.ts                                                                                                |  100.00 |  100.00 |
+ src/pkg/sdk/gen/client/utils.gen.ts                                                                                            |   35.29 |   34.84 | 11-50,59-87,91-102,106-140,144-152,209,213-216,220-221,225-228,232-237,242-243
+ src/pkg/sdk/gen/core/auth.gen.ts                                                                                               |    0.00 |    5.26 | 22-39
+ src/pkg/sdk/gen/core/bodySerializer.gen.ts                                                                                     |    0.00 |   22.00 | 15-20,25-28,34-47,53,58-71
+ src/pkg/sdk/gen/core/params.gen.ts                                                                                             |    0.00 |   11.11 | 50-67,78-82,86-142
+ src/pkg/sdk/gen/core/pathSerializer.gen.ts                                                                                     |    0.00 |    4.76 | 28-36,41-49,54-62,67-105,109-119,123-165
+ src/pkg/sdk/gen/core/serverSentEvents.gen.ts                                                                                   |    0.00 |    0.69 | 66-208
+ src/pkg/sdk/gen/core/utils.gen.ts                                                                                              |    0.00 |    4.40 | 18-79,83-107
+ src/pkg/sdk/gen/sdk.gen.ts                                                                                                     |    1.25 |   26.42 | 223,237-240,249-252,259-262,271-274,281-288,295-298,305-308,315-322,329-332,341-344,351-358,365-368,377-380,387-390,399-402,411-414,423-426,435-438,445-452,459-462,469-472,479-482,489-496,503-506,513-516,523-530,537-544,551-554,561-564,571-574,581-584,591-598,605-608,615-622,629-632,639-646,653-660,667-674,681-688,695-698,707-710,719-730,737-748,757-760,767-770,780-783,790-793,800-803,812-815,822-825,832-835,844-851,858-861,870-873,880-883,890-897,904-909,916-923,932-935,942-949,956-959,966-969,980-983,992-995,1004-1007,1014-1021,1030-1037,1044-1047,1054-1057,1064-1067,1074-1077,1084-1087,1094-1097,1104-1111,1118-1125,1132-1139,1149-1152,1161-1174
+ src/pkg/sdk/gen/types.gen.ts                                                                                                   |  100.00 |  100.00 |
+ src/pkg/util/error.ts                                                                                                          |   71.43 |   92.50 | 1-2
+ src/pkg/util/fn.ts                                                                                                             |   66.67 |  100.00 |
+ src/pkg/util/lazy.ts                                                                                                           |   50.00 |   37.50 | 5-9
+ src/pkg/util/slug.ts                                                                                                           |  100.00 |  100.00 |
+ src/plugin/codex.ts                                                                                                            |   26.32 |   12.66 | 19-24,28-32,36-38,42,82-83,86-98,109-123,127-139,185-227,243-310,314-318,322-345,352-459,466-489,496-572
+ src/plugin/index.ts                                                                                                            |   58.33 |   58.02 | 67-81,89-90,92-101,122-135,143-156
+ src/plugin/kimi-log.ts                                                                                                         |    7.14 |   25.00 | 17,21-26,30-53,57-69,73-78,82-86,90,95,98,101,104,109-117,127-132
+ src/plugin/kimi.ts                                                                                                             |   32.35 |   11.85 | 46-49,54,62,66,74,86-120,124-143,147-159,168-172,175-176,178-186,188-195,197,200-216,220-221,225-226,230-231,243-244,250-252,256-324,328-340,350-352,354,356-362,365-372,376-390,394-447,451-498,507-509,516-564,570-676
+ src/process/registry.ts                                                                                                        |   28.57 |   17.48 | 66-106,113-125,132-149,156-184,191,198-218,225,232,239-268,275-278,288,309-330,337-346,353-362
+ src/process/types.ts                                                                                                           |  100.00 |  100.00 |
+ src/project/bootstrap.ts                                                                                                       |    0.00 |   46.43 | 15-29
+ src/project/instance.ts                                                                                                        |   95.24 |   97.22 | 83-84
+ src/project/project.ts                                                                                                         |   72.22 |   80.41 | 67-72,92-97,126-131,149-154,261-263,265,270-272,276-281,314-321,325-336
+ src/project/state.ts                                                                                                           |   88.89 |   90.57 | 52-55
+ src/project/vcs.ts                                                                                                             |   16.67 |   50.00 | 30-36,41-60,63,68
+ src/provider/auth.ts                                                                                                           |   16.67 |   39.20 | 19-25,39-47,68-87,99-158,169-179
+ src/provider/circuit-breaker.ts                                                                                                |   29.17 |   17.09 | 68-138,146-147,154-158,165-166,173,180-190,199-219,226-256,263-295,302-307,314-342,349,356-362,369-372,389-392
+ src/provider/constants.ts                                                                                                      |  100.00 |  100.00 |
+ src/provider/equivalence.ts                                                                                                    |   16.67 |   22.40 | 55-60,74,82-86,94-102,112-133,143-149,161-250,257-261,268-270
+ src/provider/fallback-chain.ts                                                                                                 |   16.67 |   15.83 | 85-189,196-203,216-285,292-299,306-316
+ src/provider/fallback.ts                                                                                                       |   11.11 |   13.88 | 82-126,133-199,209-362,369-370,377-378,385,392
+ src/provider/models.ts                                                                                                         |  100.00 |   97.53 | 88-89
+ src/provider/provider.ts                                                                                                       |   81.43 |   64.09 | 115,121-125,160-161,382,519,522-528,533,535-542,544,547-555,557,560-568,571-720,723-727,729-735,743-744,771-772,774-780,783-792,794-796,798-830,832-837,843-844,943,973,987,1007-1041,1054,1056-1061,1064,1066-1073,1116-1124,1166-1167,1169-1178,1233-1270
+ src/provider/sdk/openai-compatible/src/index.ts                                                                                |  100.00 |  100.00 |
+ src/provider/sdk/openai-compatible/src/openai-compatible-provider.ts                                                           |   16.67 |   61.11 | 56,68-73,77-82
+ src/provider/sdk/openai-compatible/src/responses/convert-to-openai-responses-input.ts                                          |    0.00 |    3.50 | 16-17,21-294
+ src/provider/sdk/openai-compatible/src/responses/map-openai-responses-finish-reason.ts                                         |    0.00 |    0.00 | 3-30
+ src/provider/sdk/openai-compatible/src/responses/openai-error.ts                                                               |    0.00 |  100.00 |
+ src/provider/sdk/openai-compatible/src/responses/openai-responses-language-model.ts                                            |    0.00 |   19.29 | 15-17,146-147,154-1451,1673-1675,1679-1681,1685-1689,1693-1695,1699-1701,1705-1707,1710-1712,1716-1718,1722-1724,1728-1730,1734-1738,1742-1744,1748-1750,1754-1756,1760,1772-1823
+ src/provider/sdk/openai-compatible/src/responses/openai-responses-prepare-tools.ts                                             |    0.00 |    3.53 | 13-176
+ src/provider/sdk/openai-compatible/src/responses/tool/code-interpreter.ts                                                      |    0.00 |   91.67 | 83-85
+ src/provider/sdk/openai-compatible/src/responses/tool/file-search.ts                                                           |    0.00 |  100.00 |
+ src/provider/sdk/openai-compatible/src/responses/tool/image-generation.ts                                                      |    0.00 |   91.18 | 110-112
+ src/provider/sdk/openai-compatible/src/responses/tool/local-shell.ts                                                           |  100.00 |  100.00 |
+ src/provider/sdk/openai-compatible/src/responses/tool/web-search-preview.ts                                                    |  100.00 |  100.00 |
+ src/provider/sdk/openai-compatible/src/responses/tool/web-search.ts                                                            |    0.00 |   93.48 | 98-100
+ src/provider/transform.ts                                                                                                      |   75.00 |   73.64 | 17,25-28,47,63-65,119-145,147,178-183,220-224,253-255,262,279-293,297-307,311-317,604-609,614,644-646,648-650,652-654,659-663,667,672-691,872-901,909-921,925-945,966-970,1018,1022,1029,1031-1033,1043
+ src/pty/index.ts                                                                                                               |    8.33 |    4.60 | 15-242
+ src/question/index.ts                                                                                                          |  100.00 |  100.00 |
+ src/scheduler.ts                                                                                                               |  100.00 |   98.28 |
+ src/security/env-sanitize.ts                                                                                                   |  100.00 |   98.31 |
+ src/security/external-content.ts                                                                                               |  100.00 |  100.00 |
+ src/security/timing-safe.ts                                                                                                    |  100.00 |  100.00 |
+ src/server/auth.ts                                                                                                             |   42.86 |   34.04 | 19-22,26-30,35-36,46-54,56-60,63-68
+ src/server/error.ts                                                                                                            |  100.00 |  100.00 |
+ src/server/mdns.ts                                                                                                             |   33.33 |   12.12 | 31-77,82-92
+ src/server/route/app.ts                                                                                                        |   50.00 |   53.28 | 22-66,100-118
+ src/server/route/auth.ts                                                                                                       |   66.67 |   91.67 | 66-69,99-102
+ src/server/route/command.ts                                                                                                    |    0.00 |   70.45 | 32-44
+ src/server/route/config.ts                                                                                                     |    0.00 |   66.49 | 25,48-50,81-133,159-160,193-196
+ src/server/route/filesystem.ts                                                                                                 |    0.00 |   84.66 | 34-40,70-80,107-108,135-137,164-166
+ src/server/route/gateway.ts                                                                                                    |   88.89 |   83.48 | 61-63,74-75,77,99-102,154-161,171,194-195,201-205,214-215,230-231,239-241,244-245,310-311,317-318,323-324,340-343,384-385,391-392,397-398,412-415
+ src/server/route/global.ts                                                                                                     |    0.00 |   56.74 | 54-55,76-101,118-164,185-186
+ src/server/route/instance.ts                                                                                                   |    0.00 |   86.36 | 29-30,63-69,92-94,115-116,137-140
+ src/server/route/lsp.ts                                                                                                        |    0.00 |   95.35 | 24
+ src/server/route/mcp.ts                                                                                                        |    0.00 |   85.02 | 26,56-59,88-90,117-126,156-159,182-191,214-216,237-239,260-262,284-286,307-308,329-330
+ src/server/route/memory.ts                                                                                                     |    0.00 |   72.26 | 97-103,133-143,170-184,211-219,245-251,281-291,318-330,364-372,399-407,441-449,475-482,513-528
+ src/server/route/model.ts                                                                                                      |   57.14 |   90.58 | 25-26,54-59,175,210,244-250,286-294
+ src/server/route/permission.ts                                                                                                 |    0.00 |   81.82 | 28-35,56-57
+ src/server/route/process.ts                                                                                                    |    0.00 |   71.55 | 48-51,84-87,119-121,140-185,210-213,243-246,272-280,306-314,341-350,376-384,429-443,479-485,517-523,558-564,603-616,658-680,713-719,754-760,801-813
+ src/server/route/project.ts                                                                                                    |    0.00 |   90.28 | 27-28,49,73-76
+ src/server/route/pty.ts                                                                                                        |    0.00 |   89.83 | 27,50-51,74-78,102-103,125-126
+ src/server/route/question.ts                                                                                                   |    0.00 |   86.36 | 26-27,56-62,90-92
+ src/server/route/session.ts                                                                                                    |    5.41 |   65.33 | 25-26,30-32,36-37,104-106,140-153,175-176,205-208,247-257,285-306,335-344,373-375,421-445,482-507,530-532,557-560,583-586,609-610,633-639,675-676,707-730,754-759,787-792,814-820,843-853,873-881,910-913,937-940,964-970,993-995,1020-1025,1049-1051,1074-1076,1096-1190,1222-1245,1263-1333
+ src/server/route/stt.ts                                                                                                        |    0.00 |   58.33 | 55-89
+ src/server/route/tool.ts                                                                                                       |    0.00 |   85.71 | 28,70-79
+ src/server/route/tui.ts                                                                                                        |   23.08 |   83.27 | 29-30,51-52,73-76,97-100,121-124,145-148,169-172,195-212,234-235,272-274
+ src/server/server.ts                                                                                                           |   76.19 |   68.93 | 55-66,92,100-101,141-145,153-154,158-159,222,233,238,248,267-278,290-299,303-339
+ src/server/state.ts                                                                                                            |   75.00 |   88.89 |
+ src/session/compaction.ts                                                                                                      |   50.00 |   23.61 | 49-88,92-199,213-229
+ src/session/index.ts                                                                                                           |   69.44 |    3.62 | 1-445,458,470-476
+ src/session/instruction.ts                                                                                                     |   61.90 |   53.47 | 22,32-34,38-40,44-50,54,72-73,81,84-89,99-124,131-140,163-169
+ src/session/llm.ts                                                                                                             |   28.57 |    8.29 | 33-41,47-80,84-85,104-381,385-393
+ src/session/message-v2.ts                                                                                                      |   77.78 |   85.83 | 609-622,626-629,642-698,700,702-715
+ src/session/persistence.ts                                                                                                     |   57.97 |   40.97 | 142-143,152,158,191-192,197-198,205,218-222,226-230,235-239,244-248,258-260,285-287,293-317,321-344,364,375-377,426,431-443,452-477,481-498,574-576,580-584,592-597,604-640,647-655,669-713,731-749,756-770,794-813,821-826,834-839
+ src/session/processor.ts                                                                                                       |   45.45 |   29.10 | 47-48,51,93-104,112-115,118-131,134-147,150-168,171-179,199-200,217-220,222-232,234-249,251-261,263-266,268-276,278-293,295-296,298-299,301-318,320,322-323,325-331,333-369,372-376,378-393,395-400,402-408,410-419,421-439,443-444,447-458,460,462-521,523-525,527-539,541-543,545-548,551-554,575-584,593-604,608-621
+ src/session/prompt.ts                                                                                                          |   17.24 |    9.56 | 77-80,87-95,100-109,113-120,124-132,139-161,165-168,172-226,302-331,335-382,386-393,397-410,417-458,462-471,476-480,484-913,917-934,938-941,945-1136,1140-1513,1517-1564,1580-1795,1826-1873,1882-2028,2032-2100
+ src/session/retry.ts                                                                                                           |   88.89 |   68.97 | 14-15,22-23,41,67-68,76,84,86-103
+ src/session/revert.ts                                                                                                          |   64.29 |   79.44 | 37,76,80-88,105-115
+ src/session/status.ts                                                                                                          |   20.00 |   75.00 | 72-73,77-80,85,89-101
+ src/session/stream-events.ts                                                                                                   |  100.00 |  100.00 |
+ src/session/stream-health.ts                                                                                                   |   83.87 |   98.06 | 616-618,626-628,635
+ src/session/summary.ts                                                                                                         |   42.86 |   36.51 | 28-32,37-60,64-109,118,133-134,141-142
+ src/session/system.ts                                                                                                          |   20.00 |   28.26 | 14-15,19,23-28,32-55
+ src/session/thread.ts                                                                                                          |    6.67 |    9.63 | 69-117,124-148,156,163-170,177-181,188-210,221-249,256-271,309-375,383,391,398,406-456,464-505
+ src/session/todo.ts                                                                                                            |   25.00 |   67.31 | 31-36,50-51,55-63
+ src/shell/shell.ts                                                                                                             |   40.00 |   25.00 | 9-32,38-51,55-57
+ src/skill/index.ts                                                                                                             |  100.00 |  100.00 |
+ src/skill/skill.ts                                                                                                             |   69.23 |   65.93 | 58-63,74-78,100,104-113,115,117-119,137-150,156,171,173-176
+ src/snapshot/index.ts                                                                                                          |   91.30 |   69.35 | 13-46,122-127,150-152,173-179,249,251-275,285-288
+ src/storage/storage.ts                                                                                                         |   88.10 |   49.00 | 28-35,37-57,59-61,63-74,76-99,101-118,126-139,206-207
+ src/tool/apply_patch.ts                                                                                                        |   87.50 |   96.36 | 29-32,267-270
+ src/tool/bash.ts                                                                                                               |   77.27 |   77.78 | 39,42,53,113,115-126,128-134,136,143,150,153-161,172,177,196-197,275-282,304-305,308-309,315-316,332-334,342-343,345,349,353
+ src/tool/batch.ts                                                                                                              |    0.00 |    3.49 | 8-173
+ src/tool/codesearch.ts                                                                                                         |    0.00 |   25.71 | 51-128
+ src/tool/edit.ts                                                                                                               |   12.50 |    9.03 | 23,34-153,167-181,185,189-225,229-360,364-404,408-432,436-481,485-495,499-521,525-579,603-612,614,619-654
+ src/tool/external-directory.ts                                                                                                 |  100.00 |  100.00 |
+ src/tool/glob.ts                                                                                                               |    0.00 |   25.00 | 19-75
+ src/tool/grep.ts                                                                                                               |   60.00 |   89.21 | 21,60-62,79,94,131-135,155-156,160-161
+ src/tool/invalid.ts                                                                                                            |    0.00 |   60.00 | 9-14
+ src/tool/ls.ts                                                                                                                 |    0.00 |   34.48 | 42-117
+ src/tool/lsp.ts                                                                                                                |    0.00 |   31.18 | 30-93
+ src/tool/plan.ts                                                                                                               |    0.00 |   15.87 | 13-16,22-71,78-129
+ src/tool/question.ts                                                                                                           |  100.00 |  100.00 |
+ src/tool/read.ts                                                                                                               |   66.67 |   85.02 | 123,208,227-254
+ src/tool/registry.ts                                                                                                           |   78.57 |   60.14 | 56,66-82,87-93,129-160
+ src/tool/skill.ts                                                                                                              |    0.00 |    8.54 | 8-82
+ src/tool/task.ts                                                                                                               |    0.00 |    9.59 | 23-89,105-301
+ src/tool/todo.ts                                                                                                               |    0.00 |   23.81 | 11-42,49-64
+ src/tool/tool.ts                                                                                                               |  100.00 |   82.05 | 62-68
+ src/tool/truncation.ts                                                                                                         |   66.67 |   79.55 | 15-30,80-81
+ src/tool/webfetch.ts                                                                                                           |    0.00 |   10.56 | 20-142,148-176,180-188
+ src/tool/websearch.ts                                                                                                          |    0.00 |    9.38 | 40-155
+ src/tool/write.ts                                                                                                              |    0.00 |   26.14 | 24-88
+ src/usage/pricing.ts                                                                                                           |    0.00 |   12.16 | 21-31,38-59,67-90,97,104-107,114-116
+ src/usage/route.ts                                                                                                             |    0.00 |    6.86 | 16-38,47-60,69-88,97-115,124-135,144-160,169-210,219-234
+ src/usage/storage.ts                                                                                                           |    0.00 |    3.80 | 34-76,83-87,94-97,104-142,149-191,198-318,325-355,362-453,460-463,470-472,480-502,506-527
+ src/usage/tracker.ts                                                                                                           |    0.00 |   15.38 | 29-34,41-46,54-105,113-146
+ src/util/archive.ts                                                                                                            |   50.00 |   33.33 | 5-12
+ src/util/color.ts                                                                                                              |  100.00 |  100.00 |
+ src/util/context.ts                                                                                                            |  100.00 |  100.00 |
+ src/util/defer.ts                                                                                                              |    0.00 |    0.00 | 1-10
+ src/util/filesystem.ts                                                                                                         |   88.00 |   85.34 | 33,42-49,61-63,67-71
+ src/util/fn.ts                                                                                                                 |   66.67 |  100.00 |
+ src/util/format.ts                                                                                                             |  100.00 |  100.00 |
+ src/util/iife.ts                                                                                                               |  100.00 |  100.00 |
+ src/util/keybind.ts                                                                                                            |  100.00 |   97.18 | 91-92
+ src/util/lazy.ts                                                                                                               |  100.00 |  100.00 |
+ src/util/locale.ts                                                                                                             |   25.00 |   13.64 | 6-7,11-14,18-26,31-55,59-64,68-86,90-91,95-101,105-106
+ src/util/lock.ts                                                                                                               |  100.00 |  100.00 |
+ src/util/log.ts                                                                                                                |   85.19 |   94.49 | 60,63-64,96,138-140
+ src/util/net.ts                                                                                                                |   20.00 |   10.78 | 20-44,56-74,93-119,132-149,158-159
+ src/util/path.ts                                                                                                               |   60.00 |   60.00 | 24-30,34-38
+ src/util/queue.ts                                                                                                              |   50.00 |   57.14 | 5-16
+ src/util/timeout.ts                                                                                                            |  100.00 |  100.00 |
+ src/util/timestamp.ts                                                                                                          |    0.00 |   35.71 | 40-44,52,65-68,75-82
+ src/util/token.ts                                                                                                              |  100.00 |  100.00 |
+ src/util/wide-events.ts                                                                                                        |   66.67 |   74.81 | 55,86-87,118,122-135,139-150,157-159
+ src/util/wildcard.ts                                                                                                           |   77.78 |  100.00 |
+ src/worktree/index.ts                                                                                                          |    8.33 |   39.84 | 164,168-173,177,181-184,188-189,193,197-211,215-218,222-248,252-297,301-421
+ test/fixture/fixture.ts                                                                                                        |   77.78 |   81.97 | 21-25,52,59,65,78-80
+ test/mock/llm-provider.ts                                                                                                      |   83.87 |   37.17 | 138-139,172-173,312-498,510-529,541-561,573-602
+ test/mock/whatsapp-api.ts                                                                                                      |   75.00 |   77.55 | 118,128,195-199,206,285-317,326-337,390
+ test/preload.ts                                                                                                                |   63.16 |   80.70 | 49-53,57-65,70-78,82-85,89-90,93-94,139
+ ../../src/agent/personas.ts                                                                                                    |    0.00 |   98.85 | 418,423
+ ../../src/awareness/config-injector.ts                                                                                         |    0.00 |    3.45 | 24-58,65-85
+ ../../src/awareness/index.ts                                                                                                   |    0.00 |   11.19 | 51-101,109-138,145-190
+ ../../src/awareness/knowledge-loader.ts                                                                                        |    0.00 |    5.56 | 21-43,50-82,86-97
+ ../../src/awareness/mcp-catalog.ts                                                                                             |    0.00 |    2.54 | 34-71,79-124,128-137,144-164
+ ../../src/awareness/tool-catalog.ts                                                                                            |    0.00 |   22.56 | 97-149,156-227,231-244,248-250,254-264,268-286,290-300,304-326
+ ../../src/config/embedding-profiles.ts                                                                                         |    0.00 |   81.82 | 32-35
+ ../../src/config/runtime.ts                                                                                                    |    0.00 |   12.42 | 104-121,125-164,168-177,181-191,195-212,216,220,224-242,246-265,269,273
+ ../../src/domain/zee/google/calendar.ts                                                                                        |    0.00 |    4.51 | 71-78,82,86-110,114-122,126-142,146-147,151-173,177-184,188-199,203-217,221-261,265-272,302-322,326-347,351-367,371-390,409-493,497-585
+ ../../src/mcp/servers/calendar-tools.ts                                                                                        |   33.33 |   28.03 | 76-143,167-222,243-294,310-348,374-383,400-403,408-417,433-478
+ ../../src/mcp/servers/index.ts                                                                                                 |   33.33 |   73.68 | 67,81-89
+ ../../src/memory/stats.ts                                                                                                      |   75.00 |   91.30 | 41
+ ../../src/paths.ts                                                                                                             |   13.04 |   50.59 | 20,30,34,38,42,46,55,59,67-85,92-95,99,108,112,121,129,133,142,146,159,163
+ ../../src/theme/rosetta.ts                                                                                                     |   50.00 |   83.21 | 184-188,196-213
+ ../../../tmp/opencode-test-data-7343/home/tmp/opencode-test-2745f6bc-b268-4640-afd9-f58ff366f1e6/.agent-core/tool/test-tool.ts |    0.00 |   83.33 |
+ ../../../tmp/opencode-test-data-7343/home/tmp/opencode-test-e5377fe6-3dec-4b1e-aae8-4a99147e1240/.agent-core/tool/hello.ts     |    0.00 |   83.33 |
+ ../../../tmp/opencode-test-data-7343/home/tmp/opencode-test-f0b2df69-50cf-4b04-b077-0f257d0ae5cd/.agent-core/tools/hello.ts    |    0.00 |   83.33 |
+--------------------------------------------------------------------------------------------------------------------------------|---------|---------|-------------------
+
+ 1146 pass
+ 23 fail
+ 2 errors
+ 2732 expect() calls
+Ran 1169 tests across 82 files. [46.36s]
