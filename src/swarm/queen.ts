@@ -18,6 +18,19 @@ import {
 export interface QueenConfig extends SwarmConfig {
   id?: string;
   name?: string;
+  consensus?: ConsensusConfig;
+}
+
+export interface ConsensusConfig {
+  threshold?: number; // 0-1, default 0.6 (60% agreement)
+  timeout?: number; // ms to wait for votes
+}
+
+export interface ConsensusResult {
+  approved: boolean;
+  votes: Map<string, boolean>;
+  threshold: number;
+  agreement: number;
 }
 
 export class Queen extends EventEmitter {
@@ -181,6 +194,74 @@ export class Queen extends EventEmitter {
    */
   isDone(): boolean {
     return Array.from(this.workers.values()).every((w) => w.isDone());
+  }
+
+  /**
+   * Run consensus vote among workers
+   * Each worker is asked to vote yes/no on a proposal
+   */
+  async consensus(
+    proposal: string,
+    config?: ConsensusConfig
+  ): Promise<ConsensusResult> {
+    const threshold = config?.threshold ?? 0.6;
+    const timeout = config?.timeout ?? 30000;
+
+    const votePrompt = `
+CONSENSUS VOTE REQUIRED
+
+Proposal: ${proposal}
+
+You must vote YES or NO on this proposal.
+Respond with exactly one word: YES or NO
+
+Your vote:`.trim();
+
+    const voters = Array.from(this.workers.values()).filter((w) => !w.isDone());
+    if (voters.length === 0) {
+      return {
+        approved: false,
+        votes: new Map(),
+        threshold,
+        agreement: 0,
+      };
+    }
+
+    const votes = new Map<string, boolean>();
+    
+    // Collect votes with timeout
+    const votePromises = voters.map(async (worker) => {
+      try {
+        const queen = new Queen({ maxWorkers: 1, panes: false, timeout });
+        const result = await queen.spawnOne({
+          id: `vote-${worker.id}`,
+          name: `Vote-${worker.name}`,
+          prompt: votePrompt,
+          persona: "zee",
+        });
+        
+        const output = result.output.join("").toLowerCase();
+        const vote = output.includes("yes");
+        votes.set(worker.id, vote);
+      } catch {
+        votes.set(worker.id, false); // Timeout = no vote
+      }
+    });
+
+    await Promise.all(votePromises);
+
+    const yesCount = Array.from(votes.values()).filter((v) => v).length;
+    const agreement = yesCount / votes.size;
+    const approved = agreement >= threshold;
+
+    this.emit("consensus", { proposal, approved, agreement, votes });
+
+    return {
+      approved,
+      votes,
+      threshold,
+      agreement,
+    };
   }
 }
 

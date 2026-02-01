@@ -1,12 +1,12 @@
 ---
-name: tiara-orchestration
-description: Orchestration layer for the Personas system. Provides swarm coordination, shared memory, WezTerm panes, and execution patterns.
+name: swarm
+description: Parallel worker coordination with WezTerm visualization, shared memory, and SPARC phases.
 version: 2.0.0
 author: Artur
-tags: [orchestration, swarm, memory, wezterm, sparc]
+tags: [orchestration, swarm, memory, wezterm, sparc, consensus]
 ---
 
-# Swarm Orchestration
+# Swarm
 
 The swarm module (`src/swarm/`) provides Claude-Flow-level parallelism for all Personas.
 

@@ -271,4 +271,191 @@ export namespace Thread {
 
     return `${personaIcon} ${thread.persona.charAt(0).toUpperCase() + thread.persona.slice(1)} via ${channelLabel} (${thread.messageCount} msgs, last: ${lastActive})`
   }
+
+  // =========================================================================
+  // Thread Search & Discovery (Amp-style)
+  // =========================================================================
+
+  export interface SearchOptions {
+    /** Search by keyword in thread messages */
+    keyword?: string
+    /** Search by files touched (edited/read) */
+    files?: string[]
+    /** Filter by persona */
+    persona?: Persona
+    /** Filter by channel */
+    channel?: Channel
+    /** Filter by date range */
+    after?: Date
+    before?: Date
+    /** Maximum results */
+    limit?: number
+  }
+
+  export interface SearchResult {
+    thread: Info
+    /** Matching message snippets */
+    snippets: string[]
+    /** Files touched in this thread */
+    filesTouched: string[]
+    /** Relevance score (0-1) */
+    score: number
+  }
+
+  /**
+   * Search threads by keyword, files touched, or other criteria.
+   * Like Amp's "find threads by keyword or by which files they touched".
+   */
+  export async function search(options: SearchOptions): Promise<SearchResult[]> {
+    const results: SearchResult[] = []
+    const limit = options.limit ?? 20
+
+    for await (const session of Session.list()) {
+      if (results.length >= limit) break
+
+      // Parse persona/channel from title
+      const { persona, channel } = parseSessionTitle(session.title)
+
+      // Filter by persona
+      if (options.persona && persona !== options.persona) continue
+
+      // Filter by channel
+      if (options.channel && channel !== options.channel) continue
+
+      // Filter by date
+      if (options.after && session.time.created < options.after.getTime()) continue
+      if (options.before && session.time.created > options.before.getTime()) continue
+
+      // Get messages for deeper search
+      const messages = await Session.messages({ sessionID: session.id, limit: 100 })
+
+      // Extract files touched from messages
+      const filesTouched = extractFilesTouched(messages)
+
+      // Filter by files
+      if (options.files && options.files.length > 0) {
+        const hasMatch = options.files.some((file) =>
+          filesTouched.some((touched) => touched.includes(file) || file.includes(touched))
+        )
+        if (!hasMatch) continue
+      }
+
+      // Search by keyword
+      let snippets: string[] = []
+      let score = 0.5 // Base score
+
+      if (options.keyword) {
+        const keyword = options.keyword.toLowerCase()
+        snippets = findSnippets(messages, keyword)
+        if (snippets.length === 0) continue
+        score = Math.min(1, 0.5 + snippets.length * 0.1)
+      }
+
+      // Build thread info
+      const thread: Info = {
+        id: session.id,
+        persona,
+        channel,
+        createdAt: session.time.created,
+        lastActiveAt: session.time.updated,
+        messageCount: messages.length,
+        isActive: !session.time.archived,
+      }
+
+      results.push({
+        thread,
+        snippets,
+        filesTouched,
+        score,
+      })
+    }
+
+    // Sort by score (highest first)
+    results.sort((a, b) => b.score - a.score)
+
+    return results
+  }
+
+  /**
+   * Find threads that touched specific files.
+   * Shorthand for search({ files: [...] })
+   */
+  export async function findByFiles(files: string[], limit?: number): Promise<SearchResult[]> {
+    return search({ files, limit })
+  }
+
+  /**
+   * Find threads by keyword.
+   * Shorthand for search({ keyword: "..." })
+   */
+  export async function findByKeyword(keyword: string, limit?: number): Promise<SearchResult[]> {
+    return search({ keyword, limit })
+  }
+
+  /**
+   * Extract file paths touched in messages (edits, reads, etc.)
+   */
+  function extractFilesTouched(messages: MessageV2.WithParts[]): string[] {
+    const files = new Set<string>()
+
+    for (const msg of messages) {
+      for (const part of msg.parts) {
+        // Check tool calls for file operations
+        if (part.type === "tool-invocation" && part.state.status !== "pending") {
+          const input = part.state.input
+          if (typeof input === "object" && input !== null) {
+            // Common patterns for file paths in tool inputs
+            const possiblePaths = [
+              (input as { path?: string }).path,
+              (input as { file?: string }).file,
+              (input as { filePath?: string }).filePath,
+              (input as { filename?: string }).filename,
+            ]
+            for (const p of possiblePaths) {
+              if (typeof p === "string" && p.length > 0) {
+                files.add(p)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return Array.from(files)
+  }
+
+  /**
+   * Find message snippets containing keyword
+   */
+  function findSnippets(messages: MessageV2.WithParts[], keyword: string): string[] {
+    const snippets: string[] = []
+    const maxSnippets = 5
+    const snippetLength = 100
+
+    for (const msg of messages) {
+      if (snippets.length >= maxSnippets) break
+
+      for (const part of msg.parts) {
+        if (snippets.length >= maxSnippets) break
+
+        let text = ""
+        if (part.type === "text") {
+          text = part.text
+        } else if (part.type === "tool-invocation" && part.state.status === "completed") {
+          text = typeof part.state.output === "string" ? part.state.output : ""
+        }
+
+        const lowerText = text.toLowerCase()
+        const index = lowerText.indexOf(keyword)
+        if (index !== -1) {
+          const start = Math.max(0, index - snippetLength / 2)
+          const end = Math.min(text.length, index + keyword.length + snippetLength / 2)
+          const snippet = text.slice(start, end).trim()
+          snippets.push(snippet.length < text.length ? `...${snippet}...` : snippet)
+        }
+      }
+    }
+
+    return snippets
+  }
 }

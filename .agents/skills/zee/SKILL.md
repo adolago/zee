@@ -5,14 +5,14 @@ version: 1.0.0
 author: Artur
 tags: [persona, assistant, memory, messaging, calendar]
 includes:
-  - tiara-orchestration
+  - swarm
   - agents-menu
 ---
 
 # zee - Personal Life Assistant
 
 > **Part of the Personas** - Zee shares orchestration capabilities with Stanley and Johny.
-> See the `tiara-orchestration` skill for: drone spawning, shared memory, conversation continuity.
+> See the `swarm` skill for: drone spawning, shared memory, conversation continuity.
 
 zee handles the cognitive load of life administration:
 - **Memory**: Remember everything, recall anything (Qdrant-backed)
@@ -153,7 +153,7 @@ zee operates across:
 | Financial question | @stanley |
 | Code implementation | @johny |
 
-See `tiara-orchestration` for execution protocols.
+See `swarm` for execution protocols.
 
 ## Integration Points
 

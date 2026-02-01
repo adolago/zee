@@ -37,7 +37,7 @@
  */
 
 export { Queen, runSwarm, fanOut, research } from "./queen";
-export type { QueenConfig } from "./queen";
+export type { QueenConfig, ConsensusConfig, ConsensusResult } from "./queen";
 
 export { Worker } from "./worker";
 
@@ -65,3 +65,14 @@ export {
   runSparcParallel,
 } from "./sparc";
 export type { SparcPhase, SparcTask, SparcConfig } from "./sparc";
+
+// Neural pattern training (Johny-only)
+export {
+  learnFromSuccess,
+  learnFromFailure,
+  trainOnBatch,
+  findSimilarPatterns,
+  enhanceWithPatterns,
+  runWithLearning,
+} from "./neural";
+export type { Pattern, TrainingResult } from "./neural";

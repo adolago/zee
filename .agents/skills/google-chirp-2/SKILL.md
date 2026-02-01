@@ -136,7 +136,7 @@ Agent:           "You added lunch with Sarah at noon"
 
 - **TUI Dictation**: `packages/agent-core/src/tui/dictation.ts`
 - **Voice Messages**: `packages/personas/zee/src/media-understanding/`
-- **Unified Sessions**: `packages/tiara/src/sessions/`
+- **Unified Sessions**: `src/swarm/sessions/`
 - **Vertex AI Provider**: Configured via connect provider
 
 ## Related

@@ -43,6 +43,7 @@ export class Worker extends EventEmitter {
 
     // Spawn agent-core with the prompt
     // Uses daemon API to create a session and stream output
+    // Persona identity flows to subagent (mini-persona pattern)
     this.process = spawn(
       "agent-core",
       ["prompt", "--agent", this.persona, "--no-tui", this.prompt],
@@ -52,6 +53,9 @@ export class Worker extends EventEmitter {
           ...process.env,
           AGENT_CORE_WORKER_ID: this.id,
           AGENT_CORE_WORKER_NAME: this.name,
+          AGENT_CORE_PERSONA: this.persona,
+          // Subagent inherits parent persona identity
+          AGENT_CORE_IS_SUBAGENT: "true",
         },
       }
     );

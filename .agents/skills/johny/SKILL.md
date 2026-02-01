@@ -5,14 +5,14 @@ version: 1.0.0
 author: Artur
 tags: [persona, learning, study, knowledge-graph, spaced-repetition]
 includes:
-  - tiara-orchestration
+  - swarm
   - agents-menu
 ---
 
 # johny - Learning System
 
 > **Part of the Personas** - Johny shares orchestration capabilities with Zee and Stanley.
-> See the `tiara-orchestration` skill for: drone spawning, shared memory, conversation continuity.
+> See the `swarm` skill for: drone spawning, shared memory, conversation continuity.
 
 johny embodies legendary learning capabilities:
 - **Rapid information absorption** via knowledge graph
@@ -115,7 +115,7 @@ npx tsx scripts/johny-daemon.ts status
 | Chart/UI analysis | Multimodal | Visual understanding |
 | Frontend work | Frontend Engineer | UI/UX expertise |
 
-See `tiara-orchestration` for execution protocols (Oracle, Librarian, Explorer).
+See `swarm` for execution protocols (Oracle, Librarian, Explorer).
 
 ## Johny's Discipline Rules
 

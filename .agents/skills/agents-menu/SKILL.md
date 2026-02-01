@@ -32,7 +32,7 @@ agent-core --agent johny "..."
 
 ## Orchestration
 
-See `tiara-orchestration` skill for:
+See `swarm` skill for:
 - Drone spawning
 - Shared memory (Qdrant)
 - Conversation continuity
