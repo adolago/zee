@@ -29,11 +29,6 @@ export type KeybindsConfig = SDKKeybindsConfig & {
   // Vim mode keybinds
   vim_normal_mode?: string
   vim_insert_mode?: string
-  vim_insert_append?: string
-  vim_insert_line_start?: string
-  vim_insert_line_end?: string
-  vim_insert_below?: string
-  vim_insert_above?: string
 }
 
 export const { use: useKeybind, provider: KeybindProvider } = createSimpleContext({
@@ -51,9 +46,6 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
       leader: false,
     })
     const renderer = useRenderer()
-
-    // Global vim command handler - invoked when textarea is unfocused but vim is enabled
-    let vimCommandHandler: ((key: string, evt: ParsedKey) => boolean) | null = null
 
     let focus: Renderable | null
     function isRenderableInTree(root: Renderable, target: Renderable): boolean {
@@ -117,26 +109,14 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
         return
       }
 
-      // Global vim command handling when textarea is unfocused
-      // This enables vim commands to work even when focus is elsewhere (e.g., after dialog close)
+      // When vim normal mode is active and textarea is unfocused, refocus on Escape
       if (vim.enabled && vim.isNormal && !store.leader && !hasFocus) {
-        // Handle Escape in normal mode when unfocused - refocus the textarea
         if (evt.name === "escape") {
           vim.onEnterInsert() // Uses the focus callback to refocus textarea
           vim.enterNormal() // Stay in normal mode
           evt.stopPropagation()
           evt.preventDefault()
           return
-        }
-
-        // Route single character commands (no modifiers except shift for uppercase)
-        if (evt.name && evt.name.length === 1 && !evt.ctrl && !evt.meta) {
-          const key = evt.shift ? evt.name.toUpperCase() : evt.name
-          if (vimCommandHandler?.(key, evt)) {
-            evt.stopPropagation()
-            evt.preventDefault()
-            return
-          }
         }
       }
     })
@@ -177,10 +157,6 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
         if (!first) return ""
         const result = Keybind.toString(first)
         return result.replace("<leader>", Keybind.toString(keybinds().leader![0]!))
-      },
-      // Register a global vim command handler for when textarea is unfocused
-      registerVimCommandHandler(fn: ((key: string, evt: ParsedKey) => boolean) | null) {
-        vimCommandHandler = fn
       },
     }
     return result

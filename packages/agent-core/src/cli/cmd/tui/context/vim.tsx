@@ -3,7 +3,7 @@ import { createStore } from "solid-js/store"
 import { useSync } from "@tui/context/sync"
 import { createSimpleContext } from "./helper"
 
-export type VimMode = "normal" | "insert" | "visual"
+export type VimMode = "normal" | "insert"
 
 export const { use: useVim, provider: VimProvider } = createSimpleContext({
   name: "Vim",
@@ -61,9 +61,6 @@ export const { use: useVim, provider: VimProvider } = createSimpleContext({
       get isInsert() {
         return !enabled() || store.mode === "insert"
       },
-      get isVisual() {
-        return enabled() && store.mode === "visual"
-      },
       setMode(mode: VimMode) {
         if (!enabled()) return
         setStore("mode", mode)
@@ -71,10 +68,6 @@ export const { use: useVim, provider: VimProvider } = createSimpleContext({
       enterNormal() {
         if (!enabled()) return
         setStore("mode", "normal")
-      },
-      enterVisual() {
-        if (!enabled()) return
-        setStore("mode", "visual")
       },
       enterInsert() {
         if (enabled()) {

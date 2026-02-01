@@ -21,7 +21,6 @@ import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
 import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
-import { VimCommands } from "@tui/util/vim-commands"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
 import type { FilePart } from "@opencode-ai/sdk/v2"
@@ -71,7 +70,6 @@ export function Prompt(props: PromptProps) {
 
   const keybind = useKeybind()
   const vim = useVim()
-  const [visualAnchor, setVisualAnchor] = createSignal<number | null>(null)
   const local = useLocal()
   const sdk = useSDK()
   const route = useRoute()
@@ -358,82 +356,7 @@ export function Prompt(props: PromptProps) {
       dictationRecording = undefined
     }
     grammarChecker.cancel()
-    // Unregister vim command handler when component unmounts
-    keybind.registerVimCommandHandler(null)
   })
-
-  // Create vim command context for the shared handler
-  function createVimContext(): VimCommands.VimCommandContext {
-    return {
-      getCursorOffset: () => input.cursorOffset,
-      setCursorOffset: (offset) => { input.cursorOffset = offset },
-      getText: () => input.plainText,
-      setText: (text) => input.setText(text),
-      insertText: (text) => input.insertText(text),
-      setStoreInput: (text) => setStore("prompt", "input", text),
-    }
-  }
-
-  const visualMotionKeys = new Set(["h", "j", "k", "l", "w", "b", "e", "0", "$", "^", "g", "G"])
-
-  function updateVisualSelection() {
-    const anchor = visualAnchor()
-    if (anchor === null) return
-    input.editorView.setSelection(anchor, input.cursorOffset)
-  }
-
-  function enterVisualMode() {
-    if (!vim.enabled || !vim.isNormal) return
-    const anchor = input.cursorOffset
-    setVisualAnchor(anchor)
-    input.editorView.setSelection(anchor, anchor)
-    vim.enterVisual()
-  }
-
-  function exitVisualMode() {
-    input.editorView.resetSelection()
-    setVisualAnchor(null)
-    vim.enterNormal()
-  }
-
-  function deleteVisualSelection(): boolean {
-    const selection = input.editorView.getSelection()
-    if (!selection) return false
-    const start = Math.min(selection.start, selection.end)
-    const end = Math.max(selection.start, selection.end)
-    if (start === end) return false
-    const text = input.plainText
-    const next = text.slice(0, start) + text.slice(end)
-    input.setText(next)
-    setStore("prompt", "input", next)
-    input.cursorOffset = start
-    exitVisualMode()
-    return true
-  }
-
-  // Global vim command handler - handles vim commands when textarea is unfocused
-  // This is registered with the keybind context to enable vim mode to work globally
-  function handleVimCommand(key: string): boolean {
-    if (!vim.enabled || !vim.isNormal) return false
-
-    const ctx = createVimContext()
-    const result = VimCommands.handleNormalModeKey(ctx, key)
-
-    if (result.handled) {
-      if (result.enterInsert) {
-        vim.enterInsert()
-      } else {
-        // Navigation commands - focus the textarea but stay in normal mode
-        input.focus()
-      }
-      return true
-    }
-
-    return false
-  }
-
-  // Register the global vim command handler
-  keybind.registerVimCommandHandler(handleVimCommand)
 
   const fileStyleId = syntax().getStyleId("extmark.file")!
   const agentStyleId = syntax().getStyleId("extmark.agent")!
@@ -1444,11 +1367,11 @@ export function Prompt(props: PromptProps) {
             <Show when={vim.enabled && store.mode !== "shell"}>
               <text fg={theme.border} flexShrink={0}>─</text>
               <text
-                fg={vim.isVisual ? theme.warning : vim.isNormal ? theme.accent : theme.success}
+                fg={vim.isNormal ? theme.accent : theme.success}
                 attributes={TextAttributes.BOLD}
                 flexShrink={0}
               >
-                {vim.isVisual ? "V" : vim.isNormal ? "N" : "I"}
+                {vim.isNormal ? "N" : "I"}
               </text>
             </Show>
             <text fg={theme.border} flexShrink={0}>─┤</text>
@@ -1523,59 +1446,21 @@ export function Prompt(props: PromptProps) {
                     }
                   }
 
-                  // In visual mode, handle selection and exit keys
-                  if (vim.isVisual && !keybind.leader) {
-                    if (e.name === "escape") {
-                      exitVisualMode()
-                      e.preventDefault()
-                      return
-                    }
-
-                    if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
-                      const key = e.name
-
-                      if (key === "v") {
-                        exitVisualMode()
-                        e.preventDefault()
-                        return
-                      }
-
-                      if ((key === "x" || key === "d") && deleteVisualSelection()) {
-                        e.preventDefault()
-                        return
-                      }
-
-                      if (visualMotionKeys.has(key)) {
-                        const ctx = createVimContext()
-                        const result = VimCommands.handleNormalModeKey(ctx, key)
-                        if (result.handled) {
-                          updateVisualSelection()
-                          e.preventDefault()
-                          return
-                        }
-                      }
-
-                      e.preventDefault()
-                      return
-                    }
-                  }
-
                   // In normal mode, handle vim commands
                   if (vim.isNormal && !keybind.leader) {
                     // Single character commands (no modifiers except shift for uppercase)
                     if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
                       const key = e.name
 
-                      if (key === "v") {
-                        enterVisualMode()
+                      // `i` enters insert mode
+                      if (key === "i") {
+                        vim.enterInsert()
                         e.preventDefault()
                         return
                       }
 
                       // Allow `!` at position 0 to trigger shell mode
-                      // This must be checked before vim command handling
                       if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
-                        // Enter insert mode first so user can type the shell command
                         vim.enterInsert()
                         setStore("mode", "shell")
                         e.preventDefault()
@@ -1584,24 +1469,10 @@ export function Prompt(props: PromptProps) {
 
                       // Allow leader key to pass through to activate leader mode
                       if (keybind.match("leader", e)) {
-                        // Don't block - let it propagate to the global leader handler
-                        return
-                      }
-
-                      // Use shared vim command handler
-                      const ctx = createVimContext()
-                      const result = VimCommands.handleNormalModeKey(ctx, key)
-
-                      if (result.handled) {
-                        if (result.enterInsert) {
-                          vim.enterInsert()
-                        }
-                        e.preventDefault()
                         return
                       }
 
                       // Block all other character input in normal mode
-                      // This prevents accidental typing
                       e.preventDefault()
                       return
                     }
