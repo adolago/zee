@@ -18,8 +18,8 @@ import { SplitBorder } from "@tui/component/border"
  * ```
  */
 export const Header = {
-  /** Standard padding for header content (top: 1, bottom: 1, left: 2, right: 2) */
-  padding: { top: 1, bottom: 1, left: 2, right: 2 },
+  /** Standard padding for header content (top: 0, bottom: 1, left: 0, right: 0) */
+  padding: { top: 0, bottom: 1, left: 0, right: 0 },
 
   /** Border color for headers - uses theme.border */
   borderColor: "theme.border" as const,

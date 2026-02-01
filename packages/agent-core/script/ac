@@ -1,10 +1,11 @@
 #!/bin/bash
-# ac - Always runs the LOCAL dev binary, bypassing PATH entirely
+# ac - Nuke and boot: kills all agent-core processes, then runs the LOCAL dev binary
 #
-# Usage: ./script/ac [args...]
-#   or: ln -sf ~/.local/src/agent-core/packages/agent-core/script/ac ~/bin/ac
+# Usage: ac [args...]
 #
-# This guarantees you're running YOUR build, not some global install.
+# Symlink: ln -sf ~/.local/src/agent-core/packages/agent-core/script/ac ~/bin/ac
+#
+# Use `agent-core` for normal boot (no nuke), `ac` for fresh start.
 
 set -e
 
@@ -36,13 +37,22 @@ if [[ ! -f "$LOCAL_BINARY" ]]; then
     exit 1
 fi
 
-# Check if source is newer than binary (warn but still run)
-LOCAL_MTIME=$(stat -c %Y "$LOCAL_BINARY" 2>/dev/null || stat -f %m "$LOCAL_BINARY")
-SRC_NEWEST=$(find "$REPO_ROOT/src" -name "*.ts" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1)
+# Check if source is newer than binary - auto-rebuild if needed
+LOCAL_MTIME=$(stat -c %Y "$LOCAL_BINARY" 2>/dev/null || stat -f %m "$LOCAL_BINARY" 2>/dev/null || echo 0)
+SRC_NEWEST=$(find "$REPO_ROOT/src" "$REPO_ROOT/package.json" "$REPO_ROOT/tsconfig.json" \
+    \( -name "*.ts" -o -name "*.tsx" -o -name "*.json" \) -type f -newer "$LOCAL_BINARY" -print -quit 2>/dev/null)
 
-if [[ -n "$SRC_NEWEST" ]] && [[ "$SRC_NEWEST" -gt "$LOCAL_MTIME" ]]; then
-    echo -e "\033[1;33m[ac] Source newer than binary - rebuild recommended\033[0m" >&2
+if [[ -n "$SRC_NEWEST" ]]; then
+    echo -e "\033[1;33m[ac] Source newer than binary ($SRC_NEWEST) - rebuilding...\033[0m" >&2
+    (cd "$REPO_ROOT" && bun run build) || { echo "[ac] Build failed"; exit 1; }
 fi
 
-# Run the local binary directly
+# Nuke: kill all existing agent-core processes
+if pgrep -f "agent-core" > /dev/null 2>&1; then
+    echo -e "\033[1;36m[ac] Killing existing agent-core processes...\033[0m" >&2
+    pkill -9 -f "agent-core" 2>/dev/null || true
+    sleep 1
+fi
+
+# Boot: run the local binary
 exec "$LOCAL_BINARY" "$@"

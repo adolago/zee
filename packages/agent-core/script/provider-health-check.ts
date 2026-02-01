@@ -4,12 +4,25 @@
  *
  * Tests all configured providers and models with minimal (1-token) requests.
  * Reports success, errors, and latency for each provider/model combination.
+ * 
+ * Error Categories:
+ * - AuthError: Invalid API key, expired token, unauthorized
+ * - RateLimitError: Rate limited, too many requests (429)
+ * - QuotaError: Insufficient balance, quota exceeded, billing issues
+ * - TimeoutError: Connection timeout, slow response
+ * - ModelNotFoundError: Model doesn't exist, deprecated
+ * - ServerError: 5xx errors, internal server errors
+ * - PermissionError: 403 forbidden, insufficient scopes
+ * - ValidationError: Bad request, invalid parameters
+ * - NetworkError: Connection refused, DNS errors
  *
  * Usage:
  *   bun run script/provider-health-check.ts
- *   bun run script/provider-health-check.ts --all     # Test all models, not just first per provider
- *   bun run script/provider-health-check.ts --json    # Output JSON results
- *   bun run script/provider-health-check.ts --provider anthropic  # Test specific provider
+ *   bun run script/provider-health-check.ts --all           # Test all models
+ *   bun run script/provider-health-check.ts --json          # Output JSON results
+ *   bun run script/provider-health-check.ts --provider <id> # Test specific provider
+ *   bun run script/provider-health-check.ts --errors-only   # Only show failing tests
+ *   bun run script/provider-health-check.ts --timeout 60    # Custom timeout (seconds)
  */
 
 import { Provider } from "../src/provider/provider"
@@ -17,20 +30,53 @@ import { ProviderTransform } from "../src/provider/transform"
 import { generateText, streamText, type LanguageModel } from "ai"
 import { Instance } from "../src/project/instance"
 
+type TestStatus = "success" | "error" | "skipped" | "warning"
+
+type ErrorCategory =
+  | "AuthError"
+  | "RateLimitError"
+  | "QuotaError"
+  | "TimeoutError"
+  | "ModelNotFoundError"
+  | "ServerError"
+  | "PermissionError"
+  | "ValidationError"
+  | "NetworkError"
+  | "ConfigError"
+  | "UnknownError"
+
 interface TestResult {
   provider: string
   model: string
-  status: "success" | "error" | "skipped"
+  status: TestStatus
   error?: string
-  errorType?: string
+  errorType?: ErrorCategory
   latencyMs?: number
   response?: string
+  timestamp: string
+  suggestedAction?: string
 }
 
 const args = process.argv.slice(2)
 const testAllModels = args.includes("--all")
 const outputJson = args.includes("--json")
+const errorsOnly = args.includes("--errors-only")
 const specificProvider = args.find((a) => a.startsWith("--provider="))?.split("=")[1] ?? args[args.indexOf("--provider") + 1]
+const timeoutArg = args.find((a) => a.startsWith("--timeout="))?.split("=")[1]
+const DEFAULT_TIMEOUT = timeoutArg ? parseInt(timeoutArg, 10) * 1000 : 30000
+
+// ANSI color codes for terminal output
+const COLORS = {
+  reset: "\x1b[0m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  gray: "\x1b[90m",
+  bold: "\x1b[1m",
+}
 
 async function testModel(
   providerID: string,
@@ -41,13 +87,18 @@ async function testModel(
   const startTime = Date.now()
 
   try {
+    // Check if provider is disabled
+    const isDisabled = providerInfo.source === undefined
+    
     // Check if provider has required authentication
-    if (!providerInfo.source || providerInfo.source === "none") {
+    if (!providerInfo.source) {
       return {
         provider: providerID,
         model: modelID,
         status: "skipped",
         error: `No auth configured (need: ${providerInfo.env.join(" or ")})`,
+        timestamp: new Date().toISOString(),
+        suggestedAction: `Run: agent-core auth login ${providerID}`,
       }
     }
 
@@ -62,8 +113,10 @@ async function testModel(
         model: modelID,
         status: "error",
         error: err.message,
-        errorType: err.name || "LanguageModelError",
+        errorType: (err.name as ErrorCategory) || "ConfigError",
         latencyMs: Date.now() - startTime,
+        timestamp: new Date().toISOString(),
+        suggestedAction: `Check provider configuration for ${providerID}`,
       }
     }
 
@@ -85,9 +138,9 @@ async function testModel(
         model: language,
         prompt: "Reply with a single word: pong",
         temperature: 0,
-        maxTokens: 5,
+        maxOutputTokens: 5,
         maxRetries: 0,
-        abortSignal: AbortSignal.timeout(30000),
+        abortSignal: AbortSignal.timeout(DEFAULT_TIMEOUT),
         providerOptions: ProviderTransform.providerOptions(model, options),
         headers: model.headers,
       })
@@ -100,7 +153,7 @@ async function testModel(
         temperature: 0,
         maxOutputTokens: 5,
         maxRetries: 0,
-        abortSignal: AbortSignal.timeout(30000),
+        abortSignal: AbortSignal.timeout(DEFAULT_TIMEOUT),
         providerOptions: ProviderTransform.providerOptions(model, options),
         headers: model.headers,
       })
@@ -115,6 +168,7 @@ async function testModel(
       status: "success",
       latencyMs,
       response: responseText?.substring(0, 50),
+      timestamp: new Date().toISOString(),
     }
   } catch (e: unknown) {
     const err = e as Error & { cause?: Error; data?: unknown; responseBody?: string; url?: string; statusCode?: number }
@@ -138,6 +192,8 @@ async function testModel(
       errorDetails += ` | Status: ${err.statusCode}`
     }
 
+    const suggestedAction = getSuggestedAction(errorType, providerID)
+
     return {
       provider: providerID,
       model: modelID,
@@ -145,40 +201,93 @@ async function testModel(
       error: errorDetails,
       errorType,
       latencyMs,
+      timestamp: new Date().toISOString(),
+      suggestedAction,
     }
   }
 }
 
-function categorizeError(err: Error): string {
+function categorizeError(err: Error & { statusCode?: number; code?: string }): ErrorCategory {
   const message = err.message?.toLowerCase() || ""
   const name = err.name || ""
+  const statusCode = err.statusCode
+  const code = err.code?.toLowerCase() || ""
 
-  if (message.includes("unauthorized") || message.includes("authentication") || message.includes("api key") || message.includes("invalid_api_key")) {
-    return "AuthError"
-  }
-  if (message.includes("rate limit") || message.includes("too many requests") || message.includes("429")) {
-    return "RateLimitError"
-  }
-  if (message.includes("timeout") || message.includes("timed out") || message.includes("econnrefused") || message.includes("abort")) {
-    return "TimeoutError"
-  }
-  if (message.includes("not found") || message.includes("404") || message.includes("model not found") || message.includes("does not exist")) {
-    return "ModelNotFoundError"
-  }
-  if (message.includes("quota") || message.includes("billing") || message.includes("insufficient") || message.includes("credit")) {
-    return "QuotaError"
-  }
-  if (message.includes("invalid") || message.includes("bad request") || message.includes("400")) {
-    return "ValidationError"
-  }
-  if (message.includes("server error") || message.includes("500") || message.includes("502") || message.includes("503") || message.includes("internal")) {
-    return "ServerError"
-  }
-  if (message.includes("permission") || message.includes("forbidden") || message.includes("403")) {
+  // Check HTTP status codes first
+  if (statusCode === 401 || statusCode === 403) {
     return "PermissionError"
   }
+  if (statusCode === 429) {
+    return "RateLimitError"
+  }
+  if (statusCode === 404) {
+    return "ModelNotFoundError"
+  }
+  if (statusCode && statusCode >= 500 && statusCode < 600) {
+    return "ServerError"
+  }
+  if (statusCode === 400) {
+    return "ValidationError"
+  }
 
-  return name || "UnknownError"
+  // Check error messages
+  if (message.includes("unauthorized") || message.includes("authentication") || message.includes("api key") || 
+      message.includes("invalid_api_key") || message.includes("invalid token")) {
+    return "AuthError"
+  }
+  if (message.includes("rate limit") || message.includes("too many requests") || message.includes("throttled")) {
+    return "RateLimitError"
+  }
+  if (message.includes("quota") || message.includes("billing") || message.includes("insufficient") || 
+      message.includes("credit") || message.includes("balance") || message.includes("exceeded your current quota")) {
+    return "QuotaError"
+  }
+  if (message.includes("timeout") || message.includes("timed out") || message.includes("etimedout") || 
+      message.includes("abort") || code === "etimedout") {
+    return "TimeoutError"
+  }
+  if (message.includes("not found") || message.includes("model not found") || 
+      message.includes("does not exist") || message.includes("unknown model")) {
+    return "ModelNotFoundError"
+  }
+  if (message.includes("server error") || message.includes("internal error") || 
+      message.includes("bad gateway") || message.includes("service unavailable")) {
+    return "ServerError"
+  }
+  if (message.includes("permission") || message.includes("forbidden") || 
+      message.includes("insufficient scopes") || message.includes("access denied")) {
+    return "PermissionError"
+  }
+  if (message.includes("invalid") || message.includes("bad request") || 
+      message.includes("validation") || message.includes("unsupported parameter")) {
+    return "ValidationError"
+  }
+  if (message.includes("econnrefused") || message.includes("enotfound") || 
+      message.includes("network") || code === "econnrefused" || code === "enotfound") {
+    return "NetworkError"
+  }
+  if (message.includes("config") || message.includes("configuration")) {
+    return "ConfigError"
+  }
+
+  return (name as ErrorCategory) || "UnknownError"
+}
+
+function getSuggestedAction(errorType: ErrorCategory, provider: string): string {
+  const actions: Record<ErrorCategory, string> = {
+    AuthError: `Run: agent-core auth login ${provider}`,
+    RateLimitError: "Wait and retry; consider reducing request frequency",
+    QuotaError: "Check billing dashboard; add credits or upgrade plan",
+    TimeoutError: "Check network connection; retry with longer timeout",
+    ModelNotFoundError: "Model may be deprecated; check models.dev for alternatives",
+    ServerError: "Provider issue; retry later or check provider status page",
+    PermissionError: `Re-authenticate: agent-core auth login ${provider}`,
+    ValidationError: "Check model parameters; may need config update",
+    NetworkError: "Check internet connection and DNS resolution",
+    ConfigError: "Verify provider configuration in config.json",
+    UnknownError: "Check logs for details; may need manual investigation",
+  }
+  return actions[errorType] || actions.UnknownError
 }
 
 async function main() {
@@ -202,9 +311,39 @@ async function main() {
 
       for (const [providerID, providerInfo] of providerList) {
         const modelList = Object.entries(providerInfo.models)
-        const testableModels = testAllModels
-          ? modelList.filter(([_, model]) => model.status !== "deprecated")
-          : modelList.filter(([_, model]) => model.status !== "deprecated").slice(0, 1)
+        // Filter out deprecated models and embedding models (which don't support chat)
+        const isEmbeddingModel = (id: string) => id.includes("embedding") || id.includes("embed")
+        
+        // For google provider, separate antigravity models from native models
+        const isAntigravityModel = (id: string) => id.includes("antigravity")
+        
+        let testableModels: typeof modelList
+        if (providerID === "google") {
+          // Check if we have antigravity models - if so, prioritize testing one of those
+          const antigravityModels = modelList.filter(([id]) => isAntigravityModel(id))
+          const nativeModels = modelList.filter(([id, model]) => 
+            !isAntigravityModel(id) && model.status !== "deprecated" && !isEmbeddingModel(id)
+          )
+          
+          if (testAllModels) {
+            testableModels = [...antigravityModels, ...nativeModels]
+          } else {
+            // Test one antigravity model (if available) and one native model
+            testableModels = [
+              ...antigravityModels.slice(0, 1),
+              ...nativeModels.slice(0, 1),
+            ]
+          }
+          
+          if (!outputJson && antigravityModels.length > 0) {
+            console.log(`  Antigravity models: ${antigravityModels.length}`)
+            console.log(`  Native Gemini models: ${nativeModels.length}`)
+          }
+        } else {
+          testableModels = testAllModels
+            ? modelList.filter(([id, model]) => model.status !== "deprecated" && !isEmbeddingModel(id))
+            : modelList.filter(([id, model]) => model.status !== "deprecated" && !isEmbeddingModel(id)).slice(0, 1)
+        }
 
         if (!outputJson) {
           console.log(`\n${providerID} (${testableModels.length}/${modelList.length} models)`)
@@ -220,12 +359,16 @@ async function main() {
           const result = await testModel(providerID, providerInfo, modelID, model)
           results.push(result)
 
-          if (!outputJson) {
+          if (!outputJson && (!errorsOnly || result.status === "error")) {
+            const color = result.status === "success" ? COLORS.green : result.status === "skipped" ? COLORS.yellow : COLORS.red
             const statusIcon = result.status === "success" ? "OK" : result.status === "skipped" ? "SKIP" : "FAIL"
             const latency = result.latencyMs ? ` (${result.latencyMs}ms)` : ""
-            console.log(` [${statusIcon}]${latency}`)
+            console.log(`${color}[${statusIcon}]${COLORS.reset}${latency}`)
             if (result.error && result.status === "error") {
-              console.log(`    Error: ${result.errorType}: ${result.error?.substring(0, 80)}...`)
+              console.log(`    ${COLORS.red}${result.errorType}:${COLORS.reset} ${result.error?.substring(0, 80)}...`)
+              if (result.suggestedAction) {
+                console.log(`    ${COLORS.cyan}Action: ${result.suggestedAction}${COLORS.reset}`)
+              }
             }
           }
         }
@@ -244,48 +387,54 @@ async function main() {
   const failed = results.filter((r) => r.status === "error")
   const skipped = results.filter((r) => r.status === "skipped")
 
-  console.log(`\n${"=".repeat(60)}`)
-  console.log("SUMMARY")
-  console.log(`${"=".repeat(60)}`)
-  console.log(`Total: ${results.length} | OK: ${successful.length} | FAILED: ${failed.length} | SKIPPED: ${skipped.length}`)
+  console.log(`\n${COLORS.bold}${"=".repeat(60)}${COLORS.reset}`)
+  console.log(`${COLORS.bold}SUMMARY${COLORS.reset}`)
+  console.log(`${COLORS.bold}${"=".repeat(60)}${COLORS.reset}`)
+  console.log(`${COLORS.bold}Total:${COLORS.reset} ${results.length} | ${COLORS.green}OK: ${successful.length}${COLORS.reset} | ${COLORS.red}FAILED: ${failed.length}${COLORS.reset} | ${COLORS.yellow}SKIPPED: ${skipped.length}${COLORS.reset}`)
 
-  if (successful.length > 0) {
-    console.log(`\nSUCCESSFUL (${successful.length}):`)
+  if (successful.length > 0 && !errorsOnly) {
+    console.log(`\n${COLORS.green}SUCCESSFUL (${successful.length}):${COLORS.reset}`)
     for (const r of successful) {
-      console.log(`  [OK] ${r.provider}/${r.model} (${r.latencyMs}ms) - "${r.response}"`)
+      console.log(`  [OK] ${COLORS.green}${r.provider}/${r.model}${COLORS.reset} (${r.latencyMs}ms)`)
     }
   }
 
   if (failed.length > 0) {
-    console.log(`\nFAILED (${failed.length}):`)
+    console.log(`\n${COLORS.red}FAILED (${failed.length}):${COLORS.reset}`)
 
     // Group by error type
-    const byErrorType = new Map<string, TestResult[]>()
+    const byErrorType = new Map<ErrorCategory, TestResult[]>()
     for (const r of failed) {
-      const type = r.errorType || "Unknown"
+      const type = r.errorType || "UnknownError"
       if (!byErrorType.has(type)) byErrorType.set(type, [])
       byErrorType.get(type)!.push(r)
     }
 
     for (const [errorType, errs] of byErrorType) {
-      console.log(`\n  ${errorType} (${errs.length}):`)
+      console.log(`\n  ${COLORS.red}${errorType}${COLORS.reset} (${errs.length}):`)
       for (const r of errs) {
         console.log(`    - ${r.provider}/${r.model}`)
-        console.log(`      ${r.error?.substring(0, 100)}`)
+        console.log(`      ${r.error?.substring(0, 80)}...`)
+        if (r.suggestedAction) {
+          console.log(`      ${COLORS.cyan}> ${r.suggestedAction}${COLORS.reset}`)
+        }
       }
     }
   }
 
   if (skipped.length > 0) {
-    console.log(`\nSKIPPED - Missing Auth (${skipped.length}):`)
+    console.log(`\n${COLORS.yellow}SKIPPED - Missing Auth (${skipped.length}):${COLORS.reset}`)
     const providers = new Set(skipped.map((r) => r.provider))
     for (const p of providers) {
       const first = skipped.find((r) => r.provider === p)
       console.log(`  - ${p}: ${first?.error}`)
+      if (first?.suggestedAction) {
+        console.log(`    ${COLORS.cyan}> ${first.suggestedAction}${COLORS.reset}`)
+      }
     }
   }
 
-  console.log(`\n${"=".repeat(60)}\n`)
+  console.log(`\n${COLORS.bold}${"=".repeat(60)}${COLORS.reset}\n`)
 
   // Exit with error code if any failures
   if (failed.length > 0) {

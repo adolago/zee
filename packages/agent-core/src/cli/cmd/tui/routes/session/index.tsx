@@ -111,15 +111,25 @@ const ASCII_ART: Record<string, string[]> = {
 function AgentBanner() {
   const local = useLocal()
   const { theme } = useTheme()
+  const dimensions = useTerminalDimensions()
   const agent = createMemo(() => local.agent.current())
   const color = createMemo(() => local.agent.color(agent().name))
-  const art = createMemo(() => ASCII_ART[agent().name.toLowerCase()] || [])
+  const fullArt = createMemo(() => ASCII_ART[agent().name.toLowerCase()] || [])
+  // Trim art from edges to fit available height (hint=1, gap=1, borders~4)
+  const art = createMemo(() => {
+    const lines = fullArt()
+    const available = dimensions().height - 8
+    if (available >= lines.length) return lines
+    if (available <= 0) return []
+    const skip = Math.floor((lines.length - available) / 2)
+    return lines.slice(skip, skip + available)
+  })
 
   return (
     <box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1} gap={1}>
       {/* ASCII Art Name */}
       <box flexDirection="column" alignItems="center">
-        <For each={art()}>{(line) => <text style={{ fg: color() }}>{line}</text>}</For>
+        <For each={art()}>{(line) => <text style={{ fg: color() }} wrapMode="none">{line}</text>}</For>
       </box>
 
       {/* Hint */}
@@ -1020,7 +1030,7 @@ export function Session() {
       <box flexDirection="row">
         <box
           flexGrow={1}
-          paddingTop={1}
+          paddingTop={0}
           paddingLeft={1}
           paddingRight={1}
           {...SplitBorder}
@@ -1380,7 +1390,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                 <span style={{ fg: theme.textMuted }}> interrupted</span>
               </Show>
             </text>
-            <text fg={theme.border} flexGrow={1} flexShrink={1}> {"─".repeat(500)}</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1}> </text>
           </box>
         </Match>
       </Switch>

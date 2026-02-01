@@ -114,39 +114,36 @@ export function Prompt(props: PromptProps) {
     }
     return Math.floor(total / 1000)
   })
-  // Session-wise cumulative token counters (across all completed assistant messages)
-  const sessionTokenTotals = createMemo(() => {
-    if (!props.sessionID) return { snt: 0, rcvd: 0 }
-    const msgs = sync.data.message[props.sessionID] ?? []
-    let snt = 0, rcvd = 0
-    for (const m of msgs) {
-      if (m.role !== "assistant" || !m.tokens) continue
-      snt += m.tokens.input ?? 0
-      rcvd += m.tokens.output ?? 0
-    }
-    return { snt, rcvd }
-  })
-  // Live received tokens (completed + in-flight)
-  const rcvdLive = createMemo(() => sessionTokenTotals().rcvd + (streamHealth()?.estimatedTokens ?? 0))
   // Context usage for token counter and compaction indicator
   const contextUsage = createMemo(() => {
     if (!props.sessionID) return null
-    const messages = sync.data.message[props.sessionID] ?? []
-    const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
-    if (!lastAssistant?.tokens) return null
     
-    // Get current model limits
+    // Get current model limits first
     const model = local.model.current()
     if (!model) return null
     const provider = sync.data.provider.find((p) => p.id === model.providerID)
     const modelInfo = provider?.models[model.modelID]
     if (!modelInfo?.limit?.context) return null
     
-    // Calculate usage (same formula as compaction.ts)
-    const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
     const outputLimit = Math.min(modelInfo.limit.output ?? 8192, 16384)
     const usable = modelInfo.limit.input ?? (modelInfo.limit.context - outputLimit)
     if (usable <= 0) return null
+    
+    // Check for last assistant message tokens
+    const messages = sync.data.message[props.sessionID] ?? []
+    const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
+    
+    // If no assistant message yet, show 0% with model limit
+    if (!lastAssistant?.tokens) {
+      return {
+        count: 0,
+        limit: usable,
+        percent: 0,
+      }
+    }
+    
+    // Calculate usage (same formula as compaction.ts)
+    const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
     
     return {
       count,
@@ -169,10 +166,6 @@ export function Prompt(props: PromptProps) {
     return { files: diffs.length, additions, deletions, modified }
   })
   const gitBranch = createMemo(() => sync.data.vcs?.branch)
-  const formatTokens = (n: number) => {
-    if (n >= 1000) return `${Math.round(n / 1000)}k`
-    return `${n}`
-  }
   const history = usePromptHistory()
   const stash = usePromptStash()
   const command = useCommandDialog()
@@ -1448,7 +1441,10 @@ export function Prompt(props: PromptProps) {
                 </>
               )}
             </Show>
+
+            {/* Line fill */}
             <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
+            {/* Right side: agent info */}
             <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
             <text fg={theme.border} flexShrink={0}>─</text>
             <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
@@ -1480,10 +1476,10 @@ export function Prompt(props: PromptProps) {
         >
             <textarea
               placeholder={null}
-              textColor={keybind.leader ? theme.textMuted : theme.text}
-              focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
+              textColor={keybind.leader ? theme.textMuted : RGBA.fromInts(255, 255, 255)}
+              focusedTextColor={keybind.leader ? theme.textMuted : RGBA.fromInts(255, 255, 255)}
               minHeight={1}
-              maxHeight={6}
+              maxHeight={12}
               onContentChange={() => {
                 const value = input.plainText
                 setStore("prompt", "input", value)
@@ -1798,7 +1794,7 @@ export function Prompt(props: PromptProps) {
             <text fg={theme.textMuted}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
           {/* Right: model + path */}
           {(() => {
             const parsed = local.model.parsed()

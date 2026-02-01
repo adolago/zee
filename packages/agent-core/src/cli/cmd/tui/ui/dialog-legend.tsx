@@ -72,8 +72,6 @@ export function DialogLegend() {
           <text attributes={TextAttributes.BOLD} fg={theme.text}>
             Stats
           </text>
-          <text fg={theme.textMuted}>  snt   Tokens sent (input) this session</text>
-          <text fg={theme.textMuted}>  rcvd  Tokens received (output) this session</text>
           <text fg={theme.textMuted}>  mbd   Tokens embedded (memory) this session</text>
           <text fg={theme.textMuted}>  rrnk  Documents reranked this session</text>
           <text fg={theme.textMuted}>  Ctx   Context window usage percentage</text>

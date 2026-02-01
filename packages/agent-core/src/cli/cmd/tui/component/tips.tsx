@@ -47,24 +47,24 @@ export function Tips(props: TipsProps) {
       {/* Rounded top border */}
       <box height={1} flexDirection="row">
         <text fg={theme.border} flexShrink={0}>╭</text>
-        <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
+        <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
         <text fg={theme.border} flexShrink={0}>╮</text>
       </box>
       {/* Content row with side borders */}
       <box flexDirection="row">
-        <text fg={theme.border} flexShrink={0}>│ </text>
+        <text fg={theme.border} flexShrink={0}>│</text>
         <text flexGrow={1} flexShrink={1}>
           <For each={parts()}>
             {(part) => <span style={{ fg: part.highlight ? theme.text : theme.textMuted }}>{part.text}</span>}
           </For>
         </text>
-        <text fg={theme.border} flexShrink={0}> │</text>
+        <text fg={theme.border} flexShrink={0}>│</text>
       </box>
       {/* Bottom border - either custom or default rounded */}
       <Show when={props.bottomBorder} fallback={
         <box height={1} flexDirection="row">
           <text fg={theme.border} flexShrink={0}>╰</text>
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
           <text fg={theme.border} flexShrink={0}>╯</text>
         </box>
       }>

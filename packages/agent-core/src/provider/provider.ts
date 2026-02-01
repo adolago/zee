@@ -512,15 +512,31 @@ export namespace Provider {
       if (blocked.has(providerID)) continue
 
       let hasAuth = false
-      const auth = await Auth.get(providerID)
+      let auth = await Auth.get(providerID)
       if (auth) hasAuth = true
+
+      // For google provider, also check gemini-cli auth (Antigravity OAuth stored under gemini-cli)
+      // Prefer OAuth over API key for Antigravity functionality
+      let geminiCliAuth: Awaited<ReturnType<typeof Auth.get>> | undefined
+      if (providerID === "google") {
+        geminiCliAuth = await Auth.get("gemini-cli")
+        if (geminiCliAuth?.type === "oauth") {
+          hasAuth = true
+          auth = geminiCliAuth
+          log.info("using gemini-cli OAuth for google provider")
+        }
+      }
 
       if (!hasAuth) continue
       if (!plugin.auth.loader) continue
 
       // Load for the main provider if auth exists
       if (auth) {
-        const options = await plugin.auth.loader(() => Auth.get(providerID) as any, database[plugin.auth.provider])
+        // For google provider with gemini-cli OAuth, pass the gemini-cli auth getter
+        const authGetter = geminiCliAuth
+          ? () => Auth.get("gemini-cli") as any
+          : () => Auth.get(providerID) as any
+        const options = await plugin.auth.loader(authGetter, database[plugin.auth.provider])
         const opts = options ?? {}
         const patch: Partial<Info> = providers[providerID]
           ? { options: opts }

@@ -1910,6 +1910,8 @@ test("all variants can be disabled via config", async () => {
               models: {
                 "claude-sonnet-4-5": {
                   variants: {
+                    low: { disabled: true },
+                    medium: { disabled: true },
                     high: { disabled: true },
                     max: { disabled: true },
                   },
