@@ -142,7 +142,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
 
   function moveTo(next: number, center = false) {
     setStore("selected", next)
-    const sel = selected(); if (sel) props.onMove?.(sel)
+    const option = selected()
+    if (option) props.onMove?.(option)
     if (!scroll) return
     const target = scroll.getChildren().find((child) => {
       return child.id === JSON.stringify(selected()?.value)
@@ -220,7 +221,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
           </text>
           <text fg={theme.textMuted}>esc</text>
         </box>
-        <box paddingTop={1} paddingBottom={1}>
+        <box paddingTop={1}>
           <input
             onInput={(e) => {
               batch(() => {

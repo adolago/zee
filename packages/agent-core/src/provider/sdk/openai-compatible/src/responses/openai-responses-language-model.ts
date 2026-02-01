@@ -299,7 +299,7 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
       previous_response_id: openaiOptions?.previousResponseId,
       store: openaiOptions?.store,
       user: openaiOptions?.user,
-      instructions: openaiOptions?.instructions,
+      instructions: openaiOptions?.instructions ?? "You are a helpful assistant.",
       service_tier: openaiOptions?.serviceTier,
       include,
       prompt_cache_key: openaiOptions?.promptCacheKey,

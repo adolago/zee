@@ -81,6 +81,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
       <box
         backgroundColor={theme.backgroundPanel}
         width={40}
+        height="100%"
         paddingTop={0}
         paddingBottom={0}
         paddingLeft={1}

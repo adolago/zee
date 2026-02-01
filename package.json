@@ -16,9 +16,16 @@
   "workspaces": {
     "packages": [
       "packages/agent-core",
+      "packages/agent-core-adapter",
+      "packages/app",
+      "packages/desktop",
       "packages/personas/zee",
       "packages/personas/stanley",
+      "packages/plugin",
       "packages/sdk",
+      "packages/ui",
+      "packages/util",
+      "packages/web",
       "packages/hosted"
     ],
     "catalog": {

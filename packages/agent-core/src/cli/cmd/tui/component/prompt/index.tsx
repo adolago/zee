@@ -1448,7 +1448,7 @@ export function Prompt(props: PromptProps) {
                 </>
               )}
             </Show>
-            <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
             <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
             <text fg={theme.border} flexShrink={0}>─</text>
             <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>

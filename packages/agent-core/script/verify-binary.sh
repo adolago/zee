@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-LOCAL_BINARY="$REPO_ROOT/dist/@adolago/agent-core-linux-x64/bin/agent-core"
+LOCAL_BINARY="$REPO_ROOT/dist/@agent-core/core-linux-x64/bin/agent-core"
 INSTALLED_BINARY="$(which agent-core 2>/dev/null || echo '')"
 
 echo "=== Binary Version Check ==="

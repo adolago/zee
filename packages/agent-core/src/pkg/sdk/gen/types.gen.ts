@@ -1192,28 +1192,15 @@ export type Config = {
    * Log level
    */
   logLevel?: "DEBUG" | "INFO" | "WARN" | "ERROR"
-  /**
-   * TUI specific settings
-   */
-  tui?: {
-    /**
-     * TUI scroll speed
-     */
-    scroll_speed?: number
-    /**
-     * Scroll acceleration settings
-     */
-    scroll_acceleration?: {
-      /**
-       * Enable scroll acceleration
-       */
-      enabled: boolean
-    }
-    /**
-     * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
-     */
-    diff_style?: "auto" | "stacked"
-  }
+   /**
+    * TUI specific settings
+    */
+   tui?: {
+     /**
+      * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
+      */
+     diff_style?: "auto" | "stacked"
+   }
   /**
    * Command configuration, see docs/commands
    */

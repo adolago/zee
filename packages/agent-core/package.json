@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "0.2.0",
-  "name": "@adolago/agent-core",
+  "name": "@agent-core/core",
   "description": "CLI + daemon powering the Personas system (Zee, Stanley, Johny)",
   "type": "module",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "typecheck": "tsgo --noEmit",
     "lint": "prettier --check 'src/**/*.ts' 'test/**/*.ts' 'script/**/*.ts' 'package.json'",
     "test": "bun test",
-    "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@adolago/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core",
+    "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@agent-core/core-linux-x64/bin/agent-core ~/.bun/bin/agent-core",
     "dev": "bun run --conditions=browser ./src/index.ts",
     "memory:health": "bun run script/memory-health-check.ts",
     "clean": "rm -rf node_modules dist"
@@ -31,7 +31,11 @@
     "agent-core": "./bin/agent-core"
   },
   "exports": {
-    "./*": "./src/*.ts"
+    "./*": "./src/*.ts",
+    "./pkg/sdk": "./src/pkg/sdk/index.ts",
+    "./pkg/sdk/*": "./src/pkg/sdk/*.ts",
+    "./pkg/sdk/v2": "./src/pkg/sdk/v2/index.ts",
+    "./pkg/sdk/v2/client": "./src/pkg/sdk/v2/client.ts"
   },
   "devDependencies": {
     "@octokit/webhooks-types": "7.6.1",

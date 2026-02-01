@@ -360,17 +360,17 @@ export function Session() {
 
   const local = useLocal()
 
-  // Persona-based scrollbar colors with transparency
+  // Persona-based scrollbar colors with transparency (subtle)
   const personaColor = createMemo(() => local.agent.color(local.agent.current().name))
   const scrollbarTrackColor = createMemo(() => {
     const color = personaColor()
-    if (!color) return theme.backgroundElement
-    return RGBA.fromValues(color.r, color.g, color.b, 0.15)
+    if (!color) return RGBA.fromValues(theme.backgroundElement.r, theme.backgroundElement.g, theme.backgroundElement.b, 0.1)
+    return RGBA.fromValues(color.r, color.g, color.b, 0.08)
   })
   const scrollbarThumbColor = createMemo(() => {
     const color = personaColor()
-    if (!color) return theme.border
-    return RGBA.fromValues(color.r, color.g, color.b, 0.5)
+    if (!color) return RGBA.fromValues(theme.border.r, theme.border.g, theme.border.b, 0.3)
+    return RGBA.fromValues(color.r, color.g, color.b, 0.3)
   })
 
   // Track session changes to reset model selection (session-scoped)
@@ -1039,6 +1039,7 @@ export function Session() {
                 }}
                 verticalScrollbarOptions={{
                   paddingLeft: 1,
+                  paddingBottom: 1,
                   visible: showScrollbar(),
                   trackOptions: {
                     backgroundColor: scrollbarTrackColor(),

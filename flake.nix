@@ -176,7 +176,7 @@
           node_modules = pkgs.callPackage ./nix/node_modules.nix {
             inherit rev;
           };
-          opencode = pkgs.callPackage ./nix/opencode.nix {
+          agent-core = pkgs.callPackage ./nix/agent-core.nix {
             inherit node_modules;
           };
           # nixpkgs cpu naming to bun cpu naming
@@ -197,12 +197,12 @@
             ) [ "x86_64" "aarch64" ]
           );
 
-          # Personas bundle: opencode + stock dependencies wrapped together
+          # Personas bundle: agent-core + stock dependencies wrapped together
           # Usage: nix build .#personas
           personasPkg = pkgs.symlinkJoin {
             name = "agent-core-personas";
             paths = [
-              opencode
+              agent-core
               deps.wezterm
               deps.yazi
               deps.ripgrep
@@ -215,7 +215,7 @@
               description = "Agent-Core Personas bundle with stock dependencies";
               longDescription = ''
                 Complete Personas system bundle including:
-                - opencode: The AI coding agent CLI
+                - agent-core: The AI coding agent CLI
                 - wezterm: Terminal emulator for pane orchestration
                 - yazi: File manager
                 - ripgrep, fd, fzf: Search utilities
@@ -232,8 +232,8 @@
           };
         in
         {
-          default = opencode;
-          inherit opencode;
+          default = agent-core;
+          "agent-core" = agent-core;
           personas = personasPkg;
 
           # Expose individual stock packages for flexibility

@@ -6,6 +6,7 @@ import type { Session } from "@opencode-ai/sdk/v2"
 import { useKeybind } from "../../context/keybind"
 import { Locale } from "@/util/locale"
 import { Header as HeaderStyles } from "@tui/ui/header-footer"
+import { useTerminalDimensions } from "@opentui/solid"
 
 const Title = (props: { session: Accessor<Session> }) => {
   const { theme } = useTheme()
@@ -37,6 +38,8 @@ export function Header() {
 
   const { theme } = useTheme()
   const keybind = useKeybind()
+  const dimensions = useTerminalDimensions()
+  const narrow = createMemo(() => dimensions().width < 80)
 
   return (
     <box flexShrink={0}>
@@ -45,7 +48,6 @@ export function Header() {
         paddingBottom={HeaderStyles.padding.bottom}
         paddingLeft={HeaderStyles.padding.left}
         paddingRight={HeaderStyles.padding.right}
-        backgroundColor={theme.backgroundPanel}
       >
         <Switch>
           <Match when={session()?.parentID}>
@@ -97,7 +99,7 @@ export function Header() {
           </Match>
           <Match when={true}>
             <box
-              flexDirection="row"
+              flexDirection={narrow() ? "column" : "row"}
               justifyContent="space-between"
               gap={1}
             >

@@ -7,15 +7,17 @@
 
 import { tool } from "@opencode-ai/plugin"
 
+const AGENT_CORE_ROOT = process.env.AGENT_CORE_ROOT || "/home/artur/.local/src/agent-core"
+
 async function loadMemoryModule() {
   try {
-    return await import("../../src/memory/unified.js")
+    return await import(`${AGENT_CORE_ROOT}/src/memory/unified.js`)
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     if (!errorMsg.includes("Cannot find module") && !errorMsg.includes("ERR_MODULE_NOT_FOUND")) {
       throw error
     }
-    return await import("../../src/memory/unified.ts")
+    return await import(`${AGENT_CORE_ROOT}/src/memory/unified.ts`)
   }
 }
 

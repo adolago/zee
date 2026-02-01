@@ -1,5 +1,5 @@
 {
-  "name": "@adolago/agent-core-hosted",
+  "name": "@agent-core/hosted",
   "version": "0.1.0",
   "private": true,
   "type": "module",

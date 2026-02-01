@@ -27,7 +27,7 @@ case "$(uname -s)-$(uname -m)" in
     *)             echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
 esac
 
-LOCAL_BINARY="$REPO_ROOT/dist/@adolago/agent-core-$PLATFORM/bin/agent-core"
+LOCAL_BINARY="$REPO_ROOT/dist/@agent-core/core-$PLATFORM/bin/agent-core"
 
 # Check if binary exists
 if [[ ! -f "$LOCAL_BINARY" ]]; then

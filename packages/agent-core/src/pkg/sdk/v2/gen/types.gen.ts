@@ -1051,32 +1051,19 @@ export type Config = {
      * Payload detail policy for wide events
      */
     payloads?: "summary" | "debug" | "full"
-  }
-  /**
-   * TUI specific settings
-   */
-  tui?: {
-    /**
-     * TUI scroll speed
-     */
-    scroll_speed?: number
-    /**
-     * Scroll acceleration settings
-     */
-    scroll_acceleration?: {
+   }
+   /**
+    * TUI specific settings
+    */
+   tui?: {
       /**
-       * Enable scroll acceleration
+       * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
        */
-      enabled: boolean
-    }
-    /**
-     * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
-     */
-    diff_style?: "auto" | "stacked"
-    /**
-     * Dictation settings
-     */
-    dictation?: {
+      diff_style?: "auto" | "stacked"
+      /**
+       * Dictation settings
+       */
+      dictation?: {
       /**
        * Enable dictation
        */
