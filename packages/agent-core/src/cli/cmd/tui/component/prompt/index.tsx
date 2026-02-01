@@ -19,7 +19,7 @@ import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
-import { useRenderer } from "@opentui/solid"
+import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { VimCommands } from "@tui/util/vim-commands"
 import { useExit } from "../../context/exit"
@@ -78,6 +78,8 @@ export function Prompt(props: PromptProps) {
   const sync = useSync()
   const dialog = useDialog()
   const toast = useToast()
+  const dimensions = useTerminalDimensions()
+  const fill = createMemo(() => "─".repeat(dimensions().width))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {
@@ -1443,7 +1445,7 @@ export function Prompt(props: PromptProps) {
             </Show>
 
             {/* Line fill */}
-            <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
             {/* Right side: agent info */}
             <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
             <text fg={theme.border} flexShrink={0}>─</text>
@@ -1794,7 +1796,7 @@ export function Prompt(props: PromptProps) {
             <text fg={theme.textMuted}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
           {/* Right: model + path */}
           {(() => {
             const parsed = local.model.parsed()

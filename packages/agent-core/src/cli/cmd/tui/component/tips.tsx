@@ -1,5 +1,6 @@
 import { For, Show, createMemo, type Accessor } from "solid-js"
 import { DEFAULT_THEMES, useTheme } from "@tui/context/theme"
+import { useTerminalDimensions } from "@opentui/solid"
 import type { JSX } from "solid-js"
 
 const themeCount = Object.keys(DEFAULT_THEMES).length
@@ -38,6 +39,8 @@ export type TipsProps = {
 
 export function Tips(props: TipsProps) {
   const theme = useTheme().theme
+  const dimensions = useTerminalDimensions()
+  const fill = createMemo(() => "─".repeat(dimensions().width))
   const randomTip = TIPS[Math.floor(Math.random() * TIPS.length)]
   const displayText = createMemo(() => props.billboard?.() || randomTip)
   const parts = createMemo(() => parse(displayText()))
@@ -47,7 +50,7 @@ export function Tips(props: TipsProps) {
       {/* Rounded top border */}
       <box height={1} flexDirection="row">
         <text fg={theme.border} flexShrink={0}>╭</text>
-        <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
+        <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
         <text fg={theme.border} flexShrink={0}>╮</text>
       </box>
       {/* Content row with side borders */}
@@ -64,7 +67,7 @@ export function Tips(props: TipsProps) {
       <Show when={props.bottomBorder} fallback={
         <box height={1} flexDirection="row">
           <text fg={theme.border} flexShrink={0}>╰</text>
-          <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{"─".repeat(200)}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
           <text fg={theme.border} flexShrink={0}>╯</text>
         </box>
       }>
