@@ -10,8 +10,7 @@ export const OAUTH_DUMMY_KEY = "agent-core-oauth-dummy-key"
 const REFRESH_BUFFER_MS = 10 * 60 * 1000
 
 // OAuth refresh configurations for known providers
-// Note: google/antigravity uses a custom flow handled by the plugin, not standard OAuth
-const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId: string }> = {
+const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId: string; clientSecret?: string }> = {
   anthropic: {
     url: "https://console.anthropic.com/v1/oauth/token",
     clientId: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
@@ -19,6 +18,11 @@ const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId: string }> = 
   openai: {
     url: "https://auth.openai.com/oauth/token",
     clientId: "pdlLIX2Y72MgDktxw22rHpPdJKmlMVBi", // ChatGPT client ID
+  },
+  "gemini-cli": {
+    url: "https://oauth2.googleapis.com/token",
+    clientId: "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
+    clientSecret: "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",
   },
   // Note: kimi-for-coding uses custom refresh in plugin (requires X-Msh-* headers)
 }
@@ -123,14 +127,19 @@ export namespace Auth {
     try {
       log.info("refreshing token", { providerID, expiresIn: Math.round((auth.expires - Date.now()) / 1000) })
 
+      const body: Record<string, string> = {
+        grant_type: "refresh_token",
+        refresh_token: auth.refresh,
+        client_id: config.clientId,
+      }
+      if (config.clientSecret) {
+        body.client_secret = config.clientSecret
+      }
+
       const response = await fetch(config.url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          grant_type: "refresh_token",
-          refresh_token: auth.refresh,
-          client_id: config.clientId,
-        }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(body),
       })
 
       if (!response.ok) {
