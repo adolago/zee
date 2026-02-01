@@ -11,6 +11,7 @@ import {
 } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
 import { useKeybind, type KeybindsConfig } from "@tui/context/keybind"
+import { useVim } from "@tui/context/vim"
 
 type Context = ReturnType<typeof createCommandDialog>
 const ctx = createContext<Context>()
@@ -31,6 +32,7 @@ export function createCommandDialog() {
   const [suspendCount, setSuspendCount] = createSignal(0)
   const dialog = useDialog()
   const keybind = useKeybind()
+  const vim = useVim()
 
   const entries = () => {
     const all = registrations().flatMap((x) => x() ?? [])
@@ -51,9 +53,16 @@ export function createCommandDialog() {
   useKeyboard((evt) => {
     if (suspended()) return
     if (dialog.stack.length > 0) return
+    // In vim insert mode, only allow leader-prefixed keybinds through
+    // so that plain keys (shift+g, shift+e, etc.) reach the textarea for text input
+    const insertMode = vim.enabled && vim.isInsert
     for (const option of entries()) {
       if (!isEnabled(option)) continue
       if (option.keybind && keybind.match(option.keybind, evt)) {
+        // Skip non-leader keybinds in insert mode to allow typing accented chars etc.
+        if (insertMode && !keybind.leader) {
+          continue
+        }
         evt.preventDefault()
         option.onSelect?.(dialog)
         // Dismiss leader mode after executing a command

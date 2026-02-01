@@ -50,6 +50,17 @@ Workers share state via Memory MCP:
 - Other workers can query memory
 - Queen aggregates results
 
+## Topology Patterns
+
+### Mesh (Peer-to-Peer)
+Equal peers with distributed decision-making. Good for research tasks.
+
+### Hierarchical (Queen-Worker)
+Centralized coordination with specialized workers. Default for most tasks.
+
+### Adaptive (Dynamic)
+Automatically switches topology based on task complexity.
+
 ## Patterns
 
 ### Fan-Out
