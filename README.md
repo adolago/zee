@@ -224,18 +224,6 @@ bun run build
 bun run typecheck
 ```
 
-## Roadmap and Parity (Phase 0)
-
-Phase 0 baselines and checklists:
-
-- `docs/ALPHA_READINESS_ISSUES.md`
-- `docs/architecture/ansible-compat-gap.md`
-- `docs/architecture/terraform-integration.md`
-- `docs/architecture/resource-graph-model.md`
-- `docs/guides/cli-parity.md`
-- `docs/architecture/feature-flag-maturity.md`
-- `docs/ALPHA_LAUNCH_CHECKLIST.md`
-
 ## Wide events
 
 Agent-core emits wide event JSONL logs for per-request diagnostics:
