@@ -722,7 +722,7 @@ export namespace Config {
       stash_delete: z.string().optional().default("<leader>shift+x").describe("Delete stash entry"),
       model_provider_list: z.string().optional().default("<leader>p").describe("Open provider list from model dialog"),
       session_delegate: z.string().optional().default("<leader>shift+d").describe("Delegate to another persona"),
-      session_interrupt: z.string().optional().default("<leader>escape").describe("Interrupt current session"),
+      session_interrupt: z.string().optional().default("escape").describe("Interrupt current session"),
       session_compact: z.string().optional().default("<leader>shift+c").describe("Compact the session"),
       messages_page_up: z.string().optional().default("pageup,ctrl+alt+b").describe("Scroll messages up by one page"),
       messages_page_down: z

@@ -2,7 +2,7 @@ import { createMemo, For, Show } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind, type KeybindsConfig } from "@tui/context/keybind"
 import { useTerminalDimensions } from "@opentui/solid"
-import { TextAttributes } from "@opentui/core"
+import { TextAttributes, RGBA } from "@opentui/core"
 import { Keybind } from "@/util/keybind"
 import { SplitBorder } from "@tui/component/border"
 
@@ -115,15 +115,18 @@ export function WhichKey() {
     <Show when={keybind.leader}>
       <box
         position="absolute"
-        bottom={4}
+        top={0}
         left={0}
         width={dimensions().width}
-        justifyContent="center"
+        height={dimensions().height - 9}
+        justifyContent="flex-start"
         alignItems="center"
         zIndex={1500}
+        overflow="hidden"
+        backgroundColor={RGBA.fromInts(0, 0, 0, 255)}
       >
         <box
-          backgroundColor={theme.backgroundMenu}
+          backgroundColor={RGBA.fromInts(0, 0, 0, 220)}
           border={["top", "bottom", "left", "right"]}
           borderColor={theme.primary}
           customBorderChars={SplitBorder.customBorderChars}
@@ -131,17 +134,20 @@ export function WhichKey() {
           paddingRight={1}
           paddingTop={0}
           paddingBottom={0}
+          overflow="hidden"
+          flexShrink={1}
           maxWidth={Math.min(dimensions().width - 4, maxColumns() * columnWidth + 4)}
+          maxHeight={dimensions().height - 11}
         >
           <box flexDirection="column" gap={0}>
             {/* Header */}
-            <box paddingBottom={0}>
-              <text fg={theme.primary} attributes={TextAttributes.BOLD}>
-                Which Key?
+            <box paddingBottom={0} flexDirection="row">
+              <text fg={theme.primary} attributes={TextAttributes.BOLD} wrapMode="none">
+                {"Which Key? "}
               </text>
-              <text fg={theme.textMuted}> (</text>
-              <text fg={theme.warning}>Esc</text>
-              <text fg={theme.textMuted}> to cancel)</text>
+              <text fg={theme.textMuted} wrapMode="none">{"("}</text>
+              <text fg={theme.warning} wrapMode="none">Esc</text>
+              <text fg={theme.textMuted} wrapMode="none">{" to cancel)"}</text>
             </box>
 
             {/* Categories in columns */}
