@@ -51,24 +51,31 @@ export async function initPersonas(): Promise<void> {
 
   log.info("Initializing persona hooks")
 
-  // Pre-initialize unified Memory
+  // Pre-initialize unified Memory - REQUIRED
   const memory = await getMemoryInstance()
-  if (memory) {
-    log.info("Unified Memory connected for cross-session context")
+  if (!memory) {
+    throw new Error("Unified Memory is required but unavailable. Ensure Qdrant is running or configure embedded mode.")
   }
+  log.info("Unified Memory connected for cross-session context")
 
-  // Register session start hook for memory injection
+  // Register session start hook for memory injection - persona always required
   LifecycleHooks.on<LifecycleHooks.SessionLifecycle.StartPayload>(
     LifecycleHooks.SessionLifecycle.Start,
     async (payload) => {
+      if (!payload.persona) {
+        throw new Error("Persona is required for all sessions")
+      }
       await injectCrossSessionMemory(payload.sessionId, payload.persona)
     },
   )
 
-  // Register session restore hook for memory injection
+  // Register session restore hook for memory injection - persona always required
   LifecycleHooks.on<LifecycleHooks.SessionLifecycle.RestorePayload>(
     LifecycleHooks.SessionLifecycle.Restore,
     async (payload) => {
+      if (!payload.persona) {
+        throw new Error("Persona is required for all sessions")
+      }
       await injectCrossSessionMemory(payload.sessionId, payload.persona)
     },
   )
@@ -94,73 +101,59 @@ export async function initPersonas(): Promise<void> {
 }
 
 /**
- * Inject relevant memories from previous sessions
+ * Inject relevant memories from previous sessions - MEMORY IS REQUIRED
  */
 async function injectCrossSessionMemory(sessionId: string, persona: "zee" | "stanley" | "johny"): Promise<void> {
-  try {
-    const memory = await getMemoryInstance()
-    const memories: string[] = []
+  const memory = await getMemoryInstance()
+  if (!memory) {
+    throw new Error(`Memory is required but unavailable for session ${sessionId.slice(0, 8)}`)
+  }
 
-    // 1. Get yesterday's session for recent context
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdaySession = await Persistence.getDailySession(persona, yesterday)
+  const memories: string[] = []
 
-    if (yesterdaySession) {
-      const previousSession = await Session.get(yesterdaySession.sessionId)
-      if (previousSession) {
-        log.info("Found previous session for context", {
-          persona,
-          previousSessionId: yesterdaySession.sessionId,
-          previousDate: yesterday.toISOString().split("T")[0],
-        })
-        memories.push(`[Previous session from ${yesterday.toISOString().split("T")[0]}]`)
-      }
-    }
+  // 1. Get yesterday's session for recent context
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdaySession = await Persistence.getDailySession(persona, yesterday)
 
-    // 2. Search for relevant memories from Qdrant (semantic search)
-    if (memory) {
-      try {
-        // Search for recent facts and important information using unified Memory API
-        const personaContext = getPersonaSearchContext(persona)
-        const searchResults = await memory.searchPersonaMemories(personaContext, persona, {
-          limit: 5,
-          categories: ["fact", "preference", "decision"],
-        })
-
-        if (searchResults.length > 0) {
-          log.info("Found relevant memories", {
-            persona,
-            count: searchResults.length,
-          })
-
-          for (const result of searchResults) {
-            const entry = result.entry
-            const score = result.score.toFixed(2)
-            memories.push(`[Memory (${entry.category}, relevance: ${score})]: ${entry.content}`)
-          }
-        }
-      } catch (memoryError) {
-        log.debug("Memory search failed", {
-          error: memoryError instanceof Error ? memoryError.message : String(memoryError),
-        })
-      }
-    }
-
-    // 3. Store context for session (to be used by prompt injection)
-    if (memories.length > 0) {
-      // Store the memory context in session metadata for prompt injection
-      // This will be picked up by the prompt builder
-      await storeSessionContext(sessionId, memories)
-      log.info("Injected cross-session context", {
-        sessionId: sessionId.slice(0, 8),
-        memoriesCount: memories.length,
+  if (yesterdaySession) {
+    const previousSession = await Session.get(yesterdaySession.sessionId)
+    if (previousSession) {
+      log.info("Found previous session for context", {
+        persona,
+        previousSessionId: yesterdaySession.sessionId,
+        previousDate: yesterday.toISOString().split("T")[0],
       })
+      memories.push(`[Previous session from ${yesterday.toISOString().split("T")[0]}]`)
     }
-  } catch (error) {
-    log.debug("Could not inject cross-session memory", {
+  }
+
+  // 2. Search for relevant memories from Qdrant (semantic search) - REQUIRED
+  const personaContext = getPersonaSearchContext(persona)
+  const searchResults = await memory.searchPersonaMemories(personaContext, persona, {
+    limit: 5,
+    categories: ["fact", "preference", "decision"],
+  })
+
+  if (searchResults.length > 0) {
+    log.info("Found relevant memories", {
+      persona,
+      count: searchResults.length,
+    })
+
+    for (const result of searchResults) {
+      const entry = result.entry
+      const score = result.score.toFixed(2)
+      memories.push(`[Memory (${entry.category}, relevance: ${score})]: ${entry.content}`)
+    }
+  }
+
+  // 3. Store context for session (to be used by prompt injection)
+  if (memories.length > 0) {
+    await storeSessionContext(sessionId, memories)
+    log.info("Injected cross-session context", {
       sessionId: sessionId.slice(0, 8),
-      error: error instanceof Error ? error.message : String(error),
+      memoriesCount: memories.length,
     })
   }
 }

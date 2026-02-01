@@ -270,21 +270,25 @@ export namespace Agent {
     )
   }
 
-  export async function defaultAgent() {
+  export async function defaultAgent(): Promise<string> {
     const cfg = await Config.get()
     const agents = await state()
 
-    if (cfg.default_agent) {
-      const agent = agents[cfg.default_agent]
-      if (!agent) throw new Error(`default agent "${cfg.default_agent}" not found`)
-      if (agent.mode === "subagent") throw new Error(`default agent "${cfg.default_agent}" is a subagent`)
-      if (agent.hidden === true) throw new Error(`default agent "${cfg.default_agent}" is hidden`)
-      return agent.name
+    // Default to zee if no default_agent configured
+    const defaultAgentName = cfg.default_agent ?? "zee"
+    const agent = agents[defaultAgentName]
+    
+    if (!agent) throw new Error(`default agent "${defaultAgentName}" not found`)
+    if (agent.mode === "subagent") throw new Error(`default agent "${defaultAgentName}" is a subagent`)
+    if (agent.hidden === true) throw new Error(`default agent "${defaultAgentName}" is hidden`)
+    
+    // Persona is REQUIRED - agent name must map to zee, stanley, or johny
+    const personaNames = ["zee", "stanley", "johny"]
+    if (!personaNames.includes(agent.name)) {
+      throw new Error(`default agent "${agent.name}" must be a persona (zee, stanley, or johny)`)
     }
-
-    const primaryVisible = Object.values(agents).find((a) => a.mode !== "subagent" && a.hidden !== true)
-    if (!primaryVisible) throw new Error("no primary visible agent found")
-    return primaryVisible.name
+    
+    return agent.name
   }
 
   export async function generate(input: { description: string; model?: { providerID: string; modelID: string } }) {

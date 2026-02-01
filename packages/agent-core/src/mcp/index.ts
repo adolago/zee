@@ -488,7 +488,28 @@ export namespace MCP {
   const state = Instance.state(
     async () => {
       const cfg = await Config.get()
-      const config = cfg.mcp ?? {}
+      // ALWAYS include all 4 persona MCP servers (required)
+      const personaMcps = getAllPersonaMcpServers()
+      const userConfig = cfg.mcp ?? {}
+      
+      // Merge: user config overrides persona defaults, but all 4 must exist
+      const config: Record<string, Config.Mcp> = {}
+      
+      // Add all 4 persona MCPs first
+      for (const [name, server] of Object.entries(personaMcps)) {
+        config[name] = {
+          type: server.type,
+          command: [...server.command], // Convert readonly to mutable
+        } as Config.Mcp
+      }
+      
+      // User config can override but not disable persona MCPs
+      for (const [name, mcp] of Object.entries(userConfig)) {
+        if (mcp && typeof mcp === "object" && "type" in mcp) {
+          config[name] = mcp as Config.Mcp
+        }
+      }
+      
       const clients: Record<string, MCPClient> = {}
       const status: Record<string, Status> = {}
 
@@ -500,8 +521,8 @@ export namespace MCP {
             return
           }
 
-          // If disabled by config, mark as disabled without trying to connect
-          if (resolved.enabled === false) {
+          // Persona MCPs cannot be disabled
+          if (resolved.enabled === false && !personaMcps[key as keyof typeof personaMcps]) {
             status[key] = { status: "disabled" }
             return
           }
