@@ -1,6 +1,7 @@
 import { Global } from "../global"
 import { Log } from "../util/log"
 import path from "path"
+import fs from "fs/promises"
 import z from "zod"
 import { data } from "./models-macro" with { type: "macro" }
 
@@ -78,8 +79,11 @@ export namespace ModelsDev {
 
   export type Provider = z.infer<typeof Provider>
 
+  const STALENESS_MS = 24 * 60 * 60 * 1000 // 24 hours
+
   export async function get() {
-    refresh()
+    // Fire-and-forget background refresh if cache is stale
+    refreshIfStale()
     const file = Bun.file(getFilepath())
     const result = await file.json().catch(() => {})
     if (result) return result as Record<string, Provider>
@@ -93,6 +97,48 @@ export namespace ModelsDev {
     return (await response.json()) as Record<string, Provider>
   }
 
-  // Models fetch disabled - use bundled models
-  export async function refresh() {}
+  /**
+   * Check cache staleness and refresh in background if older than STALENESS_MS.
+   */
+  function refreshIfStale() {
+    const filepath = getFilepath()
+    fs.stat(filepath)
+      .then((stat) => {
+        const age = Date.now() - stat.mtimeMs
+        if (age > STALENESS_MS) {
+          log.debug("models cache stale", { ageHours: Math.round(age / 3600000) })
+          refresh().catch(() => {})
+        }
+      })
+      .catch(() => {
+        // No cache file exists, trigger refresh
+        refresh().catch(() => {})
+      })
+  }
+
+  /**
+   * Fetch the latest model catalog from models.dev and write to cache.
+   */
+  export async function refresh() {
+    const url = `${Global.Path.modelsDevUrl}/api.json`
+    const filepath = getFilepath()
+    log.info("refreshing models from", { url })
+    try {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!response.ok) {
+        log.warn("models refresh failed", { status: response.status })
+        return
+      }
+      const json = await response.text()
+      // Validate it's parseable before writing
+      JSON.parse(json)
+      await fs.mkdir(path.dirname(filepath), { recursive: true })
+      await Bun.file(filepath).write(json)
+      log.info("models cache updated", { filepath })
+    } catch (e) {
+      log.warn("models refresh error", { error: String(e) })
+    }
+  }
 }

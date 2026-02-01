@@ -31,118 +31,48 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createOpenaiCompatible as createPatchedOpenAI } from "./sdk/openai-compatible/src"
 import { ProviderTransform } from "./transform"
+import { dedup, hasDedupParser } from "./dedup"
+
+import blacklistData from "./blacklist.json"
 
 export namespace Provider {
   const log = Log.create({ service: "provider" })
 
   /**
-   * Hard-coded model blacklist by provider.
-   * Models listed here are permanently hidden from the model selector.
-   * Use config blacklist for per-user filtering instead.
+   * Blacklist data loaded from blacklist.json.
+   * Contains model and provider blacklists with human-readable reasons.
    */
-  const MODEL_BLACKLIST: Record<string, string[]> = {
-    anthropic: [
-      "claude-3-5-haiku",
-      "claude-3-5-haiku-latest",
-      "claude-3-7-sonnet-latest",
-      "claude-opus-4-0",
-      "claude-opus-4-1",
-      "claude-sonnet-4",
-      "claude-sonnet-4-0",
-    ],
-    openai: [
-      "gpt-4",
-      "gpt-4-turbo",
-      "gpt-4o",
-      "gpt-4o-mini",
-      "gpt-5",
-      "gpt-5-codex",
-      "gpt-5-codex-mini",
-      "gpt-5-nano",
-      "gpt-5-pro",
-      "gpt-5-chat-latest",
-      "gpt-5.1",
-      "gpt-5.1-codex",
-      "gpt-5.1-codex-max",
-      "gpt-5.1-codex-mini",
-    ],
-    google: [
-      "gemini-2.5-flash",
-      "gemini-2.5-pro",
-      "gemini-2.5-flash-lite",
-      "gemini-live-2.5-flash",
-      "gemini-2.5-flash-preview-05-20",
-      "gemini-flash-lite-latest",
-      "gemini-2.5-flash-image",
-    ],
-    xai: [
-      "grok-2",
-      "grok-2-1212",
-      "grok-2-latest",
-      "grok-2-vision",
-      "grok-2-vision-1212",
-      "grok-2-vision-latest",
-      "grok-3",
-      "grok-3-fast",
-      "grok-3-fast-latest",
-      "grok-3-latest",
-      "grok-3-mini",
-      "grok-3-mini-fast",
-      "grok-3-mini-fast-latest",
-      "grok-3-mini-latest",
-      "grok-4",
-      "grok-4-fast",
-      "grok-4-fast-non-reasoning",
-    ],
-    "kimi-for-coding": [
-      "kimi-k2",
-      "kimi-k2-thinking",
-    ],
-    "zai-coding-plan": [
-      "glm-4.5",
-      "glm-4.5-air",
-      "glm-4.5-flash",
-      "glm-4.5v",
-      "glm-4.6",
-      "glm-4.6v",
-    ],
-    minimax: [
-      "MiniMax-M2",
-    ],
-    opencode: [
-      "claude-3-5-haiku",
-      "claude-opus-4-1",
-      "claude-sonnet-4",
-      "gpt-5",
-      "gpt-5-codex",
-      "gpt-5-nano",
-      "gpt-5.1",
-      "gpt-5.1-codex",
-      "gpt-5.1-codex-max",
-      "gpt-5.1-codex-mini",
-      "glm-4.6",
-      "kimi-k2",
-      "kimi-k2-thinking",
-    ],
+  type BlacklistEntry = { id: string; reason: string }
+
+  const MODEL_BLACKLIST: Record<string, string[]> = {}
+  const MODEL_BLACKLIST_REASONS: Record<string, Record<string, string>> = {}
+  for (const [providerID, entries] of Object.entries(blacklistData.models)) {
+    MODEL_BLACKLIST[providerID] = (entries as BlacklistEntry[]).map((e) => e.id)
+    MODEL_BLACKLIST_REASONS[providerID] = {}
+    for (const entry of entries as BlacklistEntry[]) {
+      MODEL_BLACKLIST_REASONS[providerID][entry.id] = entry.reason
+    }
+  }
+
+  const PROVIDER_BLACKLIST = new Set<string>(blacklistData.providers.map((e) => e.id))
+  const PROVIDER_BLACKLIST_REASONS: Record<string, string> = {}
+  for (const entry of blacklistData.providers) {
+    PROVIDER_BLACKLIST_REASONS[entry.id] = entry.reason
   }
 
   /**
-   * Hard-coded provider blacklist.
-   * Providers listed here are permanently hidden from all menus and lists.
-   * Use config.disabled_providers for per-user filtering instead.
+   * Get the reason a model is blacklisted, or undefined if not blacklisted.
    */
-  const PROVIDER_BLACKLIST = new Set<string>([
-    "nebius",           // Permanently disabled
-    "venice",           // Privacy proxy removed
-    "alibaba",          // Removed per request
-    "synthetic",        // Redundant HuggingFace proxy
-    "ollama",           // Local provider - use vLLM instead
-    "github-copilot",   // Subscription-based, limited models
-    "amazon-bedrock",   // Enterprise AWS only
-    // "opencode",      // KEEP - Multi-model proxy useful
-    "qwen-portal",      // OAuth complexity, limited models
-    "moonshot",         // Duplicate of kimi-for-coding
-  ])
+  export function getModelBlacklistReason(providerID: string, modelID: string): string | undefined {
+    return MODEL_BLACKLIST_REASONS[providerID]?.[modelID]
+  }
+
+  /**
+   * Get the reason a provider is blacklisted, or undefined if not blacklisted.
+   */
+  export function getProviderBlacklistReason(providerID: string): string | undefined {
+    return PROVIDER_BLACKLIST_REASONS[providerID]
+  }
 
   export function isProviderBlocked(providerID: string): boolean {
     return PROVIDER_BLACKLIST.has(providerID)
@@ -396,7 +326,7 @@ export namespace Provider {
     const blocked = new Set([...disabled, ...PROVIDER_BLACKLIST])
     for (const providerID of blocked) {
       if (database[providerID]) {
-        const reason = PROVIDER_BLACKLIST.has(providerID) ? "hard-coded provider blacklist" : "disabled_providers config"
+        const reason = PROVIDER_BLACKLIST_REASONS[providerID] ?? (disabled.has(providerID) ? "disabled_providers config" : "blocked")
         log.debug("provider blocked", { providerID, reason })
         delete database[providerID]
       }
@@ -917,7 +847,8 @@ export namespace Provider {
         }
         // Hard-coded blacklist - permanently hidden models
         if (MODEL_BLACKLIST[providerID]?.includes(modelID)) {
-          log.debug("model filtered", { providerID, modelID, reason: "hard-coded blacklist" })
+          const blReason = MODEL_BLACKLIST_REASONS[providerID]?.[modelID] ?? "hard-coded blacklist"
+          log.debug("model filtered", { providerID, modelID, reason: blReason })
           delete provider.models[modelID]
         }
         if (configProvider?.blacklist && configProvider.blacklist.includes(modelID)) {
@@ -940,99 +871,48 @@ export namespace Provider {
         }
       }
 
-      // For Anthropic provider, hide older model versions and dated snapshots
-      // Priority: 1) -latest suffix, 2) highest non-dated version, 3) most recent dated version
-      if (providerID === "anthropic") {
-        const modelIDs = Object.keys(provider.models)
-        const datePattern = /-(\d{8})$/
-
-        // Parse Claude model names into family and version
-        // Formats: claude-{type}-{major}-{minor}, claude-{major}-{minor}-{type}, claude-{major}-{type}
-        function parseClaudeModel(
-          id: string,
-        ): { family: string; version: number; dated: string | null; isLatest: boolean } | null {
-          const isLatest = id.endsWith("-latest")
-          const dateMatch = id.match(datePattern)
-          const dated = dateMatch ? dateMatch[1] : null
-          let cleanID = id.replace(datePattern, "").replace(/-latest$/, "")
-
-          // New format: claude-{type}-{major}-{minor} (e.g., claude-opus-4-5)
-          const newFormat = cleanID.match(/^claude-(opus|sonnet|haiku)-(\d+)-(\d+)$/)
-          if (newFormat) {
-            const [, type, major, minor] = newFormat
-            return { family: `claude-${type}`, version: parseFloat(`${major}.${minor}`), dated, isLatest }
-          }
-
-          // Old format: claude-{major}-{minor}-{type} (e.g., claude-3-5-sonnet)
-          const oldFormat = cleanID.match(/^claude-(\d+)-(\d+)-(opus|sonnet|haiku)$/)
-          if (oldFormat) {
-            const [, major, minor, type] = oldFormat
-            return { family: `claude-${type}`, version: parseFloat(`${major}.${minor}`), dated, isLatest }
-          }
-
-          // Oldest format: claude-{major}-{type} (e.g., claude-3-opus)
-          const oldestFormat = cleanID.match(/^claude-(\d+)-(opus|sonnet|haiku)$/)
-          if (oldestFormat) {
-            const [, major, type] = oldestFormat
-            return { family: `claude-${type}`, version: parseFloat(major), dated, isLatest }
-          }
-
-          // New format without minor: claude-{type}-{major} (e.g., claude-opus-4)
-          const newFormatNoMinor = cleanID.match(/^claude-(opus|sonnet|haiku)-(\d+)$/)
-          if (newFormatNoMinor) {
-            const [, type, major] = newFormatNoMinor
-            return { family: `claude-${type}`, version: parseFloat(major), dated, isLatest }
-          }
-
-          return null
-        }
-
-        // Group models by family
-        const families: Record<string, { id: string; version: number; dated: string | null; isLatest: boolean }[]> = {}
-        for (const modelID of modelIDs) {
-          const parsed = parseClaudeModel(modelID)
-          if (parsed) {
-            if (!families[parsed.family]) families[parsed.family] = []
-            families[parsed.family].push({
-              id: modelID,
-              version: parsed.version,
-              dated: parsed.dated,
-              isLatest: parsed.isLatest,
-            })
-          }
-        }
-
-        // For each family, keep only the best version
-        for (const [_family, versions] of Object.entries(families)) {
-          // Sort by: 1) highest version, 2) isLatest (for same version), 3) non-dated over dated, 4) most recent date
-          const sorted = [...versions].sort((a, b) => {
-            if (a.version !== b.version) return b.version - a.version
-            if (a.isLatest !== b.isLatest) return a.isLatest ? -1 : 1
-            if ((a.dated === null) !== (b.dated === null)) return a.dated === null ? -1 : 1
-            if (a.dated && b.dated) return b.dated.localeCompare(a.dated) // Most recent date first
-            return 0
-          })
-
-          // Keep only the first (best) one
-          if (sorted.length > 1) {
-            log.debug("dedup anthropic family", {
-              family: _family,
-              kept: sorted[0].id,
-              removed: sorted.slice(1).map((s) => s.id),
-            })
-          }
-          for (let i = 1; i < sorted.length; i++) {
-            delete provider.models[sorted[i].id]
-          }
+      // Deduplicate model versions: keep only the best per family
+      // Applies to anthropic, openai, google, xai (providers with registered parsers)
+      if (hasDedupParser(providerID)) {
+        const removedByDedup = dedup(providerID, Object.keys(provider.models))
+        for (const modelID of removedByDedup) {
+          delete provider.models[modelID]
         }
       }
 
       if (Object.keys(provider.models).length === 0) {
+        log.debug("provider removed", { providerID, reason: "no models remaining after filtering" })
         delete providers[providerID]
         continue
       }
 
       log.info("found", { providerID })
+    }
+
+    // Cross-provider dedup: remove models from proxy providers (opencode) if they
+    // exist in a direct provider with auth. Direct provider always wins.
+    const PROXY_PROVIDERS = ["opencode"]
+    for (const proxyID of PROXY_PROVIDERS) {
+      const proxy = providers[proxyID]
+      if (!proxy) continue
+      const removedFromProxy: string[] = []
+      for (const modelID of Object.keys(proxy.models)) {
+        for (const [directID, directProvider] of Object.entries(providers)) {
+          if (directID === proxyID) continue
+          if (directProvider.models[modelID]) {
+            removedFromProxy.push(modelID)
+            delete proxy.models[modelID]
+            break
+          }
+        }
+      }
+      if (removedFromProxy.length > 0) {
+        log.debug("cross-provider dedup", { proxy: proxyID, removed: removedFromProxy })
+      }
+      if (Object.keys(proxy.models).length === 0) {
+        log.debug("provider removed", { providerID: proxyID, reason: "all models deduped to direct providers" })
+        delete providers[proxyID]
+      }
     }
 
     return {
