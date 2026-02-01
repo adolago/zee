@@ -46,6 +46,7 @@ import type { ApplyPatchTool } from "@/tool/apply_patch"
 import type { WebFetchTool } from "@/tool/webfetch"
 import type { TaskTool } from "@/tool/task"
 import type { QuestionTool } from "@/tool/question"
+import type { SkillTool } from "@/tool/skill"
 import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import { useSDK } from "@tui/context/sdk"
 import { useCommandDialog } from "@tui/component/dialog-command"
@@ -1534,6 +1535,9 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         <Match when={props.part.tool === "question"}>
           <Question {...toolprops} />
         </Match>
+        <Match when={props.part.tool === "skill"}>
+          <Skill {...toolprops} />
+        </Match>
         <Match when={true}>
           <GenericTool {...toolprops} />
         </Match>
@@ -1866,10 +1870,12 @@ function Task(props: ToolProps<typeof TaskTool>) {
               </text>
             </Show>
           </box>
-          <text fg={theme.text}>
-            {keybind.print("session_child_cycle")}
-            <span style={{ fg: theme.textMuted }}> view subagents</span>
-          </text>
+          <Show when={props.metadata.sessionId}>
+            <text fg={theme.text}>
+              {keybind.print("session_child_cycle")}
+              <span style={{ fg: theme.textMuted }}> view subagents</span>
+            </text>
+          </Show>
         </BlockTool>
       </Match>
       <Match when={true}>
@@ -2083,6 +2089,14 @@ function Question(props: ToolProps<typeof QuestionTool>) {
         </InlineTool>
       </Match>
     </Switch>
+  )
+}
+
+function Skill(props: ToolProps<typeof SkillTool>) {
+  return (
+    <InlineTool icon=">" pending="Loading skill..." complete={props.input.name} part={props.part}>
+      Skill
+    </InlineTool>
   )
 }
 

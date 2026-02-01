@@ -17,6 +17,7 @@ import { useVim } from "@tui/context/vim"
 import { usePromptHistory, type PromptInfo } from "./history"
 import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
+import { DialogSkill } from "../dialog-skill"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
 import { useRenderer, useTerminalDimensions } from "@opentui/solid"
@@ -1007,6 +1008,28 @@ export function Prompt(props: PromptProps) {
               input.setText(entry.input)
               setStore("prompt", { input: entry.input, parts: entry.parts })
               restoreExtmarksFromParts(entry.parts)
+              input.gotoBufferEnd()
+            }}
+          />
+        ))
+      },
+    },
+  ])
+
+  command.register(() => [
+    {
+      title: "Skills",
+      value: "prompt.skills",
+      category: "Session",
+      slash: {
+        name: "skills",
+      },
+      enabled: (sync.data.command?.length ?? 0) > 0,
+      onSelect: (dialog) => {
+        dialog.replace(() => (
+          <DialogSkill
+            onSelect={(id) => {
+              input.setText("/" + id + " ")
               input.gotoBufferEnd()
             }}
           />

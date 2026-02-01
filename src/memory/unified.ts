@@ -35,6 +35,8 @@ import {
 } from "../config/constants";
 import { getMemoryEmbeddingConfig, getMemoryQdrantConfig, getMemoryRerankerConfig } from "../config/runtime";
 import { Log } from "../../packages/agent-core/src/util/log";
+import { SqliteFtsStore, type FtsConfig, type FtsEntry } from "./sqlite-fts";
+import { mergeHybridResults, type HybridSearchConfig, type HybridSearchResult } from "./hybrid";
 
 const log = Log.create({ service: "memory" });
 
@@ -113,6 +115,8 @@ export interface MemoryConfig {
   reranker?: RerankerConfig;
   namespace?: string;
   maxKeyFacts?: number;
+  /** SQLite FTS configuration for hybrid search */
+  fts?: FtsConfig;
 }
 
 // =============================================================================
@@ -355,6 +359,11 @@ export class Memory {
   private initialized = false;
   private reranker?: Reranker;
 
+  // SQLite FTS for hybrid keyword search
+  private ftsStore?: SqliteFtsStore;
+  private readonly ftsConfig?: FtsConfig;
+  private ftsInitFailed = false;
+
   // Current conversation state (for continuity)
   private currentConversation?: ConversationState;
 
@@ -400,6 +409,9 @@ export class Memory {
     } else {
       this.embedding = createEmbeddingProvider(embeddingConfig);
     }
+
+    // FTS config (SQLite hybrid search)
+    this.ftsConfig = config.fts;
   }
 
   // ===========================================================================
@@ -470,11 +482,26 @@ export class Memory {
         this.storage.setCollection(this.collection);
         this.initialized = true;
 
+        // Initialize SQLite FTS for hybrid search
+        if (!this.ftsStore && !this.ftsInitFailed) {
+          try {
+            this.ftsStore = new SqliteFtsStore(this.ftsConfig);
+            await this.ftsStore.init();
+            log.info("SQLite FTS initialized for hybrid search");
+          } catch (ftsErr) {
+            this.ftsInitFailed = true;
+            log.warn("SQLite FTS initialization failed, hybrid search unavailable", {
+              error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+            });
+          }
+        }
+
         log.info("Memory initialized", {
           collection: this.collection,
           namespace: this.namespace,
           dimension: this.embedding.dimension,
           attempt,
+          ftsAvailable: !!this.ftsStore,
         });
         return;
       } catch (err) {
@@ -675,6 +702,28 @@ export class Memory {
         memoryType: entry.memoryType,
       },
     }]);
+
+    // Index in SQLite FTS for hybrid search
+    if (this.ftsStore) {
+      try {
+        this.ftsStore.index({
+          id: entry.id,
+          content: entry.content,
+          summary: entry.summary,
+          category: entry.category,
+          namespace: entry.namespace,
+          domain: entry.domain,
+          topic: entry.topic,
+          subtopic: entry.subtopic,
+          createdAt: entry.createdAt,
+        });
+      } catch (ftsErr) {
+        log.debug("FTS indexing failed (non-fatal)", {
+          id: entry.id,
+          error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+        });
+      }
+    }
 
     // Maintain context tree directory indexes
     if (input.domain) {
@@ -971,9 +1020,74 @@ export class Memory {
   // ===========================================================================
   // Agentic Search (filter-first retrieval)
   // ===========================================================================
+  // Hybrid Search (Vector + Keyword)
+  // ===========================================================================
+
+  /**
+   * Hybrid search combining Qdrant vector similarity with SQLite BM25 keyword search.
+   * Falls back to pure vector search if FTS is not available.
+   *
+   * @param params - Standard memory search parameters
+   * @param hybridConfig - Optional weight and threshold overrides
+   */
+  async hybridSearch(
+    params: MemorySearchParams,
+    hybridConfig?: HybridSearchConfig,
+  ): Promise<HybridSearchResult[]> {
+    await this.init();
+
+    if (!this.isAvailable()) {
+      log.warn("Hybrid search skipped - storage unavailable");
+      return [];
+    }
+
+    // Run vector search (always)
+    const vectorResults = await this.search(params);
+
+    // If FTS is not available, return vector results in hybrid format
+    if (!this.ftsStore) {
+      return vectorResults.map((vr) => ({
+        entry: vr.entry,
+        score: vr.score,
+        components: { vector: vr.score, keyword: 0 },
+        id: vr.entry.id,
+      }));
+    }
+
+    // Run keyword search in parallel
+    const keywordResults = this.ftsStore.search(params.query, {
+      limit: (params.limit ?? 10) * 2, // fetch more for better merge
+      namespace: typeof params.namespace === "string" ? params.namespace : undefined,
+      category: typeof params.category === "string" ? params.category : undefined,
+      domain: params.domain,
+      topic: params.topic,
+    });
+
+    // Merge using configurable weights
+    return mergeHybridResults(
+      vectorResults,
+      keywordResults.map((kr) => ({
+        id: kr.id,
+        score: kr.score,
+        snippet: kr.snippet,
+      })),
+      {
+        limit: params.limit ?? 10,
+        threshold: params.threshold ?? 0.3,
+        ...hybridConfig,
+      },
+    );
+  }
+
+  /** Whether hybrid (FTS) search is available */
+  get hybridAvailable(): boolean {
+    return !!this.ftsStore;
+  }
+
+  // ===========================================================================
 
   /** Filter-first memory retrieval with optional semantic refinement */
-  async agenticSearch(params: AgenticSearchParams): Promise<MemorySearchResult[]> {
+  async agenticSearch(params: AgenticSearchParams & { namespace?: string | null }): Promise<MemorySearchResult[]> {
     await this.init();
     if (!this.isAvailable()) return [];
 
@@ -982,6 +1096,15 @@ export class Memory {
       type: "memory",
       domain: params.domain,
     };
+
+    // Namespace filtering: null = all namespaces, undefined = use instance default
+    if (params.namespace === null) {
+      // Explicitly null = search all namespaces (no filter)
+    } else if (params.namespace !== undefined) {
+      filter.namespace = params.namespace;
+    } else {
+      filter.namespace = this.namespace;
+    }
 
     if (params.topic) filter.topic = params.topic;
     if (params.subtopic) filter.subtopic = params.subtopic;
@@ -1088,7 +1211,8 @@ export class Memory {
   /** Get curated context: bookmarked + high-priority memories */
   async getCuratedContext(options?: {
     limit?: number;
-    namespace?: string;
+    /** Namespace filter. Null = all namespaces, undefined = instance default. */
+    namespace?: string | null;
   }): Promise<MemoryEntry[]> {
     await this.init();
     if (!this.isAvailable()) return [];
@@ -1096,6 +1220,11 @@ export class Memory {
     const limit = options?.limit ?? 50;
     const seen = new Set<string>();
     const results: MemoryEntry[] = [];
+
+    // Resolve namespace: null = all, undefined = instance default
+    const nsFilter: Record<string, unknown> =
+      options?.namespace === null ? {} :
+      { namespace: options?.namespace ?? this.namespace };
 
     // Pass 1: curated + bookmarked
     const bookmarked = await this.storage.scroll({
@@ -1109,7 +1238,7 @@ export class Memory {
             { is_null: { key: "superseded" } },
           ],
         },
-        ...(options?.namespace ? { namespace: options.namespace } : {}),
+        ...nsFilter,
       },
       limit,
     });
@@ -1133,7 +1262,7 @@ export class Memory {
               { is_null: { key: "superseded" } },
             ],
           },
-          ...(options?.namespace ? { namespace: options.namespace } : {}),
+          ...nsFilter,
         },
         limit: limit - results.length,
       });
