@@ -1,4 +1,4 @@
-export function getFilename(path: string | undefined) {
+export function getFilename(path: string | undefined): string {
   if (!path) return ""
 
   // Optimization: Scan manually to avoid string allocation and regex overhead.
