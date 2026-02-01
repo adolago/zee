@@ -9,32 +9,42 @@ import { highlight, supportsLanguage } from "cli-highlight";
 import type { SearchableSelectListTheme } from "../components/searchable-select-list.js";
 import { createSyntaxTheme } from "./syntax-theme.js";
 
+/**
+ * Zee TUI Palette - Solarized Dark Blue
+ *
+ * MIGRATED from legacy yellow/orange to Solarized Blue.
+ * Zee is the Blue Team persona.
+ */
 const palette = {
-  text: "#E8E3D5",
-  dim: "#7B7F87",
-  accent: "#F6C453",
-  accentSoft: "#F2A65A",
-  border: "#3C414B",
-  userBg: "#2B2F36",
-  userText: "#F3EEE0",
-  systemText: "#9BA3B2",
-  toolPendingBg: "#1F2A2F",
-  toolSuccessBg: "#1E2D23",
-  toolErrorBg: "#2F1F1F",
-  toolTitle: "#F6C453",
-  toolOutput: "#E1DACB",
-  quote: "#8CC8FF",
-  quoteBorder: "#3B4D6B",
-  code: "#F0C987",
-  codeBlock: "#1E232A",
-  codeBorder: "#343A45",
-  link: "#7DD3A5",
-  error: "#F97066",
-  success: "#7DD3A5",
-  // Status bar box design - delicate and refined
-  statusBoxBorder: "#4A5568",
-  statusInnerBorder: "#63B3ED",
-  statusReminderText: "#A0AEC0",
+  // Solarized base
+  text: "#839496",
+  dim: "#586e75",
+  accent: "#268bd2",
+  accentSoft: "#69c3ff",
+  border: "#073642",
+  userBg: "#073642",
+  userText: "#93a1a1",
+  systemText: "#657b83",
+  // Tool states use semantic colors
+  toolPendingBg: "#073642",
+  toolSuccessBg: "#002b36",
+  toolErrorBg: "#002b36",
+  toolTitle: "#268bd2",
+  toolOutput: "#839496",
+  // Markdown
+  quote: "#6c71c4",
+  quoteBorder: "#073642",
+  code: "#b58900",
+  codeBlock: "#002b36",
+  codeBorder: "#073642",
+  link: "#2aa198",
+  // Semantic
+  error: "#dc322f",
+  success: "#2aa198",
+  // Status bar
+  statusBoxBorder: "#073642",
+  statusInnerBorder: "#268bd2",
+  statusReminderText: "#586e75",
 };
 
 const fg = (hex: string) => (text: string) => chalk.hex(hex)(text);

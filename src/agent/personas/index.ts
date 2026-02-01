@@ -9,6 +9,7 @@
 
 import { PersonaDefinition } from "../persona";
 import { PermissionConfig } from "../agent";
+import { personaPalettes } from "../../theme/rosetta";
 
 // ============================================================================
 // Base Permission Configurations
@@ -169,7 +170,7 @@ export const STANLEY_ANALYST: PersonaDefinition = {
   description: "Comprehensive financial analysis agent for institutional investment",
   mode: "primary",
   useCase: "stanley",
-  color: "#458A5C", // Emerald Phantom - Green (Stanley)
+  color: personaPalettes.stanley.primary.hex,
   model: "openrouter/anthropic/claude-sonnet-4",
   temperature: 0.3,
   permission: NO_EXECUTION_PERMISSIONS,
@@ -351,7 +352,7 @@ export const ZEE_ASSISTANT: PersonaDefinition = {
   mode: "primary",
   useCase: "zee",
   default: true,
-  color: "#3F5E99", // Sapphire Shadow - Blue (Zee)
+  color: personaPalettes.zee.primary.hex,
   temperature: 0.7,
   identityFiles: ["~/.zee/IDENTITY.md", "~/.zee/SOUL.md"],
   tools: {

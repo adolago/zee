@@ -98,11 +98,16 @@ export namespace SessionPrompt {
   }
 
   async function resolvePersona(agentName?: string): Promise<LifecycleHooks.SessionLifecycle.StartPayload["persona"]> {
+    // Persona is ALWAYS required - no non-persona mode exists
     const fromInput = normalizePersona(agentName)
     if (fromInput) return fromInput
 
     const defaultAgent = await Agent.defaultAgent()
-    return normalizePersona(defaultAgent) ?? "zee"
+    const persona = normalizePersona(defaultAgent)
+    if (!persona) {
+      throw new Error(`Agent "${defaultAgent}" must map to a persona (zee, stanley, or johny)`)
+    }
+    return persona
   }
 
   function resolveSessionSource(): LifecycleHooks.SessionLifecycle.StartPayload["source"] {
@@ -165,8 +170,8 @@ export namespace SessionPrompt {
   }
 
   async function ensureRequiredMemory(sessionID: string): Promise<void> {
+    // Memory is ALWAYS required - no non-memory mode exists
     const cfg = await Config.get()
-    if (cfg.memory?.required !== true) return
 
     const status = await MCP.status()
     const mcpConfig = cfg.mcp ?? {}

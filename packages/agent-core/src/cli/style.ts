@@ -91,6 +91,7 @@
  */
 
 import { env } from "node:process";
+import { cliColors, personaCliColors } from "@root/theme/rosetta";
 
 // =============================================================================
 // NO_COLOR Detection
@@ -677,14 +678,14 @@ export const themeToAnsi = {
   primary: _useColors ? "\x1b[96m" : "", // Cyan
   secondary: _useColors ? "\x1b[95m" : "", // Magenta
   accent: _useColors ? "\x1b[96m" : "", // Cyan
-  error: _useColors ? "\x1b[91m" : "", // Bright red
-  warning: _useColors ? "\x1b[93m" : "", // Bright yellow
-  success: _useColors ? "\x1b[92m" : "", // Bright green
-  info: _useColors ? "\x1b[94m" : "", // Bright blue
-  muted: _useColors ? "\x1b[90m" : "", // Bright black (gray)
-  text: _useColors ? "\x1b[37m" : "", // White
-  background: _useColors ? "" : "", // No background color in CLI
-  border: _useColors ? "\x1b[90m" : "", // Gray
+  error: cliColors.error,
+  warning: cliColors.warning,
+  success: cliColors.success,
+  info: cliColors.info,
+  muted: cliColors.muted,
+  text: cliColors.text,
+  background: "",
+  border: cliColors.muted,
 } as const;
 
 /**
@@ -709,20 +710,4 @@ export const themeToAnsi = {
  * console.log(`${personaColors.johny.logo}Johny${Style.reset}`);
  * ```
  */
-export const personaColors = {
-  zee: {
-    /** Zee - Sapphire Shadow Blue (#3F5E99) */
-    logo: _useColors ? "\x1b[38;2;63;94;153m" : "",
-    primary: _useColors ? "\x1b[38;2;63;94;153m" : "",
-  },
-  stanley: {
-    /** Stanley - Emerald Phantom Green (#458A5C) */
-    logo: _useColors ? "\x1b[38;2;69;138;92m" : "",
-    primary: _useColors ? "\x1b[38;2;69;138;92m" : "",
-  },
-  johny: {
-    /** Johny - Crimson Specter Red (#9E4D42) */
-    logo: _useColors ? "\x1b[38;2;158;77;66m" : "",
-    primary: _useColors ? "\x1b[38;2;158;77;66m" : "",
-  },
-} as const;
+export const personaColors = personaCliColors;

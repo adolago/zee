@@ -1,4 +1,4 @@
-import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, fg, TextAttributes } from "@opentui/core"
+import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, fg, TextAttributes, RGBA } from "@opentui/core"
 import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, Show, Switch, Match } from "solid-js"
 import "opentui-spinner/solid"
 import { useLocal } from "@tui/context/local"
@@ -1399,7 +1399,6 @@ export function Prompt(props: PromptProps) {
       gap={1}
       paddingLeft={1}
       paddingRight={1}
-      backgroundColor={theme.backgroundElement}
     >
       {content}
     </box>
@@ -1447,7 +1446,7 @@ export function Prompt(props: PromptProps) {
               )}
             </Show>
             <text fg={theme.border} flexGrow={1} flexShrink={1}>{"─".repeat(200)}</text>
-            <text fg={highlight()} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
+            <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
             <text fg={theme.border} flexShrink={0}>─</text>
             <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
             <Show when={vim.enabled && store.mode !== "shell"}>
@@ -1773,7 +1772,7 @@ export function Prompt(props: PromptProps) {
                 }, 0)
               }}
               onMouseDown={(r: MouseEvent) => r.target?.focus()}
-              focusedBackgroundColor={theme.backgroundElement}
+              focusedBackgroundColor={RGBA.fromInts(0, 0, 0, 0)}
               cursorColor={theme.primary}
               syntaxStyle={syntax()}
             />

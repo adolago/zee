@@ -9,6 +9,7 @@
  */
 
 import { z } from "zod";
+import { personaPalettes } from "../theme/rosetta";
 
 // =============================================================================
 // Persona Types
@@ -59,7 +60,7 @@ export const ORCHESTRATION_PERSONAS: Record<PersonaId, OrchestrationPersona> = {
       "You help with daily tasks, research, and communication.",
       "You maintain context across conversations.",
     ],
-    color: "#3F5E99", // Sapphire Shadow - Blue (Zee)
+    color: personaPalettes.zee.primary.hex, // Sapphire Shadow - Blue (Zee)
     icon: "★",
   },
   stanley: {
@@ -78,7 +79,7 @@ export const ORCHESTRATION_PERSONAS: Record<PersonaId, OrchestrationPersona> = {
       "You help with market analysis, portfolio management, and trading decisions.",
       "You think in terms of risk/reward and macro trends.",
     ],
-    color: "#458A5C", // Emerald Phantom - Green (Stanley)
+    color: personaPalettes.stanley.primary.hex, // Emerald Phantom - Green (Stanley)
     icon: "♦",
   },
   johny: {
@@ -97,7 +98,7 @@ export const ORCHESTRATION_PERSONAS: Record<PersonaId, OrchestrationPersona> = {
       "You help with understanding complex topics, spaced repetition, and knowledge retention.",
       "You think systematically and build knowledge graphs.",
     ],
-    color: "#9E4D42", // Crimson Specter - Red (Johny)
+    color: personaPalettes.johny.primary.hex, // Crimson Specter - Red (Johny)
     icon: "◎",
   },
 };

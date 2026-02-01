@@ -7,42 +7,43 @@
 
 import type { AgentPersona, AgentConfig, PersonaTheme } from "./types";
 import type { AgentPersonaConfig } from "../config/types";
+import { personaPalettes } from "../theme/rosetta";
 
 // =============================================================================
-// Theme Definitions
+// Theme Definitions (Solarized Dark base)
 // =============================================================================
 
 /**
  * Stanley - Emerald Phantom (Green Team)
- * Stealth matte metallic green theme
+ * Solarized green theme
  */
 export const STANLEY_THEME: PersonaTheme = {
-  primaryColor: "#458A5C",
-  accentColor: "#5DB87A",
-  borderColor: "rgba(69, 138, 92, 0.45)",
-  bgGradient: "linear-gradient(135deg, rgba(69, 138, 92, 0.16) 0%, rgba(69, 138, 92, 0.08) 100%)",
+  primaryColor: personaPalettes.stanley.primary.hex,
+  accentColor: personaPalettes.stanley.accent.hex,
+  borderColor: `rgba(${personaPalettes.stanley.primary.rgb.join(", ")}, 0.45)`,
+  bgGradient: `linear-gradient(135deg, rgba(${personaPalettes.stanley.primary.rgb.join(", ")}, 0.16) 0%, rgba(${personaPalettes.stanley.primary.rgb.join(", ")}, 0.08) 100%)`,
 };
 
 /**
  * Zee - Sapphire Shadow (Blue Team)
- * Stealth matte metallic blue theme
+ * Solarized blue theme
  */
 export const ZEE_THEME: PersonaTheme = {
-  primaryColor: "#3F5E99",
-  accentColor: "#5078C2",
-  borderColor: "rgba(63, 94, 153, 0.45)",
-  bgGradient: "linear-gradient(135deg, rgba(63, 94, 153, 0.16) 0%, rgba(63, 94, 153, 0.08) 100%)",
+  primaryColor: personaPalettes.zee.primary.hex,
+  accentColor: personaPalettes.zee.accent.hex,
+  borderColor: `rgba(${personaPalettes.zee.primary.rgb.join(", ")}, 0.45)`,
+  bgGradient: `linear-gradient(135deg, rgba(${personaPalettes.zee.primary.rgb.join(", ")}, 0.16) 0%, rgba(${personaPalettes.zee.primary.rgb.join(", ")}, 0.08) 100%)`,
 };
 
 /**
  * Johny - Crimson Specter (Red Team)
- * Stealth matte metallic red theme
+ * Solarized red theme
  */
 export const JOHNY_THEME: PersonaTheme = {
-  primaryColor: "#9E4D42",
-  accentColor: "#C46356",
-  borderColor: "rgba(158, 77, 66, 0.45)",
-  bgGradient: "linear-gradient(135deg, rgba(158, 77, 66, 0.16) 0%, rgba(158, 77, 66, 0.08) 100%)",
+  primaryColor: personaPalettes.johny.primary.hex,
+  accentColor: personaPalettes.johny.accent.hex,
+  borderColor: `rgba(${personaPalettes.johny.primary.rgb.join(", ")}, 0.45)`,
+  bgGradient: `linear-gradient(135deg, rgba(${personaPalettes.johny.primary.rgb.join(", ")}, 0.16) 0%, rgba(${personaPalettes.johny.primary.rgb.join(", ")}, 0.08) 100%)`,
 };
 
 // =============================================================================

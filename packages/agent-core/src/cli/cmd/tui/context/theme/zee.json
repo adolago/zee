@@ -1,126 +1,121 @@
 {
   "defs": {
-    "stealthBlack": "#0A0A0A",
-    "sapphireVoid": "#0A0A14",
-    "sapphireShadow": "#111426",
-    "sapphireObsidian": "#161D38",
-    "sapphireBronze": "#243055",
-    "sapphireSteel": "#304572",
-    "sapphireAlloy": "#3F5E99",
-    "sapphireFlux": "#5078C2",
-    "sapphirePhosphor": "#6995E8",
-    "sapphireWarning": "#4D8AFF",
-    "sapphireTrace": "#A3C8FF",
-    "darkStep6": "#3c3c3c",
-    "darkStep7": "#484848",
-    "darkStep11": "#808080",
-    "darkStep12": "#eeeeee",
-    "darkPanelBg": "#0A0A14",
-    "darkMenuBg": "#111426",
-    "lightPanelBg": "#f0f5ff99",
-    "darkRed": "#e06c75",
-    "darkOrange": "#f5a742",
-    "darkGreen": "#7fd88f",
-    "darkCyan": "#56b6c2",
-    "darkYellow": "#e5c07b",
-    "lightStep6": "#d4d4d4",
-    "lightStep7": "#b8b8b8",
-    "lightStep11": "#8a8a8a",
-    "lightStep12": "#1a1a1a",
-    "lightRed": "#d1383d",
-    "lightOrange": "#d68c27",
-    "lightGreen": "#3d9a57",
-    "lightCyan": "#318795",
-    "lightYellow": "#b0851f"
+    "base03": "#002b36",
+    "base02": "#073642",
+    "base01": "#586e75",
+    "base00": "#657b83",
+    "base0": "#839496",
+    "base1": "#93a1a1",
+    "base2": "#eee8d5",
+    "base3": "#fdf6e3",
+    "solYellow": "#b58900",
+    "solOrange": "#cb4b16",
+    "solRed": "#dc322f",
+    "solMagenta": "#d33682",
+    "solViolet": "#6c71c4",
+    "solBlue": "#268bd2",
+    "solCyan": "#2aa198",
+    "solGreen": "#859900",
+    "zeePrimary": "#268bd2",
+    "zeePrimaryBright": "#69c3ff",
+    "zeePrimaryDim": "#1a6094",
+    "zeeSecondary": "#5078C2",
+    "zeeAccent": "#4D8AFF",
+    "zeeBorder": "#1a6094",
+    "zeeGlow": "#69c3ff",
+    "surface": "#0A3A47",
+    "shadow": "#001419",
+    "lightBase": "#fdf6e3",
+    "lightText": "#657b83"
   },
   "theme": {
     "primary": {
-      "dark": "sapphireAlloy",
-      "light": "sapphireSteel"
+      "dark": "zeePrimary",
+      "light": "zeePrimaryDim"
     },
     "secondary": {
-      "dark": "sapphireSteel",
-      "light": "sapphireAlloy"
+      "dark": "zeeSecondary",
+      "light": "zeePrimaryDim"
     },
     "accent": {
-      "dark": "sapphirePhosphor",
-      "light": "sapphireFlux"
+      "dark": "zeeAccent",
+      "light": "zeePrimary"
     },
     "error": {
-      "dark": "darkRed",
-      "light": "lightRed"
+      "dark": "solRed",
+      "light": "solRed"
     },
     "warning": {
-      "dark": "sapphireWarning",
-      "light": "lightOrange"
+      "dark": "solYellow",
+      "light": "solYellow"
     },
     "success": {
-      "dark": "darkGreen",
-      "light": "lightGreen"
+      "dark": "solCyan",
+      "light": "solCyan"
     },
     "info": {
-      "dark": "sapphireTrace",
-      "light": "lightCyan"
+      "dark": "solCyan",
+      "light": "solCyan"
     },
     "text": {
-      "dark": "darkStep12",
-      "light": "lightStep12"
+      "dark": "base0",
+      "light": "lightText"
     },
     "textMuted": {
-      "dark": "sapphireSteel",
-      "light": "lightStep11"
+      "dark": "base01",
+      "light": "base00"
     },
     "background": {
       "dark": "transparent",
       "light": "transparent"
     },
     "backgroundPanel": {
-      "dark": "darkPanelBg",
+      "dark": "base02",
       "light": "transparent"
     },
     "backgroundElement": {
-      "dark": "sapphireShadow",
+      "dark": "surface",
       "light": "transparent"
     },
     "backgroundMenu": {
-      "dark": "darkMenuBg",
-      "light": "lightPanelBg"
+      "dark": "base02",
+      "light": "lightBase"
     },
     "border": {
-      "dark": "sapphireSteel",
-      "light": "lightStep7"
+      "dark": "base01",
+      "light": "base1"
     },
     "borderActive": {
-      "dark": "sapphireFlux",
-      "light": "sapphireAlloy"
+      "dark": "zeePrimary",
+      "light": "zeePrimaryDim"
     },
     "borderSubtle": {
-      "dark": "sapphireShadow",
-      "light": "lightStep6"
+      "dark": "surface",
+      "light": "base2"
     },
     "diffAdded": {
-      "dark": "#4fd6be",
-      "light": "#1e725c"
+      "dark": "solCyan",
+      "light": "solCyan"
     },
     "diffRemoved": {
-      "dark": "#c53b53",
-      "light": "#c53b53"
+      "dark": "solRed",
+      "light": "solRed"
     },
     "diffContext": {
-      "dark": "sapphireSteel",
-      "light": "#7086b5"
+      "dark": "base01",
+      "light": "base00"
     },
     "diffHunkHeader": {
-      "dark": "sapphireSteel",
-      "light": "#7086b5"
+      "dark": "base01",
+      "light": "base00"
     },
     "diffHighlightAdded": {
-      "dark": "#b8db87",
-      "light": "#4db380"
+      "dark": "solGreen",
+      "light": "solGreen"
     },
     "diffHighlightRemoved": {
-      "dark": "#e26a75",
-      "light": "#f52a65"
+      "dark": "solRed",
+      "light": "solRed"
     },
     "diffAddedBg": {
       "dark": "transparent",
@@ -135,8 +130,8 @@
       "light": "transparent"
     },
     "diffLineNumber": {
-      "dark": "sapphireBronze",
-      "light": "#999999"
+      "dark": "base01",
+      "light": "base00"
     },
     "diffAddedLineNumberBg": {
       "dark": "transparent",
@@ -147,96 +142,96 @@
       "light": "transparent"
     },
     "markdownText": {
-      "dark": "darkStep12",
-      "light": "lightStep12"
+      "dark": "base0",
+      "light": "lightText"
     },
     "markdownHeading": {
-      "dark": "sapphireFlux",
-      "light": "sapphireAlloy"
+      "dark": "zeePrimary",
+      "light": "zeePrimaryDim"
     },
     "markdownLink": {
-      "dark": "sapphireAlloy",
-      "light": "sapphireSteel"
+      "dark": "zeeSecondary",
+      "light": "zeePrimaryDim"
     },
     "markdownLinkText": {
-      "dark": "sapphirePhosphor",
-      "light": "sapphireFlux"
+      "dark": "zeeAccent",
+      "light": "zeePrimary"
     },
     "markdownCode": {
-      "dark": "darkGreen",
-      "light": "lightGreen"
+      "dark": "solGreen",
+      "light": "solGreen"
     },
     "markdownBlockQuote": {
-      "dark": "sapphireSteel",
-      "light": "lightYellow"
+      "dark": "base01",
+      "light": "solYellow"
     },
     "markdownEmph": {
-      "dark": "darkYellow",
-      "light": "lightYellow"
+      "dark": "solYellow",
+      "light": "solYellow"
     },
     "markdownStrong": {
-      "dark": "sapphirePhosphor",
-      "light": "sapphireFlux"
+      "dark": "zeeAccent",
+      "light": "zeePrimary"
     },
     "markdownHorizontalRule": {
-      "dark": "sapphireBronze",
-      "light": "lightStep11"
+      "dark": "base01",
+      "light": "base00"
     },
     "markdownListItem": {
-      "dark": "sapphireAlloy",
-      "light": "sapphireSteel"
+      "dark": "zeeSecondary",
+      "light": "zeePrimaryDim"
     },
     "markdownListEnumeration": {
-      "dark": "sapphirePhosphor",
-      "light": "sapphireFlux"
+      "dark": "zeeAccent",
+      "light": "zeePrimary"
     },
     "markdownImage": {
-      "dark": "sapphireAlloy",
-      "light": "sapphireSteel"
+      "dark": "zeeSecondary",
+      "light": "zeePrimaryDim"
     },
     "markdownImageText": {
-      "dark": "sapphirePhosphor",
-      "light": "sapphireFlux"
+      "dark": "zeeAccent",
+      "light": "zeePrimary"
     },
     "markdownCodeBlock": {
-      "dark": "darkStep12",
-      "light": "lightStep12"
+      "dark": "base0",
+      "light": "lightText"
     },
     "syntaxComment": {
-      "dark": "sapphireBronze",
-      "light": "lightStep11"
+      "dark": "base01",
+      "light": "base00"
     },
     "syntaxKeyword": {
-      "dark": "sapphireFlux",
-      "light": "sapphireAlloy"
+      "dark": "zeePrimary",
+      "light": "zeePrimaryDim"
     },
     "syntaxFunction": {
-      "dark": "sapphirePhosphor",
-      "light": "sapphireFlux"
+      "dark": "zeeAccent",
+      "light": "zeePrimary"
     },
     "syntaxVariable": {
-      "dark": "darkRed",
-      "light": "lightRed"
+      "dark": "solRed",
+      "light": "solRed"
     },
     "syntaxString": {
-      "dark": "darkGreen",
-      "light": "lightGreen"
+      "dark": "solGreen",
+      "light": "solGreen"
     },
     "syntaxNumber": {
-      "dark": "darkOrange",
-      "light": "lightOrange"
+      "dark": "solOrange",
+      "light": "solOrange"
     },
     "syntaxType": {
-      "dark": "darkYellow",
-      "light": "lightYellow"
+      "dark": "solYellow",
+      "light": "solYellow"
     },
     "syntaxOperator": {
-      "dark": "sapphireTrace",
-      "light": "lightCyan"
+      "dark": "solCyan",
+      "light": "solCyan"
     },
     "syntaxPunctuation": {
-      "dark": "darkStep12",
-      "light": "lightStep12"
+      "dark": "base0",
+      "light": "lightText"
     }
   }
 }
