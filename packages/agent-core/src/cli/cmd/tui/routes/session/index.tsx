@@ -128,16 +128,6 @@ function AgentBanner() {
   )
 }
 
-class CustomSpeedScroll implements ScrollAcceleration {
-  constructor(private speed: number) {}
-
-  tick(_now?: number): number {
-    return this.speed
-  }
-
-  reset(): void {}
-}
-
 const context = createContext<{
   width: number
   sessionID: string
@@ -210,15 +200,7 @@ export function Session() {
   const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
 
   const scrollAcceleration = createMemo(() => {
-    const tui = sync.data.config.tui
-    if (tui?.scroll_acceleration?.enabled) {
-      return new LinearScrollAccel()
-    }
-    if (tui?.scroll_speed) {
-      return new CustomSpeedScroll(tui.scroll_speed)
-    }
-
-    return new CustomSpeedScroll(3)
+    return new LinearScrollAccel()
   })
 
   createEffect(async () => {

@@ -1,6 +1,9 @@
 import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, fg, TextAttributes, RGBA } from "@opentui/core"
 import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, Show, Switch, Match } from "solid-js"
-import "opentui-spinner/solid"
+import { extend, type RenderableConstructor } from "@opentui/solid"
+import { SpinnerRenderable } from "opentui-spinner"
+
+extend({ spinner: SpinnerRenderable as unknown as RenderableConstructor })
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
 import { EmptyBorder } from "@tui/component/border"
@@ -1777,41 +1780,6 @@ export function Prompt(props: PromptProps) {
               syntaxStyle={syntax()}
             />
         </box>
-        {/* Diff stats line inside box */}
-        <Show when={diffStats()}>
-          {(stats) => (
-            <box
-              height={1}
-              flexDirection="row"
-              border={["left", "right"]}
-              borderColor={theme.border}
-              customBorderChars={{
-                vertical: "│",
-                topLeft: "", bottomLeft: "", topRight: "", bottomRight: "",
-                horizontal: "", topT: "", bottomT: "", leftT: "", rightT: "", cross: "",
-              }}
-            >
-              <box flexGrow={1} flexDirection="row" justifyContent="flex-end" paddingRight={1}>
-                <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>
-                <Show when={stats().additions > 0}>
-                  <text fg={theme.success}>+{stats().additions}</text>
-                </Show>
-                <Show when={stats().additions > 0 && stats().modified > 0}>
-                  <text> </text>
-                </Show>
-                <Show when={stats().modified > 0}>
-                  <text fg={theme.warning}>~{stats().modified}</text>
-                </Show>
-                <Show when={(stats().additions > 0 || stats().modified > 0) && stats().deletions > 0}>
-                  <text> </text>
-                </Show>
-                <Show when={stats().deletions > 0}>
-                  <text fg={theme.error}>-{stats().deletions}</text>
-                </Show>
-              </box>
-            </box>
-          )}
-        </Show>
         {/* Bottom border with embedded status info */}
         <box height={1} flexDirection="row">
           <text fg={theme.border} flexShrink={0}>╰</text>
@@ -1855,6 +1823,29 @@ export function Prompt(props: PromptProps) {
           <text fg={theme.border} flexShrink={0}>─╯</text>
         </box>
       </box>
+      {/* Diff stats line outside box, below bottom border */}
+      <Show when={diffStats()}>
+        {(stats) => (
+          <box height={1} flexDirection="row" justifyContent="flex-end" paddingRight={1}>
+            <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>
+            <Show when={stats().additions > 0}>
+              <text fg={theme.success}>+{stats().additions}</text>
+            </Show>
+            <Show when={stats().additions > 0 && stats().modified > 0}>
+              <text> </text>
+            </Show>
+            <Show when={stats().modified > 0}>
+              <text fg={theme.warning}>~{stats().modified}</text>
+            </Show>
+            <Show when={(stats().additions > 0 || stats().modified > 0) && stats().deletions > 0}>
+              <text> </text>
+            </Show>
+            <Show when={stats().deletions > 0}>
+              <text fg={theme.error}>-{stats().deletions}</text>
+            </Show>
+          </box>
+        )}
+      </Show>
     </>
   )
 }

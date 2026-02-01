@@ -387,6 +387,12 @@ export namespace ProviderTransform {
             },
           }
         }
+        // Kimi For Coding: Free tier models don't support thinking budget parameters.
+        // Reasoning is controlled by using the "-thinking" model variant (e.g., kimi-k2.5-thinking).
+        // Return empty variants to avoid sending unsupported parameters.
+        if (model.providerID === "kimi-for-coding") {
+          return {}
+        }
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
       case "@ai-sdk/azure": {
@@ -921,7 +927,20 @@ export namespace ProviderTransform {
     const sanitized = sanitizeOptions(options)
     // Then filter to only include params supported by this provider SDK
     // Use getProviderNpm() to get the ACTUAL provider backend, not model overrides
-    const filtered = filterProviderParams(getProviderNpm(model), sanitized)
+    let filtered = filterProviderParams(getProviderNpm(model), sanitized)
+
+    // Kimi For Coding: Free tier doesn't support thinking budget or reasoning effort.
+    // Reasoning is controlled by using the "-thinking" model variant.
+    if (model.providerID === "kimi-for-coding") {
+      const { thinking, reasoningEffort, reasoning_effort, thinkingBudget, ...rest } = filtered
+      if (thinking || reasoningEffort || reasoning_effort || thinkingBudget) {
+        log.info("filtered unsupported Kimi params", {
+          model: model.id,
+          hint: "Kimi free tier doesn't support thinking budget. Use kimi-k2.5-thinking model for reasoning.",
+        })
+      }
+      filtered = rest
+    }
 
     const key = sdkKey(model.api.npm) ?? model.providerID
     return { [key]: filtered }

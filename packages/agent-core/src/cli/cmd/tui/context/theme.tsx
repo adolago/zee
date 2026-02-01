@@ -562,11 +562,16 @@ function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJs
     greenBright: col(10),
   }
 
-  const diffAlpha = isDark ? 0.22 : 0.14
-  const diffAddedBg = tint(bg, ansiColors.green, diffAlpha)
-  const diffRemovedBg = tint(bg, ansiColors.red, diffAlpha)
-  const diffAddedLineNumberBg = tint(grays[3], ansiColors.green, diffAlpha)
-  const diffRemovedLineNumberBg = tint(grays[3], ansiColors.red, diffAlpha)
+  // Softer, more aesthetic diff colors with better differentiation
+  // Additions: teal-green tint, Deletions: rose/coral tint
+  const diffAlpha = isDark ? 0.12 : 0.08
+  const diffLineNumAlpha = isDark ? 0.18 : 0.12
+  const diffAddColor = RGBA.fromValues(0.2, 0.7, 0.5, 1) // teal-green
+  const diffRemoveColor = RGBA.fromValues(0.85, 0.35, 0.4, 1) // rose/coral
+  const diffAddedBg = tint(bg, diffAddColor, diffAlpha)
+  const diffRemovedBg = tint(bg, diffRemoveColor, diffAlpha)
+  const diffAddedLineNumberBg = tint(grays[3], diffAddColor, diffLineNumAlpha)
+  const diffRemovedLineNumberBg = tint(grays[3], diffRemoveColor, diffLineNumAlpha)
 
   return {
     theme: {

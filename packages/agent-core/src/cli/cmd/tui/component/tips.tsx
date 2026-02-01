@@ -155,7 +155,6 @@ export const TIPS = [
   "Press {highlight}Space G{/highlight} or {highlight}:timeline{/highlight} to jump to specific messages.",
   "Press {highlight}Space H{/highlight} to toggle code block visibility in messages.",
   "Press {highlight}Space S{/highlight} or {highlight}:status{/highlight} to see system status info.",
-  "Enable {highlight}tui.scroll_acceleration{/highlight} for smooth accelerated scrolling.",
   "Toggle username display in chat via command palette ({highlight}Space C{/highlight}).",
   "Type {highlight}:q{/highlight} or {highlight}exit{/highlight} to quit agent-core.",
   "Use {highlight}:review{/highlight} to review uncommitted changes, branches, or PRs.",

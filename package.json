@@ -16,7 +16,6 @@
   "workspaces": {
     "packages": [
       "packages/agent-core",
-      "packages/tiara",
       "packages/personas/zee",
       "packages/personas/stanley",
       "packages/sdk",
@@ -94,7 +93,10 @@
   "overrides": {
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
-    "baseline-browser-mapping": "2.9.19"
+    "baseline-browser-mapping": "2.9.19",
+    "@opentui/core": "0.1.75",
+    "@opentui/solid": "0.1.75",
+    "solid-js": "1.9.10"
   },
   "patchedDependencies": {
     "ghostty-web@0.3.0": "patches/ghostty-web@0.3.0.patch",
