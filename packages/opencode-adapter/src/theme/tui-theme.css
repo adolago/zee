@@ -1,0 +1,458 @@
+/**
+ * TUI-Matching Theme for OpenCode Web UI
+ * 
+ * This theme makes the web UI look identical to the agent-core TUI.
+ * Based on the TUI theme system with ANSI color references.
+ */
+
+:root {
+  /* Override fonts to match TUI monospace feel */
+  --font-family-sans: "IBM Plex Mono", "JetBrains Mono", "Fira Code", monospace;
+  --font-family-mono: "IBM Plex Mono", "JetBrains Mono", "Fira Code", monospace;
+  
+  /* Tighter spacing for terminal feel */
+  --font-size-small: 12px;
+  --font-size-base: 13px;
+  --font-size-large: 14px;
+  
+  /* Minimal border radius for sharp TUI look */
+  --radius-xs: 0;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  
+  /* Remove decorative shadows */
+  --shadow-xs: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+/* ============================================
+   DARK THEME (Default - matches TUI dark mode)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --text-mix-blend-mode: screen;
+    
+    /* TUI Background Colors - from generateGrayScale */
+    --background-base: #131010;
+    --background-weak: #1b1818;
+    --background-strong: #0a0808;
+    --background-stronger: #050404;
+    
+    /* Surface colors - terminal panel feel */
+    --surface-base: rgba(27, 24, 24, 0.6);
+    --surface-base-hover: rgba(37, 33, 33, 0.7);
+    --surface-base-active: rgba(45, 40, 40, 0.8);
+    --surface-raised-base: #1b1818;
+    --surface-raised-strong: #252121;
+    --surface-float-base: #1b1818;
+    --surface-inset-base: rgba(10, 8, 8, 0.8);
+    --surface-strong: #252121;
+    
+    /* TUI Primary = Cyan (ANSI color 6) */
+    --surface-interactive-base: rgba(0, 139, 139, 0.15);
+    --surface-interactive-hover: rgba(0, 139, 139, 0.25);
+    --surface-interactive-weak: rgba(0, 139, 139, 0.1);
+    
+    /* TUI Success = Green (ANSI color 2) */
+    --surface-success-base: rgba(0, 128, 0, 0.15);
+    --surface-success-weak: rgba(0, 128, 0, 0.1);
+    --surface-success-strong: #00aa00;
+    
+    /* TUI Warning = Yellow (ANSI color 3) */
+    --surface-warning-base: rgba(139, 139, 0, 0.15);
+    --surface-warning-weak: rgba(139, 139, 0, 0.1);
+    --surface-warning-strong: #c0c000;
+    
+    /* TUI Error = Red (ANSI color 1) */
+    --surface-critical-base: rgba(139, 0, 0, 0.15);
+    --surface-critical-weak: rgba(139, 0, 0, 0.1);
+    --surface-critical-strong: #cc0000;
+    
+    /* Diff colors - teal-green additions, rose deletions (from theme.tsx update) */
+    --surface-diff-add-base: rgba(51, 179, 128, 0.12);
+    --surface-diff-add-weak: rgba(51, 179, 128, 0.08);
+    --surface-diff-add-strong: rgba(51, 179, 128, 0.22);
+    --surface-diff-add-stronger: #33b380;
+    --surface-diff-delete-base: rgba(217, 89, 102, 0.12);
+    --surface-diff-delete-weak: rgba(217, 89, 102, 0.08);
+    --surface-diff-delete-strong: rgba(217, 89, 102, 0.22);
+    --surface-diff-delete-stronger: #d95966;
+    --surface-diff-unchanged-base: transparent;
+    --surface-diff-skip-base: #1b1818;
+    
+    /* Text colors - high contrast terminal style */
+    --text-base: #e0dcdc;
+    --text-weak: #8a8585;
+    --text-weaker: #6a6565;
+    --text-strong: #f5f2f2;
+    --text-interactive-base: #00d7d7;
+    --text-on-success-base: #00cc00;
+    --text-on-critical-base: #ff5555;
+    --text-on-warning-base: #d7d700;
+    --text-diff-add-base: #33b380;
+    --text-diff-add-strong: #5fd7af;
+    --text-diff-delete-base: #d95966;
+    --text-diff-delete-strong: #ff8787;
+    
+    /* Border colors - subtle terminal borders */
+    --border-base: rgba(100, 95, 95, 0.5);
+    --border-hover: rgba(100, 95, 95, 0.7);
+    --border-active: rgba(100, 95, 95, 0.9);
+    --border-selected: #00d7d7;
+    --border-weak-base: rgba(75, 70, 70, 0.4);
+    --border-strong-base: rgba(100, 95, 95, 0.6);
+    --border-interactive-base: #008b8b;
+    --border-success-base: #008800;
+    --border-critical-base: #880000;
+    --border-warning-base: #888800;
+    
+    /* Icon colors */
+    --icon-base: #8a8585;
+    --icon-hover: #b0abab;
+    --icon-active: #e0dcdc;
+    --icon-strong-base: #f5f2f2;
+    --icon-interactive-base: #00d7d7;
+    --icon-success-base: #00cc00;
+    --icon-critical-base: #ff5555;
+    --icon-warning-base: #d7d700;
+    --icon-diff-add-base: #33b380;
+    --icon-diff-delete-base: #d95966;
+    
+    /* Button colors */
+    --button-primary-base: #f5f2f2;
+    --button-secondary-base: #252121;
+    --button-secondary-hover: #2d2828;
+    --button-ghost-hover: rgba(255, 255, 255, 0.05);
+    
+    /* Input colors */
+    --input-base: #1b1818;
+    --input-hover: #252121;
+    --input-active: rgba(0, 139, 139, 0.2);
+    --input-focus: rgba(0, 139, 139, 0.3);
+    
+    /* Syntax highlighting - TUI style */
+    --syntax-comment: #6a6565;
+    --syntax-keyword: #d787d7;
+    --syntax-string: #00cc00;
+    --syntax-number: #d7d700;
+    --syntax-type: #00d7d7;
+    --syntax-variable: #e0dcdc;
+    --syntax-operator: #00d7d7;
+    --syntax-punctuation: #e0dcdc;
+    --syntax-property: #5f87ff;
+    --syntax-constant: #00d7d7;
+    --syntax-regexp: #e0dcdc;
+    --syntax-primitive: #d7af5f;
+    --syntax-success: #00cc00;
+    --syntax-warning: #d7d700;
+    --syntax-critical: #ff5555;
+    --syntax-info: #00d7d7;
+    --syntax-diff-add: #33b380;
+    --syntax-diff-delete: #d95966;
+    
+    /* Markdown colors - TUI style */
+    --markdown-heading: #e0dcdc;
+    --markdown-text: #e0dcdc;
+    --markdown-link: #5f87ff;
+    --markdown-link-text: #00d7d7;
+    --markdown-code: #00cc00;
+    --markdown-block-quote: #d7d700;
+    --markdown-emph: #d7d700;
+    --markdown-strong: #e0dcdc;
+    --markdown-horizontal-rule: #4b4646;
+    --markdown-list-item: #5f87ff;
+    --markdown-list-enumeration: #00d7d7;
+    --markdown-image: #5f87ff;
+    --markdown-image-text: #00d7d7;
+    --markdown-code-block: #e0dcdc;
+  }
+}
+
+/* Force dark theme when class applied */
+.theme-tui,
+[data-theme="tui"] {
+  color-scheme: dark;
+  --text-mix-blend-mode: screen;
+  
+  /* Copy all dark theme variables here */
+  --background-base: #131010;
+  --background-weak: #1b1818;
+  --background-strong: #0a0808;
+  --background-stronger: #050404;
+  --surface-base: rgba(27, 24, 24, 0.6);
+  --surface-base-hover: rgba(37, 33, 33, 0.7);
+  --surface-base-active: rgba(45, 40, 40, 0.8);
+  --surface-raised-base: #1b1818;
+  --surface-raised-strong: #252121;
+  --surface-float-base: #1b1818;
+  --surface-inset-base: rgba(10, 8, 8, 0.8);
+  --surface-strong: #252121;
+  --surface-interactive-base: rgba(0, 139, 139, 0.15);
+  --surface-interactive-hover: rgba(0, 139, 139, 0.25);
+  --surface-interactive-weak: rgba(0, 139, 139, 0.1);
+  --surface-success-base: rgba(0, 128, 0, 0.15);
+  --surface-success-weak: rgba(0, 128, 0, 0.1);
+  --surface-success-strong: #00aa00;
+  --surface-warning-base: rgba(139, 139, 0, 0.15);
+  --surface-warning-weak: rgba(139, 139, 0, 0.1);
+  --surface-warning-strong: #c0c000;
+  --surface-critical-base: rgba(139, 0, 0, 0.15);
+  --surface-critical-weak: rgba(139, 0, 0, 0.1);
+  --surface-critical-strong: #cc0000;
+  --surface-diff-add-base: rgba(51, 179, 128, 0.12);
+  --surface-diff-add-weak: rgba(51, 179, 128, 0.08);
+  --surface-diff-add-strong: rgba(51, 179, 128, 0.22);
+  --surface-diff-add-stronger: #33b380;
+  --surface-diff-delete-base: rgba(217, 89, 102, 0.12);
+  --surface-diff-delete-weak: rgba(217, 89, 102, 0.08);
+  --surface-diff-delete-strong: rgba(217, 89, 102, 0.22);
+  --surface-diff-delete-stronger: #d95966;
+  --surface-diff-unchanged-base: transparent;
+  --surface-diff-skip-base: #1b1818;
+  --text-base: #e0dcdc;
+  --text-weak: #8a8585;
+  --text-weaker: #6a6565;
+  --text-strong: #f5f2f2;
+  --text-interactive-base: #00d7d7;
+  --text-on-success-base: #00cc00;
+  --text-on-critical-base: #ff5555;
+  --text-on-warning-base: #d7d700;
+  --text-diff-add-base: #33b380;
+  --text-diff-add-strong: #5fd7af;
+  --text-diff-delete-base: #d95966;
+  --text-diff-delete-strong: #ff8787;
+  --border-base: rgba(100, 95, 95, 0.5);
+  --border-hover: rgba(100, 95, 95, 0.7);
+  --border-active: rgba(100, 95, 95, 0.9);
+  --border-selected: #00d7d7;
+  --border-weak-base: rgba(75, 70, 70, 0.4);
+  --border-strong-base: rgba(100, 95, 95, 0.6);
+  --border-interactive-base: #008b8b;
+  --border-success-base: #008800;
+  --border-critical-base: #880000;
+  --border-warning-base: #888800;
+  --icon-base: #8a8585;
+  --icon-hover: #b0abab;
+  --icon-active: #e0dcdc;
+  --icon-strong-base: #f5f2f2;
+  --icon-interactive-base: #00d7d7;
+  --icon-success-base: #00cc00;
+  --icon-critical-base: #ff5555;
+  --icon-warning-base: #d7d700;
+  --icon-diff-add-base: #33b380;
+  --icon-diff-delete-base: #d95966;
+  --button-primary-base: #f5f2f2;
+  --button-secondary-base: #252121;
+  --button-secondary-hover: #2d2828;
+  --button-ghost-hover: rgba(255, 255, 255, 0.05);
+  --input-base: #1b1818;
+  --input-hover: #252121;
+  --input-active: rgba(0, 139, 139, 0.2);
+  --input-focus: rgba(0, 139, 139, 0.3);
+  --syntax-comment: #6a6565;
+  --syntax-keyword: #d787d7;
+  --syntax-string: #00cc00;
+  --syntax-number: #d7d700;
+  --syntax-type: #00d7d7;
+  --syntax-variable: #e0dcdc;
+  --syntax-operator: #00d7d7;
+  --syntax-punctuation: #e0dcdc;
+  --syntax-property: #5f87ff;
+  --syntax-constant: #00d7d7;
+  --syntax-regexp: #e0dcdc;
+  --syntax-primitive: #d7af5f;
+  --syntax-success: #00cc00;
+  --syntax-warning: #d7d700;
+  --syntax-critical: #ff5555;
+  --syntax-info: #00d7d7;
+  --syntax-diff-add: #33b380;
+  --syntax-diff-delete: #d95966;
+  --markdown-heading: #e0dcdc;
+  --markdown-text: #e0dcdc;
+  --markdown-link: #5f87ff;
+  --markdown-link-text: #00d7d7;
+  --markdown-code: #00cc00;
+  --markdown-block-quote: #d7d700;
+  --markdown-emph: #d7d700;
+  --markdown-strong: #e0dcdc;
+  --markdown-horizontal-rule: #4b4646;
+  --markdown-list-item: #5f87ff;
+  --markdown-list-enumeration: #00d7d7;
+  --markdown-image: #5f87ff;
+  --markdown-image-text: #00d7d7;
+  --markdown-code-block: #e0dcdc;
+}
+
+/* ============================================
+   LIGHT THEME (matches TUI light mode)
+   ============================================ */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --text-mix-blend-mode: multiply;
+    
+    /* Light TUI backgrounds */
+    --background-base: #f8f7f7;
+    --background-weak: #f1f0f0;
+    --background-strong: #fdfcfc;
+    --background-stronger: #ffffff;
+    
+    /* Surface colors */
+    --surface-base: rgba(0, 0, 0, 0.03);
+    --surface-base-hover: rgba(0, 0, 0, 0.05);
+    --surface-base-active: rgba(0, 0, 0, 0.08);
+    --surface-raised-base: #ffffff;
+    --surface-raised-strong: #fdfcfc;
+    --surface-float-base: #ffffff;
+    --surface-inset-base: rgba(0, 0, 0, 0.04);
+    --surface-strong: #fdfcfc;
+    
+    /* Primary = Cyan */
+    --surface-interactive-base: rgba(0, 139, 139, 0.08);
+    --surface-interactive-hover: rgba(0, 139, 139, 0.12);
+    --surface-interactive-weak: rgba(0, 139, 139, 0.05);
+    
+    /* Diff colors - subtle for light mode */
+    --surface-diff-add-base: rgba(51, 179, 128, 0.08);
+    --surface-diff-add-weak: rgba(51, 179, 128, 0.05);
+    --surface-diff-add-strong: rgba(51, 179, 128, 0.15);
+    --surface-diff-add-stronger: #228866;
+    --surface-diff-delete-base: rgba(217, 89, 102, 0.08);
+    --surface-diff-delete-weak: rgba(217, 89, 102, 0.05);
+    --surface-diff-delete-strong: rgba(217, 89, 102, 0.15);
+    --surface-diff-delete-stronger: #b84450;
+    
+    /* Text colors */
+    --text-base: #211e1e;
+    --text-weak: #656363;
+    --text-weaker: #8e8b8b;
+    --text-strong: #0a0808;
+    --text-interactive-base: #006666;
+    --text-on-success-base: #006600;
+    --text-on-critical-base: #cc0000;
+    --text-on-warning-base: #886600;
+    --text-diff-add-base: #228866;
+    --text-diff-delete-base: #b84450;
+    
+    /* Border colors */
+    --border-base: rgba(0, 0, 0, 0.15);
+    --border-hover: rgba(0, 0, 0, 0.2);
+    --border-weak-base: rgba(0, 0, 0, 0.1);
+    --border-selected: #006666;
+    
+    /* Syntax - darker for light mode */
+    --syntax-comment: #8e8b8b;
+    --syntax-keyword: #a040a0;
+    --syntax-string: #006600;
+    --syntax-number: #886600;
+    --syntax-type: #006666;
+  }
+}
+
+/* ============================================
+   TUI-SPECIFIC COMPONENT OVERRIDES
+   ============================================ */
+
+/* Make panels look like terminal windows */
+.theme-tui [class*="panel"],
+.theme-tui [class*="card"],
+[data-theme="tui"] [class*="panel"],
+[data-theme="tui"] [class*="card"] {
+  border: 1px solid var(--border-base);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Terminal-style input fields */
+.theme-tui input,
+.theme-tui textarea,
+[data-theme="tui"] input,
+[data-theme="tui"] textarea {
+  border-radius: 0;
+  border: 1px solid var(--border-base);
+  background: var(--input-base);
+  font-family: var(--font-family-mono);
+}
+
+.theme-tui input:focus,
+.theme-tui textarea:focus,
+[data-theme="tui"] input:focus,
+[data-theme="tui"] textarea:focus {
+  border-color: var(--border-selected);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--border-selected);
+}
+
+/* Buttons - flat terminal style */
+.theme-tui button,
+[data-theme="tui"] button {
+  border-radius: 2px;
+  font-family: var(--font-family-mono);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Code blocks - prominent monospace */
+.theme-tui pre,
+.theme-tui code,
+[data-theme="tui"] pre,
+[data-theme="tui"] code {
+  font-family: var(--font-family-mono);
+  border-radius: 0;
+  border: 1px solid var(--border-weak-base);
+}
+
+/* Scrollbars - thin terminal style */
+.theme-tui ::-webkit-scrollbar,
+[data-theme="tui"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.theme-tui ::-webkit-scrollbar-track,
+[data-theme="tui"] ::-webkit-scrollbar-track {
+  background: var(--background-base);
+}
+
+.theme-tui ::-webkit-scrollbar-thumb,
+[data-theme="tui"] ::-webkit-scrollbar-thumb {
+  background: var(--border-base);
+  border-radius: 0;
+}
+
+.theme-tui ::-webkit-scrollbar-thumb:hover,
+[data-theme="tui"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Selection - cyan highlight */
+.theme-tui ::selection,
+[data-theme="tui"] ::selection {
+  background: rgba(0, 215, 215, 0.3);
+  color: inherit;
+}
+
+/* Links - terminal cyan */
+.theme-tui a,
+[data-theme="tui"] a {
+  color: var(--text-interactive-base);
+  text-decoration: underline;
+}
+
+.theme-tui a:hover,
+[data-theme="tui"] a:hover {
+  color: #00ffff;
+}
+
+/* Focus rings - cyan */
+.theme-tui *:focus-visible,
+[data-theme="tui"] *:focus-visible {
+  outline: 2px solid var(--border-selected);
+  outline-offset: 1px;
+}

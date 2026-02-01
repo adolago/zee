@@ -863,13 +863,6 @@ export namespace Config {
     })
 
   export const TUI = z.object({
-    scroll_speed: z.number().min(0.001).optional().describe("@deprecated Scroll speed (ignored, acceleration always enabled)"),
-    scroll_acceleration: z
-      .object({
-        enabled: z.boolean().optional().describe("@deprecated Scroll acceleration (always enabled)"),
-      })
-      .optional()
-      .describe("@deprecated Scroll acceleration settings (always enabled)"),
     diff_style: z
       .enum(["auto", "stacked"])
       .optional()
