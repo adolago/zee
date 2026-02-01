@@ -71,7 +71,7 @@
       "light": "lightStep11"
     },
     "background": {
-      "dark": "stealthBlack",
+      "dark": "transparent",
       "light": "transparent"
     },
     "backgroundPanel": {
@@ -87,7 +87,7 @@
       "light": "lightPanelBg"
     },
     "border": {
-      "dark": "sapphireObsidian",
+      "dark": "sapphireSteel",
       "light": "lightStep7"
     },
     "borderActive": {

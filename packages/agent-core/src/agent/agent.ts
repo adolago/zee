@@ -131,7 +131,7 @@ export namespace Agent {
     const defaults = buildDefaults()
 
     // NOTE: Built-in agents (build, plan, general, explore) removed.
-    // agent-core uses the Personas system (Zee, Stanley, Johny) defined in .claude/skills/
+    // agent-core uses the Personas system (Zee, Stanley, Johny) defined in .agents/skills/
     // Custom agents are loaded from config and skill files.
 
     // System agents (compaction, title, summary) have fixed permissions that cannot be

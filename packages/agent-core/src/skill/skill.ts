@@ -86,21 +86,21 @@ export namespace Skill {
       }
     }
 
-    // Scan .claude/skills/ directories (project-level)
-    const claudeDirs = await Array.fromAsync(
+    // Scan .agents/skills/ directories (project-level) - primary location
+    const agentsDirs = await Array.fromAsync(
       Filesystem.up({
-        targets: [".claude"],
+        targets: [".agents"],
         start: Instance.directory,
         stop: Instance.worktree,
       }),
     )
-    // Also include global ~/.claude/skills/
-    const globalClaude = `${Global.Path.home}/.claude`
-    if (await Filesystem.isDir(globalClaude)) {
-      claudeDirs.push(globalClaude)
+    // Also include global ~/.agents/skills/
+    const globalAgents = `${Global.Path.home}/.agents`
+    if (await Filesystem.isDir(globalAgents)) {
+      agentsDirs.push(globalAgents)
     }
 
-    for (const dir of claudeDirs) {
+    for (const dir of agentsDirs) {
         const matches = await Array.fromAsync(
           CLAUDE_SKILL_GLOB.scan({
             cwd: dir,
@@ -110,7 +110,7 @@ export namespace Skill {
             dot: true,
           }),
         ).catch((error) => {
-          log.error("failed .claude directory scan for skills", { dir, error })
+          log.error("failed .agents directory scan for skills", { dir, error })
           return []
         })
 

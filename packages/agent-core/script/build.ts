@@ -21,7 +21,7 @@ const personasRoot = path.resolve(repoRoot, "packages", "personas")
 const zeeRoot = path.join(personasRoot, "zee")
 const tiaraRoot = path.resolve(repoRoot, "packages", "tiara")
 const agentCoreAssetsRoot = path.join(repoRoot, ".agent-core")
-const claudeSkillsRoot = path.join(repoRoot, ".claude", "skills")
+const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
 
 async function ensureZeeDependencies() {
   const nodeModules = path.join(zeeRoot, "node_modules")
@@ -156,12 +156,12 @@ function bundleAgentCoreAssets(distRoot: string) {
 }
 
 function bundlePersonaSkills(distRoot: string) {
-  if (!fs.existsSync(claudeSkillsRoot)) return
+  if (!fs.existsSync(agentsSkillsRoot)) return
   const destRoot = path.join(distRoot, ".agent-core", "skill")
   fs.mkdirSync(destRoot, { recursive: true })
   const skills = ["zee", "stanley", "johny", "personas"]
   for (const skill of skills) {
-    const src = path.join(claudeSkillsRoot, skill)
+    const src = path.join(agentsSkillsRoot, skill)
     if (!fs.existsSync(src)) continue
     const dest = path.join(destRoot, skill)
     fs.cpSync(src, dest, {

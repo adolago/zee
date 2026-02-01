@@ -11,6 +11,7 @@ export function Dialog(
   props: ParentProps<{
     size?: "medium" | "large"
     onClose: () => void
+    minimal?: boolean
   }>,
 ) {
   const dimensions = useTerminalDimensions()
@@ -18,6 +19,7 @@ export function Dialog(
   const renderer = useRenderer()
 
   const overlayBg = createMemo(() => {
+    if (props.minimal) return RGBA.fromInts(0, 0, 0, 60)
     const menuBg = theme.backgroundMenu
     return menuBg.a > 0 ? RGBA.fromInts(menuBg.r * 255, menuBg.g * 255, menuBg.b * 255, 180) : RGBA.fromInts(0, 0, 0, 150)
   })
@@ -64,6 +66,7 @@ function init() {
       onClose?: () => void
     }[],
     size: "medium" as "medium" | "large",
+    minimal: false,
   })
 
   useKeyboard((evt) => {
@@ -103,11 +106,12 @@ function init() {
       }
       batch(() => {
         setStore("size", "medium")
+        setStore("minimal", false)
         setStore("stack", [])
       })
       refocus()
     },
-    replace(input: any, onClose?: () => void) {
+    replace(input: any, onClose?: () => void, options?: { minimal?: boolean }) {
       if (store.stack.length === 0) {
         focus = renderer.currentFocusedRenderable
         focus?.blur()
@@ -115,13 +119,16 @@ function init() {
       for (const item of store.stack) {
         if (item.onClose) item.onClose()
       }
-      setStore("size", "medium")
-      setStore("stack", [
-        {
-          element: input,
-          onClose,
-        },
-      ])
+      batch(() => {
+        setStore("size", "medium")
+        setStore("minimal", options?.minimal ?? false)
+        setStore("stack", [
+          {
+            element: input,
+            onClose,
+          },
+        ])
+      })
     },
     get stack() {
       return store.stack
@@ -129,8 +136,14 @@ function init() {
     get size() {
       return store.size
     },
+    get minimal() {
+      return store.minimal
+    },
     setSize(size: "medium" | "large") {
       setStore("size", size)
+    },
+    setMinimal(minimal: boolean) {
+      setStore("minimal", minimal)
     },
   }
 }
@@ -159,7 +172,7 @@ export function DialogProvider(props: ParentProps) {
         }}
       >
         <Show when={value.stack.length}>
-          <Dialog onClose={() => value.clear()} size={value.size}>
+          <Dialog onClose={() => value.clear()} size={value.size} minimal={value.minimal}>
             {value.stack.at(-1)!.element}
           </Dialog>
         </Show>

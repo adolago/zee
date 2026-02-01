@@ -128,12 +128,12 @@ This policy applies to all personas (Zee, Stanley, Johny) and all agents working
    - `packages/tiara/CLAUDE.md` - SPARC methodology, concurrent execution rules
    - `packages/tiara/docs/` - Architecture, integrations, roadmaps
 
-2. **The Triad** (`.claude/skills/`) - The three personas:
-   - `.claude/skills/zee/SKILL.md` - Personal assistant (memory, messaging, calendar, and more)
-   - `.claude/skills/stanley/SKILL.md` - Investing assistant with access to a full platform (NautilusTrader, OpenBB, own GUI in rust) of APIS integration
-   - `.claude/skills/johny/SKILL.md` - Study assistant focused on diliberate practice, with knowledge graph and spaced repetition
+2. **The Triad** (`.agents/skills/`) - The three personas:
+   - `.agents/skills/zee/SKILL.md` - Personal assistant (memory, messaging, calendar, and more)
+   - `.agents/skills/stanley/SKILL.md` - Investing assistant with access to a full platform (NautilusTrader, OpenBB, own GUI in rust) of APIS integration
+   - `.agents/skills/johny/SKILL.md` - Study assistant focused on diliberate practice, with knowledge graph and spaced repetition
    - Each persona has its own configuration and capabilities, all have access to Tiara's orchestration offers
-3. **Orchestration** (`.claude/skills/tiara-orchestration/`, `.claude/skills/personas/`)
+3. **Orchestration** (`.agents/skills/tiara-orchestration/`, `.agents/skills/personas/`)
    - Tiara orchestration, WezTerm integration, drone spawning
 
 **Do NOT skip this step** - the personas have specific capabilities and delegation rules.
@@ -253,7 +253,7 @@ You can always check:
 │                              ▼                                      │
 │  ┌───────────────────────────────────────────────────────────────┐  │
 │  │                    PERSONAS (The Triad)                        │  │
-│  │                    .claude/skills/                             │  │
+│  │                    .agents/skills/                             │  │
 │  │                                                               │  │
 │  │  ┌─────────┐     ┌─────────┐     ┌─────────┐                  │  │
 │  │  │   ZEE   │     │ STANLEY │     │  JOHNY  │                  │  │
@@ -306,7 +306,7 @@ packages/
 
 ```
 agent-core/
-├── .claude/skills/           # Agent Skills (Anthropic standard)
+├── .agents/skills/           # Agent Skills (Anthropic standard)
 │   ├── johny/               # Study assistant
 │   ├── stanley/             # Trading assistant
 │   └── zee/                 # Personal assistant
@@ -333,20 +333,20 @@ agent-core/
 
 ## Integration
 
-Skills are loaded from `.claude/skills/` and `~/.config/agent-core/skills/`:
+Skills are loaded from `.agents/skills/` and `~/.config/agent-core/skills/`:
 
 ```
-.claude/skills/johny/              → Johny persona
-.claude/skills/stanley/            → Stanley persona
-.claude/skills/zee/                → Zee persona
-.claude/skills/personas/           → Persona identities
-.claude/skills/tiara-orchestration/→ Orchestration (drones, memory, continuity)
-.claude/skills/agents-menu/        → Quick reference
+.agents/skills/johny/              → Johny persona
+.agents/skills/stanley/            → Stanley persona
+.agents/skills/zee/                → Zee persona
+.agents/skills/personas/           → Persona identities
+.agents/skills/tiara-orchestration/→ Orchestration (drones, memory, continuity)
+.agents/skills/agents-menu/        → Quick reference
 ```
 
 ## Development Guidelines
 
-1. **Skills go in `.claude/skills/`** - Follow Anthropic Agent Skills standard
+1. **Skills go in `.agents/skills/`** - Follow Anthropic Agent Skills standard
 2. **Domain tools go in `src/domain/`** - TypeScript implementations
 3. **Persona logic goes in `src/personas/`** - Knowledge graphs, strategies
 4. **No upstream sync** - This is a standalone monolith for solo development

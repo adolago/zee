@@ -357,7 +357,7 @@ function App() {
         name: "models",
       },
       onSelect: () => {
-        dialog.replace(() => <DialogModel />)
+        dialog.replace(() => <DialogModel />, undefined, { minimal: true })
       },
     },
     {

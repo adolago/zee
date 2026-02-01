@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run build:*)",
+      "Bash(# Kill any running processes pkill -9 -f \"\"bun\"\" || true # Clear bun cache rm -rf /home/artur/Repositories/agent-core/packages/agent-core/node_modules/.cache # Verify the code changes are in place grep -A5 \"\"Agent cycle\"\" packages/agent-core/src/cli/cmd/tui/app.tsx)",
+      "Bash(./dist/agent-core-linux-x64/bin/agent-core:*)",
+      "Bash(bun install:*)",
+      "Bash(bun run:*)",
+      "Bash(curl:*)",
+      "Bash(git pull:*)",
+      "Bash(gh pr list:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(convert:*)",
+      "Bash(grep:*)",
+      "Bash(himalaya:*)",
+      "WebFetch(domain:deepwiki.com)",
+      "Bash(./scripts/reload.sh:*)",
+      "Bash(bun test:*)",
+      "Bash(timeout 90 bun:*)",
+      "Bash(bun pm:*)"
+    ]
+  }
+}

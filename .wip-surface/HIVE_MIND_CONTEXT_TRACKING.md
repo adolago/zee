@@ -93,31 +93,31 @@ Using 50 hives to track and classify all `.md` files that provide context to mod
 
 ### HIVE 1: Zee Persona Core
 ```
-.claude/skills/zee/SKILL.md                    [Primary Zee definition]
-.claude/skills/zee/examples.md                 [Usage examples]
-.claude/skills/zee/tools-reference.md          [Tool reference]
-.claude/skills/zee/writer/SKILL.md             [Writer skill]
+.agents/skills/zee/SKILL.md                    [Primary Zee definition]
+.agents/skills/zee/examples.md                 [Usage examples]
+.agents/skills/zee/tools-reference.md          [Tool reference]
+.agents/skills/zee/writer/SKILL.md             [Writer skill]
 .agent-core/agent/zee.md                       [Runtime agent def]
 ```
 
 ### HIVE 2: Stanley Persona Core
 ```
-.claude/skills/stanley/SKILL.md                [Primary Stanley definition]
+.agents/skills/stanley/SKILL.md                [Primary Stanley definition]
 .agent-core/agent/stanley.md                   [Runtime agent def]
 packages/personas/stanley/README.md            [Package README]
 ```
 
 ### HIVE 3: Johny Persona Core
 ```
-.claude/skills/johny/SKILL.md                  [Primary Johny definition]
+.agents/skills/johny/SKILL.md                  [Primary Johny definition]
 .agent-core/agent/johny.md                     [Runtime agent def]
 ```
 
 ### HIVE 4: Persona Shared Layer
 ```
-.claude/skills/personas/SKILL.md               [Shared orchestration]
-.claude/skills/agents-menu/SKILL.md            [Quick reference]
-.claude/skills/tiara-orchestration/SKILL.md    [Orchestration layer]
+.agents/skills/personas/SKILL.md               [Shared orchestration]
+.agents/skills/agents-menu/SKILL.md            [Quick reference]
+.agents/skills/tiara-orchestration/SKILL.md    [Orchestration layer]
 ```
 
 ### HIVE 5: Agent Definitions (Root)
@@ -146,136 +146,136 @@ CLAUDE.md                                      [Symlink to AGENTS]
 
 ### HIVE 7: AgentDB Skills
 ```
-.claude/skills/agentdb-advanced/SKILL.md
-.claude/skills/agentdb-learning/SKILL.md
-.claude/skills/agentdb-memory-patterns/SKILL.md
-.claude/skills/agentdb-optimization/SKILL.md
-.claude/skills/agentdb-vector-search/SKILL.md
+.agents/skills/agentdb-advanced/SKILL.md
+.agents/skills/agentdb-learning/SKILL.md
+.agents/skills/agentdb-memory-patterns/SKILL.md
+.agents/skills/agentdb-optimization/SKILL.md
+.agents/skills/agentdb-vector-search/SKILL.md
 ```
 
 ### HIVE 8: Flow Nexus Skills
 ```
-.claude/skills/flow-nexus-neural/SKILL.md
-.claude/skills/flow-nexus-platform/SKILL.md
-.claude/skills/flow-nexus-swarm/SKILL.md
+.agents/skills/flow-nexus-neural/SKILL.md
+.agents/skills/flow-nexus-platform/SKILL.md
+.agents/skills/flow-nexus-swarm/SKILL.md
 ```
 
 ### HIVE 9: Swarm/Hive Skills
 ```
-.claude/skills/hive-mind-advanced/SKILL.md     [Current file context]
-.claude/skills/swarm-advanced/SKILL.md
-.claude/skills/swarm-orchestration/SKILL.md
-.claude/skills/stream-chain/SKILL.md
+.agents/skills/hive-mind-advanced/SKILL.md     [Current file context]
+.agents/skills/swarm-advanced/SKILL.md
+.agents/skills/swarm-orchestration/SKILL.md
+.agents/skills/stream-chain/SKILL.md
 ```
 
 ### HIVE 10: Memory/Reasoning Skills
 ```
-.claude/skills/reasoningbank-agentdb/SKILL.md
-.claude/skills/reasoningbank-intelligence/SKILL.md
-.claude/skills/performance-analysis/SKILL.md
+.agents/skills/reasoningbank-agentdb/SKILL.md
+.agents/skills/reasoningbank-intelligence/SKILL.md
+.agents/skills/performance-analysis/SKILL.md
 ```
 
 ### HIVE 11: Media/Content Skills
 ```
-.claude/skills/google-chirp-2/SKILL.md         [STT]
-.claude/skills/minimax-tts/SKILL.md            [TTS]
-.claude/skills/sag/SKILL.md                    [ElevenLabs TTS]
-.claude/skills/video-frames/SKILL.md           [Video processing]
-.claude/skills/nano-pdf/SKILL.md               [PDF editing]
-.claude/skills/openai-image-gen/SKILL.md       [Image generation]
+.agents/skills/google-chirp-2/SKILL.md         [STT]
+.agents/skills/minimax-tts/SKILL.md            [TTS]
+.agents/skills/sag/SKILL.md                    [ElevenLabs TTS]
+.agents/skills/video-frames/SKILL.md           [Video processing]
+.agents/skills/nano-pdf/SKILL.md               [PDF editing]
+.agents/skills/openai-image-gen/SKILL.md       [Image generation]
 ```
 
 ### HIVE 12: Search/Research Skills
 ```
-.claude/skills/brave-search/SKILL.md
-.claude/skills/summarize/SKILL.md
-.claude/skills/blogwatcher/SKILL.md
+.agents/skills/brave-search/SKILL.md
+.agents/skills/summarize/SKILL.md
+.agents/skills/blogwatcher/SKILL.md
 ```
 
 ### HIVE 13: Utility Skills
 ```
-.claude/skills/bitwarden/SKILL.md
-.claude/skills/bitwarden/references/commands.md
-.claude/skills/bitwarden/references/session.md
-.claude/skills/obsidian/SKILL.md
-.claude/skills/blogwatcher/SKILL.md
+.agents/skills/bitwarden/SKILL.md
+.agents/skills/bitwarden/references/commands.md
+.agents/skills/bitwarden/references/session.md
+.agents/skills/obsidian/SKILL.md
+.agents/skills/blogwatcher/SKILL.md
 ```
 
 ### HIVE 14: Advanced Tech Skills
 ```
-.claude/skills/agentic-jujutsu/SKILL.md
-.claude/skills/stream-chain/SKILL.md
+.agents/skills/agentic-jujutsu/SKILL.md
+.agents/skills/stream-chain/SKILL.md
 ```
 
 ### HIVE 21: @Johny Core Skills
 ```
-.claude/skills/@johny/clawdhub/SKILL.md
-.claude/skills/@johny/coding-agent/SKILL.md
-.claude/skills/@johny/concept-exploration/SKILL.md
-.claude/skills/@johny/deliberate-practice/SKILL.md
-.claude/skills/@johny/hooks-automation/SKILL.md
-.claude/skills/@johny/hooks-automation/configuration.md
-.claude/skills/@johny/hooks-automation/examples.md
-.claude/skills/@johny/mcporter/SKILL.md
-.claude/skills/@johny/oracle/SKILL.md
-.claude/skills/@johny/pair-programming/SKILL.md
-.claude/skills/@johny/problem-solving/SKILL.md
-.claude/skills/@johny/progress-tracking/SKILL.md
-.claude/skills/@johny/qmd/SKILL.md
-.claude/skills/@johny/session-logs/SKILL.md
-.claude/skills/@johny/skill-builder/SKILL.md
-.claude/skills/@johny/sparc-methodology/SKILL.md
-.claude/skills/@johny/verification-quality/SKILL.md
+.agents/skills/@johny/clawdhub/SKILL.md
+.agents/skills/@johny/coding-agent/SKILL.md
+.agents/skills/@johny/concept-exploration/SKILL.md
+.agents/skills/@johny/deliberate-practice/SKILL.md
+.agents/skills/@johny/hooks-automation/SKILL.md
+.agents/skills/@johny/hooks-automation/configuration.md
+.agents/skills/@johny/hooks-automation/examples.md
+.agents/skills/@johny/mcporter/SKILL.md
+.agents/skills/@johny/oracle/SKILL.md
+.agents/skills/@johny/pair-programming/SKILL.md
+.agents/skills/@johny/problem-solving/SKILL.md
+.agents/skills/@johny/progress-tracking/SKILL.md
+.agents/skills/@johny/qmd/SKILL.md
+.agents/skills/@johny/session-logs/SKILL.md
+.agents/skills/@johny/skill-builder/SKILL.md
+.agents/skills/@johny/sparc-methodology/SKILL.md
+.agents/skills/@johny/verification-quality/SKILL.md
 ```
 
 ### HIVE 22: @Johny GitHub Skills
 ```
-.claude/skills/@johny/github/SKILL.md
-.claude/skills/@johny/github-code-review/SKILL.md
-.claude/skills/@johny/github-multi-repo/SKILL.md
-.claude/skills/@johny/github-project-management/SKILL.md
-.claude/skills/@johny/github-release-management/SKILL.md
-.claude/skills/@johny/github-shared-reference.md
-.claude/skills/@johny/github-workflow-automation/SKILL.md
+.agents/skills/@johny/github/SKILL.md
+.agents/skills/@johny/github-code-review/SKILL.md
+.agents/skills/@johny/github-multi-repo/SKILL.md
+.agents/skills/@johny/github-project-management/SKILL.md
+.agents/skills/@johny/github-release-management/SKILL.md
+.agents/skills/@johny/github-shared-reference.md
+.agents/skills/@johny/github-workflow-automation/SKILL.md
 ```
 
 ### HIVE 23: @Stanley Financial Skills
 ```
-.claude/skills/@stanley/earnings-intelligence/SKILL.md
-.claude/skills/@stanley/financial-research/SKILL.md
-.claude/skills/@stanley/investment-thesis/SKILL.md
-.claude/skills/@stanley/market-analysis/SKILL.md
-.claude/skills/@stanley/news-digest/SKILL.md
-.claude/skills/@stanley/portfolio-analytics/SKILL.md
-.claude/skills/@stanley/risk-management/SKILL.md
+.agents/skills/@stanley/earnings-intelligence/SKILL.md
+.agents/skills/@stanley/financial-research/SKILL.md
+.agents/skills/@stanley/investment-thesis/SKILL.md
+.agents/skills/@stanley/market-analysis/SKILL.md
+.agents/skills/@stanley/news-digest/SKILL.md
+.agents/skills/@stanley/portfolio-analytics/SKILL.md
+.agents/skills/@stanley/risk-management/SKILL.md
 ```
 
 ### HIVE 24: @Zee Core Skills
 ```
-.claude/skills/@zee/bird/SKILL.md
-.claude/skills/@zee/food-order/SKILL.md
-.claude/skills/@zee/gifgrep/SKILL.md
-.claude/skills/@zee/goplaces/SKILL.md
-.claude/skills/@zee/home-assistant/SKILL.md
-.claude/skills/@zee/local-places/SKILL.md
-.claude/skills/@zee/local-places/SERVER_README.md
-.claude/skills/@zee/openhue/SKILL.md
-.claude/skills/@zee/ordercli/SKILL.md
-.claude/skills/@zee/songsee/SKILL.md
-.claude/skills/@zee/wacli/SKILL.md
-.claude/skills/@zee/weather/SKILL.md
+.agents/skills/@zee/bird/SKILL.md
+.agents/skills/@zee/food-order/SKILL.md
+.agents/skills/@zee/gifgrep/SKILL.md
+.agents/skills/@zee/goplaces/SKILL.md
+.agents/skills/@zee/home-assistant/SKILL.md
+.agents/skills/@zee/local-places/SKILL.md
+.agents/skills/@zee/local-places/SERVER_README.md
+.agents/skills/@zee/openhue/SKILL.md
+.agents/skills/@zee/ordercli/SKILL.md
+.agents/skills/@zee/songsee/SKILL.md
+.agents/skills/@zee/wacli/SKILL.md
+.agents/skills/@zee/weather/SKILL.md
 ```
 
 ### HIVE 25: @Zee PIM Classic
 ```
-.claude/skills/@zee/pim-classic/SKILL.md
-.claude/skills/@zee/pim-classic/references/khal-config.md
-.claude/skills/@zee/pim-classic/references/khard-config.md
-.claude/skills/@zee/pim-classic/references/mbsync-config.md
-.claude/skills/@zee/pim-classic/references/msmtp-config.md
-.claude/skills/@zee/pim-classic/references/neomutt-config.md
-.claude/skills/@zee/pim-classic/references/notmuch-config.md
-.claude/skills/@zee/pim-classic/references/vdirsyncer-config.md
+.agents/skills/@zee/pim-classic/SKILL.md
+.agents/skills/@zee/pim-classic/references/khal-config.md
+.agents/skills/@zee/pim-classic/references/khard-config.md
+.agents/skills/@zee/pim-classic/references/mbsync-config.md
+.agents/skills/@zee/pim-classic/references/msmtp-config.md
+.agents/skills/@zee/pim-classic/references/neomutt-config.md
+.agents/skills/@zee/pim-classic/references/notmuch-config.md
+.agents/skills/@zee/pim-classic/references/vdirsyncer-config.md
 ```
 
 ### HIVE 26: Zee Gateway Skills (packages/personas/zee/skills/)
@@ -342,31 +342,31 @@ packages/personas/zee/extensions/voice-call/README.md
 
 ### HIVE 28: Tiara Skills
 ```
-packages/tiara/.claude/skills/agentdb-advanced/SKILL.md
-packages/tiara/.claude/skills/agentdb-learning/SKILL.md
-packages/tiara/.claude/skills/agentdb-memory-patterns/SKILL.md
-packages/tiara/.claude/skills/agentdb-optimization/SKILL.md
-packages/tiara/.claude/skills/agentdb-vector-search/SKILL.md
-packages/tiara/.claude/skills/agentic-jujutsu/SKILL.md
-packages/tiara/.claude/skills/codebase-exploration/SKILL.md
-packages/tiara/.claude/skills/codebase-research/SKILL.md
-packages/tiara/.claude/skills/flow-nexus-neural/SKILL.md
-packages/tiara/.claude/skills/flow-nexus-platform/SKILL.md
-packages/tiara/.claude/skills/flow-nexus-swarm/SKILL.md
-packages/tiara/.claude/skills/hive-mind-advanced/SKILL.md
-packages/tiara/.claude/skills/hooks-automation/SKILL.md
-packages/tiara/.claude/skills/orchestration/SKILL.md
-packages/tiara/.claude/skills/pair-programming/SKILL.md
-packages/tiara/.claude/skills/performance-analysis/SKILL.md
-packages/tiara/.claude/skills/reasoningbank-agentdb/SKILL.md
-packages/tiara/.claude/skills/reasoningbank-intelligence/SKILL.md
-packages/tiara/.claude/skills/skill-builder/SKILL.md
-packages/tiara/.claude/skills/sparc-methodology/SKILL.md
-packages/tiara/.claude/skills/strategic-advisor/SKILL.md
-packages/tiara/.claude/skills/stream-chain/SKILL.md
-packages/tiara/.claude/skills/swarm-advanced/SKILL.md
-packages/tiara/.claude/skills/swarm-orchestration/SKILL.md
-packages/tiara/.claude/skills/verification-quality/SKILL.md
+packages/tiara/.agents/skills/agentdb-advanced/SKILL.md
+packages/tiara/.agents/skills/agentdb-learning/SKILL.md
+packages/tiara/.agents/skills/agentdb-memory-patterns/SKILL.md
+packages/tiara/.agents/skills/agentdb-optimization/SKILL.md
+packages/tiara/.agents/skills/agentdb-vector-search/SKILL.md
+packages/tiara/.agents/skills/agentic-jujutsu/SKILL.md
+packages/tiara/.agents/skills/codebase-exploration/SKILL.md
+packages/tiara/.agents/skills/codebase-research/SKILL.md
+packages/tiara/.agents/skills/flow-nexus-neural/SKILL.md
+packages/tiara/.agents/skills/flow-nexus-platform/SKILL.md
+packages/tiara/.agents/skills/flow-nexus-swarm/SKILL.md
+packages/tiara/.agents/skills/hive-mind-advanced/SKILL.md
+packages/tiara/.agents/skills/hooks-automation/SKILL.md
+packages/tiara/.agents/skills/orchestration/SKILL.md
+packages/tiara/.agents/skills/pair-programming/SKILL.md
+packages/tiara/.agents/skills/performance-analysis/SKILL.md
+packages/tiara/.agents/skills/reasoningbank-agentdb/SKILL.md
+packages/tiara/.agents/skills/reasoningbank-intelligence/SKILL.md
+packages/tiara/.agents/skills/skill-builder/SKILL.md
+packages/tiara/.agents/skills/sparc-methodology/SKILL.md
+packages/tiara/.agents/skills/strategic-advisor/SKILL.md
+packages/tiara/.agents/skills/stream-chain/SKILL.md
+packages/tiara/.agents/skills/swarm-advanced/SKILL.md
+packages/tiara/.agents/skills/swarm-orchestration/SKILL.md
+packages/tiara/.agents/skills/verification-quality/SKILL.md
 ```
 
 ### HIVE 36: Root Documentation
@@ -416,7 +416,7 @@ packages/personas/zee/docs/reference/templates/TOOLS.md
 packages/personas/zee/docs/reference/templates/USER.dev.md
 packages/personas/zee/docs/reference/templates/USER.md
 packages/tiara/bin/init/templates/CLAUDE.md
-packages/tiara/.claude/templates/CLAUDE_VERIFIED.md
+packages/tiara/.agents/templates/CLAUDE_VERIFIED.md
 ```
 
 ### HIVE 39: Zee Docs - Core
@@ -461,17 +461,17 @@ packages/tiara/CLAUDE.md
 
 ### HIVE 44: Tiara Agents
 ```
-packages/tiara/.claude/agents/**/*.md (50+ files)
+packages/tiara/.agents/agents/**/*.md (50+ files)
 ```
 
 ### HIVE 45: Tiara Commands
 ```
-packages/tiara/.claude/commands/**/*.md (40+ files)
+packages/tiara/.agents/commands/**/*.md (40+ files)
 ```
 
 ### HIVE 46: Tiara Skills
 ```
-packages/tiara/.claude/skills/**/*.md (25 files)
+packages/tiara/.agents/skills/**/*.md (25 files)
 ```
 
 ### HIVE 47: Tiara Documentation
@@ -493,7 +493,7 @@ packages/personas/zee/src/hooks/bundled/soul-evil/HOOK.md
 packages/personas/zee/src/hooks/bundled/soul-evil/README.md
 packages/personas/zee/src/hooks/bundled/README.md
 packages/tiara/bin/init/templates/commands/hooks/*.md (9 files)
-packages/tiara/.claude/commands/hooks/*.md (6 files)
+packages/tiara/.agents/commands/hooks/*.md (6 files)
 ```
 
 ### HIVE 50: Test Fixtures & Misc
@@ -502,7 +502,7 @@ packages/agent-core/test/config/fixtures/*.md (5 files)
 packages/agent-core/src/acp/README.md
 packages/agent-core/src/provider/sdk/openai-compatible/src/README.md
 packages/agent-core/test/compat/**/*.md (4 files)
-packages/tiara/.claude/sessions/*-summary.md (session summaries)
+packages/tiara/.agents/sessions/*-summary.md (session summaries)
 ```
 
 ---
@@ -527,8 +527,8 @@ Based on Hive Mind analysis:
 
 ### High Priority Consolidation Targets:
 1. **Hive 5** (Agent Definitions) - 3 files are essentially duplicates (AGENTS.md)
-2. **Hive 7** (AgentDB Skills) - Duplicated in .claude/skills/ and packages/tiara/.claude/skills/
-3. **Hive 26 vs Hive 24** - Zee skills duplicated between .claude/skills/@zee/ and packages/personas/zee/skills/
+2. **Hive 7** (AgentDB Skills) - Duplicated in .agents/skills/ and packages/tiara/.agents/skills/
+3. **Hive 26 vs Hive 24** - Zee skills duplicated between .agents/skills/@zee/ and packages/personas/zee/skills/
 
 ### Cross-Hive Dependencies:
 - Tiara (Hives 43-48) depends on Persona Skills (Hives 21-35)
@@ -537,7 +537,7 @@ Based on Hive Mind analysis:
 
 ### Suggested Refactoring:
 1. Merge duplicate AGENTS.md files into single source of truth
-2. Consolidate duplicate skills between .claude/skills/ and packages/tiara/.claude/skills/
+2. Consolidate duplicate skills between .agents/skills/ and packages/tiara/.agents/skills/
 3. Remove deprecated persona agent definitions from .agent-core/agent/
 
 ---

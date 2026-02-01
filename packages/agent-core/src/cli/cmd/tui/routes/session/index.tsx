@@ -1258,7 +1258,7 @@ function UserMessage(props: {
         >
           <text fg={color()}>│ </text>
           <box flexDirection="column" flexGrow={1}>
-            <text fg={color()}>{text()?.text}</text>
+            <text fg={color()} attributes={TextAttributes.ITALIC}>{text()?.text}</text>
             <Show when={files().length}>
               <box flexDirection="row" paddingTop={1} gap={1} flexWrap="wrap">
                 <For each={files()}>

@@ -340,7 +340,7 @@ export namespace PermissionEvaluator {
 
 ## Persona Sources
 
-Personas are defined in `.claude/skills/` and loaded at runtime. The core repo does not ship built-in development agents; add or override personas per project under `.agent-core/agent/` or `~/.agent-core/agent/` as needed.
+Personas are defined in `.agents/skills/` and loaded at runtime. The core repo does not ship built-in development agents; add or override personas per project under `.agent-core/agent/` or `~/.agent-core/agent/` as needed.
 
 ## Configuration Files
 
