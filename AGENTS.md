@@ -20,7 +20,6 @@ This is the **engine** that powers Agent-Core.
 ## Quick Reference
 
 - To test agent-core in `packages/agent-core`, run `bun dev`.
-- To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `dev`.
 - When creating GitHub issues or PRs, target the fork at `origin` (e.g., `adolago/agent-core`), not upstream or other repos.
@@ -124,17 +123,17 @@ This policy applies to all personas (Zee, Stanley, Johny) and all agents working
 
 **ALWAYS read these before making changes:**
 
-1. **Tiara** (`packages/tiara/`) - The orchestration submodule
-   - `packages/tiara/CLAUDE.md` - SPARC methodology, concurrent execution rules
-   - `packages/tiara/docs/` - Architecture, integrations, roadmaps
+1. **Swarm** (`src/swarm/`) - The orchestration layer
+   - SPARC methodology, concurrent execution, queen/worker patterns
+   - `.agents/skills/swarm/SKILL.md` - Swarm skill definition
 
 2. **The Triad** (`.agents/skills/`) - The three personas:
-   - `.agents/skills/zee/SKILL.md` - Personal assistant (memory, messaging, calendar, and more)
-   - `.agents/skills/stanley/SKILL.md` - Investing assistant with access to a full platform (NautilusTrader, OpenBB, own GUI in rust) of APIS integration
-   - `.agents/skills/johny/SKILL.md` - Study assistant focused on diliberate practice, with knowledge graph and spaced repetition
-   - Each persona has its own configuration and capabilities, all have access to Tiara's orchestration offers
-3. **Orchestration** (`.agents/skills/tiara-orchestration/`, `.agents/skills/personas/`)
-   - Tiara orchestration, WezTerm integration, drone spawning
+   - `.agents/skills/@zee/SKILL.md` - Personal assistant (memory, messaging, calendar, and more)
+   - `.agents/skills/@stanley/SKILL.md` - Investing assistant with access to a full platform (NautilusTrader, OpenBB, own GUI in rust) of APIS integration
+   - `.agents/skills/@johny/SKILL.md` - Study assistant focused on deliberate practice, with knowledge graph and spaced repetition
+   - Each persona has its own configuration and capabilities, all have access to swarm orchestration
+3. **Orchestration** (`.agents/skills/swarm/`, `.agents/skills/personas/`)
+   - Swarm orchestration, WezTerm integration, drone spawning
 
 **Do NOT skip this step** - the personas have specific capabilities and delegation rules.
 
@@ -225,7 +224,7 @@ You can always check:
 - Memory search results
 ```
 
-## Architecture: agent-core → tiara → personas
+## Architecture: agent-core → swarm → personas
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -239,12 +238,12 @@ You can always check:
 │                              │                                      │
 │                              ▼                                      │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    TIARA (Orchestration)                       │  │
-│  │                    packages/tiara/                               │  │
+│  │                    SWARM (Orchestration)                       │  │
+│  │                    src/swarm/                                  │  │
 │  │                                                               │  │
 │  │  • SPARC methodology (Specification→Pseudocode→Architecture   │  │
 │  │    →Refinement→Completion)                                    │  │
-│  │  • Claude-Flow swarm coordination                             │  │
+│  │  • Queen/worker swarm coordination                            │  │
 │  │  • Concurrent execution patterns                              │  │
 │  │  • Agent spawning via Task tool                               │  │
 │  │  • Memory coordination                                        │  │
@@ -264,14 +263,14 @@ You can always check:
 │  │              ┌─────────────────┐                               │  │
 │  │              │  SHARED LAYER   │                               │  │
 │  │              │  • personas/    │  Orchestration, drones        │  │
-│  │              │  • shared/      │  Qdrant, WezTerm              │  │
-│  │              │  • agents-menu/ │  Delegation routing           │  │
+│  │              │  • swarm/       │  Queen, workers, SPARC        │  │
 │  │              └─────────────────┘                               │  │
 │  └───────────────────────────────────────────────────────────────┘  │
 │                                                                     │
 │  src/                                                               │
 │  ├── domain/          ← Domain tools (stanley/, zee/)              │
 │  ├── personas/        ← Persona logic (knowledge-graph, etc.)      │
+│  ├── swarm/           ← Swarm orchestration (queen, workers)       │
 │  └── memory/          ← Qdrant vector storage types                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -279,27 +278,35 @@ You can always check:
 ### Flow Summary
 
 1. **agent-core** = Core engine with built-in agents (build/plan/general/explore) **removed**
-2. **tiara** = Orchestration layer providing SPARC methodology and swarm coordination
+2. **swarm** = Orchestration layer providing SPARC methodology and queen/worker coordination
 3. **personas** = The Triad (Zee/Stanley/Johny) + shared capabilities
 
 ### Key Principle
 
-No generic "build" or "plan" agents. Every interaction goes through a persona with domain expertise. The personas share orchestration (tiara) and memory (Qdrant) but have distinct purposes.
+No generic "build" or "plan" agents. Every interaction goes through a persona with domain expertise. The personas share orchestration (swarm) and memory (Qdrant) but have distinct purposes.
 
-## Simplified Package Structure
-
-This is a consolidated monolith with just 3 packages:
+## Package Structure
 
 ```
 packages/
-├── agent-core/      # Core TUI, daemon, SDK, utils (all merged)
-├── tiara/           # Orchestration (SPARC methodology)
-└── personas/zee/    # Messaging gateway only
+├── agent-core/          # Core TUI, daemon, SDK, utils
+├── agent-core-adapter/  # Adapter layer
+├── app/                 # App shell
+├── desktop/             # Desktop integration
+├── extensions/          # Extension system
+├── hosted/              # Hosted deployment
+├── personas/            # Personas package (Zee gateway)
+├── plugin/              # Plugin system
+├── sdk/                 # SDK
+├── stanley-core/        # Stanley core logic
+├── ui/                  # UI components
+├── util/                # Shared utilities
+└── web/                 # Web interface
 ```
 
 **Personas:**
 - **Zee**: Messaging gateway in `packages/personas/zee/`
-- **Stanley**: External Python repo (set `STANLEY_REPO` env var)
+- **Stanley**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
 - **Johny**: TypeScript implementation in `src/personas/johny/`
 
 ## Key Directories
@@ -307,19 +314,21 @@ packages/
 ```
 agent-core/
 ├── .agents/skills/           # Agent Skills (Anthropic standard)
-│   ├── johny/               # Study assistant
-│   ├── stanley/             # Trading assistant
-│   └── zee/                 # Personal assistant
+│   ├── @johny/              # Study assistant
+│   ├── @stanley/            # Trading assistant
+│   ├── @zee/                # Personal assistant
+│   ├── personas/            # Persona identities
+│   └── swarm/               # Swarm orchestration
 ├── packages/
 │   ├── agent-core/          # Core engine
 │   │   └── src/pkg/         # Merged packages (sdk, plugin, util, script)
-│   ├── tiara/               # Orchestration
 │   └── personas/zee/        # Messaging gateway
 ├── src/
 │   ├── domain/              # Domain-specific tools
-│   │   ├── johny/           # 5 learning tools
-│   │   ├── stanley/         # 5 financial tools (CLI bridge)
-│   │   └── zee/             # 6 personal tools
+│   │   ├── johny/           # Learning tools
+│   │   ├── stanley/         # Financial tools (CLI bridge)
+│   │   └── zee/             # Personal tools
+│   ├── swarm/               # Swarm orchestration (queen, workers, SPARC)
 │   ├── personas/
 │   │   └── johny/           # TypeScript learning system
 │   │       ├── knowledge-graph.ts  # Topic DAG
@@ -327,8 +336,7 @@ agent-core/
 │   │       ├── review.ts           # Spaced repetition
 │   │       └── practice.ts         # Practice sessions
 │   └── memory/              # Qdrant vector storage types
-└── docs/
-    └── SKILLS.md            # Skills documentation
+└── docs/                    # Architecture docs, provider references
 ```
 
 ## Integration
@@ -336,12 +344,11 @@ agent-core/
 Skills are loaded from `.agents/skills/` and `~/.config/agent-core/skills/`:
 
 ```
-.agents/skills/johny/              → Johny persona
-.agents/skills/stanley/            → Stanley persona
-.agents/skills/zee/                → Zee persona
+.agents/skills/@johny/             → Johny persona
+.agents/skills/@stanley/           → Stanley persona
+.agents/skills/@zee/               → Zee persona
 .agents/skills/personas/           → Persona identities
-.agents/skills/tiara-orchestration/→ Orchestration (drones, memory, continuity)
-.agents/skills/agents-menu/        → Quick reference
+.agents/skills/swarm/              → Orchestration (drones, memory, continuity)
 ```
 
 ## Development Guidelines
@@ -381,9 +388,7 @@ This system has experimental features enabled:
 
 ## Running Processes & Binary Updates
 
-> ⚠️ **CRITICAL: Read `docs/OPS.md` before debugging fixes that "don't take effect"**
->
-> The #1 cause of confusion is **not knowing which binary is running**:
+> **CRITICAL**: The #1 cause of confusion is **not knowing which binary is running**:
 >
 > - **Dev mode** (`bun run dev`): Uses source files directly, restart takes effect
 > - **Production** (`~/bin/agent-core`): Uses compiled binary, must rebuild + copy + restart
