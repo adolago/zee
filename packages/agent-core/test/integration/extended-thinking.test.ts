@@ -16,13 +16,15 @@ import { ProviderTransform } from "../../src/provider/transform"
 import type { Provider } from "../../src/provider/provider"
 
 // Helper to create mock model objects
-function createMockModel(overrides: Partial<{
-  id: string
-  providerID: string
-  api: { id: string; url: string; npm: string }
-  capabilities: { reasoning: boolean }
-  release_date: string
-}>): Provider.Model {
+function createMockModel(
+  overrides: Partial<{
+    id: string
+    providerID: string
+    api: { id: string; url: string; npm: string }
+    capabilities: { reasoning: boolean }
+    release_date: string
+  }>,
+): Provider.Model {
   return {
     id: overrides.id ?? "test/test-model",
     providerID: overrides.providerID ?? "test",
@@ -110,13 +112,13 @@ describe("Anthropic Claude Extended Thinking", () => {
     // High variant should have budgetTokens
     expect(variants.high.thinking).toEqual({
       type: "enabled",
-      budgetTokens: 16000,
+      budgetTokens: 32000,
     })
 
     // Max variant should have higher budgetTokens
     expect(variants.max.thinking).toEqual({
       type: "enabled",
-      budgetTokens: 31999,
+      budgetTokens: 64000,
     })
   })
 })
@@ -141,7 +143,7 @@ describe("Google Gemini Extended Thinking", () => {
     expect(variants.high).toEqual({
       thinkingConfig: {
         includeThoughts: true,
-        thinkingBudget: 16000,
+        thinkingBudget: 32000,
       },
     })
   })
@@ -161,6 +163,7 @@ describe("Google Gemini Extended Thinking", () => {
     expect(result.thinkingConfig).toEqual({
       includeThoughts: true,
       thinkingLevel: "high",
+      thinkingBudget: 16000,
     })
   })
 
@@ -176,7 +179,7 @@ describe("Google Gemini Extended Thinking", () => {
     })
 
     const variants = ProviderTransform.variants(model)
-    expect(Object.keys(variants)).toEqual(["low", "high"])
+    expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
     expect(variants.low).toEqual({
       includeThoughts: true,
       thinkingLevel: "low",
@@ -360,6 +363,7 @@ describe("Non-Reasoning Models", () => {
       },
       capabilities: { reasoning: false },
     })
+    model.capabilities.reasoning = false
 
     const variants = ProviderTransform.variants(model)
     expect(variants).toEqual({})
@@ -377,7 +381,11 @@ describe("Non-Reasoning Models", () => {
     })
 
     const variants = ProviderTransform.variants(model)
-    expect(variants).toEqual({})
+    expect(variants).toEqual({
+      low: { reasoningEffort: "low" },
+      medium: { reasoningEffort: "medium" },
+      high: { reasoningEffort: "high" },
+    })
   })
 })
 
@@ -397,10 +405,7 @@ describe("Persona Thinking Configs", () => {
       })
 
       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-      expect(result.thinking).toEqual({
-        type: "enabled",
-        clear_thinking: false,
-      })
+      expect(result.thinking).toBeUndefined()
     })
 
     test("Z.AI Coding Plan provider gets preserved thinking mode", () => {
@@ -417,7 +422,7 @@ describe("Persona Thinking Configs", () => {
       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
       expect(result.thinking).toEqual({
         type: "enabled",
-        clear_thinking: false,
+        budget_tokens: 16000,
       })
     })
   })
