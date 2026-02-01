@@ -1,237 +1,86 @@
 {
   "defs": {
-    "base03": "#002b36",
-    "base02": "#073642",
-    "base01": "#586e75",
-    "base00": "#657b83",
-    "base0": "#839496",
-    "base1": "#93a1a1",
-    "base2": "#eee8d5",
-    "base3": "#fdf6e3",
-    "solYellow": "#b58900",
-    "solOrange": "#cb4b16",
-    "solRed": "#dc322f",
-    "solMagenta": "#d33682",
-    "solViolet": "#6c71c4",
-    "solBlue": "#268bd2",
-    "solCyan": "#2aa198",
-    "solGreen": "#859900",
     "johnyPrimary": "#dc322f",
     "johnyPrimaryBright": "#ff6b6b",
     "johnyPrimaryDim": "#9a2422",
     "johnySecondary": "#b52b28",
     "johnyAccent": "#ff4d4d",
-    "johnyBorder": "#9a2422",
-    "johnyGlow": "#ff6b6b",
-    "surface": "#0A3A47",
-    "shadow": "#001419",
-    "lightBase": "#fdf6e3",
-    "lightText": "#657b83"
+
+    "darkText": "#d4d4d4",
+    "darkTextMuted": "#808080",
+    "darkRed": "#f44747",
+    "darkYellow": "#e5c07b",
+    "darkGreen": "#73daca",
+    "darkCyan": "#56b6c2",
+    "darkOrange": "#d19a66",
+    "darkBorder": "#4a4a4a",
+    "darkBorderActive": "#606060",
+    "darkBorderSubtle": "#333333",
+    "darkSyntaxGreen": "#98c379",
+
+    "lightText": "#383a42",
+    "lightTextMuted": "#a0a1a7",
+    "lightRed": "#e45649",
+    "lightYellow": "#c18401",
+    "lightGreen": "#40a02b",
+    "lightCyan": "#0184bc",
+    "lightOrange": "#986801",
+    "lightBorder": "#d4d4d4",
+    "lightBorderActive": "#b8b8b8",
+    "lightBorderSubtle": "#e8e8e8",
+    "lightSyntaxGreen": "#50a14f"
   },
   "theme": {
-    "primary": {
-      "dark": "johnyPrimary",
-      "light": "johnyPrimaryDim"
-    },
-    "secondary": {
-      "dark": "johnySecondary",
-      "light": "johnyPrimaryDim"
-    },
-    "accent": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "error": {
-      "dark": "solRed",
-      "light": "solRed"
-    },
-    "warning": {
-      "dark": "solYellow",
-      "light": "solYellow"
-    },
-    "success": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "info": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "text": {
-      "dark": "base0",
-      "light": "lightText"
-    },
-    "textMuted": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "background": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "backgroundPanel": {
-      "dark": "base02",
-      "light": "transparent"
-    },
-    "backgroundElement": {
-      "dark": "surface",
-      "light": "transparent"
-    },
-    "backgroundMenu": {
-      "dark": "base02",
-      "light": "lightBase"
-    },
-    "border": {
-      "dark": "base01",
-      "light": "base1"
-    },
-    "borderActive": {
-      "dark": "johnyPrimary",
-      "light": "johnyPrimaryDim"
-    },
-    "borderSubtle": {
-      "dark": "surface",
-      "light": "base2"
-    },
-    "diffAdded": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "diffRemoved": {
-      "dark": "johnyPrimary",
-      "light": "johnyPrimaryDim"
-    },
-    "diffContext": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "diffHunkHeader": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "diffHighlightAdded": {
-      "dark": "solGreen",
-      "light": "solGreen"
-    },
-    "diffHighlightRemoved": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "diffAddedBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffRemovedBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffContextBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffLineNumber": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "diffAddedLineNumberBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffRemovedLineNumberBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "markdownText": {
-      "dark": "base0",
-      "light": "lightText"
-    },
-    "markdownHeading": {
-      "dark": "johnyPrimary",
-      "light": "johnyPrimaryDim"
-    },
-    "markdownLink": {
-      "dark": "johnySecondary",
-      "light": "johnyPrimaryDim"
-    },
-    "markdownLinkText": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "markdownCode": {
-      "dark": "solGreen",
-      "light": "solGreen"
-    },
-    "markdownBlockQuote": {
-      "dark": "base01",
-      "light": "solYellow"
-    },
-    "markdownEmph": {
-      "dark": "solYellow",
-      "light": "solYellow"
-    },
-    "markdownStrong": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "markdownHorizontalRule": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "markdownListItem": {
-      "dark": "johnySecondary",
-      "light": "johnyPrimaryDim"
-    },
-    "markdownListEnumeration": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "markdownImage": {
-      "dark": "johnySecondary",
-      "light": "johnyPrimaryDim"
-    },
-    "markdownImageText": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "markdownCodeBlock": {
-      "dark": "base0",
-      "light": "lightText"
-    },
-    "syntaxComment": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "syntaxKeyword": {
-      "dark": "johnyPrimary",
-      "light": "johnyPrimaryDim"
-    },
-    "syntaxFunction": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "syntaxVariable": {
-      "dark": "johnyAccent",
-      "light": "johnyPrimary"
-    },
-    "syntaxString": {
-      "dark": "solGreen",
-      "light": "solGreen"
-    },
-    "syntaxNumber": {
-      "dark": "solOrange",
-      "light": "solOrange"
-    },
-    "syntaxType": {
-      "dark": "solYellow",
-      "light": "solYellow"
-    },
-    "syntaxOperator": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "syntaxPunctuation": {
-      "dark": "base0",
-      "light": "lightText"
-    }
+    "primary": { "dark": "johnyPrimary", "light": "johnyPrimaryDim" },
+    "secondary": { "dark": "johnySecondary", "light": "johnyPrimaryDim" },
+    "accent": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "error": { "dark": "darkRed", "light": "lightRed" },
+    "warning": { "dark": "darkYellow", "light": "lightYellow" },
+    "success": { "dark": "darkGreen", "light": "lightGreen" },
+    "info": { "dark": "darkCyan", "light": "lightCyan" },
+    "text": { "dark": "darkText", "light": "lightText" },
+    "textMuted": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "background": { "dark": "transparent", "light": "transparent" },
+    "backgroundPanel": { "dark": "transparent", "light": "transparent" },
+    "backgroundElement": { "dark": "transparent", "light": "transparent" },
+    "backgroundMenu": { "dark": "transparent", "light": "transparent" },
+    "border": { "dark": "darkBorder", "light": "lightBorder" },
+    "borderActive": { "dark": "johnyPrimary", "light": "johnyPrimaryDim" },
+    "borderSubtle": { "dark": "darkBorderSubtle", "light": "lightBorderSubtle" },
+    "diffAdded": { "dark": "darkGreen", "light": "lightGreen" },
+    "diffRemoved": { "dark": "johnyPrimary", "light": "johnyPrimaryDim" },
+    "diffContext": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "diffHunkHeader": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "diffHighlightAdded": { "dark": "darkSyntaxGreen", "light": "lightSyntaxGreen" },
+    "diffHighlightRemoved": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "diffAddedBg": { "dark": "transparent", "light": "transparent" },
+    "diffRemovedBg": { "dark": "transparent", "light": "transparent" },
+    "diffContextBg": { "dark": "transparent", "light": "transparent" },
+    "diffLineNumber": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "diffAddedLineNumberBg": { "dark": "transparent", "light": "transparent" },
+    "diffRemovedLineNumberBg": { "dark": "transparent", "light": "transparent" },
+    "markdownText": { "dark": "darkText", "light": "lightText" },
+    "markdownHeading": { "dark": "johnyPrimary", "light": "johnyPrimaryDim" },
+    "markdownLink": { "dark": "johnySecondary", "light": "johnyPrimaryDim" },
+    "markdownLinkText": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "markdownCode": { "dark": "darkSyntaxGreen", "light": "lightSyntaxGreen" },
+    "markdownBlockQuote": { "dark": "darkTextMuted", "light": "lightYellow" },
+    "markdownEmph": { "dark": "darkYellow", "light": "lightYellow" },
+    "markdownStrong": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "markdownHorizontalRule": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "markdownListItem": { "dark": "johnySecondary", "light": "johnyPrimaryDim" },
+    "markdownListEnumeration": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "markdownImage": { "dark": "johnySecondary", "light": "johnyPrimaryDim" },
+    "markdownImageText": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "markdownCodeBlock": { "dark": "darkText", "light": "lightText" },
+    "syntaxComment": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "syntaxKeyword": { "dark": "johnyPrimary", "light": "johnyPrimaryDim" },
+    "syntaxFunction": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "syntaxVariable": { "dark": "johnyAccent", "light": "johnyPrimary" },
+    "syntaxString": { "dark": "darkSyntaxGreen", "light": "lightSyntaxGreen" },
+    "syntaxNumber": { "dark": "darkOrange", "light": "lightOrange" },
+    "syntaxType": { "dark": "darkYellow", "light": "lightYellow" },
+    "syntaxOperator": { "dark": "darkCyan", "light": "lightCyan" },
+    "syntaxPunctuation": { "dark": "darkText", "light": "lightText" }
   }
 }

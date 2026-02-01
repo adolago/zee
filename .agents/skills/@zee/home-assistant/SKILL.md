@@ -1,31 +1,33 @@
 ---
 name: home-assistant
-description: Control Home Assistant for smart home automation - lights, switches, sensors, climate, covers, and automations via CLI or REST API.
-version: 1.0.0
-author: Artur
+description: Control Home Assistant for smart home automation - lights, switches, sensors, climate, covers, scenes, and automations via CLI or REST API.
+version: 1.1.0
+author: dbhurley
 tags: [home, automation, iot, smart-home]
+source: clawhub
+homepage: https://www.home-assistant.io/
+metadata: {"clawhub":{"id":"dbhurley/homeassistant","requires":{"bins":["curl"],"env":["HASS_TOKEN"]},"primaryEnv":"HASS_TOKEN"}}
 ---
 
-# home-assistant - Smart Home Control
+# Home Assistant - Smart Home Control
 
 Control Home Assistant entities and automations.
-
-## Prerequisites
-
-```bash
-# Install hass-cli
-pip install homeassistant-cli
-
-# Configure (or use env vars)
-hass-cli config set --server https://your-ha-instance:8123 --token YOUR_LONG_LIVED_TOKEN
-```
 
 ## Environment Variables
 
 - `HASS_SERVER` - Home Assistant URL (e.g., `http://192.168.1.100:8123`)
-- `HASS_TOKEN` - Long-lived access token
+- `HASS_TOKEN` - Long-lived access token (create in HA -> Profile -> Long-Lived Access Tokens)
 
-## Common Commands
+## hass-cli (preferred)
+
+### Prerequisites
+
+```bash
+pip install homeassistant-cli
+
+# Configure (or use env vars HASS_SERVER / HASS_TOKEN)
+hass-cli config set --server https://your-ha-instance:8123 --token YOUR_LONG_LIVED_TOKEN
+```
 
 ### Entity State
 
@@ -116,24 +118,66 @@ hass-cli service call media_player.media_pause --arguments entity_id=media_playe
 hass-cli service call media_player.volume_set --arguments entity_id=media_player.living_room,volume_level=0.5
 ```
 
-## REST API Alternative
+## REST API (fallback)
 
-If hass-cli is unavailable, use curl:
+If hass-cli is unavailable, use curl directly:
 
 ```bash
+# List entities by domain
+curl -s "$HASS_SERVER/api/states" -H "Authorization: Bearer $HASS_TOKEN" | \
+  jq -r '.[] | select(.entity_id | startswith("switch.")) | .entity_id'
+
 # Get state
 curl -s -H "Authorization: Bearer $HASS_TOKEN" \
   "$HASS_SERVER/api/states/light.living_room" | jq
 
-# Call service
-curl -s -X POST -H "Authorization: Bearer $HASS_TOKEN" \
+# Turn on
+curl -s -X POST "$HASS_SERVER/api/services/light/turn_on" \
+  -H "Authorization: Bearer $HASS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"entity_id": "light.living_room"}' \
-  "$HASS_SERVER/api/services/light/turn_on"
+  -d '{"entity_id": "light.living_room"}'
+
+# Turn on with brightness
+curl -s -X POST "$HASS_SERVER/api/services/light/turn_on" \
+  -H "Authorization: Bearer $HASS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_id": "light.living_room", "brightness_pct": 80}'
+
+# Turn off
+curl -s -X POST "$HASS_SERVER/api/services/switch/turn_off" \
+  -H "Authorization: Bearer $HASS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_id": "switch.office_lamp"}'
+
+# Trigger scene
+curl -s -X POST "$HASS_SERVER/api/services/scene/turn_on" \
+  -H "Authorization: Bearer $HASS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_id": "scene.movie_time"}'
+
+# Call any service
+curl -s -X POST "$HASS_SERVER/api/services/{domain}/{service}" \
+  -H "Authorization: Bearer $HASS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_id": "...", ...}'
 ```
+
+## Entity Domains
+
+- `switch.*` -- Smart plugs, generic switches
+- `light.*` -- Lights (Hue, LIFX, etc.)
+- `scene.*` -- Pre-configured scenes
+- `automation.*` -- Automations
+- `climate.*` -- Thermostats
+- `cover.*` -- Blinds, garage doors
+- `media_player.*` -- TVs, speakers
+- `sensor.*` -- Temperature, humidity, etc.
 
 ## Tips
 
 - Use `hass-cli entity list | grep -i kitchen` to find entities by name
 - Entity IDs follow pattern: `domain.friendly_name_snake_case`
-- Long-lived tokens: HA Settings → Security → Long-lived access tokens
+- Long-lived tokens: HA Settings -> Security -> Long-lived access tokens
+- API returns JSON by default
+- Long-lived tokens don't expire -- store securely
+- Test entity IDs with the list command first

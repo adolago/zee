@@ -22,6 +22,10 @@ import type {
   EmbeddingProvider,
   MultimodalContent,
   MediaMetadata,
+  AgenticSearchParams,
+  MemoryKind,
+  MemoryPriority,
+  MemoryMemoryType,
 } from "./types";
 import type { Reranker, RerankerConfig, RerankResult } from "./reranker";
 import {
@@ -515,6 +519,49 @@ export class Memory {
   }
 
   // ===========================================================================
+  // Helpers
+  // ===========================================================================
+
+  /** Convert a Qdrant point payload to a MemoryEntry */
+  private pointToEntry(point: {
+    id: string;
+    payload: Record<string, unknown>;
+    vector?: number[];
+  }): MemoryEntry {
+    const p = point.payload;
+    return {
+      id: point.id,
+      category: p.category as MemoryCategory,
+      content: p.content as string,
+      summary: p.summary as string | undefined,
+      embedding: point.vector,
+      metadata: (p.metadata as MemoryEntry["metadata"]) ?? {},
+      media: p.media as MediaMetadata | undefined,
+      createdAt: p.createdAt as number,
+      accessedAt: p.accessedAt as number,
+      ttl: p.ttl as number | undefined,
+      namespace: p.namespace as string | undefined,
+      // Enhanced fields
+      domain: p.domain as string | undefined,
+      topic: p.topic as string | undefined,
+      subtopic: p.subtopic as string | undefined,
+      memoryId: p.memoryId as string | undefined,
+      version: p.version as number | undefined,
+      parentVersion: p.parentVersion as number | undefined,
+      superseded: p.superseded as boolean | undefined,
+      kind: p.kind as MemoryKind | undefined,
+      priority: p.priority as MemoryPriority | undefined,
+      bookmarked: p.bookmarked as boolean | undefined,
+      memoryType: p.memoryType as MemoryMemoryType | undefined,
+    };
+  }
+
+  /** Generate a deterministic point ID for a tree index node */
+  private treePointId(path: string): string {
+    return stringToUUID(`tree:${path}`);
+  }
+
+  // ===========================================================================
   // Memory Operations (facts, preferences, etc.)
   // ===========================================================================
 
@@ -525,7 +572,6 @@ export class Memory {
     // Graceful degradation if memory unavailable
     if (!this.isAvailable()) {
       log.warn("Memory save skipped - storage unavailable", { category: input.category });
-      // Return a placeholder entry without actually storing
       const id = randomUUID();
       const now = Date.now();
       return {
@@ -546,6 +592,36 @@ export class Memory {
     const now = Date.now();
     const vector = await this.embedding.embed(input.content);
 
+    // Version control: if memoryId provided, look for existing current version
+    let memoryId = input.memoryId ?? randomUUID();
+    let version = 1;
+    let parentVersion: number | undefined;
+
+    if (input.memoryId) {
+      try {
+        const existing = await this.storage.scroll({
+          filter: { memoryId: input.memoryId, superseded: false, type: "memory" },
+          limit: 1,
+        });
+        if (existing.points.length > 0) {
+          const prev = existing.points[0];
+          const prevVersion = (prev.payload.version as number) ?? 1;
+          version = prevVersion + 1;
+          parentVersion = prevVersion;
+          // Mark old version as superseded
+          await this.storage.update(prev.id, { superseded: true });
+          // Decrement tree index counts for the old point (it's now superseded)
+          // Not needed: tree counts track total non-superseded entries, and we're
+          // adding a new one to replace the old, so net change is zero.
+        }
+      } catch (err) {
+        log.debug("Version lookup failed, treating as new memory", {
+          memoryId: input.memoryId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     const entry: MemoryEntry = {
       id,
       category: input.category,
@@ -557,6 +633,18 @@ export class Memory {
       accessedAt: now,
       ttl: input.ttl,
       namespace: input.namespace ?? this.namespace,
+      // Enhanced fields
+      domain: input.domain,
+      topic: input.topic,
+      subtopic: input.subtopic,
+      memoryId,
+      version,
+      parentVersion,
+      superseded: false,
+      kind: input.kind ?? "auto",
+      priority: input.priority ?? "normal",
+      bookmarked: input.bookmarked ?? false,
+      memoryType: input.memoryType ?? "fact",
     };
 
     await this.storage.insert([{
@@ -571,11 +659,27 @@ export class Memory {
         createdAt: entry.createdAt,
         accessedAt: entry.accessedAt,
         ttl: entry.ttl,
-        // Store absolute expiration time for efficient filtering
         expiresAt: entry.ttl ? entry.createdAt + entry.ttl : 0,
         namespace: entry.namespace,
+        // Enhanced payload fields
+        domain: entry.domain,
+        topic: entry.topic,
+        subtopic: entry.subtopic,
+        memoryId: entry.memoryId,
+        version: entry.version,
+        parentVersion: entry.parentVersion,
+        superseded: false,
+        kind: entry.kind,
+        priority: entry.priority,
+        bookmarked: entry.bookmarked,
+        memoryType: entry.memoryType,
       },
     }]);
+
+    // Maintain context tree directory indexes
+    if (input.domain) {
+      await this.upsertTreeIndexes(input.domain, input.topic, input.subtopic);
+    }
 
     return entry;
   }
@@ -616,6 +720,46 @@ export class Memory {
       filter["metadata.tags"] = { $in: params.tags };
     }
 
+    // Context Tree filters
+    if (params.domain) filter.domain = params.domain;
+    if (params.topic) filter.topic = params.topic;
+    if (params.subtopic) filter.subtopic = params.subtopic;
+
+    // Version Control filters
+    if (params.memoryId) filter.memoryId = params.memoryId;
+    // Default to non-superseded unless explicitly set
+    if (params.superseded !== undefined) {
+      filter.superseded = params.superseded;
+    } else {
+      // Backward compatible: include old points that lack the superseded field
+      filter.superseded = {
+        $should: [
+          { key: "superseded", match: { value: false } },
+          { is_null: { key: "superseded" } },
+        ],
+      };
+    }
+
+    // Context Composer filters
+    if (params.kind) {
+      if (Array.isArray(params.kind)) {
+        filter.kind = { $in: params.kind };
+      } else {
+        filter.kind = params.kind;
+      }
+    }
+    if (params.priority) {
+      if (Array.isArray(params.priority)) {
+        filter.priority = { $in: params.priority };
+      } else {
+        filter.priority = params.priority;
+      }
+    }
+    if (params.bookmarked !== undefined) filter.bookmarked = params.bookmarked;
+
+    // Dual Memory filter
+    if (params.memoryType) filter.memoryType = params.memoryType;
+
     const results = await this.storage.search(queryVector, {
       limit: params.limit ?? 10,
       threshold: params.threshold ?? 0.5,
@@ -623,17 +767,7 @@ export class Memory {
     });
 
     return results.map((r) => ({
-      entry: {
-        id: r.id,
-        category: r.payload.category as MemoryCategory,
-        content: r.payload.content as string,
-        summary: r.payload.summary as string | undefined,
-        metadata: r.payload.metadata as MemoryEntry["metadata"],
-        createdAt: r.payload.createdAt as number,
-        accessedAt: r.payload.accessedAt as number,
-        ttl: r.payload.ttl as number | undefined,
-        namespace: r.payload.namespace as string | undefined,
-      },
+      entry: this.pointToEntry({ id: r.id, payload: r.payload }),
       score: r.score,
     }));
   }
@@ -646,18 +780,7 @@ export class Memory {
     const point = results[0];
     if (!point || point.payload.type !== "memory") return null;
 
-    return {
-      id: point.id,
-      category: point.payload.category as MemoryCategory,
-      content: point.payload.content as string,
-      summary: point.payload.summary as string | undefined,
-      embedding: point.vector,
-      metadata: point.payload.metadata as MemoryEntry["metadata"],
-      createdAt: point.payload.createdAt as number,
-      accessedAt: point.payload.accessedAt as number,
-      ttl: point.payload.ttl as number | undefined,
-      namespace: point.payload.namespace as string | undefined,
-    };
+    return this.pointToEntry(point);
   }
 
   /** List memories with optional filters */
@@ -686,17 +809,7 @@ export class Memory {
       filter,
     });
 
-    return results.map((r) => ({
-      id: r.id,
-      category: r.payload.category as MemoryCategory,
-      content: r.payload.content as string,
-      summary: r.payload.summary as string | undefined,
-      metadata: r.payload.metadata as MemoryEntry["metadata"],
-      createdAt: r.payload.createdAt as number,
-      accessedAt: r.payload.accessedAt as number,
-      ttl: r.payload.ttl as number | undefined,
-      namespace: r.payload.namespace as string | undefined,
-    }));
+    return results.map((r) => this.pointToEntry({ id: r.id, payload: r.payload }));
   }
 
   /** Delete a memory by ID */
@@ -729,6 +842,311 @@ export class Memory {
       type: "memory",
       expiresAt: { $lt: now, $gt: 0 },
     });
+  }
+
+  // ===========================================================================
+  // Context Tree Navigation
+  // ===========================================================================
+
+  /** Upsert directory index points for context tree navigation */
+  private async upsertTreeIndexes(
+    domain: string,
+    topic?: string,
+    subtopic?: string,
+  ): Promise<void> {
+    const now = Date.now();
+    const dummyVector = new Array(this.embedding.dimension).fill(0);
+
+    // Domain-level index
+    const domainId = this.treePointId(domain);
+    await this.upsertTreeNode(domainId, dummyVector, {
+      type: "tree_index",
+      level: "domain",
+      domain,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Topic-level index
+    if (topic) {
+      const topicId = this.treePointId(`${domain}/${topic}`);
+      await this.upsertTreeNode(topicId, dummyVector, {
+        type: "tree_index",
+        level: "topic",
+        domain,
+        topic,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Subtopic-level index
+    if (topic && subtopic) {
+      const subtopicId = this.treePointId(`${domain}/${topic}/${subtopic}`);
+      await this.upsertTreeNode(subtopicId, dummyVector, {
+        type: "tree_index",
+        level: "subtopic",
+        domain,
+        topic,
+        subtopic,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  /** Upsert a single tree index node (create or update timestamp) */
+  private async upsertTreeNode(
+    id: string,
+    vector: number[],
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const existing = await this.storage.get([id]);
+      if (existing[0]) {
+        // Already exists, just update timestamp
+        await this.storage.update(id, { updatedAt: Date.now() });
+      } else {
+        await this.storage.insert([{ id, vector, payload }]);
+      }
+    } catch (err) {
+      log.debug("Tree index upsert failed", {
+        id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  /** List all domains in the context tree */
+  async listDomains(): Promise<Array<{ domain: string; updatedAt: number }>> {
+    await this.init();
+    if (!this.isAvailable()) return [];
+
+    const result = await this.storage.scroll({
+      filter: { type: "tree_index", level: "domain" },
+      limit: 1000,
+    });
+
+    return result.points.map((p) => ({
+      domain: p.payload.domain as string,
+      updatedAt: p.payload.updatedAt as number,
+    }));
+  }
+
+  /** List topics within a domain */
+  async listTopics(domain: string): Promise<Array<{ topic: string; updatedAt: number }>> {
+    await this.init();
+    if (!this.isAvailable()) return [];
+
+    const result = await this.storage.scroll({
+      filter: { type: "tree_index", level: "topic", domain },
+      limit: 1000,
+    });
+
+    return result.points.map((p) => ({
+      topic: p.payload.topic as string,
+      updatedAt: p.payload.updatedAt as number,
+    }));
+  }
+
+  /** List subtopics within a domain/topic */
+  async listSubtopics(
+    domain: string,
+    topic: string,
+  ): Promise<Array<{ subtopic: string; updatedAt: number }>> {
+    await this.init();
+    if (!this.isAvailable()) return [];
+
+    const result = await this.storage.scroll({
+      filter: { type: "tree_index", level: "subtopic", domain, topic },
+      limit: 1000,
+    });
+
+    return result.points.map((p) => ({
+      subtopic: p.payload.subtopic as string,
+      updatedAt: p.payload.updatedAt as number,
+    }));
+  }
+
+  // ===========================================================================
+  // Agentic Search (filter-first retrieval)
+  // ===========================================================================
+
+  /** Filter-first memory retrieval with optional semantic refinement */
+  async agenticSearch(params: AgenticSearchParams): Promise<MemorySearchResult[]> {
+    await this.init();
+    if (!this.isAvailable()) return [];
+
+    // Build filter from structured params
+    const filter: Record<string, unknown> = {
+      type: "memory",
+      domain: params.domain,
+    };
+
+    if (params.topic) filter.topic = params.topic;
+    if (params.subtopic) filter.subtopic = params.subtopic;
+
+    // Default: only current (non-superseded) versions
+    if (params.currentOnly !== false) {
+      filter.superseded = {
+        $should: [
+          { key: "superseded", match: { value: false } },
+          { is_null: { key: "superseded" } },
+        ],
+      };
+    }
+
+    if (params.kind) {
+      filter.kind = Array.isArray(params.kind) ? { $in: params.kind } : params.kind;
+    }
+    if (params.priority) {
+      filter.priority = Array.isArray(params.priority) ? { $in: params.priority } : params.priority;
+    }
+    if (params.bookmarked !== undefined) filter.bookmarked = params.bookmarked;
+    if (params.memoryType) filter.memoryType = params.memoryType;
+
+    const limit = params.limit ?? 20;
+
+    if (params.query) {
+      // Semantic search within filtered set
+      const queryVector = await this.embedding.embed(params.query);
+      const results = await this.storage.search(queryVector, {
+        limit,
+        threshold: params.threshold ?? 0.3,
+        filter,
+      });
+
+      return results.map((r) => ({
+        entry: this.pointToEntry({ id: r.id, payload: r.payload }),
+        score: r.score,
+      }));
+    }
+
+    // No query: deterministic scroll
+    const scrollResult = await this.storage.scroll({
+      filter,
+      limit,
+      orderBy: { key: "createdAt", direction: "desc" },
+    });
+
+    return scrollResult.points.map((p) => ({
+      entry: this.pointToEntry(p),
+      score: 1.0, // No similarity score for non-vector retrieval
+    }));
+  }
+
+  // ===========================================================================
+  // Version Control
+  // ===========================================================================
+
+  /** Get version history for a memory (all versions, sorted by version number) */
+  async getMemoryHistory(memoryId: string): Promise<MemoryEntry[]> {
+    await this.init();
+    if (!this.isAvailable()) return [];
+
+    const result = await this.storage.scroll({
+      filter: { type: "memory", memoryId },
+      limit: 100,
+    });
+
+    const entries = result.points.map((p) => this.pointToEntry(p));
+    entries.sort((a, b) => (a.version ?? 1) - (b.version ?? 1));
+    return entries;
+  }
+
+  /** Rollback a memory to a target version */
+  async rollbackMemory(memoryId: string, targetVersion: number): Promise<MemoryEntry | null> {
+    await this.init();
+    if (!this.isAvailable()) return null;
+
+    const history = await this.getMemoryHistory(memoryId);
+    if (history.length === 0) return null;
+
+    const target = history.find((e) => e.version === targetVersion);
+    if (!target) return null;
+
+    // Mark all versions > target as superseded, and target as current
+    for (const entry of history) {
+      const shouldBeSuperseded = (entry.version ?? 1) > targetVersion;
+      const isCurrent = entry.version === targetVersion;
+
+      if (isCurrent) {
+        await this.storage.update(entry.id, { superseded: false });
+      } else if (shouldBeSuperseded) {
+        await this.storage.update(entry.id, { superseded: true });
+      }
+    }
+
+    target.superseded = false;
+    return target;
+  }
+
+  // ===========================================================================
+  // Context Composer (Curated Context)
+  // ===========================================================================
+
+  /** Get curated context: bookmarked + high-priority memories */
+  async getCuratedContext(options?: {
+    limit?: number;
+    namespace?: string;
+  }): Promise<MemoryEntry[]> {
+    await this.init();
+    if (!this.isAvailable()) return [];
+
+    const limit = options?.limit ?? 50;
+    const seen = new Set<string>();
+    const results: MemoryEntry[] = [];
+
+    // Pass 1: curated + bookmarked
+    const bookmarked = await this.storage.scroll({
+      filter: {
+        type: "memory",
+        kind: "curated",
+        bookmarked: true,
+        superseded: {
+          $should: [
+            { key: "superseded", match: { value: false } },
+            { is_null: { key: "superseded" } },
+          ],
+        },
+        ...(options?.namespace ? { namespace: options.namespace } : {}),
+      },
+      limit,
+    });
+
+    for (const p of bookmarked.points) {
+      if (!seen.has(p.id)) {
+        seen.add(p.id);
+        results.push(this.pointToEntry(p));
+      }
+    }
+
+    // Pass 2: high-priority (fill remaining slots)
+    if (results.length < limit) {
+      const highPri = await this.storage.scroll({
+        filter: {
+          type: "memory",
+          priority: "high",
+          superseded: {
+            $should: [
+              { key: "superseded", match: { value: false } },
+              { is_null: { key: "superseded" } },
+            ],
+          },
+          ...(options?.namespace ? { namespace: options.namespace } : {}),
+        },
+        limit: limit - results.length,
+      });
+
+      for (const p of highPri.points) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          results.push(this.pointToEntry(p));
+        }
+      }
+    }
+
+    return results;
   }
 
   // ===========================================================================

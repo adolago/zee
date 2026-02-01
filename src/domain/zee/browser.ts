@@ -84,8 +84,12 @@ const BrowserParams = z.object({
   ]).describe("Browser action to perform"),
   
   // Profile selection
-  profile: z.enum(["zee", "chrome"]).default("zee")
-    .describe("Browser profile: 'zee' (isolated) or 'chrome' (extension relay)"),
+  profile: z.string().default("zee")
+    .describe("Browser profile name. Defaults to the session's persona profile if available. Built-in: 'zee', 'stanley', 'johny', 'chrome'"),
+
+  // Persona context (auto-selects the persona's dedicated browser profile)
+  persona: z.enum(["zee", "stanley", "johny"]).optional()
+    .describe("Persona context. When set, routes to the persona's dedicated Chrome profile"),
   
   // URL for navigation
   url: z.string().optional()
@@ -173,8 +177,11 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
 - { action: "type", ref: "e5", text: "hello", submit: true }`,
     parameters: BrowserParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { action, profile } = args;
-      
+      const { action, persona } = args;
+      // Resolve persona to its dedicated profile, or use explicit profile
+      const PERSONA_PROFILES: Record<string, string> = { zee: "zee", stanley: "stanley", johny: "johny" };
+      const profile = persona && PERSONA_PROFILES[persona] ? PERSONA_PROFILES[persona] : args.profile;
+
       ctx.metadata({ title: `Browser: ${action}` });
 
       try {

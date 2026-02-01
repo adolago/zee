@@ -310,3 +310,32 @@ export type ChannelSecurityAdapter<ResolvedAccount = unknown> = {
   ) => ChannelSecurityDmPolicy | null;
   collectWarnings?: (ctx: ChannelSecurityContext<ResolvedAccount>) => Promise<string[]> | string[];
 };
+
+/**
+ * Optional adapter for channels that support end-to-end encryption.
+ * Channels without E2EE can omit this adapter entirely.
+ */
+export type ChannelEncryptionAdapter = {
+  /** Initialize encryption state (key stores, crypto sessions, etc.). */
+  initialize?: (params: {
+    cfg: ZeeConfig;
+    accountId?: string | null;
+    stateDir: string;
+  }) => Promise<void>;
+
+  /** Whether encryption is currently active for this account. */
+  isActive?: (params: {
+    cfg: ZeeConfig;
+    accountId?: string | null;
+  }) => Promise<boolean>;
+
+  /** Protocol identifier (e.g. "olm-megolm", "signal"). */
+  protocol?: string;
+
+  /** Verify a peer device or identity (e.g. SAS verification, cross-signing). */
+  verifyPeer?: (params: {
+    cfg: ZeeConfig;
+    accountId?: string | null;
+    peerId: string;
+  }) => Promise<{ verified: boolean; method?: string }>;
+};

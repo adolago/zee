@@ -1,5 +1,5 @@
 import "@/index.css"
-import { ErrorBoundary, Show, lazy, type ParentProps } from "solid-js"
+import { ErrorBoundary, Show, createEffect, lazy, type ParentProps } from "solid-js"
 import { Router, Route, Navigate } from "@solidjs/router"
 import { MetaProvider } from "@solidjs/meta"
 import { Font } from "@agent-core/ui/font"
@@ -9,7 +9,7 @@ import { CodeComponentProvider } from "@agent-core/ui/context/code"
 import { I18nProvider } from "@agent-core/ui/context"
 import { Diff } from "@agent-core/ui/diff"
 import { Code } from "@agent-core/ui/code"
-import { ThemeProvider } from "@agent-core/ui/theme"
+import { ThemeProvider, useTheme } from "@agent-core/ui/theme"
 import { GlobalSyncProvider } from "@/context/global-sync"
 import { PermissionProvider } from "@/context/permission"
 import { LayoutProvider } from "@/context/layout"
@@ -22,7 +22,7 @@ import { FileProvider } from "@/context/file"
 import { CommentsProvider } from "@/context/comments"
 import { NotificationProvider } from "@/context/notification"
 import { ModelsProvider } from "@/context/models"
-import { PersonaProvider } from "@/context/persona"
+import { PersonaProvider, usePersona, isPersonaId } from "@/context/persona"
 import { DialogProvider } from "@agent-core/ui/context/dialog"
 import { CommandProvider } from "@/context/command"
 import { LanguageProvider, useLanguage } from "@/context/language"
@@ -46,6 +46,24 @@ declare global {
   interface Window {
     __OPENCODE__?: { updaterEnabled?: boolean; serverPassword?: string; deepLinks?: string[] }
   }
+}
+
+const PERSONA_THEME_OVERRIDE_KEY = "agent-core.persona-theme-override"
+
+function PersonaThemeBridge(props: ParentProps) {
+  const persona = usePersona()
+  const theme = useTheme()
+
+  createEffect(() => {
+    const id = persona.id()
+    const override = localStorage.getItem(PERSONA_THEME_OVERRIDE_KEY)
+    if (override === "true") return
+    if (isPersonaId(id) && theme.themes()[id]) {
+      theme.setTheme(id)
+    }
+  })
+
+  return <>{props.children}</>
 }
 
 function MarkedProviderWithNativeParser(props: ParentProps) {
@@ -112,6 +130,7 @@ export function AppInterface(props: { defaultUrl?: string }) {
         <GlobalSDKProvider>
           <GlobalSyncProvider>
           <PersonaProvider>
+          <PersonaThemeBridge>
             <Router
               root={(props) => (
                 <SettingsProvider>
@@ -161,6 +180,7 @@ export function AppInterface(props: { defaultUrl?: string }) {
                 />
               </Route>
             </Router>
+          </PersonaThemeBridge>
           </PersonaProvider>
           </GlobalSyncProvider>
         </GlobalSDKProvider>

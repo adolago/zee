@@ -5,6 +5,7 @@ import { Keybind } from "@/util/keybind"
 import { pipe, mapValues } from "remeda"
 import type { KeybindsConfig as SDKKeybindsConfig } from "@opencode-ai/sdk/v2"
 import type { ParsedKey, Renderable } from "@opentui/core"
+import { InputRenderable } from "@opentui/core"
 import { createStore } from "solid-js/store"
 import { useKeyboard, useRenderer } from "@opentui/solid"
 import { createSimpleContext } from "./helper"
@@ -94,7 +95,8 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
       // - OR vim mode is enabled AND we're in vim normal mode
       // This allows Space to work as leader key in vim normal mode even when textarea is focused
       const hasFocus = renderer.currentFocusedRenderable !== null
-      const canActivateLeader = !hasFocus || (vim.enabled && vim.isNormal)
+      const isInputElement = renderer.currentFocusedRenderable instanceof InputRenderable
+      const canActivateLeader = !hasFocus || (vim.enabled && vim.isNormal && !isInputElement)
       if (!store.leader && canActivateLeader && result.match("leader", evt)) {
         // Stop propagation to prevent the textarea from receiving this key
         // This is important because:
@@ -148,6 +150,9 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
       },
       dismiss() {
         leader(false)
+      },
+      get savedFocus() {
+        return focus
       },
       parse(evt: ParsedKey): Keybind.Info {
         // Handle special case for Ctrl+Underscore (represented as \x1F)

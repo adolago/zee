@@ -29,8 +29,8 @@ function dedupeChannels(channels: ChannelPlugin[]): ChannelPlugin[] {
 export function listChannelPlugins(): ChannelPlugin[] {
   const combined = dedupeChannels(listPluginChannels());
   return combined.sort((a, b) => {
-    const indexA = CHAT_CHANNEL_ORDER.indexOf(a.id as ChatChannelId);
-    const indexB = CHAT_CHANNEL_ORDER.indexOf(b.id as ChatChannelId);
+    const indexA = (CHAT_CHANNEL_ORDER as readonly string[]).indexOf(String(a.id));
+    const indexB = (CHAT_CHANNEL_ORDER as readonly string[]).indexOf(String(b.id));
     const orderA = a.meta.order ?? (indexA === -1 ? 999 : indexA);
     const orderB = b.meta.order ?? (indexB === -1 ? 999 : indexB);
     if (orderA !== orderB) return orderA - orderB;

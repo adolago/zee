@@ -1,237 +1,86 @@
 {
   "defs": {
-    "base03": "#002b36",
-    "base02": "#073642",
-    "base01": "#586e75",
-    "base00": "#657b83",
-    "base0": "#839496",
-    "base1": "#93a1a1",
-    "base2": "#eee8d5",
-    "base3": "#fdf6e3",
-    "solYellow": "#b58900",
-    "solOrange": "#cb4b16",
-    "solRed": "#dc322f",
-    "solMagenta": "#d33682",
-    "solViolet": "#6c71c4",
-    "solBlue": "#268bd2",
-    "solCyan": "#2aa198",
-    "solGreen": "#859900",
     "stanleyPrimary": "#859900",
     "stanleyPrimaryBright": "#b3d900",
     "stanleyPrimaryDim": "#5a6600",
     "stanleySecondary": "#6a7a00",
     "stanleyAccent": "#9acd00",
-    "stanleyBorder": "#5a6600",
-    "stanleyGlow": "#b3d900",
-    "surface": "#0A3A47",
-    "shadow": "#001419",
-    "lightBase": "#fdf6e3",
-    "lightText": "#657b83"
+
+    "darkText": "#d4d4d4",
+    "darkTextMuted": "#808080",
+    "darkRed": "#f44747",
+    "darkYellow": "#e5c07b",
+    "darkGreen": "#73daca",
+    "darkCyan": "#56b6c2",
+    "darkOrange": "#d19a66",
+    "darkBorder": "#4a4a4a",
+    "darkBorderActive": "#606060",
+    "darkBorderSubtle": "#333333",
+    "darkSyntaxGreen": "#98c379",
+
+    "lightText": "#383a42",
+    "lightTextMuted": "#a0a1a7",
+    "lightRed": "#e45649",
+    "lightYellow": "#c18401",
+    "lightGreen": "#40a02b",
+    "lightCyan": "#0184bc",
+    "lightOrange": "#986801",
+    "lightBorder": "#d4d4d4",
+    "lightBorderActive": "#b8b8b8",
+    "lightBorderSubtle": "#e8e8e8",
+    "lightSyntaxGreen": "#50a14f"
   },
   "theme": {
-    "primary": {
-      "dark": "stanleyPrimary",
-      "light": "stanleyPrimaryDim"
-    },
-    "secondary": {
-      "dark": "stanleySecondary",
-      "light": "stanleyPrimaryDim"
-    },
-    "accent": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "error": {
-      "dark": "solRed",
-      "light": "solRed"
-    },
-    "warning": {
-      "dark": "solYellow",
-      "light": "solYellow"
-    },
-    "success": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "info": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "text": {
-      "dark": "base0",
-      "light": "lightText"
-    },
-    "textMuted": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "background": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "backgroundPanel": {
-      "dark": "base02",
-      "light": "transparent"
-    },
-    "backgroundElement": {
-      "dark": "surface",
-      "light": "transparent"
-    },
-    "backgroundMenu": {
-      "dark": "base02",
-      "light": "lightBase"
-    },
-    "border": {
-      "dark": "base01",
-      "light": "base1"
-    },
-    "borderActive": {
-      "dark": "stanleyPrimary",
-      "light": "stanleyPrimaryDim"
-    },
-    "borderSubtle": {
-      "dark": "surface",
-      "light": "base2"
-    },
-    "diffAdded": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "diffRemoved": {
-      "dark": "solRed",
-      "light": "solRed"
-    },
-    "diffContext": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "diffHunkHeader": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "diffHighlightAdded": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "diffHighlightRemoved": {
-      "dark": "solRed",
-      "light": "solRed"
-    },
-    "diffAddedBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffRemovedBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffContextBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffLineNumber": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "diffAddedLineNumberBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "diffRemovedLineNumberBg": {
-      "dark": "transparent",
-      "light": "transparent"
-    },
-    "markdownText": {
-      "dark": "base0",
-      "light": "lightText"
-    },
-    "markdownHeading": {
-      "dark": "stanleyPrimary",
-      "light": "stanleyPrimaryDim"
-    },
-    "markdownLink": {
-      "dark": "stanleySecondary",
-      "light": "stanleyPrimaryDim"
-    },
-    "markdownLinkText": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "markdownCode": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "markdownBlockQuote": {
-      "dark": "base01",
-      "light": "solYellow"
-    },
-    "markdownEmph": {
-      "dark": "solYellow",
-      "light": "solYellow"
-    },
-    "markdownStrong": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "markdownHorizontalRule": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "markdownListItem": {
-      "dark": "stanleySecondary",
-      "light": "stanleyPrimaryDim"
-    },
-    "markdownListEnumeration": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "markdownImage": {
-      "dark": "stanleySecondary",
-      "light": "stanleyPrimaryDim"
-    },
-    "markdownImageText": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "markdownCodeBlock": {
-      "dark": "base0",
-      "light": "lightText"
-    },
-    "syntaxComment": {
-      "dark": "base01",
-      "light": "base00"
-    },
-    "syntaxKeyword": {
-      "dark": "stanleyPrimary",
-      "light": "stanleyPrimaryDim"
-    },
-    "syntaxFunction": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "syntaxVariable": {
-      "dark": "solRed",
-      "light": "solRed"
-    },
-    "syntaxString": {
-      "dark": "stanleyAccent",
-      "light": "stanleyPrimary"
-    },
-    "syntaxNumber": {
-      "dark": "solOrange",
-      "light": "solOrange"
-    },
-    "syntaxType": {
-      "dark": "solYellow",
-      "light": "solYellow"
-    },
-    "syntaxOperator": {
-      "dark": "solCyan",
-      "light": "solCyan"
-    },
-    "syntaxPunctuation": {
-      "dark": "base0",
-      "light": "lightText"
-    }
+    "primary": { "dark": "stanleyPrimary", "light": "stanleyPrimaryDim" },
+    "secondary": { "dark": "stanleySecondary", "light": "stanleyPrimaryDim" },
+    "accent": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "error": { "dark": "darkRed", "light": "lightRed" },
+    "warning": { "dark": "darkYellow", "light": "lightYellow" },
+    "success": { "dark": "darkGreen", "light": "lightGreen" },
+    "info": { "dark": "darkCyan", "light": "lightCyan" },
+    "text": { "dark": "darkText", "light": "lightText" },
+    "textMuted": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "background": { "dark": "transparent", "light": "transparent" },
+    "backgroundPanel": { "dark": "transparent", "light": "transparent" },
+    "backgroundElement": { "dark": "transparent", "light": "transparent" },
+    "backgroundMenu": { "dark": "transparent", "light": "transparent" },
+    "border": { "dark": "darkBorder", "light": "lightBorder" },
+    "borderActive": { "dark": "stanleyPrimary", "light": "stanleyPrimaryDim" },
+    "borderSubtle": { "dark": "darkBorderSubtle", "light": "lightBorderSubtle" },
+    "diffAdded": { "dark": "darkGreen", "light": "lightGreen" },
+    "diffRemoved": { "dark": "darkRed", "light": "lightRed" },
+    "diffContext": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "diffHunkHeader": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "diffHighlightAdded": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "diffHighlightRemoved": { "dark": "darkRed", "light": "lightRed" },
+    "diffAddedBg": { "dark": "transparent", "light": "transparent" },
+    "diffRemovedBg": { "dark": "transparent", "light": "transparent" },
+    "diffContextBg": { "dark": "transparent", "light": "transparent" },
+    "diffLineNumber": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "diffAddedLineNumberBg": { "dark": "transparent", "light": "transparent" },
+    "diffRemovedLineNumberBg": { "dark": "transparent", "light": "transparent" },
+    "markdownText": { "dark": "darkText", "light": "lightText" },
+    "markdownHeading": { "dark": "stanleyPrimary", "light": "stanleyPrimaryDim" },
+    "markdownLink": { "dark": "stanleySecondary", "light": "stanleyPrimaryDim" },
+    "markdownLinkText": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "markdownCode": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "markdownBlockQuote": { "dark": "darkTextMuted", "light": "lightYellow" },
+    "markdownEmph": { "dark": "darkYellow", "light": "lightYellow" },
+    "markdownStrong": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "markdownHorizontalRule": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "markdownListItem": { "dark": "stanleySecondary", "light": "stanleyPrimaryDim" },
+    "markdownListEnumeration": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "markdownImage": { "dark": "stanleySecondary", "light": "stanleyPrimaryDim" },
+    "markdownImageText": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "markdownCodeBlock": { "dark": "darkText", "light": "lightText" },
+    "syntaxComment": { "dark": "darkTextMuted", "light": "lightTextMuted" },
+    "syntaxKeyword": { "dark": "stanleyPrimary", "light": "stanleyPrimaryDim" },
+    "syntaxFunction": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "syntaxVariable": { "dark": "darkRed", "light": "lightRed" },
+    "syntaxString": { "dark": "stanleyAccent", "light": "stanleyPrimary" },
+    "syntaxNumber": { "dark": "darkOrange", "light": "lightOrange" },
+    "syntaxType": { "dark": "darkYellow", "light": "lightYellow" },
+    "syntaxOperator": { "dark": "darkCyan", "light": "lightCyan" },
+    "syntaxPunctuation": { "dark": "darkText", "light": "lightText" }
   }
 }

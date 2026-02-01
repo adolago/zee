@@ -365,11 +365,13 @@ export function buildAgentSystemPrompt(params: {
 
   // For "none" mode, return just the basic identity line
   if (promptMode === "none") {
-    return "You are a personal assistant running inside Zee.";
+    return "You are Zee, a personal life assistant. Part of the Personas triad (Zee, Stanley, Johny) sharing memory and orchestration.";
   }
 
   const lines = [
-    "You are a personal assistant running inside Zee.",
+    "You are Zee, a personal life assistant running inside the Personas system.",
+    "You are the first of a triad: Zee (life admin), Stanley (investing), Johny (learning). You share Qdrant memory, orchestration, and drone spawning, but each persona has its own domain and identity.",
+    "If SOUL.md and IDENTITY.md are present in your workspace, they define your personality and identity. Embody them.",
     "",
     "## Tooling",
     "Tool availability (filtered by policy):",

@@ -63,6 +63,11 @@ export type GatewayClientOptions = {
   onConnectError?: (err: Error) => void;
   onClose?: (code: number, reason: string) => void;
   onGap?: (info: { expected: number; received: number }) => void;
+  /** Called on successful reconnect with the last known sequence number.
+   *  The caller can use this to request event replay from the server. */
+  onReconnect?: (info: { lastSeq: number | null; reconnectCount: number }) => void;
+  /** Maximum number of automatic reconnection attempts. 0 = infinite (default). */
+  maxReconnectAttempts?: number;
 };
 
 export const GATEWAY_CLOSE_CODE_HINTS: Readonly<Record<number, string>> = {
@@ -90,6 +95,9 @@ export class GatewayClient {
   private lastTick: number | null = null;
   private tickIntervalMs = 30_000;
   private tickTimer: NodeJS.Timeout | null = null;
+  // Reconnection tracking
+  private reconnectCount = 0;
+  private hasConnectedOnce = false;
 
   constructor(opts: GatewayClientOptions) {
     this.opts = {
@@ -179,7 +187,7 @@ export class GatewayClient {
       clearTimeout(this.connectTimer);
       this.connectTimer = null;
     }
-    const role = this.opts.role ?? "operator";
+    const role = (this.opts.role ?? "operator") as "operator" | "node";
     const storedToken = this.opts.deviceIdentity
       ? loadDeviceAuthToken({ deviceId: this.opts.deviceIdentity.deviceId, role })?.token
       : null;
@@ -258,6 +266,14 @@ export class GatewayClient {
             : 30_000;
         this.lastTick = Date.now();
         this.startTickWatch();
+        if (this.hasConnectedOnce) {
+          this.reconnectCount++;
+          this.opts.onReconnect?.({
+            lastSeq: this.lastSeq,
+            reconnectCount: this.reconnectCount,
+          });
+        }
+        this.hasConnectedOnce = true;
         this.opts.onHelloOk?.(helloOk);
       })
       .catch((err) => {
@@ -331,6 +347,13 @@ export class GatewayClient {
 
   private scheduleReconnect() {
     if (this.closed) return;
+    const maxAttempts = this.opts.maxReconnectAttempts ?? 0;
+    if (maxAttempts > 0 && this.reconnectCount >= maxAttempts) {
+      logDebug(`gateway client: max reconnect attempts (${maxAttempts}) reached, giving up`);
+      this.closed = true;
+      this.flushPendingErrors(new Error("max reconnect attempts reached"));
+      return;
+    }
     if (this.tickTimer) {
       clearInterval(this.tickTimer);
       this.tickTimer = null;

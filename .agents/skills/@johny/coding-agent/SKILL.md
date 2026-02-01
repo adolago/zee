@@ -1,10 +1,11 @@
 ---
 name: coding-agent
-description: Run Codex CLI, Claude Code, agent-core, or Pi Coding Agent via background process for programmatic control.
-version: 1.0.0
-author: Artur
-tags: [coding, agents, background, johny]
-metadata: {"zee":{"emoji":"🧩","requires":{"anyBins":["claude","codex","agent-core","pi"]}}}
+description: Run Codex CLI, Claude Code, OpenCode, agent-core, or Pi Coding Agent via background process for programmatic control.
+version: 1.1.0
+author: steipete
+tags: [coding, agents, background]
+source: clawhub
+metadata: {"clawhub":{"id":"steipete/coding-agent","requires":{"anyBins":["claude","codex","opencode","agent-core","pi"]}}}
 ---
 
 # Coding Agent (background-first)
@@ -26,7 +27,7 @@ bash workdir:~/project/folder background:true command:"<agent command>"
 # Monitor progress
 process action:log sessionId:XXX
 
-# Check if done  
+# Check if done
 process action:poll sessionId:XXX
 
 # Send input (if agent asks a question)
@@ -57,17 +58,17 @@ bash workdir:~/project background:true command:"codex --yolo \"Build a snake gam
 
 ### Reviewing PRs (vanilla, no flags)
 
-**⚠️ CRITICAL: Never review PRs in Zee's own project folder!**
-- Either use the project where the PR is submitted (if it's NOT ~/Projects/zee)
+**CRITICAL: Never review PRs in agent-core's own project folder!**
+- Either use the project where the PR is submitted (if it's NOT ~/.local/src/agent-core)
 - Or clone to a temp folder first
 
 ```bash
-# Option 1: Review in the actual project (if NOT zee)
+# Option 1: Review in the actual project (if NOT agent-core)
 bash workdir:~/Projects/some-other-repo background:true command:"codex review --base main"
 
-# Option 2: Clone to temp folder for safe review (REQUIRED for zee PRs!)
+# Option 2: Clone to temp folder for safe review (REQUIRED for agent-core PRs!)
 REVIEW_DIR=$(mktemp -d)
-git clone https://github.com/zee/zee.git $REVIEW_DIR
+git clone https://github.com/user/repo.git $REVIEW_DIR
 cd $REVIEW_DIR && gh pr checkout 130
 bash workdir:$REVIEW_DIR background:true command:"codex review --base origin/main"
 # Clean up after: rm -rf $REVIEW_DIR
@@ -77,7 +78,7 @@ git worktree add /tmp/pr-130-review pr-130-branch
 bash workdir:/tmp/pr-130-review background:true command:"codex review --base main"
 ```
 
-**Why?** Checking out branches in the running Zee repo can break the live instance!
+**Why?** Checking out branches in the running agent-core repo can break the live instance!
 
 ### Batch PR Reviews (parallel army!)
 ```bash
@@ -114,10 +115,25 @@ bash workdir:~/project background:true command:"claude \"Your task\""
 
 ---
 
+## OpenCode
+
+```bash
+bash workdir:~/project background:true command:"opencode run \"Your task\""
+```
+
+---
+
 ## Agent-Core
 
 ```bash
 bash workdir:~/project background:true command:"agent-core run \"Your task\""
+```
+
+For swarm-delegated work, use the `zee:claude-spawn` tool to spawn coding agents as drones:
+
+```bash
+# Spawn a coding drone via swarm
+zee:claude-spawn --workdir ~/project --prompt "Fix the failing tests in src/auth/"
 ```
 
 ---
@@ -194,20 +210,20 @@ git worktree remove /tmp/issue-99
 
 **Why worktrees?** Each Codex works in isolated branch, no conflicts. Can run 5+ parallel fixes!
 
-**Why tmux over bash background?** Codex is interactive — needs TTY for proper output. tmux provides persistent sessions with full history capture.
+**Why tmux over bash background?** Codex is interactive -- needs TTY for proper output. tmux provides persistent sessions with full history capture.
 
 ---
 
 ## Rules
 
-1. **Respect tool choice** — if user asks for Codex, use Codex. NEVER offer to build it yourself!
-2. **Be patient** — don't kill sessions because they're "slow"
-3. **Monitor with process:log** — check progress without interfering
-4. **--full-auto for building** — auto-approves changes
-5. **vanilla for reviewing** — no special flags needed
-6. **Parallel is OK** — run many Codex processes at once for batch work
-7. **NEVER start Codex in ~/clawd/** — it'll read your soul docs and get weird ideas about the org chart! Use the target project dir or /tmp for blank slate chats
-8. **NEVER checkout branches in ~/Projects/zee/** — that's the LIVE Zee instance! Clone to /tmp or use git worktree for PR reviews
+1. **Respect tool choice** -- if user asks for Codex, use Codex. NEVER offer to build it yourself!
+2. **Be patient** -- don't kill sessions because they're "slow"
+3. **Monitor with process:log** -- check progress without interfering
+4. **--full-auto for building** -- auto-approves changes
+5. **vanilla for reviewing** -- no special flags needed
+6. **Parallel is OK** -- run many Codex processes at once for batch work
+7. **NEVER start Codex in ~/.local/src/agent-core/** -- it'll read your soul docs and get weird ideas about the org chart! Use the target project dir or /tmp for blank slate chats
+8. **NEVER checkout branches in ~/.local/src/agent-core/** -- that's the LIVE agent-core instance! Clone to /tmp or use git worktree for PR reviews
 
 ---
 

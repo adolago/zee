@@ -2,14 +2,23 @@ import type { ChannelMeta } from "./plugins/types.js";
 import type { ChannelId } from "./plugins/types.js";
 import { requireActivePluginRegistry } from "../plugins/runtime.js";
 
-// Channel docking: add new core channels here (order + meta + aliases), then
-// register the plugin in its extension entrypoint and keep protocol IDs in sync.
+// Default priority for built-in channels. Lower number = higher priority.
+// Extensions can register additional channels with their own priority via the
+// plugin registry; this map covers the bundled ones only.
+export const DEFAULT_CHANNEL_PRIORITY: Record<string, number> = {
+  telegram: 10,
+  whatsapp: 20,
+  matrix: 30,
+};
+
+// Legacy constant kept for backward compatibility. Prefer listChannelPluginIds()
+// for dynamic channel enumeration.
 export const CHAT_CHANNEL_ORDER = [
   "telegram",
   "whatsapp",
 ] as const;
 
-export type ChatChannelId = (typeof CHAT_CHANNEL_ORDER)[number];
+export type ChatChannelId = (typeof CHAT_CHANNEL_ORDER)[number] | (string & {});
 
 export const CHANNEL_IDS = [...CHAT_CHANNEL_ORDER] as const;
 
@@ -19,7 +28,7 @@ export type ChatChannelMeta = ChannelMeta;
 
 const WEBSITE_URL = "https://docs.zee";
 
-const CHAT_CHANNEL_META: Record<ChatChannelId, ChannelMeta> = {
+const BUILTIN_CHANNEL_META: Record<string, ChannelMeta> = {
   telegram: {
     id: "telegram",
     label: "Telegram",
@@ -43,6 +52,16 @@ const CHAT_CHANNEL_META: Record<ChatChannelId, ChannelMeta> = {
     blurb: "works with your own number; recommend a separate phone + eSIM.",
     systemImage: "message",
   },
+  matrix: {
+    id: "matrix",
+    label: "Matrix",
+    selectionLabel: "Matrix (E2EE)",
+    detailLabel: "Matrix Homeserver",
+    docsPath: "/channels/matrix",
+    docsLabel: "matrix",
+    blurb: "end-to-end encrypted messaging via any Matrix homeserver.",
+    systemImage: "lock.shield",
+  },
 };
 
 export const CHAT_CHANNEL_ALIASES: Record<string, ChatChannelId> = {};
@@ -52,23 +71,51 @@ const normalizeChannelKey = (raw?: string | null): string | undefined => {
   return normalized || undefined;
 };
 
+/**
+ * List all registered channel plugins, ordered by priority.
+ * Falls back to built-in meta when the plugin registry is not yet initialized.
+ */
+export function listChannelPluginIds(): string[] {
+  try {
+    const registry = requireActivePluginRegistry();
+    const entries = [...registry.channels];
+    entries.sort((a, b) => {
+      const pa = a.plugin.meta.order ?? DEFAULT_CHANNEL_PRIORITY[String(a.plugin.id)] ?? 999;
+      const pb = b.plugin.meta.order ?? DEFAULT_CHANNEL_PRIORITY[String(b.plugin.id)] ?? 999;
+      return pa - pb;
+    });
+    return entries.map((e) => String(e.plugin.id));
+  } catch {
+    // Registry not initialized yet; return built-in order
+    return Object.keys(DEFAULT_CHANNEL_PRIORITY).sort(
+      (a, b) => (DEFAULT_CHANNEL_PRIORITY[a] ?? 999) - (DEFAULT_CHANNEL_PRIORITY[b] ?? 999),
+    );
+  }
+}
+
 export function listChatChannels(): ChatChannelMeta[] {
-  return CHAT_CHANNEL_ORDER.map((id) => CHAT_CHANNEL_META[id]);
+  const ids = listChannelPluginIds();
+  return ids
+    .map((id) => BUILTIN_CHANNEL_META[id])
+    .filter((meta): meta is ChannelMeta => meta != null);
 }
 
 export function listChatChannelAliases(): string[] {
   return Object.keys(CHAT_CHANNEL_ALIASES);
 }
 
-export function getChatChannelMeta(id: ChatChannelId): ChatChannelMeta {
-  return CHAT_CHANNEL_META[id];
+export function getChatChannelMeta(id: ChatChannelId): ChatChannelMeta | undefined {
+  return BUILTIN_CHANNEL_META[id];
 }
 
 export function normalizeChatChannelId(raw?: string | null): ChatChannelId | null {
   const normalized = normalizeChannelKey(raw);
   if (!normalized) return null;
   const resolved = CHAT_CHANNEL_ALIASES[normalized] ?? normalized;
-  return CHAT_CHANNEL_ORDER.includes(resolved as ChatChannelId)
+  // Check built-in channels first
+  if (resolved in BUILTIN_CHANNEL_META) return resolved as ChatChannelId;
+  // Check legacy order for backward compatibility
+  return CHAT_CHANNEL_ORDER.includes(resolved as (typeof CHAT_CHANNEL_ORDER)[number])
     ? (resolved as ChatChannelId)
     : null;
 }

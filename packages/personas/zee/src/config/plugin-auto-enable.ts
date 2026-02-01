@@ -221,7 +221,7 @@ function isPluginDenied(cfg: ZeeConfig, pluginId: string): boolean {
 function resolvePreferredOverIds(pluginId: string): string[] {
   const normalized = normalizeChatChannelId(pluginId);
   if (normalized) {
-    return getChatChannelMeta(normalized).preferOver ?? [];
+    return getChatChannelMeta(normalized)?.preferOver ?? [];
   }
   const catalogEntry = getChannelPluginCatalogEntry(pluginId);
   return catalogEntry?.meta.preferOver ?? [];
@@ -278,7 +278,7 @@ function formatAutoEnableChange(entry: PluginEnableChange): string {
   let reason = entry.reason.trim();
   const channelId = normalizeChatChannelId(entry.pluginId);
   if (channelId) {
-    const label = getChatChannelMeta(channelId).label;
+    const label = getChatChannelMeta(channelId)?.label ?? channelId;
     reason = reason.replace(new RegExp(`^${channelId}\\b`, "i"), label);
   }
   return `${reason}, not enabled yet.`;

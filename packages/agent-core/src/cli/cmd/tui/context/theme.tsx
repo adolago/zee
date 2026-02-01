@@ -327,6 +327,19 @@ export function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
     resolved.backgroundMenu = resolved.backgroundElement
   }
 
+  // Override background hierarchy: use the theme's base background color with
+  // varying alpha so the terminal background shows through everywhere.
+  // Only the text-protecting layers get opacity; the root background is transparent.
+  const baseBg = resolved.background!
+  // When the theme background is transparent, we can't derive panel colors from
+  // it (would be RGBA(0,0,0,alpha) = black overlay). Use a neutral base instead.
+  const bgBase = baseBg.a < 0.1
+    ? (mode === "dark" ? RGBA.fromInts(15, 15, 15) : RGBA.fromInts(240, 240, 240))
+    : baseBg
+  resolved.backgroundPanel = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.35)
+  resolved.backgroundElement = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.5)
+  resolved.backgroundMenu = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.85)
+
   // Handle thinkingOpacity - optional with default of 0.6
   const thinkingOpacity = theme.theme.thinkingOpacity ?? 0.6
 

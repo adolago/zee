@@ -25,14 +25,19 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
           "Load a skill to get detailed instructions for a specific task.",
           "Skills provide specialized knowledge and step-by-step guidance.",
           "Use this when a task matches an available skill's description.",
-          "Only the skills listed here are available:",
+          "All skills are available regardless of persona. Cross-persona skills are marked.",
           "<available_skills>",
-          ...accessibleSkills.flatMap((skill) => [
-            `  <skill>`,
-            `    <name>${skill.name}</name>`,
-            `    <description>${skill.description}</description>`,
-            `  </skill>`,
-          ]),
+          ...accessibleSkills.flatMap((skill) => {
+            const crossTag = "affinity" in skill && (skill as { affinity: string }).affinity === "cross"
+              ? ` [via @${skill.context}]`
+              : ""
+            return [
+              `  <skill>`,
+              `    <name>${skill.name}</name>`,
+              `    <description>${skill.description}${crossTag}</description>`,
+              `  </skill>`,
+            ]
+          }),
           "</available_skills>",
         ].join(" ")
 

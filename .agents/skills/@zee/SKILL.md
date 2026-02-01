@@ -1,9 +1,9 @@
 ---
 name: zee
-description: Personal assistant for life admin. Use for memory management, messaging (WhatsApp/Telegram), email (neomutt/notmuch), calendar (khal), contacts (khard), notifications, and cross-platform communication coordination.
-version: 1.0.0
+description: Personal assistant for life admin. Use for memory management, messaging (WhatsApp/Telegram/Matrix), email (neomutt/notmuch), calendar (khal), contacts (khard), notifications, browser (per-persona Chrome), canvas, skills marketplace, and cross-platform communication coordination.
+version: 2.0.0
 author: Artur
-tags: [persona, assistant, memory, messaging, calendar]
+tags: [persona, assistant, memory, messaging, calendar, matrix, canvas, marketplace]
 includes:
   - swarm
   - agents-menu
@@ -16,13 +16,15 @@ includes:
 
 zee handles the cognitive load of life administration:
 - **Memory**: Remember everything, recall anything (Qdrant-backed)
-- **Messaging**: WhatsApp, Telegram coordination
+- **Messaging**: WhatsApp, Telegram, Matrix (E2EE) coordination
 - **Email**: neomutt + notmuch (search) + msmtp (send) + mbsync (sync)
 - **Calendar**: khal (TUI) + vdirsyncer (CalDAV sync)
 - **Contacts**: khard (TUI) + vdirsyncer (CardDAV sync)
 - **Notifications**: Proactive reminders and alerts
-- **Browser**: Automated web interaction (Playwright via gateway)
+- **Browser**: Per-persona Chrome profiles (CDP port 18800, isolated data dirs)
 - **Nodes**: Control node hosts (camera, location, notifications)
+- **Canvas**: Interactive web surfaces via A2UI (cross-persona at `/__agent__/canvas`)
+- **Skills Marketplace**: Discover and install skills from ClawHub
 
 ## References
 
@@ -73,16 +75,20 @@ khard show "John Doe"           # Details
 
 | Tool | Purpose |
 |------|---------|
-| `zee:memory-store` | Store facts, preferences, tasks, notes |
-| `zee:memory-search` | Semantic search across memories |
-| `zee:messaging` | Send text/audio/media on WhatsApp and Telegram |
+| `zee:memory-store` | Store facts, preferences, tasks, notes (with domain/topic, versioning, priority) |
+| `zee:memory-search` | Semantic search across memories (with domain/kind/priority filters) |
+| `zee:memory-browse` | Browse context tree: list domains, topics, subtopics, entries |
+| `zee:memory-agentic-search` | Filter-first retrieval by domain/topic with optional semantic refinement |
+| `zee:memory-version` | View version history or rollback a memory to a previous version |
+| `zee:messaging` | Send text/audio/media on WhatsApp, Telegram, and Matrix |
 | `zee:notification` | Proactive alerts and reminders |
 | `zee:reminder-status` | TUI banner with calendar/memory status |
-| `zee:browser-*` | Web automation (see `tools-reference.md`) |
+| `zee:browser-*` | Web automation with per-persona Chrome (see `tools-reference.md`) |
 | `zee:pty-*` | Interactive terminal sessions |
 | `zee:node-*` | Node host control |
 | `zee:cron-*` | Scheduled task automation |
 | `zee:sentinel-*` | Session persistence on restart |
+| `canvas` | Present/eval/snapshot interactive web surfaces |
 
 ## Reminder Status Banner
 
@@ -125,6 +131,84 @@ agent-core tool zee:cron-update '{"jobId": "<id>", "patch": {"enabled": false}}'
 agent-core tool zee:cron-remove '{"jobId": "<id>"}'
 ```
 
+## Enhanced Memory System
+
+### Context Tree (Structured Organization)
+
+Store memories with `domain/topic/subtopic` for hierarchical browsing:
+
+```bash
+# Store with location
+zee:memory-store { content: "JWT uses RS256", domain: "architecture", topic: "auth", subtopic: "jwt" }
+
+# Browse the tree
+zee:memory-browse { action: "list-domains" }
+zee:memory-browse { action: "list-topics", domain: "architecture" }
+zee:memory-browse { action: "get-entries", domain: "architecture", topic: "auth" }
+```
+
+### Agentic Search (Filter-First Retrieval)
+
+Use `zee:memory-agentic-search` when you know the domain and want structured retrieval:
+
+```bash
+# All memories in a domain
+zee:memory-agentic-search { domain: "architecture" }
+
+# Semantic search within a domain
+zee:memory-agentic-search { domain: "architecture", query: "authentication flow" }
+
+# Filter by kind and priority
+zee:memory-agentic-search { domain: "work", kind: "curated", bookmarked: true }
+```
+
+Use `zee:memory-search` when you have a free-text query and don't know the domain.
+
+### Version Control
+
+Provide `memoryId` when storing to create a new version of an existing memory:
+
+```bash
+# First store
+zee:memory-store { content: "JWT uses RS256", domain: "architecture", topic: "auth" }
+# Returns memoryId: "abc-123"
+
+# Update (creates v2)
+zee:memory-store { content: "JWT now uses ES256", memoryId: "abc-123", domain: "architecture", topic: "auth" }
+
+# View history
+zee:memory-version { action: "history", memoryId: "abc-123" }
+
+# Rollback to v1
+zee:memory-version { action: "rollback", memoryId: "abc-123", targetVersion: 1 }
+```
+
+### Context Composer (Curated Context)
+
+Mark important context for priority retrieval:
+
+```bash
+# Store as curated, high-priority, bookmarked
+zee:memory-store { content: "Critical: API keys rotate monthly", kind: "curated", priority: "high", bookmarked: true }
+```
+
+The daemon's `/memory/curated` endpoint returns all bookmarked+curated and high-priority memories for context injection.
+
+### Dual Memory (Facts vs Reasoning)
+
+Separate factual content from reasoning traces:
+
+```bash
+# Store a fact
+zee:memory-store { content: "Auth uses OAuth2", domain: "architecture", memoryType: "fact" }
+
+# Store reasoning
+zee:memory-store { content: "Chose OAuth2 over SAML because...", domain: "architecture", memoryType: "reasoning" }
+
+# Search only facts
+zee:memory-agentic-search { domain: "architecture", memoryType: "fact" }
+```
+
 ## Memory Categories
 
 - **conversation**: Chat history and context
@@ -142,7 +226,9 @@ zee operates across:
 - **CLI**: Direct terminal interaction
 - **Web**: Browser-based interface
 - **API**: Programmatic access
-- **WhatsApp/Telegram**: Chat interfaces
+- **WhatsApp/Telegram/Matrix**: Chat interfaces (Matrix with E2EE support)
+- **Canvas**: Interactive web surfaces via A2UI (`/__agent__/canvas` or `/__zee__/canvas`)
+- **Tailscale**: Secure remote access via Tailscale Serve/Funnel
 
 ## Delegation
 
@@ -158,10 +244,14 @@ See `swarm` for execution protocols.
 ## Integration Points
 
 - **agent-core**: `/src/domain/zee/tools.ts`
-- **Browser**: `/src/domain/zee/browser.ts`
+- **Browser**: `/src/domain/zee/browser.ts` (per-persona profiles: zee=18800, stanley=18801, johny=18802)
 - **Memory**: `/src/plugin/builtin/memory-persistence.ts`
 - **Qdrant**: Vector database for semantic memory
 - **Zee Gateway**: `http://127.0.0.1:18791`
+- **Matrix**: `extensions/matrix/` (E2EE via Rust crypto SDK)
+- **Canvas/A2UI**: `src/canvas-host/` (cross-persona at `/__agent__/`)
+- **ClawHub**: `packages/agent-core/src/pkg/clawhub/` (skill marketplace)
+- **Tailscale**: `packages/agent-core/src/pkg/tailscale/` (remote exposure)
 
 ## Zee's Life Admin Rules
 

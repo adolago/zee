@@ -26,6 +26,10 @@ mock.module("@tui/context/keybind", () => ({
   }),
 }))
 
+mock.module("@tui/context/vim", () => ({
+  useVim: () => ({ enabled: false, isInsert: false }),
+}))
+
 mock.module("@tui/ui/dialog-select", () => ({
   DialogSelect: () => null,
 }))

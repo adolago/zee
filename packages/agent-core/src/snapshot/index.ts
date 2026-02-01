@@ -211,14 +211,14 @@ export namespace Snapshot {
         : await $`git -c core.autocrlf=false --git-dir ${git} --work-tree ${Instance.worktree} show ${from}:${file}`
           .quiet()
           .nothrow()
-      const before = beforeResult.exitCode === 0 ? beforeResult.text() : `[DEBUG ERROR] git show ${from}:${file} failed: ${beforeResult.stderr.toString()}`
+      const before = beforeResult.exitCode === 0 ? beforeResult.text() : ""
 
       const afterResult = isBinaryFile
         ? { exitCode: 0, text: () => "", stderr: Buffer.from("") }
         : await $`git -c core.autocrlf=false --git-dir ${git} --work-tree ${Instance.worktree} show ${to}:${file}`
           .quiet()
           .nothrow()
-      const after = afterResult.exitCode === 0 ? afterResult.text() : `[DEBUG ERROR] git show ${to}:${file} failed: ${afterResult.stderr.toString()}`
+      const after = afterResult.exitCode === 0 ? afterResult.text() : ""
       const added = isBinaryFile ? 0 : parseInt(additions)
       const deleted = isBinaryFile ? 0 : parseInt(deletions)
       result.push({

@@ -38,7 +38,7 @@ export const ConnectParamsSchema = Type.Object(
     commands: Type.Optional(Type.Array(NonEmptyString)),
     permissions: Type.Optional(Type.Record(NonEmptyString, Type.Boolean())),
     pathEnv: Type.Optional(Type.String()),
-    role: Type.Optional(NonEmptyString),
+    role: Type.Optional(Type.Union([Type.Literal("operator"), Type.Literal("node")])),
     scopes: Type.Optional(Type.Array(NonEmptyString)),
     device: Type.Optional(
       Type.Object(
@@ -129,6 +129,9 @@ export const RequestFrameSchema = Type.Object(
     id: NonEmptyString,
     method: NonEmptyString,
     params: Type.Optional(Type.Unknown()),
+    /** Optional idempotency key. Duplicate requests with the same key within
+     *  a 5-minute window return the cached response. */
+    idempotencyKey: Type.Optional(NonEmptyString),
   },
   { additionalProperties: false },
 );

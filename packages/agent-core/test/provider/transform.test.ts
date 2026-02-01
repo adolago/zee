@@ -112,7 +112,7 @@ describe("ProviderTransform.variants - mapping parity", () => {
       capabilities: { reasoning: true },
     } as any
 
-    expect(Object.keys(ProviderTransform.variants(minimaxModel))).toEqual(["low", "medium", "high"])
+    expect(Object.keys(ProviderTransform.variants(minimaxModel))).toEqual([])
   })
 
   test("glm models from Z.AI/ZhipuAI return thinking variants", () => {
@@ -1003,8 +1003,7 @@ describe("ProviderTransform.variants", () => {
       capabilities: { reasoning: true },
     })
     const result = ProviderTransform.variants(model)
-    expect(Object.keys(result)).toEqual(["low", "medium", "high"])
-    expect(result.high).toEqual({ reasoningEffort: "high" })
+    expect(Object.keys(result)).toEqual([])
   })
 
   test("glm returns empty object", () => {
@@ -1266,7 +1265,7 @@ describe("ProviderTransform.variants", () => {
         },
       })
       const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
+      expect(Object.keys(result)).toEqual(["low", "high"])
       expect(result.low).toEqual({
         includeThoughts: true,
         thinkingLevel: "low",
@@ -1297,7 +1296,7 @@ describe("ProviderTransform.options - persona thinking configs", () => {
       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
       expect(result.thinking).toEqual({
         type: "enabled",
-        budget_tokens: 16000,
+        clear_thinking: false,
       })
     })
   })
@@ -1355,7 +1354,6 @@ describe("ProviderTransform.options - persona thinking configs", () => {
       expect(result.thinkingConfig).toEqual({
         includeThoughts: true,
         thinkingLevel: "high",
-        thinkingBudget: 16000,
       })
     })
   })
@@ -1375,7 +1373,6 @@ describe("ProviderTransform.options - persona thinking configs", () => {
       expect(result.thinkingConfig).toEqual({
         includeThoughts: true,
         thinkingLevel: "high",
-        thinkingBudget: 16000,
       })
     })
 
@@ -1393,7 +1390,6 @@ describe("ProviderTransform.options - persona thinking configs", () => {
       expect(result.thinkingConfig).toEqual({
         includeThoughts: true,
         thinkingLevel: "high",
-        thinkingBudget: 16000,
       })
     })
   })

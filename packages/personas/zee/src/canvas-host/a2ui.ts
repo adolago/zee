@@ -9,6 +9,31 @@ export const A2UI_PATH = "/__zee__/a2ui";
 export const CANVAS_HOST_PATH = "/__zee__/canvas";
 export const CANVAS_WS_PATH = "/__zee__/ws";
 
+// Cross-persona aliases: all personas can access canvas via /__agent__/
+export const AGENT_CANVAS_HOST_PATH = "/__agent__/canvas";
+export const AGENT_CANVAS_WS_PATH = "/__agent__/ws";
+export const AGENT_A2UI_PATH = "/__agent__/a2ui";
+
+/**
+ * Normalize a canvas path to handle both /__zee__/ and /__agent__/ prefixes.
+ * Returns the canonical /__zee__/ path for backward compatibility.
+ */
+export function normalizeCanvasPath(urlPath: string): string {
+  if (urlPath.startsWith("/__agent__/")) {
+    return urlPath.replace("/__agent__/", "/__zee__/");
+  }
+  return urlPath;
+}
+
+/**
+ * Extract persona identifier from canvas WebSocket connection params.
+ * Used to isolate canvas state per-persona.
+ */
+export function extractCanvasPersona(url: URL | string): string {
+  const parsed = typeof url === "string" ? new URL(url, "http://localhost") : url;
+  return parsed.searchParams.get("persona") ?? "zee";
+}
+
 let cachedA2uiRootReal: string | null | undefined;
 let resolvingA2uiRoot: Promise<string | null> | null = null;
 

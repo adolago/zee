@@ -211,7 +211,7 @@ function categorizeError(err: Error & { statusCode?: number; code?: string }): E
   const message = err.message?.toLowerCase() || ""
   const name = err.name || ""
   const statusCode = err.statusCode
-  const code = err.code?.toLowerCase() || ""
+  const code = typeof err.code === "string" ? err.code.toLowerCase() : ""
 
   // Check HTTP status codes first
   if (statusCode === 401 || statusCode === 403) {
@@ -340,9 +340,14 @@ async function main() {
             console.log(`  Native Gemini models: ${nativeModels.length}`)
           }
         } else {
-          testableModels = testAllModels
-            ? modelList.filter(([id, model]) => model.status !== "deprecated" && !isEmbeddingModel(id))
-            : modelList.filter(([id, model]) => model.status !== "deprecated" && !isEmbeddingModel(id)).slice(0, 1)
+          const eligible = modelList.filter(([id, model]) => model.status !== "deprecated" && !isEmbeddingModel(id))
+          if (testAllModels) {
+            testableModels = eligible
+          } else {
+            // Prefer free models for single-model health checks to avoid billing errors
+            const sorted = eligible.sort(([, a], [, b]) => (a.cost.input || 0) - (b.cost.input || 0))
+            testableModels = sorted.slice(0, 1)
+          }
         }
 
         if (!outputJson) {

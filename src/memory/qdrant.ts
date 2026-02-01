@@ -22,7 +22,7 @@ const log = Log.create({ service: "qdrant" });
 
 type QdrantCondition = {
   key?: string;
-  match?: { value: string | number };
+  match?: { value: string | number | boolean };
   range?: { lt?: number; gt?: number; lte?: number; gte?: number };
   is_null?: { key: string };
   should?: QdrantCondition[];
@@ -161,8 +161,9 @@ export class QdrantVectorStorage implements VectorStorage {
           `Qdrant collection "${name}" has dimension ${existingDimension}, expected ${dimension}.`,
         );
       }
-      // Still set currentCollection even if collection already exists
       this.currentCollection = name;
+      // Ensure indexes exist even if collection was already created
+      await this.ensureIndexes(name);
       return;
     }
 
@@ -173,8 +174,14 @@ export class QdrantVectorStorage implements VectorStorage {
       },
     });
 
-    // Create payload indexes for common filtering patterns
+    await this.ensureIndexes(name);
+    this.currentCollection = name;
+  }
+
+  /** Create payload indexes for filtering. Safe to call multiple times. */
+  async ensureIndexes(name: string): Promise<void> {
     const indexConfigs: Array<{ field: string; schema: unknown }> = [
+      // Original indexes
       { field: "category", schema: "keyword" },
       { field: "namespace", schema: "keyword" },
       { field: "sessionId", schema: "keyword" },
@@ -187,10 +194,31 @@ export class QdrantVectorStorage implements VectorStorage {
         field: "accessedAt",
         schema: { type: "integer", lookup: true, range: true },
       },
-      // Media metadata indexes for multimodal content
+      // Media metadata indexes
       { field: "media.mediaType", schema: "keyword" },
       { field: "media.sourceUrl", schema: "keyword" },
       { field: "media.contentHash", schema: "keyword" },
+      // Context Tree indexes
+      { field: "domain", schema: "keyword" },
+      { field: "topic", schema: "keyword" },
+      { field: "subtopic", schema: "keyword" },
+      // Version Control indexes
+      { field: "memoryId", schema: "keyword" },
+      {
+        field: "version",
+        schema: { type: "integer", lookup: true, range: true },
+      },
+      { field: "superseded", schema: "bool" },
+      // Context Composer indexes
+      { field: "kind", schema: "keyword" },
+      { field: "priority", schema: "keyword" },
+      { field: "bookmarked", schema: "bool" },
+      // Dual Memory index
+      { field: "memoryType", schema: "keyword" },
+      // Tree index level
+      { field: "level", schema: "keyword" },
+      // Entry type
+      { field: "type", schema: "keyword" },
     ];
 
     for (const { field, schema } of indexConfigs) {
@@ -208,8 +236,6 @@ export class QdrantVectorStorage implements VectorStorage {
         });
       }
     }
-
-    this.currentCollection = name;
   }
 
   async deleteCollection(name: string): Promise<void> {
@@ -401,9 +427,16 @@ export class QdrantVectorStorage implements VectorStorage {
   }
 
   /**
-   * Build Qdrant filter from generic filter object
+   * Build Qdrant filter from generic filter object.
+   *
+   * Supported value types:
+   * - string | number: exact match
+   * - boolean: exact match
+   * - { $in: [...] }: OR of exact matches (should clause)
+   * - { lt?, gt?, lte?, gte? }: range filter
+   * - { $should: QdrantCondition[] }: raw should clause passthrough
    */
-  private buildFilter(filter?: Record<string, unknown>): QdrantFilter {
+  buildFilter(filter?: Record<string, unknown>): QdrantFilter {
     if (!filter) return { must: [] };
 
     const must: QdrantCondition[] = [];
@@ -411,20 +444,87 @@ export class QdrantVectorStorage implements VectorStorage {
     for (const [key, value] of Object.entries(filter)) {
       if (value === undefined || value === null) continue;
 
-      if (typeof value === "object" && !Array.isArray(value)) {
+      if (typeof value === "boolean") {
+        must.push({ key, match: { value } });
+      } else if (typeof value === "object" && !Array.isArray(value)) {
+        const obj = value as Record<string, unknown>;
+
+        // $in array: OR of match conditions
+        if (Array.isArray(obj.$in)) {
+          const shouldClauses: QdrantCondition[] = (obj.$in as Array<string | number | boolean>).map(
+            (v) => ({ key, match: { value: v as string | number } })
+          );
+          if (shouldClauses.length > 0) {
+            must.push({ should: shouldClauses });
+          }
+        }
+        // $should passthrough for raw should clauses
+        else if (Array.isArray(obj.$should)) {
+          must.push({ should: obj.$should as QdrantCondition[] });
+        }
         // Range filter
-        const range = value as { lt?: number; gt?: number; lte?: number; gte?: number };
-        if (range.lt !== undefined || range.gt !== undefined ||
-            range.lte !== undefined || range.gte !== undefined) {
-          must.push({ key, range });
+        else {
+          const range = obj as { lt?: number; gt?: number; lte?: number; gte?: number };
+          if (range.lt !== undefined || range.gt !== undefined ||
+              range.lte !== undefined || range.gte !== undefined) {
+            must.push({ key, range });
+          }
         }
       } else {
-        // Exact match
+        // Exact match (string | number)
         must.push({ key, match: { value: value as string | number } });
       }
     }
 
     return { must };
+  }
+
+  /**
+   * Scroll (list) points matching a filter without vector similarity.
+   * Returns points ordered by Qdrant's internal ordering.
+   */
+  async scroll(options: {
+    filter?: Record<string, unknown>;
+    limit?: number;
+    offset?: string | number;
+    withPayload?: boolean;
+    withVector?: boolean;
+    orderBy?: { key: string; direction?: "asc" | "desc" };
+  } = {}): Promise<{
+    points: Array<{ id: string; payload: Record<string, unknown>; vector?: number[] }>;
+    nextOffset?: string | number | null;
+  }> {
+    const qdrantFilter = options.filter ? this.buildFilter(options.filter) : undefined;
+
+    const body: Record<string, unknown> = {
+      filter: qdrantFilter?.must?.length ? qdrantFilter : undefined,
+      limit: options.limit ?? 100,
+      with_payload: options.withPayload ?? true,
+      with_vector: options.withVector ?? false,
+    };
+
+    if (options.offset !== undefined) {
+      body.offset = options.offset;
+    }
+
+    if (options.orderBy) {
+      body.order_by = options.orderBy;
+    }
+
+    const result = await this.request<QdrantScrollResult>(
+      "POST",
+      `/collections/${this.currentCollection}/points/scroll`,
+      body,
+    );
+
+    return {
+      points: (result.points ?? []).map((p) => ({
+        id: String(p.id),
+        payload: p.payload,
+        vector: p.vector,
+      })),
+      nextOffset: result.next_page_offset,
+    };
   }
 
   /**

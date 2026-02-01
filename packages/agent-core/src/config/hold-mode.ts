@@ -392,12 +392,19 @@ export namespace HoldMode {
       }
     }
 
-    // RELEASE mode - skip release_confirm checks (auto-approve all permissions)
-    // The release_confirm feature is disabled when holdMode is false (RELEASE mode)
-    // This makes RELEASE mode equivalent to --dangerous / skip-all
+    // RELEASE mode - check release_confirm patterns before auto-approving
     if (!options.holdMode) {
-      // In RELEASE mode, we skip the release_confirm check entirely
-      // All permissions are auto-approved except for always_block
+      const confirmPattern = findMatchingPattern(command, config.release_confirm)
+      if (confirmPattern) {
+        const result: CheckResult = {
+          blocked: false,
+          requiresConfirmation: true,
+          matchedPattern: confirmPattern,
+          profile: config.profile,
+        }
+        checkCache.set(cacheKey, { result, timestamp: Date.now() })
+        return result
+      }
       const result: CheckResult = { blocked: false, profile: config.profile }
       checkCache.set(cacheKey, { result, timestamp: Date.now() })
       return result

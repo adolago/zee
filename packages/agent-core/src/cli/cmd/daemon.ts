@@ -20,6 +20,10 @@ import {
   startEmbeddedGateway,
   stopEmbeddedGateway,
 } from "../../gateway/embedded-gateway"
+import {
+  startTailscaleExposure,
+  type TailscaleMode,
+} from "../../pkg/tailscale"
 
 const log = Log.create({ service: "daemon" })
 
@@ -675,6 +679,12 @@ export const DaemonCommand = cmd({
         describe: "Start zee gateway even if preflight checks fail",
         type: "boolean",
         default: false,
+      })
+      .option("tailscale", {
+        describe: "Expose daemon via Tailscale (off, serve, funnel)",
+        type: "string",
+        choices: ["off", "serve", "funnel"],
+        default: "off",
       }),
   describe: "Start agent-core as a headless daemon for remote access",
   handler: async (args) => {
@@ -733,7 +743,30 @@ export const DaemonCommand = cmd({
       restoreSessions: Boolean(args["restore-sessions"]),
     })
 
-    await Daemon.setupSignalHandlers(proc.cleanup)
+    // Start Tailscale exposure if requested
+    const tailscaleMode = (args.tailscale as TailscaleMode) ?? "off"
+    let tailscaleCleanup: (() => Promise<void>) | undefined
+    if (tailscaleMode !== "off") {
+      const exposure = await startTailscaleExposure({
+        mode: tailscaleMode,
+        port: opts.port,
+        onInfo: (msg) => UI.info(msg),
+        onWarn: (msg) => UI.warn(msg),
+      })
+      if (exposure) {
+        tailscaleCleanup = exposure.cleanup
+        if (exposure.hostname) {
+          UI.info(`Daemon accessible via Tailscale: https://${exposure.hostname}`)
+        }
+      }
+    }
+
+    await Daemon.setupSignalHandlers(async (signal?: NodeJS.Signals) => {
+      if (tailscaleCleanup) {
+        await tailscaleCleanup().catch(() => {})
+      }
+      await proc.cleanup(signal)
+    })
 
     process.on("uncaughtException", async (error) => {
       log.error("uncaught exception", { error: error.message, stack: error.stack })

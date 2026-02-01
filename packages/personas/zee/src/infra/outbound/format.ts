@@ -33,7 +33,7 @@ const resolveChannelLabel = (channel: string) => {
   const pluginLabel = getChannelPlugin(channel as ChannelId)?.meta.label;
   if (pluginLabel) return pluginLabel;
   const normalized = normalizeChatChannelId(channel);
-  if (normalized) return getChatChannelMeta(normalized).label;
+  if (normalized) return getChatChannelMeta(normalized)?.label ?? normalized;
   return channel;
 };
 

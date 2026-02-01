@@ -188,7 +188,7 @@ function listPluginDockEntries(): Array<{ id: ChannelId; dock: ChannelDock; orde
     const id = String(plugin.id).trim();
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    if (CHAT_CHANNEL_ORDER.includes(plugin.id as ChatChannelId)) continue;
+    if ((CHAT_CHANNEL_ORDER as readonly string[]).includes(String(plugin.id))) continue;
     const dock = entry.dock ?? buildDockFromPlugin(plugin);
     entries.push({ id: plugin.id, dock, order: plugin.meta.order });
   }
@@ -199,13 +199,13 @@ export function listChannelDocks(): ChannelDock[] {
   const baseEntries = CHAT_CHANNEL_ORDER.map((id) => ({
     id,
     dock: DOCKS[id],
-    order: getChatChannelMeta(id).order,
+    order: getChatChannelMeta(id)?.order,
   }));
   const pluginEntries = listPluginDockEntries();
   const combined = [...baseEntries, ...pluginEntries];
   combined.sort((a, b) => {
-    const indexA = CHAT_CHANNEL_ORDER.indexOf(a.id as ChatChannelId);
-    const indexB = CHAT_CHANNEL_ORDER.indexOf(b.id as ChatChannelId);
+    const indexA = (CHAT_CHANNEL_ORDER as readonly string[]).indexOf(String(a.id));
+    const indexB = (CHAT_CHANNEL_ORDER as readonly string[]).indexOf(String(b.id));
     const orderA = a.order ?? (indexA === -1 ? 999 : indexA);
     const orderB = b.order ?? (indexB === -1 ? 999 : indexB);
     if (orderA !== orderB) return orderA - orderB;

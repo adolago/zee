@@ -186,6 +186,32 @@ export function attachGatewayWsMessageHandler(params: {
   const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
   const clientIp = resolveGatewayClientIp({ remoteAddr, forwardedFor, realIp, trustedProxies });
 
+  // Idempotency cache: maps idempotency keys to cached responses with TTL.
+  const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  const idempotencyCache = new Map<string, { response: unknown; expiresAt: number }>();
+
+  // Periodic cleanup of expired idempotency entries
+  const idempotencyCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of idempotencyCache) {
+      if (now >= entry.expiresAt) idempotencyCache.delete(key);
+    }
+  }, 60_000);
+  socket.on("close", () => clearInterval(idempotencyCleanupInterval));
+
+  // Methods restricted to operator role only.
+  const OPERATOR_ONLY_METHODS = new Set([
+    "session.list", "session.preview", "session.resolve", "session.patch",
+    "session.reset", "session.delete", "session.compact",
+    "chat.send", "chat.abort", "chat.inject", "chat.history",
+    "agent.list", "agent.describe", "agent.wait",
+    "config.get", "config.set", "config.apply", "config.patch", "config.schema",
+    "cron.add", "cron.update", "cron.remove", "cron.run", "cron.list", "cron.status",
+    "exec-approval.list", "exec-approval.resolve",
+    "send.text", "send.media",
+    "browser.act", "browser.snapshot", "browser.screenshot",
+  ]);
+
   // If proxy headers are present but the remote address isn't trusted, don't treat
   // the connection as local. This prevents auth bypass when running behind a reverse
   // proxy without proper configuration - the proxy's loopback connection would otherwise
@@ -868,13 +894,48 @@ export function attachGatewayWsMessageHandler(params: {
       }
       const req = parsed as RequestFrame;
       logWs("in", "req", { connId, id: req.id, method: req.method });
+
+      // Idempotency: return cached response if key was seen recently
+      const idempotencyKey = (req as { idempotencyKey?: string }).idempotencyKey;
+      if (idempotencyKey) {
+        const cached = idempotencyCache.get(idempotencyKey);
+        if (cached && Date.now() < cached.expiresAt) {
+          logWs("out", "res-cached", { connId, id: req.id, method: req.method, idempotencyKey });
+          send({ ...(cached.response as object), id: req.id });
+          return;
+        }
+      }
+
+      // Role-based method filtering: nodes cannot call operator-only methods
+      const clientRole = client.connect.role ?? "operator";
+      if (clientRole === "node" && OPERATOR_ONLY_METHODS.has(req.method)) {
+        send({
+          type: "res",
+          id: req.id,
+          ok: false,
+          error: errorShape(ErrorCodes.INVALID_REQUEST, `method "${req.method}" not allowed for role "node"`),
+        });
+        logWs("out", "res-denied", { connId, id: req.id, method: req.method, role: clientRole });
+        return;
+      }
+
       const respond = (
         ok: boolean,
         payload?: unknown,
         error?: ErrorShape,
         meta?: Record<string, unknown>,
       ) => {
-        send({ type: "res", id: req.id, ok, payload, error });
+        const response = { type: "res", id: req.id, ok, payload, error };
+        send(response);
+
+        // Cache the response if an idempotency key was provided
+        if (idempotencyKey) {
+          idempotencyCache.set(idempotencyKey, {
+            response,
+            expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
+          });
+        }
+
         logWs("out", "res", {
           connId,
           id: req.id,

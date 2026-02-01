@@ -39,6 +39,51 @@ export interface MemoryMetadata {
   extra?: Record<string, unknown>;
 }
 
+// =============================================================================
+// Enhanced Memory Types (Context Tree, Versioning, Composer, Dual Memory)
+// =============================================================================
+
+/** Context tree location for hierarchical organization */
+export interface ContextTreeLocation {
+  domain: string;
+  topic?: string;
+  subtopic?: string;
+}
+
+/** Version metadata for a memory entry */
+export interface MemoryVersionInfo {
+  memoryId: string;
+  version: number;
+  parentVersion?: number;
+  superseded: boolean;
+}
+
+/** How a memory was created/curated */
+export type MemoryKind = "curated" | "auto" | "agent";
+
+/** Retrieval priority for context composer */
+export type MemoryPriority = "high" | "normal" | "low";
+
+/** Dual memory: factual vs reasoning */
+export type MemoryMemoryType = "fact" | "reasoning";
+
+/** Parameters for agentic (filter-first) memory search */
+export interface AgenticSearchParams {
+  domain: string;
+  topic?: string;
+  subtopic?: string;
+  /** Optional semantic query within the filtered set */
+  query?: string;
+  /** Only return current (non-superseded) versions. Default true. */
+  currentOnly?: boolean;
+  kind?: MemoryKind | MemoryKind[];
+  priority?: MemoryPriority | MemoryPriority[];
+  bookmarked?: boolean;
+  memoryType?: MemoryMemoryType;
+  limit?: number;
+  threshold?: number;
+}
+
 /** A single memory entry */
 export interface MemoryEntry {
   /** Unique identifier */
@@ -65,6 +110,36 @@ export interface MemoryEntry {
   ttl?: number;
   /** Namespace for isolation */
   namespace?: string;
+
+  // Context Tree
+  /** Top-level domain for context tree organization */
+  domain?: string;
+  /** Topic within domain */
+  topic?: string;
+  /** Subtopic within topic */
+  subtopic?: string;
+
+  // Version Control
+  /** Stable memory ID across versions */
+  memoryId?: string;
+  /** Version number (1-based) */
+  version?: number;
+  /** Parent version number */
+  parentVersion?: number;
+  /** Whether this version has been superseded */
+  superseded?: boolean;
+
+  // Context Composer
+  /** How this memory was created */
+  kind?: MemoryKind;
+  /** Retrieval priority */
+  priority?: MemoryPriority;
+  /** Whether this memory is bookmarked for quick access */
+  bookmarked?: boolean;
+
+  // Dual Memory
+  /** Whether this is a fact or reasoning trace */
+  memoryType?: MemoryMemoryType;
 }
 
 /** Input for creating a memory */
@@ -79,6 +154,22 @@ export interface MemoryInput {
   multimodal?: MultimodalContent;
   ttl?: number;
   namespace?: string;
+
+  // Context Tree
+  domain?: string;
+  topic?: string;
+  subtopic?: string;
+
+  // Version Control (provide memoryId to update an existing memory)
+  memoryId?: string;
+
+  // Context Composer
+  kind?: MemoryKind;
+  priority?: MemoryPriority;
+  bookmarked?: boolean;
+
+  // Dual Memory
+  memoryType?: MemoryMemoryType;
 }
 
 // =============================================================================
@@ -108,6 +199,24 @@ export interface MemorySearchParams {
   includeMetadata?: boolean;
   /** Include embedding vectors in results */
   includeVectors?: boolean;
+
+  // Context Tree filters
+  domain?: string;
+  topic?: string;
+  subtopic?: string;
+
+  // Version Control filters
+  memoryId?: string;
+  /** Filter by superseded status (defaults to false for current-only) */
+  superseded?: boolean;
+
+  // Context Composer filters
+  kind?: MemoryKind | MemoryKind[];
+  priority?: MemoryPriority | MemoryPriority[];
+  bookmarked?: boolean;
+
+  // Dual Memory filter
+  memoryType?: MemoryMemoryType;
 }
 
 /** A search result with similarity score */

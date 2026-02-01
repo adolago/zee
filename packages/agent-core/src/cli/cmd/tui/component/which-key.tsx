@@ -2,7 +2,7 @@ import { createMemo, For, Show } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind, type KeybindsConfig } from "@tui/context/keybind"
 import { useTerminalDimensions } from "@opentui/solid"
-import { TextAttributes, RGBA } from "@opentui/core"
+import { TextAttributes } from "@opentui/core"
 import { Keybind } from "@/util/keybind"
 import { SplitBorder } from "@tui/component/border"
 
@@ -123,10 +123,9 @@ export function WhichKey() {
         alignItems="center"
         zIndex={1500}
         overflow="hidden"
-        backgroundColor={RGBA.fromInts(0, 0, 0, 255)}
       >
         <box
-          backgroundColor={RGBA.fromInts(0, 0, 0, 220)}
+          backgroundColor={theme.backgroundMenu}
           border={["top", "bottom", "left", "right"]}
           borderColor={theme.primary}
           customBorderChars={SplitBorder.customBorderChars}

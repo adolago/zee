@@ -396,6 +396,8 @@ export namespace Provider {
     const blocked = new Set([...disabled, ...PROVIDER_BLACKLIST])
     for (const providerID of blocked) {
       if (database[providerID]) {
+        const reason = PROVIDER_BLACKLIST.has(providerID) ? "hard-coded provider blacklist" : "disabled_providers config"
+        log.debug("provider blocked", { providerID, reason })
         delete database[providerID]
       }
     }
@@ -905,16 +907,27 @@ export namespace Provider {
 
       for (const [modelID, model] of Object.entries(provider.models)) {
         model.api.id = model.api.id ?? model.id ?? modelID
-        if (modelID === "gpt-5-chat-latest" || (providerID === "openrouter" && modelID === "openai/gpt-5-chat"))
+        if (modelID === "gpt-5-chat-latest" || (providerID === "openrouter" && modelID === "openai/gpt-5-chat")) {
+          log.debug("model filtered", { providerID, modelID, reason: "gpt-5-chat exclusion" })
           delete provider.models[modelID]
-        if (model.status === "deprecated") delete provider.models[modelID]
+        }
+        if (model.status === "deprecated") {
+          log.debug("model filtered", { providerID, modelID, reason: "deprecated status" })
+          delete provider.models[modelID]
+        }
         // Hard-coded blacklist - permanently hidden models
-        if (MODEL_BLACKLIST[providerID]?.includes(modelID)) delete provider.models[modelID]
-        if (
-          (configProvider?.blacklist && configProvider.blacklist.includes(modelID)) ||
-          (configProvider?.whitelist && !configProvider.whitelist.includes(modelID))
-        )
+        if (MODEL_BLACKLIST[providerID]?.includes(modelID)) {
+          log.debug("model filtered", { providerID, modelID, reason: "hard-coded blacklist" })
           delete provider.models[modelID]
+        }
+        if (configProvider?.blacklist && configProvider.blacklist.includes(modelID)) {
+          log.debug("model filtered", { providerID, modelID, reason: "config blacklist" })
+          delete provider.models[modelID]
+        }
+        if (configProvider?.whitelist && !configProvider.whitelist.includes(modelID)) {
+          log.debug("model filtered", { providerID, modelID, reason: "not in config whitelist" })
+          delete provider.models[modelID]
+        }
 
         // Filter out disabled variants from config
         const configVariants = configProvider?.models?.[modelID]?.variants
@@ -990,7 +1003,7 @@ export namespace Provider {
         }
 
         // For each family, keep only the best version
-        for (const [, versions] of Object.entries(families)) {
+        for (const [_family, versions] of Object.entries(families)) {
           // Sort by: 1) highest version, 2) isLatest (for same version), 3) non-dated over dated, 4) most recent date
           const sorted = [...versions].sort((a, b) => {
             if (a.version !== b.version) return b.version - a.version
@@ -1001,6 +1014,13 @@ export namespace Provider {
           })
 
           // Keep only the first (best) one
+          if (sorted.length > 1) {
+            log.debug("dedup anthropic family", {
+              family: _family,
+              kept: sorted[0].id,
+              removed: sorted.slice(1).map((s) => s.id),
+            })
+          }
           for (let i = 1; i < sorted.length; i++) {
             delete provider.models[sorted[i].id]
           }

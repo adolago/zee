@@ -512,7 +512,7 @@ function Prompt<const T extends Record<string, string>>(props: {
           left={0}
           width={dimensions().width}
           height={dimensions().height}
-          backgroundColor={RGBA.fromInts(0, 0, 0, 100)}
+          backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
           zIndex={100}
         >
           {content()}

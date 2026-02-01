@@ -70,18 +70,20 @@ export function PersonaSelectorCompact(props: { value?: PersonaId; onChange: (pe
 
   return (
     <DropdownMenu>
-      <Tooltip value={`${currentPersona().name}: ${currentPersona().description}`} placement="top">
-        <DropdownMenu.Trigger
-          as={Button}
-          variant="ghost"
-          class="size-7 p-0"
-        >
-          <div
-            class="size-3 rounded-full"
-            style={{ "background-color": currentPersona().color }}
-          />
-        </DropdownMenu.Trigger>
-      </Tooltip>
+      <div data-component="persona-selector-compact" data-persona={currentPersona().id} class="inline-flex">
+        <Tooltip value={`${currentPersona().name}: ${currentPersona().description}`} placement="top">
+          <DropdownMenu.Trigger
+            as={Button}
+            variant="ghost"
+            class="size-7 p-0"
+          >
+            <div
+              class="size-3 rounded-full"
+              style={{ "background-color": currentPersona().color }}
+            />
+          </DropdownMenu.Trigger>
+        </Tooltip>
+      </div>
       <DropdownMenu.Portal>
         <DropdownMenu.Content class="min-w-[160px]">
           <For each={PERSONAS}>

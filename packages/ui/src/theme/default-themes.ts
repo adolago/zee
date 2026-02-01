@@ -15,6 +15,9 @@ import vesperThemeJson from "./themes/vesper.json"
 import carbonfoxThemeJson from "./themes/carbonfox.json"
 import gruvboxThemeJson from "./themes/gruvbox.json"
 import auraThemeJson from "./themes/aura.json"
+import zeeThemeJson from "./themes/zee.json"
+import stanleyThemeJson from "./themes/stanley.json"
+import johnyThemeJson from "./themes/johny.json"
 
 export const agentCoreTheme = agentCoreThemeJson as DesktopTheme
 export const oc1Theme = oc1ThemeJson as DesktopTheme
@@ -32,6 +35,9 @@ export const vesperTheme = vesperThemeJson as DesktopTheme
 export const carbonfoxTheme = carbonfoxThemeJson as DesktopTheme
 export const gruvboxTheme = gruvboxThemeJson as DesktopTheme
 export const auraTheme = auraThemeJson as DesktopTheme
+export const zeeTheme = zeeThemeJson as DesktopTheme
+export const stanleyTheme = stanleyThemeJson as DesktopTheme
+export const johnyTheme = johnyThemeJson as DesktopTheme
 
 export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
   "agent-core": agentCoreTheme,
@@ -50,4 +56,7 @@ export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
   solarized: solarizedTheme,
   tokyonight: tokyonightTheme,
   vesper: vesperTheme,
+  zee: zeeTheme,
+  stanley: stanleyTheme,
+  johny: johnyTheme,
 }

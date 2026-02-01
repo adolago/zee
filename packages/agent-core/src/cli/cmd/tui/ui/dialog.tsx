@@ -1,11 +1,12 @@
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { batch, createContext, createMemo, Show, useContext, type JSX, type ParentProps } from "solid-js"
 import { useTheme } from "@tui/context/theme"
-import { Renderable, RGBA, TextAttributes } from "@opentui/core"
+import { Renderable } from "@opentui/core"
 import { createStore } from "solid-js/store"
 import { Clipboard } from "@tui/util/clipboard"
 import { SplitBorder } from "@tui/component/border"
 import { useToast } from "./toast"
+import { useKeybind } from "@tui/context/keybind"
 
 export function Dialog(
   props: ParentProps<{
@@ -17,12 +18,6 @@ export function Dialog(
   const dimensions = useTerminalDimensions()
   const { theme } = useTheme()
   const renderer = useRenderer()
-
-  const overlayBg = createMemo(() => {
-    if (props.minimal) return RGBA.fromInts(0, 0, 0, 60)
-    const menuBg = theme.backgroundMenu
-    return menuBg.a > 0 ? RGBA.fromInts(menuBg.r * 255, menuBg.g * 255, menuBg.b * 255, 180) : RGBA.fromInts(0, 0, 0, 150)
-  })
 
   return (
     <box
@@ -38,7 +33,6 @@ export function Dialog(
       paddingTop={dimensions().height / 4}
       left={0}
       top={0}
-      backgroundColor={overlayBg()}
     >
       <box
         onMouseUp={async (e) => {
@@ -68,6 +62,8 @@ function init() {
     size: "medium" as "medium" | "large",
     minimal: false,
   })
+
+  const keybind = useKeybind()
 
   useKeyboard((evt) => {
     if (evt.name === "escape" && store.stack.length > 0) {
@@ -113,7 +109,10 @@ function init() {
     },
     replace(input: any, onClose?: () => void, options?: { minimal?: boolean }) {
       if (store.stack.length === 0) {
-        focus = renderer.currentFocusedRenderable
+        // Use keybind's saved focus as fallback when leader mode has blurred the
+        // previously focused element (e.g., opening model dialog via <leader>m)
+        focus = renderer.currentFocusedRenderable ?? keybind.savedFocus ?? null
+        if (focus?.isDestroyed) focus = null
         focus?.blur()
       }
       for (const item of store.stack) {

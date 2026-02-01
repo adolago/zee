@@ -110,13 +110,13 @@ describe("Anthropic Claude Extended Thinking", () => {
     // High variant should have budgetTokens
     expect(variants.high.thinking).toEqual({
       type: "enabled",
-      budgetTokens: 16000,
+      budgetTokens: 32000,
     })
 
     // Max variant should have higher budgetTokens
     expect(variants.max.thinking).toEqual({
       type: "enabled",
-      budgetTokens: 31999,
+      budgetTokens: 64000,
     })
   })
 })
@@ -141,7 +141,7 @@ describe("Google Gemini Extended Thinking", () => {
     expect(variants.high).toEqual({
       thinkingConfig: {
         includeThoughts: true,
-        thinkingBudget: 16000,
+        thinkingBudget: 32000,
       },
     })
   })

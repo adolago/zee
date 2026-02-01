@@ -172,6 +172,10 @@ export type ChannelCapabilities = {
   media?: boolean;
   nativeCommands?: boolean;
   blockStreaming?: boolean;
+  /** Whether the channel supports end-to-end encryption. */
+  encryption?: boolean;
+  /** Protocol identifier for the encryption scheme (e.g. "olm-megolm", "signal"). */
+  encryptionProtocol?: string;
 };
 
 export type ChannelSecurityDmPolicy = {

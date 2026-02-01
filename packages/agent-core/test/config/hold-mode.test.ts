@@ -93,8 +93,10 @@ describe("HoldMode.skipPermissions bypass", () => {
     })
 
     test("skipPermissions false still respects hold mode restrictions", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("edit", false)
-      expect(allowed).toBe(false)
+      await withTempConfig({}, async () => {
+        const allowed = await HoldMode.isToolAllowedInHold("edit", false)
+        expect(allowed).toBe(false)
+      })
     })
 
     test("skipPermissions false still respects hold mode command blocks", async () => {
@@ -546,8 +548,10 @@ describe("HoldMode.checkCommand edge cases", () => {
     })
 
     test("skipPermissions false still respects hold mode restrictions", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("edit", false)
-      expect(allowed).toBe(false)
+      await withTempConfig({}, async () => {
+        const allowed = await HoldMode.isToolAllowedInHold("edit", false)
+        expect(allowed).toBe(false)
+      })
     })
 
     test("skipPermissions false still respects hold mode command blocks", async () => {

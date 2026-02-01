@@ -2,9 +2,9 @@ import { createSignal, createMemo, onMount } from "solid-js"
 import { createSimpleContext } from "@agent-core/ui/context"
 
 export const PERSONAS = [
-  { id: "zee", name: "Zee", description: "Personal assistant", color: "#fab283" },
-  { id: "stanley", name: "Stanley", description: "Investment research", color: "#5c9cf5" },
-  { id: "johny", name: "Johny", description: "Learning & study", color: "#7fd88f" },
+  { id: "zee", name: "Zee", description: "Personal assistant", color: "#268bd2" },
+  { id: "stanley", name: "Stanley", description: "Investment research", color: "#859900" },
+  { id: "johny", name: "Johny", description: "Learning & study", color: "#dc322f" },
 ] as const
 
 export type PersonaId = (typeof PERSONAS)[number]["id"]

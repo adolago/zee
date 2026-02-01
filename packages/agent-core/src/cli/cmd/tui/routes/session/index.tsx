@@ -1197,7 +1197,7 @@ export function Session() {
                 bottom={0}
                 alignItems="flex-end"
                 zIndex={500}
-                backgroundColor={RGBA.fromInts(0, 0, 0, 70)}
+                backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
               >
                 <Sidebar sessionID={route.sessionID} />
               </box>
@@ -1380,9 +1380,6 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                 }}
               >●</span>
               <span style={{ fg: theme.textMuted }}> {props.message.modelID}</span>
-              <Show when={props.message.mode}>
-                <span style={{ fg: theme.textMuted }}> {props.message.mode}</span>
-              </Show>
               <Show when={duration()}>
                 <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>
               </Show>

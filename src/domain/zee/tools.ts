@@ -68,6 +68,26 @@ const MemoryStoreParams = z.object({
     .describe("Tags for categorization"),
   relatedTo: z.array(z.string()).optional()
     .describe("Related memory IDs"),
+  // Context Tree
+  domain: z.string().optional()
+    .describe("Top-level domain (e.g., 'architecture', 'personal', 'work')"),
+  topic: z.string().optional()
+    .describe("Topic within domain (e.g., 'auth', 'meetings')"),
+  subtopic: z.string().optional()
+    .describe("Subtopic within topic (e.g., 'oauth', 'standup')"),
+  // Version Control
+  memoryId: z.string().optional()
+    .describe("Provide to update an existing memory (creates new version)"),
+  // Context Composer
+  kind: z.enum(["curated", "auto", "agent"]).optional()
+    .describe("How this memory was created (default: auto)"),
+  priority: z.enum(["high", "normal", "low"]).optional()
+    .describe("Retrieval priority (default: normal)"),
+  bookmarked: z.boolean().optional()
+    .describe("Bookmark for quick access"),
+  // Dual Memory
+  memoryType: z.enum(["fact", "reasoning"]).optional()
+    .describe("Type: fact (what) or reasoning (why/how)"),
 });
 
 export const memoryStoreTool: ToolDefinition = {
@@ -81,12 +101,20 @@ Use this to remember:
 - Tasks and decisions
 - Notes from conversations
 
+Organize with context tree: provide domain/topic/subtopic for structured retrieval.
+Version control: provide memoryId to update an existing memory (creates new version).
+Curate context: set kind="curated", priority="high", bookmarked=true for important context.
+Dual memory: use memoryType="reasoning" for reasoning traces, "fact" for factual content.
+
 Examples:
 - Remember preference: { content: "User prefers morning meetings", category: "preference" }
-- Store fact: { content: "User's birthday is March 15", category: "fact", importance: 0.8 }`,
+- Store fact: { content: "User's birthday is March 15", category: "fact", importance: 0.8 }
+- Structured: { content: "JWT auth uses RS256", domain: "architecture", topic: "auth", memoryType: "fact" }
+- Update existing: { content: "JWT now uses ES256", memoryId: "abc-123", domain: "architecture", topic: "auth" }
+- Curated: { content: "Critical design decision", kind: "curated", priority: "high", bookmarked: true }`,
     parameters: MemoryStoreParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { content, category, importance, tags, relatedTo } = args;
+      const { content, category, importance, tags, relatedTo, domain, topic, subtopic, memoryId, kind, priority, bookmarked, memoryType } = args;
 
       ctx.metadata({ title: `Storing memory: ${category}` });
 
@@ -103,15 +131,29 @@ Examples:
             agent: "zee",
             extra: relatedTo ? { relatedTo } : undefined,
           },
+          domain,
+          topic,
+          subtopic,
+          memoryId,
+          kind,
+          priority,
+          bookmarked,
+          memoryType,
         });
+
+        const locationParts = [domain, topic, subtopic].filter(Boolean);
+        const locationStr = locationParts.length > 0 ? `- Location: ${locationParts.join("/")}` : "";
+        const versionStr = entry.version && entry.version > 1 ? `- Version: ${entry.version}` : "";
 
         return {
           title: `Memory Stored`,
           metadata: {
             id: entry.id,
+            memoryId: entry.memoryId,
             category,
             importance,
             tags,
+            version: entry.version,
           },
           output: `Remembered: "${content.substring(0, 100)}${content.length > 100 ? "..." : ""}"
 
@@ -119,8 +161,11 @@ Memory saved with ID: ${entry.id}
 - Category: ${category}
 - Importance: ${((importance ?? 0.5) * 100).toFixed(0)}%
 ${tags?.length ? `- Tags: ${tags.join(", ")}` : ""}
+${locationStr}
+${versionStr}
+${entry.memoryId ? `- Memory ID: ${entry.memoryId}` : ""}
 
-This memory can be recalled later using zee:memory-search.`,
+This memory can be recalled later using zee:memory-search or zee:memory-agentic-search.`,
         };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -1219,12 +1264,397 @@ The reaction would be:
 };
 
 // =============================================================================
+// Memory Browse Tool (Context Tree Navigation)
+// =============================================================================
+
+const MemoryBrowseParams = z.object({
+  action: z.enum(["list-domains", "list-topics", "list-subtopics", "get-entries"])
+    .describe("Browse action"),
+  domain: z.string().optional()
+    .describe("Domain to browse (required for list-topics, list-subtopics, get-entries)"),
+  topic: z.string().optional()
+    .describe("Topic to browse (required for list-subtopics)"),
+  subtopic: z.string().optional()
+    .describe("Subtopic filter for get-entries"),
+  limit: z.number().optional()
+    .describe("Max results for get-entries"),
+});
+
+export const memoryBrowseTool: ToolDefinition = {
+  id: "zee:memory-browse",
+  category: "domain",
+  init: async () => ({
+    description: `Browse the memory context tree. Use this to discover what domains/topics exist before searching.
+
+Actions:
+- list-domains: Show all top-level domains
+- list-topics: Show topics within a domain
+- list-subtopics: Show subtopics within a domain/topic
+- get-entries: Get memories at a specific location
+
+Examples:
+- { action: "list-domains" }
+- { action: "list-topics", domain: "architecture" }
+- { action: "get-entries", domain: "architecture", topic: "auth", limit: 10 }`,
+    parameters: MemoryBrowseParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const { action, domain, topic, subtopic, limit } = args;
+
+      ctx.metadata({ title: `Memory Browse: ${action}` });
+
+      try {
+        const store = getMemory();
+
+        if (action === "list-domains") {
+          const domains = await store.listDomains();
+          if (domains.length === 0) {
+            return {
+              title: "No Domains",
+              metadata: { action, count: 0 },
+              output: "No memory domains found. Store memories with a 'domain' field to create tree structure.",
+            };
+          }
+          const list = domains.map((d) => `- ${d.domain}`).join("\n");
+          return {
+            title: `${domains.length} Domains`,
+            metadata: { action, count: domains.length },
+            output: `Memory domains:\n\n${list}`,
+          };
+        }
+
+        if (action === "list-topics") {
+          if (!domain) {
+            return {
+              title: "Missing Domain",
+              metadata: { action, error: "missing_domain" },
+              output: "Provide 'domain' to list topics.",
+            };
+          }
+          const topics = await store.listTopics(domain);
+          if (topics.length === 0) {
+            return {
+              title: `No Topics in ${domain}`,
+              metadata: { action, domain, count: 0 },
+              output: `No topics found in domain "${domain}".`,
+            };
+          }
+          const list = topics.map((t) => `- ${t.topic}`).join("\n");
+          return {
+            title: `${topics.length} Topics in ${domain}`,
+            metadata: { action, domain, count: topics.length },
+            output: `Topics in "${domain}":\n\n${list}`,
+          };
+        }
+
+        if (action === "list-subtopics") {
+          if (!domain || !topic) {
+            return {
+              title: "Missing Parameters",
+              metadata: { action, error: "missing_params" },
+              output: "Provide 'domain' and 'topic' to list subtopics.",
+            };
+          }
+          const subtopics = await store.listSubtopics(domain, topic);
+          if (subtopics.length === 0) {
+            return {
+              title: `No Subtopics in ${domain}/${topic}`,
+              metadata: { action, domain, topic, count: 0 },
+              output: `No subtopics found in "${domain}/${topic}".`,
+            };
+          }
+          const list = subtopics.map((s) => `- ${s.subtopic}`).join("\n");
+          return {
+            title: `${subtopics.length} Subtopics in ${domain}/${topic}`,
+            metadata: { action, domain, topic, count: subtopics.length },
+            output: `Subtopics in "${domain}/${topic}":\n\n${list}`,
+          };
+        }
+
+        if (action === "get-entries") {
+          if (!domain) {
+            return {
+              title: "Missing Domain",
+              metadata: { action, error: "missing_domain" },
+              output: "Provide 'domain' to get entries.",
+            };
+          }
+          const results = await store.agenticSearch({
+            domain,
+            topic,
+            subtopic,
+            limit: limit ?? 20,
+          });
+          if (results.length === 0) {
+            const path = [domain, topic, subtopic].filter(Boolean).join("/");
+            return {
+              title: `No Entries at ${path}`,
+              metadata: { action, domain, topic, subtopic, count: 0 },
+              output: `No memories found at "${path}".`,
+            };
+          }
+          const list = results.map((r, i) => {
+            const e = r.entry;
+            const preview = e.content.substring(0, 120);
+            const ellipsis = e.content.length > 120 ? "..." : "";
+            const ver = e.version && e.version > 1 ? ` (v${e.version})` : "";
+            return `${i + 1}. [${e.category}]${ver} "${preview}${ellipsis}"\n   ID: ${e.id} | memoryId: ${e.memoryId ?? "n/a"}`;
+          }).join("\n\n");
+          return {
+            title: `${results.length} Entries`,
+            metadata: { action, domain, topic, subtopic, count: results.length },
+            output: `Memories at ${[domain, topic, subtopic].filter(Boolean).join("/")}:\n\n${list}`,
+          };
+        }
+
+        return {
+          title: "Unknown Action",
+          metadata: { action },
+          output: `Unknown browse action: ${action}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
+          return {
+            title: "Memory Unavailable",
+            metadata: { error: "connection_failed" },
+            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+          };
+        }
+        return {
+          title: "Memory Browse Error",
+          metadata: { error: errorMsg },
+          output: `Failed to browse memories: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
+// Memory Agentic Search Tool
+// =============================================================================
+
+const MemoryAgenticSearchParams = z.object({
+  domain: z.string().describe("Domain to search within"),
+  topic: z.string().optional().describe("Topic filter"),
+  subtopic: z.string().optional().describe("Subtopic filter"),
+  query: z.string().optional().describe("Optional semantic query within filtered set"),
+  kind: z.union([
+    z.enum(["curated", "auto", "agent"]),
+    z.array(z.enum(["curated", "auto", "agent"])),
+  ]).optional().describe("Filter by kind"),
+  priority: z.union([
+    z.enum(["high", "normal", "low"]),
+    z.array(z.enum(["high", "normal", "low"])),
+  ]).optional().describe("Filter by priority"),
+  bookmarked: z.boolean().optional().describe("Filter bookmarked only"),
+  memoryType: z.enum(["fact", "reasoning"]).optional().describe("Filter by memory type"),
+  limit: z.number().optional().describe("Max results (default 20)"),
+});
+
+export const memoryAgenticSearchTool: ToolDefinition = {
+  id: "zee:memory-agentic-search",
+  category: "domain",
+  init: async () => ({
+    description: `Filter-first memory search. Use when you know the domain/topic and want structured retrieval.
+
+Unlike zee:memory-search (pure semantic), this filters by domain/topic first, then optionally applies semantic search within the filtered set. Use when:
+- You know the domain (e.g., "architecture")
+- You want all entries at a location, not just semantically similar ones
+- You want to filter by kind, priority, or memoryType
+
+Examples:
+- All auth memories: { domain: "architecture", topic: "auth" }
+- Semantic within domain: { domain: "architecture", query: "authentication flow" }
+- Curated only: { domain: "work", kind: "curated", bookmarked: true }
+- Reasoning traces: { domain: "architecture", memoryType: "reasoning" }`,
+    parameters: MemoryAgenticSearchParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const { domain, topic, subtopic, query, kind, priority, bookmarked, memoryType, limit } = args;
+
+      ctx.metadata({ title: `Agentic Search: ${domain}${topic ? "/" + topic : ""}` });
+
+      try {
+        const store = getMemory();
+        const results = await store.agenticSearch({
+          domain,
+          topic,
+          subtopic,
+          query,
+          kind: kind as any,
+          priority: priority as any,
+          bookmarked,
+          memoryType: memoryType as any,
+          limit,
+        });
+
+        if (results.length === 0) {
+          return {
+            title: "No Results",
+            metadata: { domain, topic, subtopic, query, count: 0 },
+            output: `No memories found matching filters.`,
+          };
+        }
+
+        const list = results.map((r, i) => {
+          const e = r.entry;
+          const preview = e.content.substring(0, 150);
+          const ellipsis = e.content.length > 150 ? "..." : "";
+          const score = r.score < 1.0 ? ` (${(r.score * 100).toFixed(0)}% match)` : "";
+          const ver = e.version && e.version > 1 ? ` v${e.version}` : "";
+          const date = new Date(e.createdAt).toLocaleDateString();
+          return `${i + 1}. [${e.category}${ver}]${score} (${date})
+   "${preview}${ellipsis}"
+   ID: ${e.id}`;
+        }).join("\n\n");
+
+        return {
+          title: `${results.length} Results`,
+          metadata: { domain, topic, subtopic, query, count: results.length },
+          output: `Found ${results.length} memories:\n\n${list}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
+          return {
+            title: "Memory Unavailable",
+            metadata: { error: "connection_failed" },
+            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+          };
+        }
+        return {
+          title: "Agentic Search Error",
+          metadata: { error: errorMsg },
+          output: `Search failed: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
+// Memory Version Tool
+// =============================================================================
+
+const MemoryVersionParams = z.object({
+  action: z.enum(["history", "rollback"])
+    .describe("Version action"),
+  memoryId: z.string()
+    .describe("Memory ID (stable across versions)"),
+  targetVersion: z.number().optional()
+    .describe("Target version number for rollback"),
+});
+
+export const memoryVersionTool: ToolDefinition = {
+  id: "zee:memory-version",
+  category: "domain",
+  init: async () => ({
+    description: `View version history or rollback a memory to a previous version.
+
+Actions:
+- history: Show all versions of a memory
+- rollback: Revert to a specific version (marks newer versions as superseded)
+
+Examples:
+- { action: "history", memoryId: "abc-123" }
+- { action: "rollback", memoryId: "abc-123", targetVersion: 1 }`,
+    parameters: MemoryVersionParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const { action, memoryId, targetVersion } = args;
+
+      ctx.metadata({ title: `Memory Version: ${action}` });
+
+      try {
+        const store = getMemory();
+
+        if (action === "history") {
+          const history = await store.getMemoryHistory(memoryId);
+          if (history.length === 0) {
+            return {
+              title: "No History",
+              metadata: { action, memoryId, count: 0 },
+              output: `No versions found for memoryId: ${memoryId}`,
+            };
+          }
+
+          const list = history.map((e) => {
+            const status = e.superseded ? "[superseded]" : "[current]";
+            const date = new Date(e.createdAt).toLocaleString();
+            const preview = e.content.substring(0, 100);
+            const ellipsis = e.content.length > 100 ? "..." : "";
+            return `v${e.version ?? 1} ${status} (${date})
+   "${preview}${ellipsis}"
+   ID: ${e.id}`;
+          }).join("\n\n");
+
+          return {
+            title: `${history.length} Versions`,
+            metadata: { action, memoryId, count: history.length },
+            output: `Version history for ${memoryId}:\n\n${list}`,
+          };
+        }
+
+        if (action === "rollback") {
+          if (targetVersion === undefined) {
+            return {
+              title: "Missing Target",
+              metadata: { action, memoryId, error: "missing_target" },
+              output: "Provide 'targetVersion' for rollback.",
+            };
+          }
+
+          const result = await store.rollbackMemory(memoryId, targetVersion);
+          if (!result) {
+            return {
+              title: "Rollback Failed",
+              metadata: { action, memoryId, targetVersion },
+              output: `Could not rollback. Either memoryId "${memoryId}" not found or version ${targetVersion} does not exist.`,
+            };
+          }
+
+          return {
+            title: `Rolled Back to v${targetVersion}`,
+            metadata: { action, memoryId, targetVersion, restoredId: result.id },
+            output: `Memory ${memoryId} rolled back to version ${targetVersion}.
+
+Current content: "${result.content.substring(0, 150)}${result.content.length > 150 ? "..." : ""}"`,
+          };
+        }
+
+        return {
+          title: "Unknown Action",
+          metadata: { action },
+          output: `Unknown version action: ${action}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
+          return {
+            title: "Memory Unavailable",
+            metadata: { error: "connection_failed" },
+            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+          };
+        }
+        return {
+          title: "Version Error",
+          metadata: { error: errorMsg },
+          output: `Version operation failed: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
 // Exports
 // =============================================================================
 
 export const ZEE_TOOLS = [
   memoryStoreTool,
   memorySearchTool,
+  memoryBrowseTool,
+  memoryAgenticSearchTool,
+  memoryVersionTool,
   messagingTool,
   notificationTool,
   calendarTool,

@@ -41,6 +41,66 @@ export type DeleteProfileResult = {
 
 const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 
+export type PersonaProfileSpec = {
+  name: string;
+  cdpPort: number;
+  color: string;
+  dataDir: string;
+};
+
+const PERSONA_PROFILES: Record<string, PersonaProfileSpec> = {
+  zee: { name: "zee", cdpPort: 18800, color: "#FF4500", dataDir: "~/.zee/browser/profiles/zee/" },
+  stanley: { name: "stanley", cdpPort: 18801, color: "#0066CC", dataDir: "~/.zee/browser/profiles/stanley/" },
+  johny: { name: "johny", cdpPort: 18802, color: "#00AA00", dataDir: "~/.zee/browser/profiles/johny/" },
+};
+
+/**
+ * Ensure that per-persona browser profiles exist in the configuration.
+ * Creates missing profiles with fixed CDP ports and colors. Existing
+ * profiles with the same name are left untouched.
+ */
+export async function ensurePersonaProfiles(ctx: BrowserRouteContext): Promise<string[]> {
+  const created: string[] = [];
+  for (const [persona, spec] of Object.entries(PERSONA_PROFILES)) {
+    const state = ctx.state();
+    if (persona in state.resolved.profiles) continue;
+
+    const cfg = loadConfig();
+    const rawProfiles = cfg.browser?.profiles ?? {};
+    if (persona in rawProfiles) continue;
+
+    const profileConfig: BrowserProfileConfig = {
+      cdpPort: spec.cdpPort,
+      color: spec.color,
+    };
+
+    const nextConfig: ZeeConfig = {
+      ...cfg,
+      browser: {
+        ...cfg.browser,
+        profiles: {
+          ...rawProfiles,
+          [persona]: profileConfig,
+        },
+      },
+    };
+
+    await writeConfigFile(nextConfig);
+    state.resolved.profiles[persona] = profileConfig;
+    created.push(persona);
+  }
+  return created;
+}
+
+/**
+ * Resolve the persona profile name for a given persona context.
+ * Falls back to the default profile if the persona has no dedicated profile.
+ */
+export function resolvePersonaProfile(persona?: string | null): string {
+  if (persona && persona in PERSONA_PROFILES) return persona;
+  return DEFAULT_BROWSER_DEFAULT_PROFILE_NAME;
+}
+
 export function createBrowserProfilesService(ctx: BrowserRouteContext) {
   const listProfiles = async (): Promise<ProfileStatus[]> => {
     return await ctx.listProfiles();

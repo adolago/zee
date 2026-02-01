@@ -365,24 +365,28 @@ export namespace ProviderTransform {
               thinking: {
                 type: "enabled",
                 budget_tokens: THINKING_BUDGETS.low,
+                clear_thinking: false,
               },
             },
             medium: {
               thinking: {
                 type: "enabled",
                 budget_tokens: THINKING_BUDGETS.medium,
+                clear_thinking: false,
               },
             },
             high: {
               thinking: {
                 type: "enabled",
                 budget_tokens: THINKING_BUDGETS.high,
+                clear_thinking: false,
               },
             },
             max: {
               thinking: {
                 type: "enabled",
                 budget_tokens: THINKING_BUDGETS.max,
+                clear_thinking: false,
               },
             },
           }
@@ -391,6 +395,9 @@ export namespace ProviderTransform {
         // Reasoning is controlled by using the "-thinking" model variant (e.g., kimi-k2.5-thinking).
         // Return empty variants to avoid sending unsupported parameters.
         if (model.providerID === "kimi-for-coding") {
+          return {}
+        }
+        if (model.providerID === "minimax") {
           return {}
         }
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
@@ -548,7 +555,7 @@ export namespace ProviderTransform {
           }
         }
         return Object.fromEntries(
-          ["low", "medium", "high"].map((effort) => [
+          ["low", "high"].map((effort) => [
             effort,
             {
               includeThoughts: true,
@@ -617,12 +624,12 @@ export namespace ProviderTransform {
     // Enable thinking mode for Z.AI/ZhipuAI models
     // Use .includes() to match provider IDs like "zai-coding-plan"
     if (
-      input.model.providerID.includes("zai") &&
+      (input.model.providerID.includes("zai") || input.model.providerID === "zhipuai") &&
       input.model.api.npm === "@ai-sdk/openai-compatible"
     ) {
       result["thinking"] = {
         type: "enabled",
-        budget_tokens: THINKING_BUDGETS.medium,
+        clear_thinking: false,
       }
     }
 
@@ -636,7 +643,6 @@ export namespace ProviderTransform {
       }
       if (input.model.api.id.includes("gemini-3")) {
         result["thinkingConfig"]["thinkingLevel"] = "high"
-        result["thinkingConfig"]["thinkingBudget"] = THINKING_BUDGETS.medium
       }
     }
 

@@ -50,7 +50,23 @@ const MemoryEntrySchema = z.object({
   updatedAt: z.number().optional(),
   ttl: z.number().optional(),
   namespace: z.string().optional(),
+  // Enhanced fields
+  domain: z.string().optional(),
+  topic: z.string().optional(),
+  subtopic: z.string().optional(),
+  memoryId: z.string().optional(),
+  version: z.number().optional(),
+  parentVersion: z.number().optional(),
+  superseded: z.boolean().optional(),
+  kind: z.enum(["curated", "auto", "agent"]).optional(),
+  priority: z.enum(["high", "normal", "low"]).optional(),
+  bookmarked: z.boolean().optional(),
+  memoryType: z.enum(["fact", "reasoning"]).optional(),
 })
+
+const MemoryKindSchema = z.enum(["curated", "auto", "agent"])
+const MemoryPrioritySchema = z.enum(["high", "normal", "low"])
+const MemoryMemoryTypeSchema = z.enum(["fact", "reasoning"])
 
 const MemoryInputSchema = z.object({
   category: MemoryCategorySchema,
@@ -59,6 +75,18 @@ const MemoryInputSchema = z.object({
   metadata: MemoryMetadataSchema.optional(),
   ttl: z.number().optional(),
   namespace: z.string().optional(),
+  // Context Tree
+  domain: z.string().optional(),
+  topic: z.string().optional(),
+  subtopic: z.string().optional(),
+  // Version Control
+  memoryId: z.string().optional(),
+  // Context Composer
+  kind: MemoryKindSchema.optional(),
+  priority: MemoryPrioritySchema.optional(),
+  bookmarked: z.boolean().optional(),
+  // Dual Memory
+  memoryType: MemoryMemoryTypeSchema.optional(),
 })
 
 const MemorySearchParamsSchema = z.object({
@@ -527,6 +555,262 @@ export const MemoryRoute = new Hono()
           available: false,
           error,
         })
+      }
+    }
+  )
+
+  // Agentic search (filter-first retrieval)
+  .post(
+    "/memory/agentic-search",
+    describeRoute({
+      summary: "Agentic memory search",
+      description: "Filter-first memory search with optional semantic refinement.",
+      operationId: "memory.agenticSearch",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "Search results",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(MemorySearchResultSchema)),
+            },
+          },
+        },
+        ...errors(400, 500),
+      },
+    }),
+    validator(
+      "json",
+      z.object({
+        domain: z.string(),
+        topic: z.string().optional(),
+        subtopic: z.string().optional(),
+        query: z.string().optional(),
+        currentOnly: z.boolean().optional(),
+        kind: z.union([MemoryKindSchema, z.array(MemoryKindSchema)]).optional(),
+        priority: z.union([MemoryPrioritySchema, z.array(MemoryPrioritySchema)]).optional(),
+        bookmarked: z.boolean().optional(),
+        memoryType: MemoryMemoryTypeSchema.optional(),
+        limit: z.number().min(1).max(200).optional(),
+        threshold: z.number().min(0).max(1).optional(),
+      })
+    ),
+    async (c) => {
+      try {
+        const params = c.req.valid("json")
+        const memory = await getMemoryService()
+        const results = await memory.agenticSearch(params)
+        return c.json(results)
+      } catch (err) {
+        log.error("Agentic search failed", { error: err })
+        return c.json({ error: "Agentic search failed" }, 500)
+      }
+    }
+  )
+
+  // Context tree: list domains
+  .get(
+    "/memory/tree/domains",
+    describeRoute({
+      summary: "List memory domains",
+      description: "List all top-level domains in the context tree.",
+      operationId: "memory.tree.domains",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "List of domains",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(z.object({ domain: z.string(), updatedAt: z.number() }))),
+            },
+          },
+        },
+        ...errors(500),
+      },
+    }),
+    async (c) => {
+      try {
+        const memory = await getMemoryService()
+        const domains = await memory.listDomains()
+        return c.json(domains)
+      } catch (err) {
+        log.error("List domains failed", { error: err })
+        return c.json({ error: "Failed to list domains" }, 500)
+      }
+    }
+  )
+
+  // Context tree: list topics
+  .get(
+    "/memory/tree/topics/:domain",
+    describeRoute({
+      summary: "List memory topics",
+      description: "List topics within a domain.",
+      operationId: "memory.tree.topics",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "List of topics",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(z.object({ topic: z.string(), updatedAt: z.number() }))),
+            },
+          },
+        },
+        ...errors(500),
+      },
+    }),
+    validator("param", z.object({ domain: z.string() })),
+    async (c) => {
+      try {
+        const { domain } = c.req.valid("param")
+        const memory = await getMemoryService()
+        const topics = await memory.listTopics(domain)
+        return c.json(topics)
+      } catch (err) {
+        log.error("List topics failed", { error: err })
+        return c.json({ error: "Failed to list topics" }, 500)
+      }
+    }
+  )
+
+  // Context tree: list subtopics
+  .get(
+    "/memory/tree/subtopics/:domain/:topic",
+    describeRoute({
+      summary: "List memory subtopics",
+      description: "List subtopics within a domain/topic.",
+      operationId: "memory.tree.subtopics",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "List of subtopics",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(z.object({ subtopic: z.string(), updatedAt: z.number() }))),
+            },
+          },
+        },
+        ...errors(500),
+      },
+    }),
+    validator("param", z.object({ domain: z.string(), topic: z.string() })),
+    async (c) => {
+      try {
+        const { domain, topic } = c.req.valid("param")
+        const memory = await getMemoryService()
+        const subtopics = await memory.listSubtopics(domain, topic)
+        return c.json(subtopics)
+      } catch (err) {
+        log.error("List subtopics failed", { error: err })
+        return c.json({ error: "Failed to list subtopics" }, 500)
+      }
+    }
+  )
+
+  // Version history
+  .get(
+    "/memory/version/:memoryId",
+    describeRoute({
+      summary: "Get memory version history",
+      description: "Get all versions of a memory by its stable memoryId.",
+      operationId: "memory.version.history",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "Version history",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(MemoryEntrySchema)),
+            },
+          },
+        },
+        ...errors(500),
+      },
+    }),
+    validator("param", z.object({ memoryId: z.string() })),
+    async (c) => {
+      try {
+        const { memoryId } = c.req.valid("param")
+        const memory = await getMemoryService()
+        const history = await memory.getMemoryHistory(memoryId)
+        return c.json(history)
+      } catch (err) {
+        log.error("Version history failed", { error: err })
+        return c.json({ error: "Failed to get version history" }, 500)
+      }
+    }
+  )
+
+  // Version rollback
+  .post(
+    "/memory/version/:memoryId/rollback",
+    describeRoute({
+      summary: "Rollback memory version",
+      description: "Rollback a memory to a specific version.",
+      operationId: "memory.version.rollback",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "Rollback result",
+          content: {
+            "application/json": {
+              schema: resolver(MemoryEntrySchema.nullable()),
+            },
+          },
+        },
+        ...errors(400, 500),
+      },
+    }),
+    validator("param", z.object({ memoryId: z.string() })),
+    validator("json", z.object({ targetVersion: z.number().min(1) })),
+    async (c) => {
+      try {
+        const { memoryId } = c.req.valid("param")
+        const { targetVersion } = c.req.valid("json")
+        const memory = await getMemoryService()
+        const result = await memory.rollbackMemory(memoryId, targetVersion)
+        if (!result) {
+          return c.json({ error: "Memory or version not found" }, 404)
+        }
+        return c.json(result)
+      } catch (err) {
+        log.error("Version rollback failed", { error: err })
+        return c.json({ error: "Failed to rollback version" }, 500)
+      }
+    }
+  )
+
+  // Curated context
+  .get(
+    "/memory/curated",
+    describeRoute({
+      summary: "Get curated context",
+      description: "Get bookmarked and high-priority memories for context injection.",
+      operationId: "memory.curated",
+      tags: ["Memory"],
+      responses: {
+        200: {
+          description: "Curated memories",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(MemoryEntrySchema)),
+            },
+          },
+        },
+        ...errors(500),
+      },
+    }),
+    async (c) => {
+      try {
+        const memory = await getMemoryService()
+        const limit = parseInt(c.req.query("limit") ?? "50", 10)
+        const namespace = c.req.query("namespace") || undefined
+        const results = await memory.getCuratedContext({ limit, namespace })
+        return c.json(results)
+      } catch (err) {
+        log.error("Curated context failed", { error: err })
+        return c.json({ error: "Failed to get curated context" }, 500)
       }
     }
   )
