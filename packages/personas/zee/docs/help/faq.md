@@ -67,7 +67,6 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Cron or reminders do not fire. What should I check?](#cron-or-reminders-do-not-fire-what-should-i-check)
   - [How do I install skills on Linux?](#how-do-i-install-skills-on-linux)
   - [Can Zee run tasks on a schedule or continuously in the background?](#can-zee-run-tasks-on-a-schedule-or-continuously-in-the-background)
-  - [Do you have a Notion or HeyGen integration?](#do-you-have-a-notion-or-heygen-integration)
   - [How do I install the Chrome extension for browser takeover?](#how-do-i-install-the-chrome-extension-for-browser-takeover)
 - [Sandboxing and memory](#sandboxing-and-memory)
   - [Is there a dedicated sandboxing doc?](#is-there-a-dedicated-sandboxing-doc)
@@ -950,30 +949,6 @@ Yes. Use the Gateway scheduler:
 
 Docs: [Cron jobs](/automation/cron-jobs), [Cron vs Heartbeat](/automation/cron-vs-heartbeat),
 [Heartbeat](/gateway/heartbeat).
-
-### Do you have a Notion or HeyGen integration
-
-Not built‑in today.
-
-Options:
-- **Custom skill / plugin:** best for reliable API access (Notion/HeyGen both have APIs).
-- **Browser automation:** works without code but is slower and more fragile.
-
-If you want to keep context per client (agency workflows), a simple pattern is:
-- One Notion page per client (context + preferences + active work).
-- Ask the agent to fetch that page at the start of a session.
-
-If you want a native integration, open a feature request or build a skill
-targeting those APIs.
-
-Install skills:
-
-```bash
-zeehub install <skill-slug>
-zeehub update --all
-```
-
-ZeeHub installs into `./skills` under your current directory (or falls back to your configured Zee workspace); Zee treats that as `<workspace>/skills` on the next session. For shared skills across agents, place them in `~/.zee/skills/<name>/SKILL.md`. Some skills expect binaries installed via Homebrew; on Linux that means Linuxbrew (see the Homebrew Linux FAQ entry above). See [Skills](/tools/skills) and [ZeeHub](/tools/zeehub).
 
 ### How do I install the Chrome extension for browser takeover
 

@@ -280,7 +280,6 @@ CLAUDE.md                                      [Symlink to AGENTS]
 
 ### HIVE 26: Zee Gateway Skills (packages/personas/zee/skills/)
 ```
-packages/personas/zee/skills/1password/SKILL.md
 packages/personas/zee/skills/bird/SKILL.md
 packages/personas/zee/skills/blogwatcher/SKILL.md
 packages/personas/zee/skills/blucli/SKILL.md
@@ -298,7 +297,6 @@ packages/personas/zee/skills/local-places/SKILL.md
 packages/personas/zee/skills/mcporter/SKILL.md
 packages/personas/zee/skills/nano-banana-pro/SKILL.md
 packages/personas/zee/skills/nano-pdf/SKILL.md
-packages/personas/zee/skills/notion/SKILL.md
 packages/personas/zee/skills/obsidian/SKILL.md
 packages/personas/zee/skills/openai-image-gen/SKILL.md
 packages/personas/zee/skills/openai-whisper-api/SKILL.md
@@ -315,7 +313,6 @@ packages/personas/zee/skills/sonoscli/SKILL.md
 packages/personas/zee/skills/spotify-player/SKILL.md
 packages/personas/zee/skills/summarize/SKILL.md
 packages/personas/zee/skills/tmux/SKILL.md
-packages/personas/zee/skills/trello/SKILL.md
 packages/personas/zee/skills/video-frames/SKILL.md
 packages/personas/zee/skills/voice-call/SKILL.md
 packages/personas/zee/skills/wacli/SKILL.md
