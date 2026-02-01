@@ -393,27 +393,60 @@ export namespace Thread {
   }
 
   /**
+   * Normalize a file path for consistent matching
+   */
+  function normalizePath(p: string): string {
+    return p.trim().replace(/\\/g, "/")
+  }
+
+  /**
    * Extract file paths touched in messages (edits, reads, etc.)
+   * Looks at tool inputs and outputs for common file path patterns.
    */
   function extractFilesTouched(messages: MessageV2.WithParts[]): string[] {
     const files = new Set<string>()
+    const MAX_OUTPUT_SCAN = 50_000
 
     for (const msg of messages) {
       for (const part of msg.parts) {
         // Check tool calls for file operations
-        if (part.type === "tool-invocation" && part.state.status !== "pending") {
-          const input = part.state.input
-          if (typeof input === "object" && input !== null) {
-            // Common patterns for file paths in tool inputs
-            const possiblePaths = [
-              (input as { path?: string }).path,
-              (input as { file?: string }).file,
-              (input as { filePath?: string }).filePath,
-              (input as { filename?: string }).filename,
-            ]
-            for (const p of possiblePaths) {
-              if (typeof p === "string" && p.length > 0) {
-                files.add(p)
+        if (part.type === "tool" && part.state.status !== "pending") {
+          const input = part.state.input as Record<string, unknown> | undefined
+          if (input && typeof input === "object") {
+            // Common single path keys
+            const singlePathKeys = ["path", "file", "filePath", "filename", "absolutePath"]
+            for (const key of singlePathKeys) {
+              const p = input[key]
+              if (typeof p === "string" && p.length > 0 && p.length < 500) {
+                files.add(normalizePath(p))
+              }
+            }
+
+            // Common array path keys
+            const arrayPathKeys = ["paths", "files", "filePaths"]
+            for (const key of arrayPathKeys) {
+              const arr = input[key]
+              if (Array.isArray(arr)) {
+                for (const item of arr) {
+                  if (typeof item === "string" && item.length > 0 && item.length < 500) {
+                    files.add(normalizePath(item))
+                  }
+                }
+              }
+            }
+          }
+
+          // Also scan output for file-like paths (e.g., glob results)
+          if (part.state.status === "completed" && typeof part.state.output === "string") {
+            const output = part.state.output.length > MAX_OUTPUT_SCAN
+              ? part.state.output.slice(0, MAX_OUTPUT_SCAN)
+              : part.state.output
+            // Look for lines that appear to be file paths
+            for (const line of output.split("\n")) {
+              const trimmed = line.trim()
+              // Heuristic: contains path separator and looks like a path
+              if ((trimmed.includes("/") || trimmed.includes("\\")) && trimmed.length < 300 && !trimmed.includes(" ")) {
+                files.add(normalizePath(trimmed))
               }
             }
           }
@@ -425,12 +458,15 @@ export namespace Thread {
   }
 
   /**
-   * Find message snippets containing keyword
+   * Find message snippets containing keyword.
+   * Finds multiple occurrences across messages up to maxSnippets.
    */
   function findSnippets(messages: MessageV2.WithParts[], keyword: string): string[] {
     const snippets: string[] = []
     const maxSnippets = 5
     const snippetLength = 100
+    const half = Math.floor(snippetLength / 2)
+    const maxScan = 50_000
 
     for (const msg of messages) {
       if (snippets.length >= maxSnippets) break
@@ -441,17 +477,28 @@ export namespace Thread {
         let text = ""
         if (part.type === "text") {
           text = part.text
-        } else if (part.type === "tool-invocation" && part.state.status === "completed") {
+        } else if (part.type === "tool" && part.state.status === "completed") {
           text = typeof part.state.output === "string" ? part.state.output : ""
         }
 
+        if (!text) continue
+        // Limit scanning of very large outputs
+        if (text.length > maxScan) text = text.slice(0, maxScan)
+
         const lowerText = text.toLowerCase()
-        const index = lowerText.indexOf(keyword)
-        if (index !== -1) {
-          const start = Math.max(0, index - snippetLength / 2)
-          const end = Math.min(text.length, index + keyword.length + snippetLength / 2)
+        let fromIndex = 0
+
+        // Find all occurrences in this text
+        while (snippets.length < maxSnippets) {
+          const index = lowerText.indexOf(keyword, fromIndex)
+          if (index === -1) break
+
+          const start = Math.max(0, index - half)
+          const end = Math.min(text.length, index + keyword.length + half)
           const snippet = text.slice(start, end).trim()
           snippets.push(snippet.length < text.length ? `...${snippet}...` : snippet)
+
+          fromIndex = index + keyword.length
         }
       }
     }

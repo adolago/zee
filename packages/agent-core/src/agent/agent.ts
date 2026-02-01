@@ -15,9 +15,41 @@ import PROMPT_TITLE from "./prompt/title.txt"
 // NOTE: PROMPT_EXPLORE removed - explore agent replaced by Personas system
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
-// Import persona definitions for bootstrapping
-// Note: This crosses the package boundary from packages/agent-core to root src/
-import { PERSONAS, AGENT_CONFIGS } from "../../../../src/agent/personas"
+import { Log } from "../util/log"
+
+const log = Log.create({ service: "agent" })
+
+// Persona bootstrap cache (lazy loaded)
+let personaBootstrapCache: { PERSONAS: any; AGENT_CONFIGS: any } | null = null
+
+/**
+ * Load persona bootstrap data from src/agent/personas.
+ * Uses dynamic import to handle different build scenarios gracefully.
+ * Falls back to empty personas if load fails (allows agent-core to start without personas).
+ */
+async function loadPersonaBootstrap(): Promise<{ PERSONAS: any; AGENT_CONFIGS: any }> {
+  if (personaBootstrapCache) {
+    return personaBootstrapCache
+  }
+
+  try {
+    // Dynamic import to handle different build/runtime scenarios
+    const mod = await import("../../../../src/agent/personas")
+    if (!mod.PERSONAS || !mod.AGENT_CONFIGS) {
+      throw new Error("Missing exports PERSONAS or AGENT_CONFIGS")
+    }
+    personaBootstrapCache = { PERSONAS: mod.PERSONAS, AGENT_CONFIGS: mod.AGENT_CONFIGS }
+    log.debug("Loaded persona bootstrap", { personas: Object.keys(mod.PERSONAS) })
+    return personaBootstrapCache
+  } catch (e) {
+    log.warn("Failed to load persona bootstrap, personas will not have custom configs", {
+      error: e instanceof Error ? e.message : String(e),
+    })
+    // Return empty to allow graceful degradation
+    personaBootstrapCache = { PERSONAS: {}, AGENT_CONFIGS: {} }
+    return personaBootstrapCache
+  }
+}
 
 export namespace Agent {
   export const Info = z
@@ -175,9 +207,14 @@ export namespace Agent {
     // Bootstrap personas from src/agent/personas.ts
     // This provides the base layer with systemPromptAdditions, knowledge, mcpServers
     // Config file settings will be merged on top
-    for (const [personaId, personaConfig] of Object.entries(PERSONAS)) {
-      const agentConfig = AGENT_CONFIGS[personaId as keyof typeof AGENT_CONFIGS]
-      if (!agentConfig) continue
+    const { PERSONAS, AGENT_CONFIGS } = await loadPersonaBootstrap()
+
+    for (const [personaId, personaConfig] of Object.entries(PERSONAS) as [string, any][]) {
+      const agentConfig = AGENT_CONFIGS[personaId] as any
+      if (!agentConfig) {
+        log.warn("Persona missing agent config, skipping", { personaId })
+        continue
+      }
 
       result[personaId] = {
         name: personaId,

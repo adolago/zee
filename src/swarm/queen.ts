@@ -63,7 +63,12 @@ export class Queen extends EventEmitter {
       throw new Error(`Cannot spawn ${configs.length} workers, max is ${this.config.maxWorkers}`);
     }
 
+    // Reset state for fresh run (in case Queen is reused)
+    this.workers.clear();
+    this.panes.clear();
+
     this.startedAt = new Date();
+    this.completedAt = undefined;
     this.emit("start", { swarmId: this.id, workerCount: configs.length });
 
     // Create WezTerm panes if enabled
@@ -99,9 +104,10 @@ export class Queen extends EventEmitter {
     // Start all workers in parallel
     await Promise.all(workers.map((w) => w.start()));
 
-    // Set up timeout
+    // Set up timeout with proper cleanup
+    let timeoutTimer: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => {
+      timeoutTimer = setTimeout(() => {
         reject(new Error(`Swarm timeout after ${this.config.timeout}ms`));
       }, this.config.timeout);
     });
@@ -113,9 +119,14 @@ export class Queen extends EventEmitter {
         timeoutPromise,
       ]);
     } catch (err) {
-      // Timeout - abort all workers
+      // Timeout - abort all workers and close panes immediately
       await this.abortAll();
+      if (this.config.panes && this.panes.size > 0) {
+        await closeAllPanes(this.panes);
+      }
       throw err;
+    } finally {
+      if (timeoutTimer) clearTimeout(timeoutTimer);
     }
 
     this.completedAt = new Date();
@@ -197,8 +208,9 @@ export class Queen extends EventEmitter {
   }
 
   /**
-   * Run consensus vote among workers
-   * Each worker is asked to vote yes/no on a proposal
+   * Run consensus vote among workers.
+   * Each completed worker's output is considered as context for the vote.
+   * Spawns new voter agents to decide on the proposal.
    */
   async consensus(
     proposal: string,
@@ -207,17 +219,8 @@ export class Queen extends EventEmitter {
     const threshold = config?.threshold ?? 0.6;
     const timeout = config?.timeout ?? 30000;
 
-    const votePrompt = `
-CONSENSUS VOTE REQUIRED
-
-Proposal: ${proposal}
-
-You must vote YES or NO on this proposal.
-Respond with exactly one word: YES or NO
-
-Your vote:`.trim();
-
-    const voters = Array.from(this.workers.values()).filter((w) => !w.isDone());
+    // Vote among all workers (not just non-done ones, as spawn() completes them all)
+    const voters = Array.from(this.workers.values());
     if (voters.length === 0) {
       return {
         approved: false,
@@ -228,9 +231,24 @@ Your vote:`.trim();
     }
 
     const votes = new Map<string, boolean>();
-    
+
     // Collect votes with timeout
     const votePromises = voters.map(async (worker) => {
+      const workerOutput = worker.getState().output.join("").slice(0, 2000);
+
+      const votePrompt = `
+CONSENSUS VOTE REQUIRED
+
+Proposal: ${proposal}
+
+Context from worker "${worker.name}":
+${workerOutput}
+
+Based on the context above, vote YES or NO on the proposal.
+Respond with exactly one word: YES or NO
+
+Your vote:`.trim();
+
       try {
         const queen = new Queen({ maxWorkers: 1, panes: false, timeout });
         const result = await queen.spawnOne({
@@ -239,9 +257,10 @@ Your vote:`.trim();
           prompt: votePrompt,
           persona: "zee",
         });
-        
-        const output = result.output.join("").toLowerCase();
-        const vote = output.includes("yes");
+
+        const output = result.output.join("").trim().toLowerCase();
+        // Strict match to avoid false positives like "yesterday"
+        const vote = /^yes\b/.test(output);
         votes.set(worker.id, vote);
       } catch {
         votes.set(worker.id, false); // Timeout = no vote
@@ -251,7 +270,7 @@ Your vote:`.trim();
     await Promise.all(votePromises);
 
     const yesCount = Array.from(votes.values()).filter((v) => v).length;
-    const agreement = yesCount / votes.size;
+    const agreement = votes.size > 0 ? yesCount / votes.size : 0;
     const approved = agreement >= threshold;
 
     this.emit("consensus", { proposal, approved, agreement, votes });

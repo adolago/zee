@@ -11,8 +11,8 @@
  * Only Johny uses this for development tasks.
  */
 
-import { Queen, WorkerConfig } from "./queen";
-import { SwarmResult } from "./types";
+import { Queen } from "./queen";
+import { WorkerConfig, SwarmResult } from "./types";
 
 export type SparcPhase = "specification" | "pseudocode" | "architecture" | "refinement" | "completion";
 

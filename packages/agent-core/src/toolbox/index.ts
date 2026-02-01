@@ -34,7 +34,6 @@ import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import path from "path";
 import { z } from "zod";
-import { Flag } from "../flag/flag";
 import { Log } from "../util/log";
 import { Instance } from "../project/instance";
 
@@ -69,7 +68,7 @@ export function getToolboxDirs(): string[] {
   dirs.push(path.join(Instance.directory, ".agent-core", "tools"));
 
   // Environment variable (colon-separated)
-  const envToolbox = Flag.AGENT_CORE_TOOLBOX ?? process.env.AGENT_CORE_TOOLBOX;
+  const envToolbox = process.env.AGENT_CORE_TOOLBOX;
   if (envToolbox) {
     dirs.push(...envToolbox.split(":").filter(Boolean));
   }
@@ -120,14 +119,20 @@ export async function discoverTools(): Promise<ToolboxTool[]> {
 
 /**
  * Get tool description by running with TOOLBOX_ACTION=describe
+ * Uses explicit timeout since spawn's timeout option is unreliable
  */
 async function describeTool(toolPath: string, source: string): Promise<ToolboxTool | null> {
   return new Promise((resolve) => {
     const proc = spawn(toolPath, [], {
       env: { ...process.env, TOOLBOX_ACTION: "describe" },
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 5000,
     });
+
+    // Explicit timeout - spawn's timeout option is unreliable
+    const timer = setTimeout(() => {
+      proc.kill("SIGKILL");
+      resolve(null);
+    }, 5000);
 
     let output = "";
     proc.stdout.on("data", (data) => {
@@ -135,6 +140,7 @@ async function describeTool(toolPath: string, source: string): Promise<ToolboxTo
     });
 
     proc.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) {
         resolve(null);
         return;
@@ -148,15 +154,26 @@ async function describeTool(toolPath: string, source: string): Promise<ToolboxTo
       }
     });
 
-    proc.on("error", () => resolve(null));
+    proc.on("error", () => {
+      clearTimeout(timer);
+      resolve(null);
+    });
   });
 }
 
 /**
- * Parse tool description YAML
+ * Parse tool description output.
+ * Supports a strict line-based format (not full YAML):
+ *   name: tool_name
+ *   description: what it does
+ *   parameters:
+ *     paramName: string (optional) - description
+ *     anotherParam: number - description with hyphens allowed
  */
 function parseToolDescription(output: string, toolPath: string, source: string): ToolboxTool {
-  const lines = output.split("\n");
+  // Normalize line endings
+  const lines = output.replace(/\r\n/g, "\n").split("\n");
+
   const tool: ToolboxTool = {
     name: path.basename(toolPath),
     description: "",
@@ -166,30 +183,72 @@ function parseToolDescription(output: string, toolPath: string, source: string):
   };
 
   let inParams = false;
+
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.startsWith("name:")) {
-      tool.name = trimmed.slice(5).trim();
-    } else if (trimmed.startsWith("description:")) {
-      tool.description = trimmed.slice(12).trim();
-    } else if (trimmed === "parameters:") {
-      inParams = true;
-    } else if (inParams && trimmed.includes(":")) {
-      // Parse parameter: "paramName: type (optional) - description"
-      const [paramPart, ...descParts] = trimmed.split("-");
-      const [paramName, typePart] = paramPart.split(":").map((s) => s.trim());
-      const typeMatch = typePart?.match(/^(string|number|boolean)(\s*\(optional\))?/i);
-      if (paramName && typeMatch) {
-        tool.parameters[paramName] = {
-          type: typeMatch[1].toLowerCase() as "string" | "number" | "boolean",
-          optional: !!typeMatch[2],
-          description: descParts.join("-").trim() || undefined,
-        };
+
+    if (!inParams) {
+      // Match name: value
+      const mName = trimmed.match(/^name:\s*(.+)\s*$/i);
+      if (mName) {
+        tool.name = mName[1].trim();
+        continue;
       }
+
+      // Match description: value
+      const mDesc = trimmed.match(/^description:\s*(.+)\s*$/i);
+      if (mDesc) {
+        tool.description = mDesc[1].trim();
+        continue;
+      }
+
+      // Enter parameters section
+      if (/^parameters:\s*$/i.test(trimmed)) {
+        inParams = true;
+      }
+      continue;
     }
+
+    // In parameters section - require indentation (2+ spaces)
+    // If indentation stops, exit parameters section
+    if (!/^\s{2,}\S/.test(line)) {
+      inParams = false;
+      continue;
+    }
+
+    // Parse parameter line with strict regex:
+    // "  paramName: string (optional) - description..."
+    // The description can contain hyphens after the first " - "
+    const m = line.match(
+      /^\s{2,}([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(string|number|boolean)\s*(\(\s*optional\s*\))?\s*(?:-\s*(.*))?\s*$/i
+    );
+    if (!m) continue;
+
+    const [, paramName, typeRaw, optRaw, descRaw] = m;
+    tool.parameters[paramName] = {
+      type: typeRaw.toLowerCase() as ToolboxParam["type"],
+      optional: Boolean(optRaw),
+      description: descRaw?.trim() || undefined,
+    };
   }
 
   return tool;
+}
+
+/**
+ * Format a value for toolbox parameter serialization.
+ * Handles strings with special characters, numbers, booleans, and objects.
+ */
+function formatToolboxValue(v: unknown): string {
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "string") {
+    // Quote strings containing special characters that could break parsing
+    if (/[:\n\r]|^\s|\s$/.test(v)) return JSON.stringify(v);
+    return v;
+  }
+  // Objects and arrays get JSON stringified
+  return JSON.stringify(v);
 }
 
 /**
@@ -203,8 +262,16 @@ export async function executeTool(
     const proc = spawn(tool.path, [], {
       env: { ...process.env, TOOLBOX_ACTION: "execute" },
       stdio: ["pipe", "pipe", "pipe"],
-      timeout: 60000,
     });
+
+    // Explicit timeout - spawn's timeout option is unreliable
+    const timer = setTimeout(() => {
+      proc.kill("SIGKILL");
+      resolve({
+        output: "[ERROR] Tool execution timed out after 60 seconds",
+        exitCode: 124,
+      });
+    }, 60000);
 
     let output = "";
     let stderr = "";
@@ -217,14 +284,15 @@ export async function executeTool(
       stderr += data.toString();
     });
 
-    // Send parameters as simple key: value lines
+    // Send parameters as key: value lines with proper value formatting
     const input = Object.entries(params)
-      .map(([k, v]) => `${k}: ${v}`)
+      .map(([k, v]) => `${k}: ${formatToolboxValue(v)}`)
       .join("\n");
     proc.stdin.write(input);
     proc.stdin.end();
 
     proc.on("close", (code) => {
+      clearTimeout(timer);
       resolve({
         output: output || stderr,
         exitCode: code ?? 0,
@@ -232,6 +300,7 @@ export async function executeTool(
     });
 
     proc.on("error", (err) => {
+      clearTimeout(timer);
       reject(err);
     });
   });

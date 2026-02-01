@@ -15,13 +15,18 @@ const log = Log.create({ service: "personas-bootstrap" })
 // Track initialized state
 let initialized = false
 
+// Hook unsubscribe functions for cleanup
+let hookUnsubscribers: Array<() => void> = []
+
 // Memory instance (lazy loaded to avoid import issues)
 let memoryPromise: Promise<any> | null = null
+let memoryLoadError: Error | null = null
 
 /**
  * Get the unified Memory instance (lazy load)
+ * Throws with actionable error message if memory is unavailable.
  */
-async function getMemoryInstance(): Promise<any | null> {
+async function getMemoryInstance(): Promise<any> {
   if (!memoryPromise) {
     memoryPromise = (async () => {
       try {
@@ -30,14 +35,48 @@ async function getMemoryInstance(): Promise<any | null> {
         const memoryModule = await import(memoryPath)
         return memoryModule.getMemory()
       } catch (e) {
-        log.debug("Unified Memory not available", {
-          error: e instanceof Error ? e.message : String(e),
+        memoryLoadError = e instanceof Error ? e : new Error(String(e))
+        log.error("Unified Memory load failed", {
+          error: memoryLoadError.message,
         })
         return null
       }
     })()
   }
-  return memoryPromise
+
+  const memory = await memoryPromise
+
+  if (!memory) {
+    const cause = memoryLoadError?.message ?? "unknown error"
+    throw new Error(
+      `Unified Memory is required but unavailable. ` +
+        `Ensure Qdrant is running (docker-compose up -d qdrant) or configure embedded mode. ` +
+        `Cause: ${cause}`
+    )
+  }
+
+  return memory
+}
+
+/**
+ * Wrap a hook handler with error logging and context.
+ * Re-throws the error after logging to maintain fail-fast behavior.
+ */
+function safeHookHandler<T>(
+  name: string,
+  fn: (payload: T) => Promise<void>
+): (payload: T) => Promise<void> {
+  return async (payload: T) => {
+    try {
+      await fn(payload)
+    } catch (e) {
+      log.error(`Persona hook "${name}" failed`, {
+        error: e instanceof Error ? e.message : String(e),
+        payload: JSON.stringify(payload).slice(0, 200),
+      })
+      throw e
+    }
+  }
 }
 
 /**
@@ -51,34 +90,33 @@ export async function initPersonas(): Promise<void> {
 
   log.info("Initializing persona hooks")
 
-  // Pre-initialize unified Memory - REQUIRED
+  // Pre-initialize unified Memory - REQUIRED (throws with actionable message if unavailable)
   const memory = await getMemoryInstance()
-  if (!memory) {
-    throw new Error("Unified Memory is required but unavailable. Ensure Qdrant is running or configure embedded mode.")
-  }
   log.info("Unified Memory connected for cross-session context")
 
   // Register session start hook for memory injection - persona always required
-  LifecycleHooks.on<LifecycleHooks.SessionLifecycle.StartPayload>(
+  const startUnsub = LifecycleHooks.on<LifecycleHooks.SessionLifecycle.StartPayload>(
     LifecycleHooks.SessionLifecycle.Start,
-    async (payload) => {
+    safeHookHandler("session.start", async (payload) => {
       if (!payload.persona) {
         throw new Error("Persona is required for all sessions")
       }
       await injectCrossSessionMemory(payload.sessionId, payload.persona)
-    },
+    }),
   )
+  hookUnsubscribers.push(startUnsub)
 
   // Register session restore hook for memory injection - persona always required
-  LifecycleHooks.on<LifecycleHooks.SessionLifecycle.RestorePayload>(
+  const restoreUnsub = LifecycleHooks.on<LifecycleHooks.SessionLifecycle.RestorePayload>(
     LifecycleHooks.SessionLifecycle.Restore,
-    async (payload) => {
+    safeHookHandler("session.restore", async (payload) => {
       if (!payload.persona) {
         throw new Error("Persona is required for all sessions")
       }
       await injectCrossSessionMemory(payload.sessionId, payload.persona)
-    },
+    }),
   )
+  hookUnsubscribers.push(restoreUnsub)
 
   // Try to initialize external persona hooks (fact extraction, etc.)
   // These are in src/personas/hooks/ which may not be available in all builds
@@ -197,10 +235,25 @@ async function storeSessionContext(sessionId: string, memories: string[]): Promi
 }
 
 /**
- * Cleanup persona hooks
+ * Cleanup persona hooks and reset state
  */
 export function cleanupPersonas(): void {
-  // Currently hooks clean up automatically via garbage collection
+  // Unsubscribe all registered hooks to prevent double-registration on re-init
+  for (const unsub of hookUnsubscribers) {
+    try {
+      unsub()
+    } catch (e) {
+      log.debug("Hook unsubscribe failed", {
+        error: e instanceof Error ? e.message : String(e),
+      })
+    }
+  }
+  hookUnsubscribers = []
+
+  // Reset memory promise to allow retry on re-init
+  memoryPromise = null
+  memoryLoadError = null
+
   initialized = false
   log.info("Personas cleanup complete")
 }

@@ -74,6 +74,13 @@ export class Worker extends EventEmitter {
 
     this.process.on("close", (code) => {
       this.completedAt = new Date();
+
+      // Preserve aborted status - don't overwrite with completed/failed
+      if (this.status === "aborted") {
+        this.emit("complete", this.createMessage("complete", this.output.join("")));
+        return;
+      }
+
       if (code === 0) {
         this.status = "completed";
         this.emit("complete", this.createMessage("complete", this.output.join("")));
@@ -95,20 +102,35 @@ export class Worker extends EventEmitter {
   }
 
   /**
-   * Abort the worker
+   * Abort the worker.
+   * Returns a promise that resolves when the process actually terminates.
    */
   async abort(): Promise<void> {
-    if (this.process && this.status === "running") {
-      this.status = "aborted";
-      this.process.kill("SIGTERM");
-      
-      // Force kill after 5s
-      setTimeout(() => {
-        if (this.process && !this.process.killed) {
-          this.process.kill("SIGKILL");
+    if (!this.process || this.status !== "running") {
+      return;
+    }
+
+    this.status = "aborted";
+    this.emit("status", this.createMessage("status", "aborted"));
+
+    const proc = this.process;
+
+    return new Promise<void>((resolve) => {
+      const onClose = () => {
+        clearTimeout(forceKillTimer);
+        resolve();
+      };
+
+      proc.once("close", onClose);
+      proc.kill("SIGTERM");
+
+      // Force kill after 5s if SIGTERM doesn't work
+      const forceKillTimer = setTimeout(() => {
+        if (!proc.killed) {
+          proc.kill("SIGKILL");
         }
       }, 5000);
-    }
+    });
   }
 
   /**
@@ -133,7 +155,8 @@ export class Worker extends EventEmitter {
   }
 
   /**
-   * Wait for worker to complete
+   * Wait for worker to complete.
+   * Resolves on complete, error, or abort.
    */
   async wait(): Promise<WorkerState> {
     if (this.isDone()) {
@@ -142,12 +165,30 @@ export class Worker extends EventEmitter {
 
     return new Promise((resolve) => {
       const handler = () => {
-        this.removeListener("complete", handler);
-        this.removeListener("error", handler);
+        cleanup();
         resolve(this.getState());
       };
+
+      const statusHandler = (msg: WorkerMessage) => {
+        if (msg.data === "aborted") {
+          handler();
+        }
+      };
+
+      const cleanup = () => {
+        this.removeListener("complete", handler);
+        this.removeListener("error", handler);
+        this.removeListener("status", statusHandler);
+        if (this.process) {
+          this.process.removeListener("close", handler);
+        }
+      };
+
       this.on("complete", handler);
       this.on("error", handler);
+      this.on("status", statusHandler);
+      // Also listen on process close as a fallback
+      this.process?.once("close", handler);
     });
   }
 
