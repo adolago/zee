@@ -27,9 +27,7 @@ import { HeartbeatRunner } from "../../heartbeat/runner"
 import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
 import { Config } from "../../config/config"
-import { Bus } from "../../bus"
-import { BusEvent } from "../../bus/bus-event"
-import z from "zod"
+import { GlobalBus } from "../../bus/global"
 
 const log = Log.create({ service: "always-on" })
 
@@ -297,8 +295,9 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
           })
         },
         onEvent: (evt) => {
-          const CronEvent = BusEvent.define("cron.event", z.any())
-          Bus.publish(CronEvent, evt).catch(() => {})
+          GlobalBus.emit("event", {
+            payload: { type: "cron.event", properties: evt },
+          })
         },
       }
       cronService = new CronService(cronDeps)

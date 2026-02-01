@@ -1,22 +1,12 @@
 // Heartbeat result delivery to TUI and messaging platforms.
 
 import { Log } from "../util/log"
-import { Bus } from "../bus"
-import { BusEvent } from "../bus/bus-event"
-import { z } from "zod"
+import { GlobalBus } from "../bus/global"
 
 const log = Log.create({ service: "heartbeat:delivery" })
 
-// Bus event for heartbeat delivery (TUI subscribes to this)
-export const HeartbeatDelivery = BusEvent.define(
-  "heartbeat.delivery",
-  z.object({
-    text: z.string(),
-    persona: z.string().optional(),
-    channel: z.string().optional(),
-    suppressMessaging: z.boolean().optional(),
-  }),
-)
+/** Event type emitted on GlobalBus for heartbeat delivery. */
+export const HEARTBEAT_DELIVERY_EVENT = "heartbeat.delivery" as const
 
 export type DeliveryTarget = {
   /** Base URL for the agent-core server. */
@@ -36,18 +26,13 @@ export async function deliverHeartbeatResult(
   text: string,
   target: DeliveryTarget,
 ): Promise<void> {
-  // Always emit Bus event for TUI display
-  try {
-    await Bus.publish(HeartbeatDelivery, {
-      text,
-      persona: target.persona,
-      channel: target.channel,
-    })
-  } catch (err) {
-    log.error("failed to publish heartbeat delivery event", {
-      error: err instanceof Error ? err.message : String(err),
-    })
-  }
+  // Emit on GlobalBus for TUI display (no Instance context required)
+  GlobalBus.emit("event", {
+    payload: {
+      type: HEARTBEAT_DELIVERY_EVENT,
+      properties: { text, persona: target.persona, channel: target.channel },
+    },
+  })
 
   // Deliver to messaging via gateway if channel is specified
   if (target.channel && target.serverUrl) {

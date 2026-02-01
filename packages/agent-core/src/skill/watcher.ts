@@ -3,21 +3,13 @@
 import chokidar from "chokidar"
 import path from "path"
 import { Log } from "../util/log"
-import { Bus } from "../bus"
-import { BusEvent } from "../bus/bus-event"
+import { GlobalBus } from "../bus/global"
 import { Global } from "../global"
-import { z } from "zod"
 
 const log = Log.create({ service: "skill:watcher" })
 
-// Bus event emitted when skills change
-export const SkillsChangeEvent = BusEvent.define(
-  "skill.change",
-  z.object({
-    reason: z.enum(["watch", "manual"]),
-    paths: z.array(z.string()).optional(),
-  }),
-)
+/** Event type emitted on GlobalBus when skills change. */
+export const SKILL_CHANGE_EVENT = "skill.change" as const
 
 let globalVersion = 0
 let watcher: ReturnType<typeof chokidar.watch> | null = null
@@ -36,7 +28,9 @@ export function getSkillsVersion(): number {
 export function bumpSkillsVersion(reason: "watch" | "manual" = "manual") {
   globalVersion = Date.now()
   log.info("skills version bumped", { version: globalVersion, reason })
-  Bus.publish(SkillsChangeEvent, { reason }).catch(() => {})
+  GlobalBus.emit("event", {
+    payload: { type: SKILL_CHANGE_EVENT, properties: { reason } },
+  })
 }
 
 export type SkillWatcherOptions = {

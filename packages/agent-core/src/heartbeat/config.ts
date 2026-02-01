@@ -68,7 +68,7 @@ export function isWithinActiveHours(config: HeartbeatConfig, now: Date = new Dat
     return true
   }
 
-  const { start, end } = config.activeHours
+  const { start, end, timezone } = config.activeHours
 
   const parseTime = (timeStr: string) => {
     const [h, m] = timeStr.split(":").map(Number)
@@ -77,7 +77,35 @@ export function isWithinActiveHours(config: HeartbeatConfig, now: Date = new Dat
 
   const startMinutes = parseTime(start)
   const endMinutes = parseTime(end)
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
+  // Extract wall-clock hour/minute in the configured timezone.
+  // Falls back to the daemon's local timezone if none is specified or if the
+  // timezone string is invalid (Intl throws RangeError for unknown timezones).
+  let nowH: number
+  let nowM: number
+  if (timezone) {
+    try {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        hour: "numeric",
+        minute: "numeric",
+        hour12: false,
+      })
+      const parts = fmt.formatToParts(now)
+      nowH = Number(parts.find((p) => p.type === "hour")!.value)
+      nowM = Number(parts.find((p) => p.type === "minute")!.value)
+      // Intl hour12:false can return 24 for midnight in some engines
+      if (nowH === 24) nowH = 0
+    } catch {
+      // Invalid timezone string -- fall back to local time
+      nowH = now.getHours()
+      nowM = now.getMinutes()
+    }
+  } else {
+    nowH = now.getHours()
+    nowM = now.getMinutes()
+  }
+  const nowMinutes = nowH * 60 + nowM
 
   if (startMinutes <= endMinutes) {
     return nowMinutes >= startMinutes && nowMinutes < endMinutes
