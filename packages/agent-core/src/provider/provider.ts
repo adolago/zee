@@ -41,20 +41,39 @@ export namespace Provider {
    * Use config blacklist for per-user filtering instead.
    */
   const MODEL_BLACKLIST: Record<string, string[]> = {
-    "kimi-for-coding": [
-      "kimi-k2-thinking",
+    anthropic: [
+      "claude-3-5-haiku",
+      "claude-3-5-haiku-latest",
+      "claude-3-7-sonnet-latest",
+      "claude-opus-4-0",
+      "claude-opus-4-1",
+      "claude-sonnet-4",
+      "claude-sonnet-4-0",
     ],
     openai: [
       "gpt-4",
       "gpt-4-turbo",
       "gpt-4o",
       "gpt-4o-mini",
+      "gpt-5",
+      "gpt-5-codex",
+      "gpt-5-codex-mini",
+      "gpt-5-nano",
+      "gpt-5-pro",
+      "gpt-5-chat-latest",
+      "gpt-5.1",
+      "gpt-5.1-codex",
+      "gpt-5.1-codex-max",
+      "gpt-5.1-codex-mini",
     ],
     google: [
       "gemini-2.5-flash",
       "gemini-2.5-pro",
       "gemini-2.5-flash-lite",
       "gemini-live-2.5-flash",
+      "gemini-2.5-flash-preview-05-20",
+      "gemini-flash-lite-latest",
+      "gemini-2.5-flash-image",
     ],
     xai: [
       "grok-2",
@@ -75,6 +94,10 @@ export namespace Provider {
       "grok-4-fast",
       "grok-4-fast-non-reasoning",
     ],
+    "kimi-for-coding": [
+      "kimi-k2",
+      "kimi-k2-thinking",
+    ],
     "zai-coding-plan": [
       "glm-4.5",
       "glm-4.5-air",
@@ -82,6 +105,24 @@ export namespace Provider {
       "glm-4.5v",
       "glm-4.6",
       "glm-4.6v",
+    ],
+    minimax: [
+      "MiniMax-M2",
+    ],
+    opencode: [
+      "claude-3-5-haiku",
+      "claude-opus-4-1",
+      "claude-sonnet-4",
+      "gpt-5",
+      "gpt-5-codex",
+      "gpt-5-nano",
+      "gpt-5.1",
+      "gpt-5.1-codex",
+      "gpt-5.1-codex-max",
+      "gpt-5.1-codex-mini",
+      "glm-4.6",
+      "kimi-k2",
+      "kimi-k2-thinking",
     ],
   }
 
