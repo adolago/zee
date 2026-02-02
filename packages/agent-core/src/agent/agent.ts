@@ -67,6 +67,24 @@ export namespace Agent {
       presencePenalty: z.number().min(-2).max(2).optional(),
       seed: z.number().int().optional(),
       minP: z.number().min(0).max(1).optional(),
+      // Per-model sampling parameters (Rosetta Stone)
+      // Keys are model family patterns matched against model.id (e.g. "opus", "gemini-3")
+      // null value = locked params (don't override, e.g. GPT-5 series)
+      modelParams: z
+        .record(
+          z.string(),
+          z.union([
+            z.object({
+              temperature: z.number().optional(),
+              topP: z.number().optional(),
+              topK: z.number().optional(),
+              frequencyPenalty: z.number().optional(),
+              presencePenalty: z.number().optional(),
+            }),
+            z.null(),
+          ]),
+        )
+        .optional(),
       color: z.string().optional(),
       theme: z.string().optional(),
       permission: PermissionNext.Ruleset,
@@ -222,7 +240,12 @@ export namespace Agent {
         mode: (agentConfig.mode ?? "primary") as "primary" | "subagent" | "all",
         native: agentConfig.native ?? false,
         hidden: false,
+        // Map AgentConfig casing (providerId/modelId) to Agent.Info casing (providerID/modelID)
+        model: agentConfig.model
+          ? { providerID: agentConfig.model.providerId, modelID: agentConfig.model.modelId }
+          : undefined,
         temperature: agentConfig.temperature,
+        modelParams: agentConfig.modelParams,
         color: agentConfig.color,
         // defaults already includes user global permissions
         permission: [...defaults],
@@ -268,6 +291,7 @@ export namespace Agent {
       item.presencePenalty = value.presence_penalty ?? item.presencePenalty
       item.seed = value.seed ?? item.seed
       item.minP = value.min_p ?? item.minP
+      item.modelParams = value.model_params ?? item.modelParams
       // Persona-specific fields - config can override persona defaults
       item.systemPromptAdditions = value.systemPromptAdditions ?? item.systemPromptAdditions
       item.knowledge = value.knowledge ?? item.knowledge

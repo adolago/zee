@@ -213,7 +213,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const keybinds = createMemo(() => props.keybind?.filter((x) => !x.disabled && x.keybind) ?? [])
 
   return (
-    <box gap={1} paddingBottom={1}>
+    <box gap={1} paddingBottom={1} backgroundColor={theme.backgroundMenu}>
       <box paddingLeft={2} paddingRight={2}>
         <box flexDirection="row" justifyContent="space-between">
           <text fg={theme.text} attributes={TextAttributes.BOLD}>

@@ -4,7 +4,7 @@
  * Wraps the Zee calendar tool in the plugin format.
  */
 
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "@agent-core/plugin"
 
 async function loadCalendarModule() {
   try {

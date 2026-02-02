@@ -362,12 +362,21 @@ export namespace GatewaySupervisor {
 
     if (options.checkPort) {
       const gatewayPort = getGatewayPort()
-      const portOpen = await isPortOpen("127.0.0.1", gatewayPort)
+      let portOpen = await isPortOpen("127.0.0.1", gatewayPort)
       const embeddedState = getEmbeddedGatewayState()
       if (portOpen && !embeddedState.running) {
         const processes = listGatewayProcesses()
         if (processes.length > 0) {
-          issues.push(`Existing Zee gateway process detected on port ${gatewayPort}`)
+          // Kill orphaned gateway processes instead of blocking startup
+          log.warn("killing orphaned zee gateway processes during preflight", {
+            pids: processes.map((p) => p.pid),
+          })
+          await stopGatewayProcesses("preflight: orphaned gateway on port " + gatewayPort)
+          // Re-check port after cleanup
+          portOpen = await isPortOpen("127.0.0.1", gatewayPort)
+          if (portOpen) {
+            issues.push(`Gateway port ${gatewayPort} still in use after killing orphaned processes`)
+          }
         } else {
           issues.push(`Gateway port ${gatewayPort} is already in use`)
         }

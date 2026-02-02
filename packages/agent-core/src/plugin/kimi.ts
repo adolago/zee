@@ -1,4 +1,4 @@
-import type { Hooks, PluginInput } from "@opencode-ai/plugin"
+import type { Hooks, PluginInput } from "@agent-core/plugin"
 import { Installation } from "@/installation"
 import { Auth } from "@/auth"
 import { Global } from "@/global"

@@ -1,13 +1,13 @@
-import type { Hooks, PluginInput, Plugin as PluginInstance } from "@opencode-ai/plugin"
+import type { Hooks, PluginInput, Plugin as PluginInstance } from "@agent-core/plugin"
 import { Config } from "../config/config"
 import { Bus } from "../bus"
 import { Log } from "../util/log"
-import { createOpencodeClient } from "@opencode-ai/sdk"
+import { createOpencodeClient } from "@agent-core/sdk"
 import { BunProc } from "../bun"
 import { Instance } from "../project/instance"
 import { CodexAuthPlugin } from "./codex"
 import { Session } from "../session"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@agent-core/util/error"
 import { KimiAuthPlugin } from "./kimi"
 
 export namespace Plugin {

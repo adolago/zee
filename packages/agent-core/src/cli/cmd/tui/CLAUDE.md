@@ -25,7 +25,7 @@ Defined in `packages/agent-core/tsconfig.json`:
 
 - `@tui/*` -> `src/cli/cmd/tui/*` (this directory)
 - `@/*` -> `src/*` (package root)
-- `@opencode-ai/sdk` -> `src/pkg/sdk/client`
+- `@agent-core/sdk` -> `src/pkg/sdk/client`
 - `@root/*` -> `../../src/*` (monorepo src root)
 - `@personas/*` -> `../../src/personas/*`
 

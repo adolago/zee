@@ -111,12 +111,21 @@ export const TaskTool = Tool.define("task", async (ctx) => {
     ? agents.filter((a) => PermissionNext.evaluate("task", a.name, caller.permission).action !== "deny")
     : agents
 
-  const description = DESCRIPTION.replace(
+  let description = DESCRIPTION.replace(
     "{agents}",
     accessibleAgents
       .map((a) => `- ${a.name}: ${a.description ?? "This subagent should only be called manually by the user."}`)
       .join("\n"),
   )
+
+  // Persona agents don't need the code-writing examples
+  if (ctx?.agent?.native === true) {
+    const exampleStart = description.indexOf("\nExample usage")
+    if (exampleStart !== -1) {
+      description = description.slice(0, exampleStart).trimEnd()
+    }
+  }
+
   return {
     description,
     parameters,

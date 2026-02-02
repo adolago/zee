@@ -77,14 +77,24 @@ export const parser = lazy(async () => {
 
 // NOTE: Tool is named 'bash' for backwards compatibility, but it uses the system's
 // preferred shell (detected by Shell.acceptable()). Renaming would break existing prompts.
-export const BashTool = Tool.define("bash", async () => {
+export const BashTool = Tool.define("bash", async (initCtx) => {
   const shell = Shell.acceptable()
   log.info("bash tool using shell", { shell })
 
+  let description = DESCRIPTION.replaceAll("${directory}", Instance.directory)
+    .replaceAll("${maxLines}", String(Truncate.MAX_LINES))
+    .replaceAll("${maxBytes}", String(Truncate.MAX_BYTES))
+
+  // Persona agents don't need git commit/PR workflow instructions
+  if (initCtx?.agent?.native === true) {
+    const gitSection = description.indexOf("\n# Committing changes with git")
+    if (gitSection !== -1) {
+      description = description.slice(0, gitSection).trimEnd()
+    }
+  }
+
   return {
-    description: DESCRIPTION.replaceAll("${directory}", Instance.directory)
-      .replaceAll("${maxLines}", String(Truncate.MAX_LINES))
-      .replaceAll("${maxBytes}", String(Truncate.MAX_BYTES)),
+    description,
     parameters: z.object({
       command: z.string().describe("The command to execute"),
       timeout: z.number().describe("Optional timeout in milliseconds").optional(),

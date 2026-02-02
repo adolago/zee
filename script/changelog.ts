@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
-import { createOpencode } from "@opencode-ai/sdk"
+import { createOpencode } from "@agent-core/sdk"
 import { parseArgs } from "util"
 
 const CHANGELOG_REPO = process.env.CHANGELOG_REPO

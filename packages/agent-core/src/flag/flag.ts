@@ -53,6 +53,11 @@ function computeFlags() {
     // Client identifier
     OPENCODE_CLIENT: process.env["OPENCODE_CLIENT"] ?? "cli",
 
+    // Models
+    AGENT_CORE_MODELS_URL: process.env["AGENT_CORE_MODELS_URL"] ?? process.env["OPENCODE_MODELS_URL"],
+    AGENT_CORE_MODELS_PATH: process.env["AGENT_CORE_MODELS_PATH"] ?? process.env["OPENCODE_MODELS_PATH"],
+    AGENT_CORE_DISABLE_MODELS_FETCH: truthy("AGENT_CORE_DISABLE_MODELS_FETCH") || truthy("OPENCODE_DISABLE_MODELS_FETCH"),
+
     // Testing
     OPENCODE_FAKE_VCS: process.env["OPENCODE_FAKE_VCS"],
   }

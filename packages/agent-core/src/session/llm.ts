@@ -86,6 +86,50 @@ export namespace LLM {
     return { ...part, usage: normalizeUsage(part.usage) }
   }
 
+  function resolveModelParam(
+    param: "temperature" | "topP" | "topK" | "frequencyPenalty" | "presencePenalty",
+    agent: Agent.Info,
+    model: Provider.Model,
+  ): number | undefined {
+    if (agent.modelParams) {
+      const modelId = model.id.toLowerCase()
+      for (const [pattern, params] of Object.entries(agent.modelParams)) {
+        const matches = pattern.split("|").some((p) => modelId.includes(p.trim()))
+        if (matches) {
+          if (params === null) return undefined // locked params (e.g. GPT-5)
+          // When a modelParams entry matches, it is authoritative for this model.
+          // Params not explicitly set in the entry fall through to provider defaults,
+          // NOT to the agent's static params. This prevents e.g. agent.topP leaking
+          // into providers that forbid combining temp + topP (Opus, Grok, GLM).
+          if (params[param] !== undefined) return params[param]
+          switch (param) {
+            case "temperature":
+              return ProviderTransform.temperature(model)
+            case "topP":
+              return ProviderTransform.topP(model)
+            case "topK":
+              return ProviderTransform.topK(model)
+            default:
+              return undefined
+          }
+        }
+      }
+    }
+    // No modelParams match -- fall back to agent-level static params
+    if (agent[param] !== undefined) return agent[param]
+    // Fall back to provider defaults
+    switch (param) {
+      case "temperature":
+        return ProviderTransform.temperature(model)
+      case "topP":
+        return ProviderTransform.topP(model)
+      case "topK":
+        return ProviderTransform.topK(model)
+      default:
+        return undefined
+    }
+  }
+
   export type StreamInput = {
     user: MessageV2.User
     sessionID: string
@@ -211,13 +255,12 @@ export namespace LLM {
       },
       {
         temperature: input.model.capabilities.temperature
-          ? (input.agent.temperature ?? ProviderTransform.temperature(input.model))
+          ? resolveModelParam("temperature", input.agent, input.model)
           : undefined,
-        topP: input.agent.topP ?? ProviderTransform.topP(input.model),
-        topK: input.agent.topK ?? ProviderTransform.topK(input.model),
-        // Additional sampling parameters from agent config
-        frequencyPenalty: input.agent.frequencyPenalty,
-        presencePenalty: input.agent.presencePenalty,
+        topP: resolveModelParam("topP", input.agent, input.model),
+        topK: resolveModelParam("topK", input.agent, input.model),
+        frequencyPenalty: resolveModelParam("frequencyPenalty", input.agent, input.model),
+        presencePenalty: resolveModelParam("presencePenalty", input.agent, input.model),
         seed: input.agent.seed,
         options,
       },
@@ -226,9 +269,9 @@ export namespace LLM {
     // Enhanced parameter logging for debugging
     l.info("stream params", {
       temperature: params.temperature,
-      temperatureSource: input.agent.temperature !== undefined ? "agent" : "model",
+      temperatureSource: input.agent.modelParams ? "modelParams" : input.agent.temperature !== undefined ? "agent" : "model",
       topP: params.topP,
-      topPSource: input.agent.topP !== undefined ? "agent" : "model",
+      topPSource: input.agent.modelParams ? "modelParams" : input.agent.topP !== undefined ? "agent" : "model",
       topK: params.topK,
       frequencyPenalty: params.frequencyPenalty,
       presencePenalty: params.presencePenalty,

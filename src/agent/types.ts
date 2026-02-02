@@ -37,6 +37,18 @@ export interface AgentToolConfig {
   [toolId: string]: boolean;
 }
 
+/** Per-model sampling parameters, or null for locked params (e.g. GPT-5 series) */
+export type ModelSamplingParams = {
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+} | null;
+
+/** Map of model family pattern to sampling params */
+export type ModelParamsMap = Record<string, ModelSamplingParams>;
+
 /** Agent configuration */
 export interface AgentConfig {
   /** Unique agent identifier */
@@ -62,6 +74,9 @@ export interface AgentConfig {
 
   /** Top-p sampling parameter */
   topP?: number;
+
+  /** Per-model sampling overrides keyed by model family pattern */
+  modelParams?: ModelParamsMap;
 
   /** Display color (hex or named) */
   color?: string;

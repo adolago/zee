@@ -10,7 +10,7 @@ import { proxy } from "hono/proxy"
 import z from "zod"
 
 import { Provider } from "../provider/provider"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@agent-core/util/error"
 import { lazy } from "../util/lazy"
 import { Storage } from "../storage/storage"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
@@ -263,7 +263,7 @@ export namespace Server {
           })
           response.headers.set(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self'",
+            "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data:",
           )
           return response
         }) as unknown as Hono,

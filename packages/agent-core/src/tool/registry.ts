@@ -16,7 +16,7 @@ import { Tool } from "./tool"
 import { Instance } from "../project/instance"
 import { Config } from "../config/config"
 import path from "path"
-import { type ToolContext as PluginToolContext, type ToolDefinition } from "@opencode-ai/plugin"
+import { type ToolContext as PluginToolContext, type ToolDefinition } from "@agent-core/plugin"
 import z from "zod"
 import { Plugin } from "../plugin"
 import { WebSearchTool } from "./websearch"
@@ -26,7 +26,6 @@ import { Log } from "@/util/log"
 import { LspTool } from "./lsp"
 import { Truncate } from "./truncation"
 import { HoldReleaseTool, HoldEnterTool } from "./plan"
-import { ApplyPatchTool } from "./apply_patch"
 
 export namespace ToolRegistry {
   const log = Log.create({ service: "tool.registry" })
@@ -114,7 +113,6 @@ export namespace ToolRegistry {
       WebSearchTool,
       CodeSearchTool,
       SkillTool,
-      ApplyPatchTool,
       LspTool,
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
       ...(Flag.OPENCODE_CLIENT === "cli" ? [HoldReleaseTool, HoldEnterTool] : []),
@@ -126,6 +124,11 @@ export namespace ToolRegistry {
     return all().then((x) => x.map((t) => t.id))
   }
 
+  // Tools excluded for native persona agents (zee, stanley, johny).
+  // Currently empty -- personas run in TUI, CLI, and daemon, and need
+  // the full tool set. The `all()` function already gates tools by client type.
+  const PERSONA_EXCLUDED_TOOLS = new Set<string>([])
+
   export async function tools(
     model: {
       providerID: string
@@ -134,19 +137,14 @@ export namespace ToolRegistry {
     agent?: Agent.Info,
   ) {
     const tools = await all()
+    const isPersona = agent?.native === true
     const result = await Promise.all(
       tools
         .filter((t) => {
-          // websearch/codesearch always enabled
-          if (t.id === "codesearch" || t.id === "websearch") {
-            return true
+          // Persona agents get a leaner tool set
+          if (isPersona && PERSONA_EXCLUDED_TOOLS.has(t.id)) {
+            return false
           }
-
-          // use apply tool in same format as codex
-          const usePatch =
-            model.modelID.includes("gpt-") && !model.modelID.includes("oss") && !model.modelID.includes("gpt-4")
-          if (t.id === "apply_patch") return usePatch
-          if (t.id === "edit" || t.id === "write") return !usePatch
 
           return true
         })

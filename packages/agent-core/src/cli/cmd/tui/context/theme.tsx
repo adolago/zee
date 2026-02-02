@@ -51,6 +51,7 @@ import stanley from "./theme/stanley.json" with { type: "json" }
 import johny from "./theme/johny.json" with { type: "json" }
 import { useKV } from "./kv"
 import { useRenderer } from "@opentui/solid"
+import { Terminal } from "@tui/util/terminal"
 import { createStore, produce } from "solid-js/store"
 import { Global } from "@/global"
 import { Filesystem } from "@/util/filesystem"
@@ -279,7 +280,7 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   johny,
 }
 
-export function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
+export function resolveTheme(theme: ThemeJson, mode: "dark" | "light", terminalBackground?: RGBA | null) {
   const defs = theme.defs ?? {}
   function resolveColor(c: ColorValue): RGBA {
     if (c instanceof RGBA) return c
@@ -327,18 +328,17 @@ export function resolveTheme(theme: ThemeJson, mode: "dark" | "light") {
     resolved.backgroundMenu = resolved.backgroundElement
   }
 
-  // Override background hierarchy: use the theme's base background color with
-  // varying alpha so the terminal background shows through everywhere.
-  // Only the text-protecting layers get opacity; the root background is transparent.
+  // Override background hierarchy: use the terminal background color with
+  // varying alpha so the terminal shows through everywhere.
+  // Only the text-protecting layers get opacity; the root background stays transparent.
   const baseBg = resolved.background!
-  // When the theme background is transparent, we can't derive panel colors from
-  // it (would be RGBA(0,0,0,alpha) = black overlay). Use a neutral base instead.
-  const bgBase = baseBg.a < 0.1
+  const fallbackBase = baseBg.a < 0.1
     ? (mode === "dark" ? RGBA.fromInts(15, 15, 15) : RGBA.fromInts(240, 240, 240))
     : baseBg
-  resolved.backgroundPanel = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.35)
-  resolved.backgroundElement = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.5)
-  resolved.backgroundMenu = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.85)
+  const bgBase = terminalBackground ?? fallbackBase
+  resolved.backgroundPanel = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.25)
+  resolved.backgroundElement = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.4)
+  resolved.backgroundMenu = RGBA.fromValues(bgBase.r, bgBase.g, bgBase.b, 0.75)
 
   // Handle thinkingOpacity - optional with default of 0.6
   const thinkingOpacity = theme.theme.thinkingOpacity ?? 0.6
@@ -405,6 +405,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       mode: kv.get("theme_mode", props.mode),
       active: (sync.data.config.theme ?? kv.get("theme", "agent-core")) as string,
       ready: false,
+      terminalBackground: null as RGBA | null,
     })
 
     createEffect(() => {
@@ -412,8 +413,14 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       if (theme) setStore("active", theme)
     })
 
-    function init() {
+    async function init() {
       resolveSystemTheme()
+      Terminal.colors()
+        .then((result) => {
+          if (!result.background) return
+          setStore("terminalBackground", result.background)
+        })
+        .catch(() => {})
       getCustomThemes()
         .then((custom) => {
           setStore(
@@ -454,6 +461,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
           setStore(
             produce((draft) => {
               draft.themes.system = generateSystem(colors, store.mode)
+              const background = colors.defaultBackground ?? colors.palette[0]
+              draft.terminalBackground = background ? RGBA.fromHex(background) : null
               if (store.active === "system") {
                 draft.ready = true
               }
@@ -470,11 +479,11 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
 
     const values = createMemo(() => {
       // Use monochrome theme when NO_COLOR is set
-      if (isNoColorEnabled()) {
-        return resolveTheme(generateMonochromeTheme(store.mode), store.mode)
-      }
-      return resolveTheme(store.themes[store.active] ?? store.themes["agent-core"], store.mode)
-    })
+       if (isNoColorEnabled()) {
+         return resolveTheme(generateMonochromeTheme(store.mode), store.mode, store.terminalBackground)
+       }
+       return resolveTheme(store.themes[store.active] ?? store.themes["agent-core"], store.mode, store.terminalBackground)
+     })
 
     const syntax = createMemo(() => generateSyntax(values()))
     const subtleSyntax = createMemo(() => generateSubtleSyntax(values()))

@@ -7,6 +7,7 @@ import { useRoute } from "../context/route"
 import { useDirectory } from "../context/directory"
 import { useConnected } from "../component/dialog-model"
 import { StatusBar as StatusBarStyle } from "../../../style"
+import type { ToolPart } from "@agent-core/sdk/v2"
 
 export function StatusBar() {
   const { theme } = useTheme()
@@ -32,6 +33,33 @@ export function StatusBar() {
     const status = sync.data.session_status?.[route.data.sessionID]
     if (!status || status.type !== "busy") return undefined
     return status.streamHealth
+  })
+
+  // Current activity state for better status indication
+  const currentActivity = createMemo(() => {
+    if (route.data.type !== "session") return { state: "idle" as const, toolCount: 0, currentTool: undefined as string | undefined }
+    
+    const sessionID = route.data.sessionID
+    const messages = sync.data.message[sessionID] ?? []
+    const pendingMsg = messages.findLast((x) => x.role === "assistant" && !x.time.completed)
+    
+    if (!pendingMsg) return { state: "idle" as const, toolCount: 0, currentTool: undefined }
+    
+    const parts = sync.data.part[pendingMsg.id] ?? []
+    const toolParts = parts.filter((p): p is ToolPart => p.type === "tool")
+    const runningTools = toolParts.filter((p) => p.state.status === "running" || p.state.status === "pending")
+    const completedTools = toolParts.filter((p) => p.state.status === "completed")
+    
+    if (runningTools.length > 0) {
+      return { 
+        state: "running" as const, 
+        toolCount: toolParts.length,
+        completedCount: completedTools.length,
+        currentTool: runningTools[0].tool 
+      }
+    }
+    
+    return { state: "thinking" as const, toolCount: toolParts.length, currentTool: undefined }
   })
 
   const [store, setStore] = createStore({
@@ -86,6 +114,25 @@ export function StatusBar() {
               </text>
               <text fg={theme.border}>{StatusBarStyle.separator}</text>
             </Show>
+            {/* Activity indicator - clearer state visualization */}
+            <Show when={currentActivity().state !== "idle"}>
+              <Switch>
+                <Match when={currentActivity().state === "running"}>
+                  <text fg={theme.accent}>
+                    ◐ {currentActivity().currentTool}
+                    <Show when={currentActivity().toolCount > 1}>
+                      <span style={{ fg: theme.textMuted }}>
+                        {" "}({(currentActivity() as any).completedCount ?? 0}/{currentActivity().toolCount})
+                      </span>
+                    </Show>
+                  </text>
+                </Match>
+                <Match when={currentActivity().state === "thinking"}>
+                  <text fg={theme.warning}>◐ thinking</text>
+                </Match>
+              </Switch>
+              <text fg={theme.border}>{StatusBarStyle.separator}</text>
+            </Show>
             <Show when={streamHealth()}>
               {(() => {
                 const health = streamHealth()!
@@ -96,16 +143,6 @@ export function StatusBar() {
                   return (
                     <>
                       <text fg={theme.error}>⊘ stalled {elapsedSeconds}s</text>
-                      <text fg={theme.border}>{StatusBarStyle.separator}</text>
-                    </>
-                  )
-                }
-
-                if (health.isThinking) {
-                  const thinkingSeconds = Math.round((health.timeSinceContentMs ?? 0) / 1000)
-                  return (
-                    <>
-                      <text fg={theme.warning}>◐ thinking {thinkingSeconds}s</text>
                       <text fg={theme.border}>{StatusBarStyle.separator}</text>
                     </>
                   )
@@ -123,7 +160,7 @@ export function StatusBar() {
                 if (elapsed >= 30_000) {
                   return (
                     <>
-                      <text fg={theme.warning}>◐ waiting {elapsedSeconds}s</text>
+                      <text fg={theme.warning}>⚠ slow {elapsedSeconds}s</text>
                       <text fg={theme.border}>{StatusBarStyle.separator}</text>
                     </>
                   )

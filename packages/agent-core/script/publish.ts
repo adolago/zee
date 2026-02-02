@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
 import pkg from "../package.json"
-import { Script } from "@opencode-ai/script"
+import { Script } from "@agent-core/script"
 import { fileURLToPath } from "url"
 import path from "path"
 import fs from "fs"

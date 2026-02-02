@@ -1,7 +1,7 @@
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { batch, createContext, createMemo, Show, useContext, type JSX, type ParentProps } from "solid-js"
 import { useTheme } from "@tui/context/theme"
-import { Renderable } from "@opentui/core"
+import { Renderable, RGBA } from "@opentui/core"
 import { createStore } from "solid-js/store"
 import { Clipboard } from "@tui/util/clipboard"
 import { SplitBorder } from "@tui/component/border"
@@ -41,7 +41,7 @@ export function Dialog(
         }}
         width={props.size === "large" ? 80 : 60}
         maxWidth={dimensions().width - 2}
-        backgroundColor={theme.backgroundMenu}
+        backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
         paddingTop={1}
         border={["left", "right", "top", "bottom"]}
         borderColor={theme.borderActive}

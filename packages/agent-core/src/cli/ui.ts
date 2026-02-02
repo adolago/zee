@@ -30,7 +30,7 @@
 
 import z from "zod";
 import { EOL } from "os";
-import { NamedError } from "@opencode-ai/util/error";
+import { NamedError } from "@agent-core/util/error";
 import {
   Style as StyleImpl,
   Symbols as SymbolsImpl,

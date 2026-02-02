@@ -1,539 +1,64 @@
 <!--
-  ╔═══════════════════════════════════════════════════════════════════════════╗
-  ║  IMPORTANT: CLAUDE.md is a SYMLINK to this file (AGENTS.md)               ║
-  ║                                                                           ║
-  ║  This ensures all AI agents (Claude, GPT, Gemini, etc.) read the same     ║
-  ║  instructions. DO NOT:                                                    ║
-  ║    - Delete CLAUDE.md (it will break Claude Code compatibility)           ║
-  ║    - Replace the symlink with a separate file                             ║
-  ║    - Create conflicting instructions in multiple files                    ║
-  ║                                                                           ║
-  ║  If you need to edit these instructions, edit THIS file (AGENTS.md).      ║
-  ║  The symlink will automatically reflect the changes.                      ║
-  ╚═══════════════════════════════════════════════════════════════════════════╝
+  CLAUDE.md is a SYMLINK to this file (AGENTS.md).
+  Edit THIS file; the symlink reflects changes automatically.
 -->
 
 # Agent-Core - The Engine
 
-This is the **engine** that powers Agent-Core.
-
 ## Quick Reference
 
-- To test agent-core in `packages/agent-core`, run `bun dev`.
+- Build and test: `cd packages/agent-core && bun run build && bun dev`
+- Default branch: `dev`
+- PRs target the fork at `origin` (e.g., `adolago/agent-core`), not upstream.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
-- The default branch in this repo is `dev`.
-- When creating GitHub issues or PRs, target the fork at `origin` (e.g., `adolago/agent-core`), not upstream or other repos.
 
-### Binary Installation
+### Binary Verification (CRITICAL)
 
-**Single source of truth**: The `agent-core` binary is installed via `bun link` from `packages/agent-core/`.
-
-To reinstall after building:
+After building, always verify the binary:
 ```bash
-cd packages/agent-core && bun link
-```
-
-This creates a symlink at `~/.bun/bin/agent-core` → dev build.
-
-**Do NOT** install agent-core via:
-- `~/bin/agent-core` (manual copy)
-- `~/.local/bin/agent-core` (separate symlink)
-- legacy curl installer
-
-## CRITICAL: Always Verify Binary Version Before Testing
-
-**Before testing any changes, ALWAYS run the verification script:**
-
-```bash
-# After building, verify binary is correct
 cd packages/agent-core && bun run build
 ./script/verify-binary.sh
 ```
-
-The script checks:
-1. Installed binary points to local build (not global npm install)
-2. Binary is newer than source files
-3. Symlink resolves correctly
-
-**If verification fails**, fix with:
-```bash
-ln -sf /home/artur/.local/src/agent-core/packages/agent-core/dist/@adolago/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core
-```
-
-⚠️ **Common pitfall**: `bun run build` compiles to `dist/` but does NOT update the installed binary if the symlink points elsewhere (e.g., global npm install).
+If verification fails: `ln -sf /home/artur/.local/src/agent-core/packages/agent-core/dist/@adolago/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core`
 
 ## CRITICAL: Naming Convention
 
-**NEVER use the legacy name in new code, documentation, or user-facing text.**
+This project is `agent-core`. NEVER use the legacy name in new code, docs, or user-facing text.
+- CLI: `agent-core`, Config: `~/.config/agent-core/`, State: `~/.local/state/agent-core/`
 
-This project is `agent-core`. Users should be able to run different toolchains without confusion:
+## No Emojis Policy
 
-- CLI command: `agent-core`
-- Config directory: `~/.config/agent-core/`
-- State directory: `~/.local/state/agent-core/`
-- Documentation references: "agent-core daemon"
-- Variable names, function names: avoid legacy prefixes
+Do NOT use emojis in commits, PRs, code comments, docs, logs, or user-facing text.
+Exceptions: third-party integrations, user content, skill metadata `emoji` fields.
 
-Existing upstream code may still contain legacy references - that's fine. But all NEW code and documentation should use agent-core naming.
+## The Personas (Triad)
 
-## Communication Style
+Three AI personas share orchestration (swarm) and memory (Qdrant):
+- **Zee** (`@zee`): Personal assistant - memory, messaging, calendar, contacts
+- **Stanley** (`@stanley`): Investing - market data, portfolio, SEC filings, NautilusTrader
+- **Johny** (`@johny`): Learning - knowledge graph, mastery tracking, spaced repetition
 
-### No Emojis Policy
+Personas can spawn drones (background workers), share Qdrant memory, and preserve continuity across sessions.
 
-**Do NOT use emojis** anywhere in this project:
+## Key Paths
 
-- Commit messages
-- PR titles and descriptions
-- Code comments
-- Documentation (markdown files)
-- Log messages
-- User-facing text and status messages
-- Variable names or identifiers
+| What | Where |
+|------|-------|
+| Skills | `.agents/skills/@zee/`, `@stanley/`, `@johny/`, `swarm/`, `personas/` |
+| Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
+| Persona logic | `src/personas/johny/` (TS), `packages/stanley-core/` |
+| Swarm | `src/swarm/` (queen, workers, SPARC) |
+| Core engine | `packages/agent-core/` |
+| Gateway | `packages/personas/zee/` |
+| Memory types | `src/memory/` |
 
-**Why**: Clean, professional text is easier to read, search, and parse programmatically. Emojis add visual noise without semantic value in technical contexts.
-
-**Exceptions**: 
-- Third-party integrations that require emojis (for example, platform reactions or status features)
-- User-provided content that may contain emojis
-- Skill metadata `emoji` fields used for external platform identity
-
-**Examples**:
-
-```
-# Bad
-git commit -m "🚀 Add new feature"
-git commit -m "✨ Fix bug in parser"
-
-# Good  
-git commit -m "Add new feature"
-git commit -m "Fix bug in parser"
-```
-
-```
-# Bad (in code comments)
-// TODO: 🔥 Optimize this later
-
-# Good
-// TODO: Optimize this later
-```
-
-This policy applies to all personas (Zee, Stanley, Johny) and all agents working on this codebase.
-
-## IMPORTANT: First Steps When Working on This Repo
-
-**ALWAYS read these before making changes:**
-
-1. **Swarm** (`src/swarm/`) - The orchestration layer
-   - SPARC methodology, concurrent execution, queen/worker patterns
-   - `.agents/skills/swarm/SKILL.md` - Swarm skill definition
-
-2. **The Triad** (`.agents/skills/`) - The three personas:
-   - `.agents/skills/@zee/SKILL.md` - Personal assistant (memory, messaging, calendar, and more)
-   - `.agents/skills/@stanley/SKILL.md` - Investing assistant with access to a full platform (NautilusTrader, OpenBB, own GUI in rust) of APIS integration
-   - `.agents/skills/@johny/SKILL.md` - Study assistant focused on deliberate practice, with knowledge graph and spaced repetition
-   - Each persona has its own configuration and capabilities, all have access to swarm orchestration
-3. **Orchestration** (`.agents/skills/swarm/`, `.agents/skills/personas/`)
-   - Swarm orchestration, WezTerm integration, drone spawning
-
-**Do NOT skip this step** - the personas have specific capabilities and delegation rules.
-
-## The Personas System
-
-You are part of the **Personas** - three AI personas that share a common orchestration layer:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         PERSONAS                               │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │     ZEE     │  │   STANLEY   │  │    JOHNY    │         │
-│  │  Personal   │  │  Investing  │  │  Learning   │         │
-│  │  Assistant  │  │  Platform   │  │  System     │         │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘         │
-│         │                │                │                 │
-│         └────────────────┼────────────────┘                 │
-│                          │                                  │
-│              ┌───────────▼───────────┐                     │
-│              │   SHARED LAYER        │                     │
-│              │ • Memory (Qdrant)     │                     │
-│              │ • Orchestration       │                     │
-│              │ • WezTerm Integration │                     │
-│              │ • Conversation State  │                     │
-│              └───────────────────────┘                     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Personas Capabilities (ALL Personas Have These)
-
-**1. Spawn Drones** - You can spawn background workers (drones) that:
-
-- Maintain your persona identity (a "Zee drone" acts like Zee)
-- Execute tasks in parallel while you continue the conversation
-- Report results back to you
-- Run in separate WezTerm panes for visibility
-
-**2. Shared Memory** - All personas share:
-
-- Qdrant vector memory for semantic search
-- Conversation continuity state (survives compacting)
-- Plan and objectives across sessions
-- Key facts extracted from conversations
-
-**3. Conversation Continuity** - When context gets compacted:
-
-- A summary is saved to Qdrant automatically
-- Key facts are extracted and preserved
-- Plan/objectives persist across sessions
-- You can restore context from previous sessions
-
-**4. WezTerm Pane Management** - Visual orchestration:
-
-- Each drone gets its own pane
-- Status pane shows Personas state
-- You can see what all workers are doing
-
-### How to Use Personas Capabilities
-
-**Spawning a Drone:**
-
-```
-When you need to do heavy background work, you can spawn a drone:
-1. Decide what task needs background processing
-2. Use the Task tool to spawn an agent with your persona
-3. The drone will work independently and report back
-4. You continue the conversation while it works
-```
-
-**Preserving Continuity:**
-
-```
-Before context is compacted:
-1. Summarize the conversation state
-2. Extract key facts to remember
-3. Save current plan and objectives
-4. These persist in Qdrant for restoration
-```
-
-**Checking State:**
-
-```
-You can always check:
-- What drones are running
-- Current plan and objectives
-- Key facts from previous sessions
-- Memory search results
-```
-
-## Architecture: agent-core → swarm → personas
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        AGENT-CORE (Engine)                          │
-│               ~/.local/src/agent-core/                              │
-│                                                                     │
-│  packages/agent-core/     ← Core TUI (built-in agents                │
-│                           removed, only triad remains)              │
-│  ~/.config/agent-core/  ← Config, auth, plugins                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                              │                                      │
-│                              ▼                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    SWARM (Orchestration)                       │  │
-│  │                    src/swarm/                                  │  │
-│  │                                                               │  │
-│  │  • SPARC methodology (Specification→Pseudocode→Architecture   │  │
-│  │    →Refinement→Completion)                                    │  │
-│  │  • Queen/worker swarm coordination                            │  │
-│  │  • Concurrent execution patterns                              │  │
-│  │  • Agent spawning via Task tool                               │  │
-│  │  • Memory coordination                                        │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                              │                                      │
-│                              ▼                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    PERSONAS (The Triad)                        │  │
-│  │                    .agents/skills/                             │  │
-│  │                                                               │  │
-│  │  ┌─────────┐     ┌─────────┐     ┌─────────┐                  │  │
-│  │  │   ZEE   │     │ STANLEY │     │  JOHNY  │                  │  │
-│  │  │ Personal│     │Investing│     │Learning │                  │  │
-│  │  └────┬────┘     └────┬────┘     └────┬────┘                  │  │
-│  │       └───────────────┼───────────────┘                       │  │
-│  │                       ▼                                        │  │
-│  │              ┌─────────────────┐                               │  │
-│  │              │  SHARED LAYER   │                               │  │
-│  │              │  • personas/    │  Orchestration, drones        │  │
-│  │              │  • swarm/       │  Queen, workers, SPARC        │  │
-│  │              └─────────────────┘                               │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                     │
-│  src/                                                               │
-│  ├── domain/          ← Domain tools (stanley/, zee/)              │
-│  ├── personas/        ← Persona logic (knowledge-graph, etc.)      │
-│  ├── swarm/           ← Swarm orchestration (queen, workers)       │
-│  └── memory/          ← Qdrant vector storage types                │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Flow Summary
-
-1. **agent-core** = Core engine with built-in agents (build/plan/general/explore) **removed**
-2. **swarm** = Orchestration layer providing SPARC methodology and queen/worker coordination
-3. **personas** = The Triad (Zee/Stanley/Johny) + shared capabilities
-
-### Key Principle
-
-No generic "build" or "plan" agents. Every interaction goes through a persona with domain expertise. The personas share orchestration (swarm) and memory (Qdrant) but have distinct purposes.
-
-## Package Structure
-
-```
-packages/
-├── agent-core/          # Core TUI, daemon, SDK, utils
-├── agent-core-adapter/  # Adapter layer
-├── app/                 # App shell
-├── desktop/             # Desktop integration
-├── extensions/          # Extension system
-├── hosted/              # Hosted deployment
-├── personas/            # Personas package (Zee gateway)
-├── plugin/              # Plugin system
-├── sdk/                 # SDK
-├── stanley-core/        # Stanley core logic
-├── ui/                  # UI components
-├── util/                # Shared utilities
-└── web/                 # Web interface
-```
-
-**Personas:**
-- **Zee**: Messaging gateway in `packages/personas/zee/`
-- **Stanley**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
-- **Johny**: TypeScript implementation in `src/personas/johny/`
-
-## Key Directories
-
-```
-agent-core/
-├── .agents/skills/           # Agent Skills (Anthropic standard)
-│   ├── @johny/              # Study assistant
-│   ├── @stanley/            # Trading assistant
-│   ├── @zee/                # Personal assistant
-│   ├── personas/            # Persona identities
-│   └── swarm/               # Swarm orchestration
-├── packages/
-│   ├── agent-core/          # Core engine
-│   │   └── src/pkg/         # Merged packages (sdk, plugin, util, script)
-│   └── personas/zee/        # Messaging gateway
-├── src/
-│   ├── domain/              # Domain-specific tools
-│   │   ├── johny/           # Learning tools
-│   │   ├── stanley/         # Financial tools (CLI bridge)
-│   │   └── zee/             # Personal tools
-│   ├── swarm/               # Swarm orchestration (queen, workers, SPARC)
-│   ├── personas/
-│   │   └── johny/           # TypeScript learning system
-│   │       ├── knowledge-graph.ts  # Topic DAG
-│   │       ├── mastery.ts          # Mastery tracking
-│   │       ├── review.ts           # Spaced repetition
-│   │       └── practice.ts         # Practice sessions
-│   └── memory/              # Qdrant vector storage types
-└── docs/                    # Architecture docs, provider references
-```
-
-## Integration
-
-Skills are loaded from `.agents/skills/` and `~/.config/agent-core/skills/`:
-
-```
-.agents/skills/@johny/             → Johny persona
-.agents/skills/@stanley/           → Stanley persona
-.agents/skills/@zee/               → Zee persona
-.agents/skills/personas/           → Persona identities
-.agents/skills/swarm/              → Orchestration (drones, memory, continuity)
-```
-
-## Development Guidelines
-
-1. **Skills go in `.agents/skills/`** - Follow Anthropic Agent Skills standard
-2. **Domain tools go in `src/domain/`** - TypeScript implementations
-3. **Persona logic goes in `src/personas/`** - Knowledge graphs, strategies
-4. **No upstream sync** - This is a standalone monolith for solo development
-
-## Experimental Features
-
-This system has experimental features enabled:
-
-- Knowledge graph with FIRe (Fractional Implicit Repetition)
-- Semantic memory via Qdrant
-- All experimental flags active
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `STANLEY_REPO` | Path to external Stanley Python repo (required for Stanley tools) |
-| `JOHNY_DATA_DIR` | Directory for Johny data files (default: `~/.zee/johny`) |
-| `AGENT_CORE_ROOT` | Path to agent-core installation (for bundled binaries) |
-
-## State Management
-
-| Data              | Location                        |
-| ----------------- | ------------------------------- |
-| Johny knowledge   | `~/.zee/johny/knowledge-graph.json` |
-| Johny mastery     | `~/.zee/johny/mastery.json`     |
-| Johny reviews     | `~/.zee/johny/reviews.json`     |
-| Johny practice    | `~/.zee/johny/practice.json`    |
-| Stanley portfolio | `~/.zee/stanley/portfolio.json` |
-| Zee memories      | `~/.zee/zee/memories.json`      |
-| Credentials       | `~/.zee/credentials/`           |
-
-## Daemon Management (systemd)
-
-The daemon is managed by a **systemd user service**. Always use `systemctl --user` to manage it. Never use `pkill`, `kill -9`, or `nohup` to start/stop the daemon.
-
-### Quick Reference
+## Daemon (systemd)
 
 ```bash
-# Restart daemon (after config changes or rebuild)
-systemctl --user restart agent-core
-
-# Stop daemon
-systemctl --user stop agent-core
-
-# Check status
-systemctl --user status agent-core
-
-# View logs (live tail)
-journalctl --user -u agent-core -f
-
-# View recent logs
-journalctl --user -u agent-core --since "5 min ago"
-
-# Full rebuild + restart
-./scripts/reload.sh
-
-# Just restart (config changes, no rebuild)
-./scripts/reload.sh --no-build
-
-# Check binary and service status
-./scripts/reload.sh --status
+systemctl --user restart agent-core   # Restart
+systemctl --user status agent-core    # Status
+journalctl --user -u agent-core -f    # Logs
+./scripts/reload.sh                   # Full rebuild + restart
 ```
 
-### Service File
-
-Location: `~/.config/systemd/user/agent-core.service`
-
-The service runs with `Restart=always` and `RestartSec=10`, so it auto-recovers from crashes. Lingering is enabled (`loginctl enable-linger`) so the service persists across logout.
-
-Environment variables are loaded from `~/.config/agent-core/daemon.env`.
-
-### Repository Location
-
-**Source code:** The project root (can be customized via `AGENT_CORE_SOURCE` env var)
-
-By default, the canonical location is `~/.local/src/agent-core`, but the project can be cloned anywhere.
-
-### Binary Location
-
-Binary: `~/.bun/bin/agent-core` (symlink to `dist/@agent-core/core-linux-x64/bin/agent-core`)
-
-**Run from anywhere:** The binary can be launched from any directory. Just `cd` to your project folder and run `agent-core`.
-
-### Rebuilding
-
-```bash
-# Full reload - stop, rebuild, restart daemon via systemd
-./scripts/reload.sh
-
-# Just check status (what's running, version info)
-./scripts/reload.sh --status
-
-# Restart without rebuilding (config changes only)
-./scripts/reload.sh --no-build
-
-# Clean rebuild
-./scripts/reload.sh --clean
-```
-
-### Common Processes
-
-```bash
-systemctl --user status agent-core
-```
-
-**Typical processes:**
-| Process | Description | Managed by |
-|---------|-------------|------------|
-| `agent-core daemon --hostname ...` | Daemon + embedded gateway | systemd |
-| `agent-core --print-logs` | TUI instance | user (close normally) |
-| `bun run ... src/index.ts` | Dev server | user |
-
-### Gateway Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         GATEWAY FLOW                                 │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────────┐
-│  │                   Zee Gateway (Transport)                        │
-│  │                 ~/.local/src/agent-core/packages/personas/zee/                             │
-│  │                                                                 │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
-│  │  │ WhatsApp │  │ Telegram │                                  │
-│  │  │ (Baileys)│  │ (grammY) │                                  │
-│  │  └────┬─────┘  └────┬─────┘                                  │
-│  │       └──────────────┼──────────────┘                         │
-│  │                      ▼                                          │
-│  │          ┌─────────────────────────┐                            │
-│  │          │  Persona Detection      │                            │
-│  │          │  @stanley → stanley     │                            │
-│  │          │  @johny → johny         │                            │
-│  │          │  default → zee          │                            │
-│  │          └───────────┬─────────────┘                            │
-│  └──────────────────────┼──────────────────────────────────────────┘
-│                         │ HTTP POST /session/:id/message
-│                         │ + agent: persona
-│                         ▼
-│  ┌─────────────────────────────────────────────────────────────────┐
-│  │              agent-core daemon (spawns gateway)                  │
-│  │                   http://127.0.0.1:3210                         │
-│  │                                                                 │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │  │     ZEE     │  │   STANLEY   │  │    JOHNY    │              │
-│  │  │  Persona    │  │   Persona   │  │   Persona   │              │
-│  │  │  Skills,    │  │   Skills,   │  │   Skills,   │              │
-│  │  │  Memory,    │  │   Markets,  │  │   Learning, │              │
-│  │  │  Tools      │  │   Tools     │  │   Tools     │              │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘              │
-│  └─────────────────────────────────────────────────────────────────┘
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Key Points:**
-
-- **Zee Gateway** = Transport layer only (handles WhatsApp/Telegram/Signal connections)
-- **agent-core daemon** = All agent logic, personas, memory, tools
-- **Persona routing** = Messages mentioning `@stanley` or `@johny` are routed to those personas
-- **Daemon-only mode** = Zee REQUIRES agent-core daemon to be running
-
-### Running the Embedded Gateway
-
-1. **The daemon is managed by systemd and starts automatically.** To manually restart:
-
-   ```bash
-   systemctl --user restart agent-core
-   ```
-
-2. **Send a message** via WhatsApp/Telegram mentioning a persona:
-   - "Hello" → routes to Zee (default)
-   - "@stanley What's the market doing?" → routes to Stanley
-   - "@johny Help me study" → routes to Johny
-
-### Architecture Decision
-
-Messaging transport remains in Zee, but the gateway is launched by agent-core to:
-
-1. Avoid duplication with the Zee gateway transport layer
-2. Keep agent-core clean for upstream sync
-3. Centralize messaging transport in one place
-
-All messaging flows through the Zee gateway at `~/.local/src/agent-core/packages/personas/zee/`, managed by the daemon.
+For detailed architecture, gateway flow, directory trees, and environment variables, use: `skill: { name: "codebase-guide" }`

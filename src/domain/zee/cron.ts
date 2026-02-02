@@ -65,6 +65,14 @@ const CronPayloadSchema = z.union([
   CronPayloadAgentTurnSchema,
 ]);
 
+// Throttle config
+const CronThrottleSchema = z.object({
+  dedupWindowMs: z.number().optional()
+    .describe("Suppress duplicate notifications within this window (ms)"),
+  maxPerWindow: z.number().optional()
+    .describe("Max notifications per window; excess are dropped with a summary"),
+});
+
 // Job definition
 const CronJobSchema = z.object({
   name: z.string().describe("Job name"),
@@ -83,6 +91,10 @@ const CronJobSchema = z.object({
     postToMainMode: z.enum(["summary", "full"]).optional(),
     postToMainMaxChars: z.number().optional(),
   }).optional().describe("Isolation settings for isolated sessions"),
+  maxConcurrentRuns: z.number().int().min(1).optional()
+    .describe("Max concurrent runs for this job (default: 1)"),
+  throttle: CronThrottleSchema.optional()
+    .describe("Notification throttle/dedup settings"),
 });
 
 // Actions
@@ -440,6 +452,10 @@ const CronUpdateParams = z.object({
     sessionTarget: z.enum(["main", "isolated"]).optional(),
     wakeMode: z.enum(["next-heartbeat", "now"]).optional(),
     payload: CronPayloadSchema.optional(),
+    maxConcurrentRuns: z.number().int().min(1).optional()
+      .describe("Max concurrent runs for this job (default: 1)"),
+    throttle: CronThrottleSchema.optional()
+      .describe("Notification throttle/dedup settings"),
   }).describe("Fields to update"),
   gatewayUrl: z.string().optional(),
   timeoutMs: z.number().optional(),
@@ -628,7 +644,7 @@ Example:
             runId: string;
             startedAt: number;
             completedAt?: number;
-            status: "ok" | "error" | "skipped" | "running";
+            status: "ok" | "error" | "skipped" | "throttled" | "running";
             error?: string;
             durationMs?: number;
           }>;

@@ -9,6 +9,7 @@ import { withNetworkOptions, resolveNetworkOptions, type ResolvedNetworkOptions 
 import { Daemon } from "@/cli/cmd/daemon"
 import { startAlwaysOnProcess, type AlwaysOnProcess } from "@/cli/cmd/always-on"
 import { createAuthorizedFetch } from "@/server/auth"
+import { Config } from "@/config/config"
 
 const DEFAULT_DAEMON_PORT = 3210
 const DAEMON_HEALTH_PATH = "/global/health"
@@ -268,10 +269,15 @@ export const TuiThreadCommand = cmd({
       return
     }
 
+    // Read TUI config for kitty keyboard setting
+    const config = await Config.get().catch(() => undefined)
+    const kittyKeyboard = config?.tui?.kitty_keyboard
+
     // Start TUI - when TUI exits, process keeps running
     const tuiPromise = tui({
       url,
       directory: cwd,
+      kittyKeyboard,
       args: {
         continue: args.continue,
         sessionID: args.session,

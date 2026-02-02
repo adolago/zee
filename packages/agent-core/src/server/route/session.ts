@@ -19,7 +19,7 @@ import { SessionSummary } from "@/session/summary"
 import { SessionCompaction } from "../../session/compaction"
 import { Agent } from "../../agent/agent"
 import { PermissionNext } from "@/permission/next"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@agent-core/util/error"
 
 const log = Log.create({ service: "server:session" })
 

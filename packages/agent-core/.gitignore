@@ -1,6 +1,7 @@
 research
 dist
 dist-check
+src/provider/models-snapshot.ts
 /gen
 app.log
 # Allow SDK generated files

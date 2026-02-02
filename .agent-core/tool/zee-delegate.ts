@@ -11,7 +11,7 @@
  * - Zee relays it back to the user
  */
 
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "@agent-core/plugin"
 
 // Get daemon API base URL
 function getDaemonUrl(): string {

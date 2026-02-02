@@ -7,7 +7,7 @@ import { Rpc } from "@/util/rpc"
 import { upgrade } from "@/cli/upgrade"
 import { Config } from "@/config/config"
 import { GlobalBus } from "@/bus/global"
-import { createOpencodeClient } from "@opencode-ai/sdk"
+import { createOpencodeClient } from "@agent-core/sdk"
 import type { BunWebSocketData } from "hono/bun"
 import { Flag } from "@/flag/flag"
 

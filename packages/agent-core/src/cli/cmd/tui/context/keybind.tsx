@@ -3,7 +3,7 @@ import { useSync } from "@tui/context/sync"
 import { useVim } from "@tui/context/vim"
 import { Keybind } from "@/util/keybind"
 import { pipe, mapValues } from "remeda"
-import type { KeybindsConfig as SDKKeybindsConfig } from "@opencode-ai/sdk/v2"
+import type { KeybindsConfig as SDKKeybindsConfig } from "@agent-core/sdk/v2"
 import type { ParsedKey, Renderable } from "@opentui/core"
 import { InputRenderable } from "@opentui/core"
 import { createStore } from "solid-js/store"
@@ -126,7 +126,10 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
           // Refocus textarea first so the handler has access to it
           vim.onEnterInsert()
           vim.enterNormal()
-          const handled = vimCommandHandler(evt.name)
+          const key = evt.shift && /^[a-z]$/.test(evt.name)
+            ? evt.name.toUpperCase()
+            : evt.name
+          const handled = vimCommandHandler(key)
           if (handled) {
             evt.stopPropagation()
             evt.preventDefault()

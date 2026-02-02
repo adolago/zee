@@ -9,7 +9,7 @@ import { mergeDeep, pipe, unique } from "remeda"
 import { Global } from "../global"
 import fs from "fs/promises"
 import { lazy } from "../util/lazy"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@agent-core/util/error"
 import { Flag } from "../flag/flag"
 import { Auth } from "../auth"
 import { type ParseError as JsoncParseError, parse as parseJsonc, printParseErrorCode } from "jsonc-parser"
@@ -217,7 +217,7 @@ export namespace Config {
     if (!hasGitIgnore) await Bun.write(gitignore, ["node_modules", "package.json", "bun.lock", ".gitignore"].join("\n"))
 
     const pluginVersion = Installation.isLocal() || Installation.isPreview() ? "latest" : Installation.VERSION
-    await BunProc.run(["add", "@opencode-ai/plugin@" + pluginVersion, "--exact"], {
+    await BunProc.run(["add", "@agent-core/plugin@" + pluginVersion, "--exact"], {
       cwd: dir,
     }).catch((err) => {
       log.debug("failed to add plugin package", { error: String(err), dir })
@@ -918,6 +918,13 @@ export namespace Config {
       })
       .optional()
       .describe("Vim mode settings for the input prompt"),
+    kitty_keyboard: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe(
+        "Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work.",
+      ),
   })
 
   /**

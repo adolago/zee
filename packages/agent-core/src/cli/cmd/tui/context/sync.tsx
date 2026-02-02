@@ -18,17 +18,17 @@ import type {
   ProviderAuthMethod,
   VcsInfo,
   ToolPart,
-} from "@opencode-ai/sdk/v2"
+} from "@agent-core/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useSDK } from "@tui/context/sdk"
-import { Binary } from "@opencode-ai/util/binary"
+import { Binary } from "@agent-core/util/binary"
 import { createSimpleContext } from "./helper"
 import type { Snapshot } from "@/snapshot"
 import { useExit } from "./exit"
 import { useArgs } from "./args"
 import { batch, createSignal, onMount } from "solid-js"
 import { Log } from "@/util/log"
-import type { Path } from "@opencode-ai/sdk/v2"
+import type { Path } from "@agent-core/sdk/v2"
 import { useToast } from "../ui/toast"
 import { createAuthorizedFetch } from "@/server/auth"
 

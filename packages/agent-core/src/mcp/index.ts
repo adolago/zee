@@ -13,7 +13,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js"
 import { Config } from "../config/config"
 import { Log } from "../util/log"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@agent-core/util/error"
 import z from "zod/v4"
 import { Instance } from "../project/instance"
 import { Installation } from "../installation"
@@ -1138,7 +1138,11 @@ export namespace MCP {
       const pollToolId = `${sanitizedClientName}_job_poll`
       for (const mcpTool of toolsResult.tools) {
         const sanitizedToolName = mcpTool.name.replace(/[^a-zA-Z0-9_-]/g, "_")
-        result[sanitizedClientName + "_" + sanitizedToolName] = await convertMcpTool(
+        // Use short name by default; prefix with server name only on collision
+        const toolId = sanitizedToolName in result
+          ? sanitizedClientName + "_" + sanitizedToolName
+          : sanitizedToolName
+        result[toolId] = await convertMcpTool(
           mcpTool,
           s.clients[clientName] ?? client,
           timeout,

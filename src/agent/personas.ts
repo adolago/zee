@@ -5,7 +5,7 @@
  * Theme colors are shared between backend and UI.
  */
 
-import type { AgentPersona, AgentConfig, PersonaTheme } from "./types";
+import type { AgentPersona, AgentConfig, PersonaTheme, ModelParamsMap } from "./types";
 import type { AgentPersonaConfig } from "../config/types";
 import { personaPalettes } from "../theme/rosetta";
 
@@ -76,8 +76,19 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
+  model: { providerId: "xai", modelId: "grok-4.1" },
   temperature: 0.3,
   topP: 0.9, // More focused sampling for analytical work
+  modelParams: {
+    "opus":       { temperature: 0.3 },                        // Anthropic: temp only, no topP
+    "gpt-5":      null,                                        // GPT-5 series: sampling locked
+    "gemini-3":   { temperature: 0.4, topP: 0.9, topK: 20 },  // Focused for analysis
+    "grok-4":     { temperature: 0.3 },                        // xAI: temp only
+    "kimi-k2":    { temperature: 0.5, topP: 0.9 },
+    "glm-4.7":    { temperature: 0.5 },                          // GLM: temp only, don't combine with topP
+    "minimax-m2": { temperature: 0.5, topP: 0.9, topK: 40 },
+    "qwen3":      { temperature: 0.3, topP: 0.9 },
+  },
   color: "#254533", // Emerald Bronze (Stanley dark)
   permission: {
     edit: "allow",
@@ -122,7 +133,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
 export const STANLEY_PERSONA_CONFIG: AgentPersonaConfig = {
   ...STANLEY_PERSONA,
   defaultAgent: "stanley",
-  surfaces: ["cli", "web", "api"],
+  surfaces: ["cli", "web", "api", "telegram"],
   systemPromptAdditions: `
 You are Stanley, a research analyst specializing in financial markets and investment research.
 
@@ -194,8 +205,19 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: true,
+  model: { providerId: "kimi-for-coding", modelId: "kimi-k2.5" },
   temperature: 0.7,
   topP: 0.95, // Balanced sampling for conversational flexibility
+  modelParams: {
+    "opus":       { temperature: 0.7 },                        // Anthropic: temp only, no topP
+    "gpt-5":      null,                                        // GPT-5 series: sampling locked
+    "gemini-3":   { temperature: 0.9, topP: 0.95, topK: 40 }, // Higher temp for conversational variety
+    "grok-4":     { temperature: 0.7 },                        // xAI: temp only
+    "kimi-k2":    { temperature: 0.6, topP: 0.95 },            // Kimi recommended instant defaults
+    "glm-4.7":    { temperature: 1.0 },                          // GLM: temp only, don't combine with topP
+    "minimax-m2": { temperature: 1.0, topP: 0.95, topK: 40 },  // Minimax official recommendation
+    "qwen3":      { temperature: 0.6, topP: 1.0 },             // Slightly warmer than Qwen default
+  },
   color: "#111426", // Sapphire Shadow dark (Zee dark)
   permission: {
     edit: "allow",
@@ -310,8 +332,19 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
+  model: { providerId: "anthropic", modelId: "claude-opus-4-5" },
   temperature: 0.5,
   topP: 0.92, // Balanced sampling for teaching variety
+  modelParams: {
+    "opus":       { temperature: 0.5 },                        // Anthropic: temp only, no topP
+    "gpt-5":      null,                                        // GPT-5 series: sampling locked
+    "gemini-3":   { temperature: 0.7, topP: 0.95, topK: 40 }, // Moderate variety for teaching
+    "grok-4":     { temperature: 0.5 },                        // xAI: temp only
+    "kimi-k2":    { temperature: 0.6, topP: 0.95 },
+    "glm-4.7":    { temperature: 0.7 },                          // GLM: temp only, don't combine with topP
+    "minimax-m2": { temperature: 0.7, topP: 0.95, topK: 40 },
+    "qwen3":      { temperature: 0.5, topP: 1.0 },
+  },
   color: "#5C2A24", // Crimson Bronze (Johny dark)
   permission: {
     edit: "allow",
@@ -355,7 +388,7 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
 export const JOHNY_PERSONA_CONFIG: AgentPersonaConfig = {
   ...JOHNY_PERSONA,
   defaultAgent: "johny",
-  surfaces: ["cli", "web", "api"],
+  surfaces: ["cli", "web", "api", "telegram"],
   systemPromptAdditions: `
 You are Johny, a learning system applying deliberate practice and spaced repetition principles.
 

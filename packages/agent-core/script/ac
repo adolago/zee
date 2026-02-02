@@ -1,11 +1,15 @@
 #!/bin/bash
-# ac - Nuke and boot: kills all agent-core processes, then runs the LOCAL dev binary
+# ac - Nuke, verify, and boot: kills all processes, runs self-test, then opens TUI
 #
 # Usage: ac [args...]
+#   ac --skip-test    Skip the self-test (messaging + provider checks)
 #
 # Symlink: ln -sf ~/.local/src/agent-core/packages/agent-core/script/ac ~/bin/ac
 #
 # Use `agent-core` for normal boot (no nuke), `ac` for fresh start.
+# The self-test starts a headless daemon, verifies providers and messaging,
+# then opens the TUI only if everything passes. If anything fails, ac exits
+# without opening the TUI -- broken software does not ship.
 
 set -e
 
@@ -18,6 +22,16 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Parse flags
+SKIP_TEST=false
+PASSTHROUGH_ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --skip-test) SKIP_TEST=true ;;
+        *) PASSTHROUGH_ARGS+=("$arg") ;;
+    esac
+done
 
 # Detect platform
 case "$(uname -s)-$(uname -m)" in
@@ -74,5 +88,156 @@ if pgrep -x "agent-core" > /dev/null 2>&1; then
     sleep 0.5
 fi
 
+# Kill Zee gateway processes too (they aren't named "agent-core")
+if pgrep -af "zee.*gateway" > /dev/null 2>&1; then
+    echo -e "\033[1;36m[ac] Killing orphaned Zee gateway processes...\033[0m" >&2
+    pkill -9 -f "zee.*gateway" 2>/dev/null || true
+fi
+
+# Clean up stale daemon state left by kill -9
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/agent-core/daemon"
+rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
+
+# ---------------------------------------------------------------------------
+# Self-test: start headless daemon, verify providers + messaging, then open TUI
+# ---------------------------------------------------------------------------
+
+if [[ "$SKIP_TEST" == "true" ]]; then
+    echo -e "\033[1;33m[ac] Skipping self-test (--skip-test)\033[0m" >&2
+    exec "$LOCAL_BINARY" "${PASSTHROUGH_ARGS[@]}"
+fi
+
+DAEMON_PORT=3210
+DAEMON_URL="http://127.0.0.1:$DAEMON_PORT"
+TEST_DAEMON_PID=""
+AC_TEST_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/agent-core/ac-test.json"
+
+ac_test_cleanup() {
+    if [[ -n "$TEST_DAEMON_PID" ]] && kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
+        kill "$TEST_DAEMON_PID" 2>/dev/null || true
+        wait "$TEST_DAEMON_PID" 2>/dev/null || true
+    fi
+    # Clean state so TUI can start fresh
+    rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
+}
+trap ac_test_cleanup EXIT
+
+ac_test_fail() {
+    echo -e "\033[1;31m[ac] SELF-TEST FAILED: $1\033[0m" >&2
+    echo -e "\033[1;31m[ac] TUI will NOT open. Fix the issue and retry, or use: ac --skip-test\033[0m" >&2
+    exit 1
+}
+
+# Start daemon in headless mode
+echo -e "\033[1;33m[ac] Starting headless daemon for self-test...\033[0m" >&2
+AGENT_CORE_HEADLESS=1 "$LOCAL_BINARY" daemon &
+TEST_DAEMON_PID=$!
+
+# Wait for daemon health
+echo -e "\033[1;33m[ac] Waiting for daemon health...\033[0m" >&2
+MAX_WAIT=30
+WAITED=0
+while true; do
+    if curl -sf -m 2 "$DAEMON_URL/global/health" 2>/dev/null | jq -e '.healthy' >/dev/null 2>&1; then
+        break
+    fi
+    if ! kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
+        ac_test_fail "daemon process died during startup"
+    fi
+    sleep 1
+    WAITED=$((WAITED + 1))
+    if [[ "$WAITED" -ge "$MAX_WAIT" ]]; then
+        ac_test_fail "daemon not healthy after ${MAX_WAIT}s"
+    fi
+done
+echo -e "\033[1;32m[ac] Daemon healthy\033[0m" >&2
+
+# Wait for gateway
+echo -e "\033[1;33m[ac] Waiting for gateway...\033[0m" >&2
+MAX_GW_WAIT=30
+GW_WAITED=0
+while true; do
+    GW_STATUS=$(curl -sf -m 3 "$DAEMON_URL/gateway/status" 2>/dev/null || true)
+    if echo "$GW_STATUS" | jq -e '.success' >/dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+    GW_WAITED=$((GW_WAITED + 1))
+    if [[ "$GW_WAITED" -ge "$MAX_GW_WAIT" ]]; then
+        ac_test_fail "gateway not ready after ${MAX_GW_WAIT}s"
+    fi
+done
+echo -e "\033[1;32m[ac] Gateway ready\033[0m" >&2
+
+# Provider health check (real API calls with tokens)
+echo -e "\033[1;33m[ac] Running provider health check...\033[0m" >&2
+if ! (cd "$REPO_ROOT" && bun run script/provider-health-check.ts --errors-only); then
+    ac_test_fail "provider health check failed (token/API issue)"
+fi
+echo -e "\033[1;32m[ac] Providers OK\033[0m" >&2
+
+# Messaging test
+MESSAGING_FAILED=false
+
+if [[ -f "$AC_TEST_CONFIG" ]]; then
+    WA_TO=$(jq -r '.whatsapp.to // empty' "$AC_TEST_CONFIG" 2>/dev/null)
+    WA_ACCOUNT=$(jq -r '.whatsapp.account // "zee"' "$AC_TEST_CONFIG" 2>/dev/null)
+    TG_CHAT_ID=$(jq -r '.telegram.chatId // empty' "$AC_TEST_CONFIG" 2>/dev/null)
+
+    # WhatsApp: "Zee is back on."
+    if [[ -n "$WA_TO" ]]; then
+        echo -e "\033[1;33m[ac] WhatsApp test -> $WA_TO ...\033[0m" >&2
+        WA_RESULT=$(curl -sf -m 15 "$DAEMON_URL/gateway/whatsapp/send" \
+            -H "Content-Type: application/json" \
+            -d "{\"chatId\":\"$WA_TO\",\"message\":\"Zee is back on.\",\"accountId\":\"$WA_ACCOUNT\"}" 2>&1) || true
+        if echo "$WA_RESULT" | jq -e '.success' >/dev/null 2>&1; then
+            echo -e "\033[1;32m[ac] WhatsApp: sent\033[0m" >&2
+        else
+            echo -e "\033[1;31m[ac] WhatsApp FAILED: ${WA_RESULT:-no response}\033[0m" >&2
+            MESSAGING_FAILED=true
+        fi
+    else
+        echo -e "\033[1;31m[ac] ac-test.json missing whatsapp.to\033[0m" >&2
+        MESSAGING_FAILED=true
+    fi
+
+    # Telegram: one message per persona
+    if [[ -n "$TG_CHAT_ID" ]]; then
+        for PERSONA in zee stanley johny; do
+            DISPLAY_NAME="$(echo "$PERSONA" | sed 's/./\U&/')"
+            echo -e "\033[1;33m[ac] Telegram test ($DISPLAY_NAME) -> $TG_CHAT_ID ...\033[0m" >&2
+            TG_RESULT=$(curl -sf -m 15 "$DAEMON_URL/gateway/telegram/send" \
+                -H "Content-Type: application/json" \
+                -d "{\"persona\":\"$PERSONA\",\"chatId\":\"$TG_CHAT_ID\",\"message\":\"$DISPLAY_NAME is back on.\"}" 2>&1) || true
+            if echo "$TG_RESULT" | jq -e '.success' >/dev/null 2>&1; then
+                echo -e "\033[1;32m[ac] Telegram ($DISPLAY_NAME): sent\033[0m" >&2
+            else
+                echo -e "\033[1;31m[ac] Telegram ($DISPLAY_NAME) FAILED: ${TG_RESULT:-no response}\033[0m" >&2
+                MESSAGING_FAILED=true
+            fi
+        done
+    else
+        echo -e "\033[1;31m[ac] ac-test.json missing telegram.chatId\033[0m" >&2
+        MESSAGING_FAILED=true
+    fi
+else
+    ac_test_fail "no test config at $AC_TEST_CONFIG -- create it with:\n  {\"whatsapp\":{\"to\":\"<jid>@c.us\",\"account\":\"zee\"},\"telegram\":{\"chatId\":\"<numeric-id>\"}}"
+fi
+
+if [[ "$MESSAGING_FAILED" == "true" ]]; then
+    ac_test_fail "messaging verification failed"
+fi
+
+echo -e "\033[1;32m[ac] All self-tests passed\033[0m" >&2
+
+# Stop test daemon cleanly
+echo -e "\033[1;33m[ac] Stopping test daemon...\033[0m" >&2
+kill "$TEST_DAEMON_PID" 2>/dev/null || true
+wait "$TEST_DAEMON_PID" 2>/dev/null || true
+TEST_DAEMON_PID=""
+rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
+sleep 0.5
+
 # Boot: run the local binary (starts daemon + gateway + TUI)
-exec "$LOCAL_BINARY" "$@"
+echo -e "\033[1;32m[ac] Launching TUI...\033[0m" >&2
+exec "$LOCAL_BINARY" "${PASSTHROUGH_ARGS[@]}"

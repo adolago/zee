@@ -140,7 +140,7 @@ if (response.ok) {
   console.error(`[preload] Failed to fetch models.dev: ${response.status}`)
 }
 // Disable models.dev refresh to avoid race conditions during tests
-process.env["OPENCODE_DISABLE_MODELS_FETCH"] = "true"
+process.env["AGENT_CORE_DISABLE_MODELS_FETCH"] = "true"
 
 // Clear config override env vars to ensure clean test state
 // These flags can override project config and interfere with permission tests

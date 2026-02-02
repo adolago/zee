@@ -105,6 +105,8 @@ export function createJob(state: CronServiceState, input: CronJobCreate): CronJo
     wakeMode: input.wakeMode,
     payload: input.payload,
     isolation: input.isolation,
+    maxConcurrentRuns: input.maxConcurrentRuns,
+    throttle: input.throttle,
     state: {
       ...input.state,
     },
@@ -141,6 +143,12 @@ export function applyJobPatch(job: CronJob, patch: CronJobPatch) {
   }
   if (patch.isolation) {
     job.isolation = patch.isolation
+  }
+  if ("maxConcurrentRuns" in patch) {
+    job.maxConcurrentRuns = patch.maxConcurrentRuns
+  }
+  if ("throttle" in patch) {
+    job.throttle = patch.throttle
   }
   if (patch.state) {
     job.state = { ...job.state, ...patch.state }

@@ -110,6 +110,7 @@ export function tui(input: {
   fetch?: typeof fetch
   events?: EventSource
   onExit?: () => Promise<void>
+  kittyKeyboard?: boolean
 }) {
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
@@ -172,7 +173,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: {},
+        useKittyKeyboard: input.kittyKeyboard !== false ? {} : null,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {

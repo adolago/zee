@@ -45,7 +45,7 @@ npx tsx scripts/zee-memory.ts search "John Q4" --limit 5
 1. Call `zee:memory-agentic-search` with `domain: "contacts"` and the person's name as `query`.
 2. If no results, try `zee:memory-search` with the person's name.
 3. Only ask the user for a number if both searches return nothing.
-4. Once you have the number, call the messaging tool and respond naturally (e.g., "Just sent a ping to John on WhatsApp").
+4. Once you have the number, call the messaging tool. If the tool output confirms success, respond naturally (e.g., "Sent John a message on WhatsApp"). If the tool returns an error, report the error to the user -- never claim a message was sent when it failed.
 
 Never ask the user for a phone number if the contact exists in memory.
 

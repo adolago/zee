@@ -15,6 +15,8 @@ import { SnapshotCommand } from "./snapshot"
 import { StatusCommand } from "./status"
 import { TasksCommand } from "./tasks"
 import { AgentCommand } from "./agent"
+import { ContextTaxCommand } from "./context-tax"
+import { SkillAuditCommand } from "./skill-audit"
 
 export const DebugCommand = cmd({
   command: "debug",
@@ -22,6 +24,7 @@ export const DebugCommand = cmd({
   builder: (yargs) =>
     yargs
       .command(ConfigCommand)
+      .command(ContextTaxCommand)
       .command(ErrorsCommand)
       .command(LSPCommand)
       .command(LogsCommand)
@@ -31,6 +34,7 @@ export const DebugCommand = cmd({
       .command(FileCommand)
       .command(ScrapCommand)
       .command(SkillCommand)
+      .command(SkillAuditCommand)
       .command(SnapshotCommand)
       .command(TasksCommand)
       .command(AgentCommand)

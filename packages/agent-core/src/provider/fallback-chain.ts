@@ -1,6 +1,6 @@
 import { Log } from "@/util/log"
 import { ModelEquivalence } from "./equivalence"
-import type { NamedError } from "@opencode-ai/util/error"
+import type { NamedError } from "@agent-core/util/error"
 
 /**
  * Fallback Chain - User-configurable fallback sequences.

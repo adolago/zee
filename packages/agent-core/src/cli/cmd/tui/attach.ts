@@ -5,6 +5,7 @@ import { tui } from "./app"
 import { UI } from "../../ui"
 import { Daemon } from "../daemon"
 import { createAuthorizedFetch } from "../../../server/auth"
+import { Config } from "@/config/config"
 
 function normalizeDaemonHost(hostname?: string): string {
   if (!hostname || hostname === "0.0.0.0") return "127.0.0.1"
@@ -87,9 +88,12 @@ export const AttachCommand = cmd({
       process.exit(1)
     }
 
+    const config = await Config.get().catch(() => undefined)
+
     await tui({
       url,
       directory: cwd,
+      kittyKeyboard: config?.tui?.kitty_keyboard,
       args: {
         continue: args.continue,
         sessionID: args.session,

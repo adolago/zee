@@ -9,7 +9,7 @@ export const ServeCommand = cmd({
   handler: async (args) => {
     const opts = await resolveNetworkOptions(args)
     const server = Server.listen(opts)
-    // Use "opencode server listening" for @opencode-ai/sdk compatibility
+    // Use "opencode server listening" for @agent-core/sdk compatibility
     console.log(`opencode server listening on http://${server.hostname}:${server.port}`)
     await new Promise(() => {})
     await server.stop()

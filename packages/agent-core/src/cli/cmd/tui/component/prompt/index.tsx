@@ -24,7 +24,7 @@ import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
-import type { FilePart } from "@opencode-ai/sdk/v2"
+import type { FilePart } from "@agent-core/sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
@@ -52,6 +52,7 @@ export type PromptProps = {
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
   showPlaceholder?: boolean
+  sidebarVisible?: boolean
 }
 
 export type PromptRef = {
@@ -80,6 +81,52 @@ export function Prompt(props: PromptProps) {
   const toast = useToast()
   const dimensions = useTerminalDimensions()
   const fill = createMemo(() => "─".repeat(dimensions().width))
+  const borderFill = createMemo(() => "─".repeat(Math.max(1, dimensions().width - 2)))
+  const contextUsageLabel = createMemo(() => {
+    const ctx = contextUsage()
+    if (!ctx) return ""
+    const limit = ctx.limit >= 1000000
+      ? `${(ctx.limit / 1000000).toFixed(1)}M`
+      : ctx.limit >= 1000
+        ? `${Math.round(ctx.limit / 1000)}k`
+        : `${ctx.limit}`
+    return `${ctx.percent}% of ${limit}`
+  })
+  const agentLabel = createMemo(() => Locale.titlecase(local.agent.current().name))
+  const skillsLabel = createMemo(() => `${sync.data.agent?.length ?? 0} skills`)
+  const vimLabel = createMemo(() => {
+    if (!vim.enabled || store.mode === "shell") return ""
+    if (vim.isNormal) return vimPending() ? `N ${vimPending()}` : "N"
+    return "I"
+  })
+  const topLineFill = createMemo(() => {
+    const left = contextUsageLabel()
+    const leftLen = left ? left.length + 1 : 0
+    const rightLen = agentLabel().length + 1 + skillsLabel().length + (vimLabel() ? 1 + vimLabel().length : 0)
+    const reserved = 2 + leftLen + rightLen
+    return "─".repeat(Math.max(1, dimensions().width - reserved))
+  })
+  const bottomLineFill = createMemo(() => {
+    const leftLen = status().type === "busy" ? 1 + " Esc to cancel".length : 1
+    if (props.sidebarVisible) {
+      const reserved = 2 + leftLen
+      return "─".repeat(Math.max(1, dimensions().width - reserved))
+    }
+    const parsed = local.model.parsed()
+    const modelLabel = parsed ? `${parsed.provider} ${parsed.model}` : ""
+    const variant = local.model.variant.current()
+    const variantLabel = variant ? ` ${variant}` : ""
+    let pathLabel = ""
+    if (sync.data.path?.directory) {
+      pathLabel += ` ~${sync.data.path.directory.replace(process.env.HOME ?? "", "")}`
+    }
+    if (sync.data.vcs?.branch) {
+      pathLabel += ` (${sync.data.vcs.branch})`
+    }
+    const rightLen = modelLabel.length + variantLabel.length + pathLabel.length
+    const reserved = 2 + leftLen + rightLen
+    return "─".repeat(Math.max(1, dimensions().width - reserved))
+  })
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {
@@ -1443,53 +1490,69 @@ export function Prompt(props: PromptProps) {
         promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
-        {/* Tips/billboard box with shared middle border (T-junctions) */}
-        <Tips billboard={billboard} bottomBorder={
+        <Tips topBorder={
           <box height={1} flexDirection="row">
-            <text fg={theme.border} flexShrink={0}>├</text>
-            {/* Left side: context usage */}
-            <Show when={contextUsage()}>
-              {(ctx) => (
-                <>
-                  <text
-                    fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
-                    flexShrink={0}
-                  >
-                    {ctx().percent}% of {ctx().limit >= 1000000 ? `${(ctx().limit / 1000000).toFixed(1)}M` : ctx().limit >= 1000 ? `${Math.round(ctx().limit / 1000)}k` : ctx().limit}
-                  </text>
-                  <text fg={theme.border} flexShrink={0}>─</text>
-                </>
-              )}
-            </Show>
-
-            {/* Line fill */}
-            <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
-            {/* Right side: agent info */}
-            <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
-            <text fg={theme.border} flexShrink={0}>─</text>
-            <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
-            <Show when={vim.enabled && store.mode !== "shell"}>
-              <text fg={theme.border} flexShrink={0}>─</text>
-              <text
-                fg={vim.isNormal ? theme.accent : theme.success}
-                attributes={TextAttributes.BOLD}
-                flexShrink={0}
-              >
-                {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
-              </text>
-            </Show>
-            <text fg={theme.border} flexShrink={0}>─┤</text>
+            <text fg={theme.border} flexShrink={0}>╭</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1}>{borderFill()}</text>
+            <text fg={theme.border} flexShrink={0}>╮</text>
+          </box>
+        } bottomBorder={
+          <box height={1} flexDirection="row">
+            <text fg={theme.border} flexShrink={0}>╰</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1}>{borderFill()}</text>
+            <text fg={theme.border} flexShrink={0}>╯</text>
           </box>
         } />
+
+        <box height={1} flexDirection="row">
+          <text fg={theme.border} flexShrink={0}>╭</text>
+          <Show when={contextUsageLabel()}>
+            <>
+              <text
+                fg={(() => {
+                  const ctx = contextUsage()
+                  if (!ctx) return theme.textMuted
+                  return ctx.percent >= 80 ? theme.error : ctx.percent >= 60 ? theme.warning : theme.textMuted
+                })()}
+                flexShrink={0}
+              >
+                {contextUsageLabel()}
+              </text>
+              <text fg={theme.border} flexShrink={0}>─</text>
+            </>
+          </Show>
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>{topLineFill()}</text>
+          <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
+          <text fg={theme.border} flexShrink={0}>─</text>
+          <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
+          <Show when={vim.enabled && store.mode !== "shell"}>
+            <text fg={theme.border} flexShrink={0}>─</text>
+            <text
+              fg={vim.isNormal ? theme.accent : theme.success}
+              attributes={TextAttributes.BOLD}
+              flexShrink={0}
+            >
+              {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
+            </text>
+          </Show>
+          <text fg={theme.border} flexShrink={0}>─╮</text>
+        </box>
         
-        {/* Input area with side borders (stacked box style) */}
         <box
-          border={["left", "right"]}
+          border={["left", "right", "bottom"]}
           borderColor={theme.border}
           customBorderChars={{
             vertical: "│",
-            topLeft: "", bottomLeft: "", topRight: "", bottomRight: "",
-            horizontal: "", topT: "", bottomT: "", leftT: "", rightT: "", cross: "",
+            bottomLeft: "╰",
+            bottomRight: "╯",
+            topLeft: "",
+            topRight: "",
+            horizontal: "─",
+            topT: "",
+            bottomT: "",
+            leftT: "",
+            rightT: "",
+            cross: "",
           }}
           paddingLeft={1}
           paddingRight={1}
@@ -1556,7 +1619,9 @@ export function Prompt(props: PromptProps) {
                   if (vim.isNormal && !keybind.leader) {
                     // Single character commands (no modifiers except shift for uppercase)
                     if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
-                      const key = e.name
+                      const key = e.shift && /^[a-z]$/.test(e.name)
+                        ? e.name.toUpperCase()
+                        : e.name
 
                       // Allow `!` at position 0 to trigger shell mode
                       if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
@@ -1775,7 +1840,7 @@ export function Prompt(props: PromptProps) {
               syntaxStyle={syntax()}
             />
         </box>
-        {/* Bottom border with embedded status info */}
+        {/* Bottom border - minimal or full */}
         <box height={1} flexDirection="row">
           <text fg={theme.border} flexShrink={0}>╰</text>
           {/* Left: spinner only */}
@@ -1793,33 +1858,35 @@ export function Prompt(props: PromptProps) {
             <text fg={theme.textMuted}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
-          {/* Right: model + path */}
-          {(() => {
-            const parsed = local.model.parsed()
-            const variant = local.model.variant.current()
-            return (
-              <>
-                <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
-                <Show when={variant}>
-                  <text fg={theme.accent} flexShrink={0}> {variant}</text>
-                </Show>
-              </>
-            )
-          })()}
-          <text fg={theme.textMuted} flexShrink={0}>
-            <Show when={sync.data.path?.directory}>
-              {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
-            </Show>
-            <Show when={sync.data.vcs?.branch}>
-              {` (${sync.data.vcs?.branch})`}
-            </Show>
-          </text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>{bottomLineFill()}</text>
+          {/* Right: model + path (only when not minimal) */}
+          <Show when={!props.sidebarVisible}>
+            {(() => {
+              const parsed = local.model.parsed()
+              const variant = local.model.variant.current()
+              return (
+                <>
+                  <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
+                  <Show when={variant}>
+                    <text fg={theme.accent} flexShrink={0}> {variant}</text>
+                  </Show>
+                </>
+              )
+            })()}
+            <text fg={theme.textMuted} flexShrink={0}>
+              <Show when={sync.data.path?.directory}>
+                {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
+              </Show>
+              <Show when={sync.data.vcs?.branch}>
+                {` (${sync.data.vcs?.branch})`}
+              </Show>
+            </text>
+          </Show>
           <text fg={theme.border} flexShrink={0}>─╯</text>
         </box>
       </box>
-      {/* Diff stats line outside box, below bottom border */}
-      <Show when={diffStats()}>
+      {/* Diff stats line outside box, below bottom border (only when not minimal) */}
+      <Show when={!props.sidebarVisible && diffStats()}>
         {(stats) => (
           <box height={1} flexDirection="row" justifyContent="flex-end" paddingRight={1}>
             <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>

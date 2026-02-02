@@ -104,17 +104,7 @@ export const marketDataTool: ToolDefinition = {
   id: "stanley:market-data",
   category: "domain",
   init: async () => ({
-    description: `Retrieve real-time and historical market data for stocks, ETFs, and indices.
-Use this tool to get:
-- Current quotes and prices
-- Historical price charts
-- Fundamental data (P/E, market cap, etc.)
-- Recent news and sentiment
-
-Examples:
-- Get current AAPL quote: { symbol: "AAPL", dataType: "quote" }
-- Get 3-month MSFT chart: { symbol: "MSFT", dataType: "chart", period: "3m" }
-- Get Tesla fundamentals: { symbol: "TSLA", dataType: "fundamentals" }`,
+    description: `Retrieve real-time and historical market data for stocks, ETFs, and indices. Data types: quote (current price), chart (historical), fundamentals (P/E, market cap), news.`,
     parameters: MarketDataParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { symbol, dataType, period } = args;
@@ -160,20 +150,7 @@ export const portfolioTool: ToolDefinition = {
   id: "stanley:portfolio",
   category: "domain",
   init: async () => ({
-    description: `Analyze and optimize investment portfolios.
-
-**Recall context**: Check zee:memory-agentic-search (domain "portfolio") for the user's current positions and recent changes before asking.
-
-Capabilities:
-- Portfolio performance analysis
-- Risk metrics (Sharpe ratio, Sortino, VaR, beta)
-- Asset allocation optimization
-- Backtesting strategies
-
-Examples:
-- Analyze current portfolio: { action: "analyze" }
-- Optimize for Sharpe ratio: { action: "optimize" }
-- Backtest a strategy: { action: "backtest" }`,
+    description: `Analyze and optimize investment portfolios. Check memory for user positions first. Actions: get (current), analyze (performance + risk metrics), optimize, backtest.`,
     parameters: PortfolioParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, portfolioId, benchmark, riskMetrics } = args;
@@ -226,18 +203,7 @@ export const secFilingsTool: ToolDefinition = {
   id: "stanley:sec-filings",
   category: "domain",
   init: async () => ({
-    description: `Access and analyze SEC regulatory filings.
-Available form types:
-- 10-K: Annual reports
-- 10-Q: Quarterly reports
-- 8-K: Current events
-- 13F: Institutional holdings
-- DEF14A: Proxy statements
-- S-1: IPO registration
-
-Examples:
-- Get Apple's annual report: { ticker: "AAPL", formType: "10-K" }
-- Check institutional holdings: { ticker: "MSFT", formType: "13F" }`,
+    description: `Access and analyze SEC regulatory filings. Form types: 10-K (annual), 10-Q (quarterly), 8-K (events), 13F (holdings), DEF14A (proxy), S-1 (IPO). Set summarize=true for AI summary.`,
     parameters: SecFilingsParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { ticker, formType, year, summarize } = args;
@@ -273,19 +239,7 @@ export const researchTool: ToolDefinition = {
   id: "stanley:research",
   category: "domain",
   init: async () => ({
-    description: `Conduct financial research across multiple sources.
-
-**Check memory first**: Before starting research, search zee:memory-agentic-search (domain "research") for previous analyses on the same ticker. Build on existing findings.
-
-Sources include:
-- SEC filings and disclosures
-- Financial news (Bloomberg, Reuters, etc.)
-- Analyst reports and ratings
-- Academic papers and research
-
-Examples:
-- Research AI sector: { query: "artificial intelligence market trends" }
-- Find analyst reports: { query: "NVDA", sources: ["analyst"] }`,
+    description: `Conduct financial research across multiple sources (SEC, news, analyst, academic). Check memory for previous analyses first. Specify dateRange and limit for results.`,
     parameters: ResearchParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { query, sources, dateRange, limit } = args;
@@ -321,14 +275,7 @@ export const nautilusTool: ToolDefinition = {
   id: "stanley:nautilus",
   category: "domain",
   init: async () => ({
-    description: `Interface with NautilusTrader for algorithmic trading.
-Capabilities:
-- Backtest trading strategies
-- Paper trading simulation
-- Strategy performance analysis
-- Market data feeds
-
-Note: This is for research and simulation only. No real trading.`,
+    description: `Interface with NautilusTrader for algorithmic trading research. Actions: backtest, paper_trade, strategy_info, market_status. Simulation only, no real trading.`,
     parameters: NautilusParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, strategy, symbols, startDate, endDate } = args;

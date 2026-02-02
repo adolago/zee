@@ -96,24 +96,7 @@ export const memoryStoreTool: ToolDefinition = {
   id: "zee:memory-store",
   category: "domain",
   init: async () => ({
-    description: `Store information in long-term memory for future reference.
-Use this to remember:
-- Important facts about the user
-- Preferences and settings
-- Tasks and decisions
-- Notes from conversations
-
-Organize with context tree: provide domain/topic/subtopic for structured retrieval.
-Version control: provide memoryId to update an existing memory (creates new version).
-Curate context: set kind="curated", priority="high", bookmarked=true for important context.
-Dual memory: use memoryType="reasoning" for reasoning traces, "fact" for factual content.
-
-Examples:
-- Remember preference: { content: "User prefers morning meetings", category: "preference" }
-- Store fact: { content: "User's birthday is March 15", category: "fact", importance: 0.8 }
-- Structured: { content: "JWT auth uses RS256", domain: "architecture", topic: "auth", memoryType: "fact" }
-- Update existing: { content: "JWT now uses ES256", memoryId: "abc-123", domain: "architecture", topic: "auth" }
-- Curated: { content: "Critical design decision", kind: "curated", priority: "high", bookmarked: true }`,
+    description: `Store information in long-term memory. Organize with domain/topic/subtopic for structured retrieval. Provide memoryId to update an existing memory (creates new version). Use kind="curated" + priority="high" for important context, memoryType="reasoning" for reasoning traces.`,
     parameters: MemoryStoreParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { content, category, importance, tags, relatedTo, domain, topic, subtopic, memoryId, kind, priority, bookmarked, memoryType } = args;
@@ -220,13 +203,7 @@ export const memorySearchTool: ToolDefinition = {
   id: "zee:memory-search",
   category: "domain",
   init: async () => ({
-    description: `Search through stored memories using semantic similarity.
-The search understands meaning, not just keywords.
-
-Examples:
-- Find preferences: { query: "meeting preferences", category: "preference" }
-- Search all: { query: "birthday", limit: 3 }
-- Recent memories: { query: "what we discussed", timeRange: { start: "2024-01-01" } }`,
+    description: `Search stored memories using semantic similarity. Understands meaning, not just keywords. Filter by category and timeRange.`,
     parameters: MemorySearchParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { query, category, limit, threshold, timeRange } = args;
@@ -360,37 +337,10 @@ export const messagingTool: ToolDefinition = {
   id: "zee:messaging",
   category: "domain",
   init: async () => ({
-    description: `Send messages via WhatsApp or Telegram gateways.
+    description: `Send messages via WhatsApp or Telegram gateways. Always search memory for recipient contact info before asking the user.
 
-**Recipient lookup workflow (ALWAYS follow this):**
-1. If the user says "message <name>" without a number, call zee:memory-agentic-search with domain "contacts" first to find their number/chatId.
-2. If no memory result, try zee:memory-search with the person's name as query.
-3. Only ask the user for a phone number if both searches return nothing.
-4. Then call this tool with the resolved \`to\` value.
-
-Never ask the user for a phone number without searching memory first.
-
-Channels:
-- **whatsapp**: Zee's WhatsApp gateway (requires `agent-core daemon` with gateway enabled)
-- **telegram**: Telegram bots (requires `agent-core daemon` with gateway enabled)
-
-WhatsApp:
-- \`to\`: E164 phone (e.g., "+1555...") or chat JID (e.g., "1234567890@c.us" or "...@g.us")
-- \`account\`: Which WhatsApp account to use:
-  - "zee" (default): Zee's dedicated bot number
-  - "personal": Your personal WhatsApp number (must be configured)
-  - Or any custom account ID configured in Zee
-
-Telegram:
-- \`to\`: Chat ID (numeric) or @username
-- \`persona\`: Which bot/account to use - "stanley" (default) or "johny"
-
-Examples:
-- WhatsApp text: { channel: "whatsapp", to: "+15551234567", message: "Hello!" }
-- WhatsApp audio: { channel: "whatsapp", to: "+15551234567", message: "", mediaUrl: "/tmp/voice.ogg" }
-- WhatsApp image with caption: { channel: "whatsapp", to: "+15551234567", message: "Check this out!", mediaUrl: "/tmp/photo.jpg" }
-- WhatsApp via your number: { channel: "whatsapp", to: "+15551234567", message: "Hello!", account: "personal" }
-- Telegram via Stanley: { channel: "telegram", to: "123456789", message: "Market update!", persona: "stanley" }`,
+WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"), account="zee"|"personal". Supports mediaUrl for images/audio/video.
+Telegram: to=numeric chatId, persona="stanley"|"johny".`,
     parameters: MessagingParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { channel, to, message, mediaUrl, persona, account } = args;
@@ -591,16 +541,7 @@ export const notificationTool: ToolDefinition = {
   id: "zee:notification",
   category: "domain",
   init: async () => ({
-    description: `Create notifications and reminders.
-Types:
-- alert: Immediate attention needed
-- reminder: Scheduled reminder
-- summary: Daily/weekly summaries
-- update: Status updates
-
-Examples:
-- Set reminder: { type: "reminder", title: "Meeting", body: "Team standup", schedule: "2024-01-15T09:00:00Z" }
-- Urgent alert: { type: "alert", title: "Important", body: "...", priority: "urgent" }`,
+    description: `Create notifications and reminders. Types: alert (immediate), reminder (scheduled), summary, update. Use schedule for ISO date or cron expression.`,
     parameters: NotificationParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { type, title, body, priority, schedule, channels } = args;
@@ -668,28 +609,10 @@ export const calendarTool: ToolDefinition = {
   id: "zee:calendar",
   category: "domain",
   init: async () => ({
-    description: `Google Calendar with smart scheduling.
+    description: `Google Calendar with smart scheduling. Search memory for attendee emails before asking the user.
 
-**Attendee resolution**: When creating events with attendees, search zee:memory-agentic-search (domain "contacts") for email addresses before asking the user.
-
-**View Events:**
-- today/week/month/list/show: View events
-
-**Manage Events:**
-- create: Create event with { event: { summary, start, end, location?, attendees? } }
-- update: Update event with { eventId, event: {...} }
-- delete: Delete event with { eventId }
-- quick-add: Natural language event creation { quickAddText: "Lunch with John tomorrow at noon" }
-
-**Smart Scheduling:**
-- suggest: Get optimal meeting time suggestions { durationMinutes, withinDays?, preferMorning?, preferAfternoon? }
-- find-free: Find available time slots { dateRange: {start, end}, durationMinutes }
-
-Examples:
-- { action: "today" }
-- { action: "create", event: { summary: "Team Meeting", start: "2026-01-15T10:00:00", end: "2026-01-15T11:00:00" } }
-- { action: "suggest", durationMinutes: 30, preferMorning: true }
-- { action: "quick-add", quickAddText: "Coffee with Sarah tomorrow 3pm" }`,
+View: today/week/month/list/show. Manage: create/update/delete/quick-add. Smart: suggest (optimal times), find-free (available slots).
+Create with { event: { summary, start, end } }. Quick-add with { quickAddText: "Lunch tomorrow at noon" }.`,
     parameters: CalendarParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, dateRange, year, month, event, eventId, durationMinutes, withinDays, preferMorning, preferAfternoon, quickAddText } = args;
@@ -942,19 +865,7 @@ export const contactsTool: ToolDefinition = {
   id: "zee:contacts",
   category: "domain",
   init: async () => ({
-    description: `Manage contact information.
-
-**Deduplication**: Before creating a contact, search zee:memory-agentic-search (domain "contacts") to check if the person already exists.
-
-Actions:
-- search: Find contacts by name, email, or phone
-- get: Get specific contact details
-- create: Add new contact
-- update: Update contact info
-
-Examples:
-- Search: { action: "search", query: "John" }
-- Get: { action: "get", contactId: "abc123" }`,
+    description: `Manage contact information. Actions: search, get, create, update. Always check memory for existing contacts before creating duplicates.`,
     parameters: ContactsParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, query, contactId, data } = args;
@@ -1009,24 +920,7 @@ export const splitwiseTool: ToolDefinition = {
   id: "zee:splitwise",
   category: "domain",
   init: async () => ({
-    description: `Access Splitwise API for shared expenses and balances.
-
-**Group/friend resolution**: When the user refers to a group or friend by name, search zee:memory-agentic-search (domain "contacts" or "preferences") for their Splitwise IDs before asking.
-
-Requires configuration:
-- agent-core.jsonc: { "zee": { "splitwise": { "enabled": true, "token": "{env:SPLITWISE_TOKEN}" } } }
-
-Token sources (when enabled):
-- zee.splitwise.token in agent-core.jsonc
-- zee.splitwise.tokenFile in agent-core.jsonc
-- SPLITWISE_TOKEN environment variable.
-
-Examples:
-- Current user: { action: "current-user" }
-- List groups: { action: "groups" }
-- List expenses: { action: "expenses", query: { group_id: 12345 } }
-- Create expense: { action: "create-expense", payload: { cost: "42.50", description: "Dinner", group_id: 12345 } }
-- Custom request: { action: "request", endpoint: "get_expenses", method: "GET", query: { dated_after: "2024-01-01" } }`,
+    description: `Access Splitwise API for shared expenses and balances. Search memory for group/friend IDs before asking the user. Actions: current-user, groups, friends, expenses, create-expense, balances, request (custom endpoint).`,
     parameters: SplitwiseParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       ctx.metadata({ title: `Splitwise: ${args.action}` });
@@ -1148,14 +1042,7 @@ export const codexbarTool: ToolDefinition = {
   id: "zee:codexbar",
   category: "domain",
   init: async () => ({
-    description: `Run CodexBar CLI commands to check provider usage and resets.
-
-Requires configuration:
-- agent-core.jsonc: { "zee": { "codexbar": { "enabled": true } } }
-
-Examples:
-- Show status: { args: ["status"] }
-- Cost usage: { args: ["cost", "--provider", "codex"] }`,
+    description: `Run CodexBar CLI commands to check provider usage and resets. Pass CLI arguments via args array.`,
     parameters: CodexbarParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       ctx.metadata({ title: "CodexBar" });
@@ -1224,20 +1111,7 @@ export const whatsappReactionTool: ToolDefinition = {
   id: "zee:whatsapp-react",
   category: "domain",
   init: async () => ({
-    description: `Add or remove emoji reactions to WhatsApp messages.
-
-Use this to react to messages the user mentions or sends screenshots of.
-
-Parameters:
-- **chatJid**: The WhatsApp chat ID. Format depends on chat type:
-  - DMs: "1234567890@c.us" (phone number + @c.us)
-  - Groups: "123456789012345678@g.us" (group ID + @g.us)
-- **messageId**: The message stanza ID to react to
-- **emoji**: Unicode emoji character. Use empty string "" to remove.
-
-Examples:
-- Add thumbs up: { action: "react", chatJid: "1234567890@c.us", messageId: "ABC123", emoji: "👍" }
-- Remove reaction: { action: "react", chatJid: "1234567890@c.us", messageId: "ABC123", emoji: "", remove: true }`,
+    description: `Add or remove emoji reactions to WhatsApp messages. chatJid format: "num@c.us" (DM) or "id@g.us" (group). Empty emoji or remove=true to remove reaction.`,
     parameters: WhatsAppReactionParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, chatJid, messageId, emoji, remove } = args;
@@ -1358,18 +1232,7 @@ export const memoryBrowseTool: ToolDefinition = {
   id: "zee:memory-browse",
   category: "domain",
   init: async () => ({
-    description: `Browse the memory context tree. Use this to discover what domains/topics exist before searching.
-
-Actions:
-- list-domains: Show all top-level domains
-- list-topics: Show topics within a domain
-- list-subtopics: Show subtopics within a domain/topic
-- get-entries: Get memories at a specific location
-
-Examples:
-- { action: "list-domains" }
-- { action: "list-topics", domain: "architecture" }
-- { action: "get-entries", domain: "architecture", topic: "auth", limit: 10 }`,
+    description: `Browse the memory context tree to discover domains/topics before searching. Actions: list-domains, list-topics, list-subtopics, get-entries.`,
     parameters: MemoryBrowseParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, domain, topic, subtopic, limit } = args;
@@ -1531,18 +1394,7 @@ export const memoryAgenticSearchTool: ToolDefinition = {
   id: "zee:memory-agentic-search",
   category: "domain",
   init: async () => ({
-    description: `Filter-first memory search. Use when you know the domain/topic and want structured retrieval.
-
-Unlike zee:memory-search (pure semantic), this filters by domain/topic first, then optionally applies semantic search within the filtered set. Use when:
-- You know the domain (e.g., "architecture")
-- You want all entries at a location, not just semantically similar ones
-- You want to filter by kind, priority, or memoryType
-
-Examples:
-- All auth memories: { domain: "architecture", topic: "auth" }
-- Semantic within domain: { domain: "architecture", query: "authentication flow" }
-- Curated only: { domain: "work", kind: "curated", bookmarked: true }
-- Reasoning traces: { domain: "architecture", memoryType: "reasoning" }`,
+    description: `Filter-first memory search by domain/topic, then optional semantic search within results. Use when you know the domain. Supports kind, priority, bookmarked, and memoryType filters.`,
     parameters: MemoryAgenticSearchParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { domain, topic, subtopic, query, kind, priority, bookmarked, memoryType, limit } = args;
@@ -1625,15 +1477,7 @@ export const memoryVersionTool: ToolDefinition = {
   id: "zee:memory-version",
   category: "domain",
   init: async () => ({
-    description: `View version history or rollback a memory to a previous version.
-
-Actions:
-- history: Show all versions of a memory
-- rollback: Revert to a specific version (marks newer versions as superseded)
-
-Examples:
-- { action: "history", memoryId: "abc-123" }
-- { action: "rollback", memoryId: "abc-123", targetVersion: 1 }`,
+    description: `View version history or rollback a memory. Actions: history (show all versions), rollback (revert to specific version).`,
     parameters: MemoryVersionParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, memoryId, targetVersion } = args;
@@ -1747,15 +1591,7 @@ export const planCreateTool: ToolDefinition = {
   id: "zee:plan-create",
   category: "domain",
   init: async () => ({
-    description: `Create a multi-step plan for a complex request.
-
-Use this when the user asks for something that requires multiple actions.
-The plan tracks progress across steps and persists in memory so work
-can be resumed across sessions and surfaces.
-
-Examples:
-- { objective: "Organize next week's schedule", steps: ["Review current calendar", "Identify conflicts", "Suggest rescheduling", "Create new events"] }
-- { objective: "Research competitor pricing", steps: ["List competitors", "Gather pricing data", "Compare features", "Write summary"] }`,
+    description: `Create a multi-step plan for complex requests. Plans persist in memory and can be resumed across sessions.`,
     parameters: PlanCreateParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const persona = args.persona ?? (ctx.extra?.persona as string) ?? "zee";
@@ -1799,14 +1635,7 @@ export const planAdvanceTool: ToolDefinition = {
   id: "zee:plan-advance",
   category: "domain",
   init: async () => ({
-    description: `Advance a plan by completing the current step and moving to the next.
-
-After completing work on the current step, call this to record the result
-and get the next step. If a step failed, set failed=true with an error.
-
-Examples:
-- Success: { planId: "abc-123", result: "Found 3 schedule conflicts" }
-- Failure: { planId: "abc-123", failed: true, error: "Calendar API returned 401" }`,
+    description: `Advance a plan by completing the current step. Record result and move to next step. Set failed=true with error if step failed.`,
     parameters: PlanAdvanceParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       ctx.metadata({ title: `Advancing plan` });
@@ -1866,12 +1695,7 @@ export const planStatusTool: ToolDefinition = {
   id: "zee:plan-status",
   category: "domain",
   init: async () => ({
-    description: `Check the status of plans. View a specific plan or list all plans for a persona.
-
-Examples:
-- Specific plan: { planId: "abc-123" }
-- Active plans: { persona: "zee", status: "active" }
-- All plans: { persona: "zee" }`,
+    description: `Check plan status. View a specific plan by planId or list all plans for a persona filtered by status.`,
     parameters: PlanStatusParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       ctx.metadata({ title: `Plan status` });

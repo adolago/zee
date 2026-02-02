@@ -7,7 +7,7 @@ export type CronEvent = {
   action: "added" | "updated" | "removed" | "started" | "finished"
   runAtMs?: number
   durationMs?: number
-  status?: "ok" | "error" | "skipped"
+  status?: "ok" | "error" | "skipped" | "throttled"
   error?: string
   summary?: string
   nextRunAtMs?: number
@@ -56,6 +56,8 @@ export type CronServiceState = {
   running: boolean
   op: Promise<unknown>
   warnedDisabled: boolean
+  /** Tracks the number of currently active runs per job ID. */
+  activeRuns: Map<string, number>
 }
 
 export function createCronServiceState(deps: CronServiceDeps): CronServiceState {
@@ -66,5 +68,6 @@ export function createCronServiceState(deps: CronServiceDeps): CronServiceState 
     running: false,
     op: Promise.resolve(),
     warnedDisabled: false,
+    activeRuns: new Map(),
   }
 }

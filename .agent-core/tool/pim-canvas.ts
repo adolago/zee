@@ -5,7 +5,7 @@
  * building on the canvas infrastructure.
  */
 
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "@agent-core/plugin"
 import { execFile } from "node:child_process"
 import { existsSync } from "node:fs"
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"

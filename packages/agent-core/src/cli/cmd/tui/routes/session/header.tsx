@@ -2,7 +2,7 @@ import { type Accessor, createMemo, For, Match, Switch } from "solid-js"
 import { useRouteData, useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
-import type { Session } from "@opencode-ai/sdk/v2"
+import type { Session } from "@agent-core/sdk/v2"
 import { useKeybind } from "../../context/keybind"
 import { Locale } from "@/util/locale"
 import { Header as HeaderStyles } from "@tui/ui/header-footer"
@@ -98,13 +98,9 @@ export function Header() {
             </box>
           </Match>
           <Match when={true}>
-            <box
-              flexDirection={narrow() ? "column" : "row"}
-              justifyContent="space-between"
-              gap={1}
-            >
-              <Title session={session} />
-            </box>
+            {/* Session title is now shown in the prompt's top border */}
+            {/* Only show minimal header space for consistency */}
+            <box height={0} />
           </Match>
         </Switch>
       </box>

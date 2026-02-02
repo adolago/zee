@@ -3,7 +3,7 @@ import path from "path"
 import os from "os"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
-import { NamedError } from "@opencode-ai/util/error"
+import { NamedError } from "@agent-core/util/error"
 import { ConfigMarkdown } from "../config/markdown"
 import { Log } from "../util/log"
 import { Global } from "@/global"
@@ -479,18 +479,6 @@ export namespace Skill {
    * Search skills by keyword across name, description, tags, and triggers.
    * Results are sorted by affinity when an agent is provided.
    */
-  export async function search(query: string, agent?: string): Promise<AnnotatedInfo[]> {
-    const skills = await all(agent)
-    const q = query.toLowerCase()
-    return skills.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q) ||
-        s.tags?.some((t) => t.toLowerCase().includes(q)) ||
-        s.triggers?.some((t) => t.toLowerCase().includes(q)),
-    )
-  }
-
   export async function search(query: string, agent?: string): Promise<AnnotatedInfo[]> {
     const skills = await all(agent)
     const q = query.toLowerCase()

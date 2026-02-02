@@ -15,6 +15,6 @@
     "@actions/github": "6.0.1",
     "@octokit/graphql": "9.0.3",
     "@octokit/rest": "catalog:",
-    "@opencode-ai/sdk": "workspace:*"
+    "@agent-core/sdk": "workspace:*"
   }
 }

@@ -27,20 +27,7 @@ export const studyTool: ToolDefinition = {
   id: "johny:study",
   category: "domain",
   init: async () => ({
-    description: `Manage study sessions for deliberate practice.
-
-**Session continuity**: Before starting a new session, check zee:memory-agentic-search (domain "learning") for the user's most recent session summary and study plan.
-
-Actions:
-- start: Begin a focused study session with optional duration
-- end: End current session and record progress
-- status: Check active session and statistics
-- pause/resume: Pause or resume a session
-
-Examples:
-- Start 30-min math session: { action: "start", domain: "math", minutes: 30 }
-- Check status: { action: "status" }
-- End session: { action: "end", sessionId: "session-123" }`,
+    description: `Manage study sessions for deliberate practice. Check memory for recent session state first. Actions: start (with domain/minutes), end, status, pause, resume.`,
     parameters: StudyParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, domain, minutes, sessionId } = args
@@ -146,21 +133,7 @@ export const knowledgeTool: ToolDefinition = {
   id: "johny:knowledge",
   category: "domain",
   init: async () => ({
-    description: `Interact with the knowledge graph (topic DAG with prerequisites).
-Actions:
-- topics: List all topics, optionally filtered by domain
-- prerequisites: Get prerequisites for a topic
-- path: Get learning path from current knowledge to target topic
-- add-topic: Add a new topic to the graph
-- add-prereq: Add a prerequisite relationship
-- search: Search topics by name or description
-
-The knowledge graph is a DAG where edges represent "is prerequisite for" relationships.
-
-Examples:
-- List math topics: { action: "topics", domain: "math" }
-- Get calculus prerequisites: { action: "prerequisites", topicId: "calculus" }
-- Path to integration: { action: "path", targetId: "integration" }`,
+    description: `Interact with the knowledge graph (topic DAG with prerequisites). Actions: topics, prerequisites, path (learning path to target), add-topic, add-prereq, search.`,
     parameters: KnowledgeParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, domain, topicId, targetId, query, topic, prerequisiteId } = args
@@ -259,26 +232,7 @@ export const masteryTool: ToolDefinition = {
   id: "johny:mastery",
   category: "domain",
   init: async () => ({
-    description: `Track mastery levels across topics.
-Mastery Levels (inspired by MathAcademy):
-1. Unknown - Never encountered
-2. Introduced - Seen but not practiced
-3. Developing - Practicing, making progress
-4. Proficient - Can solve with effort
-5. Mastered - Reliable recall and application
-6. Fluent - Automatic, effortless mastery
-
-Actions:
-- status: Get mastery level for a topic or domain
-- update: Update mastery based on practice score
-- history: Get mastery history for a topic
-- decay: Calculate current retention with Ebbinghaus decay
-- summary: Overall mastery summary across domains
-
-Examples:
-- Check calculus mastery: { action: "status", topicId: "calculus" }
-- Update after practice: { action: "update", topicId: "limits", score: 0.85 }
-- Domain summary: { action: "summary", domain: "math" }`,
+    description: `Track mastery levels (unknown/introduced/developing/proficient/mastered/fluent) across topics. Actions: status, update (with score 0-1), history, decay (Ebbinghaus retention), summary.`,
     parameters: MasteryParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, topicId, domain, score } = args
@@ -371,29 +325,7 @@ export const reviewTool: ToolDefinition = {
   id: "johny:review",
   category: "domain",
   init: async () => ({
-    description: `Manage spaced repetition reviews using Ebbinghaus decay modeling.
-Features:
-- Optimal review scheduling based on retention curves
-- FIRe (Fractional Implicit Repetition) - practicing advanced topics gives partial credit to prerequisites
-- Adaptive intervals based on performance
-
-Actions:
-- due: Get topics due for review (sorted by urgency)
-- schedule: Schedule a review for a topic
-- complete: Record a review completion with score
-- stats: Get review statistics
-- optimize: Suggest optimal review schedule
-
-FIRe Example:
-When you practice "Integration by Parts", you get implicit review credit for:
-- Integration (50%)
-- Derivatives (25%)
-- Limits (12.5%)
-This reduces explicit review burden by ~80%.
-
-Examples:
-- Get due reviews: { action: "due", limit: 5 }
-- Complete review: { action: "complete", topicId: "derivatives", score: 0.9 }`,
+    description: `Spaced repetition reviews with Ebbinghaus decay and FIRe (practicing advanced topics gives partial credit to prerequisites). Actions: due (urgent reviews), schedule, complete (with score), stats, optimize.`,
     parameters: ReviewParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, topicId, domain, score, limit } = args
@@ -477,26 +409,7 @@ export const practiceTool: ToolDefinition = {
   id: "johny:practice",
   category: "domain",
   init: async () => ({
-    description: `Get practice problems for deliberate practice.
-Actions:
-- next: Get the optimal next practice problem (considers mastery, decay, dependencies)
-- generate: Generate a practice problem for a specific topic
-- complete: Record problem completion with score
-- skip: Skip a problem (affects scheduling)
-- hint: Get a hint for a problem
-
-Problem Types:
-- concept: Conceptual understanding questions
-- calculation: Numerical/symbolic computation
-- proof: Mathematical proofs
-- application: Real-world applications
-
-Difficulty is adaptive by default - targets the edge of your ability.
-
-Examples:
-- Get next problem: { action: "next" }
-- Generate calculus problem: { action: "generate", topicId: "derivatives", difficulty: "medium" }
-- Complete problem: { action: "complete", problemId: "prob-123", score: 1.0 }`,
+    description: `Get practice problems for deliberate practice. Actions: next (optimal problem considering mastery/decay), generate (specific topic), complete (record score), skip, hint. Types: concept, calculation, proof, application. Difficulty is adaptive by default.`,
     parameters: PracticeParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, topicId, domain, difficulty, score, type } = args

@@ -1,5 +1,5 @@
-import { createOpencodeClient } from "@opencode-ai/sdk/v2"
-import { createOpencodeClient as createEventClient } from "@opencode-ai/sdk"
+import { createOpencodeClient } from "@agent-core/sdk/v2"
+import { createOpencodeClient as createEventClient } from "@agent-core/sdk"
 import { createSimpleContext } from "./helper"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { batch, onCleanup, onMount } from "solid-js"

@@ -11,7 +11,7 @@ import { Config } from "../../config/config"
 import { Global } from "../../global"
 import { Plugin } from "../../plugin"
 import { Instance } from "../../project/instance"
-import type { Hooks } from "@opencode-ai/plugin"
+import type { Hooks } from "@agent-core/plugin"
 import { modify, applyEdits } from "jsonc-parser"
 import { createAuthorizedFetch } from "@/server/auth"
 import {

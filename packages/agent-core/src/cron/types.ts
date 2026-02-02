@@ -50,11 +50,18 @@ export type CronIsolation = {
   postToMainMaxChars?: number
 }
 
+export type CronThrottle = {
+  /** Suppress duplicate notifications within this window (ms). */
+  dedupWindowMs?: number
+  /** Max notifications per window. Excess are dropped with a summary. */
+  maxPerWindow?: number
+}
+
 export type CronJobState = {
   nextRunAtMs?: number
   runningAtMs?: number
   lastRunAtMs?: number
-  lastStatus?: "ok" | "error" | "skipped"
+  lastStatus?: "ok" | "error" | "skipped" | "throttled"
   lastError?: string
   lastDurationMs?: number
 }
@@ -73,6 +80,10 @@ export type CronJob = {
   wakeMode: CronWakeMode
   payload: CronPayload
   isolation?: CronIsolation
+  /** Max concurrent runs for this job. Default: 1. */
+  maxConcurrentRuns?: number
+  /** Throttle/dedup settings for notification suppression. */
+  throttle?: CronThrottle
   state: CronJobState
 }
 

@@ -4,7 +4,7 @@
  * Wraps the Zee messaging tool in the plugin format.
  */
 
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "@agent-core/plugin"
 
 export default tool({
   description: `Send messages via WhatsApp or Telegram gateways.

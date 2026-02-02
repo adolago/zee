@@ -33,6 +33,7 @@ function parse(tip: string): TipPart[] {
 }
 
 export type TipsProps = {
+  topBorder?: JSX.Element
   bottomBorder?: JSX.Element
   billboard?: Accessor<string | undefined>
 }
@@ -47,12 +48,16 @@ export function Tips(props: TipsProps) {
 
   return (
     <box flexDirection="column">
-      {/* Rounded top border */}
-      <box height={1} flexDirection="row">
-        <text fg={theme.border} flexShrink={0}>╭</text>
-        <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
-        <text fg={theme.border} flexShrink={0}>╮</text>
-      </box>
+      {/* Rounded top border - either custom or default */}
+      <Show when={props.topBorder} fallback={
+        <box height={1} flexDirection="row">
+          <text fg={theme.border} flexShrink={0}>╭</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+          <text fg={theme.border} flexShrink={0}>╮</text>
+        </box>
+      }>
+        {props.topBorder}
+      </Show>
       {/* Content row with side borders */}
       <box flexDirection="row">
         <text fg={theme.border} flexShrink={0}>│</text>

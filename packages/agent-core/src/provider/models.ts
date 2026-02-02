@@ -1,9 +1,14 @@
 import { Global } from "../global"
 import { Log } from "../util/log"
 import path from "path"
-import fs from "fs/promises"
 import z from "zod"
-import { data } from "./models-macro" with { type: "macro" }
+import { Installation } from "../installation"
+import { Flag } from "../flag/flag"
+import { lazy } from "@/util/lazy"
+
+// Try to import bundled snapshot (generated at build time)
+// Falls back to undefined in dev mode when snapshot doesn't exist
+/* @ts-ignore */
 
 export namespace ModelsDev {
   const log = Log.create({ service: "models.dev" })
@@ -79,66 +84,57 @@ export namespace ModelsDev {
 
   export type Provider = z.infer<typeof Provider>
 
-  const STALENESS_MS = 24 * 60 * 60 * 1000 // 24 hours
-
-  export async function get() {
-    // Fire-and-forget background refresh if cache is stale
-    refreshIfStale()
-    const file = Bun.file(getFilepath())
-    const result = await file.json().catch(() => {})
-    if (result) return result as Record<string, Provider>
-    // Fallback: macro may not be available in test mode, fetch directly
-    if (typeof data === "function") {
-      const json = await data()
-      return JSON.parse(json) as Record<string, Provider>
-    }
-    // Direct fetch as final fallback
-    const response = await fetch(`${Global.Path.modelsDevUrl}/api.json`)
-    return (await response.json()) as Record<string, Provider>
+  function url() {
+    return Flag.AGENT_CORE_MODELS_URL || "https://models.dev"
   }
 
-  /**
-   * Check cache staleness and refresh in background if older than STALENESS_MS.
-   */
-  function refreshIfStale() {
-    const filepath = getFilepath()
-    fs.stat(filepath)
-      .then((stat) => {
-        const age = Date.now() - stat.mtimeMs
-        if (age > STALENESS_MS) {
-          log.debug("models cache stale", { ageHours: Math.round(age / 3600000) })
-          refresh().catch(() => {})
-        }
-      })
-      .catch(() => {
-        // No cache file exists, trigger refresh
-        refresh().catch(() => {})
-      })
+  export const Data = lazy(async () => {
+    const file = Bun.file(Flag.AGENT_CORE_MODELS_PATH ?? getFilepath())
+    const result = await file.json().catch(() => {})
+    if (result) return result
+    // @ts-ignore
+    const snapshot = await import("./models-snapshot")
+      .then((m) => m.snapshot as Record<string, unknown>)
+      .catch(() => undefined)
+    if (snapshot) return snapshot
+    if (Flag.AGENT_CORE_DISABLE_MODELS_FETCH) return {}
+    const json = await fetch(`${url()}/api.json`).then((x) => x.text())
+    return JSON.parse(json)
+  })
+
+  export async function get() {
+    const result = await Data()
+    return result as Record<string, Provider>
   }
 
   /**
    * Fetch the latest model catalog from models.dev and write to cache.
    */
   export async function refresh() {
-    const url = `${Global.Path.modelsDevUrl}/api.json`
     const filepath = getFilepath()
-    log.info("refreshing models from", { url })
-    try {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(5000),
+    log.info("refreshing models from", { url: `${url()}/api.json` })
+    const result = await fetch(`${url()}/api.json`, {
+      headers: {
+        "User-Agent": Installation.USER_AGENT,
+      },
+    }).catch((e) => {
+      log.warn("models refresh error", {
+        error: e,
       })
-      if (!response.ok) {
-        log.warn("models refresh failed", { status: response.status })
-        return
-      }
-      const json = await response.text()
-      // Validate it's parseable before writing
-      JSON.parse(json)
-      await fs.mkdir(path.dirname(filepath), { recursive: true })
-      await Bun.file(filepath).write(json)
-      log.info("models cache updated", { filepath })
-    } catch (e) {
-      log.warn("models refresh error", { error: String(e) })
+    })
+    if (result && result.ok) {
+      await Bun.write(filepath, await result.text())
+      ModelsDev.Data.reset()
     }
   }
+}
+
+if (!Flag.AGENT_CORE_DISABLE_MODELS_FETCH) {
+  ModelsDev.refresh()
+  setInterval(
+    async () => {
+      await ModelsDev.refresh()
+    },
+    60 * 1000 * 60,
+  ).unref()
 }

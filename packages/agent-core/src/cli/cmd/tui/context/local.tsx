@@ -12,7 +12,7 @@ import { Provider } from "@/provider/provider"
 import { useArgs } from "./args"
 import { useSDK } from "./sdk"
 import { RGBA } from "@opentui/core"
-import type { Agent as SDKAgent } from "@opencode-ai/sdk/v2"
+import type { Agent as SDKAgent } from "@agent-core/sdk/v2"
 
 // Extended agent type with fallback model support (internal feature not yet in SDK)
 type AgentWithFallback = SDKAgent & {

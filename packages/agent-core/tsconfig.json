@@ -13,11 +13,11 @@
       "@tui/*": ["./src/cli/cmd/tui/*"],
       "@root/*": ["../../src/*"],
       "@personas/*": ["../../src/personas/*"],
-      "@opencode-ai/sdk": ["./src/pkg/sdk/client"],
-      "@opencode-ai/sdk/*": ["./src/pkg/sdk/*"],
-      "@opencode-ai/plugin": ["./src/pkg/plugin/index"],
-      "@opencode-ai/util/*": ["./src/pkg/util/*"],
-      "@opencode-ai/script": ["./src/pkg/script/index"]
+      "@agent-core/sdk": ["./src/pkg/sdk/client"],
+      "@agent-core/sdk/*": ["./src/pkg/sdk/*"],
+      "@agent-core/plugin": ["./src/pkg/plugin/index"],
+      "@agent-core/util/*": ["./src/pkg/util/*"],
+      "@agent-core/script": ["./src/pkg/script/index"]
     }
   },
   "exclude": ["dist", "dist.bak"]

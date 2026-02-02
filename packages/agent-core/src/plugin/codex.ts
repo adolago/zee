@@ -1,4 +1,4 @@
-import type { Hooks, PluginInput } from "@opencode-ai/plugin"
+import type { Hooks, PluginInput } from "@agent-core/plugin"
 import { Log } from "../util/log"
 import { OAUTH_DUMMY_KEY } from "../auth"
 import { Installation } from "../installation"

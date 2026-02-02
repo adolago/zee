@@ -5,7 +5,7 @@
  * so they can be loaded by the tool registry.
  */
 
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "@agent-core/plugin"
 
 const AGENT_CORE_ROOT = process.env.AGENT_CORE_ROOT || "/home/artur/.local/src/agent-core"
 

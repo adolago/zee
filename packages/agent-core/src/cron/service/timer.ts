@@ -5,6 +5,7 @@ import type { CronEvent, CronServiceState, HeartbeatRunResult } from "./state"
 import { computeJobNextRunAtMs, nextWakeAtMs, resolveJobPayloadTextForMain } from "./jobs"
 import { locked } from "./locked"
 import { ensureLoaded, persist } from "./store"
+import { contentHash, shouldThrottle, recordSent } from "./throttle"
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1
 
@@ -57,7 +58,9 @@ export async function runDueJobs(state: CronServiceState) {
     if (!j.enabled) {
       return false
     }
-    if (typeof j.state.runningAtMs === "number") {
+    const maxConcurrent = j.maxConcurrentRuns ?? 1
+    const active = state.activeRuns.get(j.id) ?? 0
+    if (active >= maxConcurrent) {
       return false
     }
     const next = j.state.nextRunAtMs
@@ -77,12 +80,13 @@ export async function executeJob(
   const startedAt = state.deps.nowMs()
   job.state.runningAtMs = startedAt
   job.state.lastError = undefined
+  state.activeRuns.set(job.id, (state.activeRuns.get(job.id) ?? 0) + 1)
   emit(state, { jobId: job.id, action: "started", runAtMs: startedAt })
 
   let deleted = false
 
   const finish = async (
-    status: "ok" | "error" | "skipped",
+    status: "ok" | "error" | "skipped" | "throttled",
     err?: string,
     summary?: string,
     outputText?: string,
@@ -93,6 +97,13 @@ export async function executeJob(
     job.state.lastStatus = status
     job.state.lastDurationMs = Math.max(0, endedAt - startedAt)
     job.state.lastError = err
+
+    const prev = state.activeRuns.get(job.id) ?? 1
+    if (prev <= 1) {
+      state.activeRuns.delete(job.id)
+    } else {
+      state.activeRuns.set(job.id, prev - 1)
+    }
 
     const shouldDelete =
       job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true
@@ -126,7 +137,7 @@ export async function executeJob(
       emit(state, { jobId: job.id, action: "removed" })
     }
 
-    if (job.sessionTarget === "isolated") {
+    if (job.sessionTarget === "isolated" && status !== "throttled") {
       const prefix = job.isolation?.postToMainPrefix?.trim() || "Cron"
       const mode = job.isolation?.postToMainMode ?? "summary"
 
@@ -214,7 +225,20 @@ export async function executeJob(
       message: job.payload.message,
     })
     if (res.status === "ok") {
-      await finish("ok", undefined, res.summary, res.outputText)
+      // Check throttle before delivering the result.
+      const outputForHash = res.outputText ?? res.summary ?? ""
+      const hash = contentHash(outputForHash)
+      const throttleReason = shouldThrottle(job.id, hash, state.deps.nowMs(), job.throttle)
+      if (throttleReason) {
+        state.deps.log.debug("cron: throttled notification", {
+          jobId: job.id,
+          reason: throttleReason,
+        })
+        await finish("throttled", throttleReason, res.summary, res.outputText)
+      } else {
+        recordSent(job.id, hash, state.deps.nowMs())
+        await finish("ok", undefined, res.summary, res.outputText)
+      }
     } else if (res.status === "skipped") {
       await finish("skipped", undefined, res.summary, res.outputText)
     } else {

@@ -1,6 +1,6 @@
 /// <reference path="../env.d.ts" />
 // import { Octokit } from "@octokit/rest"
-import { tool } from "@opencode-ai/plugin"
+import { tool } from "@agent-core/plugin"
 const DESCRIPTION = `Assign GitHub issues and apply labels in anomalyco/opencode.
 
 Requires:
