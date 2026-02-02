@@ -76,7 +76,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
-  model: { providerId: "xai", modelId: "grok-4.1" },
+  model: { providerId: "xai", modelId: "grok-4-1-fast" },
   temperature: 0.3,
   topP: 0.9, // More focused sampling for analytical work
   modelParams: {
@@ -205,7 +205,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: true,
-  model: { providerId: "kimi-for-coding", modelId: "kimi-k2.5" },
+  model: { providerId: "kimi-for-coding", modelId: "kimi-k2.5-thinking" },
   temperature: 0.7,
   topP: 0.95, // Balanced sampling for conversational flexibility
   modelParams: {
@@ -213,6 +213,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     "gpt-5":      null,                                        // GPT-5 series: sampling locked
     "gemini-3":   { temperature: 0.9, topP: 0.95, topK: 40 }, // Higher temp for conversational variety
     "grok-4":     { temperature: 0.7 },                        // xAI: temp only
+    "kimi-k2.5-thinking": { temperature: 1.0, topP: 0.95 },    // Kimi thinking variant defaults
     "kimi-k2":    { temperature: 0.6, topP: 0.95 },            // Kimi recommended instant defaults
     "glm-4.7":    { temperature: 1.0 },                          // GLM: temp only, don't combine with topP
     "minimax-m2": { temperature: 1.0, topP: 0.95, topK: 40 },  // Minimax official recommendation

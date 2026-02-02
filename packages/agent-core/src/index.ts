@@ -32,6 +32,7 @@ import { SetupCommand } from "./cli/cmd/setup"
 import { BugReportCommand } from "./cli/cmd/bug-report"
 import { CheckCommand } from "./cli/cmd/check"
 import { ProviderCommand } from "./cli/cmd/provider"
+import { ClawHubCommand } from "./cli/cmd/clawhub"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -178,6 +179,7 @@ const cli = yargs(hideBin(process.argv))
   .command(ProviderCommand)
   .command(SetupCommand)
   .command(BugReportCommand)
+  .command(ClawHubCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

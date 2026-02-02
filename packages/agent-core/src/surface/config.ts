@@ -6,6 +6,8 @@
 
 import type { PermissionAction, PermissionType } from './types.js';
 
+const PATTERN_CACHE = new Map<string, RegExp>();
+
 // =============================================================================
 // Permission Configuration
 // =============================================================================
@@ -87,6 +89,55 @@ export const DEFAULT_PERMISSION_CONFIG: PermissionConfig = {
 };
 
 // =============================================================================
+// Permission Merging Helpers
+// =============================================================================
+
+function mergePermissionPolicy(
+  base: PermissionPolicy,
+  overrides?: Partial<PermissionPolicy>,
+): PermissionPolicy {
+  if (!overrides) return base;
+  return {
+    defaultAction: overrides.defaultAction ?? base.defaultAction,
+    requireConfirmation: overrides.requireConfirmation ?? base.requireConfirmation,
+    timeoutMs: overrides.timeoutMs ?? base.timeoutMs,
+    allowPatterns: overrides.allowPatterns ?? base.allowPatterns,
+    denyPatterns: overrides.denyPatterns ?? base.denyPatterns,
+  };
+}
+
+export function mergePermissionConfig(
+  base: PermissionConfig,
+  ...overrides: Array<Partial<PermissionConfig> | undefined>
+): PermissionConfig {
+  const result: PermissionConfig = {
+    globalDefault: base.globalDefault,
+    policies: { ...base.policies },
+    remembered: base.remembered,
+  };
+
+  for (const override of overrides) {
+    if (!override) continue;
+    if (override.globalDefault !== undefined) result.globalDefault = override.globalDefault;
+    if (override.remembered) result.remembered = override.remembered;
+    if (override.policies) {
+      for (const [key, value] of Object.entries(override.policies)) {
+        if (!value) continue;
+        const policyKey = key as PermissionType;
+        const basePolicy = result.policies[policyKey];
+        if (!basePolicy) {
+          result.policies[policyKey] = value as PermissionPolicy;
+          continue;
+        }
+        result.policies[policyKey] = mergePermissionPolicy(basePolicy, value as Partial<PermissionPolicy>);
+      }
+    }
+  }
+
+  return result;
+}
+
+// =============================================================================
 // Surface-Specific Configuration
 // =============================================================================
 
@@ -141,6 +192,24 @@ export const DEFAULT_CLI_CONFIG: CLISurfaceConfig = {
   },
 };
 
+export function resolveCLISurfaceConfig(
+  overrides: Partial<CLISurfaceConfig> = {}
+): CLISurfaceConfig {
+  return {
+    ...DEFAULT_CLI_CONFIG,
+    ...overrides,
+    keyBindings: {
+      ...DEFAULT_CLI_CONFIG.keyBindings,
+      ...overrides.keyBindings,
+    },
+    permissions: mergePermissionConfig(
+      DEFAULT_PERMISSION_CONFIG,
+      DEFAULT_CLI_CONFIG.permissions,
+      overrides.permissions
+    ),
+  };
+}
+
 /**
  * GUI surface configuration.
  */
@@ -191,6 +260,24 @@ export const DEFAULT_GUI_CONFIG: GUISurfaceConfig = {
     },
   },
 };
+
+export function resolveGUISurfaceConfig(
+  overrides: Partial<GUISurfaceConfig> = {}
+): GUISurfaceConfig {
+  return {
+    ...DEFAULT_GUI_CONFIG,
+    ...overrides,
+    reconnect: {
+      ...DEFAULT_GUI_CONFIG.reconnect,
+      ...overrides.reconnect,
+    },
+    permissions: mergePermissionConfig(
+      DEFAULT_PERMISSION_CONFIG,
+      DEFAULT_GUI_CONFIG.permissions,
+      overrides.permissions
+    ),
+  };
+}
 
 /**
  * Messaging surface configuration (WhatsApp, Telegram).
@@ -275,6 +362,30 @@ export const DEFAULT_MESSAGING_CONFIG: MessagingSurfaceConfig = {
   },
 };
 
+export function resolveMessagingSurfaceConfig(
+  overrides: Partial<MessagingSurfaceConfig> = {},
+  options?: { platform?: MessagingSurfaceConfig["platform"] },
+): MessagingSurfaceConfig {
+  const base: MessagingSurfaceConfig = {
+    ...DEFAULT_MESSAGING_CONFIG,
+    ...(options?.platform ? { platform: options.platform } : {}),
+  };
+
+  return {
+    ...base,
+    ...overrides,
+    groups: {
+      ...base.groups,
+      ...overrides.groups,
+    },
+    permissions: mergePermissionConfig(
+      DEFAULT_PERMISSION_CONFIG,
+      base.permissions,
+      overrides.permissions
+    ),
+  };
+}
+
 // =============================================================================
 // Unified Surface Configuration
 // =============================================================================
@@ -338,24 +449,15 @@ export function buildSurfaceConfig(
   overrides: Partial<SurfaceConfig> = {}
 ): SurfaceConfig {
   return {
-    permissions: {
-      ...DEFAULT_PERMISSION_CONFIG,
-      ...overrides.permissions,
-    },
-    cli: {
-      ...DEFAULT_CLI_CONFIG,
-      ...overrides.cli,
-    },
-    gui: {
-      ...DEFAULT_GUI_CONFIG,
-      ...overrides.gui,
-    },
+    permissions: mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, overrides.permissions),
+    cli: resolveCLISurfaceConfig(overrides.cli),
+    gui: resolveGUISurfaceConfig(overrides.gui),
     messaging: {
       whatsapp: overrides.messaging?.whatsapp
-        ? { ...DEFAULT_MESSAGING_CONFIG, ...overrides.messaging.whatsapp }
+        ? resolveMessagingSurfaceConfig(overrides.messaging.whatsapp)
         : undefined,
       telegram: overrides.messaging?.telegram
-        ? { ...DEFAULT_MESSAGING_CONFIG, ...overrides.messaging.telegram, platform: 'telegram' as const }
+        ? resolveMessagingSurfaceConfig(overrides.messaging.telegram, { platform: 'telegram' as const })
         : undefined,
     },
     toolAvailability: overrides.toolAvailability ?? {},
@@ -433,14 +535,22 @@ export function resolvePermission(
  * Simple glob-like pattern matching.
  */
 function matchPattern(value: string, pattern: string): boolean {
-  // Convert glob to regex
-  const escaped = pattern
+  const normalizedValue = value.replace(/\\/g, '/');
+  const normalizedPattern = pattern.replace(/\\/g, '/');
+
+  let regex = PATTERN_CACHE.get(normalizedPattern);
+  if (!regex) {
+    // Convert glob to regex
+    const escaped = normalizedPattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\*\*/g, '<<<GLOBSTAR>>>')
     .replace(/\*/g, '[^/]*')
     .replace(/<<<GLOBSTAR>>>/g, '.*')
     .replace(/\?/g, '.');
 
-  const regex = new RegExp(`^${escaped}$`);
-  return regex.test(value);
+    regex = new RegExp(`^${escaped}$`);
+    PATTERN_CACHE.set(normalizedPattern, regex);
+  }
+
+  return regex.test(normalizedValue);
 }

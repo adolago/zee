@@ -353,6 +353,37 @@ Storage abstracted behind interfaces:
 }
 ```
 
+### Session Context Overrides
+
+Sessions can carry optional metadata that is injected into the system prompt on each loop. These fields are additive and do not replace the base agent prompt or surface policies.
+
+- `systemPrompt`: a session-specific system prompt section.
+- `skills`: an ordered list of skill names. The corresponding `SKILL.md` content is loaded and appended.
+- `contextFiles`: a list of file paths whose contents are appended as session context.
+
+Path resolution for `contextFiles` expands `${ENV}` variables, `~/` home paths, and resolves relative paths against the session directory.
+
+The session also stores a `toolPolicySnapshot` (read-only) to capture the tool policy used for a processing loop.
+
+```json
+POST /session
+{
+  "directory": "/path/to/project",
+  "systemPrompt": "Be concise in this session.",
+  "skills": ["codebase-guide"],
+  "contextFiles": ["docs/ARCHITECTURE.md", "~/notes/todo.md"]
+}
+```
+
+```json
+PATCH /session/:sessionID
+{
+  "systemPrompt": null,
+  "skills": ["gh-address-comments"],
+  "contextFiles": []
+}
+```
+
 ### Processor Configuration
 
 ```typescript

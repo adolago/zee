@@ -13,8 +13,9 @@ import {
 } from './surface.js';
 import {
   type GUISurfaceConfig,
-  DEFAULT_GUI_CONFIG,
+  resolveGUISurfaceConfig,
   DEFAULT_PERMISSION_CONFIG,
+  mergePermissionConfig,
   resolvePermission,
 } from './config.js';
 import {
@@ -103,7 +104,7 @@ export class GUISurface extends BaseSurface implements Surface {
 
   constructor(config: Partial<GUISurfaceConfig> = {}) {
     super();
-    this.config = { ...DEFAULT_GUI_CONFIG, ...config };
+    this.config = resolveGUISurfaceConfig(config);
   }
 
   // ---------------------------------------------------------------------------
@@ -389,10 +390,7 @@ export class GUISurface extends BaseSurface implements Surface {
   // ---------------------------------------------------------------------------
 
   async requestPermission(request: PermissionRequest): Promise<PermissionResponse> {
-    const permissionConfig = {
-      ...DEFAULT_PERMISSION_CONFIG,
-      ...this.config.permissions,
-    };
+    const permissionConfig = mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, this.config.permissions);
 
     // Resolve automatic permission
     const resolved = resolvePermission(request.type, request.description, permissionConfig);

@@ -249,6 +249,9 @@ export const SessionRoute = new Hono()
             archived: z.number().optional(),
           })
           .optional(),
+        systemPrompt: z.string().nullable().optional(),
+        skills: z.array(z.string()).nullable().optional(),
+        contextFiles: z.array(z.string()).nullable().optional(),
       }),
     ),
     async (c) => {
@@ -258,6 +261,15 @@ export const SessionRoute = new Hono()
       const updatedSession = await Session.update(sessionID, (session) => {
         if (updates.title !== undefined) {
           session.title = updates.title
+        }
+        if (updates.systemPrompt !== undefined) {
+          session.systemPrompt = updates.systemPrompt ?? undefined
+        }
+        if (updates.skills !== undefined) {
+          session.skills = updates.skills ?? undefined
+        }
+        if (updates.contextFiles !== undefined) {
+          session.contextFiles = updates.contextFiles ?? undefined
         }
         if (updates.time?.archived !== undefined) session.time.archived = updates.time.archived
       }, { touch: false })

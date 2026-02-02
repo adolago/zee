@@ -61,6 +61,8 @@ export interface InstallResult {
   version: string
   location: string
   gatingIssues?: Array<{ kind: string; name: string; message: string }>
+  /** Environment variables required by this skill (from requires.env). */
+  requiredEnv?: string[]
   error?: string
 }
 
@@ -122,7 +124,8 @@ export function createClawHubInstaller(client?: ClawHubClient) {
         }
         writeManifest(manifest)
 
-        return { ok: true, skillId, version: targetVersion, location: skillDir }
+        const requiredEnv = requires?.env?.length ? requires.env : undefined
+        return { ok: true, skillId, version: targetVersion, location: skillDir, requiredEnv }
       } catch (err) {
         return {
           ok: false,

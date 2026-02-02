@@ -613,6 +613,7 @@ export function Autocomplete(props: {
       zIndex={1400}
       {...SplitBorder}
       borderColor={theme.border}
+      backgroundColor={theme.backgroundMenu}
     >
       <scrollbox
         ref={(r: ScrollBoxRenderable) => (scroll = r)}
@@ -632,8 +633,10 @@ export function Autocomplete(props: {
             <box
               paddingLeft={1}
               paddingRight={1}
-              backgroundColor={index === store.selected ? theme.primary : undefined}
+              height={1}
+              backgroundColor={index === store.selected ? theme.primary : theme.backgroundMenu}
               flexDirection="row"
+              gap={1}
               onMouseMove={() => {
                 setStore("input", "mouse")
               }}

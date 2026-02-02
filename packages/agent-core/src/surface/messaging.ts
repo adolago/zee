@@ -11,7 +11,9 @@ import {
 } from './surface.js';
 import {
   type MessagingSurfaceConfig,
-  DEFAULT_MESSAGING_CONFIG,
+  resolveMessagingSurfaceConfig,
+  DEFAULT_PERMISSION_CONFIG,
+  mergePermissionConfig,
   resolvePermission,
 } from './config.js';
 import {
@@ -205,7 +207,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
   ) {
     super();
     this.platform = platform;
-    this.config = { ...DEFAULT_MESSAGING_CONFIG, ...config };
+    this.config = resolveMessagingSurfaceConfig(config, { platform: platform.platform });
     this.id = `messaging:${platform.platform}`;
     this.name = this.formatPlatformName(platform.platform);
 
@@ -393,15 +395,12 @@ export class MessagingSurface extends BaseSurface implements Surface {
   async requestPermission(request: PermissionRequest): Promise<PermissionResponse> {
     // Messaging surfaces cannot prompt interactively
     // Always apply automatic resolution based on config
-    const permissionConfig = {
-      ...DEFAULT_MESSAGING_CONFIG.permissions,
-      ...this.config.permissions,
-    };
+    const permissionConfig = mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, this.config.permissions);
 
     const resolved = resolvePermission(
       request.type,
       request.description,
-      permissionConfig as any
+      permissionConfig
     );
 
     return {

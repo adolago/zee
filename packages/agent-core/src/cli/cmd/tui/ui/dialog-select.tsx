@@ -278,6 +278,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                       <box
                         id={JSON.stringify(option.value)}
                         flexDirection="row"
+                        height={1}
                         onMouseMove={() => {
                           setStore("input", "mouse")
                         }}

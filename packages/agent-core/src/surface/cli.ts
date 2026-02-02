@@ -22,8 +22,9 @@ import {
 } from './surface.js';
 import {
   type CLISurfaceConfig,
-  DEFAULT_CLI_CONFIG,
+  resolveCLISurfaceConfig,
   DEFAULT_PERMISSION_CONFIG,
+  mergePermissionConfig,
   resolvePermission,
 } from './config.js';
 import {
@@ -105,7 +106,7 @@ export class CLISurface extends BaseSurface implements Surface {
 
   constructor(config: Partial<CLISurfaceConfig> = {}) {
     super();
-    this.config = { ...DEFAULT_CLI_CONFIG, ...config };
+    this.config = resolveCLISurfaceConfig(config);
     this.useColors = this.config.colors && shouldUseColors();
     // Choose spinner frames based on Unicode support (NO_COLOR disables Unicode)
     this.spinnerFrames = shouldUseUnicode() 
@@ -256,10 +257,7 @@ export class CLISurface extends BaseSurface implements Surface {
   // ---------------------------------------------------------------------------
 
   async requestPermission(request: PermissionRequest): Promise<PermissionResponse> {
-    const permissionConfig = {
-      ...DEFAULT_PERMISSION_CONFIG,
-      ...this.config.permissions,
-    };
+    const permissionConfig = mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, this.config.permissions);
 
     // Resolve automatic permission
     const resolved = resolvePermission(request.type, request.description, permissionConfig);

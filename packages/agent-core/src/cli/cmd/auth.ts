@@ -13,6 +13,7 @@ import { Plugin } from "../../plugin"
 import { Instance } from "../../project/instance"
 import type { Hooks } from "@agent-core/plugin"
 import { modify, applyEdits } from "jsonc-parser"
+import { Skill } from "../../skill"
 import { createAuthorizedFetch } from "@/server/auth"
 import {
   listProvidersByService,
@@ -133,6 +134,96 @@ async function addProviderToConfig(
 
   await Bun.write(configPath, result)
   return configPath
+}
+
+/** A skill that requires credentials (env vars or primaryEnv). */
+interface SkillAuthProvider {
+  /** Skill name (used as key in skills.entries). */
+  name: string
+  /** Human-friendly label for the selection menu. */
+  label: string
+  /** The single primary env var, if any. */
+  primaryEnv?: string
+  /** All required env vars from requires.env. */
+  envVars: string[]
+}
+
+/**
+ * Discover installed skills that need credentials (primaryEnv or requires.env).
+ * Returns entries suitable for injection into the auth login flow.
+ */
+async function discoverSkillAuthProviders(): Promise<SkillAuthProvider[]> {
+  const skills = await Skill.all()
+  const providers: SkillAuthProvider[] = []
+
+  for (const skill of skills) {
+    const envVars = skill.requires?.env ?? []
+    const primaryEnv = skill.primaryEnv
+    if (!primaryEnv && envVars.length === 0) continue
+
+    const allEnvVars = primaryEnv && !envVars.includes(primaryEnv) ? [primaryEnv, ...envVars] : [...envVars]
+
+    providers.push({
+      name: skill.name,
+      label: `${skill.description || skill.name} (Requires ${allEnvVars.join(", ")})`,
+      primaryEnv,
+      envVars: allEnvVars,
+    })
+  }
+
+  return providers
+}
+
+/** Marker prefix to distinguish skill providers from LLM providers. */
+const SKILL_PROVIDER_PREFIX = "skill:"
+
+/**
+ * Write skill credentials to config (skills.entries.<name>).
+ * Single primaryEnv -> apiKey field. Multiple env vars -> env object.
+ */
+async function updateSkillConfig(
+  skillName: string,
+  credentials: { apiKey?: string; env?: Record<string, string> },
+): Promise<void> {
+  const configPath = path.join(Global.Path.config, "agent-core.jsonc")
+  const file = Bun.file(configPath)
+
+  let text = "{}"
+  if (await file.exists()) {
+    text = await file.text()
+  }
+
+  const opts = { formattingOptions: { tabSize: 2, insertSpaces: true } }
+
+  if (credentials.apiKey) {
+    const edits = modify(text, ["skills", "entries", skillName, "apiKey"], credentials.apiKey, opts)
+    text = applyEdits(text, edits)
+  }
+
+  if (credentials.env) {
+    for (const [key, value] of Object.entries(credentials.env)) {
+      const edits = modify(text, ["skills", "entries", skillName, "env", key], value, opts)
+      text = applyEdits(text, edits)
+    }
+  }
+
+  await Bun.write(configPath, text)
+}
+
+/**
+ * Remove a skill's credentials from config (skills.entries.<name>).
+ */
+async function removeSkillConfig(skillName: string): Promise<void> {
+  const configPath = path.join(Global.Path.config, "agent-core.jsonc")
+  const file = Bun.file(configPath)
+  if (!(await file.exists())) return
+
+  let text = await file.text()
+  const edits = modify(text, ["skills", "entries", skillName], undefined, {
+    formattingOptions: { tabSize: 2, insertSpaces: true },
+  })
+  text = applyEdits(text, edits)
+  await Bun.write(configPath, text)
 }
 
 type PluginAuth = NonNullable<Hooks["auth"]>
@@ -348,6 +439,29 @@ export const AuthListCommand = cmd({
 
       prompts.outro(`${activeEnvVars.length} environment variable` + (activeEnvVars.length === 1 ? "" : "s"))
     }
+
+    // Skills credentials section
+    const config = await Config.get().catch(() => undefined)
+    const skillEntries = config?.skills?.entries
+    if (skillEntries) {
+      const configuredSkills = Object.entries(skillEntries).filter(
+        ([, entry]) => entry && (entry.apiKey || (entry.env && Object.keys(entry.env).length > 0)),
+      )
+
+      if (configuredSkills.length > 0) {
+        UI.empty()
+        prompts.intro("Skills")
+
+        for (const [name, entry] of configuredSkills) {
+          const fields: string[] = []
+          if (entry.apiKey) fields.push("apiKey")
+          if (entry.env) fields.push(...Object.keys(entry.env))
+          prompts.log.info(`${name} ${UI.Style.TEXT_DIM}${fields.join(", ")}`)
+        }
+
+        prompts.outro(`${configuredSkills.length} skill credential` + (configuredSkills.length === 1 ? "" : "s"))
+      }
+    }
   },
 })
 
@@ -479,8 +593,32 @@ export const AuthLoginCommand = cmd({
           }
         }
 
+        // Discover skills with credential requirements
+        const skillAuthProviders = await discoverSkillAuthProviders()
+        const skillProviderMap = new Map<string, SkillAuthProvider>()
+        for (const sp of skillAuthProviders) {
+          const id = SKILL_PROVIDER_PREFIX + sp.name
+          skillProviderMap.set(id, sp)
+          if (!providers[id]) {
+            providers[id] = {
+              id,
+              name: sp.label,
+              env: [],
+              models: {},
+            } as (typeof providers)[string]
+          }
+        }
+
         const existingCredentials = await Auth.all()
         const credentialProviderIds = new Set(Object.keys(existingCredentials))
+
+        // Also mark skills with existing config entries as "configured"
+        const configEntries = config.skills?.entries ?? {}
+        for (const [id, sp] of skillProviderMap) {
+          if (configEntries[sp.name]?.apiKey || configEntries[sp.name]?.env) {
+            credentialProviderIds.add(id)
+          }
+        }
 
         // Filter to only providers with existing credentials
         const configuredProviders = pipe(
@@ -491,6 +629,15 @@ export const AuthLoginCommand = cmd({
         )
 
         let provider = providerArg ?? ""
+
+        // If a direct skill name was passed (e.g., "home-assistant"), resolve to skill provider
+        if (provider && !providers[provider]) {
+          const skillId = SKILL_PROVIDER_PREFIX + provider
+          if (skillProviderMap.has(skillId)) {
+            provider = skillId
+          }
+        }
+
         if (!provider) {
           const ADD_NEW = "__add_new__"
           const options = [
@@ -556,8 +703,8 @@ export const AuthLoginCommand = cmd({
           }
         }
 
-        // Check if provider is known (either in LLM models database or unified provider registry)
-        const knownProvider = provider in providers || getProvider(provider) !== undefined
+        // Check if provider is known (either in LLM models database, unified provider registry, or skill)
+        const knownProvider = provider in providers || getProvider(provider) !== undefined || skillProviderMap.has(provider)
         if (!knownProvider) {
           provider = provider.replace(/^@ai-sdk\//, "")
           const customPlugin = await Plugin.list().then((x) => x.findLast((x) => x.auth?.provider === provider))
@@ -661,6 +808,50 @@ export const AuthLoginCommand = cmd({
           return
         }
 
+        // Handle skill credential prompts
+        const skillProvider = skillProviderMap.get(provider)
+        if (skillProvider) {
+          const isSecret = (name: string) => /TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL/i.test(name)
+
+          if (skillProvider.primaryEnv && skillProvider.envVars.length === 1) {
+            // Single env var: store as apiKey
+            const value = await prompts.password({
+              message: `Enter ${skillProvider.primaryEnv}`,
+              validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+            })
+            if (prompts.isCancel(value)) throw new UI.CancelledError()
+            await updateSkillConfig(skillProvider.name, { apiKey: value })
+          } else {
+            // Multiple env vars: store as env object, with apiKey for primaryEnv
+            const credentials: { apiKey?: string; env?: Record<string, string> } = {}
+            const envMap: Record<string, string> = {}
+
+            for (const envVar of skillProvider.envVars) {
+              const promptFn = isSecret(envVar) ? prompts.password : prompts.text
+              const value = await promptFn({
+                message: `Enter ${envVar}`,
+                validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+              })
+              if (prompts.isCancel(value)) throw new UI.CancelledError()
+
+              if (envVar === skillProvider.primaryEnv) {
+                credentials.apiKey = value
+              } else {
+                envMap[envVar] = value
+              }
+            }
+
+            if (Object.keys(envMap).length > 0) {
+              credentials.env = envMap
+            }
+            await updateSkillConfig(skillProvider.name, credentials)
+          }
+
+          prompts.log.success(`${skillProvider.name} configured`)
+          prompts.outro("Done")
+          return
+        }
+
         const key = await prompts.password({
           message: "Enter your API key",
           validate: (x) => (x && x.length > 0 ? undefined : "Required"),
@@ -692,14 +883,22 @@ export const AuthLogoutCommand = cmd({
     UI.empty()
     const credentials = await Auth.all().then((x) => Object.entries(x))
     prompts.intro("Remove credential")
-    if (credentials.length === 0) {
+
+    // Gather skill credentials from config
+    const config = await Config.get().catch(() => undefined)
+    const skillEntries = config?.skills?.entries ?? {}
+    const configuredSkills = Object.entries(skillEntries).filter(
+      ([, entry]) => entry && (entry.apiKey || (entry.env && Object.keys(entry.env).length > 0)),
+    )
+
+    if (credentials.length === 0 && configuredSkills.length === 0) {
       prompts.log.error("No credentials found")
       return
     }
+
     const database = await ModelsDev.get()
-    const providerID = await prompts.select({
-      message: "Select provider",
-      options: credentials.map(([key, value]) => ({
+    const options = [
+      ...credentials.map(([key, value]) => ({
         label:
           (database[key]?.name || AUTH_ONLY_PROVIDERS[key]?.name || key) +
           UI.Style.TEXT_DIM +
@@ -708,11 +907,27 @@ export const AuthLogoutCommand = cmd({
           ")",
         value: key,
       })),
+      ...configuredSkills.map(([name]) => ({
+        label: name + UI.Style.TEXT_DIM + " (skill)",
+        value: SKILL_PROVIDER_PREFIX + name,
+      })),
+    ]
+
+    const providerID = await prompts.select({
+      message: "Select provider",
+      options,
     })
     if (prompts.isCancel(providerID)) throw new UI.CancelledError()
-    await Auth.remove(providerID)
-    await notifyDaemonAuthChange()
-    prompts.outro("Logout successful")
+
+    if (typeof providerID === "string" && providerID.startsWith(SKILL_PROVIDER_PREFIX)) {
+      const skillName = providerID.slice(SKILL_PROVIDER_PREFIX.length)
+      await removeSkillConfig(skillName)
+      prompts.outro(`Removed credentials for ${skillName}`)
+    } else {
+      await Auth.remove(providerID)
+      await notifyDaemonAuthChange()
+      prompts.outro("Logout successful")
+    }
   },
 })
 

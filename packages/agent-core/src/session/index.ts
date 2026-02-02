@@ -105,6 +105,18 @@ export namespace Session {
       mode: z
         .enum(["hold", "release"])
         .optional(),
+      systemPrompt: z.string().optional(),
+      skills: z.array(z.string()).optional(),
+      contextFiles: z.array(z.string()).optional(),
+      toolPolicySnapshot: z
+        .object({
+          createdAt: z.number(),
+          mode: z.enum(["hold", "release"]),
+          surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
+          agent: z.string().optional(),
+          permission: PermissionNext.Ruleset.optional(),
+        })
+        .optional(),
     })
     .meta({
       ref: "Session",
@@ -163,6 +175,9 @@ export namespace Session {
         title: z.string().optional(),
         permission: Info.shape.permission,
         surface: Info.shape.surface,
+        systemPrompt: z.string().nullable().optional(),
+        skills: z.array(z.string()).nullable().optional(),
+        contextFiles: z.array(z.string()).nullable().optional(),
       })
       .optional(),
     async (input) => {
@@ -172,6 +187,9 @@ export namespace Session {
         title: input?.title,
         permission: input?.permission,
         surface: input?.surface,
+        systemPrompt: input?.systemPrompt ?? undefined,
+        skills: input?.skills ?? undefined,
+        contextFiles: input?.contextFiles ?? undefined,
       })
     },
   )
@@ -231,6 +249,10 @@ export namespace Session {
     directory: string
     permission?: PermissionNext.Ruleset
     surface?: Info["surface"]
+    systemPrompt?: string
+    skills?: string[]
+    contextFiles?: string[]
+    toolPolicySnapshot?: Info["toolPolicySnapshot"]
   }) {
     const result: Info = {
       id: Identifier.descending("session", input.id),
@@ -242,6 +264,10 @@ export namespace Session {
       title: input.title ?? createDefaultTitle(!!input.parentID),
       permission: input.permission,
       surface: input.surface,
+      systemPrompt: input.systemPrompt,
+      skills: input.skills,
+      contextFiles: input.contextFiles,
+      toolPolicySnapshot: input.toolPolicySnapshot,
       time: {
         created: Date.now(),
         updated: Date.now(),

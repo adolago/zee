@@ -6,7 +6,7 @@ import { createClawHubInstaller } from "../../pkg/clawhub/install"
 import { evaluateGating } from "../../pkg/clawhub/gating"
 
 export const ClawHubCommand = cmd({
-  command: "clawhub <action>",
+  command: "clawhub <action> [target]",
   describe: "ClawHub marketplace -- discover and install skills",
   builder: (yargs: Argv) => {
     return yargs
@@ -36,7 +36,7 @@ export const ClawHubCommand = cmd({
   },
   handler: async (args) => {
     const action = args.action as string
-    const target = (args._ as string[])[1] as string | undefined
+    const target = (args.target as string | undefined) ?? (args._ as string[])[1] as string | undefined
 
     const client = createClawHubClient()
     const installer = createClawHubInstaller(client)
@@ -81,6 +81,11 @@ export const ClawHubCommand = cmd({
           if (result.ok) {
             UI.println(`Installed ${result.skillId} v${result.version}`)
             UI.println(`  Location: ${result.location}`)
+            if (result.requiredEnv?.length) {
+              const skillName = result.skillId.includes("/") ? result.skillId.split("/").pop()! : result.skillId
+              UI.println(`  This skill requires credentials: ${result.requiredEnv.join(", ")}`)
+              UI.println(`  Run 'agent-core auth login ${skillName}' to configure.`)
+            }
           } else {
             UI.println(`Installation failed: ${result.error}`)
             if (result.gatingIssues?.length) {

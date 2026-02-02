@@ -51,6 +51,8 @@ import { iife } from "@/util/iife"
 import { Shell } from "@/shell/shell"
 import { Truncate } from "@/tool/truncation"
 import { withTimeout } from "@/util/timeout"
+import { createSafeEnv } from "@/security/env-sanitize"
+import { buildSessionSystemContext } from "./session-context"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -126,12 +128,14 @@ export namespace SessionPrompt {
     if (sessionLifecycleEmitted.has(session.id)) return
     sessionLifecycleEmitted.add(session.id)
 
+    const resolvedAgentName = agentName ?? (await Agent.defaultAgent())
     await LifecycleHooks.emitSessionStart({
       sessionId: session.id,
-      persona: await resolvePersona(agentName),
+      persona: await resolvePersona(resolvedAgentName),
       source: resolveSessionSource(),
       directory: session.directory,
     })
+
   }
 
   /**
@@ -565,6 +569,11 @@ export namespace SessionPrompt {
 
     let step = 0
     const session = await Session.get(sessionID)
+    const sessionSystemContext = await buildSessionSystemContext({
+      systemPrompt: session.systemPrompt,
+      skills: session.skills,
+      contextFiles: session.contextFiles,
+    })
     while (true) {
       SessionStatus.set(sessionID, { type: "busy" })
       log.info("loop", { step, sessionID })
@@ -593,6 +602,23 @@ export namespace SessionPrompt {
       }
 
       if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
+      if (!session.toolPolicySnapshot) {
+        const snapshotAgent = await Agent.get(lastUser.agent)
+        const mode: "hold" | "release" = resolveHoldMode(session, lastUser.tools) ? "hold" : "release"
+        const ruleset = PermissionNext.merge(snapshotAgent.permission, session.permission ?? [])
+        const snapshot: NonNullable<Session.Info["toolPolicySnapshot"]> = {
+          createdAt: Date.now(),
+          mode,
+          surface: session.surface,
+          agent: snapshotAgent.name,
+          permission: ruleset,
+        }
+        session.toolPolicySnapshot = snapshot
+        await Session.update(session.id, (draft) => {
+          if (draft.toolPolicySnapshot) return
+          draft.toolPolicySnapshot = snapshot
+        })
+      }
       // Check if we should exit the loop based on assistant's finish reason
       // Continue if: pending tool calls OR pending tasks (subtask/compaction)
       // Exit if: no pending work, even if finish reason is "unknown"
@@ -703,6 +729,15 @@ export namespace SessionPrompt {
           subagent_type: resolvedAgent,
           command: task.command,
         }
+        await Plugin.trigger(
+          "before_tool_call",
+          {
+            tool: "task",
+            sessionID,
+            callID: part.id,
+          },
+          { args: taskArgs },
+        )
         await Plugin.trigger(
           "tool.execute.before",
           {
@@ -943,6 +978,7 @@ export namespace SessionPrompt {
         system: [
           ...(await SystemPrompt.environment(model)),
           ...(await InstructionPrompt.system()),
+          ...sessionSystemContext,
           ...(resolveHoldMode(session, lastUser.tools) ? [HOLD_MODE_PROMPT] : []),
         ],
         messages: [
@@ -1074,6 +1110,17 @@ export namespace SessionPrompt {
         async execute(args, options) {
           const ctx = context(args, options)
           await Plugin.trigger(
+            "before_tool_call",
+            {
+              tool: item.id,
+              sessionID: ctx.sessionID,
+              callID: ctx.callID,
+            },
+            {
+              args,
+            },
+          )
+          await Plugin.trigger(
             "tool.execute.before",
             {
               tool: item.id,
@@ -1112,6 +1159,18 @@ export namespace SessionPrompt {
       // Wrap execute to add plugin hooks and format output
       item.execute = async (args, opts) => {
         const ctx = context(args, opts)
+
+        await Plugin.trigger(
+          "before_tool_call",
+          {
+            tool: key,
+            sessionID: ctx.sessionID,
+            callID: opts.toolCallId,
+          },
+          {
+            args,
+          },
+        )
 
         await Plugin.trigger(
           "tool.execute.before",
@@ -1780,12 +1839,13 @@ export namespace SessionPrompt {
     const matchingInvocation = invocations[shellName] ?? invocations[""]
     const args = matchingInvocation?.args
 
+    const safeEnv = createSafeEnv(process.env, { validatePath: process.platform !== "win32" })
     const proc = spawn(shell, args, {
       cwd: Instance.directory,
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
       env: {
-        ...process.env,
+        ...safeEnv,
         TERM: "dumb",
       },
     })

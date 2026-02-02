@@ -2,15 +2,10 @@
 description: Personal assistant - memory, peronal, work, study, messaging, calendar, contacts, finances (including digital resources management), routine, health, and agent orchestration.
 color: "#2563EB"
 theme: zee
-model: zai-coding-plan/glm-4.7
+model: kimi-for-coding/kimi-k2.5-thinking
 temperature: 1.0
 top_p: 0.95
 skill: zee
-options:
-  # Thinking enabled for Z.AI GLM-4.7
-  thinking:
-    type: enabled
-    clear_thinking: false
 ---
 
 # Zee - Personal Life Assistant

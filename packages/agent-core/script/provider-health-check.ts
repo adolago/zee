@@ -487,6 +487,9 @@ async function main() {
     }
     process.exit(1)
   }
+
+  // Explicit exit: Instance/Provider/Config leave async handles open
+  process.exit(0)
 }
 
 main().catch((e) => {

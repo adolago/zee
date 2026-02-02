@@ -1462,6 +1462,18 @@ export type Session = {
     output: number
     reasoning: number
   }
+  surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+  mode?: "hold" | "release"
+  systemPrompt?: string
+  skills?: Array<string>
+  contextFiles?: Array<string>
+  toolPolicySnapshot?: {
+    createdAt: number
+    mode: "hold" | "release"
+    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    agent?: string
+    permission?: PermissionRuleset
+  }
 }
 
 export type ProviderAuthError = {
@@ -2870,6 +2882,10 @@ export type SessionCreateData = {
     parentID?: string
     title?: string
     permission?: PermissionRuleset
+    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    systemPrompt?: string | null
+    skills?: Array<string> | null
+    contextFiles?: Array<string> | null
   }
   path?: never
   query?: never
@@ -3082,6 +3098,9 @@ export type SessionUpdateData = {
     time?: {
       archived?: number
     }
+    systemPrompt?: string | null
+    skills?: Array<string> | null
+    contextFiles?: Array<string> | null
   }
   path: {
     sessionID: string

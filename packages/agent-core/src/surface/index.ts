@@ -129,6 +129,10 @@ export {
   DEFAULT_GUI_CONFIG,
   DEFAULT_MESSAGING_CONFIG,
   DEFAULT_UX_ADAPTATIONS,
+  mergePermissionConfig,
+  resolveCLISurfaceConfig,
+  resolveGUISurfaceConfig,
+  resolveMessagingSurfaceConfig,
   buildSurfaceConfig,
   resolvePermission,
 } from './config.js';

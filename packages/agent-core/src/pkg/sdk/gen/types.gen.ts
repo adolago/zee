@@ -44,6 +44,16 @@ export type FileDiff = {
   deletions: number
 }
 
+export type PermissionAction = "allow" | "deny" | "ask"
+
+export type PermissionRule = {
+  permission: string
+  pattern: string
+  action: PermissionAction
+}
+
+export type PermissionRuleset = Array<PermissionRule>
+
 export type UserMessage = {
   id: string
   sessionID: string
@@ -542,6 +552,7 @@ export type EventCommandExecuted = {
 
 export type Session = {
   id: string
+  slug: string
   projectID: string
   directory: string
   parentID?: string
@@ -560,12 +571,31 @@ export type Session = {
     created: number
     updated: number
     compacting?: number
+    archived?: number
   }
+  permission?: PermissionRuleset
   revert?: {
     messageID: string
     partID?: string
     snapshot?: string
     diff?: string
+  }
+  tokens?: {
+    input: number
+    output: number
+    reasoning: number
+  }
+  surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+  mode?: "hold" | "release"
+  systemPrompt?: string
+  skills?: Array<string>
+  contextFiles?: Array<string>
+  toolPolicySnapshot?: {
+    createdAt: number
+    mode: "hold" | "release"
+    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    agent?: string
+    permission?: PermissionRuleset
   }
 }
 
@@ -2065,6 +2095,11 @@ export type SessionCreateData = {
   body?: {
     parentID?: string
     title?: string
+    permission?: PermissionRuleset
+    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    systemPrompt?: string | null
+    skills?: Array<string> | null
+    contextFiles?: Array<string> | null
   }
   path?: never
   query?: {
@@ -2189,6 +2224,12 @@ export type SessionGetResponse = SessionGetResponses[keyof SessionGetResponses]
 export type SessionUpdateData = {
   body?: {
     title?: string
+    time?: {
+      archived?: number
+    }
+    systemPrompt?: string | null
+    skills?: Array<string> | null
+    contextFiles?: Array<string> | null
   }
   path: {
     id: string

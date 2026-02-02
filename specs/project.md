@@ -19,6 +19,18 @@ POST /project/:projectID/session -> Session
   id?: string
   parentID?: string
   directory: string
+  systemPrompt?: string | null
+  skills?: string[] | null
+  contextFiles?: string[] | null
+}
+
+PATCH /project/:projectID/session/:sessionID -> Session
+{
+  title?: string
+  time?: { archived?: number }
+  systemPrompt?: string | null
+  skills?: string[] | null
+  contextFiles?: string[] | null
 }
 
 DELETE /project/:projectID/session/:sessionID

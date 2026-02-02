@@ -17,6 +17,7 @@ import { Shell } from "@/shell/shell"
 import { BashArity } from "@/permission/arity"
 import { Truncate } from "./truncation"
 import { HoldMode } from "@/config/hold-mode"
+import { createSafeEnv } from "@/security/env-sanitize"
 
 const MAX_METADATA_LENGTH = 30_000
 const DEFAULT_TIMEOUT = Flag.AGENT_CORE_BASH_DEFAULT_TIMEOUT_MS || 2 * 60 * 1000
@@ -256,12 +257,11 @@ To modify state, the user must switch to RELEASE mode.`
         })
       }
 
+      const safeEnv = createSafeEnv(process.env, { validatePath: process.platform !== "win32" })
       const proc = spawn(params.command, {
         shell,
         cwd,
-        env: {
-          ...process.env,
-        },
+        env: safeEnv,
         stdio: ["ignore", "pipe", "pipe"],
         detached: process.platform !== "win32",
       })

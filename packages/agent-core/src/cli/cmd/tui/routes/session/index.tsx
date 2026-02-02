@@ -77,7 +77,6 @@ import { QuestionPrompt } from "./question"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
 import { DialogDelegation } from "./dialog-delegation"
-import { ActivityHeader } from "./activity-header"
 
 addDefaultParsers(parsers.parsers)
 
@@ -1045,10 +1044,6 @@ export function Session() {
           <Show when={session()}>
             <Show when={!sidebarVisible() || !wide()}>
               <Header />
-            </Show>
-            {/* Activity header shows current model state at a glance */}
-            <Show when={messages().length > 0 && pending()}>
-              <ActivityHeader sessionID={route.sessionID} />
             </Show>
             <Show when={messages().length > 0} fallback={<AgentBanner />}>
               <scrollbox
