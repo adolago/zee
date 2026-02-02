@@ -560,7 +560,7 @@ export const AuthLoginCommand = cmd({
         const knownProvider = provider in providers || getProvider(provider) !== undefined
         if (!knownProvider) {
           provider = provider.replace(/^@ai-sdk\//, "")
-          const customPlugin = await Plugin.list().then((x) => x.find((x) => x.auth?.provider === provider))
+          const customPlugin = await Plugin.list().then((x) => x.findLast((x) => x.auth?.provider === provider))
           if (customPlugin && customPlugin.auth) {
             const handled = await handlePluginAuth({ auth: customPlugin.auth }, provider, config)
             if (handled) return
@@ -570,7 +570,7 @@ export const AuthLoginCommand = cmd({
           )
         }
 
-        const plugin = await Plugin.list().then((x) => x.find((x) => x.auth?.provider === provider))
+        const plugin = await Plugin.list().then((x) => x.findLast((x) => x.auth?.provider === provider))
         if (plugin && plugin.auth) {
           const handled = await handlePluginAuth({ auth: plugin.auth }, provider, config)
           if (handled) return
