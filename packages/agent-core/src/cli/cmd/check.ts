@@ -11,7 +11,7 @@ import { MinimalReporter } from "../../diagnostics/reporters/minimal";
 import type { CheckCategory } from "../../diagnostics/types";
 import { cmd } from "./cmd";
 
-const VALID_CATEGORIES: CheckCategory[] = ["runtime", "config", "providers", "integrity"];
+const VALID_CATEGORIES: CheckCategory[] = ["runtime", "config", "providers", "integrity", "skills"];
 
 type CheckArgs = {
   full?: boolean;
@@ -65,7 +65,7 @@ export const CheckCommand = cmd({
         type: "string",
         array: true,
         choices: VALID_CATEGORIES,
-        describe: "Run only specific categories (runtime, config, providers, integrity)",
+        describe: "Run only specific categories (runtime, config, providers, integrity, skills)",
       })
       .option("skip", {
         type: "string",
@@ -163,6 +163,8 @@ Check Categories:
   config     - Configuration validation, deprecated options
   providers  - AI provider connectivity (Anthropic, OpenAI, Gemini, Ollama)
   integrity  - Lock files, processes, session files
+  skills     - Skill discovery, loading, conflicts, environment
+  skills     - Skill discovery, loading, conflicts, env vars
 
 Exit Codes:
   0 - All checks passed

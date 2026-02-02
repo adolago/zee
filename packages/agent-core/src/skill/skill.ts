@@ -44,6 +44,10 @@ export namespace Skill {
     primaryEnv: z.string().optional(),
     /** Paths of skills that were shadowed by this one (same name, loaded later). */
     conflicts: z.array(z.string()).optional(),
+    /** Searchable tags for skill discovery. */
+    tags: z.array(z.string()).optional(),
+    /** Trigger phrases that indicate this skill should be used. */
+    triggers: z.array(z.string()).optional(),
   })
   export type Info = z.infer<typeof Info>
 
@@ -227,6 +231,14 @@ export namespace Skill {
         }
       }
 
+      // Parse tags and triggers from frontmatter
+      const tags = Array.isArray(md.data.tags)
+        ? md.data.tags.filter((t: unknown) => typeof t === "string")
+        : undefined
+      const triggers = Array.isArray(md.data.triggers)
+        ? md.data.triggers.filter((t: unknown) => typeof t === "string")
+        : undefined
+
       skills[parsed.data.name] = {
         name: parsed.data.name,
         description: parsed.data.description,
@@ -235,6 +247,8 @@ export namespace Skill {
         registry,
         requires,
         primaryEnv,
+        ...(tags && tags.length > 0 ? { tags } : {}),
+        ...(triggers && triggers.length > 0 ? { triggers } : {}),
       }
     }
 
@@ -459,6 +473,34 @@ export namespace Skill {
     annotated.sort((a, b) => affinityOrder[a.affinity] - affinityOrder[b.affinity])
 
     return annotated
+  }
+
+  /**
+   * Search skills by keyword across name, description, tags, and triggers.
+   * Results are sorted by affinity when an agent is provided.
+   */
+  export async function search(query: string, agent?: string): Promise<AnnotatedInfo[]> {
+    const skills = await all(agent)
+    const q = query.toLowerCase()
+    return skills.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.tags?.some((t) => t.toLowerCase().includes(q)) ||
+        s.triggers?.some((t) => t.toLowerCase().includes(q)),
+    )
+  }
+
+  export async function search(query: string, agent?: string): Promise<AnnotatedInfo[]> {
+    const skills = await all(agent)
+    const q = query.toLowerCase()
+    return skills.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.tags?.some((t) => t.toLowerCase().includes(q)) ||
+        s.triggers?.some((t) => t.toLowerCase().includes(q)),
+    )
   }
 
   /** Audit report for skill health diagnostics. */

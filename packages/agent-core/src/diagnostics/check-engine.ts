@@ -16,6 +16,8 @@ import { runRuntimeChecks } from "./checks/runtime";
 import { runConfigChecks } from "./checks/config";
 import { runProviderChecks } from "./checks/providers";
 import { runIntegrityChecks } from "./checks/integrity";
+import { runSkillChecks } from "./checks/skills";
+import { runSkillChecks } from "./checks/skills";
 
 /** Default options for the check engine */
 const DEFAULT_OPTIONS: CheckOptions = {
@@ -45,7 +47,7 @@ export class CheckEngine {
 
     const categories =
       this.options.categories ||
-      (["runtime", "config", "providers", "integrity"] as CheckCategory[]);
+      (["runtime", "config", "providers", "integrity", "skills"] as CheckCategory[]);
 
     // Run categories sequentially to avoid resource contention
     for (const category of categories) {
@@ -98,6 +100,7 @@ export class CheckEngine {
       config: () => runConfigChecks(this.options),
       providers: () => runProviderChecks(this.options),
       integrity: () => runIntegrityChecks(this.options),
+      skills: () => runSkillChecks(this.options),
     };
 
     try {
@@ -138,6 +141,7 @@ export class CheckEngine {
       config: { status: "ok", passed: 0, total: 0, checks: [] },
       providers: { status: "ok", passed: 0, total: 0, checks: [] },
       integrity: { status: "ok", passed: 0, total: 0, checks: [] },
+      skills: { status: "ok", passed: 0, total: 0, checks: [] },
     };
 
     let passed = 0,

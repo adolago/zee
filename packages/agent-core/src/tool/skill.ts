@@ -7,7 +7,6 @@ import { PermissionNext } from "../permission/next"
 
 export const SkillTool = Tool.define("skill", async (ctx) => {
   const agent = ctx?.agent
-  // Filter skills by persona context (e.g., @zee/ skills only for zee agent)
   const skills = await Skill.all(agent?.name)
 
   // Further filter by agent permissions if agent provided
@@ -18,72 +17,126 @@ export const SkillTool = Tool.define("skill", async (ctx) => {
       })
     : skills
 
-  const description =
-    accessibleSkills.length === 0
-      ? "Load a skill to get detailed instructions for a specific task. No skills are currently available."
-      : [
-          "Load a skill to get detailed instructions for a specific task.",
-          "Skills provide specialized knowledge and step-by-step guidance.",
-          "Use this when a task matches an available skill's description.",
-          "All skills are available regardless of persona. Cross-persona skills are marked.",
-          "<available_skills>",
-          ...accessibleSkills.flatMap((skill) => {
-            const crossTag = "affinity" in skill && (skill as { affinity: string }).affinity === "cross"
-              ? ` [via @${skill.context}]`
-              : ""
-            return [
-              `  <skill>`,
-              `    <name>${skill.name}</name>`,
-              `    <description>${skill.description}${crossTag}</description>`,
-              `  </skill>`,
-            ]
-          }),
-          "</available_skills>",
-        ].join(" ")
-
-  const examples = accessibleSkills
-    .map((skill) => `'${skill.name}'`)
-    .slice(0, 3)
-    .join(", ")
-  const hint = examples.length > 0 ? ` (e.g., ${examples}, ...)` : ""
+  // Build compact grouped listing
+  const description = buildCompactDescription(accessibleSkills)
 
   const parameters = z.object({
-    name: z.string().describe(`The skill identifier from available_skills${hint}`),
+    name: z.string().optional().describe("Exact skill name to load"),
+    query: z.string().optional().describe("Search skills by keyword"),
   })
 
   return {
     description,
     parameters,
     async execute(params: z.infer<typeof parameters>, ctx) {
-      const skill = await Skill.get(params.name)
+      // Load a specific skill by name
+      if (params.name) {
+        const skill = await Skill.get(params.name)
 
-      if (!skill) {
-        // In execute context, ctx.agent is already a string (agent name)
-        const skills = await Skill.all(ctx.agent)
-        const available = skills.map((s) => s.name).join(", ")
-        throw new Error(`Skill "${params.name}" not found. Available skills: ${available || "none"}`)
+        if (!skill) {
+          const skills = await Skill.all(ctx.agent)
+          const available = skills.map((s) => s.name).join(", ")
+          throw new Error(`Skill "${params.name}" not found. Available skills: ${available || "none"}`)
+        }
+
+        await ctx.ask({
+          permission: "skill",
+          patterns: [params.name],
+          always: [params.name],
+          metadata: {},
+        })
+        const content = (await ConfigMarkdown.parse(skill.location)).content
+        const dir = path.dirname(skill.location)
+
+        const output = [`## Skill: ${skill.name}`, "", `**Base directory**: ${dir}`, "", content.trim()].join("\n")
+
+        return {
+          title: `Loaded skill: ${skill.name}`,
+          output,
+          metadata: {
+            name: skill.name,
+            dir,
+          },
+        }
       }
 
-      await ctx.ask({
-        permission: "skill",
-        patterns: [params.name],
-        always: [params.name],
-        metadata: {},
-      })
-      const content = (await ConfigMarkdown.parse(skill.location)).content
-      const dir = path.dirname(skill.location)
+      // Search skills by keyword
+      if (params.query) {
+        const results = await Skill.search(params.query, ctx.agent)
+        const maxResults = 10
 
-      // Format output similar to plugin pattern
-      const output = [`## Skill: ${skill.name}`, "", `**Base directory**: ${dir}`, "", content.trim()].join("\n")
+        if (results.length === 0) {
+          return {
+            title: `No skills matching "${params.query}"`,
+            output: `No skills found for "${params.query}". Try a different keyword or use without parameters to see all skills.`,
+            metadata: { query: params.query, count: 0 },
+          }
+        }
 
-      return {
-        title: `Loaded skill: ${skill.name}`,
-        output,
-        metadata: {
-          name: skill.name,
-          dir,
-        },
+        const shown = results.slice(0, maxResults)
+        const lines = shown.map((s) => {
+          const crossTag = s.affinity === "cross" ? ` [via @${s.context}]` : ""
+          return `- **${s.name}**: ${s.description}${crossTag}`
+        })
+        if (results.length > maxResults) {
+          lines.push(`\n...and ${results.length - maxResults} more. Refine your search to narrow results.`)
+        }
+        lines.push("", 'Load with { name: "skill-name" } to get full instructions.')
+
+        return {
+          title: `Found ${results.length} skill(s) for "${params.query}"`,
+          output: lines.join("\n"),
+          metadata: { query: params.query, count: results.length },
+        }
       }
+
+      // Neither name nor query provided
+      throw new Error(
+        'Provide { name: "skill-name" } to load a skill, or { query: "keyword" } to search.',
+      )
     },
   }
 })
+
+/**
+ * Build a compact description that groups skills by affinity.
+ * Saves ~650 tokens compared to verbose XML listing.
+ */
+function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
+  if (skills.length === 0) {
+    return "Load a skill to get detailed instructions for a specific task. No skills are currently available."
+  }
+
+  const own = skills.filter((s) => s.affinity === "own")
+  const shared = skills.filter((s) => s.affinity === "shared")
+  const cross = skills.filter((s) => s.affinity === "cross")
+
+  const lines: string[] = [
+    "Load a skill for detailed instructions on a specific task.",
+    'Search with { query: "keyword" } to find skills by name, tag, or trigger phrase.',
+    'Load with { name: "skill-name" } to get full instructions.',
+    "",
+    "Skills by persona:",
+  ]
+
+  if (own.length > 0) {
+    lines.push(`  yours: ${own.map((s) => s.name).join(", ")}`)
+  }
+  if (shared.length > 0) {
+    lines.push(`  shared: ${shared.map((s) => s.name).join(", ")}`)
+  }
+  if (cross.length > 0) {
+    // Group cross-persona skills by context
+    const byContext = new Map<string, string[]>()
+    for (const s of cross) {
+      const ctx = s.context ?? "other"
+      if (!byContext.has(ctx)) byContext.set(ctx, [])
+      byContext.get(ctx)!.push(s.name)
+    }
+    for (const [persona, names] of byContext) {
+      lines.push(`  @${persona}: ${names.join(", ")}`)
+    }
+  }
+
+  return lines.join("\n")
+}
