@@ -386,14 +386,45 @@ This system has experimental features enabled:
 | Zee memories      | `~/.zee/zee/memories.json`      |
 | Credentials       | `~/.zee/credentials/`           |
 
-## Running Processes & Binary Updates
+## Daemon Management (systemd)
 
-> **CRITICAL**: The #1 cause of confusion is **not knowing which binary is running**:
->
-> - **Dev mode** (`bun run dev`): Uses source files directly, restart takes effect
-> - **Production** (`~/bin/agent-core`): Uses compiled binary, must rebuild + copy + restart
->
-> Use `./scripts/reload.sh --status` to see what's running and if source is newer than binary.
+The daemon is managed by a **systemd user service**. Always use `systemctl --user` to manage it. Never use `pkill`, `kill -9`, or `nohup` to start/stop the daemon.
+
+### Quick Reference
+
+```bash
+# Restart daemon (after config changes or rebuild)
+systemctl --user restart agent-core
+
+# Stop daemon
+systemctl --user stop agent-core
+
+# Check status
+systemctl --user status agent-core
+
+# View logs (live tail)
+journalctl --user -u agent-core -f
+
+# View recent logs
+journalctl --user -u agent-core --since "5 min ago"
+
+# Full rebuild + restart
+./scripts/reload.sh
+
+# Just restart (config changes, no rebuild)
+./scripts/reload.sh --no-build
+
+# Check binary and service status
+./scripts/reload.sh --status
+```
+
+### Service File
+
+Location: `~/.config/systemd/user/agent-core.service`
+
+The service runs with `Restart=always` and `RestartSec=10`, so it auto-recovers from crashes. Lingering is enabled (`loginctl enable-linger`) so the service persists across logout.
+
+Environment variables are loaded from `~/.config/agent-core/daemon.env`.
 
 ### Repository Location
 
@@ -403,31 +434,14 @@ By default, the canonical location is `~/.local/src/agent-core`, but the project
 
 ### Binary Location
 
-Two installation methods are supported:
-
-1. **Bun global install (recommended):** `~/.bun/bin/agent-core`
-   - Installed via `bun install -g agent-core`
-   - Wrapper script resolves the actual binary automatically
-
-2. **Manual install:** `~/bin/agent-core` (also `$AGENT_CORE_BIN`)
-   - Direct binary copy from build output
-   - Used by `reload.sh` script
+Binary: `~/.bun/bin/agent-core` (symlink to `dist/@agent-core/core-linux-x64/bin/agent-core`)
 
 **Run from anywhere:** The binary can be launched from any directory. Just `cd` to your project folder and run `agent-core`.
 
 ### Rebuilding
 
-**For bun global install:**
-
 ```bash
-# Build and the global install auto-updates
-cd packages/agent-core && bun run build
-```
-
-**For manual install (reload script):**
-
-```bash
-# Full reload - kill all, rebuild, restart daemon
+# Full reload - stop, rebuild, restart daemon via systemd
 ./scripts/reload.sh
 
 # Just check status (what's running, version info)
@@ -435,37 +449,23 @@ cd packages/agent-core && bun run build
 
 # Restart without rebuilding (config changes only)
 ./scripts/reload.sh --no-build
-```
 
-**Manual method** (if script unavailable):
-
-```bash
-# Build from repo
-cd packages/agent-core && bun run build
-
-# Kill running instances and install (MUST close TUI first)
-pkill -f agent-core; sleep 1
-cp packages/agent-core/dist/agent-core-linux-x64/bin/agent-core ~/bin/agent-core
+# Clean rebuild
+./scripts/reload.sh --clean
 ```
 
 ### Common Processes
 
-When updating the binary, you may encounter "Text file busy". Check for:
-
 ```bash
-pgrep -af agent-core
+systemctl --user status agent-core
 ```
 
 **Typical processes:**
-| Process | Description | Safe to kill? |
-|---------|-------------|---------------|
-| `/home/artur/bin/agent-core --print-logs` | TUI instance | Yes (close TUI first) |
-| `bun run ... src/index.ts` | Dev server | Yes |
-
-**Related but separate (don't kill):**
-| Process | Location | Description |
-|---------|----------|-------------|
-| Zee Gateway | `~/.local/src/agent-core/packages/personas/zee/` | Node.js messaging gateway (WhatsApp, Telegram, Signal) |
+| Process | Description | Managed by |
+|---------|-------------|------------|
+| `agent-core daemon --hostname ...` | Daemon + embedded gateway | systemd |
+| `agent-core --print-logs` | TUI instance | user (close normally) |
+| `bun run ... src/index.ts` | Dev server | user |
 
 ### Gateway Architecture
 
@@ -517,10 +517,10 @@ pgrep -af agent-core
 
 ### Running the Embedded Gateway
 
-1. **Start agent-core daemon (gateway auto-starts):**
+1. **The daemon is managed by systemd and starts automatically.** To manually restart:
 
    ```bash
-   agent-core daemon --hostname 127.0.0.1 --port 3210
+   systemctl --user restart agent-core
    ```
 
 2. **Send a message** via WhatsApp/Telegram mentioning a persona:

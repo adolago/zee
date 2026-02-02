@@ -6,7 +6,6 @@ author: Artur
 tags: [persona, investing, finance, trading, portfolio]
 includes:
   - swarm
-  - agents-menu
 ---
 
 # stanley - Investing System

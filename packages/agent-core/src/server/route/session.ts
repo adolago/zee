@@ -19,6 +19,7 @@ import { SessionSummary } from "@/session/summary"
 import { SessionCompaction } from "../../session/compaction"
 import { Agent } from "../../agent/agent"
 import { PermissionNext } from "@/permission/next"
+import { NamedError } from "@opencode-ai/util/error"
 
 const log = Log.create({ service: "server:session" })
 
@@ -150,7 +151,10 @@ export const SessionRoute = new Hono()
           const msg = await SessionPrompt.prompt({ ...body, sessionID })
           stream.write(JSON.stringify(msg))
         } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : String(err)
+          const errorMsg =
+            err instanceof NamedError ? (err.toObject().data?.message ?? err.message) :
+            err instanceof Error ? err.message :
+            String(err)
           Log.Default.error("session.prompt stream error", { error: errorMsg })
           stream.write(JSON.stringify({ error: errorMsg, info: null, parts: [] }))
         }

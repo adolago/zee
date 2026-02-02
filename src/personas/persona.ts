@@ -34,11 +34,16 @@ const skillCache = new Map<string, LoadedSkill>();
 /**
  * Find the skills directory (supports both dev and installed paths)
  */
+/** Candidate skill directory names in precedence order. */
+const SKILL_DIR_CANDIDATES = [".agents/skills", ".claude/skills"] as const;
+
 function findSkillsDirFrom(startDir: string): string | undefined {
   let current = resolve(startDir);
   for (;;) {
-    const candidate = join(current, ".claude", "skills");
-    if (existsSync(candidate)) return candidate;
+    for (const rel of SKILL_DIR_CANDIDATES) {
+      const candidate = join(current, rel);
+      if (existsSync(candidate)) return candidate;
+    }
     const parent = dirname(current);
     if (parent === current) return undefined;
     current = parent;
@@ -49,8 +54,10 @@ function findSkillsDir(): string {
   const envRoot =
     process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE || process.env.AGENT_CORE_ROOT;
   if (envRoot) {
-    const envSkills = join(envRoot, ".claude", "skills");
-    if (existsSync(envSkills)) return envSkills;
+    for (const rel of SKILL_DIR_CANDIDATES) {
+      const envSkills = join(envRoot, rel);
+      if (existsSync(envSkills)) return envSkills;
+    }
   }
 
   const starts = [process.cwd(), dirname(process.execPath)];
@@ -63,7 +70,7 @@ function findSkillsDir(): string {
   }
 
   // Fallback to cwd
-  return join(process.cwd(), ".claude", "skills");
+  return join(process.cwd(), ".agents", "skills");
 }
 
 /**
@@ -144,10 +151,13 @@ function loadSkill(skillName: string, skillsDir: string, loaded = new Set<string
     return skillCache.get(skillName)!;
   }
 
-  // Try to load the skill file
-  const skillPath = join(skillsDir, skillName, "SKILL.md");
+  // Try to load the skill file (check both plain and @-prefixed paths)
+  let skillPath = join(skillsDir, skillName, "SKILL.md");
   if (!existsSync(skillPath)) {
-    return null;
+    skillPath = join(skillsDir, `@${skillName}`, "SKILL.md");
+    if (!existsSync(skillPath)) {
+      return null;
+    }
   }
 
   try {

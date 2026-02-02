@@ -4,12 +4,15 @@
 # Usage: ./scripts/reload.sh [OPTIONS]
 #
 # This script:
-# 1. Kills all agent-core processes
+# 1. Stops daemon via systemctl --user
 # 2. Optionally cleans build artifacts (--clean or --fresh)
 # 3. Rebuilds from source (unless --no-build)
 # 4. Links binary via direct symlink (~/.bun/bin/agent-core -> dist binary)
-# 5. Starts daemon (unless --no-daemon)
+# 5. Starts daemon via systemctl --user (unless --no-daemon)
 # 6. Verifies everything is working
+#
+# The daemon is managed by systemd user service (agent-core.service).
+# Never use pkill/kill -9 to manage the daemon -- use systemctl.
 #
 
 set -euo pipefail
@@ -17,11 +20,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 PKG_DIR="$REPO_ROOT/packages/agent-core"
-BINARY_SRC="$PKG_DIR/dist/@adolago/agent-core-linux-x64/bin/agent-core"
+BINARY_SRC="$PKG_DIR/dist/@agent-core/core-linux-x64/bin/agent-core"
 BINARY_LINK="$HOME/.bun/bin/agent-core"
 DAEMON_PORT="${AGENT_CORE_PORT:-3210}"
 DAEMON_HOST="${AGENT_CORE_HOST:-127.0.0.1}"
 DAEMON_URL="${AGENT_CORE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}"
+SYSTEMD_UNIT="agent-core.service"
 
 # Colors
 RED='\033[0;31m'
@@ -46,13 +50,11 @@ NO_DAEMON=false
 STATUS_ONLY=false
 CLEAN_BUILD=false
 FRESH_BUILD=false
-GATEWAY=true
 
 for arg in "$@"; do
   case $arg in
     --no-build) NO_BUILD=true ;;
     --no-daemon) NO_DAEMON=true ;;
-    --no-gateway) GATEWAY=false ;;
     --status) STATUS_ONLY=true ;;
     --clean) CLEAN_BUILD=true ;;
     --fresh) FRESH_BUILD=true ;;
@@ -62,7 +64,6 @@ for arg in "$@"; do
       echo "Options:"
       echo "  --no-build   Skip rebuilding (just restart)"
       echo "  --no-daemon  Don't start daemon after reload"
-      echo "  --no-gateway Skip starting Zee messaging gateway"
       echo "  --status     Show status and diagnostics only"
       echo "  --clean      Clean build artifacts before rebuilding"
       echo "  --fresh      Full fresh build: clean + clear turbo cache + reinstall deps"
@@ -73,7 +74,7 @@ for arg in "$@"; do
       echo "  $0 --clean          # Clean dist/, rebuild, restart"
       echo "  $0 --fresh          # Nuclear option: purge everything, rebuild from scratch"
       echo "  $0 --no-daemon      # Rebuild but don't start daemon"
-      echo "  $0 --no-gateway     # Rebuild without messaging gateway"
+      echo "  $0 --no-build       # Just restart daemon (config changes)"
       exit 0
       ;;
   esac
@@ -82,7 +83,7 @@ done
 # Clean function
 do_clean() {
   log "Cleaning build artifacts..."
-  
+
   # Clean dist directory
   if [[ -d "$PKG_DIR/dist" ]]; then
     rm -rf "$PKG_DIR/dist"
@@ -95,31 +96,31 @@ do_clean() {
 # Fresh/full clean function
 do_fresh_clean() {
   log "Performing FULL fresh clean..."
-  
+
   # Clean dist
   if [[ -d "$PKG_DIR/dist" ]]; then
     rm -rf "$PKG_DIR/dist"
     ok "Removed dist/"
   fi
-  
+
   # Clean turbo cache
   if [[ -d "$REPO_ROOT/.turbo" ]]; then
     rm -rf "$REPO_ROOT/.turbo"
     ok "Removed .turbo/ cache"
   fi
-  
+
   # Clean node_modules/.cache
   if [[ -d "$REPO_ROOT/node_modules/.cache" ]]; then
     rm -rf "$REPO_ROOT/node_modules/.cache"
     ok "Removed node_modules/.cache"
   fi
-  
+
   # Clean bun cache for the package
   if [[ -d "$PKG_DIR/node_modules/.cache" ]]; then
     rm -rf "$PKG_DIR/node_modules/.cache"
     ok "Removed package node_modules/.cache"
   fi
-  
+
   # Optionally reinstall deps
   log "Reinstalling dependencies..."
   cd "$REPO_ROOT"
@@ -133,9 +134,26 @@ do_fresh_clean() {
 # Status/diagnostics function
 show_status() {
   echo ""
-  echo "═══════════════════════════════════════════════════════════════"
+  echo "==============================================================="
   echo "                    AGENT-CORE STATUS"
-  echo "═══════════════════════════════════════════════════════════════"
+  echo "==============================================================="
+  echo ""
+
+  # Systemd service status
+  echo "Systemd service:"
+  if systemctl --user is-active "$SYSTEMD_UNIT" >/dev/null 2>&1; then
+    local svc_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_UNIT" 2>/dev/null)
+    local svc_uptime=$(systemctl --user show -p ActiveEnterTimestamp --value "$SYSTEMD_UNIT" 2>/dev/null)
+    ok "Active (PID: $svc_pid, since: $svc_uptime)"
+  else
+    local svc_state=$(systemctl --user is-active "$SYSTEMD_UNIT" 2>/dev/null || echo "unknown")
+    warn "Not active ($svc_state)"
+  fi
+  if systemctl --user is-enabled "$SYSTEMD_UNIT" >/dev/null 2>&1; then
+    ok "Enabled (starts on login)"
+  else
+    warn "Not enabled"
+  fi
   echo ""
 
   # Binary info
@@ -164,28 +182,6 @@ show_status() {
     ok "Exists (modified: $mod_date)"
   else
     err "Not found"
-  fi
-  echo ""
-
-  # Running processes
-  echo "Processes:"
-  local procs=$(pgrep -af "agent-core|bun.*print-logs" 2>/dev/null | grep -v "reload.sh" | grep -v "pgrep" || true)
-  if [[ -n "$procs" ]]; then
-    echo "$procs" | while read -r line; do
-      local pid=$(echo "$line" | awk '{print $1}')
-      local cmd=$(echo "$line" | cut -d' ' -f2-)
-      if [[ "$cmd" == *"daemon"* ]]; then
-        ok "Daemon: PID $pid"
-      elif [[ "$cmd" == *"bun"*"print-logs"* ]]; then
-        ok "TUI (dev): PID $pid"
-      elif [[ "$cmd" == *"print-logs"* ]] || [[ "$cmd" == *"/bin/agent-core" ]]; then
-        ok "TUI:    PID $pid"
-      else
-        echo "  Other:  PID $pid - $cmd"
-      fi
-    done
-  else
-    warn "No agent-core processes running"
   fi
   echo ""
 
@@ -251,7 +247,15 @@ show_status() {
     done
   fi
   echo ""
-  echo "═══════════════════════════════════════════════════════════════"
+
+  # Quick reference
+  echo "Quick commands:"
+  echo "  systemctl --user restart agent-core    # restart daemon"
+  echo "  systemctl --user stop agent-core       # stop daemon"
+  echo "  journalctl --user -u agent-core -f     # tail logs"
+  echo "  ./scripts/reload.sh                    # rebuild + restart"
+  echo ""
+  echo "==============================================================="
 }
 
 if $STATUS_ONLY; then
@@ -260,66 +264,35 @@ if $STATUS_ONLY; then
 fi
 
 echo ""
-echo "═══════════════════════════════════════════════════════════════"
+echo "==============================================================="
 echo "                   AGENT-CORE RELOAD"
-echo "═══════════════════════════════════════════════════════════════"
+echo "==============================================================="
 echo ""
 
-# Step 1: Kill ALL agent-core related processes (be aggressive!)
-log "Stopping ALL agent-core processes..."
-
-kill_procs() {
-  local pattern="$1"
-  local name="$2"
-  local pids=$(pgrep -f "$pattern" 2>/dev/null | grep -v $$ | grep -v "reload" || true)
-  if [[ -n "$pids" ]]; then
-    echo "$pids" | xargs -r kill -9 2>/dev/null || true
-    ok "Killed $name (PIDs: $(echo $pids | tr '\n' ' '))"
-    return 0
-  fi
-  return 1
-}
-
-# Kill in order of dependency
-kill_procs "agent-core daemon" "daemon" || warn "No daemon to kill"
-kill_procs "agent-core.*gateway" "gateway" || true
-kill_procs "agent-core.*print-logs" "TUI (binary)" || true  
-kill_procs "bun.*print-logs" "TUI (dev)" || true
-kill_procs "bun.*agent-core" "bun agent-core" || true
-kill_procs "/bin/agent-core" "agent-core binary" || true
-
-# Wait for processes to die
-sleep 1
-
-# Nuclear option: kill ANYTHING with agent-core in the command
-remaining=$(pgrep -af "agent-core" 2>/dev/null | grep -v $$ | grep -v "reload.sh" | grep -v "grep" || true)
-if [[ -n "$remaining" ]]; then
-  warn "Lingering processes found:"
-  echo "$remaining"
-  echo ""
-  log "Force killing ALL remaining..."
-  pgrep -f "agent-core" 2>/dev/null | grep -v $$ | grep -v "reload" | xargs -r kill -9 2>/dev/null || true
-  sleep 1
+# Step 1: Stop daemon via systemd
+log "Stopping daemon via systemctl..."
+if systemctl --user is-active "$SYSTEMD_UNIT" >/dev/null 2>&1; then
+  systemctl --user stop "$SYSTEMD_UNIT"
+  ok "Daemon stopped"
+else
+  warn "Daemon was not running"
 fi
 
-# Also kill any process listening on the daemon port
+# Wait for graceful shutdown
+sleep 2
+
+# Verify port is free
 port_pid=$(lsof -ti:$DAEMON_PORT 2>/dev/null || true)
 if [[ -n "$port_pid" ]]; then
-  kill -9 $port_pid 2>/dev/null || true
-  ok "Killed process on port $DAEMON_PORT (PID: $port_pid)"
+  warn "Port $DAEMON_PORT still in use (PID: $port_pid), waiting..."
+  sleep 3
+  port_pid=$(lsof -ti:$DAEMON_PORT 2>/dev/null || true)
+  if [[ -n "$port_pid" ]]; then
+    err "Port $DAEMON_PORT still occupied after wait. Killing PID $port_pid."
+    kill -9 "$port_pid" 2>/dev/null || true
+    sleep 1
+  fi
 fi
-
-# Final verification
-final_check=$(pgrep -af "agent-core" 2>/dev/null | grep -v $$ | grep -v "reload" || true)
-if [[ -n "$final_check" ]]; then
-  err "WARNING: Some processes may still be running:"
-  echo "$final_check"
-else
-  ok "All processes stopped"
-fi
-
-# Extra wait to ensure file handles are released
-sleep 2
 
 # Step 2: Clean if requested
 if $FRESH_BUILD; then
@@ -365,39 +338,18 @@ else
   exit 1
 fi
 
-# Step 5: Start daemon
+# Step 5: Start daemon via systemd
 if ! $NO_DAEMON; then
-  # Kill any daemon that may have started during build
-  log "Ensuring no daemon is running..."
-  AGENT_BIN="$(resolve_agent_bin)"
-  if [[ -z "$AGENT_BIN" ]]; then
-    AGENT_BIN="$BINARY_LINK"
-  fi
-  "$AGENT_BIN" daemon-stop 2>/dev/null || true
-  sleep 1
-  
-  # Kill by port as final measure
-  port_pid=$(lsof -ti:$DAEMON_PORT 2>/dev/null || true)
-  if [[ -n "$port_pid" ]]; then
-    kill -9 $port_pid 2>/dev/null || true
-    ok "Killed process on port $DAEMON_PORT"
-    sleep 1
-  fi
-  
-  log "Starting daemon..."
-  daemon_args=(daemon --hostname "$DAEMON_HOST" --port "$DAEMON_PORT")
-  if $GATEWAY; then
-    daemon_args+=(--gateway)
-  fi
-  # Set bundled plugins dir for zee gateway to find channel plugins
-  export ZEE_BUNDLED_PLUGINS_DIR="$REPO_ROOT/packages/personas/zee/extensions"
-  nohup "$AGENT_BIN" "${daemon_args[@]}" > /tmp/agent-core-daemon.log 2>&1 &
-  DAEMON_PID=$!
-  sleep 2
+  log "Starting daemon via systemctl..."
+  systemctl --user daemon-reload
+  systemctl --user start "$SYSTEMD_UNIT"
+  sleep 3
 
   # Verify daemon started
-  if kill -0 "$DAEMON_PID" 2>/dev/null; then
+  if systemctl --user is-active "$SYSTEMD_UNIT" >/dev/null 2>&1; then
+    local_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_UNIT" 2>/dev/null)
     # Check health endpoint
+    health=""
     for i in {1..5}; do
       health=$(curl -sf "$DAEMON_URL/global/health" 2>/dev/null || echo "")
       if [[ -n "$health" ]]; then
@@ -408,17 +360,18 @@ if ! $NO_DAEMON; then
         if [[ -n "$channel" || -n "$mode" ]]; then
           suffix=" (${channel}/${mode})"
         fi
-        ok "Daemon started (PID: $DAEMON_PID, version: $version$suffix)"
+        ok "Daemon started (PID: $local_pid, version: $version$suffix)"
         break
       fi
       sleep 1
     done
     if [[ -z "$health" ]]; then
-      warn "Daemon started but health check failed"
+      warn "Daemon started but health check failed (may still be initializing)"
     fi
   else
-    err "Daemon failed to start! Check /tmp/agent-core-daemon.log"
-    tail -20 /tmp/agent-core-daemon.log
+    err "Daemon failed to start! Check logs:"
+    echo ""
+    journalctl --user -u "$SYSTEMD_UNIT" --since "1 min ago" --no-pager | tail -20
     exit 1
   fi
 else
@@ -429,11 +382,11 @@ fi
 log "Verifying providers and models..."
 verify_providers() {
   local all_ok=true
-  
+
   echo ""
   echo "Provider Health Check:"
   echo "----------------------"
-  
+
   # Check Qdrant connectivity
   local qdrant_url="${QDRANT_URL:-http://localhost:6333}"
   if curl -sf "$qdrant_url/health" >/dev/null 2>&1; then
@@ -442,7 +395,7 @@ verify_providers() {
     warn "Qdrant:     NOT AVAILABLE ($qdrant_url)"
     all_ok=false
   fi
-  
+
   # Check embedding provider (Google/Voyage)
   local google_key="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
   if [[ -n "$google_key" ]]; then
@@ -459,7 +412,7 @@ verify_providers() {
     warn "Embedding:  NOT CONFIGURED (set GEMINI_API_KEY or VOYAGE_API_KEY)"
     all_ok=false
   fi
-  
+
   # Check reranker (Voyage)
   if [[ -n "${VOYAGE_API_KEY:-}" ]]; then
     # Light test - just verify API endpoint reachable
@@ -472,11 +425,11 @@ verify_providers() {
   else
     echo "  Reranker:   Not configured (optional)"
   fi
-  
+
   # Check LLM providers
   echo ""
   echo "LLM Providers:"
-  
+
   # Anthropic
   if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
     local anthropic_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "x-api-key: $ANTHROPIC_API_KEY" "https://api.anthropic.com/v1/messages" -X POST -H "content-type: application/json" -d '{}' 2>&1)
@@ -488,7 +441,7 @@ verify_providers() {
   else
     echo "    Anthropic:  Not configured"
   fi
-  
+
   # OpenAI
   if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     local openai_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $OPENAI_API_KEY" "https://api.openai.com/v1/models" 2>&1)
@@ -500,12 +453,12 @@ verify_providers() {
   else
     echo "    OpenAI:     Not configured"
   fi
-  
+
   # Google Gemini (LLM)
   if [[ -n "$google_key" ]]; then
     ok "  Gemini:     Reachable (uses embedding key)"
   fi
-  
+
   # Ollama (local)
   local ollama_url="${OLLAMA_HOST:-http://localhost:11434}"
   local ollama_test=$(curl -sf "$ollama_url/api/tags" 2>&1)
@@ -515,9 +468,9 @@ verify_providers() {
   else
     echo "    Ollama:     Not running (optional)"
   fi
-  
+
   echo ""
-  
+
   if $all_ok; then
     ok "All critical providers verified"
   else
@@ -528,7 +481,7 @@ verify_providers() {
 verify_providers
 
 echo ""
-echo "═══════════════════════════════════════════════════════════════"
+echo "==============================================================="
 echo "                      RELOAD COMPLETE"
-echo "═══════════════════════════════════════════════════════════════"
+echo "==============================================================="
 show_status

@@ -6,7 +6,6 @@ author: Artur
 tags: [persona, assistant, memory, messaging, calendar, matrix, canvas, marketplace]
 includes:
   - swarm
-  - agents-menu
 ---
 
 # zee - Personal Life Assistant

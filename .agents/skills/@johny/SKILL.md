@@ -6,7 +6,6 @@ author: Artur
 tags: [persona, learning, study, knowledge-graph, spaced-repetition]
 includes:
   - swarm
-  - agents-menu
 ---
 
 # johny - Learning System

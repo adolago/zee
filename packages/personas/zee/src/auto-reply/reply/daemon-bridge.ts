@@ -152,6 +152,7 @@ async function fetchWithTimeout(
 
 async function createDaemonSession(
   bridge: ResolvedDaemonBridgeConfig,
+  surface?: string,
 ): Promise<{ sessionId: string }> {
   const res = await fetchWithTimeout(
     `${bridge.url}/session`,
@@ -160,7 +161,9 @@ async function createDaemonSession(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        ...(surface ? { surface } : {}),
+      }),
     },
     bridge.timeoutMs,
   );
@@ -182,8 +185,9 @@ async function getOrCreateSessionId(params: {
   bridge: ResolvedDaemonBridgeConfig;
   sessionKey: string;
   agentId: string;
+  surface?: string;
 }): Promise<{ sessionId: string; created: boolean }> {
-  const { bridge, sessionKey, agentId } = params;
+  const { bridge, sessionKey, agentId, surface } = params;
   const key = normalizeSessionKey(sessionKey);
   if (!key) {
     throw new Error("daemon bridge: missing session key");
@@ -206,7 +210,7 @@ async function getOrCreateSessionId(params: {
       throw new Error("daemon bridge: session missing and auto-create disabled");
     }
 
-    const created = await createDaemonSession(bridge);
+    const created = await createDaemonSession(bridge, surface);
     const now = new Date().toISOString();
     store.sessions[key] = {
       sessionId: created.sessionId,
@@ -256,9 +260,10 @@ async function sendMessageToDaemon(params: {
   sessionKey: string;
   agentId: string;
   text: string;
+  surface?: string;
 }): Promise<{ text: string; sessionId: string }> {
-  const { bridge, sessionKey, agentId, text } = params;
-  let { sessionId } = await getOrCreateSessionId({ bridge, sessionKey, agentId });
+  const { bridge, sessionKey, agentId, text, surface } = params;
+  let { sessionId } = await getOrCreateSessionId({ bridge, sessionKey, agentId, surface });
 
   const postMessage = async (targetSessionId: string): Promise<Response> => {
     return await fetchWithTimeout(
@@ -288,7 +293,7 @@ async function sendMessageToDaemon(params: {
     if (!bridge.createSession) {
       throw new Error("daemon bridge: session missing and auto-create disabled");
     }
-    const recreated = await getOrCreateSessionId({ bridge, sessionKey, agentId });
+    const recreated = await getOrCreateSessionId({ bridge, sessionKey, agentId, surface });
     sessionId = recreated.sessionId;
     res = await postMessage(sessionId);
   }
@@ -300,7 +305,29 @@ async function sendMessageToDaemon(params: {
     );
   }
 
-  const payload = await readDaemonResponse(res);
+  let payload = await readDaemonResponse(res);
+  // The daemon streams responses with status 200 even on errors, so a
+  // StorageNotFoundError (missing session) arrives inside the JSON payload
+  // rather than as HTTP 404. Detect it here and trigger the same recovery
+  // path. Only match storage/session errors -- not ProviderModelNotFoundError
+  // or other "NotFound" variants which would recur after re-creating the
+  // session.
+  if (payload.error && /^StorageNotFoundError/i.test(String(payload.error))) {
+    await deleteSessionMapping({ bridge, sessionKey });
+    if (!bridge.createSession) {
+      throw new Error("daemon bridge: session missing and auto-create disabled");
+    }
+    const recreated = await getOrCreateSessionId({ bridge, sessionKey, agentId, surface });
+    sessionId = recreated.sessionId;
+    res = await postMessage(sessionId);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(
+        `daemon bridge message failed (retry): ${res.status} ${res.statusText}${body ? `: ${body}` : ""}`,
+      );
+    }
+    payload = await readDaemonResponse(res);
+  }
   if (payload.error) {
     throw new Error(`daemon bridge message error: ${payload.error}`);
   }
@@ -340,6 +367,7 @@ export async function getReplyFromDaemonBridge(
   }
   const agentId = resolveAgentIdFromSessionKey(sessionKey);
   const inputText = resolveInboundText(ctx);
+  const surface = ctx.Surface?.trim().toLowerCase() || ctx.Provider?.trim().toLowerCase();
 
   opts?.onReplyStart?.();
 
@@ -349,6 +377,7 @@ export async function getReplyFromDaemonBridge(
       sessionKey,
       agentId,
       text: inputText,
+      surface,
     });
     return { text: result.text };
   } catch (err) {

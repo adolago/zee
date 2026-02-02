@@ -22,7 +22,11 @@ export abstract class NamedError extends Error {
         public readonly data: z.input<Data>,
         options?: ErrorOptions,
       ) {
-        super(name, options)
+        const msg =
+          typeof data === "object" && data !== null && "message" in data && typeof data.message === "string"
+            ? data.message
+            : name
+        super(msg, options)
         this.name = name
       }
 
