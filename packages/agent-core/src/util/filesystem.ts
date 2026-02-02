@@ -5,7 +5,7 @@ import { dirname, join, relative } from "path"
 export namespace Filesystem {
   // Optimization: check for null byte first to avoid regex overhead on clean paths
   export const sanitizePath = (value: string) =>
-    value.indexOf("\0") !== -1 ? value.replace(/\0/g, "") : value
+    value.includes("\0") ? value.replace(/\0/g, "") : value
 
   export const exists = (p: string) =>
     Bun.file(sanitizePath(p))
