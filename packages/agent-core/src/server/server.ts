@@ -164,6 +164,7 @@ export namespace Server {
         })
         // Middleware to provide instance context
         .use(async (c, next) => {
+          if (c.req.path === "/log") return next()
           let directory = c.req.query("directory") || c.req.header("x-opencode-directory") || process.cwd()
           // If directory is relative, make it absolute ensuring it starts with /
           // This fixes an issue where ?directory=foo/bar was treating it as relative to CWD
