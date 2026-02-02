@@ -42,7 +42,11 @@ import { TodoWriteTool } from "@/tool/todo"
 import type { GrepTool } from "@/tool/grep"
 import type { ListTool } from "@/tool/ls"
 import type { EditTool } from "@/tool/edit"
-import type { ApplyPatchTool } from "@/tool/apply_patch"
+// apply_patch tool was removed but old sessions may still contain these tool calls
+type ApplyPatchToolType = Tool.Info<
+  import("zod").ZodObject<{ patchText: import("zod").ZodString }>,
+  { files: Array<{ type: string; relativePath: string; filePath: string; deletions: number; diff: string }> }
+>
 import type { WebFetchTool } from "@/tool/webfetch"
 import type { TaskTool } from "@/tool/task"
 import type { QuestionTool } from "@/tool/question"
@@ -1966,7 +1970,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
   )
 }
 
-function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
+function ApplyPatch(props: ToolProps<ApplyPatchToolType>) {
   const ctx = use()
   const { theme, syntax } = useTheme()
 
