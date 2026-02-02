@@ -74,8 +74,7 @@ export function Home() {
             <Match when={mcpError()}>
               <span style={{ fg: theme.error }}>⊙</span>
               <span style={{ fg: theme.textMuted }}> </span>
-              mcp errors{" "}
-              <span style={{ fg: theme.textMuted }}>space s</span>
+              mcp errors <span style={{ fg: theme.textMuted }}>space s</span>
             </Match>
             <Match when={true}>
               <span style={{ fg: theme.success }}>⊙</span>
@@ -117,6 +116,7 @@ export function Home() {
               promptRef.set(r)
             }}
             hint={Hint}
+            placeholder="Ask a question, use /command, or paste text..."
           />
         </box>
         <box height={3} width="100%" maxWidth={100} alignItems="center" paddingTop={2}>
