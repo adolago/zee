@@ -47,6 +47,7 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
     })
     const renderer = useRenderer()
 
+    let vimCommandHandler: ((key: string) => boolean) | null = null
     let focus: Renderable | null
     function isRenderableInTree(root: Renderable, target: Renderable): boolean {
       if (root === target) return true
@@ -118,6 +119,20 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
           evt.preventDefault()
           return
         }
+
+        // Forward single-char keys to the registered vim command handler
+        // so vim navigation/commands work even when textarea is unfocused
+        if (evt.name && evt.name.length === 1 && !evt.ctrl && !evt.meta && vimCommandHandler) {
+          // Refocus textarea first so the handler has access to it
+          vim.onEnterInsert()
+          vim.enterNormal()
+          const handled = vimCommandHandler(evt.name)
+          if (handled) {
+            evt.stopPropagation()
+            evt.preventDefault()
+            return
+          }
+        }
       }
     })
 
@@ -157,6 +172,12 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
         if (!first) return ""
         const result = Keybind.toString(first)
         return result.replace("<leader>", Keybind.toString(keybinds().leader![0]!))
+      },
+      registerVimCommandHandler(handler: (key: string) => boolean) {
+        vimCommandHandler = handler
+      },
+      unregisterVimCommandHandler() {
+        vimCommandHandler = null
       },
     }
     return result

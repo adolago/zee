@@ -42,6 +42,7 @@ import { DialogGrammar } from "../dialog-grammar"
 import { Grammar } from "../../util/grammar"
 import { createGrammarChecker, type GrammarError } from "../../util/grammar-realtime"
 import { Tips } from "../tips"
+import { VimCommands } from "@tui/util/vim-commands"
 
 export type PromptProps = {
   sessionID?: string
@@ -222,6 +223,80 @@ export function Prompt(props: PromptProps) {
 
   const textareaKeybindings = useTextareaKeybindings()
 
+  // Vim engine for full normal-mode command handling
+  const vimEngine = new VimCommands.VimEngine()
+  const [vimPending, setVimPending] = createSignal("")
+
+  /** Bridge between the VimEngine and the textarea renderable */
+  function createVimContext(): VimCommands.VimCommandContext {
+    return {
+      get cursorOffset() { return input.cursorOffset },
+      set cursorOffset(offset: number) { input.cursorOffset = offset },
+      get text() { return input.plainText },
+      setText(text: string) { input.setText(text) },
+      insertText(text: string) { input.insertText(text) },
+      deleteRange(start: number, end: number): string {
+        const text = input.plainText
+        const deleted = text.slice(start, end)
+        input.setText(text.slice(0, start) + text.slice(end))
+        return deleted
+      },
+      gotoBufferStart() { input.cursorOffset = 0 },
+      gotoBufferEnd() { input.gotoBufferEnd() },
+      get cursorLine(): number {
+        const text = input.plainText
+        const before = text.slice(0, input.cursorOffset)
+        return (before.match(/\n/g) ?? []).length
+      },
+      get cursorColumn(): number {
+        const text = input.plainText
+        const before = text.slice(0, input.cursorOffset)
+        const lastNewline = before.lastIndexOf("\n")
+        return lastNewline === -1 ? input.cursorOffset : input.cursorOffset - lastNewline - 1
+      },
+      get lines(): string[] {
+        return input.plainText.split("\n")
+      },
+      lineStart(line: number): number {
+        const lines = input.plainText.split("\n")
+        let offset = 0
+        for (let i = 0; i < line && i < lines.length; i++) {
+          offset += lines[i]!.length + 1 // +1 for \n
+        }
+        return offset
+      },
+      lineEnd(line: number): number {
+        const lines = input.plainText.split("\n")
+        let offset = 0
+        for (let i = 0; i <= line && i < lines.length; i++) {
+          if (i === line) return offset + lines[i]!.length
+          offset += lines[i]!.length + 1
+        }
+        return offset
+      },
+      moveCursorUp() {
+        // Move cursor up one visual line using the textarea's internal logic
+        const col = this.cursorColumn
+        const line = this.cursorLine
+        if (line > 0) {
+          const start = this.lineStart(line - 1)
+          const prevLineLen = this.lines[line - 1]?.length ?? 0
+          input.cursorOffset = start + Math.min(col, prevLineLen)
+        }
+      },
+      moveCursorDown() {
+        const col = this.cursorColumn
+        const line = this.cursorLine
+        const lines = this.lines
+        if (line < lines.length - 1) {
+          const start = this.lineStart(line + 1)
+          const nextLineLen = lines[line + 1]?.length ?? 0
+          input.cursorOffset = start + Math.min(col, nextLineLen)
+        }
+      },
+    }
+  }
+
   // Track incomplete todos for hint display
   const incompleteTodos = createMemo(() => {
     if (!props.sessionID) return []
@@ -351,12 +426,30 @@ export function Prompt(props: PromptProps) {
     toast.show({ variant: "info", message: "Dictation is still processing" })
   }
 
+  // Register global vim command handler so commands work even when textarea is unfocused
+  keybind.registerVimCommandHandler((key: string) => {
+    if (!vim.enabled || !vim.isNormal) return false
+    const ctx = createVimContext()
+    const result = vimEngine.handleKey(ctx, key)
+    if (result.handled) {
+      setVimPending(result.pendingDisplay ?? vimEngine.pendingDisplay)
+      if (result.enterInsert) {
+        vimEngine.reset()
+        setVimPending("")
+        vim.enterInsert()
+      }
+      return true
+    }
+    return false
+  })
+
   onCleanup(() => {
     if (dictationRecording) {
       dictationRecording.cancel().catch(() => {})
       dictationRecording = undefined
     }
     grammarChecker.cancel()
+    keybind.unregisterVimCommandHandler()
   })
 
   const fileStyleId = syntax().getStyleId("extmark.file")!
@@ -1382,7 +1475,7 @@ export function Prompt(props: PromptProps) {
                 attributes={TextAttributes.BOLD}
                 flexShrink={0}
               >
-                {vim.isNormal ? "N" : "I"}
+                {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
               </text>
             </Show>
             <text fg={theme.border} flexShrink={0}>─┤</text>
@@ -1451,6 +1544,8 @@ export function Prompt(props: PromptProps) {
                   if (vim.isInsert && e.name === "escape" && !keybind.leader) {
                     // Don't switch to vim normal if autocomplete is visible (let autocomplete handle escape)
                     if (!autocomplete.visible) {
+                      vimEngine.reset()
+                      setVimPending("")
                       vim.enterNormal()
                       e.preventDefault()
                       return
@@ -1463,15 +1558,10 @@ export function Prompt(props: PromptProps) {
                     if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
                       const key = e.name
 
-                      // `i` enters insert mode
-                      if (key === "i") {
-                        vim.enterInsert()
-                        e.preventDefault()
-                        return
-                      }
-
                       // Allow `!` at position 0 to trigger shell mode
                       if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
+                        vimEngine.reset()
+                        setVimPending("")
                         vim.enterInsert()
                         setStore("mode", "shell")
                         e.preventDefault()
@@ -1480,12 +1570,35 @@ export function Prompt(props: PromptProps) {
 
                       // Allow leader key to pass through to activate leader mode
                       if (keybind.match("leader", e)) {
+                        vimEngine.reset()
+                        setVimPending("")
+                        return
+                      }
+
+                      // Dispatch to VimEngine
+                      const ctx = createVimContext()
+                      const result = vimEngine.handleKey(ctx, key)
+
+                      if (result.handled) {
+                        setVimPending(result.pendingDisplay ?? vimEngine.pendingDisplay)
+                        if (result.enterInsert) {
+                          vimEngine.reset()
+                          setVimPending("")
+                          vim.enterInsert()
+                        }
+                        e.preventDefault()
                         return
                       }
 
                       // Block all other character input in normal mode
                       e.preventDefault()
                       return
+                    }
+
+                    // Escape resets pending state in normal mode
+                    if (e.name === "escape") {
+                      vimEngine.reset()
+                      setVimPending("")
                     }
                   }
                 }
