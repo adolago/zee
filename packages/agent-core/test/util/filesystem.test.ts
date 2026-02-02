@@ -5,6 +5,13 @@ import { mkdtemp, mkdir, rm } from "node:fs/promises"
 import { Filesystem } from "../../src/util/filesystem"
 
 describe("util.filesystem", () => {
+  test("sanitizePath() removes null bytes", () => {
+    expect(Filesystem.sanitizePath("clean/path")).toBe("clean/path")
+    expect(Filesystem.sanitizePath("dirty\0/path")).toBe("dirty/path")
+    expect(Filesystem.sanitizePath("\0start")).toBe("start")
+    expect(Filesystem.sanitizePath("end\0")).toBe("end")
+  })
+
   test("exists() is true for files and directories", async () => {
     const tmp = await mkdtemp(path.join(os.tmpdir(), "opencode-filesystem-"))
     const dir = path.join(tmp, "dir")
