@@ -3,12 +3,13 @@ export * from "./gen/types.gen.js"
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
 import { AgentCoreClient } from "./gen/sdk.gen.js"
-export { type Config as AgentCoreClientConfig, AgentCoreClient }
+export type AgentCoreClientConfig = Config
+export { AgentCoreClient }
 
 /** @deprecated Use AgentCoreClient */
 export const OpencodeClient = AgentCoreClient
 /** @deprecated Use AgentCoreClientConfig */
-export type OpencodeClientConfig = AgentCoreClientConfig
+export type OpencodeClientConfig = Config
 
 export function createAgentCoreClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {

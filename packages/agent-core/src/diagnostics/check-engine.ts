@@ -17,7 +17,6 @@ import { runConfigChecks } from "./checks/config";
 import { runProviderChecks } from "./checks/providers";
 import { runIntegrityChecks } from "./checks/integrity";
 import { runSkillChecks } from "./checks/skills";
-import { runSkillChecks } from "./checks/skills";
 
 /** Default options for the check engine */
 const DEFAULT_OPTIONS: CheckOptions = {

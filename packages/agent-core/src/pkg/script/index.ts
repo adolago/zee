@@ -25,9 +25,6 @@ const env = {
   AGENT_CORE_BUMP: process.env["AGENT_CORE_BUMP"],
   AGENT_CORE_VERSION: process.env["AGENT_CORE_VERSION"],
   AGENT_CORE_NPM_PACKAGE: process.env["AGENT_CORE_NPM_PACKAGE"],
-  AGENT_CORE_CHANNEL: process.env["AGENT_CORE_CHANNEL"],
-  AGENT_CORE_BUMP: process.env["AGENT_CORE_BUMP"],
-  AGENT_CORE_VERSION: process.env["AGENT_CORE_VERSION"],
 }
 const DEFAULT_NPM_PACKAGE = "@adolago/agent-core"
 const registry = "https://registry.npmjs.org"
@@ -35,9 +32,8 @@ const npmPackage = env.AGENT_CORE_NPM_PACKAGE || DEFAULT_NPM_PACKAGE
 const encodedPackage = encodeURIComponent(npmPackage)
 const CHANNEL = await (async () => {
   if (env.AGENT_CORE_CHANNEL) return env.AGENT_CORE_CHANNEL
-  if (env.AGENT_CORE_CHANNEL) return env.AGENT_CORE_CHANNEL
-  if (env.AGENT_CORE_BUMP || env.AGENT_CORE_BUMP) return "latest"
-  const version = env.AGENT_CORE_VERSION || env.AGENT_CORE_VERSION
+  if (env.AGENT_CORE_BUMP) return "latest"
+  const version = env.AGENT_CORE_VERSION
   if (version && !version.startsWith("0.0.0-")) return "latest"
   return await $`git branch --show-current`.text().then((x) => x.trim())
 })()

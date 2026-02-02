@@ -5,7 +5,14 @@ import { Skill } from "../skill"
 import { ConfigMarkdown } from "../config/markdown"
 import { PermissionNext } from "../permission/next"
 
-export const SkillTool = Tool.define("skill", async (ctx) => {
+interface SkillMetadata {
+  name?: string
+  dir?: string
+  query?: string
+  count?: number
+}
+
+export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) => {
   const agent = ctx?.agent
   const skills = await Skill.all(agent?.name)
 

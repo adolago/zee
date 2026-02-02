@@ -284,7 +284,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
                           <text fg={theme.text} wrapMode="none">
                             {shortToolName(tool.tool)}
                             <Show when={state.title}>
-                              : <span style={{ fg: theme.textMuted }}>{Locale.truncateMiddle(state.title, 16)}</span>
+                              : <span style={{ fg: theme.textMuted }}>{Locale.truncateMiddle(state.title ?? "", 16)}</span>
                             </Show>
                             <span style={{ fg: theme.textMuted }}>
                               {" "}

@@ -42,7 +42,6 @@ import { TodoWriteTool } from "@/tool/todo"
 import type { GrepTool } from "@/tool/grep"
 import type { ListTool } from "@/tool/ls"
 import type { EditTool } from "@/tool/edit"
-import type { ApplyPatchTool } from "@/tool/apply_patch"
 import type { WebFetchTool } from "@/tool/webfetch"
 import type { TaskTool } from "@/tool/task"
 import type { QuestionTool } from "@/tool/question"
@@ -1741,7 +1740,7 @@ function BlockTool(props: { title: string; children: JSX.Element; onClick?: () =
   )
 }
 
-function Bash(props: ToolProps<typeof BashTool>) {
+function Bash(props: ToolProps<Tool.Info<any, any>>) {
   const { theme } = useTheme()
   const sync = useSync()
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
@@ -2049,7 +2048,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
   )
 }
 
-function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
+function ApplyPatch(props: ToolProps<Tool.Info<any, any>>) {
   const ctx = use()
   const { theme, syntax } = useTheme()
 
@@ -2178,7 +2177,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
   )
 }
 
-function Skill(props: ToolProps<typeof SkillTool>) {
+function Skill(props: ToolProps<Tool.Info<any, any>>) {
   return (
     <InlineTool icon=">" pending="Loading skill..." complete={props.input.name} part={props.part}>
       Skill

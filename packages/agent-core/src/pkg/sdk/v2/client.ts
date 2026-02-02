@@ -696,7 +696,7 @@ export class AgentCoreClient extends GeneratedAgentCoreClient {
   }
 }
 
-export { type Config as AgentCoreClientConfig }
+export type AgentCoreClientConfig = Config
 
 export function createAgentCoreClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {
@@ -727,6 +727,6 @@ export function createAgentCoreClient(config?: Config & { directory?: string }) 
 /** @deprecated Use AgentCoreClient */
 export const OpencodeClient = AgentCoreClient
 /** @deprecated Use AgentCoreClientConfig */
-export type OpencodeClientConfig = AgentCoreClientConfig
+export type OpencodeClientConfig = Config
 /** @deprecated Use createAgentCoreClient */
 export const createOpencodeClient = createAgentCoreClient

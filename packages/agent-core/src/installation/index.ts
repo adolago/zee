@@ -12,8 +12,6 @@ import { fileURLToPath } from "url"
 declare global {
   const AGENT_CORE_VERSION: string
   const AGENT_CORE_CHANNEL: string
-  const AGENT_CORE_VERSION: string
-  const AGENT_CORE_CHANNEL: string
 }
 
 export namespace Installation {

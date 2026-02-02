@@ -338,10 +338,8 @@ for (const item of targets) {
     define: {
       AGENT_CORE_VERSION: `'${Script.version}'`,
       AGENT_CORE_CHANNEL: `'${Script.channel}'`,
-      AGENT_CORE_VERSION: `'${Script.version}'`,
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       AGENT_CORE_WORKER_PATH: workerPath,
-      AGENT_CORE_CHANNEL: `'${Script.channel}'`,
       AGENT_CORE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
     },
   })
