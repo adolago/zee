@@ -401,30 +401,6 @@ export namespace ProviderTransform {
         if (model.providerID === "minimax") {
           return {}
         }
-        // When using openai-compatible SDK with Claude/Anthropic models,
-        // use snake_case (budget_tokens) as the SDK doesn't convert parameter names
-        if (
-          model.providerID === "anthropic" ||
-          model.api.id.includes("anthropic") ||
-          model.api.id.includes("claude") ||
-          model.id.includes("anthropic") ||
-          model.id.includes("claude")
-        ) {
-          return {
-            high: {
-              thinking: {
-                type: "enabled",
-                budget_tokens: 16000,
-              },
-            },
-            max: {
-              thinking: {
-                type: "enabled",
-                budget_tokens: 31999,
-              },
-            },
-          }
-        }
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
       case "@ai-sdk/azure": {
@@ -1002,13 +978,9 @@ export namespace ProviderTransform {
       }
     }
 
-    if (npm === "@ai-sdk/anthropic" || npm === "@ai-sdk/google-vertex/anthropic" || npm === "@ai-sdk/openai-compatible") {
+    if (npm === "@ai-sdk/anthropic" || npm === "@ai-sdk/google-vertex/anthropic") {
       const thinking = options?.["thinking"]
-      // Support both camelCase (for @ai-sdk/anthropic) and snake_case (for openai-compatible)
-      const budgetTokens =
-        typeof thinking?.["budgetTokens"] === "number" ? thinking["budgetTokens"] :
-        typeof thinking?.["budget_tokens"] === "number" ? thinking["budget_tokens"] :
-        0
+      const budgetTokens = typeof thinking?.["budgetTokens"] === "number" ? thinking["budgetTokens"] : 0
       const enabled = thinking?.["type"] === "enabled"
       if (enabled && budgetTokens > 0) {
         // Return text tokens so that text + thinking <= model cap, preferring 32k text when possible.
