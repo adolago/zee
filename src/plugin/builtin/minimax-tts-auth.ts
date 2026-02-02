@@ -31,7 +31,7 @@ export const MinimaxTtsAuthPlugin: PluginFactory = async (
     apiKey: ctx.config.get('minimax-tts.apiKey'),
   };
 
-  const envApiKey = process.env.MINIMAX_API_KEY ?? process.env.OPENCODE_MINIMAX_API_KEY;
+  const envApiKey = process.env.MINIMAX_API_KEY ?? process.env.AGENT_CORE_MINIMAX_API_KEY ?? process.env.OPENCODE_MINIMAX_API_KEY;
 
   const authProvider: AuthProvider = {
     provider: 'minimax',

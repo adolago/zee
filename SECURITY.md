@@ -14,7 +14,7 @@ If you need true isolation, run Agent-Core inside a Docker container or VM.
 
 ### Server Mode
 
-Server mode requires authentication by default. Set `AGENT_CORE_SERVER_PASSWORD` (or `OPENCODE_SERVER_PASSWORD`) to configure HTTP Basic Auth. You can opt out with `AGENT_CORE_DISABLE_SERVER_AUTH=1`, but this is not recommended. It is the end user's responsibility to secure the server - any functionality it provides is not a vulnerability.
+Server mode requires authentication by default. Set `AGENT_CORE_SERVER_PASSWORD` (or `AGENT_CORE_SERVER_PASSWORD`) to configure HTTP Basic Auth. You can opt out with `AGENT_CORE_DISABLE_SERVER_AUTH=1`, but this is not recommended. It is the end user's responsibility to secure the server - any functionality it provides is not a vulnerability.
 
 ### Out of Scope
 

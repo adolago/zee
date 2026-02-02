@@ -1157,9 +1157,9 @@ export default function Layout(props: ParentProps) {
   }
 
   const drainDeepLinks = () => {
-    const pending = window.__OPENCODE__?.deepLinks ?? []
+    const pending = window.__AGENT_CORE__?.deepLinks ?? []
     if (pending.length === 0) return
-    if (window.__OPENCODE__) window.__OPENCODE__.deepLinks = []
+    if (window.__AGENT_CORE__) window.__AGENT_CORE__.deepLinks = []
     handleDeepLinks(pending)
   }
 

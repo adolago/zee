@@ -90,6 +90,13 @@ const MemoryStoreParams = z.object({
   // Dual Memory
   memoryType: z.enum(["fact", "reasoning"]).optional()
     .describe("Type: fact (what) or reasoning (why/how)"),
+  // Opinion Confidence
+  confidence: z.number().min(0).max(1).optional()
+    .describe("Confidence score (0-1) for beliefs/opinions. Default: none (not a belief)"),
+  evidenceFor: z.array(z.string()).optional()
+    .describe("Initial evidence supporting this belief"),
+  evidenceAgainst: z.array(z.string()).optional()
+    .describe("Initial evidence contradicting this belief"),
 });
 
 export const memoryStoreTool: ToolDefinition = {
@@ -99,7 +106,7 @@ export const memoryStoreTool: ToolDefinition = {
     description: `Store information in long-term memory. Organize with domain/topic/subtopic for structured retrieval. Provide memoryId to update an existing memory (creates new version). Use kind="curated" + priority="high" for important context, memoryType="reasoning" for reasoning traces.`,
     parameters: MemoryStoreParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { content, category, importance, tags, relatedTo, domain, topic, subtopic, memoryId, kind, priority, bookmarked, memoryType } = args;
+      const { content, category, importance, tags, relatedTo, domain, topic, subtopic, memoryId, kind, priority, bookmarked, memoryType, confidence, evidenceFor, evidenceAgainst } = args;
 
       ctx.metadata({ title: `Storing memory: ${category}` });
 
@@ -128,6 +135,9 @@ export const memoryStoreTool: ToolDefinition = {
             priority,
             bookmarked,
             memoryType,
+            confidence,
+            evidenceFor,
+            evidenceAgainst,
           }),
           { toolName: "zee:memory-store", maxAttempts: 2 },
         );
@@ -145,6 +155,7 @@ export const memoryStoreTool: ToolDefinition = {
         const locationParts = [domain, topic, subtopic].filter(Boolean);
         const locationStr = locationParts.length > 0 ? `- Location: ${locationParts.join("/")}` : "";
         const versionStr = entry.version && entry.version > 1 ? `- Version: ${entry.version}` : "";
+        const confidenceStr = entry.confidence !== undefined ? `- Confidence: ${(entry.confidence * 100).toFixed(0)}%` : "";
 
         return {
           title: `Memory Stored`,
@@ -165,6 +176,7 @@ Memory saved with ID: ${entry.id}
 ${tags?.length ? `- Tags: ${tags.join(", ")}` : ""}
 ${locationStr}
 ${versionStr}
+${confidenceStr}
 ${entry.memoryId ? `- Memory ID: ${entry.memoryId}` : ""}
 
 This memory can be recalled later using zee:memory-search or zee:memory-agentic-search.`,
@@ -416,8 +428,8 @@ Telegram: to=numeric chatId, persona="stanley"|"johny".`,
               output: `Failed to send WhatsApp message: ${result.error || "Unknown error"}
 
 Troubleshooting:
-- Ensure `agent-core daemon` is running
-- Check `agent-core debug status` shows Gateway: Active
+- Ensure \`agent-core daemon\` is running
+- Check \`agent-core debug status\` shows Gateway: Active
 - Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`,
             };
           }
@@ -481,8 +493,8 @@ Chat ID must be a numeric value (e.g., 123456789).`,
               output: `Failed to send Telegram message via ${selectedPersona}: ${result.error || "Unknown error"}
 
 Troubleshooting:
-- Ensure `agent-core daemon` is running
-- Check `agent-core debug status` shows Gateway: Active
+- Ensure \`agent-core daemon\` is running
+- Check \`agent-core debug status\` shows Gateway: Active
 - Verify chatId is numeric`,
             };
           }
@@ -1566,6 +1578,486 @@ Current content: "${result.content.substring(0, 150)}${result.content.length > 1
 };
 
 // =============================================================================
+// Memory Entity Pages Tool
+// =============================================================================
+
+const MemoryEntitiesParams = z.object({
+  action: z.enum(["generate", "list", "read"])
+    .describe("Entity pages action: generate (create/update pages), list (show all entities), read (read a page)"),
+  entity: z.string().optional()
+    .describe("Entity name for generate (specific) or read action"),
+});
+
+export const memoryEntitiesTool: ToolDefinition = {
+  id: "zee:memory-entities",
+  category: "domain",
+  init: async () => ({
+    description: `Manage auto-generated entity pages. Generate creates Markdown pages from entity-tagged memories. List shows known entities. Read returns an entity page.`,
+    parameters: MemoryEntitiesParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const { action, entity } = args;
+
+      ctx.metadata({ title: `Entities: ${action}` });
+
+      try {
+        const store = getMemory();
+
+        if (action === "list") {
+          const { discoverEntities } = await import("../../memory/entity-pages.js");
+          const entities = await discoverEntities(store, "zee");
+          if (entities.length === 0) {
+            return {
+              title: "No Entities",
+              metadata: { action, count: 0 },
+              output: "No entities found in memory. Store memories with metadata.entities to create entity pages.",
+            };
+          }
+          return {
+            title: `${entities.length} Entities`,
+            metadata: { action, count: entities.length },
+            output: `Known entities:\n\n${entities.map((e) => `- ${e}`).join("\n")}`,
+          };
+        }
+
+        if (action === "read") {
+          if (!entity) {
+            return {
+              title: "Missing Entity",
+              metadata: { action, error: "missing_entity" },
+              output: "Provide 'entity' name to read.",
+            };
+          }
+          const { getMarkdownSync } = await import("../../memory/markdown-sync.js");
+          const mdSync = getMarkdownSync();
+          const content = mdSync.readEntityPage(entity);
+          if (!content) {
+            return {
+              title: "Page Not Found",
+              metadata: { action, entity },
+              output: `No entity page found for "${entity}". Use action "generate" to create one.`,
+            };
+          }
+          return {
+            title: `Entity: ${entity}`,
+            metadata: { action, entity },
+            output: content,
+          };
+        }
+
+        if (action === "generate") {
+          const { generateEntityPages } = await import("../../memory/entity-pages.js");
+          const results = await generateEntityPages(store, {
+            entities: entity ? [entity] : undefined,
+            namespace: "zee",
+          });
+
+          if (results.length === 0) {
+            return {
+              title: "No Pages Generated",
+              metadata: { action, count: 0 },
+              output: entity
+                ? `No memories found for entity "${entity}".`
+                : "No entities with enough data to generate pages.",
+            };
+          }
+
+          const list = results.map((r) => `- ${r.entityName}: ${r.factCount} facts -> ${r.filePath}`).join("\n");
+          return {
+            title: `${results.length} Pages Generated`,
+            metadata: { action, count: results.length },
+            output: `Generated entity pages:\n\n${list}`,
+          };
+        }
+
+        return {
+          title: "Unknown Action",
+          metadata: { action },
+          output: `Unknown entities action: ${action}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return {
+          title: "Entity Pages Error",
+          metadata: { error: errorMsg },
+          output: `Entity pages operation failed: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
+// Memory Temporal Query Tool
+// =============================================================================
+
+const MemoryTemporalParams = z.object({
+  since: z.string().optional()
+    .describe("Start of time range. Relative: '30d', '2w', '6h', '90m'. Absolute: ISO date string. Default: 30 days ago."),
+  until: z.string().optional()
+    .describe("End of time range. Same format as 'since'. Default: now."),
+  entity: z.string().optional()
+    .describe("Filter by entity name (matches metadata.entities array)"),
+  category: z.enum(["conversation", "fact", "preference", "task", "decision", "note", "all"])
+    .optional().describe("Filter by category"),
+  domain: z.string().optional()
+    .describe("Filter by domain"),
+  topic: z.string().optional()
+    .describe("Filter by topic"),
+  query: z.string().optional()
+    .describe("Optional semantic query to refine results within time range"),
+  minConfidence: z.number().min(0).max(1).optional()
+    .describe("Minimum confidence filter for belief entries"),
+  limit: z.number().default(20)
+    .describe("Maximum results (default 20)"),
+});
+
+/** Parse relative time strings like '30d', '2w', '6h', '90m' to milliseconds offset */
+function parseRelativeTime(input: string): number | null {
+  const match = input.match(/^(\d+)(m|h|d|w)$/);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  const multipliers: Record<string, number> = {
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+    w: 7 * 24 * 60 * 60 * 1000,
+  };
+  return value * (multipliers[unit] ?? 0);
+}
+
+/** Resolve a time parameter to a unix timestamp */
+function resolveTimeParam(input: string | undefined, defaultMs: number): number {
+  if (!input) return defaultMs;
+  const relativeMs = parseRelativeTime(input);
+  if (relativeMs !== null) {
+    return Date.now() - relativeMs;
+  }
+  const parsed = new Date(input).getTime();
+  if (isNaN(parsed)) return defaultMs;
+  return parsed;
+}
+
+export const memoryTemporalTool: ToolDefinition = {
+  id: "zee:memory-temporal",
+  category: "domain",
+  init: async () => ({
+    description: `Query memories by time range with optional filters. Use relative times like '30d' (30 days), '2w' (2 weeks), '6h' (6 hours), '90m' (90 minutes) or ISO dates. Combine with entity, category, domain, and semantic query filters.`,
+    parameters: MemoryTemporalParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const { since, until, entity, category, domain, topic, query, minConfidence, limit } = args;
+
+      const now = Date.now();
+      const sinceMs = resolveTimeParam(since, now - 30 * 24 * 60 * 60 * 1000); // default 30d
+      const untilMs = resolveTimeParam(until, now);
+
+      const sinceLabel = since ?? "30d ago";
+      const untilLabel = until ?? "now";
+      ctx.metadata({ title: `Temporal: ${sinceLabel} to ${untilLabel}` });
+
+      try {
+        const store = getMemory();
+
+        if (query) {
+          // Semantic search with time range filter
+          const results = await store.search({
+            query,
+            namespace: "zee",
+            limit: limit ?? 20,
+            threshold: 0.3,
+            category: category && category !== "all" ? category as any : undefined,
+            domain,
+            topic,
+            timeRange: { start: sinceMs, end: untilMs },
+            minConfidence,
+          });
+
+          // Post-filter by entity if specified
+          const filtered = entity
+            ? results.filter((r) => {
+                const entities = r.entry.metadata?.entities ?? [];
+                return entities.some((e) =>
+                  e.toLowerCase().includes(entity.toLowerCase()),
+                );
+              })
+            : results;
+
+          if (filtered.length === 0) {
+            return {
+              title: "No Temporal Results",
+              metadata: { since: sinceLabel, until: untilLabel, count: 0 },
+              output: `No memories found between ${sinceLabel} and ${untilLabel}${entity ? ` for entity "${entity}"` : ""}.`,
+            };
+          }
+
+          const list = filtered.map((r, i) => {
+            const e = r.entry;
+            const date = new Date(e.createdAt).toLocaleString();
+            const preview = e.content.substring(0, 150);
+            const ellipsis = e.content.length > 150 ? "..." : "";
+            const score = (r.score * 100).toFixed(0);
+            const conf = e.confidence !== undefined ? ` [${(e.confidence * 100).toFixed(0)}% conf]` : "";
+            return `${i + 1}. [${e.category}] (${score}% match, ${date})${conf}
+   "${preview}${ellipsis}"
+   ID: ${e.id}`;
+          }).join("\n\n");
+
+          return {
+            title: `${filtered.length} Temporal Results`,
+            metadata: { since: sinceLabel, until: untilLabel, count: filtered.length },
+            output: `Memories from ${sinceLabel} to ${untilLabel}${entity ? ` about "${entity}"` : ""}:\n\n${list}`,
+          };
+        }
+
+        // No semantic query: use agentic search with time-based scroll
+        // Build filter for Qdrant scroll
+        const results = await store.agenticSearch({
+          domain: domain ?? "*",
+          topic,
+          namespace: "zee",
+          limit: limit ?? 20,
+        });
+
+        // Post-filter by time range and entity
+        const filtered = results.filter((r) => {
+          const t = r.entry.createdAt;
+          if (t < sinceMs || t > untilMs) return false;
+          if (entity) {
+            const entities = r.entry.metadata?.entities ?? [];
+            if (!entities.some((e) => e.toLowerCase().includes(entity.toLowerCase()))) return false;
+          }
+          if (category && category !== "all" && r.entry.category !== category) return false;
+          if (minConfidence !== undefined && (r.entry.confidence ?? 1) < minConfidence) return false;
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          return {
+            title: "No Temporal Results",
+            metadata: { since: sinceLabel, until: untilLabel, count: 0 },
+            output: `No memories found between ${sinceLabel} and ${untilLabel}${entity ? ` for entity "${entity}"` : ""}.`,
+          };
+        }
+
+        const list = filtered.map((r, i) => {
+          const e = r.entry;
+          const date = new Date(e.createdAt).toLocaleString();
+          const preview = e.content.substring(0, 150);
+          const ellipsis = e.content.length > 150 ? "..." : "";
+          const conf = e.confidence !== undefined ? ` [${(e.confidence * 100).toFixed(0)}% conf]` : "";
+          return `${i + 1}. [${e.category}] (${date})${conf}
+   "${preview}${ellipsis}"
+   ID: ${e.id}`;
+        }).join("\n\n");
+
+        return {
+          title: `${filtered.length} Temporal Results`,
+          metadata: { since: sinceLabel, until: untilLabel, count: filtered.length },
+          output: `Memories from ${sinceLabel} to ${untilLabel}${entity ? ` about "${entity}"` : ""}:\n\n${list}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
+          return {
+            title: "Memory Unavailable",
+            metadata: { error: "connection_failed" },
+            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+          };
+        }
+        return {
+          title: "Temporal Query Error",
+          metadata: { error: errorMsg },
+          output: `Temporal query failed: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
+// Memory Belief Tool (Opinion Confidence)
+// =============================================================================
+
+const MemoryBeliefParams = z.object({
+  action: z.enum(["reinforce", "challenge", "status"])
+    .describe("Belief action: reinforce (add supporting evidence), challenge (add contradicting evidence), status (view confidence)"),
+  id: z.string()
+    .describe("Memory entry ID to update"),
+  evidence: z.string().optional()
+    .describe("Evidence text (required for reinforce/challenge)"),
+  strength: z.number().min(0.01).max(0.5).optional()
+    .describe("How much to adjust confidence (default: 0.1 for reinforce, 0.15 for challenge)"),
+});
+
+export const memoryBeliefTool: ToolDefinition = {
+  id: "zee:memory-belief",
+  category: "domain",
+  init: async () => ({
+    description: `Manage belief confidence on memory entries. Use reinforce to increase confidence with supporting evidence, challenge to decrease with contradicting evidence, or status to view current confidence and evidence.`,
+    parameters: MemoryBeliefParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const { action, id, evidence, strength } = args;
+
+      ctx.metadata({ title: `Belief: ${action}` });
+
+      try {
+        const store = getMemory();
+
+        if (action === "status") {
+          const entry = await store.get(id);
+          if (!entry) {
+            return {
+              title: "Not Found",
+              metadata: { action, id },
+              output: `Memory entry not found: ${id}`,
+            };
+          }
+
+          const conf = entry.confidence;
+          const forList = (entry.evidenceFor ?? []).map((e, i) => `  ${i + 1}. ${e}`).join("\n");
+          const againstList = (entry.evidenceAgainst ?? []).map((e, i) => `  ${i + 1}. ${e}`).join("\n");
+          const lastChallenged = entry.lastChallenged
+            ? new Date(entry.lastChallenged).toLocaleString()
+            : "never";
+
+          return {
+            title: `Belief: ${conf !== undefined ? `${(conf * 100).toFixed(0)}%` : "no confidence set"}`,
+            metadata: { action, id, confidence: conf },
+            output: `Memory: "${entry.content.substring(0, 100)}${entry.content.length > 100 ? "..." : ""}"
+
+Confidence: ${conf !== undefined ? `${(conf * 100).toFixed(0)}%` : "not tracked"}
+Last challenged: ${lastChallenged}
+
+Evidence FOR (${(entry.evidenceFor ?? []).length}):
+${forList || "  (none)"}
+
+Evidence AGAINST (${(entry.evidenceAgainst ?? []).length}):
+${againstList || "  (none)"}`,
+          };
+        }
+
+        if (!evidence) {
+          return {
+            title: "Missing Evidence",
+            metadata: { action, id, error: "missing_evidence" },
+            output: `Provide 'evidence' text for ${action} action.`,
+          };
+        }
+
+        if (action === "reinforce") {
+          const result = await store.reinforceBelief(id, evidence, strength ?? 0.1);
+          if (!result) {
+            return {
+              title: "Reinforce Failed",
+              metadata: { action, id },
+              output: `Memory entry not found: ${id}`,
+            };
+          }
+          return {
+            title: `Reinforced to ${(result.confidence! * 100).toFixed(0)}%`,
+            metadata: { action, id, confidence: result.confidence },
+            output: `Belief reinforced: ${(result.confidence! * 100).toFixed(0)}% confidence
+Evidence added: "${evidence}"
+Total supporting evidence: ${(result.evidenceFor ?? []).length}`,
+          };
+        }
+
+        if (action === "challenge") {
+          const result = await store.challengeBelief(id, evidence, strength ?? 0.15);
+          if (!result) {
+            return {
+              title: "Challenge Failed",
+              metadata: { action, id },
+              output: `Memory entry not found: ${id}`,
+            };
+          }
+          return {
+            title: `Challenged to ${(result.confidence! * 100).toFixed(0)}%`,
+            metadata: { action, id, confidence: result.confidence },
+            output: `Belief challenged: ${(result.confidence! * 100).toFixed(0)}% confidence
+Evidence added: "${evidence}"
+Total contradicting evidence: ${(result.evidenceAgainst ?? []).length}`,
+          };
+        }
+
+        return {
+          title: "Unknown Action",
+          metadata: { action },
+          output: `Unknown belief action: ${action}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return {
+          title: "Belief Error",
+          metadata: { error: errorMsg },
+          output: `Belief operation failed: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
+// Memory Reflect Tool
+// =============================================================================
+
+const MemoryReflectParams = z.object({
+  namespace: z.string().optional()
+    .describe("Namespace to reflect on (default: zee)"),
+  duplicateThreshold: z.number().min(0.5).max(1).optional()
+    .describe("Similarity threshold for duplicate detection (default: 0.92)"),
+  staleDays: z.number().optional()
+    .describe("Days without challenge before a belief decays (default: 30)"),
+  scanLimit: z.number().optional()
+    .describe("Max entries to scan per run (default: 200)"),
+  updateEntityPages: z.boolean().optional()
+    .describe("Whether to regenerate entity pages (default: true)"),
+});
+
+export const memoryReflectTool: ToolDefinition = {
+  id: "zee:memory-reflect",
+  category: "domain",
+  init: async () => ({
+    description: `Run the memory reflect job: deduplicates similar facts, decays stale beliefs, and regenerates entity pages. Designed for scheduled curation but can be run on-demand.`,
+    parameters: MemoryReflectParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      ctx.metadata({ title: "Memory Reflect" });
+
+      try {
+        const store = getMemory();
+        const { runReflect } = await import("../../memory/reflect.js");
+
+        const result = await runReflect(store, {
+          namespace: args.namespace,
+          duplicateThreshold: args.duplicateThreshold,
+          staleDays: args.staleDays,
+          scanLimit: args.scanLimit,
+          updateEntityPages: args.updateEntityPages,
+        });
+
+        return {
+          title: `Reflect Complete (${result.durationMs}ms)`,
+          metadata: result,
+          output: `Memory reflect completed in ${result.durationMs}ms:
+
+- Duplicates merged: ${result.duplicatesMerged}
+- Stale beliefs found: ${result.staleBeliefs}
+- Beliefs decayed: ${result.beliefsDecayed}
+- Entity pages updated: ${result.entityPagesUpdated}`,
+        };
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return {
+          title: "Reflect Error",
+          metadata: { error: errorMsg },
+          output: `Reflect job failed: ${errorMsg}`,
+        };
+      }
+    },
+  }),
+};
+
+// =============================================================================
 // Plan Tools (Proactive Planning Loop)
 // =============================================================================
 
@@ -1756,6 +2248,10 @@ export const ZEE_TOOLS = [
   memoryBrowseTool,
   memoryAgenticSearchTool,
   memoryVersionTool,
+  memoryEntitiesTool,
+  memoryTemporalTool,
+  memoryBeliefTool,
+  memoryReflectTool,
   messagingTool,
   notificationTool,
   calendarTool,

@@ -7,7 +7,7 @@ import { Rpc } from "@/util/rpc"
 import { upgrade } from "@/cli/upgrade"
 import { Config } from "@/config/config"
 import { GlobalBus } from "@/bus/global"
-import { createOpencodeClient } from "@agent-core/sdk"
+import { createAgentCoreClient } from "@agent-core/sdk"
 import type { BunWebSocketData } from "hono/bun"
 import { Flag } from "@/flag/flag"
 
@@ -74,8 +74,8 @@ const startEventStream = (directory: string) => {
     return Server.App().fetch(request)
   }) as typeof globalThis.fetch
 
-  const sdk = createOpencodeClient({
-    baseUrl: "http://opencode.internal",
+  const sdk = createAgentCoreClient({
+    baseUrl: "http://agent-core.internal",
     directory,
     fetch: fetchFn,
     signal,

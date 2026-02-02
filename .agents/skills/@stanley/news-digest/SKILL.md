@@ -39,7 +39,7 @@ Stanley -> Tiara (claude-flow) -> Agent-Core
 
 **No separate API keys required** - leverages agent-core infrastructure:
 - Web search via `mcp.exa.ai` (same as agent-core's websearch.ts)
-- LLM summarization via `~/.opencode/auth.json` providers
+- LLM summarization via `~/.agent-core/auth.json` providers
 - Python 3.10+ with `httpx`
 
 ## Quick Start
@@ -200,11 +200,11 @@ Authentication is handled by agent-core's centralized auth system:
 
 ```bash
 # View current auth status
-cat ~/.opencode/auth.json
+cat ~/.agent-core/auth.json
 
-# Auth is managed via opencode CLI
-opencode auth login anthropic
-opencode auth login openai
+# Auth is managed via agent-core CLI
+agent-core auth login anthropic
+agent-core auth login openai
 ```
 
 ### Config File (optional)

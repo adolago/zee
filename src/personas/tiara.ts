@@ -1088,7 +1088,6 @@ export class Orchestrator extends EventEmitter implements PersonasOrchestrator {
         PATH: `${process.env.HOME}/bin:${process.env.PATH}`,
         // Disable terminal title to prevent escape sequence leaks
         AGENT_CORE_DISABLE_TERMINAL_TITLE: "true",
-        OPENCODE_DISABLE_TERMINAL_TITLE: "true",
         NO_COLOR: "true"
       }
     });

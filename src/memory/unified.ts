@@ -37,6 +37,7 @@ import { getMemoryEmbeddingConfig, getMemoryQdrantConfig, getMemoryRerankerConfi
 import { Log } from "../../packages/agent-core/src/util/log";
 import { SqliteFtsStore, type FtsConfig, type FtsEntry } from "./sqlite-fts";
 import { mergeHybridResults, type HybridSearchConfig, type HybridSearchResult } from "./hybrid";
+import { getMarkdownSync, type MarkdownSyncConfig } from "./markdown-sync";
 
 const log = Log.create({ service: "memory" });
 
@@ -117,6 +118,8 @@ export interface MemoryConfig {
   maxKeyFacts?: number;
   /** SQLite FTS configuration for hybrid search */
   fts?: FtsConfig;
+  /** Markdown sync configuration */
+  markdown?: MarkdownSyncConfig;
 }
 
 // =============================================================================
@@ -364,6 +367,9 @@ export class Memory {
   private readonly ftsConfig?: FtsConfig;
   private ftsInitFailed = false;
 
+  // Markdown source-of-truth sync
+  private readonly markdownConfig?: MarkdownSyncConfig;
+
   // Current conversation state (for continuity)
   private currentConversation?: ConversationState;
 
@@ -412,6 +418,9 @@ export class Memory {
 
     // FTS config (SQLite hybrid search)
     this.ftsConfig = config.fts;
+
+    // Markdown sync config
+    this.markdownConfig = config.markdown;
   }
 
   // ===========================================================================
@@ -580,6 +589,11 @@ export class Memory {
       priority: p.priority as MemoryPriority | undefined,
       bookmarked: p.bookmarked as boolean | undefined,
       memoryType: p.memoryType as MemoryMemoryType | undefined,
+      // Opinion Confidence
+      confidence: p.confidence as number | undefined,
+      evidenceFor: p.evidenceFor as string[] | undefined,
+      evidenceAgainst: p.evidenceAgainst as string[] | undefined,
+      lastChallenged: p.lastChallenged as number | undefined,
     };
   }
 
@@ -672,6 +686,11 @@ export class Memory {
       priority: input.priority ?? "normal",
       bookmarked: input.bookmarked ?? false,
       memoryType: input.memoryType ?? "fact",
+      // Opinion Confidence
+      confidence: input.confidence,
+      evidenceFor: input.evidenceFor,
+      evidenceAgainst: input.evidenceAgainst,
+      lastChallenged: input.confidence !== undefined ? now : undefined,
     };
 
     await this.storage.insert([{
@@ -700,6 +719,11 @@ export class Memory {
         priority: entry.priority,
         bookmarked: entry.bookmarked,
         memoryType: entry.memoryType,
+        // Opinion Confidence
+        confidence: entry.confidence,
+        evidenceFor: entry.evidenceFor,
+        evidenceAgainst: entry.evidenceAgainst,
+        lastChallenged: entry.lastChallenged,
       },
     }]);
 
@@ -728,6 +752,17 @@ export class Memory {
     // Maintain context tree directory indexes
     if (input.domain) {
       await this.upsertTreeIndexes(input.domain, input.topic, input.subtopic);
+    }
+
+    // Sync to markdown daily log
+    try {
+      const mdSync = getMarkdownSync(this.markdownConfig);
+      mdSync.appendToDailyLog(entry);
+    } catch (mdErr) {
+      log.debug("Markdown sync failed (non-fatal)", {
+        id: entry.id,
+        error: mdErr instanceof Error ? mdErr.message : String(mdErr),
+      });
     }
 
     return entry;
@@ -808,6 +843,14 @@ export class Memory {
 
     // Dual Memory filter
     if (params.memoryType) filter.memoryType = params.memoryType;
+
+    // Opinion Confidence range filters
+    if (params.minConfidence !== undefined || params.maxConfidence !== undefined) {
+      const confidenceFilter: Record<string, number> = {};
+      if (params.minConfidence !== undefined) confidenceFilter.$gte = params.minConfidence;
+      if (params.maxConfidence !== undefined) confidenceFilter.$lte = params.maxConfidence;
+      filter.confidence = confidenceFilter;
+    }
 
     const results = await this.storage.search(queryVector, {
       limit: params.limit ?? 10,
@@ -1202,6 +1245,74 @@ export class Memory {
 
     target.superseded = false;
     return target;
+  }
+
+  // ===========================================================================
+  // Opinion Confidence
+  // ===========================================================================
+
+  /**
+   * Reinforce a belief with supporting evidence.
+   * Increases confidence (capped at 1.0) and appends to evidenceFor.
+   */
+  async reinforceBelief(
+    id: string,
+    evidence: string,
+    boost: number = 0.1,
+  ): Promise<MemoryEntry | null> {
+    await this.init();
+    if (!this.isAvailable()) return null;
+
+    const entry = await this.get(id);
+    if (!entry) return null;
+
+    const currentConfidence = entry.confidence ?? 0.5;
+    const newConfidence = Math.min(1.0, currentConfidence + boost);
+    const evidenceFor = [...(entry.evidenceFor ?? []), evidence];
+    const now = Date.now();
+
+    await this.storage.update(id, {
+      confidence: newConfidence,
+      evidenceFor,
+      lastChallenged: now,
+    });
+
+    entry.confidence = newConfidence;
+    entry.evidenceFor = evidenceFor;
+    entry.lastChallenged = now;
+    return entry;
+  }
+
+  /**
+   * Challenge a belief with contradicting evidence.
+   * Decreases confidence (floored at 0.0) and appends to evidenceAgainst.
+   */
+  async challengeBelief(
+    id: string,
+    evidence: string,
+    penalty: number = 0.15,
+  ): Promise<MemoryEntry | null> {
+    await this.init();
+    if (!this.isAvailable()) return null;
+
+    const entry = await this.get(id);
+    if (!entry) return null;
+
+    const currentConfidence = entry.confidence ?? 0.5;
+    const newConfidence = Math.max(0.0, currentConfidence - penalty);
+    const evidenceAgainst = [...(entry.evidenceAgainst ?? []), evidence];
+    const now = Date.now();
+
+    await this.storage.update(id, {
+      confidence: newConfidence,
+      evidenceAgainst,
+      lastChallenged: now,
+    });
+
+    entry.confidence = newConfidence;
+    entry.evidenceAgainst = evidenceAgainst;
+    entry.lastChallenged = now;
+    return entry;
   }
 
   // ===========================================================================

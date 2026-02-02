@@ -9,7 +9,7 @@ Architecture:
   Stanley -> Tiara (claude-flow) -> Agent-Core
   - WebSearch via Exa MCP (built into agent-core)
   - LLM summarization via agent-core providers
-  - Auth handled by ~/.opencode/auth.json
+  - Auth handled by ~/.agent-core/auth.json
 """
 
 import argparse
@@ -157,7 +157,7 @@ def find_agent_core_path() -> Optional[Path]:
     # Check common locations
     paths = [
         Path.home() / ".local/src/agent-core",
-        Path.home() / ".opencode",
+        Path.home() / ".agent-core",
         Path("/opt/agent-core"),
     ]
     for p in paths:
@@ -166,25 +166,25 @@ def find_agent_core_path() -> Optional[Path]:
     return None
 
 
-def get_opencode_bin() -> str:
-    """Get opencode binary path."""
-    # Check if opencode is in PATH
-    result = subprocess.run(["which", "opencode"], capture_output=True, text=True)
+def get_agent_core_bin() -> str:
+    """Get agent-core binary path."""
+    # Check if agent-core is in PATH
+    result = subprocess.run(["which", "agent-core"], capture_output=True, text=True)
     if result.returncode == 0:
         return result.stdout.strip()
 
     # Check common locations
     paths = [
-        Path.home() / ".local/bin/opencode",
-        Path("/usr/local/bin/opencode"),
-        Path.home() / ".local/src/agent-core/dist/opencode",
+        Path.home() / ".local/bin/agent-core",
+        Path("/usr/local/bin/agent-core"),
+        Path.home() / ".local/src/agent-core/dist/agent-core",
     ]
     for p in paths:
         if p.exists():
             return str(p)
 
     # Fallback to npx
-    return "npx opencode-ai"
+    return "npx agent-core"
 
 
 async def search_via_agent_core(query: str, num_results: int = 5) -> list[dict]:

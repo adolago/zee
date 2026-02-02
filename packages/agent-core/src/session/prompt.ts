@@ -112,7 +112,7 @@ export namespace SessionPrompt {
   }
 
   function resolveSessionSource(): LifecycleHooks.SessionLifecycle.StartPayload["source"] {
-    const client = (Flag.OPENCODE_CLIENT ?? "cli").toLowerCase()
+    const client = (Flag.AGENT_CORE_CLIENT ?? "cli").toLowerCase()
     if (client === "tui") return "tui"
     if (client === "cli") return "cli"
     if (client === "daemon") return "daemon"

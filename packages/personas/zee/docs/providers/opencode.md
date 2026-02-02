@@ -6,7 +6,7 @@ read_when:
 ---
 # OpenCode Zen
 
-OpenCode Zen is a **curated list of models** recommended by the OpenCode team for coding agents.
+OpenCode Zen is a **curated list of models** recommended by the Agent Core team for coding agents.
 It is an optional, hosted model access path that uses an API key and the `opencode` provider.
 Zen is currently in beta.
 
@@ -15,14 +15,14 @@ Zen is currently in beta.
 ```bash
 zee onboard --auth-choice opencode-zen
 # or non-interactive
-zee onboard --opencode-zen-api-key "$OPENCODE_API_KEY"
+zee onboard --opencode-zen-api-key "$AGENT_CORE_API_KEY"
 ```
 
 ## Config snippet
 
 ```json5
 {
-  env: { OPENCODE_API_KEY: "sk-..." },
+  env: { AGENT_CORE_API_KEY: "sk-..." },
   agents: { defaults: { model: { primary: "opencode/claude-opus-4-5" } } }
 }
 ```

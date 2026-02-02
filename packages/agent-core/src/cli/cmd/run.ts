@@ -7,8 +7,8 @@ import { bootstrap } from "../bootstrap"
 import { Command } from "../../command"
 import { EOL } from "os"
 import { select } from "@clack/prompts"
-import { createOpencodeClient as createEventClient } from "@agent-core/sdk"
-import { createOpencodeClient, type OpencodeClient } from "@agent-core/sdk/v2"
+import { createAgentCoreClient as createEventClient } from "@agent-core/sdk"
+import { createAgentCoreClient, type AgentCoreClient } from "@agent-core/sdk/v2"
 import { Server } from "../../server/server"
 import { Provider } from "../../provider/provider"
 import { Agent } from "../../agent/agent"
@@ -148,7 +148,7 @@ export const RunCommand = cmd({
     }
 
     const execute = async (
-      sdk: OpencodeClient,
+      sdk: AgentCoreClient,
       eventClient: ReturnType<typeof createEventClient> | null,
       sessionID: string,
       resolvedAgent: string | undefined,
@@ -296,7 +296,7 @@ export const RunCommand = cmd({
     }
 
     if (args.attach) {
-      const sdk = createOpencodeClient({ baseUrl: args.attach })
+      const sdk = createAgentCoreClient({ baseUrl: args.attach })
       const eventClient = createEventClient({ baseUrl: args.attach })
 
       const sessionID = await (async () => {
@@ -352,7 +352,7 @@ export const RunCommand = cmd({
         const request = new Request(input, init)
         return Server.App().fetch(request)
       }) as typeof globalThis.fetch
-      const sdk = createOpencodeClient({ baseUrl: "http://opencode.internal", fetch: fetchFn })
+      const sdk = createAgentCoreClient({ baseUrl: "http://agent-core.internal", fetch: fetchFn })
 
       // Create a local event stream using GlobalBus directly instead of SSE
       // This avoids issues with Server.App().fetch() not properly streaming SSE

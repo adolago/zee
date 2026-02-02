@@ -62,6 +62,7 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     services: ["stt"],
     envKey: "GOOGLE_STT_API_KEY",
     envAliases: [
+      "AGENT_CORE_GOOGLE_STT_API_KEY",
       "OPENCODE_GOOGLE_STT_API_KEY",
       "GOOGLE_APPLICATION_CREDENTIALS",
       "GOOGLE_CLIENT_EMAIL",
@@ -109,7 +110,7 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     name: "MiniMax",
     services: ["tts"],
     envKey: "MINIMAX_API_KEY",
-    envAliases: ["OPENCODE_MINIMAX_API_KEY"],
+    envAliases: ["AGENT_CORE_MINIMAX_API_KEY", "OPENCODE_MINIMAX_API_KEY"],
     authType: "api",
     baseUrl: "https://api.minimax.io/v1",
     website: "https://platform.minimaxi.com/",

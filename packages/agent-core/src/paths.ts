@@ -25,12 +25,12 @@ function findAgentCoreRoot(startDir: string): string | undefined {
  * Get the agent-core root directory.
  * Order of precedence:
  * 1. AGENT_CORE_ROOT env var (set by binary or launcher)
- * 2. AGENT_CORE_SOURCE/OPENCODE_SOURCE env vars
+ * 2. AGENT_CORE_SOURCE/OPENCODE_SOURCE env vars (backward compat)
  * 3. Walk up from cwd/argv/exec paths
  */
 export function getAgentCoreRoot(): string {
-  if (process.env.AGENT_CORE_ROOT) {
-    return process.env.AGENT_CORE_ROOT
+  if (process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT) {
+    return (process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT)!
   }
 
   const envSource = process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE

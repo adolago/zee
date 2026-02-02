@@ -8,7 +8,7 @@ describe("Dictation.resolveConfig", () => {
 
   beforeEach(() => {
     delete process.env.GOOGLE_STT_API_KEY
-    delete process.env.OPENCODE_GOOGLE_STT_API_KEY
+    delete process.env.AGENT_CORE_GOOGLE_STT_API_KEY
     delete process.env.GOOGLE_CLIENT_EMAIL
     delete process.env.GOOGLE_PRIVATE_KEY
     delete process.env.GOOGLE_PRIVATE_KEY_ID
@@ -57,8 +57,8 @@ describe("Dictation.resolveConfig", () => {
     expect(result?.google.apiKey).toBe("test-key")
   })
 
-  it("uses OPENCODE_GOOGLE_STT_API_KEY when present", async () => {
-    process.env.OPENCODE_GOOGLE_STT_API_KEY = "opencode-key"
+  it("uses AGENT_CORE_GOOGLE_STT_API_KEY when present", async () => {
+    process.env.AGENT_CORE_GOOGLE_STT_API_KEY = "opencode-key"
     const result = await Dictation.resolveConfig({})
     expect(result).toBeDefined()
     expect(result?.google.apiKey).toBe("opencode-key")

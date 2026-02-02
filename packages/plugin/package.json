@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@agent-core/plugin",
+  "name": "@opencode-ai/plugin",
   "version": "1.1.48",
   "type": "module",
   "license": "MIT",

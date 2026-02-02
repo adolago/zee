@@ -52,7 +52,7 @@ function findSkillsDirFrom(startDir: string): string | undefined {
 
 function findSkillsDir(): string {
   const envRoot =
-    process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE || process.env.AGENT_CORE_ROOT;
+    process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT;
   if (envRoot) {
     for (const rel of SKILL_DIR_CANDIDATES) {
       const envSkills = join(envRoot, rel);

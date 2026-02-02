@@ -76,7 +76,7 @@ export const OPENCODE_ZEN_MODEL_ALIASES: Record<string, string> = {
  * Resolve a model alias to its full model ID.
  * Returns the input if no alias exists.
  */
-export function resolveOpencodeZenAlias(modelIdOrAlias: string): string {
+export function resolveAgentCoreZenAlias(modelIdOrAlias: string): string {
   const normalized = modelIdOrAlias.toLowerCase().trim();
   return OPENCODE_ZEN_MODEL_ALIASES[normalized] ?? modelIdOrAlias;
 }
@@ -84,7 +84,7 @@ export function resolveOpencodeZenAlias(modelIdOrAlias: string): string {
 /**
  * OpenCode Zen routes models to specific API shapes by family.
  */
-export function resolveOpencodeZenModelApi(modelId: string): ModelApi {
+export function resolveAgentCoreZenModelApi(modelId: string): ModelApi {
   const lower = modelId.toLowerCase();
   if (lower.startsWith("gpt-")) {
     return "openai-responses";
@@ -186,7 +186,7 @@ function buildModelDefinition(modelId: string): ModelDefinitionConfig {
   return {
     id: modelId,
     name: formatModelName(modelId),
-    api: resolveOpencodeZenModelApi(modelId),
+    api: resolveAgentCoreZenModelApi(modelId),
     // Treat Zen models as reasoning-capable so defaults pick thinkLevel="low" unless users opt out.
     reasoning: true,
     input: supportsImageInput(modelId) ? ["text", "image"] : ["text"],
@@ -227,7 +227,7 @@ function formatModelName(modelId: string): string {
 /**
  * Static fallback models when API is unreachable.
  */
-export function getOpencodeZenStaticFallbackModels(): ModelDefinitionConfig[] {
+export function getAgentCoreZenStaticFallbackModels(): ModelDefinitionConfig[] {
   const modelIds = [
     "gpt-5.1-codex",
     "claude-opus-4-5",
@@ -265,7 +265,7 @@ interface ZenModelsResponse {
  * @param apiKey - OpenCode Zen API key for authentication
  * @returns Array of model definitions, or static fallback on failure
  */
-export async function fetchOpencodeZenModels(apiKey?: string): Promise<ModelDefinitionConfig[]> {
+export async function fetchAgentCoreZenModels(apiKey?: string): Promise<ModelDefinitionConfig[]> {
   // Return cached models if still valid
   const now = Date.now();
   if (cachedModels && now - cacheTimestamp < CACHE_TTL_MS) {
@@ -304,14 +304,14 @@ export async function fetchOpencodeZenModels(apiKey?: string): Promise<ModelDefi
     return models;
   } catch (error) {
     console.warn(`[opencode-zen] Failed to fetch models, using static fallback: ${String(error)}`);
-    return getOpencodeZenStaticFallbackModels();
+    return getAgentCoreZenStaticFallbackModels();
   }
 }
 
 /**
  * Clear the model cache (useful for testing or forcing refresh).
  */
-export function clearOpencodeZenModelCache(): void {
+export function clearAgentCoreZenModelCache(): void {
   cachedModels = null;
   cacheTimestamp = 0;
 }

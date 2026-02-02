@@ -1,4 +1,4 @@
-import { createOpencodeClient, type Event } from "@agent-core/core/pkg/sdk/v2/client"
+import { createAgentCoreClient, type Event } from "@agent-core/core/pkg/sdk/v2/client"
 import { createSimpleContext } from "@agent-core/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { createEffect, createMemo, onCleanup } from "solid-js"
@@ -13,7 +13,7 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
 
     const directory = createMemo(() => props.directory)
     const client = createMemo(() =>
-      createOpencodeClient({
+      createAgentCoreClient({
         baseUrl: globalSDK.url,
         fetch: platform.fetch,
         directory: directory(),

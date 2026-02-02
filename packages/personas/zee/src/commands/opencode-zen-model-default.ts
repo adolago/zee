@@ -12,7 +12,7 @@ function resolvePrimaryModel(model?: AgentModelListConfig | string): string | un
   return undefined;
 }
 
-export function applyOpencodeZenModelDefault(cfg: ZeeConfig): {
+export function applyAgentCoreZenModelDefault(cfg: ZeeConfig): {
   next: ZeeConfig;
   changed: boolean;
 } {

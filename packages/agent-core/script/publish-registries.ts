@@ -65,7 +65,7 @@ if (!Script.preview) {
     `  cd "agent-core-\${pkgver}"`,
     `  bun install`,
     "  cd ./packages/agent-core",
-    `  OPENCODE_CHANNEL=latest OPENCODE_VERSION=${pkgver} bun run ./script/build.ts --single`,
+    `  AGENT_CORE_CHANNEL=latest AGENT_CORE_VERSION=${pkgver} bun run ./script/build.ts --single`,
     "}",
     "",
     "package() {",

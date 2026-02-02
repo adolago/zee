@@ -10,7 +10,7 @@
       "category": "auth",
       "tags": ["auth", "github", "copilot", "free"],
       "capabilities": ["auth"],
-      "author": "opencode-ai"
+      "author": "agent-core"
     },
     {
       "name": "opencode-anthropic-auth",
@@ -21,7 +21,7 @@
       "category": "auth",
       "tags": ["auth", "anthropic", "oauth", "claude"],
       "capabilities": ["auth"],
-      "author": "opencode-ai"
+      "author": "agent-core"
     },
     {
       "name": "opencode-google-auth",
@@ -32,7 +32,7 @@
       "category": "auth",
       "tags": ["auth", "google", "gemini", "antigravity", "free"],
       "capabilities": ["auth"],
-      "author": "opencode-ai"
+      "author": "agent-core"
     },
     {
       "name": "opencode-antigravity-auth",
@@ -43,7 +43,7 @@
       "category": "auth",
       "tags": ["auth", "google", "gemini", "antigravity", "legacy", "free"],
       "capabilities": ["auth"],
-      "author": "opencode-ai"
+      "author": "agent-core"
     }
   ],
   "categories": ["auth", "tools", "personas", "integrations"]

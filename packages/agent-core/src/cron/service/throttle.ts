@@ -34,17 +34,23 @@ export function shouldThrottle(
 
   const entries = history.get(jobId) ?? []
 
-  const windowMs = config.dedupWindowMs
-  if (typeof windowMs === "number" && windowMs > 0) {
-    const cutoff = nowMs - windowMs
+  const DEFAULT_WINDOW_MS = 3_600_000 // 1 hour
+
+  const dedupWindowMs = config.dedupWindowMs
+  if (typeof dedupWindowMs === "number" && dedupWindowMs > 0) {
+    const cutoff = nowMs - dedupWindowMs
     const dup = entries.find((e) => e.sentAtMs >= cutoff && e.hash === outputHash)
     if (dup) {
-      return `duplicate output within dedup window (${windowMs}ms)`
+      return `duplicate output within dedup window (${dedupWindowMs}ms)`
     }
   }
 
   const maxPer = config.maxPerWindow
-  if (typeof maxPer === "number" && maxPer > 0 && typeof windowMs === "number" && windowMs > 0) {
+  if (typeof maxPer === "number" && maxPer > 0) {
+    const windowMs =
+      typeof dedupWindowMs === "number" && dedupWindowMs > 0
+        ? dedupWindowMs
+        : DEFAULT_WINDOW_MS
     const cutoff = nowMs - windowMs
     const countInWindow = entries.filter((e) => e.sentAtMs >= cutoff).length
     if (countInWindow >= maxPer) {

@@ -108,7 +108,7 @@ export namespace Dictation {
     sampleRate: number
     command?: string | string[]
   }): string[] | undefined {
-    const override = input.command ?? process.env["OPENCODE_DICTATION_RECORD_COMMAND"]
+    const override = input.command ?? process.env["AGENT_CORE_DICTATION_RECORD_COMMAND"]
     if (override) {
       const parsed = Array.isArray(override) ? override : override.trim().split(/\s+/)
       return parsed.length > 0 ? parsed : undefined
@@ -374,7 +374,7 @@ export namespace Dictation {
   }
 
   async function resolveGoogleAuth(): Promise<{ apiKey?: string; credentials?: GoogleServiceAccountCredentials }> {
-    const envApiKey = process.env["GOOGLE_STT_API_KEY"] ?? process.env["OPENCODE_GOOGLE_STT_API_KEY"]
+    const envApiKey = process.env["GOOGLE_STT_API_KEY"] ?? process.env["AGENT_CORE_GOOGLE_STT_API_KEY"]
     if (envApiKey) return { apiKey: envApiKey.trim() }
 
     const envClientEmail = process.env["GOOGLE_CLIENT_EMAIL"]

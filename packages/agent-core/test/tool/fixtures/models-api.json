@@ -990,7 +990,7 @@
   "opencode": {
     "id": "opencode",
     "env": [
-      "OPENCODE_API_KEY"
+      "AGENT_CORE_API_KEY"
     ],
     "npm": "@ai-sdk/openai-compatible",
     "api": "https://example.invalid/zen/v1",

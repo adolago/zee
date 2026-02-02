@@ -101,6 +101,11 @@ const cli = yargs(hideBin(process.argv))
     choices: ["DEBUG", "INFO", "WARN", "ERROR"],
   })
   .middleware(async (opts) => {
+    // Backward compat: migrate OPENCODE_ROOT to AGENT_CORE_ROOT
+    if (!process.env.AGENT_CORE_ROOT && process.env.OPENCODE_ROOT) {
+      process.env.AGENT_CORE_ROOT = process.env.OPENCODE_ROOT
+    }
+
     if (!process.env.AGENT_CORE_ROOT) {
       const rootCandidate = path.resolve(path.dirname(process.execPath), "..")
       if (fs.existsSync(path.join(rootCandidate, "vendor", "personas"))) {

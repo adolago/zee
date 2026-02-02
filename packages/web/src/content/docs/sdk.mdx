@@ -28,9 +28,9 @@ npm install @agent-core/sdk
 Create an instance of opencode:
 
 ```javascript
-import { createOpencode } from "@agent-core/sdk"
+import { createAgentCore } from "@agent-core/sdk"
 
-const { client } = await createOpencode()
+const { client } = await createAgentCore()
 ```
 
 This starts both a server and a client
@@ -49,12 +49,12 @@ This starts both a server and a client
 
 ## Config
 
-You can pass a configuration object to customize behavior. The instance still picks up your `opencode.json`, but you can override or add configuration inline:
+You can pass a configuration object to customize behavior. The instance still picks up your `agent-core.json`, but you can override or add configuration inline:
 
 ```javascript
-import { createOpencode } from "@agent-core/sdk"
+import { createAgentCore } from "@agent-core/sdk"
 
-const opencode = await createOpencode({
+const opencode = await createAgentCore({
   hostname: "127.0.0.1",
   port: 4096,
   config: {

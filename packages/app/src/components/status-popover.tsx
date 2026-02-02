@@ -13,7 +13,7 @@ import { useSDK } from "@/context/sdk"
 import { normalizeServerUrl, serverDisplayName, useServer } from "@/context/server"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
-import { createOpencodeClient } from "@agent-core/core/pkg/sdk/v2/client"
+import { createAgentCoreClient } from "@agent-core/core/pkg/sdk/v2/client"
 import { DialogSelectServer } from "./dialog-select-server"
 import { showToast } from "@agent-core/ui/toast"
 
@@ -21,7 +21,7 @@ type ServerStatus = { healthy: boolean; version?: string }
 
 async function checkHealth(url: string, platform: ReturnType<typeof usePlatform>): Promise<ServerStatus> {
   const signal = (AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal }).timeout?.(3000)
-  const sdk = createOpencodeClient({
+  const sdk = createAgentCoreClient({
     baseUrl: url,
     fetch: platform.fetch,
     signal,

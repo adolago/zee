@@ -177,7 +177,7 @@ export const SettingsProviders: Component = () => {
                     </div>
                     <Show when={item.id === "opencode"}>
                       <span class="text-12-regular text-text-weak pl-8">
-                        {language.t("dialog.provider.opencode.note")}
+                        {language.t("dialog.provider.agentCoreZen.note")}
                       </span>
                     </Show>
                     <Show when={item.id === "anthropic"}>

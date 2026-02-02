@@ -130,7 +130,7 @@ export namespace Server {
         .use(
           bodyLimit({
             maxSize:
-              parseBodyLimitBytes(process.env["AGENT_CORE_BODY_LIMIT"] ?? process.env["OPENCODE_BODY_LIMIT"]) ??
+              parseBodyLimitBytes(process.env["AGENT_CORE_BODY_LIMIT"] ?? process.env["AGENT_CORE_BODY_LIMIT"]) ??
               DEFAULT_BODY_LIMIT_BYTES,
             onError: (c) => c.json({ error: "Request body too large" }, 413),
           }),
@@ -232,7 +232,7 @@ export namespace Server {
         
         // Proxy Fallback - MUST BE LAST
         .all("/*", async (c) => {
-          const proxyBase = (process.env["AGENT_CORE_PROXY_BASE_URL"] ?? process.env["OPENCODE_PROXY_BASE_URL"] ?? "")
+          const proxyBase = (process.env["AGENT_CORE_PROXY_BASE_URL"] ?? process.env["AGENT_CORE_PROXY_BASE_URL"] ?? "")
             .replace(/\/+$/, "")
           if (!proxyBase) {
             return c.text("Not Found", 404)

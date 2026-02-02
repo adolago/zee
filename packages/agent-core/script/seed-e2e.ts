@@ -1,7 +1,7 @@
-const dir = process.env.OPENCODE_E2E_PROJECT_DIR ?? process.cwd()
-const title = process.env.OPENCODE_E2E_SESSION_TITLE ?? "E2E Session"
-const text = process.env.OPENCODE_E2E_MESSAGE ?? "Seeded for UI e2e"
-const model = process.env.OPENCODE_E2E_MODEL ?? "zai-coding-plan/glm-4.7"
+const dir = process.env.AGENT_CORE_E2E_PROJECT_DIR ?? process.cwd()
+const title = process.env.AGENT_CORE_E2E_SESSION_TITLE ?? "E2E Session"
+const text = process.env.AGENT_CORE_E2E_MESSAGE ?? "Seeded for UI e2e"
+const model = process.env.AGENT_CORE_E2E_MODEL ?? "zai-coding-plan/glm-4.7"
 const parts = model.split("/")
 const providerID = parts[0] ?? "zai-coding-plan"
 const modelID = parts[1] ?? "glm-4.7"

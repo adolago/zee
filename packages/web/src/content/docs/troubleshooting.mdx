@@ -11,12 +11,12 @@ To debug issues with OpenCode, start by checking the logs and local data it stor
 
 Log files are written to:
 
-- **macOS/Linux**: `~/.local/share/opencode/log/`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\opencode\log`
+- **macOS/Linux**: `~/.local/share/agent-core/log/`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\agent-core\log`
 
 Log files are named with timestamps (e.g., `2025-01-09T123456.log`) and the most recent 10 log files are kept.
 
-You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `opencode --log-level DEBUG`.
+You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `agent-core --log-level DEBUG`.
 
 ---
 
@@ -24,8 +24,8 @@ You can set the log level with the `--log-level` command-line option to get more
 
 opencode stores session data and other application data on disk at:
 
-- **macOS/Linux**: `~/.local/share/opencode/`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\opencode`
+- **macOS/Linux**: `~/.local/share/agent-core/`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\agent-core`
 
 This directory contains:
 
@@ -39,7 +39,7 @@ This directory contains:
 
 ## Desktop app
 
-OpenCode Desktop runs a local OpenCode server (the `opencode-cli` sidecar) in the background. Most issues are caused by a misbehaving plugin, a corrupted cache, or a bad server setting.
+OpenCode Desktop runs a local OpenCode server (the `agent-core-cli` sidecar) in the background. Most issues are caused by a misbehaving plugin, a corrupted cache, or a bad server setting.
 
 ### Quick checks
 
@@ -57,9 +57,9 @@ If the desktop app is crashing on launch, hanging, or behaving strangely, start 
 
 Open your global config file and look for a `plugin` key.
 
-- **macOS/Linux**: `~/.config/opencode/opencode.jsonc` (or `~/.config/opencode/opencode.json`)
-- **macOS/Linux** (older installs): `~/.local/share/opencode/opencode.jsonc`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\opencode\opencode.jsonc`
+- **macOS/Linux**: `~/.config/agent-core/agent-core.jsonc` (or `~/.config/agent-core/agent-core.json`)
+- **macOS/Linux** (older installs): `~/.local/share/agent-core/agent-core.jsonc`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\agent-core\agent-core.jsonc`
 
 If you have plugins configured, temporarily disable them by removing the key or setting it to an empty array:
 
@@ -75,10 +75,10 @@ If you have plugins configured, temporarily disable them by removing the key or 
 OpenCode can also load local plugins from disk. Temporarily move these out of the way (or rename the folder) and restart the desktop app:
 
 - **Global plugins**
-  - **macOS/Linux**: `~/.config/opencode/plugins/`
-  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\opencode\plugins`
+  - **macOS/Linux**: `~/.config/agent-core/plugins/`
+  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\agent-core\plugins`
 - **Project plugins** (only if you use per-project config)
-  - `<your-project>/.opencode/plugins/`
+  - `<your-project>/.agent-core/plugins/`
 
 If the app starts working again, re-enable plugins one at a time to find which one is causing the issue.
 
@@ -91,9 +91,9 @@ If disabling plugins doesn't help (or a plugin install is stuck), clear the cach
 1. Quit OpenCode Desktop completely.
 2. Delete the cache directory:
 
-- **macOS**: Finder -> `Cmd+Shift+G` -> paste `~/.cache/opencode`
-- **Linux**: delete `~/.cache/opencode` (or run `rm -rf ~/.cache/opencode`)
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.cache\opencode`
+- **macOS**: Finder -> `Cmd+Shift+G` -> paste `~/.cache/agent-core`
+- **Linux**: delete `~/.cache/agent-core` (or run `rm -rf ~/.cache/agent-core`)
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.cache\agent-core`
 
 3. Restart OpenCode Desktop.
 
@@ -111,13 +111,13 @@ From the Home screen, click the server name (with the status dot) to open the Se
 
 #### Remove `server.port` / `server.hostname` from your config
 
-If your `opencode.json(c)` contains a `server` section, temporarily remove it and restart the desktop app.
+If your `agent-core.json(c)` contains a `server` section, temporarily remove it and restart the desktop app.
 
 #### Check environment variables
 
-If you have `OPENCODE_PORT` set in your environment, the desktop app will try to use that port for the local server.
+If you have `AGENT_CORE_PORT` set in your environment, the desktop app will try to use that port for the local server.
 
-- Unset `OPENCODE_PORT` (or pick a free port) and restart.
+- Unset `AGENT_CORE_PORT` (or pick a free port) and restart.
 
 ---
 
@@ -152,8 +152,8 @@ If the app won't start and you can't clear settings from inside the UI, reset th
 1. Quit OpenCode Desktop.
 2. Find and delete these files (they live in the OpenCode Desktop app data directory):
 
-- `opencode.settings.dat` (desktop default server URL)
-- `opencode.global.dat` and `opencode.workspace.*.dat` (UI state like recent servers/projects)
+- `agent-core.settings.dat` (desktop default server URL)
+- `agent-core.global.dat` and `agent-core.workspace.*.dat` (UI state like recent servers/projects)
 
 To find the directory quickly:
 
@@ -193,7 +193,7 @@ Here are some common issues and how to resolve them.
 
 1. Check the logs for error messages
 2. Try running with `--print-logs` to see output in the terminal
-3. Ensure you have the latest version with `opencode upgrade`
+3. Ensure you have the latest version with `agent-core upgrade`
 
 ---
 
@@ -219,9 +219,9 @@ Examples:
 
 - `openai/gpt-4.1`
 - `openrouter/google/gemini-2.5-flash`
-- `opencode/kimi-k2`
+- `agent-core/kimi-k2`
 
-To figure out what models you have access to, run `opencode models`
+To figure out what models you have access to, run `agent-core models`
 
 ---
 
@@ -235,10 +235,10 @@ To resolve this:
 2. If the issue persists, try clearing your stored configuration:
 
    ```bash
-   rm -rf ~/.local/share/opencode
+   rm -rf ~/.local/share/agent-core
    ```
 
-   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\opencode`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\agent-core`
 
 3. Re-authenticate with your provider using the `/connect` command in the TUI.
 
@@ -253,10 +253,10 @@ To resolve provider package issues:
 1. Clear the provider package cache:
 
    ```bash
-   rm -rf ~/.cache/opencode
+   rm -rf ~/.cache/agent-core
    ```
 
-   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\opencode`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\agent-core`
 
 2. Restart opencode to reinstall the latest provider packages
 

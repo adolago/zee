@@ -1993,7 +1993,7 @@ Select the model via `agents.defaults.model.primary` (provider/model).
 ### OpenCode Zen (multi-model proxy)
 
 OpenCode Zen is a multi-model gateway with per-model endpoints. Zee uses
-the built-in `opencode` provider from pi-ai; set `OPENCODE_API_KEY` (or
+the built-in `opencode` provider from pi-ai; set `AGENT_CORE_API_KEY` (or
 `OPENCODE_ZEN_API_KEY`) from https://opencode.ai/auth.
 
 Notes:

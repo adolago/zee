@@ -17,7 +17,7 @@ import {
   type VcsInfo,
   type PermissionRequest,
   type QuestionRequest,
-  createOpencodeClient,
+  createAgentCoreClient,
 } from "@agent-core/core/pkg/sdk/v2/client"
 import { createStore, produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import { Binary } from "@agent-core/util/binary"
@@ -139,12 +139,12 @@ function createGlobalSync() {
   const metaCache = new Map<string, MetaCache>()
   const iconCache = new Map<string, IconCache>()
 
-  const sdkCache = new Map<string, ReturnType<typeof createOpencodeClient>>()
+  const sdkCache = new Map<string, ReturnType<typeof createAgentCoreClient>>()
   const sdkFor = (directory: string) => {
     const cached = sdkCache.get(directory)
     if (cached) return cached
 
-    const sdk = createOpencodeClient({
+    const sdk = createAgentCoreClient({
       baseUrl: globalSDK.url,
       fetch: platform.fetch,
       directory,

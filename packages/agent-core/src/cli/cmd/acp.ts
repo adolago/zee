@@ -4,7 +4,7 @@ import { cmd } from "./cmd"
 import { AgentSideConnection, ndJsonStream } from "@agentclientprotocol/sdk"
 import { ACP } from "@/acp/agent"
 import { Server } from "@/server/server"
-import { createOpencodeClient } from "@agent-core/sdk/v2"
+import { createAgentCoreClient } from "@agent-core/sdk/v2"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 
 const log = Log.create({ service: "acp-command" })
@@ -25,7 +25,7 @@ export const AcpCommand = cmd({
       const server = Server.listen(opts)
 
       const baseUrl = `http://${server.hostname}:${server.port}`
-      const sdk = createOpencodeClient({
+      const sdk = createAgentCoreClient({
         baseUrl,
       })
 

@@ -71,6 +71,12 @@ export function recomputeNextRuns(state: CronServiceState) {
         runningAtMs: runningAt,
       })
       job.state.runningAtMs = undefined
+      const prev = state.activeRuns.get(job.id) ?? 0
+      if (prev <= 1) {
+        state.activeRuns.delete(job.id)
+      } else {
+        state.activeRuns.set(job.id, prev - 1)
+      }
     }
     job.state.nextRunAtMs = computeJobNextRunAtMs(job, now)
   }

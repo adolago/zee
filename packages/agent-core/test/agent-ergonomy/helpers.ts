@@ -183,14 +183,20 @@ export function setupCommonMocks() {
     Portal: () => null,
   }))
 
-  mock.module("@opentui/core", () => ({
-    RGBA: {
-      fromInts: () => ({ r: 0, g: 0, b: 0, a: 0 }),
-      fromHex: () => ({ r: 0, g: 0, b: 0, a: 255 }),
-    },
-    Renderable: class {},
-    TextAttributes: class {},
-  }))
+  mock.module("@opentui/core", () => {
+    class MockRGBA {
+      r = 0; g = 0; b = 0; a = 0
+      constructor(r = 0, g = 0, b = 0, a = 0) { this.r = r; this.g = g; this.b = b; this.a = a }
+      static fromInts(r: number, g: number, b: number, a: number) { return new MockRGBA(r, g, b, a) }
+      static fromHex(_hex: string) { return new MockRGBA(0, 0, 0, 255) }
+      static fromValues(r: number, g: number, b: number, a: number) { return new MockRGBA(r, g, b, a) }
+    }
+    return {
+      RGBA: MockRGBA,
+      Renderable: class {},
+      TextAttributes: class {},
+    }
+  })
 
   mock.module("@opentui/solid/jsx-runtime", () => ({
     jsx: () => null,
@@ -281,11 +287,27 @@ export function setupCommonMocks() {
     },
   }))
 
+  // Use dynamic getters matching the real Global.Path so tests using the real
+  // module still see correct XDG-based paths even if this mock leaks across files.
+  const os = require("os")
+  const path = require("path")
+  const app = "agent-core"
+  const xdgData = () => process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share")
+  const xdgCache = () => process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache")
+  const xdgConfig = () => process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config")
+  const xdgState = () => process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state")
   mock.module("@/global", () => ({
     Global: {
       Path: {
-        home: "/home/test",
-        state: "/tmp/test-state",
+        get home() { return process.env.AGENT_CORE_TEST_HOME || os.homedir() },
+        get source() { return process.cwd() },
+        get data() { return path.join(xdgData(), app) },
+        get bin() { return path.join(xdgData(), app, "bin") },
+        get log() { return path.join(xdgData(), app, "log") },
+        get cache() { return path.join(xdgCache(), app) },
+        get config() { return path.join(xdgConfig(), app) },
+        get state() { return path.join(xdgState(), app) },
+        get tmp() { return path.join(os.tmpdir(), app) },
       },
     },
   }))

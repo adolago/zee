@@ -29,8 +29,8 @@ export {
 } from "./onboard-auth.config-minimax.js";
 
 export {
-  applyOpencodeZenConfig,
-  applyOpencodeZenProviderConfig,
+  applyAgentCoreZenConfig,
+  applyAgentCoreZenProviderConfig,
 } from "./onboard-auth.config-opencode.js";
 export {
   OPENROUTER_DEFAULT_MODEL_REF,
@@ -39,7 +39,7 @@ export {
   setKimiCodeApiKey,
   setMinimaxApiKey,
   setMoonshotApiKey,
-  setOpencodeZenApiKey,
+  setAgentCoreZenApiKey,
   setOpenrouterApiKey,
   setSyntheticApiKey,
   setVeniceApiKey,

@@ -116,7 +116,6 @@ afterAll(() => {
 // This prevents tests from picking up real user configs/skills from ~/.claude/skills
 const testHome = path.join(dir, "home")
 await fs.mkdir(testHome, { recursive: true })
-process.env["OPENCODE_TEST_HOME"] = testHome
 process.env["AGENT_CORE_TEST_HOME"] = testHome
 
 process.env["XDG_DATA_HOME"] = path.join(dir, "share")
@@ -132,7 +131,7 @@ process.env["AGENT_CORE_DISABLE_SERVER_AUTH"] = "true"
 // Note: Must use "agent-core" to match Global.Path.cache which uses app = "agent-core"
 const cacheDir = path.join(dir, "cache", "agent-core")
 await fs.mkdir(cacheDir, { recursive: true })
-await fs.writeFile(path.join(cacheDir, "version"), "16")
+await fs.writeFile(path.join(cacheDir, "version"), "18")
 const response = await fetch("https://models.dev/api.json")
 if (response.ok) {
   await fs.writeFile(path.join(cacheDir, "models.json"), await response.text())
@@ -144,10 +143,17 @@ process.env["AGENT_CORE_DISABLE_MODELS_FETCH"] = "true"
 
 // Clear config override env vars to ensure clean test state
 // These flags can override project config and interfere with permission tests
+delete process.env["AGENT_CORE_PERMISSION"]
+delete process.env["AGENT_CORE_CONFIG"]
+delete process.env["AGENT_CORE_CONFIG_CONTENT"]
+delete process.env["AGENT_CORE_CONFIG_DIR"]
+
+// Clear legacy OPENCODE_* env vars that flag.ts reads as fallbacks
 delete process.env["OPENCODE_PERMISSION"]
 delete process.env["OPENCODE_CONFIG"]
 delete process.env["OPENCODE_CONFIG_CONTENT"]
 delete process.env["OPENCODE_CONFIG_DIR"]
+delete process.env["OPENCODE_ENABLE_EXPERIMENTAL_MODELS"]
 
 // Clear provider env vars to ensure clean test state
 delete process.env["ANTHROPIC_API_KEY"]

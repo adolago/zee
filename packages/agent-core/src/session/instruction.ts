@@ -18,8 +18,8 @@ const FILES = [
 
 function globalFiles() {
   const files = [path.join(Global.Path.config, "AGENTS.md"), path.join(os.homedir(), ".agents", "AGENTS.md")]
-  if (Flag.OPENCODE_CONFIG_DIR) {
-    files.push(path.join(Flag.OPENCODE_CONFIG_DIR, "AGENTS.md"))
+  if (Flag.AGENT_CORE_CONFIG_DIR) {
+    files.push(path.join(Flag.AGENT_CORE_CONFIG_DIR, "AGENTS.md"))
   }
   return files
 }

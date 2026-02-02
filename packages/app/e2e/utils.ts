@@ -1,4 +1,4 @@
-import { createOpencodeClient } from "@agent-core/core/pkg/sdk/v2/client"
+import { createAgentCoreClient } from "@agent-core/core/pkg/sdk/v2/client"
 import { base64Encode } from "@agent-core/util/encode"
 
 export const serverHost = process.env.PLAYWRIGHT_SERVER_HOST ?? "localhost"
@@ -11,7 +11,7 @@ export const modKey = process.platform === "darwin" ? "Meta" : "Control"
 export const terminalToggleKey = "Control+Backquote"
 
 export function createSdk(directory?: string) {
-  return createOpencodeClient({ baseUrl: serverUrl, directory, throwOnError: true })
+  return createAgentCoreClient({ baseUrl: serverUrl, directory, throwOnError: true })
 }
 
 export async function getWorktree() {

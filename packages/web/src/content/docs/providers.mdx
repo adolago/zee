@@ -1,6 +1,6 @@
 ---
 title: Providers
-description: Using any LLM provider in OpenCode.
+description: Using any LLM provider in Agent Core.
 ---
 
 import config from "../../../config.mjs"
@@ -50,7 +50,7 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ## OpenCode Zen
 
-OpenCode Zen is a list of models provided by the OpenCode team that have been
+OpenCode Zen is a list of models provided by the Agent Core team that have been
 tested and verified to work well with OpenCode. [Learn more](/docs/zen).
 
 :::tip
@@ -80,7 +80,7 @@ If you are new, we recommend starting with OpenCode Zen.
    /models
    ```
 
-It works like any other provider in OpenCode and is completely optional to use.
+It works like any other provider in Agent Core and is completely optional to use.
 
 ---
 
@@ -279,7 +279,7 @@ For custom inference profiles, use the model and provider name in the key and se
    ```
 
 :::info
-Using your Claude Pro/Max subscription in OpenCode is not officially supported by [Anthropic](https://anthropic.com).
+Using your Claude Pro/Max subscription in Agent Core is not officially supported by [Anthropic](https://anthropic.com).
 :::
 
 ##### Using API keys
@@ -1268,7 +1268,7 @@ To use Ollama Cloud with OpenCode:
 
 2. Navigate to **Settings** > **Keys** and click **Add API Key** to generate a new API key.
 
-3. Copy the API key for use in OpenCode.
+3. Copy the API key for use in Agent Core.
 
 4. Run the `/connect` command and search for **Ollama Cloud**.
 
@@ -1285,7 +1285,7 @@ To use Ollama Cloud with OpenCode:
    └ enter
    ```
 
-6. **Important**: Before using cloud models in OpenCode, you must pull the model information locally:
+6. **Important**: Before using cloud models in Agent Core, you must pull the model information locally:
 
    ```bash
    ollama pull gpt-oss:20b-cloud
@@ -1334,7 +1334,7 @@ If you already have an API key, you can select **Manually enter API Key** and pa
 
 ### OpenCode Zen
 
-OpenCode Zen is a list of tested and verified models provided by the OpenCode team. [Learn more](/docs/zen).
+OpenCode Zen is a list of tested and verified models provided by the Agent Core team. [Learn more](/docs/zen).
 
 1. Sign in to **<a href={console}>OpenCode Zen</a>** and click **Create API Key**.
 

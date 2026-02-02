@@ -25,9 +25,9 @@ const env = {
   AGENT_CORE_BUMP: process.env["AGENT_CORE_BUMP"],
   AGENT_CORE_VERSION: process.env["AGENT_CORE_VERSION"],
   AGENT_CORE_NPM_PACKAGE: process.env["AGENT_CORE_NPM_PACKAGE"],
-  OPENCODE_CHANNEL: process.env["OPENCODE_CHANNEL"],
-  OPENCODE_BUMP: process.env["OPENCODE_BUMP"],
-  OPENCODE_VERSION: process.env["OPENCODE_VERSION"],
+  AGENT_CORE_CHANNEL: process.env["AGENT_CORE_CHANNEL"],
+  AGENT_CORE_BUMP: process.env["AGENT_CORE_BUMP"],
+  AGENT_CORE_VERSION: process.env["AGENT_CORE_VERSION"],
 }
 const DEFAULT_NPM_PACKAGE = "@adolago/agent-core"
 const registry = "https://registry.npmjs.org"
@@ -35,9 +35,9 @@ const npmPackage = env.AGENT_CORE_NPM_PACKAGE || DEFAULT_NPM_PACKAGE
 const encodedPackage = encodeURIComponent(npmPackage)
 const CHANNEL = await (async () => {
   if (env.AGENT_CORE_CHANNEL) return env.AGENT_CORE_CHANNEL
-  if (env.OPENCODE_CHANNEL) return env.OPENCODE_CHANNEL
-  if (env.AGENT_CORE_BUMP || env.OPENCODE_BUMP) return "latest"
-  const version = env.AGENT_CORE_VERSION || env.OPENCODE_VERSION
+  if (env.AGENT_CORE_CHANNEL) return env.AGENT_CORE_CHANNEL
+  if (env.AGENT_CORE_BUMP || env.AGENT_CORE_BUMP) return "latest"
+  const version = env.AGENT_CORE_VERSION || env.AGENT_CORE_VERSION
   if (version && !version.startsWith("0.0.0-")) return "latest"
   return await $`git branch --show-current`.text().then((x) => x.trim())
 })()
@@ -45,7 +45,7 @@ const IS_PREVIEW = CHANNEL !== "latest"
 
 const VERSION = await (async () => {
   if (env.AGENT_CORE_VERSION) return env.AGENT_CORE_VERSION
-  if (env.OPENCODE_VERSION) return env.OPENCODE_VERSION
+  if (env.AGENT_CORE_VERSION) return env.AGENT_CORE_VERSION
   // For dev/preview builds, generate nightly version (increments daily)
   if (IS_PREVIEW) {
     const [major, minor] = (packageJsonVersion?.replace(/-.*$/, "") || "0.2.0").split(".").map(Number)
@@ -66,7 +66,7 @@ const VERSION = await (async () => {
     })
     .then((data: any) => data.version)
   const [major, minor, patch] = version.split(".").map((x: string) => Number(x) || 0)
-  const t = (env.AGENT_CORE_BUMP || env.OPENCODE_BUMP)?.toLowerCase()
+  const t = (env.AGENT_CORE_BUMP || env.AGENT_CORE_BUMP)?.toLowerCase()
   if (t === "major") return `${major + 1}.0.0`
   if (t === "minor") return `${major}.${minor + 1}.0`
   return `${major}.${minor}.${patch + 1}`

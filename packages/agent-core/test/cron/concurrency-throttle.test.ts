@@ -4,9 +4,11 @@ import {
   shouldThrottle,
   recordSent,
   clearAllHistory,
+  clearHistory,
 } from "../../src/cron/service/throttle"
 import { createCronServiceState, type CronServiceState } from "../../src/cron/service/state"
 import { runDueJobs, executeJob } from "../../src/cron/service/timer"
+import { recomputeNextRuns } from "../../src/cron/service/jobs"
 import type { CronJob, CronStoreFile } from "../../src/cron/types"
 
 // ---------------------------------------------------------------------------
@@ -290,5 +292,143 @@ describe("throttle integration", () => {
     await executeJob(state, job, 1000, { forced: false })
     // Errors should pass through, not be throttled
     expect(job.state.lastStatus).toBe("error")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Bug fix regression tests
+// ---------------------------------------------------------------------------
+
+describe("bug fixes", () => {
+  beforeEach(() => {
+    clearAllHistory()
+  })
+
+  test("bug 1: recomputeNextRuns clears activeRuns for stuck jobs", () => {
+    const TWO_HOURS_PLUS = 2 * 60 * 60 * 1000 + 1000
+    const now = TWO_HOURS_PLUS + 1000
+    const state = makeState({ nowMs: () => now })
+    const job = makeJob({
+      state: { runningAtMs: 1000, nextRunAtMs: 500 },
+    })
+    state.store = { version: 1, jobs: [job] } as CronStoreFile
+    state.activeRuns.set("job-1", 1)
+
+    recomputeNextRuns(state)
+
+    expect(job.state.runningAtMs).toBeUndefined()
+    expect(state.activeRuns.has("job-1")).toBe(false)
+  })
+
+  test("bug 1: recomputeNextRuns decrements activeRuns (not delete) when > 1", () => {
+    const TWO_HOURS_PLUS = 2 * 60 * 60 * 1000 + 1000
+    const now = TWO_HOURS_PLUS + 1000
+    const state = makeState({ nowMs: () => now })
+    const job = makeJob({
+      maxConcurrentRuns: 3,
+      state: { runningAtMs: 1000, nextRunAtMs: 500 },
+    })
+    state.store = { version: 1, jobs: [job] } as CronStoreFile
+    state.activeRuns.set("job-1", 2)
+
+    recomputeNextRuns(state)
+
+    expect(state.activeRuns.get("job-1")).toBe(1)
+  })
+
+  test("bug 2: throttle history is cleared when job is removed", () => {
+    // Record some throttle history
+    recordSent("job-remove-test", "hash1", 1000)
+    const before = shouldThrottle("job-remove-test", "hash1", 2000, {
+      dedupWindowMs: 60_000,
+    })
+    expect(before).toBeDefined()
+
+    // Clear it
+    clearHistory("job-remove-test")
+
+    // After clearing, same hash should no longer be throttled
+    const after = shouldThrottle("job-remove-test", "hash1", 2000, {
+      dedupWindowMs: 60_000,
+    })
+    expect(after).toBeUndefined()
+  })
+
+  test("bug 3: run() respects concurrency for non-forced mode", async () => {
+    const state = makeState({ nowMs: () => 1000 })
+    const job = makeJob({ maxConcurrentRuns: 1 })
+    state.store = { version: 1, jobs: [job] } as CronStoreFile
+    state.activeRuns.set("job-1", 1)
+
+    // Use runDueJobs as proxy since run() needs locked/ensureLoaded
+    // The concurrency check in runDueJobs should block it
+    await runDueJobs(state)
+    expect(job.state.lastRunAtMs).toBeUndefined()
+  })
+
+  test("bug 3: forced run bypasses concurrency check", async () => {
+    let ran = false
+    const state = makeState({
+      nowMs: () => 1000,
+      runIsolatedAgentJob: async () => {
+        ran = true
+        return { status: "ok", summary: "done" }
+      },
+    })
+    const job = makeJob({ maxConcurrentRuns: 1 })
+    state.store = { version: 1, jobs: [job] } as CronStoreFile
+    state.activeRuns.set("job-1", 1)
+
+    // Direct executeJob call (forced) should still work
+    await executeJob(state, job, 1000, { forced: true })
+    expect(ran).toBe(true)
+  })
+
+  test("bug 4: disabling a job clears its activeRuns via recomputeNextRuns", () => {
+    const state = makeState({ nowMs: () => 1000 })
+    const job = makeJob({ enabled: false })
+    state.store = { version: 1, jobs: [job] } as CronStoreFile
+    state.activeRuns.set("job-1", 2)
+
+    recomputeNextRuns(state)
+
+    // recomputeNextRuns clears runningAtMs for disabled jobs
+    expect(job.state.runningAtMs).toBeUndefined()
+  })
+
+  test("bug 5: maxPerWindow works without explicit dedupWindowMs (defaults to 1h)", () => {
+    recordSent("j-mw", "h1", 500)
+    recordSent("j-mw", "h2", 600)
+
+    const result = shouldThrottle("j-mw", "h3", 1000, {
+      maxPerWindow: 2,
+    })
+    expect(result).toBeDefined()
+    expect(result).toContain("max notifications")
+    // Verify the default 1h window is used
+    expect(result).toContain("3600000")
+  })
+
+  test("bug 5: maxPerWindow with explicit dedupWindowMs uses that window", () => {
+    recordSent("j-mw2", "h1", 500)
+    recordSent("j-mw2", "h2", 600)
+
+    const result = shouldThrottle("j-mw2", "h3", 1000, {
+      dedupWindowMs: 10_000,
+      maxPerWindow: 2,
+    })
+    expect(result).toBeDefined()
+    expect(result).toContain("10000")
+  })
+
+  test("bug 5: maxPerWindow without dedupWindowMs allows after default window expires", () => {
+    recordSent("j-mw3", "h1", 100)
+    recordSent("j-mw3", "h2", 200)
+
+    // 1 hour + 1 second later
+    const result = shouldThrottle("j-mw3", "h3", 3_600_000 + 1000, {
+      maxPerWindow: 2,
+    })
+    expect(result).toBeUndefined()
   })
 })

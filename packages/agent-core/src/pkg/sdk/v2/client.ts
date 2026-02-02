@@ -3,7 +3,7 @@ export * from "./gen/types.gen.js"
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
 import {
-  OpencodeClient as GeneratedOpencodeClient,
+  AgentCoreClient as GeneratedAgentCoreClient,
   Session as GeneratedSession,
   Project as GeneratedProject,
   Worktree as GeneratedWorktree,
@@ -316,7 +316,7 @@ export type LocalProject = {
 
 // Config accessor for global.config.get()/update() pattern
 class GlobalConfigAccessor {
-  constructor(private sdk: GeneratedOpencodeClient) {}
+  constructor(private sdk: GeneratedAgentCoreClient) {}
 
   get<ThrowOnError extends boolean = false>(options?: any) {
     return this.sdk.config.get(options)
@@ -331,7 +331,7 @@ class GlobalConfigAccessor {
 class GlobalAccessor {
   private _config?: GlobalConfigAccessor
 
-  constructor(private sdk: GeneratedOpencodeClient) {}
+  constructor(private sdk: GeneratedAgentCoreClient) {}
 
   get config(): GlobalConfigAccessor {
     return (this._config ??= new GlobalConfigAccessor(this.sdk))
@@ -642,8 +642,8 @@ class ExtendedAuth extends GeneratedAuth {
   }
 }
 
-// Extended OpencodeClient that adds the global accessor and extended classes
-export class OpencodeClient extends GeneratedOpencodeClient {
+// Extended AgentCoreClient that adds the global accessor and extended classes
+export class AgentCoreClient extends GeneratedAgentCoreClient {
   private _global?: GlobalAccessor
   private _extSession?: ExtendedSession
   private _extProject?: ExtendedProject
@@ -655,7 +655,7 @@ export class OpencodeClient extends GeneratedOpencodeClient {
   private _extInstance?: ExtendedInstance
 
   get global(): GlobalAccessor {
-    return (this._global ??= new GlobalAccessor(this as unknown as GeneratedOpencodeClient))
+    return (this._global ??= new GlobalAccessor(this as unknown as GeneratedAgentCoreClient))
   }
 
   // Override accessors to return extended versions
@@ -696,9 +696,9 @@ export class OpencodeClient extends GeneratedOpencodeClient {
   }
 }
 
-export { type Config as OpencodeClientConfig }
+export { type Config as AgentCoreClientConfig }
 
-export function createOpencodeClient(config?: Config & { directory?: string }) {
+export function createAgentCoreClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {
     const customFetch: any = (req: any) => {
       // @ts-ignore
@@ -721,5 +721,12 @@ export function createOpencodeClient(config?: Config & { directory?: string }) {
   }
 
   const client = createClient(config)
-  return new OpencodeClient({ client })
+  return new AgentCoreClient({ client })
 }
+
+/** @deprecated Use AgentCoreClient */
+export const OpencodeClient = AgentCoreClient
+/** @deprecated Use AgentCoreClientConfig */
+export type OpencodeClientConfig = AgentCoreClientConfig
+/** @deprecated Use createAgentCoreClient */
+export const createOpencodeClient = createAgentCoreClient

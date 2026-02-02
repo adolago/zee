@@ -8,7 +8,7 @@ import { IconButton } from "@agent-core/ui/icon-button"
 import { TextField } from "@agent-core/ui/text-field"
 import { normalizeServerUrl, serverDisplayName, useServer } from "@/context/server"
 import { usePlatform } from "@/context/platform"
-import { createOpencodeClient } from "@agent-core/core/pkg/sdk/v2/client"
+import { createAgentCoreClient } from "@agent-core/core/pkg/sdk/v2/client"
 import { useNavigate } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
 import { DropdownMenu } from "@agent-core/ui/dropdown-menu"
@@ -42,7 +42,7 @@ interface EditRowProps {
 
 async function checkHealth(url: string, platform: ReturnType<typeof usePlatform>): Promise<ServerStatus> {
   const signal = (AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal }).timeout?.(3000)
-  const sdk = createOpencodeClient({
+  const sdk = createAgentCoreClient({
     baseUrl: url,
     fetch: platform.fetch,
     signal,

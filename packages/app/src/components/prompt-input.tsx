@@ -56,7 +56,7 @@ import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePlatform } from "@/context/platform"
-import { createOpencodeClient, type Message, type Part } from "@agent-core/core/pkg/sdk/v2/client"
+import { createAgentCoreClient, type Message, type Part } from "@agent-core/core/pkg/sdk/v2/client"
 import { Binary } from "@agent-core/util/binary"
 import { showToast } from "@agent-core/ui/toast"
 import { base64Encode } from "@agent-core/util/encode"
@@ -1197,7 +1197,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       }
 
       if (sessionDirectory !== projectDirectory) {
-        client = createOpencodeClient({
+        client = createAgentCoreClient({
           baseUrl: sdk.url,
           fetch: platform.fetch,
           directory: sessionDirectory,

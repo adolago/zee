@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
-import { createOpencode } from "@agent-core/sdk"
+import { createAgentCore } from "@agent-core/sdk"
 import { parseArgs } from "util"
 
 const CHANGELOG_REPO = process.env.CHANGELOG_REPO
@@ -134,7 +134,7 @@ function getSection(areas: Set<string>): string {
   return "Core"
 }
 
-async function summarizeCommit(opencode: Awaited<ReturnType<typeof createOpencode>>, message: string): Promise<string> {
+async function summarizeCommit(opencode: Awaited<ReturnType<typeof createAgentCore>>, message: string): Promise<string> {
   console.log("summarizing commit:", message)
   const session = await opencode.client.session.create()
   const result = await opencode.client.session
@@ -160,7 +160,7 @@ Commit: ${message}`,
   return result.trim()
 }
 
-export async function generateChangelog(commits: Commit[], opencode: Awaited<ReturnType<typeof createOpencode>>) {
+export async function generateChangelog(commits: Commit[], opencode: Awaited<ReturnType<typeof createAgentCore>>) {
   // Summarize commits in parallel with max 10 concurrent requests
   const BATCH_SIZE = 10
   const summaries: string[] = []
@@ -223,7 +223,7 @@ export async function buildNotes(from: string, to: string) {
 
   console.log("generating changelog since " + from)
 
-  const opencode = await createOpencode({ port: 5044 })
+  const opencode = await createAgentCore({ port: 5044 })
   const notes: string[] = []
 
   try {

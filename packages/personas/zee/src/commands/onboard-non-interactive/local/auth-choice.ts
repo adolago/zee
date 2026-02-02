@@ -12,7 +12,7 @@ import {
   applyMinimaxApiConfig,
   applyMinimaxConfig,
   applyMoonshotConfig,
-  applyOpencodeZenConfig,
+  applyAgentCoreZenConfig,
   applyOpenrouterConfig,
   applySyntheticConfig,
   applyVeniceConfig,
@@ -23,7 +23,7 @@ import {
   setKimiCodeApiKey,
   setMinimaxApiKey,
   setMoonshotApiKey,
-  setOpencodeZenApiKey,
+  setAgentCoreZenApiKey,
   setOpenrouterApiKey,
   setSyntheticApiKey,
   setVeniceApiKey,
@@ -340,19 +340,19 @@ export async function applyNonInteractiveAuthChoice(params: {
     const resolved = await resolveNonInteractiveApiKey({
       provider: "opencode",
       cfg: baseConfig,
-      flagValue: opts.opencodeZenApiKey,
+      flagValue: opts.agentCoreZenApiKey,
       flagName: "--opencode-zen-api-key",
-      envVar: "OPENCODE_API_KEY (or OPENCODE_ZEN_API_KEY)",
+      envVar: "AGENT_CORE_API_KEY (or OPENCODE_ZEN_API_KEY)",
       runtime,
     });
     if (!resolved) return null;
-    if (resolved.source !== "profile") await setOpencodeZenApiKey(resolved.key);
+    if (resolved.source !== "profile") await setAgentCoreZenApiKey(resolved.key);
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: "opencode:default",
       provider: "opencode",
       mode: "api_key",
     });
-    return applyOpencodeZenConfig(nextConfig);
+    return applyAgentCoreZenConfig(nextConfig);
   }
 
   if (

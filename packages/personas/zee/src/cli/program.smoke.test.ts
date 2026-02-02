@@ -150,7 +150,7 @@ describe("cli program (smoke)", () => {
         authChoice: "opencode-zen",
         flag: "--opencode-zen-api-key",
         key: "sk-opencode-zen-test",
-        field: "opencodeZenApiKey",
+        field: "agentCoreZenApiKey",
       },
       {
         authChoice: "openrouter-api-key",

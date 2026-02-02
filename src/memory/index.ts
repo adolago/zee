@@ -45,3 +45,15 @@ export type { FtsConfig, FtsEntry, FtsSearchResult, FtsSearchOptions } from "./s
 // Hybrid search (vector + keyword)
 export { mergeHybridResults } from "./hybrid";
 export type { HybridSearchConfig, HybridSearchResult, HybridSearchParams } from "./hybrid";
+
+// Markdown source-of-truth layer
+export { MarkdownSync, getMarkdownSync, resetMarkdownSync } from "./markdown-sync";
+export type { MarkdownSyncConfig } from "./markdown-sync";
+
+// Entity page auto-generation
+export { generateEntityPages, discoverEntities, getEntityMemories } from "./entity-pages";
+export type { EntityPageResult, GenerateEntityPagesOptions } from "./entity-pages";
+
+// Reflect job (scheduled curation)
+export { runReflect, getReflectJobDefinition } from "./reflect";
+export type { ReflectResult, ReflectOptions } from "./reflect";

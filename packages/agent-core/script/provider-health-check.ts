@@ -22,11 +22,13 @@
  *   bun run script/provider-health-check.ts --json          # Output JSON results
  *   bun run script/provider-health-check.ts --provider <id> # Test specific provider
  *   bun run script/provider-health-check.ts --errors-only   # Only show failing tests
+ *   bun run script/provider-health-check.ts --critical-only # Only exit(1) if agent model provider fails
  *   bun run script/provider-health-check.ts --timeout 60    # Custom timeout (seconds)
  */
 
 import { Provider } from "../src/provider/provider"
 import { ProviderTransform } from "../src/provider/transform"
+import { Config } from "../src/config/config"
 import { generateText, streamText, type LanguageModel } from "ai"
 import { Instance } from "../src/project/instance"
 
@@ -61,7 +63,9 @@ const args = process.argv.slice(2)
 const testAllModels = args.includes("--all")
 const outputJson = args.includes("--json")
 const errorsOnly = args.includes("--errors-only")
-const specificProvider = args.find((a) => a.startsWith("--provider="))?.split("=")[1] ?? args[args.indexOf("--provider") + 1]
+const criticalOnly = args.includes("--critical-only")
+const providerArgIdx = args.indexOf("--provider")
+const specificProvider = args.find((a) => a.startsWith("--provider="))?.split("=")[1] ?? (providerArgIdx >= 0 ? args[providerArgIdx + 1] : undefined)
 const timeoutArg = args.find((a) => a.startsWith("--timeout="))?.split("=")[1]
 const DEFAULT_TIMEOUT = timeoutArg ? parseInt(timeoutArg, 10) * 1000 : 30000
 
@@ -138,7 +142,6 @@ async function testModel(
         model: language,
         prompt: "Reply with a single word: pong",
         temperature: 0,
-        maxOutputTokens: 5,
         maxRetries: 0,
         abortSignal: AbortSignal.timeout(DEFAULT_TIMEOUT),
         providerOptions: ProviderTransform.providerOptions(model, options),
@@ -292,10 +295,12 @@ function getSuggestedAction(errorType: ErrorCategory, provider: string): string 
 
 async function main() {
   const results: TestResult[] = []
+  let config: Awaited<ReturnType<typeof Config.get>> | undefined
 
   await Instance.provide({
     directory: process.cwd(),
     fn: async () => {
+      config = await Config.get()
       const allProviders = await Provider.list()
       const providerList = specificProvider
         ? Object.entries(allProviders).filter(([id]) => id === specificProvider)
@@ -329,9 +334,22 @@ async function main() {
             testableModels = [...antigravityModels, ...nativeModels]
           } else {
             // Test one antigravity model (if available) and one native model
+            // Prefer lightest models for health checks: flash > non-thinking > thinking
+            const sortAntigravity = (models: typeof modelList) => models
+              .sort(([idA, a], [idB, b]) => {
+                const weight = (id: string) => {
+                  if (id.includes("flash")) return 0
+                  if (id.includes("thinking")) return 2
+                  return 1
+                }
+                const diff = weight(idA) - weight(idB)
+                if (diff !== 0) return diff
+                return (a.cost.input || 0) - (b.cost.input || 0)
+              })
+            const sortedNative = nativeModels.sort(([, a], [, b]) => (a.cost.input || 0) - (b.cost.input || 0))
             testableModels = [
-              ...antigravityModels.slice(0, 1),
-              ...nativeModels.slice(0, 1),
+              ...sortAntigravity(antigravityModels).slice(0, 1),
+              ...sortedNative.slice(0, 1),
             ]
           }
           
@@ -443,6 +461,30 @@ async function main() {
 
   // Exit with error code if any failures
   if (failed.length > 0) {
+    if (criticalOnly) {
+      // In --critical-only mode, only exit(1) if the active agent model's provider failed.
+      // Read agent model from config to determine the critical provider.
+      if (!config) {
+        console.log(`${COLORS.yellow}Could not determine critical provider (no config)${COLORS.reset}`)
+        process.exit(1)
+      }
+      const defaultAgent = config.default_agent ?? "zee"
+      const agentConfig = (config.agent as Record<string, { model?: string } | undefined>)?.[defaultAgent]
+      const agentModel = agentConfig?.model
+      const criticalProvider = agentModel?.split("/")[0]
+
+      if (criticalProvider) {
+        const criticalFailures = failed.filter((r) => r.provider === criticalProvider)
+        if (criticalFailures.length > 0) {
+          console.log(`${COLORS.red}${COLORS.bold}CRITICAL: Agent model provider "${criticalProvider}" failed${COLORS.reset}`)
+          process.exit(1)
+        } else {
+          console.log(`${COLORS.yellow}Non-critical provider failures (agent model provider "${criticalProvider}" is OK)${COLORS.reset}`)
+          process.exit(0)
+        }
+      }
+      // If we can't determine the critical provider, fall through to exit(1)
+    }
     process.exit(1)
   }
 }

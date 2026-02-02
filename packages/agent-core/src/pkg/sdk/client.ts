@@ -2,10 +2,15 @@ export * from "./gen/types.gen.js"
 
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
-import { OpencodeClient } from "./gen/sdk.gen.js"
-export { type Config as OpencodeClientConfig, OpencodeClient }
+import { AgentCoreClient } from "./gen/sdk.gen.js"
+export { type Config as AgentCoreClientConfig, AgentCoreClient }
 
-export function createOpencodeClient(config?: Config & { directory?: string }) {
+/** @deprecated Use AgentCoreClient */
+export const OpencodeClient = AgentCoreClient
+/** @deprecated Use AgentCoreClientConfig */
+export type OpencodeClientConfig = AgentCoreClientConfig
+
+export function createAgentCoreClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {
     const customFetch: any = (req: any) => {
       // @ts-ignore
@@ -26,5 +31,8 @@ export function createOpencodeClient(config?: Config & { directory?: string }) {
   }
 
   const client = createClient(config)
-  return new OpencodeClient({ client })
+  return new AgentCoreClient({ client })
 }
+
+/** @deprecated Use createAgentCoreClient */
+export const createOpencodeClient = createAgentCoreClient

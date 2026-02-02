@@ -271,7 +271,7 @@ Include at least one image-capable model in `ZEE_LIVE_GATEWAY_MODELS` (Claude/Ge
 
 If you have keys enabled, we also support testing via:
 - OpenRouter: `openrouter/...` (hundreds of models; use `zee models scan` to find tool+image capable candidates)
-- OpenCode Zen: `opencode/...` (auth via `OPENCODE_API_KEY` / `OPENCODE_ZEN_API_KEY`)
+- OpenCode Zen: `opencode/...` (auth via `AGENT_CORE_API_KEY` / `OPENCODE_ZEN_API_KEY`)
 
 More providers you can include in the live matrix (if you have creds/config):
 - Built-in: `openai`, `openai-codex`, `anthropic`, `google`, `google-vertex`, `google-antigravity`, `google-gemini-cli`, `zai`, `openrouter`, `opencode`, `xai`, `groq`, `cerebras`, `mistral`, `github-copilot`

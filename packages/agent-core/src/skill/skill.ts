@@ -81,7 +81,7 @@ export namespace Skill {
     }),
   )
 
-  const OPENCODE_SKILL_GLOB = new Bun.Glob("{skill,skills}/**/SKILL.md")
+  const AGENT_CORE_SKILL_GLOB = new Bun.Glob("{skill,skills}/**/SKILL.md")
   const CLAUDE_SKILL_GLOB = new Bun.Glob("skills/**/SKILL.md")
   const SKILL_GLOB = new Bun.Glob("**/SKILL.md")
 
@@ -326,7 +326,7 @@ export namespace Skill {
 
     // Scan .agent-core/skill/ directories
     for (const dir of await Config.directories()) {
-      for await (const match of OPENCODE_SKILL_GLOB.scan({
+      for await (const match of AGENT_CORE_SKILL_GLOB.scan({
         cwd: dir,
         absolute: true,
         onlyFiles: true,

@@ -12,8 +12,8 @@
  *   bun script/test-extended-thinking.ts kimi-for-coding/kimi-k2-thinking
  */
 
-import { createOpencodeClient as createEventClient } from "@agent-core/sdk"
-import { createOpencodeClient } from "@agent-core/sdk/v2"
+import { createAgentCoreClient as createEventClient } from "@agent-core/sdk"
+import { createAgentCoreClient } from "@agent-core/sdk/v2"
 
 const DEFAULT_MODEL = "openai/gpt-5.2"
 const TEST_TIMEOUT = 180_000 // 3 minutes
@@ -32,7 +32,7 @@ async function runTest(
   model: string,
   prompt: string,
 ): Promise<TestResult> {
-  const sdk = createOpencodeClient({ baseUrl })
+  const sdk = createAgentCoreClient({ baseUrl })
   const eventClient = createEventClient({ baseUrl })
 
   const startTime = Date.now()

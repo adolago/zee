@@ -1,7 +1,7 @@
 import { RequestError, type McpServer } from "@agentclientprotocol/sdk"
 import type { ACPSessionState } from "./types"
 import { Log } from "@/util/log"
-import type { OpencodeClient } from "@agent-core/sdk/v2"
+import type { AgentCoreClient } from "@agent-core/sdk/v2"
 import { HEADER_DIRECTORY } from "@/gateway/constants"
 
 const log = Log.create({ service: "acp-session-manager" })
@@ -18,9 +18,9 @@ const withDirectory = (
 
 export class ACPSessionManager {
   private sessions = new Map<string, ACPSessionState>()
-  private sdk: OpencodeClient
+  private sdk: AgentCoreClient
 
-  constructor(sdk: OpencodeClient) {
+  constructor(sdk: AgentCoreClient) {
     this.sdk = sdk
   }
 

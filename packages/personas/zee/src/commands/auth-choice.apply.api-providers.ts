@@ -17,8 +17,8 @@ import {
   applyKimiCodeProviderConfig,
   applyMoonshotConfig,
   applyMoonshotProviderConfig,
-  applyOpencodeZenConfig,
-  applyOpencodeZenProviderConfig,
+  applyAgentCoreZenConfig,
+  applyAgentCoreZenProviderConfig,
   applyOpenrouterConfig,
   applyOpenrouterProviderConfig,
   applySyntheticConfig,
@@ -37,7 +37,7 @@ import {
   setGeminiApiKey,
   setKimiCodeApiKey,
   setMoonshotApiKey,
-  setOpencodeZenApiKey,
+  setAgentCoreZenApiKey,
   setOpenrouterApiKey,
   setSyntheticApiKey,
   setVeniceApiKey,
@@ -525,7 +525,7 @@ export async function applyAuthChoiceApiProviders(
   if (authChoice === "opencode-zen") {
     let hasCredential = false;
     if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "opencode") {
-      await setOpencodeZenApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      await setAgentCoreZenApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
       hasCredential = true;
     }
 
@@ -542,11 +542,11 @@ export async function applyAuthChoiceApiProviders(
     const envKey = resolveEnvApiKey("opencode");
     if (envKey) {
       const useExisting = await params.prompter.confirm({
-        message: `Use existing OPENCODE_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        message: `Use existing AGENT_CORE_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
         initialValue: true,
       });
       if (useExisting) {
-        await setOpencodeZenApiKey(envKey.apiKey, params.agentDir);
+        await setAgentCoreZenApiKey(envKey.apiKey, params.agentDir);
         hasCredential = true;
       }
     }
@@ -555,7 +555,7 @@ export async function applyAuthChoiceApiProviders(
         message: "Enter OpenCode Zen API key",
         validate: validateApiKeyInput,
       });
-      await setOpencodeZenApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+      await setAgentCoreZenApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
     }
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: "opencode:default",
@@ -567,8 +567,8 @@ export async function applyAuthChoiceApiProviders(
         config: nextConfig,
         setDefaultModel: params.setDefaultModel,
         defaultModel: OPENCODE_ZEN_DEFAULT_MODEL,
-        applyDefaultConfig: applyOpencodeZenConfig,
-        applyProviderConfig: applyOpencodeZenProviderConfig,
+        applyDefaultConfig: applyAgentCoreZenConfig,
+        applyProviderConfig: applyAgentCoreZenProviderConfig,
         noteDefault: OPENCODE_ZEN_DEFAULT_MODEL,
         noteAgentModel,
         prompter: params.prompter,

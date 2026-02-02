@@ -9,8 +9,8 @@ import {
   applyAuthProfileConfig,
   applyMinimaxApiConfig,
   applyMinimaxApiProviderConfig,
-  applyOpencodeZenConfig,
-  applyOpencodeZenProviderConfig,
+  applyAgentCoreZenConfig,
+  applyAgentCoreZenProviderConfig,
   applyOpenrouterConfig,
   applyOpenrouterProviderConfig,
   applySyntheticConfig,
@@ -343,15 +343,15 @@ describe("applySyntheticConfig", () => {
   });
 });
 
-describe("applyOpencodeZenProviderConfig", () => {
+describe("applyAgentCoreZenProviderConfig", () => {
   it("adds allowlist entry for the default model", () => {
-    const cfg = applyOpencodeZenProviderConfig({});
+    const cfg = applyAgentCoreZenProviderConfig({});
     const models = cfg.agents?.defaults?.models ?? {};
     expect(Object.keys(models)).toContain("opencode/claude-opus-4-5");
   });
 
   it("preserves existing alias for the default model", () => {
-    const cfg = applyOpencodeZenProviderConfig({
+    const cfg = applyAgentCoreZenProviderConfig({
       agents: {
         defaults: {
           models: {
@@ -364,14 +364,14 @@ describe("applyOpencodeZenProviderConfig", () => {
   });
 });
 
-describe("applyOpencodeZenConfig", () => {
+describe("applyAgentCoreZenConfig", () => {
   it("sets correct primary model", () => {
-    const cfg = applyOpencodeZenConfig({});
+    const cfg = applyAgentCoreZenConfig({});
     expect(cfg.agents?.defaults?.model?.primary).toBe("opencode/claude-opus-4-5");
   });
 
   it("preserves existing model fallbacks", () => {
-    const cfg = applyOpencodeZenConfig({
+    const cfg = applyAgentCoreZenConfig({
       agents: {
         defaults: {
           model: { fallbacks: ["anthropic/claude-opus-4-5"] },

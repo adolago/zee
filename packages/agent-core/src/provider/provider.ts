@@ -79,7 +79,7 @@ export namespace Provider {
   }
 
   function clientHeaders(options?: { lower?: boolean }) {
-    const referer = Env.get("AGENT_CORE_HTTP_REFERER") ?? Env.get("OPENCODE_HTTP_REFERER")
+    const referer = Env.get("AGENT_CORE_HTTP_REFERER") ?? Env.get("AGENT_CORE_HTTP_REFERER")
     const title = Env.get("AGENT_CORE_CLIENT_TITLE") ?? "agent-core"
     const headers: Record<string, string> = {}
     if (referer) {

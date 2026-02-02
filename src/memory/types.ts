@@ -140,6 +140,16 @@ export interface MemoryEntry {
   // Dual Memory
   /** Whether this is a fact or reasoning trace */
   memoryType?: MemoryMemoryType;
+
+  // Opinion Confidence
+  /** Confidence score (0-1) for belief/opinion entries */
+  confidence?: number;
+  /** Evidence supporting this belief */
+  evidenceFor?: string[];
+  /** Evidence contradicting this belief */
+  evidenceAgainst?: string[];
+  /** Timestamp when this belief was last challenged or reinforced */
+  lastChallenged?: number;
 }
 
 /** Input for creating a memory */
@@ -170,6 +180,14 @@ export interface MemoryInput {
 
   // Dual Memory
   memoryType?: MemoryMemoryType;
+
+  // Opinion Confidence
+  /** Initial confidence score (0-1). Default: 0.5 */
+  confidence?: number;
+  /** Evidence supporting this belief */
+  evidenceFor?: string[];
+  /** Evidence contradicting this belief */
+  evidenceAgainst?: string[];
 }
 
 // =============================================================================
@@ -217,6 +235,12 @@ export interface MemorySearchParams {
 
   // Dual Memory filter
   memoryType?: MemoryMemoryType;
+
+  // Opinion Confidence filters
+  /** Minimum confidence threshold */
+  minConfidence?: number;
+  /** Maximum confidence threshold */
+  maxConfidence?: number;
 }
 
 /** A search result with similarity score */

@@ -99,7 +99,7 @@ export namespace ToolRegistry {
 
     return [
       InvalidTool,
-      ...(["app", "cli", "desktop"].includes(Flag.OPENCODE_CLIENT) ? [QuestionTool] : []),
+      ...(["app", "cli", "desktop"].includes(Flag.AGENT_CORE_CLIENT) ? [QuestionTool] : []),
       BashTool,
       ReadTool,
       GlobTool,
@@ -115,7 +115,7 @@ export namespace ToolRegistry {
       SkillTool,
       LspTool,
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
-      ...(Flag.OPENCODE_CLIENT === "cli" ? [HoldReleaseTool, HoldEnterTool] : []),
+      ...(Flag.AGENT_CORE_CLIENT === "cli" ? [HoldReleaseTool, HoldEnterTool] : []),
       ...custom,
     ]
   }

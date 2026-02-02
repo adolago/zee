@@ -19,7 +19,7 @@ function findSourceRoot(startDir: string): string | undefined {
 
 function resolveSourceRoot(): string {
   const envSource =
-    process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE || process.env.AGENT_CORE_ROOT
+    process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
   if (envSource) return envSource
 
   const starts = [process.cwd()]

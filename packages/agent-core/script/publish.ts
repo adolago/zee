@@ -105,7 +105,7 @@ async function gitTagAndPush(version: string) {
 
 const { binaries } = await import("./build.ts")
 {
-  const binarySuffix = process.env.OPENCODE_BINARY_SUFFIX?.trim()
+  const binarySuffix = process.env.AGENT_CORE_BINARY_SUFFIX?.trim()
   const osName = process.platform === "win32" ? "windows" : process.platform
   const name = [pkg.name, osName, process.arch, binarySuffix].filter(Boolean).join("-")
   console.log(`\n> Smoke test: running dist/${name}/bin/agent-core --version`)

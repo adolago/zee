@@ -66,9 +66,9 @@ export namespace Config {
     result = mergeConfigConcatArrays(result, await global())
 
     // Custom config path overrides global
-    if (Flag.OPENCODE_CONFIG) {
-      result = mergeConfigConcatArrays(result, await loadFile(Flag.OPENCODE_CONFIG))
-      log.debug("loaded custom config", { path: Flag.OPENCODE_CONFIG })
+    if (Flag.AGENT_CORE_CONFIG) {
+      result = mergeConfigConcatArrays(result, await loadFile(Flag.AGENT_CORE_CONFIG))
+      log.debug("loaded custom config", { path: Flag.AGENT_CORE_CONFIG })
     }
 
     // Project config has highest precedence (overrides global and remote)
@@ -80,15 +80,15 @@ export namespace Config {
     }
 
     // Inline config content has highest precedence
-    if (Flag.OPENCODE_CONFIG_CONTENT) {
+    if (Flag.AGENT_CORE_CONFIG_CONTENT) {
       try {
-        const parsed = JSON.parse(Flag.OPENCODE_CONFIG_CONTENT)
+        const parsed = JSON.parse(Flag.AGENT_CORE_CONFIG_CONTENT)
         // Use partial schema since inline config may override only some fields
         const validated = Info.partial().parse(parsed)
         result = mergeConfigConcatArrays(result, validated as Info)
-        log.debug("loaded custom config from OPENCODE_CONFIG_CONTENT")
+        log.debug("loaded custom config from AGENT_CORE_CONFIG_CONTENT")
       } catch (error) {
-        log.error("failed to parse OPENCODE_CONFIG_CONTENT", {
+        log.error("failed to parse AGENT_CORE_CONFIG_CONTENT", {
           error: error instanceof Error ? error.message : String(error),
         })
       }
@@ -102,7 +102,7 @@ export namespace Config {
 
     // Support running from any directory via launcher script that sets AGENT_CORE_ROOT.
     // Treat packaged config as the lowest-precedence defaults so user/project config can override it.
-    const agentCoreRoot = process.env.AGENT_CORE_ROOT
+    const agentCoreRoot = process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
     if (agentCoreRoot) {
       const rootConfigDir = path.join(agentCoreRoot, ".agent-core")
       if (existsSync(rootConfigDir)) {
@@ -129,14 +129,14 @@ export namespace Config {
       )),
     )
 
-    if (Flag.OPENCODE_CONFIG_DIR) {
-      directories.push(Flag.OPENCODE_CONFIG_DIR)
-      log.debug("loading config from OPENCODE_CONFIG_DIR", { path: Flag.OPENCODE_CONFIG_DIR })
+    if (Flag.AGENT_CORE_CONFIG_DIR) {
+      directories.push(Flag.AGENT_CORE_CONFIG_DIR)
+      log.debug("loading config from AGENT_CORE_CONFIG_DIR", { path: Flag.AGENT_CORE_CONFIG_DIR })
     }
 
     for (const dir of unique(directories)) {
       const safeDir = Filesystem.sanitizePath(dir)
-      if (safeDir.endsWith(".agent-core") || safeDir === Flag.OPENCODE_CONFIG_DIR) {
+      if (safeDir.endsWith(".agent-core") || safeDir === Flag.AGENT_CORE_CONFIG_DIR) {
         for (const file of ["agent-core.jsonc", "agent-core.json"]) {
           log.debug(`loading config from ${path.join(safeDir, file)}`)
           result = mergeConfigConcatArrays(result, await loadFile(path.join(safeDir, file)))
@@ -167,13 +167,13 @@ export namespace Config {
       })
     }
 
-    if (Flag.OPENCODE_PERMISSION) {
+    if (Flag.AGENT_CORE_PERMISSION) {
       try {
-        const parsed = JSON.parse(Flag.OPENCODE_PERMISSION)
+        const parsed = JSON.parse(Flag.AGENT_CORE_PERMISSION)
         const validated = Permission.parse(parsed)
         result.permission = mergeDeep(result.permission ?? {}, validated)
       } catch (error) {
-        log.error("failed to parse OPENCODE_PERMISSION", {
+        log.error("failed to parse AGENT_CORE_PERMISSION", {
           error: error instanceof Error ? error.message : String(error),
         })
       }
@@ -217,7 +217,7 @@ export namespace Config {
     if (!hasGitIgnore) await Bun.write(gitignore, ["node_modules", "package.json", "bun.lock", ".gitignore"].join("\n"))
 
     const pluginVersion = Installation.isLocal() || Installation.isPreview() ? "latest" : Installation.VERSION
-    await BunProc.run(["add", "@agent-core/plugin@" + pluginVersion, "--exact"], {
+    await BunProc.run(["add", "@opencode-ai/plugin@" + pluginVersion, "--exact"], {
       cwd: dir,
     }).catch((err) => {
       log.debug("failed to add plugin package", { error: String(err), dir })
@@ -406,9 +406,9 @@ export namespace Config {
    * Deduplicates plugins by name, with later entries (higher priority) winning.
    * Priority order (highest to lowest):
    * 1. Local plugin/ directory
-   * 2. Local opencode.json
+   * 2. Local agent-core.json
    * 3. Global plugin/ directory
-   * 4. Global opencode.json
+   * 4. Global agent-core.json
    *
    * Since plugins are added in low-to-high priority order,
    * we reverse, deduplicate (keeping first occurrence), then restore order.

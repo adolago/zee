@@ -308,7 +308,7 @@
       },
     },
     "packages/plugin": {
-      "name": "@agent-core/plugin",
+      "name": "@opencode-ai/plugin",
       "version": "1.1.48",
       "dependencies": {
         "@agent-core/core": "workspace:*",
@@ -495,8 +495,6 @@
     "@agent-core/desktop": ["@agent-core/desktop@workspace:packages/desktop"],
 
     "@agent-core/hosted": ["@agent-core/hosted@workspace:packages/hosted"],
-
-    "@agent-core/plugin": ["@agent-core/plugin@workspace:packages/plugin"],
 
     "@agent-core/sdk": ["@agent-core/sdk@workspace:packages/sdk"],
 
@@ -1203,6 +1201,8 @@
     "@octokit/webhooks-types": ["@octokit/webhooks-types@7.6.1", "", {}, "sha512-S8u2cJzklBC0FgTwWVLaM8tMrDuDMVE4xiTK4EYXM9GntyvrdbSoxqDQa+Fh57CCNApyIpyeqPhhFEmHPfrXgw=="],
 
     "@openauthjs/openauth": ["@openauthjs/openauth@0.0.0-20250322224806", "", { "dependencies": { "@standard-schema/spec": "1.0.0-beta.3", "aws4fetch": "1.0.20", "jose": "5.9.6" }, "peerDependencies": { "arctic": "^2.2.2", "hono": "^4.0.0" } }, "sha512-p5IWSRXvABcwocH2dNI0w8c1QJelIOFulwhKk+aLLFfUbs8u1pr7kQbYe8yCSM2+bcLHiwbogpUQc2ovrGwCuw=="],
+
+    "@opencode-ai/plugin": ["@opencode-ai/plugin@workspace:packages/plugin"],
 
     "@openrouter/ai-sdk-provider": ["@openrouter/ai-sdk-provider@1.5.2", "", { "dependencies": { "@openrouter/sdk": "^0.1.27" }, "peerDependencies": { "@toon-format/toon": "^2.0.0", "ai": "^5.0.0", "zod": "^3.24.1 || ^v4" }, "optionalPeers": ["@toon-format/toon"] }, "sha512-3Th0vmJ9pjnwcPc2H1f59Mb0LFvwaREZAScfOQIpUxAHjZ7ZawVKDP27qgsteZPmMYqccNMy4r4Y3kgUnNcKAg=="],
 

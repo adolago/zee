@@ -1987,7 +1987,7 @@ test("variants filtered in second pass for database models", async () => {
           provider: {
             openai: {
               models: {
-                "gpt-5": {
+                "o3": {
                   variants: {
                     high: { disabled: true },
                   },
@@ -2006,7 +2006,8 @@ test("variants filtered in second pass for database models", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["openai"].models["gpt-5"]
+      const model = providers["openai"].models["o3"]
+      expect(model).toBeDefined()
       expect(model.variants).toBeDefined()
       expect(model.variants!["high"]).toBeUndefined()
       // Other variants should still exist

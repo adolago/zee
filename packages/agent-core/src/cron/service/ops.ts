@@ -13,6 +13,7 @@ import {
 } from "./jobs"
 import { locked } from "./locked"
 import { ensureLoaded, persist, warnIfDisabled } from "./store"
+import { clearHistory } from "./throttle"
 import { armTimer, emit, executeJob, stopTimer, wake } from "./timer"
 
 export async function start(state: CronServiceState) {
@@ -88,6 +89,7 @@ export async function update(state: CronServiceState, id: string, patch: CronJob
     } else {
       job.state.nextRunAtMs = undefined
       job.state.runningAtMs = undefined
+      state.activeRuns.delete(job.id)
     }
 
     await persist(state)
@@ -111,6 +113,10 @@ export async function remove(state: CronServiceState, id: string) {
     }
     state.store.jobs = state.store.jobs.filter((j) => j.id !== id)
     const removed = (state.store.jobs.length ?? 0) !== before
+    if (removed) {
+      clearHistory(id)
+      state.activeRuns.delete(id)
+    }
     await persist(state)
     armTimer(state)
     if (removed) {
@@ -126,11 +132,19 @@ export async function run(state: CronServiceState, id: string, mode?: "due" | "f
     await ensureLoaded(state)
     const job = findJobOrThrow(state, id)
     const now = state.deps.nowMs()
-    const due = isJobDue(job, now, { forced: mode === "force" })
+    const forced = mode === "force"
+    const due = isJobDue(job, now, { forced })
     if (!due) {
       return { ok: true, ran: false, reason: "not-due" as const }
     }
-    await executeJob(state, job, now, { forced: mode === "force" })
+    if (!forced) {
+      const maxConcurrent = job.maxConcurrentRuns ?? 1
+      const active = state.activeRuns.get(job.id) ?? 0
+      if (active >= maxConcurrent) {
+        return { ok: true, ran: false, reason: "concurrency-limit" as const }
+      }
+    }
+    await executeJob(state, job, now, { forced })
     await persist(state)
     armTimer(state)
     return { ok: true, ran: true } as const

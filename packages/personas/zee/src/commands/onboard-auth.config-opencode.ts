@@ -1,7 +1,7 @@
 import { OPENCODE_ZEN_DEFAULT_MODEL_REF } from "../agents/opencode-zen-models.js";
 import type { ZeeConfig } from "../config/config.js";
 
-export function applyOpencodeZenProviderConfig(cfg: ZeeConfig): ZeeConfig {
+export function applyAgentCoreZenProviderConfig(cfg: ZeeConfig): ZeeConfig {
   // Use the built-in opencode provider from pi-ai; only seed the allowlist alias.
   const models = { ...cfg.agents?.defaults?.models };
   models[OPENCODE_ZEN_DEFAULT_MODEL_REF] = {
@@ -21,8 +21,8 @@ export function applyOpencodeZenProviderConfig(cfg: ZeeConfig): ZeeConfig {
   };
 }
 
-export function applyOpencodeZenConfig(cfg: ZeeConfig): ZeeConfig {
-  const next = applyOpencodeZenProviderConfig(cfg);
+export function applyAgentCoreZenConfig(cfg: ZeeConfig): ZeeConfig {
+  const next = applyAgentCoreZenProviderConfig(cfg);
   return {
     ...next,
     agents: {

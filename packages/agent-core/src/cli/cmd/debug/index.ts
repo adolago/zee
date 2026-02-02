@@ -93,7 +93,7 @@ const FlagsCommand = cmd({
       const agentCoreValue = process.env[agentCoreKey]
       const opencodeValue = process.env[opencodeKey]
       // Get value from Flag namespace if available
-      const flagKey = `OPENCODE_${name}` as keyof typeof Flag
+      const flagKey = `AGENT_CORE_${name}` as keyof typeof Flag
       const computedValue = Flag[flagKey]
 
       return {
@@ -114,7 +114,7 @@ const FlagsCommand = cmd({
     console.log("Environment Flags")
     console.log("=================")
     console.log("")
-    console.log("Use either AGENT_CORE_* or OPENCODE_* prefix (AGENT_CORE_* takes precedence)")
+    console.log("Use either AGENT_CORE_* or AGENT_CORE_* prefix (AGENT_CORE_* takes precedence)")
     console.log("")
 
     const setFlags = flags.filter((f) => f.envValue !== null || f.computedValue === "true")

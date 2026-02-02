@@ -29,8 +29,8 @@ import { Config } from "@/config/config"
 import { Todo } from "@/session/todo"
 import { z } from "zod"
 import { LoadAPIKeyError } from "ai"
-import { createOpencodeClient as createEventClient } from "@agent-core/sdk"
-import type { OpencodeClient, SessionMessageResponse } from "@agent-core/sdk/v2"
+import { createAgentCoreClient as createEventClient } from "@agent-core/sdk"
+import type { AgentCoreClient, SessionMessageResponse } from "@agent-core/sdk/v2"
 import { applyPatch } from "diff"
 import { HEADER_DIRECTORY } from "@/gateway/constants"
 import { createAuthorizedFetch } from "@/server/auth"
@@ -77,7 +77,7 @@ function formatModelId(model: { providerID: string; modelID: string; variant?: s
 export namespace ACP {
   const log = Log.create({ service: "acp-agent" })
 
-  export async function init({ sdk: _sdk }: { sdk: OpencodeClient }) {
+  export async function init({ sdk: _sdk }: { sdk: AgentCoreClient }) {
     return {
       create: (connection: AgentSideConnection, fullConfig: ACPConfig) => {
         return new Agent(connection, fullConfig)
@@ -88,7 +88,7 @@ export namespace ACP {
   export class Agent implements ACPAgent {
     private connection: AgentSideConnection
     private config: ACPConfig
-    private sdk: OpencodeClient
+    private sdk: AgentCoreClient
     private eventSdk: EventClient
     private sessionManager: ACPSessionManager
     private eventAbort = new AbortController()
@@ -464,7 +464,7 @@ export namespace ACP {
       const authMethod: AuthMethod = {
         description: "Run `agent-core auth login` in the terminal",
         name: "Login with agent-core",
-        id: "opencode-login",
+        id: "agent-core-login",
       }
 
       // If client supports terminal-auth capability, use that instead.

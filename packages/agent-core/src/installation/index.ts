@@ -12,8 +12,8 @@ import { fileURLToPath } from "url"
 declare global {
   const AGENT_CORE_VERSION: string
   const AGENT_CORE_CHANNEL: string
-  const OPENCODE_VERSION: string
-  const OPENCODE_CHANNEL: string
+  const AGENT_CORE_VERSION: string
+  const AGENT_CORE_CHANNEL: string
 }
 
 export namespace Installation {
@@ -294,16 +294,16 @@ export namespace Installation {
   export const VERSION =
     typeof AGENT_CORE_VERSION === "string"
       ? AGENT_CORE_VERSION
-      : typeof OPENCODE_VERSION === "string"
-        ? OPENCODE_VERSION
+      : typeof AGENT_CORE_VERSION === "string"
+        ? AGENT_CORE_VERSION
         : PACKAGE_VERSION ?? "dev"
   export const CHANNEL =
     typeof AGENT_CORE_CHANNEL === "string"
       ? AGENT_CORE_CHANNEL
-      : typeof OPENCODE_CHANNEL === "string"
-        ? OPENCODE_CHANNEL
+      : typeof AGENT_CORE_CHANNEL === "string"
+        ? AGENT_CORE_CHANNEL
         : "local"
-  export const USER_AGENT = `agent-core/${CHANNEL}/${VERSION}/${Flag.OPENCODE_CLIENT}`
+  export const USER_AGENT = `agent-core/${CHANNEL}/${VERSION}/${Flag.AGENT_CORE_CLIENT}`
 
   export function runtimeInfo(): RuntimeInfo {
     const execPath = process.execPath

@@ -125,7 +125,7 @@ export async function listInstalled(): Promise<InstalledPlugin[]> {
   }
 
   return configPlugins.map((spec) => {
-    // Parse spec (e.g., "opencode-anthropic-auth@0.0.11" or "opencode-anthropic-auth")
+    // Parse spec (e.g., "agent-core-anthropic-auth@0.0.11" or "agent-core-anthropic-auth")
     const lastAtIdx = spec.lastIndexOf("@")
     const hasVersion = lastAtIdx > 0
     const npm = hasVersion ? spec.substring(0, lastAtIdx) : spec

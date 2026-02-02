@@ -58,28 +58,28 @@ const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-e2e-"))
 
 const serverEnv = {
   ...process.env,
-  OPENCODE_DISABLE_SHARE: process.env.OPENCODE_DISABLE_SHARE ?? "true",
-  OPENCODE_DISABLE_LSP_DOWNLOAD: "true",
-  OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
-  OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER: "true",
-  OPENCODE_TEST_HOME: path.join(sandbox, "home"),
+  AGENT_CORE_DISABLE_SHARE: process.env.AGENT_CORE_DISABLE_SHARE ?? "true",
+  AGENT_CORE_DISABLE_LSP_DOWNLOAD: "true",
+  AGENT_CORE_DISABLE_DEFAULT_PLUGINS: "true",
+  AGENT_CORE_EXPERIMENTAL_DISABLE_FILEWATCHER: "true",
+  AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
   XDG_DATA_HOME: path.join(sandbox, "share"),
   XDG_CACHE_HOME: path.join(sandbox, "cache"),
   XDG_CONFIG_HOME: path.join(sandbox, "config"),
   XDG_STATE_HOME: path.join(sandbox, "state"),
-  OPENCODE_E2E_PROJECT_DIR: repoDir,
-  OPENCODE_E2E_SESSION_TITLE: "E2E Session",
-  OPENCODE_E2E_MESSAGE: "Seeded for UI e2e",
-  OPENCODE_E2E_MODEL: "opencode/gpt-5-nano",
-  OPENCODE_CLIENT: "app",
+  AGENT_CORE_E2E_PROJECT_DIR: repoDir,
+  AGENT_CORE_E2E_SESSION_TITLE: "E2E Session",
+  AGENT_CORE_E2E_MESSAGE: "Seeded for UI e2e",
+  AGENT_CORE_E2E_MODEL: "opencode/gpt-5-nano",
+  AGENT_CORE_CLIENT: "app",
 } satisfies Record<string, string>
 
 const runnerEnv = {
   ...serverEnv,
   PLAYWRIGHT_SERVER_HOST: "127.0.0.1",
   PLAYWRIGHT_SERVER_PORT: String(serverPort),
-  VITE_OPENCODE_SERVER_HOST: "127.0.0.1",
-  VITE_OPENCODE_SERVER_PORT: String(serverPort),
+  VITE_AGENT_CORE_SERVER_HOST: "127.0.0.1",
+  VITE_AGENT_CORE_SERVER_PORT: String(serverPort),
   PLAYWRIGHT_PORT: String(webPort),
 } satisfies Record<string, string>
 

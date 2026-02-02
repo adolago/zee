@@ -565,7 +565,7 @@ export function resolveTtsApiKey(
     return (
       config.minimax.apiKey ||
       process.env.MINIMAX_API_KEY ||
-      process.env.OPENCODE_MINIMAX_API_KEY ||
+      process.env.AGENT_CORE_MINIMAX_API_KEY ||
       resolveAuthProfileApiKey("minimax") ||
       resolveAuthProfileApiKey("minimax-tts")
     );
