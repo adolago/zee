@@ -388,7 +388,10 @@ export function Session() {
   createEffect(
     on(
       () => route.sessionID,
-      (sessionID) => local.model.setSession(sessionID),
+      (sessionID) => {
+        local.model.setSession(sessionID)
+        local.mode.setSession(sessionID)
+      },
     ),
   )
 

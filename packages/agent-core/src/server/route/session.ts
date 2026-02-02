@@ -138,12 +138,15 @@ export const SessionRoute = new Hono()
     ),
     validator("json", SessionPrompt.PromptInput.omit({ sessionID: true })),
     async (c) => {
+      const sessionID = c.req.valid("param").sessionID
+      const body = c.req.valid("json")
+      // Validate session exists before opening stream so the error surfaces
+      // as a proper HTTP 404 instead of being buried inside a 200 payload.
+      await Session.get(sessionID)
       c.status(200)
       c.header("Content-Type", "application/json")
       return stream(c, async (stream) => {
         try {
-          const sessionID = c.req.valid("param").sessionID
-          const body = c.req.valid("json")
           const msg = await SessionPrompt.prompt({ ...body, sessionID })
           stream.write(JSON.stringify(msg))
         } catch (err) {
@@ -256,6 +259,50 @@ export const SessionRoute = new Hono()
       }, { touch: false })
 
       return c.json(updatedSession)
+    },
+  )
+  .patch(
+    "/session/:sessionID/mode",
+    describeRoute({
+      summary: "Update session mode",
+      description: "Set the hold/release mode for a session. Hold mode restricts file modifications; release mode enables full tool access.",
+      operationId: "session.mode",
+      responses: {
+        200: {
+          description: "Successfully updated session mode",
+          content: {
+            "application/json": {
+              schema: resolver(
+                z.object({
+                  ok: z.boolean(),
+                  mode: z.enum(["hold", "release"]),
+                }),
+              ),
+            },
+          },
+        },
+        ...errors(400, 404),
+      },
+    }),
+    validator(
+      "param",
+      z.object({
+        sessionID: z.string(),
+      }),
+    ),
+    validator(
+      "json",
+      z.object({
+        mode: z.enum(["hold", "release"]),
+      }),
+    ),
+    async (c) => {
+      const { sessionID } = c.req.valid("param")
+      const { mode } = c.req.valid("json")
+      await Session.update(sessionID, (draft) => {
+        draft.mode = mode
+      })
+      return c.json({ ok: true, mode })
     },
   )
   .post(

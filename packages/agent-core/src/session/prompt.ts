@@ -7,6 +7,7 @@ import { MessageV2 } from "./message-v2"
 import { Log } from "../util/log"
 import { SessionRevert } from "./revert"
 import { Session } from "."
+import { Storage } from "../storage/storage"
 import { Agent } from "../agent/agent"
 import { Provider } from "../provider/provider"
 import { type Tool as AITool, tool, jsonSchema, type ToolCallOptions } from "ai"
@@ -131,6 +132,24 @@ export namespace SessionPrompt {
       source: resolveSessionSource(),
       directory: session.directory,
     })
+  }
+
+  /**
+   * Resolve whether hold mode is active for a given session and message.
+   * Priority: per-message tools override > per-session mode > surface default.
+   */
+  export function resolveHoldMode(session: Session.Info, messageTools?: Record<string, boolean>): boolean {
+    // Explicit per-message tools override (TUI backward compat)
+    if (messageTools?.edit === false) return true
+    if (messageTools?.edit === true) return false
+
+    // Per-session mode
+    if (session.mode === "hold") return true
+    if (session.mode === "release") return false
+
+    // Surface defaults: messaging surfaces default to release, everything else to hold
+    if (session.surface === "whatsapp" || session.surface === "telegram") return false
+    return true
   }
 
   const MEMORY_REQUIRED_CHECK_TTL_MS = 30_000
@@ -300,10 +319,56 @@ export namespace SessionPrompt {
   export type PromptInput = z.infer<typeof PromptInput>
 
   export const prompt = fn(PromptInput, async (input) => {
-    const session = await Session.get(input.sessionID)
+    let session: Session.Info
+    try {
+      session = await Session.get(input.sessionID)
+    } catch (e) {
+      if (!Storage.NotFoundError.isInstance(e)) throw e
+      log.info("session not found, auto-creating", { sessionID: input.sessionID })
+      session = await Session.createNext({
+        id: input.sessionID,
+        directory: Instance.directory,
+      })
+    }
     await emitSessionStartOnce(session, input.agent)
     await SessionRevert.cleanup(session)
     await ensureRequiredMemory(input.sessionID)
+
+    // Handle /hold and /release commands at the server level (works for all surfaces)
+    const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
+    if (firstText === "/hold" || firstText === "/release") {
+      const newMode = firstText === "/hold" ? "hold" : "release"
+      await Session.update(input.sessionID, (draft) => {
+        draft.mode = newMode
+      })
+      const message = await createUserMessage(input)
+      const confirmMsg: MessageV2.Assistant = {
+        id: Identifier.ascending("message"),
+        sessionID: input.sessionID,
+        parentID: message.info.id,
+        role: "assistant",
+        mode: input.agent ?? "zee",
+        agent: input.agent ?? "zee",
+        path: { cwd: Instance.directory, root: Instance.worktree },
+        cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        modelID: "system",
+        providerID: "system",
+        finish: "stop",
+        time: { created: Date.now(), completed: Date.now() },
+      }
+      await Session.updateMessage(confirmMsg)
+      await Session.updatePart({
+        id: Identifier.ascending("part"),
+        messageID: confirmMsg.id,
+        sessionID: input.sessionID,
+        type: "text",
+        text: newMode === "hold"
+          ? "Switched to HOLD mode. File modifications are restricted."
+          : "Switched to RELEASE mode. Full tool access enabled.",
+      } satisfies MessageV2.TextPart)
+      return { info: confirmMsg, parts: [] } as MessageV2.WithParts
+    }
 
     const message = await createUserMessage(input)
     await Session.touch(input.sessionID)
@@ -875,7 +940,7 @@ export namespace SessionPrompt {
         system: [
           ...(await SystemPrompt.environment(model)),
           ...(await InstructionPrompt.system()),
-          ...(lastUser.tools?.edit === false ? [HOLD_MODE_PROMPT] : []),
+          ...(resolveHoldMode(session, lastUser.tools) ? [HOLD_MODE_PROMPT] : []),
         ],
         messages: [
           ...(await MessageV2.toModelMessage(sessionMessages)),
@@ -961,7 +1026,7 @@ export namespace SessionPrompt {
       callID: options.toolCallId,
       directory: Instance.directory,
       worktree: Instance.worktree,
-      extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck, holdMode: input.tools?.edit === false },
+      extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck, holdMode: resolveHoldMode(input.session, input.tools) },
       agent: input.agent.name,
       messages: input.messages,
       metadata: async (val: { title?: string; metadata?: any }) => {
@@ -987,7 +1052,7 @@ export namespace SessionPrompt {
           sessionID: input.session.id,
           tool: { messageID: input.processor.message.id, callID: options.toolCallId },
           ruleset: PermissionNext.merge(input.agent.permission, input.session.permission ?? []),
-          holdMode: input.tools?.edit === false,
+          holdMode: resolveHoldMode(input.session, input.tools),
         })
       },
     })

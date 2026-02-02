@@ -102,6 +102,9 @@ export namespace Session {
       surface: z
         .enum(["cli", "web", "api", "whatsapp", "telegram"])
         .optional(),
+      mode: z
+        .enum(["hold", "release"])
+        .optional(),
     })
     .meta({
       ref: "Session",
@@ -159,6 +162,7 @@ export namespace Session {
         parentID: Identifier.schema("session").optional(),
         title: z.string().optional(),
         permission: Info.shape.permission,
+        surface: Info.shape.surface,
       })
       .optional(),
     async (input) => {
@@ -167,6 +171,7 @@ export namespace Session {
         directory: Instance.directory,
         title: input?.title,
         permission: input?.permission,
+        surface: input?.surface,
       })
     },
   )

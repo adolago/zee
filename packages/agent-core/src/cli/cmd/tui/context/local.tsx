@@ -437,57 +437,60 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       },
     }
 
-    // Hold/Release mode - controls whether the persona can edit files or only research
+    // Hold/Release mode - per-session, controls whether the persona can edit files or only research
     const mode = iife(() => {
-      const [modeStore, setModeStore] = createStore<{
-        hold: boolean // true = HOLD (research only), false = RELEASE (can edit)
-      }>({
-        hold: true, // Default to HOLD mode for safety
-      })
+      // Track which session we're looking at for mode
+      let activeSessionID: string | null = null
 
-      const modeFile = Bun.file(path.join(Global.Path.state, "mode.json"))
-
-      function saveMode() {
-        Bun.write(modeFile, JSON.stringify({ hold: modeStore.hold }))
+      function resolveHold(): boolean {
+        if (!activeSessionID) return true // Default to hold when no session
+        const session = sync.session.get(activeSessionID) as
+          | (ReturnType<typeof sync.session.get> & { mode?: "hold" | "release"; surface?: string })
+          | undefined
+        if (!session) return true
+        // Per-session mode
+        if (session.mode === "hold") return true
+        if (session.mode === "release") return false
+        // Surface defaults: messaging surfaces default to release
+        if (session.surface === "whatsapp" || session.surface === "telegram") return false
+        return true // TUI default to hold
       }
 
-      // Load persisted mode state
-      modeFile
-        .json()
-        .then((x) => {
-          if (typeof x.hold === "boolean") setModeStore("hold", x.hold)
-        })
-        .catch(() => {})
+      async function setSessionMode(mode: "hold" | "release") {
+        if (!activeSessionID) return
+        try {
+          await sdk.client.session.mode({ sessionID: activeSessionID, mode })
+        } catch (e) {
+          // Silently fail, mode will stay as-is
+        }
+      }
 
       return {
+        setSession(sessionID: string | null) {
+          activeSessionID = sessionID
+        },
         isHold() {
-          return modeStore.hold
+          return resolveHold()
         },
         isRelease() {
-          return !modeStore.hold
+          return !resolveHold()
         },
         toggle() {
-          batch(() => {
-            setModeStore("hold", !modeStore.hold)
-            saveMode()
-            toast.show({
-              variant: modeStore.hold ? "info" : "success",
-              message: modeStore.hold ? "◼ HOLD mode - Research only" : "◻ RELEASE mode - Can edit files",
-              duration: 2000,
-            })
+          const newMode = resolveHold() ? "release" : "hold"
+          setSessionMode(newMode)
+          toast.show({
+            variant: newMode === "hold" ? "info" : "success",
+            message: newMode === "hold" ? "HOLD mode - Research only" : "RELEASE mode - Can edit files",
+            duration: 2000,
           })
         },
         setHold() {
-          if (!modeStore.hold) {
-            setModeStore("hold", true)
-            saveMode()
-          }
+          if (resolveHold()) return
+          setSessionMode("hold")
         },
         setRelease() {
-          if (modeStore.hold) {
-            setModeStore("hold", false)
-            saveMode()
-          }
+          if (!resolveHold()) return
+          setSessionMode("release")
         },
       }
     })
@@ -577,14 +580,14 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           mode.setHold()
           toast.show({
             variant: "info",
-            message: "◼ HOLD mode - Research only (from tool)",
+            message: "HOLD mode - Research only (from tool)",
             duration: 2000,
           })
         } else if (pending === "release") {
           mode.setRelease()
           toast.show({
             variant: "success",
-            message: "◻ RELEASE mode - Can edit files (from tool)",
+            message: "RELEASE mode - Can edit files (from tool)",
             duration: 2000,
           })
         }

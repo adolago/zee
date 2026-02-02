@@ -1143,22 +1143,10 @@ export function Prompt(props: PromptProps) {
           })),
       })
     } else {
-      // Hold mode: force hold mode for first message in session
-      const messages = sync.data.message[sessionID] ?? []
-      const isFirstMessage = messages.length === 0
-
-      // Force hold mode for first message (read-only until user approves plan)
-      if (isFirstMessage && !local.mode.isHold()) {
-        local.mode.setHold()
-      }
-
-      // Tool permissions based on hold/release mode
+      // Tool permissions based on hold/release mode (server also resolves from session.mode)
       const holdModeTools = local.mode.isHold()
         ? { edit: false, write: false, notebook_edit: false }
         : { edit: true, write: true, notebook_edit: true }
-
-      // Inject mode awareness into the message parts
-      const modeContext = `\n\n[System: Current Agent Mode is ${local.mode.isHold() ? "HOLD" : "RELEASE"}]`
 
       sdk.client.session
         .prompt({
@@ -1174,7 +1162,7 @@ export function Prompt(props: PromptProps) {
             {
               id: Identifier.ascending("part"),
               type: "text",
-              text: inputText + modeContext,
+              text: inputText,
             },
             ...nonTextParts.map((x) => ({
               id: Identifier.ascending("part"),

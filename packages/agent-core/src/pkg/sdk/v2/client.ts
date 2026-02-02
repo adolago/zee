@@ -423,6 +423,19 @@ class ExtendedSession extends GeneratedSession {
     const { directory: _, ...rest } = parameters
     return super.unshare(rest, options)
   }
+
+  // Set session mode (hold/release) - not yet in auto-generated SDK
+  mode(
+    parameters: { sessionID: string; mode: "hold" | "release" },
+    options?: Options<never, false>
+  ) {
+    return (this as any)._client.patch({
+      url: `/session/${parameters.sessionID}/mode`,
+      body: { mode: parameters.mode },
+      headers: { "Content-Type": "application/json" },
+      ...options,
+    })
+  }
 }
 
 
