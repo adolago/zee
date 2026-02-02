@@ -33,11 +33,8 @@ function parse(tip: string): TipPart[] {
 }
 
 export type TipsProps = {
-  topBorder?: JSX.Element
   bottomBorder?: JSX.Element
   billboard?: Accessor<string | undefined>
-  compact?: boolean
-  rightContent?: JSX.Element
 }
 
 export function Tips(props: TipsProps) {
@@ -47,34 +44,15 @@ export function Tips(props: TipsProps) {
   const randomTip = TIPS[Math.floor(Math.random() * TIPS.length)]
   const displayText = createMemo(() => props.billboard?.() || randomTip)
   const parts = createMemo(() => parse(displayText()))
-  if (props.compact) {
-    return (
-      <box height={1} flexDirection="row">
-        <text fg={theme.border} flexShrink={0}>╭</text>
-        <text flexGrow={0} flexShrink={1}>
-          <For each={parts()}>
-            {(part) => <span style={{ fg: part.highlight ? theme.text : theme.textMuted }}>{part.text}</span>}
-          </For>
-        </text>
-        <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
-        {props.rightContent}
-        <text fg={theme.border} flexShrink={0}>╮</text>
-      </box>
-    )
-  }
 
   return (
     <box flexDirection="column">
-      {/* Rounded top border - either custom or default */}
-      <Show when={props.topBorder} fallback={
-        <box height={1} flexDirection="row">
-          <text fg={theme.border} flexShrink={0}>╭</text>
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
-          <text fg={theme.border} flexShrink={0}>╮</text>
-        </box>
-      }>
-        {props.topBorder}
-      </Show>
+      {/* Rounded top border */}
+      <box height={1} flexDirection="row">
+        <text fg={theme.border} flexShrink={0}>╭</text>
+        <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+        <text fg={theme.border} flexShrink={0}>╮</text>
+      </box>
       {/* Content row with side borders */}
       <box flexDirection="row">
         <text fg={theme.border} flexShrink={0}>│</text>

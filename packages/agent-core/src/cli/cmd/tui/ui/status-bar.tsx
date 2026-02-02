@@ -34,7 +34,6 @@ export function StatusBar() {
     return status.streamHealth
   })
 
-
   const [store, setStore] = createStore({
     welcome: false,
   })
@@ -102,6 +101,16 @@ export function StatusBar() {
                   )
                 }
 
+                if (health.isThinking) {
+                  const thinkingSeconds = Math.round((health.timeSinceContentMs ?? 0) / 1000)
+                  return (
+                    <>
+                      <text fg={theme.warning}>◐ thinking {thinkingSeconds}s</text>
+                      <text fg={theme.border}>{StatusBarStyle.separator}</text>
+                    </>
+                  )
+                }
+
                 if (elapsed >= 45_000) {
                   return (
                     <>
@@ -114,7 +123,7 @@ export function StatusBar() {
                 if (elapsed >= 30_000) {
                   return (
                     <>
-                      <text fg={theme.warning}>⚠ slow {elapsedSeconds}s</text>
+                      <text fg={theme.warning}>◐ waiting {elapsedSeconds}s</text>
                       <text fg={theme.border}>{StatusBarStyle.separator}</text>
                     </>
                   )

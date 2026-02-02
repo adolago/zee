@@ -25,10 +25,8 @@ export namespace Terminal {
       const paletteColors: RGBA[] = []
       let timeout: NodeJS.Timeout
 
-      const wasRaw = process.stdin.isRaw === true
       const cleanup = () => {
-        // Restore prior raw mode state to avoid breaking the TUI input handler
-        process.stdin.setRawMode(wasRaw)
+        process.stdin.setRawMode(false)
         process.stdin.removeListener("data", handler)
         clearTimeout(timeout)
       }

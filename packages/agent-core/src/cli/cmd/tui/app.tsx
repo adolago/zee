@@ -110,7 +110,6 @@ export function tui(input: {
   fetch?: typeof fetch
   events?: EventSource
   onExit?: () => Promise<void>
-  kittyKeyboard?: boolean
 }) {
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
@@ -173,7 +172,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: input.kittyKeyboard !== false ? {} : null,
+        useKittyKeyboard: {},
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
@@ -451,7 +450,7 @@ function App() {
     {
       title: "View status",
       keybind: "status_view",
-      value: "agent-core.status",
+      value: "opencode.status",
       slash: {
         name: "status",
       },
@@ -462,7 +461,7 @@ function App() {
     },
     {
       title: "View legend",
-      value: "agent-core.legend",
+      value: "opencode.legend",
       keybind: "legend_view",
       slash: {
         name: "legend",

@@ -24,7 +24,7 @@ import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
-import type { FilePart, ToolPart } from "@agent-core/sdk/v2"
+import type { FilePart } from "@agent-core/sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
@@ -52,7 +52,6 @@ export type PromptProps = {
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
   showPlaceholder?: boolean
-  sidebarVisible?: boolean
 }
 
 export type PromptRef = {
@@ -80,83 +79,7 @@ export function Prompt(props: PromptProps) {
   const dialog = useDialog()
   const toast = useToast()
   const dimensions = useTerminalDimensions()
-  // Context usage for token counter and compaction indicator (hoisted before contextUsageLabel)
-  const contextUsage = createMemo(() => {
-    if (!props.sessionID) return null
-
-    // Get current model limits first
-    const model = local.model.current()
-    if (!model) return null
-    const provider = sync.data.provider.find((p) => p.id === model.providerID)
-    const modelInfo = provider?.models[model.modelID]
-    if (!modelInfo?.limit?.context) return null
-
-    const outputLimit = Math.min(modelInfo.limit.output ?? 8192, 16384)
-    const usable = modelInfo.limit.input ?? (modelInfo.limit.context - outputLimit)
-    if (usable <= 0) return null
-
-    // Check for last assistant message tokens
-    const messages = sync.data.message[props.sessionID] ?? []
-    const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
-
-    // If no assistant message yet, show 0% with model limit
-    if (!lastAssistant?.tokens) {
-      return {
-        count: 0,
-        limit: usable,
-        percent: 0,
-      }
-    }
-
-    // Calculate usage (same formula as compaction.ts)
-    const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
-
-    return {
-      count,
-      limit: usable,
-      percent: Math.min(100, Math.round((count / usable) * 100)),
-    }
-  })
-  const contextUsageLabel = createMemo(() => {
-    const ctx = contextUsage()
-    if (!ctx) return ""
-    const limit = ctx.limit >= 1000000
-      ? `${(ctx.limit / 1000000).toFixed(1)}M`
-      : ctx.limit >= 1000
-        ? `${Math.round(ctx.limit / 1000)}k`
-        : `${ctx.limit}`
-    return `${ctx.percent}% of ${limit}`
-  })
-  const [store, setStore] = createStore<{
-    prompt: PromptInfo
-    mode: "normal" | "shell"
-    extmarkToPartIndex: Map<number, number>
-    interrupt: number
-  }>({
-    prompt: {
-      input: "",
-      parts: [],
-    },
-    mode: "normal",
-    extmarkToPartIndex: new Map(),
-    interrupt: 0,
-  })
-
-  const agentLabel = createMemo(() => Locale.titlecase(local.agent.current().name))
-  const skillsLabel = createMemo(() => `${sync.data.agent?.length ?? 0} skills`)
-  const [vimPending, setVimPending] = createSignal("")
-  const vimLabel = createMemo(() => {
-    if (!vim.enabled || store.mode === "shell") return ""
-    if (vim.isNormal) return vimPending() ? `N ${vimPending()}` : "N"
-    return "I"
-  })
-  const topLineFill = createMemo(() => {
-    const left = contextUsageLabel()
-    const leftLen = left ? left.length + 1 : 0
-    const rightLen = agentLabel().length + 1 + skillsLabel().length + (vimLabel() ? 1 + vimLabel().length : 0)
-    const reserved = 2 + leftLen + rightLen
-    return "─".repeat(Math.max(1, dimensions().width - reserved))
-  })
+  const fill = createMemo(() => "─".repeat(dimensions().width))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {
@@ -179,83 +102,6 @@ export function Prompt(props: PromptProps) {
     const s = status()
     return s.type === "busy" ? (s.streamHealth as StreamHealthExtended | undefined) : undefined
   })
-  const spinnerDef = createMemo(() => {
-    const color = local.agent.color(local.agent.current().name)
-    return {
-      frames: createFrames({
-        color,
-        style: "blocks",
-        animation: "carousel",
-        width: 10,
-        carouselActiveCount: 5,
-        inactiveFactor: 0.6,
-        minAlpha: 0.3,
-      }),
-      color: createColors({
-        color,
-        style: "blocks",
-        animation: "carousel",
-        width: 10,
-        carouselActiveCount: 5,
-        inactiveFactor: 0.6,
-        minAlpha: 0.3,
-      }),
-    }
-  })
-  type ActivityState = "idle" | "thinking" | "running" | "generating"
-  type ActivityInfo = { state: ActivityState; label: string }
-  const activityInfo = createMemo<ActivityInfo>(() => {
-    if (!props.sessionID) return { state: "idle", label: "" }
-    const currentStatus = status()
-    if (currentStatus.type !== "busy") return { state: "idle", label: "" }
-
-    const messages = sync.data.message[props.sessionID] ?? []
-    const pendingMessage = messages.findLast((x) => x.role === "assistant" && !x.time.completed)
-    if (pendingMessage) {
-      const parts = sync.data.part[pendingMessage.id] ?? []
-      const runningTools = parts.filter(
-        (p): p is ToolPart => p.type === "tool" && (p.state.status === "pending" || p.state.status === "running"),
-      )
-      if (runningTools.length > 0) {
-        const toolName = runningTools[0].tool ?? "tool"
-        const extra = runningTools.length > 1 ? ` +${runningTools.length - 1}` : ""
-        return { state: "running", label: `running ${toolName}${extra}` }
-      }
-    }
-
-    const phase = streamHealth()?.phase
-    if (phase === "tool_calling") return { state: "running", label: "preparing tool call" }
-    if (phase === "generating") return { state: "generating", label: "responding" }
-    if (phase === "starting") return { state: "thinking", label: "starting" }
-    return { state: "thinking", label: "thinking" }
-  })
-  const activityLabel = createMemo(() => (status().type === "busy" ? activityInfo().label : ""))
-  const bottomLineFill = createMemo(() => {
-    const label = activityLabel()
-    const leftLabel = label ? ` ${label}` : ""
-    const cancelLabel = status().type === "busy" ? " Esc to cancel" : ""
-    const spinnerWidth =
-      status().type === "busy" ? Math.max(1, spinnerDef().frames[0]?.length ?? 1) : 1
-    const leftLen = spinnerWidth + leftLabel.length + cancelLabel.length
-    if (props.sidebarVisible) {
-      const reserved = 2 + leftLen
-      return "─".repeat(Math.max(1, dimensions().width - reserved))
-    }
-    const parsed = local.model.parsed()
-    const modelLabel = parsed ? `${parsed.provider} ${parsed.model}` : ""
-    const variant = local.model.variant.current()
-    const variantLabel = variant ? ` ${variant}` : ""
-    let pathLabel = ""
-    if (sync.data.path?.directory) {
-      pathLabel += ` ~${sync.data.path.directory.replace(process.env.HOME ?? "", "")}`
-    }
-    if (sync.data.vcs?.branch) {
-      pathLabel += ` (${sync.data.vcs.branch})`
-    }
-    const rightLen = modelLabel.length + variantLabel.length + pathLabel.length
-    const reserved = 2 + leftLen + rightLen
-    return "─".repeat(Math.max(1, dimensions().width - reserved))
-  })
   // Session for token counter
   const session = createMemo(() => props.sessionID ? sync.session.get(props.sessionID) : undefined)
   // Cumulative agent work time for COMPLETED assistant responses only
@@ -270,23 +116,63 @@ export function Prompt(props: PromptProps) {
     }
     return Math.floor(total / 1000)
   })
+  // Context usage for token counter and compaction indicator
+  const contextUsage = createMemo(() => {
+    if (!props.sessionID) return null
+    
+    // Get current model limits first
+    const model = local.model.current()
+    if (!model) return null
+    const provider = sync.data.provider.find((p) => p.id === model.providerID)
+    const modelInfo = provider?.models[model.modelID]
+    if (!modelInfo?.limit?.context) return null
+    
+    const outputLimit = Math.min(modelInfo.limit.output ?? 8192, 16384)
+    const usable = modelInfo.limit.input ?? (modelInfo.limit.context - outputLimit)
+    if (usable <= 0) return null
+    
+    // Check for last assistant message tokens
+    const messages = sync.data.message[props.sessionID] ?? []
+    const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
+    
+    // If no assistant message yet, show 0% with model limit
+    if (!lastAssistant?.tokens) {
+      return {
+        count: 0,
+        limit: usable,
+        percent: 0,
+      }
+    }
+    
+    // Calculate usage (same formula as compaction.ts)
+    const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
+    
+    return {
+      count,
+      limit: usable,
+      percent: Math.min(100, Math.round((count / usable) * 100)),
+    }
+  })
+  const diffStats = createMemo(() => {
+    if (!props.sessionID) return null
+    const diffs = sync.data.session_diff[props.sessionID] ?? []
+    if (diffs.length === 0) return null
+    let additions = 0
+    let deletions = 0
+    let modified = 0
+    for (const d of diffs) {
+      additions += d.additions
+      deletions += d.deletions
+      if (d.additions > 0 && d.deletions > 0) modified++
+    }
+    return { files: diffs.length, additions, deletions, modified }
+  })
+  const gitBranch = createMemo(() => sync.data.vcs?.branch)
   const history = usePromptHistory()
   const stash = usePromptStash()
   const command = useCommandDialog()
   const renderer = useRenderer()
   const { theme, syntax } = useTheme()
-  const activityColor = createMemo(() => {
-    switch (activityInfo().state) {
-      case "running":
-        return theme.warning
-      case "generating":
-        return theme.success
-      case "thinking":
-        return theme.accent
-      default:
-        return theme.textMuted
-    }
-  })
   const kv = useKV()
   const billboard = createMemo(() => kv.get("zee_status_banner", undefined) as string | undefined)
   const [dictationConfig, setDictationConfig] = createSignal<Dictation.RuntimeConfig | undefined>(undefined)
@@ -339,6 +225,7 @@ export function Prompt(props: PromptProps) {
 
   // Vim engine for full normal-mode command handling
   const vimEngine = new VimCommands.VimEngine()
+  const [vimPending, setVimPending] = createSignal("")
 
   /** Bridge between the VimEngine and the textarea renderable */
   function createVimContext(): VimCommands.VimCommandContext {
@@ -646,6 +533,21 @@ export function Prompt(props: PromptProps) {
     const messages = sync.data?.message?.[props.sessionID]
     if (!messages) return undefined
     return messages.findLast((m) => m.role === "user")
+  })
+
+  const [store, setStore] = createStore<{
+    prompt: PromptInfo
+    mode: "normal" | "shell"
+    extmarkToPartIndex: Map<number, number>
+    interrupt: number
+  }>({
+    prompt: {
+      input: "",
+      parts: [],
+    },
+    mode: "normal",
+    extmarkToPartIndex: new Map(),
+    interrupt: 0,
   })
 
   // Initialize agent/model/variant from last user message when session changes
@@ -1465,6 +1367,47 @@ export function Prompt(props: PromptProps) {
     return
   }
 
+  const highlight = createMemo(() => {
+    if (keybind.leader) return theme.border
+    if (store.mode === "shell") return theme.primary
+    return theme.primary
+  })
+
+  const showVariant = createMemo(() => {
+    const variants = local.model.variant.list()
+    if (variants.length === 0) return false
+    const current = local.model.variant.current()
+    return !!current
+  })
+
+  const spinnerDef = createMemo(() => {
+    const color = local.agent.color(local.agent.current().name)
+    return {
+      frames: createFrames({
+        color,
+        style: "blocks",
+        animation: "carousel",
+        width: 10,
+        carouselActiveCount: 5,
+        inactiveFactor: 0.6,
+        minAlpha: 0.3,
+      }),
+      color: createColors({
+        color,
+        style: "blocks",
+        animation: "carousel",
+        width: 10,
+        carouselActiveCount: 5,
+        inactiveFactor: 0.6,
+        minAlpha: 0.3,
+      }),
+    }
+  })
+  const idleFrames = createMemo(() => {
+    const frame = spinnerDef().frames[0]
+    if (!frame) return ["..."]
+    return [frame]
+  })
   const chip = (content: JSX.Element) => (
     <box
       flexDirection="row"
@@ -1500,46 +1443,54 @@ export function Prompt(props: PromptProps) {
         promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
-        <Tips compact />
+        {/* Tips/billboard box with shared middle border (T-junctions) */}
+        <Tips billboard={billboard} bottomBorder={
+          <box height={1} flexDirection="row">
+            <text fg={theme.border} flexShrink={0}>├</text>
+            {/* Left side: context usage */}
+            <Show when={contextUsage()}>
+              {(ctx) => (
+                <>
+                  <text
+                    fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
+                    flexShrink={0}
+                  >
+                    {ctx().percent}% of {ctx().limit >= 1000000 ? `${(ctx().limit / 1000000).toFixed(1)}M` : ctx().limit >= 1000 ? `${Math.round(ctx().limit / 1000)}k` : ctx().limit}
+                  </text>
+                  <text fg={theme.border} flexShrink={0}>─</text>
+                </>
+              )}
+            </Show>
 
-        <box height={1} flexDirection="row">
-          <text fg={theme.border} flexShrink={0}>╭</text>
-          <Show when={contextUsageLabel()}>
-            <>
+            {/* Line fill */}
+            <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+            {/* Right side: agent info */}
+            <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
+            <text fg={theme.border} flexShrink={0}>─</text>
+            <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
+            <Show when={vim.enabled && store.mode !== "shell"}>
+              <text fg={theme.border} flexShrink={0}>─</text>
               <text
-                fg={(() => {
-                  const ctx = contextUsage()
-                  if (!ctx) return theme.textMuted
-                  return ctx.percent >= 80 ? theme.error : ctx.percent >= 60 ? theme.warning : theme.textMuted
-                })()}
+                fg={vim.isNormal ? theme.accent : theme.success}
+                attributes={TextAttributes.BOLD}
                 flexShrink={0}
               >
-                {contextUsageLabel()}
+                {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
               </text>
-              <text fg={theme.border} flexShrink={0}>─</text>
-            </>
-          </Show>
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{topLineFill()}</text>
-          <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
-          <text fg={theme.border} flexShrink={0}>─</text>
-          <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
-          <Show when={vim.enabled && store.mode !== "shell"}>
-            <text fg={theme.border} flexShrink={0}>─</text>
-            <text
-              fg={vim.isNormal ? theme.accent : theme.success}
-              attributes={TextAttributes.BOLD}
-              flexShrink={0}
-            >
-              {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
-            </text>
-          </Show>
-          <text fg={theme.border} flexShrink={0}>─╮</text>
-        </box>
+            </Show>
+            <text fg={theme.border} flexShrink={0}>─┤</text>
+          </box>
+        } />
         
+        {/* Input area with side borders (stacked box style) */}
         <box
           border={["left", "right"]}
           borderColor={theme.border}
-          minHeight={1}
+          customBorderChars={{
+            vertical: "│",
+            topLeft: "", bottomLeft: "", topRight: "", bottomRight: "",
+            horizontal: "", topT: "", bottomT: "", leftT: "", rightT: "", cross: "",
+          }}
           paddingLeft={1}
           paddingRight={1}
         >
@@ -1605,9 +1556,7 @@ export function Prompt(props: PromptProps) {
                   if (vim.isNormal && !keybind.leader) {
                     // Single character commands (no modifiers except shift for uppercase)
                     if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
-                      const key = e.shift && /^[a-z]$/.test(e.name)
-                        ? e.name.toUpperCase()
-                        : e.name
+                      const key = e.name
 
                       // Allow `!` at position 0 to trigger shell mode
                       if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
@@ -1826,11 +1775,13 @@ export function Prompt(props: PromptProps) {
               syntaxStyle={syntax()}
             />
         </box>
+        {/* Bottom border with embedded status info */}
         <box height={1} flexDirection="row">
           <text fg={theme.border} flexShrink={0}>╰</text>
+          {/* Left: spinner only */}
           <Show
             when={status().type === "busy"}
-            fallback={<text fg={theme.textMuted}>~</text>}
+            fallback={<text fg={highlight()}>~</text>}
           >
             <spinner
               color={spinnerDef().color}
@@ -1838,38 +1789,58 @@ export function Prompt(props: PromptProps) {
               interval={60}
             />
           </Show>
-          <Show when={status().type === "busy" && activityLabel()}>
-            <text fg={activityColor()}>{` ${activityLabel()}`}</text>
-          </Show>
           <Show when={status().type === "busy"}>
             <text fg={theme.textMuted}> Esc to cancel</text>
           </Show>
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{bottomLineFill()}</text>
-          <Show when={!props.sidebarVisible}>
-            {(() => {
-              const parsed = local.model.parsed()
-              const variant = local.model.variant.current()
-              return (
-                <>
-                  <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
-                  <Show when={variant}>
-                    <text fg={theme.accent} flexShrink={0}> {variant}</text>
-                  </Show>
-                </>
-              )
-            })()}
-            <text fg={theme.textMuted} flexShrink={0}>
-              <Show when={sync.data.path?.directory}>
-                {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
-              </Show>
-              <Show when={sync.data.vcs?.branch}>
-                {` (${sync.data.vcs?.branch})`}
-              </Show>
-            </text>
-          </Show>
+          {/* Center: line fill */}
+          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+          {/* Right: model + path */}
+          {(() => {
+            const parsed = local.model.parsed()
+            const variant = local.model.variant.current()
+            return (
+              <>
+                <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
+                <Show when={variant}>
+                  <text fg={theme.accent} flexShrink={0}> {variant}</text>
+                </Show>
+              </>
+            )
+          })()}
+          <text fg={theme.textMuted} flexShrink={0}>
+            <Show when={sync.data.path?.directory}>
+              {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
+            </Show>
+            <Show when={sync.data.vcs?.branch}>
+              {` (${sync.data.vcs?.branch})`}
+            </Show>
+          </text>
           <text fg={theme.border} flexShrink={0}>─╯</text>
         </box>
       </box>
+      {/* Diff stats line outside box, below bottom border */}
+      <Show when={diffStats()}>
+        {(stats) => (
+          <box height={1} flexDirection="row" justifyContent="flex-end" paddingRight={1}>
+            <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>
+            <Show when={stats().additions > 0}>
+              <text fg={theme.success}>+{stats().additions}</text>
+            </Show>
+            <Show when={stats().additions > 0 && stats().modified > 0}>
+              <text> </text>
+            </Show>
+            <Show when={stats().modified > 0}>
+              <text fg={theme.warning}>~{stats().modified}</text>
+            </Show>
+            <Show when={(stats().additions > 0 || stats().modified > 0) && stats().deletions > 0}>
+              <text> </text>
+            </Show>
+            <Show when={stats().deletions > 0}>
+              <text fg={theme.error}>-{stats().deletions}</text>
+            </Show>
+          </box>
+        )}
+      </Show>
     </>
   )
 }

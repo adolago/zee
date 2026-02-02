@@ -42,6 +42,7 @@ import { TodoWriteTool } from "@/tool/todo"
 import type { GrepTool } from "@/tool/grep"
 import type { ListTool } from "@/tool/ls"
 import type { EditTool } from "@/tool/edit"
+import type { ApplyPatchTool } from "@/tool/apply_patch"
 import type { WebFetchTool } from "@/tool/webfetch"
 import type { TaskTool } from "@/tool/task"
 import type { QuestionTool } from "@/tool/question"
@@ -207,8 +208,7 @@ export function Session() {
     return false
   })
   const showTimestamps = createMemo(() => timestamps() === "show")
-  const sidebarWidth = 50
-  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? sidebarWidth + 2 : 0) - 4)
+  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
 
   const scrollAcceleration = createMemo(() => {
     return new LinearScrollAccel()
@@ -605,7 +605,7 @@ export function Session() {
       },
     },
     {
-      title: conceal() ? "Disable code concealment" : "Enable code concealment",
+      title: "Toggle code concealment",
       value: "session.toggle.conceal",
       keybind: "messages_toggle_conceal" as any,
       category: "Session",
@@ -1182,7 +1182,6 @@ export function Session() {
                   toBottom()
                 }}
                 sessionID={route.sessionID}
-                sidebarVisible={sidebarVisible()}
               />
             </box>
           </Show>
@@ -1597,10 +1596,11 @@ function InlineTool(props: {
     return callID === props.part.callID
   })
 
-  const status = createMemo(() => props.part.state.status)
-  const isRunning = createMemo(() => status() === "running" || status() === "pending")
-  const isCompleted = createMemo(() => status() === "completed")
-  const isError = createMemo(() => status() === "error")
+  const fg = createMemo(() => {
+    if (permission()) return theme.warning
+    if (props.complete) return theme.textMuted
+    return theme.text
+  })
 
   const error = createMemo(() => (props.part.state.status === "error" ? props.part.state.error : undefined))
 
@@ -1611,66 +1611,21 @@ function InlineTool(props: {
       error()?.includes("user dismissed"),
   )
 
-  // Status icon based on state
-  const statusIcon = createMemo(() => {
-    if (permission()) return "⚠"
-    if (isError()) return "✗"
-    if (isRunning()) return "◐"
-    if (isCompleted()) return "✓"
-    return "○"
-  })
-
-  // Icon color based on state
-  const iconColor = createMemo(() => {
-    if (permission()) return theme.warning
-    if (isError()) return theme.error
-    if (isRunning()) return theme.accent
-    if (isCompleted()) return theme.success
-    return theme.textMuted
-  })
-
-  // Text color based on state
-  const textColor = createMemo(() => {
-    if (permission()) return theme.warning
-    if (isError()) return theme.error
-    if (isRunning()) return theme.text
-    return theme.textMuted
-  })
-
-  // Duration for completed tools
-  const duration = createMemo(() => {
-    const state = props.part.state
-    if (state.status === "completed" || state.status === "error") {
-      const ms = state.time.end - state.time.start
-      if (ms < 1000) return `${ms}ms`
-      return `${(ms / 1000).toFixed(1)}s`
-    }
-    return undefined
-  })
-
   return (
     <box flexDirection="column">
-      {/* Status icon + Tool name + Duration */}
-      <text attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
-        <span style={{ fg: iconColor() }}>{statusIcon()}</span>
-        <span style={{ fg: textColor() }}> {props.toolName ?? props.part.tool}</span>
-        <Show when={duration()}>
-          <span style={{ fg: theme.textMuted }}> ({duration()})</span>
-        </Show>
-        <Show when={isRunning() && !props.complete}>
-          <span style={{ fg: theme.textMuted }}> {props.pending}</span>
+      {/* Amp-style: ✓ ToolName */}
+      <text fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
+        <Show fallback={<>~ {props.pending}</>} when={props.complete}>
+          <span style={{ fg: theme.success }}>✓</span>
+          <span style={{ fg: fg() }}> {props.toolName ?? props.part.tool}</span>
         </Show>
       </text>
-      {/* Query/details on second line */}
-      <Show when={props.query}>
-        <text fg={theme.textMuted} paddingLeft={2}>
-          └ {props.query}
-        </text>
+      {/* Tree structure for query/details */}
+      <Show when={props.query && props.complete}>
+        <text fg={theme.textMuted} paddingLeft={1}>├── {props.query}</text>
       </Show>
       <Show when={error() && !denied()}>
-        <text fg={theme.error} paddingLeft={2}>
-          └ {error()}
-        </text>
+        <text fg={theme.error} paddingLeft={1}>└── {error()}</text>
       </Show>
     </box>
   )
@@ -1680,52 +1635,20 @@ function BlockTool(props: { title: string; children: JSX.Element; onClick?: () =
   const { theme } = useTheme()
   const renderer = useRenderer()
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
-  const status = createMemo(() => props.part?.state.status)
-  const isCompleted = createMemo(() => status() === "completed")
-  const isError = createMemo(() => status() === "error")
-
-  // Status icon for block tool header
-  const statusIcon = createMemo(() => {
-    if (isError()) return "✗"
-    if (isCompleted()) return "✓"
-    return "○"
-  })
-
-  const iconColor = createMemo(() => {
-    if (isError()) return theme.error
-    if (isCompleted()) return theme.success
-    return theme.textMuted
-  })
-
-  // Duration for completed tools
-  const duration = createMemo(() => {
-    const state = props.part?.state
-    if (state && (state.status === "completed" || state.status === "error")) {
-      const ms = state.time.end - state.time.start
-      if (ms < 1000) return `${ms}ms`
-      return `${(ms / 1000).toFixed(1)}s`
-    }
-    return undefined
-  })
-
   return (
     <box
       border={["left"]}
       paddingLeft={1}
       backgroundColor={theme.backgroundPanel}
       customBorderChars={SplitBorder.customBorderChars}
-      borderColor={isError() ? theme.error : theme.background}
+      borderColor={theme.background}
       onMouseUp={() => {
         if (renderer.getSelection()?.getSelectedText()) return
         props.onClick?.()
       }}
     >
-      <text paddingLeft={1}>
-        <span style={{ fg: iconColor() }}>{statusIcon()}</span>
-        <span style={{ fg: theme.textMuted }}> {props.title}</span>
-        <Show when={duration()}>
-          <span style={{ fg: theme.textMuted }}> ({duration()})</span>
-        </Show>
+      <text paddingLeft={1} fg={theme.textMuted}>
+        {props.title}
       </text>
       {props.children}
       <Show when={error()}>
@@ -1735,7 +1658,7 @@ function BlockTool(props: { title: string; children: JSX.Element; onClick?: () =
   )
 }
 
-function Bash(props: ToolProps<Tool.Info<any, any>>) {
+function Bash(props: ToolProps<typeof BashTool>) {
   const { theme } = useTheme()
   const sync = useSync()
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
@@ -2043,7 +1966,7 @@ function Edit(props: ToolProps<typeof EditTool>) {
   )
 }
 
-function ApplyPatch(props: ToolProps<Tool.Info<any, any>>) {
+function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
   const ctx = use()
   const { theme, syntax } = useTheme()
 
@@ -2172,7 +2095,7 @@ function Question(props: ToolProps<typeof QuestionTool>) {
   )
 }
 
-function Skill(props: ToolProps<Tool.Info<any, any>>) {
+function Skill(props: ToolProps<typeof SkillTool>) {
   return (
     <InlineTool icon=">" pending="Loading skill..." complete={props.input.name} part={props.part}>
       Skill

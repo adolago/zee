@@ -1,5 +1,5 @@
-import { createAgentCoreClient } from "@agent-core/sdk/v2"
-import { createAgentCoreClient as createEventClient } from "@agent-core/sdk"
+import { createOpencodeClient } from "@agent-core/sdk/v2"
+import { createOpencodeClient as createEventClient } from "@agent-core/sdk"
 import { createSimpleContext } from "./helper"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { batch, onCleanup, onMount } from "solid-js"
@@ -17,7 +17,7 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
   name: "SDK",
   init: (props: { url: string; directory?: string; fetch?: typeof fetch; events?: EventSource }) => {
     const abort = new AbortController()
-    const sdk = createAgentCoreClient({
+    const sdk = createOpencodeClient({
       baseUrl: props.url,
       signal: abort.signal,
       directory: props.directory,

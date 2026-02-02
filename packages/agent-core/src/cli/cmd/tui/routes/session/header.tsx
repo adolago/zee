@@ -98,9 +98,13 @@ export function Header() {
             </box>
           </Match>
           <Match when={true}>
-            {/* Session title is now shown in the prompt's top border */}
-            {/* Only show minimal header space for consistency */}
-            <box height={0} />
+            <box
+              flexDirection={narrow() ? "column" : "row"}
+              justifyContent="space-between"
+              gap={1}
+            >
+              <Title session={session} />
+            </box>
           </Match>
         </Switch>
       </box>
