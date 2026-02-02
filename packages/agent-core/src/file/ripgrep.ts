@@ -211,7 +211,7 @@ export namespace Ripgrep {
     input.signal?.throwIfAborted()
 
     const args = [await filepath(), "--files", "--glob=!.git/*"]
-    if (input.follow === true) args.push("--follow")
+    if (input.follow) args.push("--follow")
     if (input.hidden !== false) args.push("--hidden")
     if (input.maxDepth !== undefined) args.push(`--max-depth=${input.maxDepth}`)
     if (input.glob) {
@@ -411,7 +411,7 @@ export namespace Ripgrep {
   }) {
     // Sentinel: Removed quotes around glob to support Bun.spawn (array args) and fixed command injection.
     const args = [`${await filepath()}`, "--json", "--hidden", "--glob=!.git/*"]
-    if (input.follow === true) args.push("--follow")
+    if (input.follow) args.push("--follow")
 
     if (input.glob) {
       for (const g of input.glob) {
