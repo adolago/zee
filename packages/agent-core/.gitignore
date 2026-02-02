@@ -1,5 +1,6 @@
 research
 dist
+dist-check
 /gen
 app.log
 # Allow SDK generated files
