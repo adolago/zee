@@ -1,0 +1,4 @@
+## 2025-02-17 - Critical Path Traversal in Pty Service
+**Vulnerability:** `Pty.create` accepted an arbitrary `cwd` parameter without validation, allowing authenticated users with WRITE scope to spawn a shell in any directory on the host system (e.g., `/`, `/root`). This allows sandbox escape and full system compromise if the process has privileges.
+**Learning:** The `Pty` service implementation missed the validation check for `cwd`. Although `Filesystem.containsResolved` is used elsewhere (like `File.read`), it was overlooked in the PTY service. Input validation must be applied at every entry point where file paths or execution contexts are defined.
+**Prevention:** Always validate `cwd` and file path parameters against `Instance.directory` using `Filesystem.containsResolved` (or similar secure method that handles symlinks) before executing commands or accessing files. Enforce this pattern in all service creation methods.
