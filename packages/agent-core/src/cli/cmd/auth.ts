@@ -223,6 +223,22 @@ async function discoverSkillAuthProviders(): Promise<SkillAuthProvider[]> {
   return providers
 }
 
+function hasValue(value: unknown): boolean {
+  return typeof value === "string" ? value.trim().length > 0 : false
+}
+
+function isSkillEnvSatisfied(params: {
+  envVar: string
+  provider: SkillAuthProvider
+  entry?: { apiKey?: string; env?: Record<string, string> }
+}): boolean {
+  if (hasValue(process.env[params.envVar])) return true
+  const entryEnv = params.entry?.env?.[params.envVar]
+  if (hasValue(entryEnv)) return true
+  if (params.provider.primaryEnv === params.envVar && hasValue(params.entry?.apiKey)) return true
+  return false
+}
+
 /** Marker prefix to distinguish skill providers from LLM providers. */
 const SKILL_PROVIDER_PREFIX = "skill:"
 
@@ -492,6 +508,7 @@ export const AuthListCommand = cmd({
     // Skills credentials section
     const config = await Config.get().catch(() => undefined)
     const skillEntries = config?.skills?.entries
+    const skillProviders = await discoverSkillAuthProviders().catch(() => [])
     if (skillEntries) {
       const configuredSkills = Object.entries(skillEntries).filter(
         ([, entry]) => entry && (entry.apiKey || (entry.env && Object.keys(entry.env).length > 0)),
@@ -509,6 +526,29 @@ export const AuthListCommand = cmd({
         }
 
         prompts.outro(`${configuredSkills.length} skill credential` + (configuredSkills.length === 1 ? "" : "s"))
+      }
+    }
+
+    if (skillProviders.length > 0) {
+      const missingSkills = skillProviders
+        .map((provider) => {
+          const entry = skillEntries?.[provider.name] as { apiKey?: string; env?: Record<string, string> } | undefined
+          const missing = provider.envVars.filter((envVar) =>
+            !isSkillEnvSatisfied({ envVar, provider, entry }),
+          )
+          return { provider, missing }
+        })
+        .filter((item) => item.missing.length > 0)
+
+      if (missingSkills.length > 0) {
+        UI.empty()
+        prompts.intro("Skills missing env vars")
+
+        for (const item of missingSkills) {
+          prompts.log.info(`${item.provider.name} ${UI.Style.TEXT_DIM}${item.missing.join(", ")}`)
+        }
+
+        prompts.outro(`${missingSkills.length} skill` + (missingSkills.length === 1 ? "" : "s"))
       }
     }
   },
