@@ -5,6 +5,7 @@ import { createMessageTool } from "./message-tool.js";
 
 const mocks = vi.hoisted(() => ({
   runMessageAction: vi.fn(),
+  recordSessionHandoff: vi.fn(),
 }));
 
 vi.mock("../../infra/outbound/message-action-runner.js", async () => {
@@ -14,6 +15,16 @@ vi.mock("../../infra/outbound/message-action-runner.js", async () => {
   return {
     ...actual,
     runMessageAction: mocks.runMessageAction,
+  };
+});
+
+vi.mock("../../config/sessions.js", async () => {
+  const actual = await vi.importActual<typeof import("../../config/sessions.js")>(
+    "../../config/sessions.js",
+  );
+  return {
+    ...actual,
+    recordSessionHandoff: mocks.recordSessionHandoff,
   };
 });
 
@@ -107,6 +118,7 @@ describe("message tool path passthrough", () => {
 describe("message tool handoff defaults", () => {
   it("defaults WhatsApp target to user.phone when handoff is requested", async () => {
     mocks.runMessageAction.mockClear();
+    mocks.recordSessionHandoff.mockClear();
     mocks.runMessageAction.mockResolvedValue({
       kind: "send",
       action: "send",
@@ -134,5 +146,42 @@ describe("message tool handoff defaults", () => {
     const call = mocks.runMessageAction.mock.calls[0]?.[0];
     expect(call?.params?.target).toBe("+15551230000");
     expect(call?.params?.channel).toBe("whatsapp");
+    expect(mocks.recordSessionHandoff).toHaveBeenCalledTimes(1);
+  });
+
+  it("auto-enables handoff for WhatsApp self DM when not explicit", async () => {
+    mocks.runMessageAction.mockClear();
+    mocks.recordSessionHandoff.mockClear();
+    mocks.runMessageAction.mockResolvedValue({
+      kind: "send",
+      action: "send",
+      channel: "whatsapp",
+      to: "+15551230000",
+      handledBy: "plugin",
+      payload: {},
+      dryRun: false,
+    } satisfies MessageActionRunResult);
+
+    const tool = createMessageTool({
+      agentSessionKey: "agent:main:whatsapp:dm:+15551230000",
+      config: {
+        user: { phone: "+15551230000" },
+        channels: { whatsapp: {} },
+      } as never,
+    });
+
+    await tool.execute("1", {
+      action: "send",
+      message: "hello",
+      channel: "whatsapp",
+    });
+
+    const call = mocks.runMessageAction.mock.calls[0]?.[0];
+    expect(call?.params?.target).toBe("+15551230000");
+    expect(mocks.recordSessionHandoff).toHaveBeenCalledTimes(1);
+    const handoff = mocks.recordSessionHandoff.mock.calls[0]?.[0];
+    expect(handoff?.channel).toBe("whatsapp");
+    expect(handoff?.target).toBe("+15551230000");
+    expect(handoff?.sessionKey).toBe("agent:main:whatsapp:dm:+15551230000");
   });
 });

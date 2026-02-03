@@ -11,6 +11,9 @@ import path from "path"
 import fs from "fs/promises"
 import net from "net"
 
+import { CONFIG_FILE_NAMES, CONFIG_DIR_NAMES, getGlobalConfigDir } from "../config/defaults"
+import { interpolate } from "../config/interpolation"
+
 const log = Log.create({ service: "setup-check" })
 
 export interface SetupCheckResult {
@@ -30,6 +33,108 @@ export interface SetupCheckResult {
 }
 
 const AUTH_JSON_PATH = path.join(Global.Path.data, "auth.json")
+const CONFIG_DISPLAY_MAX = 3
+
+async function findProjectConfigDirs(startDir: string): Promise<string[]> {
+  const dirs: string[] = []
+  let currentDir = startDir
+  const root = path.parse(currentDir).root
+
+  while (currentDir !== root) {
+    for (const dirName of CONFIG_DIR_NAMES) {
+      const configDir = path.join(currentDir, dirName)
+      try {
+        const stat = await fs.stat(configDir)
+        if (stat.isDirectory()) {
+          dirs.push(configDir)
+        }
+      } catch {
+        // Directory doesn't exist
+      }
+    }
+
+    for (const fileName of CONFIG_FILE_NAMES) {
+      const filePath = path.join(currentDir, fileName)
+      try {
+        await fs.access(filePath)
+        if (!dirs.includes(currentDir)) {
+          dirs.push(currentDir)
+        }
+      } catch {
+        // File doesn't exist
+      }
+    }
+
+    const gitDir = path.join(currentDir, ".git")
+    try {
+      await fs.access(gitDir)
+      break
+    } catch {
+      // Not a git repo - continue upward
+    }
+
+    if (currentDir === os.homedir()) {
+      break
+    }
+
+    currentDir = path.dirname(currentDir)
+  }
+
+  return dirs.reverse()
+}
+
+function formatConfigPath(filePath: string): string {
+  const home = os.homedir()
+  if (filePath.startsWith(home)) {
+    return filePath.replace(home, "~")
+  }
+  return filePath
+}
+
+async function scanMissingEnvPlaceholders(): Promise<string[]> {
+  const warnings: string[] = []
+  const missingByVar = new Map<string, Set<string>>()
+
+  const globalDir = getGlobalConfigDir()
+  const projectDirs = await findProjectConfigDirs(process.cwd())
+  const scanDirs = [globalDir, ...projectDirs]
+
+  for (const dir of scanDirs) {
+    for (const fileName of CONFIG_FILE_NAMES) {
+      const filePath = path.join(dir, fileName)
+      let text: string
+      try {
+        text = await fs.readFile(filePath, "utf-8")
+      } catch {
+        continue
+      }
+
+      const interpolated = await interpolate(text, {
+        configDir: path.dirname(filePath),
+        env: process.env,
+        strict: false,
+      })
+
+      for (const missing of interpolated.missing) {
+        if (missing.type !== "env") continue
+        const list = missingByVar.get(missing.name) ?? new Set<string>()
+        list.add(filePath)
+        missingByVar.set(missing.name, list)
+      }
+    }
+  }
+
+  for (const [name, files] of missingByVar.entries()) {
+    const locations = Array.from(files)
+      .slice(0, CONFIG_DISPLAY_MAX)
+      .map(formatConfigPath)
+    const suffix = files.size > CONFIG_DISPLAY_MAX ? ` (+${files.size - CONFIG_DISPLAY_MAX} more)` : ""
+    const locationText = locations.length > 0 ? ` in ${locations.join(", ")}${suffix}` : ""
+    warnings.push(`Missing env var ${name}${locationText}`)
+  }
+
+  return warnings
+}
 
 /**
  * Check if Qdrant is reachable at the given URL
@@ -134,6 +239,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   const qdrantUrl = getQdrantUrl()
   const qdrantCheck = await checkQdrantConnectivity(qdrantUrl)
   const googleCheck = await checkGoogleApiKey()
+  const missingEnvWarnings = await scanMissingEnvPlaceholders().catch(() => [])
 
   if (!qdrantCheck.available) {
     errors.push(`Qdrant not available at ${qdrantUrl}: ${qdrantCheck.error}`)
@@ -145,6 +251,10 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     errors.push("  Set GEMINI_API_KEY or GOOGLE_API_KEY in your environment, or")
     errors.push(`  Store in: ${AUTH_JSON_PATH}`)
     errors.push('  Format: {"google":{"type":"api","key":"YOUR_KEY"}}')
+  }
+
+  if (missingEnvWarnings.length > 0) {
+    warnings.push(...missingEnvWarnings)
   }
 
   const ok = qdrantCheck.available && googleCheck.available
@@ -169,6 +279,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     log.info("Setup check passed", {
       qdrantUrl,
       googleSource: googleCheck.source,
+      warnings: warnings.length,
     })
   } else {
     log.warn("Setup check failed", { errors })
@@ -211,6 +322,14 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
     lines.push("")
     for (const error of result.errors) {
       lines.push(error)
+    }
+  }
+
+  if (result.warnings.length > 0) {
+    lines.push("")
+    lines.push("Warnings:")
+    for (const warning of result.warnings) {
+      lines.push(`  - ${warning}`)
     }
   }
 

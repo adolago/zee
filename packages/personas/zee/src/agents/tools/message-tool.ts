@@ -360,7 +360,7 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         required: true,
       }) as ChannelMessageActionName;
 
-      const handoffRequested = readBooleanParam(params, "handoff") ?? false;
+      const handoffValue = readBooleanParam(params, "handoff");
       const handoffTtlMinutes = readNumberParam(params, "handoffTtlMinutes", { integer: true });
       delete params.handoff;
       delete params.handoffTtlMinutes;
@@ -371,17 +371,44 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
       const legacyChannelId =
         typeof params.channelId === "string" ? params.channelId.trim() : "";
       const hasTarget = Boolean(explicitTarget || legacyTo || legacyChannelId);
+      const rawChannel = typeof params.channel === "string" ? params.channel.trim() : "";
+      const normalizedChannel = normalizeMessageChannel(rawChannel);
+      const wantsWhatsApp = normalizedChannel
+        ? normalizedChannel === "whatsapp"
+        : Boolean(cfg.channels?.whatsapp);
+      const userPhone = cfg.user?.phone?.trim();
+      const normalizedUserTarget = userPhone
+        ? normalizeTargetForProvider("whatsapp", userPhone) ?? userPhone
+        : undefined;
+      const normalizedExplicitTarget =
+        explicitTarget && wantsWhatsApp
+          ? normalizeTargetForProvider("whatsapp", explicitTarget) ?? explicitTarget
+          : explicitTarget;
+      const normalizedLegacyTarget =
+        legacyTo && wantsWhatsApp
+          ? normalizeTargetForProvider("whatsapp", legacyTo) ?? legacyTo
+          : legacyTo;
+      const normalizedLegacyChannelTarget =
+        legacyChannelId && wantsWhatsApp
+          ? normalizeTargetForProvider("whatsapp", legacyChannelId) ?? legacyChannelId
+          : legacyChannelId;
+      const resolvedTarget =
+        normalizedExplicitTarget || normalizedLegacyTarget || normalizedLegacyChannelTarget;
+      const isUserTarget =
+        Boolean(normalizedUserTarget) &&
+        Boolean(resolvedTarget) &&
+        resolvedTarget === normalizedUserTarget;
+      const shouldDefaultHandoff =
+        handoffValue === undefined &&
+        action === "send" &&
+        wantsWhatsApp &&
+        Boolean(userPhone) &&
+        (!hasTarget || isUserTarget);
+      const handoffRequested = handoffValue ?? shouldDefaultHandoff;
+
       if (handoffRequested && action === "send" && !hasTarget) {
-        const rawChannel = typeof params.channel === "string" ? params.channel.trim() : "";
-        const normalizedChannel = normalizeMessageChannel(rawChannel);
-        const wantsWhatsApp = normalizedChannel
-          ? normalizedChannel === "whatsapp"
-          : Boolean(cfg.channels?.whatsapp);
-        const userPhone = cfg.user?.phone?.trim();
         if (wantsWhatsApp && userPhone) {
-          const normalizedTarget =
-            normalizeTargetForProvider("whatsapp", userPhone) ?? userPhone;
-          params.target = normalizedTarget;
+          params.target = normalizedUserTarget ?? userPhone;
           if (!rawChannel) params.channel = "whatsapp";
         }
       }
