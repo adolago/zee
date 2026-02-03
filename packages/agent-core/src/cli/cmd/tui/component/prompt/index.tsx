@@ -1507,7 +1507,7 @@ export function Prompt(props: PromptProps) {
               </Show>
 
               {/* Line fill */}
-              <text fg={theme.border} flexGrow={1} flexShrink={1} width={0} overflow="hidden">{fill()}</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{fill()}</text>
               {/* Right side: agent info */}
               <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
               <text fg={theme.border} flexShrink={0}>─</text>
@@ -1838,7 +1838,7 @@ export function Prompt(props: PromptProps) {
             <text fg={theme.textMuted} flexShrink={0}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1} width={0} overflow="hidden">{fill()}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{fill()}</text>
           {/* Right: model + path */}
           <Show when={showModelInfoInBorder()}>
             {(() => {

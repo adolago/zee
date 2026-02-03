@@ -21,6 +21,31 @@ const log = Log.create({ service: "agent" })
 
 // Persona bootstrap cache (lazy loaded)
 let personaBootstrapCache: { PERSONAS: any; AGENT_CONFIGS: any } | null = null
+type PersonaModule = typeof import("../../../../src/agent/persona")
+let personaModuleCache: PersonaModule | null = null
+let personaModuleLoadAttempted = false
+
+async function loadPersonaModule(): Promise<PersonaModule | null> {
+  if (personaModuleLoadAttempted) {
+    return personaModuleCache
+  }
+  personaModuleLoadAttempted = true
+
+  try {
+    const mod = await import("../../../../src/agent/persona")
+    if (!mod.Persona) {
+      throw new Error("Missing export Persona")
+    }
+    personaModuleCache = mod as PersonaModule
+    return personaModuleCache
+  } catch (e) {
+    log.warn("Failed to load persona module, identity wiring disabled", {
+      error: e instanceof Error ? e.message : String(e),
+    })
+    personaModuleCache = null
+    return null
+  }
+}
 
 /**
  * Load persona bootstrap data from src/agent/personas.
@@ -227,12 +252,38 @@ export namespace Agent {
     // Config file settings will be merged on top
     const { PERSONAS, AGENT_CONFIGS } = await loadPersonaBootstrap()
 
+    const personaIdentityPrompts: Record<string, string> = {}
+
+    const loadPersonaIdentityPrompt = async (personaConfig: any): Promise<string> => {
+      const identityFiles = personaConfig?.identityFiles
+      if (!identityFiles || identityFiles.length === 0) return ""
+
+      const personaModule = await loadPersonaModule()
+      if (!personaModule?.Persona?.loadIdentityContext || !personaModule?.Persona?.composeIdentityPrompt) return ""
+
+      try {
+        const identity = await personaModule.Persona.loadIdentityContext(identityFiles, { cwd: Instance.directory })
+        return personaModule.Persona.composeIdentityPrompt(identity)
+      } catch (e) {
+        log.warn("Failed to load persona identity context", {
+          error: e instanceof Error ? e.message : String(e),
+        })
+        return ""
+      }
+    }
+
     for (const [personaId, personaConfig] of Object.entries(PERSONAS) as [string, any][]) {
       const agentConfig = AGENT_CONFIGS[personaId] as any
       if (!agentConfig) {
         log.warn("Persona missing agent config, skipping", { personaId })
         continue
       }
+
+      const identityPrompt = await loadPersonaIdentityPrompt(personaConfig)
+      if (identityPrompt) {
+        personaIdentityPrompts[personaId] = identityPrompt
+      }
+      const systemPromptAdditions = [identityPrompt, personaConfig.systemPromptAdditions].filter(Boolean).join("\n\n")
 
       result[personaId] = {
         name: personaId,
@@ -251,7 +302,7 @@ export namespace Agent {
         permission: [...defaults],
         options: agentConfig.options ?? {},
         // Persona-specific fields
-        systemPromptAdditions: personaConfig.systemPromptAdditions,
+        systemPromptAdditions,
         knowledge: personaConfig.knowledge,
         mcpServers: personaConfig.mcpServers,
       }
@@ -296,6 +347,11 @@ export namespace Agent {
       item.systemPromptAdditions = value.systemPromptAdditions ?? item.systemPromptAdditions
       item.knowledge = value.knowledge ?? item.knowledge
       item.mcpServers = value.mcpServers ?? item.mcpServers
+
+      const identityPrompt = personaIdentityPrompts[key]
+      if (identityPrompt && value.systemPromptAdditions !== undefined) {
+        item.systemPromptAdditions = [identityPrompt, item.systemPromptAdditions].filter(Boolean).join("\n\n")
+      }
     }
 
     // Ensure Truncate.DIR is allowed unless explicitly configured

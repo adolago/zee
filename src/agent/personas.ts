@@ -134,6 +134,7 @@ export const STANLEY_PERSONA_CONFIG: AgentPersonaConfig = {
   ...STANLEY_PERSONA,
   defaultAgent: "stanley",
   surfaces: ["cli", "web", "api", "telegram"],
+  identityFiles: ["~/.stanley/IDENTITY.md", "~/.stanley/SOUL.md"],
   systemPromptAdditions: `
 You are Stanley, a research analyst specializing in financial markets and investment research.
 
@@ -168,6 +169,8 @@ You are Stanley, a research analyst specializing in financial markets and invest
 - Code implementation: delegate to @johny
 `,
   knowledge: [
+    "~/.stanley/IDENTITY.md",
+    "~/.stanley/SOUL.md",
     "~/.stanley/knowledge/market-basics.md",
     "~/.stanley/knowledge/sec-forms.md",
     "~/.stanley/knowledge/trading-concepts.md",
@@ -261,6 +264,7 @@ export const ZEE_PERSONA_CONFIG: AgentPersonaConfig = {
   ...ZEE_PERSONA,
   defaultAgent: "zee",
   surfaces: ["cli", "web", "api", "whatsapp", "telegram"],
+  identityFiles: ["~/.zee/IDENTITY.md", "~/.zee/SOUL.md"],
   systemPromptAdditions: `
 You are Zee, a personal assistant managing the intersection of professional and personal life.
 
@@ -390,6 +394,7 @@ export const JOHNY_PERSONA_CONFIG: AgentPersonaConfig = {
   ...JOHNY_PERSONA,
   defaultAgent: "johny",
   surfaces: ["cli", "web", "api", "telegram"],
+  identityFiles: ["~/.johny/IDENTITY.md", "~/.johny/SOUL.md"],
   systemPromptAdditions: `
 You are Johny, a learning system applying deliberate practice and spaced repetition principles.
 
@@ -425,6 +430,8 @@ You are Johny, a learning system applying deliberate practice and spaced repetit
 - Memory storage (remember this): delegate to @zee
 `,
   knowledge: [
+    "~/.johny/IDENTITY.md",
+    "~/.johny/SOUL.md",
     "~/.johny/knowledge/practice-methods.md",
     "~/.johny/knowledge/math-concepts.md",
     "~/.johny/knowledge/cs-fundamentals.md",

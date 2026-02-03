@@ -8,6 +8,9 @@
  * - Config overrides
  */
 
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
 import { z } from "zod";
 import matter from "gray-matter";
 import { AgentInfo, AgentMode, Permission, parseModelString } from "./agent";
@@ -184,6 +187,53 @@ export interface IdentityContext {
   prompt?: string;
 }
 
+function resolveIdentityPath(inputPath: string, cwd?: string): string {
+  let resolved = inputPath.replace(/\$\{([^}]+)\}/g, (_match, varName) => {
+    return process.env[varName] ?? "";
+  });
+
+  if (resolved === "~") {
+    resolved = homedir();
+  } else if (resolved.startsWith("~/")) {
+    resolved = path.join(homedir(), resolved.slice(2));
+  }
+
+  return path.isAbsolute(resolved) ? resolved : path.resolve(cwd ?? process.cwd(), resolved);
+}
+
+function mergeIdentity(base: Identity | undefined, next: Identity): Identity {
+  if (!base) return next;
+
+  return Identity.parse({
+    name: next.name || base.name,
+    creature: next.creature ?? base.creature,
+    vibe: next.vibe ?? base.vibe,
+    emoji: next.emoji ?? base.emoji,
+    about: next.about ?? base.about,
+    continuity: next.continuity ?? base.continuity,
+    values: [...(base.values ?? []), ...(next.values ?? [])],
+    infrastructure: {
+      ...(base.infrastructure ?? {}),
+      ...(next.infrastructure ?? {}),
+    },
+  });
+}
+
+function mergeSoul(base: Soul | undefined, next: Soul): Soul {
+  if (!base) return next;
+
+  return Soul.parse({
+    truths: [...(base.truths ?? []), ...(next.truths ?? [])],
+    boundaries: [...(base.boundaries ?? []), ...(next.boundaries ?? [])],
+    vibe: {
+      traits: [...(base.vibe?.traits ?? []), ...(next.vibe?.traits ?? [])],
+      communication: next.vibe?.communication ?? base.vibe?.communication,
+    },
+    directives: { ...(base.directives ?? {}), ...(next.directives ?? {}) },
+    goal: next.goal ?? base.goal,
+  });
+}
+
 /**
  * Persona namespace for persona management
  */
@@ -328,6 +378,120 @@ export namespace Persona {
   }
 
   /**
+   * Load identity and soul files into a structured context.
+   */
+  export async function loadIdentityContext(
+    identityFiles: string[] | undefined,
+    opts?: { cwd?: string }
+  ): Promise<IdentityContext | undefined> {
+    if (!identityFiles || identityFiles.length === 0) {
+      return undefined;
+    }
+
+    const context: IdentityContext = {};
+
+    for (const rawPath of identityFiles) {
+      const resolved = resolveIdentityPath(rawPath, opts?.cwd);
+      let content: string;
+
+      try {
+        content = await readFile(resolved, "utf-8");
+      } catch {
+        continue;
+      }
+
+      const trimmed = content.trim();
+      if (!trimmed) continue;
+
+      const basename = path.basename(resolved).toLowerCase();
+      const isIdentity = basename.includes("identity");
+      const isSoul = basename.includes("soul");
+
+      if (isIdentity) {
+        try {
+          context.identity = mergeIdentity(context.identity, parseIdentityMd(trimmed));
+        } catch {
+          continue;
+        }
+      } else if (isSoul) {
+        try {
+          context.soul = mergeSoul(context.soul, parseSoulMd(trimmed));
+        } catch {
+          continue;
+        }
+      } else {
+        try {
+          context.identity = mergeIdentity(context.identity, parseIdentityMd(trimmed));
+          continue;
+        } catch {}
+        try {
+          context.soul = mergeSoul(context.soul, parseSoulMd(trimmed));
+        } catch {}
+      }
+    }
+
+    if (!context.identity && !context.soul && !context.prompt) return undefined;
+    return context;
+  }
+
+  /**
+   * Compose the identity/soul prompt block.
+   */
+  export function composeIdentityPrompt(identity?: IdentityContext): string {
+    if (!identity) return "";
+
+    const parts: string[] = [];
+
+    if (identity.prompt?.trim()) {
+      parts.push(identity.prompt.trim());
+      parts.push("");
+    }
+
+    if (identity.identity) {
+      const id = identity.identity;
+      parts.push(`# ${id.name}`);
+      if (id.creature) {
+        parts.push(`*${id.creature}*`);
+      }
+      if (id.vibe) {
+        parts.push(`**Vibe:** ${id.vibe}`);
+      }
+      if (id.about) {
+        parts.push(`\n${id.about}`);
+      }
+      parts.push("");
+    }
+
+    if (identity.soul) {
+      const soul = identity.soul;
+
+      if (soul.truths.length > 0) {
+        parts.push("## Core Principles");
+        for (const truth of soul.truths) {
+          parts.push(`- ${truth}`);
+        }
+        parts.push("");
+      }
+
+      if (soul.boundaries.length > 0) {
+        parts.push("## Boundaries");
+        for (const boundary of soul.boundaries) {
+          parts.push(`- ${boundary}`);
+        }
+        parts.push("");
+      }
+
+      if (soul.goal) {
+        parts.push("## Goal");
+        parts.push(soul.goal);
+        parts.push("");
+      }
+    }
+
+    return parts.join("\n").trim();
+  }
+
+  /**
    * Convert a persona definition to agent info
    */
   export function toAgentInfo(
@@ -396,55 +560,16 @@ export namespace Persona {
   ): string {
     const parts: string[] = [];
 
-    // Identity header
-    if (identity?.identity) {
-      const id = identity.identity;
-      parts.push(`# ${id.name}`);
-      if (id.creature) {
-        parts.push(`*${id.creature}*`);
-      }
-      if (id.vibe) {
-        parts.push(`**Vibe:** ${id.vibe}`);
-      }
-      if (id.about) {
-        parts.push(`\n${id.about}`);
-      }
-      parts.push("");
+    const identityPrompt = composeIdentityPrompt(identity);
+    if (identityPrompt) {
+      parts.push(identityPrompt);
     }
 
-    // Soul section
-    if (identity?.soul) {
-      const soul = identity.soul;
-
-      if (soul.truths.length > 0) {
-        parts.push("## Core Principles");
-        for (const truth of soul.truths) {
-          parts.push(`- ${truth}`);
-        }
-        parts.push("");
-      }
-
-      if (soul.boundaries.length > 0) {
-        parts.push("## Boundaries");
-        for (const boundary of soul.boundaries) {
-          parts.push(`- ${boundary}`);
-        }
-        parts.push("");
-      }
-
-      if (soul.goal) {
-        parts.push("## Goal");
-        parts.push(soul.goal);
-        parts.push("");
-      }
-    }
-
-    // Persona-specific prompt
     if (persona.prompt) {
       parts.push(persona.prompt);
     }
 
-    return parts.join("\n").trim();
+    return parts.join("\n\n").trim();
   }
 
   /**

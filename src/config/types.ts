@@ -139,6 +139,9 @@ export interface AgentPersonaConfig extends AgentPersona {
   /** Surfaces this persona appears on */
   surfaces: SurfaceType[];
 
+  /** Identity and soul files to load for persona wiring */
+  identityFiles?: string[];
+
   /** Custom system prompt additions */
   systemPromptAdditions?: string;
 

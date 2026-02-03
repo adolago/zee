@@ -93,6 +93,7 @@ export const STANLEY: PersonaDefinition = {
   color: personaPalettes.stanley.primary.hex,
   model: "openrouter/anthropic/claude-sonnet-4",
   temperature: 0.3,
+  identityFiles: ["~/.stanley/IDENTITY.md", "~/.stanley/SOUL.md"],
   permission: ANALYSIS_PERMISSIONS,
   tools: {
     market_data: true,
