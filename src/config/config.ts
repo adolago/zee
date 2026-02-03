@@ -36,6 +36,13 @@ import {
   type InterpolationContext,
 } from './interpolation';
 
+// ========================================================================
+// Missing interpolation sentinels
+// ========================================================================
+
+const MISSING_ENV_SENTINEL = '__AGENT_CORE_MISSING_ENV__';
+const MISSING_FILE_SENTINEL = '__AGENT_CORE_MISSING_FILE__';
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -288,6 +295,8 @@ async function loadConfigFile(
     configDir: path.dirname(filePath),
     env,
     strict: false,
+    missingEnvValue: MISSING_ENV_SENTINEL,
+    missingFileValue: MISSING_FILE_SENTINEL,
   };
 
   const interpolated = await interpolate(text, context);
@@ -301,7 +310,8 @@ async function loadConfigFile(
     throw new ConfigFileError(filePath, `Invalid JSON:\n${errorDetails}`);
   }
 
-  return data as Partial<Config>;
+  const cleaned = stripMissingInterpolations(data);
+  return cleaned as Partial<Config>;
 }
 
 /**
@@ -525,6 +535,37 @@ function parseEnvValue(value: string): unknown {
  */
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
+}
+
+/**
+ * Strip unresolved interpolation values from parsed config.
+ */
+function stripMissingInterpolations(value: unknown): unknown {
+  if (typeof value === 'string') {
+    if (value.includes(MISSING_ENV_SENTINEL) || value.includes(MISSING_FILE_SENTINEL)) {
+      return undefined;
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(stripMissingInterpolations)
+      .filter((item) => item !== undefined);
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      const cleaned = stripMissingInterpolations(val);
+      if (cleaned !== undefined) {
+        result[key] = cleaned;
+      }
+    }
+    return result;
+  }
+
+  return value;
 }
 
 /**

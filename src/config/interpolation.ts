@@ -24,6 +24,10 @@ export interface InterpolationContext {
   env?: Record<string, string | undefined>;
   /** Whether to throw on missing variables */
   strict?: boolean;
+  /** Replacement text for missing env vars when strict=false */
+  missingEnvValue?: string;
+  /** Replacement text for missing file includes when strict=false */
+  missingFileValue?: string;
 }
 
 export interface InterpolationResult {
@@ -82,6 +86,8 @@ export async function interpolate(
   const interpolated: InterpolatedVariable[] = [];
   const missing: MissingVariable[] = [];
   const env = context.env ?? process.env;
+  const missingEnvValue = context.missingEnvValue ?? '';
+  const missingFileValue = context.missingFileValue ?? '';
 
   // First, protect escaped patterns by replacing them with placeholders
   const escapedMatches: string[] = [];
@@ -117,7 +123,7 @@ export async function interpolate(
       );
     }
 
-    return ''; // Replace with empty string if not strict
+    return missingEnvValue; // Replace with configured missing value if not strict
   });
 
   // Interpolate file includes
@@ -163,8 +169,8 @@ export async function interpolate(
         );
       }
 
-      // Replace with empty string if not strict
-      protectedText = protectedText.replace(fullMatch, '');
+      // Replace with configured missing value if not strict
+      protectedText = protectedText.replace(fullMatch, missingFileValue);
     }
   }
 
