@@ -459,24 +459,26 @@ export interface ConfigValidationError {
  */
 function getSuggestion(issue: z.ZodIssue): string | undefined {
   const path = issue.path.join('.');
+  const code = issue.code as string;
 
   // Common error suggestions
-  if (issue.code === 'invalid_type') {
-    return `Expected ${issue.expected}, received ${issue.received}`;
+  if (code === 'invalid_type') {
+    const invalid = issue as z.ZodIssueInvalidType;
+    return `Expected ${invalid.expected}, received ${invalid.received}`;
   }
 
-  if (issue.code === 'unrecognized_keys') {
+  if (code === 'unrecognized_keys') {
     const keys = (issue as z.ZodIssue & { keys?: string[] }).keys;
     if (keys?.length) {
       return `Unknown keys: ${keys.join(', ')}. Check spelling or remove.`;
     }
   }
 
-  if (path.includes('provider') && issue.code === 'invalid_string') {
+  if (path.includes('provider') && (code === 'invalid_format' || code === 'invalid_string')) {
     return 'API keys can use {env:VAR_NAME} syntax for environment variables';
   }
 
-  if (path.includes('model') && issue.code === 'invalid_string') {
+  if (path.includes('model') && (code === 'invalid_format' || code === 'invalid_string')) {
     return 'Model format should be "provider/model-name" (e.g., "anthropic/claude-3-opus")';
   }
 
