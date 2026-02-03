@@ -10,9 +10,10 @@ import { Global } from "../global"
 import path from "path"
 import fs from "fs/promises"
 import net from "net"
+import os from "os"
 
-import { CONFIG_FILE_NAMES, CONFIG_DIR_NAMES, getGlobalConfigDir } from "../config/defaults"
-import { interpolate } from "../config/interpolation"
+import { CONFIG_FILE_NAMES, CONFIG_DIR_NAMES, getGlobalConfigDir } from "@root/config/defaults"
+import { interpolate } from "@root/config/interpolation"
 
 const log = Log.create({ service: "setup-check" })
 
