@@ -13,7 +13,6 @@ import { InstructionPrompt } from "../session/instruction"
 import { ToolRegistry } from "../tool/registry"
 import { Skill } from "../skill"
 import { estimateTokens, estimateToolTokens } from "./token-estimate"
-import { generateAwarenessSection } from "../../../../src/awareness"
 import { generateToolCatalog, formatCatalogForPrompt } from "../../../../src/awareness/tool-catalog"
 import { generateMcpCatalog, formatMcpCatalogForPrompt } from "../../../../src/awareness/mcp-catalog"
 import { loadKnowledgeFiles, formatKnowledgeForPrompt } from "../../../../src/awareness/knowledge-loader"
@@ -24,7 +23,6 @@ export interface ContextComponent {
   category: "system" | "tools" | "skills" | "knowledge" | "mcp" | "awareness"
   estimatedTokens: number
   bytes: number
-  /** Percentage of total base context */
   pct?: number
 }
 
@@ -34,39 +32,27 @@ export interface ContextTaxBreakdown {
   systemSubtotal: number
   toolsSubtotal: number
   totalEstimated: number
-  /** Lazy-loaded skill pool stats */
   lazyPool: {
     persona: string
     skillCount: number
     totalBytes: number
     estimatedTokens: number
   }[]
-  /** Empirical validation from actual API call */
   empirical?: {
     firstTurnInputTokens: number
     sessionId: string
   }
 }
 
-/**
- * Measure the context tax for a persona.
- *
- * Assembles the same context components as LLM.stream() + prompt.ts
- * and measures each one individually.
- */
 export async function measureContextTax(personaName: string): Promise<ContextTaxBreakdown> {
   const agent = await Agent.get(personaName)
   if (!agent) {
-    throw new Error(`Agent "${personaName}" not found`)
+    throw new Error("Agent not found: " + personaName)
   }
 
-  const modelRef = agent.model ?? (await Provider.defaultModel())
-  const model = await Provider.getModel(modelRef.providerID, modelRef.modelID)
+  const model = agent.model ?? (await Provider.defaultModel())
   const components: ContextComponent[] = []
 
-  // -- SYSTEM PROMPT COMPONENTS --
-
-  // 1. Provider prompt header (anthropic spoof)
   const header = SystemPrompt.header(model.providerID)
   const headerText = header.join("\n")
   if (headerText.length > 0) {
@@ -78,7 +64,6 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     })
   }
 
-  // 2. Provider prompt (anthropic.txt etc.)
   const providerPrompt = agent.prompt ?? SystemPrompt.provider(model).join("\n")
   if (providerPrompt) {
     components.push({
@@ -89,7 +74,6 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     })
   }
 
-  // 3. Persona systemPromptAdditions
   if (agent.systemPromptAdditions) {
     components.push({
       name: "Persona additions",
@@ -99,7 +83,6 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     })
   }
 
-  // 4. Awareness section (broken down)
   try {
     const toolCatalog = await generateToolCatalog(agent)
     const toolSection = formatCatalogForPrompt(toolCatalog, 2000)
@@ -126,7 +109,7 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
         })
       }
     }
-  } catch { /* MCP may not be initialized */ }
+  } catch { /* skip */ }
 
   try {
     const state = await getRuntimeState(agent.name)
@@ -154,7 +137,6 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     }
   } catch { /* skip */ }
 
-  // 5. Environment info
   const envInfo = (await SystemPrompt.environment(model)).join("\n")
   if (envInfo) {
     components.push({
@@ -165,22 +147,13 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     })
   }
 
-  // 6. Instruction files (AGENTS.md / CLAUDE.md)
   try {
     const instructions = await InstructionPrompt.system()
     for (const inst of instructions) {
-      // Extract path from "Instructions from: /path/to/FILE.md\n..."
       const match = inst.match(/Instructions from: (.+)\n/)
-      const fullPath = match?.[1] ?? ""
-      const parts = fullPath.split("/")
-      // Use last 3 parts to disambiguate (e.g., "src/agent-core/AGENTS.md" vs ".claude/CLAUDE.md")
-      const name = parts.length >= 3
-        ? parts.slice(-3).join("/")
-        : parts.length >= 2
-          ? `${parts[parts.length - 2]}/${parts[parts.length - 1]}`
-          : parts[parts.length - 1] ?? "instruction file"
+      const name = match?.[1]?.split("/").pop() ?? "instruction file"
       components.push({
-        name: `Instructions: ${name}`,
+        name: "Instructions: " + name,
         category: "system",
         estimatedTokens: estimateTokens(inst),
         bytes: inst.length,
@@ -188,12 +161,13 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     }
   } catch { /* skip */ }
 
-  // -- TOOL SCHEMA COMPONENTS --
-
-  const tools = await ToolRegistry.tools(modelRef, agent)
-
-  // Group tools by category
-  const coreToolIds = ["bash", "read", "write", "edit", "glob", "grep", "task", "webfetch", "websearch", "codesearch", "invalid", "todowrite", "todoread", "lsp", "batch", "hold_release", "hold_enter", "question"]
+  const tools = await ToolRegistry.tools(model, agent)
+  const coreToolIds = [
+    "bash", "read", "write", "edit", "glob", "grep", "task",
+    "webfetch", "websearch", "codesearch", "invalid", "todowrite",
+    "todoread", "apply_patch", "lsp", "batch", "hold_release",
+    "hold_enter", "question",
+  ]
   const coreSeen: typeof tools = []
   const domainSeen: typeof tools = []
   const mcpSeen: typeof tools = []
@@ -207,48 +181,43 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     } else if (t.id.includes(":") || t.id.startsWith(personaName)) {
       domainSeen.push(t)
     } else if (t.id.includes("_")) {
-      // MCP tools use underscore-separated server prefix
       mcpSeen.push(t)
     } else {
       coreSeen.push(t)
     }
   }
 
-  // Core tool schemas
   if (coreSeen.length > 0) {
     let totalTokens = 0
     let totalBytes = 0
     for (const t of coreSeen) {
-      const tokens = estimateToolTokens({ description: t.description, parameters: t.parameters })
-      totalTokens += tokens
+      totalTokens += estimateToolTokens({ description: t.description, parameters: t.parameters })
       totalBytes += JSON.stringify(t.parameters ?? {}).length + (t.description?.length ?? 0)
     }
     components.push({
-      name: `Core tools (${coreSeen.length})`,
+      name: "Core tools (" + coreSeen.length + ")",
       category: "tools",
       estimatedTokens: totalTokens,
       bytes: totalBytes,
     })
   }
 
-  // Domain tool schemas (persona-specific)
   if (domainSeen.length > 0) {
     let totalTokens = 0
     let totalBytes = 0
     for (const t of domainSeen) {
-      const tokens = estimateToolTokens({ description: t.description, parameters: t.parameters })
-      totalTokens += tokens
+      totalTokens += estimateToolTokens({ description: t.description, parameters: t.parameters })
       totalBytes += JSON.stringify(t.parameters ?? {}).length + (t.description?.length ?? 0)
     }
+    const names = domainSeen.map((t) => t.id).join(", ")
     components.push({
-      name: `Domain tools (${domainSeen.length})`,
+      name: "Domain tools (" + domainSeen.length + ": " + names + ")",
       category: "tools",
       estimatedTokens: totalTokens,
       bytes: totalBytes,
     })
   }
 
-  // Skill tool (includes inline skill listing)
   if (skillSeen.length > 0) {
     const t = skillSeen[0]
     const tokens = estimateToolTokens({ description: t.description, parameters: t.parameters })
@@ -260,39 +229,32 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     })
   }
 
-  // MCP tool schemas
   if (mcpSeen.length > 0) {
-    // Group by server prefix
     const byServer = new Map<string, typeof mcpSeen>()
     for (const t of mcpSeen) {
       const prefix = t.id.split("_")[0] ?? "unknown"
       if (!byServer.has(prefix)) byServer.set(prefix, [])
       byServer.get(prefix)!.push(t)
     }
-
     let totalTokens = 0
     let totalBytes = 0
     const serverSummary: string[] = []
     for (const [server, serverTools] of byServer) {
       let serverTokens = 0
       for (const t of serverTools) {
-        const tokens = estimateToolTokens({ description: t.description, parameters: t.parameters })
-        serverTokens += tokens
+        serverTokens += estimateToolTokens({ description: t.description, parameters: t.parameters })
         totalBytes += JSON.stringify(t.parameters ?? {}).length + (t.description?.length ?? 0)
       }
       totalTokens += serverTokens
-      serverSummary.push(`${server}: ${serverTools.length}`)
+      serverSummary.push(server + ": " + serverTools.length)
     }
-
     components.push({
-      name: `MCP tools (${mcpSeen.length}: ${serverSummary.join(", ")})`,
+      name: "MCP tools (" + mcpSeen.length + ": " + serverSummary.join(", ") + ")",
       category: "mcp",
       estimatedTokens: totalTokens,
       bytes: totalBytes,
     })
   }
-
-  // -- COMPUTE TOTALS --
 
   const systemSubtotal = components
     .filter((c) => ["system", "awareness", "knowledge"].includes(c.category))
@@ -304,12 +266,10 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
 
   const totalEstimated = systemSubtotal + toolsSubtotal
 
-  // Compute percentages
   for (const c of components) {
     c.pct = totalEstimated > 0 ? Math.round((c.estimatedTokens / totalEstimated) * 100) : 0
   }
 
-  // -- LAZY POOL (skills available for on-demand loading) --
   const lazyPool = await measureLazyPool(agent.name)
 
   return {
@@ -322,15 +282,10 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
   }
 }
 
-/**
- * Measure the lazy-loaded skill pool sizes.
- * These are only loaded when the Skill tool is invoked.
- */
 async function measureLazyPool(personaName: string): Promise<ContextTaxBreakdown["lazyPool"]> {
   const allSkills = await Skill.all(personaName)
   const pool: ContextTaxBreakdown["lazyPool"] = []
 
-  // Group skills by persona context
   const byPersona = new Map<string, Skill.Info[]>()
   for (const skill of allSkills) {
     const ctx = skill.context ?? "shared"
@@ -343,18 +298,18 @@ async function measureLazyPool(personaName: string): Promise<ContextTaxBreakdown
     for (const skill of skills) {
       try {
         const file = Bun.file(skill.location)
-        const stat = await file.exists() ? file.size : 0
-        totalBytes += stat
-      } catch {
-        // Skip unreadable files
-      }
+        const exists = await file.exists()
+        if (exists) {
+          totalBytes += file.size
+        }
+      } catch { /* skip */ }
     }
 
     pool.push({
-      persona: persona === "shared" ? "shared" : `@${persona}`,
+      persona: persona === "shared" ? "shared" : "@" + persona,
       skillCount: skills.length,
       totalBytes,
-      estimatedTokens: estimateTokens("x".repeat(totalBytes)), // rough estimate
+      estimatedTokens: Math.ceil(totalBytes / 4),
     })
   }
 

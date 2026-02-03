@@ -158,10 +158,10 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                     </text>
                   )}
                 </Show>
-                <text fg={theme.text}>Model Provider: {modelInfo().provider}</text>
-                <text fg={theme.text}>Model Name: {modelInfo().model}</text>
+                <text fg={theme.text}>{modelInfo().provider}</text>
+                <text fg={theme.text}>{modelInfo().model}</text>
                 <Show when={modelInfo().variant}>
-                  <text fg={theme.accent}>Model Variant: {modelInfo().variant}</text>
+                  <text fg={theme.accent}>{modelInfo().variant}</text>
                 </Show>
                 <Show when={directoryLabel() || branchLabel()}>
                   <text fg={theme.text}>

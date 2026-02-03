@@ -1507,7 +1507,7 @@ export function Prompt(props: PromptProps) {
               </Show>
 
               {/* Line fill */}
-              <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} width={0} overflow="hidden">{fill()}</text>
               {/* Right side: agent info */}
               <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
               <text fg={theme.border} flexShrink={0}>─</text>
@@ -1826,7 +1826,7 @@ export function Prompt(props: PromptProps) {
           {/* Left: spinner only */}
           <Show
             when={status().type === "busy"}
-            fallback={<text fg={highlight()}>~</text>}
+            fallback={<text fg={highlight()} flexShrink={0}>~</text>}
           >
             <spinner
               color={spinnerDef().color}
@@ -1835,10 +1835,10 @@ export function Prompt(props: PromptProps) {
             />
           </Show>
           <Show when={status().type === "busy"}>
-            <text fg={theme.textMuted}> Esc to cancel</text>
+            <text fg={theme.textMuted} flexShrink={0}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1} width={0} overflow="hidden">{fill()}</text>
           {/* Right: model + path */}
           <Show when={showModelInfoInBorder()}>
             {(() => {
