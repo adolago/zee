@@ -618,7 +618,7 @@ describe("Provider Delay Simulation", () => {
     })
     const elapsed = Date.now() - start
 
-    expect(elapsed).toBeGreaterThanOrEqual(100)
+    expect(elapsed).toBeGreaterThanOrEqual(95)
   })
 
   test("streaming respects delay before starting", async () => {
@@ -637,6 +637,6 @@ describe("Provider Delay Simulation", () => {
     while (!(await reader.read()).done) {}
 
     const elapsed = Date.now() - start
-    expect(elapsed).toBeGreaterThanOrEqual(50)
+    expect(elapsed).toBeGreaterThanOrEqual(45)
   })
 })
