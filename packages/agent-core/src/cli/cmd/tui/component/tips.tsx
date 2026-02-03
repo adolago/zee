@@ -46,6 +46,8 @@ export function Tips(props: TipsProps) {
   const randomTip = TIPS[Math.floor(Math.random() * TIPS.length)]
   const displayText = createMemo(() => props.billboard?.() || (props.hidden ? "" : randomTip))
   const parts = createMemo(() => parse(displayText()))
+  const maxTextWidth = createMemo(() => Math.max(0, dimensions().width - 2))
+  const truncatedParts = createMemo(() => truncateParts(parts(), maxTextWidth()))
 
   return (
     <box flexDirection="column">
@@ -62,8 +64,8 @@ export function Tips(props: TipsProps) {
       {/* Content row with side borders */}
       <box flexDirection="row">
         <text fg={theme.border} flexShrink={0}>│</text>
-        <text flexGrow={1} flexShrink={1}>
-          <For each={parts()}>
+        <text flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+          <For each={truncatedParts()}>
             {(part) => <span style={{ fg: part.highlight ? theme.text : theme.textMuted }}>{part.text}</span>}
           </For>
         </text>
@@ -81,6 +83,34 @@ export function Tips(props: TipsProps) {
       </Show>
     </box>
   )
+}
+
+function truncateParts(parts: TipPart[], maxChars: number): TipPart[] {
+  if (maxChars <= 0) return []
+  const total = parts.reduce((sum, part) => sum + part.text.length, 0)
+  if (total <= maxChars) return parts
+
+  const ellipsis = "..."
+  const target = maxChars >= ellipsis.length ? maxChars - ellipsis.length : maxChars
+  const result: TipPart[] = []
+  let remaining = target
+
+  for (const part of parts) {
+    if (remaining <= 0) break
+    if (part.text.length <= remaining) {
+      result.push(part)
+      remaining -= part.text.length
+      continue
+    }
+    result.push({ text: part.text.slice(0, remaining), highlight: part.highlight })
+    remaining = 0
+  }
+
+  if (maxChars >= ellipsis.length) {
+    result.push({ text: ellipsis, highlight: false })
+  }
+
+  return result
 }
 
 export const TIPS = [
