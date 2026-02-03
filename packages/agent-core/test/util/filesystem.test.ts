@@ -64,4 +64,9 @@ describe("util.filesystem", () => {
 
     await rm(tmp, { recursive: true, force: true })
   })
+
+  test("sanitizePath() removes null bytes", () => {
+    expect(Filesystem.sanitizePath("path/with/\0/null")).toBe("path/with//null")
+    expect(Filesystem.sanitizePath("clean/path")).toBe("clean/path")
+  })
 })
