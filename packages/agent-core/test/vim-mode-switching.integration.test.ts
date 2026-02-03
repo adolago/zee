@@ -539,16 +539,54 @@ describe("VimEngine", () => {
       expect(ctx.cursorOffset).toBe(6)
     })
 
+    test("W moves to next WORD start", () => {
+      const ctx = createMockContext("foo,bar baz", 0)
+      engine.handleKey(ctx, "W")
+      expect(ctx.cursorOffset).toBe(8)
+    })
+
     test("b moves to previous word start", () => {
       const ctx = createMockContext("hello world", 8)
       engine.handleKey(ctx, "b")
       expect(ctx.cursorOffset).toBe(6)
     })
 
+    test("B moves to previous WORD start", () => {
+      const ctx = createMockContext("foo,bar baz", 9)
+      engine.handleKey(ctx, "B")
+      expect(ctx.cursorOffset).toBe(8)
+    })
+
     test("e moves to word end", () => {
       const ctx = createMockContext("hello world", 0)
       engine.handleKey(ctx, "e")
       expect(ctx.cursorOffset).toBe(4)
+    })
+
+    test("E moves to WORD end", () => {
+      const ctx = createMockContext("foo,bar baz", 0)
+      engine.handleKey(ctx, "E")
+      expect(ctx.cursorOffset).toBe(6)
+    })
+  })
+
+  describe("paragraph navigation", () => {
+    test("{ moves to current paragraph start", () => {
+      const ctx = createMockContext("one\n\ntwo\n\nthree", 7)
+      engine.handleKey(ctx, "{")
+      expect(ctx.cursorOffset).toBe(ctx.lineStart(2))
+    })
+
+    test("{ at paragraph start moves to previous paragraph", () => {
+      const ctx = createMockContext("one\n\ntwo\n\nthree", 5)
+      engine.handleKey(ctx, "{")
+      expect(ctx.cursorOffset).toBe(0)
+    })
+
+    test("} moves to next paragraph start", () => {
+      const ctx = createMockContext("one\n\ntwo\n\nthree", 6)
+      engine.handleKey(ctx, "}")
+      expect(ctx.cursorOffset).toBe(ctx.lineStart(4))
     })
   })
 

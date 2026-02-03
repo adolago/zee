@@ -1524,6 +1524,14 @@ export function Prompt(props: PromptProps) {
                 >
                   {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
                 </text>
+                <text fg={theme.border} flexShrink={0}>─</text>
+                <text
+                  fg={local.mode.isHold() ? theme.warning : theme.success}
+                  attributes={TextAttributes.BOLD}
+                  flexShrink={0}
+                >
+                  {local.mode.isHold() ? "HOLD" : "RELEASE"}
+                </text>
               </Show>
               <text fg={theme.border} flexShrink={0}>─┤</text>
             </box>

@@ -299,11 +299,20 @@ export namespace VimCommands {
         case "w":
           ctx.cursorOffset = this.findNextWordStart(ctx.text, ctx.cursorOffset)
           return { handled: true }
+        case "W":
+          ctx.cursorOffset = this.findNextWORDStart(ctx.text, ctx.cursorOffset)
+          return { handled: true }
         case "e":
           ctx.cursorOffset = this.findWordEnd(ctx.text, ctx.cursorOffset)
           return { handled: true }
+        case "E":
+          ctx.cursorOffset = this.findWORDEnd(ctx.text, ctx.cursorOffset)
+          return { handled: true }
         case "b":
           ctx.cursorOffset = this.findPrevWordStart(ctx.text, ctx.cursorOffset)
+          return { handled: true }
+        case "B":
+          ctx.cursorOffset = this.findPrevWORDStart(ctx.text, ctx.cursorOffset)
           return { handled: true }
         case "0":
           ctx.cursorOffset = ctx.lineStart(ctx.cursorLine)
@@ -313,6 +322,12 @@ export namespace VimCommands {
           return { handled: true }
         case "^":
           this.moveToFirstNonBlank(ctx)
+          return { handled: true }
+        case "{":
+          ctx.cursorOffset = this.findPrevParagraphStart(ctx)
+          return { handled: true }
+        case "}":
+          ctx.cursorOffset = this.findNextParagraphStart(ctx)
           return { handled: true }
         case "G":
           ctx.gotoBufferEnd()
@@ -438,8 +453,11 @@ export namespace VimCommands {
       const cursor = ctx.cursorOffset
       switch (key) {
         case "w": return [cursor, this.findNextWordStart(ctx.text, cursor)]
+        case "W": return [cursor, this.findNextWORDStart(ctx.text, cursor)]
         case "e": return [cursor, this.findWordEnd(ctx.text, cursor) + 1]
+        case "E": return [cursor, this.findWORDEnd(ctx.text, cursor) + 1]
         case "b": return [this.findPrevWordStart(ctx.text, cursor), cursor]
+        case "B": return [this.findPrevWORDStart(ctx.text, cursor), cursor]
         case "0": return [ctx.lineStart(ctx.cursorLine), cursor]
         case "$": return [cursor, ctx.lineEnd(ctx.cursorLine)]
         case "^": {
@@ -448,6 +466,14 @@ export namespace VimCommands {
           const lineText = ctx.lines[line] ?? ""
           const firstNonBlank = start + (lineText.length - lineText.trimStart().length)
           return [Math.min(firstNonBlank, cursor), Math.max(firstNonBlank, cursor)]
+        }
+        case "{": {
+          const target = this.findPrevParagraphStart(ctx)
+          return [target, cursor]
+        }
+        case "}": {
+          const target = this.findNextParagraphStart(ctx)
+          return [cursor, target]
         }
         case "h": return [Math.max(0, cursor - 1), cursor]
         case "l": return [cursor, Math.min(ctx.text.length, cursor + 1)]
@@ -717,6 +743,90 @@ export namespace VimCommands {
       }
 
       return Math.max(0, i)
+    }
+
+    private isWhitespace(char: string | undefined): boolean {
+      return char === undefined ? true : /\s/.test(char)
+    }
+
+    private findNextWORDStart(text: string, offset: number): number {
+      let i = offset
+      const len = text.length
+      if (i >= len) return len
+
+      if (!this.isWhitespace(text[i])) {
+        while (i < len && !this.isWhitespace(text[i])) i++
+      }
+
+      while (i < len && this.isWhitespace(text[i])) i++
+
+      return Math.min(i, len)
+    }
+
+    private findWORDEnd(text: string, offset: number): number {
+      let i = offset
+      const len = text.length
+      if (i >= len) return Math.max(0, len - 1)
+
+      while (i < len && this.isWhitespace(text[i])) i++
+      while (i < len && !this.isWhitespace(text[i])) i++
+
+      return Math.max(offset, i - 1)
+    }
+
+    private findPrevWORDStart(text: string, offset: number): number {
+      let i = offset - 1
+      if (i <= 0) return 0
+
+      while (i > 0 && this.isWhitespace(text[i])) i--
+      while (i > 0 && !this.isWhitespace(text[i - 1])) i--
+
+      return Math.max(0, i)
+    }
+
+    private findCurrentParagraphStartLine(ctx: VimCommandContext): number {
+      const lines = ctx.lines
+      let line = ctx.cursorLine
+
+      if (line >= lines.length) return lines.length - 1
+
+      while (line >= 0 && (lines[line]?.trim() ?? "") === "") line--
+      if (line < 0) return 0
+
+      while (line > 0 && (lines[line - 1]?.trim() ?? "") !== "") line--
+
+      return line
+    }
+
+    private findPrevParagraphStart(ctx: VimCommandContext): number {
+      const lines = ctx.lines
+      const currentStartLine = this.findCurrentParagraphStartLine(ctx)
+      const currentStartOffset = ctx.lineStart(currentStartLine)
+
+      if (ctx.cursorOffset > currentStartOffset) {
+        return currentStartOffset
+      }
+
+      let line = currentStartLine - 1
+      while (line >= 0 && (lines[line]?.trim() ?? "") === "") line--
+      if (line < 0) return 0
+
+      while (line > 0 && (lines[line - 1]?.trim() ?? "") !== "") line--
+
+      return ctx.lineStart(line)
+    }
+
+    private findNextParagraphStart(ctx: VimCommandContext): number {
+      const lines = ctx.lines
+      let line = ctx.cursorLine
+
+      if (line >= lines.length) return ctx.text.length
+
+      while (line < lines.length && (lines[line]?.trim() ?? "") !== "") line++
+      while (line < lines.length && (lines[line]?.trim() ?? "") === "") line++
+
+      if (line >= lines.length) return ctx.text.length
+      return ctx.lineStart(line)
     }
 
     // -- Line helpers --

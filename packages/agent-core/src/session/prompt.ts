@@ -189,8 +189,12 @@ export namespace SessionPrompt {
   async function resolveFirstTurnPlanState(input: {
     session: Session.Info
     messages: MessageV2.WithParts[]
+    messageTools?: Record<string, boolean>
   }): Promise<{ enabled: boolean; planPath: string }> {
     const planPath = Session.plan(input.session)
+    if (!resolveHoldMode(input.session, input.messageTools)) {
+      return { enabled: false, planPath }
+    }
     if (await hasPlanFile(planPath)) return { enabled: false, planPath }
     const lastUserMsg = input.messages.findLast((msg) => msg.info.role === "user")
     if (!lastUserMsg) return { enabled: false, planPath }
@@ -1035,6 +1039,7 @@ export namespace SessionPrompt {
       const planState = await resolveFirstTurnPlanState({
         session,
         messages: sessionMessages,
+        messageTools: lastUser.tools,
       })
 
       const result = await processor.process({

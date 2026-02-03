@@ -146,6 +146,7 @@ agent-core --no-daemon   # run without the daemon (local worker only)
 ```
 
 Ensure the daemon is running first (systemd service recommended for always-on messaging).
+See `docs/tui-vim-mode.md` for Vim keybindings.
 
 **Daemon mode (gateway is opt-in; development/manual use only):**
 
