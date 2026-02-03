@@ -15,6 +15,7 @@ It works anywhere Zee can send audio; Telegram gets a round voice-note bubble.
 
 - **ElevenLabs** (primary or fallback provider)
 - **OpenAI** (primary or fallback provider; also used for summaries)
+- **MiniMax TTS** (primary or fallback provider)
 - **Edge TTS** (primary or fallback provider; uses `node-edge-tts`, default when no API keys)
 
 ### Edge TTS notes
@@ -31,9 +32,10 @@ does not publish limits, so assume similar or lower limits. citeturn0searc
 
 ## Optional keys
 
-If you want OpenAI or ElevenLabs:
+If you want OpenAI, ElevenLabs, or MiniMax TTS:
 - `ELEVENLABS_API_KEY` (or `XI_API_KEY`)
 - `OPENAI_API_KEY`
+- `MINIMAX_TTS_API_KEY` (or use `agent-core auth login minimax-tts`)
 
 Edge TTS does **not** require an API key. If no API keys are found, Zee defaults
 to Edge TTS (unless disabled via `messages.tts.edge.enabled=false`).

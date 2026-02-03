@@ -93,6 +93,8 @@
     { "id": "github-copilot", "reason": "Subscription-based, limited models" },
     { "id": "amazon-bedrock", "reason": "Enterprise AWS only" },
     { "id": "qwen-portal", "reason": "OAuth complexity, limited models" },
-    { "id": "moonshot", "reason": "Duplicate of kimi-for-coding" }
+    { "id": "moonshot", "reason": "Duplicate of kimi-for-coding" },
+    { "id": "google-vertex", "reason": "Requires GCP service account" },
+    { "id": "google-vertex-anthropic", "reason": "Requires GCP service account" }
   ]
 }

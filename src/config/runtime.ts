@@ -13,6 +13,7 @@ import { Assets } from "../paths";
 import type { EmbeddingProviderType } from "../memory/types";
 import type { RerankerConfig } from "../memory/reranker";
 import { resolveEmbeddingProfile } from "./embedding-profiles";
+import { getApiKeySync } from "./providers";
 
 type RuntimeConfig = {
   memory?: {
@@ -203,12 +204,19 @@ function resolveMemoryEmbeddingConfig(config: RuntimeConfig): MemoryEmbeddingCon
       : rawDimensions;
 
   const provider = embedding.provider?.trim() || profileConfig?.provider;
+  const providerId = provider?.trim();
+  const apiKeyFromAuth =
+    providerId === "google" ||
+    providerId === "openai" ||
+    providerId === "voyage"
+      ? getApiKeySync(providerId)
+      : undefined;
 
   return {
     provider: provider as EmbeddingProviderType | undefined,
     model: embedding.model?.trim() || profileConfig?.model,
     dimensions: Number.isFinite(dimensions as number) ? (dimensions as number) : undefined,
-    apiKey: embedding.apiKey?.trim() || undefined,
+    apiKey: embedding.apiKey?.trim() || apiKeyFromAuth || undefined,
     baseUrl: embedding.baseUrl?.trim() || profileConfig?.baseUrl,
   };
 }

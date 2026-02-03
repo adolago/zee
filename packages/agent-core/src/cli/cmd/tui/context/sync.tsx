@@ -96,6 +96,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       health: {
         internet: "ok" | "fail" | "checking"
         providers: { id: string; name: string; status: "ok" | "fail" | "skip" }[]
+        memory?: { status: "ok" | "fail"; error?: string }
       }
     }>({
       provider_next: {
@@ -510,8 +511,23 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             // Fetch health status (internet + providers)
             createAuthorizedFetch(fetch)(`${sdk.url}/global/health/status`)
               .then((res) => res.json())
-              .then((data: { internet: "ok" | "fail" | "checking"; providers: { id: string; name: string; status: "ok" | "fail" | "skip" }[] }) =>
-                setStore("health", reconcile(data)),
+              .then(
+                (data: {
+                  internet: "ok" | "fail" | "checking"
+                  providers: { id: string; name: string; status: "ok" | "fail" | "skip" }[]
+                  memory?: { status: "ok" | "fail"; error?: string }
+                }) => {
+                  setStore("health", reconcile(data))
+                  if (data.memory?.status === "fail") {
+                    const trimmed = data.memory.error?.replace(/\s+/g, " ").slice(0, 200)
+                    const detail = trimmed ? `: ${trimmed}` : ""
+                    toast.show({
+                      variant: "error",
+                      message: `Memory backend unavailable${detail}`,
+                      duration: 7000,
+                    })
+                  }
+                },
               )
               .catch(() => setStore("health", "internet", "fail")),
           ]).then(() => {

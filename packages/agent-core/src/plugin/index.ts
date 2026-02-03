@@ -101,6 +101,14 @@ export namespace Plugin {
         })
         continue
       }
+      if (pluginName === "opencode-antigravity-auth") {
+        const createAntigravityPlugin = (mod as Record<string, unknown>).createAntigravityPlugin
+        if (typeof createAntigravityPlugin === "function") {
+          mod = {
+            antigravity: createAntigravityPlugin("google-antigravity") as PluginInstance,
+          }
+        }
+      }
       // Prevent duplicate initialization when plugins export the same function
       // as both a named export and default export (e.g., `export const X` and `export default X`).
       // Object.entries(mod) would return both entries pointing to the same function reference.

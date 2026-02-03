@@ -110,6 +110,7 @@ export function WhichKey() {
   // Calculate layout - try to fit in available width
   const columnWidth = 20
   const maxColumns = createMemo(() => Math.max(1, Math.floor((dimensions().width - 4) / columnWidth)))
+  const paneHeight = createMemo(() => Math.max(3, dimensions().height - 9))
 
   return (
     <Show when={keybind.leader}>
@@ -120,7 +121,7 @@ export function WhichKey() {
         width={dimensions().width}
         height={dimensions().height - 9}
         justifyContent="flex-start"
-        alignItems="center"
+        alignItems="flex-start"
         zIndex={1500}
         overflow="hidden"
       >
@@ -136,7 +137,8 @@ export function WhichKey() {
           overflow="hidden"
           flexShrink={1}
           maxWidth={Math.min(dimensions().width - 4, maxColumns() * columnWidth + 4)}
-          maxHeight={dimensions().height - 11}
+          height={paneHeight()}
+          maxHeight={paneHeight()}
         >
           <box flexDirection="column" gap={0}>
             {/* Header */}

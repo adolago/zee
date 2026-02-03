@@ -54,6 +54,8 @@ async function waitForHealthy(resolveUrl: () => Promise<string>, timeoutMs: numb
   return null
 }
 
+type SystemdScope = "user" | "system"
+
 type SystemdServiceState = {
   available: boolean
   installed: boolean
@@ -61,12 +63,13 @@ type SystemdServiceState = {
   status?: string
 }
 
-function getSystemdServiceState(): SystemdServiceState {
+function getSystemdServiceState(scope: SystemdScope): SystemdServiceState {
   if (process.platform !== "linux") {
     return { available: false, installed: false, active: false }
   }
   try {
-    const result = spawnSync("systemctl", ["is-active", "agent-core"], {
+    const args = scope === "user" ? ["--user", "is-active", "agent-core"] : ["is-active", "agent-core"]
+    const result = spawnSync("systemctl", args, {
       encoding: "utf-8",
     })
     if (result.error) {
@@ -89,13 +92,22 @@ function getSystemdServiceState(): SystemdServiceState {
   }
 }
 
-function attemptSystemctlStart(): { ok: boolean; details?: string } {
-  const result = spawnSync("systemctl", ["--no-ask-password", "start", "agent-core"], { encoding: "utf-8" })
+function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: string } {
+  const baseArgs = scope === "user" ? ["--user"] : []
+  const result = spawnSync(
+    "systemctl",
+    [...baseArgs, "--no-ask-password", "start", "agent-core"],
+    { encoding: "utf-8" },
+  )
   if (result.status === 0) return { ok: true }
 
   const stdout = (result.stdout ?? "").trim()
   const stderr = (result.stderr ?? "").trim()
   const details = stderr || stdout
+
+  if (scope === "user") {
+    return { ok: false, details }
+  }
 
   const sudoResult = spawnSync("sudo", ["-n", "systemctl", "start", "agent-core"], { encoding: "utf-8" })
   if (sudoResult.status === 0) return { ok: true }
@@ -112,9 +124,10 @@ function attemptSystemctlStart(): { ok: boolean; details?: string } {
  *
  * Strategy:
  * 1. If AGENT_CORE_URL is set, use it directly (external/remote process)
- * 2. If systemd service is installed, use it
- * 3. If a process is already running (PID file + healthy), attach to it
- * 4. Otherwise, start a new always-on process in this process
+ * 2. If a process is already running (PID file + healthy), attach to it
+ * 3. If systemd user service is installed, use it
+ * 4. If systemd system service is installed, use it
+ * 5. Otherwise, start a new always-on process in this process
  */
 async function ensureProcessRunning(
   network: ResolvedNetworkOptions,
@@ -130,14 +143,50 @@ async function ensureProcessRunning(
     process.exit(1)
   }
 
-  // 2. Systemd
-  const systemd = getSystemdServiceState()
   const resolveUrl = async () => resolveDaemonUrl(network, await Daemon.readPidFile())
 
-  if (systemd.available && systemd.installed) {
-    if (!systemd.active) {
+  // 2. Existing process
+  const running = await Daemon.isRunning()
+  if (running) {
+    let url = await resolveUrl()
+    if (await checkDaemonHealth(url)) return { url }
+    url = await resolveUrl()
+    if (await checkDaemonHealth(url)) return { url }
+    UI.error("Process appears to be running but is not healthy. Check `agent-core daemon-status`.")
+    process.exit(1)
+  }
+
+  // 3. Systemd (prefer user service)
+  const systemdUser = getSystemdServiceState("user")
+  const systemdSystem = getSystemdServiceState("system")
+  if (systemdUser.available && systemdUser.installed && systemdSystem.available && systemdSystem.installed) {
+    UI.warn("Both user and system agent-core systemd services are installed. Use only one to avoid restarts.")
+  }
+
+  if (systemdUser.available && systemdUser.installed) {
+    if (!systemdUser.active) {
+      UI.info("Starting systemd user service 'agent-core'...")
+      const started = attemptSystemctlStart("user")
+      if (!started.ok) {
+        UI.error("Failed to start systemd user service 'agent-core'.")
+        if (started.details) UI.info(started.details)
+        UI.info("Try: systemctl --user start agent-core")
+        process.exit(1)
+      }
+    }
+
+    const url = await waitForHealthy(resolveUrl, 8000)
+    if (url) return { url }
+
+    UI.error("Systemd user service 'agent-core' is active but unhealthy.")
+    UI.info("Check: systemctl --user status agent-core")
+    process.exit(1)
+  }
+
+  if (systemdSystem.available && systemdSystem.installed) {
+    if (!systemdSystem.active) {
       UI.info("Starting systemd service 'agent-core'...")
-      const started = attemptSystemctlStart()
+      const started = attemptSystemctlStart("system")
       if (!started.ok) {
         UI.error("Failed to start systemd service 'agent-core'.")
         if (started.details) UI.info(started.details)
@@ -154,18 +203,7 @@ async function ensureProcessRunning(
     process.exit(1)
   }
 
-  // 3. Existing process
-  const running = await Daemon.isRunning()
-  if (running) {
-    let url = await resolveUrl()
-    if (await checkDaemonHealth(url)) return { url }
-    url = await resolveUrl()
-    if (await checkDaemonHealth(url)) return { url }
-    UI.error("Process appears to be running but is not healthy. Check `agent-core daemon-status`.")
-    process.exit(1)
-  }
-
-  // 4. Start in-process
+  // 5. Start in-process
   try {
     await Daemon.acquireLock()
   } catch (error) {

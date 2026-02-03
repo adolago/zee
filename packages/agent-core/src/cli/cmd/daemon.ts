@@ -27,6 +27,8 @@ import {
 } from "../../pkg/tailscale"
 
 const log = Log.create({ service: "daemon" })
+const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
+const ALLOW_RESTART_ENV = "AGENT_CORE_ALLOW_RESTART"
 
 export namespace Daemon {
   const STATE_DIR = path.join(Global.Path.state, "daemon")
@@ -740,10 +742,17 @@ export const DaemonCommand = cmd({
 
       const isInteractive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
       const headless = process.env.AGENT_CORE_HEADLESS === "1" || !isInteractive
+      const allowRestart = process.env[ALLOW_RESTART_ENV] === "1"
 
-      if (headless) {
-        UI.info("Headless mode detected, stopping existing daemon before restart.")
-      } else {
+      if (headless && !allowRestart) {
+        UI.info("Headless mode detected; refusing to restart an existing daemon.")
+        UI.info(
+          `Stop the running service first, or set ${ALLOW_RESTART_ENV}=1 to force a restart.`,
+        )
+        process.exit(DAEMON_ALREADY_RUNNING_EXIT_CODE)
+      }
+
+      if (!headless) {
         const shouldKill = await prompts.confirm({
           message: "Do you want to stop the existing daemon and start a new one?",
           initialValue: false,

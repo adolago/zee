@@ -683,7 +683,7 @@ export namespace ProviderTransform {
       }
       return { reasoningEffort: "minimal" }
     }
-    if (model.providerID === "google") {
+    if (model.providerID === "google" || model.providerID === "google-antigravity") {
       // gemini-3 uses thinkingLevel, gemini-2.5 uses thinkingBudget
       if (model.api.id.includes("gemini-3")) {
         return { thinkingConfig: { thinkingLevel: "minimal" } }
@@ -1019,7 +1019,7 @@ export namespace ProviderTransform {
     */
 
     // Convert integer enums to string enums for Google/Gemini
-    if (model.providerID === "google" || model.api.id.includes("gemini")) {
+    if (model.providerID === "google" || model.providerID === "google-antigravity" || model.api.id.includes("gemini")) {
       const sanitizeGemini = (obj: any): any => {
         if (obj === null || typeof obj !== "object") {
           return obj

@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import JSON5 from "json5";
 
 import type { ModelDefinitionConfig } from "../config/types.models.js";
 import type { ProviderConfig } from "./models-config.providers.js";
@@ -46,14 +47,6 @@ let cachedConfig: AgentCoreConfig | null = null;
 let lastReadAt = 0;
 const CACHE_TTL_MS = 30_000;
 
-function stripJsonComments(json: string): string {
-  // Remove single-line comments (// ...) and multi-line comments (/* ... */)
-  return json
-    .replace(/\/\/.*$/gm, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/,(\s*[}\]])/g, "$1"); // Remove trailing commas
-}
-
 function readAgentCoreConfig(): AgentCoreConfig | null {
   const now = Date.now();
   if (cachedConfig && now - lastReadAt < CACHE_TTL_MS) {
@@ -64,8 +57,7 @@ function readAgentCoreConfig(): AgentCoreConfig | null {
     try {
       if (!fs.existsSync(configPath)) continue;
       const raw = fs.readFileSync(configPath, "utf-8");
-      const cleaned = stripJsonComments(raw);
-      const parsed = JSON.parse(cleaned) as AgentCoreConfig;
+      const parsed = JSON5.parse(raw) as AgentCoreConfig;
       cachedConfig = parsed;
       lastReadAt = now;
       log.debug("loaded agent-core config", { path: configPath });

@@ -124,7 +124,6 @@ export async function modelsStatusCommand(
   const envProbeProviders = [
     "anthropic",
     "github-copilot",
-    "google-vertex",
     "openai",
     "google",
     "groq",

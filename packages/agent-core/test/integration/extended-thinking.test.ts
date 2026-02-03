@@ -423,10 +423,10 @@ describe("Persona Thinking Configs", () => {
   })
 
   describe("Johny (Google Antigravity)", () => {
-    test("Google provider gets thinkingConfig", () => {
+    test("Google Antigravity provider gets thinkingConfig", () => {
       const model = createMockModel({
-        id: "google/antigravity-claude-opus-4-5-thinking",
-        providerID: "google",
+        id: "google-antigravity/antigravity-claude-opus-4-5-thinking",
+        providerID: "google-antigravity",
         api: {
           id: "antigravity-claude-opus-4-5-thinking",
           url: "https://generativelanguage.googleapis.com",

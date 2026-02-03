@@ -21,6 +21,7 @@ export function StatusBar() {
   const lsp = createMemo(() => Object.keys(sync.data.lsp))
   const internet = createMemo(() => sync.data.health.internet)
   const connectedProviders = createMemo(() => sync.data.health.providers.filter((p) => p.status === "ok").length)
+  const memoryStatus = createMemo(() => sync.data.health.memory?.status)
 
   const permissions = createMemo(() => {
     if (route.data.type !== "session") return []
@@ -148,6 +149,10 @@ export function StatusBar() {
               <Show when={connectedProviders() > 0}>
                 <text fg={theme.border}>{StatusBarStyle.innerSeparator}</text>
                 <text fg={theme.success}>◈{connectedProviders()}</text>
+              </Show>
+              <Show when={memoryStatus() === "fail"}>
+                <text fg={theme.border}>{StatusBarStyle.innerSeparator}</text>
+                <text fg={theme.error}>MEM</text>
               </Show>
               <text fg={theme.border}>{StatusBarStyle.innerSeparator}</text>
               <text fg={lsp().length > 0 ? theme.success : theme.textMuted}>●{lsp().length}</text>

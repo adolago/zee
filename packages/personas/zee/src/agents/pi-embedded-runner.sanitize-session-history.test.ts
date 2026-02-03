@@ -41,7 +41,7 @@ describe("sanitizeSessionHistory", () => {
     await sanitizeSessionHistory({
       messages: mockMessages,
       modelApi: "google-generative-ai",
-      provider: "google-vertex",
+      provider: "google",
       sessionManager: mockSessionManager,
       sessionId: "test-session",
     });

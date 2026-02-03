@@ -82,11 +82,58 @@ if [[ "$PLATFORM" == "linux-x64" ]]; then
     (cd "$REPO_ROOT" && ./script/verify-binary.sh) || { echo "[ac] Binary verification failed"; exit 1; }
 fi
 
-# Stop systemd service first (Restart=always would respawn killed processes)
-if systemctl --user is-active agent-core &>/dev/null; then
-    echo -e "\033[1;36m[ac] Stopping systemd agent-core service...\033[0m" >&2
-    systemctl --user stop agent-core 2>/dev/null || true
-    sleep 0.5
+# Stop systemd service first (Restart=always would respawn killed processes).
+# Always issue stop -- the service may be active, activating (RestartSec
+# cooldown), or reloading.  After stop, wait until it reaches inactive so
+# nothing sneaks back while we run the self-test.
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -qx "agent-core.service"; then
+        SYS_SVC_STATE=$(systemctl is-active agent-core 2>/dev/null || true)
+        if [[ "$SYS_SVC_STATE" == "active" || "$SYS_SVC_STATE" == "activating" || "$SYS_SVC_STATE" == "deactivating" ]]; then
+            echo -e "\033[1;36m[ac] Stopping system agent-core service ($SYS_SVC_STATE)...\033[0m" >&2
+            if ! sudo -n systemctl stop agent-core 2>/dev/null; then
+                echo -e "\033[1;31m[ac] Unable to stop system agent-core service. Run: sudo systemctl stop agent-core\033[0m" >&2
+                exit 1
+            fi
+            for _i in $(seq 1 20); do
+                SYS_SVC_STATE=$(systemctl is-active agent-core 2>/dev/null || true)
+                [[ "$SYS_SVC_STATE" == "inactive" || "$SYS_SVC_STATE" == "dead" || "$SYS_SVC_STATE" == "failed" ]] && break
+                sleep 0.5
+            done
+            SYS_SVC_STATE=$(systemctl is-active agent-core 2>/dev/null || true)
+            if [[ "$SYS_SVC_STATE" != "inactive" && "$SYS_SVC_STATE" != "dead" && "$SYS_SVC_STATE" != "failed" ]]; then
+                echo -e "\033[1;31m[ac] system agent-core still $SYS_SVC_STATE after stop -- aborting\033[0m" >&2
+                exit 1
+            fi
+        fi
+
+        SYS_SVC_ENABLED=$(systemctl is-enabled agent-core 2>/dev/null || true)
+        if [[ "$SYS_SVC_ENABLED" != "disabled" && "$SYS_SVC_ENABLED" != "masked" && "$SYS_SVC_ENABLED" != "static" ]]; then
+            echo -e "\033[1;36m[ac] Disabling system agent-core service ($SYS_SVC_ENABLED)...\033[0m" >&2
+            if ! sudo -n systemctl disable agent-core 2>/dev/null; then
+                echo -e "\033[1;31m[ac] Unable to disable system agent-core service. Run: sudo systemctl disable agent-core\033[0m" >&2
+                exit 1
+            fi
+        fi
+    fi
+fi
+if systemctl --user list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -qx "agent-core.service"; then
+    AC_SVC_STATE=$(systemctl --user is-active agent-core 2>/dev/null || true)
+    if [[ "$AC_SVC_STATE" != "inactive" && "$AC_SVC_STATE" != "dead" && "$AC_SVC_STATE" != "failed" ]]; then
+        echo -e "\033[1;36m[ac] Stopping systemd agent-core service ($AC_SVC_STATE)...\033[0m" >&2
+        systemctl --user stop agent-core 2>/dev/null || true
+    fi
+    # Wait until fully stopped (up to 10s)
+    for _i in $(seq 1 20); do
+        AC_SVC_STATE=$(systemctl --user is-active agent-core 2>/dev/null || true)
+        [[ "$AC_SVC_STATE" == "inactive" || "$AC_SVC_STATE" == "dead" || "$AC_SVC_STATE" == "failed" ]] && break
+        sleep 0.5
+    done
+    AC_SVC_STATE=$(systemctl --user is-active agent-core 2>/dev/null || true)
+    if [[ "$AC_SVC_STATE" != "inactive" && "$AC_SVC_STATE" != "dead" && "$AC_SVC_STATE" != "failed" ]]; then
+        echo -e "\033[1;31m[ac] systemd agent-core still $AC_SVC_STATE after stop -- aborting\033[0m" >&2
+        exit 1
+    fi
 fi
 
 # Nuke: kill all remaining agent-core processes (excluding this script)
@@ -180,6 +227,28 @@ fi
 DAEMON_URL="http://127.0.0.1:$DAEMON_PORT"
 TEST_DAEMON_PID=""
 AC_TEST_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/agent-core/ac-test.json"
+DAEMON_ENV_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/agent-core/daemon.env"
+
+# Run self-tests with the same environment as the systemd service.
+# This prevents false-green tests when keys are only in the shell env.
+DAEMON_ENV_BASE=(
+    env -i
+    HOME="$HOME"
+    USER="${USER:-$(id -un)}"
+    LOGNAME="${LOGNAME:-$USER}"
+    PATH="$PATH"
+    NODE_ENV=production
+    AGENT_CORE_ROOT="$REPO_ROOT"
+    AGENT_CORE_HEADLESS=1
+)
+if [[ -n "${ZEE_GATEWAY_TOKEN:-}" ]]; then
+    DAEMON_ENV_BASE+=(ZEE_GATEWAY_TOKEN="$ZEE_GATEWAY_TOKEN")
+fi
+if [[ -f "$DAEMON_ENV_FILE" ]]; then
+    DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'set -a; source "$0"; set +a; exec "$@"' "$DAEMON_ENV_FILE")
+else
+    DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'exec "$@"' bash)
+fi
 
 ac_test_cleanup() {
     if [[ -n "$TEST_DAEMON_PID" ]] && kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
@@ -199,7 +268,7 @@ ac_test_fail() {
 
 # Start daemon in headless mode
 echo -e "\033[1;33m[ac] Starting headless daemon for self-test...\033[0m" >&2
-AGENT_CORE_HEADLESS=1 "$LOCAL_BINARY" daemon &
+("${DAEMON_ENV_PREFIX[@]}" "$LOCAL_BINARY" daemon --directory "$REPO_ROOT") &
 TEST_DAEMON_PID=$!
 
 # Wait for daemon health
@@ -240,10 +309,18 @@ echo -e "\033[1;32m[ac] Gateway ready\033[0m" >&2
 
 # Provider health check (real API calls with tokens)
 echo -e "\033[1;33m[ac] Running provider health check...\033[0m" >&2
-if ! (cd "$REPO_ROOT" && bun run script/provider-health-check.ts --errors-only --critical-only); then
+if ! (cd "$REPO_ROOT" && "${DAEMON_ENV_PREFIX[@]}" bun run script/provider-health-check.ts --errors-only --critical-only); then
     ac_test_fail "provider health check failed (token/API issue)"
 fi
 echo -e "\033[1;32m[ac] Providers OK\033[0m" >&2
+
+# Memory health check (ensures embedding + vector store are available)
+echo -e "\033[1;33m[ac] Checking memory health...\033[0m" >&2
+MEM_STATUS=$(curl -sf -m 5 "$DAEMON_URL/memory/health" 2>/dev/null || true)
+if ! echo "$MEM_STATUS" | jq -e '.available == true' >/dev/null 2>&1; then
+    ac_test_fail "memory backend unavailable (check memory.embedding credentials and Qdrant)"
+fi
+echo -e "\033[1;32m[ac] Memory OK\033[0m" >&2
 
 # Messaging test
 MESSAGING_FAILED=false

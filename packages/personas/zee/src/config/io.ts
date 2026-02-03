@@ -32,7 +32,7 @@ import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } fr
 import { applyConfigOverrides } from "./runtime-overrides.js";
 import type { ZeeConfig, ConfigFileSnapshot, LegacyConfigIssue } from "./types.js";
 import { validateConfigObjectWithPlugins } from "./validation.js";
-import { compareZeeVersions } from "./version.js";
+import { compareZeeVersions, parseZeeVersion } from "./version.js";
 
 // Re-export for backwards compatibility
 export { CircularIncludeError, ConfigIncludeError } from "./includes.js";
@@ -137,6 +137,15 @@ function stampConfigVersion(cfg: ZeeConfig): ZeeConfig {
 function warnIfConfigFromFuture(cfg: ZeeConfig, logger: Pick<typeof console, "warn">): void {
   const touched = cfg.meta?.lastTouchedVersion;
   if (!touched) return;
+  const parsedTouched = parseZeeVersion(touched);
+  const parsedCurrent = parseZeeVersion(VERSION);
+  if (!parsedTouched || !parsedCurrent) return;
+  // Detect version scheme change (e.g. legacy YYYY.M.D -> semver 0.x.y).
+  // A major of >= 1000 is clearly a calendar-based scheme; skip comparison
+  // when the two versions are on different schemes to avoid false warnings.
+  const touchedIsCalendar = parsedTouched.major >= 1000;
+  const currentIsCalendar = parsedCurrent.major >= 1000;
+  if (touchedIsCalendar !== currentIsCalendar) return;
   const cmp = compareZeeVersions(VERSION, touched);
   if (cmp === null) return;
   if (cmp < 0) {

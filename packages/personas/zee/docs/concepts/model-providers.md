@@ -79,10 +79,9 @@ Zee ships with the pi‑ai catalog. These providers require **no**
 - Example model: `google/gemini-3-pro-preview`
 - CLI: `zee onboard --auth-choice gemini-api-key`
 
-### Google Vertex / Antigravity / Gemini CLI
+### Google Antigravity / Gemini CLI (OAuth)
 
-- Providers: `google-vertex`, `google-antigravity`, `google-gemini-cli`
-- Auth: Vertex uses gcloud ADC; Antigravity/Gemini CLI use their respective auth flows
+- Providers: `google-antigravity`, `google-gemini-cli`
 - Antigravity OAuth is shipped as a bundled plugin (`google-antigravity-auth`, disabled by default).
   - Enable: `zee plugins enable google-antigravity-auth`
   - Login: `zee models auth login --provider google-antigravity --set-default`

@@ -321,6 +321,16 @@ export namespace Provider {
     const config = await Config.get()
     const modelsDev = await ModelsDev.get()
     const database = mapValues(modelsDev, fromModelsDevProvider)
+    if (database.google && !database["google-antigravity"]) {
+      database["google-antigravity"] = {
+        ...database.google,
+        id: "google-antigravity",
+        name: "Google Antigravity",
+        env: [],
+        options: {},
+        models: {},
+      }
+    }
 
     const disabled = new Set(config.disabled_providers ?? [])
     const blocked = new Set([...disabled, ...PROVIDER_BLACKLIST])
@@ -485,30 +495,15 @@ export namespace Provider {
       if (blocked.has(providerID)) continue
 
       let hasAuth = false
-      let auth = await Auth.get(providerID)
+      const auth = await Auth.get(providerID)
       if (auth) hasAuth = true
-
-      // For google provider, also check gemini-cli auth (Antigravity OAuth stored under gemini-cli)
-      // Prefer OAuth over API key for Antigravity functionality
-      let geminiCliAuth: Awaited<ReturnType<typeof Auth.get>> | undefined
-      if (providerID === "google") {
-        geminiCliAuth = await Auth.get("gemini-cli")
-        if (geminiCliAuth?.type === "oauth") {
-          hasAuth = true
-          auth = geminiCliAuth
-          log.info("using gemini-cli OAuth for google provider")
-        }
-      }
 
       if (!hasAuth) continue
       if (!plugin.auth.loader) continue
 
       // Load for the main provider if auth exists
       if (auth) {
-        // For google provider with gemini-cli OAuth, pass the gemini-cli auth getter
-        const authGetter = geminiCliAuth
-          ? () => Auth.get("gemini-cli") as any
-          : () => Auth.get(providerID) as any
+        const authGetter = () => Auth.get(providerID) as any
         const options = await plugin.auth.loader(authGetter, database[plugin.auth.provider])
         const opts = options ?? {}
         const patch: Partial<Info> = providers[providerID]
@@ -516,21 +511,21 @@ export namespace Provider {
           : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
 
-        // If this is google plugin (antigravity), set up the provider properly
+        // If this is antigravity plugin, set up the provider properly
         // The plugin's fetch interceptor handles Claude/Gemini models via Google Cloud Code API
         // The plugin returns apiKey: "" because it uses OAuth via custom fetch
-        if (providerID === "google") {
-          // Force-create google provider if it doesn't exist (no env/api key configured)
-          if (!providers["google"] && database["google"]) {
-            providers["google"] = {
-              ...database["google"],
+        if (providerID === "google-antigravity") {
+          // Force-create antigravity provider if it doesn't exist (no env/api key configured)
+          if (!providers["google-antigravity"] && database["google-antigravity"]) {
+            providers["google-antigravity"] = {
+              ...database["google-antigravity"],
               source: "custom",
               options: {},
             }
-            log.info("created google provider for antigravity plugin")
+            log.info("created google-antigravity provider for antigravity plugin")
           }
 
-          if (providers["google"]) {
+          if (providers["google-antigravity"]) {
             // Wrap the plugin's custom fetch to remove x-goog-api-key header
             // The plugin uses OAuth Bearer token but @ai-sdk/google adds x-goog-api-key
             const pluginFetch = options?.fetch
@@ -546,21 +541,21 @@ export namespace Provider {
               : undefined
 
             // Set placeholder API key (required by @ai-sdk/google) and preserve custom fetch
-            providers["google"].options = {
-              ...providers["google"].options,
+            providers["google-antigravity"].options = {
+              ...providers["google-antigravity"].options,
               apiKey: "antigravity-oauth-placeholder",
               fetch: wrappedFetch,
             }
-            log.info("configured google provider with antigravity auth", {
-              hasApiKey: !!providers["google"].options.apiKey,
-              hasFetch: typeof providers["google"].options.fetch === "function",
+            log.info("configured google-antigravity provider with antigravity auth", {
+              hasApiKey: !!providers["google-antigravity"].options.apiKey,
+              hasFetch: typeof providers["google-antigravity"].options.fetch === "function",
             })
 
             // Add Antigravity models - Claude and Gemini via Google Cloud Code API
             const antigravityModels: Record<string, Model> = {
               "antigravity-claude-opus-4-5-thinking": {
                 id: "antigravity-claude-opus-4-5-thinking",
-                providerID: "google",
+                providerID: "google-antigravity",
                 name: "Claude Opus 4.5 Thinking",
                 family: "claude",
                 api: {
@@ -590,7 +585,7 @@ export namespace Provider {
               },
               "antigravity-claude-sonnet-4-5": {
                 id: "antigravity-claude-sonnet-4-5",
-                providerID: "google",
+                providerID: "google-antigravity",
                 name: "Claude Sonnet 4.5",
                 family: "claude",
                 api: {
@@ -616,7 +611,7 @@ export namespace Provider {
               },
               "antigravity-claude-sonnet-4-5-thinking": {
                 id: "antigravity-claude-sonnet-4-5-thinking",
-                providerID: "google",
+                providerID: "google-antigravity",
                 name: "Claude Sonnet 4.5 Thinking",
                 family: "claude",
                 api: {
@@ -646,7 +641,7 @@ export namespace Provider {
               },
               "antigravity-gemini-3-pro": {
                 id: "antigravity-gemini-3-pro",
-                providerID: "google",
+                providerID: "google-antigravity",
                 name: "Gemini 3 Pro",
                 family: "gemini",
                 api: {
@@ -676,7 +671,7 @@ export namespace Provider {
               },
               "antigravity-gemini-3-flash": {
                 id: "antigravity-gemini-3-flash",
-                providerID: "google",
+                providerID: "google-antigravity",
                 name: "Gemini 3 Flash",
                 family: "gemini",
                 api: {
@@ -708,14 +703,14 @@ export namespace Provider {
               },
             }
 
-            // Add models to google provider
+            // Add models to google-antigravity provider
             for (const [modelID, model] of Object.entries(antigravityModels)) {
-              if (!providers["google"].models[modelID]) {
-                providers["google"].models[modelID] = model
+              if (!providers["google-antigravity"].models[modelID]) {
+                providers["google-antigravity"].models[modelID] = model
               }
             }
 
-            log.info("added antigravity models to google provider", {
+            log.info("added antigravity models to google-antigravity provider", {
               count: Object.keys(antigravityModels).length,
               models: Object.keys(antigravityModels).join(", "),
             })

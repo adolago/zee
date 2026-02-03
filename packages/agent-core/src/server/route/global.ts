@@ -7,6 +7,7 @@ import { Instance } from "../../project/instance"
 import { Provider } from "@/provider/provider"
 import { Installation } from "@/installation"
 import { getGatewayHealthState } from "@/gateway/supervisor-state"
+import { withTimeout } from "@/util/timeout"
 
 // Health status schema for system monitoring
 const HealthStatus = z.object({
@@ -18,6 +19,10 @@ const HealthStatus = z.object({
       status: z.enum(["ok", "fail", "skip"]),
     }),
   ),
+  memory: z.object({
+    status: z.enum(["ok", "fail"]),
+    error: z.string().optional(),
+  }),
 })
 const HealthCheck = z.object({
   healthy: z.boolean(),
@@ -33,6 +38,35 @@ const HealthCheck = z.object({
   entryModifiedAt: z.string().optional(),
   entryModifiedTs: z.number().optional(),
 })
+
+const MEMORY_CHECK_TTL_MS = 30_000
+let memoryHealthCache: { status: "ok" | "fail"; error?: string; checkedAt: number } | null = null
+
+async function checkMemoryHealth(): Promise<{ status: "ok" | "fail"; error?: string }> {
+  const now = Date.now()
+  if (memoryHealthCache && now - memoryHealthCache.checkedAt < MEMORY_CHECK_TTL_MS) {
+    return memoryHealthCache
+  }
+
+  let status: "ok" | "fail" = "ok"
+  let error: string | undefined
+
+  try {
+    const { getMemory } = await import("../../../../../src/memory/unified")
+    const memory = getMemory()
+    await withTimeout(memory.stats(), 5000)
+    if (typeof memory.isAvailable === "function" && !memory.isAvailable()) {
+      status = "fail"
+      error = "Memory backend unavailable"
+    }
+  } catch (err) {
+    status = "fail"
+    error = err instanceof Error ? err.message : String(err)
+  }
+
+  memoryHealthCache = { status, error, checkedAt: now }
+  return memoryHealthCache
+}
 
 export const GlobalRoute = new Hono()
   .get(
@@ -105,7 +139,9 @@ export const GlobalRoute = new Hono()
         status: "ok" as "ok" | "fail" | "skip",
       }))
 
-      return c.json({ internet, providers })
+      const memory = await checkMemoryHealth()
+
+      return c.json({ internet, providers, memory })
     },
   )
   .get(

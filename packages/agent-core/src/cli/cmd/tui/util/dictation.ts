@@ -1,16 +1,9 @@
 import { platform } from "os"
-import path from "path"
 import { Auth } from "@/auth"
-
-type GoogleServiceAccountCredentials = {
-  client_email: string
-  private_key: string
-  private_key_id?: string
-}
 
 export namespace Dictation {
   export type Provider = "google"
-  export type Model = "default" | "chirp_2"
+  export type Model = "default" | "gemini-3-flash" | "gemini-3-flash-preview"
 
   export type Config = {
     enabled?: boolean
@@ -36,9 +29,7 @@ export namespace Dictation {
     maxDuration: number
     recordCommand?: string | string[]
     google: {
-      apiKey?: string
-      credentials?: GoogleServiceAccountCredentials
-      projectId?: string
+      apiKey: string
     }
   }
 
@@ -65,6 +56,9 @@ export namespace Dictation {
   const DEFAULT_LANGUAGE = "en-US"
   const DEFAULT_ALTERNATIVE_LANGUAGES = ["pt-BR", "es-ES", "de-DE"]
   const DEFAULT_REGION = "us-central1"
+  const DEFAULT_GOOGLE_AUDIO_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+  const DEFAULT_GOOGLE_AUDIO_MODEL = "gemini-3-flash-preview"
+  const DEFAULT_GOOGLE_AUDIO_PROMPT = "Transcribe the audio."
 
   export async function resolveConfig(input?: Config): Promise<RuntimeConfig | undefined> {
     if (input?.enabled === false) return
@@ -73,22 +67,7 @@ export namespace Dictation {
 
     const model: Model = input?.model ?? "default"
     const google = await resolveGoogleAuth()
-
-    // Check for ADC availability:
-    // 1. Explicit GOOGLE_APPLICATION_CREDENTIALS env var
-    // 2. Service account env vars (GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY)
-    // 3. Default ADC file location (~/.config/gcloud/application_default_credentials.json)
-    const defaultAdcPath = path.join(
-      process.env["HOME"] ?? process.env["USERPROFILE"] ?? "",
-      ".config",
-      "gcloud",
-      "application_default_credentials.json"
-    )
-    const hasAdc =
-      Boolean(process.env["GOOGLE_APPLICATION_CREDENTIALS"]) ||
-      (Boolean(process.env["GOOGLE_CLIENT_EMAIL"]) && Boolean(process.env["GOOGLE_PRIVATE_KEY"])) ||
-      (await Bun.file(defaultAdcPath).exists())
-    if (!google.apiKey && !google.credentials && !hasAdc) return
+    if (!google.apiKey) return
 
     return {
       provider,
@@ -231,38 +210,30 @@ export namespace Dictation {
     const truncated = truncatePcm16(decoded, input.config.maxDuration)
     const base64Audio = Buffer.from(truncated.pcm).toString("base64")
 
-    // Use Chirp 2 with V2 API or default V1 API
-    if (input.config.model === "chirp_2") {
-      return transcribeChirp2(input, truncated, base64Audio, fetcher)
+    const model = resolveModel(input.config.model)
+    const url = `${DEFAULT_GOOGLE_AUDIO_BASE_URL}/models/${model}:generateContent`
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-goog-api-key": input.config.google.apiKey,
     }
-
-    // Default: V1 API
     const body = {
-      config: {
-        encoding: "LINEAR16",
-        sampleRateHertz: truncated.sampleRate,
-        languageCode: input.config.language,
-        alternativeLanguageCodes: input.config.alternativeLanguages,
-        enableAutomaticPunctuation: true,
-      },
-      audio: { content: base64Audio },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: resolvePrompt(input.config) },
+            {
+              inline_data: {
+                mime_type: "audio/wav",
+                data: base64Audio,
+              },
+            },
+          ],
+        },
+      ],
     }
 
-    const url = new URL("https://speech.googleapis.com/v1/speech:recognize")
-    const headers: Record<string, string> = { "Content-Type": "application/json" }
-
-    if (input.config.google.apiKey) {
-      url.searchParams.set("key", input.config.google.apiKey)
-    } else {
-      headers.Authorization = `Bearer ${await getGoogleAccessToken(input.config.google.credentials)}`
-      // For ADC with user credentials, we need to specify a quota project
-      const quotaProject = input.config.google.projectId ?? (await getGoogleProjectId(input.config.google.credentials))
-      if (quotaProject) {
-        headers["x-goog-user-project"] = quotaProject
-      }
-    }
-
-    const response = await fetcher(url.toString(), {
+    const response = await fetcher(url, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
@@ -275,194 +246,55 @@ export namespace Dictation {
     }
 
     const payload = await response.json().catch(() => null)
-    return parseGoogleTranscript(payload)
+    return parseGeminiTranscript(payload)
   }
 
-  async function transcribeChirp2(
-    input: {
-      config: RuntimeConfig
-      onState?: (state: TranscribeState) => void
-    },
-    truncated: DecodedPcm16Wav,
-    base64Audio: string,
-    fetcher: typeof fetch
-  ): Promise<string | undefined> {
-    // Chirp 2 uses Speech-to-Text V2 API
-    // Endpoint: https://{region}-speech.googleapis.com/v2/projects/{project}/locations/{region}/recognizers/_:recognize
-    const region = input.config.region
-    const projectId = input.config.google.projectId ?? (await getGoogleProjectId(input.config.google.credentials))
-
-    if (!projectId) {
-      throw new Error("Chirp 2 requires a Google Cloud project ID. Set GOOGLE_CLOUD_PROJECT or use a service account key.")
-    }
-
-    // V2 API uses recognizers path: /recognizers/_:recognize (underscore means default recognizer)
-    const url = `https://${region}-speech.googleapis.com/v2/projects/${projectId}/locations/${region}/recognizers/_:recognize`
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${await getGoogleAccessToken(input.config.google.credentials)}`,
-    }
-
-    // V2 API request format for Chirp 2
-    const body = {
-      config: {
-        model: "chirp_2",
-        languageCodes: input.config.language === "auto" ? ["auto"] : [input.config.language],
-        features: {
-          enableAutomaticPunctuation: true,
-        },
-        explicitDecodingConfig: {
-          encoding: "LINEAR16",
-          sampleRateHertz: truncated.sampleRate,
-          audioChannelCount: 1,
-        },
-      },
-      content: base64Audio,
-    }
-
-    const response = await fetcher(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    })
-
-    input.onState?.("receiving")
-    if (!response.ok) {
-      const text = await response.text().catch(() => "")
-      throw new Error(`Chirp 2 transcription failed (${response.status}): ${text || response.statusText}`)
-    }
-
-    const payload = await response.json().catch(() => null)
-    return parseChirp2Transcript(payload)
+  function resolveModel(model: Model): string {
+    if (model === "default") return DEFAULT_GOOGLE_AUDIO_MODEL
+    if (model === "gemini-3-flash") return "gemini-3-flash-preview"
+    return model
   }
 
-  function parseChirp2Transcript(value: unknown): string | undefined {
-    // V2 API response format
+  function resolvePrompt(config: RuntimeConfig): string {
+    const primary = config.language?.trim()
+    const alternatives = config.alternativeLanguages?.map((lang) => lang.trim()).filter(Boolean) ?? []
+    const languages = [
+      ...(primary && primary.toLowerCase() !== "auto" ? [primary] : []),
+      ...alternatives,
+    ]
+    if (languages.length > 0) {
+      return `Transcribe the audio. Language may be: ${languages.join(", ")}.`
+    }
+    return DEFAULT_GOOGLE_AUDIO_PROMPT
+  }
+
+  function parseGeminiTranscript(value: unknown): string | undefined {
     if (!value || typeof value !== "object") return
-    const results = (value as Record<string, unknown>).results
-    if (!Array.isArray(results)) return
-    const parts: string[] = []
-    for (const result of results) {
-      if (!result || typeof result !== "object") continue
-      const alternatives = (result as Record<string, unknown>).alternatives
-      if (!Array.isArray(alternatives) || alternatives.length === 0) continue
-      const first = alternatives[0]
-      if (first && typeof first === "object") {
-        const transcript = (first as Record<string, unknown>).transcript
-        if (typeof transcript === "string" && transcript.trim()) parts.push(transcript.trim())
-      }
-    }
-    return parts.join(" ").trim() || undefined
+    const candidates = (value as Record<string, unknown>).candidates
+    if (!Array.isArray(candidates) || candidates.length === 0) return
+    const parts = (candidates[0] as Record<string, unknown>)?.content
+      ? ((candidates[0] as Record<string, unknown>).content as Record<string, unknown>)?.parts
+      : undefined
+    if (!Array.isArray(parts)) return
+    const text = parts
+      .map((part) => (part && typeof part === "object" ? (part as Record<string, unknown>).text : undefined))
+      .map((part) => (typeof part === "string" ? part.trim() : ""))
+      .filter(Boolean)
+      .join("\n")
+      .trim()
+    return text || undefined
   }
 
-  function parseGoogleTranscript(value: unknown): string | undefined {
-    if (!value || typeof value !== "object") return
-    const results = (value as Record<string, unknown>).results
-    if (!Array.isArray(results)) return
-    const parts: string[] = []
-    for (const result of results) {
-      if (!result || typeof result !== "object") continue
-      const alternatives = (result as Record<string, unknown>).alternatives
-      if (!Array.isArray(alternatives) || alternatives.length === 0) continue
-      const first = alternatives[0]
-      if (first && typeof first === "object") {
-        const transcript = (first as Record<string, unknown>).transcript
-        if (typeof transcript === "string" && transcript.trim()) parts.push(transcript.trim())
-      }
-    }
-    return parts.join(" ").trim() || undefined
-  }
-
-  async function resolveGoogleAuth(): Promise<{ apiKey?: string; credentials?: GoogleServiceAccountCredentials }> {
-    const envApiKey = process.env["GOOGLE_STT_API_KEY"] ?? process.env["OPENCODE_GOOGLE_STT_API_KEY"]
+  async function resolveGoogleAuth(): Promise<{ apiKey?: string }> {
+    const envApiKey = process.env["GOOGLE_API_KEY"] ?? process.env["GEMINI_API_KEY"]
     if (envApiKey) return { apiKey: envApiKey.trim() }
 
-    const envClientEmail = process.env["GOOGLE_CLIENT_EMAIL"]
-    const envPrivateKey = process.env["GOOGLE_PRIVATE_KEY"]
-    const envPrivateKeyId = process.env["GOOGLE_PRIVATE_KEY_ID"]
-    if (envClientEmail && envPrivateKey) {
-      return {
-        credentials: {
-          client_email: envClientEmail,
-          private_key: envPrivateKey.replace(/\\n/g, "\n"),
-          ...(envPrivateKeyId ? { private_key_id: envPrivateKeyId } : {}),
-        },
-      }
-    }
-
-    // Check for stored service account credentials
-    // Note: We only accept service account JSON keys here, not API keys,
-    // because Speech-to-Text API requires OAuth tokens (not API keys)
-    const stored = await Auth.get("google-stt")
+    const stored = await Auth.get("google")
     if (stored?.type === "api" && stored.key) {
-      const parsed = parseGoogleServiceAccountKey(stored.key)
-      if (parsed) return { credentials: parsed }
-      // If not a service account key, fall through to use ADC
-      // (Speech API doesn't support API keys, only OAuth)
+      return { apiKey: stored.key }
     }
 
-    // Return empty to signal that ADC should be used
     return {}
-  }
-
-  function parseGoogleServiceAccountKey(value: string): GoogleServiceAccountCredentials | undefined {
-    const trimmed = value.trim()
-    if (!trimmed.startsWith("{")) return
-    try {
-      const parsed = JSON.parse(trimmed) as Record<string, unknown>
-      const clientEmail = parsed["client_email"]
-      const privateKey = parsed["private_key"]
-      if (typeof clientEmail !== "string" || !clientEmail.trim()) return
-      if (typeof privateKey !== "string" || !privateKey.trim()) return
-      const privateKeyId = parsed["private_key_id"]
-      return {
-        client_email: clientEmail,
-        private_key: privateKey,
-        ...(typeof privateKeyId === "string" && privateKeyId.trim() ? { private_key_id: privateKeyId } : {}),
-      }
-    } catch {
-      return
-    }
-  }
-
-  async function getGoogleAccessToken(credentials?: GoogleServiceAccountCredentials): Promise<string> {
-    const { GoogleAuth } = await import("google-auth-library")
-    const auth = new GoogleAuth({
-      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-      ...(credentials ? { credentials } : {}),
-    })
-    const client = await auth.getClient()
-    const token = await client.getAccessToken()
-    if (token?.token) return token.token
-    throw new Error(
-      "Unable to obtain Google access token. Set GOOGLE_APPLICATION_CREDENTIALS, or connect google-stt with a service-account JSON key.",
-    )
-  }
-
-  async function getGoogleProjectId(credentials?: GoogleServiceAccountCredentials): Promise<string | undefined> {
-    // Try environment variables first
-    const envProjectId = process.env["GOOGLE_CLOUD_PROJECT"] ?? process.env["GCLOUD_PROJECT"] ?? process.env["GCP_PROJECT"]
-    if (envProjectId) return envProjectId
-
-    // Try to extract from service account credentials
-    if (credentials) {
-      const { GoogleAuth } = await import("google-auth-library")
-      const auth = new GoogleAuth({ credentials })
-      const projectId = await auth.getProjectId().catch(() => undefined)
-      if (projectId) return projectId
-    }
-
-    // Try ADC
-    try {
-      const { GoogleAuth } = await import("google-auth-library")
-      const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] })
-      const projectId = await auth.getProjectId()
-      if (projectId) return projectId
-    } catch {
-      // ignore
-    }
-
-    return undefined
   }
 
   function decodeWavPcm16(input: Uint8Array): DecodedPcm16Wav | undefined {

@@ -19,6 +19,7 @@ import { Script } from "../src/pkg/script"
 
 const personasRoot = path.resolve(repoRoot, "packages", "personas")
 const zeeRoot = path.join(personasRoot, "zee")
+
 const tiaraRoot = path.resolve(repoRoot, "packages", "tiara")
 const agentCoreAssetsRoot = path.join(repoRoot, ".agent-core")
 const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
@@ -341,6 +342,7 @@ for (const item of targets) {
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       AGENT_CORE_WORKER_PATH: workerPath,
       AGENT_CORE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      __ZEE_VERSION__: `'${Script.version}'`,
     },
   })
 

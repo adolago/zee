@@ -29,6 +29,8 @@ ExecStart=@HOME@/.bun/bin/agent-core daemon --hostname 127.0.0.1 --port 3210 --d
 # Restart policy
 Restart=always
 RestartSec=10
+RestartPreventExitStatus=100
+SuccessExitStatus=100
 TimeoutStopSec=30
 KillMode=control-group
 

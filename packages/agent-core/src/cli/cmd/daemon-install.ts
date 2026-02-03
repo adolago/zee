@@ -246,6 +246,8 @@ ExecStart=${execStart}
 WorkingDirectory=${workDir}
 Restart=always
 RestartSec=5
+RestartPreventExitStatus=100
+SuccessExitStatus=100
 KillMode=process
 
 # Environment

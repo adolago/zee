@@ -1324,10 +1324,10 @@ describe("ProviderTransform.options - persona thinking configs", () => {
   })
 
   describe("Johny (Claude Opus 4.5 via Antigravity/Google)", () => {
-    test("should enable thinkingConfig for Google provider models", () => {
+    test("should enable thinkingConfig for Google Antigravity provider models", () => {
       const model = {
-        id: "google/antigravity-claude-opus-4-5-thinking",
-        providerID: "google",
+        id: "google-antigravity/antigravity-claude-opus-4-5-thinking",
+        providerID: "google-antigravity",
         api: {
           id: "antigravity-claude-opus-4-5-thinking",
           url: "https://generativelanguage.googleapis.com",

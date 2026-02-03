@@ -25,7 +25,6 @@ Complete reference for agent-core providers, authentication, and models.
 | Provider ID | Display Name | Auth Type | Status | Issue |
 |-------------|--------------|-----------|--------|-------|
 | `anthropic` | Anthropic | OAuth | Needs re-auth | Rate limit exceeded |
-| `gemini-cli` | Gemini CLI | OAuth | Needs scopes | Insufficient scopes |
 | `openai` | OpenAI | OAuth | Quota exceeded | Check billing |
 | `opencode` | OpenCode Zen | API key | Insufficient balance | Add credits |
 
@@ -34,7 +33,6 @@ Complete reference for agent-core providers, authentication, and models.
 - **kimi-for-coding**: Only works via agent-core TUI, not direct API calls (Kimi restricts to coding agents)
 - **anthropic**: OAuth token may need refresh - run `agent-core auth login anthropic`
 - **openai**: Quota exceeded - check billing at https://platform.openai.com/account/billing
-- **gemini-cli**: Antigravity models need additional OAuth scopes - re-run `agent-core auth login gemini-cli`
 - **minimax**: Pay-as-you-go account has no chat balance, but TTS works fine
 
 ## Authentication Commands
@@ -64,7 +62,8 @@ agent-core auth login zai-coding-plan  # API key prompt
 |-------------|-----|-------------|------------|
 | `anthropic` | @ai-sdk/anthropic | OAuth or API key | Claude 4.5 Opus/Sonnet |
 | `openai` | @ai-sdk/openai | OAuth or API key | GPT-5.5, o3, Codex |
-| `google` | @ai-sdk/google | OAuth (gemini-cli) or API key | Gemini 3 Pro/Flash, Antigravity |
+| `google` | @ai-sdk/google | API key (AI Studio) | Gemini 3 Pro/Flash |
+| `google-antigravity` | @ai-sdk/google | OAuth (Antigravity) | Claude Opus 4.5 Thinking, Gemini 3 |
 
 ### Tier 2: Coding Plan Providers (Free/Subscription)
 
@@ -109,7 +108,7 @@ Each provider can be authenticated via environment variable OR `agent-core auth 
 |----------|---------------------|
 | anthropic | `ANTHROPIC_API_KEY` |
 | openai | `OPENAI_API_KEY` |
-| google | `GOOGLE_GENERATIVE_AI_API_KEY` or `GEMINI_API_KEY` |
+| google | `GOOGLE_API_KEY` or `GEMINI_API_KEY` |
 | xai | `XAI_API_KEY` |
 | nebius | `NEBIUS_API_KEY` |
 | kimi-for-coding | `KIMI_API_KEY` |
@@ -152,7 +151,7 @@ Each provider can be authenticated via environment variable OR `agent-core auth 
 
 | Auth Type | Providers | Flow |
 |-----------|-----------|------|
-| **OAuth** | anthropic, openai, google (gemini-cli), kimi-for-coding | Browser-based login, auto-refresh tokens |
+| **OAuth** | anthropic, openai, google-antigravity, kimi-for-coding | Browser-based login, auto-refresh tokens |
 | **API Key** | Most others | Paste key when prompted |
 
 ## MiniMax Special Cases
@@ -228,17 +227,15 @@ curl -s -X POST "https://api.minimax.io/v1/t2a_v2" \
 
 Google provider supports multiple auth sources:
 
-1. **API Key**: `GEMINI_API_KEY` or `agent-core auth login google`
-2. **OAuth (gemini-cli)**: `agent-core auth login gemini-cli` - enables Antigravity models
+1. **API Key (AI Studio)**: `GEMINI_API_KEY` or `agent-core auth login google`
+2. **OAuth (Antigravity)**: `agent-core auth login google-antigravity`
 
-Antigravity models (Claude via Google, Gemini 3) require `gemini-cli` OAuth.
+Antigravity models (Claude via Google, Gemini 3) require `google-antigravity` OAuth.
 
 ## Disabled Providers
 
 These are disabled in your config (`disabled_providers`):
 
-- `google-vertex` - Requires GCP service account
-- `google-vertex-anthropic` - Requires GCP service account
 - `minimax` - No chat balance (kept for TTS)
 - `minimax-cn` - China region
 - `minimax-cn-coding-plan` - China region
@@ -256,6 +253,8 @@ These providers are permanently hidden:
 - `amazon-bedrock` - Enterprise AWS only
 - `qwen-portal` - OAuth complexity
 - `moonshot` - Duplicate of kimi-for-coding
+- `google-vertex` - Requires GCP service account
+- `google-vertex-anthropic` - Requires GCP service account
 
 ## Model Naming Conventions
 

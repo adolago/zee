@@ -880,15 +880,15 @@ export namespace Config {
         enabled: z.boolean().optional().describe("Enable dictation"),
         provider: z.enum(["google"]).optional().default("google").describe("Dictation provider"),
         model: z
-          .enum(["default", "chirp_2"])
+          .enum(["default", "gemini-3-flash", "gemini-3-flash-preview"])
           .optional()
           .default("default")
-          .describe("Speech recognition model: 'default' uses V1 API, 'chirp_2' uses V2 API with enhanced multilingual accuracy"),
+          .describe("Speech recognition model (Gemini audio): 'default' uses Gemini 3 Flash"),
         region: z
           .string()
           .optional()
           .default("us-central1")
-          .describe("Google Cloud region for Chirp 2 (us-central1, europe-west4, asia-southeast1)"),
+          .describe("Reserved for future use (ignored by Gemini audio)"),
         language: z.string().optional().default("en-US").describe("Primary language (BCP-47 code)"),
         alternative_languages: z
           .array(z.string())

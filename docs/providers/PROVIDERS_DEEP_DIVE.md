@@ -79,8 +79,7 @@ GEMINI_API_KEY=...
 ### Auth Methods
 
 1. **API Key** (default): `GOOGLE_API_KEY`
-2. **OAuth** (Gemini CLI): `google-gemini-cli`
-3. **OAuth** (Antigravity): `google-antigravity`
+2. **OAuth** (Antigravity): `google-antigravity`
 
 ---
 

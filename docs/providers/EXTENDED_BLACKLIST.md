@@ -4,7 +4,7 @@ Complete analysis of all providers including utility providers and Google varian
 
 ---
 
-## Currently Blocked (9 Providers)
+## Currently Blocked (11 Providers)
 
 ```typescript
 const PROVIDER_BLACKLIST = new Set<string>([
@@ -17,19 +17,20 @@ const PROVIDER_BLACKLIST = new Set<string>([
   "amazon-bedrock",   // Enterprise AWS only
   "qwen-portal",      // OAuth complexity, limited models
   "moonshot",         // Duplicate of kimi-for-coding
+  "google-vertex",    // Requires GCP service account
+  "google-vertex-anthropic", // Requires GCP service account
 ])
 ```
 
 ---
 
-## Active LLM Providers (10)
+## Active LLM Providers (11)
 
 | Provider | Type | Block Recommendation |
 |----------|------|---------------------|
 | **anthropic** | Core LLM | KEEP |
 | **openai** | Core LLM | KEEP |
 | **google** | Core LLM (AI Studio API) | KEEP |
-| **google-gemini-cli** | OAuth (Gemini CLI) | KEEP |
 | **google-antigravity** | OAuth (Cloud Code) | KEEP |
 | **xai** | Long Context | KEEP |
 | **deepseek** | Budget | KEEP |
@@ -81,16 +82,15 @@ const PROVIDER_BLACKLIST = new Set<string>([
 | Provider ID | Service | Env Var | Default Model |
 |-------------|---------|---------|---------------|
 | `google` | STT (Gemini) | `GOOGLE_API_KEY` | gemini-3-flash-preview |
-| `google-stt` | STT (Chirp 2) | `GOOGLE_STT_API_KEY` | chirp_2 |
 | `openai` | STT | `OPENAI_API_KEY` | gpt-4o-mini-transcribe |
 | `deepgram` | STT | `DEEPGRAM_API_KEY` | nova-3 |
 | `groq` | STT | `GROQ_API_KEY` | whisper-large-v3-turbo |
 
 ---
 
-## Google Provider Variants (3 Separate Providers)
+## Google Provider Variants (2 Separate Providers)
 
-Google has **3 distinct provider IDs** that can be blocked separately:
+Google has **2 distinct provider IDs** that can be blocked separately:
 
 ### 1. `google` - Google AI Studio API
 - **Service:** Main LLM, Embedding, Gemini STT
@@ -98,14 +98,7 @@ Google has **3 distinct provider IDs** that can be blocked separately:
 - **Models:** gemini-3-pro/flash-preview, gemini-embedding-001
 - **Auth:** API Key
 
-### 2. `google-gemini-cli` - Gemini CLI OAuth
-- **Service:** LLM via Gemini CLI
-- **Env Vars:** `ZEE_GEMINI_OAUTH_CLIENT_ID`, `GEMINI_CLI_OAUTH_CLIENT_SECRET`
-- **Default Model:** google-gemini-cli/gemini-3-pro-preview
-- **Auth:** OAuth (PKCE + localhost callback)
-- **Scopes:** cloud-platform, userinfo
-
-### 3. `google-antigravity` - Google Cloud Code (Antigravity)
+### 2. `google-antigravity` - Google Cloud Code (Antigravity)
 - **Service:** LLM via Cloud Code Assist
 - **Default Model:** google-antigravity/claude-opus-4-5-thinking
 - **Auth:** OAuth (PKCE + localhost callback)
@@ -114,9 +107,6 @@ Google has **3 distinct provider IDs** that can be blocked separately:
 ### To Block Google Variants Individually:
 
 ```typescript
-// Block only Gemini CLI
-"google-gemini-cli"
-
 // Block only Antigravity
 "google-antigravity"
 
@@ -130,14 +120,14 @@ Google has **3 distinct provider IDs** that can be blocked separately:
 
 | Category | Count | Can Block Individually |
 |----------|-------|------------------------|
-| LLM Providers | 10 | Yes |
-| Google Variants | 3 | Yes (google, google-gemini-cli, google-antigravity) |
+| LLM Providers | 11 | Yes |
+| Google Variants | 2 | Yes (google, google-antigravity) |
 | Embedding | 4 | Yes (openai, google, voyage, vllm) |
 | Reranking | 2 | Yes (voyage, vllm) |
 | TTS | 4 | Yes (openai, elevenlabs, minimax, edge) |
-| STT | 5 | Yes (google, google-stt, openai, deepgram, groq) |
+| STT | 4 | Yes (google, openai, deepgram, groq) |
 
-**Total Blockable Provider IDs:** ~28
+**Total Blockable Provider IDs:** ~27
 
 ---
 
@@ -156,15 +146,15 @@ const blockSTT = ["deepgram", "groq"];
 const blockRerank = ["voyage"];
 
 // Block Google variants (keep main google)
-const blockGoogleVariants = ["google-gemini-cli", "google-antigravity"];
+const blockGoogleVariants = ["google-antigravity"];
 ```
 
 ---
 
 ## Complete Provider Registry
 
-### LLM (12)
-anthropic, openai, google, google-gemini-cli, google-antigravity, xai, deepseek, minimax, zai-coding-plan, kimi-for-coding, opencode, openrouter
+### LLM (11)
+anthropic, openai, google, google-antigravity, xai, deepseek, minimax, zai-coding-plan, kimi-for-coding, opencode, openrouter
 
 ### Embedding (4)
 openai, google, voyage, vllm
@@ -175,8 +165,8 @@ voyage, vllm
 ### TTS (4)
 openai, elevenlabs, minimax, edge
 
-### STT (5)
-google, google-stt, openai, deepgram, groq
+### STT (4)
+google, openai, deepgram, groq
 
 ### Image (1)
 openai
@@ -184,4 +174,4 @@ openai
 ### Web Search (2)
 brave, perplexity
 
-**Total: ~30 distinct provider IDs**
+**Total: ~29 distinct provider IDs**

@@ -1,4 +1,4 @@
-import { type Accessor, createMemo, For, Match, Switch } from "solid-js"
+import { createMemo, For, Match, Switch } from "solid-js"
 import { useRouteData, useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
@@ -6,17 +6,6 @@ import type { Session } from "@agent-core/sdk/v2"
 import { useKeybind } from "../../context/keybind"
 import { Locale } from "@/util/locale"
 import { Header as HeaderStyles } from "@tui/ui/header-footer"
-import { useTerminalDimensions } from "@opentui/solid"
-
-const Title = (props: { session: Accessor<Session> }) => {
-  const { theme } = useTheme()
-  return (
-    <text fg={theme.text}>
-      <span style={{ bold: true }}>#</span>{" "}
-      <span style={{ bold: true }}>{props.session().title}</span>
-    </text>
-  )
-}
 
 export function Header() {
   const route = useRouteData("session")
@@ -38,9 +27,6 @@ export function Header() {
 
   const { theme } = useTheme()
   const keybind = useKeybind()
-  const dimensions = useTerminalDimensions()
-  const narrow = createMemo(() => dimensions().width < 80)
-
   return (
     <box flexShrink={0}>
       <box
@@ -98,13 +84,7 @@ export function Header() {
             </box>
           </Match>
           <Match when={true}>
-            <box
-              flexDirection={narrow() ? "column" : "row"}
-              justifyContent="space-between"
-              gap={1}
-            >
-              <Title session={session} />
-            </box>
+            <box height={0} />
           </Match>
         </Switch>
       </box>
