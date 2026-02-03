@@ -33,8 +33,13 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await $`git init`.cwd(dirpath).quiet()
-    await $`git commit --allow-empty -m "root commit ${dirpath}"`.cwd(dirpath).quiet()
+    // Use explicit array arguments for Bun.spawn to avoid shell injection and potential shell issues in CI
+    await Bun.spawn(["git", "init"], { cwd: dirpath, stdout: "ignore", stderr: "ignore" }).exited
+    await Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
+      cwd: dirpath,
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited
   }
   if (options?.config) {
     await Bun.write(
