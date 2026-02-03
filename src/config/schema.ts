@@ -463,7 +463,7 @@ function getSuggestion(issue: z.ZodIssue): string | undefined {
 
   // Common error suggestions
   if (code === 'invalid_type') {
-    const invalid = issue as z.ZodIssueInvalidType;
+    const invalid = issue as { expected?: unknown; received?: unknown };
     return `Expected ${invalid.expected}, received ${invalid.received}`;
   }
 
