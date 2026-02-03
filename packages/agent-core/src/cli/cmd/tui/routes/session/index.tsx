@@ -1208,9 +1208,9 @@ export function Session() {
                 bottom={0}
                 alignItems="flex-end"
                 zIndex={500}
-                backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
+                backgroundColor={RGBA.fromInts(0, 0, 0, 80)}
               >
-                <Sidebar sessionID={route.sessionID} hideTitle={false} />
+                <Sidebar sessionID={route.sessionID} hideTitle={false} overlay={true} />
               </box>
             </Match>
           </Switch>

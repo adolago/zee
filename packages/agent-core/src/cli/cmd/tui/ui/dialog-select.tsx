@@ -366,7 +366,7 @@ function Option(props: {
         attributes={props.active ? TextAttributes.BOLD : undefined}
         overflow="hidden"
         wrapMode="none"
-        paddingLeft={3}
+        paddingLeft={1}
       >
         {Locale.truncate(props.title, 61)}
         <Show when={props.description}>

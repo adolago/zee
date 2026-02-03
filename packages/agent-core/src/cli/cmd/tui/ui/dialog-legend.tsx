@@ -24,7 +24,7 @@ export function DialogLegend() {
 
       <box gap={1} paddingBottom={1}>
         <box>
-          <text attributes={TextAttributes.BOLD} fg={theme.accent}>
+          <text attributes={TextAttributes.BOLD} fg={theme.text}>
             Vim Mode (enabled by default)
           </text>
           <text fg={theme.textMuted}>  NORMAL   Navigate/command mode (Esc to enter)</text>
@@ -88,7 +88,7 @@ export function DialogLegend() {
       </box>
 
       <box flexDirection="row" justifyContent="flex-end" paddingBottom={1}>
-        <box paddingLeft={3} paddingRight={3} backgroundColor={theme.primary} onMouseUp={() => dialog.clear()}>
+        <box paddingLeft={2} paddingRight={2} backgroundColor={theme.primary} onMouseUp={() => dialog.clear()}>
           <text fg={theme.selectedListItemText}>ok</text>
         </box>
       </box>
