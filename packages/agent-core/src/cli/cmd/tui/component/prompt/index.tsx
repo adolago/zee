@@ -1,9 +1,6 @@
 import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, fg, TextAttributes, RGBA } from "@opentui/core"
 import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, Show, Switch, Match } from "solid-js"
-import { extend, type RenderableConstructor } from "@opentui/solid"
-import { SpinnerRenderable } from "opentui-spinner"
-
-extend({ spinner: SpinnerRenderable as unknown as RenderableConstructor })
+import "opentui-spinner/solid"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
 import { EmptyBorder } from "@tui/component/border"
@@ -52,6 +49,11 @@ export type PromptProps = {
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
   showPlaceholder?: boolean
+  showTitleInBorder?: boolean
+  showContextUsageInBorder?: boolean
+  showModelInfoInBorder?: boolean
+  showPathInfoInBorder?: boolean
+  layoutWidth?: number
 }
 
 export type PromptRef = {
@@ -79,7 +81,8 @@ export function Prompt(props: PromptProps) {
   const dialog = useDialog()
   const toast = useToast()
   const dimensions = useTerminalDimensions()
-  const fill = createMemo(() => "─".repeat(dimensions().width))
+  const layoutWidth = createMemo(() => props.layoutWidth ?? dimensions().width)
+  const fill = createMemo(() => "─".repeat(Math.max(0, layoutWidth())))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {
@@ -168,6 +171,28 @@ export function Prompt(props: PromptProps) {
     return { files: diffs.length, additions, deletions, modified }
   })
   const gitBranch = createMemo(() => sync.data.vcs?.branch)
+  const sessionTitle = createMemo(() => {
+    if (!props.sessionID) return ""
+    const title = sync.session.get(props.sessionID)?.title ?? ""
+    return title.replace(/^#\s*/, "")
+  })
+  const maxTitleWidth = createMemo(() => {
+    const width = layoutWidth()
+    const minFill = 1
+    const fixed = 3 + minFill // left corner + separator + right corner + min fill
+    return Math.max(0, width - fixed)
+  })
+  const titleClamped = createMemo(() => {
+    const title = sessionTitle()
+    const max = maxTitleWidth()
+    if (max <= 0) return ""
+    if (title.length <= max) return title
+    return title.slice(0, max)
+  })
+  const showTitleInBorder = createMemo(() => (props.showTitleInBorder ?? true) && sessionTitle().length > 0)
+  const showContextUsageInBorder = createMemo(() => props.showContextUsageInBorder ?? true)
+  const showModelInfoInBorder = createMemo(() => props.showModelInfoInBorder ?? true)
+  const showPathInfoInBorder = createMemo(() => props.showPathInfoInBorder ?? true)
   const history = usePromptHistory()
   const stash = usePromptStash()
   const command = useCommandDialog()
@@ -1444,43 +1469,63 @@ export function Prompt(props: PromptProps) {
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
         {/* Tips/billboard box with shared middle border (T-junctions) */}
-        <Tips billboard={billboard} bottomBorder={
-          <box height={1} flexDirection="row">
-            <text fg={theme.border} flexShrink={0}>├</text>
-            {/* Left side: context usage */}
-            <Show when={contextUsage()}>
-              {(ctx) => (
-                <>
-                  <text
-                    fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
-                    flexShrink={0}
-                  >
-                    {ctx().percent}% of {ctx().limit >= 1000000 ? `${(ctx().limit / 1000000).toFixed(1)}M` : ctx().limit >= 1000 ? `${Math.round(ctx().limit / 1000)}k` : ctx().limit}
-                  </text>
-                  <text fg={theme.border} flexShrink={0}>─</text>
-                </>
-              )}
-            </Show>
-
-            {/* Line fill */}
-            <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
-            {/* Right side: agent info */}
-            <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
-            <text fg={theme.border} flexShrink={0}>─</text>
-            <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
-            <Show when={vim.enabled && store.mode !== "shell"}>
-              <text fg={theme.border} flexShrink={0}>─</text>
-              <text
-                fg={vim.isNormal ? theme.accent : theme.success}
-                attributes={TextAttributes.BOLD}
-                flexShrink={0}
-              >
-                {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
+        <Tips
+          billboard={billboard}
+          topBorder={showTitleInBorder() ? (
+            <box height={1} flexDirection="row">
+              <text fg={theme.border} flexShrink={0}>╭</text>
+              <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
+                {titleClamped()}
               </text>
-            </Show>
-            <text fg={theme.border} flexShrink={0}>─┤</text>
-          </box>
-        } />
+              <text fg={theme.border} flexShrink={0}>─</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{fill()}</text>
+              <text fg={theme.border} flexShrink={0}>╮</text>
+            </box>
+          ) : (
+            <box height={1} flexDirection="row">
+              <text fg={theme.border} flexShrink={0}>╭</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{fill()}</text>
+              <text fg={theme.border} flexShrink={0}>╮</text>
+            </box>
+          )}
+          bottomBorder={
+            <box height={1} flexDirection="row">
+              <text fg={theme.border} flexShrink={0}>├</text>
+              {/* Left side: context usage */}
+              <Show when={showContextUsageInBorder() && contextUsage()}>
+                {(ctx) => (
+                  <>
+                    <text
+                      fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
+                      flexShrink={0}
+                    >
+                      {ctx().percent}% of {ctx().limit >= 1000000 ? `${(ctx().limit / 1000000).toFixed(1)}M` : ctx().limit >= 1000 ? `${Math.round(ctx().limit / 1000)}k` : ctx().limit}
+                    </text>
+                    <text fg={theme.border} flexShrink={0}>─</text>
+                  </>
+                )}
+              </Show>
+
+              {/* Line fill */}
+              <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
+              {/* Right side: agent info */}
+              <text fg={theme.textMuted} flexShrink={0}>{Locale.titlecase(local.agent.current().name)}</text>
+              <text fg={theme.border} flexShrink={0}>─</text>
+              <text fg={theme.textMuted} flexShrink={0}>{sync.data.agent?.length ?? 0} skills</text>
+              <Show when={vim.enabled && store.mode !== "shell"}>
+                <text fg={theme.border} flexShrink={0}>─</text>
+                <text
+                  fg={vim.isNormal ? theme.accent : theme.success}
+                  attributes={TextAttributes.BOLD}
+                  flexShrink={0}
+                >
+                  {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
+                </text>
+              </Show>
+              <text fg={theme.border} flexShrink={0}>─┤</text>
+            </box>
+          }
+        />
         
         {/* Input area with side borders (stacked box style) */}
         <box
@@ -1795,26 +1840,30 @@ export function Prompt(props: PromptProps) {
           {/* Center: line fill */}
           <text fg={theme.border} flexGrow={1} flexShrink={1}>{fill()}</text>
           {/* Right: model + path */}
-          {(() => {
-            const parsed = local.model.parsed()
-            const variant = local.model.variant.current()
-            return (
-              <>
-                <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
-                <Show when={variant}>
-                  <text fg={theme.accent} flexShrink={0}> {variant}</text>
-                </Show>
-              </>
-            )
-          })()}
-          <text fg={theme.textMuted} flexShrink={0}>
-            <Show when={sync.data.path?.directory}>
-              {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
-            </Show>
-            <Show when={sync.data.vcs?.branch}>
-              {` (${sync.data.vcs?.branch})`}
-            </Show>
-          </text>
+          <Show when={showModelInfoInBorder()}>
+            {(() => {
+              const parsed = local.model.parsed()
+              const variant = local.model.variant.current()
+              return (
+                <>
+                  <text fg={theme.textMuted} flexShrink={0}>{parsed.provider} {parsed.model}</text>
+                  <Show when={variant}>
+                    <text fg={theme.accent} flexShrink={0}> {variant}</text>
+                  </Show>
+                </>
+              )
+            })()}
+          </Show>
+          <Show when={showPathInfoInBorder()}>
+            <text fg={theme.textMuted} flexShrink={0}>
+              <Show when={sync.data.path?.directory}>
+                {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
+              </Show>
+              <Show when={sync.data.vcs?.branch}>
+                {` (${sync.data.vcs?.branch})`}
+              </Show>
+            </text>
+          </Show>
           <text fg={theme.border} flexShrink={0}>─╯</text>
         </box>
       </box>

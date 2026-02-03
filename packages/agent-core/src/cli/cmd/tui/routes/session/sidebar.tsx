@@ -8,13 +8,14 @@ import type { Session } from "@agent-core/sdk/v2"
 import { Global } from "@/global"
 import { Installation } from "@/installation"
 import { useKeybind } from "../../context/keybind"
-import { useDirectory } from "../../context/directory"
 import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { useRoute } from "../../context/route"
+import { useLocal } from "../../context/local"
 
-export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
+export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle?: boolean }) {
   const sync = useSync()
+  const local = useLocal()
   const { theme } = useTheme()
   const session = createMemo(() => sync.session.get(props.sessionID)!)
   const diff = createMemo(() => sync.data.session_diff[props.sessionID] ?? [])
@@ -41,7 +42,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   )
 
 
-  const directory = useDirectory()
   const kv = useKV()
 
   const hasProviders = createMemo(() => sync.data.provider.length > 0)
@@ -75,14 +75,65 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
   const hasBranches = createMemo(
     () => parentSession() !== null || childSessions().length > 0 || siblingsSessions().length > 0,
   )
+  const modelInfo = createMemo(() => {
+    const parsed = local.model.parsed()
+    const variant = local.model.variant.current()
+    return { provider: parsed.provider, model: parsed.model, variant }
+  })
+  const contextUsage = createMemo(() => {
+    const model = local.model.current()
+    if (!model) return null
+    const provider = sync.data.provider.find((p) => p.id === model.providerID)
+    const modelInfo = provider?.models[model.modelID]
+    if (!modelInfo?.limit?.context) return null
+
+    const outputLimit = Math.min(modelInfo.limit.output ?? 8192, 16384)
+    const usable = modelInfo.limit.input ?? (modelInfo.limit.context - outputLimit)
+    if (usable <= 0) return null
+
+    const messages = sync.data.message[props.sessionID] ?? []
+    const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
+    if (!lastAssistant?.tokens) {
+      return { count: 0, limit: usable, percent: 0 }
+    }
+
+    const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
+    return { count, limit: usable, percent: Math.min(100, Math.round((count / usable) * 100)) }
+  })
+  const contextLimitLabel = createMemo(() => {
+    const ctx = contextUsage()
+    if (!ctx) return ""
+    if (ctx.limit >= 1000000) return `${(ctx.limit / 1000000).toFixed(1)}M`
+    if (ctx.limit >= 1000) return `${Math.round(ctx.limit / 1000)}k`
+    return `${ctx.limit}`
+  })
+  const diffStats = createMemo(() => {
+    const diffs = sync.data.session_diff[props.sessionID] ?? []
+    if (diffs.length === 0) return null
+    let additions = 0
+    let deletions = 0
+    let modified = 0
+    for (const d of diffs) {
+      additions += d.additions
+      deletions += d.deletions
+      if (d.additions > 0 && d.deletions > 0) modified++
+    }
+    return { files: diffs.length, additions, deletions, modified }
+  })
+  const directoryLabel = createMemo(() => {
+    const path = sync.data.path?.directory
+    if (!path) return ""
+    return `~${path.replace(process.env.HOME ?? "", "")}`
+  })
+  const branchLabel = createMemo(() => sync.data.vcs?.branch)
 
   return (
     <Show when={session()}>
       <box
-        backgroundColor={theme.backgroundPanel}
+        backgroundColor={theme.background}
         width={40}
         height="100%"
-        paddingTop={0}
+        paddingTop={1}
         paddingBottom={0}
         paddingLeft={1}
         paddingRight={1}
@@ -90,14 +141,46 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
       >
         <scrollbox flexGrow={1}>
           <box flexShrink={0} gap={0} paddingRight={0}>
-            <box paddingRight={0} paddingBottom={1}>
-              <text fg={theme.text}>
-                <b>{session().title}</b>
-              </text>
-              <Show when={session().share?.url}>
-                <text fg={theme.textMuted}>{session().share!.url}</text>
-              </Show>
-            </box>
+            <Show when={!props.hideTitle}>
+              <box paddingRight={0} paddingBottom={1} gap={0}>
+                <text fg={theme.text}>
+                  <b>{session().title}</b>
+                </text>
+                <Show when={session().share?.url}>
+                  <text fg={theme.textMuted}>{session().share!.url}</text>
+                </Show>
+                <Show when={contextUsage()}>
+                  {(ctx) => (
+                    <text
+                      fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
+                    >
+                      Context: {ctx().percent}% of {contextLimitLabel()}
+                    </text>
+                  )}
+                </Show>
+                <text fg={theme.text}>Model Provider: {modelInfo().provider}</text>
+                <text fg={theme.text}>Model Name: {modelInfo().model}</text>
+                <Show when={modelInfo().variant}>
+                  <text fg={theme.accent}>Model Variant: {modelInfo().variant}</text>
+                </Show>
+                <Show when={directoryLabel() || branchLabel()}>
+                  <text fg={theme.text}>
+                    Path: <Show when={directoryLabel()}>{directoryLabel()}</Show>
+                    <Show when={branchLabel()}>{` (${branchLabel()})`}</Show>
+                  </text>
+                </Show>
+                <Show when={diffStats()}>
+                  {(stats) => (
+                    <text fg={theme.text}>
+                      File Changes: {stats().files} file{stats().files !== 1 ? "s" : ""}
+                      {stats().modified > 0 ? `, ${stats().modified} modified` : ""}
+                      {stats().additions > 0 ? `, +${stats().additions}` : ""}
+                      {stats().deletions > 0 ? `, -${stats().deletions}` : ""}
+                    </text>
+                  )}
+                </Show>
+              </box>
+            </Show>
             <Show when={mcpEntries().length > 0}>
               <box>
                 <box
@@ -350,10 +433,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               </box>
             </box>
           </Show>
-          <text>
-            <span style={{ fg: theme.textMuted }}>{directory().split("/").slice(0, -1).join("/")}/</span>
-            <span style={{ fg: theme.text }}>{directory().split("/").at(-1)}</span>
-          </text>
           <text fg={theme.textMuted}>
             <span style={{ fg: theme.success }}>•</span> <b>agent</b>
             <span style={{ fg: theme.text }}>

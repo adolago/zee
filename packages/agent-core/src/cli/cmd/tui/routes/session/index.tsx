@@ -1046,9 +1046,7 @@ export function Session() {
           borderColor={theme.border}
         >
           <Show when={session()}>
-            <Show when={!sidebarVisible() || !wide()}>
-              <Header />
-            </Show>
+            <Header />
             <Show when={messages().length > 0} fallback={<AgentBanner />}>
               <scrollbox
                 ref={(r) => (scroll = r)}
@@ -1186,6 +1184,11 @@ export function Session() {
                   toBottom()
                 }}
                 sessionID={route.sessionID}
+                showTitleInBorder={!sidebarVisible()}
+                showContextUsageInBorder={!sidebarVisible()}
+                showModelInfoInBorder={!sidebarVisible()}
+                showPathInfoInBorder={!sidebarVisible()}
+                layoutWidth={contentWidth()}
               />
             </box>
           </Show>
@@ -1194,7 +1197,7 @@ export function Session() {
         <Show when={sidebarVisible()}>
           <Switch>
             <Match when={wide()}>
-              <Sidebar sessionID={route.sessionID} />
+              <Sidebar sessionID={route.sessionID} hideTitle={false} />
             </Match>
             <Match when={!wide()}>
               <box
@@ -1207,7 +1210,7 @@ export function Session() {
                 zIndex={500}
                 backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
               >
-                <Sidebar sessionID={route.sessionID} />
+                <Sidebar sessionID={route.sessionID} hideTitle={false} />
               </box>
             </Match>
           </Switch>
