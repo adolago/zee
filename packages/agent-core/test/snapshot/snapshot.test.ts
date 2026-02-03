@@ -36,7 +36,7 @@ test("tracks deleted files correctly", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
 
       expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/a.txt`)
     },
@@ -68,7 +68,7 @@ test("revert in subdirectory", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir -p ${tmp.path}/sub`.quiet()
+      await Bun.spawn(["mkdir", "-p", `${tmp.path}/sub`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/sub/file.txt`, "SUB")
 
       await Snapshot.revert([await Snapshot.patch(before!)])
@@ -88,9 +88,9 @@ test("multiple file operations", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/c.txt`, "C")
-      await $`mkdir -p ${tmp.path}/dir`.quiet()
+      await Bun.spawn(["mkdir", "-p", `${tmp.path}/dir`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/dir/d.txt`, "D")
       await Bun.write(`${tmp.path}/b.txt`, "MODIFIED")
 
@@ -113,7 +113,7 @@ test("empty directory handling", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir ${tmp.path}/empty`.quiet()
+      await Bun.spawn(["mkdir", `${tmp.path}/empty`], { stdout: "ignore", stderr: "ignore" }).exited
 
       expect((await Snapshot.patch(before!)).files.length).toBe(0)
     },
@@ -147,7 +147,10 @@ test("symlink handling", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`ln -s ${tmp.path}/a.txt ${tmp.path}/link.txt`.quiet()
+      await Bun.spawn(["ln", "-s", `${tmp.path}/a.txt`, `${tmp.path}/link.txt`], {
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited
 
       expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/link.txt`)
     },
@@ -177,7 +180,10 @@ test("nested directory revert", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir -p ${tmp.path}/level1/level2/level3`.quiet()
+      await Bun.spawn(["mkdir", "-p", `${tmp.path}/level1/level2/level3`], {
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited
       await Bun.write(`${tmp.path}/level1/level2/level3/deep.txt`, "DEEP")
 
       await Snapshot.revert([await Snapshot.patch(before!)])
@@ -342,10 +348,16 @@ test("nested symlinks", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir -p ${tmp.path}/sub/dir`.quiet()
+      await Bun.spawn(["mkdir", "-p", `${tmp.path}/sub/dir`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/sub/dir/target.txt`, "target content")
-      await $`ln -s ${tmp.path}/sub/dir/target.txt ${tmp.path}/sub/dir/link.txt`.quiet()
-      await $`ln -s ${tmp.path}/sub ${tmp.path}/sub-link`.quiet()
+      await Bun.spawn(["ln", "-s", `${tmp.path}/sub/dir/target.txt`, `${tmp.path}/sub/dir/link.txt`], {
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited
+      await Bun.spawn(["ln", "-s", `${tmp.path}/sub`, `${tmp.path}/sub-link`], {
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited
 
       const patch = await Snapshot.patch(before!)
       expect(patch.files).toContain(`${tmp.path}/sub/dir/link.txt`)
@@ -363,9 +375,9 @@ test("file permissions and ownership changes", async () => {
       expect(before).toBeTruthy()
 
       // Change permissions multiple times
-      await $`chmod 600 ${tmp.path}/a.txt`.quiet()
-      await $`chmod 755 ${tmp.path}/a.txt`.quiet()
-      await $`chmod 644 ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["chmod", "600", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
+      await Bun.spawn(["chmod", "755", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
+      await Bun.spawn(["chmod", "644", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
 
       const patch = await Snapshot.patch(before!)
       // Note: git doesn't track permission changes on existing files by default
@@ -384,7 +396,10 @@ test("circular symlinks", async () => {
       expect(before).toBeTruthy()
 
       // Create circular symlink
-      await $`ln -s ${tmp.path}/circular ${tmp.path}/circular`.quiet().nothrow()
+      await Bun.spawn(["ln", "-s", `${tmp.path}/circular`, `${tmp.path}/circular`], {
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited
 
       const patch = await Snapshot.patch(before!)
       expect(patch.files.length).toBeGreaterThanOrEqual(0) // Should not crash
@@ -477,7 +492,11 @@ test("snapshot state isolation between projects", async () => {
 test("patch detects changes in secondary worktree", async () => {
   await using tmp = await bootstrap()
   const worktreePath = `${tmp.path}-worktree`
-  await $`git worktree add ${worktreePath} HEAD`.cwd(tmp.path).quiet()
+  await Bun.spawn(["git", "worktree", "add", worktreePath, "HEAD"], {
+    cwd: tmp.path,
+    stdout: "ignore",
+    stderr: "ignore",
+  }).exited
 
   try {
     await Instance.provide({
@@ -501,15 +520,23 @@ test("patch detects changes in secondary worktree", async () => {
       },
     })
   } finally {
-    await $`git worktree remove --force ${worktreePath}`.cwd(tmp.path).quiet().nothrow()
-    await $`rm -rf ${worktreePath}`.quiet()
+    await Bun.spawn(["git", "worktree", "remove", "--force", worktreePath], {
+      cwd: tmp.path,
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited
+    await Bun.spawn(["rm", "-rf", worktreePath], { stdout: "ignore", stderr: "ignore" }).exited
   }
 })
 
 test("revert only removes files in invoking worktree", async () => {
   await using tmp = await bootstrap()
   const worktreePath = `${tmp.path}-worktree`
-  await $`git worktree add ${worktreePath} HEAD`.cwd(tmp.path).quiet()
+  await Bun.spawn(["git", "worktree", "add", worktreePath, "HEAD"], {
+    cwd: tmp.path,
+    stdout: "ignore",
+    stderr: "ignore",
+  }).exited
 
   try {
     await Instance.provide({
@@ -539,16 +566,24 @@ test("revert only removes files in invoking worktree", async () => {
 
     expect(await Bun.file(primaryFile).text()).toBe("primary content")
   } finally {
-    await $`git worktree remove --force ${worktreePath}`.cwd(tmp.path).quiet().nothrow()
-    await $`rm -rf ${worktreePath}`.quiet()
-    await $`rm -f ${tmp.path}/worktree.txt`.quiet()
+    await Bun.spawn(["git", "worktree", "remove", "--force", worktreePath], {
+      cwd: tmp.path,
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited
+    await Bun.spawn(["rm", "-rf", worktreePath], { stdout: "ignore", stderr: "ignore" }).exited
+    await Bun.spawn(["rm", "-f", `${tmp.path}/worktree.txt`], { stdout: "ignore", stderr: "ignore" }).exited
   }
 })
 
 test("diff reports worktree-only/shared edits and ignores primary-only", async () => {
   await using tmp = await bootstrap()
   const worktreePath = `${tmp.path}-worktree`
-  await $`git worktree add ${worktreePath} HEAD`.cwd(tmp.path).quiet()
+  await Bun.spawn(["git", "worktree", "add", worktreePath, "HEAD"], {
+    cwd: tmp.path,
+    stdout: "ignore",
+    stderr: "ignore",
+  }).exited
 
   try {
     await Instance.provide({
@@ -576,10 +611,14 @@ test("diff reports worktree-only/shared edits and ignores primary-only", async (
       },
     })
   } finally {
-    await $`git worktree remove --force ${worktreePath}`.cwd(tmp.path).quiet().nothrow()
-    await $`rm -rf ${worktreePath}`.quiet()
-    await $`rm -f ${tmp.path}/shared.txt`.quiet()
-    await $`rm -f ${tmp.path}/primary-only.txt`.quiet()
+    await Bun.spawn(["git", "worktree", "remove", "--force", worktreePath], {
+      cwd: tmp.path,
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited
+    await Bun.spawn(["rm", "-rf", worktreePath], { stdout: "ignore", stderr: "ignore" }).exited
+    await Bun.spawn(["rm", "-f", `${tmp.path}/shared.txt`], { stdout: "ignore", stderr: "ignore" }).exited
+    await Bun.spawn(["rm", "-f", `${tmp.path}/primary-only.txt`], { stdout: "ignore", stderr: "ignore" }).exited
   }
 })
 
@@ -611,7 +650,7 @@ test("diff function with various changes", async () => {
       expect(before).toBeTruthy()
 
       // Make various changes
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/new.txt`, "new content")
       await Bun.write(`${tmp.path}/b.txt`, "modified content")
 
@@ -632,7 +671,7 @@ test("restore function", async () => {
       expect(before).toBeTruthy()
 
       // Make changes
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/new.txt`, "new content")
       await Bun.write(`${tmp.path}/b.txt`, "modified")
 
@@ -655,7 +694,7 @@ test("revert should not delete files that existed but were deleted in snapshot",
       const snapshot1 = await Snapshot.track()
       expect(snapshot1).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
 
       const snapshot2 = await Snapshot.track()
       expect(snapshot2).toBeTruthy()
@@ -682,7 +721,7 @@ test("revert preserves file that existed in snapshot when deleted then recreated
       const snapshot = await Snapshot.track()
       expect(snapshot).toBeTruthy()
 
-      await $`rm ${tmp.path}/existing.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/existing.txt`], { stdout: "ignore", stderr: "ignore" }).exited
       await Bun.write(`${tmp.path}/existing.txt`, "recreated")
       await Bun.write(`${tmp.path}/newfile.txt`, "new")
 
@@ -759,7 +798,7 @@ test("diffFull with file deletions", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
 
       const after = await Snapshot.track()
       expect(after).toBeTruthy()
@@ -812,7 +851,7 @@ test("diffFull with addition and deletion", async () => {
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/added.txt`, "added content")
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
 
       const after = await Snapshot.track()
       expect(after).toBeTruthy()
@@ -847,8 +886,8 @@ test("diffFull with multiple additions and deletions", async () => {
 
       await Bun.write(`${tmp.path}/multi1.txt`, "line1\nline2\nline3")
       await Bun.write(`${tmp.path}/multi2.txt`, "single line")
-      await $`rm ${tmp.path}/a.txt`.quiet()
-      await $`rm ${tmp.path}/b.txt`.quiet()
+      await Bun.spawn(["rm", `${tmp.path}/a.txt`], { stdout: "ignore", stderr: "ignore" }).exited
+      await Bun.spawn(["rm", `${tmp.path}/b.txt`], { stdout: "ignore", stderr: "ignore" }).exited
 
       const after = await Snapshot.track()
       expect(after).toBeTruthy()
