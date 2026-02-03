@@ -235,6 +235,9 @@ export function Prompt(props: PromptProps) {
     if (state === "sending" || state === "receiving" || state === "transcribing") return theme.primary
     return theme.text
   })
+  const showDictationButton = createMemo(() => store.mode === "normal" && !props.disabled)
+  const showDictationKey = createMemo(() => layoutWidth() >= 70)
+  const dictationButtonColor = createMemo(() => (dictationConfig() ? dictationHintColor() : theme.textMuted))
 
   function promptModelWarning() {
     toast.show({
@@ -1847,6 +1850,22 @@ export function Prompt(props: PromptProps) {
           </Show>
           <Show when={status().type === "busy"}>
             <text fg={theme.textMuted} flexShrink={0}> Esc to cancel</text>
+          </Show>
+          <Show when={showDictationButton()}>
+            <text fg={theme.border} flexShrink={0}>─</text>
+            <text
+              fg={dictationButtonColor()}
+              flexShrink={0}
+              attributes={TextAttributes.BOLD}
+              onMouseDown={async () => {
+                await toggleDictation()
+              }}
+            >
+              {dictationHintLabel()}
+            </text>
+            <Show when={showDictationKey()}>
+              <text fg={theme.textMuted} flexShrink={0}> {dictationKey()}</text>
+            </Show>
           </Show>
           {/* Center: line fill */}
           <text fg={theme.border} flexGrow={1} flexShrink={1} overflow="hidden">{fill()}</text>
