@@ -49,6 +49,7 @@ export type PromptProps = {
   ref?: (ref: PromptRef) => void
   hint?: JSX.Element
   showPlaceholder?: boolean
+  placeholder?: string
   showTitleInBorder?: boolean
   showContextUsageInBorder?: boolean
   showModelInfoInBorder?: boolean
@@ -1540,7 +1541,11 @@ export function Prompt(props: PromptProps) {
           paddingRight={1}
         >
             <textarea
-              placeholder={null}
+              placeholder={
+                props.showPlaceholder === false
+                  ? null
+                  : props.placeholder ?? "Ask a question, or type / for commands"
+              }
               textColor={keybind.leader ? theme.textMuted : RGBA.fromInts(255, 255, 255)}
               focusedTextColor={keybind.leader ? theme.textMuted : RGBA.fromInts(255, 255, 255)}
               minHeight={1}
