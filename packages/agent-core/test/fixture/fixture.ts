@@ -34,6 +34,8 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
     await $`git init`.cwd(dirpath).quiet()
+    await $`git config user.email "you@example.com"`.cwd(dirpath).quiet()
+    await $`git config user.name "Your Name"`.cwd(dirpath).quiet()
     await $`git commit --allow-empty -m "root commit ${dirpath}"`.cwd(dirpath).quiet()
   }
   if (options?.config) {
