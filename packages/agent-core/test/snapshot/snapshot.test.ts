@@ -13,8 +13,13 @@ async function bootstrap() {
       const bContent = `B${unique}`
       await Bun.write(`${dir}/a.txt`, aContent)
       await Bun.write(`${dir}/b.txt`, bContent)
-      await $`git add .`.cwd(dir).quiet()
-      await $`git commit --no-gpg-sign -m init`.cwd(dir).quiet()
+      // Use Bun.spawn to avoid ShellPromise issues in CI
+      await Bun.spawn(["git", "add", "."], { cwd: dir, stdout: "ignore", stderr: "ignore" }).exited
+      await Bun.spawn(["git", "commit", "--no-gpg-sign", "-m", "init"], {
+        cwd: dir,
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited
       return {
         aContent,
         bContent,
