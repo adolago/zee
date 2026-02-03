@@ -123,6 +123,15 @@
       },
       "tmux": {
         "enabled": true
+      },
+      "brave-search": {
+        "apiKey": "{env:BRAVE_API_KEY}"
+      },
+      "home-assistant": {
+        "apiKey": "{env:HASS_TOKEN}",
+        "env": {
+          "HASS_SERVER": "https://ha.home.arpa/"
+        }
       }
     }
   },
@@ -137,7 +146,8 @@
       "region": "us-central1",
       "language": "en-US",
       "alternative_languages": ["pt-BR", "es-ES", "de-DE"]
-    }
+    },
+    "kitty_keyboard": false
   },
   "agent": {
     "zee": {

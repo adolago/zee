@@ -37,6 +37,8 @@ import { KVProvider, useKV } from "./context/kv"
 import { Provider } from "@/provider/provider"
 import { ArgsProvider, useArgs, type Args } from "./context/args"
 import { VimProvider, useVim } from "./context/vim"
+import { Config } from "@/config/config"
+import { Instance } from "@/project/instance"
 import open from "open"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { normalizeHttpUrl } from "@/util/net"
@@ -114,6 +116,13 @@ export function tui(input: {
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
     const mode = await getTerminalBackgroundColor()
+    const kittyKeyboardEnabled = await Instance.provide({
+      directory: input.directory ?? process.cwd(),
+      fn: async () => {
+        const cfg = await Config.get()
+        return cfg.tui?.kitty_keyboard !== false
+      },
+    }).catch(() => true)
     const onExit = async () => {
       await input.onExit?.()
       resolve()
@@ -172,7 +181,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: {},
+        useKittyKeyboard: kittyKeyboardEnabled ? {} : undefined,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
@@ -446,6 +455,20 @@ function App() {
         dialog.replace(() => <DialogProviderList />)
       },
       category: "Provider",
+    },
+    {
+      title: "Grammar",
+      value: "prompt.grammar.menu",
+      category: "Prompt",
+      onSelect: (dialog) => {
+        const promptInput = promptRef.current?.current?.input ?? ""
+        if (!promptInput.trim()) {
+          toast.show({ message: "No prompt text to check", variant: "warning", duration: 2000 })
+          dialog.clear()
+          return
+        }
+        command.trigger("prompt.grammar")
+      },
     },
     {
       title: "View status",

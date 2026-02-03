@@ -214,7 +214,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
 
   return (
     <box gap={1} paddingBottom={1}>
-      <box paddingLeft={2} paddingRight={2}>
+      <box paddingLeft={0} paddingRight={0}>
         <box flexDirection="row" justifyContent="space-between">
           <text fg={theme.text} attributes={TextAttributes.BOLD}>
             {props.title}
@@ -248,14 +248,14 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
       <Show
         when={grouped().length > 0}
         fallback={
-          <box paddingLeft={2} paddingRight={2} paddingTop={1}>
+          <box paddingLeft={0} paddingRight={0} paddingTop={1}>
             <text fg={theme.textMuted}>No results found</text>
           </box>
         }
       >
         <scrollbox
-          paddingLeft={1}
-          paddingRight={1}
+          paddingLeft={0}
+          paddingRight={0}
           scrollbarOptions={{ visible: false }}
           ref={(r: ScrollBoxRenderable) => (scroll = r)}
           maxHeight={height()}
@@ -264,7 +264,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
             {([category, options], index) => (
               <>
                 <Show when={category}>
-                  <box paddingTop={index() > 0 ? 1 : 0} paddingLeft={3}>
+                  <box paddingTop={index() > 0 ? 1 : 0} paddingLeft={0}>
                     <text fg={theme.accent} attributes={TextAttributes.BOLD}>
                       {category}
                     </text>
@@ -297,8 +297,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                           moveTo(index)
                         }}
                         backgroundColor={active() ? (option.bg ?? theme.primary) : RGBA.fromInts(0, 0, 0, 0)}
-                        paddingLeft={current() || option.gutter ? 1 : 3}
-                        paddingRight={3}
+                        paddingLeft={0}
+                        paddingRight={0}
                         gap={1}
                       >
                         <Option
@@ -319,7 +319,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         </scrollbox>
       </Show>
       <Show when={keybinds().length} fallback={<box flexShrink={0} />}>
-        <box paddingLeft={2} paddingRight={2} flexDirection="row" gap={2} flexShrink={0} paddingTop={1}>
+        <box paddingLeft={0} paddingRight={0} flexDirection="row" gap={2} flexShrink={0} paddingTop={1}>
           <For each={keybinds()}>
             {(item) => (
               <text>
@@ -366,7 +366,7 @@ function Option(props: {
         attributes={props.active ? TextAttributes.BOLD : undefined}
         overflow="hidden"
         wrapMode="none"
-        paddingLeft={1}
+        paddingLeft={0}
       >
         {Locale.truncate(props.title, 61)}
         <Show when={props.description}>

@@ -2,47 +2,21 @@ import { TextAttributes } from "@opentui/core"
 import { For, createMemo } from "solid-js"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
-
-// Persona ASCII art banners
-const PERSONA_ART: Record<string, string[]> = {
-  zee: [
-    "███████╗███████╗███████╗",
-    "╚══███╔╝██╔════╝██╔════╝",
-    "  ███╔╝ █████╗  █████╗  ",
-    " ███╔╝  ██╔══╝  ██╔══╝  ",
-    "███████╗███████╗███████╗",
-    "╚══════╝╚══════╝╚══════╝",
-  ],
-  stanley: [
-    "███████╗████████╗ █████╗ ███╗   ██╗██╗     ███████╗██╗   ██╗",
-    "██╔════╝╚══██╔══╝██╔══██╗████╗  ██║██║     ██╔════╝╚██╗ ██╔╝",
-    "███████╗   ██║   ███████║██╔██╗ ██║██║     █████╗   ╚████╔╝ ",
-    "╚════██║   ██║   ██╔══██║██║╚██╗██║██║     ██╔══╝    ╚██╔╝  ",
-    "███████║   ██║   ██║  ██║██║ ╚████║███████╗███████╗   ██║   ",
-    "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝   ╚═╝   ",
-  ],
-  johny: [
-    "     ██╗ ██████╗ ██╗  ██╗███╗   ██╗██╗   ██╗",
-    "     ██║██╔═══██╗██║  ██║████╗  ██║╚██╗ ██╔╝",
-    "     ██║██║   ██║███████║██╔██╗ ██║ ╚████╔╝ ",
-    "██   ██║██║   ██║██╔══██║██║╚██╗██║  ╚██╔╝  ",
-    "╚█████╔╝╚██████╔╝██║  ██║██║ ╚████║   ██║   ",
-    " ╚════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ",
-  ],
-}
+import { resolvePersonaArt } from "./persona-art"
 
 export function Logo() {
   const local = useLocal()
   const { theme } = useTheme()
 
   const agent = createMemo(() => local.agent.current())
-  const art = createMemo(() => PERSONA_ART[agent().name.toLowerCase()] || PERSONA_ART.zee)
+  const art = createMemo(() => resolvePersonaArt(agent().name))
+  const color = createMemo(() => local.agent.color(agent().name) ?? theme.primary)
 
   return (
     <box flexDirection="column" alignItems="center">
       <For each={art()}>
         {(line) => (
-          <text fg={theme.primary} attributes={TextAttributes.BOLD} selectable={false}>
+          <text fg={color()} attributes={TextAttributes.BOLD} selectable={false}>
             {line}
           </text>
         )}

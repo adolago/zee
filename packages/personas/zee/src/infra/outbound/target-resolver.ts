@@ -135,18 +135,37 @@ function normalizeDirectoryEntryId(channel: ChannelId, entry: ChannelDirectoryEn
   return normalized ?? entry.id.trim();
 }
 
-function matchesDirectoryEntry(params: {
+type MatchQuality = "exact" | "partial" | "none";
+
+function collectEntryCandidates(params: {
   channel: ChannelId;
   entry: ChannelDirectoryEntry;
-  query: string;
-}): boolean {
-  const query = normalizeQuery(params.query);
-  if (!query) return false;
+}): string[] {
   const id = stripTargetPrefixes(normalizeDirectoryEntryId(params.channel, params.entry));
   const name = params.entry.name ? stripTargetPrefixes(params.entry.name) : "";
   const handle = params.entry.handle ? stripTargetPrefixes(params.entry.handle) : "";
-  const candidates = [id, name, handle].map((value) => normalizeQuery(value)).filter(Boolean);
-  return candidates.some((value) => value === query || value.includes(query));
+  const aliases = Array.isArray(params.entry.aliases) ? params.entry.aliases : [];
+  const aliasCandidates = aliases
+    .map((alias) => stripTargetPrefixes(alias))
+    .map((value) => normalizeQuery(value))
+    .filter(Boolean);
+  return [id, name, handle]
+    .map((value) => normalizeQuery(value))
+    .filter(Boolean)
+    .concat(aliasCandidates);
+}
+
+function matchQuality(params: {
+  channel: ChannelId;
+  entry: ChannelDirectoryEntry;
+  query: string;
+}): MatchQuality {
+  const query = normalizeQuery(params.query);
+  if (!query) return "none";
+  const candidates = collectEntryCandidates(params);
+  if (candidates.some((value) => value === query)) return "exact";
+  if (candidates.some((value) => value.includes(query))) return "partial";
+  return "none";
 }
 
 function resolveMatch(params: {
@@ -154,12 +173,19 @@ function resolveMatch(params: {
   entries: ChannelDirectoryEntry[];
   query: string;
 }) {
-  const matches = params.entries.filter((entry) =>
-    matchesDirectoryEntry({ channel: params.channel, entry, query: params.query }),
-  );
-  if (matches.length === 0) return { kind: "none" as const };
-  if (matches.length === 1) return { kind: "single" as const, entry: matches[0] };
-  return { kind: "ambiguous" as const, entries: matches };
+  const scored = params.entries
+    .map((entry) => ({
+      entry,
+      quality: matchQuality({ channel: params.channel, entry, query: params.query }),
+    }))
+    .filter((match) => match.quality !== "none");
+  if (scored.length === 0) return { kind: "none" as const };
+  const exact = scored.filter((match) => match.quality === "exact").map((match) => match.entry);
+  if (exact.length === 1) return { kind: "single" as const, entry: exact[0] };
+  if (exact.length > 1) return { kind: "ambiguous" as const, entries: exact };
+  const partial = scored.map((match) => match.entry);
+  if (partial.length === 1) return { kind: "single" as const, entry: partial[0] };
+  return { kind: "ambiguous" as const, entries: partial };
 }
 
 async function listDirectoryEntries(params: {

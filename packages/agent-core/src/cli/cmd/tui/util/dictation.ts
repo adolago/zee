@@ -68,6 +68,7 @@ export namespace Dictation {
     const model: Model = input?.model ?? "default"
     const google = await resolveGoogleAuth()
     if (!google.apiKey) return
+    const googleAuth = { apiKey: google.apiKey }
 
     return {
       provider,
@@ -79,7 +80,7 @@ export namespace Dictation {
       autoSubmit: input?.auto_submit ?? false,
       maxDuration: input?.max_duration ?? DEFAULT_MAX_DURATION,
       recordCommand: input?.record_command,
-      google,
+      google: googleAuth,
     }
   }
 

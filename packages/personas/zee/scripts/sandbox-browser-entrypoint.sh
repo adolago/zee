@@ -25,6 +25,12 @@ else
   CHROME_ARGS=()
 fi
 
+if [[ "${HEADLESS}" != "1" ]]; then
+  if [[ -n "${WAYLAND_DISPLAY:-}" || "${XDG_SESSION_TYPE:-}" == "wayland" ]]; then
+    CHROME_ARGS+=("--ozone-platform-hint=auto" "--enable-features=UseOzonePlatform")
+  fi
+fi
+
 if [[ "${CDP_PORT}" -ge 65535 ]]; then
   CHROME_CDP_PORT="$((CDP_PORT - 1))"
 else

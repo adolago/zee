@@ -36,6 +36,7 @@ export type TipsProps = {
   topBorder?: JSX.Element
   bottomBorder?: JSX.Element
   billboard?: Accessor<string | undefined>
+  hidden?: boolean
 }
 
 export function Tips(props: TipsProps) {
@@ -43,7 +44,7 @@ export function Tips(props: TipsProps) {
   const dimensions = useTerminalDimensions()
   const fill = createMemo(() => "─".repeat(dimensions().width))
   const randomTip = TIPS[Math.floor(Math.random() * TIPS.length)]
-  const displayText = createMemo(() => props.billboard?.() || randomTip)
+  const displayText = createMemo(() => props.billboard?.() || (props.hidden ? "" : randomTip))
   const parts = createMemo(() => parse(displayText()))
 
   return (

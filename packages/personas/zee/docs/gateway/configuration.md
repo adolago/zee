@@ -2312,9 +2312,10 @@ Fields:
   - `per-account-channel-peer`: isolate DMs per account + channel + sender (recommended for multi-account inboxes).
 - `identityLinks`: map canonical ids to provider-prefixed peers so the same person shares a DM session across channels when using `per-peer`, `per-channel-peer`, or `per-account-channel-peer`.
 - `reset`: primary reset policy. Defaults to daily resets at 4:00 AM local time on the gateway host.
-  - `mode`: `daily` or `idle` (default: `daily` when `reset` is present).
+  - `mode`: `daily`, `idle`, or `manual` (default: `daily` when `reset` is present).
   - `atHour`: local hour (0-23) for the daily reset boundary.
-  - `idleMinutes`: sliding idle window in minutes. When daily + idle are both configured, whichever expires first wins.
+  - `idleMinutes`: sliding idle window in minutes. When daily + idle are both configured, whichever expires first wins. Ignored when `mode: "manual"`.
+  - `manual` mode disables automatic resets; sessions only change via explicit `/new` or `/reset` (or by deleting store entries).
 - `resetByType`: per-session overrides for `dm`, `group`, and `thread`.
   - If you only set legacy `session.idleMinutes` without any `reset`/`resetByType`, Zee stays in idle-only mode for backward compatibility.
 - `heartbeatIdleMinutes`: optional idle override for heartbeat checks (daily reset still applies when enabled).

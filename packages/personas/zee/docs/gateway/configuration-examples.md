@@ -386,6 +386,20 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
 }
 ```
 
+### Persistent sessions (manual reset)
+```json5
+{
+  session: {
+    dmScope: "per-peer",
+    identityLinks: {
+      "user:artur": ["whatsapp:+15555550123", "telegram:123456789"]
+    },
+    reset: { mode: "manual" },
+    resetTriggers: ["/new", "/reset"]
+  }
+}
+```
+
 ### OAuth with API key failover
 ```json5
 {

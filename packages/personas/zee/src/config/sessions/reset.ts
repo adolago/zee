@@ -2,7 +2,7 @@ import type { SessionConfig, SessionResetConfig } from "../types.base.js";
 import { DEFAULT_IDLE_MINUTES } from "./types.js";
 import { normalizeMessageChannel } from "../../utils/message-channel.js";
 
-export type SessionResetMode = "daily" | "idle";
+export type SessionResetMode = "daily" | "idle" | "manual";
 export type SessionResetType = "dm" | "group" | "thread";
 
 export type SessionResetPolicy = {
@@ -85,13 +85,15 @@ export function resolveSessionResetPolicy(params: {
   const idleMinutesRaw = typeReset?.idleMinutes ?? baseReset?.idleMinutes ?? legacyIdleMinutes;
 
   let idleMinutes: number | undefined;
-  if (idleMinutesRaw != null) {
-    const normalized = Math.floor(idleMinutesRaw);
-    if (Number.isFinite(normalized)) {
-      idleMinutes = Math.max(normalized, 1);
+  if (mode !== "manual") {
+    if (idleMinutesRaw != null) {
+      const normalized = Math.floor(idleMinutesRaw);
+      if (Number.isFinite(normalized)) {
+        idleMinutes = Math.max(normalized, 1);
+      }
+    } else if (mode === "idle") {
+      idleMinutes = DEFAULT_IDLE_MINUTES;
     }
-  } else if (mode === "idle") {
-    idleMinutes = DEFAULT_IDLE_MINUTES;
   }
 
   return { mode, atHour, idleMinutes };
@@ -115,6 +117,9 @@ export function evaluateSessionFreshness(params: {
   now: number;
   policy: SessionResetPolicy;
 }): SessionFreshness {
+  if (params.policy.mode === "manual") {
+    return { fresh: true };
+  }
   const dailyResetAt =
     params.policy.mode === "daily"
       ? resolveDailyResetAtMs(params.now, params.policy.atHour)

@@ -851,6 +851,13 @@
         ]
       },
       {
+        "group": "Experiments",
+        "pages": [
+          "experiments/proposals/persona-hub-routing",
+          "experiments/proposals/model-config"
+        ]
+      },
+      {
         "group": "Reference & Templates",
         "pages": [
           "testing",

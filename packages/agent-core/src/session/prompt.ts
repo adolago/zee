@@ -22,6 +22,7 @@ import { Plugin } from "../plugin"
 // NOTE: PROMPT_PLAN and BUILD_SWITCH removed - replaced by hold/release mode in TUI
 import MAX_STEPS from "../session/prompt/max-steps.txt"
 import HOLD_MODE_PROMPT from "./prompt/hold-mode.txt"
+import FIRST_TURN_PLAN_PROMPT from "./prompt/first-turn-plan.txt"
 import { defer } from "../util/defer"
 import { clone, mergeDeep } from "remeda"
 import { ToolRegistry } from "../tool/registry"
@@ -153,6 +154,68 @@ export namespace SessionPrompt {
 
     // Surface defaults: messaging surfaces default to release, everything else to hold
     if (session.surface === "whatsapp" || session.surface === "telegram") return false
+    return true
+  }
+
+  async function hasPlanFile(planPath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(planPath)
+      return stat.isFile() && stat.size > 0
+    } catch {
+      return false
+    }
+  }
+
+  function hasRealUserContent(message: MessageV2.WithParts): boolean {
+    for (const part of message.parts) {
+      if (part.type === "text") {
+        const text = (part as MessageV2.TextPart).text?.trim()
+        if ((part as MessageV2.TextPart).synthetic) continue
+        if (text) return true
+        continue
+      }
+      return true
+    }
+    return false
+  }
+
+  function extractPlanSection(text: string): string | null {
+    const match = text.match(/(^|\n)##\\s*Plan\\s*\\n([\\s\\S]*?)(?=\\n#{1,2}\\s+\\S|$)/i)
+    if (!match) return null
+    const block = match[0].startsWith("\n") ? match[0].slice(1) : match[0]
+    return block.trim()
+  }
+
+  async function resolveFirstTurnPlanState(input: {
+    session: Session.Info
+    messages: MessageV2.WithParts[]
+  }): Promise<{ enabled: boolean; planPath: string }> {
+    const planPath = Session.plan(input.session)
+    if (await hasPlanFile(planPath)) return { enabled: false, planPath }
+    const lastUserMsg = input.messages.findLast((msg) => msg.info.role === "user")
+    if (!lastUserMsg) return { enabled: false, planPath }
+    if (!hasRealUserContent(lastUserMsg)) return { enabled: false, planPath }
+    return { enabled: true, planPath }
+  }
+
+  async function writeFirstPlanFile(input: {
+    session: Session.Info
+    planPath: string
+    assistantMessageID: string
+  }): Promise<boolean> {
+    if (await hasPlanFile(input.planPath)) return false
+    const parts = await MessageV2.parts(input.assistantMessageID)
+    const text = parts
+      .filter((part) => part.type === "text")
+      .map((part) => (part as MessageV2.TextPart).text)
+      .filter(Boolean)
+      .join("\n\n")
+      .trim()
+    if (!text) return false
+    const planBlock = extractPlanSection(text) ?? text
+    if (!planBlock.trim()) return false
+    await fs.mkdir(path.dirname(input.planPath), { recursive: true })
+    await fs.writeFile(input.planPath, planBlock.trim() + "\n", "utf-8")
     return true
   }
 
@@ -969,6 +1032,10 @@ export namespace SessionPrompt {
       }
 
       await Plugin.trigger("experimental.chat.messages.transform", {}, { messages: sessionMessages })
+      const planState = await resolveFirstTurnPlanState({
+        session,
+        messages: sessionMessages,
+      })
 
       const result = await processor.process({
         user: lastUser,
@@ -980,6 +1047,7 @@ export namespace SessionPrompt {
           ...(await InstructionPrompt.system()),
           ...sessionSystemContext,
           ...(resolveHoldMode(session, lastUser.tools) ? [HOLD_MODE_PROMPT] : []),
+          ...(planState.enabled ? [FIRST_TURN_PLAN_PROMPT] : []),
         ],
         messages: [
           ...(await MessageV2.toModelMessage(sessionMessages)),
@@ -995,6 +1063,20 @@ export namespace SessionPrompt {
         tools,
         model,
       })
+      if (planState.enabled) {
+        try {
+          await writeFirstPlanFile({
+            session,
+            planPath: planState.planPath,
+            assistantMessageID: processor.message.id,
+          })
+        } catch (error) {
+          log.warn("failed to write first-turn plan file", {
+            sessionID,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      }
       if (result === "stop") break
       if (result === "compact") {
         await SessionCompaction.create({

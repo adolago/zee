@@ -1,5 +1,6 @@
 import { DEFAULT_CONTEXT_TOKENS } from "../agents/defaults.js";
 import { parseModelRef } from "../agents/model-selection.js";
+import { DEFAULT_AGENT_ID, normalizeAgentId } from "../routing/session-key.js";
 import { resolveTalkApiKey } from "./talk.js";
 import type { ZeeConfig } from "./types.js";
 import { DEFAULT_AGENT_MAX_CONCURRENT, DEFAULT_SUBAGENT_MAX_CONCURRENT } from "./agent-limits.js";
@@ -270,6 +271,39 @@ export function applyAgentDefaults(cfg: ZeeConfig): ZeeConfig {
       defaults: {
         ...nextDefaults,
         subagents: nextSubagents,
+      },
+    },
+  };
+}
+
+export function applyAgentToAgentDefaults(cfg: ZeeConfig): ZeeConfig {
+  const agentToAgent = cfg.tools?.agentToAgent;
+  if (!agentToAgent || agentToAgent.enabled !== true) return cfg;
+  const allow = Array.isArray(agentToAgent.allow)
+    ? agentToAgent.allow.map((entry) => String(entry ?? "").trim()).filter(Boolean)
+    : [];
+  if (allow.length > 0) return cfg;
+
+  const entries = Array.isArray(cfg.agents?.list) ? cfg.agents?.list ?? [] : [];
+  const ids = entries.length
+    ? Array.from(
+        new Set(
+          entries
+            .map((entry) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
+            .filter(Boolean)
+            .map((entryId) => normalizeAgentId(entryId)),
+        ),
+      )
+    : [];
+  const nextAllow = ids.length > 0 ? ids : [DEFAULT_AGENT_ID];
+
+  return {
+    ...cfg,
+    tools: {
+      ...cfg.tools,
+      agentToAgent: {
+        ...agentToAgent,
+        allow: nextAllow,
       },
     },
   };

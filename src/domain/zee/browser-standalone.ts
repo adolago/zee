@@ -138,7 +138,7 @@ function findChromeExecutable(): string {
 // Browser Actions
 // =============================================================================
 
-async function launchBrowser(profile: string, headless = true): Promise<BrowserInstance> {
+async function launchBrowser(profile: string, headless = false): Promise<BrowserInstance> {
   const existing = activeBrowsers.get(profile);
   if (existing) {
     const reachable = await isPortReachable(existing.cdpPort, 1000);
@@ -168,6 +168,13 @@ async function launchBrowser(profile: string, headless = true): Promise<BrowserI
     "--use-mock-keychain",
     "--force-color-profile=srgb",
   ];
+
+  const isWaylandSession =
+    process.platform === "linux" &&
+    (process.env.WAYLAND_DISPLAY || process.env.XDG_SESSION_TYPE === "wayland");
+  if (!headless && isWaylandSession) {
+    args.push("--ozone-platform-hint=auto", "--enable-features=UseOzonePlatform");
+  }
 
   if (headless) {
     args.push("--headless=new");
@@ -456,7 +463,7 @@ const StandaloneBrowserParams = z.object({
   url: z.string().optional()
     .describe("URL for navigate action"),
   
-  headless: z.boolean().default(true)
+  headless: z.boolean().default(false)
     .describe("Run browser in headless mode (no GUI)"),
   
   fullPage: z.boolean().default(false)
@@ -487,7 +494,7 @@ Uses "kernel.sh" approach (direct process spawning).
 
 **Features:**
 - Each profile gets its own isolated browser
-- Headless mode by default (set headless: false for GUI)
+- Headed mode by default (set headless: true for no GUI)
 - Direct CDP control (no Playwright dependency in agent-core)
 - Auto-cleanup on process exit
 

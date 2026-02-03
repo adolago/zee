@@ -28,6 +28,7 @@ export function Home() {
   const route = useRouteData("home")
   const promptRef = usePromptRef()
   const command = useCommandDialog()
+  const keybind = useKeybind()
   const mcp = createMemo(() => Object.keys(sync.data.mcp).length > 0)
   const mcpError = createMemo(() => {
     return Object.values(sync.data.mcp).some((x) => x.status === "failed")
@@ -75,7 +76,7 @@ export function Home() {
               <span style={{ fg: theme.error }}>⊙</span>
               <span style={{ fg: theme.textMuted }}> </span>
               mcp errors{" "}
-              <span style={{ fg: theme.textMuted }}>space s</span>
+              <span style={{ fg: theme.textMuted }}>{keybind.print("status_view")}</span>
             </Match>
             <Match when={true}>
               <span style={{ fg: theme.success }}>⊙</span>
@@ -103,11 +104,9 @@ export function Home() {
   })
   const directory = useDirectory()
 
-  const keybind = useKeybind()
-
   return (
     <>
-      <box flexGrow={1} justifyContent="center" alignItems="center" paddingLeft={2} paddingRight={2} gap={1}>
+      <box flexGrow={1} justifyContent="center" alignItems="center" paddingLeft={0} paddingRight={0} gap={1}>
         <box height={3} />
         <Logo />
         <box width="100%" maxWidth={100} zIndex={1000} paddingTop={1}>
@@ -120,9 +119,9 @@ export function Home() {
           />
         </box>
         <box height={3} width="100%" maxWidth={100} alignItems="center" paddingTop={2}>
-          {/* <Show when={showTips()}>
+          <Show when={showTips()}>
             <Tips />
-          </Show> */}
+          </Show>
         </box>
         <Toast />
       </box>

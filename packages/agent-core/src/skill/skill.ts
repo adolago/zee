@@ -30,6 +30,31 @@ export namespace Skill {
   })
   export type RequiresMeta = z.infer<typeof RequiresMeta>
 
+  function parseMetadata(raw: unknown): Record<string, unknown> | undefined {
+    if (!raw) return undefined
+    if (typeof raw === "object") return raw as Record<string, unknown>
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>
+      } catch {
+        return undefined
+      }
+    }
+    return undefined
+  }
+
+  function mergeRequires(base: RequiresMeta | undefined, next: RequiresMeta): RequiresMeta {
+    if (!base) return next
+
+    return {
+      bins: [...new Set([...(base.bins ?? []), ...(next.bins ?? [])])],
+      env: [...new Set([...(base.env ?? []), ...(next.env ?? [])])],
+      config: [...new Set([...(base.config ?? []), ...(next.config ?? [])])],
+      os: [...new Set([...(base.os ?? []), ...(next.os ?? [])])],
+    }
+  }
+
   export const Info = z.object({
     name: z.string(),
     description: z.string(),
@@ -140,6 +165,7 @@ export namespace Skill {
       // Detect ClawHub registry metadata from manifest
       let registry: RegistryMeta | undefined
       let requires: RequiresMeta | undefined
+      const metadata = parseMetadata(md.data.metadata)
       if (match.includes("/@clawhub/")) {
         try {
           const manifestPath = path.join(path.dirname(match), "..", ".manifest.json")
@@ -161,20 +187,35 @@ export namespace Skill {
           // manifest unavailable; continue without registry info
         }
       }
-      // Parse requires from frontmatter if present
-      if (md.data.requires) {
-        const requiresParsed = RequiresMeta.safeParse(md.data.requires)
+      const requiresCandidates = [
+        md.data.requires,
+        metadata && typeof (metadata as { requires?: unknown }).requires !== "undefined"
+          ? (metadata as { requires?: unknown }).requires
+          : undefined,
+        metadata && typeof (metadata as { clawhub?: { requires?: unknown } }).clawhub?.requires !== "undefined"
+          ? (metadata as { clawhub?: { requires?: unknown } }).clawhub?.requires
+          : undefined,
+        metadata && typeof (metadata as { zee?: { requires?: unknown } }).zee?.requires !== "undefined"
+          ? (metadata as { zee?: { requires?: unknown } }).zee?.requires
+          : undefined,
+      ].filter((candidate) => candidate !== undefined)
+
+      for (const candidate of requiresCandidates) {
+        const requiresParsed = RequiresMeta.safeParse(candidate)
         if (requiresParsed.success) {
-          requires = requiresParsed.data
+          requires = mergeRequires(requires, requiresParsed.data)
         }
       }
 
-      // Extract primaryEnv from metadata (Zee-style frontmatter)
       const primaryEnv =
         typeof md.data.primaryEnv === "string" ? md.data.primaryEnv :
-        typeof md.data.metadata?.primaryEnv === "string" ? md.data.metadata.primaryEnv :
-        typeof md.data.metadata?.zee?.primaryEnv === "string" ? md.data.metadata.zee.primaryEnv :
-        undefined
+        metadata && typeof (metadata as { primaryEnv?: unknown }).primaryEnv === "string"
+          ? (metadata as { primaryEnv?: string }).primaryEnv
+          : metadata && typeof (metadata as { clawhub?: { primaryEnv?: unknown } }).clawhub?.primaryEnv === "string"
+            ? (metadata as { clawhub?: { primaryEnv?: string } }).clawhub?.primaryEnv
+            : metadata && typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
+              ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
+              : undefined
 
       // Check requires gates
       if (requires) {
@@ -216,17 +257,11 @@ export namespace Skill {
           }
         }
 
-        // Env var check
         if (requires.env && requires.env.length > 0) {
           const missingEnv = requires.env.filter((e) => !process.env[e])
           if (missingEnv.length > 0) {
-            exclusions.push({
-              path: match,
-              name: parsed.data.name,
-              reason: `missing required env: ${missingEnv.join(", ")}`,
-            })
-            log.debug("skill excluded: missing env vars", { skill: parsed.data.name, missing: missingEnv })
-            return
+            // Missing env vars are non-blocking: skill can load but may fail at runtime.
+            log.debug("skill missing env vars", { skill: parsed.data.name, missing: missingEnv })
           }
         }
       }

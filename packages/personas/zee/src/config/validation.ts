@@ -10,7 +10,12 @@ import {
 import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 import { validateJsonSchemaValue } from "../plugins/schema-validator.js";
 import { findDuplicateAgentDirs, formatDuplicateAgentDirError } from "./agent-dirs.js";
-import { applyAgentDefaults, applyModelDefaults, applySessionDefaults } from "./defaults.js";
+import {
+  applyAgentDefaults,
+  applyAgentToAgentDefaults,
+  applyModelDefaults,
+  applySessionDefaults,
+} from "./defaults.js";
 import { findLegacyConfigIssues } from "./legacy.js";
 import type { ZeeConfig, ConfigValidationIssue } from "./types.js";
 import { ZeeSchema } from "./zod-schema.js";
@@ -111,7 +116,9 @@ export function validateConfigObject(
   return {
     ok: true,
     config: applyModelDefaults(
-      applyAgentDefaults(applySessionDefaults(validated.data as ZeeConfig)),
+      applyAgentToAgentDefaults(
+        applyAgentDefaults(applySessionDefaults(validated.data as ZeeConfig)),
+      ),
     ),
   };
 }

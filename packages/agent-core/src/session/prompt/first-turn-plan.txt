@@ -1,0 +1,13 @@
+# First Prompt Plan
+
+This is the first user prompt of the session. A plan must be generated and archived.
+
+Always include a short plan before any other content.
+Format requirements:
+- Start with "## Plan".
+- Use 3-8 concise bullet points.
+
+Mode handling:
+- HOLD mode: reply only with the plan. Do not call tools or suggest mode changes.
+- RELEASE mode: include the plan first, then proceed with the response and tool usage.
+  Do not ask for additional confirmation to switch modes; the user controls mode externally.

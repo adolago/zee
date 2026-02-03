@@ -112,6 +112,14 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       reactions: true,
       media: true,
     },
+    agentPrompt: {
+      messageToolHints: () => [
+        "- WhatsApp handoff: when you send a proactive WhatsApp message because the user asked to continue there, set `handoff: true` on the `message` tool send (one-time).",
+        '- Treat these as explicit handoff phrases: "continue on WhatsApp", "switch to WhatsApp", "reply on WhatsApp".',
+        "- If the user says reply on WhatsApp without a target, default to the configured user.phone.",
+        "- Handoff is for WhatsApp DMs only; do not use it for groups.",
+      ],
+    },
     commands: {
       enforceOwnerForCommands: true,
       skipWhenConfigEmpty: true,

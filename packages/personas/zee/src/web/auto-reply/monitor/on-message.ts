@@ -3,7 +3,14 @@ import type { getReplyFromConfig } from "../../../auto-reply/reply.js";
 import type { loadConfig } from "../../../config/config.js";
 import { logVerbose } from "../../../globals.js";
 import { resolveAgentRoute } from "../../../routing/resolve-route.js";
-import { buildGroupHistoryKey } from "../../../routing/session-key.js";
+import {
+  buildAgentMainSessionKey,
+  buildGroupHistoryKey,
+  DEFAULT_MAIN_KEY,
+  normalizeAccountId,
+  normalizeAgentId,
+  parseAgentSessionKey,
+} from "../../../routing/session-key.js";
 import { normalizeE164 } from "../../../utils.js";
 import type { MentionConfig } from "../mentions.js";
 import type { WebInboundMsg } from "../types.js";
@@ -14,6 +21,7 @@ import { applyGroupGating } from "./group-gating.js";
 import { updateLastRouteInBackground } from "./last-route.js";
 import { resolvePeerId } from "./peer.js";
 import { processMessage } from "./process-message.js";
+import { consumeSessionHandoff } from "../../../config/sessions.js";
 
 export function createWebOnMessageHandler(params: {
   cfg: ReturnType<typeof loadConfig>;
@@ -63,15 +71,43 @@ export function createWebOnMessageHandler(params: {
   return async (msg: WebInboundMsg) => {
     const conversationId = msg.conversationId ?? msg.from;
     const peerId = resolvePeerId(msg);
-    const route = resolveAgentRoute({
-      cfg: params.cfg,
-      channel: "whatsapp",
-      accountId: msg.accountId,
-      peer: {
-        kind: msg.chatType === "group" ? "group" : "dm",
-        id: peerId,
-      },
-    });
+    const accountId = normalizeAccountId(msg.accountId);
+    let route: ReturnType<typeof resolveAgentRoute> | undefined;
+    if (msg.chatType !== "group") {
+      const handoffSessionKey = await consumeSessionHandoff({
+        channel: "whatsapp",
+        accountId,
+        peerId,
+      });
+      if (handoffSessionKey) {
+        const parsed = parseAgentSessionKey(handoffSessionKey);
+        if (parsed?.agentId) {
+          const agentId = normalizeAgentId(parsed.agentId);
+          route = {
+            agentId,
+            channel: "whatsapp",
+            accountId,
+            sessionKey: handoffSessionKey.toLowerCase(),
+            mainSessionKey: buildAgentMainSessionKey({
+              agentId,
+              mainKey: DEFAULT_MAIN_KEY,
+            }).toLowerCase(),
+            matchedBy: "handoff",
+          };
+        }
+      }
+    }
+    if (!route) {
+      route = resolveAgentRoute({
+        cfg: params.cfg,
+        channel: "whatsapp",
+        accountId: msg.accountId,
+        peer: {
+          kind: msg.chatType === "group" ? "group" : "dm",
+          id: peerId,
+        },
+      });
+    }
     const groupHistoryKey =
       msg.chatType === "group"
         ? buildGroupHistoryKey({

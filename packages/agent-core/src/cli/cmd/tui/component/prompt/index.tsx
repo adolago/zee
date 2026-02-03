@@ -200,6 +200,7 @@ export function Prompt(props: PromptProps) {
   const { theme, syntax } = useTheme()
   const kv = useKV()
   const billboard = createMemo(() => kv.get("zee_status_banner", undefined) as string | undefined)
+  const tipsHidden = createMemo(() => kv.get("tips_hidden", false))
   const [dictationConfig, setDictationConfig] = createSignal<Dictation.RuntimeConfig | undefined>(undefined)
   createEffect(() => {
     const tui = sync.data.config.tui as { dictation?: Dictation.Config } | undefined
@@ -765,6 +766,7 @@ export function Prompt(props: PromptProps) {
         title: "Check grammar",
         value: "prompt.grammar",
         category: "Prompt",
+        hidden: true,
         disabled: !store.prompt.input,
         onSelect: async (d) => {
           if (!store.prompt.input) return
@@ -1471,6 +1473,7 @@ export function Prompt(props: PromptProps) {
         {/* Tips/billboard box with shared middle border (T-junctions) */}
         <Tips
           billboard={billboard}
+          hidden={tipsHidden()}
           topBorder={showTitleInBorder() ? (
             <box height={1} flexDirection="row">
               <text fg={theme.border} flexShrink={0}>╭</text>
@@ -1541,8 +1544,8 @@ export function Prompt(props: PromptProps) {
         >
             <textarea
               placeholder={null}
-              textColor={keybind.leader ? theme.textMuted : RGBA.fromInts(255, 255, 255)}
-              focusedTextColor={keybind.leader ? theme.textMuted : RGBA.fromInts(255, 255, 255)}
+              textColor={keybind.leader ? theme.textMuted : theme.text}
+              focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
               minHeight={1}
               maxHeight={12}
               onContentChange={() => {

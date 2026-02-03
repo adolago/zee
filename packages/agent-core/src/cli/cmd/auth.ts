@@ -8,6 +8,7 @@ import { filter, map, pipe, sortBy, values } from "remeda"
 import path from "path"
 import os from "os"
 import { Config } from "../../config/config"
+import { ConfigMarkdown } from "../../config/markdown"
 import { Global } from "../../global"
 import { Plugin } from "../../plugin"
 import { Instance } from "../../project/instance"
@@ -120,6 +121,68 @@ interface SkillAuthProvider {
   envVars: string[]
 }
 
+type SkillAuthHints = {
+  primaryEnv?: string
+  envVars: string[]
+}
+
+function normalizeEnvVars(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  return input.filter((value): value is string => typeof value === "string" && value.length > 0)
+}
+
+function parseMetadata(raw: unknown): Record<string, unknown> | undefined {
+  if (!raw) return undefined
+  if (typeof raw === "object") return raw as Record<string, unknown>
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>
+    } catch {
+      return undefined
+    }
+  }
+  return undefined
+}
+
+export function extractAuthFromFrontmatter(data: Record<string, unknown>): SkillAuthHints {
+  const envVars: string[] = []
+
+  if (data.requires && typeof data.requires === "object") {
+    envVars.push(...normalizeEnvVars((data.requires as { env?: unknown }).env))
+  }
+
+  const metadata = parseMetadata(data.metadata)
+  if (metadata) {
+    const metaPrimary =
+      typeof metadata.primaryEnv === "string"
+        ? metadata.primaryEnv
+        : typeof (metadata as { clawhub?: { primaryEnv?: unknown } }).clawhub?.primaryEnv === "string"
+          ? (metadata as { clawhub?: { primaryEnv?: string } }).clawhub?.primaryEnv
+          : typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
+            ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
+            : undefined
+
+    const requiresCandidates = [
+      (metadata as { requires?: unknown }).requires,
+      (metadata as { clawhub?: { requires?: unknown } }).clawhub?.requires,
+      (metadata as { zee?: { requires?: unknown } }).zee?.requires,
+    ]
+
+    for (const candidate of requiresCandidates) {
+      if (!candidate || typeof candidate !== "object") continue
+      envVars.push(...normalizeEnvVars((candidate as { env?: unknown }).env))
+    }
+
+    return {
+      primaryEnv: metaPrimary,
+      envVars: [...new Set(envVars)],
+    }
+  }
+
+  return { envVars: [...new Set(envVars)] }
+}
+
 /**
  * Discover installed skills that need credentials (primaryEnv or requires.env).
  * Returns entries suitable for injection into the auth login flow.
@@ -129,8 +192,22 @@ async function discoverSkillAuthProviders(): Promise<SkillAuthProvider[]> {
   const providers: SkillAuthProvider[] = []
 
   for (const skill of skills) {
-    const envVars = skill.requires?.env ?? []
-    const primaryEnv = skill.primaryEnv
+    let envVars = skill.requires?.env ?? []
+    let primaryEnv = skill.primaryEnv
+
+    if (!primaryEnv || envVars.length === 0) {
+      try {
+        const md = await ConfigMarkdown.parse(skill.location)
+        const extracted = extractAuthFromFrontmatter(md.data as Record<string, unknown>)
+        if (!primaryEnv && extracted.primaryEnv) primaryEnv = extracted.primaryEnv
+        if (extracted.envVars.length > 0) {
+          envVars = [...new Set([...envVars, ...extracted.envVars])]
+        }
+      } catch {
+        // Ignore frontmatter parsing errors for auth discovery
+      }
+    }
+
     if (!primaryEnv && envVars.length === 0) continue
 
     const allEnvVars = primaryEnv && !envVars.includes(primaryEnv) ? [primaryEnv, ...envVars] : [...envVars]
@@ -808,7 +885,7 @@ export const AuthLoginCommand = cmd({
         // Show what services are enabled for multimedia providers
         const registryProvider = getProvider(provider)
         if (registryProvider && registryProvider.services.length > 0) {
-          const serviceNames = [...registryProvider.services]
+          const serviceNames: string[] = [...registryProvider.services]
           const modelRegistry = await ModelsDev.get().catch(() => undefined)
           if (modelRegistry?.[provider]) serviceNames.push("LLM models")
           prompts.log.success(`${registryProvider.name} configured for: ${serviceNames.join(", ")}`)

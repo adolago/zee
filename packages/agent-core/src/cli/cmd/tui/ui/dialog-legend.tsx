@@ -52,10 +52,10 @@ export function DialogLegend() {
           <text attributes={TextAttributes.BOLD} fg={theme.text}>
             Stream Status
           </text>
-          <text fg={theme.textMuted}>  ◐        Processing/streaming response</text>
-          <text fg={theme.textMuted}>  thinking Waiting for model to respond</text>
-          <text fg={theme.textMuted}>  delayed  Response taking longer than expected</text>
-          <text fg={theme.textMuted}>  stalled  No response, may need retry</text>
+          <text fg={theme.textMuted}>  ◐ thinking  Waiting for model to respond</text>
+          <text fg={theme.textMuted}>  ◐ waiting   Response taking longer than expected</text>
+          <text fg={theme.textMuted}>  ⚠ delayed   Response taking much longer than expected</text>
+          <text fg={theme.textMuted}>  ⊘ stalled   No response, may need retry</text>
         </box>
 
         <box>

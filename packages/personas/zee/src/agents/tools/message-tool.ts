@@ -18,6 +18,7 @@ import { normalizeAccountId } from "../../routing/session-key.js";
 import { channelTargetSchema, channelTargetsSchema, stringEnum } from "../schema/typebox.js";
 import { listChannelSupportedActions } from "../channel-tools.js";
 import { normalizeMessageChannel } from "../../utils/message-channel.js";
+import { recordSessionHandoff } from "../../config/sessions.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
 
@@ -29,6 +30,18 @@ function buildRoutingSchema() {
     targets: Type.Optional(channelTargetsSchema()),
     accountId: Type.Optional(Type.String()),
     dryRun: Type.Optional(Type.Boolean()),
+    handoff: Type.Optional(
+      Type.Boolean({
+        description:
+          "If true, route the next inbound DM from this target back to the current session (handoff).",
+      }),
+    ),
+    handoffTtlMinutes: Type.Optional(
+      Type.Number({
+        description: "How long the handoff stays active (minutes). Default: 360.",
+        minimum: 1,
+      }),
+    ),
   };
 }
 
@@ -265,6 +278,17 @@ function resolveAgentAccountId(value?: string): string | undefined {
   return normalizeAccountId(trimmed);
 }
 
+function readBooleanParam(params: Record<string, unknown>, key: string): boolean | undefined {
+  const raw = params[key];
+  if (typeof raw === "boolean") return raw;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim().toLowerCase();
+    if (trimmed === "true") return true;
+    if (trimmed === "false") return false;
+  }
+  return undefined;
+}
+
 function filterActionsForContext(params: {
   actions: ChannelMessageActionName[];
   channel?: string;
@@ -336,6 +360,32 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         required: true,
       }) as ChannelMessageActionName;
 
+      const handoffRequested = readBooleanParam(params, "handoff") ?? false;
+      const handoffTtlMinutes = readNumberParam(params, "handoffTtlMinutes", { integer: true });
+      delete params.handoff;
+      delete params.handoffTtlMinutes;
+
+      const explicitTarget =
+        typeof params.target === "string" ? params.target.trim() : "";
+      const legacyTo = typeof params.to === "string" ? params.to.trim() : "";
+      const legacyChannelId =
+        typeof params.channelId === "string" ? params.channelId.trim() : "";
+      const hasTarget = Boolean(explicitTarget || legacyTo || legacyChannelId);
+      if (handoffRequested && action === "send" && !hasTarget) {
+        const rawChannel = typeof params.channel === "string" ? params.channel.trim() : "";
+        const normalizedChannel = normalizeMessageChannel(rawChannel);
+        const wantsWhatsApp = normalizedChannel
+          ? normalizedChannel === "whatsapp"
+          : Boolean(cfg.channels?.whatsapp);
+        const userPhone = cfg.user?.phone?.trim();
+        if (wantsWhatsApp && userPhone) {
+          const normalizedTarget =
+            normalizeTargetForProvider("whatsapp", userPhone) ?? userPhone;
+          params.target = normalizedTarget;
+          if (!rawChannel) params.channel = "whatsapp";
+        }
+      }
+
       const accountId = readStringParam(params, "accountId") ?? agentAccountId;
       if (accountId) {
         params.accountId = accountId;
@@ -380,6 +430,25 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
           : undefined,
         abortSignal: signal,
       });
+
+      if (
+        handoffRequested &&
+        result.kind === "send" &&
+        !result.dryRun &&
+        options?.agentSessionKey?.trim()
+      ) {
+        try {
+          await recordSessionHandoff({
+            channel: result.channel,
+            accountId,
+            target: result.to,
+            sessionKey: options.agentSessionKey,
+            ttlMinutes: handoffTtlMinutes ?? undefined,
+          });
+        } catch {
+          // Best-effort only; handoff should not break message delivery.
+        }
+      }
 
       const toolResult = getToolResult(result);
       if (toolResult) return toolResult;

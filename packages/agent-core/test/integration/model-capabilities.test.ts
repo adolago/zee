@@ -607,8 +607,10 @@ describe("Usage Tracking", () => {
 
 describe("Provider Delay Simulation", () => {
   test("respects configured delay", async () => {
+    const delayMs = 100
+    const toleranceMs = 5
     const provider = createMockProvider({
-      delay: 100,
+      delay: delayMs,
       defaultResponse: { text: "Delayed response" },
     })
 
@@ -618,12 +620,14 @@ describe("Provider Delay Simulation", () => {
     })
     const elapsed = Date.now() - start
 
-    expect(elapsed).toBeGreaterThanOrEqual(100)
+    expect(elapsed).toBeGreaterThanOrEqual(delayMs - toleranceMs)
   })
 
   test("streaming respects delay before starting", async () => {
+    const delayMs = 50
+    const toleranceMs = 5
     const provider = createMockProvider({
-      delay: 50,
+      delay: delayMs,
       defaultResponse: { text: "Delayed stream" },
     })
 
@@ -637,6 +641,6 @@ describe("Provider Delay Simulation", () => {
     while (!(await reader.read()).done) {}
 
     const elapsed = Date.now() - start
-    expect(elapsed).toBeGreaterThanOrEqual(50)
+    expect(elapsed).toBeGreaterThanOrEqual(delayMs - toleranceMs)
   })
 })

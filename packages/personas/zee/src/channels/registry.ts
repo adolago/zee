@@ -79,6 +79,11 @@ export function listChannelPluginIds(): string[] {
   try {
     const registry = requireActivePluginRegistry();
     const entries = [...registry.channels];
+    if (entries.length === 0) {
+      return Object.keys(DEFAULT_CHANNEL_PRIORITY).sort(
+        (a, b) => (DEFAULT_CHANNEL_PRIORITY[a] ?? 999) - (DEFAULT_CHANNEL_PRIORITY[b] ?? 999),
+      );
+    }
     entries.sort((a, b) => {
       const pa = a.plugin.meta.order ?? DEFAULT_CHANNEL_PRIORITY[String(a.plugin.id)] ?? 999;
       const pb = b.plugin.meta.order ?? DEFAULT_CHANNEL_PRIORITY[String(b.plugin.id)] ?? 999;

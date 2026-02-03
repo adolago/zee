@@ -55,6 +55,7 @@ import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@open
 import { useSDK } from "@tui/context/sdk"
 import { useCommandDialog } from "@tui/component/dialog-command"
 import { useKeybind } from "@tui/context/keybind"
+import { resolvePersonaArt } from "@tui/component/persona-art"
 import { Header } from "./header"
 import { parsePatch } from "diff"
 import { useDialog, type DialogContext } from "../../ui/dialog"
@@ -85,41 +86,16 @@ import { DialogDelegation } from "./dialog-delegation"
 
 addDefaultParsers(parsers.parsers)
 
-// ASCII art for Personas (Figlet-style)
-const ASCII_ART: Record<string, string[]> = {
-  zee: [
-    "███████╗███████╗███████╗",
-    "╚══███╔╝██╔════╝██╔════╝",
-    "  ███╔╝ █████╗  █████╗  ",
-    " ███╔╝  ██╔══╝  ██╔══╝  ",
-    "███████╗███████╗███████╗",
-    "╚══════╝╚══════╝╚══════╝",
-  ],
-  stanley: [
-    "███████╗████████╗ █████╗ ███╗   ██╗██╗     ███████╗██╗   ██╗",
-    "██╔════╝╚══██╔══╝██╔══██╗████╗  ██║██║     ██╔════╝╚██╗ ██╔╝",
-    "███████╗   ██║   ███████║██╔██╗ ██║██║     █████╗   ╚████╔╝ ",
-    "╚════██║   ██║   ██╔══██║██║╚██╗██║██║     ██╔══╝    ╚██╔╝  ",
-    "███████║   ██║   ██║  ██║██║ ╚████║███████╗███████╗   ██║   ",
-    "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝   ╚═╝   ",
-  ],
-  johny: [
-    "     ██╗ ██████╗ ██╗  ██╗███╗   ██╗██╗   ██╗",
-    "     ██║██╔═══██╗██║  ██║████╗  ██║╚██╗ ██╔╝",
-    "     ██║██║   ██║███████║██╔██╗ ██║ ╚████╔╝ ",
-    "██   ██║██║   ██║██╔══██║██║╚██╗██║  ╚██╔╝  ",
-    "╚█████╔╝╚██████╔╝██║  ██║██║ ╚████║   ██║   ",
-    " ╚════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ",
-  ],
-}
-
 function AgentBanner() {
   const local = useLocal()
   const { theme } = useTheme()
+  const keybind = useKeybind()
   const dimensions = useTerminalDimensions()
   const agent = createMemo(() => local.agent.current())
   const color = createMemo(() => local.agent.color(agent().name))
-  const fullArt = createMemo(() => ASCII_ART[agent().name.toLowerCase()] || [])
+  const fullArt = createMemo(() => resolvePersonaArt(agent().name))
+  const cycleKey = createMemo(() => keybind.print("agent_cycle"))
+  const submitKey = createMemo(() => keybind.print("input_submit"))
   // Trim art from edges to fit available height (hint=1, gap=1, borders~4)
   const art = createMemo(() => {
     const lines = fullArt()
@@ -138,7 +114,7 @@ function AgentBanner() {
       </box>
 
       {/* Hint */}
-      <text style={{ fg: theme.textMuted }}>Tab to switch · Enter to start</text>
+      <text style={{ fg: theme.textMuted }}>{cycleKey()} to switch · {submitKey()} to start</text>
     </box>
   )
 }
@@ -212,6 +188,11 @@ export function Session() {
     return false
   })
   const showTimestamps = createMemo(() => timestamps() === "show")
+  const showHeader = createMemo(() => Boolean(session()?.parentID))
+  const headerHeight = createMemo(() => (showHeader() ? 3 : 0))
+  const headerBackground = createMemo(() =>
+    RGBA.fromValues(theme.background.r, theme.background.g, theme.background.b, 0.95),
+  )
   const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
 
   const scrollAcceleration = createMemo(() => {
@@ -1041,21 +1022,22 @@ export function Session() {
           paddingTop={0}
           paddingLeft={1}
           paddingRight={1}
+          position="relative"
           {...SplitBorder}
           border={["right", "top"]}
           borderColor={theme.border}
         >
           <Show when={session()}>
-            <Header />
             <Show when={messages().length > 0} fallback={<AgentBanner />}>
               <scrollbox
                 ref={(r) => (scroll = r)}
                 viewportOptions={{
                   paddingRight: showScrollbar() ? 1 : 0,
+                  paddingBottom: headerHeight(),
                 }}
                 verticalScrollbarOptions={{
                   paddingLeft: 1,
-                  paddingBottom: 1,
+                  paddingBottom: 1 + headerHeight(),
                   visible: showScrollbar(),
                   trackOptions: {
                     backgroundColor: scrollbarTrackColor(),
@@ -1162,7 +1144,7 @@ export function Session() {
               </scrollbox>
             </Show>
 
-            <box flexShrink={0}>
+            <box flexShrink={0} paddingBottom={headerHeight()}>
               <Show when={permissions().length > 0}>
                 <PermissionPrompt request={permissions()[0]} />
               </Show>
@@ -1190,6 +1172,20 @@ export function Session() {
                 showPathInfoInBorder={!sidebarVisible()}
                 layoutWidth={contentWidth()}
               />
+            </box>
+          </Show>
+          <Show when={showHeader()}>
+            <box
+              position="absolute"
+              left={0}
+              right={0}
+              bottom={0}
+              zIndex={400}
+              backgroundColor={headerBackground()}
+              border={["top"]}
+              borderColor={theme.border}
+            >
+              <Header />
             </box>
           </Show>
           <Toast />

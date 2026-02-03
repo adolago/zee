@@ -18,6 +18,7 @@ export function Dialog(
   const dimensions = useTerminalDimensions()
   const { theme } = useTheme()
   const renderer = useRenderer()
+  const minimal = props.minimal === true
 
   return (
     <box
@@ -42,10 +43,14 @@ export function Dialog(
         width={props.size === "large" ? 80 : 60}
         maxWidth={dimensions().width - 2}
         backgroundColor={theme.backgroundMenu}
-        paddingTop={1}
-        border={["left", "right", "top", "bottom"]}
-        borderColor={theme.borderActive}
-        customBorderChars={SplitBorder.customBorderChars}
+        paddingTop={minimal ? 0 : 1}
+        {...(minimal
+          ? {}
+          : {
+              border: ["left" as const, "right" as const, "top" as const, "bottom" as const],
+              borderColor: theme.borderActive,
+              customBorderChars: SplitBorder.customBorderChars,
+            })}
       >
         {props.children}
       </box>

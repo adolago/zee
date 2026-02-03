@@ -1,7 +1,8 @@
 /**
  * Border drawing patterns for TUI components
  *
- * Pattern: Always use SplitBorder.customBorderChars for consistent styling
+ * Pattern: Prefer SplitBorder.customBorderChars for consistent styling.
+ * Prompt/Tips intentionally use rounded borders for the billboard frame.
  *
  * Usage options:
  * 1. Spread the full SplitBorder object: {...SplitBorder}

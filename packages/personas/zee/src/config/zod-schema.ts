@@ -27,6 +27,31 @@ const NodeHostSchema = z
   .strict()
   .optional();
 
+const UserSchema = z
+  .object({
+    name: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    language: z.string().optional(),
+    location: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
+const ContactSchema = z
+  .object({
+    name: z.string(),
+    aliases: z.array(z.string()).optional(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    channels: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    notes: z.string().optional(),
+  })
+  .strict();
+
+const ContactsSchema = z.record(z.string(), ContactSchema).optional();
+
 export const ZeeSchema = z
   .object({
     meta: z
@@ -181,6 +206,8 @@ export const ZeeSchema = z
       })
       .strict()
       .optional(),
+    user: UserSchema,
+    contacts: ContactsSchema,
     auth: z
       .object({
         profiles: z

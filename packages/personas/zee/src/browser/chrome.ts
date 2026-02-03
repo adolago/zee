@@ -190,6 +190,12 @@ export async function launchZeeChrome(
       "--password-store=basic",
     ];
 
+    const isWaylandSession =
+      process.platform === "linux" &&
+      (process.env.WAYLAND_DISPLAY || process.env.XDG_SESSION_TYPE === "wayland");
+    if (!resolved.headless && isWaylandSession) {
+      args.push("--ozone-platform-hint=auto", "--enable-features=UseOzonePlatform");
+    }
     if (resolved.headless) {
       // Best-effort; older Chromes may ignore.
       args.push("--headless=new");

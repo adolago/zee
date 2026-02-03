@@ -50,7 +50,8 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     throw new Error("Agent not found: " + personaName)
   }
 
-  const model = agent.model ?? (await Provider.defaultModel())
+  const modelRef = agent.model ?? (await Provider.defaultModel())
+  const model = await Provider.getModel(modelRef.providerID, modelRef.modelID)
   const components: ContextComponent[] = []
 
   const header = SystemPrompt.header(model.providerID)
@@ -161,7 +162,7 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     }
   } catch { /* skip */ }
 
-  const tools = await ToolRegistry.tools(model, agent)
+  const tools = await ToolRegistry.tools(modelRef, agent)
   const coreToolIds = [
     "bash", "read", "write", "edit", "glob", "grep", "task",
     "webfetch", "websearch", "codesearch", "invalid", "todowrite",

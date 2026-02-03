@@ -103,3 +103,36 @@ describe("message tool path passthrough", () => {
     expect(call?.params?.media).toBeUndefined();
   });
 });
+
+describe("message tool handoff defaults", () => {
+  it("defaults WhatsApp target to user.phone when handoff is requested", async () => {
+    mocks.runMessageAction.mockClear();
+    mocks.runMessageAction.mockResolvedValue({
+      kind: "send",
+      action: "send",
+      channel: "whatsapp",
+      to: "+15551230000",
+      handledBy: "plugin",
+      payload: {},
+      dryRun: true,
+    } satisfies MessageActionRunResult);
+
+    const tool = createMessageTool({
+      config: {
+        user: { phone: "+15551230000" },
+        channels: { whatsapp: {} },
+      } as never,
+    });
+
+    await tool.execute("1", {
+      action: "send",
+      message: "hello",
+      handoff: true,
+      channel: "whatsapp",
+    });
+
+    const call = mocks.runMessageAction.mock.calls[0]?.[0];
+    expect(call?.params?.target).toBe("+15551230000");
+    expect(call?.params?.channel).toBe("whatsapp");
+  });
+});

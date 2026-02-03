@@ -40,6 +40,23 @@ export type UserConfig = {
   notes?: string;
 };
 
+export type ContactConfig = {
+  /** Contact display name (e.g., "Ruth"). */
+  name: string;
+  /** Alternative names/aliases ("partner", "Ruth A.", etc.). */
+  aliases?: string[];
+  /** Primary phone number (E164). */
+  phone?: string;
+  /** Primary email address. */
+  email?: string;
+  /** Per-channel identifiers (e.g., { whatsapp: "+123", telegram: "@handle" }). */
+  channels?: Record<string, string | number>;
+  /** Additional notes about the contact. */
+  notes?: string;
+};
+
+export type ContactsConfig = Record<string, ContactConfig>;
+
 export type ZeeConfig = {
   meta?: {
     /** Last Zee version that wrote this config. */
@@ -49,6 +66,8 @@ export type ZeeConfig = {
   };
   /** User identity and preferences. Injected into system prompts. */
   user?: UserConfig;
+  /** Contact registry used for outbound targeting and disambiguation. */
+  contacts?: ContactsConfig;
   auth?: AuthConfig;
   env?: {
     /** Opt-in: import missing secrets from a login shell environment (exec `$SHELL -l -c 'env -0'`). */

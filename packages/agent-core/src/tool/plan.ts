@@ -10,6 +10,10 @@ import { Instance } from "../project/instance"
 import EXIT_DESCRIPTION from "./hold-release.txt"
 import ENTER_DESCRIPTION from "./hold-enter.txt"
 
+interface HoldModeMetadata {
+  modeChange?: "hold" | "release"
+}
+
 async function getLastModel(sessionID: string) {
   for await (const item of MessageV2.stream(sessionID)) {
     if (item.info.role === "user" && item.info.model) return item.info.model
@@ -17,11 +21,19 @@ async function getLastModel(sessionID: string) {
   return Provider.defaultModel()
 }
 
-export const HoldReleaseTool = Tool.define("hold_release", {
+export const HoldReleaseTool = Tool.define<any, HoldModeMetadata>("hold_release", {
   description: EXIT_DESCRIPTION,
   parameters: z.object({}),
   async execute(_params, ctx) {
     const session = await Session.get(ctx.sessionID)
+    const inReleaseMode = ctx.extra?.holdMode === false || session.mode === "release"
+    if (inReleaseMode) {
+      return {
+        title: "Release mode already active",
+        output: "Already in release mode. Continue with the task.",
+        metadata: {},
+      }
+    }
     const plan = path.relative(Instance.worktree, Session.plan(session))
     const answers = await Question.ask({
       sessionID: ctx.sessionID,
@@ -73,11 +85,19 @@ export const HoldReleaseTool = Tool.define("hold_release", {
   },
 })
 
-export const HoldEnterTool = Tool.define("hold_enter", {
+export const HoldEnterTool = Tool.define<any, HoldModeMetadata>("hold_enter", {
   description: ENTER_DESCRIPTION,
   parameters: z.object({}),
   async execute(_params, ctx) {
     const session = await Session.get(ctx.sessionID)
+    const inHoldMode = ctx.extra?.holdMode === true || session.mode === "hold"
+    if (inHoldMode) {
+      return {
+        title: "Hold mode already active",
+        output: "Already in hold mode. Continue planning.",
+        metadata: {},
+      }
+    }
     const plan = path.relative(Instance.worktree, Session.plan(session))
 
     const answers = await Question.ask({

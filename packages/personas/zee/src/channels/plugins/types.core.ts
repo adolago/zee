@@ -278,6 +278,7 @@ export type ChannelDirectoryEntry = {
   id: string;
   name?: string;
   handle?: string;
+  aliases?: string[];
   avatarUrl?: string;
   rank?: number;
   raw?: unknown;

@@ -46,6 +46,8 @@ export type ChannelUiMetadata = {
 };
 
 const GROUP_LABELS: Record<string, string> = {
+  user: "User",
+  contacts: "Contacts",
   wizard: "Wizard",
   update: "Update",
   diagnostics: "Diagnostics",
@@ -74,6 +76,8 @@ const GROUP_LABELS: Record<string, string> = {
 };
 
 const GROUP_ORDER: Record<string, number> = {
+  user: 10,
+  contacts: 15,
   wizard: 20,
   update: 25,
   diagnostics: 27,
@@ -104,6 +108,20 @@ const GROUP_ORDER: Record<string, number> = {
 const FIELD_LABELS: Record<string, string> = {
   "meta.lastTouchedVersion": "Config Last Touched Version",
   "meta.lastTouchedAt": "Config Last Touched At",
+  user: "User",
+  "user.name": "User Name",
+  "user.phone": "User Phone",
+  "user.email": "User Email",
+  "user.language": "User Language",
+  "user.location": "User Location",
+  "user.notes": "User Notes",
+  contacts: "Contacts",
+  "contacts.*.name": "Contact Name",
+  "contacts.*.aliases": "Contact Aliases",
+  "contacts.*.phone": "Contact Phone",
+  "contacts.*.email": "Contact Email",
+  "contacts.*.channels": "Contact Channels",
+  "contacts.*.notes": "Contact Notes",
   "update.channel": "Update Channel",
   "update.checkOnStart": "Update Check on Start",
   "diagnostics.enabled": "Diagnostics Enabled",
@@ -335,6 +353,19 @@ const FIELD_LABELS: Record<string, string> = {
 const FIELD_HELP: Record<string, string> = {
   "meta.lastTouchedVersion": "Auto-set when Zee writes the config.",
   "meta.lastTouchedAt": "ISO timestamp of the last config write (auto-set).",
+  "user.name": "Primary name used for personalization in system prompts.",
+  "user.phone": "Primary phone number (E164) used for default WhatsApp replies.",
+  "user.email": "Primary email address used for personalization.",
+  "user.language": "Preferred language for responses.",
+  "user.location": "Location context for scheduling/timezone hints.",
+  "user.notes": "Additional user notes injected into prompts.",
+  "contacts.*.name": "Contact display name.",
+  "contacts.*.aliases": "Alternative names used for matching (case-insensitive).",
+  "contacts.*.phone": "Primary phone number (E164).",
+  "contacts.*.email": "Primary email address.",
+  "contacts.*.channels":
+    "Per-channel identifiers (e.g., { whatsapp: \"+123\", telegram: \"@handle\" }).",
+  "contacts.*.notes": "Freeform notes for this contact.",
   "update.channel": 'Update channel for git + npm installs ("stable", "beta", or "dev").',
   "update.checkOnStart": "Check for npm updates when the gateway starts (default: true).",
   "gateway.remote.url": "Remote Gateway WebSocket URL (ws:// or wss://).",

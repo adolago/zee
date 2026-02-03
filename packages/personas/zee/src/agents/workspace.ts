@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isSubagentSessionKey } from "../routing/session-key.js";
+import { isSubagentSessionKey, normalizeAgentId } from "../routing/session-key.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import { resolveUserPath } from "../utils.js";
 
@@ -44,16 +44,42 @@ function stripFrontMatter(content: string): string {
   return trimmed;
 }
 
-async function loadTemplate(name: string): Promise<string> {
+async function loadTemplateOptional(name: string): Promise<string | null> {
   const templatePath = path.join(TEMPLATE_DIR, name);
   try {
     const content = await fs.readFile(templatePath, "utf-8");
     return stripFrontMatter(content);
-  } catch {
-    throw new Error(
-      `Missing workspace template: ${name} (${templatePath}). Ensure docs/reference/templates are packaged.`,
-    );
+  } catch (err) {
+    const anyErr = err as { code?: string };
+    if (anyErr.code === "ENOENT") return null;
+    throw err;
   }
+}
+
+async function loadTemplate(name: string): Promise<string> {
+  const content = await loadTemplateOptional(name);
+  if (content !== null) return content;
+  const templatePath = path.join(TEMPLATE_DIR, name);
+  throw new Error(
+    `Missing workspace template: ${name} (${templatePath}). Ensure docs/reference/templates are packaged.`,
+  );
+}
+
+function formatPersonaTemplateName(filename: string, persona: string): string {
+  const ext = path.extname(filename);
+  const base = ext ? filename.slice(0, -ext.length) : filename;
+  return `${base}.${persona}${ext}`;
+}
+
+async function loadTemplateForAgent(name: string, agentId?: string): Promise<string> {
+  const normalized = normalizeAgentId(agentId);
+  if (normalized !== "johny" && normalized !== "stanley") {
+    return loadTemplate(name);
+  }
+  const candidate = formatPersonaTemplateName(name, normalized);
+  const content = await loadTemplateOptional(candidate);
+  if (content !== null) return content;
+  return loadTemplate(name);
 }
 
 export type WorkspaceBootstrapFileName =
@@ -118,6 +144,7 @@ async function ensureGitRepo(dir: string, isBrandNewWorkspace: boolean) {
 export async function ensureAgentWorkspace(params?: {
   dir?: string;
   ensureBootstrapFiles?: boolean;
+  agentId?: string;
 }): Promise<{
   dir: string;
   agentsPath?: string;
@@ -157,10 +184,10 @@ export async function ensureAgentWorkspace(params?: {
     return existing.every((v) => !v);
   })();
 
-  const agentsTemplate = await loadTemplate(DEFAULT_AGENTS_FILENAME);
-  const soulTemplate = await loadTemplate(DEFAULT_SOUL_FILENAME);
+  const agentsTemplate = await loadTemplateForAgent(DEFAULT_AGENTS_FILENAME, params?.agentId);
+  const soulTemplate = await loadTemplateForAgent(DEFAULT_SOUL_FILENAME, params?.agentId);
   const toolsTemplate = await loadTemplate(DEFAULT_TOOLS_FILENAME);
-  const identityTemplate = await loadTemplate(DEFAULT_IDENTITY_FILENAME);
+  const identityTemplate = await loadTemplateForAgent(DEFAULT_IDENTITY_FILENAME, params?.agentId);
   const userTemplate = await loadTemplate(DEFAULT_USER_FILENAME);
   const heartbeatTemplate = await loadTemplate(DEFAULT_HEARTBEAT_FILENAME);
   const bootstrapTemplate = await loadTemplate(DEFAULT_BOOTSTRAP_FILENAME);

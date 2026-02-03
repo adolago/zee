@@ -36,6 +36,7 @@ export type ResolvedAgentRoute = {
   mainSessionKey: string;
   /** Match description for debugging/logging. */
   matchedBy:
+    | "handoff"
     | "binding.peer"
     | "binding.guild"
     | "binding.team"
