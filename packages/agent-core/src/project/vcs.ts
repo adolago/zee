@@ -1,6 +1,5 @@
 import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
-import { $ } from "bun"
 import z from "zod"
 import { Log } from "@/util/log"
 import { Instance } from "./instance"
@@ -28,13 +27,19 @@ export namespace Vcs {
   export type Info = z.infer<typeof Info>
 
   async function currentBranch() {
-    return $`git rev-parse --abbrev-ref HEAD`
-      .quiet()
-      .nothrow()
-      .cwd(Instance.worktree)
-      .text()
-      .then((x) => x.trim())
-      .catch(() => undefined)
+    try {
+      const proc = Bun.spawn(["git", "rev-parse", "--abbrev-ref", "HEAD"], {
+        cwd: Instance.worktree,
+        stderr: "ignore",
+        stdout: "pipe",
+      })
+      const text = await new Response(proc.stdout).text()
+      const exitCode = await proc.exited
+      if (exitCode !== 0) return undefined
+      return text.trim()
+    } catch {
+      return undefined
+    }
   }
 
   const state = Instance.state(

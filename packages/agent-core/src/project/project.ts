@@ -2,7 +2,6 @@ import z from "zod"
 import fs from "fs/promises"
 import { Filesystem } from "../util/filesystem"
 import path from "path"
-import { $ } from "bun"
 import { Storage } from "../storage/storage"
 import { Log } from "../util/log"
 import { Flag } from "@/flag/flag"
@@ -74,14 +73,10 @@ export namespace Project {
 
         // generate id from root commit
         if (!id) {
-          const roots = await $`git rev-list --max-parents=0 --all`
-            .quiet()
-            .nothrow()
-            .cwd(sandbox)
-            .text()
+          const roots = await git(["rev-list", "--max-parents=0", "--all"], sandbox)
             .then((x) =>
               x
-                .split("\n")
+                ?.split("\n")
                 .filter(Boolean)
                 .map((x) => x.trim())
                 .toSorted(),
@@ -114,12 +109,8 @@ export namespace Project {
           }
         }
 
-        const top = await $`git rev-parse --show-toplevel`
-          .quiet()
-          .nothrow()
-          .cwd(sandbox)
-          .text()
-          .then((x) => path.resolve(sandbox, x.trim()))
+        const top = await git(["rev-parse", "--show-toplevel"], sandbox)
+          .then((x) => (x ? path.resolve(sandbox, x.trim()) : undefined))
           .catch(() => undefined)
 
         if (!top) {
@@ -133,12 +124,9 @@ export namespace Project {
 
         sandbox = top
 
-        const worktree = await $`git rev-parse --git-common-dir`
-          .quiet()
-          .nothrow()
-          .cwd(sandbox)
-          .text()
+        const worktree = await git(["rev-parse", "--git-common-dir"], sandbox)
           .then((x) => {
+            if (!x) return undefined
             const dirname = path.dirname(x.trim())
             if (dirname === ".") return sandbox
             return dirname
