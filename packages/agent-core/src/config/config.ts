@@ -1725,4 +1725,44 @@ export namespace Config {
   export async function directories() {
     return state().then((x) => x.directories)
   }
+
+  function isSensitiveKey(key: string) {
+    return ["apiKey", "token", "password", "clientSecret", "botToken"].includes(key)
+  }
+
+  export function redact(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(redact)
+    }
+    if (obj !== null && typeof obj === "object") {
+      const result: any = {}
+      for (const [key, value] of Object.entries(obj)) {
+        if (isSensitiveKey(key) && typeof value === "string") {
+          result[key] = "***"
+        } else {
+          result[key] = redact(value)
+        }
+      }
+      return result
+    }
+    return obj
+  }
+
+  export function clean(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(clean)
+    }
+    if (obj !== null && typeof obj === "object") {
+      const result: any = {}
+      for (const [key, value] of Object.entries(obj)) {
+        if (value === "***") {
+          continue
+        }
+        const cleaned = clean(value)
+        result[key] = cleaned
+      }
+      return result
+    }
+    return obj
+  }
 }

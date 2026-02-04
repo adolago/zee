@@ -23,7 +23,8 @@ export const ConfigRoute = new Hono()
       },
     }),
     async (c) => {
-      return c.json(await Config.get())
+      const config = await Config.get()
+      return c.json(Config.redact(config))
     },
   )
   .patch(
@@ -46,9 +47,10 @@ export const ConfigRoute = new Hono()
     }),
     validator("json", Config.Info),
     async (c) => {
-      const config = c.req.valid("json")
+      const raw = c.req.valid("json")
+      const config = Config.clean(raw)
       await Config.update(config)
-      return c.json(config)
+      return c.json(Config.redact(config))
     },
   )
   .get(
