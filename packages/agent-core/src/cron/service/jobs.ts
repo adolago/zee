@@ -23,8 +23,12 @@ export function assertSupportedJobSpec(job: Pick<CronJob, "sessionTarget" | "pay
   if (job.sessionTarget === "main" && job.payload.kind !== "systemEvent") {
     throw new Error('main cron jobs require payload.kind="systemEvent"')
   }
-  if (job.sessionTarget === "isolated" && job.payload.kind !== "agentTurn") {
-    throw new Error('isolated cron jobs require payload.kind="agentTurn"')
+  if (
+    job.sessionTarget === "isolated" &&
+    job.payload.kind !== "agentTurn" &&
+    job.payload.kind !== "toolInvoke"
+  ) {
+    throw new Error('isolated cron jobs require payload.kind="agentTurn" or "toolInvoke"')
   }
 }
 
@@ -178,6 +182,15 @@ function mergeCronPayload(existing: CronPayload, patch: CronPayloadPatch): CronP
     return { kind: "systemEvent", text }
   }
 
+  if (patch.kind === "toolInvoke") {
+    if (existing.kind !== "toolInvoke") {
+      return buildPayloadFromPatch(patch)
+    }
+    const tool = typeof patch.tool === "string" ? patch.tool : existing.tool
+    const args = patch.args !== undefined ? patch.args : existing.args
+    return { kind: "toolInvoke", tool, args }
+  }
+
   if (existing.kind !== "agentTurn") {
     return buildPayloadFromPatch(patch)
   }
@@ -200,6 +213,23 @@ function buildPayloadFromPatch(patch: CronPayloadPatch): CronPayload {
       throw new Error('cron.update payload.kind="systemEvent" requires text')
     }
     return { kind: "systemEvent", text: patch.text }
+  }
+
+  if (patch.kind === "toolInvoke") {
+    if (typeof patch.tool !== "string" || patch.tool.trim().length === 0) {
+      throw new Error('cron.update payload.kind="toolInvoke" requires tool')
+    }
+    if (
+      patch.args !== undefined &&
+      (!patch.args || typeof patch.args !== "object" || Array.isArray(patch.args))
+    ) {
+      throw new Error('cron.update payload.kind="toolInvoke" args must be a JSON object')
+    }
+    return {
+      kind: "toolInvoke",
+      tool: patch.tool.trim(),
+      args: patch.args,
+    }
   }
 
   if (typeof patch.message !== "string" || patch.message.length === 0) {

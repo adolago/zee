@@ -44,6 +44,11 @@ const CronPayloadSchema = z.discriminatedUnion("kind", [
     to: z.string().optional(),
     persona: z.string().optional(),
   }),
+  z.object({
+    kind: z.literal("toolInvoke"),
+    tool: z.string(),
+    args: z.object({}).passthrough().optional(),
+  }),
 ])
 
 const CronJobCreateSchema = z.object({

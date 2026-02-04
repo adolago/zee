@@ -18,21 +18,17 @@ The `Banner` skill powers an always-on rotating banner shown in the agent-core T
 
 ### Refresh banner items
 
+Auto-refresh is wired into the agent-core daemon cron (every 15 minutes). The cron job name is `zee-banner-refresh`.
+
 Manual refresh (writes to KV so the running TUI updates live):
 ```bash
-agent-core tool zee:banner-refresh '{"autoSave": true}'
-```
-
-One-time setup (auto-refresh every 15 minutes):
-```bash
-agent-core tool zee:banner-refresh '{"autoSave": true, "setupCron": true}'
+agent-core debug agent zee --tool zee-banner-refresh --params '{"autoSave": true}'
 ```
 
 ### Push a message into the banner
 
 ```bash
-agent-core tool zee:banner-push '{"message": "Heads up: standup in 10 minutes", "priority": "high"}'
+agent-core debug agent zee --tool zee-banner-push --params '{"message": "Heads up: standup in 10 minutes", "priority": "high"}'
 ```
 
 Messages are not dismissible in the UI. They expire automatically after `ttlMinutes` (default: 24h).
-

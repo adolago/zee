@@ -28,6 +28,7 @@ import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
 import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
+import path from "path"
 
 const log = Log.create({ service: "always-on" })
 
@@ -257,6 +258,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       const cronLog = Log.create({ service: "cron" })
       const storePath = resolveCronStorePath(config.cron?.storeDir)
       const cronDeps: CronServiceDeps = {
+        directory,
         log: cronLog,
         storePath,
         cronEnabled: true,
@@ -304,6 +306,15 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       await cronService.start()
       setCronService(cronService)
       Output.log("Cron:       Scheduler started")
+
+      // Ensure Zee banner refresh is wired to cron so the rotating TUI banner stays current.
+      try {
+        await ensureZeeBannerRefreshJob(cronService, directory)
+      } catch (err) {
+        log.warn("Failed to ensure Zee banner refresh cron job", {
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
     } else {
       Output.log("Cron:       Disabled by config")
     }
@@ -447,6 +458,66 @@ URL:       ${daemonUrl}
     hostname: serverHost,
     cleanup,
   }
+}
+
+async function ensureZeeBannerRefreshJob(cron: CronService, directory: string) {
+  const toolPathTs = path.join(directory, ".agent-core", "tool", "zee-banner-refresh.ts")
+  const toolPathJs = path.join(directory, ".agent-core", "tool", "zee-banner-refresh.js")
+  const hasTool = (await Bun.file(toolPathTs).exists()) || (await Bun.file(toolPathJs).exists())
+  if (!hasTool) {
+    return
+  }
+
+  const jobs = await cron.list({ includeDisabled: true })
+  const existing = jobs.find((j) => j.name === "zee-banner-refresh")
+  const now = Date.now()
+
+  const desired = {
+    name: "zee-banner-refresh",
+    description: "Auto-refresh Zee banner for agent-core TUI",
+    enabled: true,
+    schedule: { kind: "every", everyMs: 900000, anchorMs: now - 900000 } as const,
+    sessionTarget: "isolated" as const,
+    wakeMode: "next-heartbeat" as const,
+    payload: {
+      kind: "toolInvoke" as const,
+      tool: "zee-banner-refresh",
+      args: { autoSave: true },
+    },
+  }
+
+  if (!existing) {
+    const job = await cron.add({
+      ...desired,
+      state: {},
+    })
+    void cron.run(job.id, "force").catch(() => {})
+    return
+  }
+
+  // Keep user edits if the job looks compatible; otherwise, patch it to the safe/default spec.
+  const compatible =
+    existing.sessionTarget === "isolated" &&
+    existing.payload.kind === "toolInvoke" &&
+    existing.payload.tool === desired.payload.tool
+
+  if (compatible && existing.enabled) {
+    const ranRecently = typeof existing.state.lastRunAtMs === "number" && now - existing.state.lastRunAtMs < 5 * 60_000
+    if (!ranRecently) {
+      void cron.run(existing.id, "force").catch(() => {})
+    }
+    return
+  }
+
+  await cron.update(existing.id, {
+    enabled: true,
+    description: desired.description,
+    sessionTarget: desired.sessionTarget,
+    wakeMode: desired.wakeMode,
+    schedule: desired.schedule,
+    payload: desired.payload,
+  })
+  void cron.run(existing.id, "force").catch(() => {})
 }
 
 async function restoreSessionsWithTodos(directory: string): Promise<number> {

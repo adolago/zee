@@ -94,4 +94,3 @@ Smoke checklist:
 - `Ctrl+X H` toggles `HOLD`/`RELEASE` mode
 - `Ctrl+T` cycles model variants (for models that define variants)
 - Provider dialog accepts an API key and shows success toast
-- Canvas tools render in WezTerm: prompt Zee to use `canvas_spawn` and verify a right-side pane appears/updates (set `AGENT_CORE_CANVAS_WEZTERM=0` to force inline fallback)

@@ -6,6 +6,7 @@ import { computeJobNextRunAtMs, nextWakeAtMs, resolveJobPayloadTextForMain } fro
 import { locked } from "./locked"
 import { ensureLoaded, persist } from "./store"
 import { contentHash, shouldThrottle, recordSent } from "./throttle"
+import { Instance } from "@/project/instance"
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1
 
@@ -139,7 +140,13 @@ export async function executeJob(
 
     if (job.sessionTarget === "isolated" && status !== "throttled") {
       const prefix = job.isolation?.postToMainPrefix?.trim() || "Cron"
-      const mode = job.isolation?.postToMainMode ?? "summary"
+      const modeRaw = job.isolation?.postToMainMode
+      const mode =
+        modeRaw ?? (job.payload.kind === "toolInvoke" ? ("none" as const) : ("summary" as const))
+
+      if (mode === "none") {
+        return
+      }
 
       let body = (summary ?? err ?? status).trim()
       if (mode === "full") {
@@ -215,8 +222,59 @@ export async function executeJob(
       return
     }
 
+    if (job.payload.kind === "toolInvoke") {
+      const tool = job.payload.tool.trim()
+      if (!tool) {
+        await finish("error", 'payload.kind="toolInvoke" requires non-empty tool')
+        return
+      }
+      const argsRaw = job.payload.args ?? {}
+      if (!argsRaw || typeof argsRaw !== "object" || Array.isArray(argsRaw)) {
+        await finish("error", 'payload.kind="toolInvoke" args must be a JSON object')
+        return
+      }
+
+      const res = await Instance.provide({
+        directory: state.deps.directory,
+        fn: async () => {
+          const { ToolRegistry } = await import("../../tool/registry")
+          const toolInfo = await ToolRegistry.get(tool)
+          if (!toolInfo) {
+            return { ok: false as const, error: `tool not found: ${tool}` }
+          }
+          const init = await toolInfo.init()
+          const validatedArgs = init.parameters.parse(argsRaw)
+          const ctx = {
+            sessionID: `cron:${job.id}`,
+            messageID: `cron:${job.id}`,
+            agent: "cron",
+            abort: new AbortController().signal,
+            directory: Instance.directory,
+            worktree: Instance.worktree,
+            messages: [],
+            metadata: () => {},
+            async ask(req: { permission: string }) {
+              throw new Error(
+                `cron toolInvoke cannot request permissions (permission: ${req.permission})`,
+              )
+            },
+          } as any
+          const result = await init.execute(validatedArgs, ctx)
+          return { ok: true as const, outputText: result.output, title: result.title }
+        },
+      })
+
+      if (!res.ok) {
+        await finish("error", res.error)
+        return
+      }
+
+      await finish("ok", undefined, res.title || `toolInvoke:${tool}`, res.outputText)
+      return
+    }
+
     if (job.payload.kind !== "agentTurn") {
-      await finish("skipped", "isolated job requires payload.kind=agentTurn")
+      await finish("skipped", "isolated job requires payload.kind=agentTurn or toolInvoke")
       return
     }
 

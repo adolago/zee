@@ -31,13 +31,15 @@ export function normalizeOptionalAgentId(raw: unknown): string | undefined {
 
 export function inferLegacyName(job: {
   schedule?: { kind?: unknown; everyMs?: unknown; expr?: unknown }
-  payload?: { kind?: unknown; text?: unknown; message?: unknown }
+  payload?: { kind?: unknown; text?: unknown; message?: unknown; tool?: unknown }
 }): string {
   const text =
     job?.payload?.kind === "systemEvent" && typeof job.payload.text === "string"
       ? job.payload.text
       : job?.payload?.kind === "agentTurn" && typeof job.payload.message === "string"
         ? job.payload.message
+        : job?.payload?.kind === "toolInvoke" && typeof job.payload.tool === "string"
+          ? `tool:${job.payload.tool}`
         : ""
   const firstLine =
     text
@@ -66,5 +68,8 @@ export function normalizePayloadToSystemText(payload: CronPayload): string {
   if (payload.kind === "systemEvent") {
     return payload.text.trim()
   }
-  return payload.message.trim()
+  if (payload.kind === "agentTurn") {
+    return payload.message.trim()
+  }
+  return `tool:${payload.tool}`.trim()
 }

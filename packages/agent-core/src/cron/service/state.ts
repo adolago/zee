@@ -27,6 +27,8 @@ export type HeartbeatRunResult = {
 
 export type CronServiceDeps = {
   nowMs?: () => number
+  /** Project directory used for cron-invoked tool execution. Defaults to process.cwd(). */
+  directory?: string
   log: CronLogger
   storePath: string
   cronEnabled: boolean
@@ -45,8 +47,9 @@ export type CronServiceDeps = {
   onEvent?: (evt: CronEvent) => void
 }
 
-export type CronServiceDepsInternal = Omit<CronServiceDeps, "nowMs"> & {
+export type CronServiceDepsInternal = Omit<CronServiceDeps, "nowMs" | "directory"> & {
   nowMs: () => number
+  directory: string
 }
 
 export type CronServiceState = {
@@ -62,7 +65,11 @@ export type CronServiceState = {
 
 export function createCronServiceState(deps: CronServiceDeps): CronServiceState {
   return {
-    deps: { ...deps, nowMs: deps.nowMs ?? (() => Date.now()) },
+    deps: {
+      ...deps,
+      nowMs: deps.nowMs ?? (() => Date.now()),
+      directory: deps.directory ?? process.cwd(),
+    },
     store: null,
     timer: null,
     running: false,

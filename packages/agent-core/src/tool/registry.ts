@@ -124,6 +124,11 @@ export namespace ToolRegistry {
     return all().then((x) => x.map((t) => t.id))
   }
 
+  export async function get(id: string) {
+    const tools = await all()
+    return tools.find((t) => t.id === id)
+  }
+
   // Tools excluded for native persona agents (zee, stanley, johny).
   // Currently empty -- personas run in TUI, CLI, and daemon, and need
   // the full tool set. The `all()` function already gates tools by client type.

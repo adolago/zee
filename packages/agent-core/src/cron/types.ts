@@ -23,6 +23,13 @@ export type CronPayload =
       /** Persona to run as (zee, stanley, johny). */
       persona?: string
     }
+  | {
+      kind: "toolInvoke"
+      /** Tool id in the agent-core ToolRegistry (built-in or plugin tool). */
+      tool: string
+      /** Tool args (JSON object). */
+      args?: Record<string, unknown>
+    }
 
 export type CronPayloadPatch =
   | { kind: "systemEvent"; text?: string }
@@ -36,6 +43,11 @@ export type CronPayloadPatch =
       channel?: string
       to?: string
       persona?: string
+    }
+  | {
+      kind: "toolInvoke"
+      tool?: string
+      args?: Record<string, unknown>
     }
 
 export type CronIsolation = {

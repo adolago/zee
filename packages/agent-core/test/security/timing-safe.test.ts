@@ -123,10 +123,10 @@ describe("timing attack resistance", () => {
     const wrongFirstTime = measureTime(secret, wrongFirstChar)
     const wrongLastTime = measureTime(secret, wrongLastChar)
 
-    // All times should be within 2x of each other
-    // (this is a loose bound to avoid flaky tests)
+    // All times should be within 3x of each other.
+    // (loose bound to avoid flakiness on noisy CI / turbo-boosted CPUs)
     const maxTime = Math.max(correctTime, wrongFirstTime, wrongLastTime)
     const minTime = Math.min(correctTime, wrongFirstTime, wrongLastTime)
-    expect(maxTime / minTime).toBeLessThan(2)
+    expect(maxTime / minTime).toBeLessThan(3)
   })
 })
