@@ -26,6 +26,14 @@ const shouldIgnoreNullBytePathError = (error: unknown) => {
   return code === "ENOENT" && (hasNullByte(pathValue) || hasNullByte(message))
 }
 
+async function exec(cmd: string[], cwd: string) {
+  const proc = Bun.spawn(cmd, { cwd, stderr: "inherit", stdout: "ignore" })
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    throw new Error(`Command failed with exit code ${exitCode}: ${cmd.join(" ")}`)
+  }
+}
+
 async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const baseDir = process.env["AGENT_CORE_TEST_HOME"] ?? os.tmpdir()
   const rootDir = path.join(baseDir, "tmp")
@@ -33,12 +41,8 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await Bun.spawn(["git", "init"], { cwd: dirpath, stderr: "ignore", stdout: "ignore" }).exited
-    await Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
-      cwd: dirpath,
-      stderr: "ignore",
-      stdout: "ignore",
-    }).exited
+    await exec(["git", "init"], dirpath)
+    await exec(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], dirpath)
   }
   if (options?.config) {
     await Bun.write(

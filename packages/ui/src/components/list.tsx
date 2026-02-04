@@ -15,7 +15,6 @@ function findByKey(container: HTMLElement, key: string) {
 
 export interface ListSearchProps {
   placeholder?: string
-  ariaLabel?: string
   autofocus?: boolean
   hideIcon?: boolean
   class?: string
@@ -242,7 +241,6 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
                 <Icon name="magnifying-glass" />
               </Show>
               <TextField
-                aria-label={searchProps().ariaLabel || searchProps().placeholder}
                 autofocus={searchProps().autofocus}
                 variant="ghost"
                 data-slot="list-search-input"

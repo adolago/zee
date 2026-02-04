@@ -4,6 +4,14 @@ import { Snapshot } from "../../src/snapshot"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 
+async function exec(cmd: string[], cwd?: string) {
+  const proc = Bun.spawn(cmd, { cwd, stderr: "inherit", stdout: "ignore" })
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    throw new Error(`Command failed with exit code ${exitCode}: ${cmd.join(" ")}`)
+  }
+}
+
 async function bootstrap() {
   return tmpdir({
     git: true,
@@ -13,8 +21,8 @@ async function bootstrap() {
       const bContent = `B${unique}`
       await Bun.write(`${dir}/a.txt`, aContent)
       await Bun.write(`${dir}/b.txt`, bContent)
-      await $`git add .`.cwd(dir).quiet()
-      await $`git commit --no-gpg-sign -m init`.cwd(dir).quiet()
+      await exec(["git", "add", "."], dir)
+      await exec(["git", "commit", "--no-gpg-sign", "-m", "init"], dir)
       return {
         aContent,
         bContent,
@@ -31,7 +39,7 @@ test("tracks deleted files correctly", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
 
       expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/a.txt`)
     },
@@ -63,7 +71,7 @@ test("revert in subdirectory", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir -p ${tmp.path}/sub`.quiet()
+      await exec(["mkdir", "-p", `${tmp.path}/sub`])
       await Bun.write(`${tmp.path}/sub/file.txt`, "SUB")
 
       await Snapshot.revert([await Snapshot.patch(before!)])
@@ -83,9 +91,9 @@ test("multiple file operations", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
       await Bun.write(`${tmp.path}/c.txt`, "C")
-      await $`mkdir -p ${tmp.path}/dir`.quiet()
+      await exec(["mkdir", "-p", `${tmp.path}/dir`])
       await Bun.write(`${tmp.path}/dir/d.txt`, "D")
       await Bun.write(`${tmp.path}/b.txt`, "MODIFIED")
 
@@ -108,7 +116,7 @@ test("empty directory handling", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir ${tmp.path}/empty`.quiet()
+      await exec(["mkdir", `${tmp.path}/empty`])
 
       expect((await Snapshot.patch(before!)).files.length).toBe(0)
     },
@@ -142,7 +150,7 @@ test("symlink handling", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`ln -s ${tmp.path}/a.txt ${tmp.path}/link.txt`.quiet()
+      await exec(["ln", "-s", `${tmp.path}/a.txt`, `${tmp.path}/link.txt`])
 
       expect((await Snapshot.patch(before!)).files).toContain(`${tmp.path}/link.txt`)
     },
@@ -172,7 +180,7 @@ test("nested directory revert", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir -p ${tmp.path}/level1/level2/level3`.quiet()
+      await exec(["mkdir", "-p", `${tmp.path}/level1/level2/level3`])
       await Bun.write(`${tmp.path}/level1/level2/level3/deep.txt`, "DEEP")
 
       await Snapshot.revert([await Snapshot.patch(before!)])
@@ -337,10 +345,10 @@ test("nested symlinks", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`mkdir -p ${tmp.path}/sub/dir`.quiet()
+      await exec(["mkdir", "-p", `${tmp.path}/sub/dir`])
       await Bun.write(`${tmp.path}/sub/dir/target.txt`, "target content")
-      await $`ln -s ${tmp.path}/sub/dir/target.txt ${tmp.path}/sub/dir/link.txt`.quiet()
-      await $`ln -s ${tmp.path}/sub ${tmp.path}/sub-link`.quiet()
+      await exec(["ln", "-s", `${tmp.path}/sub/dir/target.txt`, `${tmp.path}/sub/dir/link.txt`])
+      await exec(["ln", "-s", `${tmp.path}/sub`, `${tmp.path}/sub-link`])
 
       const patch = await Snapshot.patch(before!)
       expect(patch.files).toContain(`${tmp.path}/sub/dir/link.txt`)
@@ -358,9 +366,9 @@ test("file permissions and ownership changes", async () => {
       expect(before).toBeTruthy()
 
       // Change permissions multiple times
-      await $`chmod 600 ${tmp.path}/a.txt`.quiet()
-      await $`chmod 755 ${tmp.path}/a.txt`.quiet()
-      await $`chmod 644 ${tmp.path}/a.txt`.quiet()
+      await exec(["chmod", "600", `${tmp.path}/a.txt`])
+      await exec(["chmod", "755", `${tmp.path}/a.txt`])
+      await exec(["chmod", "644", `${tmp.path}/a.txt`])
 
       const patch = await Snapshot.patch(before!)
       // Note: git doesn't track permission changes on existing files by default
@@ -379,7 +387,9 @@ test("circular symlinks", async () => {
       expect(before).toBeTruthy()
 
       // Create circular symlink
-      await $`ln -s ${tmp.path}/circular ${tmp.path}/circular`.quiet().nothrow()
+      try {
+        await exec(["ln", "-s", `${tmp.path}/circular`, `${tmp.path}/circular`])
+      } catch {}
 
       const patch = await Snapshot.patch(before!)
       expect(patch.files.length).toBeGreaterThanOrEqual(0) // Should not crash
@@ -472,7 +482,7 @@ test("snapshot state isolation between projects", async () => {
 test("patch detects changes in secondary worktree", async () => {
   await using tmp = await bootstrap()
   const worktreePath = `${tmp.path}-worktree`
-  await $`git worktree add ${worktreePath} HEAD`.cwd(tmp.path).quiet()
+  await exec(["git", "worktree", "add", worktreePath, "HEAD"], tmp.path)
 
   try {
     await Instance.provide({
@@ -496,15 +506,17 @@ test("patch detects changes in secondary worktree", async () => {
       },
     })
   } finally {
-    await $`git worktree remove --force ${worktreePath}`.cwd(tmp.path).quiet().nothrow()
-    await $`rm -rf ${worktreePath}`.quiet()
+    try {
+      await exec(["git", "worktree", "remove", "--force", worktreePath], tmp.path)
+    } catch {}
+    await exec(["rm", "-rf", worktreePath])
   }
 })
 
 test("revert only removes files in invoking worktree", async () => {
   await using tmp = await bootstrap()
   const worktreePath = `${tmp.path}-worktree`
-  await $`git worktree add ${worktreePath} HEAD`.cwd(tmp.path).quiet()
+  await exec(["git", "worktree", "add", worktreePath, "HEAD"], tmp.path)
 
   try {
     await Instance.provide({
@@ -534,16 +546,18 @@ test("revert only removes files in invoking worktree", async () => {
 
     expect(await Bun.file(primaryFile).text()).toBe("primary content")
   } finally {
-    await $`git worktree remove --force ${worktreePath}`.cwd(tmp.path).quiet().nothrow()
-    await $`rm -rf ${worktreePath}`.quiet()
-    await $`rm -f ${tmp.path}/worktree.txt`.quiet()
+    try {
+      await exec(["git", "worktree", "remove", "--force", worktreePath], tmp.path)
+    } catch {}
+    await exec(["rm", "-rf", worktreePath])
+    await exec(["rm", "-f", `${tmp.path}/worktree.txt`])
   }
 })
 
 test("diff reports worktree-only/shared edits and ignores primary-only", async () => {
   await using tmp = await bootstrap()
   const worktreePath = `${tmp.path}-worktree`
-  await $`git worktree add ${worktreePath} HEAD`.cwd(tmp.path).quiet()
+  await exec(["git", "worktree", "add", worktreePath, "HEAD"], tmp.path)
 
   try {
     await Instance.provide({
@@ -571,10 +585,12 @@ test("diff reports worktree-only/shared edits and ignores primary-only", async (
       },
     })
   } finally {
-    await $`git worktree remove --force ${worktreePath}`.cwd(tmp.path).quiet().nothrow()
-    await $`rm -rf ${worktreePath}`.quiet()
-    await $`rm -f ${tmp.path}/shared.txt`.quiet()
-    await $`rm -f ${tmp.path}/primary-only.txt`.quiet()
+    try {
+      await exec(["git", "worktree", "remove", "--force", worktreePath], tmp.path)
+    } catch {}
+    await exec(["rm", "-rf", worktreePath])
+    await exec(["rm", "-f", `${tmp.path}/shared.txt`])
+    await exec(["rm", "-f", `${tmp.path}/primary-only.txt`])
   }
 })
 
@@ -606,7 +622,7 @@ test("diff function with various changes", async () => {
       expect(before).toBeTruthy()
 
       // Make various changes
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
       await Bun.write(`${tmp.path}/new.txt`, "new content")
       await Bun.write(`${tmp.path}/b.txt`, "modified content")
 
@@ -627,7 +643,7 @@ test("restore function", async () => {
       expect(before).toBeTruthy()
 
       // Make changes
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
       await Bun.write(`${tmp.path}/new.txt`, "new content")
       await Bun.write(`${tmp.path}/b.txt`, "modified")
 
@@ -650,7 +666,7 @@ test("revert should not delete files that existed but were deleted in snapshot",
       const snapshot1 = await Snapshot.track()
       expect(snapshot1).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
 
       const snapshot2 = await Snapshot.track()
       expect(snapshot2).toBeTruthy()
@@ -677,7 +693,7 @@ test("revert preserves file that existed in snapshot when deleted then recreated
       const snapshot = await Snapshot.track()
       expect(snapshot).toBeTruthy()
 
-      await $`rm ${tmp.path}/existing.txt`.quiet()
+      await exec(["rm", `${tmp.path}/existing.txt`])
       await Bun.write(`${tmp.path}/existing.txt`, "recreated")
       await Bun.write(`${tmp.path}/newfile.txt`, "new")
 
@@ -754,7 +770,7 @@ test("diffFull with file deletions", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
 
       const after = await Snapshot.track()
       expect(after).toBeTruthy()
@@ -807,7 +823,7 @@ test("diffFull with addition and deletion", async () => {
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/added.txt`, "added content")
-      await $`rm ${tmp.path}/a.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
 
       const after = await Snapshot.track()
       expect(after).toBeTruthy()
@@ -842,8 +858,8 @@ test("diffFull with multiple additions and deletions", async () => {
 
       await Bun.write(`${tmp.path}/multi1.txt`, "line1\nline2\nline3")
       await Bun.write(`${tmp.path}/multi2.txt`, "single line")
-      await $`rm ${tmp.path}/a.txt`.quiet()
-      await $`rm ${tmp.path}/b.txt`.quiet()
+      await exec(["rm", `${tmp.path}/a.txt`])
+      await exec(["rm", `${tmp.path}/b.txt`])
 
       const after = await Snapshot.track()
       expect(after).toBeTruthy()
