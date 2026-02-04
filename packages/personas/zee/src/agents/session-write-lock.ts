@@ -35,9 +35,10 @@ function isAlive(pid: number): boolean {
 function releaseAllLocksSync(): void {
   for (const [sessionFile, held] of HELD_LOCKS) {
     try {
-      if (typeof held.handle.fd === "number") {
-        fsSync.closeSync(held.handle.fd);
-      }
+      // Avoid closing the underlying fd directly (closeSync), because Node's
+      // FileHandle finalizer may attempt to close again on GC and crash tests
+      // with EBADF. Best-effort: schedule a normal FileHandle.close().
+      void held.handle.close().catch(() => {});
     } catch {
       // Ignore errors during cleanup - best effort
     }
