@@ -84,7 +84,6 @@ describe("onboard (non-interactive): gateway and remote auth", () => {
     skipChannels: process.env.ZEE_SKIP_CHANNELS,
     skipGmail: process.env.ZEE_SKIP_GMAIL_WATCHER,
     skipCron: process.env.ZEE_SKIP_CRON,
-    skipCanvas: process.env.ZEE_SKIP_CANVAS_HOST,
     skipBrowser: process.env.ZEE_SKIP_BROWSER_CONTROL_SERVER,
     token: process.env.ZEE_GATEWAY_TOKEN,
     password: process.env.ZEE_GATEWAY_PASSWORD,
@@ -105,7 +104,6 @@ describe("onboard (non-interactive): gateway and remote auth", () => {
     process.env.ZEE_SKIP_CHANNELS = "1";
     process.env.ZEE_SKIP_GMAIL_WATCHER = "1";
     process.env.ZEE_SKIP_CRON = "1";
-    process.env.ZEE_SKIP_CANVAS_HOST = "1";
     process.env.ZEE_SKIP_BROWSER_CONTROL_SERVER = "1";
     delete process.env.ZEE_GATEWAY_TOKEN;
     delete process.env.ZEE_GATEWAY_PASSWORD;
@@ -124,7 +122,6 @@ describe("onboard (non-interactive): gateway and remote auth", () => {
     process.env.ZEE_SKIP_CHANNELS = prev.skipChannels;
     process.env.ZEE_SKIP_GMAIL_WATCHER = prev.skipGmail;
     process.env.ZEE_SKIP_CRON = prev.skipCron;
-    process.env.ZEE_SKIP_CANVAS_HOST = prev.skipCanvas;
     process.env.ZEE_SKIP_BROWSER_CONTROL_SERVER = prev.skipBrowser;
     process.env.ZEE_GATEWAY_TOKEN = prev.token;
     process.env.ZEE_GATEWAY_PASSWORD = prev.password;

@@ -86,13 +86,10 @@ async function loadNodes(opts: GatewayCallOptions): Promise<NodeListNode[]> {
 }
 
 function pickDefaultNode(nodes: NodeListNode[]): NodeListNode | null {
-  const withCanvas = nodes.filter((n) =>
-    Array.isArray(n.caps) ? n.caps.includes("canvas") : true,
-  );
-  if (withCanvas.length === 0) return null;
+  if (nodes.length === 0) return null;
 
-  const connected = withCanvas.filter((n) => n.connected);
-  const candidates = connected.length > 0 ? connected : withCanvas;
+  const connected = nodes.filter((n) => n.connected);
+  const candidates = connected.length > 0 ? connected : nodes;
   if (candidates.length === 1) return candidates[0];
 
   return null;

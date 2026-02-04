@@ -11,7 +11,6 @@ export async function startGatewayDiscovery(params: {
   machineDisplayName: string;
   port: number;
   gatewayTls?: { enabled: boolean; fingerprintSha256?: string };
-  canvasPort?: number;
   wideAreaDiscoveryEnabled: boolean;
   tailscaleMode: "off" | "serve" | "funnel";
   /** mDNS/Bonjour discovery mode (default: minimal). */
@@ -44,7 +43,6 @@ export async function startGatewayDiscovery(params: {
         gatewayPort: params.port,
         gatewayTlsEnabled: params.gatewayTls?.enabled ?? false,
         gatewayTlsFingerprintSha256: params.gatewayTls?.fingerprintSha256,
-        canvasPort: params.canvasPort,
         sshPort,
         tailnetDns,
         cliPath,

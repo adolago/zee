@@ -30,7 +30,6 @@ export const DEFAULT_TOOL_ALLOW = [
 // Provider docking: keep sandbox policy aligned with provider tool names.
 export const DEFAULT_TOOL_DENY = [
   "browser",
-  "canvas",
   "nodes",
   "cron",
   "gateway",

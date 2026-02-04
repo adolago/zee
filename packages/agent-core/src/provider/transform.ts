@@ -327,8 +327,8 @@ export namespace ProviderTransform {
 
     const id = model.id.toLowerCase()
 
-    // GLM models only support variants when using Z.AI/ZhipuAI
-    if (id.includes("glm") && !model.providerID.includes("zai")) {
+    // GLM models only support variants when using Z.AI/ZhipuAI or Cerebras
+    if (id.includes("glm") && !model.providerID.includes("zai") && model.api.npm !== "@ai-sdk/cerebras") {
       return {}
     }
 
@@ -356,6 +356,11 @@ export namespace ProviderTransform {
         return Object.fromEntries(OPENAI_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
       case "@ai-sdk/cerebras":
+        // Cerebras GLM: reasoning is on by default, no budget control via SDK
+        // Only GPT-OSS supports reasoningEffort on Cerebras
+        if (id.includes("glm")) return {}
+        return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
+
       case "@ai-sdk/togetherai":
       case "@ai-sdk/xai":
       case "@ai-sdk/deepinfra":
@@ -848,6 +853,20 @@ export namespace ProviderTransform {
     // ═══════════════════════════════════════════════════════════════════════
     // Note: Z.AI is handled via openai-compatible, but we add thinking support
     // in the transform.ts options() function for zai/zhipuai providers
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CEREBRAS (GLM, GPT-OSS, Qwen, Llama via Cerebras Wafer-Scale Engine)
+    // ═══════════════════════════════════════════════════════════════════════
+    "@ai-sdk/cerebras": new Set([
+      // Reasoning (GPT-OSS: "low" | "medium" | "high")
+      "reasoningEffort",
+
+      // User identification
+      "user",
+
+      // Structured output (constrained decoding)
+      "strictJsonSchema",
+    ]),
 
     // ═══════════════════════════════════════════════════════════════════════
     // OPENAI-COMPATIBLE (Generic - Ollama, LM Studio, etc.)

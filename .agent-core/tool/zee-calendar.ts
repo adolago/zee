@@ -23,7 +23,7 @@ export default tool({
 
 **View Events:**
 - today/week/month/list: View events
-- show: Display calendar canvas
+- show: Display calendar
 
 **Manage Events:**
 - create: Create event with { event: { summary, start, end, location?, attendees? } }

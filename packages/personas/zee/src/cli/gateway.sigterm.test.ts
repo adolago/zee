@@ -90,7 +90,6 @@ describe("gateway SIGTERM", () => {
       ZEE_SKIP_GMAIL_WATCHER: "1",
       ZEE_SKIP_CRON: "1",
       ZEE_SKIP_BROWSER_CONTROL_SERVER: "1",
-      ZEE_SKIP_CANVAS_HOST: "1",
     };
     const bootstrapPath = path.join(stateDir, "zee-entry-bootstrap.mjs");
     const runLoopPath = path.resolve("src/cli/gateway-cli/run-loop.ts");

@@ -386,50 +386,6 @@ describe("cli program (nodes media)", () => {
     );
   });
 
-  it("runs nodes canvas snapshot and prints MEDIA path", async () => {
-    callGateway.mockImplementation(async (opts: { method?: string }) => {
-      if (opts.method === "node.list") {
-        return {
-          ts: Date.now(),
-          nodes: [
-            {
-              nodeId: "node-1",
-              displayName: "Camera Node",
-              remoteIp: "192.168.0.88",
-              connected: true,
-            },
-          ],
-        };
-      }
-      if (opts.method === "node.invoke") {
-        return {
-          ok: true,
-          nodeId: "node-1",
-          command: "canvas.snapshot",
-          payload: { format: "png", base64: "aGk=" },
-        };
-      }
-      return { ok: true };
-    });
-
-    const program = buildProgram();
-    runtime.log.mockClear();
-    await program.parseAsync(
-      ["nodes", "canvas", "snapshot", "--node", "node-1", "--format", "png"],
-      { from: "user" },
-    );
-
-    const out = String(runtime.log.mock.calls[0]?.[0] ?? "");
-    const mediaPath = out.replace(/^MEDIA:/, "").trim();
-    expect(mediaPath).toMatch(/zee-canvas-snapshot-.*\.png$/);
-
-    try {
-      await expect(fs.readFile(mediaPath, "utf8")).resolves.toBe("hi");
-    } finally {
-      await fs.unlink(mediaPath).catch(() => {});
-    }
-  });
-
   it("fails nodes camera snap on invalid facing", async () => {
     callGateway.mockImplementation(async (opts: { method?: string }) => {
       if (opts.method === "node.list") {

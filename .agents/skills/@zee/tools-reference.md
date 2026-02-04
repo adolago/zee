@@ -133,8 +133,8 @@ Manage multiple isolated browser contexts:
 | `zee:node-run` | Execute command on a node host that supports system.run |
 
 **Capability groups (vary by host):**
-- **Handheld nodes**: Canvas, Camera, Screen, Location, Notifications (optional SMS if provided by the host).
-- **Desktop nodes**: Canvas, Screen, System commands; optional camera/location depending on hardware.
+- **Handheld nodes**: Camera, Screen, Location, Notifications (optional SMS if provided by the host).
+- **Desktop nodes**: Screen, System commands; optional camera/location depending on hardware.
 - **Headless nodes**: System commands only.
 
 **Camera Options:**

@@ -9,7 +9,7 @@
  *   18789 - Gateway WebSocket
  *   18790 - Bridge
  *   18791 - Browser control server
- *   18792-18799 - Reserved for future one-off services (canvas at 18793)
+ *   18792-18799 - Reserved for future one-off services
  */
 
 export const CDP_PORT_RANGE_START = 18800;

@@ -186,7 +186,6 @@ describeLive("gateway live (cli backend)", () => {
       skipChannels: process.env.ZEE_SKIP_CHANNELS,
       skipGmail: process.env.ZEE_SKIP_GMAIL_WATCHER,
       skipCron: process.env.ZEE_SKIP_CRON,
-      skipCanvas: process.env.ZEE_SKIP_CANVAS_HOST,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
       anthropicApiKeyOld: process.env.ANTHROPIC_API_KEY_OLD,
     };
@@ -194,7 +193,6 @@ describeLive("gateway live (cli backend)", () => {
     process.env.ZEE_SKIP_CHANNELS = "1";
     process.env.ZEE_SKIP_GMAIL_WATCHER = "1";
     process.env.ZEE_SKIP_CRON = "1";
-    process.env.ZEE_SKIP_CANVAS_HOST = "1";
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY_OLD;
 
@@ -408,8 +406,6 @@ describeLive("gateway live (cli backend)", () => {
       else process.env.ZEE_SKIP_GMAIL_WATCHER = previous.skipGmail;
       if (previous.skipCron === undefined) delete process.env.ZEE_SKIP_CRON;
       else process.env.ZEE_SKIP_CRON = previous.skipCron;
-      if (previous.skipCanvas === undefined) delete process.env.ZEE_SKIP_CANVAS_HOST;
-      else process.env.ZEE_SKIP_CANVAS_HOST = previous.skipCanvas;
       if (previous.anthropicApiKey === undefined) delete process.env.ANTHROPIC_API_KEY;
       else process.env.ANTHROPIC_API_KEY = previous.anthropicApiKey;
       if (previous.anthropicApiKeyOld === undefined) delete process.env.ANTHROPIC_API_KEY_OLD;

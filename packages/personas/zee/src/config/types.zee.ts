@@ -6,7 +6,6 @@ import type { BrowserConfig } from "./types.browser.js";
 import type { ChannelsConfig } from "./types.channels.js";
 import type { CronConfig } from "./types.cron.js";
 import type {
-  CanvasHostConfig,
   DiscoveryConfig,
   GatewayConfig,
   TalkConfig,
@@ -129,7 +128,6 @@ export type ZeeConfig = {
   cron?: CronConfig;
   hooks?: HooksConfig;
   discovery?: DiscoveryConfig;
-  canvasHost?: CanvasHostConfig;
   talk?: TalkConfig;
   gateway?: GatewayConfig;
 };

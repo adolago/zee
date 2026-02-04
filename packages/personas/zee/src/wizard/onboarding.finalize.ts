@@ -219,7 +219,7 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
   await prompter.note(
     [
       "Add node hosts for extra features:",
-      "- Camera/canvas node",
+      "- Camera node",
       "- System/notifications node",
     ].join("\n"),
     "Optional nodes",

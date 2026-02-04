@@ -1,17 +1,6 @@
 import type { ZeeConfig } from "../config/config.js";
 import type { NodeSession } from "./node-registry.js";
 
-const CANVAS_COMMANDS = [
-  "canvas.present",
-  "canvas.hide",
-  "canvas.navigate",
-  "canvas.eval",
-  "canvas.snapshot",
-  "canvas.a2ui.push",
-  "canvas.a2ui.pushJSONL",
-  "canvas.a2ui.reset",
-];
-
 const CAMERA_COMMANDS = ["camera.list", "camera.snap", "camera.clip"];
 
 const SCREEN_COMMANDS = ["screen.record"];
@@ -28,7 +17,6 @@ const SYSTEM_COMMANDS = [
 ];
 
 const DESKTOP_COMMANDS = [
-  ...CANVAS_COMMANDS,
   ...CAMERA_COMMANDS,
   ...SCREEN_COMMANDS,
   ...LOCATION_COMMANDS,

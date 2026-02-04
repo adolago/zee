@@ -69,6 +69,16 @@
         }
       }
     },
+    "cerebras": {
+      "models": {
+        "zai-glm-4.7": {
+          "reasoning": true
+        },
+        "qwen-3-235b-a22b-instruct-2507": {
+          "reasoning": true
+        }
+      }
+    },
     "zai-coding-plan": {
       "models": {
         "glm-4.7": {
@@ -89,7 +99,7 @@
       }
     }
   },
-  // "disabled_providers": [],
+  "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan"],
   "fallback": {
     "enabled": true,
     "rules": [

@@ -3,7 +3,6 @@ import { createMemo, Match, onMount, Show, Switch } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useKeybind } from "@tui/context/keybind"
 import { Logo } from "../component/logo"
-import { Tips } from "../component/tips"
 import { Locale } from "@/util/locale"
 import { useSync } from "../context/sync"
 import { Toast } from "../ui/toast"
@@ -12,8 +11,6 @@ import { useDirectory } from "../context/directory"
 import { useRouteData } from "@tui/context/route"
 import { usePromptRef } from "../context/prompt"
 import { Installation } from "@/installation"
-import { useKV } from "../context/kv"
-import { useCommandDialog } from "../component/dialog-command"
 import { StatusBar as StatusBarStyle } from "../../../style"
 import { Header as HeaderStyles } from "@tui/ui/header-footer"
 
@@ -23,11 +20,9 @@ let once = false
 
 export function Home() {
   const sync = useSync()
-  const kv = useKV()
   const { theme } = useTheme()
   const route = useRouteData("home")
   const promptRef = usePromptRef()
-  const command = useCommandDialog()
   const keybind = useKeybind()
   const mcp = createMemo(() => Object.keys(sync.data.mcp).length > 0)
   const mcpError = createMemo(() => {
@@ -41,30 +36,6 @@ export function Home() {
     const runtime = Installation.runtimeInfo()
     return `${runtime.version} (${runtime.channel}/${runtime.mode})`
   })
-
-  const isFirstTimeUser = createMemo(() => sync.data.session.length === 0)
-  const tipsHidden = createMemo(() => kv.get("tips_hidden", false))
-  const showTips = createMemo(() => {
-    // Don't show tips for first-time users
-    if (isFirstTimeUser()) return false
-    return !tipsHidden()
-  })
-
-  // Read Zee status banner from KV store
-  const zeeStatusBanner = createMemo(() => kv.get("zee_status_banner", ""))
-
-  command.register(() => [
-    {
-      title: tipsHidden() ? "Show tips" : "Hide tips",
-      value: "tips.toggle",
-      keybind: "tips_toggle",
-      category: "System",
-      onSelect: (dialog) => {
-        kv.set("tips_hidden", !tipsHidden())
-        dialog.clear()
-      },
-    },
-  ])
 
   const Hint = (
     <Show when={connectedMcpCount() > 0}>
@@ -118,25 +89,8 @@ export function Home() {
             hint={Hint}
           />
         </box>
-        <box height={3} width="100%" maxWidth={100} alignItems="center" paddingTop={2}>
-          <Show when={showTips()}>
-            <Tips />
-          </Show>
-        </box>
         <Toast />
       </box>
-      {/* Zee status banner */}
-      <Show when={zeeStatusBanner()}>
-        <box
-          paddingTop={HeaderStyles.padding.top}
-          paddingLeft={HeaderStyles.padding.left}
-          paddingRight={HeaderStyles.padding.right}
-          flexDirection="row"
-          flexShrink={0}
-        >
-          <text fg={theme.accent}>{zeeStatusBanner()}</text>
-        </box>
-      </Show>
       <box
         paddingTop={HeaderStyles.padding.top}
         paddingBottom={HeaderStyles.padding.bottom}

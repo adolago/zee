@@ -55,6 +55,7 @@ import { ZEE_BROWSER_TOOLS } from "./browser.js";
 import { ZEE_STANDALONE_BROWSER_TOOLS } from "./browser-standalone.js";
 import { WHATSAPP_TOOLS } from "./whatsapp.js";
 import { reminderStatusTool } from "./reminder-status.js";
+import { bannerPushTool, bannerRefreshTool } from "./banner.js";
 
 // =============================================================================
 // Memory Store Tool
@@ -2260,6 +2261,8 @@ export const ZEE_TOOLS = [
   codexbarTool,
   whatsappReactionTool,
   reminderStatusTool,
+  bannerRefreshTool,
+  bannerPushTool,
   planCreateTool,
   planAdvanceTool,
   planStatusTool,

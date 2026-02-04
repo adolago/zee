@@ -13,41 +13,6 @@ describe("subscribeEmbeddedPiSession", () => {
     { tag: "antthinking", open: "<antthinking>", close: "</antthinking>" },
   ] as const;
 
-  it("includes canvas action metadata in tool summaries", async () => {
-    let handler: ((evt: unknown) => void) | undefined;
-    const session: StubSession = {
-      subscribe: (fn) => {
-        handler = fn;
-        return () => {};
-      },
-    };
-
-    const onToolResult = vi.fn();
-
-    subscribeEmbeddedPiSession({
-      session: session as unknown as Parameters<typeof subscribeEmbeddedPiSession>[0]["session"],
-      runId: "run-canvas-tool",
-      verboseLevel: "on",
-      onToolResult,
-    });
-
-    handler?.({
-      type: "tool_execution_start",
-      toolName: "canvas",
-      toolCallId: "tool-canvas-1",
-      args: { action: "a2ui_push", jsonlPath: "/tmp/a2ui.jsonl" },
-    });
-
-    // Wait for async handler to complete
-    await Promise.resolve();
-
-    expect(onToolResult).toHaveBeenCalledTimes(1);
-    const payload = onToolResult.mock.calls[0][0];
-    expect(payload.text).toContain("🖼️");
-    expect(payload.text).toContain("Canvas");
-    expect(payload.text).toContain("A2UI push");
-    expect(payload.text).toContain("/tmp/a2ui.jsonl");
-  });
   it("skips tool summaries when shouldEmitToolResult is false", () => {
     let handler: ((evt: unknown) => void) | undefined;
     const session: StubSession = {

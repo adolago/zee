@@ -60,7 +60,7 @@ describe("late-arriving invoke results", () => {
           platform: "linux",
           mode: GATEWAY_CLIENT_MODES.NODE,
         },
-        commands: ["canvas.snapshot"],
+        commands: ["camera.snap"],
         token: "test-gateway-token-1234567890",
       });
 

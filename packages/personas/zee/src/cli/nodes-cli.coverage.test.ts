@@ -9,7 +9,7 @@ const callGateway = vi.fn(async (opts: { method?: string }) => {
           nodeId: "node-1",
           displayName: "Node",
           platform: "linux",
-          caps: ["canvas"],
+          caps: ["screen"],
           connected: true,
           permissions: { screenRecording: true },
         },

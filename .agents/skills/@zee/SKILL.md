@@ -1,9 +1,9 @@
 ---
 name: zee
-description: Personal assistant for life admin. Use for memory management, messaging (WhatsApp/Telegram/Matrix), email (neomutt/notmuch), calendar (khal), contacts (khard), notifications, browser (per-persona Chrome), canvas, skills marketplace, and cross-platform communication coordination.
+description: Personal assistant for life admin. Use for memory management, messaging (WhatsApp/Telegram/Matrix), email (neomutt/notmuch), calendar (khal), contacts (khard), notifications, browser (per-persona Chrome), skills marketplace, and cross-platform communication coordination.
 version: 2.0.0
 author: Artur
-tags: [persona, assistant, memory, messaging, calendar, matrix, canvas, marketplace]
+tags: [persona, assistant, memory, messaging, calendar, matrix, marketplace]
 ---
 
 # zee - Personal Life Assistant
@@ -19,7 +19,6 @@ zee handles the cognitive load of life administration:
 - **Notifications**: Proactive reminders and alerts
 - **Browser**: Per-persona Chrome profiles (CDP port 18800, isolated data dirs)
 - **Nodes**: Control node hosts (camera, location, notifications)
-- **Canvas**: Interactive web surfaces via A2UI (cross-persona at `/__agent__/canvas`)
 - **Skills Marketplace**: Discover and install skills from ClawHub
 
 ## References
@@ -88,6 +87,8 @@ khard show "John Doe"           # Details
 | `zee:memory-version` | View version history or rollback a memory to a previous version |
 | `zee:messaging` | Send text/audio/media on WhatsApp, Telegram, and Matrix |
 | `zee:notification` | Proactive alerts and reminders |
+| `zee:banner-refresh` | Refresh the always-on TUI banner (reminders, todos, messages) |
+| `zee:banner-push` | Push a message into the TUI banner |
 | `zee:reminder-status` | TUI banner with calendar/memory status |
 | `zee:browser-*` | Web automation with per-persona Chrome (see `tools-reference.md`) |
 | `zee:pty-*` | Interactive terminal sessions |
@@ -97,7 +98,6 @@ khard show "John Doe"           # Details
 | `zee:plan-create` | Create a multi-step plan for complex requests |
 | `zee:plan-advance` | Complete current step and move to next |
 | `zee:plan-status` | Check plan progress or list active plans |
-| `canvas` | Present/eval/snapshot interactive web surfaces |
 
 ## Proactive Planning
 
@@ -111,6 +111,27 @@ ask the user.
 Plans persist in memory and survive session changes and surface handoffs.
 When resuming a session, check for active plans with `zee:plan-status`
 and continue where you left off.
+
+## Banner (agent-core TUI)
+
+Zee-owned banner displayed in the agent-core TUI prompt UI (shown even when using other personas).
+
+### Setup (One-Time)
+```bash
+agent-core tool zee:banner-refresh '{"autoSave": true, "setupCron": true}'
+```
+
+### Manual Usage
+```bash
+# Refresh and save to KV so the running TUI updates live
+agent-core tool zee:banner-refresh '{"autoSave": true}'
+
+# Push a message (expires automatically; not dismissible in UI)
+agent-core tool zee:banner-push '{"message": "Heads up: meeting in 10 minutes", "priority": "high"}'
+```
+
+### Banner Display
+The banner reads from `zee_banner` in the KV store and rotates items.
 
 ## Reminder Status Banner
 
@@ -139,7 +160,7 @@ agent-core tool zee:reminder-status '{"autoSave": true}'
 ```
 
 ### Banner Display
-The banner appears in the TUI home screen when `zee_status_banner` is set in KV store.
+This tool writes to `zee_status_banner` in the KV store. In current TUI builds, this value is used as a fallback when `zee_banner` is not set.
 
 ### Manage Auto-Refresh
 ```bash
@@ -276,7 +297,6 @@ zee operates across:
 - **Web**: Browser-based interface
 - **API**: Programmatic access
 - **WhatsApp/Telegram/Matrix**: Chat interfaces (Matrix with E2EE support)
-- **Canvas**: Interactive web surfaces via A2UI (`/__agent__/canvas` or `/__zee__/canvas`)
 - **Tailscale**: Secure remote access via Tailscale Serve/Funnel
 
 ## Delegation
@@ -296,7 +316,6 @@ zee operates across:
 - **Qdrant**: Vector database for semantic memory
 - **Zee Gateway**: `http://127.0.0.1:18791`
 - **Matrix**: `extensions/matrix/` (E2EE via Rust crypto SDK)
-- **Canvas/A2UI**: `src/canvas-host/` (cross-persona at `/__agent__/`)
 - **ClawHub**: `packages/agent-core/src/pkg/clawhub/` (skill marketplace)
 - **Tailscale**: `packages/agent-core/src/pkg/tailscale/` (remote exposure)
 

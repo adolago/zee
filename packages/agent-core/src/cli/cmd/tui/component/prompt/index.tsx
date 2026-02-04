@@ -38,7 +38,7 @@ import { Dictation } from "@tui/util/dictation"
 import { DialogGrammar } from "../dialog-grammar"
 import { Grammar } from "../../util/grammar"
 import { createGrammarChecker, type GrammarError } from "../../util/grammar-realtime"
-import { Tips } from "../tips"
+import { Banner, type BannerItem } from "../banner"
 import { VimCommands } from "@tui/util/vim-commands"
 
 export type PromptProps = {
@@ -199,8 +199,47 @@ export function Prompt(props: PromptProps) {
   const renderer = useRenderer()
   const { theme, syntax } = useTheme()
   const kv = useKV()
-  const billboard = createMemo(() => kv.get("zee_status_banner", undefined) as string | undefined)
-  const tipsHidden = createMemo(() => kv.get("tips_hidden", false))
+  const zeeBanner = createMemo(() => kv.get("zee_banner", undefined) as unknown)
+  const bannerRotationMs = createMemo(() => {
+    const raw = zeeBanner()
+    if (!raw || typeof raw !== "object") return 8000
+    const ms = (raw as { rotationMs?: unknown }).rotationMs
+    if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) return 8000
+    return ms
+  })
+  const bannerItems = createMemo<BannerItem[]>(() => {
+    const now = Date.now()
+    const raw = zeeBanner()
+    if (raw && typeof raw === "object") {
+      const items = (raw as { items?: unknown }).items
+      if (Array.isArray(items)) {
+        return items
+          .filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object")
+          .map((x) => {
+            const kind = x.kind
+            const text = x.text
+            const expiresAt = x.expiresAt
+            const priority = x.priority
+
+            if (typeof expiresAt === "number" && Number.isFinite(expiresAt) && expiresAt <= now) return null
+            if (kind !== "reminder" && kind !== "todo" && kind !== "message") return null
+            if (typeof text !== "string" || !text.trim()) return null
+            if (priority !== undefined && priority !== "low" && priority !== "normal" && priority !== "high" && priority !== "urgent") {
+              return { kind, text: text.trim() }
+            }
+            return { kind, text: text.trim(), priority: priority as BannerItem["priority"] }
+          })
+          .filter((x): x is BannerItem => x !== null)
+      }
+    }
+
+    const legacy = kv.get("zee_status_banner", undefined)
+    if (typeof legacy === "string" && legacy.trim()) {
+      return [{ kind: "reminder", text: legacy.trim(), priority: "normal" }]
+    }
+
+    return []
+  })
   const [dictationConfig, setDictationConfig] = createSignal<Dictation.RuntimeConfig | undefined>(undefined)
   createEffect(() => {
     const tui = sync.data.config.tui as { dictation?: Dictation.Config } | undefined
@@ -613,7 +652,7 @@ export function Prompt(props: PromptProps) {
         category: "Prompt",
         hidden: true,
         onSelect: async () => {
-          const content = await Clipboard.read()
+          const content = await Clipboard.read({ imageOnly: true })
           if (content?.mime.startsWith("image/")) {
             await pasteImage({
               filename: "clipboard",
@@ -1454,10 +1493,11 @@ export function Prompt(props: PromptProps) {
         promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)} visible={props.visible !== false}>
-        {/* Tips/billboard box with shared middle border (T-junctions) */}
-        <Tips
-          billboard={billboard}
-          hidden={tipsHidden()}
+        {/* Zee banner (always visible) */}
+        <Banner
+          items={bannerItems}
+          rotationMs={bannerRotationMs()}
+          fallback="Zee banner: no updates."
           topBorder={showTitleInBorder() ? (
             <box height={1} flexDirection="row">
               <text fg={theme.border} flexShrink={0}>╭</text>
@@ -1648,7 +1688,7 @@ export function Prompt(props: PromptProps) {
                 // through bracketed paste, so we need to intercept the keypress and
                 // directly read from clipboard before the terminal handles it
                 if (keybind.match("input_paste", e)) {
-                  const content = await Clipboard.read()
+                  const content = await Clipboard.read({ imageOnly: true })
                   if (content?.mime.startsWith("image/")) {
                     e.preventDefault()
                     await pasteImage({
