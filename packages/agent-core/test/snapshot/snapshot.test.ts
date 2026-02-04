@@ -2,15 +2,7 @@ import { test, expect } from "bun:test"
 import { $ } from "bun"
 import { Snapshot } from "../../src/snapshot"
 import { Instance } from "../../src/project/instance"
-import { tmpdir } from "../fixture/fixture"
-
-async function exec(cmd: string[], cwd?: string) {
-  const proc = Bun.spawn(cmd, { cwd, stderr: "inherit", stdout: "ignore" })
-  const exitCode = await proc.exited
-  if (exitCode !== 0) {
-    throw new Error(`Command failed with exit code ${exitCode}: ${cmd.join(" ")}`)
-  }
-}
+import { exec, tmpdir } from "../fixture/fixture"
 
 async function bootstrap() {
   return tmpdir({

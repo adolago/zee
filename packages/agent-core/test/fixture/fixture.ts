@@ -26,7 +26,7 @@ const shouldIgnoreNullBytePathError = (error: unknown) => {
   return code === "ENOENT" && (hasNullByte(pathValue) || hasNullByte(message))
 }
 
-async function exec(cmd: string[], cwd: string) {
+export async function exec(cmd: string[], cwd?: string) {
   const proc = Bun.spawn(cmd, { cwd, stderr: "inherit", stdout: "ignore" })
   const exitCode = await proc.exited
   if (exitCode !== 0) {
@@ -42,6 +42,8 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
     await exec(["git", "init"], dirpath)
+    await exec(["git", "config", "user.email", "you@example.com"], dirpath)
+    await exec(["git", "config", "user.name", "Your Name"], dirpath)
     await exec(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], dirpath)
   }
   if (options?.config) {
