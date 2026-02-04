@@ -56,6 +56,11 @@ export const HoldReleaseTool = Tool.define<any, HoldModeMetadata>("hold_release"
 
     const model = await getLastModel(ctx.sessionID)
 
+    // Persist mode change server-side (do not rely on the client to apply metadata).
+    await Session.update(ctx.sessionID, (draft) => {
+      draft.mode = "release"
+    })
+
     // Use current agent - hold/release are modes, not separate agents
     const userMsg: MessageV2.User = {
       id: Identifier.ascending("message"),
@@ -121,6 +126,11 @@ export const HoldEnterTool = Tool.define<any, HoldModeMetadata>("hold_enter", {
     if (answer === "No") throw new Question.RejectedError()
 
     const model = await getLastModel(ctx.sessionID)
+
+    // Persist mode change server-side (do not rely on the client to apply metadata).
+    await Session.update(ctx.sessionID, (draft) => {
+      draft.mode = "hold"
+    })
 
     // Use current agent - hold/release are modes, not separate agents
     const userMsg: MessageV2.User = {

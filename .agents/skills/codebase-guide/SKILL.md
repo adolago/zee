@@ -1,6 +1,7 @@
 ---
 name: codebase-guide
 description: Detailed architecture reference for agent-core - package structure, directory trees, daemon management, gateway architecture, environment variables, and state management.
+version: "1.0.0"
 tags: [architecture, reference, codebase, daemon, gateway]
 ---
 

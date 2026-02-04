@@ -1,6 +1,7 @@
 ---
 name: provider-monitoring
 description: Monitor AI provider health, diagnose issues, and manage credentials across agent-core and codex CLI.
+version: "1.0.0"
 ---
 
 # Provider Monitoring

@@ -220,6 +220,30 @@ describe("ProviderTransform.maxOutputTokens", () => {
       expect(result).toBe(20000)
     })
 
+    test("returns at least 1 when budgetTokens equals modelLimit", () => {
+      const modelLimit = 64000
+      const options = {
+        thinking: {
+          type: "enabled",
+          budgetTokens: 64000,
+        },
+      }
+      const result = ProviderTransform.maxOutputTokens("@ai-sdk/anthropic", options, modelLimit, OUTPUT_TOKEN_MAX)
+      expect(result).toBe(1)
+    })
+
+    test("returns at least 1 when budgetTokens exceeds modelLimit", () => {
+      const modelLimit = 50000
+      const options = {
+        thinking: {
+          type: "enabled",
+          budgetTokens: 64000,
+        },
+      }
+      const result = ProviderTransform.maxOutputTokens("@ai-sdk/anthropic", options, modelLimit, OUTPUT_TOKEN_MAX)
+      expect(result).toBe(1)
+    })
+
     test("returns 32k when thinking type is not enabled", () => {
       const modelLimit = 100000
       const options = {

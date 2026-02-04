@@ -270,24 +270,6 @@ export function Session() {
     }
   })
 
-  let lastSwitch: string | undefined = undefined
-  sdk.event.on("message.part.updated", (evt) => {
-    const part = evt.properties.part
-    if (part.type !== "tool") return
-    if (part.sessionID !== route.sessionID) return
-    if (part.state.status !== "completed") return
-    if (part.id === lastSwitch) return
-
-    // Hold/release are modes, not agents - use the mode system
-    if (part.tool === "hold_release") {
-      local.mode.setRelease()
-      lastSwitch = part.id
-    } else if (part.tool === "hold_enter") {
-      local.mode.setHold()
-      lastSwitch = part.id
-    }
-  })
-
   let scroll: ScrollBoxRenderable
   let prompt: PromptRef
   const keybind = useKeybind()

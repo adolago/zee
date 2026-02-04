@@ -987,12 +987,13 @@ export namespace ProviderTransform {
         if (budgetTokens + standardLimit <= modelCap) {
           return standardLimit
         }
+        const adjustedMax = Math.max(1, modelCap - budgetTokens)
         log.debug("adjusting max_tokens for thinking budget", {
           budgetTokens,
           modelCap,
-          adjustedMax: modelCap - budgetTokens,
+          adjustedMax,
         })
-        return modelCap - budgetTokens
+        return adjustedMax
       }
     }
 

@@ -17,7 +17,6 @@ import type {
   ProviderListResponse,
   ProviderAuthMethod,
   VcsInfo,
-  ToolPart,
 } from "@agent-core/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useSDK } from "@tui/context/sdk"
@@ -26,7 +25,7 @@ import { createSimpleContext } from "./helper"
 import type { Snapshot } from "@/snapshot"
 import { useExit } from "./exit"
 import { useArgs } from "./args"
-import { batch, createSignal, onMount } from "solid-js"
+import { batch, onMount } from "solid-js"
 import { Log } from "@/util/log"
 import type { Path } from "@agent-core/sdk/v2"
 import { useToast } from "../ui/toast"
@@ -128,11 +127,6 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       daemon: undefined,
       health: { internet: "checking", providers: [] },
     })
-
-    // Signal for mode changes from hold_enter/hold_release tools
-    // When a tool completes with modeChange metadata, this signal is updated
-    // local.tsx watches this signal to toggle the actual UI mode
-    const [pendingModeChange, setPendingModeChange] = createSignal<"hold" | "release" | null>(null)
 
     function normalizeDaemonHealth(data: unknown) {
       if (data && typeof data === "object") {
@@ -371,16 +365,6 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             }
           }
 
-          // Check for mode change from hold_enter/hold_release tools
-          if (part.type === "tool") {
-            const toolPart = part as ToolPart
-            if (toolPart.state.status === "completed") {
-              const modeChange = toolPart.state.metadata?.modeChange
-              if (modeChange === "hold" || modeChange === "release") {
-                setPendingModeChange(modeChange)
-              }
-            }
-          }
           break
         }
 
@@ -603,16 +587,6 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         },
       },
       bootstrap,
-      // Mode change signal from hold_enter/hold_release tools
-      // local.tsx watches this to toggle the actual UI mode
-      mode: {
-        pending: pendingModeChange,
-        consume() {
-          const value = pendingModeChange()
-          if (value) setPendingModeChange(null)
-          return value
-        },
-      },
     }
     return result
   },

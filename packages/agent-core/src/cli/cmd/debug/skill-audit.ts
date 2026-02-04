@@ -92,6 +92,9 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
     const total = report.missingEnv.reduce((sum, m) => sum + m.vars.length, 0)
     console.log(warn(`${total} missing env vars across ${report.missingEnv.length} skills`))
   }
+  if (report.schemaWarnings.length > 0) {
+    console.log(warn(`${report.schemaWarnings.length} skills with unknown frontmatter keys`))
+  }
 
   // Per-persona breakdown
   console.log("")
@@ -158,6 +161,18 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
     console.log(`${bold}Missing Environment Variables${reset}`)
     for (const entry of report.missingEnv) {
       console.log(`  ${yellow}!${reset} ${entry.skill}: ${entry.vars.join(", ")}`)
+    }
+  }
+
+  // Schema warnings
+  if (report.schemaWarnings.length > 0) {
+    console.log("")
+    console.log(`${bold}Schema Warnings${reset}`)
+    for (const warning of report.schemaWarnings) {
+      console.log(`  ${yellow}!${reset} ${warning.skill}: unknown keys [${warning.unknownKeys.join(", ")}]`)
+      if (args.verbose) {
+        console.log(`    ${dim}${warning.path}${reset}`)
+      }
     }
   }
 

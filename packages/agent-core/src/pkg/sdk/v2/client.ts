@@ -425,15 +425,19 @@ class ExtendedSession extends GeneratedSession {
   }
 
   // Set session mode (hold/release) - not yet in auto-generated SDK
-  mode(
-    parameters: { sessionID: string; mode: "hold" | "release" },
-    options?: Options<never, false>
+  mode<ThrowOnError extends boolean = false>(
+    parameters: { sessionID: string; mode: "hold" | "release"; directory?: string },
+    options?: Options<never, ThrowOnError>
   ) {
-    return (this as any)._client.patch({
-      url: `/session/${parameters.sessionID}/mode`,
-      body: { mode: parameters.mode },
-      headers: { "Content-Type": "application/json" },
+    const { directory: _, ...rest } = parameters
+    return (options?.client ?? this.client).patch<{ ok: boolean; mode: "hold" | "release" }, unknown, ThrowOnError>({
+      url: `/session/${rest.sessionID}/mode`,
+      body: { mode: rest.mode },
       ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
     })
   }
 }

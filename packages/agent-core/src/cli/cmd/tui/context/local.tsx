@@ -1,11 +1,12 @@
-import { createStore } from "solid-js/store"
-import { batch, createEffect, createMemo } from "solid-js"
+import { createStore, produce } from "solid-js/store"
+import { batch, createEffect, createMemo, createSignal } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { useTheme, resolveTheme } from "@tui/context/theme"
 import { uniqueBy } from "remeda"
 import path from "path"
 import { Global } from "@/global"
 import { iife } from "@/util/iife"
+import { Binary } from "@agent-core/util/binary"
 import { createSimpleContext } from "./helper"
 import { useToast } from "../ui/toast"
 import { Provider } from "@/provider/provider"
@@ -440,14 +441,10 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     // Hold/Release mode - per-session, controls whether the persona can edit files or only research
     const mode = iife(() => {
       // Track which session we're looking at for mode
-      let activeSessionID: string | null = null
+      const [activeSessionID, setActiveSessionID] = createSignal<string | null>(null)
+      let inflightSync: Promise<void> | null = null
 
-      function resolveHold(): boolean {
-        if (!activeSessionID) return true // Default to hold when no session
-        const session = sync.session.get(activeSessionID) as
-          | (ReturnType<typeof sync.session.get> & { mode?: "hold" | "release"; surface?: string })
-          | undefined
-        if (!session) return true
+      function resolveHoldFromSession(session: { mode?: "hold" | "release"; surface?: string }): boolean {
         // Per-session mode
         if (session.mode === "hold") return true
         if (session.mode === "release") return false
@@ -456,18 +453,83 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         return true // TUI default to hold
       }
 
-      async function setSessionMode(mode: "hold" | "release") {
-        if (!activeSessionID) return
+      async function ensureSessionLoaded(sessionID: string, options?: { force?: boolean }): Promise<void> {
+        if (!options?.force) {
+          const existing = sync.session.get(sessionID) as
+            | (ReturnType<typeof sync.session.get> & { mode?: "hold" | "release"; surface?: string })
+            | undefined
+          if (existing) return
+        }
         try {
-          await sdk.client.session.mode({ sessionID: activeSessionID, mode })
+          const res = await sdk.client.session.get({ sessionID })
+          if (!res.data) return
+          sync.set(
+            produce((draft) => {
+              const match = Binary.search(draft.session, sessionID, (s) => s.id)
+              if (match.found) draft.session[match.index] = res.data
+              if (!match.found) draft.session.splice(match.index, 0, res.data)
+            }),
+          )
+        } catch {
+          // Best-effort; UI will fall back to hold until the session is available.
+        }
+      }
+
+      function resolveHold(): boolean {
+        const sessionID = activeSessionID()
+        if (!sessionID) return true // Default to hold when no session
+        const session = sync.session.get(sessionID) as
+          | (ReturnType<typeof sync.session.get> & { mode?: "hold" | "release"; surface?: string })
+          | undefined
+        if (!session) {
+          if (!inflightSync) {
+            inflightSync = ensureSessionLoaded(sessionID).finally(() => {
+              inflightSync = null
+            })
+          }
+          return true
+        }
+        return resolveHoldFromSession(session)
+      }
+
+      async function setSessionMode(next: "hold" | "release") {
+        const sessionID = activeSessionID()
+        if (!sessionID) return false
+
+        // Ensure we have a session record so UI indicators can update immediately.
+        await ensureSessionLoaded(sessionID)
+        try {
+          await sdk.client.session.mode({ sessionID, mode: next }, { throwOnError: true })
+          sync.set(
+            produce((draft) => {
+              const match = Binary.search(draft.session, sessionID, (s) => s.id)
+              if (!match.found) return
+              draft.session[match.index].mode = next
+            }),
+          )
+          // Best-effort refresh to pick up updated timestamps and any server-side changes.
+          void ensureSessionLoaded(sessionID, { force: true })
+          return true
         } catch (e) {
-          // Silently fail, mode will stay as-is
+          toast.show({
+            variant: "error",
+            message: `Failed to switch to ${next.toUpperCase()} mode`,
+            duration: 3000,
+          })
+          return false
         }
       }
 
       return {
         setSession(sessionID: string | null) {
-          activeSessionID = sessionID
+          setActiveSessionID(sessionID)
+          if (sessionID) {
+            if (!inflightSync) {
+              inflightSync = ensureSessionLoaded(sessionID).finally(() => {
+                inflightSync = null
+              })
+            }
+          }
         },
         isHold() {
           return resolveHold()
@@ -476,21 +538,37 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           return !resolveHold()
         },
         toggle() {
-          const newMode = resolveHold() ? "release" : "hold"
-          setSessionMode(newMode)
-          toast.show({
-            variant: newMode === "hold" ? "info" : "success",
-            message: newMode === "hold" ? "HOLD mode - Research only" : "RELEASE mode - Can edit files",
-            duration: 2000,
-          })
+          void (async () => {
+            const sessionID = activeSessionID()
+            if (!sessionID) return
+            await ensureSessionLoaded(sessionID)
+            const newMode = resolveHold() ? "release" : "hold"
+            const ok = await setSessionMode(newMode)
+            if (!ok) return
+            toast.show({
+              variant: newMode === "hold" ? "info" : "success",
+              message: newMode === "hold" ? "HOLD mode - Research only" : "RELEASE mode - Can edit files",
+              duration: 2000,
+            })
+          })()
         },
         setHold() {
-          if (resolveHold()) return
-          setSessionMode("hold")
+          void (async () => {
+            const sessionID = activeSessionID()
+            if (!sessionID) return
+            await ensureSessionLoaded(sessionID)
+            if (resolveHold()) return
+            await setSessionMode("hold")
+          })()
         },
         setRelease() {
-          if (!resolveHold()) return
-          setSessionMode("release")
+          void (async () => {
+            const sessionID = activeSessionID()
+            if (!sessionID) return
+            await ensureSessionLoaded(sessionID)
+            if (!resolveHold()) return
+            await setSessionMode("release")
+          })()
         },
       }
     })
@@ -564,33 +642,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (!params) return false
           return Object.values(params).some((v) => v !== undefined)
         },
-      }
-    })
-
-    // Watch for mode changes from hold_enter/hold_release tools
-    // When the tool completes with modeChange metadata, sync.mode.pending() is set
-    // This effect consumes the pending change and applies it to the UI mode
-    createEffect(() => {
-      const pending = sync.mode.pending()
-      if (pending) {
-        // Consume the pending change to clear the signal
-        sync.mode.consume()
-        // Apply the mode change
-        if (pending === "hold") {
-          mode.setHold()
-          toast.show({
-            variant: "info",
-            message: "HOLD mode - Research only (from tool)",
-            duration: 2000,
-          })
-        } else if (pending === "release") {
-          mode.setRelease()
-          toast.show({
-            variant: "success",
-            message: "RELEASE mode - Can edit files (from tool)",
-            duration: 2000,
-          })
-        }
       }
     })
 

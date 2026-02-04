@@ -482,4 +482,139 @@ describe("Skill gating", () => {
       },
     })
   })
+
+  test("anyBins loads skill when at least one binary found", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "any-ok", "SKILL.md"),
+          skill("any-ok", "Any binary skill", "requires:\n  anyBins:\n    - nonexistent-xyz\n    - bun\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const report = await Skill.audit()
+        expect(report.loaded.length).toBe(1)
+        expect(report.loaded[0].name).toBe("any-ok")
+      },
+    })
+  })
+
+  test("anyBins excludes skill when no binary found", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "any-fail", "SKILL.md"),
+          skill("any-fail", "No matching binary", "requires:\n  anyBins:\n    - nonexistent-a\n    - nonexistent-b\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const report = await Skill.audit()
+        expect(report.loaded.length).toBe(0)
+        expect(report.excluded.length).toBe(1)
+        expect(report.excluded[0].reason).toContain("missing any binary")
+      },
+    })
+  })
+})
+
+describe("Skill schema warnings", () => {
+  test("reports unknown frontmatter keys", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "odd", "SKILL.md"),
+          skill("odd", "Has unknown keys", "customField: hello\npriority: 5\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const report = await Skill.audit()
+        expect(report.loaded.length).toBe(1)
+        expect(report.schemaWarnings.length).toBe(1)
+        expect(report.schemaWarnings[0].skill).toBe("odd")
+        expect(report.schemaWarnings[0].unknownKeys).toContain("customField")
+        expect(report.schemaWarnings[0].unknownKeys).toContain("priority")
+      },
+    })
+  })
+
+  test("no warnings for known keys", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "clean", "SKILL.md"),
+          skill("clean", "All known keys", "version: \"1.0.0\"\nauthor: Test\ncategory: tools\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const report = await Skill.audit()
+        expect(report.loaded.length).toBe(1)
+        expect(report.schemaWarnings.length).toBe(0)
+      },
+    })
+  })
+})
+
+describe("Skill extended fields", () => {
+  test("version and author parsed from frontmatter", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "versioned", "SKILL.md"),
+          skill("versioned", "Has version", "version: \"2.1.0\"\nauthor: Alice\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const s = await Skill.get("versioned")
+        expect(s).toBeDefined()
+        expect(s!.version).toBe("2.1.0")
+        expect(s!.author).toBe("Alice")
+      },
+    })
+  })
+
+  test("authors array normalized to author string", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "multi-author", "SKILL.md"),
+          skill("multi-author", "Has authors array", "authors:\n  - Bob\n  - Carol\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const s = await Skill.get("multi-author")
+        expect(s).toBeDefined()
+        expect(s!.author).toBe("Bob")
+      },
+    })
+  })
 })

@@ -24,6 +24,8 @@ export namespace Skill {
 
   export const RequiresMeta = z.object({
     bins: z.array(z.string()).optional(),
+    /** At least one of these binaries must be available (vs all for `bins`). */
+    anyBins: z.array(z.string()).optional(),
     env: z.array(z.string()).optional(),
     config: z.array(z.string()).optional(),
     os: z.array(z.string()).optional(),
@@ -49,6 +51,7 @@ export namespace Skill {
 
     return {
       bins: [...new Set([...(base.bins ?? []), ...(next.bins ?? [])])],
+      anyBins: [...new Set([...(base.anyBins ?? []), ...(next.anyBins ?? [])])],
       env: [...new Set([...(base.env ?? []), ...(next.env ?? [])])],
       config: [...new Set([...(base.config ?? []), ...(next.config ?? [])])],
       os: [...new Set([...(base.os ?? []), ...(next.os ?? [])])],
@@ -73,6 +76,16 @@ export namespace Skill {
     tags: z.array(z.string()).optional(),
     /** Trigger phrases that indicate this skill should be used. */
     triggers: z.array(z.string()).optional(),
+    /** Skill version (semver). */
+    version: z.string().optional(),
+    /** Skill author. */
+    author: z.string().optional(),
+    /** Skill category for grouping. */
+    category: z.string().optional(),
+    /** Source identifier (e.g. "clawhub"). */
+    source: z.string().optional(),
+    /** Homepage URL. */
+    homepage: z.string().optional(),
   })
   export type Info = z.infer<typeof Info>
 
@@ -117,9 +130,25 @@ export namespace Skill {
     reason: string
   }
 
+  /** Schema warning: a skill has frontmatter keys not recognized by the schema. */
+  export interface SchemaWarning {
+    skill: string
+    path: string
+    unknownKeys: string[]
+  }
+
+  /** Keys recognized in SKILL.md frontmatter (excludes internal-only fields like location). */
+  const KNOWN_FRONTMATTER_KEYS = new Set([
+    "name", "description", "context", "requires", "primaryEnv", "tags", "triggers",
+    "version", "author", "category", "source", "homepage",
+    // Common metadata containers (not in Info but structurally valid)
+    "metadata", "registry", "emoji", "progressive_disclosure",
+  ])
+
   export const state = Instance.state(async () => {
     const skills: Record<string, Info> = {}
     const exclusions: Exclusion[] = []
+    const schemaWarnings: SchemaWarning[] = []
 
     const addSkill = async (match: string) => {
       const md = await ConfigMarkdown.parse(match).catch((err) => {
@@ -160,6 +189,15 @@ export namespace Skill {
           reason: `duplicate: shadowed by ${existing.location}`,
         })
         return
+      }
+
+      // Detect unknown frontmatter keys
+      if (md.data && typeof md.data === "object") {
+        const unknownKeys = Object.keys(md.data).filter((k) => !KNOWN_FRONTMATTER_KEYS.has(k))
+        if (unknownKeys.length > 0) {
+          log.debug("skill has unknown frontmatter keys", { skill: parsed.data.name, unknownKeys })
+          schemaWarnings.push({ skill: parsed.data.name, path: match, unknownKeys })
+        }
       }
 
       // Detect ClawHub registry metadata from manifest
@@ -257,6 +295,31 @@ export namespace Skill {
           }
         }
 
+        // anyBins check: at least one of these must be available
+        if (requires.anyBins && requires.anyBins.length > 0) {
+          let foundAny = false
+          for (const bin of requires.anyBins) {
+            try {
+              const result = Bun.spawnSync(["which", bin], { stdout: "pipe", stderr: "pipe" })
+              if (result.exitCode === 0) {
+                foundAny = true
+                break
+              }
+            } catch {
+              // continue checking
+            }
+          }
+          if (!foundAny) {
+            exclusions.push({
+              path: match,
+              name: parsed.data.name,
+              reason: `missing any binary: need one of ${requires.anyBins.join(", ")}`,
+            })
+            log.debug("skill excluded: no matching anyBins", { skill: parsed.data.name, anyBins: requires.anyBins })
+            return
+          }
+        }
+
         if (requires.env && requires.env.length > 0) {
           const missingEnv = requires.env.filter((e) => !process.env[e])
           if (missingEnv.length > 0) {
@@ -274,6 +337,17 @@ export namespace Skill {
         ? md.data.triggers.filter((t: unknown) => typeof t === "string")
         : undefined
 
+      // Extract optional schema fields from frontmatter
+      const version = typeof md.data.version === "string" ? md.data.version : undefined
+      const author = typeof md.data.author === "string"
+        ? md.data.author
+        : Array.isArray(md.data.authors) && typeof md.data.authors[0] === "string"
+          ? md.data.authors[0]
+          : undefined
+      const category = typeof md.data.category === "string" ? md.data.category : undefined
+      const source = typeof md.data.source === "string" ? md.data.source : undefined
+      const homepage = typeof md.data.homepage === "string" ? md.data.homepage : undefined
+
       skills[parsed.data.name] = {
         name: parsed.data.name,
         description: parsed.data.description,
@@ -284,6 +358,11 @@ export namespace Skill {
         primaryEnv,
         ...(tags && tags.length > 0 ? { tags } : {}),
         ...(triggers && triggers.length > 0 ? { triggers } : {}),
+        ...(version ? { version } : {}),
+        ...(author ? { author } : {}),
+        ...(category ? { category } : {}),
+        ...(source ? { source } : {}),
+        ...(homepage ? { homepage } : {}),
       }
     }
 
@@ -406,7 +485,7 @@ export namespace Skill {
       }
     }
 
-    return { skills, exclusions }
+    return { skills, exclusions, schemaWarnings }
   })
 
   /**
@@ -536,6 +615,8 @@ export namespace Skill {
     conflicts: Array<{ name: string; kept: string; shadowed: string[] }>
     /** Skills with missing required environment variables. */
     missingEnv: Array<{ skill: string; vars: string[] }>
+    /** Skills with unknown frontmatter keys not in the schema. */
+    schemaWarnings: SchemaWarning[]
   }
 
   /**
@@ -543,7 +624,7 @@ export namespace Skill {
    * Includes loaded skills, exclusions, conflicts, and missing env vars.
    */
   export async function audit(): Promise<AuditReport> {
-    const { skills, exclusions } = await state()
+    const { skills, exclusions, schemaWarnings } = await state()
     const loaded = Object.values(skills)
 
     // Extract conflicts from loaded skills
@@ -574,6 +655,6 @@ export namespace Skill {
       }
     }
 
-    return { loaded, excluded: exclusions, conflicts, missingEnv }
+    return { loaded, excluded: exclusions, conflicts, missingEnv, schemaWarnings }
   }
 }
