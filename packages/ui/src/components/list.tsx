@@ -253,7 +253,6 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
                 autocorrect="off"
                 autocomplete="off"
                 autocapitalize="off"
-                aria-label={searchProps().placeholder || i18n.t("ui.tool.list")}
               />
             </div>
             <Show when={internalFilter()}>

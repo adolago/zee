@@ -44,6 +44,18 @@ export namespace Project {
     Updated: BusEvent.define("project.updated", Info),
   }
 
+  async function runGit(args: string[], cwd: string) {
+    try {
+      const proc = Bun.spawn(["git", ...args], { cwd, stderr: "ignore", stdout: "pipe" })
+      const text = await new Response(proc.stdout).text()
+      const exitCode = await proc.exited
+      if (exitCode !== 0) return undefined
+      return text
+    } catch {
+      return undefined
+    }
+  }
+
   export async function fromDirectory(directory: string) {
     log.info("fromDirectory", { directory })
 
@@ -73,7 +85,7 @@ export namespace Project {
 
         // generate id from root commit
         if (!id) {
-          const roots = await git(["rev-list", "--max-parents=0", "--all"], sandbox)
+          const roots = await runGit(["rev-list", "--max-parents=0", "--all"], sandbox)
             .then((x) =>
               x
                 ?.split("\n")
@@ -109,7 +121,7 @@ export namespace Project {
           }
         }
 
-        const top = await git(["rev-parse", "--show-toplevel"], sandbox)
+        const top = await runGit(["rev-parse", "--show-toplevel"], sandbox)
           .then((x) => (x ? path.resolve(sandbox, x.trim()) : undefined))
           .catch(() => undefined)
 
@@ -124,7 +136,7 @@ export namespace Project {
 
         sandbox = top
 
-        const worktree = await git(["rev-parse", "--git-common-dir"], sandbox)
+        const worktree = await runGit(["rev-parse", "--git-common-dir"], sandbox)
           .then((x) => {
             if (!x) return undefined
             const dirname = path.dirname(x.trim())
