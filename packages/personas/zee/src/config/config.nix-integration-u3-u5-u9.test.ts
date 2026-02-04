@@ -98,10 +98,6 @@ describe("Nix integration (U3, U5, U9)", () => {
         {
           ZEE_CONFIG_PATH: undefined,
           ZEE_STATE_DIR: "/custom/state",
-          ZEE_CONFIG_PATH: undefined,
-          ZEE_STATE_DIR: undefined,
-          ZEE_CONFIG_PATH: undefined,
-          ZEE_STATE_DIR: undefined,
         },
         async () => {
           const { CONFIG_PATH } = await import("./config.js");

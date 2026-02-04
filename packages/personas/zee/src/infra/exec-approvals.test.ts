@@ -47,7 +47,7 @@ describe("exec approvals allowlist matching", () => {
   it("matches by resolved path with **", () => {
     const resolution = {
       rawExecutable: "rg",
-      resolvedPath: "/usr/local/bin/rg",
+      resolvedPath: "/opt/bin/rg",
       executableName: "rg",
     };
     const entries: ExecAllowlistEntry[] = [{ pattern: "/opt/**/rg" }];
@@ -434,9 +434,9 @@ describe("exec approvals node host allowlist check", () => {
       executableName: "python3.14",
     };
     // Pattern with ** matches across multiple directories
-    const entries: ExecAllowlistEntry[] = [{ pattern: "/opt/**/python*" }];
+    const entries: ExecAllowlistEntry[] = [{ pattern: "/usr/local/opt/**/python*" }];
     const match = matchAllowlist(entries, resolution);
-    expect(match?.pattern).toBe("/opt/**/python*");
+    expect(match?.pattern).toBe("/usr/local/opt/**/python*");
   });
 
   it("does not satisfy allowlist when command is not in allowlist", () => {

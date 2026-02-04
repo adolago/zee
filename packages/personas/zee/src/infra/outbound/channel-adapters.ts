@@ -9,6 +9,6 @@ const DEFAULT_ADAPTER: ChannelMessageAdapter = {
   supportsEmbeds: false,
 };
 
-export function getChannelMessageAdapter(channel: ChannelId): ChannelMessageAdapter {
+export function getChannelMessageAdapter(_channel: ChannelId): ChannelMessageAdapter {
   return DEFAULT_ADAPTER;
 }

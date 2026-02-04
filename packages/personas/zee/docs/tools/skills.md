@@ -174,7 +174,6 @@ Bundled/managed skills can be toggled and supplied with env values:
           model: "nano-pro"
         }
       },
-      peekaboo: { enabled: true },
       sag: { enabled: false }
     }
   }

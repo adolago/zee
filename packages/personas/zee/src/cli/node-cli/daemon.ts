@@ -53,7 +53,7 @@ function renderNodeServiceStartHints(): string[] {
   }
 }
 
-function buildNodeRuntimeHints(env: NodeJS.ProcessEnv = process.env): string[] {
+function buildNodeRuntimeHints(_env: NodeJS.ProcessEnv = process.env): string[] {
   if (process.platform === "linux") {
     const unit = resolveNodeSystemdServiceName();
     return [`Logs: journalctl --user -u ${unit}.service -n 200 --no-pager`];

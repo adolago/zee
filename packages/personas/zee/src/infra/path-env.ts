@@ -52,7 +52,6 @@ function candidateBinDirs(opts: EnsureZeePathOpts): string[] {
   const execPath = opts.execPath ?? process.execPath;
   const cwd = opts.cwd ?? process.cwd();
   const homeDir = opts.homeDir ?? os.homedir();
-  const platform = opts.platform ?? process.platform;
 
   const candidates: string[] = [];
 

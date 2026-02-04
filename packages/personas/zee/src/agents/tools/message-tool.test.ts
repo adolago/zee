@@ -126,10 +126,11 @@ describe("message tool handoff defaults", () => {
       to: "+15551230000",
       handledBy: "plugin",
       payload: {},
-      dryRun: true,
+      dryRun: false,
     } satisfies MessageActionRunResult);
 
     const tool = createMessageTool({
+      agentSessionKey: "agent:main:whatsapp:dm:+15551230000",
       config: {
         user: { phone: "+15551230000" },
         channels: { whatsapp: {} },

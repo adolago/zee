@@ -58,7 +58,7 @@ function normalizeAllowlist(input: unknown): string[] | undefined {
 }
 
 function isBundledSkill(entry: SkillEntry): boolean {
-  return entry.skill.source === "zee-bundled" || entry.skill.source === "zee-bundled";
+  return entry.skill.source === "zee-bundled";
 }
 
 export function resolveBundledAllowlist(config?: ZeeConfig): string[] | undefined {

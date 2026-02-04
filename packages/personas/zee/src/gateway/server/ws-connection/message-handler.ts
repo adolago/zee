@@ -39,7 +39,6 @@ import {
   validateConnectParams,
   validateRequestFrame,
 } from "../../protocol/index.js";
-import { GATEWAY_CLIENT_IDS } from "../../protocol/client-info.js";
 import { MAX_BUFFERED_BYTES, MAX_PAYLOAD_BYTES, TICK_INTERVAL_MS } from "../../server-constants.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "../../server-methods/types.js";
 import { handleGatewayRequest } from "../../server-methods.js";

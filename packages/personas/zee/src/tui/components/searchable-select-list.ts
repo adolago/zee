@@ -7,8 +7,8 @@ import {
   type SelectItem,
   type SelectListTheme,
   truncateToWidth,
+  visibleWidth,
 } from "@mariozechner/pi-tui";
-import { visibleWidth } from "../../terminal/ansi.js";
 import { findWordBoundaryIndex, fuzzyFilterLower, prepareSearchItems } from "./fuzzy-filter.js";
 
 export interface SearchableSelectListTheme extends SelectListTheme {

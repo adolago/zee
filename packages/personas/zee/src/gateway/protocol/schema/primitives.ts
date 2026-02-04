@@ -8,9 +8,9 @@ export const SessionLabelString = Type.String({
   maxLength: SESSION_LABEL_MAX_LENGTH,
 });
 
-export const GatewayClientIdSchema = Type.Union([
-  ...Object.values(GATEWAY_CLIENT_IDS).map((value) => Type.Literal(value)),
-]);
+export const GatewayClientIdSchema = Type.Union(
+  Object.values(GATEWAY_CLIENT_IDS).map((value) => Type.Literal(value)),
+);
 
 export const GatewayClientModeSchema = Type.Union(
   Object.values(GATEWAY_CLIENT_MODES).map((value) => Type.Literal(value)),

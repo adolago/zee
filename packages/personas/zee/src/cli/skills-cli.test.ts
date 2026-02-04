@@ -64,14 +64,14 @@ describe("skills-cli", () => {
     it("formats skills list with eligible skill", () => {
       const report = createMockReport([
         createMockSkill({
-          name: "peekaboo",
+          name: "ui-capture",
           description: "Capture UI screenshots",
           emoji: "📸",
           eligible: true,
         }),
       ]);
       const output = formatSkillsList(report, {});
-      expect(output).toContain("peekaboo");
+      expect(output).toContain("ui-capture");
       expect(output).toContain("ready");
     });
 
@@ -248,7 +248,7 @@ describe("skills-cli", () => {
       expect(parsed.skills).toBeInstanceOf(Array);
     });
 
-    it("formats info for a real bundled skill (peekaboo)", () => {
+    it("formats info for a real bundled skill (gemini)", () => {
       const bundledDir = resolveBundledSkillsDir();
       if (!bundledDir) return;
 
@@ -256,15 +256,14 @@ describe("skills-cli", () => {
         managedSkillsDir: "/nonexistent",
       });
 
-      // peekaboo is a bundled skill that should always exist
-      const peekaboo = report.skills.find((s) => s.name === "peekaboo");
-      if (!peekaboo) {
-        // Skip if peekaboo not found
+      const gemini = report.skills.find((s) => s.name === "gemini");
+      if (!gemini) {
+        // Skip if gemini not found
         return;
       }
 
-      const output = formatSkillInfo(report, "peekaboo", {});
-      expect(output).toContain("peekaboo");
+      const output = formatSkillInfo(report, "gemini", {});
+      expect(output).toContain("gemini");
       expect(output).toContain("Details:");
     });
   });

@@ -1,20 +1,39 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 
-const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const VITEST_BIN = process.platform === "win32" ? "vitest.cmd" : "vitest";
+
+function findFirstUp(startDir, relativePath) {
+  let dir = startDir;
+  for (let i = 0; i < 20; i += 1) {
+    const candidate = path.join(dir, relativePath);
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+const vitest = findFirstUp(process.cwd(), path.join("node_modules", ".bin", VITEST_BIN));
+if (!vitest) {
+  throw new Error("vitest binary not found. Run dependency install for the workspace.");
+}
 
 const runs = [
   {
     name: "unit",
-    args: ["vitest", "run", "--config", "vitest.unit.config.ts"],
+    args: ["run", "--config", "vitest.unit.config.ts"],
   },
   {
     name: "extensions",
-    args: ["vitest", "run", "--config", "vitest.extensions.config.ts"],
+    args: ["run", "--config", "vitest.extensions.config.ts"],
   },
   {
     name: "gateway",
-    args: ["vitest", "run", "--config", "vitest.gateway.config.ts"],
+    args: ["run", "--config", "vitest.gateway.config.ts"],
   },
 ];
 
@@ -51,7 +70,7 @@ const runOnce = (entry, extraArgs = []) =>
       (acc, flag) => (acc.includes(flag) ? acc : `${acc} ${flag}`.trim()),
       nodeOptions,
     );
-    const child = spawn(pnpm, args, {
+    const child = spawn(vitest, args, {
       stdio: "inherit",
       env: { ...process.env, VITEST_GROUP: entry.name, NODE_OPTIONS: nextNodeOptions },
       shell: process.platform === "win32",

@@ -12,7 +12,7 @@ metadata: {"zee":{"emoji":"🔊","requires":{"env":["MINIMAX_API_KEY"]}}}
 
 **Text-to-speech for TUI and messaging platforms.**
 
-> **Note:** STT (speech-to-text) is handled by `google-chirp-2` via Vertex AI.
+> **Note:** STT (speech-to-text) is handled by Gemini 3 Flash via Google API.
 > This skill covers TTS only.
 
 ## Architecture
@@ -24,8 +24,8 @@ metadata: {"zee":{"emoji":"🔊","requires":{"env":["MINIMAX_API_KEY"]}}}
 │                                                             │
 │  STT (Speech-to-Text)         TTS (Text-to-Speech)          │
 │  ════════════════════         ════════════════════          │
-│  Google Chirp 2               MiniMax TTS                   │
-│  (via Vertex AI)              (this skill)                  │
+│  Gemini 3 Flash               MiniMax TTS                   │
+│  (Google API)                 (this skill)                  │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
@@ -198,7 +198,7 @@ if (response.status === 429) {
 
 ## Related
 
-- **STT**: `google-chirp-2` skill (speech-to-text via Vertex AI)
+- **STT**: Gemini 3 Flash via Google API (speech-to-text)
 - **MiniMax Models**: `minimax/MiniMax-M2.1` for chat/completion
 
 ## Guardrails

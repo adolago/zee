@@ -10,48 +10,57 @@ import type { RuntimeEnv } from "../runtime.js";
 import { runOnboardingWizard } from "./onboarding.js";
 import type { WizardPrompter } from "./prompts.js";
 
-let setupChannels: ReturnType<typeof vi.fn>;
-let setupSkills: ReturnType<typeof vi.fn>;
-let healthCommand: ReturnType<typeof vi.fn>;
-let ensureWorkspaceAndSessions: ReturnType<typeof vi.fn>;
-let writeConfigFile: ReturnType<typeof vi.fn>;
+const mocks = vi.hoisted(() => ({
+  setupChannels: vi.fn(async (cfg: unknown) => cfg),
+  setupSkills: vi.fn(async (cfg: unknown) => cfg),
+  healthCommand: vi.fn(async () => {}),
+  ensureSystemdUserLingerInteractive: vi.fn(async () => {}),
+  isSystemdUserServiceAvailable: vi.fn(async () => true),
+  runAgentCoreTui: vi.fn(async () => {}),
+}));
+
+let _ensureWorkspaceAndSessions: ReturnType<typeof vi.fn>;
+let _writeConfigFile: ReturnType<typeof vi.fn>;
 let readConfigFileSnapshot: ReturnType<typeof vi.fn>;
-let ensureSystemdUserLingerInteractive: ReturnType<typeof vi.fn>;
-let isSystemdUserServiceAvailable: ReturnType<typeof vi.fn>;
-let runAgentCoreTui: ReturnType<typeof vi.fn>;
 
 vi.mock("../commands/onboard-channels.js", () => ({
-  setupChannels: (setupChannels = vi.fn(async (cfg) => cfg)),
+  setupChannels: mocks.setupChannels,
 }));
 
 vi.mock("../commands/onboard-skills.js", () => ({
-  setupSkills: (setupSkills = vi.fn(async (cfg) => cfg)),
+  setupSkills: mocks.setupSkills,
 }));
 
 vi.mock("../commands/health.js", () => ({
-  healthCommand: (healthCommand = vi.fn(async () => {})),
+  healthCommand: mocks.healthCommand,
 }));
 
 vi.mock("../commands/systemd-linger.js", () => ({
-  ensureSystemdUserLingerInteractive: (ensureSystemdUserLingerInteractive = vi.fn(async () => {})),
+  ensureSystemdUserLingerInteractive: mocks.ensureSystemdUserLingerInteractive,
 }));
 
 vi.mock("../daemon/systemd.js", () => ({
-  isSystemdUserServiceAvailable: (isSystemdUserServiceAvailable = vi.fn(async () => true)),
+  isSystemdUserServiceAvailable: mocks.isSystemdUserServiceAvailable,
 }));
 
 vi.mock("../tui/agent-core-tui.js", () => ({
-  runAgentCoreTui: (runAgentCoreTui = vi.fn(async () => {})),
+  runAgentCoreTui: mocks.runAgentCoreTui,
 }));
 
 describe("runOnboardingWizard", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mocks.setupChannels.mockClear();
+    mocks.setupSkills.mockClear();
+    mocks.healthCommand.mockClear();
+    mocks.ensureSystemdUserLingerInteractive.mockClear();
+    mocks.isSystemdUserServiceAvailable.mockClear();
+    mocks.runAgentCoreTui.mockClear();
     readConfigFileSnapshot = vi
       .spyOn(config, "readConfigFileSnapshot")
       .mockResolvedValue({ exists: false, valid: true, config: {} });
-    writeConfigFile = vi.spyOn(config, "writeConfigFile").mockResolvedValue();
-    ensureWorkspaceAndSessions = vi
+    _writeConfigFile = vi.spyOn(config, "writeConfigFile").mockResolvedValue();
+    _ensureWorkspaceAndSessions = vi
       .spyOn(onboardHelpers, "ensureWorkspaceAndSessions")
       .mockResolvedValue();
     vi.spyOn(onboardHelpers, "detectBrowserOpenSupport").mockResolvedValue({ ok: false });
@@ -156,14 +165,14 @@ describe("runOnboardingWizard", () => {
     );
 
     expect(select).not.toHaveBeenCalled();
-    expect(setupChannels).not.toHaveBeenCalled();
-    expect(setupSkills).not.toHaveBeenCalled();
-    expect(healthCommand).not.toHaveBeenCalled();
-    expect(runAgentCoreTui).not.toHaveBeenCalled();
+    expect(mocks.setupChannels).not.toHaveBeenCalled();
+    expect(mocks.setupSkills).not.toHaveBeenCalled();
+    expect(mocks.healthCommand).not.toHaveBeenCalled();
+    expect(mocks.runAgentCoreTui).not.toHaveBeenCalled();
   });
 
   it("launches TUI without auto-delivery when hatching", async () => {
-    runAgentCoreTui.mockClear();
+    mocks.runAgentCoreTui.mockClear();
 
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-onboard-"));
     await fs.writeFile(path.join(workspaceDir, DEFAULT_BOOTSTRAP_FILENAME), "{}");
@@ -208,7 +217,7 @@ describe("runOnboardingWizard", () => {
       prompter,
     );
 
-    expect(runAgentCoreTui).toHaveBeenCalledWith(
+    expect(mocks.runAgentCoreTui).toHaveBeenCalledWith(
       expect.objectContaining({
         message: "Wake up, my friend!",
       }),
@@ -219,7 +228,7 @@ describe("runOnboardingWizard", () => {
   });
 
   it("offers TUI hatch even without BOOTSTRAP.md", async () => {
-    runAgentCoreTui.mockClear();
+    mocks.runAgentCoreTui.mockClear();
 
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-onboard-"));
 
@@ -263,7 +272,7 @@ describe("runOnboardingWizard", () => {
       prompter,
     );
 
-    expect(runAgentCoreTui).toHaveBeenCalledWith(
+    expect(mocks.runAgentCoreTui).toHaveBeenCalledWith(
       expect.objectContaining({
         message: undefined,
       }),

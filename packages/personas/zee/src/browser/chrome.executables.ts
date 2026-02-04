@@ -93,23 +93,6 @@ function execText(
   }
 }
 
-function inferKindFromIdentifier(identifier: string): BrowserExecutable["kind"] {
-  const id = identifier.toLowerCase();
-  if (id.includes("brave")) return "brave";
-  if (id.includes("edge")) return "edge";
-  if (id.includes("chromium")) return "chromium";
-  if (id.includes("canary")) return "canary";
-  if (
-    id.includes("opera") ||
-    id.includes("vivaldi") ||
-    id.includes("yandex") ||
-    id.includes("thebrowser")
-  ) {
-    return "chromium";
-  }
-  return "chrome";
-}
-
 function inferKindFromExecutableName(name: string): BrowserExecutable["kind"] {
   const lower = name.toLowerCase();
   if (lower.includes("brave")) return "brave";
@@ -310,7 +293,7 @@ export function findChromeExecutableWindows(): BrowserExecutable | null {
   // Must use bracket notation: variable name contains parentheses
   const programFilesX86 = process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
 
-  const joinWin = path.win32.join;
+  const joinWin = (...parts: string[]) => path.win32.join(...parts);
   const candidates: Array<BrowserExecutable> = [];
 
   if (localAppData) {

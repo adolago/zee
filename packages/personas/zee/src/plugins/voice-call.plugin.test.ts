@@ -1,24 +1,26 @@
 import { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-let runtimeStub: {
-  config: { toNumber?: string };
-  manager: {
-    initiateCall: ReturnType<typeof vi.fn>;
-    continueCall: ReturnType<typeof vi.fn>;
-    speak: ReturnType<typeof vi.fn>;
-    endCall: ReturnType<typeof vi.fn>;
-    getCall: ReturnType<typeof vi.fn>;
-    getCallByProviderCallId: ReturnType<typeof vi.fn>;
-  };
-  stop: ReturnType<typeof vi.fn>;
-};
-
-vi.mock("../../extensions/voice-call/src/runtime.js", () => ({
-  createVoiceCallRuntime: vi.fn(async () => runtimeStub),
+const mocks = vi.hoisted(() => ({
+  runtime: {
+    initiateCall: vi.fn(),
+    continueCall: vi.fn(),
+    speak: vi.fn(),
+    endCall: vi.fn(),
+    getCallStatus: vi.fn(),
+    getCall: vi.fn(),
+    getActiveCalls: vi.fn(),
+  },
+  stopVoiceCallRuntime: vi.fn(async () => {}),
 }));
 
-import plugin from "../../extensions/voice-call/index.js";
+vi.mock("../../extensions/voice-call/src/runtime.js", () => ({
+  initializeVoiceCallRuntime: vi.fn(() => mocks.runtime),
+  getVoiceCallRuntime: vi.fn(() => mocks.runtime),
+  stopVoiceCallRuntime: mocks.stopVoiceCallRuntime,
+}));
+
+import registerPlugin from "../../extensions/voice-call/index.js";
 
 const noopLogger = {
   info: vi.fn(),
@@ -35,7 +37,7 @@ type Registered = {
 function setup(config: Record<string, unknown>): Registered {
   const methods = new Map<string, (ctx: Record<string, unknown>) => unknown>();
   const tools: unknown[] = [];
-  plugin.register({
+  registerPlugin({
     id: "voice-call",
     name: "Voice Call",
     description: "test",
@@ -56,27 +58,40 @@ function setup(config: Record<string, unknown>): Registered {
 
 describe("voice-call plugin", () => {
   beforeEach(() => {
-    runtimeStub = {
-      config: { toNumber: "+15550001234" },
-      manager: {
-        initiateCall: vi.fn(async () => ({ callId: "call-1", success: true })),
-        continueCall: vi.fn(async () => ({
-          success: true,
-          transcript: "hello",
-        })),
-        speak: vi.fn(async () => ({ success: true })),
-        endCall: vi.fn(async () => ({ success: true })),
-        getCall: vi.fn((id: string) => (id === "call-1" ? { callId: "call-1" } : undefined)),
-        getCallByProviderCallId: vi.fn(() => undefined),
-      },
-      stop: vi.fn(async () => {}),
-    };
+    mocks.runtime.initiateCall.mockReset();
+    mocks.runtime.continueCall.mockReset();
+    mocks.runtime.speak.mockReset();
+    mocks.runtime.endCall.mockReset();
+    mocks.runtime.getCallStatus.mockReset();
+    mocks.runtime.getCall.mockReset();
+
+    mocks.runtime.initiateCall.mockResolvedValue({
+      callId: "call-1",
+      providerCallId: "provider-1",
+      status: "initiating",
+    });
+    mocks.runtime.getCallStatus.mockResolvedValue({
+      callId: "call-1",
+      providerCallId: "provider-1",
+      status: "in-progress",
+      duration: 12,
+    });
+    mocks.runtime.getCall.mockImplementation((id: string) =>
+      id === "call-1"
+        ? {
+            callId: "call-1",
+            providerCallId: "provider-1",
+            status: "in-progress",
+            duration: 12,
+          }
+        : undefined,
+    );
   });
 
   afterEach(() => vi.restoreAllMocks());
 
   it("registers gateway methods", () => {
-    const { methods } = setup({ provider: "mock" });
+    const { methods } = setup({ provider: "mock", fromNumber: "+15550001111" });
     expect(methods.has("voicecall.initiate")).toBe(true);
     expect(methods.has("voicecall.continue")).toBe(true);
     expect(methods.has("voicecall.speak")).toBe(true);
@@ -86,81 +101,65 @@ describe("voice-call plugin", () => {
   });
 
   it("initiates a call via voicecall.initiate", async () => {
-    const { methods } = setup({ provider: "mock" });
+    const { methods } = setup({ provider: "mock", fromNumber: "+15550001111" });
     const handler = methods.get("voicecall.initiate");
     const respond = vi.fn();
-    await handler?.({ params: { message: "Hi" }, respond });
-    expect(runtimeStub.manager.initiateCall).toHaveBeenCalled();
+    await handler?.({ params: { to: "+15551230001", message: "Hi" }, respond });
+    expect(mocks.runtime.initiateCall).toHaveBeenCalled();
     const [ok, payload] = respond.mock.calls[0];
     expect(ok).toBe(true);
     expect(payload.callId).toBe("call-1");
   });
 
   it("returns call status", async () => {
-    const { methods } = setup({ provider: "mock" });
+    const { methods } = setup({ provider: "mock", fromNumber: "+15550001111" });
     const handler = methods.get("voicecall.status");
     const respond = vi.fn();
     await handler?.({ params: { callId: "call-1" }, respond });
     const [ok, payload] = respond.mock.calls[0];
     expect(ok).toBe(true);
-    expect(payload.found).toBe(true);
+    expect(payload.status).toBe("in-progress");
   });
 
   it("tool get_status returns json payload", async () => {
-    const { tools } = setup({ provider: "mock" });
+    const { tools } = setup({ provider: "mock", fromNumber: "+15550001111" });
     const tool = tools[0] as {
       execute: (id: string, params: unknown) => Promise<unknown>;
     };
     const result = (await tool.execute("id", {
       action: "get_status",
       callId: "call-1",
-    })) as { details: { found?: boolean } };
-    expect(result.details.found).toBe(true);
+    })) as { details: { status?: string } };
+    expect(result.details.status).toBe("in-progress");
   });
 
-  it("legacy tool status without sid returns error payload", async () => {
-    const { tools } = setup({ provider: "mock" });
+  it("tool get_status without callId returns error payload", async () => {
+    const { tools } = setup({ provider: "mock", fromNumber: "+15550001111" });
     const tool = tools[0] as {
       execute: (id: string, params: unknown) => Promise<unknown>;
     };
-    const result = (await tool.execute("id", { mode: "status" })) as {
+    const result = (await tool.execute("id", { action: "get_status" })) as {
       details: { error?: unknown };
     };
-    expect(String(result.details.error)).toContain("sid required");
+    expect(String(result.details.error)).toContain("missing_callId");
   });
 
   it("CLI start prints JSON", async () => {
-    const { register } = plugin as unknown as {
-      register: (api: Record<string, unknown>) => void | Promise<void>;
-    };
     const program = new Command();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    await register({
+    registerPlugin({
       id: "voice-call",
       name: "Voice Call",
       description: "test",
       version: "0",
       source: "test",
       config: {},
-      pluginConfig: { provider: "mock" },
+      pluginConfig: { provider: "mock", fromNumber: "+15550001111" },
       runtime: { tts: { textToSpeechTelephony: vi.fn() } },
       logger: noopLogger,
       registerGatewayMethod: () => {},
       registerTool: () => {},
-      registerCli: (
-        fn: (ctx: {
-          program: Command;
-          config: Record<string, unknown>;
-          workspaceDir?: string;
-          logger: typeof noopLogger;
-        }) => void,
-      ) =>
-        fn({
-          program,
-          config: {},
-          workspaceDir: undefined,
-          logger: noopLogger,
-        }),
+      registerCli: (fn: (ctx: { program: Command }) => void) => fn({ program }),
       registerService: () => {},
       resolvePath: (p: string) => p,
     });

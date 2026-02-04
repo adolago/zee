@@ -19,7 +19,6 @@ const PROVIDERS: MediaUnderstandingProvider[] = [
 export function normalizeMediaProviderId(id: string): string {
   const normalized = normalizeProviderId(id);
   if (normalized === "gemini") return "google";
-  if (normalized === "google-stt") return "google";
   return normalized;
 }
 

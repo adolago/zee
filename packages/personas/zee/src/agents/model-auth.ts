@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { type Api, getEnvApiKey, type Model } from "@mariozechner/pi-ai";
+import { type Api, type Model } from "@mariozechner/pi-ai";
 import type { ZeeConfig } from "../config/config.js";
 import type { ModelProviderAuthMode, ModelProviderConfig } from "../config/types.js";
 import { getShellEnvAppliedKeys } from "../infra/shell-env.js";
@@ -253,6 +253,10 @@ export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
 
   if (normalized === "zai") {
     return pick("ZAI_API_KEY") ?? pick("Z_AI_API_KEY");
+  }
+
+  if (normalized === "zai-coding-plan") {
+    return pick("ZHIPU_API_KEY") ?? pick("ZAI_API_KEY") ?? pick("Z_AI_API_KEY");
   }
 
   if (normalized === "opencode") {

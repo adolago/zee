@@ -34,6 +34,23 @@ logs/
 *.bun-build
 .dev-config/
 
+# Local repo state / tool configs
+.agent-core/plugin/
+.claude/
+.claude-flow/
+.learnings/
+.mcp.json
+config.json
+output/
+
+# Skills installed locally into this checkout (keep persona + curated skills tracked)
+.agents/skills/*
+!.agents/skills/@zee/
+!.agents/skills/@stanley/
+!.agents/skills/@johny/
+!.agents/skills/codebase-guide/
+!.agents/skills/personas/
+
 # Removed gateway docs (embedded gateway only)
 vendor/personas/zee/docs/gateway/external-gateway.md
 vendor/personas/zee/docs/gateway/index.md

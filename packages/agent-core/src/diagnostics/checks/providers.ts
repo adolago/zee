@@ -22,6 +22,7 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: "https://api.anthropic.com/v1/messages",
     envKey: "ANTHROPIC_API_KEY",
     timeout: 5000,
+    authProviderId: "anthropic",
   },
   {
     name: "OpenAI",
@@ -29,6 +30,7 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: "https://api.openai.com/v1/models",
     envKey: "OPENAI_API_KEY",
     timeout: 5000,
+    authProviderId: "openai",
   },
   {
     name: "Google Gemini",
@@ -36,6 +38,7 @@ const PROVIDERS: ProviderConfig[] = [
     endpoint: "https://generativelanguage.googleapis.com/v1/models",
     envKey: "GOOGLE_API_KEY",
     timeout: 5000,
+    authProviderId: "google",
   },
 ];
 
@@ -85,24 +88,27 @@ async function checkInternetConnectivity(): Promise<CheckResult> {
 
 async function checkProvider(provider: ProviderConfig): Promise<CheckResult> {
   const start = Date.now();
-  let isConfigured = false;
+  const envValue = process.env[provider.envKey];
+  const hasEnv = Boolean(envValue && envValue.trim());
+  let hasAuth = false;
 
   if (provider.authProviderId) {
     const auth = await Auth.get(provider.authProviderId);
     if (auth?.type === "api") {
-      isConfigured = Boolean(auth.key?.trim());
+      hasAuth = Boolean(auth.key?.trim());
     } else if (auth?.type === "oauth") {
-      isConfigured = Boolean(auth.access?.trim());
+      hasAuth = Boolean(auth.access?.trim());
     } else if (auth?.type === "wellknown") {
-      isConfigured = Boolean(auth.token?.trim());
+      hasAuth = Boolean(auth.token?.trim());
     }
-  } else {
-    const apiKey = process.env[provider.envKey];
-    isConfigured = Boolean(apiKey && apiKey.trim());
   }
 
+  const isConfigured = hasEnv || hasAuth;
+
   if (!isConfigured) {
-    const details = `Set ${provider.envKey} environment variable`;
+    const details = provider.authProviderId
+      ? `Run \`agent-core auth login ${provider.authProviderId}\` (or set ${provider.envKey})`
+      : `Set ${provider.envKey} environment variable`;
     return {
       id: `providers.${provider.id}`,
       name: provider.name,

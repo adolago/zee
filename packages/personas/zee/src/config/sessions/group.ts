@@ -2,7 +2,7 @@ import type { MsgContext } from "../../auto-reply/templating.js";
 import { listDeliverableMessageChannels } from "../../utils/message-channel.js";
 import type { GroupKeyResolution } from "./types.js";
 
-const getGroupSurfaces = () => new Set<string>([...listDeliverableMessageChannels()]);
+const getGroupSurfaces = () => new Set<string>(listDeliverableMessageChannels());
 
 function normalizeGroupLabel(raw?: string) {
   const trimmed = raw?.trim().toLowerCase() ?? "";

@@ -15,10 +15,6 @@ import { ensureDir, resolveUserPath } from "../utils.js";
 import {
   CANVAS_HOST_PATH,
   CANVAS_WS_PATH,
-  AGENT_CANVAS_HOST_PATH,
-  AGENT_CANVAS_WS_PATH,
-  AGENT_A2UI_PATH,
-  normalizeCanvasPath,
   handleA2uiHttpRequest,
   injectCanvasLiveReload,
 } from "./a2ui.js";

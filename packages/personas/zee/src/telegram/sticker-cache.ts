@@ -142,7 +142,7 @@ export function getCacheStats(): { count: number; oldestAt?: string; newestAt?: 
 
 const STICKER_DESCRIPTION_PROMPT =
   "Describe this sticker image in 1-2 sentences. Focus on what the sticker depicts (character, object, action, emotion). Be concise and objective.";
-const VISION_PROVIDERS = ["openai", "anthropic", "google", "minimax"] as const;
+const VISION_PROVIDERS = ["google"] as const;
 
 export interface DescribeStickerParams {
   imagePath: string;
@@ -188,14 +188,7 @@ export async function describeStickerImage(params: DescribeStickerParams): Promi
         entry.provider.toLowerCase() === provider.toLowerCase() && modelSupportsVision(entry),
     );
     if (entries.length === 0) return undefined;
-    const defaultId =
-      provider === "openai"
-        ? "gpt-5-mini"
-        : provider === "anthropic"
-          ? "claude-opus-4-5"
-          : provider === "google"
-            ? "gemini-3-flash-preview"
-            : "MiniMax-VL-01";
+    const defaultId = provider === "google" ? "gemini-3-flash-preview" : entries[0]?.id;
     const preferred = entries.find((entry) => entry.id === defaultId);
     return preferred ?? entries[0];
   };

@@ -122,25 +122,38 @@ function noteOpencodeProviderOverrides(cfg: ZeeConfig) {
 }
 
 function hasExplicitConfigPath(env: NodeJS.ProcessEnv): boolean {
-  return Boolean(
-    env.ZEE_CONFIG_PATH?.trim() ||
-      env.ZEE_CONFIG_PATH?.trim() ||
-      env.ZEE_CONFIG_PATH?.trim(),
-  );
+  return Boolean(env.ZEE_CONFIG_PATH?.trim());
 }
 
-function moveLegacyConfigFile(legacyPath: string, canonicalPath: string) {
+function moveLegacyConfigFile(legacyPath: string, canonicalPath: string): boolean {
   fs.mkdirSync(path.dirname(canonicalPath), { recursive: true, mode: 0o700 });
   try {
     fs.renameSync(legacyPath, canonicalPath);
+    try {
+      fs.chmodSync(canonicalPath, 0o600);
+    } catch {
+      // best-effort
+    }
+    return true;
   } catch {
-    fs.copyFileSync(legacyPath, canonicalPath);
-    fs.chmodSync(canonicalPath, 0o600);
+    try {
+      fs.copyFileSync(legacyPath, canonicalPath);
+    } catch (copyError) {
+      const err = copyError as NodeJS.ErrnoException;
+      if (err.code === "ENOENT") return false;
+      throw copyError;
+    }
+    try {
+      fs.chmodSync(canonicalPath, 0o600);
+    } catch {
+      // best-effort
+    }
     try {
       fs.unlinkSync(legacyPath);
     } catch {
       // Best-effort cleanup; we'll warn later if both files exist.
     }
+    return true;
   }
 }
 
@@ -160,15 +173,17 @@ export async function loadAndMaybeMigrateDoctorConfig(params: {
   let snapshot = await readConfigFileSnapshot();
   if (!hasExplicitConfigPath(process.env) && snapshot.exists) {
     const basename = path.basename(snapshot.path);
-    if (basename === "zee.json" || basename === "zee.json") {
+    if (basename === "zee.json") {
       const canonicalPath = resolveCanonicalConfigPath(process.env);
       if (
         path.resolve(snapshot.path) !== path.resolve(canonicalPath) &&
         !fs.existsSync(canonicalPath)
       ) {
-        moveLegacyConfigFile(snapshot.path, canonicalPath);
-        note(`- Config: ${snapshot.path} → ${canonicalPath}`, "Doctor changes");
-        snapshot = await readConfigFileSnapshot();
+        const moved = moveLegacyConfigFile(snapshot.path, canonicalPath);
+        if (moved) {
+          note(`- Config: ${snapshot.path} → ${canonicalPath}`, "Doctor changes");
+          snapshot = await readConfigFileSnapshot();
+        }
       }
     }
   }

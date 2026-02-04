@@ -3,8 +3,6 @@ import { ExecApprovalManager } from "../exec-approval-manager.js";
 import { createExecApprovalHandlers } from "./exec-approval.js";
 import { validateExecApprovalRequestParams } from "../protocol/index.js";
 
-const noop = () => {};
-
 describe("exec approval handlers", () => {
   describe("ExecApprovalRequestParams validation", () => {
     it("accepts request with resolvedPath omitted", () => {

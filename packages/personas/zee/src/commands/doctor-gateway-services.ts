@@ -2,6 +2,10 @@ import path from "node:path";
 
 import type { ZeeConfig } from "../config/config.js";
 import { resolveGatewayPort, resolveIsNixMode } from "../config/paths.js";
+import {
+  findLegacyGatewayServices,
+  uninstallLegacyGatewayServices,
+} from "../daemon/legacy.js";
 import { findExtraGatewayServices, renderGatewayServiceCleanupHints } from "../daemon/inspect.js";
 import { renderSystemNodeWarning, resolveSystemNodeInfo } from "../daemon/runtime-paths.js";
 import { resolveGatewayService } from "../daemon/service.js";
@@ -47,7 +51,9 @@ export async function maybeMigrateLegacyGatewayService(
   runtime: RuntimeEnv,
   prompter: DoctorPrompter,
 ) {
-  const legacyServices: Array<{ label: string; platform: string; detail: string }> = [];
+  const legacyServices = await findLegacyGatewayServices(
+    process.env as Record<string, string | undefined>,
+  );
   if (legacyServices.length === 0) return;
 
   note(
@@ -61,7 +67,17 @@ export async function maybeMigrateLegacyGatewayService(
   });
   if (!migrate) return;
 
-  // Legacy service uninstall disabled in zee-only mode.
+  try {
+    const changes = await uninstallLegacyGatewayServices(
+      legacyServices,
+      process.env as Record<string, string | undefined>,
+    );
+    if (changes.length > 0) {
+      note(changes.map((entry) => `- ${entry}`).join("\n"), "Doctor changes");
+    }
+  } catch {
+    // Best-effort: failing to uninstall legacy services should not block doctor.
+  }
 
   if (resolveIsNixMode(process.env)) {
     note("Nix mode detected; skip installing services.", "Gateway");

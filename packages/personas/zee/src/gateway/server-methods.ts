@@ -96,13 +96,13 @@ function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["c
   const scopes = client.connect.scopes ?? [];
   if (NODE_ROLE_METHODS.has(method)) {
     if (role === "node") return null;
-    return errorShape(ErrorCodes.INVALID_REQUEST, `unauthorized role: ${role}`);
+    return errorShape(ErrorCodes.INVALID_REQUEST, `unauthorized role: ${String(role)}`);
   }
   if (role === "node") {
-    return errorShape(ErrorCodes.INVALID_REQUEST, `unauthorized role: ${role}`);
+    return errorShape(ErrorCodes.INVALID_REQUEST, `unauthorized role: ${String(role)}`);
   }
   if (role !== "operator") {
-    return errorShape(ErrorCodes.INVALID_REQUEST, `unauthorized role: ${role}`);
+    return errorShape(ErrorCodes.INVALID_REQUEST, `unauthorized role: ${String(role)}`);
   }
   if (scopes.includes(ADMIN_SCOPE)) return null;
   if (APPROVAL_METHODS.has(method) && !scopes.includes(APPROVALS_SCOPE)) {

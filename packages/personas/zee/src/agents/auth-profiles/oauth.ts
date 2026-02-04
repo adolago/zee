@@ -4,6 +4,7 @@ import lockfile from "proper-lockfile";
 import type { ZeeConfig } from "../../config/config.js";
 import { refreshChutesTokens } from "../chutes-oauth.js";
 import { refreshQwenPortalCredentials } from "../../providers/qwen-portal-oauth.js";
+import { refreshKimiForCodingCredentials } from "../../providers/kimi-for-coding-oauth.js";
 import { AUTH_STORE_LOCK_OPTIONS, log } from "./constants.js";
 import { formatAuthDoctorHint } from "./doctor.js";
 import { ensureAuthStoreFile, resolveAuthStorePath } from "./paths.js";
@@ -49,20 +50,24 @@ async function refreshOAuthTokenWithLock(params: {
       [cred.provider]: cred,
     };
 
-    const result =
-      String(cred.provider) === "chutes"
-        ? await (async () => {
-            const newCredentials = await refreshChutesTokens({
-              credential: cred,
-            });
-            return { apiKey: newCredentials.access, newCredentials };
-          })()
-        : String(cred.provider) === "qwen-portal"
-          ? await (async () => {
-              const newCredentials = await refreshQwenPortalCredentials(cred);
-              return { apiKey: newCredentials.access, newCredentials };
-            })()
-          : await getOAuthApiKey(cred.provider as OAuthProvider, oauthCreds);
+    const provider = String(cred.provider);
+    const result = await (async () => {
+      if (provider === "chutes") {
+        const newCredentials = await refreshChutesTokens({
+          credential: cred,
+        });
+        return { apiKey: newCredentials.access, newCredentials };
+      }
+      if (provider === "qwen-portal") {
+        const newCredentials = await refreshQwenPortalCredentials(cred);
+        return { apiKey: newCredentials.access, newCredentials };
+      }
+      if (provider === "kimi-for-coding") {
+        const newCredentials = await refreshKimiForCodingCredentials(cred);
+        return { apiKey: newCredentials.access, newCredentials };
+      }
+      return getOAuthApiKey(cred.provider as OAuthProvider, oauthCreds);
+    })();
     if (!result) return null;
     store.profiles[params.profileId] = {
       ...cred,

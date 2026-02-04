@@ -54,6 +54,19 @@ const KIMI_CODE_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+const ZAI_CODING_PLAN_BASE_URL = "https://api.z.ai/api/coding/paas/v4";
+const ZAI_CODING_PLAN_MODEL_ID = "glm-4.7";
+const ZAI_CODING_PLAN_CONTEXT_WINDOW = 204800;
+const ZAI_CODING_PLAN_MAX_TOKENS = 8192;
+const ZAI_CODING_PLAN_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
+const OAUTH_API_KEY_PLACEHOLDER = "oauth";
+
 const QWEN_PORTAL_BASE_URL = "https://portal.qwen.ai/v1";
 const QWEN_PORTAL_OAUTH_PLACEHOLDER = "qwen-oauth";
 const QWEN_PORTAL_DEFAULT_CONTEXT_WINDOW = 128000;
@@ -151,12 +164,15 @@ function resolveApiKeyFromProfiles(params: {
   store: ReturnType<typeof ensureAuthProfileStore>;
 }): string | undefined {
   const ids = listProfilesForProvider(params.store, params.provider);
+  let sawOauth = false;
   for (const id of ids) {
     const cred = params.store.profiles[id];
     if (!cred) continue;
     if (cred.type === "api_key") return cred.key;
     if (cred.type === "token") return cred.token;
+    if (cred.type === "oauth") sawOauth = true;
   }
+  if (sawOauth) return OAUTH_API_KEY_PLACEHOLDER;
   return undefined;
 }
 
@@ -307,6 +323,24 @@ function buildKimiCodeProvider(): ProviderConfig {
   };
 }
 
+function buildZaiCodingPlanProvider(): ProviderConfig {
+  return {
+    baseUrl: ZAI_CODING_PLAN_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: ZAI_CODING_PLAN_MODEL_ID,
+        name: "GLM-4.7",
+        reasoning: true,
+        input: ["text"],
+        cost: ZAI_CODING_PLAN_DEFAULT_COST,
+        contextWindow: ZAI_CODING_PLAN_CONTEXT_WINDOW,
+        maxTokens: ZAI_CODING_PLAN_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 function buildQwenPortalProvider(): ProviderConfig {
   return {
     baseUrl: QWEN_PORTAL_BASE_URL,
@@ -385,6 +419,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "minimax", store: authStore });
   if (minimaxKey) {
     providers.minimax = { ...buildMinimaxProvider(), apiKey: minimaxKey };
+  }
+
+  const zaiCodingPlanKey =
+    resolveEnvApiKeyVarName("zai-coding-plan") ??
+    resolveApiKeyFromProfiles({ provider: "zai-coding-plan", store: authStore });
+  if (zaiCodingPlanKey) {
+    providers["zai-coding-plan"] = { ...buildZaiCodingPlanProvider(), apiKey: zaiCodingPlanKey };
   }
 
   const moonshotKey =

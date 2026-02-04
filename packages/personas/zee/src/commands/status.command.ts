@@ -1,5 +1,4 @@
 import { withProgress } from "../cli/progress.js";
-import { resolveGatewayPort } from "../config/config.js";
 import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
 import { info } from "../globals.js";
 import { formatUsageReportLines, loadProviderUsageSummary } from "../infra/provider-usage.js";

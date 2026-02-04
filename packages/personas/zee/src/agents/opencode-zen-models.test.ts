@@ -54,7 +54,7 @@ describe("getAgentCoreZenStaticFallbackModels", () => {
   it("returns an array of models", () => {
     const models = getAgentCoreZenStaticFallbackModels();
     expect(Array.isArray(models)).toBe(true);
-    expect(models.length).toBe(9);
+    expect(models.length).toBe(11);
   });
 
   it("includes Claude, GPT, Gemini, and GLM models", () => {
@@ -66,6 +66,8 @@ describe("getAgentCoreZenStaticFallbackModels", () => {
     expect(ids).toContain("gpt-5.1-codex");
     expect(ids).toContain("gemini-3-pro");
     expect(ids).toContain("glm-4.7");
+    expect(ids).toContain("kimi-k2.5");
+    expect(ids).toContain("kimi-k2.5-thinking");
   });
 
   it("returns valid ModelDefinitionConfig objects", () => {

@@ -235,6 +235,20 @@ export function Prompt(props: PromptProps) {
     if (state === "sending" || state === "receiving" || state === "transcribing") return theme.primary
     return theme.text
   })
+  const [store, setStore] = createStore<{
+    prompt: PromptInfo
+    mode: "normal" | "shell"
+    extmarkToPartIndex: Map<number, number>
+    interrupt: number
+  }>({
+    prompt: {
+      input: "",
+      parts: [],
+    },
+    mode: "normal",
+    extmarkToPartIndex: new Map(),
+    interrupt: 0,
+  })
   const showDictationButton = createMemo(() => store.mode === "normal" && !props.disabled)
   const showDictationKey = createMemo(() => layoutWidth() >= 70)
   const dictationButtonColor = createMemo(() => (dictationConfig() ? dictationHintColor() : theme.textMuted))
@@ -562,21 +576,6 @@ export function Prompt(props: PromptProps) {
     const messages = sync.data?.message?.[props.sessionID]
     if (!messages) return undefined
     return messages.findLast((m) => m.role === "user")
-  })
-
-  const [store, setStore] = createStore<{
-    prompt: PromptInfo
-    mode: "normal" | "shell"
-    extmarkToPartIndex: Map<number, number>
-    interrupt: number
-  }>({
-    prompt: {
-      input: "",
-      parts: [],
-    },
-    mode: "normal",
-    extmarkToPartIndex: new Map(),
-    interrupt: 0,
   })
 
   // Initialize agent/model/variant from last user message when session changes

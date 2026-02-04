@@ -4,14 +4,11 @@ description: Personal assistant for life admin. Use for memory management, messa
 version: 2.0.0
 author: Artur
 tags: [persona, assistant, memory, messaging, calendar, matrix, canvas, marketplace]
-includes:
-  - swarm
 ---
 
 # zee - Personal Life Assistant
 
 > **Part of the Personas** - Zee shares orchestration capabilities with Stanley and Johny.
-> See the `swarm` skill for: drone spawning, shared memory, conversation continuity.
 
 zee handles the cognitive load of life administration:
 - **Memory**: Remember everything, recall anything (Qdrant-backed)
@@ -290,8 +287,6 @@ zee operates across:
 | Learning/study | @johny |
 | Financial question | @stanley |
 | Code implementation | @johny |
-
-See `swarm` for execution protocols.
 
 ## Integration Points
 

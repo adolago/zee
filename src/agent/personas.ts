@@ -76,7 +76,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
-  model: { providerId: "xai", modelId: "grok-4-1-fast" },
+  model: { providerId: "google-antigravity", modelId: "antigravity-gemini-3-pro" },
   temperature: 0.3,
   topP: 0.9, // More focused sampling for analytical work
   modelParams: {
@@ -123,9 +123,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
     "stanley:nautilus": true,
   },
   options: {
-    // Extended thinking for complex analysis
-    enableReasoning: true,
-    maxReasoningTokens: 8000,
+    thinkingLevel: "high",
   },
   maxSteps: 50,
 };
@@ -208,7 +206,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: true,
-  model: { providerId: "kimi-for-coding", modelId: "kimi-k2.5-thinking" },
+  model: { providerId: "zai-coding-plan", modelId: "glm-4.7" },
   temperature: 0.7,
   topP: 0.95, // Balanced sampling for conversational flexibility
   modelParams: {
@@ -337,7 +335,7 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
-  model: { providerId: "anthropic", modelId: "claude-opus-4-5" },
+  model: { providerId: "google-antigravity", modelId: "antigravity-gemini-3-pro" },
   temperature: 0.5,
   topP: 0.92, // Balanced sampling for teaching variety
   modelParams: {
@@ -383,9 +381,7 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
     "johny:progress": true,
   },
   options: {
-    // Extended thinking for problem solving
-    enableReasoning: true,
-    maxReasoningTokens: 6000,
+    thinkingLevel: "high",
   },
   maxSteps: 40,
 };

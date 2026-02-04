@@ -161,9 +161,7 @@ async function createDaemonSession(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        ...(surface ? { surface } : {}),
-      }),
+      body: JSON.stringify(surface ? { surface } : {}),
     },
     bridge.timeoutMs,
   );
@@ -369,7 +367,7 @@ export async function getReplyFromDaemonBridge(
   const inputText = resolveInboundText(ctx);
   const surface = ctx.Surface?.trim().toLowerCase() || ctx.Provider?.trim().toLowerCase();
 
-  opts?.onReplyStart?.();
+  void opts?.onReplyStart?.();
 
   try {
     const result = await sendMessageToDaemon({

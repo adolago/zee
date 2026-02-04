@@ -12,7 +12,6 @@
       "Bash(npx ts-node:*)",
       "Bash(convert:*)",
       "Bash(grep:*)",
-      "Bash(himalaya:*)",
       "WebFetch(domain:deepwiki.com)",
       "Bash(./scripts/reload.sh:*)",
       "Bash(bun test:*)",

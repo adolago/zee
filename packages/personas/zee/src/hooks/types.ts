@@ -39,10 +39,6 @@ export type Hook = {
     | "zee-bundled"
     | "zee-managed"
     | "zee-workspace"
-    | "zee-plugin"
-    | "zee-bundled"
-    | "zee-managed"
-    | "zee-workspace"
     | "zee-plugin";
   pluginId?: string;
   filePath: string; // Path to HOOK.md

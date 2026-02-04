@@ -30,14 +30,14 @@ describe("buildWorkspaceSkillsPrompt", () => {
   it("applies bundled allowlist without affecting workspace skills", async () => {
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const bundledDir = path.join(workspaceDir, ".bundled");
-    const bundledSkillDir = path.join(bundledDir, "peekaboo");
+    const bundledSkillDir = path.join(bundledDir, "ui-capture");
     const workspaceSkillDir = path.join(workspaceDir, "skills", "demo-skill");
 
     await writeSkill({
       dir: bundledSkillDir,
-      name: "peekaboo",
+      name: "ui-capture",
       description: "Capture UI",
-      body: "# Peekaboo\n",
+      body: "# UI capture\n",
     });
     await writeSkill({
       dir: workspaceSkillDir,
@@ -53,6 +53,6 @@ describe("buildWorkspaceSkillsPrompt", () => {
     });
 
     expect(prompt).toContain("Workspace version");
-    expect(prompt).not.toContain("peekaboo");
+    expect(prompt).not.toContain("ui-capture");
   });
 });

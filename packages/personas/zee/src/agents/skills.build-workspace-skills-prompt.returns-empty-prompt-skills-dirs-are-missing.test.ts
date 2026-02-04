@@ -40,20 +40,20 @@ describe("buildWorkspaceSkillsPrompt", () => {
   it("loads bundled skills when present", async () => {
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const bundledDir = path.join(workspaceDir, ".bundled");
-    const bundledSkillDir = path.join(bundledDir, "peekaboo");
+    const bundledSkillDir = path.join(bundledDir, "ui-capture");
 
     await writeSkill({
       dir: bundledSkillDir,
-      name: "peekaboo",
+      name: "ui-capture",
       description: "Capture UI",
-      body: "# Peekaboo\n",
+      body: "# UI capture\n",
     });
 
     const prompt = buildWorkspaceSkillsPrompt(workspaceDir, {
       managedSkillsDir: path.join(workspaceDir, ".managed"),
       bundledSkillsDir: bundledDir,
     });
-    expect(prompt).toContain("peekaboo");
+    expect(prompt).toContain("ui-capture");
     expect(prompt).toContain("Capture UI");
     expect(prompt).toContain(path.join(bundledSkillDir, "SKILL.md"));
   });

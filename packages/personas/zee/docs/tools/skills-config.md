@@ -9,12 +9,12 @@ read_when:
 All skills-related configuration lives under `skills` in `~/.zee/zee.json`.
 
 ```json5
-{
-  skills: {
-    allowBundled: ["gemini", "peekaboo"],
-    load: {
-      extraDirs: [
-        "~/Projects/agent-scripts/skills",
+  {
+    skills: {
+    allowBundled: ["gemini"],
+      load: {
+        extraDirs: [
+          "~/Projects/agent-scripts/skills",
         "~/Projects/oss/some-skill-pack/skills"
       ],
       watch: true,
@@ -32,7 +32,6 @@ All skills-related configuration lives under `skills` in `~/.zee/zee.json`.
           GEMINI_API_KEY: "GEMINI_KEY_HERE"
         }
       },
-      peekaboo: { enabled: true },
       sag: { enabled: false }
     }
   }

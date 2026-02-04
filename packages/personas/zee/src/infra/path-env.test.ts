@@ -17,12 +17,8 @@ describe("ensureZeeCliOnPath", () => {
       await fs.chmod(cliPath, 0o755);
 
       const originalPath = process.env.PATH;
-      const originalFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-      const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-      const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
+      const originalBootstrapped = process.env.ZEE_PATH_BOOTSTRAPPED;
       process.env.PATH = "/usr/bin";
-      delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      delete process.env.ZEE_PATH_BOOTSTRAPPED;
       delete process.env.ZEE_PATH_BOOTSTRAPPED;
       try {
         ensureZeeCliOnPath({
@@ -35,12 +31,8 @@ describe("ensureZeeCliOnPath", () => {
         expect(updated.split(path.delimiter)[0]).toBe(appBinDir);
       } finally {
         process.env.PATH = originalPath;
-        if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-        else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
-        if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-        else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
-        if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-        else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
+        if (originalBootstrapped === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
+        else process.env.ZEE_PATH_BOOTSTRAPPED = originalBootstrapped;
       }
     } finally {
       await fs.rm(tmp, { recursive: true, force: true });
@@ -49,9 +41,7 @@ describe("ensureZeeCliOnPath", () => {
 
   it("is idempotent", () => {
     const originalPath = process.env.PATH;
-    const originalFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-    const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-    const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
+    const originalBootstrapped = process.env.ZEE_PATH_BOOTSTRAPPED;
     process.env.PATH = "/bin";
     process.env.ZEE_PATH_BOOTSTRAPPED = "1";
     try {
@@ -64,21 +54,15 @@ describe("ensureZeeCliOnPath", () => {
       expect(process.env.PATH).toBe("/bin");
     } finally {
       process.env.PATH = originalPath;
-      if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
-      if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
-      if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
+      if (originalBootstrapped === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
+      else process.env.ZEE_PATH_BOOTSTRAPPED = originalBootstrapped;
     }
   });
 
   it("prepends mise shims when available", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "zee-path-"));
     const originalPath = process.env.PATH;
-    const originalFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-    const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-    const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
+    const originalBootstrapped = process.env.ZEE_PATH_BOOTSTRAPPED;
     const originalMiseDataDir = process.env.MISE_DATA_DIR;
     try {
       const appBinDir = path.join(tmp, "AppBin");
@@ -99,8 +83,6 @@ describe("ensureZeeCliOnPath", () => {
       process.env.MISE_DATA_DIR = miseDataDir;
       process.env.PATH = "/usr/bin";
       delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      delete process.env.ZEE_PATH_BOOTSTRAPPED;
 
       ensureZeeCliOnPath({
         execPath: appCli,
@@ -119,12 +101,8 @@ describe("ensureZeeCliOnPath", () => {
       expect(shimsIndex).toBeGreaterThan(localIndex);
     } finally {
       process.env.PATH = originalPath;
-      if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
-      if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
-      if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
+      if (originalBootstrapped === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
+      else process.env.ZEE_PATH_BOOTSTRAPPED = originalBootstrapped;
       if (originalMiseDataDir === undefined) delete process.env.MISE_DATA_DIR;
       else process.env.MISE_DATA_DIR = originalMiseDataDir;
       await fs.rm(tmp, { recursive: true, force: true });
@@ -134,9 +112,7 @@ describe("ensureZeeCliOnPath", () => {
   it("prepends Linuxbrew dirs when present", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "zee-path-"));
     const originalPath = process.env.PATH;
-    const originalFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-    const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
-    const originalZeeFlag = process.env.ZEE_PATH_BOOTSTRAPPED;
+    const originalBootstrapped = process.env.ZEE_PATH_BOOTSTRAPPED;
     const originalMiseDataDir = process.env.MISE_DATA_DIR;
     const originalHomebrewPrefix = process.env.HOMEBREW_PREFIX;
     const originalHomebrewBrewFile = process.env.HOMEBREW_BREW_FILE;
@@ -151,8 +127,6 @@ describe("ensureZeeCliOnPath", () => {
       await fs.mkdir(linuxbrewSbin, { recursive: true });
 
       process.env.PATH = "/usr/bin";
-      delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      delete process.env.ZEE_PATH_BOOTSTRAPPED;
       delete process.env.ZEE_PATH_BOOTSTRAPPED;
       delete process.env.HOMEBREW_PREFIX;
       delete process.env.HOMEBREW_BREW_FILE;
@@ -172,12 +146,8 @@ describe("ensureZeeCliOnPath", () => {
       expect(parts[1]).toBe(linuxbrewSbin);
     } finally {
       process.env.PATH = originalPath;
-      if (originalFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalFlag;
-      if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
-      if (originalZeeFlag === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
-      else process.env.ZEE_PATH_BOOTSTRAPPED = originalZeeFlag;
+      if (originalBootstrapped === undefined) delete process.env.ZEE_PATH_BOOTSTRAPPED;
+      else process.env.ZEE_PATH_BOOTSTRAPPED = originalBootstrapped;
       if (originalMiseDataDir === undefined) delete process.env.MISE_DATA_DIR;
       else process.env.MISE_DATA_DIR = originalMiseDataDir;
       if (originalHomebrewPrefix === undefined) delete process.env.HOMEBREW_PREFIX;

@@ -1,4 +1,4 @@
-import { CHAT_CHANNEL_ORDER, type ChatChannelId, normalizeAnyChannelId } from "../registry.js";
+import { CHAT_CHANNEL_ORDER, normalizeAnyChannelId } from "../registry.js";
 import type { ChannelId, ChannelPlugin } from "./types.js";
 import { requireActivePluginRegistry } from "../../plugins/runtime.js";
 

@@ -1635,10 +1635,10 @@ Note: `applyPatch` is only under `tools.exec`.
   - `attachments`: attachment policy (`mode`, `maxAttachments`, `prefer`).
   - `scope`: optional gating (first match wins) with `match.channel`, `match.chatType`, or `match.keyPrefix`.
   - `models`: ordered list of model entries; failures or oversize media fall back to the next entry.
-- Each `models[]` entry:
+  - Each `models[]` entry:
   - Provider entry (`type: "provider"` or omitted):
     - `provider`: API provider id (`openai`, `anthropic`, `google`/`gemini`, `groq`, etc).
-    - `model`: model id override (required for image; defaults to `gpt-4o-mini-transcribe`/`whisper-large-v3-turbo` for audio providers, and `gemini-3-flash-preview` for video).
+    - `model`: model id override (required for image; defaults to `gemini-3-flash-preview` for `google` audio/video providers).
     - `profile` / `preferredProfile`: auth profile selection.
   - CLI entry (`type: "cli"`):
     - `command`: executable to run.
@@ -1663,7 +1663,7 @@ Example:
           rules: [{ action: "allow", match: { chatType: "direct" } }]
         },
         models: [
-          { provider: "openai", model: "gpt-4o-mini-transcribe" },
+          { provider: "google", model: "gemini-3-flash-preview" },
           { type: "cli", command: "whisper", args: ["--model", "base", "{{MediaPath}}"] }
         ]
       },
@@ -2347,7 +2347,7 @@ Example:
 ```json5
 {
   skills: {
-    allowBundled: ["gemini", "peekaboo"],
+    allowBundled: ["gemini"],
     load: {
       extraDirs: [
         "~/Projects/agent-scripts/skills",
@@ -2365,7 +2365,6 @@ Example:
           GEMINI_API_KEY: "GEMINI_KEY_HERE"
         }
       },
-      peekaboo: { enabled: true },
       sag: { enabled: false }
     }
   }

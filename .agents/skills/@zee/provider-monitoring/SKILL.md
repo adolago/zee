@@ -114,14 +114,14 @@ codex exec -m gpt-5.2-codex "Say 'pong'"
 
 ### Codex Provider Limits
 
-OpenAI codex CLI uses the OpenAI API. Check limits via:
+Codex CLI authentication can be either API key or OAuth (depends on your setup). Check your local auth shape:
 
 ```bash
-# View current usage (via OpenAI dashboard)
-open https://platform.openai.com/usage
+# Inspect what codex stored locally
+jq 'keys' ~/.codex/auth.json
 
-# Or check local auth
-jq '.OPENAI_API_KEY' ~/.codex/auth.json
+# Usage/billing (browser)
+xdg-open https://platform.openai.com/usage
 ```
 
 ## System-wide Provider Status
@@ -168,6 +168,7 @@ jq '.["zai-coding-plan"]' ~/.local/share/agent-core/auth.json
 ```bash
 # OAuth providers
 agent-core auth login anthropic
+agent-core auth login openai
 agent-core auth login kimi-for-coding
 agent-core auth login gemini-cli
 
@@ -196,7 +197,7 @@ echo "=== Provider Health Check - $(date) ==="
 bun run script/provider-health-check.ts --errors-only
 
 if [ $? -ne 0 ]; then
-  echo "⚠️  Some providers are failing. Check logs."
+  echo "Some providers are failing. Check logs."
   # Could send notification here
 fi
 ```
@@ -207,8 +208,8 @@ fi
 # Quick status overview
 echo "=== Provider Status ==="
 for provider in zai-coding-plan minimax-coding-plan xai nebius google; do
-  KEY=$(jq -r ".[\"$provider\"].key // empty" ~/.local/share/agent-core/auth.json)
-  [ -n "$KEY" ] && echo "✓ $provider" || echo "✗ $provider (no auth)"
+  VALUE=$(jq -r ".[\"$provider\"].key // .[\"$provider\"].access // .[\"$provider\"].token // empty" ~/.local/share/agent-core/auth.json)
+  [ -n "$VALUE" ] && echo "OK $provider" || echo "MISSING $provider (no auth)"
 done
 ```
 

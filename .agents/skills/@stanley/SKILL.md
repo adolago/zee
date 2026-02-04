@@ -4,14 +4,11 @@ description: Investing and financial research assistant for market analysis, por
 version: 1.0.0
 author: Artur
 tags: [persona, investing, finance, trading, portfolio]
-includes:
-  - swarm
 ---
 
 # stanley - Investing System
 
 > **Part of the Personas** - Stanley shares orchestration capabilities with Zee and Johny.
-> See the `swarm` skill for: drone spawning, shared memory, conversation continuity.
 
 stanley embodies a disciplined investing approach:
 - **Macro-first analysis** with bottom-up validation
@@ -202,8 +199,6 @@ skills will use that interpreter automatically.
 | Learn concept | @johny | "Explain options Greeks" |
 | Codebase understanding | @johny | Oracle protocol |
 | Expenses/reimbursements | @zee | Splitwise |
-
-See `swarm` for execution protocols (Oracle finance variant, Multimodal for charts).
 
 ## Stanley's Investment Rules
 

@@ -39,9 +39,8 @@ export function unauthorizedHintForMessage(message: string): string | null {
     haystack.includes("unsigned bridge clients are not allowed")
   ) {
     return [
-      "peekaboo bridge rejected the client.",
-      "sign the peekaboo CLI (TeamID Y5PE65HELJ) or launch the host with",
-      "PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1 for local dev.",
+      "Bridge rejected the client.",
+      "If you're using a local socket bridge, ensure the CLI is signed or allow unsigned clients for local dev.",
     ].join(" ");
   }
   return null;

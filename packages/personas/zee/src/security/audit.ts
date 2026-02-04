@@ -22,7 +22,7 @@ import {
   readConfigSnapshotForAudit,
 } from "./audit-extra.js";
 import { readChannelAllowFromStore } from "../pairing/pairing-store.js";
-import { resolveNativeCommandsEnabled, resolveNativeSkillsEnabled } from "../config/commands.js";
+import { resolveNativeSkillsEnabled } from "../config/commands.js";
 import {
   formatPermissionDetail,
   formatPermissionRemediation,
@@ -425,13 +425,6 @@ async function collectChannelSecurityFindings(params: {
   plugins: ReturnType<typeof listChannelPlugins>;
 }): Promise<SecurityAuditFinding[]> {
   const findings: SecurityAuditFinding[] = [];
-
-  const coerceNativeSetting = (value: unknown): boolean | "auto" | undefined => {
-    if (value === true) return true;
-    if (value === false) return false;
-    if (value === "auto") return "auto";
-    return undefined;
-  };
 
   const warnDmPolicy = async (input: {
     label: string;

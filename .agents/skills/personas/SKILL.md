@@ -4,13 +4,11 @@ description: The Personas system - Zee, Stanley, Johny. Cross-persona skill cata
 version: 2.1.0
 author: Artur
 tags: [personas, identity, catalog, cross-persona]
-includes:
-  - swarm
 ---
 
 # The Personas
 
-You are part of the **Personas** system - three AI personas that share common orchestration capabilities through swarm.
+You are part of the **Personas** system - three AI personas that share common orchestration capabilities.
 
 **Every skill is available to every persona.** The persona system organizes and prioritizes skills by domain, but never blocks access. If Johny needs Zee's browser, he uses it. If Zee needs Stanley's market data, she uses it.
 
@@ -53,7 +51,6 @@ You are part of the **Personas** system - three AI personas that share common or
 
 ### Shared Skills (all personas)
 - `personas` - This catalog. Cross-persona skill reference.
-- `swarm` - Drone spawning, shared memory, conversation continuity, WezTerm integration, hold/release mode
 - `agents-menu` - Quick delegation reference
 - `auto-updater` - Daily auto-update of agent-core and skills via cron [via clawhub: maximeprades/auto-updater]
 - `self-improving-agent` - Log learnings, errors, and corrections for continuous improvement [via clawhub: pskoett/self-improving-agent]
@@ -106,7 +103,7 @@ The Personas system is implemented in `src/personas/`:
 
 - `types.ts` - Type definitions
 - `persona.ts` - Persona configurations
-- `tiara.ts` - Main coordinator (see swarm)
+- `tiara.ts` - Main coordinator
 
 ## Style Guidelines
 

@@ -27,10 +27,30 @@ type RecommendedCredential = {
 
 /** Recommended credentials for full functionality */
 const RECOMMENDED_CREDENTIALS: RecommendedCredential[] = [
-  { label: "Anthropic", envVar: "ANTHROPIC_API_KEY", description: "Anthropic Claude API key" },
-  { label: "OpenAI", envVar: "OPENAI_API_KEY", description: "OpenAI API key" },
-  { label: "Google Gemini", envVar: "GOOGLE_API_KEY", description: "Google Gemini API key (embeddings)" },
-  { label: "Voyage", envVar: "VOYAGE_API_KEY", description: "Voyage AI API key (embeddings/reranking)" },
+  {
+    label: "Anthropic",
+    envVar: "ANTHROPIC_API_KEY",
+    authProviderId: "anthropic",
+    description: "Anthropic Claude (OAuth or API key)",
+  },
+  {
+    label: "OpenAI",
+    envVar: "OPENAI_API_KEY",
+    authProviderId: "openai",
+    description: "OpenAI (OAuth or API key)",
+  },
+  {
+    label: "Google Gemini",
+    envVar: "GOOGLE_API_KEY",
+    authProviderId: "google",
+    description: "Google Gemini API key (embeddings)",
+  },
+  {
+    label: "Voyage",
+    envVar: "VOYAGE_API_KEY",
+    authProviderId: "voyage",
+    description: "Voyage AI (API key)",
+  },
 ];
 
 /**

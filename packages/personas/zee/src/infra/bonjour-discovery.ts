@@ -231,7 +231,7 @@ function parseDnsSdResolve(stdout: string, instanceName: string): GatewayBonjour
   return beacon;
 }
 
-async function discoverViaDnsSd(
+async function _discoverViaDnsSd(
   domain: string,
   timeoutMs: number,
   run: typeof runCommandWithTimeout,
@@ -258,7 +258,7 @@ async function discoverViaDnsSd(
   return results;
 }
 
-async function discoverWideAreaViaTailnetDns(
+async function _discoverWideAreaViaTailnetDns(
   domain: string,
   timeoutMs: number,
   run: typeof runCommandWithTimeout,
@@ -403,14 +403,24 @@ function parseAvahiBrowse(stdout: string): GatewayBonjourBeacon[] {
     if (!line) continue;
     if (line.startsWith("=") && SERVICE_TYPE_PATTERN.test(line)) {
       if (current) results.push(current);
-      const marker = ALL_GATEWAY_SERVICE_TYPES.map((type) => ` ${type}`).find((m) =>
-        line.includes(m),
-      );
-      if (!marker) continue;
-      const idx = line.indexOf(marker);
-      const left = idx >= 0 ? line.slice(0, idx).trim() : line;
-      const parts = left.split(/\s+/);
-      const instanceName = parts.length > 3 ? parts.slice(3).join(" ") : left;
+      // Prefer the "-t" (semicolon-separated) output format:
+      // =;eth0;IPv4;Zee Gateway;_zee-gw._tcp;local
+      let instanceName = "";
+      if (line.includes(";")) {
+        const parts = line.split(";");
+        instanceName = parts[3]?.trim() ?? "";
+      }
+      // Fallback: older whitespace-based parsing.
+      if (!instanceName) {
+        const marker = ALL_GATEWAY_SERVICE_TYPES.map((type) => ` ${type}`).find((m) =>
+          line.includes(m),
+        );
+        if (!marker) continue;
+        const idx = line.indexOf(marker);
+        const left = idx >= 0 ? line.slice(0, idx).trim() : line;
+        const parts = left.split(/\s+/);
+        instanceName = parts.length > 3 ? parts.slice(3).join(" ") : left;
+      }
       current = {
         instanceName,
         displayName: instanceName,

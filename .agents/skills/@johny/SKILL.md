@@ -4,14 +4,11 @@ description: Study assistant for learning, deliberate practice, spaced repetitio
 version: 1.0.0
 author: Artur
 tags: [persona, learning, study, knowledge-graph, spaced-repetition]
-includes:
-  - swarm
 ---
 
 # johny - Learning System
 
 > **Part of the Personas** - Johny shares orchestration capabilities with Zee and Stanley.
-> See the `swarm` skill for: drone spawning, shared memory, conversation continuity.
 
 johny embodies legendary learning capabilities:
 - **Rapid information absorption** via knowledge graph
@@ -124,8 +121,6 @@ npx tsx scripts/johny-daemon.ts status
 | Financial data | @stanley | "Get AAPL fundamentals" |
 | Chart/UI analysis | Multimodal | Visual understanding |
 | Frontend work | Frontend Engineer | UI/UX expertise |
-
-See `swarm` for execution protocols (Oracle, Librarian, Explorer).
 
 ## Johny's Discipline Rules
 

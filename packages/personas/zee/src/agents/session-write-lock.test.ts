@@ -82,15 +82,20 @@ describe("acquireSessionWriteLock", () => {
         const lockPath = `${sessionFile}.lock`;
         await acquireSessionWriteLock({ sessionFile, timeoutMs: 500 });
         const keepAlive = () => {};
-        if (signal === "SIGINT") {
+        try {
+          // Ensure handleTerminationSignal doesn't re-raise and kill the test worker.
           process.on(signal, keepAlive);
+        } catch {
+          // Ignore unsupported signals on this platform.
         }
 
         __testing.handleTerminationSignal(signal);
 
         await expect(fs.stat(lockPath)).rejects.toThrow();
-        if (signal === "SIGINT") {
+        try {
           process.off(signal, keepAlive);
+        } catch {
+          // Ignore unsupported signals on this platform.
         }
       } finally {
         await fs.rm(root, { recursive: true, force: true });

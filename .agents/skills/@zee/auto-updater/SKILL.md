@@ -88,7 +88,7 @@ Skills Updated (3):
 - nano-banana-pro: 3.1.0 -> 3.1.2
 
 Skills Already Current (5):
-gemini, sag, things-mac, himalaya, peekaboo
+gemini, sag
 
 No issues encountered.
 ```

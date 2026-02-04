@@ -45,22 +45,17 @@ describe("models-config", () => {
 
   it("skips writing models.json when no env token or profile exists", async () => {
     await withTempHome(async (home) => {
-      const previous = process.env.COPILOT_GITHUB_TOKEN;
-      const previousGh = process.env.GH_TOKEN;
-      const previousGithub = process.env.GITHUB_TOKEN;
-      const previousKimiCode = process.env.KIMICODE_API_KEY;
-      const previousMinimax = process.env.MINIMAX_API_KEY;
-      const previousMoonshot = process.env.MOONSHOT_API_KEY;
-      const previousSynthetic = process.env.SYNTHETIC_API_KEY;
-      const previousVenice = process.env.VENICE_API_KEY;
-      delete process.env.COPILOT_GITHUB_TOKEN;
-      delete process.env.GH_TOKEN;
-      delete process.env.GITHUB_TOKEN;
-      delete process.env.KIMICODE_API_KEY;
-      delete process.env.MINIMAX_API_KEY;
-      delete process.env.MOONSHOT_API_KEY;
-      delete process.env.SYNTHETIC_API_KEY;
-      delete process.env.VENICE_API_KEY;
+      const cleared = new Map<string, string | undefined>();
+      const keys = new Set<string>([
+        ...Object.keys(process.env).filter((key) => key.endsWith("_API_KEY")),
+        "COPILOT_GITHUB_TOKEN",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+      ]);
+      for (const key of keys) {
+        cleared.set(key, process.env[key]);
+        delete process.env[key];
+      }
 
       try {
         vi.resetModules();
@@ -77,22 +72,10 @@ describe("models-config", () => {
         await expect(fs.stat(path.join(agentDir, "models.json"))).rejects.toThrow();
         expect(result.wrote).toBe(false);
       } finally {
-        if (previous === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
-        else process.env.COPILOT_GITHUB_TOKEN = previous;
-        if (previousGh === undefined) delete process.env.GH_TOKEN;
-        else process.env.GH_TOKEN = previousGh;
-        if (previousGithub === undefined) delete process.env.GITHUB_TOKEN;
-        else process.env.GITHUB_TOKEN = previousGithub;
-        if (previousKimiCode === undefined) delete process.env.KIMICODE_API_KEY;
-        else process.env.KIMICODE_API_KEY = previousKimiCode;
-        if (previousMinimax === undefined) delete process.env.MINIMAX_API_KEY;
-        else process.env.MINIMAX_API_KEY = previousMinimax;
-        if (previousMoonshot === undefined) delete process.env.MOONSHOT_API_KEY;
-        else process.env.MOONSHOT_API_KEY = previousMoonshot;
-        if (previousSynthetic === undefined) delete process.env.SYNTHETIC_API_KEY;
-        else process.env.SYNTHETIC_API_KEY = previousSynthetic;
-        if (previousVenice === undefined) delete process.env.VENICE_API_KEY;
-        else process.env.VENICE_API_KEY = previousVenice;
+        for (const [key, value] of cleared) {
+          if (value === undefined) delete process.env[key];
+          else process.env[key] = value;
+        }
       }
     });
   });

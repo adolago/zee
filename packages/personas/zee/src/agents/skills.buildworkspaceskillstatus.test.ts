@@ -80,14 +80,14 @@ describe("buildWorkspaceSkillStatus", () => {
   it("marks bundled skills blocked by allowlist", async () => {
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-"));
     const bundledDir = path.join(workspaceDir, ".bundled");
-    const bundledSkillDir = path.join(bundledDir, "peekaboo");
+    const bundledSkillDir = path.join(bundledDir, "ui-capture");
     const originalBundled = process.env.ZEE_BUNDLED_SKILLS_DIR;
 
     await writeSkill({
       dir: bundledSkillDir,
-      name: "peekaboo",
+      name: "ui-capture",
       description: "Capture UI",
-      body: "# Peekaboo\n",
+      body: "# UI capture\n",
     });
 
     try {
@@ -96,7 +96,7 @@ describe("buildWorkspaceSkillStatus", () => {
         managedSkillsDir: path.join(workspaceDir, ".managed"),
         config: { skills: { allowBundled: ["other-skill"] } },
       });
-      const skill = report.skills.find((entry) => entry.name === "peekaboo");
+      const skill = report.skills.find((entry) => entry.name === "ui-capture");
 
       expect(skill).toBeDefined();
       expect(skill?.blockedByAllowlist).toBe(true);

@@ -192,7 +192,6 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `packages/personas/zee/skills/blucli/SKILL.md` | alias | - |
 | `packages/personas/zee/skills/coding-agent/SKILL.md` | provider/model | - |
 | `packages/personas/zee/skills/eightctl/SKILL.md` | - | temperature |
-| `packages/personas/zee/skills/himalaya/references/configuration.md` | Alias, alias | - |
 | `packages/personas/zee/skills/oracle/SKILL.md` | alias, fallback | - |
 | `packages/personas/zee/skills/session-logs/SKILL.md` | - | thinking |
 | `packages/personas/zee/skills/skill-creator/SKILL.md` | - | thinking |

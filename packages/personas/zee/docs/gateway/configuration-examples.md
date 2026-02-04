@@ -119,17 +119,17 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
 
   // Tooling
   tools: {
-    media: {
-      audio: {
-        enabled: true,
-        maxBytes: 20971520,
-        models: [
-          { provider: "openai", model: "gpt-4o-mini-transcribe" },
+      media: {
+        audio: {
+          enabled: true,
+          maxBytes: 20971520,
+          models: [
+          { provider: "google", model: "gemini-3-flash-preview" },
           // Optional CLI fallback (Whisper binary):
           // { type: "cli", command: "whisper", args: ["--model", "base", "{{MediaPath}}"] }
-        ],
-        timeoutSeconds: 120
-      },
+          ],
+          timeoutSeconds: 120
+        },
       video: {
         enabled: true,
         maxBytes: 52428800,
@@ -349,7 +349,7 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   },
 
   skills: {
-    allowBundled: ["gemini", "peekaboo"],
+    allowBundled: ["gemini"],
     load: {
       extraDirs: ["~/Projects/agent-scripts/skills"]
     },
@@ -362,8 +362,7 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
         enabled: true,
         apiKey: "GEMINI_KEY_HERE",
         env: { GEMINI_API_KEY: "GEMINI_KEY_HERE" }
-      },
-      peekaboo: { enabled: true }
+      }
     }
   }
 }

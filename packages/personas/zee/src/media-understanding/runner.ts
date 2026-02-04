@@ -49,14 +49,11 @@ import {
 import { describeImageWithModel } from "./providers/image.js";
 import { estimateBase64Size, resolveVideoMaxBase64Bytes } from "./video.js";
 
-const AUTO_AUDIO_KEY_PROVIDERS = ["google", "openai", "groq", "deepgram"] as const;
-const AUTO_IMAGE_KEY_PROVIDERS = ["openai", "anthropic", "google", "minimax"] as const;
+const AUTO_AUDIO_KEY_PROVIDERS = ["google"] as const;
+const AUTO_IMAGE_KEY_PROVIDERS = ["google"] as const;
 const AUTO_VIDEO_KEY_PROVIDERS = ["google"] as const;
 const DEFAULT_IMAGE_MODELS: Record<string, string> = {
-  openai: "gpt-5-mini",
-  anthropic: "claude-opus-4-5",
   google: "gemini-3-flash-preview",
-  minimax: "MiniMax-VL-01",
 };
 
 export type ActiveMediaModel = {
@@ -401,14 +398,14 @@ async function resolveAutoEntries(params: {
 }): Promise<MediaUnderstandingModelConfig[]> {
   const activeEntry = await resolveActiveModelEntry(params);
   if (activeEntry) return [activeEntry];
+  const keys = await resolveKeyEntry(params);
+  if (keys) return [keys];
+  const gemini = await resolveGeminiCliEntry(params.capability);
+  if (gemini) return [gemini];
   if (params.capability === "audio") {
     const localAudio = await resolveLocalAudioEntry();
     if (localAudio) return [localAudio];
   }
-  const gemini = await resolveGeminiCliEntry(params.capability);
-  if (gemini) return [gemini];
-  const keys = await resolveKeyEntry(params);
-  if (keys) return [keys];
   return [];
 }
 

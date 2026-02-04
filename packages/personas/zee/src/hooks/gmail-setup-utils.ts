@@ -138,7 +138,7 @@ async function runGcloudCommand(
   });
 }
 
-export async function ensureDependency(bin: string, brewArgs: string[]) {
+export async function ensureDependency(bin: string, _brewArgs: string[]) {
   if (bin === "gcloud" && ensureGcloudOnPath()) return;
   if (hasBinary(bin)) return;
   throw new Error(`${bin} not installed; install it and retry`);

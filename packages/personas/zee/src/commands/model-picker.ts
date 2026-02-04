@@ -6,7 +6,6 @@ import {
   buildAllowedModelSet,
   buildModelAliasIndex,
   modelKey,
-  normalizeProviderId,
   resolveConfiguredModelRef,
 } from "../agents/model-selection.js";
 import type { ZeeConfig } from "../config/config.js";

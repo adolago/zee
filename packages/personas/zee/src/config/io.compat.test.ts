@@ -14,90 +14,57 @@ async function withTempHome(run: (home: string) => Promise<void>): Promise<void>
   }
 }
 
-async function writeConfig(
-  home: string,
-  dirname: ".zee" | ".zee",
-  port: number,
-  filename: "zee.json" | "zee.json" = "zee.json",
-) {
-  const dir = path.join(home, dirname);
-  await fs.mkdir(dir, { recursive: true });
-  const configPath = path.join(dir, filename);
+async function writeConfig(configPath: string, port: number): Promise<string> {
+  await fs.mkdir(path.dirname(configPath), { recursive: true });
   await fs.writeFile(configPath, JSON.stringify({ gateway: { port } }, null, 2));
   return configPath;
 }
 
-describe("config io compat (new + legacy folders)", () => {
-  it("prefers ~/.zee/zee.json when both configs exist", async () => {
+describe("config io path selection", () => {
+  it("prefers ZEE_CONFIG_PATH when set", async () => {
     await withTempHome(async (home) => {
-      const newConfigPath = await writeConfig(home, ".zee", 19001);
-      await writeConfig(home, ".zee", 18789);
+      const overridePath = await writeConfig(path.join(home, "custom", "zee.json"), 19001);
 
       const io = createConfigIO({
-        env: {} as NodeJS.ProcessEnv,
+        env: { ZEE_CONFIG_PATH: overridePath } as NodeJS.ProcessEnv,
         homedir: () => home,
       });
-      expect(io.configPath).toBe(newConfigPath);
+
+      expect(io.configPath).toBe(overridePath);
       expect(io.loadConfig().gateway?.port).toBe(19001);
     });
   });
 
-  it("falls back to ~/.zee/zee.json when only legacy exists", async () => {
+  it("prefers ZEE_STATE_DIR candidate when present", async () => {
     await withTempHome(async (home) => {
-      const legacyConfigPath = await writeConfig(home, ".zee", 20001);
+      const defaultConfigPath = await writeConfig(path.join(home, ".zee", "zee.json"), 18789);
+      const overrideDir = path.join(home, "override");
+      const overrideConfigPath = await writeConfig(path.join(overrideDir, "zee.json"), 20001);
 
       const io = createConfigIO({
-        env: {} as NodeJS.ProcessEnv,
+        env: { ZEE_STATE_DIR: overrideDir } as NodeJS.ProcessEnv,
         homedir: () => home,
       });
 
-      expect(io.configPath).toBe(legacyConfigPath);
+      expect(io.configPath).not.toBe(defaultConfigPath);
+      expect(io.configPath).toBe(overrideConfigPath);
       expect(io.loadConfig().gateway?.port).toBe(20001);
     });
   });
 
-  it("falls back to ~/.zee/zee.json when only legacy filename exists", async () => {
+  it("falls back to default candidate when ZEE_STATE_DIR config is missing", async () => {
     await withTempHome(async (home) => {
-      const legacyConfigPath = await writeConfig(home, ".zee", 20002, "zee.json");
+      const defaultConfigPath = await writeConfig(path.join(home, ".zee", "zee.json"), 18789);
+      const overrideDir = path.join(home, "override");
 
       const io = createConfigIO({
-        env: {} as NodeJS.ProcessEnv,
+        env: { ZEE_STATE_DIR: overrideDir } as NodeJS.ProcessEnv,
         homedir: () => home,
       });
 
-      expect(io.configPath).toBe(legacyConfigPath);
-      expect(io.loadConfig().gateway?.port).toBe(20002);
-    });
-  });
-
-  it("prefers zee.json over legacy filename in the same dir", async () => {
-    await withTempHome(async (home) => {
-      const preferred = await writeConfig(home, ".zee", 20003, "zee.json");
-      await writeConfig(home, ".zee", 20004, "zee.json");
-
-      const io = createConfigIO({
-        env: {} as NodeJS.ProcessEnv,
-        homedir: () => home,
-      });
-
-      expect(io.configPath).toBe(preferred);
-      expect(io.loadConfig().gateway?.port).toBe(20003);
-    });
-  });
-
-  it("honors explicit legacy config path env override", async () => {
-    await withTempHome(async (home) => {
-      const newConfigPath = await writeConfig(home, ".zee", 19002);
-      const legacyConfigPath = await writeConfig(home, ".zee", 20002);
-
-      const io = createConfigIO({
-        env: { ZEE_CONFIG_PATH: legacyConfigPath } as NodeJS.ProcessEnv,
-        homedir: () => home,
-      });
-
-      expect(io.configPath).not.toBe(newConfigPath);
-      expect(io.configPath).toBe(legacyConfigPath);
-      expect(io.loadConfig().gateway?.port).toBe(20002);
+      expect(io.configPath).toBe(defaultConfigPath);
+      expect(io.loadConfig().gateway?.port).toBe(18789);
     });
   });
 });
+

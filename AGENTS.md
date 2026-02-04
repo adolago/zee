@@ -44,7 +44,7 @@ Personas can spawn drones (background workers), share Qdrant memory, and preserv
 
 | What | Where |
 |------|-------|
-| Skills | `.agents/skills/@zee/`, `@stanley/`, `@johny/`, `swarm/`, `personas/` |
+| Skills | `.agents/skills/@zee/`, `.agents/skills/@stanley/`, `.agents/skills/@johny/`, `.agents/skills/personas/` |
 | Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
 | Persona logic | `src/personas/johny/` (TS), `packages/stanley-core/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |

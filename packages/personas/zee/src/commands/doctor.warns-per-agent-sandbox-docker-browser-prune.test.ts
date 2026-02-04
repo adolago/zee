@@ -331,10 +331,10 @@ vi.mock("./doctor-state-migrations.js", () => ({
 
 describe("doctor command", () => {
   it("warns when per-agent sandbox docker/browser/prune overrides are ignored under shared scope", async () => {
-    readConfigFileSnapshot.mockResolvedValue({
-      path: "/tmp/zee.json",
-      exists: true,
-      raw: "{}",
+	    readConfigFileSnapshot.mockResolvedValue({
+	      path: "/tmp/zee.json",
+	      exists: true,
+	      raw: "{}",
       parsed: {},
       valid: true,
       config: {
@@ -393,13 +393,13 @@ describe("doctor command", () => {
       exists: true,
       raw: "{}",
       parsed: {},
-      valid: true,
-      config: {
-        agents: { defaults: { workspace: "/Users/steipete/zee" } },
-      },
-      issues: [],
-      legacyIssues: [],
-    });
+	      valid: true,
+	      config: {
+	        agents: { defaults: { workspace: "/Users/steipete/.local/src/agent-core" } },
+	      },
+	      issues: [],
+	      legacyIssues: [],
+	    });
 
     note.mockClear();
     const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue("/Users/steipete");

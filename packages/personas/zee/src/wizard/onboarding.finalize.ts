@@ -41,7 +41,7 @@ type FinalizeOnboardingOptions = {
 };
 
 export async function finalizeOnboardingWizard(options: FinalizeOnboardingOptions) {
-  const { flow, opts, baseConfig, nextConfig, settings, prompter, runtime } = options;
+  const { flow, opts, baseConfig: _baseConfig, nextConfig, settings, prompter, runtime } = options;
 
   const withWizardProgress = async <T>(
     label: string,

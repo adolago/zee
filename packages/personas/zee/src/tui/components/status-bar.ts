@@ -1,5 +1,4 @@
-import { Container, Text } from "@mariozechner/pi-tui";
-import { visibleWidth } from "../../terminal/ansi.js";
+import { Container, truncateToWidth as piTruncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 
 export interface StatusBarTheme {
   outerBorder: (text: string) => string;
@@ -50,6 +49,7 @@ const BOX = {
 export class StatusBar extends Container {
   private theme: StatusBarTheme;
   private state: StatusBarState;
+  private segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
   constructor(theme: StatusBarTheme, initialState?: Partial<StatusBarState>) {
     super();
@@ -105,7 +105,7 @@ export class StatusBar extends Container {
       }
 
       // Separator line
-      const separator = `${BOX.dot}${BOX.horizontal.repeat(innerWidth)}${BOX.dot}`;
+      const separator = `${BOX.dot}${BOX.horizontal.repeat(Math.max(0, innerWidth - 2))}${BOX.dot}`;
       lines.push(this.wrapInOuterBox(this.theme.dimText(separator), width));
     }
 
@@ -182,25 +182,27 @@ export class StatusBar extends Container {
   }
 
   private wrapInOuterBox(content: string, totalWidth: number): string {
-    const contentWidth = visibleWidth(content);
-    const innerSpace = totalWidth - 4; // 2 for borders, 2 for padding
-    const padding = Math.max(0, innerSpace - contentWidth);
-
-    return `${this.theme.outerBorder(BOX.vertical)} ${content}${" ".repeat(padding)} ${this.theme.outerBorder(BOX.vertical)}`;
+    const innerSpace = Math.max(1, totalWidth - 4); // 2 for borders, 2 for padding
+    const padded = piTruncateToWidth(content, innerSpace, "", true);
+    return `${this.theme.outerBorder(BOX.vertical)} ${padded} ${this.theme.outerBorder(BOX.vertical)}`;
   }
 
   private truncateToWidth(text: string, maxWidth: number): string {
     if (visibleWidth(text) <= maxWidth) return text;
 
-    // Simple truncation - could be improved with ellipsis
+    const ellipsis = "…";
+    const targetWidth = Math.max(0, maxWidth - visibleWidth(ellipsis));
     let result = "";
-    for (const char of text) {
-      if (visibleWidth(result + char) > maxWidth - 1) {
-        return result + "…";
-      }
-      result += char;
+    let currentWidth = 0;
+
+    for (const { segment } of this.segmenter.segment(text)) {
+      const segmentWidth = visibleWidth(segment);
+      if (currentWidth + segmentWidth > targetWidth) break;
+      result += segment;
+      currentWidth += segmentWidth;
     }
-    return result;
+
+    return result + ellipsis;
   }
 
   invalidate(): void {

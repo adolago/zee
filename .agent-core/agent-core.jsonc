@@ -1,7 +1,7 @@
 {
   "$schema": "agent-core",
   "default_agent": "zee",
-  "model": "kimi-for-coding/kimi-k2.5-thinking",
+  "model": "zai-coding-plan/glm-4.7",
   "small_model": "zai-coding-plan/glm-4.7",
   "instructions": ["STYLE_GUIDE.md"],
   "mcp": {
@@ -59,6 +59,25 @@
         }
       }
     },
+    "google-antigravity": {
+      "models": {
+        "antigravity-gemini-3-pro": {
+          "options": { "thinkingLevel": "high" }
+        },
+        "antigravity-gemini-3-flash": {
+          "options": { "thinkingLevel": "high" }
+        }
+      }
+    },
+    "zai-coding-plan": {
+      "models": {
+        "glm-4.7": {
+          "options": {
+            "thinking": { "type": "enabled", "budget_tokens": 32000, "clear_thinking": false }
+          }
+        }
+      }
+    },
     "xai": {
       "options": {
         "baseURL": "https://api.x.ai/v1"
@@ -76,11 +95,11 @@
     "rules": [
       {
         "condition": "rate_limit",
-        "fallbacks": ["kimi-for-coding/kimi-k2.5-thinking"]
+        "fallbacks": ["google-antigravity/antigravity-gemini-3-flash"]
       },
       {
         "condition": "error",
-        "fallbacks": ["kimi-for-coding/kimi-k2.5-thinking"]
+        "fallbacks": ["google-antigravity/antigravity-gemini-3-flash"]
       }
     ]
   },
@@ -152,19 +171,19 @@
   "agent": {
     "zee": {
       "description": "Personal assistant for life admin, memory, messaging, and calendar",
-      "model": "kimi-for-coding/kimi-k2.5-thinking",
+      "model": "zai-coding-plan/glm-4.7",
       "mode": "primary",
       "color": "#5c9cf5"
     },
     "stanley": {
       "description": "Investing and financial research assistant",
-      "model": "xai/grok-4-1-fast",
+      "model": "google-antigravity/antigravity-gemini-3-pro",
       "mode": "primary",
       "color": "#f5a742"
     },
     "johny": {
       "description": "Study assistant for learning and knowledge graphs",
-      "model": "anthropic/claude-opus-4.5",
+      "model": "google-antigravity/antigravity-gemini-3-pro",
       "mode": "primary",
       "color": "#7fd88c"
     },

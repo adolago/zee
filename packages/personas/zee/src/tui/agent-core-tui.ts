@@ -5,13 +5,6 @@ import type { TuiOptions } from "./tui-types.js";
 
 type AgentCoreTuiOptions = TuiOptions;
 
-const SUPPORTED_FLAG_HINTS: Array<[keyof AgentCoreTuiOptions, string]> = [
-  ["session", "--session"],
-  ["message", "--prompt"],
-  ["url", "AGENT_CORE_URL"],
-  ["password", "AGENT_CORE_SERVER_PASSWORD"],
-];
-
 const UNSUPPORTED_FLAG_HINTS: Array<[keyof AgentCoreTuiOptions, string]> = [
   ["token", "--token"],
   ["deliver", "--deliver"],

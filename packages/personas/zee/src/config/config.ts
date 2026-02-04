@@ -1,5 +1,3 @@
-import "../types/register.js";
-
 export {
   createConfigIO,
   loadConfig,

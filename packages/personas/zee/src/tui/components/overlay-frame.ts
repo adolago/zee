@@ -1,5 +1,4 @@
-import type { Component } from "@mariozechner/pi-tui";
-import { visibleWidth } from "../../terminal/ansi.js";
+import { type Component, visibleWidth } from "@mariozechner/pi-tui";
 import { theme } from "../theme/theme.js";
 
 type OverlayChild = Component & {
@@ -20,9 +19,9 @@ export class OverlayFrame implements Component {
     const innerWidth = Math.max(1, width - pad * 2);
     const raw = this.child.render(innerWidth);
     const lines = raw.length > 0 ? raw : [""];
-    const contentWidth = Math.max(
-      1,
-      lines.reduce((acc, line) => Math.max(acc, visibleWidth(line)), 0),
+    const contentWidth = Math.min(
+      innerWidth,
+      Math.max(1, lines.reduce((acc, line) => Math.max(acc, visibleWidth(line)), 0)),
     );
     const left = " ".repeat(pad);
     const right = " ".repeat(pad);
