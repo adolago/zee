@@ -437,6 +437,50 @@ function App() {
 	        local.model.variant.cycle()
 	      },
 	    },
+    {
+      title: "Toggle model favorite",
+      value: "model.favorite_toggle",
+      keybind: "model_favorite_toggle",
+      category: "Agent",
+      onSelect: (dialog) => {
+        const m = local.model.current()
+        if (!m) return
+        local.model.toggleFavorite(m)
+        const isFav = local.model.isFavorite(m)
+        toast.show({
+          message: isFav ? "Added to favorites" : "Removed from favorites",
+          variant: "info",
+          duration: 2000,
+        })
+        dialog.clear()
+      },
+    },
+    {
+      title: "Next favorite model",
+      value: "model.cycle_favorite",
+      keybind: "model_cycle_favorite",
+      category: "Agent",
+      hidden: true,
+      onSelect: (dialog) => {
+        if (!local.model.cycleFavorite(1)) {
+          toast.show({ message: "No favorite models set", variant: "warning", duration: 2000 })
+        }
+        dialog.clear()
+      },
+    },
+    {
+      title: "Previous favorite model",
+      value: "model.cycle_favorite_reverse",
+      keybind: "model_cycle_favorite_reverse",
+      category: "Agent",
+      hidden: true,
+      onSelect: (dialog) => {
+        if (!local.model.cycleFavorite(-1)) {
+          toast.show({ message: "No favorite models set", variant: "warning", duration: 2000 })
+        }
+        dialog.clear()
+      },
+    },
 	    {
 	    title: local.mode.isHold() ? "Switch to Release mode" : "Switch to Hold mode",
 	    value: "mode.toggle",

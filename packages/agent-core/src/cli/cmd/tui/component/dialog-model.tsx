@@ -51,9 +51,10 @@ export function DialogModel(props: { providerID?: string }) {
               providerID: provider.id,
               modelID: model,
             }
+            const isFav = local.model.isFavorite(value)
             return {
               value,
-              title: info.name ?? model,
+              title: (isFav ? "* " : "") + (info.name ?? model),
               category: connected() ? authIndicator + provider.name : undefined,
               onSelect() {
                 dialog.clear()
@@ -94,6 +95,15 @@ export function DialogModel(props: { providerID?: string }) {
           title: connected() ? "Connect provider" : "View all providers",
           onTrigger() {
             dialog.replace(() => <DialogProvider />)
+          },
+        },
+        {
+          keybind: keybind.all.model_favorite_toggle?.[0],
+          title: "Toggle favorite",
+          onTrigger() {
+            // Toggle current model as favorite (the model shown at top of dialog)
+            const m = local.model.current()
+            if (m) local.model.toggleFavorite(m)
           },
         },
       ]}

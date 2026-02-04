@@ -4,7 +4,7 @@ import { createStore } from "solid-js/store"
 import { useTheme } from "../../context/theme"
 import { SplitBorder } from "@tui/component/border"
 import { Locale } from "@/util/locale"
-import type { Session } from "@agent-core/sdk/v2"
+import type { Session, AssistantMessage } from "@agent-core/sdk/v2"
 import { Global } from "@/global"
 import { Installation } from "@/installation"
 import { useKeybind } from "../../context/keybind"
@@ -120,6 +120,46 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
     }
     return { files: diffs.length, additions, deletions, modified }
   })
+  const sessionCost = createMemo(() => {
+    const msgs = sync.data.message[props.sessionID] ?? []
+    let total = 0
+    for (const msg of msgs) {
+      if (msg.role === "assistant") {
+        total += (msg as AssistantMessage).cost ?? 0
+      }
+    }
+    return total
+  })
+  const sessionCostLabel = createMemo(() => {
+    const cost = sessionCost()
+    if (cost === 0) return ""
+    if (cost < 0.01) return `$${cost.toFixed(4)}`
+    if (cost < 1) return `$${cost.toFixed(3)}`
+    return `$${cost.toFixed(2)}`
+  })
+  const sessionTokens = createMemo(() => {
+    const msgs = sync.data.message[props.sessionID] ?? []
+    let input = 0
+    let output = 0
+    for (const msg of msgs) {
+      if (msg.role === "assistant") {
+        const a = msg as AssistantMessage
+        input += a.tokens?.input ?? 0
+        output += a.tokens?.output ?? 0
+      }
+    }
+    return { input, output, total: input + output }
+  })
+  const sessionTokensLabel = createMemo(() => {
+    const t = sessionTokens()
+    if (t.total === 0) return ""
+    const fmt = (n: number) => {
+      if (n < 1000) return n.toString()
+      if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`
+      return `${(n / 1_000_000).toFixed(2)}M`
+    }
+    return `${fmt(t.input)} in / ${fmt(t.output)} out`
+  })
   const directoryLabel = createMemo(() => {
     const path = sync.data.path?.directory
     if (!path) return ""
@@ -157,6 +197,14 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                       Context: {ctx().percent}% of {contextLimitLabel()}
                     </text>
                   )}
+                </Show>
+                <Show when={sessionCostLabel()}>
+                  <text fg={theme.textMuted}>
+                    Cost: {sessionCostLabel()}
+                    <Show when={sessionTokensLabel()}>
+                      {" "}({sessionTokensLabel()})
+                    </Show>
+                  </text>
                 </Show>
                 <text fg={theme.text}>{modelInfo().provider}</text>
                 <text fg={theme.text}>{modelInfo().model}</text>

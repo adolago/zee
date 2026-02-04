@@ -14,6 +14,9 @@ import { createSimpleContext } from "./helper"
 export type KeybindsConfig = SDKKeybindsConfig & {
   model_fallback_toggle?: string
   model_provider_list?: string
+  model_favorite_toggle?: string
+  model_cycle_favorite?: string
+  model_cycle_favorite_reverse?: string
   input_dictation_toggle?: string
   session_delegate?: string
   session_delete?: string

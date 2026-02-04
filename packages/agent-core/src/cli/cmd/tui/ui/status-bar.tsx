@@ -7,6 +7,7 @@ import { useRoute } from "../context/route"
 import { useDirectory } from "../context/directory"
 import { useConnected } from "../component/dialog-model"
 import { StatusBar as StatusBarStyle } from "../../../style"
+import type { AssistantMessage } from "@agent-core/sdk/v2"
 
 export function StatusBar() {
   const { theme } = useTheme()
@@ -26,6 +27,21 @@ export function StatusBar() {
   const permissions = createMemo(() => {
     if (route.data.type !== "session") return []
     return sync.data.permission[route.data.sessionID] ?? []
+  })
+
+  const sessionCostLabel = createMemo(() => {
+    if (route.data.type !== "session") return ""
+    const msgs = sync.data.message[route.data.sessionID] ?? []
+    let total = 0
+    for (const msg of msgs) {
+      if (msg.role === "assistant") {
+        total += (msg as AssistantMessage).cost ?? 0
+      }
+    }
+    if (total === 0) return ""
+    if (total < 0.01) return `$${total.toFixed(4)}`
+    if (total < 1) return `$${total.toFixed(3)}`
+    return `$${total.toFixed(2)}`
   })
 
   const streamHealth = createMemo(() => {
@@ -81,6 +97,10 @@ export function StatusBar() {
               {local.mode.isHold() ? "◼ HOLD" : "◻ RELEASE"}
             </text>
             <text fg={theme.border}>{StatusBarStyle.separator}</text>
+            <Show when={sessionCostLabel()}>
+              <text fg={theme.textMuted}>{sessionCostLabel()}</text>
+              <text fg={theme.border}>{StatusBarStyle.separator}</text>
+            </Show>
             <Show when={permissions().length > 0}>
               <text fg={theme.warning}>
                 ⚠{permissions().length}

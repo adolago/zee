@@ -316,6 +316,44 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         favorite() {
           return modelStore.favorite
         },
+        isFavorite(model?: { providerID: string; modelID: string }) {
+          if (!model) return false
+          return modelStore.favorite.some(
+            (f) => f.providerID === model.providerID && f.modelID === model.modelID,
+          )
+        },
+        toggleFavorite(model?: { providerID: string; modelID: string }) {
+          if (!model) return
+          const idx = modelStore.favorite.findIndex(
+            (f) => f.providerID === model.providerID && f.modelID === model.modelID,
+          )
+          if (idx >= 0) {
+            setModelStore("favorite", (arr) => arr.filter((_, i) => i !== idx))
+          } else {
+            setModelStore("favorite", (arr) => [...arr, { providerID: model.providerID, modelID: model.modelID }])
+          }
+          save()
+        },
+        cycleFavorite(direction: 1 | -1) {
+          const favorites = modelStore.favorite.filter(isModelValid)
+          if (favorites.length === 0) return false
+          const current = currentModel()
+          if (!current) {
+            const target = favorites[0]
+            if (target) setModelStore("sessionModel", agent.current().name, target)
+            return true
+          }
+          const idx = favorites.findIndex(
+            (f) => f.providerID === current.providerID && f.modelID === current.modelID,
+          )
+          let next = idx + direction
+          if (next < 0) next = favorites.length - 1
+          if (next >= favorites.length) next = 0
+          const target = favorites[next]
+          if (target) setModelStore("sessionModel", agent.current().name, target)
+          save()
+          return true
+        },
         // Called when session changes - clears session-scoped model selection and fallback toggle
         setSession(sessionID: string | null) {
           if (modelStore.sessionID !== sessionID) {
