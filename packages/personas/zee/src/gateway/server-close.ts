@@ -12,6 +12,7 @@ export function createGatewayCloseHandler(params: {
   tailscaleCleanup: (() => Promise<void>) | null;
   stopChannel: (name: ChannelId, accountId?: string) => Promise<void>;
   pluginServices: PluginServicesHandle | null;
+  canvasHost: { close: () => Promise<void> } | null;
   cron: { stop: () => void };
   heartbeatRunner: HeartbeatRunner;
   nodePresenceTimers: Map<string, ReturnType<typeof setInterval>>;
@@ -102,6 +103,9 @@ export function createGatewayCloseHandler(params: {
     await params.configReloader.stop().catch(() => {});
     if (params.browserControl) {
       await params.browserControl.stop().catch(() => {});
+    }
+    if (params.canvasHost) {
+      await params.canvasHost.close().catch(() => {});
     }
     await new Promise<void>((resolve) => params.wss.close(() => resolve()));
     const servers =

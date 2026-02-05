@@ -320,6 +320,15 @@ export const ZeeSchema = z
       })
       .strict()
       .optional(),
+    canvasHost: z
+      .object({
+        enabled: z.boolean().optional(),
+        root: z.string().optional(),
+        port: z.number().int().min(1).max(65535).optional(),
+        liveReload: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     gateway: z
       .object({
         port: z.number().int().positive().optional(),

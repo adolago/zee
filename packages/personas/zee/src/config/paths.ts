@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ZeeConfig } from "./types.js";
+import { deriveDefaultCanvasHostPort } from "./port-defaults.js";
 
 /**
  * Nix mode detection: When ZEE_NIX_MODE=1, the gateway is running under Nix.
@@ -144,6 +145,7 @@ export function resolveDefaultConfigCandidates(
 }
 
 export const DEFAULT_GATEWAY_PORT = 18789;
+export const DEFAULT_CANVAS_HOST_PORT = 18793;
 
 /**
  * Gateway lock directory (ephemeral).
@@ -196,4 +198,22 @@ export function resolveGatewayPort(
     if (configPort > 0) return configPort;
   }
   return DEFAULT_GATEWAY_PORT;
+}
+
+export function resolveCanvasHostPort(
+  cfg?: ZeeConfig,
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  const envRaw = env.ZEE_CANVAS_HOST_PORT?.trim();
+  if (envRaw) {
+    const parsed = Number.parseInt(envRaw, 10);
+    if (Number.isFinite(parsed) && parsed > 0 && parsed <= 65535) return parsed;
+  }
+  const configPort = cfg?.canvasHost?.port;
+  if (typeof configPort === "number" && Number.isFinite(configPort)) {
+    if (configPort > 0 && configPort <= 65535) return configPort;
+  }
+  const gatewayPort = resolveGatewayPort(cfg, env);
+  const derived = deriveDefaultCanvasHostPort(gatewayPort);
+  return derived > 0 ? derived : DEFAULT_CANVAS_HOST_PORT;
 }

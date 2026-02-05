@@ -53,6 +53,7 @@ const GROUP_LABELS: Record<string, string> = {
   diagnostics: "Diagnostics",
   logging: "Logging",
   gateway: "Gateway",
+  canvasHost: "Canvas Host",
   nodeHost: "Node Host",
   agents: "Agents",
   tools: "Tools",
@@ -82,6 +83,7 @@ const GROUP_ORDER: Record<string, number> = {
   update: 25,
   diagnostics: 27,
   gateway: 30,
+  canvasHost: 32,
   nodeHost: 35,
   agents: 40,
   tools: 50,
@@ -155,6 +157,11 @@ const FIELD_LABELS: Record<string, string> = {
   "gateway.daemonBridge.createSession": "Daemon Bridge Auto-Create Sessions",
   "gateway.auth.token": "Gateway Token",
   "gateway.auth.password": "Gateway Password",
+  canvasHost: "Canvas Host",
+  "canvasHost.enabled": "Canvas Host Enabled",
+  "canvasHost.root": "Canvas Root Directory",
+  "canvasHost.port": "Canvas Host Port",
+  "canvasHost.liveReload": "Canvas Live Reload",
   "tools.media.image.enabled": "Enable Image Understanding",
   "tools.media.image.maxBytes": "Image Understanding Max Bytes",
   "tools.media.image.maxChars": "Image Understanding Max Chars",
@@ -381,6 +388,12 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.daemonBridge.timeoutMs": "HTTP timeout in milliseconds for daemon requests.",
   "gateway.daemonBridge.createSession":
     "Auto-create new daemon sessions when no mapping exists (default: true).",
+  "canvasHost.enabled": "Enable the Canvas file server used by nodes for Canvas/A2UI (default: true).",
+  "canvasHost.root": "Directory of HTML/CSS/JS files served at `/__zee__/canvas/` (default: ~/zee/canvas).",
+  "canvasHost.port":
+    "Port for the Canvas host HTTP server (default: gateway port + 4; env override: ZEE_CANVAS_HOST_PORT).",
+  "canvasHost.liveReload":
+    "When true (default), watches the canvas directory and triggers browser reloads over `/__zee__/ws`.",
   "agents.list[].identity.avatar":
     "Avatar image path (relative to the agent workspace only) or a remote URL/data URL.",
   "discovery.mdns.mode":

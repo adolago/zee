@@ -130,6 +130,7 @@ export function attachGatewayWsMessageHandler(params: {
   requestHost?: string;
   requestOrigin?: string;
   requestUserAgent?: string;
+  canvasHostUrl?: string;
   connectNonce: string;
   resolvedAuth: ResolvedGatewayAuth;
   gatewayMethods: string[];
@@ -159,6 +160,7 @@ export function attachGatewayWsMessageHandler(params: {
     requestHost,
     requestOrigin,
     requestUserAgent,
+    canvasHostUrl,
     connectNonce,
     resolvedAuth,
     gatewayMethods,
@@ -182,6 +184,8 @@ export function attachGatewayWsMessageHandler(params: {
   const configSnapshot = loadConfig();
   const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
   const clientIp = resolveGatewayClientIp({ remoteAddr, forwardedFor, realIp, trustedProxies });
+  const canvasHostUrlNormalized =
+    typeof canvasHostUrl === "string" && canvasHostUrl.trim() ? canvasHostUrl.trim() : undefined;
 
   // Idempotency cache: maps idempotency keys to cached responses with TTL.
   const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -788,6 +792,7 @@ export function attachGatewayWsMessageHandler(params: {
           },
           features: { methods: gatewayMethods, events },
           snapshot,
+          canvasHostUrl: canvasHostUrlNormalized,
           auth: deviceToken
             ? {
                 deviceToken: deviceToken.token,

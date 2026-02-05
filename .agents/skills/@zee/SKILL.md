@@ -24,7 +24,28 @@ zee handles the cognitive load of life administration:
 ## References
 
 - `tools-reference.md` - Detailed tool documentation (browser, PTY, nodes, cron)
+- `browser/SKILL.md` - Browser automation skill (zee-exclusive, Playwright + CDP)
 - `examples.md` - Usage examples and workflows
+
+## Zee-Exclusive Capabilities
+
+Zee is the **sole browser operator** for all personas. Stanley and Johny delegate browser tasks to Zee.
+
+### Why Browser is Zee-Only
+
+1. **Security** - Credentials stored in zee's secure memory only
+2. **State management** - Browser profiles are persona-specific (port 18800)
+3. **Consistency** - Single point of browser automation avoids conflicts
+4. **External world** - Zee handles all external interactions
+
+### Deferred Tools
+
+MCP browser tools must be loaded before use:
+```
+ToolSearch: "browser playwright"
+```
+
+See `tools-reference.md` for details on deferred tool loading.
 
 ## Quick Start
 
@@ -301,12 +322,23 @@ zee operates across:
 
 ## Delegation
 
+### Zee Delegates To
+
 | Need | Delegate To |
 |------|-------------|
 | Market analysis | @stanley |
 | Learning/study | @johny |
 | Financial question | @stanley |
 | Code implementation | @johny |
+
+### Zee Receives From
+
+| From | Task Type |
+|------|-----------|
+| @stanley | Browser automation, web research, portal access |
+| @johny | Browser automation, TUWEL login, web content fetch |
+
+Zee is the sole browser operator. When Stanley or Johny need web interactions, they delegate to Zee.
 
 ## Integration Points
 

@@ -121,6 +121,24 @@ npx tsx scripts/johny-daemon.ts status
 | Financial data | @stanley | "Get AAPL fundamentals" |
 | Chart/UI analysis | Multimodal | Visual understanding |
 | Frontend work | Frontend Engineer | UI/UX expertise |
+| **Browser automation** | @zee | Web research, portal login, content fetch |
+| **Web interactions** | @zee | TUWEL, course portals, online resources |
+
+### Browser Tasks
+
+Johny does **not** have browser automation capabilities. For any task requiring:
+- Logging into portals (TUWEL, university systems)
+- Fetching content from authenticated pages
+- Web scraping for learning resources
+- Interactive form filling
+- Screenshot capture of web content
+
+Delegate to @zee:
+```
+zee:delegate({ task: "browser", description: "Log into TUWEL and fetch exam schedule" })
+```
+
+Zee handles all external web interactions. Provide credentials securely and Zee will coordinate the 2FA approval with the user.
 
 ## Johny's Discipline Rules
 

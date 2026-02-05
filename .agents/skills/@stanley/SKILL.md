@@ -199,6 +199,24 @@ skills will use that interpreter automatically.
 | Learn concept | @johny | "Explain options Greeks" |
 | Codebase understanding | @johny | Oracle protocol |
 | Expenses/reimbursements | @zee | Splitwise |
+| **Browser automation** | @zee | Web scraping, SSO login, form filling |
+| **Web research** | @zee | Fetch pages, screenshots, interactive sites |
+
+### Browser Tasks
+
+Stanley does **not** have browser automation capabilities. For any task requiring:
+- Web scraping or data extraction
+- SSO/OAuth login flows
+- Interactive form filling
+- Screenshot capture
+- JavaScript execution on pages
+
+Delegate to @zee:
+```
+zee:delegate({ task: "browser", description: "Fetch earnings calendar from finviz.com" })
+```
+
+Zee handles all external web interactions for security and consistency.
 
 ## Stanley's Investment Rules
 

@@ -2,6 +2,47 @@
 
 Detailed documentation for Zee's tools and capabilities.
 
+## Deferred Tools (MCP)
+
+Some tools from MCP servers are **deferred** - they are not loaded until explicitly requested. Before using them, you must load them with `ToolSearch`.
+
+### Browser Automation (claude-flow MCP)
+
+```
+ToolSearch: "browser playwright"
+```
+
+Loads Playwright-based browser tools:
+- `mcp__claude-flow__browser_open` - Navigate to URL
+- `mcp__claude-flow__browser_click` - Click elements by ref or selector
+- `mcp__claude-flow__browser_fill` - Fill input fields
+- `mcp__claude-flow__browser_type` - Type text character by character
+- `mcp__claude-flow__browser_press` - Press keyboard keys
+- `mcp__claude-flow__browser_screenshot` - Capture screenshots
+- `mcp__claude-flow__browser_snapshot` - Get accessibility tree
+- `mcp__claude-flow__browser_wait` - Wait for conditions
+- `mcp__claude-flow__browser_eval` - Execute JavaScript
+
+### Why Deferred?
+
+MCP tools are loaded on-demand to:
+1. Reduce startup time
+2. Avoid loading unused tools
+3. Support dynamic tool discovery
+
+### Common Pattern
+
+```typescript
+// 1. Load the tools
+ToolSearch({ query: "browser" })
+
+// 2. Now use them
+mcp__claude-flow__browser_open({ url: "https://example.com" })
+mcp__claude-flow__browser_fill({ target: "#email", value: "user@example.com" })
+```
+
+---
+
 ## Domain Tools Summary
 
 | Tool | Purpose |

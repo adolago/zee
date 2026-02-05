@@ -2,6 +2,7 @@ import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent
 import { initSubagentRegistry } from "../agents/subagent-registry.js";
 import { registerSkillsChangeListener } from "../agents/skills/refresh.js";
 import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js";
+import { startCanvasHost, type CanvasHostServer } from "../canvas-host/server.js";
 import { createDefaultDeps } from "../cli/deps.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import {
@@ -10,6 +11,7 @@ import {
   loadConfig,
   migrateLegacyConfig,
   readConfigFileSnapshot,
+  resolveCanvasHostPort,
   writeConfigFile,
 } from "../config/config.js";
 import { isDiagnosticsEnabled } from "../infra/diagnostic-events.js";
@@ -389,11 +391,45 @@ export async function startGatewayServer(
     forwarder: execApprovalForwarder,
   });
 
+  const canvasHostCfg = cfgAtStart.canvasHost ?? {};
+  const canvasHostEnabledByConfig = canvasHostCfg.enabled !== false;
+  const canvasHostRuntime: RuntimeEnv = {
+    log: (...args) => log.child("canvasHost").info(args.map((arg) => String(arg)).join(" ")),
+    error: (...args) => log.child("canvasHost").error(args.map((arg) => String(arg)).join(" ")),
+    exit: (code) => {
+      process.exit(code);
+      throw new Error("unreachable");
+    },
+  };
+  let canvasHost: CanvasHostServer | null = null;
+  let canvasHostEnabled = false;
+  let canvasHostServerPort: number | undefined;
+  if (canvasHostEnabledByConfig) {
+    try {
+      canvasHost = await startCanvasHost({
+        runtime: canvasHostRuntime,
+        rootDir: canvasHostCfg.root,
+        port: resolveCanvasHostPort(cfgAtStart),
+        listenHost: bindHost,
+        liveReload: canvasHostCfg.liveReload,
+      });
+      if (canvasHost.port > 0) {
+        canvasHostEnabled = true;
+        canvasHostServerPort = canvasHost.port;
+      }
+    } catch (err) {
+      log.warn(`canvas host failed to start: ${String(err)}`);
+      canvasHost = null;
+    }
+  }
+
   attachGatewayWsHandlers({
     wss,
     clients,
     port,
     gatewayHost: bindHost ?? undefined,
+    canvasHostEnabled,
+    canvasHostServerPort,
     resolvedAuth,
     gatewayMethods,
     events: GATEWAY_EVENTS,
@@ -516,6 +552,7 @@ export async function startGatewayServer(
     tailscaleCleanup,
     stopChannel,
     pluginServices,
+    canvasHost,
     cron,
     heartbeatRunner,
     nodePresenceTimers,
