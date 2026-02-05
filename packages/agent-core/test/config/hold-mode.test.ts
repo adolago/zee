@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach } from "bun:test"
 import { HoldMode } from "../../src/config/hold-mode"
 import { Instance } from "../../src/project/instance"
+import { resolveConfigDir } from "../../src/global/dirs"
 import { tmpdir } from "../fixture/fixture"
 import fs from "fs/promises"
 import path from "path"
@@ -204,31 +205,34 @@ async function withTempConfig(
   await using projectDir = await tmpdir({ git: true })
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "hold-mode-test-"))
-  const configPath = path.join(tempDir, "hold-mode.yaml")
-
-  // Write config as YAML
-  const yamlContent = Object.entries(config)
-    .map(([key, value]) => {
-      if (Array.isArray(value)) {
-        if (value.length === 0) return `${key}: []`
-        return `${key}:\n${value.map(v => `  - "${v}"`).join("\n")}`
-      }
-      if (typeof value === "object" && value !== null) {
-        const entries = Object.entries(value)
-        if (entries.length === 0) return `${key}: {}`
-        return `${key}:\n${entries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`
-      }
-      return `${key}: ${value}`
-    })
-    .join("\n")
-
-  await fs.writeFile(configPath, yamlContent)
 
   const originalXdgConfig = process.env.XDG_CONFIG_HOME
   process.env.XDG_CONFIG_HOME = tempDir
   HoldMode.invalidateCache()
 
   try {
+    const configDir = resolveConfigDir()
+    await fs.mkdir(configDir, { recursive: true })
+    const configPath = path.join(configDir, "hold-mode.yaml")
+
+    // Write config as YAML
+    const yamlContent = Object.entries(config)
+      .map(([key, value]) => {
+        if (Array.isArray(value)) {
+          if (value.length === 0) return `${key}: []`
+          return `${key}:\n${value.map((v) => `  - "${v}"`).join("\n")}`
+        }
+        if (typeof value === "object" && value !== null) {
+          const entries = Object.entries(value)
+          if (entries.length === 0) return `${key}: {}`
+          return `${key}:\n${entries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`
+        }
+        return `${key}: ${value}`
+      })
+      .join("\n")
+
+    await fs.writeFile(configPath, yamlContent)
+
     await Instance.provide({
       directory: projectDir.path,
       fn: async () => {

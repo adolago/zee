@@ -9,6 +9,18 @@ import type { CommandOption } from "../../../src/cli/cmd/tui/component/dialog-co
 
 mock.module("@opentui/solid", () => ({
   useKeyboard: () => {},
+  useRenderer: () => ({
+    root: { getChildren: () => [] },
+    currentFocusedRenderable: null,
+    getSelection: () => null,
+    clearSelection: () => {},
+  }),
+  useTerminalDimensions: () => () => ({ width: 120, height: 40 }),
+  Portal: () => null,
+}))
+
+mock.module("@opentui/core", () => ({
+  TextAttributes: class {},
 }))
 
 mock.module("@tui/ui/dialog", () => ({
@@ -28,6 +40,15 @@ mock.module("@tui/context/keybind", () => ({
 
 mock.module("@tui/context/vim", () => ({
   useVim: () => ({ enabled: false, isInsert: false }),
+}))
+
+mock.module("@tui/context/theme", () => ({
+  useTheme: () => ({
+    theme: {
+      backgroundElement: { r: 40, g: 40, b: 40, a: 255 },
+      primary: { r: 0, g: 120, b: 255, a: 255 },
+    },
+  }),
 }))
 
 mock.module("@tui/ui/dialog-select", () => ({
@@ -57,7 +78,7 @@ test("createCommandDialog filters undefined options from registrations", async (
   const options = setup.command.options
   expect(options).toHaveLength(1)
   expect(options[0].value).toBe("hello")
-  expect(options[0].footer).toBe("input_dictation_toggle")
+  expect(options[0].keybind).toBe("input_dictation_toggle")
 
   setup.dispose()
 })

@@ -292,21 +292,34 @@ export function setupCommonMocks() {
   const os = require("os")
   const path = require("path")
   const app = "agent-core"
-  const xdgData = () => process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share")
-  const xdgCache = () => process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache")
-  const xdgConfig = () => process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config")
-  const xdgState = () => process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state")
+  const home = () => process.env.AGENT_CORE_TEST_HOME || process.env.OPENCODE_TEST_HOME || os.homedir()
+  const xdgData = () => process.env.XDG_DATA_HOME || path.join(home(), ".local", "share")
+  const xdgCache = () => process.env.XDG_CACHE_HOME || path.join(home(), ".cache")
+  const xdgConfig = () => process.env.XDG_CONFIG_HOME || path.join(home(), ".config")
+  const xdgState = () => process.env.XDG_STATE_HOME || path.join(home(), ".local", "state")
+  const stateOverride = () => (process.env.AGENT_CORE_STATE_DIR || process.env.OPENCODE_STATE_DIR)?.trim()
+  const configOverride = () => (process.env.AGENT_CORE_CONFIG_DIR || process.env.OPENCODE_CONFIG_DIR)?.trim()
+  const workspaceOverride = () => (process.env.AGENT_CORE_WORKSPACE_DIR || process.env.OPENCODE_WORKSPACE_DIR)?.trim()
   mock.module("@/global", () => ({
     Global: {
       Path: {
-        get home() { return process.env.AGENT_CORE_TEST_HOME || os.homedir() },
+        get home() { return home() },
         get source() { return process.cwd() },
-        get data() { return path.join(xdgData(), app) },
-        get bin() { return path.join(xdgData(), app, "bin") },
-        get log() { return path.join(xdgData(), app, "log") },
-        get cache() { return path.join(xdgCache(), app) },
-        get config() { return path.join(xdgConfig(), app) },
-        get state() { return path.join(xdgState(), app) },
+        get data() { return stateOverride() ? path.join(stateOverride(), "data") : path.join(xdgData(), app) },
+        get bin() { return path.join(this.data, "bin") },
+        get log() { return path.join(this.data, "log") },
+        get cache() { return stateOverride() ? path.join(stateOverride(), "cache") : path.join(xdgCache(), app) },
+        get config() {
+          if (configOverride()) return configOverride()
+          if (stateOverride()) return path.join(stateOverride(), "config")
+          return path.join(xdgConfig(), app)
+        },
+        get state() { return stateOverride() ? stateOverride() : path.join(xdgState(), app) },
+        get workspace() {
+          if (workspaceOverride()) return workspaceOverride()
+          if (stateOverride()) return path.join(stateOverride(), "workspace")
+          return path.join(this.data, "worktree")
+        },
         get tmp() { return path.join(os.tmpdir(), app) },
       },
     },

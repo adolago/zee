@@ -1,11 +1,11 @@
 import z from "zod"
 import path from "path"
-import os from "os"
 import fs from "fs/promises"
 import { existsSync } from "fs"
 import { Log } from "../util/log"
 import { Instance } from "../project/instance"
 import { parse as parseYaml } from "yaml"
+import { resolveConfigDir } from "../global/dirs"
 
 const log = Log.create({ service: "hold-mode" })
 
@@ -53,7 +53,7 @@ export namespace HoldMode {
   const checkCache = new Map<string, CheckCacheEntry>()
 
   function configDir(): string {
-    return process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config", "agent-core")
+    return resolveConfigDir()
   }
 
   function userConfigPath(): string {
