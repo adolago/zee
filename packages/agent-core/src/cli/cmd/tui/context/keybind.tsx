@@ -90,9 +90,13 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
       // - No focus (original behavior for non-textarea contexts)
       // - OR vim mode is enabled AND we're in vim normal mode
       // This allows Space to work as leader key in vim normal mode even when textarea is focused
-      const hasFocus = renderer.currentFocusedRenderable !== null
-      const isInputElement = renderer.currentFocusedRenderable instanceof InputRenderable
-      const canActivateLeader = !hasFocus || (vim.enabled && vim.isNormal && !isInputElement)
+      const focused = renderer.currentFocusedRenderable
+      const hasFocus = focused !== null
+      const isInputElement = focused instanceof InputRenderable
+      // Allow leader activation in empty input fields (e.g., session search) so leader keybinds
+      // remain usable even when dialogs auto-focus their filter input.
+      const inputIsEmpty = isInputElement && focused.value.length === 0
+      const canActivateLeader = !hasFocus || (vim.enabled && vim.isNormal && !isInputElement) || inputIsEmpty
       if (!store.leader && canActivateLeader && result.match("leader", evt)) {
         // Stop propagation to prevent the textarea from receiving this key
         // This is important because:

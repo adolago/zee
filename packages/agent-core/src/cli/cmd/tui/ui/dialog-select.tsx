@@ -193,7 +193,10 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         const s = selected()
         if (s) {
           evt.preventDefault()
+          evt.stopPropagation()
           item.onTrigger(s)
+          if (keybind.leader) keybind.dismiss()
+          return
         }
       }
     }
