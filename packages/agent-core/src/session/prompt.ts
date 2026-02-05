@@ -1243,7 +1243,9 @@ export namespace SessionPrompt {
       const execute = item.execute
       if (!execute) continue
 
-      const transformed = ProviderTransform.schema(input.model, asSchema(item.inputSchema).jsonSchema)
+      const inputSchema = asSchema(item.inputSchema)
+      const schemaJson = await Promise.resolve(inputSchema.jsonSchema)
+      const transformed = ProviderTransform.schema(input.model, schemaJson)
       item.inputSchema = jsonSchema(transformed)
       // Wrap execute to add plugin hooks and format output
       item.execute = async (args, opts) => {
@@ -2281,18 +2283,19 @@ export namespace SessionPrompt {
 
     const agent = await Agent.get("title")
     if (!agent) return
+    const titleModel = await iife(async () => {
+      if (agent.model) return await Provider.getModel(agent.model.providerID, agent.model.modelID)
+      return (
+        (await Provider.getSmallModel(input.providerID)) ?? (await Provider.getModel(input.providerID, input.modelID))
+      )
+    })
     const result = await LLM.stream({
       agent,
       user: firstRealUser.info as MessageV2.User,
       system: [],
       small: true,
       tools: {},
-      model: await iife(async () => {
-        if (agent.model) return await Provider.getModel(agent.model.providerID, agent.model.modelID)
-        return (
-          (await Provider.getSmallModel(input.providerID)) ?? (await Provider.getModel(input.providerID, input.modelID))
-        )
-      }),
+      model: titleModel,
       abort: new AbortController().signal,
       sessionID: input.session.id,
       retries: 2,
@@ -2303,7 +2306,7 @@ export namespace SessionPrompt {
         },
         ...(hasOnlySubtaskParts
           ? [{ role: "user" as const, content: subtaskParts.map((p) => p.prompt).join("\n") }]
-          : await MessageV2.toModelMessage(contextMessages, model)),
+          : await MessageV2.toModelMessage(contextMessages, titleModel)),
       ],
     })
     const text = await Promise.resolve(result.text).catch((err: unknown) => log.error("failed to generate title", { error: err }))

@@ -144,7 +144,7 @@ export const WebSearchTool = Tool.define("websearch", async () => {
           metadata: {},
         }
       } catch (error) {
-        clearTimeout(timeoutId)
+        clearTimeout()
 
         if (error instanceof Error && error.name === "AbortError") {
           throw new Error("Search request timed out")

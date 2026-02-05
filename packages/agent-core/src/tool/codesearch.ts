@@ -120,7 +120,7 @@ export const CodeSearchTool = Tool.define("codesearch", {
         metadata: {},
       }
     } catch (error) {
-      clearTimeout(timeoutId)
+      clearTimeout()
 
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Code search request timed out")
