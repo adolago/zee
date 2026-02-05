@@ -82,9 +82,9 @@ export function Prompt(props: PromptProps) {
   const toast = useToast()
   const dimensions = useTerminalDimensions()
   const layoutWidth = createMemo(() => props.layoutWidth ?? dimensions().width)
-  // Over-provision horizontal fills to avoid gaps when container width is slightly
-  // different from our calculated `layoutWidth` (padding/border can vary by route).
-  const fill = createMemo(() => "─".repeat(Math.max(0, dimensions().width)))
+  // Use layout width for horizontal fills so embedded right-side text aligns
+  // with the actual prompt width.
+  const fill = createMemo(() => "─".repeat(Math.max(0, layoutWidth())))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {

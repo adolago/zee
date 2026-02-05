@@ -76,9 +76,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
     () => parentSession() !== null || childSessions().length > 0 || siblingsSessions().length > 0,
   )
   const modelInfo = createMemo(() => {
-    const parsed = local.model.parsed()
+    const { provider, model } = local.model.parsed()
     const variant = local.model.variant.current()
-    return { provider: parsed.provider, model: parsed.model, variant }
+    return { provider, model, variant }
   })
   const contextUsage = createMemo(() => {
     const model = local.model.current()
@@ -120,46 +120,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
     }
     return { files: diffs.length, additions, deletions, modified }
   })
-  const sessionCost = createMemo(() => {
-    const msgs = sync.data.message[props.sessionID] ?? []
-    let total = 0
-    for (const msg of msgs) {
-      if (msg.role === "assistant") {
-        total += (msg as AssistantMessage).cost ?? 0
-      }
-    }
-    return total
-  })
-  const sessionCostLabel = createMemo(() => {
-    const cost = sessionCost()
-    if (cost === 0) return ""
-    if (cost < 0.01) return `$${cost.toFixed(4)}`
-    if (cost < 1) return `$${cost.toFixed(3)}`
-    return `$${cost.toFixed(2)}`
-  })
-  const sessionTokens = createMemo(() => {
-    const msgs = sync.data.message[props.sessionID] ?? []
-    let input = 0
-    let output = 0
-    for (const msg of msgs) {
-      if (msg.role === "assistant") {
-        const a = msg as AssistantMessage
-        input += a.tokens?.input ?? 0
-        output += a.tokens?.output ?? 0
-      }
-    }
-    return { input, output, total: input + output }
-  })
-  const sessionTokensLabel = createMemo(() => {
-    const t = sessionTokens()
-    if (t.total === 0) return ""
-    const fmt = (n: number) => {
-      if (n < 1000) return n.toString()
-      if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`
-      return `${(n / 1_000_000).toFixed(2)}M`
-    }
-    return `${fmt(t.input)} in / ${fmt(t.output)} out`
-  })
+
   const directoryLabel = createMemo(() => {
     const path = sync.data.path?.directory
     if (!path) return ""
@@ -194,18 +155,11 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                     <text
                       fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
                     >
-                      Context: {ctx().percent}% of {contextLimitLabel()}
+                        {ctx().percent}% of {contextLimitLabel()}
                     </text>
                   )}
                 </Show>
-                <Show when={sessionCostLabel()}>
-                  <text fg={theme.textMuted}>
-                    Cost: {sessionCostLabel()}
-                    <Show when={sessionTokensLabel()}>
-                      {" "}({sessionTokensLabel()})
-                    </Show>
-                  </text>
-                </Show>
+
                 <text fg={theme.text}>{modelInfo().provider}</text>
                 <text fg={theme.text}>{modelInfo().model}</text>
                 <Show when={modelInfo().variant}>
@@ -213,18 +167,30 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                 </Show>
                 <Show when={directoryLabel() || branchLabel()}>
                   <text fg={theme.text}>
-                    Path: <Show when={directoryLabel()}>{directoryLabel()}</Show>
+                    <Show when={directoryLabel()}>{directoryLabel()}</Show>
                     <Show when={branchLabel()}>{` (${branchLabel()})`}</Show>
                   </text>
                 </Show>
                 <Show when={diffStats()}>
                   {(stats) => (
-                    <text fg={theme.text}>
-                      File Changes: {stats().files} file{stats().files !== 1 ? "s" : ""}
-                      {stats().modified > 0 ? `, ${stats().modified} modified` : ""}
-                      {stats().additions > 0 ? `, +${stats().additions}` : ""}
-                      {stats().deletions > 0 ? `, -${stats().deletions}` : ""}
-                    </text>
+                    <box flexDirection="row">
+                      <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>
+                      <Show when={stats().additions > 0}>
+                        <text fg={theme.success}>+{stats().additions}</text>
+                      </Show>
+                      <Show when={stats().additions > 0 && stats().modified > 0}>
+                        <text> </text>
+                      </Show>
+                      <Show when={stats().modified > 0}>
+                        <text fg={theme.warning}>~{stats().modified}</text>
+                      </Show>
+                      <Show when={(stats().additions > 0 || stats().modified > 0) && stats().deletions > 0}>
+                        <text> </text>
+                      </Show>
+                      <Show when={stats().deletions > 0}>
+                        <text fg={theme.error}>-{stats().deletions}</text>
+                      </Show>
+                    </box>
                   )}
                 </Show>
               </box>
