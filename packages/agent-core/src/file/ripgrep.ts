@@ -245,6 +245,7 @@ export namespace Ripgrep {
     try {
       while (true) {
         input.signal?.throwIfAborted()
+
         const { done, value } = await reader.read()
         if (done) break
 
