@@ -1055,7 +1055,7 @@ export namespace SessionPrompt {
           ...(planState.enabled ? [FIRST_TURN_PLAN_PROMPT] : []),
         ],
         messages: [
-          ...(await MessageV2.toModelMessage(sessionMessages)),
+          ...(await MessageV2.toModelMessage(sessionMessages, model)),
           ...(isLastStep
             ? [
                 {
@@ -2298,7 +2298,7 @@ export namespace SessionPrompt {
         },
         ...(hasOnlySubtaskParts
           ? [{ role: "user" as const, content: subtaskParts.map((p) => p.prompt).join("\n") }]
-          : await MessageV2.toModelMessage(contextMessages)),
+          : await MessageV2.toModelMessage(contextMessages, model)),
       ],
     })
     const text = await Promise.resolve(result.text).catch((err: unknown) => log.error("failed to generate title", { error: err }))
