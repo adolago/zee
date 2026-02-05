@@ -658,7 +658,7 @@ export default function Layout(props: ParentProps) {
       const activeDir = decode64(params.dir) ?? ""
       const result: Session[] = []
       for (const dir of dirs) {
-        const expanded = store.workspaceExpanded[dir] ?? dir === project.worktree
+        const expanded = store.workspaceExpanded[dir] ?? false
         const active = dir === activeDir
         if (!expanded && !active) continue
         const [dirStore] = globalSync.child(dir, { bootstrap: true })
@@ -1519,10 +1519,6 @@ export default function Layout(props: ParentProps) {
         if (!directory) return
         setStore("lastSession", directory, id)
         notification.session.markViewed(id)
-        const expanded = untrack(() => store.workspaceExpanded[directory])
-        if (expanded === false) {
-          setStore("workspaceExpanded", directory, true)
-        }
         requestAnimationFrame(() => scrollToSession(id, `${directory}:${id}`))
       },
       { defer: true },
@@ -1542,7 +1538,7 @@ export default function Layout(props: ParentProps) {
       const activeDir = decode64(params.dir) ?? ""
       const dirs = [project.worktree, ...(project.sandboxes ?? [])]
       for (const directory of dirs) {
-        const expanded = store.workspaceExpanded[directory] ?? directory === project.worktree
+        const expanded = store.workspaceExpanded[directory] ?? false
         const active = directory === activeDir
         if (!expanded && !active) continue
         globalSync.project.loadSessions(directory)
@@ -2037,7 +2033,7 @@ export default function Layout(props: ParentProps) {
       const name = branch ?? getFilename(props.directory)
       return workspaceName(props.directory, props.project.id, branch) ?? name
     })
-    const open = createMemo(() => store.workspaceExpanded[props.directory] ?? local())
+    const open = createMemo(() => store.workspaceExpanded[props.directory] ?? false)
     const boot = createMemo(() => open() || active())
     const booted = createMemo((prev) => prev || workspaceStore.status === "complete", false)
     const loading = createMemo(() => open() && !booted() && sessions().length === 0)
