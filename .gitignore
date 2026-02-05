@@ -36,6 +36,7 @@ logs/
 
 # Local repo state / tool configs
 .agent-core/plugin/
+.agent-core/plans/
 .claude/
 .claude-flow/
 .learnings/
