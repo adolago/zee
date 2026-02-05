@@ -775,6 +775,7 @@ export namespace Config {
       input_submit: z.string().optional().default("return").describe("Submit input"),
       input_dictation_toggle: z.string().optional().default("<leader>t").describe("Toggle dictation recording"),
       grammar_quickfix: z.string().optional().default("<leader>.").describe("Quick-fix grammar error at cursor"),
+      grammar_menu: z.string().optional().default("<leader>shift+g").describe("Open grammar check menu"),
       input_newline: z
         .string()
         .optional()
