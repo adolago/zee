@@ -38,14 +38,9 @@ Zee is the **sole browser operator** for all personas. Stanley and Johny delegat
 3. **Consistency** - Single point of browser automation avoids conflicts
 4. **External world** - Zee handles all external interactions
 
-### Deferred Tools
+### Browser Tools
 
-MCP browser tools must be loaded before use:
-```
-ToolSearch: "browser playwright"
-```
-
-See `tools-reference.md` for details on deferred tool loading.
+See `browser/SKILL.md` for the full browser automation guide with CDP tools.
 
 ## Quick Start
 

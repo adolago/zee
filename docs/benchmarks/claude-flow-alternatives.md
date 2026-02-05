@@ -383,13 +383,20 @@ This repository already has significant overlap with claude-flow through skills 
 | **Quality** | verification-quality is unique - keep separate |
 | **Browser** | Zee for CDP, claude-flow for Playwright MCP |
 
-### Action Items
+### Action Items (Implemented 2026-02-05)
 
-1. **v3 Memory Unification** - Replace claude-flow memory with AgentDB (in progress)
-2. **Dedupe hooks-automation** - Merge documentation, remove redundant skill
-3. **Consider stream-chain merge** - Add pipeline command to claude-flow
-4. **Keep SPARC** - Valuable methodology layer on top of primitives
-5. **Keep verification-quality** - Unique QA capability not in claude-flow
+1. **Removed claude-flow MCP server** from `.mcp.json`
+2. **Deprecated skills** moved to `.agents/skills/_deprecated/`:
+   - hooks-automation (wrapper around claude-flow)
+   - stream-chain (wrapper around claude-flow)
+   - v3-* skills (9 skills for claude-flow v3 development)
+   - agentdb-* skills (3 skills - redundant with Qdrant)
+   - reasoningbank-* skills (2 skills - depended on AgentDB)
+3. **Updated SPARC methodology** to work without MCP tools (v3.0.0)
+4. **Updated zee browser skill** to use native CDP only (v2.0.0)
+5. **Kept verification-quality** - unique QA capability
+6. **Kept zee's Qdrant memory** - production-grade vector database
+7. **Kept personas** - native orchestration
 
 ---
 
