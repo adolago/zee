@@ -26,6 +26,14 @@ const shouldIgnoreNullBytePathError = (error: unknown) => {
   return code === "ENOENT" && (hasNullByte(pathValue) || hasNullByte(message))
 }
 
+async function run(cmd: string[], cwd: string) {
+  const proc = Bun.spawn(cmd, { cwd, stderr: "inherit", stdout: "inherit" })
+  const code = await proc.exited
+  if (code !== 0) {
+    throw new Error(`Command failed with exit code ${code}: ${cmd.join(" ")}`)
+  }
+}
+
 async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const baseDir = process.env["AGENT_CORE_TEST_HOME"] ?? os.tmpdir()
   const rootDir = path.join(baseDir, "tmp")
@@ -33,8 +41,20 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await $`git init`.cwd(dirpath).quiet()
-    await $`git commit --allow-empty -m "root commit ${dirpath}"`.cwd(dirpath).quiet()
+    // Configure git user to prevent CI failures
+    const env = { ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.com", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.com" }
+
+    // Using Bun.spawn instead of Bun Shell to avoid ShellPromise errors in CI
+    const spawnGit = async (args: string[]) => {
+       const proc = Bun.spawn(["git", ...args], { cwd: dirpath, env, stdout: "ignore", stderr: "ignore" })
+       const code = await proc.exited
+       if (code !== 0) throw new Error(`git ${args.join(" ")} failed in ${dirpath}`)
+    }
+
+    await spawnGit(["init"])
+    await spawnGit(["config", "user.email", "test@example.com"])
+    await spawnGit(["config", "user.name", "Test User"])
+    await spawnGit(["commit", "--allow-empty", "-m", `root commit ${dirpath}`])
   }
   if (options?.config) {
     await Bun.write(
