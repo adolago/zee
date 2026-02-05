@@ -7,6 +7,7 @@ import type { Config } from "../../src/config/config"
 
 // Strip null bytes from paths (defensive fix for CI environment issues)
 function sanitizePath(p: string): string {
+  if (p.indexOf("\0") === -1) return p
   return p.replace(/\0/g, "")
 }
 
