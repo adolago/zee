@@ -1,6 +1,6 @@
 import { realpathSync } from "fs"
 import { realpath } from "fs/promises"
-import { dirname, join, relative } from "path"
+import { basename, dirname, join, relative } from "path"
 
 export namespace Filesystem {
   export const sanitizePath = (value: string) => value.replace(/\0/g, "")
@@ -25,15 +25,36 @@ export namespace Filesystem {
   export async function containsResolved(parent: string, child: string): Promise<boolean> {
     parent = sanitizePath(parent)
     child = sanitizePath(child)
+
+    // Resolve parent to its real location
+    const resolvedParent = await realpath(parent).catch(() => parent)
+
+    let resolvedChild: string
     try {
-      // Resolve both paths to their real locations (following symlinks)
-      const resolvedParent = await realpath(parent).catch(() => parent)
-      const resolvedChild = await realpath(child).catch(() => child)
-      return !relative(resolvedParent, resolvedChild).startsWith("..")
+      resolvedChild = await realpath(child)
     } catch {
-      // If realpath fails (file doesn't exist yet), fall back to lexical check
-      return contains(parent, child)
+      // Child doesn't exist, find the first existing ancestor
+      let current = dirname(child)
+      let suffix = relative(current, child)
+
+      while (current !== dirname(current)) {
+        try {
+          const resolvedCurrent = await realpath(current)
+          resolvedChild = join(resolvedCurrent, suffix)
+          break
+        } catch {
+          suffix = join(basename(current), suffix)
+          current = dirname(current)
+        }
+      }
+
+      // If we couldn't find any existing ancestor (unlikely), fallback to original path
+      if (!resolvedChild!) {
+        resolvedChild = child
+      }
     }
+
+    return !relative(resolvedParent, resolvedChild).startsWith("..")
   }
 
   /**
@@ -42,13 +63,39 @@ export namespace Filesystem {
   export function containsResolvedSync(parent: string, child: string): boolean {
     parent = sanitizePath(parent)
     child = sanitizePath(child)
+
+    let resolvedParent: string
     try {
-      const resolvedParent = realpathSync(parent)
-      const resolvedChild = realpathSync(child)
-      return !relative(resolvedParent, resolvedChild).startsWith("..")
+      resolvedParent = realpathSync(parent)
     } catch {
-      return contains(parent, child)
+      resolvedParent = parent
     }
+
+    let resolvedChild: string
+    try {
+      resolvedChild = realpathSync(child)
+    } catch {
+      // Child doesn't exist, find the first existing ancestor
+      let current = dirname(child)
+      let suffix = relative(current, child)
+
+      while (current !== dirname(current)) {
+        try {
+          const resolvedCurrent = realpathSync(current)
+          resolvedChild = join(resolvedCurrent, suffix)
+          break
+        } catch {
+          suffix = join(basename(current), suffix)
+          current = dirname(current)
+        }
+      }
+
+      if (!resolvedChild!) {
+        resolvedChild = child
+      }
+    }
+
+    return !relative(resolvedParent, resolvedChild).startsWith("..")
   }
   /**
    * On Windows, normalize a path to its canonical casing using the filesystem.

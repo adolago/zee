@@ -1,0 +1,4 @@
+## 2025-02-05 - Path Traversal via Symlink for Non-Existent Files
+**Vulnerability:** `realpath` throws an error for non-existent files, leading to fallback logic that might rely on unsafe lexical path analysis (like `contains`). If a non-existent file path traverses an existing symlink pointing outside the sandbox, the lexical check returns true (safe), but writing to the file effectively writes outside the sandbox.
+**Learning:** `Filesystem.containsResolved` must not simply fallback to lexical checks when `realpath` fails. It must recursively resolve the path by walking up the directory tree until an existing ancestor is found, resolving that ancestor, and then checking containment.
+**Prevention:** Always implement recursive path resolution for non-existent files when verifying path containment in a sandbox.

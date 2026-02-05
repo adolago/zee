@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import os from "node:os"
 import path from "node:path"
-import { mkdtemp, mkdir, rm } from "node:fs/promises"
+import { mkdtemp, mkdir, rm, symlink } from "node:fs/promises"
 import { Filesystem } from "../../src/util/filesystem"
 
 describe("util.filesystem", () => {
@@ -61,6 +61,49 @@ describe("util.filesystem", () => {
 
     const found = await Filesystem.findFirstUp("missing.txt", dir, tmp)
     expect(found).toBeUndefined()
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  test("containsResolved() rejects non-existent files in symlinked directories pointing outside", async () => {
+    const tmp = await mkdtemp(path.join(os.tmpdir(), "opencode-filesystem-"))
+    const safeDir = path.join(tmp, "safe")
+    await mkdir(safeDir, { recursive: true })
+
+    const outsideTarget = os.tmpdir()
+    const symlinkPath = path.join(safeDir, "link")
+
+    // Create symlink: safeDir/link -> os.tmpdir()
+    await symlink(outsideTarget, symlinkPath)
+
+    // Check path: safeDir/link/non_existent_file
+    // Should resolve to os.tmpdir()/non_existent_file
+    // Which is OUTSIDE safeDir.
+    const maliciousPath = path.join(symlinkPath, "non_existent_file")
+
+    const isContained = await Filesystem.containsResolved(safeDir, maliciousPath)
+    expect(isContained).toBe(false)
+
+    // Sync version
+    const isContainedSync = Filesystem.containsResolvedSync(safeDir, maliciousPath)
+    expect(isContainedSync).toBe(false)
+
+    await rm(tmp, { recursive: true, force: true })
+  })
+
+  test("containsResolved() accepts non-existent files in regular directories", async () => {
+    const tmp = await mkdtemp(path.join(os.tmpdir(), "opencode-filesystem-"))
+    const safeDir = path.join(tmp, "safe")
+    await mkdir(safeDir, { recursive: true })
+
+    const safePath = path.join(safeDir, "non_existent_file")
+
+    const isContained = await Filesystem.containsResolved(safeDir, safePath)
+    expect(isContained).toBe(true)
+
+    // Sync version
+    const isContainedSync = Filesystem.containsResolvedSync(safeDir, safePath)
+    expect(isContainedSync).toBe(true)
 
     await rm(tmp, { recursive: true, force: true })
   })
