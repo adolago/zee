@@ -453,9 +453,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           try {
             const modelRef = `${model.providerID}/${model.modelID}`
             const updated = await sdk.client.config.update({
-              agent: {
-                [agentKey]: {
-                  model: modelRef,
+              config: {
+                agent: {
+                  [agentKey]: {
+                    model: modelRef,
+                  },
                 },
               },
             })
