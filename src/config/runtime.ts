@@ -1,7 +1,7 @@
 /**
  * Lightweight runtime config loader.
  *
- * Reads agent-core.json(c) for runtime-only settings (memory, tiara)
+ * Reads agent-core.json(c) for runtime-only settings (memory)
  * without invoking the full CLI config pipeline.
  */
 
@@ -42,15 +42,6 @@ type RuntimeConfig = {
       baseUrl?: string;
     };
   };
-  tiara?: {
-    qdrant?: {
-      url?: string;
-      apiKey?: string;
-      stateCollection?: string;
-      memoryCollection?: string;
-      embeddingDimension?: number;
-    };
-  };
   zee?: {
     splitwise?: ZeeSplitwiseConfig;
     codexbar?: ZeeCodexbarConfig;
@@ -61,14 +52,6 @@ export type MemoryQdrantConfig = {
   url?: string;
   apiKey?: string;
   collection?: string;
-};
-
-export type TiaraQdrantConfig = {
-  url?: string;
-  apiKey?: string;
-  stateCollection?: string;
-  memoryCollection?: string;
-  embeddingDimension?: number;
 };
 
 export type MemoryEmbeddingConfig = {
@@ -141,14 +124,6 @@ function mergeConfigs(base: RuntimeConfig, override: RuntimeConfig): RuntimeConf
       reranker: {
         ...base.memory?.reranker,
         ...override.memory?.reranker,
-      },
-    },
-    tiara: {
-      ...base.tiara,
-      ...override.tiara,
-      qdrant: {
-        ...base.tiara?.qdrant,
-        ...override.tiara?.qdrant,
       },
     },
     zee: {
@@ -248,29 +223,6 @@ export function getMemoryRerankerConfig(): RerankerConfig {
     model: envModel?.trim() || reranker.model?.trim() || undefined,
     apiKey: envApiKey?.trim() || reranker.apiKey?.trim() || undefined,
     baseUrl: envBaseUrl?.trim() || reranker.baseUrl?.trim() || undefined,
-  };
-}
-
-export function getTiaraQdrantConfig(): TiaraQdrantConfig {
-  const config = loadRuntimeConfig();
-  const memoryQdrant = resolveMemoryQdrantConfig(config);
-  const memoryEmbedding = resolveMemoryEmbeddingConfig(config);
-  const qdrant = config.tiara?.qdrant ?? {};
-  const url = (qdrant.url ?? memoryQdrant.url)?.trim() || undefined;
-  const apiKey = (qdrant.apiKey ?? memoryQdrant.apiKey)?.trim() || undefined;
-  const stateCollection = qdrant.stateCollection?.trim() || undefined;
-  const memoryCollection = (qdrant.memoryCollection ?? memoryQdrant.collection)?.trim() || undefined;
-  const embeddingDimension =
-    typeof qdrant.embeddingDimension === "number"
-      ? qdrant.embeddingDimension
-      : memoryEmbedding.dimensions;
-
-  return {
-    url,
-    apiKey,
-    stateCollection,
-    memoryCollection,
-    embeddingDimension,
   };
 }
 

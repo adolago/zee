@@ -14,6 +14,7 @@ import { NamedError } from "@agent-core/util/error"
 import { FormatError } from "./cli/error"
 import { ServeCommand } from "./cli/cmd/serve"
 import { DebugCommand } from "./cli/cmd/debug"
+import { PathsCommand } from "./cli/cmd/paths"
 import { StatsCommand } from "./cli/cmd/stats"
 import { McpCommand } from "./cli/cmd/mcp"
 import { GithubCommand } from "./cli/cmd/github"
@@ -154,6 +155,7 @@ const cli = yargs(hideBin(process.argv))
   .command(CheckCommand)
   .command(GenerateCommand)
   .command(DebugCommand)
+  .command(PathsCommand)
   .command(AuthCommand)
   .command(AgentCommand)
   .command(UpgradeCommand)

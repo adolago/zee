@@ -16,7 +16,7 @@ import { Log } from "../util/log"
 const log = Log.create({ service: "task" })
 
 /**
- * Maps external agent types (e.g., from tiara orchestration) to personas.
+ * Maps external agent types (e.g., from orchestration) to personas.
  * Each persona spawns its own kind: zee spawns zees, stanley spawns stanleys, johny spawns johnys.
  * @exported for use in prompt.ts subtask handling
  */
@@ -38,7 +38,7 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     return trimmed
   }
 
-  // Map tiara/external agent types to personas based on the calling context
+  // Map external agent types to personas based on the calling context
   // Each persona spawns its own kind for subtasks
   const personas = ["zee", "stanley", "johny"]
 
@@ -53,7 +53,7 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
   }
 
   // Semantic mapping for when there's no caller context
-  // This maps tiara agent types to the most appropriate persona
+  // This maps external agent types to the most appropriate persona
   const semanticMap: Record<string, string> = {
     // Research/analysis → Stanley
     researcher: "stanley",
@@ -137,7 +137,7 @@ export const TaskTool = Tool.define("task", async (ctx) => {
     async execute(params: z.infer<typeof parameters>, ctx) {
       const config = await Config.get()
 
-      // Resolve the agent type - maps tiara/external types to personas
+      // Resolve the agent type - maps external types to personas
       // Each persona spawns its own kind: zee→zee, stanley→stanley, johny→johny
       const resolvedAgentType = await resolveAgentType(params.subagent_type, ctx.agent)
 

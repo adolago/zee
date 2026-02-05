@@ -1,8 +1,7 @@
 /**
  * Swarm Module
  *
- * Lightweight swarm coordination extracted from Tiara.
- * Provides Claude-Flow-level parallelism without the complexity.
+ * Lightweight swarm coordination with parallelism without the complexity.
  *
  * Features:
  * - Queen coordinator spawns N workers in parallel

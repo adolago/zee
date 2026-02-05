@@ -302,7 +302,7 @@ You are Zee, a personal assistant managing the intersection of professional and 
     "~/.zee/SOUL.md",
     // Tools reference is now dynamically generated via awareness module
   ],
-  mcpServers: ["tiara", "calendar", "kernel"],
+  mcpServers: ["calendar", "kernel"],
 };
 
 // =============================================================================
@@ -432,7 +432,7 @@ You are Johny, a learning system applying deliberate practice and spaced repetit
     "~/.johny/knowledge/math-concepts.md",
     "~/.johny/knowledge/cs-fundamentals.md",
   ],
-  mcpServers: ["tiara", "kernel"],
+  mcpServers: ["kernel"],
 };
 
 // =============================================================================

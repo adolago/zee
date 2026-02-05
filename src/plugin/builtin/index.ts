@@ -4,7 +4,6 @@
  * Exports all built-in plugins for easy registration.
  */
 
-export { ClaudeFlowPlugin } from './claude-flow';
 export { AnthropicAuthPlugin } from './anthropic-auth';
 export { CopilotAuthPlugin } from './copilot-auth';
 export { MinimaxTtsAuthPlugin } from './minimax-tts-auth';
@@ -14,7 +13,6 @@ export { MemoryPersistencePlugin } from './memory-persistence';
 export { StanleyFinancePlugin } from './domains/stanley-finance';
 export { ZeeMessagingPlugin } from './domains/zee-messaging';
 
-import { ClaudeFlowPlugin } from './claude-flow';
 import { AnthropicAuthPlugin } from './anthropic-auth';
 import { CopilotAuthPlugin } from './copilot-auth';
 import { MinimaxTtsAuthPlugin } from './minimax-tts-auth';
@@ -27,7 +25,6 @@ import type { PluginFactory } from '../plugin';
  * All built-in plugins mapped by name
  */
 export const builtinPlugins: Record<string, PluginFactory> = {
-  'tiara': ClaudeFlowPlugin,
   'anthropic-auth': AnthropicAuthPlugin,
   'copilot-auth': CopilotAuthPlugin,
   'minimax-tts-auth': MinimaxTtsAuthPlugin,
@@ -41,7 +38,6 @@ export const builtinPlugins: Record<string, PluginFactory> = {
  */
 export const defaultPlugins = [
   'memory-persistence',
-  'tiara',
   'anthropic-auth',
 ];
 

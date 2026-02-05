@@ -21,13 +21,6 @@
   "exclude": [
     "node_modules",
     "**/node_modules",
-    "packages/tiara/dist",
-    "packages/tiara/dist-cjs",
-    "packages/tiara/examples",
-    "packages/tiara/tests",
-    "packages/tiara/bin",
-    "packages/tiara/**/*.test.ts",
-    "packages/tiara/**/*.spec.ts",
     "**/*.d.ts"
   ]
 }

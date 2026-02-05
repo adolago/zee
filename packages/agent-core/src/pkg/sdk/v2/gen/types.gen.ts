@@ -933,37 +933,6 @@ export type MemoryConfig = {
 }
 
 /**
- * Tiara orchestration configuration
- */
-export type TiaraConfig = {
-  /**
-   * Qdrant configuration for tiara
-   */
-  qdrant?: {
-    /**
-     * Qdrant endpoint URL
-     */
-    url?: string
-    /**
-     * Qdrant API key
-     */
-    apiKey?: string
-    /**
-     * Collection for personas state
-     */
-    stateCollection?: string
-    /**
-     * Collection for personas memory
-     */
-    memoryCollection?: string
-    /**
-     * Embedding dimension for tiara Qdrant collections
-     */
-    embeddingDimension?: number
-  }
-}
-
-/**
  * Zee integration configuration
  */
 export type ZeeConfig = {
@@ -1189,7 +1158,6 @@ export type Config = {
         }
   }
   memory?: MemoryConfig
-  tiara?: TiaraConfig
   zee?: ZeeConfig
   formatter?:
     | false

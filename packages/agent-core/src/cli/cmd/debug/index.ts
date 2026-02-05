@@ -1,4 +1,3 @@
-import { Global } from "../../../global"
 import { bootstrap } from "../../bootstrap"
 import { cmd } from "../cmd"
 import { ConfigCommand } from "./config"
@@ -17,6 +16,7 @@ import { TasksCommand } from "./tasks"
 import { AgentCommand } from "./agent"
 import { ContextTaxCommand } from "./context-tax"
 import { SkillAuditCommand } from "./skill-audit"
+import { PathsCommand } from "../paths"
 
 export const DebugCommand = cmd({
   command: "debug",
@@ -52,16 +52,6 @@ export const DebugCommand = cmd({
       })
       .demandCommand(),
   async handler() {},
-})
-
-const PathsCommand = cmd({
-  command: "paths",
-  describe: "show global paths (data, config, cache, state)",
-  handler() {
-    for (const [key, value] of Object.entries(Global.Path)) {
-      console.log(key.padEnd(10), value)
-    }
-  },
 })
 
 const FlagsCommand = cmd({

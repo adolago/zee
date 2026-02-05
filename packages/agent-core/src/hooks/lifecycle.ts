@@ -2,7 +2,6 @@
  * Lifecycle Hooks for agent-core daemon
  *
  * Provides hook events for daemon, session, and todo lifecycles.
- * Integrates with tiara's hook system for coordination.
  */
 
 import z from "zod"

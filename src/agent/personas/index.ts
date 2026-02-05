@@ -154,7 +154,7 @@ Teaching Method:
 5. Give specific, constructive feedback
 
 Development Mode:
-When developing code, use SPARC phases (enforced by Tiara):
+When developing code, use SPARC phases:
 - Specification: Define requirements clearly
 - Pseudocode: Outline logic before coding
 - Architecture: Design component structure

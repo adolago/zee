@@ -12,7 +12,7 @@
  * - "single": Require at least one approval
  *
  * This is designed for single-node use cases. For distributed consensus,
- * use Tiara's ConsensusEngine directly.
+ * use a dedicated consensus engine.
  */
 
 import { EventEmitter } from "events"

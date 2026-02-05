@@ -1123,29 +1123,6 @@ export namespace Config {
       ref: "MemoryConfig",
     })
 
-  export const Tiara = z
-    .object({
-      qdrant: z
-        .object({
-          url: z.string().optional().describe("Qdrant endpoint URL"),
-          apiKey: z.string().optional().describe("Qdrant API key"),
-          stateCollection: z.string().optional().describe("Collection for personas state"),
-          memoryCollection: z.string().optional().describe("Collection for personas memory"),
-          embeddingDimension: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe("Embedding dimension for tiara Qdrant collections"),
-        })
-        .optional()
-        .describe("Qdrant configuration for tiara"),
-    })
-    .strict()
-    .meta({
-      ref: "TiaraConfig",
-    })
-
   export const Zee = z
     .object({
       splitwise: z
@@ -1337,7 +1314,6 @@ export namespace Config {
         .optional()
         .describe("MCP (Model Context Protocol) server configurations"),
       memory: Memory.optional().describe("Memory and storage configuration"),
-      tiara: Tiara.optional().describe("Tiara orchestration configuration"),
       zee: Zee.optional().describe("Zee integration configuration"),
       messages: Messages.optional().describe("Messaging and TTS configuration"),
       formatter: z

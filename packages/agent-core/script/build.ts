@@ -20,7 +20,6 @@ import { Script } from "../src/pkg/script"
 const personasRoot = path.resolve(repoRoot, "packages", "personas")
 const zeeRoot = path.join(personasRoot, "zee")
 
-const tiaraRoot = path.resolve(repoRoot, "packages", "tiara")
 const agentCoreAssetsRoot = path.join(repoRoot, ".agent-core")
 const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
 
@@ -84,20 +83,6 @@ function bundlePersonas(distRoot: string) {
       },
     })
   }
-}
-
-function bundleTiara(distRoot: string) {
-  if (!fs.existsSync(tiaraRoot)) return
-  const destRoot = path.join(distRoot, "packages", "tiara")
-  fs.mkdirSync(destRoot, { recursive: true })
-  fs.cpSync(tiaraRoot, destRoot, {
-    recursive: true,
-    dereference: true,
-    filter: (srcPath) => {
-      const base = path.basename(srcPath)
-      return base !== ".git" && base !== "node_modules" && base !== ".venv" && base !== "venv"
-    },
-  })
 }
 
 function bundleSrcModules(distRoot: string) {
@@ -361,7 +346,6 @@ for (const item of targets) {
   await Bun.file(`dist/${name}/bin/package.json`).write(pkgJson)
   // Bundle personas so standalone installs can resolve them via AGENT_CORE_ROOT.
   bundlePersonas(path.join(dir, "dist", name))
-  bundleTiara(path.join(dir, "dist", name))
   bundleAgentCoreAssets(path.join(dir, "dist", name))
   bundlePersonaSkills(path.join(dir, "dist", name))
   bundleSrcModules(path.join(dir, "dist", name))

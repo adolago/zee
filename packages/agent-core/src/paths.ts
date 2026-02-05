@@ -162,19 +162,6 @@ export const Zee = {
 }
 
 /**
- * Tiara orchestration paths
- */
-export const Tiara = {
-  root(): string {
-    return path.join(getAgentCoreRoot(), "packages", "tiara")
-  },
-
-  exists(): boolean {
-    return fs.existsSync(this.root())
-  },
-}
-
-/**
  * Agent-core assets paths
  */
 export const Assets = {

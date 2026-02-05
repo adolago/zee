@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   // TODO: Start LSP server if ports configured
   if (lspPort) {
     console.log(`[daemon] LSP server would start on ${lspHost}:${lspPort}`);
-    // Future: integrate with Tiara LSP
+    // Future: integrate with an LSP server
   }
 
   // Handle signals

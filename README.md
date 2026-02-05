@@ -72,6 +72,24 @@ cp dist/agent-core-linux-x64/bin/agent-core ~/bin/agent-core
 Agent-core reads JSONC config from `~/.config/agent-core/agent-core.jsonc` or `.agent-core/agent-core.jsonc`.
 Environment variables are used only for secrets (Qdrant settings are config-only).
 
+#### Paths and overrides
+
+Defaults follow XDG:
+
+- Config: `~/.config/agent-core`
+- Data: `~/.local/share/agent-core`
+- Cache: `~/.cache/agent-core`
+- State: `~/.local/state/agent-core`
+- Workspace (default worktree): `~/.local/share/agent-core/worktree`
+
+To co-locate everything under a single state root, set `AGENT_CORE_STATE_DIR` (legacy: `OPENCODE_STATE_DIR`).
+This makes config/data/cache/logs/workspace resolve under that directory as `config/`, `data/`, `cache/`, `logs/`,
+and `workspace/`.
+
+To override only the workspace location, set `AGENT_CORE_WORKSPACE_DIR` (legacy: `OPENCODE_WORKSPACE_DIR`).
+
+Use `agent-core paths` to print the resolved locations.
+
 Example memory + embeddings configuration:
 
 ```jsonc
@@ -85,14 +103,6 @@ Example memory + embeddings configuration:
       "profile": "google/gemini-embedding-001",
       "dimensions": 3072,
       "apiKey": "{env:GEMINI_API_KEY}"
-    }
-  },
-  "tiara": {
-    "qdrant": {
-      "url": "http://localhost:6333",
-      "stateCollection": "personas_state",
-      "memoryCollection": "personas_memory",
-      "embeddingDimension": 3072
     }
   }
 }
@@ -134,7 +144,7 @@ Common profiles you can set in `memory.embedding.profile`:
 You can also override with `provider`, `model`, `dimensions`, `baseUrl`, and `apiKey`.
 
 Keep Qdrant collection dimensions aligned with your embedding dimensions by setting
-`memory.embedding.dimensions` and `tiara.qdrant.embeddingDimension` to the same value.
+`memory.embedding.dimensions` to the same value as your collection vectors.
 
 ### Running
 
@@ -164,7 +174,6 @@ agent-core/
 │   ├── personas/           # Persona logic and routing
 │   ├── memory/             # Qdrant semantic memory
 │   └── domain/             # Domain tools (zee/, stanley/)
-├── packages/tiara/         # Orchestration layer (SPARC methodology)
 └── .claude/skills/         # Persona skill definitions
 ```
 
@@ -180,7 +189,6 @@ agent-core/
 
 - **Semantic Memory**: Vector-based memory with Qdrant for context persistence
 - **Multi-Persona Routing**: Route messages to specialized personas
-- **Orchestration**: SPARC methodology via tiara for complex tasks
 - **Embedded Gateway**: Optional Zee messaging gateway launched by agent-core
 
 ## Usage with Zee Gateway

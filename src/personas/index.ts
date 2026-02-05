@@ -14,8 +14,6 @@ export * from "./types";
 
 // Persona utilities
 export {
-  PERSONA_AGENT_MAPPINGS,
-  selectDroneType,
   generateDronePrompt,
   getPersonaConfig,
   generateWorkerName,
@@ -43,14 +41,6 @@ export {
   WeztermPaneBridge,
   createWeztermBridge,
 } from "./wezterm";
-
-// Orchestrator
-export {
-  Orchestrator,
-  createOrchestrator,
-  getOrchestrator,
-  shutdownOrchestrator,
-} from "./tiara";
 
 // Drone wait & announce
 export {

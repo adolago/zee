@@ -741,7 +741,7 @@ export namespace SessionPrompt {
       // FUTURE: Consider centralizing tool invocation logic in a dedicated module
       // Currently, tool calls are handled here and in processor.ts
       if (task?.type === "subtask") {
-        // Resolve the agent type - maps tiara/external types to personas
+        // Resolve the agent type - maps external types to personas
         // Each persona spawns its own kind: zee→zee, stanley→stanley, johny→johny
         const resolvedAgent = await resolveAgentType(task.agent, lastUser.agent)
         const taskTool = await TaskTool.init()

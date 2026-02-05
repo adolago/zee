@@ -26,10 +26,9 @@ The plugin system provides the extensibility layer for agent-core, enabling plug
 |  +-------------------+    +-------------------+                   |
 |  |  Plugin Sources   |    |   Built-in        |                   |
 |  |  - NPM packages   |    |   Plugins         |                   |
-|  |  - Local files    |    |   - claude-flow   |                   |
-|  |  - Built-in       |    |   - anthropic-auth|                   |
-|  +-------------------+    |   - copilot-auth  |                   |
-|                           |   - memory        |                   |
+|  |  - Local files    |    |   - anthropic-auth|                   |
+|  |  - Built-in       |    |   - copilot-auth  |                   |
+|  +-------------------+    |   - memory        |                   |
 |                           +-------------------+                   |
 |                                    |                              |
 |                                    v                              |
@@ -74,7 +73,6 @@ Handles plugin loading from various sources:
 ### 4. Built-in Plugins
 
 #### Core Plugins
-- **claude-flow**: Claude Flow hooks integration
 - **anthropic-auth**: Anthropic API authentication
 - **copilot-auth**: GitHub Copilot authentication
 - **memory-persistence**: Persistent memory storage
@@ -92,7 +90,7 @@ Handles plugin loading from various sources:
 'session.restore' // Session restored from persistence
 ```
 
-### Task Lifecycle (claude-flow integration)
+### Task Lifecycle
 ```typescript
 'pre-task'  // Before task execution
 'post-task' // After task completion

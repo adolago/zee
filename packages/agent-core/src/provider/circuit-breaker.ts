@@ -14,7 +14,7 @@ import fs from "fs/promises"
  * - OPEN: Provider is failing, requests are blocked
  * - HALF_OPEN: Testing if provider has recovered
  *
- * Adapted from tiara's circuit-breaker.ts but standalone for agent-core.
+ * Adapted from a prior circuit-breaker implementation, standalone for agent-core.
  */
 export namespace CircuitBreaker {
   const log = Log.create({ service: "circuit-breaker" })

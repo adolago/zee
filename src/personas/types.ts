@@ -1,8 +1,8 @@
 /**
  * Personas Types
  *
- * Type definitions for personas layer - a wrapper around tiara's
- * hive-mind that provides persona-specific orchestration for Zee, Stanley, and Johny.
+ * Type definitions for personas layer that provides persona-specific orchestration
+ * for Zee, Stanley, and Johny.
  *
  * Each persona can act as a Queen (primary conversation) and spawn Drones
  * (background workers) that maintain persona's identity and capabilities.
@@ -144,8 +144,6 @@ export const Worker = z.object({
   pid: z.number().optional(),
   /** Current task description */
   currentTask: z.string().optional(),
-  /** Tiara agent ID */
-  tiaraAgentId: z.string().optional(),
   createdAt: z.number(),
   lastActivityAt: z.number(),
   /** Worker metadata (e.g., topology, SPARC phase) */
@@ -286,8 +284,6 @@ export type ConversationState = z.infer<typeof ConversationState>;
 export const PersonasState = z.object({
   /** Version for migrations */
   version: z.string().default("1.0.0"),
-  /** Tiara swarm ID */
-  tiaraSwarmId: z.string().optional(),
   /** Active workers by persona */
   workers: z.array(Worker),
   /** Pending and active tasks */
@@ -337,17 +333,6 @@ export const PersonasConfig = z.object({
     /** Max key facts to retain */
     maxKeyFacts: z.number().int().positive().default(50),
   }).default({}),
-  /** Tiara integration */
-  tiara: z.object({
-    /** Use tiara for orchestration */
-    enabled: z.boolean().default(true),
-    /** Topology for swarm - 'auto' enables dynamic selection based on task type */
-    topology: z.enum(["mesh", "hierarchical", "star", "adaptive", "auto"]).default("auto"),
-    /** Enable SPARC methodology for complex planning tasks */
-    sparcEnabled: z.boolean().default(false),
-    /** Enable neural pattern training for optimization */
-    neuralTrainingEnabled: z.boolean().default(false),
-  }).default({}),
 });
 export type PersonasConfig = z.infer<typeof PersonasConfig>;
 
@@ -396,66 +381,6 @@ export type PersonasEvent = z.infer<typeof PersonasEvent>;
 // =============================================================================
 // Service Interfaces
 // =============================================================================
-
-/** Main personas layer tiara interface */
-export interface PersonasOrchestrator {
-  /** Initialize the personas system */
-  init(): Promise<void>;
-
-  /** Get current state */
-  state(): PersonasState;
-
-  /** Get conversation continuity state */
-  conversation(): ConversationState | undefined;
-
-  /** Update the current plan */
-  setPlan(plan: string): Promise<void>;
-
-  /** Add an objective */
-  addObjective(objective: string): Promise<void>;
-
-  /** Spawn a drone for a task */
-  spawnDrone(options: {
-    persona: PersonaId;
-    task: string;
-    prompt: string;
-    priority?: TaskPriority;
-    contextMemoryIds?: string[];
-  }): Promise<Worker>;
-
-  /** Wait for a drone to complete */
-  waitForDrone(workerId: WorkerId, options?: WaitOptions): Promise<DroneResult>;
-
-  /** Spawn a drone and wait for completion */
-  spawnDroneWithWait(options: SpawnWithWaitOptions): Promise<DroneResult>;
-
-  /** Kill a worker */
-  killWorker(workerId: WorkerId): Promise<void>;
-
-  /** Submit a task (auto-assigns to appropriate drone) */
-  submitTask(task: Omit<PersonasTask, "id" | "createdAt" | "status">): Promise<PersonasTask>;
-
-  /** List workers */
-  listWorkers(filter?: { persona?: PersonaId; role?: WorkerRole }): Worker[];
-
-  /** List tasks */
-  listTasks(filter?: { persona?: PersonaId; status?: TaskStatus }): PersonasTask[];
-
-  /** Summarize conversation for continuity */
-  summarizeConversation(messages: string[]): Promise<string>;
-
-  /** Restore context from previous session */
-  restoreContext(sessionId: string): Promise<ConversationState | null>;
-
-  /** Save current state */
-  saveState(): Promise<void>;
-
-  /** Subscribe to events */
-  subscribe(event: PersonasEventType | "*", handler: (event: PersonasEvent) => void): () => void;
-
-  /** Shutdown */
-  shutdown(): Promise<void>;
-}
 
 /** WezTerm bridge interface */
 export interface WeztermBridge {

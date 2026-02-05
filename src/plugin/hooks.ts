@@ -347,7 +347,7 @@ export const HOOK_TYPES = {
   SESSION_END: 'session.end',
   SESSION_RESTORE: 'session.restore',
 
-  // Task lifecycle (tiara)
+  // Task lifecycle
   PRE_TASK: 'pre-task',
   POST_TASK: 'post-task',
 

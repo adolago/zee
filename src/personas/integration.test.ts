@@ -7,18 +7,14 @@
 
 import {
   Memory,
-  getMemory,
   createWeztermBridge,
-  createOrchestrator,
   type PersonasState,
-  type ConversationState,
 } from "./index";
 
 // Test configuration
 const TEST_CONFIG = {
   qdrant: {
     url: "http://localhost:6333",
-    stateCollection: "personas_test_state",
     memoryCollection: "personas_test_memory",
   },
   wezterm: {
@@ -39,10 +35,6 @@ function success(msg: string) {
 
 function fail(msg: string) {
   console.error(`[✗] ${msg}`);
-}
-
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ============================================================================
@@ -235,88 +227,6 @@ async function testWeztermBridge() {
 }
 
 // ============================================================================
-// Orchestrator Tests (Basic)
-// ============================================================================
-
-async function testOrchestrator() {
-  log("Testing Orchestrator (basic operations)...");
-
-  const tiara = createOrchestrator({
-    ...TEST_CONFIG,
-    maxDronesPerPersona: 2,
-    autoSpawn: false, // Don't auto-spawn in tests
-  });
-
-  try {
-    // Initialize
-    await tiara.init();
-    success("Orchestrator initialized");
-
-    // Get initial state
-    const state = tiara.state();
-    if (state.version === "1.0.0") {
-      success("Initial state correct");
-    }
-
-    // Set plan
-    await tiara.setPlan("Test plan for integration testing");
-    success("Plan set");
-
-    // Add objective
-    await tiara.addObjective("Complete integration tests");
-    success("Objective added");
-
-    // Check conversation state
-    const conv = tiara.conversation();
-    if (conv && conv.objectives.length === 1) {
-      success("Conversation state accessible");
-    }
-
-    // Submit a task (won't auto-spawn since disabled)
-    const task = await tiara.submitTask({
-      persona: "zee",
-      description: "Test task",
-      prompt: "This is a test prompt",
-      priority: "normal",
-      contextMemoryIds: [],
-    });
-    if (task.status === "pending") {
-      success(`Task submitted: ${task.id}`);
-    }
-
-    // List tasks
-    const tasks = tiara.listTasks();
-    if (tasks.length === 1) {
-      success("Task list correct");
-    }
-
-    // Subscribe to events
-    let eventReceived = false;
-    const unsubscribe = tiara.subscribe("state:synced", () => {
-      eventReceived = true;
-    });
-
-    // Save state (should trigger event)
-    await tiara.saveState();
-    await sleep(100);
-
-    if (eventReceived) {
-      success("Event subscription working");
-    }
-    unsubscribe();
-
-    // Shutdown
-    await tiara.shutdown();
-    success("Orchestrator shutdown cleanly");
-
-    return true;
-  } catch (e) {
-    fail(`Orchestrator error: ${e}`);
-    return false;
-  }
-}
-
-// ============================================================================
 // Main Test Runner
 // ============================================================================
 
@@ -335,9 +245,6 @@ async function runTests() {
   console.log("");
 
   results["WezTerm Bridge"] = await testWeztermBridge();
-  console.log("");
-
-  results["Orchestrator"] = await testOrchestrator();
   console.log("");
 
   // Summary
@@ -363,10 +270,6 @@ async function runTests() {
   // Cleanup test collections
   console.log("Cleaning up test collections...");
   try {
-    void await fetch(
-      `${TEST_CONFIG.qdrant.url}/collections/${TEST_CONFIG.qdrant.stateCollection}`,
-      { method: "DELETE" }
-    );
     void await fetch(
       `${TEST_CONFIG.qdrant.url}/collections/${TEST_CONFIG.qdrant.memoryCollection}`,
       { method: "DELETE" }

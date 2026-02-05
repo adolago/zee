@@ -31,7 +31,6 @@ CRITICAL_FILES=(
     "packages/agent-core/src/cli/cmd/tui/context/theme/zee.json"
     "packages/agent-core/src/cli/cmd/tui/context/theme/stanley.json"
     "packages/agent-core/src/cli/cmd/tui/context/theme/johny.json"
-    "packages/tiara/CLAUDE.md"
 )
 
 for file in "${CRITICAL_FILES[@]}"; do

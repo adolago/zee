@@ -9,8 +9,7 @@
  * - Bus: Emits workstealing:request events for task reassignment
  * - Session: Can be used to balance sessions across workers
  *
- * This is a simplified version of Tiara's WorkStealingCoordinator
- * adapted for the agent-core daemon context.
+ * This is a simplified work-stealing coordinator adapted for the agent-core daemon context.
  */
 
 import { EventEmitter } from "events"

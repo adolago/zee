@@ -70,7 +70,6 @@ export interface ConversationState {
 /** Personas orchestration state */
 export interface PersonasState {
   version: string;
-  tiaraSwarmId?: string;
   workers: Array<{
     id: string;
     persona: PersonaId;

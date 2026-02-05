@@ -213,7 +213,7 @@ export interface Hooks {
   >;
 
   // -------------------------------------------------------------------------
-  // Task Hooks (tiara integration)
+  // Task Hooks
   // -------------------------------------------------------------------------
   /** Called before task execution begins */
   'pre-task'?: HookHandler<
