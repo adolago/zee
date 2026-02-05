@@ -1,5 +1,6 @@
 import type { APICallError, ModelMessage } from "ai"
 import { unique } from "remeda"
+import type { JSONSchema7 } from "@ai-sdk/provider"
 import type { JSONSchema } from "zod/v4/core"
 import type { Provider } from "./provider"
 import type { ModelsDev } from "./models"
@@ -1019,7 +1020,7 @@ export namespace ProviderTransform {
     return standardLimit
   }
 
-  export function schema(model: Provider.Model, schema: JSONSchema.BaseSchema) {
+  export function schema(model: Provider.Model, schema: JSONSchema.BaseSchema | JSONSchema7): JSONSchema7 {
     /*
     if (["openai", "azure"].includes(providerID)) {
       if (schema.type === "object" && schema.properties) {
@@ -1080,7 +1081,7 @@ export namespace ProviderTransform {
       schema = sanitizeGemini(schema)
     }
 
-    return schema
+    return schema as JSONSchema7
   }
 
   export function error(providerID: string, error: APICallError) {
