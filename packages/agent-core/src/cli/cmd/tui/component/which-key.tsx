@@ -110,62 +110,63 @@ export function WhichKey() {
   // Calculate layout - try to fit in available width
   const columnWidth = 20
   const maxColumns = createMemo(() => Math.max(1, Math.floor((dimensions().width - 4) / columnWidth)))
-  const paneHeight = createMemo(() => Math.max(3, dimensions().height - 9))
+  const reservedBottom = createMemo(() => Math.min(9, Math.max(0, dimensions().height - 8)))
 
   return (
     <Show when={keybind.leader}>
       <box
         position="absolute"
-        top={0}
         left={0}
-        width={dimensions().width}
-        height={dimensions().height - 9}
-        justifyContent="flex-start"
+        right={0}
+        top={0}
+        bottom={reservedBottom()}
+        justifyContent="flex-end"
         alignItems="flex-start"
         zIndex={1500}
         overflow="hidden"
+        paddingLeft={1}
+        paddingBottom={1}
       >
         <box
           backgroundColor={theme.backgroundMenu}
-          border={["top", "bottom", "left", "right"]}
-          borderColor={theme.primary}
-          customBorderChars={SplitBorder.customBorderChars}
-          paddingLeft={1}
-          paddingRight={1}
-          paddingTop={0}
-          paddingBottom={0}
+          {...SplitBorder}
+          borderColor={theme.borderActive}
+          paddingLeft={2}
+          paddingRight={2}
+          paddingTop={1}
+          paddingBottom={1}
           overflow="hidden"
           flexShrink={1}
-          maxWidth={Math.min(dimensions().width - 4, maxColumns() * columnWidth + 4)}
-          height={paneHeight()}
-          maxHeight={paneHeight()}
+          maxWidth={Math.min(dimensions().width - 2, maxColumns() * columnWidth + 6)}
         >
           <box flexDirection="column" gap={0}>
             {/* Header */}
-            <box paddingBottom={0} flexDirection="row">
-              <text fg={theme.primary} attributes={TextAttributes.BOLD} wrapMode="none">
-                {"Which Key? "}
+            <box paddingBottom={1} flexDirection="row" justifyContent="space-between">
+              <text fg={theme.text} attributes={TextAttributes.BOLD} wrapMode="none">
+                Leader
               </text>
-              <text fg={theme.textMuted} wrapMode="none">{"("}</text>
-              <text fg={theme.warning} wrapMode="none">Esc</text>
-              <text fg={theme.textMuted} wrapMode="none">{" to cancel)"}</text>
+              <text fg={theme.textMuted} wrapMode="none">
+                esc
+              </text>
             </box>
 
             {/* Categories in columns */}
-            <box flexDirection="row" flexWrap="wrap" gap={2}>
+            <box flexDirection="row" flexWrap="wrap" gap={3}>
               <For each={categories()}>
                 {(category) => (
                   <box flexDirection="column" minWidth={columnWidth - 2}>
-                    <text fg={theme.accent} attributes={TextAttributes.BOLD}>
+                    <text fg={theme.accent} attributes={TextAttributes.BOLD} wrapMode="none">
                       {category.name}
                     </text>
                     <For each={category.entries}>
                       {(entry) => (
                         <box flexDirection="row" gap={1}>
-                          <text fg={theme.warning} attributes={TextAttributes.BOLD}>
-                            {entry.key.padEnd(3)}
-                          </text>
-                          <text fg={theme.text}>{entry.description}</text>
+                          <box backgroundColor={theme.backgroundElement} paddingLeft={1} paddingRight={1}>
+                            <text fg={theme.primary} attributes={TextAttributes.BOLD} wrapMode="none">
+                              {entry.key.padEnd(3)}
+                            </text>
+                          </box>
+                          <text fg={theme.textMuted}>{entry.description}</text>
                         </box>
                       )}
                     </For>
