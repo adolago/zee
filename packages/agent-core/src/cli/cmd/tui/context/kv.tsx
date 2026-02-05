@@ -77,7 +77,7 @@ export const { use: useKV, provider: KVProvider } = createSimpleContext({
       },
       set(key: string, value: any) {
         setStore(key, value)
-        Bun.write(file, JSON.stringify(store, null, 2))
+        Bun.write(file, JSON.stringify(store, null, 2)).catch(() => {})
       },
     }
     return result

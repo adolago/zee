@@ -191,6 +191,24 @@ describe("Keybind.match", () => {
   })
 })
 
+describe("Keybind.matchAny", () => {
+  test("matches shifted letter when no explicit shift binding exists", () => {
+    const bindings = Keybind.parse("<leader>h")
+    const parsed = Keybind.fromParsedKey(createParsedKey("h", { shift: true }), true)
+    expect(Keybind.matchAny(bindings, parsed, { shiftLetterBindings: new Set() })).toBe(true)
+  })
+
+  test("does not relax shift when a shift binding exists for the letter", () => {
+    const unshifted = Keybind.parse("<leader>g")
+    const shifted = Keybind.parse("<leader>shift+g")
+    const parsed = Keybind.fromParsedKey(createParsedKey("g", { shift: true }), true)
+    const shiftSet = new Set(["leader:g"])
+
+    expect(Keybind.matchAny(unshifted, parsed, { shiftLetterBindings: shiftSet })).toBe(false)
+    expect(Keybind.matchAny(shifted, parsed, { shiftLetterBindings: shiftSet })).toBe(true)
+  })
+})
+
 describe("Keybind.parse", () => {
   test("should parse simple key", () => {
     const result = Keybind.parse("f")
@@ -199,6 +217,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "f",
       },
@@ -212,6 +231,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: true,
         name: "f",
       },
@@ -225,6 +245,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "x",
       },
@@ -238,6 +259,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: true,
         shift: false,
+        super: false,
         leader: false,
         name: "u",
       },
@@ -251,6 +273,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: true,
+        super: false,
         leader: false,
         name: "f2",
       },
@@ -264,6 +287,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: true,
         shift: false,
+        super: false,
         leader: false,
         name: "g",
       },
@@ -277,6 +301,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: true,
         name: "h",
       },
@@ -290,6 +315,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "c",
       },
@@ -297,6 +323,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: true,
         name: "q",
       },
@@ -310,6 +337,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: true,
+        super: false,
         leader: false,
         name: "return",
       },
@@ -323,6 +351,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "j",
       },
@@ -341,6 +370,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "pgup",
       },
@@ -354,6 +384,7 @@ describe("Keybind.parse", () => {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "f2",
       },
@@ -367,6 +398,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: true,
         shift: false,
+        super: false,
         leader: false,
         name: "g",
       },
@@ -380,6 +412,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "x",
       },
@@ -421,6 +454,7 @@ describe("Keybind.parse", () => {
         ctrl: true,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "-",
       },

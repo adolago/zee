@@ -1,4 +1,4 @@
-import { createStore, produce } from "solid-js/store"
+import { createStore, produce, reconcile } from "solid-js/store"
 import { batch, createEffect, createMemo, createSignal } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { useTheme, resolveTheme } from "@tui/context/theme"
@@ -10,6 +10,7 @@ import { Binary } from "@agent-core/util/binary"
 import { createSimpleContext } from "./helper"
 import { useToast } from "../ui/toast"
 import { Provider } from "@/provider/provider"
+import { Locale } from "@/util/locale"
 import { useArgs } from "./args"
 import { useSDK } from "./sdk"
 import { RGBA } from "@opentui/core"
@@ -229,7 +230,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             favorite: modelStore.favorite,
             variant: modelStore.variant,
           }),
-        )
+        ).catch(() => {
+          toast.show({
+            variant: "warning",
+            message: "Failed to save model preferences",
+          })
+        })
       }
 
       file
@@ -417,6 +423,81 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
           // Store in session-scoped model (not persisted)
           setModelStore("sessionModel", agent.current().name, model)
+        },
+        async setDefault(model: { providerID: string; modelID: string }) {
+          if (!isModelValid(model)) {
+            toast.show({
+              message: `Model ${model.providerID}/${model.modelID} is not valid`,
+              variant: "warning",
+              duration: 3000,
+            })
+            return
+          }
+
+          const currentAgent = agent.current()
+          const agentName = currentAgent?.name
+          if (!agentName) {
+            toast.show({
+              message: "No active agent to set default model",
+              variant: "warning",
+              duration: 3000,
+            })
+            return
+          }
+
+          const agentKey = agentName.toLowerCase()
+          const previous = currentModel()
+          // Optimistic update to keep UI responsive
+          setModelStore("sessionModel", agentName, model)
+
+          try {
+            const modelRef = `${model.providerID}/${model.modelID}`
+            const updated = await sdk.client.config.update({
+              agent: {
+                [agentKey]: {
+                  model: modelRef,
+                },
+              },
+            })
+            if (updated.data) {
+              sync.set("config", reconcile(updated.data))
+            }
+            sync.set(
+              produce((draft) => {
+                const match = draft.agent.find((x) => x.name.toLowerCase() === agentKey)
+                if (match) {
+                  match.model = model
+                }
+              }),
+            )
+            // Clear session override so defaults stay in sync with messaging
+            setModelStore("sessionModel", (current) => {
+              const next = { ...current }
+              delete next[agentName]
+              return next
+            })
+            toast.show({
+              message: `Default model set for ${Locale.titlecase(agentName)}`,
+              variant: "success",
+              duration: 2000,
+            })
+          } catch (error) {
+            // Revert on failure
+            if (previous) {
+              setModelStore("sessionModel", agentName, previous)
+            } else {
+              setModelStore("sessionModel", (current) => {
+                const next = { ...current }
+                delete next[agentName]
+                return next
+              })
+            }
+            toast.show({
+              message: "Failed to update default model",
+              variant: "error",
+              duration: 3000,
+            })
+          }
         },
         variant: {
           current() {
@@ -642,7 +723,14 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const paramsFile = Bun.file(path.join(Global.Path.state, "params.json"))
 
       function saveParams() {
-        Bun.write(paramsFile, JSON.stringify(paramStore.sessionParams))
+        Bun.write(paramsFile, JSON.stringify(paramStore.sessionParams)).catch(
+          () => {
+            toast.show({
+              variant: "warning",
+              message: "Failed to save session parameters",
+            })
+          },
+        )
       }
 
       // Load persisted params

@@ -17,6 +17,35 @@ export namespace Keybind {
     return isDeepEqual(normalizedA, normalizedB)
   }
 
+  export function matchAny(
+    bindings: Info[] | undefined,
+    parsed: Info,
+    options?: {
+      shiftLetterBindings?: Set<string>
+    },
+  ): boolean {
+    if (!bindings) return false
+    const shiftLetterBindings = options?.shiftLetterBindings
+    for (const kb of bindings) {
+      if (match(kb, parsed)) return true
+      if (
+        shiftLetterBindings &&
+        parsed.shift &&
+        !kb.shift &&
+        parsed.name &&
+        parsed.name.length === 1 &&
+        kb.name === parsed.name
+      ) {
+        const scope = kb.leader ? "leader" : "plain"
+        if (!shiftLetterBindings.has(`${scope}:${kb.name}`)) {
+          const relaxed = { ...parsed, shift: false }
+          if (match(kb, relaxed)) return true
+        }
+      }
+    }
+    return false
+  }
+
   /**
    * Convert OpenTUI's ParsedKey to our Keybind.Info format.
    * This helper ensures all required fields are present and avoids manual object creation.
@@ -65,6 +94,7 @@ export namespace Keybind {
         ctrl: false,
         meta: false,
         shift: false,
+        super: false,
         leader: false,
         name: "",
       }

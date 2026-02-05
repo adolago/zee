@@ -31,7 +31,7 @@ export const { use: useVim, provider: VimProvider } = createSimpleContext({
     let focusCallback: (() => void) | null = null
 
     // Track previous enabled state to detect transitions
-    let prevEnabled = enabled()
+    let prevEnabled = false
 
     // Reset mode to default when vim is re-enabled to avoid stale state
     createEffect(() => {
