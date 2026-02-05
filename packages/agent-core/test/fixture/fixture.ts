@@ -34,22 +34,36 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await Bun.spawn(["git", "init"], { cwd: dirpath, stdout: "ignore", stderr: "ignore" }).exited
-    await Bun.spawn(["git", "config", "user.email", "test@example.com"], {
-      cwd: dirpath,
-      stdout: "ignore",
-      stderr: "ignore",
-    }).exited
-    await Bun.spawn(["git", "config", "user.name", "Test User"], {
-      cwd: dirpath,
-      stdout: "ignore",
-      stderr: "ignore",
-    }).exited
-    await Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
-      cwd: dirpath,
-      stdout: "ignore",
-      stderr: "ignore",
-    }).exited
+    if ((await Bun.spawn(["git", "init"], { cwd: dirpath, stdout: "ignore", stderr: "ignore" }).exited) !== 0) {
+      throw new Error(`Failed to git init in ${dirpath}`)
+    }
+    if (
+      (await Bun.spawn(["git", "config", "user.email", "test@example.com"], {
+        cwd: dirpath,
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited) !== 0
+    ) {
+      throw new Error(`Failed to configure git user.email in ${dirpath}`)
+    }
+    if (
+      (await Bun.spawn(["git", "config", "user.name", "Test User"], {
+        cwd: dirpath,
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited) !== 0
+    ) {
+      throw new Error(`Failed to configure git user.name in ${dirpath}`)
+    }
+    if (
+      (await Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
+        cwd: dirpath,
+        stdout: "ignore",
+        stderr: "ignore",
+      }).exited) !== 0
+    ) {
+      throw new Error(`Failed to create root commit in ${dirpath}`)
+    }
   }
   if (options?.config) {
     await Bun.write(
