@@ -2,6 +2,7 @@ import z from "zod"
 import { Tool } from "./tool"
 import DESCRIPTION from "./websearch.txt"
 import { Env } from "../env"
+import { abortAfterAny } from "../util/abort"
 
 const API_CONFIG = {
   BASE_URL: "https://mcp.exa.ai",
@@ -92,8 +93,7 @@ export const WebSearchTool = Tool.define("websearch", async () => {
         },
       }
 
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 25000)
+      const { signal, clearTimeout } = abortAfterAny(25000, ctx.abort)
 
       try {
         const headers: Record<string, string> = {
@@ -111,10 +111,10 @@ export const WebSearchTool = Tool.define("websearch", async () => {
           method: "POST",
           headers,
           body: JSON.stringify(searchRequest),
-          signal: AbortSignal.any([controller.signal, ctx.abort]),
+          signal,
         })
 
-        clearTimeout(timeoutId)
+        clearTimeout()
 
         if (!response.ok) {
           const errorText = await response.text()

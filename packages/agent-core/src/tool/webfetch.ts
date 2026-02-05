@@ -3,6 +3,7 @@ import { Tool } from "./tool"
 import TurndownService from "turndown"
 import DESCRIPTION from "./webfetch.txt"
 import { wrapExternalContent } from "../security/external-content"
+import { abortAfterAny } from "../util/abort"
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 const DEFAULT_TIMEOUT = 30 * 1000 // 30 seconds
@@ -37,8 +38,7 @@ export const WebFetchTool = Tool.define("webfetch", {
 
     const timeout = Math.min((params.timeout ?? DEFAULT_TIMEOUT / 1000) * 1000, MAX_TIMEOUT)
 
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeout)
+    const { signal, clearTimeout } = abortAfterAny(timeout, ctx.abort)
 
     // Build Accept header based on requested format with q parameters for fallbacks
     let acceptHeader = "*/*"
@@ -56,8 +56,6 @@ export const WebFetchTool = Tool.define("webfetch", {
         acceptHeader =
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
     }
-
-    const signal = AbortSignal.any([controller.signal, ctx.abort])
     const headers = {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
@@ -73,7 +71,7 @@ export const WebFetchTool = Tool.define("webfetch", {
         ? await fetch(params.url, { signal, headers: { ...headers, "User-Agent": "agent-core" } })
         : initial
 
-    clearTimeout(timeoutId)
+    clearTimeout()
 
     if (!response.ok) {
       throw new Error(`Request failed with status code: ${response.status}`)
