@@ -313,6 +313,20 @@ export namespace LLM {
       })
     }
 
+    const { headers } = await Plugin.trigger(
+      "chat.headers",
+      {
+        sessionID: input.sessionID,
+        agent: input.agent,
+        model: input.model,
+        provider,
+        message: input.user,
+      },
+      {
+        headers: {},
+      },
+    )
+
     return streamText({
       onError(error) {
         l.error("stream error", {
@@ -368,6 +382,7 @@ export namespace LLM {
               }
             : undefined),
         ...input.model.headers,
+        ...headers,
       },
       maxRetries: input.retries ?? 3, // Default to 3 retries for transient failures (timeouts, 503, 429)
       messages: [
