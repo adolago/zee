@@ -8,17 +8,22 @@ import { SplitBorder } from "@tui/component/border"
 import { useToast } from "./toast"
 import { useKeybind } from "@tui/context/keybind"
 
+type DialogPlacement = "top" | "bottom"
+
 export function Dialog(
   props: ParentProps<{
     size?: "medium" | "large"
     onClose: () => void
     minimal?: boolean
+    placement?: DialogPlacement
   }>,
 ) {
   const dimensions = useTerminalDimensions()
   const { theme } = useTheme()
   const renderer = useRenderer()
   const minimal = props.minimal === true
+  const placement = props.placement ?? "top"
+  const reservedBottom = createMemo(() => Math.min(9, Math.max(0, dimensions().height - 8)))
 
   return (
     <box
@@ -31,7 +36,9 @@ export function Dialog(
       alignItems="center"
       position="absolute"
       zIndex={2000}
-      paddingTop={dimensions().height / 4}
+      justifyContent={placement === "bottom" ? "flex-end" : "flex-start"}
+      paddingTop={placement === "bottom" ? 0 : dimensions().height / 4}
+      paddingBottom={placement === "bottom" ? reservedBottom() : 0}
       left={0}
       top={0}
     >
@@ -66,6 +73,7 @@ function init() {
     }[],
     size: "medium" as "medium" | "large",
     minimal: false,
+    placement: "top" as DialogPlacement,
   })
 
   const keybind = useKeybind()
@@ -108,11 +116,12 @@ function init() {
       batch(() => {
         setStore("size", "medium")
         setStore("minimal", false)
+        setStore("placement", "top")
         setStore("stack", [])
       })
       refocus()
     },
-    replace(input: any, onClose?: () => void, options?: { minimal?: boolean }) {
+    replace(input: any, onClose?: () => void, options?: { minimal?: boolean; placement?: DialogPlacement }) {
       if (store.stack.length === 0) {
         // Use keybind's saved focus as fallback when leader mode has blurred the
         // previously focused element (e.g., opening model dialog via <leader>m)
@@ -126,6 +135,7 @@ function init() {
       batch(() => {
         setStore("size", "medium")
         setStore("minimal", options?.minimal ?? false)
+        setStore("placement", options?.placement ?? "top")
         setStore("stack", [
           {
             element: input,
@@ -142,6 +152,9 @@ function init() {
     },
     get minimal() {
       return store.minimal
+    },
+    get placement() {
+      return store.placement
     },
     setSize(size: "medium" | "large") {
       setStore("size", size)
@@ -176,7 +189,12 @@ export function DialogProvider(props: ParentProps) {
         }}
       >
         <Show when={value.stack.length}>
-          <Dialog onClose={() => value.clear()} size={value.size} minimal={value.minimal}>
+          <Dialog
+            onClose={() => value.clear()}
+            size={value.size}
+            minimal={value.minimal}
+            placement={value.placement}
+          >
             {value.stack.at(-1)!.element}
           </Dialog>
         </Show>

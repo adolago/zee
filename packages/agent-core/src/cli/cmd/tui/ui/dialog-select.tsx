@@ -50,11 +50,24 @@ export type DialogSelectRef<T> = {
 export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const dialog = useDialog()
   const { theme } = useTheme()
+  const keybind = useKeybind()
   const [store, setStore] = createStore({
     selected: 0,
     filter: "",
     input: "keyboard" as "keyboard" | "mouse",
   })
+
+  const leaderLabel = createMemo(() => {
+    const leader = keybind.all.leader?.at(0)
+    if (!leader) return "leader"
+    return Keybind.toString(leader)
+  })
+  function formatKeybind(info: Keybind.Info | undefined): string {
+    if (!info) return ""
+    const rendered = Keybind.toString(info)
+    if (!info.leader) return rendered
+    return rendered.replace("<leader>", leaderLabel())
+  }
 
   createEffect(
     on(
@@ -166,7 +179,6 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
     }
   }
 
-  const keybind = useKeybind()
   useKeyboard((evt) => {
     setStore("input", "keyboard")
 
@@ -232,7 +244,9 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                 props.onFilter?.(e)
               })
             }}
-            focusedBackgroundColor={theme.backgroundMenu}
+            backgroundColor={theme.backgroundElement}
+            focusedBackgroundColor={theme.backgroundElement}
+            placeholderColor={theme.textMuted}
             cursorColor={theme.primary}
             textColor={theme.text}
             focusedTextColor={theme.text}
@@ -325,12 +339,16 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         <box paddingLeft={0} paddingRight={0} flexDirection="row" gap={2} flexShrink={0} paddingTop={1}>
           <For each={keybinds()}>
             {(item) => (
-              <text>
-                <span style={{ fg: theme.text }}>
-                  <b>{item.title}</b>{" "}
-                </span>
-                <span style={{ fg: theme.textMuted }}>{Keybind.toString(item.keybind)}</span>
-              </text>
+              <box flexDirection="row" gap={1} flexShrink={0}>
+                <box backgroundColor={theme.backgroundElement} paddingLeft={1} paddingRight={1}>
+                  <text fg={theme.primary} attributes={TextAttributes.BOLD} wrapMode="none">
+                    {formatKeybind(item.keybind)}
+                  </text>
+                </box>
+                <text fg={theme.textMuted} wrapMode="none">
+                  {item.title}
+                </text>
+              </box>
             )}
           </For>
         </box>

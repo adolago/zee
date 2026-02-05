@@ -5,6 +5,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  onMount,
   useContext,
   type Accessor,
   type ParentProps,
@@ -12,6 +13,8 @@ import {
 import { useKeyboard } from "@opentui/solid"
 import { useKeybind, type KeybindsConfig } from "@tui/context/keybind"
 import { useVim } from "@tui/context/vim"
+import { useTheme } from "@tui/context/theme"
+import { TextAttributes } from "@opentui/core"
 
 type Context = ReturnType<typeof createCommandDialog>
 const ctx = createContext<Context>()
@@ -33,6 +36,7 @@ export function createCommandDialog() {
   const dialog = useDialog()
   const keybind = useKeybind()
   const vim = useVim()
+  const { theme } = useTheme()
 
   const entries = () => {
     const all = registrations().flatMap((x) => x() ?? [])
@@ -40,7 +44,18 @@ export function createCommandDialog() {
       .filter((item): item is CommandOption => Boolean(item))
       .map((item) => ({
         ...item,
-        footer: item.keybind ? keybind.print(item.keybind) : undefined,
+        footer: (() => {
+          if (!item.keybind) return undefined
+          const binding = keybind.print(item.keybind)
+          if (!binding) return undefined
+          return (
+            <box backgroundColor={theme.backgroundElement} paddingLeft={1} paddingRight={1}>
+              <text fg={theme.primary} attributes={TextAttributes.BOLD} wrapMode="none">
+                {binding}
+              </text>
+            </box>
+          )
+        })(),
       }))
   }
 
@@ -102,7 +117,7 @@ export function createCommandDialog() {
     },
     suspended,
     show() {
-      dialog.replace(() => <DialogCommand options={visibleOptions()} />)
+      dialog.replace(() => <DialogCommand options={visibleOptions()} />, undefined, { placement: "bottom" })
     },
     register(cb: () => CommandOption[]) {
       const results = createMemo(cb)
@@ -143,5 +158,7 @@ export function CommandProvider(props: ParentProps) {
 }
 
 function DialogCommand(props: { options: CommandOption[] }) {
-  return <DialogSelect title="Commands" options={props.options} />
+  const dialog = useDialog()
+  onMount(() => dialog.setSize("large"))
+  return <DialogSelect title="Commands" placeholder="Search commands..." options={props.options} />
 }
