@@ -3,6 +3,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  createUniqueId,
   For,
   Match,
   Show,
@@ -1351,6 +1352,7 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
   const options = createMemo(() => question()?.options ?? [])
   const input = createMemo(() => store.custom[store.tab] ?? "")
   const multi = createMemo(() => question()?.multiple === true)
+  const questionId = createUniqueId()
   const customPicked = createMemo(() => {
     const value = input()
     if (!value) return false
@@ -1469,16 +1471,27 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
 
       <Show when={!confirm()}>
         <div data-slot="question-content">
-          <div data-slot="question-text">
+          <div data-slot="question-text" id={questionId}>
             {question()?.question}
             {multi() ? " " + i18n.t("ui.question.multiHint") : ""}
           </div>
-          <div data-slot="question-options">
+          <div
+            data-slot="question-options"
+            role={multi() ? "group" : "radiogroup"}
+            aria-labelledby={questionId}
+          >
             <For each={options()}>
               {(opt, i) => {
                 const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
                 return (
-                  <button data-slot="question-option" data-picked={picked()} onClick={() => selectOption(i())}>
+                  <button
+                    type="button"
+                    role={multi() ? "checkbox" : "radio"}
+                    aria-checked={picked()}
+                    data-slot="question-option"
+                    data-picked={picked()}
+                    onClick={() => selectOption(i())}
+                  >
                     <span data-slot="option-label">{opt.label}</span>
                     <Show when={opt.description}>
                       <span data-slot="option-description">{opt.description}</span>
@@ -1491,6 +1504,9 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
               }}
             </For>
             <button
+              type="button"
+              role={multi() ? "checkbox" : "radio"}
+              aria-checked={customPicked()}
               data-slot="question-option"
               data-picked={customPicked()}
               onClick={() => selectOption(options().length)}
