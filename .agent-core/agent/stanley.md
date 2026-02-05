@@ -2,7 +2,6 @@
 description: Investing system - narratives, data, markets dynamics, companies accounting and projections, portfolio management, algorithmic trading.
 color: "#059669"
 theme: stanley
-model: xai/grok-4-1-fast
 fallback: openai/gpt-5.2
 temperature: 0.3
 max_completion_tokens: 32000

@@ -2,7 +2,6 @@
 description: Study and SWE assistant - professor, builder, researcher, historian. Learning system: study, knowledge graph, spaced repetition, and FIRe. Deliberate practice at the edge of ability, mix topics to maximize retention, track progress and identify at-risk topics.
 color: "#DC2626"
 theme: johny
-model: anthropic/claude-opus-4-5
 skills: johny, ...
 top_p: 0.95
 max_tokens: 128000

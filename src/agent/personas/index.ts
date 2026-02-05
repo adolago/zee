@@ -11,6 +11,7 @@
 import { PersonaDefinition } from "../persona";
 import { PermissionConfig } from "../agent";
 import { personaPalettes } from "../../theme/rosetta";
+import { personaModels, modelString } from "../model-rosetta";
 
 // ============================================================================
 // Permission Configurations
@@ -57,6 +58,7 @@ export const ZEE: PersonaDefinition = {
   useCase: "zee",
   default: true,
   color: personaPalettes.zee.primary.hex,
+  model: modelString(personaModels.zee),
   temperature: 0.7,
   identityFiles: ["~/.zee/IDENTITY.md", "~/.zee/SOUL.md"],
   permission: FULL_ACCESS_PERMISSIONS,
@@ -91,7 +93,7 @@ export const STANLEY: PersonaDefinition = {
   mode: "primary",
   useCase: "stanley",
   color: personaPalettes.stanley.primary.hex,
-  model: "openrouter/anthropic/claude-sonnet-4",
+  model: modelString(personaModels.stanley),
   temperature: 0.3,
   identityFiles: ["~/.stanley/IDENTITY.md", "~/.stanley/SOUL.md"],
   permission: ANALYSIS_PERMISSIONS,
@@ -129,6 +131,7 @@ export const JOHNY: PersonaDefinition = {
   mode: "primary",
   useCase: "johny",
   color: personaPalettes.johny.primary.hex,
+  model: modelString(personaModels.johny),
   temperature: 0.5,
   identityFiles: ["~/.johny/IDENTITY.md", "~/.johny/SOUL.md"],
   permission: FULL_ACCESS_PERMISSIONS,

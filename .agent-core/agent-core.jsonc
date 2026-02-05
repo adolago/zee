@@ -1,8 +1,8 @@
 {
   "$schema": "agent-core",
   "default_agent": "zee",
-  "model": "zai-coding-plan/glm-4.7",
-  "small_model": "zai-coding-plan/glm-4.7",
+  "model": "cerebras/zai-glm-4.7",
+  "small_model": "cerebras/zai-glm-4.7",
   "instructions": ["STYLE_GUIDE.md"],
   "mcp": {
     "context7": {
@@ -22,14 +22,6 @@
       "profile": "google/gemini-embedding-001",
       "dimensions": 3072,
       "apiKey": "{env:GEMINI_API_KEY}"
-    }
-  },
-  "tiara": {
-    "qdrant": {
-      "url": "http://localhost:6333",
-      "stateCollection": "personas_state",
-      "memoryCollection": "personas_memory",
-      "embeddingDimension": 3072
     }
   },
   "zee": {
@@ -70,6 +62,9 @@
       }
     },
     "cerebras": {
+      "options": {
+        "baseURL": "https://api.cerebras.ai/v1"
+      },
       "models": {
         "zai-glm-4.7": {
           "reasoning": true
@@ -181,29 +176,26 @@
   "agent": {
     "zee": {
       "description": "Personal assistant for life admin, memory, messaging, and calendar",
-      "model": "zai-coding-plan/glm-4.7",
       "mode": "primary",
       "color": "#5c9cf5"
     },
     "stanley": {
       "description": "Investing and financial research assistant",
-      "model": "google-antigravity/antigravity-gemini-3-pro",
       "mode": "primary",
       "color": "#f5a742"
     },
     "johny": {
       "description": "Study assistant for learning and knowledge graphs",
-      "model": "google-antigravity/antigravity-gemini-3-pro",
       "mode": "primary",
       "color": "#7fd88c"
     },
     "title": {
-      "model": "zai-coding-plan/glm-4.7",
+      "model": "cerebras/zai-glm-4.7",
       "temperature": 0.5,
       "hidden": true
     },
     "compaction": {
-      "model": "zai-coding-plan/glm-4.7",
+      "model": "cerebras/zai-glm-4.7",
       "temperature": 0.3,
       "hidden": true
     }

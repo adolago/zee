@@ -8,6 +8,7 @@
 import type { AgentPersona, AgentConfig, PersonaTheme, ModelParamsMap } from "./types";
 import type { AgentPersonaConfig } from "../config/types";
 import { personaPalettes } from "../theme/rosetta";
+import { personaModels } from "./model-rosetta";
 
 // =============================================================================
 // Theme Definitions (Solarized Dark base)
@@ -76,7 +77,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
-  model: { providerId: "google-antigravity", modelId: "antigravity-gemini-3-pro" },
+  model: personaModels.stanley,
   temperature: 0.3,
   topP: 0.9, // More focused sampling for analytical work
   modelParams: {
@@ -89,7 +90,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
     "minimax-m2": { temperature: 0.5, topP: 0.9, topK: 40 },
     "qwen3":      { temperature: 0.3, topP: 0.9 },
   },
-  color: "#254533", // Emerald Bronze (Stanley dark)
+  color: personaPalettes.stanley.accent.hex, // Bright green for Stanley
   permission: {
     edit: "allow",
     bash: {
@@ -206,7 +207,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: true,
-  model: { providerId: "zai-coding-plan", modelId: "glm-4.7" },
+  model: personaModels.zee,
   temperature: 0.7,
   topP: 0.95, // Balanced sampling for conversational flexibility
   modelParams: {
@@ -220,7 +221,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     "minimax-m2": { temperature: 1.0, topP: 0.95, topK: 40 },  // Minimax official recommendation
     "qwen3":      { temperature: 0.6, topP: 1.0 },             // Slightly warmer than Qwen default
   },
-  color: "#111426", // Sapphire Shadow dark (Zee dark)
+  color: personaPalettes.zee.accent.hex, // Bright blue for Zee
   permission: {
     edit: "allow",
     bash: {
@@ -335,7 +336,7 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
   mode: "primary",
   native: true,
   default: false,
-  model: { providerId: "google-antigravity", modelId: "antigravity-gemini-3-pro" },
+  model: personaModels.johny,
   temperature: 0.5,
   topP: 0.92, // Balanced sampling for teaching variety
   modelParams: {
@@ -348,7 +349,7 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
     "minimax-m2": { temperature: 0.7, topP: 0.95, topK: 40 },
     "qwen3":      { temperature: 0.5, topP: 1.0 },
   },
-  color: "#5C2A24", // Crimson Bronze (Johny dark)
+  color: personaPalettes.johny.accent.hex, // Bright red for Johny
   permission: {
     edit: "allow",
     bash: {
