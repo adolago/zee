@@ -5,12 +5,12 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as os from "os";
 import { PrivacyRedactor } from "../privacy/redactor";
 import type { ConfigSummary } from "../types";
+import { resolveConfigDir } from "../../global/dirs";
 
 function getConfigDir(): string {
-  return process.env.AGENT_CORE_CONFIG_DIR || path.join(os.homedir(), ".config", "agent-core");
+  return resolveConfigDir();
 }
 
 /**

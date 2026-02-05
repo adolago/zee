@@ -2,6 +2,7 @@ import fs from "fs/promises"
 import fsSync from "fs"
 import path from "path"
 import os from "os"
+import { resolveCacheDir, resolveConfigDir, resolveDataDir, resolveStateDir, resolveWorkspaceDir } from "./dirs"
 
 const app = "agent-core"
 
@@ -35,21 +36,6 @@ function resolveSourceRoot(): string {
   return process.cwd()
 }
 
-// Compute XDG paths dynamically to support test isolation
-// Tests set XDG_* env vars in preload.ts, so we must read them at access time
-function getXdgDataHome() {
-  return process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share")
-}
-function getXdgCacheHome() {
-  return process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache")
-}
-function getXdgConfigHome() {
-  return process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config")
-}
-function getXdgStateHome() {
-  return process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state")
-}
-
 export namespace Global {
   export const Path = {
     // Allow override for test isolation (AGENT_CORE_TEST_HOME preferred, OPENCODE_TEST_HOME for compat)
@@ -60,7 +46,7 @@ export namespace Global {
       return resolveSourceRoot()
     },
     get data() {
-      return path.join(getXdgDataHome(), app)
+      return resolveDataDir()
     },
     get bin() {
       return path.join(this.data, "bin")
@@ -69,22 +55,26 @@ export namespace Global {
       return path.join(this.data, "log")
     },
     get cache() {
-      return path.join(getXdgCacheHome(), app)
+      return resolveCacheDir()
     },
     get config() {
-      return path.join(getXdgConfigHome(), app)
+      return resolveConfigDir()
     },
     get state() {
-      return path.join(getXdgStateHome(), app)
+      return resolveStateDir()
+    },
+    get workspace() {
+      return resolveWorkspaceDir()
     },
     get tmp() {
-        return path.join(os.tmpdir(), app)
+      return path.join(os.tmpdir(), app)
     },
   }
 }
 
 await Promise.all([
   fs.mkdir(Global.Path.data, { recursive: true }),
+  fs.mkdir(Global.Path.cache, { recursive: true }),
   fs.mkdir(Global.Path.config, { recursive: true }),
   fs.mkdir(Global.Path.state, { recursive: true }),
   fs.mkdir(Global.Path.log, { recursive: true }),

@@ -5,11 +5,11 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as os from "os";
 import { execSync } from "child_process";
 import net from "net";
 import type { CheckResult, CheckOptions } from "../types";
 import { Zee } from "../../paths";
+import { resolveStateDir } from "../../global/dirs";
 
 const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
 const ZEE_CONFIG_FILES = ["zee.json", "zee.jsonc"];
@@ -23,8 +23,7 @@ const GATEWAY_ENV_HINTS = [
 ];
 
 function getStateDir(): string {
-  return process.env.AGENT_CORE_STATE_DIR || 
-    path.join(os.homedir(), ".local", "state", "agent-core");
+  return resolveStateDir();
 }
 
 function getGatewayPort(): number {

@@ -5,12 +5,12 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as os from "os";
 import { PrivacyRedactor } from "../privacy/redactor";
 import type { SessionReplay, SanitizedMessage, SanitizedToolCall } from "../types";
+import { resolveStateDir } from "../../global/dirs";
 
 function getStateDir(): string {
-  return process.env.AGENT_CORE_STATE_DIR || path.join(os.homedir(), ".local", "state", "agent-core");
+  return resolveStateDir();
 }
 
 /**

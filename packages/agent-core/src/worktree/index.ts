@@ -224,7 +224,7 @@ export namespace Worktree {
       throw new NotGitError({ message: "Worktrees are only supported for git projects" })
     }
 
-    const root = path.join(Global.Path.data, "worktree", Instance.project.id)
+    const root = path.join(Global.Path.workspace, Instance.project.id)
     await fs.mkdir(root, { recursive: true })
 
     const base = input?.name ? slug(input.name) : ""

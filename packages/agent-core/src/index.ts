@@ -38,12 +38,10 @@ import fs from "node:fs"
 import os from "node:os"
 import { fileURLToPath } from "node:url"
 import { reloadFlags } from "./flag/flag"
+import { resolveConfigDir } from "./global/dirs"
 
 function loadDaemonEnv(): void {
-  const configDir =
-    process.env.AGENT_CORE_CONFIG_DIR ||
-    process.env.OPENCODE_CONFIG_DIR ||
-    path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"), "agent-core")
+  const configDir = resolveConfigDir()
   const envPath = path.join(configDir, "daemon.env")
   if (!fs.existsSync(envPath)) return
 

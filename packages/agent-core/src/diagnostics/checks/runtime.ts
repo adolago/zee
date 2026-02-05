@@ -6,8 +6,8 @@
 import { execSync } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as os from "os";
 import type { CheckResult, CheckOptions } from "../types";
+import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs";
 
 /** Minimum required Bun version */
 const MIN_BUN_VERSION = "1.0.0";
@@ -22,30 +22,21 @@ const MIN_MEMORY_MB = 512;
  * Get the config directory path
  */
 function getConfigDir(): string {
-  return (
-    process.env.AGENT_CORE_CONFIG_DIR ||
-    path.join(os.homedir(), ".config", "agent-core")
-  );
+  return resolveConfigDir();
 }
 
 /**
  * Get the state directory path
  */
 function getStateDir(): string {
-  return (
-    process.env.AGENT_CORE_STATE_DIR ||
-    path.join(os.homedir(), ".local", "state", "agent-core")
-  );
+  return resolveStateDir();
 }
 
 /**
  * Get the logs directory path
  */
 function getLogsDir(): string {
-  return (
-    process.env.AGENT_CORE_LOG_DIR ||
-    path.join(os.homedir(), ".local", "state", "agent-core", "logs")
-  );
+  return resolveLogsDir();
 }
 
 /**

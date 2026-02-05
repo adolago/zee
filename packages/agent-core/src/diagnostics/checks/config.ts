@@ -5,11 +5,11 @@
 
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as os from "os";
 import { parse } from "jsonc-parser";
 import type { ParseError } from "jsonc-parser";
 import type { CheckResult, CheckOptions } from "../types";
 import { Auth } from "../../auth";
+import { resolveConfigDir } from "../../global/dirs";
 
 /** Deprecated configuration options that should be migrated */
 const DEPRECATED_OPTIONS = [
@@ -57,10 +57,7 @@ const RECOMMENDED_CREDENTIALS: RecommendedCredential[] = [
  * Get the config directory path
  */
 function getConfigDir(): string {
-  return (
-    process.env.AGENT_CORE_CONFIG_DIR ||
-    path.join(os.homedir(), ".config", "agent-core")
-  );
+  return resolveConfigDir();
 }
 
 /**

@@ -4,11 +4,11 @@
  */
 
 import * as path from "path";
-import * as os from "os";
 import { Logger } from "./logger";
 import { ConsoleTransport } from "./transports/console";
 import { RotatingFileTransport } from "./transports/rotating-file";
 import type { ILogger, LogLevel, ITransport } from "./types";
+import { resolveLogsDir } from "../global/dirs";
 
 /** Global logger instance */
 let globalLogger: ILogger | null = null;
@@ -20,10 +20,7 @@ const loggerRegistry = new Map<string, ILogger>();
  * Get the default log directory
  */
 function getDefaultLogDir(): string {
-  return (
-    process.env.AGENT_CORE_LOG_DIR ||
-    path.join(os.homedir(), ".local", "state", "agent-core", "logs")
-  );
+  return resolveLogsDir();
 }
 
 /**
