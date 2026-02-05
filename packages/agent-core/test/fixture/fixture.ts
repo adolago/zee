@@ -35,6 +35,16 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
     await Bun.spawn(["git", "init"], { cwd: dirpath, stdout: "ignore", stderr: "ignore" }).exited
+    await Bun.spawn(["git", "config", "user.email", "test@example.com"], {
+      cwd: dirpath,
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited
+    await Bun.spawn(["git", "config", "user.name", "Test User"], {
+      cwd: dirpath,
+      stdout: "ignore",
+      stderr: "ignore",
+    }).exited
     await Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
       cwd: dirpath,
       stdout: "ignore",
