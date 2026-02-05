@@ -1512,7 +1512,6 @@ export namespace Config {
         .optional()
         .describe("Provider/model fallback configuration for automatic failover"),
     })
-    .strict()
     .meta({
       ref: "Config",
     })
@@ -1627,17 +1626,17 @@ export namespace Config {
       })
     }
 
-    const parsed = Info.safeParse(data)
+    const parsed = Info.safeParse(data ?? {})
     if (parsed.success) {
-      if (!parsed.data.$schema) {
-        parsed.data.$schema = "agent-core"
+      const data = parsed.data
+      if (!data.$schema) {
+        data.$schema = "agent-core"
         // Write the $schema to the original text to preserve variables like {env:VAR}
         const updated = original.replace(/^\s*\{/, '{\n  "$schema": "agent-core",')
         await Bun.write(configFilepath, updated).catch((err) => {
           log.debug("failed to write config schema", { error: String(err), path: configFilepath })
         })
       }
-      const data = parsed.data
       if (data.plugin) {
         for (let i = 0; i < data.plugin.length; i++) {
           const plugin = data.plugin[i]
