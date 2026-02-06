@@ -33,8 +33,29 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await $`git init`.cwd(dirpath).quiet()
-    await $`git commit --allow-empty -m "root commit ${dirpath}"`.cwd(dirpath).quiet()
+    const init = Bun.spawn(["git", "init"], { cwd: dirpath, stderr: "ignore", stdout: "ignore" })
+    if ((await init.exited) !== 0) throw new Error("Failed to init git repo")
+
+    const configEmail = Bun.spawn(["git", "config", "user.email", "test@example.com"], {
+      cwd: dirpath,
+      stderr: "ignore",
+      stdout: "ignore",
+    })
+    if ((await configEmail.exited) !== 0) throw new Error("Failed to configure git user.email")
+
+    const configName = Bun.spawn(["git", "config", "user.name", "Test User"], {
+      cwd: dirpath,
+      stderr: "ignore",
+      stdout: "ignore",
+    })
+    if ((await configName.exited) !== 0) throw new Error("Failed to configure git user.name")
+
+    const commit = Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
+      cwd: dirpath,
+      stderr: "ignore",
+      stdout: "ignore",
+    })
+    if ((await commit.exited) !== 0) throw new Error("Failed to create root commit")
   }
   if (options?.config) {
     await Bun.write(
