@@ -9,6 +9,7 @@ import { Instance } from "../project/instance"
 import { lazy } from "@agent-core/util/lazy"
 import { Shell } from "@/shell/shell"
 import { Plugin } from "@/plugin"
+import { Filesystem } from "../util/filesystem"
 
 export namespace Pty {
   const log = Log.create({ service: "pty" })
@@ -103,6 +104,11 @@ export namespace Pty {
     }
 
     const cwd = input.cwd || Instance.directory
+
+    if (!(await Filesystem.containsResolved(Instance.directory, cwd))) {
+      throw new Error("Access denied: path escapes project directory")
+    }
+
     const shellEnv = await Plugin.trigger("shell.env", { cwd }, { env: {} })
     const env = {
       ...process.env,
