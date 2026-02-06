@@ -12,7 +12,7 @@ export namespace Terminal {
    * Returns an object with background, foreground, and colors array.
    * Any query that fails will be null/empty.
    */
-  export async function colors(): Promise<{
+  export async function colors(timeoutMs: number = 1000): Promise<{
     background: RGBA | null
     foreground: RGBA | null
     colors: RGBA[]
@@ -96,8 +96,13 @@ export namespace Terminal {
       timeout = setTimeout(() => {
         cleanup()
         resolve({ background, foreground, colors: paletteColors })
-      }, 1000)
+      }, timeoutMs)
     })
+  }
+
+  export async function backgroundColor(timeoutMs: number = 1000): Promise<RGBA | null> {
+    const result = await colors(timeoutMs)
+    return result.background
   }
 
   export async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
