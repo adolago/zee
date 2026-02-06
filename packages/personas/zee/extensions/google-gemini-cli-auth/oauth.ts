@@ -239,10 +239,13 @@ async function waitForLocalCallback(params: {
         const state = requestUrl.searchParams.get("state")?.trim();
 
         if (error) {
+          // Sanitize the error param to prevent reflected XSS.
+          const safeError = String(error).replace(/[<>&"']/g, "");
           res.statusCode = 400;
-          res.setHeader("Content-Type", "text/plain");
-          res.end(`Authentication failed: ${error}`);
-          finish(new Error(`OAuth error: ${error}`));
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.end(`Authentication failed: ${safeError}`);
+          finish(new Error(`OAuth error: ${safeError}`));
           return;
         }
 

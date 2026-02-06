@@ -51,11 +51,19 @@ function resolveMentionPatterns(cfg: ZeeConfig | undefined, agentId?: string): s
   return derived.length > 0 ? derived : [];
 }
 
+/** Reject patterns with nested quantifiers that can cause catastrophic backtracking. */
+const REDOS_SUSPECT_RE = /(\+|\*|\{[0-9,]+\})\s*(\+|\*|\{[0-9,]+\})/;
+
+function isSafeMentionPattern(pattern: string): boolean {
+  return pattern.length <= 512 && !REDOS_SUSPECT_RE.test(pattern);
+}
+
 export function buildMentionRegexes(cfg: ZeeConfig | undefined, agentId?: string): RegExp[] {
   const patterns = normalizeMentionPatterns(resolveMentionPatterns(cfg, agentId));
   return patterns
     .map((pattern) => {
       try {
+        if (!isSafeMentionPattern(pattern)) return null;
         return new RegExp(pattern, "i");
       } catch {
         return null;
@@ -127,6 +135,7 @@ export function stripMentions(
   ]);
   for (const p of patterns) {
     try {
+      if (!isSafeMentionPattern(p)) continue;
       const re = new RegExp(p, "gi");
       result = result.replace(re, " ");
     } catch {

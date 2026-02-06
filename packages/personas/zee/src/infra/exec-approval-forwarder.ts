@@ -67,12 +67,19 @@ function normalizeMode(mode?: ExecApprovalForwardingConfig["mode"]) {
   return mode ?? DEFAULT_MODE;
 }
 
+/** Reject patterns with nested quantifiers that can cause catastrophic backtracking. */
+const REDOS_SUSPECT_RE = /(\+|\*|\{[0-9,]+\})\s*(\+|\*|\{[0-9,]+\})/;
+
 function matchSessionFilter(sessionKey: string, patterns: string[]): boolean {
   return patterns.some((pattern) => {
+    if (sessionKey.includes(pattern)) return true;
+    if (pattern.length > 512 || REDOS_SUSPECT_RE.test(pattern)) {
+      return false;
+    }
     try {
-      return sessionKey.includes(pattern) || new RegExp(pattern).test(sessionKey);
+      return new RegExp(pattern).test(sessionKey);
     } catch {
-      return sessionKey.includes(pattern);
+      return false;
     }
   });
 }

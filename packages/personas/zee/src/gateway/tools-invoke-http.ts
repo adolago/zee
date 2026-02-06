@@ -71,23 +71,53 @@ function resolveSessionKeyFromBody(body: ToolsInvokeBody): string | undefined {
  * Checks all string values in a flat args object for path traversal sequences.
  * Rejects args containing `..` path components, null bytes, or backslash
  * separators that could escape intended directory boundaries.
+ *
+ * Also validates URL-like args to block SSRF via internal/private URLs.
  */
 const PATH_TRAVERSAL_RE = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
 const PATH_ARG_KEYS = new Set(["path", "file", "filepath", "filename", "dir", "directory", "cwd"]);
+const URL_ARG_KEYS = new Set(["url", "uri", "endpoint", "href", "link"]);
+const BLOCKED_HOSTNAMES = new Set([
+  "localhost",
+  "127.0.0.1",
+  "[::1]",
+  "::1",
+  "0.0.0.0",
+  "metadata.google.internal",
+]);
 
-function assertNoPathTraversal(args: Record<string, unknown>): void {
+function isBlockedUrl(value: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return true;
+  const hostname = parsed.hostname.toLowerCase();
+  if (BLOCKED_HOSTNAMES.has(hostname)) return true;
+  if (hostname.endsWith(".localhost") || hostname.endsWith(".local") || hostname.endsWith(".internal")) return true;
+  return false;
+}
+
+function assertSafeArgs(args: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(args)) {
     if (typeof value !== "string") continue;
     if (value.includes("\0")) {
       throw new Error(`Argument "${key}" contains null byte`);
     }
-    // Only apply path traversal checks to keys that look like file paths.
     const keyLower = key.toLowerCase();
-    if (!PATH_ARG_KEYS.has(keyLower) && !keyLower.endsWith("path") && !keyLower.endsWith("file") && !keyLower.endsWith("dir")) {
-      continue;
+    // Path traversal checks for file-path-like keys.
+    if (PATH_ARG_KEYS.has(keyLower) || keyLower.endsWith("path") || keyLower.endsWith("file") || keyLower.endsWith("dir")) {
+      if (PATH_TRAVERSAL_RE.test(value)) {
+        throw new Error(`Argument "${key}" contains path traversal sequence`);
+      }
     }
-    if (PATH_TRAVERSAL_RE.test(value)) {
-      throw new Error(`Argument "${key}" contains path traversal sequence`);
+    // SSRF checks for URL-like keys.
+    if (URL_ARG_KEYS.has(keyLower) || keyLower.endsWith("url") || keyLower.endsWith("uri")) {
+      if (isBlockedUrl(value)) {
+        throw new Error(`Argument "${key}" contains a blocked URL`);
+      }
     }
   }
 }
@@ -309,7 +339,7 @@ export async function handleToolsInvokeHttpRequest(
   }
 
   try {
-    assertNoPathTraversal(args);
+    assertSafeArgs(args);
     const toolArgs = mergeActionIntoArgsIfSupported({
       toolSchema: (tool as any).parameters,
       action,

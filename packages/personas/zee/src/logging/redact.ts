@@ -45,10 +45,23 @@ function normalizeMode(value?: string): RedactSensitiveMode {
   return value === "off" ? "off" : DEFAULT_REDACT_MODE;
 }
 
+/**
+ * Test whether a regex pattern is likely to exhibit catastrophic backtracking.
+ * Rejects patterns with nested quantifiers or excessive alternation depth.
+ */
+const REDOS_SUSPECT_RE = /(\+|\*|\{[0-9,]+\})\s*(\+|\*|\{[0-9,]+\})/;
+
+function isSafeRegexPattern(pattern: string): boolean {
+  if (pattern.length > 1024) return false;
+  return !REDOS_SUSPECT_RE.test(pattern);
+}
+
 function parsePattern(raw: string): RegExp | null {
   if (!raw.trim()) return null;
   const match = raw.match(/^\/(.+)\/([gimsuy]*)$/);
   try {
+    const pattern = match ? match[1] : raw;
+    if (!isSafeRegexPattern(pattern)) return null;
     if (match) {
       const flags = match[2].includes("g") ? match[2] : `${match[2]}g`;
       return new RegExp(match[1], flags);
