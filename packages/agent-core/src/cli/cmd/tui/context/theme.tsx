@@ -46,9 +46,10 @@ import vercel from "./theme/vercel.json" with { type: "json" }
 import vesper from "./theme/vesper.json" with { type: "json" }
 import zenburn from "./theme/zenburn.json" with { type: "json" }
 import carbonfox from "./theme/carbonfox.json" with { type: "json" }
-import zee from "./theme/zee.json" with { type: "json" }
-import stanley from "./theme/stanley.json" with { type: "json" }
-import johny from "./theme/johny.json" with { type: "json" }
+import { generateTuiPersonaTheme } from "@root/theme/rosetta"
+const zee = generateTuiPersonaTheme("zee")
+const stanley = generateTuiPersonaTheme("stanley")
+const johny = generateTuiPersonaTheme("johny")
 import { useKV } from "./kv"
 import { useRenderer } from "@opentui/solid"
 import { createStore, produce } from "solid-js/store"

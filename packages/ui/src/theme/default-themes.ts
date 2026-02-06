@@ -15,9 +15,10 @@ import vesperThemeJson from "./themes/vesper.json"
 import carbonfoxThemeJson from "./themes/carbonfox.json"
 import gruvboxThemeJson from "./themes/gruvbox.json"
 import auraThemeJson from "./themes/aura.json"
-import zeeThemeJson from "./themes/zee.json"
-import stanleyThemeJson from "./themes/stanley.json"
-import johnyThemeJson from "./themes/johny.json"
+import { generateDesktopPersonaTheme } from "../../../../src/theme/rosetta"
+const zeeThemeJson = generateDesktopPersonaTheme("zee")
+const stanleyThemeJson = generateDesktopPersonaTheme("stanley")
+const johnyThemeJson = generateDesktopPersonaTheme("johny")
 
 export const agentCoreTheme = agentCoreThemeJson as DesktopTheme
 export const oc1Theme = oc1ThemeJson as DesktopTheme

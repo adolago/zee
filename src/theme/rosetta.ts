@@ -57,7 +57,7 @@ export const semantic = {
   highlight: solarized.magenta,
   background: solarized.base03,
   backgroundSecondary: solarized.base02,
-  surface: { hex: "#0A3A47", rgb: [10, 58, 71], ansi: "bright_black", color256: 237 },
+  surface: { hex: "#0a3a47", rgb: [10, 58, 71], ansi: "bright_black", color256: 237 },
   text: solarized.base0,
   textBright: solarized.base1,
   textMuted: solarized.base01,
@@ -86,8 +86,8 @@ export const personaPalettes: Record<PersonaId, PersonaPalette> = {
     primary: solarized.blue,
     primaryBright: { hex: "#69c3ff", rgb: [105, 195, 255], ansi: "bright_blue", color256: 111 },
     primaryDim: { hex: "#1a6094", rgb: [26, 96, 148], ansi: "blue", color256: 24 },
-    secondary: { hex: "#5078C2", rgb: [80, 120, 194], ansi: "blue", color256: 68 },
-    accent: { hex: "#4D8AFF", rgb: [77, 138, 255], ansi: "bright_blue", color256: 111 },
+    secondary: { hex: "#5078c2", rgb: [80, 120, 194], ansi: "blue", color256: 68 },
+    accent: { hex: "#4d8aff", rgb: [77, 138, 255], ansi: "bright_blue", color256: 111 },
     border: { hex: "#1a6094", rgb: [26, 96, 148], ansi: "blue", color256: 24 },
     glow: { hex: "#69c3ff", rgb: [105, 195, 255], ansi: "bright_blue", color256: 111 },
   },
@@ -115,7 +115,7 @@ export const personaPalettes: Record<PersonaId, PersonaPalette> = {
 // CLI ANSI Escape Codes (for terminal output)
 // =============================================================================
 
-const NO_COLOR = !!process.env.NO_COLOR;
+const NO_COLOR = typeof process !== "undefined" && !!process.env?.NO_COLOR;
 
 function ansiFromRgb(rgb: readonly [number, number, number]): string {
   return NO_COLOR ? "" : `\x1b[38;2;${rgb[0]};${rgb[1]};${rgb[2]}m`;
@@ -190,27 +190,320 @@ export function getTheme(personaId: PersonaId): FullTheme {
 }
 
 // =============================================================================
-// TUI Theme JSON Generator (for theme.tsx consumption)
+// Shared Theme Colors (used by both TUI and Desktop generators)
 // =============================================================================
 
-export function generateTuiTheme(personaId: PersonaId) {
-  const persona = personaPalettes[personaId];
+const darkColors = {
+  text: "#d4d4d4",
+  textMuted: "#808080",
+  red: "#f44747",
+  yellow: "#e5c07b",
+  green: "#73daca",
+  cyan: "#56b6c2",
+  orange: "#d19a66",
+  border: "#4a4a4a",
+  borderActive: "#606060",
+  borderSubtle: "#333333",
+  syntaxGreen: "#98c379",
+} as const;
+
+const lightColors = {
+  text: "#383a42",
+  textMuted: "#a0a1a7",
+  red: "#e45649",
+  yellow: "#c18401",
+  green: "#40a02b",
+  cyan: "#0184bc",
+  orange: "#986801",
+  border: "#d4d4d4",
+  borderActive: "#b8b8b8",
+  borderSubtle: "#e8e8e8",
+  syntaxGreen: "#50a14f",
+} as const;
+
+// =============================================================================
+// TUI Persona Theme Generator (for theme.tsx consumption)
+// =============================================================================
+
+type DarkLight = { dark: string; light: string };
+function dl(dark: string, light: string): DarkLight {
+  return { dark, light };
+}
+
+export function generateTuiPersonaTheme(personaId: PersonaId) {
+  const p = personaPalettes[personaId];
+  const d = darkColors;
+  const l = lightColors;
+
+  // Per-persona personality overrides
+  const isStanley = personaId === "stanley";
+  const isJohny = personaId === "johny";
+
   return {
-    primary: persona.primary.hex,
-    secondary: persona.secondary.hex,
-    accent: persona.accent.hex,
-    error: semantic.error.hex,
-    warning: semantic.warning.hex,
-    success: semantic.success.hex,
-    info: semantic.info.hex,
-    text: semantic.text.hex,
-    textMuted: semantic.textMuted.hex,
-    background: semantic.background.hex,
-    backgroundPanel: semantic.backgroundSecondary.hex,
-    backgroundElement: semantic.surface.hex,
-    border: persona.border.hex,
-    borderActive: persona.primary.hex,
-    borderSubtle: semantic.surface.hex,
+    defs: {
+      [`${personaId}Primary`]: p.primary.hex,
+      [`${personaId}PrimaryBright`]: p.primaryBright.hex,
+      [`${personaId}PrimaryDim`]: p.primaryDim.hex,
+      [`${personaId}Secondary`]: p.secondary.hex,
+      [`${personaId}Accent`]: p.accent.hex,
+      darkText: d.text,
+      darkTextMuted: d.textMuted,
+      darkRed: d.red,
+      darkYellow: d.yellow,
+      darkGreen: d.green,
+      darkCyan: d.cyan,
+      darkOrange: d.orange,
+      darkBorder: d.border,
+      darkBorderActive: d.borderActive,
+      darkBorderSubtle: d.borderSubtle,
+      darkSyntaxGreen: d.syntaxGreen,
+      lightText: l.text,
+      lightTextMuted: l.textMuted,
+      lightRed: l.red,
+      lightYellow: l.yellow,
+      lightGreen: l.green,
+      lightCyan: l.cyan,
+      lightOrange: l.orange,
+      lightBorder: l.border,
+      lightBorderActive: l.borderActive,
+      lightBorderSubtle: l.borderSubtle,
+      lightSyntaxGreen: l.syntaxGreen,
+    },
+    theme: {
+      primary: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
+      secondary: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
+      accent: dl(`${personaId}Accent`, `${personaId}Primary`),
+      error: dl("darkRed", "lightRed"),
+      warning: dl("darkYellow", "lightYellow"),
+      success: dl("darkGreen", "lightGreen"),
+      info: dl("darkCyan", "lightCyan"),
+      text: dl("darkText", "lightText"),
+      textMuted: dl("darkTextMuted", "lightTextMuted"),
+      background: dl("transparent", "transparent"),
+      backgroundPanel: dl("transparent", "transparent"),
+      backgroundElement: dl("transparent", "transparent"),
+      backgroundMenu: dl("transparent", "transparent"),
+      border: dl("darkBorder", "lightBorder"),
+      borderActive: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
+      borderSubtle: dl("darkBorderSubtle", "lightBorderSubtle"),
+      diffAdded: dl("darkGreen", "lightGreen"),
+      diffRemoved: dl(
+        isJohny ? `${personaId}Primary` : "darkRed",
+        isJohny ? `${personaId}PrimaryDim` : "lightRed",
+      ),
+      diffContext: dl("darkTextMuted", "lightTextMuted"),
+      diffHunkHeader: dl("darkTextMuted", "lightTextMuted"),
+      diffHighlightAdded: dl(
+        isStanley ? `${personaId}Accent` : "darkSyntaxGreen",
+        isStanley ? `${personaId}Primary` : "lightSyntaxGreen",
+      ),
+      diffHighlightRemoved: dl(
+        isJohny ? `${personaId}Accent` : "darkRed",
+        isJohny ? `${personaId}Primary` : "lightRed",
+      ),
+      diffAddedBg: dl("transparent", "transparent"),
+      diffRemovedBg: dl("transparent", "transparent"),
+      diffContextBg: dl("transparent", "transparent"),
+      diffLineNumber: dl("darkTextMuted", "lightTextMuted"),
+      diffAddedLineNumberBg: dl("transparent", "transparent"),
+      diffRemovedLineNumberBg: dl("transparent", "transparent"),
+      markdownText: dl("darkText", "lightText"),
+      markdownHeading: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
+      markdownLink: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
+      markdownLinkText: dl(`${personaId}Accent`, `${personaId}Primary`),
+      markdownCode: dl(
+        isStanley ? `${personaId}Accent` : "darkSyntaxGreen",
+        isStanley ? `${personaId}Primary` : "lightSyntaxGreen",
+      ),
+      markdownBlockQuote: dl(
+        isJohny ? `${personaId}PrimaryDim` : "darkTextMuted",
+        isJohny ? `${personaId}PrimaryDim` : "lightYellow",
+      ),
+      markdownEmph: dl(
+        isJohny ? `${personaId}Accent` : "darkYellow",
+        isJohny ? `${personaId}PrimaryDim` : "lightYellow",
+      ),
+      markdownStrong: dl(`${personaId}Accent`, `${personaId}Primary`),
+      markdownHorizontalRule: dl("darkTextMuted", "lightTextMuted"),
+      markdownListItem: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
+      markdownListEnumeration: dl(`${personaId}Accent`, `${personaId}Primary`),
+      markdownImage: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
+      markdownImageText: dl(`${personaId}Accent`, `${personaId}Primary`),
+      markdownCodeBlock: dl("darkText", "lightText"),
+      syntaxComment: dl("darkTextMuted", "lightTextMuted"),
+      syntaxKeyword: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
+      syntaxFunction: dl(`${personaId}Accent`, `${personaId}Primary`),
+      syntaxVariable: dl(
+        isJohny ? `${personaId}Accent` : "darkRed",
+        isJohny ? `${personaId}Primary` : "lightRed",
+      ),
+      syntaxString: dl(
+        isStanley ? `${personaId}Accent` : "darkSyntaxGreen",
+        isStanley ? `${personaId}Primary` : "lightSyntaxGreen",
+      ),
+      syntaxNumber: dl(
+        isJohny ? `${personaId}PrimaryDim` : "darkOrange",
+        isJohny ? `${personaId}PrimaryDim` : "lightOrange",
+      ),
+      syntaxType: dl(
+        isJohny ? `${personaId}Accent` : "darkYellow",
+        isJohny ? `${personaId}Primary` : "lightYellow",
+      ),
+      syntaxOperator: dl("darkCyan", "lightCyan"),
+      syntaxPunctuation: dl("darkText", "lightText"),
+    },
+  };
+}
+
+// =============================================================================
+// Desktop (Web UI) Persona Theme Generator
+// =============================================================================
+
+interface DesktopThemeVariant {
+  seeds: {
+    neutral: string;
+    primary: string;
+    success: string;
+    warning: string;
+    error: string;
+    info: string;
+    interactive: string;
+    diffAdd: string;
+    diffDelete: string;
+  };
+  overrides: Record<string, string>;
+}
+
+interface DesktopTheme {
+  $schema: string;
+  name: string;
+  id: string;
+  light: DesktopThemeVariant;
+  dark: DesktopThemeVariant;
+}
+
+const personaNames: Record<PersonaId, string> = {
+  zee: "Zee",
+  stanley: "Stanley",
+  johny: "Johny",
+};
+
+export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme {
+  const p = personaPalettes[personaId];
+  const d = darkColors;
+  const l = lightColors;
+
+  const isStanley = personaId === "stanley";
+  const isJohny = personaId === "johny";
+
+  const lightOverrides: Record<string, string> = {
+    "text-base": l.text,
+    "text-weak": l.textMuted,
+    "text-strong": l.text,
+    "border-weak-base": l.borderSubtle,
+    "markdown-heading": "var(--text-interactive-base)",
+    "markdown-text": "var(--text-base)",
+    "markdown-link": "var(--text-interactive-base)",
+    "markdown-link-text": "var(--text-interactive-base)",
+    "markdown-code": isStanley ? l.syntaxGreen : l.syntaxGreen,
+    "markdown-block-quote": "var(--text-weak)",
+    "markdown-emph": isJohny ? "var(--text-interactive-base)" : "var(--syntax-type)",
+    "markdown-strong": "var(--text-interactive-base)",
+    "markdown-horizontal-rule": "var(--text-weak)",
+    "markdown-list-item": "var(--text-interactive-base)",
+    "markdown-list-enumeration": "var(--text-interactive-base)",
+    "markdown-image": "var(--text-interactive-base)",
+    "markdown-image-text": "var(--text-interactive-base)",
+    "markdown-code-block": "var(--text-base)",
+    "syntax-comment": "var(--text-weak)",
+    "syntax-keyword": "var(--text-interactive-base)",
+    "syntax-string": l.syntaxGreen,
+    "syntax-variable": isJohny ? "var(--syntax-critical)" : "var(--syntax-critical)",
+    "syntax-property": "var(--text-interactive-base)",
+    "syntax-type": isJohny ? "var(--text-interactive-base)" : l.yellow,
+    "syntax-constant": l.cyan,
+    "syntax-punctuation": "var(--text-base)",
+    "syntax-operator": l.cyan,
+  };
+
+  const darkOverrides: Record<string, string> = {
+    "background-base": "#0a0a0a",
+    "background-weak": "#141414",
+    "background-strong": "#1e1e1e",
+    "background-stronger": "#282828",
+    "surface-base": "#141414",
+    "surface-base-hover": "#1e1e1e",
+    "surface-raised-base": "#1e1e1e",
+    "surface-raised-strong": "#282828",
+    "surface-float-base": "#141414",
+    "surface-float-base-hover": "#1e1e1e",
+    "surface-inset-base": "#0a0a0a",
+    "text-base": d.text,
+    "text-weak": d.textMuted,
+    "text-strong": d.text,
+    "border-base": d.border,
+    "border-weak-base": d.borderSubtle,
+    "border-strong-base": d.borderActive,
+    "icon-base": d.textMuted,
+    "icon-strong-base": d.text,
+    "markdown-heading": "var(--surface-brand-base)",
+    "markdown-text": "var(--text-base)",
+    "markdown-link": "var(--surface-brand-base)",
+    "markdown-link-text": "var(--text-interactive-base)",
+    "markdown-code": isStanley ? "var(--text-interactive-base)" : d.syntaxGreen,
+    "markdown-block-quote": "var(--text-weak)",
+    "markdown-emph": isJohny ? "var(--text-interactive-base)" : "var(--syntax-type)",
+    "markdown-strong": "var(--text-interactive-base)",
+    "markdown-horizontal-rule": "var(--text-weak)",
+    "markdown-list-item": "var(--surface-brand-base)",
+    "markdown-list-enumeration": "var(--text-interactive-base)",
+    "markdown-image": "var(--surface-brand-base)",
+    "markdown-image-text": "var(--text-interactive-base)",
+    "markdown-code-block": "var(--text-base)",
+    "syntax-comment": "var(--text-weak)",
+    "syntax-keyword": "var(--surface-brand-base)",
+    "syntax-string": isStanley ? "var(--text-interactive-base)" : d.syntaxGreen,
+    "syntax-variable": isJohny ? "var(--text-interactive-base)" : "var(--syntax-critical)",
+    "syntax-property": "var(--text-interactive-base)",
+    "syntax-type": isJohny ? "var(--text-interactive-base)" : d.yellow,
+    "syntax-constant": d.cyan,
+    "syntax-punctuation": "var(--text-base)",
+    "syntax-operator": d.cyan,
+    "syntax-primitive": isJohny ? "var(--text-interactive-base)" : d.orange,
+  };
+
+  return {
+    $schema: "https://opencode.ai/desktop-theme.json",
+    name: personaNames[personaId],
+    id: personaId,
+    light: {
+      seeds: {
+        neutral: "#8a8a8a",
+        primary: p.primaryDim.hex,
+        success: l.green,
+        warning: l.yellow,
+        error: l.red,
+        info: l.cyan,
+        interactive: p.primary.hex,
+        diffAdd: "#4db380",
+        diffDelete: "#d1383d",
+      },
+      overrides: lightOverrides,
+    },
+    dark: {
+      seeds: {
+        neutral: d.textMuted,
+        primary: p.primary.hex,
+        success: d.green,
+        warning: d.yellow,
+        error: d.red,
+        info: d.cyan,
+        interactive: p.accent.hex,
+        diffAdd: "#4fd6be",
+        diffDelete: "#c53b53",
+      },
+      overrides: darkOverrides,
+    },
   };
 }
 

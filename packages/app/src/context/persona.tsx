@@ -1,10 +1,11 @@
 import { createSignal, createMemo, onMount } from "solid-js"
 import { createSimpleContext } from "@agent-core/ui/context"
+import { personaPalettes } from "../../../../src/theme/rosetta"
 
 export const PERSONAS = [
-  { id: "zee", name: "Zee", description: "Personal assistant", color: "#268bd2" },
-  { id: "stanley", name: "Stanley", description: "Investment research", color: "#859900" },
-  { id: "johny", name: "Johny", description: "Learning & study", color: "#dc322f" },
+  { id: "zee", name: "Zee", description: "Personal assistant", color: personaPalettes.zee.primary.hex },
+  { id: "stanley", name: "Stanley", description: "Investment research", color: personaPalettes.stanley.primary.hex },
+  { id: "johny", name: "Johny", description: "Learning & study", color: personaPalettes.johny.primary.hex },
 ] as const
 
 export type PersonaId = (typeof PERSONAS)[number]["id"]
