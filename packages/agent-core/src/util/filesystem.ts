@@ -3,7 +3,8 @@ import { realpath } from "fs/promises"
 import { dirname, join, relative } from "path"
 
 export namespace Filesystem {
-  export const sanitizePath = (value: string) => value.replace(/\0/g, "")
+  // Optimization: indexOf is faster than regex replace for checking existence in hot paths
+  export const sanitizePath = (value: string) => (value.indexOf("\0") !== -1 ? value.replace(/\0/g, "") : value)
   export const exists = (p: string) =>
     Bun.file(sanitizePath(p))
       .stat()
