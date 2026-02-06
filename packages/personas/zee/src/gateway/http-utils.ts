@@ -3,6 +3,38 @@ import type { IncomingMessage } from "node:http";
 
 import { buildAgentMainSessionKey, normalizeAgentId } from "../routing/session-key.js";
 
+/**
+ * Reject session keys that contain path traversal sequences, null bytes,
+ * or other characters that could escape directory boundaries when the key
+ * is later used as (or embedded in) a filesystem path.
+ *
+ * Allowed characters: alphanumeric, dash, underscore, colon, dot, plus, at.
+ * Maximum length: 256 characters.
+ */
+const SESSION_KEY_MAX_LENGTH = 256;
+const SESSION_KEY_SAFE_RE = /^[a-zA-Z0-9_:.\-+@]+$/;
+
+function sanitizeSessionKey(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (trimmed.length > SESSION_KEY_MAX_LENGTH) {
+    throw new Error("Session key too long");
+  }
+  if (trimmed.includes("\0")) {
+    throw new Error("Session key contains null byte");
+  }
+  if (trimmed.includes("..")) {
+    throw new Error("Session key contains path traversal sequence");
+  }
+  if (trimmed.includes("/") || trimmed.includes("\\")) {
+    throw new Error("Session key contains path separator");
+  }
+  if (!SESSION_KEY_SAFE_RE.test(trimmed)) {
+    throw new Error("Session key contains invalid characters");
+  }
+  return trimmed;
+}
+
 export function getHeader(req: IncomingMessage, name: string): string | undefined {
   const raw = req.headers[name.toLowerCase()];
   if (typeof raw === "string") return raw;
@@ -61,11 +93,11 @@ export function resolveSessionKey(params: {
   user?: string | undefined;
   prefix: string;
 }): string {
-  const explicit =
+  const rawExplicit =
     getHeader(params.req, "x-zee-session-key")?.trim() ||
     getHeader(params.req, "x-zee-session-key")?.trim() ||
     getHeader(params.req, "x-zee-session-key")?.trim();
-  if (explicit) return explicit;
+  if (rawExplicit) return sanitizeSessionKey(rawExplicit);
 
   const user = params.user?.trim();
   const mainKey = user ? `${params.prefix}-user:${user}` : `${params.prefix}:${randomUUID()}`;

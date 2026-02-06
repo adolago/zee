@@ -42,9 +42,54 @@ type ToolsInvokeBody = {
   dryRun?: unknown;
 };
 
+const SESSION_KEY_MAX_LENGTH = 256;
+const SESSION_KEY_SAFE_RE = /^[a-zA-Z0-9_:.\-+@]+$/;
+
+function sanitizeSessionKey(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (trimmed.length > SESSION_KEY_MAX_LENGTH) {
+    throw new Error("Session key too long");
+  }
+  if (trimmed.includes("\0") || trimmed.includes("..") || trimmed.includes("/") || trimmed.includes("\\")) {
+    throw new Error("Session key contains unsafe characters");
+  }
+  if (!SESSION_KEY_SAFE_RE.test(trimmed)) {
+    throw new Error("Session key contains invalid characters");
+  }
+  return trimmed;
+}
+
 function resolveSessionKeyFromBody(body: ToolsInvokeBody): string | undefined {
-  if (typeof body.sessionKey === "string" && body.sessionKey.trim()) return body.sessionKey.trim();
+  if (typeof body.sessionKey === "string" && body.sessionKey.trim()) {
+    return sanitizeSessionKey(body.sessionKey);
+  }
   return undefined;
+}
+
+/**
+ * Checks all string values in a flat args object for path traversal sequences.
+ * Rejects args containing `..` path components, null bytes, or backslash
+ * separators that could escape intended directory boundaries.
+ */
+const PATH_TRAVERSAL_RE = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
+const PATH_ARG_KEYS = new Set(["path", "file", "filepath", "filename", "dir", "directory", "cwd"]);
+
+function assertNoPathTraversal(args: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(args)) {
+    if (typeof value !== "string") continue;
+    if (value.includes("\0")) {
+      throw new Error(`Argument "${key}" contains null byte`);
+    }
+    // Only apply path traversal checks to keys that look like file paths.
+    const keyLower = key.toLowerCase();
+    if (!PATH_ARG_KEYS.has(keyLower) && !keyLower.endsWith("path") && !keyLower.endsWith("file") && !keyLower.endsWith("dir")) {
+      continue;
+    }
+    if (PATH_TRAVERSAL_RE.test(value)) {
+      throw new Error(`Argument "${key}" contains path traversal sequence`);
+    }
+  }
 }
 
 function mergeActionIntoArgsIfSupported(params: {
@@ -112,7 +157,13 @@ export async function handleToolsInvokeHttpRequest(
       : {}
   ) as Record<string, unknown>;
 
-  const rawSessionKey = resolveSessionKeyFromBody(body);
+  let rawSessionKey: string | undefined;
+  try {
+    rawSessionKey = resolveSessionKeyFromBody(body);
+  } catch (err) {
+    sendInvalidRequest(res, err instanceof Error ? err.message : "Invalid session key");
+    return true;
+  }
   const sessionKey =
     !rawSessionKey || rawSessionKey === "main" ? resolveMainSessionKey(cfg) : rawSessionKey;
 
@@ -258,6 +309,7 @@ export async function handleToolsInvokeHttpRequest(
   }
 
   try {
+    assertNoPathTraversal(args);
     const toolArgs = mergeActionIntoArgsIfSupported({
       toolSchema: (tool as any).parameters,
       action,

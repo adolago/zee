@@ -185,7 +185,18 @@ export async function handleOpenAiHttpRequest(
   const user = typeof payload.user === "string" ? payload.user : undefined;
 
   const agentId = resolveAgentIdForRequest({ req, model });
-  const sessionKey = resolveOpenAiSessionKey({ req, agentId, user });
+  let sessionKey: string;
+  try {
+    sessionKey = resolveOpenAiSessionKey({ req, agentId, user });
+  } catch (err) {
+    sendJson(res, 400, {
+      error: {
+        message: err instanceof Error ? err.message : "Invalid session key",
+        type: "invalid_request_error",
+      },
+    });
+    return true;
+  }
   const prompt = buildAgentPrompt(payload.messages);
   if (!prompt.message) {
     sendJson(res, 400, {

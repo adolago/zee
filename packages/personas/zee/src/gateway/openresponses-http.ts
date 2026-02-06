@@ -56,6 +56,38 @@ import {
   type InputImageSource,
 } from "../media/input-files.js";
 
+/**
+ * Validate that a user-supplied URL is safe to fetch.
+ * Rejects non-HTTP(S) schemes and obviously internal hostnames before the
+ * request reaches the deeper SSRF-guarded fetch pipeline.
+ */
+function assertSafeInputUrl(url: string | undefined): void {
+  if (!url) return;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid URL: ${url.slice(0, 200)}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`Blocked URL scheme: ${parsed.protocol}. Only HTTP/HTTPS allowed.`);
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    hostname === "::1" ||
+    hostname === "0.0.0.0" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    hostname === "metadata.google.internal"
+  ) {
+    throw new Error(`Blocked internal hostname: ${hostname}`);
+  }
+}
+
 type OpenResponsesHttpOptions = {
   auth: ResolvedGatewayAuth;
   maxBodyBytes?: number;
@@ -384,6 +416,9 @@ export async function handleOpenResponsesHttpRequest(
               if (!sourceType) {
                 throw new Error("input_image must have 'source.url' or 'source.data'");
               }
+              if (sourceType === "url") {
+                assertSafeInputUrl(source.url);
+              }
               const imageSource: InputImageSource = {
                 type: sourceType,
                 url: source.url,
@@ -407,6 +442,9 @@ export async function handleOpenResponsesHttpRequest(
                 source.type === "base64" || source.type === "url" ? source.type : undefined;
               if (!sourceType) {
                 throw new Error("input_file must have 'source.url' or 'source.data'");
+              }
+              if (sourceType === "url") {
+                assertSafeInputUrl(source.url);
               }
               const file = await extractFileContentFromSource({
                 source: {
@@ -457,7 +495,18 @@ export async function handleOpenResponsesHttpRequest(
     return true;
   }
   const agentId = resolveAgentIdForRequest({ req, model });
-  const sessionKey = resolveOpenResponsesSessionKey({ req, agentId, user });
+  let sessionKey: string;
+  try {
+    sessionKey = resolveOpenResponsesSessionKey({ req, agentId, user });
+  } catch (err) {
+    sendJson(res, 400, {
+      error: {
+        message: err instanceof Error ? err.message : "Invalid session key",
+        type: "invalid_request_error",
+      },
+    });
+    return true;
+  }
 
   // Build prompt from input
   const prompt = buildAgentPrompt(payload.input);
