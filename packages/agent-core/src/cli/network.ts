@@ -1,5 +1,6 @@
 import type { Argv, InferredOptionTypes } from "yargs"
 import { Config } from "../config/config"
+import { assertSafeServerBind } from "../server/auth"
 
 const options = {
   port: {
@@ -91,6 +92,8 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
   ]
   const argsCors = Array.isArray(args.cors) ? args.cors : args.cors ? [args.cors] : []
   const cors = [...configCors, ...envCors, ...argsCors]
+
+  assertSafeServerBind({ hostname })
 
   return { hostname, port, mdns, cors }
 }

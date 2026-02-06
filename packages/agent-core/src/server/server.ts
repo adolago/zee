@@ -3,12 +3,16 @@ import { Log } from "../util/log"
 import { describeRoute, generateSpecs, resolver } from "hono-openapi"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
+import fs from "fs/promises"
+import os from "os"
+import path from "path"
 
 import { HTTPException } from "hono/http-exception"
 
 import { proxy } from "hono/proxy"
 import z from "zod"
 
+import { Flag } from "@/flag/flag"
 import { Provider } from "../provider/provider"
 import { NamedError } from "@agent-core/util/error"
 import { lazy } from "../util/lazy"
@@ -17,10 +21,20 @@ import type { ContentfulStatusCode } from "hono/utils/http-status"
 import { websocket } from "hono/bun"
 import { bodyLimit } from "hono/body-limit"
 
+import { Config } from "../config/config"
+import { Filesystem } from "../util/filesystem"
 import { MDNS } from "./mdns"
 import { ServerState } from "./state"
 import { Instance } from "../project/instance"
-import { isAuthorized } from "./auth"
+import {
+  AuthScope,
+  assertSafeServerBind,
+  getAuthConfig,
+  hasScope,
+  isAuthorized,
+  isLoopbackHostname,
+  resolveRequiredScope,
+} from "./auth"
 
 // Routes
 import { ProjectRoute } from "./route/project"
@@ -47,10 +61,13 @@ import { GatewayRoute } from "./route/gateway"
 import { SttRoute } from "./route/stt"
 import { CronRoute } from "./route/cron"
 import { HeartbeatRoute } from "./route/heartbeat"
+import { RequestMeta } from "./request-meta"
 
 // Default API port for the daemon
 const DEFAULT_API_PORT = 3210
 const DEFAULT_BODY_LIMIT_BYTES = 10 * 1024 * 1024
+const DEFAULT_IDLE_TIMEOUT_SECONDS = 120
+const DEFAULT_MAX_INSTANCES_NON_LOOPBACK = 64
 
 function parseBodyLimitBytes(value?: string): number | undefined {
   if (!value) return undefined
@@ -76,6 +93,37 @@ export namespace Server {
   const log = Log.create({ service: "server" })
 
   let _corsWhitelist: string[] = []
+  let _isLoopbackBind = true
+
+  function parseCommaList(value?: string): string[] {
+    if (!value) return []
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+  }
+
+  function expandHome(value: string): string {
+    const trimmed = value.trim()
+    if (trimmed === "~") return os.homedir()
+    if (trimmed.startsWith("~/")) return path.join(os.homedir(), trimmed.slice(2))
+    if (trimmed.startsWith("$HOME/")) return path.join(os.homedir(), trimmed.slice(6))
+    if (trimmed === "$HOME") return os.homedir()
+    return trimmed
+  }
+
+  async function normalizeAllowedDirectories(raw: string[], baseDir: string): Promise<string[]> {
+    const result: string[] = []
+    for (const item of raw) {
+      const expanded = expandHome(item)
+      const absolute = path.isAbsolute(expanded) ? path.resolve(expanded) : path.resolve(baseDir, expanded)
+      const real = await fs.realpath(absolute).catch(() => absolute)
+      const st = await fs.stat(real).catch(() => undefined)
+      if (!st?.isDirectory()) continue
+      result.push(real)
+    }
+    return Array.from(new Set(result))
+  }
 
   export function url(): URL {
     return ServerState.url()
@@ -155,23 +203,125 @@ export namespace Server {
             await next()
             return
           }
-          // Auth disabled by default. Enable with AGENT_CORE_ENABLE_SERVER_AUTH=1 + AGENT_CORE_SERVER_PASSWORD
-          if (!isAuthorized(c.req.header("Authorization"))) {
-            c.header("WWW-Authenticate", 'Basic realm="agent-core"')
-            return c.text("Unauthorized", 401)
+
+          const authConfig = getAuthConfig()
+          if (!authConfig.disabled) {
+            const ip = RequestMeta.getIp(c.req.raw)
+            const method = c.req.method
+            const path = c.req.path
+            const required = resolveRequiredScope(method, path)
+            const authHeader = c.req.header("Authorization")
+
+            if (!isAuthorized(authHeader)) {
+              log.warn("auth denied", {
+                status: 401,
+                ip,
+                method,
+                path,
+                required,
+              })
+              c.header("WWW-Authenticate", 'Basic realm="agent-core"')
+              return c.text("Unauthorized", 401)
+            }
+
+            const granted = authConfig.scopes ?? [AuthScope.ADMIN]
+            if (!hasScope(granted, required)) {
+              log.warn("authz denied", {
+                status: 403,
+                ip,
+                method,
+                path,
+                required,
+                granted,
+              })
+              return c.text("Forbidden", 403)
+            }
           }
           await next()
         })
         // Middleware to provide instance context
         .use(async (c, next) => {
           if (c.req.path === "/log") return next()
-          let directory = c.req.query("directory") || c.req.header("x-opencode-directory") || process.cwd()
-          // If directory is relative, make it absolute ensuring it starts with /
-          // This fixes an issue where ?directory=foo/bar was treating it as relative to CWD
-          // but we want it relative to root if it starts with /
-          // Actually, process.cwd() is absolute.
-          // If user passes query dir, we assume it's the intended workspace.
-          
+
+          const baseDir = process.cwd()
+          const requestedDirectory = c.req.query("directory") || c.req.header("x-opencode-directory")
+          let directory = baseDir
+
+          if (requestedDirectory) {
+            const authConfig = getAuthConfig()
+            const expanded = expandHome(requestedDirectory)
+            const absolute = path.isAbsolute(expanded) ? path.resolve(expanded) : path.resolve(baseDir, expanded)
+            const real = await fs.realpath(absolute).catch(() => absolute)
+            const st = await fs.stat(real).catch(() => undefined)
+            if (!st?.isDirectory()) {
+              return c.json({ error: "Directory not found", directory: real }, 400)
+            }
+
+            const baseReal = await fs.realpath(baseDir).catch(() => baseDir)
+            if (!authConfig.disabled && path.resolve(real) !== path.resolve(baseReal)) {
+              const granted = authConfig.scopes ?? [AuthScope.ADMIN]
+              if (!hasScope(granted, AuthScope.ADMIN)) {
+                return c.text("Forbidden", 403)
+              }
+            }
+
+            const root = path.parse(real).root
+            const isRoot = path.resolve(real) === path.resolve(root)
+            const globalConfig = await Config.global().catch(() => ({} as Config.Info))
+            const allowGlobal =
+              Flag.AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY || globalConfig?.server?.allowGlobalDirectory === true
+            if (isRoot && !allowGlobal) {
+              return c.json(
+                {
+                  error:
+                    "Refusing to use filesystem root as instance directory. Set AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY=1 or config.server.allowGlobalDirectory=true to override.",
+                  directory: real,
+                },
+                400,
+              )
+            }
+
+            if (!_isLoopbackBind) {
+              const configAllowed = globalConfig?.server?.allowedDirectories ?? []
+              const envAllowed = parseCommaList(process.env["AGENT_CORE_SERVER_ALLOWED_DIRECTORIES"])
+              const rawAllowed = [...configAllowed, ...envAllowed]
+              const allowedRoots =
+                rawAllowed.length > 0 ? await normalizeAllowedDirectories(rawAllowed, baseDir) : [baseDir]
+
+              const ok = allowedRoots.some((rootDir) => Filesystem.containsResolvedSync(rootDir, real))
+              if (!ok) {
+                return c.json(
+                  {
+                    error:
+                      "Directory is not allowed in server mode. Configure AGENT_CORE_SERVER_ALLOWED_DIRECTORIES or config.server.allowedDirectories.",
+                    directory: real,
+                  },
+                  403,
+                )
+              }
+            }
+
+            const maxInstances =
+              Flag.AGENT_CORE_SERVER_MAX_INSTANCES ??
+              globalConfig?.server?.maxInstances ??
+              (!_isLoopbackBind ? DEFAULT_MAX_INSTANCES_NON_LOOPBACK : undefined)
+            if (maxInstances && !Instance.isCached(real) && Instance.cacheSize() >= maxInstances) {
+              return c.json(
+                {
+                  error:
+                    "Instance cache limit reached. Refusing to create a new instance directory for this request. " +
+                    "Dispose unused instances (POST /instance/dispose?directory=...) or increase server.maxInstances / AGENT_CORE_SERVER_MAX_INSTANCES.",
+                  directory: real,
+                  maxInstances,
+                  currentInstances: Instance.cacheSize(),
+                },
+                429,
+              )
+            }
+
+            directory = real
+          }
+
           return Instance.provide({
             directory,
             fn: async () => {
@@ -307,11 +457,23 @@ export namespace Server {
 
   export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
     _corsWhitelist = opts.cors ?? []
+    _isLoopbackBind = isLoopbackHostname(opts.hostname)
 
+    assertSafeServerBind({ hostname: opts.hostname })
+
+    const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
     const args = {
       hostname: opts.hostname,
-      idleTimeout: 0,
-      fetch: App().fetch,
+      idleTimeout,
+      fetch: (req: Request, server: any) => {
+        try {
+          const ip = server?.requestIP?.(req)?.address
+          RequestMeta.setIp(req, ip)
+        } catch {
+          // Ignore - request metadata is best-effort.
+        }
+        return App().fetch(req)
+      },
       websocket: websocket,
     } as const
     const tryServe = (port: number) => {

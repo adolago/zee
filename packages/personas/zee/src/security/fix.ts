@@ -7,6 +7,7 @@ import type { ZeeConfig } from "../config/config.js";
 import { createConfigIO } from "../config/config.js";
 import { resolveConfigPath, resolveOAuthDir, resolveStateDir } from "../config/paths.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
+import { resolveAuthStorePathForDisplay } from "../agents/auth-profiles.js";
 import { INCLUDE_KEY, MAX_INCLUDE_DEPTH } from "../config/includes.js";
 import { normalizeAgentId } from "../routing/session-key.js";
 import { readChannelAllowFromStore } from "../pairing/pairing-store.js";
@@ -266,7 +267,7 @@ function applyConfigFixes(params: { cfg: ZeeConfig; env: NodeJS.ProcessEnv }): {
     changes.push('logging.redactSensitive=off -> "tools"');
   }
 
-  for (const channel of ["telegram", "whatsapp"]) {
+  for (const channel of ["whatsapp", "matrix"]) {
     setGroupPolicyAllowlist({ cfg: next, channel, changes, policyFlips });
   }
 
@@ -361,6 +362,16 @@ async function chmodCredentialsAndAgentState(params: {
     params.actions.push(await safeChmod({ path: p, mode: 0o600, require: "file" }));
   }
 
+  // agent-core auth store (global)
+  // eslint-disable-next-line no-await-in-loop
+  params.actions.push(
+    await params.applyPerms({
+      path: resolveAuthStorePathForDisplay(),
+      mode: 0o600,
+      require: "file",
+    }),
+  );
+
   const ids = new Set<string>();
   ids.add(resolveDefaultAgentId(params.cfg));
   const list = Array.isArray(params.cfg.agents?.list) ? params.cfg.agents?.list : [];
@@ -382,7 +393,7 @@ async function chmodCredentialsAndAgentState(params: {
     // eslint-disable-next-line no-await-in-loop
     params.actions.push(await params.applyPerms({ path: agentDir, mode: 0o700, require: "dir" }));
 
-    const authPath = path.join(agentDir, "auth-profiles.json");
+    const authPath = path.join(agentDir, "auth-metadata.json");
     // eslint-disable-next-line no-await-in-loop
     params.actions.push(await params.applyPerms({ path: authPath, mode: 0o600, require: "file" }));
 

@@ -16,6 +16,7 @@ import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogLegend } from "./ui/dialog-legend"
+import { DialogReleaseButton } from "./ui/dialog-release-button"
 import { WhichKey } from "@tui/component/which-key"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
@@ -47,7 +48,8 @@ import { Terminal } from "./util/terminal"
 function modeFromBackground(background: RGBA | null): "dark" | "light" {
   if (!background) return "dark"
   const { r, g, b } = background
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  const scale = r > 1 || g > 1 || b > 1 ? 255 : 1
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / scale
   return luminance > 0.5 ? "light" : "dark"
 }
 
@@ -431,7 +433,9 @@ function App() {
       },
     },
 	    {
-	    title: local.mode.isHold() ? "Switch to Release mode" : "Switch to Hold mode",
+	    title: local.mode.isHold()
+        ? (kv.get("mode_release_policy", "no_cuffs") === "safe" ? "Switch to Release mode" : "Switch to No Cuffs")
+        : "Switch to Hold mode",
 	    value: "mode.toggle",
 	    keybind: "mode_toggle",
 	    category: "Mode",
@@ -441,6 +445,34 @@ function App() {
 	        setTimeout(() => vim.onEnterInsert(), 10)
 	      },
 	    },
+    {
+      title: "Release button settings",
+      value: "mode.release_button",
+      category: "Mode",
+      onSelect: () => {
+        dialog.replace(() => <DialogReleaseButton />)
+      },
+    },
+    {
+      title:
+        kv.get("mode_release_policy", "no_cuffs") === "safe"
+          ? "Release policy: Safe (toggle to No Cuffs)"
+          : "Release policy: No Cuffs (toggle to Safe)",
+      value: "mode.release_policy_toggle",
+      keybind: "mode_release_policy_toggle",
+      category: "Mode",
+      onSelect: (dialog) => {
+        const current = kv.get("mode_release_policy", "no_cuffs")
+        const next = current === "safe" ? "no_cuffs" : "safe"
+        kv.set("mode_release_policy", next)
+        toast.show({
+          variant: "info",
+          message: next === "safe" ? "Release policy set to SAFE" : "Release policy set to NO CUFFS",
+          duration: 2000,
+        })
+        dialog.clear()
+      },
+    },
     {
       title: "Connect provider",
       value: "provider.connect",

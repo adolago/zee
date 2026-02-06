@@ -45,7 +45,10 @@ export function DialogLegend() {
           </text>
           <text fg={theme.textMuted}>  HOLD     Agent paused, research only</text>
           <text fg={theme.textMuted}>  RELEASE  Agent can edit files</text>
+          <text fg={theme.textMuted}>  NO CUFFS Release mode with skipPermissions (allows everything)</text>
           <text fg={theme.textMuted}>  Space h  Toggle hold/release mode</text>
+          <text fg={theme.textMuted}>  Space H  Toggle release policy (safe/no cuffs)</text>
+          <text fg={theme.textMuted}>  Space c  Commands: "Release button settings"</text>
         </box>
 
         <box>

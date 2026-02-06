@@ -43,8 +43,14 @@ const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
   "PATCH /config": AuthScope.WRITE,
   "POST /cron": AuthScope.WRITE,
   "DELETE /cron": AuthScope.WRITE,
-  "POST /pty": AuthScope.WRITE,
-  "DELETE /pty": AuthScope.WRITE,
+  // High-risk: process execution surface
+  "POST /pty": AuthScope.ADMIN,
+  "DELETE /pty": AuthScope.ADMIN,
+  // High-risk: MCP can execute arbitrary tool logic via external servers
+  "POST /mcp": AuthScope.ADMIN,
+  "DELETE /mcp": AuthScope.ADMIN,
+  // High-risk: UI control plane
+  "POST /tui": AuthScope.ADMIN,
 
   // Approval operations
   "POST /session/*/permissions": AuthScope.APPROVALS,
@@ -52,6 +58,10 @@ const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
   "POST /question": AuthScope.APPROVALS,
 
   // Admin operations
+  "GET /global/instances": AuthScope.ADMIN,
+  "POST /global/dispose": AuthScope.ADMIN,
+  "POST /instance/dispose": AuthScope.ADMIN,
+  // Legacy (should not be used by current routes)
   "POST /dispose": AuthScope.ADMIN,
   "PUT /auth": AuthScope.ADMIN,
   "DELETE /auth": AuthScope.ADMIN,
@@ -196,6 +206,41 @@ export function authorizeRequestScoped(
   }
 
   return { authorized: true }
+}
+
+export function isLoopbackHostname(hostname: string): boolean {
+  const value = hostname.trim().toLowerCase()
+  if (!value) return true
+  if (value === "localhost") return true
+  if (value === "127.0.0.1") return true
+  if (value === "::1") return true
+  return false
+}
+
+/**
+ * Guardrail: Refuse non-loopback binds unless server auth is enabled and configured.
+ * This prevents accidental LAN exposure of privileged endpoints.
+ */
+export function assertSafeServerBind(opts: { hostname: string }) {
+  const hostname = opts.hostname
+  if (isLoopbackHostname(hostname)) return
+
+  const config = getAuthConfig()
+  if (!config.disabled && config.password) return
+
+  const insecureOverrideOk =
+    Flag.AGENT_CORE_DISABLE_SERVER_AUTH && Flag.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
+
+  if (insecureOverrideOk) return
+
+  const authDisabledHelp = config.disabled
+    ? "Server auth is disabled. Set AGENT_CORE_ENABLE_SERVER_AUTH=1 and AGENT_CORE_SERVER_PASSWORD to enable."
+    : "Server auth is enabled but AGENT_CORE_SERVER_PASSWORD is missing."
+
+  throw new Error(
+    `Refusing to bind agent-core server to non-loopback hostname "${hostname}" without HTTP auth. ${authDisabledHelp} ` +
+      "To override (dangerous), set AGENT_CORE_DISABLE_SERVER_AUTH=1 and AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH=1.",
+  )
 }
 
 function secureEqual(a: string, b: string): boolean {

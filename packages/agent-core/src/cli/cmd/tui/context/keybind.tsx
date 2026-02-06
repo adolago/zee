@@ -17,6 +17,7 @@ export type KeybindsConfig = SDKKeybindsConfig & {
   model_favorite_toggle?: string
   model_cycle_favorite?: string
   model_cycle_favorite_reverse?: string
+  mode_release_policy_toggle?: string
   input_dictation_toggle?: string
   session_delegate?: string
   session_delete?: string
@@ -45,6 +46,19 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
         (sync.data.config.keybinds ?? {}) as KeybindsConfig,
         mapValues((value) => Keybind.parse(value)),
       ) as { [K in keyof KeybindsConfig]?: Keybind.Info[] }
+    })
+    const shiftLetterBindings = createMemo(() => {
+      const set = new Set<string>()
+      const all = keybinds()
+      for (const bindings of Object.values(all)) {
+        for (const binding of bindings ?? []) {
+          if (!binding.shift) continue
+          if (!binding.name || binding.name.length !== 1) continue
+          const scope = binding.leader ? "leader" : "plain"
+          set.add(`${scope}:${binding.name}`)
+        }
+      }
+      return set
     })
     const [store, setStore] = createStore({
       leader: false,
@@ -168,12 +182,7 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
         const keybind = keybinds()[key]
         if (!keybind) return false
         const parsed: Keybind.Info = result.parse(evt)
-        for (const kb of keybind) {
-          if (Keybind.match(kb, parsed)) {
-            return true
-          }
-        }
-        return false
+        return Keybind.matchAny(keybind, parsed, { shiftLetterBindings: shiftLetterBindings() })
       },
       print(key: keyof KeybindsConfig) {
         const first = keybinds()[key]?.at(0)

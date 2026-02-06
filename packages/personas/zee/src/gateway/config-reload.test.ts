@@ -27,13 +27,13 @@ describe("diffConfigPaths", () => {
 
 describe("buildGatewayReloadPlan", () => {
   const emptyRegistry = createTestRegistry([]);
-  const telegramPlugin: ChannelPlugin = {
-    id: "telegram",
+  const matrixPlugin: ChannelPlugin = {
+    id: "matrix",
     meta: {
-      id: "telegram",
-      label: "Telegram",
-      selectionLabel: "Telegram",
-      docsPath: "/channels/telegram",
+      id: "matrix",
+      label: "Matrix",
+      selectionLabel: "Matrix",
+      docsPath: "/channels/matrix",
       blurb: "test",
     },
     capabilities: { chatTypes: ["direct"] },
@@ -41,7 +41,7 @@ describe("buildGatewayReloadPlan", () => {
       listAccountIds: () => [],
       resolveAccount: () => ({}),
     },
-    reload: { configPrefixes: ["channels.telegram"] },
+    reload: { configPrefixes: ["channels.matrix"] },
   };
   const whatsappPlugin: ChannelPlugin = {
     id: "whatsapp",
@@ -60,7 +60,7 @@ describe("buildGatewayReloadPlan", () => {
     reload: { configPrefixes: ["web"], noopPrefixes: ["channels.whatsapp"] },
   };
   const registry = createTestRegistry([
-    { pluginId: "telegram", plugin: telegramPlugin, source: "test" },
+    { pluginId: "matrix", plugin: matrixPlugin, source: "test" },
     { pluginId: "whatsapp", plugin: whatsappPlugin, source: "test" },
   ]);
 
@@ -86,7 +86,7 @@ describe("buildGatewayReloadPlan", () => {
   });
 
   it("restarts providers when provider config prefixes change", () => {
-    const changedPaths = ["web.enabled", "channels.telegram.botToken"];
+    const changedPaths = ["web.enabled", "channels.matrix.accessToken"];
     const plan = buildGatewayReloadPlan(changedPaths);
     expect(plan.restartGateway).toBe(false);
     const expected = new Set(

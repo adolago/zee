@@ -6,10 +6,6 @@ export const LEGACY_CONFIG_RULES: LegacyConfigRule[] = [
     message: "whatsapp config moved to channels.whatsapp (auto-migrated on load).",
   },
   {
-    path: ["telegram"],
-    message: "telegram config moved to channels.telegram (auto-migrated on load).",
-  },
-  {
     path: ["routing", "allowFrom"],
     message:
       "routing.allowFrom was removed; use channels.whatsapp.allowFrom instead (auto-migrated on load).",
@@ -35,7 +31,7 @@ export const LEGACY_CONFIG_RULES: LegacyConfigRule[] = [
   {
     path: ["routing", "groupChat", "requireMention"],
     message:
-      'routing.groupChat.requireMention was removed; use channels.whatsapp/telegram groups defaults (e.g. channels.whatsapp.groups."*".requireMention) instead (auto-migrated on load).',
+      'routing.groupChat.requireMention was removed; use channels.whatsapp groups defaults (e.g. channels.whatsapp.groups."*".requireMention) instead (auto-migrated on load).',
   },
   {
     path: ["routing", "groupChat", "mentionPatterns"],
@@ -50,11 +46,6 @@ export const LEGACY_CONFIG_RULES: LegacyConfigRule[] = [
     path: ["routing", "transcribeAudio"],
     message:
       "routing.transcribeAudio was moved; use tools.media.audio.models instead (auto-migrated on load).",
-  },
-  {
-    path: ["telegram", "requireMention"],
-    message:
-      'telegram.requireMention was removed; use channels.telegram.groups."*".requireMention instead (auto-migrated on load).',
   },
   {
     path: ["identity"],

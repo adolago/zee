@@ -1,6 +1,7 @@
 import { Log } from "../util/log"
 
 import { loadConfig, readConfigFileSnapshot, resolveGatewayPort } from "../../../personas/zee/src/config/config"
+import { resolveGatewayAuth } from "../../../personas/zee/src/gateway/auth"
 import { startGatewayServer, type GatewayServer } from "../../../personas/zee/src/gateway/server"
 import { acquireGatewayLock, type GatewayLockHandle } from "../../../personas/zee/src/infra/gateway-lock"
 
@@ -69,6 +70,19 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
     try {
       gatewayLock = await acquireGatewayLock()
       gatewayServer = await startGatewayServer(port)
+
+      // Sync the resolved gateway auth token into the env so that
+      // buildGatewayConnectParams() (WS client) uses the exact same
+      // token the gateway server validates against. Both run in-process,
+      // so process.env is shared.
+      if (!process.env.ZEE_GATEWAY_TOKEN) {
+        const cfg = loadConfig()
+        const auth = resolveGatewayAuth({ authConfig: cfg.gateway?.auth })
+        if (auth.token) {
+          process.env.ZEE_GATEWAY_TOKEN = auth.token
+        }
+      }
+
       log.info("embedded gateway started", { port })
     } catch (error) {
       await gatewayLock?.release().catch(() => undefined)

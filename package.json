@@ -46,7 +46,7 @@
       "diff": "8.0.2",
       "dompurify": "3.3.1",
       "ai": "6.0.35",
-      "hono": "4.10.7",
+      "hono": "4.11.8",
       "hono-openapi": "1.1.2",
       "fuzzysort": "3.1.0",
       "luxon": "3.6.1",
@@ -103,7 +103,16 @@
     "baseline-browser-mapping": "2.9.19",
     "@opentui/core": "0.1.75",
     "@opentui/solid": "0.1.75",
-    "solid-js": "1.9.10"
+    "@isaacs/brace-expansion": "5.0.1",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "fast-xml-parser": "5.3.4",
+    "hono": "4.11.8",
+    "jws": "4.0.1",
+    "qs": "6.14.1",
+    "seroval": "1.5.0",
+    "solid-js": "1.9.10",
+    "tar": "7.5.7",
+    "wrangler": "4.63.0"
   },
   "patchedDependencies": {
     "ghostty-web@0.3.0": "patches/ghostty-web@0.3.0.patch",

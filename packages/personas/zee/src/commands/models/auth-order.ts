@@ -2,6 +2,7 @@ import { resolveAgentDir, resolveDefaultAgentId } from "../../agents/agent-scope
 import {
   type AuthProfileStore,
   ensureAuthProfileStore,
+  resolveAuthStorePathForDisplay,
   setAuthProfileOrder,
 } from "../../agents/auth-profiles.js";
 import { normalizeProviderId } from "../../agents/model-selection.js";
@@ -9,6 +10,7 @@ import { loadConfig } from "../../config/config.js";
 import { normalizeAgentId } from "../../routing/session-key.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { shortenHomePath } from "../../utils.js";
+import path from "node:path";
 
 function resolveTargetAgent(
   cfg: ReturnType<typeof loadConfig>,
@@ -42,6 +44,8 @@ export async function modelsAuthOrderGetCommand(
     allowKeychainPrompt: false,
   });
   const order = describeOrder(store, provider);
+  const authStorePath = resolveAuthStorePathForDisplay(agentDir);
+  const authMetadataPath = path.join(agentDir, "auth-metadata.json");
 
   if (opts.json) {
     runtime.log(
@@ -50,7 +54,8 @@ export async function modelsAuthOrderGetCommand(
           agentId,
           agentDir,
           provider,
-          authStorePath: shortenHomePath(`${agentDir}/auth-profiles.json`),
+          authStorePath: shortenHomePath(authStorePath),
+          authMetadataPath: shortenHomePath(authMetadataPath),
           order: order.length > 0 ? order : null,
         },
         null,
@@ -62,7 +67,8 @@ export async function modelsAuthOrderGetCommand(
 
   runtime.log(`Agent: ${agentId}`);
   runtime.log(`Provider: ${provider}`);
-  runtime.log(`Auth file: ${shortenHomePath(`${agentDir}/auth-profiles.json`)}`);
+  runtime.log(`Auth store: ${shortenHomePath(authStorePath)}`);
+  runtime.log(`Auth metadata: ${shortenHomePath(authMetadataPath)}`);
   runtime.log(order.length > 0 ? `Order override: ${order.join(", ")}` : "Order override: (none)");
 }
 
@@ -81,7 +87,7 @@ export async function modelsAuthOrderClearCommand(
     provider,
     order: null,
   });
-  if (!updated) throw new Error("Failed to update auth-profiles.json (lock busy?).");
+  if (!updated) throw new Error("Failed to update auth metadata (lock busy?).");
 
   runtime.log(`Agent: ${agentId}`);
   runtime.log(`Provider: ${provider}`);
@@ -123,7 +129,7 @@ export async function modelsAuthOrderSetCommand(
     provider,
     order: requested,
   });
-  if (!updated) throw new Error("Failed to update auth-profiles.json (lock busy?).");
+  if (!updated) throw new Error("Failed to update auth metadata (lock busy?).");
 
   runtime.log(`Agent: ${agentId}`);
   runtime.log(`Provider: ${provider}`);

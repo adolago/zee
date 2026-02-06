@@ -5,7 +5,6 @@ import type { NativeCommandsSetting } from "./types.js";
 function resolveAutoDefault(providerId?: ChannelId): boolean {
   const id = normalizeChannelId(providerId);
   if (!id) return false;
-  if (id === "telegram") return true;
   return false;
 }
 

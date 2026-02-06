@@ -148,6 +148,34 @@ export namespace ProviderTransform {
       })
     }
 
+    // Catch-all: strip reasoning parts for providers that don't handle them natively.
+    // - @ai-sdk/anthropic: handles reasoning parts natively (handled above)
+    // - @ai-sdk/openai-compatible, @ai-sdk/cerebras: SDK converts reasoning parts to
+    //   reasoning_content field in the API request body -- leave them intact
+    // - @ai-sdk/google, @ai-sdk/google-vertex, @openrouter/ai-sdk-provider: do NOT
+    //   understand reasoning content parts and will error or silently drop them
+    const REASONING_AWARE_SDKS = new Set([
+      "@ai-sdk/anthropic",
+      "@ai-sdk/google-vertex/anthropic",
+      "@ai-sdk/openai-compatible",
+      "@ai-sdk/cerebras",
+      "@ai-sdk/openai",
+      "@ai-sdk/azure",
+      "@ai-sdk/amazon-bedrock",
+    ])
+
+    if (!REASONING_AWARE_SDKS.has(model.api.npm)) {
+      return msgs.map((msg) => {
+        if (msg.role !== "assistant" || !Array.isArray(msg.content)) return msg
+        const hasReasoning = msg.content.some((part: any) => part.type === "reasoning")
+        if (!hasReasoning) return msg
+        return {
+          ...msg,
+          content: msg.content.filter((part: any) => part.type !== "reasoning"),
+        }
+      })
+    }
+
     return msgs
   }
 

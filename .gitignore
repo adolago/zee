@@ -38,7 +38,6 @@ logs/
 .agent-core/plugin/
 .agent-core/plans/
 .claude/
-.claude-flow/
 .learnings/
 .mcp.json
 config.json
@@ -61,8 +60,7 @@ vendor/personas/zee/docs/platforms/linux.md
 vendor/personas/zee/docs/platforms/exe-dev.md
 vendor/personas/zee/docker-compose.yml
 
-# Removed council components (tiara-only mode)
+# Removed legacy components
 src/council/
 src/agent-types.ts
 src/model-catalog.ts
-src/tiara.ts

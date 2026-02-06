@@ -47,8 +47,8 @@ function getTextAliasMap(): Map<string, TextAliasSpec> {
   const map = new Map<string, TextAliasSpec>();
   for (const command of commands) {
     // Canonicalize to the *primary* text alias, not `/${key}`. Some command keys are
-    // internal identifiers (e.g. `dock:telegram`) while the public text command is
-    // the alias (e.g. `/dock-telegram`).
+    // internal identifiers (e.g. `dock:matrix`) while the public text command is
+    // the alias (e.g. `/dock-matrix`).
     const canonical = command.textAliases[0]?.trim() || `/${command.key}`;
     const acceptsArgs = Boolean(command.acceptsArgs);
     for (const alias of command.textAliases) {

@@ -47,17 +47,6 @@ function recordHasKeys(value: unknown): boolean {
   return isRecord(value) && Object.keys(value).length > 0;
 }
 
-function accountsHaveKeys(value: unknown, keys: string[]): boolean {
-  if (!isRecord(value)) return false;
-  for (const account of Object.values(value)) {
-    if (!isRecord(account)) continue;
-    for (const key of keys) {
-      if (hasNonEmptyString(account[key])) return true;
-    }
-  }
-  return false;
-}
-
 function resolveChannelConfig(
   cfg: ZeeConfig,
   channelId: string,
@@ -65,15 +54,6 @@ function resolveChannelConfig(
   const channels = cfg.channels as Record<string, unknown> | undefined;
   const entry = channels?.[channelId];
   return isRecord(entry) ? entry : null;
-}
-
-function isTelegramConfigured(cfg: ZeeConfig, env: NodeJS.ProcessEnv): boolean {
-  if (hasNonEmptyString(env.TELEGRAM_BOT_TOKEN)) return true;
-  const entry = resolveChannelConfig(cfg, "telegram");
-  if (!entry) return false;
-  if (hasNonEmptyString(entry.botToken) || hasNonEmptyString(entry.tokenFile)) return true;
-  if (accountsHaveKeys(entry.accounts, ["botToken", "tokenFile"])) return true;
-  return recordHasKeys(entry);
 }
 
 function isWhatsAppConfigured(cfg: ZeeConfig): boolean {
@@ -91,13 +71,10 @@ function isGenericChannelConfigured(cfg: ZeeConfig, channelId: string): boolean 
 export function isChannelConfigured(
   cfg: ZeeConfig,
   channelId: string,
-  env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   switch (channelId) {
     case "whatsapp":
       return isWhatsAppConfigured(cfg);
-    case "telegram":
-      return isTelegramConfigured(cfg, env);
     default:
       return isGenericChannelConfigured(cfg, channelId);
   }
@@ -190,7 +167,7 @@ function resolveConfiguredPlugins(
   }
   for (const channelId of channelIds) {
     if (!channelId) continue;
-    if (isChannelConfigured(cfg, channelId, env)) {
+    if (isChannelConfigured(cfg, channelId)) {
       changes.push({
         pluginId: channelId,
         reason: `${channelId} configured`,

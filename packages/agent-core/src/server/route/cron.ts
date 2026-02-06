@@ -8,6 +8,8 @@ import { Hono } from "hono"
 import { z } from "zod"
 import { Log } from "../../util/log"
 import type { CronService } from "../../cron/service"
+import { AuthScope, getAuthConfig, hasScope } from "../auth"
+import { assertCronToolInvokeAllowed } from "../../cron/policy"
 
 const log = Log.create({ service: "server:cron" })
 
@@ -95,6 +97,25 @@ CronRoute.post("/cron/jobs", async (c) => {
   if (!parsed.success) {
     return c.json({ error: "invalid input", issues: parsed.error.issues }, 400)
   }
+
+  if (parsed.data.payload.kind === "toolInvoke") {
+    const authConfig = getAuthConfig()
+    if (!authConfig.disabled) {
+      const granted = authConfig.scopes ?? [AuthScope.ADMIN]
+      if (!hasScope(granted, AuthScope.ADMIN)) {
+        return c.json({ error: 'cron toolInvoke requires scope "operator.admin"' }, 403)
+      }
+    }
+
+    const tool = parsed.data.payload.tool.trim()
+    try {
+      await assertCronToolInvokeAllowed(tool)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return c.json({ error: message }, 403)
+    }
+  }
+
   try {
     const job = await cron.add(parsed.data as any)
     return c.json(job, 201)
@@ -108,6 +129,31 @@ CronRoute.patch("/cron/jobs/:id", async (c) => {
   const cron = requireCron()
   const id = c.req.param("id")
   const body = await c.req.json()
+
+  const payload = (body && typeof body === "object" ? (body as any).payload : undefined) as any
+  if (payload && typeof payload === "object" && payload.kind === "toolInvoke") {
+    const authConfig = getAuthConfig()
+    if (!authConfig.disabled) {
+      const granted = authConfig.scopes ?? [AuthScope.ADMIN]
+      if (!hasScope(granted, AuthScope.ADMIN)) {
+        return c.json({ error: 'cron toolInvoke requires scope "operator.admin"' }, 403)
+      }
+    }
+
+    const toolRaw = payload.tool
+    const tool = typeof toolRaw === "string" ? toolRaw.trim() : ""
+    if (!tool) {
+      return c.json({ error: 'payload.kind="toolInvoke" requires non-empty tool' }, 400)
+    }
+
+    try {
+      await assertCronToolInvokeAllowed(tool)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return c.json({ error: message }, 403)
+    }
+  }
+
   try {
     const job = await cron.update(id, body)
     return c.json(job)

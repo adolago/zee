@@ -10,7 +10,6 @@ import { createCLISurface } from '../surface/cli';
 import { createMessagingSurface } from '../surface/messaging';
 import {
   createWhatsAppHandler,
-  createTelegramHandler,
 } from '../surface/platforms/index';
 import type { Surface } from '../surface/surface';
 import { Log } from '../util/log';
@@ -31,20 +30,11 @@ type SurfaceBootstrapConfig = {
   enableCLI?: boolean;
   /** Enable WhatsApp surface (default: false) */
   enableWhatsApp?: boolean;
-  /** Enable Telegram surface (default: false) */
-  enableTelegram?: boolean;
   /** WhatsApp configuration */
   whatsapp?: {
     sessionName: string;
     allowedNumbers?: string[];
     allowedGroups?: string[];
-    requireMention?: boolean;
-  };
-  /** Telegram configuration */
-  telegram?: {
-    botToken: string;
-    allowedUsers?: number[];
-    allowedGroups?: number[];
     requireMention?: boolean;
   };
   /** Enable analytics collection */
@@ -85,11 +75,6 @@ export async function initSurfaces(): Promise<void> {
   // Register WhatsApp surface if configured
   if (config.enableWhatsApp && config.whatsapp) {
     await registerWhatsAppSurface(config.whatsapp);
-  }
-
-  // Register Telegram surface if configured
-  if (config.enableTelegram && config.telegram) {
-    await registerTelegramSurface(config.telegram);
   }
 
   // Initialize router (connects all surfaces)
@@ -173,38 +158,6 @@ async function registerWhatsAppSurface(config: NonNullable<SurfaceBootstrapConfi
   }
 }
 
-async function registerTelegramSurface(config: NonNullable<SurfaceBootstrapConfig['telegram']>): Promise<void> {
-  if (!router) return;
-
-  log.info('Registering Telegram surface');
-
-  try {
-    const handler = createTelegramHandler({
-      botToken: config.botToken,
-      allowedUsers: config.allowedUsers,
-      allowedGroups: config.allowedGroups,
-      requireMention: config.requireMention ?? true,
-    });
-
-    const surface = createMessagingSurface(handler, {
-      groups: {
-        enabled: true,
-        requireMention: config.requireMention ?? true,
-        mentionPatterns: [],
-        allowedGroups: config.allowedGroups?.map(String) ?? [],
-      },
-    });
-
-    await router.registerSurface(surface);
-    log.info('Telegram surface registered');
-  } catch (error) {
-    log.error('Failed to register Telegram surface', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    // Don't throw - other surfaces can still work
-  }
-}
-
 // =============================================================================
 // Configuration Loading
 // =============================================================================
@@ -215,26 +168,16 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
 
     // Extract surface configuration from agent-core config
     const whatsappConfig = config.experimental?.surfaces?.whatsapp;
-    const telegramConfig = config.experimental?.surfaces?.telegram;
 
     const surfaceConfig: SurfaceBootstrapConfig = {
       enableCLI: config.experimental?.surfaces?.cli?.enabled ?? true,
       enableWhatsApp: whatsappConfig?.enabled ?? false,
-      enableTelegram: telegramConfig?.enabled ?? false,
       whatsapp: whatsappConfig?.sessionName
         ? {
             sessionName: whatsappConfig.sessionName,
             allowedNumbers: whatsappConfig.allowedNumbers,
             allowedGroups: whatsappConfig.allowedGroups,
             requireMention: whatsappConfig.requireMention,
-          }
-        : undefined,
-      telegram: telegramConfig?.botToken
-        ? {
-            botToken: telegramConfig.botToken,
-            allowedUsers: telegramConfig.allowedUsers,
-            allowedGroups: telegramConfig.allowedGroups,
-            requireMention: telegramConfig.requireMention,
           }
         : undefined,
       enableAnalytics: config.experimental?.surfaces?.analytics?.enabled ?? true,
@@ -251,7 +194,6 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
     return {
       enableCLI: true,
       enableWhatsApp: false,
-      enableTelegram: false,
       enableAnalytics: true,
       enableHotReload: false,
     };

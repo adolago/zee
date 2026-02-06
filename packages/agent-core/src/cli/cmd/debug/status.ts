@@ -16,10 +16,7 @@ import { Timestamp } from "../../../util/timestamp"
 const GATEWAY_ENV_HINTS = [
   "ZEE_GATEWAY_TOKEN",
   "ZEE_GATEWAY_PASSWORD",
-  "TELEGRAM_BOT_TOKEN",
-  "TELEGRAM_USER_PHONE",
-  "TELEGRAM_API_ID",
-  "TELEGRAM_API_HASH",
+  "MATRIX_ACCESS_TOKEN",
 ]
 
 export const StatusCommand = cmd({

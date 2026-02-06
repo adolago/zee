@@ -5,6 +5,7 @@ import { buildHistoryContextFromEntries, type HistoryEntry } from "../auto-reply
 import { createDefaultDeps } from "../cli/deps.js";
 import { agentCommand } from "../commands/agent.js";
 import { emitAgentEvent, onAgentEvent } from "../infra/agent-events.js";
+import { logError } from "../logger.js";
 import { defaultRuntime } from "../runtime.js";
 import { authorizeGatewayConnect, type ResolvedGatewayAuth } from "./auth.js";
 import {
@@ -191,7 +192,8 @@ export async function handleOpenAiHttpRequest(
   } catch (err) {
     sendJson(res, 400, {
       error: {
-        message: err instanceof Error ? err.message : "Invalid session key",
+        // Avoid leaking internal error details back to remote callers.
+        message: "Invalid session key",
         type: "invalid_request_error",
       },
     });
@@ -251,8 +253,9 @@ export async function handleOpenAiHttpRequest(
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
       });
     } catch (err) {
+      logError(`gateway: openai http non-streaming request failed: ${String(err)}`);
       sendJson(res, 500, {
-        error: { message: String(err), type: "api_error" },
+        error: { message: "Internal server error", type: "api_error" },
       });
     }
     return true;
@@ -374,6 +377,17 @@ export async function handleOpenAiHttpRequest(
       }
     } catch (err) {
       if (closed) return;
+      logError(`gateway: openai http streaming request failed: ${String(err)}`);
+      if (!wroteRole) {
+        wroteRole = true;
+        writeSse(res, {
+          id: runId,
+          object: "chat.completion.chunk",
+          created: Math.floor(Date.now() / 1000),
+          model,
+          choices: [{ index: 0, delta: { role: "assistant" } }],
+        });
+      }
       writeSse(res, {
         id: runId,
         object: "chat.completion.chunk",
@@ -382,7 +396,7 @@ export async function handleOpenAiHttpRequest(
         choices: [
           {
             index: 0,
-            delta: { content: `Error: ${String(err)}` },
+            delta: { content: "Internal server error" },
             finish_reason: "stop",
           },
         ],

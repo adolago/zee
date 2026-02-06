@@ -10,6 +10,8 @@ import { Bus } from "@/bus"
 import { Log } from "../../util/log"
 import { errors } from "../error"
 import { ServerState } from "../state"
+import { SseLimit } from "../sse-limit"
+import { registerSseKeepalive } from "../sse-keepalive"
 import { Config } from "../../config/config"
 import { Storage } from "../../storage/storage"
 import { SessionPrompt } from "../../session/prompt"
@@ -515,7 +517,7 @@ export const SessionRoute = new Hono()
       summary: "Session handoff",
       tags: ["Session"],
       description:
-        "Prepare a session for handoff to another surface (cli, gui, telegram, whatsapp). Returns session state and a handoff token for resumption.",
+        "Prepare a session for handoff to another surface (cli, web, api, whatsapp, matrix). Returns session state and a handoff token for resumption.",
       operationId: "session.handoff",
       responses: {
         200: {
@@ -551,7 +553,7 @@ export const SessionRoute = new Hono()
       },
     }),
     validator("param", z.object({ sessionID: z.string() })),
-    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "telegram", "whatsapp"]) })),
+    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "whatsapp", "matrix"]) })),
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const { targetSurface } = c.req.valid("json")
@@ -1200,7 +1202,13 @@ export const SessionRoute = new Hono()
       const sessionID = c.req.valid("param").sessionID
       await Session.get(sessionID)
 
-      return streamSSE(c, async (stream) => {
+      const slot = SseLimit.acquire(c.req.raw)
+      if (!slot.ok) {
+        return c.json({ error: slot.error }, slot.status)
+      }
+
+      try {
+        return streamSSE(c, async (stream) => {
         const subscriptions: (() => void)[] = []
 
         subscriptions.push(
@@ -1274,24 +1282,20 @@ export const SessionRoute = new Hono()
           data: JSON.stringify({ sessionID, timestamp: Date.now() }),
         })
 
-        const keepalive = setInterval(async () => {
-          try {
-            await stream.writeSSE({
-              event: "keepalive",
-              data: JSON.stringify({ timestamp: Date.now() }),
-            })
-          } catch {
-            clearInterval(keepalive)
-          }
-        }, 30000)
+        const unregisterKeepalive = registerSseKeepalive(stream)
 
         stream.onAbort(() => {
-          clearInterval(keepalive)
+          slot.release()
+          unregisterKeepalive()
           subscriptions.forEach((unsub) => unsub())
         })
 
         await new Promise(() => {})
-      })
+        })
+      } catch (err) {
+        slot.release()
+        throw err
+      }
     },
   )
   .get(
@@ -1364,7 +1368,13 @@ export const SessionRoute = new Hono()
       },
     }),
     async (c) => {
-      return streamSSE(c, async (stream) => {
+      const slot = SseLimit.acquire(c.req.raw)
+      if (!slot.ok) {
+        return c.json({ error: slot.error }, slot.status)
+      }
+
+      try {
+        return streamSSE(c, async (stream) => {
         const subscriptions: (() => void)[] = []
 
         subscriptions.push(
@@ -1417,23 +1427,19 @@ export const SessionRoute = new Hono()
           data: JSON.stringify({ timestamp: Date.now(), status: SessionStatus.list() }),
         })
 
-        const keepalive = setInterval(async () => {
-          try {
-            await stream.writeSSE({
-              event: "keepalive",
-              data: JSON.stringify({ timestamp: Date.now() }),
-            })
-          } catch {
-            clearInterval(keepalive)
-          }
-        }, 30000)
+        const unregisterKeepalive = registerSseKeepalive(stream)
 
         stream.onAbort(() => {
-          clearInterval(keepalive)
+          slot.release()
+          unregisterKeepalive()
           subscriptions.forEach((unsub) => unsub())
         })
 
         await new Promise(() => {})
-      })
+        })
+      } catch (err) {
+        slot.release()
+        throw err
+      }
     },
   )

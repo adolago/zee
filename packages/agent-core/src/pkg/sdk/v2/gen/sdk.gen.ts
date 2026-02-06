@@ -35,7 +35,7 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
-  GatewayTelegramSendResponses,
+  GatewayMatrixSendResponses,
   GatewayWhatsappSendResponses,
   HealthCheckResponses,
   HealthStatusResponses,
@@ -1073,12 +1073,12 @@ export class Session extends HeyApiClient {
   /**
    * Session handoff
    *
-   * Prepare a session for handoff to another surface (cli, gui, telegram, whatsapp). Returns session state and a handoff token for resumption.
+   * Prepare a session for handoff to another surface (cli, web, api, whatsapp, matrix). Returns session state and a handoff token for resumption.
    */
   public handoff<ThrowOnError extends boolean = false>(
     parameters: {
       sessionID: string
-      targetSurface?: "cli" | "gui" | "telegram" | "whatsapp"
+      targetSurface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -3368,15 +3368,15 @@ export class Whatsapp extends HeyApiClient {
   }
 }
 
-export class Telegram extends HeyApiClient {
+export class Matrix extends HeyApiClient {
   /**
-   * Send Telegram message (via Zee gateway)
+   * Send Matrix message (via Zee gateway)
    *
-   * Send a Telegram message via the local Zee gateway (WebSocket RPC).
+   * Send a Matrix message via the local Zee gateway (WebSocket RPC).
    */
   public send<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
-    return (options?.client ?? this.client).post<GatewayTelegramSendResponses, unknown, ThrowOnError>({
-      url: "/gateway/telegram/send",
+    return (options?.client ?? this.client).post<GatewayMatrixSendResponses, unknown, ThrowOnError>({
+      url: "/gateway/matrix/send",
       ...options,
     })
   }
@@ -3388,9 +3388,9 @@ export class Gateway extends HeyApiClient {
     return (this._whatsapp ??= new Whatsapp({ client: this.client }))
   }
 
-  private _telegram?: Telegram
-  get telegram(): Telegram {
-    return (this._telegram ??= new Telegram({ client: this.client }))
+  private _matrix?: Matrix
+  get matrix(): Matrix {
+    return (this._matrix ??= new Matrix({ client: this.client }))
   }
 }
 

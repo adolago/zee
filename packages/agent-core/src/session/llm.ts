@@ -234,6 +234,8 @@ export namespace LLM {
     // Filter out non-provider options (like 'includes' which is for skill loading)
     const agentProviderOptions = { ...input.agent.options }
     delete agentProviderOptions.includes
+    // Internal runtime flags; never forward to providers.
+    delete agentProviderOptions.skipPermissions
     const options: Record<string, any> = pipe(
       base,
       mergeDeep(input.model.options),

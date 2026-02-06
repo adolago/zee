@@ -294,7 +294,10 @@ export namespace Provider {
           video: model.modalities?.output?.includes("video") ?? false,
           pdf: model.modalities?.output?.includes("pdf") ?? false,
         },
-        interleaved: model.interleaved ?? false,
+        interleaved: model.interleaved
+          // Anthropic reasoning models always support interleaved thinking natively
+          // via @ai-sdk/anthropic, even when models.dev hasn't been updated yet
+          ?? (provider.npm === "@ai-sdk/anthropic" && model.reasoning ? true : false),
       },
       release_date: model.release_date,
       variants: {},
@@ -432,7 +435,7 @@ export namespace Provider {
               video: model.modalities?.output?.includes("video") ?? existingModel?.capabilities.output.video ?? false,
               pdf: model.modalities?.output?.includes("pdf") ?? existingModel?.capabilities.output.pdf ?? false,
             },
-            interleaved: model.interleaved ?? false,
+            interleaved: model.interleaved ?? existingModel?.capabilities.interleaved ?? false,
           },
           cost: {
             input: model?.cost?.input ?? existingModel?.cost?.input ?? 0,

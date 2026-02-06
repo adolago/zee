@@ -98,20 +98,20 @@ describe("loadZeePlugins", () => {
     expect(enabled?.status).toBe("loaded");
   });
 
-  it("loads bundled telegram plugin when enabled", () => {
+  it("loads bundled matrix plugin when enabled", () => {
     const bundledDir = makeTempDir();
     writePlugin({
-      id: "telegram",
-      body: `export default { id: "telegram", register(api) {
+      id: "matrix",
+      body: `export default { id: "matrix", register(api) {
   api.registerChannel({
     plugin: {
-      id: "telegram",
+      id: "matrix",
       meta: {
-        id: "telegram",
-        label: "Telegram",
-        selectionLabel: "Telegram",
-        docsPath: "/channels/telegram",
-        blurb: "telegram channel"
+        id: "matrix",
+        label: "Matrix",
+        selectionLabel: "Matrix",
+        docsPath: "/channels/matrix",
+        blurb: "matrix channel"
       },
       capabilities: { chatTypes: ["direct"] },
       config: {
@@ -123,7 +123,7 @@ describe("loadZeePlugins", () => {
   });
 } };`,
       dir: bundledDir,
-      filename: "telegram.ts",
+      filename: "matrix.ts",
     });
     process.env.ZEE_BUNDLED_PLUGINS_DIR = bundledDir;
 
@@ -131,17 +131,17 @@ describe("loadZeePlugins", () => {
       cache: false,
       config: {
         plugins: {
-          allow: ["telegram"],
+          allow: ["matrix"],
           entries: {
-            telegram: { enabled: true },
+            matrix: { enabled: true },
           },
         },
       },
     });
 
-    const telegram = registry.plugins.find((entry) => entry.id === "telegram");
-    expect(telegram?.status).toBe("loaded");
-    expect(registry.channels.some((entry) => entry.plugin.id === "telegram")).toBe(true);
+    const matrix = registry.plugins.find((entry) => entry.id === "matrix");
+    expect(matrix?.status).toBe("loaded");
+    expect(registry.channels.some((entry) => entry.plugin.id === "matrix")).toBe(true);
   });
 
   it("enables bundled memory plugin when selected by slot", () => {

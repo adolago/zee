@@ -1,7 +1,7 @@
 /**
  * Messaging Surface Adapter
  *
- * Unified adapter for messaging platforms (WhatsApp, Telegram).
+ * Unified adapter for messaging platforms (WhatsApp, Matrix).
  * Handles non-streaming (message batching) and automatic permission resolution.
  */
 
@@ -42,7 +42,7 @@ const log = Log.create({ service: 'messaging-surface' });
  */
 export interface MessagingPlatformHandler {
   /** Platform identifier */
-  readonly platform: 'whatsapp' | 'telegram';
+  readonly platform: 'whatsapp' | 'matrix';
 
   /** Connect to the platform */
   connect(): Promise<void>;
@@ -82,7 +82,7 @@ export type PlatformMessage = {
   groupName?: string;
   replyToId?: string;
   wasMentioned?: boolean;
-  platform: 'whatsapp' | 'telegram';
+  platform: 'whatsapp' | 'matrix';
 };
 
 // =============================================================================
@@ -112,11 +112,11 @@ const PLATFORM_CAPABILITIES: Record<string, Partial<SurfaceCapabilities>> = {
     messageEditing: false,
     showThinking: false, // Locked: never show thinking on WhatsApp (enforced at multiple layers)
   },
-  telegram: {
-    maxMessageLength: 4096,
+  matrix: {
+    maxMessageLength: 65536,
     reactions: true,
     messageEditing: true,
-    showThinking: false, // Locked: never show thinking on Telegram (enforced at multiple layers)
+    showThinking: false, // Locked: never show thinking on Matrix (enforced at multiple layers)
   },
 };
 
@@ -187,10 +187,10 @@ class MessageBatcher {
 
 /**
  * Unified messaging surface adapter.
- *
- * Handles WhatsApp and Telegram with a common interface.
- */
-export class MessagingSurface extends BaseSurface implements Surface {
+   *
+   * Handles WhatsApp and Matrix with a common interface.
+   */
+  export class MessagingSurface extends BaseSurface implements Surface {
   readonly id: string;
   readonly name: string;
   readonly capabilities: SurfaceCapabilities;
@@ -223,7 +223,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
   private formatPlatformName(platform: string): string {
     const names: Record<string, string> = {
       whatsapp: 'WhatsApp',
-      telegram: 'Telegram',
+      matrix: 'Matrix',
     };
     return names[platform] || platform;
   }
@@ -472,7 +472,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
  *
  * Platform handlers must be provided by the application:
  * - WhatsApp: Use whatsapp-web.js (or @whiskeysockets/baileys)
- * - Telegram: Use telegraf
+ * - Matrix: Use a Matrix client SDK (e.g. matrix-js-sdk)
  *
  * @example
  * ```typescript

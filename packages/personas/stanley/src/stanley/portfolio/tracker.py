@@ -8,12 +8,52 @@ from pathlib import Path
 from typing import Any
 
 
+def _sanitize_relative_path(value: str) -> Path | None:
+    """
+    Sanitize a user-supplied relative path.
+
+    The portfolio file path is used for both reads and writes. Treat the env var
+    as untrusted and restrict it to a *relative* path without traversal
+    sequences so it cannot escape the Stanley data directory.
+    """
+    raw = value.strip()
+    if not raw:
+        return None
+    if "\0" in raw:
+        return None
+    # Reject absolute paths (including "~/" before expansion).
+    if raw.startswith("~") or os.path.isabs(raw):
+        return None
+
+    # Normalize separators and reject traversal components.
+    parts = [p for p in raw.replace("\\", "/").split("/") if p]
+    if not parts:
+        return None
+    if any(p in (".", "..") for p in parts):
+        return None
+
+    return Path(*parts)
+
+
 def _get_portfolio_path() -> Path:
     """Get the path to the portfolio file."""
+    base_dir = Path.home() / ".zee" / "stanley"
+    default_path = base_dir / "portfolio.json"
+
     portfolio_file = os.environ.get("STANLEY_PORTFOLIO_FILE")
     if portfolio_file:
-        return Path(portfolio_file)
-    return Path.home() / ".zee" / "stanley" / "portfolio.json"
+        rel = _sanitize_relative_path(portfolio_file)
+        if rel is not None:
+            # Resolve to avoid symlink escapes (e.g., base_dir/subdir -> /etc).
+            base_resolved = base_dir.resolve()
+            candidate = (base_dir / rel).resolve()
+            try:
+                candidate.relative_to(base_resolved)
+                return candidate
+            except ValueError:
+                pass
+
+    return default_path
 
 
 def _load_portfolio() -> dict[str, Any]:

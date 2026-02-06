@@ -17,10 +17,7 @@ const ZEE_CONFIG_FILES = ["zee.json", "zee.jsonc"];
 const GATEWAY_ENV_HINTS = [
   "ZEE_GATEWAY_TOKEN",
   "ZEE_GATEWAY_PASSWORD",
-  "TELEGRAM_BOT_TOKEN",
-  "TELEGRAM_USER_PHONE",
-  "TELEGRAM_API_ID",
-  "TELEGRAM_API_HASH",
+  "MATRIX_ACCESS_TOKEN",
 ];
 
 function getStateDir(): string {

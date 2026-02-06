@@ -10,6 +10,7 @@ import { useDialog, type DialogContext } from "@tui/ui/dialog"
 import { useKeybind } from "@tui/context/keybind"
 import { Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
+import { renderDialogSelectFooter } from "./dialog-select-footer"
 
 export interface DialogSelectProps<T> {
   title: string
@@ -228,7 +229,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const keybinds = createMemo(() => props.keybind?.filter((x) => !x.disabled && x.keybind) ?? [])
 
   return (
-    <box gap={1} paddingBottom={1}>
+    <box gap={1} paddingBottom={1} paddingLeft={0} paddingRight={0}>
       <box paddingLeft={0} paddingRight={0}>
         <box flexDirection="row" justifyContent="space-between">
           <text fg={theme.text} attributes={TextAttributes.BOLD}>
@@ -250,6 +251,8 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
             cursorColor={theme.primary}
             textColor={theme.text}
             focusedTextColor={theme.text}
+            paddingLeft={0}
+            paddingRight={0}
             ref={(r) => {
               input = r
               setTimeout(() => {
@@ -396,7 +399,14 @@ function Option(props: {
       </text>
       <Show when={props.footer}>
         <box flexShrink={0}>
-          <text fg={props.active ? fg : theme.textMuted}>{props.footer}</text>
+          {renderDialogSelectFooter(
+            props.footer,
+            fg,
+            theme.textMuted,
+            props.active,
+            theme.backgroundElement,
+            theme.primary,
+          )}
         </box>
       </Show>
     </>

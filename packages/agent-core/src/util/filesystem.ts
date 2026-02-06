@@ -28,7 +28,12 @@ export namespace Filesystem {
     try {
       // Resolve both paths to their real locations (following symlinks)
       const resolvedParent = await realpath(parent).catch(() => parent)
-      const resolvedChild = await realpath(child).catch(() => child)
+      const resolvedChild = await realpath(child).catch(async () => {
+        // If the path doesn't exist yet (common for writes), resolve the parent directory
+        // to prevent symlink escapes via directory symlinks.
+        const dir = dirname(child)
+        return await realpath(dir).catch(() => dir)
+      })
       return !relative(resolvedParent, resolvedChild).startsWith("..")
     } catch {
       // If realpath fails (file doesn't exist yet), fall back to lexical check
@@ -44,7 +49,18 @@ export namespace Filesystem {
     child = sanitizePath(child)
     try {
       const resolvedParent = realpathSync(parent)
-      const resolvedChild = realpathSync(child)
+      const resolvedChild = (() => {
+        try {
+          return realpathSync(child)
+        } catch {
+          const dir = dirname(child)
+          try {
+            return realpathSync(dir)
+          } catch {
+            return child
+          }
+        }
+      })()
       return !relative(resolvedParent, resolvedChild).startsWith("..")
     } catch {
       return contains(parent, child)

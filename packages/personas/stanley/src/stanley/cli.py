@@ -324,9 +324,11 @@ def status() -> None:
         status_data["dependencies"]["core"] = {"installed": False, "error": str(e)}
 
     # Portfolio file
-    portfolio_file = os.environ.get("STANLEY_PORTFOLIO_FILE", os.path.expanduser("~/.zee/stanley/portfolio.json"))
-    status_data["portfolio_file"] = portfolio_file
-    status_data["portfolio_exists"] = os.path.exists(portfolio_file)
+    from stanley.portfolio.tracker import _get_portfolio_path
+
+    portfolio_path = _get_portfolio_path()
+    status_data["portfolio_file"] = str(portfolio_path)
+    status_data["portfolio_exists"] = portfolio_path.exists()
 
     _output_result({"ok": True, "data": status_data})
 

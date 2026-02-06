@@ -80,13 +80,13 @@ export type SessionConfig = {
   scope?: SessionScope;
   /** DM session scoping (default: "main"). */
   dmScope?: DmScope;
-  /** Map platform-prefixed identities (e.g. "telegram:123") to canonical DM peers. */
+  /** Map platform-prefixed identities (e.g. "matrix:@user:server") to canonical DM peers. */
   identityLinks?: Record<string, string[]>;
   resetTriggers?: string[];
   idleMinutes?: number;
   reset?: SessionResetConfig;
   resetByType?: SessionResetByTypeConfig;
-  /** Channel-specific reset overrides (e.g. { telegram: { mode: "idle", idleMinutes: 10080 } }). */
+  /** Channel-specific reset overrides (e.g. { whatsapp: { mode: "idle", idleMinutes: 10080 } }). */
   resetByChannel?: Record<string, SessionResetConfig>;
   store?: string;
   typingIntervalSeconds?: number;
@@ -135,7 +135,7 @@ export type DiagnosticsCacheTraceConfig = {
 
 export type DiagnosticsConfig = {
   enabled?: boolean;
-  /** Optional ad-hoc diagnostics flags (e.g. "telegram.http"). */
+  /** Optional ad-hoc diagnostics flags (e.g. "matrix.http"). */
   flags?: string[];
   otel?: DiagnosticsOtelConfig;
   cacheTrace?: DiagnosticsCacheTraceConfig;

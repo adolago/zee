@@ -6,6 +6,7 @@ import { computeJobNextRunAtMs, nextWakeAtMs, resolveJobPayloadTextForMain } fro
 import { locked } from "./locked"
 import { ensureLoaded, persist } from "./store"
 import { contentHash, shouldThrottle, recordSent } from "./throttle"
+import { assertCronToolInvokeAllowed } from "../policy"
 import { Instance } from "@/project/instance"
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1
@@ -228,6 +229,15 @@ export async function executeJob(
         await finish("error", 'payload.kind="toolInvoke" requires non-empty tool')
         return
       }
+
+      try {
+        await assertCronToolInvokeAllowed(tool)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        await finish("error", message)
+        return
+      }
+
       const argsRaw = job.payload.args ?? {}
       if (!argsRaw || typeof argsRaw !== "object" || Array.isArray(argsRaw)) {
         await finish("error", 'payload.kind="toolInvoke" args must be a JSON object')

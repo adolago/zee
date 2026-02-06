@@ -86,12 +86,12 @@ describe("gateway routes", () => {
     expect(lastSendParams!.to).toBe("15551234567")
   })
 
-  test("POST /gateway/telegram/send uses Zee gateway RPC", async () => {
+  test("POST /gateway/matrix/send uses Zee gateway RPC", async () => {
     const app = Server.App()
-    const response = await app.request("/gateway/telegram/send", {
+    const response = await app.request("/gateway/matrix/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId: 123456789, message: "Hi", persona: "johny" }),
+      body: JSON.stringify({ roomId: "!test:example.org", message: "Hi" }),
     })
 
     expect(response.status).toBe(200)
@@ -99,9 +99,8 @@ describe("gateway routes", () => {
     expect(data.success).toBe(true)
 
     expect(lastSendParams).not.toBeNull()
-    expect(lastSendParams!.channel).toBe("telegram")
-    expect(lastSendParams!.accountId).toBe("johny")
+    expect(lastSendParams!.channel).toBe("matrix")
     expect(lastSendParams!.message).toBe("Hi")
-    expect(lastSendParams!.to).toBe("123456789")
+    expect(lastSendParams!.to).toBe("!test:example.org")
   })
 })

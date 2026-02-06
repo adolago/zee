@@ -103,7 +103,6 @@ The Personas system is implemented in `src/personas/`:
 
 - `types.ts` - Type definitions
 - `persona.ts` - Persona configurations
-- `tiara.ts` - Main coordinator
 
 ## Style Guidelines
 

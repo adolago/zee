@@ -3,9 +3,6 @@ import type { ChannelId } from "../../channels/plugins/types.js";
 import type { ZeeConfig } from "../../config/config.js";
 import { recordSessionMetaFromInbound, resolveStorePath } from "../../config/sessions.js";
 import { buildAgentSessionKey, type RoutePeer } from "../../routing/resolve-route.js";
-import { buildTelegramGroupPeerId } from "../../telegram/bot/helpers.js";
-import { resolveTelegramTargetChatType } from "../../telegram/inline-buttons.js";
-import { parseTelegramTarget } from "../../telegram/targets.js";
 import { isWhatsAppGroupJid, normalizeWhatsAppTarget } from "../../whatsapp/normalize.js";
 import type { ResolvedMessagingTarget } from "./target-resolver.js";
 
@@ -31,16 +28,6 @@ export type ResolveOutboundSessionRouteParams = {
 };
 
 
-function normalizeThreadId(value?: string | number | null): string | undefined {
-  if (value == null) return undefined;
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) return undefined;
-    return String(Math.trunc(value));
-  }
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-}
-
 function buildBaseSessionKey(params: {
   cfg: ZeeConfig;
   agentId: string;
@@ -58,34 +45,27 @@ function buildBaseSessionKey(params: {
   });
 }
 
+function normalizeMatrixTarget(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const withoutPrefix = trimmed.replace(/^matrix:/i, "").trim();
+  return withoutPrefix ? withoutPrefix : null;
+}
 
-function resolveTelegramSession(
+function resolveMatrixSession(
   params: ResolveOutboundSessionRouteParams,
 ): OutboundSessionRoute | null {
-  const parsed = parseTelegramTarget(params.target);
-  const chatId = parsed.chatId.trim();
-  if (!chatId) return null;
-  const parsedThreadId = parsed.messageThreadId;
-  const fallbackThreadId = normalizeThreadId(params.threadId);
-  const resolvedThreadId =
-    parsedThreadId ?? (fallbackThreadId ? Number.parseInt(fallbackThreadId, 10) : undefined);
-  // Telegram topics are encoded in the peer id (chatId:topic:<id>).
-  const chatType = resolveTelegramTargetChatType(params.target);
-  // If the target is a username and we lack a resolvedTarget, default to DM to avoid group keys.
-  const isGroup =
-    chatType === "group" ||
-    (chatType === "unknown" &&
-      params.resolvedTarget?.kind &&
-      params.resolvedTarget.kind !== "user");
-  const peerId = isGroup ? buildTelegramGroupPeerId(chatId, resolvedThreadId) : chatId;
+  const normalized = normalizeMatrixTarget(params.target);
+  if (!normalized) return null;
+  const isGroup = normalized.startsWith("!") || normalized.startsWith("#");
   const peer: RoutePeer = {
     kind: isGroup ? "group" : "dm",
-    id: peerId,
+    id: normalized,
   };
   const baseSessionKey = buildBaseSessionKey({
     cfg: params.cfg,
     agentId: params.agentId,
-    channel: "telegram",
+    channel: "matrix",
     accountId: params.accountId,
     peer,
   });
@@ -94,9 +74,8 @@ function resolveTelegramSession(
     baseSessionKey,
     peer,
     chatType: isGroup ? "group" : "direct",
-    from: isGroup ? `telegram:group:${peerId}` : `telegram:${chatId}`,
-    to: `telegram:${chatId}`,
-    threadId: resolvedThreadId,
+    from: normalized,
+    to: normalized,
   };
 }
 
@@ -133,10 +112,10 @@ export async function resolveOutboundSessionRoute(
   const target = params.target.trim();
   if (!target) return null;
   switch (params.channel) {
-    case "telegram":
-      return resolveTelegramSession({ ...params, target });
     case "whatsapp":
       return resolveWhatsAppSession({ ...params, target });
+    case "matrix":
+      return resolveMatrixSession({ ...params, target });
     default:
       return null;
   }

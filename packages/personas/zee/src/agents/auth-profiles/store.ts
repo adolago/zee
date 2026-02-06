@@ -1,22 +1,214 @@
-import fs from "node:fs";
-import type { OAuthCredentials } from "@mariozechner/pi-ai";
 import lockfile from "proper-lockfile";
-import { resolveOAuthPath } from "../../config/paths.js";
+
 import { loadJsonFile, saveJsonFile } from "../../infra/json-file.js";
-import { AUTH_STORE_LOCK_OPTIONS, AUTH_STORE_VERSION, log } from "./constants.js";
-import { syncAgentCoreCredentials } from "./agent-core-sync.js";
-import { syncExternalCliCredentials } from "./external-cli-sync.js";
-import { ensureAuthStoreFile, resolveAuthStorePath, resolveLegacyAuthStorePath } from "./paths.js";
+import { AUTH_STORE_LOCK_OPTIONS, AUTH_STORE_VERSION } from "./constants.js";
+import {
+  ensureAuthMetadataFile,
+  ensureAuthStoreFile,
+  resolveAuthMetadataPath,
+  resolveAuthStorePath,
+} from "./paths.js";
 import type { AuthProfileCredential, AuthProfileStore, ProfileUsageStats } from "./types.js";
 
-type LegacyAuthStore = Record<string, AuthProfileCredential>;
+type OpencodeAuthInfo =
+  | {
+      type: "api";
+      key: string;
+    }
+  | ({
+      type: "oauth";
+      refresh: string;
+      access: string;
+      expires: number;
+      accountId?: string;
+    } & Record<string, unknown>)
+  | {
+      type: "wellknown";
+      key: string;
+      token: string;
+    };
 
-function _syncAuthProfileStore(target: AuthProfileStore, source: AuthProfileStore): void {
-  target.version = source.version;
-  target.profiles = source.profiles;
-  target.order = source.order;
-  target.lastGood = source.lastGood;
-  target.usageStats = source.usageStats;
+type OpencodeAuthJson = Record<string, OpencodeAuthInfo>;
+
+type AuthMetaFile = {
+  version: number;
+  order?: AuthProfileStore["order"];
+  lastGood?: AuthProfileStore["lastGood"];
+  usageStats?: Record<string, ProfileUsageStats>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function coerceOpencodeAuthJson(raw: unknown): OpencodeAuthJson {
+  if (!isRecord(raw)) return {};
+
+  const out: OpencodeAuthJson = {};
+  for (const [providerId, value] of Object.entries(raw)) {
+    if (!providerId.trim()) continue;
+    if (!isRecord(value)) continue;
+    const type = value.type;
+    if (type === "api") {
+      const key = typeof value.key === "string" ? value.key : "";
+      if (!key.trim()) continue;
+      out[providerId] = { type: "api", key };
+      continue;
+    }
+    if (type === "oauth") {
+      const refresh = typeof value.refresh === "string" ? value.refresh : "";
+      const access = typeof value.access === "string" ? value.access : "";
+      const expires = typeof value.expires === "number" ? value.expires : 0;
+      if (!refresh.trim() || !access.trim() || !Number.isFinite(expires) || expires <= 0) continue;
+
+      // Preserve known optional fields + passthrough fields that other components expect
+      // (e.g. projectId for Google OAuth wrapper).
+      const accountId = typeof value.accountId === "string" ? value.accountId : undefined;
+      out[providerId] = {
+        ...value,
+        type: "oauth",
+        refresh,
+        access,
+        expires,
+        ...(accountId ? { accountId } : {}),
+      };
+      continue;
+    }
+    if (type === "wellknown") {
+      const key = typeof value.key === "string" ? value.key : "";
+      const token = typeof value.token === "string" ? value.token : "";
+      if (!key.trim() || !token.trim()) continue;
+      out[providerId] = { type: "wellknown", key, token };
+    }
+  }
+
+  return out;
+}
+
+function readAuthMetaFile(agentDir?: string): AuthMetaFile {
+  const pathname = resolveAuthMetadataPath(agentDir);
+  ensureAuthMetadataFile(pathname);
+  const raw = loadJsonFile(pathname);
+  if (!isRecord(raw)) {
+    return { version: AUTH_STORE_VERSION };
+  }
+  return {
+    version:
+      typeof raw.version === "number" && Number.isFinite(raw.version) && raw.version > 0
+        ? raw.version
+        : AUTH_STORE_VERSION,
+    order: isRecord(raw.order) ? (raw.order as AuthProfileStore["order"]) : undefined,
+    lastGood: isRecord(raw.lastGood) ? (raw.lastGood as AuthProfileStore["lastGood"]) : undefined,
+    usageStats: isRecord(raw.usageStats) ? (raw.usageStats as Record<string, ProfileUsageStats>) : undefined,
+  };
+}
+
+function writeAuthMetaFile(meta: AuthMetaFile, agentDir?: string): void {
+  const pathname = resolveAuthMetadataPath(agentDir);
+  ensureAuthMetadataFile(pathname);
+  saveJsonFile(pathname, {
+    version: AUTH_STORE_VERSION,
+    order: meta.order ?? undefined,
+    lastGood: meta.lastGood ?? undefined,
+    usageStats: meta.usageStats ?? undefined,
+  } satisfies AuthMetaFile);
+}
+
+function toAuthProfileStore(auth: OpencodeAuthJson, meta: AuthMetaFile): AuthProfileStore {
+  const profiles: Record<string, AuthProfileCredential> = {};
+  for (const [providerIdRaw, info] of Object.entries(auth)) {
+    const providerId = providerIdRaw.trim();
+    if (!providerId) continue;
+    const profileId = `${providerId}:default`;
+    if (info.type === "api") {
+      profiles[profileId] = {
+        type: "api_key",
+        provider: providerId,
+        key: info.key,
+      };
+      continue;
+    }
+    if (info.type === "wellknown") {
+      profiles[profileId] = {
+        type: "token",
+        provider: providerId,
+        token: info.token,
+      };
+      continue;
+    }
+
+    const oauth: Record<string, unknown> = info;
+    const enterpriseUrl = typeof oauth.enterpriseUrl === "string" ? oauth.enterpriseUrl : undefined;
+    const projectId = typeof oauth.projectId === "string" ? oauth.projectId : undefined;
+    const email = typeof oauth.email === "string" ? oauth.email : undefined;
+    const clientId = typeof oauth.clientId === "string" ? oauth.clientId : undefined;
+
+    profiles[profileId] = {
+      type: "oauth",
+      provider: providerId,
+      access: info.access,
+      refresh: info.refresh,
+      expires: info.expires,
+      ...(enterpriseUrl ? { enterpriseUrl } : {}),
+      ...(projectId ? { projectId } : {}),
+      ...(info.accountId ? { accountId: info.accountId } : {}),
+      ...(email ? { email } : {}),
+      ...(clientId ? { clientId } : {}),
+    };
+  }
+
+  return {
+    version: AUTH_STORE_VERSION,
+    profiles,
+    order: meta.order,
+    lastGood: meta.lastGood,
+    usageStats: meta.usageStats,
+  };
+}
+
+function toOpencodeAuthJson(store: AuthProfileStore): OpencodeAuthJson {
+  const out: OpencodeAuthJson = {};
+
+  for (const cred of Object.values(store.profiles ?? {})) {
+    const provider = String(cred?.provider ?? "").trim();
+    if (!provider) continue;
+
+    if (cred.type === "api_key") {
+      const key = cred.key?.trim();
+      if (!key) continue;
+      out[provider] = { type: "api", key };
+      continue;
+    }
+
+    if (cred.type === "token") {
+      const token = cred.token?.trim();
+      if (!token) continue;
+      // OpenCode auth.json doesn't have a dedicated "token" type. Treat tokens
+      // as API-like strings (the provider decides how to use them).
+      out[provider] = { type: "api", key: token };
+      continue;
+    }
+
+    // oauth
+    const refresh = cred.refresh?.trim();
+    const access = cred.access?.trim();
+    const expires = cred.expires;
+    if (!refresh || !access || typeof expires !== "number" || !Number.isFinite(expires) || expires <= 0) continue;
+
+    out[provider] = {
+      type: "oauth",
+      refresh,
+      access,
+      expires,
+      ...(cred.accountId ? { accountId: cred.accountId } : {}),
+      ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
+      ...(cred.projectId ? { projectId: cred.projectId } : {}),
+      ...(cred.email ? { email: cred.email } : {}),
+      ...(cred.clientId ? { clientId: cred.clientId } : {}),
+    };
+  }
+
+  return out;
 }
 
 export async function updateAuthProfileStoreWithLock(params: {
@@ -48,307 +240,40 @@ export async function updateAuthProfileStoreWithLock(params: {
   }
 }
 
-function coerceLegacyStore(raw: unknown): LegacyAuthStore | null {
-  if (!raw || typeof raw !== "object") return null;
-  const record = raw as Record<string, unknown>;
-  if ("profiles" in record) return null;
-  const entries: LegacyAuthStore = {};
-  for (const [key, value] of Object.entries(record)) {
-    if (!value || typeof value !== "object") continue;
-    const typed = value as Partial<AuthProfileCredential>;
-    if (typed.type !== "api_key" && typed.type !== "oauth" && typed.type !== "token") {
-      continue;
-    }
-    entries[key] = {
-      ...typed,
-      provider: String(typed.provider ?? key),
-    } as AuthProfileCredential;
-  }
-  return Object.keys(entries).length > 0 ? entries : null;
-}
-
-function coerceAuthStore(raw: unknown): AuthProfileStore | null {
-  if (!raw || typeof raw !== "object") return null;
-  const record = raw as Record<string, unknown>;
-  if (!record.profiles || typeof record.profiles !== "object") return null;
-  const profiles = record.profiles as Record<string, unknown>;
-  const normalized: Record<string, AuthProfileCredential> = {};
-  for (const [key, value] of Object.entries(profiles)) {
-    if (!value || typeof value !== "object") continue;
-    const typed = value as Partial<AuthProfileCredential>;
-    if (typed.type !== "api_key" && typed.type !== "oauth" && typed.type !== "token") {
-      continue;
-    }
-    if (!typed.provider) continue;
-    normalized[key] = typed as AuthProfileCredential;
-  }
-  const order =
-    record.order && typeof record.order === "object"
-      ? Object.entries(record.order as Record<string, unknown>).reduce(
-          (acc, [provider, value]) => {
-            if (!Array.isArray(value)) return acc;
-            const list = value
-              .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-              .filter(Boolean);
-            if (list.length === 0) return acc;
-            acc[provider] = list;
-            return acc;
-          },
-          {} as Record<string, string[]>,
-        )
-      : undefined;
-  return {
-    version: Number(record.version ?? AUTH_STORE_VERSION),
-    profiles: normalized,
-    order,
-    lastGood:
-      record.lastGood && typeof record.lastGood === "object"
-        ? (record.lastGood as Record<string, string>)
-        : undefined,
-    usageStats:
-      record.usageStats && typeof record.usageStats === "object"
-        ? (record.usageStats as Record<string, ProfileUsageStats>)
-        : undefined,
-  };
-}
-
-function mergeRecord<T>(
-  base?: Record<string, T>,
-  override?: Record<string, T>,
-): Record<string, T> | undefined {
-  if (!base && !override) return undefined;
-  if (!base) return { ...override };
-  if (!override) return { ...base };
-  return { ...base, ...override };
-}
-
-function mergeAuthProfileStores(
-  base: AuthProfileStore,
-  override: AuthProfileStore,
-): AuthProfileStore {
-  if (
-    Object.keys(override.profiles).length === 0 &&
-    !override.order &&
-    !override.lastGood &&
-    !override.usageStats
-  ) {
-    return base;
-  }
-  return {
-    version: Math.max(base.version, override.version ?? base.version),
-    profiles: { ...base.profiles, ...override.profiles },
-    order: mergeRecord(base.order, override.order),
-    lastGood: mergeRecord(base.lastGood, override.lastGood),
-    usageStats: mergeRecord(base.usageStats, override.usageStats),
-  };
-}
-
-function mergeOAuthFileIntoStore(store: AuthProfileStore): boolean {
-  const oauthPath = resolveOAuthPath();
-  const oauthRaw = loadJsonFile(oauthPath);
-  if (!oauthRaw || typeof oauthRaw !== "object") return false;
-  const oauthEntries = oauthRaw as Record<string, OAuthCredentials>;
-  let mutated = false;
-  for (const [provider, creds] of Object.entries(oauthEntries)) {
-    if (!creds || typeof creds !== "object") continue;
-    const profileId = `${provider}:default`;
-    if (store.profiles[profileId]) continue;
-    store.profiles[profileId] = {
-      type: "oauth",
-      provider,
-      ...creds,
-    };
-    mutated = true;
-  }
-  return mutated;
-}
-
 export function loadAuthProfileStore(): AuthProfileStore {
   const authPath = resolveAuthStorePath();
-  const raw = loadJsonFile(authPath);
-  const asStore = coerceAuthStore(raw);
-  if (asStore) {
-    // Sync from external sources on every load
-    let synced = syncExternalCliCredentials(asStore);
-    synced = syncAgentCoreCredentials(asStore) || synced;
-    if (synced) {
-      saveJsonFile(authPath, asStore);
-    }
-    return asStore;
-  }
-
-  const legacyRaw = loadJsonFile(resolveLegacyAuthStorePath());
-  const legacy = coerceLegacyStore(legacyRaw);
-  if (legacy) {
-    const store: AuthProfileStore = {
-      version: AUTH_STORE_VERSION,
-      profiles: {},
-    };
-    for (const [provider, cred] of Object.entries(legacy)) {
-      const profileId = `${provider}:default`;
-      if (cred.type === "api_key") {
-        store.profiles[profileId] = {
-          type: "api_key",
-          provider: String(cred.provider ?? provider),
-          key: cred.key,
-          ...(cred.email ? { email: cred.email } : {}),
-        };
-      } else if (cred.type === "token") {
-        store.profiles[profileId] = {
-          type: "token",
-          provider: String(cred.provider ?? provider),
-          token: cred.token,
-          ...(typeof cred.expires === "number" ? { expires: cred.expires } : {}),
-          ...(cred.email ? { email: cred.email } : {}),
-        };
-      } else {
-        store.profiles[profileId] = {
-          type: "oauth",
-          provider: String(cred.provider ?? provider),
-          access: cred.access,
-          refresh: cred.refresh,
-          expires: cred.expires,
-          ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
-          ...(cred.projectId ? { projectId: cred.projectId } : {}),
-          ...(cred.accountId ? { accountId: cred.accountId } : {}),
-          ...(cred.email ? { email: cred.email } : {}),
-        };
-      }
-    }
-    syncExternalCliCredentials(store);
-    syncAgentCoreCredentials(store);
-    return store;
-  }
-
-  const store: AuthProfileStore = { version: AUTH_STORE_VERSION, profiles: {} };
-  syncExternalCliCredentials(store);
-  syncAgentCoreCredentials(store);
-  return store;
-}
-
-function loadAuthProfileStoreForAgent(
-  agentDir?: string,
-  _options?: { allowKeychainPrompt?: boolean },
-): AuthProfileStore {
-  const authPath = resolveAuthStorePath(agentDir);
-  const raw = loadJsonFile(authPath);
-  const asStore = coerceAuthStore(raw);
-  if (asStore) {
-    // Sync from external sources on every load
-    let synced = syncExternalCliCredentials(asStore);
-    synced = syncAgentCoreCredentials(asStore) || synced;
-    if (synced) {
-      saveJsonFile(authPath, asStore);
-    }
-    return asStore;
-  }
-
-  // Fallback: inherit auth-profiles from main agent if subagent has none
-  if (agentDir) {
-    const mainAuthPath = resolveAuthStorePath(); // without agentDir = main
-    const mainRaw = loadJsonFile(mainAuthPath);
-    const mainStore = coerceAuthStore(mainRaw);
-    if (mainStore && Object.keys(mainStore.profiles).length > 0) {
-      // Clone main store to subagent directory for auth inheritance
-      saveJsonFile(authPath, mainStore);
-      log.info("inherited auth-profiles from main agent", { agentDir });
-      return mainStore;
-    }
-  }
-
-  const legacyRaw = loadJsonFile(resolveLegacyAuthStorePath(agentDir));
-  const legacy = coerceLegacyStore(legacyRaw);
-  const store: AuthProfileStore = {
-    version: AUTH_STORE_VERSION,
-    profiles: {},
-  };
-  if (legacy) {
-    for (const [provider, cred] of Object.entries(legacy)) {
-      const profileId = `${provider}:default`;
-      if (cred.type === "api_key") {
-        store.profiles[profileId] = {
-          type: "api_key",
-          provider: String(cred.provider ?? provider),
-          key: cred.key,
-          ...(cred.email ? { email: cred.email } : {}),
-        };
-      } else if (cred.type === "token") {
-        store.profiles[profileId] = {
-          type: "token",
-          provider: String(cred.provider ?? provider),
-          token: cred.token,
-          ...(typeof cred.expires === "number" ? { expires: cred.expires } : {}),
-          ...(cred.email ? { email: cred.email } : {}),
-        };
-      } else {
-        store.profiles[profileId] = {
-          type: "oauth",
-          provider: String(cred.provider ?? provider),
-          access: cred.access,
-          refresh: cred.refresh,
-          expires: cred.expires,
-          ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
-          ...(cred.projectId ? { projectId: cred.projectId } : {}),
-          ...(cred.accountId ? { accountId: cred.accountId } : {}),
-          ...(cred.email ? { email: cred.email } : {}),
-        };
-      }
-    }
-  }
-
-  const mergedOAuth = mergeOAuthFileIntoStore(store);
-  const syncedCli = syncExternalCliCredentials(store);
-  const syncedAgentCore = syncAgentCoreCredentials(store);
-  const shouldWrite = legacy !== null || mergedOAuth || syncedCli || syncedAgentCore;
-  if (shouldWrite) {
-    saveJsonFile(authPath, store);
-  }
-
-  // PR #368: legacy auth.json could get re-migrated from other agent dirs,
-  // overwriting fresh OAuth creds with stale tokens (fixes #363). Delete only
-  // after we've successfully written auth-profiles.json.
-  if (shouldWrite && legacy !== null) {
-    const legacyPath = resolveLegacyAuthStorePath(agentDir);
-    try {
-      fs.unlinkSync(legacyPath);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") {
-        log.warn("failed to delete legacy auth.json after migration", {
-          err,
-          legacyPath,
-        });
-      }
-    }
-  }
-
-  return store;
+  ensureAuthStoreFile(authPath);
+  const auth = coerceOpencodeAuthJson(loadJsonFile(authPath));
+  const meta = readAuthMetaFile(undefined);
+  return toAuthProfileStore(auth, meta);
 }
 
 export function ensureAuthProfileStore(
   agentDir?: string,
-  options?: { allowKeychainPrompt?: boolean },
+  _options?: { allowKeychainPrompt?: boolean },
 ): AuthProfileStore {
-  const store = loadAuthProfileStoreForAgent(agentDir, options);
   const authPath = resolveAuthStorePath(agentDir);
-  const mainAuthPath = resolveAuthStorePath();
-  if (!agentDir || authPath === mainAuthPath) {
-    return store;
-  }
-
-  const mainStore = loadAuthProfileStoreForAgent(undefined, options);
-  const merged = mergeAuthProfileStores(mainStore, store);
-
-  return merged;
+  ensureAuthStoreFile(authPath);
+  const auth = coerceOpencodeAuthJson(loadJsonFile(authPath));
+  const meta = readAuthMetaFile(agentDir);
+  return toAuthProfileStore(auth, meta);
 }
 
 export function saveAuthProfileStore(store: AuthProfileStore, agentDir?: string): void {
   const authPath = resolveAuthStorePath(agentDir);
-  const payload = {
-    version: AUTH_STORE_VERSION,
-    profiles: store.profiles,
-    order: store.order ?? undefined,
-    lastGood: store.lastGood ?? undefined,
-    usageStats: store.usageStats ?? undefined,
-  } satisfies AuthProfileStore;
-  saveJsonFile(authPath, payload);
+  ensureAuthStoreFile(authPath);
+
+  const nextAuth = toOpencodeAuthJson(store);
+  saveJsonFile(authPath, nextAuth);
+
+  writeAuthMetaFile(
+    {
+      version: AUTH_STORE_VERSION,
+      order: store.order,
+      lastGood: store.lastGood,
+      usageStats: store.usageStats,
+    },
+    agentDir,
+  );
 }
+

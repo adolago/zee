@@ -18,7 +18,7 @@ export function getAvailableCommands(): AvailableCommand[] {
     { name: "usage", description: "Toggle usage footer (off|tokens|full)." },
     { name: "stop", description: "Stop the current run." },
     { name: "restart", description: "Restart the gateway (if enabled)." },
-    { name: "dock-telegram", description: "Route replies to Telegram." },
+    { name: "dock-matrix", description: "Route replies to Matrix." },
     { name: "activation", description: "Set group activation (mention|always)." },
     { name: "send", description: "Set send mode (on|off|inherit)." },
     { name: "reset", description: "Reset the session (/new)." },

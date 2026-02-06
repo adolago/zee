@@ -2,7 +2,7 @@
 /**
  * personas-daemon CLI
  *
- * Starts the agent-core daemon (tiara + LSP).
+ * Starts the agent-core daemon (+ LSP).
  *
  * Usage:
  *   npx tsx personas-daemon.ts start [--lsp-port <port>] [--lsp-host <host>]

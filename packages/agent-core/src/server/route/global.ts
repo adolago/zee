@@ -8,6 +8,8 @@ import { Provider } from "@/provider/provider"
 import { Installation } from "@/installation"
 import { getGatewayHealthState } from "@/gateway/supervisor-state"
 import { withTimeout } from "@/util/timeout"
+import { SseLimit } from "../sse-limit"
+import { registerSseKeepalive } from "../sse-keepalive"
 
 // Health status schema for system monitoring
 const HealthStatus = z.object({
@@ -37,6 +39,18 @@ const HealthCheck = z.object({
   execModifiedTs: z.number().optional(),
   entryModifiedAt: z.string().optional(),
   entryModifiedTs: z.number().optional(),
+})
+
+const ServerStats = z.object({
+  instances: z.object({
+    cached: z.number().int().nonnegative(),
+  }),
+  sse: z.object({
+    activeTotal: z.number().int().nonnegative(),
+    activeClients: z.number().int().nonnegative(),
+    maxTotal: z.number().int().positive(),
+    maxPerClient: z.number().int().positive(),
+  }),
 })
 
 const MEMORY_CHECK_TTL_MS = 30_000
@@ -145,6 +159,53 @@ export const GlobalRoute = new Hono()
     },
   )
   .get(
+    "/stats",
+    describeRoute({
+      summary: "Server stats",
+      description: "Get basic server stats (instance cache size and streaming connection counts).",
+      operationId: "global.stats",
+      responses: {
+        200: {
+          description: "Server stats",
+          content: {
+            "application/json": {
+              schema: resolver(ServerStats),
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      return c.json({
+        instances: {
+          cached: Instance.cacheSize(),
+        },
+        sse: SseLimit.stats(),
+      })
+    },
+  )
+  .get(
+    "/instances",
+    describeRoute({
+      summary: "List cached instances",
+      description: "List cached agent-core instance directories currently held in-process.",
+      operationId: "global.instances",
+      responses: {
+        200: {
+          description: "List of cached instance directories",
+          content: {
+            "application/json": {
+              schema: resolver(z.array(z.string())),
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      return c.json(Instance.cachedDirectories())
+    },
+  )
+  .get(
     "/event",
     describeRoute({
       summary: "Global event stream (SSE)",
@@ -158,53 +219,110 @@ export const GlobalRoute = new Hono()
       },
     }),
     async (c) => {
-      return streamSSE(c, async (stream) => {
-        const subscriptions: (() => void)[] = []
+      const slot = SseLimit.acquire(c.req.raw)
+      if (!slot.ok) {
+        return c.json({ error: slot.error }, slot.status)
+      }
 
-        // Pass through all events from the bus
-        const handler = async (event: { directory?: string; payload: any }) => {
-          const payload = {
-            type: event.payload.type,
-            properties: event.payload.properties,
-          }
-          await stream.writeSSE({
-            event: event.payload.type,
-            data: JSON.stringify({
-              directory: event.directory,
-              type: payload.type,
-              properties: payload.properties,
-              payload,
-            }),
-          })
-        }
-        GlobalBus.on("event", handler)
-        subscriptions.push(() => GlobalBus.off("event", handler))
+      try {
+        return streamSSE(c, async (stream) => {
+          const subscriptions: (() => void)[] = []
+          const unregisterKeepalive = registerSseKeepalive(stream)
 
-        // Send initial state
-        await stream.writeSSE({
-          event: "connected",
-          data: JSON.stringify({ timestamp: Date.now() }),
-        })
-
-        // Keepalive every 30 seconds
-        const keepalive = setInterval(async () => {
           try {
+            // Pass through all events from the bus
+            const handler = async (event: { directory?: string; payload: any }) => {
+              const payload = {
+                type: event.payload.type,
+                properties: event.payload.properties,
+              }
+              await stream.writeSSE({
+                event: event.payload.type,
+                data: JSON.stringify({
+                  directory: event.directory,
+                  type: payload.type,
+                  properties: payload.properties,
+                  payload,
+                }),
+              })
+            }
+            GlobalBus.on("event", handler)
+            subscriptions.push(() => GlobalBus.off("event", handler))
+
+            // Send initial state
             await stream.writeSSE({
-              event: "keepalive",
+              event: "connected",
               data: JSON.stringify({ timestamp: Date.now() }),
             })
-          } catch {
-            clearInterval(keepalive)
+
+            stream.onAbort(() => {
+              slot.release()
+              unregisterKeepalive()
+              subscriptions.forEach((unsub) => unsub())
+            })
+
+            await new Promise(() => {})
+          } catch (err) {
+            unregisterKeepalive()
+            throw err
           }
-        }, 30000)
-
-        stream.onAbort(() => {
-          clearInterval(keepalive)
-          subscriptions.forEach((unsub) => unsub())
         })
-
-        await new Promise(() => {})
-      })
+      } catch (err) {
+        slot.release()
+        throw err
+      }
+    },
+  )
+  .post(
+    "/dispose-directory",
+    describeRoute({
+      summary: "Dispose cached instance by directory",
+      description:
+        "Dispose a cached agent-core instance by directory key. Use /global/instances to discover cached keys.",
+      operationId: "global.disposeDirectory",
+      responses: {
+        200: {
+          description: "Dispose result",
+          content: {
+            "application/json": {
+              schema: resolver(z.boolean()),
+            },
+          },
+        },
+      },
+    }),
+    validator(
+      "json",
+      z.object({
+        directory: z.string(),
+      }),
+    ),
+    async (c) => {
+      const { directory } = c.req.valid("json")
+      const disposed = await Instance.disposeDirectory(directory)
+      return c.json(disposed)
+    },
+  )
+  .post(
+    "/dispose-all",
+    describeRoute({
+      summary: "Dispose all cached instances",
+      description: "Dispose all cached agent-core instances held in-process.",
+      operationId: "global.disposeAll",
+      responses: {
+        200: {
+          description: "Dispose completed",
+          content: {
+            "application/json": {
+              schema: resolver(z.boolean()),
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      await Instance.disposeAll()
+      return c.json(true)
     },
   )
   .post(

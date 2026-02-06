@@ -4,7 +4,8 @@ import { useKeybind, type KeybindsConfig } from "@tui/context/keybind"
 import { useTerminalDimensions } from "@opentui/solid"
 import { TextAttributes } from "@opentui/core"
 import { Keybind } from "@/util/keybind"
-import { SplitBorder } from "@tui/component/border"
+import { RoundedBorder } from "@tui/component/border"
+import { overlayBottomOffset } from "@tui/ui/overlay"
 
 type KeybindEntry = {
   key: string
@@ -40,6 +41,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
 
   // UI
   mode_toggle: { category: "UI", description: "[h]old mode" },
+  mode_release_policy_toggle: { category: "UI", description: "[H] release policy" },
   status_view: { category: "UI", description: "[s]tatus" },
   sidebar_toggle: { category: "UI", description: "side[b]ar" },
 
@@ -108,9 +110,10 @@ export function WhichKey() {
   })
 
   // Calculate layout - try to fit in available width
-  const columnWidth = 20
+  const scale = 1.33
+  const columnWidth = Math.max(22, Math.round(20 * scale))
   const maxColumns = createMemo(() => Math.max(1, Math.floor((dimensions().width - 4) / columnWidth)))
-  const reservedBottom = createMemo(() => Math.min(9, Math.max(0, dimensions().height - 8)))
+  const promptOffset = createMemo(() => overlayBottomOffset(dimensions().height))
 
   return (
     <Show when={keybind.leader}>
@@ -118,26 +121,24 @@ export function WhichKey() {
         position="absolute"
         left={0}
         right={0}
-        top={0}
-        bottom={reservedBottom()}
+        bottom={promptOffset()}
         justifyContent="flex-end"
-        alignItems="flex-start"
+        alignItems="center"
         zIndex={1500}
         overflow="hidden"
-        paddingLeft={1}
         paddingBottom={1}
       >
         <box
           backgroundColor={theme.backgroundMenu}
-          {...SplitBorder}
+          {...RoundedBorder}
           borderColor={theme.borderActive}
-          paddingLeft={2}
-          paddingRight={2}
-          paddingTop={1}
-          paddingBottom={1}
+          paddingLeft={3}
+          paddingRight={3}
+          paddingTop={2}
+          paddingBottom={2}
           overflow="hidden"
           flexShrink={1}
-          maxWidth={Math.min(dimensions().width - 2, maxColumns() * columnWidth + 6)}
+          maxWidth={Math.min(dimensions().width - 2, maxColumns() * columnWidth + 10)}
         >
           <box flexDirection="column" gap={0}>
             {/* Header */}

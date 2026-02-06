@@ -271,10 +271,7 @@ export namespace GatewaySupervisor {
   const GATEWAY_ENV_HINTS = [
     "ZEE_GATEWAY_TOKEN",
     "ZEE_GATEWAY_PASSWORD",
-    "TELEGRAM_BOT_TOKEN",
-    "TELEGRAM_USER_PHONE",
-    "TELEGRAM_API_ID",
-    "TELEGRAM_API_HASH",
+    "MATRIX_ACCESS_TOKEN",
   ]
 
   let startInFlight = false
@@ -718,7 +715,7 @@ export const DaemonCommand = cmd({
         default: "horizontal",
       })
       .option("gateway", {
-        describe: "Start zee messaging gateway (WhatsApp/Telegram/Signal)",
+        describe: "Start zee messaging gateway (WhatsApp/Matrix)",
         type: "boolean",
         default: true,
       })

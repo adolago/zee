@@ -32,6 +32,7 @@ import { ReadTool } from "../tool/read"
 import { ListTool } from "../tool/ls"
 import { FileTime } from "../file/time"
 import { Flag } from "../flag/flag"
+import { AuthScope, getAuthConfig, hasScope } from "../server/auth"
 import { ulid } from "ulid"
 import { spawn } from "child_process"
 import { Command } from "../command"
@@ -119,8 +120,8 @@ export namespace SessionPrompt {
     if (client === "tui") return "tui"
     if (client === "cli") return "cli"
     if (client === "daemon") return "daemon"
-    if (client === "telegram") return "telegram"
     if (client === "whatsapp") return "whatsapp"
+    if (client === "matrix") return "matrix"
     if (client === "app" || client === "desktop") return "tui"
     return "daemon"
   }
@@ -152,9 +153,26 @@ export namespace SessionPrompt {
     if (session.mode === "hold") return true
     if (session.mode === "release") return false
 
-    // Surface defaults: messaging surfaces default to release, everything else to hold
-    if (session.surface === "whatsapp" || session.surface === "telegram") return false
+    // Surface defaults: safe-by-default (hold mode).
+    // Sessions can explicitly opt into release mode via session.mode="release".
     return true
+  }
+
+  /**
+   * Resolve whether permission checks should be skipped ("no cuffs" mode).
+   *
+   * Priority: per-message options override > inferred from hold/release mode.
+   *
+   * Convention: RELEASE mode implies skipPermissions=true by default.
+   */
+  export function resolveSkipPermissions(
+    session: Session.Info,
+    messageTools?: Record<string, boolean>,
+    messageOptions?: Record<string, any>,
+  ): boolean {
+    const opt = messageOptions?.skipPermissions
+    if (typeof opt === "boolean") return opt
+    return resolveHoldMode(session, messageTools) === false
   }
 
   async function hasPlanFile(planPath: string): Promise<boolean> {
@@ -403,16 +421,46 @@ export namespace SessionPrompt {
     }
     await emitSessionStartOnce(session, input.agent)
     await SessionRevert.cleanup(session)
-    await ensureRequiredMemory(input.sessionID)
 
-    // Handle /hold and /release commands at the server level (works for all surfaces)
+    // Handle /hold and /release commands early so mode switching still works even if
+    // the memory backend/MCP is unavailable.
     const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
     if (firstText === "/hold" || firstText === "/release") {
-      const newMode = firstText === "/hold" ? "hold" : "release"
-      await Session.update(input.sessionID, (draft) => {
-        draft.mode = newMode
-      })
       const message = await createUserMessage(input)
+      const requestedMode = firstText === "/hold" ? "hold" : "release"
+
+      let allowed = true
+      let responseText = ""
+
+      if (requestedMode === "release") {
+        const surface = session.surface
+        const isMessagingSurface = surface === "whatsapp" || surface === "matrix"
+        if (isMessagingSurface && !Flag.AGENT_CORE_ALLOW_MESSAGING_RELEASE) {
+          allowed = false
+          responseText =
+            "Refusing to switch to RELEASE mode from messaging surfaces by default. " +
+            "Resume this session in the CLI/TUI, or set AGENT_CORE_ALLOW_MESSAGING_RELEASE=1 to override."
+        } else {
+          const authConfig = getAuthConfig()
+          if (!authConfig.disabled) {
+            const granted = authConfig.scopes ?? [AuthScope.ADMIN]
+            if (!hasScope(granted, AuthScope.ADMIN)) {
+              allowed = false
+              responseText = 'Refusing to switch to RELEASE mode: requires scope "operator.admin".'
+            }
+          }
+        }
+      }
+
+      if (allowed) {
+        await Session.update(input.sessionID, (draft) => {
+          draft.mode = requestedMode
+        })
+        responseText =
+          requestedMode === "hold"
+            ? "Switched to HOLD mode. File modifications are restricted."
+            : "Switched to RELEASE mode. Full tool access enabled."
+      }
       const confirmMsg: MessageV2.Assistant = {
         id: Identifier.ascending("message"),
         sessionID: input.sessionID,
@@ -434,12 +482,12 @@ export namespace SessionPrompt {
         messageID: confirmMsg.id,
         sessionID: input.sessionID,
         type: "text",
-        text: newMode === "hold"
-          ? "Switched to HOLD mode. File modifications are restricted."
-          : "Switched to RELEASE mode. Full tool access enabled.",
+        text: responseText,
       } satisfies MessageV2.TextPart)
       return { info: confirmMsg, parts: [] } as MessageV2.WithParts
     }
+
+    await ensureRequiredMemory(input.sessionID)
 
     const message = await createUserMessage(input)
     await Session.touch(input.sessionID)
@@ -1002,6 +1050,7 @@ export namespace SessionPrompt {
         session,
         model,
         tools: lastUser.tools,
+        options: lastUser.options,
         processor,
         bypassAgentCheck,
         messages: msgs,
@@ -1138,12 +1187,16 @@ export namespace SessionPrompt {
     model: Provider.Model
     session: Session.Info
     tools?: Record<string, boolean>
+    options?: Record<string, any>
     processor: SessionProcessor.Info
     bypassAgentCheck: boolean
     messages: MessageV2.WithParts[]
   }) {
     using _ = log.time("resolveTools")
     const tools: Record<string, AITool> = {}
+
+    const holdMode = resolveHoldMode(input.session, input.tools)
+    const skipPermissions = resolveSkipPermissions(input.session, input.tools, input.options)
 
     const context = (args: any, options: ToolCallOptions): Tool.Context => ({
       sessionID: input.session.id,
@@ -1152,7 +1205,12 @@ export namespace SessionPrompt {
       callID: options.toolCallId,
       directory: Instance.directory,
       worktree: Instance.worktree,
-      extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck, holdMode: resolveHoldMode(input.session, input.tools) },
+      extra: {
+        model: input.model,
+        bypassAgentCheck: input.bypassAgentCheck,
+        holdMode,
+        skipPermissions,
+      },
       agent: input.agent.name,
       messages: input.messages,
       metadata: async (val: { title?: string; metadata?: any }) => {
@@ -1178,7 +1236,8 @@ export namespace SessionPrompt {
           sessionID: input.session.id,
           tool: { messageID: input.processor.message.id, callID: options.toolCallId },
           ruleset: PermissionNext.merge(input.agent.permission, input.session.permission ?? []),
-          holdMode: resolveHoldMode(input.session, input.tools),
+          // skipPermissions ("no cuffs") should bypass permission UX entirely.
+          holdMode: skipPermissions ? false : holdMode,
         })
       },
     })

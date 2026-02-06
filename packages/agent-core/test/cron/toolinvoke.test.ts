@@ -4,6 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import z from "zod"
 
+import { Config } from "../../src/config/config"
 import { createCronServiceState } from "../../src/cron/service/state"
 import { executeJob } from "../../src/cron/service/timer"
 import type { CronJob, CronStoreFile } from "../../src/cron/types"
@@ -44,45 +45,127 @@ describe("cron toolInvoke", () => {
   })
 
   test("runs a toolInvoke job and does not post to main by default", async () => {
+    const prevAllowlist = process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+    process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"] = "test-tool"
+
+    const prevConfigDir = process.env["AGENT_CORE_CONFIG_DIR"]
     const tmp = await makeTmpDir()
     const events: string[] = []
     let ran = false
 
-    await Instance.provide({
-      directory: tmp.dir,
-      fn: async () => {
-        await ToolRegistry.register(
-          Tool.define("test-tool", async () => ({
-            description: "test tool",
-            parameters: z.object({}),
-            execute: async () => {
-              ran = true
-              return { title: "Test Tool", metadata: {}, output: "ok" }
-            },
-          })),
-        )
-      },
-    })
+    try {
+      process.env["AGENT_CORE_CONFIG_DIR"] = tmp.dir
+      Config.global.reset()
 
-    const state = createCronServiceState({
-      directory: tmp.dir,
-      log: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
-      storePath: "/tmp/test-cron.json",
-      cronEnabled: true,
-      enqueueSystemEvent: (text) => events.push(text),
-      requestHeartbeatNow: () => {},
-      runIsolatedAgentJob: async () => ({ status: "ok" }),
-    })
+      await Instance.provide({
+        directory: tmp.dir,
+        fn: async () => {
+          await ToolRegistry.register(
+            Tool.define("test-tool", async () => ({
+              description: "test tool",
+              parameters: z.object({}),
+              execute: async () => {
+                ran = true
+                return { title: "Test Tool", metadata: {}, output: "ok" }
+              },
+            })),
+          )
+        },
+      })
 
-    const job = makeJob()
-    state.store = { version: 1, jobs: [job] } as CronStoreFile
+      const state = createCronServiceState({
+        directory: tmp.dir,
+        log: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
+        storePath: "/tmp/test-cron.json",
+        cronEnabled: true,
+        enqueueSystemEvent: (text) => events.push(text),
+        requestHeartbeatNow: () => {},
+        runIsolatedAgentJob: async () => ({ status: "ok" }),
+      })
 
-    await executeJob(state, job, 1000, { forced: false })
+      const job = makeJob()
+      state.store = { version: 1, jobs: [job] } as CronStoreFile
 
-    expect(ran).toBe(true)
-    expect(job.state.lastStatus).toBe("ok")
-    expect(events).toHaveLength(0)
+      await executeJob(state, job, 1000, { forced: false })
 
-    await tmp.cleanup()
+      expect(ran).toBe(true)
+      expect(job.state.lastStatus).toBe("ok")
+      expect(events).toHaveLength(0)
+    } finally {
+      if (prevAllowlist === undefined) {
+        delete process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+      } else {
+        process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"] = prevAllowlist
+      }
+      if (prevConfigDir === undefined) {
+        delete process.env["AGENT_CORE_CONFIG_DIR"]
+      } else {
+        process.env["AGENT_CORE_CONFIG_DIR"] = prevConfigDir
+      }
+      Config.global.reset()
+      await tmp.cleanup()
+    }
+  })
+
+  test("rejects toolInvoke when tool is not in the allowlist", async () => {
+    const prevAllowlist = process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+    delete process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+
+    const prevConfigDir = process.env["AGENT_CORE_CONFIG_DIR"]
+    const tmp = await makeTmpDir()
+    let ran = false
+
+    try {
+      process.env["AGENT_CORE_CONFIG_DIR"] = tmp.dir
+      Config.global.reset()
+
+      await Instance.provide({
+        directory: tmp.dir,
+        fn: async () => {
+          await ToolRegistry.register(
+            Tool.define("test-tool", async () => ({
+              description: "test tool",
+              parameters: z.object({}),
+              execute: async () => {
+                ran = true
+                return { title: "Test Tool", metadata: {}, output: "ok" }
+              },
+            })),
+          )
+        },
+      })
+
+      const state = createCronServiceState({
+        directory: tmp.dir,
+        log: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
+        storePath: "/tmp/test-cron.json",
+        cronEnabled: true,
+        enqueueSystemEvent: () => {},
+        requestHeartbeatNow: () => {},
+        runIsolatedAgentJob: async () => ({ status: "ok" }),
+      })
+
+      const job = makeJob()
+      state.store = { version: 1, jobs: [job] } as CronStoreFile
+
+      await executeJob(state, job, 1000, { forced: false })
+
+      expect(ran).toBe(false)
+      expect(job.state.lastStatus).toBe("error")
+      expect(job.state.lastError).toContain('cron toolInvoke is not allowed for tool "test-tool"')
+    } finally {
+      if (prevAllowlist === undefined) {
+        delete process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+      } else {
+        process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"] = prevAllowlist
+      }
+      if (prevConfigDir === undefined) {
+        delete process.env["AGENT_CORE_CONFIG_DIR"]
+      } else {
+        process.env["AGENT_CORE_CONFIG_DIR"] = prevConfigDir
+      }
+      Config.global.reset()
+      await tmp.cleanup()
+    }
   })
 })

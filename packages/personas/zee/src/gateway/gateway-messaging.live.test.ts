@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
+import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -48,7 +49,21 @@ function resolveGatewayToken(): string | undefined {
   const envToken = process.env.ZEE_GATEWAY_TOKEN?.trim();
   if (envToken) return envToken;
   try {
-    return fs.readFileSync("/tmp/zee_gateway_token", "utf-8").trim() || undefined;
+    const override = process.env.ZEE_GATEWAY_TOKEN_FILE?.trim();
+    const home = process.env.HOME?.trim();
+    const stateHome = process.env.XDG_STATE_HOME?.trim() || (home ? path.join(home, ".local", "state") : undefined);
+    const defaultPath = stateHome ? path.join(stateHome, "agent-core", "zee_gateway_token") : undefined;
+
+    const candidates = [override, defaultPath].filter((p): p is string => Boolean(p && p.length > 0));
+    for (const candidate of candidates) {
+      try {
+        const token = fs.readFileSync(candidate, "utf-8").trim();
+        if (token) return token;
+      } catch {
+        // Ignore missing/unreadable token candidates.
+      }
+    }
+    return undefined;
   } catch {
     return undefined;
   }

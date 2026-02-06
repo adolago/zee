@@ -44,6 +44,28 @@ export const SplitBorder = {
 }
 
 /**
+ * RoundedBorder - Full border using rounded corners, matching the prompt frame.
+ * Use this for dialogs/menus that should visually align with the prompt aesthetic.
+ */
+export const RoundedBorder = {
+  border: ["left" as const, "right" as const, "top" as const, "bottom" as const],
+  customBorderChars: {
+    ...EmptyBorder,
+    topLeft: "╭",
+    topRight: "╮",
+    bottomLeft: "╰",
+    bottomRight: "╯",
+    horizontal: "─",
+    vertical: "│",
+    topT: "┬",
+    bottomT: "┴",
+    leftT: "├",
+    rightT: "┤",
+    cross: "┼",
+  },
+}
+
+/**
  * SplitBorderVertical - Convenience export for single vertical border
  * Equivalent to SplitBorder.customBorderChars.vertical
  */

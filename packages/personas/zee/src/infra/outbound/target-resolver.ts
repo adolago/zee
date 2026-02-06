@@ -105,7 +105,7 @@ export function formatTargetDisplay(params: {
     ? trimmedTarget.slice(channelPrefix.length)
     : trimmedTarget;
 
-  const withoutPrefix = withoutProvider.replace(/^telegram:/i, "");
+  const withoutPrefix = withoutProvider.replace(/^matrix:/i, "");
   if (/^channel:/i.test(withoutPrefix)) {
     return `#${withoutPrefix.replace(/^channel:/i, "")}`;
   }

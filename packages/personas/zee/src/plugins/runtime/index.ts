@@ -39,7 +39,6 @@ import { handleWhatsAppAction } from "../../agents/tools/whatsapp-actions.js";
 import { removeAckReactionAfterReply, shouldAckReaction } from "../../channels/ack-reactions.js";
 import { resolveCommandAuthorizedFromAuthorizers } from "../../channels/command-gating.js";
 import { recordInboundSession } from "../../channels/session.js";
-import { telegramMessageActions } from "../../channels/plugins/actions/telegram.js";
 import { createWhatsAppLoginTool } from "../../channels/plugins/agent-tools/whatsapp-login.js";
 import { monitorWebChannel } from "../../channels/web/index.js";
 import {
@@ -74,14 +73,6 @@ import {
 } from "../../pairing/pairing-store.js";
 import { runCommandWithTimeout } from "../../process/exec.js";
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
-import {
-  auditTelegramGroupMembership,
-  collectTelegramUnmentionedGroupIds,
-} from "../../telegram/audit.js";
-import { monitorTelegramProvider } from "../../telegram/monitor.js";
-import { probeTelegram } from "../../telegram/probe.js";
-import { sendMessageTelegram } from "../../telegram/send.js";
-import { resolveTelegramToken } from "../../telegram/token.js";
 import { loadWebMedia } from "../../web/media.js";
 import { getActiveWebListener } from "../../web/active-listener.js";
 import {
@@ -212,15 +203,6 @@ export function createPluginRuntime(): PluginRuntime {
         isControlCommandMessage,
         shouldComputeCommandAuthorized,
         shouldHandleTextCommands,
-      },
-      telegram: {
-        auditGroupMembership: auditTelegramGroupMembership,
-        collectUnmentionedGroupIds: collectTelegramUnmentionedGroupIds,
-        probeTelegram,
-        resolveTelegramToken,
-        sendMessageTelegram,
-        monitorTelegramProvider,
-        messageActions: telegramMessageActions,
       },
       whatsapp: {
         getActiveWebListener,

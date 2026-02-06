@@ -9,6 +9,7 @@ import { resolveNativeSkillsEnabled } from "../config/commands.js";
 import { resolveOAuthDir } from "../config/paths.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
+import { resolveAuthStorePathForDisplay } from "../agents/auth-profiles.js";
 import type { AgentToolsConfig } from "../config/types.tools.js";
 import { resolveBrowserConfig } from "../browser/config.js";
 import { isToolAllowedByPolicies } from "../agents/pi-tools.policy.js";
@@ -535,31 +536,25 @@ export async function collectPluginsTrustFindings(params: {
   const allowConfigured = Array.isArray(allow) && allow.length > 0;
   if (!allowConfigured) {
     const hasString = (value: unknown) => typeof value === "string" && value.trim().length > 0;
-    const hasAccountStringKey = (account: unknown, key: string) =>
-      Boolean(
-        account &&
-        typeof account === "object" &&
-        hasString((account as Record<string, unknown>)[key]),
-      );
+    const isNonEmptyObject = (value: unknown) =>
+      Boolean(value && typeof value === "object" && Object.keys(value as Record<string, unknown>).length > 0);
 
-    const telegramConfigured =
-      hasString(params.cfg.channels?.telegram?.botToken) ||
-      hasString(params.cfg.channels?.telegram?.tokenFile) ||
-      Boolean(
-        params.cfg.channels?.telegram?.accounts &&
-        Object.values(params.cfg.channels.telegram.accounts).some(
-          (a) => hasAccountStringKey(a, "botToken") || hasAccountStringKey(a, "tokenFile"),
-        ),
-      ) ||
-      hasString(process.env.TELEGRAM_BOT_TOKEN);
+	    const whatsappConfigured = isNonEmptyObject(params.cfg.channels?.whatsapp);
+	    const matrixConfigured = isNonEmptyObject(params.cfg.channels?.matrix);
 
-    const skillCommandsLikelyExposed =
-      telegramConfigured &&
-      resolveNativeSkillsEnabled({
-        providerId: "telegram",
-        providerSetting: params.cfg.channels?.telegram?.commands?.nativeSkills,
-        globalSetting: params.cfg.commands?.nativeSkills,
-      });
+		    const skillCommandsLikelyExposed =
+		      (whatsappConfigured &&
+		        resolveNativeSkillsEnabled({
+		          providerId: "whatsapp",
+		          providerSetting: undefined,
+	          globalSetting: params.cfg.commands?.nativeSkills,
+	        })) ||
+	      (matrixConfigured &&
+	        resolveNativeSkillsEnabled({
+	          providerId: "matrix",
+	          providerSetting: undefined,
+	          globalSetting: params.cfg.commands?.nativeSkills,
+	        }));
 
     findings.push({
       checkId: "plugins.extensions_no_allowlist",
@@ -769,11 +764,49 @@ export async function collectStateDeepFilesystemFindings(params: {
   const defaultAgentId = resolveDefaultAgentId(params.cfg);
   const ids = Array.from(new Set([defaultAgentId, ...agentIds])).map((id) => normalizeAgentId(id));
 
+  const opencodeAuthPath = resolveAuthStorePathForDisplay();
+  const opencodeAuthPerms = await inspectPathPermissions(opencodeAuthPath, {
+    env: params.env,
+    platform: params.platform,
+    exec: params.execIcacls,
+  });
+  if (opencodeAuthPerms.ok) {
+    if (opencodeAuthPerms.worldWritable || opencodeAuthPerms.groupWritable) {
+      findings.push({
+        checkId: "fs.auth_json.perms_writable",
+        severity: "critical",
+        title: "auth.json is writable by others",
+        detail: `${formatPermissionDetail(opencodeAuthPath, opencodeAuthPerms)}; another user could inject credentials.`,
+        remediation: formatPermissionRemediation({
+          targetPath: opencodeAuthPath,
+          perms: opencodeAuthPerms,
+          isDir: false,
+          posixMode: 0o600,
+          env: params.env,
+        }),
+      });
+    } else if (opencodeAuthPerms.worldReadable || opencodeAuthPerms.groupReadable) {
+      findings.push({
+        checkId: "fs.auth_json.perms_readable",
+        severity: "warn",
+        title: "auth.json is readable by others",
+        detail: `${formatPermissionDetail(opencodeAuthPath, opencodeAuthPerms)}; auth.json contains API keys and OAuth tokens.`,
+        remediation: formatPermissionRemediation({
+          targetPath: opencodeAuthPath,
+          perms: opencodeAuthPerms,
+          isDir: false,
+          posixMode: 0o600,
+          env: params.env,
+        }),
+      });
+    }
+  }
+
   for (const agentId of ids) {
     const agentDir = path.join(params.stateDir, "agents", agentId, "agent");
-    const authPath = path.join(agentDir, "auth-profiles.json");
+    const authMetaPath = path.join(agentDir, "auth-metadata.json");
     // eslint-disable-next-line no-await-in-loop
-    const authPerms = await inspectPathPermissions(authPath, {
+    const authPerms = await inspectPathPermissions(authMetaPath, {
       env: params.env,
       platform: params.platform,
       exec: params.execIcacls,
@@ -781,12 +814,12 @@ export async function collectStateDeepFilesystemFindings(params: {
     if (authPerms.ok) {
       if (authPerms.worldWritable || authPerms.groupWritable) {
         findings.push({
-          checkId: "fs.auth_profiles.perms_writable",
-          severity: "critical",
-          title: "auth-profiles.json is writable by others",
-          detail: `${formatPermissionDetail(authPath, authPerms)}; another user could inject credentials.`,
+          checkId: "fs.auth_metadata.perms_writable",
+          severity: "warn",
+          title: "auth-metadata.json is writable by others",
+          detail: `${formatPermissionDetail(authMetaPath, authPerms)}; another user could tamper with auth rotation metadata.`,
           remediation: formatPermissionRemediation({
-            targetPath: authPath,
+            targetPath: authMetaPath,
             perms: authPerms,
             isDir: false,
             posixMode: 0o600,
@@ -795,12 +828,12 @@ export async function collectStateDeepFilesystemFindings(params: {
         });
       } else if (authPerms.worldReadable || authPerms.groupReadable) {
         findings.push({
-          checkId: "fs.auth_profiles.perms_readable",
-          severity: "warn",
-          title: "auth-profiles.json is readable by others",
-          detail: `${formatPermissionDetail(authPath, authPerms)}; auth-profiles.json contains API keys and OAuth tokens.`,
+          checkId: "fs.auth_metadata.perms_readable",
+          severity: "info",
+          title: "auth-metadata.json is readable by others",
+          detail: `${formatPermissionDetail(authMetaPath, authPerms)}; auth-metadata.json contains non-secret auth metadata.`,
           remediation: formatPermissionRemediation({
-            targetPath: authPath,
+            targetPath: authMetaPath,
             perms: authPerms,
             isDir: false,
             posixMode: 0o600,

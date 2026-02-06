@@ -6,7 +6,7 @@ Generates comprehensive news digests for portfolio holdings by leveraging
 agent-core's WebSearch and LLM providers. No separate API keys required.
 
 Architecture:
-  Stanley -> Tiara (claude-flow) -> Agent-Core
+  Stanley -> Agent-Core
   - WebSearch via Exa MCP (built into agent-core)
   - LLM summarization via agent-core providers
   - Auth handled by ~/.agent-core/auth.json

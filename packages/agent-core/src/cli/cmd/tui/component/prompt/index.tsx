@@ -201,6 +201,10 @@ export function Prompt(props: PromptProps) {
   const renderer = useRenderer()
   const { theme, syntax } = useTheme()
   const kv = useKV()
+  const releasePolicy = createMemo((): "safe" | "no_cuffs" => {
+    const val = kv.get("mode_release_policy", "no_cuffs")
+    return val === "safe" ? "safe" : "no_cuffs"
+  })
   const zeeBanner = createMemo(() => kv.get("zee_banner", undefined) as unknown)
   const bannerRotationMs = createMemo(() => {
     const raw = zeeBanner()
@@ -1302,7 +1306,9 @@ export function Prompt(props: PromptProps) {
           model: selectedModel,
           variant,
           tools: holdModeTools,
-          options: { skipPermissions: local.mode.isRelease() },
+          options: {
+            skipPermissions: local.mode.isRelease() ? releasePolicy() === "no_cuffs" : false,
+          },
           parts: [
             {
               id: Identifier.ascending("part"),
@@ -1538,10 +1544,10 @@ export function Prompt(props: PromptProps) {
               </Show>
 
               {/* Line fill */}
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{fill()}</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={100} wrapMode="none" overflow="hidden">{fill()}</text>
               {/* Right side: agent info (shrinkable to avoid breaking the border) */}
               <text flexShrink={1} wrapMode="none" overflow="hidden">
-                <span style={{ fg: theme.textMuted }}>{Locale.titlecase(local.agent.current().name)}</span>
+                <span style={{ fg: local.agent.color(local.agent.current().name) ?? theme.textMuted }}>{Locale.titlecase(local.agent.current().name)}</span>
                 <span style={{ fg: theme.border }}>─</span>
                 <span style={{ fg: theme.textMuted }}>{sync.data.agent?.length ?? 0} skills</span>
                 <Show when={vim.enabled && store.mode !== "shell"}>
@@ -1557,11 +1563,15 @@ export function Prompt(props: PromptProps) {
                   <span style={{ fg: theme.border }}>─</span>
                   <span
                     style={{
-                      fg: local.mode.isHold() ? theme.warning : theme.success,
+                      fg: local.mode.isHold()
+                        ? theme.warning
+                        : releasePolicy() === "no_cuffs"
+                          ? theme.error
+                          : theme.success,
                       attributes: TextAttributes.BOLD,
                     }}
                   >
-                    {local.mode.isHold() ? "HOLD" : "RELEASE"}
+                    {local.mode.isHold() ? "HOLD" : releasePolicy() === "no_cuffs" ? "NO CUFFS" : "RELEASE"}
                   </span>
                 </Show>
               </text>
@@ -1881,7 +1891,7 @@ export function Prompt(props: PromptProps) {
             <text fg={theme.textMuted} flexShrink={0}> Esc to cancel</text>
           </Show>
           {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{fill()}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={100} wrapMode="none" overflow="hidden">{fill()}</text>
           {/* Right: model + path */}
           <Show when={showModelInfoInBorder() || showPathInfoInBorder()}>
             <text flexShrink={1} wrapMode="none" overflow="hidden">

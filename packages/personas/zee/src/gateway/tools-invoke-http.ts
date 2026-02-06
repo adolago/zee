@@ -100,26 +100,27 @@ function isBlockedUrl(value: string): boolean {
   return false;
 }
 
-function assertSafeArgs(args: Record<string, unknown>): void {
+function getUnsafeArgsError(args: Record<string, unknown>): string | null {
   for (const [key, value] of Object.entries(args)) {
     if (typeof value !== "string") continue;
     if (value.includes("\0")) {
-      throw new Error(`Argument "${key}" contains null byte`);
+      return `Argument "${key}" contains null byte`;
     }
     const keyLower = key.toLowerCase();
     // Path traversal checks for file-path-like keys.
     if (PATH_ARG_KEYS.has(keyLower) || keyLower.endsWith("path") || keyLower.endsWith("file") || keyLower.endsWith("dir")) {
       if (PATH_TRAVERSAL_RE.test(value)) {
-        throw new Error(`Argument "${key}" contains path traversal sequence`);
+        return `Argument "${key}" contains path traversal sequence`;
       }
     }
     // SSRF checks for URL-like keys.
     if (URL_ARG_KEYS.has(keyLower) || keyLower.endsWith("url") || keyLower.endsWith("uri")) {
       if (isBlockedUrl(value)) {
-        throw new Error(`Argument "${key}" contains a blocked URL`);
+        return `Argument "${key}" contains a blocked URL`;
       }
     }
   }
+  return null;
 }
 
 function mergeActionIntoArgsIfSupported(params: {
@@ -191,7 +192,8 @@ export async function handleToolsInvokeHttpRequest(
   try {
     rawSessionKey = resolveSessionKeyFromBody(body);
   } catch (err) {
-    sendInvalidRequest(res, err instanceof Error ? err.message : "Invalid session key");
+    // Avoid leaking internal validation details back to remote callers.
+    sendInvalidRequest(res, "Invalid session key");
     return true;
   }
   const sessionKey =
@@ -338,19 +340,29 @@ export async function handleToolsInvokeHttpRequest(
     return true;
   }
 
-  try {
-    assertSafeArgs(args);
-    const toolArgs = mergeActionIntoArgsIfSupported({
-      toolSchema: (tool as any).parameters,
-      action,
-      args,
+  const unsafeArgsError = getUnsafeArgsError(args);
+  if (unsafeArgsError) {
+    sendJson(res, 400, {
+      ok: false,
+      error: { type: "invalid_request_error", message: unsafeArgsError },
     });
+    return true;
+  }
+
+  const toolArgs = mergeActionIntoArgsIfSupported({
+    toolSchema: (tool as any).parameters,
+    action,
+    args,
+  });
+
+  try {
     const result = await (tool as any).execute?.(`http-${Date.now()}`, toolArgs);
     sendJson(res, 200, { ok: true, result });
   } catch (err) {
+    logWarn(`gateway: tool invoke failed (${toolName}): ${String(err)}`);
     sendJson(res, 400, {
       ok: false,
-      error: { type: "tool_error", message: err instanceof Error ? err.message : String(err) },
+      error: { type: "tool_error", message: "Tool execution failed" },
     });
   }
 

@@ -20,6 +20,8 @@ import { getProcessRegistry, ProcessRegistryEvents } from "../../process/registr
 import { getWorkStealingService, getConsensusGate } from "../../coordination"
 import { errors } from "../error"
 import { Log } from "../../util/log"
+import { SseLimit } from "../sse-limit"
+import { registerSseKeepalive } from "../sse-keepalive"
 
 const log = Log.create({ service: "server:process" })
 
@@ -138,52 +140,58 @@ export const ProcessRoute = new Hono()
       },
     }),
     async (c) => {
-      return streamSSE(c, async (stream) => {
-        const registry = getProcessRegistry()
+      const slot = SseLimit.acquire(c.req.raw)
+      if (!slot.ok) {
+        return c.json({ error: slot.error }, slot.status)
+      }
 
-        const handler = async (event: any) => {
+      try {
+        return streamSSE(c, async (stream) => {
+          const unregisterKeepalive = registerSseKeepalive(stream)
+
           try {
+            const registry = getProcessRegistry()
+
+            const handler = async (event: any) => {
+              try {
+                await stream.writeSSE({
+                  event: event.type,
+                  data: JSON.stringify(event),
+                })
+              } catch (err) {
+                log.error("SSE write error", { error: err })
+              }
+            }
+
+            // Subscribe to all events
+            registry.on("event", handler)
+
+            // Send initial connected event with current stats
             await stream.writeSSE({
-              event: event.type,
-              data: JSON.stringify(event),
+              event: "connected",
+              data: JSON.stringify({
+                timestamp: Date.now(),
+                stats: registry.getStats(),
+              }),
             })
+
+            stream.onAbort(() => {
+              slot.release()
+              unregisterKeepalive()
+              registry.off("event", handler)
+            })
+
+            // Keep stream open
+            await new Promise(() => {})
           } catch (err) {
-            log.error("SSE write error", { error: err })
+            unregisterKeepalive()
+            throw err
           }
-        }
-
-        // Subscribe to all events
-        registry.on("event", handler)
-
-        // Send initial connected event with current stats
-        await stream.writeSSE({
-          event: "connected",
-          data: JSON.stringify({
-            timestamp: Date.now(),
-            stats: registry.getStats(),
-          }),
         })
-
-        // Keepalive
-        const keepalive = setInterval(async () => {
-          try {
-            await stream.writeSSE({
-              event: "keepalive",
-              data: JSON.stringify({ timestamp: Date.now() }),
-            })
-          } catch {
-            clearInterval(keepalive)
-          }
-        }, 30000)
-
-        stream.onAbort(() => {
-          clearInterval(keepalive)
-          registry.off("event", handler)
-        })
-
-        // Keep stream open
-        await new Promise(() => {})
-      })
+      } catch (err) {
+        slot.release()
+        throw err
+      }
     }
   )
 

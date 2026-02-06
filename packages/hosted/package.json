@@ -8,7 +8,7 @@
     "start": "bun src/server.ts"
   },
   "dependencies": {
-    "hono": "4.10.7",
+    "hono": "4.11.8",
     "zod": "4.1.8"
   }
 }

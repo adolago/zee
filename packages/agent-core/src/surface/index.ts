@@ -89,7 +89,7 @@ export {
   CLI_CAPABILITIES,
   WEB_CAPABILITIES,
   WHATSAPP_CAPABILITIES,
-  TELEGRAM_CAPABILITIES,
+  MATRIX_CAPABILITIES,
   API_CAPABILITIES,
   formatForSurface,
 } from './types.js';
@@ -196,7 +196,7 @@ import {
   CLI_CAPABILITIES,
   WEB_CAPABILITIES,
   WHATSAPP_CAPABILITIES,
-  TELEGRAM_CAPABILITIES,
+  MATRIX_CAPABILITIES,
   API_CAPABILITIES,
   DEFAULT_CAPABILITIES,
 } from './types.js';
@@ -204,7 +204,7 @@ import {
 /**
  * Create a surface instance based on type.
  *
- * For messaging platforms (whatsapp, telegram), use createMessagingSurface()
+ * For messaging platforms (whatsapp, matrix), use createMessagingSurface()
  * with your own platform handler implementation instead.
  */
 export function createSurface(
@@ -225,7 +225,7 @@ export function createSurface(
  * Get default capabilities for a surface type.
  */
 export function getDefaultCapabilities(
-  type: 'cli' | 'gui' | 'whatsapp' | 'telegram' | 'api'
+  type: 'cli' | 'gui' | 'whatsapp' | 'matrix' | 'api'
 ): SurfaceCapabilities {
   switch (type) {
     case 'cli':
@@ -234,8 +234,8 @@ export function getDefaultCapabilities(
       return WEB_CAPABILITIES;
     case 'whatsapp':
       return WHATSAPP_CAPABILITIES;
-    case 'telegram':
-      return TELEGRAM_CAPABILITIES;
+    case 'matrix':
+      return MATRIX_CAPABILITIES;
     case 'api':
       return API_CAPABILITIES;
     default:

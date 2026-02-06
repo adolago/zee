@@ -23,7 +23,7 @@ export type HookMappingConfig = {
   channel?:
     | "last"
     | "whatsapp"
-    | "telegram";
+    | "matrix";
   to?: string;
   /** Override model for this hook (provider/model or alias). */
   model?: string;

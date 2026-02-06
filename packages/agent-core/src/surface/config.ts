@@ -280,11 +280,11 @@ export function resolveGUISurfaceConfig(
 }
 
 /**
- * Messaging surface configuration (WhatsApp, Telegram).
+ * Messaging surface configuration (WhatsApp, Matrix).
  */
 export type MessagingSurfaceConfig = {
   /** Platform identifier */
-  platform: 'whatsapp' | 'telegram';
+  platform: 'whatsapp' | 'matrix';
   /** Whether to batch messages instead of streaming */
   batchMessages: boolean;
   /** Maximum message length before splitting */
@@ -403,7 +403,7 @@ export type SurfaceConfig = {
   /** Messaging platform configurations */
   messaging: {
     whatsapp?: MessagingSurfaceConfig;
-    telegram?: MessagingSurfaceConfig;
+    matrix?: MessagingSurfaceConfig;
   };
   /** Tool availability per surface */
   toolAvailability: Record<string, string[]>;
@@ -456,8 +456,8 @@ export function buildSurfaceConfig(
       whatsapp: overrides.messaging?.whatsapp
         ? resolveMessagingSurfaceConfig(overrides.messaging.whatsapp)
         : undefined,
-      telegram: overrides.messaging?.telegram
-        ? resolveMessagingSurfaceConfig(overrides.messaging.telegram, { platform: 'telegram' as const })
+      matrix: overrides.messaging?.matrix
+        ? resolveMessagingSurfaceConfig(overrides.messaging.matrix, { platform: 'matrix' as const })
         : undefined,
     },
     toolAvailability: overrides.toolAvailability ?? {},

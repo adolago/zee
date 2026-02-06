@@ -56,28 +56,6 @@ function formatProbeLines(channelId: string, probe: unknown): string[] {
   if (!probe || typeof probe !== "object") return lines;
   const probeObj = probe as Record<string, unknown>;
 
-  if (channelId === "telegram") {
-    const bot = probeObj.bot as { username?: string | null; id?: number | null } | undefined;
-    if (bot?.username) {
-      const botId = bot.id ? ` (${bot.id})` : "";
-      lines.push(`Bot: ${theme.accent(`@${bot.username}`)}${botId}`);
-    }
-    const flags: string[] = [];
-    const canJoinGroups = (bot as { canJoinGroups?: boolean | null })?.canJoinGroups;
-    const canReadAll = (bot as { canReadAllGroupMessages?: boolean | null })
-      ?.canReadAllGroupMessages;
-    const inlineQueries = (bot as { supportsInlineQueries?: boolean | null })
-      ?.supportsInlineQueries;
-    if (typeof canJoinGroups === "boolean") flags.push(`joinGroups=${canJoinGroups}`);
-    if (typeof canReadAll === "boolean") flags.push(`readAllGroupMessages=${canReadAll}`);
-    if (typeof inlineQueries === "boolean") flags.push(`inlineQueries=${inlineQueries}`);
-    if (flags.length > 0) lines.push(`Flags: ${flags.join(" ")}`);
-    const webhook = probeObj.webhook as { url?: string | null } | undefined;
-    if (webhook?.url !== undefined) {
-      lines.push(`Webhook: ${webhook.url || "none"}`);
-    }
-  }
-
   const ok = typeof probeObj.ok === "boolean" ? probeObj.ok : undefined;
   if (ok === true && lines.length === 0) {
     lines.push("Probe: ok");

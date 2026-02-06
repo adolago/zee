@@ -124,7 +124,7 @@ export type ToolCategory =
 // Surface Types
 // ============================================================================
 
-export type SurfaceType = 'cli' | 'web' | 'api' | 'whatsapp';
+export type SurfaceType = 'cli' | 'web' | 'api' | 'whatsapp' | 'telegram';
 
 // ============================================================================
 // Permission Types

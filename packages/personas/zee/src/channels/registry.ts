@@ -6,16 +6,15 @@ import { requireActivePluginRegistry } from "../plugins/runtime.js";
 // Extensions can register additional channels with their own priority via the
 // plugin registry; this map covers the bundled ones only.
 export const DEFAULT_CHANNEL_PRIORITY: Record<string, number> = {
-  telegram: 10,
-  whatsapp: 20,
-  matrix: 30,
+  whatsapp: 10,
+  matrix: 20,
 };
 
 // Legacy constant kept for backward compatibility. Prefer listChannelPluginIds()
 // for dynamic channel enumeration.
 export const CHAT_CHANNEL_ORDER = [
-  "telegram",
   "whatsapp",
+  "matrix",
 ] as const;
 
 export type ChatChannelId = (typeof CHAT_CHANNEL_ORDER)[number] | (string & {});
@@ -26,22 +25,7 @@ export const DEFAULT_CHAT_CHANNEL: ChatChannelId = "whatsapp";
 
 export type ChatChannelMeta = ChannelMeta;
 
-const WEBSITE_URL = "https://docs.zee";
-
 const BUILTIN_CHANNEL_META: Record<string, ChannelMeta> = {
-  telegram: {
-    id: "telegram",
-    label: "Telegram",
-    selectionLabel: "Telegram (Bot API)",
-    detailLabel: "Telegram Bot",
-    docsPath: "/channels/telegram",
-    docsLabel: "telegram",
-    blurb: "simplest way to get started — register a bot with @BotFather and get going.",
-    systemImage: "paperplane",
-    selectionDocsPrefix: "",
-    selectionDocsOmitLabel: true,
-    selectionExtras: [WEBSITE_URL],
-  },
   whatsapp: {
     id: "whatsapp",
     label: "WhatsApp",

@@ -35,9 +35,23 @@ export function DialogModel(props: { providerID?: string }) {
 
     // Filter to only show providers with credentials (connected providers)
     const connectedProviderIds = new Set(sync.data.provider_next.connected)
+    const isMiniMax = (provider: { name: string }) => provider.name.toLowerCase().startsWith("minimax")
+    const connectedProviders = sync.data.provider.filter((provider) => connectedProviderIds.has(provider.id))
+    const preferredProviderID = props.providerID ?? local.model.current()?.providerID
+    const minimaxProviders = connectedProviders.filter(isMiniMax)
+    let filteredProviders = connectedProviders
+    if (minimaxProviders.length > 1) {
+      const sortedMiniMax = [...minimaxProviders].sort((a, b) => a.name.localeCompare(b.name))
+      const preferred =
+        (preferredProviderID && sortedMiniMax.find((p) => p.id === preferredProviderID)?.id) ||
+        sortedMiniMax[0]?.id
+      if (preferred) {
+        filteredProviders = connectedProviders.filter((provider) => !isMiniMax(provider) || provider.id === preferred)
+      }
+    }
+
     const providerOptions = pipe(
-      sync.data.provider,
-      filter((provider) => connectedProviderIds.has(provider.id)),
+      filteredProviders,
       sortBy((provider) => provider.name),
       flatMap((provider) => {
         const authIndicator = getAuthIndicator(provider.id)
@@ -58,7 +72,7 @@ export function DialogModel(props: { providerID?: string }) {
               category: connected() ? authIndicator + provider.name : undefined,
               onSelect() {
                 dialog.clear()
-                local.model.set({
+                void local.model.setDefault({
                   providerID: provider.id,
                   modelID: model,
                 })

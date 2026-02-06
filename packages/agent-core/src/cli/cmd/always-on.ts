@@ -436,8 +436,8 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     port: state.port,
     services: {
       persistence: persistenceEnabled,
-      telegram: false,
       whatsapp: false,
+      matrix: false,
     },
     sessionsWithIncompleteTodos: 0,
   })

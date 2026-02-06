@@ -208,6 +208,13 @@ ensure_port_free() {
 ensure_port_free "$DAEMON_PORT" || exit 1
 
 # ---------------------------------------------------------------------------
+# Regression tests (fail fast)
+# ---------------------------------------------------------------------------
+
+echo -e "\033[1;36m[ac] Running tests...\033[0m" >&2
+(cd "$REPO_ROOT" && bun test) || { echo "[ac] Tests failed"; exit 1; }
+
+# ---------------------------------------------------------------------------
 # Self-test: start headless daemon, verify providers + messaging, then open TUI
 # ---------------------------------------------------------------------------
 
@@ -217,10 +224,11 @@ if [[ "$SKIP_TEST" == "true" ]]; then
 fi
 
 # Resolve gateway auth token from zee config so daemon<->gateway RPC works.
-# The callGateway() function reads ZEE_GATEWAY_TOKEN env or /tmp/zee_gateway_token.
+# The daemon uses ZEE_GATEWAY_TOKEN or a token file (ZEE_GATEWAY_TOKEN_FILE, default: ~/.local/state/agent-core/zee_gateway_token).
 ZEE_CONFIG="${HOME}/.zee/zee.json"
 if [[ -f "$ZEE_CONFIG" ]] && command -v jq &>/dev/null; then
-    GW_TOKEN=$(jq -r '.gateway.auth.token // empty' "$ZEE_CONFIG" 2>/dev/null)
+    # Strip JSON5 comments (// and /* */) before feeding to jq
+    GW_TOKEN=$(sed 's|//.*||; s|/\*.*\*/||g' "$ZEE_CONFIG" 2>/dev/null | jq -r '.gateway.auth.token // empty' 2>/dev/null)
     if [[ -n "$GW_TOKEN" ]]; then
         export ZEE_GATEWAY_TOKEN="$GW_TOKEN"
     fi
@@ -330,7 +338,8 @@ MESSAGING_FAILED=false
 if [[ -f "$AC_TEST_CONFIG" ]]; then
     WA_TO=$(jq -r '.whatsapp.to // empty' "$AC_TEST_CONFIG" 2>/dev/null)
     WA_ACCOUNT=$(jq -r '.whatsapp.account // "zee"' "$AC_TEST_CONFIG" 2>/dev/null)
-    TG_CHAT_ID=$(jq -r '.telegram.chatId // empty' "$AC_TEST_CONFIG" 2>/dev/null)
+    MX_ROOM_ID=$(jq -r '.matrix.roomId // empty' "$AC_TEST_CONFIG" 2>/dev/null)
+    MX_ACCOUNT=$(jq -r '.matrix.account // "zee"' "$AC_TEST_CONFIG" 2>/dev/null)
 
     # WhatsApp: "Zee is back on."
     if [[ -n "$WA_TO" ]]; then
@@ -349,27 +358,24 @@ if [[ -f "$AC_TEST_CONFIG" ]]; then
         MESSAGING_FAILED=true
     fi
 
-    # Telegram: one message per persona
-    if [[ -n "$TG_CHAT_ID" ]]; then
-        for PERSONA in zee stanley johny; do
-            DISPLAY_NAME="$(echo "$PERSONA" | sed 's/./\U&/')"
-            echo -e "\033[1;33m[ac] Telegram test ($DISPLAY_NAME) -> $TG_CHAT_ID ...\033[0m" >&2
-            TG_RESULT=$(curl -sf -m 15 "$DAEMON_URL/gateway/telegram/send" \
-                -H "Content-Type: application/json" \
-                -d "{\"persona\":\"$PERSONA\",\"chatId\":\"$TG_CHAT_ID\",\"message\":\"$DISPLAY_NAME is back on.\"}" 2>&1) || true
-            if echo "$TG_RESULT" | jq -e '.success' >/dev/null 2>&1; then
-                echo -e "\033[1;32m[ac] Telegram ($DISPLAY_NAME): sent\033[0m" >&2
-            else
-                echo -e "\033[1;31m[ac] Telegram ($DISPLAY_NAME) FAILED: ${TG_RESULT:-no response}\033[0m" >&2
-                MESSAGING_FAILED=true
-            fi
-        done
+    # Matrix
+    if [[ -n "$MX_ROOM_ID" ]]; then
+        echo -e "\033[1;33m[ac] Matrix test -> $MX_ROOM_ID ...\033[0m" >&2
+        MX_RESULT=$(curl -sf -m 15 "$DAEMON_URL/gateway/matrix/send" \
+            -H "Content-Type: application/json" \
+            -d "{\"roomId\":\"$MX_ROOM_ID\",\"message\":\"Zee is back on.\",\"accountId\":\"$MX_ACCOUNT\"}" 2>&1) || true
+        if echo "$MX_RESULT" | jq -e '.success' >/dev/null 2>&1; then
+            echo -e "\033[1;32m[ac] Matrix: sent\033[0m" >&2
+        else
+            echo -e "\033[1;31m[ac] Matrix FAILED: ${MX_RESULT:-no response}\033[0m" >&2
+            MESSAGING_FAILED=true
+        fi
     else
-        echo -e "\033[1;31m[ac] ac-test.json missing telegram.chatId\033[0m" >&2
+        echo -e "\033[1;31m[ac] ac-test.json missing matrix.roomId\033[0m" >&2
         MESSAGING_FAILED=true
     fi
 else
-    ac_test_fail "no test config at $AC_TEST_CONFIG -- create it with:\n  {\"whatsapp\":{\"to\":\"<jid>@c.us\",\"account\":\"zee\"},\"telegram\":{\"chatId\":\"<numeric-id>\"}}"
+    ac_test_fail "no test config at $AC_TEST_CONFIG -- create it with:\n  {\"whatsapp\":{\"to\":\"<jid>@c.us\",\"account\":\"zee\"},\"matrix\":{\"roomId\":\"!roomid:example.org\",\"account\":\"zee\"}}"
 fi
 
 if [[ "$MESSAGING_FAILED" == "true" ]]; then

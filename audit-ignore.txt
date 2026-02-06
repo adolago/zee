@@ -1,0 +1,5 @@
+# bun audit ignore list
+#
+# One advisory ID per line (GHSA-... or CVE-...).
+# Keep this list as small as possible and include a short rationale in a comment above the entry.
+

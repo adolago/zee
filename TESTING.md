@@ -3,7 +3,7 @@
 ## Quick Reference
 
 ```bash
-# agent-core unit/integration
+# agent-core unit/integration (Bun)
 cd packages/agent-core && bun test
 
 # agent-core single file
@@ -12,8 +12,8 @@ cd packages/agent-core && bun test test/session/compaction.test.ts
 # agent-core pattern match
 cd packages/agent-core && bun test --grep "hold mode"
 
-# zee unit
-cd packages/personas/zee && bun test
+# zee unit/integration (pnpm + Vitest)
+cd packages/personas/zee && pnpm test
 
 # app e2e
 cd packages/app && npx playwright test

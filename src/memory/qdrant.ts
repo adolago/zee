@@ -16,6 +16,55 @@ import { QDRANT_URL, QDRANT_COLLECTION_MEMORY } from "../config/constants";
 
 const log = Log.create({ service: "qdrant" });
 
+const DEFAULT_QDRANT_TIMEOUT_MS = 15_000;
+const DEFAULT_QDRANT_MAX_RETRIES = 2;
+const MAX_QDRANT_MAX_RETRIES = 5;
+const QDRANT_RETRY_BASE_DELAY_MS = 100;
+const QDRANT_RETRY_MAX_DELAY_MS = 1_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const name = (error as { name?: unknown }).name;
+  return name === "AbortError";
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function isRetryableQdrantRequest(method: string, path: string): boolean {
+  const m = method.toUpperCase();
+
+  // HTTP idempotent methods.
+  if (m === "GET" || m === "HEAD" || m === "OPTIONS" || m === "PUT" || m === "DELETE") {
+    return true;
+  }
+
+  // Qdrant uses POST for several read-like/idempotent operations.
+  if (m === "POST") {
+    return (
+      path.endsWith("/points/search") ||
+      path.endsWith("/points/scroll") ||
+      path.endsWith("/points/count") ||
+      path.endsWith("/points") ||
+      path.endsWith("/points/payload") ||
+      path.endsWith("/points/delete")
+    );
+  }
+
+  return false;
+}
+
+function retryDelayMs(attempt: number): number {
+  // attempt is 1-based. After attempt=1 fails, delay base; then exponential.
+  const exponent = Math.max(0, attempt - 1);
+  return Math.min(QDRANT_RETRY_BASE_DELAY_MS * 2 ** exponent, QDRANT_RETRY_MAX_DELAY_MS);
+}
+
 // =============================================================================
 // Qdrant Types
 // =============================================================================
@@ -67,12 +116,22 @@ export class QdrantVectorStorage implements VectorStorage {
   private readonly apiKey?: string;
   private readonly defaultCollection: string;
   private currentCollection: string;
+  private readonly timeoutMs: number;
+  private readonly maxRetries: number;
 
   constructor(config: MemoryConfig["qdrant"]) {
     this.baseUrl = (config.url ?? QDRANT_URL).replace(/\/$/, "");
     this.apiKey = config.apiKey;
     this.defaultCollection = config.collection ?? QDRANT_COLLECTION_MEMORY;
     this.currentCollection = this.defaultCollection;
+    this.timeoutMs =
+      typeof config.timeoutMs === "number" && Number.isFinite(config.timeoutMs) && config.timeoutMs > 0
+        ? Math.min(config.timeoutMs, 5 * 60 * 1000)
+        : DEFAULT_QDRANT_TIMEOUT_MS;
+    this.maxRetries =
+      typeof config.maxRetries === "number" && Number.isFinite(config.maxRetries) && config.maxRetries >= 0
+        ? Math.min(Math.floor(config.maxRetries), MAX_QDRANT_MAX_RETRIES)
+        : DEFAULT_QDRANT_MAX_RETRIES;
   }
 
   /** Make a request to Qdrant REST API */
@@ -88,21 +147,91 @@ export class QdrantVectorStorage implements VectorStorage {
       headers["api-key"] = this.apiKey;
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const url = `${this.baseUrl}${path}`;
+    const canRetry = isRetryableQdrantRequest(method, path);
+    const maxAttempts = 1 + (canRetry ? this.maxRetries : 0);
+    let lastError: unknown = undefined;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Qdrant ${method} ${path} failed (${response.status}): ${errorText}`
-      );
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        const isTimeout = isAbortError(error);
+        const err = isTimeout ? new Error(`Qdrant ${method} ${path} timed out after ${this.timeoutMs}ms`) : error;
+
+        if (canRetry && attempt < maxAttempts) {
+          lastError = err;
+          log.debug("Retrying Qdrant request due to error", {
+            method,
+            path,
+            attempt,
+            maxAttempts,
+            reason: isTimeout ? "timeout" : error instanceof Error ? error.message : String(error),
+          });
+          await sleep(retryDelayMs(attempt));
+          continue;
+        }
+
+        throw err;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        const err = new Error(`Qdrant ${method} ${path} failed (${response.status}): ${errorText}`);
+
+        if (canRetry && attempt < maxAttempts && isRetryableStatus(response.status)) {
+          lastError = err;
+          log.debug("Retrying Qdrant request due to status", {
+            method,
+            path,
+            status: response.status,
+            attempt,
+            maxAttempts,
+          });
+          await sleep(retryDelayMs(attempt));
+          continue;
+        }
+
+        throw err;
+      }
+
+      try {
+        const data = await response.json();
+        return (data as { result?: T }).result ?? (data as T);
+      } catch (error) {
+        const err = new Error(
+          `Qdrant ${method} ${path} failed to parse JSON response: ${error instanceof Error ? error.message : String(error)}`
+        );
+
+        if (canRetry && attempt < maxAttempts) {
+          lastError = err;
+          log.debug("Retrying Qdrant request due to JSON parse error", {
+            method,
+            path,
+            attempt,
+            maxAttempts,
+          });
+          await sleep(retryDelayMs(attempt));
+          continue;
+        }
+
+        throw err;
+      }
     }
 
-    const data = await response.json();
-    return (data as { result?: T }).result ?? (data as T);
+    throw lastError instanceof Error
+      ? lastError
+      : new Error(`Qdrant ${method} ${path} failed after ${maxAttempts} attempts`);
   }
 
   /** Check if collection exists */

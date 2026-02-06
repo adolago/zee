@@ -8,7 +8,6 @@ import type { ReplyPayload } from "../../auto-reply/types.js";
 import { loadChannelOutboundAdapter } from "../../channels/plugins/outbound/load.js";
 import type { ChannelOutboundAdapter } from "../../channels/plugins/types.js";
 import type { ZeeConfig } from "../../config/config.js";
-import type { sendMessageTelegram } from "../../telegram/send.js";
 import type { sendMessageWhatsApp } from "../../web/outbound.js";
 import {
   appendAssistantMessageToSessionTranscript,
@@ -23,7 +22,6 @@ export { normalizeOutboundPayloads } from "./payloads.js";
 
 export type OutboundSendDeps = {
   sendWhatsApp?: typeof sendMessageWhatsApp;
-  sendTelegram?: typeof sendMessageTelegram;
 };
 
 export type OutboundDeliveryResult = {

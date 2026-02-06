@@ -28,13 +28,11 @@ Generates comprehensive news digests for your portfolio holdings and watchlist b
 ## Architecture
 
 ```
-Stanley -> Tiara (claude-flow) -> Agent-Core
-              │                      │
-              │                      ├── WebSearch (Exa MCP)
-              │                      ├── WebFetch (content extraction)
-              │                      └── 15+ LLM providers (auth.json)
+Stanley -> Agent-Core
               │
-              └── MCP Tools (100+ orchestration tools)
+              ├── WebSearch (Exa MCP)
+              ├── WebFetch (content extraction)
+              └── 15+ LLM providers (auth.json)
 ```
 
 **No separate API keys required** - leverages agent-core infrastructure:

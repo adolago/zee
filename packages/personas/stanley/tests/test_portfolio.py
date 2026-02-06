@@ -127,6 +127,50 @@ class TestPortfolioTracker:
                 assert result["ok"] is False
                 assert "not found" in result["error"]
 
+    def test_get_portfolio_path_sanitizes_env_var(self, monkeypatch, tmp_path: Path):
+        """STANLEY_PORTFOLIO_FILE is treated as an untrusted relative path."""
+        import stanley.portfolio.tracker as tracker
+
+        # Make default path deterministic for the test.
+        monkeypatch.setattr(tracker.Path, "home", lambda: tmp_path)
+
+        base_dir = tmp_path / ".zee" / "stanley"
+        default_path = base_dir / "portfolio.json"
+
+        monkeypatch.setenv("STANLEY_PORTFOLIO_FILE", "/tmp/evil.json")
+        assert tracker._get_portfolio_path() == default_path
+
+        monkeypatch.setenv("STANLEY_PORTFOLIO_FILE", "../../etc/passwd")
+        assert tracker._get_portfolio_path() == default_path
+
+        monkeypatch.setenv("STANLEY_PORTFOLIO_FILE", "custom.json")
+        assert tracker._get_portfolio_path() == base_dir / "custom.json"
+
+        monkeypatch.setenv("STANLEY_PORTFOLIO_FILE", "profiles/dev.json")
+        assert tracker._get_portfolio_path() == base_dir / "profiles" / "dev.json"
+
+    def test_get_portfolio_path_rejects_symlink_escape(self, monkeypatch, tmp_path: Path):
+        """A symlink inside the base dir must not allow escaping it."""
+        import stanley.portfolio.tracker as tracker
+
+        monkeypatch.setattr(tracker.Path, "home", lambda: tmp_path)
+
+        base_dir = tmp_path / ".zee" / "stanley"
+        default_path = base_dir / "portfolio.json"
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        outside = tmp_path / "outside"
+        outside.mkdir(parents=True, exist_ok=True)
+
+        escape = base_dir / "escape"
+        try:
+            escape.symlink_to(outside, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks not supported in this environment")
+
+        monkeypatch.setenv("STANLEY_PORTFOLIO_FILE", "escape/evil.json")
+        assert tracker._get_portfolio_path() == default_path
+
 
 class TestPortfolioPerformance:
     """Test portfolio performance calculations."""

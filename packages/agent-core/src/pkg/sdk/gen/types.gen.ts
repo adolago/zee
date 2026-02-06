@@ -585,7 +585,7 @@ export type Session = {
     output: number
     reasoning: number
   }
-  surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+  surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
   mode?: "hold" | "release"
   systemPrompt?: string
   skills?: Array<string>
@@ -593,7 +593,7 @@ export type Session = {
   toolPolicySnapshot?: {
     createdAt: number
     mode: "hold" | "release"
-    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
     agent?: string
     permission?: PermissionRuleset
   }
@@ -2096,7 +2096,7 @@ export type SessionCreateData = {
     parentID?: string
     title?: string
     permission?: PermissionRuleset
-    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
     systemPrompt?: string | null
     skills?: Array<string> | null
     contextFiles?: Array<string> | null

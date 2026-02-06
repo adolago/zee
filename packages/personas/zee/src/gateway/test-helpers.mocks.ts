@@ -77,11 +77,11 @@ const createStubPluginRegistry = (): PluginRegistry => ({
       plugin: createStubChannelPlugin({ id: "whatsapp", label: "WhatsApp" }),
     },
     {
-      pluginId: "telegram",
+      pluginId: "matrix",
       source: "test",
       plugin: createStubChannelPlugin({
-        id: "telegram",
-        label: "Telegram",
+        id: "matrix",
+        label: "Matrix",
         summary: { tokenSource: "none", lastProbeAt: null },
       }),
     },

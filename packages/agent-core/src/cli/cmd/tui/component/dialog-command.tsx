@@ -13,8 +13,6 @@ import {
 import { useKeyboard } from "@opentui/solid"
 import { useKeybind, type KeybindsConfig } from "@tui/context/keybind"
 import { useVim } from "@tui/context/vim"
-import { useTheme } from "@tui/context/theme"
-import { TextAttributes } from "@opentui/core"
 
 type Context = ReturnType<typeof createCommandDialog>
 const ctx = createContext<Context>()
@@ -30,13 +28,13 @@ export type CommandOption = DialogSelectOption<string> & {
   hidden?: boolean
   enabled?: boolean
 }
+
 export function createCommandDialog() {
   const [registrations, setRegistrations] = createSignal<Accessor<CommandOption[]>[]>([])
   const [suspendCount, setSuspendCount] = createSignal(0)
   const dialog = useDialog()
   const keybind = useKeybind()
   const vim = useVim()
-  const { theme } = useTheme()
 
   const entries = () => {
     const all = registrations().flatMap((x) => x() ?? [])
@@ -45,16 +43,11 @@ export function createCommandDialog() {
       .map((item) => ({
         ...item,
         footer: (() => {
+          if (item.footer) return item.footer
           if (!item.keybind) return undefined
           const binding = keybind.print(item.keybind)
           if (!binding) return undefined
-          return (
-            <box backgroundColor={theme.backgroundElement} paddingLeft={1} paddingRight={1}>
-              <text fg={theme.primary} attributes={TextAttributes.BOLD} wrapMode="none">
-                {binding}
-              </text>
-            </box>
-          )
+          return binding
         })(),
       }))
   }

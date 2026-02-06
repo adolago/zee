@@ -4,7 +4,8 @@ import { useTheme } from "@tui/context/theme"
 import { Renderable } from "@opentui/core"
 import { createStore } from "solid-js/store"
 import { Clipboard } from "@tui/util/clipboard"
-import { SplitBorder } from "@tui/component/border"
+import { RoundedBorder } from "@tui/component/border"
+import { overlayBottomOffset } from "@tui/ui/overlay"
 import { useToast } from "./toast"
 import { useKeybind } from "@tui/context/keybind"
 
@@ -22,8 +23,8 @@ export function Dialog(
   const { theme } = useTheme()
   const renderer = useRenderer()
   const minimal = props.minimal === true
-  const placement = props.placement ?? "top"
-  const reservedBottom = createMemo(() => Math.min(9, Math.max(0, dimensions().height - 8)))
+  const placement = props.placement ?? "bottom"
+  const reservedBottom = createMemo(() => overlayBottomOffset(dimensions().height))
 
   return (
     <box
@@ -54,9 +55,9 @@ export function Dialog(
         {...(minimal
           ? {}
           : {
-              border: ["left" as const, "right" as const, "top" as const, "bottom" as const],
+              border: RoundedBorder.border,
               borderColor: theme.borderActive,
-              customBorderChars: SplitBorder.customBorderChars,
+              customBorderChars: RoundedBorder.customBorderChars,
             })}
       >
         {props.children}
@@ -73,7 +74,7 @@ function init() {
     }[],
     size: "medium" as "medium" | "large",
     minimal: false,
-    placement: "top" as DialogPlacement,
+    placement: "bottom" as DialogPlacement,
   })
 
   const keybind = useKeybind()
@@ -116,7 +117,7 @@ function init() {
       batch(() => {
         setStore("size", "medium")
         setStore("minimal", false)
-        setStore("placement", "top")
+        setStore("placement", "bottom")
         setStore("stack", [])
       })
       refocus()

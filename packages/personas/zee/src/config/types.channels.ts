@@ -1,4 +1,4 @@
-import type { TelegramConfig } from "./types.telegram.js";
+import type { MatrixConfig } from "./types.matrix.js";
 import type { WhatsAppConfig } from "./types.whatsapp.js";
 import type { GroupPolicy } from "./types.base.js";
 
@@ -20,6 +20,6 @@ export type ChannelDefaultsConfig = {
 export type ChannelsConfig = {
   defaults?: ChannelDefaultsConfig;
   whatsapp?: WhatsAppConfig;
-  telegram?: TelegramConfig;
+  matrix?: MatrixConfig;
   [key: string]: unknown;
 };

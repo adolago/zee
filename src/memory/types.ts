@@ -583,6 +583,10 @@ export interface MemoryConfig {
     url: string;
     apiKey?: string;
     collection: string;
+    /** Default request timeout for Qdrant REST calls (ms). */
+    timeoutMs?: number;
+    /** Max retry count for idempotent requests (network errors/timeouts/5xx/429). */
+    maxRetries?: number;
   };
 
   /** Embedding settings */

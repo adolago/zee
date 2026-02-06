@@ -6,6 +6,8 @@ import { GlobalBus } from "@/bus/global"
 import { Log } from "../../util/log"
 import { Agent } from "../../agent/agent"
 import { errors } from "../error"
+import { SseLimit } from "../sse-limit"
+import { registerSseKeepalive } from "../sse-keepalive"
 
 export const AppRoute = new Hono().get(
     "/event",
@@ -20,51 +22,57 @@ export const AppRoute = new Hono().get(
       },
     }),
     async (c) => {
-      return streamSSE(c, async (stream) => {
-        const subscriptions: (() => void)[] = []
+      const slot = SseLimit.acquire(c.req.raw)
+      if (!slot.ok) {
+        return c.json({ error: slot.error }, slot.status)
+      }
 
-        const handler = async (event: { directory?: string; payload: any }) => {
-          const payload = {
-            type: event.payload.type,
-            properties: event.payload.properties,
-          }
-          await stream.writeSSE({
-            event: event.payload.type,
-            // Include legacy and payload shapes for SDK compatibility.
-            data: JSON.stringify({
-              directory: event.directory,
-              type: payload.type,
-              properties: payload.properties,
-              payload,
-            }),
-          })
-        }
-        GlobalBus.on("event", handler)
-        subscriptions.push(() => GlobalBus.off("event", handler))
+      try {
+        return streamSSE(c, async (stream) => {
+          const subscriptions: (() => void)[] = []
+          const unregisterKeepalive = registerSseKeepalive(stream)
 
-        await stream.writeSSE({
-          event: "connected",
-          data: JSON.stringify({ timestamp: Date.now() }),
-        })
-
-        const keepalive = setInterval(async () => {
           try {
+            const handler = async (event: { directory?: string; payload: any }) => {
+              const payload = {
+                type: event.payload.type,
+                properties: event.payload.properties,
+              }
+              await stream.writeSSE({
+                event: event.payload.type,
+                // Include legacy and payload shapes for SDK compatibility.
+                data: JSON.stringify({
+                  directory: event.directory,
+                  type: payload.type,
+                  properties: payload.properties,
+                  payload,
+                }),
+              })
+            }
+            GlobalBus.on("event", handler)
+            subscriptions.push(() => GlobalBus.off("event", handler))
+
             await stream.writeSSE({
-              event: "keepalive",
+              event: "connected",
               data: JSON.stringify({ timestamp: Date.now() }),
             })
-          } catch {
-            clearInterval(keepalive)
+
+            stream.onAbort(() => {
+              slot.release()
+              unregisterKeepalive()
+              subscriptions.forEach((unsub) => unsub())
+            })
+
+            await new Promise(() => {})
+          } catch (err) {
+            unregisterKeepalive()
+            throw err
           }
-        }, 30000)
-
-        stream.onAbort(() => {
-          clearInterval(keepalive)
-          subscriptions.forEach((unsub) => unsub())
         })
-
-        await new Promise(() => {})
-      })
+      } catch (err) {
+        slot.release()
+        throw err
+      }
     },
   )
   .post(

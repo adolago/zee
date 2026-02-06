@@ -326,7 +326,7 @@ export function registerModelsCli(program: Command) {
 
   auth
     .command("paste-token")
-    .description("Paste a token into auth-profiles.json and update config")
+    .description("Paste a token into agent-core auth.json and update config")
     .requiredOption("--provider <name>", "Provider id (e.g. anthropic)")
     .option("--profile-id <id>", "Auth profile id (default: <provider>:manual)")
     .option(
@@ -367,7 +367,7 @@ export function registerModelsCli(program: Command) {
 
   order
     .command("get")
-    .description("Show per-agent auth order override (from auth-profiles.json)")
+    .description("Show per-agent auth order override (from auth-metadata.json)")
     .requiredOption("--provider <name>", "Provider id (e.g. anthropic)")
     .option("--agent <id>", "Agent id (default: configured default agent)")
     .option("--json", "Output JSON", false)

@@ -85,16 +85,6 @@ type CreateMemoryGetTool = typeof import("../../agents/tools/memory-tool.js").cr
 type CreateMemorySearchTool =
   typeof import("../../agents/tools/memory-tool.js").createMemorySearchTool;
 type RegisterMemoryCli = typeof import("../../cli/memory-cli.js").registerMemoryCli;
-type AuditTelegramGroupMembership =
-  typeof import("../../telegram/audit.js").auditTelegramGroupMembership;
-type CollectTelegramUnmentionedGroupIds =
-  typeof import("../../telegram/audit.js").collectTelegramUnmentionedGroupIds;
-type ProbeTelegram = typeof import("../../telegram/probe.js").probeTelegram;
-type ResolveTelegramToken = typeof import("../../telegram/token.js").resolveTelegramToken;
-type SendMessageTelegram = typeof import("../../telegram/send.js").sendMessageTelegram;
-type MonitorTelegramProvider = typeof import("../../telegram/monitor.js").monitorTelegramProvider;
-type TelegramMessageActions =
-  typeof import("../../channels/plugins/actions/telegram.js").telegramMessageActions;
 type GetActiveWebListener = typeof import("../../web/active-listener.js").getActiveWebListener;
 type GetWebAuthAgeMs = typeof import("../../web/auth-store.js").getWebAuthAgeMs;
 type LogoutWeb = typeof import("../../web/auth-store.js").logoutWeb;
@@ -215,15 +205,6 @@ export type PluginRuntime = {
       isControlCommandMessage: IsControlCommandMessage;
       shouldComputeCommandAuthorized: ShouldComputeCommandAuthorized;
       shouldHandleTextCommands: ShouldHandleTextCommands;
-    };
-    telegram: {
-      auditGroupMembership: AuditTelegramGroupMembership;
-      collectUnmentionedGroupIds: CollectTelegramUnmentionedGroupIds;
-      probeTelegram: ProbeTelegram;
-      resolveTelegramToken: ResolveTelegramToken;
-      sendMessageTelegram: SendMessageTelegram;
-      monitorTelegramProvider: MonitorTelegramProvider;
-      messageActions: TelegramMessageActions;
     };
     whatsapp: {
       getActiveWebListener: GetActiveWebListener;

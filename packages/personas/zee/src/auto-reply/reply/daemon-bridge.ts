@@ -7,7 +7,11 @@ import type { ZeeConfig } from "../../config/config.js";
 import { loadConfig } from "../../config/config.js";
 import { resolveStateDir } from "../../config/paths.js";
 import { logVerbose } from "../../globals.js";
-import { resolveAgentIdFromSessionKey } from "../../routing/session-key.js";
+import {
+  resolveAgentIdFromSessionKey,
+  toAgentRequestSessionKey,
+  toAgentStoreSessionKey,
+} from "../../routing/session-key.js";
 import { resolveUserPath } from "../../utils.js";
 import type { MsgContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
@@ -71,6 +75,8 @@ function resolveDaemonBridgeConfig(cfg: ZeeConfig | undefined): ResolvedDaemonBr
 }
 
 export function isDaemonBridgeEnabled(cfg: ZeeConfig | undefined): boolean {
+  // Auto-enable when running embedded (AGENT_CORE_URL is injected by embedded-gateway.ts)
+  if (process.env.AGENT_CORE_URL?.trim()) return true;
   return resolveDaemonBridgeConfig(cfg).enabled;
 }
 
@@ -359,13 +365,24 @@ export async function getReplyFromDaemonBridge(
   if (!bridge.enabled) return undefined;
   if (opts?.isHeartbeat) return undefined;
 
-  const sessionKey = ctx.CommandTargetSessionKey?.trim() || ctx.SessionKey?.trim();
-  if (!sessionKey) {
+  const inboundSessionKey = ctx.CommandTargetSessionKey?.trim() || ctx.SessionKey?.trim();
+  if (!inboundSessionKey) {
     throw new Error("daemon bridge: missing session key");
   }
-  const agentId = resolveAgentIdFromSessionKey(sessionKey);
   const inputText = resolveInboundText(ctx);
   const surface = ctx.Surface?.trim().toLowerCase() || ctx.Provider?.trim().toLowerCase();
+  const isExternalMessagingSurface = surface === "whatsapp" || surface === "matrix";
+
+  // Hub mode: all external inboxes are Zee (WhatsApp + Matrix).
+  // Keep the original session "rest" (channel/peer/thread) for continuity, but
+  // force the agentId to zee so users only talk to Zee externally.
+  const sessionKey = isExternalMessagingSurface
+    ? toAgentStoreSessionKey({
+        agentId: "zee",
+        requestKey: toAgentRequestSessionKey(inboundSessionKey),
+      })
+    : inboundSessionKey;
+  const agentId = isExternalMessagingSurface ? "zee" : resolveAgentIdFromSessionKey(sessionKey);
 
   void opts?.onReplyStart?.();
 

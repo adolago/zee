@@ -46,6 +46,51 @@ function computeFlags() {
     AGENT_CORE_SERVER_USERNAME: env("AGENT_CORE_SERVER_USERNAME", "OPENCODE_SERVER_USERNAME"),
     AGENT_CORE_ENABLE_SERVER_AUTH: truthyCompat("AGENT_CORE_ENABLE_SERVER_AUTH", "OPENCODE_ENABLE_SERVER_AUTH"),
     AGENT_CORE_DISABLE_SERVER_AUTH: truthyCompat("AGENT_CORE_DISABLE_SERVER_AUTH", "OPENCODE_DISABLE_SERVER_AUTH"),
+    // Explicitly allow insecure server binds with auth disabled (dangerous).
+    AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH: truthyCompat(
+      "AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH",
+      "OPENCODE_ALLOW_INSECURE_SERVER_NO_AUTH",
+    ),
+    // Allow using filesystem roots ("/", "C:\\") as the instance directory in server mode (dangerous).
+    AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY: truthyCompat(
+      "AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY",
+      "OPENCODE_SERVER_ALLOW_GLOBAL_DIRECTORY",
+    ),
+    // Allow HTTP callers to override PTY spawn command (dangerous, usually unnecessary).
+    AGENT_CORE_PTY_ALLOW_COMMAND_OVERRIDE: truthyCompat(
+      "AGENT_CORE_PTY_ALLOW_COMMAND_OVERRIDE",
+      "OPENCODE_PTY_ALLOW_COMMAND_OVERRIDE",
+    ),
+    // Allow switching sessions into RELEASE mode from messaging surfaces (dangerous).
+    AGENT_CORE_ALLOW_MESSAGING_RELEASE: truthyCompat(
+      "AGENT_CORE_ALLOW_MESSAGING_RELEASE",
+      "OPENCODE_ALLOW_MESSAGING_RELEASE",
+    ),
+
+    // Server network tuning
+    AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS: numberCompat(
+      "AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS",
+      "OPENCODE_SERVER_IDLE_TIMEOUT_SECONDS",
+    ),
+    AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS: numberCompat(
+      "AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS",
+      "OPENCODE_SERVER_MAX_SSE_CONNECTIONS",
+    ),
+    AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT: numberCompat(
+      "AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT",
+      "OPENCODE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT",
+    ),
+    AGENT_CORE_SERVER_MAX_INSTANCES: numberCompat("AGENT_CORE_SERVER_MAX_INSTANCES", "OPENCODE_SERVER_MAX_INSTANCES"),
+
+    // Instance cache eviction (optional)
+    AGENT_CORE_INSTANCE_CACHE_MAX_INSTANCES: numberCompat(
+      "AGENT_CORE_INSTANCE_CACHE_MAX_INSTANCES",
+      "OPENCODE_INSTANCE_CACHE_MAX_INSTANCES",
+    ),
+    AGENT_CORE_INSTANCE_CACHE_TTL_SECONDS: numberCompat(
+      "AGENT_CORE_INSTANCE_CACHE_TTL_SECONDS",
+      "OPENCODE_INSTANCE_CACHE_TTL_SECONDS",
+    ),
 
     // Tuning (optional overrides)
     AGENT_CORE_BASH_DEFAULT_TIMEOUT_MS: numberCompat("AGENT_CORE_BASH_DEFAULT_TIMEOUT_MS", "OPENCODE_BASH_DEFAULT_TIMEOUT_MS"),
@@ -81,4 +126,3 @@ export const Flag = computeFlags()
 export function reloadFlags() {
   Object.assign(Flag, computeFlags())
 }
-

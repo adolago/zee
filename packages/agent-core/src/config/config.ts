@@ -769,6 +769,11 @@ export namespace Config {
       agent_cycle: z.string().optional().default("tab").describe("Next agent"),
       agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Previous agent"),
       mode_toggle: z.string().optional().default("<leader>h").describe("Toggle hold/release mode"),
+      mode_release_policy_toggle: z
+        .string()
+        .optional()
+        .default("<leader>shift+h")
+        .describe("Toggle release policy (safe/no cuffs)"),
       variant_cycle: z.string().optional().default("<leader>v").describe("Cycle model variants"),
       input_clear: z.string().optional().default("ctrl+c").describe("Clear input field"),
       input_paste: z.string().optional().default("ctrl+v").describe("Paste from clipboard"),
@@ -957,6 +962,24 @@ export namespace Config {
         .optional()
         .describe("Enable mDNS service discovery (boolean or detailed config)"),
       cors: z.array(z.string()).optional().describe("Additional domains to allow for CORS"),
+      allowedDirectories: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Allowlist of directories that can be selected via ?directory=... or x-opencode-directory in server mode. If omitted, non-loopback binds default to the daemon CWD only.",
+        ),
+      allowGlobalDirectory: z
+        .boolean()
+        .optional()
+        .describe("Allow using filesystem roots (/, C:\\\\) as the instance directory (dangerous)"),
+      maxInstances: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Maximum number of cached instance directories allowed in server mode. Helps bound resource usage when ?directory=... is used.",
+        ),
     })
     .strict()
     .meta({
@@ -1229,6 +1252,12 @@ export namespace Config {
         .object({
           enabled: z.boolean().optional().default(true).describe("Enable cron job scheduler"),
           storeDir: z.string().optional().describe("Directory for cron job store (default: ~/.config/agent-core/cron)"),
+          toolInvokeAllowlist: z
+            .array(z.string())
+            .optional()
+            .describe(
+              'Allowlist of tool IDs permitted for cron jobs with payload.kind="toolInvoke". Defaults to a small built-in safe list.',
+            ),
         })
         .optional()
         .describe("Cron job scheduler configuration"),
@@ -1433,15 +1462,6 @@ export namespace Config {
                   sessionName: z.string().optional(),
                   allowedNumbers: z.string().array().optional(),
                   allowedGroups: z.string().array().optional(),
-                  requireMention: z.boolean().optional(),
-                })
-                .optional(),
-              telegram: z
-                .object({
-                  enabled: z.boolean().optional(),
-                  botToken: z.string().optional(),
-                  allowedUsers: z.number().array().optional(),
-                  allowedGroups: z.number().array().optional(),
                   requireMention: z.boolean().optional(),
                 })
                 .optional(),

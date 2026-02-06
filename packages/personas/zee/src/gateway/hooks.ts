@@ -96,14 +96,17 @@ export async function readJsonBody(
       try {
         const parsed = JSON.parse(raw) as unknown;
         resolve({ ok: true, value: parsed });
-      } catch (err) {
-        resolve({ ok: false, error: String(err) });
+      } catch {
+        // Avoid leaking JSON.parse error details (which can include implementation specifics)
+        // back to remote callers.
+        resolve({ ok: false, error: "invalid json" });
       }
     });
-    req.on("error", (err) => {
+    req.on("error", () => {
       if (done) return;
       done = true;
-      resolve({ ok: false, error: String(err) });
+      // Avoid leaking low-level socket error details to callers.
+      resolve({ ok: false, error: "request error" });
     });
   });
 }

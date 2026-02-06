@@ -1,6 +1,5 @@
 import type { ContactConfig, ZeeConfig } from "../../config/types.js";
 import type { ChannelDirectoryEntry } from "./types.js";
-import { resolveTelegramAccount } from "../../telegram/accounts.js";
 import { resolveWhatsAppAccount } from "../../web/accounts.js";
 import { isWhatsAppGroupJid, normalizeWhatsAppTarget } from "../../whatsapp/normalize.js";
 
@@ -20,7 +19,7 @@ function normalizeAliasList(contactId: string, aliases?: string[]): string[] {
 
 function resolveContactChannelTarget(
   contact: ContactConfig,
-  channel: "telegram" | "whatsapp",
+  channel: "matrix" | "whatsapp",
 ): string | null {
   const channels = contact.channels ?? {};
   const direct = channels[channel];
@@ -110,7 +109,7 @@ function applyQueryAndLimit(
 
 function listContactDirectoryPeersFromConfig(params: {
   cfg: ZeeConfig;
-  channel: "telegram" | "whatsapp";
+  channel: "matrix" | "whatsapp";
   query?: string | null;
   limit?: number | null;
 }): ChannelDirectoryEntry[] {
@@ -148,37 +147,35 @@ function listContactDirectoryPeersFromConfig(params: {
   return applyQueryAndLimit(entries, params.query, params.limit);
 }
 
-export async function listTelegramDirectoryPeersFromConfig(
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function readMatrixAllowFrom(cfg: ZeeConfig): string[] {
+  const channels = (cfg.channels as Record<string, unknown> | undefined) ?? {};
+  const matrix = channels.matrix;
+  if (!isRecord(matrix)) return [];
+  const allowFrom = matrix.allowFrom;
+  if (!Array.isArray(allowFrom)) return [];
+  return allowFrom
+    .map((entry) => String(entry).trim())
+    .filter(Boolean)
+    .map((entry) => entry.replace(/^matrix:/i, "").trim())
+    .filter(Boolean);
+}
+
+export async function listMatrixDirectoryPeersFromConfig(
   params: DirectoryConfigParams,
 ): Promise<ChannelDirectoryEntry[]> {
-  const account = resolveTelegramAccount({ cfg: params.cfg, accountId: params.accountId });
-  const raw = [
-    ...(account.config.allowFrom ?? []).map((entry) => String(entry)),
-    ...Object.keys(account.config.dms ?? {}),
-  ];
-  const baseEntries = Array.from(
-    new Set(
-      raw
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-        .map((entry) => entry.replace(/^(telegram|tg):/i, "")),
-    ),
-  )
-    .map((entry) => {
-      const trimmed = entry.trim();
-      if (!trimmed) return null;
-      if (/^-?\d+$/.test(trimmed)) return trimmed;
-      const withAt = trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
-      return withAt;
-    })
-    .filter((id): id is string => Boolean(id))
+  const baseEntries = Array.from(new Set(readMatrixAllowFrom(params.cfg)))
+    .filter((entry) => entry.startsWith("@"))
     .map((id) => ({ kind: "user", id }) as const);
   const contactEntries = listContactDirectoryPeersFromConfig({
     cfg: params.cfg,
-    channel: "telegram",
+    channel: "matrix",
     query: params.query,
     limit: params.limit,
-  });
+  }).filter((entry) => entry.id.startsWith("@"));
   return applyQueryAndLimit(
     mergeDirectoryLists(baseEntries, contactEntries),
     params.query,
@@ -186,17 +183,23 @@ export async function listTelegramDirectoryPeersFromConfig(
   );
 }
 
-export async function listTelegramDirectoryGroupsFromConfig(
+export async function listMatrixDirectoryGroupsFromConfig(
   params: DirectoryConfigParams,
 ): Promise<ChannelDirectoryEntry[]> {
-  const account = resolveTelegramAccount({ cfg: params.cfg, accountId: params.accountId });
-  const q = params.query?.trim().toLowerCase() || "";
-  return Object.keys(account.config.groups ?? {})
-    .map((id) => id.trim())
-    .filter((id) => Boolean(id) && id !== "*")
-    .filter((id) => (q ? id.toLowerCase().includes(q) : true))
-    .slice(0, params.limit && params.limit > 0 ? params.limit : undefined)
+  const baseEntries = Array.from(new Set(readMatrixAllowFrom(params.cfg)))
+    .filter((entry) => entry.startsWith("!") || entry.startsWith("#"))
     .map((id) => ({ kind: "group", id }) as const);
+  const contactEntries = listContactDirectoryPeersFromConfig({
+    cfg: params.cfg,
+    channel: "matrix",
+    query: params.query,
+    limit: params.limit,
+  }).filter((entry) => entry.id.startsWith("!") || entry.id.startsWith("#"));
+  return applyQueryAndLimit(
+    mergeDirectoryLists(baseEntries, contactEntries),
+    params.query,
+    params.limit,
+  );
 }
 
 export async function listWhatsAppDirectoryPeersFromConfig(

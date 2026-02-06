@@ -17,6 +17,9 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      - name: Audit (high)
+        run: bash scripts/bun-audit-ci.sh
+
       - name: Typecheck
         run: bun run --cwd packages/agent-core typecheck
 
@@ -25,3 +28,28 @@ jobs:
         env:
           CI: true
         timeout-minutes: 10
+
+  test_zee:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: packages/personas/zee
+
+      - name: Test
+        run: pnpm test
+        working-directory: packages/personas/zee
+        env:
+          CI: true
+        timeout-minutes: 20

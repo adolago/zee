@@ -643,7 +643,7 @@ export const DaemonInstallCommand = cmd({
       // Confirm gateway option
       if (!options.gateway) {
         const enableGateway = await prompts.confirm({
-          message: "Enable zee messaging gateway (WhatsApp/Telegram)?",
+          message: "Enable zee messaging gateway (WhatsApp/Matrix)?",
           initialValue: false,
         });
         if (!prompts.isCancel(enableGateway)) {

@@ -15,6 +15,7 @@ import { useArgs } from "./args"
 import { useSDK } from "./sdk"
 import { RGBA } from "@opentui/core"
 import type { Agent as SDKAgent } from "@agent-core/sdk/v2"
+import { personaPalettes, type PersonaId } from "@root/theme/rosetta"
 
 // Extended agent type with fallback model support (internal feature not yet in SDK)
 type AgentWithFallback = SDKAgent & {
@@ -181,6 +182,10 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           // Check if this is a persona and use their theme's accent color
           const personaColor = getPersonaAccentColor(name)
           if (personaColor) return personaColor
+
+          // Rosetta Stone fallback for known personas
+          const rosetta = personaPalettes[name.toLowerCase() as PersonaId]
+          if (rosetta) return RGBA.fromHex(rosetta.accent.hex)
 
           // Fall back to indexed colors for other agents
           const index = all.findIndex((x) => x.name.toLowerCase() === name.toLowerCase())
@@ -570,7 +575,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         if (session.mode === "hold") return true
         if (session.mode === "release") return false
         // Surface defaults: messaging surfaces default to release
-        if (session.surface === "whatsapp" || session.surface === "telegram") return false
+        if (session.surface === "whatsapp" || session.surface === "matrix") return false
         return true // TUI default to hold
       }
 

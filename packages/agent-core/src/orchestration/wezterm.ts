@@ -85,13 +85,13 @@ export namespace WeztermOrchestration {
     uptime: number
     services: {
       persistence: boolean
-      telegram: boolean
+      whatsapp: boolean
+      matrix: boolean
     }
     sessions: {
       total: number
       withIncompleteTodos: number
     }
-    telegramChats: number
   }
 
   let config: Config = DEFAULT_CONFIG
@@ -277,7 +277,6 @@ export namespace WeztermOrchestration {
           total: 0,
           withIncompleteTodos: event.properties.sessionsWithIncompleteTodos,
         },
-        telegramChats: 0,
       }
       await setupStatusPane(status)
     })
@@ -344,11 +343,12 @@ export namespace WeztermOrchestration {
 
       // Services
       const persistence = cachedStatus.services?.persistence ? "●" : "○"
-      const telegram = cachedStatus.services?.telegram ? "●" : "○"
+      const whatsapp = cachedStatus.services?.whatsapp ? "●" : "○"
+      const matrix = cachedStatus.services?.matrix ? "●" : "○"
       const wezterm = isInitialized ? "●" : "○"
 
       lines.push(
-        `║ Services: Persistence ${persistence}  Telegram ${telegram}  WezTerm ${wezterm} ║`,
+        `║ Services: Persistence ${persistence}  WhatsApp ${whatsapp}  Matrix ${matrix}  WezTerm ${wezterm} ║`,
       )
 
       lines.push("╠════════════════════════════════════════════════════════╣")

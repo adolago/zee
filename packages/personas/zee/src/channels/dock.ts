@@ -1,11 +1,8 @@
 import type { ZeeConfig } from "../config/config.js";
-import { resolveTelegramAccount } from "../telegram/accounts.js";
 import { resolveWhatsAppAccount } from "../web/accounts.js";
 import { normalizeWhatsAppTarget } from "../whatsapp/normalize.js";
 import { requireActivePluginRegistry } from "../plugins/runtime.js";
 import {
-  resolveTelegramGroupRequireMention,
-  resolveTelegramGroupToolPolicy,
   resolveWhatsAppGroupRequireMention,
   resolveWhatsAppGroupToolPolicy,
 } from "./plugins/group-mentions.js";
@@ -68,42 +65,6 @@ const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\
 // - add a new entry to `DOCKS`
 // - keep it cheap; push heavy logic into `src/channels/plugins/<id>.ts` or channel modules
 const DOCKS: Record<ChatChannelId, ChannelDock> = {
-  telegram: {
-    id: "telegram",
-    capabilities: {
-      chatTypes: ["direct", "group", "channel", "thread"],
-      nativeCommands: true,
-      blockStreaming: true,
-    },
-    outbound: { textChunkLimit: 4000 },
-    config: {
-      resolveAllowFrom: ({ cfg, accountId }) =>
-        (resolveTelegramAccount({ cfg, accountId }).config.allowFrom ?? []).map((entry) =>
-          String(entry),
-        ),
-      formatAllowFrom: ({ allowFrom }) =>
-        allowFrom
-          .map((entry) => String(entry).trim())
-          .filter(Boolean)
-          .map((entry) => entry.replace(/^(telegram|tg):/i, ""))
-          .map((entry) => entry.toLowerCase()),
-    },
-    groups: {
-      resolveRequireMention: resolveTelegramGroupRequireMention,
-      resolveToolPolicy: resolveTelegramGroupToolPolicy,
-    },
-    threading: {
-      resolveReplyToMode: ({ cfg }) => cfg.channels?.telegram?.replyToMode ?? "first",
-      buildToolContext: ({ context, hasRepliedRef }) => {
-        const threadId = context.MessageThreadId ?? context.ReplyToId;
-        return {
-          currentChannelId: context.To?.trim() || undefined,
-          currentThreadTs: threadId != null ? String(threadId) : undefined,
-          hasRepliedRef,
-        };
-      },
-    },
-  },
   whatsapp: {
     id: "whatsapp",
     capabilities: {
@@ -159,6 +120,20 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
         };
       },
     },
+  },
+  matrix: {
+    id: "matrix",
+    capabilities: {
+      chatTypes: ["direct", "group", "channel", "thread"],
+      reactions: true,
+      edit: true,
+      unsend: true,
+      reply: true,
+      threads: true,
+      encryption: true,
+      encryptionProtocol: "olm-megolm",
+    },
+    outbound: { textChunkLimit: 4000 },
   },
 };
 

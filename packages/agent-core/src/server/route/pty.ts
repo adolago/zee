@@ -2,6 +2,7 @@ import { describeRoute, resolver } from "hono-openapi"
 import { Hono } from "hono"
 import { z } from "zod"
 import { Pty } from "@/pty"
+import { Flag } from "@/flag/flag"
 import { Storage } from "../../storage/storage"
 import { errors } from "../error"
 import { validator } from "hono-openapi"
@@ -48,7 +49,10 @@ export const PtyRoute = new Hono()
     }),
     validator("json", Pty.CreateInput),
     async (c) => {
-      const info = await Pty.create(c.req.valid("json"))
+      const input = c.req.valid("json")
+      const sanitized =
+        input.command && !Flag.AGENT_CORE_PTY_ALLOW_COMMAND_OVERRIDE ? { ...input, command: undefined } : input
+      const info = await Pty.create(sanitized)
       return c.json(info)
     },
   )

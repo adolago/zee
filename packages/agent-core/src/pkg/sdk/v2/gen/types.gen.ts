@@ -1430,7 +1430,7 @@ export type Session = {
     output: number
     reasoning: number
   }
-  surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+  surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
   mode?: "hold" | "release"
   systemPrompt?: string
   skills?: Array<string>
@@ -1438,7 +1438,7 @@ export type Session = {
   toolPolicySnapshot?: {
     createdAt: number
     mode: "hold" | "release"
-    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
     agent?: string
     permission?: PermissionRuleset
   }
@@ -2850,7 +2850,7 @@ export type SessionCreateData = {
     parentID?: string
     title?: string
     permission?: PermissionRuleset
-    surface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+    surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
     systemPrompt?: string | null
     skills?: Array<string> | null
     contextFiles?: Array<string> | null
@@ -3142,7 +3142,7 @@ export type SyncDeltaResponse = SyncDeltaResponses[keyof SyncDeltaResponses]
 
 export type SessionHandoffData = {
   body?: {
-    targetSurface: "cli" | "gui" | "telegram" | "whatsapp"
+    targetSurface: "cli" | "web" | "api" | "whatsapp" | "matrix"
   }
   path: {
     sessionID: string
@@ -5920,14 +5920,14 @@ export type GatewayWhatsappSendResponses = {
 
 export type GatewayWhatsappSendResponse = GatewayWhatsappSendResponses[keyof GatewayWhatsappSendResponses]
 
-export type GatewayTelegramSendData = {
+export type GatewayMatrixSendData = {
   body?: never
   path?: never
   query?: never
-  url: "/gateway/telegram/send"
+  url: "/gateway/matrix/send"
 }
 
-export type GatewayTelegramSendResponses = {
+export type GatewayMatrixSendResponses = {
   /**
    * Send result
    */
@@ -5938,7 +5938,7 @@ export type GatewayTelegramSendResponses = {
   }
 }
 
-export type GatewayTelegramSendResponse = GatewayTelegramSendResponses[keyof GatewayTelegramSendResponses]
+export type GatewayMatrixSendResponse = GatewayMatrixSendResponses[keyof GatewayMatrixSendResponses]
 
 export type OpenapiSpecsData = {
   body?: never

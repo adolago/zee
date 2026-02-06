@@ -1,5 +1,4 @@
 import type { ChannelId } from "../channels/plugins/types.js";
-import type { StickerMetadata } from "../telegram/bot/types.js";
 import type { InternalMessageChannel } from "../utils/message-channel.js";
 import type { CommandArgs } from "./commands-registry.types.js";
 import type {
@@ -66,8 +65,8 @@ export type MsgContext = {
   MediaPaths?: string[];
   MediaUrls?: string[];
   MediaTypes?: string[];
-  /** Telegram sticker metadata (emoji, set name, file IDs, cached description). */
-  Sticker?: StickerMetadata;
+  /** Optional sticker metadata from the originating channel. */
+  Sticker?: Record<string, unknown>;
   OutputDir?: string;
   OutputBase?: string;
   /** Remote host for SCP when media lives on a different machine (e.g., zee@192.168.64.3). */
@@ -93,17 +92,16 @@ export type MsgContext = {
   SenderTag?: string;
   SenderE164?: string;
   Timestamp?: number;
-  /** Provider label (e.g. whatsapp, telegram). */
+  /** Provider label (e.g. whatsapp, matrix). */
   Provider?: string;
-  /** Provider surface label (e.g. telegram, whatsapp). Prefer this over `Provider` when available. */
+  /** Provider surface label (e.g. matrix, whatsapp). Prefer this over `Provider` when available. */
   Surface?: string;
   WasMentioned?: boolean;
   CommandAuthorized?: boolean;
   CommandSource?: "text" | "native";
   CommandTargetSessionKey?: string;
-  /** Thread identifier (Telegram topic id). */
+  /** Thread identifier for channels that support threading. */
   MessageThreadId?: string | number;
-  /** Telegram forum supergroup marker. */
   IsForum?: boolean;
   /**
    * Originating channel for reply routing.
