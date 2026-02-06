@@ -33,8 +33,34 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await $`git init`.cwd(dirpath).quiet()
-    await $`git commit --allow-empty -m "root commit ${dirpath}"`.cwd(dirpath).quiet()
+    const init = Bun.spawn(["git", "init"], { cwd: dirpath, stderr: "ignore", stdout: "ignore" })
+    await init.exited
+    if (init.exitCode !== 0) throw new Error("git init failed")
+
+    // Configure git user for CI environments
+    const configName = Bun.spawn(["git", "config", "user.name", "Test User"], {
+      cwd: dirpath,
+      stderr: "ignore",
+      stdout: "ignore",
+    })
+    await configName.exited
+    if (configName.exitCode !== 0) throw new Error("git config user.name failed")
+
+    const configEmail = Bun.spawn(["git", "config", "user.email", "test@example.com"], {
+      cwd: dirpath,
+      stderr: "ignore",
+      stdout: "ignore",
+    })
+    await configEmail.exited
+    if (configEmail.exitCode !== 0) throw new Error("git config user.email failed")
+
+    const commit = Bun.spawn(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`], {
+      cwd: dirpath,
+      stderr: "ignore",
+      stdout: "ignore",
+    })
+    await commit.exited
+    if (commit.exitCode !== 0) throw new Error("git commit failed")
   }
   if (options?.config) {
     await Bun.write(
