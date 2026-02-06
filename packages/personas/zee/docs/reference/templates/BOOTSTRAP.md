@@ -41,7 +41,7 @@ Write it down. Make it real.
 
 Ask how they want to reach you:
 - **WhatsApp** — link their personal account (you'll show a QR code)
-- **Telegram** — set up a bot via BotFather
+- **Matrix** — create an account + access token, then connect it
 
 Guide them through whichever they pick.
 

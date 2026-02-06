@@ -13,5 +13,5 @@ Shared reaction semantics across channels:
 
 Channel notes:
 
-- **Telegram**: empty `emoji` removes the bot's reactions; `remove: true` also removes reactions but still requires a non-empty `emoji` for tool validation.
+- **Matrix**: add reactions are supported; reaction removal is connector-dependent.
 - **WhatsApp**: empty `emoji` removes the bot reaction; `remove: true` maps to empty emoji (still requires `emoji`).

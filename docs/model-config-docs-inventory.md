@@ -41,9 +41,8 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `packages/personas/zee/docs/automation/gmail-pubsub.md` | Fallback, agents.defaults.model, alias, allowlist, fallbacks, provider/model | thinking |
 | `packages/personas/zee/docs/automation/webhook.md` | Model override, agents.defaults.model, alias, model list | Thinking, thinking |
 | `packages/personas/zee/docs/broadcast-groups.md` | allowlist | - |
-| `packages/personas/zee/docs/channels/grammy.md` | allowlist | - |
 | `packages/personas/zee/docs/channels/index.md` | allowlist | - |
-| `packages/personas/zee/docs/channels/telegram.md` | /model, allowlist, fallback | - |
+| `packages/personas/zee/docs/channels/matrix.md` | allowlist | - |
 | `packages/personas/zee/docs/channels/whatsapp.md` | allowlist, fallback | - |
 | `packages/personas/zee/docs/cli/agent.md` | - | thinking |
 | `packages/personas/zee/docs/cli/approvals.md` | Allowlist, allowlist | - |

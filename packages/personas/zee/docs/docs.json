@@ -134,28 +134,12 @@
       "destination": "/cli/message"
     },
     {
-      "source": "/providers/grammy",
-      "destination": "/channels/grammy"
-    },
-    {
-      "source": "/providers/grammy/",
-      "destination": "/channels/grammy"
-    },
-    {
       "source": "/providers/location",
       "destination": "/channels/location"
     },
     {
       "source": "/providers/location/",
       "destination": "/channels/location"
-    },
-    {
-      "source": "/providers/telegram",
-      "destination": "/channels/telegram"
-    },
-    {
-      "source": "/providers/telegram/",
-      "destination": "/channels/telegram"
     },
     {
       "source": "/providers/troubleshooting",
@@ -316,10 +300,6 @@
     {
       "source": "/gmail-pubsub",
       "destination": "/automation/gmail-pubsub"
-    },
-    {
-      "source": "/grammy",
-      "destination": "/channels/grammy"
     },
     {
       "source": "/group-messages",
@@ -488,10 +468,6 @@
     {
       "source": "/talk",
       "destination": "/nodes"
-    },
-    {
-      "source": "/telegram",
-      "destination": "/channels/telegram"
     },
     {
       "source": "/templates/AGENTS",
@@ -768,8 +744,7 @@
         "pages": [
           "channels/index",
           "channels/whatsapp",
-          "channels/telegram",
-          "channels/grammy",
+          "channels/matrix",
           "broadcast-groups",
           "channels/troubleshooting",
           "channels/location"

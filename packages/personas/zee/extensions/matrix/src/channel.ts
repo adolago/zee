@@ -2,7 +2,7 @@
  * Matrix Channel Plugin
  *
  * Implements the ChannelPlugin interface for Matrix, following the
- * Telegram extension pattern. Supports DMs, groups, threads, reactions,
+ * standard Zee channel plugin patterns. Supports DMs, groups, threads, reactions,
  * media, and E2EE via the Rust crypto SDK.
  */
 

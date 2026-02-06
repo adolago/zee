@@ -334,29 +334,27 @@ ${formattedResults}`,
 // =============================================================================
 
 const MessagingParams = z.object({
-  channel: z.enum(["whatsapp", "telegram"])
-    .describe("Messaging channel: whatsapp (Zee) or telegram (Stanley/Johny bots)"),
-  to: z.string().describe("Recipient: WhatsApp chatId or Telegram chatId (numeric)"),
+  channel: z.enum(["whatsapp", "matrix"])
+    .describe("Messaging channel: whatsapp or matrix"),
+  to: z.string().describe("Recipient: WhatsApp chatId/JID/E.164 or Matrix room ID"),
   message: z.string().describe("Message content (text or caption for media)"),
   mediaUrl: z.string().optional()
     .describe("URL or local file path to media (audio, image, video, document). For voice notes, use audio/ogg with opus codec."),
-  persona: z.enum(["zee", "stanley", "johny"]).optional()
-    .describe("For Telegram: which persona's bot to use (default: stanley)"),
   account: z.string().optional()
-    .describe("For WhatsApp: which account to use (default: 'zee' for bot number, 'personal' for your number)"),
+    .describe('Account to use (default: "zee")'),
 });
 
 export const messagingTool: ToolDefinition = {
   id: "zee:messaging",
   category: "domain",
   init: async () => ({
-    description: `Send messages via WhatsApp or Telegram gateways. Always search memory for recipient contact info before asking the user.
+    description: `Send messages via WhatsApp or Matrix gateways. Always search memory for recipient contact info before asking the user.
 
-WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"), account="zee"|"personal". Supports mediaUrl for images/audio/video.
-Telegram: to=numeric chatId, persona="stanley"|"johny".`,
+WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for images/audio/video.
+Matrix: to=room ID (e.g. "!room:server").`,
     parameters: MessagingParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { channel, to, message, mediaUrl, persona, account } = args;
+      const { channel, to, message, mediaUrl, account } = args;
 
       const hasMedia = Boolean(mediaUrl?.trim());
       ctx.metadata({ title: `Sending via ${channel}${hasMedia ? " (media)" : ""}` });
@@ -450,38 +448,30 @@ Troubleshooting:
 ${preview}`,
           };
 
-        } else if (channel === "telegram") {
-          // Send via Telegram gateway (Stanley/Johny bots)
-          const selectedPersona = persona || "stanley";
-          const chatId = parseInt(to, 10);
-
-          if (isNaN(chatId)) {
-            return {
-              title: `Invalid Telegram Chat ID`,
-              metadata: { channel, to, error: "invalid_chat_id" },
-              output: `Invalid Telegram chat ID: "${to}"
-
-Chat ID must be a numeric value (e.g., 123456789).`,
-            };
-          }
-
-          const response = await fetch(`${baseUrl}/gateway/telegram/send`, {
+        } else if (channel === "matrix") {
+          const accountId = account || "zee";
+          const response = await fetch(`${baseUrl}/gateway/matrix/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ persona: selectedPersona, chatId, message }),
+            body: JSON.stringify({
+              roomId: to,
+              message,
+              accountId,
+              ...(validatedMediaUrl ? { mediaUrl: validatedMediaUrl } : {}),
+            }),
           });
 
           const rawResult = await response.json();
           const parseResult = GatewayResponseSchema.safeParse(rawResult);
 
           if (!parseResult.success) {
-            log.error("Telegram gateway response validation failed", {
+            log.error("Matrix gateway response validation failed", {
               errors: parseResult.error.flatten().fieldErrors,
             });
             return {
-              title: `Telegram Send Failed`,
-              metadata: { channel, to, persona: selectedPersona, error: "Invalid response from gateway" },
-              output: `Failed to send Telegram message via ${selectedPersona}: Invalid response from gateway`,
+              title: `Matrix Send Failed`,
+              metadata: { channel, to, account: accountId, error: "Invalid response from gateway" },
+              output: `Failed to send Matrix message: Invalid response from gateway`,
             };
           }
 
@@ -489,21 +479,21 @@ Chat ID must be a numeric value (e.g., 123456789).`,
 
           if (!result.success) {
             return {
-              title: `Telegram Send Failed`,
-              metadata: { channel, to, persona: selectedPersona, error: result.error },
-              output: `Failed to send Telegram message via ${selectedPersona}: ${result.error || "Unknown error"}
+              title: `Matrix Send Failed`,
+              metadata: { channel, to, account: accountId, error: result.error },
+              output: `Failed to send Matrix message: ${result.error || "Unknown error"}
 
 Troubleshooting:
 - Ensure \`agent-core daemon\` is running
 - Check \`agent-core debug status\` shows Gateway: Active
-- Verify chatId is numeric`,
+- Verify the room ID is correct (e.g., "!room:server")`,
             };
           }
 
           return {
-            title: `Telegram Message Sent`,
-            metadata: { channel, to, persona: selectedPersona, success: true },
-            output: `Message sent via Telegram (${selectedPersona} bot) to chat ${to}
+            title: `Matrix Message Sent`,
+            metadata: { channel, to, account: accountId, success: true },
+            output: `Message sent via Matrix account "${accountId}" to ${to}
 
 Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
           };
@@ -512,7 +502,7 @@ Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
         return {
           title: `Unsupported Channel`,
           metadata: { channel, error: "unsupported" },
-          output: `Channel "${channel}" is not supported. Use "whatsapp" or "telegram".`,
+          output: `Channel "${channel}" is not supported. Use "whatsapp" or "matrix".`,
         };
 
       } catch (error) {
@@ -546,7 +536,7 @@ const NotificationParams = z.object({
     .describe("Priority level"),
   schedule: z.string().optional()
     .describe("ISO date or cron expression for scheduling"),
-  channels: z.array(z.enum(["push", "whatsapp", "email", "telegram"])).default(["push"])
+  channels: z.array(z.enum(["push", "whatsapp", "matrix", "email"])).default(["push"])
     .describe("Channels to notify through"),
 });
 

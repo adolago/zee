@@ -25,7 +25,7 @@ export function resolveAnnounceTargetFromKey(sessionKey: string): AnnounceTarget
   if (kind !== "group" && kind !== "channel") return null;
 
   // Extract topic/thread ID from rest (supports both :topic: and :thread:)
-  // Telegram uses :topic:, other platforms use :thread:
+  // Legacy keys may use :topic:, newer keys use :thread:
   let threadId: string | undefined;
   const restJoined = rest.join(":");
   const topicMatch = restJoined.match(/:topic:(\d+)$/);

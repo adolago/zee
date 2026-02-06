@@ -31,14 +31,6 @@ ${formatHelpExamples([
     'zee message send --target +15555550123 --message "Hi" --media photo.jpg',
     "Send a message with media.",
   ],
-  [
-    'zee message poll --channel telegram --target channel:123 --poll-question "Snack?" --poll-option Pizza --poll-option Sushi',
-    "Create a poll.",
-  ],
-  [
-    'zee message react --channel telegram --target 123 --message-id 456 --emoji "✅"',
-    "React to a message.",
-  ],
 ])}
 
 ${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "docs.zee/cli/message")}`,

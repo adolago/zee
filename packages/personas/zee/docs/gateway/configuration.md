@@ -3,12 +3,12 @@ summary: "All configuration options for ~/.zee/zee.json with examples"
 read_when:
   - Adding or modifying config fields
 ---
-# Configuration 🔧
+# Configuration
 
 Zee reads an optional **JSON5** config from `~/.zee/zee.json` (comments + trailing commas allowed).
 
 If the file is missing, Zee uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/zee`). You usually only need a config to:
-- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.telegram.allowFrom`, etc.)
+- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.matrix.allowFrom`, etc.)
 - customize message prefixes (`messages`)
 - set the agent's workspace (`agents.defaults.workspace` or `agents.list[].workspace`)
 - tune the embedded agent defaults (`agents.defaults`) and session behavior (`session`)
@@ -89,7 +89,7 @@ Example:
 ```bash
 zee gateway call config.get --params '{}' # capture payload.hash
 zee gateway call config.patch --params '{
-  "raw": "{\\n  channels: { telegram: { groups: { \\"*\\": { requireMention: false } } } }\\n}\\n",
+  "raw": "{\\n  channels: { whatsapp: { groups: { \\"*\\": { requireMention: false } } } }\\n}\\n",
   "baseHash": "<hash-from-config.get>",
   "sessionKey": "agent:main:whatsapp:dm:+15555550123",
   "restartDelayMs": 1000
@@ -543,33 +543,7 @@ Notes:
 - Outbound commands default to account `default` if present; otherwise the first configured account id (sorted).
 - The legacy single-account Baileys auth dir is migrated by `zee doctor` into `whatsapp/default`.
 
-
-Run multiple accounts per channel (each account has its own `accountId` and optional `name`):
-
-```json5
-{
-  channels: {
-    telegram: {
-      accounts: {
-        default: {
-          name: "Primary bot",
-          botToken: "123456:ABC..."
-        },
-        alerts: {
-          name: "Alerts bot",
-          botToken: "987654:XYZ..."
-        }
-      }
-    }
-  }
-}
-```
-
-Notes:
-- `default` is used when `accountId` is omitted (CLI + routing).
-- Env tokens only apply to the **default** account.
-- Base channel settings (group policy, mention gating, etc.) apply to all accounts unless overridden per account.
-- Use `bindings[].match.accountId` to route each account to a different agents.defaults.
+Not all channels support multi-account. For channels that do, each account has its own `accountId` and optional `name`.
 
 ### Group chat mention gating (`agents.list[].groupChat` + `messages.groupChat`)
 
@@ -601,10 +575,10 @@ DM conversations use session-based history managed by the agent. You can limit t
 ```json5
 {
   channels: {
-    telegram: {
+    whatsapp: {
       dmHistoryLimit: 30,  // limit DM sessions to 30 user turns
       dms: {
-        "123456789": { historyLimit: 50 }  // per-user override (user ID)
+        "+15555550123": { historyLimit: 50 }  // per-user override
       }
     }
   }
@@ -665,28 +639,9 @@ Use `channels.*.groupPolicy` to control whether group/room messages are accepted
       groupPolicy: "allowlist",
       groupAllowFrom: ["+15551234567"]
     },
-    telegram: {
+    matrix: {
       groupPolicy: "allowlist",
-      groupAllowFrom: ["tg:123456789", "@alice"]
-    },
-      groupPolicy: "allowlist",
-      groupAllowFrom: ["+15551234567"]
-    },
-      groupPolicy: "allowlist",
-      groupAllowFrom: ["chat_id:123"]
-    },
-      groupPolicy: "allowlist",
-      groupAllowFrom: ["user@org.com"]
-    },
-      groupPolicy: "allowlist",
-      guilds: {
-        "GUILD_ID": {
-          channels: { help: { allow: true } }
-        }
-      }
-    },
-      groupPolicy: "allowlist",
-      channels: { "#general": { allow: true } }
+      groupAllowFrom: ["!room:example.com"]
     }
   }
 }
@@ -872,7 +827,7 @@ Controls how inbound messages behave when an agent run is already active.
       drop: "summarize", // old | new | summarize
       byChannel: {
         whatsapp: "collect",
-        telegram: "collect",
+        matrix: "collect",
       }
     }
   }
@@ -924,7 +879,6 @@ Controls how chat commands are enabled across connectors.
 Notes:
 - Text commands must be sent as a **standalone** message and use the leading `/` (no plain-text aliases).
 - `commands.text: false` disables parsing chat messages for commands.
-- `channels.telegram.customCommands` adds extra Telegram bot menu entries. Names are normalized; conflicts with native commands are ignored.
 - `commands.bash: true` enables `! <cmd>` to run host shell commands (`/bash <cmd>` also works as an alias). Requires `tools.elevated.enabled` and allowlisting the sender in `tools.elevated.allowFrom.<channel>`.
 - `commands.bashForegroundMs` controls how long bash waits before backgrounding. While a bash job is running, new `! <cmd>` requests are rejected (one at a time).
 - `commands.config: true` enables `/config` (reads/writes `zee.json`).
@@ -955,73 +909,35 @@ Set `web.enabled: false` to keep it off by default.
 }
 ```
 
-### `channels.telegram` (bot transport)
+### `channels.matrix` (Matrix channel plugin)
 
-Zee starts Telegram only when a `channels.telegram` config section exists. The bot token is resolved from `channels.telegram.botToken` (or `channels.telegram.tokenFile`), with `TELEGRAM_BOT_TOKEN` as a fallback for the default account.
-Set `channels.telegram.enabled: false` to disable automatic startup.
-Multi-account support lives under `channels.telegram.accounts` (see the multi-account section above). Env tokens only apply to the default account.
-Set `channels.telegram.configWrites: false` to block Telegram-initiated config writes (including supergroup ID migrations and `/config set|unset`).
+Zee starts Matrix only when a `channels.matrix` config section exists.
+
+The access token is resolved from `channels.matrix.accessToken`, with `MATRIX_ACCESS_TOKEN` as a fallback.
 
 ```json5
 {
   channels: {
-    telegram: {
+    matrix: {
       enabled: true,
-      botToken: "your-bot-token",
-      dmPolicy: "pairing",                 // pairing | allowlist | open | disabled
-      allowFrom: ["tg:123456789"],         // optional; "open" requires ["*"]
-      groups: {
-        "*": { requireMention: true },
-        "-1001234567890": {
-          allowFrom: ["@admin"],
-          systemPrompt: "Keep answers brief.",
-          topics: {
-            "99": {
-              requireMention: false,
-              skills: ["search"],
-              systemPrompt: "Stay on topic."
-            }
-          }
-        }
-      },
-      customCommands: [
-        { command: "backup", description: "Git backup" },
-        { command: "generate", description: "Create an image" }
-      ],
-      historyLimit: 50,                     // include last N group messages as context (0 disables)
-      replyToMode: "first",                 // off | first | all
-      linkPreview: true,                   // toggle outbound link previews
-      streamMode: "partial",               // off | partial | block (draft streaming; separate from block streaming)
-      draftChunk: {                        // optional; only for streamMode=block
-        minChars: 200,
-        maxChars: 800,
-        breakPreference: "paragraph"       // paragraph | newline | sentence
-      },
-      actions: { reactions: true, sendMessage: true }, // tool action gates (false disables)
-      reactionNotifications: "own",   // off | own | all
-      mediaMaxMb: 5,
-      retry: {                             // outbound retry policy
+      homeserver: "https://matrix.example.com",
+      userId: "@zee:example.com",
+      accessToken: "{env:MATRIX_ACCESS_TOKEN}",
+      dmPolicy: "pairing",           // pairing | allowlist | open | disabled
+      allowFrom: ["@you:example.com"], // optional; "open" requires ["*"]
+      encryption: false,             // enable E2EE (optional)
+      threadReplies: "off",          // off | inbound | always
+      retry: {                       // outbound retry policy
         attempts: 3,
         minDelayMs: 400,
         maxDelayMs: 30000,
         jitter: 0.1
-      },
-      network: {                           // transport overrides
-        autoSelectFamily: false
-      },
-      proxy: "socks5://localhost:9050",
-      webhookUrl: "https://example.com/telegram-webhook",
-      webhookSecret: "secret",
-      webhookPath: "/telegram-webhook"
+      }
     }
   }
 }
 ```
 
-Draft streaming notes:
-- Uses Telegram `sendMessageDraft` (draft bubble, not a real message).
-- Requires **private chat topics** (message_thread_id in DMs; bot has topics enabled).
-- `/reasoning stream` streams reasoning into the draft, then sends the final answer.
 Retry policy defaults and behavior are documented in [Retry policy](/concepts/retry).
 
 ### `agents.defaults.workspace`
@@ -1153,8 +1069,8 @@ WhatsApp inbound prefix is configured via `channels.whatsapp.messagePrefix` (dep
 `"[zee]"`, Zee will instead use `[{identity.name}]` when the routed
 agent has `identity.name` set.
 
-`ackReaction` sends a best-effort emoji reaction to acknowledge inbound messages
-active agent’s `identity.emoji` when set, otherwise `"👀"`. Set it to `""` to disable.
+`ackReaction` sends a best-effort reaction to acknowledge inbound messages: it uses the
+active agent's `identity.emoji` when set, otherwise a default. Set it to `""` to disable.
 
 `ackReactionScope` controls when reactions fire:
 - `group-mentions` (default): only when a group/room requires mentions **and** the bot was mentioned
@@ -1167,8 +1083,8 @@ active agent’s `identity.emoji` when set, otherwise `"👀"`. Set it to `""` t
 #### `messages.tts`
 
 Enable text-to-speech for outbound replies. When on, Zee generates audio
-using ElevenLabs or OpenAI and attaches it to responses. Telegram uses Opus
-voice notes; other channels send MP3 audio.
+using ElevenLabs or OpenAI and attaches it to responses. The exact audio container/codec
+depends on the channel connector.
 
 ```json5
 {
@@ -1537,7 +1453,7 @@ Example (tuned):
 Block streaming:
 - `agents.defaults.blockStreamingDefault`: `"on"`/`"off"` (default off).
 - Channel overrides: `*.blockStreaming` (and per-account variants) to force block streaming on/off.
-  Non-Telegram channels require an explicit `*.blockStreaming: true` to enable block replies.
+  Most channels require an explicit `*.blockStreaming: true` to enable block replies.
 - `agents.defaults.blockStreamingBreak`: `"text_end"` or `"message_end"` (default: text_end).
 - `agents.defaults.blockStreamingChunk`: soft chunking for streamed blocks. Defaults to
   800–1200 chars, prefers paragraph breaks (`\n\n`), then newlines, then sentences.
@@ -1550,7 +1466,7 @@ Block streaming:
 - `agents.defaults.blockStreamingCoalesce`: merge streamed blocks before sending.
   Defaults to `{ idleMs: 1000 }` and inherits `minChars` from `blockStreamingChunk`
   to `minChars: 1500` unless overridden.
-  Channel overrides: `channels.whatsapp.blockStreamingCoalesce`, `channels.telegram.blockStreamingCoalesce`,
+  Channel overrides: `channels.whatsapp.blockStreamingCoalesce`, `channels.matrix.blockStreamingCoalesce`,
   (and per-account variants).
 - `agents.defaults.humanDelay`: randomized pause between **block replies** after the first.
   Modes: `off` (default), `natural` (800–2500ms), `custom` (use `minMs`/`maxMs`).
@@ -1583,7 +1499,7 @@ Z.AI models are available as `zai/<model>` (e.g. `zai/glm-4.7`) and require
 - `model`: optional override model for heartbeat runs (`provider/model`).
 - `includeReasoning`: when `true`, heartbeats will also deliver the separate `Reasoning:` message when available (same shape as `/reasoning on`). Default: `false`.
 - `session`: optional session key to control which session the heartbeat runs in. Default: `main`.
-- `to`: optional recipient override (channel-specific id, e.g. E.164 for WhatsApp, chat id for Telegram).
+- `to`: optional recipient override (channel-specific id, e.g. E.164 for WhatsApp, room id for Matrix).
 - `ackMaxChars`: max chars allowed after `HEARTBEAT_OK` before delivery (default: 300).
 
 Per-agent heartbeats:
@@ -1767,7 +1683,7 @@ Tool groups (shorthands) work in **global** and **per-agent** tool policies:
 - `enabled`: allow elevated mode (default true)
 - `allowFrom`: per-channel allowlists (empty = disabled)
   - `whatsapp`: E.164 numbers
-  - `telegram`: chat ids or usernames
+  - `matrix`: Matrix user ids (e.g. `@user:server`)
 
 Example:
 ```json5

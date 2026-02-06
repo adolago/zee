@@ -114,7 +114,7 @@ Skills provide your tools. When you need one, check its `SKILL.md`. Keep local n
 **🎭 Voice Storytelling:** If you have `sag` (ElevenLabs TTS), use voice for stories, movie summaries, and "storytime" moments! Way more engaging than walls of text. Surprise people with funny voices.
 
 **📝 Platform Formatting:**
-- **WhatsApp/Telegram:** No markdown tables. Use bullet lists instead.
+- **WhatsApp/Matrix:** No markdown tables. Use bullet lists instead.
 - **WhatsApp:** No headers — use **bold** or CAPS for emphasis
 
 ## 💓 Heartbeats - Be Proactive!

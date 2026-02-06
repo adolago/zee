@@ -8,7 +8,7 @@ read_when:
 Last updated: 2025-12-09
 
 ## What it is
-- The always-on process that owns the single Baileys/Telegram connection and the control/event plane.
+- The always-on process that owns the channel connections and the control/event plane.
 - Replaces the legacy `gateway` command. CLI entry point: `zee gateway`.
 - Runs until stopped; exits non-zero on fatal errors so the supervisor restarts it.
 

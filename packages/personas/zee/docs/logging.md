@@ -67,7 +67,7 @@ zee doctor
 
 ### Channel-only logs
 
-To filter channel activity (WhatsApp/Telegram/etc), use:
+To filter channel activity by channel id, use:
 
 ```bash
 zee channels logs --channel whatsapp
@@ -190,12 +190,12 @@ Use this if you want diagnostics events available to plugins or custom sinks:
 ### Diagnostics flags (targeted logs)
 
 Use flags to turn on extra, targeted debug logs without raising `logging.level`.
-Flags are case-insensitive and support wildcards (e.g. `telegram.*` or `*`).
+Flags are case-insensitive and support wildcards (e.g. `matrix.*` or `*`).
 
 ```json
 {
   "diagnostics": {
-    "flags": ["telegram.http"]
+    "flags": ["matrix.http"]
   }
 }
 ```
@@ -203,7 +203,7 @@ Flags are case-insensitive and support wildcards (e.g. `telegram.*` or `*`).
 Env override (one-off):
 
 ```
-ZEE_DIAGNOSTICS=telegram.http,telegram.payload
+ZEE_DIAGNOSTICS=matrix.http,matrix.payload
 ```
 
 Notes:

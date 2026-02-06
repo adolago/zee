@@ -358,5 +358,5 @@ WhatsApp sends audio as **voice notes** (PTT bubble).
 - Fix: `zee doctor` (or restart the gateway). If it persists, relink via `channels login` and inspect `zee logs --follow`.
 
 **Bun runtime**
-- Bun is **not recommended**. WhatsApp (Baileys) and Telegram are unreliable on Bun.
-  Run the gateway with **Node**. (See Getting Started runtime note.)
+- Bun is **not recommended** for the gateway runtime. Run the gateway with **Node**
+  (especially for channel connectors).

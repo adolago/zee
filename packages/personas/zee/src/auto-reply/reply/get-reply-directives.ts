@@ -352,7 +352,7 @@ export async function resolveReplyDirectives(params: {
     (sessionEntry?.reasoningLevel as ReasoningLevel | undefined) ??
     "off";
   // CRITICAL: Messaging channels must never expose reasoning.
-  if (["whatsapp", "telegram"].includes(messageProviderKey)) {
+  if (["whatsapp", "matrix"].includes(messageProviderKey)) {
     resolvedReasoningLevel = "off";
   }
   const resolvedElevatedLevel = elevatedAllowed

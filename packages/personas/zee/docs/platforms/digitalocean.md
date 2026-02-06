@@ -79,7 +79,7 @@ zee onboard --install-daemon
 
 The wizard will walk you through:
 - Model auth (API keys or OAuth)
-- Channel setup (Telegram, WhatsApp)
+- Channel setup (Matrix, WhatsApp)
 - Gateway token (auto-generated)
 - Daemon installation (systemd)
 
@@ -135,10 +135,9 @@ Open: `http://<tailscale-ip>:18789` (token required).
 
 ## 7) Connect Your Channels
 
-### Telegram
+### Matrix
 ```bash
-zee pairing list telegram
-zee pairing approve telegram <CODE>
+zee channels add --channel matrix
 ```
 
 ### WhatsApp

@@ -103,7 +103,7 @@ Severity: High (if RELEASE is used on untrusted surfaces)
 
 What is implemented:
 - HOLD mode is now the default when `session.mode` is not explicitly set.
-- `/release` is refused on WhatsApp/Telegram unless `AGENT_CORE_ALLOW_MESSAGING_RELEASE=1`.
+- `/release` is refused on WhatsApp/Matrix unless `AGENT_CORE_ALLOW_MESSAGING_RELEASE=1`.
 - When HTTP auth is enabled, switching to RELEASE mode requires scope `operator.admin`.
 
 Evidence:
@@ -206,5 +206,5 @@ CI also runs `bash scripts/bun-audit-ci.sh` (currently gates on `--audit-level h
 
 1. Keep non-loopback binds behind HTTP auth and a firewall (guardrail exists; do not bypass it).
 2. Keep admin credentials tightly controlled (PTY/MCP/cron toolInvoke are admin-grade).
-3. Prefer HOLD mode by default (implemented); `/release` is blocked on WhatsApp/Telegram unless `AGENT_CORE_ALLOW_MESSAGING_RELEASE=1`, and switching to RELEASE requires `operator.admin` when HTTP auth is enabled.
+3. Prefer HOLD mode by default (implemented); `/release` is blocked on WhatsApp/Matrix unless `AGENT_CORE_ALLOW_MESSAGING_RELEASE=1`, and switching to RELEASE requires `operator.admin` when HTTP auth is enabled.
 4. Keep cron toolInvoke allowlist minimal and stable.

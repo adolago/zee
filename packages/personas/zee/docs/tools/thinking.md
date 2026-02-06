@@ -45,7 +45,7 @@ read_when:
 - Levels: `on|off|stream`.
 - Directive-only message toggles whether thinking blocks are shown in replies.
 - When enabled, reasoning is sent as a **separate message** prefixed with `Reasoning:`.
-- `stream` (Telegram only): streams reasoning into the Telegram draft bubble while the reply is generating, then sends the final answer without reasoning.
+- `stream`: reserved for future use; treat it as `on` for now.
 - Alias: `/reason`.
 - Send `/reasoning` (or `/reasoning:`) with no argument to see the current reasoning level.
 

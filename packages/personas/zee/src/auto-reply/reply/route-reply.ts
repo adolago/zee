@@ -19,7 +19,7 @@ import { normalizeReplyPayload } from "./normalize-reply.js";
 export type RouteReplyParams = {
   /** The reply payload to send. */
   payload: ReplyPayload;
-  /** The originating channel type (telegram, whatsapp). */
+  /** The originating channel type (whatsapp, matrix). */
   channel: OriginatingChannelType;
   /** The destination chat/channel/user ID. */
   to: string;
@@ -27,7 +27,7 @@ export type RouteReplyParams = {
   sessionKey?: string;
   /** Provider account id (multi-account). */
   accountId?: string;
-  /** Thread id for replies (Telegram topic id). */
+  /** Thread id for replies (provider-specific). */
   threadId?: string | number;
   /** Config for provider-specific settings. */
   cfg: ZeeConfig;

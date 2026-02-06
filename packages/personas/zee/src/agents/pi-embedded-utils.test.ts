@@ -524,7 +524,7 @@ describe("formatReasoningMessage", () => {
     );
   });
 
-  it("wraps each line separately for multiline text (Telegram fix)", () => {
+  it("wraps each line separately for multiline text", () => {
     expect(formatReasoningMessage("Line one\nLine two\nLine three")).toBe(
       "Reasoning:\n_Line one_\n_Line two_\n_Line three_",
     );

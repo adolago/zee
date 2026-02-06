@@ -1,5 +1,5 @@
 const ENVELOPE_PREFIX = /^\[([^\]]+)\]\s*/;
-const ENVELOPE_CHANNELS = ["WhatsApp", "Telegram"];
+const ENVELOPE_CHANNELS = ["WhatsApp", "Matrix"];
 
 const MESSAGE_ID_LINE = /^\s*\[message_id:\s*[^\]]+\]\s*$/i;
 

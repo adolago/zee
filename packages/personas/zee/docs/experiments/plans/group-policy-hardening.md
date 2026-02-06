@@ -1,9 +1,9 @@
 ---
-summary: "Telegram allowlist hardening: prefix + whitespace normalization"
+summary: "Matrix allowlist hardening: prefix + whitespace normalization"
 read_when:
-  - Reviewing historical Telegram allowlist changes
+  - Reviewing historical Matrix allowlist changes
 ---
-# Telegram Allowlist Hardening
+# Matrix Allowlist Hardening
 
 **Date**: 2026-01-05  
 **Status**: Complete  
@@ -11,21 +11,21 @@ read_when:
 
 ## Summary
 
-Telegram allowlists now accept `telegram:` and `tg:` prefixes case-insensitively, and tolerate
-accidental whitespace. This aligns inbound allowlist checks with outbound send normalization.
+Matrix allowlists accept an optional `matrix:` prefix case-insensitively, and tolerate accidental
+whitespace. This aligns inbound allowlist checks with outbound send normalization.
 
 ## What changed
 
-- Prefixes `telegram:` and `tg:` are treated the same (case-insensitive).
+- `matrix:` prefixes are treated as optional (case-insensitive).
 - Allowlist entries are trimmed; empty entries are ignored.
 
 ## Examples
 
 All of these are accepted for the same ID:
 
-- `telegram:123456`
-- `TG:123456`
-- ` tg:123456 `
+- `matrix:@alice:example.org`
+- `MATRIX:@alice:example.org`
+- `  @alice:example.org  `
 
 ## Why it matters
 
@@ -35,4 +35,4 @@ false negatives when deciding whether to respond in DMs or groups.
 ## Related docs
 
 - [Group Chats](/concepts/groups)
-- [Telegram Provider](/channels/telegram)
+- [Matrix Channel](/channels/matrix)

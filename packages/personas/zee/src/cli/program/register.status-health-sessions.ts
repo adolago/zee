@@ -31,7 +31,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     .option("--json", "Output JSON instead of text", false)
     .option("--all", "Full diagnosis (read-only, pasteable)", false)
     .option("--usage", "Show model provider usage/quota snapshots", false)
-    .option("--deep", "Probe channels (WhatsApp Web + Telegram)", false)
+    .option("--deep", "Probe channels (WhatsApp Web + Matrix)", false)
     .option("--timeout <ms>", "Probe timeout in milliseconds", "10000")
     .option("--verbose", "Verbose logging", false)
     .option("--debug", "Alias for --verbose", false)
@@ -45,7 +45,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
           ["zee status --usage", "Show model provider usage/quota snapshots."],
           [
             "zee status --deep",
-            "Run channel probes (WA + Telegram).",
+            "Run channel probes (WhatsApp + Matrix).",
           ],
           ["zee status --deep --timeout 5000", "Tighten probe timeout."],
         ])}`,

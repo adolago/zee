@@ -561,7 +561,7 @@ export async function runEmbeddedAttempt(
       const runtimeChannel = (params.messageChannel ?? params.messageProvider ?? "")
         .trim()
         .toLowerCase();
-      const effectiveReasoningMode = ["whatsapp", "telegram"].includes(runtimeChannel)
+      const effectiveReasoningMode = ["whatsapp", "matrix"].includes(runtimeChannel)
         ? "off"
         : (params.reasoningLevel ?? "off");
       const subscription = subscribeEmbeddedPiSession({

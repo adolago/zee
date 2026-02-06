@@ -245,7 +245,7 @@ describe("CronService", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        provider: " TeLeGrAm ",
+        provider: " MaTrIx ",
         to: "7200373102",
       },
       state: {},
@@ -271,7 +271,7 @@ describe("CronService", () => {
     const jobs = await cron.list({ includeDisabled: true });
     const job = jobs.find((j) => j.id === rawJob.id);
     const payload = job?.payload as unknown as Record<string, unknown>;
-    expect(payload.channel).toBe("telegram");
+    expect(payload.channel).toBe("matrix");
     expect("provider" in payload).toBe(false);
 
     cron.stop();
@@ -296,7 +296,7 @@ describe("CronService", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        channel: "Telegram",
+        channel: "Matrix",
         to: "7200373102",
       },
       state: {},
@@ -322,7 +322,7 @@ describe("CronService", () => {
     const jobs = await cron.list({ includeDisabled: true });
     const job = jobs.find((j) => j.id === rawJob.id);
     const payload = job?.payload as unknown as Record<string, unknown>;
-    expect(payload.channel).toBe("telegram");
+    expect(payload.channel).toBe("matrix");
 
     cron.stop();
     await store.cleanup();

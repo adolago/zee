@@ -37,7 +37,7 @@ Memory files are created with the following format:
 
 - **Session Key**: agent:main:main
 - **Session ID**: abc123def456
-- **Source**: telegram
+- **Source**: matrix
 ```
 
 ## Filename Examples

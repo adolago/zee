@@ -28,17 +28,14 @@ and you configure everything via the `/setup` web wizard.
 
 1) Visit `https://<your-northflank-domain>/setup` and enter your `SETUP_PASSWORD`.
 2) Choose a model/auth provider and paste your key.
-3) (Optional) Add Telegram/WhatsApp tokens.
+3) (Optional) Add Matrix/WhatsApp credentials.
 4) Click **Run setup**.
 5) Open the CLI/TUI at `https://<your-northflank-domain>/zee`
 
-If Telegram DMs are set to pairing, the setup wizard can approve the pairing code.
+## Getting chat credentials
 
-## Getting chat tokens
+### Matrix access token
 
-### Telegram bot token
-
-1) Message `@BotFather` in Telegram
-2) Run `/newbot`
-3) Copy the token (looks like `123456789:AA...`)
-4) Paste it into `/setup`
+1) Create a Matrix account for the Gateway (a dedicated user is recommended).
+2) Collect: homeserver URL, user id, and an access token.
+3) Paste them into `/setup`.

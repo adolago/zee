@@ -10,7 +10,7 @@ read_when:
 Goal: go from **zero** → **first working chat** (with sane defaults) as quickly as possible.
 
 Fastest chat: run the **CLI onboarding wizard** (`zee onboard`) and connect a
-WhatsApp or Telegram channel. It sets up:
+WhatsApp or Matrix channel. It sets up:
 - model/auth (OAuth recommended)
 - gateway settings
 - pairing defaults (secure DMs)
@@ -80,7 +80,7 @@ What you’ll choose:
 - **Local vs Remote** gateway
 - **Auth**: OpenAI Code (Codex) subscription (OAuth) or API keys. For Anthropic we recommend an API key; `claude setup-token` is also supported.
 - **Daemon**: background install (systemd; WSL2 uses systemd)
-  - **Runtime**: Node (recommended; required for WhatsApp/Telegram). Bun is **not recommended**.
+  - **Runtime**: Node (recommended; required for WhatsApp/Matrix). Bun is **not recommended**.
 - **Gateway token**: the wizard generates one by default (even on loopback) and stores it in `gateway.auth.token`.
 
 Wizard doc: [Wizard](/start/wizard)
@@ -108,8 +108,8 @@ Manual run (foreground):
 zee gateway --port 18789 --verbose
 ```
 
-⚠️ **Bun warning (WhatsApp + Telegram):** Bun has known issues with these
-channels. If you use WhatsApp or Telegram, run the Gateway with **Node**.
+Warning (WhatsApp + Matrix): Bun has known issues with these
+channels. If you use WhatsApp or Matrix, run the Gateway with **Node**.
 
 ## 3.5) Quick verify (2 min)
 
@@ -133,10 +133,9 @@ WhatsApp doc: [WhatsApp](/channels/whatsapp)
 
 
 The wizard can write tokens/config for you. If you prefer manual config, start with:
-- Telegram: [Telegram](/channels/telegram)
-- Mattermost (plugin): [Mattermost](/channels/mattermost)
+- Matrix: [Matrix](/channels/matrix)
 
-**Telegram DM tip:** your first DM returns a pairing code. Approve it (see next step) or the bot won’t respond.
+Matrix DM tip: your first DM may require pairing approval (see next step) or the bot won’t respond.
 
 ## 5) DM safety (pairing approvals)
 

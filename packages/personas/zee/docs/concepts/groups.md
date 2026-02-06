@@ -40,7 +40,7 @@ If you want...
 
 ## Session keys
 - Group sessions use `agent:<agentId>:<channel>:group:<id>` session keys (rooms/channels use `agent:<agentId>:<channel>:channel:<id>`).
-- Telegram forum topics add `:topic:<threadId>` to the group id so each topic has its own session.
+- Threads (when supported) can add `:thread:<threadId>` to the group id so each thread has its own session.
 - Direct chats use the main session (or per-sender if configured).
 - Heartbeats are skipped for group sessions.
 
@@ -121,10 +121,6 @@ Control how group/room messages are handled per channel:
     whatsapp: {
       groupPolicy: "disabled", // "open" | "disabled" | "allowlist"
       groupAllowFrom: ["+15551234567"]
-    },
-    telegram: {
-      groupPolicy: "disabled",
-      groupAllowFrom: ["123456789", "@username"]
     }
   }
 }
@@ -138,7 +134,6 @@ Control how group/room messages are handled per channel:
 
 Notes:
 - `groupPolicy` is separate from mention-gating (which requires @mentions).
-- Telegram allowlist can match user IDs (`"123456789"`, `"telegram:123456789"`, `"tg:123456789"`) or usernames (`"@alice"` or `"alice"`); prefixes are case-insensitive.
 - Default is `groupPolicy: "allowlist"`; if your group allowlist is empty, group messages are blocked.
 
 Quick mental model (evaluation order for group messages):
@@ -149,7 +144,7 @@ Quick mental model (evaluation order for group messages):
 ## Mention gating (default)
 Group messages require a mention unless overridden per group. Defaults live per subsystem under `*.groups."*"`.
 
-Replying to a bot message counts as an implicit mention (when the channel supports reply metadata). This applies to Telegram and WhatsApp.
+Replying to a bot message counts as an implicit mention (when the channel supports reply metadata).
 
 ```json5
 {
@@ -158,12 +153,6 @@ Replying to a bot message counts as an implicit mention (when the channel suppor
       groups: {
         "*": { requireMention: true },
         "123@g.us": { requireMention: false }
-      }
-    },
-    telegram: {
-      groups: {
-        "*": { requireMention: true },
-        "123456789": { requireMention: false }
       }
     }
   },
@@ -200,18 +189,18 @@ Resolution order (most specific wins):
 3) default (`"*"`) `toolsBySender` match
 4) default (`"*"`) `tools`
 
-Example (Telegram):
+Example (WhatsApp):
 
 ```json5
 {
   channels: {
-    telegram: {
+    whatsapp: {
       groups: {
         "*": { tools: { deny: ["exec"] } },
-        "-1001234567890": {
+        "123@g.us": {
           tools: { deny: ["exec", "read", "write"] },
           toolsBySender: {
-            "123456789": { alsoAllow: ["exec"] }
+            "+15551234567": { alsoAllow: ["exec"] }
           }
         }
       }
@@ -286,12 +275,11 @@ Group inbound payloads set:
 - `GroupSubject` (if known)
 - `GroupMembers` (if known)
 - `WasMentioned` (mention gating result)
-- Telegram forum topics also include `MessageThreadId` and `IsForum`.
 
 The agent system prompt includes a group intro on the first turn of a new group session. It reminds the model to respond like a human, avoid Markdown tables, and avoid typing literal `\n` sequences.
 
-- Prefer `chat_id:<id>` when routing or allowlisting.
-- Group replies always go back to the same `chat_id`.
+- Prefer stable peer IDs when routing or allowlisting.
+- Group replies always go back to the same peer ID.
 
 ## WhatsApp specifics
 See [Group messages](/concepts/group-messages) for WhatsApp-only behavior (history injection, mention handling details).

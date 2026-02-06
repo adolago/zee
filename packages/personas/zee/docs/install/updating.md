@@ -49,7 +49,7 @@ npm i -g zee@latest
 ```bash
 pnpm add -g zee@latest
 ```
-We do **not** recommend Bun for the Gateway runtime (WhatsApp/Telegram bugs).
+We do **not** recommend Bun for the Gateway runtime (channel connector bugs).
 
 To switch update channels (git + npm installs):
 

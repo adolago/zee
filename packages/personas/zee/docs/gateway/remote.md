@@ -50,11 +50,11 @@ Guide: [Tailscale](/gateway/tailscale).
 
 One gateway service owns state + channels. Nodes are peripherals.
 
-Flow example (Telegram → node):
-- Telegram message arrives at the **Gateway**.
+Flow example (channel → node):
+- Inbound message arrives at the **Gateway**.
 - Gateway runs the **agent** and decides whether to call a node tool.
 - Gateway calls the **node** over the Gateway WebSocket (`node.*` RPC).
-- Node returns the result; Gateway replies back out to Telegram.
+- Node returns the result; Gateway replies back out to the channel.
 
 Notes:
 - **Nodes do not run the gateway service.** Only one gateway should run per host unless you intentionally run isolated profiles (see [Multiple gateways](/gateway/multiple-gateways)).

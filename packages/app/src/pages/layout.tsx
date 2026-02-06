@@ -1185,6 +1185,7 @@ export default function Layout(props: ParentProps) {
 
     if (project.id && project.id !== "global") {
       await globalSDK.client.project.update({ projectID: project.id, directory: project.worktree, name })
+      await globalSync.project.refresh()
       return
     }
 
@@ -1198,6 +1199,15 @@ export default function Layout(props: ParentProps) {
       sessionID: session.id,
       title: next,
     })
+    const [, setStore] = globalSync.child(session.directory, { bootstrap: false })
+    setStore(
+      produce((draft) => {
+        const match = Binary.search(draft.session, session.id, (s) => s.id)
+        if (match.found) {
+          draft.session[match.index] = { ...draft.session[match.index], title: next }
+        }
+      }),
+    )
   }
 
   const renameWorkspace = (directory: string, next: string, projectId?: string, branch?: string) => {

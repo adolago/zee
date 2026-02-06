@@ -186,14 +186,14 @@ describeLive(
         10_000,
       );
 
-      it("returns channel status with whatsapp and telegram", () => {
+      it("returns channel status with whatsapp and matrix", () => {
         expect(channelStatus).toBeTruthy();
         expect(channelStatus.channelOrder).toBeInstanceOf(Array);
         expect(channelStatus.channelAccounts).toBeTruthy();
 
         const channels = Object.keys(channelStatus.channelAccounts);
         expect(channels).toContain("whatsapp");
-        expect(channels).toContain("telegram");
+        expect(channels).toContain("matrix");
         logProgress(`channels present: ${channels.join(", ")}`);
       });
     });
@@ -223,55 +223,55 @@ describeLive(
         expect(alive).toBe(true);
       });
 
-      it("zee: telegram account is connected", () => {
-        const binding = findBindingForAgent(cfg, "telegram", "zee");
+      it("zee: matrix account is connected", () => {
+        const binding = findBindingForAgent(cfg, "matrix", "zee");
         if (!binding) {
-          logProgress("skip: no telegram binding for zee");
+          logProgress("skip: no matrix binding for zee");
           return;
         }
-        const account = findAccountInStatus(channelStatus, "telegram", binding.accountId);
+        const account = findAccountInStatus(channelStatus, "matrix", binding.accountId);
         if (!account) {
-          logProgress(`skip: telegram account ${binding.accountId} not in status`);
+          logProgress(`skip: matrix account ${binding.accountId} not in status`);
           return;
         }
         logProgress(
-          `telegram/${account.accountId} (zee): configured=${account.configured} ` +
+          `matrix/${account.accountId} (zee): configured=${account.configured} ` +
             `running=${account.running} connected=${account.connected}`,
         );
         expect(account.configured).toBe(true);
       });
 
-      it("stanley: telegram account is connected", () => {
-        const binding = findBindingForAgent(cfg, "telegram", "stanley");
+      it("stanley: matrix account is connected", () => {
+        const binding = findBindingForAgent(cfg, "matrix", "stanley");
         if (!binding) {
-          logProgress("skip: no telegram binding for stanley");
+          logProgress("skip: no matrix binding for stanley");
           return;
         }
-        const account = findAccountInStatus(channelStatus, "telegram", binding.accountId);
+        const account = findAccountInStatus(channelStatus, "matrix", binding.accountId);
         if (!account) {
-          logProgress(`skip: telegram account ${binding.accountId} not in status`);
+          logProgress(`skip: matrix account ${binding.accountId} not in status`);
           return;
         }
         logProgress(
-          `telegram/${account.accountId} (stanley): configured=${account.configured} ` +
+          `matrix/${account.accountId} (stanley): configured=${account.configured} ` +
             `running=${account.running} connected=${account.connected}`,
         );
         expect(account.configured).toBe(true);
       });
 
-      it("johny: telegram account is connected", () => {
-        const binding = findBindingForAgent(cfg, "telegram", "johny");
+      it("johny: matrix account is connected", () => {
+        const binding = findBindingForAgent(cfg, "matrix", "johny");
         if (!binding) {
-          logProgress("skip: no telegram binding for johny");
+          logProgress("skip: no matrix binding for johny");
           return;
         }
-        const account = findAccountInStatus(channelStatus, "telegram", binding.accountId);
+        const account = findAccountInStatus(channelStatus, "matrix", binding.accountId);
         if (!account) {
-          logProgress(`skip: telegram account ${binding.accountId} not in status`);
+          logProgress(`skip: matrix account ${binding.accountId} not in status`);
           return;
         }
         logProgress(
-          `telegram/${account.accountId} (johny): configured=${account.configured} ` +
+          `matrix/${account.accountId} (johny): configured=${account.configured} ` +
             `running=${account.running} connected=${account.connected}`,
         );
         expect(account.configured).toBe(true);
@@ -289,54 +289,54 @@ describeLive(
         expect(route.channel).toBe("whatsapp");
       });
 
-      it("telegram binding for zee routes correctly", () => {
-        const binding = findBindingForAgent(cfg, "telegram", "zee");
+      it("matrix binding for zee routes correctly", () => {
+        const binding = findBindingForAgent(cfg, "matrix", "zee");
         if (!binding) {
-          logProgress("skip: no telegram binding for zee");
+          logProgress("skip: no matrix binding for zee");
           return;
         }
         const route = resolveAgentRoute({
           cfg,
-          channel: "telegram",
+          channel: "matrix",
           accountId: binding.accountId,
         });
         logProgress(
-          `telegram zee route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
+          `matrix zee route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
         );
         // Should route to zee (or the default agent if zee is the default)
         expect(route.agentId).toBeTruthy();
       });
 
-      it("telegram binding for stanley routes correctly", () => {
-        const binding = findBindingForAgent(cfg, "telegram", "stanley");
+      it("matrix binding for stanley routes correctly", () => {
+        const binding = findBindingForAgent(cfg, "matrix", "stanley");
         if (!binding) {
-          logProgress("skip: no telegram binding for stanley");
+          logProgress("skip: no matrix binding for stanley");
           return;
         }
         const route = resolveAgentRoute({
           cfg,
-          channel: "telegram",
+          channel: "matrix",
           accountId: binding.accountId,
         });
         logProgress(
-          `telegram stanley route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
+          `matrix stanley route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
         );
         expect(normalizeAgentId(route.agentId)).toBe(normalizeAgentId("stanley"));
       });
 
-      it("telegram binding for johny routes correctly", () => {
-        const binding = findBindingForAgent(cfg, "telegram", "johny");
+      it("matrix binding for johny routes correctly", () => {
+        const binding = findBindingForAgent(cfg, "matrix", "johny");
         if (!binding) {
-          logProgress("skip: no telegram binding for johny");
+          logProgress("skip: no matrix binding for johny");
           return;
         }
         const route = resolveAgentRoute({
           cfg,
-          channel: "telegram",
+          channel: "matrix",
           accountId: binding.accountId,
         });
         logProgress(
-          `telegram johny route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
+          `matrix johny route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
         );
         expect(normalizeAgentId(route.agentId)).toBe(normalizeAgentId("johny"));
       });
@@ -346,7 +346,7 @@ describeLive(
 
     describeSend("send probe", () => {
       const waTo = process.env.ZEE_LIVE_MESSAGING_SEND_TO_WA?.trim();
-      const tgTo = process.env.ZEE_LIVE_MESSAGING_SEND_TO_TG?.trim();
+      const matrixTo = process.env.ZEE_LIVE_MESSAGING_SEND_TO_MATRIX?.trim();
 
       it(
         "sends probe message via whatsapp",
@@ -371,23 +371,23 @@ describeLive(
       );
 
       it(
-        "sends probe message via telegram",
+        "sends probe message via matrix",
         async () => {
-          if (!tgTo) {
-            logProgress("skip: ZEE_LIVE_MESSAGING_SEND_TO_TG not set");
+          if (!matrixTo) {
+            logProgress("skip: ZEE_LIVE_MESSAGING_SEND_TO_MATRIX not set");
             return;
           }
           const nonce = randomUUID().slice(0, 8);
           const message = `live test probe ${nonce}`;
-          logProgress(`telegram send probe to ${tgTo}: ${message}`);
+          logProgress(`matrix send probe to ${matrixTo}: ${message}`);
           const result = await client.request<unknown>("send", {
-            to: tgTo,
+            to: matrixTo,
             message,
-            channel: "telegram",
+            channel: "matrix",
             idempotencyKey: randomUUID(),
           });
           expect(result).toBeTruthy();
-          logProgress("telegram send probe ok");
+          logProgress("matrix send probe ok");
         },
         60_000,
       );

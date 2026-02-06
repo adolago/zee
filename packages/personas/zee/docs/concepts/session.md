@@ -23,7 +23,7 @@ All session state is **owned by the gateway** (the “master” Zee). UI clients
 ## Where state lives
 - On the **gateway host**:
   - Store file: `~/.zee/agents/<agentId>/sessions/sessions.json` (per agent).
-- Transcripts: `~/.zee/agents/<agentId>/sessions/<SessionId>.jsonl` (Telegram topic sessions use `.../<SessionId>-topic-<threadId>.jsonl`).
+- Transcripts: `~/.zee/agents/<agentId>/sessions/<SessionId>.jsonl`.
 - The store is a map `sessionKey -> { sessionId, updatedAt, ... }`. Deleting entries is safe; they are recreated on demand.
 - Group entries may include `displayName`, `channel`, `subject`, `room`, and `space` to label sessions in UIs.
 - Session entries include `origin` metadata (label + routing hints) so UIs can explain where a session came from.
@@ -46,9 +46,8 @@ the workspace is writable. See [Memory](/concepts/memory) and
   - `per-peer`: `agent:<agentId>:dm:<peerId>`.
   - `per-channel-peer`: `agent:<agentId>:<channel>:dm:<peerId>`.
   - `per-account-channel-peer`: `agent:<agentId>:<channel>:<accountId>:dm:<peerId>` (accountId defaults to `default`).
-  - If `session.identityLinks` matches a provider-prefixed peer id (for example `telegram:123`), the canonical key replaces `<peerId>` so the same person shares a session across channels.
+  - If `session.identityLinks` matches a provider-prefixed peer id (for example `matrix:@user:example.org`), the canonical key replaces `<peerId>` so the same person shares a session across channels.
 - Group chats isolate state: `agent:<agentId>:<channel>:group:<id>` (rooms/channels use `agent:<agentId>:<channel>:channel:<id>`).
-  - Telegram forum topics append `:topic:<threadId>` to the group id for isolation.
   - Legacy `group:<id>` keys are still recognized for migration.
 - Inbound contexts may still use `group:<id>`; the channel is inferred from `Provider` and normalized to the canonical `agent:<agentId>:<channel>:group:<id>` form.
 - Other sources:

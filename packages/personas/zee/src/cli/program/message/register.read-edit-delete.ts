@@ -30,7 +30,7 @@ export function registerMessageReadEditDeleteCommands(
           .requiredOption("-m, --message <text>", "Message body"),
       ),
     )
-    .option("--thread-id <id>", "Thread id (Telegram forum thread)")
+    .option("--thread-id <id>", "Thread id (provider-specific)")
     .action(async (opts) => {
       await helpers.runMessageAction("edit", opts);
     });

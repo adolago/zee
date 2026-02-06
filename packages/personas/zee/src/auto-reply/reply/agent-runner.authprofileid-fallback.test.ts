@@ -37,11 +37,11 @@ import { runReplyAgent } from "./agent-runner.js";
 function createBaseRun(params: { runOverrides?: Partial<FollowupRun["run"]> }) {
   const typing = createMockTypingController();
   const sessionCtx = {
-    Provider: "telegram",
+    Provider: "matrix",
     OriginatingTo: "chat",
     AccountId: "primary",
     MessageSid: "msg",
-    Surface: "telegram",
+    Surface: "matrix",
   } as unknown as TemplateContext;
 
   const resolvedQueue = { mode: "interrupt" } as unknown as QueueSettings;
@@ -55,7 +55,7 @@ function createBaseRun(params: { runOverrides?: Partial<FollowupRun["run"]> }) {
       agentDir: "/tmp/agent",
       sessionId: "session",
       sessionKey: "main",
-      messageProvider: "telegram",
+      messageProvider: "matrix",
       sessionFile: "/tmp/session.jsonl",
       workspaceDir: "/tmp",
       config: {},

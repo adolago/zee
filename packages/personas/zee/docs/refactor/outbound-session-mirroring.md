@@ -30,7 +30,7 @@ Outbound sends were mirrored into the *current* agent session (tool session key)
 - Gateway send derives a target session key when none is provided (default agent), and ensures a session entry.
 
 ## Thread/Topic Handling
-- Telegram: topic IDs map to `chatId:topic:<id>` via `buildTelegramGroupPeerId`.
+- Threads/topics are encoded as a `:thread:<id>` suffix on the session key (with legacy `:topic:<id>` support in some flows). Outbound mirroring preserves the derived thread scope when present.
 
 ## Extensions Covered
 - Notes:
@@ -44,7 +44,7 @@ Outbound sends were mirrored into the *current* agent session (tool session key)
 
 ## Tests Added/Updated
 - `src/infra/outbound/outbound-session.test.ts`
-  - Telegram topic session key.
+  - Legacy thread/topic session key handling.
 - `src/agents/tools/message-tool.test.ts`
   - Derives agentId from session key (no sessionKey passed through).
 - `src/gateway/server-methods/send.test.ts`

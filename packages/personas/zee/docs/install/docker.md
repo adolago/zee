@@ -172,12 +172,12 @@ WhatsApp (QR):
 docker compose run --rm zee-cli channels login
 ```
 
-Telegram (bot token):
+Matrix:
 ```bash
-docker compose run --rm zee-cli channels add --channel telegram --token "<token>"
+docker compose run --rm zee-cli channels add --channel matrix
 ```
 
-Docs: [WhatsApp](/channels/whatsapp), [Telegram](/channels/telegram)
+Docs: [WhatsApp](/channels/whatsapp), [Matrix](/channels/matrix)
 
 ### Health check
 

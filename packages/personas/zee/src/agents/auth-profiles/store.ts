@@ -1,214 +1,261 @@
+import fs from "node:fs";
+
 import lockfile from "proper-lockfile";
 
+import { resolveZeeAgentDir } from "../agent-paths.js";
+import { resolveOAuthPath } from "../../config/paths.js";
 import { loadJsonFile, saveJsonFile } from "../../infra/json-file.js";
+import { syncAgentCoreCredentials } from "./agent-core-sync.js";
 import { AUTH_STORE_LOCK_OPTIONS, AUTH_STORE_VERSION } from "./constants.js";
+import { syncExternalCliCredentials } from "./external-cli-sync.js";
 import {
-  ensureAuthMetadataFile,
   ensureAuthStoreFile,
-  resolveAuthMetadataPath,
   resolveAuthStorePath,
+  resolveLegacyAuthStorePath,
 } from "./paths.js";
-import type { AuthProfileCredential, AuthProfileStore, ProfileUsageStats } from "./types.js";
+import type { AuthProfileCredential, AuthProfileStore } from "./types.js";
 
-type OpencodeAuthInfo =
-  | {
-      type: "api";
-      key: string;
-    }
-  | ({
-      type: "oauth";
-      refresh: string;
-      access: string;
-      expires: number;
-      accountId?: string;
-    } & Record<string, unknown>)
-  | {
-      type: "wellknown";
-      key: string;
-      token: string;
-    };
+type LegacyAuthJson = Record<string, unknown>;
 
-type OpencodeAuthJson = Record<string, OpencodeAuthInfo>;
-
-type AuthMetaFile = {
-  version: number;
-  order?: AuthProfileStore["order"];
-  lastGood?: AuthProfileStore["lastGood"];
-  usageStats?: Record<string, ProfileUsageStats>;
-};
+type LegacyOAuthJson = Record<
+  string,
+  {
+    access?: unknown;
+    refresh?: unknown;
+    expires?: unknown;
+    accountId?: unknown;
+    email?: unknown;
+    enterpriseUrl?: unknown;
+    projectId?: unknown;
+    clientId?: unknown;
+  }
+>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function coerceOpencodeAuthJson(raw: unknown): OpencodeAuthJson {
-  if (!isRecord(raw)) return {};
+function coerceString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
 
-  const out: OpencodeAuthJson = {};
-  for (const [providerId, value] of Object.entries(raw)) {
-    if (!providerId.trim()) continue;
-    if (!isRecord(value)) continue;
-    const type = value.type;
-    if (type === "api") {
-      const key = typeof value.key === "string" ? value.key : "";
-      if (!key.trim()) continue;
-      out[providerId] = { type: "api", key };
-      continue;
-    }
-    if (type === "oauth") {
-      const refresh = typeof value.refresh === "string" ? value.refresh : "";
-      const access = typeof value.access === "string" ? value.access : "";
-      const expires = typeof value.expires === "number" ? value.expires : 0;
-      if (!refresh.trim() || !access.trim() || !Number.isFinite(expires) || expires <= 0) continue;
+function coerceNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
 
-      // Preserve known optional fields + passthrough fields that other components expect
-      // (e.g. projectId for Google OAuth wrapper).
-      const accountId = typeof value.accountId === "string" ? value.accountId : undefined;
-      out[providerId] = {
-        ...value,
-        type: "oauth",
-        refresh,
-        access,
-        expires,
-        ...(accountId ? { accountId } : {}),
-      };
-      continue;
-    }
-    if (type === "wellknown") {
-      const key = typeof value.key === "string" ? value.key : "";
-      const token = typeof value.token === "string" ? value.token : "";
-      if (!key.trim() || !token.trim()) continue;
-      out[providerId] = { type: "wellknown", key, token };
-    }
+function coerceCredential(value: unknown, fallbackProvider: string): AuthProfileCredential | null {
+  if (!isRecord(value)) return null;
+  const type = coerceString(value.type);
+  const provider = coerceString(value.provider).trim() || fallbackProvider;
+  if (!provider.trim()) return null;
+
+  if (type === "api_key") {
+    const key = coerceString(value.key).trim();
+    if (!key) return null;
+    const email = coerceString(value.email).trim() || undefined;
+    return { type: "api_key", provider, key, ...(email ? { email } : {}) };
   }
 
-  return out;
-}
-
-function readAuthMetaFile(agentDir?: string): AuthMetaFile {
-  const pathname = resolveAuthMetadataPath(agentDir);
-  ensureAuthMetadataFile(pathname);
-  const raw = loadJsonFile(pathname);
-  if (!isRecord(raw)) {
-    return { version: AUTH_STORE_VERSION };
+  if (type === "token") {
+    const token = coerceString(value.token).trim();
+    if (!token) return null;
+    const expires = coerceNumber(value.expires);
+    const email = coerceString(value.email).trim() || undefined;
+    return {
+      type: "token",
+      provider,
+      token,
+      ...(expires > 0 ? { expires } : {}),
+      ...(email ? { email } : {}),
+    };
   }
-  return {
-    version:
-      typeof raw.version === "number" && Number.isFinite(raw.version) && raw.version > 0
-        ? raw.version
-        : AUTH_STORE_VERSION,
-    order: isRecord(raw.order) ? (raw.order as AuthProfileStore["order"]) : undefined,
-    lastGood: isRecord(raw.lastGood) ? (raw.lastGood as AuthProfileStore["lastGood"]) : undefined,
-    usageStats: isRecord(raw.usageStats) ? (raw.usageStats as Record<string, ProfileUsageStats>) : undefined,
-  };
-}
 
-function writeAuthMetaFile(meta: AuthMetaFile, agentDir?: string): void {
-  const pathname = resolveAuthMetadataPath(agentDir);
-  ensureAuthMetadataFile(pathname);
-  saveJsonFile(pathname, {
-    version: AUTH_STORE_VERSION,
-    order: meta.order ?? undefined,
-    lastGood: meta.lastGood ?? undefined,
-    usageStats: meta.usageStats ?? undefined,
-  } satisfies AuthMetaFile);
-}
-
-function toAuthProfileStore(auth: OpencodeAuthJson, meta: AuthMetaFile): AuthProfileStore {
-  const profiles: Record<string, AuthProfileCredential> = {};
-  for (const [providerIdRaw, info] of Object.entries(auth)) {
-    const providerId = providerIdRaw.trim();
-    if (!providerId) continue;
-    const profileId = `${providerId}:default`;
-    if (info.type === "api") {
-      profiles[profileId] = {
-        type: "api_key",
-        provider: providerId,
-        key: info.key,
-      };
-      continue;
-    }
-    if (info.type === "wellknown") {
-      profiles[profileId] = {
-        type: "token",
-        provider: providerId,
-        token: info.token,
-      };
-      continue;
-    }
-
-    const oauth: Record<string, unknown> = info;
-    const enterpriseUrl = typeof oauth.enterpriseUrl === "string" ? oauth.enterpriseUrl : undefined;
-    const projectId = typeof oauth.projectId === "string" ? oauth.projectId : undefined;
-    const email = typeof oauth.email === "string" ? oauth.email : undefined;
-    const clientId = typeof oauth.clientId === "string" ? oauth.clientId : undefined;
-
-    profiles[profileId] = {
+  if (type === "oauth") {
+    const access = coerceString(value.access).trim();
+    const refresh = coerceString(value.refresh).trim();
+    const expires = coerceNumber(value.expires);
+    if (!access || !refresh || expires <= 0) return null;
+    const accountId = coerceString(value.accountId).trim() || undefined;
+    const email = coerceString(value.email).trim() || undefined;
+    const enterpriseUrl = coerceString(value.enterpriseUrl).trim() || undefined;
+    const projectId = coerceString(value.projectId).trim() || undefined;
+    const clientId = coerceString(value.clientId).trim() || undefined;
+    return {
       type: "oauth",
-      provider: providerId,
-      access: info.access,
-      refresh: info.refresh,
-      expires: info.expires,
+      provider,
+      access,
+      refresh,
+      expires,
+      ...(accountId ? { accountId } : {}),
+      ...(email ? { email } : {}),
       ...(enterpriseUrl ? { enterpriseUrl } : {}),
       ...(projectId ? { projectId } : {}),
-      ...(info.accountId ? { accountId: info.accountId } : {}),
-      ...(email ? { email } : {}),
       ...(clientId ? { clientId } : {}),
     };
   }
 
-  return {
-    version: AUTH_STORE_VERSION,
-    profiles,
-    order: meta.order,
-    lastGood: meta.lastGood,
-    usageStats: meta.usageStats,
-  };
+  return null;
 }
 
-function toOpencodeAuthJson(store: AuthProfileStore): OpencodeAuthJson {
-  const out: OpencodeAuthJson = {};
+function coerceOrder(value: unknown): AuthProfileStore["order"] | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: Record<string, string[]> = {};
+  for (const [provider, raw] of Object.entries(value)) {
+    if (!provider.trim()) continue;
+    if (!Array.isArray(raw)) continue;
+    const items = raw.map((entry) => String(entry).trim()).filter(Boolean);
+    if (items.length === 0) continue;
+    out[provider] = items;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
-  for (const cred of Object.values(store.profiles ?? {})) {
-    const provider = String(cred?.provider ?? "").trim();
-    if (!provider) continue;
+function coerceStringMap(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    const v = coerceString(raw).trim();
+    if (!key.trim() || !v) continue;
+    out[key] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
-    if (cred.type === "api_key") {
-      const key = cred.key?.trim();
-      if (!key) continue;
-      out[provider] = { type: "api", key };
-      continue;
-    }
+function coerceUsageStats(value: unknown): AuthProfileStore["usageStats"] | undefined {
+  if (!isRecord(value)) return undefined;
+  return value as AuthProfileStore["usageStats"];
+}
 
-    if (cred.type === "token") {
-      const token = cred.token?.trim();
-      if (!token) continue;
-      // OpenCode auth.json doesn't have a dedicated "token" type. Treat tokens
-      // as API-like strings (the provider decides how to use them).
-      out[provider] = { type: "api", key: token };
-      continue;
-    }
-
-    // oauth
-    const refresh = cred.refresh?.trim();
-    const access = cred.access?.trim();
-    const expires = cred.expires;
-    if (!refresh || !access || typeof expires !== "number" || !Number.isFinite(expires) || expires <= 0) continue;
-
-    out[provider] = {
-      type: "oauth",
-      refresh,
-      access,
-      expires,
-      ...(cred.accountId ? { accountId: cred.accountId } : {}),
-      ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
-      ...(cred.projectId ? { projectId: cred.projectId } : {}),
-      ...(cred.email ? { email: cred.email } : {}),
-      ...(cred.clientId ? { clientId: cred.clientId } : {}),
+function coerceAuthProfileStore(raw: unknown): AuthProfileStore {
+  if (!isRecord(raw)) {
+    return {
+      version: AUTH_STORE_VERSION,
+      profiles: {},
+      order: undefined,
+      lastGood: undefined,
+      usageStats: undefined,
     };
   }
 
-  return out;
+  const profilesRaw = raw.profiles;
+  const profiles: Record<string, AuthProfileCredential> = {};
+  if (isRecord(profilesRaw)) {
+    for (const [profileId, credRaw] of Object.entries(profilesRaw)) {
+      const id = profileId.trim();
+      if (!id) continue;
+      const providerHint = id.includes(":") ? id.split(":")[0] : id;
+      const cred = coerceCredential(credRaw, providerHint);
+      if (!cred) continue;
+      profiles[id] = cred;
+    }
+  }
+
+  const versionRaw = raw.version;
+  const version =
+    typeof versionRaw === "number" && Number.isFinite(versionRaw) && versionRaw > 0
+      ? versionRaw
+      : AUTH_STORE_VERSION;
+
+  return {
+    version,
+    profiles,
+    order: coerceOrder(raw.order),
+    lastGood: coerceStringMap(raw.lastGood),
+    usageStats: coerceUsageStats(raw.usageStats),
+  };
+}
+
+function migrateLegacyAuthJson(agentDir?: string): AuthProfileStore | null {
+  const legacyPath = resolveLegacyAuthStorePath(agentDir);
+  if (!fs.existsSync(legacyPath)) return null;
+  const raw = loadJsonFile(legacyPath) as LegacyAuthJson | undefined;
+  if (!isRecord(raw)) return null;
+
+  const store: AuthProfileStore = {
+    version: AUTH_STORE_VERSION,
+    profiles: {},
+    order: undefined,
+    lastGood: undefined,
+    usageStats: undefined,
+  };
+
+  for (const [providerIdRaw, credRaw] of Object.entries(raw)) {
+    const providerId = providerIdRaw.trim();
+    if (!providerId) continue;
+    const cred = coerceCredential(credRaw, providerId);
+    if (!cred) continue;
+    store.profiles[`${providerId}:default`] = cred;
+  }
+
+  // If we found any usable credentials, migrate and delete legacy file.
+  if (Object.keys(store.profiles).length === 0) return null;
+
+  const authPath = resolveAuthStorePath(agentDir);
+  saveAuthProfileStore(store, agentDir);
+  try {
+    fs.unlinkSync(legacyPath);
+  } catch {
+    // ignore unlink errors; best-effort migration
+  }
+  return store;
+}
+
+function importLegacyOAuthJson(store: AuthProfileStore): boolean {
+  const oauthPath = resolveOAuthPath();
+  const raw = loadJsonFile(oauthPath) as LegacyOAuthJson | undefined;
+  if (!isRecord(raw)) return false;
+
+  let mutated = false;
+  for (const [providerIdRaw, entryRaw] of Object.entries(raw)) {
+    const providerId = providerIdRaw.trim();
+    if (!providerId || !isRecord(entryRaw)) continue;
+
+    const profileId = `${providerId}:default`;
+    if (store.profiles[profileId]) continue;
+
+    const access = coerceString(entryRaw.access).trim();
+    const refresh = coerceString(entryRaw.refresh).trim();
+    const expires = coerceNumber(entryRaw.expires);
+    if (!access || !refresh || expires <= 0) continue;
+
+    const accountId = coerceString(entryRaw.accountId).trim() || undefined;
+    const email = coerceString(entryRaw.email).trim() || undefined;
+    const enterpriseUrl = coerceString(entryRaw.enterpriseUrl).trim() || undefined;
+    const projectId = coerceString(entryRaw.projectId).trim() || undefined;
+    const clientId = coerceString(entryRaw.clientId).trim() || undefined;
+
+    store.profiles[profileId] = {
+      type: "oauth",
+      provider: providerId,
+      access,
+      refresh,
+      expires,
+      ...(accountId ? { accountId } : {}),
+      ...(email ? { email } : {}),
+      ...(enterpriseUrl ? { enterpriseUrl } : {}),
+      ...(projectId ? { projectId } : {}),
+      ...(clientId ? { clientId } : {}),
+    };
+    mutated = true;
+  }
+
+  return mutated;
+}
+
+function mergeMainProfilesIntoAgentStore(store: AuthProfileStore, agentDir?: string): boolean {
+  if (!agentDir?.trim()) return false;
+  const mainDir = resolveZeeAgentDir();
+  // Treat "main agent dir" as the one resolved from env + defaults.
+  if (resolveAuthStorePath(agentDir) === resolveAuthStorePath(mainDir)) return false;
+
+  const mainStore = ensureAuthProfileStore(undefined);
+  let mutated = false;
+  for (const [profileId, cred] of Object.entries(mainStore.profiles ?? {})) {
+    if (store.profiles[profileId]) continue;
+    store.profiles[profileId] = cred;
+    mutated = true;
+  }
+  return mutated;
 }
 
 export async function updateAuthProfileStoreWithLock(params: {
@@ -241,11 +288,7 @@ export async function updateAuthProfileStoreWithLock(params: {
 }
 
 export function loadAuthProfileStore(): AuthProfileStore {
-  const authPath = resolveAuthStorePath();
-  ensureAuthStoreFile(authPath);
-  const auth = coerceOpencodeAuthJson(loadJsonFile(authPath));
-  const meta = readAuthMetaFile(undefined);
-  return toAuthProfileStore(auth, meta);
+  return ensureAuthProfileStore(undefined);
 }
 
 export function ensureAuthProfileStore(
@@ -253,27 +296,31 @@ export function ensureAuthProfileStore(
   _options?: { allowKeychainPrompt?: boolean },
 ): AuthProfileStore {
   const authPath = resolveAuthStorePath(agentDir);
+
+  // Migration: legacy auth.json -> auth-profiles.json
+  const migrated = migrateLegacyAuthJson(agentDir);
+  if (migrated) {
+    return migrated;
+  }
+
   ensureAuthStoreFile(authPath);
-  const auth = coerceOpencodeAuthJson(loadJsonFile(authPath));
-  const meta = readAuthMetaFile(agentDir);
-  return toAuthProfileStore(auth, meta);
+  const store = coerceAuthProfileStore(loadJsonFile(authPath));
+
+  let mutated = false;
+  mutated = importLegacyOAuthJson(store) || mutated;
+  mutated = mergeMainProfilesIntoAgentStore(store, agentDir) || mutated;
+  mutated = syncExternalCliCredentials(store) || mutated;
+  mutated = syncAgentCoreCredentials(store) || mutated;
+
+  if (mutated) {
+    saveAuthProfileStore(store, agentDir);
+  }
+
+  return store;
 }
 
 export function saveAuthProfileStore(store: AuthProfileStore, agentDir?: string): void {
   const authPath = resolveAuthStorePath(agentDir);
   ensureAuthStoreFile(authPath);
-
-  const nextAuth = toOpencodeAuthJson(store);
-  saveJsonFile(authPath, nextAuth);
-
-  writeAuthMetaFile(
-    {
-      version: AUTH_STORE_VERSION,
-      order: store.order,
-      lastGood: store.lastGood,
-      usageStats: store.usageStats,
-    },
-    agentDir,
-  );
+  saveJsonFile(authPath, store);
 }
-

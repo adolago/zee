@@ -52,7 +52,7 @@ export function registerCronEditCommand(cron: Command) {
       .option("--channel <channel>", `Delivery channel (${getCronChannelOptions()})`)
       .option(
         "--to <dest>",
-        "Delivery destination (E.164 or Telegram chatId)",
+        "Delivery destination (E.164 or Matrix room id)",
       )
       .option("--best-effort-deliver", "Do not fail job if delivery fails")
       .option("--no-best-effort-deliver", "Fail job when delivery fails")

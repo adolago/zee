@@ -8,9 +8,10 @@
 - Docs: `docs/` (Mintlify). Built output lives in `dist/`.
 - Plugins/extensions: `extensions/*` (workspace packages). Keep plugin-only deps in the extension `package.json`; do not add them to the root `package.json` unless core uses them.
 - Plugins: install runs `npm install --omit=dev` in plugin dir; runtime deps must live in `dependencies`. Avoid `workspace:*` in `dependencies` (npm install breaks); put `zee` in `devDependencies` or `peerDependencies` instead (runtime resolves `zee/plugin-sdk` via jiti alias).
-- Messaging channels: focus on WhatsApp + Telegram when refactoring routing, allowlists, pairing, command gating, onboarding, or docs.
+- Messaging channels: focus on WhatsApp + Matrix when refactoring routing, allowlists, pairing, command gating, onboarding, or docs.
   - Core channel docs: `docs/channels/`
-  - Core channel code: `src/telegram`, `src/web` (WhatsApp web), `src/channels`, `src/routing`
+  - Core channel code: `src/web` (WhatsApp web), `src/channels`, `src/routing`
+  - Matrix channel plugin: `extensions/matrix`
   - Extensions (channel plugins): `extensions/*` (if present)
 
 ## Docs Linking (Mintlify)
@@ -79,5 +80,4 @@
   - If commit/push already requested, auto-stage and include formatting-only follow-ups in the same commit (or a tiny follow-up commit if needed), no extra confirmation.
   - Only ask when changes are semantic (logic/data/behavior).
 - Release guardrails: do not change version numbers without operator’s explicit consent; always ask permission before running any npm publish/release step.
-
 

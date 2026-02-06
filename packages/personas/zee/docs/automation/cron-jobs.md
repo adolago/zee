@@ -135,18 +135,10 @@ Delivery notes:
 - Use `deliver: false` to keep output internal even if a `to` is present.
 
 Target format reminders:
-- Telegram topics should use the `:topic:` form (see below).
-
-#### Telegram delivery targets (topics / forum threads)
-Telegram supports forum topics via `message_thread_id`. For cron delivery, you can encode
-the topic/thread into the `to` field:
-
-- `-1001234567890` (chat id only)
-- `-1001234567890:topic:123` (preferred: explicit topic marker)
-- `-1001234567890:123` (shorthand: numeric suffix)
-
-Prefixed targets like `telegram:...` / `telegram:group:...` are also accepted:
-- `telegram:group:-1001234567890:topic:123`
+- WhatsApp DMs: E.164 numbers (example: `+15551234567`)
+- WhatsApp groups: group JIDs (example: `123456789@g.us`)
+- Matrix DMs: user ids (example: `@user:example.org`)
+- Matrix rooms: room ids (example: `!roomid:example.org`)
 
 ## Storage & history
 - Job store: `~/.zee/cron/jobs.json` (Gateway-managed JSON).
@@ -205,17 +197,17 @@ zee cron add \
   --to "+15551234567"
 ```
 
-Recurring isolated job (deliver to a Telegram topic):
+Recurring isolated job (deliver to a Matrix room):
 ```bash
 zee cron add \
-  --name "Nightly summary (topic)" \
+  --name "Nightly summary (room)" \
   --cron "0 22 * * *" \
   --tz "America/Los_Angeles" \
   --session isolated \
-  --message "Summarize today; send to the nightly topic." \
+  --message "Summarize today; send to the nightly room." \
   --deliver \
-  --channel telegram \
-  --to "-1001234567890:topic:123"
+  --channel matrix \
+  --to "!roomid:example.org"
 ```
 
 Isolated job with model and thinking override:
@@ -278,7 +270,7 @@ For immediate system events without a job, use [`zee system event`](/cli/system)
 - Check the Gateway is running continuously (cron runs inside the Gateway process).
 - For `cron` schedules: confirm timezone (`--tz`) vs the host timezone.
 
-### Telegram delivers to the wrong place
-- For forum topics, use `-100…:topic:<id>` so it’s explicit and unambiguous.
-- If you see `telegram:...` prefixes in logs or stored “last route” targets, that’s normal;
-  cron delivery accepts them and still parses topic IDs correctly.
+### Delivery goes to the wrong place
+- Prefer explicit `--channel` + `--to` targets rather than last-route delivery.
+- If you use last-route delivery, make sure the agent recently spoke in the correct room/chat.
+- Provider-prefixed targets in logs (for example `matrix:...` or `whatsapp:...`) are normal.

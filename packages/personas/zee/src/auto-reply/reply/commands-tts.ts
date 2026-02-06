@@ -195,7 +195,7 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
           text:
             `📏 TTS limit: ${currentLimit} characters.\n\n` +
             `Text longer than this triggers summary (if enabled).\n` +
-            `Range: 100-4096 chars (Telegram max).\n\n` +
+            `Range: 100-4096 chars.\n\n` +
             `To change: /tts limit <number>\n` +
             `Example: /tts limit 2000`,
         },

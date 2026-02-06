@@ -205,7 +205,7 @@ Each event includes:
     sessionEntry?: SessionEntry,
     sessionId?: string,
     sessionFile?: string,
-    commandSource?: string,    // e.g., 'whatsapp', 'telegram'
+    commandSource?: string,    // e.g., 'whatsapp', 'matrix'
     senderId?: string,
     workspaceDir?: string,
     bootstrapFiles?: WorkspaceBootstrapFile[],
@@ -464,7 +464,7 @@ Saves session context to memory when you issue `/new`.
 
 - **Session Key**: agent:main:main
 - **Session ID**: abc123def456
-- **Source**: telegram
+- **Source**: matrix
 ```
 
 **Filename examples**:
@@ -496,7 +496,7 @@ Logs all command events to a centralized audit file.
 **Example log entries**:
 
 ```jsonl
-{"timestamp":"2026-01-16T14:30:00.000Z","action":"new","sessionKey":"agent:main:main","senderId":"+1234567890","source":"telegram"}
+{"timestamp":"2026-01-16T14:30:00.000Z","action":"new","sessionKey":"agent:main:main","senderId":"+1234567890","source":"matrix"}
 {"timestamp":"2026-01-16T15:45:22.000Z","action":"stop","sessionKey":"agent:main:main","senderId":"user@example.com","source":"whatsapp"}
 ```
 

@@ -253,7 +253,7 @@ export function getDefaultsForSurface(surface: 'stanley' | 'zee' | 'cli' | 'web'
       },
     },
     zee: {
-      // Telegram-specific defaults
+      // Messaging-surface defaults
       defaultAgent: 'build',
     },
     cli: {
@@ -320,7 +320,6 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
 
   // Surface-specific
   'AGENT_CORE_WHATSAPP_SESSION': 'surface.stanley.sessionName',
-  'TELEGRAM_BOT_TOKEN': 'surface.zee.botToken',
   'AGENT_CORE_PORT': 'surface.web.port',
   'AGENT_CORE_HOSTNAME': 'surface.web.hostname',
 

@@ -42,12 +42,11 @@ They run immediately, are stripped before the model sees the message, and the re
 
 - `commands.text` (default `true`) enables parsing `/...` in chat messages.
 - `commands.native` (default `"auto"`) registers native commands.
-  - Auto: on for Telegram; ignored for providers without native support.
-  - Set `channels.telegram.commands.native` to override per provider (bool or `"auto"`).
-  - `false` clears previously registered commands on Telegram at startup.
+  - Auto: enabled for channels that support native command registration; ignored otherwise.
+  - Override per channel with `channels.<channel>.commands.native` (bool or `"auto"`).
 - `commands.nativeSkills` (default `"auto"`) registers **skill** commands natively when supported.
-  - Auto: on for Telegram; ignored for providers without native support.
-  - Set `channels.telegram.commands.nativeSkills` to override per provider (bool or `"auto"`).
+  - Auto: enabled for channels that support native skill registration; ignored otherwise.
+  - Override per channel with `channels.<channel>.commands.nativeSkills` (bool or `"auto"`).
 - `commands.bash` (default `false`) enables `! <cmd>` to run host shell commands (`/bash <cmd>` is an alias; requires `tools.elevated` allowlists).
 - `commands.bashForegroundMs` (default `2000`) controls how long bash waits before switching to background mode (`0` backgrounds immediately).
 - `commands.config` (default `false`) enables `/config` (reads/writes `zee.json`).
@@ -72,13 +71,12 @@ Text + native (when enabled):
 - `/tts off|always|inbound|tagged|status|provider|limit|summary|audio` (control TTS; see [/tts](/tts))
 - `/stop`
 - `/restart`
-- `/dock-telegram` (alias: `/dock_telegram`) (switch replies to Telegram)
 - `/activation mention|always` (groups only)
 - `/send on|off|inherit` (owner-only)
 - `/reset` or `/new [model]` (optional model hint; remainder is passed through)
 - `/think <off|minimal|low|medium|high|xhigh>` (dynamic choices by model/provider; aliases: `/thinking`, `/t`)
 - `/verbose on|full|off` (alias: `/v`)
-- `/reasoning on|off|stream` (alias: `/reason`; when on, sends a separate message prefixed `Reasoning:`; `stream` = Telegram draft only)
+- `/reasoning on|off|stream` (alias: `/reason`; when on, sends a separate message prefixed `Reasoning:`; `stream` = draft-only where supported)
 - `/elevated on|off|ask|full` (alias: `/elev`; `full` skips exec approvals)
 - `/exec host=<sandbox|gateway|node> security=<deny|allowlist|full> ask=<off|on-miss|always> node=<id>` (send `/exec` to show current)
 - `/model <name>` (alias: `/models`; or `/<alias>` from `agents.defaults.models.*.alias`)
@@ -111,7 +109,7 @@ Notes:
   - By default, skill commands are forwarded to the model as a normal request.
   - Skills may optionally declare `command-dispatch: tool` to route the command directly to a tool (deterministic, no model).
   - Example: `/prose` (OpenProse plugin) — see [OpenProse](/prose).
-- **Native command arguments:** Telegram shows a button menu when a command supports choices and you omit the arg.
+- **Native command arguments:** Some channels show a button menu when a command supports choices and you omit the arg.
 
 ## Usage surfaces (what shows where)
 
@@ -128,15 +126,14 @@ Examples:
 ```
 /model
 /model list
-/model 3
 /model openai/gpt-5.2
 /model opus@anthropic:default
 /model status
 ```
 
 Notes:
-- `/model` and `/model list` show a compact, numbered picker (model family + available providers).
-- `/model <#>` selects from that picker (and prefers the current provider when possible).
+- `/model` and `/model list` show a compact summary and point to `/models`.
+- Numeric model selection is not supported in chat; use `/model <provider/model>`.
 - `/model status` shows the detailed view, including configured provider endpoint (`baseUrl`) and API mode (`api`) when available.
 
 ## Debug overrides
@@ -179,5 +176,5 @@ Notes:
 
 - **Text commands** run in the normal chat session (DMs share `main`, groups have their own session).
 - **Native commands** use isolated sessions:
-  - Telegram: `telegram:slash:<userId>` (targets the chat session via `CommandTargetSessionKey`)
+  - Matrix: `matrix:slash:<userId>` (targets the chat session via `CommandTargetSessionKey`)
 - **`/stop`** targets the active chat session so it can abort the current run.

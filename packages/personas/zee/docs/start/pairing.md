@@ -30,8 +30,8 @@ Pairing codes:
 ### Approve a sender
 
 ```bash
-zee pairing list telegram
-zee pairing approve telegram <CODE>
+zee pairing list matrix
+zee pairing approve matrix <CODE>
 ```
 
 
@@ -74,5 +74,5 @@ Stored under `~/.zee/devices/`:
 - Security model + prompt injection: [Security](/gateway/security)
 - Updating safely (run doctor): [Updating](/install/updating)
 - Channel configs:
-  - Telegram: [Telegram](/channels/telegram)
+  - Matrix: [Matrix](/channels/matrix)
   - WhatsApp: [WhatsApp](/channels/whatsapp)

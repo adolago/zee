@@ -114,7 +114,7 @@ function buildMessagingSection(params: {
   if (params.isMinimal) return [];
   return [
     "## Messaging",
-    "- Reply in current session → automatically routes to the source channel (WhatsApp/Telegram).",
+    "- Reply in current session → automatically routes to the source channel (WhatsApp/Matrix).",
     "- Cross-session messaging → use sessions_send(sessionKey, message)",
     "- Never use exec/curl for provider messaging; Zee handles all routing internally.",
     params.availableTools.has("message")
@@ -214,7 +214,7 @@ export function buildAgentSystemPrompt(params: {
       defaultLevel: "on" | "off" | "ask" | "full";
     };
   };
-  /** Reaction guidance for the agent (for Telegram minimal/extensive modes). */
+  /** Reaction guidance for the agent (minimal/extensive). */
   reactionGuidance?: {
     level: "minimal" | "extensive";
     channel: string;

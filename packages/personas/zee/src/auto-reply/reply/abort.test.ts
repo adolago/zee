@@ -72,11 +72,11 @@ describe("abort detection", () => {
         CommandBody: "/stop",
         RawBody: "/stop",
         CommandAuthorized: true,
-        SessionKey: "telegram:123",
-        Provider: "telegram",
-        Surface: "telegram",
-        From: "telegram:123",
-        To: "telegram:123",
+        SessionKey: "matrix:123",
+        Provider: "matrix",
+        Surface: "matrix",
+        From: "matrix:123",
+        To: "matrix:123",
       }),
       cfg,
     });
@@ -88,7 +88,7 @@ describe("abort detection", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "zee-abort-"));
     const storePath = path.join(root, "sessions.json");
     const cfg = { session: { store: storePath } } as ZeeConfig;
-    const sessionKey = "telegram:123";
+    const sessionKey = "matrix:123";
     const sessionId = "session-123";
     await fs.writeFile(
       storePath,
@@ -111,7 +111,7 @@ describe("abort detection", () => {
         agentDir: path.join(root, "agent"),
         sessionId,
         sessionKey,
-        messageProvider: "telegram",
+        messageProvider: "matrix",
         agentAccountId: "acct",
         sessionFile: path.join(root, "session.jsonl"),
         workspaceDir: path.join(root, "workspace"),
@@ -136,10 +136,10 @@ describe("abort detection", () => {
         RawBody: "/stop",
         CommandAuthorized: true,
         SessionKey: sessionKey,
-        Provider: "telegram",
-        Surface: "telegram",
-        From: "telegram:123",
-        To: "telegram:123",
+        Provider: "matrix",
+        Surface: "matrix",
+        From: "matrix:123",
+        To: "matrix:123",
       }),
       cfg,
     });
@@ -153,7 +153,7 @@ describe("abort detection", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "zee-abort-"));
     const storePath = path.join(root, "sessions.json");
     const cfg = { session: { store: storePath } } as ZeeConfig;
-    const sessionKey = "telegram:parent";
+    const sessionKey = "matrix:parent";
     const childKey = "agent:main:subagent:child-1";
     const sessionId = "session-parent";
     const childSessionId = "session-child";
@@ -180,7 +180,7 @@ describe("abort detection", () => {
         runId: "run-1",
         childSessionKey: childKey,
         requesterSessionKey: sessionKey,
-        requesterDisplayKey: "telegram:parent",
+        requesterDisplayKey: "matrix:parent",
         task: "do work",
         cleanup: "keep",
         createdAt: Date.now(),
@@ -193,10 +193,10 @@ describe("abort detection", () => {
         RawBody: "/stop",
         CommandAuthorized: true,
         SessionKey: sessionKey,
-        Provider: "telegram",
-        Surface: "telegram",
-        From: "telegram:parent",
-        To: "telegram:parent",
+        Provider: "matrix",
+        Surface: "matrix",
+        From: "matrix:parent",
+        To: "matrix:parent",
       }),
       cfg,
     });

@@ -1,17 +1,16 @@
 ---
-summary: "Streaming + chunking behavior (block replies, draft streaming, limits)"
+summary: "Streaming + chunking behavior (block replies, limits)"
 read_when:
   - Explaining how streaming or chunking works on channels
   - Changing block streaming or channel chunking behavior
-  - Debugging duplicate/early block replies or draft streaming
+  - Debugging duplicate/early block replies
 ---
 # Streaming + chunking
 
-Zee has two separate “streaming” layers:
+Zee has one external "streaming" layer:
 - **Block streaming (channels):** emit completed **blocks** as the assistant writes. These are normal channel messages (not token deltas).
-- **Token-ish streaming (Telegram only):** update a **draft bubble** with partial text while generating; final message is sent at the end.
 
-There is **no real token streaming** to external channel messages today. Telegram draft streaming is the only partial-stream surface.
+There is **no token streaming** to external channel messages today.
 
 ## Block streaming (channel messages)
 
@@ -83,39 +82,12 @@ more natural.
 ## “Stream chunks or everything”
 
 This maps to:
-- **Stream chunks:** `blockStreamingDefault: "on"` + `blockStreamingBreak: "text_end"` (emit as you go). Non-Telegram channels also need `*.blockStreaming: true`.
+- **Stream chunks:** `blockStreamingDefault: "on"` + `blockStreamingBreak: "text_end"` (emit as you go). Many channels also need `*.blockStreaming: true`.
 - **Stream everything at end:** `blockStreamingBreak: "message_end"` (flush once, possibly multiple chunks if very long).
 - **No block streaming:** `blockStreamingDefault: "off"` (only final reply).
 
-**Channel note:** For non-Telegram channels, block streaming is **off unless**
-`*.blockStreaming` is explicitly set to `true`. Telegram can stream drafts
-(`channels.telegram.streamMode`) without block replies.
+**Channel note:** For many channels, block streaming is **off unless** `*.blockStreaming`
+is explicitly set to `true`.
 
 Config location reminder: the `blockStreaming*` defaults live under
 `agents.defaults`, not the root config.
-
-## Telegram draft streaming (token-ish)
-
-Telegram is the only channel with draft streaming:
-- Uses Bot API `sendMessageDraft` in **private chats with topics**.
-- `channels.telegram.streamMode: "partial" | "block" | "off"`.
-  - `partial`: draft updates with the latest stream text.
-  - `block`: draft updates in chunked blocks (same chunker rules).
-  - `off`: no draft streaming.
-- Draft chunk config (only for `streamMode: "block"`): `channels.telegram.draftChunk` (defaults: `minChars: 200`, `maxChars: 800`).
-- Draft streaming is separate from block streaming; block replies are off by default and only enabled by `*.blockStreaming: true` on non-Telegram channels.
-- Final reply is still a normal message.
-- `/reasoning stream` writes reasoning into the draft bubble (Telegram only).
-
-When draft streaming is active, Zee disables block streaming for that reply to avoid double-streaming.
-
-```
-Telegram (private + topics)
-  └─ sendMessageDraft (draft bubble)
-       ├─ streamMode=partial → update latest text
-       └─ streamMode=block   → chunker updates draft
-  └─ final reply → normal message
-```
-Legend:
-- `sendMessageDraft`: Telegram draft bubble (not a real message).
-- `final reply`: normal Telegram message send.

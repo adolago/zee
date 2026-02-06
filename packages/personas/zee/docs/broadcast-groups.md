@@ -260,8 +260,8 @@ Result: Agent A and C respond, Agent B logs error
 ### Providers
 
 Broadcast groups currently work with:
-- ✅ WhatsApp (implemented)
-- 🚧 Telegram (planned)
+- WhatsApp
+- Matrix
 
 ### Routing
 

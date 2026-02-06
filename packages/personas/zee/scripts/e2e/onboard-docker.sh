@@ -453,13 +453,10 @@ import JSON5 from "json5";
 const cfg = JSON5.parse(fs.readFileSync(process.env.CONFIG_PATH, "utf-8"));
 const errors = [];
 
-    if (cfg?.telegram?.botToken) {
-      errors.push(`telegram.botToken should be unset (got ${cfg?.telegram?.botToken})`);
-    }
-    if (cfg?.wizard?.lastRunCommand !== "configure") {
-      errors.push(
-        `wizard.lastRunCommand mismatch (got ${cfg?.wizard?.lastRunCommand ?? "unset"})`,
-      );
+	    if (cfg?.wizard?.lastRunCommand !== "configure") {
+	      errors.push(
+	        `wizard.lastRunCommand mismatch (got ${cfg?.wizard?.lastRunCommand ?? "unset"})`,
+	      );
     }
 
 if (errors.length > 0) {

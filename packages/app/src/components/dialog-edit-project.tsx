@@ -84,7 +84,10 @@ export function DialogEditProject(props: { project: LocalProject }) {
         icon: { color: store.color, override: store.iconUrl },
         commands: { start },
       })
+      // Workspace startup script is a local concept (not persisted by the server).
+      globalSync.project.meta(props.project.worktree, { commands: { start: start || undefined } })
       globalSync.project.icon(props.project.worktree, store.iconUrl || undefined)
+      await globalSync.project.refresh()
       setStore("saving", false)
       dialog.close()
       return

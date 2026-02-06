@@ -5,14 +5,14 @@ description: Deploy Zee on Fly.io
 
 # Fly.io Deployment
 
-**Goal:** Zee Gateway running on a [Fly.io](https://fly.io) machine with persistent storage, automatic HTTPS, and WhatsApp/Telegram access.
+**Goal:** Zee Gateway running on a [Fly.io](https://fly.io) machine with persistent storage, automatic HTTPS, and WhatsApp/Matrix access.
 
 ## What you need
 
 - [flyctl CLI](https://fly.io/docs/hands-on/install-flyctl/) installed
 - Fly.io account (free tier works)
 - Model auth: Anthropic API key (or other provider keys)
-- Channel credentials: Telegram bot token and WhatsApp pairing
+- Channel credentials: Matrix access token and WhatsApp pairing
 
 ## Beginner quick path
 
@@ -100,7 +100,7 @@ fly secrets set OPENAI_API_KEY=sk-...
 fly secrets set GOOGLE_API_KEY=...
 
 # Channel tokens
-fly secrets set TELEGRAM_BOT_TOKEN=123456:ABC...
+fly secrets set MATRIX_ACCESS_TOKEN=syt_...
 ```
 
 **Notes:**
@@ -125,7 +125,7 @@ fly logs
 You should see:
 ```
 [gateway] listening on ws://0.0.0.0:3000 (PID xxx)
-[telegram] logged in as xxx
+[matrix] connected as @zee:example.com
 ```
 
 ## 5) Create config file
@@ -165,16 +165,16 @@ cat > /data/zee.json << 'EOF'
   "bindings": [
     {
       "agentId": "main",
-      "match": { "channel": "telegram" }
+      "match": { "channel": "matrix" }
     }
   ],
   "channels": {
-    "telegram": {
+    "matrix": {
       "enabled": true,
-      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
-      "groupPolicy": "allowlist",
-      "groupAllowFrom": ["123456789"],
-      "groups": { "*": { "requireMention": true } }
+      "homeserver": "https://matrix.example.com",
+      "userId": "@zee:example.com",
+      "accessToken": "{env:MATRIX_ACCESS_TOKEN}",
+      "allowFrom": ["@you:example.com"]
     }
   },
   "gateway": {
@@ -190,11 +190,11 @@ EOF
 
 **Note:** With `ZEE_STATE_DIR=/data`, the config path is `/data/zee.json`.
 
-**Note:** The Telegram bot token can come from either:
-- Environment variable: `TELEGRAM_BOT_TOKEN` (recommended for secrets)
-- Config file: `channels.telegram.botToken`
+**Note:** The Matrix access token can come from either:
+- Environment variable: `MATRIX_ACCESS_TOKEN` (recommended for secrets)
+- Config file: `channels.matrix.accessToken`
 
-If using env var, no need to add token to config. The gateway reads `TELEGRAM_BOT_TOKEN` automatically.
+If using env var, no need to add token to config. The gateway reads `MATRIX_ACCESS_TOKEN` automatically.
 
 Restart to apply:
 ```bash
@@ -449,7 +449,7 @@ The ngrok tunnel runs inside the container and provides a public webhook URL wit
 
 - Fly.io uses **x86 architecture** (not ARM)
 - The Dockerfile is compatible with both architectures
-- For WhatsApp/Telegram onboarding, use `fly ssh console`
+- For WhatsApp/Matrix onboarding, use `fly ssh console`
 - Persistent data lives on the volume at `/data`
 
 ## Cost

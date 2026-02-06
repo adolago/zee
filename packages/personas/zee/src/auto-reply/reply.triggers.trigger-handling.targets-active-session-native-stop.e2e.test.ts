@@ -18,7 +18,7 @@ const usageMocks = vi.hoisted(() => ({
     updatedAt: 0,
     providers: [],
   }),
-  formatUsageSummaryLine: vi.fn().mockReturnValue("📊 Usage: Claude 80% left"),
+  formatUsageSummaryLine: vi.fn().mockReturnValue("Usage: Claude 80% left"),
   resolveUsageProviderId: vi.fn((provider: string) => provider.split("/")[0]),
 }));
 
@@ -86,6 +86,9 @@ function makeCfg(home: string) {
       whatsapp: {
         allowFrom: ["*"],
       },
+      matrix: {
+        allowFrom: ["*"],
+      },
     },
     session: { store: join(home, "sessions.json") },
   };
@@ -99,7 +102,7 @@ describe("trigger handling", () => {
   it("targets the active session for native /stop", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const targetSessionKey = "agent:main:telegram:group:123";
+      const targetSessionKey = "agent:main:matrix:room:123";
       const targetSessionId = "session-target";
       await fs.writeFile(
         cfg.session.store,
@@ -122,7 +125,7 @@ describe("trigger handling", () => {
           agentDir: join(home, "agent"),
           sessionId: targetSessionId,
           sessionKey: targetSessionKey,
-          messageProvider: "telegram",
+          messageProvider: "matrix",
           agentAccountId: "acct",
           sessionFile: join(home, "session.jsonl"),
           workspaceDir: join(home, "workspace"),
@@ -144,12 +147,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/stop",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
-          SessionKey: "telegram:slash:111",
+          Provider: "matrix",
+          Surface: "matrix",
+          SessionKey: "matrix:slash:111",
           CommandSource: "native",
           CommandTargetSessionKey: targetSessionKey,
           CommandAuthorized: true,
@@ -169,7 +172,7 @@ describe("trigger handling", () => {
   it("applies native /model to the target session", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const slashSessionKey = "telegram:slash:111";
+      const slashSessionKey = "matrix:slash:111";
       const targetSessionKey = MAIN_SESSION_KEY;
 
       // Seed the target session to ensure the native command mutates it.
@@ -190,11 +193,11 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model openai/gpt-4.1-mini",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
+          Provider: "matrix",
+          Surface: "matrix",
           SessionKey: slashSessionKey,
           CommandSource: "native",
           CommandTargetSessionKey: targetSessionKey,
@@ -223,11 +226,11 @@ describe("trigger handling", () => {
       await getReplyFromConfig(
         {
           Body: "hi",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
+          Provider: "matrix",
+          Surface: "matrix",
         },
         {},
         cfg,
@@ -254,7 +257,7 @@ describe("trigger handling", () => {
           list: [{ id: "coding", model: "minimax/MiniMax-M2.1" }],
         },
         channels: {
-          telegram: {
+          matrix: {
             allowFrom: ["*"],
           },
         },
@@ -264,14 +267,14 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/status",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "group",
-          Provider: "telegram",
-          Surface: "telegram",
-          SessionKey: "telegram:slash:111",
+          Provider: "matrix",
+          Surface: "matrix",
+          SessionKey: "matrix:slash:111",
           CommandSource: "native",
-          CommandTargetSessionKey: "agent:coding:telegram:group:123",
+          CommandTargetSessionKey: "agent:coding:matrix:room:123",
           CommandAuthorized: true,
         },
         {},

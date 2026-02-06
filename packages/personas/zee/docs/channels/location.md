@@ -1,5 +1,5 @@
 ---
-summary: "Inbound channel location parsing (Telegram + WhatsApp) and context fields"
+summary: "Inbound channel location parsing (WhatsApp) and context fields"
 read_when:
   - Adding or modifying channel location parsing
   - Using location context fields in agent prompts or tools
@@ -12,7 +12,6 @@ Zee normalizes shared locations from chat channels into:
 - structured fields in the auto-reply context payload.
 
 Currently supported:
-- **Telegram** (location pins + venues + live locations)
 - **WhatsApp** (locationMessage + liveLocationMessage)
 
 ## Text formatting
@@ -42,5 +41,4 @@ When a location is present, these fields are added to `ctx`:
 - `LocationIsLive` (boolean)
 
 ## Channel notes
-- **Telegram**: venues map to `LocationName/LocationAddress`; live locations use `live_period`.
 - **WhatsApp**: `locationMessage.comment` and `liveLocationMessage.caption` are appended as the caption line.

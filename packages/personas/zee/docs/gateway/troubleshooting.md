@@ -151,7 +151,7 @@ Exec runs on `host=gateway` merge your login-shell `PATH` into the exec environm
 so missing tools usually mean your shell init isn’t exporting them (or set
 `tools.exec.pathPrepend`). See [/tools/exec](/tools/exec).
 
-WhatsApp + Telegram channels require **Node**; Bun is unsupported. If your
+Channel connectors require **Node**; Bun is unsupported. If your
 service was installed with Bun or a version-managed Node path, run `zee doctor`
 to migrate to a system Node install.
 
@@ -354,7 +354,7 @@ Or use the `process` tool to background long commands.
 ```bash
 # Check local status (creds, sessions, queued events)
 zee status
-# Probe the running gateway + channels (WA connect + Telegram APIs)
+# Probe the running gateway + channels (WA connect + channel APIs)
 zee status --deep
 
 # View recent connection events
@@ -502,19 +502,17 @@ Notes:
   zee gateway restart
   ```
 
-### Telegram block streaming isn’t splitting text between tool calls. Why?
+### Block streaming isn't splitting text between tool calls. Why?
 
 Block streaming only sends **completed text blocks**. Common reasons you see a single message:
 - `agents.defaults.blockStreamingDefault` is still `"off"`.
-- `channels.telegram.blockStreaming` is set to `false`.
-- `channels.telegram.streamMode` is `partial` or `block` **and draft streaming is active**
-  (private chat + topics). Draft streaming disables block streaming in that case.
+- `channels.<id>.blockStreaming` is `false` or missing for the active channel.
 - Your `minChars` / coalesce settings are too high, so chunks get merged.
 - The model emits one large text block (no mid‑reply flush points).
 
 Fix checklist:
 1) Put block streaming settings under `agents.defaults`, not the root.
-2) Set `channels.telegram.streamMode: "off"` if you want real multi‑message block replies.
+2) Enable block streaming for the channel (for example `channels.whatsapp.blockStreaming: true` or `channels.matrix.blockStreaming: true`).
 3) Use smaller chunk/coalesce thresholds while debugging.
 
 See [Streaming](/concepts/streaming).

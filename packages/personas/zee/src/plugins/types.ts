@@ -138,9 +138,9 @@ export type ZeePluginGatewayMethod = {
  * Context passed to plugin command handlers.
  */
 export type PluginCommandContext = {
-  /** The sender's identifier (e.g., Telegram user ID) */
+  /** The sender's identifier (e.g., Matrix user ID) */
   senderId?: string;
-  /** The channel/surface (e.g., "telegram", "whatsapp") */
+  /** The channel/surface (e.g., "matrix", "whatsapp") */
   channel: string;
   /** Whether the sender is on the allowlist */
   isAuthorizedSender: boolean;

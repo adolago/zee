@@ -204,7 +204,7 @@ describe("cron cli", () => {
     registerCronCli(program);
 
     await program.parseAsync(
-      ["cron", "edit", "job-1", "--deliver", "--channel", "telegram", "--to", "19098680"],
+      ["cron", "edit", "job-1", "--deliver", "--channel", "matrix", "--to", "!roomid:example.com"],
       { from: "user" },
     );
 
@@ -223,8 +223,8 @@ describe("cron cli", () => {
 
     expect(patch?.patch?.payload?.kind).toBe("agentTurn");
     expect(patch?.patch?.payload?.deliver).toBe(true);
-    expect(patch?.patch?.payload?.channel).toBe("telegram");
-    expect(patch?.patch?.payload?.to).toBe("19098680");
+    expect(patch?.patch?.payload?.channel).toBe("matrix");
+    expect(patch?.patch?.payload?.to).toBe("!roomid:example.com");
     expect(patch?.patch?.payload?.message).toBeUndefined();
   });
 
@@ -301,9 +301,9 @@ describe("cron cli", () => {
         "Updated message",
         "--deliver",
         "--channel",
-        "telegram",
+        "matrix",
         "--to",
-        "19098680",
+        "!roomid:example.com",
       ],
       { from: "user" },
     );
@@ -323,8 +323,8 @@ describe("cron cli", () => {
     // Should include everything
     expect(patch?.patch?.payload?.message).toBe("Updated message");
     expect(patch?.patch?.payload?.deliver).toBe(true);
-    expect(patch?.patch?.payload?.channel).toBe("telegram");
-    expect(patch?.patch?.payload?.to).toBe("19098680");
+    expect(patch?.patch?.payload?.channel).toBe("matrix");
+    expect(patch?.patch?.payload?.to).toBe("!roomid:example.com");
   });
 
   it("includes best-effort delivery when provided with message", async () => {

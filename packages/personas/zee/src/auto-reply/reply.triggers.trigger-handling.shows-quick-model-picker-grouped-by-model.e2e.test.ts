@@ -18,7 +18,7 @@ const usageMocks = vi.hoisted(() => ({
     updatedAt: 0,
     providers: [],
   }),
-  formatUsageSummaryLine: vi.fn().mockReturnValue("📊 Usage: Claude 80% left"),
+  formatUsageSummaryLine: vi.fn().mockReturnValue("Usage: Claude 80% left"),
   resolveUsageProviderId: vi.fn((provider: string) => provider.split("/")[0]),
 }));
 
@@ -85,6 +85,9 @@ function makeCfg(home: string) {
       whatsapp: {
         allowFrom: ["*"],
       },
+      matrix: {
+        allowFrom: ["*"],
+      },
     },
     session: { store: join(home, "sessions.json") },
   };
@@ -101,12 +104,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
-          SessionKey: "telegram:slash:111",
+          Provider: "matrix",
+          Surface: "matrix",
+          SessionKey: "matrix:slash:111",
           CommandAuthorized: true,
         },
         {},
@@ -129,12 +132,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model list",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
-          SessionKey: "telegram:slash:111",
+          Provider: "matrix",
+          Surface: "matrix",
+          SessionKey: "matrix:slash:111",
           CommandAuthorized: true,
         },
         {},
@@ -151,16 +154,16 @@ describe("trigger handling", () => {
   it("selects the exact provider/model pair for openrouter", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "telegram:slash:111";
+      const sessionKey = "matrix:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model openrouter/anthropic/claude-opus-4-5",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
+          Provider: "matrix",
+          Surface: "matrix",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },
@@ -181,16 +184,16 @@ describe("trigger handling", () => {
   it("rejects invalid /model <#> selections", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "telegram:slash:111";
+      const sessionKey = "matrix:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model 99",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
+          Provider: "matrix",
+          Surface: "matrix",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },
@@ -212,16 +215,16 @@ describe("trigger handling", () => {
   it("resets to the default model via /model <provider/model>", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "telegram:slash:111";
+      const sessionKey = "matrix:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model anthropic/claude-opus-4-5",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
+          Provider: "matrix",
+          Surface: "matrix",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },
@@ -243,16 +246,16 @@ describe("trigger handling", () => {
   it("selects a model via /model <provider/model>", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "telegram:slash:111";
+      const sessionKey = "matrix:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model openai/gpt-5.2",
-          From: "telegram:111",
-          To: "telegram:111",
+          From: "matrix:111",
+          To: "matrix:111",
           ChatType: "direct",
-          Provider: "telegram",
-          Surface: "telegram",
+          Provider: "matrix",
+          Surface: "matrix",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },

@@ -76,11 +76,11 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   },
 
   // Identity
-  identity: {
-    name: "Samantha",
-    theme: "helpful sloth",
-    emoji: "🦥"
-  },
+	  identity: {
+	    name: "Samantha",
+	    theme: "helpful sloth",
+	    emoji: "<emoji>"
+	  },
 
   // Logging
   logging: {
@@ -92,12 +92,12 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   },
 
   // Message formatting
-  messages: {
-    messagePrefix: "[zee]",
-    responsePrefix: ">",
-    ackReaction: "👀",
-    ackReactionScope: "group-mentions"
-  },
+	  messages: {
+	    messagePrefix: "[zee]",
+	    responsePrefix: ">",
+	    ackReaction: "<reaction>",
+	    ackReactionScope: "group-mentions"
+	  },
 
   // Routing + queue
   routing: {
@@ -109,13 +109,13 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
       mode: "collect",
       debounceMs: 1000,
       cap: 20,
-      drop: "summarize",
-      byChannel: {
-        whatsapp: "collect",
-        telegram: "collect"
-      }
-    }
-  },
+	      drop: "summarize",
+	      byChannel: {
+	        whatsapp: "collect",
+	        matrix: "collect"
+	      }
+	    }
+	  },
 
   // Tooling
   tools: {
@@ -152,24 +152,25 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   },
 
   // Channels
-  channels: {
-    whatsapp: {
-      dmPolicy: "pairing",
-      allowFrom: ["+15555550123"],
-      groupPolicy: "allowlist",
-      groupAllowFrom: ["+15555550123"],
-      groups: { "*": { requireMention: true } }
-    },
+	  channels: {
+	    whatsapp: {
+	      dmPolicy: "pairing",
+	      allowFrom: ["+15555550123"],
+	      groupPolicy: "allowlist",
+	      groupAllowFrom: ["+15555550123"],
+	      groups: { "*": { requireMention: true } }
+	    },
 
-    telegram: {
-      enabled: true,
-      botToken: "YOUR_TELEGRAM_BOT_TOKEN",
-      allowFrom: ["123456789"],
-      groupPolicy: "allowlist",
-      groupAllowFrom: ["123456789"],
-      groups: { "*": { requireMention: true } }
-    }
-  },
+	    matrix: {
+	      enabled: true,
+	      homeserver: "https://matrix.example.org",
+	      userId: "@zee:example.org",
+	      accessToken: "YOUR_MATRIX_ACCESS_TOKEN",
+	      allowFrom: ["@artur:example.org"],
+	      encryption: true,
+	      threadReplies: "inbound"
+	    }
+	  },
 
   // Agent runtime
   agents: {
@@ -251,14 +252,14 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
       timeoutSec: 1800,
       cleanupMs: 1800000
     },
-    elevated: {
-      enabled: true,
-      allowFrom: {
-        whatsapp: ["+15555550123"],
-        telegram: ["123456789"]
-      }
-    }
-  },
+	    elevated: {
+	      enabled: true,
+	      allowFrom: {
+	        whatsapp: ["+15555550123"],
+	        matrix: ["@artur:example.org"]
+	      }
+	    }
+	  },
 
   // Custom model providers
   models: {
@@ -376,11 +377,7 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   agent: { workspace: "~/zee" },
   channels: {
     whatsapp: { allowFrom: ["+15555550123"] },
-    telegram: {
-      enabled: true,
-      botToken: "YOUR_TOKEN",
-      allowFrom: ["123456789"]
-    }
+    matrix: { homeserver: "https://matrix.example.org", userId: "@zee:example.org" }
   }
 }
 ```
@@ -391,7 +388,7 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   session: {
     dmScope: "per-peer",
     identityLinks: {
-      "user:artur": ["whatsapp:+15555550123", "telegram:123456789"]
+      "user:artur": ["whatsapp:+15555550123", "matrix:@artur:example.org"]
     },
     reset: { mode: "manual" },
     resetTriggers: ["/new", "/reset"]

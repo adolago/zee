@@ -2,7 +2,7 @@
  * MCP Tools Layer - Type Definitions
  *
  * Core type definitions for the unified MCP tools layer that provides
- * tool access across all surfaces (CLI, Web, API, WhatsApp).
+ * tool access across all surfaces (CLI, Web, API, WhatsApp, Matrix).
  */
 
 import type { z } from 'zod';
@@ -24,7 +24,7 @@ export interface ToolMetadata {
 export interface ToolInitContext {
   /** Agent information if running within an agent context */
   agent?: AgentInfo;
-  /** Surface identifier (cli, web, api, whatsapp) */
+  /** Surface identifier (cli, web, api, whatsapp, matrix) */
   surface?: SurfaceType;
 }
 
@@ -124,7 +124,7 @@ export type ToolCategory =
 // Surface Types
 // ============================================================================
 
-export type SurfaceType = 'cli' | 'web' | 'api' | 'whatsapp' | 'telegram';
+export type SurfaceType = 'cli' | 'web' | 'api' | 'whatsapp' | 'matrix';
 
 // ============================================================================
 // Permission Types
@@ -291,7 +291,7 @@ export namespace ZeeTools {
   }
 
   export interface MessagingParams {
-    channel: 'whatsapp' | 'telegram';
+    channel: 'whatsapp' | 'matrix';
     to: string;
     message: string;
     attachments?: string[];

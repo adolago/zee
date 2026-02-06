@@ -28,10 +28,7 @@ describe("plugin-sdk exports", () => {
       "createReplyDispatcherWithTyping",
       "dispatchReplyWithBufferedBlockDispatcher",
       "resolveCommandAuthorizedFromAuthorizers",
-      "monitorTelegramProvider",
-      "sendMessageTelegram",
       "sendMessageWhatsApp",
-      "probeTelegram",
     ];
 
     for (const key of forbidden) {

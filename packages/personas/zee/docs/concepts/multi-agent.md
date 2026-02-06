@@ -200,9 +200,9 @@ multiple phone numbers without mixing sessions.
 }
 ```
 
-## Example: WhatsApp daily chat + Telegram deep work
+## Example: WhatsApp daily chat + Matrix deep work
 
-Split by channel: route WhatsApp to a fast everyday agent and Telegram to an Opus agent.
+Split by channel: route WhatsApp to a fast everyday agent and Matrix to an Opus agent.
 
 ```json5
 {
@@ -224,7 +224,7 @@ Split by channel: route WhatsApp to a fast everyday agent and Telegram to an Opu
   },
   bindings: [
     { agentId: "chat", match: { channel: "whatsapp" } },
-    { agentId: "opus", match: { channel: "telegram" } }
+    { agentId: "opus", match: { channel: "matrix" } }
   ]
 }
 ```

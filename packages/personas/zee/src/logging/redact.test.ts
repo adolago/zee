@@ -41,7 +41,7 @@ describe("redactSensitiveText", () => {
     expect(output).toBe("Authorization: Bearer abcdef…ghij");
   });
 
-  it("masks Telegram-style tokens", () => {
+  it("masks colon-separated tokens", () => {
     const input = "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef";
     const output = redactSensitiveText(input, {
       mode: "tools",

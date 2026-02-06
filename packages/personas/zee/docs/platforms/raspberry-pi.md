@@ -15,7 +15,7 @@ Run a persistent, always-on Zee Gateway on a Raspberry Pi for **~$35-80** one-ti
 Perfect for:
 - 24/7 personal AI assistant
 - Home automation hub
-- Low-power, always-available Telegram/WhatsApp bot
+- Low-power, always-available Matrix/WhatsApp gateway
 
 ## Hardware Requirements
 
@@ -134,7 +134,7 @@ zee onboard --install-daemon
 Follow the wizard:
 1. **Gateway mode:** Local
 2. **Auth:** API keys recommended (OAuth can be finicky on headless Pi)
-3. **Channels:** Telegram is easiest to start with
+3. **Channels:** Connect WhatsApp and/or Matrix
 4. **Daemon:** Yes (systemd)
 
 ## 8) Verify Installation
@@ -224,7 +224,7 @@ Most Zee features work on ARM64, but some external binaries may need ARM builds:
 |------|--------------|-------|
 | Node.js | ✅ | Works great |
 | WhatsApp (Baileys) | ✅ | Pure JS, no issues |
-| Telegram | ✅ | Pure JS, no issues |
+| Matrix | ✅ | Pure JS, no issues |
 | gog (Gmail CLI) | ⚠️ | Check for ARM release |
 | Chromium (browser) | ✅ | `sudo apt install chromium-browser` |
 

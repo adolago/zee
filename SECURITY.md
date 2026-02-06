@@ -35,7 +35,7 @@ Server resource limits (to reduce DoS blast radius):
 
 Agent-Core defaults sessions to HOLD mode (safe-by-default). Switching a session into RELEASE mode removes permission prompts and enables full tool access.
 
-For safety, `/release` is refused on messaging surfaces (WhatsApp/Telegram) unless you explicitly opt in:
+For safety, `/release` is refused on messaging surfaces (WhatsApp/Matrix) unless you explicitly opt in:
 - Set `AGENT_CORE_ALLOW_MESSAGING_RELEASE=1`
 
 When HTTP auth is enabled, switching to RELEASE mode requires `operator.admin` scope.

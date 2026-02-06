@@ -56,7 +56,6 @@ Per agent, on the Gateway host:
 
 - Store: `~/.zee/agents/<agentId>/sessions/sessions.json`
 - Transcripts: `~/.zee/agents/<agentId>/sessions/<sessionId>.jsonl`
-  - Telegram topic sessions: `.../<sessionId>-topic-<threadId>.jsonl`
 
 Zee resolves these via `src/config/sessions.ts`.
 

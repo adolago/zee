@@ -44,7 +44,7 @@ async function waitForHealth(url: string) {
 
 const appDir = process.cwd()
 const repoDir = path.resolve(appDir, "../..")
-const opencodeDir = path.join(repoDir, "packages", "opencode")
+const agentCoreDir = path.join(repoDir, "packages", "agent-core")
 
 const extraArgs = (() => {
   const args = process.argv.slice(2)
@@ -54,15 +54,15 @@ const extraArgs = (() => {
 
 const [serverPort, webPort] = await Promise.all([freePort(), freePort()])
 
-const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-e2e-"))
+const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-e2e-"))
 
 const serverEnv = {
   ...process.env,
-  AGENT_CORE_DISABLE_SHARE: process.env.AGENT_CORE_DISABLE_SHARE ?? "true",
-  AGENT_CORE_DISABLE_LSP_DOWNLOAD: "true",
-  AGENT_CORE_DISABLE_DEFAULT_PLUGINS: "true",
-  AGENT_CORE_EXPERIMENTAL_DISABLE_FILEWATCHER: "true",
+  // Keep e2e isolated, quiet, and fast.
+  AGENT_CORE_DISABLE_FILEWATCHER: "true",
+  AGENT_CORE_DISABLE_MODELS_FETCH: "true",
   AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
+  HOME: path.join(sandbox, "home"),
   XDG_DATA_HOME: path.join(sandbox, "share"),
   XDG_CACHE_HOME: path.join(sandbox, "cache"),
   XDG_CONFIG_HOME: path.join(sandbox, "config"),
@@ -70,12 +70,13 @@ const serverEnv = {
   AGENT_CORE_E2E_PROJECT_DIR: repoDir,
   AGENT_CORE_E2E_SESSION_TITLE: "E2E Session",
   AGENT_CORE_E2E_MESSAGE: "Seeded for UI e2e",
-  AGENT_CORE_E2E_MODEL: "opencode/gpt-5-nano",
+  // Only used as metadata in the seed session; does not require a live provider.
+  AGENT_CORE_E2E_MODEL: "openai/gpt-5-nano",
   AGENT_CORE_CLIENT: "app",
 } satisfies Record<string, string>
 
 const runnerEnv = {
-  ...serverEnv,
+  ...process.env,
   PLAYWRIGHT_SERVER_HOST: "127.0.0.1",
   PLAYWRIGHT_SERVER_PORT: String(serverPort),
   VITE_AGENT_CORE_SERVER_HOST: "127.0.0.1",
@@ -84,7 +85,7 @@ const runnerEnv = {
 } satisfies Record<string, string>
 
 const seed = Bun.spawn(["bun", "script/seed-e2e.ts"], {
-  cwd: opencodeDir,
+  cwd: agentCoreDir,
   env: serverEnv,
   stdout: "inherit",
   stderr: "inherit",
@@ -96,21 +97,26 @@ if (seedExit !== 0) {
 }
 
 Object.assign(process.env, serverEnv)
-process.env.AGENT = "1"
-process.env.OPENCODE = "1"
 
-const log = await import("../../opencode/src/util/log")
-const install = await import("../../opencode/src/installation")
-await log.Log.init({
-  print: true,
-  dev: install.Installation.isLocal(),
-  level: "WARN",
-})
+const server = Bun.spawn(
+  [
+    "bun",
+    "run",
+    "--conditions=browser",
+    "./src/index.ts",
+    "serve",
+    "--hostname=127.0.0.1",
+    `--port=${serverPort}`,
+  ],
+  {
+    cwd: agentCoreDir,
+    env: serverEnv,
+    stdout: "inherit",
+    stderr: "inherit",
+  },
+)
 
-const servermod = await import("../../opencode/src/server/server")
-const inst = await import("../../opencode/src/project/instance")
-const server = servermod.Server.listen({ port: serverPort, hostname: "127.0.0.1" })
-console.log(`opencode server listening on http://127.0.0.1:${serverPort}`)
+console.log(`agent-core server listening on http://127.0.0.1:${serverPort}`)
 
 const result = await (async () => {
   try {
@@ -127,8 +133,7 @@ const result = await (async () => {
   } catch (error) {
     return { error }
   } finally {
-    await inst.Instance.disposeAll()
-    await server.stop()
+    server.kill()
   }
 })()
 

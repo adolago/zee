@@ -70,16 +70,6 @@ const DEFAULT_ELEVENLABS_VOICE_SETTINGS = {
   speed: 1.0,
 };
 
-const TELEGRAM_OUTPUT = {
-  openai: "opus",
-  // ElevenLabs output formats use codec_sample_rate_bitrate naming.
-  // Opus @ 48kHz/64kbps is a good voice-note tradeoff for Telegram.
-  elevenlabs: "opus_48000_64",
-  minimax: "opus",
-  extension: ".opus",
-  voiceCompatible: true,
-} as const;
-
 const DEFAULT_OUTPUT = {
   openai: "mp3",
   elevenlabs: "mp3_44100_128",
@@ -499,7 +489,6 @@ export function setLastTtsAttempt(entry: TtsStatusEntry | undefined): void {
 }
 
 function resolveOutputFormat(channelId?: string | null) {
-  if (channelId === "telegram") return TELEGRAM_OUTPUT;
   return DEFAULT_OUTPUT;
 }
 
@@ -1768,8 +1757,7 @@ export async function maybeApplyTtsToPayload(params: {
       latencyMs: result.latencyMs,
     };
 
-    const channelId = resolveChannelId(params.channel);
-    const shouldVoice = channelId === "telegram" && result.voiceCompatible === true;
+    const shouldVoice = false;
     const finalPayload = {
       ...nextPayload,
       mediaUrl: result.audioPath,

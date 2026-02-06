@@ -1,5 +1,5 @@
 title: "Zee Docs"
-description: "A TypeScript/Node gateway for WhatsApp (web) and Telegram (bot)."
+description: "A TypeScript/Node gateway for WhatsApp (web) and Matrix."
 markdown: kramdown
 highlighter: rouge
 
@@ -32,8 +32,8 @@ nav:
     url: "/gateway/discovery/"
   - title: "Configuration"
     url: "/gateway/configuration/"
-  - title: "Telegram"
-    url: "/channels/telegram/"
+  - title: "Matrix"
+    url: "/channels/matrix/"
   - title: "Security"
     url: "/gateway/security/"
   - title: "Troubleshooting"

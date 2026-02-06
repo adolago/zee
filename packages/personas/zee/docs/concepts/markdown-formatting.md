@@ -28,7 +28,7 @@ stay consistent across channels.
    - Chunking happens on the IR text before rendering.
    - Inline formatting does not split across chunks; spans are sliced per chunk.
 3. **Render per channel**
-   - **Telegram:** HTML tags (`<b>`, `<i>`, `<s>`, `<code>`, `<pre><code>`, `<a href>`).
+   - **Matrix:** HTML tags (`<b>`, `<i>`, `<s>`, `<code>`, `<pre><code>`, `<a href>`).
 
 ## IR example
 
@@ -93,7 +93,7 @@ If you need more on chunking behavior across channels, see
 ## Link policy
 
   is disabled during parse to avoid double-linking.
-- **Telegram:** `[label](url)` -> `<a href="url">label</a>` (HTML parse mode).
+- **Matrix:** `[label](url)` -> `<a href="url">label</a>` (HTML formatted messages).
 
 ## Spoilers
 
@@ -113,6 +113,6 @@ SPOILER style ranges. Other channels treat them as plain text.
 ## Common gotchas
 
   preserved; escape raw HTML safely.
-- Telegram HTML requires escaping text outside tags to avoid broken markup.
+- Matrix HTML requires escaping text outside tags to avoid broken markup.
 - Preserve trailing newlines for fenced code blocks so closing markers land on
   their own line.

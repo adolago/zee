@@ -15,7 +15,7 @@ Snapshot used for this comparison:
 
 - **agent-core**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, semantic memory (Qdrant), orchestration, and an optional always-on messaging gateway.
 - **opencode**: an open source AI coding agent (TUI-first) with a client/server architecture and LSP support.
-- **openclaw**: a personal AI assistant with a Gateway WebSocket control plane, multi-channel messaging (WhatsApp/Telegram/Slack/Discord/etc), device nodes (macOS/iOS/Android), and a large skill catalog.
+- **openclaw**: a personal AI assistant with a Gateway WebSocket control plane, multi-channel messaging (WhatsApp/Slack/Discord/etc), device nodes (macOS/iOS/Android), and a large skill catalog.
 
 ## Relationship at a glance
 
@@ -116,7 +116,7 @@ OpenClaw does not mirror the AI SDK surface; it uses a Pi-based provider/tooling
 ### openclaw (full surface)
 
 - Gateway WebSocket control plane (clients, tools, events)
-- Broad channel coverage (WhatsApp/Telegram/Slack/Discord/Signal/iMessage/Google Chat/Teams/etc), with extensions for additional channels
+- Broad channel coverage (WhatsApp/Slack/Discord/Signal/iMessage/Google Chat/Teams/etc), with extensions for additional channels
 - Device nodes (macOS/iOS/Android) for device-local actions and permissions
 - Remote access patterns (Tailscale Serve/Funnel, SSH tunnels)
 
@@ -193,4 +193,3 @@ jq -r '.dependencies | keys[]' packages/agent-core/package.json | sort > /tmp/ag
 jq -r '.dependencies | keys[]' /tmp/agent-core-compare/opencode/packages/opencode/package.json | sort > /tmp/opencode.deps
 comm -3 /tmp/agent-core.deps /tmp/opencode.deps
 ```
-

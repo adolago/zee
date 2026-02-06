@@ -106,16 +106,14 @@ if [[ ! -f "$ENV_FILE" ]]; then
 # EXA_API_KEY=your-key-here
 
 # =============================================================================
-# Telegram Gateway (Phase 2: Remote Access)
+# Matrix Channel (Optional)
 # =============================================================================
 
-# Get your bot token from @BotFather on Telegram
-# TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+# Matrix homeserver URL
+# MATRIX_HOMESERVER_URL=https://matrix.example.com
 
-# Restrict access to specific Telegram user IDs (comma-separated)
-# Find your ID by messaging @userinfobot on Telegram
-# Leave empty to allow all users (not recommended for public bots)
-# TELEGRAM_ALLOWED_USERS=123456789,987654321
+# Matrix access token
+# MATRIX_ACCESS_TOKEN=syt_xxx...
 
 EOF
     chown "$SERVICE_USER:$SERVICE_GROUP" "$ENV_FILE"
@@ -217,7 +215,7 @@ echo "Installation complete!"
 echo ""
 echo "The daemon starts:"
 echo "  - agent-core (AI agent engine)"
-echo "  - zee gateway (WhatsApp/Telegram messaging)"
+echo "  - zee gateway (WhatsApp/Matrix messaging)"
 echo ""
 echo "Next steps:"
 echo "  1. Edit your API keys in: $ENV_FILE"

@@ -146,9 +146,9 @@ Notes:
 - If multiple installers are listed, the gateway picks a **single** preferred option (brew when available, otherwise node).
 - If all installers are `download`, Zee lists each entry so you can see the available artifacts.
 - Installer specs can include `os: ["linux"|"win32"]` to filter options by platform.
-- Node installs honor `skills.install.nodeManager` in `zee.json` (default: npm; options: npm/pnpm/yarn/bun).
+  - Node installs honor `skills.install.nodeManager` in `zee.json` (default: npm; options: npm/pnpm/yarn/bun).
   This only affects **skill installs**; the Gateway runtime should still be Node
-  (Bun is not recommended for WhatsApp/Telegram).
+  (Bun is not recommended for gateway connectors).
 - Go installs: if `go` is missing and `brew` is available, the gateway installs Go via Homebrew first and sets `GOBIN` to Homebrew’s `bin` when possible.
  - Download installs: `url` (required), `archive` (`tar.gz` | `tar.bz2` | `zip`), `extract` (default: auto when archive detected), `stripComponents`, `targetDir` (default: `~/.zee/tools/<skillKey>`).
 

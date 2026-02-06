@@ -25,7 +25,7 @@ export function createZeeTools(options?: {
   agentSessionKey?: string;
   agentChannel?: GatewayMessageChannel;
   agentAccountId?: string;
-  /** Delivery target (e.g. telegram:group:123:topic:456) for topic/thread routing. */
+  /** Delivery target (e.g. whatsapp:+15555550123 or matrix:!room:example.com) for routing. */
   agentTo?: string;
   /** Thread/topic identifier for routing replies to the originating thread. */
   agentThreadId?: string | number;

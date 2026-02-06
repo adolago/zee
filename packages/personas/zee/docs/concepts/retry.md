@@ -14,37 +14,25 @@ read_when:
 ## Defaults
 - Attempts: 3
 - Max delay cap: 30000 ms
-- Jitter: 0.1 (10 percent)
-- Provider defaults:
-  - Telegram min delay: 400 ms
+- Min delay: 300 ms
+- Jitter: 0
 
 ## Behavior
-- Retries only on rate-limit errors (HTTP 429).
-
-### Telegram
-- Retries on transient errors (429, timeout, connect/reset/closed, temporarily unavailable).
-- Uses `retry_after` when available, otherwise exponential backoff.
-- Markdown parse errors are not retried; they fall back to plain text.
+- Connector-dependent. Some outbound calls only retry on rate limits (HTTP 429) and transient
+  network errors.
 
 ## Configuration
-Set retry policy per provider in `~/.zee/zee.json`:
+When supported by a connector, set retry policy under `channels.<id>.retry` in `~/.zee/zee.json`:
 
 ```json5
 {
   channels: {
-    telegram: {
+    matrix: {
       retry: {
         attempts: 3,
-        minDelayMs: 400,
+        minDelayMs: 300,
         maxDelayMs: 30000,
-        jitter: 0.1
-      }
-    },
-      retry: {
-        attempts: 3,
-        minDelayMs: 500,
-        maxDelayMs: 30000,
-        jitter: 0.1
+        jitter: 0
       }
     }
   }

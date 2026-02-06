@@ -24,8 +24,8 @@ zee channels logs --channel all
 ## Add / remove accounts
 
 ```bash
-zee channels add --channel telegram --token <bot-token>
-zee channels remove --channel telegram --delete
+zee channels add --channel matrix
+zee channels remove --channel matrix --delete
 ```
 
 
@@ -58,7 +58,7 @@ Notes:
 Resolve channel/user names to IDs using the provider directory:
 
 ```bash
-zee channels resolve --channel telegram "Project Room"
+zee channels resolve --channel matrix "Project Room"
 ```
 
 Notes:

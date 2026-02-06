@@ -22,8 +22,8 @@ const EXAMPLES = [
     "Talk directly to the agent using the Gateway; optionally send the WhatsApp reply.",
   ],
   [
-    'zee message send --channel telegram --target @mychat --message "Hi"',
-    "Send via your Telegram bot.",
+    'zee message send --channel matrix --target "!room:example.com" --message "Hi"',
+    "Send to a Matrix room.",
   ],
 ] as const;
 

@@ -391,7 +391,7 @@ More detail: [/concepts/oauth](/concepts/oauth)
 
 Examples:
 ```bash
-zee channels add --channel telegram --account alerts --name "Alerts Bot" --token $TELEGRAM_BOT_TOKEN
+zee channels add --channel matrix --account alerts --name "Alerts" --use-env
 zee channels status --probe
 zee status --deep
 ```
@@ -620,7 +620,7 @@ Notes:
 - `gateway status` also surfaces legacy or extra gateway services when it can detect them (`--deep` adds system-level scans). Profile-named Zee services are treated as first-class and aren't flagged as "extra".
 - `gateway status` prints which config path the CLI uses vs which config the service likely uses (service env), plus the resolved probe target URL.
 - `gateway install|uninstall|start|stop|restart` support `--json` for scripting (default output stays human-friendly).
-- `gateway install` defaults to Node runtime; bun is **not recommended** (WhatsApp/Telegram bugs).
+- `gateway install` defaults to Node runtime; bun is **not recommended** for gateway connectors.
 - `gateway install` options: `--port`, `--runtime`, `--token`, `--force`, `--json`.
 
 ### `logs`

@@ -12,7 +12,7 @@ Key assumptions (these materially affect risk ranking):
 
 Context questions:
 1. Do you run `agent-core` with `--mdns` or `server.hostname=0.0.0.0` on networks you do not fully trust?
-2. Are WhatsApp/Telegram inbound messages treated as untrusted user input (for example, can unknown contacts message the bot)?
+2. Are WhatsApp/Matrix inbound messages treated as untrusted user input (for example, can unknown contacts message the bot)?
 3. Is this ever deployed on a shared host (for example, a multi-user Linux box) rather than a personal workstation?
 
 ## Executive summary
@@ -70,7 +70,7 @@ Daemon -> Memory backend (Qdrant):
 
 Daemon -> Zee gateway:
 - Channel: WebSocket to `ws://127.0.0.1:<port>` by default. Evidence: `packages/agent-core/src/server/route/gateway.ts:63-70`.
-- Data: messaging send requests (WhatsApp/Telegram) and gateway control.
+- Data: messaging send requests (WhatsApp/Matrix) and gateway control.
 - Security guarantees: Zee gateway enforces token/password and can optionally verify Tailscale identity. Evidence: `packages/personas/zee/src/gateway/auth.ts:207-259`, `packages/personas/zee/src/gateway/server/ws-connection/message-handler.ts:560-615`.
 - Risk note: `agent-core` can read a gateway token from disk via `ZEE_GATEWAY_TOKEN_FILE` (default: `~/.local/state/agent-core/zee_gateway_token`). The token file reader rejects symlinks, non-owned files, and unsafe permissions. Evidence: `packages/agent-core/src/gateway/token.ts`.
 
@@ -89,7 +89,7 @@ flowchart TD
   C --> F["LLM providers"]
   C --> G["Qdrant memory"]
   C --> H["Zee gateway"]
-  H --> I["Messaging networks (WhatsApp/Telegram)"]
+  H --> I["Messaging networks (WhatsApp/Matrix)"]
 ```
 
 ## Assets and security objectives
@@ -153,7 +153,7 @@ flowchart TD
    3. Read files under `/home`, `/etc`, and other sensitive locations without triggering `external_directory` prompts.
 
 3. Goal: silent privileged tool execution via messaging
-   1. Send an inbound WhatsApp/Telegram message that triggers an agent turn.
+   1. Send an inbound WhatsApp/Matrix message that triggers an agent turn.
    2. Session surface defaults resolve to release mode.
    3. Permission requests auto-allow in release mode, enabling tool execution without prompts.
 

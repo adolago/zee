@@ -1,7 +1,7 @@
 /**
  * Agent Core - Unified AI Agent Foundation
  *
- * Powers Stanley (GUI/GPUI), Zee (WhatsApp/Telegram), and agent-core (CLI/TUI)
+ * Powers Stanley (GUI/GPUI), Zee (WhatsApp/Matrix), and agent-core (CLI/TUI)
  * with subscription-based auth support (Claude Max, ChatGPT Plus, GitHub Copilot).
  *
  * ## Architecture Overview

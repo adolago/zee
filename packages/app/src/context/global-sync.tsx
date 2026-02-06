@@ -1018,6 +1018,25 @@ function createGlobalSync() {
     setGlobalStore("ready", true)
   }
 
+  async function refreshProjects() {
+    return retry(() =>
+      globalSDK.client.project.list().then((x) => {
+        const projects = (x.data ?? [])
+          .filter((p) => !!p?.id)
+          .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
+          .slice()
+          .sort((a, b) => a.id.localeCompare(b.id))
+        setGlobalStore("project", projects)
+      }),
+    ).catch((err) => {
+      console.error("Failed to refresh projects", err)
+      showToast({
+        title: language.t("common.requestFailed"),
+        description: err instanceof Error ? err.message : String(err),
+      })
+    })
+  }
+
   onMount(() => {
     bootstrap()
   })
@@ -1069,6 +1088,7 @@ function createGlobalSync() {
     },
     project: {
       loadSessions,
+      refresh: refreshProjects,
       meta: projectMeta,
       icon: projectIcon,
     },

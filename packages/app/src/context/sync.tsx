@@ -22,6 +22,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     const absolute = (path: string) => (current()[0].path.directory + "/" + path).replace("//", "/")
     const chunk = 400
     const inflight = new Map<string, Promise<void>>()
+    const inflightRefresh = new Map<string, Promise<void>>()
     const inflightDiff = new Map<string, Promise<void>>()
     const inflightTodo = new Map<string, Promise<void>>()
     const [meta, setMeta] = createStore({
@@ -188,6 +189,52 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             })
 
           inflight.set(key, promise)
+          return promise
+        },
+        async refresh(sessionID: string, options?: { messages?: boolean }) {
+          const directory = sdk.directory
+          const client = sdk.client
+          const [, setStore] = globalSync.child(directory)
+          const key = keyFor(directory, sessionID)
+          const pending = inflightRefresh.get(key)
+          if (pending) return pending
+
+          const limit = meta.limit[key] ?? chunk
+          const refreshMessages = options?.messages ?? true
+
+          const sessionReq = retry(() => client.session.get({ sessionID })).then((session) => {
+            const data = session.data
+            if (!data) return
+            setStore(
+              "session",
+              produce((draft) => {
+                const match = Binary.search(draft, sessionID, (s) => s.id)
+                if (match.found) {
+                  draft[match.index] = data
+                  return
+                }
+                draft.splice(match.index, 0, data)
+              }),
+            )
+          })
+
+          const messagesReq = refreshMessages
+            ? loadMessages({
+                directory,
+                client,
+                setStore,
+                sessionID,
+                limit,
+              })
+            : Promise.resolve()
+
+          const promise = Promise.all([sessionReq, messagesReq])
+            .then(() => {})
+            .finally(() => {
+              inflightRefresh.delete(key)
+            })
+
+          inflightRefresh.set(key, promise)
           return promise
         },
         async diff(sessionID: string) {

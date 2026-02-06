@@ -1,59 +1,38 @@
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
 
 import { saveJsonFile } from "../../infra/json-file.js";
 import { resolveZeeAgentDir } from "../agent-paths.js";
 import { resolveUserPath } from "../../utils.js";
-import { AUTH_STORE_VERSION } from "./constants.js";
+import {
+  AUTH_PROFILE_FILENAME,
+  AUTH_STORE_VERSION,
+  LEGACY_AUTH_FILENAME,
+} from "./constants.js";
 import type { AuthProfileStore } from "./types.js";
 
-const APP_NAME = "agent-core";
-
-function getHomeDir(env: NodeJS.ProcessEnv = process.env): string {
-  return env.AGENT_CORE_TEST_HOME || env.OPENCODE_TEST_HOME || os.homedir();
-}
-
-function resolveUserPathForAgentCore(input: string, env: NodeJS.ProcessEnv = process.env): string {
-  const trimmed = String(input ?? "").trim();
-  if (!trimmed) return trimmed;
-  if (trimmed.startsWith("~")) {
-    const expanded = trimmed.replace(/^~(?=$|[\\/])/, getHomeDir(env));
-    return path.resolve(expanded);
-  }
-  return path.resolve(trimmed);
-}
-
-function resolveStateDirOverride(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const override = (env.AGENT_CORE_STATE_DIR || env.OPENCODE_STATE_DIR)?.trim();
-  if (!override) return undefined;
-  return resolveUserPathForAgentCore(override, env);
-}
-
-function resolveOpencodeDataDir(env: NodeJS.ProcessEnv = process.env): string {
-  const stateOverride = resolveStateDirOverride(env);
-  if (stateOverride) return path.join(stateOverride, "data");
-  const xdgDataHome = env.XDG_DATA_HOME || path.join(getHomeDir(env), ".local", "share");
-  return path.join(xdgDataHome, APP_NAME);
+function resolveAgentDir(agentDir?: string): string {
+  return resolveUserPath(agentDir ?? resolveZeeAgentDir());
 }
 
 /**
- * OpenCode/agent-core credentials store (global).
+ * Zee's per-agent auth profile store (secrets + metadata).
  *
- * Zee should not keep its own auth-profiles.json secret store.
+ * Default: `~/.zee/agents/<agentId>/agent/auth-profiles.json`
  */
-export function resolveAuthStorePath(_agentDir?: string): string {
-  return path.join(resolveOpencodeDataDir(), "auth.json");
+export function resolveAuthStorePath(agentDir?: string): string {
+  const resolved = resolveAgentDir(agentDir);
+  return path.join(resolved, AUTH_PROFILE_FILENAME);
 }
 
 /**
- * Zee-side auth metadata store (per agent).
+ * Legacy per-agent auth store (pre auth-profiles.json).
  *
- * Contains only non-secret state (ordering, lastGood, cooldowns, usage stats).
+ * Default: `~/.zee/agents/<agentId>/agent/auth.json`
  */
-export function resolveAuthMetadataPath(agentDir?: string): string {
-  const resolved = resolveUserPath(agentDir ?? resolveZeeAgentDir());
-  return path.join(resolved, "auth-metadata.json");
+export function resolveLegacyAuthStorePath(agentDir?: string): string {
+  const resolved = resolveAgentDir(agentDir);
+  return path.join(resolved, LEGACY_AUTH_FILENAME);
 }
 
 export function resolveAuthStorePathForDisplay(agentDir?: string): string {
@@ -63,14 +42,9 @@ export function resolveAuthStorePathForDisplay(agentDir?: string): string {
 
 export function ensureAuthStoreFile(pathname: string) {
   if (fs.existsSync(pathname)) return;
-  // OpenCode auth.json is a plain object keyed by provider id.
-  saveJsonFile(pathname, {});
-}
-
-export function ensureAuthMetadataFile(pathname: string) {
-  if (fs.existsSync(pathname)) return;
-  const payload: Pick<AuthProfileStore, "version" | "order" | "lastGood" | "usageStats"> = {
+  const payload: AuthProfileStore = {
     version: AUTH_STORE_VERSION,
+    profiles: {},
     order: undefined,
     lastGood: undefined,
     usageStats: undefined,

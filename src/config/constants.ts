@@ -81,8 +81,8 @@ export const CONTINUITY_SUMMARY_THRESHOLD = 60_000;
 // Message Chunking
 // =============================================================================
 
-/** Maximum message chunk size for Telegram (4096 char limit) */
-export const MESSAGE_CHUNK_SIZE_TELEGRAM = 4000;
+/** Maximum message chunk size for Matrix */
+export const MESSAGE_CHUNK_SIZE_MATRIX = 4000;
 
 /** Maximum message chunk size for WhatsApp */
 export const MESSAGE_CHUNK_SIZE_WHATSAPP = 4000;

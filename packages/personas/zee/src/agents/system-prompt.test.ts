@@ -274,12 +274,12 @@ describe("buildAgentSystemPrompt", () => {
     const prompt = buildAgentSystemPrompt({
       workspaceDir: "/tmp/zee",
       runtimeInfo: {
-        channel: "telegram",
+        channel: "matrix",
         capabilities: ["inlineButtons"],
       },
     });
 
-    expect(prompt).toContain("channel=telegram");
+    expect(prompt).toContain("channel=matrix");
     expect(prompt).toContain("capabilities=inlineButtons");
   });
 
@@ -322,7 +322,7 @@ describe("buildAgentSystemPrompt", () => {
         model: "anthropic/claude",
         defaultModel: "anthropic/claude-opus-4-5",
       },
-      "telegram",
+      "matrix",
       ["inlineButtons"],
       "low",
     );
@@ -334,7 +334,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(line).toContain("node=v20");
     expect(line).toContain("model=anthropic/claude");
     expect(line).toContain("default_model=anthropic/claude-opus-4-5");
-    expect(line).toContain("channel=telegram");
+    expect(line).toContain("channel=matrix");
     expect(line).toContain("capabilities=inlineButtons");
     expect(line).toContain("thinking=low");
   });
@@ -362,11 +362,11 @@ describe("buildAgentSystemPrompt", () => {
       workspaceDir: "/tmp/zee",
       reactionGuidance: {
         level: "minimal",
-        channel: "Telegram",
+        channel: "Matrix",
       },
     });
 
     expect(prompt).toContain("## Reactions");
-    expect(prompt).toContain("Reactions are enabled for Telegram in MINIMAL mode.");
+    expect(prompt).toContain("Reactions are enabled for Matrix in MINIMAL mode.");
   });
 });

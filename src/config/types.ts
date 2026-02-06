@@ -162,7 +162,7 @@ export interface SurfaceConfigs {
   web?: WebConfig;
   api?: APIConfig;
   whatsapp?: WhatsAppConfig;
-  telegram?: TelegramConfig;
+  matrix?: MatrixConfig;
 }
 
 /** CLI/TUI configuration */
@@ -260,28 +260,25 @@ export interface WhatsAppConfig {
   };
 }
 
-/** Telegram configuration */
-export interface TelegramConfig {
-  /** Bot token */
-  botToken?: string;
+/** Matrix configuration */
+export interface MatrixConfig {
+  /** Homeserver URL */
+  homeserverUrl?: string;
+
+  /** Access token */
+  accessToken?: string;
 
   /** Direct message access policy (shared with zee) */
   dmPolicy?: DmPolicy;
 
-  /** Group message access policy (shared with zee) */
+  /** Room message access policy (shared with zee) */
   groupPolicy?: GroupPolicy;
 
-  /** Allowlist for direct chats (user IDs or usernames) */
-  allowFrom?: Array<string | number>;
+  /** Allowlist for direct chats (Matrix user IDs) */
+  allowFrom?: string[];
 
   /** Retry configuration for outbound messages */
   retry?: RetryConfig;
-
-  /** Allowed user IDs (empty = all) - legacy, prefer allowFrom */
-  allowedUsers?: string[];
-
-  /** Webhook URL (if using webhooks) */
-  webhookUrl?: string;
 }
 
 // =============================================================================

@@ -18,7 +18,7 @@ read_when:
   <a href="/start/zee">Zee assistant setup</a>
 </p>
 
-Zee bridges WhatsApp (via WhatsApp Web / Baileys), Telegram (Bot API / grammY),
+Zee bridges WhatsApp (via WhatsApp Web / Baileys), Matrix (via matrix-bot-sdk),
 agents like Pi.
 
 ## Start here
@@ -59,9 +59,9 @@ Most operations flow through the **Zee Gateway** (`zee gateway`), a single long-
 ## Features (high level)
 
 - **WhatsApp Integration** — Uses Baileys for WhatsApp Web protocol
-- **Telegram Bot** — DMs + groups via grammY
+- **Matrix** — DMs + rooms via the Matrix channel plugin
 - **Agent bridge** — Pi (RPC mode) with tool streaming
-- **Streaming + chunking** — Block streaming + Telegram draft streaming details ([/concepts/streaming](/concepts/streaming))
+- **Streaming + chunking** — Block streaming + per-channel chunking details ([/concepts/streaming](/concepts/streaming))
 - **Multi-agent routing** — Route provider accounts/peers to isolated agents (workspace + per-agent sessions)
 - **Subscription auth** — Anthropic (Claude Pro/Max) + OpenAI (ChatGPT/Codex) via OAuth
 - **Sessions** — Direct chats collapse into shared `main` (default); groups are isolated
@@ -162,7 +162,7 @@ Example:
   - [Discovery + transports](/gateway/discovery)
   - [Remote access](/gateway/remote)
 - Providers and UX:
-  - [Telegram](/channels/telegram)
+  - [Matrix](/channels/matrix)
   - [WhatsApp](/channels/whatsapp)
   - [Groups](/concepts/groups)
   - [WhatsApp group messages](/concepts/group-messages)
@@ -186,11 +186,11 @@ Example:
 ## Core Contributors
 
 - **Maxim Vovshin** (@Hyaxia, 36747317+Hyaxia@users.noreply.github.com) — Blogwatcher skill
-- **Nacho Iacovino** (@nachoiacovino, nacho.iacovino@gmail.com) — Location parsing (Telegram + WhatsApp)
+- **Nacho Iacovino** (@nachoiacovino, nacho.iacovino@gmail.com) — Location parsing (Matrix + WhatsApp)
 
 ## License
 
-MIT — Free as a lobster in the ocean 🦞
+MIT — Free as a lobster in the ocean
 
 ---
 

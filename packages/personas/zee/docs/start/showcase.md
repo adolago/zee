@@ -84,14 +84,6 @@ Full setup walkthrough (28m) by VelvetShark.
 
 <CardGroup cols={2}>
 
-<Card title="PR Review → Telegram Feedback" icon="code-pull-request" href="https://x.com/i/status/2010878524543131691">
-  **@bangnokia** • `review` `github` `telegram`
-
-  OpenCode finishes the change → opens a PR → Zee reviews the diff and replies in Telegram with “minor suggestions” plus a clear merge verdict (including critical fixes to apply first).
-
-  <img src="/assets/showcase/pr-review-telegram.jpg" alt="Zee PR review feedback delivered in Telegram" />
-</Card>
-
 <Card title="Wine Cellar Skill in Minutes" icon="wine-glass" href="https://x.com/i/status/2010916352454791216">
   **@prades_maxime** • `skills` `local` `csv`
 
@@ -114,14 +106,6 @@ Full setup walkthrough (28m) by VelvetShark.
   Hotkey a screen region → Gemini vision → instant Markdown in your clipboard.
 
   <img src="/assets/showcase/snag.png" alt="SNAG screenshot-to-markdown tool" />
-</Card>
-
-<Card title="Telegram Voice Notes (papla.media)" icon="microphone" href="https://papla.media/docs">
-  **Community** • `voice` `tts` `telegram`
-
-  Wraps papla.media TTS and sends results as Telegram voice notes (no annoying autoplay).
-
-  <img src="/assets/showcase/papla-tts.jpg" alt="Telegram voice note output from TTS" />
 </Card>
 
 <Card title="CodexMonitor" icon="eye" href="https://zeehub.com/odrobnik/codexmonitor">
@@ -207,7 +191,7 @@ Full setup walkthrough (28m) by VelvetShark.
 </Card>
 
 <Card title="Visual Morning Briefing Scene" icon="robot" href="https://x.com/buddyhadry/status/2010005331925954739">
-  **@buddyhadry** • `automation` `briefing` `images` `telegram`
+  **@buddyhadry** • `automation` `briefing` `images`
 
   A scheduled prompt generates a single "scene" image each morning (weather, tasks, date, favorite post/quote) via a Zee persona.
 </Card>
@@ -226,22 +210,10 @@ Full setup walkthrough (28m) by VelvetShark.
   Collects PDFs from email, preps documents for tax consultant. Monthly accounting on autopilot.
 </Card>
 
-<Card title="Couch Potato Dev Mode" icon="couch" href="https://davekiss.com">
-  **@davekiss** • `telegram` `website` `migration` `astro`
-
-  Rebuilt entire personal site via Telegram while watching Netflix — Notion → Astro, 18 posts migrated, DNS to Cloudflare. Never opened a laptop.
-</Card>
-
 <Card title="Job Search Agent" icon="briefcase">
   **@attol8** • `automation` `api` `skill`
 
   Searches job listings, matches against CV keywords, and returns relevant opportunities with links. Built in 30 minutes using JSearch API.
-</Card>
-
-<Card title="Todoist Skill via Telegram" icon="list-check" href="https://x.com/iamsubhrajyoti/status/2009949389884920153">
-  **@iamsubhrajyoti** • `automation` `todoist` `skill` `telegram`
-
-  Automated Todoist tasks and had Zee generate the skill directly in Telegram chat.
 </Card>
 
 <Card title="TradingView Analysis" icon="chart-line">

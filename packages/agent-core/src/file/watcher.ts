@@ -17,8 +17,6 @@ import { readdir } from "fs/promises"
 
 const SUBSCRIBE_TIMEOUT_MS = 10_000
 
-declare const AGENT_CORE_LIBC: string | undefined
-
 export namespace FileWatcher {
   const log = Log.create({ service: "file.watcher" })
 
@@ -33,8 +31,10 @@ export namespace FileWatcher {
   }
 
   const watcher = lazy(() => {
+    const libc = process.env["AGENT_CORE_LIBC"] ?? process.env["OPENCODE_LIBC"]
+    const linuxSuffix = process.platform === "linux" ? `-${libc || "glibc"}` : ""
     const binding = require(
-      `@parcel/watcher-${process.platform}-${process.arch}${process.platform === "linux" ? `-${AGENT_CORE_LIBC || "glibc"}` : ""}`,
+      `@parcel/watcher-${process.platform}-${process.arch}${linuxSuffix}`,
     )
     return createWrapper(binding) as typeof import("@parcel/watcher")
   })

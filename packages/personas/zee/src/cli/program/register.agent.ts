@@ -63,7 +63,7 @@ ${formatHelpExamples([
   ],
   ['zee agent --to +15555550123 --message "Summon reply" --deliver', "Deliver reply."],
   [
-    'zee agent --agent ops --message "Generate report" --deliver --reply-channel telegram --reply-to "@reports"',
+    'zee agent --agent ops --message "Generate report" --deliver --reply-channel matrix --reply-to "!room:example.com"',
     "Send reply to a different channel/target.",
   ],
 ])}

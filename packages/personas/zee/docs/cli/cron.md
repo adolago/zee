@@ -19,7 +19,7 @@ Tip: run `zee cron --help` for the full command surface.
 Update delivery settings without changing the message:
 
 ```bash
-zee cron edit <job-id> --deliver --channel telegram --to "123456789"
+zee cron edit <job-id> --deliver --channel matrix --to "!room:example.com"
 ```
 
 Disable delivery for an isolated job:

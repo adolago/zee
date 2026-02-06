@@ -45,7 +45,7 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
   {
     value: "channels",
     label: "Channels",
-    hint: "Link WhatsApp/Telegram/etc and defaults",
+    hint: "Link WhatsApp/Matrix/etc and defaults",
   },
   { value: "skills", label: "Skills", hint: "Install/enable workspace skills" },
   {

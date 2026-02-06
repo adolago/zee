@@ -14,13 +14,13 @@ describe("normalizeCronJobCreate", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        provider: " TeLeGrAm ",
+        provider: " MaTrIx ",
         to: "7200373102",
       },
     }) as unknown as Record<string, unknown>;
 
     const payload = normalized.payload as Record<string, unknown>;
-    expect(payload.channel).toBe("telegram");
+    expect(payload.channel).toBe("matrix");
     expect("provider" in payload).toBe(false);
   });
 
@@ -67,13 +67,13 @@ describe("normalizeCronJobCreate", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        channel: "Telegram",
+        channel: "Matrix",
         to: "7200373102",
       },
     }) as unknown as Record<string, unknown>;
 
     const payload = normalized.payload as Record<string, unknown>;
-    expect(payload.channel).toBe("telegram");
+    expect(payload.channel).toBe("matrix");
   });
 
   it("coerces ISO schedule.at to atMs (UTC)", () => {

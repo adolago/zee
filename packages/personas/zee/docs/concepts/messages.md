@@ -23,7 +23,7 @@ Inbound message
 Key knobs live in configuration:
 - `messages.*` for prefixes, queueing, and group behavior.
 - `agents.defaults.*` for block streaming and chunking defaults.
-- Channel overrides (`channels.whatsapp.*`, `channels.telegram.*`, etc.) for caps and streaming toggles.
+- Channel overrides (`channels.whatsapp.*`, `channels.matrix.*`, etc.) for caps and streaming toggles.
 
 See [Configuration](/gateway/configuration) for full schema.
 
@@ -95,7 +95,8 @@ Directive stripping only applies to the **current message** section so history
 remains intact. Channels that wrap history should set `CommandBody` (or
 `RawBody`) to the original message text and keep `Body` as the combined prompt.
 History buffers are configurable via `messages.groupChat.historyLimit` (global
-`channels.telegram.accounts.<id>.historyLimit` (set `0` to disable).
+default) and per-account overrides like `channels.whatsapp.accounts.<id>.historyLimit`
+(set `0` to disable).
 
 ## Queueing and followups
 
@@ -118,7 +119,7 @@ Key settings:
 - `agents.defaults.blockStreamingChunk` (`minChars|maxChars|breakPreference`)
 - `agents.defaults.blockStreamingCoalesce` (idle-based batching)
 - `agents.defaults.humanDelay` (human-like pause between block replies)
-- Channel overrides: `*.blockStreaming` and `*.blockStreamingCoalesce` (non-Telegram channels require explicit `*.blockStreaming: true`)
+- Channel overrides: `*.blockStreaming` and `*.blockStreamingCoalesce` (most channels require explicit `*.blockStreaming: true`)
 
 Details: [Streaming + chunking](/concepts/streaming).
 
@@ -127,7 +128,7 @@ Details: [Streaming + chunking](/concepts/streaming).
 Zee can expose or hide model reasoning:
 - `/reasoning on|off|stream` controls visibility.
 - Reasoning content still counts toward token usage when produced by the model.
-- Telegram supports reasoning stream into the draft bubble.
+- Reasoning streaming to external channel messages is not supported; reasoning is delivered as a separate message.
 
 Details: [Thinking + reasoning directives](/tools/thinking) and [Token use](/token-use).
 

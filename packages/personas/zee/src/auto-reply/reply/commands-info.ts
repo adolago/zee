@@ -2,7 +2,6 @@ import { logVerbose } from "../../globals.js";
 import { listSkillCommandsForAgents } from "../skill-commands.js";
 import {
   buildCommandsMessage,
-  buildCommandsMessagePaginated,
   buildHelpMessage,
 } from "../status.js";
 import { buildStatusReply } from "./commands-status.js";
@@ -41,71 +40,11 @@ export const handleCommandsListCommand: CommandHandler = async (params, allowTex
     });
   const surface = params.ctx.Surface;
 
-  if (surface === "telegram") {
-    const result = buildCommandsMessagePaginated(params.cfg, skillCommands, {
-      page: 1,
-      surface,
-    });
-
-    if (result.totalPages > 1) {
-      return {
-        shouldContinue: false,
-        reply: {
-          text: result.text,
-          channelData: {
-            telegram: {
-              buttons: buildCommandsPaginationKeyboard(
-                result.currentPage,
-                result.totalPages,
-                params.agentId,
-              ),
-            },
-          },
-        },
-      };
-    }
-
-    return {
-      shouldContinue: false,
-      reply: { text: result.text },
-    };
-  }
-
   return {
     shouldContinue: false,
     reply: { text: buildCommandsMessage(params.cfg, skillCommands, { surface }) },
   };
 };
-
-export function buildCommandsPaginationKeyboard(
-  currentPage: number,
-  totalPages: number,
-  agentId?: string,
-): Array<Array<{ text: string; callback_data: string }>> {
-  const buttons: Array<{ text: string; callback_data: string }> = [];
-  const suffix = agentId ? `:${agentId}` : "";
-
-  if (currentPage > 1) {
-    buttons.push({
-      text: "◀ Prev",
-      callback_data: `commands_page_${currentPage - 1}${suffix}`,
-    });
-  }
-
-  buttons.push({
-    text: `${currentPage}/${totalPages}`,
-    callback_data: `commands_page_noop${suffix}`,
-  });
-
-  if (currentPage < totalPages) {
-    buttons.push({
-      text: "Next ▶",
-      callback_data: `commands_page_${currentPage + 1}${suffix}`,
-    });
-  }
-
-  return [buttons];
-}
 
 export const handleStatusCommand: CommandHandler = async (params, allowTextCommands) => {
   if (!allowTextCommands) return null;

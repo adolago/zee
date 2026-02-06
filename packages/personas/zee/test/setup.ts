@@ -21,8 +21,8 @@ const testEnv = withIsolatedTestHome();
 afterAll(() => testEnv.cleanup());
 const pickSendFn = (id: ChannelId, deps?: OutboundSendDeps) => {
   switch (id) {
-    case "telegram":
-      return deps?.sendTelegram;
+    case "matrix":
+      return deps?.sendMatrix;
     case "whatsapp":
       return deps?.sendWhatsApp;
     default:
@@ -99,13 +99,13 @@ const createStubPlugin = (params: {
 const createDefaultRegistry = () =>
   createTestRegistry([
     {
-      pluginId: "telegram",
+      pluginId: "matrix",
       plugin: {
-        ...createStubPlugin({ id: "telegram", label: "Telegram" }),
+        ...createStubPlugin({ id: "matrix", label: "Matrix" }),
         status: {
           buildChannelSummary: async () => ({
             configured: false,
-            tokenSource: process.env.TELEGRAM_BOT_TOKEN ? "env" : "none",
+            tokenSource: process.env.MATRIX_ACCESS_TOKEN ? "env" : "none",
           }),
         },
       },

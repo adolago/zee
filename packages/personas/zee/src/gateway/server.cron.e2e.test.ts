@@ -162,7 +162,7 @@ describe("gateway server cron", () => {
       const mergeUpdateRes = await rpcReq(ws, "cron.update", {
         id: mergeJobId,
         patch: {
-          payload: { kind: "agentTurn", deliver: true, channel: "telegram", to: "19098680" },
+          payload: { kind: "agentTurn", deliver: true, channel: "matrix", to: "!roomid:example.com" },
         },
       });
       expect(mergeUpdateRes.ok).toBe(true);
@@ -182,8 +182,8 @@ describe("gateway server cron", () => {
       expect(merged?.payload?.message).toBe("hello");
       expect(merged?.payload?.model).toBe("opus");
       expect(merged?.payload?.deliver).toBe(true);
-      expect(merged?.payload?.channel).toBe("telegram");
-      expect(merged?.payload?.to).toBe("19098680");
+      expect(merged?.payload?.channel).toBe("matrix");
+      expect(merged?.payload?.to).toBe("!roomid:example.com");
 
       const rejectRes = await rpcReq(ws, "cron.add", {
         name: "patch reject",

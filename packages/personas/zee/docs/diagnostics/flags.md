@@ -13,7 +13,7 @@ Diagnostics flags let you enable targeted debug logs without turning on verbose 
 - Flags are strings (case-insensitive).
 - You can enable flags in config or via an env override.
 - Wildcards are supported:
-  - `telegram.*` matches `telegram.http`
+  - `matrix.*` matches `matrix.http`
   - `*` enables all flags
 
 ## Enable via config
@@ -21,7 +21,7 @@ Diagnostics flags let you enable targeted debug logs without turning on verbose 
 ```json
 {
   "diagnostics": {
-    "flags": ["telegram.http"]
+    "flags": ["matrix.http"]
   }
 }
 ```
@@ -31,7 +31,7 @@ Multiple flags:
 ```json
 {
   "diagnostics": {
-    "flags": ["telegram.http", "gateway.*"]
+    "flags": ["matrix.http", "gateway.*"]
   }
 }
 ```
@@ -41,7 +41,7 @@ Restart the gateway after changing flags.
 ## Env override (one-off)
 
 ```bash
-ZEE_DIAGNOSTICS=telegram.http,telegram.payload
+ZEE_DIAGNOSTICS=matrix.http,matrix.payload
 ```
 
 Disable all flags:
@@ -68,16 +68,16 @@ Pick the latest log file:
 ls -t /tmp/zee/zee-*.log | head -n 1
 ```
 
-Filter for Telegram HTTP diagnostics:
+Filter for Matrix HTTP diagnostics:
 
 ```bash
-rg "telegram http error" /tmp/zee/zee-*.log
+rg "matrix http error" /tmp/zee/zee-*.log
 ```
 
 Or tail while reproducing:
 
 ```bash
-tail -f /tmp/zee/zee-$(date +%F).log | rg "telegram http error"
+tail -f /tmp/zee/zee-$(date +%F).log | rg "matrix http error"
 ```
 
 For remote gateways, you can also use `zee logs --follow` (see [/cli/logs](/cli/logs)).

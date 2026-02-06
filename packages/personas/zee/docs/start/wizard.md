@@ -18,7 +18,7 @@ Primary entrypoint:
 zee onboard
 ```
 
-Fastest first chat: finish the wizard and connect WhatsApp or Telegram.
+Fastest first chat: finish the wizard and connect WhatsApp or Matrix.
 
 Follow‑up reconfiguration:
 
@@ -40,7 +40,7 @@ The wizard starts with **QuickStart** (defaults) vs **Advanced** (full control).
 - Gateway port **18789**
 - Gateway auth **Token** (auto‑generated, even on loopback)
 - Tailscale exposure **Off**
-- Telegram + WhatsApp DMs default to **allowlist** (you’ll be prompted for your phone number)
+- Matrix + WhatsApp DMs default to **allowlist**
 
 **Advanced** exposes every step (mode, workspace, gateway, channels, daemon, skills).
 
@@ -116,16 +116,14 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
 
 5) **Channels**
   - WhatsApp: optional QR login.
-  - Telegram: bot token.
-  - Google Chat: service account JSON + webhook audience.
-  - Mattermost (plugin): bot token + base URL.
+  - Matrix: homeserver + userId + access token.
   - DM security: default is pairing. First DM sends a code; approve via `zee pairing approve <channel> <code>` or use allowlists.
 
 6) **Daemon install**
    - Linux (and Windows via WSL2): systemd user unit
      - Wizard attempts to enable lingering via `loginctl enable-linger <user>` so the Gateway stays up after logout.
      - May prompt for sudo (writes `/var/lib/systemd/linger`); it tries without sudo first.
-   - **Runtime selection:** Node (recommended; required for WhatsApp/Telegram). Bun is **not recommended**.
+   - **Runtime selection:** Node (recommended; required for WhatsApp/Matrix). Bun is **not recommended**.
 
 7) **Health check**
    - Starts the Gateway (if needed) and runs `zee health`.

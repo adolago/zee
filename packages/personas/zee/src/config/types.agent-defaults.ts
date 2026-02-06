@@ -180,7 +180,7 @@ export type AgentDefaultsConfig = {
     session?: string;
     /** Delivery target ("last", "none", or a channel id). */
     target?: "last" | "none" | ChannelId;
-    /** Optional delivery override (E.164 for WhatsApp, chat id for Telegram). */
+    /** Optional delivery override (E.164 for WhatsApp, room ID for Matrix). */
     to?: string;
     /** Override the heartbeat prompt body (default: "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK."). */
     prompt?: string;

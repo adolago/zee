@@ -95,7 +95,7 @@ rg -l "phrase" ~/.zee/agents/<agentId>/sessions/*.jsonl
 
 - Sessions are append-only JSONL (one JSON object per line)
 - Large sessions can be several MB - use `head`/`tail` for sampling
-- The `sessions.json` index maps chat providers (whatsapp, telegram) to session IDs
+- The `sessions.json` index maps chat providers (whatsapp, matrix) to session IDs
 - Deleted sessions have `.deleted.<timestamp>` suffix
 
 ## Fast text-only hint (low noise)

@@ -33,13 +33,13 @@ describe("diagnostic-events", () => {
 
     emitDiagnosticEvent({
       type: "webhook.received",
-      channel: "telegram",
-      updateType: "telegram-post",
+      channel: "matrix",
+      updateType: "matrix-post",
     });
     emitDiagnosticEvent({
       type: "message.queued",
-      channel: "telegram",
-      source: "telegram",
+      channel: "matrix",
+      source: "matrix",
       queueDepth: 1,
     });
     emitDiagnosticEvent({

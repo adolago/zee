@@ -60,7 +60,6 @@ cd packages/agent-core && bun run typecheck
 
 - `llm-provider.ts` -- Mock LLM provider (use for any test that would otherwise call an API)
 - `whatsapp-api.ts` -- WhatsApp channel mock
-- `telegram-api.ts` -- Telegram channel mock
 - `index.ts` -- Re-exports all mocks
 
 ### Preload (`test/preload.ts`)

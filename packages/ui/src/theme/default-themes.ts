@@ -41,8 +41,8 @@ export const stanleyTheme = stanleyThemeJson as DesktopTheme
 export const johnyTheme = johnyThemeJson as DesktopTheme
 
 export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
-  "agent-core": agentCoreTheme,
   "oc-1": oc1Theme,
+  "agent-core": agentCoreTheme,
   aura: auraTheme,
   ayu: ayuTheme,
   carbonfox: carbonfoxTheme,

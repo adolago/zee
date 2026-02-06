@@ -21,7 +21,7 @@ Channel selection:
 
 Target formats (`--target`):
 - WhatsApp: E.164 or group JID
-- Telegram: chat id or `@username`
+- Matrix: `@user:server` or `!roomId:server`
 
 Name lookup:
 - On cache miss, Zee will attempt a live directory lookup when the provider supports it.
@@ -43,8 +43,6 @@ Name lookup:
 - `send`
   - Required: `--target`, plus `--message` or `--media`
   - Optional: `--media`, `--reply-to`, `--thread-id`, `--gif-playback`
-  - Telegram only: `--buttons` (requires `channels.telegram.capabilities.inlineButtons` to allow it)
-  - Telegram only: `--thread-id` (forum topic id)
   - WhatsApp only: `--gif-playback`
 
 - `poll`
@@ -148,30 +146,24 @@ Name lookup:
   --poll-multi --poll-duration-hours 48
 ```
 
-Send a Telegram message:
+Send a Matrix message:
 ```
-zee message send --channel telegram \
-  --target "@channel" --message "hi"
+zee message send --channel matrix \
+  --target "!room:example.com" --message "hi"
 ```
 
-Create a Telegram poll:
+Create a poll:
 ```
-zee message poll --channel telegram \
-  --target "@channel" \
+zee message poll --channel matrix \
+  --target "!room:example.com" \
   --poll-question "Lunch?" \
   --poll-option Pizza --poll-option Sushi
 ```
 
 ```
-  --target C123 --message-id 456 --emoji "✅"
+  --target C123 --message-id 456 --emoji ":check:"
 ```
 
 ```
-  --emoji "✅" --target-author-uuid 123e4567-e89b-12d3-a456-426614174000
-```
-
-Send Telegram inline buttons:
-```
-zee message send --channel telegram --target @mychat --message "Choose:" \
-  --buttons '[ [{"text":"Yes","callback_data":"cmd:yes"}], [{"text":"No","callback_data":"cmd:no"}] ]'
+  --emoji ":check:" --target-author-uuid 123e4567-e89b-12d3-a456-426614174000
 ```

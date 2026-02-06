@@ -60,6 +60,7 @@ export function SessionHeader() {
     timer: undefined as number | undefined,
   })
   const shareUrl = createMemo(() => currentSession()?.share?.url)
+  let disposed = false
 
   createEffect(() => {
     const url = shareUrl()
@@ -69,6 +70,7 @@ export function SessionHeader() {
   })
 
   onCleanup(() => {
+    disposed = true
     if (state.timer) window.clearTimeout(state.timer)
   })
 
@@ -78,6 +80,14 @@ export function SessionHeader() {
     setState("share", true)
     globalSDK.client.session
       .share({ sessionID: session.id, directory: projectDirectory() })
+      .then(async () => {
+        const timeout = Date.now() + 30_000
+        while (!disposed && Date.now() < timeout) {
+          await sync.session.refresh(session.id, { messages: false })
+          if (shareUrl()) return
+          await new Promise((r) => setTimeout(r, 500))
+        }
+      })
       .catch((error) => {
         console.error("Failed to share session", error)
       })
@@ -92,6 +102,14 @@ export function SessionHeader() {
     setState("unshare", true)
     globalSDK.client.session
       .unshare({ sessionID: session.id, directory: projectDirectory() })
+      .then(async () => {
+        const timeout = Date.now() + 30_000
+        while (!disposed && Date.now() < timeout) {
+          await sync.session.refresh(session.id, { messages: false })
+          if (!shareUrl()) return
+          await new Promise((r) => setTimeout(r, 500))
+        }
+      })
       .catch((error) => {
         console.error("Failed to unshare session", error)
       })

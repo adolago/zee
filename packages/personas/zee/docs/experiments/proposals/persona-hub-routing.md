@@ -1,7 +1,7 @@
 ---
 summary: "Exploration: hub persona routing and cross-channel session continuity"
 read_when:
-  - Designing a hub persona across WhatsApp and Telegram
+- Designing a hub persona across WhatsApp and Matrix
   - Planning cross-persona context visibility without shared sessions
 status: draft
 ---
@@ -15,8 +15,8 @@ not a shipping spec. For current behavior, see:
 
 ## Goals
 
-- Zee is the hub persona with WhatsApp and GUI access.
-- Johny and Stanley run as isolated personas with Telegram bots only.
+- Zee is the hub persona with WhatsApp and Matrix access.
+- Johny and Stanley run as isolated personas without external chat endpoints by default.
 - Zee can answer questions about Johny and Stanley conversations.
 - Johny and Stanley do not see each other or Zee by default.
 - Users do not need session ids to resume or start a new thread.
@@ -25,14 +25,14 @@ not a shipping spec. For current behavior, see:
 ## Roles and constraints
 
 - Zee is the only WhatsApp endpoint.
-- Johny and Stanley have Telegram endpoints.
+- Zee is the only Matrix endpoint (optional).
 - GUI sessions can be started for any persona.
 - Cross-persona access is by design intent, not by shared state.
 
 ## Proposed routing model
 
 - Run three agents: `zee`, `johny`, `stanley`.
-- Bind WhatsApp to `zee`. Bind each Telegram bot to its persona agent.
+- Bind WhatsApp and Matrix to `zee`.
 - Enable agent-to-agent messaging so Zee can call into other persona sessions.
 - Restrict session tools to Zee only via per-agent tool policy.
 
@@ -73,8 +73,7 @@ Config sketch:
   },
   bindings: [
     { agentId: "zee", match: { channel: "whatsapp", peer: { kind: "dm", id: "+15555550123" } } },
-    { agentId: "johny", match: { channel: "telegram", accountId: "johny" } },
-    { agentId: "stanley", match: { channel: "telegram", accountId: "stanley" } }
+    { agentId: "zee", match: { channel: "matrix", peer: { kind: "dm", id: "@artur:example.org" } } }
   ]
 }
 ```
@@ -92,7 +91,7 @@ Zee should interpret intents like:
 Flow:
 1. Zee calls `sessions_send` to the target persona session.
 2. Zee uses the tool reply to answer the user on WhatsApp.
-3. The target persona suppresses channel announce with `ANNOUNCE_SKIP` so Telegram stays quiet.
+3. The target persona suppresses channel announce with `ANNOUNCE_SKIP` so the hub stays quiet.
 
 This keeps WhatsApp as the single human inbox while still leveraging the other personas.
 
@@ -107,7 +106,7 @@ tools, so they remain isolated unless Zee forwards a request.
 Use existing session controls to make continuity feel automatic:
 
 - `session.dmScope` selects how direct chats group across channels.
-  - `per-channel-peer` keeps WhatsApp and Telegram separate.
+  - `per-channel-peer` keeps WhatsApp and Matrix separate.
   - `per-peer` plus `session.identityLinks` can merge the same user across channels.
 - `session.reset` defines daily, idle, or manual resets. Manual disables automatic session rolls.
 - `session.resetTriggers` can include natural phrases such as `new`, `new topic`, `start fresh`.
@@ -118,15 +117,15 @@ If you want long-lived sessions that survive day boundaries, configure DM scopin
 and reset policy so the same person keeps a stable session key across channels.
 
 ```json5
-{
-  session: {
-    dmScope: "per-peer",
-    identityLinks: {
-      "user:artur": ["whatsapp:+15555550123", "telegram:12345678"]
-    },
-    resetByType: {
-      dm: { mode: "idle", idleMinutes: 10080 } // 7 days
-    }
+  {
+    session: {
+      dmScope: "per-peer",
+      identityLinks: {
+      "user:artur": ["whatsapp:+15555550123", "matrix:@artur:example.org"]
+      },
+      resetByType: {
+        dm: { mode: "idle", idleMinutes: 10080 } // 7 days
+      }
   }
 }
 ```
@@ -140,7 +139,7 @@ Notes:
 
 Proposed UX improvement:
 - When a reset triggers, Zee sends a short header message with an auto title and date
-  so the user can see a new thread started in WhatsApp or Telegram.
+  so the user can see a new thread started in WhatsApp or Matrix.
 
 ## Prompt drafts
 
@@ -158,7 +157,7 @@ If a request is ambiguous, ask one short clarifying question.
 ```text
 You are Johny. You only see your own session history. You do not have access to Zee
 or Stanley unless Zee forwards a request. If you receive a sessions_send request,
-answer it clearly and end with ANNOUNCE_SKIP to avoid posting to Telegram.
+answer it clearly and end with ANNOUNCE_SKIP to avoid posting to chat.
 ```
 
 ### Stanley prompt
@@ -166,7 +165,7 @@ answer it clearly and end with ANNOUNCE_SKIP to avoid posting to Telegram.
 ```text
 You are Stanley. You only see your own session history. You do not have access to Zee
 or Johny unless Zee forwards a request. If you receive a sessions_send request,
-answer it clearly and end with ANNOUNCE_SKIP to avoid posting to Telegram.
+answer it clearly and end with ANNOUNCE_SKIP to avoid posting to chat.
 ```
 
 ## Implementation Plan
@@ -180,4 +179,4 @@ answer it clearly and end with ANNOUNCE_SKIP to avoid posting to Telegram.
 
 - Should Zee store cross-persona summaries in memory for faster recall?
 - Do we want a fixed list of natural reset triggers or a configurable map?
-- Should the UI show the active session label in WhatsApp and Telegram headers?
+- Should the UI show the active session label in WhatsApp and Matrix headers?

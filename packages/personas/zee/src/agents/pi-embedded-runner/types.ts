@@ -42,7 +42,7 @@ export type EmbeddedPiRunResult = {
     isError?: boolean;
   }>;
   meta: EmbeddedPiRunMeta;
-  // True if a messaging tool (telegram, whatsapp, sessions_send)
+  // True if a messaging tool (whatsapp, matrix, sessions_send)
   // successfully sent a message. Used to suppress agent's confirmation text.
   didSendViaMessagingTool?: boolean;
   // Texts successfully sent via messaging tools during the run.

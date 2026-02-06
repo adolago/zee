@@ -2,7 +2,7 @@
  * Configuration Schema Definitions
  *
  * Zod-based validation schemas for the unified configuration system.
- * Supports all surfaces: Stanley (WhatsApp), Zee (Telegram), CLI, and Web.
+ * Supports all surfaces: Stanley (WhatsApp), Zee (WhatsApp/Matrix), CLI, and Web.
  *
  * @module config/schema
  */
@@ -203,23 +203,15 @@ export const StanleySurfaceConfigSchema = z.object({
 export type StanleySurfaceConfig = z.infer<typeof StanleySurfaceConfigSchema>;
 
 /**
- * Zee (Telegram) surface-specific settings
+ * Zee (WhatsApp/Matrix) surface-specific settings
  */
 export const ZeeSurfaceConfigSchema = z.object({
-  /** Bot token (supports {env:VAR} interpolation) */
-  botToken: z.string().optional(),
   /** Default agent for this surface */
   defaultAgent: z.string().optional(),
-  /** Allowed user IDs (empty = all allowed) */
-  allowedUsers: z.array(z.number()).optional(),
-  /** Allowed chat IDs (empty = all allowed) */
-  allowedChats: z.array(z.number()).optional(),
-  /** Whether to use webhooks instead of polling */
-  useWebhooks: z.boolean().optional().default(false),
-  /** Webhook URL (required if useWebhooks is true) */
-  webhookUrl: z.string().url().optional(),
-  /** Message parse mode */
-  parseMode: z.enum(['HTML', 'Markdown', 'MarkdownV2']).optional().default('MarkdownV2'),
+  /** Default outbound channel */
+  defaultChannel: z.enum(['whatsapp', 'matrix']).optional(),
+  /** Allowlist of sender identifiers (channel-specific) */
+  allowFrom: z.array(z.string()).optional(),
 }).strict();
 export type ZeeSurfaceConfig = z.infer<typeof ZeeSurfaceConfigSchema>;
 

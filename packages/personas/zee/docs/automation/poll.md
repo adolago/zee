@@ -9,7 +9,6 @@ read_when:
 
 ## Supported channels
 - WhatsApp (web channel)
-- Telegram
 
 ## CLI
 
@@ -17,15 +16,12 @@ read_when:
 # WhatsApp
 zee message poll --target +15555550123 \
   --poll-question "Lunch today?" --poll-option "Yes" --poll-option "No" --poll-option "Maybe"
+
 zee message poll --target 123456789@g.us \
   --poll-question "Meeting time?" --poll-option "10am" --poll-option "2pm" --poll-option "4pm" --poll-multi
 
+zee message poll --target +15555550123 \
   --poll-question "Snack?" --poll-option "Pizza" --poll-option "Sushi"
-  --poll-question "Plan?" --poll-option "A" --poll-option "B" --poll-duration-hours 48
-
-# Telegram
-zee message poll --channel telegram --target "@channel" \
-  --poll-question "Lunch?" --poll-option "Pizza" --poll-option "Sushi"
 ```
 
 Options:
@@ -46,7 +42,6 @@ Params:
 
 ## Channel differences
 - WhatsApp: 2-12 options, `maxSelections` must be within option count, ignores `durationHours`.
-- Telegram: native poll API with per-message limits enforced by Telegram.
 
 ## Agent tool (Message)
 Use the `message` tool with `poll` action (`to`, `pollQuestion`, `pollOption`, optional `pollMulti`, `pollDurationHours`, `channel`).

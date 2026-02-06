@@ -9,7 +9,8 @@ const isStringArray = (value: unknown): value is string[] =>
 
 function normalizeCapabilities(capabilities: CapabilitiesConfig | undefined): string[] | undefined {
   // Handle object-format capabilities (e.g., { inlineButtons: "dm" }) gracefully.
-  // Channel-specific handlers (like resolveTelegramInlineButtonsScope) process these separately.
+  // Channel implementations can interpret object-format capabilities (like inline button scopes)
+  // in a plugin-specific way.
   if (!isStringArray(capabilities)) return undefined;
   const normalized = capabilities.map((entry) => entry.trim()).filter(Boolean);
   return normalized.length > 0 ? normalized : undefined;

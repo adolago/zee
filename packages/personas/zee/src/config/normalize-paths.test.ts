@@ -19,10 +19,10 @@ describe("normalizeConfigPaths", () => {
           transformsDir: "~/hooks-xform",
         },
         channels: {
-          telegram: {
+          whatsapp: {
             accounts: {
               personal: {
-                tokenFile: "~/.zee/telegram.token",
+                authDir: "~/.zee/whatsapp-auth",
               },
             },
           },
@@ -48,8 +48,8 @@ describe("normalizeConfigPaths", () => {
       expect(cfg.hooks?.path).toBe(path.join(home, ".zee", "hooks.json5"));
       expect(cfg.hooks?.transformsDir).toBe(path.join(home, "hooks-xform"));
       expect(cfg.tools?.exec?.pathPrepend?.[0]).toBe(path.join(home, "bin"));
-      expect(cfg.channels?.telegram?.accounts?.personal?.tokenFile).toBe(
-        path.join(home, ".zee", "telegram.token"),
+      expect(cfg.channels?.whatsapp?.accounts?.personal?.authDir).toBe(
+        path.join(home, ".zee", "whatsapp-auth"),
       );
       expect(cfg.agents?.defaults?.workspace).toBe(path.join(home, "ws-default"));
       expect(cfg.agents?.list?.[0]?.workspace).toBe(path.join(home, "ws-agent"));

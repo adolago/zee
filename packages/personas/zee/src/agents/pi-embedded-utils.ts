@@ -211,8 +211,8 @@ export function formatReasoningMessage(text: string): string {
   if (!trimmed) return "";
   // Show reasoning in italics for markdown-friendly surfaces.
   // Keep the plain "Reasoning:" prefix so existing parsing/detection keeps working.
-  // Note: Underscore markdown cannot span multiple lines on Telegram, so we wrap
-  // each non-empty line separately.
+  // Note: Underscore markdown can't reliably span multiple lines, so we wrap each
+  // non-empty line separately.
   const italicLines = trimmed
     .split("\n")
     .map((line) => (line ? `_${line}_` : line))

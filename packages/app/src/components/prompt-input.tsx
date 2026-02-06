@@ -1592,6 +1592,28 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         parts: requestParts,
         variant,
       })
+
+      // The UI primarily relies on SSE to receive incremental message updates. In test
+      // environments (or when SSE is temporarily unavailable) we still want the session
+      // view to update. Poll the API for a short period after sending a prompt.
+      if (sessionDirectory === projectDirectory) {
+        void (async () => {
+          const timeout = Date.now() + 90_000
+          let delay = 500
+          while (Date.now() < timeout) {
+            if (params.id !== session.id) return
+            await sync.session.refresh(session.id)
+            const messages = sync.data.message[session.id] ?? []
+            const hasAssistantText = messages
+              .filter((m) => m.role === "assistant")
+              .some((m) => (sync.data.part[m.id] ?? []).some((p) => p.type === "text" && !!p.text?.trim()))
+            if (hasAssistantText) return
+
+            await new Promise((r) => setTimeout(r, delay))
+            delay = Math.min(Math.round(delay * 1.5), 5000)
+          }
+        })()
+      }
     }
 
     void send().catch((err) => {

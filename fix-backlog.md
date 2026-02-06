@@ -98,7 +98,7 @@ Tests:
 Addresses: `security_best_practices_report.md` SEC-005, `agent-core-threat-model.md` TM-004
 
 Change:
-- Default messaging surfaces (WhatsApp/Telegram) to hold mode.
+- Default messaging surfaces (WhatsApp/Matrix) to hold mode.
 - Optionally, keep release mode semantics for explicitly configured sessions, but do not auto-approve high-risk permissions without an allowlist.
 
 Implementation details:

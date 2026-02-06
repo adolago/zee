@@ -17,7 +17,6 @@ const SENSITIVE_PATTERNS = [
   /^GITHUB_TOKEN$/i,
   /^GH_TOKEN$/i,
   /^NPM_TOKEN$/i,
-  /^TELEGRAM_BOT_TOKEN$/i,
   /^WHATSAPP_TOKEN$/i,
   /^TWILIO_/i,
   /^SENDGRID_/i,

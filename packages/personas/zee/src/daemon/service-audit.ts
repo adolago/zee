@@ -247,7 +247,7 @@ async function auditGatewayRuntime(
   if (isBunRuntime(execPath)) {
     issues.push({
       code: SERVICE_AUDIT_CODES.gatewayRuntimeBun,
-      message: "Gateway service uses Bun; Bun is incompatible with WhatsApp + Telegram channels.",
+      message: "Gateway service uses Bun; Bun is incompatible with WhatsApp channels.",
       detail: execPath,
       level: "recommended",
     });

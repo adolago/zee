@@ -88,7 +88,7 @@ export function registerCronAddCommand(cron: Command) {
       .option("--channel <channel>", `Delivery channel (${getCronChannelOptions()})`, "last")
       .option(
         "--to <dest>",
-        "Delivery destination (E.164 or Telegram chatId)",
+        "Delivery destination (E.164 or Matrix room id)",
       )
       .option("--best-effort-deliver", "Do not fail the job if delivery fails", false)
       .option("--post-prefix <prefix>", "Prefix for main-session post", "Cron")

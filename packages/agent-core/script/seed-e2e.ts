@@ -14,37 +14,44 @@ const seed = async () => {
   const { Identifier } = await import("../src/id/id")
   const { Project } = await import("../src/project/project")
 
-  await Instance.provide({
-    directory: dir,
-    init: InstanceBootstrap,
-    fn: async () => {
-      const session = await Session.create({ title })
-      const messageID = Identifier.descending("message")
-      const partID = Identifier.descending("part")
-      const message = {
-        id: messageID,
-        sessionID: session.id,
-        role: "user" as const,
-        time: { created: now },
-        agent: "build",
-        model: {
-          providerID,
-          modelID,
-        },
-      }
-      const part = {
-        id: partID,
-        sessionID: session.id,
-        messageID,
-        type: "text" as const,
-        text,
-        time: { start: now },
-      }
-      await Session.updateMessage(message)
-      await Session.updatePart(part)
-      await Project.update({ projectID: Instance.project.id, name: "E2E Project" })
-    },
-  })
+  try {
+    await Instance.provide({
+      directory: dir,
+      init: InstanceBootstrap,
+      fn: async () => {
+        const session = await Session.create({ title })
+        const messageID = Identifier.descending("message")
+        const partID = Identifier.descending("part")
+        const message = {
+          id: messageID,
+          sessionID: session.id,
+          role: "user" as const,
+          time: { created: now },
+          agent: "build",
+          model: {
+            providerID,
+            modelID,
+          },
+        }
+        const part = {
+          id: partID,
+          sessionID: session.id,
+          messageID,
+          type: "text" as const,
+          text,
+          time: { start: now },
+        }
+        await Session.updateMessage(message)
+        await Session.updatePart(part)
+        await Project.update({ projectID: Instance.project.id, name: "E2E Project" })
+      },
+    })
+  } finally {
+    // Prevent long-lived services (watchers, timers) from keeping the seed process alive.
+    await Instance.disposeAll().catch(() => undefined)
+  }
 }
 
 await seed()
+// Seed scripts should be short-lived; force exit in case any library leaves handles open.
+process.exit(0)

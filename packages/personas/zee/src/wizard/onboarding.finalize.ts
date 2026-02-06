@@ -357,6 +357,6 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
   await prompter.outro(
     ranTui
       ? "Onboarding complete. TUI started."
-      : `Onboarding complete. Start the TUI with ${formatCliCommand("zee tui")} or chat via WhatsApp/Telegram.`,
+      : `Onboarding complete. Start the TUI with ${formatCliCommand("zee tui")} or chat via WhatsApp/Matrix.`,
   );
 }

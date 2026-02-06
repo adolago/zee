@@ -233,7 +233,7 @@ running, SSH tunnel).
 
 ### 17) Gateway runtime best practices
 Doctor warns when the gateway service runs on Bun or a version-managed Node path
-(`nvm`, `fnm`, `volta`, `asdf`, etc.). WhatsApp + Telegram channels require Node,
+(`nvm`, `fnm`, `volta`, `asdf`, etc.). Channel connectors require Node,
 and version-manager paths can break after upgrades because the service does not
 load your shell init. Doctor offers to migrate to a system Node install when
 available (Homebrew/apt/choco).

@@ -259,6 +259,10 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       const base = {
         ...(metadata ?? {}),
         ...project,
+        commands: {
+          ...(metadata?.commands ?? {}),
+          ...(local?.commands ?? {}),
+        },
         icon: {
           url: metadata?.icon?.url,
           override: metadata?.icon?.override ?? childStore.icon,

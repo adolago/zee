@@ -37,7 +37,7 @@ export type FollowupRun = {
   originatingTo?: string;
   /** Provider account id (multi-account). */
   originatingAccountId?: string;
-  /** Thread id for reply routing (Telegram topic id). */
+  /** Thread id for reply routing (provider-specific). */
   originatingThreadId?: string | number;
   /** Chat type for context-aware threading (e.g., DM vs channel). */
   originatingChatType?: string;

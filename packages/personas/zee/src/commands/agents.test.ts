@@ -36,7 +36,7 @@ describe("agents helpers", () => {
           agentId: "work",
           match: { channel: "whatsapp", accountId: "biz" },
         },
-        { agentId: "main", match: { channel: "telegram" } },
+        { agentId: "main", match: { channel: "matrix" } },
       ],
     };
 
@@ -100,7 +100,7 @@ describe("agents helpers", () => {
       },
       {
         agentId: "work",
-        match: { channel: "telegram" },
+        match: { channel: "matrix" },
       },
     ]);
 
@@ -120,7 +120,7 @@ describe("agents helpers", () => {
       },
       bindings: [
         { agentId: "work", match: { channel: "whatsapp" } },
-        { agentId: "home", match: { channel: "telegram" } },
+        { agentId: "home", match: { channel: "matrix" } },
       ],
       tools: {
         agentToAgent: { enabled: true, allow: ["work", "home"] },

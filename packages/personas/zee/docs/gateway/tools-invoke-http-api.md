@@ -54,7 +54,7 @@ Tool availability is filtered through the same policy chain used by Gateway agen
 If a tool is not allowed by policy, the endpoint returns **404**.
 
 To help group policies resolve context, you can optionally set:
-- `x-zee-message-channel: <channel>` (example: `whatsapp`, `telegram`)
+- `x-zee-message-channel: <channel>` (example: `whatsapp`, `matrix`)
 - `x-zee-account-id: <accountId>` (when multiple accounts exist)
 
 ## Responses

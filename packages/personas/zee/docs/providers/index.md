@@ -9,7 +9,7 @@ read_when:
 Zee can use many LLM providers. Pick a provider, authenticate, then set the
 default model as `provider/model`.
 
-Looking for chat channel docs (WhatsApp/Telegram)? See [Channels](/channels).
+Looking for chat channel docs (WhatsApp/Matrix)? See [Channels](/channels).
 
 ## Highlight: Venius (Venice AI)
 

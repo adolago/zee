@@ -165,7 +165,7 @@ Config:
       mode: "session", // "session" | "targets" | "both"
       agentFilter: ["main"],
       targets: [
-        { channel: "telegram", to: "123456789" }
+        { channel: "matrix", to: "!room:example.com" }
       ]
     }
   }

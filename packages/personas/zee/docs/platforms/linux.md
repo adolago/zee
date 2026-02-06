@@ -7,7 +7,7 @@ read_when:
 # Linux
 
 The Gateway is fully supported on Linux. **Node is the recommended runtime**.
-Bun is not recommended for the Gateway (WhatsApp/Telegram bugs).
+Bun is not recommended for the Gateway runtime (channel connector bugs).
 
 No native Linux app is shipped in this repo. Use the Gateway and CLI/TUI.
 

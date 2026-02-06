@@ -210,17 +210,4 @@ describe("control command parsing", () => {
     expect(hasInlineCommandTokens("http://example.com/path")).toBe(false);
     expect(hasInlineCommandTokens("stop")).toBe(false);
   });
-
-  it("ignores telegram commands addressed to other bots", () => {
-    expect(
-      hasControlCommand("/help@otherbot", undefined, {
-        botUsername: "zee",
-      }),
-    ).toBe(false);
-    expect(
-      hasControlCommand("/help@zee", undefined, {
-        botUsername: "zee",
-      }),
-    ).toBe(true);
-  });
 });

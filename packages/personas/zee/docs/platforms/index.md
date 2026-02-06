@@ -7,7 +7,7 @@ read_when:
 # Platforms
 
 Zee core is written in TypeScript. **Node is the recommended runtime**.
-Bun is not recommended for the Gateway (WhatsApp/Telegram bugs).
+Bun is not recommended for the Gateway runtime (channel connector bugs).
 
 supported today, and the CLI/TUI provides the terminal interface across
 platforms.

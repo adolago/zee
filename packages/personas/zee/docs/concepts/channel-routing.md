@@ -28,11 +28,7 @@ Groups and channels remain isolated per channel:
 
 Threads:
 
-- Telegram forum topics embed `:topic:<topicId>` in the group key.
-
-Examples:
-
-- `agent:main:telegram:group:-1001234567890:topic:42`
+- Some channels append `:thread:<threadId>` to isolate per-thread context.
 
 ## Routing rules (how an agent is chosen)
 
@@ -78,7 +74,7 @@ Example:
     ]
   },
   bindings: [
-    { match: { channel: "telegram", peer: { kind: "group", id: "-100123" } }, agentId: "support" }
+    { match: { channel: "matrix", peer: { kind: "group", id: "<group-id>" } }, agentId: "support" }
   ]
 }
 ```

@@ -42,7 +42,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Is a local model OK for casual chats?](#is-a-local-model-ok-for-casual-chats)
   - [How do I keep hosted model traffic in a specific region?](#how-do-i-keep-hosted-model-traffic-in-a-specific-region)
   - [Can I use Bun?](#can-i-use-bun)
-  - [Telegram: what goes in `allowFrom`?](#telegram-what-goes-in-allowfrom)
+  - [Matrix: what goes in `allowFrom`?](#matrix-what-goes-in-allowfrom)
   - [Can multiple people use one WhatsApp number with different Zees?](#can-multiple-people-use-one-whatsapp-number-with-different-zees)
   - [Can I run a "fast chat" agent and an "Opus for coding" agent?](#can-i-run-a-fast-chat-agent-and-an-opus-for-coding-agent)
   - [Does Homebrew work on Linux?](#does-homebrew-work-on-linux)
@@ -94,7 +94,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Can the Zee browser run headless?](#can-the-zee-browser-run-headless)
   - [How do I use Brave for browser control?](#how-do-i-use-brave-for-browser-control)
 - [Remote gateways + nodes](#remote-gateways-nodes)
-  - [How do commands propagate between Telegram, the gateway, and nodes?](#how-do-commands-propagate-between-telegram-the-gateway-and-nodes)
+  - [How do commands propagate between chat channels, the gateway, and nodes?](#how-do-commands-propagate-between-chat-channels-the-gateway-and-nodes)
   - [How can my agent access my computer if the Gateway is hosted remotely?](#how-can-my-agent-access-my-computer-if-the-gateway-is-hosted-remotely)
   - [Tailscale is connected but I get no replies. What now?](#tailscale-is-connected-but-i-get-no-replies-what-now)
   - [Can two Zees talk to each other (local + VPS)?](#can-two-zees-talk-to-each-other-local-vps)
@@ -164,7 +164,6 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [I closed my terminal on Windows - how do I restart Zee?](#i-closed-my-terminal-on-windows-how-do-i-restart-zee)
   - [The Gateway is up but replies never arrive. What should I check?](#the-gateway-is-up-but-replies-never-arrive-what-should-i-check)
   - ["Disconnected from gateway: no reason" - what now?](#disconnected-from-gateway-no-reason-what-now)
-  - [Telegram setMyCommands fails with network errors. What should I check?](#telegram-setmycommands-fails-with-network-errors-what-should-i-check)
   - [TUI shows no output. What should I check?](#tui-shows-no-output-what-should-i-check)
   - [How do I completely stop then start the Gateway?](#how-do-i-completely-stop-then-start-the-gateway)
   - [ELI5: `zee gateway restart` vs `zee gateway`](#eli5-zee-gateway-restart-vs-zee-gateway)
@@ -177,7 +176,7 @@ Quick answers plus deeper troubleshooting for real-world setups (local dev, VPS,
   - [Should my bot have its own email GitHub account or phone number](#should-my-bot-have-its-own-email-github-account-or-phone-number)
   - [Can I give it autonomy over my text messages and is that safe](#can-i-give-it-autonomy-over-my-text-messages-and-is-that-safe)
   - [Can I use cheaper models for personal assistant tasks?](#can-i-use-cheaper-models-for-personal-assistant-tasks)
-  - [I ran `/start` in Telegram but didn’t get a pairing code](#i-ran-start-in-telegram-but-didnt-get-a-pairing-code)
+  - [I didn't get a pairing code. What should I check?](#i-didnt-get-a-pairing-code-what-should-i-check)
   - [WhatsApp: will it message my contacts? How does pairing work?](#whatsapp-will-it-message-my-contacts-how-does-pairing-work)
 - [Chat commands, aborting tasks, and “it won’t stop”](#chat-commands-aborting-tasks-and-it-wont-stop)
   - [How do I stop internal system messages from showing in chat](#how-do-i-stop-internal-system-messages-from-showing-in-chat)
@@ -672,26 +671,22 @@ Pick region-pinned endpoints. OpenRouter exposes US-hosted options for MiniMax, 
 
 ### Can I use Bun
 
-Bun is **not recommended**. We see runtime bugs, especially with WhatsApp and Telegram.
+Bun is **not recommended** for the Gateway runtime.
 Use **Node** for stable gateways.
 
 If you still want to experiment with Bun, do it on a non‑production gateway
-without WhatsApp/Telegram.
+without channel connectors enabled.
 
-### Telegram what goes in allowFrom
+### Matrix what goes in allowFrom
 
-`channels.telegram.allowFrom` is **the human sender’s Telegram user ID** (numeric, recommended) or `@username`. It is not the bot username.
+`channels.matrix.allowFrom` is a list of Matrix user IDs (example: `@alice:example.org`). It is used
+for DM access control (together with `channels.matrix.dmPolicy`).
 
-Safer (no third-party bot):
-- DM your bot, then run `zee logs --follow` and read `from.id`.
+To find your Matrix user ID:
+- Check your Matrix client profile (it starts with `@` and includes your server).
+- Or run `zee logs --follow` and read the sender identity in the inbound payload.
 
-Official Bot API:
-- DM your bot, then call `https://api.telegram.org/bot<bot_token>/getUpdates` and read `message.from.id`.
-
-Third-party (less private):
-- DM `@userinfobot` or `@getidsbot`.
-
-See [/channels/telegram](/channels/telegram#access-control-dms--groups).
+See [/channels/matrix](/channels/matrix).
 
 ### Can multiple people use one WhatsApp number with different Zees
 
@@ -867,7 +862,7 @@ want durable memory, cross-device access, and tool orchestration.
 
 Advantages:
 - **Persistent memory + workspace** across sessions
-- **Multi-platform access** (WhatsApp, Telegram, TUI, CLI/TUI)
+- **Multi-platform access** (WhatsApp, Matrix, TUI, CLI/TUI)
 - **Tool orchestration** (browser, files, scheduling, hooks)
 - **Always-on Gateway** (run on a VPS, interact from anywhere)
 - **Nodes** for local browser/screen/camera/exec
@@ -1255,12 +1250,12 @@ See the full config examples in [Browser](/tools/browser#use-brave-or-another-ch
 
 ## Remote gateways + nodes
 
-### How do commands propagate between Telegram the gateway and nodes
+### How do commands propagate between chat channels the gateway and nodes
 
-Telegram messages are handled by the **gateway**. The gateway runs the agent and
+Inbound messages are handled by the **gateway**. The gateway runs the agent and
 only then calls nodes over the **Gateway WebSocket** when a node tool is needed:
 
-Telegram → Gateway → Agent → `node.*` → Node → Gateway → Telegram
+Channel → Gateway → Agent → `node.*` → Node → Gateway → Channel
 
 Nodes don’t see inbound provider traffic; they only receive node RPC calls.
 
@@ -1318,7 +1313,7 @@ via SSH/Tailscale (see [Remote access](/gateway/remote)).
 
 Example pattern (run from a machine that can reach the target Gateway):
 ```bash
-zee agent --message "Hello from local bot" --deliver --channel telegram --reply-to <chat-id>
+zee agent --message "Hello from local bot" --deliver --channel matrix --reply-to <room-id>
 ```
 
 Tip: add a guardrail so the two bots do not loop endlessly (mention-only, channel
@@ -2308,20 +2303,6 @@ zee logs --follow
 
 Docs: [Remote access](/gateway/remote), [Troubleshooting](/gateway/troubleshooting).
 
-### Telegram setMyCommands fails with network errors What should I check
-
-Start with logs and channel status:
-
-```bash
-zee channels status
-zee channels logs --channel telegram
-```
-
-If you are on a VPS or behind a proxy, confirm outbound HTTPS is allowed and DNS works.
-If the Gateway is remote, make sure you are looking at logs on the Gateway host.
-
-Docs: [Telegram](/channels/telegram), [Channel troubleshooting](/channels/troubleshooting).
-
 ### TUI shows no output What should I check
 
 First confirm the Gateway is reachable and the agent can run:
@@ -2443,14 +2424,14 @@ more susceptible to instruction hijacking, so avoid them for tool-enabled agents
 or when reading untrusted content. If you must use a smaller model, lock down
 tools and run inside a sandbox. See [Security](/gateway/security).
 
-### I ran start in Telegram but didnt get a pairing code
+### I didn't get a pairing code. What should I check?
 
 Pairing codes are sent **only** when an unknown sender messages the bot and
-`dmPolicy: "pairing"` is enabled. `/start` by itself doesn’t generate a code.
+`dmPolicy: "pairing"` is enabled. Sending a command by itself doesn't generate a code.
 
 Check pending requests:
 ```bash
-zee pairing list telegram
+zee pairing list <channel>
 ```
 
 If you want immediate access, allowlist your sender id or set `dmPolicy: "open"`

@@ -73,7 +73,7 @@ function buildSendSchema(options: { includeButtons: boolean; includeCards: boole
     asVoice: Type.Optional(Type.Boolean()),
     silent: Type.Optional(Type.Boolean()),
     quoteText: Type.Optional(
-      Type.String({ description: "Quote text for Telegram reply_parameters" }),
+      Type.String({ description: "Quote text for replies when supported by the channel." }),
     ),
     bestEffort: Type.Optional(Type.Boolean()),
     gifPlayback: Type.Optional(Type.Boolean()),
@@ -86,7 +86,7 @@ function buildSendSchema(options: { includeButtons: boolean; includeCards: boole
           }),
         ),
         {
-          description: "Telegram inline keyboard buttons (array of button rows)",
+          description: "Inline keyboard buttons as JSON (array of button rows) when supported by the channel.",
         },
       ),
     ),
