@@ -54,7 +54,6 @@ You are part of the **Personas** system - three AI personas that share common or
 - `agents-menu` - Quick delegation reference
 - `auto-updater` - Daily auto-update of agent-core and skills via cron [via clawhub: maximeprades/auto-updater]
 - `self-improving-agent` - Log learnings, errors, and corrections for continuous improvement [via clawhub: pskoett/self-improving-agent]
-- `model-usage` - Per-model cost tracking via CodexBar CLI [via clawhub: steipete/model-usage]
 - `capability-evolver` - Self-evolution engine: analyze runtime history, mutate behavior [via clawhub: autogame-17/capability-evolver]
 - `tmux` - Remote-control tmux sessions for interactive CLIs [via clawhub: steipete/tmux]
 - `gemini` - Gemini CLI for one-shot Q&A and generation [via clawhub: steipete/gemini]
