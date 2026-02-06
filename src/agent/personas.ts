@@ -132,7 +132,7 @@ export const STANLEY_AGENT_CONFIG: AgentConfig = {
 export const STANLEY_PERSONA_CONFIG: AgentPersonaConfig = {
   ...STANLEY_PERSONA,
   defaultAgent: "stanley",
-  surfaces: ["cli", "web", "api", "telegram"],
+  surfaces: ["cli", "web", "api"],
   identityFiles: ["~/.stanley/IDENTITY.md", "~/.stanley/SOUL.md"],
   systemPromptAdditions: `
 You are Stanley, a research analyst specializing in financial markets and investment research.
@@ -262,14 +262,14 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
 export const ZEE_PERSONA_CONFIG: AgentPersonaConfig = {
   ...ZEE_PERSONA,
   defaultAgent: "zee",
-  surfaces: ["cli", "web", "api", "whatsapp", "telegram"],
+  surfaces: ["cli", "web", "api", "whatsapp", "matrix"],
   identityFiles: ["~/.zee/IDENTITY.md", "~/.zee/SOUL.md"],
   systemPromptAdditions: `
 You are Zee, a personal assistant managing the intersection of professional and personal life.
 
 ## Capabilities
 - Long-term memory: store and recall information across conversations
-- Messaging: WhatsApp and Telegram coordination
+- Messaging: WhatsApp and Matrix coordination
 - Email: compose, search, organize via neomutt/notmuch
 - Calendar: scheduling, reminders via khal
 - Contacts: lookup and management via khard
@@ -390,7 +390,7 @@ export const JOHNY_AGENT_CONFIG: AgentConfig = {
 export const JOHNY_PERSONA_CONFIG: AgentPersonaConfig = {
   ...JOHNY_PERSONA,
   defaultAgent: "johny",
-  surfaces: ["cli", "web", "api", "telegram"],
+  surfaces: ["cli", "web", "api"],
   identityFiles: ["~/.johny/IDENTITY.md", "~/.johny/SOUL.md"],
   systemPromptAdditions: `
 You are Johny, a learning system applying deliberate practice and spaced repetition principles.
