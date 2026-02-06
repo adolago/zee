@@ -228,7 +228,7 @@ fi
 ZEE_CONFIG="${HOME}/.zee/zee.json"
 if [[ -f "$ZEE_CONFIG" ]] && command -v jq &>/dev/null; then
     # Strip JSON5 comments (// and /* */) before feeding to jq
-    GW_TOKEN=$(sed 's|//.*||; s|/\*.*\*/||g' "$ZEE_CONFIG" 2>/dev/null | jq -r '.gateway.auth.token // empty' 2>/dev/null)
+    GW_TOKEN=$(sed 's|//.*||; s|/\*.*\*/||g' "$ZEE_CONFIG" 2>/dev/null | jq -r '.gateway.auth.token // empty' 2>/dev/null) || GW_TOKEN=""
     if [[ -n "$GW_TOKEN" ]]; then
         export ZEE_GATEWAY_TOKEN="$GW_TOKEN"
     fi
