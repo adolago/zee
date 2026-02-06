@@ -132,10 +132,7 @@ export const DEFAULT_STANLEY_CONFIG: StanleySurfaceConfig = {
 
 export const DEFAULT_ZEE_CONFIG: ZeeSurfaceConfig = {
   defaultAgent: 'build',
-  useWebhooks: false,
-  parseMode: 'MarkdownV2',
-  allowedUsers: [],
-  allowedChats: [],
+  defaultChannel: 'whatsapp',
 };
 
 export const DEFAULT_CLI_CONFIG: CliSurfaceConfig = {
