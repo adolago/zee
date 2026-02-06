@@ -40,6 +40,13 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
       cwd: dirpath,
       stdout: "ignore",
       stderr: "ignore",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Test User",
+        GIT_AUTHOR_EMAIL: "test@example.com",
+        GIT_COMMITTER_NAME: "Test User",
+        GIT_COMMITTER_EMAIL: "test@example.com",
+      },
     })
     if ((await gitCommit.exited) !== 0) throw new Error("git commit failed")
   }
