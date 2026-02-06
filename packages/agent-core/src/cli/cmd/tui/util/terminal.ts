@@ -111,4 +111,67 @@ export namespace Terminal {
     // Determine if dark or light based on luminance threshold
     return luminance > 0.5 ? "light" : "dark"
   }
+
+  /**
+   * Queries the terminal background color.
+   * @param timeoutMs Timeout in milliseconds to wait for a response.
+   */
+  export async function backgroundColor(timeoutMs: number = 1000): Promise<RGBA | null> {
+    if (!process.stdin.isTTY) return null
+
+    return new Promise((resolve) => {
+      let background: RGBA | null = null
+      let timeout: NodeJS.Timeout
+
+      const cleanup = () => {
+        process.stdin.setRawMode(false)
+        process.stdin.removeListener("data", handler)
+        clearTimeout(timeout)
+      }
+
+      const parseColor = (colorStr: string): RGBA | null => {
+        if (colorStr.startsWith("rgb:")) {
+          const parts = colorStr.substring(4).split("/")
+          return RGBA.fromInts(
+            parseInt(parts[0], 16) >> 8, // Convert 16-bit to 8-bit
+            parseInt(parts[1], 16) >> 8,
+            parseInt(parts[2], 16) >> 8,
+            255,
+          )
+        }
+        if (colorStr.startsWith("#")) {
+          return RGBA.fromHex(colorStr)
+        }
+        if (colorStr.startsWith("rgb(")) {
+          const parts = colorStr.substring(4, colorStr.length - 1).split(",")
+          return RGBA.fromInts(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]), 255)
+        }
+        return null
+      }
+
+      const handler = (data: Buffer) => {
+        const str = data.toString()
+        // Match OSC 11 (background color)
+        const bgMatch = str.match(/\x1b]11;([^\x07\x1b]+)/)
+        if (bgMatch) {
+          background = parseColor(bgMatch[1])
+          if (background) {
+            cleanup()
+            resolve(background)
+          }
+        }
+      }
+
+      process.stdin.setRawMode(true)
+      process.stdin.on("data", handler)
+
+      // Query background (OSC 11)
+      process.stdout.write("\x1b]11;?\x07")
+
+      timeout = setTimeout(() => {
+        cleanup()
+        resolve(background)
+      }, timeoutMs)
+    })
+  }
 }
