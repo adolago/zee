@@ -1,5 +1,25 @@
 import { RGBA } from "@opentui/core"
 
+function parseColor(colorStr: string): RGBA | null {
+  if (colorStr.startsWith("rgb:")) {
+    const parts = colorStr.substring(4).split("/")
+    return RGBA.fromInts(
+      parseInt(parts[0], 16) >> 8, // Convert 16-bit to 8-bit
+      parseInt(parts[1], 16) >> 8,
+      parseInt(parts[2], 16) >> 8,
+      255,
+    )
+  }
+  if (colorStr.startsWith("#")) {
+    return RGBA.fromHex(colorStr)
+  }
+  if (colorStr.startsWith("rgb(")) {
+    const parts = colorStr.substring(4, colorStr.length - 1).split(",")
+    return RGBA.fromInts(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]), 255)
+  }
+  return null
+}
+
 export namespace Terminal {
   export type Colors = Awaited<ReturnType<typeof colors>>
   /**
@@ -29,26 +49,6 @@ export namespace Terminal {
         process.stdin.setRawMode(false)
         process.stdin.removeListener("data", handler)
         clearTimeout(timeout)
-      }
-
-      const parseColor = (colorStr: string): RGBA | null => {
-        if (colorStr.startsWith("rgb:")) {
-          const parts = colorStr.substring(4).split("/")
-          return RGBA.fromInts(
-            parseInt(parts[0], 16) >> 8, // Convert 16-bit to 8-bit
-            parseInt(parts[1], 16) >> 8,
-            parseInt(parts[2], 16) >> 8,
-            255,
-          )
-        }
-        if (colorStr.startsWith("#")) {
-          return RGBA.fromHex(colorStr)
-        }
-        if (colorStr.startsWith("rgb(")) {
-          const parts = colorStr.substring(4, colorStr.length - 1).split(",")
-          return RGBA.fromInts(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]), 255)
-        }
-        return null
       }
 
       const handler = (data: Buffer) => {
@@ -97,6 +97,42 @@ export namespace Terminal {
         cleanup()
         resolve({ background, foreground, colors: paletteColors })
       }, 1000)
+    })
+  }
+
+  export async function backgroundColor(timeoutMs: number = 1000): Promise<RGBA | null> {
+    if (!process.stdin.isTTY) return null
+
+    return new Promise((resolve) => {
+      let timeout: NodeJS.Timeout
+
+      const cleanup = () => {
+        process.stdin.setRawMode(false)
+        process.stdin.removeListener("data", handler)
+        clearTimeout(timeout)
+      }
+
+      const handler = (data: Buffer) => {
+        const str = data.toString()
+        const bgMatch = str.match(/\x1b]11;([^\x07\x1b]+)/)
+        if (bgMatch) {
+          const color = parseColor(bgMatch[1])
+          if (color) {
+            cleanup()
+            resolve(color)
+            return
+          }
+        }
+      }
+
+      process.stdin.setRawMode(true)
+      process.stdin.on("data", handler)
+      process.stdout.write("\x1b]11;?\x07")
+
+      timeout = setTimeout(() => {
+        cleanup()
+        resolve(null)
+      }, timeoutMs)
     })
   }
 
