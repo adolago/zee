@@ -32,12 +32,28 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    const init = Bun.spawn(["git", "init"], { cwd: dirpath, stderr: "ignore", stdout: "ignore" })
+    // In CI environments, git config might not be set, causing commits to fail.
+    // We set user.email and user.name locally for this repo.
+    const init = Bun.spawn(["git", "init"], { cwd: dirpath, stderr: "inherit", stdout: "ignore" })
     if ((await init.exited) !== 0) throw new Error("Failed to init git repo")
+
+    const configEmail = Bun.spawn(["git", "config", "user.email", "test@example.com"], {
+      cwd: dirpath,
+      stderr: "inherit",
+      stdout: "ignore",
+    })
+    if ((await configEmail.exited) !== 0) throw new Error("Failed to set git user.email")
+
+    const configName = Bun.spawn(["git", "config", "user.name", "Test User"], {
+      cwd: dirpath,
+      stderr: "inherit",
+      stdout: "ignore",
+    })
+    if ((await configName.exited) !== 0) throw new Error("Failed to set git user.name")
 
     const commit = Bun.spawn(["git", "commit", "--allow-empty", "-m", "root commit"], {
       cwd: dirpath,
-      stderr: "ignore",
+      stderr: "inherit",
       stdout: "ignore",
     })
     if ((await commit.exited) !== 0) throw new Error("Failed to create root commit")
