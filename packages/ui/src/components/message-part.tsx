@@ -9,6 +9,7 @@ import {
   Switch,
   onCleanup,
   type JSX,
+  createUniqueId,
 } from "solid-js"
 import stripAnsi from "strip-ansi"
 import { Dynamic } from "solid-js/web"
@@ -1336,6 +1337,7 @@ ToolRegistry.register({
 function QuestionPrompt(props: { request: QuestionRequest }) {
   const data = useData()
   const i18n = useI18n()
+  const labelId = createUniqueId()
   const questions = createMemo(() => props.request.questions)
   const single = createMemo(() => questions().length === 1 && questions()[0]?.multiple !== true)
 
@@ -1469,16 +1471,22 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
 
       <Show when={!confirm()}>
         <div data-slot="question-content">
-          <div data-slot="question-text">
+          <div data-slot="question-text" id={labelId}>
             {question()?.question}
             {multi() ? " " + i18n.t("ui.question.multiHint") : ""}
           </div>
-          <div data-slot="question-options">
+          <div data-slot="question-options" role={multi() ? "group" : "radiogroup"} aria-labelledby={labelId}>
             <For each={options()}>
               {(opt, i) => {
                 const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
                 return (
-                  <button data-slot="question-option" data-picked={picked()} onClick={() => selectOption(i())}>
+                  <button
+                    data-slot="question-option"
+                    data-picked={picked()}
+                    onClick={() => selectOption(i())}
+                    role={multi() ? "checkbox" : "radio"}
+                    aria-checked={picked()}
+                  >
                     <span data-slot="option-label">{opt.label}</span>
                     <Show when={opt.description}>
                       <span data-slot="option-description">{opt.description}</span>
@@ -1494,6 +1502,8 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
               data-slot="question-option"
               data-picked={customPicked()}
               onClick={() => selectOption(options().length)}
+              role={multi() ? "checkbox" : "radio"}
+              aria-checked={customPicked()}
             >
               <span data-slot="option-label">{i18n.t("ui.messagePart.option.typeOwnAnswer")}</span>
               <Show when={!store.editing && input()}>
