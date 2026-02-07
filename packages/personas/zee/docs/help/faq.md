@@ -679,8 +679,8 @@ without channel connectors enabled.
 
 ### Matrix what goes in allowFrom
 
-`channels.matrix.allowFrom` is a list of Matrix user IDs (example: `@alice:example.org`). It is used
-for DM access control (together with `channels.matrix.dmPolicy`).
+`channels.matrix.dm.allowFrom` is a list of Matrix user IDs (example: `@alice:example.org`). It is used
+for DM access control (together with `channels.matrix.dm.policy`).
 
 To find your Matrix user ID:
 - Check your Matrix client profile (it starts with `@` and includes your server).

@@ -151,23 +151,54 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function readMatrixAllowFrom(cfg: ZeeConfig): string[] {
+function readMatrixDirectoryIds(cfg: ZeeConfig): string[] {
   const channels = (cfg.channels as Record<string, unknown> | undefined) ?? {};
   const matrix = channels.matrix;
   if (!isRecord(matrix)) return [];
-  const allowFrom = matrix.allowFrom;
-  if (!Array.isArray(allowFrom)) return [];
-  return allowFrom
-    .map((entry) => String(entry).trim())
-    .filter(Boolean)
-    .map((entry) => entry.replace(/^matrix:/i, "").trim())
-    .filter(Boolean);
+
+  const ids: string[] = [];
+  const addRaw = (raw: unknown) => {
+    if (typeof raw !== "string") return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    if (trimmed === "*") return;
+    const withoutMatrixPrefix = trimmed.replace(/^matrix:/i, "").trim();
+    const withoutTargetPrefix = withoutMatrixPrefix.replace(/^(room|channel|user):/i, "").trim();
+    if (!withoutTargetPrefix) return;
+    if (withoutTargetPrefix === "*") return;
+    ids.push(withoutTargetPrefix);
+  };
+  const addList = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const entry of list) addRaw(entry);
+  };
+
+  // Legacy allowlist key (pre-2026-02 Matrix plugin sync).
+  addList(matrix.allowFrom);
+
+  const dm = isRecord(matrix.dm) ? matrix.dm : null;
+  addList(dm?.allowFrom);
+  addList(matrix.groupAllowFrom);
+
+  const groups = isRecord(matrix.groups) ? matrix.groups : null;
+  const rooms = isRecord(matrix.rooms) ? matrix.rooms : null;
+  const groupConfigs: Record<string, unknown> = {};
+  if (groups) Object.assign(groupConfigs, groups);
+  if (rooms) Object.assign(groupConfigs, rooms);
+  for (const [key, value] of Object.entries(groupConfigs)) {
+    if (key === "*") continue;
+    addRaw(key);
+    if (!isRecord(value)) continue;
+    addList(value.users);
+  }
+
+  return Array.from(new Set(ids.map((entry) => entry.trim()).filter(Boolean)));
 }
 
 export async function listMatrixDirectoryPeersFromConfig(
   params: DirectoryConfigParams,
 ): Promise<ChannelDirectoryEntry[]> {
-  const baseEntries = Array.from(new Set(readMatrixAllowFrom(params.cfg)))
+  const baseEntries = Array.from(new Set(readMatrixDirectoryIds(params.cfg)))
     .filter((entry) => entry.startsWith("@"))
     .map((id) => ({ kind: "user", id }) as const);
   const contactEntries = listContactDirectoryPeersFromConfig({
@@ -186,7 +217,7 @@ export async function listMatrixDirectoryPeersFromConfig(
 export async function listMatrixDirectoryGroupsFromConfig(
   params: DirectoryConfigParams,
 ): Promise<ChannelDirectoryEntry[]> {
-  const baseEntries = Array.from(new Set(readMatrixAllowFrom(params.cfg)))
+  const baseEntries = Array.from(new Set(readMatrixDirectoryIds(params.cfg)))
     .filter((entry) => entry.startsWith("!") || entry.startsWith("#"))
     .map((id) => ({ kind: "group", id }) as const);
   const contactEntries = listContactDirectoryPeersFromConfig({

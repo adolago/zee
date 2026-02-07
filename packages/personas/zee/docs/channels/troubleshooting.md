@@ -23,4 +23,4 @@ zee channels status --probe
 
 - `channels status --probe` shows Matrix not configured: check `channels.matrix.homeserver`, `channels.matrix.userId`, and `MATRIX_ACCESS_TOKEN` (or `channels.matrix.accessToken`).
 - Messages send but you see access errors: confirm the token matches the configured `userId` and that the user is joined to the target room.
-- DMs are blocked: check `channels.matrix.dmPolicy` and `channels.matrix.allowFrom`.
+- DMs are blocked: check `channels.matrix.dm.policy` and `channels.matrix.dm.allowFrom`.

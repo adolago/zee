@@ -168,4 +168,47 @@ export const LEGACY_CONFIG_MIGRATIONS_PART_3: LegacyConfigMigration[] = [
       delete raw.identity;
     },
   },
+  {
+    id: "channels.matrix.dm-policy-v1",
+    describe: "Move channels.matrix.dmPolicy/allowFrom to channels.matrix.dm.*",
+    apply: (raw, changes) => {
+      const migrateEntry = (entry: Record<string, unknown>, prefix: string) => {
+        const hasDmPolicy = Object.prototype.hasOwnProperty.call(entry, "dmPolicy");
+        const hasAllowFrom = Object.prototype.hasOwnProperty.call(entry, "allowFrom");
+        if (!hasDmPolicy && !hasAllowFrom) return;
+
+        const dm = ensureRecord(entry, "dm");
+        if (dm.policy === undefined && typeof entry.dmPolicy === "string") {
+          dm.policy = entry.dmPolicy;
+          changes.push(`Moved ${prefix}.dmPolicy → ${prefix}.dm.policy.`);
+        } else if (hasDmPolicy) {
+          changes.push(`Removed ${prefix}.dmPolicy (${prefix}.dm.policy already set).`);
+        }
+
+        if (dm.allowFrom === undefined && Array.isArray(entry.allowFrom)) {
+          dm.allowFrom = entry.allowFrom;
+          changes.push(`Moved ${prefix}.allowFrom → ${prefix}.dm.allowFrom.`);
+        } else if (hasAllowFrom) {
+          changes.push(`Removed ${prefix}.allowFrom (${prefix}.dm.allowFrom already set).`);
+        }
+
+        delete entry.dmPolicy;
+        delete entry.allowFrom;
+      };
+
+      const channels = getRecord(raw.channels);
+      if (!channels) return;
+      const matrix = getRecord(channels.matrix);
+      if (!matrix) return;
+
+      migrateEntry(matrix, "channels.matrix");
+
+      const accounts = getRecord(matrix.accounts);
+      if (!accounts) return;
+      for (const [accountId, entry] of Object.entries(accounts)) {
+        if (!isRecord(entry)) continue;
+        migrateEntry(entry, `channels.matrix.accounts.${accountId}`);
+      }
+    },
+  },
 ];

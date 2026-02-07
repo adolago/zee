@@ -37,7 +37,7 @@ import { applySessionHints } from "./body.js";
 import { routeReply } from "./route-reply.js";
 import type { buildCommandContext } from "./commands.js";
 import type { InlineDirectives } from "./directive-handling.js";
-import { buildGroupIntro } from "./groups.js";
+import { buildGroupIntro, buildUntrustedGroupMetadata } from "./groups.js";
 import type { createModelSelectionState } from "./model-selection.js";
 import { resolveQueueSettings } from "./queue.js";
 import { ensureSkillSnapshot, prependSystemEvents } from "./session-updates.js";
@@ -178,6 +178,11 @@ export async function runPreparedReply(
         silentToken: SILENT_REPLY_TOKEN,
       })
     : "";
+  const groupMetadata = shouldInjectGroupIntro
+    ? buildUntrustedGroupMetadata({
+        sessionCtx,
+      })
+    : undefined;
   const groupSystemPrompt = sessionCtx.GroupSystemPrompt?.trim() ?? "";
   const extraSystemPrompt = [groupIntro, groupSystemPrompt].filter(Boolean).join("\n\n");
   const baseBody = sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
@@ -207,8 +212,9 @@ export async function runPreparedReply(
       text: "I didn't receive any text in your message. Please resend or add a caption.",
     };
   }
+  const baseBodyWithMetadata = groupMetadata ? `${groupMetadata}\n\n${baseBodyFinal}` : baseBodyFinal;
   let prefixedBodyBase = await applySessionHints({
-    baseBody: baseBodyFinal,
+    baseBody: baseBodyWithMetadata,
     abortedLastRun,
     sessionEntry,
     sessionStore,

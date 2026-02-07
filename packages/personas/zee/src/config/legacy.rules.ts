@@ -99,4 +99,14 @@ export const LEGACY_CONFIG_RULES: LegacyConfigRule[] = [
     path: ["gateway", "token"],
     message: "gateway.token is ignored; use gateway.auth.token instead (auto-migrated on load).",
   },
+  {
+    path: ["channels", "matrix", "dmPolicy"],
+    message:
+      "channels.matrix.dmPolicy was replaced by channels.matrix.dm.policy (auto-migrated by gateway start / `zee doctor`).",
+  },
+  {
+    path: ["channels", "matrix", "allowFrom"],
+    message:
+      "channels.matrix.allowFrom was replaced by channels.matrix.dm.allowFrom (auto-migrated by gateway start / `zee doctor`).",
+  },
 ];

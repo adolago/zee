@@ -8,7 +8,7 @@ read_when:
 Zee reads an optional **JSON5** config from `~/.zee/zee.json` (comments + trailing commas allowed).
 
 If the file is missing, Zee uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/zee`). You usually only need a config to:
-- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.matrix.allowFrom`, etc.)
+- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.matrix.dm.allowFrom`, etc.)
 - customize message prefixes (`messages`)
 - set the agent's workspace (`agents.defaults.workspace` or `agents.list[].workspace`)
 - tune the embedded agent defaults (`agents.defaults`) and session behavior (`session`)

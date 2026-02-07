@@ -1,15 +1,21 @@
 {
   "name": "@zee/matrix",
-  "version": "0.1.0",
+  "version": "2026.1.27-beta.1",
   "type": "module",
-  "description": "Zee Matrix channel plugin with E2EE support",
+  "description": "Zee Matrix channel plugin",
+  "dependencies": {
+    "@vector-im/matrix-bot-sdk": "0.8.0-element.3",
+    "markdown-it": "14.1.0",
+    "music-metadata": "^11.11.2",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@matrix-org/matrix-sdk-crypto-nodejs": "^0.4.0"
+  },
   "zee": {
     "extensions": [
       "./index.ts"
     ]
-  },
-  "dependencies": {
-    "matrix-bot-sdk": "^0.7.1",
-    "better-sqlite3": "^11.0.0"
   }
 }
+

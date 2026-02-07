@@ -161,8 +161,12 @@ describe("trigger handling", () => {
       expect(text).toBe("ok");
       expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
       const extra = vi.mocked(runEmbeddedPiAgent).mock.calls[0]?.[0]?.extraSystemPrompt ?? "";
-      expect(extra).toContain("Test Group");
       expect(extra).toContain("Activation: always-on");
+      expect(extra).not.toContain("Test Group");
+      const prompt = vi.mocked(runEmbeddedPiAgent).mock.calls[0]?.[0]?.prompt ?? "";
+      expect(prompt).toContain("<<<EXTERNAL_UNTRUSTED_CONTENT>>>");
+      expect(prompt).toContain("Subject: Test Group");
+      expect(prompt).toContain("Members: Alice (+1), Bob (+2)");
     });
   });
   it("runs a greeting prompt for a bare /new", async () => {
