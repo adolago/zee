@@ -12,8 +12,15 @@
         --border: color-mix(in oklab, canvasText 18%, transparent);
         --muted: color-mix(in oklab, canvasText 70%, transparent);
         --shadow: 0 10px 30px color-mix(in oklab, canvasText 18%, transparent);
-        font-family: ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Rounded",
-          "SF Pro Display", "Segoe UI", sans-serif;
+        font-family:
+          ui-rounded,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "SF Pro Rounded",
+          "SF Pro Display",
+          "Segoe UI",
+          sans-serif;
         line-height: 1.4;
       }
       body {
@@ -104,19 +111,17 @@
         color: canvasText;
         outline: none;
       }
-      input:focus {
+      input:focus,
+      button:focus-visible {
         border-color: color-mix(in oklab, var(--accent) 70%, transparent);
         box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 20%, transparent);
+        outline: none;
       }
       button {
         padding: 10px 14px;
         border-radius: 12px;
         border: 1px solid color-mix(in oklab, var(--accent) 55%, transparent);
-        background: linear-gradient(
-          180deg,
-          color-mix(in oklab, var(--accent) 80%, white 20%),
-          var(--accent)
-        );
+        background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 80%, white 20%), var(--accent));
         color: white;
         font-weight: 650;
         letter-spacing: 0.01em;
@@ -143,10 +148,10 @@
         color: color-mix(in oklab, var(--accent) 70%, canvasText 30%);
         min-height: 16px;
       }
-      .status[data-kind='ok'] {
+      .status[data-kind="ok"] {
         color: color-mix(in oklab, #16a34a 75%, canvasText 25%);
       }
-      .status[data-kind='error'] {
+      .status[data-kind="error"] {
         color: color-mix(in oklab, #ef4444 75%, canvasText 25%);
       }
     </style>
@@ -167,11 +172,14 @@
         <div class="card">
           <h2>Getting started</h2>
           <p>
-            If you see a red <code>!</code> badge on the extension icon, the relay server is not reachable.
-            Start Zee’s browser relay on this machine (Gateway or node host), then click the toolbar button again.
+            If you see a red <code>!</code> badge on the extension icon, the relay server is not reachable. Start Zee’s
+            browser relay on this machine (Gateway or node host), then click the toolbar button again.
           </p>
           <p>
-            Full guide (install, remote Gateway, security): <a href="https://docs.zee/tools/chrome-extension" target="_blank" rel="noreferrer">docs.zee/tools/chrome-extension</a>
+            Full guide (install, remote Gateway, security):
+            <a href="https://docs.zee/tools/chrome-extension" target="_blank" rel="noreferrer"
+              >docs.zee/tools/chrome-extension</a
+            >
           </p>
         </div>
 
@@ -179,14 +187,15 @@
           <h2>Relay port</h2>
           <label for="port">Port</label>
           <div class="row">
-            <input id="port" inputmode="numeric" pattern="[0-9]*" />
+            <input id="port" type="number" min="1" max="65535" required placeholder="18792" />
             <button id="save" type="button">Save</button>
           </div>
           <div class="hint">
-            Default: <code>18792</code>. Extension connects to: <code id="relay-url">http://127.0.0.1:&lt;port&gt;/</code>.
-            Only change this if your Zee profile uses a different <code>cdpUrl</code> port.
+            Default: <code>18792</code>. Extension connects to:
+            <code id="relay-url">http://127.0.0.1:&lt;port&gt;/</code>. Only change this if your Zee profile uses a
+            different <code>cdpUrl</code> port.
           </div>
-          <div class="status" id="status"></div>
+          <div class="status" id="status" role="status" aria-live="polite"></div>
         </div>
       </div>
 
