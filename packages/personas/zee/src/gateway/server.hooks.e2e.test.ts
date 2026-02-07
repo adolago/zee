@@ -83,15 +83,13 @@ describe("gateway server hooks", () => {
       expect(call?.job?.payload?.model).toBe("openai/gpt-4.1-mini");
       drainSystemEvents(resolveMainKey());
 
+      // Query-parameter tokens are no longer accepted; must use header auth.
       const resQuery = await fetch(`http://127.0.0.1:${port}/hooks/wake?token=hook-secret`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: "Query auth" }),
       });
-      expect(resQuery.status).toBe(200);
-      const queryEvents = await waitForSystemEvent();
-      expect(queryEvents.some((e) => e.includes("Query auth"))).toBe(true);
-      drainSystemEvents(resolveMainKey());
+      expect(resQuery.status).toBe(401);
 
       const resBadChannel = await fetch(`http://127.0.0.1:${port}/hooks/agent`, {
         method: "POST",

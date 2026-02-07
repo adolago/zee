@@ -165,4 +165,12 @@ describe("resolveUserPath", () => {
   it("resolves relative paths", () => {
     expect(resolveUserPath("tmp/dir")).toBe(path.resolve("tmp/dir"));
   });
+
+  it("returns cwd for undefined input", () => {
+    expect(resolveUserPath(undefined as unknown as string)).toBe(process.cwd());
+  });
+
+  it("returns cwd for empty string", () => {
+    expect(resolveUserPath("")).toBe(process.cwd());
+  });
 });

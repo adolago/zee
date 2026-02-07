@@ -10,7 +10,7 @@ type Semver = {
   patch: number;
 };
 
-const MIN_NODE: Semver = { major: 22, minor: 0, patch: 0 };
+const MIN_NODE: Semver = { major: 22, minor: 12, patch: 0 };
 
 export type RuntimeDetails = {
   kind: RuntimeKind;
@@ -75,7 +75,7 @@ export function assertSupportedRuntime(
 
   runtime.error(
     [
-      "zee requires Node >=22.0.0.",
+      "zee requires Node >=22.12.0.",
       `Detected: ${runtimeLabel} (exec: ${execLabel}).`,
       `PATH searched: ${details.pathEnv}`,
       "Install Node: https://nodejs.org/en/download",

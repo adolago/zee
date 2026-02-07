@@ -28,7 +28,7 @@ describe("resolvePreferredNodePath", () => {
       throw new Error("missing");
     });
 
-    const execFile = vi.fn().mockResolvedValue({ stdout: "22.1.0\n", stderr: "" });
+    const execFile = vi.fn().mockResolvedValue({ stdout: "22.12.0\n", stderr: "" });
 
     const result = await resolvePreferredNodePath({
       env: {},
@@ -86,7 +86,7 @@ describe("resolveSystemNodeInfo", () => {
       throw new Error("missing");
     });
 
-    const execFile = vi.fn().mockResolvedValue({ stdout: "22.0.0\n", stderr: "" });
+    const execFile = vi.fn().mockResolvedValue({ stdout: "22.12.0\n", stderr: "" });
 
     const result = await resolveSystemNodeInfo({
       env: {},
@@ -96,7 +96,7 @@ describe("resolveSystemNodeInfo", () => {
 
     expect(result).toEqual({
       path: linuxNode,
-      version: "22.0.0",
+      version: "22.12.0",
       supported: true,
     });
   });

@@ -13,6 +13,7 @@ export function resolveHomeDir(env: Record<string, string | undefined>): string 
 }
 
 export function resolveUserPathWithHome(input: string, home?: string): string {
+  if (!input) return process.cwd();
   const trimmed = input.trim();
   if (!trimmed) return trimmed;
   if (trimmed.startsWith("~")) {

@@ -192,7 +192,6 @@ export async function runGmailSetup(opts: GmailSetupOptions) {
         path: tailscalePath,
         port: servePort,
         target: normalizedTailscaleTarget,
-        token: pushToken,
       });
 
   if (!pushEndpoint) {

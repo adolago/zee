@@ -47,6 +47,7 @@ export function resolveStateDir(
 }
 
 function resolveUserPath(input: string): string {
+  if (!input) return process.cwd();
   const trimmed = input.trim();
   if (!trimmed) return trimmed;
   if (trimmed.startsWith("~")) {
