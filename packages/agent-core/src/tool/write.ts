@@ -12,6 +12,7 @@ import { Instance } from "../project/instance"
 import { trimDiff } from "./edit"
 import { assertExternalDirectory } from "./external-directory"
 import { HoldMode } from "@/config/hold-mode"
+import { ExperimentalHooks } from "@/hooks/experimental-hooks"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 const MAX_PROJECT_DIAGNOSTICS_FILES = 5
@@ -57,6 +58,11 @@ export const WriteTool = Tool.define("write", {
       file: filepath,
     })
     FileTime.read(ctx.sessionID, filepath)
+    await ExperimentalHooks.triggerFileEdited({
+      sessionID: ctx.sessionID,
+      filePathAbs: filepath,
+      filePathRel: path.relative(Instance.worktree, filepath),
+    })
 
     let output = "Wrote file successfully"
     await LSP.touchFile(filepath, true)

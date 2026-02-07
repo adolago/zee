@@ -12,6 +12,8 @@ import { Provider } from "../../provider/provider"
 import { Agent } from "../../agent/agent"
 import { checkEnvironment } from "./check"
 import { GlobalBus } from "../../bus/global"
+import { ExperimentalHooks } from "@/hooks/experimental-hooks"
+import { Instance } from "@/project/instance"
 
 // ---------------------------------------------------------------------------
 // Typed tool rendering helpers
@@ -463,6 +465,41 @@ export const RunCommand = cmd({
       if (errorMsg) process.exit(1)
     }
 
+    const maybeTriggerSessionCompletedHooks = async (sdk: AgentCoreClient, sessionID: string) => {
+      try {
+        const todoResult = await sdk.session.todo({ sessionID })
+        const todos = todoResult.data ?? []
+
+        const todosRemaining = todos.filter((t) => t.status !== "completed" && t.status !== "cancelled").length
+        if (todosRemaining !== 0) return
+
+        const todosCompleted = todos.filter((t) => t.status === "completed").length
+
+        const runHooks = async () => {
+          await ExperimentalHooks.triggerSessionCompleted({
+            sessionID,
+            todosCompleted,
+            todosRemaining,
+          })
+        }
+
+        // `agent-core run --attach` does not create an Instance context. Hooks rely on Config + Instance paths.
+        try {
+          void Instance.directory
+          await runHooks()
+        } catch {
+          await Instance.provide({
+            directory: process.cwd(),
+            fn: async () => {
+              await runHooks()
+            },
+          })
+        }
+      } catch {
+        // Best-effort: hooks must not affect `agent-core run` exit status.
+      }
+    }
+
     if (args.attach) {
       const sdk = createAgentCoreClient({ baseUrl: args.attach })
       const eventClient = createEventClient({ baseUrl: args.attach })
@@ -500,6 +537,7 @@ export const RunCommand = cmd({
       }
 
       const result = await execute(sdk, eventClient, sessionID, args.agent)
+      await maybeTriggerSessionCompletedHooks(sdk, sessionID)
 
       if (args.share) {
         const shareResult = await sdk.session.share({ sessionID })
@@ -621,6 +659,7 @@ export const RunCommand = cmd({
       })()
 
       await execute(sdk, null, sessionID, resolvedAgent, events)
+      await maybeTriggerSessionCompletedHooks(sdk, sessionID)
 
       if (args.share) {
         const shareResult = await sdk.session.share({ sessionID })
