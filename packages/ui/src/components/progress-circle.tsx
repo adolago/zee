@@ -30,6 +30,10 @@ export function ProgressCircle(props: ProgressCircleProps) {
       height={size()}
       viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
       fill="none"
+      role="progressbar"
+      aria-valuenow={split.percentage}
+      aria-valuemin={0}
+      aria-valuemax={100}
       data-component="progress-circle"
       classList={{
         ...(split.classList ?? {}),
