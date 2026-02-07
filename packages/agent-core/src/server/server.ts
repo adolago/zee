@@ -456,10 +456,13 @@ export namespace Server {
   }
 
   export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
+    assertSafeServerBind({ hostname: opts.hostname })
+
+    // Only update server mode state after we know the bind is allowed.
+    // This prevents failed Server.listen calls (e.g. bind-guard tests) from
+    // leaking non-loopback behavior into subsequent requests.
     _corsWhitelist = opts.cors ?? []
     _isLoopbackBind = isLoopbackHostname(opts.hostname)
-
-    assertSafeServerBind({ hostname: opts.hostname })
 
     const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
     const args = {
