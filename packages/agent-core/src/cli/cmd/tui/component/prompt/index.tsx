@@ -1593,7 +1593,7 @@ export function Prompt(props: PromptProps) {
           paddingRight={1}
         >
             <textarea
-              placeholder={null}
+              placeholder={props.showPlaceholder !== false ? "Ask a question, or type / for commands" : null}
               textColor={keybind.leader ? theme.textMuted : theme.text}
               focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
               minHeight={1}
