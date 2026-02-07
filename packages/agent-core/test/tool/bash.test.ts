@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
 import { BashTool } from "../../src/tool/bash"
+import { AppDeps } from "../../src/app/deps"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import type { PermissionNext } from "../../src/permission/next"
@@ -35,6 +36,36 @@ describe("tool.bash", () => {
         )
         expect(result.metadata.exit).toBe(0)
         expect(result.metadata.output).toContain("test")
+      },
+    })
+  })
+
+  test("uses AppDeps.pluginTrigger for shell.env", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        await AppDeps.provide(
+          {
+            pluginTrigger: (async (name: any, input: any, output: any) => {
+              if (name === "shell.env") {
+                output.env.APP_DEPS_TEST = "ok"
+              }
+              return output
+            }) as any,
+          },
+          async () => {
+            const bash = await BashTool.init()
+            const result = await bash.execute(
+              {
+                command: "echo $APP_DEPS_TEST",
+                description: "Echo injected env var",
+              },
+              ctx(projectRoot),
+            )
+            expect(result.metadata.exit).toBe(0)
+            expect(result.metadata.output).toContain("ok")
+          },
+        )
       },
     })
   })

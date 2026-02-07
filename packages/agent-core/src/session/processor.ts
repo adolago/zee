@@ -8,7 +8,6 @@ import { SessionSummary } from "./summary"
 import { Bus } from "@/bus"
 import { SessionRetry } from "./retry"
 import { SessionStatus } from "./status"
-import { Plugin } from "@/plugin"
 import type { Provider } from "@/provider/provider"
 import { LLM } from "./llm"
 import { Fallback } from "@/provider/fallback"
@@ -22,6 +21,7 @@ import { withTimeout } from "@/util/timeout"
 import * as UsageTracker from "@/usage/tracker"
 import { StreamHealth } from "./stream-health"
 import { StreamEvents } from "./stream-events"
+import { AppDeps } from "@/app/deps"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -38,6 +38,7 @@ export namespace SessionProcessor {
     model: Provider.Model
     abort: AbortSignal
   }) {
+    const deps = AppDeps.use()
     const toolcalls: Record<string, MessageV2.ToolPart> = {}
     let snapshot: string | undefined
     let blocked = false
@@ -150,7 +151,7 @@ export namespace SessionProcessor {
               const finalizeTextPart = async (metadata?: Record<string, any>) => {
                 if (!currentText) return
                 currentText.text = currentText.text.trimEnd()
-                const textOutput = await Plugin.trigger(
+                const textOutput = await deps.pluginTrigger(
                   "experimental.text.complete",
                   {
                     sessionID: input.sessionID,

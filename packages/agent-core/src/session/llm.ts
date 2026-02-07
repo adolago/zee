@@ -18,12 +18,12 @@ import { Config } from "@/config/config"
 import { Instance } from "@/project/instance"
 import type { Agent } from "@/agent/agent"
 import type { MessageV2 } from "./message-v2"
-import { Plugin } from "@/plugin"
 import { SystemPrompt } from "./system"
 import { Flag } from "@/flag/flag"
 import { PermissionNext } from "@/permission/next"
 import { Auth } from "@/auth"
 import { generateAwarenessSection } from "../../../../src/awareness"
+import { AppDeps } from "@/app/deps"
 
 export namespace LLM {
   const log = Log.create({ service: "llm" })
@@ -146,6 +146,7 @@ export namespace LLM {
   export type StreamOutput = StreamTextResult<ToolSet, any>
 
   export async function stream(input: StreamInput) {
+    const deps = AppDeps.use()
     const l = log
       .clone()
       .tag("providerID", input.model.providerID)
@@ -211,7 +212,7 @@ export namespace LLM {
       includesAgentPrompt: input.agent.prompt ? mainContent?.includes(input.agent.prompt.slice(0, 50)) : false,
       systemContentPreview: mainContent?.slice(0, 200) ?? "(no content)",
     })
-    await Plugin.trigger("experimental.chat.system.transform", { sessionID: input.sessionID }, { system })
+    await deps.pluginTrigger("experimental.chat.system.transform", { sessionID: input.sessionID }, { system })
     if (system.length === 0) {
       system.push(...original)
     }
@@ -246,7 +247,7 @@ export namespace LLM {
       options.instructions = SystemPrompt.instructions()
     }
 
-    const params = await Plugin.trigger(
+    const params = await deps.pluginTrigger(
       "chat.params",
       {
         sessionID: input.sessionID,
@@ -315,7 +316,7 @@ export namespace LLM {
       })
     }
 
-    const { headers } = await Plugin.trigger(
+    const { headers } = await deps.pluginTrigger(
       "chat.headers",
       {
         sessionID: input.sessionID,
