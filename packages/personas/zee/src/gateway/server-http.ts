@@ -22,6 +22,7 @@ import {
   resolveHookDeliver,
 } from "./hooks.js";
 import { applyHookMappings } from "./hooks-mapping.js";
+import { checkBrowserOrigin } from "./origin-check.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
@@ -71,7 +72,11 @@ export function createHooksRequestHandler(
       return false;
     }
 
-    const { token } = extractHookToken(req, url);
+    if (url.searchParams.has("token")) {
+      sendJson(res, 400, { ok: false, error: "token query parameter is not allowed" });
+      return true;
+    }
+    const token = extractHookToken(req);
     if (!token || token !== hooksConfig.token) {
       res.statusCode = 401;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -263,9 +268,24 @@ export function createGatewayHttpServer(opts: {
 export function attachGatewayUpgradeHandler(opts: {
   httpServer: HttpServer;
   wss: WebSocketServer;
+  allowedOrigins?: string[];
 }) {
-  const { httpServer, wss } = opts;
+  const { httpServer, wss, allowedOrigins } = opts;
   httpServer.on("upgrade", (req, socket, head) => {
+    const headerValue = (value: string | string[] | undefined) =>
+      Array.isArray(value) ? value[0] : value;
+    const origin = headerValue(req.headers.origin);
+    const hostHeader = headerValue(req.headers.host);
+    const originCheck = checkBrowserOrigin({ origin, hostHeader, allowlist: allowedOrigins });
+    if (!originCheck.ok) {
+      try {
+        socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+      } catch {
+        /* ignore */
+      }
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
     });

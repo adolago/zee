@@ -192,7 +192,7 @@ export namespace Config {
     }
 
     // Migrate deprecated mode field to agent field
-    for (const [name, mode] of Object.entries(result.mode)) {
+    for (const [name, mode] of Object.entries(result.mode ?? {})) {
       result.agent = mergeDeep(result.agent ?? {}, {
         [name]: {
           ...mode,
@@ -1009,23 +1009,20 @@ export namespace Config {
     .strict()
     .describe("mDNS service discovery configuration")
 
-	  export const Server = z
-	    .object({
-	      port: z.number().int().positive().optional().describe("Port to listen on"),
-	      hostname: z.string().optional().describe("Hostname to listen on"),
-	      mdns: z
-	        .union([z.boolean(), MdnsConfig])
-	        .optional()
-	        .describe("Enable mDNS service discovery (boolean or detailed config)"),
-	      mdnsDomain: z
-	        .string()
-	        .optional()
-	        .describe("Custom domain name for mDNS service (default: agent-core.local)"),
-	      cors: z.array(z.string()).optional().describe("Additional domains to allow for CORS"),
-	      allowedDirectories: z
-	        .array(z.string())
-	        .optional()
-	        .describe(
+  export const Server = z
+    .object({
+      port: z.number().int().positive().optional().describe("Port to listen on"),
+      hostname: z.string().optional().describe("Hostname to listen on"),
+      mdns: z
+        .union([z.boolean(), MdnsConfig])
+        .optional()
+        .describe("Enable mDNS service discovery (boolean or detailed config)"),
+      mdnsDomain: z.string().optional().describe("Custom domain name for mDNS service (default: agent-core.local)"),
+      cors: z.array(z.string()).optional().describe("Additional domains to allow for CORS"),
+      allowedDirectories: z
+        .array(z.string())
+        .optional()
+        .describe(
           "Allowlist of directories that can be selected via ?directory=... or x-opencode-directory in server mode. If omitted, non-loopback binds default to the daemon CWD only.",
         ),
       allowGlobalDirectory: z

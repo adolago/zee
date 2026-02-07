@@ -48,6 +48,7 @@ export function isLoopbackHost(hostname: string): boolean {
   if (host === "localhost") return true;
   if (host === "::1") return true;
   if (host === "0:0:0:0:0:0:0:1") return true;
+  // 127.0.0.0/8
   if (/^127(?:\.\d{1,3}){3}$/.test(host)) return true;
   return false;
 }
@@ -116,4 +117,3 @@ export function checkBrowserOrigin(params: {
 
   return { ok: false, reason: "origin-mismatch" };
 }
-

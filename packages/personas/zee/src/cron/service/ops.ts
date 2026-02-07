@@ -11,16 +11,18 @@ import {
 import { locked } from "./locked.js";
 import type { CronServiceState } from "./state.js";
 import { ensureLoaded, persist, warnIfDisabled } from "./store.js";
-import { armTimer, emit, executeJob, stopTimer, wake } from "./timer.js";
+import { armTimer, emit, executeJob, runMissedJobs, stopTimer, wake } from "./timer.js";
 
 export async function start(state: CronServiceState) {
   await locked(state, async () => {
+    state.stopped = false;
     if (!state.deps.cronEnabled) {
       state.deps.log.info({ enabled: false }, "cron: disabled");
       return;
     }
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     recomputeNextRuns(state);
+    await runMissedJobs(state);
     await persist(state);
     armTimer(state);
     state.deps.log.info(
@@ -35,12 +37,13 @@ export async function start(state: CronServiceState) {
 }
 
 export function stop(state: CronServiceState) {
+  state.stopped = true;
   stopTimer(state);
 }
 
 export async function status(state: CronServiceState) {
   return await locked(state, async () => {
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     return {
       enabled: state.deps.cronEnabled,
       storePath: state.deps.storePath,
@@ -52,17 +55,17 @@ export async function status(state: CronServiceState) {
 
 export async function list(state: CronServiceState, opts?: { includeDisabled?: boolean }) {
   return await locked(state, async () => {
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     const includeDisabled = opts?.includeDisabled === true;
     const jobs = (state.store?.jobs ?? []).filter((j) => includeDisabled || j.enabled);
-    return jobs.sort((a, b) => (a.state.nextRunAtMs ?? 0) - (b.state.nextRunAtMs ?? 0));
+    return jobs.toSorted((a, b) => (a.state.nextRunAtMs ?? 0) - (b.state.nextRunAtMs ?? 0));
   });
 }
 
 export async function add(state: CronServiceState, input: CronJobCreate) {
   return await locked(state, async () => {
     warnIfDisabled(state, "add");
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     const job = createJob(state, input);
     state.store?.jobs.push(job);
     await persist(state);
@@ -79,10 +82,13 @@ export async function add(state: CronServiceState, input: CronJobCreate) {
 export async function update(state: CronServiceState, id: string, patch: CronJobPatch) {
   return await locked(state, async () => {
     warnIfDisabled(state, "update");
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     const job = findJobOrThrow(state, id);
     const now = state.deps.nowMs();
     applyJobPatch(job, patch);
+    if (job.schedule.kind === "every" && typeof job.schedule.anchorMs !== "number") {
+      job.schedule.anchorMs = now;
+    }
     job.updatedAtMs = now;
     if (job.enabled) {
       job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
@@ -105,7 +111,7 @@ export async function update(state: CronServiceState, id: string, patch: CronJob
 export async function remove(state: CronServiceState, id: string) {
   return await locked(state, async () => {
     warnIfDisabled(state, "remove");
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     const before = state.store?.jobs.length ?? 0;
     if (!state.store) return { ok: false, removed: false } as const;
     state.store.jobs = state.store.jobs.filter((j) => j.id !== id);
@@ -120,8 +126,11 @@ export async function remove(state: CronServiceState, id: string) {
 export async function run(state: CronServiceState, id: string, mode?: "due" | "force") {
   return await locked(state, async () => {
     warnIfDisabled(state, "run");
-    await ensureLoaded(state);
+    await ensureLoaded(state, { skipRecompute: true });
     const job = findJobOrThrow(state, id);
+    if (typeof job.state.runningAtMs === "number") {
+      return { ok: true, ran: false, reason: "already-running" as const };
+    }
     const now = state.deps.nowMs();
     const forced = mode !== "due";
     const due = isJobDue(job, now, { forced });

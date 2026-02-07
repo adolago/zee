@@ -588,7 +588,7 @@ export function Session() {
     {
       title: conceal() ? "Disable code concealment" : "Enable code concealment",
       value: "session.toggle.conceal",
-      keybind: "messages_toggle_conceal" as any,
+      keybind: "messages_toggle_conceal",
       category: "Session",
       onSelect: (dialog) => {
         setConceal((prev) => !prev)
@@ -611,7 +611,7 @@ export function Session() {
     {
       title: showThinking() ? "Hide thinking" : "Show thinking",
       value: "session.toggle.thinking",
-      keybind: "messages_toggle_thinking" as any,
+      keybind: "messages_toggle_thinking",
       category: "Session",
       slash: {
         name: "thinking",

@@ -89,7 +89,7 @@ describe("gateway server hooks", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: "Query auth" }),
       });
-      expect(resQuery.status).toBe(401);
+      expect(resQuery.status).toBe(400);
 
       const resBadChannel = await fetch(`http://127.0.0.1:${port}/hooks/agent`, {
         method: "POST",

@@ -10,6 +10,8 @@ export type CronEvent = {
   error?: string;
   summary?: string;
   nextRunAtMs?: number;
+  sessionId?: string;
+  sessionKey?: string;
 };
 
 export type Logger = {
@@ -33,6 +35,8 @@ export type CronServiceDeps = {
     /** Last non-empty agent text output (not truncated). */
     outputText?: string;
     error?: string;
+    sessionId?: string;
+    sessionKey?: string;
   }>;
   onEvent?: (evt: CronEvent) => void;
 };
@@ -48,6 +52,8 @@ export type CronServiceState = {
   running: boolean;
   op: Promise<unknown>;
   warnedDisabled: boolean;
+  lastLoadedMtimeMs?: number;
+  stopped: boolean;
 };
 
 export function createCronServiceState(deps: CronServiceDeps): CronServiceState {
@@ -58,6 +64,8 @@ export function createCronServiceState(deps: CronServiceDeps): CronServiceState 
     running: false,
     op: Promise.resolve(),
     warnedDisabled: false,
+    lastLoadedMtimeMs: undefined,
+    stopped: false,
   };
 }
 
@@ -74,6 +82,7 @@ export type CronStatusSummary = {
 export type CronRunResult =
   | { ok: true; ran: true }
   | { ok: true; ran: false; reason: "not-due" }
+  | { ok: true; ran: false; reason: "already-running" }
   | { ok: false };
 
 export type CronRemoveResult = { ok: true; removed: boolean } | { ok: false; removed: false };
