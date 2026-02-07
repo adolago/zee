@@ -245,16 +245,18 @@ Implementation focus (agent-core):
 
 Upstream PR triage (OpenClaw):
 
+Auth gating: see lane 01 (`openclaw/openclaw#9518`).
+
 | Upstream PR | Category | Decision | Rationale | agent-core follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#9518 | security | port | Require auth for canvas host and A2UI assets. | TODO |
+| openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | TODO |
+| openclaw/openclaw#2900 | feature | non-goal | Telegram quote replies not in scope for canvas lane. | None |
+| openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to agent-core. | TODO |
 | openclaw/openclaw#2455 | reliability | port | Restore A2UI scaffold assets; prevent runtime breakage. | TODO |
 | openclaw/openclaw#1882 | security | adapt | Add mDNS discovery config to reduce information disclosure; config surface differs. | TODO |
-| openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to agent-core. | TODO |
-| openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | TODO |
+| openclaw/openclaw#1621 | feature | non-goal | Discord exec approval forwarding is out of scope (channel not supported). | None |
 | openclaw/openclaw#1607 | reliability | port | Node disconnect/late invoke log noise reduction also applies. | TODO |
 | openclaw/openclaw#1229 | feature | adapt | Expand /v1/responses inputs; may impact adapters/tool routing. | TODO |
-| openclaw/openclaw#2900 | feature | non-goal | Telegram quote replies not in scope for canvas lane. | None |
 
 ## Lane 11: Plugin and extension model (manifests, loader, tool groups, safety scanning)
 
