@@ -2,11 +2,9 @@ import type { Argv } from "yargs"
 import path from "path"
 import { UI } from "../ui"
 import { cmd } from "./cmd"
-import { Flag } from "../../flag/flag"
 import { bootstrap } from "../bootstrap"
 import { Command } from "../../command"
 import { EOL } from "os"
-import { select } from "@clack/prompts"
 import { createAgentCoreClient as createEventClient } from "@agent-core/sdk"
 import { createAgentCoreClient, type AgentCoreClient } from "@agent-core/sdk/v2"
 import { Server } from "../../server/server"
@@ -15,18 +13,160 @@ import { Agent } from "../../agent/agent"
 import { checkEnvironment } from "./check"
 import { GlobalBus } from "../../bus/global"
 
-const TOOL: Record<string, [string, string]> = {
-  todowrite: ["Todo", UI.Style.TEXT_WARNING_BOLD],
-  todoread: ["Todo", UI.Style.TEXT_WARNING_BOLD],
-  bash: ["Bash", UI.Style.TEXT_DANGER_BOLD],
-  edit: ["Edit", UI.Style.TEXT_SUCCESS_BOLD],
-  glob: ["Glob", UI.Style.TEXT_INFO_BOLD],
-  grep: ["Grep", UI.Style.TEXT_INFO_BOLD],
-  list: ["List", UI.Style.TEXT_INFO_BOLD],
-  read: ["Read", UI.Style.TEXT_HIGHLIGHT_BOLD],
-  write: ["Write", UI.Style.TEXT_SUCCESS_BOLD],
-  websearch: ["Search", UI.Style.TEXT_DIM_BOLD],
+// ---------------------------------------------------------------------------
+// Typed tool rendering helpers
+// ---------------------------------------------------------------------------
+
+type ToolPart = {
+  tool: string
+  state: {
+    status: string
+    input: Record<string, any>
+    output?: string
+    title?: string
+    metadata?: Record<string, any>
+  }
 }
+
+type Inline = { type: "inline"; tool: string; description: string }
+type Block = { type: "block"; tool: string; description: string; body?: string }
+type ToolResult = Inline | Block
+
+function inline(tool: string, description: string): Inline {
+  return { type: "inline", tool, description }
+}
+
+function block(tool: string, description: string, body?: string): Block {
+  return { type: "block", tool, description, body }
+}
+
+function normalizePath(input?: string): string {
+  if (!input) return ""
+  const relative = path.relative(process.cwd(), input)
+  if (relative.startsWith("..")) return input
+  return relative || "."
+}
+
+function fallback(part: ToolPart): ToolResult {
+  const title =
+    part.state.title ||
+    (Object.keys(part.state.input).length > 0 ? JSON.stringify(part.state.input) : "")
+  return inline(part.tool, title)
+}
+
+function renderGlob(part: ToolPart): ToolResult {
+  const input = part.state.input
+  let desc = input.pattern || ""
+  if (input.path) desc += ` in ${normalizePath(input.path)}`
+  return inline("Glob", desc)
+}
+
+function renderGrep(part: ToolPart): ToolResult {
+  const input = part.state.input
+  let desc = input.pattern || ""
+  if (input.path) desc += ` in ${normalizePath(input.path)}`
+  return inline("Grep", desc)
+}
+
+function renderList(part: ToolPart): ToolResult {
+  return inline("List", normalizePath(part.state.input.path) || ".")
+}
+
+function renderRead(part: ToolPart): ToolResult {
+  const fp = normalizePath(part.state.input.filePath || part.state.input.file_path)
+  return inline("Read", fp)
+}
+
+function renderWrite(part: ToolPart): ToolResult {
+  const fp = normalizePath(part.state.input.filePath || part.state.input.file_path)
+  return block("Write", fp)
+}
+
+function renderEdit(part: ToolPart): ToolResult {
+  const fp = normalizePath(part.state.input.filePath || part.state.input.file_path)
+  return block("Edit", fp)
+}
+
+function renderBash(part: ToolPart): ToolResult {
+  const input = part.state.input
+  const desc = input.description || input.command || ""
+  return block("Bash", desc, part.state.output?.trim() || undefined)
+}
+
+function renderWebFetch(part: ToolPart): ToolResult {
+  return inline("Fetch", part.state.input.url || "")
+}
+
+function renderWebSearch(part: ToolPart): ToolResult {
+  return inline("Search", part.state.input.query || "")
+}
+
+function renderCodeSearch(part: ToolPart): ToolResult {
+  return inline("CodeSearch", part.state.input.query || "")
+}
+
+function renderTask(part: ToolPart): ToolResult {
+  return inline("Task", part.state.input.description || part.state.title || "")
+}
+
+function renderSkill(part: ToolPart): ToolResult {
+  const input = part.state.input
+  return inline("Skill", input.name || input.query || part.state.title || "")
+}
+
+function renderTodo(part: ToolPart): ToolResult {
+  return inline("Todo", part.state.title || "")
+}
+
+const TOOL_RENDERERS: Record<string, (part: ToolPart) => ToolResult> = {
+  glob: renderGlob,
+  grep: renderGrep,
+  list: renderList,
+  read: renderRead,
+  write: renderWrite,
+  edit: renderEdit,
+  bash: renderBash,
+  webfetch: renderWebFetch,
+  websearch: renderWebSearch,
+  codesearch: renderCodeSearch,
+  task: renderTask,
+  skill: renderSkill,
+  todowrite: renderTodo,
+  todoread: renderTodo,
+}
+
+const TOOL_COLORS: Record<string, string> = {
+  Glob: UI.Style.TEXT_INFO_BOLD,
+  Grep: UI.Style.TEXT_INFO_BOLD,
+  List: UI.Style.TEXT_INFO_BOLD,
+  Read: UI.Style.TEXT_HIGHLIGHT_BOLD,
+  Write: UI.Style.TEXT_SUCCESS_BOLD,
+  Edit: UI.Style.TEXT_SUCCESS_BOLD,
+  Bash: UI.Style.TEXT_DANGER_BOLD,
+  Fetch: UI.Style.TEXT_DIM_BOLD,
+  Search: UI.Style.TEXT_DIM_BOLD,
+  CodeSearch: UI.Style.TEXT_DIM_BOLD,
+  Task: UI.Style.TEXT_INFO_BOLD,
+  Skill: UI.Style.TEXT_WARNING_BOLD,
+  Todo: UI.Style.TEXT_WARNING_BOLD,
+}
+
+function renderTool(part: ToolPart): ToolResult {
+  const renderer = TOOL_RENDERERS[part.tool]
+  return renderer ? renderer(part) : fallback(part)
+}
+
+// ---------------------------------------------------------------------------
+// Permission rules for non-interactive run mode
+// ---------------------------------------------------------------------------
+
+const RUN_PERMISSION_RULES = [
+  { permission: "question", action: "deny" as const, pattern: "*" },
+  { permission: "plan_enter", action: "deny" as const, pattern: "*" },
+  { permission: "plan_exit", action: "deny" as const, pattern: "*" },
+]
+
+// ---------------------------------------------------------------------------
 
 type AppEvent = {
   type: string
@@ -103,6 +243,11 @@ export const RunCommand = cmd({
         type: "boolean",
         describe: "skip all permission checks (no cuffs mode, equivalent to release mode)",
       })
+      .option("thinking", {
+        type: "boolean",
+        describe: "show thinking blocks",
+        default: false,
+      })
   },
   handler: async (args) => {
     await checkEnvironment()
@@ -154,13 +299,18 @@ export const RunCommand = cmd({
       resolvedAgent: string | undefined,
       localEvents?: { stream: AsyncIterable<any> },
     ) => {
-      const printEvent = (color: string, type: string, title: string) => {
+      const printToolEvent = (result: ToolResult) => {
+        const color = TOOL_COLORS[result.tool] ?? UI.Style.TEXT_INFO_BOLD
         UI.println(
           color + `|`,
-          UI.Style.TEXT_NORMAL + UI.Style.TEXT_DIM + ` ${type.padEnd(7, " ")}`,
+          UI.Style.TEXT_NORMAL + UI.Style.TEXT_DIM + ` ${result.tool.padEnd(7, " ")}`,
           "",
-          UI.Style.TEXT_NORMAL + title,
+          UI.Style.TEXT_NORMAL + result.description,
         )
+        if (result.type === "block" && result.body) {
+          UI.println()
+          UI.println(result.body)
+        }
       }
 
       const outputJsonEvent = (type: string, data: any) => {
@@ -185,6 +335,9 @@ export const RunCommand = cmd({
         }
       }
 
+      // Track running tasks so we show them once when started
+      const taskToggles = new Map<string, boolean>()
+
       const eventProcessor = (async () => {
         for await (const event of events.stream) {
           const resolved = resolveEvent(event)
@@ -195,14 +348,21 @@ export const RunCommand = cmd({
 
             if (part.type === "tool" && part.state.status === "completed") {
               if (outputJsonEvent("tool_use", { part })) continue
-              const [tool, color] = TOOL[part.tool] ?? [part.tool, UI.Style.TEXT_INFO_BOLD]
-              const title =
-                part.state.title ||
-                (Object.keys(part.state.input).length > 0 ? JSON.stringify(part.state.input) : "Unknown")
-              printEvent(color, tool, title)
-              if (part.tool === "bash" && part.state.output?.trim()) {
-                UI.println()
-                UI.println(part.state.output)
+              const result = renderTool(part as ToolPart)
+              printToolEvent(result)
+            }
+
+            if (part.type === "tool" && part.state.status === "running" && part.tool === "task") {
+              const taskKey = part.callID || part.id
+              if (!taskToggles.has(taskKey)) {
+                taskToggles.set(taskKey, true)
+                const desc = part.state.input?.description || "running task..."
+                UI.println(
+                  UI.Style.TEXT_INFO_BOLD + "|",
+                  UI.Style.TEXT_NORMAL + UI.Style.TEXT_DIM + ` Task   `,
+                  "",
+                  UI.Style.TEXT_NORMAL + desc,
+                )
               }
             }
 
@@ -220,6 +380,21 @@ export const RunCommand = cmd({
               if (!isPiped) UI.println()
               process.stdout.write((isPiped ? part.text : UI.markdown(part.text)) + EOL)
               if (!isPiped) UI.println()
+            }
+
+            if (part.type === "reasoning" && part.time?.end && args.thinking) {
+              if (outputJsonEvent("reasoning", { part })) continue
+              const text = (part.text || "").trim()
+              if (!text) continue
+              const isPiped = !process.stdout.isTTY
+              if (isPiped) {
+                process.stdout.write("Thinking: " + text + EOL)
+              } else {
+                UI.println()
+                UI.println(UI.Style.TEXT_DIM + "Thinking:" + UI.Style.TEXT_NORMAL)
+                UI.println(UI.Style.TEXT_DIM + text + UI.Style.TEXT_NORMAL)
+                UI.println()
+              }
             }
           }
 
@@ -242,20 +417,13 @@ export const RunCommand = cmd({
           if (resolved.type === "permission.asked") {
             const permission = resolved.properties
             if (permission.sessionID !== sessionID) continue
-            const result = await select({
-              message: `Permission required: ${permission.permission} (${permission.patterns.join(", ")})`,
-              options: [
-                { value: "once", label: "Allow once" },
-                { value: "always", label: "Always allow: " + permission.always.join(", ") },
-                { value: "reject", label: "Reject" },
-              ],
-              initialValue: "once",
-            }).catch(() => "reject")
-            const response = (result.toString().includes("cancel") ? "reject" : result) as "once" | "always" | "reject"
+            UI.warn(
+              `Permission denied in non-interactive mode: ${permission.permission} (${permission.patterns.join(", ")})`,
+            )
             await sdk.permission.respond({
               sessionID,
               permissionID: permission.id,
-              response,
+              response: "reject",
             })
           }
         }
@@ -317,22 +485,10 @@ export const RunCommand = cmd({
           title
             ? {
                 title,
-                permission: [
-                  {
-                    permission: "question",
-                    action: "deny",
-                    pattern: "*",
-                  },
-                ],
+                permission: RUN_PERMISSION_RULES,
               }
             : {
-                permission: [
-                  {
-                    permission: "question",
-                    action: "deny",
-                    pattern: "*",
-                  },
-                ],
+                permission: RUN_PERMISSION_RULES,
               },
         )
         return result.data?.id
@@ -343,8 +499,16 @@ export const RunCommand = cmd({
         process.exit(1)
       }
 
-      // In attach mode, skip local agent validation - server will validate
-      return await execute(sdk, eventClient, sessionID, args.agent)
+      const result = await execute(sdk, eventClient, sessionID, args.agent)
+
+      if (args.share) {
+        const shareResult = await sdk.session.share({ sessionID })
+        if (shareResult.data) {
+          UI.info(`Session shared: ${shareResult.data}`)
+        }
+      }
+
+      return result
     }
 
     await bootstrap(process.cwd(), async () => {
@@ -420,7 +584,11 @@ export const RunCommand = cmd({
               : args.title
             : undefined
 
-        const result = await sdk.session.create(title ? { title } : {})
+        const result = await sdk.session.create(
+          title
+            ? { title, permission: RUN_PERMISSION_RULES }
+            : { permission: RUN_PERMISSION_RULES },
+        )
         return result.data?.id
       })()
 
@@ -453,6 +621,13 @@ export const RunCommand = cmd({
       })()
 
       await execute(sdk, null, sessionID, resolvedAgent, events)
+
+      if (args.share) {
+        const shareResult = await sdk.session.share({ sessionID })
+        if (shareResult.data) {
+          UI.info(`Session shared: ${shareResult.data}`)
+        }
+      }
     })
   },
 })
