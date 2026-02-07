@@ -215,7 +215,6 @@ export async function ensureTailscaleEndpoint(params: {
   path: string;
   port?: number;
   target?: string;
-  token?: string;
 }): Promise<string> {
   if (params.mode === "off") return "";
 
@@ -259,7 +258,8 @@ export async function ensureTailscaleEndpoint(params: {
 
   const baseUrl = `https://${dnsName}${pathArg}`;
   // Funnel/serve strips pathArg before proxying; keep it only in the public URL.
-  return params.token ? `${baseUrl}?token=${params.token}` : baseUrl;
+  // Token must be sent via Authorization header, not query parameter.
+  return baseUrl;
 }
 
 export async function resolveProjectIdFromGogCredentials(): Promise<string | null> {
