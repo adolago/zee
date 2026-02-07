@@ -6,6 +6,7 @@ import { ACP } from "@/acp/agent"
 import { Server } from "@/server/server"
 import { createAgentCoreClient } from "@agent-core/sdk/v2"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
+import { reloadFlags } from "@/flag/flag"
 
 const log = Log.create({ service: "acp-command" })
 
@@ -20,6 +21,8 @@ export const AcpCommand = cmd({
     })
   },
   handler: async (args) => {
+    process.env.AGENT_CORE_CLIENT = "acp"
+    reloadFlags()
     await bootstrap(process.cwd(), async () => {
       const opts = await resolveNetworkOptions(args)
       const server = Server.listen(opts)

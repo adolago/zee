@@ -2,16 +2,25 @@ import {
   RequestError,
   type Agent as ACPAgent,
   type AgentSideConnection,
+  type Annotations,
   type AuthenticateRequest,
   type AuthMethod,
   type CancelNotification,
+  type ForkSessionRequest,
+  type ForkSessionResponse,
   type InitializeRequest,
   type InitializeResponse,
+  type ListSessionsRequest,
+  type ListSessionsResponse,
   type LoadSessionRequest,
   type NewSessionRequest,
   type PermissionOption,
   type PlanEntry,
   type PromptRequest,
+  type ResumeSessionRequest,
+  type ResumeSessionResponse,
+  type Role,
+  type SessionInfo as ACPSessionInfo,
   type SetSessionModelRequest,
   type SetSessionModeRequest,
   type SetSessionModeResponse,
@@ -72,6 +81,25 @@ function parseModelId(modelId: string): { providerID: string; modelID: string; v
 function formatModelId(model: { providerID: string; modelID: string; variant?: string }) {
   const base = `${model.providerID}/${model.modelID}`
   return model.variant ? `${base}${VARIANT_SEPARATOR}${model.variant}` : base
+}
+
+type ProviderInfo = {
+  id: string
+  name: string
+  models: Record<string, { id: string; name: string; providerID: string; variants?: Record<string, { disabled?: boolean }> }>
+}
+
+function getModelVariants(
+  providers: ProviderInfo[],
+  model: { providerID: string; modelID: string },
+): string[] {
+  const provider = providers.find((p) => p.id === model.providerID)
+  if (!provider) return []
+  const m = provider.models[model.modelID]
+  if (!m?.variants) return []
+  return Object.entries(m.variants)
+    .filter(([, config]) => !config.disabled)
+    .map(([v]) => v)
 }
 
 export namespace ACP {
@@ -415,7 +443,13 @@ export namespace ACP {
 
           if (part.type === "text") {
             const delta = props.delta
-            if (delta && part.ignored !== true) {
+            if (delta) {
+              const audience: Role[] | undefined = part.synthetic
+                ? ["assistant"]
+                : part.ignored
+                  ? ["user"]
+                  : undefined
+              const annotations: Annotations | undefined = audience ? { audience } : undefined
               await this.connection
                 .sessionUpdate({
                   sessionId,
@@ -424,6 +458,7 @@ export namespace ACP {
                     content: {
                       type: "text",
                       text: delta,
+                      ...(annotations ? { annotations } : {}),
                     },
                   },
                 })
@@ -482,6 +517,11 @@ export namespace ACP {
         protocolVersion: 1,
         agentCapabilities: {
           loadSession: true,
+          sessionCapabilities: {
+            fork: {},
+            list: {},
+            resume: {},
+          },
           mcpCapabilities: {
             http: true,
             sse: true,
@@ -754,7 +794,13 @@ export namespace ACP {
               break
           }
         } else if (part.type === "text") {
-          if (part.text && !part.ignored) {
+          if (part.text) {
+            const audience: Role[] | undefined = (part as any).synthetic
+              ? ["assistant"]
+              : (part as any).ignored
+                ? ["user"]
+                : undefined
+            const annotations: Annotations | undefined = audience ? { audience } : undefined
             await this.connection
               .sessionUpdate({
                 sessionId,
@@ -763,6 +809,7 @@ export namespace ACP {
                   content: {
                     type: "text",
                     text: part.text,
+                    ...(annotations ? { annotations } : {}),
                   },
                 },
               })
@@ -983,6 +1030,7 @@ export namespace ACP {
       }, 0)
 
       const currentVariant = this.sessionManager.getVariant(sessionId)
+      const availableVariants = getModelVariants(providers as ProviderInfo[], currentModel)
 
       return {
         sessionId,
@@ -998,13 +1046,13 @@ export namespace ACP {
           opencode: {
             modelId: `${currentModel.providerID}/${currentModel.modelID}`,
             variant: currentVariant ?? null,
-            availableVariants: [],
+            availableVariants,
           },
         },
       }
     }
 
-    async setSessionModel(params: SetSessionModelRequest) {
+    async unstable_setSessionModel(params: SetSessionModelRequest) {
       const session = this.sessionManager.get(params.sessionId)
 
       const model = parseModelId(params.modelId)
@@ -1016,12 +1064,17 @@ export namespace ACP {
       })
       this.sessionManager.setVariant(session.id, model.variant)
 
+      const providers = await this.sdk.config
+        .providers(withDirectory(session.cwd))
+        .then((x) => x.data!.providers)
+      const availableVariants = getModelVariants(providers as ProviderInfo[], model)
+
       return {
         _meta: {
           opencode: {
             modelId: `${model.providerID}/${model.modelID}`,
             variant: model.variant ?? null,
-            availableVariants: [],
+            availableVariants,
           },
         },
       }
@@ -1064,16 +1117,23 @@ export namespace ACP {
       const agent = session.modeId ?? (await AgentModule.defaultAgent())
 
       const parts: Array<
-        { type: "text"; text: string } | { type: "file"; url: string; filename: string; mime: string }
+        | { type: "text"; text: string; synthetic?: boolean; ignored?: boolean }
+        | { type: "file"; url: string; filename: string; mime: string }
       > = []
       for (const part of params.prompt) {
         switch (part.type) {
-          case "text":
+          case "text": {
+            const audience = (part as any).annotations?.audience as Role[] | undefined
+            const synthetic = audience?.length === 1 && audience[0] === "assistant" ? true : undefined
+            const ignored = audience?.length === 1 && audience[0] === "user" ? true : undefined
             parts.push({
               type: "text" as const,
               text: part.text,
+              ...(synthetic ? { synthetic } : {}),
+              ...(ignored ? { ignored } : {}),
             })
             break
+          }
           case "image": {
             const parsed = parseUri(part.uri ?? "")
             const filename = parsed.type === "file" ? parsed.filename : "image"
@@ -1209,6 +1269,78 @@ export namespace ACP {
         },
         withDirectory(session.cwd, { throwOnError: true }),
       )
+    }
+
+    async unstable_listSessions(params: ListSessionsRequest): Promise<ListSessionsResponse> {
+      const PAGE_LIMIT = 100
+      const start = params.cursor ? parseInt(params.cursor, 10) : 0
+
+      const sessions = await this.sdk.session
+        .list(
+          {
+            start,
+            limit: PAGE_LIMIT,
+            ...(params.cwd ? { directory: params.cwd } : {}),
+          },
+          { throwOnError: true },
+        )
+        .then((x) => x.data!)
+
+      const mapped: ACPSessionInfo[] = sessions.map((s) => ({
+        sessionId: s.id,
+        cwd: s.directory,
+        title: s.title || undefined,
+        updatedAt: new Date(s.time.updated * 1000).toISOString(),
+      }))
+
+      return {
+        sessions: mapped,
+        nextCursor: sessions.length >= PAGE_LIMIT ? String(start + PAGE_LIMIT) : undefined,
+      }
+    }
+
+    async unstable_forkSession(params: ForkSessionRequest): Promise<ForkSessionResponse> {
+      const directory = params.cwd
+      const model = await defaultModel(this.config, directory)
+
+      const forked = await this.sdk.session
+        .fork(
+          {
+            sessionID: params.sessionId,
+          },
+          withDirectory(directory, { throwOnError: true }),
+        )
+        .then((x) => x.data!)
+
+      const forkedId = forked.id
+      await this.sessionManager.load(forkedId, directory, params.mcpServers ?? [], model)
+
+      const result = await this.loadSessionMode({
+        cwd: directory,
+        mcpServers: params.mcpServers ?? [],
+        sessionId: forkedId,
+      })
+
+      return {
+        sessionId: forkedId,
+        models: result.models,
+        modes: result.modes,
+        _meta: result._meta,
+      }
+    }
+
+    async unstable_resumeSession(params: ResumeSessionRequest): Promise<ResumeSessionResponse> {
+      const result = await this.loadSession({
+        sessionId: params.sessionId,
+        cwd: params.cwd,
+        mcpServers: params.mcpServers ?? [],
+      })
+
+      return {
+        models: result.models,
+        modes: result.modes,
+        _meta: result._meta,
+      }
     }
   }
 
