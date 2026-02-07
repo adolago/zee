@@ -19,7 +19,19 @@ async function makeStorePath() {
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
-      await fs.rm(dir, { recursive: true, force: true });
+      // Allow any pending FS operations to settle before cleanup.
+      // We must switch to real timers so setTimeout actually waits wall-clock time.
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      try {
+        await fs.rm(dir, { recursive: true, force: true });
+      } catch (err) {
+        if ((err as { code?: string })?.code !== "ENOENT") {
+          // Retry once after a delay to handle race conditions with open handles/locks
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          await fs.rm(dir, { recursive: true, force: true });
+        }
+      }
     },
   };
 }
