@@ -943,28 +943,30 @@ export namespace SessionPrompt {
           } satisfies MessageV2.ToolPart)
         }
 
-        // Add synthetic user message to prevent certain reasoning models from erroring
-        // If we create assistant messages w/ out user ones following mid loop thinking signatures
-        // will be missing and it can cause errors for models like gemini for example
-        const summaryUserMsg: MessageV2.User = {
-          id: Identifier.ascending("message"),
-          sessionID,
-          role: "user",
-          time: {
-            created: Date.now(),
-          },
-          agent: lastUser.agent,
-          model: lastUser.model,
+        if (task.command) {
+          // Add synthetic user message to prevent certain reasoning models from erroring
+          // If we create assistant messages w/ out user ones following mid loop thinking signatures
+          // will be missing and it can cause errors for models like gemini for example
+          const summaryUserMsg: MessageV2.User = {
+            id: Identifier.ascending("message"),
+            sessionID,
+            role: "user",
+            time: {
+              created: Date.now(),
+            },
+            agent: lastUser.agent,
+            model: lastUser.model,
+          }
+          await Session.updateMessage(summaryUserMsg)
+          await Session.updatePart({
+            id: Identifier.ascending("part"),
+            messageID: summaryUserMsg.id,
+            sessionID,
+            type: "text",
+            text: "Summarize the task tool output above and continue with your task.",
+            synthetic: true,
+          } satisfies MessageV2.TextPart)
         }
-        await Session.updateMessage(summaryUserMsg)
-        await Session.updatePart({
-          id: Identifier.ascending("part"),
-          messageID: summaryUserMsg.id,
-          sessionID,
-          type: "text",
-          text: "Summarize the task tool output above and continue with your task.",
-          synthetic: true,
-        } satisfies MessageV2.TextPart)
 
         continue
       }
@@ -1542,9 +1544,11 @@ export namespace SessionPrompt {
               // have to normalize, symbol search returns absolute paths
               // Decode the pathname since URL constructor doesn't automatically decode it
               const filepath = fileURLToPath(part.url)
-              const stat = await Bun.file(filepath).stat()
+              const stat = await Bun.file(filepath)
+                .stat()
+                .catch(() => undefined)
 
-              if (stat.isDirectory()) {
+              if (stat?.isDirectory()) {
                 part.mime = "application/x-directory"
               }
 
@@ -1563,7 +1567,7 @@ export namespace SessionPrompt {
                   // workspace/symbol searches, so we'll try to find the
                   // symbol in the document to get the full range
                   if (start === end) {
-                    const symbols = await LSP.documentSymbol(filePathURI)
+                    const symbols = await LSP.documentSymbol(filePathURI).catch(() => [])
                     for (const symbol of symbols) {
                       let range: LSP.Range | undefined
                       if ("range" in symbol) {

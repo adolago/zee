@@ -18,7 +18,7 @@ import { LSPServer } from "../lsp/server"
 import { BunProc } from "@/bun"
 import { Installation } from "@/installation"
 import { ConfigMarkdown } from "./markdown"
-import { existsSync } from "fs"
+import { constants, existsSync } from "fs"
 import { Bus } from "@/bus"
 
 export namespace Config {
@@ -205,7 +205,22 @@ export namespace Config {
     }
   })
 
+  async function isWritable(dir: string) {
+    try {
+      await fs.access(dir, constants.W_OK)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   export async function installDependencies(dir: string) {
+    const writable = await isWritable(dir)
+    if (!writable) {
+      log.debug("config dir is not writable, skipping dependency install", { dir })
+      return
+    }
+
     const pkg = path.join(dir, "package.json")
 
     if (!(await Bun.file(pkg).exists())) {
