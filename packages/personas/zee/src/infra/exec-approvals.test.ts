@@ -13,12 +13,14 @@ import {
   matchAllowlist,
   maxAsk,
   minSecurity,
+  normalizeExecApprovals,
   normalizeSafeBins,
   requiresExecApproval,
   resolveCommandResolution,
   resolveExecApprovals,
   resolveExecApprovalsFromFile,
   type ExecAllowlistEntry,
+  type ExecApprovalsFile,
 } from "./exec-approvals.js";
 
 function makePathEnv(binDir: string): NodeJS.ProcessEnv {
@@ -511,5 +513,87 @@ describe("exec approvals default agent migration", () => {
     expect(resolved.agent.ask).toBe("always");
     expect(resolved.allowlist.map((entry) => entry.pattern)).toEqual(["/bin/main", "/bin/legacy"]);
     expect(resolved.file.agents?.default).toBeUndefined();
+  });
+});
+
+describe("normalizeExecApprovals handles string allowlist entries (#9790)", () => {
+  it("converts bare string entries to ExecAllowlistEntry objects", () => {
+    const file = {
+      version: 1,
+      agents: {
+        main: {
+          allowlist: ["things", "remindctl", "memo", "which", "ls", "cat", "echo"],
+        },
+      },
+    } as unknown as ExecApprovalsFile;
+
+    const normalized = normalizeExecApprovals(file);
+    const entries = normalized.agents?.main?.allowlist ?? [];
+
+    for (const entry of entries) {
+      expect(entry).toHaveProperty("pattern");
+      expect(typeof entry.pattern).toBe("string");
+      expect(entry.pattern.length).toBeGreaterThan(0);
+      expect(entry).not.toHaveProperty("0");
+    }
+
+    expect(entries.map((e) => e.pattern)).toEqual([
+      "things",
+      "remindctl",
+      "memo",
+      "which",
+      "ls",
+      "cat",
+      "echo",
+    ]);
+  });
+
+  it("handles mixed string and object entries", () => {
+    const file = {
+      version: 1,
+      agents: {
+        main: {
+          allowlist: ["ls", { pattern: "/usr/bin/cat" }, "echo"],
+        },
+      },
+    } as unknown as ExecApprovalsFile;
+
+    const normalized = normalizeExecApprovals(file);
+    const entries = normalized.agents?.main?.allowlist ?? [];
+
+    expect(entries).toHaveLength(3);
+    expect(entries.map((e) => e.pattern)).toEqual(["ls", "/usr/bin/cat", "echo"]);
+    for (const entry of entries) {
+      expect(entry).not.toHaveProperty("0");
+    }
+  });
+
+  it("drops empty string entries", () => {
+    const file = {
+      version: 1,
+      agents: {
+        main: {
+          allowlist: ["", "  ", "ls"],
+        },
+      },
+    } as unknown as ExecApprovalsFile;
+
+    const normalized = normalizeExecApprovals(file);
+    const entries = normalized.agents?.main?.allowlist ?? [];
+    expect(entries.map((e) => e.pattern)).toEqual(["ls"]);
+  });
+
+  it("drops non-array allowlist values", () => {
+    const file = {
+      version: 1,
+      agents: {
+        main: {
+          allowlist: "ls",
+        },
+      },
+    } as unknown as ExecApprovalsFile;
+
+    const normalized = normalizeExecApprovals(file);
+    expect(normalized.agents?.main?.allowlist).toBeUndefined();
   });
 });

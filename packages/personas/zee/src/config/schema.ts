@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 
 import { CHANNEL_IDS } from "../channels/registry.js";
 import { VERSION } from "../version.js";
