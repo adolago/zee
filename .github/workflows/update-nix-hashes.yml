@@ -56,7 +56,8 @@ jobs:
           set -euo pipefail
 
           HASH_FILE="nix/hashes.json"
-          SYSTEMS="x86_64-linux aarch64-linux x86_64-darwin aarch64-darwin"
+          # node_modules.nix currently only supports Linux (bunOs = linux) and meta.platforms excludes Darwin.
+          SYSTEMS="x86_64-linux aarch64-linux"
 
           if [ ! -f "$HASH_FILE" ]; then
             mkdir -p "$(dirname "$HASH_FILE")"
