@@ -2,13 +2,13 @@
 
 Baseline:
 - Repo: `agent-core` (branch `dev`, commit `c5b4cfb2c489ae4b211a1cf4b12c61c867c6ec97`)
-- Source reports: `agent-core-threat-model.md`, `security_best_practices_report.md`, `reliability-report.md`, `performance-report.md`
+- Source reports: `docs/security/THREAT-MODEL.md`, `security_best_practices_report.md`, `reliability-report.md`, `performance-report.md`
 
 ## P0 (Security)
 
 ### SEC-001: Refuse non-loopback bind unless server auth is enabled and configured
 
-Addresses: `security_best_practices_report.md` SEC-001, `agent-core-threat-model.md` TM-001
+Addresses: `security_best_practices_report.md` SEC-001, `docs/security/THREAT-MODEL.md` TM-001
 
 Change:
 - Implement a guardrail at daemon startup such that binding to a non-loopback hostname fails unless `AGENT_CORE_ENABLE_SERVER_AUTH=1` and `AGENT_CORE_SERVER_PASSWORD` is set (and non-empty).
@@ -33,7 +33,7 @@ Rollout notes:
 
 ### SEC-002: Enforce scope authorization in HTTP middleware
 
-Addresses: `security_best_practices_report.md` SEC-004, `agent-core-threat-model.md` TM-002
+Addresses: `security_best_practices_report.md` SEC-004, `docs/security/THREAT-MODEL.md` TM-002
 
 Change:
 - Replace `isAuthorized(...)` middleware with `authorizeRequestScoped(...)`, returning `401` and `WWW-Authenticate` for unauthenticated requests and `403` for authenticated-but-insufficient-scope requests.
@@ -52,7 +52,7 @@ Tests:
 
 ### SEC-003: Remove or strictly gate request-scoped directory switching; fix boundary checks
 
-Addresses: `security_best_practices_report.md` SEC-003, `agent-core-threat-model.md` TM-003
+Addresses: `security_best_practices_report.md` SEC-003, `docs/security/THREAT-MODEL.md` TM-003
 
 Change:
 - In server mode, do not accept directory selection from unauthenticated inputs.
@@ -75,7 +75,7 @@ Tests:
 
 ### SEC-004: Restrict PTY API to reduce RCE blast radius
 
-Addresses: `security_best_practices_report.md` SEC-002, `agent-core-threat-model.md` TM-001
+Addresses: `security_best_practices_report.md` SEC-002, `docs/security/THREAT-MODEL.md` TM-001
 
 Change:
 - Require admin scope for all PTY endpoints.
@@ -95,7 +95,7 @@ Tests:
 
 ### SEC-005: Make messaging surfaces safe by default (hold mode + no auto-allow of dangerous perms)
 
-Addresses: `security_best_practices_report.md` SEC-005, `agent-core-threat-model.md` TM-004
+Addresses: `security_best_practices_report.md` SEC-005, `docs/security/THREAT-MODEL.md` TM-004
 
 Change:
 - Default messaging surfaces (WhatsApp/Matrix) to hold mode.
@@ -114,7 +114,7 @@ Tests:
 
 ### SEC-006: Harden cron toolInvoke execution policy
 
-Addresses: `security_best_practices_report.md` SEC-006, `agent-core-threat-model.md` TM-005
+Addresses: `security_best_practices_report.md` SEC-006, `docs/security/THREAT-MODEL.md` TM-005
 
 Change:
 - Require admin scope for cron job creation/updates when payload is `toolInvoke`.
@@ -136,7 +136,7 @@ Tests:
 
 ### SEC-007: Add connection limiting and finite idle timeouts for streaming endpoints
 
-Addresses: `security_best_practices_report.md` SEC-008, `agent-core-threat-model.md` TM-007
+Addresses: `security_best_practices_report.md` SEC-008, `docs/security/THREAT-MODEL.md` TM-007
 
 Change:
 - Set a finite `idleTimeout` in server mode.
@@ -151,7 +151,7 @@ Tests:
 
 ### SEC-008: Move Zee gateway token storage out of `/tmp` and validate file permissions
 
-Addresses: `security_best_practices_report.md` SEC-007, `agent-core-threat-model.md` TM-009
+Addresses: `security_best_practices_report.md` SEC-007, `docs/security/THREAT-MODEL.md` TM-009
 
 Change:
 - Replace the insecure `/tmp/zee_gateway_token` fallback with `ZEE_GATEWAY_TOKEN_FILE` (default: `~/.local/state/agent-core/zee_gateway_token`).
@@ -165,7 +165,7 @@ Tests:
 
 ### SEC-009: Upgrade vulnerable runtime dependencies and add audit gating
 
-Addresses: `security_best_practices_report.md` "Supply chain" section, `agent-core-threat-model.md` TM-008
+Addresses: `security_best_practices_report.md` "Supply chain" section, `docs/security/THREAT-MODEL.md` TM-008
 
 Change:
 - Upgrade runtime-relevant dependencies flagged by audit, prioritizing `hono` (daemon request path), `@modelcontextprotocol/sdk` (MCP path), and `undici`/`jws`/`qs` where they are runtime-reachable.

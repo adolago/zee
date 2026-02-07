@@ -36,9 +36,7 @@ export namespace Installation {
     }
   })()
   export const NPM_PACKAGES = Array.from(
-    new Set(
-      [process.env.AGENT_CORE_NPM_PACKAGE?.trim(), DEFAULT_NPM_PACKAGE, "agent-core-ai"].filter(Boolean),
-    ),
+    new Set([process.env.AGENT_CORE_NPM_PACKAGE?.trim(), DEFAULT_NPM_PACKAGE, "agent-core-ai"].filter(Boolean)),
   ) as string[]
 
   function preferredNpmPackage() {
@@ -247,13 +245,13 @@ export namespace Installation {
         })
         break
       case "npm":
-        cmd = $`npm install -g ${(await resolveNpmPackage(method))}@${target}`
+        cmd = $`npm install -g ${await resolveNpmPackage(method)}@${target}`
         break
       case "pnpm":
-        cmd = $`pnpm install -g ${(await resolveNpmPackage(method))}@${target}`
+        cmd = $`pnpm install -g ${await resolveNpmPackage(method)}@${target}`
         break
       case "bun":
-        cmd = $`bun install -g ${(await resolveNpmPackage(method))}@${target}`
+        cmd = $`bun install -g ${await resolveNpmPackage(method)}@${target}`
         break
       case "brew": {
         const formula = await getBrewFormula()
@@ -294,7 +292,7 @@ export namespace Installation {
       ? AGENT_CORE_VERSION
       : typeof AGENT_CORE_VERSION === "string"
         ? AGENT_CORE_VERSION
-        : PACKAGE_VERSION ?? "dev"
+        : (PACKAGE_VERSION ?? "dev")
   export const CHANNEL =
     typeof AGENT_CORE_CHANNEL === "string"
       ? AGENT_CORE_CHANNEL
@@ -338,7 +336,12 @@ export namespace Installation {
       }
     }
 
-    if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm" || detectedMethod === "yarn") {
+    if (
+      detectedMethod === "npm" ||
+      detectedMethod === "bun" ||
+      detectedMethod === "pnpm" ||
+      detectedMethod === "yarn"
+    ) {
       const registry = await iife(async () => {
         const r = (await $`npm config get registry`.quiet().nothrow().text()).trim()
         const reg = r || "https://registry.npmjs.org"

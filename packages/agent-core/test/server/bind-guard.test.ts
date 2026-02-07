@@ -59,4 +59,3 @@ describe("server bind guard", () => {
     expect(() => assertSafeServerBind({ hostname: "0.0.0.0" })).not.toThrow()
   })
 })
-

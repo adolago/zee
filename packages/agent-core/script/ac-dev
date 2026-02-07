@@ -47,7 +47,7 @@ case "$(uname -s)-$(uname -m)" in
     *)             echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
 esac
 
-LOCAL_BINARY="$REPO_ROOT/dist/@agent-core/core-$PLATFORM/bin/agent-core"
+LOCAL_BINARY="$REPO_ROOT/dist/agent-core-$PLATFORM/bin/agent-core"
 DAEMON_PORT=3210
 
 # Always rebuild unless --no-build is set

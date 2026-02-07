@@ -154,9 +154,11 @@ export const SessionRoute = new Hono()
           stream.write(JSON.stringify(msg))
         } catch (err) {
           const errorMsg =
-            err instanceof NamedError ? (err.toObject().data?.message ?? err.message) :
-            err instanceof Error ? err.message :
-            String(err)
+            err instanceof NamedError
+              ? (err.toObject().data?.message ?? err.message)
+              : err instanceof Error
+                ? err.message
+                : String(err)
           Log.Default.error("session.prompt stream error", { error: errorMsg })
           stream.write(JSON.stringify({ error: errorMsg, info: null, parts: [] }))
         }
@@ -260,21 +262,25 @@ export const SessionRoute = new Hono()
       const sessionID = c.req.valid("param").sessionID
       const updates = c.req.valid("json")
 
-      const updatedSession = await Session.update(sessionID, (session) => {
-        if (updates.title !== undefined) {
-          session.title = updates.title
-        }
-        if (updates.systemPrompt !== undefined) {
-          session.systemPrompt = updates.systemPrompt ?? undefined
-        }
-        if (updates.skills !== undefined) {
-          session.skills = updates.skills ?? undefined
-        }
-        if (updates.contextFiles !== undefined) {
-          session.contextFiles = updates.contextFiles ?? undefined
-        }
-        if (updates.time?.archived !== undefined) session.time.archived = updates.time.archived
-      }, { touch: false })
+      const updatedSession = await Session.update(
+        sessionID,
+        (session) => {
+          if (updates.title !== undefined) {
+            session.title = updates.title
+          }
+          if (updates.systemPrompt !== undefined) {
+            session.systemPrompt = updates.systemPrompt ?? undefined
+          }
+          if (updates.skills !== undefined) {
+            session.skills = updates.skills ?? undefined
+          }
+          if (updates.contextFiles !== undefined) {
+            session.contextFiles = updates.contextFiles ?? undefined
+          }
+          if (updates.time?.archived !== undefined) session.time.archived = updates.time.archived
+        },
+        { touch: false },
+      )
 
       return c.json(updatedSession)
     },
@@ -283,7 +289,8 @@ export const SessionRoute = new Hono()
     "/session/:sessionID/mode",
     describeRoute({
       summary: "Update session mode",
-      description: "Set the hold/release mode for a session. Hold mode restricts file modifications; release mode enables full tool access.",
+      description:
+        "Set the hold/release mode for a session. Hold mode restricts file modifications; release mode enables full tool access.",
       operationId: "session.mode",
       responses: {
         200: {
@@ -363,9 +370,13 @@ export const SessionRoute = new Hono()
           url,
         } satisfies Session.ShareInfo)
 
-        const updated = await Session.update(sessionID, (draft) => {
-          draft.share = { url }
-        }, { touch: false })
+        const updated = await Session.update(
+          sessionID,
+          (draft) => {
+            draft.share = { url }
+          },
+          { touch: false },
+        )
         return c.json(updated)
       } catch (error) {
         log.error("session share failed", { error: error instanceof Error ? error.message : String(error) })
@@ -401,9 +412,13 @@ export const SessionRoute = new Hono()
       const { sessionID } = c.req.valid("param")
       try {
         await Storage.remove(["session_share", sessionID])
-        const updated = await Session.update(sessionID, (draft) => {
-          delete draft.share
-        }, { touch: false })
+        const updated = await Session.update(
+          sessionID,
+          (draft) => {
+            delete draft.share
+          },
+          { touch: false },
+        )
         return c.json(updated)
       } catch (error) {
         log.error("session unshare failed", { error: error instanceof Error ? error.message : String(error) })
@@ -535,11 +550,13 @@ export const SessionRoute = new Hono()
                   todos: Todo.Info.array(),
                   context: z.object({
                     recentMessages: z.array(z.string()),
-                    activeTodos: z.array(z.object({
-                      id: z.string(),
-                      content: z.string(),
-                      status: z.string(),
-                    })),
+                    activeTodos: z.array(
+                      z.object({
+                        id: z.string(),
+                        content: z.string(),
+                        status: z.string(),
+                      }),
+                    ),
                     previousSurface: z.string().optional(),
                     persona: z.string().optional(),
                   }),
@@ -948,11 +965,7 @@ export const SessionRoute = new Hono()
     async (c) => {
       const params = c.req.valid("param")
       const body = c.req.valid("json")
-      if (
-        body.id !== params.partID ||
-        body.messageID !== params.messageID ||
-        body.sessionID !== params.sessionID
-      ) {
+      if (body.id !== params.partID || body.messageID !== params.messageID || body.sessionID !== params.sessionID) {
         throw new Error("Part mismatch")
       }
       const part = await Session.updatePart(body)
@@ -1209,88 +1222,88 @@ export const SessionRoute = new Hono()
 
       try {
         return streamSSE(c, async (stream) => {
-        const subscriptions: (() => void)[] = []
+          const subscriptions: (() => void)[] = []
 
-        subscriptions.push(
-          Bus.subscribe(Session.Event.Updated, async (event) => {
-            if (event.properties.info.id === sessionID) {
-              await stream.writeSSE({
-                event: "session.updated",
-                data: JSON.stringify(event.properties.info),
-              })
-            }
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(Session.Event.Updated, async (event) => {
+              if (event.properties.info.id === sessionID) {
+                await stream.writeSSE({
+                  event: "session.updated",
+                  data: JSON.stringify(event.properties.info),
+                })
+              }
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(MessageV2.Event.Updated, async (event) => {
-            if (event.properties.info.sessionID === sessionID) {
-              await stream.writeSSE({
-                event: "message.updated",
-                data: JSON.stringify(event.properties.info),
-              })
-            }
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(MessageV2.Event.Updated, async (event) => {
+              if (event.properties.info.sessionID === sessionID) {
+                await stream.writeSSE({
+                  event: "message.updated",
+                  data: JSON.stringify(event.properties.info),
+                })
+              }
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(MessageV2.Event.PartUpdated, async (event) => {
-            if (event.properties.part.sessionID === sessionID) {
-              await stream.writeSSE({
-                event: "message.part.updated",
-                data: JSON.stringify(event.properties),
-              })
-            }
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(MessageV2.Event.PartUpdated, async (event) => {
+              if (event.properties.part.sessionID === sessionID) {
+                await stream.writeSSE({
+                  event: "message.part.updated",
+                  data: JSON.stringify(event.properties),
+                })
+              }
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(Todo.Event.Updated, async (event) => {
-            if (event.properties.sessionID === sessionID) {
-              await stream.writeSSE({
-                event: "todo.updated",
-                data: JSON.stringify(event.properties),
-              })
-            }
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(Todo.Event.Updated, async (event) => {
+              if (event.properties.sessionID === sessionID) {
+                await stream.writeSSE({
+                  event: "todo.updated",
+                  data: JSON.stringify(event.properties),
+                })
+              }
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(SessionStatus.Event.Status, async (event) => {
-            if (event.properties.sessionID === sessionID) {
-              await stream.writeSSE({
-                event: "session.status",
-                data: JSON.stringify(event.properties),
-              })
-            }
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(SessionStatus.Event.Status, async (event) => {
+              if (event.properties.sessionID === sessionID) {
+                await stream.writeSSE({
+                  event: "session.status",
+                  data: JSON.stringify(event.properties),
+                })
+              }
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(SessionStatus.Event.Idle, async (event) => {
-            if (event.properties.sessionID === sessionID) {
-              await stream.writeSSE({
-                event: "session.idle",
-                data: JSON.stringify(event.properties),
-              })
-            }
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(SessionStatus.Event.Idle, async (event) => {
+              if (event.properties.sessionID === sessionID) {
+                await stream.writeSSE({
+                  event: "session.idle",
+                  data: JSON.stringify(event.properties),
+                })
+              }
+            }),
+          )
 
-        await stream.writeSSE({
-          event: "connected",
-          data: JSON.stringify({ sessionID, timestamp: Date.now() }),
-        })
+          await stream.writeSSE({
+            event: "connected",
+            data: JSON.stringify({ sessionID, timestamp: Date.now() }),
+          })
 
-        const unregisterKeepalive = registerSseKeepalive(stream)
+          const unregisterKeepalive = registerSseKeepalive(stream)
 
-        stream.onAbort(() => {
-          slot.release()
-          unregisterKeepalive()
-          subscriptions.forEach((unsub) => unsub())
-        })
+          stream.onAbort(() => {
+            slot.release()
+            unregisterKeepalive()
+            subscriptions.forEach((unsub) => unsub())
+          })
 
-        await new Promise(() => {})
+          await new Promise(() => {})
         })
       } catch (err) {
         slot.release()
@@ -1375,67 +1388,67 @@ export const SessionRoute = new Hono()
 
       try {
         return streamSSE(c, async (stream) => {
-        const subscriptions: (() => void)[] = []
+          const subscriptions: (() => void)[] = []
 
-        subscriptions.push(
-          Bus.subscribe(Session.Event.Created, async (event) => {
-            await stream.writeSSE({
-              event: "session.created",
-              data: JSON.stringify(event.properties.info),
-            })
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(Session.Event.Created, async (event) => {
+              await stream.writeSSE({
+                event: "session.created",
+                data: JSON.stringify(event.properties.info),
+              })
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(Session.Event.Updated, async (event) => {
-            await stream.writeSSE({
-              event: "session.updated",
-              data: JSON.stringify(event.properties.info),
-            })
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(Session.Event.Updated, async (event) => {
+              await stream.writeSSE({
+                event: "session.updated",
+                data: JSON.stringify(event.properties.info),
+              })
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(Session.Event.Deleted, async (event) => {
-            await stream.writeSSE({
-              event: "session.deleted",
-              data: JSON.stringify(event.properties.info),
-            })
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(Session.Event.Deleted, async (event) => {
+              await stream.writeSSE({
+                event: "session.deleted",
+                data: JSON.stringify(event.properties.info),
+              })
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(SessionStatus.Event.Status, async (event) => {
-            await stream.writeSSE({
-              event: "session.status",
-              data: JSON.stringify(event.properties),
-            })
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(SessionStatus.Event.Status, async (event) => {
+              await stream.writeSSE({
+                event: "session.status",
+                data: JSON.stringify(event.properties),
+              })
+            }),
+          )
 
-        subscriptions.push(
-          Bus.subscribe(SessionStatus.Event.Idle, async (event) => {
-            await stream.writeSSE({
-              event: "session.idle",
-              data: JSON.stringify(event.properties),
-            })
-          }),
-        )
+          subscriptions.push(
+            Bus.subscribe(SessionStatus.Event.Idle, async (event) => {
+              await stream.writeSSE({
+                event: "session.idle",
+                data: JSON.stringify(event.properties),
+              })
+            }),
+          )
 
-        await stream.writeSSE({
-          event: "connected",
-          data: JSON.stringify({ timestamp: Date.now(), status: SessionStatus.list() }),
-        })
+          await stream.writeSSE({
+            event: "connected",
+            data: JSON.stringify({ timestamp: Date.now(), status: SessionStatus.list() }),
+          })
 
-        const unregisterKeepalive = registerSseKeepalive(stream)
+          const unregisterKeepalive = registerSseKeepalive(stream)
 
-        stream.onAbort(() => {
-          slot.release()
-          unregisterKeepalive()
-          subscriptions.forEach((unsub) => unsub())
-        })
+          stream.onAbort(() => {
+            slot.release()
+            unregisterKeepalive()
+            subscriptions.forEach((unsub) => unsub())
+          })
 
-        await new Promise(() => {})
+          await new Promise(() => {})
         })
       } catch (err) {
         slot.release()

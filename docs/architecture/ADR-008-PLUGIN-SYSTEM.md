@@ -1,6 +1,10 @@
-# Plugin System Architecture
+# ADR-008: Plugin System
 
-## Overview
+## Status
+
+Accepted
+
+## Context
 
 The plugin system provides the extensibility layer for agent-core, enabling plugins to extend agent functionality through hooks, tools, and authentication providers. The design supports agent-specific use cases.
 
@@ -119,6 +123,12 @@ Handles plugin loading from various sources:
 ```typescript
 'permission.ask' // Permission requested
 ```
+
+## Implemented By (Evidence)
+
+- Plugin loader/registry: `packages/agent-core/src/plugin/`
+- Hooks manager: `packages/agent-core/src/hooks/`
+- Plugin tests: `packages/agent-core/test/plugin/`
 
 ### Memory
 ```typescript

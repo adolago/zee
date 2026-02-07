@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "@agent-core/core",
   "description": "CLI + daemon powering the Personas system (Zee, Stanley, Johny)",
   "type": "module",
@@ -22,7 +22,7 @@
     "typecheck": "tsgo --noEmit",
     "lint": "prettier --check 'src/**/*.ts' 'test/**/*.ts' 'script/**/*.ts' 'package.json'",
     "test": "bun test",
-    "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@agent-core/core-linux-x64/bin/agent-core ~/.bun/bin/agent-core",
+    "build": "bun run script/build.ts && ln -sf $(pwd)/dist/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core",
     "dev": "bun run --conditions=browser ./src/index.ts",
     "memory:health": "bun run script/memory-health-check.ts",
     "clean": "rm -rf node_modules dist"

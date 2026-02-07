@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
-import pkg from "../package.json"
 import { Script } from "@agent-core/script"
 import { fileURLToPath } from "url"
 import path from "path"
@@ -14,7 +13,7 @@ process.chdir(dir)
 // Configuration
 // =============================================================================
 
-const DEFAULT_NPM_PACKAGE = "agent-core-tui"
+const DEFAULT_NPM_PACKAGE = "@adolago/agent-core"
 const NPM_PACKAGE = process.env.AGENT_CORE_NPM_PACKAGE?.trim() || DEFAULT_NPM_PACKAGE
 const SCOPE_PREFIX = NPM_PACKAGE.startsWith("@") ? NPM_PACKAGE.split("/")[0] : ""
 const scopedName = (name: string) => (SCOPE_PREFIX ? `${SCOPE_PREFIX}/${name}` : name)
@@ -23,10 +22,11 @@ const GITHUB_REPO = process.env.AGENT_CORE_GITHUB_REPO?.trim() || "adolago/agent
 const skipDocker = ["1", "true", "yes"].includes((process.env.AGENT_CORE_SKIP_DOCKER ?? "").toLowerCase())
 const skipGithub = ["1", "true", "yes"].includes((process.env.AGENT_CORE_SKIP_GITHUB ?? "").toLowerCase())
 
+const DIST_NAME = process.env.AGENT_CORE_DIST_NAME?.trim() || "agent-core"
+const WRAPPER_DIST_DIR = DIST_NAME
+
 const npmOtp =
-  process.env.AGENT_CORE_NPM_OTP?.trim() ||
-  process.env.NPM_OTP?.trim() ||
-  process.env.NPM_CONFIG_OTP?.trim()
+  process.env.AGENT_CORE_NPM_OTP?.trim() || process.env.NPM_OTP?.trim() || process.env.NPM_CONFIG_OTP?.trim()
 const otpArgs = npmOtp ? ["--otp", npmOtp] : []
 
 console.log("=== Agent-Core Publish Script ===")
@@ -61,7 +61,6 @@ async function updateVersionAcrossRepos(version: string) {
     fs.writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n")
     console.log(`  ✓ Updated ${rootPkgPath}`)
   }
-
 }
 
 async function gitTagAndPush(version: string) {
@@ -81,7 +80,6 @@ async function gitTagAndPush(version: string) {
   await $`git push origin dev`.cwd(repoRoot).quiet().nothrow()
   await $`git push origin v${version}`.cwd(repoRoot).quiet().nothrow()
   console.log(`  ✓ Tagged and pushed v${version}`)
-
 }
 
 // =============================================================================
@@ -92,7 +90,7 @@ const { binaries } = await import("./build.ts")
 {
   const binarySuffix = process.env.AGENT_CORE_BINARY_SUFFIX?.trim()
   const osName = process.platform === "win32" ? "windows" : process.platform
-  const name = [pkg.name, osName, process.arch, binarySuffix].filter(Boolean).join("-")
+  const name = [DIST_NAME, osName, process.arch, binarySuffix].filter(Boolean).join("-")
   console.log(`\n> Smoke test: running dist/${name}/bin/agent-core --version`)
   await $`./dist/${name}/bin/agent-core --version`
 }
@@ -103,18 +101,17 @@ const { binaries } = await import("./build.ts")
 
 console.log(`\n* Preparing npm package ${NPM_PACKAGE}...`)
 
-await $`mkdir -p ./dist/${pkg.name}`
-await $`cp -r ./bin ./dist/${pkg.name}/bin`
-await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
+await $`mkdir -p ./dist/${WRAPPER_DIST_DIR}`
+await $`cp -r ./bin ./dist/${WRAPPER_DIST_DIR}/bin`
+await $`cp ./script/postinstall.mjs ./dist/${WRAPPER_DIST_DIR}/postinstall.mjs`
 
-await Bun.file(`./dist/${pkg.name}/package.json`).write(
+await Bun.file(`./dist/${WRAPPER_DIST_DIR}/package.json`).write(
   JSON.stringify(
     {
       name: NPM_PACKAGE,
-      description: "Agent-Core TUI - A powerful terminal interface for AI agents",
+      description: "CLI + daemon powering the Personas system (Zee, Stanley, Johny)",
       bin: {
-        "agent-core": `./bin/${pkg.name}`,
-        [pkg.name]: `./bin/${pkg.name}`,
+        "agent-core": `./bin/agent-core`,
       },
       scripts: {
         postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
@@ -161,7 +158,7 @@ await Promise.all(tasks)
 
 console.log(`\n> Publishing main package ${NPM_PACKAGE}...`)
 for (const tag of tags) {
-  await $`cd ./dist/${pkg.name} && bun pm pack && npm publish ${publishFlag} *.tgz --access public --tag ${tag} ${otpArgs}`
+  await $`cd ./dist/${WRAPPER_DIST_DIR} && bun pm pack && npm publish ${publishFlag} *.tgz --access public --tag ${tag} ${otpArgs}`
 }
 
 // =============================================================================
@@ -178,10 +175,10 @@ if (!Script.preview) {
   const archives: string[] = []
   for (const key of Object.keys(binaries)) {
     if (key.includes("linux")) {
-      await $`tar -czf ../${key}.tar.gz *`.cwd(`dist/${key}/bin`)
+      await $`tar -czf ../../${key}.tar.gz *`.cwd(`dist/${key}/bin`)
       archives.push(`dist/${key}.tar.gz`)
     } else {
-      await $`zip -rj ../${key}.zip *`.cwd(`dist/${key}/bin`)
+      await $`zip -rj ../../${key}.zip *`.cwd(`dist/${key}/bin`)
       archives.push(`dist/${key}.zip`)
     }
   }
@@ -208,7 +205,9 @@ See [CHANGELOG](https://github.com/${GITHUB_REPO}/blob/dev/CHANGELOG.md) for det
     fs.writeFileSync(releaseNotesFile, releaseNotes)
 
     const archiveFlags = archives.join(" ")
-    await $`gh release create v${Script.version} ${archiveFlags} --repo ${GITHUB_REPO} --title "v${Script.version}" --notes-file ${releaseNotesFile} --prerelease`.cwd(dir).nothrow()
+    await $`gh release create v${Script.version} ${archiveFlags} --repo ${GITHUB_REPO} --title "v${Script.version}" --notes-file ${releaseNotesFile} --prerelease`
+      .cwd(dir)
+      .nothrow()
     console.log(`  ✓ Created GitHub release v${Script.version}`)
   }
 

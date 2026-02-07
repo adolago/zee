@@ -3,21 +3,21 @@
  * @description Creates ZIP archives for crash reports
  */
 
-import * as fs from "fs";
-import * as path from "path";
-import { createGzip } from "zlib";
-import { pipeline } from "stream/promises";
+import * as fs from "fs"
+import * as path from "path"
+import { createGzip } from "zlib"
+import { pipeline } from "stream/promises"
 
 /**
  * Simple ZIP-like archive builder (TAR.GZ format for simplicity)
  * For a real ZIP, you'd use the 'archiver' package
  */
 export class ZipBuilder {
-  private files: Array<{ archivePath: string; content: string | Buffer }> = [];
-  private outputPath: string;
+  private files: Array<{ archivePath: string; content: string | Buffer }> = []
+  private outputPath: string
 
   constructor(outputPath: string) {
-    this.outputPath = outputPath;
+    this.outputPath = outputPath
   }
 
   /**
@@ -27,7 +27,7 @@ export class ZipBuilder {
     this.files.push({
       archivePath,
       content: JSON.stringify(data, null, 2),
-    });
+    })
   }
 
   /**
@@ -37,7 +37,7 @@ export class ZipBuilder {
     this.files.push({
       archivePath,
       content,
-    });
+    })
   }
 
   /**
@@ -45,8 +45,8 @@ export class ZipBuilder {
    */
   async addFile(archivePath: string, sourcePath: string): Promise<void> {
     try {
-      const content = await fs.promises.readFile(sourcePath);
-      this.files.push({ archivePath, content });
+      const content = await fs.promises.readFile(sourcePath)
+      this.files.push({ archivePath, content })
     } catch {
       // File doesn't exist, skip
     }
@@ -56,7 +56,7 @@ export class ZipBuilder {
    * Get list of files in the archive
    */
   getFileList(): string[] {
-    return this.files.map((f) => f.archivePath);
+    return this.files.map((f) => f.archivePath)
   }
 
   /**
@@ -65,40 +65,40 @@ export class ZipBuilder {
    */
   async finalize(): Promise<string> {
     // Create output directory
-    const outputDir = this.outputPath.replace(/\.(zip|tar\.gz)$/, "");
-    await fs.promises.mkdir(outputDir, { recursive: true });
+    const outputDir = this.outputPath.replace(/\.(zip|tar\.gz)$/, "")
+    await fs.promises.mkdir(outputDir, { recursive: true })
 
     // Write all files
     for (const file of this.files) {
-      const filePath = path.join(outputDir, file.archivePath);
-      const dir = path.dirname(filePath);
-      await fs.promises.mkdir(dir, { recursive: true });
-      await fs.promises.writeFile(filePath, file.content);
+      const filePath = path.join(outputDir, file.archivePath)
+      const dir = path.dirname(filePath)
+      await fs.promises.mkdir(dir, { recursive: true })
+      await fs.promises.writeFile(filePath, file.content)
     }
 
     // Create tar.gz of the directory
-    const tarPath = `${outputDir}.tar.gz`;
-    await this.createTarGz(outputDir, tarPath);
+    const tarPath = `${outputDir}.tar.gz`
+    await this.createTarGz(outputDir, tarPath)
 
     // Clean up directory
-    await fs.promises.rm(outputDir, { recursive: true });
+    await fs.promises.rm(outputDir, { recursive: true })
 
-    return tarPath;
+    return tarPath
   }
 
   private async createTarGz(sourceDir: string, outputPath: string): Promise<void> {
     // Use tar command for simplicity (available on Linux)
-    const { execSync } = await import("child_process");
-    const parentDir = path.dirname(sourceDir);
-    const dirName = path.basename(sourceDir);
+    const { execSync } = await import("child_process")
+    const parentDir = path.dirname(sourceDir)
+    const dirName = path.basename(sourceDir)
 
     try {
       execSync(`tar -czf "${outputPath}" -C "${parentDir}" "${dirName}"`, {
         encoding: "utf-8",
-      });
+      })
     } catch (error) {
       // Fallback: just keep the directory
-      throw new Error(`Failed to create archive: ${error}`);
+      throw new Error(`Failed to create archive: ${error}`)
     }
   }
 }

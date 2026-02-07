@@ -10,7 +10,10 @@ export namespace Todo {
   export const InfoInput = z
     .object({
       content: z.string().describe("Brief description of the task"),
-      status: z.string().default("pending").describe("Current status of the task: pending, in_progress, completed, cancelled"),
+      status: z
+        .string()
+        .default("pending")
+        .describe("Current status of the task: pending, in_progress, completed, cancelled"),
       priority: z.string().default("medium").describe("Priority level of the task: high, medium, low"),
       id: z.string().optional().describe("Unique identifier for the todo item (auto-generated if not provided)"),
     })

@@ -95,6 +95,12 @@ export namespace Server {
   let _corsWhitelist: string[] = []
   let _isLoopbackBind = true
 
+  // Test helper: avoid cross-test pollution when tests call Server.listen().
+  export function resetForTests() {
+    _corsWhitelist = []
+    _isLoopbackBind = true
+  }
+
   function parseCommaList(value?: string): string[] {
     if (!value) return []
     return value
@@ -267,7 +273,7 @@ export namespace Server {
 
             const root = path.parse(real).root
             const isRoot = path.resolve(real) === path.resolve(root)
-            const globalConfig = await Config.global().catch(() => ({} as Config.Info))
+            const globalConfig = await Config.global().catch(() => ({}) as Config.Info)
             const allowGlobal =
               Flag.AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY || globalConfig?.server?.allowGlobalDirectory === true
             if (isRoot && !allowGlobal) {
@@ -329,7 +335,7 @@ export namespace Server {
             },
           })
         })
-        
+
         // Mount Routes
         .route("/", AppRoute)
         .route("/global", GlobalRoute)
@@ -379,11 +385,13 @@ export namespace Server {
           },
         )
 
-        
         // Proxy Fallback - MUST BE LAST
         .all("/*", async (c) => {
-          const proxyBase = (process.env["AGENT_CORE_PROXY_BASE_URL"] ?? process.env["AGENT_CORE_PROXY_BASE_URL"] ?? "")
-            .replace(/\/+$/, "")
+          const proxyBase = (
+            process.env["AGENT_CORE_PROXY_BASE_URL"] ??
+            process.env["AGENT_CORE_PROXY_BASE_URL"] ??
+            ""
+          ).replace(/\/+$/, "")
           if (!proxyBase) {
             return c.text("Not Found", 404)
           }

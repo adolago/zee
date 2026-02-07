@@ -7,25 +7,51 @@ import fsSync from "fs"
 import { afterAll, afterEach } from "bun:test"
 
 const sanitizePathInput = (value: unknown) => (typeof value === "string" ? value.replace(/\0/g, "") : value)
-const wrapAsync = (fn: (...args: any[]) => any) =>
+const wrapAsync =
+  (fn: (...args: any[]) => any) =>
   (...args: any[]) => {
     if (args.length > 0) args[0] = sanitizePathInput(args[0])
     return fn(...args)
   }
-const wrapSync = (fn: (...args: any[]) => any) =>
+const wrapSync =
+  (fn: (...args: any[]) => any) =>
   (...args: any[]) => {
     if (args.length > 0) args[0] = sanitizePathInput(args[0])
     return fn(...args)
   }
 
-for (const name of ["open", "readFile", "writeFile", "stat", "lstat", "access", "mkdir", "readdir", "realpath", "rm", "cp"]) {
+for (const name of [
+  "open",
+  "readFile",
+  "writeFile",
+  "stat",
+  "lstat",
+  "access",
+  "mkdir",
+  "readdir",
+  "realpath",
+  "rm",
+  "cp",
+]) {
   const target = (fs as any)[name]
   if (typeof target === "function") {
     ;(fs as any)[name] = wrapAsync(target)
   }
 }
 const fsPromises = fsSync.promises as any
-for (const name of ["open", "readFile", "writeFile", "stat", "lstat", "access", "mkdir", "readdir", "realpath", "rm", "cp"]) {
+for (const name of [
+  "open",
+  "readFile",
+  "writeFile",
+  "stat",
+  "lstat",
+  "access",
+  "mkdir",
+  "readdir",
+  "realpath",
+  "rm",
+  "cp",
+]) {
   const target = fsPromises?.[name]
   if (typeof target === "function") {
     fsPromises[name] = wrapAsync(target)
@@ -39,7 +65,8 @@ for (const name of ["open", "openSync", "readFile", "readFileSync", "writeFile",
 }
 
 const originalBunFile = Bun.file
-Bun.file = ((pathLike: any, ...rest: any[]) => originalBunFile(sanitizePathInput(pathLike) as any, ...rest)) as typeof Bun.file
+Bun.file = ((pathLike: any, ...rest: any[]) =>
+  originalBunFile(sanitizePathInput(pathLike) as any, ...rest)) as typeof Bun.file
 
 const originalBunWrite = Bun.write
 Bun.write = ((pathLike: any, data: any, ...rest: any[]) =>
@@ -53,7 +80,8 @@ const shouldIgnoreNullBytePathError = (error: unknown) => {
   const message = (error as any).message
   return code === "ENOENT" && (hasNullByte(pathValue) || hasNullByte(message))
 }
-const wrapOpenAsync = (fn: (...args: any[]) => Promise<any>) =>
+const wrapOpenAsync =
+  (fn: (...args: any[]) => Promise<any>) =>
   async (...args: any[]) => {
     if (args.length > 0) args[0] = sanitizePathInput(args[0])
     try {
@@ -66,7 +94,8 @@ const wrapOpenAsync = (fn: (...args: any[]) => Promise<any>) =>
       return await fn(...fallbackArgs)
     }
   }
-const wrapOpenSync = (fn: (...args: any[]) => any) =>
+const wrapOpenSync =
+  (fn: (...args: any[]) => any) =>
   (...args: any[]) => {
     if (args.length > 0) args[0] = sanitizePathInput(args[0])
     try {
@@ -232,6 +261,7 @@ afterEach(async () => {
     // 11. Reset Server.App lazy cache (Hono app instance) - import dynamically to avoid circular deps
     const { Server } = await import("../src/server/server")
     Server.App.reset()
+    Server.resetForTests()
 
     // 12. Reset Bash parser lazy cache (tree-sitter)
     bashParser.reset()

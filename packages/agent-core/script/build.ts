@@ -20,6 +20,10 @@ import { Script } from "../src/pkg/script"
 const personasRoot = path.resolve(repoRoot, "packages", "personas")
 const zeeRoot = path.join(personasRoot, "zee")
 
+// Distribution package name prefix for platform binaries (npm optionalDependencies).
+// Keep this stable and independent from the internal workspace package name.
+const DIST_NAME = process.env.AGENT_CORE_DIST_NAME?.trim() || "agent-core"
+
 const agentCoreAssetsRoot = path.join(repoRoot, ".agent-core")
 const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
 
@@ -90,10 +94,10 @@ function bundleSrcModules(distRoot: string) {
   // These are imported via relative paths like ../../../../../src/memory/unified
   const srcRoot = path.join(repoRoot, "src")
   if (!fs.existsSync(srcRoot)) return
-  
+
   const destRoot = path.join(distRoot, "src")
   fs.mkdirSync(destRoot, { recursive: true })
-  
+
   // Modules needed at runtime (dynamically imported)
   const modules = ["memory", "config"]
   for (const mod of modules) {
@@ -281,7 +285,7 @@ if (fs.existsSync(zeeRoot)) {
 
 for (const item of targets) {
   const baseName = [
-    pkg.name,
+    DIST_NAME,
     // changing to win32 flags npm for some reason
     item.os === "win32" ? "windows" : item.os,
     item.arch,
@@ -315,7 +319,7 @@ for (const item of targets) {
       //@ts-ignore (bun types aren't up to date)
       autoloadTsconfig: true,
       autoloadPackageJson: true,
-      target: baseName.replace(pkg.name, "bun") as any,
+      target: baseName.replace(DIST_NAME, "bun") as any,
       outfile: `dist/${name}/bin/agent-core`,
       execArgv: [`--user-agent=agent-core/${Script.version}`, "--use-system-ca", "--"],
       windows: {},

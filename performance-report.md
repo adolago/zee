@@ -77,18 +77,12 @@ Evidence:
 Remaining opportunities:
 - Collection/index initialization may still perform multiple sequential requests. If this becomes a hotspot, consider caching successful ensure-index completion per collection version.
 
-## Measurement plan (still recommended)
+## Measurement plan (implemented)
 
-The repo does not currently include a standardized runtime benchmark suite. A minimal plan that can be implemented without changing runtime behavior:
+The repo includes an opt-in benchmark harness under `packages/agent-core/script/bench/`.
 
-1. Add a microbenchmark harness under `packages/agent-core/script/bench/` (opt-in). Targets:
-- `tool.read` reading a 50MB file (time, peak RSS).
-- SSE connection overhead with N clients (CPU, open FDs).
-- Gateway call latency for 100 sequential calls (WS reuse behavior).
-2. Add lightweight operational counters exposed via HTTP:
-- Instance cache size.
-- Open SSE connections.
-- Route request durations aggregated by route.
+Runbook:
+- `docs/performance/BENCHMARKS.md`
 
 ## Notes
 

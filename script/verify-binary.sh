@@ -27,7 +27,7 @@ if [[ ! -x "$RESOLVED" ]]; then
 fi
 
 shopt -s nullglob
-DIST_CANDIDATES=("$ROOT/packages/agent-core/dist/@agent-core"/*/bin/agent-core)
+DIST_CANDIDATES=("$ROOT/packages/agent-core/dist/agent-core-"*/bin/agent-core)
 shopt -u nullglob
 
 if (( ${#DIST_CANDIDATES[@]} == 0 )); then
@@ -47,7 +47,7 @@ done
 if [[ -z "$MATCHED" ]]; then
   echo "Binary does not point to a local build." >&2
   echo "Resolved: $RESOLVED" >&2
-  echo "Expected under: $ROOT/packages/agent-core/dist/@agent-core/*/bin/agent-core" >&2
+  echo "Expected under: $ROOT/packages/agent-core/dist/agent-core-*/bin/agent-core" >&2
   exit 1
 fi
 

@@ -2,11 +2,7 @@ import { Hono } from "hono"
 import { describeRoute, resolver } from "hono-openapi"
 import { z } from "zod"
 import { Log } from "../../util/log"
-import {
-  formatForSurface,
-  WHATSAPP_CAPABILITIES,
-  MATRIX_CAPABILITIES,
-} from "../../surface/types"
+import { formatForSurface, WHATSAPP_CAPABILITIES, MATRIX_CAPABILITIES } from "../../surface/types"
 import type { SurfaceCapabilities } from "../../surface/types"
 import { readZeeGatewayTokenFromFile } from "@/gateway/token"
 import { GatewayWsClient } from "@/gateway/ws-client"
@@ -29,7 +25,7 @@ const WhatsAppSendInput = z.object({
   mediaUrls: z.array(z.string()).optional(),
   gifPlayback: z.boolean().optional(),
   accountId: z.string().optional(),
-  account: z.string().optional(),  // Alias for accountId (backward compatibility)
+  account: z.string().optional(), // Alias for accountId (backward compatibility)
 })
 
 const MatrixSendInput = z.object({
@@ -135,16 +131,20 @@ async function sendViaGateway(input: {
   // Send each chunk (for platforms with message length limits)
   let lastResult: unknown
   for (const chunk of messages) {
-    lastResult = await callGateway("send", {
-      to: input.to,
-      message: chunk,
-      channel: input.provider,
-      ...(input.accountId ? { accountId: input.accountId } : {}),
-      ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
-      ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
-      ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
-      idempotencyKey: crypto.randomUUID(),
-    }, { timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS })
+    lastResult = await callGateway(
+      "send",
+      {
+        to: input.to,
+        message: chunk,
+        channel: input.provider,
+        ...(input.accountId ? { accountId: input.accountId } : {}),
+        ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
+        ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
+        ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
+        idempotencyKey: crypto.randomUUID(),
+      },
+      { timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS },
+    )
     // Only attach media to the first chunk
     input = { ...input, mediaUrl: undefined, mediaUrls: undefined }
   }
@@ -314,8 +314,14 @@ export const GatewayRoute = new Hono()
       description: "Get skill status from the Zee gateway (bridged from WS skills.status method).",
       operationId: "gateway.skills.status",
       responses: {
-        200: { description: "Skills status", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
-        500: { description: "Gateway error", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        200: {
+          description: "Skills status",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Gateway error",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
       },
     }),
     async (c) => {
@@ -336,8 +342,14 @@ export const GatewayRoute = new Hono()
       description: "Get messaging channel connection status from the Zee gateway.",
       operationId: "gateway.channels.status",
       responses: {
-        200: { description: "Channel status", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
-        500: { description: "Gateway error", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        200: {
+          description: "Channel status",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Gateway error",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
       },
     }),
     async (c) => {
@@ -358,8 +370,14 @@ export const GatewayRoute = new Hono()
       description: "Check whether the Zee gateway is reachable and responding.",
       operationId: "gateway.health",
       responses: {
-        200: { description: "Gateway healthy", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
-        500: { description: "Gateway unreachable", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        200: {
+          description: "Gateway healthy",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Gateway unreachable",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
       },
     }),
     async (c) => {
@@ -379,8 +397,14 @@ export const GatewayRoute = new Hono()
       description: "Get message counts and token usage from the Zee gateway.",
       operationId: "gateway.usage",
       responses: {
-        200: { description: "Usage data", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
-        500: { description: "Gateway error", content: { "application/json": { schema: resolver(GatewayResponseSchema) } } },
+        200: {
+          description: "Usage data",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Gateway error",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
       },
     }),
     async (c) => {

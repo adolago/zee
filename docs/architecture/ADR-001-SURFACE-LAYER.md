@@ -256,9 +256,9 @@ interface MessagingPlatformHandler {
 
 ## Related ADRs
 
-- ADR-002: Agent Core Architecture
-- ADR-003: Tool System
-- ADR-004: Permission System
+- ADR-002: Agent-Core Architecture (`docs/architecture/ADR-002-AGENT-CORE-ARCHITECTURE.md`)
+- ADR-003: Tool System (`docs/architecture/ADR-003-TOOL-SYSTEM.md`)
+- ADR-004: Permission System (`docs/architecture/ADR-004-PERMISSION-SYSTEM.md`)
 
 ## References
 

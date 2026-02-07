@@ -5,5 +5,5 @@
  */
 
 // WhatsApp (Baileys)
-export type { WhatsAppConfig } from './whatsapp.js';
-export { WhatsAppHandler, createWhatsAppHandler } from './whatsapp.js';
+export type { WhatsAppConfig } from "./whatsapp.js"
+export { WhatsAppHandler, createWhatsAppHandler } from "./whatsapp.js"

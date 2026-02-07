@@ -52,7 +52,7 @@ export const ProcessRoute = new Hono()
       const registry = getProcessRegistry()
       const process = registry.register(input)
       return c.json(process)
-    }
+    },
   )
 
   // List all processes
@@ -81,14 +81,14 @@ export const ProcessRoute = new Hono()
         swarmId: z.string().optional(),
         status: ProcessStatus.optional(),
         parentId: z.string().optional(),
-      })
+      }),
     ),
     async (c) => {
       const filter = c.req.valid("query")
       const registry = getProcessRegistry()
       const processes = registry.list(filter as ProcessQueryFilter)
       return c.json(processes)
-    }
+    },
   )
 
   // Get process statistics
@@ -111,7 +111,7 @@ export const ProcessRoute = new Hono()
                   byStatus: z.record(ProcessStatus, z.number()),
                   swarms: z.number(),
                   activeAgents: z.number(),
-                })
+                }),
               ),
             },
           },
@@ -122,7 +122,7 @@ export const ProcessRoute = new Hono()
       const registry = getProcessRegistry()
       const stats = registry.getStats()
       return c.json(stats)
-    }
+    },
   )
 
   // SSE stream for process events
@@ -192,7 +192,7 @@ export const ProcessRoute = new Hono()
         slot.release()
         throw err
       }
-    }
+    },
   )
 
   // Get processes by swarm
@@ -220,7 +220,7 @@ export const ProcessRoute = new Hono()
       const registry = getProcessRegistry()
       const processes = registry.getBySwarm(swarmId)
       return c.json(processes)
-    }
+    },
   )
 
   // Find available agents with capabilities
@@ -246,14 +246,14 @@ export const ProcessRoute = new Hono()
       "json",
       z.object({
         capabilities: z.array(z.string()).optional(),
-      })
+      }),
     ),
     async (c) => {
       const { capabilities } = c.req.valid("json")
       const registry = getProcessRegistry()
       const agents = registry.findAvailable(capabilities)
       return c.json(agents)
-    }
+    },
   )
 
   // Get specific process
@@ -287,7 +287,7 @@ export const ProcessRoute = new Hono()
       }
 
       return c.json(process)
-    }
+    },
   )
 
   // Update process heartbeat
@@ -321,7 +321,7 @@ export const ProcessRoute = new Hono()
       }
 
       return c.json(process)
-    }
+    },
   )
 
   // Update process status/info
@@ -357,7 +357,7 @@ export const ProcessRoute = new Hono()
       }
 
       return c.json(process)
-    }
+    },
   )
 
   // Deregister process
@@ -391,7 +391,7 @@ export const ProcessRoute = new Hono()
       }
 
       return c.json(true)
-    }
+    },
   )
 
   // =========================================================================
@@ -425,9 +425,9 @@ export const ProcessRoute = new Hono()
                     z.object({
                       taskCount: z.number(),
                       avgDuration: z.number(),
-                    })
+                    }),
                   ),
-                })
+                }),
               ),
             },
           },
@@ -451,7 +451,7 @@ export const ProcessRoute = new Hono()
           workloads: {},
         })
       }
-    }
+    },
   )
 
   // Update agent workload
@@ -482,7 +482,7 @@ export const ProcessRoute = new Hono()
         cpuUsage: z.number().optional(),
         memoryUsage: z.number().optional(),
         capabilities: z.array(z.string()).optional(),
-      })
+      }),
     ),
     async (c) => {
       const workload = c.req.valid("json")
@@ -493,7 +493,7 @@ export const ProcessRoute = new Hono()
       } catch {
         return c.json({ success: false })
       }
-    }
+    },
   )
 
   // Record task duration
@@ -520,7 +520,7 @@ export const ProcessRoute = new Hono()
       z.object({
         agentId: z.string(),
         durationMs: z.number(),
-      })
+      }),
     ),
     async (c) => {
       const { agentId, durationMs } = c.req.valid("json")
@@ -531,7 +531,7 @@ export const ProcessRoute = new Hono()
       } catch {
         return c.json({ success: false })
       }
-    }
+    },
   )
 
   // Find best agent for task
@@ -550,7 +550,7 @@ export const ProcessRoute = new Hono()
               schema: resolver(
                 z.object({
                   agentId: z.string().nullable(),
-                })
+                }),
               ),
             },
           },
@@ -561,7 +561,7 @@ export const ProcessRoute = new Hono()
       "json",
       z.object({
         capabilities: z.array(z.string()).optional(),
-      })
+      }),
     ),
     async (c) => {
       const { capabilities } = c.req.valid("json")
@@ -572,7 +572,7 @@ export const ProcessRoute = new Hono()
       } catch {
         return c.json({ agentId: null })
       }
-    }
+    },
   )
 
   // =========================================================================
@@ -601,7 +601,7 @@ export const ProcessRoute = new Hono()
                   rejected: z.number(),
                   pending: z.number(),
                   voterCount: z.number(),
-                })
+                }),
               ),
             },
           },
@@ -624,7 +624,7 @@ export const ProcessRoute = new Hono()
           voterCount: 0,
         })
       }
-    }
+    },
   )
 
   // Submit a proposal for approval
@@ -646,7 +646,7 @@ export const ProcessRoute = new Hono()
                   approved: z.boolean(),
                   reason: z.string(),
                   mode: z.string(),
-                })
+                }),
               ),
             },
           },
@@ -661,7 +661,7 @@ export const ProcessRoute = new Hono()
         content: z.unknown(),
         proposer: z.string().optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
-      })
+      }),
     ),
     async (c) => {
       const input = c.req.valid("json")
@@ -688,7 +688,7 @@ export const ProcessRoute = new Hono()
           mode: "error",
         })
       }
-    }
+    },
   )
 
   // Register a voter
@@ -716,7 +716,7 @@ export const ProcessRoute = new Hono()
         id: z.string(),
         name: z.string(),
         capabilities: z.array(z.string()).optional(),
-      })
+      }),
     ),
     async (c) => {
       const { id, name, capabilities } = c.req.valid("json")
@@ -727,7 +727,7 @@ export const ProcessRoute = new Hono()
       } catch {
         return c.json({ success: false })
       }
-    }
+    },
   )
 
   // Cast a vote
@@ -757,7 +757,7 @@ export const ProcessRoute = new Hono()
         approved: z.boolean(),
         confidence: z.number().optional(),
         reason: z.string().optional(),
-      })
+      }),
     ),
     async (c) => {
       const { proposalId, voterId, approved, confidence, reason } = c.req.valid("json")
@@ -768,7 +768,7 @@ export const ProcessRoute = new Hono()
       } catch {
         return c.json({ success: false })
       }
-    }
+    },
   )
 
   // Get decision history
@@ -792,8 +792,8 @@ export const ProcessRoute = new Hono()
                     mode: z.string(),
                     decidedAt: z.number(),
                     reason: z.string(),
-                  })
-                )
+                  }),
+                ),
               ),
             },
           },
@@ -804,22 +804,24 @@ export const ProcessRoute = new Hono()
       "query",
       z.object({
         limit: z.coerce.number().optional().default(100),
-      })
+      }),
     ),
     async (c) => {
       const { limit } = c.req.valid("query")
       try {
         const gate = getConsensusGate()
         const history = gate.getDecisionHistory(limit)
-        return c.json(history.map((d) => ({
-          proposalId: d.proposalId,
-          approved: d.approved,
-          mode: d.mode,
-          decidedAt: d.decidedAt,
-          reason: d.reason,
-        })))
+        return c.json(
+          history.map((d) => ({
+            proposalId: d.proposalId,
+            approved: d.approved,
+            mode: d.mode,
+            decidedAt: d.decidedAt,
+            reason: d.reason,
+          })),
+        )
       } catch {
         return c.json([])
       }
-    }
+    },
   )

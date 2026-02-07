@@ -1,5 +1,12 @@
 # Security
 
+Additional security documentation:
+
+- Threat model: `docs/security/THREAT-MODEL.md`
+- Security architecture: `docs/security/SECURITY-ARCHITECTURE.md`
+- Secure patterns: `docs/security/SECURE-PATTERNS.md`
+- Release security gate: `bash scripts/security-gate.sh`
+
 ## Threat Model
 
 ### Overview

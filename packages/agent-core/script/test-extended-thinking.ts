@@ -27,11 +27,7 @@ interface TestResult {
   durationMs: number
 }
 
-async function runTest(
-  baseUrl: string,
-  model: string,
-  prompt: string,
-): Promise<TestResult> {
+async function runTest(baseUrl: string, model: string, prompt: string): Promise<TestResult> {
   const sdk = createAgentCoreClient({ baseUrl })
   const eventClient = createEventClient({ baseUrl })
 

@@ -42,19 +42,33 @@ async function createVimTextarea(initialText = ""): Promise<VimTextarea> {
 
   function ctx(): VimCommands.VimCommandContext {
     return {
-      get cursorOffset() { return textarea.cursorOffset },
-      set cursorOffset(offset: number) { textarea.cursorOffset = offset },
-      get text() { return textarea.plainText },
-      setText(text: string) { textarea.setText(text) },
-      insertText(text: string) { textarea.insertText(text) },
+      get cursorOffset() {
+        return textarea.cursorOffset
+      },
+      set cursorOffset(offset: number) {
+        textarea.cursorOffset = offset
+      },
+      get text() {
+        return textarea.plainText
+      },
+      setText(text: string) {
+        textarea.setText(text)
+      },
+      insertText(text: string) {
+        textarea.insertText(text)
+      },
       deleteRange(start: number, end: number): string {
         const text = textarea.plainText
         const deleted = text.slice(start, end)
         textarea.setText(text.slice(0, start) + text.slice(end))
         return deleted
       },
-      gotoBufferStart() { textarea.cursorOffset = 0 },
-      gotoBufferEnd() { textarea.gotoBufferEnd() },
+      gotoBufferStart() {
+        textarea.cursorOffset = 0
+      },
+      gotoBufferEnd() {
+        textarea.gotoBufferEnd()
+      },
       get cursorLine(): number {
         const text = textarea.plainText
         const before = text.slice(0, textarea.cursorOffset)
@@ -125,8 +139,15 @@ async function createVimTextarea(initialText = ""): Promise<VimTextarea> {
   }
 
   return {
-    textarea, engine, ctx, vim, mockInput, renderOnce,
-    expectText, expectCursor, destroy: () => renderer.destroy(),
+    textarea,
+    engine,
+    ctx,
+    vim,
+    mockInput,
+    renderOnce,
+    expectText,
+    expectCursor,
+    destroy: () => renderer.destroy(),
   }
 }
 

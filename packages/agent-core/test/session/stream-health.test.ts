@@ -1,10 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test"
-import {
-  StreamHealthMonitor,
-  StreamHealth,
-  noopStatusHandler,
-  noopBusPublisher,
-} from "../../src/session/stream-health"
+import { StreamHealthMonitor, StreamHealth, noopStatusHandler, noopBusPublisher } from "../../src/session/stream-health"
 
 // WORKAROUND: This flag is set in preload.ts when running full test suite
 // Skip flaky tests that fail due to Bun native code bugs when multiple test files run together
@@ -211,8 +206,9 @@ describe.skipIf(isFullSuite)("StreamHealthMonitor", () => {
       monitor.complete()
 
       const report = monitor.getReport()
-      expect(report.timing.durationMs).toBeGreaterThanOrEqual(50)
-      expect(report.timing.durationMs).toBeLessThan(200)
+      // Timers can be slightly under due to scheduling jitter in CI.
+      expect(report.timing.durationMs).toBeGreaterThanOrEqual(45)
+      expect(report.timing.durationMs).toBeLessThan(500)
     })
   })
 

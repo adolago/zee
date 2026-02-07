@@ -584,10 +584,7 @@ export const McpResourcesReadCommand = cmd({
 
 async function resolveConfigPath(baseDir: string, global = false) {
   // Check for existing config files (prefer .jsonc over .json, check .agent-core/ subdirectory too)
-  const candidates = [
-    path.join(baseDir, "agent-core.jsonc"),
-    path.join(baseDir, "agent-core.json"),
-  ]
+  const candidates = [path.join(baseDir, "agent-core.jsonc"), path.join(baseDir, "agent-core.json")]
 
   if (!global) {
     candidates.push(

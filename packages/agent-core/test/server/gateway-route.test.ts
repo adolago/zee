@@ -43,7 +43,14 @@ describe("gateway routes", () => {
             return
           }
 
-          ws.send(JSON.stringify({ type: "res", id: frame.id, ok: false, error: { code: "unknown", message: "unknown method" } }))
+          ws.send(
+            JSON.stringify({
+              type: "res",
+              id: frame.id,
+              ok: false,
+              error: { code: "unknown", message: "unknown method" },
+            }),
+          )
         },
       },
     })

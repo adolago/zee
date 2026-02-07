@@ -3,7 +3,7 @@
  * @description Regex patterns for detecting and redacting sensitive data
  */
 
-import type { RedactionPattern } from "../types";
+import type { RedactionPattern } from "../types"
 
 /** API Key patterns */
 export const API_KEY_PATTERNS: RedactionPattern[] = [
@@ -42,7 +42,7 @@ export const API_KEY_PATTERNS: RedactionPattern[] = [
     pattern: /api[_-]?key["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{16,}/gi,
     replacement: "[API_KEY]",
   },
-];
+]
 
 /** Credential patterns */
 export const CREDENTIAL_PATTERNS: RedactionPattern[] = [
@@ -71,7 +71,7 @@ export const CREDENTIAL_PATTERNS: RedactionPattern[] = [
     pattern: /aws[_-]?secret[_-]?access[_-]?key["']?\s*[:=]\s*["']?[A-Za-z0-9/+=]{40}/gi,
     replacement: "[AWS_SECRET_KEY]",
   },
-];
+]
 
 /** PII patterns */
 export const PII_PATTERNS: RedactionPattern[] = [
@@ -100,7 +100,7 @@ export const PII_PATTERNS: RedactionPattern[] = [
     pattern: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
     replacement: "[IP_ADDRESS]",
   },
-];
+]
 
 /** Path patterns for username redaction */
 export const PATH_PATTERNS: RedactionPattern[] = [
@@ -114,7 +114,7 @@ export const PATH_PATTERNS: RedactionPattern[] = [
     pattern: /C:\\Users\\[a-zA-Z0-9_-]+/gi,
     replacement: "C:\\Users\\[USER]",
   },
-];
+]
 
 /**
  * Get patterns based on anonymization level
@@ -123,17 +123,17 @@ export function getPatterns(level: "minimal" | "standard" | "aggressive"): Redac
   switch (level) {
     case "minimal":
       // Only API keys
-      return [...API_KEY_PATTERNS];
+      return [...API_KEY_PATTERNS]
 
     case "standard":
       // API keys + credentials + paths
-      return [...API_KEY_PATTERNS, ...CREDENTIAL_PATTERNS, ...PATH_PATTERNS];
+      return [...API_KEY_PATTERNS, ...CREDENTIAL_PATTERNS, ...PATH_PATTERNS]
 
     case "aggressive":
       // Everything including PII
-      return [...API_KEY_PATTERNS, ...CREDENTIAL_PATTERNS, ...PII_PATTERNS, ...PATH_PATTERNS];
+      return [...API_KEY_PATTERNS, ...CREDENTIAL_PATTERNS, ...PII_PATTERNS, ...PATH_PATTERNS]
 
     default:
-      return [...API_KEY_PATTERNS, ...CREDENTIAL_PATTERNS, ...PATH_PATTERNS];
+      return [...API_KEY_PATTERNS, ...CREDENTIAL_PATTERNS, ...PATH_PATTERNS]
   }
 }

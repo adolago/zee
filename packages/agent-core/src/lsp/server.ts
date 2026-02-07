@@ -1364,12 +1364,7 @@ export namespace LSPServer {
 
         assetName = `lua-language-server-${release.tag_name}-${lualsPlatform}-${lualsArch}.${ext}`
 
-        const supportedCombos = [
-          "linux-x64.tar.gz",
-          "linux-arm64.tar.gz",
-          "win32-x64.zip",
-          "win32-ia32.zip",
-        ]
+        const supportedCombos = ["linux-x64.tar.gz", "linux-arm64.tar.gz", "win32-x64.zip", "win32-ia32.zip"]
 
         const assetSuffix = `${lualsPlatform}-${lualsArch}.${ext}`
         if (!supportedCombos.includes(assetSuffix)) {

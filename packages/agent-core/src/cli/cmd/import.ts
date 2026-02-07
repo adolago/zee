@@ -14,7 +14,7 @@ async function fetchShareData(base: string, slug: string, attempts = 3) {
     try {
       const response = await fetch(url, {
         signal: AbortSignal.timeout(8000),
-        headers: { "Accept": "application/json" },
+        headers: { Accept: "application/json" },
       })
 
       if (response.ok) {

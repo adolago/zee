@@ -142,9 +142,7 @@ export namespace SessionSummary {
       .filter(Boolean)
 
     // Extract last assistant response summary
-    const lastAssistant = [...msgs]
-      .reverse()
-      .find((m) => m.info.role === "assistant")
+    const lastAssistant = [...msgs].reverse().find((m) => m.info.role === "assistant")
     const lastAssistantText = lastAssistant?.parts
       .filter((p): p is MessageV2.TextPart => p.type === "text")
       .map((p) => p.text)
@@ -159,10 +157,7 @@ export namespace SessionSummary {
     else if (lowerTitle.includes("johny")) persona = "johny"
 
     // Build the summary block
-    const parts: string[] = [
-      `[Handoff Context - Session ${sessionID.slice(0, 12)}...]`,
-      `Persona: ${persona}`,
-    ]
+    const parts: string[] = [`[Handoff Context - Session ${sessionID.slice(0, 12)}...]`, `Persona: ${persona}`]
 
     if (recentUserMessages.length > 0) {
       parts.push("")

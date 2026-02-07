@@ -48,14 +48,7 @@ export type {
 } from "./types"
 
 // Tracker (main API)
-export {
-  init,
-  shutdown,
-  record,
-  recordFromResponse,
-  isInitialized,
-  UsageRecorded,
-} from "./tracker"
+export { init, shutdown, record, recordFromResponse, isInitialized, UsageRecorded } from "./tracker"
 
 // Storage (direct queries)
 export * as Storage from "./storage"

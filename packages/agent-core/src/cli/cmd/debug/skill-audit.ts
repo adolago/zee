@@ -37,9 +37,7 @@ export const SkillAuditCommand = cmd({
       const report = await Skill.audit()
 
       if (args.json) {
-        const output = args.persona
-          ? filterByPersona(report, args.persona)
-          : report
+        const output = args.persona ? filterByPersona(report, args.persona) : report
         process.stdout.write(JSON.stringify(output, null, 2) + EOL)
         return
       }
@@ -52,9 +50,7 @@ export const SkillAuditCommand = cmd({
 function filterByPersona(report: Skill.AuditReport, persona: string) {
   return {
     ...report,
-    loaded: report.loaded.filter(
-      (s) => s.context === persona || !s.context
-    ),
+    loaded: report.loaded.filter((s) => s.context === persona || !s.context),
     missingEnv: report.missingEnv.filter((m) => {
       const skill = report.loaded.find((s) => s.name === m.skill)
       return skill && (skill.context === persona || !skill.context)
@@ -77,11 +73,7 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
   // Summary
   console.log(`${bold}Skill Audit Report${reset}`)
   console.log("")
-  console.log(
-    report.loaded.length > 0
-      ? ok(`${report.loaded.length} skills loaded`)
-      : warn("No skills loaded")
-  )
+  console.log(report.loaded.length > 0 ? ok(`${report.loaded.length} skills loaded`) : warn("No skills loaded"))
   if (report.excluded.length > 0) {
     console.log(warn(`${report.excluded.length} skills excluded`))
   }
@@ -109,9 +101,7 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
     if (args.verbose) {
       for (const skill of skills) {
         const envWarn = report.missingEnv.find((m) => m.skill === skill.name)
-        const suffix = envWarn
-          ? ` ${yellow}[missing: ${envWarn.vars.join(", ")}]${reset}`
-          : ""
+        const suffix = envWarn ? ` ${yellow}[missing: ${envWarn.vars.join(", ")}]${reset}` : ""
         console.log(`    ${dim}-${reset} ${skill.name}${suffix}`)
       }
     }
@@ -119,7 +109,7 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
 
   // Shared skills
   const shared = report.loaded.filter((s) => !s.context)
-  if (shared.length > 0 && (!args.persona)) {
+  if (shared.length > 0 && !args.persona) {
     console.log("")
     console.log(`  ${cyan}shared${reset} (${shared.length} skills)`)
     if (args.verbose) {

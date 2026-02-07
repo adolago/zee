@@ -19,7 +19,7 @@ After building, always verify the binary:
 cd packages/agent-core && bun run build
 ./script/verify-binary.sh
 ```
-If verification fails: `ln -sf /home/artur/.local/src/agent-core/packages/agent-core/dist/@adolago/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core`
+If verification fails: `ln -sf /home/artur/.local/src/agent-core/packages/agent-core/dist/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core`
 
 ## CRITICAL: Naming Convention
 

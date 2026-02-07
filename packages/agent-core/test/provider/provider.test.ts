@@ -1987,7 +1987,7 @@ test("variants filtered in second pass for database models", async () => {
           provider: {
             openai: {
               models: {
-                "o3": {
+                o3: {
                   variants: {
                     high: { disabled: true },
                   },

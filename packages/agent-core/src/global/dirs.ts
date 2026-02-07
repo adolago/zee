@@ -79,4 +79,3 @@ export function resolveWorkspaceDir(env: NodeJS.ProcessEnv = process.env): strin
   // Preserve historical default worktree location unless explicitly configured.
   return path.join(resolveDataDir(env), "worktree")
 }
-

@@ -228,8 +228,7 @@ export function assertSafeServerBind(opts: { hostname: string }) {
   const config = getAuthConfig()
   if (!config.disabled && config.password) return
 
-  const insecureOverrideOk =
-    Flag.AGENT_CORE_DISABLE_SERVER_AUTH && Flag.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
+  const insecureOverrideOk = Flag.AGENT_CORE_DISABLE_SERVER_AUTH && Flag.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
 
   if (insecureOverrideOk) return
 

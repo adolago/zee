@@ -125,8 +125,7 @@ export function installKimiStderrRedirect(options?: { enabled?: boolean }) {
 
   originalStderrWrite = process.stderr.write.bind(process.stderr)
   process.stderr.write = ((chunk: any, encoding?: any, callback?: any) => {
-    const text =
-      typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString(encoding ?? "utf8")
+    const text = typeof chunk === "string" ? chunk : Buffer.from(chunk as Uint8Array).toString(encoding ?? "utf8")
     stderrBuffer += text
     flushStderrLines()
     if (!originalStderrWrite) return true

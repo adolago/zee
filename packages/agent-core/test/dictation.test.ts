@@ -151,9 +151,7 @@ describe("Dictation.transcribe", () => {
     expect(headers["x-goog-api-key"]).toBe("test-key")
 
     const body = JSON.parse(String(seenInit?.body ?? "{}")) as any
-    expect(body.contents?.[0]?.parts?.[0]?.text).toBe(
-      "Transcribe the audio. Language may be: en-US, pt-BR.",
-    )
+    expect(body.contents?.[0]?.parts?.[0]?.text).toBe("Transcribe the audio. Language may be: en-US, pt-BR.")
     expect(body.contents?.[0]?.parts?.[1]?.inline_data?.mime_type).toBe("audio/wav")
 
     const pcmBytes = Buffer.from(String(body.contents?.[0]?.parts?.[1]?.inline_data?.data ?? ""), "base64")

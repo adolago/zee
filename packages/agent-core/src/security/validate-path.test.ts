@@ -1,11 +1,7 @@
 import { describe, it, expect } from "vitest"
 import os from "node:os"
 import path from "node:path"
-import {
-  validateToolPath,
-  validateMediaPath,
-  PathValidationError,
-} from "./validate-path"
+import { validateToolPath, validateMediaPath, PathValidationError } from "./validate-path"
 
 const HOME = os.homedir()
 const CWD = path.join(HOME, "projects", "test")
@@ -83,9 +79,7 @@ describe("validateToolPath", () => {
   })
 
   it("rejects empty paths", () => {
-    expect(() =>
-      validateToolPath({ filePath: "", cwd: CWD, root: HOME }),
-    ).toThrow("Empty file path")
+    expect(() => validateToolPath({ filePath: "", cwd: CWD, root: HOME })).toThrow("Empty file path")
   })
 
   it("expands tilde paths", () => {

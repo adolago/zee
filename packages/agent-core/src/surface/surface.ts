@@ -16,10 +16,10 @@ import type {
   SurfaceState,
   ToolCall,
   ToolResult,
-} from './types.js';
-import { Log } from '../util/log';
+} from "./types.js"
+import { Log } from "../util/log"
 
-const log = Log.create({ service: 'surface' });
+const log = Log.create({ service: "surface" })
 
 // =============================================================================
 // Core Surface Interface
@@ -42,16 +42,16 @@ const log = Log.create({ service: 'surface' });
  */
 export interface Surface {
   /** Unique surface identifier */
-  readonly id: string;
+  readonly id: string
 
   /** Human-readable surface name */
-  readonly name: string;
+  readonly name: string
 
   /** Surface capabilities */
-  readonly capabilities: SurfaceCapabilities;
+  readonly capabilities: SurfaceCapabilities
 
   /** Current connection state */
-  readonly state: SurfaceState;
+  readonly state: SurfaceState
 
   // ---------------------------------------------------------------------------
   // Lifecycle Methods
@@ -61,13 +61,13 @@ export interface Surface {
    * Initialize and connect the surface.
    * Called once when the surface is first activated.
    */
-  connect(): Promise<void>;
+  connect(): Promise<void>
 
   /**
    * Gracefully disconnect the surface.
    * Should clean up resources and pending operations.
    */
-  disconnect(): Promise<void>;
+  disconnect(): Promise<void>
 
   // ---------------------------------------------------------------------------
   // Message Handling
@@ -82,7 +82,7 @@ export interface Surface {
    * @param response - The response to send
    * @param threadId - Optional thread/conversation to send to
    */
-  sendResponse(response: SurfaceResponse, threadId?: string): Promise<void>;
+  sendResponse(response: SurfaceResponse, threadId?: string): Promise<void>
 
   /**
    * Send a streaming chunk to the surface.
@@ -93,7 +93,7 @@ export interface Surface {
    * @param chunk - The streaming chunk
    * @param threadId - Optional thread/conversation
    */
-  sendStreamChunk(chunk: StreamChunk, threadId?: string): Promise<void>;
+  sendStreamChunk(chunk: StreamChunk, threadId?: string): Promise<void>
 
   /**
    * Send a typing indicator to the surface.
@@ -102,7 +102,7 @@ export interface Surface {
    *
    * @param threadId - Optional thread/conversation
    */
-  sendTypingIndicator(threadId?: string): Promise<void>;
+  sendTypingIndicator(threadId?: string): Promise<void>
 
   // ---------------------------------------------------------------------------
   // Tool & Permission Handling
@@ -117,7 +117,7 @@ export interface Surface {
    * @param request - The permission request
    * @returns The user's response or automatic response based on config
    */
-  requestPermission(request: PermissionRequest): Promise<PermissionResponse>;
+  requestPermission(request: PermissionRequest): Promise<PermissionResponse>
 
   /**
    * Notify the surface that a tool is being executed.
@@ -126,14 +126,14 @@ export interface Surface {
    *
    * @param toolCall - The tool being executed
    */
-  notifyToolStart(toolCall: ToolCall): Promise<void>;
+  notifyToolStart(toolCall: ToolCall): Promise<void>
 
   /**
    * Notify the surface that a tool has completed.
    *
    * @param result - The tool execution result
    */
-  notifyToolEnd(result: ToolResult): Promise<void>;
+  notifyToolEnd(result: ToolResult): Promise<void>
 
   // ---------------------------------------------------------------------------
   // Event Handling
@@ -147,7 +147,7 @@ export interface Surface {
    * @param handler - Event handler function
    * @returns Unsubscribe function
    */
-  onEvent(handler: (event: SurfaceEvent) => void): () => void;
+  onEvent(handler: (event: SurfaceEvent) => void): () => void
 }
 
 // =============================================================================
@@ -161,36 +161,33 @@ export interface Surface {
  */
 export type SurfaceContext = {
   /** Surface identifier */
-  surfaceId: string;
+  surfaceId: string
   /** Surface name for display */
-  surfaceName: string;
+  surfaceName: string
   /** Surface capabilities */
-  capabilities: SurfaceCapabilities;
+  capabilities: SurfaceCapabilities
   /** Sender identifier */
-  senderId: string;
+  senderId: string
   /** Sender display name */
-  senderName?: string;
+  senderName?: string
   /** Thread/conversation ID */
-  threadId?: string;
+  threadId?: string
   /** Whether this is a group conversation */
-  isGroup: boolean;
+  isGroup: boolean
   /** Group name if applicable */
-  groupName?: string;
+  groupName?: string
   /** Whether the agent was mentioned */
-  wasMentioned?: boolean;
+  wasMentioned?: boolean
   /** Message timestamp */
-  timestamp: number;
+  timestamp: number
   /** Original message ID for threading */
-  messageId: string;
-};
+  messageId: string
+}
 
 /**
  * Build surface context from a message.
  */
-export function buildSurfaceContext(
-  surface: Surface,
-  message: SurfaceMessage
-): SurfaceContext {
+export function buildSurfaceContext(surface: Surface, message: SurfaceMessage): SurfaceContext {
   return {
     surfaceId: surface.id,
     surfaceName: surface.name,
@@ -203,7 +200,7 @@ export function buildSurfaceContext(
     wasMentioned: message.thread?.wasMentioned,
     timestamp: message.timestamp,
     messageId: message.id,
-  };
+  }
 }
 
 // =============================================================================
@@ -214,44 +211,44 @@ export function buildSurfaceContext(
  * Registry of available surfaces.
  */
 export class SurfaceRegistry {
-  private surfaces = new Map<string, Surface>();
+  private surfaces = new Map<string, Surface>()
 
   /**
    * Register a surface adapter.
    */
   register(surface: Surface): void {
     if (this.surfaces.has(surface.id)) {
-      throw new Error(`Surface with id '${surface.id}' is already registered`);
+      throw new Error(`Surface with id '${surface.id}' is already registered`)
     }
-    this.surfaces.set(surface.id, surface);
+    this.surfaces.set(surface.id, surface)
   }
 
   /**
    * Unregister a surface adapter.
    */
   unregister(surfaceId: string): boolean {
-    return this.surfaces.delete(surfaceId);
+    return this.surfaces.delete(surfaceId)
   }
 
   /**
    * Get a surface by ID.
    */
   get(surfaceId: string): Surface | undefined {
-    return this.surfaces.get(surfaceId);
+    return this.surfaces.get(surfaceId)
   }
 
   /**
    * Get all registered surfaces.
    */
   getAll(): Surface[] {
-    return Array.from(this.surfaces.values());
+    return Array.from(this.surfaces.values())
   }
 
   /**
    * Check if a surface is registered.
    */
   has(surfaceId: string): boolean {
-    return this.surfaces.has(surfaceId);
+    return this.surfaces.has(surfaceId)
   }
 }
 
@@ -265,40 +262,40 @@ export class SurfaceRegistry {
  * Provides common functionality and sensible defaults.
  */
 export abstract class BaseSurface implements Surface {
-  abstract readonly id: string;
-  abstract readonly name: string;
-  abstract readonly capabilities: SurfaceCapabilities;
+  abstract readonly id: string
+  abstract readonly name: string
+  abstract readonly capabilities: SurfaceCapabilities
 
-  protected _state: SurfaceState = 'disconnected';
-  protected eventHandlers = new Set<(event: SurfaceEvent) => void>();
+  protected _state: SurfaceState = "disconnected"
+  protected eventHandlers = new Set<(event: SurfaceEvent) => void>()
 
   get state(): SurfaceState {
-    return this._state;
+    return this._state
   }
 
   protected setState(state: SurfaceState, error?: Error): void {
-    this._state = state;
-    this.emit({ type: 'state_change', state, error });
+    this._state = state
+    this.emit({ type: "state_change", state, error })
   }
 
   protected emit(event: SurfaceEvent): void {
     for (const handler of this.eventHandlers) {
       try {
-        handler(event);
+        handler(event)
       } catch (err) {
-        log.error('Surface event handler error', {
+        log.error("Surface event handler error", {
           eventType: event.type,
           error: err instanceof Error ? err.message : String(err),
-        });
+        })
       }
     }
   }
 
   onEvent(handler: (event: SurfaceEvent) => void): () => void {
-    this.eventHandlers.add(handler);
+    this.eventHandlers.add(handler)
     return () => {
-      this.eventHandlers.delete(handler);
-    };
+      this.eventHandlers.delete(handler)
+    }
   }
 
   // Default implementations that can be overridden
@@ -306,7 +303,7 @@ export abstract class BaseSurface implements Surface {
   async sendStreamChunk(chunk: StreamChunk, threadId?: string): Promise<void> {
     // Default: buffer and send on final
     if (chunk.isFinal && chunk.text) {
-      await this.sendResponse({ text: chunk.text }, threadId);
+      await this.sendResponse({ text: chunk.text }, threadId)
     }
   }
 
@@ -322,8 +319,8 @@ export abstract class BaseSurface implements Surface {
     // Default: no-op
   }
 
-  abstract connect(): Promise<void>;
-  abstract disconnect(): Promise<void>;
-  abstract sendResponse(response: SurfaceResponse, threadId?: string): Promise<void>;
-  abstract requestPermission(request: PermissionRequest): Promise<PermissionResponse>;
+  abstract connect(): Promise<void>
+  abstract disconnect(): Promise<void>
+  abstract sendResponse(response: SurfaceResponse, threadId?: string): Promise<void>
+  abstract requestPermission(request: PermissionRequest): Promise<PermissionResponse>
 }

@@ -26,7 +26,7 @@ export namespace Grammar {
       const params = new URLSearchParams()
       params.append("text", text)
       params.append("language", "auto")
-      
+
       if (config?.username && config?.apiKey) {
         params.append("username", config.username)
         params.append("apiKey", config.apiKey)
@@ -37,7 +37,7 @@ export namespace Grammar {
         body: params,
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
       })
 

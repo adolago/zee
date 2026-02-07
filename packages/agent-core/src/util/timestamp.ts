@@ -49,8 +49,7 @@ export const Timestamp = {
    * Compact format: YYYYMMDD-HHMMSS
    * Use for: File names, identifiers
    */
-  compact: (date: Date = new Date()): string =>
-    date.toISOString().split(".")[0].replace(/[-:T]/g, ""),
+  compact: (date: Date = new Date()): string => date.toISOString().split(".")[0].replace(/[-:T]/g, ""),
 
   /**
    * Unix timestamp in milliseconds

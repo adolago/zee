@@ -122,9 +122,7 @@ export namespace MCP {
     return resolved
   }
 
-  async function resolveMcpHeaders(
-    headers?: Record<string, string>,
-  ): Promise<Record<string, string> | undefined> {
+  async function resolveMcpHeaders(headers?: Record<string, string>): Promise<Record<string, string> | undefined> {
     if (!headers) return undefined
     const resolved: Record<string, string> = {}
     for (const [key, value] of Object.entries(headers)) {
@@ -356,10 +354,7 @@ export namespace MCP {
           }
         }
 
-        const statusLine =
-          job.status === "running"
-            ? `Job ${job_id} is running.`
-            : `Job ${job_id} is queued.`
+        const statusLine = job.status === "running" ? `Job ${job_id} is running.` : `Job ${job_id} is queued.`
         return {
           content: [{ type: "text", text: `${statusLine} Try again with ${toolId}.` }],
         }
@@ -775,7 +770,9 @@ export namespace MCP {
       for (let i = 0; i < transports.length; i++) {
         if (i !== usedTransportIndex) {
           const { name, transport } = transports[i]
-          transport.close?.().catch((e) => log.debug("failed to close unused transport", { key, transport: name, error: e }))
+          transport
+            .close?.()
+            .catch((e) => log.debug("failed to close unused transport", { key, transport: name, error: e }))
         }
       }
     }
@@ -1103,9 +1100,7 @@ export namespace MCP {
     const clientsSnapshot = await clients()
 
     // Identify connected servers
-    const connectedServers = Object.keys(clientsSnapshot).filter(
-      (name) => s.status[name]?.status === "connected",
-    )
+    const connectedServers = Object.keys(clientsSnapshot).filter((name) => s.status[name]?.status === "connected")
 
     // Identify servers that need a fresh listTools() call (no cache entry)
     const uncachedServers = connectedServers.filter((name) => !toolCache.has(name))
@@ -1166,9 +1161,7 @@ export namespace MCP {
 
       for (const mcpTool of cached.tools) {
         const sanitizedToolName = mcpTool.name.replace(/[^a-zA-Z0-9_-]/g, "_")
-        const toolId = sanitizedToolName in result
-          ? sanitizedClientName + "_" + sanitizedToolName
-          : sanitizedToolName
+        const toolId = sanitizedToolName in result ? sanitizedClientName + "_" + sanitizedToolName : sanitizedToolName
         result[toolId] = convertMcpTool(mcpTool, clientName, {
           asyncEnabled,
           pollToolId,
@@ -1223,11 +1216,7 @@ export namespace MCP {
     return result
   }
 
-  export async function callTool(
-    serverName: string,
-    toolName: string,
-    args: Record<string, unknown> = {},
-  ) {
+  export async function callTool(serverName: string, toolName: string, args: Record<string, unknown> = {}) {
     const s = await state()
     let client = s.clients[serverName]
 

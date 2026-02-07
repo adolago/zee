@@ -48,9 +48,7 @@ function normalizePath(input?: string): string {
 }
 
 function fallback(part: ToolPart): ToolResult {
-  const title =
-    part.state.title ||
-    (Object.keys(part.state.input).length > 0 ? JSON.stringify(part.state.input) : "")
+  const title = part.state.title || (Object.keys(part.state.input).length > 0 ? JSON.stringify(part.state.input) : "")
   return inline(part.tool, title)
 }
 
@@ -432,9 +430,7 @@ export const RunCommand = cmd({
       // Hold mode: first message in new session restricts edit/write tools
       // This mirrors TUI behavior - agents must plan before executing
       const isNewSession = !args.continue && !args.session
-      const holdModeTools = isNewSession
-        ? { edit: false, write: false, notebook_edit: false }
-        : undefined
+      const holdModeTools = isNewSession ? { edit: false, write: false, notebook_edit: false } : undefined
 
       if (args.command) {
         await sdk.session.command({
@@ -585,9 +581,7 @@ export const RunCommand = cmd({
             : undefined
 
         const result = await sdk.session.create(
-          title
-            ? { title, permission: RUN_PERMISSION_RULES }
-            : { permission: RUN_PERMISSION_RULES },
+          title ? { title, permission: RUN_PERMISSION_RULES } : { permission: RUN_PERMISSION_RULES },
         )
         return result.data?.id
       })()

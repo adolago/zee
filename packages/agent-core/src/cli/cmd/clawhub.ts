@@ -29,14 +29,15 @@ export const ClawHubCommand = cmd({
         type: "string",
       })
       .option("persona", {
-        describe: "Install for a specific persona (zee, stanley, johny). Scopes the skill so only that persona sees it.",
+        describe:
+          "Install for a specific persona (zee, stanley, johny). Scopes the skill so only that persona sees it.",
         type: "string",
         choices: ["zee", "stanley", "johny"],
       })
   },
   handler: async (args) => {
     const action = args.action as string
-    const target = (args.target as string | undefined) ?? (args._ as string[])[1] as string | undefined
+    const target = (args.target as string | undefined) ?? ((args._ as string[])[1] as string | undefined)
 
     const client = createClawHubClient()
     const installer = createClawHubInstaller(client)

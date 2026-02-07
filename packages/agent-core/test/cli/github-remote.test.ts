@@ -2,7 +2,10 @@ import { test, expect } from "bun:test"
 import { parseGitHubRemote } from "../../src/cli/cmd/github"
 
 test("parses https URL with .git suffix", () => {
-  expect(parseGitHubRemote("https://github.com/example/agent-core.git")).toEqual({ owner: "example", repo: "agent-core" })
+  expect(parseGitHubRemote("https://github.com/example/agent-core.git")).toEqual({
+    owner: "example",
+    repo: "agent-core",
+  })
 })
 
 test("parses https URL without .git suffix", () => {
@@ -18,7 +21,10 @@ test("parses git@ URL without .git suffix", () => {
 })
 
 test("parses ssh:// URL with .git suffix", () => {
-  expect(parseGitHubRemote("ssh://git@github.com/example/agent-core.git")).toEqual({ owner: "example", repo: "agent-core" })
+  expect(parseGitHubRemote("ssh://git@github.com/example/agent-core.git")).toEqual({
+    owner: "example",
+    repo: "agent-core",
+  })
 })
 
 test("parses ssh:// URL without .git suffix", () => {

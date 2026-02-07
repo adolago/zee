@@ -356,10 +356,18 @@ function createMockContext(initialText = "", initialCursor = 0): VimCommands.Vim
   let cursor = initialCursor
 
   return {
-    get cursorOffset() { return cursor },
-    set cursorOffset(offset: number) { cursor = Math.max(0, Math.min(offset, text.length)) },
-    get text() { return text },
-    setText(t: string) { text = t },
+    get cursorOffset() {
+      return cursor
+    },
+    set cursorOffset(offset: number) {
+      cursor = Math.max(0, Math.min(offset, text.length))
+    },
+    get text() {
+      return text
+    },
+    setText(t: string) {
+      text = t
+    },
     insertText(t: string) {
       text = text.slice(0, cursor) + t + text.slice(cursor)
       cursor += t.length
@@ -369,8 +377,12 @@ function createMockContext(initialText = "", initialCursor = 0): VimCommands.Vim
       text = text.slice(0, start) + text.slice(end)
       return deleted
     },
-    gotoBufferStart() { cursor = 0 },
-    gotoBufferEnd() { cursor = text.length },
+    gotoBufferStart() {
+      cursor = 0
+    },
+    gotoBufferEnd() {
+      cursor = text.length
+    },
     get cursorLine(): number {
       const before = text.slice(0, cursor)
       return (before.match(/\n/g) ?? []).length

@@ -23,10 +23,7 @@ describe("wiring.phase0", () => {
   describe("johny tools", () => {
     test(" Johny domain exports expected tools", async () => {
       // Read the Johny tools source file to verify structure
-      const johnyToolsPath = path.join(
-        process.cwd(),
-        "../../src/domain/johny/tools.ts",
-      )
+      const johnyToolsPath = path.join(process.cwd(), "../../src/domain/johny/tools.ts")
       const content = await fs.readFile(johnyToolsPath, "utf-8")
 
       // Should export the expected tool IDs
@@ -42,10 +39,7 @@ describe("wiring.phase0", () => {
 
     test(" Johny tools are registered via MCP domain", async () => {
       // Read the MCP domain index to verify registration
-      const mcpDomainPath = path.join(
-        process.cwd(),
-        "../../src/mcp/domain/index.ts",
-      )
+      const mcpDomainPath = path.join(process.cwd(), "../../src/mcp/domain/index.ts")
       const content = await fs.readFile(mcpDomainPath, "utf-8")
 
       // Should have registerJohnyTools function
@@ -61,10 +55,7 @@ describe("wiring.phase0", () => {
   describe("zee tools", () => {
     test(" Zee domain exports WhatsApp and Splitwise tools", async () => {
       // Read the Zee tools source file
-      const zeeToolsPath = path.join(
-        process.cwd(),
-        "../../src/domain/zee/tools.ts",
-      )
+      const zeeToolsPath = path.join(process.cwd(), "../../src/domain/zee/tools.ts")
       const content = await fs.readFile(zeeToolsPath, "utf-8")
 
       // Should import WhatsApp tools (they're defined in a separate file)
@@ -80,10 +71,7 @@ describe("wiring.phase0", () => {
     })
 
     test(" Zee full tools are registered via MCP domain", async () => {
-      const mcpDomainPath = path.join(
-        process.cwd(),
-        "../../src/mcp/domain/index.ts",
-      )
+      const mcpDomainPath = path.join(process.cwd(), "../../src/mcp/domain/index.ts")
       const content = await fs.readFile(mcpDomainPath, "utf-8")
 
       // Should have registerZeeFullTools function
@@ -99,10 +87,7 @@ describe("wiring.phase0", () => {
   describe("memory reranker", () => {
     test(" Memory search accepts rerank option", async () => {
       // Read the unified memory source
-      const unifiedPath = path.join(
-        process.cwd(),
-        "../../src/memory/unified.ts",
-      )
+      const unifiedPath = path.join(process.cwd(), "../../src/memory/unified.ts")
       const content = await fs.readFile(unifiedPath, "utf-8")
 
       // Should have rerank parameter in search
@@ -112,10 +97,7 @@ describe("wiring.phase0", () => {
     })
 
     test(" Reranker implementation exists", async () => {
-      const rerankerPath = path.join(
-        process.cwd(),
-        "../../src/memory/reranker.ts",
-      )
+      const rerankerPath = path.join(process.cwd(), "../../src/memory/reranker.ts")
       const exists = await fs
         .stat(rerankerPath)
         .then(() => true)
@@ -141,16 +123,11 @@ describe("wiring.phase0", () => {
   describe("retry safety", () => {
     test(" getErrorMessage does not use JSON.stringify", async () => {
       // Read the retry.ts source file
-      const retryPath = path.join(
-        process.cwd(),
-        "../../src/session/retry.ts",
-      )
+      const retryPath = path.join(process.cwd(), "../../src/session/retry.ts")
       const content = await fs.readFile(retryPath, "utf-8")
 
       // Extract the getErrorMessage function
-      const getErrorMessageMatch = content.match(
-        /function getErrorMessage[\s\S]*?^}/m,
-      )
+      const getErrorMessageMatch = content.match(/function getErrorMessage[\s\S]*?^}/m)
       expect(getErrorMessageMatch).toBeDefined()
 
       if (getErrorMessageMatch) {
@@ -163,10 +140,7 @@ describe("wiring.phase0", () => {
     })
 
     test(" Retry module uses safe error extraction", async () => {
-      const retryPath = path.join(
-        process.cwd(),
-        "../../src/session/retry.ts",
-      )
+      const retryPath = path.join(process.cwd(), "../../src/session/retry.ts")
       const content = await fs.readFile(retryPath, "utf-8")
 
       // Should classify errors without serializing objects
@@ -193,10 +167,7 @@ describe("wiring.phase0", () => {
   // ============================================================================
   describe("retry consolidation", () => {
     test(" util/retry.ts is deleted (no duplicate implementation)", async () => {
-      const utilRetryPath = path.join(
-        process.cwd(),
-        "src/util/retry.ts",
-      )
+      const utilRetryPath = path.join(process.cwd(), "src/util/retry.ts")
 
       const exists = await fs
         .stat(utilRetryPath)
@@ -245,10 +216,7 @@ describe("wiring.phase0", () => {
   // ============================================================================
   describe("retry-after parsing", () => {
     test(" parseRetryAfterHeader handles seconds format", async () => {
-      const retryPath = path.join(
-        process.cwd(),
-        "../../src/session/retry.ts",
-      )
+      const retryPath = path.join(process.cwd(), "../../src/session/retry.ts")
       const content = await fs.readFile(retryPath, "utf-8")
 
       // Should parse retry-after header
@@ -257,10 +225,7 @@ describe("wiring.phase0", () => {
     })
 
     test(" Retry module handles provider-specific errors", async () => {
-      const retryPath = path.join(
-        process.cwd(),
-        "../../src/session/retry.ts",
-      )
+      const retryPath = path.join(process.cwd(), "../../src/session/retry.ts")
       const content = await fs.readFile(retryPath, "utf-8")
 
       // Should handle rate limiting patterns
@@ -284,10 +249,7 @@ describe("wiring.phase0", () => {
   // ============================================================================
   describe("retry performance", () => {
     test(" uses node:timers/promises for sleep", async () => {
-      const retryPath = path.join(
-        process.cwd(),
-        "../../src/session/retry.ts",
-      )
+      const retryPath = path.join(process.cwd(), "../../src/session/retry.ts")
       const content = await fs.readFile(retryPath, "utf-8")
 
       // Should import from node:timers/promises

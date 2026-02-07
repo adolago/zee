@@ -33,9 +33,7 @@ export namespace FileWatcher {
   const watcher = lazy(() => {
     const libc = process.env["AGENT_CORE_LIBC"] ?? process.env["OPENCODE_LIBC"]
     const linuxSuffix = process.platform === "linux" ? `-${libc || "glibc"}` : ""
-    const binding = require(
-      `@parcel/watcher-${process.platform}-${process.arch}${linuxSuffix}`,
-    )
+    const binding = require(`@parcel/watcher-${process.platform}-${process.arch}${linuxSuffix}`)
     return createWrapper(binding) as typeof import("@parcel/watcher")
   })
 
@@ -71,9 +69,11 @@ export namespace FileWatcher {
       })
       const sub = await withTimeout(pending, SUBSCRIBE_TIMEOUT_MS).catch((err) => {
         log.error("failed to subscribe to Instance.directory", { error: err })
-        pending.then((s) => s.unsubscribe()).catch((unsubErr) => {
-          log.debug("failed to unsubscribe after timeout", { dir: Instance.directory, error: String(unsubErr) })
-        })
+        pending
+          .then((s) => s.unsubscribe())
+          .catch((unsubErr) => {
+            log.debug("failed to unsubscribe after timeout", { dir: Instance.directory, error: String(unsubErr) })
+          })
         return undefined
       })
       if (sub) subs.push(sub)
@@ -100,9 +100,11 @@ export namespace FileWatcher {
         })
         const sub = await withTimeout(pending, SUBSCRIBE_TIMEOUT_MS).catch((err) => {
           log.error("failed to subscribe to vcsDir", { error: err })
-          pending.then((s) => s.unsubscribe()).catch((unsubErr) => {
-            log.debug("failed to unsubscribe after timeout", { vcsDir, error: String(unsubErr) })
-          })
+          pending
+            .then((s) => s.unsubscribe())
+            .catch((unsubErr) => {
+              log.debug("failed to unsubscribe after timeout", { vcsDir, error: String(unsubErr) })
+            })
           return undefined
         })
         if (sub) subs.push(sub)

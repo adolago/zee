@@ -28,9 +28,9 @@
  * ```
  */
 
-import z from "zod";
-import { EOL } from "os";
-import { NamedError } from "@agent-core/util/error";
+import z from "zod"
+import { EOL } from "os"
+import { NamedError } from "@agent-core/util/error"
 import {
   Style as StyleImpl,
   Symbols as SymbolsImpl,
@@ -38,7 +38,7 @@ import {
   themeToAnsi as themeToAnsiImpl,
   personaColors as personaColorsImpl,
   shouldUseColors as shouldUseColorsImpl,
-} from "./style";
+} from "./style"
 
 // Re-export all style utilities for direct access (backward compatibility)
 export {
@@ -62,7 +62,7 @@ export {
   padEnd,
   StatusBar,
   getSymbol,
-} from "./style";
+} from "./style"
 
 /**
  * UI namespace providing high-level UI utilities.
@@ -99,12 +99,12 @@ export namespace UI {
     " ███╔╝  ██╔══╝  ██╔══╝  ",
     "███████╗███████╗███████╗",
     "╚══════╝╚══════╝╚══════╝",
-  ];
+  ]
 
   /**
    * Error thrown when user cancels an input operation
    */
-  export const CancelledError = NamedError.create("UICancelledError", z.void());
+  export const CancelledError = NamedError.create("UICancelledError", z.void())
 
   // =============================================================================
   // Re-exports from style.ts (for backward compatibility)
@@ -114,37 +114,37 @@ export namespace UI {
    * Semantic color constants and ANSI styles
    * @deprecated Use direct import: `import { Style } from "@/cli"`
    */
-  export const Style = StyleImpl;
+  export const Style = StyleImpl
 
   /**
    * Unicode/ASCII symbols with automatic fallback
    * @deprecated Use direct import: `import { Symbols } from "@/cli"`
    */
-  export const Symbols = SymbolsImpl;
+  export const Symbols = SymbolsImpl
 
   /**
    * Message formatters with icons
    * @deprecated Use direct import: `import { Message } from "@/cli"`
    */
-  export const Message = MessageImpl;
+  export const Message = MessageImpl
 
   /**
    * Theme to ANSI color mapping
    * @deprecated Use direct import: `import { themeToAnsi } from "@/cli"`
    */
-  export const themeToAnsi = themeToAnsiImpl;
+  export const themeToAnsi = themeToAnsiImpl
 
   /**
    * Persona-specific colors
    * @deprecated Use direct import: `import { personaColors } from "@/cli"`
    */
-  export const personaColors = personaColorsImpl;
+  export const personaColors = personaColorsImpl
 
   /**
    * Check if colors should be used
    * @deprecated Use direct import: `import { shouldUseColors } from "@/cli"`
    */
-  export const shouldUseColors = shouldUseColorsImpl;
+  export const shouldUseColors = shouldUseColorsImpl
 
   // =============================================================================
   // Output Methods
@@ -156,8 +156,8 @@ export namespace UI {
    * @param message - Messages to print
    */
   export function println(...message: string[]) {
-    print(...message);
-    Bun.stderr.write(EOL);
+    print(...message)
+    Bun.stderr.write(EOL)
   }
 
   /**
@@ -166,11 +166,11 @@ export namespace UI {
    * @param message - Messages to print
    */
   export function print(...message: string[]) {
-    blank = false;
-    Bun.stderr.write(message.join(" "));
+    blank = false
+    Bun.stderr.write(message.join(" "))
   }
 
-  let blank = false;
+  let blank = false
 
   /**
    * Print a section header with highlighting
@@ -178,9 +178,9 @@ export namespace UI {
    * @param text - Header text
    */
   export function header(text: string) {
-    empty();
-    println(StyleImpl.TEXT_HIGHLIGHT_BOLD + text + StyleImpl.TEXT_NORMAL);
-    empty();
+    empty()
+    println(StyleImpl.TEXT_HIGHLIGHT_BOLD + text + StyleImpl.TEXT_NORMAL)
+    empty()
   }
 
   /**
@@ -189,7 +189,7 @@ export namespace UI {
    * @param text - Message text
    */
   export function info(text: string) {
-    println(MessageImpl.info(text));
+    println(MessageImpl.info(text))
   }
 
   /**
@@ -198,7 +198,7 @@ export namespace UI {
    * @param text - Message text
    */
   export function warn(text: string) {
-    println(MessageImpl.warning(text));
+    println(MessageImpl.warning(text))
   }
 
   /**
@@ -207,16 +207,16 @@ export namespace UI {
    * @param text - Message text
    */
   export function success(text: string) {
-    println(MessageImpl.success(text));
+    println(MessageImpl.success(text))
   }
 
   /**
    * Print an empty line (only once between sections)
    */
   export function empty() {
-    if (blank) return;
-    println("" + StyleImpl.TEXT_NORMAL);
-    blank = true;
+    if (blank) return
+    println("" + StyleImpl.TEXT_NORMAL)
+    blank = true
   }
 
   /**
@@ -225,7 +225,7 @@ export namespace UI {
    * @param message - Error message
    */
   export function error(message: string) {
-    println(MessageImpl.error(message));
+    println(MessageImpl.error(message))
   }
 
   // =============================================================================
@@ -249,18 +249,16 @@ export namespace UI {
    * const stanleyColor = UI.getLogoColor("stanley");
    * ```
    */
-  export function getLogoColor(
-    persona: "zee" | "stanley" | "johny" | "default" = "default",
-  ): string {
+  export function getLogoColor(persona: "zee" | "stanley" | "johny" | "default" = "default"): string {
     switch (persona) {
       case "stanley":
-        return personaColorsImpl.stanley.logo;
+        return personaColorsImpl.stanley.logo
       case "johny":
-        return personaColorsImpl.johny.logo;
+        return personaColorsImpl.johny.logo
       case "zee":
       case "default":
       default:
-        return personaColorsImpl.zee.logo;
+        return personaColorsImpl.zee.logo
     }
   }
 
@@ -288,22 +286,19 @@ export namespace UI {
    * console.log(UI.logo("  "));
    * ```
    */
-  export function logo(
-    pad?: string,
-    persona?: "zee" | "stanley" | "johny" | "default",
-  ): string {
-    const result = [];
+  export function logo(pad?: string, persona?: "zee" | "stanley" | "johny" | "default"): string {
+    const result = []
     // Use theme-aware logo color instead of hardcoded cyan
     // Style.reset and colors are automatically empty when NO_COLOR is set
-    const color = getLogoColor(persona);
+    const color = getLogoColor(persona)
     for (const row of LOGO) {
-      if (pad) result.push(pad);
-      result.push(color);
-      result.push(row);
-      result.push(StyleImpl.reset);
-      result.push(EOL);
+      if (pad) result.push(pad)
+      result.push(color)
+      result.push(row)
+      result.push(StyleImpl.reset)
+      result.push(EOL)
     }
-    return result.join("").trimEnd();
+    return result.join("").trimEnd()
   }
 
   // =============================================================================
@@ -325,18 +320,18 @@ export namespace UI {
    * ```
    */
   export async function input(prompt: string): Promise<string> {
-    const readline = require("readline");
+    const readline = require("readline")
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
-    });
+    })
 
     return new Promise((resolve) => {
       rl.question(prompt, (answer: string) => {
-        rl.close();
-        resolve(answer.trim());
-      });
-    });
+        rl.close()
+        resolve(answer.trim())
+      })
+    })
   }
 
   /**
@@ -346,6 +341,6 @@ export namespace UI {
    * @returns Plain text (markdown not processed in CLI mode)
    */
   export function markdown(text: string): string {
-    return text;
+    return text
   }
 }

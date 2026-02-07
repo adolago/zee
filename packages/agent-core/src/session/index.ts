@@ -6,7 +6,6 @@ import { Decimal } from "decimal.js"
 import z from "zod"
 import { type LanguageModelUsage, type ProviderMetadata } from "ai"
 
-
 import { Identifier } from "../id/id"
 import { Installation } from "../installation"
 
@@ -99,12 +98,8 @@ export namespace Session {
           reasoning: z.number(),
         })
         .optional(),
-      surface: z
-        .enum(["cli", "web", "api", "whatsapp", "matrix"])
-        .optional(),
-      mode: z
-        .enum(["hold", "release"])
-        .optional(),
+      surface: z.enum(["cli", "web", "api", "whatsapp", "matrix"]).optional(),
+      mode: z.enum(["hold", "release"]).optional(),
       systemPrompt: z.string().optional(),
       skills: z.array(z.string()).optional(),
       contextFiles: z.array(z.string()).optional(),
@@ -453,11 +448,10 @@ export namespace Session {
         if (!Number.isFinite(value)) return 0
         return value
       }
-      const cacheWriteTokens =
-        (input.metadata?.["anthropic"]?.["cacheCreationInputTokens"] ??
-          input.metadata?.["venice"]?.["cacheWriteInputTokens"] ??
-          input.metadata?.["venice"]?.["cacheCreationInputTokens"] ??
-          0) as number
+      const cacheWriteTokens = (input.metadata?.["anthropic"]?.["cacheCreationInputTokens"] ??
+        input.metadata?.["venice"]?.["cacheWriteInputTokens"] ??
+        input.metadata?.["venice"]?.["cacheCreationInputTokens"] ??
+        0) as number
 
       const tokens = {
         input: safe(adjustedInputTokens),

@@ -2,5 +2,5 @@
  * @file Formatters Index
  */
 
-export { JsonFormatter } from "./json";
-export { PrettyFormatter } from "./pretty";
+export { JsonFormatter } from "./json"
+export { PrettyFormatter } from "./pretty"

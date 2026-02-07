@@ -18,22 +18,16 @@ export type {
   RedactionStats,
   RedactionPattern,
   RedactionResult,
-} from "./types";
+} from "./types"
 
 // Generator
-export { ReportGenerator } from "./report-generator";
+export { ReportGenerator } from "./report-generator"
 
 // Privacy
-export { PrivacyRedactor, getPatterns } from "./privacy";
+export { PrivacyRedactor, getPatterns } from "./privacy"
 
 // Archive
-export { ZipBuilder } from "./archive";
+export { ZipBuilder } from "./archive"
 
 // Collectors
-export {
-  collectSystemInfo,
-  collectConfig,
-  collectLogs,
-  collectSession,
-  collectDiagnostics,
-} from "./collectors";
+export { collectSystemInfo, collectConfig, collectLogs, collectSession, collectDiagnostics } from "./collectors"

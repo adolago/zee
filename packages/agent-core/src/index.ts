@@ -58,10 +58,7 @@ function loadDaemonEnv(): void {
     const key = line.slice(0, eqIndex).trim()
     if (!key || process.env[key] !== undefined) continue
     let value = line.slice(eqIndex + 1).trim()
-    if (
-      (value.startsWith("\"") && value.endsWith("\"")) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1)
     }
     process.env[key] = value

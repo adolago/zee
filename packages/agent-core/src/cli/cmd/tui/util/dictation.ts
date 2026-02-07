@@ -104,7 +104,22 @@ export namespace Dictation {
       : undefined
 
     const soxCommand = sox
-      ? [sox, "-q", "-d", "-r", String(input.sampleRate), "-c", "1", "-b", "16", "-e", "signed-integer", "-t", "wav", "-"]
+      ? [
+          sox,
+          "-q",
+          "-d",
+          "-r",
+          String(input.sampleRate),
+          "-c",
+          "1",
+          "-b",
+          "16",
+          "-e",
+          "signed-integer",
+          "-t",
+          "wav",
+          "-",
+        ]
       : undefined
 
     if (os === "linux") {
@@ -259,10 +274,7 @@ export namespace Dictation {
   function resolvePrompt(config: RuntimeConfig): string {
     const primary = config.language?.trim()
     const alternatives = config.alternativeLanguages?.map((lang) => lang.trim()).filter(Boolean) ?? []
-    const languages = [
-      ...(primary && primary.toLowerCase() !== "auto" ? [primary] : []),
-      ...alternatives,
-    ]
+    const languages = [...(primary && primary.toLowerCase() !== "auto" ? [primary] : []), ...alternatives]
     if (languages.length > 0) {
       return `Transcribe the audio. Language may be: ${languages.join(", ")}.`
     }
@@ -304,9 +316,7 @@ export namespace Dictation {
     if (readTag(view, 0) !== "RIFF" || readTag(view, 8) !== "WAVE") return
 
     let offset = 12
-    let format:
-      | { audioFormat: number; channels: number; sampleRate: number; bitsPerSample: number }
-      | undefined
+    let format: { audioFormat: number; channels: number; sampleRate: number; bitsPerSample: number } | undefined
     let dataOffset: number | undefined
     let dataSize: number | undefined
 

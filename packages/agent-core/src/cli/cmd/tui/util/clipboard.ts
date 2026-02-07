@@ -208,9 +208,7 @@ export namespace Clipboard {
       }
 
       // If all compression attempts failed, return original with warning
-      console.warn(
-        `[clipboard] Could not compress image below ${IMAGE_SIZE_THRESHOLD / 1024 / 1024}MB threshold`,
-      )
+      console.warn(`[clipboard] Could not compress image below ${IMAGE_SIZE_THRESHOLD / 1024 / 1024}MB threshold`)
       return { data: buffer, mime }
     } catch (err) {
       console.warn(`[clipboard] Image compression failed:`, err)
@@ -229,7 +227,12 @@ export namespace Clipboard {
     if (tryWayland) {
       try {
         const typesRaw = await $`wl-paste -l`.nothrow().text()
-        const types = new Set(typesRaw.split(/\r?\n/).map(normalizeClipboardType).filter((x) => x.length > 0))
+        const types = new Set(
+          typesRaw
+            .split(/\r?\n/)
+            .map(normalizeClipboardType)
+            .filter((x) => x.length > 0),
+        )
 
         const imageMime = pickPreferredMime(types, LINUX_IMAGE_MIME_CANDIDATES)
         if (imageMime) {
@@ -268,7 +271,12 @@ export namespace Clipboard {
     if (tryX11) {
       try {
         const targetsRaw = await $`xclip -selection clipboard -t TARGETS -o`.nothrow().text()
-        const targets = new Set(targetsRaw.split(/\r?\n/).map(normalizeClipboardType).filter((x) => x.length > 0))
+        const targets = new Set(
+          targetsRaw
+            .split(/\r?\n/)
+            .map(normalizeClipboardType)
+            .filter((x) => x.length > 0),
+        )
 
         const imageMime = pickPreferredMime(targets, LINUX_IMAGE_MIME_CANDIDATES)
         if (imageMime) {

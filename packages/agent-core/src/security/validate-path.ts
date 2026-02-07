@@ -56,25 +56,13 @@ function resolveToCwd(filePath: string, cwd: string): string {
  * Paths that should never be accepted as tool input regardless of sandbox root.
  * These are sensitive system directories and credential stores.
  */
-const BLOCKED_PREFIXES: readonly string[] = [
-  "/etc/shadow",
-  "/etc/passwd",
-  "/etc/sudoers",
-  "/proc/",
-  "/sys/",
-]
+const BLOCKED_PREFIXES: readonly string[] = ["/etc/shadow", "/etc/passwd", "/etc/sudoers", "/proc/", "/sys/"]
 
 /**
  * Sensitive directories within the user's home that require extra caution.
  * Tools should not read/write these unless explicitly allowed.
  */
-const SENSITIVE_HOME_DIRS: readonly string[] = [
-  ".ssh",
-  ".gnupg",
-  ".config/gcloud",
-  ".aws/credentials",
-  ".netrc",
-]
+const SENSITIVE_HOME_DIRS: readonly string[] = [".ssh", ".gnupg", ".config/gcloud", ".aws/credentials", ".netrc"]
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -128,9 +116,7 @@ export function validateToolPath(options: PathValidationOptions): PathValidation
   const allBlocked = [...BLOCKED_PREFIXES, ...blockedPrefixes]
   for (const prefix of allBlocked) {
     if (resolved === prefix || resolved.startsWith(prefix)) {
-      throw new PathValidationError(
-        `Access denied: path targets a sensitive system location: ${filePath}`,
-      )
+      throw new PathValidationError(`Access denied: path targets a sensitive system location: ${filePath}`)
     }
   }
 
@@ -139,9 +125,7 @@ export function validateToolPath(options: PathValidationOptions): PathValidation
   for (const dir of SENSITIVE_HOME_DIRS) {
     const sensitive = path.join(home, dir)
     if (resolved === sensitive || resolved.startsWith(sensitive + path.sep)) {
-      throw new PathValidationError(
-        `Access denied: path targets sensitive credentials: ${filePath}`,
-      )
+      throw new PathValidationError(`Access denied: path targets sensitive credentials: ${filePath}`)
     }
   }
 
@@ -158,9 +142,7 @@ export function validateToolPath(options: PathValidationOptions): PathValidation
   }
 
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new PathValidationError(
-      `Path escapes sandbox root (${shortPath(rootResolved)}): ${filePath}`,
-    )
+    throw new PathValidationError(`Path escapes sandbox root (${shortPath(rootResolved)}): ${filePath}`)
   }
 
   return { resolved, relative }
@@ -171,9 +153,7 @@ export function validateToolPath(options: PathValidationOptions): PathValidation
  * Each path component is verified to not be a symlink that could
  * redirect to a location outside the sandbox.
  */
-export async function assertToolPath(
-  options: PathValidationOptions,
-): Promise<PathValidationResult> {
+export async function assertToolPath(options: PathValidationOptions): Promise<PathValidationResult> {
   const result = validateToolPath(options)
 
   if (!options.permissive) {

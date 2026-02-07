@@ -35,92 +35,92 @@ describe("HoldMode.matchesPattern", () => {
 })
 
 describe("HoldMode.skipPermissions bypass", () => {
-    beforeEach(() => {
-      HoldMode.invalidateCache()
-    })
+  beforeEach(() => {
+    HoldMode.invalidateCache()
+  })
 
-    test("skipPermissions bypasses always_block in hold mode", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: true,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.skipPermissions).toBe(true)
+  test("skipPermissions bypasses always_block in hold mode", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: true,
+        skipPermissions: true,
       })
+      expect(result.blocked).toBe(false)
+      expect(result.skipPermissions).toBe(true)
     })
+  })
 
-    test("skipPermissions bypasses always_block in release mode", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: false,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.skipPermissions).toBe(true)
+  test("skipPermissions bypasses always_block in release mode", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: false,
+        skipPermissions: true,
       })
+      expect(result.blocked).toBe(false)
+      expect(result.skipPermissions).toBe(true)
     })
+  })
 
-    test("skipPermissions bypasses release_confirm in release mode", async () => {
-      await withTempConfig({ release_confirm: ["confirm-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("confirm-cmd --arg", { 
-          holdMode: false,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.requiresConfirmation).toBeUndefined()
-        expect(result.skipPermissions).toBe(true)
+  test("skipPermissions bypasses release_confirm in release mode", async () => {
+    await withTempConfig({ release_confirm: ["confirm-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("confirm-cmd --arg", {
+        holdMode: false,
+        skipPermissions: true,
       })
+      expect(result.blocked).toBe(false)
+      expect(result.requiresConfirmation).toBeUndefined()
+      expect(result.skipPermissions).toBe(true)
     })
+  })
 
-    test("skipPermissions allows tools in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("edit", true)
-      expect(allowed).toBe(true)
+  test("skipPermissions allows tools in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("edit", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions allows write in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("write", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions allows apply_patch in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("apply_patch", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions allows todowrite in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("todowrite", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions false still respects hold mode restrictions", async () => {
+    await withTempConfig({}, async () => {
+      const allowed = await HoldMode.isToolAllowedInHold("edit", false)
+      expect(allowed).toBe(false)
     })
+  })
 
-    test("skipPermissions allows write in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("write", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions allows apply_patch in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("apply_patch", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions allows todowrite in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("todowrite", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions false still respects hold mode restrictions", async () => {
-      await withTempConfig({}, async () => {
-        const allowed = await HoldMode.isToolAllowedInHold("edit", false)
-        expect(allowed).toBe(false)
+  test("skipPermissions false still respects hold mode command blocks", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: true,
+        skipPermissions: false,
       })
+      expect(result.blocked).toBe(true)
+      expect(result.skipPermissions).toBeUndefined()
     })
+  })
 
-    test("skipPermissions false still respects hold mode command blocks", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: true,
-          skipPermissions: false 
-        })
-        expect(result.blocked).toBe(true)
-        expect(result.skipPermissions).toBeUndefined()
+  test("skipPermissions true still blocks always_block when holdMode is false", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: false,
+        skipPermissions: true,
       })
+      expect(result.blocked).toBe(false)
+      expect(result.skipPermissions).toBe(true)
     })
-
-    test("skipPermissions true still blocks always_block when holdMode is false", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: false,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.skipPermissions).toBe(true)
-      })
-    })
+  })
 })
 
 describe("HoldMode.findMatchingPattern", () => {
@@ -197,10 +197,7 @@ describe("HoldMode.ConfigSchema", () => {
 
 // Helper to create a temporary config directory for testing
 // Also sets up an Instance context since HoldMode.load() requires Instance.directory
-async function withTempConfig(
-  config: Partial<HoldMode.Config>,
-  fn: () => Promise<void>
-): Promise<void> {
+async function withTempConfig(config: Partial<HoldMode.Config>, fn: () => Promise<void>): Promise<void> {
   // Create temp directory for project (needed for Instance context)
   await using projectDir = await tmpdir({ git: true })
 
@@ -273,26 +270,32 @@ describe("HoldMode.isToolAllowedInHold", () => {
   })
 
   test("works for all four tool types", async () => {
-    await withTempConfig({
-      tools: { edit: true, write: true, apply_patch: true, todowrite: true }
-    }, async () => {
-      expect(await HoldMode.isToolAllowedInHold("edit")).toBe(true)
-      expect(await HoldMode.isToolAllowedInHold("write")).toBe(true)
-      expect(await HoldMode.isToolAllowedInHold("apply_patch")).toBe(true)
-      expect(await HoldMode.isToolAllowedInHold("todowrite")).toBe(true)
-    })
+    await withTempConfig(
+      {
+        tools: { edit: true, write: true, apply_patch: true, todowrite: true },
+      },
+      async () => {
+        expect(await HoldMode.isToolAllowedInHold("edit")).toBe(true)
+        expect(await HoldMode.isToolAllowedInHold("write")).toBe(true)
+        expect(await HoldMode.isToolAllowedInHold("apply_patch")).toBe(true)
+        expect(await HoldMode.isToolAllowedInHold("todowrite")).toBe(true)
+      },
+    )
   })
 
   test("handles mixed tool settings", async () => {
-    await withTempConfig({
-      tools: { edit: true, write: false }
-    }, async () => {
-      expect(await HoldMode.isToolAllowedInHold("edit")).toBe(true)
-      expect(await HoldMode.isToolAllowedInHold("write")).toBe(false)
-      // Unconfigured tools default to false
-      expect(await HoldMode.isToolAllowedInHold("apply_patch")).toBe(false)
-      expect(await HoldMode.isToolAllowedInHold("todowrite")).toBe(false)
-    })
+    await withTempConfig(
+      {
+        tools: { edit: true, write: false },
+      },
+      async () => {
+        expect(await HoldMode.isToolAllowedInHold("edit")).toBe(true)
+        expect(await HoldMode.isToolAllowedInHold("write")).toBe(false)
+        // Unconfigured tools default to false
+        expect(await HoldMode.isToolAllowedInHold("apply_patch")).toBe(false)
+        expect(await HoldMode.isToolAllowedInHold("todowrite")).toBe(false)
+      },
+    )
   })
 })
 
@@ -327,14 +330,17 @@ describe("HoldMode.checkCommand", () => {
   })
 
   test("hold_allow does NOT bypass always_block", async () => {
-    await withTempConfig({
-      always_block: ["blocked-cmd"],
-      hold_allow: ["blocked-cmd"]
-    }, async () => {
-      const result = await HoldMode.checkCommand("blocked-cmd", { holdMode: true })
-      expect(result.blocked).toBe(true)
-      expect(result.reason).toBe("command in always_block list")
-    })
+    await withTempConfig(
+      {
+        always_block: ["blocked-cmd"],
+        hold_allow: ["blocked-cmd"],
+      },
+      async () => {
+        const result = await HoldMode.checkCommand("blocked-cmd", { holdMode: true })
+        expect(result.blocked).toBe(true)
+        expect(result.reason).toBe("command in always_block list")
+      },
+    )
   })
 
   test("release_confirm returns requiresConfirmation: true in release mode", async () => {
@@ -355,15 +361,18 @@ describe("HoldMode.checkCommand", () => {
   })
 
   test("commands not matching any pattern are allowed", async () => {
-    await withTempConfig({
-      always_block: ["blocked"],
-      hold_allow: ["allowed"],
-      release_confirm: ["confirm"]
-    }, async () => {
-      const result = await HoldMode.checkCommand("some-other-cmd", { holdMode: false })
-      expect(result.blocked).toBe(false)
-      expect(result.requiresConfirmation).toBeUndefined()
-    })
+    await withTempConfig(
+      {
+        always_block: ["blocked"],
+        hold_allow: ["allowed"],
+        release_confirm: ["confirm"],
+      },
+      async () => {
+        const result = await HoldMode.checkCommand("some-other-cmd", { holdMode: false })
+        expect(result.blocked).toBe(false)
+        expect(result.requiresConfirmation).toBeUndefined()
+      },
+    )
   })
 
   test("wildcard patterns work in always_block", async () => {
@@ -481,102 +490,105 @@ describe("HoldMode.checkCommand edge cases", () => {
 
   test("order of precedence: always_block checked before hold_allow", async () => {
     // This demonstrates that always_block takes precedence
-    await withTempConfig({
-      always_block: ["rm"],
-      hold_allow: ["rm"]
-    }, async () => {
-      // Even with hold_allow, always_block should win
-      const result = await HoldMode.checkCommand("rm file", { holdMode: true })
-      expect(result.blocked).toBe(true)
-    })
+    await withTempConfig(
+      {
+        always_block: ["rm"],
+        hold_allow: ["rm"],
+      },
+      async () => {
+        // Even with hold_allow, always_block should win
+        const result = await HoldMode.checkCommand("rm file", { holdMode: true })
+        expect(result.blocked).toBe(true)
+      },
+    )
   })
 })
 
-  describe("HoldMode.skipPermissions bypass", () => {
-    beforeEach(() => {
-      HoldMode.invalidateCache()
-    })
+describe("HoldMode.skipPermissions bypass", () => {
+  beforeEach(() => {
+    HoldMode.invalidateCache()
+  })
 
-    test("skipPermissions bypasses always_block in hold mode", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: true,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.skipPermissions).toBe(true)
+  test("skipPermissions bypasses always_block in hold mode", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: true,
+        skipPermissions: true,
       })
-    })
-
-    test("skipPermissions bypasses always_block in release mode", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: false,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.skipPermissions).toBe(true)
-      })
-    })
-
-    test("skipPermissions bypasses release_confirm in release mode", async () => {
-      await withTempConfig({ release_confirm: ["confirm-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("confirm-cmd --arg", { 
-          holdMode: false,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.requiresConfirmation).toBeUndefined()
-        expect(result.skipPermissions).toBe(true)
-      })
-    })
-
-    test("skipPermissions allows tools in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("edit", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions allows write in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("write", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions allows apply_patch in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("apply_patch", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions allows todowrite in hold mode", async () => {
-      const allowed = await HoldMode.isToolAllowedInHold("todowrite", true)
-      expect(allowed).toBe(true)
-    })
-
-    test("skipPermissions false still respects hold mode restrictions", async () => {
-      await withTempConfig({}, async () => {
-        const allowed = await HoldMode.isToolAllowedInHold("edit", false)
-        expect(allowed).toBe(false)
-      })
-    })
-
-    test("skipPermissions false still respects hold mode command blocks", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: true,
-          skipPermissions: false 
-        })
-        expect(result.blocked).toBe(true)
-        expect(result.skipPermissions).toBeUndefined()
-      })
-    })
-
-    test("skipPermissions true still blocks always_block when holdMode is false", async () => {
-      await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
-        const result = await HoldMode.checkCommand("dangerous-cmd --flag", { 
-          holdMode: false,
-          skipPermissions: true 
-        })
-        expect(result.blocked).toBe(false)
-        expect(result.skipPermissions).toBe(true)
-      })
+      expect(result.blocked).toBe(false)
+      expect(result.skipPermissions).toBe(true)
     })
   })
+
+  test("skipPermissions bypasses always_block in release mode", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: false,
+        skipPermissions: true,
+      })
+      expect(result.blocked).toBe(false)
+      expect(result.skipPermissions).toBe(true)
+    })
+  })
+
+  test("skipPermissions bypasses release_confirm in release mode", async () => {
+    await withTempConfig({ release_confirm: ["confirm-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("confirm-cmd --arg", {
+        holdMode: false,
+        skipPermissions: true,
+      })
+      expect(result.blocked).toBe(false)
+      expect(result.requiresConfirmation).toBeUndefined()
+      expect(result.skipPermissions).toBe(true)
+    })
+  })
+
+  test("skipPermissions allows tools in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("edit", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions allows write in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("write", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions allows apply_patch in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("apply_patch", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions allows todowrite in hold mode", async () => {
+    const allowed = await HoldMode.isToolAllowedInHold("todowrite", true)
+    expect(allowed).toBe(true)
+  })
+
+  test("skipPermissions false still respects hold mode restrictions", async () => {
+    await withTempConfig({}, async () => {
+      const allowed = await HoldMode.isToolAllowedInHold("edit", false)
+      expect(allowed).toBe(false)
+    })
+  })
+
+  test("skipPermissions false still respects hold mode command blocks", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: true,
+        skipPermissions: false,
+      })
+      expect(result.blocked).toBe(true)
+      expect(result.skipPermissions).toBeUndefined()
+    })
+  })
+
+  test("skipPermissions true still blocks always_block when holdMode is false", async () => {
+    await withTempConfig({ always_block: ["dangerous-cmd"] }, async () => {
+      const result = await HoldMode.checkCommand("dangerous-cmd --flag", {
+        holdMode: false,
+        skipPermissions: true,
+      })
+      expect(result.blocked).toBe(false)
+      expect(result.skipPermissions).toBe(true)
+    })
+  })
+})

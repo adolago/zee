@@ -1095,7 +1095,7 @@ test("project config can override MCP server enabled status", async () => {
           },
         }),
       )
-        // Project config enables just tracker
+      // Project config enables just tracker
       await Bun.write(
         path.join(dir, "agent-core.json"),
         JSON.stringify({

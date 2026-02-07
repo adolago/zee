@@ -10,7 +10,9 @@ const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
 
 // Read version from agent-core package.json as fallback (go up 3 levels to packages/agent-core)
 const agentCorePkgPath = path.resolve(import.meta.dir, "../../../package.json")
-const agentCorePkg = await Bun.file(agentCorePkgPath).json().catch(() => ({}))
+const agentCorePkg = await Bun.file(agentCorePkgPath)
+  .json()
+  .catch(() => ({}))
 const packageJsonVersion = agentCorePkg.version as string | undefined
 
 if (!expectedBunVersion) {
@@ -46,10 +48,12 @@ const VERSION = await (async () => {
   if (env.AGENT_CORE_VERSION) return env.AGENT_CORE_VERSION
   // For dev/preview builds, generate nightly version (increments daily)
   if (IS_PREVIEW) {
-    const [major, minor] = (packageJsonVersion?.replace(/-.*$/, "") || "0.2.0").split(".").map(Number)
+    const [major, minor] = (packageJsonVersion?.replace(/-.*$/, "") || "0.3.0").split(".").map(Number)
     // Nightly number = days since Jan 30, 2026 (so Jan 31 = 1)
     const now = new Date()
-    const startYear = 2026, startMonth = 0, startDay = 30 // Jan 30, 2026
+    const startYear = 2026,
+      startMonth = 0,
+      startDay = 30 // Jan 30, 2026
     const startDate = new Date(startYear, startMonth, startDay)
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const nightly = Math.round((today.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000))

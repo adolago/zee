@@ -98,9 +98,7 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
       }
 
       // Neither name nor query provided
-      throw new Error(
-        'Provide { name: "skill-name" } to load a skill, or { query: "keyword" } to search.',
-      )
+      throw new Error('Provide { name: "skill-name" } to load a skill, or { query: "keyword" } to search.')
     },
   }
 })

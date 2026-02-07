@@ -10,4 +10,12 @@ export type { WorkStealingConfig, WorkStealingStats, WorkStealRequest, AgentWork
 
 // Consensus Gate (approval for side effects)
 export { ConsensusGate, loadConsensusConfig, getConsensusGate, initConsensus, checkApproval } from "./consensus-gate"
-export type { ConsensusConfig, ConsensusMode, ProposalType, Proposal, Vote, Decision, ConsensusStats } from "./consensus-gate"
+export type {
+  ConsensusConfig,
+  ConsensusMode,
+  ProposalType,
+  Proposal,
+  Vote,
+  Decision,
+  ConsensusStats,
+} from "./consensus-gate"

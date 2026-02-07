@@ -77,4 +77,3 @@ describe("Instance cache eviction", () => {
     expect(Instance.cacheSize()).toBe(0)
   })
 })
-

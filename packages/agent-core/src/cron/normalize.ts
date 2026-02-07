@@ -40,7 +40,7 @@ export function inferLegacyName(job: {
         ? job.payload.message
         : job?.payload?.kind === "toolInvoke" && typeof job.payload.tool === "string"
           ? `tool:${job.payload.tool}`
-        : ""
+          : ""
   const firstLine =
     text
       .split("\n")

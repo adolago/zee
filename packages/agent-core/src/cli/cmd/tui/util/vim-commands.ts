@@ -452,14 +452,22 @@ export namespace VimCommands {
     private resolveMotion(ctx: VimCommandContext, key: string): [number, number] | null {
       const cursor = ctx.cursorOffset
       switch (key) {
-        case "w": return [cursor, this.findNextWordStart(ctx.text, cursor)]
-        case "W": return [cursor, this.findNextWORDStart(ctx.text, cursor)]
-        case "e": return [cursor, this.findWordEnd(ctx.text, cursor) + 1]
-        case "E": return [cursor, this.findWORDEnd(ctx.text, cursor) + 1]
-        case "b": return [this.findPrevWordStart(ctx.text, cursor), cursor]
-        case "B": return [this.findPrevWORDStart(ctx.text, cursor), cursor]
-        case "0": return [ctx.lineStart(ctx.cursorLine), cursor]
-        case "$": return [cursor, ctx.lineEnd(ctx.cursorLine)]
+        case "w":
+          return [cursor, this.findNextWordStart(ctx.text, cursor)]
+        case "W":
+          return [cursor, this.findNextWORDStart(ctx.text, cursor)]
+        case "e":
+          return [cursor, this.findWordEnd(ctx.text, cursor) + 1]
+        case "E":
+          return [cursor, this.findWORDEnd(ctx.text, cursor) + 1]
+        case "b":
+          return [this.findPrevWordStart(ctx.text, cursor), cursor]
+        case "B":
+          return [this.findPrevWORDStart(ctx.text, cursor), cursor]
+        case "0":
+          return [ctx.lineStart(ctx.cursorLine), cursor]
+        case "$":
+          return [cursor, ctx.lineEnd(ctx.cursorLine)]
         case "^": {
           const line = ctx.cursorLine
           const start = ctx.lineStart(line)
@@ -475,10 +483,14 @@ export namespace VimCommands {
           const target = this.findNextParagraphStart(ctx)
           return [cursor, target]
         }
-        case "h": return [Math.max(0, cursor - 1), cursor]
-        case "l": return [cursor, Math.min(ctx.text.length, cursor + 1)]
-        case "G": return [cursor, ctx.text.length]
-        default: return null
+        case "h":
+          return [Math.max(0, cursor - 1), cursor]
+        case "l":
+          return [cursor, Math.min(ctx.text.length, cursor + 1)]
+        case "G":
+          return [cursor, ctx.text.length]
+        default:
+          return null
       }
     }
 
@@ -516,22 +528,32 @@ export namespace VimCommands {
       const text = ctx.text
 
       switch (key) {
-        case "w": return this.textObjectWord(text, cursor, around, false)
-        case "W": return this.textObjectWord(text, cursor, around, true)
-        case '"': return this.textObjectQuote(text, cursor, around, '"')
-        case "'": return this.textObjectQuote(text, cursor, around, "'")
-        case "`": return this.textObjectQuote(text, cursor, around, "`")
-        case "(": case ")": return this.textObjectBracket(text, cursor, around, "(", ")")
-        case "[": case "]": return this.textObjectBracket(text, cursor, around, "[", "]")
-        case "{": case "}": return this.textObjectBracket(text, cursor, around, "{", "}")
-        default: return null
+        case "w":
+          return this.textObjectWord(text, cursor, around, false)
+        case "W":
+          return this.textObjectWord(text, cursor, around, true)
+        case '"':
+          return this.textObjectQuote(text, cursor, around, '"')
+        case "'":
+          return this.textObjectQuote(text, cursor, around, "'")
+        case "`":
+          return this.textObjectQuote(text, cursor, around, "`")
+        case "(":
+        case ")":
+          return this.textObjectBracket(text, cursor, around, "(", ")")
+        case "[":
+        case "]":
+          return this.textObjectBracket(text, cursor, around, "[", "]")
+        case "{":
+        case "}":
+          return this.textObjectBracket(text, cursor, around, "{", "}")
+        default:
+          return null
       }
     }
 
     private textObjectWord(text: string, cursor: number, around: boolean, bigWord: boolean): [number, number] | null {
-      const isWordChar = bigWord
-        ? (c: string) => c !== " " && c !== "\t" && c !== "\n"
-        : (c: string) => /\w/.test(c)
+      const isWordChar = bigWord ? (c: string) => c !== " " && c !== "\t" && c !== "\n" : (c: string) => /\w/.test(c)
 
       // Find word boundaries around cursor
       let start = cursor
@@ -681,11 +703,16 @@ export namespace VimCommands {
 
     private reverseCharSearchType(type: string): string {
       switch (type) {
-        case "f": return "F"
-        case "F": return "f"
-        case "t": return "T"
-        case "T": return "t"
-        default: return type
+        case "f":
+          return "F"
+        case "F":
+          return "f"
+        case "t":
+          return "T"
+        case "T":
+          return "t"
+        default:
+          return type
       }
     }
 

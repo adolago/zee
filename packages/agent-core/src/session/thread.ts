@@ -99,9 +99,13 @@ export namespace Thread {
 
       // Tag the session with the originating surface
       try {
-        await Session.update(result.sessionId, (draft) => {
-          if (!draft.surface) draft.surface = surface
-        }, { touch: false })
+        await Session.update(
+          result.sessionId,
+          (draft) => {
+            if (!draft.surface) draft.surface = surface
+          },
+          { touch: false },
+        )
       } catch {
         // Session may not exist yet in storage race conditions; non-critical
       }
@@ -354,7 +358,7 @@ export namespace Thread {
       // Filter by files
       if (options.files && options.files.length > 0) {
         const hasMatch = options.files.some((file) =>
-          filesTouched.some((touched) => touched.includes(file) || file.includes(touched))
+          filesTouched.some((touched) => touched.includes(file) || file.includes(touched)),
         )
         if (!hasMatch) continue
       }
@@ -457,9 +461,10 @@ export namespace Thread {
 
           // Also scan output for file-like paths (e.g., glob results)
           if (part.state.status === "completed" && typeof part.state.output === "string") {
-            const output = part.state.output.length > MAX_OUTPUT_SCAN
-              ? part.state.output.slice(0, MAX_OUTPUT_SCAN)
-              : part.state.output
+            const output =
+              part.state.output.length > MAX_OUTPUT_SCAN
+                ? part.state.output.slice(0, MAX_OUTPUT_SCAN)
+                : part.state.output
             // Look for lines that appear to be file paths
             for (const line of output.split("\n")) {
               const trimmed = line.trim()
@@ -482,10 +487,14 @@ export namespace Thread {
    */
   export function getCapabilities(channel: Channel): SurfaceCapabilities {
     switch (channel) {
-      case "whatsapp": return WHATSAPP_CAPABILITIES
-      case "matrix": return MATRIX_CAPABILITIES
-      case "tui": return CLI_CAPABILITIES
-      case "api": return API_CAPABILITIES
+      case "whatsapp":
+        return WHATSAPP_CAPABILITIES
+      case "matrix":
+        return MATRIX_CAPABILITIES
+      case "tui":
+        return CLI_CAPABILITIES
+      case "api":
+        return API_CAPABILITIES
     }
   }
 
@@ -521,10 +530,14 @@ export namespace Thread {
    */
   function channelToSurface(channel: Channel): "cli" | "web" | "api" | "whatsapp" | "matrix" {
     switch (channel) {
-      case "whatsapp": return "whatsapp"
-      case "matrix": return "matrix"
-      case "tui": return "cli"
-      case "api": return "api"
+      case "whatsapp":
+        return "whatsapp"
+      case "matrix":
+        return "matrix"
+      case "tui":
+        return "cli"
+      case "api":
+        return "api"
     }
   }
 

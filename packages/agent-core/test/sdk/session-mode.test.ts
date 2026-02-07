@@ -25,4 +25,3 @@ describe("SDK v2 session.mode", () => {
     expect(calls[0]?.throwOnError).toBe(true)
   })
 })
-

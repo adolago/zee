@@ -260,10 +260,15 @@ export class ConsensusGate extends EventEmitter {
   /**
    * Cast a vote on a pending proposal
    */
-  vote(proposalId: string, voterId: string, approved: boolean, options?: {
-    confidence?: number
-    reason?: string
-  }): boolean {
+  vote(
+    proposalId: string,
+    voterId: string,
+    approved: boolean,
+    options?: {
+      confidence?: number
+      reason?: string
+    },
+  ): boolean {
     const pending = this.pendingProposals.get(proposalId)
     if (!pending) {
       log.warn("Vote for unknown proposal", { proposalId, voterId })
@@ -399,12 +404,7 @@ export class ConsensusGate extends EventEmitter {
     return this.createDecision(proposal, votes, approved, reason)
   }
 
-  private createDecision(
-    proposal: Proposal,
-    votes: Vote[],
-    approved: boolean,
-    reason: string
-  ): Decision {
+  private createDecision(proposal: Proposal, votes: Vote[], approved: boolean, reason: string): Decision {
     return {
       proposalId: proposal.id,
       approved,

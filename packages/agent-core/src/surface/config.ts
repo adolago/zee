@@ -4,9 +4,9 @@
  * Configuration options for surface behavior, permissions, and adaptations.
  */
 
-import type { PermissionAction, PermissionType } from './types.js';
+import type { PermissionAction, PermissionType } from "./types.js"
 
-const PATTERN_CACHE = new Map<string, RegExp>();
+const PATTERN_CACHE = new Map<string, RegExp>()
 
 // =============================================================================
 // Permission Configuration
@@ -17,93 +17,90 @@ const PATTERN_CACHE = new Map<string, RegExp>();
  */
 export type PermissionPolicy = {
   /** Default action when no interactive prompt is available */
-  defaultAction: PermissionAction;
+  defaultAction: PermissionAction
   /** Whether to require confirmation even for allowed actions */
-  requireConfirmation: boolean;
+  requireConfirmation: boolean
   /** Timeout in milliseconds before applying default (0 = no timeout) */
-  timeoutMs: number;
+  timeoutMs: number
   /** Patterns that are always allowed (glob patterns for files, prefixes for commands) */
-  allowPatterns?: string[];
+  allowPatterns?: string[]
   /** Patterns that are always denied */
-  denyPatterns?: string[];
-};
+  denyPatterns?: string[]
+}
 
 /**
  * Permission configuration for a surface.
  */
 export type PermissionConfig = {
   /** Global default action for unknown permission types */
-  globalDefault: PermissionAction;
+  globalDefault: PermissionAction
   /** Per-type permission policies */
-  policies: Partial<Record<PermissionType, PermissionPolicy>>;
+  policies: Partial<Record<PermissionType, PermissionPolicy>>
   /** Remembered permissions from user responses */
-  remembered: Map<string, PermissionAction>;
-};
+  remembered: Map<string, PermissionAction>
+}
 
 /**
  * Default permission configuration.
  */
 export const DEFAULT_PERMISSION_CONFIG: PermissionConfig = {
-  globalDefault: 'deny',
+  globalDefault: "deny",
   policies: {
     file_read: {
-      defaultAction: 'allow',
+      defaultAction: "allow",
       requireConfirmation: false,
       timeoutMs: 0,
-      allowPatterns: ['**/*'],
-      denyPatterns: ['**/.env*', '**/secrets*', '**/*.key', '**/*.pem'],
+      allowPatterns: ["**/*"],
+      denyPatterns: ["**/.env*", "**/secrets*", "**/*.key", "**/*.pem"],
     },
     file_write: {
-      defaultAction: 'deny',
+      defaultAction: "deny",
       requireConfirmation: true,
       timeoutMs: 30_000,
     },
     file_delete: {
-      defaultAction: 'deny',
+      defaultAction: "deny",
       requireConfirmation: true,
       timeoutMs: 30_000,
     },
     execute_command: {
-      defaultAction: 'deny',
+      defaultAction: "deny",
       requireConfirmation: true,
       timeoutMs: 30_000,
-      denyPatterns: ['rm -rf *', 'sudo *', 'chmod 777 *'],
+      denyPatterns: ["rm -rf *", "sudo *", "chmod 777 *"],
     },
     network_request: {
-      defaultAction: 'allow',
+      defaultAction: "allow",
       requireConfirmation: false,
       timeoutMs: 0,
     },
     tool_execution: {
-      defaultAction: 'allow',
+      defaultAction: "allow",
       requireConfirmation: false,
       timeoutMs: 0,
     },
     sensitive_data: {
-      defaultAction: 'deny',
+      defaultAction: "deny",
       requireConfirmation: true,
       timeoutMs: 60_000,
     },
   },
   remembered: new Map(),
-};
+}
 
 // =============================================================================
 // Permission Merging Helpers
 // =============================================================================
 
-function mergePermissionPolicy(
-  base: PermissionPolicy,
-  overrides?: Partial<PermissionPolicy>,
-): PermissionPolicy {
-  if (!overrides) return base;
+function mergePermissionPolicy(base: PermissionPolicy, overrides?: Partial<PermissionPolicy>): PermissionPolicy {
+  if (!overrides) return base
   return {
     defaultAction: overrides.defaultAction ?? base.defaultAction,
     requireConfirmation: overrides.requireConfirmation ?? base.requireConfirmation,
     timeoutMs: overrides.timeoutMs ?? base.timeoutMs,
     allowPatterns: overrides.allowPatterns ?? base.allowPatterns,
     denyPatterns: overrides.denyPatterns ?? base.denyPatterns,
-  };
+  }
 }
 
 export function mergePermissionConfig(
@@ -114,27 +111,27 @@ export function mergePermissionConfig(
     globalDefault: base.globalDefault,
     policies: { ...base.policies },
     remembered: base.remembered,
-  };
+  }
 
   for (const override of overrides) {
-    if (!override) continue;
-    if (override.globalDefault !== undefined) result.globalDefault = override.globalDefault;
-    if (override.remembered) result.remembered = override.remembered;
+    if (!override) continue
+    if (override.globalDefault !== undefined) result.globalDefault = override.globalDefault
+    if (override.remembered) result.remembered = override.remembered
     if (override.policies) {
       for (const [key, value] of Object.entries(override.policies)) {
-        if (!value) continue;
-        const policyKey = key as PermissionType;
-        const basePolicy = result.policies[policyKey];
+        if (!value) continue
+        const policyKey = key as PermissionType
+        const basePolicy = result.policies[policyKey]
         if (!basePolicy) {
-          result.policies[policyKey] = value as PermissionPolicy;
-          continue;
+          result.policies[policyKey] = value as PermissionPolicy
+          continue
         }
-        result.policies[policyKey] = mergePermissionPolicy(basePolicy, value as Partial<PermissionPolicy>);
+        result.policies[policyKey] = mergePermissionPolicy(basePolicy, value as Partial<PermissionPolicy>)
       }
     }
   }
 
-  return result;
+  return result
 }
 
 // =============================================================================
@@ -146,22 +143,22 @@ export function mergePermissionConfig(
  */
 export type CLISurfaceConfig = {
   /** Whether to use ANSI colors */
-  colors: boolean;
+  colors: boolean
   /** Whether to show tool execution details */
-  showToolDetails: boolean;
+  showToolDetails: boolean
   /** Whether to show streaming output */
-  streamOutput: boolean;
+  streamOutput: boolean
   /** Prompt style */
-  promptStyle: 'minimal' | 'full' | 'none';
+  promptStyle: "minimal" | "full" | "none"
   /** Key bindings for interactive actions */
   keyBindings: {
-    abort: string;
-    accept: string;
-    deny: string;
-  };
+    abort: string
+    accept: string
+    deny: string
+  }
   /** Permission overrides for CLI (more permissive by default) */
-  permissions: Partial<PermissionConfig>;
-};
+  permissions: Partial<PermissionConfig>
+}
 
 /**
  * Default CLI configuration.
@@ -170,31 +167,29 @@ export const DEFAULT_CLI_CONFIG: CLISurfaceConfig = {
   colors: true,
   showToolDetails: true,
   streamOutput: true,
-  promptStyle: 'full',
+  promptStyle: "full",
   keyBindings: {
-    abort: 'Ctrl+C',
-    accept: 'y',
-    deny: 'n',
+    abort: "Ctrl+C",
+    accept: "y",
+    deny: "n",
   },
   permissions: {
     policies: {
       file_write: {
-        defaultAction: 'allow',
+        defaultAction: "allow",
         requireConfirmation: true,
         timeoutMs: 0, // Wait forever in CLI
       },
       execute_command: {
-        defaultAction: 'allow',
+        defaultAction: "allow",
         requireConfirmation: true,
         timeoutMs: 0,
       },
     },
   },
-};
+}
 
-export function resolveCLISurfaceConfig(
-  overrides: Partial<CLISurfaceConfig> = {}
-): CLISurfaceConfig {
+export function resolveCLISurfaceConfig(overrides: Partial<CLISurfaceConfig> = {}): CLISurfaceConfig {
   return {
     ...DEFAULT_CLI_CONFIG,
     ...overrides,
@@ -205,9 +200,9 @@ export function resolveCLISurfaceConfig(
     permissions: mergePermissionConfig(
       DEFAULT_PERMISSION_CONFIG,
       DEFAULT_CLI_CONFIG.permissions,
-      overrides.permissions
+      overrides.permissions,
     ),
-  };
+  }
 }
 
 /**
@@ -215,33 +210,33 @@ export function resolveCLISurfaceConfig(
  */
 export type GUISurfaceConfig = {
   /** WebSocket server host */
-  host: string;
+  host: string
   /** WebSocket server port */
-  port: number;
+  port: number
   /** Whether to use TLS */
-  secure: boolean;
+  secure: boolean
   /** TLS certificate path */
-  certPath?: string;
+  certPath?: string
   /** TLS key path */
-  keyPath?: string;
+  keyPath?: string
   /** Authentication token */
-  authToken?: string;
+  authToken?: string
   /** Reconnection settings */
   reconnect: {
-    enabled: boolean;
-    maxAttempts: number;
-    backoffMs: number;
-    maxBackoffMs: number;
-  };
+    enabled: boolean
+    maxAttempts: number
+    backoffMs: number
+    maxBackoffMs: number
+  }
   /** Permission overrides for GUI */
-  permissions: Partial<PermissionConfig>;
-};
+  permissions: Partial<PermissionConfig>
+}
 
 /**
  * Default GUI configuration.
  */
 export const DEFAULT_GUI_CONFIG: GUISurfaceConfig = {
-  host: '127.0.0.1',
+  host: "127.0.0.1",
   port: 18790,
   secure: false,
   reconnect: {
@@ -253,17 +248,15 @@ export const DEFAULT_GUI_CONFIG: GUISurfaceConfig = {
   permissions: {
     policies: {
       file_write: {
-        defaultAction: 'deny',
+        defaultAction: "deny",
         requireConfirmation: true,
         timeoutMs: 60_000,
       },
     },
   },
-};
+}
 
-export function resolveGUISurfaceConfig(
-  overrides: Partial<GUISurfaceConfig> = {}
-): GUISurfaceConfig {
+export function resolveGUISurfaceConfig(overrides: Partial<GUISurfaceConfig> = {}): GUISurfaceConfig {
   return {
     ...DEFAULT_GUI_CONFIG,
     ...overrides,
@@ -274,9 +267,9 @@ export function resolveGUISurfaceConfig(
     permissions: mergePermissionConfig(
       DEFAULT_PERMISSION_CONFIG,
       DEFAULT_GUI_CONFIG.permissions,
-      overrides.permissions
+      overrides.permissions,
     ),
-  };
+  }
 }
 
 /**
@@ -284,39 +277,39 @@ export function resolveGUISurfaceConfig(
  */
 export type MessagingSurfaceConfig = {
   /** Platform identifier */
-  platform: 'whatsapp' | 'matrix';
+  platform: "whatsapp" | "matrix"
   /** Whether to batch messages instead of streaming */
-  batchMessages: boolean;
+  batchMessages: boolean
   /** Maximum message length before splitting */
-  maxMessageLength: number;
+  maxMessageLength: number
   /** Message chunk delay in milliseconds */
-  chunkDelayMs: number;
+  chunkDelayMs: number
   /** Whether to show typing indicators */
-  showTyping: boolean;
+  showTyping: boolean
   /** Typing indicator interval in milliseconds */
-  typingIntervalMs: number;
+  typingIntervalMs: number
   /** Allowed senders (empty = all allowed) */
-  allowedSenders: string[];
+  allowedSenders: string[]
   /** Group-specific settings */
   groups: {
     /** Whether to respond in groups */
-    enabled: boolean;
+    enabled: boolean
     /** Whether to require mention to respond */
-    requireMention: boolean;
+    requireMention: boolean
     /** Mention patterns */
-    mentionPatterns: string[];
+    mentionPatterns: string[]
     /** Allowed groups (empty = all allowed) */
-    allowedGroups: string[];
-  };
+    allowedGroups: string[]
+  }
   /** Permission overrides - messaging is more restrictive */
-  permissions: Partial<PermissionConfig>;
-};
+  permissions: Partial<PermissionConfig>
+}
 
 /**
  * Default messaging configuration.
  */
 export const DEFAULT_MESSAGING_CONFIG: MessagingSurfaceConfig = {
-  platform: 'whatsapp',
+  platform: "whatsapp",
   batchMessages: true,
   maxMessageLength: 4096,
   chunkDelayMs: 100,
@@ -330,37 +323,37 @@ export const DEFAULT_MESSAGING_CONFIG: MessagingSurfaceConfig = {
     allowedGroups: [],
   },
   permissions: {
-    globalDefault: 'deny',
+    globalDefault: "deny",
     policies: {
       file_read: {
-        defaultAction: 'allow',
+        defaultAction: "allow",
         requireConfirmation: false,
         timeoutMs: 0,
-        denyPatterns: ['**/.env*', '**/secrets*', '**/*.key', '**/*.pem'],
+        denyPatterns: ["**/.env*", "**/secrets*", "**/*.key", "**/*.pem"],
       },
       file_write: {
-        defaultAction: 'deny',
+        defaultAction: "deny",
         requireConfirmation: false, // No interactive prompts
         timeoutMs: 0,
       },
       file_delete: {
-        defaultAction: 'deny',
+        defaultAction: "deny",
         requireConfirmation: false,
         timeoutMs: 0,
       },
       execute_command: {
-        defaultAction: 'deny',
+        defaultAction: "deny",
         requireConfirmation: false,
         timeoutMs: 0,
       },
       tool_execution: {
-        defaultAction: 'allow',
+        defaultAction: "allow",
         requireConfirmation: false,
         timeoutMs: 0,
       },
     },
   },
-};
+}
 
 export function resolveMessagingSurfaceConfig(
   overrides: Partial<MessagingSurfaceConfig> = {},
@@ -369,7 +362,7 @@ export function resolveMessagingSurfaceConfig(
   const base: MessagingSurfaceConfig = {
     ...DEFAULT_MESSAGING_CONFIG,
     ...(options?.platform ? { platform: options.platform } : {}),
-  };
+  }
 
   return {
     ...base,
@@ -378,12 +371,8 @@ export function resolveMessagingSurfaceConfig(
       ...base.groups,
       ...overrides.groups,
     },
-    permissions: mergePermissionConfig(
-      DEFAULT_PERMISSION_CONFIG,
-      base.permissions,
-      overrides.permissions
-    ),
-  };
+    permissions: mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, base.permissions, overrides.permissions),
+  }
 }
 
 // =============================================================================
@@ -395,69 +384,65 @@ export function resolveMessagingSurfaceConfig(
  */
 export type SurfaceConfig = {
   /** Global permission configuration */
-  permissions: PermissionConfig;
+  permissions: PermissionConfig
   /** CLI-specific configuration */
-  cli: CLISurfaceConfig;
+  cli: CLISurfaceConfig
   /** GUI-specific configuration */
-  gui: GUISurfaceConfig;
+  gui: GUISurfaceConfig
   /** Messaging platform configurations */
   messaging: {
-    whatsapp?: MessagingSurfaceConfig;
-    matrix?: MessagingSurfaceConfig;
-  };
+    whatsapp?: MessagingSurfaceConfig
+    matrix?: MessagingSurfaceConfig
+  }
   /** Tool availability per surface */
-  toolAvailability: Record<string, string[]>;
+  toolAvailability: Record<string, string[]>
   /** UX adaptations */
-  ux: UXAdaptations;
-};
+  ux: UXAdaptations
+}
 
 /**
  * UX adaptations for different surface types.
  */
 export type UXAdaptations = {
   /** Streaming vs batching behavior */
-  responseMode: 'streaming' | 'batched' | 'auto';
+  responseMode: "streaming" | "batched" | "auto"
   /** How to handle long responses */
-  longResponseHandling: 'chunk' | 'truncate' | 'file';
+  longResponseHandling: "chunk" | "truncate" | "file"
   /** Maximum response length before applying longResponseHandling */
-  maxResponseLength: number;
+  maxResponseLength: number
   /** Whether to include tool output in responses */
-  includeToolOutput: boolean;
+  includeToolOutput: boolean
   /** Whether to include thinking/reasoning in responses */
-  includeThinking: boolean;
+  includeThinking: boolean
   /** Response prefix (e.g., bot name) */
-  responsePrefix?: string;
+  responsePrefix?: string
   /** Response suffix */
-  responseSuffix?: string;
-};
+  responseSuffix?: string
+}
 
 /**
  * Default UX adaptations.
  */
 export const DEFAULT_UX_ADAPTATIONS: UXAdaptations = {
-  responseMode: 'auto',
-  longResponseHandling: 'chunk',
+  responseMode: "auto",
+  longResponseHandling: "chunk",
   maxResponseLength: 10_000,
   includeToolOutput: false,
   includeThinking: false,
-};
+}
 
 /**
  * Build complete surface configuration with defaults.
  */
-export function buildSurfaceConfig(
-  overrides: Partial<SurfaceConfig> = {}
-): SurfaceConfig {
+export function buildSurfaceConfig(overrides: Partial<SurfaceConfig> = {}): SurfaceConfig {
   return {
     permissions: mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, overrides.permissions),
     cli: resolveCLISurfaceConfig(overrides.cli),
     gui: resolveGUISurfaceConfig(overrides.gui),
     messaging: {
-      whatsapp: overrides.messaging?.whatsapp
-        ? resolveMessagingSurfaceConfig(overrides.messaging.whatsapp)
-        : undefined,
+      whatsapp: overrides.messaging?.whatsapp ? resolveMessagingSurfaceConfig(overrides.messaging.whatsapp) : undefined,
       matrix: overrides.messaging?.matrix
-        ? resolveMessagingSurfaceConfig(overrides.messaging.matrix, { platform: 'matrix' as const })
+        ? resolveMessagingSurfaceConfig(overrides.messaging.matrix, { platform: "matrix" as const })
         : undefined,
     },
     toolAvailability: overrides.toolAvailability ?? {},
@@ -465,7 +450,7 @@ export function buildSurfaceConfig(
       ...DEFAULT_UX_ADAPTATIONS,
       ...overrides.ux,
     },
-  };
+  }
 }
 
 // =============================================================================
@@ -483,30 +468,30 @@ export function buildSurfaceConfig(
 export function resolvePermission(
   type: PermissionType,
   resource: string,
-  config: PermissionConfig
+  config: PermissionConfig,
 ): { action: PermissionAction; requiresConfirmation: boolean; timeoutMs: number } {
   // Check remembered permissions first
-  const rememberedKey = `${type}:${resource}`;
-  const remembered = config.remembered.get(rememberedKey);
+  const rememberedKey = `${type}:${resource}`
+  const remembered = config.remembered.get(rememberedKey)
   if (remembered) {
-    return { action: remembered, requiresConfirmation: false, timeoutMs: 0 };
+    return { action: remembered, requiresConfirmation: false, timeoutMs: 0 }
   }
 
   // Get type-specific policy
-  const policy = config.policies[type];
+  const policy = config.policies[type]
   if (!policy) {
     return {
       action: config.globalDefault,
       requiresConfirmation: true,
       timeoutMs: 30_000,
-    };
+    }
   }
 
   // Check deny patterns first (deny takes priority)
   if (policy.denyPatterns) {
     for (const pattern of policy.denyPatterns) {
       if (matchPattern(resource, pattern)) {
-        return { action: 'deny', requiresConfirmation: false, timeoutMs: 0 };
+        return { action: "deny", requiresConfirmation: false, timeoutMs: 0 }
       }
     }
   }
@@ -516,10 +501,10 @@ export function resolvePermission(
     for (const pattern of policy.allowPatterns) {
       if (matchPattern(resource, pattern)) {
         return {
-          action: 'allow',
+          action: "allow",
           requiresConfirmation: policy.requireConfirmation,
           timeoutMs: policy.timeoutMs,
-        };
+        }
       }
     }
   }
@@ -528,29 +513,29 @@ export function resolvePermission(
     action: policy.defaultAction,
     requiresConfirmation: policy.requireConfirmation,
     timeoutMs: policy.timeoutMs,
-  };
+  }
 }
 
 /**
  * Simple glob-like pattern matching.
  */
 function matchPattern(value: string, pattern: string): boolean {
-  const normalizedValue = value.replace(/\\/g, '/');
-  const normalizedPattern = pattern.replace(/\\/g, '/');
+  const normalizedValue = value.replace(/\\/g, "/")
+  const normalizedPattern = pattern.replace(/\\/g, "/")
 
-  let regex = PATTERN_CACHE.get(normalizedPattern);
+  let regex = PATTERN_CACHE.get(normalizedPattern)
   if (!regex) {
     // Convert glob to regex
     const escaped = normalizedPattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '<<<GLOBSTAR>>>')
-    .replace(/\*/g, '[^/]*')
-    .replace(/<<<GLOBSTAR>>>/g, '.*')
-    .replace(/\?/g, '.');
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*\*/g, "<<<GLOBSTAR>>>")
+      .replace(/\*/g, "[^/]*")
+      .replace(/<<<GLOBSTAR>>>/g, ".*")
+      .replace(/\?/g, ".")
 
-    regex = new RegExp(`^${escaped}$`);
-    PATTERN_CACHE.set(normalizedPattern, regex);
+    regex = new RegExp(`^${escaped}$`)
+    PATTERN_CACHE.set(normalizedPattern, regex)
   }
 
-  return regex.test(normalizedValue);
+  return regex.test(normalizedValue)
 }

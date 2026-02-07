@@ -13,11 +13,7 @@ import { Zee } from "../../../paths"
 import { Style, Symbols } from "../../style"
 import { Timestamp } from "../../../util/timestamp"
 
-const GATEWAY_ENV_HINTS = [
-  "ZEE_GATEWAY_TOKEN",
-  "ZEE_GATEWAY_PASSWORD",
-  "MATRIX_ACCESS_TOKEN",
-]
+const GATEWAY_ENV_HINTS = ["ZEE_GATEWAY_TOKEN", "ZEE_GATEWAY_PASSWORD", "MATRIX_ACCESS_TOKEN"]
 
 export const StatusCommand = cmd({
   command: "status",
@@ -446,7 +442,9 @@ function printStatus(status: SystemStatus, verbose: boolean) {
   // Header with theme-aware colors
   console.log("")
   console.log(`${Style.theme.border}${Symbols.hDoubleLine.repeat(63)}${Style.reset}`)
-  console.log(`${Style.theme.border}${Symbols.vDoubleLine}${Style.reset}${" ".repeat(19)}${Style.bold}AGENT-CORE STATUS${Style.reset}${" ".repeat(24)}${Style.theme.border}${Symbols.vDoubleLine}${Style.reset}`)
+  console.log(
+    `${Style.theme.border}${Symbols.vDoubleLine}${Style.reset}${" ".repeat(19)}${Style.bold}AGENT-CORE STATUS${Style.reset}${" ".repeat(24)}${Style.theme.border}${Symbols.vDoubleLine}${Style.reset}`,
+  )
   console.log(`${Style.theme.border}${Symbols.hDoubleLine.repeat(63)}${Style.reset}`)
   console.log("")
 

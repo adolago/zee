@@ -22,10 +22,7 @@ export type DeliveryTarget = {
 /**
  * Deliver heartbeat output to both TUI (via Bus event) and messaging (via gateway HTTP).
  */
-export async function deliverHeartbeatResult(
-  text: string,
-  target: DeliveryTarget,
-): Promise<void> {
+export async function deliverHeartbeatResult(text: string, target: DeliveryTarget): Promise<void> {
   // Emit on GlobalBus for TUI display (no Instance context required)
   GlobalBus.emit("event", {
     payload: {

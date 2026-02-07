@@ -934,7 +934,6 @@ describe("ProviderTransform.message - providerOptions key remapping", () => {
       options: {},
       headers: {},
     }) as any
-
 })
 
 describe("ProviderTransform.message - claude w/bedrock custom inference profile", () => {
@@ -1300,7 +1299,6 @@ describe("ProviderTransform.variants", () => {
       })
     })
   })
-
 })
 
 describe("ProviderTransform.options - persona thinking configs", () => {

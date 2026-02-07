@@ -51,7 +51,7 @@ async function getMemoryInstance(): Promise<any> {
     throw new Error(
       `Unified Memory is required but unavailable. ` +
         `Ensure Qdrant is running (docker-compose up -d qdrant) or configure embedded mode. ` +
-        `Cause: ${cause}`
+        `Cause: ${cause}`,
     )
   }
 
@@ -62,10 +62,7 @@ async function getMemoryInstance(): Promise<any> {
  * Wrap a hook handler with error logging and context.
  * Re-throws the error after logging to maintain fail-fast behavior.
  */
-function safeHookHandler<T>(
-  name: string,
-  fn: (payload: T) => Promise<void>
-): (payload: T) => Promise<void> {
+function safeHookHandler<T>(name: string, fn: (payload: T) => Promise<void>): (payload: T) => Promise<void> {
   return async (payload: T) => {
     try {
       await fn(payload)

@@ -20,7 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 PKG_DIR="$REPO_ROOT/packages/agent-core"
-BINARY_SRC="$PKG_DIR/dist/@agent-core/core-linux-x64/bin/agent-core"
+BINARY_SRC="$PKG_DIR/dist/agent-core-linux-x64/bin/agent-core"
 BINARY_LINK="$HOME/.bun/bin/agent-core"
 DAEMON_PORT="${AGENT_CORE_PORT:-3210}"
 DAEMON_HOST="${AGENT_CORE_HOST:-127.0.0.1}"

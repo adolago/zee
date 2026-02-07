@@ -94,11 +94,9 @@ function getSystemdServiceState(scope: SystemdScope): SystemdServiceState {
 
 function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: string } {
   const baseArgs = scope === "user" ? ["--user"] : []
-  const result = spawnSync(
-    "systemctl",
-    [...baseArgs, "--no-ask-password", "start", "agent-core"],
-    { encoding: "utf-8" },
-  )
+  const result = spawnSync("systemctl", [...baseArgs, "--no-ask-password", "start", "agent-core"], {
+    encoding: "utf-8",
+  })
   if (result.status === 0) return { ok: true }
 
   const stdout = (result.stdout ?? "").trim()

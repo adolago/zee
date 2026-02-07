@@ -177,10 +177,12 @@ export class StreamHealthMonitor {
       charsReceived: this.charsReceived,
       estimatedTokens: Math.floor(this.charsReceived / 4), // ~4 chars per token
       requestCount: this.requestCount,
-      embeddingConfig: embeddingModel ? {
-        model: embeddingModel,
-        maxContext: embeddingMaxContext,
-      } : undefined,
+      embeddingConfig: embeddingModel
+        ? {
+            model: embeddingModel,
+            maxContext: embeddingMaxContext,
+          }
+        : undefined,
     }
   }
 
@@ -227,7 +229,8 @@ export class StreamHealthMonitor {
     this.stallTimeoutMs =
       Flag.AGENT_CORE_STREAM_STALL_TIMEOUT_MS ?? (isReasoning ? REASONING_STALL_TIMEOUT_MS : DEFAULT_STALL_TIMEOUT_MS)
     this.noContentTimeoutMs =
-      Flag.AGENT_CORE_STREAM_NO_CONTENT_TIMEOUT_MS ?? (isReasoning ? REASONING_NO_CONTENT_TIMEOUT_MS : DEFAULT_NO_CONTENT_TIMEOUT_MS)
+      Flag.AGENT_CORE_STREAM_NO_CONTENT_TIMEOUT_MS ??
+      (isReasoning ? REASONING_NO_CONTENT_TIMEOUT_MS : DEFAULT_NO_CONTENT_TIMEOUT_MS)
 
     if (isReasoning) {
       log.info("using extended timeouts for reasoning model", {
@@ -262,7 +265,8 @@ export class StreamHealthMonitor {
     // Track specific event types for more detailed metrics
     // Also track meaningful content for extended thinking timeout detection
     const isReasoningEvent = type.startsWith("reasoning")
-    const isMeaningfulContent = type === "text-delta" || type === "tool-call" || type === "tool-result" || isReasoningEvent
+    const isMeaningfulContent =
+      type === "text-delta" || type === "tool-call" || type === "tool-result" || isReasoningEvent
     if (type === "text-delta") {
       this.textDeltaEvents++
       this.phase = "generating"
@@ -384,11 +388,7 @@ export class StreamHealthMonitor {
     }
 
     // Emit warning for extended thinking (reasoning without content) after 60s
-    if (
-      isExtendedThinking &&
-      elapsedSinceMeaningful >= this.stallTimeoutMs &&
-      !this.noContentWarningEmitted
-    ) {
+    if (isExtendedThinking && elapsedSinceMeaningful >= this.stallTimeoutMs && !this.noContentWarningEmitted) {
       this.noContentWarningEmitted = true
       log.warn("extended thinking detected - reasoning without output", {
         sessionID: this.sessionID,
@@ -412,11 +412,7 @@ export class StreamHealthMonitor {
     // Check for early warning (no meaningful content after 5s)
     const elapsedSinceStart = Date.now() - this.streamStartedAt
     const hasNoContent = this.textDeltaEvents === 0 && this.toolCallEvents === 0
-    if (
-      elapsedSinceStart >= DEFAULT_EARLY_STALL_MS &&
-      hasNoContent &&
-      !this.earlyWarningEmitted
-    ) {
+    if (elapsedSinceStart >= DEFAULT_EARLY_STALL_MS && hasNoContent && !this.earlyWarningEmitted) {
       this.earlyWarningEmitted = true
       log.warn("stream slow start detected - no content received", {
         sessionID: this.sessionID,
@@ -597,7 +593,6 @@ export class StreamHealthMonitor {
       eventsPerSecond,
     }
   }
-
 
   /**
    * Check if the stream is currently stalled (warning threshold exceeded).

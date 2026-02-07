@@ -7,7 +7,6 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import * as lancedb from "@lancedb/lancedb";
 import OpenAI from "openai";
 import { randomUUID } from "node:crypto";
 import type { ZeePluginApi } from "zee/plugin-sdk";
@@ -44,9 +43,39 @@ type MemorySearchResult = {
 
 const TABLE_NAME = "memories";
 
+type LanceDbTable = {
+  add: (rows: unknown[]) => Promise<void>;
+  delete: (predicate: string) => Promise<void>;
+  vectorSearch: (
+    vector: number[],
+  ) => {
+    limit: (n: number) => { toArray: () => Promise<any[]> };
+  };
+  countRows: () => Promise<number>;
+};
+
+type LanceDbConnection = {
+  tableNames: () => Promise<string[]>;
+  openTable: (name: string) => Promise<LanceDbTable>;
+  createTable: (name: string, initialRows: unknown[]) => Promise<LanceDbTable>;
+};
+
+type LanceDbModule = {
+  connect: (dbPath: string) => Promise<LanceDbConnection>;
+};
+
+async function loadLanceDb(): Promise<LanceDbModule> {
+  try {
+    return (await import("@lancedb/lancedb")) as LanceDbModule;
+  } catch (err) {
+    const details = err instanceof Error ? err.message : String(err);
+    throw new Error(`memory-lancedb: failed to load \"@lancedb/lancedb\": ${details}`);
+  }
+}
+
 class MemoryDB {
-  private db: lancedb.Connection | null = null;
-  private table: lancedb.Table | null = null;
+  private db: LanceDbConnection | null = null;
+  private table: LanceDbTable | null = null;
   private initPromise: Promise<void> | null = null;
 
   constructor(
@@ -63,6 +92,7 @@ class MemoryDB {
   }
 
   private async doInitialize(): Promise<void> {
+    const lancedb = await loadLanceDb();
     this.db = await lancedb.connect(this.dbPath);
     const tables = await this.db.tableNames();
 

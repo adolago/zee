@@ -460,12 +460,10 @@ export namespace LSP {
           return []
         })) as any[]
       if (!items?.length) return []
-      return client.connection
-        .sendRequest("callHierarchy/incomingCalls", { item: items[0] })
-        .catch((error) => {
-          logRequestError("incomingCalls", error)
-          return []
-        })
+      return client.connection.sendRequest("callHierarchy/incomingCalls", { item: items[0] }).catch((error) => {
+        logRequestError("incomingCalls", error)
+        return []
+      })
     }).then((result) => result.flat().filter(Boolean))
   }
 
@@ -481,12 +479,10 @@ export namespace LSP {
           return []
         })) as any[]
       if (!items?.length) return []
-      return client.connection
-        .sendRequest("callHierarchy/outgoingCalls", { item: items[0] })
-        .catch((error) => {
-          logRequestError("outgoingCalls", error)
-          return []
-        })
+      return client.connection.sendRequest("callHierarchy/outgoingCalls", { item: items[0] }).catch((error) => {
+        logRequestError("outgoingCalls", error)
+        return []
+      })
     }).then((result) => result.flat().filter(Boolean))
   }
 

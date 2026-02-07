@@ -11,15 +11,11 @@ function parseCommaList(value?: string): string[] {
 }
 
 export async function getCronToolInvokeAllowlist(): Promise<Set<string>> {
-  const config = await Config.global().catch(() => ({} as Config.Info))
+  const config = await Config.global().catch(() => ({}) as Config.Info)
   const fromConfig = config?.cron?.toolInvokeAllowlist ?? []
   const fromEnv = parseCommaList(process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"])
 
-  const allowlist = [
-    ...DEFAULT_TOOL_INVOKE_ALLOWLIST,
-    ...fromConfig,
-    ...fromEnv,
-  ]
+  const allowlist = [...DEFAULT_TOOL_INVOKE_ALLOWLIST, ...fromConfig, ...fromEnv]
     .map((tool) => tool.trim())
     .filter((tool) => tool.length > 0)
 
@@ -38,4 +34,3 @@ export async function assertCronToolInvokeAllowed(tool: string): Promise<void> {
     `cron toolInvoke is not allowed for tool "${tool}". Add it to config.cron.toolInvokeAllowlist or set AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST.`,
   )
 }
-

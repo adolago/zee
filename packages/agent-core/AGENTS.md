@@ -8,14 +8,14 @@
 - **Typecheck**: `bun run typecheck` (npm run typecheck)
 - **Test**: `bun test` (runs all tests)
 - **Single test**: `bun test test/tool/tool.test.ts` (specific test file)
-- **Verify**: `./script/verify-binary.sh` (check binary is correct)
+- **Verify**: `../../script/verify-binary.sh` (from `packages/agent-core/`)
 
 ## Binary Installation
 
 The build script automatically symlinks the compiled binary to `~/.bun/bin/agent-core`:
 
 ```bash
-# Build outputs to: dist/@adolago/agent-core-linux-x64/bin/agent-core
+# Build outputs to: dist/agent-core-linux-x64/bin/agent-core
 # Symlink created: ~/.bun/bin/agent-core -> <build output>
 bun run build
 ```

@@ -1,8 +1,10 @@
-# ADR-001: Session Management Architecture
+# ADR-005: Session Management Architecture
 
 ## Status
 
 Accepted
+
+Note: This document previously used ADR-001 numbering. ADR-001 is reserved for the Surface Abstraction Layer.
 
 ## Context
 
@@ -154,3 +156,9 @@ Key adaptations from the upstream base:
 
 - Vercel AI SDK streaming: https://sdk.vercel.ai/docs/ai-sdk-core/streaming
 - Zod documentation: https://zod.dev/
+
+## Implemented By (Evidence)
+
+- Core session types/manager/processor: `packages/agent-core/src/session/`
+- Session persistence/storage: `packages/agent-core/src/session/persistence.ts`, `packages/agent-core/src/storage/`
+- Session tests: `packages/agent-core/test/session/`

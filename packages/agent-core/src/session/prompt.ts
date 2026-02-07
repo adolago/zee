@@ -137,7 +137,6 @@ export namespace SessionPrompt {
       source: resolveSessionSource(),
       directory: session.directory,
     })
-
   }
 
   /**
@@ -309,7 +308,7 @@ export namespace SessionPrompt {
         const reason =
           memoryStatus?.status === "failed"
             ? memoryStatus.error
-            : memoryStatus?.status ?? (hasConfig ? "missing" : "not configured")
+            : (memoryStatus?.status ?? (hasConfig ? "missing" : "not configured"))
         const message =
           reason === "not configured"
             ? `Memory MCP "${memoryServer}" is required but not configured.`
@@ -763,12 +762,7 @@ export namespace SessionPrompt {
         })
       }
 
-      if (
-        lastAssistant?.finish &&
-        !hasPendingToolCalls &&
-        !hasPendingTasks &&
-        lastUser.id < lastAssistant.id
-      ) {
+      if (lastAssistant?.finish && !hasPendingToolCalls && !hasPendingTasks && lastUser.id < lastAssistant.id) {
         log.info("exiting loop", { sessionID, finish: lastAssistant.finish })
         break
       }
@@ -895,7 +889,12 @@ export namespace SessionPrompt {
         }
         const result = await taskTool.execute(taskArgs, taskCtx).catch((error) => {
           executionError = error
-          log.error("subtask execution failed", { error, agent: resolvedAgent, originalAgent: task.agent, description: task.description })
+          log.error("subtask execution failed", {
+            error,
+            agent: resolvedAgent,
+            originalAgent: task.agent,
+            description: task.description,
+          })
           return undefined
         })
         await Plugin.trigger(
@@ -2372,18 +2371,24 @@ export namespace SessionPrompt {
           : await MessageV2.toModelMessage(contextMessages, titleModel)),
       ],
     })
-    const text = await Promise.resolve(result.text).catch((err: unknown) => log.error("failed to generate title", { error: err }))
+    const text = await Promise.resolve(result.text).catch((err: unknown) =>
+      log.error("failed to generate title", { error: err }),
+    )
     if (text)
-      return Session.update(input.session.id, (draft) => {
-        const cleaned = text
-          .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
-          .split("\n")
-          .map((line: string) => line.trim())
-          .find((line: string) => line.length > 0)
-        if (!cleaned) return
+      return Session.update(
+        input.session.id,
+        (draft) => {
+          const cleaned = text
+            .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+            .split("\n")
+            .map((line: string) => line.trim())
+            .find((line: string) => line.length > 0)
+          if (!cleaned) return
 
-        const title = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
-        draft.title = title
-      }, { touch: false })
+          const title = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
+          draft.title = title
+        },
+        { touch: false },
+      )
   }
 }

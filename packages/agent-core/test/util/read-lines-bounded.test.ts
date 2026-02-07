@@ -44,4 +44,3 @@ describe("util.readTextLinesBounded", () => {
     expect(result.bytesRead).toBeLessThan(128 * 1024)
   })
 })
-

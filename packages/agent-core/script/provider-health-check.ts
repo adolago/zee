@@ -4,7 +4,7 @@
  *
  * Tests all configured providers and models with minimal (1-token) requests.
  * Reports success, errors, and latency for each provider/model combination.
- * 
+ *
  * Error Categories:
  * - AuthError: Invalid API key, expired token, unauthorized
  * - RateLimitError: Rate limited, too many requests (429)
@@ -65,7 +65,9 @@ const outputJson = args.includes("--json")
 const errorsOnly = args.includes("--errors-only")
 const criticalOnly = args.includes("--critical-only")
 const providerArgIdx = args.indexOf("--provider")
-const specificProvider = args.find((a) => a.startsWith("--provider="))?.split("=")[1] ?? (providerArgIdx >= 0 ? args[providerArgIdx + 1] : undefined)
+const specificProvider =
+  args.find((a) => a.startsWith("--provider="))?.split("=")[1] ??
+  (providerArgIdx >= 0 ? args[providerArgIdx + 1] : undefined)
 const timeoutArg = args.find((a) => a.startsWith("--timeout="))?.split("=")[1]
 const DEFAULT_TIMEOUT = timeoutArg ? parseInt(timeoutArg, 10) * 1000 : 30000
 
@@ -93,7 +95,7 @@ async function testModel(
   try {
     // Check if provider is disabled
     const isDisabled = providerInfo.source === undefined
-    
+
     // Check if provider has required authentication
     if (!providerInfo.source) {
       return {
@@ -234,39 +236,76 @@ function categorizeError(err: Error & { statusCode?: number; code?: string }): E
   }
 
   // Check error messages
-  if (message.includes("unauthorized") || message.includes("authentication") || message.includes("api key") || 
-      message.includes("invalid_api_key") || message.includes("invalid token")) {
+  if (
+    message.includes("unauthorized") ||
+    message.includes("authentication") ||
+    message.includes("api key") ||
+    message.includes("invalid_api_key") ||
+    message.includes("invalid token")
+  ) {
     return "AuthError"
   }
   if (message.includes("rate limit") || message.includes("too many requests") || message.includes("throttled")) {
     return "RateLimitError"
   }
-  if (message.includes("quota") || message.includes("billing") || message.includes("insufficient") || 
-      message.includes("credit") || message.includes("balance") || message.includes("exceeded your current quota")) {
+  if (
+    message.includes("quota") ||
+    message.includes("billing") ||
+    message.includes("insufficient") ||
+    message.includes("credit") ||
+    message.includes("balance") ||
+    message.includes("exceeded your current quota")
+  ) {
     return "QuotaError"
   }
-  if (message.includes("timeout") || message.includes("timed out") || message.includes("etimedout") || 
-      message.includes("abort") || code === "etimedout") {
+  if (
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("etimedout") ||
+    message.includes("abort") ||
+    code === "etimedout"
+  ) {
     return "TimeoutError"
   }
-  if (message.includes("not found") || message.includes("model not found") || 
-      message.includes("does not exist") || message.includes("unknown model")) {
+  if (
+    message.includes("not found") ||
+    message.includes("model not found") ||
+    message.includes("does not exist") ||
+    message.includes("unknown model")
+  ) {
     return "ModelNotFoundError"
   }
-  if (message.includes("server error") || message.includes("internal error") || 
-      message.includes("bad gateway") || message.includes("service unavailable")) {
+  if (
+    message.includes("server error") ||
+    message.includes("internal error") ||
+    message.includes("bad gateway") ||
+    message.includes("service unavailable")
+  ) {
     return "ServerError"
   }
-  if (message.includes("permission") || message.includes("forbidden") || 
-      message.includes("insufficient scopes") || message.includes("access denied")) {
+  if (
+    message.includes("permission") ||
+    message.includes("forbidden") ||
+    message.includes("insufficient scopes") ||
+    message.includes("access denied")
+  ) {
     return "PermissionError"
   }
-  if (message.includes("invalid") || message.includes("bad request") || 
-      message.includes("validation") || message.includes("unsupported parameter")) {
+  if (
+    message.includes("invalid") ||
+    message.includes("bad request") ||
+    message.includes("validation") ||
+    message.includes("unsupported parameter")
+  ) {
     return "ValidationError"
   }
-  if (message.includes("econnrefused") || message.includes("enotfound") || 
-      message.includes("network") || code === "econnrefused" || code === "enotfound") {
+  if (
+    message.includes("econnrefused") ||
+    message.includes("enotfound") ||
+    message.includes("network") ||
+    code === "econnrefused" ||
+    code === "enotfound"
+  ) {
     return "NetworkError"
   }
   if (message.includes("config") || message.includes("configuration")) {
@@ -309,7 +348,9 @@ async function main() {
       if (!outputJson) {
         console.log(`\nProvider Health Check`)
         console.log(`${"=".repeat(60)}`)
-        console.log(`Found ${providerList.length} providers${specificProvider ? ` (filtered to: ${specificProvider})` : ""}`)
+        console.log(
+          `Found ${providerList.length} providers${specificProvider ? ` (filtered to: ${specificProvider})` : ""}`,
+        )
         console.log(`Mode: ${testAllModels ? "Testing ALL models" : "Testing first model per provider"}`)
         console.log(`${"=".repeat(60)}\n`)
       }
@@ -318,25 +359,25 @@ async function main() {
         const modelList = Object.entries(providerInfo.models)
         // Filter out deprecated models and embedding models (which don't support chat)
         const isEmbeddingModel = (id: string) => id.includes("embedding") || id.includes("embed")
-        
+
         // For google provider, separate antigravity models from native models
         const isAntigravityModel = (id: string) => id.includes("antigravity")
-        
+
         let testableModels: typeof modelList
         if (providerID === "google") {
           // Check if we have antigravity models - if so, prioritize testing one of those
           const antigravityModels = modelList.filter(([id]) => isAntigravityModel(id))
-          const nativeModels = modelList.filter(([id, model]) => 
-            !isAntigravityModel(id) && model.status !== "deprecated" && !isEmbeddingModel(id)
+          const nativeModels = modelList.filter(
+            ([id, model]) => !isAntigravityModel(id) && model.status !== "deprecated" && !isEmbeddingModel(id),
           )
-          
+
           if (testAllModels) {
             testableModels = [...antigravityModels, ...nativeModels]
           } else {
             // Test one antigravity model (if available) and one native model
             // Prefer lightest models for health checks: flash > non-thinking > thinking
-            const sortAntigravity = (models: typeof modelList) => models
-              .sort(([idA, a], [idB, b]) => {
+            const sortAntigravity = (models: typeof modelList) =>
+              models.sort(([idA, a], [idB, b]) => {
                 const weight = (id: string) => {
                   if (id.includes("flash")) return 0
                   if (id.includes("thinking")) return 2
@@ -347,12 +388,9 @@ async function main() {
                 return (a.cost.input || 0) - (b.cost.input || 0)
               })
             const sortedNative = nativeModels.sort(([, a], [, b]) => (a.cost.input || 0) - (b.cost.input || 0))
-            testableModels = [
-              ...sortAntigravity(antigravityModels).slice(0, 1),
-              ...sortedNative.slice(0, 1),
-            ]
+            testableModels = [...sortAntigravity(antigravityModels).slice(0, 1), ...sortedNative.slice(0, 1)]
           }
-          
+
           if (!outputJson && antigravityModels.length > 0) {
             console.log(`  Antigravity models: ${antigravityModels.length}`)
             console.log(`  Native Gemini models: ${nativeModels.length}`)
@@ -383,7 +421,8 @@ async function main() {
           results.push(result)
 
           if (!outputJson && (!errorsOnly || result.status === "error")) {
-            const color = result.status === "success" ? COLORS.green : result.status === "skipped" ? COLORS.yellow : COLORS.red
+            const color =
+              result.status === "success" ? COLORS.green : result.status === "skipped" ? COLORS.yellow : COLORS.red
             const statusIcon = result.status === "success" ? "OK" : result.status === "skipped" ? "SKIP" : "FAIL"
             const latency = result.latencyMs ? ` (${result.latencyMs}ms)` : ""
             console.log(`${color}[${statusIcon}]${COLORS.reset}${latency}`)
@@ -413,7 +452,9 @@ async function main() {
   console.log(`\n${COLORS.bold}${"=".repeat(60)}${COLORS.reset}`)
   console.log(`${COLORS.bold}SUMMARY${COLORS.reset}`)
   console.log(`${COLORS.bold}${"=".repeat(60)}${COLORS.reset}`)
-  console.log(`${COLORS.bold}Total:${COLORS.reset} ${results.length} | ${COLORS.green}OK: ${successful.length}${COLORS.reset} | ${COLORS.red}FAILED: ${failed.length}${COLORS.reset} | ${COLORS.yellow}SKIPPED: ${skipped.length}${COLORS.reset}`)
+  console.log(
+    `${COLORS.bold}Total:${COLORS.reset} ${results.length} | ${COLORS.green}OK: ${successful.length}${COLORS.reset} | ${COLORS.red}FAILED: ${failed.length}${COLORS.reset} | ${COLORS.yellow}SKIPPED: ${skipped.length}${COLORS.reset}`,
+  )
 
   if (successful.length > 0 && !errorsOnly) {
     console.log(`\n${COLORS.green}SUCCESSFUL (${successful.length}):${COLORS.reset}`)
@@ -476,10 +517,14 @@ async function main() {
       if (criticalProvider) {
         const criticalFailures = failed.filter((r) => r.provider === criticalProvider)
         if (criticalFailures.length > 0) {
-          console.log(`${COLORS.red}${COLORS.bold}CRITICAL: Agent model provider "${criticalProvider}" failed${COLORS.reset}`)
+          console.log(
+            `${COLORS.red}${COLORS.bold}CRITICAL: Agent model provider "${criticalProvider}" failed${COLORS.reset}`,
+          )
           process.exit(1)
         } else {
-          console.log(`${COLORS.yellow}Non-critical provider failures (agent model provider "${criticalProvider}" is OK)${COLORS.reset}`)
+          console.log(
+            `${COLORS.yellow}Non-critical provider failures (agent model provider "${criticalProvider}" is OK)${COLORS.reset}`,
+          )
           process.exit(0)
         }
       }

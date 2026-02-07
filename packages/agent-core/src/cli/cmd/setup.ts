@@ -40,10 +40,10 @@ export const SetupCommand = cmd({
     let composeFile = candidates.find((p) => fs.existsSync(p))
 
     if (!composeFile) {
-        // Fallback: Create it in current directory if not found
-        UI.warn("docker-compose.yml not found. Creating a default one in current directory...")
-        composeFile = path.join(process.cwd(), "docker-compose.yml")
-        const content = `version: '3.8'
+      // Fallback: Create it in current directory if not found
+      UI.warn("docker-compose.yml not found. Creating a default one in current directory...")
+      composeFile = path.join(process.cwd(), "docker-compose.yml")
+      const content = `version: '3.8'
 
 services:
   qdrant:
@@ -62,24 +62,24 @@ services:
       timeout: 10s
       retries: 3
 `
-        fs.writeFileSync(composeFile, content)
-        UI.success(`Created ${composeFile}`)
+      fs.writeFileSync(composeFile, content)
+      UI.success(`Created ${composeFile}`)
     } else {
-        UI.info(`Using ${composeFile}`)
+      UI.info(`Using ${composeFile}`)
     }
 
     // 3. Run Docker Compose
     UI.info("Starting services (Qdrant)...")
     const composeCmd = ["docker", "compose", "-f", composeFile, "up", "-d"]
     const proc = Bun.spawn(composeCmd, {
-        stdout: "inherit",
-        stderr: "inherit"
+      stdout: "inherit",
+      stderr: "inherit",
     })
-    
+
     const exitCode = await proc.exited
     if (exitCode !== 0) {
-        UI.error("Failed to start docker-compose.")
-        return
+      UI.error("Failed to start docker-compose.")
+      return
     }
 
     // 4. Verify Health
@@ -87,22 +87,22 @@ services:
     let attempts = 0
     const maxAttempts = 10
     while (attempts < maxAttempts) {
-        try {
-            const resp = await fetch("http://localhost:6333/healthz")
-            if (resp.ok) {
-                UI.success("Qdrant is healthy and ready!")
-                break
-            }
-        } catch (e) {
-            // ignore
+      try {
+        const resp = await fetch("http://localhost:6333/healthz")
+        if (resp.ok) {
+          UI.success("Qdrant is healthy and ready!")
+          break
         }
-        await Bun.sleep(2000)
-        attempts++
-        process.stdout.write(".")
+      } catch (e) {
+        // ignore
+      }
+      await Bun.sleep(2000)
+      attempts++
+      process.stdout.write(".")
     }
 
     if (attempts >= maxAttempts) {
-        UI.warn("Qdrant started but health check timed out. It might still be initializing.")
+      UI.warn("Qdrant started but health check timed out. It might still be initializing.")
     }
 
     UI.success("Setup complete. You can now run 'agent-core daemon'.")

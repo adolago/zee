@@ -3,40 +3,40 @@
  * @description Health checks for skill discovery, loading, and configuration
  */
 
-import type { CheckResult, CheckOptions } from "../types";
-import { Skill } from "../../skill";
-import { Instance } from "../../project/instance";
+import type { CheckResult, CheckOptions } from "../types"
+import { Skill } from "../../skill"
+import { Instance } from "../../project/instance"
 
 /**
  * Get a cached audit report, bootstrapping Instance if needed.
  * The check command doesn't call bootstrap(), so Skill.audit() would
  * fail with "No context found for instance". We handle that here.
  */
-let cachedReport: Skill.AuditReport | undefined;
+let cachedReport: Skill.AuditReport | undefined
 async function getAuditReport(): Promise<Skill.AuditReport> {
-  if (cachedReport) return cachedReport;
+  if (cachedReport) return cachedReport
 
   try {
-    cachedReport = await Skill.audit();
+    cachedReport = await Skill.audit()
   } catch {
     // Instance not bootstrapped - provide one for the skill scan
     cachedReport = await Instance.provide({
       directory: process.cwd(),
       fn: () => Skill.audit(),
-    });
+    })
   }
-  return cachedReport;
+  return cachedReport
 }
 
 /**
  * Check total loaded skills and per-persona distribution
  */
 async function checkLoadedSkills(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const report = await getAuditReport();
-    const loaded = report.loaded;
+    const report = await getAuditReport()
+    const loaded = report.loaded
 
     if (loaded.length === 0) {
       return {
@@ -49,7 +49,7 @@ async function checkLoadedSkills(): Promise<CheckResult> {
         severity: "warning",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     const byPersona = {
@@ -57,9 +57,9 @@ async function checkLoadedSkills(): Promise<CheckResult> {
       stanley: loaded.filter((s) => s.context === "stanley").length,
       johny: loaded.filter((s) => s.context === "johny").length,
       shared: loaded.filter((s) => !s.context).length,
-    };
+    }
 
-    const distribution = `zee(${byPersona.zee}), stanley(${byPersona.stanley}), johny(${byPersona.johny}), shared(${byPersona.shared})`;
+    const distribution = `zee(${byPersona.zee}), stanley(${byPersona.stanley}), johny(${byPersona.johny}), shared(${byPersona.shared})`
 
     return {
       id: "skills.loaded",
@@ -71,7 +71,7 @@ async function checkLoadedSkills(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { total: loaded.length, byPersona },
-    };
+    }
   } catch (error) {
     return {
       id: "skills.loaded",
@@ -83,7 +83,7 @@ async function checkLoadedSkills(): Promise<CheckResult> {
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -91,11 +91,11 @@ async function checkLoadedSkills(): Promise<CheckResult> {
  * Check for skills excluded during loading
  */
 async function checkExclusions(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const report = await getAuditReport();
-    const excluded = report.excluded;
+    const report = await getAuditReport()
+    const excluded = report.excluded
 
     if (excluded.length === 0) {
       return {
@@ -107,10 +107,10 @@ async function checkExclusions(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
-    const reasons = excluded.map((e) => `${e.name || e.path}: ${e.reason}`);
+    const reasons = excluded.map((e) => `${e.name || e.path}: ${e.reason}`)
 
     return {
       id: "skills.exclusions",
@@ -123,7 +123,7 @@ async function checkExclusions(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { excluded },
-    };
+    }
   } catch (error) {
     return {
       id: "skills.exclusions",
@@ -135,7 +135,7 @@ async function checkExclusions(): Promise<CheckResult> {
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -143,11 +143,11 @@ async function checkExclusions(): Promise<CheckResult> {
  * Check for name conflicts between skills
  */
 async function checkConflicts(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const report = await getAuditReport();
-    const conflicts = report.conflicts;
+    const report = await getAuditReport()
+    const conflicts = report.conflicts
 
     if (conflicts.length === 0) {
       return {
@@ -159,12 +159,10 @@ async function checkConflicts(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
-    const details = conflicts
-      .map((c) => `"${c.name}": kept ${c.kept}, shadowed ${c.shadowed.join(", ")}`)
-      .join("\n");
+    const details = conflicts.map((c) => `"${c.name}": kept ${c.kept}, shadowed ${c.shadowed.join(", ")}`).join("\n")
 
     return {
       id: "skills.conflicts",
@@ -177,7 +175,7 @@ async function checkConflicts(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { conflicts },
-    };
+    }
   } catch (error) {
     return {
       id: "skills.conflicts",
@@ -189,7 +187,7 @@ async function checkConflicts(): Promise<CheckResult> {
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -197,11 +195,11 @@ async function checkConflicts(): Promise<CheckResult> {
  * Check for missing environment variables in loaded skills
  */
 async function checkMissingEnv(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const report = await getAuditReport();
-    const missing = report.missingEnv;
+    const report = await getAuditReport()
+    const missing = report.missingEnv
 
     if (missing.length === 0) {
       return {
@@ -213,13 +211,11 @@ async function checkMissingEnv(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
-    const total = missing.reduce((sum, m) => sum + m.vars.length, 0);
-    const details = missing
-      .map((m) => `${m.skill}: ${m.vars.join(", ")}`)
-      .join("\n");
+    const total = missing.reduce((sum, m) => sum + m.vars.length, 0)
+    const details = missing.map((m) => `${m.skill}: ${m.vars.join(", ")}`).join("\n")
 
     return {
       id: "skills.missing-env",
@@ -232,7 +228,7 @@ async function checkMissingEnv(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { missing },
-    };
+    }
   } catch (error) {
     return {
       id: "skills.missing-env",
@@ -244,7 +240,7 @@ async function checkMissingEnv(): Promise<CheckResult> {
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -252,15 +248,15 @@ async function checkMissingEnv(): Promise<CheckResult> {
  * Check skill frontmatter completeness (extended check)
  */
 async function checkFrontmatterCompleteness(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const report = await getAuditReport();
-    const incomplete: string[] = [];
+    const report = await getAuditReport()
+    const incomplete: string[] = []
 
     for (const skill of report.loaded) {
       if (!skill.name || !skill.description) {
-        incomplete.push(skill.name || skill.location);
+        incomplete.push(skill.name || skill.location)
       }
     }
 
@@ -274,7 +270,7 @@ async function checkFrontmatterCompleteness(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     return {
@@ -288,7 +284,7 @@ async function checkFrontmatterCompleteness(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { incomplete },
-    };
+    }
   } catch (error) {
     return {
       id: "skills.frontmatter",
@@ -300,7 +296,7 @@ async function checkFrontmatterCompleteness(): Promise<CheckResult> {
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -308,17 +304,17 @@ async function checkFrontmatterCompleteness(): Promise<CheckResult> {
  * Run all skill health checks
  */
 export async function runSkillChecks(options: CheckOptions): Promise<CheckResult[]> {
-  cachedReport = undefined;
-  const results: CheckResult[] = [];
+  cachedReport = undefined
+  const results: CheckResult[] = []
 
-  results.push(await checkLoadedSkills());
-  results.push(await checkExclusions());
-  results.push(await checkConflicts());
-  results.push(await checkMissingEnv());
+  results.push(await checkLoadedSkills())
+  results.push(await checkExclusions())
+  results.push(await checkConflicts())
+  results.push(await checkMissingEnv())
 
   if (options.full) {
-    results.push(await checkFrontmatterCompleteness());
+    results.push(await checkFrontmatterCompleteness())
   }
 
-  return results;
+  return results
 }

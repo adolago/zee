@@ -73,12 +73,7 @@ export async function runDueJobs(state: CronServiceState) {
   }
 }
 
-export async function executeJob(
-  state: CronServiceState,
-  job: CronJob,
-  nowMs: number,
-  opts: { forced: boolean },
-) {
+export async function executeJob(state: CronServiceState, job: CronJob, nowMs: number, opts: { forced: boolean }) {
   const startedAt = state.deps.nowMs()
   job.state.runningAtMs = startedAt
   job.state.lastError = undefined
@@ -107,8 +102,7 @@ export async function executeJob(
       state.activeRuns.set(job.id, prev - 1)
     }
 
-    const shouldDelete =
-      job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true
+    const shouldDelete = job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true
 
     if (!shouldDelete) {
       if (job.schedule.kind === "at" && status === "ok") {
@@ -142,8 +136,7 @@ export async function executeJob(
     if (job.sessionTarget === "isolated" && status !== "throttled") {
       const prefix = job.isolation?.postToMainPrefix?.trim() || "Cron"
       const modeRaw = job.isolation?.postToMainMode
-      const mode =
-        modeRaw ?? (job.payload.kind === "toolInvoke" ? ("none" as const) : ("summary" as const))
+      const mode = modeRaw ?? (job.payload.kind === "toolInvoke" ? ("none" as const) : ("summary" as const))
 
       if (mode === "none") {
         return
@@ -192,10 +185,7 @@ export async function executeJob(
         let heartbeatResult: HeartbeatRunResult
         for (;;) {
           heartbeatResult = await state.deps.runHeartbeatOnce({ reason })
-          if (
-            heartbeatResult.status !== "skipped" ||
-            heartbeatResult.reason !== "requests-in-flight"
-          ) {
+          if (heartbeatResult.status !== "skipped" || heartbeatResult.reason !== "requests-in-flight") {
             break
           }
           if (state.deps.nowMs() - waitStartedAt > maxWaitMs) {
@@ -264,9 +254,7 @@ export async function executeJob(
             messages: [],
             metadata: () => {},
             async ask(req: { permission: string }) {
-              throw new Error(
-                `cron toolInvoke cannot request permissions (permission: ${req.permission})`,
-              )
+              throw new Error(`cron toolInvoke cannot request permissions (permission: ${req.permission})`)
             },
           } as any
           const result = await init.execute(validatedArgs, ctx)
@@ -323,10 +311,7 @@ export async function executeJob(
   }
 }
 
-export function wake(
-  state: CronServiceState,
-  opts: { mode: "now" | "next-heartbeat"; text: string },
-) {
+export function wake(state: CronServiceState, opts: { mode: "now" | "next-heartbeat"; text: string }) {
   const text = opts.text.trim()
   if (!text) {
     return { ok: false } as const

@@ -21,10 +21,7 @@ import {
   stopEmbeddedGateway,
 } from "../../gateway/embedded-gateway"
 import { setGatewayHealthState } from "../../gateway/supervisor-state"
-import {
-  startTailscaleExposure,
-  type TailscaleMode,
-} from "../../pkg/tailscale"
+import { startTailscaleExposure, type TailscaleMode } from "../../pkg/tailscale"
 
 const log = Log.create({ service: "daemon" })
 const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
@@ -256,7 +253,10 @@ export namespace Daemon {
             process.exit(0)
           })
           .catch((error) => {
-            log.error("error during signal cleanup", { signal, error: error instanceof Error ? error.message : String(error) })
+            log.error("error during signal cleanup", {
+              signal,
+              error: error instanceof Error ? error.message : String(error),
+            })
             process.exit(1)
           })
       })
@@ -268,11 +268,7 @@ export namespace Daemon {
  * Gateway supervisor - manages embedded Zee gateway runtime
  */
 export namespace GatewaySupervisor {
-  const GATEWAY_ENV_HINTS = [
-    "ZEE_GATEWAY_TOKEN",
-    "ZEE_GATEWAY_PASSWORD",
-    "MATRIX_ACCESS_TOKEN",
-  ]
+  const GATEWAY_ENV_HINTS = ["ZEE_GATEWAY_TOKEN", "ZEE_GATEWAY_PASSWORD", "MATRIX_ACCESS_TOKEN"]
 
   let startInFlight = false
   let isShuttingDown = false
@@ -310,7 +306,6 @@ export namespace GatewaySupervisor {
     daemonUrl?: string
   }
 
-
   function getEnvHints(): string[] {
     const hints: string[] = []
     for (const key of GATEWAY_ENV_HINTS) {
@@ -318,7 +313,6 @@ export namespace GatewaySupervisor {
     }
     return hints
   }
-
 
   async function runPreflight(options: { force: boolean; checkPort: boolean }): Promise<GatewayPreflight> {
     const issues: string[] = []
@@ -345,7 +339,7 @@ export namespace GatewaySupervisor {
         }
       }
       if (snapshot.legacyIssues.length > 0) {
-        warnings.push("Legacy config entries detected (run \"zee doctor\")")
+        warnings.push('Legacy config entries detected (run "zee doctor")')
       }
     } catch (error) {
       issues.push(`Failed to read Zee config: ${String(error)}`)
@@ -562,15 +556,15 @@ function listGatewayProcesses(): Array<{ pid: number; cmd: string }> {
       encoding: "utf-8",
     })
     const lines = output.trim().split("\n").filter(Boolean)
-  return lines
-    .map((line) => {
-      const match = line.match(/^(\d+)\s+(.*)$/)
-      if (!match) return null
-      const cmd = match[2]
-      if (cmd.includes("pgrep")) return null
-      return { pid: Number.parseInt(match[1], 10), cmd }
-    })
-    .filter((entry): entry is { pid: number; cmd: string } => Boolean(entry))
+    return lines
+      .map((line) => {
+        const match = line.match(/^(\d+)\s+(.*)$/)
+        if (!match) return null
+        const cmd = match[2]
+        if (cmd.includes("pgrep")) return null
+        return { pid: Number.parseInt(match[1], 10), cmd }
+      })
+      .filter((entry): entry is { pid: number; cmd: string } => Boolean(entry))
   } catch {
     return []
   }
@@ -743,9 +737,7 @@ export const DaemonCommand = cmd({
 
       if (headless && !allowRestart) {
         UI.info("Headless mode detected; refusing to restart an existing daemon.")
-        UI.info(
-          `Stop the running service first, or set ${ALLOW_RESTART_ENV}=1 to force a restart.`,
-        )
+        UI.info(`Stop the running service first, or set ${ALLOW_RESTART_ENV}=1 to force a restart.`)
         process.exit(DAEMON_ALREADY_RUNNING_EXIT_CODE)
       }
 
@@ -765,7 +757,7 @@ export const DaemonCommand = cmd({
       try {
         if (state?.pid) process.kill(state.pid, "SIGTERM")
         await Daemon.removePidFile()
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
       } catch (e) {
         UI.error(`Failed to stop daemon: ${e}`)
         process.exit(1)
@@ -927,7 +919,7 @@ export const GatewayStatusCommand = cmd({
     const gatewayState = GatewaySupervisor.getState()
     const embeddedState = getEmbeddedGatewayState()
     const configLabel = preflight.configExists
-      ? preflight.configPath ?? "Configured"
+      ? (preflight.configPath ?? "Configured")
       : preflight.configPath
         ? `Not found (${preflight.configPath})`
         : "Not found"
@@ -938,9 +930,7 @@ export const GatewayStatusCommand = cmd({
     Output.log(`  Port:      ${port} (${portOpen ? "listening" : "closed"})`)
     Output.log(`  Daemon:    ${gatewayState.daemonUrl ?? "unknown"}`)
     Output.log(`  Enabled:   ${gatewayState.enabled ? "yes" : "no"}`)
-    Output.log(
-      `  Process:   ${embeddedState.running ? `embedded (pid ${embeddedState.pid ?? process.pid})` : "none"}`,
-    )
+    Output.log(`  Process:   ${embeddedState.running ? `embedded (pid ${embeddedState.pid ?? process.pid})` : "none"}`)
     Output.log(`  Env:       ${preflight.envHints.length ? preflight.envHints.join(", ") : "none"}`)
 
     if (processes.length > 0) {

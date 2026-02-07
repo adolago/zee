@@ -57,9 +57,7 @@ function resolveDaemonUrl(config?: Config.Info): string {
   const direct = process.env.AGENT_CORE_URL ?? process.env.OPENCODE_URL
   if (direct && direct.trim().length > 0) return direct.trim()
   const portEnv = Number(process.env.AGENT_CORE_PORT ?? "")
-  const port =
-    config?.server?.port ??
-    (Number.isFinite(portEnv) && portEnv > 0 ? portEnv : DEFAULT_DAEMON_PORT)
+  const port = config?.server?.port ?? (Number.isFinite(portEnv) && portEnv > 0 ? portEnv : DEFAULT_DAEMON_PORT)
   const hostname = normalizeDaemonHost(config?.server?.hostname ?? "127.0.0.1")
   return `http://${hostname}:${port}`
 }
@@ -87,10 +85,7 @@ async function notifyDaemonAuthChange(config?: Config.Info) {
 /**
  * Add a provider to the global config file.
  */
-async function addProviderToConfig(
-  providerId: string,
-  providerConfig: { options: { baseURL: string } },
-) {
+async function addProviderToConfig(providerId: string, providerConfig: { options: { baseURL: string } }) {
   const configPath = path.join(Global.Path.config, "agent-core.jsonc")
   const file = Bun.file(configPath)
 
@@ -533,9 +528,7 @@ export const AuthListCommand = cmd({
       const missingSkills = skillProviders
         .map((provider) => {
           const entry = skillEntries?.[provider.name] as { apiKey?: string; env?: Record<string, string> } | undefined
-          const missing = provider.envVars.filter((envVar) =>
-            !isSkillEnvSatisfied({ envVar, provider, entry }),
-          )
+          const missing = provider.envVars.filter((envVar) => !isSkillEnvSatisfied({ envVar, provider, entry }))
           return { provider, missing }
         })
         .filter((item) => item.missing.length > 0)
@@ -795,7 +788,8 @@ export const AuthLoginCommand = cmd({
         }
 
         // Check if provider is known (either in LLM models database, unified provider registry, or skill)
-        const knownProvider = provider in providers || getProvider(provider) !== undefined || skillProviderMap.has(provider)
+        const knownProvider =
+          provider in providers || getProvider(provider) !== undefined || skillProviderMap.has(provider)
         if (!knownProvider) {
           provider = provider.replace(/^@ai-sdk\//, "")
           const customPlugin = await Plugin.list().then((x) => x.findLast((x) => x.auth?.provider === provider))
@@ -961,11 +955,7 @@ export const AuthLogoutCommand = cmd({
     const options = [
       ...credentials.map(([key, value]) => ({
         label:
-          (database[key]?.name || AUTH_ONLY_PROVIDERS[key]?.name || key) +
-          UI.Style.TEXT_DIM +
-          " (" +
-          value.type +
-          ")",
+          (database[key]?.name || AUTH_ONLY_PROVIDERS[key]?.name || key) + UI.Style.TEXT_DIM + " (" + value.type + ")",
         value: key,
       })),
       ...configuredSkills.map(([name]) => ({
@@ -1031,7 +1021,9 @@ export const AuthProvidersCommand = cmd({
     }
 
     prompts.log.message("")
-    prompts.log.info(`${UI.Style.TEXT_DIM}Use 'agent-core auth login <provider>' to configure credentials${UI.Style.TEXT_NORMAL}`)
+    prompts.log.info(
+      `${UI.Style.TEXT_DIM}Use 'agent-core auth login <provider>' to configure credentials${UI.Style.TEXT_NORMAL}`,
+    )
     prompts.outro("")
   },
 })

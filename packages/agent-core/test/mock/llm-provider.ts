@@ -575,11 +575,7 @@ export function createMultiToolMockProvider(options: {
   includeSynthesis?: boolean
   toolNames?: string[]
 }) {
-  const {
-    toolCount = 3,
-    includeSynthesis = false,
-    toolNames = ["Read", "Glob", "Grep"],
-  } = options
+  const { toolCount = 3, includeSynthesis = false, toolNames = ["Read", "Glob", "Grep"] } = options
 
   const toolCalls = Array.from({ length: toolCount }, (_, i) => ({
     toolCallId: `call_${String(i + 1).padStart(3, "0")}`,

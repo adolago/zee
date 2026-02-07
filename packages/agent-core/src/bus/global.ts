@@ -11,4 +11,3 @@ export const GlobalBus = new EventEmitter<{
 
 // Prevent memory leak warning during long daemon sessions with many SSE connections
 GlobalBus.setMaxListeners(100)
-

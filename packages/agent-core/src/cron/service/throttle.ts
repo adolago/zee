@@ -47,10 +47,7 @@ export function shouldThrottle(
 
   const maxPer = config.maxPerWindow
   if (typeof maxPer === "number" && maxPer > 0) {
-    const windowMs =
-      typeof dedupWindowMs === "number" && dedupWindowMs > 0
-        ? dedupWindowMs
-        : DEFAULT_WINDOW_MS
+    const windowMs = typeof dedupWindowMs === "number" && dedupWindowMs > 0 ? dedupWindowMs : DEFAULT_WINDOW_MS
     const cutoff = nowMs - windowMs
     const countInWindow = entries.filter((e) => e.sentAtMs >= cutoff).length
     if (countInWindow >= maxPer) {

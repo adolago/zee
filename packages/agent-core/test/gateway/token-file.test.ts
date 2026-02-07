@@ -69,4 +69,3 @@ describe("Zee gateway token file", () => {
     expect(token).toBeUndefined()
   })
 })
-

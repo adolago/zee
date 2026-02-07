@@ -461,12 +461,7 @@ export namespace Config {
         .optional()
         .describe("Environment variables to set when running the MCP server"),
       enabled: z.boolean().optional().describe("Enable or disable the MCP server on startup"),
-      timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Timeout in ms for MCP server requests."),
+      timeout: z.number().int().positive().optional().describe("Timeout in ms for MCP server requests."),
     })
     .strict()
     .meta({
@@ -504,12 +499,7 @@ export namespace Config {
         .describe(
           "OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection.",
         ),
-      timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Timeout in ms for MCP server requests."),
+      timeout: z.number().int().positive().optional().describe("Timeout in ms for MCP server requests."),
     })
     .strict()
     .meta({
@@ -632,7 +622,9 @@ export namespace Config {
           z.enum(["primary", "secondary", "accent", "success", "warning", "error", "info"]),
         ])
         .optional()
-        .describe("Hex color code (e.g., #FF5733) or theme color name (primary, secondary, accent, success, warning, error, info)"),
+        .describe(
+          "Hex color code (e.g., #FF5733) or theme color name (primary, secondary, accent, success, warning, error, info)",
+        ),
       steps: z
         .number()
         .int()
@@ -789,7 +781,11 @@ export namespace Config {
       model_fallback_toggle: z.string().optional().default("f3").describe("Toggle between primary and fallback model"),
       model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle current model as favorite"),
       model_cycle_favorite: z.string().optional().default("f2").describe("Cycle to next favorite model"),
-      model_cycle_favorite_reverse: z.string().optional().default("shift+f2").describe("Cycle to previous favorite model"),
+      model_cycle_favorite_reverse: z
+        .string()
+        .optional()
+        .default("shift+f2")
+        .describe("Cycle to previous favorite model"),
       command_list: z.string().optional().default("<leader>c").describe("List available commands"),
       agent_list: z.string().optional().default("<leader>a").describe("List agents"),
       agent_cycle: z.string().optional().default("tab").describe("Next agent"),
@@ -898,7 +894,11 @@ export namespace Config {
       vim_insert_line_start: z.string().optional().default("shift+i").describe("Enter insert mode at line start"),
       vim_insert_line_end: z.string().optional().default("shift+a").describe("Enter insert mode at line end"),
       vim_insert_below: z.string().optional().default("o").describe("Insert new line below and enter insert mode"),
-      vim_insert_above: z.string().optional().default("shift+o").describe("Insert new line above and enter insert mode"),
+      vim_insert_above: z
+        .string()
+        .optional()
+        .default("shift+o")
+        .describe("Insert new line above and enter insert mode"),
     })
     .strict()
     .meta({
@@ -957,9 +957,7 @@ export namespace Config {
       .boolean()
       .optional()
       .default(true)
-      .describe(
-        "Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work.",
-      ),
+      .describe("Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work."),
   })
 
   /**
@@ -1060,13 +1058,15 @@ export namespace Config {
   })
   export type Layout = z.infer<typeof Layout>
 
-  export const Grammar = z.object({
-    provider: z.literal("languagetool").describe("Grammar checking provider"),
-    username: z.string().optional().describe("LanguageTool username/email"),
-    apiKey: z.string().optional().describe("LanguageTool API key"),
-  }).meta({
-    ref: "GrammarConfig",
-  })
+  export const Grammar = z
+    .object({
+      provider: z.literal("languagetool").describe("Grammar checking provider"),
+      username: z.string().optional().describe("LanguageTool username/email"),
+      apiKey: z.string().optional().describe("LanguageTool API key"),
+    })
+    .meta({
+      ref: "GrammarConfig",
+    })
   export type Grammar = z.infer<typeof Grammar>
 
   export const Provider = ModelsDev.Provider.partial()
@@ -1123,10 +1123,7 @@ export namespace Config {
 
   export const Memory = z
     .object({
-      required: z
-        .boolean()
-        .optional()
-        .describe("Require memory backend availability before prompting"),
+      required: z.boolean().optional().describe("Require memory backend availability before prompting"),
       backend: z.enum(["file", "redis", "qdrant"]).optional().describe("Memory backend"),
       storagePath: z.string().optional().describe("Storage path for file backend"),
       redisUrl: z.string().optional().describe("Redis connection URL"),
@@ -1207,10 +1204,7 @@ export namespace Config {
       tts: z
         .object({
           provider: z.enum(["minimax", "openai"]).optional().describe("TTS provider to use"),
-          auto: z
-            .enum(["always", "never", "on-request"])
-            .optional()
-            .describe("When to automatically speak responses"),
+          auto: z.enum(["always", "never", "on-request"]).optional().describe("When to automatically speak responses"),
           minimax: z
             .object({
               voice: z.string().optional().describe("MiniMax voice ID"),
@@ -1287,10 +1281,7 @@ export namespace Config {
         })
         .optional()
         .describe("Cron job scheduler configuration"),
-      command: z
-        .record(z.string(), Command)
-        .optional()
-        .describe("Command configuration"),
+      command: z.record(z.string(), Command).optional().describe("Command configuration"),
       skills: Skills.optional().describe("Additional skill folder paths"),
       watcher: z
         .object({

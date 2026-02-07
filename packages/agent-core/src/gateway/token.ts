@@ -25,10 +25,7 @@ function isSafeTokenMode(mode: number): boolean {
   return false
 }
 
-async function readTokenFileIfSafe(
-  filepath: string,
-  options?: { log?: Logger },
-): Promise<string | undefined> {
+async function readTokenFileIfSafe(filepath: string, options?: { log?: Logger }): Promise<string | undefined> {
   const safe = Filesystem.sanitizePath(filepath)
   const absolute = path.resolve(safe)
 
@@ -84,4 +81,3 @@ export async function readZeeGatewayTokenFromFile(options?: {
 
   return undefined
 }
-

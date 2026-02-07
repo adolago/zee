@@ -271,7 +271,11 @@ export namespace LLM {
     // Enhanced parameter logging for debugging
     l.info("stream params", {
       temperature: params.temperature,
-      temperatureSource: input.agent.modelParams ? "modelParams" : input.agent.temperature !== undefined ? "agent" : "model",
+      temperatureSource: input.agent.modelParams
+        ? "modelParams"
+        : input.agent.temperature !== undefined
+          ? "agent"
+          : "model",
       topP: params.topP,
       topPSource: input.agent.modelParams ? "modelParams" : input.agent.topP !== undefined ? "agent" : "model",
       topK: params.topK,

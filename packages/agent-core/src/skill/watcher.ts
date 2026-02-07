@@ -75,19 +75,21 @@ export function startSkillWatcher(opts: SkillWatcherOptions): void {
   watchPaths.push(globalClaudeSkills)
 
   // Supplement with Skill.directories() when available (async, best-effort)
-  Skill.directories().then((dirs) => {
-    const newPaths = dirs.filter((d) => !watchPaths.includes(d))
-    if (newPaths.length > 0 && watcher) {
-      watcher.add(newPaths)
-      log.info("skill watcher: added directories from Skill.directories()", {
-        count: newPaths.length,
-      })
-    }
-  }).catch((err) => {
-    log.debug("skill watcher: could not load Skill.directories()", {
-      error: err instanceof Error ? err.message : String(err),
+  Skill.directories()
+    .then((dirs) => {
+      const newPaths = dirs.filter((d) => !watchPaths.includes(d))
+      if (newPaths.length > 0 && watcher) {
+        watcher.add(newPaths)
+        log.info("skill watcher: added directories from Skill.directories()", {
+          count: newPaths.length,
+        })
+      }
     })
-  })
+    .catch((err) => {
+      log.debug("skill watcher: could not load Skill.directories()", {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    })
 
   log.info("starting skill watcher", { paths: watchPaths })
 

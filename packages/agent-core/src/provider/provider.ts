@@ -294,10 +294,11 @@ export namespace Provider {
           video: model.modalities?.output?.includes("video") ?? false,
           pdf: model.modalities?.output?.includes("pdf") ?? false,
         },
-        interleaved: model.interleaved
+        interleaved:
+          model.interleaved ??
           // Anthropic reasoning models always support interleaved thinking natively
           // via @ai-sdk/anthropic, even when models.dev hasn't been updated yet
-          ?? (provider.npm === "@ai-sdk/anthropic" && model.reasoning ? true : false),
+          (provider.npm === "@ai-sdk/anthropic" && model.reasoning ? true : false),
       },
       release_date: model.release_date,
       variants: {},
@@ -339,7 +340,8 @@ export namespace Provider {
     const blocked = new Set([...disabled, ...PROVIDER_BLACKLIST])
     for (const providerID of blocked) {
       if (database[providerID]) {
-        const reason = PROVIDER_BLACKLIST_REASONS[providerID] ?? (disabled.has(providerID) ? "disabled_providers config" : "blocked")
+        const reason =
+          PROVIDER_BLACKLIST_REASONS[providerID] ?? (disabled.has(providerID) ? "disabled_providers config" : "blocked")
         log.debug("provider blocked", { providerID, reason })
         delete database[providerID]
       }
@@ -509,9 +511,7 @@ export namespace Provider {
         const authGetter = () => Auth.get(providerID) as any
         const options = await plugin.auth.loader(authGetter, database[plugin.auth.provider])
         const opts = options ?? {}
-        const patch: Partial<Info> = providers[providerID]
-          ? { options: opts }
-          : { source: "custom", options: opts }
+        const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
 
         // If this is antigravity plugin, set up the provider properly
@@ -720,7 +720,6 @@ export namespace Provider {
           }
         }
       }
-
     }
 
     for (const [providerID, fn] of Object.entries(CUSTOM_LOADERS)) {
@@ -734,9 +733,7 @@ export namespace Provider {
       if (result && (result.autoload || providers[providerID])) {
         if (result.getModel) modelLoaders[providerID] = result.getModel
         const opts = result.options ?? {}
-        const patch: Partial<Info> = providers[providerID]
-          ? { options: opts }
-          : { source: "custom", options: opts }
+        const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
       }
     }
@@ -966,7 +963,7 @@ export namespace Provider {
 
         // Merge configured headers into request headers
         opts.headers = {
-          ...(typeof opts.headers === 'object' ? opts.headers : {}),
+          ...(typeof opts.headers === "object" ? opts.headers : {}),
           ...options["headers"],
         }
 
@@ -1128,7 +1125,9 @@ export namespace Provider {
       }
 
       const models = Object.values(provider.models)
-      const candidates = models.some((m) => m.status !== "deprecated") ? models.filter((m) => m.status !== "deprecated") : models
+      const candidates = models.some((m) => m.status !== "deprecated")
+        ? models.filter((m) => m.status !== "deprecated")
+        : models
       const [fallback] = sortBy(
         candidates,
         [(m) => (m.id.includes("latest") ? 1 : 0), "desc"],
@@ -1200,7 +1199,9 @@ export namespace Provider {
     let model = await getSmallModel(providerID)
     if (!model || model.providerID !== providerID) {
       const models = Object.values(provider.models)
-      const candidates = models.some((m) => m.status !== "deprecated") ? models.filter((m) => m.status !== "deprecated") : models
+      const candidates = models.some((m) => m.status !== "deprecated")
+        ? models.filter((m) => m.status !== "deprecated")
+        : models
       const [fallback] = sortBy(
         candidates,
         [(m) => (m.id.includes("latest") ? 1 : 0), "desc"],

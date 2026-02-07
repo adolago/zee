@@ -140,11 +140,7 @@ export function createClawHubInstaller(client?: ClawHubClient) {
     /** Update a specific installed skill or all installed skills. */
     async update(skillId?: string): Promise<UpdateResult[]> {
       const manifest = readManifest()
-      const toUpdate = skillId
-        ? skillId in manifest.installed
-          ? [skillId]
-          : []
-        : Object.keys(manifest.installed)
+      const toUpdate = skillId ? (skillId in manifest.installed ? [skillId] : []) : Object.keys(manifest.installed)
 
       const results: UpdateResult[] = []
 
@@ -229,9 +225,7 @@ export function createClawHubInstaller(client?: ClawHubClient) {
       // Update manifest
       const fromLabel = entry.persona ?? "shared"
       entry.location = newDir
-      entry.persona = toPersona && VALID_PERSONAS.includes(toPersona as Persona)
-        ? toPersona as Persona
-        : undefined
+      entry.persona = toPersona && VALID_PERSONAS.includes(toPersona as Persona) ? (toPersona as Persona) : undefined
       writeManifest(manifest)
 
       return { ok: true, from: fromLabel, to: toPersona ?? "shared" }

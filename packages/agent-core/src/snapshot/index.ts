@@ -152,7 +152,7 @@ export namespace Snapshot {
             })
           } else {
             log.info("file did not exist in snapshot, deleting", { file })
-            await fs.unlink(file).catch(() => { })
+            await fs.unlink(file).catch(() => {})
           }
         }
         files.add(file)
