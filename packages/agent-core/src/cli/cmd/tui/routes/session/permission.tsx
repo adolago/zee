@@ -316,6 +316,8 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
   const keybind = useKeybind()
   const textareaKeybindings = useTextareaKeybindings()
   const dialog = useDialog()
+  const dimensions = useTerminalDimensions()
+  const narrow = createMemo(() => dimensions().width < 80)
 
   useKeyboard((evt) => {
     if (dialog.stack.length > 0) return
@@ -347,7 +349,7 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
         </box>
       </box>
       <box
-        flexDirection="row"
+        flexDirection={narrow() ? "column" : "row"}
         flexShrink={0}
         paddingTop={1}
         paddingLeft={2}
@@ -355,6 +357,7 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
         paddingBottom={1}
         backgroundColor={theme.backgroundElement}
         justifyContent="space-between"
+        gap={narrow() ? 1 : 0}
       >
         <textarea
           ref={(val: TextareaRenderable) => (input = val)}
@@ -364,7 +367,7 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
           cursorColor={theme.primary}
           keyBindings={textareaKeybindings()}
         />
-        <box flexDirection="row" gap={2} flexShrink={0} marginLeft={1}>
+        <box flexDirection="row" gap={2} flexShrink={0}>
           <text fg={theme.text}>
             enter <span style={{ fg: theme.textMuted }}>confirm</span>
           </text>
@@ -388,6 +391,7 @@ function Prompt<const T extends Record<string, string>>(props: {
   const { theme } = useTheme()
   const keybind = useKeybind()
   const dimensions = useTerminalDimensions()
+  const narrow = createMemo(() => dimensions().width < 80)
   const keys = Object.keys(props.options) as (keyof T)[]
   const [store, setStore] = createStore({
     selected: keys[0],
@@ -457,7 +461,7 @@ function Prompt<const T extends Record<string, string>>(props: {
         {props.body}
       </box>
       <box
-        flexDirection="row"
+        flexDirection={narrow() ? "column" : "row"}
         flexShrink={0}
         gap={1}
         paddingTop={1}
@@ -465,7 +469,7 @@ function Prompt<const T extends Record<string, string>>(props: {
         paddingRight={3}
         paddingBottom={1}
         backgroundColor={theme.backgroundElement}
-        justifyContent="space-between"
+        justifyContent={narrow() ? "flex-start" : "space-between"}
       >
         <box flexDirection="row" gap={1}>
           <For each={keys}>

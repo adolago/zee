@@ -627,10 +627,12 @@ export namespace Config {
         .describe("Hide this subagent from the @ autocomplete menu (default: false, only applies to mode: subagent)"),
       options: z.record(z.string(), z.any()).optional(),
       color: z
-        .string()
-        .regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color format")
+        .union([
+          z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color format"),
+          z.enum(["primary", "secondary", "accent", "success", "warning", "error", "info"]),
+        ])
         .optional()
-        .describe("Hex color code for the agent (e.g., #FF5733)"),
+        .describe("Hex color code (e.g., #FF5733) or theme color name (primary, secondary, accent, success, warning, error, info)"),
       steps: z
         .number()
         .int()
@@ -778,6 +780,11 @@ export namespace Config {
         .optional()
         .default("<leader>/")
         .describe("Toggle code block concealment in messages"),
+      messages_toggle_thinking: z
+        .string()
+        .optional()
+        .default("<leader>i")
+        .describe("Toggle thinking blocks visibility"),
       model_list: z.string().optional().default("<leader>m").describe("List available models"),
       model_fallback_toggle: z.string().optional().default("f3").describe("Toggle between primary and fallback model"),
       model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle current model as favorite"),

@@ -87,16 +87,19 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   let input: InputRenderable
 
   const filtered = createMemo(() => {
-    if (props.skipFilter) {
-      return props.options.filter((x) => x.disabled !== true)
-    }
-    const needle = store.filter.toLowerCase()
-    const result = pipe(
+    const options = pipe(
       props.options,
       filter((x) => x.disabled !== true),
-      (x) => (!needle ? x : fuzzysort.go(needle, x, { keys: ["title", "category"], scoreFn: (a) => Math.max(a[0] ? a[0].score : -Infinity, a[1] ? a[1].score - 100 : -Infinity) }).map((x) => x.obj)),
     )
-    return result
+    if (props.skipFilter) return options
+    const needle = store.filter.toLowerCase()
+    if (!needle) return options
+    return fuzzysort
+      .go(needle, options, {
+        keys: ["title", "category"],
+        scoreFn: (r) => r[0].score * 2 + r[1].score,
+      })
+      .map((x) => x.obj)
   })
 
   // When the filter changes due to how TUI works, the mousemove might still be triggered

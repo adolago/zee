@@ -570,6 +570,7 @@ export function tint(base: RGBA, overlay: RGBA, alpha: number): RGBA {
 function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJson {
   const bg = RGBA.fromHex(colors.defaultBackground ?? colors.palette[0]!)
   const fg = RGBA.fromHex(colors.defaultForeground ?? colors.palette[7]!)
+  const transparent = RGBA.fromInts(0, 0, 0, 0)
   const isDark = mode == "dark"
 
   const col = (i: number) => {
@@ -626,7 +627,7 @@ function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJs
       selectedListItemText: bg,
 
       // Background colors
-      background: bg,
+      background: transparent,
       backgroundPanel: grays[2],
       backgroundElement: grays[3],
       backgroundMenu: grays[3],

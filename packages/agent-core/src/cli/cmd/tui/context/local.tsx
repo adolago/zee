@@ -94,7 +94,14 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         theme.warning,
         theme.primary,
         theme.error,
+        theme.info,
       ])
+
+      const visibleAgents = createMemo(() => {
+        const all = sync.data?.agent
+        if (!all || !Array.isArray(all)) return []
+        return all.filter((x) => !x.hidden)
+      })
 
       // Get persona's accent color from their theme (brighter, more vibrant)
       function getPersonaAccentColor(agentName: string): RGBA | null {
@@ -177,7 +184,21 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           const agent = all.find((x) => x.name.toLowerCase() === name.toLowerCase())
 
           // First check for agent's custom color property
-          if (agent?.color) return RGBA.fromHex(agent.color)
+          if (agent?.color) {
+            if (agent.color.startsWith("#")) return RGBA.fromHex(agent.color)
+            // Theme color name (primary, secondary, accent, success, warning, error, info)
+            const themeColorMap: Record<string, RGBA> = {
+              primary: theme.primary,
+              secondary: theme.secondary,
+              accent: theme.accent,
+              success: theme.success,
+              warning: theme.warning,
+              error: theme.error,
+              info: theme.info,
+            }
+            const themeColor = themeColorMap[agent.color]
+            if (themeColor) return themeColor
+          }
 
           // Check if this is a persona and use their theme's accent color
           const personaColor = getPersonaAccentColor(name)
@@ -188,7 +209,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (rosetta) return RGBA.fromHex(rosetta.accent.hex)
 
           // Fall back to indexed colors for other agents
-          const index = all.findIndex((x) => x.name.toLowerCase() === name.toLowerCase())
+          const visible = visibleAgents()
+          const index = visible.findIndex((x) => x.name.toLowerCase() === name.toLowerCase())
           if (index === -1) return colors()[0]
           return colors()[index % colors().length]
         },

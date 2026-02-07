@@ -2,6 +2,7 @@ import { createMemo, For, Match, Switch } from "solid-js"
 import { useRouteData, useRoute } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
+import { useTerminalDimensions } from "@opentui/solid"
 import type { Session } from "@agent-core/sdk/v2"
 import { useKeybind } from "../../context/keybind"
 import { Locale } from "@/util/locale"
@@ -11,6 +12,8 @@ export function Header() {
   const route = useRouteData("session")
   const sync = useSync()
   const { navigate } = useRoute()
+  const dimensions = useTerminalDimensions()
+  const narrow = createMemo(() => dimensions().width < 80)
   const session = createMemo(() => sync.session.get(route.sessionID)!)
   // Build ancestry chain for breadcrumbs
   const ancestry = createMemo(() => {
@@ -38,7 +41,7 @@ export function Header() {
         <Switch>
           <Match when={session()?.parentID}>
             <box flexDirection="column" gap={0}>
-              <box flexDirection="row" gap={1} alignItems="center">
+              <box flexDirection={narrow() ? "column" : "row"} gap={narrow() ? 0 : 1} alignItems={narrow() ? "flex-start" : "center"}>
                 <For each={ancestry()}>
                   {(ancestor) => (
                     <>

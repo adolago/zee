@@ -52,6 +52,52 @@ test("Agent.get includes color from config", async () => {
   })
 })
 
+test("agent color accepts theme color name 'primary'", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "agent-core.json"),
+        JSON.stringify({
+          $schema: "agent-core",
+          agent: {
+            review: { color: "primary" },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const cfg = await Config.get()
+      expect(cfg.agent?.["review"]?.color).toBe("primary")
+    },
+  })
+})
+
+test("agent color accepts theme color name 'accent'", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "agent-core.json"),
+        JSON.stringify({
+          $schema: "agent-core",
+          agent: {
+            deploy: { color: "accent" },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const cfg = await Config.get()
+      expect(cfg.agent?.["deploy"]?.color).toBe("accent")
+    },
+  })
+})
+
 test("Color.hexToAnsiBold converts valid hex to ANSI", () => {
   const result = Color.hexToAnsiBold("#FFA500")
   expect(result).toBe("\x1b[38;2;255;165;0m\x1b[1m")

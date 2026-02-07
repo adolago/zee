@@ -542,6 +542,17 @@ function App() {
       category: "System",
     },
     {
+      get title() {
+        return kv.get("animations_enabled", true) ? "Disable animations" : "Enable animations"
+      },
+      value: "animations.toggle",
+      onSelect: (dialog) => {
+        kv.set("animations_enabled", !kv.get("animations_enabled", true))
+        dialog.clear()
+      },
+      category: "System",
+    },
+    {
       title: "Help",
       value: "help.show",
       keybind: "help_view",
