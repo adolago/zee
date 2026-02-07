@@ -249,6 +249,18 @@ export namespace Config {
   }
 
   export async function installDependencies(dir: string) {
+    // Benchmarks and certain automation should never mutate user config directories.
+    // This env var is intentionally read at call time (not via Flag) to avoid stale values
+    // when the process sets it after module import.
+    const disableInstall = (() => {
+      const v = process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL?.toLowerCase()
+      return v === "true" || v === "1"
+    })()
+    if (disableInstall) {
+      log.debug("dependency install disabled", { dir })
+      return
+    }
+
     const writable = await isWritable(dir)
     if (!writable) {
       log.debug("config dir is not writable, skipping dependency install", { dir })

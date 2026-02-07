@@ -91,8 +91,11 @@ const MemoryInputSchema = z.object({
 
 const MemorySearchParamsSchema = z.object({
   query: z.string().min(1),
+  mode: z.enum(["auto", "semantic", "keyword", "hybrid"]).optional(),
   limit: z.number().min(1).max(100).optional().default(10),
-  threshold: z.number().min(0).max(1).optional().default(0.5),
+  threshold: z.number().min(0).max(1).optional(),
+  includeVectors: z.boolean().optional().default(false),
+  includeSnippets: z.boolean().optional().default(false),
   category: z.union([MemoryCategorySchema, z.array(MemoryCategorySchema)]).optional(),
   namespace: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
@@ -108,12 +111,19 @@ const MemorySearchResultSchema = z.object({
   entry: MemoryEntrySchema,
   score: z.number(),
   highlights: z.array(z.string()).optional(),
+  snippet: z.string().optional(),
 })
 
 const MemoryStatsSchema = z.object({
   total: z.number(),
   byType: z.record(z.string(), z.number()),
   byCategory: z.record(z.string(), z.number()),
+  fts: z
+    .object({
+      totalEntries: z.number(),
+      dbSizeBytes: z.number(),
+    })
+    .optional(),
 })
 
 // =============================================================================

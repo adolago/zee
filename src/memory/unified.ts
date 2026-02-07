@@ -16,6 +16,7 @@ import { createEmbeddingProvider, createEmbeddingProviderAsync, type EmbeddingCo
 import type {
   MemoryEntry,
   MemoryInput,
+  MemorySearchMode,
   MemorySearchParams,
   MemorySearchResult,
   MemoryCategory,
@@ -498,6 +499,7 @@ export class Memory {
             log.info("SQLite FTS initialized for hybrid search");
           } catch (ftsErr) {
             this.ftsInitFailed = true;
+            this.ftsStore = undefined;
             log.warn("SQLite FTS initialization failed, hybrid search unavailable", {
               error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
             });
@@ -650,6 +652,17 @@ export class Memory {
           parentVersion = prevVersion;
           // Mark old version as superseded
           await this.storage.update(prev.id, { superseded: true });
+          // Keep FTS "current-only": remove superseded entry from keyword index.
+          if (this.ftsStore) {
+            try {
+              this.ftsStore.delete(prev.id);
+            } catch (ftsErr) {
+              log.debug("FTS delete failed for superseded version (non-fatal)", {
+                id: prev.id,
+                error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+              });
+            }
+          }
           // Decrement tree index counts for the old point (it's now superseded)
           // Not needed: tree counts track total non-superseded entries, and we're
           // adding a new one to replace the old, so net change is zero.
@@ -767,7 +780,7 @@ export class Memory {
     return entry;
   }
 
-  /** Search memories semantically */
+  /** Search memories using semantic, keyword, or hybrid retrieval. */
   async search(params: MemorySearchParams): Promise<MemorySearchResult[]> {
     await this.init();
 
@@ -777,12 +790,60 @@ export class Memory {
       return [];
     }
 
-    const queryVector = await this.embedding.embed(params.query);
+    const mode = this.resolveSearchMode(params);
 
-    // Build filter
-    const filter: Record<string, unknown> = {
-      type: "memory",
-    };
+    if (mode === "keyword") {
+      return this.keywordSearch(params);
+    }
+
+    if (mode === "hybrid") {
+      return this.hybridSearchMode(params);
+    }
+
+    // Default: semantic
+    return this.semanticSearch(params);
+  }
+
+  private resolveSearchMode(params: MemorySearchParams): MemorySearchMode {
+    const requested = params.mode ?? "auto";
+
+    if (requested !== "auto") {
+      if ((requested === "keyword" || requested === "hybrid") && !this.ftsStore) {
+        log.debug("FTS unavailable; falling back to semantic search", { requested });
+        return "semantic";
+      }
+      return requested;
+    }
+
+    // Auto mode: use keyword fast-path for identifier-like queries, otherwise hybrid if FTS is available.
+    if (this.ftsStore && this.isLikelyKeywordQuery(params.query)) {
+      return "keyword";
+    }
+
+    if (this.ftsStore) return "hybrid";
+    return "semantic";
+  }
+
+  private isLikelyKeywordQuery(query: string): boolean {
+    const q = query.trim();
+    if (!q) return false;
+
+    // Explicit keyword operators / quoting.
+    if (q.includes("*") || q.includes(":") || q.includes("\"")) return true;
+
+    const tokens = q.split(/\s+/g).filter(Boolean);
+    if (tokens.length > 2) return false;
+
+    const isShort = q.length <= 32;
+    if (!isShort) return false;
+
+    // Single token or identifier-like patterns.
+    if (tokens.length === 1) return true;
+    return /[_\d]/.test(q);
+  }
+
+  private buildSemanticFilter(params: MemorySearchParams): Record<string, unknown> {
+    const filter: Record<string, unknown> = { type: "memory" };
 
     // Namespace filtering: pass namespace: null to search all namespaces
     if (params.namespace === null) {
@@ -801,6 +862,13 @@ export class Memory {
 
     if (params.tags?.length) {
       filter["metadata.tags"] = { $in: params.tags };
+    }
+
+    if (params.timeRange?.start !== undefined || params.timeRange?.end !== undefined) {
+      const createdAtRange: Record<string, number> = {};
+      if (params.timeRange?.start !== undefined) createdAtRange.$gte = params.timeRange.start;
+      if (params.timeRange?.end !== undefined) createdAtRange.$lte = params.timeRange.end;
+      filter.createdAt = createdAtRange;
     }
 
     // Context Tree filters
@@ -851,16 +919,248 @@ export class Memory {
       filter.confidence = confidenceFilter;
     }
 
+    return filter;
+  }
+
+  private matchesSearchParams(entry: MemoryEntry, params: MemorySearchParams): boolean {
+    if (params.namespace !== null) {
+      const ns = params.namespace ?? this.namespace;
+      if (entry.namespace !== ns) return false;
+    }
+
+    if (params.category) {
+      if (Array.isArray(params.category)) {
+        if (!params.category.includes(entry.category)) return false;
+      } else if (entry.category !== params.category) {
+        return false;
+      }
+    }
+
+    if (params.tags?.length) {
+      const tags = entry.metadata?.tags;
+      if (!Array.isArray(tags)) return false;
+      const hasAny = params.tags.some((t) => tags.includes(t));
+      if (!hasAny) return false;
+    }
+
+    if (params.timeRange?.start !== undefined && entry.createdAt < params.timeRange.start) return false;
+    if (params.timeRange?.end !== undefined && entry.createdAt > params.timeRange.end) return false;
+
+    if (params.domain && entry.domain !== params.domain) return false;
+    if (params.topic && entry.topic !== params.topic) return false;
+    if (params.subtopic && entry.subtopic !== params.subtopic) return false;
+
+    if (params.memoryId && entry.memoryId !== params.memoryId) return false;
+
+    // Default: current-only. Treat missing superseded as current for back-compat.
+    if (params.superseded !== undefined) {
+      if (entry.superseded !== params.superseded) return false;
+    } else {
+      if (entry.superseded === true) return false;
+    }
+
+    if (params.kind) {
+      const kind = entry.kind;
+      if (Array.isArray(params.kind)) {
+        if (!kind || !params.kind.includes(kind)) return false;
+      } else if (kind !== params.kind) {
+        return false;
+      }
+    }
+
+    if (params.priority) {
+      const priority = entry.priority;
+      if (Array.isArray(params.priority)) {
+        if (!priority || !params.priority.includes(priority)) return false;
+      } else if (priority !== params.priority) {
+        return false;
+      }
+    }
+
+    if (params.bookmarked !== undefined && entry.bookmarked !== params.bookmarked) return false;
+    if (params.memoryType && entry.memoryType !== params.memoryType) return false;
+
+    if (params.minConfidence !== undefined) {
+      if (typeof entry.confidence !== "number") return false;
+      if (entry.confidence < params.minConfidence) return false;
+    }
+
+    if (params.maxConfidence !== undefined) {
+      if (typeof entry.confidence !== "number") return false;
+      if (entry.confidence > params.maxConfidence) return false;
+    }
+
+    return true;
+  }
+
+  private async semanticSearch(params: MemorySearchParams): Promise<MemorySearchResult[]> {
+    const queryVector = await this.embedding.embed(params.query);
+    const filter = this.buildSemanticFilter(params);
+
+    const limit = params.limit ?? 10;
+    const threshold = params.threshold ?? 0.5;
+
     const results = await this.storage.search(queryVector, {
-      limit: params.limit ?? 10,
-      threshold: params.threshold ?? 0.5,
+      limit,
+      threshold,
       filter,
     });
 
-    return results.map((r) => ({
-      entry: this.pointToEntry({ id: r.id, payload: r.payload }),
-      score: r.score,
-    }));
+    if (!params.includeVectors) {
+      return results.map((r) => ({
+        entry: this.pointToEntry({ id: r.id, payload: r.payload }),
+        score: r.score,
+      }));
+    }
+
+    const ids = results.map((r) => r.id);
+    const fetched = await this.storage.get(ids, { withVector: true });
+    const fetchedMap = new Map(
+      fetched.filter((p): p is NonNullable<typeof p> => !!p).map((p) => [p.id, p]),
+    );
+
+    return results.map((r) => {
+      const point = fetchedMap.get(r.id);
+      return {
+        entry: point ? this.pointToEntry(point) : this.pointToEntry({ id: r.id, payload: r.payload }),
+        score: r.score,
+      };
+    });
+  }
+
+  private async keywordSearch(params: MemorySearchParams): Promise<MemorySearchResult[]> {
+    if (!this.ftsStore) {
+      return this.semanticSearch(params);
+    }
+
+    const limit = params.limit ?? 10;
+    const threshold = params.threshold ?? 0.0;
+    const includeSnippets = params.includeSnippets ?? false;
+    const effectiveNamespace = params.namespace === null ? undefined : (params.namespace ?? this.namespace);
+
+    const keywordResults = this.ftsStore.search(params.query, {
+      limit: Math.min(limit * 5, 200),
+      namespace: effectiveNamespace,
+      category: typeof params.category === "string" ? params.category : undefined,
+      domain: params.domain,
+      topic: params.topic,
+      subtopic: params.subtopic,
+      timeRange: params.timeRange,
+      includeSnippets,
+    }).filter((r) => r.score >= threshold);
+
+    if (keywordResults.length === 0) return [];
+
+    const idMeta = new Map<string, { score: number; snippet?: string }>();
+    for (const r of keywordResults) {
+      idMeta.set(r.id, { score: r.score, snippet: r.snippet });
+    }
+
+    const orderedIds = keywordResults.map((r) => r.id);
+    const withVector = params.includeVectors ?? false;
+
+    const out: MemorySearchResult[] = [];
+    const maxPerCall = 50;
+    const maxTotal = 200;
+    let cursor = 0;
+    let hydrated = 0;
+
+    while (out.length < limit && cursor < orderedIds.length && hydrated < maxTotal) {
+      const batch = orderedIds.slice(cursor, cursor + maxPerCall);
+      cursor += maxPerCall;
+      hydrated += batch.length;
+
+      const points = await this.storage.get(batch, { withVector });
+      for (const point of points) {
+        if (!point || point.payload.type !== "memory") continue;
+        const entry = this.pointToEntry(point);
+        if (!this.matchesSearchParams(entry, params)) continue;
+
+        const meta = idMeta.get(entry.id);
+        if (!meta) continue;
+
+        out.push({
+          entry,
+          score: meta.score,
+          snippet: includeSnippets ? meta.snippet : undefined,
+        });
+        if (out.length >= limit) break;
+      }
+    }
+
+    return out;
+  }
+
+  private async hybridSearchMode(params: MemorySearchParams): Promise<MemorySearchResult[]> {
+    if (!this.ftsStore) {
+      return this.semanticSearch(params);
+    }
+
+    const limit = params.limit ?? 10;
+    const includeSnippets = params.includeSnippets ?? false;
+    const effectiveNamespace = params.namespace === null ? undefined : (params.namespace ?? this.namespace);
+
+    // Vector search (recall) + keyword search (BM25) merged via weights.
+    const [vectorResults, keywordResults] = await Promise.all([
+      this.semanticSearch({
+        ...params,
+        limit: limit * 2,
+        threshold: params.threshold ?? 0.5,
+      }),
+      Promise.resolve(
+        this.ftsStore.search(params.query, {
+          limit: Math.min(limit * 4, 200),
+          namespace: effectiveNamespace,
+          category: typeof params.category === "string" ? params.category : undefined,
+          domain: params.domain,
+          topic: params.topic,
+          subtopic: params.subtopic,
+          timeRange: params.timeRange,
+          includeSnippets,
+        }),
+      ),
+    ]);
+
+    const merged = mergeHybridResults(
+      vectorResults,
+      keywordResults.map((kr) => ({ id: kr.id, score: kr.score, snippet: kr.snippet })),
+      {
+        limit,
+        threshold: params.threshold ?? 0.3,
+      },
+    );
+
+    const missingIds = merged.filter((m) => !m.entry).map((m) => m.id);
+    const withVector = params.includeVectors ?? false;
+    const hydrated = missingIds.length
+      ? await this.storage.get(missingIds.slice(0, 200), { withVector })
+      : [];
+    const hydratedMap = new Map(
+      hydrated.filter((p): p is NonNullable<typeof p> => !!p).map((p) => [p.id, p]),
+    );
+
+    const out: MemorySearchResult[] = [];
+    for (const item of merged) {
+      let entry = item.entry ?? null;
+
+      if (!entry) {
+        const point = hydratedMap.get(item.id);
+        if (!point || point.payload.type !== "memory") continue;
+        entry = this.pointToEntry(point);
+      }
+
+      if (!this.matchesSearchParams(entry, params)) continue;
+
+      out.push({
+        entry,
+        score: item.score,
+        snippet: includeSnippets ? item.snippet : undefined,
+      });
+
+      if (out.length >= limit) break;
+    }
+
+    return out;
   }
 
   /** Get a memory by ID */
@@ -907,6 +1207,16 @@ export class Memory {
   async delete(id: string): Promise<void> {
     await this.init();
     await this.storage.delete([id]);
+    if (this.ftsStore) {
+      try {
+        this.ftsStore.delete(id);
+      } catch (ftsErr) {
+        log.debug("FTS delete failed (non-fatal)", {
+          id,
+          error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+        });
+      }
+    }
   }
 
   /** Delete memories matching filter */
@@ -1084,7 +1394,7 @@ export class Memory {
     }
 
     // Run vector search (always)
-    const vectorResults = await this.search(params);
+    const vectorResults = await this.semanticSearch(params);
 
     // If FTS is not available, return vector results in hybrid format
     if (!this.ftsStore) {
@@ -1099,10 +1409,13 @@ export class Memory {
     // Run keyword search in parallel
     const keywordResults = this.ftsStore.search(params.query, {
       limit: (params.limit ?? 10) * 2, // fetch more for better merge
-      namespace: typeof params.namespace === "string" ? params.namespace : undefined,
+      namespace: params.namespace === null ? undefined : (params.namespace ?? this.namespace),
       category: typeof params.category === "string" ? params.category : undefined,
       domain: params.domain,
       topic: params.topic,
+      subtopic: params.subtopic,
+      timeRange: params.timeRange,
+      includeSnippets: params.includeSnippets ?? false,
     });
 
     // Merge using configurable weights
@@ -1237,8 +1550,38 @@ export class Memory {
 
       if (isCurrent) {
         await this.storage.update(entry.id, { superseded: false });
+        if (this.ftsStore) {
+          try {
+            this.ftsStore.index({
+              id: entry.id,
+              content: entry.content,
+              summary: entry.summary,
+              category: entry.category,
+              namespace: entry.namespace,
+              domain: entry.domain,
+              topic: entry.topic,
+              subtopic: entry.subtopic,
+              createdAt: entry.createdAt,
+            });
+          } catch (ftsErr) {
+            log.debug("FTS re-index failed for rolled-back current version (non-fatal)", {
+              id: entry.id,
+              error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+            });
+          }
+        }
       } else if (shouldBeSuperseded) {
         await this.storage.update(entry.id, { superseded: true });
+        if (this.ftsStore) {
+          try {
+            this.ftsStore.delete(entry.id);
+          } catch (ftsErr) {
+            log.debug("FTS delete failed for rolled-back superseded version (non-fatal)", {
+              id: entry.id,
+              error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+            });
+          }
+        }
       }
     }
 
@@ -2083,6 +2426,7 @@ export class Memory {
     total: number;
     byType: Record<EntryType, number>;
     byCategory: Record<string, number>;
+    fts?: { totalEntries: number; dbSizeBytes: number };
   }> {
     await this.init();
 
@@ -2103,10 +2447,22 @@ export class Memory {
       byCategory[cat] = await this.storage.count({ type: "memory", category: cat });
     }
 
+    let fts: { totalEntries: number; dbSizeBytes: number } | undefined;
+    if (this.ftsStore) {
+      try {
+        fts = this.ftsStore.stats();
+      } catch (ftsErr) {
+        log.debug("FTS stats failed (non-fatal)", {
+          error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+        });
+      }
+    }
+
     return {
       total,
       byType: byType as Record<EntryType, number>,
       byCategory,
+      ...(fts ? { fts } : {}),
     };
   }
 

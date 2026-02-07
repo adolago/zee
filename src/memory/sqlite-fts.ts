@@ -66,6 +66,8 @@ export interface FtsSearchResult {
   namespace?: string
   domain?: string
   topic?: string
+  subtopic?: string
+  createdAt?: number
   /** BM25 rank converted to a 0-1 score */
   score: number
   /** Raw BM25 rank from SQLite (lower is better) */
@@ -215,6 +217,7 @@ export class SqliteFtsStore {
     if (!ftsQuery) return []
 
     const limit = options.limit ?? 20
+    const includeSnippets = options.includeSnippets ?? false
     const conditions: string[] = []
     const params: (string | number)[] = [ftsQuery]
 
@@ -234,14 +237,30 @@ export class SqliteFtsStore {
       conditions.push("topic = ?")
       params.push(options.topic)
     }
+    if (options.subtopic) {
+      conditions.push("subtopic = ?")
+      params.push(options.subtopic)
+    }
+    if (options.timeRange?.start !== undefined) {
+      conditions.push("created_at >= ?")
+      params.push(options.timeRange.start)
+    }
+    if (options.timeRange?.end !== undefined) {
+      conditions.push("created_at <= ?")
+      params.push(options.timeRange.end)
+    }
 
     const where = conditions.length > 0 ? `AND ${conditions.join(" AND ")}` : ""
 
     params.push(limit)
 
+    const snippetExpr = includeSnippets
+      ? "snippet(memory_fts, 1, '<b>', '</b>', '...', 32) as snippet"
+      : "NULL as snippet"
+
     const rows = this.db.query<FtsRow, (string | number)[]>(
-      `SELECT id, content, summary, category, namespace, domain, topic,
-              rank, snippet(memory_fts, 1, '<b>', '</b>', '...', 32) as snippet
+      `SELECT id, content, summary, category, namespace, domain, topic, subtopic, created_at,
+              rank, ${snippetExpr}
        FROM memory_fts
        WHERE memory_fts MATCH ? ${where}
        ORDER BY rank
@@ -256,9 +275,11 @@ export class SqliteFtsStore {
       namespace: row.namespace || undefined,
       domain: row.domain || undefined,
       topic: row.topic || undefined,
+      subtopic: row.subtopic || undefined,
+      createdAt: typeof row.created_at === "number" ? row.created_at : undefined,
       score: bm25RankToScore(row.rank),
       rank: row.rank,
-      snippet: row.snippet || undefined,
+      snippet: includeSnippets ? (row.snippet || undefined) : undefined,
     }))
   }
 
@@ -334,6 +355,9 @@ export interface FtsSearchOptions {
   category?: string
   domain?: string
   topic?: string
+  subtopic?: string
+  timeRange?: { start?: number; end?: number }
+  includeSnippets?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -348,8 +372,10 @@ type FtsRow = {
   namespace: string
   domain: string
   topic: string
+  subtopic: string
+  created_at: number
   rank: number
-  snippet: string
+  snippet: string | null
 }
 
 /**

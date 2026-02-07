@@ -442,7 +442,8 @@ export class QdrantVectorStorage implements VectorStorage {
   }
 
   async get(
-    ids: string[]
+    ids: string[],
+    options?: { withVector?: boolean }
   ): Promise<
     Array<{
       id: string;
@@ -459,7 +460,7 @@ export class QdrantVectorStorage implements VectorStorage {
         {
           ids,
           with_payload: true,
-          with_vector: true,
+          with_vector: options?.withVector ?? false,
         }
       );
 
@@ -593,9 +594,26 @@ export class QdrantVectorStorage implements VectorStorage {
         }
         // Range filter
         else {
-          const range = obj as { lt?: number; gt?: number; lte?: number; gte?: number };
-          if (range.lt !== undefined || range.gt !== undefined ||
-              range.lte !== undefined || range.gte !== undefined) {
+          const range: { lt?: number; gt?: number; lte?: number; gte?: number } = {};
+
+          const setRange = (from: string, to: "lt" | "gt" | "lte" | "gte") => {
+            const v = obj[from];
+            if (typeof v === "number" && Number.isFinite(v)) {
+              range[to] = v;
+            }
+          };
+
+          // Accept both Mongo-style `$lt` and plain `lt`.
+          setRange("lt", "lt");
+          setRange("$lt", "lt");
+          setRange("gt", "gt");
+          setRange("$gt", "gt");
+          setRange("lte", "lte");
+          setRange("$lte", "lte");
+          setRange("gte", "gte");
+          setRange("$gte", "gte");
+
+          if (range.lt !== undefined || range.gt !== undefined || range.lte !== undefined || range.gte !== undefined) {
             must.push({ key, range });
           }
         }
