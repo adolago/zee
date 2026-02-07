@@ -1672,7 +1672,6 @@ function Bash(props: ToolProps<typeof BashTool>) {
   const sync = useSync()
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
   const [expanded, setExpanded] = createSignal(false)
-  const lines = createMemo(() => output().split("\n"))
   const hasOutput = createMemo(() => output().length > 0)
 
   const workdirDisplay = createMemo(() => {
