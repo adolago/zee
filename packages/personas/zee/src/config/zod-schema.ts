@@ -332,6 +332,7 @@ export const ZeeSchema = z
     gateway: z
       .object({
         port: z.number().int().positive().optional(),
+        allowedOrigins: z.array(z.string()).optional(),
         mode: z.union([z.literal("local"), z.literal("remote")]).optional(),
         bind: z
           .union([

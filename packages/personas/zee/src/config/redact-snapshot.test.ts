@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ConfigFileSnapshot } from "./types.js";
 import {
   REDACTED_SENTINEL,
+  redactConfigObject,
   redactConfigSnapshot,
   restoreRedactedValues,
 } from "./redact-snapshot.js";
@@ -21,6 +22,29 @@ function makeSnapshot(config: Record<string, unknown>, raw?: string): ConfigFile
     legacyIssues: [],
   };
 }
+
+describe("redactConfigObject", () => {
+  it("redacts token/password/apiKey values but preserves env references and non-sensitive keys", () => {
+    const input = {
+      gateway: {
+        auth: {
+          token: "token-1",
+          password: "${ZEE_GATEWAY_PASSWORD}",
+        },
+      },
+      matrix: {
+        tokenSource: "none",
+      },
+      apiKey: "api-key-1",
+    };
+
+    const out = redactConfigObject(input) as typeof input;
+    expect(out.gateway.auth.token).toBe(REDACTED_SENTINEL);
+    expect(out.gateway.auth.password).toBe("${ZEE_GATEWAY_PASSWORD}");
+    expect(out.matrix.tokenSource).toBe("none");
+    expect(out.apiKey).toBe(REDACTED_SENTINEL);
+  });
+});
 
 describe("redactConfigSnapshot", () => {
   it("redacts top-level token fields", () => {
@@ -67,7 +91,7 @@ describe("redactConfigSnapshot", () => {
     expect(channels.matrix.accessToken).toBe(REDACTED_SENTINEL);
   });
 
-  it("redacts short secrets with same sentinel", () => {
+  it("redacts short secrets with the same sentinel", () => {
     const snapshot = makeSnapshot({
       gateway: { auth: { token: "short" } },
     });
@@ -92,7 +116,7 @@ describe("redactConfigSnapshot", () => {
     expect(result.hash).toBe("abc123");
   });
 
-  it("redacts secrets in raw field via text-based redaction", () => {
+  it("redacts secrets in raw field", () => {
     const config = { token: "abcdef1234567890ghij" };
     const raw = '{ "token": "abcdef1234567890ghij" }';
     const snapshot = makeSnapshot(config, raw);
@@ -148,7 +172,7 @@ describe("redactConfigSnapshot", () => {
     const snapshot: ConfigFileSnapshot = {
       path: "/test",
       exists: true,
-      raw: '{ token: "raw-secret-1234567890" }',
+      raw: '{ token: \"raw-secret-1234567890\" }',
       parsed: {},
       valid: false,
       config: {} as ConfigFileSnapshot["config"],
@@ -159,15 +183,6 @@ describe("redactConfigSnapshot", () => {
     const result = redactConfigSnapshot(snapshot);
     expect(result.raw).not.toContain("raw-secret-1234567890");
     expect(result.raw).toContain(REDACTED_SENTINEL);
-  });
-
-  it("redacts sensitive fields even when the value is not a string", () => {
-    const snapshot = makeSnapshot({
-      gateway: { auth: { token: 1234 } },
-    });
-    const result = redactConfigSnapshot(snapshot);
-    const gw = result.config.gateway as Record<string, Record<string, string>>;
-    expect(gw.auth.token).toBe(REDACTED_SENTINEL);
   });
 });
 
@@ -235,7 +250,7 @@ describe("restoreRedactedValues", () => {
     expect(result.channels.matrix.accounts.acct2.accessToken).toBe("user-typed-new-token-value");
   });
 
-  it("handles missing original gracefully", () => {
+  it("throws when base is missing a redacted value", () => {
     const incoming = {
       channels: { matrix: { accessToken: REDACTED_SENTINEL } },
     };

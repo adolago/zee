@@ -201,6 +201,17 @@ export type GatewayConfig = {
   /** Single multiplexed port for Gateway WS + HTTP (default: 18789). */
   port?: number;
   /**
+   * Allowed browser Origin(s) for Gateway WebSocket connections.
+   *
+   * Browser clients include an `Origin` header during WebSocket upgrades.
+   * By default the Gateway only accepts browser Origins that match the request
+   * Host (after normalizing loopback aliases like localhost vs 127.0.0.1).
+   *
+   * Use this allowlist when a browser UI is hosted on a different origin
+   * (different scheme/host/port) but still needs to connect to the Gateway.
+   */
+  allowedOrigins?: string[];
+  /**
    * Explicit gateway mode. When set to "remote", local gateway start is disabled.
    * When set to "local", the CLI may start the gateway locally.
    */

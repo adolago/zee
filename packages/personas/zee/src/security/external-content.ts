@@ -13,18 +13,18 @@
  * These are logged for monitoring but content is still processed (wrapped safely).
  */
 const SUSPICIOUS_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?)/i,
-  /disregard\s+(all\s+)?(previous|prior|above)/i,
-  /forget\s+(everything|all|your)\s+(instructions?|rules?|guidelines?)/i,
-  /you\s+are\s+now\s+(a|an)\s+/i,
-  /new\s+instructions?:/i,
-  /system\s*:?\s*(prompt|override|command)/i,
-  /\bexec\b.*command\s*=/i,
-  /elevated\s*=\s*true/i,
-  /rm\s+-rf/i,
-  /delete\s+all\s+(emails?|files?|data)/i,
-  /<\/?system>/i,
-  /\]\s*\n\s*\[?(system|assistant|user)\]?:/i,
+  /ignore\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|prompts?)/i,
+  /disregard\\s+(all\\s+)?(previous|prior|above)/i,
+  /forget\\s+(everything|all|your)\\s+(instructions?|rules?|guidelines?)/i,
+  /you\\s+are\\s+now\\s+(a|an)\\s+/i,
+  /new\\s+instructions?:/i,
+  /system\\s*:?\\s*(prompt|override|command)/i,
+  /\\bexec\\b.*command\\s*=/i,
+  /elevated\\s*=\\s*true/i,
+  /rm\\s+-rf/i,
+  /delete\\s+all\\s+(emails?|files?|data)/i,
+  /<\\/?system>/i,
+  /\\]\\s*\\n\\s*\\[?(system|assistant|user)\\]?:/i,
 ];
 
 /**
@@ -46,6 +46,18 @@ export function detectSuspiciousPatterns(content: string): string[] {
  */
 const EXTERNAL_CONTENT_START = "<<<EXTERNAL_UNTRUSTED_CONTENT>>>";
 const EXTERNAL_CONTENT_END = "<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>";
+
+export function sanitizeExternalContent(content: string): string {
+  // Prevent nested boundary injection inside untrusted content by neutralizing
+  // any boundary markers that appear in the payload itself.
+  return content
+    .replaceAll(EXTERNAL_CONTENT_START, "<<EXTERNAL_UNTRUSTED_CONTENT>>")
+    .replaceAll(EXTERNAL_CONTENT_END, "<<END_EXTERNAL_UNTRUSTED_CONTENT>>");
+}
+
+function sanitizeExternalMetadataValue(value: string): string {
+  return sanitizeExternalContent(value).replace(/\\r?\\n/g, " ").trim();
+}
 
 /**
  * Security warning prepended to external content.
@@ -95,8 +107,8 @@ export type WrapExternalContentOptions = {
 
 export function replaceMarkers(text: string): string {
   return text
-    .replaceAll("\uFF1C", "<")
-    .replaceAll("\uFF1E", ">")
+    .replaceAll("\\uFF1C", "<")
+    .replaceAll("\\uFF1E", ">")
     .replaceAll(EXTERNAL_CONTENT_START, "")
     .replaceAll(EXTERNAL_CONTENT_END, "");
 }
@@ -123,16 +135,19 @@ export function wrapExternalContent(content: string, options: WrapExternalConten
   const sourceLabel = EXTERNAL_SOURCE_LABELS[source] ?? EXTERNAL_SOURCE_LABELS.unknown;
   const metadataLines: string[] = [`Source: ${sourceLabel}`];
 
-  if (sender) {
-    metadataLines.push(`From: ${sender}`);
+  const safeSender = sender ? sanitizeExternalMetadataValue(sender) : "";
+  const safeSubject = subject ? sanitizeExternalMetadataValue(subject) : "";
+  if (safeSender) {
+    metadataLines.push(`From: ${safeSender}`);
   }
-  if (subject) {
-    metadataLines.push(`Subject: ${subject}`);
+  if (safeSubject) {
+    metadataLines.push(`Subject: ${safeSubject}`);
   }
 
-  const metadata = metadataLines.join("\n");
-  const warningBlock = includeWarning ? `${EXTERNAL_CONTENT_WARNING}\n\n` : "";
-  const safeContent = replaceMarkers(content);
+  const metadata = metadataLines.join("\\n");
+  const warningBlock = includeWarning ? `${EXTERNAL_CONTENT_WARNING}\\n\\n` : "";
+
+  const safeContent = sanitizeExternalContent(replaceMarkers(content));
 
   return [
     warningBlock,
@@ -141,7 +156,7 @@ export function wrapExternalContent(content: string, options: WrapExternalConten
     "---",
     safeContent,
     EXTERNAL_CONTENT_END,
-  ].join("\n");
+  ].join("\\n");
 }
 
 /**
@@ -177,7 +192,7 @@ export function buildSafeExternalPrompt(params: {
     contextLines.push(`Received: ${timestamp}`);
   }
 
-  const context = contextLines.length > 0 ? `${contextLines.join(" | ")}\n\n` : "";
+  const context = contextLines.length > 0 ? `${contextLines.join(" | ")}\\n\\n` : "";
 
   return `${context}${wrappedContent}`;
 }
@@ -202,3 +217,4 @@ export function getHookType(sessionKey: string): ExternalContentSource {
   if (sessionKey.startsWith("hook:")) return "webhook";
   return "unknown";
 }
+

@@ -1,3 +1,5 @@
+import JSON5 from "json5";
+
 import type { ConfigFileSnapshot } from "./types.js";
 
 /**
@@ -6,167 +8,97 @@ import type { ConfigFileSnapshot } from "./types.js";
  * sentinel and restore the original value from the on-disk config, so a
  * round-trip through the UI does not corrupt credentials.
  */
-export const REDACTED_SENTINEL = "__AGENT_CORE_REDACTED__";
+export const REDACTED_SENTINEL = "<redacted>";
 
-/**
- * Patterns that identify sensitive config field names.
- *
- * This is intentionally broad because the config contains a mix of core
- * credentials (gateway auth), provider API keys, and channel tokens.
- */
-const SENSITIVE_KEY_PATTERNS = [/token/i, /password/i, /secret/i, /api.?key/i];
+const ENV_REF_RE = /^\\$\\{[A-Z0-9_]+\\}$/;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isEnvReference(value: string): boolean {
+  return ENV_REF_RE.test(value.trim());
+}
 
 function isSensitiveKey(key: string): boolean {
-  return SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(key));
+  const k = key.trim().toLowerCase();
+  if (!k) return false;
+  if (k === "token" || k.endsWith("token")) return true;
+  if (k === "password" || k.endsWith("password")) return true;
+  if (k === "secret" || k.endsWith("secret")) return true;
+  if (k === "apikey" || k.endsWith("apikey")) return true;
+  if (k === "api_key" || k.endsWith("api_key")) return true;
+  return false;
 }
 
-/**
- * Deep-walk an object and replace values whose key matches a sensitive pattern
- * with the redaction sentinel.
- */
-function redactObject(obj: unknown): unknown {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-  if (typeof obj !== "object") {
-    return obj;
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(redactObject);
-  }
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    if (isSensitiveKey(key) && value !== null && value !== undefined) {
-      result[key] = REDACTED_SENTINEL;
-    } else if (typeof value === "object" && value !== null) {
-      result[key] = redactObject(value);
-    } else {
-      result[key] = value;
+function redactValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((entry) => redactValue(entry));
+  if (!isPlainObject(value)) return value;
+
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (isSensitiveKey(key) && typeof child === "string" && child.trim() && !isEnvReference(child)) {
+      out[key] = REDACTED_SENTINEL;
+      continue;
     }
+    out[key] = redactValue(child);
   }
-  return result;
+  return out;
 }
 
-export function redactConfigObject<T>(value: T): T {
-  return redactObject(value) as T;
+export function redactConfigObject<T = unknown>(value: T): T {
+  return redactValue(value) as T;
 }
 
-/**
- * Collect all sensitive string values from a config object.
- * Used for text-based redaction of the raw JSON5 source.
- */
-function collectSensitiveValues(obj: unknown): string[] {
-  const values: string[] = [];
-  if (obj === null || obj === undefined || typeof obj !== "object") {
-    return values;
-  }
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      values.push(...collectSensitiveValues(item));
-    }
-    return values;
-  }
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    if (isSensitiveKey(key) && typeof value === "string" && value.length > 0) {
-      values.push(value);
-    } else if (typeof value === "object" && value !== null) {
-      values.push(...collectSensitiveValues(value));
-    }
-  }
-  return values;
-}
-
-/**
- * Replace known sensitive values in a raw JSON5 string with the sentinel.
- * Values are replaced longest-first to avoid partial matches.
- */
-function redactRawText(raw: string, config: unknown): string {
-  const sensitiveValues = collectSensitiveValues(config);
-  sensitiveValues.sort((a, b) => b.length - a.length);
-  let result = raw;
-  for (const value of sensitiveValues) {
-    const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    result = result.replace(new RegExp(escaped, "g"), REDACTED_SENTINEL);
-  }
-
-  // Also redact raw by key pattern so even invalid/unparsed configs do not leak.
-  const keyValuePattern =
-    /(^|[{\s,])((["'])([^"']+)\3|([A-Za-z0-9_$.-]+))(\s*:\s*)(["'])([^"']*)\7/g;
-  result = result.replace(
-    keyValuePattern,
-    (match, prefix, keyExpr, _keyQuote, keyQuoted, keyBare, sep, valQuote, val) => {
-      const key = (keyQuoted ?? keyBare) as string | undefined;
-      if (!key || !isSensitiveKey(key)) {
-        return match;
-      }
-      if (val === REDACTED_SENTINEL) {
-        return match;
-      }
-      return `${prefix}${keyExpr}${sep}${valQuote}${REDACTED_SENTINEL}${valQuote}`;
-    },
-  );
-
-  return result;
-}
-
-/**
- * Returns a copy of the config snapshot with all sensitive fields
- * replaced by {@link REDACTED_SENTINEL}. The `hash` is preserved
- * (it tracks config identity, not content).
- *
- * Both `config` (the parsed object) and `raw` (the JSON5 source) are scrubbed
- * so no credential can leak through either path.
- */
 export function redactConfigSnapshot(snapshot: ConfigFileSnapshot): ConfigFileSnapshot {
-  const redactedConfig = redactConfigObject(snapshot.config);
-  const redactedRaw = snapshot.raw ? redactRawText(snapshot.raw, snapshot.config) : null;
-  const redactedParsed = snapshot.parsed ? redactConfigObject(snapshot.parsed) : snapshot.parsed;
+  let redactedRaw: string | null = snapshot.raw;
+  if (typeof snapshot.raw === "string") {
+    try {
+      const parsed = JSON5.parse(snapshot.raw) as unknown;
+      const redacted = redactConfigObject(parsed);
+      redactedRaw = JSON.stringify(redacted, null, 2).trimEnd().concat("\\n");
+    } catch {
+      // Avoid leaking secrets when raw can't be parsed.
+      redactedRaw = null;
+    }
+  }
 
   return {
     ...snapshot,
-    config: redactedConfig,
     raw: redactedRaw,
-    parsed: redactedParsed,
+    parsed: redactConfigObject(snapshot.parsed),
+    config: redactConfigObject(snapshot.config),
   };
 }
 
-/**
- * Deep-walk `incoming` and replace any {@link REDACTED_SENTINEL} values
- * (on sensitive keys) with the corresponding value from `original`.
- *
- * This is called by config.set / config.apply / config.patch before writing,
- * so that credentials survive a UI round-trip unmodified.
- */
-export function restoreRedactedValues(incoming: unknown, original: unknown): unknown {
-  if (incoming === null || incoming === undefined) {
-    return incoming;
+function restoreValue(next: unknown, base: unknown, path: string[]): unknown {
+  if (Array.isArray(next)) {
+    const baseArr = Array.isArray(base) ? base : [];
+    return next.map((value, index) => restoreValue(value, baseArr[index], [...path, String(index)]));
   }
-  if (typeof incoming !== "object") {
-    return incoming;
-  }
-  if (Array.isArray(incoming)) {
-    const origArr = Array.isArray(original) ? original : [];
-    return incoming.map((item, i) => restoreRedactedValues(item, origArr[i]));
-  }
-  const orig =
-    original && typeof original === "object" && !Array.isArray(original)
-      ? (original as Record<string, unknown>)
-      : {};
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(incoming as Record<string, unknown>)) {
-    if (isSensitiveKey(key) && value === REDACTED_SENTINEL) {
-      if (!(key in orig)) {
+  if (!isPlainObject(next)) return next;
+
+  const baseObj = isPlainObject(base) ? base : {};
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(next)) {
+    const baseChild = baseObj[key];
+    if (isSensitiveKey(key) && child === REDACTED_SENTINEL) {
+      const hasBaseValue = key in baseObj;
+      if (!hasBaseValue) {
+        const label = path.length > 0 ? `${path.join(".")}.${key}` : key;
         throw new Error(
-          `config write rejected: "${key}" is redacted; set an explicit value instead of ${REDACTED_SENTINEL}`,
+          `config write rejected: \"${label}\" is redacted; set an explicit value instead of ${REDACTED_SENTINEL}`,
         );
       }
-      result[key] = orig[key];
-    } else if (typeof value === "object" && value !== null) {
-      result[key] = restoreRedactedValues(value, orig[key]);
-    } else {
-      result[key] = value;
+      out[key] = baseChild;
+      continue;
     }
+    out[key] = restoreValue(child, baseChild, [...path, key]);
   }
-  return result;
+  return out;
+}
+
+export function restoreRedactedValues<T = unknown>(next: T, base: unknown): T {
+  return restoreValue(next, base, []) as T;
 }
 

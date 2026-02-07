@@ -278,12 +278,21 @@ export function attachGatewayUpgradeHandler(opts: {
     const hostHeader = headerValue(req.headers.host);
     const originCheck = checkBrowserOrigin({ origin, hostHeader, allowlist: allowedOrigins });
     if (!originCheck.ok) {
+      const body = "Forbidden";
       try {
-        socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+        socket.end(
+          [
+            "HTTP/1.1 403 Forbidden",
+            "Connection: close",
+            "Content-Type: text/plain; charset=utf-8",
+            `Content-Length: ${Buffer.byteLength(body, "utf8")}`,
+            "",
+            body,
+          ].join("\r\n"),
+        );
       } catch {
-        /* ignore */
+        socket.destroy();
       }
-      socket.destroy();
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {

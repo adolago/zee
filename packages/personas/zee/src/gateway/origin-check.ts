@@ -1,36 +1,44 @@
 export type OriginCheckResult = { ok: true } | { ok: false; reason: string };
 
-export function normalizeHostHeader(hostHeader: string | undefined): string | undefined {
+function normalizeHost(rawHost: string): string {
+  const host = rawHost.trim().toLowerCase();
+  if (!host) return "";
+  if (host === "localhost") return "loopback";
+  if (host === "::1") return "loopback";
+  if (host === "0:0:0:0:0:0:0:1") return "loopback";
+  if (host.startsWith("127.")) return "loopback";
+  if (host.startsWith("::ffff:127.")) return "loopback";
+  return host;
+}
+
+function resolvePortFromProtocol(protocol: string): string {
+  return protocol === "https:" ? "443" : "80";
+}
+
+function resolvePort(url: URL): string {
+  return url.port || resolvePortFromProtocol(url.protocol);
+}
+
+function normalizeHostHeader(hostHeader: string | undefined): string | undefined {
   if (typeof hostHeader !== "string") return undefined;
   const trimmed = hostHeader.trim();
   if (!trimmed) return undefined;
   // Defensive: some proxies may produce comma-delimited host headers.
-  return trimmed.split(",")[0]!.trim().toLowerCase();
+  return trimmed.split(",")[0]!.trim();
 }
 
-export function resolveHostName(hostOrUrl: string | undefined): string | undefined {
-  if (typeof hostOrUrl !== "string") return undefined;
-  const raw = hostOrUrl.trim();
-  if (!raw) return undefined;
-
-  if (raw.includes("://")) {
-    try {
-      return new URL(raw).hostname.trim().toLowerCase();
-    } catch {
-      // Fall through to host:port parsing.
-    }
+function parseHostHeader(value: string): { hostname: string; port: string | null } | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(`http://${trimmed}`);
+    return { hostname: parsed.hostname, port: parsed.port || null };
+  } catch {
+    return null;
   }
-
-  if (raw.startsWith("[")) {
-    const end = raw.indexOf("]");
-    if (end > 1) return raw.slice(1, end).trim().toLowerCase();
-  }
-
-  const host = raw.includes(":") ? raw.split(":", 1)[0]! : raw;
-  return host.trim().toLowerCase();
 }
 
-export function parseOrigin(origin: string): URL | null {
+function parseOrigin(origin: string): URL | null {
   const trimmed = origin.trim();
   if (!trimmed || trimmed === "null") return null;
   try {
@@ -42,38 +50,21 @@ export function parseOrigin(origin: string): URL | null {
   }
 }
 
-export function isLoopbackHost(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase();
-  if (!host) return false;
-  if (host === "localhost") return true;
-  if (host === "::1") return true;
-  if (host === "0:0:0:0:0:0:0:1") return true;
-  // 127.0.0.0/8
-  if (/^127(?:\.\d{1,3}){3}$/.test(host)) return true;
-  return false;
-}
-
-function isAllowlisted(originUrl: URL, allowlist?: string[]): boolean {
+function isAllowlisted(originKey: string, allowlist?: string[]): boolean {
   if (!Array.isArray(allowlist) || allowlist.length === 0) return false;
 
   for (const entry of allowlist) {
     if (typeof entry !== "string") continue;
     const trimmed = entry.trim();
     if (!trimmed) continue;
-
-    if (trimmed.includes("://")) {
-      try {
-        const allowedUrl = new URL(trimmed);
-        if (allowedUrl.origin === originUrl.origin) return true;
-      } catch {
-        // Ignore invalid allowlist entries.
-      }
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      const allowedKey = `${normalizeHost(url.hostname)}:${resolvePort(url)}`;
+      if (allowedKey === originKey) return true;
+    } catch {
+      // Ignore invalid allowlist entries.
       continue;
-    }
-
-    const allowedHost = resolveHostName(trimmed);
-    if (allowedHost && allowedHost === originUrl.hostname.trim().toLowerCase()) {
-      return true;
     }
   }
 
@@ -91,29 +82,29 @@ export function checkBrowserOrigin(params: {
     return { ok: true };
   }
 
-  const parsedOrigin = parseOrigin(originRaw);
-  if (!parsedOrigin) {
+  const originUrl = parseOrigin(originRaw);
+  if (!originUrl) {
     return { ok: false, reason: "invalid-origin" };
   }
 
-  if (isAllowlisted(parsedOrigin, params.allowlist)) {
+  const originKey = `${normalizeHost(originUrl.hostname)}:${resolvePort(originUrl)}`;
+
+  if (isAllowlisted(originKey, params.allowlist)) {
     return { ok: true };
   }
 
   const normalizedHostHeader = normalizeHostHeader(params.hostHeader);
-  const requestHost = resolveHostName(normalizedHostHeader);
-  if (!requestHost) {
+  const host = normalizedHostHeader ? parseHostHeader(normalizedHostHeader) : null;
+  if (!host) {
     return { ok: false, reason: "missing-host" };
   }
 
-  const originHost = parsedOrigin.hostname.trim().toLowerCase();
-  if (originHost === requestHost) {
-    return { ok: true };
-  }
-
-  if (isLoopbackHost(originHost) && isLoopbackHost(requestHost)) {
+  const requestPort = host.port ?? resolvePortFromProtocol(originUrl.protocol);
+  const requestKey = `${normalizeHost(host.hostname)}:${requestPort}`;
+  if (requestKey === originKey) {
     return { ok: true };
   }
 
   return { ok: false, reason: "origin-mismatch" };
 }
+
