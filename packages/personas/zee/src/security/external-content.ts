@@ -13,18 +13,18 @@
  * These are logged for monitoring but content is still processed (wrapped safely).
  */
 const SUSPICIOUS_PATTERNS = [
-  /ignore\\s+(all\\s+)?(previous|prior|above)\\s+(instructions?|prompts?)/i,
-  /disregard\\s+(all\\s+)?(previous|prior|above)/i,
-  /forget\\s+(everything|all|your)\\s+(instructions?|rules?|guidelines?)/i,
-  /you\\s+are\\s+now\\s+(a|an)\\s+/i,
-  /new\\s+instructions?:/i,
-  /system\\s*:?\\s*(prompt|override|command)/i,
-  /\\bexec\\b.*command\\s*=/i,
-  /elevated\\s*=\\s*true/i,
-  /rm\\s+-rf/i,
-  /delete\\s+all\\s+(emails?|files?|data)/i,
-  /<\\/?system>/i,
-  /\\]\\s*\\n\\s*\\[?(system|assistant|user)\\]?:/i,
+  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|prompts?)/i,
+  /disregard\s+(all\s+)?(previous|prior|above)/i,
+  /forget\s+(everything|all|your)\s+(instructions?|rules?|guidelines?)/i,
+  /you\s+are\s+now\s+(a|an)\s+/i,
+  /new\s+instructions?:/i,
+  /system\s*:?\s*(prompt|override|command)/i,
+  /\bexec\b.*command\s*=/i,
+  /elevated\s*=\s*true/i,
+  /rm\s+-rf/i,
+  /delete\s+all\s+(emails?|files?|data)/i,
+  /<\/?system>/i,
+  /\]\s*\n\s*\[?(system|assistant|user)\]?:/i,
 ];
 
 /**
@@ -56,7 +56,7 @@ export function sanitizeExternalContent(content: string): string {
 }
 
 function sanitizeExternalMetadataValue(value: string): string {
-  return sanitizeExternalContent(value).replace(/\\r?\\n/g, " ").trim();
+  return sanitizeExternalContent(value).replace(/\r?\n/g, " ").trim();
 }
 
 /**
@@ -107,8 +107,8 @@ export type WrapExternalContentOptions = {
 
 export function replaceMarkers(text: string): string {
   return text
-    .replaceAll("\\uFF1C", "<")
-    .replaceAll("\\uFF1E", ">")
+    .replaceAll("\uFF1C", "<")
+    .replaceAll("\uFF1E", ">")
     .replaceAll(EXTERNAL_CONTENT_START, "")
     .replaceAll(EXTERNAL_CONTENT_END, "");
 }
@@ -144,8 +144,8 @@ export function wrapExternalContent(content: string, options: WrapExternalConten
     metadataLines.push(`Subject: ${safeSubject}`);
   }
 
-  const metadata = metadataLines.join("\\n");
-  const warningBlock = includeWarning ? `${EXTERNAL_CONTENT_WARNING}\\n\\n` : "";
+  const metadata = metadataLines.join("\n");
+  const warningBlock = includeWarning ? `${EXTERNAL_CONTENT_WARNING}\n\n` : "";
 
   const safeContent = sanitizeExternalContent(replaceMarkers(content));
 
@@ -156,7 +156,7 @@ export function wrapExternalContent(content: string, options: WrapExternalConten
     "---",
     safeContent,
     EXTERNAL_CONTENT_END,
-  ].join("\\n");
+  ].join("\n");
 }
 
 /**
@@ -192,7 +192,7 @@ export function buildSafeExternalPrompt(params: {
     contextLines.push(`Received: ${timestamp}`);
   }
 
-  const context = contextLines.length > 0 ? `${contextLines.join(" | ")}\\n\\n` : "";
+  const context = contextLines.length > 0 ? `${contextLines.join(" | ")}\n\n` : "";
 
   return `${context}${wrappedContent}`;
 }

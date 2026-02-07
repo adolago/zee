@@ -10,7 +10,7 @@ import type { ConfigFileSnapshot } from "./types.js";
  */
 export const REDACTED_SENTINEL = "<redacted>";
 
-const ENV_REF_RE = /^\\$\\{[A-Z0-9_]+\\}$/;
+const ENV_REF_RE = /^\$\{[A-Z0-9_]+\}$/;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -56,7 +56,7 @@ export function redactConfigSnapshot(snapshot: ConfigFileSnapshot): ConfigFileSn
     try {
       const parsed = JSON5.parse(snapshot.raw) as unknown;
       const redacted = redactConfigObject(parsed);
-      redactedRaw = JSON.stringify(redacted, null, 2).trimEnd().concat("\\n");
+      redactedRaw = JSON.stringify(redacted, null, 2).trimEnd().concat("\n");
     } catch {
       // Avoid leaking secrets when raw can't be parsed.
       redactedRaw = null;
@@ -101,4 +101,3 @@ function restoreValue(next: unknown, base: unknown, path: string[]): unknown {
 export function restoreRedactedValues<T = unknown>(next: T, base: unknown): T {
   return restoreValue(next, base, []) as T;
 }
-
