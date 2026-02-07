@@ -374,12 +374,14 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.daemonBridge.timeoutMs": "HTTP timeout in milliseconds for daemon requests.",
   "gateway.daemonBridge.createSession":
     "Auto-create new daemon sessions when no mapping exists (default: true).",
-  "canvasHost.enabled": "Enable the Canvas file server used by nodes for Canvas/A2UI (default: true).",
-  "canvasHost.root": "Directory of HTML/CSS/JS files served at `/__zee__/canvas/` (default: ~/zee/canvas).",
+  "canvasHost.enabled":
+    "Enable the Canvas file server used by nodes for Canvas/A2UI (default: true). Requires gateway auth (token/password).",
+  "canvasHost.root":
+    "Directory of HTML/CSS/JS files served at `/__zee__/canvas/` (default: ~/zee/canvas). Canvas access requires gateway auth.",
   "canvasHost.port":
-    "Port for the Canvas host HTTP server (default: gateway port + 4; env override: ZEE_CANVAS_HOST_PORT).",
+    "Port for the Canvas host HTTP server (default: gateway port + 4; env override: ZEE_CANVAS_HOST_PORT). Canvas access requires gateway auth (Authorization: Bearer or ?auth=... to set an HttpOnly cookie).",
   "canvasHost.liveReload":
-    "When true (default), watches the canvas directory and triggers browser reloads over `/__zee__/ws`.",
+    "When true (default), watches the canvas directory and triggers browser reloads over `/__zee__/ws` (auth required).",
   "agents.list[].identity.avatar":
     "Avatar image path (relative to the agent workspace only) or a remote URL/data URL.",
   "discovery.mdns.mode":

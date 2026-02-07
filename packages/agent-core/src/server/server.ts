@@ -456,11 +456,13 @@ export namespace Server {
   }
 
   export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
+    // Only update server-global bind state after we've validated that the bind is safe.
+    // This prevents failed binds (e.g. non-loopback without auth) from polluting subsequent
+    // in-process requests, which is particularly important for unit tests.
     assertSafeServerBind({ hostname: opts.hostname })
 
-    // Only update server mode state after we know the bind is allowed.
-    // This prevents failed Server.listen calls (e.g. bind-guard tests) from
-    // leaking non-loopback behavior into subsequent requests.
+    const previousCorsWhitelist = _corsWhitelist
+    const previousIsLoopbackBind = _isLoopbackBind
     _corsWhitelist = opts.cors ?? []
     _isLoopbackBind = isLoopbackHostname(opts.hostname)
 
@@ -487,7 +489,11 @@ export namespace Server {
       }
     }
     const server = opts.port === 0 ? (tryServe(DEFAULT_API_PORT) ?? tryServe(0)) : tryServe(opts.port)
-    if (!server) throw new Error(`Failed to start server on port ${opts.port}`)
+    if (!server) {
+      _corsWhitelist = previousCorsWhitelist
+      _isLoopbackBind = previousIsLoopbackBind
+      throw new Error(`Failed to start server on port ${opts.port}`)
+    }
 
     ServerState.setUrl(server.url)
 

@@ -9,18 +9,30 @@ import { WebSocketServer, type WebSocket } from "ws";
 
 import type { RuntimeEnv } from "../runtime.js";
 import { isTruthyEnvValue } from "../infra/env.js";
+import { checkBrowserOrigin } from "../gateway/origin-check.js";
 import { SafeOpenError, openFileWithinRoot } from "../infra/fs-safe.js";
 import { detectMime } from "../media/mime.js";
 import { ensureDir, resolveUserPath } from "../utils.js";
 import {
+  A2UI_PATH,
+  AGENT_A2UI_PATH,
+  AGENT_CANVAS_HOST_PATH,
+  AGENT_CANVAS_WS_PATH,
   CANVAS_HOST_PATH,
   CANVAS_WS_PATH,
   handleA2uiHttpRequest,
   injectCanvasLiveReload,
 } from "./a2ui.js";
+import {
+  authorizeCanvasHostRequest,
+  resolveCanvasAuthSecret,
+  sendCanvasHostUnauthorized,
+  type CanvasHostAuth,
+} from "./auth.js";
 
 export type CanvasHostOpts = {
   runtime: RuntimeEnv;
+  auth?: CanvasHostAuth;
   rootDir?: string;
   port?: number;
   listenHost?: string;
@@ -41,6 +53,7 @@ export type CanvasHostServer = {
 
 export type CanvasHostHandlerOpts = {
   runtime: RuntimeEnv;
+  auth?: CanvasHostAuth;
   rootDir?: string;
   basePath?: string;
   allowInTests?: boolean;
@@ -205,7 +218,8 @@ async function prepareCanvasRoot(rootDir: string) {
 
 export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Promise<CanvasHostHandler> {
   const basePath = normalizeBasePath(opts.basePath);
-  const basePaths = [basePath];
+  const basePaths =
+    basePath === CANVAS_HOST_PATH ? [CANVAS_HOST_PATH, AGENT_CANVAS_HOST_PATH] : [basePath];
   if (isDisabledByEnv() && opts.allowInTests !== true) {
     return {
       rootDir: "",
@@ -276,8 +290,47 @@ export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Prom
   const handleUpgrade = (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     if (!wss) return false;
     const url = new URL(req.url ?? "/", "http://localhost");
-    if (url.pathname !== CANVAS_WS_PATH) {
+    if (url.pathname !== CANVAS_WS_PATH && url.pathname !== AGENT_CANVAS_WS_PATH) {
       return false;
+    }
+
+    const headerValue = (value: string | string[] | undefined) =>
+      Array.isArray(value) ? value[0] : value;
+    const origin = headerValue(req.headers.origin);
+    const hostHeader = headerValue(req.headers.host);
+
+    const originCheck = checkBrowserOrigin({ origin, hostHeader });
+    if (!originCheck.ok) {
+      try {
+        socket.write(
+          "HTTP/1.1 403 Forbidden\r\n" +
+            "Content-Type: text/plain; charset=utf-8\r\n" +
+            "Connection: close\r\n" +
+            "\r\n" +
+            "Forbidden",
+        );
+      } catch {
+        // Best-effort; fall through to destroy.
+      }
+      socket.destroy();
+      return true;
+    }
+
+    const authRes = authorizeCanvasHostRequest({ req, auth: opts.auth });
+    if (!authRes.ok) {
+      try {
+        socket.write(
+          "HTTP/1.1 403 Forbidden\r\n" +
+            "Content-Type: text/plain; charset=utf-8\r\n" +
+            "Connection: close\r\n" +
+            "\r\n" +
+            "Forbidden",
+        );
+      } catch {
+        // Best-effort; fall through to destroy.
+      }
+      socket.destroy();
+      return true;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
@@ -291,7 +344,7 @@ export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Prom
 
     try {
       const url = new URL(urlRaw, "http://localhost");
-      if (url.pathname === CANVAS_WS_PATH) {
+      if (url.pathname === CANVAS_WS_PATH || url.pathname === AGENT_CANVAS_WS_PATH) {
         res.statusCode = liveReload ? 426 : 404;
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
         res.end(liveReload ? "upgrade required" : "not found");
@@ -311,8 +364,16 @@ export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Prom
         }
       }
 
+      const authRes = authorizeCanvasHostRequest({ req, res, auth: opts.auth });
+      if (!authRes.ok) {
+        sendCanvasHostUnauthorized(res);
+        return true;
+      }
+
       if (req.method !== "GET" && req.method !== "HEAD") {
         res.statusCode = 405;
+        res.setHeader("Referrer-Policy", "no-referrer");
+        res.setHeader("X-Content-Type-Options", "nosniff");
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
         res.end("Method Not Allowed");
         return true;
@@ -322,11 +383,15 @@ export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Prom
       if (!opened) {
         if (urlPath === "/" || urlPath.endsWith("/")) {
           res.statusCode = 404;
+          res.setHeader("Referrer-Policy", "no-referrer");
+          res.setHeader("X-Content-Type-Options", "nosniff");
           res.setHeader("Content-Type", "text/html; charset=utf-8");
           res.end(`<!doctype html><meta charset="utf-8" /><title>Zee Canvas</title><pre>Missing file.\nCreate ${rootDir}/index.html</pre>`);
           return true;
         }
         res.statusCode = 404;
+        res.setHeader("Referrer-Policy", "no-referrer");
+        res.setHeader("X-Content-Type-Options", "nosniff");
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
         res.end("not found");
         return true;
@@ -346,6 +411,8 @@ export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Prom
           ? "text/html"
           : ((await detectMime({ filePath: realPath })) ?? "application/octet-stream");
       res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      res.setHeader("X-Content-Type-Options", "nosniff");
 
       if (mime === "text/html") {
         const html = data.toString("utf8");
@@ -387,10 +454,18 @@ export async function startCanvasHost(opts: CanvasHostServerOpts): Promise<Canva
     return { port: 0, rootDir: "", close: async () => {} };
   }
 
+  if (!resolveCanvasAuthSecret(opts.auth)) {
+    opts.runtime.error(
+      "canvas host auth is not configured; refusing to start (set gateway.auth.token/password or ZEE_GATEWAY_TOKEN/ZEE_GATEWAY_PASSWORD)",
+    );
+    return { port: 0, rootDir: "", close: async () => {} };
+  }
+
   const handler =
     opts.handler ??
     (await createCanvasHostHandler({
       runtime: opts.runtime,
+      auth: opts.auth,
       rootDir: opts.rootDir,
       basePath: CANVAS_HOST_PATH,
       allowInTests: opts.allowInTests,
@@ -403,6 +478,19 @@ export async function startCanvasHost(opts: CanvasHostServerOpts): Promise<Canva
   const server = http.createServer((req, res) => {
     if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") return;
     void (async () => {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      const isA2ui =
+        url.pathname === A2UI_PATH ||
+        url.pathname.startsWith(`${A2UI_PATH}/`) ||
+        url.pathname === AGENT_A2UI_PATH ||
+        url.pathname.startsWith(`${AGENT_A2UI_PATH}/`);
+      if (isA2ui) {
+        const authRes = authorizeCanvasHostRequest({ req, res, auth: opts.auth });
+        if (!authRes.ok) {
+          sendCanvasHostUnauthorized(res);
+          return;
+        }
+      }
       if (await handleA2uiHttpRequest(req, res)) return;
       if (await handler.handleHttpRequest(req, res)) return;
       res.statusCode = 404;
