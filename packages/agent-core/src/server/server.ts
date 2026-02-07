@@ -456,10 +456,14 @@ export namespace Server {
   }
 
   export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
-    _corsWhitelist = opts.cors ?? []
-    _isLoopbackBind = isLoopbackHostname(opts.hostname)
+    const nextCorsWhitelist = opts.cors ?? []
+    const nextIsLoopbackBind = isLoopbackHostname(opts.hostname)
 
+    // Guardrails can throw; don't mutate global server state if bind is rejected.
     assertSafeServerBind({ hostname: opts.hostname })
+
+    _corsWhitelist = nextCorsWhitelist
+    _isLoopbackBind = nextIsLoopbackBind
 
     const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
     const args = {

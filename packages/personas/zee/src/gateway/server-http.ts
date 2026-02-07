@@ -25,6 +25,7 @@ import { applyHookMappings } from "./hooks-mapping.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
+import { checkBrowserOrigin } from "./origin-check.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
@@ -266,6 +267,27 @@ export function attachGatewayUpgradeHandler(opts: {
 }) {
   const { httpServer, wss } = opts;
   httpServer.on("upgrade", (req, socket, head) => {
+    const origin = typeof req.headers.origin === "string" ? req.headers.origin : undefined;
+    if (origin) {
+      const cfg = loadConfig();
+      const allowlist = cfg.gateway?.allowedOrigins ?? [];
+      const hostHeader = typeof req.headers.host === "string" ? req.headers.host : undefined;
+      const ok = checkBrowserOrigin({ origin, hostHeader, allowlist });
+      if (!ok) {
+        const body = "Forbidden";
+        socket.end(
+          [
+            "HTTP/1.1 403 Forbidden",
+            "Connection: close",
+            "Content-Type: text/plain; charset=utf-8",
+            `Content-Length: ${Buffer.byteLength(body, "utf8")}`,
+            "",
+            body,
+          ].join("\r\n"),
+        );
+        return;
+      }
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
     });

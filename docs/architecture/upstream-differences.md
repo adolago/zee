@@ -147,6 +147,28 @@ OpenCode’s “server mode” is about a client/server split for the coding age
 
 This section tracks discrete upstream-delta triage "lanes" between agent-core's Zee gateway subset (`packages/personas/zee/`) and OpenClaw (`openclaw/openclaw`).
 
+### Lane 01: Gateway control plane (WS protocol, auth, events)
+
+Source tracking issue: `adolago/agent-core#224`.
+
+Comparison snapshot used for triage (historical context):
+
+- agent-core: `1942d6fe01bc4e497856e25af500b05f805d7d98`
+- openclaw/openclaw: `aaddbdae52d71bff3a74fa28dd6597816e2d7592`
+
+Triage outcome:
+
+| Upstream PR / commit | Title | Decision | agent-core location |
+| --- | --- | --- | --- |
+| openclaw/openclaw#9858 | Redact credentials from gateway config.get responses | Ported | `packages/personas/zee/src/gateway/server-methods/config.ts`, `packages/personas/zee/src/config/redact-snapshot.ts` |
+| openclaw commit `66d8117d` | Harden WebSocket origin checks | Ported (adapted to Zee gateway) | `packages/personas/zee/src/gateway/server-http.ts`, `packages/personas/zee/src/gateway/origin-check.ts` |
+| openclaw commit `35eb40a7` | Treat channel/group metadata as untrusted content | Ported | `packages/personas/zee/src/auto-reply/reply/groups.ts`, `packages/personas/zee/src/security/channel-metadata.ts`, `packages/personas/zee/src/security/external-content.ts` |
+
+Notes:
+
+- Configure `gateway.allowedOrigins` when connecting from a different browser origin (for example a dev server on `http://127.0.0.1:5173`).
+- Config RPC responses use the sentinel `<redacted>` for sensitive keys; config writes restore `<redacted>` values from the current on-disk config to avoid accidental secret loss.
+
 ### Lane 12: Onboarding + daemon install + operational CLI
 
 Source tracking issue: `adolago/agent-core#235`.

@@ -1,3 +1,7 @@
+import fs from "node:fs";
+
+import JSON5 from "json5";
+
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/agent-scope.js";
 import {
   CONFIG_PATH,
@@ -7,9 +11,12 @@ import {
   resolveConfigSnapshotHash,
   validateConfigObjectWithPlugins,
   writeConfigFile,
+  type ZeeConfig,
 } from "../../config/config.js";
+import { resolveConfigIncludes } from "../../config/includes.js";
 import { applyLegacyMigrations } from "../../config/legacy.js";
 import { applyMergePatch } from "../../config/merge-patch.js";
+import { redactConfigObject, restoreRedactedValues } from "../../config/redact-snapshot.js";
 import { buildConfigSchema } from "../../config/schema.js";
 import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
 import {
@@ -82,6 +89,32 @@ function requireConfigBaseHash(
   return true;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function resolveConfigWriteBase(
+  snapshot: Awaited<ReturnType<typeof readConfigFileSnapshot>>,
+): Record<string, unknown> {
+  if (!snapshot.exists) return {};
+  if (!isPlainObject(snapshot.parsed)) return {};
+
+  let resolved: unknown = snapshot.parsed;
+  try {
+    resolved = resolveConfigIncludes(snapshot.parsed, snapshot.path, {
+      readFile: (p) => fs.readFileSync(p, "utf-8"),
+      parseJson: (raw) => JSON5.parse(raw),
+    });
+  } catch {
+    resolved = snapshot.parsed;
+  }
+
+  const migrated = applyLegacyMigrations(resolved);
+  const base = migrated.next ?? resolved;
+  if (!isPlainObject(base)) return {};
+  return base;
+}
+
 export const configHandlers: GatewayRequestHandlers = {
   "config.get": async ({ params, respond }) => {
     if (!validateConfigGetParams(params)) {
@@ -96,7 +129,19 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
     const snapshot = await readConfigFileSnapshot();
-    respond(true, snapshot, undefined);
+    const baseConfig = resolveConfigWriteBase(snapshot);
+    const redactedBase = redactConfigObject(baseConfig) as ZeeConfig;
+    const raw = snapshot.exists ? JSON.stringify(redactedBase, null, 2).trimEnd().concat("\n") : null;
+    respond(
+      true,
+      {
+        ...snapshot,
+        raw,
+        parsed: redactedBase,
+        config: redactedBase,
+      },
+      undefined,
+    );
   },
   "config.schema": ({ params, respond }) => {
     if (!validateConfigSchemaParams(params)) {
@@ -156,6 +201,7 @@ export const configHandlers: GatewayRequestHandlers = {
     if (!requireConfigBaseHash(params, snapshot, respond)) {
       return;
     }
+    const baseConfig = resolveConfigWriteBase(snapshot);
     const rawValue = (params as { raw?: unknown }).raw;
     if (typeof rawValue !== "string") {
       respond(
@@ -181,13 +227,20 @@ export const configHandlers: GatewayRequestHandlers = {
       );
       return;
     }
-    await writeConfigFile(validated.config);
+    let restored: ZeeConfig;
+    try {
+      restored = restoreRedactedValues(validated.config, baseConfig);
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, String(err)));
+      return;
+    }
+    await writeConfigFile(restored);
     respond(
       true,
       {
         ok: true,
         path: CONFIG_PATH,
-        config: validated.config,
+        config: redactConfigObject(restored),
       },
       undefined,
     );
@@ -216,6 +269,7 @@ export const configHandlers: GatewayRequestHandlers = {
       );
       return;
     }
+    const baseConfig = resolveConfigWriteBase(snapshot);
     const rawValue = (params as { raw?: unknown }).raw;
     if (typeof rawValue !== "string") {
       respond(
@@ -245,10 +299,17 @@ export const configHandlers: GatewayRequestHandlers = {
       );
       return;
     }
-    const merged = applyMergePatch(snapshot.config, parsedRes.parsed);
+    const merged = applyMergePatch(baseConfig, parsedRes.parsed);
     const migrated = applyLegacyMigrations(merged);
     const resolved = migrated.next ?? merged;
-    const validated = validateConfigObjectWithPlugins(resolved);
+    let restored: unknown;
+    try {
+      restored = restoreRedactedValues(resolved, baseConfig);
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, String(err)));
+      return;
+    }
+    const validated = validateConfigObjectWithPlugins(restored);
     if (!validated.ok) {
       respond(
         false,
@@ -302,7 +363,7 @@ export const configHandlers: GatewayRequestHandlers = {
       {
         ok: true,
         path: CONFIG_PATH,
-        config: validated.config,
+        config: redactConfigObject(validated.config),
         restart,
         sentinel: {
           path: sentinelPath,
@@ -328,6 +389,7 @@ export const configHandlers: GatewayRequestHandlers = {
     if (!requireConfigBaseHash(params, snapshot, respond)) {
       return;
     }
+    const baseConfig = resolveConfigWriteBase(snapshot);
     const rawValue = (params as { raw?: unknown }).raw;
     if (typeof rawValue !== "string") {
       respond(
@@ -356,7 +418,14 @@ export const configHandlers: GatewayRequestHandlers = {
       );
       return;
     }
-    await writeConfigFile(validated.config);
+    let restored: ZeeConfig;
+    try {
+      restored = restoreRedactedValues(validated.config, baseConfig);
+    } catch (err) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, String(err)));
+      return;
+    }
+    await writeConfigFile(restored);
 
     const sessionKey =
       typeof (params as { sessionKey?: unknown }).sessionKey === "string"
@@ -399,7 +468,7 @@ export const configHandlers: GatewayRequestHandlers = {
       {
         ok: true,
         path: CONFIG_PATH,
-        config: validated.config,
+        config: redactConfigObject(restored),
         restart,
         sentinel: {
           path: sentinelPath,

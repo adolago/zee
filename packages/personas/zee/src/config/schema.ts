@@ -157,6 +157,7 @@ const FIELD_LABELS: Record<string, string> = {
   "gateway.daemonBridge.createSession": "Daemon Bridge Auto-Create Sessions",
   "gateway.auth.token": "Gateway Token",
   "gateway.auth.password": "Gateway Password",
+  "gateway.allowedOrigins": "Gateway Allowed Origins",
   canvasHost: "Canvas Host",
   "canvasHost.enabled": "Canvas Host Enabled",
   "canvasHost.root": "Canvas Root Directory",
@@ -374,6 +375,8 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.daemonBridge.timeoutMs": "HTTP timeout in milliseconds for daemon requests.",
   "gateway.daemonBridge.createSession":
     "Auto-create new daemon sessions when no mapping exists (default: true).",
+  "gateway.allowedOrigins":
+    "Browser WebSocket Origin allowlist (array of origins like https://example.com). Use when a browser UI connects from a different origin than the Gateway host.",
   "canvasHost.enabled": "Enable the Canvas file server used by nodes for Canvas/A2UI (default: true).",
   "canvasHost.root": "Directory of HTML/CSS/JS files served at `/__zee__/canvas/` (default: ~/zee/canvas).",
   "canvasHost.port":
@@ -604,6 +607,7 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "gateway.remote.sshTarget": "user@host",
   "gateway.daemonBridge.url": "http://127.0.0.1:3210",
   "gateway.daemonBridge.sessionStore": "~/.zee/gateway/daemon-sessions.json",
+  "gateway.allowedOrigins": "http://127.0.0.1:5173",
   "agents.list[].identity.avatar": "avatars/zee.png",
 };
 
