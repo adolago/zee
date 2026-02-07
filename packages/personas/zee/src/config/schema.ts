@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { CHANNEL_IDS } from "../channels/registry.js";
 import { VERSION } from "../version.js";
 import { ZeeSchema } from "./zod-schema.js";
@@ -15,7 +17,7 @@ export type ConfigUiHint = {
 
 export type ConfigUiHints = Record<string, ConfigUiHint>;
 
-export type ConfigSchema = ReturnType<typeof ZeeSchema.toJSONSchema>;
+export type ConfigSchema = Record<string, unknown>;
 
 type JsonSchemaNode = Record<string, unknown>;
 
@@ -871,10 +873,10 @@ function stripChannelSchema(schema: ConfigSchema): ConfigSchema {
 
 function buildBaseConfigSchema(): ConfigSchemaResponse {
   if (cachedBase) return cachedBase;
-  const schema = ZeeSchema.toJSONSchema({
-    target: "draft-07",
+  const schema = z.toJSONSchema(ZeeSchema, {
+    target: "draft-7",
     unrepresentable: "any",
-  });
+  }) as ConfigSchema;
   schema.title = "ZeeConfig";
   const hints = applySensitiveHints(buildBaseHints());
   const next = {
