@@ -24,6 +24,22 @@ import { Bus } from "@/bus"
 export namespace Config {
   const log = Log.create({ service: "config" })
 
+  // Managed settings directory for enterprise deployments (highest priority, admin-controlled).
+  // These settings override all user and project settings.
+  function getManagedConfigDir(): string {
+    switch (process.platform) {
+      case "darwin":
+        return "/Library/Application Support/agent-core"
+      case "win32":
+        return path.join(process.env.ProgramData || "C:\\ProgramData", "agent-core")
+      default:
+        return "/etc/agent-core"
+    }
+  }
+
+  const managedConfigDir =
+    process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR || process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || getManagedConfigDir()
+
   // Custom merge function that concatenates array fields instead of replacing them
   function mergeConfigConcatArrays(target: Info, source: Info): Info {
     const merged = mergeDeep(target, source)
@@ -159,6 +175,20 @@ export namespace Config {
       result.agent = mergeDeep(result.agent, await loadAgent(safeDir))
       result.agent = mergeDeep(result.agent, await loadMode(safeDir))
       result.plugin.push(...(await loadPlugin(safeDir)))
+    }
+
+    // Load managed config files last (highest precedence) - enterprise admin-controlled.
+    // Kept separate from directories to avoid writes (plugin install) to system directories
+    // requiring elevated permissions.
+    const safeManagedConfigDir = Filesystem.sanitizePath(managedConfigDir)
+    if (existsSync(safeManagedConfigDir)) {
+      for (const file of ["agent-core.jsonc", "agent-core.json"]) {
+        result = mergeConfigConcatArrays(result, await loadFile(path.join(safeManagedConfigDir, file)))
+        // to satisfy the type checker
+        result.agent ??= {}
+        result.mode ??= {}
+        result.plugin ??= []
+      }
     }
 
     // Migrate deprecated mode field to agent field

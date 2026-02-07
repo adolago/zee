@@ -7,6 +7,17 @@ import path from "path"
 import fs from "fs/promises"
 import { pathToFileURL } from "url"
 
+const managedConfigDir = process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR!
+
+async function writeManagedSettings(settings: object, filename = "agent-core.json") {
+  await fs.mkdir(managedConfigDir, { recursive: true })
+  await Bun.write(path.join(managedConfigDir, filename), JSON.stringify(settings))
+}
+
+async function writeProjectConfig(dir: string, config: object, name = "agent-core.json") {
+  await Bun.write(path.join(dir, name), JSON.stringify(config))
+}
+
 test("loads config with defaults when no files exist", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
@@ -100,6 +111,83 @@ test("merges multiple config files with correct precedence", async () => {
       const config = await Config.get()
       expect(config.model).toBe("override")
       expect(config.username).toBe("base")
+    },
+  })
+})
+
+test("managed settings override user settings", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeProjectConfig(dir, {
+        $schema: "agent-core",
+        model: "user/model",
+        share: "auto",
+        username: "testuser",
+      })
+    },
+  })
+
+  await writeManagedSettings({
+    $schema: "agent-core",
+    model: "managed/model",
+    share: "disabled",
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.model).toBe("managed/model")
+      expect(config.share).toBe("disabled")
+      expect(config.username).toBe("testuser")
+    },
+  })
+})
+
+test("managed settings override project settings", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeProjectConfig(dir, {
+        $schema: "agent-core",
+        autoupdate: true,
+        disabled_providers: [],
+        theme: "dark",
+      })
+    },
+  })
+
+  await writeManagedSettings({
+    $schema: "agent-core",
+    autoupdate: false,
+    disabled_providers: ["openai"],
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.autoupdate).toBe(false)
+      expect(config.disabled_providers).toEqual(["openai"])
+      expect(config.theme).toBe("dark")
+    },
+  })
+})
+
+test("missing managed settings file is not an error", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeProjectConfig(dir, {
+        $schema: "agent-core",
+        model: "user/model",
+      })
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.model).toBe("user/model")
     },
   })
 })

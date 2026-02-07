@@ -107,7 +107,7 @@ if (typeof fsSync.openSync === "function") {
   fsSync.openSync = wrapOpenSync(fsSync.openSync)
 }
 
-const dir = path.join(os.tmpdir(), "opencode-test-data-" + process.pid)
+const dir = path.join(os.tmpdir(), "agent-core-test-data-" + process.pid)
 await fs.mkdir(dir, { recursive: true })
 afterAll(() => {
   fsSync.rmSync(dir, { recursive: true, force: true })
@@ -122,6 +122,9 @@ process.env["XDG_DATA_HOME"] = path.join(dir, "share")
 process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
 process.env["XDG_CONFIG_HOME"] = path.join(dir, "config")
 process.env["XDG_STATE_HOME"] = path.join(dir, "state")
+
+const managedConfigDir = path.join(dir, "managed-config")
+process.env["AGENT_CORE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
 
 // Server auth breaks most unit tests (they don't send Authorization headers).
 process.env["AGENT_CORE_DISABLE_SERVER_AUTH"] = "true"
@@ -199,6 +202,8 @@ Log.init({
 // Clean up global state between tests to prevent state pollution
 afterEach(async () => {
   try {
+    await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
+
     // 1. Dispose all Instance contexts and their associated State
     await Instance.disposeAll()
 
