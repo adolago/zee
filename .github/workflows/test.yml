@@ -44,7 +44,7 @@ jobs:
         run: npm install -g pnpm@10.23.0
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
         working-directory: packages/personas/zee
 
       - name: Test
