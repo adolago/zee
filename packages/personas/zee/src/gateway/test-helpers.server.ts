@@ -180,16 +180,16 @@ export function installGatewayTestHooks(options?: { scope?: "test" | "suite" }) 
     beforeAll(async () => {
       await setupGatewayTestHome();
       await resetGatewayTestState({ uniqueConfigRoot: true });
-    });
+    }, 60_000);
     beforeEach(async () => {
       await resetGatewayTestState({ uniqueConfigRoot: true });
     }, 60_000);
     afterEach(async () => {
       await cleanupGatewayTestHome({ restoreEnv: false });
-    });
+    }, 60_000);
     afterAll(async () => {
       await cleanupGatewayTestHome({ restoreEnv: true });
-    });
+    }, 60_000);
     return;
   }
 
@@ -200,7 +200,7 @@ export function installGatewayTestHooks(options?: { scope?: "test" | "suite" }) 
 
   afterEach(async () => {
     await cleanupGatewayTestHome({ restoreEnv: true });
-  });
+  }, 60_000);
 }
 
 export async function getFreePort(): Promise<number> {
