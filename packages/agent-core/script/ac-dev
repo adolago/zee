@@ -255,11 +255,14 @@ DAEMON_ENV_BASE=(
     AGENT_CORE_ROOT="$MONOREPO_ROOT"
     AGENT_CORE_HEADLESS=1
 )
-if [[ -n "${ZEE_GATEWAY_TOKEN:-}" ]]; then
-    DAEMON_ENV_BASE+=(ZEE_GATEWAY_TOKEN="$ZEE_GATEWAY_TOKEN")
-fi
-if [[ -f "$DAEMON_ENV_FILE" ]]; then
+# Source daemon.env first, then override ZEE_GATEWAY_TOKEN after so the
+# correct token from zee.json always wins over any stale daemon.env value.
+if [[ -f "$DAEMON_ENV_FILE" ]] && [[ -n "${ZEE_GATEWAY_TOKEN:-}" ]]; then
+    DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'set -a; source "$1"; set +a; export ZEE_GATEWAY_TOKEN="$2"; shift 2; exec "$@"' _ "$DAEMON_ENV_FILE" "$ZEE_GATEWAY_TOKEN")
+elif [[ -f "$DAEMON_ENV_FILE" ]]; then
     DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'set -a; source "$0"; set +a; exec "$@"' "$DAEMON_ENV_FILE")
+elif [[ -n "${ZEE_GATEWAY_TOKEN:-}" ]]; then
+    DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'export ZEE_GATEWAY_TOKEN="$1"; shift; exec "$@"' _ "$ZEE_GATEWAY_TOKEN")
 else
     DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'exec "$@"' bash)
 fi

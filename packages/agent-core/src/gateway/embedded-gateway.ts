@@ -71,16 +71,13 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
       gatewayLock = await acquireGatewayLock()
       gatewayServer = await startGatewayServer(port)
 
-      // Sync the resolved gateway auth token into the env so that
-      // buildGatewayConnectParams() (WS client) uses the exact same
-      // token the gateway server validates against. Both run in-process,
-      // so process.env is shared.
-      if (!process.env.ZEE_GATEWAY_TOKEN) {
-        const cfg = loadConfig()
-        const auth = resolveGatewayAuth({ authConfig: cfg.gateway?.auth })
-        if (auth.token) {
-          process.env.ZEE_GATEWAY_TOKEN = auth.token
-        }
+      // Always sync the server's resolved token into process.env so the
+      // in-process WS client authenticates with the exact same credential.
+      // This must overwrite any stale env value (e.g. from daemon.env).
+      const cfg = loadConfig()
+      const auth = resolveGatewayAuth({ authConfig: cfg.gateway?.auth })
+      if (auth.token) {
+        process.env.ZEE_GATEWAY_TOKEN = auth.token
       }
 
       log.info("embedded gateway started", { port })
