@@ -1,9 +1,13 @@
 export function getFilename(path: string | undefined) {
   if (!path) return ""
-  const trimmed = path.replace(/[\/\\]+$/, "")
-  const lastSlashIndex = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"))
-  if (lastSlashIndex === -1) return trimmed
-  return trimmed.slice(lastSlashIndex + 1)
+  let end = path.length
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) {
+    end--
+  }
+  if (end === 0) return ""
+  const lastSlashIndex = Math.max(path.lastIndexOf("/", end - 1), path.lastIndexOf("\\", end - 1))
+  if (lastSlashIndex === -1) return path.slice(0, end)
+  return path.slice(lastSlashIndex + 1, end)
 }
 
 export function getDirectory(path: string | undefined) {
