@@ -17,6 +17,7 @@ import { runConfigChecks } from "./checks/config";
 import { runProviderChecks } from "./checks/providers";
 import { runIntegrityChecks } from "./checks/integrity";
 import { runSkillChecks } from "./checks/skills";
+import { runSecurityChecks } from "./checks/security";
 
 /** Default options for the check engine */
 const DEFAULT_OPTIONS: CheckOptions = {
@@ -100,6 +101,7 @@ export class CheckEngine {
       providers: () => runProviderChecks(this.options),
       integrity: () => runIntegrityChecks(this.options),
       skills: () => runSkillChecks(this.options),
+      security: () => runSecurityChecks(this.options),
     };
 
     try {
@@ -141,6 +143,7 @@ export class CheckEngine {
       providers: { status: "ok", passed: 0, total: 0, checks: [] },
       integrity: { status: "ok", passed: 0, total: 0, checks: [] },
       skills: { status: "ok", passed: 0, total: 0, checks: [] },
+      security: { status: "ok", passed: 0, total: 0, checks: [] },
     };
 
     let passed = 0,

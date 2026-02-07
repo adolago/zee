@@ -7,7 +7,7 @@
 export type CheckStatus = "pass" | "warn" | "fail" | "skip";
 
 /** Categories for grouping checks */
-export type CheckCategory = "runtime" | "config" | "providers" | "integrity" | "skills";
+export type CheckCategory = "runtime" | "config" | "providers" | "integrity" | "skills" | "security";
 
 /** Severity levels for check results */
 export type Severity = "info" | "warning" | "error" | "critical";

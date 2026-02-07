@@ -87,7 +87,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       // - Zee: zeeAccent (#6995E8)
       // - Stanley: stanleyAccent (#78E89C)
       // - Johny: johnyAccent (#E87D6E)
-      const colors = createMemo(() => [
+      const colors = createMemo((): RGBA[] => [
         theme.secondary,
         theme.accent,
         theme.success,
@@ -178,9 +178,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             if (value) setAgentStore("current", value.name)
           })
         },
-        color(name: string) {
+        color(name: string): RGBA {
           const all = sync.data?.agent
-          if (!all || !Array.isArray(all)) return colors()[0]
+          if (!all || !Array.isArray(all)) return colors()[0]!
           const agent = all.find((x) => x.name.toLowerCase() === name.toLowerCase())
 
           // First check for agent's custom color property
@@ -211,8 +211,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           // Fall back to indexed colors for other agents
           const visible = visibleAgents()
           const index = visible.findIndex((x) => x.name.toLowerCase() === name.toLowerCase())
-          if (index === -1) return colors()[0]
-          return colors()[index % colors().length]
+          if (index === -1) return colors()[0]!
+          return colors()[index % colors().length]!
         },
       }
     })

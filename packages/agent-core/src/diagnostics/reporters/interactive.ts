@@ -70,6 +70,7 @@ const CATEGORY_NAMES: Record<CheckCategory, string> = {
   providers: "Providers",
   integrity: "Integrity",
   skills: "Skills",
+  security: "Security",
 };
 
 export class InteractiveReporter {
