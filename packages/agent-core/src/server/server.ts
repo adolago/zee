@@ -455,11 +455,19 @@ export namespace Server {
     }
   }
 
-  export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
+  export function listen(opts: {
+    port: number
+    hostname: string
+    mdns?: MdnsOption
+    mdnsDomain?: string
+    cors?: string[]
+  }) {
+    assertSafeServerBind({ hostname: opts.hostname })
+
+    // Only mutate server runtime state after bind-safety checks pass.
+    // This prevents failed listen attempts from leaking state into subsequent requests/tests.
     _corsWhitelist = opts.cors ?? []
     _isLoopbackBind = isLoopbackHostname(opts.hostname)
-
-    assertSafeServerBind({ hostname: opts.hostname })
 
     const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
     const args = {
@@ -493,7 +501,7 @@ export namespace Server {
     const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
 
     if (shouldPublishMDNS) {
-      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal })
+      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal, domain: opts.mdnsDomain })
     } else if (mdnsConfig.enabled && isLoopback) {
       log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
     }

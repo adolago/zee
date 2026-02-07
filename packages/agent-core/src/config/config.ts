@@ -24,6 +24,19 @@ import { Bus } from "@/bus"
 export namespace Config {
   const log = Log.create({ service: "config" })
 
+  function getManagedConfigDir(): string {
+    switch (process.platform) {
+      case "darwin":
+        return "/Library/Application Support/agent-core"
+      case "win32":
+        return path.join(process.env.ProgramData || "C:\\ProgramData", "agent-core")
+      default:
+        return "/etc/agent-core"
+    }
+  }
+
+  const managedConfigDir = process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR || getManagedConfigDir()
+
   // Custom merge function that concatenates array fields instead of replacing them
   function mergeConfigConcatArrays(target: Info, source: Info): Info {
     const merged = mergeDeep(target, source)
@@ -161,8 +174,17 @@ export namespace Config {
       result.plugin.push(...(await loadPlugin(safeDir)))
     }
 
+    // Load managed config files last (highest priority) -- enterprise admin-controlled
+    // Kept separate from directories to avoid write operations (plugin installs)
+    // that would fail on system directories requiring elevated permissions
+    if (existsSync(managedConfigDir)) {
+      for (const file of ["agent-core.jsonc", "agent-core.json"]) {
+        result = mergeConfigConcatArrays(result, await loadFile(path.join(managedConfigDir, file)))
+      }
+    }
+
     // Migrate deprecated mode field to agent field
-    for (const [name, mode] of Object.entries(result.mode)) {
+    for (const [name, mode] of Object.entries(result.mode ?? {})) {
       result.agent = mergeDeep(result.agent ?? {}, {
         [name]: {
           ...mode,
@@ -987,6 +1009,7 @@ export namespace Config {
         .union([z.boolean(), MdnsConfig])
         .optional()
         .describe("Enable mDNS service discovery (boolean or detailed config)"),
+      mdnsDomain: z.string().optional().describe("Custom domain name for mDNS service (default: agent-core.local)"),
       cors: z.array(z.string()).optional().describe("Additional domains to allow for CORS"),
       allowedDirectories: z
         .array(z.string())

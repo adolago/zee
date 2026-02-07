@@ -28,7 +28,7 @@ export async function onTimer(state: CronServiceState) {
   state.running = true;
   try {
     await locked(state, async () => {
-      await ensureLoaded(state);
+      await ensureLoaded(state, { forceReload: true });
       await runDueJobs(state);
       await persist(state);
     });
@@ -38,15 +38,67 @@ export async function onTimer(state: CronServiceState) {
   }
 }
 
-export async function runDueJobs(state: CronServiceState) {
-  if (!state.store) return;
-  const now = state.deps.nowMs();
-  const due = state.store.jobs.filter((j) => {
+export function findDueJobs(state: CronServiceState, nowMs: number): CronJob[] {
+  if (!state.store) return [];
+  return state.store.jobs.filter((j) => {
     if (!j.enabled) return false;
     if (typeof j.state.runningAtMs === "number") return false;
     const next = j.state.nextRunAtMs;
-    return typeof next === "number" && now >= next;
+    return typeof next === "number" && nowMs >= next;
   });
+}
+
+export async function runMissedJobs(state: CronServiceState) {
+  if (!state.store) return;
+  const now = state.deps.nowMs();
+  const due = findDueJobs(state, now);
+  if (due.length === 0) return;
+
+  // Claim all due jobs before running any of them. This prevents parallel schedulers
+  // (e.g., multiple processes) from double-firing due jobs.
+  const startedAt = state.deps.nowMs();
+  const prevMarkers = new Map<string, number | undefined>();
+  for (const job of due) {
+    prevMarkers.set(job.id, job.state.runningAtMs);
+    job.state.runningAtMs = startedAt;
+  }
+  try {
+    await persist(state);
+  } catch (err) {
+    for (const job of due) {
+      job.state.runningAtMs = prevMarkers.get(job.id);
+    }
+    throw err;
+  }
+
+  for (const job of due) {
+    await executeJob(state, job, now, { forced: false });
+  }
+}
+
+export async function runDueJobs(state: CronServiceState) {
+  if (!state.store) return;
+  const now = state.deps.nowMs();
+  const due = findDueJobs(state, now);
+  if (due.length === 0) return;
+
+  // Claim all due jobs before running any of them. This prevents parallel schedulers
+  // (e.g., multiple processes) from double-firing due jobs.
+  const startedAt = state.deps.nowMs();
+  const prevMarkers = new Map<string, number | undefined>();
+  for (const job of due) {
+    prevMarkers.set(job.id, job.state.runningAtMs);
+    job.state.runningAtMs = startedAt;
+  }
+  try {
+    await persist(state);
+  } catch (err) {
+    for (const job of due) {
+      job.state.runningAtMs = prevMarkers.get(job.id);
+    }
+    throw err;
+  }
+
   for (const job of due) {
     await executeJob(state, job, now, { forced: false });
   }
@@ -64,6 +116,8 @@ export async function executeJob(
   emit(state, { jobId: job.id, action: "started", runAtMs: startedAt });
 
   let deleted = false;
+  let sessionId: string | undefined;
+  let sessionKey: string | undefined;
 
   const finish = async (
     status: "ok" | "error" | "skipped",
@@ -102,6 +156,8 @@ export async function executeJob(
       runAtMs: startedAt,
       durationMs: job.state.lastDurationMs,
       nextRunAtMs: job.state.nextRunAtMs,
+      sessionId,
+      sessionKey,
     });
 
     if (shouldDelete && state.store) {
@@ -198,6 +254,8 @@ export async function executeJob(
       job,
       message: job.payload.message,
     });
+    sessionId = res.sessionId;
+    sessionKey = res.sessionKey;
     if (res.status === "ok") await finish("ok", undefined, res.summary, res.outputText);
     else if (res.status === "skipped")
       await finish("skipped", undefined, res.summary, res.outputText);

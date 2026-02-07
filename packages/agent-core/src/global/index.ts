@@ -69,6 +69,9 @@ export namespace Global {
     get tmp() {
       return path.join(os.tmpdir(), app)
     },
+    get modelsDevUrl() {
+      return process.env.AGENT_CORE_MODELS_URL || process.env.OPENCODE_MODELS_URL || "https://models.dev"
+    },
   }
 }
 

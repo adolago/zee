@@ -117,6 +117,9 @@ afterAll(() => {
 const testHome = path.join(dir, "home")
 await fs.mkdir(testHome, { recursive: true })
 process.env["AGENT_CORE_TEST_HOME"] = testHome
+// Set test managed config directory to isolate tests from system managed settings
+const testManagedConfigDir = path.join(dir, "managed")
+process.env["AGENT_CORE_TEST_MANAGED_CONFIG_DIR"] = testManagedConfigDir
 
 process.env["XDG_DATA_HOME"] = path.join(dir, "share")
 process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
@@ -132,7 +135,9 @@ process.env["AGENT_CORE_DISABLE_SERVER_AUTH"] = "true"
 const cacheDir = path.join(dir, "cache", "agent-core")
 await fs.mkdir(cacheDir, { recursive: true })
 await fs.writeFile(path.join(cacheDir, "version"), "18")
-const response = await fetch("https://models.dev/api.json")
+const { Global } = await import("../src/global")
+const modelsDevUrl = Global.Path.modelsDevUrl
+const response = await fetch(`${modelsDevUrl}/api.json`)
 if (response.ok) {
   await fs.writeFile(path.join(cacheDir, "models.json"), await response.text())
 } else {

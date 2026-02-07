@@ -131,7 +131,7 @@ export const rpc = {
       body,
     }
   },
-  async server(input: { port: number; hostname: string; mdns?: boolean; cors?: string[] }) {
+  async server(input: { port: number; hostname: string; mdns?: boolean; mdnsDomain?: string; cors?: string[] }) {
     if (server) await server.stop(true)
     server = Server.listen(input)
     return { url: server.url.toString() }

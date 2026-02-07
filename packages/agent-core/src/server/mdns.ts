@@ -14,6 +14,7 @@ export interface MdnsPublishOptions {
    * Based on Zee security audit commit a1f9825d63.
    */
   minimal?: boolean
+  domain?: string
 }
 
 export namespace MDNS {
@@ -45,7 +46,7 @@ export namespace MDNS {
       const serviceConfig: Parameters<Bonjour["publish"]>[0] = {
         name,
         type: "http",
-        host: "agent-core.local",
+        host: opts.domain ?? "agent-core.local",
         port,
       }
 

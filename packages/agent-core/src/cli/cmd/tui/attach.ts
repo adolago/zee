@@ -132,6 +132,7 @@ export const AttachCommand = cmd({
     await tui({
       url,
       directory: cwd,
+      fetch: createAuthorizedFetch(fetch),
       args: {
         continue: args.continue,
         sessionID: args.session,
