@@ -104,6 +104,7 @@ describe("CronService timer resilience", () => {
     })
 
     cron.stop()
+    vi.useRealTimers();
     await store.cleanup()
   })
 
@@ -147,6 +148,7 @@ describe("CronService timer resilience", () => {
     await vi.runOnlyPendingTimersAsync()
 
     cron.stop()
+    vi.useRealTimers();
     await store.cleanup()
   })
 })
