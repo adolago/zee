@@ -408,6 +408,7 @@ export async function startGatewayServer(
     try {
       canvasHost = await startCanvasHost({
         runtime: canvasHostRuntime,
+        auth: resolvedAuth,
         rootDir: canvasHostCfg.root,
         port: resolveCanvasHostPort(cfgAtStart),
         listenHost: bindHost,
