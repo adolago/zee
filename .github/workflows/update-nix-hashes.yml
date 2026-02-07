@@ -23,7 +23,7 @@ on:
 jobs:
   update-node-modules-hashes:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     env:
       TITLE: node_modules hashes
 
@@ -56,7 +56,8 @@ jobs:
           set -euo pipefail
 
           HASH_FILE="nix/hashes.json"
-          SYSTEMS="x86_64-linux aarch64-linux x86_64-darwin aarch64-darwin"
+          # node_modules.nix currently only supports Linux (bunOs = linux) and meta.platforms excludes Darwin.
+          SYSTEMS="x86_64-linux aarch64-linux"
 
           if [ ! -f "$HASH_FILE" ]; then
             mkdir -p "$(dirname "$HASH_FILE")"

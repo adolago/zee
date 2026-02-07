@@ -478,7 +478,6 @@ export namespace Server {
 
     const previousCorsWhitelist = _corsWhitelist
     const previousIsLoopbackBind = _isLoopbackBind
-
     _corsWhitelist = opts.cors ?? []
     _isLoopbackBind = isLoopbackHostname(opts.hostname)
 
