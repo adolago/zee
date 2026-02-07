@@ -11,6 +11,7 @@ import { Filesystem } from "@/util/filesystem"
 import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
 import { Session } from "@/session"
+import { scanDirectoryWithSummary, type SkillScanFinding } from "./scanner"
 
 export namespace Skill {
   const log = Log.create({ service: "skill" })
@@ -617,6 +618,14 @@ export namespace Skill {
     missingEnv: Array<{ skill: string; vars: string[] }>
     /** Skills with unknown frontmatter keys not in the schema. */
     schemaWarnings: SchemaWarning[]
+    /** Code safety scan results per skill directory. */
+    codeSafety?: Array<{
+      skill: string
+      directory: string
+      critical: number
+      warn: number
+      findings: SkillScanFinding[]
+    }>
   }
 
   /**
@@ -655,6 +664,36 @@ export namespace Skill {
       }
     }
 
-    return { loaded, excluded: exclusions, conflicts, missingEnv, schemaWarnings }
+    // Code safety scanning: scan the parent directory of each loaded skill
+    const codeSafety: AuditReport["codeSafety"] = []
+    const scannedDirs = new Set<string>()
+    for (const skill of loaded) {
+      const skillDir = path.dirname(skill.location)
+      if (scannedDirs.has(skillDir)) continue
+      scannedDirs.add(skillDir)
+      try {
+        const summary = await scanDirectoryWithSummary(skillDir)
+        if (summary.findings.length > 0) {
+          codeSafety.push({
+            skill: skill.name,
+            directory: skillDir,
+            critical: summary.critical,
+            warn: summary.warn,
+            findings: summary.findings,
+          })
+        }
+      } catch {
+        // Scan failure for a single skill directory is non-fatal
+      }
+    }
+
+    return {
+      loaded,
+      excluded: exclusions,
+      conflicts,
+      missingEnv,
+      schemaWarnings,
+      ...(codeSafety.length > 0 ? { codeSafety } : {}),
+    }
   }
 }
