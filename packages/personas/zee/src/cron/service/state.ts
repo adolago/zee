@@ -9,9 +9,9 @@ export type CronEvent = {
   status?: "ok" | "error" | "skipped";
   error?: string;
   summary?: string;
-  nextRunAtMs?: number;
   sessionId?: string;
   sessionKey?: string;
+  nextRunAtMs?: number;
 };
 
 export type Logger = {
@@ -52,8 +52,8 @@ export type CronServiceState = {
   running: boolean;
   op: Promise<unknown>;
   warnedDisabled: boolean;
-  lastLoadedMtimeMs?: number;
-  stopped: boolean;
+  storeLoadedAtMs: number | null;
+  storeFileMtimeMs: number | null;
 };
 
 export function createCronServiceState(deps: CronServiceDeps): CronServiceState {
@@ -64,8 +64,8 @@ export function createCronServiceState(deps: CronServiceDeps): CronServiceState 
     running: false,
     op: Promise.resolve(),
     warnedDisabled: false,
-    lastLoadedMtimeMs: undefined,
-    stopped: false,
+    storeLoadedAtMs: null,
+    storeFileMtimeMs: null,
   };
 }
 
