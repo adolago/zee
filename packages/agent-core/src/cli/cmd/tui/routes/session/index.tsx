@@ -56,6 +56,7 @@ import { useSDK } from "@tui/context/sdk"
 import { useCommandDialog } from "@tui/component/dialog-command"
 import { useKeybind } from "@tui/context/keybind"
 import { resolvePersonaArt } from "@tui/component/persona-art"
+import { Spinner } from "@tui/component/spinner"
 import { Header } from "./header"
 import { parsePatch } from "diff"
 import { useDialog, type DialogContext } from "../../ui/dialog"
@@ -585,7 +586,7 @@ export function Session() {
       },
     },
     {
-      title: "Toggle code concealment",
+      title: conceal() ? "Disable code concealment" : "Enable code concealment",
       value: "session.toggle.conceal",
       keybind: "messages_toggle_conceal" as any,
       category: "Session",
@@ -610,6 +611,7 @@ export function Session() {
     {
       title: showThinking() ? "Hide thinking" : "Show thinking",
       value: "session.toggle.thinking",
+      keybind: "messages_toggle_thinking" as any,
       category: "Session",
       slash: {
         name: "thinking",
@@ -1629,10 +1631,11 @@ function InlineTool(props: {
   )
 }
 
-function BlockTool(props: { title: string; children: JSX.Element; onClick?: () => void; part?: ToolPart }) {
+function BlockTool(props: { title: string; children: JSX.Element; onClick?: () => void; part?: ToolPart; spinner?: boolean }) {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
+  const label = createMemo(() => props.title.replace(/^# /, ""))
   return (
     <box
       border={["left"]}
@@ -1645,9 +1648,17 @@ function BlockTool(props: { title: string; children: JSX.Element; onClick?: () =
         props.onClick?.()
       }}
     >
-      <text paddingLeft={1} fg={theme.textMuted}>
-        {props.title}
-      </text>
+      <Show when={props.spinner} fallback={
+        <text paddingLeft={1} fg={theme.textMuted}>
+          {props.title}
+        </text>
+      }>
+        <box paddingLeft={1}>
+          <Spinner color={theme.textMuted}>
+            <text fg={theme.textMuted}>{label()}</text>
+          </Spinner>
+        </box>
+      </Show>
       {props.children}
       <Show when={error()}>
         <text fg={theme.error}>{error()}</text>
@@ -1844,15 +1855,38 @@ function Task(props: ToolProps<typeof TaskTool>) {
   const keybind = useKeybind()
   const { navigate } = useRoute()
   const local = useLocal()
+  const sync = useSync()
 
-  const current = createMemo(() => props.metadata.summary?.findLast((x) => x.state.status !== "pending"))
+  const isRunning = createMemo(() => props.part.state.status === "running")
+
+  // Live tool parts from sync data (child session messages + parts)
+  const tools = createMemo(() => {
+    const sessionId = props.metadata.sessionId
+    if (!sessionId) return props.metadata.summary ?? []
+    const messages = sync.data.message[sessionId] ?? []
+    const parts = messages
+      .filter((x) => x.role === "assistant")
+      .flatMap((msg) => (sync.data.part[msg.id] ?? []).filter((p): p is ToolPart => p.type === "tool"))
+      .map((p) => ({
+        id: p.id,
+        tool: p.tool,
+        state: {
+          status: p.state.status,
+          title: p.state.status === "completed" ? (p.state as any).title : undefined,
+        },
+      }))
+    return parts.length > 0 ? parts : props.metadata.summary ?? []
+  })
+
+  const current = createMemo(() => tools().findLast((x) => x.state.status !== "pending"))
   const color = createMemo(() => local.agent.color(props.input.subagent_type ?? "unknown"))
 
   return (
     <Switch>
-      <Match when={props.metadata.summary?.length}>
+      <Match when={tools().length}>
         <BlockTool
           title={"# " + Locale.titlecase(props.input.subagent_type ?? "unknown") + " Task"}
+          spinner={isRunning()}
           onClick={
             props.metadata.sessionId
               ? () => navigate({ type: "session", sessionID: props.metadata.sessionId! })
@@ -1862,13 +1896,15 @@ function Task(props: ToolProps<typeof TaskTool>) {
         >
           <box>
             <text style={{ fg: theme.textMuted }}>
-              {props.input.description} ({props.metadata.summary?.length} toolcalls)
+              {props.input.description} ({tools().length} toolcalls)
             </text>
             <Show when={current()}>
-              <text style={{ fg: current()!.state.status === "error" ? theme.error : theme.textMuted }}>
-                └ {Locale.titlecase(current()!.tool)}{" "}
-                {current()!.state.status === "completed" ? current()!.state.title : ""}
-              </text>
+              {(c) => (
+                <text style={{ fg: c().state.status === "error" ? theme.error : theme.textMuted }}>
+                  └ {Locale.titlecase(c().tool)}{" "}
+                  {c().state.status === "completed" ? c().state.title : ""}
+                </text>
+              )}
             </Show>
           </box>
           <Show when={props.metadata.sessionId}>

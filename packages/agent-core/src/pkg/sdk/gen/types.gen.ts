@@ -935,6 +935,10 @@ export type KeybindsConfig = {
    */
   messages_toggle_conceal?: string
   /**
+   * Toggle thinking blocks visibility
+   */
+  messages_toggle_thinking?: string
+  /**
    * Toggle tool details visibility
    */
   tool_details?: string
