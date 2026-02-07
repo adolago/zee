@@ -4,8 +4,6 @@ import type { AgentSideConnection } from "@agentclientprotocol/sdk"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 
-const skipNullPathBug = Bun.version === "1.3.5"
-
 type SessionUpdateParams = Parameters<AgentSideConnection["sessionUpdate"]>[0]
 type RequestPermissionParams = Parameters<AgentSideConnection["requestPermission"]>[0]
 type RequestPermissionResult = Awaited<ReturnType<AgentSideConnection["requestPermission"]>>
@@ -198,7 +196,7 @@ function createFakeAgent() {
   return { agent, controller, calls, updates, chunks, stop, sdk, connection }
 }
 
-describe.skipIf(skipNullPathBug)("acp.agent event subscription", () => {
+describe("acp.agent event subscription", () => {
   test("routes message.part.updated by the event sessionID (no cross-session pollution)", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
