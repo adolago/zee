@@ -5,7 +5,7 @@ Unified memory logic (Qdrant storage, embeddings, conversation/state continuity)
 Embedding and reranking are TypeScript implementations in `src/memory/embedding.ts (1-200)` and `src/memory/reranker.ts (1-200)`, with core types and provider definitions in `src/memory/types.ts (1-520)`.
 Memory is consumed by server routes `packages/agent-core/src/server/route/memory.ts (1-200)`, MCP server `src/mcp/servers/memory.ts (1-200)`, Zee tools `src/domain/zee/tools.ts (1-240)`, persona bootstrap hooks `packages/agent-core/src/bootstrap/personas.ts (1-200)`, and required-memory checks in `packages/agent-core/src/session/prompt.ts (91-290)`.
 Runtime configuration is loaded from `src/config/runtime.ts (1-200)` with defaults in `src/config/constants.ts (1-120)`; the broader config schema and defaults are in `src/config/schema.ts (271-470)` and `src/config/defaults.ts (96-295)`.
-There is a separate memory persistence plugin with Qdrant usage for key/value caching in `src/plugin/builtin/memory-persistence.ts (1-200)`.
+There was a legacy memory persistence plugin prototype for key/value caching; the active runtime plugin loader is `packages/agent-core/src/plugin/index.ts`.
 Rust workspace currently includes only `packages/stanley-core` as per `Cargo.toml (1-34)`.
 ## Proposed changes
 ### 1) Define the Rust boundary and contract

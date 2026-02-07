@@ -3,7 +3,7 @@ import { Config } from "../../src/config/config"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import path from "path"
-import { Server } from "../../src/server/server"
+import { ConfigRoute } from "../../src/server/route/config"
 
 describe("Config security", () => {
   test("redact hides sensitive fields", () => {
@@ -122,8 +122,8 @@ describe("Config security", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        const app = Server.App()
-        const res = await app.request("/config?directory=" + encodeURIComponent(tmp.path))
+        const app = ConfigRoute
+        const res = await app.request("/config")
         const body = (await res.json()) as Config.Info
 
         expect(res.status).toBe(200)
@@ -156,7 +156,7 @@ describe("Config security", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        const app = Server.App()
+        const app = ConfigRoute
 
         // We manually construct payload because Config.get() might not read config.json in test env
         const patchPayload: Config.Info = {
@@ -170,7 +170,7 @@ describe("Config security", () => {
           },
         }
 
-        const patchRes = await app.request("/config?directory=" + encodeURIComponent(tmp.path), {
+        const patchRes = await app.request("/config", {
           method: "PATCH",
           body: JSON.stringify(patchPayload),
           headers: { "Content-Type": "application/json" },

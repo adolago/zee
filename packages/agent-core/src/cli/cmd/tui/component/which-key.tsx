@@ -38,6 +38,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
   // Messages
   messages_copy: { category: "Messages", description: "[y]ank" },
   messages_undo: { category: "Messages", description: "[u]ndo" },
+  messages_toggle_thinking: { category: "Messages", description: "th[i]nking" },
 
   // UI
   mode_toggle: { category: "UI", description: "[h]old mode" },

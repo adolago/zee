@@ -95,6 +95,15 @@ export namespace Server {
   let _corsWhitelist: string[] = []
   let _isLoopbackBind = true
 
+  /**
+   * Reset in-memory server state. This is mainly used by tests to avoid cross-test leakage.
+   */
+  export function reset() {
+    _corsWhitelist = []
+    _isLoopbackBind = true
+    App.reset()
+  }
+
   function parseCommaList(value?: string): string[] {
     if (!value) return []
     return value
@@ -455,7 +464,13 @@ export namespace Server {
     }
   }
 
-  export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
+  export function listen(opts: {
+    port: number
+    hostname: string
+    mdns?: MdnsOption
+    mdnsDomain?: string
+    cors?: string[]
+  }) {
     const corsWhitelist = opts.cors ?? []
     const isLoopbackBind = isLoopbackHostname(opts.hostname)
 
@@ -498,7 +513,7 @@ export namespace Server {
     const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
 
     if (shouldPublishMDNS) {
-      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal })
+      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal, domain: opts.mdnsDomain })
     } else if (mdnsConfig.enabled && isLoopback) {
       log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
     }

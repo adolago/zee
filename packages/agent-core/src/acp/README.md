@@ -1,36 +1,23 @@
-# ACP (Agent Client Protocol) Implementation
+# ACP (Agent Client Protocol) Support
 
-This directory contains a clean, protocol-compliant implementation of the [Agent Client Protocol](https://agentclientprotocol.com/) for agent-core.
+This directory contains agent-core's agent-side implementation of the
+[Agent Client Protocol (ACP)](https://agentclientprotocol.com/). It is used by
+the `agent-core acp` CLI command to expose an ACP agent over stdio.
 
-## Architecture
+## Components
 
-The implementation follows a clean separation of concerns:
+- **`agent.ts`** - ACP agent implementation
+  - Initialization and capability negotiation
+  - Session operations (new/load/list/fork/resume)
+  - Prompt translation to agent-core session prompts
+  - Event subscription to stream updates back to the ACP client
+- **`session.ts`** - In-memory ACP session state
+  - Maps ACP session ids to agent-core sessions
+  - Stores per-session working directory, selected model/variant, and mode
+- **`types.ts`** - Internal types
 
-### Core Components
-
-- **`agent.ts`** - Implements the `Agent` interface from `@agentclientprotocol/sdk`
-  - Handles initialization and capability negotiation
-  - Manages session lifecycle (`session/new`, `session/load`)
-  - Processes prompts and returns responses
-  - Properly implements ACP protocol v1
-
-- **`client.ts`** - Implements the `Client` interface for client-side capabilities
-  - File operations (`readTextFile`, `writeTextFile`)
-  - Permission requests (auto-approves for now)
-  - Terminal support (stub implementation)
-
-- **`session.ts`** - Session state management
-  - Creates and tracks ACP sessions
-  - Maps ACP sessions to internal agent-core sessions
-  - Maintains working directory context
-  - Handles MCP server configurations
-
-- **`server.ts`** - ACP server startup and lifecycle
-  - Sets up JSON-RPC over stdio using the official library
-  - Manages graceful shutdown on SIGTERM/SIGINT
-  - Provides Instance context for the agent
-
-- **`types.ts`** - Type definitions for internal use
+The stdio JSON-RPC wiring and local server startup is implemented in
+`src/cli/cmd/acp.ts`.
 
 ## Usage
 
@@ -75,52 +62,67 @@ This implementation follows the ACP specification v1:
 
 - Proper `initialize` request/response with protocol version negotiation
 - Capability advertisement (`agentCapabilities`)
-- Authentication support (stub)
+- Auth method hint (auth itself is not implemented via ACP)
 
 ✅ **Session Management**
 
 - `session/new` - Create new conversation sessions
-- `session/load` - Resume existing sessions (basic support)
+- `session/load` - Load an existing session and replay history to the client
+- `session/list` - List sessions (SDK method name: `unstable_listSessions`)
+- `session/fork` - Fork a session (SDK method name: `unstable_forkSession`)
+- `session/resume` - Resume a session (SDK method name: `unstable_resumeSession`)
 - Working directory context (`cwd`)
 - MCP server configuration support
+- Mode switching (`setSessionMode`)
+- Model switching (`unstable_setSessionModel`)
 
 ✅ **Prompting**
 
 - `session/prompt` - Process user messages
-- Content block handling (text, resources)
-- Response with stop reasons
+- Content block handling (text, image, resource, resource_link)
+- Streaming updates via `session/update` notifications driven by agent-core events
 
-✅ **Client Capabilities**
+## Model Variants
 
-- File read/write operations
-- Permission requests
-- Terminal support (stub for future)
+Model variants are encoded directly in ACP model ids as:
+
+`providerID/modelID#variant`
+
+For example: `openai/gpt-5#thinking`.
+
+## Audience Mapping
+
+For ACP text blocks, the agent maps `annotations.audience` to agent-core message
+flags, and reverses the mapping when replaying history/events back to the ACP
+client:
+
+- `["assistant"]` -> `synthetic`
+- `["user"]` -> `ignored`
+
+## Tool Availability
+
+When running ACP, the CLI sets `AGENT_CORE_CLIENT=acp`. This excludes the
+`question` tool from the tool registry so ACP clients are not prompted via the
+interactive question tool.
 
 ## Current Limitations
 
 ### Not Yet Implemented
 
-1. **Streaming Responses** - Currently returns complete responses instead of streaming via `session/update` notifications
-2. **Tool Call Reporting** - Doesn't report tool execution progress
-3. **Session Modes** - No mode switching support yet
-4. **Authentication** - No actual auth implementation
-5. **Terminal Support** - Placeholder only
-6. **Session Persistence** - `session/load` doesn't restore actual conversation history
+1. **Authentication** - ACP `authenticate` is not implemented. Use `agent-core auth login`.
+2. **Terminal Support** - ACP terminal capability is not implemented beyond what the client provides.
 
 ### Future Enhancements
 
-- **Real-time Streaming**: Implement `session/update` notifications for progressive responses
-- **Tool Call Visibility**: Report tool executions as they happen
-- **Session Persistence**: Save and restore full conversation history
-- **Mode Support**: Implement different operational modes (ask, code, etc.)
-- **Enhanced Permissions**: More sophisticated permission handling
-- **Terminal Integration**: Full terminal support via agent-core's bash tool
+- **Authentication**: Support ACP `authenticate` flows directly.
+- **Terminal Integration**: Surface a richer terminal API when the ACP ecosystem supports it.
 
 ## Testing
 
 ```bash
 # Run ACP tests
-bun test test/acp.test.ts
+cd packages/agent-core
+bun test test/acp
 
 # Test manually with stdio
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | agent-core acp

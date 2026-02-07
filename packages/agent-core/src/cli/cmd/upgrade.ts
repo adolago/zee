@@ -2,6 +2,7 @@ import type { Argv } from "yargs"
 import { UI } from "../ui"
 import * as prompts from "@clack/prompts"
 import { Installation } from "../../installation"
+import { throwIfCancelled } from "../prompts"
 
 export const UpgradeCommand = {
   command: "upgrade [target]",
@@ -36,6 +37,7 @@ export const UpgradeCommand = {
         ],
         initialValue: false,
       })
+      throwIfCancelled(install)
       if (!install) {
         prompts.outro("Done")
         return

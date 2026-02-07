@@ -18,7 +18,7 @@ import { BashArity } from "@/permission/arity"
 import { Truncate } from "./truncation"
 import { HoldMode } from "@/config/hold-mode"
 import { createSafeEnv } from "@/security/env-sanitize"
-import { Plugin } from "@/plugin"
+import { AppDeps } from "@/app/deps"
 
 const MAX_METADATA_LENGTH = 30_000
 const DEFAULT_TIMEOUT = Flag.AGENT_CORE_BASH_DEFAULT_TIMEOUT_MS || 2 * 60 * 1000
@@ -262,7 +262,8 @@ To modify state, the user must switch to RELEASE mode.`
         })
       }
 
-      const shellEnv = await Plugin.trigger("shell.env", { cwd }, { env: {} })
+      const deps = AppDeps.use()
+      const shellEnv = await deps.pluginTrigger("shell.env", { cwd }, { env: {} })
       const safeEnv = createSafeEnv(process.env, { validatePath: process.platform !== "win32" })
       const proc = spawn(params.command, {
         shell,
