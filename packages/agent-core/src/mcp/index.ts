@@ -39,6 +39,10 @@ export namespace MCP {
   // Per-server mutex to prevent concurrent state mutations for the same server
   const serverMutexes = new Map<string, Promise<void>>()
 
+  // Per-server tool cache -- invalidated on tools/list_changed, reconnect, disconnect, add
+  type ToolCacheEntry = { tools: MCPToolDef[]; cachedAt: number }
+  const toolCache = new Map<string, ToolCacheEntry>()
+
   async function withServerMutex<T>(serverName: string, fn: () => T | Promise<T>): Promise<T> {
     const currentMutex = serverMutexes.get(serverName) ?? Promise.resolve()
     let release: () => void
@@ -213,6 +217,7 @@ export namespace MCP {
   function registerNotificationHandlers(client: MCPClient, serverName: string) {
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
       log.info("tools list changed notification received", { server: serverName })
+      toolCache.delete(serverName)
       Bus.publish(ToolsChanged, { server: serverName })
     })
   }
@@ -363,12 +368,13 @@ export namespace MCP {
   }
 
   // Convert MCP tool definition to AI SDK Tool type
-  async function convertMcpTool(
+  // Uses serverName (not client reference) so execute() does late-bound client lookup
+  // via callTool(), which handles reconnection. This fixes stale client references.
+  function convertMcpTool(
     mcpTool: MCPToolDef,
-    client: MCPClient,
-    timeout: number,
-    options: { serverName: string; asyncEnabled: boolean; pollToolId: string },
-  ): Promise<Tool> {
+    serverName: string,
+    options: { asyncEnabled: boolean; pollToolId: string },
+  ): Tool {
     const inputSchema = mcpTool.inputSchema
 
     // Spread first, then override type to ensure it's always "object"
@@ -391,9 +397,9 @@ export namespace MCP {
         description,
         inputSchema: jsonSchema(schema),
         execute: async (args: unknown) => {
-          const job = createJob(options.serverName, mcpTool.name, (args ?? {}) as Record<string, unknown>)
+          const job = createJob(serverName, mcpTool.name, (args ?? {}) as Record<string, unknown>)
           const text = [
-            `Queued async job ${job.id} for ${options.serverName}/${mcpTool.name}.`,
+            `Queued async job ${job.id} for ${serverName}/${mcpTool.name}.`,
             `Use ${options.pollToolId} with { job_id: "${job.id}" } to fetch status/result.`,
           ].join(" ")
           return {
@@ -407,17 +413,8 @@ export namespace MCP {
       description: mcpTool.description ?? "",
       inputSchema: jsonSchema(schema),
       execute: async (args: unknown) => {
-        return client.callTool(
-          {
-            name: mcpTool.name,
-            arguments: (args ?? {}) as Record<string, unknown>,
-          },
-          CallToolResultSchema,
-          {
-            resetTimeoutOnProgress: true,
-            timeout,
-          },
-        )
+        // Late-bound: callTool() looks up the current client + handles reconnect
+        return callTool(serverName, mcpTool.name, (args ?? {}) as Record<string, unknown>)
       },
     })
   }
@@ -491,10 +488,10 @@ export namespace MCP {
       // ALWAYS include all 4 persona MCP servers (required)
       const personaMcps = getAllPersonaMcpServers()
       const userConfig = cfg.mcp ?? {}
-      
+
       // Merge: user config overrides persona defaults, but all 4 must exist
       const config: Record<string, Config.Mcp> = {}
-      
+
       // Add all 4 persona MCPs first
       for (const [name, server] of Object.entries(personaMcps)) {
         config[name] = {
@@ -502,14 +499,14 @@ export namespace MCP {
           command: [...server.command], // Convert readonly to mutable
         } as Config.Mcp
       }
-      
+
       // User config can override but not disable persona MCPs
       for (const [name, mcp] of Object.entries(userConfig)) {
         if (mcp && typeof mcp === "object" && "type" in mcp) {
           config[name] = mcp as Config.Mcp
         }
       }
-      
+
       const clients: Record<string, MCPClient> = {}
       const status: Record<string, Status> = {}
 
@@ -631,6 +628,7 @@ export namespace MCP {
       }
       s.clients[name] = result.mcpClient
       s.status[name] = result.status
+      toolCache.delete(name)
 
       return {
         status: s.status,
@@ -875,6 +873,8 @@ export namespace MCP {
       }
     }
 
+    // Seed tool cache from the listTools() call we already made
+    toolCache.set(key, { tools: result.tools, cachedAt: Date.now() })
     log.info("create() successfully created client", { key, toolCount: result.tools.length })
     return {
       mcpClient,
@@ -956,6 +956,7 @@ export namespace MCP {
         })
         delete s.clients[name]
       }
+      toolCache.delete(name)
       s.status[name] = { status: "disabled" }
     })
   }
@@ -967,13 +968,19 @@ export namespace MCP {
   export async function isHealthy(name: string): Promise<boolean> {
     const s = await state()
     const client = s.clients[name]
-    
+
     if (!client) {
       return false
     }
-    
+
     if (s.status[name]?.status !== "connected") {
       return false
+    }
+
+    // Skip listTools() ping if we have a recent cache entry (< 60s old)
+    const cached = toolCache.get(name)
+    if (cached && Date.now() - cached.cachedAt < 60_000) {
+      return true
     }
 
     try {
@@ -1016,6 +1023,7 @@ export namespace MCP {
         })
         delete s.clients[name]
       }
+      toolCache.delete(name)
 
       log.info("Attempting MCP reconnection", { name })
 
@@ -1046,7 +1054,7 @@ export namespace MCP {
   export async function reconnectAll(): Promise<Record<string, Status>> {
     const s = await state()
     const results: Record<string, Status> = {}
-    
+
     for (const [name, currentStatus] of Object.entries(s.status)) {
       if (currentStatus.status === "failed") {
         results[name] = await reconnect(name)
@@ -1054,7 +1062,7 @@ export namespace MCP {
         results[name] = currentStatus
       }
     }
-    
+
     return results
   }
 
@@ -1093,65 +1101,78 @@ export namespace MCP {
     const cfg = await Config.get()
     const config = cfg.mcp ?? {}
     const clientsSnapshot = await clients()
-    const defaultTimeout = cfg.experimental?.mcp_timeout ?? DEFAULT_TIMEOUT
 
-    for (const [clientName, client] of Object.entries(clientsSnapshot)) {
-      // Only include tools from connected MCPs (skip disabled ones)
-      if (s.status[clientName]?.status !== "connected") {
-        continue
-      }
+    // Identify connected servers
+    const connectedServers = Object.keys(clientsSnapshot).filter(
+      (name) => s.status[name]?.status === "connected",
+    )
 
-      let toolsResult = await client.listTools().catch((e) => {
-        log.warn("failed to get tools, will attempt reconnect", { clientName, error: e.message })
-        return undefined
-      })
+    // Identify servers that need a fresh listTools() call (no cache entry)
+    const uncachedServers = connectedServers.filter((name) => !toolCache.has(name))
 
-      // If initial fetch failed, attempt reconnection
-      if (!toolsResult) {
-        const reconnectStatus = await reconnect(clientName)
-        if (reconnectStatus.status === "connected") {
-          // Try again with new client
-          const newClient = s.clients[clientName]
-          if (newClient) {
-            toolsResult = await newClient.listTools().catch((e) => {
-              log.error("failed to get tools after reconnect", { clientName, error: e.message })
-              const failedStatus = {
-                status: "failed" as const,
-                error: e instanceof Error ? e.message : String(e),
+    // Fetch uncached servers in parallel
+    if (uncachedServers.length > 0) {
+      const fetchResults = await Promise.allSettled(
+        uncachedServers.map(async (clientName) => {
+          const client = clientsSnapshot[clientName]
+          let toolsResult = await client.listTools().catch((e) => {
+            log.warn("failed to get tools, will attempt reconnect", { clientName, error: e.message })
+            return undefined
+          })
+
+          // If initial fetch failed, attempt reconnection
+          if (!toolsResult) {
+            const reconnectStatus = await reconnect(clientName)
+            if (reconnectStatus.status === "connected") {
+              const newClient = s.clients[clientName]
+              if (newClient) {
+                toolsResult = await newClient.listTools().catch((e) => {
+                  log.error("failed to get tools after reconnect", { clientName, error: e.message })
+                  s.status[clientName] = {
+                    status: "failed" as const,
+                    error: e instanceof Error ? e.message : String(e),
+                  }
+                  delete s.clients[clientName]
+                  return undefined
+                })
               }
-              s.status[clientName] = failedStatus
-              delete s.clients[clientName]
-              return undefined
-            })
+            }
           }
+
+          if (toolsResult) {
+            toolCache.set(clientName, { tools: toolsResult.tools, cachedAt: Date.now() })
+          }
+          return { clientName, tools: toolsResult?.tools }
+        }),
+      )
+
+      for (const r of fetchResults) {
+        if (r.status === "rejected") {
+          log.error("parallel tool fetch failed", { error: r.reason })
         }
       }
+    }
 
-      if (!toolsResult) {
-        continue
-      }
+    // Build tool map from cached entries
+    for (const clientName of connectedServers) {
+      const cached = toolCache.get(clientName)
+      if (!cached) continue
+
       const mcpConfig = config[clientName]
       const entry = isMcpConfigured(mcpConfig) ? mcpConfig : undefined
-      const timeout = entry?.timeout ?? defaultTimeout
       const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9_-]/g, "_")
       const asyncEnabled = isAsyncServer(clientName, entry)
       const pollToolId = `${sanitizedClientName}_job_poll`
-      for (const mcpTool of toolsResult.tools) {
+
+      for (const mcpTool of cached.tools) {
         const sanitizedToolName = mcpTool.name.replace(/[^a-zA-Z0-9_-]/g, "_")
-        // Use short name by default; prefix with server name only on collision
         const toolId = sanitizedToolName in result
           ? sanitizedClientName + "_" + sanitizedToolName
           : sanitizedToolName
-        result[toolId] = await convertMcpTool(
-          mcpTool,
-          s.clients[clientName] ?? client,
-          timeout,
-          {
-            serverName: clientName,
-            asyncEnabled,
-            pollToolId,
-          },
-        )
+        result[toolId] = convertMcpTool(mcpTool, clientName, {
+          asyncEnabled,
+          pollToolId,
+        })
       }
       if (asyncEnabled) {
         result[pollToolId] = createJobPollTool(clientName, pollToolId)
@@ -1539,5 +1560,19 @@ export namespace MCP {
     if (!hasTokens) return "not_authenticated"
     const expired = await McpAuth.isTokenExpired(mcpName)
     return expired ? "expired" : "authenticated"
+  }
+
+  /**
+   * Clear the tool cache. Exported for testing.
+   */
+  export function clearToolCache() {
+    toolCache.clear()
+  }
+
+  /**
+   * Get tool cache entry for a server. Exported for testing.
+   */
+  export function getToolCacheEntry(serverName: string): ToolCacheEntry | undefined {
+    return toolCache.get(serverName)
   }
 }
