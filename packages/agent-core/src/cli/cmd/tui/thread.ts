@@ -310,6 +310,7 @@ export const TuiThreadCommand = cmd({
     const tuiPromise = tui({
       url,
       directory: cwd,
+      fetch: createAuthorizedFetch(fetch),
       args: {
         continue: args.continue,
         sessionID: args.session,

@@ -17,6 +17,16 @@ test("loads config with defaults when no files exist", async () => {
     },
   })
 })
+test("includes default keybind for toggling thinking visibility", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.keybinds?.messages_toggle_thinking).toBe("<leader>i")
+    },
+  })
+})
 test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

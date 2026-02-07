@@ -129,9 +129,11 @@ export const AttachCommand = cmd({
       process.exit(1)
     }
 
+    const authorizedFetch = createAuthorizedFetch(fetch)
     await tui({
       url,
       directory: cwd,
+      fetch: authorizedFetch,
       args: {
         continue: args.continue,
         sessionID: args.session,
