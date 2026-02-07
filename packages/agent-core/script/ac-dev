@@ -404,7 +404,7 @@ ensure_port_free "$DAEMON_PORT" || exit 1
 if command -v systemctl >/dev/null 2>&1; then
     if systemctl --user list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -qx "agent-core.service"; then
         echo -e "\033[1;36m[ac] Starting systemd agent-core service...\033[0m" >&2
-        systemctl --user daemon-reload
+        systemctl --user daemon-reload 2>/dev/null || true
         systemctl --user restart agent-core || { echo "[ac] systemd start failed"; exit 1; }
         sleep 1
         if ! systemctl --user is-active agent-core &>/dev/null; then

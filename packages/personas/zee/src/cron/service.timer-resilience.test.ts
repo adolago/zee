@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CronService } from "./service.js";
-import * as storeModule from "./store.js";
+import { onTimer } from "./service/timer.js";
 
 const noopLogger = {
   debug: vi.fn(),
@@ -43,8 +43,10 @@ describe("CronService timer resilience", () => {
     const store = await makeStorePath();
     const enqueueSystemEvent = vi.fn();
     const requestHeartbeatNow = vi.fn();
+    let nowMs = Date.parse("2025-12-13T00:00:00.000Z");
 
     const cron = new CronService({
+      nowMs: () => nowMs,
       storePath: store.storePath,
       cronEnabled: true,
       log: noopLogger,
@@ -65,24 +67,24 @@ describe("CronService timer resilience", () => {
       payload: { kind: "systemEvent", text: "tick" },
     });
 
-    // Make saveCronStore throw on the next call to simulate a persist failure.
-    const saveSpy = vi
-      .spyOn(storeModule, "saveCronStore")
-      .mockRejectedValueOnce(new Error("ENOSPC: no space left on device"));
+    // Simulate a persist failure by making the store directory read-only.
+    const storeDir = path.dirname(store.storePath);
+    await fs.mkdir(storeDir, { recursive: true });
+    await fs.chmod(storeDir, 0o500);
+    await expect(fs.writeFile(path.join(storeDir, "probe.tmp"), "x", "utf-8")).rejects.toThrow();
 
-    // Advance past the first due time -- this tick should fail on persist.
-    vi.setSystemTime(new Date("2025-12-13T00:00:01.000Z"));
-    await vi.runOnlyPendingTimersAsync();
-
-    // The persist error should have been logged via the timer catch handler.
-    expect(noopLogger.error).toHaveBeenCalled();
+    // Trigger the tick directly so we can assert the timer re-arms even when
+    // persistence fails. The caller (armTimer) is responsible for logging.
+    nowMs = Date.parse("2025-12-13T00:00:01.000Z");
+    await expect(onTimer((cron as unknown as { state: unknown }).state as never)).rejects.toThrow();
+    expect((cron as unknown as { state: { timer: unknown } }).state.timer).not.toBeNull();
 
     // Restore normal saveCronStore behavior for the next tick.
-    saveSpy.mockRestore();
+    await fs.chmod(storeDir, 0o700);
 
-    // Advance time again -- the timer should still be alive and fire.
-    vi.setSystemTime(new Date("2025-12-13T00:00:02.000Z"));
-    await vi.runOnlyPendingTimersAsync();
+    // Run again with the store writable; the job should fire.
+    nowMs = Date.parse("2025-12-13T00:00:02.000Z");
+    await onTimer((cron as unknown as { state: unknown }).state as never);
 
     // The job should have been enqueued on the second tick despite the
     // first tick's persist failure.
@@ -113,7 +115,7 @@ describe("CronService timer resilience", () => {
     await cron.add({
       name: "far future job",
       enabled: true,
-      schedule: { kind: "at", atMs: tenMinutesLater },
+      schedule: { kind: "at", at: new Date(tenMinutesLater).toISOString() },
       sessionTarget: "main",
       wakeMode: "next-heartbeat",
       payload: { kind: "systemEvent", text: "hello" },
