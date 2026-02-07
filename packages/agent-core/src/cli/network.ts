@@ -18,6 +18,11 @@ const options = {
     describe: "enable mDNS service discovery (defaults hostname to 0.0.0.0)",
     default: false,
   },
+  "mdns-domain": {
+    type: "string" as const,
+    describe: "custom domain name for mDNS service discovery",
+    default: "agent-core.local",
+  },
   cors: {
     type: "string" as const,
     array: true,
@@ -42,6 +47,7 @@ export type ResolvedNetworkOptions = {
   hostname: string
   port: number
   mdns: MdnsConfig
+  mdnsDomain: string
   cors: string[]
 }
 
@@ -71,12 +77,17 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
   const portExplicitlySet = process.argv.includes("--port")
   const hostnameExplicitlySet = process.argv.includes("--hostname")
   const mdnsExplicitlySet = process.argv.includes("--mdns")
+  const mdnsDomainExplicitlySet =
+    process.argv.includes("--mdns-domain") || process.argv.some((arg) => arg.startsWith("--mdns-domain="))
   const corsExplicitlySet = process.argv.includes("--cors")
 
   // mDNS config can be boolean (from CLI) or object (from config file)
   // If CLI flag is set, it overrides config; otherwise use config (preserving object form)
   const mdns: MdnsConfig = mdnsExplicitlySet ? args.mdns : (config?.server?.mdns ?? args.mdns)
   const mdnsEnabled = isMdnsEnabled(mdns)
+  const mdnsDomain = mdnsDomainExplicitlySet
+    ? (args["mdns-domain"] as string)
+    : ((config?.server?.mdnsDomain as string | undefined) ?? (args["mdns-domain"] as string))
 
   const port = portExplicitlySet ? args.port : (config?.server?.port ?? args.port)
   const hostname = hostnameExplicitlySet
@@ -95,5 +106,5 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
 
   assertSafeServerBind({ hostname })
 
-  return { hostname, port, mdns, cors }
+  return { hostname, port, mdns, mdnsDomain, cors }
 }

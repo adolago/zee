@@ -455,7 +455,13 @@ export namespace Server {
     }
   }
 
-  export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
+  export function listen(opts: {
+    port: number
+    hostname: string
+    mdns?: MdnsOption
+    mdnsDomain?: string
+    cors?: string[]
+  }) {
     // Only update server-global bind state after we've validated that the bind is safe.
     // This prevents failed binds (e.g. non-loopback without auth) from polluting subsequent
     // in-process requests, which is particularly important for unit tests.
@@ -503,7 +509,7 @@ export namespace Server {
     const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
 
     if (shouldPublishMDNS) {
-      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal })
+      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal, domain: opts.mdnsDomain })
     } else if (mdnsConfig.enabled && isLoopback) {
       log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
     }

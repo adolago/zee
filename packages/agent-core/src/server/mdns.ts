@@ -9,6 +9,10 @@ const log = Log.create({ service: "mdns" })
 export interface MdnsPublishOptions {
   port: number
   /**
+   * Custom mDNS host/domain. Defaults to "agent-core.local".
+   */
+  domain?: string
+  /**
    * Minimal mode - only advertise service type, not detailed metadata.
    * This helps prevent information disclosure on the network.
    * Based on Zee security audit commit a1f9825d63.
@@ -31,7 +35,7 @@ export namespace MDNS {
   export function publish(options: number | MdnsPublishOptions) {
     // Support both simple port number and options object for backward compatibility
     const opts: MdnsPublishOptions = typeof options === "number" ? { port: options } : options
-    const { port, minimal = false } = opts
+    const { port, minimal = false, domain } = opts
 
     if (currentPort === port) return
     if (bonjour) unpublish()
@@ -45,7 +49,7 @@ export namespace MDNS {
       const serviceConfig: Parameters<Bonjour["publish"]>[0] = {
         name,
         type: "http",
-        host: "agent-core.local",
+        host: domain ?? "agent-core.local",
         port,
       }
 
@@ -57,7 +61,7 @@ export namespace MDNS {
       const service = bonjour.publish(serviceConfig)
 
       service.on("up", () => {
-        log.info("mDNS service published", { name, port, minimal })
+        log.info("mDNS service published", { name, port, minimal, domain: domain ?? "agent-core.local" })
       })
 
       service.on("error", (err) => {
