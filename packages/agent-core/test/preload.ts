@@ -229,9 +229,9 @@ afterEach(async () => {
     // 10. Reset Storage lazy cache (prevents cross-test state pollution)
     Storage.state.reset()
 
-    // 11. Reset Server.App lazy cache (Hono app instance) - import dynamically to avoid circular deps
+    // 11. Reset Server globals and app instance (prevents cross-test pollution)
     const { Server } = await import("../src/server/server")
-    Server.App.reset()
+    Server.reset()
 
     // 12. Reset Bash parser lazy cache (tree-sitter)
     bashParser.reset()
