@@ -1,4 +1,3 @@
-import { $ } from "bun"
 import * as fs from "fs/promises"
 import { randomUUID } from "node:crypto"
 import os from "os"
@@ -33,10 +32,15 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
   const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
-    await $`git init`.cwd(dirpath).quiet()
-    await $`git config user.email "bot@opencode.ai"`.cwd(dirpath).quiet()
-    await $`git config user.name "Bot"`.cwd(dirpath).quiet()
-    await $`git commit --allow-empty -m "root commit ${dirpath}"`.cwd(dirpath).quiet()
+    const run = async (cmd: string[]) => {
+      const proc = Bun.spawn(cmd, { cwd: dirpath, stdout: "ignore", stderr: "ignore" })
+      await proc.exited
+      if (proc.exitCode !== 0) throw new Error(`Command failed: ${cmd.join(" ")}`)
+    }
+    await run(["git", "init"])
+    await run(["git", "config", "user.email", "bot@opencode.ai"])
+    await run(["git", "config", "user.name", "Bot"])
+    await run(["git", "commit", "--allow-empty", "-m", `root commit ${dirpath}`])
   }
   if (options?.config) {
     await Bun.write(
