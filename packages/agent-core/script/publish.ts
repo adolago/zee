@@ -5,6 +5,10 @@ import { fileURLToPath } from "url"
 import path from "path"
 import fs from "fs"
 
+function isTruthyEnv(value: string | undefined): boolean {
+  return ["1", "true", "yes", "y", "on"].includes((value ?? "").trim().toLowerCase())
+}
+
 const dir = fileURLToPath(new URL("..", import.meta.url))
 const repoRoot = path.resolve(dir, "..", "..")
 process.chdir(dir)
@@ -25,6 +29,24 @@ const skipGithub = ["1", "true", "yes"].includes((process.env.AGENT_CORE_SKIP_GI
 const DIST_NAME = process.env.AGENT_CORE_DIST_NAME?.trim() || "agent-core"
 const WRAPPER_DIST_DIR = DIST_NAME
 
+const allowPreviewPublish = isTruthyEnv(process.env.AGENT_CORE_PUBLISH_PREVIEW)
+const forceDryRun = isTruthyEnv(process.env.AGENT_CORE_DRY_RUN)
+
+const wrapperOs = process.env.AGENT_CORE_WRAPPER_OS?.trim()
+const wrapperCpu = process.env.AGENT_CORE_WRAPPER_CPU?.trim()
+const wrapperOsList = wrapperOs
+  ? wrapperOs
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean)
+  : undefined
+const wrapperCpuList = wrapperCpu
+  ? wrapperCpu
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean)
+  : undefined
+
 const npmOtp =
   process.env.AGENT_CORE_NPM_OTP?.trim() || process.env.NPM_OTP?.trim() || process.env.NPM_CONFIG_OTP?.trim()
 const otpArgs = npmOtp ? ["--otp", npmOtp] : []
@@ -37,6 +59,10 @@ console.log({
   preview: Script.preview,
   skipDocker,
   skipGithub,
+  allowPreviewPublish,
+  forceDryRun,
+  wrapperOs: wrapperOsList,
+  wrapperCpu: wrapperCpuList,
 })
 
 // =============================================================================
@@ -51,7 +77,7 @@ async function updateVersionAcrossRepos(version: string) {
   const agentCorePkg = JSON.parse(fs.readFileSync(agentCorePkgPath, "utf-8"))
   agentCorePkg.version = version
   fs.writeFileSync(agentCorePkgPath, JSON.stringify(agentCorePkg, null, 2) + "\n")
-  console.log(`  ✓ Updated ${agentCorePkgPath}`)
+  console.log(`  OK Updated ${agentCorePkgPath}`)
 
   // Update root package.json
   const rootPkgPath = path.join(repoRoot, "package.json")
@@ -59,7 +85,7 @@ async function updateVersionAcrossRepos(version: string) {
     const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf-8"))
     rootPkg.version = version
     fs.writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n")
-    console.log(`  ✓ Updated ${rootPkgPath}`)
+    console.log(`  OK Updated ${rootPkgPath}`)
   }
 }
 
@@ -79,7 +105,7 @@ async function gitTagAndPush(version: string) {
   await $`git tag -a v${version} -m "Release v${version}"`.cwd(repoRoot).quiet().nothrow()
   await $`git push origin dev`.cwd(repoRoot).quiet().nothrow()
   await $`git push origin v${version}`.cwd(repoRoot).quiet().nothrow()
-  console.log(`  ✓ Tagged and pushed v${version}`)
+  console.log(`  OK Tagged and pushed v${version}`)
 }
 
 // =============================================================================
@@ -105,39 +131,38 @@ await $`mkdir -p ./dist/${WRAPPER_DIST_DIR}`
 await $`cp -r ./bin ./dist/${WRAPPER_DIST_DIR}/bin`
 await $`cp ./script/postinstall.mjs ./dist/${WRAPPER_DIST_DIR}/postinstall.mjs`
 
-await Bun.file(`./dist/${WRAPPER_DIST_DIR}/package.json`).write(
-  JSON.stringify(
-    {
-      name: NPM_PACKAGE,
-      description: "CLI + daemon powering the Personas system (Zee, Stanley, Johny)",
-      bin: {
-        "agent-core": `./bin/agent-core`,
-      },
-      scripts: {
-        postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
-      },
-      version: Script.version,
-      license: "MIT",
-      repository: {
-        type: "git",
-        url: `git+https://github.com/${GITHUB_REPO}.git`,
-      },
-      keywords: ["ai", "agent", "tui", "cli", "llm", "claude", "openai"],
-      optionalDependencies: Object.fromEntries(
-        Object.entries(binaries).map(([name, version]) => [scopedName(name), version]),
-      ),
-    },
-    null,
-    2,
+const wrapperManifest: Record<string, unknown> = {
+  name: NPM_PACKAGE,
+  description: "CLI + daemon powering the Personas system (Zee, Stanley, Johny)",
+  bin: {
+    "agent-core": `./bin/agent-core`,
+  },
+  scripts: {
+    postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
+  },
+  version: Script.version,
+  license: "MIT",
+  repository: {
+    type: "git",
+    url: `git+https://github.com/${GITHUB_REPO}.git`,
+  },
+  keywords: ["ai", "agent", "tui", "cli", "llm", "claude", "openai"],
+  optionalDependencies: Object.fromEntries(
+    Object.entries(binaries).map(([name, version]) => [scopedName(name), version]),
   ),
-)
+}
+if (wrapperOsList) wrapperManifest.os = wrapperOsList
+if (wrapperCpuList) wrapperManifest.cpu = wrapperCpuList
+
+await Bun.file(`./dist/${WRAPPER_DIST_DIR}/package.json`).write(JSON.stringify(wrapperManifest, null, 2))
 
 // =============================================================================
 // Publish to npm
 // =============================================================================
 
 const tags = [Script.channel]
-const publishFlag = Script.preview ? "--dry-run" : ""
+const dryRun = forceDryRun || (Script.preview && !allowPreviewPublish)
+const publishFlag = dryRun ? "--dry-run" : ""
 
 console.log(`\n> Publishing platform binaries to npm...`)
 const tasks = Object.entries(binaries).map(async ([name]) => {
@@ -151,14 +176,14 @@ const tasks = Object.entries(binaries).map(async ([name]) => {
   }
   await $`bun pm pack`.cwd(`./dist/${name}`)
   for (const tag of tags) {
-    await $`npm publish ${publishFlag} *.tgz --access public --tag ${tag} ${otpArgs}`.cwd(`./dist/${name}`)
+    await $`npm publish ${publishFlag} *.tgz --access public --provenance --tag ${tag} ${otpArgs}`.cwd(`./dist/${name}`)
   }
 })
 await Promise.all(tasks)
 
 console.log(`\n> Publishing main package ${NPM_PACKAGE}...`)
 for (const tag of tags) {
-  await $`cd ./dist/${WRAPPER_DIST_DIR} && bun pm pack && npm publish ${publishFlag} *.tgz --access public --tag ${tag} ${otpArgs}`
+  await $`cd ./dist/${WRAPPER_DIST_DIR} && bun pm pack && npm publish ${publishFlag} *.tgz --access public --provenance --tag ${tag} ${otpArgs}`
 }
 
 // =============================================================================
@@ -182,7 +207,7 @@ if (!Script.preview) {
       archives.push(`dist/${key}.zip`)
     }
   }
-  console.log(`  ✓ Created: ${archives.join(", ")}`)
+  console.log(`  OK Created: ${archives.join(", ")}`)
 
   // Create GitHub release
   if (!skipGithub) {
@@ -208,7 +233,7 @@ See [CHANGELOG](https://github.com/${GITHUB_REPO}/blob/dev/CHANGELOG.md) for det
     await $`gh release create v${Script.version} ${archiveFlags} --repo ${GITHUB_REPO} --title "v${Script.version}" --notes-file ${releaseNotesFile} --prerelease`
       .cwd(dir)
       .nothrow()
-    console.log(`  ✓ Created GitHub release v${Script.version}`)
+    console.log(`  OK Created GitHub release v${Script.version}`)
   }
 
   // Build and push Docker image
@@ -219,13 +244,13 @@ See [CHANGELOG](https://github.com/${GITHUB_REPO}/blob/dev/CHANGELOG.md) for det
     const dockerTags = [`${image}:${Script.version}`, `${image}:latest`]
     const tagFlags = dockerTags.flatMap((t) => ["-t", t])
     await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`.nothrow()
-    console.log(`  ✓ Pushed ${dockerTags.join(", ")}`)
+    console.log(`  OK Pushed ${dockerTags.join(", ")}`)
   }
 }
 
 console.log(`\n+ Publish complete!`)
-if (Script.preview) {
-  console.log(`   (This was a dry-run. Set AGENT_CORE_CHANNEL=stable to publish for real)`)
+if (dryRun) {
+  console.log(`   (This was a dry-run. Set AGENT_CORE_PUBLISH_PREVIEW=1 to publish preview channels for real)`)
 } else {
   console.log(`   Package: npm install -g ${NPM_PACKAGE}@${Script.version}`)
 }

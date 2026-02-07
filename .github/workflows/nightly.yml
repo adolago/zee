@@ -5,19 +5,13 @@ on:
     # Run at 2 AM UTC every day
     - cron: "0 2 * * *"
   workflow_dispatch:
-    inputs:
-      force:
-        description: "Force publish even if no changes"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
   id-token: write
 
 jobs:
-  check-and-publish:
+  publish-linux-nightly:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -25,87 +19,54 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for changes since last release
-        id: changes
-        run: |
-          # Get the latest release tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          if [ -z "$LATEST_TAG" ]; then
-            echo "No previous release found, will publish"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Check if there are commits since the last tag
-          COMMITS=$(git rev-list ${LATEST_TAG}..HEAD --count)
-
-          if [ "$COMMITS" -gt 0 ] || [ "${{ inputs.force }}" = "true" ]; then
-            echo "Found $COMMITS commits since $LATEST_TAG"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "No changes since $LATEST_TAG"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Setup Bun
-        if: steps.changes.outputs.has_changes == 'true'
         uses: ./.github/actions/setup-bun
 
       - name: Setup Node.js
-        if: steps.changes.outputs.has_changes == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install dependencies
-        if: steps.changes.outputs.has_changes == 'true'
-        run: bun install
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
 
-      - name: Set nightly version
-        if: steps.changes.outputs.has_changes == 'true'
+      - name: Compute nightly version
         id: version
         run: |
-          DATE=$(date +%Y%m%d)
-
-          # Read current version from package.json and increment patch
-          CURRENT=$(jq -r '.version' packages/agent-core/package.json)
-          # Strip any prerelease suffix (e.g., -alpha, -alpha.nightly.*)
-          BASE=$(echo "$CURRENT" | sed 's/-.*//')
-          # Parse major.minor.patch
-          MAJOR=$(echo "$BASE" | cut -d. -f1)
-          MINOR=$(echo "$BASE" | cut -d. -f2)
-          PATCH=$(echo "$BASE" | cut -d. -f3)
-          # Increment patch
-          PATCH=$((PATCH + 1))
-
-          VERSION="${MAJOR}.${MINOR}.${PATCH}-alpha.nightly.${DATE}"
+          cd packages/agent-core
+          VERSION=$(AGENT_CORE_CHANNEL=nightly bun -e 'import { Script } from "./src/pkg/script/index.ts"; console.log(Script.version)')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Nightly version: ${VERSION}"
 
-          # Update package.json versions using sed (npm version fails on catalog: refs)
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" packages/agent-core/package.json
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" package.json
+      - name: Check npm for existing version
+        id: npm
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PKG="@adolago/agent-core-linux"
+          if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "Already published: ${PKG}@${VERSION}"
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+          fi
 
-          echo "Updated versions to ${VERSION}"
-          grep '"version"' packages/agent-core/package.json
-
-      - name: Build
-        if: steps.changes.outputs.has_changes == 'true'
+      - name: Publish to npm (linux-x64)
+        if: steps.npm.outputs.already_published != 'true'
         run: |
           cd packages/agent-core
-          bun run build
-
-      - name: Publish to npm
-        if: steps.changes.outputs.has_changes == 'true'
-        run: |
-          cd packages/agent-core
-          npm publish --access public --provenance --tag nightly
+          AGENT_CORE_CHANNEL=nightly \
+          AGENT_CORE_PUBLISH_PREVIEW=1 \
+          AGENT_CORE_NPM_PACKAGE=@adolago/agent-core-linux \
+          AGENT_CORE_WRAPPER_OS=linux \
+          AGENT_CORE_WRAPPER_CPU=x64 \
+          AGENT_CORE_TARGETS=linux-x64 \
+          bun run script/publish.ts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
-        if: steps.changes.outputs.has_changes == 'true'
+        if: steps.npm.outputs.already_published != 'true'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
@@ -115,6 +76,11 @@ jobs:
             CHANGELOG=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s" | head -20)
           else
             CHANGELOG="Initial nightly release"
+          fi
+
+          if gh release view "v${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "GitHub release v${VERSION} already exists"
+            exit 0
           fi
 
           gh release create "v${VERSION}" \
@@ -129,9 +95,9 @@ jobs:
 
           ### Install
           \`\`\`bash
-          npm install -g @adolago/agent-core@nightly
+          npm install -g @adolago/agent-core-linux@nightly
           # or specific version
-          npm install -g @adolago/agent-core@${VERSION}
+          npm install -g @adolago/agent-core-linux@${VERSION}
           \`\`\`
           " \
             --prerelease
@@ -139,8 +105,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Upload artifacts
-        if: steps.changes.outputs.has_changes == 'true'
+        if: steps.npm.outputs.already_published != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: agent-core-nightly-${{ steps.version.outputs.version }}
+          name: agent-core-linux-nightly-${{ steps.version.outputs.version }}
           path: packages/agent-core/dist
