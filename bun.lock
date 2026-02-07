@@ -80,6 +80,7 @@
         "remeda": "2.26.0",
         "solid-js": "1.9.10",
         "strip-ansi": "7.1.2",
+        "tar": "7.5.7",
         "tree-sitter-bash": "0.25.0",
         "turndown": "7.2.0",
         "ulid": "3.0.1",

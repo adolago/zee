@@ -10,6 +10,9 @@ import * as fs from 'fs';
 import { glob } from 'glob';
 import { defineTool } from '../registry';
 import type { ToolExecutionContext } from '../types';
+import { assertSafeGlobPattern } from '../security/glob-pattern';
+import { resolveToolSandbox } from '../security/sandbox';
+import { assertToolPath } from '../security/validate-path';
 
 // ============================================================================
 // Configuration
@@ -36,17 +39,25 @@ Usage:
 
     parameters: z.object({
       pattern: z.string().describe('The regex pattern to search for in file contents'),
-      path: z.string().optional().describe('The directory to search in. Defaults to current working directory.'),
+      path: z.string().optional().describe('The directory to search in. Defaults to the tool sandbox cwd.'),
       include: z.string().optional().describe('File pattern to include in the search (e.g., "*.js", "*.{ts,tsx}")'),
     }),
 
-    async execute(params, _ctx: ToolExecutionContext) {
+    async execute(params, ctx: ToolExecutionContext) {
       if (!params.pattern) {
         throw new Error('pattern is required');
       }
 
-      const searchPath = params.path || process.cwd();
+      const sandbox = resolveToolSandbox(ctx);
+      const searchInput = params.path || sandbox.cwd;
+      const { resolved: searchPath } = await assertToolPath({
+        filePath: searchInput,
+        cwd: sandbox.cwd,
+        root: sandbox.root,
+      });
+
       const includePattern = params.include || '**/*';
+      assertSafeGlobPattern(includePattern, 'include pattern');
 
       // Find files to search
       const files = await glob(includePattern, {

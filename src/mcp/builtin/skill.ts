@@ -52,19 +52,19 @@ const skillRegistry: Skill[] = [
 // Tool Definition
 // ============================================================================
 
-export const SkillTool = defineTool(
-  'skill',
-  'builtin',
-  async (_ctx) => {
-    // Filter skills by agent permissions if available
-    const accessibleSkills = skillRegistry;
+// Filter skills by agent permissions if available (placeholder)
+const accessibleSkills = skillRegistry;
 
-    const skillList = accessibleSkills
-      .map((s) => `  <skill>\n    <name>${s.name}</name>\n    <description>${s.description}</description>\n  </skill>`)
-      .join('\n');
+const skillList = accessibleSkills
+  .map((s) => `  <skill>\n    <name>${s.name}</name>\n    <description>${s.description}</description>\n  </skill>`)
+  .join('\n');
 
-    return {
-      description: `Load a skill to get detailed instructions for a specific task.
+const SkillParameters = z.object({
+  name: z.string().describe("The skill identifier from available_skills (e.g., 'code-review')"),
+});
+
+export const SkillTool = defineTool('skill', 'builtin', {
+  description: `Load a skill to get detailed instructions for a specific task.
 
 Skills provide specialized knowledge and step-by-step guidance.
 Use this when a task matches an available skill's description.
@@ -73,38 +73,35 @@ Use this when a task matches an available skill's description.
 ${skillList}
 </available_skills>`,
 
-      parameters: z.object({
-        name: z.string().describe("The skill identifier from available_skills (e.g., 'code-review')"),
-      }),
+  parameters: SkillParameters,
 
-      async execute(params, _execCtx: ToolExecutionContext) {
-        const skill = skillRegistry.find((s) => s.name === params.name);
+  async execute(params, _execCtx: ToolExecutionContext) {
+    const skill = skillRegistry.find((s) => s.name === params.name);
 
-        if (!skill) {
-          const available = skillRegistry.map((s) => s.name).join(', ');
-          throw new Error(`Skill "${params.name}" not found. Available skills: ${available || 'none'}`);
-        }
+    if (!skill) {
+      const available = skillRegistry.map((s) => s.name).join(', ');
+      throw new Error(`Skill "${params.name}" not found. Available skills: ${available || 'none'}`);
+    }
 
-        // In a real implementation, this would load the skill content from the file
-        const content = skill.content || `# Skill: ${skill.name}\n\n${skill.description}\n\n[Skill content would be loaded from ${skill.location}]`;
+    // In a real implementation, this would load the skill content from the file.
+    const content =
+      skill.content || `# Skill: ${skill.name}\n\n${skill.description}\n\n[Skill content would be loaded from ${skill.location}]`;
 
-        const output = [
-          `## Skill: ${skill.name}`,
-          '',
-          `**Location**: ${skill.location}`,
-          '',
-          content,
-        ].join('\n');
+    const output = [
+      `## Skill: ${skill.name}`,
+      '',
+      `**Location**: ${skill.location}`,
+      '',
+      content,
+    ].join('\n');
 
-        return {
-          title: `Loaded skill: ${skill.name}`,
-          output,
-          metadata: {
-            name: skill.name,
-            location: skill.location,
-          },
-        };
+    return {
+      title: `Loaded skill: ${skill.name}`,
+      output,
+      metadata: {
+        name: skill.name,
+        location: skill.location,
       },
     };
-  }
-);
+  },
+});

@@ -10,6 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { defineTool } from '../registry';
 import type { ToolExecutionContext } from '../types';
+import { resolveToolSandbox } from '../security/sandbox';
+import { assertToolPath } from '../security/validate-path';
 
 // ============================================================================
 // Configuration
@@ -29,7 +31,8 @@ export const ReadTool = defineTool(
     description: `Read a file from the filesystem.
 
 Usage:
-- The file_path parameter must be an absolute path
+- The filePath parameter may be absolute or relative to the tool sandbox cwd
+- Access is restricted to the tool sandbox root
 - By default, reads up to 2000 lines from the beginning
 - You can optionally specify a line offset and limit for long files
 - Lines longer than 2000 characters will be truncated
@@ -38,18 +41,20 @@ Usage:
 - Cannot read directories - use ls command instead`,
 
     parameters: z.object({
-      filePath: z.string().describe('The absolute path to the file to read'),
+      filePath: z.string().describe('Path to the file to read (absolute or relative to the sandbox cwd)'),
       offset: z.coerce.number().optional().describe('Line number to start reading from (0-based)'),
       limit: z.coerce.number().optional().describe('Number of lines to read (defaults to 2000)'),
     }),
 
     async execute(params, ctx: ToolExecutionContext) {
-      let filepath = params.filePath;
-      if (!path.isAbsolute(filepath)) {
-        filepath = path.join(process.cwd(), filepath);
-      }
+      const sandbox = resolveToolSandbox(ctx);
+      const { resolved: filepath, relative } = await assertToolPath({
+        filePath: params.filePath,
+        cwd: sandbox.cwd,
+        root: sandbox.root,
+      });
 
-      const title = path.basename(filepath);
+      const title = relative || path.basename(filepath);
 
       // Check if file exists
       if (!fs.existsSync(filepath)) {

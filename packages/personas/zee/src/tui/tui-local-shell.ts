@@ -2,6 +2,92 @@ import type { Component, SelectItem } from "@mariozechner/pi-tui";
 import { spawn } from "node:child_process";
 import { createSearchableSelectList } from "./components/selectors.js";
 
+function parseCommandLine(command: string): string[] {
+  const argv: string[] = [];
+  let current = "";
+  let hasToken = false;
+  let mode: "none" | "single" | "double" = "none";
+  let escape = false;
+
+  const push = () => {
+    if (!hasToken) return;
+    argv.push(current);
+    current = "";
+    hasToken = false;
+  };
+
+  for (let i = 0; i < command.length; i += 1) {
+    const ch = command[i]!;
+
+    if (escape) {
+      current += ch;
+      hasToken = true;
+      escape = false;
+      continue;
+    }
+
+    if (mode === "single") {
+      if (ch === "'") {
+        mode = "none";
+      } else {
+        current += ch;
+        hasToken = true;
+      }
+      continue;
+    }
+
+    if (mode === "double") {
+      if (ch === "\"") {
+        mode = "none";
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        hasToken = true;
+        continue;
+      }
+      current += ch;
+      hasToken = true;
+      continue;
+    }
+
+    // mode === "none"
+    if (ch === "'") {
+      mode = "single";
+      hasToken = true;
+      continue;
+    }
+    if (ch === "\"") {
+      mode = "double";
+      hasToken = true;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      hasToken = true;
+      continue;
+    }
+
+    if (/\s/.test(ch)) {
+      push();
+      continue;
+    }
+
+    current += ch;
+    hasToken = true;
+  }
+
+  if (escape) {
+    throw new Error("invalid command: trailing backslash");
+  }
+  if (mode !== "none") {
+    throw new Error("invalid command: unterminated quote");
+  }
+
+  push();
+  return argv;
+}
+
 type LocalShellDeps = {
   chatLog: {
     addSystem: (line: string) => void;
@@ -93,8 +179,24 @@ export function createLocalShellRunner(deps: LocalShellDeps) {
     deps.tui.requestRender();
 
     await new Promise<void>((resolve) => {
-      const child = spawnCommand(cmd, {
-        shell: true,
+      let argv: string[];
+      try {
+        argv = parseCommandLine(cmd);
+      } catch (err) {
+        deps.chatLog.addSystem(`[local] error: ${String(err)}`);
+        deps.tui.requestRender();
+        resolve();
+        return;
+      }
+      if (argv.length === 0 || !argv[0]) {
+        deps.chatLog.addSystem("[local] error: empty command");
+        deps.tui.requestRender();
+        resolve();
+        return;
+      }
+
+      const child = spawnCommand(argv[0], argv.slice(1), {
+        shell: false,
         cwd: getCwd(),
         env,
       });

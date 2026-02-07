@@ -54,7 +54,6 @@ import { getMcpServerManager, resetMcpServerManager } from './server';
 import { registerBuiltinTools } from './builtin';
 import { registerStanleyTools, registerZeeTools, registerJohnyTools, registerZeeFullTools, registerAllDomainTools } from './domain';
 import type { McpServerConfig, SurfaceType, AgentInfo } from './types';
-import { PermissionChecker } from './permission';
 
 /**
  * Initialize the MCP tools layer
@@ -87,8 +86,7 @@ export async function initializeMcp(options?: {
 
   // Set up permission checker with ask handler if provided
   if (options?.permissions?.askHandler) {
-    const checker = new PermissionChecker();
-    checker.setAskHandler(options.permissions.askHandler);
+    registry.setAskHandler(options.permissions.askHandler);
   }
 
   // Register built-in tools

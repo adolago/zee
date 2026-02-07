@@ -193,7 +193,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("GET", "/", undefined, { profile });
             return {
               title: "Browser Status",
-              metadata: { profile, ...result as object },
+              metadata: { profile, ...(result as Record<string, unknown>) },
               output: formatStatus(result),
             };
 
@@ -201,7 +201,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("POST", "/start", undefined, { profile });
             return {
               title: "Browser Started",
-              metadata: { profile, ...result as object },
+              metadata: { profile, ...(result as Record<string, unknown>) },
               output: `Browser started with profile "${profile}"`,
             };
 
@@ -209,7 +209,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("POST", "/stop", undefined, { profile });
             return {
               title: "Browser Stopped",
-              metadata: { profile, ...result as object },
+              metadata: { profile, ...(result as Record<string, unknown>) },
               output: `Browser stopped for profile "${profile}"`,
             };
 
@@ -217,7 +217,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("GET", "/profiles");
             return {
               title: "Browser Profiles",
-              metadata: result as object,
+              metadata: result as Record<string, unknown>,
               output: formatProfiles(result),
             };
 
@@ -226,7 +226,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("GET", "/tabs", undefined, { profile });
             return {
               title: "Browser Tabs",
-              metadata: { profile, ...result as object },
+              metadata: { profile, ...(result as Record<string, unknown>) },
               output: formatTabs(result),
             };
 
@@ -241,7 +241,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("POST", "/tabs/open", { url: args.url }, { profile });
             return {
               title: "Tab Opened",
-              metadata: { profile, url: args.url, ...result as object },
+              metadata: { profile, url: args.url, ...(result as Record<string, unknown>) },
               output: `Opened ${args.url}`,
             };
           }
@@ -387,7 +387,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             result = await browserApi("POST", "/screenshot", screenshotBody, { profile });
             return {
               title: "Screenshot Taken",
-              metadata: { profile, fullPage: args.fullPage, ...result as object },
+              metadata: { profile, fullPage: args.fullPage, ...(result as Record<string, unknown>) },
               output: formatScreenshot(result),
             };
           }

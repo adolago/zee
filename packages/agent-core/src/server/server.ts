@@ -471,9 +471,13 @@ export namespace Server {
     mdnsDomain?: string
     cors?: string[]
   }) {
-    const corsWhitelist = opts.cors ?? []
-    const isLoopbackBind = isLoopbackHostname(opts.hostname)
+    const prevCorsWhitelist = _corsWhitelist
+    const prevIsLoopbackBind = _isLoopbackBind
+    const nextCorsWhitelist = opts.cors ?? []
+    const nextIsLoopbackBind = isLoopbackHostname(opts.hostname)
+    let mdnsPublished = false
 
+    // Avoid mutating global server state if we reject the bind.
     assertSafeServerBind({ hostname: opts.hostname })
 
     const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
@@ -501,29 +505,49 @@ export namespace Server {
     const server = opts.port === 0 ? (tryServe(DEFAULT_API_PORT) ?? tryServe(0)) : tryServe(opts.port)
     if (!server) throw new Error(`Failed to start server on port ${opts.port}`)
 
-    // Only update these after the bind guard and server startup succeed to avoid
-    // polluting request middleware state when listen() throws (tests, CLI errors).
-    _corsWhitelist = corsWhitelist
-    _isLoopbackBind = isLoopbackBind
+    try {
+      // Only update these after the bind guard and server startup succeed to avoid
+      // polluting request middleware state when listen() throws (tests, CLI errors).
+      _corsWhitelist = nextCorsWhitelist
+      _isLoopbackBind = nextIsLoopbackBind
 
-    ServerState.setUrl(server.url)
+      ServerState.setUrl(server.url)
 
-    const mdnsConfig = resolveMdnsConfig(opts.mdns)
-    const isLoopback = opts.hostname === "127.0.0.1" || opts.hostname === "localhost" || opts.hostname === "::1"
-    const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
+      const mdnsConfig = resolveMdnsConfig(opts.mdns)
+      const isLoopback = opts.hostname === "127.0.0.1" || opts.hostname === "localhost" || opts.hostname === "::1"
+      const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
 
-    if (shouldPublishMDNS) {
-      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal, domain: opts.mdnsDomain })
-    } else if (mdnsConfig.enabled && isLoopback) {
-      log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
+      if (shouldPublishMDNS) {
+        MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal, domain: opts.mdnsDomain })
+        mdnsPublished = true
+      } else if (mdnsConfig.enabled && isLoopback) {
+        log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
+      }
+
+      const originalStop = server.stop.bind(server)
+      server.stop = async (closeActiveConnections?: boolean) => {
+        if (shouldPublishMDNS) MDNS.unpublish()
+        return originalStop(closeActiveConnections)
+      }
+
+      return server
+    } catch (err) {
+      _corsWhitelist = prevCorsWhitelist
+      _isLoopbackBind = prevIsLoopbackBind
+      if (mdnsPublished) {
+        try {
+          MDNS.unpublish()
+        } catch {
+          // Ignore - best effort.
+        }
+      }
+      try {
+        // Best effort: avoid leaving a running server around when initialization fails.
+        void server.stop(true)
+      } catch {
+        // Ignore - best effort.
+      }
+      throw err
     }
-
-    const originalStop = server.stop.bind(server)
-    server.stop = async (closeActiveConnections?: boolean) => {
-      if (shouldPublishMDNS) MDNS.unpublish()
-      return originalStop(closeActiveConnections)
-    }
-
-    return server
   }
 }

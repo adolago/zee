@@ -341,7 +341,7 @@ export class McpServerManager extends EventEmitter<McpServerEvents> {
       description: mcpTool.description ?? '',
       parameters: this.buildZodSchema(mcpTool.inputSchema),
       execute: async (args, _ctx) => {
-        const result = await client.callTool(mcpTool.name, args);
+        const result = await client.callTool(mcpTool.name, args as Record<string, unknown>);
         return {
           title: mcpTool.name,
           metadata: { serverId, originalName: mcpTool.name },
@@ -354,7 +354,9 @@ export class McpServerManager extends EventEmitter<McpServerEvents> {
   /**
    * Build Zod schema from JSON Schema
    */
-  private buildZodSchema(_inputSchema: McpToolDefinition['inputSchema']): import('zod').ZodType {
+  private buildZodSchema(
+    _inputSchema: McpToolDefinition['inputSchema']
+  ): import('zod').ZodType<Record<string, unknown>> {
     // Dynamic import to avoid bundling issues
     const { z } = require('zod');
 

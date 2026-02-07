@@ -133,7 +133,7 @@ const PtyStartParams = z.object({
   pty: z.boolean().default(true).describe("Use PTY for interactive terminals (default: true)"),
   background: z.boolean().default(true).describe("Run in background for polling (default: true)"),
   workdir: z.string().optional().describe("Working directory"),
-  env: z.record(z.string()).optional().describe("Environment variables"),
+  env: z.record(z.string(), z.string()).optional().describe("Environment variables"),
   timeoutSeconds: z.number().optional().describe("Kill process after N seconds"),
   yieldMs: z.number().optional().describe("Wait before backgrounding (default: 1000ms)"),
 });

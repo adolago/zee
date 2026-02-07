@@ -78,7 +78,7 @@ export interface FileAttachment {
  * Tool definition interface - the core contract for all tools
  */
 export interface ToolDefinition<
-  TParams extends z.ZodType = z.ZodType,
+  TParams extends z.ZodType<any, any> = z.ZodType<any, any>,
   TMeta extends ToolMetadata = ToolMetadata
 > {
   /** Unique tool identifier */
@@ -93,7 +93,7 @@ export interface ToolDefinition<
  * Runtime tool configuration after initialization
  */
 export interface ToolRuntime<
-  TParams extends z.ZodType = z.ZodType,
+  TParams extends z.ZodType<any, any> = z.ZodType<any, any>,
   TMeta extends ToolMetadata = ToolMetadata
 > {
   /** Tool description for LLM */
