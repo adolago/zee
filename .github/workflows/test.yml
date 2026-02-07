@@ -40,8 +40,11 @@ jobs:
         with:
           node-version: "22.12.0"
 
-      - name: Enable Corepack
-        run: corepack enable
+      # Corepack has intermittently failed to verify pnpm signatures on GitHub
+      # runners ("Cannot find matching keyid"). Installing pnpm directly avoids
+      # that failure mode.
+      - name: Install pnpm
+        run: npm install -g pnpm@10.23.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
