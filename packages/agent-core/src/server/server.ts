@@ -95,6 +95,15 @@ export namespace Server {
   let _corsWhitelist: string[] = []
   let _isLoopbackBind = true
 
+  /**
+   * Reset in-memory server state. This is mainly used by tests to avoid cross-test leakage.
+   */
+  export function reset() {
+    _corsWhitelist = []
+    _isLoopbackBind = true
+    App.reset()
+  }
+
   function parseCommaList(value?: string): string[] {
     if (!value) return []
     return value
