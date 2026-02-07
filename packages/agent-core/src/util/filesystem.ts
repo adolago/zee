@@ -4,11 +4,18 @@ import { dirname, join, relative } from "path"
 
 export namespace Filesystem {
   export const sanitizePath = (value: string) => value.replace(/\0/g, "")
-  export const exists = (p: string) =>
-    Bun.file(sanitizePath(p))
+  export const exists = async (p: string) => {
+    p = sanitizePath(p)
+    const file = Bun.file(p)
+    // check if it's a file (fast & async)
+    // note: file.exists() returns false for directories
+    if (await file.exists()) return true
+    // fallback to stat for directories or to confirm non-existence
+    return file
       .stat()
       .then(() => true)
       .catch(() => false)
+  }
 
   export const isDir = (p: string) =>
     Bun.file(sanitizePath(p))
