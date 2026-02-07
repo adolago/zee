@@ -428,21 +428,6 @@ export namespace Server {
         }) as unknown as Hono,
   )
 
-  /**
-   * Reset server globals and app instance between unit tests.
-   *
-   * NOTE: `Server.listen()` mutates `_isLoopbackBind` before performing bind
-   * guard checks. Tests that intentionally trigger an early throw (for example,
-   * bind guard tests) can leave the module-level state in a non-loopback mode,
-   * causing unrelated tests to receive 403 responses when using the directory
-   * override query parameter.
-   */
-  export function reset() {
-    _corsWhitelist = []
-    _isLoopbackBind = true
-    App.reset()
-  }
-
   export async function openapi() {
     // Cast to break excessive type recursion from long route chains
     const result = await generateSpecs(App() as Hono, {
