@@ -466,7 +466,7 @@ Use this to verify Claude Code is ready and properly integrated.`,
         }
       } else {
         output += `\n\nTo install Claude Code CLI:
-  npm install -g @anthropic-ai/claude-code
+  npm install -g @anthropic-ai/claude-code@latest
 
 Then authenticate:
   claude login`;
@@ -560,7 +560,7 @@ Examples:
           output: `Claude Code CLI is not installed.
 
 To install:
-  npm install -g @anthropic-ai/claude-code
+  npm install -g @anthropic-ai/claude-code@latest
 
 Then authenticate:
   claude login`,
@@ -704,15 +704,15 @@ No credentials found. To authenticate:
 
       return {
         title: "Claude Credentials",
-        metadata: {
-          source,
-          hasFile,
-          hasKeychain: !!keychainCreds,
-          type: activeCreds?.type ?? "none",
-          expired: activeCreds ? activeCreds.expiresAt < Date.now() : true,
-        },
-        output,
-      };
+	        metadata: {
+	          source,
+	          hasFile,
+	          hasKeychain: false,
+	          type: activeCreds?.type ?? "none",
+	          expired: activeCreds ? activeCreds.expiresAt < Date.now() : true,
+	        },
+	        output,
+	      };
     },
   }),
 };

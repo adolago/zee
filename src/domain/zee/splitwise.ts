@@ -228,7 +228,7 @@ export async function callSplitwiseApi(
   };
 
   let body: string | undefined;
-  if (method !== "GET" && method !== "HEAD") {
+  if (method !== "GET") {
     const payload = request.payload ?? {};
     if (request.payloadFormat === "form") {
       headers["Content-Type"] = "application/x-www-form-urlencoded";

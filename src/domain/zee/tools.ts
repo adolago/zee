@@ -48,7 +48,6 @@ import {
 } from "./google/calendar.js";
 import { getMemory } from "../../memory/unified.js";
 import { CLAUDE_CODE_TOOLS, registerClaudeCodeTools } from "./claude-code.js";
-import { RESTART_SENTINEL_TOOLS } from "./restart-sentinel.js";
 import { CRON_TOOLS } from "./cron.js";
 import { PTY_SESSION_TOOLS } from "./pty-sessions.js";
 import { ZEE_BROWSER_TOOLS } from "./browser.js";
@@ -906,15 +905,15 @@ Contacts are synced across:
 const SplitwiseValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 
 const SplitwiseParams = z.object({
-  action: z.enum(SPLITWISE_ACTIONS as [SplitwiseAction, ...SplitwiseAction[]])
+  action: z.enum(SPLITWISE_ACTIONS)
     .describe("Splitwise action to perform"),
   groupId: z.number().optional().describe("Group ID for group actions"),
   friendId: z.number().optional().describe("Friend ID for friend actions"),
   expenseId: z.number().optional().describe("Expense ID for expense actions"),
   endpoint: z.string().optional().describe("Endpoint for request action (e.g., get_expenses)"),
   method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional().describe("HTTP method for request action"),
-  query: z.record(SplitwiseValueSchema).optional().describe("Query parameters"),
-  payload: z.record(SplitwiseValueSchema).optional().describe("Request payload"),
+  query: z.record(z.string(), SplitwiseValueSchema).optional().describe("Query parameters"),
+  payload: z.record(z.string(), SplitwiseValueSchema).optional().describe("Request payload"),
   payloadFormat: z.enum(["json", "form"]).default("json").describe("Payload encoding for POST/PUT"),
   timeoutMs: z.number().optional().describe("Override timeout in ms"),
 });
@@ -2026,16 +2025,16 @@ export const memoryReflectTool: ToolDefinition = {
           updateEntityPages: args.updateEntityPages,
         });
 
-        return {
-          title: `Reflect Complete (${result.durationMs}ms)`,
-          metadata: result,
-          output: `Memory reflect completed in ${result.durationMs}ms:
+	        return {
+	          title: `Reflect Complete (${result.durationMs}ms)`,
+	          metadata: result as unknown as Record<string, unknown>,
+	          output: `Memory reflect completed in ${result.durationMs}ms:
 
 - Duplicates merged: ${result.duplicatesMerged}
 - Stale beliefs found: ${result.staleBeliefs}
 - Beliefs decayed: ${result.beliefsDecayed}
 - Entity pages updated: ${result.entityPagesUpdated}`,
-        };
+	        };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         return {
@@ -2257,7 +2256,6 @@ export const ZEE_TOOLS = [
   planAdvanceTool,
   planStatusTool,
   ...CLAUDE_CODE_TOOLS,
-  ...RESTART_SENTINEL_TOOLS,
   ...CRON_TOOLS,
   ...PTY_SESSION_TOOLS,
   ...ZEE_BROWSER_TOOLS,

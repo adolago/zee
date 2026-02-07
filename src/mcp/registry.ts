@@ -16,9 +16,13 @@ import type {
   ToolCategory,
   AgentInfo,
   SurfaceType,
+  ToolExecutionContext,
 } from './types';
-import { PermissionChecker } from './permission';
+import type { PermissionRequest, PermissionResponse } from './permission';
+import { PermissionChecker, PermissionDeniedError } from './permission';
 import { Log } from '../../packages/agent-core/src/util/log';
+import { resolveToolSandbox } from './security/sandbox';
+import { validateToolPath } from './security/validate-path';
 
 const log = Log.create({ service: 'mcp-registry' });
 
@@ -62,6 +66,13 @@ export class ToolRegistry extends EventEmitter<ToolRegistryEvents> {
   constructor(permissionChecker?: PermissionChecker) {
     super();
     this.permissionChecker = permissionChecker ?? new PermissionChecker();
+  }
+
+  /**
+   * Set the handler used when a tool requires interactive approval ("ask").
+   */
+  setAskHandler(handler: (request: PermissionRequest) => Promise<PermissionResponse>): void {
+    this.permissionChecker.setAskHandler(handler);
   }
 
   // --------------------------------------------------------------------------
@@ -201,7 +212,8 @@ export class ToolRegistry extends EventEmitter<ToolRegistryEvents> {
       return undefined;
     }
 
-    return entry.tool.init(ctx);
+    const runtime = await entry.tool.init(ctx);
+    return this.wrapRuntimeWithPermissions(toolId, entry, runtime, ctx);
   }
 
   /**
@@ -228,7 +240,8 @@ export class ToolRegistry extends EventEmitter<ToolRegistryEvents> {
 
       try {
         const runtime = await entry.tool.init(ctx);
-        result.set(toolId, runtime);
+        const wrapped = this.wrapRuntimeWithPermissions(toolId, entry, runtime, ctx);
+        result.set(toolId, wrapped);
       } catch (error) {
         log.error('Failed to initialize tool', {
           toolId,
@@ -238,6 +251,201 @@ export class ToolRegistry extends EventEmitter<ToolRegistryEvents> {
     }
 
     return result;
+  }
+
+  private wrapRuntimeWithPermissions(
+    toolId: string,
+    entry: ToolRegistryEntry,
+    runtime: ToolRuntime,
+    initCtx?: ToolInitContext,
+  ): ToolRuntime {
+    const agent = initCtx?.agent;
+    const surface = initCtx?.surface;
+    if (!agent) return runtime;
+
+    const originalExecute = runtime.execute;
+    const checker = this.permissionChecker;
+
+    return {
+      ...runtime,
+      execute: async (args, execCtx) => {
+        const patterns = this.extractPermissionPatterns(toolId, args, execCtx);
+
+        const action = await checker.checkPermission({
+          toolId,
+          toolCategory: entry.tool.category,
+          agent,
+          surface,
+          patterns,
+        });
+
+        if (action === 'deny') {
+          throw new PermissionDeniedError(execCtx.sessionId, toolId, execCtx.callId, {
+            toolId,
+            surface,
+            patterns,
+          });
+        }
+
+        if (action === 'ask') {
+          const req = this.buildPermissionRequest(toolId, entry.tool.category, args, execCtx, patterns);
+          const ok = await checker.askPermission(req);
+          if (!ok) {
+            throw new PermissionDeniedError(execCtx.sessionId, toolId, execCtx.callId, {
+              toolId,
+              surface,
+              patterns,
+            });
+          }
+        }
+
+        return originalExecute(args, execCtx);
+      },
+    };
+  }
+
+  private extractPermissionPatterns(
+    toolId: string,
+    args: unknown,
+    execCtx: ToolExecutionContext,
+  ): { command?: string[]; path?: string; url?: string } | undefined {
+    const a = args as Record<string, unknown> | null;
+    if (!a) return undefined;
+
+    if (toolId === 'bash') {
+      const argv = a['argv'];
+      const command = a['command'];
+      if (Array.isArray(argv)) {
+        return { command: argv.map((x) => String(x)) };
+      }
+      if (typeof command === 'string' && command.trim()) {
+        return { command: [command.trim()] };
+      }
+      return undefined;
+    }
+
+    if (toolId === 'webfetch') {
+      const url = a['url'];
+      if (typeof url === 'string' && url.trim()) {
+        return { url: url.trim() };
+      }
+      return undefined;
+    }
+
+    // File-ish tools
+    if (toolId === 'read' || toolId === 'write' || toolId === 'edit') {
+      const filePath = a['filePath'];
+      if (typeof filePath === 'string' && filePath.trim()) {
+        return { path: this.resolveSandboxedPathPattern(filePath, execCtx) };
+      }
+      return undefined;
+    }
+
+    if (toolId === 'glob' || toolId === 'grep') {
+      const p = a['path'];
+      if (typeof p === 'string' && p.trim()) {
+        return { path: this.resolveSandboxedPathPattern(p, execCtx) };
+      }
+      // If omitted, treat as cwd for permissions.
+      const sandbox = resolveToolSandbox(execCtx);
+      return { path: sandbox.cwd };
+    }
+
+    return undefined;
+  }
+
+  private resolveSandboxedPathPattern(inputPath: string, execCtx: ToolExecutionContext): string {
+    const sandbox = resolveToolSandbox(execCtx);
+    try {
+      return validateToolPath({ filePath: inputPath, cwd: sandbox.cwd, root: sandbox.root }).resolved;
+    } catch {
+      return inputPath;
+    }
+  }
+
+  private buildPermissionRequest(
+    toolId: string,
+    category: ToolCategory,
+    args: unknown,
+    execCtx: ToolExecutionContext,
+    patterns: { command?: string[]; path?: string; url?: string } | undefined,
+  ): PermissionRequest {
+    const type = this.mapToolToPermissionType(toolId, category);
+    const pattern = patterns?.command ?? patterns?.path ?? patterns?.url;
+
+    return {
+      type,
+      pattern,
+      sessionId: execCtx.sessionId,
+      messageId: execCtx.messageId,
+      callId: execCtx.callId,
+      title: this.formatPermissionTitle(type, toolId, pattern),
+      metadata: this.buildPermissionMetadata(toolId, category, args, execCtx, patterns),
+    };
+  }
+
+  private mapToolToPermissionType(toolId: string, category: ToolCategory): PermissionRequest['type'] {
+    if (category === 'mcp') return 'mcp';
+    switch (toolId) {
+      case 'bash':
+      case 'edit':
+      case 'write':
+      case 'read':
+      case 'glob':
+      case 'grep':
+      case 'webfetch':
+      case 'task':
+      case 'skill':
+        return toolId;
+      default:
+        return 'mcp';
+    }
+  }
+
+  private formatPermissionTitle(
+    type: PermissionRequest['type'],
+    toolId: string,
+    pattern: string | string[] | undefined,
+  ): string {
+    const base = type === 'mcp' ? toolId : type;
+    if (!pattern) return base;
+    const patternText = Array.isArray(pattern) ? pattern.join(' ') : pattern;
+    const truncated = patternText.length > 140 ? patternText.slice(0, 140) + '...' : patternText;
+    return `${base}: ${truncated}`;
+  }
+
+  private buildPermissionMetadata(
+    toolId: string,
+    category: ToolCategory,
+    args: unknown,
+    execCtx: ToolExecutionContext,
+    patterns: { command?: string[]; path?: string; url?: string } | undefined,
+  ): Record<string, unknown> {
+    const base: Record<string, unknown> = {
+      toolId,
+      category,
+      patterns,
+    };
+
+    if (toolId === 'write') {
+      const a = args as Record<string, unknown> | null;
+      const content = a && typeof a['content'] === 'string' ? a['content'] : '';
+      base['contentChars'] = typeof content === 'string' ? content.length : undefined;
+    }
+
+    if (toolId === 'edit') {
+      const a = args as Record<string, unknown> | null;
+      base['oldStringChars'] = a && typeof a['oldString'] === 'string' ? a['oldString'].length : undefined;
+      base['newStringChars'] = a && typeof a['newString'] === 'string' ? a['newString'].length : undefined;
+    }
+
+    // Carry through non-sensitive context keys if present.
+    if (execCtx.extra && typeof execCtx.extra === 'object') {
+      const surface = execCtx.extra['surface'];
+      if (typeof surface === 'string') base['surface'] = surface;
+    }
+
+    return base;
   }
 
   // --------------------------------------------------------------------------

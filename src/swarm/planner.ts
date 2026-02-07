@@ -5,7 +5,7 @@
  * persist plan state across sessions, and proactively continue work.
  */
 
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { getMemory } from "../memory/unified.js";
 import { Log } from "../../packages/agent-core/src/util/log";
 
@@ -52,7 +52,7 @@ export async function createPlan(
   sessionId?: string,
 ): Promise<Plan> {
   const plan: Plan = {
-    id: uuidv4(),
+    id: randomUUID(),
     persona,
     objective,
     steps: steps.map((description) => ({

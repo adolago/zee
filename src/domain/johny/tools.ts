@@ -23,7 +23,7 @@ const StudyParams = z.object({
   sessionId: z.string().optional().describe("Session ID for end/pause/resume actions"),
 })
 
-export const studyTool: ToolDefinition = {
+export const studyTool: ToolDefinition<typeof StudyParams> = {
   id: "johny:study",
   category: "domain",
   init: async () => ({
@@ -129,7 +129,7 @@ const KnowledgeParams = z.object({
   prerequisiteId: z.string().optional().describe("Prerequisite topic ID to add"),
 })
 
-export const knowledgeTool: ToolDefinition = {
+export const knowledgeTool: ToolDefinition<typeof KnowledgeParams> = {
   id: "johny:knowledge",
   category: "domain",
   init: async () => ({
@@ -228,7 +228,7 @@ const MasteryParams = z.object({
   score: z.number().min(0).max(1).optional().describe("Practice score (0-1) for implicit level update"),
 })
 
-export const masteryTool: ToolDefinition = {
+export const masteryTool: ToolDefinition<typeof MasteryParams> = {
   id: "johny:mastery",
   category: "domain",
   init: async () => ({
@@ -321,7 +321,7 @@ const ReviewParams = z.object({
   limit: z.number().optional().describe("Max items to return"),
 })
 
-export const reviewTool: ToolDefinition = {
+export const reviewTool: ToolDefinition<typeof ReviewParams> = {
   id: "johny:review",
   category: "domain",
   init: async () => ({
@@ -405,7 +405,7 @@ const PracticeParams = z.object({
   type: z.enum(["concept", "calculation", "proof", "application"]).optional().describe("Problem type"),
 })
 
-export const practiceTool: ToolDefinition = {
+export const practiceTool: ToolDefinition<typeof PracticeParams> = {
   id: "johny:practice",
   category: "domain",
   init: async () => ({

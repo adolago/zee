@@ -6,11 +6,11 @@
 
 Agent-Core is an AI-powered coding assistant that runs locally on your machine. It provides an agent system with access to powerful tools including shell execution, file operations, and web access.
 
-### No Sandbox
+### No OS Sandbox
 
-Agent-Core does **not** sandbox the agent. The permission system exists as a UX feature to help users stay aware of what actions the agent is taking - it prompts for confirmation before executing commands, writing files, etc. However, it is not designed to provide security isolation.
+`agent-core` does **not** provide OS-level isolation for the agent. Some tool surfaces enforce sandboxing and input hardening (for example, MCP filesystem tools validate paths against a sandbox root), but these are defense-in-depth controls rather than a complete security boundary.
 
-If you need true isolation, run Agent-Core inside a Docker container or VM.
+If you need strong isolation, run `agent-core` inside a Docker container or VM.
 
 ### Server Mode
 

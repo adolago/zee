@@ -10,6 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { defineTool } from '../registry';
 import type { ToolExecutionContext } from '../types';
+import { resolveToolSandbox } from '../security/sandbox';
+import { assertToolPath } from '../security/validate-path';
 
 // ============================================================================
 // Tool Definition
@@ -23,23 +25,27 @@ export const WriteTool = defineTool(
 
 Usage:
 - This tool will overwrite the existing file if there is one at the provided path
-- The file_path parameter must be an absolute path
+- The filePath parameter may be absolute or relative to the tool sandbox cwd
+- Access is restricted to the tool sandbox root
 - Parent directories will be created if they don't exist
 - ALWAYS prefer editing existing files to creating new ones
 - NEVER proactively create documentation files unless explicitly requested`,
 
     parameters: z.object({
       content: z.string().describe('The content to write to the file'),
-      filePath: z.string().describe('The absolute path to the file to write (must be absolute, not relative)'),
+      filePath: z.string().describe('Path to the file to write (absolute or relative to the sandbox cwd)'),
     }),
 
-    async execute(params, _ctx: ToolExecutionContext) {
-      const filepath = path.isAbsolute(params.filePath)
-        ? params.filePath
-        : path.join(process.cwd(), params.filePath);
+    async execute(params, ctx: ToolExecutionContext) {
+      const sandbox = resolveToolSandbox(ctx);
+      const { resolved: filepath, relative } = await assertToolPath({
+        filePath: params.filePath,
+        cwd: sandbox.cwd,
+        root: sandbox.root,
+      });
 
       const exists = fs.existsSync(filepath);
-      const title = path.basename(filepath);
+      const title = relative || path.basename(filepath);
 
       // Create parent directories if needed
       const parentDir = path.dirname(filepath);

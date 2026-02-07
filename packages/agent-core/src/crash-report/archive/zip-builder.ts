@@ -5,8 +5,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { createGzip } from "zlib";
-import { pipeline } from "stream/promises";
+import * as tar from "tar";
 
 /**
  * Simple ZIP-like archive builder (TAR.GZ format for simplicity)
@@ -87,18 +86,14 @@ export class ZipBuilder {
   }
 
   private async createTarGz(sourceDir: string, outputPath: string): Promise<void> {
-    // Use tar command for simplicity (available on Linux)
-    const { execSync } = await import("child_process");
     const parentDir = path.dirname(sourceDir);
     const dirName = path.basename(sourceDir);
 
     try {
-      execSync(`tar -czf "${outputPath}" -C "${parentDir}" "${dirName}"`, {
-        encoding: "utf-8",
-      });
+      await tar.c({ cwd: parentDir, file: outputPath, gzip: true }, [dirName]);
     } catch (error) {
       // Fallback: just keep the directory
-      throw new Error(`Failed to create archive: ${error}`);
+      throw new Error(`Failed to create archive: ${String(error)}`);
     }
   }
 }

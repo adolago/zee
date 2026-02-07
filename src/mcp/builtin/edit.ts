@@ -10,6 +10,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { defineTool } from '../registry';
 import type { ToolExecutionContext } from '../types';
+import { resolveToolSandbox } from '../security/sandbox';
+import { assertToolPath } from '../security/validate-path';
 
 // ============================================================================
 // Tool Definition
@@ -29,13 +31,13 @@ Usage:
 - ALWAYS prefer editing existing files to creating new ones`,
 
     parameters: z.object({
-      filePath: z.string().describe('The absolute path to the file to modify'),
+      filePath: z.string().describe('Path to the file to modify (absolute or relative to the sandbox cwd)'),
       oldString: z.string().describe('The text to replace'),
       newString: z.string().describe('The text to replace it with (must be different from oldString)'),
       replaceAll: z.boolean().optional().describe('Replace all occurrences of oldString (default false)'),
     }),
 
-    async execute(params, _ctx: ToolExecutionContext) {
+    async execute(params, ctx: ToolExecutionContext) {
       if (!params.filePath) {
         throw new Error('filePath is required');
       }
@@ -44,9 +46,12 @@ Usage:
         throw new Error('oldString and newString must be different');
       }
 
-      const filePath = path.isAbsolute(params.filePath)
-        ? params.filePath
-        : path.join(process.cwd(), params.filePath);
+      const sandbox = resolveToolSandbox(ctx);
+      const { resolved: filePath, relative } = await assertToolPath({
+        filePath: params.filePath,
+        cwd: sandbox.cwd,
+        root: sandbox.root,
+      });
 
       // Check file exists
       if (!fs.existsSync(filePath)) {
@@ -62,7 +67,7 @@ Usage:
       if (params.oldString === '') {
         fs.writeFileSync(filePath, params.newString);
         return {
-          title: path.basename(filePath),
+          title: relative || path.basename(filePath),
           metadata: {
             diff: `Created file with ${params.newString.split('\n').length} lines`,
           },
@@ -83,7 +88,7 @@ Usage:
       const diff = `Changed: ${oldLines} -> ${newLines} lines`;
 
       return {
-        title: path.basename(filePath),
+        title: relative || path.basename(filePath),
         metadata: {
           diff,
         },

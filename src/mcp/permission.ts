@@ -38,7 +38,20 @@ export interface PermissionCheckContext {
 }
 
 export interface PermissionRequest {
-  type: 'bash' | 'edit' | 'write' | 'webfetch' | 'skill' | 'external_directory' | 'mcp';
+  type:
+    | 'bash'
+    | 'edit'
+    | 'write'
+    | 'read'
+    | 'glob'
+    | 'grep'
+    | 'webfetch'
+    | 'websearch'
+    | 'codesearch'
+    | 'task'
+    | 'skill'
+    | 'external_directory'
+    | 'mcp';
   pattern?: string | string[];
   sessionId: string;
   messageId: string;
@@ -69,6 +82,7 @@ export class PermissionChecker {
         web: {},
         api: {},
         whatsapp: {},
+        matrix: {},
       },
       global: permissions?.global ?? {},
       overrides: permissions?.overrides ?? {},
@@ -157,7 +171,16 @@ export class PermissionChecker {
       return this.permissions.global[toolId];
     }
 
-    // Default permission based on tool category defaults
+    // Fall back to built-in defaults for this surface (if any)
+    if (surface) {
+      const defaults = PermissionChecker.getDefaultSurfacePermissions(surface);
+      const surfaceDefault = defaults[toolId];
+      if (surfaceDefault) {
+        return surfaceDefault;
+      }
+    }
+
+    // Default permission
     return { default: 'allow' };
   }
 
@@ -180,8 +203,13 @@ export class PermissionChecker {
         break;
 
       case 'edit':
-      case 'write':
         if (agentPerms.edit === 'deny') {
+          return false;
+        }
+        break;
+
+      case 'write':
+        if (agentPerms.write === 'deny') {
           return false;
         }
         break;
@@ -226,8 +254,14 @@ export class PermissionChecker {
       return 'deny';
     }
 
+    const patternKey =
+      patterns?.command ? patterns.command.join(' ') :
+      patterns?.path ? patterns.path :
+      patterns?.url ? patterns.url :
+      undefined;
+
     // Get effective permission
-    const permission = this.getEffectivePermission(toolId, surface);
+    const permission = this.getEffectivePermission(toolId, surface, patternKey);
 
     // Check pattern-based permissions if patterns provided
     if (patterns && permission.patterns) {
@@ -321,7 +355,8 @@ export class PermissionChecker {
     if (!this.askHandler) {
       // No handler configured, deny by default
       log.warn('No permission ask handler configured, denying by default', {
-        toolId: request.toolId,
+        type: request.type,
+        title: request.title,
       });
       return false;
     }
@@ -392,6 +427,20 @@ export class PermissionChecker {
 
       case 'whatsapp':
         // WhatsApp is most restrictive - no file/system operations
+        return {
+          bash: { default: 'deny' },
+          edit: { default: 'deny' },
+          write: { default: 'deny' },
+          read: { default: 'deny' },
+          glob: { default: 'deny' },
+          grep: { default: 'deny' },
+          webfetch: { default: 'allow' },
+          task: { default: 'deny' },
+          skill: { default: 'allow' },
+        };
+
+      case 'matrix':
+        // Matrix is most restrictive - no file/system operations
         return {
           bash: { default: 'deny' },
           edit: { default: 'deny' },

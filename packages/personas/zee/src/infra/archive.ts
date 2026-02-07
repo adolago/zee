@@ -12,6 +12,29 @@ export type ArchiveLogger = {
 
 const TAR_SUFFIXES = [".tgz", ".tar.gz", ".tar"];
 
+function assertWithinDest(destDir: string, candidatePath: string, entryName: string): void {
+  const rel = path.relative(destDir, candidatePath);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error(`archive entry escapes destination: ${entryName}`);
+  }
+}
+
+function assertSafeArchiveEntryPath(entryPath: string): void {
+  const normalized = entryPath.replaceAll("\\", "/");
+
+  if (normalized.startsWith("/")) {
+    throw new Error(`archive entry uses absolute path: ${entryPath}`);
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(entryPath)) {
+    throw new Error(`archive entry uses Windows absolute path: ${entryPath}`);
+  }
+
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts.some((p) => p === "..")) {
+    throw new Error(`archive entry uses path traversal (".."): ${entryPath}`);
+  }
+}
+
 export function resolveArchiveKind(filePath: string): ArchiveKind | null {
   const lower = filePath.toLowerCase();
   if (lower.endsWith(".zip")) return "zip";
@@ -62,29 +85,46 @@ export async function withTimeout<T>(
 }
 
 async function extractZip(params: { archivePath: string; destDir: string }): Promise<void> {
+  const destRoot = path.resolve(params.destDir);
   const buffer = await fs.readFile(params.archivePath);
   const zip = await JSZip.loadAsync(buffer);
   const entries = Object.values(zip.files);
 
   for (const entry of entries) {
     const entryPath = entry.name.replaceAll("\\", "/");
+    assertSafeArchiveEntryPath(entryPath);
     if (!entryPath || entryPath.endsWith("/")) {
-      const dirPath = path.resolve(params.destDir, entryPath);
-      if (!dirPath.startsWith(params.destDir)) {
-        throw new Error(`zip entry escapes destination: ${entry.name}`);
-      }
+      const dirPath = path.resolve(destRoot, entryPath);
+      assertWithinDest(destRoot, dirPath, entry.name);
       await fs.mkdir(dirPath, { recursive: true });
       continue;
     }
 
-    const outPath = path.resolve(params.destDir, entryPath);
-    if (!outPath.startsWith(params.destDir)) {
-      throw new Error(`zip entry escapes destination: ${entry.name}`);
-    }
+    const outPath = path.resolve(destRoot, entryPath);
+    assertWithinDest(destRoot, outPath, entry.name);
     await fs.mkdir(path.dirname(outPath), { recursive: true });
     const data = await entry.async("nodebuffer");
     await fs.writeFile(outPath, data);
   }
+}
+
+async function validateTar(params: { archivePath: string }): Promise<void> {
+  // Use sync mode so validation failures are propagated as errors.
+  // In async mode, throwing inside onentry/onReadEntry can surface as an
+  // unhandled exception instead of rejecting the returned promise.
+  tar.t({
+    file: params.archivePath,
+    sync: true,
+    onentry(entry) {
+      const entryPath = String((entry as { path?: unknown }).path ?? "");
+      assertSafeArchiveEntryPath(entryPath);
+
+      const type = String((entry as { type?: unknown }).type ?? "");
+      if (type === "SymbolicLink" || type === "Link" || type === "HardLink") {
+        throw new Error(`tar entry is a link (type ${type}): ${entryPath}`);
+      }
+    },
+  });
 }
 
 export async function extractArchive(params: {
@@ -100,6 +140,7 @@ export async function extractArchive(params: {
 
   const label = kind === "zip" ? "extract zip" : "extract tar";
   if (kind === "tar") {
+    await withTimeout(validateTar(params), params.timeoutMs, "validate tar");
     await withTimeout(
       tar.x({ file: params.archivePath, cwd: params.destDir }),
       params.timeoutMs,

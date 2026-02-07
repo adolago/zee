@@ -455,55 +455,67 @@ export namespace Server {
     }
   }
 
-  export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
-    _corsWhitelist = opts.cors ?? []
-    _isLoopbackBind = isLoopbackHostname(opts.hostname)
+	  export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
+	    const prevCorsWhitelist = _corsWhitelist
+	    const prevIsLoopbackBind = _isLoopbackBind
+	    const nextCorsWhitelist = opts.cors ?? []
+	    const nextIsLoopbackBind = isLoopbackHostname(opts.hostname)
 
-    assertSafeServerBind({ hostname: opts.hostname })
+	    // Avoid mutating global server state if we reject the bind.
+	    assertSafeServerBind({ hostname: opts.hostname })
 
-    const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
-    const args = {
-      hostname: opts.hostname,
-      idleTimeout,
-      fetch: (req: Request, server: any) => {
-        try {
-          const ip = server?.requestIP?.(req)?.address
-          RequestMeta.setIp(req, ip)
-        } catch {
-          // Ignore - request metadata is best-effort.
-        }
-        return App().fetch(req)
-      },
-      websocket: websocket,
-    } as const
-    const tryServe = (port: number) => {
-      try {
-        return Bun.serve({ ...args, port })
-      } catch {
-        return undefined
-      }
-    }
-    const server = opts.port === 0 ? (tryServe(DEFAULT_API_PORT) ?? tryServe(0)) : tryServe(opts.port)
-    if (!server) throw new Error(`Failed to start server on port ${opts.port}`)
+	    _corsWhitelist = nextCorsWhitelist
+	    _isLoopbackBind = nextIsLoopbackBind
 
-    ServerState.setUrl(server.url)
+	    try {
+	      const idleTimeout = Flag.AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS ?? DEFAULT_IDLE_TIMEOUT_SECONDS
+	      const args = {
+	        hostname: opts.hostname,
+	        idleTimeout,
+	        fetch: (req: Request, server: any) => {
+	          try {
+	            const ip = server?.requestIP?.(req)?.address
+	            RequestMeta.setIp(req, ip)
+	          } catch {
+	            // Ignore - request metadata is best-effort.
+	          }
+	          return App().fetch(req)
+	        },
+	        websocket: websocket,
+	      } as const
+	      const tryServe = (port: number) => {
+	        try {
+	          return Bun.serve({ ...args, port })
+	        } catch {
+	          return undefined
+	        }
+	      }
+	      const server = opts.port === 0 ? (tryServe(DEFAULT_API_PORT) ?? tryServe(0)) : tryServe(opts.port)
+	      if (!server) throw new Error(`Failed to start server on port ${opts.port}`)
 
-    const mdnsConfig = resolveMdnsConfig(opts.mdns)
-    const isLoopback = opts.hostname === "127.0.0.1" || opts.hostname === "localhost" || opts.hostname === "::1"
-    const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
+	      ServerState.setUrl(server.url)
 
-    if (shouldPublishMDNS) {
-      MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal })
-    } else if (mdnsConfig.enabled && isLoopback) {
-      log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
-    }
+	      const mdnsConfig = resolveMdnsConfig(opts.mdns)
+	      const isLoopback = opts.hostname === "127.0.0.1" || opts.hostname === "localhost" || opts.hostname === "::1"
+	      const shouldPublishMDNS = mdnsConfig.enabled && server.port && !isLoopback
 
-    const originalStop = server.stop.bind(server)
-    server.stop = async (closeActiveConnections?: boolean) => {
-      if (shouldPublishMDNS) MDNS.unpublish()
-      return originalStop(closeActiveConnections)
-    }
+	      if (shouldPublishMDNS) {
+	        MDNS.publish({ port: server.port!, minimal: mdnsConfig.minimal })
+	      } else if (mdnsConfig.enabled && isLoopback) {
+	        log.warn("mDNS enabled but hostname is loopback; skipping mDNS publish")
+	      }
 
-    return server
-  }
-}
+	      const originalStop = server.stop.bind(server)
+	      server.stop = async (closeActiveConnections?: boolean) => {
+	        if (shouldPublishMDNS) MDNS.unpublish()
+	        return originalStop(closeActiveConnections)
+	      }
+
+	      return server
+	    } catch (err) {
+	      _corsWhitelist = prevCorsWhitelist
+	      _isLoopbackBind = prevIsLoopbackBind
+	      throw err
+	    }
+	  }
+	}

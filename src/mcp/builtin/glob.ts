@@ -6,11 +6,13 @@
  */
 
 import { z } from 'zod';
-import * as path from 'path';
 import { glob } from 'glob';
 import * as fs from 'fs';
 import { defineTool } from '../registry';
 import type { ToolExecutionContext } from '../types';
+import { assertSafeGlobPattern } from '../security/glob-pattern';
+import { resolveToolSandbox } from '../security/sandbox';
+import { assertToolPath } from '../security/validate-path';
 
 // ============================================================================
 // Configuration
@@ -32,19 +34,27 @@ Usage:
 - Supports glob patterns like "**/*.js" or "src/**/*.ts"
 - Returns matching file paths sorted by modification time
 - Use when you need to find files by name patterns
-- IMPORTANT: Omit the path field to use current directory`,
+- IMPORTANT: Omit the path field to use the tool sandbox cwd
+- Access is restricted to the tool sandbox root`,
 
     parameters: z.object({
       pattern: z.string().describe('The glob pattern to match files against'),
       path: z
         .string()
         .optional()
-        .describe('The directory to search in. If not specified, uses current working directory.'),
+        .describe('The directory to search in. If not specified, uses the tool sandbox cwd.'),
     }),
 
-    async execute(params, _ctx: ToolExecutionContext) {
-      let searchPath = params.path ?? process.cwd();
-      searchPath = path.isAbsolute(searchPath) ? searchPath : path.resolve(process.cwd(), searchPath);
+    async execute(params, ctx: ToolExecutionContext) {
+      assertSafeGlobPattern(params.pattern, 'glob pattern');
+
+      const sandbox = resolveToolSandbox(ctx);
+      const searchInput = params.path ?? sandbox.cwd;
+      const { resolved: searchPath, relative } = await assertToolPath({
+        filePath: searchInput,
+        cwd: sandbox.cwd,
+        root: sandbox.root,
+      });
 
       // Find files matching pattern
       const matches = await glob(params.pattern, {
@@ -91,7 +101,7 @@ Usage:
       }
 
       return {
-        title: path.relative(process.cwd(), searchPath) || '.',
+        title: relative || '.',
         metadata: {
           count: files.length,
           truncated,
