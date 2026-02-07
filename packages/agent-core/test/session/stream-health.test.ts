@@ -207,7 +207,8 @@ describe.skipIf(isFullSuite)("StreamHealthMonitor", () => {
         ...testOptions,
       })
 
-      await Bun.sleep(50)
+      // Timers can be off by a millisecond under load; keep this comfortably above 50ms.
+      await Bun.sleep(75)
       monitor.complete()
 
       const report = monitor.getReport()
