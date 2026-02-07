@@ -121,7 +121,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "packageManager": "pnpm@10.23.0",
   "dependencies": {
