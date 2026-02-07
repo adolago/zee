@@ -6,6 +6,7 @@
     "jsxImportSource": "@opentui/solid",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": [],
+    "strict": true,
     "noUncheckedIndexedAccess": false,
     "customConditions": ["browser"],
     "paths": {

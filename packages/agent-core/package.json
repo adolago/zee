@@ -20,6 +20,7 @@
   ],
   "scripts": {
     "typecheck": "tsgo --noEmit",
+    "typecheck:strict": "tsgo --noEmit -p tsconfig.strict.json",
     "lint": "prettier --check 'src/**/*.ts' 'test/**/*.ts' 'script/**/*.ts' 'package.json'",
     "test": "bun test",
     "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@agent-core/core-linux-x64/bin/agent-core ~/.bun/bin/agent-core",

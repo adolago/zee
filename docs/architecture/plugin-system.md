@@ -2,261 +2,60 @@
 
 ## Overview
 
-The plugin system provides the extensibility layer for agent-core, enabling plugins to extend agent functionality through hooks, tools, and authentication providers. The design supports agent-specific use cases.
+agent-core supports **runtime plugins** that can:
 
-## Architecture Diagram
+- register hooks (e.g., chat parameter transforms, tool execution hooks)
+- register tools
+- provide auth flows for providers
 
-```
-+------------------------------------------------------------------+
-|                         Plugin System                             |
-+------------------------------------------------------------------+
-|                                                                   |
-|  +-------------------+    +-------------------+                   |
-|  |   PluginSystem    |    |    HookManager    |                   |
-|  |      Facade       |--->|                   |                   |
-|  +-------------------+    +-------------------+                   |
-|           |                        |                              |
-|           v                        v                              |
-|  +-------------------+    +-------------------+                   |
-|  |   PluginLoader    |    |  Registered Hooks |                   |
-|  |                   |    |  (by hook name)   |                   |
-|  +-------------------+    +-------------------+                   |
-|           |                                                       |
-|           v                                                       |
-|  +-------------------+    +-------------------+                   |
-|  |  Plugin Sources   |    |   Built-in        |                   |
-|  |  - NPM packages   |    |   Plugins         |                   |
-|  |  - Local files    |    |   - anthropic-auth|                   |
-|  |  - Built-in       |    |   - copilot-auth  |                   |
-|  +-------------------+    |   - memory        |                   |
-|                           +-------------------+                   |
-|                                    |                              |
-|                                    v                              |
-|                           +-------------------+                   |
-|                           | Domain Plugins    |                   |
-|                           | - stanley-finance |                   |
-|                           | - zee-messaging   |                   |
-|                           +-------------------+                   |
-+------------------------------------------------------------------+
-```
+The runtime plugin system is intentionally simple: plugins are loaded, their hook objects are stored, and hook execution is a best-effort loop over loaded plugins.
 
-## Core Components
+## Where Things Live
 
-### 1. Plugin Interface (`plugin.ts`)
+### Plugin Contracts (Public API)
 
-Defines the core types and interfaces for plugins:
+These are the types used by plugin authors and by the runtime loader:
 
-- **PluginFactory**: Function that creates a plugin instance
-- **PluginInstance**: The plugin object with hooks, tools, and auth
-- **PluginContext**: Context provided to plugins during initialization
-- **Hooks**: All available hook types
-- **ToolDefinition**: Tool registration format
-- **AuthProvider**: Authentication provider interface
+- `packages/agent-core/src/pkg/plugin/index.ts` (exported via `@agent-core/plugin`)
+- `packages/agent-core/src/pkg/plugin/tool.ts` (tool contracts)
+- `packages/agent-core/src/pkg/plugin/shell.ts` (Bun shell contracts)
 
-### 2. Hook Manager (`hooks.ts`)
+### Runtime Loader (Kernel)
 
-Manages hook registration and execution:
+- `packages/agent-core/src/plugin/index.ts`
 
-- **RegisteredHook**: Hook with metadata (plugin name, priority, enabled)
-- **HookManager**: Central coordinator for hook invocations
-- **Hook Types**: Predefined hook type constants
-- **Hook Decorators**: `@Hook` decorator for class-based plugins
+This module is responsible for:
 
-### 3. Plugin Loader (`loader.ts`)
+1. constructing `PluginInput` (SDK client + project context + Bun shell)
+2. loading internal plugins (bundled implementations)
+3. loading configured plugins (installed via Bun and imported dynamically)
+4. executing hooks via `Plugin.trigger(...)`
 
-Handles plugin loading from various sources:
+## Plugin Loading Model
 
-- **NPM packages**: `package-name@version`
-- **Local files**: `file://path` or `./relative/path`
-- **Built-in**: `builtin:plugin-name`
+Plugins are loaded in two ways:
 
-### 4. Built-in Plugins
+1. **Internal plugins** are imported directly from the repo and initialized first.
+2. **Configured plugins** are read from config (`config.plugin`) and loaded after.
 
-#### Core Plugins
-- **anthropic-auth**: Anthropic API authentication
-- **copilot-auth**: GitHub Copilot authentication
-- **memory-persistence**: Persistent memory storage
+Configured plugins can be:
 
-#### Domain Plugins
-- **stanley-finance**: Financial data tools for Stanley
-- **zee-messaging**: Messaging platform tools for Zee
+- npm packages (`name@version`)
+- local file URLs (`file://...`)
 
-## Hook Types
+## Hook Execution
 
-### Session Lifecycle
-```typescript
-'session.start'   // Session begins
-'session.end'     // Session ends
-'session.restore' // Session restored from persistence
-```
+The runtime exposes a single entrypoint:
 
-### Task Lifecycle
-```typescript
-'pre-task'  // Before task execution
-'post-task' // After task completion
-```
+- `Plugin.trigger(name, input, output)`
 
-### File Operations
-```typescript
-'pre-edit'  // Before file edit
-'post-edit' // After file edit
-```
+Hook calls are executed sequentially across loaded plugins. Hooks may mutate the provided `output` object.
 
-### Chat/Messaging
-```typescript
-'chat.message'  // New user message received
-'chat.params'   // Modify LLM parameters
-'chat.response' // Assistant response received
-```
+## Notes
 
-### Tool Execution
-```typescript
-'tool.execute.before' // Before tool execution
-'tool.execute.after'  // After tool execution
-```
+- This document describes the runtime plugin system used by the kernel.
+- A separate prototype plugin system previously lived under `src/plugin/`; it is not part of the runtime loader.
 
-### Permissions
-```typescript
-'permission.ask' // Permission requested
-```
-
-### Memory
-```typescript
-'memory.update'   // Memory updated
-'memory.retrieve' // Memory retrieved
-```
-
-## Plugin Lifecycle
-
-```
-1. Load Phase
-   - Plugin source resolved (NPM, file, builtin)
-   - Module imported
-   - Factory function called with PluginContext
-
-2. Init Phase
-   - lifecycle.init() called
-   - Hooks registered with HookManager
-   - Tools and auth providers registered
-
-3. Active Phase
-   - Hooks triggered on events
-   - Tools available for execution
-   - Auth providers available
-
-4. Destroy Phase
-   - lifecycle.destroy() called
-   - Hooks unregistered
-   - Resources cleaned up
-```
-
-## Usage Examples
-
-### Basic Plugin System Setup
-
-```typescript
-import { createPluginSystem, PluginContext } from './plugin';
-
-const pluginSystem = createPluginSystem({
-  agentId: 'stanley',
-  disableDefaults: false,
-});
-
-const context: PluginContext = {
-  instanceId: 'inst-123',
-  workDir: process.cwd(),
-  projectRoot: '/path/to/project',
-  shell: createShell(),
-  config: createConfig(),
-  logger: createLogger(),
-  events: createEventBus(),
-};
-
-await pluginSystem.init(context);
-```
-
-### Triggering Hooks
-
-```typescript
-// Trigger with output transformation
-const output = await pluginSystem.trigger(
-  'chat.message',
-  { sessionId: 'sess-1', agentId: 'stanley' },
-  { message: userMessage, parts: [] }
-);
-
-// Notify without output transformation
-await pluginSystem.notify(
-  'session.start',
-  { sessionId: 'sess-1' },
-  { context: {} }
-);
-```
-
-### Creating a Custom Plugin
-
-```typescript
-import { PluginFactory, defineTool, schema as z } from './plugin';
-
-export const MyPlugin: PluginFactory = async (ctx) => {
-  return {
-    metadata: {
-      name: 'my-plugin',
-      version: '1.0.0',
-    },
-
-    lifecycle: {
-      async init() {
-        ctx.logger.info('My plugin initialized');
-      },
-      async destroy() {
-        ctx.logger.info('My plugin destroyed');
-      },
-    },
-
-    hooks: {
-      'chat.message': async (input, output) => {
-        // Modify the message
-        return {
-          ...output,
-          parts: [...output.parts, { type: 'text', content: 'Enhanced!' }],
-        };
-      },
-    },
-
-    tools: {
-      my_tool: defineTool({
-        description: 'My custom tool',
-        args: {
-          input: z.string().describe('Input text'),
-        },
-        async execute(args) {
-          return `Processed: ${args.input}`;
-        },
-      }),
-    },
-  };
-};
-```
-
-## Configuration
-
-### Plugin Descriptors
-
-```typescript
-interface PluginDescriptor {
-  source: string;      // NPM package, file path, or builtin
-  enabled?: boolean;   // Whether plugin is enabled
-  config?: Record<string, unknown>; // Plugin-specific config
-}
-```
-
-### Environment Variables
-
-```bash
-# Auth plugins
-ANTHROPIC_API_KEY=sk-ant-...
-GITHUB_TOKEN=ghp_...
 
 # Domain plugins
 PLAID_CLIENT_ID=...
