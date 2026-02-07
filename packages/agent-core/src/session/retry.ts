@@ -92,13 +92,7 @@ export namespace SessionRetry {
       if ((json as any).type === "error" && (json as any).error?.code?.includes("rate_limit")) {
         return "Rate Limited"
       }
-      if (
-        (json as any).error?.message?.includes("no_kv_space") ||
-        ((json as any).type === "error" && (json as any).error?.type === "server_error") ||
-        !!(json as any).error
-      ) {
-        return "Provider Server Error"
-      }
+      return JSON.stringify(json)
     } catch {
       return undefined
     }

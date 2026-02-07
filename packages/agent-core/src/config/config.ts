@@ -18,7 +18,7 @@ import { LSPServer } from "../lsp/server"
 import { BunProc } from "@/bun"
 import { Installation } from "@/installation"
 import { ConfigMarkdown } from "./markdown"
-import { existsSync } from "fs"
+import { constants, existsSync } from "fs"
 import { Bus } from "@/bus"
 
 export namespace Config {
@@ -72,10 +72,12 @@ export namespace Config {
     }
 
     // Project config has highest precedence (overrides global and remote)
-    for (const file of ["agent-core.jsonc", "agent-core.json"]) {
-      const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
-      for (const resolved of found.toReversed()) {
-        result = mergeConfigConcatArrays(result, await loadFile(resolved))
+    if (!Flag.AGENT_CORE_DISABLE_PROJECT_CONFIG) {
+      for (const file of ["agent-core.jsonc", "agent-core.json"]) {
+        const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
+        for (const resolved of found.toReversed()) {
+          result = mergeConfigConcatArrays(result, await loadFile(resolved))
+        }
       }
     }
 
@@ -113,13 +115,15 @@ export namespace Config {
 
     directories.push(
       Global.Path.config,
-      ...(await Array.fromAsync(
-        Filesystem.up({
-          targets: [".agent-core"],
-          start: Instance.directory,
-          stop: Instance.worktree,
-        }),
-      )),
+      ...(!Flag.AGENT_CORE_DISABLE_PROJECT_CONFIG
+        ? await Array.fromAsync(
+            Filesystem.up({
+              targets: [".agent-core"],
+              start: Instance.directory,
+              stop: Instance.worktree,
+            }),
+          )
+        : []),
       ...(await Array.fromAsync(
         Filesystem.up({
           targets: [".agent-core"],
@@ -205,7 +209,22 @@ export namespace Config {
     }
   })
 
+  async function isWritable(dir: string) {
+    try {
+      await fs.access(dir, constants.W_OK)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   export async function installDependencies(dir: string) {
+    const writable = await isWritable(dir)
+    if (!writable) {
+      log.debug("config dir is not writable, skipping dependency install", { dir })
+      return
+    }
+
     const pkg = path.join(dir, "package.json")
 
     if (!(await Bun.file(pkg).exists())) {

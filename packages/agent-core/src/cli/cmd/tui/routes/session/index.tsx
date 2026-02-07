@@ -276,6 +276,19 @@ export function Session() {
 
   // Allow exit when in child session (prompt is hidden)
   const exit = useExit()
+
+  createEffect(() => {
+    const title = Locale.truncate(session()?.title ?? "", 50)
+    return exit.message.set(
+      [
+        ``,
+        `  \x1b[2m${title}\x1b[0m`,
+        `  \x1b[2magent-core -s ${session()?.id}\x1b[0m`,
+        ``,
+      ].join("\n"),
+    )
+  })
+
   useKeyboard((evt) => {
     if (!session()?.parentID) return
     if (keybind.match("app_exit", evt)) {
