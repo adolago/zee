@@ -72,10 +72,12 @@ export namespace Config {
     }
 
     // Project config has highest precedence (overrides global and remote)
-    for (const file of ["agent-core.jsonc", "agent-core.json"]) {
-      const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
-      for (const resolved of found.toReversed()) {
-        result = mergeConfigConcatArrays(result, await loadFile(resolved))
+    if (!Flag.AGENT_CORE_DISABLE_PROJECT_CONFIG) {
+      for (const file of ["agent-core.jsonc", "agent-core.json"]) {
+        const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
+        for (const resolved of found.toReversed()) {
+          result = mergeConfigConcatArrays(result, await loadFile(resolved))
+        }
       }
     }
 
@@ -113,13 +115,15 @@ export namespace Config {
 
     directories.push(
       Global.Path.config,
-      ...(await Array.fromAsync(
-        Filesystem.up({
-          targets: [".agent-core"],
-          start: Instance.directory,
-          stop: Instance.worktree,
-        }),
-      )),
+      ...(!Flag.AGENT_CORE_DISABLE_PROJECT_CONFIG
+        ? await Array.fromAsync(
+            Filesystem.up({
+              targets: [".agent-core"],
+              start: Instance.directory,
+              stop: Instance.worktree,
+            }),
+          )
+        : []),
       ...(await Array.fromAsync(
         Filesystem.up({
           targets: [".agent-core"],

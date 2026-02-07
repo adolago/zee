@@ -340,6 +340,15 @@ export const rustfmt: Info = {
   },
 }
 
+export const ormolu: Info = {
+  name: "ormolu",
+  command: ["ormolu", "-i", "$FILE"],
+  extensions: [".hs"],
+  async enabled() {
+    return Bun.which("ormolu") !== null
+  },
+}
+
 export const pint: Info = {
   name: "pint",
   command: [BunProc.which(), "x", "laravel/pint", "$FILE"],

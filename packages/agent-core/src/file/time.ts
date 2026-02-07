@@ -1,3 +1,4 @@
+import { Flag } from "../flag/flag"
 import { Instance } from "../project/instance"
 import { Log } from "../util/log"
 
@@ -53,6 +54,7 @@ export namespace FileTime {
   }
 
   export async function assert(sessionID: string, filepath: string) {
+    if (Flag.AGENT_CORE_DISABLE_FILETIME_CHECK) return
     const time = get(sessionID, filepath)
     if (!time) throw new Error(`You must read the file ${filepath} before overwriting it. Use the Read tool first`)
     const stats = await Bun.file(filepath).stat()
