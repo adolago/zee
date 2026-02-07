@@ -31,11 +31,11 @@ describe("createAuthorizedFetch", () => {
     expect(auth).toBeDefined()
 
     let seen: string | undefined
-    const fakeFetch: typeof fetch = async (input, init) => {
+    const fakeFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const req = input instanceof Request && !init ? input : new Request(input, init)
       seen = req.headers.get("Authorization") ?? undefined
       return new Response("ok", { status: 200 })
-    }
+    }) as any as typeof fetch
 
     const authorizedFetch = createAuthorizedFetch(fakeFetch)
     const res = await authorizedFetch("http://example.invalid/test", { method: "GET" })
@@ -45,11 +45,11 @@ describe("createAuthorizedFetch", () => {
 
   test("does not override an existing Authorization header", async () => {
     let seen: string | undefined
-    const fakeFetch: typeof fetch = async (input, init) => {
+    const fakeFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const req = input instanceof Request && !init ? input : new Request(input, init)
       seen = req.headers.get("Authorization") ?? undefined
       return new Response("ok", { status: 200 })
-    }
+    }) as any as typeof fetch
 
     const authorizedFetch = createAuthorizedFetch(fakeFetch)
     await authorizedFetch("http://example.invalid/test", {
