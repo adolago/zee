@@ -7,7 +7,7 @@ import type { Config } from "../../src/config/config"
 
 // Strip null bytes from paths (defensive fix for CI environment issues)
 function sanitizePath(p: string): string {
-  return p.replace(/\0/g, "")
+  return p.indexOf("\0") !== -1 ? p.replace(/\0/g, "") : p
 }
 
 type TmpDirOptions<T> = {
@@ -16,7 +16,7 @@ type TmpDirOptions<T> = {
   init?: (dir: string) => Promise<T>
   dispose?: (dir: string) => Promise<T>
 }
-const hasNullByte = (value: unknown) => typeof value === "string" && value.includes("\0")
+const hasNullByte = (value: unknown) => typeof value === "string" && value.indexOf("\0") !== -1
 const skipNullPathBug = Bun.version === "1.3.5"
 const shouldIgnoreNullBytePathError = (error: unknown) => {
   if (!error || typeof error !== "object") return false
