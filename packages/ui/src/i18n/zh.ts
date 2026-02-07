@@ -45,6 +45,7 @@ export const dict = {
 
   "ui.list.loading": "加载中",
   "ui.list.empty": "无结果",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "清除筛选",
   "ui.list.emptyWithFilter.prefix": "没有关于",
   "ui.list.emptyWithFilter.suffix": "的结果",

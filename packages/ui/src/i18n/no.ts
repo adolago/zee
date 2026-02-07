@@ -44,6 +44,7 @@ export const dict: Record<Keys, string> = {
 
   "ui.list.loading": "Laster",
   "ui.list.empty": "Ingen resultater",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "Tøm filter",
   "ui.list.emptyWithFilter.prefix": "Ingen resultater for",
   "ui.list.emptyWithFilter.suffix": "",

@@ -42,6 +42,7 @@ export const dict = {
 
   "ui.list.loading": "กำลังโหลด",
   "ui.list.empty": "ไม่มีผลลัพธ์",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "ล้างตัวกรอง",
   "ui.list.emptyWithFilter.prefix": "ไม่มีผลลัพธ์สำหรับ",
   "ui.list.emptyWithFilter.suffix": "",

@@ -104,7 +104,6 @@ export function TextField(props: TextFieldProps) {
               icon={copied() ? "check" : "link"}
               variant="ghost"
               onClick={handleCopy}
-              tabIndex={-1}
               data-slot="input-copy-button"
               aria-label={copied() ? i18n.t("ui.textField.copied") : i18n.t("ui.textField.copyLink")}
             />

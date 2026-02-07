@@ -41,6 +41,7 @@ export const dict = {
 
   "ui.list.loading": "Indlæser",
   "ui.list.empty": "Ingen resultater",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "Ryd filter",
   "ui.list.emptyWithFilter.prefix": "Ingen resultater for",
   "ui.list.emptyWithFilter.suffix": "",

@@ -41,6 +41,7 @@ export const dict = {
 
   "ui.list.loading": "読み込み中",
   "ui.list.empty": "結果なし",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "フィルターをクリア",
   "ui.list.emptyWithFilter.prefix": "次の検索結果はありません: ",
   "ui.list.emptyWithFilter.suffix": "",
