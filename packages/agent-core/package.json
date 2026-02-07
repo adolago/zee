@@ -26,6 +26,7 @@
     "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@agent-core/core-linux-x64/bin/agent-core ~/.bun/bin/agent-core",
     "dev": "bun run --conditions=browser ./src/index.ts",
     "memory:health": "bun run script/memory-health-check.ts",
+    "bench": "bun run script/bench/run.ts",
     "clean": "rm -rf node_modules dist"
   },
   "bin": {
