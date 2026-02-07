@@ -356,8 +356,9 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
         paddingRight={3}
         paddingBottom={1}
         backgroundColor={theme.backgroundElement}
-        justifyContent="space-between"
-        gap={narrow() ? 1 : 0}
+        justifyContent={narrow() ? "flex-start" : "space-between"}
+        alignItems={narrow() ? "flex-start" : "center"}
+        gap={1}
       >
         <textarea
           ref={(val: TextareaRenderable) => (input = val)}
@@ -470,8 +471,9 @@ function Prompt<const T extends Record<string, string>>(props: {
         paddingBottom={1}
         backgroundColor={theme.backgroundElement}
         justifyContent={narrow() ? "flex-start" : "space-between"}
+        alignItems={narrow() ? "flex-start" : "center"}
       >
-        <box flexDirection="row" gap={1}>
+        <box flexDirection="row" gap={1} flexShrink={0}>
           <For each={keys}>
             {(option) => (
               <box
@@ -490,7 +492,7 @@ function Prompt<const T extends Record<string, string>>(props: {
             )}
           </For>
         </box>
-        <box flexDirection="row" gap={2}>
+        <box flexDirection="row" gap={2} flexShrink={0}>
           <Show when={props.fullscreen}>
             <text fg={theme.text}>
               {"ctrl+f"} <span style={{ fg: theme.textMuted }}>{hint()}</span>
