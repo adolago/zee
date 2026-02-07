@@ -456,8 +456,8 @@ export namespace Server {
   }
 
   export function listen(opts: { port: number; hostname: string; mdns?: MdnsOption; cors?: string[] }) {
-    _corsWhitelist = opts.cors ?? []
-    _isLoopbackBind = isLoopbackHostname(opts.hostname)
+    const corsWhitelist = opts.cors ?? []
+    const isLoopbackBind = isLoopbackHostname(opts.hostname)
 
     assertSafeServerBind({ hostname: opts.hostname })
 
@@ -485,6 +485,11 @@ export namespace Server {
     }
     const server = opts.port === 0 ? (tryServe(DEFAULT_API_PORT) ?? tryServe(0)) : tryServe(opts.port)
     if (!server) throw new Error(`Failed to start server on port ${opts.port}`)
+
+    // Only update these after the bind guard and server startup succeed to avoid
+    // polluting request middleware state when listen() throws (tests, CLI errors).
+    _corsWhitelist = corsWhitelist
+    _isLoopbackBind = isLoopbackBind
 
     ServerState.setUrl(server.url)
 
