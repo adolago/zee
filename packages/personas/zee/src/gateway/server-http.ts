@@ -24,6 +24,7 @@ import {
 import { applyHookMappings } from "./hooks-mapping.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
+import { checkBrowserOrigin } from "./origin-check.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
@@ -71,7 +72,11 @@ export function createHooksRequestHandler(
       return false;
     }
 
-    const { token } = extractHookToken(req, url);
+    const token = extractHookToken(req);
+    if (url.searchParams.has("token")) {
+      sendJson(res, 400, { ok: false, error: "token query parameter is not allowed" });
+      return true;
+    }
     if (!token || token !== hooksConfig.token) {
       res.statusCode = 401;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -266,6 +271,38 @@ export function attachGatewayUpgradeHandler(opts: {
 }) {
   const { httpServer, wss } = opts;
   httpServer.on("upgrade", (req, socket, head) => {
+    const originHeaderValue = req.headers.origin;
+    const origin =
+      typeof originHeaderValue === "string"
+        ? originHeaderValue
+        : Array.isArray(originHeaderValue)
+          ? originHeaderValue[0]
+          : undefined;
+    const hostHeaderValue = req.headers.host;
+    const hostHeader =
+      typeof hostHeaderValue === "string"
+        ? hostHeaderValue
+        : Array.isArray(hostHeaderValue)
+          ? hostHeaderValue[0]
+          : undefined;
+
+    const originCheck = checkBrowserOrigin({ origin, hostHeader });
+    if (!originCheck.ok) {
+      try {
+        socket.write(
+          "HTTP/1.1 403 Forbidden\r\n" +
+            "Content-Type: text/plain; charset=utf-8\r\n" +
+            "Connection: close\r\n" +
+            "\r\n" +
+            "Forbidden",
+        );
+      } catch {
+        // Best-effort; fall through to destroy.
+      }
+      socket.destroy();
+      return;
+    }
+
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
     });

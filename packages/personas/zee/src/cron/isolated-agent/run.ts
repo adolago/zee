@@ -82,6 +82,8 @@ export type RunCronAgentTurnResult = {
   /** Last non-empty agent text output (not truncated). */
   outputText?: string;
   error?: string;
+  sessionId?: string;
+  sessionKey?: string;
 };
 
 export async function runCronIsolatedAgentTurn(params: {
@@ -126,6 +128,8 @@ export async function runCronIsolatedAgentTurn(params: {
     agentId,
     mainKey: baseSessionKey,
   });
+  const sessionKey = agentSessionKey;
+  let sessionId: string | undefined;
 
   const workspaceDirRaw = resolveAgentWorkspaceDir(params.cfg, agentId);
   const agentDir = resolveAgentDir(params.cfg, agentId);
@@ -175,7 +179,7 @@ export async function runCronIsolatedAgentTurn(params: {
     params.job.payload.kind === "agentTurn" ? params.job.payload.model : undefined;
   if (modelOverrideRaw !== undefined) {
     if (typeof modelOverrideRaw !== "string") {
-      return { status: "error", error: "invalid model: expected string" };
+      return { status: "error", error: "invalid model: expected string", sessionKey };
     }
     const resolvedOverride = resolveAllowedModelRef({
       cfg: cfgWithAgentDefaults,
@@ -185,7 +189,7 @@ export async function runCronIsolatedAgentTurn(params: {
       defaultModel: resolvedDefault.model,
     });
     if ("error" in resolvedOverride) {
-      return { status: "error", error: resolvedOverride.error };
+      return { status: "error", error: resolvedOverride.error, sessionKey };
     }
     provider = resolvedOverride.ref.provider;
     model = resolvedOverride.ref.model;
@@ -193,10 +197,11 @@ export async function runCronIsolatedAgentTurn(params: {
   const now = Date.now();
   const cronSession = resolveCronSession({
     cfg: params.cfg,
-    sessionKey: agentSessionKey,
+    sessionKey,
     agentId,
     nowMs: now,
   });
+  sessionId = cronSession.sessionEntry.sessionId;
 
   // Resolve thinking level - job thinking > hooks.gmail.thinking > agent default
   const hooksGmailThinking = isGmailHook
@@ -379,7 +384,7 @@ export async function runCronIsolatedAgentTurn(params: {
     fallbackProvider = fallbackResult.provider;
     fallbackModel = fallbackResult.model;
   } catch (err) {
-    return { status: "error", error: String(err) };
+    return { status: "error", error: String(err), sessionId, sessionKey };
   }
 
   const payloads = runResult.payloads ?? [];
@@ -444,12 +449,16 @@ export async function runCronIsolatedAgentTurn(params: {
           summary,
           outputText,
           error: reason,
+          sessionId,
+          sessionKey,
         };
       }
       return {
         status: "skipped",
         summary: `Delivery skipped (${reason}).`,
         outputText,
+        sessionId,
+        sessionKey,
       };
     }
     try {
@@ -464,11 +473,11 @@ export async function runCronIsolatedAgentTurn(params: {
       });
     } catch (err) {
       if (!bestEffortDeliver) {
-        return { status: "error", summary, outputText, error: String(err) };
+        return { status: "error", summary, outputText, error: String(err), sessionId, sessionKey };
       }
-      return { status: "ok", summary, outputText };
+      return { status: "ok", summary, outputText, sessionId, sessionKey };
     }
   }
 
-  return { status: "ok", summary, outputText };
+  return { status: "ok", summary, outputText, sessionId, sessionKey };
 }

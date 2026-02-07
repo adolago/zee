@@ -169,7 +169,7 @@ export async function runPreparedReply(
   const shouldInjectGroupIntro = Boolean(
     isGroupChat && (isFirstTurnInSession || sessionEntry?.groupActivationNeedsSystemIntro),
   );
-  const groupIntro = shouldInjectGroupIntro
+  const groupIntroParts = shouldInjectGroupIntro
     ? buildGroupIntro({
         cfg,
         sessionCtx,
@@ -177,9 +177,13 @@ export async function runPreparedReply(
         defaultActivation,
         silentToken: SILENT_REPLY_TOKEN,
       })
-    : "";
+    : null;
+  const groupIntroTrusted = groupIntroParts?.trustedIntro ?? "";
+  const groupMetadataUntrusted = groupIntroParts?.untrustedMetadata ?? "";
   const groupSystemPrompt = sessionCtx.GroupSystemPrompt?.trim() ?? "";
-  const extraSystemPrompt = [groupIntro, groupSystemPrompt].filter(Boolean).join("\n\n");
+  const extraSystemPrompt = [groupIntroTrusted, groupMetadataUntrusted, groupSystemPrompt]
+    .filter(Boolean)
+    .join("\n\n");
   const baseBody = sessionCtx.BodyStripped ?? sessionCtx.Body ?? "";
   // Use CommandBody/RawBody for bare reset detection (clean message without structural context).
   const rawBodyTrimmed = (ctx.CommandBody ?? ctx.RawBody ?? ctx.Body ?? "").trim();

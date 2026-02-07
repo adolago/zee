@@ -147,6 +147,23 @@ OpenCode’s “server mode” is about a client/server split for the coding age
 
 This section tracks discrete upstream-delta triage "lanes" between agent-core's Zee gateway subset (`packages/personas/zee/`) and OpenClaw (`openclaw/openclaw`).
 
+### Lane 07: Permissions, allowlists, DM policy, pairing/approvals
+
+Source tracking issue: `adolago/agent-core#230`.
+
+Ported / adapted:
+
+- External content hardening: strip spoofed boundary markers and fold fullwidth bracket homoglyphs in `packages/personas/zee/src/security/external-content.ts`.
+- Hook auth hardening: reject token query parameters; header-only auth via `Authorization: Bearer ...` or `X-Zee-Token` in `packages/personas/zee/src/gateway/server-http.ts`.
+- Gateway WebSocket origin validation (strict same-host; allow missing Origin for non-browser clients) in `packages/personas/zee/src/gateway/origin-check.ts` and `packages/personas/zee/src/gateway/server-http.ts`.
+- Separate untrusted group subject/members into an explicit untrusted wrapper via `packages/personas/zee/src/security/channel-metadata.ts` and `packages/personas/zee/src/auto-reply/reply/groups.ts`.
+
+Deferred / non-goals:
+
+- Full OpenClaw channel parity (Discord/Slack/etc) and per-account DM scope guidance are out of scope for Zee.
+- Windows-only ACL test stabilization is a low priority for the current Linux-focused setup.
+- OpenClaw Control UI-specific hardening does not map cleanly onto Zee's gateway architecture.
+
 ### Lane 12: Onboarding + daemon install + operational CLI
 
 Source tracking issue: `adolago/agent-core#235`.
