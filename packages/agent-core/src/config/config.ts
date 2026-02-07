@@ -1751,4 +1751,65 @@ export namespace Config {
   export async function directories() {
     return state().then((x) => x.directories)
   }
+
+  export function redact(config: Info): Info {
+    const copy = structuredClone(config)
+    // Redact provider api keys
+    if (copy.provider) {
+      for (const provider of Object.values(copy.provider)) {
+        if (provider?.options?.apiKey) {
+          provider.options.apiKey = "********"
+        }
+      }
+    }
+    // Redact memory secrets
+    if (copy.memory) {
+      if (copy.memory.redisUrl) copy.memory.redisUrl = "********"
+      if (copy.memory.qdrantApiKey) copy.memory.qdrantApiKey = "********"
+      if (copy.memory.qdrant?.apiKey) copy.memory.qdrant.apiKey = "********"
+      if (copy.memory.embedding?.apiKey) copy.memory.embedding.apiKey = "********"
+      if (copy.memory.reranker?.apiKey) copy.memory.reranker.apiKey = "********"
+    }
+    // Redact zee secrets
+    if (copy.zee?.splitwise?.token) copy.zee.splitwise.token = "********"
+
+    // Redact grammar secrets
+    if (copy.grammar?.apiKey) copy.grammar.apiKey = "********"
+
+    // Redact MCP secrets
+    if (copy.mcp) {
+      for (const mcp of Object.values(copy.mcp)) {
+        if (
+          typeof mcp === "object" &&
+          "type" in mcp &&
+          mcp.type === "remote" &&
+          "oauth" in mcp &&
+          mcp.oauth &&
+          typeof mcp.oauth === "object" &&
+          "clientSecret" in mcp.oauth &&
+          mcp.oauth.clientSecret
+        ) {
+          ;(mcp.oauth as { clientSecret?: string }).clientSecret = "********"
+        }
+      }
+    }
+
+    return copy
+  }
+
+  export function clean(config: Info): Info {
+    const copy = structuredClone(config)
+    const traverse = (obj: any) => {
+      if (!obj || typeof obj !== "object") return
+      for (const key in obj) {
+        if (obj[key] === "********") {
+          delete obj[key]
+        } else {
+          traverse(obj[key])
+        }
+      }
+    }
+    traverse(copy)
+    return copy
+  }
 }
