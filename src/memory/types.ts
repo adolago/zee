@@ -194,10 +194,15 @@ export interface MemoryInput {
 // Search Types
 // =============================================================================
 
+/** Search mode selection. */
+export type MemorySearchMode = "auto" | "semantic" | "keyword" | "hybrid";
+
 /** Search parameters for memory retrieval */
 export interface MemorySearchParams {
   /** Search query text */
   query: string;
+  /** Search mode selection. Default: "auto". */
+  mode?: MemorySearchMode;
   /** Maximum results to return */
   limit?: number;
   /** Minimum similarity threshold (0-1) */
@@ -217,6 +222,8 @@ export interface MemorySearchParams {
   includeMetadata?: boolean;
   /** Include embedding vectors in results */
   includeVectors?: boolean;
+  /** Include snippets (keyword and hybrid search only). Default: false. */
+  includeSnippets?: boolean;
 
   // Context Tree filters
   domain?: string;
@@ -251,6 +258,8 @@ export interface MemorySearchResult {
   score: number;
   /** Highlighted matches */
   highlights?: string[];
+  /** Keyword snippet with match highlights (if available). */
+  snippet?: string;
 }
 
 // =============================================================================
