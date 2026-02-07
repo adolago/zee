@@ -1,6 +1,6 @@
-import fs from "node:fs/promises";
+import fs from "node:fs";
 import { migrateLegacyCronPayload } from "../payload-migration.js";
-import { loadCronStore, saveCronStore } from "../store.js";
+import * as cronStoreFile from "../store.js";
 import type { CronJob } from "../types.js";
 import { recomputeNextRuns } from "./jobs.js";
 import { inferLegacyName, normalizeOptionalText } from "./normalize.js";
@@ -15,9 +15,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function getStoreMtimeMs(storePath: string): Promise<number | undefined> {
+function getStoreMtimeMs(storePath: string): number | undefined {
   try {
-    const st = await fs.stat(storePath);
+    const st = fs.statSync(storePath);
     return st.mtimeMs;
   } catch {
     return undefined;
@@ -28,14 +28,19 @@ export async function ensureLoaded(state: CronServiceState, opts?: EnsureLoadedO
   const forceReload = opts?.forceReload === true;
   const skipRecompute = opts?.skipRecompute === true;
 
-  if (state.store && !forceReload) {
-    const mtimeMs = await getStoreMtimeMs(state.deps.storePath);
-    if (mtimeMs === state.lastLoadedMtimeMs) {
+  const mtimeMs = getStoreMtimeMs(state.deps.storePath);
+
+  if (state.store) {
+    // Even when forceReload is requested, avoid re-reading the store if it hasn't changed on disk.
+    if (typeof state.lastLoadedMtimeMs === "number" && mtimeMs === state.lastLoadedMtimeMs) {
+      return;
+    }
+    if (state.lastLoadedMtimeMs === undefined && mtimeMs === undefined) {
       return;
     }
   }
 
-  const loaded = await loadCronStore(state.deps.storePath);
+  const loaded = await cronStoreFile.loadCronStore(state.deps.storePath);
   const jobs = (loaded.jobs ?? []) as unknown as Array<Record<string, unknown>>;
   let mutated = false;
   for (const raw of jobs) {
@@ -114,7 +119,7 @@ export async function ensureLoaded(state: CronServiceState, opts?: EnsureLoadedO
     }
   }
   state.store = { version: 1, jobs: jobs as unknown as CronJob[] };
-  state.lastLoadedMtimeMs = await getStoreMtimeMs(state.deps.storePath);
+  state.lastLoadedMtimeMs = getStoreMtimeMs(state.deps.storePath);
 
   if (!skipRecompute) {
     recomputeNextRuns(state);
@@ -137,6 +142,6 @@ export function warnIfDisabled(state: CronServiceState, action: string) {
 
 export async function persist(state: CronServiceState) {
   if (!state.store) return;
-  await saveCronStore(state.deps.storePath, state.store);
-  state.lastLoadedMtimeMs = await getStoreMtimeMs(state.deps.storePath);
+  await cronStoreFile.saveCronStore(state.deps.storePath, state.store);
+  state.lastLoadedMtimeMs = getStoreMtimeMs(state.deps.storePath);
 }

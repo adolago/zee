@@ -41,17 +41,12 @@ export function resolveHooksConfig(cfg: ZeeConfig): HooksConfigResolved | null {
   };
 }
 
-export type HookTokenResult = {
-  token: string | undefined;
-  fromQuery: boolean;
-};
-
-export function extractHookToken(req: IncomingMessage, url: URL): HookTokenResult {
+export function extractHookToken(req: IncomingMessage): string | undefined {
   const auth =
     typeof req.headers.authorization === "string" ? req.headers.authorization.trim() : "";
   if (auth.toLowerCase().startsWith("bearer ")) {
     const token = auth.slice(7).trim();
-    if (token) return { token, fromQuery: false };
+    if (token) return token;
   }
   const headerTokenValue = req.headers["x-zee-token"];
   const headerToken =
@@ -60,8 +55,8 @@ export function extractHookToken(req: IncomingMessage, url: URL): HookTokenResul
       : Array.isArray(headerTokenValue)
         ? headerTokenValue.join(", ").trim()
         : "";
-  if (headerToken) return { token: headerToken, fromQuery: false };
-  return { token: undefined, fromQuery: false };
+  if (headerToken) return headerToken;
+  return undefined;
 }
 
 export async function readJsonBody(

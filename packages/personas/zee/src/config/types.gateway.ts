@@ -235,4 +235,14 @@ export type GatewayConfig = {
    * `x-real-ip`) to determine the client IP for local pairing and HTTP checks.
    */
   trustedProxies?: string[];
+  /**
+   * Allowlisted browser Origins for WebSocket connections.
+   *
+   * Entries may be full origins (e.g. "https://example.com") or hostnames
+   * (e.g. "example.com").
+   *
+   * When omitted, browser clients must match the request host (or be a loopback
+   * mismatch like "localhost" vs "127.0.0.1").
+   */
+  allowedOrigins?: string[];
 };

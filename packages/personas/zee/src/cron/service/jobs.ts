@@ -78,6 +78,13 @@ export function nextWakeAtMs(state: CronServiceState) {
 export function createJob(state: CronServiceState, input: CronJobCreate): CronJob {
   const now = state.deps.nowMs();
   const id = crypto.randomUUID();
+  const schedule =
+    input.schedule.kind === "every"
+      ? {
+          ...input.schedule,
+          anchorMs: typeof input.schedule.anchorMs === "number" ? input.schedule.anchorMs : now,
+        }
+      : input.schedule;
   const job: CronJob = {
     id,
     agentId: normalizeOptionalAgentId(input.agentId),
@@ -87,7 +94,7 @@ export function createJob(state: CronServiceState, input: CronJobCreate): CronJo
     deleteAfterRun: input.deleteAfterRun,
     createdAtMs: now,
     updatedAtMs: now,
-    schedule: input.schedule,
+    schedule,
     sessionTarget: input.sessionTarget,
     wakeMode: input.wakeMode,
     payload: input.payload,

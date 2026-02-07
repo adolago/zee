@@ -7,7 +7,6 @@
  */
 
 import { Type } from "@sinclair/typebox";
-import * as lancedb from "@lancedb/lancedb";
 import OpenAI from "openai";
 import { randomUUID } from "node:crypto";
 import type { ZeePluginApi } from "zee/plugin-sdk";
@@ -44,9 +43,40 @@ type MemorySearchResult = {
 
 const TABLE_NAME = "memories";
 
+async function importLanceDb(): Promise<{
+  connect: (dbPath: string) => Promise<{
+    tableNames: () => Promise<string[]>;
+    openTable: (name: string) => Promise<unknown>;
+    createTable: (name: string, rows: unknown[]) => Promise<unknown>;
+  }>;
+}> {
+  try {
+    // Optional dependency: keep module import lazy so unit tests and non-memory
+    // installs can still load the plugin.
+    return (await import("@lancedb/lancedb")) as unknown as Awaited<ReturnType<typeof importLanceDb>>;
+  } catch (err) {
+    throw new Error(
+      `memory-lancedb: missing optional dependency "@lancedb/lancedb" (${String(err)})`,
+    );
+  }
+}
+
 class MemoryDB {
-  private db: lancedb.Connection | null = null;
-  private table: lancedb.Table | null = null;
+  private db: {
+    tableNames: () => Promise<string[]>;
+    openTable: (name: string) => Promise<unknown>;
+    createTable: (name: string, rows: unknown[]) => Promise<unknown>;
+  } | null = null;
+  private table: {
+    add: (rows: unknown[]) => Promise<unknown>;
+    vectorSearch: (vector: number[]) => {
+      limit: (n: number) => {
+        toArray: () => Promise<Array<Record<string, unknown>>>;
+      };
+    };
+    delete: (filter: string) => Promise<unknown>;
+    countRows: () => Promise<number>;
+  } | null = null;
   private initPromise: Promise<void> | null = null;
 
   constructor(
@@ -63,13 +93,14 @@ class MemoryDB {
   }
 
   private async doInitialize(): Promise<void> {
+    const lancedb = await importLanceDb();
     this.db = await lancedb.connect(this.dbPath);
     const tables = await this.db.tableNames();
 
     if (tables.includes(TABLE_NAME)) {
-      this.table = await this.db.openTable(TABLE_NAME);
+      this.table = (await this.db.openTable(TABLE_NAME)) as MemoryDB["table"];
     } else {
-      this.table = await this.db.createTable(TABLE_NAME, [
+      this.table = (await this.db.createTable(TABLE_NAME, [
         {
           id: "__schema__",
           text: "",
@@ -78,7 +109,7 @@ class MemoryDB {
           category: "other",
           createdAt: 0,
         },
-      ]);
+      ])) as MemoryDB["table"];
       await this.table.delete('id = "__schema__"');
     }
   }

@@ -178,7 +178,19 @@ export async function updateNpmInstalledPlugins(params: {
       continue;
     }
 
-    const installPath = record.installPath ?? resolvePluginInstallDir(pluginId);
+    let installPath = record.installPath;
+    if (!installPath) {
+      try {
+        installPath = resolvePluginInstallDir(pluginId);
+      } catch (err) {
+        outcomes.push({
+          pluginId,
+          status: "error",
+          message: `Failed to resolve install dir for "${pluginId}": ${String(err)}`,
+        });
+        continue;
+      }
+    }
     const currentVersion = await readInstalledPackageVersion(installPath);
 
     if (params.dryRun) {

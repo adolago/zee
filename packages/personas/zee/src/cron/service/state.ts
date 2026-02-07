@@ -53,6 +53,7 @@ export type CronServiceState = {
   op: Promise<unknown>;
   warnedDisabled: boolean;
   lastLoadedMtimeMs?: number;
+  stopped: boolean;
 };
 
 export function createCronServiceState(deps: CronServiceDeps): CronServiceState {
@@ -64,6 +65,7 @@ export function createCronServiceState(deps: CronServiceDeps): CronServiceState 
     op: Promise.resolve(),
     warnedDisabled: false,
     lastLoadedMtimeMs: undefined,
+    stopped: false,
   };
 }
 

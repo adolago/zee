@@ -112,7 +112,11 @@ export async function createGatewayRuntimeState(params: {
     maxPayload: MAX_PAYLOAD_BYTES,
   });
   for (const server of httpServers) {
-    attachGatewayUpgradeHandler({ httpServer: server, wss });
+    attachGatewayUpgradeHandler({
+      httpServer: server,
+      wss,
+      allowedOrigins: params.cfg.gateway?.allowedOrigins,
+    });
   }
 
   const clients = new Set<GatewayWsClient>();

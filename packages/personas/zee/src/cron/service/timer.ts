@@ -11,19 +11,27 @@ const DRIFT_GUARD_MS = 60_000;
 export function armTimer(state: CronServiceState) {
   if (state.timer) clearTimeout(state.timer);
   state.timer = null;
+  if (state.stopped) return;
   if (!state.deps.cronEnabled) return;
   const nextAt = nextWakeAtMs(state);
   if (!nextAt) return;
   const delay = Math.max(nextAt - state.deps.nowMs(), 0);
   const clampedDelay = Math.min(delay, DRIFT_GUARD_MS);
-  state.timer = setTimeout(() => {
-    void onTimer(state).catch((err) => {
+  // Avoid scheduling a 0ms timer at the current tick. This prevents tight loops
+  // on scheduler failures and makes fake-timer tests deterministic when time is
+  // advanced in discrete jumps.
+  const nextDelay = clampedDelay === 0 ? 1_000 : clampedDelay;
+  state.timer = setTimeout(async () => {
+    try {
+      await onTimer(state);
+    } catch (err) {
       state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
-    });
-  }, clampedDelay);
+    }
+  }, nextDelay);
 }
 
 export async function onTimer(state: CronServiceState) {
+  if (state.stopped) return;
   if (state.running) return;
   state.running = true;
   try {
@@ -57,18 +65,8 @@ export async function runMissedJobs(state: CronServiceState) {
   // Claim all due jobs before running any of them. This prevents parallel schedulers
   // (e.g., multiple processes) from double-firing due jobs.
   const startedAt = state.deps.nowMs();
-  const prevMarkers = new Map<string, number | undefined>();
   for (const job of due) {
-    prevMarkers.set(job.id, job.state.runningAtMs);
     job.state.runningAtMs = startedAt;
-  }
-  try {
-    await persist(state);
-  } catch (err) {
-    for (const job of due) {
-      job.state.runningAtMs = prevMarkers.get(job.id);
-    }
-    throw err;
   }
 
   for (const job of due) {
@@ -85,18 +83,8 @@ export async function runDueJobs(state: CronServiceState) {
   // Claim all due jobs before running any of them. This prevents parallel schedulers
   // (e.g., multiple processes) from double-firing due jobs.
   const startedAt = state.deps.nowMs();
-  const prevMarkers = new Map<string, number | undefined>();
   for (const job of due) {
-    prevMarkers.set(job.id, job.state.runningAtMs);
     job.state.runningAtMs = startedAt;
-  }
-  try {
-    await persist(state);
-  } catch (err) {
-    for (const job of due) {
-      job.state.runningAtMs = prevMarkers.get(job.id);
-    }
-    throw err;
   }
 
   for (const job of due) {
