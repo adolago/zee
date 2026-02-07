@@ -408,12 +408,10 @@ class VoyageEmbeddingProvider implements EmbeddingProvider {
     }
   }
 
-  async embed(text: string): Promise<number[]> {
-    const result = await this.embedBatch([text]);
-    return result[0] ?? [];
-  }
-
-  async embedBatch(texts: string[]): Promise<number[][]> {
+  private async requestEmbeddings(
+    texts: string[],
+    inputType: "query" | "document",
+  ): Promise<number[][]> {
     if (texts.length === 0) return [];
 
     const response = await fetch(`${this.baseUrl}/embeddings`, {
@@ -425,15 +423,14 @@ class VoyageEmbeddingProvider implements EmbeddingProvider {
       body: JSON.stringify({
         model: this.model,
         input: texts,
+        input_type: inputType,
         output_dimension: this.dimension,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Voyage embedding failed (${response.status}): ${errorText}`
-      );
+      throw new Error(`Voyage embedding failed (${response.status}): ${errorText}`);
     }
 
     const data = (await response.json()) as {
@@ -442,6 +439,15 @@ class VoyageEmbeddingProvider implements EmbeddingProvider {
 
     const sorted = data.data.sort((a, b) => a.index - b.index);
     return sorted.map((item) => item.embedding);
+  }
+
+  async embed(text: string): Promise<number[]> {
+    const result = await this.requestEmbeddings([text], "query");
+    return result[0] ?? [];
+  }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    return this.requestEmbeddings(texts, "document");
   }
 }
 
@@ -660,4 +666,3 @@ export {
   VLLMEmbeddingProvider,
   CachedEmbeddingProvider,
 };
-

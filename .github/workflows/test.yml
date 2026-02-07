@@ -38,16 +38,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22.13.0"
+          node-version: "22"
 
-      # Corepack has intermittently failed to verify pnpm signatures on GitHub
-      # runners ("Cannot find matching keyid"). Installing pnpm directly avoids
-      # that failure mode.
       - name: Install pnpm
         run: npm install -g pnpm@10.23.0
 
       - name: Install dependencies
-        # Zee does not commit a pnpm lockfile, so CI must allow generating one.
         run: pnpm install --no-frozen-lockfile
         working-directory: packages/personas/zee
 

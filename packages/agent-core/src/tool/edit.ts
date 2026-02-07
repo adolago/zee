@@ -17,6 +17,7 @@ import { Instance } from "../project/instance"
 import { Snapshot } from "@/snapshot"
 import { assertExternalDirectory } from "./external-directory"
 import { HoldMode } from "@/config/hold-mode"
+import { ExperimentalHooks } from "@/hooks/experimental-hooks"
 
 const MAX_DIAGNOSTICS_PER_FILE = 20
 
@@ -108,6 +109,12 @@ export const EditTool = Tool.define("edit", {
         createTwoFilesPatch(filePath, filePath, normalizeLineEndings(contentOld), normalizeLineEndings(contentNew)),
       )
       FileTime.read(ctx.sessionID, filePath)
+    })
+
+    await ExperimentalHooks.triggerFileEdited({
+      sessionID: ctx.sessionID,
+      filePathAbs: filePath,
+      filePathRel: path.relative(Instance.worktree, filePath),
     })
 
     const filediff: Snapshot.FileDiff = {
