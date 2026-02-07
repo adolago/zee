@@ -1,4 +1,4 @@
-import type { BenchCase } from "./types";
+import type { BenchCase, BenchResult } from "./types";
 import { Provider } from "../../src/provider/provider";
 import { ProviderTransform } from "../../src/provider/transform";
 import { Config } from "../../src/config/config";
@@ -82,38 +82,30 @@ export const bench: BenchCase = {
   name: "Inference (OpenAI-compatible streaming)",
   group: "inference",
   async run(_ctx, opts) {
-    let result:
-      | { status: "ok"; metrics: Record<string, unknown> }
-      | { status: "skipped"; reason: string }
-      | { status: "error"; error: string } = { status: "skipped", reason: "Not executed" };
+    const id = this.id;
+    const name = this.name;
+    const group = this.group;
 
-    await Instance.provide({
+    // Instance.provide() currently types `fn` as synchronous, but it awaits the result at runtime.
+    // Double-await to keep TypeScript happy without changing Instance.provide()'s public signature.
+    return await (await Instance.provide({
       directory: process.cwd(),
-      fn: async () => {
+      fn: async (): Promise<BenchResult> => {
         const config = await Config.get().catch(() => undefined);
         const providers = await Provider.list();
         const picked = pickModel(config, providers);
         if (!picked) {
-          result = { status: "skipped", reason: "No configured provider/model found" };
-          return;
+          return { id, name, group, status: "skipped", reason: "No configured provider/model found" };
         }
 
         const info = providers[picked.providerID];
         if (!info?.source) {
-          result = {
-            status: "skipped",
-            reason: `Provider ${picked.providerID} has no auth configured`,
-          };
-          return;
+          return { id, name, group, status: "skipped", reason: `Provider ${picked.providerID} has no auth configured` };
         }
 
         const model = info.models[picked.modelID];
         if (!model) {
-          result = {
-            status: "skipped",
-            reason: `Model not found: ${picked.providerID}/${picked.modelID}`,
-          };
-          return;
+          return { id, name, group, status: "skipped", reason: `Model not found: ${picked.providerID}/${picked.modelID}` };
         }
 
         const language = await Provider.getLanguage(model);
@@ -144,7 +136,10 @@ export const bench: BenchCase = {
         const meanCompletion = mean(completionTokens);
         const tokensPerSec = meanTotal > 0 && meanCompletion > 0 ? (meanCompletion / (meanTotal / 1000)) : undefined;
 
-        result = {
+        return {
+          id,
+          name,
+          group,
           status: "ok",
           metrics: {
             model: `${picked.providerID}/${picked.modelID}`,
@@ -156,15 +151,6 @@ export const bench: BenchCase = {
           },
         };
       },
-    });
-
-    if (result.status === "ok") {
-      return { id: this.id, name: this.name, group: this.group, status: "ok", metrics: result.metrics };
-    }
-    if (result.status === "error") {
-      return { id: this.id, name: this.name, group: this.group, status: "error", error: result.error };
-    }
-    return { id: this.id, name: this.name, group: this.group, status: "skipped", reason: result.reason };
+    }));
   },
 };
-

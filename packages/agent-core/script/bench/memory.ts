@@ -37,7 +37,7 @@ function patchFetchWaitTrue(qdrantUrl: string): () => void {
   const base = qdrantUrl.replace(/\/$/, "");
   const originalFetch = globalThis.fetch;
 
-  const patchedFetch: typeof fetch = (input, init) => {
+  const patchedFetch = ((input, init) => {
     const url =
       typeof input === "string"
         ? input
@@ -60,7 +60,10 @@ function patchFetchWaitTrue(qdrantUrl: string): () => void {
     }
 
     return originalFetch(input, init);
-  };
+  }) as typeof fetch;
+
+  // Preserve Bun-specific fetch helpers (e.g. fetch.preconnect) for type + runtime compatibility.
+  (patchedFetch as any).preconnect = (originalFetch as any).preconnect;
 
   globalThis.fetch = patchedFetch;
   return () => {
