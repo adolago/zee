@@ -1,5 +1,6 @@
 import { $ } from "bun"
 import path from "path"
+import { satisfies } from "semver"
 
 // When in src/pkg/script, go up 5 levels to reach the monorepo root
 // src/pkg/script -> src/pkg -> src -> agent-core -> packages -> agent-core (root)
@@ -16,8 +17,9 @@ if (!expectedBunVersion) {
   throw new Error("packageManager field not found in root package.json")
 }
 
-if (process.versions.bun !== expectedBunVersion) {
-  throw new Error(`This script requires bun@${expectedBunVersion}, but you are using bun@${process.versions.bun}`)
+const expectedBunVersionRange = `^${expectedBunVersion}`
+if (!satisfies(process.versions.bun, expectedBunVersionRange)) {
+  throw new Error(`This script requires bun@${expectedBunVersionRange}, but you are using bun@${process.versions.bun}`)
 }
 
 const env = {
