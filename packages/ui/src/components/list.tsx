@@ -249,6 +249,7 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
                 onChange={setInternalFilter}
                 onKeyDown={handleKey}
                 placeholder={searchProps().placeholder}
+                aria-label={i18n.t("ui.list.filter")}
                 spellcheck={false}
                 autocorrect="off"
                 autocomplete="off"

@@ -41,6 +41,7 @@ export const dict = {
 
   "ui.list.loading": "로딩 중",
   "ui.list.empty": "결과 없음",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "필터 지우기",
   "ui.list.emptyWithFilter.prefix": "다음에 대한 결과 없음: ",
   "ui.list.emptyWithFilter.suffix": "",

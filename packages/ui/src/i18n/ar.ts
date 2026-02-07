@@ -41,6 +41,7 @@ export const dict = {
 
   "ui.list.loading": "جارٍ التحميل",
   "ui.list.empty": "لا توجد نتائج",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "مسح عامل التصفية",
   "ui.list.emptyWithFilter.prefix": "لا توجد نتائج لـ",
   "ui.list.emptyWithFilter.suffix": "",

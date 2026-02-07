@@ -41,6 +41,7 @@ export const dict = {
 
   "ui.list.loading": "Загрузка",
   "ui.list.empty": "Нет результатов",
+  "ui.list.filter": "Filter",
   "ui.list.clearFilter": "Очистить фильтр",
   "ui.list.emptyWithFilter.prefix": "Нет результатов для",
   "ui.list.emptyWithFilter.suffix": "",
