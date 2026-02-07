@@ -7,9 +7,9 @@ This document maps the high-signal differences between agent-core and:
 
 Snapshot used for this comparison:
 
-- agent-core: `aa815e1c86` (local `dev`)
+- agent-core: `1942d6fe01bc` (full `1942d6fe01bc4e497856e25af500b05f805d7d98`)
 - opencode: `fa20bc2` (cloned `dev`)
-- openclaw: `f2c5c84` (cloned `main`)
+- openclaw: `aaddbdae52d7` (full `aaddbdae52d71bff3a74fa28dd6597816e2d7592`)
 
 ## Summary (what each repo is)
 
