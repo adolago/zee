@@ -32,7 +32,6 @@ import {
   resolveUserTimezone,
 } from "../../agents/date-time.js";
 import {
-  formatXHighModelHint,
   normalizeThinkLevel,
   normalizeVerboseLevel,
   supportsXHighThinking,
@@ -218,7 +217,10 @@ export async function runCronIsolatedAgentTurn(params: {
     });
   }
   if (thinkLevel === "xhigh" && !supportsXHighThinking(provider, model)) {
-    throw new Error(`Thinking level "xhigh" is only supported for ${formatXHighModelHint()}.`);
+    logWarn(
+      `[cron] Thinking level "xhigh" not supported for ${model}; downgrading to "high".`,
+    );
+    thinkLevel = "high";
   }
 
   const timeoutMs = resolveAgentTimeoutMs({

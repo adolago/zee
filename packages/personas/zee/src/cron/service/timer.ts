@@ -5,7 +5,8 @@ import { locked } from "./locked.js";
 import type { CronEvent, CronServiceState } from "./state.js";
 import { ensureLoaded, persist } from "./store.js";
 
-const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+/** Max timer delay (60 s). Keeps the scheduler responsive after laptop suspend/resume. */
+const DRIFT_GUARD_MS = 60_000;
 
 export function armTimer(state: CronServiceState) {
   if (state.timer) clearTimeout(state.timer);
@@ -14,14 +15,12 @@ export function armTimer(state: CronServiceState) {
   const nextAt = nextWakeAtMs(state);
   if (!nextAt) return;
   const delay = Math.max(nextAt - state.deps.nowMs(), 0);
-  // Avoid TimeoutOverflowWarning when a job is far in the future.
-  const clampedDelay = Math.min(delay, MAX_TIMEOUT_MS);
+  const clampedDelay = Math.min(delay, DRIFT_GUARD_MS);
   state.timer = setTimeout(() => {
     void onTimer(state).catch((err) => {
       state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
     });
   }, clampedDelay);
-  state.timer.unref?.();
 }
 
 export async function onTimer(state: CronServiceState) {
@@ -32,10 +31,10 @@ export async function onTimer(state: CronServiceState) {
       await ensureLoaded(state);
       await runDueJobs(state);
       await persist(state);
-      armTimer(state);
     });
   } finally {
     state.running = false;
+    armTimer(state);
   }
 }
 
