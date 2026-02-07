@@ -224,12 +224,11 @@ describe("acp.agent session ops", () => {
         expect(calls.fork).toHaveLength(1)
         expect(calls.get).toHaveLength(1)
         expect(result.sessionId).toBe("ses_forked")
-        expect(result.models.currentModelId).toBe("zai-coding-plan/glm-4.7")
-        expect(result.modes.availableModes.map((m: any) => m.id)).toEqual(["build"])
+        expect(result.models?.currentModelId).toBe("zai-coding-plan/glm-4.7")
+        expect(result.modes?.availableModes?.map((m: any) => m.id)).toEqual(["build"])
 
         agent.dispose()
       },
     })
   })
 })
-
