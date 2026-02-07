@@ -40,11 +40,11 @@ jobs:
         with:
           node-version: "22.12.0"
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install pnpm (avoid Corepack signature issues)
+        run: npm install -g pnpm@10.23.0
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
         working-directory: packages/personas/zee
 
       - name: Test
@@ -52,4 +52,5 @@ jobs:
         working-directory: packages/personas/zee
         env:
           CI: true
+          NODE_OPTIONS: --experimental-sqlite
         timeout-minutes: 20
