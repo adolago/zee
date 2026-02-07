@@ -32,19 +32,25 @@ export namespace Filesystem {
   export async function containsResolved(parent: string, child: string): Promise<boolean> {
     parent = sanitizePath(parent)
     child = sanitizePath(child)
+
+    // Recursively resolve realpath, walking up to the nearest existing ancestor
+    const resolve = async (p: string): Promise<string> => {
+      try {
+        return await realpath(p)
+      } catch {
+        const parentDir = dirname(p)
+        if (parentDir === p) return p
+        const resolvedParent = await resolve(parentDir)
+        return join(resolvedParent, relative(parentDir, p))
+      }
+    }
+
     try {
-      // Resolve both paths to their real locations (following symlinks)
-      const resolvedParent = await realpath(parent).catch(() => parent)
-      const resolvedChild = await realpath(child).catch(async () => {
-        // If the path doesn't exist yet (common for writes), resolve the parent directory
-        // to prevent symlink escapes via directory symlinks.
-        const dir = dirname(child)
-        return await realpath(dir).catch(() => dir)
-      })
+      const resolvedParent = await resolve(parent)
+      const resolvedChild = await resolve(child)
       return !relative(resolvedParent, resolvedChild).startsWith("..")
     } catch {
-      // If realpath fails (file doesn't exist yet), fall back to lexical check
-      return contains(parent, child)
+      return false
     }
   }
 
@@ -54,23 +60,24 @@ export namespace Filesystem {
   export function containsResolvedSync(parent: string, child: string): boolean {
     parent = sanitizePath(parent)
     child = sanitizePath(child)
+
+    const resolve = (p: string): string => {
+      try {
+        return realpathSync(p)
+      } catch {
+        const parentDir = dirname(p)
+        if (parentDir === p) return p
+        const resolvedParent = resolve(parentDir)
+        return join(resolvedParent, relative(parentDir, p))
+      }
+    }
+
     try {
-      const resolvedParent = realpathSync(parent)
-      const resolvedChild = (() => {
-        try {
-          return realpathSync(child)
-        } catch {
-          const dir = dirname(child)
-          try {
-            return realpathSync(dir)
-          } catch {
-            return child
-          }
-        }
-      })()
+      const resolvedParent = resolve(parent)
+      const resolvedChild = resolve(child)
       return !relative(resolvedParent, resolvedChild).startsWith("..")
     } catch {
-      return contains(parent, child)
+      return false
     }
   }
   /**
