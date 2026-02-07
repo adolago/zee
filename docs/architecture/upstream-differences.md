@@ -143,6 +143,35 @@ Operationally, Zee’s gateway is launched by agent-core only when explicitly en
 
 OpenCode’s “server mode” is about a client/server split for the coding agent and UI surfaces; it does not aim to provide multi-channel messaging or device nodes.
 
+## Upstream Sync Lanes
+
+This section tracks discrete upstream-delta triage "lanes" between agent-core's Zee gateway subset (`packages/personas/zee/`) and OpenClaw (`openclaw/openclaw`).
+
+### Lane 12: Onboarding + daemon install + operational CLI
+
+Source tracking issue: `adolago/agent-core#235`.
+
+Comparison snapshot used for triage (historical context):
+
+- agent-core: `1942d6fe01bc4e497856e25af500b05f805d7d98`
+- openclaw/openclaw: `aaddbdae52d71bff3a74fa28dd6597816e2d7592`
+
+Triage outcome:
+
+| Upstream PR | Title | Decision | agent-core location |
+| --- | --- | --- | --- |
+| openclaw/openclaw#1512 | Linux user bin dirs in systemd PATH | Already ported | `packages/personas/zee/src/daemon/service-env.ts` |
+| openclaw/openclaw#1505 | Prefer symlinked paths over realpath | Already ported | `packages/personas/zee/src/daemon/program-args.ts` |
+| openclaw/openclaw#1735 | Propagate config env vars to gateway services | Already ported | `packages/personas/zee/src/commands/daemon-install-helpers.ts` |
+| openclaw/openclaw#1485 | Support direct token + provider in auth apply commands | Already ported | `packages/personas/zee/src/commands/auth-choice.apply.*.ts` |
+| openclaw/openclaw#10176 | Guard `resolveUserPath` against undefined input | Ported | `packages/personas/zee/src/utils.ts`, `packages/personas/zee/src/config/paths.ts`, `packages/personas/zee/src/daemon/paths.ts` (commit `3dad5d25bb`) |
+| openclaw/openclaw#5370 | Bump minimum Node.js to 22.12.0 | Ported | `packages/personas/zee/src/infra/runtime-guard.ts`, `packages/personas/zee/package.json` (commit `3dad5d25bb`) |
+| openclaw/openclaw#9436 | Silence token in URL query parameters | Adapted | `packages/personas/zee/src/gateway/hooks.ts`, `packages/personas/zee/src/gateway/server-http.ts`, `packages/personas/zee/src/hooks/gmail-setup-utils.ts` (commit `3dad5d25bb`) |
+
+Notes:
+
+- Token-in-URL support is intentionally not supported in agent-core Zee hooks. Use `Authorization: Bearer <token>` or `X-Zee-Token: <token>`.
+
 ## Skills system (format + content)
 
 ### Format
