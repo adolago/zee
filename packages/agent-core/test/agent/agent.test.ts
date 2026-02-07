@@ -4,8 +4,6 @@ import { Instance } from "../../src/project/instance"
 import { Agent } from "../../src/agent/agent"
 import { PermissionNext } from "../../src/permission/next"
 
-const skipNullPathBug = Bun.version === "1.3.5"
-
 // Helper to evaluate permission for a tool with wildcard pattern
 function evalPerm(agent: Agent.Info | undefined, permission: string): PermissionNext.Action | undefined {
   if (!agent) return undefined
@@ -15,7 +13,7 @@ function evalPerm(agent: Agent.Info | undefined, permission: string): Permission
 // NOTE: agent-core uses Personas (zee, stanley, johny) instead of generic agents (build, plan, etc.)
 // These tests have been updated to reflect the personas architecture.
 
-describe.skipIf(skipNullPathBug)("agent config", () => {
+describe("agent config", () => {
 test("returns default persona agents when no config", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
@@ -510,13 +508,13 @@ test("explicit Truncate.DIR deny is respected", async () => {
   })
 })
 
-test("defaultAgent returns stanley when no default_agent config", async () => {
+test("defaultAgent returns zee when no default_agent config", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
       const agent = await Agent.defaultAgent()
-      expect(agent).toBe("stanley")
+      expect(agent).toBe("zee")
     },
   })
 })
@@ -536,7 +534,7 @@ test("defaultAgent respects default_agent config set to zee", async () => {
   })
 })
 
-test("defaultAgent respects default_agent config set to custom agent with mode all", async () => {
+test("defaultAgent throws when default_agent points to non-persona", async () => {
   await using tmp = await tmpdir({
     config: {
       default_agent: "my_custom",
@@ -550,8 +548,7 @@ test("defaultAgent respects default_agent config set to custom agent with mode a
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const agent = await Agent.defaultAgent()
-      expect(agent).toBe("my_custom")
+      await expect(Agent.defaultAgent()).rejects.toThrow("must be a persona")
     },
   })
 })
@@ -633,7 +630,7 @@ test("defaultAgent throws when all primary agents are disabled", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      await expect(Agent.defaultAgent()).rejects.toThrow("no primary visible agent found")
+      await expect(Agent.defaultAgent()).rejects.toThrow('default agent "zee" not found')
     },
   })
 })
