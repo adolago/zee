@@ -8,10 +8,17 @@ import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'fs';
 
 const TUWEL_URL = 'https://tuwel.tuwien.ac.at';
-const EMAIL = 'dolagoartur@gmail.com';
-const PASSWORD = '&kL2S%6VR@Rj$zj4sKWx';
+const EMAIL = process.env.TUWEL_EMAIL;
+const PASSWORD = process.env.TUWEL_PASSWORD;
 
 async function scrapeExams() {
+  if (!EMAIL || !PASSWORD) {
+    console.error('\n=== ERROR: Missing Credentials ===');
+    console.error('Please set TUWEL_EMAIL and TUWEL_PASSWORD environment variables.');
+    console.error('Example: TUWEL_EMAIL=my@email.com TUWEL_PASSWORD=secret node tuwel_scraper.mjs\n');
+    process.exit(1);
+  }
+
   console.log('Starting TUWEL exam scraper...');
   
   const browser = await chromium.launch({ 
