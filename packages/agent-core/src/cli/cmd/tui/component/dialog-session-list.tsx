@@ -10,7 +10,7 @@ import { useSDK } from "../context/sdk"
 import { DialogSessionRename } from "./dialog-session-rename"
 import { createDebouncedSignal } from "../util/signal"
 import { useToast } from "../ui/toast"
-import "opentui-spinner/solid"
+import { Spinner } from "./spinner"
 
 export function DialogSessionList() {
   const dialog = useDialog()
@@ -31,8 +31,6 @@ export function DialogSessionList() {
   })
 
   const currentSessionID = createMemo(() => (route.data.type === "session" ? route.data.sessionID : undefined))
-
-  const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
   const sessions = createMemo(() => searchResults() ?? sync.data.session)
 
@@ -56,7 +54,7 @@ export function DialogSessionList() {
         // Build gutter indicator
         let gutter: JSX.Element | undefined
         if (isWorking) {
-          gutter = <spinner frames={spinnerFrames} interval={60} color={theme.primary} />
+          gutter = <Spinner color={theme.primary} />
         } else if (incompleteTodoCount > 0) {
           gutter = <text fg={theme.warning}>◐{incompleteTodoCount}</text>
         }

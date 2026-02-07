@@ -1,5 +1,5 @@
 import { createStore } from "solid-js/store"
-import { createMemo, For, Show } from "solid-js"
+import { createMemo, createSignal, For, Show } from "solid-js"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { RGBA, type TextareaRenderable } from "@opentui/core"
 import { useKeybind } from "../../context/keybind"
@@ -23,6 +23,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
   const questions = createMemo(() => props.request.questions)
   const single = createMemo(() => questions().length === 1 && questions()[0]?.multiple !== true)
   const tabs = createMemo(() => (single() ? 1 : questions().length + 1)) // questions + confirm tab (no confirm for single select)
+  const [tabHover, setTabHover] = createSignal<number | "confirm" | null>(null)
   const [store, setStore] = createStore({
     tab: 0,
     answers: [] as QuestionAnswer[],
@@ -271,13 +272,16 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
                 const isAnswered = () => {
                   return (store.answers[index()]?.length ?? 0) > 0
                 }
+                const isHovered = () => tabHover() === index()
                 return (
                   <box
                     paddingLeft={1}
                     paddingRight={1}
-                    backgroundColor={isActive() ? theme.accent : theme.backgroundElement}
+                    backgroundColor={isActive() ? theme.accent : isHovered() ? tint(theme.backgroundElement, theme.accent, 0.3) : theme.backgroundElement}
                     onMouseDown={() => selectTab(index())}
                     onMouseUp={() => selectTab(index())}
+                    onMouseOver={() => setTabHover(index())}
+                    onMouseOut={() => setTabHover(null)}
                   >
                     <text fg={isActive() ? selectedForeground(theme, theme.accent) : isAnswered() ? theme.text : theme.textMuted}>
                       {q.header}
@@ -289,9 +293,11 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
             <box
               paddingLeft={1}
               paddingRight={1}
-              backgroundColor={confirm() ? theme.accent : theme.backgroundElement}
+              backgroundColor={confirm() ? theme.accent : tabHover() === "confirm" ? tint(theme.backgroundElement, theme.accent, 0.3) : theme.backgroundElement}
               onMouseDown={() => selectTab(questions().length)}
               onMouseUp={() => selectTab(questions().length)}
+              onMouseOver={() => setTabHover("confirm")}
+              onMouseOut={() => setTabHover(null)}
             >
               <text fg={confirm() ? selectedForeground(theme, theme.accent) : theme.textMuted}>Confirm</text>
             </box>
@@ -312,7 +318,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
                   const active = () => i() === store.selected
                   const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
                   return (
-                    <box onMouseDown={() => moveTo(i())} onMouseUp={() => selectOption()}>
+                    <box onMouseDown={() => moveTo(i())} onMouseUp={() => selectOption()} onMouseOver={() => moveTo(i())}>
                       <box flexDirection="row">
                         <box backgroundColor={active() ? theme.backgroundElement : undefined} paddingRight={1}>
                           <text fg={active() ? tint(theme.textMuted, theme.secondary, 0.6) : theme.textMuted}>
@@ -337,7 +343,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
                 }}
               </For>
               <Show when={custom()}>
-                <box onMouseDown={() => moveTo(options().length)} onMouseUp={() => selectOption()}>
+                <box onMouseDown={() => moveTo(options().length)} onMouseUp={() => selectOption()} onMouseOver={() => moveTo(options().length)}>
                   <box flexDirection="row">
                     <box backgroundColor={other() ? theme.backgroundElement : undefined} paddingRight={1}>
                       <text fg={other() ? tint(theme.textMuted, theme.secondary, 0.6) : theme.textMuted}>
