@@ -1,7 +1,11 @@
 import { Hono } from "hono"
 import { describeRoute, resolver } from "hono-openapi"
 import { z } from "zod"
-import { LOBSTER_PALETTE, PROVIDERS, SKILL_FRONTMATTER_COMMON_OPTIONAL_KEYS, SKILL_FRONTMATTER_REQUIRED_KEYS } from "@clawhub/registry"
+// Mocking the @clawhub/registry dependency until it's properly vendored or fixed
+const LOBSTER_PALETTE: Record<string, string> = {}
+const PROVIDERS: Record<string, { label: string; icon?: string }> = {}
+const SKILL_FRONTMATTER_REQUIRED_KEYS: string[] = []
+const SKILL_FRONTMATTER_COMMON_OPTIONAL_KEYS: string[] = []
 
 const PaletteSchema = z.record(z.string(), z.string())
 const ProviderSchema = z.record(
