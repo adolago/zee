@@ -1446,7 +1446,7 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
   return (
     <div data-component="question-prompt">
       <Show when={!single()}>
-        <div data-slot="question-tabs">
+        <div data-slot="question-tabs" role="tablist" aria-label={i18n.t("ui.tool.questions")}>
           <For each={questions()}>
             {(q, index) => {
               const active = () => index() === store.tab
@@ -1454,6 +1454,8 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
               return (
                 <button
                   data-slot="question-tab"
+                  role="tab"
+                  aria-selected={active()}
                   data-active={active()}
                   data-answered={answered()}
                   onClick={() => selectTab(index())}
@@ -1463,7 +1465,13 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
               )
             }}
           </For>
-          <button data-slot="question-tab" data-active={confirm()} onClick={() => selectTab(questions().length)}>
+          <button
+            data-slot="question-tab"
+            role="tab"
+            aria-selected={confirm()}
+            data-active={confirm()}
+            onClick={() => selectTab(questions().length)}
+          >
             {i18n.t("ui.common.confirm")}
           </button>
         </div>
@@ -1475,11 +1483,7 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
             {question()?.question}
             {multi() ? " " + i18n.t("ui.question.multiHint") : ""}
           </div>
-          <div
-            data-slot="question-options"
-            role={multi() ? "group" : "radiogroup"}
-            aria-labelledby={questionId}
-          >
+          <div data-slot="question-options" role={multi() ? "group" : "radiogroup"} aria-labelledby={questionId}>
             <For each={options()}>
               {(opt, i) => {
                 const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
