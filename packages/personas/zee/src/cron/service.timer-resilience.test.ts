@@ -19,7 +19,19 @@ async function makeStorePath() {
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
-      await fs.rm(dir, { recursive: true, force: true });
+      // Retry loop to handle ENOTEMPTY errors on Windows/CI when fs.rm races with open handles
+      // Ensure we are using real timers for the delay loop
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      for (let i = 0; i < 5; i++) {
+        try {
+          await fs.rm(dir, { recursive: true, force: true });
+          return;
+        } catch (err: any) {
+          if (err.code !== "ENOTEMPTY" && err.code !== "EBUSY") throw err;
+          await sleep(100 * (i + 1));
+        }
+      }
     },
   };
 }
@@ -34,9 +46,12 @@ describe("CronService timer resilience", () => {
     noopLogger.error.mockClear();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Crucial: Must switch to real timers BEFORE cleanup to prevent deadlock in retry loops
     vi.useRealTimers();
     vi.restoreAllMocks();
+    // Allow any pending IO/timers to flush
+    await new Promise((resolve) => setTimeout(resolve, 10));
   });
 
   it("re-arms timer after persist failure", async () => {
