@@ -65,6 +65,18 @@ test("includes default tui.busy_submit_behavior", async () => {
     },
   })
 })
+
+test("includes default tui scroll settings", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.tui?.scroll_speed).toBe(3)
+      expect(config.tui?.scroll_acceleration?.enabled).toBe(false)
+    },
+  })
+})
 test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

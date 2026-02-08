@@ -22,7 +22,7 @@ import { SplitBorder } from "@tui/component/border"
 import { useTheme } from "@tui/context/theme"
 import {
   BoxRenderable,
-  LinearScrollAccel,
+  MacOSScrollAccel,
   ScrollBoxRenderable,
   addDefaultParsers,
   type ScrollAcceleration,
@@ -89,6 +89,16 @@ import { LatexUnicode } from "@tui/util/latex-unicode"
 import { MathBlock } from "@tui/component/math-block"
 
 addDefaultParsers(parsers.parsers)
+
+class CustomSpeedScroll implements ScrollAcceleration {
+  constructor(private speed: number) {}
+
+  tick(_now?: number): number {
+    return this.speed
+  }
+
+  reset(): void {}
+}
 
 function AgentBanner() {
   const local = useLocal()
@@ -200,7 +210,11 @@ export function Session() {
   const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
 
   const scrollAcceleration = createMemo(() => {
-    return new LinearScrollAccel()
+    const tui = (sync.data.config.tui as any) as { scroll_acceleration?: { enabled?: boolean }; scroll_speed?: number }
+    if (tui?.scroll_acceleration?.enabled) {
+      return new MacOSScrollAccel()
+    }
+    return new CustomSpeedScroll(tui?.scroll_speed ?? 3)
   })
 
   createEffect(async () => {
