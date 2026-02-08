@@ -30,6 +30,7 @@ import { Log } from "@/util/log"
 import type { Path } from "@agent-core/sdk/v2"
 import { useToast } from "../ui/toast"
 import { createAuthorizedFetch } from "@/server/auth"
+import { createBufferedUpdater } from "./buffered-updater"
 
 export const { use: useSync, provider: SyncProvider } = createSimpleContext({
   name: "Sync",
@@ -169,6 +170,35 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const sdk = useSDK()
     const toast = useToast()
+
+    const bufferedPartUpdates = createBufferedUpdater<Part>({
+      key: (p) => `${p.messageID}:${p.id}`,
+      // ~60fps coalescing; reduces render churn while streaming deltas.
+      flushMs: 16,
+      apply: (parts) => {
+        batch(() => {
+          for (const part of parts) {
+            const existing = store.part[part.messageID]
+            if (!existing) {
+              setStore("part", part.messageID, [part])
+              continue
+            }
+            const result = Binary.search(existing, part.id, (p) => p.id)
+            if (result.found) {
+              setStore("part", part.messageID, result.index, reconcile(part))
+              continue
+            }
+            setStore(
+              "part",
+              part.messageID,
+              produce((draft) => {
+                draft.splice(result.index, 0, part)
+              }),
+            )
+          }
+        })
+      },
+    })
 
     sdk.event.listen((e) => {
       const event = e.details
@@ -346,29 +376,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
         }
         case "message.part.updated": {
-          const part = event.properties.part
-          const parts = store.part[part.messageID]
-          if (!parts) {
-            setStore("part", part.messageID, [part])
-          } else {
-            const result = Binary.search(parts, part.id, (p) => p.id)
-            if (result.found) {
-              setStore("part", part.messageID, result.index, reconcile(part))
-            } else {
-              setStore(
-                "part",
-                part.messageID,
-                produce((draft) => {
-                  draft.splice(result.index, 0, part)
-                }),
-              )
-            }
-          }
-
+          bufferedPartUpdates.push(event.properties.part)
           break
         }
 
         case "message.part.removed": {
+          // Ensure any pending updates are applied before removing.
+          bufferedPartUpdates.flushNow()
           const parts = store.part[event.properties.messageID]
           if (!parts) break
           const result = Binary.search(parts, event.properties.partID, (p) => p.id)

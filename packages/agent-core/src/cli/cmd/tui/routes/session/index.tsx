@@ -217,11 +217,34 @@ export function Session() {
     return new CustomSpeedScroll(tui?.scroll_speed ?? 3)
   })
 
+  const lastStreamKey = createMemo(() => {
+    const lastId = lastAssistant()?.id
+    if (!lastId) return ""
+    const parts = sync.data.part[lastId] ?? []
+    let textLen = 0
+    let toolStatus = ""
+    for (const part of parts) {
+      if (part.type === "text") textLen += (part as any).text?.length ?? 0
+      if (part.type === "tool") toolStatus += (part as any).state?.status ?? ""
+    }
+    return `${lastId}:${textLen}:${toolStatus}`
+  })
+
+  createEffect(() => {
+    // Keep the view pinned to the bottom while the user isn't scrolling up.
+    lastStreamKey()
+    if (!stickToBottom()) return
+    scheduleToBottom()
+  })
+
   createEffect(async () => {
     await sync.session
       .sync(route.sessionID)
       .then(() => {
-        if (scroll) scroll.scrollBy(100_000)
+        if (scroll) {
+          setStickToBottom(true)
+          scheduleToBottom()
+        }
 
         // Check for incomplete todos and show continuation reminder
         const todos = sync.data.todo[route.sessionID] ?? []
@@ -350,21 +373,32 @@ export function Session() {
     const targetID = findNextVisibleMessage(direction)
 
     if (!targetID) {
+      setStickToBottom(false)
       scroll.scrollBy(direction === "next" ? scroll.height : -scroll.height)
       dialog.clear()
       return
     }
 
     const child = scroll.getChildren().find((c) => c.id === targetID)
+    setStickToBottom(false)
     if (child) scroll.scrollBy(child.y - scroll.y - 1)
     dialog.clear()
   }
 
-  function toBottom() {
-    setTimeout(() => {
+  const [stickToBottom, setStickToBottom] = createSignal(true)
+  let toBottomTimer: ReturnType<typeof setTimeout> | null = null
+  function scheduleToBottom() {
+    if (toBottomTimer) return
+    toBottomTimer = setTimeout(() => {
+      toBottomTimer = null
       if (!scroll || scroll.isDestroyed) return
       scroll.scrollTo(scroll.scrollHeight)
-    }, 50)
+    }, 0)
+  }
+
+  function toBottom() {
+    setStickToBottom(true)
+    scheduleToBottom()
   }
 
   const local = useLocal()
@@ -659,6 +693,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        setStickToBottom(false)
         scroll.scrollBy(-scroll.height / 2)
         dialog.clear()
       },
@@ -671,6 +706,8 @@ export function Session() {
       hidden: true,
       onSelect: (dialog) => {
         scroll.scrollBy(scroll.height / 2)
+        // If we've reached the bottom, resume sticky scrolling.
+        if (scroll.scrollTop + scroll.height >= scroll.scrollHeight - 2) setStickToBottom(true)
         dialog.clear()
       },
     },
@@ -681,6 +718,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        setStickToBottom(false)
         scroll.scrollBy(-1)
         dialog.clear()
       },
@@ -693,6 +731,7 @@ export function Session() {
       hidden: true,
       onSelect: (dialog) => {
         scroll.scrollBy(1)
+        if (scroll.scrollTop + scroll.height >= scroll.scrollHeight - 2) setStickToBottom(true)
         dialog.clear()
       },
     },
@@ -703,6 +742,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        setStickToBottom(false)
         scroll.scrollBy(-scroll.height / 4)
         dialog.clear()
       },
@@ -715,6 +755,7 @@ export function Session() {
       hidden: true,
       onSelect: (dialog) => {
         scroll.scrollBy(scroll.height / 4)
+        if (scroll.scrollTop + scroll.height >= scroll.scrollHeight - 2) setStickToBottom(true)
         dialog.clear()
       },
     },
@@ -725,6 +766,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        setStickToBottom(false)
         scroll.scrollTo(0)
         dialog.clear()
       },
@@ -736,6 +778,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        setStickToBottom(true)
         scroll.scrollTo(scroll.scrollHeight)
         dialog.clear()
       },
