@@ -64,3 +64,9 @@ vendor/personas/zee/docker-compose.yml
 src/council/
 src/agent-types.ts
 src/model-catalog.ts
+
+# TUWEL Scraper output
+tuwel_exams.json
+tuwel_dashboard.png
+tuwel_error.json
+tuwel_error.png
