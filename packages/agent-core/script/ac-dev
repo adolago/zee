@@ -4,6 +4,7 @@
 # Usage: ac dev [args...]
 #   ac dev --skip-test    Skip the self-test (messaging + provider checks)
 #   ac dev --no-build     Skip rebuild (use existing binary)
+#   ac dev --no-tui       Do everything but don't open the TUI (start service and exit)
 #
 # This script is invoked via `ac dev`. The main `ac` command manages the
 # systemd service.
@@ -29,11 +30,13 @@ MONOREPO_ROOT="$(cd "$REPO_ROOT/../.." && pwd)"
 # Parse flags
 SKIP_TEST=false
 NO_BUILD=false
+NO_TUI=false
 PASSTHROUGH_ARGS=()
 for arg in "$@"; do
     case "$arg" in
         --skip-test) SKIP_TEST=true ;;
         --no-build) NO_BUILD=true ;;
+        --no-tui) NO_TUI=true ;;
         *) PASSTHROUGH_ARGS+=("$arg") ;;
     esac
 done
@@ -169,6 +172,8 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user list-unit-files --ty
         systemctl --user mask --runtime agent-core 2>/dev/null || true
         AC_USER_SVC_RUNTIME_MASKED=true
     fi
+    # Clear restart counters and any lingering state to prevent delayed cgroup ops.
+    systemctl --user reset-failed agent-core 2>/dev/null || true
 fi
 
 # Nuke: kill all remaining agent-core processes (excluding this script)
@@ -264,6 +269,10 @@ if [[ "$SKIP_TEST" == "true" ]]; then
         fi
         AC_USER_SVC_RUNTIME_MASKED=false
     fi
+    if [[ "$NO_TUI" == "true" ]]; then
+        echo -e "\033[1;32m[ac] Self-tests skipped; service started. (No TUI: --no-tui)\033[0m" >&2
+        exit 0
+    fi
     exec "$LOCAL_BINARY" "${PASSTHROUGH_ARGS[@]}"
 fi
 
@@ -316,6 +325,10 @@ ac_test_cleanup() {
         kill "$TEST_DAEMON_PID" 2>/dev/null || true
         wait "$TEST_DAEMON_PID" 2>/dev/null || true
     fi
+    if [[ -n "$DAEMON_WATCHER_PID" ]] && kill -0 "$DAEMON_WATCHER_PID" 2>/dev/null; then
+        kill "$DAEMON_WATCHER_PID" 2>/dev/null || true
+        wait "$DAEMON_WATCHER_PID" 2>/dev/null || true
+    fi
     # Clean state so TUI can start fresh
     rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
 }
@@ -326,10 +339,24 @@ ac_test_fail() {
     exit 1
 }
 
+DAEMON_WATCHER_PID=""
+
 start_test_daemon() {
     echo -e "\033[1;33m[ac] Starting headless daemon for self-test...\033[0m" >&2
     ("${DAEMON_ENV_PREFIX[@]}" "$LOCAL_BINARY" daemon --directory "$MONOREPO_ROOT") &
     TEST_DAEMON_PID=$!
+    # Background watcher: report the exit signal if the daemon dies unexpectedly.
+    (
+        wait "$TEST_DAEMON_PID" 2>/dev/null
+        EC=$?
+        if [[ $EC -gt 128 ]]; then
+            SIG=$((EC - 128))
+            echo -e "\033[1;31m[ac] Daemon (PID $TEST_DAEMON_PID) killed by signal $SIG\033[0m" >&2
+        elif [[ $EC -ne 0 ]]; then
+            echo -e "\033[1;31m[ac] Daemon (PID $TEST_DAEMON_PID) exited with code $EC\033[0m" >&2
+        fi
+    ) &
+    DAEMON_WATCHER_PID=$!
 }
 
 wait_for_daemon_health() {
@@ -356,16 +383,46 @@ wait_for_gateway_ready() {
     local max_wait="${1:-30}"
     echo -e "\033[1;33m[ac] Waiting for gateway...\033[0m" >&2
     local waited=0
+    local last_err=""
+    local err=""
+    local gw_restart_attempted=false
     while true; do
-        # The server-side gateway status check can take up to ~5s (ws connect timeout).
+        # The server-side gateway RPC check can take up to ~10s (WS connect + method call).
         # Use a slightly longer client timeout to avoid piling up timed-out requests.
-        GW_STATUS=$(curl -sf -m 7 "$DAEMON_URL/gateway/status" 2>/dev/null || true)
+        #
+        # NOTE: /gateway/status bridges the gateway's "health" method which can be slow on
+        # cold start. /gateway/channels/status is a faster reachability signal.
+        GW_STATUS=$(curl -sS -m 12 "$DAEMON_URL/gateway/channels/status" 2>/dev/null || true)
         if echo "$GW_STATUS" | jq -e '.success' >/dev/null 2>&1; then
             break
+        fi
+        # Fail fast if daemon died (instead of polling a dead server for 30s).
+        if [[ -n "$TEST_DAEMON_PID" ]] && ! kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
+            if [[ "$gw_restart_attempted" != "true" ]]; then
+                echo -e "\033[1;33m[ac] Daemon died during gateway wait; restarting once...\033[0m" >&2
+                gw_restart_attempted=true
+                TEST_DAEMON_PID=""
+                rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
+                ensure_port_free "$DAEMON_PORT" || ac_test_fail "port still in use after daemon died"
+                start_test_daemon
+                wait_for_daemon_health 30
+                waited=0
+                last_err=""
+                continue
+            fi
+            ac_test_fail "daemon process died while waiting for gateway (after restart)"
+        fi
+        err=$(echo "$GW_STATUS" | jq -r '.error // empty' 2>/dev/null || true)
+        if [[ -n "$err" && "$err" != "$last_err" ]]; then
+            echo -e "\033[1;33m[ac] Gateway status error: ${err}\033[0m" >&2
+            last_err="$err"
         fi
         sleep 1
         waited=$((waited + 1))
         if [[ "$waited" -ge "$max_wait" ]]; then
+            if [[ -n "$err" ]]; then
+                ac_test_fail "gateway not ready after ${max_wait}s (last error: ${err})"
+            fi
             ac_test_fail "gateway not ready after ${max_wait}s"
         fi
     done
@@ -617,6 +674,11 @@ echo -e "\033[1;33m[ac] Stopping test daemon...\033[0m" >&2
 kill "$TEST_DAEMON_PID" 2>/dev/null || true
 wait "$TEST_DAEMON_PID" 2>/dev/null || true
 TEST_DAEMON_PID=""
+if [[ -n "$DAEMON_WATCHER_PID" ]]; then
+    kill "$DAEMON_WATCHER_PID" 2>/dev/null || true
+    wait "$DAEMON_WATCHER_PID" 2>/dev/null || true
+    DAEMON_WATCHER_PID=""
+fi
 rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
 
 # Verify port is released before handing off to systemd (prevents crash-loop)
@@ -642,6 +704,10 @@ if command -v systemctl >/dev/null 2>&1; then
     fi
 fi
 
-# Boot: run the local binary (starts daemon + gateway + TUI)
+# Boot: run the local binary (starts daemon + gateway + TUI), unless --no-tui.
+if [[ "$NO_TUI" == "true" ]]; then
+    echo -e "\033[1;32m[ac] Pristine start complete; systemd service is running. (No TUI: --no-tui)\033[0m" >&2
+    exit 0
+fi
 echo -e "\033[1;32m[ac] Launching TUI...\033[0m" >&2
 exec "$LOCAL_BINARY" "${PASSTHROUGH_ARGS[@]}"
