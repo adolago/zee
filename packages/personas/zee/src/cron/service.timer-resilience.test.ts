@@ -19,6 +19,22 @@ async function makeStorePath() {
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
+      // Ensure we are using real timers for the cleanup delay loop, otherwise
+      // setTimeout will hang if fake timers are still active.
+      vi.useRealTimers();
+      for (let i = 0; i < 10; i++) {
+        try {
+          await fs.rm(dir, { recursive: true, force: true });
+          return;
+        } catch (err: any) {
+          if (err.code === "ENOTEMPTY") {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            continue;
+          }
+          throw err;
+        }
+      }
+      // Last attempt without swallow
       await fs.rm(dir, { recursive: true, force: true });
     },
   };
