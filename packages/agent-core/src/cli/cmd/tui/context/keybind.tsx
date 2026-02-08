@@ -25,6 +25,7 @@ export type KeybindsConfig = SDKKeybindsConfig & {
   messages_line_up?: string
   messages_line_down?: string
   messages_toggle_thinking?: string
+  messages_toggle_scrollbar?: string
   messages_next?: string
   messages_previous?: string
   messages_last_user?: string

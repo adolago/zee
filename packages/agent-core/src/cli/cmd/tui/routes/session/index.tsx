@@ -190,7 +190,7 @@ export function Session() {
   const [timestamps, setTimestamps] = kv.signal<"hide" | "show">("timestamps", "hide")
   const [showDetails, setShowDetails] = kv.signal("tool_details_visibility", true)
   const [showAssistantMetadata, setShowAssistantMetadata] = kv.signal("assistant_metadata_visibility", true)
-  const [showScrollbar, setShowScrollbar] = kv.signal("scrollbar_visible", false)
+  const [showScrollbar, setShowScrollbar] = kv.signal("scrollbar_visible", true)
   const [diffWrapMode, setDiffWrapMode] = createSignal<"word" | "none">("word")
 
 
@@ -670,6 +670,20 @@ export function Session() {
       },
       onSelect: (dialog) => {
         setShowThinking((prev) => !prev)
+        dialog.clear()
+      },
+    },
+    {
+      title: showScrollbar() ? "Hide scrollbar" : "Show scrollbar",
+      value: "session.toggle.scrollbar",
+      keybind: "messages_toggle_scrollbar",
+      category: "Session",
+      slash: {
+        name: "scrollbar",
+        aliases: ["toggle-scrollbar", "sb"],
+      },
+      onSelect: (dialog) => {
+        setShowScrollbar((prev) => !prev)
         dialog.clear()
       },
     },

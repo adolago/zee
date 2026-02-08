@@ -828,6 +828,11 @@ export namespace Config {
         .optional()
         .default("<leader>i")
         .describe("Toggle thinking blocks visibility"),
+      messages_toggle_scrollbar: z
+        .string()
+        .optional()
+        .default("<leader>shift+s")
+        .describe("Toggle session scrollbar visibility"),
       model_list: z.string().optional().default("<leader>m").describe("List available models"),
       model_fallback_toggle: z.string().optional().default("f3").describe("Toggle between primary and fallback model"),
       model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle current model as favorite"),

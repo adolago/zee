@@ -55,6 +55,17 @@ test("includes default keybind for toggling thinking visibility", async () => {
   })
 })
 
+test("includes default keybind for toggling scrollbar visibility", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.keybinds?.messages_toggle_scrollbar).toBe("<leader>shift+s")
+    },
+  })
+})
+
 test("includes default tui.busy_submit_behavior", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
