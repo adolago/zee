@@ -95,7 +95,30 @@ npx tsx scripts/stanley-nautilus.ts strategy-info momentum
 | `stanley:research` | Company research, news, analyst ratings |
 | `stanley:sec-filings` | SEC EDGAR filings (10-K, 10-Q, 8-K, 13F) |
 | `stanley:nautilus` | Algorithmic strategies via NautilusTrader |
+| `stanley:estimates` | Analyst consensus, forward EPS, price targets, revision history |
+| `stanley:insider-trades` | Insider buy/sell transactions with net sentiment summary |
+| `stanley:segments` | Revenue by business segment or geography with growth rates |
+| `stanley:scratchpad` | Research session logging, dedup, and audit trail (JSONL) |
 | `stanley:gui` | Launch desktop GUI application |
+
+## Research Context Management
+
+When conducting multi-step research:
+
+1. **Tool call deduplication**: All Stanley data tools are wrapped with automatic dedup.
+   If the same tool is called with identical arguments in a session, the cached result is
+   returned immediately. This saves API calls and context window space.
+
+2. **Scratchpad logging**: Use `stanley:scratchpad` to maintain a JSONL audit trail of
+   all research steps. The scratchpad supports init, log, check_duplicate, read, and close
+   actions. Files are stored at `~/.local/state/agent-core/stanley/scratchpad/`.
+
+3. **Efficient research patterns**:
+   - Check memory for prior research before starting new analysis
+   - Avoid fetching the same data twice -- dedup handles this automatically
+   - Summarize key findings as you go to preserve context space
+   - Use the autonomous-research skill for structured multi-step investigations
+   - Use the dcf-valuation skill for structured intrinsic value analysis
 
 ## Usage Examples
 

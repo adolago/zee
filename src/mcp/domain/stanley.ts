@@ -145,6 +145,133 @@ Usage:
 );
 
 // ============================================================================
+// Analyst Estimates Tool
+// ============================================================================
+
+export const StanleyEstimatesTool = defineTool(
+  'stanley_estimates',
+  'domain',
+  {
+    description: `Get analyst estimates for a stock symbol.
+
+Usage:
+- Provide a stock ticker symbol (e.g., AAPL, MSFT)
+- Choose estimate type: consensus, forward_eps, price_target, revisions
+- Returns analyst ratings, EPS projections, or price targets`,
+
+    parameters: z.object({
+      symbol: z.string().describe('Stock ticker symbol (e.g., AAPL)'),
+      estimateType: z
+        .enum(['consensus', 'forward_eps', 'price_target', 'revisions'])
+        .optional()
+        .describe('Type of estimate data'),
+    }),
+
+    async execute(params, _ctx: ToolExecutionContext) {
+      const mockData = {
+        symbol: params.symbol.toUpperCase(),
+        type: params.estimateType || 'consensus',
+        consensus: {
+          rating: 'Buy',
+          target_mean: 200.0,
+          target_high: 230.0,
+          target_low: 170.0,
+          num_analysts: 35,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      return {
+        title: `Estimates: ${params.symbol}`,
+        metadata: { symbol: params.symbol, estimateType: params.estimateType },
+        output: JSON.stringify(mockData, null, 2),
+      };
+    },
+  }
+);
+
+// ============================================================================
+// Insider Trades Tool
+// ============================================================================
+
+export const StanleyInsiderTradesTool = defineTool(
+  'stanley_insider_trades',
+  'domain',
+  {
+    description: `Get insider trading activity for a stock.
+
+Usage:
+- Provide a stock ticker symbol
+- Optional limit for number of transactions
+- Returns insider buy/sell transactions with sentiment summary`,
+
+    parameters: z.object({
+      symbol: z.string().describe('Stock ticker symbol (e.g., AAPL)'),
+      limit: z.number().optional().describe('Maximum transactions to return'),
+    }),
+
+    async execute(params, _ctx: ToolExecutionContext) {
+      const mockData = {
+        symbol: params.symbol.toUpperCase(),
+        count: 0,
+        summary: {
+          buy_transactions: 0,
+          sell_transactions: 0,
+          net_shares: 0,
+          sentiment: 'neutral',
+        },
+        trades: [],
+      };
+
+      return {
+        title: `Insider trades: ${params.symbol}`,
+        metadata: { symbol: params.symbol, limit: params.limit },
+        output: JSON.stringify(mockData, null, 2),
+      };
+    },
+  }
+);
+
+// ============================================================================
+// Business Segments Tool
+// ============================================================================
+
+export const StanleySegmentsTool = defineTool(
+  'stanley_segments',
+  'domain',
+  {
+    description: `Get revenue breakdown by business segment or geography.
+
+Usage:
+- Provide a stock ticker symbol
+- Choose segment type: business or geography
+- Returns multi-period data with growth rates`,
+
+    parameters: z.object({
+      symbol: z.string().describe('Stock ticker symbol (e.g., AAPL)'),
+      segmentType: z
+        .enum(['business', 'geography'])
+        .optional()
+        .describe('Breakdown type'),
+    }),
+
+    async execute(params, _ctx: ToolExecutionContext) {
+      const mockData = {
+        symbol: params.symbol.toUpperCase(),
+        segment_type: params.segmentType || 'business',
+        periods: [],
+      };
+
+      return {
+        title: `Segments: ${params.symbol}`,
+        metadata: { symbol: params.symbol, segmentType: params.segmentType },
+        output: JSON.stringify(mockData, null, 2),
+      };
+    },
+  }
+);
+
+// ============================================================================
 // SEC Filing Tool
 // ============================================================================
 

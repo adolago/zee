@@ -1,10 +1,12 @@
 """
-Research module - SEC filings, analysis, and stock screening.
+Research module - SEC filings, analysis, stock screening, estimates, and insider trades.
 """
 
 from stanley.research.sec import get_sec_filing, list_sec_filings
 from stanley.research.analysis import analyze_company
 from stanley.research.screen import screen_stocks
+from stanley.research.estimates import get_estimates
+from stanley.research.insider_trades import get_insider_trades
 
 __all__ = [
     "Research",
@@ -12,6 +14,8 @@ __all__ = [
     "list_sec_filings",
     "analyze_company",
     "screen_stocks",
+    "get_estimates",
+    "get_insider_trades",
 ]
 
 
@@ -37,3 +41,13 @@ class Research:
     def screen(criteria: str) -> dict:
         """Screen stocks based on criteria."""
         return screen_stocks(criteria)
+
+    @staticmethod
+    def estimates(symbol: str, estimate_type: str = "consensus") -> dict:
+        """Get analyst estimates."""
+        return get_estimates(symbol, estimate_type)
+
+    @staticmethod
+    def insider_trades(symbol: str, limit: int = 20) -> dict:
+        """Get insider trading activity."""
+        return get_insider_trades(symbol, limit)

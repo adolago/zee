@@ -72,6 +72,18 @@ def fundamentals(symbol: str) -> None:
     _output_result(result)
 
 
+@market.command()
+@click.argument("symbol")
+@click.option("--type", "-t", "segment_type", default="business",
+              help="Segment type (business, geography)")
+def segments(symbol: str, segment_type: str) -> None:
+    """Get revenue breakdown by business segment or geography."""
+    from stanley.market.segments import get_segments
+
+    result = get_segments(symbol, segment_type)
+    _output_result(result)
+
+
 # =============================================================================
 # Portfolio Commands
 # =============================================================================
@@ -186,6 +198,29 @@ def screen(criteria: str) -> None:
     from stanley.research.screen import screen_stocks
 
     result = screen_stocks(criteria)
+    _output_result(result)
+
+
+@research.command()
+@click.argument("ticker")
+@click.option("--type", "-t", "estimate_type", default="consensus",
+              help="Estimate type (consensus, forward_eps, price_target, revisions)")
+def estimates(ticker: str, estimate_type: str) -> None:
+    """Get analyst estimates for a company."""
+    from stanley.research.estimates import get_estimates
+
+    result = get_estimates(ticker, estimate_type)
+    _output_result(result)
+
+
+@research.command("insider-trades")
+@click.argument("ticker")
+@click.option("--limit", "-l", default=20, help="Maximum transactions to return")
+def insider_trades(ticker: str, limit: int) -> None:
+    """Get insider trading activity for a company."""
+    from stanley.research.insider_trades import get_insider_trades
+
+    result = get_insider_trades(ticker, limit)
     _output_result(result)
 
 

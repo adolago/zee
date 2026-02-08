@@ -14,7 +14,7 @@ import { getToolRegistry } from '../registry';
 import { Log } from '../../../packages/agent-core/src/util/log';
 
 // MCP layer stubs (fallback implementations)
-import { StanleyMarketDataTool, StanleyResearchTool, StanleyPortfolioTool, StanleySecFilingTool } from './stanley';
+import { StanleyMarketDataTool, StanleyResearchTool, StanleyPortfolioTool, StanleySecFilingTool, StanleyEstimatesTool, StanleyInsiderTradesTool, StanleySegmentsTool } from './stanley';
 import { ZeeMemoryStoreTool, ZeeMemorySearchTool, ZeeMessagingTool, ZeeNotificationTool } from './zee';
 
 const log = Log.create({ service: 'domain-tools' });
@@ -31,6 +31,9 @@ export const stanleyTools: ToolDefinition[] = [
   StanleyResearchTool,
   StanleyPortfolioTool,
   StanleySecFilingTool,
+  StanleyEstimatesTool,
+  StanleyInsiderTradesTool,
+  StanleySegmentsTool,
 ];
 
 /**
