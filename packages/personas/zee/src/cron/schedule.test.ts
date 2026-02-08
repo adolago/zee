@@ -34,4 +34,23 @@ describe("cron schedule", () => {
     const next = computeNextRunAtMs({ kind: "every", everyMs: 30_000, anchorMs: anchor }, anchor);
     expect(next).toBe(anchor + 30_000);
   });
+
+  it("returns undefined for invalid cron schedules instead of throwing", () => {
+    const now = Date.parse("2025-12-13T00:00:00.000Z");
+
+    expect(() => computeNextRunAtMs({ kind: "cron" } as any, now)).not.toThrow();
+    expect(computeNextRunAtMs({ kind: "cron" } as any, now)).toBeUndefined();
+
+    expect(() => computeNextRunAtMs({ kind: "cron", expr: 123 } as any, now)).not.toThrow();
+    expect(computeNextRunAtMs({ kind: "cron", expr: 123 } as any, now)).toBeUndefined();
+
+    expect(() => computeNextRunAtMs({ kind: "cron", expr: "not a cron" } as any, now)).not.toThrow();
+    expect(computeNextRunAtMs({ kind: "cron", expr: "not a cron" } as any, now)).toBeUndefined();
+  });
+
+  it("returns undefined for unknown schedule kinds instead of throwing", () => {
+    const now = Date.parse("2025-12-13T00:00:00.000Z");
+    expect(() => computeNextRunAtMs({ kind: "wat" } as any, now)).not.toThrow();
+    expect(computeNextRunAtMs({ kind: "wat" } as any, now)).toBeUndefined();
+  });
 });

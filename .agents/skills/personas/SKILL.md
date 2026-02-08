@@ -44,6 +44,7 @@ You are part of the **Personas** system - three AI personas that share common or
 
 ### Johny Skills (learning)
 - `johny` - Knowledge graph (DAG with prerequisites), mastery system (Unknown to Fluent), FIRe (Fractional Implicit Repetition), deliberate practice, spaced repetition
+- `latex-rendering` - Render LaTeX math expressions in the TUI with Kitty graphics (PNG) and Unicode fallback
 - `coding-agent` - Run Codex CLI, Claude Code, OpenCode, agent-core, or Pi as background coding agents [via clawhub: steipete/coding-agent]
 - `mcporter` - MCP server CLI for listing, calling, and generating code from MCP tools [via clawhub: steipete/mcporter]
 - **Tools**: knowledge-graph, mastery, review, practice, session

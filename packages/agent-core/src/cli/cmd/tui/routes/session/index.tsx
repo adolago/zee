@@ -84,6 +84,9 @@ import { QuestionPrompt } from "./question"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
 import { DialogDelegation } from "./dialog-delegation"
+import { Latex } from "@tui/util/latex"
+import { LatexUnicode } from "@tui/util/latex-unicode"
+import { MathBlock } from "@tui/component/math-block"
 
 addDefaultParsers(parsers.parsers)
 
@@ -1440,18 +1443,47 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+
+  const content = () => props.part.text.trim()
+
+  // Split content into text and block-math segments
+  const segments = createMemo(() => {
+    const text = content()
+    if (!text) return []
+    if (!Latex.hasMath(text)) return [{ type: "text" as const, content: text }]
+    return Latex.splitAtBlockMath(text)
+  })
+
+  // For text segments, replace inline math with Unicode
+  const processText = (text: string) => {
+    return Latex.replaceInlineMath(text, LatexUnicode.convert)
+  }
+
   return (
-    <Show when={props.part.text.trim()}>
-      <box id={"text-" + props.part.id} paddingLeft={1} flexShrink={0}>
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={syntax()}
-          content={props.part.text.trim()}
-          conceal={ctx.conceal()}
-          fg={theme.text}
-        />
+    <Show when={content()}>
+      <box id={"text-" + props.part.id} paddingLeft={1} flexShrink={0} flexDirection="column">
+        <For each={segments()}>
+          {(segment) => (
+            <Switch>
+              <Match when={segment.type === "math" && segment}>
+                {(seg) => <MathBlock tex={seg().content} />}
+              </Match>
+              <Match when={segment.type === "text" && segment}>
+                {(seg) => (
+                  <code
+                    filetype="markdown"
+                    drawUnstyledText={false}
+                    streaming={true}
+                    syntaxStyle={syntax()}
+                    content={processText(seg().content)}
+                    conceal={ctx.conceal()}
+                    fg={theme.text}
+                  />
+                )}
+              </Match>
+            </Switch>
+          )}
+        </For>
       </box>
     </Show>
   )

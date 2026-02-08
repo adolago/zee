@@ -11,6 +11,13 @@ function resolveCronTimezone(tz?: string) {
 }
 
 export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): number | undefined {
+  // Be defensive: cron schedules are loaded from disk (JSON) and may be corrupted,
+  // partially migrated, or contain invalid shapes from older clients.
+  if (!schedule || typeof schedule !== "object") {
+    return undefined;
+  }
+  const kind = (schedule as { kind?: unknown }).kind;
+
   if (schedule.kind === "at") {
     // Handle both canonical `at` (string) and legacy `atMs` (number) fields.
     // The store migration should convert atMs->at, but be defensive in case
@@ -31,6 +38,9 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
   }
 
   if (schedule.kind === "every") {
+    if (typeof schedule.everyMs !== "number" || !Number.isFinite(schedule.everyMs)) {
+      return undefined;
+    }
     const everyMs = Math.max(1, Math.floor(schedule.everyMs));
     const anchor = Math.max(0, Math.floor(schedule.anchorMs ?? nowMs));
     if (nowMs < anchor) {
@@ -41,25 +51,36 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
     return anchor + steps * everyMs;
   }
 
-  const expr = schedule.expr.trim();
+  if (kind !== "cron") {
+    return undefined;
+  }
+  const exprRaw = (schedule as { expr?: unknown }).expr;
+  if (typeof exprRaw !== "string") {
+    return undefined;
+  }
+  const expr = exprRaw.trim();
   if (!expr) {
     return undefined;
   }
-  const cron = new Cron(expr, {
-    timezone: resolveCronTimezone(schedule.tz),
-    catch: false,
-  });
-  let cursor = nowMs;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const next = cron.nextRun(new Date(cursor));
-    if (!next) {
-      return undefined;
+  try {
+    const cron = new Cron(expr, {
+      timezone: resolveCronTimezone((schedule as { tz?: unknown }).tz as string | undefined),
+      catch: false,
+    });
+    let cursor = nowMs;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const next = cron.nextRun(new Date(cursor));
+      if (!next) {
+        return undefined;
+      }
+      const nextMs = next.getTime();
+      if (Number.isFinite(nextMs) && nextMs > nowMs) {
+        return nextMs;
+      }
+      cursor += 1_000;
     }
-    const nextMs = next.getTime();
-    if (Number.isFinite(nextMs) && nextMs > nowMs) {
-      return nextMs;
-    }
-    cursor += 1_000;
+    return undefined;
+  } catch {
+    return undefined;
   }
-  return undefined;
 }

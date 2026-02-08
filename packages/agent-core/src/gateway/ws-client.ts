@@ -245,11 +245,16 @@ export class GatewayWsClient {
     })()
 
     this.connectPromise = promise
-    promise.finally(() => {
-      if (this.connectPromise === promise) {
-        this.connectPromise = null
-      }
-    })
+    // Ensure the .finally() chain does not create an unhandled rejection when the
+    // connection attempt fails (callers handle the returned promise, but the
+    // promise returned by .finally() must be handled too).
+    void promise
+      .finally(() => {
+        if (this.connectPromise === promise) {
+          this.connectPromise = null
+        }
+      })
+      .catch(() => {})
 
     return promise
   }

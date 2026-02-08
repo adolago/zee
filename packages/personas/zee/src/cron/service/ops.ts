@@ -30,8 +30,22 @@ export async function start(state: CronServiceState) {
         job.state.runningAtMs = undefined;
       }
     }
-    await runMissedJobs(state);
-    recomputeNextRuns(state);
+    try {
+      await runMissedJobs(state);
+    } catch (err) {
+      state.deps.log.error(
+        { err: String(err), stack: err instanceof Error ? err.stack : undefined },
+        "cron: error running missed jobs on startup (continuing)",
+      );
+    }
+    try {
+      recomputeNextRuns(state);
+    } catch (err) {
+      state.deps.log.error(
+        { err: String(err), stack: err instanceof Error ? err.stack : undefined },
+        "cron: error recomputing next runs on startup (continuing)",
+      );
+    }
     await persist(state);
     armTimer(state);
     state.deps.log.info(

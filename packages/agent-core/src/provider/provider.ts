@@ -708,9 +708,27 @@ export namespace Provider {
 
             // Add models to google-antigravity provider
             for (const [modelID, model] of Object.entries(antigravityModels)) {
-              if (!providers["google-antigravity"].models[modelID]) {
+              const existing = providers["google-antigravity"].models[modelID]
+              if (!existing) {
                 providers["google-antigravity"].models[modelID] = model
+                continue
               }
+
+              // Config often provides partial overrides (e.g., options) for these models.
+              // Ensure canonical API wiring from the plugin model definition always wins.
+              const merged = mergeDeep(model, existing) as Model
+              merged.id = modelID
+              merged.providerID = "google-antigravity"
+              merged.api = {
+                ...merged.api,
+                id: model.api.id,
+                npm: model.api.npm,
+                url: model.api.url,
+              }
+              merged.options = mergeDeep(model.options ?? {}, existing.options ?? {})
+              merged.variants = mergeDeep(model.variants ?? {}, existing.variants ?? {})
+
+              providers["google-antigravity"].models[modelID] = merged
             }
 
             log.info("added antigravity models to google-antigravity provider", {

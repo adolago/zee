@@ -50,6 +50,26 @@ esac
 LOCAL_BINARY="$REPO_ROOT/dist/@agent-core/core-$PLATFORM/bin/agent-core"
 DAEMON_PORT=3210
 
+# If we temporarily mask the user systemd service (to prevent Restart=always
+# respawns during self-test), we must always restore it.
+AC_USER_SVC_WAS_MASKED=false
+AC_USER_SVC_RUNTIME_MASKED=false
+
+cleanup() {
+    # Stop any test daemon (function is defined only in the self-test section).
+    if declare -F ac_test_cleanup >/dev/null 2>&1; then
+        ac_test_cleanup || true
+    fi
+
+    # Restore systemd user service mask if we applied a runtime mask.
+    if [[ "$AC_USER_SVC_RUNTIME_MASKED" == "true" && "$AC_USER_SVC_WAS_MASKED" != "true" ]]; then
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl --user unmask agent-core >/dev/null 2>&1 || true
+        fi
+    fi
+}
+trap cleanup EXIT
+
 # Always rebuild unless --no-build is set
 if [[ "$NO_BUILD" != "true" ]]; then
     echo -e "\033[1;33m[ac] Rebuilding (forced)...\033[0m" >&2
@@ -119,7 +139,12 @@ if command -v systemctl >/dev/null 2>&1; then
         fi
     fi
 fi
-if systemctl --user list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -qx "agent-core.service"; then
+if command -v systemctl >/dev/null 2>&1 && systemctl --user list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -qx "agent-core.service"; then
+    AC_SVC_ENABLED=$(systemctl --user is-enabled agent-core 2>/dev/null || true)
+    if [[ "$AC_SVC_ENABLED" == masked* ]]; then
+        AC_USER_SVC_WAS_MASKED=true
+    fi
+
     AC_SVC_STATE=$(systemctl --user is-active agent-core 2>/dev/null || true)
     if [[ "$AC_SVC_STATE" != "inactive" && "$AC_SVC_STATE" != "dead" && "$AC_SVC_STATE" != "failed" ]]; then
         echo -e "\033[1;36m[ac] Stopping systemd agent-core service ($AC_SVC_STATE)...\033[0m" >&2
@@ -135,6 +160,14 @@ if systemctl --user list-unit-files --type=service 2>/dev/null | awk '{print $1}
     if [[ "$AC_SVC_STATE" != "inactive" && "$AC_SVC_STATE" != "dead" && "$AC_SVC_STATE" != "failed" ]]; then
         echo -e "\033[1;31m[ac] systemd agent-core still $AC_SVC_STATE after stop -- aborting\033[0m" >&2
         exit 1
+    fi
+
+    # Prevent systemd from starting the service during self-test (Restart=always
+    # can respawn while ports are being freed).
+    if [[ "$AC_USER_SVC_WAS_MASKED" != "true" ]]; then
+        echo -e "\033[1;36m[ac] Masking systemd agent-core service for self-test...\033[0m" >&2
+        systemctl --user mask --runtime agent-core 2>/dev/null || true
+        AC_USER_SVC_RUNTIME_MASKED=true
     fi
 fi
 
@@ -203,6 +236,11 @@ ensure_port_free() {
         echo -e "\033[1;31m[ac] FATAL: port $port still held by PID $remaining after 3 attempts\033[0m" >&2
         return 1
     fi
+
+    # Explicitly return success. Without this, the function may inherit the exit
+    # status of the last `[[ ... ]]` check (typically 1 when the port is free),
+    # causing `ac dev` to exit before launching the TUI.
+    return 0
 }
 
 ensure_port_free "$DAEMON_PORT" || exit 1
@@ -220,6 +258,12 @@ echo -e "\033[1;36m[ac] Running tests...\033[0m" >&2
 
 if [[ "$SKIP_TEST" == "true" ]]; then
     echo -e "\033[1;33m[ac] Skipping self-test (--skip-test)\033[0m" >&2
+    if [[ "$AC_USER_SVC_RUNTIME_MASKED" == "true" ]]; then
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl --user unmask agent-core 2>/dev/null || true
+        fi
+        AC_USER_SVC_RUNTIME_MASKED=false
+    fi
     exec "$LOCAL_BINARY" "${PASSTHROUGH_ARGS[@]}"
 fi
 
@@ -275,7 +319,6 @@ ac_test_cleanup() {
     # Clean state so TUI can start fresh
     rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
 }
-trap ac_test_cleanup EXIT
 
 ac_test_fail() {
     echo -e "\033[1;31m[ac] SELF-TEST FAILED: $1\033[0m" >&2
@@ -283,46 +326,166 @@ ac_test_fail() {
     exit 1
 }
 
-# Start daemon in headless mode
-echo -e "\033[1;33m[ac] Starting headless daemon for self-test...\033[0m" >&2
-("${DAEMON_ENV_PREFIX[@]}" "$LOCAL_BINARY" daemon --directory "$MONOREPO_ROOT") &
-TEST_DAEMON_PID=$!
+start_test_daemon() {
+    echo -e "\033[1;33m[ac] Starting headless daemon for self-test...\033[0m" >&2
+    ("${DAEMON_ENV_PREFIX[@]}" "$LOCAL_BINARY" daemon --directory "$MONOREPO_ROOT") &
+    TEST_DAEMON_PID=$!
+}
 
-# Wait for daemon health
-echo -e "\033[1;33m[ac] Waiting for daemon health...\033[0m" >&2
-MAX_WAIT=30
-WAITED=0
-while true; do
-    if curl -sf -m 2 "$DAEMON_URL/global/health" 2>/dev/null | jq -e '.healthy' >/dev/null 2>&1; then
-        break
-    fi
-    if ! kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
-        ac_test_fail "daemon process died during startup"
-    fi
-    sleep 1
-    WAITED=$((WAITED + 1))
-    if [[ "$WAITED" -ge "$MAX_WAIT" ]]; then
-        ac_test_fail "daemon not healthy after ${MAX_WAIT}s"
-    fi
-done
-echo -e "\033[1;32m[ac] Daemon healthy\033[0m" >&2
+wait_for_daemon_health() {
+    local max_wait="${1:-30}"
+    echo -e "\033[1;33m[ac] Waiting for daemon health...\033[0m" >&2
+    local waited=0
+    while true; do
+        if curl -sf -m 2 "$DAEMON_URL/global/health" 2>/dev/null | jq -e '.healthy' >/dev/null 2>&1; then
+            break
+        fi
+        if [[ -n "$TEST_DAEMON_PID" ]] && ! kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
+            ac_test_fail "daemon process died during startup"
+        fi
+        sleep 1
+        waited=$((waited + 1))
+        if [[ "$waited" -ge "$max_wait" ]]; then
+            ac_test_fail "daemon not healthy after ${max_wait}s"
+        fi
+    done
+    echo -e "\033[1;32m[ac] Daemon healthy\033[0m" >&2
+}
 
-# Wait for gateway
-echo -e "\033[1;33m[ac] Waiting for gateway...\033[0m" >&2
-MAX_GW_WAIT=30
-GW_WAITED=0
-while true; do
-    GW_STATUS=$(curl -sf -m 3 "$DAEMON_URL/gateway/status" 2>/dev/null || true)
-    if echo "$GW_STATUS" | jq -e '.success' >/dev/null 2>&1; then
-        break
+wait_for_gateway_ready() {
+    local max_wait="${1:-30}"
+    echo -e "\033[1;33m[ac] Waiting for gateway...\033[0m" >&2
+    local waited=0
+    while true; do
+        # The server-side gateway status check can take up to ~5s (ws connect timeout).
+        # Use a slightly longer client timeout to avoid piling up timed-out requests.
+        GW_STATUS=$(curl -sf -m 7 "$DAEMON_URL/gateway/status" 2>/dev/null || true)
+        if echo "$GW_STATUS" | jq -e '.success' >/dev/null 2>&1; then
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+        if [[ "$waited" -ge "$max_wait" ]]; then
+            ac_test_fail "gateway not ready after ${max_wait}s"
+        fi
+    done
+    echo -e "\033[1;32m[ac] Gateway ready\033[0m" >&2
+}
+
+wait_for_whatsapp_ready() {
+    local requested_account="${1:-}"
+    local max_wait="${2:-45}"
+
+    echo -e "\033[1;33m[ac] Waiting for WhatsApp connection...\033[0m" >&2
+
+    local waited=0
+    local last_state=""
+    local last_error=""
+    local ch_status=""
+
+    while true; do
+        ch_status=$(curl -sf -m 7 "$DAEMON_URL/gateway/channels/status" 2>/dev/null || true)
+        if echo "$ch_status" | jq -e '.success' >/dev/null 2>&1; then
+            local default_account=""
+            default_account=$(echo "$ch_status" | jq -r '.data.channelDefaultAccountId.whatsapp // empty' 2>/dev/null || true)
+
+            local resolved_account=""
+            if [[ -n "$requested_account" ]]; then
+                local has_requested=""
+                has_requested=$(echo "$ch_status" | jq -r --arg acc "$requested_account" '(.data.channelAccounts.whatsapp // []) | any(.accountId == $acc)' 2>/dev/null || echo "false")
+                if [[ "$has_requested" == "true" ]]; then
+                    resolved_account="$requested_account"
+                fi
+            fi
+            if [[ -z "$resolved_account" && -n "$default_account" ]]; then
+                resolved_account="$default_account"
+            fi
+            if [[ -z "$resolved_account" ]]; then
+                resolved_account=$(echo "$ch_status" | jq -r '(.data.channelAccounts.whatsapp // [])[0].accountId // empty' 2>/dev/null || true)
+            fi
+            if [[ -z "$resolved_account" ]]; then
+                resolved_account="default"
+            fi
+            WA_ACCOUNT_EFFECTIVE="$resolved_account"
+
+            local state=""
+            state=$(echo "$ch_status" | jq -r --arg acc "$resolved_account" '
+                (.data.channelAccounts.whatsapp // []) as $accounts |
+                ($accounts | map(select(.accountId == $acc)) | .[0]) as $snap |
+                if $snap == null then "missing"
+                elif ($snap.enabled == false) then "disabled"
+                elif ($snap.configured == false) then "unconfigured"
+                elif ($snap.linked == false) then "unlinked"
+                elif ($snap.running == false) then "stopped"
+                elif ($snap.connected == true) then "ready"
+                else "connecting"
+                end
+            ' 2>/dev/null || echo "unknown")
+
+            local err=""
+            err=$(echo "$ch_status" | jq -r --arg acc "$resolved_account" '
+                (.data.channelAccounts.whatsapp // []) as $accounts |
+                ($accounts | map(select(.accountId == $acc)) | .[0]) as $snap |
+                if $snap == null then "" else ($snap.lastError // "") end
+            ' 2>/dev/null || echo "")
+
+            if [[ "$state" == "ready" ]]; then
+                return 0
+            fi
+
+            if [[ "$state" != "$last_state" || "$err" != "$last_error" ]]; then
+                if [[ -n "$err" ]]; then
+                    echo -e "\033[1;33m[ac] WhatsApp status: account=${resolved_account} state=${state} error=${err}\033[0m" >&2
+                else
+                    echo -e "\033[1;33m[ac] WhatsApp status: account=${resolved_account} state=${state}\033[0m" >&2
+                fi
+                last_state="$state"
+                last_error="$err"
+            fi
+        fi
+
+        sleep 1
+        waited=$((waited + 1))
+        if [[ "$waited" -ge "$max_wait" ]]; then
+            echo -e "\033[1;31m[ac] WhatsApp not ready after ${max_wait}s (account=${WA_ACCOUNT_EFFECTIVE:-unknown})\033[0m" >&2
+            if [[ -n "$ch_status" ]]; then
+                echo -e "\033[1;31m[ac] WhatsApp snapshot: $(echo "$ch_status" | jq -c --arg acc "${WA_ACCOUNT_EFFECTIVE:-}" '(.data.channelAccounts.whatsapp // []) | map(select(.accountId == $acc)) | .[0] // null' 2>/dev/null || echo "null")\033[0m" >&2
+            fi
+            echo -e "\033[1;31m[ac] Link WhatsApp (if needed): zee channels login --channel whatsapp --account ${WA_ACCOUNT_EFFECTIVE:-default}\033[0m" >&2
+            return 1
+        fi
+    done
+}
+
+restart_test_daemon_if_dead() {
+    if [[ -z "$TEST_DAEMON_PID" ]]; then
+        return 0
     fi
-    sleep 1
-    GW_WAITED=$((GW_WAITED + 1))
-    if [[ "$GW_WAITED" -ge "$MAX_GW_WAIT" ]]; then
-        ac_test_fail "gateway not ready after ${MAX_GW_WAIT}s"
+    if kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
+        return 0
     fi
-done
-echo -e "\033[1;32m[ac] Gateway ready\033[0m" >&2
+    echo -e "\033[1;33m[ac] Warning: daemon died during self-test; restarting once...\033[0m" >&2
+    TEST_DAEMON_PID=""
+    rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
+    ensure_port_free "$DAEMON_PORT" || ac_test_fail "daemon port still in use after daemon died"
+    start_test_daemon
+    wait_for_daemon_health 30
+    wait_for_gateway_ready 30
+}
+
+restart_test_daemon_force() {
+    echo -e "\033[1;33m[ac] Restarting daemon (retry)...\033[0m" >&2
+    if [[ -n "$TEST_DAEMON_PID" ]] && kill -0 "$TEST_DAEMON_PID" 2>/dev/null; then
+        kill "$TEST_DAEMON_PID" 2>/dev/null || true
+        wait "$TEST_DAEMON_PID" 2>/dev/null || true
+    fi
+    TEST_DAEMON_PID=""
+    rm -f "$STATE_DIR/daemon.pid" "$STATE_DIR/daemon.lock" 2>/dev/null
+    ensure_port_free "$DAEMON_PORT" || ac_test_fail "daemon port still in use after daemon restart"
+    start_test_daemon
+    wait_for_daemon_health 30
+    wait_for_gateway_ready 30
+}
 
 # Provider health check (real API calls with tokens)
 echo -e "\033[1;33m[ac] Running provider health check...\033[0m" >&2
@@ -331,8 +494,14 @@ if ! (cd "$REPO_ROOT" && "${DAEMON_ENV_PREFIX[@]}" bun run script/provider-healt
 fi
 echo -e "\033[1;32m[ac] Providers OK\033[0m" >&2
 
+# Start daemon in headless mode (after provider checks to reduce peak memory usage)
+start_test_daemon
+wait_for_daemon_health 30
+wait_for_gateway_ready 30
+
 # Memory health check (ensures embedding + vector store are available)
 echo -e "\033[1;33m[ac] Checking memory health...\033[0m" >&2
+restart_test_daemon_if_dead
 MEM_STATUS=$(curl -sf -m 5 "$DAEMON_URL/memory/health" 2>/dev/null || true)
 if ! echo "$MEM_STATUS" | jq -e '.available == true' >/dev/null 2>&1; then
     ac_test_fail "memory backend unavailable (check memory.embedding credentials and Qdrant)"
@@ -344,21 +513,74 @@ MESSAGING_FAILED=false
 
 if [[ -f "$AC_TEST_CONFIG" ]]; then
     WA_TO=$(jq -r '.whatsapp.to // empty' "$AC_TEST_CONFIG" 2>/dev/null)
-    WA_ACCOUNT=$(jq -r '.whatsapp.account // "zee"' "$AC_TEST_CONFIG" 2>/dev/null)
+    WA_ACCOUNT=$(jq -r '.whatsapp.account // "default"' "$AC_TEST_CONFIG" 2>/dev/null)
     MX_ROOM_ID=$(jq -r '.matrix.roomId // empty' "$AC_TEST_CONFIG" 2>/dev/null)
     MX_ACCOUNT=$(jq -r '.matrix.account // "zee"' "$AC_TEST_CONFIG" 2>/dev/null)
 
     # WhatsApp: "Zee is back on."
     if [[ -n "$WA_TO" ]]; then
         echo -e "\033[1;33m[ac] WhatsApp test -> $WA_TO ...\033[0m" >&2
-        WA_RESULT=$(curl -sf -m 15 "$DAEMON_URL/gateway/whatsapp/send" \
-            -H "Content-Type: application/json" \
-            -d "{\"chatId\":\"$WA_TO\",\"message\":\"Zee is back on.\",\"accountId\":\"$WA_ACCOUNT\"}" 2>&1) || true
-        if echo "$WA_RESULT" | jq -e '.success' >/dev/null 2>&1; then
-            echo -e "\033[1;32m[ac] WhatsApp: sent\033[0m" >&2
-        else
-            echo -e "\033[1;31m[ac] WhatsApp FAILED: ${WA_RESULT:-no response}\033[0m" >&2
+        restart_test_daemon_if_dead
+        if ! wait_for_whatsapp_ready "$WA_ACCOUNT" 60; then
+            echo -e "\033[1;31m[ac] WhatsApp FAILED: channel not ready\033[0m" >&2
             MESSAGING_FAILED=true
+        else
+            WA_HTTP_CODE=""
+            WA_HTTP_BODY=""
+            send_whatsapp_once() {
+                local payload out code body
+                payload=$(
+                    jq -nc \
+                        --arg chatId "$WA_TO" \
+                        --arg message "Zee is back on." \
+                        --arg accountId "${WA_ACCOUNT_EFFECTIVE:-$WA_ACCOUNT}" \
+                        '{chatId:$chatId,message:$message,accountId:$accountId}'
+                )
+
+                out=$(curl -sS -m 20 "$DAEMON_URL/gateway/whatsapp/send" \
+                    -H "Content-Type: application/json" \
+                    -d "$payload" \
+                    -w "\n%{http_code}" 2>&1) || true
+                code=$(printf '%s' "$out" | tail -n1)
+                body=$(printf '%s' "$out" | sed '$d')
+                if [[ ! "$code" =~ ^[0-9]{3}$ ]]; then
+                    body="$out"
+                    code="000"
+                fi
+                WA_HTTP_CODE="$code"
+                WA_HTTP_BODY="$body"
+            }
+
+            WA_RESULT=""
+            WA_SENT=false
+            backoff=1
+            for attempt in 1 2 3; do
+                send_whatsapp_once
+                WA_RESULT="$WA_HTTP_BODY"
+
+                if [[ "$WA_HTTP_CODE" == "200" ]] && echo "$WA_RESULT" | jq -e '.success == true' >/dev/null 2>&1; then
+                    WA_SENT=true
+                    break
+                fi
+
+                if echo "$WA_RESULT" | grep -q "No active WhatsApp Web listener"; then
+                    # Gateway can be healthy while WhatsApp is still connecting.
+                    wait_for_whatsapp_ready "$WA_ACCOUNT" 30 || true
+                fi
+
+                if [[ "$attempt" -lt 3 ]]; then
+                    echo -e "\033[1;33m[ac] WhatsApp send failed (http=${WA_HTTP_CODE}); retrying...\033[0m" >&2
+                    sleep "$backoff"
+                    backoff=$((backoff * 2))
+                fi
+            done
+
+            if [[ "$WA_SENT" == "true" ]]; then
+                echo -e "\033[1;32m[ac] WhatsApp: sent\033[0m" >&2
+            else
+                echo -e "\033[1;31m[ac] WhatsApp FAILED: ${WA_RESULT:-no response}\033[0m" >&2
+                MESSAGING_FAILED=true
+            fi
         fi
     else
         echo -e "\033[1;31m[ac] ac-test.json missing whatsapp.to\033[0m" >&2
@@ -403,8 +625,14 @@ ensure_port_free "$DAEMON_PORT" || exit 1
 # Start systemd service (if installed) so TUI attaches to it
 if command -v systemctl >/dev/null 2>&1; then
     if systemctl --user list-unit-files --type=service 2>/dev/null | awk '{print $1}' | grep -qx "agent-core.service"; then
+        if [[ "$AC_USER_SVC_RUNTIME_MASKED" == "true" ]]; then
+            systemctl --user unmask agent-core 2>/dev/null || true
+            AC_USER_SVC_RUNTIME_MASKED=false
+        fi
+
         echo -e "\033[1;36m[ac] Starting systemd agent-core service...\033[0m" >&2
         systemctl --user daemon-reload 2>/dev/null || true
+        systemctl --user reset-failed agent-core 2>/dev/null || true
         systemctl --user restart agent-core || { echo "[ac] systemd start failed"; exit 1; }
         sleep 1
         if ! systemctl --user is-active agent-core &>/dev/null; then

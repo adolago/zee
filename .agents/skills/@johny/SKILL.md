@@ -19,6 +19,9 @@ johny embodies legendary learning capabilities:
 
 ## Core Capabilities
 
+### LaTeX Rendering
+johny renders LaTeX math expressions directly in the terminal. Inline math (`$...$`) is converted to Unicode text; block math (`$$...$$`) is rendered as pixel-perfect images on Kitty-capable terminals (WezTerm, Kitty, Ghostty) or falls back to Unicode. See `latex-rendering` skill for details.
+
 ### Knowledge Graph
 johny maintains a DAG of topics with prerequisite relationships. Topics unlock when prerequisites are mastered.
 

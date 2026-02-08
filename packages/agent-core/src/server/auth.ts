@@ -164,7 +164,16 @@ export function isAuthorized(authorizationHeader?: string): boolean {
   if (disabled) return true
   if (!password) return false
   if (!authorizationHeader) return false
-  const match = authorizationHeader.trim().match(/^Basic\s+(.+)$/i)
+  const trimmed = authorizationHeader.trim()
+
+  // Allow bearer-token style auth (common for non-browser clients).
+  // Token must match the configured server password.
+  const bearer = trimmed.match(/^Bearer\s+(.+)$/i)
+  if (bearer?.[1]) {
+    return secureEqual(bearer[1].trim(), password)
+  }
+
+  const match = trimmed.match(/^Basic\s+(.+)$/i)
   if (!match) return false
   let decoded: string
   try {

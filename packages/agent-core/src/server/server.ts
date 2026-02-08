@@ -61,6 +61,9 @@ import { GatewayRoute } from "./route/gateway"
 import { SttRoute } from "./route/stt"
 import { CronRoute } from "./route/cron"
 import { HeartbeatRoute } from "./route/heartbeat"
+import { RegistryRoute } from "./route/registry"
+import { SkillsRoute } from "./route/skills"
+import { LlmRoute } from "./route/llm"
 import { RequestMeta } from "./request-meta"
 
 // Default API port for the daemon
@@ -350,6 +353,9 @@ export namespace Server {
         .route("/permission", PermissionRoute)
         .route("/command", CommandRoute)
         .route("/", ModelRoute)
+        .route("/", RegistryRoute)
+        .route("/", SkillsRoute)
+        .route("/", LlmRoute)
         .route("/mcp", McpRoute)
         .route("/", LspRoute)
         .route("/tui", TuiRoute)
@@ -359,6 +365,7 @@ export namespace Server {
         .route("/project", ProjectRoute)
         .route("/", ProcessRoute)
         .route("/", MemoryRoute)
+        .route("/v1", MemoryRoute)
         .route("/usage", UsageRoute)
         .route("/gateway", GatewayRoute)
         .route("/stt", SttRoute)

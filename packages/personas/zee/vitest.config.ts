@@ -32,6 +32,7 @@ export default defineConfig({
       "**/vendor/**",
       "**/*.live.test.ts",
       "**/*.e2e.test.ts",
+      "extensions/memory-lancedb/**",
     ],
     coverage: {
       provider: "v8",

@@ -54,6 +54,17 @@ test("includes default keybind for toggling thinking visibility", async () => {
     },
   })
 })
+
+test("includes default tui.busy_submit_behavior", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.tui?.busy_submit_behavior).toBe("followup")
+    },
+  })
+})
 test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

@@ -282,10 +282,67 @@ export async function ensureLoaded(
   const loaded = await loadCronStore(state.deps.storePath);
   const jobs = (loaded.jobs ?? []) as unknown as Array<Record<string, unknown>>;
   let mutated = false;
-  for (const raw of jobs) {
-    const state = raw.state;
-    if (!state || typeof state !== "object" || Array.isArray(state)) {
+  const skippedJobIndices: number[] = [];
+  for (let i = 0; i < jobs.length; i++) {
+    const raw = jobs[i]!;
+    try {
+    const nowMs = state.deps.nowMs();
+
+    const jobState = raw.state;
+    if (!jobState || typeof jobState !== "object" || Array.isArray(jobState)) {
       raw.state = {};
+      mutated = true;
+    }
+
+    const idRaw = raw.id;
+    const jobIdRaw = raw.jobId;
+    if (typeof idRaw !== "string" || idRaw.trim().length === 0) {
+      if (typeof jobIdRaw === "string" && jobIdRaw.trim()) {
+        raw.id = jobIdRaw.trim();
+        mutated = true;
+      }
+    } else if (idRaw !== idRaw.trim()) {
+      raw.id = idRaw.trim();
+      mutated = true;
+    }
+    if ("jobId" in raw) {
+      delete raw.jobId;
+      mutated = true;
+    }
+
+    const createdAtRaw = raw.createdAtMs;
+    if (typeof createdAtRaw !== "number" || !Number.isFinite(createdAtRaw) || createdAtRaw < 0) {
+      raw.createdAtMs = nowMs;
+      mutated = true;
+    } else {
+      const normalized = Math.max(0, Math.floor(createdAtRaw));
+      if (createdAtRaw !== normalized) {
+        raw.createdAtMs = normalized;
+        mutated = true;
+      }
+    }
+
+    const updatedAtRaw = raw.updatedAtMs;
+    if (typeof updatedAtRaw !== "number" || !Number.isFinite(updatedAtRaw) || updatedAtRaw < 0) {
+      raw.updatedAtMs = raw.createdAtMs;
+      mutated = true;
+    } else {
+      const normalized = Math.max(0, Math.floor(updatedAtRaw));
+      if (updatedAtRaw !== normalized) {
+        raw.updatedAtMs = normalized;
+        mutated = true;
+      }
+    }
+
+    const wakeModeRaw = raw.wakeMode;
+    const wakeMode = typeof wakeModeRaw === "string" ? wakeModeRaw.trim().toLowerCase() : "";
+    if (wakeMode === "now" || wakeMode === "next-heartbeat") {
+      if (wakeModeRaw !== wakeMode) {
+        raw.wakeMode = wakeMode;
+        mutated = true;
+      }
+    } else {
+      raw.wakeMode = "next-heartbeat";
       mutated = true;
     }
 
@@ -370,11 +427,32 @@ export async function ensureLoaded(
     const schedule = raw.schedule;
     if (schedule && typeof schedule === "object" && !Array.isArray(schedule)) {
       const sched = schedule as Record<string, unknown>;
-      const kind = typeof sched.kind === "string" ? sched.kind.trim().toLowerCase() : "";
-      if (!kind && ("at" in sched || "atMs" in sched)) {
-        sched.kind = "at";
-        mutated = true;
+      let kind = typeof sched.kind === "string" ? sched.kind.trim().toLowerCase() : "";
+      if (kind === "at" || kind === "every" || kind === "cron") {
+        if (sched.kind !== kind) {
+          sched.kind = kind;
+          mutated = true;
+        }
+      } else {
+        kind = "";
       }
+
+      if (!kind) {
+        if ("at" in sched || "atMs" in sched) {
+          sched.kind = "at";
+          kind = "at";
+          mutated = true;
+        } else if (typeof sched.everyMs === "number") {
+          sched.kind = "every";
+          kind = "every";
+          mutated = true;
+        } else if (typeof sched.expr === "string" || typeof sched.cron === "string") {
+          sched.kind = "cron";
+          kind = "cron";
+          mutated = true;
+        }
+      }
+
       const atRaw = typeof sched.at === "string" ? sched.at.trim() : "";
       const atMsRaw = sched.atMs;
       const parsedAtMs =
@@ -398,7 +476,7 @@ export async function ensureLoaded(
         typeof everyMsRaw === "number" && Number.isFinite(everyMsRaw)
           ? Math.floor(everyMsRaw)
           : null;
-      if ((kind === "every" || sched.kind === "every") && everyMs !== null) {
+      if (kind === "every" && everyMs !== null) {
         const anchorRaw = sched.anchorMs;
         const normalizedAnchor =
           typeof anchorRaw === "number" && Number.isFinite(anchorRaw)
@@ -410,6 +488,42 @@ export async function ensureLoaded(
                 : null;
         if (normalizedAnchor !== null && anchorRaw !== normalizedAnchor) {
           sched.anchorMs = normalizedAnchor;
+          mutated = true;
+        }
+      }
+
+      if (kind === "cron") {
+        const exprRaw = typeof sched.expr === "string" ? sched.expr.trim() : "";
+        const cronRaw = typeof sched.cron === "string" ? sched.cron.trim() : "";
+        const nextExpr = exprRaw || cronRaw;
+        if (nextExpr) {
+          if (sched.expr !== nextExpr) {
+            sched.expr = nextExpr;
+            mutated = true;
+          }
+        } else if ("expr" in sched) {
+          delete sched.expr;
+          mutated = true;
+        }
+        if ("cron" in sched) {
+          delete sched.cron;
+          mutated = true;
+        }
+
+        const tzRaw = typeof sched.tz === "string" ? sched.tz.trim() : "";
+        const timezoneRaw = typeof sched.timezone === "string" ? sched.timezone.trim() : "";
+        const nextTz = tzRaw || timezoneRaw;
+        if (nextTz) {
+          if (sched.tz !== nextTz) {
+            sched.tz = nextTz;
+            mutated = true;
+          }
+        } else if ("tz" in sched) {
+          delete sched.tz;
+          mutated = true;
+        }
+        if ("timezone" in sched) {
+          delete sched.timezone;
           mutated = true;
         }
       }
@@ -442,8 +556,18 @@ export async function ensureLoaded(
       payloadRecord && typeof payloadRecord.kind === "string" ? payloadRecord.kind : "";
     const sessionTarget =
       typeof raw.sessionTarget === "string" ? raw.sessionTarget.trim().toLowerCase() : "";
-    const isIsolatedAgentTurn =
-      sessionTarget === "isolated" || (sessionTarget === "" && payloadKind === "agentTurn");
+    const normalizedSessionTarget =
+      sessionTarget === "main" || sessionTarget === "isolated"
+        ? sessionTarget
+        : payloadKind === "agentTurn"
+          ? "isolated"
+          : "main";
+    if (raw.sessionTarget !== normalizedSessionTarget) {
+      raw.sessionTarget = normalizedSessionTarget;
+      mutated = true;
+    }
+    // normalizedSessionTarget is always "main" or "isolated" after normalization above.
+    const isIsolatedAgentTurn = normalizedSessionTarget === "isolated";
     const hasDelivery = delivery && typeof delivery === "object" && !Array.isArray(delivery);
     const hasLegacyDelivery = payloadRecord ? hasLegacyDeliveryHints(payloadRecord) : false;
 
@@ -469,6 +593,18 @@ export async function ensureLoaded(
         stripLegacyDeliveryFields(payloadRecord);
         mutated = true;
       }
+    }
+    } catch (err) {
+      const jobId = typeof raw.id === "string" ? raw.id : typeof raw.jobId === "string" ? raw.jobId : `index-${i}`;
+      state.deps.log.error(
+        { jobId, err: String(err), stack: err instanceof Error ? err.stack : undefined },
+        "cron: failed to migrate job; disabling it",
+      );
+      raw.enabled = false;
+      if (!raw.state || typeof raw.state !== "object" || Array.isArray(raw.state)) {
+        raw.state = {};
+      }
+      mutated = true;
     }
   }
   state.store = { version: 1, jobs: jobs as unknown as CronJob[] };

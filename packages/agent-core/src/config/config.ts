@@ -89,7 +89,7 @@ export namespace Config {
 
     // Project config has highest precedence (overrides global and remote)
     if (!Flag.AGENT_CORE_DISABLE_PROJECT_CONFIG) {
-      for (const file of ["agent-core.jsonc", "agent-core.json"]) {
+      for (const file of ["agent-core.jsonc", "agent-core.json", "config.json"]) {
         const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
         for (const resolved of found.toReversed()) {
           result = mergeConfigConcatArrays(result, await loadFile(resolved))
@@ -230,6 +230,7 @@ export namespace Config {
     if (!result.username) result.username = os.userInfo().username
 
     if (!result.keybinds) result.keybinds = Info.shape.keybinds.parse({})
+    if (!result.tui) result.tui = Info.shape.tui.parse({})
 
     result.plugin = deduplicatePlugins(result.plugin ?? [])
 
@@ -1001,6 +1002,18 @@ export namespace Config {
       .default(true)
       .describe(
         "Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work.",
+      ),
+    busy_submit_behavior: z
+      .enum(["followup", "steer", "reject"])
+      .optional()
+      .default("followup")
+      .describe(
+        [
+          "Behavior when submitting a prompt while a session is already running.",
+          '"followup" queues the message to be processed after the current run finishes (uses prompt_async).',
+          '"steer" aborts the current run and immediately starts a new one with your message.',
+          '"reject" refuses to submit until you interrupt/stop the run yourself.',
+        ].join(" "),
       ),
   })
 

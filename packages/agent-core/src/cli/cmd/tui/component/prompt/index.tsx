@@ -40,6 +40,7 @@ import { Grammar } from "../../util/grammar"
 import { createGrammarChecker, type GrammarError } from "../../util/grammar-realtime"
 import { Banner, type BannerItem } from "../banner"
 import { VimCommands } from "@tui/util/vim-commands"
+import { decideBusySubmit } from "./busy-submit"
 
 export type PromptProps = {
   sessionID?: string
@@ -1240,6 +1241,16 @@ export function Prompt(props: PromptProps) {
     // Capture mode before it gets reset
     const currentMode = store.mode
     const variant = local.model.variant.current()
+    const busySubmitBehavior =
+      // Config is `agent-core.json`/`agent-core.jsonc` -> { "tui": { ... } }
+      ((sync.data?.config as any)?.tui?.busy_submit_behavior as "followup" | "steer" | "reject" | undefined) ??
+      "followup"
+    const sessionIsBusy = status().type !== "idle"
+    const busyDecision = decideBusySubmit({
+      sessionIsBusy,
+      hasSessionID: Boolean(props.sessionID),
+      behavior: busySubmitBehavior,
+    })
 
     // Tool permissions based on hold/release mode
     const holdModeTools = local.mode.isHold()
@@ -1297,31 +1308,54 @@ export function Prompt(props: PromptProps) {
         ? { edit: false, write: false, notebook_edit: false }
         : { edit: true, write: true, notebook_edit: true }
 
-      sdk.client.session
-        .prompt({
-          sessionID,
-          ...selectedModel,
-          messageID,
-          agent: local.agent.current().name,
-          model: selectedModel,
-          variant,
-          tools: holdModeTools,
-          options: {
-            skipPermissions: local.mode.isRelease() ? releasePolicy() === "no_cuffs" : false,
-          },
-          parts: [
-            {
-              id: Identifier.ascending("part"),
-              type: "text",
-              text: inputText,
-            },
-            ...nonTextParts.map((x) => ({
-              id: Identifier.ascending("part"),
-              ...x,
-            })),
-          ],
+      // While a run is in progress, allow either:
+      // - followup: queue message (do not wait for a reply)
+      // - steer: abort the current run and start a new one immediately
+      // - reject: refuse to submit until user interrupts
+      if (busyDecision.submit === "reject") {
+        toast.show({
+          message: "Session is running. Interrupt it first (or set tui.busy_submit_behavior).",
+          variant: "warning",
         })
-        .catch(() => {})
+        return
+      }
+      if (busyDecision.shouldAbort && props.sessionID) {
+        sdk.client.session.abort({ sessionID: props.sessionID })
+      }
+
+      const promptPayload = {
+        sessionID,
+        messageID,
+        agent: local.agent.current().name,
+        model: selectedModel,
+        variant,
+        tools: holdModeTools,
+        options: {
+          skipPermissions: local.mode.isRelease() ? releasePolicy() === "no_cuffs" : false,
+        },
+        parts: [
+          {
+            id: Identifier.ascending("part"),
+            type: "text" as const,
+            text: inputText,
+          },
+          ...nonTextParts.map((x) => ({
+            id: Identifier.ascending("part"),
+            ...x,
+          })),
+        ],
+      } satisfies Parameters<typeof sdk.client.session.prompt>[0]
+
+      if (busyDecision.submit === "promptAsync") {
+        sdk.client.session.promptAsync(promptPayload).catch(() => {})
+        toast.show({
+          message: "Queued message (follow-up).",
+          variant: "info",
+          duration: 2000,
+        })
+      } else {
+        sdk.client.session.prompt(promptPayload).catch(() => {})
+      }
     }
     history.append({
       ...store.prompt,
