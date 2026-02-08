@@ -139,16 +139,14 @@ describe("CronService timer resilience", () => {
     // The timer should fire after at most 60 seconds, not 10 minutes.
     // Advance 61 seconds and verify the timer fires (even though the
     // job isn't due yet, the scheduler re-evaluates).
-    vi.advanceTimersByTime(61_000);
-    // Allow async callbacks to flush.
-    await vi.runOnlyPendingTimersAsync();
+    await vi.advanceTimersByTimeAsync(61_000);
 
     // The job should not have run yet (not due until T+10min), but the
     // timer should have ticked (verified by no timeout at 10 min).
     // Advance to 10 minutes -- the drift guard means the timer will
     // have re-armed many times by now, eventually catching the due job.
     vi.setSystemTime(new Date("2025-12-13T00:10:00.000Z"));
-    await vi.runOnlyPendingTimersAsync();
+    await vi.advanceTimersByTimeAsync(1);
 
     cron.stop();
     await store.cleanup();
