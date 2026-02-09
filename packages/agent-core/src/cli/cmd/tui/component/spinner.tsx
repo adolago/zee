@@ -1,7 +1,8 @@
-import { createSignal, onCleanup, type JSX } from "solid-js"
+import type { JSX } from "solid-js"
 import { useTheme } from "../context/theme"
 import { useKV } from "../context/kv"
 import type { RGBA } from "@opentui/core"
+import { useAnimationTick } from "../util/animation-tick"
 
 const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
@@ -11,13 +12,8 @@ export function Spinner(props: { children?: JSX.Element; color?: string | RGBA }
   const animated = () => kv.get("animations_enabled", true)
   const color = () => props.color ?? theme.textMuted
 
-  const [index, setIndex] = createSignal(0)
-  const interval = setInterval(() => {
-    if (animated()) setIndex((i) => (i + 1) % BRAILLE_FRAMES.length)
-  }, 80)
-  onCleanup(() => clearInterval(interval))
-
-  const frame = () => (animated() ? BRAILLE_FRAMES[index()] : "...")
+  const tick = useAnimationTick()
+  const frame = () => (animated() ? BRAILLE_FRAMES[tick() % BRAILLE_FRAMES.length] : "...")
 
   return (
     <box flexDirection="row" gap={1}>

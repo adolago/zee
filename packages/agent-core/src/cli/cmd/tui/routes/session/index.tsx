@@ -221,13 +221,9 @@ export function Session() {
     const lastId = lastAssistant()?.id
     if (!lastId) return ""
     const parts = sync.data.part[lastId] ?? []
-    let textLen = 0
-    let toolStatus = ""
-    for (const part of parts) {
-      if (part.type === "text") textLen += (part as any).text?.length ?? 0
-      if (part.type === "tool") toolStatus += (part as any).state?.status ?? ""
-    }
-    return `${lastId}:${textLen}:${toolStatus}`
+    const lastTool = parts.findLast((p) => p.type === "tool")
+    const statusStr = lastTool ? (lastTool as any).state?.status ?? "" : ""
+    return `${lastId}:${parts.length}:${statusStr}`
   })
 
   createEffect(() => {
@@ -393,7 +389,7 @@ export function Session() {
       toBottomTimer = null
       if (!scroll || scroll.isDestroyed) return
       scroll.scrollTo(scroll.scrollHeight)
-    }, 0)
+    }, 50)
   }
 
   function toBottom() {

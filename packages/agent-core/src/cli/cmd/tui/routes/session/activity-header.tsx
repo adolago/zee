@@ -2,6 +2,7 @@ import { createMemo, createSignal, onCleanup, Show } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
 import type { ToolPart, Part } from "@agent-core/sdk/v2"
+import { useAnimationTick } from "@tui/util/animation-tick"
 
 type ActivityState = "idle" | "thinking" | "running" | "completed"
 
@@ -63,13 +64,10 @@ export function ActivityHeader(props: { sessionID: string }) {
   const { theme } = useTheme()
 
   const [now, setNow] = createSignal(Date.now())
-  const [spinnerIndex, setSpinnerIndex] = createSignal(0)
-
-  const interval = setInterval(() => {
-    setNow(Date.now())
-    setSpinnerIndex((i) => (i + 1) % SPINNER_FRAMES.length)
-  }, 100)
+  const interval = setInterval(() => setNow(Date.now()), 1000)
   onCleanup(() => clearInterval(interval))
+
+  const tick = useAnimationTick()
 
   const messages = createMemo(() => sync.data.message[props.sessionID] ?? [])
   const sessionStatus = createMemo(() => sync.data.session_status?.[props.sessionID])
@@ -173,7 +171,7 @@ export function ActivityHeader(props: { sessionID: string }) {
     }
   })
 
-  const spinnerChar = createMemo(() => SPINNER_FRAMES[spinnerIndex()])
+  const spinnerChar = createMemo(() => SPINNER_FRAMES[tick() % SPINNER_FRAMES.length])
 
   return (
     <box
