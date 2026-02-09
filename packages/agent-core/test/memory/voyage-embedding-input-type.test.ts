@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { VoyageEmbeddingProvider } from "../../../../src/memory/embedding"
 
 const originalFetch = globalThis.fetch
-const originalEnv = process.env
+const originalEnv = { ...process.env }
 
 afterEach(() => {
   globalThis.fetch = originalFetch
@@ -11,7 +11,7 @@ afterEach(() => {
 
 describe("VoyageEmbeddingProvider input_type", () => {
   test("uses input_type=query for embed()", async () => {
-    process.env = { ...originalEnv, VOYAGE_API_KEY: "test-key" }
+    process.env.VOYAGE_API_KEY = "test-key"
 
     const fetchMock = (async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>
@@ -32,7 +32,7 @@ describe("VoyageEmbeddingProvider input_type", () => {
   })
 
   test("uses input_type=document for embedBatch()", async () => {
-    process.env = { ...originalEnv, VOYAGE_API_KEY: "test-key" }
+    process.env.VOYAGE_API_KEY = "test-key"
 
     const fetchMock = (async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>
