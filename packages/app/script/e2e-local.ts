@@ -115,7 +115,7 @@ console.log(`mock LLM server listening on http://127.0.0.1:${mockPort}`)
 const overrideDir = path.join(sandbox, "e2e-override")
 await fs.mkdir(overrideDir, { recursive: true })
 await fs.writeFile(
-  path.join(overrideDir, "agent-core.jsonc"),
+  path.join(overrideDir, "zee.jsonc"),
   JSON.stringify({
     model: "opencode/big-pickle",
     agent: {
@@ -137,7 +137,7 @@ const serverEnv = {
   // Keep e2e isolated, quiet, and fast.
   AGENT_CORE_DISABLE_FILEWATCHER: "true",
   AGENT_CORE_DISABLE_MODELS_FETCH: "true",
-  AGENT_CORE_MODELS_PATH: path.join(repoDir, "packages/agent-core/test/fixture/e2e-models.json"),
+  AGENT_CORE_MODELS_PATH: path.join(repoDir, "packages/zee-core/test/fixture/e2e-models.json"),
   AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
   HOME: path.join(sandbox, "home"),
   XDG_DATA_HOME: path.join(sandbox, "share"),

@@ -234,7 +234,7 @@ export const dict = {
   "dialog.mcp.empty": "Aucun MCP configuré",
 
   "dialog.lsp.empty": "LSPs détectés automatiquement par type de fichier",
-  "dialog.plugins.empty": "Plugins configurés dans agent-core.json",
+  "dialog.plugins.empty": "Plugins configurés dans zee.json",
 
   "mcp.status.connected": "connecté",
   "mcp.status.failed": "échoué",
@@ -400,7 +400,7 @@ export const dict = {
   "error.chain.responseBody": "Corps de la réponse :\n{{body}}",
   "error.chain.didYouMean": "Vouliez-vous dire : {{suggestions}}",
   "error.chain.modelNotFound": "Modèle introuvable : {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Vérifiez votre configuration (agent-core.json) pour les noms de fournisseur/modèle",
+  "error.chain.checkConfig": "Vérifiez votre configuration (zee.json) pour les noms de fournisseur/modèle",
   "error.chain.mcpFailed":
     "Le serveur MCP \"{{name}}\" a échoué. Notez qu'Agent Core ne supporte pas encore l'authentification MCP.",
   "error.chain.providerAuthFailed": "Échec de l'authentification du fournisseur ({{provider}}) : {{message}}",

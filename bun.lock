@@ -24,117 +24,10 @@
         "zod": "4.1.8",
       },
     },
-    "packages/agent-core": {
-      "name": "@agent-core/core",
-      "version": "0.2.0",
-      "bin": {
-        "agent-core": "./bin/agent-core",
-      },
-      "dependencies": {
-        "@actions/core": "1.11.1",
-        "@actions/github": "6.0.1",
-        "@agentclientprotocol/sdk": "0.13.1",
-        "@ai-sdk/anthropic": "2.0.57",
-        "@ai-sdk/google": "2.0.52",
-        "@ai-sdk/openai": "2.0.89",
-        "@ai-sdk/openai-compatible": "2.0.18",
-        "@ai-sdk/provider": "3.0.3",
-        "@ai-sdk/provider-utils": "4.0.6",
-        "@babel/core": "7.28.0",
-        "@clack/prompts": "1.0.0-alpha.1",
-        "@clawhub/registry": "file:../../../claw-registry",
-        "@hono/standard-validator": "0.1.5",
-        "@hono/zod-validator": "0.4.2",
-        "@modelcontextprotocol/sdk": "1.26.0",
-        "@octokit/graphql": "9.0.2",
-        "@octokit/rest": "22.0.0",
-        "@openauthjs/openauth": "0.0.0-20250322224806",
-        "@openrouter/ai-sdk-provider": "1.5.2",
-        "@opentui/core": "0.1.75",
-        "@opentui/solid": "0.1.75",
-        "@parcel/watcher": "2.5.1",
-        "@pierre/diffs": "1.0.2",
-        "@qdrant/js-client-rest": "1.16.2",
-        "@solid-primitives/event-bus": "1.1.2",
-        "@solid-primitives/scheduled": "1.5.2",
-        "@standard-schema/spec": "1.0.0",
-        "@whiskeysockets/baileys": "7.0.0-rc.9",
-        "@zip.js/zip.js": "2.7.62",
-        "ai": "6.0.49",
-        "bonjour-service": "1.3.0",
-        "bun-pty": "0.4.4",
-        "chokidar": "4.0.3",
-        "clipboardy": "4.0.0",
-        "croner": "9.1.0",
-        "decimal.js": "10.5.0",
-        "diff": "8.0.2",
-        "fuzzysort": "3.1.0",
-        "google-auth-library": "9.15.1",
-        "gray-matter": "4.0.3",
-        "hono": "4.11.8",
-        "hono-openapi": "1.1.2",
-        "ignore": "7.0.5",
-        "jsonc-parser": "3.3.1",
-        "mathjax": "3",
-        "minimatch": "10.0.3",
-        "open": "10.1.2",
-        "opentui-spinner": "0.0.6",
-        "remeda": "2.26.0",
-        "solid-js": "1.9.10",
-        "strip-ansi": "7.1.2",
-        "tar": "7.5.7",
-        "tree-sitter-bash": "0.25.0",
-        "turndown": "7.2.0",
-        "ulid": "3.0.1",
-        "vscode-jsonrpc": "8.2.1",
-        "web-tree-sitter": "0.25.10",
-        "whatsapp-web.js": "^1.34.4",
-        "xdg-basedir": "5.1.0",
-        "yaml": "2.8.1",
-        "yargs": "18.0.0",
-        "zod": "4.1.8",
-        "zod-to-json-schema": "3.24.5",
-      },
-      "devDependencies": {
-        "@octokit/webhooks-types": "7.6.1",
-        "@parcel/watcher-linux-arm64-glibc": "2.5.1",
-        "@parcel/watcher-linux-arm64-musl": "2.5.1",
-        "@parcel/watcher-linux-x64-glibc": "2.5.1",
-        "@parcel/watcher-linux-x64-musl": "2.5.1",
-        "@parcel/watcher-win32-x64": "2.5.1",
-        "@tsconfig/bun": "1.0.9",
-        "@types/bun": "1.3.5",
-        "@types/semver": "7.7.1",
-        "@types/turndown": "5.0.5",
-        "@types/yargs": "17.0.33",
-        "@typescript/native-preview": "7.0.0-dev.20251207.1",
-        "baseline-browser-mapping": "2.9.19",
-        "typescript": "5.8.2",
-        "vscode-languageserver-types": "3.17.5",
-      },
-    },
-    "packages/agent-core-adapter": {
-      "name": "@agent-core/agent-core-adapter",
-      "version": "0.1.0",
-      "dependencies": {
-        "zod": "^3.23.8",
-      },
-      "devDependencies": {
-        "@types/bun": "latest",
-        "bun-types": "1.3.8",
-        "typescript": "^5.5.0",
-      },
-      "peerDependencies": {
-        "solid-js": "1.9.10",
-      },
-    },
     "packages/app": {
-      "name": "@agent-core/app",
+      "name": "@zee/app",
       "version": "1.1.48",
       "dependencies": {
-        "@agent-core/core": "workspace:*",
-        "@agent-core/ui": "workspace:*",
-        "@agent-core/util": "workspace:*",
         "@kobalte/core": "catalog:",
         "@shikijs/transformers": "3.9.2",
         "@solid-primitives/active-element": "2.1.3",
@@ -149,6 +42,9 @@
         "@solidjs/meta": "catalog:",
         "@solidjs/router": "catalog:",
         "@thisbeyond/solid-dnd": "0.7.5",
+        "@zee/core": "workspace:*",
+        "@zee/ui": "workspace:*",
+        "@zee/util": "workspace:*",
         "diff": "catalog:",
         "fuzzysort": "catalog:",
         "ghostty-web": "0.3.0",
@@ -179,11 +75,9 @@
       },
     },
     "packages/desktop": {
-      "name": "@agent-core/desktop",
+      "name": "@zee/desktop",
       "version": "1.1.48",
       "dependencies": {
-        "@agent-core/app": "workspace:*",
-        "@agent-core/ui": "workspace:*",
         "@solid-primitives/i18n": "2.2.1",
         "@solid-primitives/storage": "catalog:",
         "@tauri-apps/api": "^2",
@@ -198,6 +92,8 @@
         "@tauri-apps/plugin-store": "~2",
         "@tauri-apps/plugin-updater": "~2",
         "@tauri-apps/plugin-window-state": "~2",
+        "@zee/app": "workspace:*",
+        "@zee/ui": "workspace:*",
         "solid-js": "catalog:",
       },
       "devDependencies": {
@@ -210,7 +106,7 @@
       },
     },
     "packages/hosted": {
-      "name": "@agent-core/hosted",
+      "name": "@zee/hosted",
       "version": "0.1.0",
       "dependencies": {
         "hono": "4.11.8",
@@ -313,7 +209,7 @@
       "name": "@opencode-ai/plugin",
       "version": "1.1.48",
       "dependencies": {
-        "@agent-core/core": "workspace:*",
+        "@zee/core": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -324,7 +220,7 @@
       },
     },
     "packages/sdk": {
-      "name": "@agent-core/sdk",
+      "name": "@zee/sdk",
       "version": "1.0.0",
       "devDependencies": {
         "@tsconfig/node22": "catalog:",
@@ -334,11 +230,9 @@
       },
     },
     "packages/ui": {
-      "name": "@agent-core/ui",
+      "name": "@zee/ui",
       "version": "1.1.48",
       "dependencies": {
-        "@agent-core/core": "workspace:*",
-        "@agent-core/util": "workspace:*",
         "@kobalte/core": "catalog:",
         "@pierre/diffs": "catalog:",
         "@shikijs/transformers": "3.9.2",
@@ -347,6 +241,8 @@
         "@solid-primitives/resize-observer": "2.1.3",
         "@solidjs/meta": "catalog:",
         "@typescript/native-preview": "catalog:",
+        "@zee/core": "workspace:*",
+        "@zee/util": "workspace:*",
         "dompurify": "3.3.1",
         "fuzzysort": "catalog:",
         "katex": "0.16.27",
@@ -376,7 +272,7 @@
       },
     },
     "packages/util": {
-      "name": "@agent-core/util",
+      "name": "@zee/util",
       "version": "1.1.48",
       "dependencies": {
         "zod": "catalog:",
@@ -387,7 +283,7 @@
       },
     },
     "packages/web": {
-      "name": "@agent-core/web",
+      "name": "@zee/web",
       "version": "1.1.48",
       "dependencies": {
         "@astrojs/cloudflare": "12.6.12",
@@ -412,9 +308,114 @@
         "toolbeam-docs-theme": "0.4.8",
       },
       "devDependencies": {
-        "@agent-core/core": "workspace:*",
         "@types/node": "catalog:",
+        "@zee/core": "workspace:*",
         "typescript": "catalog:",
+      },
+    },
+    "packages/zee-core": {
+      "name": "@zee/core",
+      "version": "0.2.0",
+      "bin": {
+        "zee": "./bin/zee",
+        "agent-core": "./bin/agent-core",
+      },
+      "dependencies": {
+        "@actions/core": "1.11.1",
+        "@actions/github": "6.0.1",
+        "@agentclientprotocol/sdk": "0.13.1",
+        "@ai-sdk/anthropic": "2.0.57",
+        "@ai-sdk/google": "2.0.52",
+        "@ai-sdk/openai": "2.0.89",
+        "@ai-sdk/openai-compatible": "2.0.18",
+        "@ai-sdk/provider": "3.0.3",
+        "@ai-sdk/provider-utils": "4.0.6",
+        "@babel/core": "7.28.0",
+        "@clack/prompts": "1.0.0-alpha.1",
+        "@clawhub/registry": "file:../../../claw-registry",
+        "@hono/standard-validator": "0.1.5",
+        "@hono/zod-validator": "0.4.2",
+        "@modelcontextprotocol/sdk": "1.26.0",
+        "@octokit/graphql": "9.0.2",
+        "@octokit/rest": "22.0.0",
+        "@openauthjs/openauth": "0.0.0-20250322224806",
+        "@openrouter/ai-sdk-provider": "1.5.2",
+        "@opentui/core": "0.1.75",
+        "@opentui/solid": "0.1.75",
+        "@parcel/watcher": "2.5.1",
+        "@pierre/diffs": "1.0.2",
+        "@qdrant/js-client-rest": "1.16.2",
+        "@solid-primitives/event-bus": "1.1.2",
+        "@solid-primitives/scheduled": "1.5.2",
+        "@standard-schema/spec": "1.0.0",
+        "@whiskeysockets/baileys": "7.0.0-rc.9",
+        "@zip.js/zip.js": "2.7.62",
+        "ai": "6.0.49",
+        "bonjour-service": "1.3.0",
+        "bun-pty": "0.4.4",
+        "chokidar": "4.0.3",
+        "clipboardy": "4.0.0",
+        "croner": "9.1.0",
+        "decimal.js": "10.5.0",
+        "diff": "8.0.2",
+        "fuzzysort": "3.1.0",
+        "google-auth-library": "9.15.1",
+        "gray-matter": "4.0.3",
+        "hono": "4.11.8",
+        "hono-openapi": "1.1.2",
+        "ignore": "7.0.5",
+        "jsonc-parser": "3.3.1",
+        "mathjax": "3",
+        "minimatch": "10.0.3",
+        "open": "10.1.2",
+        "opentui-spinner": "0.0.6",
+        "remeda": "2.26.0",
+        "solid-js": "1.9.10",
+        "strip-ansi": "7.1.2",
+        "tar": "7.5.7",
+        "tree-sitter-bash": "0.25.0",
+        "turndown": "7.2.0",
+        "ulid": "3.0.1",
+        "vscode-jsonrpc": "8.2.1",
+        "web-tree-sitter": "0.25.10",
+        "whatsapp-web.js": "^1.34.4",
+        "xdg-basedir": "5.1.0",
+        "yaml": "2.8.1",
+        "yargs": "18.0.0",
+        "zod": "4.1.8",
+        "zod-to-json-schema": "3.24.5",
+      },
+      "devDependencies": {
+        "@octokit/webhooks-types": "7.6.1",
+        "@parcel/watcher-linux-arm64-glibc": "2.5.1",
+        "@parcel/watcher-linux-arm64-musl": "2.5.1",
+        "@parcel/watcher-linux-x64-glibc": "2.5.1",
+        "@parcel/watcher-linux-x64-musl": "2.5.1",
+        "@parcel/watcher-win32-x64": "2.5.1",
+        "@tsconfig/bun": "1.0.9",
+        "@types/bun": "1.3.5",
+        "@types/semver": "7.7.1",
+        "@types/turndown": "5.0.5",
+        "@types/yargs": "17.0.33",
+        "@typescript/native-preview": "7.0.0-dev.20251207.1",
+        "baseline-browser-mapping": "2.9.19",
+        "typescript": "5.8.2",
+        "vscode-languageserver-types": "3.17.5",
+      },
+    },
+    "packages/zee-core-adapter": {
+      "name": "@zee/core-adapter",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^3.23.8",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "bun-types": "1.3.8",
+        "typescript": "^5.5.0",
+      },
+      "peerDependencies": {
+        "solid-js": "1.9.10",
       },
     },
   },
@@ -496,24 +497,6 @@
     "@actions/http-client": ["@actions/http-client@3.0.0", "", { "dependencies": { "tunnel": "^0.0.6", "undici": "^5.28.5" } }, "sha512-1s3tXAfVMSz9a4ZEBkXXRQD4QhY3+GAsWSbaYpeknPOKEeyRiU3lH+bHiLMZdo2x/fIeQ/hscL1wCkDLVM2DZQ=="],
 
     "@actions/io": ["@actions/io@1.1.3", "", {}, "sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q=="],
-
-    "@agent-core/agent-core-adapter": ["@agent-core/agent-core-adapter@workspace:packages/agent-core-adapter"],
-
-    "@agent-core/app": ["@agent-core/app@workspace:packages/app"],
-
-    "@agent-core/core": ["@agent-core/core@workspace:packages/agent-core"],
-
-    "@agent-core/desktop": ["@agent-core/desktop@workspace:packages/desktop"],
-
-    "@agent-core/hosted": ["@agent-core/hosted@workspace:packages/hosted"],
-
-    "@agent-core/sdk": ["@agent-core/sdk@workspace:packages/sdk"],
-
-    "@agent-core/ui": ["@agent-core/ui@workspace:packages/ui"],
-
-    "@agent-core/util": ["@agent-core/util@workspace:packages/util"],
-
-    "@agent-core/web": ["@agent-core/web@workspace:packages/web"],
 
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@0.13.1", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-6byvu+F/xc96GBkdAx4hq6/tB3vT63DSBO4i3gYCz8nuyZMerVFna2Gkhm8EHNpZX0J9DjUxzZCW+rnHXUg0FA=="],
 
@@ -1892,6 +1875,24 @@
     "@webreflection/alien-signals": ["@webreflection/alien-signals@0.3.2", "", { "dependencies": { "alien-signals": "^2.0.6" } }, "sha512-DmNjD8Kq5iM+Toirp3llS/izAiI3Dwav5nHRvKdR/YJBTgun3y4xK76rs9CFYD2bZwZJN/rP+HjEqKTteGK+Yw=="],
 
     "@whiskeysockets/baileys": ["@whiskeysockets/baileys@7.0.0-rc.9", "", { "dependencies": { "@cacheable/node-cache": "^1.4.0", "@hapi/boom": "^9.1.3", "async-mutex": "^0.5.0", "libsignal": "git+https://github.com/whiskeysockets/libsignal-node.git", "lru-cache": "^11.1.0", "music-metadata": "^11.7.0", "p-queue": "^9.0.0", "pino": "^9.6", "protobufjs": "^7.2.4", "ws": "^8.13.0" }, "peerDependencies": { "audio-decode": "^2.1.3", "jimp": "^1.6.0", "link-preview-js": "^3.0.0", "sharp": "*" }, "optionalPeers": ["audio-decode", "jimp", "link-preview-js"] }, "sha512-YFm5gKXfDP9byCXCW3OPHKXLzrAKzolzgVUlRosHHgwbnf2YOO3XknkMm6J7+F0ns8OA0uuSBhgkRHTDtqkacw=="],
+
+    "@zee/app": ["@zee/app@workspace:packages/app"],
+
+    "@zee/core": ["@zee/core@workspace:packages/zee-core"],
+
+    "@zee/core-adapter": ["@zee/core-adapter@workspace:packages/zee-core-adapter"],
+
+    "@zee/desktop": ["@zee/desktop@workspace:packages/desktop"],
+
+    "@zee/hosted": ["@zee/hosted@workspace:packages/hosted"],
+
+    "@zee/sdk": ["@zee/sdk@workspace:packages/sdk"],
+
+    "@zee/ui": ["@zee/ui@workspace:packages/ui"],
+
+    "@zee/util": ["@zee/util@workspace:packages/util"],
+
+    "@zee/web": ["@zee/web@workspace:packages/web"],
 
     "@zip.js/zip.js": ["@zip.js/zip.js@2.7.62", "", {}, "sha512-OaLvZ8j4gCkLn048ypkZu29KX30r8/OfFF2w4Jo5WXFr+J04J+lzJ5TKZBVgFXhlvSkqNFQdfnY1Q8TMTCyBVA=="],
 
@@ -3869,20 +3870,6 @@
 
     "@actions/http-client/undici": ["undici@5.29.0", "", { "dependencies": { "@fastify/busboy": "^2.0.0" } }, "sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg=="],
 
-    "@agent-core/agent-core-adapter/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
-
-    "@agent-core/agent-core-adapter/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
-
-    "@agent-core/core/@clawhub/registry": ["@clawhub/registry@file:../claw-registry", {}],
-
-    "@agent-core/desktop/@actions/artifact": ["@actions/artifact@4.0.0", "", { "dependencies": { "@actions/core": "^1.10.0", "@actions/github": "^6.0.1", "@actions/http-client": "^2.1.0", "@azure/core-http": "^3.0.5", "@azure/storage-blob": "^12.15.0", "@octokit/core": "^5.2.1", "@octokit/plugin-request-log": "^1.0.4", "@octokit/plugin-retry": "^3.0.9", "@octokit/request": "^8.4.1", "@octokit/request-error": "^5.1.1", "@protobuf-ts/plugin": "^2.2.3-alpha.1", "archiver": "^7.0.1", "jwt-decode": "^3.1.2", "unzip-stream": "^0.3.1" } }, "sha512-HCc2jMJRAfviGFAh0FsOR/jNfWhirxl7W6z8zDtttt0GltwxBLdEIjLiweOPFl9WbyJRW1VWnPUSAixJqcWUMQ=="],
-
-    "@agent-core/desktop/typescript": ["typescript@5.6.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw=="],
-
-    "@agent-core/web/@shikijs/transformers": ["@shikijs/transformers@3.4.2", "", { "dependencies": { "@shikijs/core": "3.4.2", "@shikijs/types": "3.4.2" } }, "sha512-I5baLVi/ynLEOZoWSAMlACHNnG+yw5HDmse0oe+GW6U1u+ULdEB3UHiVWaHoJSSONV7tlcVxuaMy74sREDkSvg=="],
-
-    "@agent-core/web/ai": ["ai@6.0.35", "", { "dependencies": { "@ai-sdk/gateway": "3.0.14", "@ai-sdk/provider": "3.0.3", "@ai-sdk/provider-utils": "4.0.6", "@opentelemetry/api": "1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-MxgtU6CjnegH1rhRfomM0gptKxP6r+9sxbLvYq36C1l85+o0LacqbXLdNVYzqab+lHN4q7ZP3QS8wZq4YkZahA=="],
-
     "@ai-sdk/anthropic/@ai-sdk/provider": ["@ai-sdk/provider@2.0.1", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-KCUwswvsC5VsW2PWFqF8eJgSCu5Ysj7m1TxiHTVA6g7k360bk0RNQENT8KTMAYEs+8fWPD3Uu4dEmzGHc+jGng=="],
 
     "@ai-sdk/anthropic/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@3.0.20", "", { "dependencies": { "@ai-sdk/provider": "2.0.1", "@standard-schema/spec": "^1.0.0", "eventsource-parser": "^3.0.6" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-iXHVe0apM2zUEzauqJwqmpC37A5rihrStAih5Ks+JE32iTe4LZ58y17UGBjpQQTCRw9YxMeo2UFLxLpBluyvLQ=="],
@@ -4395,6 +4382,20 @@
 
     "@vitest/expect/@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
+    "@zee/core/@clawhub/registry": ["@clawhub/registry@file:../claw-registry", {}],
+
+    "@zee/core-adapter/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@zee/core-adapter/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "@zee/desktop/@actions/artifact": ["@actions/artifact@4.0.0", "", { "dependencies": { "@actions/core": "^1.10.0", "@actions/github": "^6.0.1", "@actions/http-client": "^2.1.0", "@azure/core-http": "^3.0.5", "@azure/storage-blob": "^12.15.0", "@octokit/core": "^5.2.1", "@octokit/plugin-request-log": "^1.0.4", "@octokit/plugin-retry": "^3.0.9", "@octokit/request": "^8.4.1", "@octokit/request-error": "^5.1.1", "@protobuf-ts/plugin": "^2.2.3-alpha.1", "archiver": "^7.0.1", "jwt-decode": "^3.1.2", "unzip-stream": "^0.3.1" } }, "sha512-HCc2jMJRAfviGFAh0FsOR/jNfWhirxl7W6z8zDtttt0GltwxBLdEIjLiweOPFl9WbyJRW1VWnPUSAixJqcWUMQ=="],
+
+    "@zee/desktop/typescript": ["typescript@5.6.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw=="],
+
+    "@zee/web/@shikijs/transformers": ["@shikijs/transformers@3.4.2", "", { "dependencies": { "@shikijs/core": "3.4.2", "@shikijs/types": "3.4.2" } }, "sha512-I5baLVi/ynLEOZoWSAMlACHNnG+yw5HDmse0oe+GW6U1u+ULdEB3UHiVWaHoJSSONV7tlcVxuaMy74sREDkSvg=="],
+
+    "@zee/web/ai": ["ai@6.0.35", "", { "dependencies": { "@ai-sdk/gateway": "3.0.14", "@ai-sdk/provider": "3.0.3", "@ai-sdk/provider-utils": "4.0.6", "@opentelemetry/api": "1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-MxgtU6CjnegH1rhRfomM0gptKxP6r+9sxbLvYq36C1l85+o0LacqbXLdNVYzqab+lHN4q7ZP3QS8wZq4YkZahA=="],
+
     "ai/@ai-sdk/provider": ["@ai-sdk/provider@3.0.5", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-2Xmoq6DBJqmSl80U6V9z5jJSJP7ehaJJQMy2iFUqTay06wdCqTnPVBBQbtEL8RCChenL+q5DC5H5WzU3vV3v8w=="],
 
     "ai/@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@4.0.9", "", { "dependencies": { "@ai-sdk/provider": "3.0.5", "@standard-schema/spec": "^1.1.0", "eventsource-parser": "^3.0.6" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-bB4r6nfhBOpmoS9mePxjRoCy+LnzP3AfhyMGCkGL4Mn9clVNlqEeKj26zEKEtB6yoSVcT1IQ0Zh9fytwMCDnow=="],
@@ -4674,14 +4675,6 @@
     "@actions/artifact/@actions/core/@actions/exec": ["@actions/exec@2.0.0", "", { "dependencies": { "@actions/io": "^2.0.0" } }, "sha512-k8ngrX2voJ/RIN6r9xB82NVqKpnMRtxDoiO+g3olkIUpQNqjArXrCQceduQZCQj3P3xm32pChRLqRrtXTlqhIw=="],
 
     "@actions/core/@actions/http-client/undici": ["undici@5.29.0", "", { "dependencies": { "@fastify/busboy": "^2.0.0" } }, "sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg=="],
-
-    "@agent-core/desktop/@actions/artifact/@actions/http-client": ["@actions/http-client@2.2.3", "", { "dependencies": { "tunnel": "^0.0.6", "undici": "^5.25.4" } }, "sha512-mx8hyJi/hjFvbPokCg4uRd4ZX78t+YyRPtnKWwIl+RzNaVuFpQHfmlGVfsKEJN8LwTCvL+DfVgAM04XaHkm6bA=="],
-
-    "@agent-core/web/@shikijs/transformers/@shikijs/core": ["@shikijs/core@3.4.2", "", { "dependencies": { "@shikijs/types": "3.4.2", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4", "hast-util-to-html": "^9.0.5" } }, "sha512-AG8vnSi1W2pbgR2B911EfGqtLE9c4hQBYkv/x7Z+Kt0VxhgQKcW7UNDVYsu9YxwV6u+OJrvdJrMq6DNWoBjihQ=="],
-
-    "@agent-core/web/@shikijs/transformers/@shikijs/types": ["@shikijs/types@3.4.2", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-zHC1l7L+eQlDXLnxvM9R91Efh2V4+rN3oMVS2swCBssbj2U/FBwybD1eeLaq8yl/iwT+zih8iUbTBCgGZOYlVg=="],
-
-    "@agent-core/web/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@3.0.14", "", { "dependencies": { "@ai-sdk/provider": "3.0.3", "@ai-sdk/provider-utils": "4.0.6", "@vercel/oidc": "3.1.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-udVpkDaQ00jMcBvtGGvmkEBU31XidsHB4E8HIF9l7/H7lyjOS/EtXzN2adoupDg5j1/VjjSI3Ny5P1zHUvLyMA=="],
 
     "@ai-sdk/gateway/@ai-sdk/provider-utils/@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
@@ -5087,6 +5080,14 @@
 
     "@tailwindcss/oxide-wasm32-wasi/@napi-rs/wasm-runtime/@tybys/wasm-util": ["@tybys/wasm-util@0.10.1", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg=="],
 
+    "@zee/desktop/@actions/artifact/@actions/http-client": ["@actions/http-client@2.2.3", "", { "dependencies": { "tunnel": "^0.0.6", "undici": "^5.25.4" } }, "sha512-mx8hyJi/hjFvbPokCg4uRd4ZX78t+YyRPtnKWwIl+RzNaVuFpQHfmlGVfsKEJN8LwTCvL+DfVgAM04XaHkm6bA=="],
+
+    "@zee/web/@shikijs/transformers/@shikijs/core": ["@shikijs/core@3.4.2", "", { "dependencies": { "@shikijs/types": "3.4.2", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4", "hast-util-to-html": "^9.0.5" } }, "sha512-AG8vnSi1W2pbgR2B911EfGqtLE9c4hQBYkv/x7Z+Kt0VxhgQKcW7UNDVYsu9YxwV6u+OJrvdJrMq6DNWoBjihQ=="],
+
+    "@zee/web/@shikijs/transformers/@shikijs/types": ["@shikijs/types@3.4.2", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4" } }, "sha512-zHC1l7L+eQlDXLnxvM9R91Efh2V4+rN3oMVS2swCBssbj2U/FBwybD1eeLaq8yl/iwT+zih8iUbTBCgGZOYlVg=="],
+
+    "@zee/web/ai/@ai-sdk/gateway": ["@ai-sdk/gateway@3.0.14", "", { "dependencies": { "@ai-sdk/provider": "3.0.3", "@ai-sdk/provider-utils": "4.0.6", "@vercel/oidc": "3.1.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-udVpkDaQ00jMcBvtGGvmkEBU31XidsHB4E8HIF9l7/H7lyjOS/EtXzN2adoupDg5j1/VjjSI3Ny5P1zHUvLyMA=="],
+
     "ai/@ai-sdk/provider-utils/@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "ansi-align/string-width/emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
@@ -5375,8 +5376,6 @@
 
     "@actions/artifact/@actions/core/@actions/exec/@actions/io": ["@actions/io@2.0.0", "", {}, "sha512-Jv33IN09XLO+0HS79aaODsvIRyduiF7NY/F6LYeK5oeUmrsz7aFdRphQjFoESF4jS7lMauDOttKALcpapVDIAg=="],
 
-    "@agent-core/desktop/@actions/artifact/@actions/http-client/undici": ["undici@5.29.0", "", { "dependencies": { "@fastify/busboy": "^2.0.0" } }, "sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg=="],
-
     "@aws-crypto/sha1-browser/@smithy/util-utf8/@smithy/util-buffer-from/@smithy/is-array-buffer": ["@smithy/is-array-buffer@2.2.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA=="],
 
     "@aws-crypto/sha256-browser/@smithy/util-utf8/@smithy/util-buffer-from/@smithy/is-array-buffer": ["@smithy/is-array-buffer@2.2.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-GGP3O9QFD24uGeAXYUjwSTXARoqpZykHadOmA8G5vfJPK0/DC67qa//0qvqrJzL1xc8WQWX7/yc7fwudjPHPhA=="],
@@ -5480,6 +5479,8 @@
     "@puppeteer/browsers/yargs/string-width/is-fullwidth-code-point": ["is-fullwidth-code-point@3.0.0", "", {}, "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg=="],
 
     "@puppeteer/browsers/yargs/string-width/strip-ansi": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
+
+    "@zee/desktop/@actions/artifact/@actions/http-client/undici": ["undici@5.29.0", "", { "dependencies": { "@fastify/busboy": "^2.0.0" } }, "sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg=="],
 
     "ansi-align/string-width/strip-ansi/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
 

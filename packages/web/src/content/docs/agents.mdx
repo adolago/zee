@@ -112,9 +112,9 @@ You can customize the built-in agents or create your own through configuration. 
 
 ### JSON
 
-Configure agents in your `agent-core.json` config file:
+Configure agents in your `zee.json` config file:
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
@@ -157,10 +157,10 @@ Configure agents in your `agent-core.json` config file:
 
 You can also define agents using markdown files. Place them in:
 
-- Global: `~/.config/agent-core/agents/`
-- Per-project: `.agent-core/agents/`
+- Global: `~/.config/zee/agents/`
+- Per-project: `.zee/agents/`
 
-```markdown title="~/.config/agent-core/agents/review.md"
+```markdown title="~/.config/zee/agents/review.md"
 ---
 description: Reviews code for quality and best practices
 mode: subagent
@@ -196,7 +196,7 @@ Let's look at these configuration options in detail.
 
 Use the `description` option to provide a brief description of what the agent does and when to use it.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "review": {
@@ -216,7 +216,7 @@ Control the randomness and creativity of the LLM's responses with the `temperatu
 
 Lower values make responses more focused and deterministic, while higher values increase creativity and variability.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "plan": {
@@ -235,7 +235,7 @@ Temperature values typically range from 0.0 to 1.0:
 - **0.3-0.5**: Balanced responses with some creativity, good for general development tasks
 - **0.6-1.0**: More creative and varied responses, useful for brainstorming and exploration
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "analyze": {
@@ -263,7 +263,7 @@ Control the maximum number of agentic iterations an agent can perform before bei
 
 If this is not set, the agent will continue to iterate until the model chooses to stop or the user interrupts the session.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "quick-thinker": {
@@ -287,7 +287,7 @@ The legacy `maxSteps` field is deprecated. Use `steps` instead.
 
 Set to `true` to disable the agent.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "review": {
@@ -303,7 +303,7 @@ Set to `true` to disable the agent.
 
 Specify a custom system prompt file for this agent with the `prompt` config. The prompt file should contain instructions specific to the agent's purpose.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "review": {
@@ -325,7 +325,7 @@ Use the `model` config to override the model for this agent. Useful for using di
 If you don’t specify a model, primary agents use the [model globally configured](/docs/config#models) while subagents will use the model of the primary agent that invoked the subagent.
 :::
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "plan": {
@@ -343,7 +343,7 @@ The model ID in your OpenCode config uses the format `provider/model-id`. For ex
 
 Control which tools are available in this agent with the `tools` config. You can enable or disable specific tools by setting them to `true` or `false`.
 
-```json title="agent-core.json" {3-6,9-12}
+```json title="zee.json" {3-6,9-12}
 {
   "$schema": "https://opencode.ai/config.json",
   "tools": {
@@ -367,7 +367,7 @@ The agent-specific config overrides the global config.
 
 You can also use wildcards to control multiple tools at once. For example, to disable all tools from an MCP server:
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
@@ -394,7 +394,7 @@ You can configure permissions to manage what actions an agent can take. Currentl
 - `"allow"` — Allow all operations without approval
 - `"deny"` — Disable the tool
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "$schema": "https://opencode.ai/config.json",
   "permission": {
@@ -405,7 +405,7 @@ You can configure permissions to manage what actions an agent can take. Currentl
 
 You can override these permissions per agent.
 
-```json title="agent-core.json" {3-5,8-10}
+```json title="zee.json" {3-5,8-10}
 {
   "$schema": "https://opencode.ai/config.json",
   "permission": {
@@ -423,7 +423,7 @@ You can override these permissions per agent.
 
 You can also set permissions in Markdown agents.
 
-```markdown title="~/.config/agent-core/agents/review.md"
+```markdown title="~/.config/zee/agents/review.md"
 ---
 description: Code review without edits
 mode: subagent
@@ -442,7 +442,7 @@ Only analyze code and suggest changes.
 
 You can set permissions for specific bash commands.
 
-```json title="agent-core.json" {7}
+```json title="zee.json" {7}
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
@@ -460,7 +460,7 @@ You can set permissions for specific bash commands.
 
 This can take a glob pattern.
 
-```json title="agent-core.json" {7}
+```json title="zee.json" {7}
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
@@ -478,7 +478,7 @@ This can take a glob pattern.
 And you can also use the `*` wildcard to manage permissions for all commands.
 Since the last matching rule takes precedence, put the `*` wildcard first and specific rules after.
 
-```json title="agent-core.json" {8}
+```json title="zee.json" {8}
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
@@ -502,7 +502,7 @@ Since the last matching rule takes precedence, put the `*` wildcard first and sp
 
 Control the agent's mode with the `mode` config. The `mode` option is used to determine how the agent can be used.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "review": {
@@ -520,7 +520,7 @@ The `mode` option can be set to `primary`, `subagent`, or `all`. If no `mode` is
 
 Hide a subagent from the `@` autocomplete menu with `hidden: true`. Useful for internal subagents that should only be invoked programmatically by other agents via the Task tool.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "internal-helper": {
@@ -543,7 +543,7 @@ Only applies to `mode: subagent` agents.
 
 Control which subagents an agent can invoke via the Task tool with `permission.task`. Uses glob patterns for flexible matching.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "orchestrator": {
@@ -576,7 +576,7 @@ Users can always invoke any subagent directly via the `@` autocomplete menu, eve
 
 Customize the agent's visual appearance in the UI with the `color` option. This affects how the agent appears in the interface.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "creative": {
@@ -594,7 +594,7 @@ Must be a valid hex color code like `#FF5733`.
 
 Control response diversity with the `top_p` option. Alternative to temperature for controlling randomness.
 
-```json title="agent-core.json"
+```json title="zee.json"
 {
   "agent": {
     "brainstorm": {
@@ -614,7 +614,7 @@ Any other options you specify in your agent configuration will be **passed throu
 
 For example, with OpenAI's reasoning models, you can control the reasoning effort:
 
-```json title="agent-core.json" {6,7}
+```json title="zee.json" {6,7}
 {
   "agent": {
     "deep-thinker": {
@@ -677,7 +677,7 @@ Do you have an agent you'd like to share? [Submit a PR](https://github.com/anoma
 
 ### Documentation agent
 
-```markdown title="~/.config/agent-core/agents/docs-writer.md"
+```markdown title="~/.config/zee/agents/docs-writer.md"
 ---
 description: Writes and maintains project documentation
 mode: subagent
@@ -699,7 +699,7 @@ Focus on:
 
 ### Security auditor
 
-```markdown title="~/.config/agent-core/agents/security-auditor.md"
+```markdown title="~/.config/zee/agents/security-auditor.md"
 ---
 description: Performs security audits and identifies vulnerabilities
 mode: subagent

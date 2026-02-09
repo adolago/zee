@@ -37,7 +37,7 @@ Stanley -> Agent-Core
 
 **No separate API keys required** - leverages agent-core infrastructure:
 - Web search via `mcp.exa.ai` (same as agent-core's websearch.ts)
-- LLM summarization via `~/.agent-core/auth.json` providers
+- LLM summarization via `~/.zee/auth.json` providers
 - Python 3.10+ with `httpx`
 
 ## Quick Start
@@ -198,7 +198,7 @@ Authentication is handled by agent-core's centralized auth system:
 
 ```bash
 # View current auth status
-cat ~/.agent-core/auth.json
+cat ~/.zee/auth.json
 
 # Auth is managed via agent-core CLI
 agent-core auth login anthropic

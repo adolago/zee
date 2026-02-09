@@ -5,13 +5,13 @@
  * Stores facts in the memory system for future retrieval.
  */
 
-import { LifecycleHooks } from "../../../packages/agent-core/src/hooks/lifecycle";
-import { Session } from "../../../packages/agent-core/src/session";
-import type { MessageV2 } from "../../../packages/agent-core/src/session/message-v2";
+import { LifecycleHooks } from "../../../packages/zee-core/src/hooks/lifecycle";
+import { Session } from "../../../packages/zee-core/src/session";
+import type { MessageV2 } from "../../../packages/zee-core/src/session/message-v2";
 import { getMemory } from "../../memory/unified";
 import { createFactExtractor, type ExtractedFact } from "../fact-extractor";
 import type { MemoryCategory } from "../../memory/types";
-import { Log } from "../../../packages/agent-core/src/util/log";
+import { Log } from "../../../packages/zee-core/src/util/log";
 
 const log = Log.create({ service: "fact-extraction-hook" });
 

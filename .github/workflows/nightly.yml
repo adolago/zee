@@ -70,7 +70,7 @@ jobs:
           DATE=$(date +%Y%m%d)
 
           # Read current version from package.json and increment patch
-          CURRENT=$(jq -r '.version' packages/agent-core/package.json)
+          CURRENT=$(jq -r '.version' packages/zee-core/package.json)
           # Strip any prerelease suffix (e.g., -alpha, -alpha.nightly.*)
           BASE=$(echo "$CURRENT" | sed 's/-.*//')
           # Parse major.minor.patch
@@ -84,22 +84,22 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
           # Update package.json versions using sed (npm version fails on catalog: refs)
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" packages/agent-core/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" packages/zee-core/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" package.json
 
           echo "Updated versions to ${VERSION}"
-          grep '"version"' packages/agent-core/package.json
+          grep '"version"' packages/zee-core/package.json
 
       - name: Build
         if: steps.changes.outputs.has_changes == 'true'
         run: |
-          cd packages/agent-core
+          cd packages/zee-core
           bun run build
 
       - name: Publish to npm
         if: steps.changes.outputs.has_changes == 'true'
         run: |
-          cd packages/agent-core
+          cd packages/zee-core
           npm publish --access public --provenance --tag nightly
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -143,4 +143,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agent-core-nightly-${{ steps.version.outputs.version }}
-          path: packages/agent-core/dist
+          path: packages/zee-core/dist

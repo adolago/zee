@@ -60,7 +60,7 @@ cd agent-core
 bun install
 
 # Build the project
-cd packages/agent-core
+cd packages/zee-core
 bun run build
 
 # Install the binary
@@ -69,18 +69,18 @@ cp dist/agent-core-linux-x64/bin/agent-core ~/bin/agent-core
 
 ### Configuration
 
-Agent-core reads JSONC config from `~/.config/agent-core/agent-core.jsonc` or `.agent-core/agent-core.jsonc`.
+Agent-core reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
 Environment variables are used only for secrets (Qdrant settings are config-only).
 
 #### Paths and overrides
 
 Defaults follow XDG:
 
-- Config: `~/.config/agent-core`
-- Data: `~/.local/share/agent-core`
-- Cache: `~/.cache/agent-core`
-- State: `~/.local/state/agent-core`
-- Workspace (default worktree): `~/.local/share/agent-core/worktree`
+- Config: `~/.config/zee`
+- Data: `~/.local/share/zee`
+- Cache: `~/.cache/zee`
+- State: `~/.local/state/zee`
+- Workspace (default worktree): `~/.local/share/zee/worktree`
 
 To co-locate everything under a single state root, set `AGENT_CORE_STATE_DIR` (legacy: `OPENCODE_STATE_DIR`).
 This makes config/data/cache/logs/workspace resolve under that directory as `config/`, `data/`, `cache/`, `logs/`,
@@ -169,7 +169,7 @@ agent-core daemon --gateway
 
 ```
 agent-core/
-├── packages/agent-core/    # Main CLI/TUI/daemon
+├── packages/zee-core/    # Main CLI/TUI/daemon
 ├── src/
 │   ├── personas/           # Persona logic and routing
 │   ├── memory/             # Qdrant semantic memory

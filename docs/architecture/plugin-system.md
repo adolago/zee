@@ -16,13 +16,13 @@ The runtime plugin system is intentionally simple: plugins are loaded, their hoo
 
 These are the types used by plugin authors and by the runtime loader:
 
-- `packages/agent-core/src/pkg/plugin/index.ts` (exported via `@agent-core/plugin`)
-- `packages/agent-core/src/pkg/plugin/tool.ts` (tool contracts)
-- `packages/agent-core/src/pkg/plugin/shell.ts` (Bun shell contracts)
+- `packages/zee-core/src/pkg/plugin/index.ts` (exported via `@zee/plugin`)
+- `packages/zee-core/src/pkg/plugin/tool.ts` (tool contracts)
+- `packages/zee-core/src/pkg/plugin/shell.ts` (Bun shell contracts)
 
 ### Runtime Loader (Kernel)
 
-- `packages/agent-core/src/plugin/index.ts`
+- `packages/zee-core/src/plugin/index.ts`
 
 This module is responsible for:
 

@@ -1,12 +1,12 @@
-import { Dialog } from "@agent-core/ui/dialog"
-import { List } from "@agent-core/ui/list"
-import { Switch } from "@agent-core/ui/switch"
-import { Button } from "@agent-core/ui/button"
+import { Dialog } from "@zee/ui/dialog"
+import { List } from "@zee/ui/list"
+import { Switch } from "@zee/ui/switch"
+import { Button } from "@zee/ui/button"
 import type { Component } from "solid-js"
 import { useLocal } from "@/context/local"
 import { popularProviders } from "@/hooks/use-providers"
 import { useLanguage } from "@/context/language"
-import { useDialog } from "@agent-core/ui/context/dialog"
+import { useDialog } from "@zee/ui/context/dialog"
 import { DialogSelectProvider } from "./dialog-select-provider"
 
 export const DialogManageModels: Component = () => {

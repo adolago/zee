@@ -1,7 +1,7 @@
 /**
  * Agent Module - Public API
  *
- * This module exports the agent persona system for agent-core.
+ * This module exports the agent persona system for zee.
  * It supports three use cases:
  * - Stanley: Professional financial analysis
  * - Zee: Personal AI assistant

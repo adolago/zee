@@ -1,5 +1,5 @@
-import { createAgentCoreClient } from "@agent-core/core/pkg/sdk/v2/client"
-import { base64Encode } from "@agent-core/util/encode"
+import { createAgentCoreClient } from "@zee/core/pkg/sdk/v2/client"
+import { base64Encode } from "@zee/util/encode"
 
 export const serverHost = process.env.PLAYWRIGHT_SERVER_HOST ?? "localhost"
 export const serverPort = process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"

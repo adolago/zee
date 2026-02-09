@@ -1,7 +1,7 @@
 /**
  * Zee Banner Tools
  *
- * Maintains an always-on rotating banner in the agent-core TUI.
+ * Maintains an always-on rotating banner in the zee TUI.
  * The banner is global (Zee-owned) and is shown even when using other personas.
  */
 
@@ -9,8 +9,8 @@ import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types.js";
 import { getTodayEvents, checkCredentialsExist, type CalendarEvent } from "./google/calendar.js";
 import { getMemory } from "../../memory/unified.js";
-import { Global } from "../../../packages/agent-core/src/global/index.js";
-import { Storage } from "../../../packages/agent-core/src/storage/storage.js";
+import { Global } from "../../../packages/zee-core/src/global/index.js";
+import { Storage } from "../../../packages/zee-core/src/storage/storage.js";
 import path from "path";
 import fs from "fs/promises";
 
@@ -174,7 +174,7 @@ async function createBannerRefreshCronJob(): Promise<ToolExecutionResult> {
         method: "cron.add",
         params: {
           name: "zee-banner-refresh",
-          description: "Auto-refresh Zee banner for agent-core TUI",
+          description: "Auto-refresh Zee banner for zee TUI",
           enabled: true,
           schedule: { kind: "every", everyMs: 900000 },
           sessionTarget: "main",
@@ -353,7 +353,7 @@ export const bannerRefreshTool: ToolDefinition = {
   id: "zee:banner-refresh",
   category: "domain",
   init: async () => ({
-    description: `Refresh the Zee banner shown at the top of the agent-core TUI prompt.
+    description: `Refresh the Zee banner shown at the top of the zee TUI prompt.
 
 The banner rotates items and is displayed even when using other personas.
 
@@ -437,7 +437,7 @@ export const bannerPushTool: ToolDefinition = {
   id: "zee:banner-push",
   category: "domain",
   init: async () => ({
-    description: `Push a message into the Zee banner shown in agent-core TUI.
+    description: `Push a message into the Zee banner shown in zee TUI.
 
 Messages are not dismissible in the UI; they expire after ttlMinutes (default: 24h).`,
     parameters: BannerPushParams,
@@ -495,4 +495,3 @@ Messages are not dismissible in the UI; they expire after ttlMinutes (default: 2
     },
   }),
 };
-

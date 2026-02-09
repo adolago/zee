@@ -1,5 +1,5 @@
-import { createAgentCoreClient } from "@agent-core/core/pkg/sdk/v2/client"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createAgentCoreClient } from "@zee/core/pkg/sdk/v2/client"
+import { createSimpleContext } from "@zee/ui/context"
 import { batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { usePlatform } from "@/context/platform"

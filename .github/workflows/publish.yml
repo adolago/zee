@@ -38,17 +38,17 @@ jobs:
       - name: Update version (if provided)
         if: inputs.version
         run: |
-          cd packages/agent-core
+          cd packages/zee-core
           npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Build
         run: |
-          cd packages/agent-core
+          cd packages/zee-core
           bun run build
 
       - name: Publish to npm
         run: |
-          cd packages/agent-core
+          cd packages/zee-core
           npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -57,4 +57,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agent-core-dist
-          path: packages/agent-core/dist
+          path: packages/zee-core/dist

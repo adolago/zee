@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "solid-js"
-import { Dialog } from "@agent-core/ui/dialog"
-import { Button } from "@agent-core/ui/button"
-import { useDialog } from "@agent-core/ui/context/dialog"
+import { Dialog } from "@zee/ui/dialog"
+import { Button } from "@zee/ui/button"
+import { useDialog } from "@zee/ui/context/dialog"
 import { useSettings } from "@/context/settings"
 
 export type Highlight = {

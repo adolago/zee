@@ -92,10 +92,10 @@ export interface SentinelRecord {
 // =============================================================================
 
 const SENTINEL_NAMESPACE = "zee:restart-sentinel";
-const SENTINEL_COLLECTION = "agent_core_sentinel";
+const SENTINEL_COLLECTION = "zee_sentinel";
 const SENTINEL_FILE_PATH = path.join(
   process.env.XDG_STATE_HOME ?? path.join(os.homedir(), ".local", "state"),
-  "agent-core",
+  "zee",
   "restart-sentinel.json"
 );
 
@@ -266,7 +266,7 @@ function getQdrantClient(): SentinelQdrantClient {
   const config = getMemoryQdrantConfig();
   if (!config.url) {
     throw new Error(
-      "Qdrant URL not configured. Set memory.qdrant.url in agent-core.jsonc"
+      "Qdrant URL not configured. Set memory.qdrant.url in zee.jsonc"
     );
   }
 

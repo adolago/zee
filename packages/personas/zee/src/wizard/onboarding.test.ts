@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   healthCommand: vi.fn(async () => {}),
   ensureSystemdUserLingerInteractive: vi.fn(async () => {}),
   isSystemdUserServiceAvailable: vi.fn(async () => true),
-  runAgentCoreTui: vi.fn(async () => {}),
+  runZeeTui: vi.fn(async () => {}),
 }));
 
 let _ensureWorkspaceAndSessions: ReturnType<typeof vi.fn>;
@@ -43,8 +43,8 @@ vi.mock("../daemon/systemd.js", () => ({
   isSystemdUserServiceAvailable: mocks.isSystemdUserServiceAvailable,
 }));
 
-vi.mock("../tui/agent-core-tui.js", () => ({
-  runAgentCoreTui: mocks.runAgentCoreTui,
+vi.mock("../tui/zee-tui.js", () => ({
+  runZeeTui: mocks.runZeeTui,
 }));
 
 describe("runOnboardingWizard", () => {
@@ -55,7 +55,7 @@ describe("runOnboardingWizard", () => {
     mocks.healthCommand.mockClear();
     mocks.ensureSystemdUserLingerInteractive.mockClear();
     mocks.isSystemdUserServiceAvailable.mockClear();
-    mocks.runAgentCoreTui.mockClear();
+    mocks.runZeeTui.mockClear();
     readConfigFileSnapshot = vi
       .spyOn(config, "readConfigFileSnapshot")
       .mockResolvedValue({ exists: false, valid: true, config: {} });
@@ -168,11 +168,11 @@ describe("runOnboardingWizard", () => {
     expect(mocks.setupChannels).not.toHaveBeenCalled();
     expect(mocks.setupSkills).not.toHaveBeenCalled();
     expect(mocks.healthCommand).not.toHaveBeenCalled();
-    expect(mocks.runAgentCoreTui).not.toHaveBeenCalled();
+    expect(mocks.runZeeTui).not.toHaveBeenCalled();
   });
 
   it("launches TUI without auto-delivery when hatching", async () => {
-    mocks.runAgentCoreTui.mockClear();
+    mocks.runZeeTui.mockClear();
 
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-onboard-"));
     await fs.writeFile(path.join(workspaceDir, DEFAULT_BOOTSTRAP_FILENAME), "{}");
@@ -217,7 +217,7 @@ describe("runOnboardingWizard", () => {
       prompter,
     );
 
-    expect(mocks.runAgentCoreTui).toHaveBeenCalledWith(
+    expect(mocks.runZeeTui).toHaveBeenCalledWith(
       expect.objectContaining({
         message: "Wake up, my friend!",
       }),
@@ -228,7 +228,7 @@ describe("runOnboardingWizard", () => {
   });
 
   it("offers TUI hatch even without BOOTSTRAP.md", async () => {
-    mocks.runAgentCoreTui.mockClear();
+    mocks.runZeeTui.mockClear();
 
     const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-onboard-"));
 
@@ -272,7 +272,7 @@ describe("runOnboardingWizard", () => {
       prompter,
     );
 
-    expect(mocks.runAgentCoreTui).toHaveBeenCalledWith(
+    expect(mocks.runZeeTui).toHaveBeenCalledWith(
       expect.objectContaining({
         message: undefined,
       }),

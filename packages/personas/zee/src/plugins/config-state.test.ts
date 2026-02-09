@@ -5,7 +5,7 @@ import { normalizePluginsConfig } from "./config-state.js";
 describe("normalizePluginsConfig", () => {
   it("uses default memory slot when not specified", () => {
     const result = normalizePluginsConfig({});
-    expect(result.slots.memory).toBe("agent-core");
+    expect(result.slots.memory).toBe("zee");
   });
 
   it("respects explicit memory slot value", () => {
@@ -40,13 +40,13 @@ describe("normalizePluginsConfig", () => {
     const result = normalizePluginsConfig({
       slots: { memory: "" },
     });
-    expect(result.slots.memory).toBe("agent-core");
+    expect(result.slots.memory).toBe("zee");
   });
 
   it("uses default when memory slot is whitespace only", () => {
     const result = normalizePluginsConfig({
       slots: { memory: "   " },
     });
-    expect(result.slots.memory).toBe("agent-core");
+    expect(result.slots.memory).toBe("zee");
   });
 });

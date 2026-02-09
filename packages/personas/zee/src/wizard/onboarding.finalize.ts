@@ -20,7 +20,7 @@ import type { ZeeConfig } from "../config/config.js";
 import { resolveGatewayService } from "../daemon/service.js";
 import { isSystemdUserServiceAvailable } from "../daemon/systemd.js";
 import type { RuntimeEnv } from "../runtime.js";
-import { runAgentCoreTui } from "../tui/agent-core-tui.js";
+import { runZeeTui } from "../tui/zee-tui.js";
 import { resolveUserPath } from "../utils.js";
 import {
   buildGatewayInstallPlan,
@@ -277,9 +277,9 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
 
     await prompter.note(
       [
-        "The TUI now runs via agent-core.",
-        "It connects to the agent-core daemon (starts it if needed).",
-        "If daemon auth is enabled, set AGENT_CORE_SERVER_PASSWORD.",
+        "The TUI now runs via zee.",
+        "It connects to the zee daemon (starts it if needed).",
+        "If daemon auth is enabled, set ZEE_SERVER_PASSWORD.",
       ].join("\n"),
       "TUI auth",
     );
@@ -294,9 +294,12 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
     })) as "tui" | "later";
 
     if (hatchChoice === "tui") {
-      await runAgentCoreTui({
+      await runZeeTui(
+        {
         message: hasBootstrap ? "Wake up, my friend!" : undefined,
-      }, runtime);
+        },
+        runtime,
+      );
       ranTui = true;
     } else {
       await prompter.note(

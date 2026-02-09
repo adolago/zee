@@ -10,8 +10,8 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolRuntime, ToolExecutionContext, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/agent-core/src/util/log";
-import { validateMediaPath, PathValidationError } from "../../../packages/agent-core/src/security/validate-path.js";
+import { Log } from "../../../packages/zee-core/src/util/log";
+import { validateMediaPath, PathValidationError } from "../../../packages/zee-core/src/security/validate-path.js";
 import {
   SPLITWISE_ACTIONS,
   buildSplitwiseRequest,
@@ -426,8 +426,8 @@ Matrix: to=room ID (e.g. "!room:server").`,
               output: `Failed to send WhatsApp message: ${result.error || "Unknown error"}
 
 Troubleshooting:
-- Ensure \`agent-core daemon\` is running
-- Check \`agent-core debug status\` shows Gateway: Active
+- Ensure \`zee daemon\` is running
+- Check \`zee debug status\` shows Gateway: Active
 - Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`,
             };
           }
@@ -483,8 +483,8 @@ ${preview}`,
               output: `Failed to send Matrix message: ${result.error || "Unknown error"}
 
 Troubleshooting:
-- Ensure \`agent-core daemon\` is running
-- Check \`agent-core debug status\` shows Gateway: Active
+- Ensure \`zee daemon\` is running
+- Check \`zee debug status\` shows Gateway: Active
 - Verify the room ID is correct (e.g., "!room:server")`,
             };
           }
@@ -513,7 +513,7 @@ Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
           output: `Failed to send message: ${errorMsg}
 
 Troubleshooting:
-- Ensure agent-core daemon is running
+- Ensure zee daemon is running
 - Check gateway status with /status command
 - Verify network connectivity`,
         };
@@ -934,7 +934,7 @@ export const splitwiseTool: ToolDefinition = {
           metadata: { action: args.action, enabled: false },
           output: `Splitwise tooling is disabled.
 
-Enable it in agent-core.jsonc:
+Enable it in zee.jsonc:
 {
   "zee": {
     "splitwise": {
@@ -961,8 +961,8 @@ Enable it in agent-core.jsonc:
           output: `Splitwise token is not configured.
 
 Set one of:
-- zee.splitwise.token in agent-core.jsonc
-- zee.splitwise.tokenFile in agent-core.jsonc
+- zee.splitwise.token in zee.jsonc
+- zee.splitwise.tokenFile in zee.jsonc
 - SPLITWISE_TOKEN environment variable`,
         };
       }
@@ -1056,7 +1056,7 @@ export const codexbarTool: ToolDefinition = {
           metadata: { enabled: false },
           output: `CodexBar tooling is disabled.
 
-Enable it in agent-core.jsonc:
+Enable it in zee.jsonc:
 {
   "zee": {
     "codexbar": {
@@ -1194,7 +1194,7 @@ To enable reactions, add the /gateway/whatsapp/react endpoint to the daemon.`,
             metadata: { action, chatJid, messageId, emoji, error: errorMsg },
             output: `Could not connect to daemon to send reaction.
 
-Ensure agent-core daemon is running with --whatsapp flag.
+Ensure zee daemon is running with --whatsapp flag.
 
 The reaction would be:
 - Chat: ${chatJid}

@@ -1,5 +1,5 @@
 import type { DesktopTheme } from "./types"
-import agentCoreThemeJson from "./themes/agent-core.json"
+import zeeCoreThemeJson from "./themes/zee.json"
 import oc1ThemeJson from "./themes/oc-1.json"
 import tokyoThemeJson from "./themes/tokyonight.json"
 import draculaThemeJson from "./themes/dracula.json"
@@ -20,7 +20,7 @@ const zeeThemeJson = generateDesktopPersonaTheme("zee")
 const stanleyThemeJson = generateDesktopPersonaTheme("stanley")
 const johnyThemeJson = generateDesktopPersonaTheme("johny")
 
-export const agentCoreTheme = agentCoreThemeJson as DesktopTheme
+export const zeeCoreTheme = zeeCoreThemeJson as DesktopTheme
 export const oc1Theme = oc1ThemeJson as DesktopTheme
 export const tokyonightTheme = tokyoThemeJson as DesktopTheme
 export const draculaTheme = draculaThemeJson as DesktopTheme
@@ -42,7 +42,8 @@ export const johnyTheme = johnyThemeJson as DesktopTheme
 
 export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
   "oc-1": oc1Theme,
-  "agent-core": agentCoreTheme,
+  "zee-core": zeeCoreTheme,
+  "agent-core": zeeCoreTheme, // legacy alias
   aura: auraTheme,
   ayu: ayuTheme,
   carbonfox: carbonfoxTheme,

@@ -20,7 +20,7 @@ import type {
 } from './types';
 import type { PermissionRequest, PermissionResponse } from './permission';
 import { PermissionChecker, PermissionDeniedError } from './permission';
-import { Log } from '../../packages/agent-core/src/util/log';
+import { Log } from '../../packages/zee-core/src/util/log';
 import { resolveToolSandbox } from './security/sandbox';
 import { validateToolPath } from './security/validate-path';
 

@@ -234,7 +234,7 @@ export const dict = {
   "dialog.mcp.empty": "Ingen MCP'er konfigureret",
 
   "dialog.lsp.empty": "LSP'er registreret automatisk fra filtyper",
-  "dialog.plugins.empty": "Plugins konfigureret i agent-core.json",
+  "dialog.plugins.empty": "Plugins konfigureret i zee.json",
 
   "mcp.status.connected": "forbundet",
   "mcp.status.failed": "mislykkedes",
@@ -395,7 +395,7 @@ export const dict = {
   "error.chain.responseBody": "Svarindhold:\n{{body}}",
   "error.chain.didYouMean": "Mente du: {{suggestions}}",
   "error.chain.modelNotFound": "Model ikke fundet: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Tjek dine konfigurations (agent-core.json) udbyder/modelnavne",
+  "error.chain.checkConfig": "Tjek dine konfigurations (zee.json) udbyder/modelnavne",
   "error.chain.mcpFailed": 'MCP-server "{{name}}" fejlede. Bemærk, Agent Core understøtter ikke MCP-godkendelse endnu.',
   "error.chain.providerAuthFailed": "Udbydergodkendelse mislykkedes ({{provider}}): {{message}}",
   "error.chain.providerInitFailed":

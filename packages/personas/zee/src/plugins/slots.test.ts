@@ -76,7 +76,7 @@ describe("applyExclusiveSlotSelection", () => {
 
     expect(result.changed).toBe(true);
     expect(result.warnings).toContain(
-      'Exclusive slot "memory" switched from "agent-core" to "memory".',
+      'Exclusive slot "memory" switched from "zee" to "memory".',
     );
   });
 

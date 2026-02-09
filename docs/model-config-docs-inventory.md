@@ -6,9 +6,9 @@ This inventory lists markdown files in the repo that mention model selection or 
 
 | File | Selection terms | Param terms |
 | --- | --- | --- |
-| `.agent-core/agent/johny.md` | - | max_tokens, thinking, top_p |
-| `.agent-core/agent/stanley.md` | fallback | temperature |
-| `.agent-core/agent/zee.md` | - | Thinking, temperature, thinking, top_p |
+| `.zee/agent/johny.md` | - | max_tokens, thinking, top_p |
+| `.zee/agent/stanley.md` | fallback | temperature |
+| `.zee/agent/zee.md` | - | Thinking, temperature, thinking, top_p |
 | `.agents/skills/@johny/oracle/SKILL.md` | alias, fallback | - |
 | `.agents/skills/@johny/problem-solving/SKILL.md` | - | thinking |
 | `.agents/skills/@johny/session-logs/SKILL.md` | - | thinking |
@@ -28,9 +28,9 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `docs/providers/BLACKLIST_CANDIDATES.md` | fallback, model selection | Thinking |
 | `docs/providers/EXTENDED_BLACKLIST.md` | - | thinking |
 | `docs/providers/PROVIDERS_DEEP_DIVE.md` | alias, fallback, fallbacks | thinking |
-| `packages/agent-core-adapter/README.md` | Model selection | - |
-| `packages/agent-core/src/cli/cmd/tui/CLAUDE.md` | Alias | - |
-| `packages/agent-core/src/cli/cmd/tui/ui/CLAUDE.md` | alias | topP |
+| `packages/zee-core-adapter/README.md` | Model selection | - |
+| `packages/zee-core/src/cli/cmd/tui/CLAUDE.md` | Alias | - |
+| `packages/zee-core/src/cli/cmd/tui/ui/CLAUDE.md` | alias | topP |
 | `packages/app/README.md` | - | seed |
 | `packages/personas/zee/.agent/workflows/update_clawdbot.md` | fallback | - |
 | `packages/personas/zee/AGENTS.md` | alias, allowlist | - |

@@ -1,7 +1,7 @@
 /**
  * Centralized Path Resolution
  *
- * All persona and asset paths are resolved from AGENT_CORE_ROOT.
+ * All persona and asset paths are resolved from ZEE_ROOT.
  * No need for env vars like STANLEY_REPO, ZEE_REPO, etc.
  */
 
@@ -10,25 +10,40 @@ import fs from "fs"
 import os from "os"
 
 /**
- * Get the agent-core root directory.
+ * Get the Zee root directory.
  * Order of precedence:
- * 1. AGENT_CORE_ROOT env var (set by binary or launcher)
+ * 1. ZEE_ROOT env var (set by binary or launcher)
  * 2. Source development path
  */
-export function getAgentCoreRoot(): string {
-  if (process.env.AGENT_CORE_ROOT) {
-    return process.env.AGENT_CORE_ROOT
+export function getZeeRoot(): string {
+  const envRoot = process.env.ZEE_ROOT || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
+  if (envRoot) return envRoot
+
+  // Fallback to common source paths for development.
+  const candidates = [
+    path.join(os.homedir(), ".local", "src", "zee"),
+    path.join(os.homedir(), ".local", "src", "agent-core"), // legacy
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate
   }
-  // Fallback to source path for development
-  return path.join(os.homedir(), ".local", "src", "agent-core")
+  return candidates[0]!
 }
 
 /**
- * Persona paths - resolved from AGENT_CORE_ROOT/packages/personas/
+ * Backward-compat alias.
+ * Prefer getZeeRoot() for new code.
+ */
+export function getAgentCoreRoot(): string {
+  return getZeeRoot()
+}
+
+/**
+ * Persona paths - resolved from ZEE_ROOT/packages/personas/
  */
 export const Personas = {
   root(): string {
-    return path.join(getAgentCoreRoot(), "packages", "personas")
+    return path.join(getZeeRoot(), "packages", "personas")
   },
 
   zee(): string {
@@ -136,11 +151,11 @@ export const Zee = {
 }
 
 /**
- * Agent-core assets paths
+ * Zee assets paths
  */
 export const Assets = {
   root(): string {
-    return path.join(getAgentCoreRoot(), ".agent-core")
+    return path.join(getZeeRoot(), ".zee")
   },
 
   agents(): string {
@@ -156,6 +171,6 @@ export const Assets = {
   },
 
   config(): string {
-    return path.join(this.root(), "agent-core.jsonc")
+    return path.join(this.root(), "zee.jsonc")
   },
 }

@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/agent-core/src/util/log";
+import { Log } from "../../../packages/zee-core/src/util/log";
 
 const log = Log.create({ service: "zee-browser" });
 
@@ -410,7 +410,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             output: `Cannot connect to Zee browser control server.
 
 Make sure:
-1. Zee gateway is running (agent-core daemon --gateway)
+1. Zee gateway is running (zee daemon --gateway)
 2. Browser control is enabled in Zee config
 3. Browser control port is accessible (default: 18791)
 

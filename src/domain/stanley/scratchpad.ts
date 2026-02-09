@@ -15,11 +15,11 @@ import path from "node:path";
 import os from "node:os";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
 
-// State directory: ~/.local/state/agent-core/stanley/scratchpad/
+// State directory: ~/.local/state/zee/stanley/scratchpad/
 function getScratchpadDir(): string {
   const stateDir = process.env.XDG_STATE_HOME
-    ? path.join(process.env.XDG_STATE_HOME, "agent-core")
-    : path.join(os.homedir(), ".local", "state", "agent-core");
+    ? path.join(process.env.XDG_STATE_HOME, "zee")
+    : path.join(os.homedir(), ".local", "state", "zee");
   return path.join(stateDir, "stanley", "scratchpad");
 }
 

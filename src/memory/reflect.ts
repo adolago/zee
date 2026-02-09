@@ -15,7 +15,7 @@
 import type { Memory } from "./unified";
 import type { MemoryEntry } from "./types";
 import { generateEntityPages } from "./entity-pages";
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 
 const log = Log.create({ service: "memory-reflect" });
 

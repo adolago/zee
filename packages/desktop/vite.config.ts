@@ -1,5 +1,5 @@
 import { defineConfig } from "vite"
-import appPlugin from "@agent-core/app/vite"
+import appPlugin from "@zee/app/vite"
 
 const host = process.env.TAURI_DEV_HOST
 

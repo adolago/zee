@@ -1,6 +1,6 @@
 import { createStore, reconcile } from "solid-js/store"
 import { createEffect, createMemo } from "solid-js"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createSimpleContext } from "@zee/ui/context"
 import { persisted } from "@/utils/persist"
 
 export interface NotificationSettings {

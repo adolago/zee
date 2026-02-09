@@ -1,5 +1,5 @@
-import { createAgentCoreClient, type Event } from "@agent-core/core/pkg/sdk/v2/client"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createAgentCoreClient, type Event } from "@zee/core/pkg/sdk/v2/client"
+import { createSimpleContext } from "@zee/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { createEffect, createMemo, onCleanup } from "solid-js"
 import { useGlobalSDK } from "./global-sdk"

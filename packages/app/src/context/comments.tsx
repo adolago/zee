@@ -1,6 +1,6 @@
 import { batch, createMemo, createRoot, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createSimpleContext } from "@zee/ui/context"
 import { useParams } from "@solidjs/router"
 import { Persist, persisted } from "@/utils/persist"
 import type { SelectedLineRange } from "@/context/file"

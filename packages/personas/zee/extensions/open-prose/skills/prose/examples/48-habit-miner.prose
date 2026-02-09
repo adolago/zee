@@ -1,6 +1,6 @@
 # Habit Miner
 # Excavates your AI session history to find recurring workflows worth automating
-# Scans .claude, .agent-core, .cursor, etc. — discovers patterns, writes .prose programs
+# Scans .claude, .zee, .cursor, etc. — discovers patterns, writes .prose programs
 #
 # BACKEND: Run with sqlite+ or postgres for incremental processing across runs
 #   prose run 48-habit-miner.prose --backend sqlite+
@@ -26,7 +26,7 @@ agent scout:
 
     Check common locations:
     - ~/.claude/ (Claude Code)
-    - ~/.agent-core/ (Agent Core)
+    - ~/.zee/ (Agent Core)
     - ~/.cursor/ (Cursor)
     - ~/.continue/ (Continue)
     - ~/.aider/ (Aider)
@@ -49,7 +49,7 @@ agent scout:
   """
   permissions:
     bash: allow
-    read: ["~/.claude/**", "~/.agent-core/**", "~/.cursor/**", "~/.continue/**",
+    read: ["~/.claude/**", "~/.zee/**", "~/.cursor/**", "~/.continue/**",
            "~/.aider/**", "~/.copilot/**", "~/.codeium/**", "~/.tabnine/**",
            "~/.config/**", "~/.local/share/**"]
 
@@ -75,7 +75,7 @@ agent parser:
   """
   permissions:
     bash: allow
-    read: ["~/.claude/**", "~/.agent-core/**", "~/.cursor/**", "~/.continue/**",
+    read: ["~/.claude/**", "~/.zee/**", "~/.cursor/**", "~/.continue/**",
            "~/.aider/**", "~/.copilot/**", "~/.codeium/**", "~/.tabnine/**"]
 
 agent miner:

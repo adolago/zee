@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Script } from "@agent-core/script"
+import { Script } from "@zee/script"
 import { $ } from "bun"
 
 const dir = new URL("..", import.meta.url).pathname

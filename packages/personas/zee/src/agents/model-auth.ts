@@ -221,7 +221,7 @@ export async function resolveApiKeyForProvider(params: {
     [
       `No API key found for provider "${provider}".`,
       `Auth store: ${authStorePath} (agentDir: ${resolvedAgentDir}).`,
-      `Configure auth in ${authStorePath} (agent-core auth.json).`,
+      `Configure auth in ${authStorePath} (zee auth.json).`,
     ].join(" "),
   );
 }

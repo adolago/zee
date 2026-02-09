@@ -16,7 +16,7 @@ import type {
   ToolCategory,
   SurfaceType,
 } from './types';
-import { Log } from '../../packages/agent-core/src/util/log';
+import { Log } from '../../packages/zee-core/src/util/log';
 
 const log = Log.create({ service: 'mcp-permission' });
 

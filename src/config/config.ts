@@ -3,9 +3,9 @@
  *
  * Implements the hierarchical configuration system:
  * 1. Defaults (built-in)
- * 2. Global (~/.config/agent-core/)
- * 3. Project (.agent-core/ in project root)
- * 4. Environment (AGENT_CORE_* variables)
+ * 2. Global (~/.config/zee/)
+ * 3. Project (.zee/ in project root)
+ * 4. Environment (ZEE_* variables; legacy: AGENT_CORE_*, OPENCODE_*)
  * 5. Runtime (programmatic overrides)
  *
  * @module config/config
@@ -40,8 +40,8 @@ import {
 // Missing interpolation sentinels
 // ========================================================================
 
-const MISSING_ENV_SENTINEL = '__AGENT_CORE_MISSING_ENV__';
-const MISSING_FILE_SENTINEL = '__AGENT_CORE_MISSING_FILE__';
+const MISSING_ENV_SENTINEL = '__ZEE_MISSING_ENV__';
+const MISSING_FILE_SENTINEL = '__ZEE_MISSING_FILE__';
 
 // ============================================================================
 // Types
@@ -488,8 +488,13 @@ function loadEnvOverrides(
     setNestedValue(overrides, configPath, parseEnvValue(value));
   }
 
-  // Handle AGENT_CORE_CONFIG for inline JSON config
-  const inlineConfig = env['AGENT_CORE_CONFIG'];
+  // Inline JSON config content override.
+  // Prefer ZEE_CONFIG_CONTENT; keep legacy keys for backward compatibility.
+  const inlineConfig =
+    env['ZEE_CONFIG_CONTENT'] ??
+    env['AGENT_CORE_CONFIG_CONTENT'] ??
+    env['OPENCODE_CONFIG_CONTENT'] ??
+    env['AGENT_CORE_CONFIG'];
   if (inlineConfig) {
     try {
       const parsed = JSON.parse(inlineConfig);

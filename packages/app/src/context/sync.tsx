@@ -1,11 +1,11 @@
 import { batch, createMemo } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
-import { Binary } from "@agent-core/util/binary"
-import { retry } from "@agent-core/util/retry"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { Binary } from "@zee/util/binary"
+import { retry } from "@zee/util/retry"
+import { createSimpleContext } from "@zee/ui/context"
 import { useGlobalSync } from "./global-sync"
 import { useSDK } from "./sdk"
-import type { Message, Part } from "@agent-core/core/pkg/sdk/v2/client"
+import type { Message, Part } from "@zee/core/pkg/sdk/v2/client"
 
 const keyFor = (directory: string, id: string) => `${directory}\n${id}`
 

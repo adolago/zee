@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
-import { createAgentCore } from "@agent-core/sdk"
+import { createAgentCore } from "@zee/sdk"
 import { parseArgs } from "util"
 
 const CHANGELOG_REPO = process.env.CHANGELOG_REPO
@@ -19,7 +19,8 @@ export const team = [
   "fwang",
   "adamdotdevin",
   "iamdavidhill",
-  "agent-core[bot]",
+  "zee[bot]",
+  "agent-core[bot]", // legacy
 ]
 
 export async function getLatestRelease() {
@@ -54,7 +55,7 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
 
   // Get commits that touch the relevant packages
   const log =
-    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/agent-core packages/stanley-core packages/sdk packages/plugin sdks/vscode packages/extensions github`.text()
+    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/zee-core packages/stanley-core packages/sdk packages/plugin sdks/vscode packages/extensions github`.text()
   const hashes = log.split("\n").filter(Boolean)
 
   const commits: Commit[] = []
@@ -69,8 +70,8 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
     const areas = new Set<string>()
 
     for (const file of files.split("\n").filter(Boolean)) {
-      if (file.startsWith("packages/agent-core/src/cli/cmd/")) areas.add("tui")
-      else if (file.startsWith("packages/agent-core/")) areas.add("core")
+      if (file.startsWith("packages/zee-core/src/cli/cmd/")) areas.add("tui")
+      else if (file.startsWith("packages/zee-core/")) areas.add("core")
       else if (file.startsWith("packages/stanley-core/")) areas.add("desktop")
       else if (file.startsWith("packages/sdk/")) areas.add("sdk")
       else if (file.startsWith("packages/plugin/")) areas.add("plugin")

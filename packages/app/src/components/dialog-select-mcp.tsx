@@ -1,9 +1,9 @@
 import { Component, createMemo, createSignal, Show } from "solid-js"
 import { useSync } from "@/context/sync"
 import { useSDK } from "@/context/sdk"
-import { Dialog } from "@agent-core/ui/dialog"
-import { List } from "@agent-core/ui/list"
-import { Switch } from "@agent-core/ui/switch"
+import { Dialog } from "@zee/ui/dialog"
+import { List } from "@zee/ui/list"
+import { Switch } from "@zee/ui/switch"
 import { useLanguage } from "@/context/language"
 
 export const DialogSelectMcp: Component = () => {

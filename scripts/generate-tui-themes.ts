@@ -16,7 +16,7 @@ import {
 
 const THEME_DIR = join(
   import.meta.dir,
-  "../packages/agent-core/src/cli/cmd/tui/context/theme"
+  "../packages/zee-core/src/cli/cmd/tui/context/theme"
 );
 
 interface ThemeDefs {

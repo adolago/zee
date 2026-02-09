@@ -9,7 +9,7 @@ const onboardCommand = vi.fn();
 const callGateway = vi.fn();
 const runChannelLogin = vi.fn();
 const runChannelLogout = vi.fn();
-const runAgentCoreTui = vi.fn();
+const runZeeTui = vi.fn();
 
 const runtime = {
   log: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock("../commands/setup.js", () => ({ setupCommand }));
 vi.mock("../commands/onboard.js", () => ({ onboardCommand }));
 vi.mock("../runtime.js", () => ({ defaultRuntime: runtime }));
 vi.mock("./channel-auth.js", () => ({ runChannelLogin, runChannelLogout }));
-vi.mock("../tui/agent-core-tui.js", () => ({ runAgentCoreTui }));
+vi.mock("../tui/zee-tui.js", () => ({ runZeeTui }));
 vi.mock("../gateway/call.js", () => ({
   callGateway,
   randomIdempotencyKey: () => "idem-test",
@@ -56,7 +56,7 @@ const { buildProgram } = await import("./program.js");
 describe("cli program (smoke)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runAgentCoreTui.mockResolvedValue(undefined);
+    runZeeTui.mockResolvedValue(undefined);
   });
 
   it("runs message with required options", async () => {
@@ -104,7 +104,7 @@ describe("cli program (smoke)", () => {
   it("runs tui without overriding timeout", async () => {
     const program = buildProgram();
     await program.parseAsync(["tui"], { from: "user" });
-    expect(runAgentCoreTui).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: undefined }));
+    expect(runZeeTui).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: undefined }));
   });
 
   it("runs tui with explicit timeout override", async () => {
@@ -112,14 +112,14 @@ describe("cli program (smoke)", () => {
     await program.parseAsync(["tui", "--timeout-ms", "45000"], {
       from: "user",
     });
-    expect(runAgentCoreTui).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 45000 }));
+    expect(runZeeTui).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 45000 }));
   });
 
   it("warns and ignores invalid tui timeout override", async () => {
     const program = buildProgram();
     await program.parseAsync(["tui", "--timeout-ms", "nope"], { from: "user" });
     expect(runtime.error).toHaveBeenCalledWith('warning: invalid --timeout-ms "nope"; ignoring');
-    expect(runAgentCoreTui).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: undefined }));
+    expect(runZeeTui).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: undefined }));
   });
 
   it("runs config alias as configure", async () => {

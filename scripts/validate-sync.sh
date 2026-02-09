@@ -22,15 +22,15 @@ echo ""
 # 1. Check that critical files exist
 echo -e "${YELLOW}Checking critical files...${NC}"
 CRITICAL_FILES=(
-    ".agent-core/agent/zee.md"
-    ".agent-core/agent/stanley.md"
-    ".agent-core/agent/johny.md"
+    ".zee/agent/zee.md"
+    ".zee/agent/stanley.md"
+    ".zee/agent/johny.md"
     ".claude/skills/zee/SKILL.md"
     ".claude/skills/stanley/SKILL.md"
     ".claude/skills/johny/SKILL.md"
-    "packages/agent-core/src/cli/cmd/tui/context/theme/zee.json"
-    "packages/agent-core/src/cli/cmd/tui/context/theme/stanley.json"
-    "packages/agent-core/src/cli/cmd/tui/context/theme/johny.json"
+    "packages/zee-core/src/cli/cmd/tui/context/theme/zee.json"
+    "packages/zee-core/src/cli/cmd/tui/context/theme/stanley.json"
+    "packages/zee-core/src/cli/cmd/tui/context/theme/johny.json"
 )
 
 for file in "${CRITICAL_FILES[@]}"; do
@@ -46,7 +46,7 @@ echo ""
 # 2. Check that agent-core naming is preserved
 echo -e "${YELLOW}Checking agent-core naming...${NC}"
 CONFIG_FILES=(
-    "packages/agent-core/src/global.ts"
+    "packages/zee-core/src/global.ts"
 )
 
 for file in "${CONFIG_FILES[@]}"; do
@@ -72,7 +72,7 @@ echo ""
 
 # 4. Check persona themes are registered
 echo -e "${YELLOW}Checking persona themes...${NC}"
-THEME_FILE="packages/agent-core/src/cli/cmd/tui/context/theme.tsx"
+THEME_FILE="packages/zee-core/src/cli/cmd/tui/context/theme.tsx"
 if [ -f "$THEME_FILE" ]; then
     for theme in zee stanley johny; do
         if grep -q "import $theme from" "$THEME_FILE"; then
@@ -87,7 +87,7 @@ echo ""
 
 # 5. Check agent schema has theme field
 echo -e "${YELLOW}Checking agent schema...${NC}"
-AGENT_FILE="packages/agent-core/src/agent/agent.ts"
+AGENT_FILE="packages/zee-core/src/agent/agent.ts"
 if [ -f "$AGENT_FILE" ]; then
     if grep -q "theme:" "$AGENT_FILE"; then
         echo -e "  ${GREEN}✓${NC} Agent schema has theme field"
@@ -105,7 +105,7 @@ if [ $ERRORS -eq 0 ]; then
     echo ""
     echo "Next steps:"
     echo "  1. Run full test suite: bun turbo test"
-    echo "  2. Build: cd packages/agent-core && bun run build"
+    echo "  2. Build: cd packages/zee-core && bun run build"
     echo "  3. Test with each persona"
 else
     echo -e "${RED}$ERRORS check(s) failed.${NC}"

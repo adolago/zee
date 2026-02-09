@@ -6,8 +6,8 @@
  * ensuring the model knows what capabilities are available via MCP.
  */
 
-import { MCP } from "../../packages/agent-core/src/mcp"
-import { Config } from "../../packages/agent-core/src/config/config"
+import { MCP } from "../../packages/zee-core/src/mcp"
+import { Config } from "../../packages/zee-core/src/config/config"
 
 export interface McpServerInfo {
   name: string

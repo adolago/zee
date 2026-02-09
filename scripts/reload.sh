@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# agent-core reload script
+# zee reload script
 # Usage: ./scripts/reload.sh [OPTIONS]
 #
 # This script:
 # 1. Stops daemon via systemctl --user
 # 2. Optionally cleans build artifacts (--clean or --fresh)
 # 3. Rebuilds from source (unless --no-build)
-# 4. Links binary via direct symlink (~/.bun/bin/agent-core -> dist binary)
+# 4. Links binary via direct symlink (~/.bun/bin/zee -> dist binary)
 # 5. Starts daemon via systemctl --user (unless --no-daemon)
 # 6. Verifies everything is working
 #
-# The daemon is managed by systemd user service (agent-core.service).
+# The daemon is managed by systemd user service (zee.service).
 # Never use pkill/kill -9 to manage the daemon -- use systemctl.
 #
 
@@ -19,13 +19,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-PKG_DIR="$REPO_ROOT/packages/agent-core"
-BINARY_SRC="$PKG_DIR/dist/@agent-core/core-linux-x64/bin/agent-core"
-BINARY_LINK="$HOME/.bun/bin/agent-core"
-DAEMON_PORT="${AGENT_CORE_PORT:-3210}"
-DAEMON_HOST="${AGENT_CORE_HOST:-127.0.0.1}"
-DAEMON_URL="${AGENT_CORE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}"
-SYSTEMD_UNIT="agent-core.service"
+PKG_DIR="$REPO_ROOT/packages/zee-core"
+BINARY_SRC="$PKG_DIR/dist/@zee/core-linux-x64/bin/zee"
+BINARY_LINK="$HOME/.bun/bin/zee"
+DAEMON_PORT="${ZEE_PORT:-${AGENT_CORE_PORT:-3210}}"
+DAEMON_HOST="${ZEE_HOST:-${AGENT_CORE_HOST:-127.0.0.1}}"
+DAEMON_URL="${ZEE_URL:-${AGENT_CORE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}}"
+SYSTEMD_UNIT="zee.service"
 
 # Colors
 RED='\033[0;31m'
@@ -41,7 +41,7 @@ warn() { echo -e "${YELLOW}[ WARN ]${NC} $*"; }
 err() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 resolve_agent_bin() {
-  command -v agent-core 2>/dev/null || true
+  command -v zee 2>/dev/null || true
 }
 
 # Parse args
@@ -135,7 +135,7 @@ do_fresh_clean() {
 show_status() {
   echo ""
   echo "==============================================================="
-  echo "                    AGENT-CORE STATUS"
+  echo "                        ZEE STATUS"
   echo "==============================================================="
   echo ""
 
@@ -172,7 +172,7 @@ show_status() {
     local link_target=$(readlink -f "$BINARY_LINK" 2>/dev/null || true)
     ok "Exists ${link_target:+(-> $link_target)}"
   else
-    err "Not found (run: cd packages/agent-core && bun run build)"
+    err "Not found (run: cd packages/zee-core && bun run build)"
   fi
   echo ""
   echo "Native binary: $BINARY_SRC"
@@ -204,7 +204,7 @@ show_status() {
 
   # Tool directories
   echo "Tool directories:"
-  for dir in "$HOME/.config/agent-core/tool" "$REPO_ROOT/.agent-core/tool"; do
+  for dir in "$HOME/.config/zee/tool" "$HOME/.config/agent-core/tool" "$REPO_ROOT/.zee/tool"; do
     if [[ -d "$dir" ]]; then
       local count=$(ls -1 "$dir"/*.ts 2>/dev/null | wc -l || echo 0)
       ok "$dir ($count tools)"
@@ -250,9 +250,9 @@ show_status() {
 
   # Quick reference
   echo "Quick commands:"
-  echo "  systemctl --user restart agent-core    # restart daemon"
-  echo "  systemctl --user stop agent-core       # stop daemon"
-  echo "  journalctl --user -u agent-core -f     # tail logs"
+  echo "  systemctl --user restart zee           # restart daemon"
+  echo "  systemctl --user stop zee              # stop daemon"
+  echo "  journalctl --user -u zee -f            # tail logs"
   echo "  ./scripts/reload.sh                    # rebuild + restart"
   echo ""
   echo "==============================================================="
@@ -265,7 +265,7 @@ fi
 
 echo ""
 echo "==============================================================="
-echo "                   AGENT-CORE RELOAD"
+echo "                        ZEE RELOAD"
 echo "==============================================================="
 echo ""
 
@@ -303,7 +303,7 @@ fi
 
 # Step 3: Rebuild
 if ! $NO_BUILD; then
-  log "Rebuilding agent-core..."
+  log "Rebuilding zee..."
   cd "$PKG_DIR"
   if bun run build 2>&1 | tail -10; then
     ok "Build complete"

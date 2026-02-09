@@ -1,4 +1,4 @@
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createSimpleContext } from "@zee/ui/context"
 import { AsyncStorage, SyncStorage } from "@solid-primitives/storage"
 
 export type Platform = {

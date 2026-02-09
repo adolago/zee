@@ -5,7 +5,7 @@
  * Only retries idempotent/read operations -- never retries writes or deletes.
  */
 
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 
 const log = Log.create({ service: "swarm:recovery" });
 
@@ -196,8 +196,8 @@ Error: ${error.message}`;
       return `Messaging gateway is not reachable.
 
 To fix:
-1. Start the agent-core daemon: agent-core daemon
-2. Check gateway status: agent-core debug status
+1. Start the zee daemon: zee daemon
+2. Check gateway status: zee debug status
 
 Error: ${error.message}`;
     }

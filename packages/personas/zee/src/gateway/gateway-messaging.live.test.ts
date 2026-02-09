@@ -52,9 +52,10 @@ function resolveGatewayToken(): string | undefined {
     const override = process.env.ZEE_GATEWAY_TOKEN_FILE?.trim();
     const home = process.env.HOME?.trim();
     const stateHome = process.env.XDG_STATE_HOME?.trim() || (home ? path.join(home, ".local", "state") : undefined);
-    const defaultPath = stateHome ? path.join(stateHome, "agent-core", "zee_gateway_token") : undefined;
+    const defaultPath = stateHome ? path.join(stateHome, "zee", "zee_gateway_token") : undefined;
+    const legacyPath = stateHome ? path.join(stateHome, "agent-core", "zee_gateway_token") : undefined;
 
-    const candidates = [override, defaultPath].filter((p): p is string => Boolean(p && p.length > 0));
+    const candidates = [override, defaultPath, legacyPath].filter((p): p is string => Boolean(p && p.length > 0));
     for (const candidate of candidates) {
       try {
         const token = fs.readFileSync(candidate, "utf-8").trim();

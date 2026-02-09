@@ -48,7 +48,7 @@ agent detector:
 
     Check for:
     1. ~/.claude/projects/ - Claude Code (full support)
-    2. ~/.agent-core/ - Agent Core (may differ)
+    2. ~/.zee/ - Agent Core (may differ)
     3. ~/.amp/ - Amp (may differ)
     4. ~/.codex/ - Codex (may differ)
 

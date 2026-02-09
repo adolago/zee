@@ -13,9 +13,9 @@
 
 import { Database } from "bun:sqlite"
 import path from "path"
-import os from "os"
 import fs from "node:fs"
-import { Log } from "../../packages/agent-core/src/util/log"
+import { Log } from "../../packages/zee-core/src/util/log"
+import { resolveStateDir } from "../../packages/zee-core/src/global/dirs"
 
 const log = Log.create({ service: "memory:fts" })
 
@@ -23,7 +23,7 @@ const log = Log.create({ service: "memory:fts" })
 // Configuration
 // ---------------------------------------------------------------------------
 
-const DEFAULT_DB_DIR = path.join(os.homedir(), ".local", "state", "agent-core", "memory")
+const DEFAULT_DB_DIR = path.join(resolveStateDir(), "memory")
 const DEFAULT_DB_NAME = "fts.sqlite"
 
 export interface FtsConfig {

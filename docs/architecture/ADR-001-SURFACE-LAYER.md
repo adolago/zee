@@ -228,7 +228,7 @@ interface MessagingPlatformHandler {
 
 ### Phase 3: Integration (COMPLETED)
 - [x] Connect to agent core
-  - Surface bootstrap module: `packages/agent-core/src/bootstrap/surface.ts`
+  - Surface bootstrap module: `packages/zee-core/src/bootstrap/surface.ts`
   - Integrated into daemon startup/shutdown sequence
   - Status output in daemon startup message
 - [x] Implement platform handlers (Baileys, Matrix)

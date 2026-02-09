@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types.js";
-import { Log } from "../../../packages/agent-core/src/util/log.js";
+import { Log } from "../../../packages/zee-core/src/util/log.js";
 
 const log = Log.create({ service: "zee-cron" });
 
@@ -245,8 +245,8 @@ ${result.storePath ? `- Store: ${result.storePath}` : ""}`,
             metadata: { error: "connection_failed" },
             output: `Could not connect to Zee gateway.
 
-Ensure agent-core daemon is running with gateway enabled:
-  agent-core daemon --gateway
+Ensure zee daemon is running with gateway enabled:
+  zee daemon --gateway
 
 Error: ${errorMsg}`,
           };

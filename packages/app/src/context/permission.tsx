@@ -1,12 +1,12 @@
 import { createMemo, onCleanup } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { createSimpleContext } from "@agent-core/ui/context"
-import type { PermissionRequest } from "@agent-core/core/pkg/sdk/v2/client"
+import { createSimpleContext } from "@zee/ui/context"
+import type { PermissionRequest } from "@zee/core/pkg/sdk/v2/client"
 import { Persist, persisted } from "@/utils/persist"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "./global-sync"
 import { useParams } from "@solidjs/router"
-import { base64Encode } from "@agent-core/util/encode"
+import { base64Encode } from "@zee/util/encode"
 import { decode64 } from "@/utils/base64"
 
 type PermissionRespondFn = (input: {

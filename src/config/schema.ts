@@ -283,7 +283,7 @@ export const VectorDbConfigSchema = z.object({
   /** API key for cloud providers */
   apiKey: z.string().optional(),
   /** Collection/index name */
-  collection: z.string().optional().default('agent-core'),
+  collection: z.string().optional().default('zee'),
   /** Embedding model to use */
   embeddingModel: z.string().optional().default('text-embedding-3-small'),
   /** Embedding dimensions */
@@ -335,7 +335,7 @@ export type PluginEntry = z.infer<typeof PluginEntrySchema>;
 // ============================================================================
 
 /**
- * Complete agent-core configuration
+ * Complete Zee configuration
  */
 export const ConfigSchema = z.object({
   /** JSON schema reference */
@@ -486,11 +486,11 @@ function getSuggestion(issue: z.ZodIssue): string | undefined {
  */
 export const SchemaMetadata = {
   version: '1.0.0',
-  description: 'Unified configuration schema for agent-core',
+  description: 'Unified configuration schema for zee',
   surfaces: ['stanley', 'zee', 'cli', 'web'] as const,
   configLocations: {
-    global: '~/.config/agent-core/',
-    project: '.agent-core/',
-    env: 'AGENT_CORE_*',
+    global: '~/.config/zee/',
+    project: '.zee/',
+    env: 'ZEE_*',
   },
 };

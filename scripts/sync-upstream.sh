@@ -82,11 +82,11 @@ echo ""
 
 # Known conflict-prone files (our customizations)
 CONFLICT_PRONE=(
-    "packages/agent-core/src/provider/provider.ts"
-    "packages/agent-core/src/agent/agent.ts"
-    "packages/agent-core/src/cli/cmd/tui/context/theme.tsx"
-    "packages/agent-core/src/cli/cmd/tui/routes/session"
-    ".agent-core/"
+    "packages/zee-core/src/provider/provider.ts"
+    "packages/zee-core/src/agent/agent.ts"
+    "packages/zee-core/src/cli/cmd/tui/context/theme.tsx"
+    "packages/zee-core/src/cli/cmd/tui/routes/session"
+    ".zee/"
     "vendor/"
 )
 

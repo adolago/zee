@@ -1,4 +1,4 @@
-import { UserMessage } from "@agent-core/core/pkg/sdk/v2"
+import { UserMessage } from "@zee/core/pkg/sdk/v2"
 import { ComponentProps, For, Match, Show, splitProps, Switch } from "solid-js"
 import { DiffChanges } from "./diff-changes"
 import { Tooltip } from "@kobalte/core/tooltip"

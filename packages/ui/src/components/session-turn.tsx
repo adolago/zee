@@ -7,15 +7,15 @@ import {
   type QuestionRequest,
   TextPart,
   ToolPart,
-} from "@agent-core/core/pkg/sdk/v2/client"
-import { type FileDiff } from "@agent-core/core/pkg/sdk/v2"
+} from "@zee/core/pkg/sdk/v2/client"
+import { type FileDiff } from "@zee/core/pkg/sdk/v2"
 import { useData } from "../context"
 import { useDiffComponent } from "../context/diff"
 import { type UiI18nKey, type UiI18nParams, useI18n } from "../context/i18n"
-import { findLast } from "@agent-core/util/array"
-import { getDirectory, getFilename } from "@agent-core/util/path"
+import { findLast } from "@zee/util/array"
+import { getDirectory, getFilename } from "@zee/util/path"
 
-import { Binary } from "@agent-core/util/binary"
+import { Binary } from "@zee/util/binary"
 import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, ParentProps, Show, Switch } from "solid-js"
 import { DiffChanges } from "./diff-changes"
 import { Message, Part } from "./message-part"

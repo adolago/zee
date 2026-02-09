@@ -89,9 +89,9 @@ export type GatewayRemoteConfig = {
 };
 
 export type GatewayDaemonBridgeConfig = {
-  /** If true, route replies through the agent-core daemon. */
+  /** If true, route replies through the zee daemon. */
   enabled?: boolean;
-  /** Base URL for the agent-core daemon HTTP API. */
+  /** Base URL for the zee daemon HTTP API. */
   url?: string;
   /** Optional session map file path (defaults to $ZEE_STATE_DIR/gateway/daemon-sessions.json). */
   sessionStore?: string;

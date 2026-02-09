@@ -2,7 +2,7 @@
  * Zee Claude Code Integration Tools
  *
  * Provides tools to spawn and interact with Claude Code CLI as a dependency.
- * Shares skills and MCP servers with agent-core for unified capabilities.
+ * Shares skills and MCP servers with zee for unified capabilities.
  *
  * Tools:
  * - zee:claude-status - Check Claude CLI availability and auth status
@@ -16,7 +16,7 @@ import path from "node:path";
 import os from "node:os";
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/agent-core/src/util/log";
+import { Log } from "../../../packages/zee-core/src/util/log";
 
 const log = Log.create({ service: "zee-claude-code" });
 
@@ -28,10 +28,12 @@ const CLAUDE_CLI_CREDENTIALS_PATH = path.join(os.homedir(), ".claude", ".credent
 const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes (longer for complex tasks)
 const MAX_TIMEOUT_MS = 600_000; // 10 minutes
 
-// Agent-core configuration paths
-const AGENT_CORE_CONFIG_DIR = path.join(os.homedir(), ".config", "agent-core");
-const AGENT_CORE_MCP_CONFIG = path.join(AGENT_CORE_CONFIG_DIR, "mcp.json");
-const AGENT_CORE_SKILLS_DIR = path.join(process.cwd(), ".claude", "skills");
+// Zee configuration paths
+const ZEE_CONFIG_DIR = path.join(os.homedir(), ".config", "zee");
+const LEGACY_AGENT_CORE_CONFIG_DIR = path.join(os.homedir(), ".config", "agent-core");
+const CONFIG_DIR = fs.existsSync(ZEE_CONFIG_DIR) ? ZEE_CONFIG_DIR : LEGACY_AGENT_CORE_CONFIG_DIR;
+const ZEE_MCP_CONFIG = path.join(CONFIG_DIR, "mcp.json");
+const CLAUDE_SKILLS_DIR = path.join(process.cwd(), ".claude", "skills");
 
 // Model aliases for user convenience
 const MODEL_ALIASES: Record<string, string> = {
@@ -94,9 +96,9 @@ type ClaudeSpawnOptions = {
 function findMcpConfigPaths(): string[] {
   const paths: string[] = [];
 
-  // Check agent-core MCP config
-  if (fs.existsSync(AGENT_CORE_MCP_CONFIG)) {
-    paths.push(AGENT_CORE_MCP_CONFIG);
+  // Check zee MCP config
+  if (fs.existsSync(ZEE_MCP_CONFIG)) {
+    paths.push(ZEE_MCP_CONFIG);
   }
 
   // Check project-level .claude/mcp.json
@@ -118,12 +120,12 @@ function findSkillsDirs(): string[] {
   const dirs: string[] = [];
 
   // Project skills
-  if (fs.existsSync(AGENT_CORE_SKILLS_DIR)) {
-    dirs.push(AGENT_CORE_SKILLS_DIR);
+  if (fs.existsSync(CLAUDE_SKILLS_DIR)) {
+    dirs.push(CLAUDE_SKILLS_DIR);
   }
 
   // User skills
-  const userSkillsDir = path.join(AGENT_CORE_CONFIG_DIR, "skills");
+  const userSkillsDir = path.join(CONFIG_DIR, "skills");
   if (fs.existsSync(userSkillsDir)) {
     dirs.push(userSkillsDir);
   }
@@ -515,15 +517,15 @@ export const claudeSpawnTool: ToolDefinition = {
   id: "zee:claude-spawn",
   category: "domain",
   init: async () => ({
-    description: `Spawn Claude Code CLI with a prompt, sharing skills and MCP servers with agent-core.
+    description: `Spawn Claude Code CLI with a prompt, sharing skills and MCP servers with zee.
 
 This tool runs Claude Code as a subprocess with unified configuration:
-- Shares MCP servers from agent-core (--mcp-config)
+- Shares MCP servers from zee (--mcp-config)
 - Shares skills directories (--add-dir)
 - Supports tool restrictions (--allowedTools, --disallowedTools)
 - Can continue conversations with session IDs
 
-The Claude Code instance has access to the same capabilities as agent-core.
+The Claude Code instance has access to the same capabilities as zee.
 
 Examples:
 - Simple task: { prompt: "Explain this codebase structure" }

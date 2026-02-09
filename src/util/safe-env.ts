@@ -72,7 +72,13 @@ const SAFE_VARS = new Set([
   "LESS",
   "GIT_EDITOR",
 
-  // agent-core specific (non-sensitive)
+  // zee specific (non-sensitive)
+  "ZEE_URL",
+  "ZEE_LOG_LEVEL",
+  "ZEE_WEZTERM_ENABLED",
+  "ZEE_DISABLE_TERMINAL_TITLE",
+
+  // Legacy
   "AGENT_CORE_URL",
   "AGENT_CORE_LOG_LEVEL",
   "AGENT_CORE_WEZTERM_ENABLED",

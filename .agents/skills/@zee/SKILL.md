@@ -178,7 +178,7 @@ npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
 When conducting multi-step financial research:
 
 1. **Tool call deduplication**: All stanley: data tools are wrapped with automatic dedup. Same tool + same args = cached result.
-2. **Scratchpad logging**: Use `stanley:scratchpad` for JSONL audit trail of research steps. Files at `~/.local/state/agent-core/stanley/scratchpad/`.
+2. **Scratchpad logging**: Use `stanley:scratchpad` for JSONL audit trail of research steps. Files at `~/.local/state/zee/stanley/scratchpad/`.
 3. **Efficient patterns**: Check memory for prior research before starting. Summarize findings as you go. Use autonomous-research skill for structured investigations. Use dcf-valuation skill for intrinsic value analysis.
 
 ## Learning System Details
@@ -305,7 +305,7 @@ After completing actions, store relevant results:
 - **Qdrant**: Vector database for semantic memory
 - **Gateway**: `http://127.0.0.1:18791`
 - **Matrix**: `extensions/matrix/` (E2EE via Rust crypto SDK)
-- **ClawHub**: `packages/agent-core/src/pkg/clawhub/`
+- **ClawHub**: `packages/zee-core/src/pkg/clawhub/`
 - **NautilusTrader**: `vendor/nautilus_trader`
 - **OpenBB**: Market data API integration
 

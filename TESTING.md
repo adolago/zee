@@ -4,13 +4,13 @@
 
 ```bash
 # agent-core unit/integration (Bun)
-cd packages/agent-core && bun test
+cd packages/zee-core && bun test
 
 # agent-core single file
-cd packages/agent-core && bun test test/session/compaction.test.ts
+cd packages/zee-core && bun test test/session/compaction.test.ts
 
 # agent-core pattern match
-cd packages/agent-core && bun test --grep "hold mode"
+cd packages/zee-core && bun test --grep "hold mode"
 
 # zee unit/integration (pnpm + Vitest)
 cd packages/personas/zee && pnpm test
@@ -19,12 +19,12 @@ cd packages/personas/zee && pnpm test
 cd packages/app && npx playwright test
 
 # typecheck
-cd packages/agent-core && bun run typecheck
+cd packages/zee-core && bun run typecheck
 ```
 
 ## Test Location Convention
 
-- Tests live in `packages/agent-core/test/`, mirroring `src/` structure
+- Tests live in `packages/zee-core/test/`, mirroring `src/` structure
 - Directory name = source domain (e.g., `test/session/` tests `src/session/`)
 - Loose files in `test/` root are for cross-cutting concerns (keybind, dictation, scheduler)
 - Integration tests go in `test/integration/`
@@ -83,7 +83,7 @@ cd packages/agent-core && bun run typecheck
 ## Manual / Smoke Testing
 
 ```bash
-cd packages/agent-core
+cd packages/zee-core
 bun dev
 ```
 

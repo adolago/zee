@@ -167,7 +167,7 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   enabled: true,
   vectorDb: {
     type: 'qdrant',
-    collection: 'agent-core',
+    collection: 'zee',
     embeddingModel: 'text-embedding-3-small',
     dimensions: 1536,
   },
@@ -194,7 +194,7 @@ export const DEFAULT_PERMISSIONS = {
 // ============================================================================
 
 export const DEFAULT_CONFIG: Config = {
-  $schema: 'https://agent-core.dev/config.json',
+  $schema: 'https://zee.dev/config.json',
 
   // Provider defaults (providers are loaded from environment/auth)
   provider: DEFAULT_PROVIDERS,
@@ -303,11 +303,16 @@ export const SMALL_MODEL_FALLBACK_CHAIN = [
  */
 export const ENV_VAR_MAPPING: Record<string, string> = {
   // Core settings
-  'AGENT_CORE_MODEL': 'model',
-  'AGENT_CORE_SMALL_MODEL': 'smallModel',
-  'AGENT_CORE_DEFAULT_AGENT': 'defaultAgent',
-  'AGENT_CORE_LOG_LEVEL': 'logLevel',
-  'AGENT_CORE_THEME': 'theme',
+  'ZEE_MODEL': 'model',
+  'AGENT_CORE_MODEL': 'model', // legacy
+  'ZEE_SMALL_MODEL': 'smallModel',
+  'AGENT_CORE_SMALL_MODEL': 'smallModel', // legacy
+  'ZEE_DEFAULT_AGENT': 'defaultAgent',
+  'AGENT_CORE_DEFAULT_AGENT': 'defaultAgent', // legacy
+  'ZEE_LOG_LEVEL': 'logLevel',
+  'AGENT_CORE_LOG_LEVEL': 'logLevel', // legacy
+  'ZEE_THEME': 'theme',
+  'AGENT_CORE_THEME': 'theme', // legacy
 
   // Provider API keys
   'ANTHROPIC_API_KEY': 'provider.anthropic.apiKey',
@@ -316,12 +321,16 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
   'GROQ_API_KEY': 'provider.groq.apiKey',
 
   // Surface-specific
-  'AGENT_CORE_WHATSAPP_SESSION': 'surface.stanley.sessionName',
-  'AGENT_CORE_PORT': 'surface.web.port',
-  'AGENT_CORE_HOSTNAME': 'surface.web.hostname',
+  'ZEE_WHATSAPP_SESSION': 'surface.stanley.sessionName',
+  'AGENT_CORE_WHATSAPP_SESSION': 'surface.stanley.sessionName', // legacy
+  'ZEE_PORT': 'surface.web.port',
+  'AGENT_CORE_PORT': 'surface.web.port', // legacy
+  'ZEE_HOSTNAME': 'surface.web.hostname',
+  'AGENT_CORE_HOSTNAME': 'surface.web.hostname', // legacy
 
   // Memory
-  'AGENT_CORE_MEMORY_ENABLED': 'memory.enabled',
+  'ZEE_MEMORY_ENABLED': 'memory.enabled',
+  'AGENT_CORE_MEMORY_ENABLED': 'memory.enabled', // legacy
   'QDRANT_URL': 'memory.vectorDb.url',
   'QDRANT_API_KEY': 'memory.vectorDb.apiKey',
 };
@@ -334,18 +343,18 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
  * Configuration file names to search for (in order of precedence)
  */
 export const CONFIG_FILE_NAMES = [
-  'agent-core.jsonc',
-  'agent-core.json',
-  '.agent-core.jsonc',
-  '.agent-core.json',
+  'zee.jsonc',
+  'zee.json',
+  '.zee.jsonc',
+  '.zee.json',
 ];
 
 /**
  * Config directory names
  */
 export const CONFIG_DIR_NAMES = [
-  '.agent-core',
-  'agent-core',
+  '.zee',
+  '.agent-core', // legacy
 ];
 
 /**
@@ -354,9 +363,9 @@ export const CONFIG_DIR_NAMES = [
 export function getGlobalConfigDir(): string {
   const xdgConfig = process.env.XDG_CONFIG_HOME;
   if (xdgConfig) {
-    return `${xdgConfig}/agent-core`;
+    return `${xdgConfig}/zee`;
   }
 
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  return `${home}/.config/agent-core`;
+  return `${home}/.config/zee`;
 }

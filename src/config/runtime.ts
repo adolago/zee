@@ -1,7 +1,7 @@
 /**
  * Lightweight runtime config loader.
  *
- * Reads agent-core.json(c) for runtime-only settings (memory)
+ * Reads zee.json(c) for runtime-only settings (memory)
  * without invoking the full CLI config pipeline.
  */
 
@@ -77,10 +77,13 @@ export type ZeeCodexbarConfig = {
 };
 
 const CONFIG_PATHS = [
-  path.join(os.homedir(), ".config", "agent-core", "agent-core.jsonc"),
-  path.join(os.homedir(), ".config", "agent-core", "agent-core.json"),
+  path.join(os.homedir(), ".config", "zee", "zee.jsonc"),
+  path.join(os.homedir(), ".config", "zee", "zee.json"),
+  // Legacy locations
+  path.join(os.homedir(), ".config", "agent-core", "zee.jsonc"),
+  path.join(os.homedir(), ".config", "agent-core", "zee.json"),
   Assets.config(),
-  path.join(Assets.root(), "agent-core.json"),
+  path.join(Assets.root(), "zee.json"),
 ];
 
 let cachedConfig: RuntimeConfig | null = null;

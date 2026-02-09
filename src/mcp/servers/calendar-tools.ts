@@ -84,7 +84,7 @@ Events include title, time, location, attendees, and meeting links.`,
               type: "text" as const,
               text: JSON.stringify({
                 success: false,
-                error: "Google Calendar credentials not configured. Run 'agent-core auth login google' first.",
+                error: "Google Calendar credentials not configured. Run 'zee auth login google' first.",
               }),
             }],
             isError: true,

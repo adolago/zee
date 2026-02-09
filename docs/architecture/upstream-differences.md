@@ -28,7 +28,7 @@ Snapshot used for this comparison:
 | --- | --- | --- | --- |
 | Package manager | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | pnpm (`pnpm-lock.yaml`, `packageManager: pnpm@10.23.0`) |
 | Primary runtime | Bun (dev/build) | Bun (dev/build) | Node 22+ (runtime); pnpm for builds; Bun optional for TS execution |
-| CLI framework | yargs (in `packages/agent-core`) | yargs (in `packages/opencode`) | commander (`src/commands`) |
+| CLI framework | yargs (in `packages/zee-core`) | yargs (in `packages/opencode`) | commander (`src/commands`) |
 | Non-TS components | Rust workspace (`Cargo.toml`, `packages/stanley-core`) | none in root | Swift/Kotlin apps (`apps/macos`, `apps/ios`, `apps/android`) |
 
 ## Top-level layout differences
@@ -36,7 +36,7 @@ Snapshot used for this comparison:
 ### agent-core (top-level highlights)
 
 - Persona + memory code at repo root: `src/personas/`, `src/memory/`, `src/swarm/`, `src/domain/`
-- Project-local configuration bundle: `.agent-core/` (commands/tools/themes/plans)
+- Project-local configuration bundle: `.zee/` (commands/tools/themes/plans)
 - Repo-local skills bundle: `.agents/skills/` (persona-scoped skills)
 - Rust workspace: `Cargo.toml`, `Cargo.lock` (currently `packages/stanley-core`)
 
@@ -93,16 +93,16 @@ The command entrypoints live in `src/commands/`.
 
 | Dimension | agent-core | opencode | openclaw |
 | --- | --- | --- | --- |
-| Global config | `~/.config/agent-core/agent-core.json{,c}` | `~/.config/opencode/opencode.json{,c}` | `~/.openclaw/openclaw.json` (or `$OPENCLAW_STATE_DIR/openclaw.json`) |
-| Project config | `.agent-core/` in project root | `.opencode/` in project root | not the primary model; uses the state dir + “workspace” repo |
+| Global config | `~/.config/zee/zee.json{,c}` | `~/.config/opencode/opencode.json{,c}` | `~/.openclaw/openclaw.json` (or `$OPENCLAW_STATE_DIR/openclaw.json`) |
+| Project config | `.zee/` in project root | `.opencode/` in project root | not the primary model; uses the state dir + “workspace” repo |
 | Secrets | env vars only (config JSONC references `{env:...}`) | env vars + config | `~/.openclaw/.env` plus env vars; config can fill defaults |
-| State | `~/.local/state/agent-core/` (plus Qdrant) | `~/.local/state/opencode/` (plus app/server state) | `~/.openclaw/` (agents, creds, logs, sessions, skills, workspace) |
+| State | `~/.local/state/zee/` (plus Qdrant) | `~/.local/state/opencode/` (plus app/server state) | `~/.openclaw/` (agents, creds, logs, sessions, skills, workspace) |
 
 ## Providers / model backends (practical differences)
 
 ### agent-core vs opencode (AI SDK footprint)
 
-`packages/agent-core` keeps a smaller provider surface and adds memory + messaging:
+`packages/zee-core` keeps a smaller provider surface and adds memory + messaging:
 
 - Present in agent-core deps, not in opencode deps: `@qdrant/js-client-rest`, `@whiskeysockets/baileys`, `whatsapp-web.js`, `google-auth-library`, `croner`, `yaml`
 - Present in opencode deps, not in agent-core deps: many additional `@ai-sdk/*` provider packages (Bedrock/Azure/Groq/Mistral/etc), `ai-gateway-provider`, `partial-json`, plus opencode workspace packages (`@opencode-ai/*`)
@@ -240,7 +240,7 @@ git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD > /tmp/open
 diff -ruN packages/personas/zee/src /tmp/agent-core-compare/openclaw/src || true
 
 # 3) Compare dependency surfaces (core packages)
-jq -r '.dependencies | keys[]' packages/agent-core/package.json | sort > /tmp/agent-core.deps
+jq -r '.dependencies | keys[]' packages/zee-core/package.json | sort > /tmp/agent-core.deps
 jq -r '.dependencies | keys[]' /tmp/agent-core-compare/opencode/packages/opencode/package.json | sort > /tmp/opencode.deps
 comm -3 /tmp/agent-core.deps /tmp/opencode.deps
 ```

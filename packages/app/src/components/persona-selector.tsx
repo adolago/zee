@@ -1,8 +1,8 @@
 import { For, Show, createMemo } from "solid-js"
-import { Button } from "@agent-core/ui/button"
-import { DropdownMenu } from "@agent-core/ui/dropdown-menu"
-import { Tooltip } from "@agent-core/ui/tooltip"
-import { Icon } from "@agent-core/ui/icon"
+import { Button } from "@zee/ui/button"
+import { DropdownMenu } from "@zee/ui/dropdown-menu"
+import { Tooltip } from "@zee/ui/tooltip"
+import { Icon } from "@zee/ui/icon"
 import { PERSONAS, type PersonaId } from "@/context/persona"
 
 export type { PersonaId } from "@/context/persona"

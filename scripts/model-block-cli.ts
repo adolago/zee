@@ -61,15 +61,15 @@ interface Config {
 // ============================================================================
 
 const BLOCK_LIST_PATHS = [
-  resolve(".agent-core/model-block-list.jsonc"),
+  resolve(".zee/model-block-list.jsonc"),
   join(homedir(), ".config/agent-core/model-block-list.jsonc"),
-  join(homedir(), ".agent-core/model-block-list.jsonc"),
+  join(homedir(), ".zee/model-block-list.jsonc"),
 ];
 
 const CONFIG_PATHS = [
-  resolve("agent-core.jsonc"),
-  join(homedir(), ".config/agent-core/agent-core.jsonc"),
-  join(homedir(), ".agent-core/agent-core.jsonc"),
+  resolve("zee.jsonc"),
+  join(homedir(), ".config/agent-core/zee.jsonc"),
+  join(homedir(), ".zee/zee.jsonc"),
 ];
 
 const DEFAULT_BLOCK_LIST: BlockList = {
@@ -448,9 +448,9 @@ Examples:
   bun run scripts/model-block-cli.ts apply
 
 Block List Locations (in order of priority):
-  1. ./.agent-core/model-block-list.jsonc
-  2. ~/.config/agent-core/model-block-list.jsonc
-  3. ~/.agent-core/model-block-list.jsonc
+  1. ./.zee/model-block-list.jsonc
+  2. ~/.config/zee/model-block-list.jsonc
+  3. ~/.zee/model-block-list.jsonc
 `);
     return;
   }

@@ -11,7 +11,7 @@
 
 import type { ToolDefinition } from '../types';
 import { getToolRegistry } from '../registry';
-import { Log } from '../../../packages/agent-core/src/util/log';
+import { Log } from '../../../packages/zee-core/src/util/log';
 
 // MCP layer stubs (fallback implementations)
 import { StanleyMarketDataTool, StanleyResearchTool, StanleyPortfolioTool, StanleySecFilingTool, StanleyEstimatesTool, StanleyInsiderTradesTool, StanleySegmentsTool } from './stanley';

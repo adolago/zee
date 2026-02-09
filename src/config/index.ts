@@ -1,13 +1,13 @@
 /**
  * Configuration Module
  *
- * Exports shared configuration types and constants for agent-core.
+ * Exports shared configuration types and constants for zee.
  *
- * The main config system lives in packages/agent-core/src/config/config.ts
+ * The main config system lives in packages/zee-core/src/config/config.ts
  * This module provides:
  * - Shared constants (ports, URLs, timeouts)
  * - Shared types (DmPolicy, GroupPolicy, etc.)
- * - Agent-core specific types (AgentPersonaConfig, SurfaceConfigs)
+ * - Zee-specific types (AgentPersonaConfig, SurfaceConfigs)
  */
 
 // Shared constants (Qdrant URLs, timeouts, ports, etc.)
@@ -16,5 +16,5 @@ export * from "./constants";
 // Shared types (DmPolicy, GroupPolicy, LogLevel, RetryConfig)
 export * from "./shared";
 
-// Agent-core specific types (AgentCoreConfig, AgentPersonaConfig, etc.)
+// Zee-specific types (AgentCoreConfig, AgentPersonaConfig, etc.)
 export * from "./types";

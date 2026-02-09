@@ -1,0 +1,53 @@
+# This is a template. scripts/systemd/install.sh fills in @USER@/@GROUP@/@HOME@/@ROOT@.
+
+[Unit]
+Description=Zee - Always-On Personas Daemon
+Documentation=https://github.com/adolago/zee
+After=network.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+
+# Environment setup
+Environment=HOME=@HOME@
+Environment=ZEE_HEADLESS=1
+Environment=ZEE_ROOT=@ROOT@
+Environment=NODE_ENV=production
+Environment=PATH=@HOME@/bin:@HOME@/.local/bin:@HOME@/.bun/bin:/usr/local/bin:/usr/bin:/bin
+
+# API keys can be loaded from environment file (create ~/.config/zee/daemon.env)
+EnvironmentFile=-@HOME@/.config/zee/daemon.env
+
+# Working directory - use repo root for relative assets
+WorkingDirectory=@ROOT@
+
+# Use repo-local binary - starts zee daemon (gateway is typically run via zee-gateway.service)
+ExecStart=@HOME@/.bun/bin/zee daemon --hostname 127.0.0.1 --port 3210 --directory @ROOT@
+
+# Restart policy
+Restart=always
+RestartSec=10
+RestartPreventExitStatus=100
+SuccessExitStatus=100
+TimeoutStopSec=30
+KillMode=control-group
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+# ProtectHome is disabled to allow full project access in any directory.
+# Use private /tmp for security while allowing tsx to create pipes
+PrivateTmp=true
+# Zee needs write access to config, state, logs, and session data
+# Gateway needs access to zee directory for cache and session data
+ReadWritePaths=@HOME@/.config/zee @HOME@/.local/state/zee @HOME@/.local/share/zee @HOME@/.zee @ROOT@/packages/personas
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zee
+
+[Install]
+WantedBy=multi-user.target

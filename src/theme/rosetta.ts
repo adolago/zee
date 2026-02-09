@@ -1,7 +1,7 @@
 /**
  * Rosetta Stone Color System v3.0.0
  *
- * SINGLE SOURCE OF TRUTH for all colors in agent-core.
+ * SINGLE SOURCE OF TRUTH for all colors in zee.
  *
  * Design:
  * - Solarized Dark base palette (professional, WCAG AA compliant)

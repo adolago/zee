@@ -2,7 +2,7 @@
  * Qdrant vector database client for memory storage.
  * Uses REST API - no additional dependencies required.
  *
- * Ported from zee to agent-core for unified memory layer.
+ * Ported into Zee for the unified memory layer.
  */
 
 import type {
@@ -11,7 +11,7 @@ import type {
   MemoryCategory as TypesMemoryCategory,
   VectorStorage,
 } from "./types";
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 import { QDRANT_URL, QDRANT_COLLECTION_MEMORY } from "../config/constants";
 
 const log = Log.create({ service: "qdrant" });

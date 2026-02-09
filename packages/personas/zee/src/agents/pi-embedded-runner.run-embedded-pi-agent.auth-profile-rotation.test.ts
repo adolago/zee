@@ -13,12 +13,12 @@ const runEmbeddedAttemptMock = vi.fn<Promise<EmbeddedRunAttemptResult>, [unknown
 vi.mock("./pi-embedded-runner/run/attempt.js", () => ({
   runEmbeddedAttempt: (params: unknown) => runEmbeddedAttemptMock(params),
 }));
-vi.mock("./auth-profiles/agent-core-sync.js", () => ({
-  syncAgentCoreCredentials: () => false,
+vi.mock("./auth-profiles/zee-auth-sync.js", () => ({
+  syncZeeAuthCredentials: () => false,
 }));
 
-const previousAgentCoreSync = process.env.ZEE_DISABLE_AGENT_CORE_SYNC;
-process.env.ZEE_DISABLE_AGENT_CORE_SYNC = "1";
+const previousZeeAuthSync = process.env.ZEE_DISABLE_ZEE_AUTH_SYNC;
+process.env.ZEE_DISABLE_ZEE_AUTH_SYNC = "1";
 
 let runEmbeddedPiAgent: typeof import("./pi-embedded-runner.js").runEmbeddedPiAgent;
 
@@ -32,10 +32,10 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  if (previousAgentCoreSync === undefined) {
-    delete process.env.ZEE_DISABLE_AGENT_CORE_SYNC;
+  if (previousZeeAuthSync === undefined) {
+    delete process.env.ZEE_DISABLE_ZEE_AUTH_SYNC;
   } else {
-    process.env.ZEE_DISABLE_AGENT_CORE_SYNC = previousAgentCoreSync;
+    process.env.ZEE_DISABLE_ZEE_AUTH_SYNC = previousZeeAuthSync;
   }
 });
 

@@ -4,7 +4,7 @@
  *
  * Includes LRU caching to avoid redundant API calls.
  *
- * Ported from zee to agent-core for unified memory layer.
+ * Ported into Zee for the unified memory layer.
  */
 
 import * as crypto from "node:crypto";
@@ -181,7 +181,7 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
 
     if (!this.apiKey) {
       throw new Error(
-        "OpenAI API key required: run `agent-core auth login openai` or set OPENAI_API_KEY env"
+        "OpenAI API key required: run `zee auth login openai` or set OPENAI_API_KEY env"
       );
     }
   }
@@ -263,7 +263,7 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
 
     if (!this.apiKey) {
       throw new Error(
-        "Google API key required: run `agent-core auth login google` or set GOOGLE_API_KEY env"
+        "Google API key required: run `zee auth login google` or set GOOGLE_API_KEY env"
       );
     }
   }
@@ -403,7 +403,7 @@ class VoyageEmbeddingProvider implements EmbeddingProvider {
 
     if (!this.apiKey) {
       throw new Error(
-        "Voyage API key required: run `agent-core auth login voyage` or set VOYAGE_API_KEY env"
+        "Voyage API key required: run `zee auth login voyage` or set VOYAGE_API_KEY env"
       );
     }
   }

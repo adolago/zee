@@ -16,7 +16,7 @@
     "dist"
   ],
   "dependencies": {
-    "@agent-core/core": "workspace:*",
+    "@zee/core": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

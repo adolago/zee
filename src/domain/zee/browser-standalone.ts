@@ -2,13 +2,13 @@
  * Zee Standalone Browser Tool
  *
  * Direct browser automation by spawning Chromium via shell commands.
- * Does NOT require Zee gateway - uses Playwright installed in agent-core.
+ * Does NOT require Zee gateway - uses Playwright installed in zee.
  * This is the "kernel.sh" approach to browsing.
  */
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/agent-core/src/util/log";
+import { Log } from "../../../packages/zee-core/src/util/log";
 import { spawn } from "child_process";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "fs";
 import { tmpdir } from "os";
@@ -29,7 +29,7 @@ interface BrowserInstance {
 }
 
 const activeBrowsers = new Map<string, BrowserInstance>();
-const SCREENSHOT_DIR = join(process.cwd(), ".agent-core", "screenshots");
+const SCREENSHOT_DIR = join(process.cwd(), ".zee", "screenshots");
 
 // =============================================================================
 // Helper Functions
@@ -56,7 +56,7 @@ function getAvailablePort(): number {
 }
 
 function createUserDataDir(): string {
-  return mkdtempSync(join(tmpdir(), "agent-core-chrome-"));
+  return mkdtempSync(join(tmpdir(), "zee-chrome-"));
 }
 
 async function isPortReachable(port: number, timeout = 5000): Promise<boolean> {
@@ -488,14 +488,14 @@ Uses "kernel.sh" approach (direct process spawning).
 - stop: Stop the browser
 - status: Check browser status
 - navigate: Navigate to a URL
-- screenshot: Take a screenshot (saved to .agent-core/screenshots/)
+- screenshot: Take a screenshot (saved to .zee/screenshots/)
 - content: Get page HTML content
 - tabs: List open tabs
 
 **Features:**
 - Each profile gets its own isolated browser
 - Headed mode by default (set headless: true for no GUI)
-- Direct CDP control (no Playwright dependency in agent-core)
+- Direct CDP control (no Playwright dependency in zee)
 - Auto-cleanup on process exit
 
 **Examples:**

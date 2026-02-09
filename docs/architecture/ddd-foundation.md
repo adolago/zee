@@ -6,7 +6,7 @@ This document defines the Phase 1 architectural boundaries for agent-core and ho
 
 ## Bounded Contexts
 
-### Core Kernel (`packages/agent-core/`)
+### Core Kernel (`packages/zee-core/`)
 The engine: CLI/TUI, daemon/server, sessions, tools, surfaces, and runtime plugin loading.
 
 ### Shared Runtime (`src/`)
@@ -34,11 +34,11 @@ bun run boundaries:check
 
 ### Enforced Today
 
-1. `packages/agent-core/src/**` must not import from `packages/personas/**`.
+1. `packages/zee-core/src/**` must not import from `packages/personas/**`.
 2. Cycles are tolerated for now within the kernel+shared-runtime boundary (tight coupling exists today), but cross-package imports are restricted.
 
 ### Intent (Follow-Up Work)
 
-1. Reduce coupling between `packages/agent-core/src` and `src/` by introducing narrower public entrypoints in `src/*/index.ts` and migrating callers to `@root/*`.
+1. Reduce coupling between `packages/zee-core/src` and `src/` by introducing narrower public entrypoints in `src/*/index.ts` and migrating callers to `@root/*`.
 2. Introduce a cycle-free "core services" layer (logging/config/bus) to break the largest dependency knots.
 

@@ -1,11 +1,11 @@
-import { TextField } from "@agent-core/ui/text-field"
-import { Logo } from "@agent-core/ui/logo"
-import { Button } from "@agent-core/ui/button"
+import { TextField } from "@zee/ui/text-field"
+import { Logo } from "@zee/ui/logo"
+import { Button } from "@zee/ui/button"
 import { Component, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
-import { Icon } from "@agent-core/ui/icon"
+import { Icon } from "@zee/ui/icon"
 
 export type InitError = {
   name: string

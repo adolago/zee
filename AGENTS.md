@@ -7,24 +7,26 @@
 
 ## Quick Reference
 
-- Build and test: `cd packages/agent-core && bun run build && bun dev`
+- Build and test: `cd packages/zee-core && bun run build && bun dev`
 - Default branch: `dev`
-- PRs target the fork at `origin` (e.g., `adolago/agent-core`), not upstream.
+- PRs target the fork at `origin` (e.g., `adolago/zee`), not upstream.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 
 ### Binary Verification (CRITICAL)
 
 After building, always verify the binary:
 ```bash
-cd packages/agent-core && bun run build
+cd packages/zee-core && bun run build
 ./script/verify-binary.sh
 ```
-If verification fails: `ln -sf /home/artur/.local/src/agent-core/packages/agent-core/dist/@adolago/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core`
+If verification fails:
+- `ln -sf ~/.local/src/zee/packages/zee-core/dist/@zee/core-linux-x64/bin/zee ~/.bun/bin/zee`
+- Optional legacy alias: `ln -sf ~/.bun/bin/zee ~/.bun/bin/agent-core`
 
 ## Naming Convention
 
-The user-facing name is **Zee**. The internal package infrastructure uses `agent-core` (for upstream compat).
-- CLI: `zee` (or `agent-core`), Config: `~/.config/zee/`, State: `~/.local/state/zee/`
+The user-facing name is **Zee**. The internal package infrastructure uses `zee`; `agent-core` exists only as an optional compatibility alias.
+- CLI: `zee` (optional legacy alias: `agent-core`), Config: `~/.config/zee/`, State: `~/.local/state/zee/`
 
 ## No Emojis Policy
 
@@ -48,7 +50,7 @@ Zee can spawn drones (background workers), uses Qdrant memory, and preserves con
 | Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
 | Persona logic | `src/personas/johny/` (TS), `packages/stanley-core/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |
-| Core engine | `packages/agent-core/` |
+| Core engine | `packages/zee-core/` |
 | Gateway | `packages/personas/zee/` |
 | Memory types | `src/memory/` |
 

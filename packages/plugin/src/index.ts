@@ -10,7 +10,7 @@ import type {
   Part,
   Auth,
   Config,
-} from "@agent-core/core/pkg/sdk"
+} from "@zee/core/pkg/sdk"
 
 import type { BunShell } from "./shell"
 import { type ToolDefinition } from "./tool"

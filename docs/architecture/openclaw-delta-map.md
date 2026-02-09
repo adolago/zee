@@ -154,8 +154,8 @@ Implementation focus (agent-core):
 
 - `packages/personas/zee/src/infra`
 - `packages/personas/zee/src/config`
-- `packages/agent-core/src/global/dirs.ts`
-- `packages/agent-core/src/storage`
+- `packages/zee-core/src/global/dirs.ts`
+- `packages/zee-core/src/storage`
 
 Upstream PR triage (OpenClaw):
 

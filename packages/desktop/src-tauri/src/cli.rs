@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Manager, path::BaseDirectory};
 use tauri_plugin_shell::{ShellExt, process::Command};
 
-const CLI_INSTALL_DIR: &str = ".agent-core/bin";
+const CLI_INSTALL_DIR: &str = ".zee/bin";
 const CLI_BINARY_NAME: &str = "opencode";
 
 #[derive(serde::Deserialize)]

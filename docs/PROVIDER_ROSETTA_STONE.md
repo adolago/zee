@@ -122,7 +122,7 @@ Each provider can be authenticated via environment variable OR `agent-core auth 
 ## Credential Storage
 
 ```
-~/.local/share/agent-core/auth.json
+~/.local/share/zee/auth.json
 ```
 
 ### API Key Format
@@ -181,14 +181,14 @@ agent-core auth list | grep -i minimax
 # ●  MiniMax Coding Plan (minimax.io) api  ← Coding plan (for chat)
 
 # Disabled providers (in config.json)
-jq '.disabled_providers | map(select(test("minimax")))' ~/.config/agent-core/config.json
+jq '.disabled_providers | map(select(test("minimax")))' ~/.config/zee/config.json
 # ["minimax", "minimax-cn", "minimax-cn-coding-plan"]
 # Note: minimax is disabled for chat but still used for TTS
 ```
 
 ### TTS Configuration
 
-TTS is configured in `~/.config/agent-core/config.json`:
+TTS is configured in `~/.config/zee/config.json`:
 
 ```json
 {
@@ -211,14 +211,14 @@ TTS is configured in `~/.config/agent-core/config.json`:
 ```bash
 # Test coding plan (chat)
 curl -s -X POST "https://api.minimax.io/anthropic/v1/messages" \
-  -H "x-api-key: $(jq -r '.["minimax-coding-plan"].key' ~/.local/share/agent-core/auth.json)" \
+  -H "x-api-key: $(jq -r '.["minimax-coding-plan"].key' ~/.local/share/zee/auth.json)" \
   -H "anthropic-version: 2023-06-01" \
   -H "Content-Type: application/json" \
   -d '{"model":"MiniMax-M2.1","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
 
 # Test TTS
 curl -s -X POST "https://api.minimax.io/v1/t2a_v2" \
-  -H "Authorization: Bearer $(jq -r '.minimax.key' ~/.local/share/agent-core/auth.json)" \
+  -H "Authorization: Bearer $(jq -r '.minimax.key' ~/.local/share/zee/auth.json)" \
   -H "Content-Type: application/json" \
   -d '{"text":"hello","model":"speech-02-hd","voice_setting":{"voice_id":"Calm_Woman"}}'
 ```
@@ -295,37 +295,37 @@ agent-core auth login <provider>
 
 ```bash
 # Z.AI Coding Plan
-ZAI_KEY=$(jq -r '.["zai-coding-plan"].key' ~/.local/share/agent-core/auth.json)
+ZAI_KEY=$(jq -r '.["zai-coding-plan"].key' ~/.local/share/zee/auth.json)
 curl -s -X POST "https://api.z.ai/api/coding/paas/v4/chat/completions" \
   -H "Authorization: Bearer $ZAI_KEY" -H "Content-Type: application/json" \
   -d '{"model":"glm-4.7","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
 
 # MiniMax Coding Plan
-MM_KEY=$(jq -r '.["minimax-coding-plan"].key' ~/.local/share/agent-core/auth.json)
+MM_KEY=$(jq -r '.["minimax-coding-plan"].key' ~/.local/share/zee/auth.json)
 curl -s -X POST "https://api.minimax.io/anthropic/v1/messages" \
   -H "x-api-key: $MM_KEY" -H "anthropic-version: 2023-06-01" -H "Content-Type: application/json" \
   -d '{"model":"MiniMax-M2.1","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
 
 # MiniMax TTS
-MM_TTS_KEY=$(jq -r '.minimax.key' ~/.local/share/agent-core/auth.json)
+MM_TTS_KEY=$(jq -r '.minimax.key' ~/.local/share/zee/auth.json)
 curl -s -X POST "https://api.minimax.io/v1/t2a_v2" \
   -H "Authorization: Bearer $MM_TTS_KEY" -H "Content-Type: application/json" \
   -d '{"text":"hello","model":"speech-02-hd","voice_setting":{"voice_id":"Calm_Woman"}}'
 
 # xAI
-XAI_KEY=$(jq -r '.xai.key' ~/.local/share/agent-core/auth.json)
+XAI_KEY=$(jq -r '.xai.key' ~/.local/share/zee/auth.json)
 curl -s -X POST "https://api.x.ai/v1/chat/completions" \
   -H "Authorization: Bearer $XAI_KEY" -H "Content-Type: application/json" \
   -d '{"model":"grok-3-mini","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
 
 # Google Gemini (API key)
-GOOGLE_KEY=$(jq -r '.google.key' ~/.local/share/agent-core/auth.json)
+GOOGLE_KEY=$(jq -r '.google.key' ~/.local/share/zee/auth.json)
 curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GOOGLE_KEY" \
   -H "Content-Type: application/json" \
   -d '{"contents":[{"parts":[{"text":"hi"}]}]}'
 
 # Nebius
-NEBIUS_KEY=$(jq -r '.nebius.key' ~/.local/share/agent-core/auth.json)
+NEBIUS_KEY=$(jq -r '.nebius.key' ~/.local/share/zee/auth.json)
 curl -s -X POST "https://api.tokenfactory.nebius.com/v1/chat/completions" \
   -H "Authorization: Bearer $NEBIUS_KEY" -H "Content-Type: application/json" \
   -d '{"model":"meta-llama/Llama-3.3-70B-Instruct","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
@@ -334,7 +334,7 @@ curl -s -X POST "https://api.tokenfactory.nebius.com/v1/chat/completions" \
 ### Full Health Check Script
 
 ```bash
-cd packages/agent-core
+cd packages/zee-core
 bun run script/provider-health-check.ts
 
 # Test specific provider
@@ -356,7 +356,7 @@ See [.agents/skills/provider-monitoring/SKILL.md](../.agents/skills/provider-mon
 
 ```bash
 # Test all providers with colored output
-cd packages/agent-core
+cd packages/zee-core
 bun run script/provider-health-check.ts
 
 # Only show errors

@@ -45,7 +45,7 @@ When HTTP auth is enabled, switching to RELEASE mode requires `operator.admin` s
 When using Zee gateway WebSocket RPC, `agent-core` can authenticate with:
 - `ZEE_GATEWAY_TOKEN` (environment variable)
 - `ZEE_GATEWAY_TOKEN_FILE` (path to a token file)
-- Default token file at `~/.local/state/agent-core/zee_gateway_token`
+- Default token file at `~/.local/state/zee/zee_gateway_token`
 
 For safety, `agent-core` ignores token files that are symlinks, not owned by the current user, or not `0600` (POSIX).
 

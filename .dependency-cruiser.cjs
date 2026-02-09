@@ -7,8 +7,8 @@ module.exports = {
     {
       name: "core-must-not-import-personas-packages",
       severity: "error",
-      // Exception: the embedded Zee gateway is intentionally bundled into agent-core.
-      from: { path: "^packages/agent-core/src/", pathNot: "^packages/agent-core/src/gateway/embedded-gateway\\.ts$" },
+      // Exception: the embedded Zee gateway is intentionally bundled into zee-core.
+      from: { path: "^packages/zee-core/src/", pathNot: "^packages/zee-core/src/gateway/embedded-gateway\\.ts$" },
       to: { path: "^packages/personas/" },
     },
   ],
@@ -19,8 +19,8 @@ module.exports = {
     exclude: {
       path: [
         "^node_modules/",
-        "^packages/agent-core/dist/",
-        "^packages/agent-core/dist-check/",
+        "^packages/zee-core/dist/",
+        "^packages/zee-core/dist-check/",
         "^target/",
       ].join("|"),
     },

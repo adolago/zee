@@ -1,5 +1,5 @@
 {
-  description = "Agent-Core engine with Personas system";
+  description = "Zee engine with Personas system";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -16,7 +16,7 @@
       forEachSystem = f: lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       pkgsFor = system: nixpkgs.legacyPackages.${system};
       rev = self.shortRev or self.dirtyShortRev or "dirty";
-      packageJson = builtins.fromJSON (builtins.readFile ./packages/agent-core/package.json);
+      packageJson = builtins.fromJSON (builtins.readFile ./packages/zee-core/package.json);
       bunTarget = {
         "aarch64-linux" = "bun-linux-arm64";
         "x86_64-linux" = "bun-linux-x64";
@@ -51,7 +51,7 @@
           qdrant = pkgs.qdrant;             # Semantic memory storage
 
           # Development Tools
-          ripgrep = pkgs.ripgrep;           # Fast search (used by agent-core)
+          ripgrep = pkgs.ripgrep;           # Fast search (used by zee)
           fd = pkgs.fd;                     # Fast find
           fzf = pkgs.fzf;                   # Fuzzy finder
           jq = pkgs.jq;                     # JSON processing
@@ -86,7 +86,7 @@
           deps = stockDeps system;
         in
         {
-          # Minimal shell for agent-core development only
+          # Minimal shell for zee development only
           default = pkgs.mkShell {
             packages = with pkgs; [
               bun
@@ -125,19 +125,19 @@
             ];
 
             shellHook = ''
-              echo "╔══════════════════════════════════════════════════════════════╗"
-              echo "║              🔺 Personas Development Environment 🔺            ║"
-              echo "╠══════════════════════════════════════════════════════════════╣"
-              echo "║  Stock dependencies loaded (same as client installations):  ║"
-              echo "║  • wezterm   - Terminal emulator with pane orchestration    ║"
-              echo "║  • yazi      - File manager                                  ║"
-              echo "║  • qdrant    - Vector database for semantic memory          ║"
-              echo "║  • ripgrep   - Fast code search                             ║"
-              echo "╠══════════════════════════════════════════════════════════════╣"
-              echo "║  Python packages (install via pip in venv):                 ║"
-              echo "║  • pip install openbb           # Stanley: market data      ║"
-              echo "║  • pip install nautilus-trader  # Stanley: backtesting      ║"
-              echo "╚══════════════════════════════════════════════════════════════╝"
+              echo ""
+              echo "Personas Development Environment"
+              echo ""
+              echo "Stock dependencies loaded (same as client installations):"
+              echo "  wezterm  - Terminal emulator with pane orchestration"
+              echo "  yazi     - File manager"
+              echo "  qdrant   - Vector database for semantic memory"
+              echo "  ripgrep  - Fast code search"
+              echo ""
+              echo "Python packages (install via pip in venv):"
+              echo "  pip install openbb           # Stanley: market data"
+              echo "  pip install nautilus-trader  # Stanley: backtesting"
+              echo ""
 
               # Create Python venv if it doesn't exist
               if [ ! -d ".venv" ]; then
@@ -169,14 +169,14 @@
       # ========================================================================
       # Packages
       # ========================================================================
-      packages = forEachSystem (pkgs:
+          packages = forEachSystem (pkgs:
         let
           system = pkgs.system;
           deps = stockDeps system;
           node_modules = pkgs.callPackage ./nix/node_modules.nix {
             inherit rev;
           };
-          agent-core = pkgs.callPackage ./nix/agent-core.nix {
+          zee = pkgs.callPackage ./nix/zee.nix {
             inherit node_modules;
           };
           # nixpkgs cpu naming to bun cpu naming
@@ -197,12 +197,12 @@
             ) [ "x86_64" "aarch64" ]
           );
 
-          # Personas bundle: agent-core + stock dependencies wrapped together
+          # Personas bundle: zee + stock dependencies wrapped together
           # Usage: nix build .#personas
           personasPkg = pkgs.symlinkJoin {
-            name = "agent-core-personas";
+            name = "zee-personas";
             paths = [
-              agent-core
+              zee
               deps.wezterm
               deps.yazi
               deps.ripgrep
@@ -212,10 +212,10 @@
               deps.gh
             ];
             meta = {
-              description = "Agent-Core Personas bundle with stock dependencies";
+              description = "Zee Personas bundle with stock dependencies";
               longDescription = ''
                 Complete Personas system bundle including:
-                - agent-core: The AI coding agent CLI
+                - zee: The AI coding agent CLI
                 - wezterm: Terminal emulator for pane orchestration
                 - yazi: File manager
                 - ripgrep, fd, fzf: Search utilities
@@ -232,8 +232,8 @@
           };
         in
         {
-          default = agent-core;
-          "agent-core" = agent-core;
+          default = zee;
+          zee = zee;
           personas = personasPkg;
 
           # Expose individual stock packages for flexibility
@@ -303,7 +303,7 @@
                   pip install --upgrade nautilus-trader
 
                   echo ""
-                  echo "✅ Python environment ready!"
+                  echo "Python environment ready."
                   echo "   Activate with: source .venv/bin/activate"
                 '';
               }
@@ -316,8 +316,8 @@
       # NixOS/Home-Manager Module (optional integration)
       # ========================================================================
       nixosModules.default = { config, lib, pkgs, ... }: {
-        options.services.agent-core = {
-          enable = lib.mkEnableOption "Agent-Core Personas system";
+        options.services.zee = {
+          enable = lib.mkEnableOption "Zee Personas system";
 
           qdrant = {
             enable = lib.mkEnableOption "Qdrant vector database for Personas memory";
@@ -329,18 +329,18 @@
           };
         };
 
-        config = lib.mkIf config.services.agent-core.enable {
+        config = lib.mkIf config.services.zee.enable {
           environment.systemPackages = [
             self.packages.${pkgs.system}.personas
           ];
 
           # Qdrant service (if enabled)
-          systemd.services.qdrant = lib.mkIf config.services.agent-core.qdrant.enable {
+          systemd.services.qdrant = lib.mkIf config.services.zee.qdrant.enable {
             description = "Qdrant Vector Database";
             wantedBy = [ "multi-user.target" ];
             after = [ "network.target" ];
             serviceConfig = {
-              ExecStart = "${pkgs.qdrant}/bin/qdrant --storage-path ${config.services.agent-core.qdrant.dataDir}";
+              ExecStart = "${pkgs.qdrant}/bin/qdrant --storage-path ${config.services.zee.qdrant.dataDir}";
               Restart = "on-failure";
               DynamicUser = true;
               StateDirectory = "qdrant";

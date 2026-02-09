@@ -5,7 +5,7 @@ import lockfile from "proper-lockfile";
 import { resolveZeeAgentDir } from "../agent-paths.js";
 import { resolveOAuthPath } from "../../config/paths.js";
 import { loadJsonFile, saveJsonFile } from "../../infra/json-file.js";
-import { syncAgentCoreCredentials } from "./agent-core-sync.js";
+import { syncZeeAuthCredentials } from "./zee-auth-sync.js";
 import { AUTH_STORE_LOCK_OPTIONS, AUTH_STORE_VERSION } from "./constants.js";
 import { syncExternalCliCredentials } from "./external-cli-sync.js";
 import {
@@ -310,7 +310,7 @@ export function ensureAuthProfileStore(
   mutated = importLegacyOAuthJson(store) || mutated;
   mutated = mergeMainProfilesIntoAgentStore(store, agentDir) || mutated;
   mutated = syncExternalCliCredentials(store) || mutated;
-  mutated = syncAgentCoreCredentials(store) || mutated;
+  mutated = syncZeeAuthCredentials(store) || mutated;
 
   if (mutated) {
     saveAuthProfileStore(store, agentDir);

@@ -35,8 +35,8 @@ logs/
 .dev-config/
 
 # Local repo state / tool configs
-.agent-core/plugin/
-.agent-core/plans/
+.zee/plugin/
+.zee/plans/
 .claude/
 .learnings/
 .mcp.json
@@ -62,7 +62,7 @@ vendor/personas/zee/docker-compose.yml
 *-report.md
 *-threat-model.md
 *-backlog.md
-packages/agent-core/*-report-*.zip
+packages/zee-core/*-report-*.zip
 
 # Generated type declarations
 src/theme/rosetta.d.ts

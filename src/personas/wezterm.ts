@@ -7,7 +7,7 @@
 
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 import type {
   Worker,
   PersonasState,
@@ -338,15 +338,15 @@ export class WeztermPaneBridge implements WeztermBridge {
       commands.push(`cd "${escapedPath}"`);
     }
 
-    // Build agent-core command
-    let agentCmd = "agent-core";
+    // Build zee command
+    let agentCmd = "zee";
     if (options.prompt) {
       // Escape prompt for double-quoted shell argument
       const escapedPrompt = escapeDoubleQuoted(options.prompt);
       // Validate persona against whitelist to prevent injection
       const validPersona = validatePersona(options.persona);
       const personaArg = validPersona ? `--agent ${validPersona}` : "";
-      agentCmd = `agent-core run "${escapedPrompt}" ${personaArg}`;
+      agentCmd = `zee run "${escapedPrompt}" ${personaArg}`;
     }
 
     commands.push(agentCmd);

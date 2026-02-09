@@ -6,9 +6,9 @@ This file must never contain secret values (tokens, API keys, cookies).
 
 ## Storage locations
 
-- `~/.local/share/agent-core/auth.json`  
+- `~/.local/share/zee/auth.json`  
   Provider auth used by agent-core (OAuth, API key, and well-known tokens). Manage with `agent-core auth login ...`.
-- `~/.config/agent-core/daemon.env`  
+- `~/.config/zee/daemon.env`  
   Environment variables used by the systemd user service.
 - Shell profiles (e.g., `~/.profile`, `~/.bashrc`)  
   Environment variables for interactive usage.
@@ -24,7 +24,7 @@ This file must never contain secret values (tokens, API keys, cookies).
 agent-core auth list
 
 # Inspect raw auth store (IDs only)
-jq 'keys' ~/.local/share/agent-core/auth.json
+jq 'keys' ~/.local/share/zee/auth.json
 ```
 
 ## Common env vars

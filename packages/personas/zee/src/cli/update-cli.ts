@@ -103,13 +103,13 @@ const UPDATE_QUIPS = [
 
 const MAX_LOG_CHARS = 8000;
 const DEFAULT_PACKAGE_NAME = "zee";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "zee", "zee"]);
+const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "agent-core"]);
 const CLI_NAME = resolveCliName();
 const DEFAULT_REPO_URL =
   process.env.ZEE_REPO_URL?.trim() ||
-  process.env.ZEE_REPO_URL?.trim() ||
-  process.env.ZEE_REPO_URL?.trim() ||
-  "https://github.com/adolago/agent-core.git";
+  process.env.AGENT_CORE_REPO_URL?.trim() ||
+  process.env.OPENCODE_REPO_URL?.trim() ||
+  "https://github.com/adolago/zee.git";
 const DEFAULT_GIT_DIR = path.join(os.homedir(), "zee");
 
 function normalizeTag(value?: string | null): string | null {
@@ -117,7 +117,7 @@ function normalizeTag(value?: string | null): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (trimmed.startsWith("zee@")) return trimmed.slice("zee@".length);
-  if (trimmed.startsWith("zee@")) return trimmed.slice("zee@".length);
+  if (trimmed.startsWith("agent-core@")) return trimmed.slice("agent-core@".length);
   if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
     return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
   }

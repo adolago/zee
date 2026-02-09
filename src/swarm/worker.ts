@@ -41,20 +41,25 @@ export class Worker extends EventEmitter {
     this.output = [];
     this.error = undefined;
 
-    // Spawn agent-core with the prompt
+    // Spawn zee with the prompt
     // Uses daemon API to create a session and stream output
     // Persona identity flows to subagent (mini-persona pattern)
     this.process = spawn(
-      "agent-core",
+      "zee",
       ["prompt", "--agent", this.persona, "--no-tui", this.prompt],
       {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
+          ZEE_WORKER_ID: this.id,
+          ZEE_WORKER_NAME: this.name,
+          ZEE_PERSONA: this.persona,
+          // Subagent inherits parent persona identity
+          ZEE_IS_SUBAGENT: "true",
+          // Legacy env keys (deprecated).
           AGENT_CORE_WORKER_ID: this.id,
           AGENT_CORE_WORKER_NAME: this.name,
           AGENT_CORE_PERSONA: this.persona,
-          // Subagent inherits parent persona identity
           AGENT_CORE_IS_SUBAGENT: "true",
         },
       }

@@ -12,8 +12,8 @@
 
 import { z } from "zod";
 import { Permission, PermissionConfig } from "./agent";
-import { Bus } from "../../packages/agent-core/src/bus";
-import { BusEvent } from "../../packages/agent-core/src/bus/bus-event";
+import { Bus } from "../../packages/zee-core/src/bus";
+import { BusEvent } from "../../packages/zee-core/src/bus/bus-event";
 
 /**
  * Permission events for UI integration

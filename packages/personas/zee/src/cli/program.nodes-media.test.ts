@@ -10,7 +10,7 @@ const onboardCommand = vi.fn();
 const callGateway = vi.fn();
 const runChannelLogin = vi.fn();
 const runChannelLogout = vi.fn();
-const runAgentCoreTui = vi.fn();
+const runZeeTui = vi.fn();
 
 const runtime = {
   log: vi.fn(),
@@ -40,7 +40,7 @@ vi.mock("../commands/setup.js", () => ({ setupCommand }));
 vi.mock("../commands/onboard.js", () => ({ onboardCommand }));
 vi.mock("../runtime.js", () => ({ defaultRuntime: runtime }));
 vi.mock("./channel-auth.js", () => ({ runChannelLogin, runChannelLogout }));
-vi.mock("../tui/agent-core-tui.js", () => ({ runAgentCoreTui }));
+vi.mock("../tui/zee-tui.js", () => ({ runZeeTui }));
 vi.mock("../gateway/call.js", () => ({
   callGateway,
   randomIdempotencyKey: () => "idem-test",
@@ -57,7 +57,7 @@ const { buildProgram } = await import("./program.js");
 describe("cli program (nodes media)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runAgentCoreTui.mockResolvedValue(undefined);
+    runZeeTui.mockResolvedValue(undefined);
   });
 
   it("runs nodes camera snap and prints two MEDIA paths", async () => {

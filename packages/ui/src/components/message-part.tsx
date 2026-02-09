@@ -27,7 +27,7 @@ import {
   QuestionRequest,
   QuestionAnswer,
   QuestionInfo,
-} from "@agent-core/core/pkg/sdk/v2"
+} from "@zee/core/pkg/sdk/v2"
 import { createStore } from "solid-js/store"
 import { useData } from "../context"
 import { useDiffComponent } from "../context/diff"
@@ -43,9 +43,9 @@ import { Checkbox } from "./checkbox"
 import { DiffChanges } from "./diff-changes"
 import { Markdown } from "./markdown"
 import { ImagePreview } from "./image-preview"
-import { findLast } from "@agent-core/util/array"
-import { getDirectory as _getDirectory, getFilename } from "@agent-core/util/path"
-import { checksum } from "@agent-core/util/encode"
+import { findLast } from "@zee/util/array"
+import { getDirectory as _getDirectory, getFilename } from "@zee/util/path"
+import { checksum } from "@zee/util/encode"
 import { Tooltip } from "./tooltip"
 import { IconButton } from "./icon-button"
 import { createAutoScroll } from "../hooks"

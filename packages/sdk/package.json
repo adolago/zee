@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@agent-core/sdk",
+  "name": "@zee/sdk",
   "version": "1.0.0",
-  "description": "TypeScript SDK for Agent Core daemon API",
+  "description": "TypeScript SDK for Zee daemon API",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -32,11 +32,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/adolago/agent-core.git",
+    "url": "https://github.com/adolago/zee.git",
     "directory": "packages/sdk"
   },
   "keywords": [
-    "agent-core",
+    "zee",
     "sdk",
     "ai",
     "llm",

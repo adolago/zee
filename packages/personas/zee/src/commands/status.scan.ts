@@ -31,7 +31,7 @@ function resolveMemoryPluginStatus(cfg: ReturnType<typeof loadConfig>): MemoryPl
   if (raw && raw.toLowerCase() === "none") {
     return { enabled: false, slot: null, reason: 'plugins.slots.memory="none"' };
   }
-  return { enabled: true, slot: raw || "agent-core" };
+  return { enabled: true, slot: raw || "zee" };
 }
 
 export type StatusScanResult = {
@@ -146,7 +146,7 @@ export async function scanStatus(
       const memoryPlugin = resolveMemoryPluginStatus(cfg);
       const memory = await (async (): Promise<MemoryStatusSnapshot | null> => {
         if (!memoryPlugin.enabled) return null;
-        if (memoryPlugin.slot !== "agent-core") return null;
+        if (memoryPlugin.slot !== "zee" && memoryPlugin.slot !== "agent-core") return null;
         const agentId = agentStatus.defaultId ?? "main";
         const { MemoryIndexManager } = await import("../memory/manager.js");
         const manager = await MemoryIndexManager.get({ cfg, agentId }).catch(() => null);

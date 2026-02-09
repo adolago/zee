@@ -63,7 +63,7 @@ The system theme is for users who:
 
 You can select a theme by bringing up the theme select with the `/theme` command. Or you can specify it in your [config](/docs/config).
 
-```json title="agent-core.json" {3}
+```json title="zee.json" {3}
 {
   "$schema": "https://opencode.ai/config.json",
   "theme": "tokyonight"
@@ -83,9 +83,9 @@ OpenCode supports a flexible JSON-based theme system that allows users to create
 Themes are loaded from multiple directories in the following order where later directories override earlier ones:
 
 1. **Built-in themes** - These are embedded in the binary
-2. **User config directory** - Defined in `~/.config/agent-core/themes/*.json` or `$XDG_CONFIG_HOME/agent-core/themes/*.json`
-3. **Project root directory** - Defined in the `<project-root>/.agent-core/themes/*.json`
-4. **Current working directory** - Defined in `./.agent-core/themes/*.json`
+2. **User config directory** - Defined in `~/.config/zee/themes/*.json` or `$XDG_CONFIG_HOME/agent-core/themes/*.json`
+3. **Project root directory** - Defined in the `<project-root>/.zee/themes/*.json`
+4. **Current working directory** - Defined in `./.zee/themes/*.json`
 
 If multiple directories contain a theme with the same name, the theme from the directory with higher priority will be used.
 
@@ -98,15 +98,15 @@ To create a custom theme, create a JSON file in one of the theme directories.
 For user-wide themes:
 
 ```bash no-frame
-mkdir -p ~/.config/agent-core/themes
-vim ~/.config/agent-core/themes/my-theme.json
+mkdir -p ~/.config/zee/themes
+vim ~/.config/zee/themes/my-theme.json
 ```
 
 And for project-specific themes.
 
 ```bash no-frame
 mkdir -p .opencode/themes
-vim .agent-core/themes/my-theme.json
+vim .zee/themes/my-theme.json
 ```
 
 ---

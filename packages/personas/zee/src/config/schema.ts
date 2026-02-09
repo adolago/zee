@@ -370,8 +370,8 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.remote.sshTarget":
     "Remote gateway over SSH (tunnels the gateway port to localhost). Format: user@host or user@host:port.",
   "gateway.remote.sshIdentity": "Optional SSH identity file path (passed to ssh -i).",
-  "gateway.daemonBridge.enabled": "Route replies through the agent-core daemon (single shared runtime).",
-  "gateway.daemonBridge.url": "Base URL for the agent-core daemon HTTP API.",
+  "gateway.daemonBridge.enabled": "Route replies through the zee daemon (single shared runtime).",
+  "gateway.daemonBridge.url": "Base URL for the zee daemon HTTP API.",
   "gateway.daemonBridge.sessionStore":
     "Session map file for gateway-to-daemon continuity (default: $ZEE_STATE_DIR/gateway/daemon-sessions.json).",
   "gateway.daemonBridge.timeoutMs": "HTTP timeout in milliseconds for daemon requests.",

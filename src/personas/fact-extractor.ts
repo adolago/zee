@@ -7,7 +7,7 @@
 
 import { generateText } from "ai";
 import { extractKeyFacts as heuristicExtract } from "../memory/unified";
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 import { TIMEOUT_FACT_EXTRACTION_MS } from "../config/constants";
 
 const log = Log.create({ service: "fact-extractor" });

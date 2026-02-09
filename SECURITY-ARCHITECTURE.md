@@ -1,10 +1,10 @@
-# agent-core Security Architecture
+# Zee Security Architecture
 
-This document describes the practical security architecture of `agent-core` as implemented in this repository. It is not a formal guarantee of isolation; `agent-core` is a privileged local tool by design.
+This document describes the practical security architecture of `zee` as implemented in this repository. It is not a formal guarantee of isolation; `zee` is a privileged local tool by design.
 
 ## Summary
 
-`agent-core` defends against common classes of agent-tool vulnerabilities with layered controls:
+`zee` defends against common classes of agent-tool vulnerabilities with layered controls:
 
 - **Permission gating**: per-surface defaults (`allow`/`deny`/`ask`) with an interactive “ask” flow when configured.
 - **Tool sandboxing (selected tools)**: MCP filesystem tools validate paths against a sandbox root and block sensitive host locations.
@@ -23,7 +23,7 @@ Primary surfaces:
 
 External components:
 
-- MCP servers: third-party tool providers (outside the `agent-core` trust boundary).
+- MCP servers: third-party tool providers (outside the `zee` trust boundary).
 - Zee gateway: a separate process that can forward messaging and tool requests.
 
 ## Permissions (MCP Layer)
@@ -93,6 +93,5 @@ Implementation:
 
 ## Non-Goals
 
-- `agent-core` is not an OS sandbox. A determined attacker with tool execution can often reach full user-level compromise.
-- Strong isolation should be provided by running `agent-core` inside a container/VM and restricting network exposure.
-
+- `zee` is not an OS sandbox. A determined attacker with tool execution can often reach full user-level compromise.
+- Strong isolation should be provided by running `zee` inside a container/VM and restricting network exposure.

@@ -75,9 +75,9 @@ bun run scripts/model-block-cli.ts validate
 
 The tool searches for `model-block-list.jsonc` in this order:
 
-1. `./.agent-core/model-block-list.jsonc` (project-specific)
-2. `~/.config/agent-core/model-block-list.jsonc` (user config)
-3. `~/.agent-core/model-block-list.jsonc` (legacy user config)
+1. `./.zee/model-block-list.jsonc` (project-specific)
+2. `~/.config/zee/model-block-list.jsonc` (user config)
+3. `~/.zee/model-block-list.jsonc` (legacy user config)
 
 ## Example Block List
 
@@ -107,7 +107,7 @@ When you run `apply`, the tool:
 
 ## Pre-Configured Block List
 
-A default block list is provided at `.agent-core/model-block-list.jsonc` with deprecated models already listed:
+A default block list is provided at `.zee/model-block-list.jsonc` with deprecated models already listed:
 
 - OpenAI: gpt-4, gpt-4-turbo, gpt-4o, gpt-4o-mini
 - Google: gemini-2.5 series

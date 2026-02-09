@@ -206,7 +206,7 @@ export function validateConfigObjectWithPlugins(raw: unknown):
   }
 
   const memorySlot = normalizedPlugins.slots.memory;
-  const builtInMemorySlots = new Set(["agent-core", "none"]);
+  const builtInMemorySlots = new Set(["zee", "agent-core", "none"]);
   if (
     typeof memorySlot === "string" &&
     memorySlot.trim() &&

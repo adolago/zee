@@ -12,7 +12,7 @@ import type {
   S3BackendConfig,
   HTTPBackendConfig,
 } from './types.js';
-import { Log } from '../../packages/agent-core/src/util/log';
+import { Log } from '../../packages/zee-core/src/util/log';
 import fs from 'fs/promises';
 import path from 'path';
 

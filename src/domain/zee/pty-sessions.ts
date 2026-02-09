@@ -16,7 +16,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types.js";
-import { Log } from "../../../packages/agent-core/src/util/log.js";
+import { Log } from "../../../packages/zee-core/src/util/log.js";
 
 const log = Log.create({ service: "zee-pty-sessions" });
 
@@ -90,8 +90,8 @@ async function callGatewayRpc<T = unknown>(
 function formatConnectionError(errorMsg: string): string {
   return `Could not connect to Zee gateway.
 
-Ensure agent-core daemon is running:
-  agent-core daemon
+Ensure zee daemon is running:
+  zee daemon
 
 Error: ${errorMsg}`;
 }

@@ -11,7 +11,7 @@ import type {
   ChangeType,
   Plan,
 } from './types.js';
-import { Log } from '../../packages/agent-core/src/util/log';
+import { Log } from '../../packages/zee-core/src/util/log';
 
 const log = Log.create({ service: 'graph-diff' });
 

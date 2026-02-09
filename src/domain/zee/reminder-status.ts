@@ -13,7 +13,7 @@ import {
   type CalendarEvent,
 } from "./google/calendar.js";
 import { getMemory } from "../../memory/unified.js";
-import { Global } from "../../../packages/agent-core/src/global/index.js";
+import { Global } from "../../../packages/zee-core/src/global/index.js";
 import path from "path";
 import fs from "fs/promises";
 
@@ -84,9 +84,17 @@ async function saveToKV(key: string, value: unknown): Promise<void> {
  */
 async function createRefreshCronJob(): Promise<ToolExecutionResult> {
   const rawBaseUrl =
+    process.env.ZEE_URL ||
+    process.env.ZEE_DAEMON_URL ||
     process.env.AGENT_CORE_URL ||
     process.env.AGENT_CORE_DAEMON_URL ||
-    `http://127.0.0.1:${process.env.AGENT_CORE_PORT || process.env.AGENT_CORE_DAEMON_PORT || "3210"}`;
+    `http://127.0.0.1:${
+      process.env.ZEE_PORT ||
+      process.env.ZEE_DAEMON_PORT ||
+      process.env.AGENT_CORE_PORT ||
+      process.env.AGENT_CORE_DAEMON_PORT ||
+      "3210"
+    }`;
   const baseUrl = rawBaseUrl.replace(/\/$/, "");
 
   const gatewayHttpUrl = process.env.ZEE_GATEWAY_URL ||
@@ -147,8 +155,8 @@ The TUI banner will automatically update with fresh reminder status.`,
         metadata: { error: "connection_failed" },
         output: `Could not connect to Zee gateway to create cron job.
 
-Ensure agent-core daemon is running with gateway enabled:
-  agent-core daemon --gateway
+Ensure zee daemon is running with gateway enabled:
+  zee daemon --gateway
 
 Error: ${errorMsg}`,
       };

@@ -1,7 +1,7 @@
 // @refresh reload
 import "./webview-zoom"
 import { render } from "solid-js/web"
-import { AppBaseProviders, AppInterface, PlatformProvider, Platform } from "@agent-core/app"
+import { AppBaseProviders, AppInterface, PlatformProvider, Platform } from "@zee/app"
 import { open, save } from "@tauri-apps/plugin-dialog"
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link"
 import { open as shellOpen } from "@tauri-apps/plugin-shell"
@@ -14,7 +14,7 @@ import { relaunch } from "@tauri-apps/plugin-process"
 import { AsyncStorage } from "@solid-primitives/storage"
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http"
 import { Store } from "@tauri-apps/plugin-store"
-import { Splash } from "@agent-core/ui/logo"
+import { Splash } from "@zee/ui/logo"
 import { createSignal, Show, Accessor, JSX, createResource, onMount, onCleanup } from "solid-js"
 
 import { UPDATER_ENABLED } from "./updater"

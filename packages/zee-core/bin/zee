@@ -1,0 +1,163 @@
+#!/usr/bin/env node
+
+import childProcess from "child_process"
+import fs from "fs"
+import path from "path"
+import os from "os"
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url)
+const base = "zee"
+
+function run(target) {
+  const result = childProcess.spawnSync(target, process.argv.slice(2), {
+    stdio: "inherit",
+    env: process.env,
+  })
+  if (result.error) {
+    console.error(result.error.message)
+    process.exit(1)
+  }
+  const code = typeof result.status === "number" ? result.status : 0
+  process.exit(code)
+}
+
+// Support ZEE_BIN_PATH; also accept legacy AGENT_CORE_BIN_PATH / OPENCODE_BIN_PATH.
+const envPath = process.env.ZEE_BIN_PATH || process.env.AGENT_CORE_BIN_PATH || process.env.OPENCODE_BIN_PATH
+if (envPath) {
+  run(envPath)
+}
+
+const scriptPath = fs.realpathSync(path.resolve(__filename))
+const scriptDir = path.dirname(scriptPath)
+
+const platformMap = {
+  linux: "linux",
+  win32: "windows",
+}
+const archMap = {
+  x64: "x64",
+  arm64: "arm64",
+  arm: "arm",
+}
+
+const rawPlatform = os.platform()
+if (rawPlatform !== "linux" && rawPlatform !== "win32") {
+  console.error(`zee is not supported on ${rawPlatform}`)
+  process.exit(1)
+}
+const platform = platformMap[rawPlatform] ?? rawPlatform
+let arch = archMap[os.arch()]
+if (!arch) arch = os.arch()
+
+let libc = ""
+if (platform === "linux") {
+  try {
+    const lddVersion = childProcess.execSync("ldd --version 2>&1", { encoding: "utf8" })
+    if (lddVersion.toLowerCase().includes("musl")) {
+      libc = "-musl"
+    }
+  } catch {
+    try {
+      const muslFiles = fs.readdirSync("/lib").filter((f) => f.startsWith("ld-musl-"))
+      if (muslFiles.length > 0) {
+        libc = "-musl"
+      }
+    } catch {
+      // Ignore, default to glibc
+    }
+  }
+}
+
+const zeeBase = "core-" + platform + "-" + arch + libc
+const opencodeBase = "opencode-" + platform + "-" + arch + libc
+const zeeBinary = platform === "windows" ? "zee.exe" : "zee"
+const opencodeBinary = platform === "windows" ? "opencode.exe" : "opencode"
+
+function findBinary(startDir) {
+  // First check dist/ folder for development builds.
+  const distCandidates = [
+    path.join(startDir, "..", "dist", "@zee", zeeBase, "bin", zeeBinary),
+    path.join(startDir, "..", "dist", zeeBase, "bin", zeeBinary),
+  ]
+  for (const distCandidate of distCandidates) {
+    if (fs.existsSync(distCandidate)) {
+      return distCandidate
+    }
+  }
+
+  const candidates = [
+    { base: zeeBase, binary: zeeBinary },
+    // Legacy fallback (upstream compatibility).
+    { base: opencodeBase, binary: opencodeBinary },
+  ]
+
+  function resolveCandidate(root, entryName) {
+    for (const candidate of candidates) {
+      if (!entryName.startsWith(candidate.base)) continue
+      const resolved = path.join(root, entryName, "bin", candidate.binary)
+      if (fs.existsSync(resolved)) {
+        return resolved
+      }
+    }
+  }
+
+  let current = startDir
+  for (;;) {
+    const modules = path.join(current, "node_modules")
+    if (fs.existsSync(modules)) {
+      const entries = fs.readdirSync(modules, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        if (entry.name.startsWith("@")) {
+          const scopeDir = path.join(modules, entry.name)
+          const scopedEntries = fs.readdirSync(scopeDir, { withFileTypes: true })
+          for (const scopedEntry of scopedEntries) {
+            if (!scopedEntry.isDirectory()) continue
+            const resolved = resolveCandidate(scopeDir, scopedEntry.name)
+            if (resolved) return resolved
+          }
+          continue
+        }
+        const resolved = resolveCandidate(modules, entry.name)
+        if (resolved) return resolved
+      }
+    }
+    const parent = path.dirname(current)
+    if (parent === current) {
+      return
+    }
+    current = parent
+  }
+}
+
+const resolved = findBinary(scriptDir)
+if (!resolved) {
+  console.error(
+    'It seems that your package manager failed to install the right version of the zee CLI for your platform. You can try manually installing the "' +
+      base +
+      '" package',
+  )
+  process.exit(1)
+}
+
+const candidateRoot = path.resolve(path.dirname(resolved), "..")
+
+// Backward compat: migrate legacy roots to ZEE_ROOT.
+if (!process.env.ZEE_ROOT && (process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT)) {
+  process.env.ZEE_ROOT = process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
+}
+
+if (!process.env.ZEE_ROOT) {
+  const vendorDir = path.join(candidateRoot, "vendor", "personas")
+  if (fs.existsSync(vendorDir)) {
+    process.env.ZEE_ROOT = candidateRoot
+  }
+}
+
+// Keep legacy env vars in sync for callers that still read them.
+if (!process.env.AGENT_CORE_ROOT && process.env.ZEE_ROOT) process.env.AGENT_CORE_ROOT = process.env.ZEE_ROOT
+if (!process.env.OPENCODE_ROOT && process.env.ZEE_ROOT) process.env.OPENCODE_ROOT = process.env.ZEE_ROOT
+
+run(resolved)
+

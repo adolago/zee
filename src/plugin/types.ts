@@ -92,7 +92,7 @@ export interface PluginMeta {
   /** Plugin dependencies */
   dependencies?: Record<string, string>;
 
-  /** Minimum agent-core version */
+  /** Minimum zee version */
   agentCoreVersion?: string;
 }
 

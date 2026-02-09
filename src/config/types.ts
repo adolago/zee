@@ -1,7 +1,7 @@
 /**
  * Configuration System Types
  *
- * Unified configuration for agent-core, supporting:
+ * Unified configuration for zee, supporting:
  * - Provider selection and auth
  * - Agent personas
  * - MCP servers
@@ -13,7 +13,7 @@ import type { AuthMethod, SubscriptionProvider } from "../provider/types";
 import type { AgentConfig, AgentPersona } from "../agent/types";
 import type { McpServerConfig as MCPConfig } from "../mcp/types";
 import type { MemoryConfig } from "../memory/types";
-import type { SurfaceType } from "../../packages/agent-core/src/surface/types";
+import type { SurfaceType } from "../../packages/zee-core/src/surface/types";
 import type { LogLevel, DmPolicy, GroupPolicy, RetryConfig } from "./shared";
 import {
   QDRANT_URL,
@@ -336,20 +336,20 @@ export interface ZeeCodexbarConfig {
 /** Configuration file locations (in priority order) */
 export const CONFIG_LOCATIONS = [
   // Project-specific
-  ".agent-core.json",
-  ".agent-core.yaml",
-  ".agent-core/config.json",
-  ".agent-core/config.yaml",
+  ".zee.json",
+  ".zee.yaml",
+  ".zee/config.json",
+  ".zee/config.yaml",
   // User-specific
-  "~/.config/agent-core/config.json",
-  "~/.config/agent-core/config.yaml",
+  "~/.config/zee/config.json",
+  "~/.config/zee/config.yaml",
   // Global
-  "/etc/agent-core/config.json",
-  "/etc/agent-core/config.yaml",
+  "/etc/zee/config.json",
+  "/etc/zee/config.yaml",
 ];
 
 /** Environment variable prefix */
-export const ENV_PREFIX = "AGENT_CORE_";
+export const ENV_PREFIX = "ZEE_";
 
 /** Default configuration values */
 export const DEFAULT_CONFIG: Partial<AgentCoreConfig> = {
@@ -377,8 +377,8 @@ export const DEFAULT_CONFIG: Partial<AgentCoreConfig> = {
   surfaces: {},
   settings: {
     logLevel: "info",
-    dataDir: "~/.local/share/agent-core",
-    cacheDir: "~/.cache/agent-core",
+    dataDir: "~/.local/share/zee",
+    cacheDir: "~/.cache/zee",
     telemetry: false,
     autoUpdate: true,
   },

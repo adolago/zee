@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+
+// Compatibility shim: `agent-core` delegates to `zee`.
+
+import childProcess from "child_process"
+import path from "path"
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url)
+const scriptDir = path.dirname(__filename)
+const zeeEntry = path.join(scriptDir, "zee")
+
+const result = childProcess.spawnSync(process.execPath, [zeeEntry, ...process.argv.slice(2)], {
+  stdio: "inherit",
+  env: process.env,
+})
+
+if (result.error) {
+  console.error(result.error.message)
+  process.exit(1)
+}
+
+process.exit(typeof result.status === "number" ? result.status : 0)
+

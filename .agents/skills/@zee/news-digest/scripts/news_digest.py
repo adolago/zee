@@ -9,7 +9,7 @@ Architecture:
   Stanley -> Agent-Core
   - WebSearch via Exa MCP (built into agent-core)
   - LLM summarization via agent-core providers
-  - Auth handled by ~/.agent-core/auth.json
+  - Auth handled by ~/.zee/auth.json
 """
 
 import argparse
@@ -157,7 +157,7 @@ def find_agent_core_path() -> Optional[Path]:
     # Check common locations
     paths = [
         Path.home() / ".local/src/agent-core",
-        Path.home() / ".agent-core",
+        Path.home() / ".zee",
         Path("/opt/agent-core"),
     ]
     for p in paths:

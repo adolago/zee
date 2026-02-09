@@ -39,7 +39,10 @@ export class DaemonServer extends EventEmitter {
   constructor(socketPath?: string) {
     super();
     this.socketPath =
-      socketPath || process.env.AGENT_CORE_IPC_SOCKET || DEFAULT_SOCKET_PATH;
+      socketPath ||
+      process.env.ZEE_IPC_SOCKET ||
+      process.env.AGENT_CORE_IPC_SOCKET ||
+      DEFAULT_SOCKET_PATH;
     this.startedAt = new Date();
 
     // Register default handlers

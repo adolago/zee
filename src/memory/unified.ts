@@ -35,7 +35,7 @@ import {
   CONTINUITY_MAX_KEY_FACTS,
 } from "../config/constants";
 import { getMemoryEmbeddingConfig, getMemoryQdrantConfig, getMemoryRerankerConfig } from "../config/runtime";
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 import { SqliteFtsStore, type FtsConfig, type FtsEntry } from "./sqlite-fts";
 import { mergeHybridResults, type HybridSearchConfig, type HybridSearchResult } from "./hybrid";
 import { getMarkdownSync, type MarkdownSyncConfig } from "./markdown-sync";

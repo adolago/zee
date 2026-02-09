@@ -119,7 +119,7 @@ zee:delegate({
 
 ### Enable Browser Tool
 
-In `~/.config/agent-core/agent-core.jsonc`:
+In `~/.config/zee/zee.jsonc`:
 
 ```json
 {

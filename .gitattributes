@@ -11,7 +11,7 @@ README.zh-CN.md merge=ours
 README.zh-TW.md merge=ours
 
 # Fork-specific configuration
-.agent-core/agent-core.jsonc merge=ours
+.zee/zee.jsonc merge=ours
 
 # Fork customizations in docs
 docs/OPS.md merge=ours

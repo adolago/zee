@@ -1,5 +1,5 @@
 {
-  "name": "@agent-core/desktop",
+  "name": "@zee/desktop",
   "private": true,
   "version": "1.1.48",
   "type": "module",
@@ -13,8 +13,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@agent-core/app": "workspace:*",
-    "@agent-core/ui": "workspace:*",
+    "@zee/app": "workspace:*",
+    "@zee/ui": "workspace:*",
     "@solid-primitives/i18n": "2.2.1",
     "@solid-primitives/storage": "catalog:",
     "@tauri-apps/api": "^2",

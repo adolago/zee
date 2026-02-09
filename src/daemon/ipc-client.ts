@@ -32,6 +32,7 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
 ): Promise<TResult> {
   const socketPath =
     options.socketPath ||
+    process.env.ZEE_IPC_SOCKET ||
     process.env.AGENT_CORE_IPC_SOCKET ||
     getDefaultSocketPath();
   const timeoutMs = options.timeoutMs ?? 10000;
@@ -151,5 +152,6 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
 /** Get default socket path (lazy to avoid top-level process.env access issues) */
 function getDefaultSocketPath(): string {
   const home = process.env.HOME || process.env.USERPROFILE || "/tmp";
-  return `${home}/.zee/agent-core/daemon.sock`;
+  const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`;
+  return `${stateHome}/zee/daemon.sock`;
 }

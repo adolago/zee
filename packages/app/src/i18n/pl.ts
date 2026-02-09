@@ -234,7 +234,7 @@ export const dict = {
   "dialog.mcp.empty": "Brak skonfigurowanych MCP",
 
   "dialog.lsp.empty": "LSP wykryte automatycznie na podstawie typów plików",
-  "dialog.plugins.empty": "Wtyczki skonfigurowane w agent-core.json",
+  "dialog.plugins.empty": "Wtyczki skonfigurowane w zee.json",
 
   "mcp.status.connected": "połączono",
   "mcp.status.failed": "niepowodzenie",
@@ -395,7 +395,7 @@ export const dict = {
   "error.chain.responseBody": "Treść odpowiedzi:\n{{body}}",
   "error.chain.didYouMean": "Czy miałeś na myśli: {{suggestions}}",
   "error.chain.modelNotFound": "Model nie znaleziony: {{provider}}/{{model}}",
-  "error.chain.checkConfig": "Sprawdź swoją konfigurację (agent-core.json) nazwy dostawców/modeli",
+  "error.chain.checkConfig": "Sprawdź swoją konfigurację (zee.json) nazwy dostawców/modeli",
   "error.chain.mcpFailed":
     'Serwer MCP "{{name}}" nie powiódł się. Uwaga, Agent Core nie obsługuje jeszcze uwierzytelniania MCP.',
   "error.chain.providerAuthFailed": "Uwierzytelnianie dostawcy nie powiodło się ({{provider}}): {{message}}",

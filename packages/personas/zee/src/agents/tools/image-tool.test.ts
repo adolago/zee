@@ -6,8 +6,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import type { ZeeConfig } from "../../config/config.js";
 
-vi.mock("../auth-profiles/agent-core-sync.js", () => ({
-  syncAgentCoreCredentials: () => false,
+vi.mock("../auth-profiles/zee-auth-sync.js", () => ({
+  syncZeeAuthCredentials: () => false,
 }));
 
 vi.mock("../auth-profiles.js", async (importOriginal) => {

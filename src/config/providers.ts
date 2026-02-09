@@ -2,13 +2,13 @@
  * Unified Provider Registry
  *
  * Central registry of all external service providers (embedding, reranking, TTS, STT, image).
- * Each provider has an auth ID that maps to the agent-core auth system.
+ * Each provider has an auth ID that maps to the Zee auth system.
  *
  * This enables:
  * - Single source of truth for all providers across service types
- * - Unified auth login via `agent-core auth login <provider>`
+ * - Unified auth login via `zee auth login <provider>`
  * - Service-agnostic credentials (login once, use everywhere)
- * - Easy discovery via `agent-core auth list`
+ * - Easy discovery via `zee auth list`
  */
 
 // =============================================================================
@@ -168,7 +168,7 @@ export async function hasCredentialsAsync(provider: ProviderDefinition): Promise
   if (hasCredentials(provider)) return true;
 
   // Check auth store
-  const { Auth } = await import("../../packages/agent-core/src/auth");
+  const { Auth } = await import("../../packages/zee-core/src/auth");
   const auth = await Auth.get(provider.id);
   return auth !== undefined;
 }
@@ -189,6 +189,9 @@ function readAuthStoreSync(): Record<string, { type: string; key?: string }> {
     const xdgStateHome =
       process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state");
     const authPaths = [
+      path.join(xdgDataHome, "zee", "auth.json"),
+      path.join(xdgStateHome, "zee", "auth.json"),
+      // Legacy locations
       path.join(xdgDataHome, "agent-core", "auth.json"),
       path.join(xdgStateHome, "agent-core", "auth.json"),
     ];
@@ -239,7 +242,7 @@ export async function getApiKey(providerId: string): Promise<string | undefined>
   if (envKey) return envKey;
 
   // Check auth store
-  const { Auth } = await import("../../packages/agent-core/src/auth");
+  const { Auth } = await import("../../packages/zee-core/src/auth");
   const auth = await Auth.get(providerId);
   if (auth?.type === "api") return auth.key;
 

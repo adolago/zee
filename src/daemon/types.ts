@@ -87,5 +87,6 @@ export interface IPCClientOptions {
 /** Default socket path */
 export const DEFAULT_SOCKET_PATH = (() => {
   const home = process.env.HOME || process.env.USERPROFILE || "/tmp";
-  return `${home}/.zee/agent-core/daemon.sock`;
+  const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`;
+  return `${stateHome}/zee/daemon.sock`;
 })();

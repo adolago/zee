@@ -4,11 +4,11 @@ import { SDKProvider, useSDK } from "@/context/sdk"
 import { SyncProvider, useSync } from "@/context/sync"
 import { LocalProvider } from "@/context/local"
 
-import { DataProvider } from "@agent-core/ui/context"
-import { iife } from "@agent-core/util/iife"
-import type { QuestionAnswer } from "@agent-core/core/pkg/sdk/v2"
+import { DataProvider } from "@zee/ui/context"
+import { iife } from "@zee/util/iife"
+import type { QuestionAnswer } from "@zee/core/pkg/sdk/v2"
 import { decode64 } from "@/utils/base64"
-import { showToast } from "@agent-core/ui/toast"
+import { showToast } from "@zee/ui/toast"
 import { useLanguage } from "@/context/language"
 
 export default function Layout(props: ParentProps) {

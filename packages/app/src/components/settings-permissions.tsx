@@ -1,5 +1,5 @@
-import { Select } from "@agent-core/ui/select"
-import { showToast } from "@agent-core/ui/toast"
+import { Select } from "@zee/ui/select"
+import { showToast } from "@zee/ui/toast"
 import { Component, For, createMemo, type JSX } from "solid-js"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"

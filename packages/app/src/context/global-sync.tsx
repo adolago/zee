@@ -18,10 +18,10 @@ import {
   type PermissionRequest,
   type QuestionRequest,
   createAgentCoreClient,
-} from "@agent-core/core/pkg/sdk/v2/client"
+} from "@zee/core/pkg/sdk/v2/client"
 import { createStore, produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
-import { Binary } from "@agent-core/util/binary"
-import { retry } from "@agent-core/util/retry"
+import { Binary } from "@zee/util/binary"
+import { retry } from "@zee/util/retry"
 import { useGlobalSDK } from "./global-sdk"
 import type { InitError } from "../pages/error"
 import {
@@ -39,8 +39,8 @@ import {
   Switch,
   Match,
 } from "solid-js"
-import { showToast } from "@agent-core/ui/toast"
-import { getFilename } from "@agent-core/util/path"
+import { showToast } from "@zee/ui/toast"
+import { getFilename } from "@zee/util/path"
 import { usePlatform } from "./platform"
 import { useLanguage } from "@/context/language"
 import { Persist, persisted } from "@/utils/persist"

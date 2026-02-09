@@ -1,4 +1,4 @@
-import { checksum } from "@agent-core/util/encode"
+import { checksum } from "@zee/util/encode"
 import { FileDiff, type SelectedLineRange } from "@pierre/diffs"
 import { createMediaQuery } from "@solid-primitives/media"
 import { createEffect, createMemo, createSignal, onCleanup, splitProps } from "solid-js"

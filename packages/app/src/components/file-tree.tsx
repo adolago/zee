@@ -1,8 +1,8 @@
 import { useFile } from "@/context/file"
-import { Collapsible } from "@agent-core/ui/collapsible"
-import { FileIcon } from "@agent-core/ui/file-icon"
-import { Icon } from "@agent-core/ui/icon"
-import { Tooltip } from "@agent-core/ui/tooltip"
+import { Collapsible } from "@zee/ui/collapsible"
+import { FileIcon } from "@zee/ui/file-icon"
+import { Icon } from "@zee/ui/icon"
+import { Tooltip } from "@zee/ui/tooltip"
 import {
   createEffect,
   createMemo,
@@ -16,7 +16,7 @@ import {
   type ParentProps,
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import type { FileNode } from "@agent-core/core/pkg/sdk/v2"
+import type { FileNode } from "@zee/core/pkg/sdk/v2"
 
 type Kind = "add" | "del" | "mix"
 

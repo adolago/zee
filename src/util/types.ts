@@ -1,7 +1,7 @@
 /**
  * Utility Types
  *
- * Common utility types and interfaces used across agent-core
+ * Common utility types and interfaces used across zee
  */
 
 /** Logger interface */

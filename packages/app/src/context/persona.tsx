@@ -1,5 +1,5 @@
 import { createSignal, createMemo, onMount } from "solid-js"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createSimpleContext } from "@zee/ui/context"
 import { personaPalettes } from "../../../../src/theme/rosetta"
 
 export const PERSONAS = [

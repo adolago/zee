@@ -3,7 +3,7 @@ import { join } from "path";
 import { homedir } from "os";
 
 // Configuration
-const PLAN_DIR = process.env.AGENT_CORE_PLAN_DIR || join(homedir(), ".agent-core", "plan");
+const PLAN_DIR = process.env.AGENT_CORE_PLAN_DIR || join(homedir(), ".zee", "plan");
 
 // Ensure plan directory exists
 if (!existsSync(PLAN_DIR)) {

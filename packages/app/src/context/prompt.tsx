@@ -1,10 +1,10 @@
 import { createStore } from "solid-js/store"
-import { createSimpleContext } from "@agent-core/ui/context"
+import { createSimpleContext } from "@zee/ui/context"
 import { batch, createMemo, createRoot, onCleanup } from "solid-js"
 import { useParams } from "@solidjs/router"
 import type { FileSelection } from "@/context/file"
 import { Persist, persisted } from "@/utils/persist"
-import { checksum } from "@agent-core/util/encode"
+import { checksum } from "@zee/util/encode"
 
 interface PartBase {
   content: string

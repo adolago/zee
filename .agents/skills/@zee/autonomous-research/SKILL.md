@@ -216,7 +216,7 @@ stanley:scratchpad {
 
 - Maximum data-gathering tool calls: 10
 - Maximum retries per step: 2
-- Scratchpad location: ~/.local/state/agent-core/stanley/scratchpad/
+- Scratchpad location: ~/.local/state/zee/stanley/scratchpad/
 
 ## Example: "Should I invest in AAPL?"
 

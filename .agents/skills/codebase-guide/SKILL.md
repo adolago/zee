@@ -11,8 +11,8 @@ tags: [architecture, reference, codebase, daemon, gateway]
 
 ```
 agent-core (Engine)
-  packages/agent-core/     Core TUI, daemon, SDK
-  ~/.config/agent-core/    Config, auth, plugins
+  packages/zee-core/     Core TUI, daemon, SDK
+  ~/.config/zee/    Config, auth, plugins
         |
         v
   SWARM (Orchestration) -- src/swarm/
@@ -95,7 +95,7 @@ agent-core/
 
 ## Integration
 
-Skills loaded from `.agents/skills/` and `~/.config/agent-core/skills/`:
+Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 
 ```
 .agents/skills/@johny/     Johny persona
@@ -162,16 +162,16 @@ journalctl --user -u agent-core --since "5 min ago"  # Recent logs
 
 ### Service File
 
-Location: `~/.config/systemd/user/agent-core.service`
+Location: `~/.config/systemd/user/zee.service`
 - `Restart=always`, `RestartSec=10` (auto-recovery)
 - `loginctl enable-linger` (persists across logout)
-- Env vars from `~/.config/agent-core/daemon.env`
+- Env vars from `~/.config/zee/daemon.env`
 
 ### Binary
 
-`~/.bun/bin/agent-core` (symlink to `dist/@agent-core/core-linux-x64/bin/agent-core`)
+`~/.bun/bin/agent-core` (symlink to `dist/@zee/core-linux-x64/bin/agent-core`)
 
-Install via `cd packages/agent-core && bun link`
+Install via `cd packages/zee-core && bun link`
 
 ### Common Processes
 

@@ -802,7 +802,7 @@ Look for missing:
 
 3. Check gateway logs for errors:
    ```bash
-   tail -n 200 ~/.local/state/agent-core/logs/daemon.log | rg hook
+   tail -n 200 ~/.local/state/zee/logs/daemon.log | rg hook
    ```
 
 ### Handler Errors

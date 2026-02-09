@@ -2,7 +2,7 @@ import type { ZeeConfig } from "../config/config.js";
 import type { ModelCatalogEntry } from "./model-catalog.js";
 import { normalizeGoogleModelId } from "./models-config.providers.js";
 import { resolveAgentModelPrimary } from "./agent-scope.js";
-import { resolveAgentCoreDefaultModelRef } from "./agent-core-providers.js";
+import { resolveZeeDefaultModelRef } from "./zee-providers.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "./defaults.js";
 
 export type ModelRef = {
@@ -161,9 +161,9 @@ export function resolveDefaultModelForAgent(params: {
   const agentModelOverride = params.agentId
     ? resolveAgentModelPrimary(params.cfg, params.agentId)
     : undefined;
-  const agentCoreDefault = resolveAgentCoreDefaultModelRef({ agentId: params.agentId });
-  const fallbackProvider = agentCoreDefault?.provider ?? DEFAULT_PROVIDER;
-  const fallbackModel = agentCoreDefault?.model ?? DEFAULT_MODEL;
+  const zeeDefault = resolveZeeDefaultModelRef({ agentId: params.agentId });
+  const fallbackProvider = zeeDefault?.provider ?? DEFAULT_PROVIDER;
+  const fallbackModel = zeeDefault?.model ?? DEFAULT_MODEL;
   const cfg =
     agentModelOverride && agentModelOverride.length > 0
       ? {

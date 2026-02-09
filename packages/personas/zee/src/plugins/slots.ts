@@ -14,7 +14,7 @@ const SLOT_BY_KIND: Record<PluginKind, PluginSlotKey> = {
 };
 
 const DEFAULT_SLOT_BY_KEY: Record<PluginSlotKey, string> = {
-  memory: "agent-core",
+  memory: "zee",
 };
 
 export function slotKeyForPluginKind(kind?: PluginKind): PluginSlotKey | null {

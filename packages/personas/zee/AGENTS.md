@@ -70,7 +70,7 @@
 - Patching dependencies (pnpm patches, overrides, or vendored changes) requires explicit approval; do not do this by default.
 - CLI progress: use `src/cli/progress.ts` (`osc-progress` + `@clack/prompts` spinner); don’t hand-roll spinners/bars.
 - Status output: keep tables + ANSI-safe wrapping (`src/terminal/table.ts`); `status --all` = read-only/pasteable, `status --deep` = probes.
-- Logs: check `~/.local/state/agent-core/logs/daemon.log` and `~/.local/state/agent-core/logs/daemon.err.log`.
+- Logs: check `~/.local/state/zee/logs/daemon.log` and `~/.local/state/zee/logs/daemon.err.log`.
 - Connection providers: when adding a new connection, update CLI/TUI surfaces and onboarding/overview docs, and add matching status + configuration forms so provider lists and settings stay in sync.
 - Version locations: `package.json` (CLI), `docs/install/updating.md` (pinned npm version).
 - A2UI bundle hash: `src/canvas-host/a2ui/.bundle.hash` is auto-generated; ignore unexpected changes, and only regenerate via `pnpm canvas:a2ui:bundle` (or `scripts/bundle-a2ui.sh`) when needed. Commit the hash as a separate commit.

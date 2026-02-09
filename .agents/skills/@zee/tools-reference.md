@@ -49,7 +49,7 @@ Detailed documentation for Zee's tools and capabilities.
    ```
 2. Zee gateway running (auto-started by `agent-core daemon`)
 
-**Configuration** (`agent-core.jsonc`):
+**Configuration** (`zee.jsonc`):
 ```json
 {
   "zee": {
@@ -187,13 +187,13 @@ Manage multiple isolated browser contexts:
 - **systemEvent**: Inject text into agent context
 - **agentTurn**: Run agent with specific message
 
-**Configuration** (`agent-core.jsonc`):
+**Configuration** (`zee.jsonc`):
 ```json
 {
   "zee": {
     "cron": {
       "enabled": true,
-      "store": "~/.local/state/agent-core/cron.json",
+      "store": "~/.local/state/zee/cron.json",
       "maxConcurrentRuns": 3
     }
   }
@@ -214,7 +214,7 @@ Never lose context when the daemon restarts:
 - Stores in Qdrant with semantic embeddings
 - Automatically restores on startup
 
-**Configuration** (`agent-core.jsonc`):
+**Configuration** (`zee.jsonc`):
 ```json
 {
   "memory": {
@@ -267,13 +267,13 @@ agent-core daemon-uninstall
 - Linux: `~/.config/systemd/user/agent-core-daemon.service`
 
 **Log Locations:**
-- `~/.local/state/agent-core/logs/daemon.log`
-- `~/.local/state/agent-core/logs/daemon.err.log`
+- `~/.local/state/zee/logs/daemon.log`
+- `~/.local/state/zee/logs/daemon.err.log`
 
 ## Splitwise (Shared Expenses)
 
 Track shared expenses via Splitwise API (OAuth token required).
-Enable with `zee.splitwise.enabled` in `agent-core.jsonc`.
+Enable with `zee.splitwise.enabled` in `zee.jsonc`.
 
 ```bash
 # List groups

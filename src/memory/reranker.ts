@@ -65,7 +65,7 @@ class VoyageReranker implements Reranker {
     this.baseUrl = (config.baseUrl ?? "https://api.voyageai.com/v1").replace(/\/$/, "");
 
     if (!this.apiKey) {
-      throw new Error("Voyage API key required: run `agent-core auth login voyage` or set VOYAGE_API_KEY env");
+      throw new Error("Voyage API key required: run `zee auth login voyage` or set VOYAGE_API_KEY env");
     }
   }
 

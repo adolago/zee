@@ -6,7 +6,7 @@ import * as core from "@actions/core"
 import * as github from "@actions/github"
 import type { Context as GitHubContext } from "@actions/github/lib/context"
 import type { IssueCommentEvent, PullRequestReviewCommentEvent } from "@octokit/webhooks-types"
-import { createAgentCoreClient } from "@agent-core/sdk"
+import { createAgentCoreClient } from "@zee/sdk"
 import { spawn } from "node:child_process"
 
 type GitHubAuthor = {

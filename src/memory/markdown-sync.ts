@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, rea
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import type { MemoryEntry } from "./types";
-import { Log } from "../../packages/agent-core/src/util/log";
+import { Log } from "../../packages/zee-core/src/util/log";
 
 const log = Log.create({ service: "memory-markdown" });
 
