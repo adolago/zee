@@ -68,7 +68,6 @@
     "@ai-sdk/provider-utils": "4.0.6",
     "@babel/core": "7.28.0",
     "@clack/prompts": "1.0.0-alpha.1",
-    "@clawhub/registry": "file:../../../claw-registry",
     "@hono/standard-validator": "0.1.5",
     "@hono/zod-validator": "0.4.2",
     "@modelcontextprotocol/sdk": "1.26.0",
