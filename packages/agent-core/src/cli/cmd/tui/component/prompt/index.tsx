@@ -1289,6 +1289,41 @@ export function Prompt(props: PromptProps) {
       ? { edit: false, write: false, notebook_edit: false }
       : { edit: true, write: true, notebook_edit: true }
 
+    // Clear input immediately so the UI feels responsive. Save state to restore
+    // on error so the user doesn't lose their message.
+    const savedPrompt = { ...store.prompt, mode: currentMode }
+    history.append(savedPrompt)
+    try {
+      input.extmarks.clear()
+      grammarChecker.clear()
+    } catch {
+      // EditBuffer may already be destroyed if the component was unmounted
+    }
+    setStore("prompt", { input: "", parts: [] })
+    setStore("extmarkToPartIndex", new Map())
+    props.onSubmit?.()
+    if (!props.sessionID)
+      setTimeout(() => {
+        route.navigate({
+          type: "session",
+          sessionID,
+        })
+      }, 50)
+    try {
+      input.clear()
+    } catch {
+      // EditBuffer may already be destroyed if the component was unmounted
+    }
+
+    const restoreInput = () => {
+      setStore("prompt", { input: savedPrompt.input, parts: savedPrompt.parts })
+      try {
+        input.setText(savedPrompt.input)
+      } catch {
+        // EditBuffer may already be destroyed
+      }
+    }
+
     if (store.mode === "shell") {
       // Shell mode executes user-provided commands directly, not AI actions
       // Hold/release mode doesn't apply since the user is explicitly running the command
@@ -1307,6 +1342,7 @@ export function Prompt(props: PromptProps) {
         )
         setStore("mode", "normal")
       } catch (error) {
+        restoreInput()
         toast.show({
           message: `Shell command failed: ${formatSubmitError(error)}`,
           variant: "error",
@@ -1351,6 +1387,7 @@ export function Prompt(props: PromptProps) {
           { throwOnError: true },
         )
       } catch (error) {
+        restoreInput()
         toast.show({
           message: `Command failed: ${formatSubmitError(error)}`,
           variant: "error",
@@ -1364,6 +1401,7 @@ export function Prompt(props: PromptProps) {
       // - steer: abort the current run and start a new one immediately
       // - reject: refuse to submit until user interrupts
       if (busyDecision.submit === "reject") {
+        restoreInput()
         toast.show({
           message: "Session is running. Interrupt it first (or set tui.busy_submit_behavior).",
           variant: "warning",
@@ -1406,6 +1444,7 @@ export function Prompt(props: PromptProps) {
             duration: 2000,
           })
         } catch (error) {
+          restoreInput()
           toast.show({
             message: `Failed to queue message: ${formatSubmitError(error)}`,
             variant: "error",
@@ -1417,6 +1456,7 @@ export function Prompt(props: PromptProps) {
         try {
           await sdk.client.session.prompt(promptPayload, { throwOnError: true })
         } catch (error) {
+          restoreInput()
           toast.show({
             message: `Failed to send message: ${formatSubmitError(error)}`,
             variant: "error",
@@ -1425,36 +1465,6 @@ export function Prompt(props: PromptProps) {
           return
         }
       }
-    }
-    history.append({
-      ...store.prompt,
-      mode: currentMode,
-    })
-    try {
-      input.extmarks.clear()
-      grammarChecker.clear()
-    } catch {
-      // EditBuffer may already be destroyed if the component was unmounted
-    }
-    setStore("prompt", {
-      input: "",
-      parts: [],
-    })
-    setStore("extmarkToPartIndex", new Map())
-    props.onSubmit?.()
-
-    // temporary hack to make sure the message is sent
-    if (!props.sessionID)
-      setTimeout(() => {
-        route.navigate({
-          type: "session",
-          sessionID,
-        })
-      }, 50)
-    try {
-      input.clear()
-    } catch {
-      // EditBuffer may already be destroyed if the component was unmounted
     }
   }
   const exit = useExit()
@@ -1995,7 +2005,7 @@ export function Prompt(props: PromptProps) {
             <spinner
               color={spinnerDef().color}
               frames={spinnerDef().frames}
-              interval={60}
+              interval={120}
             />
           </Show>
           <Show when={status().type === "busy"}>
