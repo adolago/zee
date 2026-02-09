@@ -19,7 +19,16 @@ async function makeStorePath() {
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
-      await fs.rm(dir, { recursive: true, force: true });
+      // Retry cleanup to handle ENOTEMPTY race conditions
+      for (let i = 0; i < 5; i++) {
+        try {
+          await fs.rm(dir, { recursive: true, force: true });
+          return;
+        } catch (err: any) {
+          if (err.code !== "ENOTEMPTY" && err.code !== "EBUSY") throw err;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
     },
   };
 }
@@ -93,6 +102,8 @@ describe("CronService timer resilience", () => {
     });
 
     cron.stop();
+    // Ensure real timers are restored before cleanup to prevent deadlocks in retry loop
+    vi.useRealTimers();
     await store.cleanup();
   });
 
@@ -136,6 +147,8 @@ describe("CronService timer resilience", () => {
     await vi.runOnlyPendingTimersAsync();
 
     cron.stop();
+    // Ensure real timers are restored before cleanup to prevent deadlocks in retry loop
+    vi.useRealTimers();
     await store.cleanup();
   });
 });
