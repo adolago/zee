@@ -132,6 +132,9 @@ process.env["AGENT_CORE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
 // Server auth breaks most unit tests (they don't send Authorization headers).
 process.env["AGENT_CORE_DISABLE_SERVER_AUTH"] = "true"
 
+// Disable config dependency install (bun add/install) to prevent network access and timeouts in tests
+process.env["AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL"] = "true"
+
 // Pre-fetch models.json so tests don't need the macro fallback
 // Also write the cache version file to prevent global/index.ts from clearing the cache
 // Note: Must use "agent-core" to match Global.Path.cache which uses app = "agent-core"
