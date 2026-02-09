@@ -52,21 +52,99 @@ const extraArgs = (() => {
   return args
 })()
 
-const [serverPort, webPort] = await Promise.all([freePort(), freePort()])
+const [serverPort, webPort, mockPort] = await Promise.all([freePort(), freePort(), freePort()])
 
 const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-e2e-"))
+
+// ---------------------------------------------------------------------------
+// Mock LLM server -- lightweight OpenAI-compatible endpoint for e2e tests.
+// Returns the token from "Reply with exactly: <token>" prompts so the
+// prompt e2e test can verify round-trip message delivery.
+// ---------------------------------------------------------------------------
+const mockLLM = Bun.serve({
+  port: mockPort,
+  hostname: "127.0.0.1",
+  async fetch(req) {
+    if (req.method === "POST" && new URL(req.url).pathname === "/v1/chat/completions") {
+      const body = (await req.json()) as {
+        messages?: Array<{ role: string; content: string | Array<{ type: string; text?: string }> }>
+      }
+      const last = body.messages?.findLast((m) => m.role === "user")
+      const text =
+        typeof last?.content === "string"
+          ? last.content
+          : Array.isArray(last?.content)
+            ? last.content
+                .filter((p) => p.type === "text")
+                .map((p) => p.text ?? "")
+                .join("")
+            : ""
+      const match = text.match(/Reply with exactly:\s*(.+)/)
+      const reply = match ? match[1].trim() : "mock response"
+
+      return Response.json({
+        id: `mock-${Date.now()}`,
+        object: "chat.completion",
+        created: Math.floor(Date.now() / 1000),
+        model: "big-pickle",
+        choices: [
+          {
+            index: 0,
+            message: { role: "assistant", content: reply },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
+      })
+    }
+
+    return new Response("Not Found", { status: 404 })
+  },
+})
+
+console.log(`mock LLM server listening on http://127.0.0.1:${mockPort}`)
+
+// ---------------------------------------------------------------------------
+// Write e2e config override so the opencode provider routes to the mock LLM.
+// Using AGENT_CORE_TEST_MANAGED_CONFIG_DIR (managed config loads LAST, highest
+// precedence in config.ts:180-192) to override the project config's
+// "model": "cerebras/zai-glm-4.7" with "opencode/big-pickle".
+// The e2e-models.json fixture (loaded via AGENT_CORE_MODELS_PATH) supplies
+// the model catalog; this config provides the connection details.
+// ---------------------------------------------------------------------------
+const overrideDir = path.join(sandbox, "e2e-override")
+await fs.mkdir(overrideDir, { recursive: true })
+await fs.writeFile(
+  path.join(overrideDir, "agent-core.jsonc"),
+  JSON.stringify({
+    model: "opencode/big-pickle",
+    agent: {
+      zee: { model: "opencode/big-pickle" },
+    },
+    provider: {
+      opencode: {
+        options: {
+          baseURL: `http://127.0.0.1:${mockPort}/v1`,
+          apiKey: "e2e",
+        },
+      },
+    },
+  }),
+)
 
 const serverEnv = {
   ...process.env,
   // Keep e2e isolated, quiet, and fast.
   AGENT_CORE_DISABLE_FILEWATCHER: "true",
   AGENT_CORE_DISABLE_MODELS_FETCH: "true",
+  AGENT_CORE_MODELS_PATH: path.join(repoDir, "packages/agent-core/test/fixture/e2e-models.json"),
   AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
   HOME: path.join(sandbox, "home"),
   XDG_DATA_HOME: path.join(sandbox, "share"),
   XDG_CACHE_HOME: path.join(sandbox, "cache"),
   XDG_CONFIG_HOME: path.join(sandbox, "config"),
   XDG_STATE_HOME: path.join(sandbox, "state"),
+  AGENT_CORE_TEST_MANAGED_CONFIG_DIR: overrideDir,
   AGENT_CORE_E2E_PROJECT_DIR: repoDir,
   AGENT_CORE_E2E_SESSION_TITLE: "E2E Session",
   AGENT_CORE_E2E_MESSAGE: "Seeded for UI e2e",
@@ -134,6 +212,7 @@ const result = await (async () => {
     return { error }
   } finally {
     server.kill()
+    mockLLM.stop()
   }
 })()
 
