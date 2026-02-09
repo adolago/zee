@@ -1,7 +1,21 @@
 import { Hono } from "hono"
 import { describeRoute, resolver } from "hono-openapi"
 import { z } from "zod"
-import { LOBSTER_PALETTE, PROVIDERS, SKILL_FRONTMATTER_COMMON_OPTIONAL_KEYS, SKILL_FRONTMATTER_REQUIRED_KEYS } from "@clawhub/registry"
+
+// @ts-ignore - Optional dependency fallback for CI/Dev
+let registry: any = {
+  LOBSTER_PALETTE: {},
+  PROVIDERS: {},
+  SKILL_FRONTMATTER_COMMON_OPTIONAL_KEYS: [],
+  SKILL_FRONTMATTER_REQUIRED_KEYS: [],
+}
+try {
+  registry = await import("@clawhub/registry")
+} catch {
+  // Ignored - use defaults
+}
+
+const { LOBSTER_PALETTE, PROVIDERS, SKILL_FRONTMATTER_COMMON_OPTIONAL_KEYS, SKILL_FRONTMATTER_REQUIRED_KEYS } = registry
 
 const PaletteSchema = z.record(z.string(), z.string())
 const ProviderSchema = z.record(
