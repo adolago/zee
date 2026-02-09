@@ -1,0 +1,3 @@
+## 2025-10-26 - Accessible Manual Tabs
+**Learning:** The `QuestionPrompt` component uses a manual implementation of tabs for navigating questions. While functional, it lacked standard accessibility roles (`tablist`, `tab`) and states (`aria-selected`), making it opaque to screen readers compared to standard library components like `kobalte/tabs`.
+**Action:** When encountering or building manual tab-like navigation, always ensure `role="tablist"` is applied to the container and `role="tab"` with `aria-selected` is applied to interactive elements to ensure accessibility parity with standard components.
