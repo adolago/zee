@@ -1,6 +1,6 @@
 import { realpathSync } from "fs"
 import { realpath } from "fs/promises"
-import { dirname, join, relative } from "path"
+import { dirname, join, relative, isAbsolute } from "path"
 
 export namespace Filesystem {
   export const sanitizePath = (value: string) => (value.includes("\0") ? value.replace(/\0/g, "") : value)
@@ -48,7 +48,8 @@ export namespace Filesystem {
     try {
       const resolvedParent = await resolve(parent)
       const resolvedChild = await resolve(child)
-      return !relative(resolvedParent, resolvedChild).startsWith("..")
+      const rel = relative(resolvedParent, resolvedChild)
+      return !rel.startsWith("..") && !isAbsolute(rel)
     } catch {
       return false
     }
@@ -75,7 +76,8 @@ export namespace Filesystem {
     try {
       const resolvedParent = resolve(parent)
       const resolvedChild = resolve(child)
-      return !relative(resolvedParent, resolvedChild).startsWith("..")
+      const rel = relative(resolvedParent, resolvedChild)
+      return !rel.startsWith("..") && !isAbsolute(rel)
     } catch {
       return false
     }
@@ -99,13 +101,14 @@ export namespace Filesystem {
     b = sanitizePath(b)
     const relA = relative(a, b)
     const relB = relative(b, a)
-    return !relA || !relA.startsWith("..") || !relB || !relB.startsWith("..")
+    return !relA || (!relA.startsWith("..") && !isAbsolute(relA)) || !relB || (!relB.startsWith("..") && !isAbsolute(relB))
   }
 
   export function contains(parent: string, child: string) {
     parent = sanitizePath(parent)
     child = sanitizePath(child)
-    return !relative(parent, child).startsWith("..")
+    const rel = relative(parent, child)
+    return !rel.startsWith("..") && !isAbsolute(rel)
   }
 
   export async function findUp(target: string, start: string, stop?: string) {
