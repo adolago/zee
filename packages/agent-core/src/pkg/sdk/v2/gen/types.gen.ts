@@ -1922,6 +1922,7 @@ export type Model = {
     reasoning: boolean
     attachment: boolean
     toolcall: boolean
+    streaming?: boolean
     input: {
       text: boolean
       audio: boolean

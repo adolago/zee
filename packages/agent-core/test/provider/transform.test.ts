@@ -310,6 +310,7 @@ describe("ProviderTransform.message - interleaved reasoning fields", () => {
           reasoning: false,
           attachment: true,
           toolcall: true,
+          streaming: true,
           input: { text: true, audio: false, image: true, video: false, pdf: false },
           output: { text: true, audio: false, image: false, video: false, pdf: false },
           interleaved: false,

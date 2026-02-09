@@ -19,6 +19,7 @@ const model: Provider.Model = {
     reasoning: false,
     attachment: false,
     toolcall: true,
+    streaming: true,
     input: {
       text: true,
       audio: false,

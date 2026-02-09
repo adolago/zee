@@ -92,6 +92,28 @@
       "options": {
         "baseURL": "http://192.168.178.102:8000/v1"
       }
+    },
+    "zee-model": {
+      "options": {
+        "baseURL": "http://192.168.178.102:8100/v1",
+        "apiKey": "local"
+      },
+      "models": {
+        "zee-qwen3-30b-phase5": {
+          "id": "zee-qwen3-30b-phase5",
+          "name": "Zee Qwen3-30B Phase 5",
+          "family": "qwen",
+          "release_date": "2026-02",
+          "attachment": false,
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": false,
+          "streaming": false,
+          "limit": { "context": 4096, "output": 400 },
+          "modalities": { "input": ["text"], "output": ["text"] },
+          "options": {}
+        }
+      }
     }
   },
   "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan"],

@@ -5,6 +5,7 @@ import { Log } from "@/util/log"
 import {
   streamText,
   wrapLanguageModel,
+  simulateStreamingMiddleware,
   type ModelMessage,
   type StreamTextResult,
   type Tool,
@@ -408,6 +409,8 @@ export namespace LLM {
         // @ts-expect-error - LanguageModel type mismatch between @ai-sdk/provider versions
         model: language,
         middleware: [
+          // For models that don't support streaming, simulate it via doGenerate
+          ...(input.model.capabilities.streaming === false ? [simulateStreamingMiddleware()] : []),
           {
             specificationVersion: "v3" as const,
             async transformParams(args) {

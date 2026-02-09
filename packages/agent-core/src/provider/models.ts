@@ -27,6 +27,7 @@ export namespace ModelsDev {
     reasoning: z.boolean(),
     temperature: z.boolean(),
     tool_call: z.boolean(),
+    streaming: z.boolean().optional(),
     interleaved: z
       .union([
         z.literal(true),
