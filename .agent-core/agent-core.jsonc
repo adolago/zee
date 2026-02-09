@@ -201,16 +201,7 @@
       "mode": "primary",
       "color": "#5c9cf5"
     },
-    "stanley": {
-      "description": "Investing and financial research assistant",
-      "mode": "primary",
-      "color": "#f5a742"
-    },
-    "johny": {
-      "description": "Study assistant for learning and knowledge graphs",
-      "mode": "primary",
-      "color": "#7fd88c"
-    },
+
     "title": {
       "model": "cerebras/zai-glm-4.7",
       "temperature": 0.5,

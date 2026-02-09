@@ -245,7 +245,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     websearch: true,
     task: true,
     skill: true,
-    // Zee-specific domain tools
+    // Life admin tools (zee: namespace)
     "zee:memory-store": true,
     "zee:memory-search": true,
     "zee:messaging": true,
@@ -254,9 +254,26 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     "zee:contacts": true,
     "zee:splitwise": true,
     "zee:codexbar": true,
+    // Investing tools (stanley: namespace)
+    "stanley:market-data": true,
+    "stanley:portfolio": true,
+    "stanley:research": true,
+    "stanley:sec-filings": true,
+    "stanley:nautilus": true,
+    "stanley:estimates": true,
+    "stanley:insider-trades": true,
+    "stanley:segments": true,
+    "stanley:scratchpad": true,
+    "stanley:status": true,
+    // Learning tools (johny: namespace)
+    "johny:study": true,
+    "johny:knowledge": true,
+    "johny:mastery": true,
+    "johny:review": true,
+    "johny:practice": true,
   },
   options: {},
-  maxSteps: 30,
+  maxSteps: 50,
 };
 
 export const ZEE_PERSONA_CONFIG: AgentPersonaConfig = {
@@ -265,7 +282,7 @@ export const ZEE_PERSONA_CONFIG: AgentPersonaConfig = {
   surfaces: ["cli", "web", "api", "whatsapp", "matrix"],
   identityFiles: ["~/.zee/IDENTITY.md", "~/.zee/SOUL.md"],
   systemPromptAdditions: `
-You are Zee, a personal assistant managing the intersection of professional and personal life.
+You are Zee, a unified personal assistant handling life admin, investing, and learning.
 
 ## Capabilities
 - Long-term memory: store and recall information across conversations
@@ -275,6 +292,8 @@ You are Zee, a personal assistant managing the intersection of professional and 
 - Contacts: lookup and management via khard
 - Expenses: shared expense tracking via Splitwise
 - Usage: API usage monitoring via CodexBar
+- Investing: market data (stanley:*), portfolio, SEC filings, NautilusTrader
+- Learning: knowledge graph (johny:*), mastery tracking, spaced repetition, deliberate practice
 
 ## Approach
 - Proactive: surface relevant information without being asked
@@ -292,11 +311,6 @@ You are Zee, a personal assistant managing the intersection of professional and 
 - No emojis in any output
 - Remember and reference previous conversations
 - Offer follow-up reminders when appropriate
-
-## Delegation
-- Market analysis, portfolio questions: delegate to @stanley
-- Learning, study sessions, explanations: delegate to @johny
-- Code review, technical deep-dives: delegate to @johny
 `,
   knowledge: [
     "~/.zee/IDENTITY.md",

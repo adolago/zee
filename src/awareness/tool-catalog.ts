@@ -28,9 +28,10 @@ export interface ToolCatalog {
   generatedAt: number
 }
 
-// Primary tools per persona - these get full details + examples
+// Primary tools - all available to the unified Zee persona
 const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
   zee: [
+    // Life admin
     "kernel_create_browser",
     "kernel_execute_playwright_code",
     "zee:splitwise",
@@ -40,24 +41,21 @@ const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
     "zee:memory",
     "whatsapp",
     "matrix",
-  ],
-  stanley: [
+    // Investing (stanley: namespace)
     "stanley:portfolio",
     "stanley:market",
     "stanley:backtest",
     "stanley:sec",
     "stanley:analysis",
-    "kernel_create_browser",
-    "kernel_execute_playwright_code",
-  ],
-  johny: [
+    "stanley:estimates",
+    "stanley:insider-trades",
+    "stanley:segments",
+    // Learning (johny: namespace)
     "johny:knowledge",
     "johny:mastery",
     "johny:review",
     "johny:practice",
-    "johny:curriculum",
-    "kernel_create_browser",
-    "kernel_execute_playwright_code",
+    "johny:study",
   ],
 }
 
@@ -301,27 +299,25 @@ function groupByCategory(tools: ToolCatalogEntry[]): Record<string, ToolCatalogE
   return grouped
 }
 
-function getEnabledServices(persona: string): string[] {
+function getEnabledServices(_persona: string): string[] {
   const services: string[] = []
 
-  if (persona === "zee") {
-    try {
-      const splitwise = getZeeSplitwiseConfig()
-      if (splitwise.enabled) {
-        services.push("Splitwise (expenses, payments, groups)")
-      }
-    } catch {
-      // Config not available
+  try {
+    const splitwise = getZeeSplitwiseConfig()
+    if (splitwise.enabled) {
+      services.push("Splitwise (expenses, payments, groups)")
     }
+  } catch {
+    // Config not available
+  }
 
-    try {
-      const codexbar = getZeeCodexbarConfig()
-      if (codexbar.enabled) {
-        services.push("CodexBar (usage tracking)")
-      }
-    } catch {
-      // Config not available
+  try {
+    const codexbar = getZeeCodexbarConfig()
+    if (codexbar.enabled) {
+      services.push("CodexBar (usage tracking)")
     }
+  } catch {
+    // Config not available
   }
 
   return services

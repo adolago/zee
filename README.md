@@ -1,9 +1,9 @@
-# Agent-Core
+# Zee
 
 [![Version](https://img.shields.io/npm/v/@adolago/agent-core?style=flat-square)](https://www.npmjs.com/package/@adolago/agent-core)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-Agent-Core is a CLI agent engine that powers the Personas system (Zee, Stanley, Johny). It adds persona-based routing, semantic memory, and orchestration capabilities.
+Zee is a unified personal assistant built on a CLI agent engine. It handles life admin, investing, and learning with semantic memory, tool orchestration, and multi-surface support (CLI, Web, WhatsApp, Matrix).
 
 ## Release
 

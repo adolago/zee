@@ -1,12 +1,12 @@
 /**
  * Domain Tools Index
  *
- * Domain-specific tools for Stanley (financial), Zee (personal assistant),
- * Johny (learning), and shared tools.
- * These tools provide specialized functionality for each agent persona.
+ * All domain tools (life admin, investing, learning) are registered
+ * unconditionally under the unified Zee persona. Tool namespaces
+ * (stanley:*, johny:*) are preserved for clarity.
  *
- * This module bridges the MCP registry with the actual domain tool implementations
- * located in src/domain/.
+ * This module bridges the MCP registry with the actual domain tool
+ * implementations located in src/domain/.
  */
 
 import type { ToolDefinition } from '../types';
@@ -24,7 +24,7 @@ const log = Log.create({ service: 'domain-tools' });
 // ============================================================================
 
 /**
- * Stanley domain tools (financial analysis)
+ * Investing domain tools (stanley: namespace)
  */
 export const stanleyTools: ToolDefinition[] = [
   StanleyMarketDataTool,
@@ -37,7 +37,7 @@ export const stanleyTools: ToolDefinition[] = [
 ];
 
 /**
- * Zee domain tools (personal assistant) - MCP stubs
+ * Life admin domain tools (zee: namespace) - MCP stubs
  */
 export const zeeTools: ToolDefinition[] = [
   ZeeMemoryStoreTool,
@@ -47,7 +47,7 @@ export const zeeTools: ToolDefinition[] = [
 ];
 
 /**
- * Johny domain tools (learning/study) - dynamically loaded
+ * Learning domain tools (johny: namespace) - dynamically loaded
  */
 export let johnyTools: ToolDefinition[] = [];
 
@@ -57,36 +57,40 @@ export let johnyTools: ToolDefinition[] = [];
 export let zeeFullTools: ToolDefinition[] = [];
 
 /**
- * Shared domain tools (available to all personas)
+ * Shared domain tools
  */
 export const sharedTools: ToolDefinition[] = [];
 
 /**
- * All domain tools
+ * All domain tools (static)
  */
 export const domainTools: ToolDefinition[] = [...stanleyTools, ...zeeTools, ...sharedTools];
 
+// ============================================================================
+// Registration Functions
+// ============================================================================
+
 /**
- * Register Stanley tools with the registry
+ * Register investing tools (stanley: namespace)
  */
 export function registerStanleyTools(): void {
   const registry = getToolRegistry();
   registry.registerAll(stanleyTools, { source: 'domain', enabled: true });
-  log.debug('Registered Stanley domain tools', { count: stanleyTools.length });
+  log.debug('Registered investing domain tools (stanley:*)', { count: stanleyTools.length });
 }
 
 /**
- * Register Zee tools with registry (MCP stubs + full domain tools)
+ * Register life admin tools (zee: namespace) - MCP stubs
  */
 export function registerZeeTools(): void {
   const registry = getToolRegistry();
   registry.registerAll(zeeTools, { source: 'domain', enabled: true });
-  log.debug('Registered Zee MCP stub tools', { count: zeeTools.length });
+  log.debug('Registered life admin MCP stub tools (zee:*)', { count: zeeTools.length });
 }
 
 /**
  * Register full Zee domain tools from src/domain/zee
- * These include WhatsApp, Splitwise, Calendar, Browser, and more.
+ * Includes WhatsApp, Splitwise, Calendar, Browser, and more.
  */
 export async function registerZeeFullTools(): Promise<void> {
   try {
@@ -95,7 +99,7 @@ export async function registerZeeFullTools(): Promise<void> {
     
     const registry = getToolRegistry();
     registry.registerAll(zeeFullTools, { source: 'domain', enabled: true });
-    log.info('Registered full Zee domain tools', { 
+    log.info('Registered full life admin tools (zee:*)', { 
       count: zeeFullTools.length,
       tools: zeeFullTools.map(t => t.id).join(', ')
     });
@@ -107,8 +111,8 @@ export async function registerZeeFullTools(): Promise<void> {
 }
 
 /**
- * Register Johny domain tools from src/domain/johny
- * These include study sessions, knowledge graph, mastery tracking, and spaced repetition.
+ * Register learning tools (johny: namespace) from src/domain/johny
+ * Includes study sessions, knowledge graph, mastery tracking, spaced repetition.
  */
 export async function registerJohnyTools(): Promise<void> {
   try {
@@ -117,7 +121,7 @@ export async function registerJohnyTools(): Promise<void> {
     
     const registry = getToolRegistry();
     registry.registerAll(johnyTools, { source: 'domain', enabled: true });
-    log.info('Registered Johny domain tools', { 
+    log.info('Registered learning domain tools (johny:*)', { 
       count: johnyTools.length,
       tools: johnyTools.map(t => t.id).join(', ')
     });
@@ -137,7 +141,7 @@ export function registerSharedTools(): void {
 }
 
 /**
- * Register all domain tools with registry (sync version for backwards compat)
+ * Register all domain tools (sync version for backwards compat)
  */
 export function registerDomainTools(): void {
   registerStanleyTools();
@@ -146,7 +150,8 @@ export function registerDomainTools(): void {
 }
 
 /**
- * Register all domain tools with registry (async version - includes full tools)
+ * Register all domain tools unconditionally.
+ * All namespaces (zee:*, stanley:*, johny:*) load for the unified Zee persona.
  */
 export async function registerAllDomainTools(): Promise<void> {
   registerStanleyTools();
@@ -159,7 +164,7 @@ export async function registerAllDomainTools(): Promise<void> {
     registerJohnyTools(),
   ]);
   
-  log.info('All domain tools registered');
+  log.info('All domain tools registered (unified Zee persona)');
 }
 
 // ============================================================================

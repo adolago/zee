@@ -92,23 +92,8 @@ export async function initializeMcp(options?: {
   // Register built-in tools
   registerBuiltinTools();
 
-  // Register domain tools based on options
-  if (options?.enableStanley !== false) {
-    registerStanleyTools();
-  }
-  if (options?.enableZee !== false) {
-    registerZeeTools();
-  }
-
-  // Register full domain tools (Johny + full Zee with WhatsApp/Splitwise/etc.)
-  if (options?.enableFullDomainTools !== false) {
-    await registerAllDomainTools();
-  } else {
-    // Register individual persona tools if full tools disabled
-    if (options?.enableJohny !== false) {
-      await registerJohnyTools();
-    }
-  }
+  // Register all domain tools unconditionally (unified Zee persona)
+  await registerAllDomainTools();
 
   // Initialize MCP servers if configured
   if (options?.mcpServers) {

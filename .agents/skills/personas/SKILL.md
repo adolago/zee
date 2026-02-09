@@ -1,112 +1,106 @@
 ---
 name: personas
-description: The Personas system - Zee, Stanley, Johny. Cross-persona skill catalog and delegation. Read this to see all capabilities across all personas.
-version: 2.1.0
+description: Skill catalog and tool reference for Zee, the unified personal assistant. All tools from all domains are available directly.
+version: 3.0.0
 author: Artur
-tags: [personas, identity, catalog, cross-persona]
+tags: [personas, identity, catalog]
 ---
 
-# The Personas
+# Zee - Unified Assistant
 
-You are part of the **Personas** system - three AI personas that share common orchestration capabilities.
-
-**Every skill is available to every persona.** The persona system organizes and prioritizes skills by domain, but never blocks access. If Johny needs Zee's browser, he uses it. If Zee needs Stanley's market data, she uses it.
-
-## The Triad
-
-| Persona | Handle | Domain | Primary Skills |
-|---------|--------|--------|---------------|
-| **Zee** | @zee | Personal | Memory, messaging, email, calendar, contacts, browser, nodes |
-| **Stanley** | @stanley | Investing | Markets, portfolio, SEC filings, NautilusTrader, GUI |
-| **Johny** | @johny | Learning | Knowledge graph, spaced repetition, deliberate practice |
+Zee is the single assistant handling all domains. The former Stanley (investing) and Johny (learning) personas have been consolidated into Zee. Their tool namespaces (`stanley:*`, `johny:*`) are preserved for clarity but all tools load unconditionally.
 
 ## Complete Skill Catalog
 
 ### Zee Skills (life admin)
-- `zee` - Memory, messaging (WhatsApp/Telegram/Matrix E2EE), email (neomutt/notmuch), calendar (khal), contacts (khard), browser (per-persona Chrome), nodes, ClawHub marketplace
-- `home-assistant` - Smart home control via hass-cli or REST API (lights, switches, climate, scenes, automations) [via clawhub: dbhurley/homeassistant]
-- `obsidian` - Obsidian vault management and obsidian-cli automation [via clawhub: steipete/obsidian]
-- `agent-browser` - Headless browser automation CLI (navigate, click, type, snapshot) [via clawhub: TheSethRose/agent-browser]
-- `wacli` - WhatsApp CLI for messaging third parties and searching history [via clawhub: steipete/wacli]
-- `weather` - Weather forecasts via wttr.in and Open-Meteo (no API key needed) [via clawhub: steipete/weather]
-- `spotify-player` - Terminal Spotify playback/search via spogo or spotify_player [via clawhub: steipete/spotify-player]
-- `food-order` - Foodora reorder + ETA tracking via ordercli [via clawhub: steipete/food-order]
-- `caldav-calendar` - CalDAV calendar sync/query via vdirsyncer + khal [via clawhub: Asleep123/caldav-calendar]
+- `zee` - Memory, messaging (WhatsApp/Telegram/Matrix E2EE), email (neomutt/notmuch), calendar (khal), contacts (khard), browser (Chrome), nodes, ClawHub marketplace
+- `home-assistant` - Smart home control via hass-cli or REST API [via clawhub: dbhurley/homeassistant]
+- `obsidian` - Obsidian vault management [via clawhub: steipete/obsidian]
+- `agent-browser` - Headless browser automation CLI [via clawhub: TheSethRose/agent-browser]
+- `wacli` - WhatsApp CLI for messaging and history search [via clawhub: steipete/wacli]
+- `weather` - Weather forecasts via wttr.in and Open-Meteo [via clawhub: steipete/weather]
+- `spotify-player` - Terminal Spotify playback/search [via clawhub: steipete/spotify-player]
+- `food-order` - Foodora reorder + ETA tracking [via clawhub: steipete/food-order]
+- `caldav-calendar` - CalDAV calendar sync/query [via clawhub: Asleep123/caldav-calendar]
 - `whoopskill` - WHOOP health metrics: sleep, recovery, HRV, strain [via clawhub: koala73/whoopskill]
-- **Tools**: memory-store, memory-search, messaging, notification, reminder-status, browser-*, pty-*, node-*, cron-*, sentinel-*
-- **Surfaces**: CLI, Web, API, WhatsApp, Telegram, Matrix, Tailscale
 
-### Stanley Skills (investing)
+### Investing Skills (stanley: namespace)
 - `stanley` - Market data (OpenBB), portfolio tracking, SEC EDGAR filings, NautilusTrader strategies, GPUI desktop GUI
-- `stock-market-pro` - Yahoo Finance price tracking, charts, fundamentals, earnings [via clawhub: kys42/stock-market-pro]
-- **Tools**: market-data, portfolio, research, sec-filings, nautilus, gui
-- **MCP servers**: openbb, nautilus, zed-editor
+- `stock-market-pro` - Yahoo Finance price tracking, charts, fundamentals [via clawhub: kys42/stock-market-pro]
+- `autonomous-research` - Structured multi-step financial investigations
+- `dcf-valuation` - Discounted cash flow intrinsic value analysis
+- `investment-thesis` - Structured thesis building and tracking
+- `portfolio-analytics` - Advanced portfolio analytics and reporting
+- `risk-management` - Position sizing, risk assessment, stop-loss management
+- `market-analysis` - Market analysis workflows
+- `financial-research` - Financial research workflows
+- `earnings-intelligence` - Earnings analysis and tracking
+- `news-digest` - News aggregation and summarization
 
-### Johny Skills (learning)
-- `johny` - Knowledge graph (DAG with prerequisites), mastery system (Unknown to Fluent), FIRe (Fractional Implicit Repetition), deliberate practice, spaced repetition
-- `latex-rendering` - Render LaTeX math expressions in the TUI with Kitty graphics (PNG) and Unicode fallback
-- `coding-agent` - Run Codex CLI, Claude Code, OpenCode, agent-core, or Pi as background coding agents [via clawhub: steipete/coding-agent]
-- `mcporter` - MCP server CLI for listing, calling, and generating code from MCP tools [via clawhub: steipete/mcporter]
-- **Tools**: knowledge-graph, mastery, review, practice, session
-- **Installed**: ClawHub skills scoped to @johny/
+### Learning Skills (johny: namespace)
+- `johny` - Knowledge graph (DAG with prerequisites), mastery system, FIRe, deliberate practice, spaced repetition
+- `latex-rendering` - Render LaTeX math in the TUI with Kitty graphics and Unicode fallback
+- `coding-agent` - Run Codex CLI, Claude Code, OpenCode as background coding agents [via clawhub: steipete/coding-agent]
+- `concept-exploration` - Deep concept exploration and explanation
+- `github` - GitHub workflow integration
+- `oracle` - Oracle protocol for codebase understanding
+- `qmd` - Quarto markdown rendering
+- `session-logs` - Study session logging and review
+- `skill-builder` - Skill creation and management
+- `problem-solving` - Structured problem-solving methodology
+- `progress-tracking` - Learning progress tracking and visualization
+- `deliberate-practice` - Deliberate practice session management
 
-### Shared Skills (all personas)
-- `personas` - This catalog. Cross-persona skill reference.
-- `agents-menu` - Quick delegation reference
+### Shared Skills
+- `personas` - This catalog. Skill reference.
 - `auto-updater` - Daily auto-update of agent-core and skills via cron [via clawhub: maximeprades/auto-updater]
-- `self-improving-agent` - Log learnings, errors, and corrections for continuous improvement [via clawhub: pskoett/self-improving-agent]
-- `capability-evolver` - Self-evolution engine: analyze runtime history, mutate behavior [via clawhub: autogame-17/capability-evolver]
-- `tmux` - Remote-control tmux sessions for interactive CLIs [via clawhub: steipete/tmux]
-- `gemini` - Gemini CLI for one-shot Q&A and generation [via clawhub: steipete/gemini]
-- `humanizer` - Remove AI writing patterns, make text sound human [via clawhub: biostartechnology/humanizer]
-- `markdown-converter` - Convert PDF/Word/Excel/HTML to Markdown via markitdown [via clawhub: steipete/markdown-converter]
-- `clawddocs` - Documentation expert with search and navigation [via clawhub: NicholasSpisak/clawddocs]
-- ClawHub skills installed without `--persona` flag
+- `self-improving-agent` - Log learnings, errors, corrections [via clawhub: pskoett/self-improving-agent]
+- `tmux` - Remote-control tmux sessions [via clawhub: steipete/tmux]
+- `humanizer` - Remove AI writing patterns [via clawhub: biostartechnology/humanizer]
+- `markdown-converter` - Convert PDF/Word/Excel/HTML to Markdown [via clawhub: steipete/markdown-converter]
+- `clawddocs` - Documentation search and navigation [via clawhub: NicholasSpisak/clawddocs]
 
-## Cross-Persona Usage
+## Tool Namespaces
 
-Any persona can use any skill. When the skill tool lists skills, cross-persona ones are annotated with `[via @persona]`. Use them directly by name -- no delegation needed for the skill itself.
+Tools use namespaced IDs for clarity. All load unconditionally under Zee:
 
-**Delegate when:**
-- The task needs sustained context in another domain (e.g., multi-step market research)
-- You want the other persona's reasoning style and domain expertise
+| Namespace | Domain | Example Tools |
+|-----------|--------|---------------|
+| `zee:*` | Life admin | memory-store, messaging, browser-*, cron-* |
+| `stanley:*` | Investing | market-data, portfolio, sec-filings, nautilus |
+| `johny:*` | Learning | study, knowledge, mastery, review, practice |
 
-**Use the skill directly when:**
-- You just need a specific tool from another persona
-- The task is a one-shot operation (send a message, check calendar, query market data)
+## Cross-Domain Memory
 
-## Cross-Persona Memory
+All domains share the same Qdrant vector store. Store with clear domain/topic tags so information is findable across contexts:
 
-All personas share the same Qdrant vector store. One persona can reference another's findings.
+- Market research: domain "research", topic <ticker>
+- Study sessions: domain "learning", topic <subject>
+- Contacts: domain "contacts"
+- Preferences: domain "preferences"
 
-**Resolve before asking, across personas**: If you need information another persona might have stored, search memory before asking the user:
-- Zee can check Stanley's research domain before asking about a stock.
-- Stanley can check Zee's contacts domain for a colleague's email.
-- Johny can check Zee's preferences domain for the user's schedule.
+**Resolve before asking**: Always search memory before asking the user for information.
 
-**Store for others**: When you produce results another persona might need, store them with clear domain/topic tags.
+**Store outcomes**: After completing actions, store relevant results for future reference.
 
-## Delegation Quick Reference
+## MCP Servers
 
-| You are | Need | Action |
-|---------|------|--------|
-| Any | Personal admin, messaging, memory | Use @zee skill directly or delegate to Zee |
-| Any | Market data, portfolio, research | Use @stanley skill directly or delegate to Stanley |
-| Any | Learning, study, knowledge graph | Use @johny skill directly or delegate to Johny |
-| Any | Browser, cron, exec | Use the tool directly (shared infrastructure) |
-| Any | Coding agent (Codex, Claude, OpenCode) | Use coding-agent skill directly |
-| Any | Smart home control | Use home-assistant skill directly |
+- `memory` - Qdrant-backed semantic memory
+- `calendar` - Google Calendar integration
+- `portfolio` - Portfolio tracking and analytics
+- `context7` - Library documentation search
 
 ## Technical Reference
 
-The Personas system is implemented in `src/personas/`:
-
-- `types.ts` - Type definitions
-- `persona.ts` - Persona configurations
+Tool implementations:
+- `src/domain/zee/tools.ts` - Life admin tools
+- `src/domain/stanley/tools.ts` - Investing tools
+- `src/domain/johny/tools.ts` - Learning tools
+- `src/personas/persona.ts` - Persona configuration
 
 ## Style Guidelines
 
-All personas follow the communication style in `AGENTS.md`:
+Follow the communication style in `AGENTS.md`:
 - **No emojis** in commits, PRs, comments, or documentation
 - Clean, professional text
 - Exceptions only for third-party integrations requiring emojis

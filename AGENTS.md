@@ -3,7 +3,7 @@
   Edit THIS file; the symlink reflects changes automatically.
 -->
 
-# Agent-Core - The Engine
+# Zee - The Engine
 
 ## Quick Reference
 
@@ -21,30 +21,30 @@ cd packages/agent-core && bun run build
 ```
 If verification fails: `ln -sf /home/artur/.local/src/agent-core/packages/agent-core/dist/@adolago/agent-core-linux-x64/bin/agent-core ~/.bun/bin/agent-core`
 
-## CRITICAL: Naming Convention
+## Naming Convention
 
-This project is `agent-core`. NEVER use the legacy name in new code, docs, or user-facing text.
-- CLI: `agent-core`, Config: `~/.config/agent-core/`, State: `~/.local/state/agent-core/`
+The user-facing name is **Zee**. The internal package infrastructure uses `agent-core` (for upstream compat).
+- CLI: `zee` (or `agent-core`), Config: `~/.config/zee/`, State: `~/.local/state/zee/`
 
 ## No Emojis Policy
 
 Do NOT use emojis in commits, PRs, code comments, docs, logs, or user-facing text.
 Exceptions: third-party integrations, user content, skill metadata `emoji` fields.
 
-## The Personas (Triad)
+## Zee - Unified Assistant
 
-Three AI personas share orchestration (swarm) and memory (Qdrant):
-- **Zee** (`@zee`): Personal assistant - memory, messaging, calendar, contacts
-- **Stanley** (`@stanley`): Investing - market data, portfolio, SEC filings, NautilusTrader
-- **Johny** (`@johny`): Learning - knowledge graph, mastery tracking, spaced repetition
+Zee is the single assistant handling all domains:
+- **Life admin** (zee:* tools): Memory, messaging, calendar, contacts, browser, expenses
+- **Investing** (stanley:* tools): Market data, portfolio, SEC filings, NautilusTrader
+- **Learning** (johny:* tools): Knowledge graph, mastery tracking, spaced repetition
 
-Personas can spawn drones (background workers), share Qdrant memory, and preserve continuity across sessions.
+Zee can spawn drones (background workers), uses Qdrant memory, and preserves continuity across sessions.
 
 ## Key Paths
 
 | What | Where |
 |------|-------|
-| Skills | `.agents/skills/@zee/`, `.agents/skills/@stanley/`, `.agents/skills/@johny/`, `.agents/skills/personas/` |
+| Skills | `.agents/skills/@zee/`, `.agents/skills/personas/` |
 | Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
 | Persona logic | `src/personas/johny/` (TS), `packages/stanley-core/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |
@@ -55,9 +55,9 @@ Personas can spawn drones (background workers), share Qdrant memory, and preserv
 ## Daemon (systemd)
 
 ```bash
-systemctl --user restart agent-core   # Restart
-systemctl --user status agent-core    # Status
-journalctl --user -u agent-core -f    # Logs
+systemctl --user restart zee           # Restart (or agent-core)
+systemctl --user status zee            # Status
+journalctl --user -u zee -f            # Logs
 ./scripts/reload.sh                   # Full rebuild + restart
 ```
 
