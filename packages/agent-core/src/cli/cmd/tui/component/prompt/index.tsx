@@ -1202,19 +1202,51 @@ export function Prompt(props: PromptProps) {
       promptModelWarning()
       return
     }
+
+    const formatSubmitError = (error: unknown) => {
+      const normalized = (() => {
+        if (!error) return ""
+        if (typeof error === "string") return error
+        if (error instanceof Error) return error.message
+        if (typeof error === "object") {
+          const anyErr = error as any
+          if (typeof anyErr?.message === "string") return anyErr.message
+          if (typeof anyErr?.error?.message === "string") return anyErr.error.message
+          try {
+            return JSON.stringify(error)
+          } catch {
+            return String(error)
+          }
+        }
+        return String(error)
+      })()
+      const collapsed = normalized.replace(/\s+/g, " ").trim()
+      return collapsed || "Unknown error"
+    }
+
     let sessionID: string
     if (props.sessionID) {
       sessionID = props.sessionID
     } else {
-      const result = await sdk.client.session.create({})
-      if (!result.data?.id) {
+      try {
+        const result = await sdk.client.session.create({}, { throwOnError: true })
+        if (!result.data?.id) {
+          toast.show({
+            message: "Failed to create session: missing id in response.",
+            variant: "error",
+            duration: 7000,
+          })
+          return
+        }
+        sessionID = result.data.id
+      } catch (error) {
         toast.show({
-          message: "Failed to create session. Please try again.",
+          message: `Failed to create session: ${formatSubmitError(error)}`,
           variant: "error",
+          duration: 7000,
         })
         return
       }
-      sessionID = result.data.id
     }
     const messageID = Identifier.ascending("message")
     let inputText = store.prompt.input
@@ -1260,16 +1292,28 @@ export function Prompt(props: PromptProps) {
     if (store.mode === "shell") {
       // Shell mode executes user-provided commands directly, not AI actions
       // Hold/release mode doesn't apply since the user is explicitly running the command
-      sdk.client.session.shell({
-        sessionID,
-        agent: local.agent.current().name,
-        model: {
-          providerID: selectedModel.providerID,
-          modelID: selectedModel.modelID,
-        },
-        command: inputText,
-      })
-      setStore("mode", "normal")
+      try {
+        await sdk.client.session.shell(
+          {
+            sessionID,
+            agent: local.agent.current().name,
+            model: {
+              providerID: selectedModel.providerID,
+              modelID: selectedModel.modelID,
+            },
+            command: inputText,
+          },
+          { throwOnError: true },
+        )
+        setStore("mode", "normal")
+      } catch (error) {
+        toast.show({
+          message: `Shell command failed: ${formatSubmitError(error)}`,
+          variant: "error",
+          duration: 7000,
+        })
+        return
+      }
     } else if (
       iife(() => {
         const prefix = inputText.startsWith(":") ? ":" : inputText.startsWith("/") ? "/" : undefined
@@ -1286,28 +1330,35 @@ export function Prompt(props: PromptProps) {
       const restOfInput = firstLineEnd === -1 ? "" : inputText.slice(firstLineEnd + 1)
       const args = firstLineArgs.join(" ") + (restOfInput ? "\n" + restOfInput : "")
 
-      sdk.client.session.command({
-        sessionID,
-        command: command.slice(1),
-        arguments: args,
-        agent: local.agent.current().name,
-        model: `${selectedModel.providerID}/${selectedModel.modelID}`,
-        messageID,
-        variant,
-        tools: holdModeTools,
-        parts: nonTextParts
-          .filter((x) => x.type === "file")
-          .map((x) => ({
-            id: Identifier.ascending("part"),
-            ...x,
-          })),
-      })
+      try {
+        await sdk.client.session.command(
+          {
+            sessionID,
+            command: command.slice(1),
+            arguments: args,
+            agent: local.agent.current().name,
+            model: `${selectedModel.providerID}/${selectedModel.modelID}`,
+            messageID,
+            variant,
+            tools: holdModeTools,
+            parts: nonTextParts
+              .filter((x) => x.type === "file")
+              .map((x) => ({
+                id: Identifier.ascending("part"),
+                ...x,
+              })),
+          },
+          { throwOnError: true },
+        )
+      } catch (error) {
+        toast.show({
+          message: `Command failed: ${formatSubmitError(error)}`,
+          variant: "error",
+          duration: 7000,
+        })
+        return
+      }
     } else {
-      // Tool permissions based on hold/release mode (server also resolves from session.mode)
-      const holdModeTools = local.mode.isHold()
-        ? { edit: false, write: false, notebook_edit: false }
-        : { edit: true, write: true, notebook_edit: true }
-
       // While a run is in progress, allow either:
       // - followup: queue message (do not wait for a reply)
       // - steer: abort the current run and start a new one immediately
@@ -1347,22 +1398,44 @@ export function Prompt(props: PromptProps) {
       } satisfies Parameters<typeof sdk.client.session.prompt>[0]
 
       if (busyDecision.submit === "promptAsync") {
-        sdk.client.session.promptAsync(promptPayload).catch(() => {})
-        toast.show({
-          message: "Queued message (follow-up).",
-          variant: "info",
-          duration: 2000,
-        })
+        try {
+          await sdk.client.session.promptAsync(promptPayload, { throwOnError: true })
+          toast.show({
+            message: "Queued message (follow-up).",
+            variant: "info",
+            duration: 2000,
+          })
+        } catch (error) {
+          toast.show({
+            message: `Failed to queue message: ${formatSubmitError(error)}`,
+            variant: "error",
+            duration: 7000,
+          })
+          return
+        }
       } else {
-        sdk.client.session.prompt(promptPayload).catch(() => {})
+        try {
+          await sdk.client.session.prompt(promptPayload, { throwOnError: true })
+        } catch (error) {
+          toast.show({
+            message: `Failed to send message: ${formatSubmitError(error)}`,
+            variant: "error",
+            duration: 7000,
+          })
+          return
+        }
       }
     }
     history.append({
       ...store.prompt,
       mode: currentMode,
     })
-    input.extmarks.clear()
-    grammarChecker.clear()
+    try {
+      input.extmarks.clear()
+      grammarChecker.clear()
+    } catch {
+      // EditBuffer may already be destroyed if the component was unmounted
+    }
     setStore("prompt", {
       input: "",
       parts: [],
@@ -1378,7 +1451,11 @@ export function Prompt(props: PromptProps) {
           sessionID,
         })
       }, 50)
-    input.clear()
+    try {
+      input.clear()
+    } catch {
+      // EditBuffer may already be destroyed if the component was unmounted
+    }
   }
   const exit = useExit()
 
