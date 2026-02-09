@@ -46,8 +46,6 @@ output/
 # Skills installed locally into this checkout (keep persona + curated skills tracked)
 .agents/skills/*
 !.agents/skills/@zee/
-!.agents/skills/@stanley/
-!.agents/skills/@johny/
 !.agents/skills/codebase-guide/
 !.agents/skills/personas/
 
@@ -59,6 +57,15 @@ vendor/personas/zee/docs/install/docker.md
 vendor/personas/zee/docs/platforms/linux.md
 vendor/personas/zee/docs/platforms/exe-dev.md
 vendor/personas/zee/docker-compose.yml
+
+# Personal reports and archives
+*-report.md
+*-threat-model.md
+*-backlog.md
+packages/agent-core/*-report-*.zip
+
+# Generated type declarations
+src/theme/rosetta.d.ts
 
 # Removed legacy components
 src/council/

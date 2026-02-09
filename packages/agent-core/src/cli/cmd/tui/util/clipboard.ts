@@ -197,10 +197,6 @@ export namespace Clipboard {
           if (await outputFile.exists()) {
             const compressed = Buffer.from(await outputFile.arrayBuffer())
             if (compressed.length <= IMAGE_SIZE_THRESHOLD && compressed.length > 0) {
-              const ratio = ((1 - compressed.length / buffer.length) * 100).toFixed(0)
-              console.log(
-                `[clipboard] Compressed image: ${(buffer.length / 1024 / 1024).toFixed(1)}MB → ${(compressed.length / 1024 / 1024).toFixed(1)}MB (${ratio}% reduction, quality=${quality}, resize=${resize})`,
-              )
               return { data: compressed, mime: "image/jpeg" }
             }
           }
@@ -343,7 +339,6 @@ export namespace Clipboard {
 
     if (os === "linux") {
       if (process.env["WAYLAND_DISPLAY"] && Bun.which("wl-copy")) {
-        console.log("clipboard: using wl-copy")
         return async (text: string) => {
           const proc = Bun.spawn(["wl-copy"], { stdin: "pipe", stdout: "ignore", stderr: "ignore" })
           proc.stdin.write(text)
@@ -352,7 +347,6 @@ export namespace Clipboard {
         }
       }
       if (Bun.which("xclip")) {
-        console.log("clipboard: using xclip")
         return async (text: string) => {
           const proc = Bun.spawn(["xclip", "-selection", "clipboard"], {
             stdin: "pipe",
@@ -365,7 +359,6 @@ export namespace Clipboard {
         }
       }
       if (Bun.which("xsel")) {
-        console.log("clipboard: using xsel")
         return async (text: string) => {
           const proc = Bun.spawn(["xsel", "--clipboard", "--input"], {
             stdin: "pipe",
@@ -380,7 +373,6 @@ export namespace Clipboard {
     }
 
     if (os === "win32") {
-      console.log("clipboard: using powershell")
       return async (text: string) => {
         // Pipe via stdin to avoid PowerShell string interpolation ($env:FOO, $(), etc.)
         const proc = Bun.spawn(
@@ -404,7 +396,6 @@ export namespace Clipboard {
       }
     }
 
-    console.log("clipboard: no native support")
     return async (text: string) => {
       await clipboardy.write(text).catch(() => {})
     }

@@ -505,7 +505,9 @@ export namespace Server {
     const tryServe = (port: number) => {
       try {
         return Bun.serve({ ...args, port })
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        log.error("Bun.serve failed", { hostname: opts.hostname, port, error: msg })
         return undefined
       }
     }

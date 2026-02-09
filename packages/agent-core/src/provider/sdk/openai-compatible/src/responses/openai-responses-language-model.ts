@@ -270,7 +270,24 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
       input,
       temperature,
       top_p: topP,
-      max_output_tokens: maxOutputTokens,
+      // Token limit param support varies across "OpenAI-compatible" Responses implementations.
+      // OpenAI's own /responses currently rejects both `max_tokens` and `max_output_tokens`
+      // (400: Unsupported parameter), so we omit token limiting for api.openai.com.
+      ...(maxOutputTokens != null &&
+        (() => {
+          try {
+            const u = new URL(
+              this.config.url({
+                path: "/responses",
+                modelId: this.modelId,
+              }),
+            )
+            if (u.hostname === "api.openai.com") return {}
+          } catch {
+            // Ignore URL parse issues; fall back to sending max_tokens below.
+          }
+          return { max_tokens: maxOutputTokens }
+        })()),
 
       ...((responseFormat?.type === "json" || openaiOptions?.textVerbosity) && {
         text: {

@@ -1,7 +1,7 @@
 import { describeRoute, resolver, validator } from "hono-openapi"
 import { Hono } from "hono"
 import { z } from "zod"
-import { stream, streamSSE } from "hono/streaming"
+import { streamSSE } from "hono/streaming"
 import { Session } from "../../session"
 import { SessionStatus } from "../../session/status"
 import { Todo } from "../../session/todo"
@@ -21,7 +21,6 @@ import { SessionSummary } from "@/session/summary"
 import { SessionCompaction } from "../../session/compaction"
 import { Agent } from "../../agent/agent"
 import { PermissionNext } from "@/permission/next"
-import { NamedError } from "@agent-core/util/error"
 
 const log = Log.create({ service: "server:session" })
 
@@ -110,15 +109,15 @@ export const SessionRoute = new Hono()
       return c.json(session)
     },
   )
-  .post(
-    "/session/:sessionID/message",
-    describeRoute({
-      summary: "Send message",
-      description: "Create and send a new message to a session, streaming the AI response.",
-      operationId: "session.prompt",
-      responses: {
-        200: {
-          description: "Created message",
+	  .post(
+	    "/session/:sessionID/message",
+	    describeRoute({
+	      summary: "Send message",
+	      description: "Create and send a new message to a session.",
+	      operationId: "session.prompt",
+	      responses: {
+	        200: {
+	          description: "Created message",
           content: {
             "application/json": {
               schema: resolver(
@@ -139,30 +138,17 @@ export const SessionRoute = new Hono()
         sessionID: z.string().meta({ description: "Session ID" }),
       }),
     ),
-    validator("json", SessionPrompt.PromptInput.omit({ sessionID: true })),
-    async (c) => {
-      const sessionID = c.req.valid("param").sessionID
-      const body = c.req.valid("json")
-      // Validate session exists before opening stream so the error surfaces
-      // as a proper HTTP 404 instead of being buried inside a 200 payload.
-      await Session.get(sessionID)
-      c.status(200)
-      c.header("Content-Type", "application/json")
-      return stream(c, async (stream) => {
-        try {
-          const msg = await SessionPrompt.prompt({ ...body, sessionID })
-          stream.write(JSON.stringify(msg))
-        } catch (err) {
-          const errorMsg =
-            err instanceof NamedError ? (err.toObject().data?.message ?? err.message) :
-            err instanceof Error ? err.message :
-            String(err)
-          Log.Default.error("session.prompt stream error", { error: errorMsg })
-          stream.write(JSON.stringify({ error: errorMsg, info: null, parts: [] }))
-        }
-      })
-    },
-  )
+	    validator("json", SessionPrompt.PromptInput.omit({ sessionID: true })),
+	    async (c) => {
+	      const sessionID = c.req.valid("param").sessionID
+	      const body = c.req.valid("json")
+	      // Validate session exists so the error surfaces as a proper HTTP 404 (and
+	      // doesn't get auto-created by SessionPrompt.prompt()).
+	      await Session.get(sessionID)
+	      const msg = await SessionPrompt.prompt({ ...body, sessionID })
+	      return c.json(msg)
+	    },
+	  )
   .get(
     "/session/status",
     describeRoute({
@@ -978,12 +964,22 @@ export const SessionRoute = new Hono()
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const body = c.req.valid("json")
-      SessionPrompt.prompt({ ...body, sessionID }).catch((err) => {
-        Log.Default.error("session.prompt_async error", {
-          error: err instanceof Error ? err.message : String(err),
-          sessionID,
+
+      // Ensure the user message is persisted before responding so the client doesn't
+      // clear the prompt optimistically on a background failure.
+      const ack = await SessionPrompt.prompt({ ...body, sessionID, noReply: true })
+
+      // Only start the assistant loop for real user prompts (not /hold, /release, etc)
+      // and when the caller actually wants a reply.
+      const status = SessionStatus.get(sessionID)
+      if (status.type !== "busy" && ack.info.role === "user" && body.noReply !== true) {
+        SessionPrompt.loop(sessionID).catch((err) => {
+          Log.Default.error("session.prompt_async loop error", {
+            error: err instanceof Error ? err.message : String(err),
+            sessionID,
+          })
         })
-      })
+      }
       return c.body(null, 204)
     },
   )

@@ -361,23 +361,42 @@ export namespace GatewaySupervisor {
 
     if (options.checkPort) {
       const gatewayPort = getGatewayPort()
-      let portOpen = await isPortOpen("127.0.0.1", gatewayPort)
       const embeddedState = getEmbeddedGatewayState()
-      if (portOpen && !embeddedState.running) {
-        const processes = listGatewayProcesses()
-        if (processes.length > 0) {
-          // Kill orphaned gateway processes instead of blocking startup
-          log.warn("killing orphaned zee gateway processes during preflight", {
-            pids: processes.map((p) => p.pid),
-          })
-          await stopGatewayProcesses("preflight: orphaned gateway on port " + gatewayPort)
-          // Re-check port after cleanup
-          portOpen = await isPortOpen("127.0.0.1", gatewayPort)
-          if (portOpen) {
-            issues.push(`Gateway port ${gatewayPort} still in use after killing orphaned processes`)
+      if (!embeddedState.running && isSystemdUserUnitEnabled(SYSTEMD_ZEE_GATEWAY_UNIT)) {
+        issues.push(
+          `Systemd unit ${SYSTEMD_ZEE_GATEWAY_UNIT} is enabled. Disable it or start agent-core daemon with --no-gateway to avoid a port conflict on ${gatewayPort}.`,
+        )
+      } else {
+        let portOpen = await isPortOpen("127.0.0.1", gatewayPort)
+        if (portOpen && !embeddedState.running) {
+          const processes = listGatewayProcesses()
+          if (processes.length > 0) {
+            const systemdPids: number[] = []
+            for (const proc of processes) {
+              if (await isPidInSystemdUnit(proc.pid, SYSTEMD_ZEE_GATEWAY_UNIT)) systemdPids.push(proc.pid)
+            }
+
+            if (systemdPids.length > 0) {
+              issues.push(
+                `Gateway port ${gatewayPort} is in use by ${SYSTEMD_ZEE_GATEWAY_UNIT} (pid(s): ${systemdPids.join(", ")}). Embedded gateway will not start.`,
+              )
+            } else if (options.force) {
+              // Kill orphaned gateway processes only when explicitly forced.
+              log.warn("killing orphaned zee gateway processes during preflight (forced)", {
+                pids: processes.map((p) => p.pid),
+              })
+              await stopGatewayProcesses("preflight: orphaned gateway on port " + gatewayPort)
+              // Re-check port after cleanup
+              portOpen = await isPortOpen("127.0.0.1", gatewayPort)
+              if (portOpen) {
+                issues.push(`Gateway port ${gatewayPort} still in use after killing orphaned processes`)
+              }
+            } else {
+              issues.push(`Gateway port ${gatewayPort} is already in use`)
+            }
+          } else {
+            issues.push(`Gateway port ${gatewayPort} is already in use`)
           }
-        } else {
-          issues.push(`Gateway port ${gatewayPort} is already in use`)
         }
       }
     }
@@ -556,21 +575,47 @@ function getGatewayPort(): number {
   return resolveEmbeddedGatewayPort()
 }
 
+const SYSTEMD_ZEE_GATEWAY_UNIT = "zee-gateway.service"
+
+function isSystemdUserUnitEnabled(unit: string): boolean {
+  try {
+    const output = execSync(`systemctl --user is-enabled ${unit} 2>/dev/null || true`, {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 1000,
+    })
+      .toString()
+      .trim()
+    return output === "enabled" || output === "enabled-runtime"
+  } catch {
+    return false
+  }
+}
+
+async function isPidInSystemdUnit(pid: number, unit: string): Promise<boolean> {
+  try {
+    const cgroup = await fs.readFile(`/proc/${pid}/cgroup`, "utf-8")
+    return cgroup.includes(unit)
+  } catch {
+    return false
+  }
+}
+
 function listGatewayProcesses(): Array<{ pid: number; cmd: string }> {
   try {
     const output = execSync('pgrep -af "zee.*gateway" 2>/dev/null || true', {
       encoding: "utf-8",
     })
     const lines = output.trim().split("\n").filter(Boolean)
-  return lines
-    .map((line) => {
-      const match = line.match(/^(\d+)\s+(.*)$/)
-      if (!match) return null
-      const cmd = match[2]
-      if (cmd.includes("pgrep")) return null
-      return { pid: Number.parseInt(match[1], 10), cmd }
-    })
-    .filter((entry): entry is { pid: number; cmd: string } => Boolean(entry))
+    return lines
+      .map((line) => {
+        const match = line.match(/^(\d+)\s+(.*)$/)
+        if (!match) return null
+        const cmd = match[2]
+        if (cmd.includes("pgrep")) return null
+        return { pid: Number.parseInt(match[1], 10), cmd }
+      })
+      .filter((entry): entry is { pid: number; cmd: string } => Boolean(entry))
   } catch {
     return []
   }
@@ -600,13 +645,33 @@ async function stopGatewayProcesses(reason: string): Promise<void> {
   const processes = listGatewayProcesses()
   if (processes.length === 0) return
 
-  log.warn("stopping leftover zee gateway processes", {
-    reason,
-    count: processes.length,
-    pids: processes.map((proc) => proc.pid),
-  })
+  const protectedProcs: Array<{ pid: number; cmd: string }> = []
+  const killableProcs: Array<{ pid: number; cmd: string }> = []
 
   for (const proc of processes) {
+    if (await isPidInSystemdUnit(proc.pid, SYSTEMD_ZEE_GATEWAY_UNIT)) {
+      protectedProcs.push(proc)
+    } else {
+      killableProcs.push(proc)
+    }
+  }
+
+  if (protectedProcs.length > 0) {
+    log.warn("skipping systemd-managed zee gateway processes", {
+      unit: SYSTEMD_ZEE_GATEWAY_UNIT,
+      pids: protectedProcs.map((proc) => proc.pid),
+    })
+  }
+
+  if (killableProcs.length === 0) return
+
+  log.warn("stopping leftover zee gateway processes", {
+    reason,
+    count: killableProcs.length,
+    pids: killableProcs.map((proc) => proc.pid),
+  })
+
+  for (const proc of killableProcs) {
     try {
       process.kill(proc.pid, "SIGTERM")
     } catch {
@@ -615,7 +680,7 @@ async function stopGatewayProcesses(reason: string): Promise<void> {
   }
 
   const deadline = Date.now() + 4000
-  let remaining = processes.map((proc) => proc.pid)
+  let remaining = killableProcs.map((proc) => proc.pid)
   while (remaining.length > 0 && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 250))
     remaining = remaining.filter((pid) => {

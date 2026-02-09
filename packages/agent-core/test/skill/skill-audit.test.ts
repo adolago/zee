@@ -42,6 +42,28 @@ describe("Skill.audit()", () => {
     })
   })
 
+  test("preserves description with colon-space pattern (no silent truncation)", async () => {
+    const fullDesc = "Use the discord tool: send messages, react, and manage channels."
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "colon-desc", "SKILL.md"),
+          skill("colon-desc", fullDesc),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const s = await Skill.get("colon-desc")
+        expect(s).toBeDefined()
+        expect(s!.description).toBe(fullDesc)
+      },
+    })
+  })
+
   test("reports exclusions for missing frontmatter", async () => {
     await using tmp = await tmpdir({
       git: true,

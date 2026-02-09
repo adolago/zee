@@ -1581,21 +1581,35 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return true
     }
 
-    const send = async () => {
-      const ok = await waitForWorktree()
-      if (!ok) return
-      await client.session.prompt({
-        sessionID: session.id,
-        agent,
-        model,
-        messageID,
-        parts: requestParts,
-        variant,
-      })
+	    const send = async () => {
+	      const ok = await waitForWorktree()
+	      if (!ok) return
+	      const result = await client.session.prompt({
+	        sessionID: session.id,
+	        agent,
+	        model,
+	        messageID,
+	        parts: requestParts,
+	        variant,
+	      })
+	
+	      // Defensive: older/buggy servers may respond 200 with `{ error, info: null }`,
+	      // which otherwise looks like a successful request and causes the optimistic
+	      // message to disappear after refresh.
+	      const payload = result?.data as unknown
+	      if (!payload || typeof payload !== "object") {
+	        throw new Error(language.t("common.requestFailed"))
+	      }
+	      const info = (payload as { info?: unknown }).info
+	      if (!info) {
+	        const err = (payload as { error?: unknown }).error
+	        if (typeof err === "string" && err.trim()) throw new Error(err)
+	        throw new Error(language.t("common.requestFailed"))
+	      }
 
-      // The UI primarily relies on SSE to receive incremental message updates. In test
-      // environments (or when SSE is temporarily unavailable) we still want the session
-      // view to update. Poll the API for a short period after sending a prompt.
+	      // The UI primarily relies on SSE to receive incremental message updates. In test
+	      // environments (or when SSE is temporarily unavailable) we still want the session
+	      // view to update. Poll the API for a short period after sending a prompt.
       if (sessionDirectory === projectDirectory) {
         void (async () => {
           const timeout = Date.now() + 90_000

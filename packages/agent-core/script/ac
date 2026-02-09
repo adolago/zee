@@ -4,6 +4,7 @@
 # Usage: ac [command] [args...]
 # Commands:
 #   dev (default)     Run legacy ac-dev script (nuke + self-test), then open TUI
+#   up                Pristine start: build + tests + self-test, then enable+start service (no TUI)
 #   start             Enable service and start it, then open TUI (fast path)
 #   stop              Stop the user service
 #   restart           Restart the user service
@@ -31,6 +32,7 @@ Usage: ac [command] [args...]
 
 Commands:
   dev (default)     Run legacy ac-dev script (nuke + self-test), then open TUI
+  up                Pristine start: build + tests + self-test, then enable+start service (no TUI)
   start             Enable service and start it, then open TUI (fast path)
   stop              Stop the user service
   restart           Restart the user service
@@ -44,6 +46,7 @@ Commands:
 
 Examples:
   ac
+  ac up
   ac start
   ac status
   ac logs
@@ -202,10 +205,37 @@ cmd_dev() {
   exec "$legacy" "$@"
 }
 
+cmd_up() {
+  require_systemctl
+  warn_if_system_service_active
+  ensure_service
+
+  # Run the full rebuild + tests + self-test flow, but don't open the TUI.
+  local script_path
+  if command -v realpath >/dev/null 2>&1; then
+    script_path="$(realpath "${BASH_SOURCE[0]}")"
+  else
+    script_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")"
+  fi
+  local script_dir
+  script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
+  local legacy="$script_dir/ac-dev"
+  if [[ ! -x "$legacy" ]]; then
+    echo "$LOG_PREFIX legacy script not found: $legacy" >&2
+    exit 1
+  fi
+
+  "$legacy" --no-tui "$@"
+
+  # "Turn on and forget": ensure enabled for boot, and try to enable linger.
+  cmd_enable
+}
+
 main() {
   local cmd="${1:-dev}"
   shift || true
   case "$cmd" in
+    up ) cmd_up "$@" ;;
     start ) cmd_start "$@" ;;
     stop ) cmd_stop "$@" ;;
     restart ) cmd_restart "$@" ;;

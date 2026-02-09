@@ -14,7 +14,8 @@ export namespace ConfigMarkdown {
     return Array.from(template.matchAll(SHELL_REGEX))
   }
 
-  // other coding agents allow invalid yaml in frontmatter; sanitize when parsing fails
+  // Sanitize frontmatter values that contain colon-space patterns which YAML
+  // silently misparses as separate mapping keys, truncating the value.
   export function fallbackSanitization(content: string): string {
     const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
     if (!match) return content
@@ -69,21 +70,20 @@ export namespace ConfigMarkdown {
   export async function parse(filePath: string) {
     const template = await Bun.file(filePath).text()
 
+    // Always sanitize: YAML silently truncates unquoted values containing
+    // colon-space patterns instead of throwing, so the fallback path never
+    // fires for the most common misparse case.
+    const sanitized = fallbackSanitization(template)
     try {
-      const md = matter(template)
-      return md
-    } catch {
-      try {
-        return matter(fallbackSanitization(template))
-      } catch (err) {
-        throw new FrontmatterError(
-          {
-            path: filePath,
-            message: `${filePath}: Failed to parse YAML frontmatter: ${err instanceof Error ? err.message : String(err)}`,
-          },
-          { cause: err },
-        )
-      }
+      return matter(sanitized)
+    } catch (err) {
+      throw new FrontmatterError(
+        {
+          path: filePath,
+          message: `${filePath}: Failed to parse YAML frontmatter: ${err instanceof Error ? err.message : String(err)}`,
+        },
+        { cause: err },
+      )
     }
   }
 

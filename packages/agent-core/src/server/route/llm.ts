@@ -67,6 +67,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
 }
 
+function truncateString(input: string, maxLen: number): string {
+  if (input.length <= maxLen) return input
+  return input.slice(0, Math.max(0, maxLen - 1)) + "…"
+}
+
+function describeProviderError(err: unknown): string {
+  if (err instanceof Error) {
+    const anyErr = err as any
+    const statusCode = typeof anyErr?.statusCode === "number" ? anyErr.statusCode : undefined
+    const url = typeof anyErr?.url === "string" ? anyErr.url : undefined
+    const responseBody = typeof anyErr?.responseBody === "string" ? anyErr.responseBody : undefined
+    const parts: string[] = [err.message || "Error"]
+    if (statusCode) parts.push(`status=${statusCode}`)
+    if (url) parts.push(`url=${url}`)
+    if (responseBody) parts.push(`responseBody=${truncateString(responseBody.trim(), 800)}`)
+    return parts.join(" | ")
+  }
+  if (typeof err === "string") return err
+  try {
+    return JSON.stringify(err)
+  } catch {
+    return String(err)
+  }
+}
+
 function toUserContent(content: unknown): string | Array<any> {
   if (typeof content === "string") return content
   if (!Array.isArray(content)) return ""
@@ -474,7 +499,8 @@ export const LlmRoute = new Hono().post(
               return
             }
             case "error": {
-              const msg = part.error instanceof Error ? part.error.message : String(part.error)
+              const msg = describeProviderError(part.error)
+              log.error("llm stream error part", { providerID, modelID, error: msg })
               partial.stopReason = "error"
               partial.errorMessage = msg
               partial.timestamp = Date.now()
@@ -490,7 +516,7 @@ export const LlmRoute = new Hono().post(
         partial.timestamp = Date.now()
         await send({ type: "done", reason: doneReason, message: partial })
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
+        const msg = describeProviderError(err)
         log.error("llm stream failed", { providerID, modelID, error: msg })
         partial.stopReason = abortController.signal.aborted ? "aborted" : "error"
         partial.errorMessage = msg
