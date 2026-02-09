@@ -3,7 +3,7 @@ import { realpath } from "fs/promises"
 import { dirname, join, relative } from "path"
 
 export namespace Filesystem {
-  export const sanitizePath = (value: string) => (value.indexOf("\0") !== -1 ? value.replace(/\0/g, "") : value)
+  export const sanitizePath = (value: string) => (value.includes("\0") ? value.replace(/\0/g, "") : value)
   export const exists = async (p: string) => {
     p = sanitizePath(p)
     const file = Bun.file(p)
