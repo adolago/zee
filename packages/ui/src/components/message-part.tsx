@@ -1353,6 +1353,9 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
   const input = createMemo(() => store.custom[store.tab] ?? "")
   const multi = createMemo(() => question()?.multiple === true)
   const questionId = createUniqueId()
+  const baseId = createUniqueId()
+  const contentId = `${baseId}-content`
+  const reviewId = `${baseId}-review`
   const customPicked = createMemo(() => {
     const value = input()
     if (!value) return false
@@ -1446,7 +1449,7 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
   return (
     <div data-component="question-prompt">
       <Show when={!single()}>
-        <div data-slot="question-tabs">
+        <div data-slot="question-tabs" role="tablist" aria-label={i18n.t("ui.tool.questions")}>
           <For each={questions()}>
             {(q, index) => {
               const active = () => index() === store.tab
@@ -1457,29 +1460,37 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
                   data-active={active()}
                   data-answered={answered()}
                   onClick={() => selectTab(index())}
+                  role="tab"
+                  id={`${baseId}-tab-${index()}`}
+                  aria-selected={active()}
+                  aria-controls={contentId}
                 >
                   {q.header}
                 </button>
               )
             }}
           </For>
-          <button data-slot="question-tab" data-active={confirm()} onClick={() => selectTab(questions().length)}>
+          <button
+            data-slot="question-tab"
+            data-active={confirm()}
+            onClick={() => selectTab(questions().length)}
+            role="tab"
+            id={`${baseId}-tab-confirm`}
+            aria-selected={confirm()}
+            aria-controls={reviewId}
+          >
             {i18n.t("ui.common.confirm")}
           </button>
         </div>
       </Show>
 
       <Show when={!confirm()}>
-        <div data-slot="question-content">
+        <div data-slot="question-content" id={contentId} role="tabpanel">
           <div data-slot="question-text" id={questionId}>
             {question()?.question}
             {multi() ? " " + i18n.t("ui.question.multiHint") : ""}
           </div>
-          <div
-            data-slot="question-options"
-            role={multi() ? "group" : "radiogroup"}
-            aria-labelledby={questionId}
-          >
+          <div data-slot="question-options" role={multi() ? "group" : "radiogroup"} aria-labelledby={questionId}>
             <For each={options()}>
               {(opt, i) => {
                 const picked = () => store.answers[store.tab]?.includes(opt.label) ?? false
@@ -1544,7 +1555,7 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
       </Show>
 
       <Show when={confirm()}>
-        <div data-slot="question-review">
+        <div data-slot="question-review" id={reviewId} role="tabpanel">
           <div data-slot="review-title">{i18n.t("ui.messagePart.review.title")}</div>
           <For each={questions()}>
             {(q, index) => {
