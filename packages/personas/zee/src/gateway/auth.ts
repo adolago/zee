@@ -14,7 +14,7 @@ export type ResolvedGatewayAuth = {
 
 export type GatewayAuthResult = {
   ok: boolean;
-  method?: "token" | "password" | "tailscale" | "device-token";
+  method?: "token" | "password" | "tailscale" | "device-token" | "local";
   user?: string;
   reason?: string;
 };
@@ -214,6 +214,13 @@ export async function authorizeGatewayConnect(params: {
   const { auth, connectAuth, req, trustedProxies } = params;
   const tailscaleWhois = params.tailscaleWhois ?? readTailscaleWhoisIdentity;
   const localDirect = isLocalDirectRequest(req, trustedProxies);
+
+  // Loopback-only gateway can operate without a shared secret. When no shared secret is configured,
+  // allow local direct requests (127.0.0.1/localhost) to connect without auth.
+  if (localDirect) {
+    if (auth.mode === "token" && !auth.token) return { ok: true, method: "local" };
+    if (auth.mode === "password" && !auth.password) return { ok: true, method: "local" };
+  }
 
   if (auth.allowTailscale && !localDirect) {
     const tailscaleCheck = await resolveVerifiedTailscaleUser({

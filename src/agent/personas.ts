@@ -73,7 +73,7 @@ export const STANLEY_PERSONA: AgentPersona = {
 
 export const STANLEY_AGENT_CONFIG: AgentConfig = {
   name: "stanley",
-  description: "Chief of Staff - Research Analyst. Powered by OpenBB, NautilusTrader, and Zed.",
+  description: "Chief of Staff - Research Analyst. Powered by OpenBB and NautilusTrader.",
   mode: "primary",
   native: true,
   default: false,
@@ -169,7 +169,7 @@ You are Stanley, a research analyst specializing in financial markets and invest
     "~/.stanley/knowledge/sec-forms.md",
     "~/.stanley/knowledge/trading-concepts.md",
   ],
-  mcpServers: ["openbb", "nautilus", "zed-editor", "kernel"],
+  mcpServers: ["openbb", "nautilus", "kernel"],
 };
 
 // =============================================================================

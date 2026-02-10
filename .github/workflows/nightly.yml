@@ -125,16 +125,16 @@ jobs:
           **Date:** $(date +%Y-%m-%d)
 
           ### Changes
-          ${CHANGELOG}
+            ${CHANGELOG}
 
-	          ### Install
-	          \`\`\`bash
-	          npm install -g @zee/core@nightly
-	          # or specific version
-	          npm install -g @zee/core@${VERSION}
-	          \`\`\`
-	          " \
-	            --prerelease
+            ### Install
+            \`\`\`bash
+            npm install -g @zee/core@nightly
+            # or specific version
+            npm install -g @zee/core@${VERSION}
+            \`\`\`
+            " \
+              --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
 

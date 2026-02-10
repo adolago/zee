@@ -7,7 +7,7 @@ import * as github from "@actions/github"
 import type { Context as GitHubContext } from "@actions/github/lib/context"
 import type { IssueCommentEvent, PullRequestReviewCommentEvent } from "@octokit/webhooks-types"
 import { createAgentCoreClient } from "@zee/sdk"
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 
 type GitHubAuthor = {
   login: string
@@ -112,8 +112,30 @@ type IssueQueryResponse = {
   }
 }
 
-const AGENT_BOT = process.env["AGENT_CORE_GITHUB_BOT"] ?? "agent-core[bot]"
-const OIDC_AUDIENCE = process.env["OIDC_AUDIENCE"] ?? "agent-core-github-action"
+const AGENT_BOT = process.env["ZEE_GITHUB_BOT"] ?? process.env["AGENT_CORE_GITHUB_BOT"] ?? "zee[bot]"
+const OIDC_AUDIENCE =
+  process.env["ZEE_OIDC_AUDIENCE"] ?? process.env["OIDC_AUDIENCE"] ?? "zee-github-action"
+
+const TRIGGER_RE = /(?:^|\s)(?:\/zee|\/z|\/agent-core|\/ac)(?=$|\s)/
+
+function isTriggerOnly(body: string): boolean {
+  const trimmed = body.trim()
+  return trimmed === "/zee" || trimmed === "/z" || trimmed === "/agent-core" || trimmed === "/ac"
+}
+
+function resolveZeeCli(): "zee" | "agent-core" {
+  // Prefer the rebranded binary, but allow legacy fallback for older workflows.
+  const candidates: Array<"zee" | "agent-core"> = ["zee", "agent-core"]
+  for (const candidate of candidates) {
+    try {
+      const res = spawnSync(candidate, ["--version"], { stdio: "ignore" })
+      if (res.status === 0) return candidate
+    } catch {
+      // ignore
+    }
+  }
+  return "zee"
+}
 
 const { client, server } = createAgentCore()
 let accessToken: string
@@ -144,7 +166,7 @@ try {
   const comment = await createComment()
   commentId = comment.data.id
 
-  // Setup agent-core session
+  // Setup zee session
   const repoData = await fetchRepo()
   session = await client.session.create<true>().then((r) => r.data)
   await subscribeSessionEvents()
@@ -159,7 +181,7 @@ try {
     await client.session.share<true>({ path: session })
     return session.id.slice(-8)
   })()
-  console.log("agent-core session", session.id)
+  console.log("zee session", session.id)
   if (shareId && shareBaseUrl) {
     console.log("Share link:", `${shareBaseUrl}/s/${shareId}`)
   }
@@ -245,7 +267,8 @@ function createAgentCore() {
   const host = "127.0.0.1"
   const port = 4096
   const url = `http://${host}:${port}`
-  const proc = spawn(`agent-core`, [`serve`, `--hostname=${host}`, `--port=${port}`])
+  const cli = resolveZeeCli()
+  const proc = spawn(cli, [`serve`, `--hostname=${host}`, `--port=${port}`])
   const client = createAgentCoreClient({ baseUrl: url })
 
   return {
@@ -257,8 +280,8 @@ function createAgentCore() {
 function assertPayloadKeyword() {
   const payload = useContext().payload as IssueCommentEvent | PullRequestReviewCommentEvent
   const body = payload.comment.body.trim()
-  if (!body.match(/(?:^|\s)(?:\/agent-core|\/ac)(?=$|\s)/)) {
-    throw new Error("Comments must mention `/agent-core` or `/ac`")
+  if (!TRIGGER_RE.test(body)) {
+    throw new Error("Comments must mention `/zee` or `/z` (legacy: `/agent-core`, `/ac`)")
   }
 }
 
@@ -299,7 +322,7 @@ async function assertAgentCoreConnected() {
   } while (retry++ < 30)
 
   if (!connected) {
-    throw new Error("Failed to connect to agent-core server")
+    throw new Error("Failed to connect to zee server")
   }
 }
 
@@ -440,19 +463,19 @@ async function getUserPrompt() {
 
   let prompt = (() => {
     const body = payload.comment.body.trim()
-    if (body === "/agent-core" || body === "/ac") {
+    if (isTriggerOnly(body)) {
       if (reviewContext) {
         return `Review this code change and suggest improvements for the commented lines:\n\nFile: ${reviewContext.file}\nLines: ${reviewContext.line}\n\n${reviewContext.diffHunk}`
       }
       return "Summarize this thread"
     }
-    if (body.includes("/agent-core") || body.includes("/ac")) {
+    if (TRIGGER_RE.test(body)) {
       if (reviewContext) {
         return `${body}\n\nContext: You are reviewing a comment on file "${reviewContext.file}" at line ${reviewContext.line}.\n\nDiff context:\n${reviewContext.diffHunk}`
       }
       return body
     }
-    throw new Error("Comments must mention `/agent-core` or `/ac`")
+    throw new Error("Comments must mention `/zee` or `/z` (legacy: `/agent-core`, `/ac`)")
   })()
 
   // Handle images
@@ -630,7 +653,7 @@ async function resolveAgent(): Promise<string | undefined> {
 }
 
 async function chat(text: string, files: PromptFiles = []) {
-  console.log("Sending message to agent-core...")
+  console.log("Sending message to zee...")
   const { providerID, modelID } = useEnvModel()
   const agent = await resolveAgent()
 
@@ -733,7 +756,7 @@ function generateBranchName(type: "issue" | "pr") {
     .replace(/\.\d{3}Z/, "")
     .split("T")
     .join("")
-  return `agent-core/${type}${useIssueId()}-${timestamp}`
+  return `zee/${type}${useIssueId()}-${timestamp}`
 }
 
 async function pushToNewBranch(summary: string, branch: string) {
@@ -837,7 +860,7 @@ async function createPR(base: string, branch: string, title: string, body: strin
 function footer(_opts?: { image?: boolean }) {
   const shareBaseUrl = useShareUrl()
   const shareUrl =
-    shareId && shareBaseUrl ? `[agent-core session](${shareBaseUrl}/s/${shareId})&nbsp;&nbsp;|&nbsp;&nbsp;` : ""
+    shareId && shareBaseUrl ? `[zee session](${shareBaseUrl}/s/${shareId})&nbsp;&nbsp;|&nbsp;&nbsp;` : ""
   return `\n\n${shareUrl}[github run](${useEnvRunUrl()})`
 }
 

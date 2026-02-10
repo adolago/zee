@@ -1,10 +1,14 @@
-# zee-core
+# @zee/core
 
-The core CLI + daemon that powers Zee's persona system (Zee, Stanley, Johny).
+Zee core engine (CLI + daemon).
 
-- **Version:** 0.2.0-alpha
-- **Prebuilt targets:** Linux x64
-- **Other platforms:** build from source
+## Install (npm)
+
+```bash
+npm install -g @zee/core
+# or nightly builds
+npm install -g @zee/core@nightly
+```
 
 ## Install from source
 
@@ -60,4 +64,4 @@ bun run bench --durationSeconds 10 --seedCount 500 --concurrency 5
 - Writes JSON reports to `output/bench/<timestamp>.json`
 - Memory benches require Qdrant at `QDRANT_URL` (default: `http://localhost:6333`)
 - Inference bench uses your configured provider/model and measures streaming latency/throughput (FlashAttention is server-side; validate via throughput metrics)
-- Bench disables config dependency installation (`ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1`) to avoid mutating your config dirs
+- Bench disables config dependency installation (`ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1`, legacy: `AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1`) to avoid mutating your config dirs

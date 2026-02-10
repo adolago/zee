@@ -31,97 +31,41 @@ To use OpenCode in your terminal, you'll need:
 
 ## Install
 
-The easiest way to install OpenCode is through the install script.
+The easiest way to install Zee is through the install script.
 
 ```bash
-curl -fsSL https://opencode.ai/install | bash
+curl -fsSL https://zee.ai/install | bash
 ```
 
-You can also install it with the following commands:
+You can also install it with Node.js package managers:
 
-- **Using Node.js**
-
-        <Tabs>
-
-      <TabItem label="npm">
-      ```bash
-      npm install -g agent-core
-      ```
-
-          </TabItem>
-
-        <TabItem label="Bun">
-        ```bash
-        bun install -g agent-core
-        ```
-
-          </TabItem>
-
-        <TabItem label="pnpm">
-        ```bash
-        pnpm install -g agent-core
-        ```
-
-          </TabItem>
-
-        <TabItem label="Yarn">
-        ```bash
-        yarn global add agent-core
-        ```
-
-      </TabItem>
-
-  </Tabs>
-
-- **Using Homebrew on macOS and Linux**
-
+<Tabs>
+  <TabItem label="npm">
   ```bash
-  brew install anomalyco/tap/agent-core
+  npm install -g @zee/core
   ```
+  </TabItem>
 
-  > We recommend using the OpenCode tap for the most up to date releases. The official `brew install agent-core` formula is maintained by the Homebrew team and is updated less frequently.
-
-- **Using Paru on Arch Linux**
-
+  <TabItem label="Bun">
   ```bash
-  paru -S agent-core-bin
+  bun install -g @zee/core
   ```
+  </TabItem>
 
-#### Windows
-
-- **Using Chocolatey**
-
+  <TabItem label="pnpm">
   ```bash
-  choco install agent-core
+  pnpm install -g @zee/core
   ```
+  </TabItem>
 
-- **Using Scoop**
-
+  <TabItem label="Yarn">
   ```bash
-  scoop install agent-core
+  yarn global add @zee/core
   ```
+  </TabItem>
+</Tabs>
 
-- **Using NPM**
-
-  ```bash
-  npm install -g agent-core
-  ```
-
-- **Using Mise**
-
-  ```bash
-  mise use -g github:anomalyco/agent-core
-  ```
-
-- **Using Docker**
-
-  ```bash
-  docker run -it --rm ghcr.io/anomalyco/agent-core
-  ```
-
-Support for installing OpenCode on Windows using Bun is currently in progress.
-
-You can also grab the binary from the [Releases](https://github.com/anomalyco/opencode/releases).
+You can also grab the binary from the [Releases](https://github.com/adolago/zee/releases).
 
 ---
 
@@ -163,26 +107,26 @@ you want to work on.
 cd /path/to/project
 ```
 
-And run OpenCode.
+And run Zee.
 
 ```bash
-agent-core
+zee
 ```
 
-Next, initialize OpenCode for the project by running the following command.
+Next, initialize Zee for the project by running the following command.
 
 ```bash frame="none"
 /init
 ```
 
-This will get OpenCode to analyze your project and create an `AGENTS.md` file in
+This will get Zee to analyze your project and create an `AGENTS.md` file in
 the project root.
 
 :::tip
 You should commit your project's `AGENTS.md` file to Git.
 :::
 
-This helps OpenCode understand the project structure and the coding patterns
+This helps Zee understand the project structure and the coding patterns
 used.
 
 ---

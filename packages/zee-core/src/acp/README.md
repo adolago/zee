@@ -1,18 +1,18 @@
 # ACP (Agent Client Protocol) Support
 
-This directory contains agent-core's agent-side implementation of the
+This directory contains Zee's agent-side implementation of the
 [Agent Client Protocol (ACP)](https://agentclientprotocol.com/). It is used by
-the `agent-core acp` CLI command to expose an ACP agent over stdio.
+the `zee acp` CLI command to expose an ACP agent over stdio.
 
 ## Components
 
 - **`agent.ts`** - ACP agent implementation
   - Initialization and capability negotiation
   - Session operations (new/load/list/fork/resume)
-  - Prompt translation to agent-core session prompts
+  - Prompt translation to Zee session prompts
   - Event subscription to stream updates back to the ACP client
 - **`session.ts`** - In-memory ACP session state
-  - Maps ACP session ids to agent-core sessions
+  - Maps ACP session ids to Zee sessions
   - Stores per-session working directory, selected model/variant, and mode
 - **`types.ts`** - Internal types
 
@@ -25,10 +25,10 @@ The stdio JSON-RPC wiring and local server startup is implemented in
 
 ```bash
 # Start the ACP server in the current directory
-agent-core acp
+zee acp
 
 # Start in a specific directory
-agent-core acp --cwd /path/to/project
+zee acp --cwd /path/to/project
 ```
 
 ### Programmatic
@@ -46,8 +46,8 @@ Add to your Zed configuration (`~/.config/zed/settings.json`):
 ```json
 {
   "agent_servers": {
-    "Agent-Core": {
-      "command": "agent-core",
+    "Zee": {
+      "command": "zee",
       "args": ["acp"]
     }
   }
@@ -80,7 +80,7 @@ This implementation follows the ACP specification v1:
 
 - `session/prompt` - Process user messages
 - Content block handling (text, image, resource, resource_link)
-- Streaming updates via `session/update` notifications driven by agent-core events
+- Streaming updates via `session/update` notifications driven by Zee events
 
 ## Model Variants
 
@@ -92,7 +92,7 @@ For example: `openai/gpt-5#thinking`.
 
 ## Audience Mapping
 
-For ACP text blocks, the agent maps `annotations.audience` to agent-core message
+For ACP text blocks, the agent maps `annotations.audience` to Zee message
 flags, and reverses the mapping when replaying history/events back to the ACP
 client:
 
@@ -101,7 +101,7 @@ client:
 
 ## Tool Availability
 
-When running ACP, the CLI sets `AGENT_CORE_CLIENT=acp`. This excludes the
+When running ACP, the CLI sets `ZEE_CLIENT=acp` (legacy: `AGENT_CORE_CLIENT=acp`). This excludes the
 `question` tool from the tool registry so ACP clients are not prompted via the
 interactive question tool.
 
@@ -109,7 +109,7 @@ interactive question tool.
 
 ### Not Yet Implemented
 
-1. **Authentication** - ACP `authenticate` is not implemented. Use `agent-core auth login`.
+1. **Authentication** - ACP `authenticate` is not implemented. Use `zee auth login`.
 2. **Terminal Support** - ACP terminal capability is not implemented beyond what the client provides.
 
 ### Future Enhancements
@@ -126,6 +126,7 @@ bun test test/acp
 
 # Test manually with stdio
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | agent-core acp
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | zee acp
 ```
 
 ## Design Decisions
@@ -150,9 +151,9 @@ Each component has a single responsibility:
 
 This makes the codebase maintainable and testable.
 
-### Mapping to Agent-Core
+### Mapping to Zee
 
-ACP sessions map cleanly to agent-core's internal session model:
+ACP sessions map cleanly to Zee's internal session model:
 
 - ACP `session/new` → creates internal Session
 - ACP `session/prompt` → uses SessionPrompt.prompt()

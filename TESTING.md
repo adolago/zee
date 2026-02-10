@@ -3,13 +3,13 @@
 ## Quick Reference
 
 ```bash
-# agent-core unit/integration (Bun)
+# zee unit/integration (Bun)
 cd packages/zee-core && bun test
 
-# agent-core single file
+# zee single file
 cd packages/zee-core && bun test test/session/compaction.test.ts
 
-# agent-core pattern match
+# zee pattern match
 cd packages/zee-core && bun test --grep "hold mode"
 
 # zee unit/integration (pnpm + Vitest)

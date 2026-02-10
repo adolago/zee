@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
 
     terminal.show()
-    terminal.sendText(`agent-core --port ${port}`)
+    terminal.sendText(`zee --port ${port}`)
 
     const fileRef = getActiveFile()
     if (!fileRef) {

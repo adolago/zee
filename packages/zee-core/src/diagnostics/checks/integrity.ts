@@ -106,7 +106,7 @@ async function checkGatewayConfig(): Promise<CheckResult> {
       category: "integrity",
       status: "skip",
       message: "Gateway not configured",
-      details: "Add ~/.zee/zee.json or provider env vars to enable messaging",
+      details: "Add ~/.config/zee/zee.json(c) or provider env vars to enable messaging",
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,

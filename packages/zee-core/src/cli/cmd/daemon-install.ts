@@ -244,8 +244,13 @@ function generateSystemdUnit(
 
   if (options.port) args.push("--port", String(options.port));
   if (options.hostname) args.push("--hostname", options.hostname);
-  if (options.gateway) args.push("--gateway");
-  if (options.gatewayForce) args.push("--gateway-force");
+  const gatewayEnabled = options.gateway !== false;
+  if (gatewayEnabled) {
+    args.push("--gateway");
+    if (options.gatewayForce) args.push("--gateway-force");
+  } else {
+    args.push("--no-gateway");
+  }
   if (options.wezterm === false) args.push("--no-wezterm");
   if (options.workingDirectory) args.push("--directory", options.workingDirectory);
 
@@ -592,7 +597,7 @@ export const DaemonInstallCommand = cmd({
       .option("gateway", {
         describe: "Enable zee messaging gateway",
         type: "boolean",
-        default: false,
+        default: true,
       })
       .option("gateway-force", {
         describe: "Force gateway start even if preflight fails",
@@ -662,14 +667,12 @@ export const DaemonInstallCommand = cmd({
       }
 
       // Confirm gateway option
-      if (!options.gateway) {
-        const enableGateway = await prompts.confirm({
-          message: "Enable zee messaging gateway (WhatsApp/Matrix)?",
-          initialValue: false,
-        });
-        if (!prompts.isCancel(enableGateway)) {
-          options.gateway = enableGateway;
-        }
+      const enableGateway = await prompts.confirm({
+        message: "Enable zee messaging gateway (WhatsApp/Matrix)?",
+        initialValue: options.gateway !== false,
+      });
+      if (!prompts.isCancel(enableGateway)) {
+        options.gateway = enableGateway;
       }
 
       prompts.log.step("Installing service...");

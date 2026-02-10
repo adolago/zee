@@ -41,7 +41,7 @@ const PiStreamOptionsSchema = z
     headers: z.record(z.string(), z.string()).optional(),
     toolChoice: z.any().optional(),
     maxRetryDelayMs: z.number().optional(),
-    // Ignore provider API keys at this boundary; agent-core owns auth.
+    // Ignore provider API keys at this boundary; Zee owns auth.
     apiKey: z.string().optional(),
   })
   .passthrough()

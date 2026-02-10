@@ -68,7 +68,10 @@ export async function resolveGatewayRuntimeConfig(params: {
   const hasSharedSecret =
     (authMode === "token" && hasToken) || (authMode === "password" && hasPassword);
   const hooksConfig = resolveHooksConfig(params.cfg);
-  assertGatewayAuthConfigured(resolvedAuth);
+  // Loopback-only gateway can run without an explicit shared secret, but any remote exposure must be protected.
+  if (tailscaleMode !== "off" || !isLoopbackHost(bindHost)) {
+    assertGatewayAuthConfigured(resolvedAuth);
+  }
   if (tailscaleMode === "funnel" && authMode !== "password") {
     throw new Error(
       "tailscale funnel requires gateway auth mode=password (set gateway.auth.password or ZEE_GATEWAY_PASSWORD)",

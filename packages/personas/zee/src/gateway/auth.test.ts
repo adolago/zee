@@ -38,6 +38,32 @@ describe("gateway auth", () => {
     expect(res.reason).toBe("token_missing_config");
   });
 
+  it("allows local direct requests when no shared secret is configured", async () => {
+    const res = await authorizeGatewayConnect({
+      auth: { mode: "token", allowTailscale: false },
+      connectAuth: null,
+      req: {
+        socket: { remoteAddress: "127.0.0.1" },
+        headers: { host: "localhost:18789" },
+      } as never,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.method).toBe("local");
+  });
+
+  it("does not bypass auth for local direct requests when a shared secret is configured", async () => {
+    const res = await authorizeGatewayConnect({
+      auth: { mode: "token", token: "secret", allowTailscale: false },
+      connectAuth: null,
+      req: {
+        socket: { remoteAddress: "127.0.0.1" },
+        headers: { host: "localhost:18789" },
+      } as never,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.reason).toBe("token_missing");
+  });
+
   it("reports missing and mismatched password reasons", async () => {
     const missing = await authorizeGatewayConnect({
       auth: { mode: "password", password: "secret", allowTailscale: false },

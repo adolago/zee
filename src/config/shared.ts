@@ -1,7 +1,7 @@
 /**
  * Shared Configuration Primitives
  *
- * Types shared between agent-core and zee gateway.
+ * Types shared between Zee core and the Zee gateway.
  * These are the canonical definitions - both projects should use these.
  */
 

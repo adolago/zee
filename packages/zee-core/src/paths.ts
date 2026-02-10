@@ -157,11 +157,13 @@ export const Zee = {
   },
 
   /**
-   * Zee data directory - ~/.zee/
-   * Contains credentials, sessions, and persona data
+   * Zee config directory (XDG) - ~/.config/zee/
+   * Used for user configuration such as zee.json(c).
    */
   dataDir(): string {
-    return path.join(os.homedir(), ".zee")
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME?.trim()
+    if (xdgConfigHome) return path.join(xdgConfigHome, "zee")
+    return path.join(os.homedir(), ".config", "zee")
   },
 
   credentials(): string {

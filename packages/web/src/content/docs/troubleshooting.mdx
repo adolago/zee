@@ -3,7 +3,7 @@ title: Troubleshooting
 description: Common issues and how to resolve them.
 ---
 
-To debug issues with OpenCode, start by checking the logs and local data it stores on disk.
+To debug issues with Zee, start by checking the logs and local data it stores on disk.
 
 ---
 
@@ -12,28 +12,26 @@ To debug issues with OpenCode, start by checking the logs and local data it stor
 Log files are written to:
 
 - **macOS/Linux**: `~/.local/share/zee/log/`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\agent-core\log`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\zee\log`
 
 Log files are named with timestamps (e.g., `2025-01-09T123456.log`) and the most recent 10 log files are kept.
 
-You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `agent-core --log-level DEBUG`.
+You can set the log level with the `--log-level` command-line option to get more detailed debug information. For example, `zee --log-level DEBUG`.
 
 ---
 
 ## Storage
 
-opencode stores session data and other application data on disk at:
+Zee stores session data and other application data on disk at:
 
 - **macOS/Linux**: `~/.local/share/zee/`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\agent-core`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.local\share\zee`
 
 This directory contains:
 
 - `auth.json` - Authentication data like API keys, OAuth tokens
 - `log/` - Application logs
-- `project/` - Project-specific data like session and message data
-  - If the project is within a Git repo, it is stored in `./<project-slug>/storage/`
-  - If it is not a Git repo, it is stored in `./global/storage/`
+- `storage/` - Project and session storage (metadata, sessions, messages)
 
 ---
 
@@ -59,7 +57,7 @@ Open your global config file and look for a `plugin` key.
 
 - **macOS/Linux**: `~/.config/zee/zee.jsonc` (or `~/.config/zee/zee.json`)
 - **macOS/Linux** (older installs): `~/.local/share/zee/zee.jsonc`
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\agent-core\zee.jsonc`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\zee\zee.jsonc`
 
 If you have plugins configured, temporarily disable them by removing the key or setting it to an empty array:
 
@@ -76,7 +74,7 @@ OpenCode can also load local plugins from disk. Temporarily move these out of th
 
 - **Global plugins**
   - **macOS/Linux**: `~/.config/zee/plugins/`
-  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\agent-core\plugins`
+  - **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.config\zee\plugins`
 - **Project plugins** (only if you use per-project config)
   - `<your-project>/.zee/plugins/`
 
@@ -93,7 +91,7 @@ If disabling plugins doesn't help (or a plugin install is stuck), clear the cach
 
 - **macOS**: Finder -> `Cmd+Shift+G` -> paste `~/.cache/zee`
 - **Linux**: delete `~/.cache/zee` (or run `rm -rf ~/.cache/zee`)
-- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.cache\agent-core`
+- **Windows**: Press `WIN+R` and paste `%USERPROFILE%\.cache\zee`
 
 3. Restart OpenCode Desktop.
 
@@ -115,9 +113,9 @@ If your `zee.json(c)` contains a `server` section, temporarily remove it and res
 
 #### Check environment variables
 
-If you have `AGENT_CORE_PORT` set in your environment, the desktop app will try to use that port for the local server.
+If you have `ZEE_PORT` set in your environment (legacy: `AGENT_CORE_PORT`), the desktop app will try to use that port for the local server.
 
-- Unset `AGENT_CORE_PORT` (or pick a free port) and restart.
+- Unset `ZEE_PORT` (or pick a free port) and restart.
 
 ---
 
@@ -193,7 +191,7 @@ Here are some common issues and how to resolve them.
 
 1. Check the logs for error messages
 2. Try running with `--print-logs` to see output in the terminal
-3. Ensure you have the latest version with `agent-core upgrade`
+3. Ensure you have the latest version with `zee upgrade`
 
 ---
 
@@ -219,9 +217,9 @@ Examples:
 
 - `openai/gpt-4.1`
 - `openrouter/google/gemini-2.5-flash`
-- `agent-core/kimi-k2`
+- `cerebras/zai-glm-4.7`
 
-To figure out what models you have access to, run `agent-core models`
+To figure out what models you have access to, run `zee models`
 
 ---
 
@@ -238,7 +236,7 @@ To resolve this:
    rm -rf ~/.local/share/zee
    ```
 
-   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\agent-core`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.local\share\zee`
 
 3. Re-authenticate with your provider using the `/connect` command in the TUI.
 
@@ -256,7 +254,7 @@ To resolve provider package issues:
    rm -rf ~/.cache/zee
    ```
 
-   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\agent-core`
+   On Windows, press `WIN+R` and delete: `%USERPROFILE%\.cache\zee`
 
 2. Restart opencode to reinstall the latest provider packages
 

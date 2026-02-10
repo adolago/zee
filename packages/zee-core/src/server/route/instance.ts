@@ -13,7 +13,7 @@ export const InstanceRoute = new Hono()
     "/instance/dispose",
     describeRoute({
       summary: "Dispose instance",
-      description: "Clean up and dispose the current agent-core instance, releasing all resources.",
+      description: "Clean up and dispose the current Zee instance, releasing all resources.",
       operationId: "instance.dispose",
       responses: {
         200: {
@@ -35,7 +35,7 @@ export const InstanceRoute = new Hono()
     "/path",
     describeRoute({
       summary: "Get paths",
-      description: "Retrieve the current working directory and related path information for the agent-core instance.",
+      description: "Retrieve the current working directory and related path information for the Zee instance.",
       operationId: "path.get",
       responses: {
         200: {

@@ -1,5 +1,6 @@
 # Zee
 
+[![Version](https://img.shields.io/npm/v/@zee/core?style=flat-square)](https://www.npmjs.com/package/@zee/core)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 Zee is [opencode](https://github.com/sst/opencode) wrapped in [openclaw](https://github.com/openclaw/openclaw) -- a CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp, Matrix).
@@ -13,7 +14,7 @@ Zee is [opencode](https://github.com/sst/opencode) wrapped in [openclaw](https:/
 
 ## Release
 
-- **Version:** 0.2.0-alpha
+- **Version:** see `zee --version`
 - **Prebuilt targets:** Linux x64
 - **Other platforms:** build from source
 
@@ -24,7 +25,20 @@ Zee is [opencode](https://github.com/sst/opencode) wrapped in [openclaw](https:/
 - [Bun](https://bun.sh) (v1.1+)
 - [Qdrant](https://qdrant.tech) (local or cloud) for semantic memory
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
-- Python 3.8+ (for Stanley persona)
+
+### Install (npm)
+
+```bash
+npm install -g @zee/core
+# or nightly builds
+npm install -g @zee/core@nightly
+```
+
+### Install (script)
+
+```bash
+curl -fsSL https://zee.ai/install | bash
+```
 
 ### Install from source
 
@@ -82,11 +96,11 @@ Defaults follow XDG:
 - State: `~/.local/state/zee`
 - Workspace (default worktree): `~/.local/share/zee/worktree`
 
-To co-locate everything under a single state root, set `ZEE_STATE_DIR` (legacy: `AGENT_CORE_STATE_DIR`).
+To co-locate everything under a single state root, set `ZEE_STATE_DIR` (legacy: `AGENT_CORE_STATE_DIR`, `OPENCODE_STATE_DIR`).
 This makes config/data/cache/logs/workspace resolve under that directory as `config/`, `data/`, `cache/`, `logs/`,
 and `workspace/`.
 
-To override only the workspace location, set `ZEE_WORKSPACE_DIR` (legacy: `AGENT_CORE_WORKSPACE_DIR`).
+To override only the workspace location, set `ZEE_WORKSPACE_DIR` (legacy: `AGENT_CORE_WORKSPACE_DIR`, `OPENCODE_WORKSPACE_DIR`).
 
 Use `zee paths` to print the resolved locations.
 
@@ -174,21 +188,21 @@ zee/
 │   ├── personas/           # Persona logic and routing
 │   ├── memory/             # Qdrant semantic memory
 │   └── domain/             # Domain tools (zee/, stanley/)
-└── .claude/skills/         # Persona skill definitions
+└── .agents/skills/         # Skills
 ```
 
-### Personas
+### Persona Model
 
-| Persona     | Domain             | Description                                |
-| ----------- | ------------------ | ------------------------------------------ |
-| **Zee**     | Personal Assistant | Memory, messaging, calendar, notifications |
-| **Stanley** | Investing          | Markets, portfolio, trading strategies     |
-| **Johny**   | Learning           | Knowledge graphs, spaced repetition        |
+Zee is the only active persona. The engine still exposes domain toolsets under namespaces:
+
+- `zee:*` for life admin
+- `stanley:*` for investing
+- `johny:*` for learning
 
 ### Key Features
 
 - **Semantic Memory**: Vector-based memory with Qdrant for context persistence
-- **Multi-Persona Routing**: Route messages to specialized personas
+- **Single Persona Runtime**: No persona switching or delegation required
 - **Embedded Gateway**: Optional Zee messaging gateway launched by the daemon
 
 ## Usage with Zee Gateway
@@ -218,19 +232,17 @@ The systemd unit disables `ProtectHome` so the daemon can read/write projects in
 
 The `--systemd-only` flag writes `daemon.systemd_only=true` to enforce a systemd-only policy.
 
-Messages mentioning `@stanley` or `@johny` are routed to those personas; all others go to Zee.
-
 ## Development
 
 ```bash
-# Run tests
-bun test
-
-# Build
-bun run build
-
-# Type check
+# Typecheck
 bun run typecheck
+
+# Core tests
+cd packages/zee-core && bun test
+
+# Build + verify binary
+cd packages/zee-core && bun run build && ./script/verify-binary.sh
 ```
 
 ## Wide events

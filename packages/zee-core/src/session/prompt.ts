@@ -439,7 +439,7 @@ export namespace SessionPrompt {
           allowed = false
           responseText =
             "Refusing to switch to RELEASE mode from messaging surfaces by default. " +
-            "Resume this session in the CLI/TUI, or set AGENT_CORE_ALLOW_MESSAGING_RELEASE=1 to override."
+            "Resume this session in the CLI/TUI, or set ZEE_ALLOW_MESSAGING_RELEASE=1 to override."
         } else {
           const authConfig = getAuthConfig()
           if (!authConfig.disabled) {

@@ -4,50 +4,50 @@
 
 ### Overview
 
-Agent-Core is an AI-powered coding assistant that runs locally on your machine. It provides an agent system with access to powerful tools including shell execution, file operations, and web access.
+Zee is an AI-powered coding assistant that runs locally on your machine. It provides an agent system with access to powerful tools including shell execution, file operations, and web access.
 
 ### No OS Sandbox
 
-`agent-core` does **not** provide OS-level isolation for the agent. Some tool surfaces enforce sandboxing and input hardening (for example, MCP filesystem tools validate paths against a sandbox root), but these are defense-in-depth controls rather than a complete security boundary.
+`zee` does **not** provide OS-level isolation for the agent. Some tool surfaces enforce sandboxing and input hardening (for example, MCP filesystem tools validate paths against a sandbox root), but these are defense-in-depth controls rather than a complete security boundary.
 
-If you need strong isolation, run `agent-core` inside a Docker container or VM.
+If you need strong isolation, run `zee` inside a Docker container or VM.
 
 ### Server Mode
 
-Server mode can be run on loopback without authentication for personal/local use. If you bind the daemon to a non-loopback interface (for example `--hostname 0.0.0.0` or enabling mDNS), `agent-core` refuses to start unless HTTP auth is enabled and configured.
+Server mode can be run on loopback without authentication for personal/local use. If you bind the daemon to a non-loopback interface (for example `--hostname 0.0.0.0` or enabling mDNS), Zee refuses to start unless HTTP auth is enabled and configured.
 
 To enable HTTP Basic Auth:
-- Set `AGENT_CORE_ENABLE_SERVER_AUTH=1`
-- Set `AGENT_CORE_SERVER_PASSWORD` (optionally `AGENT_CORE_SERVER_USERNAME`)
-- Optionally set `AGENT_CORE_SERVER_SCOPES` (comma-separated, defaults to admin)
+- Set `ZEE_ENABLE_SERVER_AUTH=1` (legacy: `AGENT_CORE_ENABLE_SERVER_AUTH`, `OPENCODE_ENABLE_SERVER_AUTH`)
+- Set `ZEE_SERVER_PASSWORD` (optionally `ZEE_SERVER_USERNAME`)
+- Optionally set `ZEE_SERVER_SCOPES` (comma-separated, defaults to admin)
 
 To explicitly run insecurely without auth (not recommended):
-- Set `AGENT_CORE_DISABLE_SERVER_AUTH=1`
-- Set `AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH=1`
+- Set `ZEE_DISABLE_SERVER_AUTH=1`
+- Set `ZEE_ALLOW_INSECURE_SERVER_NO_AUTH=1`
 
 Server resource limits (to reduce DoS blast radius):
-- `AGENT_CORE_SERVER_IDLE_TIMEOUT_SECONDS` (default: 120)
-- `AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS` (default: 64)
-- `AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT` (default: 8)
-- `AGENT_CORE_SERVER_MAX_INSTANCES` (default: 64 for non-loopback binds)
+- `ZEE_SERVER_IDLE_TIMEOUT_SECONDS` (default: 120)
+- `ZEE_SERVER_MAX_SSE_CONNECTIONS` (default: 64)
+- `ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT` (default: 8)
+- `ZEE_SERVER_MAX_INSTANCES` (default: 64 for non-loopback binds)
 
 ### Hold/Release Mode
 
-Agent-Core defaults sessions to HOLD mode (safe-by-default). Switching a session into RELEASE mode removes permission prompts and enables full tool access.
+Zee defaults sessions to HOLD mode (safe-by-default). Switching a session into RELEASE mode removes permission prompts and enables full tool access.
 
 For safety, `/release` is refused on messaging surfaces (WhatsApp/Matrix) unless you explicitly opt in:
-- Set `AGENT_CORE_ALLOW_MESSAGING_RELEASE=1`
+- Set `ZEE_ALLOW_MESSAGING_RELEASE=1` (legacy: `AGENT_CORE_ALLOW_MESSAGING_RELEASE`, `OPENCODE_ALLOW_MESSAGING_RELEASE`)
 
 When HTTP auth is enabled, switching to RELEASE mode requires `operator.admin` scope.
 
 ### Zee Gateway Token File
 
-When using Zee gateway WebSocket RPC, `agent-core` can authenticate with:
+When using Zee gateway WebSocket RPC, `zee` can authenticate with:
 - `ZEE_GATEWAY_TOKEN` (environment variable)
 - `ZEE_GATEWAY_TOKEN_FILE` (path to a token file)
 - Default token file at `~/.local/state/zee/zee_gateway_token`
 
-For safety, `agent-core` ignores token files that are symlinks, not owned by the current user, or not `0600` (POSIX).
+For safety, Zee ignores token files that are symlinks, not owned by the current user, or not `0600` (POSIX).
 
 ### Out of Scope
 

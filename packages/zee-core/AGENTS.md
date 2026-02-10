@@ -1,4 +1,4 @@
-# agent-core agent guidelines
+# Zee core agent guidelines
 
 ## Build/Test Commands
 
@@ -12,11 +12,11 @@
 
 ## Binary Installation
 
-The build script automatically symlinks the compiled binary to `~/.bun/bin/agent-core`:
+The build script automatically symlinks the compiled binary to `~/.bun/bin/zee`:
 
 ```bash
-# Build outputs to: dist/@adolago/agent-core-linux-x64/bin/agent-core
-# Symlink created: ~/.bun/bin/agent-core -> <build output>
+# Build outputs to: dist/@zee/core-linux-x64/bin/zee
+# Symlink created: ~/.bun/bin/zee -> <build output>
 bun run build
 ```
 
@@ -46,4 +46,4 @@ After building, restart the daemon to apply changes:
 - **Validation**: All inputs validated with Zod schemas
 - **Logging**: Use `Log.create({ service: "name" })` pattern
 - **Storage**: Use `Storage` namespace for persistence
-- **API Client**: The TypeScript TUI (built with SolidJS + OpenTUI) communicates with the agent-core server using the SDK. When adding/modifying server endpoints in `packages/zee-core/src/server/server.ts`, run `./script/generate.ts` to regenerate the SDK and related files.
+- **API Client**: The TypeScript TUI (built with SolidJS + OpenTUI) communicates with the zee server using the SDK. When adding/modifying server endpoints in `packages/zee-core/src/server/server.ts`, run `./script/generate.ts` to regenerate the SDK and related files.

@@ -131,7 +131,7 @@ export const AppRoute = new Hono().get(
     "/agent",
     describeRoute({
       summary: "List agents",
-      description: "Get a list of all available AI agents in the agent-core system.",
+      description: "Get a list of all available AI agents in Zee.",
       operationId: "app.agents",
       responses: {
         200: {

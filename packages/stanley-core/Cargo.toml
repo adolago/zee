@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Adolago"]
 license = "MIT"
 description = "Core trading and portfolio management library for Stanley persona"
-repository = "https://github.com/adolago/agent-core"
+repository = "https://github.com/adolago/zee"
 
 [lib]
 name = "stanley_core"

@@ -9,7 +9,7 @@ export const ConfigRoute = new Hono()
     "/config",
     describeRoute({
       summary: "Get configuration",
-      description: "Retrieve the current agent-core configuration settings and preferences.",
+      description: "Retrieve the current Zee configuration settings and preferences.",
       operationId: "config.get",
       responses: {
         200: {
@@ -30,7 +30,7 @@ export const ConfigRoute = new Hono()
     "/config",
     describeRoute({
       summary: "Update configuration",
-      description: "Update agent-core configuration settings and preferences.",
+      description: "Update Zee configuration settings and preferences.",
       operationId: "config.update",
       responses: {
         200: {

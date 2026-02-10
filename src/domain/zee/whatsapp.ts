@@ -218,7 +218,7 @@ export const whatsAppAccountTool: ToolDefinition = {
 - "personal": Your personal WhatsApp number
 - Any custom account ID you've configured
 
-**Configuration in ~/.zee/zee.json:**
+**Configuration in ~/.config/zee/zee.jsonc:**
 {
   "channels": {
     "whatsapp": {

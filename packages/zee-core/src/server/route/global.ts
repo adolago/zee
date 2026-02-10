@@ -188,7 +188,7 @@ export const GlobalRoute = new Hono()
     "/instances",
     describeRoute({
       summary: "List cached instances",
-      description: "List cached agent-core instance directories currently held in-process.",
+      description: "List cached Zee instance directories currently held in-process.",
       operationId: "global.instances",
       responses: {
         200: {
@@ -278,7 +278,7 @@ export const GlobalRoute = new Hono()
     describeRoute({
       summary: "Dispose cached instance by directory",
       description:
-        "Dispose a cached agent-core instance by directory key. Use /global/instances to discover cached keys.",
+        "Dispose a cached Zee instance by directory key. Use /global/instances to discover cached keys.",
       operationId: "global.disposeDirectory",
       responses: {
         200: {
@@ -307,7 +307,7 @@ export const GlobalRoute = new Hono()
     "/dispose-all",
     describeRoute({
       summary: "Dispose all cached instances",
-      description: "Dispose all cached agent-core instances held in-process.",
+      description: "Dispose all cached Zee instances held in-process.",
       operationId: "global.disposeAll",
       responses: {
         200: {
@@ -329,7 +329,7 @@ export const GlobalRoute = new Hono()
     "/dispose",
     describeRoute({
       summary: "Dispose instance",
-      description: "Clean up and dispose the current agent-core instance, releasing all resources.",
+      description: "Clean up and dispose the current Zee instance, releasing all resources.",
       operationId: "instance.dispose",
       responses: {
         200: {

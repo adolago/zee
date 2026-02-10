@@ -1,4 +1,4 @@
-# Browser Options in Agent-Core
+# Browser Options in Zee
 
 Three different browser implementations are now available:
 
@@ -9,7 +9,7 @@ Three different browser implementations are now available:
 Uses Zee gateway's browser control server (port 18791) via HTTP API.
 
 **Requirements**:
-- Zee gateway must be running (`agent-core daemon --gateway`)
+- Zee gateway must be running (`zee daemon --gateway`)
 - Browser control enabled in Zee config
 
 **Features**:

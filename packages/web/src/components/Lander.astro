@@ -24,7 +24,7 @@ const discord = config.social.filter(s => s.icon === 'discord')[0];
 
 const command = "curl -fsSL"
 const protocol = "https://"
-const url = "opencode.ai/install"
+const url = "zee.ai/install"
 const bash = "| bash"
 
 let darkImage: ImageMetadata | undefined;
@@ -86,9 +86,9 @@ if (image) {
     <section class="alternatives">
       <div class="col1">
         <h3>npm</h3>
-        <button class="command" data-command="npm install -g agent-core">
+        <button class="command" data-command="npm install -g @zee/core">
           <code>
-            <span>npm install -g</span> <span class="highlight">agent-core</span>
+            <span>npm install -g</span> <span class="highlight">@zee/core</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -98,45 +98,9 @@ if (image) {
       </div>
       <div class="col2">
         <h3>Bun</h3>
-        <button class="command" data-command="bun install -g agent-core">
+        <button class="command" data-command="bun install -g @zee/core">
           <code>
-            <span>bun install -g</span> <span class="highlight">agent-core</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col3">
-        <h3>Homebrew</h3>
-        <button class="command" data-command="brew install agent-core">
-          <code>
-            <span>brew install</span> <span class="highlight">opencode</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col4">
-        <h3>Paru</h3>
-        <button class="command" data-command="paru -S agent-core-bin">
-          <code>
-            <span>paru -S</span> <span class="highlight">opencode-bin</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col4">
-        <h3>Mise</h3>
-        <button class="command" data-command="mise use -g github:anomalyco/agent-core">
-          <code>
-            <span>mise use -g</span> <span class="highlight">github:anomalyco/opencode</span>
+            <span>bun install -g</span> <span class="highlight">@zee/core</span>
           </code>
           <span class="copy">
             <CopyIcon />

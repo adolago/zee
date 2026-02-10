@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-The TUI is the interactive terminal interface for agent-core. It renders a full-screen app in the terminal using **SolidJS** for reactive state and **@opentui/solid** for terminal rendering. Users select a persona (Zee/Stanley/Johny) on the home screen, then enter a session to chat.
+The TUI is the interactive terminal interface for Zee. It renders a full-screen app in the terminal using **SolidJS** for reactive state and **@opentui/solid** for terminal rendering. Users select an agent (Zee is the only active persona by default) on the home screen, then enter a session to chat.
 
 ## Build and Dev
 
@@ -56,11 +56,11 @@ To add new global state: create a context file using `createSimpleContext`, add 
 
 ### Routes
 
-Two routes: `home` (persona selection) and `session` (conversation view). The session route at `routes/session/index.tsx` is the largest file (~2100 lines) -- it handles message rendering, streaming, tool call visualization, diffs, markdown, and all session interaction.
+Two routes: `home` (agent selection) and `session` (conversation view). The session route at `routes/session/index.tsx` is the largest file (~2100 lines) -- it handles message rendering, streaming, tool call visualization, diffs, markdown, and all session interaction.
 
 ### Daemon Communication
 
-The TUI does not run AI directly. It connects to the agent-core daemon via the SDK client (`context/sdk.tsx`). A background worker (`worker.ts`) handles RPC and event forwarding from the daemon's GlobalBus.
+The TUI does not run AI directly. It connects to the Zee daemon via the SDK client (`context/sdk.tsx`). A background worker (`worker.ts`) handles RPC and event forwarding from the daemon's GlobalBus.
 
 ### Dialog System
 

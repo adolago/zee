@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@adolago/agent-core",
+      "name": "@zee/core",
       "dependencies": {
         "@actions/core": "1.11.1",
         "@actions/github": "6.0.1",
