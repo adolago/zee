@@ -64,7 +64,7 @@ bun run setup
 
 ### Via TypeScript Bridge
 
-Stanley integrates with agent-core via the TypeScript bridge in `src/domain/stanley/tools.ts`. The tools are automatically available when running agent-core with the Stanley persona.
+Stanley integrates with Zee via the TypeScript bridge in `src/domain/stanley/tools.ts`. The tools are available under the unified Zee runtime (no persona switching).
 
 Available tools:
 - `stanley:market-data` - Market quotes, charts, fundamentals

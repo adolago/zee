@@ -28,7 +28,11 @@ const RegistrySchema = z.object({
 export type RegistryPlugin = z.infer<typeof RegistryPluginSchema>
 export type Registry = z.infer<typeof RegistrySchema>
 
-const REGISTRY_URL = "https://raw.githubusercontent.com/adolago/agent-core/dev/plugins/index.json"
+const REGISTRY_URLS = [
+  "https://raw.githubusercontent.com/adolago/zee/dev/plugins/index.json",
+  // Legacy fallback for older branches/installations.
+  "https://raw.githubusercontent.com/adolago/agent-core/dev/plugins/index.json",
+] as const
 const CACHE_TTL = 3600000 // 1 hour
 const CACHE_FILE = "plugin-registry.json"
 
@@ -86,15 +90,24 @@ export async function fetchRegistry(forceRefresh = false): Promise<Registry> {
   }
 
   // Fetch from remote
-  log.info("Fetching plugin registry", { url: REGISTRY_URL })
   try {
-    const response = await fetch(REGISTRY_URL)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch registry: ${response.status} ${response.statusText}`)
+    let registry: Registry | undefined
+    let lastError: Error | undefined
+    for (const url of REGISTRY_URLS) {
+      log.info("Fetching plugin registry", { url })
+      try {
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch registry: ${response.status} ${response.statusText}`)
+        }
+        const data = await response.json()
+        registry = RegistrySchema.parse(data)
+        break
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e))
+      }
     }
-
-    const data = await response.json()
-    const registry = RegistrySchema.parse(data)
+    if (!registry) throw lastError ?? new Error("Failed to fetch registry")
 
     const cached: CachedRegistry = { data: registry, timestamp: Date.now() }
     memoryCache = cached

@@ -107,7 +107,7 @@ async function checkProvider(provider: ProviderConfig): Promise<CheckResult> {
 
   if (!isConfigured) {
     const details = provider.authProviderId
-      ? `Run \`agent-core auth login ${provider.authProviderId}\` (or set ${provider.envKey})`
+      ? `Run \`zee auth login ${provider.authProviderId}\` (or set ${provider.envKey})`
       : `Set ${provider.envKey} environment variable`;
     return {
       id: `providers.${provider.id}`,

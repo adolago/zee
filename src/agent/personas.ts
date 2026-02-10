@@ -161,11 +161,6 @@ You are Stanley, a research analyst specializing in financial markets and invest
 - No emojis in any output
 - Use tables for comparative data
 - Include relevant metrics and ratios
-
-## Delegation
-- Personal tasks (calendar, reminders): delegate to @zee
-- Learning concepts (explain options Greeks): delegate to @johny
-- Code implementation: delegate to @johny
 `,
   knowledge: [
     "~/.stanley/IDENTITY.md",
@@ -434,11 +429,6 @@ You are Johny, a learning system applying deliberate practice and spaced repetit
 - No emojis in any output
 - Use clear notation for math (LaTeX when supported)
 - Provide step-by-step reasoning
-
-## Delegation
-- Personal tasks (scheduling, reminders): delegate to @zee
-- Market data, financial analysis: delegate to @stanley
-- Memory storage (remember this): delegate to @zee
 `,
   knowledge: [
     "~/.johny/IDENTITY.md",
@@ -455,15 +445,11 @@ You are Johny, a learning system applying deliberate practice and spaced repetit
 // =============================================================================
 
 export const PERSONAS = {
-  stanley: STANLEY_PERSONA_CONFIG,
   zee: ZEE_PERSONA_CONFIG,
-  johny: JOHNY_PERSONA_CONFIG,
 };
 
 export const AGENT_CONFIGS = {
-  stanley: STANLEY_AGENT_CONFIG,
   zee: ZEE_AGENT_CONFIG,
-  johny: JOHNY_AGENT_CONFIG,
 };
 
 /** Get persona by ID */

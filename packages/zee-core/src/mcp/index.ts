@@ -100,8 +100,8 @@ export namespace MCP {
           continue
         }
         const hint = env.keys?.length
-          ? `Set ${env.keys.join(" or ")} or run: agent-core auth login ${id}`
-          : `Run: agent-core auth login ${id}`
+          ? `Set ${env.keys.join(" or ")} or run: zee auth login ${id}`
+          : `Run: zee auth login ${id}`
         throw new Error(`Missing auth for "${id}". ${hint}`)
       }
       if (auth.type === "api") {
@@ -116,7 +116,7 @@ export namespace MCP {
         resolved = resolved.replaceAll(`{auth:${id}}`, auth.token)
         continue
       }
-      throw new Error(`Unsupported auth type for "${id}". Run: agent-core auth login ${id}`)
+      throw new Error(`Unsupported auth type for "${id}". Run: zee auth login ${id}`)
     }
 
     return resolved
@@ -709,7 +709,7 @@ export namespace MCP {
         const { name, transport } = transports[i]
         try {
           const client = new Client({
-            name: "agent-core",
+            name: "zee",
             version: Installation.VERSION,
           })
           await withTimeout(client.connect(transport), connectTimeout)
@@ -747,7 +747,7 @@ export namespace MCP {
               // Show toast for needs_auth
               Bus.publish(TuiEvent.ToastShow, {
                 title: "MCP Authentication Required",
-                message: `Server "${key}" requires authentication. Run: agent-core mcp auth ${key}`,
+                message: `Server "${key}" requires authentication. Run: zee mcp auth ${key}`,
                 variant: "warning",
                 duration: 8000,
               }).catch((e) => log.debug("failed to show toast", { error: e }))
@@ -1389,7 +1389,7 @@ export namespace MCP {
     // Try to connect - this will trigger the OAuth flow
     try {
       const client = new Client({
-        name: "agent-core",
+        name: "zee",
         version: Installation.VERSION,
       })
       await client.connect(transport)

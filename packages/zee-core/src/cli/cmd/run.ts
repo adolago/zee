@@ -177,7 +177,7 @@ type AppEvent = {
 
 export const RunCommand = cmd({
   command: "run [message..]",
-  describe: "run agent-core with a message",
+  describe: "run zee with a message",
   builder: (yargs: Argv) => {
     return yargs
       .positional("message", {
@@ -231,7 +231,7 @@ export const RunCommand = cmd({
       })
       .option("attach", {
         type: "string",
-        describe: "attach to a running agent-core server (e.g., http://localhost:3456)",
+        describe: "attach to a running zee server (e.g., http://localhost:3456)",
       })
       .option("port", {
         type: "number",
@@ -483,7 +483,7 @@ export const RunCommand = cmd({
           })
         }
 
-        // `agent-core run --attach` does not create an Instance context. Hooks rely on Config + Instance paths.
+        // `zee run --attach` does not create an Instance context. Hooks rely on Config + Instance paths.
         try {
           void Instance.directory
           await runHooks()
@@ -496,7 +496,7 @@ export const RunCommand = cmd({
           })
         }
       } catch {
-        // Best-effort: hooks must not affect `agent-core run` exit status.
+        // Best-effort: hooks must not affect `zee run` exit status.
       }
     }
 
@@ -554,7 +554,7 @@ export const RunCommand = cmd({
         const request = new Request(input, init)
         return Server.App().fetch(request)
       }) as typeof globalThis.fetch
-      const sdk = createAgentCoreClient({ baseUrl: "http://agent-core.internal", fetch: fetchFn })
+      const sdk = createAgentCoreClient({ baseUrl: "http://zee.internal", fetch: fetchFn })
 
       // Create a local event stream using GlobalBus directly instead of SSE
       // This avoids issues with Server.App().fetch() not properly streaming SSE

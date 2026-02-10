@@ -97,7 +97,7 @@ export class ReportGenerator {
   private async createArchive(report: CrashReport): Promise<string> {
     const outputPath =
       this.options.outputPath ||
-      path.join(os.homedir(), `agent-core-report-${report.meta.id}.tar.gz`);
+      path.join(os.homedir(), `zee-report-${report.meta.id}.tar.gz`);
 
     const builder = new ZipBuilder(outputPath);
 

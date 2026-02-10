@@ -4,6 +4,7 @@ import os from "os"
 import path from "path"
 import fs from "fs/promises"
 import fsSync from "fs"
+import { threadId } from "worker_threads"
 import { afterAll, afterEach } from "bun:test"
 
 const sanitizePathInput = (value: unknown) => (typeof value === "string" ? value.replace(/\0/g, "") : value)
@@ -107,7 +108,9 @@ if (typeof fsSync.openSync === "function") {
   fsSync.openSync = wrapOpenSync(fsSync.openSync)
 }
 
-const dir = path.join(os.tmpdir(), "agent-core-test-data-" + process.pid)
+// bun test preloads this file per test file; bun may execute multiple test files in parallel on worker threads.
+// Use a per-thread directory to avoid cross-file collisions and premature deletion by afterAll().
+const dir = path.join(os.tmpdir(), `zee-test-data-${process.pid}-${threadId}`)
 await fs.mkdir(dir, { recursive: true })
 afterAll(() => {
   fsSync.rmSync(dir, { recursive: true, force: true })
@@ -116,10 +119,10 @@ afterAll(() => {
 // This prevents tests from picking up real user configs/skills from ~/.claude/skills
 const testHome = path.join(dir, "home")
 await fs.mkdir(testHome, { recursive: true })
-process.env["AGENT_CORE_TEST_HOME"] = testHome
+process.env["ZEE_TEST_HOME"] = testHome
 // Set test managed config directory to isolate tests from system managed settings
 const testManagedConfigDir = path.join(dir, "managed")
-process.env["AGENT_CORE_TEST_MANAGED_CONFIG_DIR"] = testManagedConfigDir
+process.env["ZEE_TEST_MANAGED_CONFIG_DIR"] = testManagedConfigDir
 
 process.env["XDG_DATA_HOME"] = path.join(dir, "share")
 process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
@@ -127,15 +130,15 @@ process.env["XDG_CONFIG_HOME"] = path.join(dir, "config")
 process.env["XDG_STATE_HOME"] = path.join(dir, "state")
 
 const managedConfigDir = path.join(dir, "managed-config")
-process.env["AGENT_CORE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
+process.env["ZEE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
 
 // Server auth breaks most unit tests (they don't send Authorization headers).
+process.env["ZEE_DISABLE_SERVER_AUTH"] = "true"
 process.env["AGENT_CORE_DISABLE_SERVER_AUTH"] = "true"
 
 // Pre-fetch models.json so tests don't need the macro fallback
 // Also write the cache version file to prevent global/index.ts from clearing the cache
-// Note: Must use "agent-core" to match Global.Path.cache which uses app = "agent-core"
-const cacheDir = path.join(dir, "cache", "agent-core")
+const cacheDir = path.join(dir, "cache", "zee")
 await fs.mkdir(cacheDir, { recursive: true })
 await fs.writeFile(path.join(cacheDir, "version"), "18")
 const { Global } = await import("../src/global")
@@ -147,10 +150,14 @@ if (response.ok) {
   console.error(`[preload] Failed to fetch models.dev: ${response.status}`)
 }
 // Disable models.dev refresh to avoid race conditions during tests
-process.env["AGENT_CORE_DISABLE_MODELS_FETCH"] = "true"
+process.env["ZEE_DISABLE_MODELS_FETCH"] = "true"
 
 // Clear config override env vars to ensure clean test state
 // These flags can override project config and interfere with permission tests
+delete process.env["ZEE_PERMISSION"]
+delete process.env["ZEE_CONFIG"]
+delete process.env["ZEE_CONFIG_CONTENT"]
+delete process.env["ZEE_CONFIG_DIR"]
 delete process.env["AGENT_CORE_PERMISSION"]
 delete process.env["AGENT_CORE_CONFIG"]
 delete process.env["AGENT_CORE_CONFIG_CONTENT"]

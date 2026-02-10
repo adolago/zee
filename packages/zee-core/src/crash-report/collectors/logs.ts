@@ -7,10 +7,32 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { PrivacyRedactor } from "../privacy/redactor";
 import type { LogEntry } from "../types";
-import { resolveLogsDir } from "../../global/dirs";
+import { resolveDataDir, resolveLogsDir } from "../../global/dirs";
 
-function getLogsDir(): string {
-  return resolveLogsDir();
+function getLogsDirs(): string[] {
+  // Zee core logs default to `${XDG_DATA_HOME}/zee/log`, while some components/tools
+  // may use `${XDG_STATE_HOME}/zee/logs`. Check both.
+  return [path.join(resolveDataDir(), "log"), resolveLogsDir()];
+}
+
+async function findMostRecentLogFile(dirs: string[]): Promise<string | null> {
+  const candidates: Array<{ filePath: string; mtimeMs: number }> = [];
+  for (const dir of dirs) {
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        if (!entry.name.endsWith(".log")) continue;
+        const filePath = path.join(dir, entry.name);
+        const stat = await fs.stat(filePath);
+        candidates.push({ filePath, mtimeMs: stat.mtimeMs });
+      }
+    } catch {
+      // Ignore missing/unreadable dirs.
+    }
+  }
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return candidates[0]?.filePath ?? null;
 }
 
 /**
@@ -20,7 +42,8 @@ export async function collectLogs(
   redactor: PrivacyRedactor,
   options: { lineCount: number } = { lineCount: 500 }
 ): Promise<LogEntry[]> {
-  const logPath = path.join(getLogsDir(), "agent-core.log");
+  const logPath = await findMostRecentLogFile(getLogsDirs());
+  if (!logPath) return [];
 
   try {
     const lines = await readLastLines(logPath, options.lineCount);

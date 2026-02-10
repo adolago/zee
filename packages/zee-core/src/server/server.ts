@@ -232,7 +232,7 @@ export namespace Server {
                 path,
                 required,
               })
-              c.header("WWW-Authenticate", 'Basic realm="agent-core"')
+              c.header("WWW-Authenticate", 'Basic realm="zee"')
               return c.text("Unauthorized", 401)
             }
 
@@ -440,9 +440,9 @@ export namespace Server {
     const result = await generateSpecs(App() as Hono, {
       documentation: {
         info: {
-          title: "agent-core",
+          title: "zee",
           version: "1.0.0",
-          description: "agent-core api",
+          description: "zee api",
         },
         openapi: "3.1.1",
       },

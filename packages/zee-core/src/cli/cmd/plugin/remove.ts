@@ -24,7 +24,7 @@ export const RemoveCommand = cmd({
           if (!(await isInstalled(name))) {
             UI.warn(`Plugin "${name}" is not installed`)
             UI.println(
-              UI.Style.TEXT_DIM + "Use 'agent-core plugin list' to see installed plugins" + UI.Style.TEXT_NORMAL,
+              UI.Style.TEXT_DIM + "Use 'zee plugin list' to see installed plugins" + UI.Style.TEXT_NORMAL,
             )
             return
           }
@@ -35,7 +35,7 @@ export const RemoveCommand = cmd({
 
           if (result.success) {
             UI.success(result.message)
-            UI.println(UI.Style.TEXT_DIM + "Restart agent-core for changes to take effect" + UI.Style.TEXT_NORMAL)
+            UI.println(UI.Style.TEXT_DIM + "Restart zee for changes to take effect" + UI.Style.TEXT_NORMAL)
           } else {
             UI.error(result.message)
             process.exit(1)

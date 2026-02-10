@@ -83,7 +83,6 @@ import { PermissionPrompt } from "./permission"
 import { QuestionPrompt } from "./question"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { formatTranscript } from "../../util/transcript"
-import { DialogDelegation } from "./dialog-delegation"
 import { Latex } from "@tui/util/latex"
 import { LatexUnicode } from "@tui/util/latex-unicode"
 import { MathBlock } from "@tui/component/math-block"
@@ -108,7 +107,6 @@ function AgentBanner() {
   const agent = createMemo(() => local.agent.current())
   const color = createMemo(() => local.agent.color(agent().name))
   const fullArt = createMemo(() => resolvePersonaArt(agent().name))
-  const cycleKey = createMemo(() => keybind.print("agent_cycle"))
   const submitKey = createMemo(() => keybind.print("input_submit"))
   // Trim art from edges to fit available height (hint=1, gap=1, borders~4)
   const art = createMemo(() => {
@@ -128,7 +126,7 @@ function AgentBanner() {
       </box>
 
       {/* Hint */}
-      <text style={{ fg: theme.textMuted }}>{cycleKey()} to switch · {submitKey()} to start</text>
+      <text style={{ fg: theme.textMuted }}>{submitKey()} to start</text>
     </box>
   )
 }
@@ -320,7 +318,7 @@ export function Session() {
       [
         ``,
         `  \x1b[2m${title}\x1b[0m`,
-        `  \x1b[2magent-core -s ${session()?.id}\x1b[0m`,
+        `  \x1b[2mzee -s ${session()?.id}\x1b[0m`,
         ``,
       ].join("\n"),
     )
@@ -542,15 +540,6 @@ export function Session() {
             navigate({ type: "home" })
           })
           .catch(() => toast.show({ message: "Failed to delete session", variant: "error" }))
-      },
-    },
-    {
-      title: "Delegate to persona",
-      value: "session.delegate",
-      keybind: "session_delegate",
-      category: "Session",
-      onSelect: (dialog) => {
-        dialog.replace(() => <DialogDelegation prompt={prompt.current} setPrompt={(p) => prompt.set(p)} />)
       },
     },
     {

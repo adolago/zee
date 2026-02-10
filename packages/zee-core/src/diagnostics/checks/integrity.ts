@@ -194,7 +194,7 @@ async function checkGatewayPort(): Promise<CheckResult> {
     category: "integrity",
     status: "warn",
     message: `Gateway not listening on ${port}`,
-    details: "Restart agent-core to recover the embedded gateway",
+    details: "Restart zee to recover the embedded gateway",
     severity: "warning",
     durationMs: Date.now() - start,
     autoFixable: false,

@@ -60,15 +60,22 @@ interface Config {
 // Constants
 // ============================================================================
 
+const XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+
 const BLOCK_LIST_PATHS = [
   resolve(".zee/model-block-list.jsonc"),
-  join(homedir(), ".config/agent-core/model-block-list.jsonc"),
+  join(XDG_CONFIG_HOME, "zee", "model-block-list.jsonc"),
+  // Legacy config location
+  join(XDG_CONFIG_HOME, "agent-core", "model-block-list.jsonc"),
   join(homedir(), ".zee/model-block-list.jsonc"),
 ];
 
 const CONFIG_PATHS = [
+  resolve(".zee/zee.jsonc"),
   resolve("zee.jsonc"),
-  join(homedir(), ".config/agent-core/zee.jsonc"),
+  join(XDG_CONFIG_HOME, "zee", "zee.jsonc"),
+  // Legacy config location
+  join(XDG_CONFIG_HOME, "agent-core", "zee.jsonc"),
   join(homedir(), ".zee/zee.jsonc"),
 ];
 

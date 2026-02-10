@@ -45,10 +45,12 @@ function UiI18nBridge(props: ParentProps) {
 declare global {
   interface Window {
     __AGENT_CORE__?: { updaterEnabled?: boolean; serverPassword?: string; deepLinks?: string[] }
+    __ZEE__?: { updaterEnabled?: boolean; serverPassword?: string; deepLinks?: string[] }
   }
 }
 
-const PERSONA_THEME_OVERRIDE_KEY = "agent-core.persona-theme-override"
+const PERSONA_THEME_OVERRIDE_KEY = "zee.persona-theme-override"
+const LEGACY_PERSONA_THEME_OVERRIDE_KEY = "agent-core.persona-theme-override"
 
 function PersonaThemeBridge(props: ParentProps) {
   const persona = usePersona()
@@ -56,7 +58,8 @@ function PersonaThemeBridge(props: ParentProps) {
 
   createEffect(() => {
     const id = persona.id()
-    const override = localStorage.getItem(PERSONA_THEME_OVERRIDE_KEY)
+    const override =
+      localStorage.getItem(PERSONA_THEME_OVERRIDE_KEY) ?? localStorage.getItem(LEGACY_PERSONA_THEME_OVERRIDE_KEY)
     if (override === "true") return
     if (isPersonaId(id) && theme.themes()[id]) {
       theme.setTheme(id)

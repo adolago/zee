@@ -457,7 +457,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           } else if (agents.length === 0) {
             toast.show({
               variant: "error",
-              message: "No agents loaded. Check agent-core config and restart the daemon.",
+              message: "No agents loaded. Check zee config and restart the daemon.",
               duration: 5000,
             })
           }

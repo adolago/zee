@@ -23,7 +23,7 @@ interface RemovalTargets {
 
 export const UninstallCommand = {
   command: "uninstall",
-  describe: "uninstall agent-core and remove all related files",
+  describe: "uninstall zee and remove all related files",
   builder: (yargs: Argv) =>
     yargs
       .option("keep-config", {
@@ -54,7 +54,7 @@ export const UninstallCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Uninstall Agent-Core")
+    prompts.intro("Uninstall Zee")
 
     const method = await Installation.method()
     prompts.log.info(`Installation method: ${method}`)
@@ -100,6 +100,21 @@ async function collectRemovalTargets(args: UninstallArgs, method: Installation.M
   return { directories, shellConfig, binary }
 }
 
+async function resolveBrewFormulaForRemoval(): Promise<string> {
+  const tapFormula = await $`brew list --formula adolago/tap/zee`.throws(false).quiet().text()
+  if (tapFormula.includes("zee")) return "adolago/tap/zee"
+  const coreFormula = await $`brew list --formula zee`.throws(false).quiet().text()
+  if (coreFormula.includes("zee")) return "zee"
+
+  // Legacy formulas
+  const legacyTapFormula = await $`brew list --formula adolago/tap/agent-core`.throws(false).quiet().text()
+  if (legacyTapFormula.includes("agent-core")) return "adolago/tap/agent-core"
+  const legacyCoreFormula = await $`brew list --formula agent-core`.throws(false).quiet().text()
+  if (legacyCoreFormula.includes("agent-core")) return "agent-core"
+
+  return "zee"
+}
+
 async function showRemovalSummary(targets: RemovalTargets, method: Installation.Method) {
   prompts.log.message("The following will be removed:")
 
@@ -127,15 +142,21 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
   }
 
   if (method !== "curl" && method !== "unknown") {
-    const npmPackage = await Installation.resolveNpmPackage(method)
-    const cmds: Record<string, string> = {
-      npm: `npm uninstall -g ${npmPackage}`,
-      pnpm: `pnpm uninstall -g ${npmPackage}`,
-      bun: `bun remove -g ${npmPackage}`,
-      yarn: `yarn global remove ${npmPackage}`,
-      brew: "brew uninstall agent-core",
+    let pkgHint: string | undefined
+    if (method === "brew") {
+      const formula = await resolveBrewFormulaForRemoval()
+      pkgHint = `brew uninstall ${formula}`
+    } else {
+      const npmPackage = await Installation.resolveNpmPackage(method)
+      const cmds: Record<string, string> = {
+        npm: `npm uninstall -g ${npmPackage}`,
+        pnpm: `pnpm uninstall -g ${npmPackage}`,
+        bun: `bun remove -g ${npmPackage}`,
+        yarn: `yarn global remove ${npmPackage}`,
+      }
+      pkgHint = cmds[method]
     }
-    prompts.log.info(`  ✓ Package: ${cmds[method] || method}`)
+    prompts.log.info(`  ✓ Package: ${pkgHint || method}`)
   }
 }
 
@@ -177,16 +198,19 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   if (method !== "curl" && method !== "unknown") {
-    const npmPackage = await Installation.resolveNpmPackage(method)
-    const cmds: Record<string, string[]> = {
-      npm: ["npm", "uninstall", "-g", npmPackage],
-      pnpm: ["pnpm", "uninstall", "-g", npmPackage],
-      bun: ["bun", "remove", "-g", npmPackage],
-      yarn: ["yarn", "global", "remove", npmPackage],
-      brew: ["brew", "uninstall", "agent-core"],
+    let cmd: string[] | undefined
+    if (method === "brew") {
+      cmd = ["brew", "uninstall", await resolveBrewFormulaForRemoval()]
+    } else {
+      const npmPackage = await Installation.resolveNpmPackage(method)
+      const cmds: Record<string, string[]> = {
+        npm: ["npm", "uninstall", "-g", npmPackage],
+        pnpm: ["pnpm", "uninstall", "-g", npmPackage],
+        bun: ["bun", "remove", "-g", npmPackage],
+        yarn: ["yarn", "global", "remove", npmPackage],
+      }
+      cmd = cmds[method]
     }
-
-    const cmd = cmds[method]
     if (cmd) {
       spinner.start(`Running ${cmd.join(" ")}...`)
       const result = await $`${cmd}`.quiet().nothrow()
@@ -219,7 +243,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   UI.empty()
-  prompts.log.success("Thank you for using agent-core!")
+  prompts.log.success("Thank you for using zee!")
 }
 
 async function getShellConfigFile(): Promise<string | null> {
@@ -258,7 +282,7 @@ async function getShellConfigFile(): Promise<string | null> {
     const content = await Bun.file(file)
       .text()
       .catch(() => "")
-    if (content.includes("# opencode") || content.includes("# agent-core") || content.includes(".zee/bin")) {
+    if (content.includes("# opencode") || content.includes("# zee") || content.includes("# agent-core") || content.includes(".zee/bin")) {
       return file
     }
   }
@@ -276,7 +300,7 @@ async function cleanShellConfig(file: string) {
   for (const line of lines) {
     const trimmed = line.trim()
 
-    if (trimmed === "# opencode" || trimmed === "# agent-core") {
+    if (trimmed === "# opencode" || trimmed === "# zee" || trimmed === "# agent-core") {
       skip = true
       continue
     }

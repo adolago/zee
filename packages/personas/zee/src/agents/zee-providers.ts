@@ -2,7 +2,8 @@
  * Reads provider configuration from Zee's config file.
  * This makes Zee the single source of truth for model providers.
  *
- * Zee config: ~/.local/src/zee/.zee/zee.jsonc
+ * Zee config (project): <repo>/.zee/zee.jsonc
+ * Zee config (user):    ~/.config/zee/zee.jsonc (or XDG_CONFIG_HOME)
  * or resolved via ZEE_ROOT environment variable.
  */
 
@@ -16,6 +17,8 @@ import type { ProviderConfig } from "./models-config.providers.js";
 import { log } from "./auth-profiles/constants.js";
 import { DEFAULT_PROVIDER } from "./defaults.js";
 
+const xdgConfigHome = process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config");
+
 const ZEE_CONFIG_PATHS = [
   // Environment override
   process.env.ZEE_ROOT
@@ -25,12 +28,12 @@ const ZEE_CONFIG_PATHS = [
   process.env.AGENT_CORE_ROOT
     ? path.join(process.env.AGENT_CORE_ROOT, ".zee", "zee.jsonc")
     : null,
-  // Standard development location
-  path.join(os.homedir(), ".local", "src", "zee", ".zee", "zee.jsonc"),
-  // Legacy development location
-  path.join(os.homedir(), ".local", "src", "agent-core", ".zee", "zee.jsonc"),
   // Current working directory
   path.join(process.cwd(), ".zee", "zee.jsonc"),
+  // User config
+  path.join(xdgConfigHome, "zee", "zee.jsonc"),
+  // Legacy user config
+  path.join(xdgConfigHome, "agent-core", "zee.jsonc"),
 ].filter(Boolean) as string[];
 
 type AgentCoreModelEntry = {

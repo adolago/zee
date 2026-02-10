@@ -1,4 +1,4 @@
-// Attach TUI to a running agent-core process.
+// Attach TUI to a running zee process.
 
 import { cmd } from "../cmd"
 import { tui } from "./app"
@@ -15,7 +15,7 @@ function normalizeDaemonHost(hostname?: string): string {
 
 export const AttachCommand = cmd({
   command: "attach [url]",
-  describe: "Attach TUI to a running agent-core process",
+  describe: "Attach TUI to a running zee process",
   builder: (yargs) =>
     yargs
       .positional("url", {
@@ -62,9 +62,9 @@ export const AttachCommand = cmd({
       // Auto-detect running process
       const running = await Daemon.isRunning()
       if (!running) {
-        UI.error("No agent-core process is running.")
-        UI.info("Start one with: agent-core")
-        UI.info("Or headless: agent-core --headless")
+        UI.error("No zee process is running.")
+        UI.info("Start one with: zee")
+        UI.info("Or headless: zee --headless")
         process.exit(1)
       }
 

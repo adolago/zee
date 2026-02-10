@@ -263,7 +263,7 @@ async function checkBinaryMatch(): Promise<CheckResult> {
   const start = Date.now();
 
   try {
-    // Get the path to the agent-core binary
+    // Get the path to the zee binary
     const binPath = process.argv[1];
     if (!binPath) {
       return {

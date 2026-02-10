@@ -61,7 +61,7 @@ export namespace SessionProcessor {
           names: new Set<string>(),
         }
         const baseEvent = {
-          service: "agent-core",
+          service: "zee",
           traceId,
           requestId: input.assistantMessage.id,
           sessionId: input.sessionID,

@@ -127,14 +127,14 @@ jobs:
           ### Changes
           ${CHANGELOG}
 
-          ### Install
-          \`\`\`bash
-          npm install -g @adolago/agent-core@nightly
-          # or specific version
-          npm install -g @adolago/agent-core@${VERSION}
-          \`\`\`
-          " \
-            --prerelease
+	          ### Install
+	          \`\`\`bash
+	          npm install -g @zee/core@nightly
+	          # or specific version
+	          npm install -g @zee/core@${VERSION}
+	          \`\`\`
+	          " \
+	            --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -142,5 +142,5 @@ jobs:
         if: steps.changes.outputs.has_changes == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: agent-core-nightly-${{ steps.version.outputs.version }}
+          name: zee-nightly-${{ steps.version.outputs.version }}
           path: packages/zee-core/dist

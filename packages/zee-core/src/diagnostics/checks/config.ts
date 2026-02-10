@@ -1,6 +1,6 @@
 /**
  * @file Configuration Checks
- * @description Validates agent-core configuration files
+ * @description Validates zee configuration files
  */
 
 import * as fs from "fs/promises";

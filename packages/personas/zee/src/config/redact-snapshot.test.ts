@@ -10,7 +10,7 @@ import {
 
 function makeSnapshot(config: Record<string, unknown>, raw?: string): ConfigFileSnapshot {
   return {
-    path: "/home/user/.config/agent-core/config.json5",
+    path: "/home/user/.config/zee/config.json5",
     exists: true,
     raw: raw ?? JSON.stringify(config),
     parsed: config,
@@ -290,4 +290,3 @@ describe("restoreRedactedValues", () => {
     expect(restored).toEqual(originalConfig);
   });
 });
-

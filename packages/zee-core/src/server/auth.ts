@@ -1,6 +1,6 @@
 import { Flag } from "@/flag/flag"
 
-const DEFAULT_USERNAME = "agent-core"
+const DEFAULT_USERNAME = "zee"
 
 // ---------------------------------------------------------------------------
 // Scoped Permissions
@@ -246,12 +246,12 @@ export function assertSafeServerBind(opts: { hostname: string }) {
   if (insecureOverrideOk) return
 
   const authDisabledHelp = config.disabled
-    ? "Server auth is disabled. Set AGENT_CORE_ENABLE_SERVER_AUTH=1 and AGENT_CORE_SERVER_PASSWORD to enable."
-    : "Server auth is enabled but AGENT_CORE_SERVER_PASSWORD is missing."
+    ? "Server auth is disabled. Set ZEE_ENABLE_SERVER_AUTH=1 and ZEE_SERVER_PASSWORD to enable."
+    : "Server auth is enabled but ZEE_SERVER_PASSWORD is missing."
 
   throw new Error(
-    `Refusing to bind agent-core server to non-loopback hostname "${hostname}" without HTTP auth. ${authDisabledHelp} ` +
-      "To override (dangerous), set AGENT_CORE_DISABLE_SERVER_AUTH=1 and AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH=1.",
+    `Refusing to bind zee server to non-loopback hostname "${hostname}" without HTTP auth. ${authDisabledHelp} ` +
+      "To override (dangerous), set ZEE_DISABLE_SERVER_AUTH=1 and ZEE_ALLOW_INSECURE_SERVER_NO_AUTH=1.",
   )
 }
 

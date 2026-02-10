@@ -373,21 +373,21 @@ export namespace LLM {
       tools,
       maxOutputTokens,
       abortSignal: input.abort,
-      headers: {
-        ...(isCodex
-          ? {
-              originator: "agent-core",
-              "User-Agent": `agent-core/${Installation.VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`,
-              session_id: input.sessionID,
-            }
-          : input.model.providerID !== "anthropic"
-            ? {
-                "User-Agent": `agent-core/${Installation.VERSION}`,
-              }
-            : undefined),
-        ...input.model.headers,
-        ...headers,
-      },
+	      headers: {
+	        ...(isCodex
+	          ? {
+	              originator: "zee",
+	              "User-Agent": `zee/${Installation.VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`,
+	              session_id: input.sessionID,
+	            }
+	          : input.model.providerID !== "anthropic"
+	            ? {
+	                "User-Agent": `zee/${Installation.VERSION}`,
+	              }
+	            : undefined),
+	        ...input.model.headers,
+	        ...headers,
+	      },
       maxRetries: input.retries ?? 3, // Default to 3 retries for transient failures (timeouts, 503, 429)
       messages: [
         ...(isCodex

@@ -1031,7 +1031,7 @@ export const AuthProvidersCommand = cmd({
     }
 
     prompts.log.message("")
-    prompts.log.info(`${UI.Style.TEXT_DIM}Use 'agent-core auth login <provider>' to configure credentials${UI.Style.TEXT_NORMAL}`)
+    prompts.log.info(`${UI.Style.TEXT_DIM}Use 'zee auth login <provider>' to configure credentials${UI.Style.TEXT_NORMAL}`)
     prompts.outro("")
   },
 })

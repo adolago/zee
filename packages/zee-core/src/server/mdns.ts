@@ -9,7 +9,7 @@ const log = Log.create({ service: "mdns" })
 export interface MdnsPublishOptions {
   port: number
   /**
-   * Custom mDNS host/domain. Defaults to "agent-core.local".
+   * Custom mDNS host/domain. Defaults to "zee.local".
    */
   domain?: string
   /**
@@ -41,7 +41,7 @@ export namespace MDNS {
     if (bonjour) unpublish()
 
     try {
-      const name = `agent-core-${port}`
+      const name = `zee-${port}`
       bonjour = new Bonjour()
 
       // In minimal mode, don't include txt records that could leak operational details
@@ -49,7 +49,7 @@ export namespace MDNS {
       const serviceConfig: Parameters<Bonjour["publish"]>[0] = {
         name,
         type: "http",
-        host: domain ?? "agent-core.local",
+        host: domain ?? "zee.local",
         port,
       }
 
@@ -61,7 +61,7 @@ export namespace MDNS {
       const service = bonjour.publish(serviceConfig)
 
       service.on("up", () => {
-        log.info("mDNS service published", { name, port, minimal, domain: domain ?? "agent-core.local" })
+        log.info("mDNS service published", { name, port, minimal, domain: domain ?? "zee.local" })
       })
 
       service.on("error", (err) => {

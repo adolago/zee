@@ -6,13 +6,13 @@ import { UI } from "./ui"
 
 export function FormatError(input: unknown) {
   if (MCP.Failed.isInstance(input))
-    return `MCP server "${input.data.name}" failed. Note, agent-core does not support MCP authentication yet`
+    return `MCP server "${input.data.name}" failed. Note, zee does not support MCP authentication yet`
   if (Provider.ModelNotFoundError.isInstance(input)) {
     const { providerID, modelID, suggestions } = input.data
     return [
       `Model not found: ${providerID}/${modelID}`,
       ...(Array.isArray(suggestions) && suggestions.length ? ["Did you mean: " + suggestions.join(", ")] : []),
-      `Try: \`agent-core models\` to list available models`,
+      `Try: \`zee models\` to list available models`,
       `Or check your config (zee.json) provider/model names`,
     ].join("\n")
   }

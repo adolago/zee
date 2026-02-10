@@ -7,9 +7,13 @@ import path from "path"
 import fs from "fs/promises"
 import { pathToFileURL } from "url"
 
-const managedConfigDir = process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR!
+const managedConfigDir = (() => {
+  const dir = process.env.ZEE_TEST_MANAGED_CONFIG_DIR || process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR
+  if (!dir) throw new Error("Missing ZEE_TEST_MANAGED_CONFIG_DIR (or legacy AGENT_CORE_TEST_MANAGED_CONFIG_DIR)")
+  return dir
+})()
 const xdgConfigHome = process.env["XDG_CONFIG_HOME"]!
-const userConfigDir = path.join(xdgConfigHome, "agent-core")
+const userConfigDir = path.join(xdgConfigHome, "zee")
 const userConfigJson = path.join(userConfigDir, "zee.json")
 const userConfigJsonc = path.join(userConfigDir, "zee.jsonc")
 
@@ -94,7 +98,7 @@ test("loads JSON config file", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           model: "test/model",
           username: "testuser",
         }),
@@ -141,7 +145,7 @@ test("merges multiple config files with correct precedence", async () => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           model: "base",
           username: "base",
         }),
@@ -149,7 +153,7 @@ test("merges multiple config files with correct precedence", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           model: "override",
         }),
       )
@@ -315,7 +319,7 @@ test("handles file inclusion substitution", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           theme: "{file:included.txt}",
         }),
       )
@@ -336,7 +340,7 @@ test("validates config schema and throws on invalid fields", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           invalid_field: "should cause error",
         }),
       )
@@ -371,7 +375,7 @@ test("handles agent configuration", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test_agent: {
               model: "test/model",
@@ -404,7 +408,7 @@ test("handles command configuration", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           command: {
             test_command: {
               template: "test template",
@@ -435,7 +439,7 @@ test("migrates mode field to agent field", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mode: {
             test_mode: {
               model: "test/model",
@@ -723,7 +727,7 @@ test("merges plugin arrays from global and local configs", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           plugin: ["global-plugin-1", "global-plugin-2"],
         }),
       )
@@ -732,7 +736,7 @@ test("merges plugin arrays from global and local configs", async () => {
       await Bun.write(
         path.join(opencodeDir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           plugin: ["local-plugin-1"],
         }),
       )
@@ -799,7 +803,7 @@ test("merges instructions arrays from global and local configs", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           instructions: ["global-instructions.md", "shared-rules.md"],
         }),
       )
@@ -807,7 +811,7 @@ test("merges instructions arrays from global and local configs", async () => {
       await Bun.write(
         path.join(opencodeDir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           instructions: ["local-instructions.md"],
         }),
       )
@@ -838,7 +842,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           instructions: ["duplicate.md", "global-only.md"],
         }),
       )
@@ -846,7 +850,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
       await Bun.write(
         path.join(opencodeDir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           instructions: ["duplicate.md", "local-only.md"],
         }),
       )
@@ -882,7 +886,7 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           plugin: ["duplicate-plugin", "global-plugin-1"],
         }),
       )
@@ -891,7 +895,7 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
       await Bun.write(
         path.join(opencodeDir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           plugin: ["duplicate-plugin", "local-plugin-1"],
         }),
       )
@@ -1418,7 +1422,7 @@ test("project config overrides remote well-known config", async () => {
         await Bun.write(
           path.join(dir, "zee.json"),
           JSON.stringify({
-            $schema: "agent-core",
+            $schema: "zee",
             mcp: {
               tracker: {
                 type: "remote",
@@ -1511,7 +1515,7 @@ describe("deduplicatePlugins", () => {
         await Bun.write(
           path.join(dir, "zee.json"),
           JSON.stringify({
-            $schema: "agent-core",
+            $schema: "zee",
             plugin: ["my-plugin@1.0.0"],
           }),
         )

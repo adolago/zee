@@ -2,7 +2,7 @@
  * ClawHub Marketplace Registry Types
  *
  * Type definitions for the ClawHub public registry API responses.
- * Consume-only: agent-core downloads and installs skills but never publishes.
+ * Consume-only: zee downloads and installs skills but never publishes.
  */
 
 export interface ClawHubSkillSummary {

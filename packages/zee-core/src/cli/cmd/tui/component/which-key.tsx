@@ -25,12 +25,8 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
   session_new: { category: "Session", description: "[n]ew" },
   session_list: { category: "Session", description: "[l]ist" },
   session_delete: { category: "Session", description: "[d]elete" },
-  session_delegate: { category: "Session", description: "[D]elegate" },
   session_compact: { category: "Session", description: "[c]ompact" },
   session_timeline: { category: "Session", description: "timelin[g]" },
-
-  // Agent
-  agent_list: { category: "Agent", description: "[a]gents" },
 
   // Model
   model_list: { category: "Model", description: "[m]odels" },

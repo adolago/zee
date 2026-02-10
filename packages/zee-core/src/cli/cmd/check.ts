@@ -150,13 +150,13 @@ export async function checkEnvironment(): Promise<void> {
 // Help examples
 export const checkExamples = `
 Examples:
-  $ agent-core check                    # Run basic health checks
-  $ agent-core check --full             # Run all checks including extended
-  $ agent-core check --fix              # Auto-fix repairable issues
-  $ agent-core check --json             # Output as JSON for CI
-  $ agent-core check --category runtime # Check only runtime category
-  $ agent-core check --skip runtime.disk-space  # Skip specific check
-  $ agent-core check --verbose          # Show detailed output
+  $ zee check                    # Run basic health checks
+  $ zee check --full             # Run all checks including extended
+  $ zee check --fix              # Auto-fix repairable issues
+  $ zee check --json             # Output as JSON for CI
+  $ zee check --category runtime # Check only runtime category
+  $ zee check --skip runtime.disk-space  # Skip specific check
+  $ zee check --verbose          # Show detailed output
 
 Check Categories:
   runtime    - Bun version, directories, disk, memory

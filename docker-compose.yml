@@ -3,12 +3,12 @@ version: '3.8'
 services:
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: agent-core-qdrant
+    container_name: zee-qdrant
     restart: always
     ports:
       - "6333:6333"
     volumes:
-      - ${HOME}/.local/share/agent-core/qdrant:/qdrant/storage
+      - ${HOME}/.local/share/zee/qdrant:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
     healthcheck:
@@ -20,9 +20,9 @@ services:
   # Redis is optional but prepared here if needed for caching later
   # redis:
   #   image: redis:alpine
-  #   container_name: agent-core-redis
+  #   container_name: zee-redis
   #   restart: always
   #   ports:
   #     - "6379:6379"
   #   volumes:
-  #     - ${HOME}/.local/share/agent-core/redis:/data
+  #     - ${HOME}/.local/share/zee/redis:/data

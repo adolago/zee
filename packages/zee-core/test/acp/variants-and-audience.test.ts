@@ -93,7 +93,7 @@ describe("acp.agent variants and audience mapping", () => {
           defaultModel: { providerID: "zai-coding-plan", modelID: "glm-4.7" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const result = await agent.newSession({ cwd, mcpServers: [] } as any)
 
         const ids = result.models.availableModels.map((m: any) => m.modelId)
@@ -164,7 +164,7 @@ describe("acp.agent variants and audience mapping", () => {
           defaultModel: { providerID: "zai-coding-plan", modelID: "glm-4.7" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const sessionId = await agent.newSession({ cwd, mcpServers: [] } as any).then((x) => x.sessionId)
 
         await agent.prompt({
@@ -301,7 +301,7 @@ describe("acp.agent variants and audience mapping", () => {
           defaultModel: { providerID: "zai-coding-plan", modelID: "glm-4.7" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const sessionId = await agent.newSession({ cwd, mcpServers: [] } as any).then((x) => x.sessionId)
 
         await agent.unstable_setSessionModel({ sessionId, modelId: "zai-coding-plan/glm-4.7#thinking" } as any)
@@ -410,7 +410,7 @@ describe("acp.agent variants and audience mapping", () => {
           defaultModel: { providerID: "default", modelID: "model" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const loaded = await agent.loadSession({ sessionId: "ses_loaded", cwd, mcpServers: [] } as any)
 
         expect(loaded.models.currentModelId).toBe("loaded-provider/loaded-model#thinking")
@@ -427,4 +427,3 @@ describe("acp.agent variants and audience mapping", () => {
     })
   })
 })
-

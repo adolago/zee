@@ -76,7 +76,7 @@ describe("acp.agent session ops", () => {
           defaultModel: { providerID: "zai-coding-plan", modelID: "glm-4.7" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const result = await agent.unstable_listSessions({ cwd } as any)
 
         expect(calls).toHaveLength(1)
@@ -140,7 +140,7 @@ describe("acp.agent session ops", () => {
           defaultModel: { providerID: "zai-coding-plan", modelID: "glm-4.7" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const page1 = await agent.unstable_listSessions({ cwd } as any)
         expect(page1.nextCursor).toBe("100")
 
@@ -218,7 +218,7 @@ describe("acp.agent session ops", () => {
           defaultModel: { providerID: "zai-coding-plan", modelID: "glm-4.7" },
         } as any)
 
-        const cwd = "/tmp/agent-core-acp-test"
+        const cwd = "/tmp/zee-acp-test"
         const result = await agent.unstable_forkSession({ sessionId: "ses_src", cwd, mcpServers: [] } as any)
 
         expect(calls.fork).toHaveLength(1)

@@ -15,8 +15,8 @@ function toNumberOrNull(value: unknown): number | null {
 }
 
 async function listOpencodeProviderRegistry(): Promise<unknown> {
-  // Use a computed specifier so tsc doesn't try to typecheck agent-core's Bun-oriented source tree.
-  // This module is executed in environments that can import agent-core modules (Bun/bundled).
+  // Use a computed specifier so tsc doesn't try to typecheck zee-core's Bun-oriented source tree.
+  // This module is executed in environments that can import @zee/core modules (Bun/bundled).
   const specifier = "@zee/core/provider-registry";
   const mod = await import(specifier);
   const fn = (mod as { listProviderRegistry?: unknown }).listProviderRegistry;
@@ -177,4 +177,3 @@ export async function resolveZeeProvidersFromOpencodeRegistry(): Promise<
 
   return providers;
 }
-

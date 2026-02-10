@@ -18,11 +18,48 @@ export type TuiOptions = {
 }
 
 /**
- * Creates and starts an Agent Core daemon server
+ * Creates and starts a Zee daemon server
  * @param options Server configuration options
  * @returns Server instance with url and close method
  */
-export async function createAgentCoreServer(options?: ServerOptions) {
+async function spawnZeeCli(
+  args: string[],
+  opts: Parameters<typeof spawn>[2],
+): Promise<ReturnType<typeof spawn>> {
+  const candidates = ["zee", "agent-core"] as const
+  let lastError: unknown
+
+  for (const cmd of candidates) {
+    const proc = spawn(cmd, args, opts)
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onSpawn = () => {
+          cleanup()
+          resolve()
+        }
+        const onError = (err: unknown) => {
+          cleanup()
+          reject(err)
+        }
+        const cleanup = () => {
+          proc.off("spawn", onSpawn)
+          proc.off("error", onError as any)
+        }
+        proc.once("spawn", onSpawn)
+        proc.once("error", onError as any)
+      })
+      return proc
+    } catch (err: any) {
+      lastError = err
+      if (err?.code === "ENOENT") continue
+      throw err
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Failed to spawn zee CLI")
+}
+
+export async function createZeeServer(options?: ServerOptions) {
   const opts = {
     hostname: "127.0.0.1",
     port: 3210,
@@ -33,10 +70,11 @@ export async function createAgentCoreServer(options?: ServerOptions) {
   const args = [`serve`, `--hostname=${opts.hostname}`, `--port=${opts.port}`]
   if (opts.config?.logLevel) args.push(`--log-level=${opts.config.logLevel}`)
 
-  const proc = spawn(`agent-core`, args, {
+  const proc = await spawnZeeCli(args, {
     signal: opts.signal,
     env: {
       ...process.env,
+      ZEE_CONFIG_CONTENT: JSON.stringify(opts.config ?? {}),
       AGENT_CORE_CONFIG_CONTENT: JSON.stringify(opts.config ?? {}),
     },
   })
@@ -52,7 +90,11 @@ export async function createAgentCoreServer(options?: ServerOptions) {
       output += chunk.toString()
       const lines = output.split("\n")
       for (const line of lines) {
-        if (line.startsWith("agent-core server listening")) {
+        if (
+          line.startsWith("zee server listening") ||
+          line.startsWith("agent-core server listening") ||
+          line.startsWith("opencode server listening")
+        ) {
           const match = line.match(/on\s+(https?:\/\/[^\s]+)/)
           if (!match) {
             throw new Error(`Failed to parse server url from output: ${line}`)
@@ -98,15 +140,20 @@ export async function createAgentCoreServer(options?: ServerOptions) {
   }
 }
 
-/** @deprecated Use createAgentCoreServer instead */
-export const createOpencodeServer = createAgentCoreServer
+/** @deprecated Use createZeeServer instead */
+export async function createAgentCoreServer(options?: ServerOptions) {
+  return createZeeServer(options)
+}
+
+/** @deprecated Use createZeeServer instead */
+export const createOpencodeServer = createZeeServer
 
 /**
- * Creates and launches the Agent Core TUI
+ * Creates and launches the Zee TUI
  * @param options TUI configuration options
  * @returns TUI instance with close method
  */
-export function createAgentCoreTui(options?: TuiOptions) {
+export function createZeeTui(options?: TuiOptions) {
   const args: string[] = []
 
   if (options?.project) {
@@ -122,21 +169,27 @@ export function createAgentCoreTui(options?: TuiOptions) {
     args.push(`--agent=${options.agent}`)
   }
 
-  const proc = spawn(`agent-core`, args, {
+  const procPromise = spawnZeeCli(args, {
     signal: options?.signal,
     stdio: "inherit",
     env: {
       ...process.env,
+      ZEE_CONFIG_CONTENT: JSON.stringify(options?.config ?? {}),
       AGENT_CORE_CONFIG_CONTENT: JSON.stringify(options?.config ?? {}),
     },
   })
 
   return {
     close() {
-      proc.kill()
+      procPromise.then((proc) => proc.kill()).catch(() => {})
     },
   }
 }
 
-/** @deprecated Use createAgentCoreTui instead */
-export const createOpencodeTui = createAgentCoreTui
+/** @deprecated Use createZeeTui instead */
+export function createAgentCoreTui(options?: TuiOptions) {
+  return createZeeTui(options)
+}
+
+/** @deprecated Use createZeeTui instead */
+export const createOpencodeTui = createZeeTui

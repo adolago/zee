@@ -1,5 +1,5 @@
-name: "agent-core GitHub Action"
-description: "Run agent-core in GitHub Actions workflows"
+name: "Zee GitHub Action"
+description: "Run zee in GitHub Actions workflows"
 branding:
   icon: "code"
   color: "orange"
@@ -14,7 +14,7 @@ inputs:
     required: false
 
   share:
-    description: "Share the agent-core session (defaults to true for public repos)"
+    description: "Share the zee session (defaults to true for public repos)"
     required: false
 
   prompt:
@@ -27,28 +27,33 @@ inputs:
     default: "false"
 
   mentions:
-    description: "Comma-separated list of trigger phrases (case-insensitive). Defaults to '/agent-core,/ac'"
+    description: "Comma-separated list of trigger phrases (case-insensitive). Defaults to '/zee,/z,/agent-core,/ac'"
     required: false
 
   oidc_base_url:
     description: "Base URL for OIDC token exchange API. Only required when running a custom GitHub App install."
     required: false
   install_url:
-    description: "Optional install script URL for agent-core."
+    description: "Optional install script URL for zee."
     required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Install agent-core
+    - name: Install zee
       if: inputs.install_url != ''
       shell: bash
       run: curl -fsSL "${{ inputs.install_url }}" | bash
 
-    - name: Run agent-core
+    - name: Run zee
       shell: bash
-      id: run_agent_core
-      run: agent-core github run
+      id: run_zee
+      run: |
+        if command -v zee >/dev/null 2>&1; then
+          zee github run
+        else
+          agent-core github run
+        fi
       env:
         MODEL: ${{ inputs.model }}
         AGENT: ${{ inputs.agent }}

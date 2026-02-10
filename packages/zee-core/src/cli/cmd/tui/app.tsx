@@ -19,7 +19,6 @@ import { DialogLegend } from "./ui/dialog-legend"
 import { DialogReleaseButton } from "./ui/dialog-release-button"
 import { WhichKey } from "@tui/component/which-key"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
-import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { KeybindProvider } from "@tui/context/keybind"
 import { ThemeProvider, useTheme, isNoColorEnabled, generateMonochromeTheme, resolveTheme } from "@tui/context/theme"
@@ -339,18 +338,6 @@ function App() {
       },
     },
     {
-      title: "Switch agent",
-      value: "agent.list",
-      keybind: "agent_list",
-      category: "Agent",
-      slash: {
-        name: "agents",
-      },
-      onSelect: () => {
-        dialog.replace(() => <DialogAgent />)
-      },
-    },
-    {
       title: "Toggle MCPs",
       value: "mcp.list",
       category: "Agent",
@@ -361,24 +348,6 @@ function App() {
         dialog.replace(() => <DialogMcp />)
       },
     },
-    {
-      title: "Agent cycle",
-      value: "agent.cycle",
-      keybind: "agent_cycle",
-      category: "Agent",
-      onSelect: () => {
-        local.agent.move(1)
-      },
-    },
-	    {
-	      title: "Agent cycle reverse",
-	      value: "agent.cycle.reverse",
-	      keybind: "agent_cycle_reverse",
-	      category: "Agent",
-	      onSelect: () => {
-	        local.agent.move(-1)
-	      },
-	    },
 	    {
 	      title: "Variant cycle",
 	      value: "variant.cycle",
@@ -568,7 +537,7 @@ function App() {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        const url = normalizeHttpUrl("https://github.com/adolago/agent-core/tree/dev/docs")
+        const url = normalizeHttpUrl("https://github.com/adolago/zee/tree/dev/docs")
         if (url) open(url).catch(() => {})
         dialog.clear()
       },
@@ -646,7 +615,7 @@ function App() {
     toast.show({
       variant: "success",
       title: "Update Complete",
-      message: `agent-core updated to v${evt.properties.version}`,
+      message: `zee updated to v${evt.properties.version}`,
       duration: 5000,
     })
   })
@@ -654,7 +623,7 @@ function App() {
     toast.show({
       variant: "info",
       title: "Update Available",
-      message: `agent-core v${evt.properties.version} is available. Run 'agent-core upgrade' to update manually.`,
+      message: `zee v${evt.properties.version} is available. Run 'zee upgrade' to update manually.`,
       duration: 10000,
     })
   })
@@ -739,7 +708,7 @@ function ErrorComponent(props: {
   })
   const [copied, setCopied] = createSignal(false)
 
-  const issueURL = new URL("https://github.com/adolago/agent-core/issues/new?template=bug-report.yml")
+  const issueURL = new URL("https://github.com/adolago/zee/issues/new?template=bug-report.yml")
 
   // Use theme-aware colors with NO_COLOR support
   const colors = MonochromeColors(props.mode ?? "dark")
@@ -755,6 +724,8 @@ function ErrorComponent(props: {
     )
   }
 
+  issueURL.searchParams.set("zee-version", Installation.VERSION)
+  // Legacy issue form field id (older templates).
   issueURL.searchParams.set("agent-core-version", Installation.VERSION)
 
   const copyIssueURL = () => {

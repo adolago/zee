@@ -1,24 +1,24 @@
-// Agent Core SDK
+// Zee SDK
 // Re-exports from the internal SDK implementation
 
 export * from "./client.js"
 export * from "./server.js"
 
-import { createAgentCoreClient } from "./client.js"
-import { createAgentCoreServer } from "./server.js"
+import { createZeeClient } from "./client.js"
+import { createZeeServer } from "./server.js"
 import type { ServerOptions } from "./server.js"
 
 /**
- * Creates both an Agent Core server and client
+ * Creates both a Zee server and client
  * @param options Server options
  * @returns Object with client and server instances
  */
-export async function createAgentCore(options?: ServerOptions) {
-  const server = await createAgentCoreServer({
+export async function createZee(options?: ServerOptions) {
+  const server = await createZeeServer({
     ...options,
   })
 
-  const client = createAgentCoreClient({
+  const client = createZeeClient({
     baseUrl: server.url,
   })
 
@@ -28,5 +28,8 @@ export async function createAgentCore(options?: ServerOptions) {
   }
 }
 
-/** @deprecated Use createAgentCore instead */
-export const createOpencode = createAgentCore
+/** @deprecated Use createZee instead */
+export const createAgentCore = createZee
+
+/** @deprecated Use createZee instead */
+export const createOpencode = createZee

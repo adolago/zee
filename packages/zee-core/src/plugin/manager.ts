@@ -35,7 +35,7 @@ export async function installPlugin(name: string): Promise<InstallResult> {
   if (!plugin) {
     return {
       success: false,
-      message: `Plugin "${name}" not found in registry. Use 'agent-core plugin search' to find available plugins.`,
+      message: `Plugin "${name}" not found in registry. Use 'zee plugin search' to find available plugins.`,
     }
   }
 
@@ -94,7 +94,7 @@ export async function removePlugin(name: string): Promise<RemoveResult> {
   if (idx === -1) {
     return {
       success: false,
-      message: `Plugin "${name}" not found in config. Use 'agent-core plugin list' to see installed plugins.`,
+      message: `Plugin "${name}" not found in config. Use 'zee plugin list' to see installed plugins.`,
     }
   }
 
@@ -125,7 +125,7 @@ export async function listInstalled(): Promise<InstalledPlugin[]> {
   }
 
   return configPlugins.map((spec) => {
-    // Parse spec (e.g., "agent-core-anthropic-auth@0.0.11" or "agent-core-anthropic-auth")
+    // Parse spec (e.g., "zee-anthropic-auth@0.0.11" or legacy "agent-core-anthropic-auth")
     const lastAtIdx = spec.lastIndexOf("@")
     const hasVersion = lastAtIdx > 0
     const npm = hasVersion ? spec.substring(0, lastAtIdx) : spec

@@ -244,7 +244,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
 
   if (!qdrantCheck.available) {
     errors.push(`Qdrant not available at ${qdrantUrl}: ${qdrantCheck.error}`)
-    errors.push("  Run: docker compose up -d   OR   agent-core setup")
+    errors.push("  Run: docker compose up -d   OR   zee setup")
   }
 
   if (!googleCheck.available) {

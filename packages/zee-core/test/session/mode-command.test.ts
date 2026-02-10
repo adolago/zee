@@ -7,6 +7,12 @@ import { MessageV2 } from "../../src/session/message-v2"
 import { tmpdir } from "../fixture/fixture"
 
 const ORIGINAL_ENV = {
+  ZEE_ALLOW_MESSAGING_RELEASE: process.env.ZEE_ALLOW_MESSAGING_RELEASE,
+  ZEE_ENABLE_SERVER_AUTH: process.env.ZEE_ENABLE_SERVER_AUTH,
+  ZEE_DISABLE_SERVER_AUTH: process.env.ZEE_DISABLE_SERVER_AUTH,
+  ZEE_SERVER_PASSWORD: process.env.ZEE_SERVER_PASSWORD,
+  ZEE_SERVER_SCOPES: process.env.ZEE_SERVER_SCOPES,
+  // Legacy fallbacks: keep restored so this suite doesn't leak env to other tests.
   AGENT_CORE_ALLOW_MESSAGING_RELEASE: process.env.AGENT_CORE_ALLOW_MESSAGING_RELEASE,
   AGENT_CORE_ENABLE_SERVER_AUTH: process.env.AGENT_CORE_ENABLE_SERVER_AUTH,
   AGENT_CORE_DISABLE_SERVER_AUTH: process.env.AGENT_CORE_DISABLE_SERVER_AUTH,
@@ -28,9 +34,13 @@ describe("session /hold and /release commands", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        delete process.env.ZEE_ALLOW_MESSAGING_RELEASE
+        delete process.env.ZEE_ENABLE_SERVER_AUTH
+        delete process.env.ZEE_SERVER_PASSWORD
+        delete process.env.ZEE_SERVER_SCOPES
+
         delete process.env.AGENT_CORE_ALLOW_MESSAGING_RELEASE
         delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-        delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
         delete process.env.AGENT_CORE_SERVER_PASSWORD
         delete process.env.AGENT_CORE_SERVER_SCOPES
         reloadFlags()
@@ -57,9 +67,13 @@ describe("session /hold and /release commands", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        process.env.AGENT_CORE_ALLOW_MESSAGING_RELEASE = "1"
+        process.env.ZEE_ALLOW_MESSAGING_RELEASE = "1"
+        delete process.env.ZEE_ENABLE_SERVER_AUTH
+        delete process.env.ZEE_SERVER_PASSWORD
+        delete process.env.ZEE_SERVER_SCOPES
+
+        delete process.env.AGENT_CORE_ALLOW_MESSAGING_RELEASE
         delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-        delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
         delete process.env.AGENT_CORE_SERVER_PASSWORD
         delete process.env.AGENT_CORE_SERVER_SCOPES
         reloadFlags()
@@ -86,11 +100,17 @@ describe("session /hold and /release commands", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        delete process.env.ZEE_ALLOW_MESSAGING_RELEASE
+        process.env.ZEE_ENABLE_SERVER_AUTH = "1"
+        delete process.env.ZEE_DISABLE_SERVER_AUTH
+        process.env.ZEE_SERVER_PASSWORD = "test-password"
+        process.env.ZEE_SERVER_SCOPES = "operator.read"
+
         delete process.env.AGENT_CORE_ALLOW_MESSAGING_RELEASE
-        process.env.AGENT_CORE_ENABLE_SERVER_AUTH = "1"
+        delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
         delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-        process.env.AGENT_CORE_SERVER_PASSWORD = "test-password"
-        process.env.AGENT_CORE_SERVER_SCOPES = "operator.read"
+        delete process.env.AGENT_CORE_SERVER_PASSWORD
+        delete process.env.AGENT_CORE_SERVER_SCOPES
         reloadFlags()
 
         const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
@@ -110,4 +130,3 @@ describe("session /hold and /release commands", () => {
     })
   })
 })
-

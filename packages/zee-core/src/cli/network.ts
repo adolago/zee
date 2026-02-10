@@ -21,7 +21,7 @@ const options = {
   "mdns-domain": {
     type: "string" as const,
     describe: "custom domain name for mDNS service discovery",
-    default: "agent-core.local",
+    default: "zee.local",
   },
   cors: {
     type: "string" as const,

@@ -9,7 +9,7 @@ export const SetupCommand = cmd({
   command: "setup",
   describe: "prepare the environment (Docker, Qdrant)",
   async handler() {
-    UI.header("Agent-Core Setup")
+    UI.header("Zee Setup")
 
     // 1. Check Docker
     UI.info("Checking Docker availability...")
@@ -48,12 +48,12 @@ export const SetupCommand = cmd({
 services:
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: agent-core-qdrant
+    container_name: zee-qdrant
     restart: always
     ports:
       - "6333:6333"
     volumes:
-      - \${HOME}/.local/share/agent-core/qdrant:/qdrant/storage
+      - \${HOME}/.local/share/zee/qdrant:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
     healthcheck:
@@ -105,6 +105,6 @@ services:
         UI.warn("Qdrant started but health check timed out. It might still be initializing.")
     }
 
-    UI.success("Setup complete. You can now run 'agent-core daemon'.")
+    UI.success("Setup complete. You can now run 'zee daemon'.")
   },
 })

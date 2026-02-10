@@ -7,7 +7,7 @@ read_when:
 
 # `zee tui`
 
-Open the terminal UI (agent-core TUI). `zee tui` delegates to agent-core.
+Open the terminal UI (Zee TUI). `zee tui` starts the UI and connects to the server.
 
 Related:
 - TUI guide: [TUI](/tui)
@@ -15,7 +15,7 @@ Related:
 ## Examples
 
 ```bash
-agent-core
-AGENT_CORE_URL=http://127.0.0.1:3210 agent-core
+zee
+ZEE_URL=http://127.0.0.1:3210 zee
 zee tui --session main
 ```

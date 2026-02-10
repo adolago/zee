@@ -6,7 +6,7 @@ import { Filesystem } from "../../src/util/filesystem";
 import { Instance } from "../../src/project/instance";
 
 // Setup filesystem
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-core-test-"));
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-test-"));
 const worktree = tmpDir;
 const projectDir = path.join(worktree, "sub", "dir");
 

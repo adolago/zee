@@ -58,7 +58,7 @@ export namespace Project {
         const gitBinary = Bun.which("git")
 
         // cached id calculation
-        let id = await Bun.file(path.join(git, "agent-core"))
+        let id = await Bun.file(path.join(git, "zee"))
           .text()
           .then((x) => x.trim())
           .catch(() => undefined)
@@ -99,7 +99,7 @@ export namespace Project {
 
           id = roots[0]
           if (id) {
-            void Bun.file(path.join(git, "agent-core"))
+            void Bun.file(path.join(git, "zee"))
               .write(id)
               .catch(() => undefined)
           }

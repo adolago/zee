@@ -56,5 +56,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: agent-core-dist
+          name: zee-dist
           path: packages/zee-core/dist

@@ -44,7 +44,7 @@ async function waitForHealth(url: string) {
 
 const appDir = process.cwd()
 const repoDir = path.resolve(appDir, "../..")
-const agentCoreDir = path.join(repoDir, "packages", "agent-core")
+const zeeCoreDir = path.join(repoDir, "packages", "zee-core")
 
 const extraArgs = (() => {
   const args = process.argv.slice(2)
@@ -54,7 +54,7 @@ const extraArgs = (() => {
 
 const [serverPort, webPort, mockPort] = await Promise.all([freePort(), freePort(), freePort()])
 
-const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-e2e-"))
+const sandbox = await fs.mkdtemp(path.join(os.tmpdir(), "zee-e2e-"))
 
 // ---------------------------------------------------------------------------
 // Mock LLM server -- lightweight OpenAI-compatible endpoint for e2e tests.
@@ -135,20 +135,32 @@ await fs.writeFile(
 const serverEnv = {
   ...process.env,
   // Keep e2e isolated, quiet, and fast.
-  AGENT_CORE_DISABLE_FILEWATCHER: "true",
-  AGENT_CORE_DISABLE_MODELS_FETCH: "true",
-  AGENT_CORE_MODELS_PATH: path.join(repoDir, "packages/zee-core/test/fixture/e2e-models.json"),
-  AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
+  ZEE_DISABLE_FILEWATCHER: "true",
+  ZEE_DISABLE_MODELS_FETCH: "true",
+  ZEE_MODELS_PATH: path.join(repoDir, "packages/zee-core/test/fixture/e2e-models.json"),
+  ZEE_TEST_HOME: path.join(sandbox, "home"),
   HOME: path.join(sandbox, "home"),
   XDG_DATA_HOME: path.join(sandbox, "share"),
   XDG_CACHE_HOME: path.join(sandbox, "cache"),
   XDG_CONFIG_HOME: path.join(sandbox, "config"),
   XDG_STATE_HOME: path.join(sandbox, "state"),
+  ZEE_TEST_MANAGED_CONFIG_DIR: overrideDir,
+  ZEE_E2E_PROJECT_DIR: repoDir,
+  ZEE_E2E_SESSION_TITLE: "E2E Session",
+  ZEE_E2E_MESSAGE: "Seeded for UI e2e",
+  // Only used as metadata in the seed session; does not require a live provider.
+  ZEE_E2E_MODEL: "openai/gpt-5-nano",
+  ZEE_CLIENT: "app",
+
+  // Legacy env vars (compat)
+  AGENT_CORE_DISABLE_FILEWATCHER: "true",
+  AGENT_CORE_DISABLE_MODELS_FETCH: "true",
+  AGENT_CORE_MODELS_PATH: path.join(repoDir, "packages/zee-core/test/fixture/e2e-models.json"),
+  AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
   AGENT_CORE_TEST_MANAGED_CONFIG_DIR: overrideDir,
   AGENT_CORE_E2E_PROJECT_DIR: repoDir,
   AGENT_CORE_E2E_SESSION_TITLE: "E2E Session",
   AGENT_CORE_E2E_MESSAGE: "Seeded for UI e2e",
-  // Only used as metadata in the seed session; does not require a live provider.
   AGENT_CORE_E2E_MODEL: "openai/gpt-5-nano",
   AGENT_CORE_CLIENT: "app",
 } satisfies Record<string, string>
@@ -157,13 +169,18 @@ const runnerEnv = {
   ...process.env,
   PLAYWRIGHT_SERVER_HOST: "127.0.0.1",
   PLAYWRIGHT_SERVER_PORT: String(serverPort),
+  VITE_ZEE_SERVER_HOST: "127.0.0.1",
+  VITE_ZEE_SERVER_PORT: String(serverPort),
+  // Legacy Vite env vars (compat)
   VITE_AGENT_CORE_SERVER_HOST: "127.0.0.1",
   VITE_AGENT_CORE_SERVER_PORT: String(serverPort),
   PLAYWRIGHT_PORT: String(webPort),
 } satisfies Record<string, string>
 
-const seed = Bun.spawn(["bun", "script/seed-e2e.ts"], {
-  cwd: agentCoreDir,
+const bunExe = process.execPath
+
+const seed = Bun.spawn([bunExe, "script/seed-e2e.ts"], {
+  cwd: zeeCoreDir,
   env: serverEnv,
   stdout: "inherit",
   stderr: "inherit",
@@ -178,7 +195,7 @@ Object.assign(process.env, serverEnv)
 
 const server = Bun.spawn(
   [
-    "bun",
+    bunExe,
     "run",
     "--conditions=browser",
     "./src/index.ts",
@@ -187,20 +204,20 @@ const server = Bun.spawn(
     `--port=${serverPort}`,
   ],
   {
-    cwd: agentCoreDir,
+    cwd: zeeCoreDir,
     env: serverEnv,
     stdout: "inherit",
     stderr: "inherit",
   },
 )
 
-console.log(`agent-core server listening on http://127.0.0.1:${serverPort}`)
+console.log(`zee server listening on http://127.0.0.1:${serverPort}`)
 
 const result = await (async () => {
   try {
     await waitForHealth(`http://127.0.0.1:${serverPort}/global/health`)
 
-    const runner = Bun.spawn(["bun", "test:e2e", ...extraArgs], {
+    const runner = Bun.spawn([bunExe, "test:e2e", ...extraArgs], {
       cwd: appDir,
       env: runnerEnv,
       stdout: "inherit",

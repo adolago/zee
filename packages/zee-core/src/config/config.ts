@@ -797,7 +797,11 @@ export namespace Config {
       session_delete: z.string().optional().default("<leader>d").describe("Delete session"),
       stash_delete: z.string().optional().default("<leader>shift+x").describe("Delete stash entry"),
       model_provider_list: z.string().optional().default("<leader>p").describe("Open provider list from model dialog"),
-      session_delegate: z.string().optional().default("<leader>shift+d").describe("Delegate to another persona"),
+      session_delegate: z
+        .string()
+        .optional()
+        .default("<leader>shift+d")
+        .describe("Deprecated (persona delegation removed; Zee is the only active persona)"),
       session_interrupt: z.string().optional().default("escape").describe("Interrupt current session"),
       session_compact: z.string().optional().default("<leader>shift+c").describe("Compact the session"),
       messages_page_up: z.string().optional().default("pageup,ctrl+alt+b").describe("Scroll messages up by one page"),
@@ -843,9 +847,13 @@ export namespace Config {
       model_cycle_favorite: z.string().optional().default("f2").describe("Cycle to next favorite model"),
       model_cycle_favorite_reverse: z.string().optional().default("shift+f2").describe("Cycle to previous favorite model"),
       command_list: z.string().optional().default("<leader>c").describe("List available commands"),
-      agent_list: z.string().optional().default("<leader>a").describe("List agents"),
-      agent_cycle: z.string().optional().default("tab").describe("Next agent"),
-      agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Previous agent"),
+      agent_list: z
+        .string()
+        .optional()
+        .default("<leader>a")
+        .describe("Deprecated (agent switching removed; Zee is the only active persona)"),
+      agent_cycle: z.string().optional().default("tab").describe("Deprecated (agent switching removed)"),
+      agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Deprecated (agent switching removed)"),
       mode_toggle: z.string().optional().default("<leader>h").describe("Toggle hold/release mode"),
       mode_release_policy_toggle: z
         .string()
@@ -1064,7 +1072,7 @@ export namespace Config {
         .union([z.boolean(), MdnsConfig])
         .optional()
         .describe("Enable mDNS service discovery (boolean or detailed config)"),
-      mdnsDomain: z.string().optional().describe("Custom domain name for mDNS service (default: agent-core.local)"),
+      mdnsDomain: z.string().optional().describe("Custom domain name for mDNS service (default: zee.local)"),
       cors: z.array(z.string()).optional().describe("Additional domains to allow for CORS"),
       allowedDirectories: z
         .array(z.string())
@@ -1333,7 +1341,7 @@ export namespace Config {
         .describe("Wide event logging configuration"),
       tui: TUI.optional().describe("TUI specific settings"),
       grammar: Grammar.optional().describe("Grammar checking configuration"),
-      server: Server.optional().describe("Server configuration for agent-core serve and web commands"),
+      server: Server.optional().describe("Server configuration for zee serve and web commands"),
       daemon: Daemon.optional().describe("Daemon mode configuration for headless operation"),
       heartbeat: z
         .object({
@@ -1660,7 +1668,7 @@ export namespace Config {
       .then(async (mod) => {
         const { provider, model, ...rest } = mod.default
         if (provider && model) result.model = `${provider}/${model}`
-        result["$schema"] = "agent-core"
+        result["$schema"] = "zee"
         result = mergeDeep(result, rest)
         await Bun.write(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
         await fs.unlink(path.join(Global.Path.config, "config"))
@@ -1755,9 +1763,9 @@ export namespace Config {
     const parsed = Info.safeParse(data)
     if (parsed.success) {
       if (!parsed.data.$schema) {
-        parsed.data.$schema = "agent-core"
+        parsed.data.$schema = "zee"
         // Write the $schema to the original text to preserve variables like {env:VAR}
-        const updated = original.replace(/^\s*\{/, '{\n  "$schema": "agent-core",')
+        const updated = original.replace(/^\s*\{/, '{\n  "$schema": "zee",')
         await Bun.write(configFilepath, updated).catch((err) => {
           log.debug("failed to write config schema", { error: String(err), path: configFilepath })
         })

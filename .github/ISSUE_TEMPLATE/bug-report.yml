@@ -20,10 +20,10 @@ body:
       required: false
 
   - type: input
-    id: agent-core-version
+    id: zee-version
     attributes:
-      label: Agent-Core version
-      description: What version of Agent-Core are you using?
+      label: Zee version
+      description: What version of Zee are you using?
     validations:
       required: false
 

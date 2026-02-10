@@ -27,7 +27,7 @@ export const ListCommand = cmd({
 
           if (installed.length === 0) {
             UI.warn("No plugins installed")
-            UI.println(UI.Style.TEXT_DIM + "Search for plugins with: agent-core plugin search" + UI.Style.TEXT_NORMAL)
+            UI.println(UI.Style.TEXT_DIM + "Search for plugins with: zee plugin search" + UI.Style.TEXT_NORMAL)
             return
           }
 

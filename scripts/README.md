@@ -63,7 +63,7 @@ bun run scripts/model-block-cli.ts check xai
 bun run scripts/model-block-cli.ts apply
 ```
 
-This applies the block list to your active agent-core configuration.
+This applies the block list to your active Zee configuration.
 
 ### Validate Block List
 
@@ -96,7 +96,7 @@ The tool searches for `model-block-list.jsonc` in this order:
 }
 ```
 
-## Integration with Agent-Core
+## Integration with Zee
 
 When you run `apply`, the tool:
 

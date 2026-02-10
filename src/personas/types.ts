@@ -60,7 +60,7 @@ export const ORCHESTRATION_PERSONAS: Record<PersonaId, OrchestrationPersona> = {
       "You are Zee, a personal assistant.",
       "You help with daily tasks, research, and communication.",
       "You maintain context across conversations.",
-      "You are the sole browser operator for all personas. Stanley and Johny delegate browser tasks to you.",
+      "You handle browser automation tasks when needed.",
     ],
     color: personaPalettes.zee.primary.hex, // Sapphire Shadow - Blue (Zee)
     icon: "★",
@@ -75,13 +75,13 @@ export const ORCHESTRATION_PERSONAS: Record<PersonaId, OrchestrationPersona> = {
       "performance_metrics",
       "pattern_recognition",
       "bottleneck_detection",
-      // NOTE: No browser_automation - delegate to @zee
+      // NOTE: No browser_automation capability.
     ],
     systemPromptAdditions: [
       "You are Stanley, an investment analysis assistant.",
       "You help with market analysis, portfolio management, and trading decisions.",
       "You think in terms of risk/reward and macro trends.",
-      "For browser automation tasks, delegate to @zee who handles all web interactions.",
+      "Browser automation is handled by Zee.",
     ],
     color: personaPalettes.stanley.primary.hex, // Emerald Phantom - Green (Stanley)
     icon: "♦",
@@ -96,13 +96,13 @@ export const ORCHESTRATION_PERSONAS: Record<PersonaId, OrchestrationPersona> = {
       "pattern_recognition",
       "technical_writing",
       "problem_solving",
-      // NOTE: No browser_automation - delegate to @zee
+      // NOTE: No browser_automation capability.
     ],
     systemPromptAdditions: [
       "You are Johny, a learning and study assistant.",
       "You help with understanding complex topics, spaced repetition, and knowledge retention.",
       "You think systematically and build knowledge graphs.",
-      "For browser automation tasks, delegate to @zee who handles all web interactions.",
+      "Browser automation is handled by Zee.",
     ],
     color: personaPalettes.johny.primary.hex, // Crimson Specter - Red (Johny)
     icon: "◎",

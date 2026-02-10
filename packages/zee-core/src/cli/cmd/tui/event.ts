@@ -24,7 +24,6 @@ export const TuiEvent = {
           "session.last",
           "prompt.clear",
           "prompt.submit",
-          "agent.cycle",
         ]),
         z.string(),
       ]),

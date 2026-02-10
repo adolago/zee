@@ -67,34 +67,50 @@ export namespace Log {
 
   export async function init(options: Options) {
     if (options.level) level = options.level
-    cleanup(Global.Path.log)
+
+    // Logging must never crash the process (or test runner). Keep this best-effort.
+    await fs.mkdir(Global.Path.log, { recursive: true }).catch(() => {})
+    void cleanup(Global.Path.log).catch(() => {})
     if (options.print) return
     logpath = path.join(
       Global.Path.log,
       options.dev ? "dev.log" : new Date().toISOString().split(".")[0].replace(/:/g, "") + ".log",
     )
-    const logfile = Bun.file(logpath)
-    await fs.truncate(logpath).catch(() => {})
-    const writer = logfile.writer()
-    write = async (msg: any) => {
-      const num = writer.write(msg)
-      writer.flush()
-      return num
+    try {
+      await fs.mkdir(path.dirname(logpath), { recursive: true })
+      await fs.truncate(logpath).catch(() => {})
+      const writer = Bun.file(logpath).writer()
+      write = (msg: any) => {
+        const num = writer.write(msg)
+        writer.flush()
+        return num
+      }
+    } catch {
+      // Fall back to stderr if file logging fails for any reason.
+      logpath = ""
+      write = (msg: any) => {
+        process.stderr.write(msg)
+        return msg.length
+      }
     }
   }
 
   async function cleanup(dir: string) {
-    const glob = new Bun.Glob("????-??-??T??????.log")
-    const files = await Array.fromAsync(
-      glob.scan({
-        cwd: dir,
-        absolute: true,
-      }),
-    )
-    if (files.length <= 5) return
+    try {
+      const glob = new Bun.Glob("????-??-??T??????.log")
+      const files = await Array.fromAsync(
+        glob.scan({
+          cwd: dir,
+          absolute: true,
+        }),
+      )
+      if (files.length <= 5) return
 
-    const filesToDelete = files.slice(0, -10)
-    await Promise.all(filesToDelete.map((file) => fs.unlink(file).catch(() => {})))
+      const filesToDelete = files.slice(0, -10)
+      await Promise.all(filesToDelete.map((file) => fs.unlink(file).catch(() => {})))
+    } catch {
+      // Ignore (dir missing, permissions, etc.).
+    }
   }
 
   function formatError(error: Error, depth = 0): string {

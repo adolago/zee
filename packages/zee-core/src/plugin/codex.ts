@@ -143,7 +143,7 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> 
 const HTML_SUCCESS = `<!doctype html>
 <html>
   <head>
-    <title>Agent-Core - Codex Authorization Successful</title>
+    <title>Zee - Codex Authorization Successful</title>
     <style>
       body {
         font-family:
@@ -171,21 +171,21 @@ const HTML_SUCCESS = `<!doctype html>
       }
     </style>
   </head>
-  <body>
-    <div class="container">
-      <h1>Authorization Successful</h1>
-      <p>You can close this window and return to Agent-Core.</p>
-    </div>
-    <script>
-      setTimeout(() => window.close(), 2000)
-    </script>
-  </body>
-</html>`
+	  <body>
+	    <div class="container">
+	      <h1>Authorization Successful</h1>
+	      <p>You can close this window and return to Zee.</p>
+	    </div>
+	    <script>
+	      setTimeout(() => window.close(), 2000)
+	    </script>
+	  </body>
+	</html>`
 
 const HTML_ERROR = (error: string) => `<!doctype html>
 <html>
   <head>
-    <title>Agent-Core - Codex Authorization Failed</title>
+    <title>Zee - Codex Authorization Failed</title>
     <style>
       body {
         font-family:
@@ -498,7 +498,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "User-Agent": `agent-core/${Installation.VERSION}`,
+                "User-Agent": `zee/${Installation.VERSION}`,
               },
               body: JSON.stringify({ client_id: CLIENT_ID }),
             })
@@ -518,15 +518,15 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               method: "auto" as const,
               async callback() {
                 while (true) {
-                  const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "User-Agent": `agent-core/${Installation.VERSION}`,
-                    },
-                    body: JSON.stringify({
-                      device_auth_id: deviceData.device_auth_id,
-                      user_code: deviceData.user_code,
+	                  const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
+	                    method: "POST",
+	                    headers: {
+	                      "Content-Type": "application/json",
+	                      "User-Agent": `zee/${Installation.VERSION}`,
+	                    },
+	                    body: JSON.stringify({
+	                      device_auth_id: deviceData.device_auth_id,
+	                      user_code: deviceData.user_code,
                     }),
                   })
 

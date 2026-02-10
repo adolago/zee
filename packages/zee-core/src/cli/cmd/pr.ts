@@ -5,7 +5,7 @@ import { $ } from "bun"
 
 export const PrCommand = cmd({
   command: "pr <number>",
-  describe: "fetch and checkout a GitHub PR branch, then run agent-core",
+  describe: "fetch and checkout a GitHub PR branch, then run zee",
   builder: (yargs) =>
     yargs.positional("number", {
       type: "number",
@@ -63,7 +63,7 @@ export const PrCommand = cmd({
               await $`git branch --set-upstream-to=${remoteName}/${headRefName} ${localBranchName}`.nothrow()
             }
 
-            // Check for agent-core session link in PR body
+            // Check for Zee session link in PR body
             if (prInfo && prInfo.body) {
               const sessionMatch = prInfo.body.match(/https:\/\/opncd\.ai\/s\/([a-zA-Z0-9_-]+)/)
               if (sessionMatch) {
@@ -71,9 +71,15 @@ export const PrCommand = cmd({
                 UI.println(`Found session: ${sessionUrl}`)
                 UI.println(`Importing session...`)
 
-                const importResult = await $`agent-core import ${sessionUrl}`.nothrow()
-                if (importResult.exitCode === 0) {
-                  const importOutput = importResult.text().trim()
+                let importOutput = ""
+                for (const cli of ["zee", "agent-core"] as const) {
+                  const importResult = await $`${cli} import ${sessionUrl}`.nothrow()
+                  if (importResult.exitCode === 0) {
+                    importOutput = importResult.text().trim()
+                    break
+                  }
+                }
+                if (importOutput) {
                   // Extract session ID from the output (format: "Imported session: <session-id>")
                   const sessionIdMatch = importOutput.match(/Imported session: ([a-zA-Z0-9_-]+)/)
                   if (sessionIdMatch) {
@@ -88,24 +94,42 @@ export const PrCommand = cmd({
 
         UI.println(`Successfully checked out PR #${prNumber} as branch '${localBranchName}'`)
         UI.println()
-        UI.println("Starting agent-core...")
+        UI.println("Starting zee...")
         UI.println()
 
-        // Launch agent-core TUI with session ID if available
+        // Launch Zee TUI with session ID if available
         const { spawn } = await import("child_process")
         const cliArgs = sessionId ? ["-s", sessionId] : []
-        const cliProcess = spawn("agent-core", cliArgs, {
-          stdio: "inherit",
-          cwd: process.cwd(),
-        })
+        const candidates = ["zee", "agent-core"] as const
+        let lastError: unknown
+        for (const cli of candidates) {
+          try {
+            await new Promise<void>((resolve, reject) => {
+              const cliProcess = spawn(cli, cliArgs, {
+                stdio: "inherit",
+                cwd: process.cwd(),
+              })
 
-        await new Promise<void>((resolve, reject) => {
-          cliProcess.on("exit", (code) => {
-            if (code === 0) resolve()
-            else reject(new Error(`agent-core exited with code ${code}`))
-          })
-          cliProcess.on("error", reject)
-        })
+              cliProcess.on("exit", (code) => {
+                if (code === 0) resolve()
+                else reject(new Error(`${cli} exited with code ${code}`))
+              })
+              cliProcess.on("error", reject)
+            })
+            lastError = undefined
+            break
+          } catch (e) {
+            lastError = e
+            // Fallback only if the binary is missing.
+            if (e && typeof e === "object" && "code" in e && (e as any).code === "ENOENT") {
+              continue
+            }
+            throw e
+          }
+        }
+        if (lastError) {
+          throw lastError
+        }
       },
     })
   },

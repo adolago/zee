@@ -44,7 +44,7 @@ export const ClawHubCommand = cmd({
     switch (action) {
       case "search": {
         if (!target) {
-          UI.println("Usage: agent-core clawhub search <query>")
+          UI.println("Usage: zee clawhub search <query>")
           process.exit(1)
         }
         try {
@@ -71,7 +71,7 @@ export const ClawHubCommand = cmd({
 
       case "install": {
         if (!target) {
-          UI.println("Usage: agent-core clawhub install <skill-id>")
+          UI.println("Usage: zee clawhub install <skill-id>")
           process.exit(1)
         }
         try {
@@ -84,7 +84,7 @@ export const ClawHubCommand = cmd({
             if (result.requiredEnv?.length) {
               const skillName = result.skillId.includes("/") ? result.skillId.split("/").pop()! : result.skillId
               UI.println(`  This skill requires credentials: ${result.requiredEnv.join(", ")}`)
-              UI.println(`  Run 'agent-core auth login ${skillName}' to configure.`)
+              UI.println(`  Run 'zee auth login ${skillName}' to configure.`)
             }
           } else {
             UI.println(`Installation failed: ${result.error}`)
@@ -107,7 +107,7 @@ export const ClawHubCommand = cmd({
         try {
           const skillId = args.all ? undefined : target
           if (!args.all && !skillId) {
-            UI.println("Usage: agent-core clawhub update <skill-id> or --all")
+            UI.println("Usage: zee clawhub update <skill-id> or --all")
             process.exit(1)
           }
           UI.println(args.all ? "Updating all skills..." : `Updating ${skillId}...`)
@@ -151,7 +151,7 @@ export const ClawHubCommand = cmd({
 
       case "info": {
         if (!target) {
-          UI.println("Usage: agent-core clawhub info <skill-id>")
+          UI.println("Usage: zee clawhub info <skill-id>")
           process.exit(1)
         }
         try {
@@ -203,7 +203,7 @@ export const ClawHubCommand = cmd({
 
       case "uninstall": {
         if (!target) {
-          UI.println("Usage: agent-core clawhub uninstall <skill-id>")
+          UI.println("Usage: zee clawhub uninstall <skill-id>")
           process.exit(1)
         }
         const removed = installer.uninstall(target)
@@ -217,8 +217,8 @@ export const ClawHubCommand = cmd({
 
       case "transfer": {
         if (!target) {
-          UI.println("Usage: agent-core clawhub transfer <skill-id> --persona <persona>")
-          UI.println("       agent-core clawhub transfer <skill-id>  (move to shared)")
+          UI.println("Usage: zee clawhub transfer <skill-id> --persona <persona>")
+          UI.println("       zee clawhub transfer <skill-id>  (move to shared)")
           process.exit(1)
         }
         const toPersona = args.persona as string | undefined

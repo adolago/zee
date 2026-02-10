@@ -103,7 +103,7 @@ export class InteractiveReporter {
     };
 
     lines.push("");
-    lines.push(`${c.bold}Agent-Core Health Check${c.reset}`);
+    lines.push(`${c.bold}Zee Health Check${c.reset}`);
     
     // Use appropriate line style based on Unicode support
     const lineChar = this.useUnicode ? Symbols.hDoubleLine : "=";

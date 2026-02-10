@@ -8,7 +8,6 @@
 
 import { DaemonServer } from "./ipc-server";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -25,10 +24,10 @@ const lspPort = getArg("lsp-port");
 const lspHost = getArg("lsp-host") || "127.0.0.1";
 
 async function main(): Promise<void> {
-  console.log(`[daemon] Starting agent-core daemon (PID: ${process.pid})`);
+  console.log(`[daemon] Starting zee daemon (PID: ${process.pid})`);
 
   // Ensure log directory exists
-  const logDir = join(homedir(), ".zee", "agent-core");
+  const logDir = join(homedir(), ".zee", "zee");
   mkdirSync(logDir, { recursive: true });
 
   // Start IPC server

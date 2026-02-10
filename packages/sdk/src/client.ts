@@ -1,5 +1,3 @@
-import { spawn } from "node:child_process"
-
 export type ClientConfig = {
   baseUrl?: string
   directory?: string
@@ -8,10 +6,10 @@ export type ClientConfig = {
 }
 
 /**
- * Creates an Agent Core API client
- * This is a simplified client for the Agent Core daemon HTTP API
+ * Creates a Zee API client
+ * This is a simplified client for the Zee daemon HTTP API
  */
-export function createAgentCoreClient(config?: ClientConfig) {
+export function createZeeClient(config?: ClientConfig) {
   const baseUrl = config?.baseUrl ?? "http://127.0.0.1:3210"
 
   const defaultHeaders: Record<string, string> = {
@@ -22,6 +20,9 @@ export function createAgentCoreClient(config?: ClientConfig) {
   if (config?.directory) {
     const isNonASCII = /[^\x00-\x7F]/.test(config.directory)
     const encodedDirectory = isNonASCII ? encodeURIComponent(config.directory) : config.directory
+    // The daemon currently uses x-opencode-directory; keep legacy headers for compatibility.
+    defaultHeaders["x-opencode-directory"] = encodedDirectory
+    defaultHeaders["x-zee-directory"] = encodedDirectory
     defaultHeaders["x-agent-core-directory"] = encodedDirectory
   }
 
@@ -37,10 +38,10 @@ export function createAgentCoreClient(config?: ClientConfig) {
     })
 
     if (!response.ok) {
-      throw new Error(`Agent Core API error: ${response.status} ${response.statusText}`)
+      throw new Error(`Zee API error: ${response.status} ${response.statusText}`)
     }
 
-    return response.json()
+    return (await response.json()) as T
   }
 
   return {
@@ -87,8 +88,11 @@ export function createAgentCoreClient(config?: ClientConfig) {
   }
 }
 
-/** @deprecated Use createAgentCoreClient instead */
-export const createOpencodeClient = createAgentCoreClient
+/** @deprecated Use createZeeClient instead */
+export const createAgentCoreClient = createZeeClient
+
+/** @deprecated Use createZeeClient instead */
+export const createOpencodeClient = createZeeClient
 
 // Type definitions
 export interface Session {
@@ -133,4 +137,6 @@ export interface Config {
 }
 
 // Re-export types for convenience
+export type { ClientConfig as ZeeClientConfig }
+/** @deprecated Use ZeeClientConfig instead */
 export type { ClientConfig as AgentCoreClientConfig }

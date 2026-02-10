@@ -207,7 +207,7 @@ export namespace WeztermOrchestration {
       statusPaneId = stdout.trim()
 
       // Set pane title
-      await setPaneTitle(statusPaneId, "◈ Agent-Core Daemon Status")
+      await setPaneTitle(statusPaneId, "◈ Zee Daemon Status")
 
       // Initial status render
       await updateStatusPane()
@@ -331,7 +331,7 @@ export namespace WeztermOrchestration {
 
       // Header
       lines.push("╔════════════════════════════════════════════════════════╗")
-      lines.push("║            ◆ AGENT-CORE DAEMON STATUS ◆               ║")
+      lines.push("║               ◆ ZEE DAEMON STATUS ◆                  ║")
       lines.push("╠════════════════════════════════════════════════════════╣")
 
       // Daemon info

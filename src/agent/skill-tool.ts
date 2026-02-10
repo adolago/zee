@@ -34,7 +34,7 @@ import { z } from "zod";
  * Actions:
  * - invoke: Execute a specific skill
  * - list: List available skills
- * - handoff: Delegate to another agent
+ * - handoff: Legacy handoff action (unused in single-persona runtime)
  * - status: Get current agent status
  */
 export const SkillToolSchema = z.object({
@@ -148,7 +148,7 @@ export interface SkillToolHandlers {
 
 export const SKILL_TOOL_NAME = "agent_skill";
 export const SKILL_TOOL_DESCRIPTION =
-  "Agent skill interface. Actions: invoke (execute skill), list (show skills), handoff (delegate), status (check state)";
+  "Agent skill interface. Actions: invoke (execute skill), list (show skills), handoff (legacy), status (check state)";
 
 // ============================================================================
 // Tool Factory

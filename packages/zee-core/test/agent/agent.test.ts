@@ -10,8 +10,7 @@ function evalPerm(agent: Agent.Info | undefined, permission: string): Permission
   return PermissionNext.evaluate(permission, "*", agent.permission).action
 }
 
-// NOTE: agent-core uses Personas (zee, stanley, johny) instead of generic agents (build, plan, etc.)
-// These tests have been updated to reflect the personas architecture.
+// Zee is the only active persona. Other domains remain available via tool namespaces (stanley:*, johny:*).
 
 describe("agent config", () => {
 test("returns default persona agents when no config", async () => {
@@ -22,9 +21,7 @@ test("returns default persona agents when no config", async () => {
       const agents = await Agent.list()
       const names = agents.map((a) => a.name)
       // Personas agents
-      expect(names).toContain("zee")
-      expect(names).toContain("stanley")
-      expect(names).toContain("johny")
+	      expect(names).toContain("zee")
       // Utility agents
       expect(names).toContain("compaction")
       expect(names).toContain("title")
@@ -56,30 +53,6 @@ test("zee agent starts the calendar mcp server", async () => {
       const servers = zee?.mcpServers ?? []
       expect(servers).toContain("calendar")
       expect(servers).not.toContain("google-calendar")
-    },
-  })
-})
-
-test("stanley agent has correct default properties", async () => {
-  await using tmp = await tmpdir()
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const stanley = await Agent.get("stanley")
-      expect(stanley).toBeDefined()
-      expect(stanley?.native).toBe(true)
-    },
-  })
-})
-
-test("johny agent has correct default properties", async () => {
-  await using tmp = await tmpdir()
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const johny = await Agent.get("johny")
-      expect(johny).toBeDefined()
-      expect(johny?.native).toBe(true)
     },
   })
 })
@@ -160,18 +133,21 @@ test("agent disable removes agent from list", async () => {
   await using tmp = await tmpdir({
     config: {
       agent: {
-        stanley: { disable: true },
+        my_custom_agent: {
+          model: "openai/gpt-4",
+          disable: true,
+        },
       },
     },
   })
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const stanley = await Agent.get("stanley")
-      expect(stanley).toBeUndefined()
+      const custom = await Agent.get("my_custom_agent")
+      expect(custom).toBeUndefined()
       const agents = await Agent.list()
       const names = agents.map((a) => a.name)
-      expect(names).not.toContain("stanley")
+      expect(names).not.toContain("my_custom_agent")
     },
   })
 })
@@ -226,7 +202,10 @@ test("agent steps/maxSteps config sets steps property", async () => {
     config: {
       agent: {
         zee: { steps: 50 },
-        stanley: { maxSteps: 100 },
+        my_custom_agent: {
+          model: "openai/gpt-4",
+          maxSteps: 100,
+        },
       },
     },
   })
@@ -234,9 +213,9 @@ test("agent steps/maxSteps config sets steps property", async () => {
     directory: tmp.path,
     fn: async () => {
       const zee = await Agent.get("zee")
-      const stanley = await Agent.get("stanley")
+      const custom = await Agent.get("my_custom_agent")
       expect(zee?.steps).toBe(50)
-      expect(stanley?.steps).toBe(100)
+      expect(custom?.steps).toBe(100)
     },
   })
 })
@@ -245,15 +224,18 @@ test("agent mode can be overridden", async () => {
   await using tmp = await tmpdir({
     config: {
       agent: {
-        johny: { mode: "subagent" },
+        my_custom_agent: {
+          model: "openai/gpt-4",
+          mode: "subagent",
+        },
       },
     },
   })
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const johny = await Agent.get("johny")
-      expect(johny?.mode).toBe("subagent")
+      const custom = await Agent.get("my_custom_agent")
+      expect(custom?.mode).toBe("subagent")
     },
   })
 })
@@ -600,30 +582,11 @@ test("defaultAgent throws when default_agent points to non-existent agent", asyn
   })
 })
 
-test("defaultAgent returns zee when stanley is disabled and default_agent not set", async () => {
-  await using tmp = await tmpdir({
-    config: {
-      agent: {
-        stanley: { disable: true },
-      },
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const agent = await Agent.defaultAgent()
-      expect(agent).toBe("zee")
-    },
-  })
-})
-
 test("defaultAgent throws when all primary agents are disabled", async () => {
   await using tmp = await tmpdir({
     config: {
       agent: {
-        stanley: { disable: true },
         zee: { disable: true },
-        johny: { disable: true },
       },
     },
   })

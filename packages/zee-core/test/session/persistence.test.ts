@@ -35,7 +35,7 @@ describe("Persistence", () => {
           await Persistence.init()
 
           // Check recovery marker exists
-          const stateDir = path.join(process.env.XDG_STATE_HOME!, "agent-core", "persistence")
+          const stateDir = path.join(process.env.XDG_STATE_HOME!, "zee", "persistence")
           const markerExists = await fs
             .access(path.join(stateDir, "recovery-needed"))
             .then(() => true)
@@ -56,7 +56,7 @@ describe("Persistence", () => {
           await Persistence.shutdown()
 
           // Check recovery marker is removed
-          const stateDir = path.join(process.env.XDG_STATE_HOME!, "agent-core", "persistence")
+          const stateDir = path.join(process.env.XDG_STATE_HOME!, "zee", "persistence")
           const markerExists = await fs
             .access(path.join(stateDir, "recovery-needed"))
             .then(() => true)
@@ -87,13 +87,17 @@ describe("Persistence", () => {
       })
     })
 
-    test("should return null for unknown persona", async () => {
+    test("should return null when no last active session exists", async () => {
       await Instance.provide({
         directory: testDir.path,
         fn: async () => {
           await Persistence.init()
 
-          const lastActive = await Persistence.getLastActive("stanley")
+          // Ensure a clean slate (last-active persists in global state dir across tests)
+          const lastActivePath = path.join(process.env.XDG_STATE_HOME!, "zee", "persistence", "last-active.json")
+          await fs.rm(lastActivePath, { force: true }).catch(() => {})
+
+          const lastActive = await Persistence.getLastActive("zee")
           expect(lastActive).toBeNull()
 
           await Persistence.shutdown()
@@ -108,11 +112,11 @@ describe("Persistence", () => {
           await Persistence.init()
 
           await Persistence.setLastActive("zee", "session-1")
-          await Persistence.setLastActive("stanley", "session-2")
 
           const all = await Persistence.getAllLastActive()
           expect(all.zee?.sessionId).toBe("session-1")
-          expect(all.stanley?.sessionId).toBe("session-2")
+          expect(all.stanley).toBeUndefined()
+          expect(all.johny).toBeUndefined()
 
           await Persistence.shutdown()
         },

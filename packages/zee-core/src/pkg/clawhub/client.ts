@@ -25,7 +25,7 @@ async function fetchJson<T>(url: string, timeoutMs: number): Promise<T> {
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "agent-core/clawhub-client" },
+      headers: { Accept: "application/json", "User-Agent": "zee/clawhub-client" },
       signal: controller.signal,
     })
     if (!res.ok) {
@@ -123,7 +123,7 @@ export function createClawHubClient(options?: ClawHubClientOptions) {
       const timer = setTimeout(() => controller.abort(), timeoutMs)
       try {
         const res = await fetch(url, {
-          headers: { "User-Agent": "agent-core/clawhub-client" },
+          headers: { "User-Agent": "zee/clawhub-client" },
           signal: controller.signal,
         })
         if (!res.ok) {

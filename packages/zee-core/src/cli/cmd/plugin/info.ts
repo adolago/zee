@@ -32,7 +32,7 @@ export const InfoCommand = cmd({
 
           if (!plugin && !installed) {
             UI.error(`Plugin "${name}" not found`)
-            UI.println(UI.Style.TEXT_DIM + "Search for plugins with: agent-core plugin search" + UI.Style.TEXT_NORMAL)
+            UI.println(UI.Style.TEXT_DIM + "Search for plugins with: zee plugin search" + UI.Style.TEXT_NORMAL)
             process.exit(1)
           }
 
@@ -86,9 +86,7 @@ export const InfoCommand = cmd({
               )
             } else {
               UI.println(UI.Style.TEXT_DIM + "Not installed" + UI.Style.TEXT_NORMAL)
-              UI.println(
-                UI.Style.TEXT_DIM + `Install with: agent-core plugin install ${plugin.name}` + UI.Style.TEXT_NORMAL,
-              )
+              UI.println(UI.Style.TEXT_DIM + `Install with: zee plugin install ${plugin.name}` + UI.Style.TEXT_NORMAL)
             }
           } else if (installed) {
             // Plugin not in registry but is installed

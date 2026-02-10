@@ -41,7 +41,7 @@ export const SearchCommand = cmd({
         if (args.query) {
           UI.println(
             UI.Style.TEXT_DIM +
-              "Try a different search term or browse all with: agent-core plugin search" +
+              "Try a different search term or browse all with: zee plugin search" +
               UI.Style.TEXT_NORMAL,
           )
         }
@@ -69,7 +69,7 @@ export const SearchCommand = cmd({
         UI.empty()
       }
 
-      UI.println(UI.Style.TEXT_DIM + "Install with: agent-core plugin install <name>" + UI.Style.TEXT_NORMAL)
+      UI.println(UI.Style.TEXT_DIM + "Install with: zee plugin install <name>" + UI.Style.TEXT_NORMAL)
     } catch (error) {
       UI.error(`Failed to fetch registry: ${error instanceof Error ? error.message : error}`)
       process.exit(1)

@@ -22,7 +22,7 @@ describe("detectLegacyWorkspaceDirs", () => {
 
   it("flags ~/zee when it contains workspace markers", () => {
     const home = "/home/user";
-    const workspaceDir = "/home/user/.local/src/agent-core";
+    const workspaceDir = "/home/user/.local/src/zee";
     const candidate = path.join(home, "zee");
     const agentsPath = path.join(candidate, "AGENTS.md");
 

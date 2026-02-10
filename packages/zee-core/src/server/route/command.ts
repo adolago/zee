@@ -7,7 +7,7 @@ export const CommandRoute = new Hono().get(
   "/",
   describeRoute({
     summary: "List commands",
-    description: "Get a list of all available commands in the agent-core system.",
+    description: "Get a list of all available commands in the zee system.",
     operationId: "command.list",
     responses: {
       200: {

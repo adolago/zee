@@ -27,10 +27,10 @@ const shouldIgnoreNullBytePathError = (error: unknown) => {
 }
 
 async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
-  const baseDir = process.env["AGENT_CORE_TEST_HOME"] ?? os.tmpdir()
+  const baseDir = process.env["ZEE_TEST_HOME"] ?? os.tmpdir()
   const rootDir = path.join(baseDir, "tmp")
   await fs.mkdir(rootDir, { recursive: true })
-  const dirpath = sanitizePath(path.join(rootDir, "opencode-test-" + randomUUID()))
+  const dirpath = sanitizePath(path.join(rootDir, "zee-test-" + randomUUID()))
   await fs.mkdir(dirpath, { recursive: true })
   if (options?.git) {
     await $`git init`.cwd(dirpath).quiet()
@@ -42,7 +42,7 @@ async function createTmpdir<T>(options: TmpDirOptions<T> | undefined) {
     await Bun.write(
       path.join(dirpath, "zee.json"),
       JSON.stringify({
-        $schema: "agent-core",
+        $schema: "zee",
         ...options.config,
       }),
     )

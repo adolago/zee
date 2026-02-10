@@ -172,7 +172,7 @@ describe("tool.read env file permissions", () => {
     { filename: "environment.ts", expected: "allow" },
   ]
 
-  describe.each(["zee", "johny"])("agent=%s", (agentName) => {
+  describe.each(["zee"])("agent=%s", (agentName) => {
     test.each(cases)("$filename $expected", async ({ filename, expected }) => {
       await using tmp = await tmpdir({
         init: (dir) => Bun.write(path.join(dir, filename), "content"),
@@ -181,6 +181,7 @@ describe("tool.read env file permissions", () => {
         directory: tmp.path,
         fn: async () => {
           const agent = await Agent.get(agentName)
+          if (!agent) throw new Error(`Missing agent: ${agentName}`)
           let askedForEnv = false
           const ctxWithPermissions = {
             ...ctx(tmp.path),

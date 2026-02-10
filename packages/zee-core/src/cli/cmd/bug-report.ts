@@ -87,7 +87,7 @@ export const BugReportCommand = cmd({
 
       console.log("\n> Next steps:");
       console.log("   1. Review the report contents for any remaining sensitive data");
-      console.log("   2. Create a GitHub issue at https://github.com/your-org/agent-core/issues");
+      console.log("   2. Create a GitHub issue at https://github.com/adolago/zee/issues");
       console.log("   3. Attach the report archive to the issue");
       console.log(`\n   Archive: ${archivePath}\n`);
 
@@ -119,11 +119,11 @@ async function promptConsent(question: string): Promise<boolean> {
 // Help examples
 export const bugReportExamples = `
 Examples:
-  $ agent-core bug-report                     # Generate basic report
-  $ agent-core bug-report --include-session   # Include session data (with consent)
-  $ agent-core bug-report --log-lines 1000    # Include more log history
-  $ agent-core bug-report -o ~/report.tar.gz  # Custom output path
-  $ agent-core bug-report --anonymization aggressive  # Maximum privacy
+  $ zee bug-report                     # Generate basic report
+  $ zee bug-report --include-session   # Include session data (with consent)
+  $ zee bug-report --log-lines 1000    # Include more log history
+  $ zee bug-report -o ~/report.tar.gz  # Custom output path
+  $ zee bug-report --anonymization aggressive  # Maximum privacy
 
 Anonymization Levels:
   minimal    - Only redact API keys

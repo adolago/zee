@@ -133,17 +133,19 @@ type IssueQueryResponse = {
   }
 }
 
-const AGENT_USERNAME = process.env["AGENT_CORE_GITHUB_BOT"] ?? "agent-core[bot]"
+const AGENT_USERNAME = process.env["ZEE_GITHUB_BOT"] ?? process.env["AGENT_CORE_GITHUB_BOT"] ?? "zee[bot]"
 const AGENT_REACTION = "eyes"
-const WORKFLOW_FILE = ".github/workflows/agent-core.yml"
-const DEFAULT_MENTIONS = "/agent-core,/ac"
-const DEFAULT_ACTION_REF = process.env["AGENT_CORE_ACTION_REF"] ?? "agent-core/github@latest"
+const WORKFLOW_FILE = ".github/workflows/zee.yml"
+const DEFAULT_MENTIONS = "/zee,/z,/agent-core,/ac"
+const DEFAULT_ACTION_REF =
+  process.env["ZEE_ACTION_REF"] ?? process.env["AGENT_CORE_ACTION_REF"] ?? "adolago/zee/github@dev"
 const GITHUB_APP_URL =
+  process.env["ZEE_GITHUB_APP_URL"] ??
   process.env["AGENT_CORE_GITHUB_APP_URL"] ??
-  (process.env["AGENT_CORE_GITHUB_APP_SLUG"]
-    ? `https://github.com/apps/${process.env["AGENT_CORE_GITHUB_APP_SLUG"]}`
+  ((process.env["ZEE_GITHUB_APP_SLUG"] ?? process.env["AGENT_CORE_GITHUB_APP_SLUG"])
+    ? `https://github.com/apps/${process.env["ZEE_GITHUB_APP_SLUG"] ?? process.env["AGENT_CORE_GITHUB_APP_SLUG"]}`
     : "")
-const OIDC_AUDIENCE = process.env["OIDC_AUDIENCE"] ?? "agent-core-github-action"
+const OIDC_AUDIENCE = process.env["OIDC_AUDIENCE"] ?? "zee-github-action"
 
 // Event categories for routing
 // USER_EVENTS: triggered by user actions, have actor/issueId, support reactions/comments
@@ -341,7 +343,8 @@ export const GithubInstallCommand = cmd({
             }
 
             async function getInstallation() {
-              const url = process.env["AGENT_CORE_GITHUB_APP_INSTALLATION_URL"]
+              const url =
+                process.env["ZEE_GITHUB_APP_INSTALLATION_URL"] ?? process.env["AGENT_CORE_GITHUB_APP_INSTALLATION_URL"]
               if (!url) return undefined
               return fetch(`${url}?owner=${app.owner}&repo=${app.repo}`)
                 .then((res) => res.json())
@@ -353,19 +356,23 @@ export const GithubInstallCommand = cmd({
           async function addWorkflowFiles() {
             const envStr = `\n        env:${providers[provider].env.map((e) => `\n          ${e}: \${{ secrets.${e} }}`).join("")}`
 
-            await Bun.write(
-              path.join(app.root, WORKFLOW_FILE),
-              `name: agent-core
-
+	            await Bun.write(
+	              path.join(app.root, WORKFLOW_FILE),
+	              `name: zee
+	
 on:
   issue_comment:
     types: [created]
   pull_request_review_comment:
     types: [created]
-
+	
 jobs:
-  agent-core:
+  zee:
     if: |
+      contains(github.event.comment.body, ' /z') ||
+      startsWith(github.event.comment.body, '/z') ||
+      contains(github.event.comment.body, ' /zee') ||
+      startsWith(github.event.comment.body, '/zee') ||
       contains(github.event.comment.body, ' /ac') ||
       startsWith(github.event.comment.body, '/ac') ||
       contains(github.event.comment.body, ' /agent-core') ||
@@ -381,12 +388,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Run agent-core
+	
+      - name: Run zee
         uses: ${DEFAULT_ACTION_REF}${envStr}
         with:
           model: ${provider}/${model}`,
-            )
+	            )
 
             prompts.log.success(`Added workflow file: "${WORKFLOW_FILE}"`)
           }
@@ -500,7 +507,7 @@ export const GithubRunCommand = cmd({
           await addReaction(commentType)
         }
 
-        // Setup agent-core session
+        // Setup zee session
         const repoData = await fetchRepo()
         session = await Session.create({
           permission: [
@@ -516,7 +523,7 @@ export const GithubRunCommand = cmd({
           Output.log("Share enabled but SHARE_BASE_URL is not set; skipping share links.")
         }
         shareId = undefined // Sharing disabled for personal use
-        Output.log(`agent-core session ${session.id}`)
+        Output.log(`zee session ${session.id}`)
 
         // Handle event types:
         // REPO_EVENTS (schedule, workflow_dispatch): no issue/PR context, output to logs/PR only
@@ -875,7 +882,7 @@ export const GithubRunCommand = cmd({
       }
 
       async function chat(message: string, files: PromptFiles = []) {
-        Output.log("Sending message to agent-core...")
+        Output.log("Sending message to zee...")
 
         const result = await SessionPrompt.prompt({
           sessionID: session.id,
@@ -1063,9 +1070,9 @@ export const GithubRunCommand = cmd({
           .join("")
         if (type === "schedule" || type === "dispatch") {
           const hex = crypto.randomUUID().slice(0, 6)
-          return `agent-core/${type}-${hex}-${timestamp}`
+          return `zee/${type}-${hex}-${timestamp}`
         }
-        return `agent-core/${type}${issueId}-${timestamp}`
+        return `zee/${type}${issueId}-${timestamp}`
       }
 
       async function pushToNewBranch(summary: string, branch: string, commit: boolean, isSchedule: boolean) {
@@ -1298,7 +1305,7 @@ Co-authored-by: ${actor} <${actor}@users.noreply.github.com>"`
 
       function footer(_opts?: { image?: boolean }) {
         const shareUrl =
-          shareId && shareBaseUrl ? `[agent-core session](${shareBaseUrl}/s/${shareId})&nbsp;&nbsp;|&nbsp;&nbsp;` : ""
+          shareId && shareBaseUrl ? `[zee session](${shareBaseUrl}/s/${shareId})&nbsp;&nbsp;|&nbsp;&nbsp;` : ""
         return `\n\n${shareUrl}[github run](${runUrl})`
       }
 
@@ -1359,7 +1366,7 @@ query($owner: String!, $repo: String!, $number: Int!) {
         return [
           "<github_action_context>",
           "You are running as a GitHub Action. Important:",
-          "- Git push and PR creation are handled AUTOMATICALLY by the agent-core infrastructure after your response",
+          "- Git push and PR creation are handled AUTOMATICALLY by the zee infrastructure after your response",
           "- Do NOT include warnings or disclaimers about GitHub tokens, workflow permissions, or PR creation capabilities",
           "- Do NOT suggest manual steps for creating PRs or pushing code - this happens automatically",
           "- Focus only on the code changes and your analysis/response",
@@ -1497,7 +1504,7 @@ query($owner: String!, $repo: String!, $number: Int!) {
         return [
           "<github_action_context>",
           "You are running as a GitHub Action. Important:",
-          "- Git push and PR creation are handled AUTOMATICALLY by the agent-core infrastructure after your response",
+          "- Git push and PR creation are handled AUTOMATICALLY by the zee infrastructure after your response",
           "- Do NOT include warnings or disclaimers about GitHub tokens, workflow permissions, or PR creation capabilities",
           "- Do NOT suggest manual steps for creating PRs or pushing code - this happens automatically",
           "- Focus only on the code changes and your analysis/response",

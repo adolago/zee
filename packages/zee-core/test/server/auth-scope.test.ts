@@ -8,6 +8,12 @@ function basicAuth(username: string, password: string): string {
 }
 
 const ORIGINAL_ENV = {
+  ZEE_ENABLE_SERVER_AUTH: process.env.ZEE_ENABLE_SERVER_AUTH,
+  ZEE_DISABLE_SERVER_AUTH: process.env.ZEE_DISABLE_SERVER_AUTH,
+  ZEE_SERVER_USERNAME: process.env.ZEE_SERVER_USERNAME,
+  ZEE_SERVER_PASSWORD: process.env.ZEE_SERVER_PASSWORD,
+  ZEE_SERVER_SCOPES: process.env.ZEE_SERVER_SCOPES,
+  // Legacy fallbacks.
   AGENT_CORE_ENABLE_SERVER_AUTH: process.env.AGENT_CORE_ENABLE_SERVER_AUTH,
   AGENT_CORE_DISABLE_SERVER_AUTH: process.env.AGENT_CORE_DISABLE_SERVER_AUTH,
   AGENT_CORE_SERVER_USERNAME: process.env.AGENT_CORE_SERVER_USERNAME,
@@ -16,11 +22,17 @@ const ORIGINAL_ENV = {
 }
 
 beforeAll(() => {
-  process.env.AGENT_CORE_ENABLE_SERVER_AUTH = "1"
+  process.env.ZEE_ENABLE_SERVER_AUTH = "1"
+  delete process.env.ZEE_DISABLE_SERVER_AUTH
+  delete process.env.ZEE_SERVER_USERNAME
+  process.env.ZEE_SERVER_PASSWORD = "test-password"
+  process.env.ZEE_SERVER_SCOPES = "operator.read"
+
+  delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
   delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
   delete process.env.AGENT_CORE_SERVER_USERNAME
-  process.env.AGENT_CORE_SERVER_PASSWORD = "test-password"
-  process.env.AGENT_CORE_SERVER_SCOPES = "operator.read"
+  delete process.env.AGENT_CORE_SERVER_PASSWORD
+  delete process.env.AGENT_CORE_SERVER_SCOPES
   reloadFlags()
   Server.App.reset()
 })
@@ -46,7 +58,7 @@ describe("HTTP auth and scopes", () => {
     const res = await app.request("/global/health", {
       method: "GET",
       headers: {
-        Authorization: basicAuth("agent-core", "test-password"),
+        Authorization: basicAuth("zee", "test-password"),
       },
     })
     expect(res.status).toBe(200)
@@ -57,7 +69,7 @@ describe("HTTP auth and scopes", () => {
     const res = await app.request("/pty", {
       method: "POST",
       headers: {
-        Authorization: basicAuth("agent-core", "test-password"),
+        Authorization: basicAuth("zee", "test-password"),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({}),
@@ -70,7 +82,7 @@ describe("HTTP auth and scopes", () => {
     const res = await app.request("/global/instances", {
       method: "GET",
       headers: {
-        Authorization: basicAuth("agent-core", "test-password"),
+        Authorization: basicAuth("zee", "test-password"),
       },
     })
     expect(res.status).toBe(403)
@@ -81,7 +93,7 @@ describe("HTTP auth and scopes", () => {
     const res = await app.request("/instance/dispose", {
       method: "POST",
       headers: {
-        Authorization: basicAuth("agent-core", "test-password"),
+        Authorization: basicAuth("zee", "test-password"),
       },
     })
     expect(res.status).toBe(403)
@@ -92,7 +104,7 @@ describe("HTTP auth and scopes", () => {
     const res = await app.request("/global/dispose", {
       method: "POST",
       headers: {
-        Authorization: basicAuth("agent-core", "test-password"),
+        Authorization: basicAuth("zee", "test-password"),
       },
     })
     expect(res.status).toBe(403)
