@@ -1,20 +1,27 @@
-# agent-core
+# zee-core
 
-Agent-core is a CLI + daemon that powers the Personas system (Zee, Stanley, Johny).
+The core CLI + daemon that powers Zee's persona system (Zee, Stanley, Johny).
 
-- **Version:** v0.1.0-20260114
+- **Version:** 0.2.0-alpha
 - **Prebuilt targets:** Linux x64
 - **Other platforms:** build from source
 
-## Install
+## Install from source
 
 ```bash
-npm install -g @adolago/agent-core@0.1.0-20260114
+git clone https://github.com/adolago/zee.git
+cd zee
+
+bun install
+cd packages/zee-core
+bun run build
+
+ln -sf ~/.local/src/zee/packages/zee-core/dist/@zee/core-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
 ## Configure
 
-Agent-core reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
+Zee reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
 Environment variables are used only for secrets.
 
 Minimal memory configuration:
@@ -38,9 +45,9 @@ Minimal memory configuration:
 ## Run
 
 ```bash
-agent-core
-agent-core --no-daemon
-agent-core daemon --hostname 127.0.0.1 --port 3210
+zee
+zee --no-daemon
+zee daemon --hostname 127.0.0.1 --port 3210
 ```
 
 ## Benchmark
@@ -53,4 +60,4 @@ bun run bench --durationSeconds 10 --seedCount 500 --concurrency 5
 - Writes JSON reports to `output/bench/<timestamp>.json`
 - Memory benches require Qdrant at `QDRANT_URL` (default: `http://localhost:6333`)
 - Inference bench uses your configured provider/model and measures streaming latency/throughput (FlashAttention is server-side; validate via throughput metrics)
-- Bench disables config dependency installation (`AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1`) to avoid mutating your config dirs
+- Bench disables config dependency installation (`ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1`) to avoid mutating your config dirs

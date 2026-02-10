@@ -1,13 +1,19 @@
 # Zee
 
-[![Version](https://img.shields.io/npm/v/@adolago/agent-core?style=flat-square)](https://www.npmjs.com/package/@adolago/agent-core)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-Zee is a unified personal assistant built on a CLI agent engine. It handles life admin, investing, and learning with semantic memory, tool orchestration, and multi-surface support (CLI, Web, WhatsApp, Matrix).
+Zee is [opencode](https://github.com/sst/opencode) wrapped in [openclaw](https://github.com/openclaw/openclaw) -- a CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp, Matrix).
+
+## Ecosystem
+
+| Project | Description |
+|---------|-------------|
+| [**Zee**](https://github.com/adolago/zee) | CLI agent engine (this repo) |
+| [**GMATE**](https://github.com/adolago/gmate) | AI-powered GMAT study platform with adaptive tutor and Socratic pedagogy |
 
 ## Release
 
-- **Version:** 0.1.6-alpha
+- **Version:** 0.2.0-alpha
 - **Prebuilt targets:** Linux x64
 - **Other platforms:** build from source
 
@@ -20,10 +26,22 @@ Zee is a unified personal assistant built on a CLI agent engine. It handles life
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
 - Python 3.8+ (for Stanley persona)
 
-### Install from npm
+### Install from source
 
 ```bash
-npm install -g @adolago/agent-core
+# Clone the repository
+git clone https://github.com/adolago/zee.git
+cd zee
+
+# Install dependencies
+bun install
+
+# Build the project
+cd packages/zee-core
+bun run build
+
+# Link the binary
+ln -sf ~/.local/src/zee/packages/zee-core/dist/@zee/core-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
 ### Install Stanley (optional, for investing features)
@@ -49,27 +67,9 @@ Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
 export STANLEY_REPO=~/.local/src/stanley
 ```
 
-### Install from source
-
-```bash
-# Clone the repository
-git clone https://github.com/adolago/agent-core.git
-cd agent-core
-
-# Install dependencies
-bun install
-
-# Build the project
-cd packages/zee-core
-bun run build
-
-# Install the binary
-cp dist/agent-core-linux-x64/bin/agent-core ~/bin/agent-core
-```
-
 ### Configuration
 
-Agent-core reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
+Zee reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
 Environment variables are used only for secrets (Qdrant settings are config-only).
 
 #### Paths and overrides
@@ -82,13 +82,13 @@ Defaults follow XDG:
 - State: `~/.local/state/zee`
 - Workspace (default worktree): `~/.local/share/zee/worktree`
 
-To co-locate everything under a single state root, set `AGENT_CORE_STATE_DIR` (legacy: `OPENCODE_STATE_DIR`).
+To co-locate everything under a single state root, set `ZEE_STATE_DIR` (legacy: `AGENT_CORE_STATE_DIR`).
 This makes config/data/cache/logs/workspace resolve under that directory as `config/`, `data/`, `cache/`, `logs/`,
 and `workspace/`.
 
-To override only the workspace location, set `AGENT_CORE_WORKSPACE_DIR` (legacy: `OPENCODE_WORKSPACE_DIR`).
+To override only the workspace location, set `ZEE_WORKSPACE_DIR` (legacy: `AGENT_CORE_WORKSPACE_DIR`).
 
-Use `agent-core paths` to print the resolved locations.
+Use `zee paths` to print the resolved locations.
 
 Example memory + embeddings configuration:
 
@@ -120,8 +120,8 @@ export VOYAGE_API_KEY="..."     # If using Voyage embeddings/reranking
 Optional: Google Antigravity (plugin-based OAuth):
 
 ```bash
-agent-core plugin install opencode-google-auth
-agent-core auth login
+zee plugin install opencode-google-auth
+zee auth login
 ```
 
 Select **Google** when prompted.
@@ -151,8 +151,8 @@ Keep Qdrant collection dimensions aligned with your embedding dimensions by sett
 **Interactive TUI (attaches to a running daemon):**
 
 ```bash
-agent-core
-agent-core --no-daemon   # run without the daemon (local worker only)
+zee
+zee --no-daemon   # run without the daemon (local worker only)
 ```
 
 Ensure the daemon is running first (systemd service recommended for always-on messaging).
@@ -161,14 +161,14 @@ See `docs/tui-vim-mode.md` for Vim keybindings.
 **Daemon mode (gateway is opt-in; development/manual use only):**
 
 ```bash
-agent-core daemon --hostname 127.0.0.1 --port 3210
-agent-core daemon --gateway
+zee daemon --hostname 127.0.0.1 --port 3210
+zee daemon --gateway
 ```
 
 ## Architecture
 
 ```
-agent-core/
+zee/
 ├── packages/zee-core/    # Main CLI/TUI/daemon
 ├── src/
 │   ├── personas/           # Persona logic and routing
@@ -189,29 +189,29 @@ agent-core/
 
 - **Semantic Memory**: Vector-based memory with Qdrant for context persistence
 - **Multi-Persona Routing**: Route messages to specialized personas
-- **Embedded Gateway**: Optional Zee messaging gateway launched by agent-core
+- **Embedded Gateway**: Optional Zee messaging gateway launched by the daemon
 
 ## Usage with Zee Gateway
 
-The Zee gateway is launched and supervised by agent-core only when explicitly enabled:
+The Zee gateway is launched and supervised by the daemon only when explicitly enabled:
 
 ```bash
-agent-core daemon --gateway
+zee daemon --gateway
 ```
 
 For always-on messaging at boot, install the systemd service:
 
 ```bash
 sudo ./scripts/systemd/install.sh --polkit --systemd-only
-sudo systemctl enable agent-core
-sudo systemctl start agent-core
+sudo systemctl enable zee
+sudo systemctl start zee
 ```
 
 The install script will prompt for sudo if needed. With `--polkit`, you can run start/stop/restart and enable/disable without sudo:
 
 ```bash
-systemctl restart agent-core
-systemctl enable agent-core
+systemctl restart zee
+systemctl enable zee
 ```
 
 The systemd unit disables `ProtectHome` so the daemon can read/write projects in any directory under your home.
@@ -235,11 +235,11 @@ bun run typecheck
 
 ## Wide events
 
-Agent-core emits wide event JSONL logs for per-request diagnostics:
+Zee emits wide event JSONL logs for per-request diagnostics:
 
 ```bash
-agent-core logs wide --lines 50
-agent-core logs wide --where sessionId=session_123
+zee logs wide --lines 50
+zee logs wide --where sessionId=session_123
 ```
 
 ## Acknowledgements
