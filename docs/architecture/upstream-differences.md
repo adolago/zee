@@ -11,6 +11,12 @@ Snapshot used for this comparison:
 - opencode: `fa20bc2` (cloned `dev`)
 - openclaw: `aaddbdae52d7` (full `aaddbdae52d71bff3a74fa28dd6597816e2d7592`)
 
+Current upstream pins (refreshed 2026-02-11):
+
+- opencode: `7e1247c42080` (full `7e1247c4208002eda989b52c9462a2294224e296`, `opencode/dev`)
+- openclaw: `fb84e18bc306` (full `fb84e18bc3061e803b19be581b5354494ba060f9`, `openclaw/main`)
+- pimono: `34878e7cc807` (full `34878e7cc8074f42edff6c2cdcc9828aa9b6afde`, `pimono/main`); installed `@mariozechner/pi-coding-agent@0.49.3`, latest tag `v0.52.9`
+
 ## Summary (what each repo is)
 
 - **zee**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, semantic memory (Qdrant), orchestration, and an optional always-on messaging gateway.
@@ -220,12 +226,20 @@ Overlap is mostly in “utility” skills (for example `weather`, `wacli`, `spot
 
 These numbers are intended to size the divergence, not to replace a full code review:
 
-- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1197` (opencode-only) vs `999` (zee-only)
+- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1466` (opencode-only) vs `1155` (zee-only)
 - File delta (with rename detection raised: `git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD`):
-  - Added: `3655`
-  - Deleted: `626`
-  - Modified: `213`
-  - Renamed: `376`
+  - Added: `4366`
+  - Deleted: `690`
+  - Modified: `224`
+  - Renamed: `332`
+
+### pi-mono dependency tracking
+
+Zee vendors `@mariozechner/pi-*` packages via npm (not git merge):
+
+- Installed: `@mariozechner/pi-coding-agent@0.49.3` (in `packages/personas/zee/package.json`)
+- Latest tag: `v0.52.9` (on `pimono/main`)
+- Update: `cd packages/personas/zee && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui`
 
 ## How to reproduce / extend this mapping
 

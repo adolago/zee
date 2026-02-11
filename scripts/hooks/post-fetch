@@ -1,0 +1,72 @@
+#!/bin/bash
+# post-fetch hook - Lightweight upstream drift warning
+#
+# Prints a one-line summary after any git fetch that touches
+# opencode, openclaw, or pimono remotes.
+#
+# Install: ./scripts/hooks/install.sh
+
+# Detect which remotes were fetched by checking FETCH_HEAD age
+# This hook runs after git fetch completes.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Colors (only when stdout is a terminal)
+if [ -t 1 ]; then
+    YELLOW='\033[1;33m'
+    CYAN='\033[0;36m'
+    NC='\033[0m'
+else
+    YELLOW=""
+    CYAN=""
+    NC=""
+fi
+
+parts=()
+
+# Check opencode
+if git rev-parse opencode/dev &>/dev/null 2>&1; then
+    merge_base=$(git merge-base HEAD opencode/dev 2>/dev/null || echo "")
+    if [ -n "$merge_base" ]; then
+        behind=$(git rev-list --count "$merge_base..opencode/dev" 2>/dev/null || echo "0")
+        if [ "$behind" -gt 0 ]; then
+            parts+=("opencode: $behind commits behind")
+        fi
+    fi
+fi
+
+# Check openclaw (unrelated histories -- count new commits since last known)
+if git rev-parse openclaw/main &>/dev/null 2>&1; then
+    # Use delta-map TODO count as drift indicator
+    delta_map="$REPO_ROOT/docs/architecture/openclaw-delta-map.md"
+    if [ -f "$delta_map" ]; then
+        todos=$(grep -c "| TODO" "$delta_map" 2>/dev/null || echo "0")
+        if [ "$todos" -gt 0 ]; then
+            parts+=("openclaw: $todos ports pending")
+        fi
+    fi
+fi
+
+# Check pimono (version comparison)
+if git rev-parse pimono/main &>/dev/null 2>&1; then
+    pkg_json="$REPO_ROOT/packages/personas/zee/package.json"
+    if [ -f "$pkg_json" ]; then
+        installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$pkg_json" | grep -o '[0-9][0-9.]*' || echo "")
+        latest_tag=$(git tag -l "v0.*" --sort=-v:refname | while read -r tag; do
+            if git merge-base --is-ancestor "$tag" pimono/main 2>/dev/null; then
+                echo "$tag"
+                break
+            fi
+        done)
+        latest_version="${latest_tag#v}"
+        if [ -n "$installed" ] && [ -n "$latest_version" ] && [ "$installed" != "$latest_version" ]; then
+            parts+=("pimono: v$latest_version available")
+        fi
+    fi
+fi
+
+# Print summary only if there is drift
+if [ ${#parts[@]} -gt 0 ]; then
+    summary=$(IFS=" | "; echo "${parts[*]}")
+    echo -e "${YELLOW}[upstream]${NC} ${CYAN}${summary}${NC}"
+fi
