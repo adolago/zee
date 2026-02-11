@@ -43,11 +43,15 @@ logs/
 config.json
 output/
 
-# Skills installed locally into this checkout (keep persona + curated skills tracked)
+# Skills: track all vendored namespaces
 .agents/skills/*
 !.agents/skills/@zee/
+!.agents/skills/@clawhub/
+!.agents/skills/@codex/
 !.agents/skills/codebase-guide/
+!.agents/skills/parallel-orchestration/
 !.agents/skills/personas/
+.agents/skills/@codex/.system/
 
 # Removed gateway docs (embedded gateway only)
 vendor/personas/zee/docs/gateway/external-gateway.md
@@ -62,7 +66,7 @@ vendor/personas/zee/docker-compose.yml
 *-report.md
 *-threat-model.md
 *-backlog.md
-packages/zee-core/*-report-*.zip
+packages/zee/*-report-*.zip
 
 # Generated type declarations
 src/theme/rosetta.d.ts

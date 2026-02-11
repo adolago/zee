@@ -1,0 +1,49 @@
+{
+  "skills": {
+    "agent-browser": {
+      "version": "0.2.0",
+      "installedAt": 1770779674844
+    },
+    "humanizer": {
+      "version": "1.0.0",
+      "installedAt": 1770779675819
+    },
+    "markdown-converter": {
+      "version": "1.0.0",
+      "installedAt": 1770779676859
+    },
+    "nano-pdf": {
+      "version": "1.0.0",
+      "installedAt": 1770779677717
+    },
+    "obsidian": {
+      "version": "1.0.0",
+      "installedAt": 1770779678761
+    },
+    "self-improving-agent": {
+      "version": "1.0.5",
+      "installedAt": 1770779680603
+    },
+    "summarize": {
+      "version": "1.0.0",
+      "installedAt": 1770779681298
+    },
+    "tmux": {
+      "version": "1.0.0",
+      "installedAt": 1770779682585
+    },
+    "video-frames": {
+      "version": "1.0.0",
+      "installedAt": 1770779683551
+    },
+    "hooks-automation": {
+      "version": "1.0.0",
+      "installedAt": 1770779684729
+    },
+    "stream-chain": {
+      "version": "1.0.0",
+      "installedAt": 1770779685820
+    }
+  },
+  "version": 1
+}
