@@ -106,14 +106,14 @@ function isIdempotent(toolName: string): boolean {
   const readPatterns = [
     "search",
     "browse",
+    "query",
     "list",
     "get",
     "status",
     "find",
     "check",
     "calendar",
-    "contacts",
-    "reminder-status",
+    "banner-refresh",
     "plan-status",
   ];
 

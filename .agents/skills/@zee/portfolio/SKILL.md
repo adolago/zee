@@ -1,15 +1,24 @@
 ---
-name: portfolio-analytics
-description: Analyze portfolio risk, performance, and allocation
-version: 1.0.0
+name: portfolio
+description: Portfolio analytics, risk management, and performance attribution
+version: 2.0.0
 author: Artur
-tags: [finance, portfolio, analytics, stanley]
+tags: [finance, portfolio, analytics, risk, stanley]
 triggers:
   - portfolio analysis
   - risk metrics
   - portfolio performance
   - allocation analysis
   - VaR
+  - risk analysis
+  - value at risk
+  - portfolio risk
+  - stress test
+  - drawdown
+  - beta
+  - volatility
+  - sharpe ratio
+  - sortino ratio
 ---
 
 # Portfolio Analytics
@@ -118,3 +127,63 @@ await memory.store({
   }
 });
 ```
+
+---
+
+## Risk Management
+
+### Risk Metrics Reference
+
+| Metric | Description |
+|--------|-------------|
+| **Historical VaR** | Non-parametric, uses actual return distribution |
+| **Parametric VaR** | Assumes normal distribution |
+| **CVaR (Expected Shortfall)** | Expected loss given loss exceeds VaR |
+| **Beta** | Market sensitivity vs benchmark (SPY default) |
+| **Alpha** | Jensen's alpha -- risk-adjusted excess return |
+| **Sharpe Ratio** | Return per unit of total risk |
+| **Sortino Ratio** | Return per unit of downside risk |
+| **Max Drawdown** | Largest peak-to-trough decline |
+
+### Risk Limits (Configurable)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Max Position Size | 10% | Maximum single position |
+| Max Sector Exposure | 30% | Maximum sector weight |
+| Max VaR 95 | 5% | Maximum daily VaR |
+| Max Drawdown | 15% | Stop-loss trigger |
+| Min Diversification | 5 | Minimum holdings |
+
+### Risk Dashboard Output
+
+```
+## Portfolio Risk Summary
+
+**Value at Risk (1-day)**
+- VaR 95%: $2,450 (1.96%)
+- VaR 99%: $3,890 (3.11%)
+- CVaR 95%: $3,120 (2.50%)
+
+**Market Sensitivity**
+- Beta: 1.15
+- Alpha: 2.3% (annualized)
+
+**Risk-Adjusted Returns**
+- Sharpe: 1.45
+- Sortino: 1.92
+
+**Stress Scenarios**
+- 2008 Crisis: -$47,500
+- COVID Crash: -$42,500
+- 10% Correction: -$12,500
+```
+
+### Risk Alerts
+
+Trigger alerts when:
+- VaR exceeds threshold
+- Drawdown exceeds limit
+- Sector concentration too high
+- Correlation spike detected
+- Volatility regime change

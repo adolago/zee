@@ -13,10 +13,9 @@ Zee is the single assistant handling all domains. The former Stanley (investing)
 ## Complete Skill Catalog
 
 ### Zee Skills (life admin)
-- `zee` - Memory, messaging (WhatsApp/Telegram/Matrix E2EE), email (neomutt/notmuch), calendar (khal), contacts (khard), browser (Chrome), nodes, ClawHub marketplace
+- `zee` - Memory, messaging (WhatsApp/Telegram/Matrix E2EE), email (neomutt/notmuch), calendar (khal), contacts (khard), browser (Chrome + agent-browser CLI), nodes, ClawHub marketplace
 - `home-assistant` - Smart home control via hass-cli or REST API [via clawhub: dbhurley/homeassistant]
 - `obsidian` - Obsidian vault management [via clawhub: steipete/obsidian]
-- `agent-browser` - Headless browser automation CLI [via clawhub: TheSethRose/agent-browser]
 - `wacli` - WhatsApp CLI for messaging and history search [via clawhub: steipete/wacli]
 - `weather` - Weather forecasts via wttr.in and Open-Meteo [via clawhub: steipete/weather]
 - `spotify-player` - Terminal Spotify playback/search [via clawhub: steipete/spotify-player]
@@ -26,15 +25,10 @@ Zee is the single assistant handling all domains. The former Stanley (investing)
 
 ### Investing Skills (stanley: namespace)
 - `stanley` - Market data (OpenBB), portfolio tracking, SEC EDGAR filings, NautilusTrader strategies, GPUI desktop GUI
-- `stock-market-pro` - Yahoo Finance price tracking, charts, fundamentals [via clawhub: kys42/stock-market-pro]
-- `autonomous-research` - Structured multi-step financial investigations
+- `autonomous-research` - Structured multi-step financial investigations (includes fundamental analysis, market/sector analysis, and earnings intelligence modes)
 - `dcf-valuation` - Discounted cash flow intrinsic value analysis
 - `investment-thesis` - Structured thesis building and tracking
-- `portfolio-analytics` - Advanced portfolio analytics and reporting
-- `risk-management` - Position sizing, risk assessment, stop-loss management
-- `market-analysis` - Market analysis workflows
-- `financial-research` - Financial research workflows
-- `earnings-intelligence` - Earnings analysis and tracking
+- `portfolio` - Portfolio analytics, risk management, and performance attribution (VaR, Sharpe, stress testing)
 - `news-digest` - News aggregation and summarization
 
 ### Learning Skills (johny: namespace)

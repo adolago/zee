@@ -9,7 +9,7 @@ Detailed documentation for Zee's tools and capabilities.
 | Tool | Purpose |
 |------|---------|
 | `zee:memory-store` | Store facts, preferences, tasks, notes |
-| `zee:memory-search` | Semantic search across all memories |
+| `zee:memory-query` | Unified memory retrieval (semantic search, tree browsing, structured filtering) |
 | `zee:messaging` | Send text/audio/media across WhatsApp and Telegram |
 | `neomutt` | Email client (read, compose, reply) |
 | `notmuch` | Email search and indexing |
@@ -18,7 +18,6 @@ Detailed documentation for Zee's tools and capabilities.
 | `khal` | Calendar TUI (view, add, edit events) |
 | `khard` | Contacts TUI (search, add, edit) |
 | `vdirsyncer` | CalDAV/CardDAV sync |
-| `zee:notification` | Proactive alerts and reminders |
 | `zee:splitwise` | Shared expenses, balances, reimbursements |
 
 ## Browser Tools

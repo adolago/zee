@@ -36,7 +36,7 @@ const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
     "kernel_execute_playwright_code",
     "zee:splitwise",
     "zee:calendar",
-    "zee:contacts",
+    "zee:memory-query",
     "zee:email",
     "zee:memory",
     "whatsapp",

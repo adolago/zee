@@ -53,7 +53,7 @@ import { PTY_SESSION_TOOLS } from "./pty-sessions.js";
 import { ZEE_BROWSER_TOOLS } from "./browser.js";
 import { ZEE_STANDALONE_BROWSER_TOOLS } from "./browser-standalone.js";
 import { WHATSAPP_TOOLS } from "./whatsapp.js";
-import { reminderStatusTool } from "./reminder-status.js";
+// reminder-status merged into banner-refresh
 import { bannerPushTool, bannerRefreshTool } from "./banner.js";
 
 // =============================================================================
@@ -179,7 +179,7 @@ ${versionStr}
 ${confidenceStr}
 ${entry.memoryId ? `- Memory ID: ${entry.memoryId}` : ""}
 
-This memory can be recalled later using zee:memory-search or zee:memory-agentic-search.`,
+This memory can be recalled later using zee:memory-query.`,
         };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -195,61 +195,310 @@ This memory can be recalled later using zee:memory-search or zee:memory-agentic-
 };
 
 // =============================================================================
-// Memory Search Tool
+// Memory Query Tool (unified: search + browse + filter + temporal)
 // =============================================================================
 
-const MemorySearchParams = z.object({
-  query: z.string().describe("Search query"),
-  category: z.enum(["conversation", "fact", "preference", "task", "decision", "note", "all"])
-    .optional().describe("Filter by category"),
-  limit: z.number().default(5).describe("Maximum results"),
+/** Parse relative time strings like '30d', '2w', '6h', '90m' to milliseconds offset */
+function parseRelativeTime(input: string): number | null {
+  const match = input.match(/^(\d+)(m|h|d|w)$/);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  const multipliers: Record<string, number> = {
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+    w: 7 * 24 * 60 * 60 * 1000,
+  };
+  return value * (multipliers[unit] ?? 0);
+}
+
+/** Resolve a time parameter to a unix timestamp */
+function resolveTimeParam(input: string | undefined, defaultMs: number): number {
+  if (!input) return defaultMs;
+  const relativeMs = parseRelativeTime(input);
+  if (relativeMs !== null) {
+    return Date.now() - relativeMs;
+  }
+  const parsed = new Date(input).getTime();
+  if (isNaN(parsed)) return defaultMs;
+  return parsed;
+}
+
+const MEMORY_CATEGORIES = ["conversation", "fact", "preference", "task", "decision", "note", "all"] as const;
+
+const MemoryQueryParams = z.object({
+  // Mode selection
+  mode: z.enum(["search", "browse", "filter"]).default("search")
+    .describe("search = semantic similarity; browse = tree navigation; filter = structured filter-first with optional semantic refinement"),
+
+  // Semantic query (mode: search or filter)
+  query: z.string().optional().describe("Semantic search query (required for mode=search)"),
+
+  // Tree browsing (mode: browse)
+  browseAction: z.enum(["list-domains", "list-topics", "list-subtopics", "get-entries"]).optional()
+    .describe("Tree navigation action (mode=browse only)"),
+
+  // Structured filters (all modes)
+  domain: z.string().optional()
+    .describe("Filter by domain (required for browse list-topics/list-subtopics/get-entries, optional for filter/search)"),
+  topic: z.string().optional()
+    .describe("Filter by topic within domain"),
+  subtopic: z.string().optional()
+    .describe("Filter by subtopic within topic"),
+  category: z.enum(MEMORY_CATEGORIES).optional()
+    .describe("Filter by memory category"),
+
+  // Time range (mode: search or filter)
+  since: z.string().optional()
+    .describe("Start of time range. Relative: '30d', '2w', '6h', '90m'. Absolute: ISO date string."),
+  until: z.string().optional()
+    .describe("End of time range. Same format as 'since'."),
+
+  // Advanced filters (mode: filter)
+  entity: z.string().optional()
+    .describe("Filter by entity name (matches metadata.entities)"),
+  kind: z.union([
+    z.enum(["curated", "auto", "agent"]),
+    z.array(z.enum(["curated", "auto", "agent"])),
+  ]).optional().describe("Filter by creation kind"),
+  priority: z.union([
+    z.enum(["high", "normal", "low"]),
+    z.array(z.enum(["high", "normal", "low"])),
+  ]).optional().describe("Filter by priority"),
+  bookmarked: z.boolean().optional()
+    .describe("Filter bookmarked only"),
+  memoryType: z.enum(["fact", "reasoning"]).optional()
+    .describe("Filter by memory type"),
+  minConfidence: z.number().min(0).max(1).optional()
+    .describe("Minimum confidence filter for belief entries"),
+
+  // Pagination
+  limit: z.number().default(10).describe("Maximum results"),
   threshold: z.number().min(0).max(1).default(0.5)
-    .describe("Minimum similarity threshold"),
-  timeRange: z.object({
-    start: z.string().optional(),
-    end: z.string().optional(),
-  }).optional().describe("Filter by time range"),
+    .describe("Minimum similarity threshold (mode=search)"),
 });
 
-export const memorySearchTool: ToolDefinition = {
-  id: "zee:memory-search",
+export const memoryQueryTool: ToolDefinition = {
+  id: "zee:memory-query",
   category: "domain",
   init: async () => ({
-    description: `Search stored memories using semantic similarity. Understands meaning, not just keywords. Filter by category and timeRange.`,
-    parameters: MemorySearchParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { query, category, limit, threshold, timeRange } = args;
+    description: `Unified memory retrieval. Modes:
+- search: semantic similarity (provide query). Add domain/topic, since/until, category to narrow.
+- browse: tree navigation (provide browseAction). list-domains, list-topics (need domain), list-subtopics (need domain+topic), get-entries (need domain).
+- filter: structured filter-first by domain/topic, with optional semantic query. Supports kind, priority, bookmarked, memoryType, entity, minConfidence.
 
-      ctx.metadata({ title: `Searching: ${query}` });
+Identity/contacts/personal facts: mode=filter, domain="contacts" or "identity".
+Known domain: mode=filter, domain="<name>".
+Exploratory/vague: mode=search, query="<text>".
+Recent by time: mode=search (or filter), since="7d".`,
+    parameters: MemoryQueryParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      const {
+        mode, query, browseAction,
+        domain, topic, subtopic, category,
+        since, until, entity,
+        kind, priority, bookmarked, memoryType, minConfidence,
+        limit, threshold,
+      } = args;
 
       try {
         const store = getMemory();
 
-        // Retry search on transient connection failures
+        // ---- MODE: BROWSE ----
+        if (mode === "browse") {
+          const action = browseAction ?? "list-domains";
+          ctx.metadata({ title: `Memory Browse: ${action}` });
+
+          if (action === "list-domains") {
+            const domains = await store.listDomains();
+            if (domains.length === 0) {
+              return {
+                title: "No Domains",
+                metadata: { mode, action, count: 0 },
+                output: "No memory domains found. Store memories with a 'domain' field to create tree structure.",
+              };
+            }
+            return {
+              title: `${domains.length} Domains`,
+              metadata: { mode, action, count: domains.length },
+              output: `Memory domains:\n\n${domains.map((d) => `- ${d.domain}`).join("\n")}`,
+            };
+          }
+
+          if (action === "list-topics") {
+            if (!domain) {
+              return { title: "Missing Domain", metadata: { mode, action }, output: "Provide 'domain' to list topics." };
+            }
+            const topics = await store.listTopics(domain);
+            if (topics.length === 0) {
+              return { title: `No Topics in ${domain}`, metadata: { mode, action, domain, count: 0 }, output: `No topics found in domain "${domain}".` };
+            }
+            return {
+              title: `${topics.length} Topics in ${domain}`,
+              metadata: { mode, action, domain, count: topics.length },
+              output: `Topics in "${domain}":\n\n${topics.map((t) => `- ${t.topic}`).join("\n")}`,
+            };
+          }
+
+          if (action === "list-subtopics") {
+            if (!domain || !topic) {
+              return { title: "Missing Parameters", metadata: { mode, action }, output: "Provide 'domain' and 'topic' to list subtopics." };
+            }
+            const subtopics = await store.listSubtopics(domain, topic);
+            if (subtopics.length === 0) {
+              return { title: `No Subtopics in ${domain}/${topic}`, metadata: { mode, action, domain, topic, count: 0 }, output: `No subtopics found in "${domain}/${topic}".` };
+            }
+            return {
+              title: `${subtopics.length} Subtopics in ${domain}/${topic}`,
+              metadata: { mode, action, domain, topic, count: subtopics.length },
+              output: `Subtopics in "${domain}/${topic}":\n\n${subtopics.map((s) => `- ${s.subtopic}`).join("\n")}`,
+            };
+          }
+
+          if (action === "get-entries") {
+            if (!domain) {
+              return { title: "Missing Domain", metadata: { mode, action }, output: "Provide 'domain' to get entries." };
+            }
+            const results = await store.agenticSearch({
+              domain, topic, subtopic,
+              namespace: "zee",
+              limit: limit ?? 20,
+            });
+            if (results.length === 0) {
+              const path = [domain, topic, subtopic].filter(Boolean).join("/");
+              return { title: `No Entries at ${path}`, metadata: { mode, action, domain, topic, subtopic, count: 0 }, output: `No memories found at "${path}".` };
+            }
+            const list = results.map((r, i) => {
+              const e = r.entry;
+              const preview = e.content.substring(0, 120);
+              const ellipsis = e.content.length > 120 ? "..." : "";
+              const ver = e.version && e.version > 1 ? ` (v${e.version})` : "";
+              return `${i + 1}. [${e.category}]${ver} "${preview}${ellipsis}"\n   ID: ${e.id} | memoryId: ${e.memoryId ?? "n/a"}`;
+            }).join("\n\n");
+            return {
+              title: `${results.length} Entries`,
+              metadata: { mode, action, domain, topic, subtopic, count: results.length },
+              output: `Memories at ${[domain, topic, subtopic].filter(Boolean).join("/")}:\n\n${list}`,
+            };
+          }
+
+          return { title: "Unknown Action", metadata: { mode, action }, output: `Unknown browse action: ${action}` };
+        }
+
+        // ---- MODE: FILTER (structured filter-first) ----
+        if (mode === "filter") {
+          const filterLabel = [domain, topic, subtopic].filter(Boolean).join("/") || "(all)";
+          ctx.metadata({ title: `Memory Filter: ${filterLabel}` });
+
+          const results = await store.agenticSearch({
+            domain: domain ?? "*",
+            topic, subtopic, query,
+            namespace: "zee",
+            kind: kind as any,
+            priority: priority as any,
+            bookmarked,
+            memoryType: memoryType as any,
+            limit,
+          });
+
+          // Post-filter by time range, entity, category, confidence
+          const now = Date.now();
+          const hasSince = since !== undefined;
+          const hasUntil = until !== undefined;
+          const sinceMs = hasSince ? resolveTimeParam(since, now - 30 * 24 * 60 * 60 * 1000) : undefined;
+          const untilMs = hasUntil ? resolveTimeParam(until, now) : undefined;
+
+          const filtered = results.filter((r) => {
+            if (sinceMs !== undefined && r.entry.createdAt < sinceMs) return false;
+            if (untilMs !== undefined && r.entry.createdAt > untilMs) return false;
+            if (entity) {
+              const entities = r.entry.metadata?.entities ?? [];
+              if (!entities.some((e) => e.toLowerCase().includes(entity.toLowerCase()))) return false;
+            }
+            if (category && category !== "all" && r.entry.category !== category) return false;
+            if (minConfidence !== undefined && (r.entry.confidence ?? 1) < minConfidence) return false;
+            return true;
+          });
+
+          if (filtered.length === 0) {
+            return {
+              title: "No Results",
+              metadata: { mode, domain, topic, subtopic, query, count: 0 },
+              output: `No memories found matching filters.`,
+            };
+          }
+
+          const list = filtered.map((r, i) => {
+            const e = r.entry;
+            const preview = e.content.substring(0, 150);
+            const ellipsis = e.content.length > 150 ? "..." : "";
+            const score = r.score < 1.0 ? ` (${(r.score * 100).toFixed(0)}% match)` : "";
+            const ver = e.version && e.version > 1 ? ` v${e.version}` : "";
+            const date = new Date(e.createdAt).toLocaleDateString();
+            const conf = e.confidence !== undefined ? ` [${(e.confidence * 100).toFixed(0)}% conf]` : "";
+            return `${i + 1}. [${e.category}${ver}]${score}${conf} (${date})\n   "${preview}${ellipsis}"\n   ID: ${e.id}`;
+          }).join("\n\n");
+
+          return {
+            title: `${filtered.length} Results`,
+            metadata: { mode, domain, topic, subtopic, query, count: filtered.length },
+            output: `Found ${filtered.length} memories:\n\n${list}`,
+          };
+        }
+
+        // ---- MODE: SEARCH (semantic similarity, default) ----
+        if (!query) {
+          return {
+            title: "Missing Query",
+            metadata: { mode },
+            output: `Provide 'query' for semantic search, or use mode=browse/filter for structured retrieval.`,
+          };
+        }
+
+        const sinceLabel = since ?? undefined;
+        const untilLabel = until ?? undefined;
+        ctx.metadata({ title: `Searching: ${query}` });
+
+        // Build time range if specified
+        const now = Date.now();
+        const timeRange = (since || until) ? {
+          start: since ? resolveTimeParam(since, now - 30 * 24 * 60 * 60 * 1000) : undefined,
+          end: until ? resolveTimeParam(until, now) : undefined,
+        } : undefined;
+
         const searchResult = await withRetry(
           () => store.search({
             query,
             namespace: "zee",
-            limit: limit ?? 5,
+            limit: limit ?? 10,
             threshold: threshold ?? 0.5,
             category: category && category !== "all" ? category as any : undefined,
-            timeRange: timeRange ? {
-              start: timeRange.start ? new Date(timeRange.start).getTime() : undefined,
-              end: timeRange.end ? new Date(timeRange.end).getTime() : undefined,
-            } : undefined,
+            domain,
+            topic,
+            timeRange,
+            minConfidence,
           }),
-          { toolName: "zee:memory-search" },
+          { toolName: "zee:memory-query" },
         );
 
         if ("error" in searchResult) {
           return {
             title: `Memory Search Failed`,
             metadata: { query, error: searchResult.error.message, attempts: searchResult.attempts },
-            output: buildEscalation(searchResult.error, "zee:memory-search"),
+            output: buildEscalation(searchResult.error, "zee:memory-query"),
           };
         }
 
-        const results = searchResult.result;
+        let results = searchResult.result;
+
+        // Post-filter by entity if specified
+        if (entity) {
+          results = results.filter((r) => {
+            const entities = r.entry.metadata?.entities ?? [];
+            return entities.some((e) => e.toLowerCase().includes(entity.toLowerCase()));
+          });
+        }
 
         if (results.length === 0) {
           // Fallback: list recent memories when semantic search misses
@@ -262,35 +511,24 @@ export const memorySearchTool: ToolDefinition = {
                   const preview = entry.content.substring(0, 150);
                   const ellipsis = entry.content.length > 150 ? "..." : "";
                   const date = new Date(entry.createdAt).toLocaleDateString();
-                  return `${i + 1}. [${entry.category}] (${date})
-   "${preview}${ellipsis}"
-   ID: ${entry.id}`;
+                  return `${i + 1}. [${entry.category}] (${date})\n   "${preview}${ellipsis}"\n   ID: ${entry.id}`;
                 })
                 .join("\n\n");
 
               return {
                 title: `${fallback.length} Recent Memories (fallback)`,
                 metadata: { query, resultCount: fallback.length, fallback: true },
-                output: `No semantic matches for "${query}", showing ${fallback.length} recent memories instead:
-
-${formattedFallback}
-
-(These are recent memories, not similarity-ranked. Try zee:memory-agentic-search with a domain filter for structured lookups.)`,
+                output: `No semantic matches for "${query}", showing ${fallback.length} recent memories instead:\n\n${formattedFallback}\n\n(Try mode=filter with a domain for structured lookups.)`,
               };
             }
           } catch {
-            // fallback itself failed, return standard no-results message
+            // fallback itself failed
           }
 
           return {
             title: `No Memories Found`,
             metadata: { query, resultCount: 0 },
-            output: `No memories found matching: "${query}"
-
-Try:
-- Using different keywords
-- Removing category filters
-- Using zee:memory-agentic-search with domain/topic filters for structured data`,
+            output: `No memories found matching: "${query}"\n\nTry:\n- Using different keywords\n- Removing category filters\n- Using mode=filter with domain/topic for structured data`,
           };
         }
 
@@ -299,9 +537,8 @@ Try:
           const ellipsis = r.entry.content.length > 150 ? "..." : "";
           const date = new Date(r.entry.createdAt).toLocaleDateString();
           const score = (r.score * 100).toFixed(0);
-          return `${i + 1}. [${r.entry.category}] (${score}% match, ${date})
-   "${preview}${ellipsis}"
-   ID: ${r.entry.id}`;
+          const conf = r.entry.confidence !== undefined ? ` [${(r.entry.confidence * 100).toFixed(0)}% conf]` : "";
+          return `${i + 1}. [${r.entry.category}] (${score}% match, ${date})${conf}\n   "${preview}${ellipsis}"\n   ID: ${r.entry.id}`;
         }).join("\n\n");
 
         return {
@@ -311,17 +548,21 @@ Try:
             resultCount: results.length,
             topScore: results[0]?.score,
           },
-          output: `Found ${results.length} memories matching: "${query}"
-
-${formattedResults}`,
+          output: `Found ${results.length} memories matching: "${query}"\n\n${formattedResults}`,
         };
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-
+        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
+          return {
+            title: "Memory Unavailable",
+            metadata: { error: "connection_failed" },
+            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+          };
+        }
         return {
-          title: `Memory Search Error`,
+          title: `Memory Query Error`,
           metadata: { error: errorMsg },
-          output: `Failed to search memories: ${errorMsg}`,
+          output: `Failed to query memories: ${errorMsg}`,
         };
       }
     },
@@ -463,59 +704,7 @@ Troubleshooting:
   }),
 };
 
-// =============================================================================
-// Notification Tool
-// =============================================================================
-
-const NotificationParams = z.object({
-  type: z.enum(["alert", "reminder", "summary", "update"])
-    .describe("Notification type"),
-  title: z.string().describe("Notification title"),
-  body: z.string().describe("Notification body"),
-  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal")
-    .describe("Priority level"),
-  schedule: z.string().optional()
-    .describe("ISO date or cron expression for scheduling"),
-  channels: z.array(z.enum(["push", "whatsapp", "email"])).default(["push"])
-    .describe("Channels to notify through"),
-});
-
-export const notificationTool: ToolDefinition = {
-  id: "zee:notification",
-  category: "domain",
-  init: async () => ({
-    description: `Create notifications and reminders. Types: alert (immediate), reminder (scheduled), summary, update. Use schedule for ISO date or cron expression.`,
-    parameters: NotificationParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { type, title, body, priority, schedule, channels } = args;
-
-      ctx.metadata({ title: `Notification: ${title}` });
-
-      return {
-        title: `${type.charAt(0).toUpperCase() + type.slice(1)}: ${title}`,
-        metadata: {
-          type,
-          priority,
-          scheduled: !!schedule,
-          channels,
-        },
-        output: `[Zee would create ${type}]
-
-Title: ${title}
-Body: ${body}
-Priority: ${priority}
-${schedule ? `Schedule: ${schedule}` : "Immediate"}
-Channels: ${channels.join(", ")}
-
-The notification system will:
-1. Store the notification/reminder
-2. Schedule delivery if needed
-3. Send through configured channels
-4. Track read/acknowledged status`,
-      };
-    },
-  }),
-};
+// (notification tool removed -- was a stub)
 
 // =============================================================================
 // Calendar Tool
@@ -784,60 +973,7 @@ ${eventsList}`,
   }),
 };
 
-// =============================================================================
-// Contacts Tool
-// =============================================================================
-
-const ContactsParams = z.object({
-  action: z.enum(["search", "get", "create", "update"])
-    .describe("Contacts action"),
-  query: z.string().optional()
-    .describe("Search query (name, email, phone)"),
-  contactId: z.string().optional()
-    .describe("Contact ID for get/update"),
-  data: z.object({
-    name: z.string().optional(),
-    email: z.string().optional(),
-    phone: z.string().optional(),
-    notes: z.string().optional(),
-    tags: z.array(z.string()).optional(),
-  }).optional().describe("Contact data"),
-});
-
-export const contactsTool: ToolDefinition = {
-  id: "zee:contacts",
-  category: "domain",
-  init: async () => ({
-    description: `Manage contact information. Actions: search, get, create, update. Always check memory for existing contacts before creating duplicates.`,
-    parameters: ContactsParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { action, query, contactId, data } = args;
-
-      ctx.metadata({ title: `Contacts: ${action}` });
-
-      return {
-        title: `Contacts: ${action}`,
-        metadata: {
-          action,
-          hasQuery: !!query,
-          hasData: !!data,
-        },
-        output: `[Zee would ${action} contacts]
-
-Action: ${action}
-${query ? `Query: "${query}"` : ""}
-${contactId ? `Contact ID: ${contactId}` : ""}
-${data ? `Data: ${JSON.stringify(data, null, 2)}` : ""}
-
-Contacts are synced across:
-- WhatsApp contacts
-- Phone contacts
-- Email address book
-- Custom contact database`,
-      };
-    },
-  }),
-};
+// (contacts tool removed -- was a stub)
 
 // =============================================================================
 // Splitwise Tool
@@ -1154,254 +1290,7 @@ The reaction would be:
   }),
 };
 
-// =============================================================================
-// Memory Browse Tool (Context Tree Navigation)
-// =============================================================================
-
-const MemoryBrowseParams = z.object({
-  action: z.enum(["list-domains", "list-topics", "list-subtopics", "get-entries"])
-    .describe("Browse action"),
-  domain: z.string().optional()
-    .describe("Domain to browse (required for list-topics, list-subtopics, get-entries)"),
-  topic: z.string().optional()
-    .describe("Topic to browse (required for list-subtopics)"),
-  subtopic: z.string().optional()
-    .describe("Subtopic filter for get-entries"),
-  limit: z.number().optional()
-    .describe("Max results for get-entries"),
-});
-
-export const memoryBrowseTool: ToolDefinition = {
-  id: "zee:memory-browse",
-  category: "domain",
-  init: async () => ({
-    description: `Browse the memory context tree to discover domains/topics before searching. Actions: list-domains, list-topics, list-subtopics, get-entries.`,
-    parameters: MemoryBrowseParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { action, domain, topic, subtopic, limit } = args;
-
-      ctx.metadata({ title: `Memory Browse: ${action}` });
-
-      try {
-        const store = getMemory();
-
-        if (action === "list-domains") {
-          const domains = await store.listDomains();
-          if (domains.length === 0) {
-            return {
-              title: "No Domains",
-              metadata: { action, count: 0 },
-              output: "No memory domains found. Store memories with a 'domain' field to create tree structure.",
-            };
-          }
-          const list = domains.map((d) => `- ${d.domain}`).join("\n");
-          return {
-            title: `${domains.length} Domains`,
-            metadata: { action, count: domains.length },
-            output: `Memory domains:\n\n${list}`,
-          };
-        }
-
-        if (action === "list-topics") {
-          if (!domain) {
-            return {
-              title: "Missing Domain",
-              metadata: { action, error: "missing_domain" },
-              output: "Provide 'domain' to list topics.",
-            };
-          }
-          const topics = await store.listTopics(domain);
-          if (topics.length === 0) {
-            return {
-              title: `No Topics in ${domain}`,
-              metadata: { action, domain, count: 0 },
-              output: `No topics found in domain "${domain}".`,
-            };
-          }
-          const list = topics.map((t) => `- ${t.topic}`).join("\n");
-          return {
-            title: `${topics.length} Topics in ${domain}`,
-            metadata: { action, domain, count: topics.length },
-            output: `Topics in "${domain}":\n\n${list}`,
-          };
-        }
-
-        if (action === "list-subtopics") {
-          if (!domain || !topic) {
-            return {
-              title: "Missing Parameters",
-              metadata: { action, error: "missing_params" },
-              output: "Provide 'domain' and 'topic' to list subtopics.",
-            };
-          }
-          const subtopics = await store.listSubtopics(domain, topic);
-          if (subtopics.length === 0) {
-            return {
-              title: `No Subtopics in ${domain}/${topic}`,
-              metadata: { action, domain, topic, count: 0 },
-              output: `No subtopics found in "${domain}/${topic}".`,
-            };
-          }
-          const list = subtopics.map((s) => `- ${s.subtopic}`).join("\n");
-          return {
-            title: `${subtopics.length} Subtopics in ${domain}/${topic}`,
-            metadata: { action, domain, topic, count: subtopics.length },
-            output: `Subtopics in "${domain}/${topic}":\n\n${list}`,
-          };
-        }
-
-        if (action === "get-entries") {
-          if (!domain) {
-            return {
-              title: "Missing Domain",
-              metadata: { action, error: "missing_domain" },
-              output: "Provide 'domain' to get entries.",
-            };
-          }
-          const results = await store.agenticSearch({
-            domain,
-            topic,
-            subtopic,
-            namespace: "zee",
-            limit: limit ?? 20,
-          });
-          if (results.length === 0) {
-            const path = [domain, topic, subtopic].filter(Boolean).join("/");
-            return {
-              title: `No Entries at ${path}`,
-              metadata: { action, domain, topic, subtopic, count: 0 },
-              output: `No memories found at "${path}".`,
-            };
-          }
-          const list = results.map((r, i) => {
-            const e = r.entry;
-            const preview = e.content.substring(0, 120);
-            const ellipsis = e.content.length > 120 ? "..." : "";
-            const ver = e.version && e.version > 1 ? ` (v${e.version})` : "";
-            return `${i + 1}. [${e.category}]${ver} "${preview}${ellipsis}"\n   ID: ${e.id} | memoryId: ${e.memoryId ?? "n/a"}`;
-          }).join("\n\n");
-          return {
-            title: `${results.length} Entries`,
-            metadata: { action, domain, topic, subtopic, count: results.length },
-            output: `Memories at ${[domain, topic, subtopic].filter(Boolean).join("/")}:\n\n${list}`,
-          };
-        }
-
-        return {
-          title: "Unknown Action",
-          metadata: { action },
-          output: `Unknown browse action: ${action}`,
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-          return {
-            title: "Memory Unavailable",
-            metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
-          };
-        }
-        return {
-          title: "Memory Browse Error",
-          metadata: { error: errorMsg },
-          output: `Failed to browse memories: ${errorMsg}`,
-        };
-      }
-    },
-  }),
-};
-
-// =============================================================================
-// Memory Agentic Search Tool
-// =============================================================================
-
-const MemoryAgenticSearchParams = z.object({
-  domain: z.string().describe("Domain to search within"),
-  topic: z.string().optional().describe("Topic filter"),
-  subtopic: z.string().optional().describe("Subtopic filter"),
-  query: z.string().optional().describe("Optional semantic query within filtered set"),
-  kind: z.union([
-    z.enum(["curated", "auto", "agent"]),
-    z.array(z.enum(["curated", "auto", "agent"])),
-  ]).optional().describe("Filter by kind"),
-  priority: z.union([
-    z.enum(["high", "normal", "low"]),
-    z.array(z.enum(["high", "normal", "low"])),
-  ]).optional().describe("Filter by priority"),
-  bookmarked: z.boolean().optional().describe("Filter bookmarked only"),
-  memoryType: z.enum(["fact", "reasoning"]).optional().describe("Filter by memory type"),
-  limit: z.number().optional().describe("Max results (default 20)"),
-});
-
-export const memoryAgenticSearchTool: ToolDefinition = {
-  id: "zee:memory-agentic-search",
-  category: "domain",
-  init: async () => ({
-    description: `Filter-first memory search by domain/topic, then optional semantic search within results. Use when you know the domain. Supports kind, priority, bookmarked, and memoryType filters.`,
-    parameters: MemoryAgenticSearchParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { domain, topic, subtopic, query, kind, priority, bookmarked, memoryType, limit } = args;
-
-      ctx.metadata({ title: `Agentic Search: ${domain}${topic ? "/" + topic : ""}` });
-
-      try {
-        const store = getMemory();
-        const results = await store.agenticSearch({
-          domain,
-          topic,
-          subtopic,
-          query,
-          namespace: "zee",
-          kind: kind as any,
-          priority: priority as any,
-          bookmarked,
-          memoryType: memoryType as any,
-          limit,
-        });
-
-        if (results.length === 0) {
-          return {
-            title: "No Results",
-            metadata: { domain, topic, subtopic, query, count: 0 },
-            output: `No memories found matching filters.`,
-          };
-        }
-
-        const list = results.map((r, i) => {
-          const e = r.entry;
-          const preview = e.content.substring(0, 150);
-          const ellipsis = e.content.length > 150 ? "..." : "";
-          const score = r.score < 1.0 ? ` (${(r.score * 100).toFixed(0)}% match)` : "";
-          const ver = e.version && e.version > 1 ? ` v${e.version}` : "";
-          const date = new Date(e.createdAt).toLocaleDateString();
-          return `${i + 1}. [${e.category}${ver}]${score} (${date})
-   "${preview}${ellipsis}"
-   ID: ${e.id}`;
-        }).join("\n\n");
-
-        return {
-          title: `${results.length} Results`,
-          metadata: { domain, topic, subtopic, query, count: results.length },
-          output: `Found ${results.length} memories:\n\n${list}`,
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-          return {
-            title: "Memory Unavailable",
-            metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
-          };
-        }
-        return {
-          title: "Agentic Search Error",
-          metadata: { error: errorMsg },
-          output: `Search failed: ${errorMsg}`,
-        };
-      }
-    },
-  }),
-};
+// (memoryBrowseTool and memoryAgenticSearchTool merged into memoryQueryTool above)
 
 // =============================================================================
 // Memory Version Tool
@@ -1617,193 +1506,7 @@ export const memoryEntitiesTool: ToolDefinition = {
   }),
 };
 
-// =============================================================================
-// Memory Temporal Query Tool
-// =============================================================================
-
-const MemoryTemporalParams = z.object({
-  since: z.string().optional()
-    .describe("Start of time range. Relative: '30d', '2w', '6h', '90m'. Absolute: ISO date string. Default: 30 days ago."),
-  until: z.string().optional()
-    .describe("End of time range. Same format as 'since'. Default: now."),
-  entity: z.string().optional()
-    .describe("Filter by entity name (matches metadata.entities array)"),
-  category: z.enum(["conversation", "fact", "preference", "task", "decision", "note", "all"])
-    .optional().describe("Filter by category"),
-  domain: z.string().optional()
-    .describe("Filter by domain"),
-  topic: z.string().optional()
-    .describe("Filter by topic"),
-  query: z.string().optional()
-    .describe("Optional semantic query to refine results within time range"),
-  minConfidence: z.number().min(0).max(1).optional()
-    .describe("Minimum confidence filter for belief entries"),
-  limit: z.number().default(20)
-    .describe("Maximum results (default 20)"),
-});
-
-/** Parse relative time strings like '30d', '2w', '6h', '90m' to milliseconds offset */
-function parseRelativeTime(input: string): number | null {
-  const match = input.match(/^(\d+)(m|h|d|w)$/);
-  if (!match) return null;
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-  const multipliers: Record<string, number> = {
-    m: 60 * 1000,
-    h: 60 * 60 * 1000,
-    d: 24 * 60 * 60 * 1000,
-    w: 7 * 24 * 60 * 60 * 1000,
-  };
-  return value * (multipliers[unit] ?? 0);
-}
-
-/** Resolve a time parameter to a unix timestamp */
-function resolveTimeParam(input: string | undefined, defaultMs: number): number {
-  if (!input) return defaultMs;
-  const relativeMs = parseRelativeTime(input);
-  if (relativeMs !== null) {
-    return Date.now() - relativeMs;
-  }
-  const parsed = new Date(input).getTime();
-  if (isNaN(parsed)) return defaultMs;
-  return parsed;
-}
-
-export const memoryTemporalTool: ToolDefinition = {
-  id: "zee:memory-temporal",
-  category: "domain",
-  init: async () => ({
-    description: `Query memories by time range with optional filters. Use relative times like '30d' (30 days), '2w' (2 weeks), '6h' (6 hours), '90m' (90 minutes) or ISO dates. Combine with entity, category, domain, and semantic query filters.`,
-    parameters: MemoryTemporalParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { since, until, entity, category, domain, topic, query, minConfidence, limit } = args;
-
-      const now = Date.now();
-      const sinceMs = resolveTimeParam(since, now - 30 * 24 * 60 * 60 * 1000); // default 30d
-      const untilMs = resolveTimeParam(until, now);
-
-      const sinceLabel = since ?? "30d ago";
-      const untilLabel = until ?? "now";
-      ctx.metadata({ title: `Temporal: ${sinceLabel} to ${untilLabel}` });
-
-      try {
-        const store = getMemory();
-
-        if (query) {
-          // Semantic search with time range filter
-          const results = await store.search({
-            query,
-            namespace: "zee",
-            limit: limit ?? 20,
-            threshold: 0.3,
-            category: category && category !== "all" ? category as any : undefined,
-            domain,
-            topic,
-            timeRange: { start: sinceMs, end: untilMs },
-            minConfidence,
-          });
-
-          // Post-filter by entity if specified
-          const filtered = entity
-            ? results.filter((r) => {
-                const entities = r.entry.metadata?.entities ?? [];
-                return entities.some((e) =>
-                  e.toLowerCase().includes(entity.toLowerCase()),
-                );
-              })
-            : results;
-
-          if (filtered.length === 0) {
-            return {
-              title: "No Temporal Results",
-              metadata: { since: sinceLabel, until: untilLabel, count: 0 },
-              output: `No memories found between ${sinceLabel} and ${untilLabel}${entity ? ` for entity "${entity}"` : ""}.`,
-            };
-          }
-
-          const list = filtered.map((r, i) => {
-            const e = r.entry;
-            const date = new Date(e.createdAt).toLocaleString();
-            const preview = e.content.substring(0, 150);
-            const ellipsis = e.content.length > 150 ? "..." : "";
-            const score = (r.score * 100).toFixed(0);
-            const conf = e.confidence !== undefined ? ` [${(e.confidence * 100).toFixed(0)}% conf]` : "";
-            return `${i + 1}. [${e.category}] (${score}% match, ${date})${conf}
-   "${preview}${ellipsis}"
-   ID: ${e.id}`;
-          }).join("\n\n");
-
-          return {
-            title: `${filtered.length} Temporal Results`,
-            metadata: { since: sinceLabel, until: untilLabel, count: filtered.length },
-            output: `Memories from ${sinceLabel} to ${untilLabel}${entity ? ` about "${entity}"` : ""}:\n\n${list}`,
-          };
-        }
-
-        // No semantic query: use agentic search with time-based scroll
-        // Build filter for Qdrant scroll
-        const results = await store.agenticSearch({
-          domain: domain ?? "*",
-          topic,
-          namespace: "zee",
-          limit: limit ?? 20,
-        });
-
-        // Post-filter by time range and entity
-        const filtered = results.filter((r) => {
-          const t = r.entry.createdAt;
-          if (t < sinceMs || t > untilMs) return false;
-          if (entity) {
-            const entities = r.entry.metadata?.entities ?? [];
-            if (!entities.some((e) => e.toLowerCase().includes(entity.toLowerCase()))) return false;
-          }
-          if (category && category !== "all" && r.entry.category !== category) return false;
-          if (minConfidence !== undefined && (r.entry.confidence ?? 1) < minConfidence) return false;
-          return true;
-        });
-
-        if (filtered.length === 0) {
-          return {
-            title: "No Temporal Results",
-            metadata: { since: sinceLabel, until: untilLabel, count: 0 },
-            output: `No memories found between ${sinceLabel} and ${untilLabel}${entity ? ` for entity "${entity}"` : ""}.`,
-          };
-        }
-
-        const list = filtered.map((r, i) => {
-          const e = r.entry;
-          const date = new Date(e.createdAt).toLocaleString();
-          const preview = e.content.substring(0, 150);
-          const ellipsis = e.content.length > 150 ? "..." : "";
-          const conf = e.confidence !== undefined ? ` [${(e.confidence * 100).toFixed(0)}% conf]` : "";
-          return `${i + 1}. [${e.category}] (${date})${conf}
-   "${preview}${ellipsis}"
-   ID: ${e.id}`;
-        }).join("\n\n");
-
-        return {
-          title: `${filtered.length} Temporal Results`,
-          metadata: { since: sinceLabel, until: untilLabel, count: filtered.length },
-          output: `Memories from ${sinceLabel} to ${untilLabel}${entity ? ` about "${entity}"` : ""}:\n\n${list}`,
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-          return {
-            title: "Memory Unavailable",
-            metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
-          };
-        }
-        return {
-          title: "Temporal Query Error",
-          metadata: { error: errorMsg },
-          output: `Temporal query failed: ${errorMsg}`,
-        };
-      }
-    },
-  }),
-};
+// (memoryTemporalTool merged into memoryQueryTool above)
 
 // =============================================================================
 // Memory Belief Tool (Opinion Confidence)
@@ -2175,22 +1878,16 @@ export const planStatusTool: ToolDefinition = {
 
 export const ZEE_TOOLS = [
   memoryStoreTool,
-  memorySearchTool,
-  memoryBrowseTool,
-  memoryAgenticSearchTool,
+  memoryQueryTool,
   memoryVersionTool,
   memoryEntitiesTool,
-  memoryTemporalTool,
   memoryBeliefTool,
   memoryReflectTool,
   messagingTool,
-  notificationTool,
   calendarTool,
-  contactsTool,
   splitwiseTool,
   codexbarTool,
   whatsappReactionTool,
-  reminderStatusTool,
   bannerRefreshTool,
   bannerPushTool,
   planCreateTool,

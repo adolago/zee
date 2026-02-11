@@ -57,8 +57,8 @@ npx tsx scripts/zee-memory.ts search "John Q4" --limit 5
 
 **Recipient resolution rule**: When the user says "message <name>" without a phone number, resolve from memory first:
 
-1. Call `zee:memory-agentic-search` with `domain: "contacts"` and the person's name.
-2. If no results, try `zee:memory-search` with the person's name.
+1. Call `zee:memory-query` with `mode: "filter"`, `domain: "contacts"` and the person's name as query.
+2. If no results, try `zee:memory-query` with `mode: "search"` and the person's name as query.
 3. Only ask the user for a number if both searches return nothing.
 4. Once you have the number, call the messaging tool.
 
@@ -130,15 +130,11 @@ npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
 | Tool | Purpose |
 |------|---------|
 | `zee:memory-store` | Store facts, preferences, tasks, notes (with domain/topic, versioning, priority) |
-| `zee:memory-search` | Semantic search across memories (with domain/kind/priority filters) |
-| `zee:memory-browse` | Browse context tree: list domains, topics, subtopics, entries |
-| `zee:memory-agentic-search` | Filter-first retrieval by domain/topic with optional semantic refinement |
+| `zee:memory-query` | Unified memory retrieval: semantic search, tree browsing, and structured filtering |
 | `zee:memory-version` | View version history or rollback a memory to a previous version |
 | `zee:messaging` | Send text/audio/media on WhatsApp and Telegram |
-| `zee:notification` | Proactive alerts and reminders |
-| `zee:banner-refresh` | Refresh the always-on TUI banner (reminders, todos, messages) |
+| `zee:banner-refresh` | Refresh the always-on TUI banner (reminders, todos, messages). Use format "short" for one-line status. |
 | `zee:banner-push` | Push a message into the TUI banner |
-| `zee:reminder-status` | TUI banner with calendar/memory status |
 | `zee:browser-*` | Web automation with Chrome (see `tools-reference.md`) |
 | `zee:pty-*` | Interactive terminal sessions |
 | `zee:node-*` | Node host control |
@@ -218,24 +214,24 @@ Store memories with `domain/topic/subtopic` for hierarchical browsing:
 
 ```bash
 zee:memory-store { content: "JWT uses RS256", domain: "architecture", topic: "auth", subtopic: "jwt" }
-zee:memory-browse { action: "list-domains" }
-zee:memory-browse { action: "list-topics", domain: "architecture" }
-zee:memory-browse { action: "get-entries", domain: "architecture", topic: "auth" }
+zee:memory-query { mode: "browse", browseAction: "list-domains" }
+zee:memory-query { mode: "browse", browseAction: "list-topics", domain: "architecture" }
+zee:memory-query { mode: "browse", browseAction: "get-entries", domain: "architecture", topic: "auth" }
 ```
 
-### Agentic Search (Filter-First Retrieval)
+### Structured Filtering (Filter-First Retrieval)
 
 ```bash
-zee:memory-agentic-search { domain: "architecture" }
-zee:memory-agentic-search { domain: "architecture", query: "authentication flow" }
-zee:memory-agentic-search { domain: "work", kind: "curated", bookmarked: true }
+zee:memory-query { mode: "filter", domain: "architecture" }
+zee:memory-query { mode: "filter", domain: "architecture", query: "authentication flow" }
+zee:memory-query { mode: "filter", domain: "work", kind: "curated", bookmarked: true }
 ```
 
 ### Memory Search Strategy
 
-1. **Identity, contacts, phone numbers, personal facts** -- `zee:memory-agentic-search` with domain "contacts" or "identity"
-2. **Known domain queries** -- `zee:memory-agentic-search` with the domain name
-3. **Free-text, vague, exploratory** -- `zee:memory-search` (semantic similarity)
+1. **Identity, contacts, phone numbers, personal facts** -- `zee:memory-query` with mode "filter", domain "contacts" or "identity"
+2. **Known domain queries** -- `zee:memory-query` with mode "filter" and the domain name
+3. **Free-text, vague, exploratory** -- `zee:memory-query` with mode "search" (semantic similarity)
 4. **Last resort** -- tools auto-fallback to listing recent memories
 
 ### Version Control

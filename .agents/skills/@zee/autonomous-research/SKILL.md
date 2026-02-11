@@ -1,9 +1,9 @@
 ---
 name: autonomous-research
-description: Autonomous multi-step financial research with iterative validation and scratchpad logging
-version: 1.0.0
+description: Autonomous multi-step financial research with iterative validation and scratchpad logging. Covers fundamental analysis, market/sector analysis, and earnings intelligence.
+version: 2.0.0
 author: Artur
-tags: [finance, research, autonomous, stanley, analysis]
+tags: [finance, research, autonomous, stanley, analysis, earnings, market, sector]
 triggers:
   - deep research
   - autonomous research
@@ -13,6 +13,21 @@ triggers:
   - compare valuation
   - full analysis
   - research report
+  - stock research
+  - company analysis
+  - investment thesis
+  - fundamental analysis
+  - valuation
+  - market analysis
+  - sector rotation
+  - market overview
+  - macro outlook
+  - economic data
+  - earnings analysis
+  - earnings call
+  - earnings surprise
+  - estimate revisions
+  - quarterly results
 ---
 
 # Autonomous Research Loop
@@ -236,3 +251,49 @@ but only 7 count toward the iteration budget.
 cases, and confidence assessment.
 
 **Persist:** Store findings in memory for future reference. Close scratchpad.
+
+---
+
+## Research Modes
+
+The autonomous research loop above is the default mode. For focused analysis, use these specialized modes which follow the same phased approach but emphasize specific data gathering.
+
+### Fundamental Analysis Mode
+
+Focus: company-level financial deep dive.
+
+**Key data sources:**
+- `stanley:market-data` with `dataType: "fundamentals"` -- PE, PB, ROE, margins, growth
+- `stanley:market-data` with `dataType: "quote"` -- current price, market cap
+- `stanley:sec-filings` -- 10-K, 10-Q for detailed financials
+- `stanley:estimates` with `estimateType: "consensus"` -- analyst consensus
+- `stanley:segments` with `segmentType: "business"` -- revenue breakdown
+
+**Report sections:** Executive Summary, Business Overview, Financial Analysis (revenue trends, margins, ROE/ROIC), Valuation (DCF, comparables, historical multiples), Risks, Catalysts.
+
+### Market / Sector Analysis Mode
+
+Focus: macro conditions, sector rotation, cross-asset trends.
+
+**Key data sources:**
+- `stanley:market-data` with `dataType: "quote"` for index ETFs (SPY, QQQ, IWM, sector ETFs)
+- `stanley:market-data` with `dataType: "chart"` for trend analysis
+- `stanley:research` with `sources: ["news"]` for macro news
+- Web search for economic data (FRED, BLS releases)
+
+**Report sections:** Index Performance, Sector Leadership/Laggards, Money Flow, Risk-On vs Risk-Off Positioning, Forward Calendar.
+
+### Earnings Intelligence Mode
+
+Focus: pre/post-earnings analysis and estimate tracking.
+
+**Key data sources:**
+- `stanley:estimates` with `estimateType: "consensus"` -- EPS/revenue expectations
+- `stanley:estimates` with `estimateType: "forward_eps"` -- forward projections
+- `stanley:estimates` with `estimateType: "revisions"` -- estimate momentum
+- `stanley:market-data` with `dataType: "fundamentals"` -- historical earnings
+- `stanley:insider-trades` -- insider activity around earnings
+
+**Pre-earnings checklist:** consensus estimates, prior quarter results, estimate revision trend, insider activity, implied move from options.
+
+**Post-earnings checklist:** actual vs estimates (surprise), guidance changes, analyst revision direction, price reaction vs implied move.

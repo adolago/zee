@@ -41,6 +41,7 @@ const MAX_REMINDER_ITEMS = 6;
 const MAX_TODO_ITEMS = 6;
 
 const BannerRefreshParams = z.object({
+  format: z.enum(["full", "short"]).default("full").describe("full = rebuild all banner items; short = return a one-line status string (e.g. '3 reminders today' or 'Next: Meeting in 15 min')"),
   autoSave: z.boolean().default(false).describe("Write the banner to KV store for TUI display"),
   setupCron: z.boolean().default(false).describe("Create a cron job to auto-refresh the banner"),
   rotationMs: z.number().int().min(1000).max(60000).default(DEFAULT_ROTATION_MS).describe("Client-side rotation interval"),
@@ -358,12 +359,13 @@ export const bannerRefreshTool: ToolDefinition = {
 The banner rotates items and is displayed even when using other personas.
 
 Parameters:
+- format: "full" (default, rebuild all banner items) or "short" (one-line status: "3 reminders today" or "Next: Meeting in 15 min")
 - autoSave: Write to KV store for live TUI display (default: false)
 - setupCron: Create a cron job to auto-refresh (default: false)
 - rotationMs: Client-side rotation interval (default: 8000)`,
     parameters: BannerRefreshParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { autoSave, setupCron, rotationMs } = args;
+      const { format, autoSave, setupCron, rotationMs } = args;
       const now = new Date();
       const nowMs = now.getTime();
 
@@ -373,6 +375,46 @@ Parameters:
       if (setupCron) {
         cronResult = await createBannerRefreshCronJob();
         if (cronResult.metadata?.error) return cronResult;
+      }
+
+      // Short format: one-line status string (replaces old zee:reminder-status)
+      if (format === "short") {
+        const { items: reminderItems, calendarError } = await getReminderItems(now);
+        let statusMessage: string;
+
+        if (reminderItems.length === 0) {
+          statusMessage = calendarError ?? "Online.";
+        } else {
+          // Find next upcoming calendar event for detailed view
+          const nextCalendar = reminderItems.find((r) => r.text.startsWith("Calendar:"));
+          if (nextCalendar) {
+            statusMessage = nextCalendar.text;
+          } else {
+            statusMessage = `${reminderItems.length} reminder${reminderItems.length !== 1 ? "s" : ""} today`;
+          }
+        }
+
+        if (autoSave) {
+          const kv = await loadKV();
+          kv.zee_status_banner = statusMessage;
+          await saveKV(kv);
+        }
+
+        let output = statusMessage;
+        if (autoSave) output += "\n\n[Saved to KV store: zee_status_banner]";
+        if (cronResult) output += `\n\n${cronResult.output}`;
+
+        return {
+          title: "Reminder Status",
+          metadata: {
+            format,
+            reminderCount: reminderItems.length,
+            autoSave,
+            calendarError,
+            cronJobId: cronResult?.metadata?.jobId,
+          },
+          output,
+        };
       }
 
       const kv = await loadKV();

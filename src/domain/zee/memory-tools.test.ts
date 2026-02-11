@@ -1,8 +1,8 @@
 /**
- * Domain Memory Tools Tests (Gaps 3-5 + temporal)
+ * Domain Memory Tools Tests
  *
  * Tests tool execute() with real Memory backend:
- * - zee:memory-temporal: relative time queries, absolute ISO dates, entity filter
+ * - zee:memory-query: unified retrieval (search, browse, filter modes; time ranges; entity filter)
  * - zee:memory-entities: generate, list, read actions
  * - zee:memory-belief: reinforce, challenge, status actions
  * - zee:memory-reflect: triggers reflect job, returns results
@@ -60,7 +60,7 @@ import { resetMarkdownSync } from "../../memory/markdown-sync";
 import type { ToolExecutionContext, ToolExecutionResult } from "../../mcp/types";
 import {
   memoryStoreTool,
-  memoryTemporalTool,
+  memoryQueryTool,
   memoryEntitiesTool,
   memoryBeliefTool,
   memoryReflectTool,
@@ -254,30 +254,33 @@ describe("zee:memory-belief", () => {
   });
 });
 
-describe("zee:memory-temporal", () => {
-  it("queries with relative time (30d)", async () => {
+describe("zee:memory-query (temporal / filter modes)", () => {
+  it("queries with relative time (30d) via search mode", async () => {
     if (!qdrantAvailable) return;
 
-    const execute = await getExecute(memoryTemporalTool);
+    const execute = await getExecute(memoryQueryTool);
     const result = await execute({
+      mode: "search",
+      query: "test",
       since: "30d",
       limit: 10,
     }, makeCtx());
 
     // Should find the entries we stored (they were just created)
     expect(result.metadata).toBeDefined();
-    // The title indicates result count or "No Temporal Results"
     expect(typeof result.title).toBe("string");
   });
 
   it("queries with absolute ISO dates", async () => {
     if (!qdrantAvailable) return;
 
-    const execute = await getExecute(memoryTemporalTool);
+    const execute = await getExecute(memoryQueryTool);
     const yesterday = new Date(Date.now() - 86400000).toISOString();
     const tomorrow = new Date(Date.now() + 86400000).toISOString();
 
     const result = await execute({
+      mode: "search",
+      query: "test",
       since: yesterday,
       until: tomorrow,
       limit: 10,
@@ -286,7 +289,7 @@ describe("zee:memory-temporal", () => {
     expect(result.metadata).toBeDefined();
   });
 
-  it("filters by entity name", async () => {
+  it("filters by domain with query via filter mode", async () => {
     if (!qdrantAvailable) return;
 
     // First store an entry with entity metadata
@@ -300,8 +303,9 @@ describe("zee:memory-temporal", () => {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    const execute = await getExecute(memoryTemporalTool);
+    const execute = await getExecute(memoryQueryTool);
     const result = await execute({
+      mode: "filter",
       since: "1d",
       query: "Charlie project deadline",
       limit: 5,
@@ -313,8 +317,9 @@ describe("zee:memory-temporal", () => {
   it("combines query with minConfidence filter", async () => {
     if (!qdrantAvailable) return;
 
-    const execute = await getExecute(memoryTemporalTool);
+    const execute = await getExecute(memoryQueryTool);
     const result = await execute({
+      mode: "filter",
       since: "30d",
       query: "faster than",
       minConfidence: 0.5,
@@ -322,6 +327,19 @@ describe("zee:memory-temporal", () => {
     }, makeCtx());
 
     expect(result.metadata).toBeDefined();
+  });
+
+  it("browses domains via browse mode", async () => {
+    if (!qdrantAvailable) return;
+
+    const execute = await getExecute(memoryQueryTool);
+    const result = await execute({
+      mode: "browse",
+      browseAction: "list-domains",
+    }, makeCtx());
+
+    expect(result.metadata).toBeDefined();
+    expect(typeof result.output).toBe("string");
   });
 });
 

@@ -74,7 +74,7 @@ Memory saved with ID: ${entry.id}
 - Importance: ${((args.importance ?? 0.5) * 100).toFixed(0)}%
 ${args.tags?.length ? `- Tags: ${args.tags.join(", ")}` : ""}
 
-This memory can be recalled later using zee:memory-search.`
+This memory can be recalled later using zee:memory-query.`
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error)
 
@@ -149,7 +149,7 @@ Examples:
 
 ${formattedFallback}
 
-(These are recent memories, not similarity-ranked. Try zee:memory-agentic-search with a domain filter for structured lookups.)`
+(These are recent memories, not similarity-ranked. Try zee:memory-query with a domain filter for structured lookups.)`
         }
 
         return `No memories found matching: "${args.query}"
@@ -157,7 +157,7 @@ ${formattedFallback}
 Try:
 - Using different keywords
 - Removing category filters
-- Using zee:memory-agentic-search with domain/topic filters for structured data`
+- Using zee:memory-query with domain/topic filters for structured data`
       }
 
       const formattedResults = results

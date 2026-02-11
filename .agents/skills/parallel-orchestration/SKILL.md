@@ -139,7 +139,7 @@ zee:memory-store({
 })
 
 // Agent 2 retrieves and builds on it
-zee:memory-search({ query: "auth implementation" })
+zee:memory-query({ mode: "search", query: "auth implementation" })
 ```
 
 ## Task Tracking

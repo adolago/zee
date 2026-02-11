@@ -165,6 +165,28 @@ SSO sessions have timeouts. For long flows:
 2. Element refs change when the page updates
 3. Use descriptive parts of the ref (e.g., `button[Login]` not just `button[0]`)
 
+## agent-browser CLI (Alternative)
+
+When the native CDP tools are unavailable or for complex multi-step automations, use the `agent-browser` CLI:
+
+```bash
+npm install -g agent-browser && agent-browser install
+```
+
+Core workflow:
+```bash
+agent-browser open <url>        # Navigate
+agent-browser snapshot -i       # Get interactive elements with refs (@e1, @e2)
+agent-browser click @e1         # Click by ref
+agent-browser fill @e2 "text"   # Fill input by ref
+agent-browser screenshot        # Capture
+agent-browser close             # Close
+```
+
+Key commands: `open`, `snapshot`, `click`, `fill`, `type`, `press`, `select`, `hover`, `wait`, `screenshot`, `pdf`, `eval`, `tab`, `cookies`, `state save/load`, `record start/stop`.
+
+Use `--session <name>` for parallel browser sessions. Use `--json` for machine-readable output.
+
 ## See Also
 
 - `tools-reference.md` - Full tool documentation
