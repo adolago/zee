@@ -54,7 +54,7 @@ import {
   sanitizeSessionHistory,
   sanitizeToolsForGoogle,
 } from "./google.js";
-import { getDmHistoryLimitFromSessionKey, limitHistoryTurns } from "./history.js";
+import { getDmHistoryLimitFromSessionKey, limitHistoryBytes, limitHistoryTurns } from "./history.js";
 import { resolveGlobalLane, resolveSessionLane } from "./lanes.js";
 import { log } from "./logger.js";
 import { buildModelAliasLines, resolveModel } from "./model.js";
@@ -377,10 +377,11 @@ export async function compactEmbeddedPiSessionDirect(
         const validated = transcriptPolicy.validateAnthropicTurns
           ? validateAnthropicTurns(validatedGemini)
           : validatedGemini;
-        const limited = limitHistoryTurns(
+        const turnLimited = limitHistoryTurns(
           validated,
           getDmHistoryLimitFromSessionKey(params.sessionKey, params.config),
         );
+        const limited = limitHistoryBytes(turnLimited, undefined);
         if (limited.length > 0) {
           session.agent.replaceMessages(limited);
         }

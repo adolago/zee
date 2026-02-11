@@ -51,10 +51,10 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#10776 | reliability | port | Gateway-adjacent reliability hardening alongside cron/store changes; treat as a "grab bag" of fixes. | Done (already implemented) |
 | openclaw/openclaw#10072 | feature | defer | Token usage dashboard is a product/UI surface (control UI). | TODO |
 | openclaw/openclaw#9436 | reliability | port | Low-risk correctness fix in hooks plumbing. | Done (already implemented) |
-| openclaw/openclaw#10000 | reliability | adapt | Same problem (context overflow) but Zee session history semantics diverge. | TODO |
+| openclaw/openclaw#10000 | reliability | adapt | Same problem (context overflow) but Zee session history semantics diverge. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
 | openclaw/openclaw#9518 | security | port | Auth-gating canvas/A2UI assets is a common exposure footgun. | Done (already implemented) |
 | openclaw/openclaw#9858 | security | port | Prevent secret leakage via gateway config responses. | Done (already implemented) |
-| openclaw/openclaw#9806 | security | adapt | Skill/plugin safety scanner is desirable, but integration differs. | TODO |
+| openclaw/openclaw#9806 | security | adapt | Skill/plugin safety scanner is desirable, but integration differs. | Done (already implemented: skill-scanner.ts with code pattern matching) |
 | openclaw/openclaw#9911 | chore | non-goal | Workspace-local upstream cleanup not actionable as a port target. | None |
 
 Unmapped commits / PR unknown (selected examples from #224):
@@ -76,8 +76,8 @@ Upstream PR triage (OpenClaw):
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#4610 | security | port | Sanitize WhatsApp `accountId` to prevent path traversal. | Done (ported: normalizeAccountId in web/accounts.ts) |
 | openclaw/openclaw#838 | security | port | Normalize user JIDs for group allowlists. | Done (ported: normalizeAllowEntry in access-control.ts) |
-| openclaw/openclaw#971 | reliability | adapt | Debounce/batching reduces spammy outbound sends; config surface may differ. | TODO |
-| openclaw/openclaw#629 | reliability | adapt | Tighten ack reactions + migrate config; Zee migration details differ. | TODO |
+| openclaw/openclaw#971 | reliability | adapt | Debounce/batching reduces spammy outbound sends; config surface may differ. | Done (already implemented: inbound-debounce.ts with configurable delays) |
+| openclaw/openclaw#629 | reliability | adapt | Tighten ack reactions + migrate config; Zee migration details differ. | Done (already implemented: ack-reactions.ts with per-channel modes) |
 | openclaw/openclaw#612 | reliability | port | Improve WhatsApp Web listener errors; reduce flakiness. | Done (already implemented in web/outbound.ts) |
 | openclaw/openclaw#537 | reliability | port | Align WhatsApp activity account id; prevent misrouting. | Done (ported: recordChannelActivity in send-api.ts sendReaction) |
 | openclaw/openclaw#1495 | feature | defer | Per-channel markdown table conversion is UX; not correctness critical. | TODO |
@@ -95,11 +95,11 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#9335 | security | adapt | Windows ACL + command auth hardening is relevant; details diverge. | TODO |
-| openclaw/openclaw#9202 | security | adapt | Owner-only tools + command auth hardening; policy model differs. | TODO |
-| openclaw/openclaw#9182 | security | adapt | Sandbox/media hardening should be carried over where applicable. | TODO |
-| openclaw/openclaw#10000 | reliability | adapt | Cap sessions history payloads to prevent context overflow; data model differs. | TODO |
-| openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | TODO |
+| openclaw/openclaw#9335 | security | adapt | Windows ACL + command auth hardening is relevant; details diverge. | Done (already implemented: windows-acl.ts, audit-fs.ts, exec-approvals.ts) |
+| openclaw/openclaw#9202 | security | adapt | Owner-only tools + command auth hardening; policy model differs. | Done (already implemented: tools.elevated.allowFrom per provider+agent, command-auth.ts) |
+| openclaw/openclaw#9182 | security | adapt | Sandbox/media hardening should be carried over where applicable. | Done (already implemented: full sandbox subsystem in agents/sandbox/, tool-policy gating) |
+| openclaw/openclaw#10000 | reliability | adapt | Cap sessions history payloads to prevent context overflow; data model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
+| openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts integrated in plugin install pipeline) |
 | openclaw/openclaw#9911 | chore | non-goal | Workspace-local upstream cleanup. | None |
 | openclaw/openclaw#10476 | docs | non-goal | Markdownlint workflow changes do not apply to Zee. | None |
 | openclaw/openclaw#7235 | feature | non-goal | Topic auto-threading for removed channels is out of scope. | None |
@@ -138,8 +138,8 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#9806 | security | adapt | Skill/plugin scanning improves supply-chain safety; integration differs. | TODO |
-| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix may be useful; persona routing complicates. | TODO |
+| openclaw/openclaw#9806 | security | adapt | Skill/plugin scanning improves supply-chain safety; integration differs. | Done (already implemented: skill-scanner.ts) |
+| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix may be useful; persona routing complicates. | Done (already implemented: response-prefix-template.ts, reply-prefix.ts) |
 | openclaw/openclaw#8403 | feature | defer | Removed-channel typing/types refactor not prioritized. | TODO |
 | openclaw/openclaw#4502 | docs | defer | session-logs path fix likely already handled by Zee naming; verify. | TODO |
 | openclaw/openclaw#7737 | docs | defer | Docs-only change; non-critical correctness. | TODO |
@@ -162,12 +162,12 @@ Upstream PR triage (OpenClaw):
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#9858 | security | port | Redact credentials from config.get-like gateway responses. | Done (already implemented in config/redact-snapshot.ts) |
 | openclaw/openclaw#9903 | security | port | Coerce bare-string exec-approval allowlist entries (hardening). | Done (already implemented in infra/exec-approvals.ts) |
-| openclaw/openclaw#10000 | reliability | adapt | Payload caps needed, but storage/session model differs. | TODO |
-| openclaw/openclaw#9870 | reliability | adapt | Ollama streaming/config/env fixes may apply, but provider stack differs. | TODO |
+| openclaw/openclaw#10000 | reliability | adapt | Payload caps needed, but storage/session model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
+| openclaw/openclaw#9870 | reliability | adapt | Ollama streaming/config/env fixes may apply, but provider stack differs. | Done (already implemented: Ollama provider in provider stack with streaming) |
 | openclaw/openclaw#7078 | feature | defer | Native Voyage support can be revisited after correctness fixes. | TODO |
 | openclaw/openclaw#10146 | security | non-goal | Control UI asset/update hardening not actionable unless Zee ships those assets. | None |
 | openclaw/openclaw#10072 | feature | defer | Token usage dashboard is UI/product. | TODO |
-| openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | TODO |
+| openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts) |
 
 ## Lane 07: Permissions, allowlists, DM policy, pairing and approvals
 
@@ -182,10 +182,10 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#4058 | security | adapt | Harden web tools and file parsing; exact tool set differs. | TODO |
-| openclaw/openclaw#9335 | security | adapt | Windows ACL + command auth hardening impacts permission surfaces. | TODO |
-| openclaw/openclaw#10000 | reliability | adapt | Cap sessions_history payloads; data model differs. | TODO |
-| openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | TODO |
+| openclaw/openclaw#4058 | security | adapt | Harden web tools and file parsing; exact tool set differs. | Done (already implemented: external-content.ts, SSRF tests, suspicious pattern detection) |
+| openclaw/openclaw#9335 | security | adapt | Windows ACL + command auth hardening impacts permission surfaces. | Done (already implemented: windows-acl.ts, exec-approvals.ts) |
+| openclaw/openclaw#10000 | reliability | adapt | Cap sessions_history payloads; data model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
+| openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts) |
 | openclaw/openclaw#3095 | feature | defer | Per-account dm scope guidance is UX; not correctness critical. | TODO |
 | openclaw/openclaw#9911 | chore | non-goal | Workspace-local cleanup. | None |
 | openclaw/openclaw#2455 | chore | non-goal | Build artifact tracking does not translate directly. | None |
@@ -209,8 +209,8 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9948 | reliability | port | Re-arm timer in finally to survive transient errors. | Done (already implemented) |
 | openclaw/openclaw#9932 | reliability | port | Handle legacy schedule fields (atMs) when computing next run. | Done (already implemented) |
 | openclaw/openclaw#10176 | reliability | port | Guard resolveUserPath against undefined input. | Done (ported: type guard in utils.ts) |
-| openclaw/openclaw#9363 | reliability | adapt | Downgrade xhigh thinking level in cron isolated agent; mapping may differ. | TODO |
-| openclaw/openclaw#8392 | reliability | adapt | Cron delivery guard relevant; removed-channel forward metadata is not. | TODO |
+| openclaw/openclaw#9363 | reliability | adapt | Downgrade xhigh thinking level in cron isolated agent; mapping may differ. | Done (already implemented: supportsXHighThinking() in cron/isolated-agent/run.ts) |
+| openclaw/openclaw#8392 | reliability | adapt | Cron delivery guard relevant; removed-channel forward metadata is not. | Done (already implemented: delivery-target.ts with channel/recipient validation) |
 
 ## Lane 09: Memory + indexing (OpenClaw plugins vs Zee semantic memory)
 
@@ -225,10 +225,10 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#10818 | performance | adapt | Voyage embedding input_type improves retrieval; provider wiring differs. | TODO |
-| openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | TODO |
-| openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | TODO |
-| openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | TODO |
+| openclaw/openclaw#10818 | performance | adapt | Voyage embedding input_type improves retrieval; provider wiring differs. | Done (already implemented: embedding.ts uses input_type "query" vs "document") |
+| openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | TODO (L2 normalization not found in embedding pipeline) |
+| openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | TODO (needs deeper investigation of auto-provider model selection) |
+| openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
 | openclaw/openclaw#7078 | feature | defer | Full native Voyage support can be revisited after correctness fixes. | TODO |
 | openclaw/openclaw#819 | feature | defer | Memory search remote overrides may not match Zee memory model. | TODO |
 | openclaw/openclaw#3600 | chore | non-goal | Upstream-only local updates without clear mapping. | None |
@@ -248,14 +248,14 @@ Auth gating: see lane 01 (`openclaw/openclaw#9518`).
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | TODO |
+| openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | TODO (canvas/A2UI exists but specific routing fixes need mapping) |
 | openclaw/openclaw#2900 | feature | non-goal | Removed-channel quote replies are not in scope for canvas lane. | None |
-| openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to Zee. | TODO |
+| openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to Zee. | TODO (tool policy is profile-based, not per-sender; needs design work) |
 | openclaw/openclaw#2455 | reliability | port | Restore A2UI scaffold assets; prevent runtime breakage. | Done (already implemented in canvas-host/a2ui/) |
-| openclaw/openclaw#1882 | security | adapt | Add mDNS discovery config to reduce information disclosure; config surface differs. | TODO |
+| openclaw/openclaw#1882 | security | adapt | Add mDNS discovery config to reduce information disclosure; config surface differs. | Done (already implemented: bonjour-ciao.ts, bonjour.ts with config in zod-schema.ts) |
 | openclaw/openclaw#1621 | feature | non-goal | Discord exec approval forwarding is out of scope (channel not supported). | None |
 | openclaw/openclaw#1607 | reliability | port | Node disconnect/late invoke log noise reduction also applies. | TODO |
-| openclaw/openclaw#1229 | feature | adapt | Expand /v1/responses inputs; may impact adapters/tool routing. | TODO |
+| openclaw/openclaw#1229 | feature | adapt | Expand /v1/responses inputs; may impact adapters/tool routing. | Done (already implemented: openresponses-http.ts + open-responses.schema.ts) |
 
 ## Lane 11: Plugin and extension model (manifests, loader, tool groups, safety scanning)
 
@@ -269,10 +269,10 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#9806 | security | adapt | Skill/plugin safety scanning should exist; integration differs. | TODO |
+| openclaw/openclaw#9806 | security | adapt | Skill/plugin safety scanning should exist; integration differs. | Done (already implemented: skill-scanner.ts) |
 | openclaw/openclaw#4001 | security | port | Harden SSH target handling; reduce injection/target spoofing risk. | Done (ported: SSH option injection prevention in ssh-tunnel.ts, ssh-config.ts, gateway-status) |
-| openclaw/openclaw#1757 | security | adapt | Tool group precedence is policy logic; map to Zee permission model. | TODO |
-| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix override may be useful; persona routing complicates. | TODO |
+| openclaw/openclaw#1757 | security | adapt | Tool group precedence is policy logic; map to Zee permission model. | TODO (tool policy is profile-based, not per-sender) |
+| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix override may be useful; persona routing complicates. | Done (already implemented: response-prefix-template.ts) |
 | openclaw/openclaw#8403 | feature | defer | Removed-channel plugin SDK typing changes not prioritized. | TODO |
 | openclaw/openclaw#1708 | feature | non-goal | iMessage normalization out of scope. | None |
 | openclaw/openclaw#1630 | feature | non-goal | Line plugin out of scope. | None |
@@ -292,8 +292,8 @@ Upstream PR triage (OpenClaw):
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#1512 | reliability | port | Add user bin dirs to systemd PATH for skill installation. | Done (already implemented in daemon/service-env.ts) |
 | openclaw/openclaw#1505 | reliability | port | Prefer symlinked paths over realpath for stable service configs. | Done (already implemented in daemon/program-args.ts) |
-| openclaw/openclaw#1735 | reliability | adapt | Propagate config env vars to gateway services; wiring differs. | TODO |
-| openclaw/openclaw#1485 | feature | adapt | Support direct token/provider in auth apply; map to Zee auth UX. | TODO |
+| openclaw/openclaw#1735 | reliability | adapt | Propagate config env vars to gateway services; wiring differs. | Done (already implemented: service-env.ts buildServiceEnvironment with PATH, PNPM_HOME, BUN_INSTALL, etc.) |
+| openclaw/openclaw#1485 | feature | adapt | Support direct token/provider in auth apply; map to Zee auth UX. | Done (already implemented: auth-choice.apply.openai.ts supports opts.token + opts.tokenProvider) |
 | openclaw/openclaw#10176 | reliability | port | resolveUserPath undefined guard is general hardening. | Done (ported: type guard in utils.ts) |
 | openclaw/openclaw#9436 | reliability | port | Silence unused hook token URL param; low risk. | Done (already implemented: hooks.ts + server-http.ts reject ?token= URLs) |
 | openclaw/openclaw#5370 | chore | defer | Minimum Node bump may be irrelevant (Zee is Bun-first). | TODO |

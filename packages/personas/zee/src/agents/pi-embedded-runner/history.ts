@@ -2,6 +2,9 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 
 import type { ZeeConfig } from "../../config/config.js";
 
+/** Default byte cap for proactive session history trimming (3 MB). */
+const DEFAULT_MAX_HISTORY_BYTES = 3 * 1024 * 1024;
+
 const THREAD_SUFFIX_REGEX = /^(.*)(?::(?:thread|topic):\d+)$/i;
 
 function stripThreadSuffix(value: string): string {
@@ -32,6 +35,42 @@ export function limitHistoryTurns(
     }
   }
   return messages;
+}
+
+function jsonUtf8Bytes(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value), "utf8");
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Limits conversation history by total serialized byte size. Drops oldest
+ * messages first until the remaining messages fit within `maxBytes`.
+ * Always keeps at least one message (the most recent).
+ */
+export function limitHistoryBytes(
+  messages: AgentMessage[],
+  maxBytes: number | undefined,
+): AgentMessage[] {
+  const limit = maxBytes ?? DEFAULT_MAX_HISTORY_BYTES;
+  if (limit <= 0 || messages.length <= 1) return messages;
+
+  // Compute per-message byte sizes once.
+  const sizes = messages.map((m) => jsonUtf8Bytes(m));
+  let total = sizes.reduce((a, b) => a + b, 0);
+
+  if (total <= limit) return messages;
+
+  // Drop from the front (oldest) until we're within budget.
+  let start = 0;
+  while (total > limit && start < messages.length - 1) {
+    total -= sizes[start];
+    start += 1;
+  }
+
+  return messages.slice(start);
 }
 
 /**
