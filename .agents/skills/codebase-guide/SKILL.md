@@ -117,10 +117,9 @@ zee/
 Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 
 ```
-.agents/skills/@zee/                   Zee skills (29+ skills)
-.agents/skills/@codex/                 Codex automation (34 skills)
+.agents/skills/@zee/                   Zee skills (20+ skills)
+.agents/skills/@codex/                 Codex automation (31 skills)
 .agents/skills/@clawhub/               ClawHub marketplace skills
-.agents/skills/personas/               Persona catalog and tool reference
 .agents/skills/codebase-guide/         Architecture reference
 .agents/skills/parallel-orchestration/ Parallel task patterns
 ```
@@ -129,7 +128,7 @@ Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 
 1. **Skills go in `.agents/skills/`** - Follow Agent Skills standard
 2. **Domain tools go in `src/domain/`** - TypeScript implementations
-3. **Persona logic goes in `src/personas/`** - Knowledge graphs, strategies
+3. **Domain logic goes in `src/domain/`** - Knowledge graphs, strategies
 4. **Upstream syncs** - Zee syncs from opencode and openclaw upstreams periodically
 
 ## Persona Capabilities

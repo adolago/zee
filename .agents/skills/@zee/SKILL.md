@@ -293,6 +293,22 @@ After completing actions, store relevant results:
 - Trade decisions: domain "trades"
 - Study session summaries: domain "learning", topic <domain>
 
+## MCP Servers
+
+- `memory` - Qdrant-backed semantic memory
+- `calendar` - Google Calendar integration
+- `portfolio` - Portfolio tracking and analytics
+- `context7` - Library documentation search
+
+## Shared Skills
+
+- `auto-updater` - Daily auto-update of zee and skills via cron
+- `self-improving-agent` - Log learnings, errors, corrections
+- `tmux` - Remote-control tmux sessions
+- `humanizer` - Remove AI writing patterns
+- `markdown-converter` - Convert PDF/Word/Excel/HTML to Markdown
+- `clawddocs` - Documentation search and navigation
+
 ## Integration Points
 
 - **zee**: `/src/domain/zee/tools.ts`, `/src/domain/stanley/tools.ts`, `/src/domain/johny/tools.ts`
