@@ -6,8 +6,9 @@ import type { AgentInfo, ToolExecutionContext } from "@root/mcp/types"
 
 const WriteTool = defineTool("write", "builtin", {
   description: "write",
-  parameters: z.object({ filePath: z.string(), content: z.string() }),
-  execute: async (_args, _ctx) => ({ title: "write", metadata: {}, output: "ok" }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parameters: z.object({ filePath: z.string(), content: z.string() }) as any,
+  execute: async (_args: any, _ctx: any) => ({ title: "write", metadata: {}, output: "ok" }),
 })
 
 function makeAgent(): AgentInfo {
