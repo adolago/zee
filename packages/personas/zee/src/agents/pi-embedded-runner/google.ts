@@ -20,6 +20,68 @@ import type { TranscriptPolicy } from "../transcript-policy.js";
 import { resolveTranscriptPolicy } from "../transcript-policy.js";
 
 const GOOGLE_TURN_ORDERING_CUSTOM_TYPE = "google-turn-ordering-bootstrap";
+
+/**
+ * OpenAI-compatible providers (e.g. Kimi) require `reasoning_content` on ALL assistant messages
+ * when thinking is enabled. The AI SDK parses reasoning_content into `type: "reasoning"` parts
+ * but does NOT reconstruct the field when converting back to API format. It DOES, however, spread
+ * `providerOptions.openaiCompatible` into the message body via getOpenAIMetadata().
+ *
+ * This function injects `providerOptions.openaiCompatible.reasoning_content` on every assistant
+ * message so the field survives the round-trip. Only activates when the history already contains
+ * thinking blocks (i.e. thinking was previously enabled).
+ */
+export function injectOpenAIReasoningContent(messages: AgentMessage[]): AgentMessage[] {
+  // Only activate if at least one assistant message has a thinking block.
+  const hasThinking = messages.some((msg) => {
+    if (!msg || typeof msg !== "object" || msg.role !== "assistant") return false;
+    const assistant = msg as Extract<AgentMessage, { role: "assistant" }>;
+    if (!Array.isArray(assistant.content)) return false;
+    return assistant.content.some(
+      (block: any) => block && typeof block === "object" && block.type === "thinking",
+    );
+  });
+  if (!hasThinking) return messages;
+
+  let touched = false;
+  const out: AgentMessage[] = [];
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object" || msg.role !== "assistant") {
+      out.push(msg);
+      continue;
+    }
+    const assistant = msg as Extract<AgentMessage, { role: "assistant" }>;
+    if (!Array.isArray(assistant.content)) {
+      out.push(msg);
+      continue;
+    }
+    // Extract reasoning text from thinking blocks.
+    const reasoningText = assistant.content
+      .filter((block: any) => block && typeof block === "object" && block.type === "thinking")
+      .map((block: any) => (typeof block.thinking === "string" ? block.thinking : ""))
+      .join("");
+
+    const existing = (assistant as any).providerOptions?.openaiCompatible;
+    const alreadySet =
+      existing && typeof existing === "object" && "reasoning_content" in existing;
+    if (alreadySet) {
+      out.push(msg);
+      continue;
+    }
+    touched = true;
+    out.push({
+      ...assistant,
+      providerOptions: {
+        ...((assistant as any).providerOptions ?? {}),
+        openaiCompatible: {
+          ...(existing && typeof existing === "object" ? existing : {}),
+          reasoning_content: reasoningText || "",
+        },
+      },
+    } as AgentMessage);
+  }
+  return touched ? out : messages;
+}
 const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
   "patternProperties",
   "additionalProperties",
@@ -336,6 +398,16 @@ export async function sanitizeSessionHistory(params: {
     ? sanitizeToolUseResultPairing(sanitizedThinking)
     : sanitizedThinking;
 
+  // Inject reasoning_content for OpenAI-compatible providers that require it on all
+  // assistant messages when thinking is enabled (e.g. Kimi). Must run before
+  // downgradeOpenAIReasoningBlocks which may strip thinking blocks.
+  const isGoogleApi = isGoogleModelApi(params.modelApi);
+  const isAnthropicApi = params.modelApi === "anthropic-messages";
+  const needsReasoningInjection = !isGoogleApi && !isAnthropicApi;
+  const withReasoning = needsReasoningInjection
+    ? injectOpenAIReasoningContent(repairedTools)
+    : repairedTools;
+
   const isOpenAIResponsesApi =
     params.modelApi === "openai-responses" || params.modelApi === "openai-codex-responses";
   const hasSnapshot = Boolean(params.provider || params.modelApi || params.modelId);
@@ -350,8 +422,8 @@ export async function sanitizeSessionHistory(params: {
     : false;
   const sanitizedOpenAI =
     isOpenAIResponsesApi && modelChanged
-      ? downgradeOpenAIReasoningBlocks(repairedTools)
-      : repairedTools;
+      ? downgradeOpenAIReasoningBlocks(withReasoning)
+      : withReasoning;
 
   if (hasSnapshot && (!priorSnapshot || modelChanged)) {
     appendModelSnapshot(params.sessionManager, {
