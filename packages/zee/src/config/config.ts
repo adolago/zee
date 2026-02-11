@@ -1524,6 +1524,7 @@ export namespace Config {
         .object({
           auto: z.boolean().optional().describe("Enable automatic compaction when context is full (default: true)"),
           prune: z.boolean().optional().describe("Enable pruning of old tool outputs (default: true)"),
+          reserved: z.number().optional().describe("Number of tokens to reserve from the context window"),
         })
         .optional(),
       experimental: z

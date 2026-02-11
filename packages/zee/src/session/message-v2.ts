@@ -7,6 +7,7 @@ import { LSP } from "../lsp"
 import { Snapshot } from "@/snapshot"
 import { fn } from "@/util/fn"
 import { Storage } from "@/storage/storage"
+import { ProviderError } from "@/provider/error"
 import { ProviderTransform } from "@/provider/transform"
 import { STATUS_CODES } from "http"
 import { iife } from "@/util/iife"
@@ -37,6 +38,11 @@ export namespace MessageV2 {
     }),
   )
   export type APIError = z.infer<typeof APIError.Schema>
+
+  export const ContextOverflowError = NamedError.create(
+    "ContextOverflowError",
+    z.object({ message: z.string(), responseBody: z.string().optional() }),
+  )
 
   const PartBase = z.object({
     id: z.string(),
@@ -364,6 +370,7 @@ export namespace MessageV2 {
         NamedError.Unknown.Schema,
         OutputLengthError.Schema,
         AbortedError.Schema,
+        ContextOverflowError.Schema,
         APIError.Schema,
       ])
       .optional(),
@@ -382,6 +389,7 @@ export namespace MessageV2 {
     summary: z.boolean().optional(),
     cost: z.number(),
     tokens: z.object({
+      total: z.number().optional(),
       input: z.number(),
       output: z.number(),
       reasoning: z.number(),
@@ -704,6 +712,18 @@ export namespace MessageV2 {
           return `${msg}: ${e.responseBody}`
         }).trim()
 
+        // Detect context overflow before creating generic API error
+        const parsed = ProviderError.parseAPICallError({ providerID: ctx.providerID, error: e })
+        if (parsed.type === "context_overflow") {
+          return new MessageV2.ContextOverflowError(
+            {
+              message: parsed.message,
+              responseBody: parsed.responseBody,
+            },
+            { cause: e },
+          ).toObject()
+        }
+
         const metadata = e.url ? { url: e.url } : undefined
         return new MessageV2.APIError(
           {
@@ -719,7 +739,29 @@ export namespace MessageV2 {
       case e instanceof Error:
         return new NamedError.Unknown({ message: e.toString() }, { cause: e }).toObject()
       default:
-        return new NamedError.Unknown({ message: JSON.stringify(e) }, { cause: e })
+        try {
+          const parsed = ProviderError.parseStreamError(e)
+          if (parsed) {
+            if (parsed.type === "context_overflow") {
+              return new MessageV2.ContextOverflowError(
+                {
+                  message: parsed.message,
+                  responseBody: parsed.responseBody,
+                },
+                { cause: e },
+              ).toObject()
+            }
+            return new MessageV2.APIError(
+              {
+                message: parsed.message,
+                isRetryable: parsed.isRetryable,
+                responseBody: parsed.responseBody,
+              },
+              { cause: e },
+            ).toObject()
+          }
+        } catch {}
+        return new NamedError.Unknown({ message: JSON.stringify(e) }, { cause: e }).toObject()
     }
   }
 }

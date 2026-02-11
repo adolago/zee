@@ -6,7 +6,7 @@ import { Instance } from "../project/instance"
 import { Provider } from "../provider/provider"
 import { MessageV2 } from "./message-v2"
 import z from "zod"
-import { SessionPrompt } from "./prompt"
+
 import { Token } from "../util/token"
 import { Log } from "../util/log"
 import { SessionProcessor } from "./processor"
@@ -34,15 +34,22 @@ export namespace SessionCompaction {
     ),
   }
 
+  const COMPACTION_BUFFER = 20_000
+
   export async function isOverflow(input: { tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) {
     const config = await Config.get()
     if (config.compaction?.auto === false) return false
     const context = input.model.limit.context
     if (context === 0) return false
-    const count = input.tokens.input + input.tokens.cache.read + input.tokens.output
-    const output = Math.min(input.model.limit.output, SessionPrompt.OUTPUT_TOKEN_MAX) || SessionPrompt.OUTPUT_TOKEN_MAX
-    const usable = input.model.limit.input || context - output
-    return count > usable
+
+    const count =
+      input.tokens.total ||
+      input.tokens.input + input.tokens.output + input.tokens.cache.read + input.tokens.cache.write
+
+    const reserved =
+      config.compaction?.reserved ?? Math.min(COMPACTION_BUFFER, input.model.limit.output || COMPACTION_BUFFER)
+    const usable = input.model.limit.input ? input.model.limit.input - reserved : context - reserved
+    return count >= usable
   }
 
   export const PRUNE_MINIMUM = 20_000

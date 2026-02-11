@@ -84,13 +84,15 @@ describe("session.compaction.isOverflow", () => {
     })
   })
 
-  test("includes cache.read in token count", async () => {
+  test("includes cache.read and cache.write in token count", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
+        // reserved = min(20K, 32K) = 20K, usable = 100K - 20K = 80K
+        // count = 60K + 10K + 5K + 6K = 81K >= 80K = true
         const model = createModel({ context: 100_000, output: 32_000 })
-        const tokens = { input: 50_000, output: 10_000, reasoning: 0, cache: { read: 10_000, write: 0 } }
+        const tokens = { input: 60_000, output: 10_000, reasoning: 0, cache: { read: 5_000, write: 6_000 } }
         expect(await SessionCompaction.isOverflow({ tokens, model })).toBe(true)
       },
     })
@@ -128,6 +130,20 @@ describe("session.compaction.isOverflow", () => {
         const model = createModel({ context: 200_000, input: 120_000, output: 10_000 })
         const tokens = { input: 50_000, output: 9_999, reasoning: 0, cache: { read: 0, write: 0 } }
         expect(await SessionCompaction.isOverflow({ tokens, model })).toBe(false)
+      },
+    })
+  })
+
+  test("uses tokens.total when available", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        // reserved = min(20K, 32K) = 20K, usable = 100K - 20K = 80K
+        // tokens.total = 85K >= 80K = true (even though component sum would be lower)
+        const model = createModel({ context: 100_000, output: 32_000 })
+        const tokens = { total: 85_000, input: 40_000, output: 5_000, reasoning: 0, cache: { read: 0, write: 0 } }
+        expect(await SessionCompaction.isOverflow({ tokens, model })).toBe(true)
       },
     })
   })
