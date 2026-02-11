@@ -81,8 +81,11 @@ export interface AgentConfig {
   /** Display color (hex or named) */
   color?: string;
 
-  /** Permission configuration */
+  /** Permission configuration (old format) */
   permission: AgentPermission;
+
+  /** PermissionNext.Ruleset format - preferred over old-style permission */
+  permissionRuleset?: Array<{ permission: string; pattern: string; action: string }>;
 
   /** Override model for this agent */
   model?: {

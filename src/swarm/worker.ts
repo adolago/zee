@@ -12,13 +12,21 @@ export class Worker extends EventEmitter {
   readonly name: string;
   readonly prompt: string;
   readonly persona: "zee" | "stanley" | "johny";
+  readonly taskId?: string;
+  readonly timeoutMs?: number;
+  readonly attempt: number;
+  readonly env?: Record<string, string>;
+  readonly permissionScope?: "full" | "readonly" | "explore";
 
   private process: ChildProcess | null = null;
   private output: string[] = [];
   private status: WorkerStatus = "idle";
   private startedAt?: Date;
   private completedAt?: Date;
+  private lastHeartbeatAt?: Date;
   private error?: string;
+  private timeoutTimer: NodeJS.Timeout | undefined;
+  private heartbeatTimer: NodeJS.Timeout | undefined;
 
   constructor(config: WorkerConfig) {
     super();
@@ -26,6 +34,11 @@ export class Worker extends EventEmitter {
     this.name = config.name;
     this.prompt = config.prompt;
     this.persona = config.persona ?? "zee";
+    this.taskId = config.taskId;
+    this.timeoutMs = config.timeoutMs;
+    this.attempt = Math.max(1, config.attempt ?? 1);
+    this.env = config.env;
+    this.permissionScope = config.permissionScope;
   }
 
   /**
@@ -38,6 +51,7 @@ export class Worker extends EventEmitter {
 
     this.status = "running";
     this.startedAt = new Date();
+    this.lastHeartbeatAt = this.startedAt;
     this.output = [];
     this.error = undefined;
 
@@ -46,39 +60,70 @@ export class Worker extends EventEmitter {
     // Persona identity flows to subagent (mini-persona pattern)
     this.process = spawn(
       "zee",
-      ["prompt", "--agent", this.persona, "--no-tui", this.prompt],
+      [
+        "prompt",
+        "--agent", this.persona,
+        ...(this.permissionScope && this.permissionScope !== "full"
+          ? ["--permission-scope", this.permissionScope]
+          : []),
+        "--no-tui",
+        this.prompt,
+      ],
       {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
+          ...(this.env ?? {}),
           ZEE_WORKER_ID: this.id,
           ZEE_WORKER_NAME: this.name,
           ZEE_PERSONA: this.persona,
-          // Subagent inherits parent persona identity
           ZEE_IS_SUBAGENT: "true",
-          // Legacy env keys (deprecated).
-          AGENT_CORE_WORKER_ID: this.id,
-          AGENT_CORE_WORKER_NAME: this.name,
-          AGENT_CORE_PERSONA: this.persona,
-          AGENT_CORE_IS_SUBAGENT: "true",
+          ...(this.permissionScope ? { ZEE_PERMISSION_SCOPE: this.permissionScope } : {}),
+          ...(this.taskId ? { ZEE_TASK_ID: this.taskId } : {}),
         },
       }
     );
 
+    if (this.timeoutMs && this.timeoutMs > 0) {
+      this.timeoutTimer = setTimeout(() => {
+        if (this.status !== "running") return;
+        this.status = "failed";
+        this.error = `Task timed out after ${this.timeoutMs}ms`;
+        this.emit("error", this.createMessage("error", this.error));
+        this.process?.kill("SIGTERM");
+      }, this.timeoutMs);
+    }
+
+    // Emit periodic heartbeats so the daemon can track liveness.
+    this.heartbeatTimer = setInterval(() => {
+      if (this.status !== "running") return;
+      this.lastHeartbeatAt = new Date();
+      this.emit("heartbeat", this.createMessage("heartbeat", "alive"));
+    }, 5000);
+    this.heartbeatTimer.unref?.();
+
     this.process.stdout?.on("data", (data) => {
       const text = data.toString();
       this.output.push(text);
+      this.lastHeartbeatAt = new Date();
       this.emit("output", this.createMessage("output", text));
     });
 
     this.process.stderr?.on("data", (data) => {
       const text = data.toString();
       this.output.push(`[stderr] ${text}`);
+      this.lastHeartbeatAt = new Date();
       this.emit("output", this.createMessage("output", `[stderr] ${text}`));
     });
 
     this.process.on("close", (code) => {
+      this.clearTimers();
       this.completedAt = new Date();
+
+      // Error was already emitted earlier (e.g., timeout), avoid duplicate failures.
+      if (this.status === "failed" && this.error) {
+        return;
+      }
 
       // Preserve aborted status - don't overwrite with completed/failed
       if (this.status === "aborted") {
@@ -97,6 +142,7 @@ export class Worker extends EventEmitter {
     });
 
     this.process.on("error", (err) => {
+      this.clearTimers();
       this.status = "failed";
       this.error = err.message;
       this.completedAt = new Date();
@@ -116,6 +162,7 @@ export class Worker extends EventEmitter {
     }
 
     this.status = "aborted";
+    this.clearTimers();
     this.emit("status", this.createMessage("status", "aborted"));
 
     const proc = this.process;
@@ -144,10 +191,16 @@ export class Worker extends EventEmitter {
   getState(): WorkerState {
     return {
       id: this.id,
+      name: this.name,
+      persona: this.persona,
+      taskId: this.taskId,
+      pid: this.process?.pid,
+      attempt: this.attempt,
       status: this.status,
       output: this.output,
       startedAt: this.startedAt,
       completedAt: this.completedAt,
+      lastHeartbeatAt: this.lastHeartbeatAt,
       error: this.error,
     };
   }
@@ -204,5 +257,16 @@ export class Worker extends EventEmitter {
       data,
       timestamp: new Date(),
     };
+  }
+
+  private clearTimers(): void {
+    if (this.timeoutTimer) {
+      clearTimeout(this.timeoutTimer);
+      this.timeoutTimer = undefined;
+    }
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = undefined;
+    }
   }
 }

@@ -39,7 +39,8 @@ test("zee agent has correct default properties", async () => {
       expect(zee).toBeDefined()
       expect(zee?.native).toBe(true)
       expect(evalPerm(zee, "edit")).toBe("allow")
-      expect(evalPerm(zee, "bash")).toBe("allow")
+      // Bash defaults to "ask" per ZEE persona permissionRuleset (git:* is allow, * is ask)
+      expect(evalPerm(zee, "bash")).toBe("ask")
     },
   })
 })

@@ -52,8 +52,16 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
   }
 
   // Semantic mapping for when there's no caller context
-  // This maps external agent types to the most appropriate persona
+  // This maps external agent types to the most appropriate persona or scoped subagent
   const semanticMap: Record<string, string> = {
+    // Scoped subagent modes (read-only / limited scope)
+    explore: "explore",
+    Explore: "explore",
+    plan: "plan",
+    Plan: "plan",
+    general: "general",
+    "general-purpose": "general",
+
     // Research/analysis → Stanley
     researcher: "stanley",
     analyst: "stanley",
@@ -67,7 +75,6 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     reviewer: "zee",
     optimizer: "zee",
     coordinator: "zee",
-    general: "zee",
 
     // Learning/teaching → Johny
     tutor: "johny",

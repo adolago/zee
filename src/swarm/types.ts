@@ -4,21 +4,35 @@
  */
 
 export type WorkerStatus = "idle" | "running" | "completed" | "failed" | "aborted";
+export type Persona = "zee" | "stanley" | "johny";
 
 export interface WorkerConfig {
   id: string;
   name: string;
   prompt: string;
-  persona?: "zee" | "stanley" | "johny";
+  persona?: Persona;
+  taskId?: string;
+  timeoutMs?: number;
+  attempt?: number;
+  env?: Record<string, string>;
   pane?: boolean; // Open in WezTerm pane
+  /** Permission scope override. Passed as ZEE_PERMISSION_SCOPE env var.
+   *  Values: "full" (default) | "readonly" | "explore" */
+  permissionScope?: "full" | "readonly" | "explore";
 }
 
 export interface WorkerState {
   id: string;
+  name: string;
+  persona: Persona;
+  taskId?: string;
+  pid?: number;
+  attempt: number;
   status: WorkerStatus;
   output: string[];
   startedAt?: Date;
   completedAt?: Date;
+  lastHeartbeatAt?: Date;
   error?: string;
 }
 
@@ -37,7 +51,7 @@ export interface SwarmResult {
 }
 
 export interface WorkerMessage {
-  type: "output" | "complete" | "error" | "status";
+  type: "output" | "complete" | "error" | "status" | "heartbeat";
   workerId: string;
   data: string;
   timestamp: Date;

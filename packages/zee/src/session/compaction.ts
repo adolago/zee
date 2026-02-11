@@ -25,6 +25,13 @@ export namespace SessionCompaction {
         sessionID: z.string(),
       }),
     ),
+    CompactionSummary: BusEvent.define(
+      "session.compaction.summary",
+      z.object({
+        sessionID: z.string(),
+        summary: z.string(),
+      }),
+    ),
   }
 
   export async function isOverflow(input: { tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) {
@@ -197,6 +204,29 @@ export namespace SessionCompaction {
     }
     if (processor.message.error) return "stop"
     Bus.publish(Event.Compacted, { sessionID: input.sessionID })
+
+    // Feed compaction summary to memory system via event bus
+    try {
+      const compactionMessages = await Session.messages({ sessionID: input.sessionID })
+      const summaryMsg = compactionMessages.findLast(
+        (m: any) => m.info.role === "assistant" && m.info.summary,
+      )
+      if (summaryMsg) {
+        const summaryText = summaryMsg.parts
+          .filter((p: any) => p.type === "text")
+          .map((p: any) => p.text)
+          .join("\n")
+        if (summaryText) {
+          Bus.publish(Event.CompactionSummary, {
+            sessionID: input.sessionID,
+            summary: summaryText,
+          })
+        }
+      }
+    } catch {
+      // Memory integration not available - graceful degradation
+    }
+
     return "continue"
   }
 

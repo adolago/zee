@@ -35,7 +35,7 @@ import {
   CONTINUITY_MAX_KEY_FACTS,
 } from "../config/constants";
 import { getMemoryEmbeddingConfig, getMemoryQdrantConfig, getMemoryRerankerConfig } from "../config/runtime";
-import { Log } from "../../packages/zee-core/src/util/log";
+import { Log } from "../../packages/zee/src/util/log";
 import { SqliteFtsStore, type FtsConfig, type FtsEntry } from "./sqlite-fts";
 import { mergeHybridResults, type HybridSearchConfig, type HybridSearchResult } from "./hybrid";
 import { getMarkdownSync, type MarkdownSyncConfig } from "./markdown-sync";
@@ -2543,4 +2543,38 @@ export async function getMemoryAsync(config?: Partial<MemoryConfig>): Promise<Me
 export function resetMemory(): void {
   _instance = null;
   _initPromise = null;
+}
+
+/**
+ * Subscribe to session compaction summaries and persist them as memories.
+ * Uses LLM-generated compaction summary instead of heuristic extraction.
+ *
+ * @param subscribeFn - A function that registers a callback for bus events.
+ *   Accepts the event definition and a callback receiving { type, properties }.
+ *   Typically pass `Bus.subscribe` from `packages/zee/src/bus`.
+ */
+export function subscribeToCompaction(subscribeFn: (
+  def: any,
+  callback: (event: { type: string; properties: { sessionID: string; summary: string } }) => void,
+) => void, eventDef: any): void {
+  subscribeFn(eventDef, async (event) => {
+    const { sessionID, summary } = event.properties;
+    try {
+      const memory = await getMemory();
+      await memory.save({
+        content: summary,
+        category: "conversation",
+        metadata: {
+          sessionId: sessionID,
+          tags: ["compaction_summary"],
+          extra: { timestamp: Date.now() },
+        },
+      });
+      log.info("Saved compaction summary to memory", { sessionID });
+    } catch (e) {
+      log.warn("Failed to save compaction summary to memory", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  });
 }

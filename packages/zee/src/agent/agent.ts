@@ -12,7 +12,7 @@ import PROMPT_GENERATE from "./generate.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
-// NOTE: PROMPT_EXPLORE removed - explore agent replaced by Personas system
+import PROMPT_EXPLORE from "./prompt/explore.txt"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
@@ -50,7 +50,7 @@ async function loadPersonaModule(): Promise<PersonaModule | null> {
 /**
  * Load persona bootstrap data from src/agent/personas.
  * Uses dynamic import to handle different build scenarios gracefully.
- * Falls back to empty personas if load fails (allows agent-core to start without personas).
+ * Falls back to empty personas if load fails (allows Zee to start without personas).
  */
 async function loadPersonaBootstrap(): Promise<{ PERSONAS: any; AGENT_CONFIGS: any }> {
   if (personaBootstrapCache) {
@@ -205,10 +205,6 @@ export namespace Agent {
     }
     const defaults = buildDefaults()
 
-    // NOTE: Built-in agents (build, plan, general, explore) removed.
-    // agent-core uses the Personas system (Zee, Stanley, Johny) defined in .agents/skills/
-    // Custom agents are loaded from config and skill files.
-
     // System agents (compaction, title, summary) have fixed permissions that cannot be
     // overridden by user config. These are internal system functions that should never
     // have access to tools.
@@ -245,6 +241,75 @@ export namespace Agent {
         permission: systemDenyAll,
         prompt: PROMPT_SUMMARY,
       },
+    }
+
+    // Scoped subagent modes - available to all personas
+    // These provide read-only or limited-scope variants for task spawning
+    result["explore"] = {
+      name: "explore",
+      description: "Fast agent for exploring codebases - read-only, no edits",
+      mode: "subagent",
+      native: true,
+      hidden: false,
+      permission: PermissionNext.merge(
+        defaults,
+        PermissionNext.fromConfig({
+          "*": "deny",
+          grep: "allow",
+          glob: "allow",
+          list: "allow",
+          bash: "allow",
+          webfetch: "allow",
+          websearch: "allow",
+          codesearch: "allow",
+          read: "allow",
+          external_directory: { [Truncate.DIR]: "allow", [Truncate.GLOB]: "allow" },
+        }),
+        user,
+      ),
+      prompt: PROMPT_EXPLORE,
+      options: {},
+    }
+    result["plan"] = {
+      name: "plan",
+      description: "Agent for designing implementation plans - read-only except plan files",
+      mode: "subagent",
+      native: true,
+      hidden: false,
+      permission: PermissionNext.merge(
+        defaults,
+        PermissionNext.fromConfig({
+          "*": "deny",
+          grep: "allow",
+          glob: "allow",
+          list: "allow",
+          bash: "allow",
+          read: "allow",
+          webfetch: "allow",
+          websearch: "allow",
+          codesearch: "allow",
+          edit: "allow",
+          external_directory: { [Truncate.DIR]: "allow", [Truncate.GLOB]: "allow" },
+        }),
+        user,
+      ),
+      options: {},
+    }
+    result["general"] = {
+      name: "general",
+      description: "General-purpose agent for researching complex questions and multi-step tasks",
+      mode: "subagent",
+      native: true,
+      hidden: false,
+      permission: PermissionNext.merge(
+        defaults,
+        PermissionNext.fromConfig({
+          todoread: "deny",
+          todowrite: "deny",
+        }),
+        user,
+      ),
+      options: {},
     }
 
     // Bootstrap personas from src/agent/personas.ts
@@ -285,6 +350,22 @@ export namespace Agent {
       }
       const systemPromptAdditions = [identityPrompt, personaConfig.systemPromptAdditions].filter(Boolean).join("\n\n")
 
+      // Use permissionRuleset (PermissionNext format) directly when available.
+      // Permission chain: base -> persona -> user -> security defaults
+      // This ensures user config always overrides persona defaults,
+      // and security defaults are applied last for unconfigured permissions.
+      const personaPermission: PermissionNext.Ruleset = agentConfig.permissionRuleset ?? []
+      const personaDefaults = (() => {
+        const result = [...basePermissions, ...personaPermission, ...user]
+        if (!userHasPermission("doom_loop")) {
+          result.push(...securityDefaults.filter((r) => r.permission === "doom_loop"))
+        }
+        if (!userHasPermission("external_directory")) {
+          result.push(...securityDefaults.filter((r) => r.permission === "external_directory"))
+        }
+        return result
+      })()
+
       result[personaId] = {
         name: personaId,
         description: agentConfig.description,
@@ -298,8 +379,7 @@ export namespace Agent {
         temperature: agentConfig.temperature,
         modelParams: agentConfig.modelParams,
         color: agentConfig.color,
-        // defaults already includes user global permissions
-        permission: [...defaults],
+        permission: personaDefaults,
         options: agentConfig.options ?? {},
         // Persona-specific fields
         systemPromptAdditions,
@@ -351,6 +431,26 @@ export namespace Agent {
       const identityPrompt = personaIdentityPrompts[key]
       if (identityPrompt && value.systemPromptAdditions !== undefined) {
         item.systemPromptAdditions = [identityPrompt, item.systemPromptAdditions].filter(Boolean).join("\n\n")
+      }
+    }
+
+    // Apply permission scope overrides from worker environment
+    const permissionScope = process.env.ZEE_PERMISSION_SCOPE
+    if (permissionScope === "readonly") {
+      for (const name in result) {
+        if (result[name].mode !== "primary") continue
+        result[name].permission = PermissionNext.merge(
+          result[name].permission,
+          PermissionNext.fromConfig({
+            edit: "deny",
+            bash: { "*": "ask", "git log*": "allow", "git diff*": "allow", "git status*": "allow", "ls*": "allow" },
+          }),
+        )
+      }
+    } else if (permissionScope === "explore") {
+      for (const name in result) {
+        if (result[name].mode !== "primary") continue
+        result[name].permission = result["explore"]?.permission ?? result[name].permission
       }
     }
 
