@@ -16,6 +16,7 @@ import { MessageV2 } from "./message-v2"
 import { Instance } from "../project/instance"
 import { SessionPrompt } from "./prompt"
 import { fn } from "@/util/fn"
+import { iife } from "@/util/iife"
 import { Command } from "../command"
 import { Snapshot } from "@/snapshot"
 
@@ -444,28 +445,53 @@ export namespace Session {
       metadata: z.custom<ProviderMetadata>().optional(),
     }),
     (input) => {
-      const cachedInputTokens = input.usage.cachedInputTokens ?? 0
-      const excludesCachedTokens = !!input.metadata?.["anthropic"]
-      const adjustedInputTokens = excludesCachedTokens
-        ? (input.usage.inputTokens ?? 0)
-        : (input.usage.inputTokens ?? 0) - cachedInputTokens
       const safe = (value: number) => {
         if (!Number.isFinite(value)) return 0
         return value
       }
-      const cacheWriteTokens =
+      const inputTokens = safe(input.usage.inputTokens ?? 0)
+      const outputTokens = safe(input.usage.outputTokens ?? 0)
+      const reasoningTokens = safe(input.usage.reasoningTokens ?? 0)
+
+      const cacheReadInputTokens = safe(input.usage.cachedInputTokens ?? 0)
+      const cacheWriteInputTokens = safe(
         (input.metadata?.["anthropic"]?.["cacheCreationInputTokens"] ??
+          // @ts-expect-error
+          input.metadata?.["bedrock"]?.["usage"]?.["cacheWriteInputTokens"] ??
+          // @ts-expect-error
+          input.metadata?.["venice"]?.["usage"]?.["cacheCreationInputTokens"] ??
           input.metadata?.["venice"]?.["cacheWriteInputTokens"] ??
           input.metadata?.["venice"]?.["cacheCreationInputTokens"] ??
-          0) as number
+          0) as number,
+      )
+
+      // Anthropic/Bedrock report inputTokens excluding cached tokens.
+      // Other providers (OpenRouter, OpenAI, Gemini, etc.) include cached tokens in inputTokens.
+      const excludesCachedTokens = !!(input.metadata?.["anthropic"] || input.metadata?.["bedrock"])
+      const adjustedInputTokens = safe(
+        excludesCachedTokens ? inputTokens : inputTokens - cacheReadInputTokens - cacheWriteInputTokens,
+      )
+
+      // Anthropic/Bedrock don't provide accurate total_tokens; compute from components.
+      const total = iife(() => {
+        if (
+          input.model.api.npm === "@ai-sdk/anthropic" ||
+          input.model.api.npm === "@ai-sdk/amazon-bedrock" ||
+          input.model.api.npm === "@ai-sdk/google-vertex/anthropic"
+        ) {
+          return adjustedInputTokens + outputTokens + cacheReadInputTokens + cacheWriteInputTokens
+        }
+        return input.usage.totalTokens
+      })
 
       const tokens = {
-        input: safe(adjustedInputTokens),
-        output: safe(input.usage.outputTokens ?? 0),
-        reasoning: safe(input.usage?.reasoningTokens ?? 0),
+        total,
+        input: adjustedInputTokens,
+        output: outputTokens,
+        reasoning: reasoningTokens,
         cache: {
-          write: safe(cacheWriteTokens),
-          read: safe(cachedInputTokens),
+          write: cacheWriteInputTokens,
+          read: cacheReadInputTokens,
         },
       }
 

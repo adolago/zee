@@ -30,6 +30,15 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createOpenaiCompatible as createPatchedOpenAI } from "./sdk/openai-compatible/src"
+import { createXai } from "@ai-sdk/xai"
+import { createMistral } from "@ai-sdk/mistral"
+import { createGroq } from "@ai-sdk/groq"
+import { createDeepInfra } from "@ai-sdk/deepinfra"
+import { createCerebras } from "@ai-sdk/cerebras"
+import { createCohere } from "@ai-sdk/cohere"
+import { createTogetherAI } from "@ai-sdk/togetherai"
+import { createPerplexity } from "@ai-sdk/perplexity"
+import { createAzure } from "@ai-sdk/azure"
 import { ProviderTransform } from "./transform"
 import { dedup, hasDedupParser } from "./dedup"
 
@@ -99,11 +108,20 @@ export namespace Provider {
 
   const BUNDLED_PROVIDERS: Record<string, (options: any) => ProviderSDK> = {
     "@ai-sdk/anthropic": createAnthropic,
+    "@ai-sdk/azure": createAzure,
+    "@ai-sdk/cerebras": createCerebras,
+    "@ai-sdk/cohere": createCohere,
+    "@ai-sdk/deepinfra": createDeepInfra,
     "@ai-sdk/google": createGoogleGenerativeAI,
+    "@ai-sdk/groq": createGroq,
+    "@ai-sdk/mistral": createMistral,
     // Use custom OpenAI wrapper with GPT-5 stream completion fix
     // @ts-ignore - types from custom wrapper don't match SDK factory signature
     "@ai-sdk/openai": createPatchedOpenAI,
     "@ai-sdk/openai-compatible": createOpenAICompatible,
+    "@ai-sdk/perplexity": createPerplexity,
+    "@ai-sdk/togetherai": createTogetherAI,
+    "@ai-sdk/xai": createXai,
     "@openrouter/ai-sdk-provider": createOpenRouter,
   }
 
@@ -143,6 +161,19 @@ export namespace Provider {
             ...clientHeaders(),
           },
         },
+      }
+    },
+    azure: async () => {
+      return {
+        autoload: false,
+        async getModel(sdk: any, modelID: string, options?: Record<string, any>) {
+          if (options?.["useCompletionUrls"]) {
+            return sdk.chat(modelID)
+          } else {
+            return sdk.responses(modelID)
+          }
+        },
+        options: {},
       }
     },
   }
