@@ -26,6 +26,7 @@ import { Log } from "@/util/log"
 import { LspTool } from "./lsp"
 import { Truncate } from "./truncation"
 import { HoldReleaseTool, HoldEnterTool } from "./plan"
+import { ApplyPatchTool } from "./apply_patch"
 
 export namespace ToolRegistry {
   const log = Log.create({ service: "tool.registry" })
@@ -106,6 +107,7 @@ export namespace ToolRegistry {
       GrepTool,
       EditTool,
       WriteTool,
+      ApplyPatchTool,
       TaskTool,
       WebFetchTool,
       TodoWriteTool,

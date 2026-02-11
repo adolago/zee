@@ -39,7 +39,7 @@ import { Todo } from "@/session/todo"
 import { z } from "zod"
 import { LoadAPIKeyError } from "ai"
 import { createZeeClient as createEventClient } from "@zee/sdk"
-import type { ZeeClient, SessionMessageResponse } from "@zee/sdk/v2"
+import type { ZeeClient, SessionMessageResponse, AssistantMessage } from "@zee/sdk/v2"
 import { applyPatch } from "diff"
 import { HEADER_DIRECTORY } from "@/gateway/constants"
 import { createAuthorizedFetch } from "@/server/auth"
@@ -104,6 +104,96 @@ function getModelVariants(
 
 export namespace ACP {
   const log = Log.create({ service: "acp-agent" })
+
+  async function getContextLimit(
+    sdk: ZeeClient,
+    providerID: string,
+    modelID: string,
+    directory: string,
+  ): Promise<number | null> {
+    const providers = await sdk.config
+      .providers(withDirectory(directory))
+      .then((x) => x.data?.providers ?? [])
+      .catch((error) => {
+        log.error("failed to get providers for context limit", { error })
+        return []
+      })
+
+    const provider = providers.find((p) => p.id === providerID)
+    const model = provider?.models[modelID]
+    return model?.limit.context ?? null
+  }
+
+  async function sendUsageUpdate(
+    connection: AgentSideConnection,
+    sdk: ZeeClient,
+    sessionID: string,
+    directory: string,
+  ): Promise<void> {
+    if (typeof sdk.session?.messages !== "function") return
+    const messages = await sdk.session
+      .messages(
+        {
+          sessionID,
+        },
+        withDirectory(directory, { throwOnError: true }),
+      )
+      .then((x) => x.data)
+      .catch((error) => {
+        log.error("failed to fetch messages for usage update", { error })
+        return undefined
+      })
+
+    if (!messages) return
+
+    const assistantMessages = messages.filter(
+      (m): m is { info: AssistantMessage; parts: SessionMessageResponse["parts"] } => m.info.role === "assistant",
+    )
+
+    const lastAssistant = assistantMessages[assistantMessages.length - 1]
+    if (!lastAssistant) return
+
+    const msg = lastAssistant.info
+    const size = await getContextLimit(sdk, msg.providerID, msg.modelID, directory)
+
+    if (!size) {
+      // Cannot calculate usage without known context size
+      return
+    }
+
+    const used = msg.tokens.input + (msg.tokens.cache?.read ?? 0)
+    const totalCost = assistantMessages.reduce((sum, m) => sum + m.info.cost, 0)
+
+    await connection
+      .sessionUpdate({
+        sessionId: sessionID,
+        update: {
+          sessionUpdate: "usage_update",
+          used,
+          size,
+          cost: { amount: totalCost, currency: "USD" },
+        } as any,
+      })
+      .catch((error) => {
+        log.error("failed to send usage update", { error })
+      })
+  }
+
+  function buildUsage(msg: AssistantMessage) {
+    return {
+      totalTokens:
+        msg.tokens.input +
+        msg.tokens.output +
+        msg.tokens.reasoning +
+        (msg.tokens.cache?.read ?? 0) +
+        (msg.tokens.cache?.write ?? 0),
+      inputTokens: msg.tokens.input,
+      outputTokens: msg.tokens.output,
+      thoughtTokens: msg.tokens.reasoning || undefined,
+      cachedReadTokens: msg.tokens.cache?.read || undefined,
+      cachedWriteTokens: msg.tokens.cache?.write || undefined,
+    }
+  }
 
   export async function init({ sdk: _sdk }: { sdk: ZeeClient }) {
     return {
@@ -628,6 +718,8 @@ export namespace ACP {
           log.debug("replay message", msg)
           await this.processMessage(msg)
         }
+
+        await sendUsageUpdate(this.connection, this.sdk, sessionId, directory)
 
         return result
       } catch (e) {
@@ -1206,13 +1298,8 @@ export namespace ACP {
         return { name, args: rest.join(" ").trim() }
       })()
 
-      const done = {
-        stopReason: "end_turn" as const,
-        _meta: {},
-      }
-
       if (!cmd) {
-        await this.sdk.session.prompt(
+        const response = await this.sdk.session.prompt(
           {
             sessionID,
             model: {
@@ -1225,14 +1312,22 @@ export namespace ACP {
           },
           withDirectory(directory),
         )
-        return done
+        const msg = response.data?.info
+
+        await sendUsageUpdate(this.connection, this.sdk, sessionID, directory)
+
+        return {
+          stopReason: "end_turn" as const,
+          usage: msg ? buildUsage(msg) : undefined,
+          _meta: {},
+        }
       }
 
       const command = await this.config.sdk.command
         .list(withDirectory(directory, { throwOnError: true }))
         .then((x) => x.data!.find((c) => c.id === cmd.name))
       if (command) {
-        await this.sdk.session.command(
+        const response = await this.sdk.session.command(
           {
             sessionID,
             command: command.id,
@@ -1242,7 +1337,15 @@ export namespace ACP {
           },
           withDirectory(directory),
         )
-        return done
+        const msg = response.data?.info
+
+        await sendUsageUpdate(this.connection, this.sdk, sessionID, directory)
+
+        return {
+          stopReason: "end_turn" as const,
+          usage: msg ? buildUsage(msg) : undefined,
+          _meta: {},
+        }
       }
 
       switch (cmd.name) {
@@ -1258,7 +1361,12 @@ export namespace ACP {
           break
       }
 
-      return done
+      await sendUsageUpdate(this.connection, this.sdk, sessionID, directory)
+
+      return {
+        stopReason: "end_turn" as const,
+        _meta: {},
+      }
     }
 
     async cancel(params: CancelNotification) {
@@ -1321,6 +1429,8 @@ export namespace ACP {
         sessionId: forkedId,
       })
 
+      await sendUsageUpdate(this.connection, this.sdk, forkedId, directory)
+
       return {
         sessionId: forkedId,
         models: result.models,
@@ -1330,6 +1440,7 @@ export namespace ACP {
     }
 
     async unstable_resumeSession(params: ResumeSessionRequest): Promise<ResumeSessionResponse> {
+      // loadSession already sends usage update internally
       const result = await this.loadSession({
         sessionId: params.sessionId,
         cwd: params.cwd,
