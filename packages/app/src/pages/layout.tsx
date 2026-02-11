@@ -164,19 +164,6 @@ export default function Layout(props: ParentProps) {
     setState("hoverProject", undefined)
   })
 
-  createEffect(
-    on(
-      () => ({ dir: params.dir, id: params.id }),
-      () => {
-        if (layout.sidebar.opened()) return
-        if (!state.hoverProject) return
-        setState("hoverSession", undefined)
-        setState("hoverProject", undefined)
-      },
-      { defer: true },
-    ),
-  )
-
   const autoselecting = createMemo(() => {
     if (params.dir) return false
     if (initialDir) return false
@@ -1770,7 +1757,7 @@ export default function Layout(props: ParentProps) {
 
     const item = (
       <A
-        href={`${props.slug}/session/${props.session.id}`}
+        href={`/${props.slug}/session/${props.session.id}`}
         class={`flex items-center justify-between gap-3 min-w-0 text-left w-full focus:outline-none transition-[padding] ${menu.open ? "pr-7" : ""} group-hover/session:pr-7 group-focus-within/session:pr-7 group-active/session:pr-7 ${props.dense ? "py-0.5" : "py-1"}`}
         onPointerEnter={scheduleHoverPrefetch}
         onPointerLeave={cancelHoverPrefetch}
@@ -1928,7 +1915,7 @@ export default function Layout(props: ParentProps) {
     const tooltip = () => props.mobile || !sidebarExpanded()
     const item = (
       <A
-        href={`${props.slug}/session`}
+        href={`/${props.slug}/session`}
         end
         class={`flex items-center justify-between gap-3 min-w-0 text-left w-full focus:outline-none ${props.dense ? "py-0.5" : "py-1"}`}
         onClick={() => {

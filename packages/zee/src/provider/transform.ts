@@ -6,6 +6,7 @@ import type { Provider } from "./provider"
 import type { ModelsDev } from "./models"
 import { iife } from "@/util/iife"
 import { Log } from "@/util/log"
+import { Flag } from "@/flag/flag"
 import { THINKING_BUDGETS } from "./constants"
 
 const log = Log.create({ service: "transform" })
@@ -54,6 +55,8 @@ function mergeProviderOptions(
 }
 
 export namespace ProviderTransform {
+  export const OUTPUT_TOKEN_MAX = Flag.ZEE_OUTPUT_TOKEN_MAX || 32_000
+
   // Maps npm package to the key the AI SDK expects for providerOptions
   function sdkKey(npm: string): string | undefined {
     switch (npm) {
@@ -1015,14 +1018,29 @@ export namespace ProviderTransform {
     return { [key]: filtered }
   }
 
+  /** Model-level max output tokens, capped at OUTPUT_TOKEN_MAX. Used for compaction reserve. */
+  export function maxOutputTokens(model: Provider.Model): number
+  /** Stream-level max output tokens with thinking budget and reasoning effort awareness. */
   export function maxOutputTokens(
     npm: string,
     options: Record<string, any>,
     modelLimit: number,
     globalLimit: number,
+  ): number | undefined
+  export function maxOutputTokens(
+    npmOrModel: string | Provider.Model,
+    options?: Record<string, any>,
+    modelLimit?: number,
+    globalLimit?: number,
   ): number | undefined {
-    const modelCap = modelLimit || globalLimit
-    const standardLimit = Math.min(modelCap, globalLimit)
+    // Simplified model-level calculation for compaction reserve
+    if (typeof npmOrModel !== "string") {
+      return Math.min(npmOrModel.limit.output, OUTPUT_TOKEN_MAX) || OUTPUT_TOKEN_MAX
+    }
+
+    const npm = npmOrModel
+    const modelCap = (modelLimit || globalLimit)!
+    const standardLimit = Math.min(modelCap, globalLimit!)
 
     // Validate thinking budget + max_tokens exclusivity
     // Some providers/models cannot have both set simultaneously
