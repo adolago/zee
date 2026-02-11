@@ -201,8 +201,8 @@ export function truncateUtf16Safe(input: string, maxLen: number): string {
   return sliceUtf16Safe(input, 0, limit);
 }
 
-export function resolveUserPath(input: string): string {
-  if (!input) return process.cwd();
+export function resolveUserPath(input: string | undefined | null): string {
+  if (input == null || input === "") return process.cwd();
   const trimmed = input.trim();
   if (!trimmed) return trimmed;
   if (trimmed.startsWith("~")) {

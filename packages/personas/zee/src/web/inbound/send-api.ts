@@ -103,6 +103,11 @@ export function createWebSendApi(params: {
           },
         },
       } as AnyMessageContent);
+      recordChannelActivity({
+        channel: "whatsapp",
+        accountId: params.defaultAccountId,
+        direction: "outbound",
+      });
     },
     sendComposingTo: async (to: string): Promise<void> => {
       const jid = toWhatsappJid(to);

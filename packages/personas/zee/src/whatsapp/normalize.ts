@@ -30,11 +30,19 @@ export function isWhatsAppUserTarget(value: string): boolean {
 }
 
 /**
+ * Check if value matches a WhatsApp user JID (e.g. "41796666864:0@s.whatsapp.net").
+ * Alias for isWhatsAppUserTarget that reads better in allowlist contexts.
+ */
+export function isWhatsAppUserJid(value: string): boolean {
+  return isWhatsAppUserTarget(value);
+}
+
+/**
  * Extract the phone number from a WhatsApp user JID.
  * "41796666864:0@s.whatsapp.net" -> "41796666864"
  * "123456@lid" -> "123456"
  */
-function extractUserJidPhone(jid: string): string | null {
+export function extractUserJidPhone(jid: string): string | null {
   const userMatch = jid.match(WHATSAPP_USER_JID_RE);
   if (userMatch) return userMatch[1];
   const lidMatch = jid.match(WHATSAPP_LID_RE);

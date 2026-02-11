@@ -118,7 +118,15 @@ export function sanitizeSshTarget(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return trimmed.replace(/^ssh\\s+/, "");
+  const cleaned = trimmed.replace(/^ssh\s+/, "");
+  if (!cleaned) return null;
+  // Extract host portion and reject if it starts with '-' (SSH option injection).
+  const atIdx = cleaned.indexOf("@");
+  const hostPart = atIdx >= 0 ? cleaned.slice(atIdx + 1) : cleaned;
+  const colonIdx = hostPart.lastIndexOf(":");
+  const host = colonIdx > 0 ? hostPart.slice(0, colonIdx) : hostPart;
+  if (host.startsWith("-")) return null;
+  return cleaned;
 }
 
 export function resolveAuthForTarget(

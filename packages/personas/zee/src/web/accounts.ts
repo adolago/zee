@@ -4,7 +4,7 @@ import path from "node:path";
 import type { ZeeConfig } from "../config/config.js";
 import { resolveOAuthDir } from "../config/paths.js";
 import type { DmPolicy, GroupPolicy, WhatsAppAccountConfig } from "../config/types.js";
-import { DEFAULT_ACCOUNT_ID } from "../routing/session-key.js";
+import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 import { resolveUserPath } from "../utils.js";
 import { hasWebCredsSync } from "./auth-store.js";
 
@@ -86,7 +86,8 @@ function resolveAccountConfig(
 }
 
 function resolveDefaultAuthDir(accountId: string): string {
-  return path.join(resolveOAuthDir(), "whatsapp", accountId);
+  const safeId = normalizeAccountId(accountId);
+  return path.join(resolveOAuthDir(), "whatsapp", safeId);
 }
 
 function resolveLegacyAuthDir(): string {

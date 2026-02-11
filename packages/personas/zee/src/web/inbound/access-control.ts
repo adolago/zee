@@ -6,6 +6,7 @@ import {
   upsertChannelPairingRequest,
 } from "../../pairing/pairing-store.js";
 import { isSelfChatMode, normalizeE164 } from "../../utils.js";
+import { normalizeWhatsAppTarget } from "../../whatsapp/normalize.js";
 import { resolveWhatsAppAccount } from "../accounts.js";
 
 export type InboundAccessControlResult = {
@@ -63,15 +64,21 @@ export async function checkInboundAccessControl(params: {
     params.messageTimestampMs < params.connectedAtMs - pairingGraceMs;
 
   // Pre-compute normalized allowlists for filtering.
+  // Use normalizeWhatsAppTarget first (strips JID device suffixes like :0@s.whatsapp.net),
+  // falling back to normalizeE164 for plain phone numbers.
+  const normalizeAllowEntry = (entry: string): string => {
+    const waTarget = normalizeWhatsAppTarget(entry);
+    return waTarget ?? normalizeE164(entry);
+  };
   const dmHasWildcard = allowFrom?.includes("*") ?? false;
   const normalizedAllowFrom =
     allowFrom && allowFrom.length > 0
-      ? allowFrom.filter((entry) => entry !== "*").map(normalizeE164)
+      ? allowFrom.filter((entry) => entry !== "*").map(normalizeAllowEntry)
       : [];
   const groupHasWildcard = groupAllowFrom?.includes("*") ?? false;
   const normalizedGroupAllowFrom =
     groupAllowFrom && groupAllowFrom.length > 0
-      ? groupAllowFrom.filter((entry) => entry !== "*").map(normalizeE164)
+      ? groupAllowFrom.filter((entry) => entry !== "*").map(normalizeAllowEntry)
       : [];
 
   // Group policy filtering:

@@ -41,10 +41,14 @@ export function parseSshTarget(raw: string): SshParsedTarget | null {
     const portRaw = hostPart.slice(colonIdx + 1).trim();
     const port = Number.parseInt(portRaw, 10);
     if (!host || !Number.isFinite(port) || port <= 0) return null;
+    // Reject hostnames starting with '-' to prevent SSH option injection.
+    if (host.startsWith("-")) return null;
     return { user: userPart, host, port };
   }
 
   if (!hostPart) return null;
+  // Reject hostnames starting with '-' to prevent SSH option injection.
+  if (hostPart.startsWith("-")) return null;
   return { user: userPart, host: hostPart, port: 22 };
 }
 
@@ -134,7 +138,8 @@ export async function startSshPortForward(opts: {
   if (opts.identity?.trim()) {
     args.push("-i", opts.identity.trim());
   }
-  args.push(userHost);
+  // Use "--" to prevent userHost from being interpreted as an SSH option.
+  args.push("--", userHost);
 
   const stderr: string[] = [];
   const child = spawn("/usr/bin/ssh", args, {

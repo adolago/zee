@@ -1,5 +1,5 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
-import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
+import { type AuthStorage, type ModelRegistry, discoverAuthStorage, discoverModels } from "../pi-model-discovery.js";
 
 import type { ZeeConfig } from "../../config/config.js";
 import type { ModelDefinitionConfig } from "../../config/types.js";
@@ -53,8 +53,8 @@ export function resolveModel(
 ): {
   model?: Model<Api>;
   error?: string;
-  authStorage: ReturnType<typeof discoverAuthStorage>;
-  modelRegistry: ReturnType<typeof discoverModels>;
+  authStorage: AuthStorage;
+  modelRegistry: ModelRegistry;
 } {
   const resolvedAgentDir = agentDir ?? resolveZeeAgentDir();
   const authStorage = discoverAuthStorage(resolvedAgentDir);

@@ -70,7 +70,7 @@ import {
 import { buildEmbeddedSandboxInfo } from "../sandbox-info.js";
 import { prewarmSessionFile, trackSessionManagerAccess } from "../session-manager-cache.js";
 import { prepareSessionManagerForRun } from "../session-manager-init.js";
-import { buildEmbeddedSystemPrompt, createSystemPromptOverride } from "../system-prompt.js";
+import { buildEmbeddedSystemPrompt } from "../system-prompt.js";
 import { splitSdkTools } from "../tool-split.js";
 import { toClientToolDefinitions } from "../../pi-tool-definition-adapter.js";
 import { buildSystemPromptParams } from "../../system-prompt-params.js";
@@ -345,7 +345,7 @@ export async function runEmbeddedAttempt(
       skillsPrompt,
       tools,
     });
-    const systemPrompt = createSystemPromptOverride(appendPrompt);
+    const systemPromptText = appendPrompt.trim();
 
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
@@ -417,15 +417,12 @@ export async function runEmbeddedAttempt(
         modelRegistry: params.modelRegistry,
         model: params.model,
         thinkingLevel: mapThinkingLevel(params.thinkLevel),
-        systemPrompt,
         tools: builtInTools,
         customTools: allCustomTools,
         sessionManager,
         settingsManager,
-        skills: [],
-        contextFiles: [],
-        additionalExtensionPaths,
       }));
+      session.agent.setSystemPrompt(systemPromptText);
       if (!session) {
         throw new Error("Embedded agent session missing");
       }
@@ -466,7 +463,7 @@ export async function runEmbeddedAttempt(
       if (cacheTrace) {
         cacheTrace.recordStage("session:loaded", {
           messages: activeSession.messages,
-          system: systemPrompt,
+          system: systemPromptText,
           note: "after session create",
         });
         activeSession.agent.streamFn = cacheTrace.wrapStreamFn(activeSession.agent.streamFn);
