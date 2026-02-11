@@ -6,6 +6,7 @@ export interface StatusBarTheme {
   reminderText: (text: string) => string;
   statusText: (text: string) => string;
   accentText: (text: string) => string;
+  titleText: (text: string) => string;
   dimText: (text: string) => string;
 }
 
@@ -113,6 +114,9 @@ export class StatusBar extends Container {
     const statusLine = this.renderStatusLine(innerWidth);
     lines.push(this.wrapInOuterBox(statusLine, width));
 
+    // Outer padding
+    lines.push(this.wrapInOuterBox("", width));
+
     // === Outer box bottom ===
     const bottomBorder = `${BOX.bottomLeft}${BOX.horizontal.repeat(width - 2)}${BOX.bottomRight}`;
     lines.push(this.theme.outerBorder(bottomBorder));
@@ -134,6 +138,10 @@ export class StatusBar extends Container {
     // Inner content
     const innerContent = `${this.theme.innerBorder(BOX.innerVertical)} ${this.theme.reminderText(truncatedContent)}${" ".repeat(contentPadding)} ${this.theme.innerBorder(BOX.innerVertical)}`;
     lines.push(innerContent);
+
+    // Inner padding
+    const emptyInnerLine = `${this.theme.innerBorder(BOX.innerVertical)}${" ".repeat(width - 2)}${this.theme.innerBorder(BOX.innerVertical)}`;
+    lines.push(emptyInnerLine);
 
     // Inner bottom
     const innerBottom = `${BOX.innerBottomLeft}${BOX.innerHorizontal.repeat(width - 2)}${BOX.innerBottomRight}`;
@@ -165,7 +173,7 @@ export class StatusBar extends Container {
 
     // Right side: persona | context % | tokens
     const rightParts: string[] = [];
-    rightParts.push(this.theme.accentText(this.state.personaName));
+    rightParts.push(this.theme.titleText(this.state.personaName));
 
     if (this.state.tokenCount) {
       rightParts.push(this.theme.dimText(this.state.tokenCount));

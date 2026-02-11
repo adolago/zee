@@ -156,5 +156,6 @@ export const statusBarTheme = {
   reminderText: fg(palette.statusReminderText),
   statusText: fg(palette.text),
   accentText: fg(palette.accent),
+  titleText: (text: string) => chalk.bold(fg(palette.accent)(text)),
   dimText: fg(palette.dim),
 };

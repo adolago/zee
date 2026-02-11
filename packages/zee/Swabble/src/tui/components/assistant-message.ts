@@ -9,7 +9,7 @@ export class AssistantMessageComponent extends Container {
     this.body = new Markdown(text, 1, 0, markdownTheme, {
       color: (line) => theme.fg(line),
     });
-    this.addChild(new Spacer(1));
+    this.addChild(new Spacer(2));
     this.addChild(this.body);
   }
 
