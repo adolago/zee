@@ -24,7 +24,7 @@ whitespace. This aligns inbound allowlist checks with outbound send normalizatio
 All of these are accepted for the same ID:
 
 - `whatsapp:@alice:example.org`
-- `MATRIX:@alice:example.org`
+- `WHATSAPP:+15551234567`
 - `  @alice:example.org  `
 
 ## Why it matters

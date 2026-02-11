@@ -13,7 +13,7 @@ describe("normalizeCronJobCreate", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        provider: " TeLeGrAm ",
+        provider: " legacy-channel ",
         to: "7200373102",
       },
     }) as unknown as Record<string, unknown>;
@@ -152,7 +152,7 @@ describe("normalizeCronJobCreate", () => {
       },
       delivery: {
         mode: " ANNOUNCE ",
-        channel: " TeLeGrAm ",
+        channel: " legacy-channel ",
         to: " 7200373102 ",
       },
     }) as unknown as Record<string, unknown>;

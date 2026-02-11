@@ -304,7 +304,7 @@ describe("CronService", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        provider: " TeLeGrAm ",
+        provider: " legacy-channel ",
         to: "7200373102",
       },
       state: {},
