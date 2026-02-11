@@ -1,0 +1,17 @@
+{
+  "name": "@zee/memory-core",
+  "version": "2026.1.27-beta.1",
+  "type": "module",
+  "description": "Zee core memory search plugin",
+  "peerDependencies": {
+    "zee": ">=2026.1.26"
+  },
+  "devDependencies": {
+    "zee": "workspace:*"
+  },
+  "zee": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

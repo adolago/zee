@@ -1,0 +1,11 @@
+{
+  "id": "llm-task",
+  "channels": [
+    "llm-task"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

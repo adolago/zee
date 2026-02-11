@@ -1,7 +1,7 @@
 /**
  * Shared Tailscale Utilities
  *
- * Extracted from packages/personas/zee/src/infra/tailscale.ts to be
+ * Extracted from packages/zee/Swabble/src/infra/tailscale.ts to be
  * shared between the zee daemon and the Zee gateway. Both can
  * now expose their HTTP servers via Tailscale Serve or Funnel.
  *

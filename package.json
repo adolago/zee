@@ -20,8 +20,6 @@
       "packages/zee-adapter",
       "packages/app",
       "packages/desktop",
-      "packages/personas/zee",
-      "packages/personas/stanley",
       "packages/plugin",
       "packages/sdk",
       "packages/ui",

@@ -1,0 +1,11 @@
+{
+  "id": "google-gemini-cli-auth",
+  "channels": [
+    "google-gemini-cli-auth"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

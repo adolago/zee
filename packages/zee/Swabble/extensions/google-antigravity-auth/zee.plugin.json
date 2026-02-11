@@ -1,0 +1,11 @@
+{
+  "id": "google-antigravity-auth",
+  "channels": [
+    "google-antigravity-auth"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "open-prose",
+  "channels": [
+    "open-prose"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

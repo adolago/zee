@@ -1,11 +1,48 @@
 import { Log } from "../util/log"
 
-import { loadConfig, readConfigFileSnapshot, resolveGatewayPort } from "../../../personas/zee/src/config/config"
-import { resolveGatewayAuth } from "../../../personas/zee/src/gateway/auth"
-import { startGatewayServer, type GatewayServer } from "../../../personas/zee/src/gateway/server"
-import { acquireGatewayLock, type GatewayLockHandle } from "../../../personas/zee/src/infra/gateway-lock"
-
 const log = Log.create({ service: "gateway:embedded" })
+
+// The embedded gateway depends on the full gateway runtime
+// (packages/zee/Swabble). When that package is not available,
+// all gateway operations gracefully degrade.
+
+type GatewayServerLike = { close(opts: { reason: string; restartExpectedMs: null }): Promise<void> }
+type GatewayLockLike = { lockPath: string; configPath: string; release(): Promise<void> }
+
+let _resolved: {
+  loadConfig: () => any
+  readConfigFileSnapshot: () => Promise<any>
+  resolveGatewayPort: (cfg: any) => number
+  resolveGatewayAuth: (params: { authConfig?: any }) => { token?: string }
+  startGatewayServer: (port: number) => Promise<GatewayServerLike>
+  acquireGatewayLock: () => Promise<GatewayLockLike | null>
+} | null = null
+let _resolveAttempted = false
+
+async function resolvePersonaGateway() {
+  if (_resolveAttempted) return _resolved
+  _resolveAttempted = true
+  try {
+    const [configMod, authMod, serverMod, lockMod] = await Promise.all([
+      import("../../Swabble/src/config/config"),
+      import("../../Swabble/src/gateway/auth"),
+      import("../../Swabble/src/gateway/server"),
+      import("../../Swabble/src/infra/gateway-lock"),
+    ])
+    _resolved = {
+      loadConfig: configMod.loadConfig,
+      readConfigFileSnapshot: configMod.readConfigFileSnapshot,
+      resolveGatewayPort: configMod.resolveGatewayPort,
+      resolveGatewayAuth: authMod.resolveGatewayAuth,
+      startGatewayServer: serverMod.startGatewayServer,
+      acquireGatewayLock: lockMod.acquireGatewayLock,
+    }
+  } catch {
+    log.warn("persona gateway runtime not available; embedded gateway disabled")
+    _resolved = null
+  }
+  return _resolved
+}
 
 export type EmbeddedGatewayState = {
   running: boolean
@@ -15,15 +52,22 @@ export type EmbeddedGatewayState = {
   lockConfigPath?: string
 }
 
-export type EmbeddedGatewayConfigSnapshot = Awaited<ReturnType<typeof readConfigFileSnapshot>>
+export type EmbeddedGatewayConfigSnapshot = {
+  path?: string
+  exists: boolean
+  valid: boolean
+  issues: Array<{ path?: string; message: string }>
+  warnings: Array<{ path?: string; message: string }>
+  legacyIssues: Array<{ message: string }>
+}
 
 type EmbeddedGatewayStartOptions = {
   port?: number
   daemonUrl?: string
 }
 
-let gatewayServer: GatewayServer | null = null
-let gatewayLock: GatewayLockHandle | null = null
+let gatewayServer: GatewayServerLike | null = null
+let gatewayLock: GatewayLockLike | null = null
 let gatewayPort: number | undefined
 let injectedZeeUrl = false
 let previousZeeUrl: string | undefined
@@ -48,18 +92,35 @@ function restoreZeeUrl() {
   previousZeeUrl = undefined
 }
 
+const DEFAULT_GATEWAY_PORT = 7860
+
 export function resolveEmbeddedGatewayPort(): number {
-  const cfg = loadConfig()
-  return resolveGatewayPort(cfg)
+  if (!_resolved) return DEFAULT_GATEWAY_PORT
+  try {
+    const cfg = _resolved.loadConfig()
+    return _resolved.resolveGatewayPort(cfg)
+  } catch {
+    return DEFAULT_GATEWAY_PORT
+  }
 }
 
 export async function readEmbeddedGatewayConfigSnapshot(): Promise<EmbeddedGatewayConfigSnapshot> {
-  return await readConfigFileSnapshot()
+  const gw = await resolvePersonaGateway()
+  if (!gw) {
+    return { exists: false, valid: true, issues: [], warnings: [], legacyIssues: [] }
+  }
+  return await gw.readConfigFileSnapshot()
 }
 
 export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions = {}): Promise<void> {
   if (gatewayServer) return
   if (startPromise) return startPromise
+
+  const gw = await resolvePersonaGateway()
+  if (!gw) {
+    log.warn("cannot start embedded gateway: persona runtime not available")
+    return
+  }
 
   const port = options.port ?? resolveEmbeddedGatewayPort()
 
@@ -68,14 +129,14 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
     gatewayPort = port
 
     try {
-      gatewayLock = await acquireGatewayLock()
-      gatewayServer = await startGatewayServer(port)
+      gatewayLock = await gw.acquireGatewayLock()
+      gatewayServer = await gw.startGatewayServer(port)
 
       // Always sync the server's resolved token into process.env so the
       // in-process WS client authenticates with the exact same credential.
       // This must overwrite any stale env value (e.g. from daemon.env).
-      const cfg = loadConfig()
-      const auth = resolveGatewayAuth({ authConfig: cfg.gateway?.auth })
+      const cfg = gw.loadConfig()
+      const auth = gw.resolveGatewayAuth({ authConfig: cfg.gateway?.auth })
       if (auth.token) {
         process.env.ZEE_GATEWAY_TOKEN = auth.token
       }

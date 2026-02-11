@@ -1,0 +1,63 @@
+{
+  "id": "voice-call",
+  "name": "Voice Call",
+  "description": "Make and manage voice calls via Twilio, Telnyx, or Plivo.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["provider", "fromNumber"],
+    "properties": {
+      "provider": {
+        "type": "string",
+        "enum": ["twilio", "telnyx", "plivo", "mock"],
+        "description": "Voice call provider"
+      },
+      "fromNumber": {
+        "type": "string",
+        "description": "Phone number to call from (E.164 format, e.g., +15551234567)"
+      },
+      "twilio": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accountSid": {
+            "type": "string",
+            "description": "Twilio Account SID"
+          },
+          "authToken": {
+            "type": "string",
+            "description": "Twilio Auth Token"
+          }
+        }
+      },
+      "telnyx": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "description": "Telnyx API Key"
+          },
+          "connectionId": {
+            "type": "string",
+            "description": "Optional Telnyx Connection ID"
+          }
+        }
+      },
+      "plivo": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "authId": {
+            "type": "string",
+            "description": "Plivo Auth ID"
+          },
+          "authToken": {
+            "type": "string",
+            "description": "Plivo Auth Token"
+          }
+        }
+      }
+    }
+  }
+}

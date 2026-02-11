@@ -1,0 +1,43 @@
+title: "Zee Docs"
+description: "A TypeScript/Node gateway for WhatsApp (web)."
+markdown: kramdown
+highlighter: rouge
+
+# Keep GitHub Pages' default page URLs (e.g. /gateway.html). Many docs links
+# are written as relative *.md links and are rewritten during the build.
+
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+nav:
+  - title: "Home"
+    url: "/"
+  - title: "Zee Assistant"
+    url: "/start/zee/"
+  - title: "Gateway"
+    url: "/gateway/"
+  - title: "Remote"
+    url: "/gateway/remote/"
+  - title: "Discovery"
+    url: "/gateway/discovery/"
+  - title: "Configuration"
+    url: "/gateway/configuration/"
+  - title: "Security"
+    url: "/gateway/security/"
+  - title: "Troubleshooting"
+    url: "/gateway/troubleshooting/"
+
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge

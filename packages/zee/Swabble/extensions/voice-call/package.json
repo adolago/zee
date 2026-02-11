@@ -1,0 +1,11 @@
+{
+  "name": "@zee/voice-call",
+  "version": "2026.1.30",
+  "type": "module",
+  "description": "Zee voice call plugin for Twilio, Telnyx, and Plivo",
+  "zee": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

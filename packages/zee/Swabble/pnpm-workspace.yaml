@@ -1,0 +1,12 @@
+packages:
+  - .
+  - packages/*
+  - extensions/*
+
+onlyBuiltDependencies:
+  - '@whiskeysockets/baileys'
+  - '@lydell/node-pty'
+  - authenticate-pam
+  - esbuild
+  - protobufjs
+  - sharp

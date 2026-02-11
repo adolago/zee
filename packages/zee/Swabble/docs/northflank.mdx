@@ -1,0 +1,41 @@
+---
+title: Deploy on Northflank
+---
+
+Deploy Zee on Northflank with a one-click template and finish setup in your browser.
+This is the easiest “no terminal on the server” path: Northflank runs the Gateway for you,
+and you configure everything via the `/setup` web wizard.
+
+## How to get started
+
+1. Click [Deploy Zee](https://northflank.com/stacks/deploy-zee) to open the template.  
+2. Create an [account on Northflank](https://app.northflank.com/signup) if you don’t already have one.  
+3. Click **Deploy Zee now**.  
+4. Set the required environment variable: `SETUP_PASSWORD`.
+5. Click **Deploy stack** to build and run the Zee template.
+6. Wait for the deployment to complete, then click **View resources**.
+7. Open the Zee service.
+8. Open the public Zee URL and complete setup at `/setup`.
+9. Open the CLI/TUI at `/zee`.
+
+## What you get
+
+- Hosted Zee Gateway + CLI/TUI
+- Web setup wizard at `/setup` (no terminal commands)
+- Persistent storage via Northflank Volume (`/data`) so config/credentials/workspace survive redeploys
+
+## Setup flow
+
+1) Visit `https://<your-northflank-domain>/setup` and enter your `SETUP_PASSWORD`.
+2) Choose a model/auth provider and paste your key.
+3) (Optional) Add WhatsApp/WhatsApp credentials.
+4) Click **Run setup**.
+5) Open the CLI/TUI at `https://<your-northflank-domain>/zee`
+
+## Getting chat credentials
+
+### WhatsApp access token
+
+1) Create a WhatsApp account for the Gateway (a dedicated user is recommended).
+2) Collect: homeserver URL, user id, and an access token.
+3) Paste them into `/setup`.

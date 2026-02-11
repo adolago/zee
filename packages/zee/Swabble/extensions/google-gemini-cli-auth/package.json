@@ -1,0 +1,11 @@
+{
+  "name": "@zee/google-gemini-cli-auth",
+  "version": "2026.1.27-beta.1",
+  "type": "module",
+  "description": "Zee Gemini CLI OAuth provider plugin",
+  "zee": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
