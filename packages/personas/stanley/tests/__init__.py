@@ -1,1 +1,0 @@
-"""Stanley test suite."""

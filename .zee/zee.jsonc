@@ -28,6 +28,9 @@
     "splitwise": {
       "enabled": true,
       "token": "{env:SPLITWISE_TOKEN}"
+    },
+    "codexbar": {
+      "enabled": true
     }
   },
   "provider": {
