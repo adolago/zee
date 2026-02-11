@@ -85,7 +85,7 @@ export function Prompt(props: PromptProps) {
   const layoutWidth = createMemo(() => props.layoutWidth ?? dimensions().width)
   // Use layout width for horizontal fills so embedded right-side text aligns
   // with the actual prompt width.
-  const fill = createMemo(() => "─".repeat(Math.max(0, layoutWidth())))
+  const fill = createMemo(() => "─".repeat(Math.max(0, layoutWidth() + 10)))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {
@@ -1628,7 +1628,7 @@ export function Prompt(props: PromptProps) {
           rotationMs={bannerRotationMs()}
           fallback="Zee banner: no updates."
           topBorder={showTitleInBorder() ? (
-            <box height={1} flexDirection="row">
+            <box height={1} flexDirection="row" gap={0}>
               <text fg={theme.border} flexShrink={0}>╭</text>
               <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
                 {titleClamped()}
@@ -1638,14 +1638,14 @@ export function Prompt(props: PromptProps) {
               <text fg={theme.border} flexShrink={0}>╮</text>
             </box>
           ) : (
-            <box height={1} flexDirection="row">
+            <box height={1} flexDirection="row" gap={0}>
               <text fg={theme.border} flexShrink={0}>╭</text>
               <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{fill()}</text>
               <text fg={theme.border} flexShrink={0}>╮</text>
             </box>
           )}
           bottomBorder={
-            <box height={1} flexDirection="row">
+            <box height={1} flexDirection="row" gap={0}>
               <text fg={theme.border} flexShrink={0}>├</text>
               {/* Left side: context usage */}
               <Show when={showContextUsageInBorder() && contextUsage()}>
@@ -1995,7 +1995,7 @@ export function Prompt(props: PromptProps) {
             />
         </box>
         {/* Bottom border with embedded status info */}
-        <box height={1} flexDirection="row">
+        <box height={1} flexDirection="row" gap={0}>
           <text fg={theme.border} flexShrink={0}>╰</text>
           {/* Left: spinner only */}
           <Show

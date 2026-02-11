@@ -96,25 +96,7 @@ export function tui(input: {
                       >
                         <SyncProvider>
                           <ThemeProvider mode={mode} terminalBackground={terminalBackground}>
-                            <LocalProvider>
-                              <VimProvider>
-                                <KeybindProvider>
-                                  <PromptStashProvider>
-                                    <PromptRefProvider>
-                                      <DialogProvider>
-                                        <CommandProvider>
-                                          <FrecencyProvider>
-                                            <PromptHistoryProvider>
-                                              <App />
-                                            </PromptHistoryProvider>
-                                          </FrecencyProvider>
-                                        </CommandProvider>
-                                      </DialogProvider>
-                                    </PromptRefProvider>
-                                  </PromptStashProvider>
-                                </KeybindProvider>
-                              </VimProvider>
-                            </LocalProvider>
+                            <InnerProviders />
                           </ThemeProvider>
                         </SyncProvider>
                       </SDKProvider>
@@ -142,6 +124,32 @@ export function tui(input: {
       },
     )
   })
+}
+
+// Extracted to reduce JSX nesting depth -- babel-preset-solid's codegen
+// emits "undefined" instead of whitespace at ~16 levels of nesting.
+function InnerProviders() {
+  return (
+    <LocalProvider>
+      <VimProvider>
+        <KeybindProvider>
+          <PromptStashProvider>
+            <PromptRefProvider>
+              <DialogProvider>
+                <CommandProvider>
+                  <FrecencyProvider>
+                    <PromptHistoryProvider>
+                      <App />
+                    </PromptHistoryProvider>
+                  </FrecencyProvider>
+                </CommandProvider>
+              </DialogProvider>
+            </PromptRefProvider>
+          </PromptStashProvider>
+        </KeybindProvider>
+      </VimProvider>
+    </LocalProvider>
+  )
 }
 
 function App() {

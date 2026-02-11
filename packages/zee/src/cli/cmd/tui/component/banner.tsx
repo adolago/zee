@@ -101,26 +101,20 @@ export function Banner(props: BannerProps) {
       <Show
         when={props.topBorder}
         fallback={
-          <box height={1} flexDirection="row">
-            <text fg={theme.border} flexShrink={0}>
-              ╭
-            </text>
-            <text fg={theme.border} flexGrow={1} flexShrink={1}>
+          <box height={1} flexDirection="row" gap={0}>
+            <text fg={theme.border} flexShrink={0}>╭</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
               {fill()}
             </text>
-            <text fg={theme.border} flexShrink={0}>
-              ╮
-            </text>
+            <text fg={theme.border} flexShrink={0}>╮</text>
           </box>
         }
       >
         {props.topBorder}
       </Show>
 
-      <box flexDirection="row">
-        <text fg={theme.border} flexShrink={0}>
-          │
-        </text>
+      <box flexDirection="row" gap={0}>
+        <text fg={theme.border} flexShrink={0}>│</text>
         <text flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
           <Show
             when={display().label}
@@ -136,24 +130,18 @@ export function Banner(props: BannerProps) {
             )}
           </Show>
         </text>
-        <text fg={theme.border} flexShrink={0}>
-          │
-        </text>
+        <text fg={theme.border} flexShrink={0}>│</text>
       </box>
 
       <Show
         when={props.bottomBorder}
         fallback={
-          <box height={1} flexDirection="row">
-            <text fg={theme.border} flexShrink={0}>
-              ╰
-            </text>
-            <text fg={theme.border} flexGrow={1} flexShrink={1}>
+          <box height={1} flexDirection="row" gap={0}>
+            <text fg={theme.border} flexShrink={0}>╰</text>
+            <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
               {fill()}
             </text>
-            <text fg={theme.border} flexShrink={0}>
-              ╯
-            </text>
+            <text fg={theme.border} flexShrink={0}>╯</text>
           </box>
         }
       >

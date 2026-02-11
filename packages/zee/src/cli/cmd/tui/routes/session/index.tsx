@@ -5,6 +5,7 @@ import {
   createMemo,
   createSignal,
   For,
+  Index,
   Match,
   on,
   onCleanup,
@@ -205,7 +206,7 @@ export function Session() {
   const headerBackground = createMemo(() =>
     RGBA.fromValues(theme.background.r, theme.background.g, theme.background.b, 0.95),
   )
-  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
+  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 3)
 
   const scrollAcceleration = createMemo(() => {
     const tui = (sync.data.config.tui as any) as { scroll_acceleration?: { enabled?: boolean }; scroll_speed?: number }
@@ -1501,13 +1502,13 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   const { theme, syntax } = useTheme()
 
   const content = () => props.part.text.trim()
+  const hasMath = createMemo(() => Latex.hasMath(content()))
 
-  // Split content into text and block-math segments
+  // Only compute segments when math is present; avoids allocating a new array
+  // on every streaming chunk which would cause <For> to destroy/recreate children.
   const segments = createMemo(() => {
-    const text = content()
-    if (!text) return []
-    if (!Latex.hasMath(text)) return [{ type: "text" as const, content: text }]
-    return Latex.splitAtBlockMath(text)
+    if (!hasMath()) return []
+    return Latex.splitAtBlockMath(content())
   })
 
   // For text segments, replace inline math with Unicode
@@ -1518,28 +1519,45 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
   return (
     <Show when={content()}>
       <box id={"text-" + props.part.id} paddingLeft={1} flexShrink={0} flexDirection="column">
-        <For each={segments()}>
-          {(segment) => (
-            <Switch>
-              <Match when={segment.type === "math" && segment}>
-                {(seg) => <MathBlock tex={seg().content} />}
-              </Match>
-              <Match when={segment.type === "text" && segment}>
-                {(seg) => (
-                  <code
-                    filetype="markdown"
-                    drawUnstyledText={false}
-                    streaming={true}
-                    syntaxStyle={syntax()}
-                    content={processText(seg().content)}
-                    conceal={ctx.conceal()}
-                    fg={theme.text}
-                  />
-                )}
-              </Match>
-            </Switch>
-          )}
-        </For>
+        {/* Fast path: no LaTeX -- render a single stable <code> element.
+            This avoids the <For>/<Index> overhead and prevents component
+            destruction/recreation on every streaming text chunk. */}
+        <Show when={hasMath()} fallback={
+          <code
+            filetype="markdown"
+            drawUnstyledText={false}
+            streaming={true}
+            syntaxStyle={syntax()}
+            content={processText(content())}
+            conceal={ctx.conceal()}
+            fg={theme.text}
+          />
+        }>
+          {/* Math path: use <Index> (tracks by position, not reference) so
+              segment objects can change without tearing down components. */}
+          <Index each={segments()}>
+            {(segment) => (
+              <Switch>
+                <Match when={segment().type === "math" && segment()}>
+                  {(seg) => <MathBlock tex={seg().content} />}
+                </Match>
+                <Match when={segment().type === "text" && segment()}>
+                  {(seg) => (
+                    <code
+                      filetype="markdown"
+                      drawUnstyledText={false}
+                      streaming={true}
+                      syntaxStyle={syntax()}
+                      content={processText(seg().content)}
+                      conceal={ctx.conceal()}
+                      fg={theme.text}
+                    />
+                  )}
+                </Match>
+              </Switch>
+            )}
+          </Index>
+        </Show>
       </box>
     </Show>
   )

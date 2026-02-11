@@ -173,9 +173,10 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const bufferedPartUpdates = createBufferedUpdater<Part>({
       key: (p) => `${p.messageID}:${p.id}`,
-      // Coalesce part updates; fires shortly after the SDK event batch (50ms)
-      // to merge into the same render frame.
-      flushMs: 5,
+      // Coalesce part updates into fewer store writes per render frame.
+      // At 30fps (33ms/frame), 16ms batches ~2 flushes per frame instead
+      // of ~6-7, reducing cascading signal re-evaluations during streaming.
+      flushMs: 16,
       apply: (parts) => {
         batch(() => {
           for (const part of parts) {
