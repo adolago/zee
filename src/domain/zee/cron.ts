@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types.js";
-import { Log } from "../../../packages/zee-core/src/util/log.js";
+import { Log } from "../../../packages/zee/src/util/log.js";
 
 const log = Log.create({ service: "zee-cron" });
 

@@ -34,7 +34,7 @@ zee agent --agent ops --message "Summarize logs"
 zee agent --session-id 1234 --message "Summarize inbox" --thinking medium
 zee agent --to +15555550123 --message "Trace logs" --verbose on --json
 zee agent --to +15555550123 --message "Summon reply" --deliver
-zee agent --agent ops --message "Generate report" --deliver --reply-channel matrix --reply-to "!reports:example.com"
+zee agent --agent ops --message "Generate report" --deliver --reply-channel whatsapp --reply-to "!reports:example.com"
 ```
 
 ## Flags

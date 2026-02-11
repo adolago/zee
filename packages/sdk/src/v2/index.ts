@@ -27,9 +27,3 @@ export async function createZee(options?: ServerOptions) {
     server,
   }
 }
-
-/** @deprecated Use createZee instead */
-export const createAgentCore = createZee
-
-/** @deprecated Use createZee instead */
-export const createOpencode = createZee

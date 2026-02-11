@@ -145,7 +145,7 @@ export async function configureGatewayForOnboarding(
   let tailscaleResetOnExit = flow === "quickstart" ? quickstartGateway.tailscaleResetOnExit : false;
   if (tailscaleMode !== "off" && flow !== "quickstart") {
     await prompter.note(
-      ["Docs:", "https://docs.zee/gateway/tailscale", "https://docs.zee/web"].join("\n"),
+      ["Docs:", "https://zee-bot.com/gateway/tailscale", "https://zee-bot.com/web"].join("\n"),
       "Tailscale",
     );
     tailscaleResetOnExit = Boolean(

@@ -3,9 +3,9 @@ Move the memory subsystem boundary into Rust to prioritize safety and reliabilit
 ## Current state summary (key references)
 Unified memory logic (Qdrant storage, embeddings, conversation/state continuity) lives in `src/memory/unified.ts (1-200, 200-1600)` and the Qdrant REST client and payload/index logic in `src/memory/qdrant.ts (1-200, 200-520)`.
 Embedding and reranking are TypeScript implementations in `src/memory/embedding.ts (1-200)` and `src/memory/reranker.ts (1-200)`, with core types and provider definitions in `src/memory/types.ts (1-520)`.
-Memory is consumed by server routes `packages/zee-core/src/server/route/memory.ts (1-200)`, MCP server `src/mcp/servers/memory.ts (1-200)`, Zee tools `src/domain/zee/tools.ts (1-240)`, persona bootstrap hooks `packages/zee-core/src/bootstrap/personas.ts (1-200)`, and required-memory checks in `packages/zee-core/src/session/prompt.ts (91-290)`.
+Memory is consumed by server routes `packages/zee/src/server/route/memory.ts (1-200)`, MCP server `src/mcp/servers/memory.ts (1-200)`, Zee tools `src/domain/zee/tools.ts (1-240)`, persona bootstrap hooks `packages/zee/src/bootstrap/personas.ts (1-200)`, and required-memory checks in `packages/zee/src/session/prompt.ts (91-290)`.
 Runtime configuration is loaded from `src/config/runtime.ts (1-200)` with defaults in `src/config/constants.ts (1-120)`; the broader config schema and defaults are in `src/config/schema.ts (271-470)` and `src/config/defaults.ts (96-295)`.
-There was a legacy memory persistence plugin prototype for key/value caching; the active runtime plugin loader is `packages/zee-core/src/plugin/index.ts`.
+There was a legacy memory persistence plugin prototype for key/value caching; the active runtime plugin loader is `packages/zee/src/plugin/index.ts`.
 Rust workspace currently includes only `packages/stanley-core` as per `Cargo.toml (1-34)`.
 ## Proposed changes
 ### 1) Define the Rust boundary and contract
@@ -37,4 +37,4 @@ End-to-end checks through existing HTTP routes and MCP tools to ensure compatibi
 ## Open decisions
 Transport: HTTP/JSON vs gRPC vs Unix socket for local IPC.
 Embedding placement in Phase 1 (Node vs Rust), given safety and auth handling.
-Process supervision model (spawned by agent-core vs externally managed service).
+Process supervision model (spawned by zee vs externally managed service).

@@ -80,7 +80,7 @@ export type SessionConfig = {
   scope?: SessionScope;
   /** DM session scoping (default: "main"). */
   dmScope?: DmScope;
-  /** Map platform-prefixed identities (e.g. "matrix:@user:server") to canonical DM peers. */
+  /** Map platform-prefixed identities (e.g. "whatsapp:+15551234567") to canonical DM peers. */
   identityLinks?: Record<string, string[]>;
   resetTriggers?: string[];
   idleMinutes?: number;
@@ -135,7 +135,7 @@ export type DiagnosticsCacheTraceConfig = {
 
 export type DiagnosticsConfig = {
   enabled?: boolean;
-  /** Optional ad-hoc diagnostics flags (e.g. "matrix.http"). */
+  /** Optional ad-hoc diagnostics flags (e.g. "whatsapp.connect"). */
   flags?: string[];
   otel?: DiagnosticsOtelConfig;
   cacheTrace?: DiagnosticsCacheTraceConfig;

@@ -14,8 +14,8 @@ SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
 if [[ -z "$SERVICE_HOME" ]]; then
   SERVICE_HOME="/home/$SERVICE_USER"
 fi
-DAEMON_HOST="${ZEE_HOST:-${AGENT_CORE_HOST:-127.0.0.1}}"
-DAEMON_PORT="${ZEE_PORT:-${AGENT_CORE_PORT:-3210}}"
+DAEMON_HOST="${ZEE_HOST:-127.0.0.1}"
+DAEMON_PORT="${ZEE_PORT:-3210}"
 DAEMON_URL="http://${DAEMON_HOST}:${DAEMON_PORT}"
 
 for arg in "$@"; do
@@ -104,16 +104,6 @@ if [[ ! -f "$ENV_FILE" ]]; then
 
 # EXA API key (for web search)
 # EXA_API_KEY=your-key-here
-
-# =============================================================================
-# Matrix Channel (Optional)
-# =============================================================================
-
-# Matrix homeserver URL
-# MATRIX_HOMESERVER_URL=https://matrix.example.com
-
-# Matrix access token
-# MATRIX_ACCESS_TOKEN=syt_xxx...
 
 EOF
     chown "$SERVICE_USER:$SERVICE_GROUP" "$ENV_FILE"
@@ -215,19 +205,18 @@ echo "Installation complete!"
 echo ""
 echo "The daemon starts:"
 echo "  - zee (AI agent engine)"
-echo "  - zee gateway (WhatsApp/Matrix messaging)"
+echo "  - zee gateway (WhatsApp messaging)"
 echo ""
 echo "Next steps:"
 echo "  1. Edit your API keys in: $ENV_FILE"
-echo "  2. Install zee binary: cd $REPO_ROOT/packages/zee-core && bun link"
+echo "  2. Build zee binary:     cd $REPO_ROOT/packages/zee && bun run build"
+echo "     Verify binary:        cd $REPO_ROOT && ./script/verify-binary.sh"
 echo "  3. Ensure zee gateway is set up: $REPO_ROOT/packages/personas/zee"
-echo "  4. Enable the service:    sudo systemctl enable zee"
 echo "  5. Start the service:     sudo systemctl start zee"
 echo "  6. Check status:          sudo systemctl status zee"
 echo "  7. View logs:             journalctl -u zee -f"
 echo ""
 echo "Or use the CLI commands:"
-echo "  zee daemon --gateway  # Start in foreground (with gateway)"
-echo "  zee daemon           # Start without gateway"
+echo "  zee daemon           # Start in foreground (embedded gateway enabled)"
 echo "  zee daemon-status    # Check if running"
 echo "  zee daemon-stop      # Stop the daemon"

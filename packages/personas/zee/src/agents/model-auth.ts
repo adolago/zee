@@ -260,7 +260,7 @@ export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
   }
 
   if (normalized === "opencode") {
-    return pick("AGENT_CORE_API_KEY") ?? pick("OPENCODE_ZEN_API_KEY");
+    return pick("OPENCODE_ZEN_API_KEY");
   }
 
   if (normalized === "qwen-portal") {
@@ -285,7 +285,7 @@ export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
     synthetic: "SYNTHETIC_API_KEY",
     venice: "VENICE_API_KEY",
     mistral: "MISTRAL_API_KEY",
-    opencode: "AGENT_CORE_API_KEY",
+    opencode: "OPENCODE_ZEN_API_KEY",
   };
   const envVar = envMap[normalized];
   if (!envVar) return null;

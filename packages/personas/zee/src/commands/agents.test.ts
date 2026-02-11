@@ -36,7 +36,7 @@ describe("agents helpers", () => {
           agentId: "work",
           match: { channel: "whatsapp", accountId: "biz" },
         },
-        { agentId: "main", match: { channel: "matrix" } },
+        { agentId: "main", match: { channel: "whatsapp" } },
       ],
     };
 
@@ -100,14 +100,14 @@ describe("agents helpers", () => {
       },
       {
         agentId: "work",
-        match: { channel: "matrix" },
+        match: { channel: "whatsapp" },
       },
     ]);
 
-    expect(result.added).toHaveLength(1);
+    expect(result.added).toHaveLength(0);
     expect(result.skipped).toHaveLength(1);
-    expect(result.conflicts).toHaveLength(1);
-    expect(result.config.bindings).toHaveLength(2);
+    expect(result.conflicts).toHaveLength(2);
+    expect(result.config.bindings).toHaveLength(1);
   });
 
   it("pruneAgentConfig removes agent, bindings, and allowlist entries", () => {
@@ -120,7 +120,7 @@ describe("agents helpers", () => {
       },
       bindings: [
         { agentId: "work", match: { channel: "whatsapp" } },
-        { agentId: "home", match: { channel: "matrix" } },
+        { agentId: "home", match: { channel: "whatsapp" } },
       ],
       tools: {
         agentToAgent: { enabled: true, allow: ["work", "home"] },

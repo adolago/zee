@@ -5,7 +5,7 @@
 </p>
 
 **Zee** is a personal AI assistant you run on your own devices.
-It answers on the channels you already use (WhatsApp, Matrix).
+It answers on the channels you already use (WhatsApp).
 The Zee Gateway is the control plane for sessions, channels, tools, and events.
 
 If you want a single-user assistant that feels local, fast, and always-on, this is it.
@@ -39,7 +39,7 @@ Notes:
 
 ```bash
 git clone <your-fork>
-cd agent-core/packages/personas/zee
+cd packages/personas/zee
 
 pnpm install
 pnpm build
@@ -52,7 +52,7 @@ pnpm gateway:watch
 
 Zee connects to real messaging surfaces. Treat inbound DMs as **untrusted input**.
 
-Default behavior on WhatsApp/Matrix:
+Default behavior on WhatsApp:
 - **DM pairing** (`dmPolicy="pairing"`): unknown senders receive a short pairing code and the bot does not process their message.
 - Approve with: `zee pairing approve <channel> <code>` (then the sender is added to a local allowlist store).
 - Public inbound DMs require an explicit opt-in: set `dmPolicy="open"` and include `"*"` in the channel allowlist (`allowFrom`).
@@ -60,7 +60,7 @@ Default behavior on WhatsApp/Matrix:
 ## Highlights
 
 - **Zee Gateway** — single control plane for sessions, channels, tools, and events.
-- **Multi-channel inbox** — WhatsApp and Matrix.
+- **Messaging inbox** — WhatsApp.
 - **Multi-agent routing** — route inbound channels/accounts/peers to isolated agents (workspaces + per-agent sessions).
 - **Live Canvas** — agent-driven visual workspace with A2UI.
 - **First-class tools** — browser, canvas, nodes, cron, and sessions.
@@ -68,7 +68,7 @@ Default behavior on WhatsApp/Matrix:
 ## How it works (short)
 
 ```
-WhatsApp / Matrix
+WhatsApp
                │
                ▼
 ┌───────────────────────────────┐

@@ -208,8 +208,8 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
       await prompter.note(
         [
           "Docs:",
-          "https://docs.zee/gateway/health",
-          "https://docs.zee/gateway/troubleshooting",
+          "https://zee-bot.com/gateway/health",
+          "https://zee-bot.com/gateway/troubleshooting",
         ].join("\n"),
         "Health check help",
       );
@@ -252,7 +252,7 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
       `Gateway HTTP: ${links.httpUrl}`,
       `Gateway WS: ${links.wsUrl}`,
       gatewayStatusLine,
-      "Docs: https://docs.zee/gateway/health",
+      "Docs: https://zee-bot.com/gateway/health",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -312,14 +312,14 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
   }
 
   await prompter.note(
-    ["Back up your agent workspace.", "Docs: https://docs.zee/concepts/agent-workspace"].join(
+    ["Back up your agent workspace.", "Docs: https://zee-bot.com/concepts/agent-workspace"].join(
       "\n",
     ),
     "Workspace backup",
   );
 
   await prompter.note(
-    "Running agents on your computer is risky — harden your setup: https://docs.zee/security",
+    "Running agents on your computer is risky — harden your setup: https://zee-bot.com/security",
     "Security",
   );
 
@@ -335,7 +335,7 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
           webSearchKey
             ? "API key: stored in config (tools.web.search.apiKey)."
             : "API key: provided via BRAVE_API_KEY env var (Gateway environment).",
-          "Docs: https://docs.zee/tools/web",
+          "Docs: https://zee-bot.com/tools/web",
         ].join("\n")
       : [
           "If you want your agent to be able to search the web, you’ll need an API key.",
@@ -347,19 +347,19 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
           "- Enable web_search and paste your Brave Search API key",
           "",
           "Alternative: set BRAVE_API_KEY in the Gateway environment (no config changes).",
-          "Docs: https://docs.zee/tools/web",
+          "Docs: https://zee-bot.com/tools/web",
         ].join("\n"),
     "Web search (optional)",
   );
 
   await prompter.note(
-    'What now: https://docs.zee/showcase ("What People Are Building").',
+    'What now: https://zee-bot.com/showcase ("What People Are Building").',
     "What now",
   );
 
   await prompter.outro(
     ranTui
       ? "Onboarding complete. TUI started."
-      : `Onboarding complete. Start the TUI with ${formatCliCommand("zee tui")} or chat via WhatsApp/Matrix.`,
+      : `Onboarding complete. Start the TUI with ${formatCliCommand("zee tui")} or chat via WhatsApp.`,
   );
 }

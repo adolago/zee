@@ -45,7 +45,7 @@ def get_sec_filing(ticker: str, form_type: str = "10-K", year: int | None = None
 
         # Download to temp directory
         with tempfile.TemporaryDirectory() as tmpdir:
-            dl = Downloader("stanley", "stanley@agent-core.local", tmpdir)
+            dl = Downloader("stanley", "stanley@zee.local", tmpdir)
 
             # Download the filing
             dl.get(form_type.upper(), ticker.upper(), limit=1)

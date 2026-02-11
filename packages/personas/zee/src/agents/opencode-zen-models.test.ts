@@ -1,64 +1,64 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  getAgentCoreZenStaticFallbackModels,
+  getOpencodeZenStaticFallbackModels,
   OPENCODE_ZEN_MODEL_ALIASES,
-  resolveAgentCoreZenAlias,
-  resolveAgentCoreZenModelApi,
+  resolveOpencodeZenAlias,
+  resolveOpencodeZenModelApi,
 } from "./opencode-zen-models.js";
 
-describe("resolveAgentCoreZenAlias", () => {
+describe("resolveOpencodeZenAlias", () => {
   it("resolves opus alias", () => {
-    expect(resolveAgentCoreZenAlias("opus")).toBe("claude-opus-4-5");
+    expect(resolveOpencodeZenAlias("opus")).toBe("claude-opus-4-5");
   });
 
   it("keeps legacy aliases working", () => {
-    expect(resolveAgentCoreZenAlias("sonnet")).toBe("claude-opus-4-5");
-    expect(resolveAgentCoreZenAlias("haiku")).toBe("claude-opus-4-5");
-    expect(resolveAgentCoreZenAlias("gpt4")).toBe("gpt-5.1");
-    expect(resolveAgentCoreZenAlias("o1")).toBe("gpt-5.2");
-    expect(resolveAgentCoreZenAlias("gemini-2.5")).toBe("gemini-3-pro");
+    expect(resolveOpencodeZenAlias("sonnet")).toBe("claude-opus-4-5");
+    expect(resolveOpencodeZenAlias("haiku")).toBe("claude-opus-4-5");
+    expect(resolveOpencodeZenAlias("gpt4")).toBe("gpt-5.1");
+    expect(resolveOpencodeZenAlias("o1")).toBe("gpt-5.2");
+    expect(resolveOpencodeZenAlias("gemini-2.5")).toBe("gemini-3-pro");
   });
 
   it("resolves gpt5 alias", () => {
-    expect(resolveAgentCoreZenAlias("gpt5")).toBe("gpt-5.2");
+    expect(resolveOpencodeZenAlias("gpt5")).toBe("gpt-5.2");
   });
 
   it("resolves gemini alias", () => {
-    expect(resolveAgentCoreZenAlias("gemini")).toBe("gemini-3-pro");
+    expect(resolveOpencodeZenAlias("gemini")).toBe("gemini-3-pro");
   });
 
   it("returns input if no alias exists", () => {
-    expect(resolveAgentCoreZenAlias("some-unknown-model")).toBe("some-unknown-model");
+    expect(resolveOpencodeZenAlias("some-unknown-model")).toBe("some-unknown-model");
   });
 
   it("is case-insensitive", () => {
-    expect(resolveAgentCoreZenAlias("OPUS")).toBe("claude-opus-4-5");
-    expect(resolveAgentCoreZenAlias("Gpt5")).toBe("gpt-5.2");
+    expect(resolveOpencodeZenAlias("OPUS")).toBe("claude-opus-4-5");
+    expect(resolveOpencodeZenAlias("Gpt5")).toBe("gpt-5.2");
   });
 });
 
-describe("resolveAgentCoreZenModelApi", () => {
+describe("resolveOpencodeZenModelApi", () => {
   it("maps APIs by model family", () => {
-    expect(resolveAgentCoreZenModelApi("claude-opus-4-5")).toBe("anthropic-messages");
-    expect(resolveAgentCoreZenModelApi("gemini-3-pro")).toBe("google-generative-ai");
-    expect(resolveAgentCoreZenModelApi("gpt-5.2")).toBe("openai-responses");
-    expect(resolveAgentCoreZenModelApi("alpha-gd4")).toBe("openai-completions");
-    expect(resolveAgentCoreZenModelApi("big-pickle")).toBe("openai-completions");
-    expect(resolveAgentCoreZenModelApi("glm-4.7")).toBe("openai-completions");
-    expect(resolveAgentCoreZenModelApi("some-unknown-model")).toBe("openai-completions");
+    expect(resolveOpencodeZenModelApi("claude-opus-4-5")).toBe("anthropic-messages");
+    expect(resolveOpencodeZenModelApi("gemini-3-pro")).toBe("google-generative-ai");
+    expect(resolveOpencodeZenModelApi("gpt-5.2")).toBe("openai-responses");
+    expect(resolveOpencodeZenModelApi("alpha-gd4")).toBe("openai-completions");
+    expect(resolveOpencodeZenModelApi("big-pickle")).toBe("openai-completions");
+    expect(resolveOpencodeZenModelApi("glm-4.7")).toBe("openai-completions");
+    expect(resolveOpencodeZenModelApi("some-unknown-model")).toBe("openai-completions");
   });
 });
 
-describe("getAgentCoreZenStaticFallbackModels", () => {
+describe("getOpencodeZenStaticFallbackModels", () => {
   it("returns an array of models", () => {
-    const models = getAgentCoreZenStaticFallbackModels();
+    const models = getOpencodeZenStaticFallbackModels();
     expect(Array.isArray(models)).toBe(true);
     expect(models.length).toBe(11);
   });
 
   it("includes Claude, GPT, Gemini, and GLM models", () => {
-    const models = getAgentCoreZenStaticFallbackModels();
+    const models = getOpencodeZenStaticFallbackModels();
     const ids = models.map((m) => m.id);
 
     expect(ids).toContain("claude-opus-4-5");
@@ -71,7 +71,7 @@ describe("getAgentCoreZenStaticFallbackModels", () => {
   });
 
   it("returns valid ModelDefinitionConfig objects", () => {
-    const models = getAgentCoreZenStaticFallbackModels();
+    const models = getOpencodeZenStaticFallbackModels();
     for (const model of models) {
       expect(model.id).toBeDefined();
       expect(model.name).toBeDefined();

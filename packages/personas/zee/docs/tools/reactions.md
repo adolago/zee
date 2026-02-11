@@ -13,5 +13,5 @@ Shared reaction semantics across channels:
 
 Channel notes:
 
-- **Matrix**: add reactions are supported; reaction removal is connector-dependent.
+- **WhatsApp**: add reactions are supported; reaction removal is connector-dependent.
 - **WhatsApp**: empty `emoji` removes the bot reaction; `remove: true` maps to empty emoji (still requires `emoji`).

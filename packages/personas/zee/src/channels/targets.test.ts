@@ -27,16 +27,16 @@ describe("ensureTargetId", () => {
 describe("requireTargetKind", () => {
   it("returns the target id when the kind matches", () => {
     const target = buildMessagingTarget("channel", "C123", "C123");
-    expect(requireTargetKind({ platform: "Matrix", target, kind: "channel" })).toBe("C123");
+    expect(requireTargetKind({ platform: "WhatsApp", target, kind: "channel" })).toBe("C123");
   });
 
   it("throws when the kind is missing or mismatched", () => {
     expect(() =>
-      requireTargetKind({ platform: "Matrix", target: undefined, kind: "channel" }),
-    ).toThrow(/Matrix channel id is required/);
+      requireTargetKind({ platform: "WhatsApp", target: undefined, kind: "channel" }),
+    ).toThrow(/WhatsApp channel id is required/);
     const target = buildMessagingTarget("user", "U123", "U123");
-    expect(() => requireTargetKind({ platform: "Matrix", target, kind: "channel" })).toThrow(
-      /Matrix channel id is required/,
+    expect(() => requireTargetKind({ platform: "WhatsApp", target, kind: "channel" })).toThrow(
+      /WhatsApp channel id is required/,
     );
   });
 });

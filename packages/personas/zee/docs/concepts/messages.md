@@ -23,7 +23,7 @@ Inbound message
 Key knobs live in configuration:
 - `messages.*` for prefixes, queueing, and group behavior.
 - `agents.defaults.*` for block streaming and chunking defaults.
-- Channel overrides (`channels.whatsapp.*`, `channels.matrix.*`, etc.) for caps and streaming toggles.
+- Channel overrides (`channels.whatsapp.*`, `channels.whatsapp.*`, etc.) for caps and streaming toggles.
 
 See [Configuration](/gateway/configuration) for full schema.
 

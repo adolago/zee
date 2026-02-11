@@ -1,5 +1,5 @@
 /**
- * Usage tracking module for agent-core.
+ * Usage tracking module for Zee.
  *
  * Captures API usage at the source for:
  * - Cost tracking

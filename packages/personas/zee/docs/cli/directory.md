@@ -27,26 +27,26 @@ Directory lookups for channels that support it (contacts/peers, groups, and “m
 ## ID formats (by channel)
 
 - WhatsApp: `+15551234567` (DM), `1234567890-1234567890@g.us` (group)
-- Matrix: `@user:server` (DM), `!roomId:server` (room)
+- WhatsApp: `@user:server` (DM), `!roomId:server` (room)
 
 ## Self (“me”)
 
 ```bash
-zee directory self --channel matrix
+zee directory self --channel whatsapp
 ```
 
 ## Peers (contacts/users)
 
 ```bash
-zee directory peers list --channel matrix
-zee directory peers list --channel matrix --query "name"
-zee directory peers list --channel matrix --limit 50
+zee directory peers list --channel whatsapp
+zee directory peers list --channel whatsapp --query "name"
+zee directory peers list --channel whatsapp --limit 50
 ```
 
 ## Groups
 
 ```bash
-zee directory groups list --channel matrix
-zee directory groups list --channel matrix --query "work"
-zee directory groups members --channel matrix --group-id <id>
+zee directory groups list --channel whatsapp
+zee directory groups list --channel whatsapp --query "work"
+zee directory groups members --channel whatsapp --group-id <id>
 ```

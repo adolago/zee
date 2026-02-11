@@ -16,7 +16,7 @@
       forEachSystem = f: lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       pkgsFor = system: nixpkgs.legacyPackages.${system};
       rev = self.shortRev or self.dirtyShortRev or "dirty";
-      packageJson = builtins.fromJSON (builtins.readFile ./packages/zee-core/package.json);
+      packageJson = builtins.fromJSON (builtins.readFile ./packages/zee/package.json);
       bunTarget = {
         "aarch64-linux" = "bun-linux-arm64";
         "x86_64-linux" = "bun-linux-x64";

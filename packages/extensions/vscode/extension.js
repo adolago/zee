@@ -7,14 +7,14 @@ function getWorkspaceDirectory() {
 }
 
 async function getBaseUrl(context) {
-  const config = vscode.workspace.getConfiguration("agentCore");
+  const config = vscode.workspace.getConfiguration("zee");
   const defaultUrl = config.get("baseUrl");
-  const stored = context.globalState.get("agentCore.baseUrl");
+  const stored = context.globalState.get("zee.baseUrl");
   return stored || defaultUrl;
 }
 
 async function setBaseUrl(context, url) {
-  await context.globalState.update("agentCore.baseUrl", url);
+  await context.globalState.update("zee.baseUrl", url);
 }
 
 async function request(context, path, options = {}) {
@@ -23,7 +23,7 @@ async function request(context, path, options = {}) {
   const directory = getWorkspaceDirectory();
   const headers = {
     "Accept": "application/json",
-    ...(directory ? { "x-agent-core-directory": directory, "x-opencode-directory": directory } : {}),
+    ...(directory ? { "x-zee-directory": directory, "x-opencode-directory": directory } : {}),
     ...(options.headers || {}),
   };
   const res = await fetch(url, { ...options, headers });
@@ -35,23 +35,23 @@ async function request(context, path, options = {}) {
 }
 
 async function ensureSession(context, output) {
-  const existing = context.globalState.get("agentCore.sessionId");
+  const existing = context.globalState.get("zee.sessionId");
   if (existing) return existing;
   const created = await request(context, "/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
   const sessionId = created.id;
-  await context.globalState.update("agentCore.sessionId", sessionId);
+  await context.globalState.update("zee.sessionId", sessionId);
   output.appendLine(`Created session ${sessionId}`);
   return sessionId;
 }
 
 function activate(context) {
-  const output = vscode.window.createOutputChannel("Agent-Core");
+  const output = vscode.window.createOutputChannel("Zee");
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("agentCore.connect", async () => {
+    vscode.commands.registerCommand("zee.connect", async () => {
       const current = await getBaseUrl(context);
       const next = await vscode.window.showInputBox({
-        prompt: "Agent-Core daemon URL",
+        prompt: "Zee daemon URL",
         value: current || "http://127.0.0.1:3210",
       });
       if (!next) return;
@@ -62,22 +62,22 @@ function activate(context) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("agentCore.newSession", async () => {
+    vscode.commands.registerCommand("zee.newSession", async () => {
       try {
         const created = await request(context, "/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-        await context.globalState.update("agentCore.sessionId", created.id);
+        await context.globalState.update("zee.sessionId", created.id);
         output.appendLine(`New session: ${created.id}`);
         output.show(true);
       } catch (err) {
-        vscode.window.showErrorMessage(`Agent-Core: ${err.message || err}`);
+        vscode.window.showErrorMessage(`Zee: ${err.message || err}`);
       }
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("agentCore.sendPrompt", async () => {
+    vscode.commands.registerCommand("zee.sendPrompt", async () => {
       try {
-        const prompt = await vscode.window.showInputBox({ prompt: "Send prompt to Agent-Core" });
+        const prompt = await vscode.window.showInputBox({ prompt: "Send prompt to Zee" });
         if (!prompt) return;
         const sessionId = await ensureSession(context, output);
         const response = await request(context, `/session/${sessionId}/message`, {
@@ -88,13 +88,13 @@ function activate(context) {
         output.appendLine(`Response: ${JSON.stringify(response.info || response, null, 2)}`);
         output.show(true);
       } catch (err) {
-        vscode.window.showErrorMessage(`Agent-Core: ${err.message || err}`);
+        vscode.window.showErrorMessage(`Zee: ${err.message || err}`);
       }
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("agentCore.sendSelection", async () => {
+    vscode.commands.registerCommand("zee.sendSelection", async () => {
       try {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -118,7 +118,7 @@ function activate(context) {
         output.appendLine(`Response: ${JSON.stringify(response.info || response, null, 2)}`);
         output.show(true);
       } catch (err) {
-        vscode.window.showErrorMessage(`Agent-Core: ${err.message || err}`);
+        vscode.window.showErrorMessage(`Zee: ${err.message || err}`);
       }
     }),
   );

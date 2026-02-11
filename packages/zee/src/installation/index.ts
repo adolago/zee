@@ -12,14 +12,11 @@ import { fileURLToPath } from "url"
 declare global {
   const ZEE_VERSION: string
   const ZEE_CHANNEL: string
-  // Legacy build-time defines (deprecated).
-  const AGENT_CORE_VERSION: string
-  const AGENT_CORE_CHANNEL: string
 }
 
 export namespace Installation {
   const log = Log.create({ service: "installation" })
-  const DEFAULT_NPM_PACKAGE = "@zee/core"
+  const DEFAULT_NPM_PACKAGE = "zee"
   const PACKAGE_JSON_PATH = (() => {
     try {
       const here = path.dirname(fileURLToPath(import.meta.url))
@@ -42,10 +39,7 @@ export namespace Installation {
     new Set(
       [
         process.env.ZEE_NPM_PACKAGE?.trim(),
-        process.env.AGENT_CORE_NPM_PACKAGE?.trim(),
         DEFAULT_NPM_PACKAGE,
-        "zee-ai",
-        "agent-core-ai",
       ].filter(Boolean),
     ),
   ) as string[]
@@ -212,8 +206,8 @@ export namespace Installation {
     })
 
     const npmPackages = NPM_PACKAGES
-    const brewPackages = ["zee", "adolago/tap/zee", "agent-core", "adolago/tap/agent-core"]
-    const winPackages = ["zee", "agent-core"]
+    const brewPackages = ["zee", "adolago/tap/zee"]
+    const winPackages = ["zee"]
 
     for (const check of checks) {
       const output = await check.command()
@@ -243,12 +237,6 @@ export namespace Installation {
     if (tapFormula.includes("zee")) return "adolago/tap/zee"
     const coreFormula = await $`brew list --formula zee`.throws(false).quiet().text()
     if (coreFormula.includes("zee")) return "zee"
-
-    // Legacy formulas
-    const legacyTapFormula = await $`brew list --formula adolago/tap/agent-core`.throws(false).quiet().text()
-    if (legacyTapFormula.includes("agent-core")) return "adolago/tap/agent-core"
-    const legacyCoreFormula = await $`brew list --formula agent-core`.throws(false).quiet().text()
-    if (legacyCoreFormula.includes("agent-core")) return "agent-core"
 
     return "zee"
   }
@@ -308,15 +296,11 @@ export namespace Installation {
   export const VERSION =
     typeof ZEE_VERSION === "string"
       ? ZEE_VERSION
-      : typeof AGENT_CORE_VERSION === "string"
-        ? AGENT_CORE_VERSION
-        : PACKAGE_VERSION ?? process.env.ZEE_VERSION ?? process.env.AGENT_CORE_VERSION ?? "dev"
+      : PACKAGE_VERSION ?? process.env.ZEE_VERSION ?? "dev"
   export const CHANNEL =
     typeof ZEE_CHANNEL === "string"
       ? ZEE_CHANNEL
-      : typeof AGENT_CORE_CHANNEL === "string"
-        ? AGENT_CORE_CHANNEL
-        : process.env.ZEE_CHANNEL ?? process.env.AGENT_CORE_CHANNEL ?? "local"
+      : process.env.ZEE_CHANNEL ?? "local"
   export const USER_AGENT = `zee/${CHANNEL}/${VERSION}/${Flag.ZEE_CLIENT}`
 
   export function runtimeInfo(): RuntimeInfo {
@@ -346,16 +330,6 @@ export namespace Installation {
       const formula = await getBrewFormula()
       if (formula === "zee" || formula === "adolago/tap/zee") {
         return fetch("https://formulae.brew.sh/api/formula/zee.json")
-          .then((res) => {
-            if (!res.ok) throw new Error(res.statusText)
-            return res.json()
-          })
-          .then((data: any) => data.versions.stable)
-      }
-
-      // Legacy formula name (may not exist on brew.sh).
-      if (formula === "agent-core" || formula === "adolago/tap/agent-core") {
-        return fetch("https://formulae.brew.sh/api/formula/agent-core.json")
           .then((res) => {
             if (!res.ok) throw new Error(res.statusText)
             return res.json()

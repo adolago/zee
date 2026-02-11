@@ -1,6 +1,6 @@
 import type {
   Event,
-  createAgentCoreClient,
+  createZeeClient,
   Project,
   Model,
   Provider,
@@ -10,7 +10,7 @@ import type {
   Part,
   Auth,
   Config,
-} from "@zee/core/pkg/sdk"
+} from "@zee/zee/pkg/sdk"
 
 import type { BunShell } from "./shell"
 import { type ToolDefinition } from "./tool"
@@ -24,7 +24,7 @@ export type ProviderContext = {
 }
 
 export type PluginInput = {
-  client: ReturnType<typeof createAgentCoreClient>
+  client: ReturnType<typeof createZeeClient>
   project: Project
   directory: string
   worktree: string

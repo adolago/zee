@@ -34,7 +34,7 @@ export const env = {
   ALLOW_SIGNUP: toBool(process.env.HOSTED_ALLOW_SIGNUP, true),
   API_KEYS: toCsv(process.env.HOSTED_API_KEYS ?? process.env.HOSTED_API_KEY),
   CORS_ORIGINS: toCsv(process.env.HOSTED_CORS_ORIGINS),
-  VAULT_KEY: process.env.HOSTED_VAULT_KEY ?? process.env.AGENT_CORE_HOSTED_VAULT_KEY ?? "",
+  VAULT_KEY: process.env.HOSTED_VAULT_KEY ?? "",
   RATE_LIMIT_PER_MINUTE: toNumber(process.env.HOSTED_RATE_LIMIT_PER_MINUTE, 60),
   RETENTION_LOGS_DAYS: toNumber(process.env.HOSTED_RETENTION_LOGS_DAYS, 30),
   RETENTION_TELEMETRY_DAYS: toNumber(process.env.HOSTED_RETENTION_TELEMETRY_DAYS, 30),

@@ -1,5 +1,5 @@
 /**
- * Usage tracking types for agent-core.
+ * Usage tracking types for Zee.
  * Captures API usage at the source for cost tracking and analytics.
  */
 

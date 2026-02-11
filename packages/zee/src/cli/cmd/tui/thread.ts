@@ -20,9 +20,7 @@ function normalizeDaemonHost(hostname?: string): string {
 
 function resolveDaemonUrl(network: ResolvedNetworkOptions, state?: Daemon.DaemonState | null): string {
   if (process.env.ZEE_URL) return process.env.ZEE_URL
-  if (process.env.AGENT_CORE_URL) return process.env.AGENT_CORE_URL
-  if (process.env.OPENCODE_URL) return process.env.OPENCODE_URL
-  const hostname = normalizeDaemonHost(state?.hostname ?? network.hostname)
+    const hostname = normalizeDaemonHost(state?.hostname ?? network.hostname)
   const port = state?.port ?? (network.port && network.port !== 0 ? network.port : DEFAULT_DAEMON_PORT)
   return `http://${hostname}:${port}`
 }
@@ -136,7 +134,7 @@ async function ensureProcessRunning(
   directory: string,
 ): Promise<{ url: string; proc?: AlwaysOnProcess }> {
   // 1. Explicit URL
-  const explicitUrl = process.env.ZEE_URL?.trim() || process.env.AGENT_CORE_URL?.trim()
+  const explicitUrl = process.env.ZEE_URL?.trim()
   if (explicitUrl) {
     const url = resolveDaemonUrl(network)
     if (await checkDaemonHealth(url)) return { url }
@@ -277,7 +275,7 @@ export const TuiThreadCommand = cmd({
         describe: "start without TUI (headless mode, same as `zee daemon`)",
       }),
   handler: async (args) => {
-    const baseCwd = process.env.ZEE_ORIGINAL_PWD ?? process.env.AGENT_CORE_ORIGINAL_PWD ?? process.env.PWD ?? process.cwd()
+    const baseCwd = process.env.ZEE_ORIGINAL_PWD ?? process.env.PWD ?? process.cwd()
     const cwd = args.project ? path.resolve(baseCwd, args.project) : baseCwd
     try {
       process.chdir(cwd)

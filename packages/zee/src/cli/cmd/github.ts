@@ -133,17 +133,16 @@ type IssueQueryResponse = {
   }
 }
 
-const AGENT_USERNAME = process.env["ZEE_GITHUB_BOT"] ?? process.env["AGENT_CORE_GITHUB_BOT"] ?? "zee[bot]"
+const AGENT_USERNAME = process.env["ZEE_GITHUB_BOT"] ?? "zee[bot]"
 const AGENT_REACTION = "eyes"
 const WORKFLOW_FILE = ".github/workflows/zee.yml"
-const DEFAULT_MENTIONS = "/zee,/z,/agent-core,/ac"
+const DEFAULT_MENTIONS = "/zee,/z,/ac"
 const DEFAULT_ACTION_REF =
-  process.env["ZEE_ACTION_REF"] ?? process.env["AGENT_CORE_ACTION_REF"] ?? "adolago/zee/github@dev"
+  process.env["ZEE_ACTION_REF"] ?? "adolago/zee/github@dev"
 const GITHUB_APP_URL =
   process.env["ZEE_GITHUB_APP_URL"] ??
-  process.env["AGENT_CORE_GITHUB_APP_URL"] ??
-  ((process.env["ZEE_GITHUB_APP_SLUG"] ?? process.env["AGENT_CORE_GITHUB_APP_SLUG"])
-    ? `https://github.com/apps/${process.env["ZEE_GITHUB_APP_SLUG"] ?? process.env["AGENT_CORE_GITHUB_APP_SLUG"]}`
+  ((process.env["ZEE_GITHUB_APP_SLUG"])
+    ? `https://github.com/apps/${process.env["ZEE_GITHUB_APP_SLUG"]}`
     : "")
 const OIDC_AUDIENCE = process.env["OIDC_AUDIENCE"] ?? "zee-github-action"
 
@@ -262,7 +261,6 @@ export const GithubInstallCommand = cmd({
 
           async function promptProvider() {
             const priority: Record<string, number> = {
-              "agent-core": 0,
               anthropic: 1,
               openai: 2,
               google: 3,
@@ -344,7 +342,7 @@ export const GithubInstallCommand = cmd({
 
             async function getInstallation() {
               const url =
-                process.env["ZEE_GITHUB_APP_INSTALLATION_URL"] ?? process.env["AGENT_CORE_GITHUB_APP_INSTALLATION_URL"]
+                process.env["ZEE_GITHUB_APP_INSTALLATION_URL"]
               if (!url) return undefined
               return fetch(`${url}?owner=${app.owner}&repo=${app.repo}`)
                 .then((res) => res.json())
@@ -374,9 +372,7 @@ jobs:
       contains(github.event.comment.body, ' /zee') ||
       startsWith(github.event.comment.body, '/zee') ||
       contains(github.event.comment.body, ' /ac') ||
-      startsWith(github.event.comment.body, '/ac') ||
-      contains(github.event.comment.body, ' /agent-core') ||
-      startsWith(github.event.comment.body, '/agent-core')
+      startsWith(github.event.comment.body, '/ac')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -686,7 +682,7 @@ export const GithubRunCommand = cmd({
       }
 
       function normalizeShareBaseUrl(): string | undefined {
-        const value = process.env["SHARE_BASE_URL"] ?? process.env["AGENT_CORE_SHARE_BASE_URL"]
+        const value = process.env["SHARE_BASE_URL"] ?? process.env["ZEE_SHARE_BASE_URL"]
         if (!value) return undefined
         return value.replace(/\/+$/, "")
       }

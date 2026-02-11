@@ -23,12 +23,12 @@ describe("resolveCronDeliveryPlan", () => {
   it("defaults to announce when delivery object has no mode", () => {
     const plan = resolveCronDeliveryPlan(
       makeJob({
-        delivery: { channel: "telegram", to: "123", mode: undefined as never },
+        delivery: { channel: "whatsapp", to: "123", mode: undefined as never },
       }),
     );
     expect(plan.mode).toBe("announce");
     expect(plan.requested).toBe(true);
-    expect(plan.channel).toBe("telegram");
+    expect(plan.channel).toBe("whatsapp");
     expect(plan.to).toBe("123");
   });
 

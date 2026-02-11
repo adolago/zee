@@ -13,7 +13,7 @@ import { Tool } from "../../src/tool/tool"
 import { ToolRegistry } from "../../src/tool/registry"
 
 async function makeTmpDir() {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-cron-toolinvoke-"))
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-cron-toolinvoke-"))
   return {
     dir,
     cleanup: async () => {
@@ -45,16 +45,16 @@ describe("cron toolInvoke", () => {
   })
 
   test("runs a toolInvoke job and does not post to main by default", async () => {
-    const prevAllowlist = process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
-    process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"] = "test-tool"
+    const prevAllowlist = process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"]
+    process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"] = "test-tool"
 
-    const prevConfigDir = process.env["AGENT_CORE_CONFIG_DIR"]
+    const prevConfigDir = process.env["ZEE_CONFIG_DIR"]
     const tmp = await makeTmpDir()
     const events: string[] = []
     let ran = false
 
     try {
-      process.env["AGENT_CORE_CONFIG_DIR"] = tmp.dir
+      process.env["ZEE_CONFIG_DIR"] = tmp.dir
       Config.global.reset()
 
       await Instance.provide({
@@ -93,14 +93,14 @@ describe("cron toolInvoke", () => {
       expect(events).toHaveLength(0)
     } finally {
       if (prevAllowlist === undefined) {
-        delete process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+        delete process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"]
       } else {
-        process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"] = prevAllowlist
+        process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"] = prevAllowlist
       }
       if (prevConfigDir === undefined) {
-        delete process.env["AGENT_CORE_CONFIG_DIR"]
+        delete process.env["ZEE_CONFIG_DIR"]
       } else {
-        process.env["AGENT_CORE_CONFIG_DIR"] = prevConfigDir
+        process.env["ZEE_CONFIG_DIR"] = prevConfigDir
       }
       Config.global.reset()
       await tmp.cleanup()
@@ -108,15 +108,15 @@ describe("cron toolInvoke", () => {
   })
 
   test("rejects toolInvoke when tool is not in the allowlist", async () => {
-    const prevAllowlist = process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
-    delete process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+    const prevAllowlist = process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"]
+    delete process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"]
 
-    const prevConfigDir = process.env["AGENT_CORE_CONFIG_DIR"]
+    const prevConfigDir = process.env["ZEE_CONFIG_DIR"]
     const tmp = await makeTmpDir()
     let ran = false
 
     try {
-      process.env["AGENT_CORE_CONFIG_DIR"] = tmp.dir
+      process.env["ZEE_CONFIG_DIR"] = tmp.dir
       Config.global.reset()
 
       await Instance.provide({
@@ -155,14 +155,14 @@ describe("cron toolInvoke", () => {
       expect(job.state.lastError).toContain('cron toolInvoke is not allowed for tool "test-tool"')
     } finally {
       if (prevAllowlist === undefined) {
-        delete process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"]
+        delete process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"]
       } else {
-        process.env["AGENT_CORE_CRON_TOOL_INVOKE_ALLOWLIST"] = prevAllowlist
+        process.env["ZEE_CRON_TOOL_INVOKE_ALLOWLIST"] = prevAllowlist
       }
       if (prevConfigDir === undefined) {
-        delete process.env["AGENT_CORE_CONFIG_DIR"]
+        delete process.env["ZEE_CONFIG_DIR"]
       } else {
-        process.env["AGENT_CORE_CONFIG_DIR"] = prevConfigDir
+        process.env["ZEE_CONFIG_DIR"] = prevConfigDir
       }
       Config.global.reset()
       await tmp.cleanup()

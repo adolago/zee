@@ -13,7 +13,7 @@
 import type { Memory } from "./unified";
 import type { MemoryEntry } from "./types";
 import { getMarkdownSync, type MarkdownSyncConfig } from "./markdown-sync";
-import { Log } from "../../packages/zee-core/src/util/log";
+import { Log } from "../../packages/zee/src/util/log";
 
 const log = Log.create({ service: "entity-pages" });
 

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 ZEE_BIN="${ZEE_BIN:-$HOME/.bun/bin/zee}"
-ZEE_BIN_PATH="${ZEE_BIN_PATH:-$REPO_ROOT/packages/zee-core/dist/@zee/core-linux-x64/bin/zee}"
+ZEE_BIN_PATH="${ZEE_BIN_PATH:-$REPO_ROOT/packages/zee/dist/@zee/zee-linux-x64/bin/zee}"
 REPORT_DIR="${REPORT_DIR:-/tmp/zee-beta}"
 REPORT_FILE="$REPORT_DIR/report.txt"
 BUG_REPORT_PATH="$REPORT_DIR/bug-report.tar.gz"
@@ -34,7 +34,7 @@ if [[ ! -x "$ZEE_BIN_PATH" ]]; then
 fi
 
 log "# Version"
-ZEE_BIN_PATH="$ZEE_BIN_PATH" AGENT_CORE_BIN_PATH="$ZEE_BIN_PATH" "$ZEE_BIN" --version | tee -a "$REPORT_FILE"
+ZEE_BIN_PATH="$ZEE_BIN_PATH" "$ZEE_BIN" --version | tee -a "$REPORT_FILE"
 log ""
 
 log "# Config & repo checks"
@@ -45,11 +45,11 @@ log "personas root: $REPO_ROOT/packages/personas"
 log ""
 
 log "# Diagnostic check (runtime + config only)"
-ZEE_BIN_PATH="$ZEE_BIN_PATH" AGENT_CORE_BIN_PATH="$ZEE_BIN_PATH" "$ZEE_BIN" check --category runtime --category config --minimal --timeout 5000 | tee -a "$REPORT_FILE"
+ZEE_BIN_PATH="$ZEE_BIN_PATH" "$ZEE_BIN" check --category runtime --category config --minimal --timeout 5000 | tee -a "$REPORT_FILE"
 log ""
 
 log "# Bug report (non-interactive, diagnostics skipped)"
-ZEE_BIN_PATH="$ZEE_BIN_PATH" AGENT_CORE_BIN_PATH="$ZEE_BIN_PATH" "$ZEE_BIN" bug-report --skip-diagnostics --non-interactive --log-lines 5 -o "$BUG_REPORT_PATH" | tee -a "$REPORT_FILE"
+ZEE_BIN_PATH="$ZEE_BIN_PATH" "$ZEE_BIN" bug-report --skip-diagnostics --non-interactive --log-lines 5 -o "$BUG_REPORT_PATH" | tee -a "$REPORT_FILE"
 log ""
 
 log "# Done"

@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/zee-core/src/util/log";
+import { Log } from "../../../packages/zee/src/util/log";
 import { spawn } from "child_process";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "fs";
 import { tmpdir } from "os";

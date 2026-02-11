@@ -106,7 +106,7 @@ describe("Config security", () => {
         await Bun.write(
           path.join(dir, "zee.json"),
           JSON.stringify({
-            $schema: "agent-core",
+            $schema: "zee",
             provider: {
               openai: {
                 options: {
@@ -139,7 +139,7 @@ describe("Config security", () => {
         await Bun.write(
           path.join(dir, "config.json"),
           JSON.stringify({
-            $schema: "agent-core",
+            $schema: "zee",
             provider: {
               openai: {
                 options: {

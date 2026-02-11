@@ -95,7 +95,7 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     name: "MiniMax",
     services: ["tts"],
     envKey: "MINIMAX_API_KEY",
-    envAliases: ["AGENT_CORE_MINIMAX_API_KEY", "OPENCODE_MINIMAX_API_KEY"],
+    envAliases: [],
     authType: "api",
     baseUrl: "https://api.minimax.io/v1",
     website: "https://platform.minimaxi.com/",
@@ -168,7 +168,7 @@ export async function hasCredentialsAsync(provider: ProviderDefinition): Promise
   if (hasCredentials(provider)) return true;
 
   // Check auth store
-  const { Auth } = await import("../../packages/zee-core/src/auth");
+  const { Auth } = await import("../../packages/zee/src/auth");
   const auth = await Auth.get(provider.id);
   return auth !== undefined;
 }
@@ -191,9 +191,6 @@ function readAuthStoreSync(): Record<string, { type: string; key?: string }> {
     const authPaths = [
       path.join(xdgDataHome, "zee", "auth.json"),
       path.join(xdgStateHome, "zee", "auth.json"),
-      // Legacy locations
-      path.join(xdgDataHome, "agent-core", "auth.json"),
-      path.join(xdgStateHome, "agent-core", "auth.json"),
     ];
     const authPath = authPaths.find((candidate: string) => fs.existsSync(candidate));
     if (!authPath) return {};
@@ -242,7 +239,7 @@ export async function getApiKey(providerId: string): Promise<string | undefined>
   if (envKey) return envKey;
 
   // Check auth store
-  const { Auth } = await import("../../packages/zee-core/src/auth");
+  const { Auth } = await import("../../packages/zee/src/auth");
   const auth = await Auth.get(providerId);
   if (auth?.type === "api") return auth.key;
 

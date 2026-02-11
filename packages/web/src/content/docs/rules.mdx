@@ -77,9 +77,9 @@ For users migrating from Claude Code, OpenCode supports Claude Code's file conve
 To disable Claude Code compatibility, set one of these environment variables:
 
 ```bash
-export AGENT_CORE_DISABLE_CLAUDE_CODE=1        # Disable all .claude support
-export AGENT_CORE_DISABLE_CLAUDE_CODE_PROMPT=1 # Disable only ~/.claude/CLAUDE.md
-export AGENT_CORE_DISABLE_CLAUDE_CODE_SKILLS=1 # Disable only .claude/skills
+export ZEE_DISABLE_CLAUDE_CODE=1        # Disable all .claude support
+export ZEE_DISABLE_CLAUDE_CODE_PROMPT=1 # Disable only ~/.claude/CLAUDE.md
+export ZEE_DISABLE_CLAUDE_CODE_SKILLS=1 # Disable only .claude/skills
 ```
 
 ---
@@ -104,7 +104,7 @@ Example:
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
 }
 ```
@@ -113,7 +113,7 @@ You can also use remote URLs to load instructions from the web.
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "instructions": ["https://raw.githubusercontent.com/my-org/shared-rules/main/style.md"]
 }
 ```
@@ -134,7 +134,7 @@ The recommended approach is to use the `instructions` field in `opencode.json`:
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "instructions": ["docs/development-standards.md", "test/testing-guidelines.md", "packages/*/AGENTS.md"]
 }
 ```

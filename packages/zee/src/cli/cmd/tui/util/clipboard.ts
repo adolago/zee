@@ -172,7 +172,7 @@ export namespace Clipboard {
     }
 
     let tempDir: string | undefined
-    tempDir = await mkdtemp(path.join(tmpdir(), "agent-core-img-"))
+    tempDir = await mkdtemp(path.join(tmpdir(), "zee-img-"))
     const tmpInput = path.join(tempDir, `input${extensionForMime(mime)}`)
     const tmpOutput = path.join(tempDir, "output.jpg")
 

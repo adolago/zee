@@ -4,11 +4,11 @@ import { ModelsDev } from "../../src/provider/models"
 import { reloadFlags } from "../../src/flag/flag"
 
 const ORIGINAL_ENV = {
-  AGENT_CORE_MODELS_PATH: process.env.AGENT_CORE_MODELS_PATH,
+  ZEE_MODELS_PATH: process.env.ZEE_MODELS_PATH,
 }
 
 beforeAll(async () => {
-  const filepath = path.join(process.env.XDG_CACHE_HOME ?? "/tmp", "agent-core-test-models.json")
+  const filepath = path.join(process.env.XDG_CACHE_HOME ?? "/tmp", "zee-test-models.json")
   await Bun.write(
     filepath,
     JSON.stringify({
@@ -22,7 +22,7 @@ beforeAll(async () => {
     }),
   )
 
-  process.env.AGENT_CORE_MODELS_PATH = filepath
+  process.env.ZEE_MODELS_PATH = filepath
   reloadFlags()
   ModelsDev.Data.reset()
 })
@@ -37,7 +37,7 @@ afterAll(() => {
 })
 
 describe("ModelsDev", () => {
-  test("reads model catalog from AGENT_CORE_MODELS_PATH when set", async () => {
+  test("reads model catalog from ZEE_MODELS_PATH when set", async () => {
     const data = await ModelsDev.get()
     expect(data).toBeDefined()
     expect(Object.keys(data)).toContain("test")

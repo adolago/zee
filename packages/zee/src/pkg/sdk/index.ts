@@ -1,16 +1,16 @@
 export * from "./client.js"
 export * from "./server.js"
 
-import { createAgentCoreClient } from "./client.js"
-import { createAgentCoreServer } from "./server.js"
+import { createZeeClient } from "./client.js"
+import { createZeeServer } from "./server.js"
 import type { ServerOptions } from "./server.js"
 
-export async function createAgentCore(options?: ServerOptions) {
-  const server = await createAgentCoreServer({
+export async function createZee(options?: ServerOptions) {
+  const server = await createZeeServer({
     ...options,
   })
 
-  const client = createAgentCoreClient({
+  const client = createZeeClient({
     baseUrl: server.url,
   })
 
@@ -19,6 +19,3 @@ export async function createAgentCore(options?: ServerOptions) {
     server,
   }
 }
-
-/** @deprecated Use createAgentCore */
-export const createOpencode = createAgentCore

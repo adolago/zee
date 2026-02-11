@@ -325,7 +325,7 @@ export async function agentsAddCommand(
         await prompter.note(
           [
             "Routing unchanged. Add bindings when you're ready.",
-            "Docs: https://docs.zee/concepts/multi-agent",
+            "Docs: https://zee-bot.com/concepts/multi-agent",
           ].join("\n"),
           "Routing",
         );

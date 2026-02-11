@@ -2,11 +2,9 @@
  * Daemon Install Wizard
  *
  * Installs zee daemon as a user systemd service (Linux only).
- * Zee daemon is the primary service - it can optionally spawn the Zee gateway
- * as a child process via the --gateway flag.
+ * Zee daemon is the primary service and always embeds the Zee gateway.
  *
- * IMPORTANT: This does NOT install zee gateway separately. Zee gateway runs
- * as a child process of zee daemon when --gateway is enabled.
+ * IMPORTANT: This does NOT install zee gateway separately. Zee gateway runs as a child process of zee daemon.
  */
 
 import { execSync, spawnSync } from "node:child_process";
@@ -89,19 +87,13 @@ function resolveZeeBinary(): string | null {
   const candidates = [
     // Bun global install
     path.join(os.homedir(), ".bun", "bin", "zee"),
-    path.join(os.homedir(), ".bun", "bin", "agent-core"),
     // User local bin
     path.join(os.homedir(), "bin", "zee"),
-    path.join(os.homedir(), "bin", "agent-core"),
     path.join(os.homedir(), ".local", "bin", "zee"),
-    path.join(os.homedir(), ".local", "bin", "agent-core"),
     // npm global
     "/usr/local/bin/zee",
-    "/usr/local/bin/agent-core",
     // Current process (if running from zee)
     process.argv[1]?.includes("zee") ? process.argv[0] : null,
-    // Legacy alias (agent-core)
-    process.argv[1]?.includes("agent-core") ? process.argv[0] : null,
   ].filter(Boolean) as string[];
 
   for (const candidate of candidates) {
@@ -119,19 +111,6 @@ function resolveZeeBinary(): string | null {
   // Try to find via which
   try {
     const result = spawnSync("which", ["zee"], {
-      encoding: "utf-8",
-      timeout: 5000,
-    });
-    if (result.status === 0 && result.stdout.trim()) {
-      return result.stdout.trim();
-    }
-  } catch {
-    // Ignore
-  }
-
-  // Legacy fallback: agent-core
-  try {
-    const result = spawnSync("which", ["agent-core"], {
       encoding: "utf-8",
       timeout: 5000,
     });
@@ -179,18 +158,14 @@ function buildServiceEnv(options: DaemonInstallOptions): Record<string, string> 
     PATH: buildServicePath(),
     NODE_ENV: "production",
     ZEE_HEADLESS: "1",
-    // Backward compat for any callers that still read legacy env vars.
-    AGENT_CORE_HEADLESS: "1",
   };
 
   if (options.port) {
     env.ZEE_PORT = String(options.port);
-    env.AGENT_CORE_PORT = String(options.port);
   }
 
   if (options.hostname) {
     env.ZEE_HOSTNAME = options.hostname;
-    env.AGENT_CORE_HOSTNAME = options.hostname;
   }
 
   return env;
@@ -244,13 +219,8 @@ function generateSystemdUnit(
 
   if (options.port) args.push("--port", String(options.port));
   if (options.hostname) args.push("--hostname", options.hostname);
-  const gatewayEnabled = options.gateway !== false;
-  if (gatewayEnabled) {
-    args.push("--gateway");
-    if (options.gatewayForce) args.push("--gateway-force");
-  } else {
-    args.push("--no-gateway");
-  }
+  args.push("--gateway");
+  if (options.gatewayForce) args.push("--gateway-force");
   if (options.wezterm === false) args.push("--no-wezterm");
   if (options.workingDirectory) args.push("--directory", options.workingDirectory);
 
@@ -505,8 +475,8 @@ export async function installDaemon(
       platform,
       error: "Could not find zee binary. Ensure it's installed and in PATH.",
       hints: [
-        "Install with: bun install -g @zee/core",
-        "Or: npm install -g @zee/core",
+        "Install with: bun install -g zee",
+        "Or: npm install -g zee",
       ],
     };
   }
@@ -594,11 +564,6 @@ export const DaemonInstallCommand = cmd({
         type: "string",
         default: "127.0.0.1",
       })
-      .option("gateway", {
-        describe: "Enable zee messaging gateway",
-        type: "boolean",
-        default: true,
-      })
       .option("gateway-force", {
         describe: "Force gateway start even if preflight fails",
         type: "boolean",
@@ -632,7 +597,7 @@ export const DaemonInstallCommand = cmd({
     const options: DaemonInstallOptions = {
       port: args.port as number,
       hostname: args.hostname as string,
-      gateway: args.gateway as boolean,
+      gateway: true,
       gatewayForce: args["gateway-force"] as boolean,
       wezterm: args.wezterm as boolean,
       workingDirectory: args.directory as string | undefined,
@@ -664,15 +629,6 @@ export const DaemonInstallCommand = cmd({
           process.exit(0);
         }
         options.force = true;
-      }
-
-      // Confirm gateway option
-      const enableGateway = await prompts.confirm({
-        message: "Enable zee messaging gateway (WhatsApp/Matrix)?",
-        initialValue: options.gateway !== false,
-      });
-      if (!prompts.isCancel(enableGateway)) {
-        options.gateway = enableGateway;
       }
 
       prompts.log.step("Installing service...");

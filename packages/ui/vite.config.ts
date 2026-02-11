@@ -45,9 +45,9 @@ function providerIconsPlugin() {
 }
 
 async function fetchProviderIcons() {
-  const url = process.env.AGENT_CORE_MODELS_URL || process.env.OPENCODE_MODELS_URL || "https://models.dev"
-  if (!process.env.AGENT_CORE_MODELS_URL && process.env.OPENCODE_MODELS_URL) {
-    console.warn("[agent-core] Deprecated env var OPENCODE_MODELS_URL. Use AGENT_CORE_MODELS_URL instead.")
+  const url = process.env.ZEE_MODELS_URL || process.env.OPENCODE_MODELS_URL || "https://models.dev"
+  if (!process.env.ZEE_MODELS_URL && process.env.OPENCODE_MODELS_URL) {
+    console.warn("[zee] Deprecated env var OPENCODE_MODELS_URL. Use ZEE_MODELS_URL instead.")
   }
   const providers = await fetch(`${url}/api.json`)
     .then((res) => res.json())

@@ -473,7 +473,7 @@ export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme 
   };
 
   return {
-    $schema: "https://opencode.ai/desktop-theme.json",
+    $schema: "https://zee-bot.com/desktop-theme.json",
     name: personaNames[personaId],
     id: personaId,
     light: {

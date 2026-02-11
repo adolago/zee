@@ -7,7 +7,7 @@ import { Rpc } from "@/util/rpc"
 import { upgrade } from "@/cli/upgrade"
 import { Config } from "@/config/config"
 import { GlobalBus } from "@/bus/global"
-import { createOpencodeClient } from "@zee/sdk"
+import { createZeeClient } from "@zee/sdk"
 import type { BunWebSocketData } from "hono/bun"
 import { Flag } from "@/flag/flag"
 
@@ -74,7 +74,7 @@ const startEventStream = (directory: string) => {
     return Server.App().fetch(request)
   }) as typeof globalThis.fetch
 
-  const sdk = createOpencodeClient({
+  const sdk = createZeeClient({
     baseUrl: "http://opencode.internal",
     directory,
     fetch: fetchFn,

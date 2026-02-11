@@ -102,13 +102,11 @@ const UPDATE_QUIPS = [
 ];
 
 const MAX_LOG_CHARS = 8000;
-const DEFAULT_PACKAGE_NAME = "zee";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "agent-core"]);
+const DEFAULT_PACKAGE_NAME = process.env.ZEE_NPM_PACKAGE?.trim() || "zee";
+const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "zee"]);
 const CLI_NAME = resolveCliName();
 const DEFAULT_REPO_URL =
   process.env.ZEE_REPO_URL?.trim() ||
-  process.env.AGENT_CORE_REPO_URL?.trim() ||
-  process.env.OPENCODE_REPO_URL?.trim() ||
   "https://github.com/adolago/zee.git";
 const DEFAULT_GIT_DIR = path.join(os.homedir(), "zee");
 
@@ -116,11 +114,12 @@ function normalizeTag(value?: string | null): string | null {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("zee@")) return trimmed.slice("zee@".length);
-  if (trimmed.startsWith("agent-core@")) return trimmed.slice("agent-core@".length);
-  if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
-    return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
+
+  const prefixes = new Set(["zee@", `${DEFAULT_PACKAGE_NAME}@`]);
+  for (const prefix of prefixes) {
+    if (trimmed.startsWith(prefix)) return trimmed.slice(prefix.length);
   }
+
   return trimmed;
 }
 
@@ -196,10 +195,7 @@ async function isEmptyDir(targetPath: string): Promise<boolean> {
 }
 
 function resolveGitInstallDir(): string {
-  const override =
-    process.env.ZEE_GIT_DIR?.trim() ||
-    process.env.ZEE_GIT_DIR?.trim() ||
-    process.env.ZEE_GIT_DIR?.trim();
+  const override = process.env.ZEE_GIT_DIR?.trim();
   if (override) return path.resolve(override);
   return DEFAULT_GIT_DIR;
 }
@@ -283,7 +279,7 @@ async function ensureGitCheckout(params: {
   }
 
   if (!(await isCorePackage(params.dir))) {
-    throw new Error(`ZEE_GIT_DIR does not look like a core checkout: ${params.dir}.`);
+    throw new Error(`ZEE_GIT_DIR does not look like a Zee checkout: ${params.dir}.`);
   }
 
   return null;
@@ -929,8 +925,6 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
         defaultRuntime.log(theme.success("Daemon restarted successfully."));
         defaultRuntime.log("");
         process.env.ZEE_UPDATE_IN_PROGRESS = "1";
-        process.env.ZEE_UPDATE_IN_PROGRESS ??= "1";
-        process.env.ZEE_UPDATE_IN_PROGRESS ??= "1";
         try {
           const { doctorCommand } = await import("../commands/doctor.js");
           const interactiveDoctor = Boolean(process.stdin.isTTY) && !opts.json && opts.yes !== true;
@@ -938,8 +932,6 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
         } catch (err) {
           defaultRuntime.log(theme.warn(`Doctor failed: ${String(err)}`));
         } finally {
-          delete process.env.ZEE_UPDATE_IN_PROGRESS;
-          delete process.env.ZEE_UPDATE_IN_PROGRESS;
           delete process.env.ZEE_UPDATE_IN_PROGRESS;
         }
       }
@@ -1159,7 +1151,7 @@ ${theme.heading("Notes:")}
   - Downgrades require confirmation (can break configuration)
   - Skips update if the working directory has uncommitted changes
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.zee/cli/update")}`;
+${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "zee-bot.com/cli/update")}`;
     })
     .action(async (opts) => {
       try {
@@ -1183,7 +1175,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.zee/cli/update")}`
     .option("--timeout <seconds>", "Timeout for each update step in seconds (default: 1200)")
     .addHelpText(
       "after",
-      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.zee/cli/update")}\n`,
+      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "zee-bot.com/cli/update")}\n`,
     )
     .action(async (opts) => {
       try {
@@ -1210,7 +1202,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.zee/cli/update")}`
           "- Shows current update channel (stable/beta/dev) and source",
         )}\n${theme.muted("- Includes git tag/branch/SHA for source checkouts")}\n\n${theme.muted(
           "Docs:",
-        )} ${formatDocsLink("/cli/update", "docs.zee/cli/update")}`,
+        )} ${formatDocsLink("/cli/update", "zee-bot.com/cli/update")}`,
     )
     .action(async (opts) => {
       try {

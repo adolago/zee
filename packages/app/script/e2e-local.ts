@@ -44,7 +44,7 @@ async function waitForHealth(url: string) {
 
 const appDir = process.cwd()
 const repoDir = path.resolve(appDir, "../..")
-const zeeCoreDir = path.join(repoDir, "packages", "zee-core")
+const zeeDir = path.join(repoDir, "packages", "zee")
 
 const extraArgs = (() => {
   const args = process.argv.slice(2)
@@ -105,11 +105,11 @@ const mockLLM = Bun.serve({
 console.log(`mock LLM server listening on http://127.0.0.1:${mockPort}`)
 
 // ---------------------------------------------------------------------------
-// Write e2e config override so the opencode provider routes to the mock LLM.
-// Using AGENT_CORE_TEST_MANAGED_CONFIG_DIR (managed config loads LAST, highest
+// Write e2e config override so the Opencode Zen provider routes to the mock LLM.
+// Using ZEE_TEST_MANAGED_CONFIG_DIR (managed config loads LAST, highest
 // precedence in config.ts:180-192) to override the project config's
 // "model": "cerebras/zai-glm-4.7" with "opencode/big-pickle".
-// The e2e-models.json fixture (loaded via AGENT_CORE_MODELS_PATH) supplies
+// The e2e-models.json fixture (loaded via ZEE_MODELS_PATH) supplies
 // the model catalog; this config provides the connection details.
 // ---------------------------------------------------------------------------
 const overrideDir = path.join(sandbox, "e2e-override")
@@ -137,7 +137,7 @@ const serverEnv = {
   // Keep e2e isolated, quiet, and fast.
   ZEE_DISABLE_FILEWATCHER: "true",
   ZEE_DISABLE_MODELS_FETCH: "true",
-  ZEE_MODELS_PATH: path.join(repoDir, "packages/zee-core/test/fixture/e2e-models.json"),
+  ZEE_MODELS_PATH: path.join(repoDir, "packages/zee/test/fixture/e2e-models.json"),
   ZEE_TEST_HOME: path.join(sandbox, "home"),
   HOME: path.join(sandbox, "home"),
   XDG_DATA_HOME: path.join(sandbox, "share"),
@@ -151,18 +151,6 @@ const serverEnv = {
   // Only used as metadata in the seed session; does not require a live provider.
   ZEE_E2E_MODEL: "openai/gpt-5-nano",
   ZEE_CLIENT: "app",
-
-  // Legacy env vars (compat)
-  AGENT_CORE_DISABLE_FILEWATCHER: "true",
-  AGENT_CORE_DISABLE_MODELS_FETCH: "true",
-  AGENT_CORE_MODELS_PATH: path.join(repoDir, "packages/zee-core/test/fixture/e2e-models.json"),
-  AGENT_CORE_TEST_HOME: path.join(sandbox, "home"),
-  AGENT_CORE_TEST_MANAGED_CONFIG_DIR: overrideDir,
-  AGENT_CORE_E2E_PROJECT_DIR: repoDir,
-  AGENT_CORE_E2E_SESSION_TITLE: "E2E Session",
-  AGENT_CORE_E2E_MESSAGE: "Seeded for UI e2e",
-  AGENT_CORE_E2E_MODEL: "openai/gpt-5-nano",
-  AGENT_CORE_CLIENT: "app",
 } satisfies Record<string, string>
 
 const runnerEnv = {
@@ -171,16 +159,13 @@ const runnerEnv = {
   PLAYWRIGHT_SERVER_PORT: String(serverPort),
   VITE_ZEE_SERVER_HOST: "127.0.0.1",
   VITE_ZEE_SERVER_PORT: String(serverPort),
-  // Legacy Vite env vars (compat)
-  VITE_AGENT_CORE_SERVER_HOST: "127.0.0.1",
-  VITE_AGENT_CORE_SERVER_PORT: String(serverPort),
   PLAYWRIGHT_PORT: String(webPort),
 } satisfies Record<string, string>
 
 const bunExe = process.execPath
 
 const seed = Bun.spawn([bunExe, "script/seed-e2e.ts"], {
-  cwd: zeeCoreDir,
+  cwd: zeeDir,
   env: serverEnv,
   stdout: "inherit",
   stderr: "inherit",
@@ -204,7 +189,7 @@ const server = Bun.spawn(
     `--port=${serverPort}`,
   ],
   {
-    cwd: zeeCoreDir,
+    cwd: zeeDir,
     env: serverEnv,
     stdout: "inherit",
     stderr: "inherit",

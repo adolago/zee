@@ -15,7 +15,7 @@ import type {
   SourceLocation,
 } from './types.js';
 import { ResourceGraph, GraphError } from './graph.js';
-import { Log } from '../../packages/zee-core/src/util/log';
+import { Log } from '../../packages/zee/src/util/log';
 
 const log = Log.create({ service: 'graph-config' });
 

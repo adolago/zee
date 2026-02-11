@@ -76,15 +76,6 @@ const createStubPluginRegistry = (): PluginRegistry => ({
       source: "test",
       plugin: createStubChannelPlugin({ id: "whatsapp", label: "WhatsApp" }),
     },
-    {
-      pluginId: "matrix",
-      source: "test",
-      plugin: createStubChannelPlugin({
-        id: "matrix",
-        label: "Matrix",
-        summary: { tokenSource: "none", lastProbeAt: null },
-      }),
-    },
   ],
   providers: [],
   gatewayHandlers: {},

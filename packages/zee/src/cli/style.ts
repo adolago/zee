@@ -1,5 +1,5 @@
 /**
- * Unified Style System for agent-core CLI
+ * Unified Style System for zee CLI
  *
  * Single source of truth for all styling, colors, symbols, and formatting
  * in the CLI interface. This module provides:
@@ -33,10 +33,10 @@
  *
  * ```bash
  * # Disable all colors
- * NO_COLOR=1 agent-core status
+ * NO_COLOR=1 zee status
  *
  * # Force colors (even when not a TTY)
- * FORCE_COLOR=1 agent-core status | cat
+ * FORCE_COLOR=1 zee status | cat
  * ```
  *
  * When NO_COLOR is set:

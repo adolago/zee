@@ -36,7 +36,7 @@ import { DiffChanges } from "@zee/ui/diff-changes"
 import { Spinner } from "@zee/ui/spinner"
 import { Dialog } from "@zee/ui/dialog"
 import { getFilename } from "@zee/util/path"
-import { Session, type Message, type TextPart } from "@zee/core/pkg/sdk/v2/client"
+import { Session, type Message, type TextPart } from "@zee/zee/pkg/sdk/v2/client"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { createStore, produce, reconcile } from "solid-js/store"
@@ -1136,10 +1136,11 @@ export default function Layout(props: ParentProps) {
     if (navigate) navigateToProject(directory)
   }
 
-  const deepLinkEvent = "opencode:deep-link"
+  const deepLinkEvent = "zee:deep-link"
+  const legacyDeepLinkEvent = "opencode:deep-link"
 
   const parseDeepLink = (input: string) => {
-    if (!input.startsWith("opencode://")) return
+    if (!(input.startsWith("zee://") || input.startsWith("opencode://"))) return
     const url = new URL(input)
     if (url.hostname !== "open-project") return
     const directory = url.searchParams.get("directory")
@@ -1157,9 +1158,9 @@ export default function Layout(props: ParentProps) {
   }
 
   const drainDeepLinks = () => {
-    const pending = window.__AGENT_CORE__?.deepLinks ?? []
+    const pending = window.__ZEE__?.deepLinks ?? []
     if (pending.length === 0) return
-    if (window.__AGENT_CORE__) window.__AGENT_CORE__.deepLinks = []
+    if (window.__ZEE__) window.__ZEE__.deepLinks = []
     handleDeepLinks(pending)
   }
 
@@ -1173,7 +1174,11 @@ export default function Layout(props: ParentProps) {
 
     drainDeepLinks()
     window.addEventListener(deepLinkEvent, handler as EventListener)
-    onCleanup(() => window.removeEventListener(deepLinkEvent, handler as EventListener))
+    window.addEventListener(legacyDeepLinkEvent, handler as EventListener)
+    onCleanup(() => {
+      window.removeEventListener(deepLinkEvent, handler as EventListener)
+      window.removeEventListener(legacyDeepLinkEvent, handler as EventListener)
+    })
   })
 
   const displayName = (project: LocalProject) => project.name || getFilename(project.worktree)
@@ -1659,7 +1664,7 @@ export default function Layout(props: ParentProps) {
         <div class="size-full rounded overflow-clip">
           <Avatar
             fallback={name()}
-            src={props.project.id === opencode ? "https://opencode.ai/favicon.svg" : props.project.icon?.override}
+            src={props.project.id === opencode ? "/favicon-v3.svg" : props.project.icon?.override}
             {...getAvatarColors(props.project.icon?.color)}
             class="size-full rounded"
             classList={{ "badge-mask": notifications().length > 0 && props.notify }}
@@ -1853,7 +1858,7 @@ export default function Layout(props: ParentProps) {
                   getLabel={messageLabel}
                   onMessageSelect={(message) => {
                     if (!isActive()) {
-                      sessionStorage.setItem("opencode.pendingMessage", `${props.session.id}|${message.id}`)
+                      sessionStorage.setItem("zee.pendingMessage", `${props.session.id}|${message.id}`)
                       navigate(`${props.slug}/session/${props.session.id}`)
                       return
                     }
@@ -2810,7 +2815,7 @@ export default function Layout(props: ParentProps) {
                 icon="help"
                 variant="ghost"
                 size="large"
-                onClick={() => platform.openLink("https://opencode.ai/desktop-feedback")}
+                onClick={() => platform.openLink("https://github.com/adolago/zee/issues/new/choose")}
                 aria-label={language.t("sidebar.help")}
               />
             </Tooltip>

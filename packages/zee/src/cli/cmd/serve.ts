@@ -9,10 +9,8 @@ export const ServeCommand = cmd({
   handler: async (args) => {
     const opts = await resolveNetworkOptions(args)
     const server = Server.listen(opts)
-    // Emit both markers for backward compatibility with older SDKs/parsers.
     const url = `http://${server.hostname}:${server.port}`
     console.log(`zee server listening on ${url}`)
-    console.log(`opencode server listening on ${url}`)
     await new Promise(() => {})
     await server.stop()
   },

@@ -1,11 +1,11 @@
 # OpenCode Adapter
 
-Adapter layer between OpenCode Web UI and agent-core daemon. Makes the web UI look and feel identical to the TUI.
+Adapter layer between OpenCode Web UI and Zee daemon. Makes the web UI look and feel identical to the TUI.
 
 ## Installation
 
 ```bash
-bun add @zee/core-adapter
+bun add @zee/adapter
 ```
 
 ## Quick Start
@@ -16,19 +16,19 @@ In your app's entry point (e.g., `index.css` or `app.tsx`):
 
 ```css
 /* Option A: Import CSS directly */
-@import "@zee/core-adapter/theme.css";
+@import "@zee/adapter/theme.css";
 ```
 
 Or in TypeScript/JavaScript:
 
 ```typescript
-import "@zee/core-adapter/theme.css"
+import "@zee/adapter/theme.css"
 ```
 
 ### 2. Wrap your app with ThemeProvider
 
 ```tsx
-import { ThemeProvider } from "@zee/core-adapter"
+import { ThemeProvider } from "@zee/adapter"
 
 function App() {
   return (
@@ -42,10 +42,10 @@ function App() {
 ### 3. Initialize the adapter
 
 ```typescript
-import { createAdapter } from "@zee/core-adapter"
+import { createAdapter } from "@zee/adapter"
 
 const adapter = createAdapter({
-  agentCoreUrl: "http://127.0.0.1:3210",
+  zeeUrl: "http://127.0.0.1:3210",
   defaultPersona: "zee",
   theme: "tui",
 })
@@ -90,7 +90,7 @@ Apply `theme-tui` class or `data-theme="tui"` attribute to enable the TUI look:
 
 ### Session Bridge
 
-Translates OpenCode sessions to agent-core format:
+Translates OpenCode sessions to Zee format:
 
 - `create()` - Create new sessions with persona routing
 - `get()` - Fetch session by ID
@@ -100,9 +100,9 @@ Translates OpenCode sessions to agent-core format:
 
 ### Tool Bridge
 
-Maps OpenCode tools to agent-core equivalents:
+Maps OpenCode tools to Zee equivalents:
 
-| OpenCode Tool | Agent-Core Tool |
+| OpenCode Tool | Zee Tool |
 |---------------|-----------------|
 | BashTool | bash |
 | EditTool | edit |
@@ -142,14 +142,14 @@ To integrate with the OpenCode web UI at `.wip-surface/opencode/packages/app/`:
    ```json
    {
      "dependencies": {
-       "@zee/core-adapter": "workspace:*"
+       "@zee/adapter": "workspace:*"
      }
    }
    ```
 
 2. Import theme in `src/index.css`:
    ```css
-   @import "@zee/core-adapter/theme.css";
+   @import "@zee/adapter/theme.css";
    ```
 
 3. Wrap App with ThemeProvider in `src/app.tsx`

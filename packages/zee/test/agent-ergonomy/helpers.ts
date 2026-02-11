@@ -292,14 +292,14 @@ export function setupCommonMocks() {
   const os = require("os")
   const path = require("path")
   const app = "zee"
-  const home = () => process.env.ZEE_TEST_HOME || process.env.AGENT_CORE_TEST_HOME || process.env.OPENCODE_TEST_HOME || os.homedir()
+  const home = () => process.env.ZEE_TEST_HOME || os.homedir()
   const xdgData = () => process.env.XDG_DATA_HOME || path.join(home(), ".local", "share")
   const xdgCache = () => process.env.XDG_CACHE_HOME || path.join(home(), ".cache")
   const xdgConfig = () => process.env.XDG_CONFIG_HOME || path.join(home(), ".config")
   const xdgState = () => process.env.XDG_STATE_HOME || path.join(home(), ".local", "state")
-  const stateOverride = () => (process.env.ZEE_STATE_DIR || process.env.AGENT_CORE_STATE_DIR || process.env.OPENCODE_STATE_DIR)?.trim()
-  const configOverride = () => (process.env.ZEE_CONFIG_DIR || process.env.AGENT_CORE_CONFIG_DIR || process.env.OPENCODE_CONFIG_DIR)?.trim()
-  const workspaceOverride = () => (process.env.ZEE_WORKSPACE_DIR || process.env.AGENT_CORE_WORKSPACE_DIR || process.env.OPENCODE_WORKSPACE_DIR)?.trim()
+  const stateOverride = () => process.env.ZEE_STATE_DIR?.trim()
+  const configOverride = () => process.env.ZEE_CONFIG_DIR?.trim()
+  const workspaceOverride = () => process.env.ZEE_WORKSPACE_DIR?.trim()
   mock.module("@/global", () => ({
     Global: {
       Path: {

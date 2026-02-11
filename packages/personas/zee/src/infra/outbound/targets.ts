@@ -127,7 +127,7 @@ export function resolveOutboundTarget(params: {
     return {
       ok: false,
       error: new Error(
-        `Delivering to internal sessions is not supported via \`${formatCliCommand("zee agent")}\`; use WhatsApp/Matrix or run with --deliver=false.`,
+        `Delivering to internal sessions is not supported via \`${formatCliCommand("zee agent")}\`; use WhatsApp or run with --deliver=false.`,
       ),
     };
   }

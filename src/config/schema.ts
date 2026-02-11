@@ -2,7 +2,7 @@
  * Configuration Schema Definitions
  *
  * Zod-based validation schemas for the unified configuration system.
- * Supports all surfaces: Stanley (WhatsApp), Zee (WhatsApp/Matrix), CLI, and Web.
+ * Supports all surfaces: Stanley (WhatsApp), Zee (WhatsApp), CLI, and Web.
  *
  * @module config/schema
  */
@@ -203,13 +203,13 @@ export const StanleySurfaceConfigSchema = z.object({
 export type StanleySurfaceConfig = z.infer<typeof StanleySurfaceConfigSchema>;
 
 /**
- * Zee (WhatsApp/Matrix) surface-specific settings
+ * Zee (WhatsApp) surface-specific settings
  */
 export const ZeeSurfaceConfigSchema = z.object({
   /** Default agent for this surface */
   defaultAgent: z.string().optional(),
   /** Default outbound channel */
-  defaultChannel: z.enum(['whatsapp', 'matrix']).optional(),
+  defaultChannel: z.enum(['whatsapp']).optional(),
   /** Allowlist of sender identifiers (channel-specific) */
   allowFrom: z.array(z.string()).optional(),
 }).strict();
@@ -222,7 +222,7 @@ export const CliSurfaceConfigSchema = z.object({
   /** Default agent for this surface */
   defaultAgent: z.string().optional(),
   /** Theme name */
-  theme: z.string().optional().default('default'),
+  theme: z.string().optional().default('selenized-dark'),
   /** Editor command for external editing */
   editor: z.string().optional(),
   /** Whether to show timestamps */

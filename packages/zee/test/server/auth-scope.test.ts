@@ -13,12 +13,6 @@ const ORIGINAL_ENV = {
   ZEE_SERVER_USERNAME: process.env.ZEE_SERVER_USERNAME,
   ZEE_SERVER_PASSWORD: process.env.ZEE_SERVER_PASSWORD,
   ZEE_SERVER_SCOPES: process.env.ZEE_SERVER_SCOPES,
-  // Legacy fallbacks.
-  AGENT_CORE_ENABLE_SERVER_AUTH: process.env.AGENT_CORE_ENABLE_SERVER_AUTH,
-  AGENT_CORE_DISABLE_SERVER_AUTH: process.env.AGENT_CORE_DISABLE_SERVER_AUTH,
-  AGENT_CORE_SERVER_USERNAME: process.env.AGENT_CORE_SERVER_USERNAME,
-  AGENT_CORE_SERVER_PASSWORD: process.env.AGENT_CORE_SERVER_PASSWORD,
-  AGENT_CORE_SERVER_SCOPES: process.env.AGENT_CORE_SERVER_SCOPES,
 }
 
 beforeAll(() => {
@@ -27,12 +21,6 @@ beforeAll(() => {
   delete process.env.ZEE_SERVER_USERNAME
   process.env.ZEE_SERVER_PASSWORD = "test-password"
   process.env.ZEE_SERVER_SCOPES = "operator.read"
-
-  delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-  delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-  delete process.env.AGENT_CORE_SERVER_USERNAME
-  delete process.env.AGENT_CORE_SERVER_PASSWORD
-  delete process.env.AGENT_CORE_SERVER_SCOPES
   reloadFlags()
   Server.App.reset()
 })

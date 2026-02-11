@@ -1,8 +1,8 @@
 /**
  * Security Utilities
  *
- * Centralized security functions for agent-core.
- * Ported from OpenCode and Zee security audit improvements.
+ * Centralized security functions for Zee.
+ * Ported from upstream security audit improvements and Zee hardening.
  *
  * @module security
  */

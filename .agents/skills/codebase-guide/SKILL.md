@@ -11,7 +11,7 @@ tags: [architecture, reference, codebase, daemon, gateway]
 
 ```
 agent-core (Engine)
-  packages/zee-core/     Core TUI, daemon, SDK
+  packages/zee/     Core TUI, daemon, SDK
   ~/.config/zee/    Config, auth, plugins
         |
         v
@@ -169,9 +169,9 @@ Location: `~/.config/systemd/user/zee.service`
 
 ### Binary
 
-`~/.bun/bin/agent-core` (symlink to `dist/@zee/core-linux-x64/bin/agent-core`)
+`~/.bun/bin/agent-core` (symlink to `dist/@zee/zee-linux-x64/bin/agent-core`)
 
-Install via `cd packages/zee-core && bun link`
+Install via `cd packages/zee && bun link`
 
 ### Common Processes
 

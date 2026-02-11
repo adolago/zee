@@ -1,7 +1,7 @@
 {
-  "name": "agent-core-vscode",
-  "displayName": "Agent-Core",
-  "description": "VS Code integration for agent-core sessions and prompts.",
+  "name": "zee-vscode",
+  "displayName": "Zee",
+  "description": "VS Code integration for Zee sessions and prompts.",
   "version": "0.1.0",
   "publisher": "adolago",
   "engines": {
@@ -12,37 +12,37 @@
   "contributes": {
     "commands": [
       {
-        "command": "agentCore.connect",
-        "title": "Agent-Core: Connect to Daemon"
+        "command": "zee.connect",
+        "title": "Zee: Connect to Daemon"
       },
       {
-        "command": "agentCore.newSession",
-        "title": "Agent-Core: New Session"
+        "command": "zee.newSession",
+        "title": "Zee: New Session"
       },
       {
-        "command": "agentCore.sendPrompt",
-        "title": "Agent-Core: Send Prompt"
+        "command": "zee.sendPrompt",
+        "title": "Zee: Send Prompt"
       },
       {
-        "command": "agentCore.sendSelection",
-        "title": "Agent-Core: Send Selection"
+        "command": "zee.sendSelection",
+        "title": "Zee: Send Selection"
       }
     ],
     "configuration": {
-      "title": "Agent-Core",
+      "title": "Zee",
       "properties": {
-        "agentCore.baseUrl": {
+        "zee.baseUrl": {
           "type": "string",
           "default": "http://127.0.0.1:3210",
-          "description": "Base URL for the agent-core daemon."
+          "description": "Base URL for the zee daemon."
         }
       }
     }
   },
   "activationEvents": [
-    "onCommand:agentCore.connect",
-    "onCommand:agentCore.newSession",
-    "onCommand:agentCore.sendPrompt",
-    "onCommand:agentCore.sendSelection"
+    "onCommand:zee.connect",
+    "onCommand:zee.newSession",
+    "onCommand:zee.sendPrompt",
+    "onCommand:zee.sendSelection"
   ]
 }

@@ -23,7 +23,7 @@ export type RunEmbeddedPiAgentParams = {
   messageChannel?: string;
   messageProvider?: string;
   agentAccountId?: string;
-  /** Delivery target (e.g. whatsapp:+15555550123 or matrix:!room:example.com) for routing. */
+  /** Delivery target (e.g. whatsapp:+15555550123) for routing. */
   messageTo?: string;
   /** Thread/topic identifier for routing replies to the originating thread. */
   messageThreadId?: string | number;

@@ -110,7 +110,7 @@ If you need to pass environment variables:
       command = "opencode",
       args = { "acp" },
       env = {
-        AGENT_CORE_API_KEY = os.getenv("AGENT_CORE_API_KEY")
+        OPENCODE_ZEN_API_KEY = os.getenv("OPENCODE_ZEN_API_KEY")
       }
     }
   }
@@ -138,7 +138,7 @@ require("codecompanion").setup({
 
 This config sets up CodeCompanion to use OpenCode as the ACP agent for chat.
 
-If you need to pass environment variables (like `AGENT_CORE_API_KEY`), refer to [Configuring Adapters: Environment Variables](https://codecompanion.olimorris.dev/getting-started#setting-an-api-key) in the CodeCompanion.nvim documentation for full details.
+If you need to pass environment variables (like `OPENCODE_ZEN_API_KEY`), refer to [Configuring Adapters: Environment Variables](https://codecompanion.olimorris.dev/getting-started#setting-an-api-key) in the CodeCompanion.nvim documentation for full details.
 
 ## Support
 
@@ -150,7 +150,7 @@ Some built-in slash commands like `/undo` and `/redo` are currently unsupported.
 
 - Built-in tools (file operations, terminal commands, etc.)
 - Custom tools and slash commands
-- MCP servers configured in your OpenCode config
+- MCP servers configured in your Zee config
 - Project-specific rules from `AGENTS.md`
 - Custom formatters and linters
 - Agents and permissions system

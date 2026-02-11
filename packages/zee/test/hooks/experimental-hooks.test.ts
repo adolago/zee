@@ -18,7 +18,7 @@ describe("ExperimentalHooks", () => {
                   command: [
                     process.execPath,
                     "-e",
-                    `require("fs").writeFileSync("file-hook.txt", process.env.AGENT_CORE_FILE_RELATIVE || "")`,
+                    `require("fs").writeFileSync("file-hook.txt", process.env.ZEE_FILE_RELATIVE || "")`,
                   ],
                 },
               ],
@@ -94,7 +94,7 @@ describe("ExperimentalHooks", () => {
                 command: [
                   process.execPath,
                   "-e",
-                  `require("fs").writeFileSync("session-hook.txt", process.env.AGENT_CORE_HOOK_EVENT || "")`,
+                  `require("fs").writeFileSync("session-hook.txt", process.env.ZEE_HOOK_EVENT || "")`,
                 ],
               },
             ],

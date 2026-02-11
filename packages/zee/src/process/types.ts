@@ -2,7 +2,7 @@
  * Process Registry Types
  *
  * Types for managing running agents, swarms, and workers
- * as a centralized registry in agent-core.
+ * as a centralized registry in Zee.
  */
 
 import { z } from "zod"

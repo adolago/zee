@@ -152,7 +152,7 @@ describe("exec tool backgrounding", () => {
   it("rejects elevated requests when not allowed", async () => {
     const customBash = createExecTool({
       elevated: { enabled: true, allowed: false, defaultLevel: "off" },
-      messageProvider: "matrix",
+      messageProvider: "whatsapp",
       sessionKey: "agent:main:main",
     });
 
@@ -161,7 +161,7 @@ describe("exec tool backgrounding", () => {
         command: "echo hi",
         elevated: true,
       }),
-    ).rejects.toThrow("Context: provider=matrix session=agent:main:main");
+    ).rejects.toThrow("Context: provider=whatsapp session=agent:main:main");
   });
 
   it("does not default to elevated when not allowed", async () => {

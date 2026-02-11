@@ -3,7 +3,7 @@
  *
  * Exports shared configuration types and constants for zee.
  *
- * The main config system lives in packages/zee-core/src/config/config.ts
+ * The main config system lives in packages/zee/src/config/config.ts
  * This module provides:
  * - Shared constants (ports, URLs, timeouts)
  * - Shared types (DmPolicy, GroupPolicy, etc.)
@@ -16,5 +16,5 @@ export * from "./constants";
 // Shared types (DmPolicy, GroupPolicy, LogLevel, RetryConfig)
 export * from "./shared";
 
-// Zee-specific types (AgentCoreConfig, AgentPersonaConfig, etc.)
+// Zee-specific types (ZeeRootConfig, AgentPersonaConfig, etc.)
 export * from "./types";

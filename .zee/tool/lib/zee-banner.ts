@@ -1,7 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
-import { Global } from "../../../packages/zee-core/src/global"
+import { Global } from "../../../packages/zee/src/global"
 
 export type BannerItemKind = "reminder" | "todo" | "message"
 export type BannerItemPriority = "low" | "normal" | "high" | "urgent"

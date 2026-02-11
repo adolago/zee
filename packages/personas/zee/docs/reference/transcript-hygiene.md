@@ -44,7 +44,7 @@ Implementation:
 
 ---
 
-## Provider matrix (current behavior)
+## Provider whatsapp (current behavior)
 
 **OpenAI / OpenAI Codex**
 - Image sanitization only.

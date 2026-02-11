@@ -8,8 +8,8 @@ import fs from "fs/promises"
 import { pathToFileURL } from "url"
 
 const managedConfigDir = (() => {
-  const dir = process.env.ZEE_TEST_MANAGED_CONFIG_DIR || process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR
-  if (!dir) throw new Error("Missing ZEE_TEST_MANAGED_CONFIG_DIR (or legacy AGENT_CORE_TEST_MANAGED_CONFIG_DIR)")
+  const dir = process.env.ZEE_TEST_MANAGED_CONFIG_DIR
+  if (!dir) throw new Error("Missing ZEE_TEST_MANAGED_CONFIG_DIR")
   return dir
 })()
 const xdgConfigHome = process.env["XDG_CONFIG_HOME"]!
@@ -122,7 +122,7 @@ test("loads JSONC config file", async () => {
         path.join(dir, "zee.jsonc"),
         `{
         // This is a comment
-        "$schema": "agent-core",
+        "$schema": "zee",
         "model": "test/model",
         "username": "testuser"
       }`,
@@ -171,13 +171,13 @@ test("merges multiple config files with correct precedence", async () => {
 
 test("managed settings override user settings", async () => {
   await writeUserSettings({
-    $schema: "agent-core",
+    $schema: "zee",
     model: "user/model",
     share: "auto",
     username: "user",
   })
   await writeManagedSettings({
-    $schema: "agent-core",
+    $schema: "zee",
     model: "managed/model",
     share: "disabled",
   })
@@ -196,7 +196,7 @@ test("managed settings override user settings", async () => {
 
 test("managed settings override project settings", async () => {
   await writeManagedSettings({
-    $schema: "agent-core",
+    $schema: "zee",
     autoupdate: false,
     disabled_providers: ["managed/provider"],
   })
@@ -204,7 +204,7 @@ test("managed settings override project settings", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeProjectConfig(dir, {
-        $schema: "agent-core",
+        $schema: "zee",
         autoupdate: true,
         disabled_providers: ["project/provider"],
         theme: "project-theme",
@@ -227,7 +227,7 @@ test("missing managed settings file is not an error", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await writeProjectConfig(dir, {
-        $schema: "agent-core",
+        $schema: "zee",
         model: "test/model",
       })
     },
@@ -252,7 +252,7 @@ test("handles environment variable substitution", async () => {
         await Bun.write(
           path.join(dir, "zee.json"),
           JSON.stringify({
-            $schema: "agent-core",
+            $schema: "zee",
             theme: "{env:TEST_VAR}",
           }),
         )
@@ -692,7 +692,7 @@ test("resolves scoped npm plugins in config", async () => {
 
       await Bun.write(
         path.join(dir, "zee.json"),
-        JSON.stringify({ $schema: "agent-core", plugin: ["@scope/plugin"] }, null, 2),
+        JSON.stringify({ $schema: "zee", plugin: ["@scope/plugin"] }, null, 2),
       )
     },
   })
@@ -934,7 +934,7 @@ test("migrates legacy tools config to permissions - allow", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -965,7 +965,7 @@ test("migrates legacy tools config to permissions - deny", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -996,7 +996,7 @@ test("migrates legacy write tool to edit permission", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -1025,7 +1025,7 @@ test("migrates legacy edit tool to edit permission", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -1054,7 +1054,7 @@ test("migrates legacy patch tool to edit permission", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -1083,7 +1083,7 @@ test("migrates legacy multiedit tool to edit permission", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -1112,7 +1112,7 @@ test("migrates mixed legacy tools config", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               tools: {
@@ -1147,7 +1147,7 @@ test("merges legacy tools with existing permission config", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             test: {
               permission: {
@@ -1180,7 +1180,7 @@ test("permission config preserves key order", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           permission: {
             "*": "deny",
             edit: "ask",
@@ -1228,7 +1228,7 @@ test("project config can override MCP server enabled status", async () => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             tracker: {
               type: "remote",
@@ -1247,7 +1247,7 @@ test("project config can override MCP server enabled status", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             tracker: {
               type: "remote",
@@ -1286,7 +1286,7 @@ test("MCP config deep merges preserving base config properties", async () => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             myserver: {
               type: "remote",
@@ -1303,7 +1303,7 @@ test("MCP config deep merges preserving base config properties", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             myserver: {
               type: "remote",
@@ -1338,7 +1338,7 @@ test("local .zee config can override MCP from project config", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             docs: {
               type: "remote",
@@ -1354,7 +1354,7 @@ test("local .zee config can override MCP from project config", async () => {
       await Bun.write(
         path.join(opencodeDir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             docs: {
               type: "remote",
@@ -1380,7 +1380,7 @@ test("project config overrides remote well-known config", async () => {
   let fetchedUrl: string | undefined
   const mockFetch = mock((url: string | URL | Request) => {
     const urlStr = url.toString()
-    if (urlStr.includes(".well-known/opencode")) {
+    if (urlStr.includes(".well-known/zee")) {
       fetchedUrl = urlStr
       return Promise.resolve(
         new Response(
@@ -1439,7 +1439,7 @@ test("project config overrides remote well-known config", async () => {
       fn: async () => {
         const config = await Config.get()
         // Verify fetch was called for wellknown config
-        expect(fetchedUrl).toBe("https://example.com/.well-known/opencode")
+        expect(fetchedUrl).toBe("https://example.com/.well-known/zee")
         // Project config (enabled: true) should override remote (enabled: false)
         expect(config.mcp?.tracker?.enabled).toBe(true)
       },
@@ -1465,7 +1465,7 @@ describe("getPluginName", () => {
 
   test("extracts name from scoped npm package", () => {
     expect(Config.getPluginName("@scope/pkg@1.0.0")).toBe("@scope/pkg")
-    expect(Config.getPluginName("@opencode/plugin@2.0.0")).toBe("@opencode/plugin")
+    expect(Config.getPluginName("@zee/plugin@2.0.0")).toBe("@zee/plugin")
   })
 
   test("returns full string for package without version", () => {

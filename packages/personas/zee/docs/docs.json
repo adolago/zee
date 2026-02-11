@@ -744,7 +744,6 @@
         "pages": [
           "channels/index",
           "channels/whatsapp",
-          "channels/matrix",
           "broadcast-groups",
           "channels/troubleshooting",
           "channels/location"

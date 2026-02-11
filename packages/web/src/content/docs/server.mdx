@@ -6,14 +6,14 @@ description: Interact with opencode server over HTTP.
 import config from "../../../config.mjs"
 export const typesUrl = `${config.github}/blob/dev/packages/sdk/js/src/gen/types.gen.ts`
 
-The `opencode serve` command runs a headless HTTP server that exposes an OpenAPI endpoint that an opencode client can use.
+The `zee serve` command runs a headless HTTP server that exposes an OpenAPI endpoint that an opencode client can use.
 
 ---
 
 ### Usage
 
 ```bash
-opencode serve [--port <number>] [--hostname <string>] [--cors <origin>]
+zee serve [--port <number>] [--hostname <string>] [--cors <origin>]
 ```
 
 #### Options
@@ -28,17 +28,17 @@ opencode serve [--port <number>] [--hostname <string>] [--cors <origin>]
 `--cors` can be passed multiple times:
 
 ```bash
-opencode serve --cors http://localhost:5173 --cors https://app.example.com
+zee serve --cors http://localhost:5173 --cors https://app.example.com
 ```
 
 ---
 
 ### Authentication
 
-Set `AGENT_CORE_SERVER_PASSWORD` to protect the server with HTTP basic auth. The username defaults to `opencode`, or set `AGENT_CORE_SERVER_USERNAME` to override it. This applies to both `opencode serve` and `opencode web`.
+Set `ZEE_SERVER_PASSWORD` to protect the server with HTTP basic auth. The username defaults to `zee`, or set `ZEE_SERVER_USERNAME` to override it. This applies to both `zee serve` and `zee web`.
 
 ```bash
-AGENT_CORE_SERVER_PASSWORD=your-password opencode serve
+ZEE_SERVER_PASSWORD=your-password zee serve
 ```
 
 ---
@@ -55,8 +55,8 @@ Use the opencode server to interact with opencode programmatically.
 
 This architecture lets opencode support multiple clients and allows you to interact with opencode programmatically.
 
-You can run `opencode serve` to start a standalone server. If you have the
-opencode TUI running, `opencode serve` will start a new server.
+You can run `zee serve` to start a standalone server. If you have the
+opencode TUI running, `zee serve` will start a new server.
 
 ---
 

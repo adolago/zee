@@ -99,7 +99,7 @@ async function promptWebToolsConfig(
     [
       "Web search lets your agent look things up online using the `web_search` tool.",
       "It requires a Brave Search API key (you can store it in the config or set BRAVE_API_KEY in the Gateway environment).",
-      "Docs: https://docs.zee/tools/web",
+      "Docs: https://zee-bot.com/tools/web",
     ].join("\n"),
     "Web search",
   );
@@ -135,7 +135,7 @@ async function promptWebToolsConfig(
         [
           "No key stored yet, so web_search will stay unavailable.",
           "Store a key here or set BRAVE_API_KEY in the Gateway environment.",
-          "Docs: https://docs.zee/tools/web",
+          "Docs: https://zee-bot.com/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -188,7 +188,7 @@ export async function runConfigureWizard(
           [
             ...snapshot.issues.map((iss) => `- ${iss.path}: ${iss.message}`),
             "",
-            "Docs: https://docs.zee/gateway/configuration",
+            "Docs: https://zee-bot.com/gateway/configuration",
           ].join("\n"),
           "Config issues",
         );
@@ -390,8 +390,8 @@ export async function runConfigureWizard(
           note(
             [
               "Docs:",
-              "https://docs.zee/gateway/health",
-              "https://docs.zee/gateway/troubleshooting",
+              "https://zee-bot.com/gateway/health",
+              "https://zee-bot.com/gateway/troubleshooting",
             ].join("\n"),
             "Health check help",
           );
@@ -513,8 +513,8 @@ export async function runConfigureWizard(
             note(
               [
                 "Docs:",
-                "https://docs.zee/gateway/health",
-                "https://docs.zee/gateway/troubleshooting",
+                "https://zee-bot.com/gateway/health",
+                "https://zee-bot.com/gateway/troubleshooting",
               ].join("\n"),
               "Health check help",
             );
@@ -566,7 +566,7 @@ export async function runConfigureWizard(
         `Gateway HTTP: ${links.httpUrl}`,
         `Gateway WS: ${links.wsUrl}`,
         gatewayStatusLine,
-        "Docs: https://docs.zee/gateway/health",
+        "Docs: https://zee-bot.com/gateway/health",
       ].join("\n"),
       "Gateway",
     );

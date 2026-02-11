@@ -190,7 +190,7 @@ export namespace Server {
         .use(
           bodyLimit({
             maxSize:
-              parseBodyLimitBytes(process.env["AGENT_CORE_BODY_LIMIT"] ?? process.env["AGENT_CORE_BODY_LIMIT"]) ??
+              parseBodyLimitBytes(process.env["ZEE_BODY_LIMIT"]) ??
               DEFAULT_BODY_LIMIT_BYTES,
             onError: (c) => c.json({ error: "Request body too large" }, 413),
           }),
@@ -256,7 +256,7 @@ export namespace Server {
           if (c.req.path === "/log") return next()
 
           const baseDir = process.cwd()
-          const requestedDirectory = c.req.query("directory") || c.req.header("x-opencode-directory")
+          const requestedDirectory = c.req.query("directory") || c.req.header("x-zee-directory")
           let directory = baseDir
 
           if (requestedDirectory) {
@@ -286,7 +286,7 @@ export namespace Server {
               return c.json(
                 {
                   error:
-                    "Refusing to use filesystem root as instance directory. Set AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY=1 or config.server.allowGlobalDirectory=true to override.",
+                    "Refusing to use filesystem root as instance directory. Set ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY=1 or config.server.allowGlobalDirectory=true to override.",
                   directory: real,
                 },
                 400,
@@ -295,7 +295,7 @@ export namespace Server {
 
             if (!_isLoopbackBind) {
               const configAllowed = globalConfig?.server?.allowedDirectories ?? []
-              const envAllowed = parseCommaList(process.env["AGENT_CORE_SERVER_ALLOWED_DIRECTORIES"])
+              const envAllowed = parseCommaList(process.env["ZEE_SERVER_ALLOWED_DIRECTORIES"])
               const rawAllowed = [...configAllowed, ...envAllowed]
               const allowedRoots =
                 rawAllowed.length > 0 ? await normalizeAllowedDirectories(rawAllowed, baseDir) : [baseDir]
@@ -305,7 +305,7 @@ export namespace Server {
                 return c.json(
                   {
                     error:
-                      "Directory is not allowed in server mode. Configure AGENT_CORE_SERVER_ALLOWED_DIRECTORIES or config.server.allowedDirectories.",
+                      "Directory is not allowed in server mode. Configure ZEE_SERVER_ALLOWED_DIRECTORIES or config.server.allowedDirectories.",
                     directory: real,
                   },
                   403,
@@ -322,7 +322,7 @@ export namespace Server {
                 {
                   error:
                     "Instance cache limit reached. Refusing to create a new instance directory for this request. " +
-                    "Dispose unused instances (POST /instance/dispose?directory=...) or increase server.maxInstances / AGENT_CORE_SERVER_MAX_INSTANCES.",
+                    "Dispose unused instances (POST /instance/dispose?directory=...) or increase server.maxInstances / ZEE_SERVER_MAX_INSTANCES.",
                   directory: real,
                   maxInstances,
                   currentInstances: Instance.cacheSize(),
@@ -398,7 +398,7 @@ export namespace Server {
         
         // Proxy Fallback - MUST BE LAST
         .all("/*", async (c) => {
-          const proxyBase = (process.env["AGENT_CORE_PROXY_BASE_URL"] ?? process.env["AGENT_CORE_PROXY_BASE_URL"] ?? "")
+          const proxyBase = (process.env["ZEE_PROXY_BASE_URL"] ?? "")
             .replace(/\/+$/, "")
           if (!proxyBase) {
             return c.text("Not Found", 404)

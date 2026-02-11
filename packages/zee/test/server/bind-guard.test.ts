@@ -8,11 +8,6 @@ const ORIGINAL_ENV = {
   ZEE_DISABLE_SERVER_AUTH: process.env.ZEE_DISABLE_SERVER_AUTH,
   ZEE_SERVER_PASSWORD: process.env.ZEE_SERVER_PASSWORD,
   ZEE_ALLOW_INSECURE_SERVER_NO_AUTH: process.env.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH,
-  // Legacy fallbacks.
-  AGENT_CORE_ENABLE_SERVER_AUTH: process.env.AGENT_CORE_ENABLE_SERVER_AUTH,
-  AGENT_CORE_DISABLE_SERVER_AUTH: process.env.AGENT_CORE_DISABLE_SERVER_AUTH,
-  AGENT_CORE_SERVER_PASSWORD: process.env.AGENT_CORE_SERVER_PASSWORD,
-  AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH: process.env.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH,
 }
 
 afterEach(() => {
@@ -29,11 +24,6 @@ describe("server bind guard", () => {
     delete process.env.ZEE_DISABLE_SERVER_AUTH
     delete process.env.ZEE_SERVER_PASSWORD
     delete process.env.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH
-
-    delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_SERVER_PASSWORD
-    delete process.env.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
     reloadFlags()
 
     expect(() => Server.listen({ hostname: "0.0.0.0", port: 0 })).toThrow(/Refusing to bind zee server/)
@@ -44,11 +34,6 @@ describe("server bind guard", () => {
     delete process.env.ZEE_DISABLE_SERVER_AUTH
     delete process.env.ZEE_SERVER_PASSWORD
     delete process.env.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH
-
-    delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_SERVER_PASSWORD
-    delete process.env.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
     reloadFlags()
 
     expect(() => assertSafeServerBind({ hostname: "0.0.0.0" })).toThrow(/ZEE_SERVER_PASSWORD/)
@@ -59,11 +44,6 @@ describe("server bind guard", () => {
     delete process.env.ZEE_DISABLE_SERVER_AUTH
     process.env.ZEE_SERVER_PASSWORD = "test-password"
     delete process.env.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH
-
-    delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_SERVER_PASSWORD
-    delete process.env.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
     reloadFlags()
 
     expect(() => assertSafeServerBind({ hostname: "0.0.0.0" })).not.toThrow()
@@ -74,11 +54,6 @@ describe("server bind guard", () => {
     process.env.ZEE_DISABLE_SERVER_AUTH = "1"
     delete process.env.ZEE_SERVER_PASSWORD
     process.env.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH = "1"
-
-    delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-    delete process.env.AGENT_CORE_SERVER_PASSWORD
-    delete process.env.AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH
     reloadFlags()
 
     expect(() => assertSafeServerBind({ hostname: "0.0.0.0" })).not.toThrow()

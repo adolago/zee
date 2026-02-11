@@ -274,12 +274,12 @@ describe("buildAgentSystemPrompt", () => {
     const prompt = buildAgentSystemPrompt({
       workspaceDir: "/tmp/zee",
       runtimeInfo: {
-        channel: "matrix",
+        channel: "whatsapp",
         capabilities: ["inlineButtons"],
       },
     });
 
-    expect(prompt).toContain("channel=matrix");
+    expect(prompt).toContain("channel=whatsapp");
     expect(prompt).toContain("capabilities=inlineButtons");
   });
 
@@ -322,7 +322,7 @@ describe("buildAgentSystemPrompt", () => {
         model: "anthropic/claude",
         defaultModel: "anthropic/claude-opus-4-5",
       },
-      "matrix",
+      "whatsapp",
       ["inlineButtons"],
       "low",
     );
@@ -334,7 +334,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(line).toContain("node=v20");
     expect(line).toContain("model=anthropic/claude");
     expect(line).toContain("default_model=anthropic/claude-opus-4-5");
-    expect(line).toContain("channel=matrix");
+    expect(line).toContain("channel=whatsapp");
     expect(line).toContain("capabilities=inlineButtons");
     expect(line).toContain("thinking=low");
   });
@@ -362,11 +362,11 @@ describe("buildAgentSystemPrompt", () => {
       workspaceDir: "/tmp/zee",
       reactionGuidance: {
         level: "minimal",
-        channel: "Matrix",
+        channel: "WhatsApp",
       },
     });
 
     expect(prompt).toContain("## Reactions");
-    expect(prompt).toContain("Reactions are enabled for Matrix in MINIMAL mode.");
+    expect(prompt).toContain("Reactions are enabled for WhatsApp in MINIMAL mode.");
   });
 });

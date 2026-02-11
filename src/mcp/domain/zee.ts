@@ -101,13 +101,13 @@ export const ZeeMessagingTool = defineTool(
     description: `Send messages through supported channels.
 
 Usage:
-- channel: whatsapp or matrix
+- channel: whatsapp
 - to: recipient identifier
 - message: text content
 - Optional attachments`,
 
     parameters: z.object({
-      channel: z.enum(['whatsapp', 'matrix']).describe('Messaging channel'),
+      channel: z.enum(['whatsapp']).describe('Messaging channel'),
       to: z.string().describe('Recipient identifier'),
       message: z.string().describe('Message content'),
       attachments: z.array(z.string()).optional().describe('File paths to attach'),

@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/zee-core/src/util/log";
+import { Log } from "../../../packages/zee/src/util/log";
 
 const log = Log.create({ service: "zee-whatsapp" });
 
@@ -23,15 +23,7 @@ function resolveBaseUrl(): string {
   const rawBaseUrl =
     process.env.ZEE_URL ||
     process.env.ZEE_DAEMON_URL ||
-    process.env.AGENT_CORE_URL ||
-    process.env.AGENT_CORE_DAEMON_URL ||
-    `http://127.0.0.1:${
-      process.env.ZEE_PORT ||
-      process.env.ZEE_DAEMON_PORT ||
-      process.env.AGENT_CORE_PORT ||
-      process.env.AGENT_CORE_DAEMON_PORT ||
-      "3210"
-    }`;
+    `http://127.0.0.1:${process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"}`;
   return rawBaseUrl.replace(/\/$/, "");
 }
 

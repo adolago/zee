@@ -1,7 +1,7 @@
 {
-  "name": "agent-core",
-  "displayName": "agent-core",
-  "description": "agent-core for VS Code",
+  "name": "zee",
+  "displayName": "Zee",
+  "description": "Zee for VS Code",
   "version": "1.1.26",
   "publisher": "sst-dev",
   "license": "MIT",
@@ -21,54 +21,54 @@
   "contributes": {
     "commands": [
       {
-        "command": "agent-core.openTerminal",
-        "title": "Open agent-core",
+        "command": "zee.openTerminal",
+        "title": "Open Zee",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
         }
       },
       {
-        "command": "agent-core.openNewTerminal",
-        "title": "Open agent-core in new tab",
+        "command": "zee.openNewTerminal",
+        "title": "Open Zee in new tab",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
         }
       },
       {
-        "command": "agent-core.addFilepathToTerminal",
+        "command": "zee.addFilepathToTerminal",
         "title": "Add Filepath to Terminal"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "agent-core.openNewTerminal",
+          "command": "zee.openNewTerminal",
           "group": "navigation"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "agent-core.openTerminal",
-        "title": "Run agent-core",
+        "command": "zee.openTerminal",
+        "title": "Run Zee",
         "key": "cmd+escape",
         "mac": "cmd+escape",
         "win": "ctrl+escape",
         "linux": "ctrl+escape"
       },
       {
-        "command": "agent-core.openNewTerminal",
-        "title": "Run agent-core",
+        "command": "zee.openNewTerminal",
+        "title": "Run Zee",
         "key": "cmd+shift+escape",
         "mac": "cmd+shift+escape",
         "win": "ctrl+shift+escape",
         "linux": "ctrl+shift+escape"
       },
       {
-        "command": "agent-core.addFilepathToTerminal",
-        "title": "agent-core: Insert At-Mentioned",
+        "command": "zee.addFilepathToTerminal",
+        "title": "zee: Insert At-Mentioned",
         "key": "cmd+alt+k",
         "mac": "cmd+alt+k",
         "win": "ctrl+alt+K",

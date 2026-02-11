@@ -2,18 +2,18 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import { Server } from "../../src/server/server"
 
 describe("Proxy SSRF Security", () => {
-  const originalEnv = process.env.AGENT_CORE_PROXY_BASE_URL
+  const originalEnv = process.env.ZEE_PROXY_BASE_URL
 
   beforeAll(() => {
     // Set a safe proxy base
-    process.env.AGENT_CORE_PROXY_BASE_URL = "http://localhost:1234"
+    process.env.ZEE_PROXY_BASE_URL = "http://localhost:1234"
   })
 
   afterAll(() => {
     if (originalEnv) {
-      process.env.AGENT_CORE_PROXY_BASE_URL = originalEnv
+      process.env.ZEE_PROXY_BASE_URL = originalEnv
     } else {
-      delete process.env.AGENT_CORE_PROXY_BASE_URL
+      delete process.env.ZEE_PROXY_BASE_URL
     }
   })
 

@@ -9,7 +9,7 @@ const app = "zee"
 function findSourceRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
   for (;;) {
-    const packageRoot = path.join(current, "packages", "zee-core")
+    const packageRoot = path.join(current, "packages", "zee")
     const zeeDir = path.join(current, ".zee")
     if (fsSync.existsSync(packageRoot) || fsSync.existsSync(zeeDir)) return current
     const parent = path.dirname(current)
@@ -20,12 +20,7 @@ function findSourceRoot(startDir: string): string | undefined {
 
 function resolveSourceRoot(): string {
   const envSource =
-    process.env.ZEE_SOURCE ||
-    process.env.AGENT_CORE_SOURCE ||
-    process.env.OPENCODE_SOURCE ||
-    process.env.ZEE_ROOT ||
-    process.env.AGENT_CORE_ROOT ||
-    process.env.OPENCODE_ROOT
+    process.env.ZEE_SOURCE || process.env.ZEE_ROOT
   if (envSource) return envSource
 
   const starts = [process.cwd()]
@@ -43,9 +38,9 @@ function resolveSourceRoot(): string {
 
 export namespace Global {
   export const Path = {
-    // Allow override for test isolation (ZEE_TEST_HOME preferred; legacy: AGENT_CORE_TEST_HOME, OPENCODE_TEST_HOME)
+    // Allow override for test isolation via ZEE_TEST_HOME.
     get home() {
-      return process.env.ZEE_TEST_HOME || process.env.AGENT_CORE_TEST_HOME || process.env.OPENCODE_TEST_HOME || os.homedir()
+      return process.env.ZEE_TEST_HOME || os.homedir()
     },
     get source() {
       return resolveSourceRoot()
@@ -75,7 +70,7 @@ export namespace Global {
       return path.join(os.tmpdir(), app)
     },
     get modelsDevUrl() {
-      return process.env.ZEE_MODELS_URL || process.env.AGENT_CORE_MODELS_URL || process.env.OPENCODE_MODELS_URL || "https://models.dev"
+      return process.env.ZEE_MODELS_URL || "https://models.dev"
     },
   }
 }

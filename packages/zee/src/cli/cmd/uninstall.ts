@@ -105,13 +105,6 @@ async function resolveBrewFormulaForRemoval(): Promise<string> {
   if (tapFormula.includes("zee")) return "adolago/tap/zee"
   const coreFormula = await $`brew list --formula zee`.throws(false).quiet().text()
   if (coreFormula.includes("zee")) return "zee"
-
-  // Legacy formulas
-  const legacyTapFormula = await $`brew list --formula adolago/tap/agent-core`.throws(false).quiet().text()
-  if (legacyTapFormula.includes("agent-core")) return "adolago/tap/agent-core"
-  const legacyCoreFormula = await $`brew list --formula agent-core`.throws(false).quiet().text()
-  if (legacyCoreFormula.includes("agent-core")) return "agent-core"
-
   return "zee"
 }
 
@@ -282,7 +275,7 @@ async function getShellConfigFile(): Promise<string | null> {
     const content = await Bun.file(file)
       .text()
       .catch(() => "")
-    if (content.includes("# opencode") || content.includes("# zee") || content.includes("# agent-core") || content.includes(".zee/bin")) {
+    if (content.includes("# opencode") || content.includes("# zee") || content.includes(".zee/bin")) {
       return file
     }
   }
@@ -300,7 +293,7 @@ async function cleanShellConfig(file: string) {
   for (const line of lines) {
     const trimmed = line.trim()
 
-    if (trimmed === "# opencode" || trimmed === "# zee" || trimmed === "# agent-core") {
+    if (trimmed === "# opencode" || trimmed === "# zee") {
       skip = true
       continue
     }

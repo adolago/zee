@@ -117,9 +117,9 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       status: "fail",
       message: `Non-loopback bind (${hostname}) with auth disabled via insecure override`,
       details:
-        "Unset AGENT_CORE_DISABLE_SERVER_AUTH and AGENT_CORE_ALLOW_INSECURE_SERVER_NO_AUTH, or enable auth:\n" +
-        "- AGENT_CORE_ENABLE_SERVER_AUTH=1\n" +
-        "- AGENT_CORE_SERVER_PASSWORD=...\n",
+        "Unset ZEE_DISABLE_SERVER_AUTH and ZEE_ALLOW_INSECURE_SERVER_NO_AUTH, or enable auth:\n" +
+        "- ZEE_ENABLE_SERVER_AUTH=1\n" +
+        "- ZEE_SERVER_PASSWORD=...\n",
       severity: "critical",
       durationMs: Date.now() - start,
       autoFixable: false,
@@ -136,8 +136,8 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       message: `Non-loopback bind (${hostname}) requires HTTP auth`,
       details:
         "Enable auth before binding to non-loopback:\n" +
-        "- AGENT_CORE_ENABLE_SERVER_AUTH=1\n" +
-        "- AGENT_CORE_SERVER_PASSWORD=...\n",
+        "- ZEE_ENABLE_SERVER_AUTH=1\n" +
+        "- ZEE_SERVER_PASSWORD=...\n",
       severity: "critical",
       durationMs: Date.now() - start,
       autoFixable: false,
@@ -151,11 +151,11 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       name: "Server bind safety",
       category: "security",
       status: "fail",
-      message: `Non-loopback bind (${hostname}) missing AGENT_CORE_SERVER_PASSWORD`,
+      message: `Non-loopback bind (${hostname}) missing ZEE_SERVER_PASSWORD`,
       details:
         "Set a server password (and optionally username) for HTTP Basic Auth:\n" +
-        "- AGENT_CORE_SERVER_PASSWORD=...\n" +
-        "- AGENT_CORE_SERVER_USERNAME=...\n",
+        "- ZEE_SERVER_PASSWORD=...\n" +
+        "- ZEE_SERVER_USERNAME=...\n",
       severity: "critical",
       durationMs: Date.now() - start,
       autoFixable: false,
@@ -194,9 +194,7 @@ async function checkServerScopes(): Promise<CheckResult> {
   }
 
   const rawScopes =
-    process.env.ZEE_SERVER_SCOPES?.trim() ||
-    process.env.AGENT_CORE_SERVER_SCOPES?.trim() ||
-    process.env.OPENCODE_SERVER_SCOPES?.trim();
+    process.env.ZEE_SERVER_SCOPES?.trim();
   const scopes = auth.scopes ?? [];
 
   if (scopes.length === 0) {

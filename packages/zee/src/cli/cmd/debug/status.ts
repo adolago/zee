@@ -16,7 +16,6 @@ import { Timestamp } from "../../../util/timestamp"
 const GATEWAY_ENV_HINTS = [
   "ZEE_GATEWAY_TOKEN",
   "ZEE_GATEWAY_PASSWORD",
-  "MATRIX_ACCESS_TOKEN",
 ]
 
 export const StatusCommand = cmd({
@@ -161,9 +160,6 @@ function resolveBinaryCandidates(): BinaryInfo[] {
   if (process.env.ZEE_BIN_PATH) {
     candidates.push({ path: process.env.ZEE_BIN_PATH, source: "ZEE_BIN_PATH" })
   }
-  if (process.env.AGENT_CORE_BIN_PATH) {
-    candidates.push({ path: process.env.AGENT_CORE_BIN_PATH, source: "AGENT_CORE_BIN_PATH" })
-  }
   if (home) {
     candidates.push({ path: path.join(home, ".bun", "bin", "zee"), source: "BUN_LINK" })
     candidates.push({ path: path.join(home, "bin", "zee"), source: "LEGACY_HOME_BIN" })
@@ -227,13 +223,13 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
   const bunLink = status.binaries.find((b) => b.source === "BUN_LINK")
   const legacyHome = status.binaries.find((b) => b.source === "LEGACY_HOME_BIN")
   const legacyLocal = status.binaries.find((b) => b.source === "LEGACY_LOCAL_BIN")
-  const envBin = status.binaries.find((b) => b.source === "ZEE_BIN_PATH") ?? status.binaries.find((b) => b.source === "AGENT_CORE_BIN_PATH")
+  const envBin = status.binaries.find((b) => b.source === "ZEE_BIN_PATH")
 
   if (!pathBinary) {
     status.issues.push("zee not found in PATH")
   }
   if (bunLink && !bunLink.exists) {
-    status.issues.push("~/.bun/bin/zee missing; run `cd packages/zee-core && bun link`")
+    status.issues.push("~/.bun/bin/zee missing; run `cd packages/zee && bun link`")
   }
   if (legacyHome?.exists) {
     status.issues.push("Legacy ~/bin/zee exists; remove to avoid confusion")
@@ -255,7 +251,7 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
   // Check for running processes
   try {
     const { execSync } = await import("child_process")
-    const psOutput = execSync('pgrep -af "(zee|agent-core)" 2>/dev/null || true', { encoding: "utf-8" })
+    const psOutput = execSync('pgrep -af "(zee)" 2>/dev/null || true', { encoding: "utf-8" })
     const lines = psOutput.trim().split("\n").filter(Boolean)
 
     for (const line of lines) {
@@ -269,7 +265,7 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
 
       let type = "unknown"
       if (cmd.includes("daemon")) type = "daemon"
-      else if (cmd.includes("print-logs") || cmd.match(/\/bin\/zee$/) || cmd.match(/\/bin\/agent-core$/)) type = "tui"
+      else if (cmd.includes("print-logs") || cmd.match(/\/bin\/zee$/)) type = "tui"
 
       status.processes.push({ pid, type, cmd })
 
@@ -283,9 +279,9 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
   }
 
   // Daemon health check
-  const daemonHost = process.env.ZEE_HOST || process.env.AGENT_CORE_HOST || "127.0.0.1"
-  let daemonPort = parseInt(process.env.ZEE_PORT || process.env.AGENT_CORE_PORT || "3210")
-  let daemonUrl = process.env.ZEE_URL?.trim() || process.env.AGENT_CORE_URL?.trim() || process.env.OPENCODE_URL?.trim()
+  const daemonHost = process.env.ZEE_HOST || "127.0.0.1"
+  let daemonPort = parseInt(process.env.ZEE_PORT || "3210")
+  let daemonUrl = process.env.ZEE_URL?.trim()
   if (daemonUrl) {
     try {
       const parsed = new URL(daemonUrl)
@@ -384,8 +380,8 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
   let binaryTimestampPath: string | undefined
   if (process.env.ZEE_BIN_PATH && fsSync.existsSync(process.env.ZEE_BIN_PATH)) {
     binaryTimestampPath = process.env.ZEE_BIN_PATH
-  } else if (process.env.AGENT_CORE_BIN_PATH && fsSync.existsSync(process.env.AGENT_CORE_BIN_PATH)) {
-    binaryTimestampPath = process.env.AGENT_CORE_BIN_PATH
+  } else if (process.env.ZEE_BIN_PATH && fsSync.existsSync(process.env.ZEE_BIN_PATH)) {
+    binaryTimestampPath = process.env.ZEE_BIN_PATH
   } else if (status.daemon.runtime?.execPath && fsSync.existsSync(status.daemon.runtime.execPath)) {
     binaryTimestampPath = status.daemon.runtime.execPath
   } else if (status.binary.exists) {
@@ -395,7 +391,7 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
   if (verbose && binaryTimestampPath) {
     const binaryStat = fsSync.statSync(binaryTimestampPath)
     const binaryTs = binaryStat.mtime.getTime()
-    const srcRoot = path.join(Global.Path.source, "packages", "zee-core", "src")
+    const srcRoot = path.join(Global.Path.source, "packages", "zee", "src")
     const keyFiles = ["provider/transform.ts", "provider/provider.ts", "server/server.ts"]
 
     for (const file of keyFiles) {
@@ -613,7 +609,7 @@ function printStatus(status: SystemStatus, verbose: boolean) {
     console.log("")
     console.log(`${Style.info}Quick fixes:${Style.reset}`)
     if (status.issues.some((i) => i.includes("bun link") || i.includes("PATH zee"))) {
-      console.log(`  Link: cd ${Global.Path.source}/packages/zee-core && bun link`)
+      console.log(`  Link: cd ${Global.Path.source}/packages/zee && bun link`)
     }
     if (status.issues.some((i) => i.includes("rebuild"))) {
       console.log(`  Rebuild: ${Global.Path.source}/scripts/reload.sh`)

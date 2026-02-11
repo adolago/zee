@@ -17,8 +17,8 @@ import {
   type VcsInfo,
   type PermissionRequest,
   type QuestionRequest,
-  createAgentCoreClient,
-} from "@zee/core/pkg/sdk/v2/client"
+  createZeeClient,
+} from "@zee/zee/pkg/sdk/v2/client"
 import { createStore, produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import { Binary } from "@zee/util/binary"
 import { retry } from "@zee/util/retry"
@@ -139,12 +139,12 @@ function createGlobalSync() {
   const metaCache = new Map<string, MetaCache>()
   const iconCache = new Map<string, IconCache>()
 
-  const sdkCache = new Map<string, ReturnType<typeof createAgentCoreClient>>()
+  const sdkCache = new Map<string, ReturnType<typeof createZeeClient>>()
   const sdkFor = (directory: string) => {
     const cached = sdkCache.get(directory)
     if (cached) return cached
 
-    const sdk = createAgentCoreClient({
+    const sdk = createZeeClient({
       baseUrl: globalSDK.url,
       fetch: platform.fetch,
       directory,

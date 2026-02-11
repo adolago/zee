@@ -32,7 +32,7 @@ describe("redactConfigObject", () => {
           password: "${ZEE_GATEWAY_PASSWORD}",
         },
       },
-      matrix: {
+      whatsapp: {
         tokenSource: "none",
       },
       apiKey: "api-key-1",
@@ -41,7 +41,7 @@ describe("redactConfigObject", () => {
     const out = redactConfigObject(input) as typeof input;
     expect(out.gateway.auth.token).toBe(REDACTED_SENTINEL);
     expect(out.gateway.auth.password).toBe("${ZEE_GATEWAY_PASSWORD}");
-    expect(out.matrix.tokenSource).toBe("none");
+    expect(out.whatsapp.tokenSource).toBe("none");
     expect(out.apiKey).toBe(REDACTED_SENTINEL);
   });
 });
@@ -83,12 +83,12 @@ describe("redactConfigSnapshot", () => {
   it("redacts accessToken fields", () => {
     const snapshot = makeSnapshot({
       channels: {
-        matrix: { accessToken: "matrix-access-token-value-here-1234" },
+        whatsapp: { accessToken: "whatsapp-access-token-value-here-1234" },
       },
     });
     const result = redactConfigSnapshot(snapshot);
     const channels = result.config.channels as Record<string, Record<string, string>>;
-    expect(channels.matrix.accessToken).toBe(REDACTED_SENTINEL);
+    expect(channels.whatsapp.accessToken).toBe(REDACTED_SENTINEL);
   });
 
   it("redacts short secrets with the same sentinel", () => {
@@ -127,12 +127,12 @@ describe("redactConfigSnapshot", () => {
 
   it("redacts parsed object as well", () => {
     const config = {
-      channels: { matrix: { accessToken: "this-is-a-token" } },
+      channels: { whatsapp: { accessToken: "this-is-a-token" } },
     };
     const snapshot = makeSnapshot(config);
     const result = redactConfigSnapshot(snapshot);
     const parsed = result.parsed as Record<string, Record<string, Record<string, string>>>;
-    expect(parsed.channels.matrix.accessToken).toBe(REDACTED_SENTINEL);
+    expect(parsed.channels.whatsapp.accessToken).toBe(REDACTED_SENTINEL);
   });
 
   it("handles null raw gracefully", () => {
@@ -227,7 +227,7 @@ describe("restoreRedactedValues", () => {
   it("handles deeply nested sentinel restoration", () => {
     const incoming = {
       channels: {
-        matrix: {
+        whatsapp: {
           accounts: {
             acct1: { accessToken: REDACTED_SENTINEL },
             acct2: { accessToken: "user-typed-new-token-value" },
@@ -237,7 +237,7 @@ describe("restoreRedactedValues", () => {
     };
     const original = {
       channels: {
-        matrix: {
+        whatsapp: {
           accounts: {
             acct1: { accessToken: "original-acct1-token-value" },
             acct2: { accessToken: "original-acct2-token-value" },
@@ -246,13 +246,13 @@ describe("restoreRedactedValues", () => {
       },
     };
     const result = restoreRedactedValues(incoming, original) as typeof incoming;
-    expect(result.channels.matrix.accounts.acct1.accessToken).toBe("original-acct1-token-value");
-    expect(result.channels.matrix.accounts.acct2.accessToken).toBe("user-typed-new-token-value");
+    expect(result.channels.whatsapp.accounts.acct1.accessToken).toBe("original-acct1-token-value");
+    expect(result.channels.whatsapp.accounts.acct2.accessToken).toBe("user-typed-new-token-value");
   });
 
   it("throws when base is missing a redacted value", () => {
     const incoming = {
-      channels: { matrix: { accessToken: REDACTED_SENTINEL } },
+      channels: { whatsapp: { accessToken: REDACTED_SENTINEL } },
     };
     const original = {};
     expect(() => restoreRedactedValues(incoming, original)).toThrow(/redacted/i);
@@ -267,7 +267,7 @@ describe("restoreRedactedValues", () => {
     const originalConfig = {
       gateway: { auth: { token: "gateway-auth-secret-token-value" }, port: 18789 },
       channels: {
-        matrix: { accessToken: "fake-matrix-access-token-value" },
+        whatsapp: { accessToken: "fake-whatsapp-access-token-value" },
       },
       models: {
         providers: {

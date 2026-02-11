@@ -1,6 +1,6 @@
 import type {
   Event,
-  createAgentCoreClient,
+  createZeeClient,
   Project,
   Model,
   Provider,
@@ -24,7 +24,7 @@ export type ProviderContext = {
 }
 
 export type PluginInput = {
-  client: ReturnType<typeof createAgentCoreClient>
+  client: ReturnType<typeof createZeeClient>
   project: Project
   directory: string
   worktree: string

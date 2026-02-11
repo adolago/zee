@@ -7,7 +7,7 @@
 
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { Log } from "../../packages/zee-core/src/util/log";
+import { Log } from "../../packages/zee/src/util/log";
 import type {
   Worker,
   PersonasState,

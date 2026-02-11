@@ -120,7 +120,7 @@ export namespace Skill {
     }),
   )
 
-  const AGENT_CORE_SKILL_GLOB = new Bun.Glob("{skill,skills}/**/SKILL.md")
+  const ZEE_SKILL_GLOB = new Bun.Glob("{skill,skills}/**/SKILL.md")
   const CLAUDE_SKILL_GLOB = new Bun.Glob("skills/**/SKILL.md")
   const SKILL_GLOB = new Bun.Glob("**/SKILL.md")
 
@@ -441,7 +441,7 @@ export namespace Skill {
 
     // Scan .zee/skill/ directories
     for (const dir of await Config.directories()) {
-      for await (const match of AGENT_CORE_SKILL_GLOB.scan({
+      for await (const match of ZEE_SKILL_GLOB.scan({
         cwd: dir,
         absolute: true,
         onlyFiles: true,

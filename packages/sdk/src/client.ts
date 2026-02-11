@@ -20,10 +20,7 @@ export function createZeeClient(config?: ClientConfig) {
   if (config?.directory) {
     const isNonASCII = /[^\x00-\x7F]/.test(config.directory)
     const encodedDirectory = isNonASCII ? encodeURIComponent(config.directory) : config.directory
-    // The daemon currently uses x-opencode-directory; keep legacy headers for compatibility.
-    defaultHeaders["x-opencode-directory"] = encodedDirectory
     defaultHeaders["x-zee-directory"] = encodedDirectory
-    defaultHeaders["x-agent-core-directory"] = encodedDirectory
   }
 
   const customFetch = config?.fetch ?? fetch
@@ -88,12 +85,6 @@ export function createZeeClient(config?: ClientConfig) {
   }
 }
 
-/** @deprecated Use createZeeClient instead */
-export const createAgentCoreClient = createZeeClient
-
-/** @deprecated Use createZeeClient instead */
-export const createOpencodeClient = createZeeClient
-
 // Type definitions
 export interface Session {
   id: string
@@ -138,5 +129,3 @@ export interface Config {
 
 // Re-export types for convenience
 export type { ClientConfig as ZeeClientConfig }
-/** @deprecated Use ZeeClientConfig instead */
-export type { ClientConfig as AgentCoreClientConfig }

@@ -13,7 +13,7 @@
 import { describe, it, expect, afterAll, vi } from "vitest";
 
 // Mock Bun-dependent modules before any imports that trigger them
-vi.mock("../../packages/zee-core/src/global/index", () => ({
+vi.mock("../../packages/zee/src/global/index", () => ({
   Global: {
     Path: {
       home: "/tmp/test", source: "/tmp/test", data: "/tmp/test/data",
@@ -23,7 +23,7 @@ vi.mock("../../packages/zee-core/src/global/index", () => ({
   },
 }));
 
-vi.mock("../../packages/zee-core/src/util/log", () => {
+vi.mock("../../packages/zee/src/util/log", () => {
   const noop = () => {};
   const noopLogger = {
     trace: noop, debug: noop, info: noop, warn: noop, error: noop,

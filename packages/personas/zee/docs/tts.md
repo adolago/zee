@@ -33,7 +33,7 @@ as best-effort. If you need guaranteed limits and support, use OpenAI or ElevenL
 If you want OpenAI, ElevenLabs, or MiniMax TTS:
 - `ELEVENLABS_API_KEY` (or `XI_API_KEY`)
 - `OPENAI_API_KEY`
-- `MINIMAX_TTS_API_KEY` (or use `agent-core auth login minimax-tts`)
+- `MINIMAX_TTS_API_KEY` (or use `zee auth login minimax-tts`)
 
 Edge TTS does **not** require an API key. If no API keys are found, Zee defaults
 to Edge TTS (unless disabled via `messages.tts.edge.enabled=false`).

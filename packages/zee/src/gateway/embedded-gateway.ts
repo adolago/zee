@@ -31,12 +31,9 @@ let startPromise: Promise<void> | null = null
 
 function maybeInjectZeeUrl(daemonUrl?: string) {
   if (!daemonUrl) return
-  if (process.env.ZEE_URL?.trim() || process.env.AGENT_CORE_URL?.trim() || process.env.OPENCODE_URL?.trim()) return
+  if (process.env.ZEE_URL?.trim()) return
   previousZeeUrl = process.env.ZEE_URL
   process.env.ZEE_URL = daemonUrl
-  // Backward compat for callers that still read legacy env vars.
-  process.env.AGENT_CORE_URL = process.env.AGENT_CORE_URL || daemonUrl
-  process.env.OPENCODE_URL = process.env.OPENCODE_URL || daemonUrl
   injectedZeeUrl = true
 }
 

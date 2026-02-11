@@ -46,7 +46,7 @@ the workspace is writable. See [Memory](/concepts/memory) and
   - `per-peer`: `agent:<agentId>:dm:<peerId>`.
   - `per-channel-peer`: `agent:<agentId>:<channel>:dm:<peerId>`.
   - `per-account-channel-peer`: `agent:<agentId>:<channel>:<accountId>:dm:<peerId>` (accountId defaults to `default`).
-  - If `session.identityLinks` matches a provider-prefixed peer id (for example `matrix:@user:example.org`), the canonical key replaces `<peerId>` so the same person shares a session across channels.
+  - If `session.identityLinks` matches a provider-prefixed peer id (for example `whatsapp:@user:example.org`), the canonical key replaces `<peerId>` so the same person shares a session across channels.
 - Group chats isolate state: `agent:<agentId>:<channel>:group:<id>` (rooms/channels use `agent:<agentId>:<channel>:channel:<id>`).
   - Legacy `group:<id>` keys are still recognized for migration.
 - Inbound contexts may still use `group:<id>`; the channel is inferred from `Provider` and normalized to the canonical `agent:<agentId>:<channel>:group:<id>` form.

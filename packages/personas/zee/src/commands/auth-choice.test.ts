@@ -274,7 +274,7 @@ describe("applyAuthChoice", () => {
     });
 
     expect(text).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Enter OpenCode Zen API key" }),
+      expect.objectContaining({ message: "Enter Opencode Zen API key" }),
     );
     expect(result.config.agents?.defaults?.model?.primary).toBe("anthropic/claude-opus-4-5");
     expect(result.config.models?.providers?.["opencode-zen"]).toBeUndefined();

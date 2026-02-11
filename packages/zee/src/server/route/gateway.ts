@@ -5,7 +5,6 @@ import { Log } from "../../util/log"
 import {
   formatForSurface,
   WHATSAPP_CAPABILITIES,
-  MATRIX_CAPABILITIES,
 } from "../../surface/types"
 import type { SurfaceCapabilities } from "../../surface/types"
 import { readZeeGatewayTokenFromFile } from "@/gateway/token"
@@ -30,16 +29,6 @@ const WhatsAppSendInput = z.object({
   gifPlayback: z.boolean().optional(),
   accountId: z.string().optional(),
   account: z.string().optional(),  // Alias for accountId (backward compatibility)
-})
-
-const MatrixSendInput = z.object({
-  roomId: z.string().optional(),
-  to: z.string().optional(),
-  message: z.string(),
-  mediaUrl: z.string().optional(),
-  mediaUrls: z.array(z.string()).optional(),
-  accountId: z.string().optional(),
-  account: z.string().optional(), // Alias for accountId (backward compatibility)
 })
 
 const PROTOCOL_VERSION = 3
@@ -84,7 +73,7 @@ async function buildGatewayConnectParams() {
     client: {
       id: "cli",
       displayName: "zee",
-      version: process.env.ZEE_VERSION?.trim() || process.env.AGENT_CORE_VERSION?.trim() || "dev",
+      version: process.env.ZEE_VERSION?.trim() || process.env.ZEE_VERSION?.trim() || "dev",
       platform: process.platform,
       mode: "backend",
     },
@@ -113,11 +102,10 @@ async function callGateway<T = unknown>(
 
 const PLATFORM_CAPABILITIES: Record<string, SurfaceCapabilities> = {
   whatsapp: WHATSAPP_CAPABILITIES,
-  matrix: MATRIX_CAPABILITIES,
 }
 
 async function sendViaGateway(input: {
-  provider: "whatsapp" | "matrix"
+  provider: "whatsapp"
   to: string
   message: string
   accountId?: string
@@ -222,79 +210,6 @@ export const GatewayRoute = new Hono()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         log.warn("whatsapp send failed", { error: message })
-        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
-      }
-    },
-  )
-  .post(
-    "/matrix/send",
-    describeRoute({
-      summary: "Send Matrix message (via Zee gateway)",
-      description: "Send a Matrix message via the local Zee gateway (WebSocket RPC).",
-      operationId: "gateway.matrix.send",
-      responses: {
-        200: {
-          description: "Send result",
-          content: {
-            "application/json": {
-              schema: resolver(GatewayResponseSchema),
-            },
-          },
-        },
-        400: {
-          description: "Invalid request",
-          content: {
-            "application/json": {
-              schema: resolver(GatewayResponseSchema),
-            },
-          },
-        },
-        500: {
-          description: "Server error",
-          content: {
-            "application/json": {
-              schema: resolver(GatewayResponseSchema),
-            },
-          },
-        },
-      },
-    }),
-    async (c) => {
-      let body: unknown
-      try {
-        body = await c.req.json()
-      } catch {
-        const payload: GatewayResponse = { success: false, error: "Invalid JSON body" }
-        return c.json(payload, 400)
-      }
-
-      const parsed = MatrixSendInput.safeParse(body)
-      if (!parsed.success) {
-        const payload: GatewayResponse = { success: false, error: "Invalid request body" }
-        return c.json(payload, 400)
-      }
-
-      const toRaw = parsed.data.roomId ?? parsed.data.to
-      if (toRaw === undefined || toRaw === null || toRaw.trim() === "") {
-        const payload: GatewayResponse = { success: false, error: 'Missing "roomId" (or "to")' }
-        return c.json(payload, 400)
-      }
-
-      try {
-        const to = toRaw
-        const accountId = parsed.data.accountId ?? parsed.data.account
-        const data = await sendViaGateway({
-          provider: "matrix",
-          to,
-          message: parsed.data.message,
-          accountId,
-          mediaUrl: parsed.data.mediaUrl,
-          mediaUrls: parsed.data.mediaUrls,
-        })
-        return c.json({ success: true, data } satisfies GatewayResponse)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        log.warn("matrix send failed", { error: message })
         return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
       }
     },

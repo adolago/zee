@@ -1,6 +1,6 @@
 ---
 title: Providers
-description: Using any LLM provider in Agent Core.
+description: Using any LLM provider in Zee.
 ---
 
 import config from "../../../config.mjs"
@@ -11,7 +11,7 @@ OpenCode uses the [AI SDK](https://ai-sdk.dev/) and [Models.dev](https://models.
 To add a provider you need to:
 
 1. Add the API keys for the provider using the `/connect` command.
-2. Configure the provider in your OpenCode config.
+2. Configure the provider in your Zee config.
 
 ---
 
@@ -35,7 +35,7 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ```json title="opencode.json" {6}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -48,16 +48,16 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ---
 
-## OpenCode Zen
+## Opencode Zen
 
-OpenCode Zen is a list of models provided by the Agent Core team that have been
+Opencode Zen is a list of models provided by the Zee team that have been
 tested and verified to work well with OpenCode. [Learn more](/docs/zen).
 
 :::tip
-If you are new, we recommend starting with OpenCode Zen.
+If you are new, we recommend starting with Opencode Zen.
 :::
 
-1. Run the `/connect` command in the TUI, select opencode, and head to [opencode.ai/auth](https://opencode.ai/auth).
+1. Run the `/connect` command in the TUI, select opencode, and head to [zee-bot.com/auth](https://zee-bot.com/providers/opencode-zen).
 
    ```txt
    /connect
@@ -80,7 +80,7 @@ If you are new, we recommend starting with OpenCode Zen.
    /models
    ```
 
-It works like any other provider in Agent Core and is completely optional to use.
+It works like any other provider in Zee and is completely optional to use.
 
 ---
 
@@ -163,7 +163,7 @@ To use Amazon Bedrock with OpenCode:
 
    ```json title="opencode.json"
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -190,7 +190,7 @@ To use Amazon Bedrock with OpenCode:
 
    ```json title="opencode.json"
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -234,7 +234,7 @@ For custom inference profiles, use the model and provider name in the key and se
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -279,7 +279,7 @@ For custom inference profiles, use the model and provider name in the key and se
    ```
 
 :::info
-Using your Claude Pro/Max subscription in Agent Core is not officially supported by [Anthropic](https://anthropic.com).
+Using your Claude Pro/Max subscription in Zee is not officially supported by [Anthropic](https://anthropic.com).
 :::
 
 ##### Using API keys
@@ -486,7 +486,7 @@ Cloudflare AI Gateway lets you access models from OpenAI, Anthropic, Workers AI,
 
    ```json title="opencode.json"
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -692,7 +692,7 @@ to only use your own GitLab-hosted instance, add the following to your
 
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -754,7 +754,7 @@ Customize through `opencode.json`:
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -775,7 +775,7 @@ To access GitLab tools (merge requests, issues, pipelines, CI/CD, etc.):
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "plugin": ["@gitlab/opencode-gitlab-plugin"]
 }
 ```
@@ -958,7 +958,7 @@ Here's [Helicone's Model Directory](https://helicone.ai/models), you'll need thi
 
 ```jsonc title="~/.config/opencode/opencode.jsonc"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -986,7 +986,7 @@ Helicone supports custom headers for features like caching, user tracking, and s
 
 ```jsonc title="~/.config/opencode/opencode.jsonc"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1040,7 +1040,7 @@ You can configure opencode to use local models through [llama.cpp's](https://git
 
 ```json title="opencode.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1107,7 +1107,7 @@ You can configure opencode to use local models through LM Studio.
 
 ```json title="opencode.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1228,7 +1228,7 @@ Ollama can automatically configure itself for OpenCode. See the [Ollama integrat
 
 ```json title="opencode.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1268,7 +1268,7 @@ To use Ollama Cloud with OpenCode:
 
 2. Navigate to **Settings** > **Keys** and click **Add API Key** to generate a new API key.
 
-3. Copy the API key for use in Agent Core.
+3. Copy the API key for use in Zee.
 
 4. Run the `/connect` command and search for **Ollama Cloud**.
 
@@ -1285,7 +1285,7 @@ To use Ollama Cloud with OpenCode:
    └ enter
    ```
 
-6. **Important**: Before using cloud models in Agent Core, you must pull the model information locally:
+6. **Important**: Before using cloud models in Zee, you must pull the model information locally:
 
    ```bash
    ollama pull gpt-oss:20b-cloud
@@ -1332,13 +1332,13 @@ If you already have an API key, you can select **Manually enter API Key** and pa
 
 ---
 
-### OpenCode Zen
+### Opencode Zen
 
-OpenCode Zen is a list of tested and verified models provided by the Agent Core team. [Learn more](/docs/zen).
+Opencode Zen is a list of tested and verified models provided by the Zee team. [Learn more](/docs/zen).
 
-1. Sign in to **<a href={console}>OpenCode Zen</a>** and click **Create API Key**.
+1. Sign in to **<a href={console}>Opencode Zen</a>** and click **Create API Key**.
 
-2. Run the `/connect` command and search for **OpenCode Zen**.
+2. Run the `/connect` command and search for **Opencode Zen**.
 
    ```txt
    /connect
@@ -1390,7 +1390,7 @@ OpenCode Zen is a list of tested and verified models provided by the Agent Core 
 
    ```json title="opencode.json" {6}
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1405,7 +1405,7 @@ OpenCode Zen is a list of tested and verified models provided by the Agent Core 
 
    ```json title="opencode.json"
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1621,7 +1621,7 @@ You can also customize models through your opencode config. Here's an example of
 
 ```json title="opencode.json"
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1731,7 +1731,7 @@ Some useful routing options:
 
    ```json title="opencode.json" {6}
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -1799,7 +1799,7 @@ You can use any OpenAI-compatible provider with opencode. Most modern AI provide
 
    ```json title="opencode.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://opencode.ai/config.json",
+     "$schema": "https://zee-bot.com/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -1837,7 +1837,7 @@ Here's an example setting the `apiKey`, `headers`, and model `limit` options.
 
 ```json title="opencode.json" {9,11,17-20}
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

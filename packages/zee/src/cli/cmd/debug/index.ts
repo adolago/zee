@@ -78,21 +78,18 @@ const FlagsCommand = cmd({
     ]
 
     const flags = flagNames.map((name) => {
-      const agentCoreKey = `AGENT_CORE_${name}`
-      const opencodeKey = `OPENCODE_${name}`
-      const agentCoreValue = process.env[agentCoreKey]
-      const opencodeValue = process.env[opencodeKey]
+      const primaryKey = `ZEE_${name}`
+      const primaryValue = process.env[primaryKey]
       // Get value from Flag namespace if available
-      const flagKey = `AGENT_CORE_${name}` as keyof typeof Flag
+      const flagKey = `ZEE_${name}` as keyof typeof Flag
       const computedValue = Flag[flagKey]
 
       return {
         name,
-        agentCoreEnv: agentCoreKey,
-        legacyEnv: opencodeKey,
-        envValue: agentCoreValue ?? opencodeValue ?? null,
+        env: primaryKey,
+        envValue: primaryValue ?? null,
         computedValue: computedValue !== undefined ? String(computedValue) : null,
-        source: agentCoreValue ? "AGENT_CORE" : opencodeValue ? "OPENCODE" : null,
+        source: primaryValue ? "ZEE" : null,
       }
     })
 
@@ -104,7 +101,7 @@ const FlagsCommand = cmd({
     console.log("Environment Flags")
     console.log("=================")
     console.log("")
-    console.log("Use either AGENT_CORE_* or AGENT_CORE_* prefix (AGENT_CORE_* takes precedence)")
+    console.log("Use ZEE_* prefix")
     console.log("")
 
     const setFlags = flags.filter((f) => f.envValue !== null || f.computedValue === "true")

@@ -267,7 +267,7 @@ function applyConfigFixes(params: { cfg: ZeeConfig; env: NodeJS.ProcessEnv }): {
     changes.push('logging.redactSensitive=off -> "tools"');
   }
 
-  for (const channel of ["whatsapp", "matrix"]) {
+  for (const channel of ["whatsapp"]) {
     setGroupPolicyAllowlist({ cfg: next, channel, changes, policyFlips });
   }
 
@@ -362,7 +362,7 @@ async function chmodCredentialsAndAgentState(params: {
     params.actions.push(await safeChmod({ path: p, mode: 0o600, require: "file" }));
   }
 
-  // agent-core auth store (global)
+  // zee auth store (global)
   // eslint-disable-next-line no-await-in-loop
   params.actions.push(
     await params.applyPerms({

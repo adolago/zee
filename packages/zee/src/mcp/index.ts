@@ -783,7 +783,7 @@ export namespace MCP {
     if (mcp.type === "local") {
       const cwd = Instance.directory
       // Ensure ZEE_ROOT is set for MCP servers that depend on it
-      const zeeRoot = process.env.ZEE_ROOT || process.env.AGENT_CORE_ROOT || getZeeRoot()
+      const zeeRoot = process.env.ZEE_ROOT || getZeeRoot()
       const resolvedCommand = resolveLocalCommand(key, mcp, zeeRoot)
       const [cmd, ...args] = resolvedCommand ?? []
       if (!cmd) {
@@ -801,11 +801,8 @@ export namespace MCP {
         cwd,
         env: {
           ...process.env,
-          ZEE_ROOT: zeeRoot,
-          // Backward compat for servers that still read legacy env vars.
-          AGENT_CORE_ROOT: process.env.AGENT_CORE_ROOT || zeeRoot,
-          OPENCODE_ROOT: process.env.OPENCODE_ROOT || zeeRoot,
-          ...(cmd === "zee" || cmd === "agent-core" ? { BUN_BE_BUN: "1" } : {}),
+          ZEE_ROOT: process.env.ZEE_ROOT || zeeRoot,
+          ...(cmd === "zee" ? { BUN_BE_BUN: "1" } : {}),
           ...mcp.environment,
         },
       })

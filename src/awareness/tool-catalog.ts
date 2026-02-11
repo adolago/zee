@@ -8,8 +8,8 @@
  * 4. Stays within token budget to avoid context bloat
  */
 
-import { ToolRegistry } from "../../packages/zee-core/src/tool/registry"
-import type { Agent } from "../../packages/zee-core/src/agent/agent"
+import { ToolRegistry } from "../../packages/zee/src/tool/registry"
+import type { Agent } from "../../packages/zee/src/agent/agent"
 import { getZeeSplitwiseConfig, getZeeCodexbarConfig } from "../config/runtime"
 
 export interface ToolCatalogEntry {
@@ -40,7 +40,6 @@ const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
     "zee:email",
     "zee:memory",
     "whatsapp",
-    "matrix",
     // Investing (stanley: namespace)
     "stanley:portfolio",
     "stanley:market",

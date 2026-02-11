@@ -5,7 +5,7 @@ import type { CliDeps } from "../cli/deps.js";
 import type { ZeeConfig } from "../config/config.js";
 import type { CronJob } from "./types.js";
 import { withTempHome as withTempHomeBase } from "../../test/helpers/temp-home.js";
-import { telegramOutbound } from "../channels/plugins/outbound/telegram.js";
+import { whatsappOutbound } from "../channels/plugins/outbound/whatsapp.js";
 import { setActivePluginRegistry } from "../plugins/runtime.js";
 import { createOutboundTestPlugin, createTestRegistry } from "../test-utils/channel-plugins.js";
 
@@ -23,7 +23,7 @@ import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
 import { runCronIsolatedAgentTurn } from "./isolated-agent.js";
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
-  return withTempHomeBase(fn, { prefix: "agent-core-cron-" });
+  return withTempHomeBase(fn, { prefix: "zee-cron-" });
 }
 
 async function writeSessionStore(home: string) {
@@ -58,7 +58,7 @@ function makeCfg(
     agents: {
       defaults: {
         model: "anthropic/claude-opus-4-5",
-        workspace: path.join(home, "agent-core"),
+        workspace: path.join(home, "zee"),
       },
     },
     session: { store: storePath, mainKey: "main" },
@@ -89,8 +89,8 @@ describe("runCronIsolatedAgentTurn", () => {
     setActivePluginRegistry(
       createTestRegistry([
         {
-          pluginId: "telegram",
-          plugin: createOutboundTestPlugin({ id: "telegram", outbound: telegramOutbound }),
+          pluginId: "whatsapp",
+          plugin: createOutboundTestPlugin({ id: "whatsapp", outbound: whatsappOutbound }),
           source: "test",
         },
       ]),
@@ -102,7 +102,6 @@ describe("runCronIsolatedAgentTurn", () => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -117,12 +116,12 @@ describe("runCronIsolatedAgentTurn", () => {
 
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
-          channels: { telegram: { botToken: "t-1" } },
+          channels: { whatsapp: { botToken: "t-1" } },
         }),
         deps,
         job: {
           ...makeJob({ kind: "agentTurn", message: "do it" }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "whatsapp", to: "+123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -130,7 +129,7 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(deps.sendMessageTelegram).toHaveBeenCalled();
+      expect(deps.sendMessageWhatsApp).toHaveBeenCalled();
     });
   });
 
@@ -139,7 +138,6 @@ describe("runCronIsolatedAgentTurn", () => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -154,12 +152,12 @@ describe("runCronIsolatedAgentTurn", () => {
 
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
-          channels: { telegram: { botToken: "t-1" } },
+          channels: { whatsapp: { botToken: "t-1" } },
         }),
         deps,
         job: {
           ...makeJob({ kind: "agentTurn", message: "do it" }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "whatsapp", to: "+123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -167,9 +165,9 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(deps.sendMessageTelegram).toHaveBeenCalledTimes(1);
-      expect(deps.sendMessageTelegram).toHaveBeenCalledWith(
-        "123",
+      expect(deps.sendMessageWhatsApp).toHaveBeenCalledTimes(1);
+      expect(deps.sendMessageWhatsApp).toHaveBeenCalledWith(
+        "+123",
         "Final weather summary",
         expect.any(Object),
       );
@@ -181,7 +179,6 @@ describe("runCronIsolatedAgentTurn", () => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -193,17 +190,17 @@ describe("runCronIsolatedAgentTurn", () => {
           agentMeta: { sessionId: "s", provider: "p", model: "m" },
         },
         didSendViaMessagingTool: true,
-        messagingToolSentTargets: [{ tool: "message", provider: "telegram", to: "123" }],
+        messagingToolSentTargets: [{ tool: "message", provider: "whatsapp", to: "+123" }],
       });
 
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
-          channels: { telegram: { botToken: "t-1" } },
+          channels: { whatsapp: { botToken: "t-1" } },
         }),
         deps,
         job: {
           ...makeJob({ kind: "agentTurn", message: "do it" }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "whatsapp", to: "+123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -211,7 +208,7 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
+      expect(deps.sendMessageWhatsApp).not.toHaveBeenCalled();
     });
   });
 
@@ -220,7 +217,6 @@ describe("runCronIsolatedAgentTurn", () => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -235,12 +231,12 @@ describe("runCronIsolatedAgentTurn", () => {
 
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
-          channels: { telegram: { botToken: "t-1" } },
+          channels: { whatsapp: { botToken: "t-1" } },
         }),
         deps,
         job: {
           ...makeJob({ kind: "agentTurn", message: "do it" }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "whatsapp", to: "+123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -248,7 +244,7 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
+      expect(deps.sendMessageWhatsApp).not.toHaveBeenCalled();
     });
   });
 
@@ -256,8 +252,7 @@ describe("runCronIsolatedAgentTurn", () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
-        sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn().mockRejectedValue(new Error("boom")),
+        sendMessageWhatsApp: vi.fn().mockRejectedValue(new Error("boom")),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -271,12 +266,12 @@ describe("runCronIsolatedAgentTurn", () => {
       });
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
-          channels: { telegram: { botToken: "t-1" } },
+          channels: { whatsapp: { botToken: "t-1" } },
         }),
         deps,
         job: {
           ...makeJob({ kind: "agentTurn", message: "do it" }),
-          delivery: { mode: "announce", channel: "telegram", to: "123" },
+          delivery: { mode: "announce", channel: "whatsapp", to: "+123" },
         },
         message: "do it",
         sessionKey: "cron:job-1",
@@ -292,8 +287,7 @@ describe("runCronIsolatedAgentTurn", () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
-        sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn().mockRejectedValue(new Error("boom")),
+        sendMessageWhatsApp: vi.fn().mockRejectedValue(new Error("boom")),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -307,15 +301,15 @@ describe("runCronIsolatedAgentTurn", () => {
       });
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
-          channels: { telegram: { botToken: "t-1" } },
+          channels: { whatsapp: { botToken: "t-1" } },
         }),
         deps,
         job: {
           ...makeJob({ kind: "agentTurn", message: "do it" }),
           delivery: {
             mode: "announce",
-            channel: "telegram",
-            to: "123",
+            channel: "whatsapp",
+            to: "+123",
             bestEffort: true,
           },
         },
@@ -325,7 +319,7 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(deps.sendMessageTelegram).toHaveBeenCalled();
+      expect(deps.sendMessageWhatsApp).toHaveBeenCalled();
     });
   });
 });

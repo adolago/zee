@@ -101,7 +101,7 @@ client:
 
 ## Tool Availability
 
-When running ACP, the CLI sets `ZEE_CLIENT=acp` (legacy: `AGENT_CORE_CLIENT=acp`). This excludes the
+When running ACP, the CLI sets `ZEE_CLIENT=acp`. This excludes the
 `question` tool from the tool registry so ACP clients are not prompted via the
 interactive question tool.
 
@@ -121,11 +121,10 @@ interactive question tool.
 
 ```bash
 # Run ACP tests
-cd packages/zee-core
+cd packages/zee
 bun test test/acp
 
 # Test manually with stdio
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | agent-core acp
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1}}' | zee acp
 ```
 

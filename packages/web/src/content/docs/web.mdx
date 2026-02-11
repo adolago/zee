@@ -12,13 +12,13 @@ OpenCode can run as a web application in your browser, providing the same powerf
 Start the web interface by running:
 
 ```bash
-opencode web
+zee web
 ```
 
 This starts a local server on `127.0.0.1` with a random available port and automatically opens OpenCode in your default browser.
 
 :::caution
-If `AGENT_CORE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
+If `ZEE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
 :::
 
 ---
@@ -32,7 +32,7 @@ You can configure the web server using command line flags or in your [config fil
 By default, OpenCode picks an available port. You can specify a port:
 
 ```bash
-opencode web --port 4096
+zee web --port 4096
 ```
 
 ### Hostname
@@ -40,7 +40,7 @@ opencode web --port 4096
 By default, the server binds to `127.0.0.1` (localhost only). To make OpenCode accessible on your network:
 
 ```bash
-opencode web --hostname 0.0.0.0
+zee web --hostname 0.0.0.0
 ```
 
 When using `0.0.0.0`, OpenCode will display both local and network addresses:
@@ -55,7 +55,7 @@ When using `0.0.0.0`, OpenCode will display both local and network addresses:
 Enable mDNS to make your server discoverable on the local network:
 
 ```bash
-opencode web --mdns
+zee web --mdns
 ```
 
 This automatically sets the hostname to `0.0.0.0` and advertises the server as `opencode.local`.
@@ -65,18 +65,18 @@ This automatically sets the hostname to `0.0.0.0` and advertises the server as `
 To allow additional domains for CORS (useful for custom frontends):
 
 ```bash
-opencode web --cors https://example.com
+zee web --cors https://example.com
 ```
 
 ### Authentication
 
-To protect access, set a password using the `AGENT_CORE_SERVER_PASSWORD` environment variable:
+To protect access, set a password using the `ZEE_SERVER_PASSWORD` environment variable:
 
 ```bash
-AGENT_CORE_SERVER_PASSWORD=secret opencode web
+ZEE_SERVER_PASSWORD=secret zee web
 ```
 
-The username defaults to `opencode` but can be changed with `AGENT_CORE_SERVER_USERNAME`.
+The username defaults to `zee` but can be changed with `ZEE_SERVER_USERNAME`.
 
 ---
 
@@ -104,7 +104,7 @@ You can attach a terminal TUI to a running web server:
 
 ```bash
 # Start the web server
-opencode web --port 4096
+zee web --port 4096
 
 # In another terminal, attach the TUI
 opencode attach http://localhost:4096

@@ -1,16 +1,14 @@
 import { createSignal, createMemo, onMount } from "solid-js"
 import { createSimpleContext } from "@zee/ui/context"
-import { personaPalettes } from "../../../../src/theme/rosetta"
 
 export const PERSONAS = [
-  { id: "zee", name: "Zee", description: "Personal assistant", color: personaPalettes.zee.primary.hex },
+  { id: "zee", name: "Zee", description: "Personal assistant", color: "#268bd2" },
 ] as const
 
 export type PersonaId = (typeof PERSONAS)[number]["id"]
 export type Persona = (typeof PERSONAS)[number]
 
 const STORAGE_KEY = "zee.persona"
-const LEGACY_STORAGE_KEY = "agent-core.persona"
 
 export function isPersonaId(id: string): id is PersonaId {
   return PERSONAS.some((p) => p.id === id)
@@ -18,7 +16,7 @@ export function isPersonaId(id: string): id is PersonaId {
 
 export function getStoredPersona(): PersonaId {
   if (typeof window === "undefined") return "zee"
-  const stored = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
+  const stored = localStorage.getItem(STORAGE_KEY)
   if (stored && isPersonaId(stored)) {
     return stored
   }
@@ -28,7 +26,6 @@ export function getStoredPersona(): PersonaId {
 export function setStoredPersona(id: PersonaId) {
   if (typeof window === "undefined") return
   localStorage.setItem(STORAGE_KEY, id)
-  localStorage.setItem(LEGACY_STORAGE_KEY, id)
 }
 
 export const { use: usePersona, provider: PersonaProvider } = createSimpleContext({

@@ -4,7 +4,7 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie"
 import { db } from "./db"
 import { env } from "./env"
 
-const SESSION_COOKIE = "agent_core_hosted_session"
+export const SESSION_COOKIE = "zee_hosted_session"
 const SESSION_TTL_MS = env.SESSION_TTL_HOURS * 60 * 60 * 1000
 
 export type UserRecord = {

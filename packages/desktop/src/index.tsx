@@ -43,13 +43,13 @@ window.getComputedStyle = ((elt: Element, pseudoElt?: string | null) => {
 
 let update: Update | null = null
 
-const deepLinkEvent = "opencode:deep-link"
+const deepLinkEvent = "zee:deep-link"
 
 const emitDeepLinks = (urls: string[]) => {
   if (urls.length === 0) return
-  window.__AGENT_CORE__ ??= {}
-  const pending = window.__AGENT_CORE__.deepLinks ?? []
-  window.__AGENT_CORE__.deepLinks = [...pending, ...urls]
+  window.__ZEE__ ??= {}
+  const pending = window.__ZEE__.deepLinks ?? []
+  window.__ZEE__.deepLinks = [...pending, ...urls]
   window.dispatchEvent(new CustomEvent(deepLinkEvent, { detail: { urls } }))
 }
 
@@ -296,7 +296,7 @@ const createPlatform = (password: Accessor<string | null>): Platform => ({
       .then(() => {
         const notification = new Notification(title, {
           body: description ?? "",
-          icon: "https://opencode.ai/favicon-96x96-v3.png",
+          icon: "https://zee-bot.com/favicon.ico",
         })
         notification.onclick = () => {
           const win = getCurrentWindow()
@@ -318,7 +318,7 @@ const createPlatform = (password: Accessor<string | null>): Platform => ({
     const pw = password()
 
     const addHeader = (headers: Headers, password: string) => {
-      headers.append("Authorization", `Basic ${btoa(`opencode:${password}`)}`)
+      headers.append("Authorization", `Basic ${btoa(`zee:`)}`)
     }
 
     if (input instanceof Request) {
@@ -376,8 +376,8 @@ render(() => {
         <ServerGate>
           {(data) => {
             setServerPassword(data().password)
-            window.__AGENT_CORE__ ??= {}
-            window.__AGENT_CORE__.serverPassword = data().password ?? undefined
+            window.__ZEE__ ??= {}
+            window.__ZEE__.serverPassword = data().password ?? undefined
 
             return <AppInterface defaultUrl={data().url} />
           }}

@@ -10,8 +10,8 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolRuntime, ToolExecutionContext, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/zee-core/src/util/log";
-import { validateMediaPath, PathValidationError } from "../../../packages/zee-core/src/security/validate-path.js";
+import { Log } from "../../../packages/zee/src/util/log";
+import { validateMediaPath, PathValidationError } from "../../../packages/zee/src/security/validate-path.js";
 import {
   SPLITWISE_ACTIONS,
   buildSplitwiseRequest,
@@ -333,9 +333,9 @@ ${formattedResults}`,
 // =============================================================================
 
 const MessagingParams = z.object({
-  channel: z.enum(["whatsapp", "matrix"])
-    .describe("Messaging channel: whatsapp or matrix"),
-  to: z.string().describe("Recipient: WhatsApp chatId/JID/E.164 or Matrix room ID"),
+  channel: z.enum(["whatsapp"])
+    .describe("Messaging channel: whatsapp"),
+  to: z.string().describe("Recipient: WhatsApp chatId/JID/E.164"),
   message: z.string().describe("Message content (text or caption for media)"),
   mediaUrl: z.string().optional()
     .describe("URL or local file path to media (audio, image, video, document). For voice notes, use audio/ogg with opus codec."),
@@ -347,10 +347,9 @@ export const messagingTool: ToolDefinition = {
   id: "zee:messaging",
   category: "domain",
   init: async () => ({
-    description: `Send messages via WhatsApp or Matrix gateways. Always search memory for recipient contact info before asking the user.
+    description: `Send messages via WhatsApp gateway. Always search memory for recipient contact info before asking the user.
 
-WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for images/audio/video.
-Matrix: to=room ID (e.g. "!room:server").`,
+WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for images/audio/video.`,
     parameters: MessagingParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { channel, to, message, mediaUrl, account } = args;
@@ -382,126 +381,68 @@ Matrix: to=room ID (e.g. "!room:server").`,
       }
 
       const rawBaseUrl =
-        process.env.AGENT_CORE_URL ||
-        process.env.AGENT_CORE_DAEMON_URL ||
-        `http://127.0.0.1:${process.env.AGENT_CORE_PORT || process.env.AGENT_CORE_DAEMON_PORT || "3210"}`;
+        process.env.ZEE_URL ||
+        process.env.ZEE_DAEMON_URL ||
+        `http://127.0.0.1:${process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"}`;
       const baseUrl = rawBaseUrl.replace(/\/$/, "");
 
       try {
-        if (channel === "whatsapp") {
-          // Send via WhatsApp gateway (Zee only)
-          // account can be 'zee' (bot number) or 'personal' (your number), or any configured account
-          const accountId = account || "zee";
-          const response = await fetch(`${baseUrl}/gateway/whatsapp/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chatId: to,
-              message,
-              accountId,
-              ...(validatedMediaUrl ? { mediaUrl: validatedMediaUrl } : {}),
-            }),
+        // Send via WhatsApp gateway (Zee only)
+        // account can be 'zee' (bot number) or 'personal' (your number), or any configured account
+        const accountId = account || "zee";
+        const response = await fetch(`${baseUrl}/gateway/whatsapp/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: to,
+            message,
+            accountId,
+            ...(validatedMediaUrl ? { mediaUrl: validatedMediaUrl } : {}),
+          }),
+        });
+
+        const rawResult = await response.json();
+        const parseResult = GatewayResponseSchema.safeParse(rawResult);
+
+        if (!parseResult.success) {
+          log.error("WhatsApp gateway response validation failed", {
+            errors: parseResult.error.flatten().fieldErrors,
           });
+          return {
+            title: `WhatsApp Send Failed`,
+            metadata: { channel, to, error: "Invalid response from gateway" },
+            output: `Failed to send WhatsApp message: Invalid response from gateway`,
+          };
+        }
 
-          const rawResult = await response.json();
-          const parseResult = GatewayResponseSchema.safeParse(rawResult);
+        const result = parseResult.data;
 
-          if (!parseResult.success) {
-            log.error("WhatsApp gateway response validation failed", {
-              errors: parseResult.error.flatten().fieldErrors,
-            });
-            return {
-              title: `WhatsApp Send Failed`,
-              metadata: { channel, to, error: "Invalid response from gateway" },
-              output: `Failed to send WhatsApp message: Invalid response from gateway`,
-            };
-          }
-
-          const result = parseResult.data;
-
-          if (!result.success) {
-            return {
-              title: `WhatsApp Send Failed`,
-              metadata: { channel, to, error: result.error },
-              output: `Failed to send WhatsApp message: ${result.error || "Unknown error"}
+        if (!result.success) {
+          return {
+            title: `WhatsApp Send Failed`,
+            metadata: { channel, to, error: result.error },
+            output: `Failed to send WhatsApp message: ${result.error || "Unknown error"}
 
 Troubleshooting:
 - Ensure \`zee daemon\` is running
 - Check \`zee debug status\` shows Gateway: Active
 - Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`,
-            };
-          }
-
-          const accountLabel = accountId === "personal" ? "your personal WhatsApp" : `WhatsApp account "${accountId}"`;
-          const mediaLabel = hasMedia ? " with media" : "";
-          const preview = message.trim()
-            ? `Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`
-            : hasMedia
-              ? `Media: ${mediaUrl}`
-              : "";
-          return {
-            title: `WhatsApp Message Sent${mediaLabel}`,
-            metadata: { channel, to, account: accountId, hasMedia, success: true },
-            output: `Message sent via ${accountLabel} to ${to}${mediaLabel}
-
-${preview}`,
-          };
-
-        } else if (channel === "matrix") {
-          const accountId = account || "zee";
-          const response = await fetch(`${baseUrl}/gateway/matrix/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              roomId: to,
-              message,
-              accountId,
-              ...(validatedMediaUrl ? { mediaUrl: validatedMediaUrl } : {}),
-            }),
-          });
-
-          const rawResult = await response.json();
-          const parseResult = GatewayResponseSchema.safeParse(rawResult);
-
-          if (!parseResult.success) {
-            log.error("Matrix gateway response validation failed", {
-              errors: parseResult.error.flatten().fieldErrors,
-            });
-            return {
-              title: `Matrix Send Failed`,
-              metadata: { channel, to, account: accountId, error: "Invalid response from gateway" },
-              output: `Failed to send Matrix message: Invalid response from gateway`,
-            };
-          }
-
-          const result = parseResult.data;
-
-          if (!result.success) {
-            return {
-              title: `Matrix Send Failed`,
-              metadata: { channel, to, account: accountId, error: result.error },
-              output: `Failed to send Matrix message: ${result.error || "Unknown error"}
-
-Troubleshooting:
-- Ensure \`zee daemon\` is running
-- Check \`zee debug status\` shows Gateway: Active
-- Verify the room ID is correct (e.g., "!room:server")`,
-            };
-          }
-
-          return {
-            title: `Matrix Message Sent`,
-            metadata: { channel, to, account: accountId, success: true },
-            output: `Message sent via Matrix account "${accountId}" to ${to}
-
-Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
           };
         }
 
+        const accountLabel = accountId === "personal" ? "your personal WhatsApp" : `WhatsApp account "${accountId}"`;
+        const mediaLabel = hasMedia ? " with media" : "";
+        const preview = message.trim()
+          ? `Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`
+          : hasMedia
+            ? `Media: ${mediaUrl}`
+            : "";
         return {
-          title: `Unsupported Channel`,
-          metadata: { channel, error: "unsupported" },
-          output: `Channel "${channel}" is not supported. Use "whatsapp" or "matrix".`,
+          title: `WhatsApp Message Sent${mediaLabel}`,
+          metadata: { channel, to, account: accountId, hasMedia, success: true },
+          output: `Message sent via ${accountLabel} to ${to}${mediaLabel}
+
+${preview}`,
         };
 
       } catch (error) {
@@ -535,7 +476,7 @@ const NotificationParams = z.object({
     .describe("Priority level"),
   schedule: z.string().optional()
     .describe("ISO date or cron expression for scheduling"),
-  channels: z.array(z.enum(["push", "whatsapp", "matrix", "email"])).default(["push"])
+  channels: z.array(z.enum(["push", "whatsapp", "email"])).default(["push"])
     .describe("Channels to notify through"),
 });
 
@@ -1121,9 +1062,9 @@ export const whatsappReactionTool: ToolDefinition = {
       ctx.metadata({ title: `WhatsApp: ${remove ? "Remove" : "Add"} reaction` });
 
       const rawBaseUrl =
-        process.env.AGENT_CORE_URL ||
-        process.env.AGENT_CORE_DAEMON_URL ||
-        `http://127.0.0.1:${process.env.AGENT_CORE_PORT || process.env.AGENT_CORE_DAEMON_PORT || "3210"}`;
+        process.env.ZEE_URL ||
+        process.env.ZEE_DAEMON_URL ||
+        `http://127.0.0.1:${process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"}`;
       const baseUrl = rawBaseUrl.replace(/\/$/, "");
 
       try {
@@ -2065,7 +2006,7 @@ const PlanCreateParams = z.object({
   objective: z.string().describe("What the plan aims to achieve"),
   steps: z.array(z.string()).min(1).max(20)
     .describe("Ordered list of step descriptions"),
-  persona: z.enum(["zee", "stanley", "johny"]).optional()
+  persona: z.enum(["zee"]).optional()
     .describe("Persona owning this plan (default: current persona)"),
 });
 
@@ -2076,7 +2017,7 @@ export const planCreateTool: ToolDefinition = {
     description: `Create a multi-step plan for complex requests. Plans persist in memory and can be resumed across sessions.`,
     parameters: PlanCreateParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const persona = args.persona ?? (ctx.extra?.persona as string) ?? "zee";
+      const persona = "zee";
       const sessionId = ctx.extra?.sessionId as string | undefined;
 
       ctx.metadata({ title: `Creating plan: ${args.objective.slice(0, 40)}...` });
@@ -2167,7 +2108,7 @@ Next: ${nextStep?.description ?? "No more steps"}`,
 
 const PlanStatusParams = z.object({
   planId: z.string().optional().describe("Specific plan ID to check"),
-  persona: z.enum(["zee", "stanley", "johny"]).optional()
+  persona: z.enum(["zee"]).optional()
     .describe("List plans for a persona"),
   status: z.enum(["active", "completed", "abandoned"]).optional()
     .describe("Filter by plan status"),
@@ -2199,7 +2140,7 @@ export const planStatusTool: ToolDefinition = {
           };
         }
 
-        const persona = args.persona ?? (ctx.extra?.persona as string) ?? "zee";
+        const persona = "zee";
         const plans = await listPlans(persona, { status: args.status });
 
         if (plans.length === 0) {

@@ -37,7 +37,7 @@ This directory contains:
 
 ## Desktop app
 
-OpenCode Desktop runs a local OpenCode server (the `agent-core-cli` sidecar) in the background. Most issues are caused by a misbehaving plugin, a corrupted cache, or a bad server setting.
+OpenCode Desktop runs a local OpenCode server (the `zee-cli` sidecar) in the background. Most issues are caused by a misbehaving plugin, a corrupted cache, or a bad server setting.
 
 ### Quick checks
 
@@ -63,7 +63,7 @@ If you have plugins configured, temporarily disable them by removing the key or 
 
 ```jsonc
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://zee-bot.com/config.json",
   "plugin": [],
 }
 ```
@@ -113,7 +113,7 @@ If your `zee.json(c)` contains a `server` section, temporarily remove it and res
 
 #### Check environment variables
 
-If you have `ZEE_PORT` set in your environment (legacy: `AGENT_CORE_PORT`), the desktop app will try to use that port for the local server.
+If you have `ZEE_PORT` set in your environment (legacy: `ZEE_PORT`), the desktop app will try to use that port for the local server.
 
 - Unset `ZEE_PORT` (or pick a free port) and restart.
 
@@ -150,8 +150,8 @@ If the app won't start and you can't clear settings from inside the UI, reset th
 1. Quit OpenCode Desktop.
 2. Find and delete these files (they live in the OpenCode Desktop app data directory):
 
-- `agent-core.settings.dat` (desktop default server URL)
-- `agent-core.global.dat` and `agent-core.workspace.*.dat` (UI state like recent servers/projects)
+- `zee.settings.dat` (desktop default server URL)
+- `zee.global.dat` and `zee.workspace.*.dat` (UI state like recent servers/projects)
 
 To find the directory quickly:
 
@@ -177,7 +177,7 @@ If you're experiencing issues with OpenCode:
 
    For real-time help and community discussion, join our Discord server:
 
-   [**opencode.ai/discord**](https://opencode.ai/discord)
+   [**zee-bot.com/discord**](https://zee-bot.com/discord)
 
 ---
 

@@ -6,7 +6,7 @@ import { LocalProvider } from "@/context/local"
 
 import { DataProvider } from "@zee/ui/context"
 import { iife } from "@zee/util/iife"
-import type { QuestionAnswer } from "@zee/core/pkg/sdk/v2"
+import type { QuestionAnswer } from "@zee/zee/pkg/sdk/v2"
 import { decode64 } from "@/utils/base64"
 import { showToast } from "@zee/ui/toast"
 import { useLanguage } from "@/context/language"

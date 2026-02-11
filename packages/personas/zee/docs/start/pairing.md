@@ -30,8 +30,8 @@ Pairing codes:
 ### Approve a sender
 
 ```bash
-zee pairing list matrix
-zee pairing approve matrix <CODE>
+zee pairing list whatsapp
+zee pairing approve whatsapp <CODE>
 ```
 
 
@@ -74,5 +74,5 @@ Stored under `~/.zee/devices/`:
 - Security model + prompt injection: [Security](/gateway/security)
 - Updating safely (run doctor): [Updating](/install/updating)
 - Channel configs:
-  - Matrix: [Matrix](/channels/matrix)
+  - WhatsApp: [WhatsApp](/channels/whatsapp)
   - WhatsApp: [WhatsApp](/channels/whatsapp)

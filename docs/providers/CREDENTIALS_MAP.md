@@ -1,4 +1,4 @@
-# Credentials Map (agent-core / Zee / Stanley)
+# Credentials Map (zee / Zee / Stanley)
 
 This document maps **where credentials live** and **which features depend on them**.
 
@@ -7,7 +7,7 @@ This file must never contain secret values (tokens, API keys, cookies).
 ## Storage locations
 
 - `~/.local/share/zee/auth.json`  
-  Provider auth used by agent-core (OAuth, API key, and well-known tokens). Manage with `agent-core auth login ...`.
+  Provider auth used by zee (OAuth, API key, and well-known tokens). Manage with `zee auth login ...`.
 - `~/.config/zee/daemon.env`  
   Environment variables used by the systemd user service.
 - Shell profiles (e.g., `~/.profile`, `~/.bashrc`)  
@@ -21,7 +21,7 @@ This file must never contain secret values (tokens, API keys, cookies).
 
 ```bash
 # List stored provider auth (IDs + types)
-agent-core auth list
+zee auth list
 
 # Inspect raw auth store (IDs only)
 jq 'keys' ~/.local/share/zee/auth.json
@@ -31,9 +31,9 @@ jq 'keys' ~/.local/share/zee/auth.json
 
 | Env var | Purpose |
 |---|---|
-| `OPENAI_API_KEY` | OpenAI API (optional if using `agent-core auth login openai`) |
-| `ANTHROPIC_API_KEY` | Anthropic API (optional if using `agent-core auth login anthropic`) |
-| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Google Gemini API (optional if stored via `agent-core auth login google`) |
+| `OPENAI_API_KEY` | OpenAI API (optional if using `zee auth login openai`) |
+| `ANTHROPIC_API_KEY` | Anthropic API (optional if using `zee auth login anthropic`) |
+| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Google Gemini API (optional if stored via `zee auth login google`) |
 | `VOYAGE_API_KEY` | Voyage embeddings/reranking |
 | `SEC_IDENTITY` | SEC EDGAR identity |
 
@@ -50,7 +50,7 @@ jq 'keys' ~/.local/share/zee/auth.json
 ## Notes
 
 - For OpenBB, keys live in `~/.openbb_platform/user_settings.json` under `"credentials"`.
-- If you rotate a key, update it in the appropriate provider store and in `daemon.env` if agent-core reads it from env.
+- If you rotate a key, update it in the appropriate provider store and in `daemon.env` if zee reads it from env.
 
 ## OpenBB Provider Keys (Status)
 

@@ -13,6 +13,7 @@ import {
   getUserFromSession,
   hashPassword,
   requireApiAuth,
+  SESSION_COOKIE,
   setSessionCookie,
   verifyPassword,
 } from "./auth"
@@ -261,14 +262,14 @@ api.post("/auth/login", async (c) => {
 })
 
 api.post("/auth/logout", requireApiAuth, (c) => {
-  const sessionId = getCookie(c, "agent_core_hosted_session")
+  const sessionId = getCookie(c, SESSION_COOKIE)
   if (sessionId) db.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId)
   clearSessionCookie(c)
   return jsonResponse(c, { ok: true })
 })
 
 api.get("/auth/me", (c) => {
-  const sessionId = getCookie(c, "agent_core_hosted_session")
+  const sessionId = getCookie(c, SESSION_COOKIE)
   const user = getUserFromSession(sessionId)
   if (!user) return jsonResponse(c, { user: null })
   return jsonResponse(c, { user })
@@ -544,7 +545,7 @@ api.post("/settings/retention", requireApiAuth, async (c) => {
 
 api.post("/gateway/:workspaceId/chat", async (c) => {
   const workspaceId = c.req.param("workspaceId")
-  const sessionId = getCookie(c, "agent_core_hosted_session")
+  const sessionId = getCookie(c, SESSION_COOKIE)
   const user = getUserFromSession(sessionId)
   const workspaceKey = getWorkspaceKey(c)
 

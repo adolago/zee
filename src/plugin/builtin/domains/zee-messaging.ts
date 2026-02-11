@@ -6,7 +6,6 @@
  *
  * Features:
  * - WhatsApp integration
- * - Matrix integration
  * - Message formatting and templating
  * - Contact management
  */
@@ -25,10 +24,6 @@ export interface ZeeMessagingConfig {
   whatsappToken?: string;
   /** WhatsApp phone number ID */
   whatsappPhoneId?: string;
-  /** Matrix homeserver URL */
-  matrixHomeserverUrl?: string;
-  /** Matrix access token */
-  matrixAccessToken?: string;
   /** Default message template */
   defaultTemplate?: string;
   /** Enable read receipts */
@@ -39,7 +34,7 @@ export interface ZeeMessagingConfig {
 
 interface QueuedMessage {
   id: string;
-  platform: 'whatsapp' | 'matrix';
+  platform: 'whatsapp';
   recipient: string;
   content: string;
   timestamp: number;
@@ -57,10 +52,6 @@ export const ZeeMessagingPlugin: PluginFactory = async (
       ctx.config.get('zee.whatsapp.token') || process.env.WHATSAPP_TOKEN,
     whatsappPhoneId:
       ctx.config.get('zee.whatsapp.phoneId') || process.env.WHATSAPP_PHONE_ID,
-    matrixHomeserverUrl:
-      ctx.config.get('zee.matrix.homeserverUrl') || process.env.MATRIX_HOMESERVER_URL,
-    matrixAccessToken:
-      ctx.config.get('zee.matrix.accessToken') || process.env.MATRIX_ACCESS_TOKEN,
     defaultTemplate: ctx.config.get('zee.defaultTemplate'),
     readReceipts: ctx.config.get('zee.readReceipts') ?? true,
     queueSize: ctx.config.get('zee.queueSize') ?? 100,
@@ -121,48 +112,6 @@ export const ZeeMessagingPlugin: PluginFactory = async (
   }
 
   /**
-   * Send Matrix message
-   */
-  async function sendMatrix(roomId: string, content: string): Promise<boolean> {
-    if (!config.matrixHomeserverUrl || !config.matrixAccessToken) {
-      ctx.logger.warn('Matrix not configured');
-      return false;
-    }
-
-    try {
-      const baseUrl = config.matrixHomeserverUrl.replace(/\/$/, '');
-      const txnId = generateMessageId();
-      const response = await fetch(
-        `${baseUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${encodeURIComponent(txnId)}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.matrixAccessToken}`,
-          },
-          body: JSON.stringify({
-            msgtype: 'm.text',
-            body: content,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.text();
-        ctx.logger.error('Matrix send failed', { error });
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      ctx.logger.error('Matrix send error', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return false;
-    }
-  }
-
-  /**
    * Process message queue
    */
   async function processQueue(): Promise<void> {
@@ -173,8 +122,6 @@ export const ZeeMessagingPlugin: PluginFactory = async (
 
       if (msg.platform === 'whatsapp') {
         success = await sendWhatsApp(msg.recipient, msg.content);
-      } else if (msg.platform === 'matrix') {
-        success = await sendMatrix(msg.recipient, msg.content);
       }
 
       msg.status = success ? 'sent' : 'failed';
@@ -246,68 +193,15 @@ export const ZeeMessagingPlugin: PluginFactory = async (
     });
   }
 
-  if (config.matrixHomeserverUrl === undefined || config.matrixAccessToken === undefined) {
-    authProviders.push({
-      provider: 'matrix',
-      displayName: 'Matrix',
-      methods: [
-        {
-          type: 'api',
-          label: 'Access Token',
-          prompts: [
-            {
-              type: 'text',
-              key: 'homeserverUrl',
-              message: 'Enter Matrix homeserver URL',
-              placeholder: 'https://matrix.example.com',
-            },
-            {
-              type: 'text',
-              key: 'accessToken',
-              message: 'Enter Matrix access token',
-              placeholder: 'syt_xxx...',
-            },
-          ],
-          async authorize(inputs) {
-            const homeserverUrl = inputs?.homeserverUrl?.trim();
-            const accessToken = inputs?.accessToken?.trim();
-            if (!homeserverUrl || !accessToken) {
-              return { type: 'failed' };
-            }
-
-            try {
-              const baseUrl = homeserverUrl.replace(/\/$/, '');
-              const response = await fetch(`${baseUrl}/_matrix/client/v3/account/whoami`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-              });
-
-              if (!response.ok) {
-                return { type: 'failed' };
-              }
-
-              return {
-                type: 'success',
-                key: accessToken,
-                provider: 'matrix',
-              };
-            } catch {
-              return { type: 'failed' };
-            }
-          },
-        },
-      ],
-    });
-  }
-
   // Tool definitions
   const tools: Record<string, ToolDefinition> = {
     send_message: {
-      description: 'Send a message via WhatsApp or Matrix',
+      description: 'Send a message via WhatsApp',
       args: {
         platform: z
-          .enum(['whatsapp', 'matrix'])
+          .enum(['whatsapp'])
           .describe('Messaging platform to use'),
-        recipient: z.string().describe('Recipient phone number (WhatsApp) or room ID (Matrix)'),
+        recipient: z.string().describe('Recipient phone number (WhatsApp)'),
         message: z.string().describe('Message content'),
         template: z.string().optional().describe('Message template to use'),
       },
@@ -369,7 +263,7 @@ export const ZeeMessagingPlugin: PluginFactory = async (
       args: {
         id: z.string().describe('Contact identifier (phone/chat ID)'),
         name: z.string().describe('Contact name'),
-        platform: z.enum(['whatsapp', 'matrix']).describe('Platform'),
+        platform: z.enum(['whatsapp']).describe('Platform'),
       },
       async execute(args) {
         contacts.set(args.id, {
@@ -398,7 +292,7 @@ export const ZeeMessagingPlugin: PluginFactory = async (
       description: 'List all contacts',
       args: {
         platform: z
-          .enum(['whatsapp', 'matrix', 'all'])
+          .enum(['whatsapp', 'all'])
           .optional()
           .describe('Filter by platform'),
       },
@@ -470,8 +364,8 @@ export const ZeeMessagingPlugin: PluginFactory = async (
       name: 'zee-messaging',
       version: '1.0.0',
       description: 'Messaging platform integrations for Zee',
-      author: 'Agent Core',
-      tags: ['messaging', 'zee', 'domain', 'whatsapp', 'matrix'],
+      author: 'Zee',
+      tags: ['messaging', 'zee', 'domain', 'whatsapp'],
     },
 
     lifecycle: {
@@ -488,7 +382,6 @@ export const ZeeMessagingPlugin: PluginFactory = async (
 
         ctx.logger.info('Zee Messaging plugin initialized', {
           hasWhatsApp: !!config.whatsappToken,
-          hasMatrix: !!config.matrixHomeserverUrl && !!config.matrixAccessToken,
           contactCount: contacts.size,
         });
       },

@@ -45,7 +45,7 @@ export namespace Ide {
   }
 
   export function alreadyInstalled() {
-    return process.env["AGENT_CORE_CALLER"] === "vscode" || process.env["AGENT_CORE_CALLER"] === "vscode-insiders"
+    return process.env["ZEE_CALLER"] === "vscode" || process.env["ZEE_CALLER"] === "vscode-insiders"
   }
 
   export async function install(ide: (typeof SUPPORTED_IDES)[number]["name"]) {

@@ -1,6 +1,6 @@
 # Provider Rosetta Stone
 
-Complete reference for agent-core providers, authentication, and models.
+Complete reference for zee providers, authentication, and models.
 
 ## Quick Reference: Your Active Providers
 
@@ -26,12 +26,12 @@ Complete reference for agent-core providers, authentication, and models.
 |-------------|--------------|-----------|--------|-------|
 | `anthropic` | Anthropic | OAuth | Needs re-auth | Rate limit exceeded |
 | `openai` | OpenAI | OAuth | Quota exceeded | Check billing |
-| `opencode` | OpenCode Zen | API key | Insufficient balance | Add credits |
+| `opencode` | Opencode Zen | API key | Insufficient balance | Add credits |
 
 ### Provider Notes
 
-- **kimi-for-coding**: Only works via agent-core TUI, not direct API calls (Kimi restricts to coding agents)
-- **anthropic**: OAuth token may need refresh - run `agent-core auth login anthropic`
+- **kimi-for-coding**: Only works via zee TUI, not direct API calls (Kimi restricts to coding agents)
+- **anthropic**: OAuth token may need refresh - run `zee auth login anthropic`
 - **openai**: Quota exceeded - check billing at https://platform.openai.com/account/billing
 - **minimax**: Pay-as-you-go account has no chat balance, but TTS works fine
 
@@ -39,19 +39,19 @@ Complete reference for agent-core providers, authentication, and models.
 
 ```bash
 # List all credentials
-agent-core auth list
+zee auth list
 
 # Login to a provider (interactive)
-agent-core auth login <provider-id>
+zee auth login <provider-id>
 
 # Logout from a provider
-agent-core auth logout <provider-id>
+zee auth logout <provider-id>
 
 # Examples
-agent-core auth login anthropic        # OAuth flow
-agent-core auth login kimi-for-coding  # OAuth flow
-agent-core auth login minimax-coding-plan  # API key prompt
-agent-core auth login zai-coding-plan  # API key prompt
+zee auth login anthropic        # OAuth flow
+zee auth login kimi-for-coding  # OAuth flow
+zee auth login minimax-coding-plan  # API key prompt
+zee auth login zai-coding-plan  # API key prompt
 ```
 
 ## Provider Categories
@@ -102,7 +102,7 @@ agent-core auth login zai-coding-plan  # API key prompt
 
 ## Environment Variables
 
-Each provider can be authenticated via environment variable OR `agent-core auth login`:
+Each provider can be authenticated via environment variable OR `zee auth login`:
 
 | Provider | Environment Variable |
 |----------|---------------------|
@@ -176,7 +176,7 @@ sk-cp-*      = Coding Plan key (starts with sk-cp-)
 
 ```bash
 # Auth entries
-agent-core auth list | grep -i minimax
+zee auth list | grep -i minimax
 # ●  MiniMax (minimax.io) api          ← Pay-as-you-go (for TTS)
 # ●  MiniMax Coding Plan (minimax.io) api  ← Coding plan (for chat)
 
@@ -227,8 +227,8 @@ curl -s -X POST "https://api.minimax.io/v1/t2a_v2" \
 
 Google provider supports multiple auth sources:
 
-1. **API Key (AI Studio)**: `GEMINI_API_KEY` or `agent-core auth login google`
-2. **OAuth (Antigravity)**: `agent-core auth login google-antigravity`
+1. **API Key (AI Studio)**: `GEMINI_API_KEY` or `zee auth login google`
+2. **OAuth (Antigravity)**: `zee auth login google-antigravity`
 
 Antigravity models (Claude via Google, Gemini 3) require `google-antigravity` OAuth.
 
@@ -272,7 +272,7 @@ These providers are permanently hidden:
 
 ### "No auth configured"
 ```bash
-agent-core auth login <provider-id>
+zee auth login <provider-id>
 ```
 
 ### "Insufficient balance"
@@ -280,13 +280,13 @@ agent-core auth login <provider-id>
 - For pay-as-you-go providers: Add credits to your account
 
 ### "Token unusable" / "Authentication error"
-- Token expired: `agent-core auth logout <provider> && agent-core auth login <provider>`
+- Token expired: `zee auth logout <provider> && zee auth login <provider>`
 - Wrong key type: Ensure you're using the correct key for the provider
 
 ### OAuth refresh failed
 ```bash
-agent-core auth logout <provider>
-agent-core auth login <provider>
+zee auth logout <provider>
+zee auth login <provider>
 ```
 
 ## Health Check
@@ -334,7 +334,7 @@ curl -s -X POST "https://api.tokenfactory.nebius.com/v1/chat/completions" \
 ### Full Health Check Script
 
 ```bash
-cd packages/zee-core
+cd packages/zee
 bun run script/provider-health-check.ts
 
 # Test specific provider
@@ -356,7 +356,7 @@ See [.agents/skills/provider-monitoring/SKILL.md](../.agents/skills/provider-mon
 
 ```bash
 # Test all providers with colored output
-cd packages/zee-core
+cd packages/zee
 bun run script/provider-health-check.ts
 
 # Only show errors
@@ -375,7 +375,7 @@ The health check categorizes errors automatically:
 
 | Category | HTTP | Description | Action |
 |----------|------|-------------|--------|
-| `AuthError` | 401 | Invalid API key, expired token | `agent-core auth login <provider>` |
+| `AuthError` | 401 | Invalid API key, expired token | `zee auth login <provider>` |
 | `PermissionError` | 403 | Insufficient scopes | Re-authenticate with broader scopes |
 | `RateLimitError` | 429 | Too many requests | Wait and retry |
 | `QuotaError` | - | Insufficient balance | Check billing dashboard |

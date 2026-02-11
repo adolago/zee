@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "0.2.0",
-  "name": "@zee/core",
-  "description": "Zee core engine (CLI + daemon)",
+  "name": "@zee/zee",
+  "description": "Zee (CLI + daemon)",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/adolago/zee.git",
-    "directory": "packages/zee-core"
+    "directory": "packages/zee"
   },
   "publishConfig": {
     "access": "public"
@@ -23,15 +23,14 @@
     "typecheck:strict": "tsgo --noEmit -p tsconfig.strict.json",
     "lint": "prettier --check 'src/**/*.ts' 'test/**/*.ts' 'script/**/*.ts' 'package.json'",
     "test": "bun test",
-    "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@zee/core-linux-x64/bin/zee ~/.bun/bin/zee",
+    "build": "bun run script/build.ts && ln -sf $(pwd)/dist/@zee/zee-linux-x64/bin/zee ~/.bun/bin/zee",
     "dev": "bun run --conditions=browser ./src/index.ts",
     "memory:health": "bun run script/memory-health-check.ts",
     "bench": "bun run script/bench/run.ts",
     "clean": "rm -rf node_modules dist"
   },
   "bin": {
-    "zee": "./bin/zee",
-    "agent-core": "./bin/agent-core"
+    "zee": "./bin/zee"
   },
   "exports": {
     "./*": "./src/*.ts",

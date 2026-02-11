@@ -20,7 +20,7 @@ import type {
 } from './types';
 import type { PermissionRequest, PermissionResponse } from './permission';
 import { PermissionChecker, PermissionDeniedError } from './permission';
-import { Log } from '../../packages/zee-core/src/util/log';
+import { Log } from '../../packages/zee/src/util/log';
 import { resolveToolSandbox } from './security/sandbox';
 import { validateToolPath } from './security/validate-path';
 
@@ -39,7 +39,6 @@ export const SURFACE_TOOL_RESTRICTIONS: Record<SurfaceType, string[]> = {
   web: ['bash'], // Bash may be restricted on web
   api: [],
   whatsapp: ['bash', 'write', 'edit'], // File operations restricted on messaging
-  matrix: ['bash', 'write', 'edit'], // File operations restricted on messaging
 };
 
 // ============================================================================

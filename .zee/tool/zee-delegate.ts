@@ -15,13 +15,13 @@ import { tool } from "@zee/plugin"
 
 // Get daemon API base URL
 function getDaemonUrl(): string {
-  const port = process.env.AGENT_CORE_DAEMON_PORT || "3456"
+  const port = process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"
   return `http://127.0.0.1:${port}`
 }
 
 // Get working directory
 function getDirectory(): string {
-  return process.env.AGENT_CORE_DIRECTORY || process.cwd()
+  return process.env.ZEE_DIRECTORY || process.cwd()
 }
 
 export default tool({
@@ -78,7 +78,7 @@ and returns their response for you to relay to the user.`,
         const error = await createResponse.text()
         return `Failed to create session with ${persona}: ${error}
 
-This might mean the daemon is not running. Ensure agent-core daemon is started.`
+This might mean the daemon is not running. Ensure zee daemon is started.`
       }
 
       const session = (await createResponse.json()) as { id: string }
@@ -131,21 +131,20 @@ Session ID: ${sessionId} (you can check the session later)`
           return `${persona.charAt(0).toUpperCase() + persona.slice(1)} did not provide a response.
 
 Session: ${sessionId}
-To continue this conversation: agent-core attach ${sessionId}`
+To continue this conversation: zee attach ${sessionId}`
         }
 
         // Format the response with clear persona identification
         const personaName = persona.charAt(0).toUpperCase() + persona.slice(1)
-        const personaEmoji = persona === "stanley" ? "📊" : "📚" // Stanley=charts, Johny=books
         const modelInfo = persona === "stanley" ? "opus" : "sonnet" // Stanley uses Opus, Johny uses Sonnet
 
-        return `${personaEmoji} **${personaName}** (via ${modelInfo}):
+        return `**${personaName}** (via ${modelInfo}):
 
 ${response}
 
 ---
 Session: \`${sessionId}\`
-To continue directly: \`agent-core attach ${sessionId}\`
+To continue directly: \`zee attach ${sessionId}\`
 Or ask me to follow up with ${personaName}`
       } catch (error) {
         clearTimeout(timeoutId)
@@ -163,11 +162,11 @@ You can check back later or ask them to continue.`
       const errorMsg = error instanceof Error ? error.message : String(error)
 
       if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-        return `Could not connect to agent-core daemon.
+        return `Could not connect to zee daemon.
 
 To enable persona delegation:
-1. Start the daemon: agent-core daemon
-2. Make sure it's running on port ${process.env.AGENT_CORE_DAEMON_PORT || "3456"}
+1. Start the daemon: zee daemon
+2. Make sure it's running on port ${process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"}
 
 Error: ${errorMsg}`
       }

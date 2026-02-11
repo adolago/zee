@@ -9,33 +9,44 @@ import path from "path"
 import fs from "fs"
 import os from "os"
 
+function findZeeRoot(startDir: string): string | undefined {
+  let current = path.resolve(startDir)
+  for (;;) {
+    const packageRoot = path.join(current, "packages", "zee")
+    const zeeDir = path.join(current, ".zee")
+    if (fs.existsSync(packageRoot) || fs.existsSync(zeeDir)) return current
+    const parent = path.dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+}
+
 /**
  * Get the Zee root directory.
  * Order of precedence:
  * 1. ZEE_ROOT env var (set by binary or launcher)
- * 2. Source development path
+ * 2. ZEE_SOURCE env var
+ * 3. Walk up from cwd/argv/exec paths
  */
 export function getZeeRoot(): string {
-  const envRoot = process.env.ZEE_ROOT || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
-  if (envRoot) return envRoot
-
-  // Fallback to common source paths for development.
-  const candidates = [
-    path.join(os.homedir(), ".local", "src", "zee"),
-    path.join(os.homedir(), ".local", "src", "agent-core"), // legacy
-  ]
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate
+  if (process.env.ZEE_ROOT) {
+    return process.env.ZEE_ROOT!
   }
-  return candidates[0]!
-}
 
-/**
- * Backward-compat alias.
- * Prefer getZeeRoot() for new code.
- */
-export function getAgentCoreRoot(): string {
-  return getZeeRoot()
+  const envSource = process.env.ZEE_SOURCE
+  if (envSource) return envSource
+
+  const starts = [process.cwd()]
+  const argvPath = process.argv[1]
+  if (argvPath) starts.push(path.dirname(path.resolve(argvPath)))
+  starts.push(path.dirname(process.execPath))
+
+  for (const start of starts) {
+    const root = findZeeRoot(start)
+    if (root) return root
+  }
+
+  return process.cwd()
 }
 
 /**
@@ -138,11 +149,13 @@ export const Zee = {
   },
 
   /**
-   * Zee data directory - ~/.zee/
-   * Contains credentials, sessions, and persona data
+   * Zee config directory (XDG) - ~/.config/zee/
+   * Used for user configuration such as zee.json(c).
    */
   dataDir(): string {
-    return path.join(os.homedir(), ".zee")
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME?.trim()
+    if (xdgConfigHome) return path.join(xdgConfigHome, "zee")
+    return path.join(os.homedir(), ".config", "zee")
   },
 
   credentials(): string {

@@ -14,9 +14,9 @@ export const GenerateCommand = {
           {
             lang: "js",
             source: [
-              `import { createAgentCoreClient } from "@zee/sdk`,
+              `import { createZeeClient } from "@zee/sdk"`,
               ``,
-              `const client = createAgentCoreClient()`,
+              `const client = createZeeClient()`,
               `await client.${operation.operationId}({`,
               `  ...`,
               `})`,

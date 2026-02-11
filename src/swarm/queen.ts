@@ -55,6 +55,47 @@ export class Queen extends EventEmitter {
     };
   }
 
+  private registerWorker(worker: Worker, pane?: PaneHandle): Worker {
+    if (pane) {
+      worker.on("output", (msg: WorkerMessage) => {
+        pane.send(msg.data);
+      });
+    }
+
+    worker.on("output", (msg) => this.emit("worker:output", msg));
+    worker.on("complete", (msg) => this.emit("worker:complete", msg));
+    worker.on("error", (msg) => this.emit("worker:error", msg));
+    worker.on("status", (msg) => this.emit("worker:status", msg));
+    worker.on("heartbeat", (msg) => this.emit("worker:heartbeat", msg));
+
+    this.workers.set(worker.id, worker);
+    return worker;
+  }
+
+  /**
+   * Spawn one worker without resetting queen state.
+   * Used by the daemon orchestration control plane.
+   */
+  async spawnWorker(config: WorkerConfig): Promise<Worker> {
+    const active = Array.from(this.workers.values()).filter(
+      (worker) => worker.getState().status === "running",
+    ).length;
+    if (active >= (this.config.maxWorkers ?? 8)) {
+      throw new Error(
+        `Worker capacity reached (${active}/${this.config.maxWorkers ?? 8})`,
+      );
+    }
+
+    const worker = this.registerWorker(
+      new Worker({
+        ...config,
+        id: config.id ?? `${this.id}-worker-${Date.now()}`,
+      }),
+    );
+    await worker.start();
+    return worker;
+  }
+
   /**
    * Spawn multiple workers in parallel
    */
@@ -77,29 +118,15 @@ export class Queen extends EventEmitter {
     }
 
     // Create workers
-    const workers: Worker[] = configs.map((cfg, index) => {
-      const worker = new Worker({
-        ...cfg,
-        id: cfg.id ?? `${this.id}-worker-${index}`,
-      });
-
-      // Stream output to pane if available
-      const pane = this.panes.get(index);
-      if (pane) {
-        worker.on("output", (msg: WorkerMessage) => {
-          pane.send(msg.data);
-        });
-      }
-
-      // Forward all events to queen
-      worker.on("output", (msg) => this.emit("worker:output", msg));
-      worker.on("complete", (msg) => this.emit("worker:complete", msg));
-      worker.on("error", (msg) => this.emit("worker:error", msg));
-      worker.on("status", (msg) => this.emit("worker:status", msg));
-
-      this.workers.set(worker.id, worker);
-      return worker;
-    });
+    const workers: Worker[] = configs.map((cfg, index) =>
+      this.registerWorker(
+        new Worker({
+          ...cfg,
+          id: cfg.id ?? `${this.id}-worker-${index}`,
+        }),
+        this.panes.get(index),
+      ),
+    );
 
     // Start all workers in parallel
     await Promise.all(workers.map((w) => w.start()));
@@ -176,10 +203,24 @@ export class Queen extends EventEmitter {
   }
 
   /**
+   * Remove worker from queen registry.
+   */
+  removeWorker(workerId: string): boolean {
+    return this.workers.delete(workerId);
+  }
+
+  /**
    * Get all worker states
    */
   getWorkerStates(): WorkerState[] {
     return Array.from(this.workers.values()).map((w) => w.getState());
+  }
+
+  /**
+   * Number of workers currently running.
+   */
+  getActiveWorkerCount(): number {
+    return this.getWorkerStates().filter((state) => state.status === "running").length;
   }
 
   /**

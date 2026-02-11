@@ -13,7 +13,7 @@ import type { AuthMethod, SubscriptionProvider } from "../provider/types";
 import type { AgentConfig, AgentPersona } from "../agent/types";
 import type { McpServerConfig as MCPConfig } from "../mcp/types";
 import type { MemoryConfig } from "../memory/types";
-import type { SurfaceType } from "../../packages/zee-core/src/surface/types";
+import type { SurfaceType } from "../../packages/zee/src/surface/types";
 import type { LogLevel, DmPolicy, GroupPolicy, RetryConfig } from "./shared";
 import {
   QDRANT_URL,
@@ -27,7 +27,7 @@ import {
 // =============================================================================
 
 /** Root configuration structure */
-export interface AgentCoreConfig {
+export interface ZeeRootConfig {
   /** Project identifier */
   projectId?: string;
 
@@ -53,7 +53,7 @@ export interface AgentCoreConfig {
   settings: GeneralSettings;
 
   /** Zee-specific integrations */
-  zee?: ZeeConfig;
+  zee?: ZeeIntegrationsConfig;
 }
 
 // =============================================================================
@@ -162,7 +162,6 @@ export interface SurfaceConfigs {
   web?: WebConfig;
   api?: APIConfig;
   whatsapp?: WhatsAppConfig;
-  matrix?: MatrixConfig;
 }
 
 /** CLI/TUI configuration */
@@ -260,27 +259,6 @@ export interface WhatsAppConfig {
   };
 }
 
-/** Matrix configuration */
-export interface MatrixConfig {
-  /** Homeserver URL */
-  homeserverUrl?: string;
-
-  /** Access token */
-  accessToken?: string;
-
-  /** Direct message access policy (shared with zee) */
-  dmPolicy?: DmPolicy;
-
-  /** Room message access policy (shared with zee) */
-  groupPolicy?: GroupPolicy;
-
-  /** Allowlist for direct chats (Matrix user IDs) */
-  allowFrom?: string[];
-
-  /** Retry configuration for outbound messages */
-  retry?: RetryConfig;
-}
-
 // =============================================================================
 // General Settings
 // =============================================================================
@@ -310,7 +288,7 @@ export interface GeneralSettings {
 // Zee Integrations
 // =============================================================================
 
-export interface ZeeConfig {
+export interface ZeeIntegrationsConfig {
   splitwise?: ZeeSplitwiseConfig;
   codexbar?: ZeeCodexbarConfig;
 }
@@ -352,7 +330,7 @@ export const CONFIG_LOCATIONS = [
 export const ENV_PREFIX = "ZEE_";
 
 /** Default configuration values */
-export const DEFAULT_CONFIG: Partial<AgentCoreConfig> = {
+export const DEFAULT_CONFIG: Partial<ZeeRootConfig> = {
   provider: {
     default: "anthropic",
     providers: {},

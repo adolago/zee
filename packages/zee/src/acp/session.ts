@@ -1,7 +1,7 @@
 import { RequestError, type McpServer } from "@agentclientprotocol/sdk"
 import type { ACPSessionState } from "./types"
 import { Log } from "@/util/log"
-import type { AgentCoreClient } from "@zee/sdk/v2"
+import type { ZeeClient } from "@zee/sdk/v2"
 import { HEADER_DIRECTORY } from "@/gateway/constants"
 
 const log = Log.create({ service: "acp-session-manager" })
@@ -18,9 +18,9 @@ const withDirectory = (
 
 export class ACPSessionManager {
   private sessions = new Map<string, ACPSessionState>()
-  private sdk: AgentCoreClient
+  private sdk: ZeeClient
 
-  constructor(sdk: AgentCoreClient) {
+  constructor(sdk: ZeeClient) {
     this.sdk = sdk
   }
 

@@ -74,7 +74,7 @@ Example:
     ]
   },
   bindings: [
-    { match: { channel: "matrix", peer: { kind: "group", id: "<group-id>" } }, agentId: "support" }
+    { match: { channel: "whatsapp", peer: { kind: "group", id: "<group-id>" } }, agentId: "support" }
   ]
 }
 ```

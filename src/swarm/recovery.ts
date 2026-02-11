@@ -5,7 +5,7 @@
  * Only retries idempotent/read operations -- never retries writes or deletes.
  */
 
-import { Log } from "../../packages/zee-core/src/util/log";
+import { Log } from "../../packages/zee/src/util/log";
 
 const log = Log.create({ service: "swarm:recovery" });
 

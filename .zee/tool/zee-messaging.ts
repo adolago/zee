@@ -10,8 +10,8 @@ export default tool({
   description: `Send messages via WhatsApp or Telegram gateways.
 
 Channels:
-- **whatsapp**: Zee's WhatsApp gateway (requires agent-core daemon with gateway enabled)
-- **telegram**: Telegram bots (requires agent-core daemon with gateway enabled)
+- **whatsapp**: Zee's WhatsApp gateway (requires zee daemon with gateway enabled)
+- **telegram**: Telegram bots (requires zee daemon with gateway enabled)
 
 WhatsApp:
 - to: E164 phone (e.g., "+1555...") or chat JID (e.g., "1234567890@c.us" or "...@g.us")
@@ -39,9 +39,9 @@ Examples:
     const { channel, to, message, persona } = args
 
     const rawBaseUrl =
-      process.env.AGENT_CORE_URL ||
-      process.env.AGENT_CORE_DAEMON_URL ||
-      `http://127.0.0.1:${process.env.AGENT_CORE_PORT || "3210"}`
+      process.env.ZEE_URL ||
+      process.env.ZEE_DAEMON_URL ||
+      `http://127.0.0.1:${process.env.ZEE_PORT || "3210"}`
     const baseUrl = rawBaseUrl.replace(/\/$/, "")
 
     try {
@@ -58,8 +58,8 @@ Examples:
           return `Failed to send WhatsApp message: ${error}
 
 Troubleshooting:
-- Ensure \`agent-core daemon\` is running
-- Check \`agent-core debug status\` shows Gateway: Active
+- Ensure \`zee daemon\` is running
+- Check \`zee debug status\` shows Gateway: Active
 - Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`
         }
 
@@ -93,8 +93,8 @@ Chat ID must be a numeric value (e.g., 123456789).`
           return `Failed to send Telegram message via ${selectedPersona}: ${error}
 
 Troubleshooting:
-- Ensure \`agent-core daemon\` is running
-- Check \`agent-core debug status\` shows Gateway: Active
+- Ensure \`zee daemon\` is running
+- Check \`zee debug status\` shows Gateway: Active
 - Verify chatId is numeric`
         }
 
@@ -115,7 +115,7 @@ Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`
       return `Failed to send message: ${errorMsg}
 
 Troubleshooting:
-- Ensure agent-core daemon is running
+- Ensure zee daemon is running
 - Check gateway status with /status command
 - Verify network connectivity`
     }

@@ -32,7 +32,7 @@ export async function runZeeTui(
   opts: ZeeTuiOptions,
   runtime: RuntimeEnv = defaultRuntime,
 ): Promise<void> {
-  const binPath = process.env.ZEE_BIN_PATH || process.env.AGENT_CORE_BIN_PATH || "zee";
+  const binPath = process.env.ZEE_BIN_PATH || "zee";
   const args: string[] = [];
 
   if (opts.session) {
@@ -44,12 +44,10 @@ export async function runZeeTui(
 
   const env: NodeJS.ProcessEnv = { ...process.env };
   env.ZEE_ORIGINAL_PWD = env.ZEE_ORIGINAL_PWD ?? process.cwd();
-  env.AGENT_CORE_ORIGINAL_PWD = env.AGENT_CORE_ORIGINAL_PWD ?? env.ZEE_ORIGINAL_PWD; // legacy compatibility
 
   if (opts.url) {
     if (shouldUseZeeUrl(opts.url)) {
       env.ZEE_URL = opts.url;
-      env.AGENT_CORE_URL = env.AGENT_CORE_URL ?? env.ZEE_URL; // legacy compatibility
     } else {
       runtime.log(
         `[zee tui] Ignoring --url "${opts.url}". Zee expects an http(s) daemon URL.`,
@@ -59,7 +57,6 @@ export async function runZeeTui(
 
   if (opts.password) {
     env.ZEE_SERVER_PASSWORD = opts.password;
-    env.AGENT_CORE_SERVER_PASSWORD = env.AGENT_CORE_SERVER_PASSWORD ?? env.ZEE_SERVER_PASSWORD; // legacy compatibility
   }
 
   const unsupported = formatUnsupportedOptions(opts);

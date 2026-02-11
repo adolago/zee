@@ -52,7 +52,7 @@ function findSkillsDirFrom(startDir: string): string | undefined {
 
 function findSkillsDir(): string {
   const envRoot =
-    process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT;
+    process.env.ZEE_SOURCE || process.env.ZEE_ROOT;
   if (envRoot) {
     for (const rel of SKILL_DIR_CANDIDATES) {
       const envSkills = join(envRoot, rel);
@@ -351,7 +351,7 @@ function condenseSkillContent(content: string, persona: PersonaId): string {
   // If no structured content found, provide a summary based on persona
   if (parts.length === 0) {
     const summaries: Record<PersonaId, string> = {
-      zee: "Memory storage/search, messaging (WhatsApp/Matrix), calendar, contacts, notifications, Splitwise expense sharing, CodexBar usage tracking",
+      zee: "Memory storage/search, messaging (WhatsApp), calendar, contacts, notifications, Splitwise expense sharing, CodexBar usage tracking",
       stanley: "Market data, portfolio management, SEC filings, research, NautilusTrader backtesting",
       johny: "Knowledge graph, spaced repetition, concept mapping, practice problems, learning progress",
     };

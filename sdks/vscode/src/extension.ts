@@ -3,15 +3,15 @@ export function deactivate() {}
 
 import * as vscode from "vscode"
 
-const TERMINAL_NAME = "agent-core"
+const TERMINAL_NAME = "zee"
 
 export function activate(context: vscode.ExtensionContext) {
-  let openNewTerminalDisposable = vscode.commands.registerCommand("agent-core.openNewTerminal", async () => {
+  let openNewTerminalDisposable = vscode.commands.registerCommand("zee.openNewTerminal", async () => {
     await openTerminal()
   })
 
-  let openTerminalDisposable = vscode.commands.registerCommand("agent-core.openTerminal", async () => {
-    // An opencode terminal already exists => focus it
+  let openTerminalDisposable = vscode.commands.registerCommand("zee.openTerminal", async () => {
+    // An zee terminal already exists => focus it
     const existingTerminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME)
     if (existingTerminal) {
       existingTerminal.show()
@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
     await openTerminal()
   })
 
-  let addFilepathDisposable = vscode.commands.registerCommand("agent-core.addFilepathToTerminal", async () => {
+  let addFilepathDisposable = vscode.commands.registerCommand("zee.addFilepathToTerminal", async () => {
     const fileRef = getActiveFile()
     if (!fileRef) {
       return
@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (terminal.name === TERMINAL_NAME) {
       // @ts-ignore
-      const port = terminal.creationOptions.env?.["_EXTENSION_AGENT_CORE_PORT"]
+      const port = terminal.creationOptions.env?.["_EXTENSION_ZEE_PORT"]
       port ? await appendPrompt(parseInt(port), fileRef) : terminal.sendText(fileRef, false)
       terminal.show()
     }
@@ -56,8 +56,8 @@ export function activate(context: vscode.ExtensionContext) {
         preserveFocus: false,
       },
       env: {
-        _EXTENSION_AGENT_CORE_PORT: port.toString(),
-        AGENT_CORE_CALLER: "vscode",
+        _EXTENSION_ZEE_PORT: port.toString(),
+        ZEE_CALLER: "vscode",
       },
     })
 

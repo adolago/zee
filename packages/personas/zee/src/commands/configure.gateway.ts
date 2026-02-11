@@ -139,7 +139,7 @@ export async function promptGatewayConfig(
   let tailscaleResetOnExit = false;
   if (tailscaleMode !== "off") {
     note(
-      ["Docs:", "https://docs.zee/gateway/tailscale", "https://docs.zee/web"].join("\n"),
+      ["Docs:", "https://zee-bot.com/gateway/tailscale", "https://zee-bot.com/web"].join("\n"),
       "Tailscale",
     );
     tailscaleResetOnExit = Boolean(

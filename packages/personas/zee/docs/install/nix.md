@@ -21,8 +21,8 @@ Repository: github:zee/nix-zee
 What I need you to do:
 1. Check if Determinate Nix is installed (if not, install it)
 2. Create a local flake at ~/code/zee-local using templates/agent-first/flake.nix
-3. Help me create a Matrix bot account and get: homeserver URL, user ID, and access token
-4. Set up secrets (Matrix access token, Anthropic key) - plain files at ~/.secrets/ is fine
+3. Help me create a WhatsApp bot account and get: homeserver URL, user ID, and access token
+4. Set up secrets (WhatsApp access token, Anthropic key) - plain files at ~/.secrets/ is fine
 5. Fill in the template placeholders and run home-manager switch
 6. Verify: service running, account responds to messages
 

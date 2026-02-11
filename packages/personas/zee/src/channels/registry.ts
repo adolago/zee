@@ -7,14 +7,12 @@ import { requireActivePluginRegistry } from "../plugins/runtime.js";
 // plugin registry; this map covers the bundled ones only.
 export const DEFAULT_CHANNEL_PRIORITY: Record<string, number> = {
   whatsapp: 10,
-  matrix: 20,
 };
 
 // Legacy constant kept for backward compatibility. Prefer listChannelPluginIds()
 // for dynamic channel enumeration.
 export const CHAT_CHANNEL_ORDER = [
   "whatsapp",
-  "matrix",
 ] as const;
 
 export type ChatChannelId = (typeof CHAT_CHANNEL_ORDER)[number] | (string & {});
@@ -35,16 +33,6 @@ const BUILTIN_CHANNEL_META: Record<string, ChannelMeta> = {
     docsLabel: "whatsapp",
     blurb: "works with your own number; recommend a separate phone + eSIM.",
     systemImage: "message",
-  },
-  matrix: {
-    id: "matrix",
-    label: "Matrix",
-    selectionLabel: "Matrix (E2EE)",
-    detailLabel: "Matrix Homeserver",
-    docsPath: "/channels/matrix",
-    docsLabel: "matrix",
-    blurb: "end-to-end encrypted messaging via any Matrix homeserver.",
-    systemImage: "lock.shield",
   },
 };
 

@@ -69,7 +69,7 @@ This allows using the TUI with a remote OpenCode backend. For example:
 
 ```bash
 # Start the backend server for web/mobile access
-opencode web --port 4096 --hostname 0.0.0.0
+zee web --port 4096 --hostname 0.0.0.0
 
 # In another terminal, attach the TUI to the running backend
 opencode attach http://10.20.30.40:4096
@@ -322,11 +322,11 @@ This is useful for scripting, automation, or when you want a quick answer withou
 opencode run Explain the use of context in Go
 ```
 
-You can also attach to a running `opencode serve` instance to avoid MCP server cold boot times on every run:
+You can also attach to a running `zee serve` instance to avoid MCP server cold boot times on every run:
 
 ```bash
 # Start a headless server in one terminal
-opencode serve
+zee serve
 
 # In another terminal, run commands that attach to it
 opencode run --attach http://localhost:4096 "Explain async/await in JavaScript"
@@ -355,10 +355,10 @@ opencode run --attach http://localhost:4096 "Explain async/await in JavaScript"
 Start a headless OpenCode server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
 
 ```bash
-opencode serve
+zee serve
 ```
 
-This starts an HTTP server that provides API access to opencode functionality without the TUI interface. Set `AGENT_CORE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `opencode`).
+This starts an HTTP server that provides API access to zee functionality without the TUI interface. Set `ZEE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `zee`).
 
 #### Flags
 
@@ -451,10 +451,10 @@ opencode import https://opncd.ai/s/abc123
 Start a headless OpenCode server with a web interface.
 
 ```bash
-opencode web
+zee web
 ```
 
-This starts an HTTP server and opens a web browser to access OpenCode through a web interface. Set `AGENT_CORE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `opencode`).
+This starts an HTTP server and opens a web browser to access OpenCode through a web interface. Set `ZEE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `zee`).
 
 #### Flags
 
@@ -553,26 +553,26 @@ OpenCode can be configured using environment variables.
 
 | Variable                              | Type    | Description                                       |
 | ------------------------------------- | ------- | ------------------------------------------------- |
-| `AGENT_CORE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
-| `AGENT_CORE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
-| `AGENT_CORE_CONFIG`                     | string  | Path to config file                               |
-| `AGENT_CORE_CONFIG_DIR`                 | string  | Path to config directory                          |
-| `AGENT_CORE_CONFIG_CONTENT`             | string  | Inline json config content                        |
-| `AGENT_CORE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
-| `AGENT_CORE_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
-| `AGENT_CORE_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
-| `AGENT_CORE_PERMISSION`                 | string  | Inlined json permissions config                   |
-| `AGENT_CORE_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
-| `AGENT_CORE_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
-| `AGENT_CORE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
-| `AGENT_CORE_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
-| `AGENT_CORE_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
-| `AGENT_CORE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
-| `AGENT_CORE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
-| `AGENT_CORE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
-| `AGENT_CORE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
-| `AGENT_CORE_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
-| `AGENT_CORE_SERVER_USERNAME`            | string  | Override basic auth username (default `opencode`) |
+| `ZEE_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
+| `ZEE_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
+| `ZEE_CONFIG`                     | string  | Path to config file                               |
+| `ZEE_CONFIG_DIR`                 | string  | Path to config directory                          |
+| `ZEE_CONFIG_CONTENT`             | string  | Inline json config content                        |
+| `ZEE_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
+| `ZEE_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
+| `ZEE_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
+| `ZEE_PERMISSION`                 | string  | Inlined json permissions config                   |
+| `ZEE_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
+| `ZEE_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
+| `ZEE_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
+| `ZEE_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
+| `ZEE_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
+| `ZEE_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
+| `ZEE_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
+| `ZEE_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
+| `ZEE_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
+| `ZEE_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
+| `ZEE_SERVER_USERNAME`            | string  | Override basic auth username (default `opencode`) |
 
 ---
 
@@ -582,16 +582,16 @@ These environment variables enable experimental features that may change or be r
 
 | Variable                                        | Type    | Description                             |
 | ----------------------------------------------- | ------- | --------------------------------------- |
-| `AGENT_CORE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
-| `AGENT_CORE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
-| `AGENT_CORE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | Disable copy on select in TUI           |
-| `AGENT_CORE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
-| `AGENT_CORE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
-| `AGENT_CORE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
-| `AGENT_CORE_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
-| `AGENT_CORE_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
-| `AGENT_CORE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
-| `AGENT_CORE_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
-| `AGENT_CORE_EXPERIMENTAL_LSP_TY`                  | boolean | Enable experimental LSP type checking   |
-| `AGENT_CORE_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
-| `AGENT_CORE_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |
+| `ZEE_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
+| `ZEE_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
+| `ZEE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | Disable copy on select in TUI           |
+| `ZEE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
+| `ZEE_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
+| `ZEE_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
+| `ZEE_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
+| `ZEE_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
+| `ZEE_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
+| `ZEE_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
+| `ZEE_EXPERIMENTAL_LSP_TY`                  | boolean | Enable experimental LSP type checking   |
+| `ZEE_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
+| `ZEE_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |

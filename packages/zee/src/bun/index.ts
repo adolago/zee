@@ -74,8 +74,24 @@ export namespace BunProc {
     })
     const dependencies = parsed.dependencies ?? {}
     if (!parsed.dependencies) parsed.dependencies = dependencies
+
+    const localPluginDir = path.join(Global.Path.source, "packages", "plugin")
+    const localPluginPkg = path.join(localPluginDir, "package.json")
+    const localPluginSpecifier = `file:${localPluginDir}`
+    const localPluginAvailable = await Filesystem.exists(localPluginPkg)
+
+    let requiresInstall = false
+    if (localPluginAvailable && dependencies["@zee/plugin"] !== localPluginSpecifier) {
+      dependencies["@zee/plugin"] = localPluginSpecifier
+      requiresInstall = true
+    }
+
     const modExists = await Filesystem.exists(mod)
-    if (dependencies[pkg] === version && modExists) return mod
+    if (!requiresInstall && dependencies[pkg] === version && modExists) return mod
+
+    if (requiresInstall) {
+      await Bun.write(pkgjson.name!, JSON.stringify(parsed, null, 2))
+    }
 
     const proxied = !!(
       process.env.HTTP_PROXY ||

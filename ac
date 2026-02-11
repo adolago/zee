@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  cat <<'USAGE'
+ac - Zee repo helper
+
+Usage:
+  ./ac dev [args...]      Run Zee in dev mode (repo-backed)
+  ./ac dist [args...]     Run Zee from dist binary (requires build)
+  ./ac reload [args...]   Rebuild + restart the systemd user service
+  ./ac build              Build + verify the binary
+  ./ac <zee args...>      Pass-through to the Zee CLI
+
+Examples:
+  ./ac dev
+  ./ac reload
+  ./ac status
+  ./ac debug status
+USAGE
+}
+
+cmd="${1:-}"
+if [[ -n "$cmd" ]]; then
+  shift || true
+fi
+
+case "$cmd" in
+  ""|-h|--help|help)
+    usage
+    ;;
+  dev)
+    exec "$ROOT/scripts/run-dev.sh" "$@"
+    ;;
+  dist)
+    exec "$ROOT/scripts/run-dist.sh" "$@"
+    ;;
+  reload)
+    exec "$ROOT/scripts/reload.sh" "$@"
+    ;;
+  build)
+    (cd "$ROOT/packages/zee" && bun run build)
+    (cd "$ROOT" && ./script/verify-binary.sh)
+    ;;
+  *)
+    exec zee "$cmd" "$@"
+    ;;
+esac

@@ -100,7 +100,7 @@ export namespace Session {
         })
         .optional(),
       surface: z
-        .enum(["cli", "web", "api", "whatsapp", "matrix"])
+        .enum(["cli", "web", "api", "whatsapp"])
         .optional(),
       mode: z
         .enum(["hold", "release"])
@@ -112,7 +112,7 @@ export namespace Session {
         .object({
           createdAt: z.number(),
           mode: z.enum(["hold", "release"]),
-          surface: z.enum(["cli", "web", "api", "whatsapp", "matrix"]).optional(),
+          surface: z.enum(["cli", "web", "api", "whatsapp"]).optional(),
           agent: z.string().optional(),
           permission: PermissionNext.Ruleset.optional(),
         })

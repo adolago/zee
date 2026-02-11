@@ -1,13 +1,13 @@
 ---
 summary: "Exploration: hub persona routing and cross-channel session continuity"
 read_when:
-- Designing a hub persona across WhatsApp and Matrix
+- Designing a hub persona across WhatsApp and WhatsApp
   - Planning cross-persona context visibility without shared sessions
 status: draft
 ---
 # Persona Hub Routing Exploration
 
-This document captures a proposed design for a hub persona pattern in agent-core. It is
+This document captures a proposed design for a hub persona pattern in Zee. It is
 not a shipping spec. For current behavior, see:
 - [Multi-Agent Routing](/concepts/multi-agent)
 - [Session management](/concepts/session)
@@ -15,7 +15,7 @@ not a shipping spec. For current behavior, see:
 
 ## Goals
 
-- Zee is the hub persona with WhatsApp and Matrix access.
+- Zee is the hub persona with WhatsApp and WhatsApp access.
 - Johny and Stanley run as isolated personas without external chat endpoints by default.
 - Zee can answer questions about Johny and Stanley conversations.
 - Johny and Stanley do not see each other or Zee by default.
@@ -25,14 +25,14 @@ not a shipping spec. For current behavior, see:
 ## Roles and constraints
 
 - Zee is the only WhatsApp endpoint.
-- Zee is the only Matrix endpoint (optional).
+- Zee is the only WhatsApp endpoint (optional).
 - GUI sessions can be started for any persona.
 - Cross-persona access is by design intent, not by shared state.
 
 ## Proposed routing model
 
 - Run three agents: `zee`, `johny`, `stanley`.
-- Bind WhatsApp and Matrix to `zee`.
+- Bind WhatsApp and WhatsApp to `zee`.
 - Enable agent-to-agent messaging so Zee can call into other persona sessions.
 - Restrict session tools to Zee only via per-agent tool policy.
 
@@ -73,7 +73,7 @@ Config sketch:
   },
   bindings: [
     { agentId: "zee", match: { channel: "whatsapp", peer: { kind: "dm", id: "+15555550123" } } },
-    { agentId: "zee", match: { channel: "matrix", peer: { kind: "dm", id: "@artur:example.org" } } }
+    { agentId: "zee", match: { channel: "whatsapp", peer: { kind: "dm", id: "@artur:example.org" } } }
   ]
 }
 ```
@@ -106,7 +106,7 @@ tools, so they remain isolated unless Zee forwards a request.
 Use existing session controls to make continuity feel automatic:
 
 - `session.dmScope` selects how direct chats group across channels.
-  - `per-channel-peer` keeps WhatsApp and Matrix separate.
+  - `per-channel-peer` keeps WhatsApp and WhatsApp separate.
   - `per-peer` plus `session.identityLinks` can merge the same user across channels.
 - `session.reset` defines daily, idle, or manual resets. Manual disables automatic session rolls.
 - `session.resetTriggers` can include natural phrases such as `new`, `new topic`, `start fresh`.
@@ -121,7 +121,7 @@ and reset policy so the same person keeps a stable session key across channels.
     session: {
       dmScope: "per-peer",
       identityLinks: {
-      "user:artur": ["whatsapp:+15555550123", "matrix:@artur:example.org"]
+      "user:artur": ["whatsapp:+15555550123", "whatsapp:@artur:example.org"]
       },
       resetByType: {
         dm: { mode: "idle", idleMinutes: 10080 } // 7 days
@@ -139,7 +139,7 @@ Notes:
 
 Proposed UX improvement:
 - When a reset triggers, Zee sends a short header message with an auto title and date
-  so the user can see a new thread started in WhatsApp or Matrix.
+  so the user can see a new thread started in WhatsApp or WhatsApp.
 
 ## Prompt drafts
 
@@ -179,4 +179,4 @@ answer it clearly and end with ANNOUNCE_SKIP to avoid posting to chat.
 
 - Should Zee store cross-persona summaries in memory for faster recall?
 - Do we want a fixed list of natural reset triggers or a configurable map?
-- Should the UI show the active session label in WhatsApp and Matrix headers?
+- Should the UI show the active session label in WhatsApp and WhatsApp headers?

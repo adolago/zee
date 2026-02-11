@@ -21,8 +21,6 @@ const testEnv = withIsolatedTestHome();
 afterAll(() => testEnv.cleanup());
 const pickSendFn = (id: ChannelId, deps?: OutboundSendDeps) => {
   switch (id) {
-    case "matrix":
-      return deps?.sendMatrix;
     case "whatsapp":
       return deps?.sendWhatsApp;
     default:
@@ -98,19 +96,6 @@ const createStubPlugin = (params: {
 
 const createDefaultRegistry = () =>
   createTestRegistry([
-    {
-      pluginId: "matrix",
-      plugin: {
-        ...createStubPlugin({ id: "matrix", label: "Matrix" }),
-        status: {
-          buildChannelSummary: async () => ({
-            configured: false,
-            tokenSource: process.env.MATRIX_ACCESS_TOKEN ? "env" : "none",
-          }),
-        },
-      },
-      source: "test",
-    },
     {
       pluginId: "whatsapp",
       plugin: createStubPlugin({

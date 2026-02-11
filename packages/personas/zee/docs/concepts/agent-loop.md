@@ -22,7 +22,7 @@ wired end-to-end.
 2) `agentCommand` runs the agent:
    - resolves model + thinking/verbose defaults
    - loads skills snapshot
-   - calls `runEmbeddedPiAgent` (pi-agent-core runtime)
+   - calls `runEmbeddedPiAgent` (Pi runtime)
    - emits **lifecycle end/error** if the embedded loop does not emit one
 3) `runEmbeddedPiAgent`:
    - serializes runs via per-session + global queues
@@ -30,7 +30,7 @@ wired end-to-end.
    - subscribes to pi events and streams assistant/tool deltas
    - enforces timeout -> aborts run if exceeded
    - returns payloads + usage metadata
-4) `subscribeEmbeddedPiSession` bridges pi-agent-core events to Zee `agent` stream:
+4) `subscribeEmbeddedPiSession` bridges Pi runtime events to Zee `agent` stream:
    - tool events => `stream: "tool"`
    - assistant deltas => `stream: "assistant"`
    - lifecycle events => `stream: "lifecycle"` (`phase: "start" | "end" | "error"`)
@@ -81,7 +81,7 @@ These run inside the agent loop or gateway pipeline:
 See [Plugins](/plugin#plugin-hooks) for the hook API and registration details.
 
 ## Streaming + partial replies
-- Assistant deltas are streamed from pi-agent-core and emitted as `assistant` events.
+- Assistant deltas are streamed from the Pi runtime and emitted as `assistant` events.
 - Block streaming can emit partial replies either on `text_end` or `message_end`.
 - Reasoning streaming can be emitted as a separate stream or as block replies.
 - See [Streaming](/concepts/streaming) for chunking and block reply behavior.
@@ -108,8 +108,8 @@ See [Plugins](/plugin#plugin-hooks) for the hook API and registration details.
 
 ## Event streams (today)
 - `lifecycle`: emitted by `subscribeEmbeddedPiSession` (and as a fallback by `agentCommand`)
-- `assistant`: streamed deltas from pi-agent-core
-- `tool`: streamed tool events from pi-agent-core
+- `assistant`: streamed deltas from the Pi runtime
+- `tool`: streamed tool events from the Pi runtime
 
 ## Chat channel handling
 - Assistant deltas are buffered into chat `delta` messages.

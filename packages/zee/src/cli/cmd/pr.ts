@@ -72,7 +72,7 @@ export const PrCommand = cmd({
                 UI.println(`Importing session...`)
 
                 let importOutput = ""
-                for (const cli of ["zee", "agent-core"] as const) {
+                for (const cli of ["zee", "zee"] as const) {
                   const importResult = await $`${cli} import ${sessionUrl}`.nothrow()
                   if (importResult.exitCode === 0) {
                     importOutput = importResult.text().trim()
@@ -100,7 +100,7 @@ export const PrCommand = cmd({
         // Launch Zee TUI with session ID if available
         const { spawn } = await import("child_process")
         const cliArgs = sessionId ? ["-s", sessionId] : []
-        const candidates = ["zee", "agent-core"] as const
+        const candidates = ["zee", "zee"] as const
         let lastError: unknown
         for (const cli of candidates) {
           try {

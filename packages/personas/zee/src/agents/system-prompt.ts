@@ -114,7 +114,7 @@ function buildMessagingSection(params: {
   if (params.isMinimal) return [];
   return [
     "## Messaging",
-    "- Reply in current session → automatically routes to the source channel (WhatsApp/Matrix).",
+    "- Reply in current session → automatically routes to the source channel (WhatsApp).",
     "- Cross-session messaging → use sessions_send(sessionKey, message)",
     "- Never use exec/curl for provider messaging; Zee handles all routing internally.",
     params.availableTools.has("message")

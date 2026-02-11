@@ -38,8 +38,8 @@ import { Config } from "@/config/config"
 import { Todo } from "@/session/todo"
 import { z } from "zod"
 import { LoadAPIKeyError } from "ai"
-import { createAgentCoreClient as createEventClient } from "@zee/sdk"
-import type { AgentCoreClient, SessionMessageResponse } from "@zee/sdk/v2"
+import { createZeeClient as createEventClient } from "@zee/sdk"
+import type { ZeeClient, SessionMessageResponse } from "@zee/sdk/v2"
 import { applyPatch } from "diff"
 import { HEADER_DIRECTORY } from "@/gateway/constants"
 import { createAuthorizedFetch } from "@/server/auth"
@@ -105,7 +105,7 @@ function getModelVariants(
 export namespace ACP {
   const log = Log.create({ service: "acp-agent" })
 
-  export async function init({ sdk: _sdk }: { sdk: AgentCoreClient }) {
+  export async function init({ sdk: _sdk }: { sdk: ZeeClient }) {
     return {
       create: (connection: AgentSideConnection, fullConfig: ACPConfig) => {
         return new Agent(connection, fullConfig)
@@ -116,7 +116,7 @@ export namespace ACP {
   export class Agent implements ACPAgent {
     private connection: AgentSideConnection
     private config: ACPConfig
-    private sdk: AgentCoreClient
+    private sdk: ZeeClient
     private eventSdk: EventClient
     private sessionManager: ACPSessionManager
     private eventAbort = new AbortController()
@@ -497,18 +497,18 @@ export namespace ACP {
       log.info("initialize", { protocolVersion: params.protocolVersion })
 
       const authMethod: AuthMethod = {
-        description: "Run `agent-core auth login` in the terminal",
-        name: "Login with agent-core",
-        id: "agent-core-login",
+        description: "Run `zee auth login` in the terminal",
+        name: "Login with zee",
+        id: "zee-login",
       }
 
       // If client supports terminal-auth capability, use that instead.
       if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
         authMethod._meta = {
           "terminal-auth": {
-            command: "agent-core",
+            command: "zee",
             args: ["auth", "login"],
-            label: "Agent-Core Login",
+            label: "Zee Login",
           },
         }
       }
@@ -533,7 +533,7 @@ export namespace ACP {
         },
         authMethods: [authMethod],
         agentInfo: {
-          name: "Agent-Core",
+          name: "Zee",
           version: Installation.VERSION,
         },
       }
@@ -819,7 +819,7 @@ export namespace ACP {
           }
         } else if (part.type === "file") {
           // Replay file attachments as appropriate ACP content blocks.
-          // agent-core stores files internally as { type: "file", url, filename, mime }.
+          // zee stores files internally as { type: "file", url, filename, mime }.
           // We convert these back to ACP blocks based on the URL scheme and MIME type:
           // - file:// URLs → resource_link
           // - data: URLs with image/* → image block

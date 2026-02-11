@@ -19,12 +19,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-PKG_DIR="$REPO_ROOT/packages/zee-core"
-BINARY_SRC="$PKG_DIR/dist/@zee/core-linux-x64/bin/zee"
+PKG_DIR="$REPO_ROOT/packages/zee"
+BINARY_SRC="$PKG_DIR/dist/@zee/zee-linux-x64/bin/zee"
 BINARY_LINK="$HOME/.bun/bin/zee"
-DAEMON_PORT="${ZEE_PORT:-${AGENT_CORE_PORT:-3210}}"
-DAEMON_HOST="${ZEE_HOST:-${AGENT_CORE_HOST:-127.0.0.1}}"
-DAEMON_URL="${ZEE_URL:-${AGENT_CORE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}}"
+DAEMON_PORT="${ZEE_PORT:-3210}"
+DAEMON_HOST="${ZEE_HOST:-127.0.0.1}"
+DAEMON_URL="${ZEE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}"
 SYSTEMD_UNIT="zee.service"
 
 # Colors
@@ -172,7 +172,7 @@ show_status() {
     local link_target=$(readlink -f "$BINARY_LINK" 2>/dev/null || true)
     ok "Exists ${link_target:+(-> $link_target)}"
   else
-    err "Not found (run: cd packages/zee-core && bun run build)"
+    err "Not found (run: cd packages/zee && bun run build)"
   fi
   echo ""
   echo "Native binary: $BINARY_SRC"
@@ -204,7 +204,7 @@ show_status() {
 
   # Tool directories
   echo "Tool directories:"
-  for dir in "$HOME/.config/zee/tool" "$HOME/.config/agent-core/tool" "$REPO_ROOT/.zee/tool"; do
+  for dir in "$HOME/.config/zee/tool" "$REPO_ROOT/.zee/tool"; do
     if [[ -d "$dir" ]]; then
       local count=$(ls -1 "$dir"/*.ts 2>/dev/null | wc -l || echo 0)
       ok "$dir ($count tools)"

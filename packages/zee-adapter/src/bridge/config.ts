@@ -1,7 +1,7 @@
 /**
  * Config Bridge
  *
- * Translates configuration between OpenCode and agent-core formats.
+ * Translates configuration between OpenCode and zee formats.
  */
 
 import type { AdapterConfig } from "../types"
@@ -24,7 +24,7 @@ interface OpenCodeConfig {
   }
 }
 
-interface AgentCoreConfig {
+interface ZeeDaemonConfig {
   provider?: {
     model?: string
     fallback?: string
@@ -46,7 +46,7 @@ export class ConfigBridge {
   private baseUrl: string
 
   constructor(private adapterConfig: AdapterConfig) {
-    this.baseUrl = adapterConfig.agentCoreUrl.replace(/\/$/, "")
+    this.baseUrl = adapterConfig.zeeUrl.replace(/\/$/, "")
   }
 
   async initialize(): Promise<void> {
@@ -57,19 +57,19 @@ export class ConfigBridge {
     if (this.configCache) return this.configCache
 
     const response = await this.fetch("/config")
-    this.configCache = this.transformFromAgentCore(response)
+    this.configCache = this.transformFromZee(response)
     return this.configCache
   }
 
   async set(config: Partial<OpenCodeConfig>): Promise<void> {
-    const agentCoreConfig = this.transformToAgentCore({
+    const zeeConfig = this.transformToZee({
       ...this.configCache,
       ...config,
     } as OpenCodeConfig)
 
     await this.fetch("/config", {
       method: "PUT",
-      body: JSON.stringify(agentCoreConfig),
+      body: JSON.stringify(zeeConfig),
     })
 
     this.configCache = { ...this.configCache, ...config }
@@ -87,7 +87,7 @@ export class ConfigBridge {
     }
   }
 
-  private transformFromAgentCore(config: AgentCoreConfig): OpenCodeConfig {
+  private transformFromZee(config: ZeeDaemonConfig): OpenCodeConfig {
     const model = this.resolveModel(config.provider?.model)
 
     return {
@@ -109,7 +109,7 @@ export class ConfigBridge {
     }
   }
 
-  private transformToAgentCore(config: OpenCodeConfig): AgentCoreConfig {
+  private transformToZee(config: OpenCodeConfig): ZeeDaemonConfig {
     return {
       provider: {
         model: config.models?.default,
@@ -132,17 +132,12 @@ export class ConfigBridge {
     return modelId
   }
 
-  private resolveAgent(personaName?: string): string {
-    const mapping: Record<string, string> = {
-      zee: "build",
-      stanley: "build",
-      johny: "build",
-    }
-    return mapping[personaName || ""] || "build"
+  private resolveAgent(_personaName?: string): string {
+    return "build"
   }
 
-  private mapAgentToPersona(agent?: string): string {
-    return this.adapterConfig.defaultPersona || "zee"
+  private mapAgentToPersona(_agent?: string): string {
+    return "zee"
   }
 
   private async fetch(path: string, options?: RequestInit): Promise<any> {

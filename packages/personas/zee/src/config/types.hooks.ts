@@ -22,8 +22,7 @@ export type HookMappingConfig = {
   allowUnsafeExternalContent?: boolean;
   channel?:
     | "last"
-    | "whatsapp"
-    | "matrix";
+    | "whatsapp";
   to?: string;
   /** Override model for this hook (provider/model or alias). */
   model?: string;

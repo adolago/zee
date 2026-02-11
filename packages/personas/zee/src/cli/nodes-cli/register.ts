@@ -17,7 +17,7 @@ export function registerNodesCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/nodes", "docs.zee/cli/nodes")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/nodes", "zee-bot.com/cli/nodes")}\n`,
     );
 
   registerNodesStatusCommands(nodes);

@@ -169,98 +169,67 @@ describe("theme resolution", () => {
     }
   })
 
-  describe("persona theme validation", () => {
-    test("zee theme exists in DEFAULT_THEMES", () => {
-      expect(DEFAULT_THEMES["zee"]).toBeDefined()
-      expect(DEFAULT_THEMES["zee"].name).toBe("Zee")
+  describe("single-theme validation", () => {
+    test("selenized-dark exists in DEFAULT_THEMES", () => {
+      expect(DEFAULT_THEMES["selenized-dark"]).toBeDefined()
+      expect(DEFAULT_THEMES["selenized-dark"].name).toBe("Selenized Dark")
     })
 
-    test("stanley theme exists in DEFAULT_THEMES", () => {
-      expect(DEFAULT_THEMES["stanley"]).toBeDefined()
-      expect(DEFAULT_THEMES["stanley"].name).toBe("Stanley")
-    })
-
-    test("johny theme exists in DEFAULT_THEMES", () => {
-      expect(DEFAULT_THEMES["johny"]).toBeDefined()
-      expect(DEFAULT_THEMES["johny"].name).toBe("Johny")
-    })
-
-    test("zee dark seeds match canonical identity colors", () => {
-      const zee = DEFAULT_THEMES["zee"]
-      expect(zee.dark.seeds.interactive).toBe("#4d8aff")
-      expect(zee.dark.seeds.primary).toBe("#268bd2")
-    })
-
-    test("stanley dark seeds match canonical identity colors", () => {
-      const stanley = DEFAULT_THEMES["stanley"]
-      expect(stanley.dark.seeds.interactive).toBe("#9acd00")
-      expect(stanley.dark.seeds.primary).toBe("#859900")
-    })
-
-    test("johny dark seeds match canonical identity colors", () => {
-      const johny = DEFAULT_THEMES["johny"]
-      expect(johny.dark.seeds.interactive).toBe("#ff4d4d")
-      expect(johny.dark.seeds.primary).toBe("#dc322f")
+    test("selenized-dark dark seeds match expected palette", () => {
+      const theme = DEFAULT_THEMES["selenized-dark"]
+      expect(theme.dark.seeds.primary).toBe("#4695f7")
+      expect(theme.dark.seeds.info).toBe("#41c7b9")
+      expect(theme.dark.seeds.error).toBe("#fa5750")
     })
 
     describe("CSS var references in overrides point to existing tokens", () => {
-      const personas = ["zee", "stanley", "johny"] as const
+      for (const mode of ["dark", "light"] as const) {
+        test(`selenized-dark ${mode}: all var references resolve`, () => {
+          const theme = DEFAULT_THEMES["selenized-dark"]
+          const variant = theme[mode]
+          const isDark = mode === "dark"
+          const resolved = resolveThemeVariant(variant, isDark)
 
-      for (const personaId of personas) {
-        for (const mode of ["dark", "light"] as const) {
-          test(`${personaId} ${mode}: all var references resolve`, () => {
-            const theme = DEFAULT_THEMES[personaId]
-            const variant = theme[mode]
-            const isDark = mode === "dark"
-            const resolved = resolveThemeVariant(variant, isDark)
-
-            for (const [key, value] of Object.entries(resolved)) {
-              if (typeof value === "string" && isCssVarRef(value)) {
-                const referencedToken = extractVarToken(value)
-                if (referencedToken) {
-                  expect(resolved[referencedToken]).toBeDefined()
-                }
+          for (const value of Object.values(resolved)) {
+            if (typeof value === "string" && isCssVarRef(value)) {
+              const referencedToken = extractVarToken(value)
+              if (referencedToken) {
+                expect(resolved[referencedToken]).toBeDefined()
               }
             }
-          })
-        }
+          }
+        })
       }
     })
 
     describe("no circular CSS var references", () => {
-      const personas = ["zee", "stanley", "johny"] as const
+      for (const mode of ["dark", "light"] as const) {
+        test(`selenized-dark ${mode}: no circular references`, () => {
+          const theme = DEFAULT_THEMES["selenized-dark"]
+          const variant = theme[mode]
+          const isDark = mode === "dark"
+          const resolved = resolveThemeVariant(variant, isDark)
 
-      for (const personaId of personas) {
-        for (const mode of ["dark", "light"] as const) {
-          test(`${personaId} ${mode}: no circular references`, () => {
-            const theme = DEFAULT_THEMES[personaId]
-            const variant = theme[mode]
-            const isDark = mode === "dark"
-            const resolved = resolveThemeVariant(variant, isDark)
+          for (const [startKey, startValue] of Object.entries(resolved)) {
+            if (!isCssVarRef(startValue as string)) continue
 
-            // For each token that is a var ref, follow the chain and check for cycles
-            for (const [startKey, startValue] of Object.entries(resolved)) {
-              if (!isCssVarRef(startValue as string)) continue
+            const visited = new Set<string>()
+            let current = startKey
+            let value = startValue as string
 
-              const visited = new Set<string>()
-              let current = startKey
-              let value = startValue as string
-
-              while (isCssVarRef(value)) {
-                if (visited.has(current)) {
-                  // Circular reference detected
-                  expect(visited.has(current)).toBe(false)
-                  break
-                }
-                visited.add(current)
-                const next = extractVarToken(value)
-                if (!next || !resolved[next]) break
-                current = next
-                value = resolved[next] as string
+            while (isCssVarRef(value)) {
+              if (visited.has(current)) {
+                expect(visited.has(current)).toBe(false)
+                break
               }
+              visited.add(current)
+              const next = extractVarToken(value)
+              if (!next || !resolved[next]) break
+              current = next
+              value = resolved[next] as string
             }
-          })
-        }
+          }
+        })
       }
     })
   })

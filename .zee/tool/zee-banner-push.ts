@@ -1,7 +1,7 @@
 /**
  * Zee Banner Push Tool
  *
- * Pushes a non-dismissible message into the always-on Zee banner shown in the agent-core TUI.
+ * Pushes a non-dismissible message into the always-on Zee banner shown in the Zee TUI.
  */
 
 import { tool } from "@zee/plugin"
@@ -23,7 +23,7 @@ import {
 } from "./lib/zee-banner"
 
 export default tool({
-  description: `Push a message into the Zee banner shown at the top of the agent-core TUI prompt.
+  description: `Push a message into the Zee banner shown at the top of the Zee TUI prompt.
 
 Messages are not dismissible in the UI; they expire automatically after ttlMinutes (default: 24h).`,
   args: {
@@ -87,4 +87,3 @@ Messages are not dismissible in the UI; they expire automatically after ttlMinut
     ].join("\n")
   },
 })
-

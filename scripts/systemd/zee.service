@@ -23,8 +23,8 @@ EnvironmentFile=-@HOME@/.config/zee/daemon.env
 # Working directory - use repo root for relative assets
 WorkingDirectory=@ROOT@
 
-# Use repo-local binary - starts zee daemon (gateway is typically run via zee-gateway.service)
-ExecStart=@HOME@/.bun/bin/zee daemon --hostname 127.0.0.1 --port 3210 --directory @ROOT@
+# Use repo-local binary - starts zee daemon with embedded gateway
+ExecStart=@HOME@/.bun/bin/zee daemon --hostname 127.0.0.1 --port 3210 --gateway --directory @ROOT@
 
 # Restart policy
 Restart=always

@@ -86,7 +86,7 @@ function makeCfg(home: string) {
       whatsapp: {
         allowFrom: ["*"],
       },
-      matrix: {
+      whatsapp: {
         allowFrom: ["*"],
       },
     },
@@ -102,7 +102,7 @@ describe("trigger handling", () => {
   it("targets the active session for native /stop", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const targetSessionKey = "agent:main:matrix:room:123";
+      const targetSessionKey = "agent:main:whatsapp:room:123";
       const targetSessionId = "session-target";
       await fs.writeFile(
         cfg.session.store,
@@ -125,7 +125,7 @@ describe("trigger handling", () => {
           agentDir: join(home, "agent"),
           sessionId: targetSessionId,
           sessionKey: targetSessionKey,
-          messageProvider: "matrix",
+          messageProvider: "whatsapp",
           agentAccountId: "acct",
           sessionFile: join(home, "session.jsonl"),
           workspaceDir: join(home, "workspace"),
@@ -147,12 +147,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/stop",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
-          SessionKey: "matrix:slash:111",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "whatsapp:slash:111",
           CommandSource: "native",
           CommandTargetSessionKey: targetSessionKey,
           CommandAuthorized: true,
@@ -172,7 +172,7 @@ describe("trigger handling", () => {
   it("applies native /model to the target session", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const slashSessionKey = "matrix:slash:111";
+      const slashSessionKey = "whatsapp:slash:111";
       const targetSessionKey = MAIN_SESSION_KEY;
 
       // Seed the target session to ensure the native command mutates it.
@@ -193,11 +193,11 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model openai/gpt-4.1-mini",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
           SessionKey: slashSessionKey,
           CommandSource: "native",
           CommandTargetSessionKey: targetSessionKey,
@@ -226,11 +226,11 @@ describe("trigger handling", () => {
       await getReplyFromConfig(
         {
           Body: "hi",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
         },
         {},
         cfg,
@@ -257,7 +257,7 @@ describe("trigger handling", () => {
           list: [{ id: "coding", model: "minimax/MiniMax-M2.1" }],
         },
         channels: {
-          matrix: {
+          whatsapp: {
             allowFrom: ["*"],
           },
         },
@@ -267,14 +267,14 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/status",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "group",
-          Provider: "matrix",
-          Surface: "matrix",
-          SessionKey: "matrix:slash:111",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "whatsapp:slash:111",
           CommandSource: "native",
-          CommandTargetSessionKey: "agent:coding:matrix:room:123",
+          CommandTargetSessionKey: "agent:coding:whatsapp:room:123",
           CommandAuthorized: true,
         },
         {},

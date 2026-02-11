@@ -1148,7 +1148,7 @@ export namespace LSPServer {
           }
         })(),
       )
-      const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-jdtls-data"))
+      const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-jdtls-data"))
       return {
         process: spawn(
           java,

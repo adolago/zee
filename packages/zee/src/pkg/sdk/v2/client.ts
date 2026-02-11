@@ -3,7 +3,7 @@ export * from "./gen/types.gen.js"
 import { createClient } from "./gen/client/client.gen.js"
 import { type Config } from "./gen/client/types.gen.js"
 import {
-  AgentCoreClient as GeneratedAgentCoreClient,
+  ZeeClient as GeneratedZeeClient,
   Session as GeneratedSession,
   Project as GeneratedProject,
   Worktree as GeneratedWorktree,
@@ -316,7 +316,7 @@ export type LocalProject = {
 
 // Config accessor for global.config.get()/update() pattern
 class GlobalConfigAccessor {
-  constructor(private sdk: GeneratedAgentCoreClient) {}
+  constructor(private sdk: GeneratedZeeClient) {}
 
   get<ThrowOnError extends boolean = false>(options?: any) {
     return this.sdk.config.get(options)
@@ -331,7 +331,7 @@ class GlobalConfigAccessor {
 class GlobalAccessor {
   private _config?: GlobalConfigAccessor
 
-  constructor(private sdk: GeneratedAgentCoreClient) {}
+  constructor(private sdk: GeneratedZeeClient) {}
 
   get config(): GlobalConfigAccessor {
     return (this._config ??= new GlobalConfigAccessor(this.sdk))
@@ -646,8 +646,8 @@ class ExtendedAuth extends GeneratedAuth {
   }
 }
 
-// Extended AgentCoreClient that adds the global accessor and extended classes
-export class AgentCoreClient extends GeneratedAgentCoreClient {
+// Extended ZeeClient that adds the global accessor and extended classes
+export class ZeeClient extends GeneratedZeeClient {
   private _global?: GlobalAccessor
   private _extSession?: ExtendedSession
   private _extProject?: ExtendedProject
@@ -659,7 +659,7 @@ export class AgentCoreClient extends GeneratedAgentCoreClient {
   private _extInstance?: ExtendedInstance
 
   get global(): GlobalAccessor {
-    return (this._global ??= new GlobalAccessor(this as unknown as GeneratedAgentCoreClient))
+    return (this._global ??= new GlobalAccessor(this as unknown as GeneratedZeeClient))
   }
 
   // Override accessors to return extended versions
@@ -700,9 +700,9 @@ export class AgentCoreClient extends GeneratedAgentCoreClient {
   }
 }
 
-export type AgentCoreClientConfig = Config
+export type ZeeClientConfig = Config
 
-export function createAgentCoreClient(config?: Config & { directory?: string }) {
+export function createZeeClient(config?: Config & { directory?: string }) {
   if (!config?.fetch) {
     const customFetch: any = (req: any) => {
       // @ts-ignore
@@ -720,17 +720,10 @@ export function createAgentCoreClient(config?: Config & { directory?: string }) 
     const encodedDirectory = isNonASCII ? encodeURIComponent(config.directory) : config.directory
     config.headers = {
       ...config.headers,
-      "x-opencode-directory": encodedDirectory,
+      "x-zee-directory": encodedDirectory,
     }
   }
 
   const client = createClient(config)
-  return new AgentCoreClient({ client })
+  return new ZeeClient({ client })
 }
-
-/** @deprecated Use AgentCoreClient */
-export const OpencodeClient = AgentCoreClient
-/** @deprecated Use AgentCoreClientConfig */
-export type OpencodeClientConfig = Config
-/** @deprecated Use createAgentCoreClient */
-export const createOpencodeClient = createAgentCoreClient

@@ -1,6 +1,6 @@
 import { formatTerminalLink } from "../utils.js";
 
-export const DOCS_ROOT = "https://docs.zee";
+export const DOCS_ROOT = "https://zee-bot.com";
 
 export function formatDocsLink(
   path: string,

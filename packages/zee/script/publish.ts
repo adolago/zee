@@ -14,28 +14,23 @@ process.chdir(dir)
 // Configuration
 // =============================================================================
 
-const DEFAULT_NPM_PACKAGE = pkg.name
+const DEFAULT_NPM_PACKAGE = "@zee/zee"
 const NPM_PACKAGE =
-  process.env.ZEE_NPM_PACKAGE?.trim() ||
-  process.env.AGENT_CORE_NPM_PACKAGE?.trim() ||
-  DEFAULT_NPM_PACKAGE
+  process.env.ZEE_NPM_PACKAGE?.trim() || DEFAULT_NPM_PACKAGE
 const SCOPE_PREFIX = NPM_PACKAGE.startsWith("@") ? NPM_PACKAGE.split("/")[0] : ""
 const scopedName = (name: string) => (SCOPE_PREFIX ? `${SCOPE_PREFIX}/${name}` : name)
 
 const GITHUB_REPO =
-  process.env.ZEE_GITHUB_REPO?.trim() ||
-  process.env.AGENT_CORE_GITHUB_REPO?.trim() ||
-  "adolago/zee"
+  process.env.ZEE_GITHUB_REPO?.trim() || "adolago/zee"
 const skipDocker = ["1", "true", "yes"].includes(
-  (process.env.ZEE_SKIP_DOCKER ?? process.env.AGENT_CORE_SKIP_DOCKER ?? "").toLowerCase(),
+  (process.env.ZEE_SKIP_DOCKER ?? "").toLowerCase(),
 )
 const skipGithub = ["1", "true", "yes"].includes(
-  (process.env.ZEE_SKIP_GITHUB ?? process.env.AGENT_CORE_SKIP_GITHUB ?? "").toLowerCase(),
+  (process.env.ZEE_SKIP_GITHUB ?? "").toLowerCase(),
 )
 
 const npmOtp =
   process.env.ZEE_NPM_OTP?.trim() ||
-  process.env.AGENT_CORE_NPM_OTP?.trim() ||
   process.env.NPM_OTP?.trim() ||
   process.env.NPM_CONFIG_OTP?.trim()
 const otpArgs = npmOtp ? ["--otp", npmOtp] : []
@@ -57,12 +52,12 @@ console.log({
 async function updateVersionAcrossRepos(version: string) {
   console.log(`\n* Updating version to ${version} across repos...`)
 
-  // Update packages/zee-core/package.json
-  const zeeCorePkgPath = path.join(dir, "package.json")
-  const zeeCorePkg = JSON.parse(fs.readFileSync(zeeCorePkgPath, "utf-8"))
-  zeeCorePkg.version = version
-  fs.writeFileSync(zeeCorePkgPath, JSON.stringify(zeeCorePkg, null, 2) + "\n")
-  console.log(`  Updated ${zeeCorePkgPath}`)
+  // Update packages/zee/package.json
+  const zeePkgPath = path.join(dir, "package.json")
+  const zeePkg = JSON.parse(fs.readFileSync(zeePkgPath, "utf-8"))
+  zeePkg.version = version
+  fs.writeFileSync(zeePkgPath, JSON.stringify(zeePkg, null, 2) + "\n")
+  console.log(`  Updated ${zeePkgPath}`)
 
   // Update root package.json
   const rootPkgPath = path.join(repoRoot, "package.json")
@@ -101,7 +96,7 @@ async function gitTagAndPush(version: string) {
 
 const { binaries } = await import("./build.ts")
 {
-  const binarySuffix = (process.env.ZEE_BINARY_SUFFIX || process.env.AGENT_CORE_BINARY_SUFFIX)?.trim()
+  const binarySuffix = process.env.ZEE_BINARY_SUFFIX?.trim()
   const osName = process.platform === "win32" ? "windows" : process.platform
   const name = [pkg.name, osName, process.arch, binarySuffix].filter(Boolean).join("-")
   console.log(`\n> Smoke test: running dist/${name}/bin/zee --version`)
@@ -122,10 +117,9 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
   JSON.stringify(
     {
       name: NPM_PACKAGE,
-      description: "Zee core engine (CLI + daemon)",
+      description: "Zee engine (CLI + daemon)",
       bin: {
         zee: "./bin/zee",
-        "agent-core": "./bin/agent-core",
       },
       scripts: {
         postinstall: "bun ./postinstall.mjs || node ./postinstall.mjs",
@@ -188,7 +182,7 @@ if (!Script.preview) {
   console.log(`\n* Creating release archives...`)
   const archives: string[] = []
   for (const key of Object.keys(binaries)) {
-    const assetBase = key.replace(/^@[^/]+\//, "").replace(/^core-/, "zee-")
+    const assetBase = key.replace(/^@[^/]+\//, "")
     if (key.includes("linux")) {
       await $`tar -czf dist/${assetBase}.tar.gz -C dist/${key}/bin .`.cwd(dir)
       archives.push(`dist/${assetBase}.tar.gz`)

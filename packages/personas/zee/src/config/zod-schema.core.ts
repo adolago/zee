@@ -317,7 +317,6 @@ export const RetryConfigSchema = z
 export const QueueModeBySurfaceSchema = z
   .object({
     whatsapp: QueueModeSchema.optional(),
-    matrix: QueueModeSchema.optional(),
   })
   .strict()
   .optional();

@@ -1,7 +1,7 @@
 import { createStore, produce, reconcile } from "solid-js/store"
 import { batch, createEffect, createMemo, createSignal } from "solid-js"
 import { useSync } from "@tui/context/sync"
-import { useTheme, resolveTheme } from "@tui/context/theme"
+import { useTheme } from "@tui/context/theme"
 import { uniqueBy } from "remeda"
 import path from "path"
 import { Global } from "@/global"
@@ -15,7 +15,6 @@ import { useArgs } from "./args"
 import { useSDK } from "./sdk"
 import { RGBA } from "@opentui/core"
 import type { Agent as SDKAgent } from "@zee/sdk/v2"
-import { personaPalettes, type PersonaId } from "@root/theme/rosetta"
 
 // Extended agent type with fallback model support (internal feature not yet in SDK)
 type AgentWithFallback = SDKAgent & {
@@ -71,22 +70,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const themeCtx = useTheme()
       const { theme } = themeCtx
 
-      // Effect to switch theme when agent changes (based on agent name)
-      createEffect(() => {
-        const agentName = agentStore.current?.toLowerCase()
-        if (agentName && themeCtx.all()[agentName]) {
-          themeCtx.set(agentName)
-        }
-      })
-
-      // Vim mode colors (defined in prompt/index.tsx):
-      // - Normal: theme.accent (blue) - matches "N" indicator
-      // - Insert: theme.success (green) - "I" indicator
-      // - Visual: theme.warning (yellow) - "V" indicator
-      // Note: User message colors use persona's theme accent color:
-      // - Zee: zeeAccent (#6995E8)
-      // - Stanley: stanleyAccent (#78E89C)
-      // - Johny: johnyAccent (#E87D6E)
+      // Keep a stable color palette for agent chips/messages with a fixed theme.
       const colors = createMemo((): RGBA[] => [
         theme.secondary,
         theme.accent,
@@ -102,29 +86,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         if (!all || !Array.isArray(all)) return []
         return all.filter((x) => !x.hidden)
       })
-
-      // Get persona's accent color from their theme (brighter, more vibrant)
-      function getPersonaAccentColor(agentName: string): RGBA | null {
-        const name = agentName.toLowerCase()
-
-        // Map persona names to their theme keys
-        const personaThemes: Record<string, string> = {
-          zee: "zee",
-          stanley: "stanley",
-          johny: "johny",
-        }
-
-        const themeKey = personaThemes[name]
-        if (!themeKey) return null
-
-        // Get the persona's theme
-        const personaTheme = themeCtx.all()[themeKey]
-        if (!personaTheme) return null
-
-        // Return accent color from that theme (brighter than primary)
-        const resolvedTheme = resolveTheme(personaTheme, themeCtx.mode())
-        return resolvedTheme.accent
-      }
 
       // Placeholder agent for when no agents are loaded yet
       const placeholderAgent = {
@@ -199,14 +160,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             const themeColor = themeColorMap[agent.color]
             if (themeColor) return themeColor
           }
-
-          // Check if this is a persona and use their theme's accent color
-          const personaColor = getPersonaAccentColor(name)
-          if (personaColor) return personaColor
-
-          // Rosetta Stone fallback for known personas
-          const rosetta = personaPalettes[name.toLowerCase() as PersonaId]
-          if (rosetta) return RGBA.fromHex(rosetta.accent.hex)
 
           // Fall back to indexed colors for other agents
           const visible = visibleAgents()
@@ -597,7 +550,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         if (session.mode === "hold") return true
         if (session.mode === "release") return false
         // Surface defaults: messaging surfaces default to release
-        if (session.surface === "whatsapp" || session.surface === "matrix") return false
+        if (session.surface === "whatsapp") return false
         return true // TUI default to hold
       }
 

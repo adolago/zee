@@ -20,7 +20,7 @@ import type { EmbeddingProvider } from "../../memory/types";
 // =============================================================================
 
 export interface SentinelDeliveryContext {
-  /** Messaging channel (whatsapp, matrix, cli) */
+  /** Messaging channel (whatsapp, cli) */
   channel?: string;
   /** Recipient identifier */
   to?: string;
@@ -45,7 +45,7 @@ export interface SentinelSessionState {
   pendingTasks: string[];
   /** Delivery context for message routing */
   deliveryContext?: SentinelDeliveryContext;
-  /** Persona that was active (zee, stanley, johny) */
+  /** Persona that was active (zee) */
   persona?: string;
   /** Working directory */
   workingDir?: string;
@@ -673,7 +673,7 @@ export const sentinelSaveTool: Tool = {
       },
       persona: {
         type: "string",
-        description: "Active persona (zee, stanley, johny)",
+        description: "Active persona (zee)",
       },
       reason: {
         type: "string",

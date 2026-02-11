@@ -88,7 +88,7 @@ export namespace Dictation {
     sampleRate: number
     command?: string | string[]
   }): string[] | undefined {
-    const override = input.command ?? process.env["OPENCODE_DICTATION_RECORD_COMMAND"]
+    const override = input.command ?? process.env["ZEE_DICTATION_RECORD_COMMAND"]
     if (override) {
       const parsed = Array.isArray(override) ? override : override.trim().split(/\s+/)
       return parsed.length > 0 ? parsed : undefined

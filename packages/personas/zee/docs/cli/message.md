@@ -21,7 +21,7 @@ Channel selection:
 
 Target formats (`--target`):
 - WhatsApp: E.164 or group JID
-- Matrix: `@user:server` or `!roomId:server`
+- WhatsApp: `@user:server` or `!roomId:server`
 
 Name lookup:
 - On cache miss, Zee will attempt a live directory lookup when the provider supports it.
@@ -146,15 +146,15 @@ Name lookup:
   --poll-multi --poll-duration-hours 48
 ```
 
-Send a Matrix message:
+Send a WhatsApp message:
 ```
-zee message send --channel matrix \
+zee message send --channel whatsapp \
   --target "!room:example.com" --message "hi"
 ```
 
 Create a poll:
 ```
-zee message poll --channel matrix \
+zee message poll --channel whatsapp \
   --target "!room:example.com" \
   --poll-question "Lunch?" \
   --poll-option Pizza --poll-option Sushi

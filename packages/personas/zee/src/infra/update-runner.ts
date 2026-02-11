@@ -66,8 +66,8 @@ const DEFAULT_TIMEOUT_MS = 20 * 60_000;
 const MAX_LOG_CHARS = 8000;
 const PREFLIGHT_MAX_COMMITS = 10;
 const START_DIRS = ["cwd", "argv1", "process"];
-const DEFAULT_PACKAGE_NAME = "zee";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "zee", "zee"]);
+const DEFAULT_PACKAGE_NAME = process.env.ZEE_NPM_PACKAGE?.trim() || "zee";
+const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "zee"]);
 
 function normalizeDir(value?: string | null) {
   if (!value) return null;
@@ -291,10 +291,9 @@ function managerInstallArgs(manager: "pnpm" | "bun" | "npm") {
 function normalizeTag(tag?: string) {
   const trimmed = tag?.trim();
   if (!trimmed) return "latest";
-  if (trimmed.startsWith("zee@")) return trimmed.slice("zee@".length);
-  if (trimmed.startsWith("zee@")) return trimmed.slice("zee@".length);
-  if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
-    return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
+  const prefixes = new Set(["zee@", `${DEFAULT_PACKAGE_NAME}@`]);
+  for (const prefix of prefixes) {
+    if (trimmed.startsWith(prefix)) return trimmed.slice(prefix.length);
   }
   return trimmed;
 }

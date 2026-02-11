@@ -1,4 +1,4 @@
-import { createAgentCoreClient } from "@zee/core/pkg/sdk/v2/client"
+import { createZeeClient } from "@zee/zee/pkg/sdk/v2/client"
 import { createSimpleContext } from "@zee/ui/context"
 import { batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -96,7 +96,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
 
     const check = (url: string) => {
       const signal = (AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal }).timeout?.(3000)
-      const sdk = createAgentCoreClient({
+      const sdk = createZeeClient({
         baseUrl: url,
         fetch: platform.fetch,
         signal,

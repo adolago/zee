@@ -30,7 +30,7 @@ function normalizeShareBaseUrl(raw?: string) {
 }
 
 function resolveShareBaseUrl() {
-  const env = normalizeShareBaseUrl(process.env["AGENT_CORE_SHARE_BASE_URL"] ?? process.env["SHARE_BASE_URL"])
+  const env = normalizeShareBaseUrl(process.env["ZEE_SHARE_BASE_URL"] ?? process.env["SHARE_BASE_URL"])
   if (env) return env
   return normalizeShareBaseUrl(ServerState.url().toString()) ?? ServerState.url().toString()
 }
@@ -503,7 +503,7 @@ export const SessionRoute = new Hono()
       summary: "Session handoff",
       tags: ["Session"],
       description:
-        "Prepare a session for handoff to another surface (cli, web, api, whatsapp, matrix). Returns session state and a handoff token for resumption.",
+        "Prepare a session for handoff to another surface (cli, web, api, whatsapp). Returns session state and a handoff token for resumption.",
       operationId: "session.handoff",
       responses: {
         200: {
@@ -539,7 +539,7 @@ export const SessionRoute = new Hono()
       },
     }),
     validator("param", z.object({ sessionID: z.string() })),
-    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "whatsapp", "matrix"]) })),
+    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "whatsapp"]) })),
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const { targetSurface } = c.req.valid("json")
@@ -584,7 +584,7 @@ export const SessionRoute = new Hono()
       else if (lowerTitle.includes("johny")) context.persona = "johny"
       else if (lowerTitle.includes("zee")) context.persona = "zee"
 
-      const resumeUrl = `agentcore://session/${sessionID}`
+      const resumeUrl = `zee://session/${sessionID}`
 
       return c.json({
         sessionID,

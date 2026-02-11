@@ -53,9 +53,7 @@ function resolveGatewayToken(): string | undefined {
     const home = process.env.HOME?.trim();
     const stateHome = process.env.XDG_STATE_HOME?.trim() || (home ? path.join(home, ".local", "state") : undefined);
     const defaultPath = stateHome ? path.join(stateHome, "zee", "zee_gateway_token") : undefined;
-    const legacyPath = stateHome ? path.join(stateHome, "agent-core", "zee_gateway_token") : undefined;
-
-    const candidates = [override, defaultPath, legacyPath].filter((p): p is string => Boolean(p && p.length > 0));
+    const candidates = [override, defaultPath].filter((p): p is string => Boolean(p && p.length > 0));
     for (const candidate of candidates) {
       try {
         const token = fs.readFileSync(candidate, "utf-8").trim();
@@ -187,14 +185,14 @@ describeLive(
         10_000,
       );
 
-      it("returns channel status with whatsapp and matrix", () => {
+      it("returns channel status with whatsapp and whatsapp", () => {
         expect(channelStatus).toBeTruthy();
         expect(channelStatus.channelOrder).toBeInstanceOf(Array);
         expect(channelStatus.channelAccounts).toBeTruthy();
 
         const channels = Object.keys(channelStatus.channelAccounts);
         expect(channels).toContain("whatsapp");
-        expect(channels).toContain("matrix");
+        expect(channels).toContain("whatsapp");
         logProgress(`channels present: ${channels.join(", ")}`);
       });
     });
@@ -224,55 +222,55 @@ describeLive(
         expect(alive).toBe(true);
       });
 
-      it("zee: matrix account is connected", () => {
-        const binding = findBindingForAgent(cfg, "matrix", "zee");
+      it("zee: whatsapp account is connected", () => {
+        const binding = findBindingForAgent(cfg, "whatsapp", "zee");
         if (!binding) {
-          logProgress("skip: no matrix binding for zee");
+          logProgress("skip: no whatsapp binding for zee");
           return;
         }
-        const account = findAccountInStatus(channelStatus, "matrix", binding.accountId);
+        const account = findAccountInStatus(channelStatus, "whatsapp", binding.accountId);
         if (!account) {
-          logProgress(`skip: matrix account ${binding.accountId} not in status`);
+          logProgress(`skip: whatsapp account ${binding.accountId} not in status`);
           return;
         }
         logProgress(
-          `matrix/${account.accountId} (zee): configured=${account.configured} ` +
+          `whatsapp/${account.accountId} (zee): configured=${account.configured} ` +
             `running=${account.running} connected=${account.connected}`,
         );
         expect(account.configured).toBe(true);
       });
 
-      it("stanley: matrix account is connected", () => {
-        const binding = findBindingForAgent(cfg, "matrix", "stanley");
+      it("stanley: whatsapp account is connected", () => {
+        const binding = findBindingForAgent(cfg, "whatsapp", "stanley");
         if (!binding) {
-          logProgress("skip: no matrix binding for stanley");
+          logProgress("skip: no whatsapp binding for stanley");
           return;
         }
-        const account = findAccountInStatus(channelStatus, "matrix", binding.accountId);
+        const account = findAccountInStatus(channelStatus, "whatsapp", binding.accountId);
         if (!account) {
-          logProgress(`skip: matrix account ${binding.accountId} not in status`);
+          logProgress(`skip: whatsapp account ${binding.accountId} not in status`);
           return;
         }
         logProgress(
-          `matrix/${account.accountId} (stanley): configured=${account.configured} ` +
+          `whatsapp/${account.accountId} (stanley): configured=${account.configured} ` +
             `running=${account.running} connected=${account.connected}`,
         );
         expect(account.configured).toBe(true);
       });
 
-      it("johny: matrix account is connected", () => {
-        const binding = findBindingForAgent(cfg, "matrix", "johny");
+      it("johny: whatsapp account is connected", () => {
+        const binding = findBindingForAgent(cfg, "whatsapp", "johny");
         if (!binding) {
-          logProgress("skip: no matrix binding for johny");
+          logProgress("skip: no whatsapp binding for johny");
           return;
         }
-        const account = findAccountInStatus(channelStatus, "matrix", binding.accountId);
+        const account = findAccountInStatus(channelStatus, "whatsapp", binding.accountId);
         if (!account) {
-          logProgress(`skip: matrix account ${binding.accountId} not in status`);
+          logProgress(`skip: whatsapp account ${binding.accountId} not in status`);
           return;
         }
         logProgress(
-          `matrix/${account.accountId} (johny): configured=${account.configured} ` +
+          `whatsapp/${account.accountId} (johny): configured=${account.configured} ` +
             `running=${account.running} connected=${account.connected}`,
         );
         expect(account.configured).toBe(true);
@@ -290,54 +288,54 @@ describeLive(
         expect(route.channel).toBe("whatsapp");
       });
 
-      it("matrix binding for zee routes correctly", () => {
-        const binding = findBindingForAgent(cfg, "matrix", "zee");
+      it("whatsapp binding for zee routes correctly", () => {
+        const binding = findBindingForAgent(cfg, "whatsapp", "zee");
         if (!binding) {
-          logProgress("skip: no matrix binding for zee");
+          logProgress("skip: no whatsapp binding for zee");
           return;
         }
         const route = resolveAgentRoute({
           cfg,
-          channel: "matrix",
+          channel: "whatsapp",
           accountId: binding.accountId,
         });
         logProgress(
-          `matrix zee route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
+          `whatsapp zee route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
         );
         // Should route to zee (or the default agent if zee is the default)
         expect(route.agentId).toBeTruthy();
       });
 
-      it("matrix binding for stanley routes correctly", () => {
-        const binding = findBindingForAgent(cfg, "matrix", "stanley");
+      it("whatsapp binding for stanley routes correctly", () => {
+        const binding = findBindingForAgent(cfg, "whatsapp", "stanley");
         if (!binding) {
-          logProgress("skip: no matrix binding for stanley");
+          logProgress("skip: no whatsapp binding for stanley");
           return;
         }
         const route = resolveAgentRoute({
           cfg,
-          channel: "matrix",
+          channel: "whatsapp",
           accountId: binding.accountId,
         });
         logProgress(
-          `matrix stanley route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
+          `whatsapp stanley route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
         );
         expect(normalizeAgentId(route.agentId)).toBe(normalizeAgentId("stanley"));
       });
 
-      it("matrix binding for johny routes correctly", () => {
-        const binding = findBindingForAgent(cfg, "matrix", "johny");
+      it("whatsapp binding for johny routes correctly", () => {
+        const binding = findBindingForAgent(cfg, "whatsapp", "johny");
         if (!binding) {
-          logProgress("skip: no matrix binding for johny");
+          logProgress("skip: no whatsapp binding for johny");
           return;
         }
         const route = resolveAgentRoute({
           cfg,
-          channel: "matrix",
+          channel: "whatsapp",
           accountId: binding.accountId,
         });
         logProgress(
-          `matrix johny route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
+          `whatsapp johny route: agentId=${route.agentId} matchedBy=${route.matchedBy}`,
         );
         expect(normalizeAgentId(route.agentId)).toBe(normalizeAgentId("johny"));
       });
@@ -347,7 +345,7 @@ describeLive(
 
     describeSend("send probe", () => {
       const waTo = process.env.ZEE_LIVE_MESSAGING_SEND_TO_WA?.trim();
-      const matrixTo = process.env.ZEE_LIVE_MESSAGING_SEND_TO_MATRIX?.trim();
+      const waAltTo = process.env.ZEE_LIVE_MESSAGING_SEND_TO_WA_ALT?.trim();
 
       it(
         "sends probe message via whatsapp",
@@ -372,23 +370,23 @@ describeLive(
       );
 
       it(
-        "sends probe message via matrix",
+        "sends probe message via whatsapp",
         async () => {
-          if (!matrixTo) {
-            logProgress("skip: ZEE_LIVE_MESSAGING_SEND_TO_MATRIX not set");
+          if (!waAltTo) {
+            logProgress("skip: ZEE_LIVE_MESSAGING_SEND_TO_WA_ALT not set");
             return;
           }
           const nonce = randomUUID().slice(0, 8);
           const message = `live test probe ${nonce}`;
-          logProgress(`matrix send probe to ${matrixTo}: ${message}`);
+          logProgress(`whatsapp send probe to ${waAltTo}: ${message}`);
           const result = await client.request<unknown>("send", {
-            to: matrixTo,
+            to: waAltTo,
             message,
-            channel: "matrix",
+            channel: "whatsapp",
             idempotencyKey: randomUUID(),
           });
           expect(result).toBeTruthy();
-          logProgress("matrix send probe ok");
+          logProgress("whatsapp send probe ok");
         },
         60_000,
       );

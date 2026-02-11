@@ -97,9 +97,9 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
       : (config?.server?.hostname ?? args.hostname)
   const configCors = config?.server?.cors ?? []
   const envCors = [
-    ...parseCorsEnv(process.env["AGENT_CORE_CORS_ALLOWLIST"]),
-    ...parseCorsEnv(process.env["AGENT_CORE_HOSTED_ORIGINS"]),
-    ...parseCorsEnv(process.env["AGENT_CORE_CORS_ORIGINS"]),
+    ...parseCorsEnv(process.env["ZEE_CORS_ALLOWLIST"]),
+    ...parseCorsEnv(process.env["ZEE_HOSTED_ORIGINS"]),
+    ...parseCorsEnv(process.env["ZEE_CORS_ORIGINS"]),
   ]
   const argsCors = Array.isArray(args.cors) ? args.cors : args.cors ? [args.cors] : []
   const cors = [...configCors, ...envCors, ...argsCors]

@@ -12,8 +12,8 @@
  *   bun script/test-extended-thinking.ts kimi-for-coding/kimi-k2-thinking
  */
 
-import { createAgentCoreClient as createEventClient } from "@zee/sdk"
-import { createAgentCoreClient } from "@zee/sdk/v2"
+import { createZeeClient as createEventClient } from "@zee/sdk"
+import { createZeeClient } from "@zee/sdk/v2"
 
 const DEFAULT_MODEL = "openai/gpt-5.2"
 const TEST_TIMEOUT = 180_000 // 3 minutes
@@ -32,7 +32,7 @@ async function runTest(
   model: string,
   prompt: string,
 ): Promise<TestResult> {
-  const sdk = createAgentCoreClient({ baseUrl })
+  const sdk = createZeeClient({ baseUrl })
   const eventClient = createEventClient({ baseUrl })
 
   const startTime = Date.now()
@@ -122,7 +122,7 @@ async function runTest(
 
 async function main() {
   const model = process.argv[2] || DEFAULT_MODEL
-  const baseUrl = process.env.AGENT_CORE_URL || "http://127.0.0.1:9021"
+  const baseUrl = process.env.ZEE_URL || "http://127.0.0.1:9021"
 
   console.log(`\n🧪 Extended Thinking Model Test`)
   console.log(`   Model: ${model}`)

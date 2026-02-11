@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { AgentCoreClient } from "../../src/pkg/sdk/v2/client"
+import { ZeeClient } from "../../src/pkg/sdk/v2/client"
 
 describe("SDK v2 session.mode", () => {
   test("calls client.patch with correct payload", async () => {
@@ -10,7 +10,7 @@ describe("SDK v2 session.mode", () => {
         return { data: { ok: true, mode: "release" } }
       },
     }
-    const sdk = new AgentCoreClient({ client: stubClient as any })
+    const sdk = new ZeeClient({ client: stubClient as any })
 
     await sdk.session.mode(
       { sessionID: "ses_test", mode: "release", directory: "/tmp" } as any,
@@ -25,4 +25,3 @@ describe("SDK v2 session.mode", () => {
     expect(calls[0]?.throwOnError).toBe(true)
   })
 })
-

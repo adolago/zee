@@ -24,19 +24,13 @@ const ZEE_CONFIG_PATHS = [
   process.env.ZEE_ROOT
     ? path.join(process.env.ZEE_ROOT, ".zee", "zee.jsonc")
     : null,
-  // Legacy env override
-  process.env.AGENT_CORE_ROOT
-    ? path.join(process.env.AGENT_CORE_ROOT, ".zee", "zee.jsonc")
-    : null,
   // Current working directory
   path.join(process.cwd(), ".zee", "zee.jsonc"),
   // User config
   path.join(xdgConfigHome, "zee", "zee.jsonc"),
-  // Legacy user config
-  path.join(xdgConfigHome, "agent-core", "zee.jsonc"),
 ].filter(Boolean) as string[];
 
-type AgentCoreModelEntry = {
+type ZeeModelEntry = {
   id?: string;
   name?: string;
   reasoning?: boolean;
@@ -52,40 +46,40 @@ type AgentCoreModelEntry = {
   input?: string[];
 };
 
-type AgentCoreProviderEntry = {
+type ZeeProviderEntry = {
   options?: {
     baseURL?: string;
   };
-  models?: AgentCoreModelEntry[] | Record<string, AgentCoreModelEntry>;
+  models?: ZeeModelEntry[] | Record<string, ZeeModelEntry>;
 };
 
-type AgentCoreModelConfig =
+type ZeeModelConfig =
   | string
   | {
       primary?: string;
       fallbacks?: string[];
     };
 
-type AgentCoreAgentEntry = {
-  model?: AgentCoreModelConfig;
+type ZeeAgentEntry = {
+  model?: ZeeModelConfig;
 };
 
-type AgentCoreConfig = {
-  provider?: Record<string, AgentCoreProviderEntry>;
+type ZeeConfig = {
+  provider?: Record<string, ZeeProviderEntry>;
   model?: string;
-  agent?: Record<string, AgentCoreAgentEntry>;
+  agent?: Record<string, ZeeAgentEntry>;
   agents?: {
     defaults?: {
-      model?: AgentCoreModelConfig;
+      model?: ZeeModelConfig;
     };
   };
 };
 
-let cachedConfig: AgentCoreConfig | null = null;
+let cachedConfig: ZeeConfig | null = null;
 let lastReadAt = 0;
 const CACHE_TTL_MS = 30_000;
 
-function readZeeConfig(): AgentCoreConfig | null {
+function readZeeConfig(): ZeeConfig | null {
   const now = Date.now();
   if (cachedConfig && now - lastReadAt < CACHE_TTL_MS) {
     return cachedConfig;
@@ -95,7 +89,7 @@ function readZeeConfig(): AgentCoreConfig | null {
     try {
       if (!fs.existsSync(configPath)) continue;
       const raw = fs.readFileSync(configPath, "utf-8");
-      const parsed = JSON5.parse(raw) as AgentCoreConfig;
+      const parsed = JSON5.parse(raw) as ZeeConfig;
       cachedConfig = parsed;
       lastReadAt = now;
       log.debug("loaded zee config", { path: configPath });
@@ -110,7 +104,7 @@ function readZeeConfig(): AgentCoreConfig | null {
 
 function convertToZeeProvider(
   providerId: string,
-  entry: AgentCoreProviderEntry,
+  entry: ZeeProviderEntry,
 ): ProviderConfig | null {
   const baseUrl = entry.options?.baseURL;
   // baseUrl is required for ProviderConfig
@@ -118,7 +112,7 @@ function convertToZeeProvider(
     return null;
   }
 
-  const rawModels = normalizeAgentCoreModels(entry.models);
+  const rawModels = normalizeZeeModels(entry.models);
   const models: ModelDefinitionConfig[] = rawModels
     .map((m) => toZeeModelDefinition(m))
     .filter((m): m is ModelDefinitionConfig => Boolean(m));
@@ -132,9 +126,9 @@ function convertToZeeProvider(
 
 type ModelRef = { provider: string; model: string };
 
-function normalizeAgentCoreModels(
-  models?: AgentCoreProviderEntry["models"],
-): AgentCoreModelEntry[] {
+function normalizeZeeModels(
+  models?: ZeeProviderEntry["models"],
+): ZeeModelEntry[] {
   if (Array.isArray(models)) return models;
   if (!models || typeof models !== "object") return [];
   return Object.entries(models).map(([key, value]) => {
@@ -144,7 +138,7 @@ function normalizeAgentCoreModels(
   });
 }
 
-function resolveInputModes(model: AgentCoreModelEntry): Array<"text" | "image"> {
+function resolveInputModes(model: ZeeModelEntry): Array<"text" | "image"> {
   const raw = Array.isArray(model.input)
     ? model.input
     : Array.isArray(model.modalities?.input)
@@ -159,19 +153,19 @@ function resolveInputModes(model: AgentCoreModelEntry): Array<"text" | "image"> 
   return Array.from(modes);
 }
 
-function resolveContextWindow(model: AgentCoreModelEntry): number {
+function resolveContextWindow(model: ZeeModelEntry): number {
   const candidate = model.limit?.context ?? model.contextWindow;
   if (typeof candidate === "number" && candidate > 0) return candidate;
   return 128000;
 }
 
-function resolveMaxTokens(model: AgentCoreModelEntry, contextWindow: number): number {
+function resolveMaxTokens(model: ZeeModelEntry, contextWindow: number): number {
   const candidate = model.limit?.output ?? model.maxTokens;
   if (typeof candidate === "number" && candidate > 0) return candidate;
   return Math.min(8192, contextWindow);
 }
 
-function toZeeModelDefinition(model: AgentCoreModelEntry): ModelDefinitionConfig | null {
+function toZeeModelDefinition(model: ZeeModelEntry): ModelDefinitionConfig | null {
   const id = String(model.id ?? "").trim();
   if (!id) return null;
   const contextWindow = resolveContextWindow(model);
@@ -186,7 +180,7 @@ function toZeeModelDefinition(model: AgentCoreModelEntry): ModelDefinitionConfig
   };
 }
 
-function resolvePrimaryModelRef(raw?: AgentCoreModelConfig): string | null {
+function resolvePrimaryModelRef(raw?: ZeeModelConfig): string | null {
   if (!raw) return null;
   if (typeof raw === "string") return raw.trim() || null;
   const primary = raw.primary?.trim();
@@ -254,7 +248,7 @@ export function resolveZeeProviders(): Record<string, ProviderConfig> {
     const converted = convertToZeeProvider(providerId, entry);
     if (converted) {
       providers[providerId] = converted;
-      log.debug("resolved zee provider", { providerId });
+      log.debug("resolved provider from Zee config", { providerId });
     }
   }
 

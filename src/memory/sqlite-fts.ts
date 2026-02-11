@@ -14,8 +14,8 @@
 import { Database } from "bun:sqlite"
 import path from "path"
 import fs from "node:fs"
-import { Log } from "../../packages/zee-core/src/util/log"
-import { resolveStateDir } from "../../packages/zee-core/src/global/dirs"
+import { Log } from "../../packages/zee/src/util/log"
+import { resolveStateDir } from "../../packages/zee/src/global/dirs"
 
 const log = Log.create({ service: "memory:fts" })
 

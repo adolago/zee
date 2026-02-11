@@ -98,20 +98,20 @@ describe("loadZeePlugins", () => {
     expect(enabled?.status).toBe("loaded");
   });
 
-  it("loads bundled matrix plugin when enabled", () => {
+  it("loads bundled whatsapp plugin when enabled", () => {
     const bundledDir = makeTempDir();
     writePlugin({
-      id: "matrix",
-      body: `export default { id: "matrix", register(api) {
+      id: "whatsapp",
+      body: `export default { id: "whatsapp", register(api) {
   api.registerChannel({
     plugin: {
-      id: "matrix",
+      id: "whatsapp",
       meta: {
-        id: "matrix",
-        label: "Matrix",
-        selectionLabel: "Matrix",
-        docsPath: "/channels/matrix",
-        blurb: "matrix channel"
+        id: "whatsapp",
+        label: "WhatsApp",
+        selectionLabel: "WhatsApp",
+        docsPath: "/channels/whatsapp",
+        blurb: "whatsapp channel"
       },
       capabilities: { chatTypes: ["direct"] },
       config: {
@@ -123,7 +123,7 @@ describe("loadZeePlugins", () => {
   });
 } };`,
       dir: bundledDir,
-      filename: "matrix.ts",
+      filename: "whatsapp.ts",
     });
     process.env.ZEE_BUNDLED_PLUGINS_DIR = bundledDir;
 
@@ -131,17 +131,17 @@ describe("loadZeePlugins", () => {
       cache: false,
       config: {
         plugins: {
-          allow: ["matrix"],
+          allow: ["whatsapp"],
           entries: {
-            matrix: { enabled: true },
+            whatsapp: { enabled: true },
           },
         },
       },
     });
 
-    const matrix = registry.plugins.find((entry) => entry.id === "matrix");
-    expect(matrix?.status).toBe("loaded");
-    expect(registry.channels.some((entry) => entry.plugin.id === "matrix")).toBe(true);
+    const whatsapp = registry.plugins.find((entry) => entry.id === "whatsapp");
+    expect(whatsapp?.status).toBe("loaded");
+    expect(registry.channels.some((entry) => entry.plugin.id === "whatsapp")).toBe(true);
   });
 
   it("enables bundled memory plugin when selected by slot", () => {

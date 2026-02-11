@@ -12,12 +12,12 @@ Text is supported everywhere; media and reactions vary by channel.
 ## Supported channels
 
 - [WhatsApp](/channels/whatsapp) — Most popular; uses Baileys and requires QR pairing.
-- [Matrix](/channels/matrix) — Matrix homeserver; supports rooms (and optional E2EE).
+- [WhatsApp](/channels/whatsapp) — WhatsApp homeserver; supports rooms (and optional E2EE).
 
 ## Notes
 
 - Channels can run simultaneously; configure multiple and Zee will route per chat.
-- Fastest setup is usually **Matrix** (access token + homeserver). WhatsApp requires QR pairing and
+- Fastest setup is usually **WhatsApp** (access token + homeserver). WhatsApp requires QR pairing and
   stores more state on disk.
 - Group behavior varies by channel; see [Groups](/concepts/groups).
 - DM pairing and allowlists are enforced for safety; see [Security](/gateway/security).

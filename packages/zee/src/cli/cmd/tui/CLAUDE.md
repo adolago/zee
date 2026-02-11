@@ -8,7 +8,7 @@ The TUI is the interactive terminal interface for Zee. It renders a full-screen 
 
 ## Build and Dev
 
-From `packages/zee-core/`:
+From `packages/zee/`:
 
 ```bash
 bun dev                    # Run dev mode (uses source directly)
@@ -21,7 +21,7 @@ After building, verify the binary: `./script/verify-binary.sh`
 
 ## Path Aliases
 
-Defined in `packages/zee-core/tsconfig.json`:
+Defined in `packages/zee/tsconfig.json`:
 
 - `@tui/*` -> `src/cli/cmd/tui/*` (this directory)
 - `@/*` -> `src/*` (package root)

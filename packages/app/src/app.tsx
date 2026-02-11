@@ -44,13 +44,11 @@ function UiI18nBridge(props: ParentProps) {
 
 declare global {
   interface Window {
-    __AGENT_CORE__?: { updaterEnabled?: boolean; serverPassword?: string; deepLinks?: string[] }
     __ZEE__?: { updaterEnabled?: boolean; serverPassword?: string; deepLinks?: string[] }
   }
 }
 
 const PERSONA_THEME_OVERRIDE_KEY = "zee.persona-theme-override"
-const LEGACY_PERSONA_THEME_OVERRIDE_KEY = "agent-core.persona-theme-override"
 
 function PersonaThemeBridge(props: ParentProps) {
   const persona = usePersona()
@@ -59,7 +57,7 @@ function PersonaThemeBridge(props: ParentProps) {
   createEffect(() => {
     const id = persona.id()
     const override =
-      localStorage.getItem(PERSONA_THEME_OVERRIDE_KEY) ?? localStorage.getItem(LEGACY_PERSONA_THEME_OVERRIDE_KEY)
+      localStorage.getItem(PERSONA_THEME_OVERRIDE_KEY)
     if (override === "true") return
     if (isPersonaId(id) && theme.themes()[id]) {
       theme.setTheme(id)
@@ -120,9 +118,9 @@ export function AppInterface(props: { defaultUrl?: string }) {
   const defaultServerUrl = () => {
     if (props.defaultUrl) return props.defaultUrl
     if (stored) return stored
-    if (location.hostname.includes("opencode.ai")) return "http://localhost:4096"
+    if (["zee-bot.com"].some((domain) => location.hostname.includes(domain))) return "http://localhost:4096"
     if (import.meta.env.DEV)
-      return `http://${import.meta.env.VITE_AGENT_CORE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_AGENT_CORE_SERVER_PORT ?? "4096"}`
+      return `http://${import.meta.env.VITE_ZEE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_ZEE_SERVER_PORT ?? "4096"}`
 
     return window.location.origin
   }

@@ -108,7 +108,7 @@ describe("gateway tool", () => {
     expect(tool).toBeDefined();
     if (!tool) throw new Error("missing gateway tool");
 
-    const raw = '{\n  channels: { matrix: { enabled: true } }\n}\n';
+    const raw = '{\n  channels: { whatsapp: { enabled: true } }\n}\n';
     await tool.execute("call4", {
       action: "config.patch",
       raw,

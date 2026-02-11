@@ -13,7 +13,6 @@ import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel } from "@tui/component/dialog-model"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
-import { DialogThemeList } from "@tui/component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogLegend } from "./ui/dialog-legend"
 import { DialogReleaseButton } from "./ui/dialog-release-button"
@@ -21,7 +20,7 @@ import { WhichKey } from "@tui/component/which-key"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { KeybindProvider } from "@tui/context/keybind"
-import { ThemeProvider, useTheme, isNoColorEnabled, generateMonochromeTheme, resolveTheme } from "@tui/context/theme"
+import { ThemeProvider, isNoColorEnabled, generateMonochromeTheme, resolveTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
 import { Session } from "@tui/routes/session"
 import { PromptHistoryProvider } from "./component/prompt/history"
@@ -156,7 +155,6 @@ function App() {
   const command = useCommandDialog()
   const sdk = useSDK()
   const toast = useToast()
-  const { theme, mode, setMode } = useTheme()
   const sync = useSync()
   const exit = useExit()
   const promptRef = usePromptRef()
@@ -490,27 +488,6 @@ function App() {
       category: "System",
     },
     {
-      title: "Switch theme",
-      value: "theme.switch",
-      keybind: "theme_list",
-      slash: {
-        name: "themes",
-      },
-      onSelect: () => {
-        dialog.replace(() => <DialogThemeList />)
-      },
-      category: "System",
-    },
-    {
-      title: "Toggle appearance",
-      value: "theme.switch_mode",
-      onSelect: (dialog) => {
-        setMode(mode() === "dark" ? "light" : "dark")
-        dialog.clear()
-      },
-      category: "System",
-    },
-    {
       get title() {
         return kv.get("animations_enabled", true) ? "Disable animations" : "Enable animations"
       },
@@ -725,8 +702,6 @@ function ErrorComponent(props: {
   }
 
   issueURL.searchParams.set("zee-version", Installation.VERSION)
-  // Legacy issue form field id (older templates).
-  issueURL.searchParams.set("agent-core-version", Installation.VERSION)
 
   const copyIssueURL = () => {
     Clipboard.copy(issueURL.toString()).then(() => {

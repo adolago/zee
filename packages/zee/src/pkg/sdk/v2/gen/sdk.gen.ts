@@ -35,7 +35,6 @@ import type {
   FindSymbolsResponses,
   FindTextResponses,
   FormatterStatusResponses,
-  GatewayMatrixSendResponses,
   GatewayWhatsappSendResponses,
   HealthCheckResponses,
   HealthStatusResponses,
@@ -247,7 +246,7 @@ class HeyApiRegistry<T> {
   get(key?: string): T {
     const instance = this.instances.get(key ?? this.defaultKey)
     if (!instance) {
-      throw new Error(`No SDK client found. Create one with "new AgentCoreClient()" to fix this error.`)
+      throw new Error(`No SDK client found. Create one with "createZeeClient()" to fix this error.`)
     }
     return instance
   }
@@ -328,7 +327,7 @@ export class App extends HeyApiClient {
   /**
    * List agents
    *
-   * Get a list of all available AI agents in the agent-core system.
+   * Get a list of all available AI agents in the Zee system.
    */
   public agents<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<AppAgentsResponses, unknown, ThrowOnError>({
@@ -368,7 +367,7 @@ export class Instance extends HeyApiClient {
   /**
    * Dispose instance
    *
-   * Clean up and dispose the current agent-core instance, releasing all resources.
+   * Clean up and dispose the current Zee instance, releasing all resources.
    */
   public dispose<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).post<InstanceDisposeResponses, unknown, ThrowOnError>({
@@ -380,7 +379,7 @@ export class Instance extends HeyApiClient {
   /**
    * Dispose instance
    *
-   * Clean up and dispose the current agent-core instance, releasing all resources.
+   * Clean up and dispose the current Zee instance, releasing all resources.
    */
   public dispose2<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).post<InstanceDispose2Responses, unknown, ThrowOnError>({
@@ -394,7 +393,7 @@ export class Pty extends HeyApiClient {
   /**
    * List PTY sessions
    *
-   * Get a list of all active pseudo-terminal (PTY) sessions managed by agent-core.
+   * Get a list of all active pseudo-terminal (PTY) sessions managed by zee.
    */
   public list<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<PtyListResponses, unknown, ThrowOnError>({ url: "/pty", ...options })
@@ -526,7 +525,7 @@ export class Config extends HeyApiClient {
   /**
    * Get configuration
    *
-   * Retrieve the current agent-core configuration settings and preferences.
+   * Retrieve the current Zee configuration settings and preferences.
    */
   public get<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<ConfigGetResponses, unknown, ThrowOnError>({
@@ -538,7 +537,7 @@ export class Config extends HeyApiClient {
   /**
    * Update configuration
    *
-   * Update agent-core configuration settings and preferences.
+   * Update Zee configuration settings and preferences.
    */
   public update<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -639,7 +638,7 @@ export class Path extends HeyApiClient {
   /**
    * Get paths
    *
-   * Retrieve the current working directory and related path information for the agent-core instance.
+   * Retrieve the current working directory and related path information for the Zee instance.
    */
   public get<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<PathGetResponses, unknown, ThrowOnError>({ url: "/path", ...options })
@@ -825,7 +824,7 @@ export class Session extends HeyApiClient {
   /**
    * List sessions
    *
-   * Get a list of all agent-core sessions, sorted by most recently updated.
+   * Get a list of all Zee sessions, sorted by most recently updated.
    */
   public list<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -859,7 +858,7 @@ export class Session extends HeyApiClient {
   /**
    * Create session
    *
-   * Create a new agent-core session for interacting with AI assistants and managing conversations.
+   * Create a new zee session for interacting with AI assistants and managing conversations.
    */
   public create<ThrowOnError extends boolean = false>(
     parameters?: {
@@ -1015,7 +1014,7 @@ export class Session extends HeyApiClient {
   /**
    * Get session
    *
-   * Retrieve detailed information about a specific agent-core session.
+   * Retrieve detailed information about a specific zee session.
    */
   public get<ThrowOnError extends boolean = false>(
     parameters: {
@@ -1073,12 +1072,12 @@ export class Session extends HeyApiClient {
   /**
    * Session handoff
    *
-   * Prepare a session for handoff to another surface (cli, web, api, whatsapp, matrix). Returns session state and a handoff token for resumption.
+   * Prepare a session for handoff to another surface (cli, web, api, whatsapp). Returns session state and a handoff token for resumption.
    */
   public handoff<ThrowOnError extends boolean = false>(
     parameters: {
       sessionID: string
-      targetSurface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
+      targetSurface?: "cli" | "web" | "api" | "whatsapp"
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -1849,7 +1848,7 @@ export class Command extends HeyApiClient {
   /**
    * List commands
    *
-   * Get a list of all available commands in the agent-core system.
+   * Get a list of all available commands in the Zee system.
    */
   public list<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<CommandListResponses, unknown, ThrowOnError>({
@@ -2684,7 +2683,7 @@ export class Project extends HeyApiClient {
   /**
    * List all projects
    *
-   * Get a list of projects that have been opened with agent-core.
+   * Get a list of projects that have been opened with zee.
    */
   public list<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<ProjectListResponses, unknown, ThrowOnError>({
@@ -2696,7 +2695,7 @@ export class Project extends HeyApiClient {
   /**
    * Get current project
    *
-   * Retrieve the currently active project that agent-core is working with.
+   * Retrieve the currently active project that zee is working with.
    */
   public current<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
     return (options?.client ?? this.client).get<ProjectCurrentResponses, unknown, ThrowOnError>({
@@ -3368,29 +3367,10 @@ export class Whatsapp extends HeyApiClient {
   }
 }
 
-export class Matrix extends HeyApiClient {
-  /**
-   * Send Matrix message (via Zee gateway)
-   *
-   * Send a Matrix message via the local Zee gateway (WebSocket RPC).
-   */
-  public send<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
-    return (options?.client ?? this.client).post<GatewayMatrixSendResponses, unknown, ThrowOnError>({
-      url: "/gateway/matrix/send",
-      ...options,
-    })
-  }
-}
-
 export class Gateway extends HeyApiClient {
   private _whatsapp?: Whatsapp
   get whatsapp(): Whatsapp {
     return (this._whatsapp ??= new Whatsapp({ client: this.client }))
-  }
-
-  private _matrix?: Matrix
-  get matrix(): Matrix {
-    return (this._matrix ??= new Matrix({ client: this.client }))
   }
 }
 
@@ -3408,12 +3388,12 @@ export class Openapi extends HeyApiClient {
   }
 }
 
-export class AgentCoreClient extends HeyApiClient {
-  public static readonly __registry = new HeyApiRegistry<AgentCoreClient>()
+export class ZeeClient extends HeyApiClient {
+  public static readonly __registry = new HeyApiRegistry<ZeeClient>()
 
   constructor(args?: { client?: Client; key?: string }) {
     super(args)
-    AgentCoreClient.__registry.set(this, args?.key)
+    ZeeClient.__registry.set(this, args?.key)
   }
 
   private _event?: Event

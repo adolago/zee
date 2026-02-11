@@ -2,7 +2,7 @@
 
 ## Overview
 
-agent-core supports **runtime plugins** that can:
+Zee supports **runtime plugins** that can:
 
 - register hooks (e.g., chat parameter transforms, tool execution hooks)
 - register tools
@@ -16,13 +16,13 @@ The runtime plugin system is intentionally simple: plugins are loaded, their hoo
 
 These are the types used by plugin authors and by the runtime loader:
 
-- `packages/zee-core/src/pkg/plugin/index.ts` (exported via `@zee/plugin`)
-- `packages/zee-core/src/pkg/plugin/tool.ts` (tool contracts)
-- `packages/zee-core/src/pkg/plugin/shell.ts` (Bun shell contracts)
+- `packages/zee/src/pkg/plugin/index.ts` (exported via `@zee/plugin`)
+- `packages/zee/src/pkg/plugin/tool.ts` (tool contracts)
+- `packages/zee/src/pkg/plugin/shell.ts` (Bun shell contracts)
 
 ### Runtime Loader (Kernel)
 
-- `packages/zee-core/src/plugin/index.ts`
+- `packages/zee/src/plugin/index.ts`
 
 This module is responsible for:
 
@@ -62,7 +62,6 @@ PLAID_CLIENT_ID=...
 PLAID_SECRET=...
 ALPHA_VANTAGE_API_KEY=...
 WHATSAPP_TOKEN=...
-MATRIX_ACCESS_TOKEN=...
 ```
 
 ## Security Considerations

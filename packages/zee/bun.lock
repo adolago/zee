@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@zee/core",
+      "name": "@zee/zee",
       "dependencies": {
         "@actions/core": "1.11.1",
         "@actions/github": "6.0.1",

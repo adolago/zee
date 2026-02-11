@@ -1,9 +1,9 @@
 # Zee
 
-[![Version](https://img.shields.io/npm/v/@zee/core?style=flat-square)](https://www.npmjs.com/package/@zee/core)
+[![Version](https://img.shields.io/npm/v/%40zee%2Fzee?style=flat-square)](https://www.npmjs.com/package/@zee/zee)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-Zee is [opencode](https://github.com/sst/opencode) wrapped in [openclaw](https://github.com/openclaw/openclaw) -- a CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp, Matrix).
+Zee is a unified CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp).
 
 ## Ecosystem
 
@@ -29,15 +29,15 @@ Zee is [opencode](https://github.com/sst/opencode) wrapped in [openclaw](https:/
 ### Install (npm)
 
 ```bash
-npm install -g @zee/core
+npm install -g @zee/zee
 # or nightly builds
-npm install -g @zee/core@nightly
+npm install -g @zee/zee@nightly
 ```
 
 ### Install (script)
 
 ```bash
-curl -fsSL https://zee.ai/install | bash
+curl -fsSL https://raw.githubusercontent.com/adolago/zee/dev/install | bash
 ```
 
 ### Install from source
@@ -51,11 +51,11 @@ cd zee
 bun install
 
 # Build the project
-cd packages/zee-core
+cd packages/zee
 bun run build
 
 # Link the binary
-ln -sf ~/.local/src/zee/packages/zee-core/dist/@zee/core-linux-x64/bin/zee ~/.bun/bin/zee
+ln -sf ~/.local/src/zee/packages/zee/dist/@zee/zee-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
 ### Install Stanley (optional, for investing features)
@@ -96,11 +96,11 @@ Defaults follow XDG:
 - State: `~/.local/state/zee`
 - Workspace (default worktree): `~/.local/share/zee/worktree`
 
-To co-locate everything under a single state root, set `ZEE_STATE_DIR` (legacy: `AGENT_CORE_STATE_DIR`, `OPENCODE_STATE_DIR`).
+To co-locate everything under a single state root, set `ZEE_STATE_DIR`.
 This makes config/data/cache/logs/workspace resolve under that directory as `config/`, `data/`, `cache/`, `logs/`,
 and `workspace/`.
 
-To override only the workspace location, set `ZEE_WORKSPACE_DIR` (legacy: `AGENT_CORE_WORKSPACE_DIR`, `OPENCODE_WORKSPACE_DIR`).
+To override only the workspace location, set `ZEE_WORKSPACE_DIR`.
 
 Use `zee paths` to print the resolved locations.
 
@@ -172,18 +172,17 @@ zee --no-daemon   # run without the daemon (local worker only)
 Ensure the daemon is running first (systemd service recommended for always-on messaging).
 See `docs/tui-vim-mode.md` for Vim keybindings.
 
-**Daemon mode (gateway is opt-in; development/manual use only):**
+**Daemon mode (gateway embedded):**
 
 ```bash
 zee daemon --hostname 127.0.0.1 --port 3210
-zee daemon --gateway
 ```
 
 ## Architecture
 
 ```
 zee/
-├── packages/zee-core/    # Main CLI/TUI/daemon
+├── packages/zee/    # Main CLI/TUI/daemon
 ├── src/
 │   ├── personas/           # Persona logic and routing
 │   ├── memory/             # Qdrant semantic memory
@@ -203,14 +202,14 @@ Zee is the only active persona. The engine still exposes domain toolsets under n
 
 - **Semantic Memory**: Vector-based memory with Qdrant for context persistence
 - **Single Persona Runtime**: No persona switching or delegation required
-- **Embedded Gateway**: Optional Zee messaging gateway launched by the daemon
+- **Embedded Gateway**: Zee messaging gateway launched and supervised by the daemon
 
 ## Usage with Zee Gateway
 
-The Zee gateway is launched and supervised by the daemon only when explicitly enabled:
+The Zee gateway is always embedded and supervised by the daemon:
 
 ```bash
-zee daemon --gateway
+zee daemon --hostname 127.0.0.1 --port 3210
 ```
 
 For always-on messaging at boot, install the systemd service:
@@ -239,10 +238,10 @@ The `--systemd-only` flag writes `daemon.systemd_only=true` to enforce a systemd
 bun run typecheck
 
 # Core tests
-cd packages/zee-core && bun test
+cd packages/zee && bun test
 
 # Build + verify binary
-cd packages/zee-core && bun run build && ./script/verify-binary.sh
+cd packages/zee && bun run build && ./script/verify-binary.sh
 ```
 
 ## Wide events

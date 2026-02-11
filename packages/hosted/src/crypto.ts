@@ -7,7 +7,7 @@ import { env } from "./env"
 const deriveKey = (input: string) => createHash("sha256").update(input).digest()
 
 const KEY_FILE = path.join(env.DATA_DIR, "vault.key")
-const LEGACY_DEV_KEY = "agent-core-hosted-dev"
+const LEGACY_DEV_KEY = "zee-hosted-dev"
 
 function parseVaultKey(value: string): Buffer | null {
   const trimmed = value.trim()
@@ -110,7 +110,7 @@ const resolveVaultKey = () => {
   } catch {
     // If migration fails, refuse to silently lose access to existing encrypted data.
     throw new Error(
-      "Hosted vault key migration failed. Set HOSTED_VAULT_KEY (or AGENT_CORE_HOSTED_VAULT_KEY) to the previous value to recover, then rotate.",
+      "Hosted vault key migration failed. Set HOSTED_VAULT_KEY to the previous value to recover, then rotate.",
     )
   }
   writeKeyFile(next)

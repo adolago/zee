@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 APP=zee
-DEFAULT_NPM_PACKAGE="@zee/core"
+DEFAULT_NPM_PACKAGE="@zee/zee"
 DEFAULT_GITHUB_REPO="adolago/zee"
 
 MUTED='\033[0;2m'
@@ -22,8 +22,8 @@ Options:
         --no-modify-path    Don't modify shell config files (.zshrc, .bashrc, etc.)
 
 Examples:
-    curl -fsSL https://zee.ai/install | bash
-    curl -fsSL https://zee.ai/install | bash -s -- --version 0.2.11-nightly
+    curl -fsSL https://raw.githubusercontent.com/adolago/zee/dev/install | bash
+    curl -fsSL https://raw.githubusercontent.com/adolago/zee/dev/install | bash -s -- --version 0.2.11-nightly
     ./install --binary /path/to/zee
 EOF
 }
@@ -155,14 +155,10 @@ else
     fi
 
     if [ -z "$requested_version" ]; then
-        npm_package="${ZEE_NPM_PACKAGE:-${AGENT_CORE_NPM_PACKAGE:-$DEFAULT_NPM_PACKAGE}}"
+        npm_package="${ZEE_NPM_PACKAGE:-$DEFAULT_NPM_PACKAGE}"
         encoded_package="${npm_package//@/%40}"
         encoded_package="${encoded_package//\//%2F}"
         specific_version="$(curl -s "${registry:-https://registry.npmjs.org}/${encoded_package}/latest" | sed -n 's/.*"version":"\\([^"]*\\)".*/\\1/p' | head -n1)"
-        if [[ $? -ne 0 || -z "$specific_version" ]]; then
-            # Fallback to legacy package if the scoped package is unavailable.
-            specific_version="$(curl -s https://registry.npmjs.org/agent-core/latest | sed -n 's/.*"version":"\\([^"]*\\)".*/\\1/p' | head -n1)"
-        fi
         if [[ $? -ne 0 || -z "$specific_version" ]]; then
             echo -e "${RED}Failed to fetch npm version information${NC}"
             exit 1
@@ -173,7 +169,7 @@ else
         specific_version=$requested_version
     fi
 
-    github_repo="${ZEE_GITHUB_REPO:-${AGENT_CORE_GITHUB_REPO:-$DEFAULT_GITHUB_REPO}}"
+    github_repo="${ZEE_GITHUB_REPO:-$DEFAULT_GITHUB_REPO}"
     url="https://github.com/${github_repo}/releases/download/v${specific_version}/$filename"
 
     # Verify the asset exists before downloading
@@ -326,11 +322,7 @@ download_and_install() {
     local installed="false"
     for candidate in \
         "$tmp_dir/$APP" \
-        "$tmp_dir/${APP}.exe" \
-        "$tmp_dir/agent-core" \
-        "$tmp_dir/agent-core.exe" \
-        "$tmp_dir/opencode" \
-        "$tmp_dir/opencode.exe"; do
+        "$tmp_dir/${APP}.exe"; do
         if [ -f "$candidate" ]; then
             mv "$candidate" "$INSTALL_DIR/$install_name"
             installed="true"

@@ -27,12 +27,12 @@ if [[ ! -x "$RESOLVED" ]]; then
 fi
 
 shopt -s nullglob
-DIST_CANDIDATES=("$ROOT/packages/zee-core/dist/@zee"/*/bin/zee)
+DIST_CANDIDATES=("$ROOT/packages/zee/dist/@zee"/*/bin/zee)
 shopt -u nullglob
 
 if (( ${#DIST_CANDIDATES[@]} == 0 )); then
   echo "No built binaries found in dist." >&2
-  echo "Run: cd packages/zee-core && bun run build" >&2
+  echo "Run: cd packages/zee && bun run build" >&2
   exit 1
 fi
 
@@ -47,13 +47,13 @@ done
 if [[ -z "$MATCHED" ]]; then
   echo "Binary does not point to a local build." >&2
   echo "Resolved: $RESOLVED" >&2
-  echo "Expected under: $ROOT/packages/zee-core/dist/@zee/*/bin/zee" >&2
+  echo "Expected under: $ROOT/packages/zee/dist/@zee/*/bin/zee" >&2
   exit 1
 fi
 
-if find "$ROOT/packages/zee-core/src" -type f -newer "$RESOLVED" -print -quit | grep -q .; then
+if find "$ROOT/packages/zee/src" -type f -newer "$RESOLVED" -print -quit | grep -q .; then
   echo "Binary is older than source files." >&2
-  echo "Rebuild: cd packages/zee-core && bun run build" >&2
+  echo "Rebuild: cd packages/zee && bun run build" >&2
   exit 1
 fi
 

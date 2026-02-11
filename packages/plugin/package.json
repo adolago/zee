@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@opencode-ai/plugin",
+  "name": "@zee/plugin",
   "version": "1.1.48",
   "type": "module",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "dist"
   ],
   "dependencies": {
-    "@zee/core": "workspace:*",
+    "@zee/zee": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

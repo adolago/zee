@@ -5,8 +5,8 @@ import { cmd } from "./cmd"
 import { bootstrap } from "../bootstrap"
 import { Command } from "../../command"
 import { EOL } from "os"
-import { createAgentCoreClient as createEventClient } from "@zee/sdk"
-import { createAgentCoreClient, type AgentCoreClient } from "@zee/sdk/v2"
+import { createZeeClient as createEventClient } from "@zee/sdk"
+import { createZeeClient, type ZeeClient } from "@zee/sdk/v2"
 import { Server } from "../../server/server"
 import { Provider } from "../../provider/provider"
 import { Agent } from "../../agent/agent"
@@ -295,7 +295,7 @@ export const RunCommand = cmd({
     }
 
     const execute = async (
-      sdk: AgentCoreClient,
+      sdk: ZeeClient,
       eventClient: ReturnType<typeof createEventClient> | null,
       sessionID: string,
       resolvedAgent: string | undefined,
@@ -465,7 +465,7 @@ export const RunCommand = cmd({
       if (errorMsg) process.exit(1)
     }
 
-    const maybeTriggerSessionCompletedHooks = async (sdk: AgentCoreClient, sessionID: string) => {
+    const maybeTriggerSessionCompletedHooks = async (sdk: ZeeClient, sessionID: string) => {
       try {
         const todoResult = await sdk.session.todo({ sessionID })
         const todos = todoResult.data ?? []
@@ -501,7 +501,7 @@ export const RunCommand = cmd({
     }
 
     if (args.attach) {
-      const sdk = createAgentCoreClient({ baseUrl: args.attach })
+      const sdk = createZeeClient({ baseUrl: args.attach })
       const eventClient = createEventClient({ baseUrl: args.attach })
 
       const sessionID = await (async () => {
@@ -554,7 +554,7 @@ export const RunCommand = cmd({
         const request = new Request(input, init)
         return Server.App().fetch(request)
       }) as typeof globalThis.fetch
-      const sdk = createAgentCoreClient({ baseUrl: "http://zee.internal", fetch: fetchFn })
+      const sdk = createZeeClient({ baseUrl: "http://zee.internal", fetch: fetchFn })
 
       // Create a local event stream using GlobalBus directly instead of SSE
       // This avoids issues with Server.App().fetch() not properly streaming SSE

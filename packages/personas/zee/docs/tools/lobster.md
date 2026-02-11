@@ -72,7 +72,7 @@ Example: map input items into tool calls:
 
 ```bash
 gog.gmail.search --query 'newer_than:1d' \
-  | zee.invoke --tool message --action send --each --item-key message --args-json '{"provider":"matrix","to":"!room:example.com"}'
+  | zee.invoke --tool message --action send --each --item-key message --args-json '{"provider":"whatsapp","to":"!room:example.com"}'
 ```
 
 ## JSON-only LLM steps (llm-task)

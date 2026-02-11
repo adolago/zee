@@ -18,12 +18,42 @@ import type {
   SpawnDroneParams,
   SubmitTaskParams,
   KillWorkerParams,
+  ListEventsParams,
+  ListEventsResult,
+  RunTaskParams,
+  TaskRunResult,
 } from "./types";
 import { DEFAULT_SOCKET_PATH } from "./types";
+import { Orchestrator, type OrchestratorOptions } from "../swarm/orchestrator";
 
 type CommandHandler<TParams = unknown, TResult = unknown> = (
   params: TParams
 ) => Promise<TResult>;
+
+interface OrchestratorLike {
+  spawnDrone(params: SpawnDroneParams): Promise<WorkerInfo>;
+  submitTask(params: SubmitTaskParams): Promise<TaskInfo>;
+  runTask(params: RunTaskParams): Promise<TaskRunResult>;
+  listWorkers(): WorkerInfo[];
+  listTasks(): TaskInfo[];
+  killWorker(workerId: string): Promise<boolean>;
+  listEvents(cursor?: number, limit?: number): ListEventsResult;
+  getSnapshot(): {
+    queueDepth: number;
+    activeWorkers: number;
+    workers: number;
+    tasks: number;
+    draining: boolean;
+  };
+  shutdown(): Promise<void>;
+}
+
+export interface DaemonServerOptions {
+  socketPath?: string;
+  orchestrator?: OrchestratorLike;
+  orchestration?: OrchestratorOptions;
+  version?: string;
+}
 
 /**
  * Daemon IPC Server
@@ -35,15 +65,23 @@ export class DaemonServer extends EventEmitter {
   private socketPath: string;
   private startedAt: Date;
   private handlers: Map<DaemonCommand, CommandHandler> = new Map();
+  private readonly version: string;
+  private readonly orchestrator: OrchestratorLike;
 
-  constructor(socketPath?: string) {
+  constructor(socketPathOrOptions?: string | DaemonServerOptions) {
     super();
+    const options: DaemonServerOptions =
+      typeof socketPathOrOptions === "string"
+        ? { socketPath: socketPathOrOptions }
+        : socketPathOrOptions ?? {};
+
     this.socketPath =
-      socketPath ||
+      options.socketPath ||
       process.env.ZEE_IPC_SOCKET ||
-      process.env.AGENT_CORE_IPC_SOCKET ||
       DEFAULT_SOCKET_PATH;
     this.startedAt = new Date();
+    this.version = options.version ?? process.env.npm_package_version ?? "0.1.0";
+    this.orchestrator = options.orchestrator ?? new Orchestrator(options.orchestration);
 
     // Register default handlers
     this.registerDefaultHandlers();
@@ -85,6 +123,10 @@ export class DaemonServer extends EventEmitter {
    * Stop the server and cleanup.
    */
   async stop(): Promise<void> {
+    await this.orchestrator.shutdown().catch((error) => {
+      this.emit("orchestratorError", error);
+    });
+
     return new Promise((resolve) => {
       if (!this.server) {
         resolve();
@@ -195,13 +237,17 @@ export class DaemonServer extends EventEmitter {
   private registerDefaultHandlers(): void {
     // Status handler
     this.handle<undefined, DaemonStatus>("status", async () => {
+      const snapshot = this.orchestrator.getSnapshot();
       return {
         running: true,
         pid: process.pid,
         uptime: Date.now() - this.startedAt.getTime(),
-        workers: 0, // Will be populated by Queen integration
-        tasks: 0,
-        version: "0.1.0",
+        activeWorkers: snapshot.activeWorkers,
+        workers: snapshot.workers,
+        tasks: snapshot.tasks,
+        queueDepth: snapshot.queueDepth,
+        draining: snapshot.draining,
+        version: this.version,
       };
     });
 
@@ -217,28 +263,50 @@ export class DaemonServer extends EventEmitter {
       return { message: "Shutdown initiated" };
     });
 
-    // Placeholder handlers - will be implemented with Queen integration
     this.handle<SpawnDroneParams, WorkerInfo>("spawn_drone", async (params) => {
-      throw new Error("spawn_drone not yet implemented - requires Queen integration");
+      if (!params?.persona || !params?.prompt) {
+        throw new Error("spawn_drone requires persona and prompt");
+      }
+      return this.orchestrator.spawnDrone(params);
     });
 
     this.handle<SubmitTaskParams, TaskInfo>("submit_task", async (params) => {
-      throw new Error("submit_task not yet implemented - requires Queen integration");
+      if (!params?.persona || !params?.description || !params?.prompt) {
+        throw new Error("submit_task requires persona, description, and prompt");
+      }
+      return this.orchestrator.submitTask(params);
+    });
+
+    this.handle<RunTaskParams, TaskRunResult>("run_task", async (params) => {
+      if (!params?.persona || !params?.prompt) {
+        throw new Error("run_task requires persona and prompt");
+      }
+      return this.orchestrator.runTask(params);
     });
 
     this.handle<undefined, WorkerInfo[]>("list_workers", async () => {
-      return []; // Will be populated by Queen integration
+      return this.orchestrator.listWorkers();
     });
 
     this.handle<undefined, TaskInfo[]>("list_tasks", async () => {
-      return []; // Will be populated by Queen integration
+      return this.orchestrator.listTasks();
     });
 
     this.handle<KillWorkerParams, { killed: boolean }>(
       "kill_worker",
       async (params) => {
-        throw new Error("kill_worker not yet implemented - requires Queen integration");
+        if (!params?.workerId) {
+          throw new Error("kill_worker requires workerId");
+        }
+        const killed = await this.orchestrator.killWorker(params.workerId);
+        return { killed };
       }
     );
+
+    this.handle<ListEventsParams, ListEventsResult>("list_events", async (params) => {
+      const cursor = params?.cursor ?? 0;
+      const limit = params?.limit ?? 100;
+      return this.orchestrator.listEvents(cursor, limit);
+    });
   }
 }

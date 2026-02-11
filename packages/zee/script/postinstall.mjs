@@ -82,7 +82,7 @@ function findBinary() {
     throw new Error(`Unsupported platform: ${os.platform()}`)
   }
   const { platform, arch, libc } = detected
-  const baseName = `core-${platform}-${arch}${libc}`
+  const baseName = `zee-${platform}-${arch}${libc}`
   const scope = resolvePackageScope()
   const packageNames = [scope ? `${scope}/${baseName}` : null, baseName].filter(Boolean)
   const binaryName = platform === "windows" ? "zee.exe" : "zee"

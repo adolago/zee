@@ -31,7 +31,7 @@ export function registerBrowserCli(program: Command) {
           true,
         )}\n\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/browser",
-          "docs.zee/cli/browser",
+          "zee-bot.com/cli/browser",
         )}\n`,
     )
     .action(() => {

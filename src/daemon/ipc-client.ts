@@ -11,7 +11,6 @@ import type {
   DaemonRequest,
   DaemonResponse,
   IPCClientOptions,
-  DEFAULT_SOCKET_PATH,
 } from "./types";
 
 export { DEFAULT_SOCKET_PATH } from "./types";
@@ -33,7 +32,6 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
   const socketPath =
     options.socketPath ||
     process.env.ZEE_IPC_SOCKET ||
-    process.env.AGENT_CORE_IPC_SOCKET ||
     getDefaultSocketPath();
   const timeoutMs = options.timeoutMs ?? 10000;
 

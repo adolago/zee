@@ -128,7 +128,7 @@ describe("Agent-specific sandbox config", () => {
     // main agent should not be sandboxed
     const mainContext = await resolveSandboxContext({
       config: cfg,
-      sessionKey: "agent:main:matrix:group:789",
+      sessionKey: "agent:main:whatsapp:group:789",
       workspaceDir: "/tmp/test-main",
     });
     expect(mainContext).toBeNull();

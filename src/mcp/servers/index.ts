@@ -7,7 +7,7 @@
  * - portfolio: Financial tools via Stanley
  *
  * Each server runs as a separate process using stdio transport.
- * Register them in your agent-core config as local MCP servers.
+ * Register them in your zee config as local MCP servers.
  *
  * Example config:
  * ```json

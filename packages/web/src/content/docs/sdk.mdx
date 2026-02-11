@@ -1,13 +1,13 @@
 ---
 title: SDK
-description: Type-safe JS client for opencode server.
+description: Type-safe JS client for Zee server.
 ---
 
 import config from "../../../config.mjs"
 export const typesUrl = `${config.github}/blob/dev/packages/sdk/js/src/gen/types.gen.ts`
 
-The opencode JS/TS SDK provides a type-safe client for interacting with the server.
-Use it to build integrations and control opencode programmatically.
+The Zee JS/TS SDK provides a type-safe client for interacting with Zee.
+Use it to build integrations and control Zee programmatically.
 
 [Learn more](/docs/server) about how the server works. For examples, check out the [projects](/docs/ecosystem#projects) built by the community.
 
@@ -25,12 +25,12 @@ npm install @zee/sdk
 
 ## Create client
 
-Create an instance of opencode:
+Create an instance of Zee:
 
 ```javascript
-import { createAgentCore } from "@zee/sdk"
+import { createZee } from "@zee/sdk"
 
-const { client } = await createAgentCore()
+const { client } = await createZee()
 ```
 
 This starts both a server and a client
@@ -52,9 +52,9 @@ This starts both a server and a client
 You can pass a configuration object to customize behavior. The instance still picks up your `zee.json`, but you can override or add configuration inline:
 
 ```javascript
-import { createAgentCore } from "@zee/sdk"
+import { createZee } from "@zee/sdk"
 
-const opencode = await createAgentCore({
+const zee = await createZee({
   hostname: "127.0.0.1",
   port: 4096,
   config: {
@@ -62,19 +62,19 @@ const opencode = await createAgentCore({
   },
 })
 
-console.log(`Server running at ${opencode.server.url}`)
+console.log(`Server running at ${zee.server.url}`)
 
-opencode.server.close()
+zee.server.close()
 ```
 
 ## Client only
 
-If you already have a running instance of opencode, you can create a client instance to connect to it:
+If you already have a running instance of Zee, you can create a client instance to connect to it:
 
 ```javascript
-import { createOpencodeClient } from "@zee/sdk"
+import { createZeeClient } from "@zee/sdk"
 
-const client = createOpencodeClient({
+const client = createZeeClient({
   baseUrl: "http://localhost:4096",
 })
 ```
@@ -304,7 +304,7 @@ await client.session.prompt({
 ```javascript
 // Search and read files
 const textResults = await client.find.text({
-  query: { pattern: "function.*opencode" },
+  query: { pattern: "function.*zee" },
 })
 
 const files = await client.find.files({

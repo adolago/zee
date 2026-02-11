@@ -3,7 +3,7 @@
 #
 # Usage: ./scripts/sync-upstream.sh [--preview] [--merge] [--rebase]
 #
-# This script helps merge upstream changes into agent-core,
+# This script helps merge upstream changes into Zee,
 # preserving our customizations while incorporating new features.
 
 set -euo pipefail
@@ -59,7 +59,7 @@ if [ -z "$MODE" ]; then
     exit 0
 fi
 
-echo -e "${BLUE}=== Agent-Core Upstream Sync ===${NC}"
+echo -e "${BLUE}=== Zee Upstream Sync ===${NC}"
 echo ""
 
 # Ensure we have latest upstream
@@ -82,10 +82,10 @@ echo ""
 
 # Known conflict-prone files (our customizations)
 CONFLICT_PRONE=(
-    "packages/zee-core/src/provider/provider.ts"
-    "packages/zee-core/src/agent/agent.ts"
-    "packages/zee-core/src/cli/cmd/tui/context/theme.tsx"
-    "packages/zee-core/src/cli/cmd/tui/routes/session"
+    "packages/zee/src/provider/provider.ts"
+    "packages/zee/src/agent/agent.ts"
+    "packages/zee/src/cli/cmd/tui/context/theme.tsx"
+    "packages/zee/src/cli/cmd/tui/routes/session"
     ".zee/"
     "vendor/"
 )

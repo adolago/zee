@@ -11,7 +11,7 @@ import type {
   MemoryCategory as TypesMemoryCategory,
   VectorStorage,
 } from "./types";
-import { Log } from "../../packages/zee-core/src/util/log";
+import { Log } from "../../packages/zee/src/util/log";
 import { QDRANT_URL, QDRANT_COLLECTION_MEMORY } from "../config/constants";
 
 const log = Log.create({ service: "qdrant" });

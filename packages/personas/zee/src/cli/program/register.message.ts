@@ -33,7 +33,7 @@ ${formatHelpExamples([
   ],
 ])}
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "docs.zee/cli/message")}`,
+${theme.muted("Docs:")} ${formatDocsLink("/cli/message", "zee-bot.com/cli/message")}`,
     )
     .action(() => {
       message.help({ error: true });

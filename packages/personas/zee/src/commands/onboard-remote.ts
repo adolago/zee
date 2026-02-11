@@ -43,7 +43,7 @@ export async function promptRemoteGatewayConfig(
     await prompter.note(
       [
         "Bonjour discovery requires dns-sd or avahi-browse.",
-        "Docs: https://docs.zee/gateway/discovery",
+        "Docs: https://zee-bot.com/gateway/discovery",
       ].join("\n"),
       "Discovery",
     );
@@ -96,7 +96,7 @@ export async function promptRemoteGatewayConfig(
             `ssh -N -L 18789:127.0.0.1:18789 <user>@${host}${
               selectedBeacon.sshPort ? ` -p ${selectedBeacon.sshPort}` : ""
             }`,
-            "Docs: https://docs.zee/gateway/remote",
+            "Docs: https://zee-bot.com/gateway/remote",
           ].join("\n"),
           "SSH tunnel",
         );

@@ -69,8 +69,6 @@ export function installTestEnv(): { cleanup: () => void; tempHome: string } {
     { key: "ZEE_BRIDGE_PORT", value: process.env.ZEE_BRIDGE_PORT },
     { key: "ZEE_CANVAS_HOST_PORT", value: process.env.ZEE_CANVAS_HOST_PORT },
     { key: "ZEE_TEST_HOME", value: process.env.ZEE_TEST_HOME },
-    { key: "MATRIX_HOMESERVER_URL", value: process.env.MATRIX_HOMESERVER_URL },
-    { key: "MATRIX_ACCESS_TOKEN", value: process.env.MATRIX_ACCESS_TOKEN },
     { key: "COPILOT_GITHUB_TOKEN", value: process.env.COPILOT_GITHUB_TOKEN },
     { key: "GH_TOKEN", value: process.env.GH_TOKEN },
     { key: "GITHUB_TOKEN", value: process.env.GITHUB_TOKEN },
@@ -95,8 +93,6 @@ export function installTestEnv(): { cleanup: () => void; tempHome: string } {
   delete process.env.ZEE_BRIDGE_PORT;
   delete process.env.ZEE_CANVAS_HOST_PORT;
   // Avoid leaking real GitHub/Copilot tokens into non-live test runs.
-  delete process.env.MATRIX_HOMESERVER_URL;
-  delete process.env.MATRIX_ACCESS_TOKEN;
   delete process.env.COPILOT_GITHUB_TOKEN;
   delete process.env.GH_TOKEN;
   delete process.env.GITHUB_TOKEN;

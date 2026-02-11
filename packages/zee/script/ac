@@ -3,7 +3,7 @@
 #
 # Usage: ac [command] [args...]
 # Commands:
-#   dev (default)     Run legacy ac-dev script (nuke + self-test), then open TUI
+#   dev (default)     Run ac-dev workflow (nuke + self-test), then open TUI
 #   up                Pristine start: build + tests + self-test, then enable+start service (no TUI)
 #   start             Enable service and start it, then open TUI (fast path)
 #   stop              Stop the user service
@@ -13,10 +13,10 @@
 #   enable            Enable user service + linger (start at boot)
 #   disable           Disable user service (and stop it)
 #   tui [args...]     Open the Zee TUI (uses running service)
-#   dev [args...]     Run legacy ac-dev script (nuke + self-test)
+#   dev [args...]     Run ac-dev workflow (nuke + self-test)
 #   help              Show this help
 #
-# Symlink: ln -sf ~/.local/src/zee/packages/zee-core/script/ac ~/bin/ac
+# Symlink: ln -sf ~/.local/src/zee/packages/zee/script/ac ~/bin/ac
 
 set -euo pipefail
 
@@ -31,7 +31,7 @@ ac - Zee master command (user systemd service manager)
 Usage: ac [command] [args...]
 
 Commands:
-  dev (default)     Run legacy ac-dev script (nuke + self-test), then open TUI
+  dev (default)     Run ac-dev workflow (nuke + self-test), then open TUI
   up                Pristine start: build + tests + self-test, then enable+start service (no TUI)
   start             Enable service and start it, then open TUI (fast path)
   stop              Stop the user service
@@ -41,7 +41,7 @@ Commands:
   enable            Enable user service + linger (start at boot)
   disable           Disable user service (and stop it)
   tui [args...]     Open the Zee TUI (uses running service)
-  dev [args...]     Run legacy ac-dev script (nuke + self-test)
+  dev [args...]     Run ac-dev workflow (nuke + self-test)
   help              Show this help
 
 Examples:
@@ -197,12 +197,12 @@ cmd_dev() {
   fi
   local script_dir
   script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
-  local legacy="$script_dir/ac-dev"
-  if [[ ! -x "$legacy" ]]; then
-    echo "$LOG_PREFIX legacy script not found: $legacy" >&2
+  local workflow="$script_dir/ac-dev"
+  if [[ ! -x "$workflow" ]]; then
+    echo "$LOG_PREFIX ac-dev script not found: $workflow" >&2
     exit 1
   fi
-  exec "$legacy" "$@"
+  exec "$workflow" "$@"
 }
 
 cmd_up() {
@@ -219,13 +219,13 @@ cmd_up() {
   fi
   local script_dir
   script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
-  local legacy="$script_dir/ac-dev"
-  if [[ ! -x "$legacy" ]]; then
-    echo "$LOG_PREFIX legacy script not found: $legacy" >&2
+  local workflow="$script_dir/ac-dev"
+  if [[ ! -x "$workflow" ]]; then
+    echo "$LOG_PREFIX ac-dev script not found: $workflow" >&2
     exit 1
   fi
 
-  "$legacy" --no-tui "$@"
+  "$workflow" --no-tui "$@"
 
   # "Turn on and forget": ensure enabled for boot, and try to enable linger.
   cmd_enable

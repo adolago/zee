@@ -53,7 +53,7 @@ export function registerChannelsCli(program: Command) {
       () =>
         `\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/channels",
-          "docs.zee/cli/channels",
+          "zee-bot.com/cli/channels",
         )}\n`,
     );
 

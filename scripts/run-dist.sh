@@ -5,9 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Clear stale daemon socket to ensure standalone mode
 unset ZEE_IPC_SOCKET
-unset AGENT_CORE_IPC_SOCKET
 
-TARGET="${ZEE_TARGET:-${AGENT_CORE_TARGET:-}}"
+TARGET="${ZEE_TARGET:-}"
 if [[ -z "$TARGET" ]]; then
   os="$(uname -s | tr '[:upper:]' '[:lower:]')"
   case "$os" in
@@ -26,8 +25,8 @@ if [[ -z "$TARGET" ]]; then
   TARGET="${os}-${arch}"
 fi
 
-DIST_DIR="${ZEE_DIST:-${AGENT_CORE_DIST:-$ROOT/packages/zee-core/dist/@zee/core-${TARGET}}}"
-BIN_PATH="${ZEE_BIN:-${AGENT_CORE_BIN:-$DIST_DIR/bin/zee}}"
+DIST_DIR="${ZEE_DIST:-$ROOT/packages/zee/dist/@zee/zee-${TARGET}}"
+BIN_PATH="${ZEE_BIN:-$DIST_DIR/bin/zee}"
 
 if [[ ! -x "$BIN_PATH" ]]; then
   echo "Binary not found: $BIN_PATH" >&2
@@ -36,5 +35,4 @@ if [[ ! -x "$BIN_PATH" ]]; then
 fi
 
 export ZEE_ROOT="$DIST_DIR"
-export AGENT_CORE_ROOT="$DIST_DIR" # legacy compatibility
 exec "$BIN_PATH" "$@"

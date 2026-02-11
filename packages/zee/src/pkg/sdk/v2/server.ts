@@ -5,7 +5,7 @@ async function spawnZeeCli(
   args: string[],
   opts: Parameters<typeof spawn>[2],
 ): Promise<ReturnType<typeof spawn>> {
-  const candidates = ["zee", "agent-core"] as const
+  const candidates = ["zee"] as const
   let lastError: unknown
 
   for (const cmd of candidates) {
@@ -55,7 +55,7 @@ export type TuiOptions = {
   config?: Config
 }
 
-export async function createAgentCoreServer(options?: ServerOptions) {
+export async function createZeeServer(options?: ServerOptions) {
   options = Object.assign(
     {
       hostname: "127.0.0.1",
@@ -73,8 +73,6 @@ export async function createAgentCoreServer(options?: ServerOptions) {
     env: {
       ...process.env,
       ZEE_CONFIG_CONTENT: JSON.stringify(options.config ?? {}),
-      // Legacy env for older builds.
-      AGENT_CORE_CONFIG_CONTENT: JSON.stringify(options.config ?? {}),
     },
   })
 
@@ -87,11 +85,7 @@ export async function createAgentCoreServer(options?: ServerOptions) {
       output += chunk.toString()
       const lines = output.split("\n")
       for (const line of lines) {
-        if (
-          line.startsWith("zee server listening") ||
-          line.startsWith("agent-core server listening") ||
-          line.startsWith("opencode server listening")
-        ) {
+        if (line.startsWith("zee server listening")) {
           const match = line.match(/on\s+(https?:\/\/[^\s]+)/)
           if (!match) {
             throw new Error(`Failed to parse server url from output: ${line}`)
@@ -133,7 +127,7 @@ export async function createAgentCoreServer(options?: ServerOptions) {
   }
 }
 
-export function createAgentCoreTui(options?: TuiOptions) {
+export function createZeeTui(options?: TuiOptions) {
   const args = []
 
   if (options?.project) {
@@ -155,8 +149,6 @@ export function createAgentCoreTui(options?: TuiOptions) {
     env: {
       ...process.env,
       ZEE_CONFIG_CONTENT: JSON.stringify(options?.config ?? {}),
-      // Legacy env for older builds.
-      AGENT_CORE_CONFIG_CONTENT: JSON.stringify(options?.config ?? {}),
     },
   })
 
@@ -166,8 +158,3 @@ export function createAgentCoreTui(options?: TuiOptions) {
     },
   }
 }
-
-/** @deprecated Use createAgentCoreServer */
-export const createOpencodeServer = createAgentCoreServer
-/** @deprecated Use createAgentCoreTui */
-export const createOpencodeTui = createAgentCoreTui

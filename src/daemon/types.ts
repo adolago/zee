@@ -4,15 +4,21 @@
  * Message types for client-daemon communication over Unix socket.
  */
 
+import type { OrchestrationEvent } from "../swarm/events";
+
+export type Persona = "zee" | "stanley" | "johny";
+
 /** Available daemon commands */
 export type DaemonCommand =
   | "status"
   | "shutdown"
   | "spawn_drone"
   | "submit_task"
+  | "run_task"
   | "list_workers"
   | "list_tasks"
-  | "kill_worker";
+  | "kill_worker"
+  | "list_events";
 
 /** Generic IPC request wrapper */
 export interface DaemonRequest<T = unknown> {
@@ -34,19 +40,45 @@ export interface DaemonResponse<T = unknown> {
 // Command-specific parameter types
 
 export interface SpawnDroneParams {
-  persona: "zee" | "stanley" | "johny";
-  task: string;
+  persona: Persona;
+  /** Short human-readable task description. */
+  description?: string;
+  /** Legacy alias retained for compatibility with older clients. */
+  task?: string;
   prompt: string;
+  parentSessionId?: string;
+  parentMessageId?: string;
+  timeoutMs?: number;
+  priority?: number;
+  taskId?: string;
 }
 
 export interface SubmitTaskParams {
-  persona: "zee" | "stanley" | "johny";
+  persona: Persona;
   description: string;
   prompt: string;
+  parentSessionId?: string;
+  parentMessageId?: string;
+  timeoutMs?: number;
+  priority?: number;
+  taskId?: string;
 }
 
 export interface KillWorkerParams {
   workerId: string;
+}
+
+export interface ListEventsParams {
+  cursor?: number;
+  limit?: number;
+}
+
+export interface RunTaskParams extends SpawnDroneParams {
+  /**
+   * Optional override for how long the caller waits for the task to finish.
+   * Defaults to the task timeout when omitted.
+   */
+  waitTimeoutMs?: number;
 }
 
 // Response data types
@@ -55,27 +87,52 @@ export interface DaemonStatus {
   running: boolean;
   pid: number;
   uptime: number;
+  activeWorkers: number;
   workers: number;
   tasks: number;
+  queueDepth: number;
+  draining: boolean;
   version: string;
 }
 
 export interface WorkerInfo {
   id: string;
   name: string;
-  persona: "zee" | "stanley" | "johny";
+  persona: Persona;
+  taskId?: string;
+  pid?: number;
+  attempt: number;
   status: "idle" | "running" | "completed" | "failed" | "aborted";
   startedAt?: string;
   completedAt?: string;
+  lastHeartbeatAt?: string;
 }
 
 export interface TaskInfo {
   id: string;
   description: string;
-  persona: "zee" | "stanley" | "johny";
-  status: "pending" | "running" | "completed" | "failed";
+  persona: Persona;
+  status: "pending" | "running" | "completed" | "failed" | "aborted";
+  priority: number;
+  attempt: number;
+  error?: string;
   workerId?: string;
+  parentSessionId?: string;
+  parentMessageId?: string;
   createdAt: string;
+  enqueuedAt: string;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+export interface ListEventsResult {
+  events: OrchestrationEvent[];
+  nextCursor: number;
+}
+
+export interface TaskRunResult {
+  task: TaskInfo;
+  output: string;
 }
 
 /** IPC client options */

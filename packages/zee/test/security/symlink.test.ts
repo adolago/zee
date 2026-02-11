@@ -12,7 +12,7 @@ describe("Symlink Vulnerability", () => {
   let symlinkPath: string
 
   beforeAll(async () => {
-    tmpBase = await fs.mkdtemp(path.join(tmpdir(), "agent-core-security-test-"))
+    tmpBase = await fs.mkdtemp(path.join(tmpdir(), "zee-security-test-"))
     projectDir = path.join(tmpBase, "project")
     externalDir = path.join(tmpBase, "external")
 

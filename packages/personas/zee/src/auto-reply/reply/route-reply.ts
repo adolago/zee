@@ -19,7 +19,7 @@ import { normalizeReplyPayload } from "./normalize-reply.js";
 export type RouteReplyParams = {
   /** The reply payload to send. */
   payload: ReplyPayload;
-  /** The originating channel type (whatsapp, matrix). */
+  /** The originating channel type (whatsapp). */
   channel: OriginatingChannelType;
   /** The destination chat/channel/user ID. */
   to: string;

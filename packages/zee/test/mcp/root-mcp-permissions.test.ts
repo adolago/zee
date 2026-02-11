@@ -1,14 +1,8 @@
 import { test, expect } from "bun:test"
 import { z } from "zod"
 
-import { ToolRegistry, defineTool, PermissionDeniedError } from "@root/mcp"
+import { ToolRegistry, defineTool } from "@root/mcp"
 import type { AgentInfo, ToolExecutionContext } from "@root/mcp/types"
-
-const ReadTool = defineTool("read", "builtin", {
-  description: "read",
-  parameters: z.object({ filePath: z.string() }),
-  execute: async (_args, _ctx) => ({ title: "read", metadata: {}, output: "ok" }),
-})
 
 const WriteTool = defineTool("write", "builtin", {
   description: "write",
@@ -45,18 +39,6 @@ function makeCtx(extra: Record<string, unknown> = {}): ToolExecutionContext {
   }
 }
 
-test("root MCP: matrix surface denies read by default", async () => {
-  const registry = new ToolRegistry()
-  registry.register(ReadTool, { source: "builtin" })
-
-  const tools = await registry.getToolsForAgent(makeAgent(), "matrix")
-  const read = tools.get("read")
-  expect(read).toBeTruthy()
-
-  await expect(read!.execute({ filePath: "file.txt" }, makeCtx({ cwd: process.cwd(), root: process.cwd() }))).rejects
-    .toBeInstanceOf(PermissionDeniedError)
-})
-
 test("root MCP: web surface asks for write, and remember avoids re-asking", async () => {
   const registry = new ToolRegistry()
   registry.register(WriteTool, { source: "builtin" })
@@ -80,4 +62,3 @@ test("root MCP: web surface asks for write, and remember avoids re-asking", asyn
   await write!.execute({ filePath: "file.txt", content: "y" }, ctx)
   expect(asked.length).toBe(1)
 })
-

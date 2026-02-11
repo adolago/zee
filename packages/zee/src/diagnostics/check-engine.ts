@@ -179,7 +179,7 @@ export class CheckEngine {
 
     return {
       timestamp: new Date().toISOString(),
-      version: process.env.ZEE_VERSION || process.env.AGENT_CORE_VERSION || "dev",
+      version: process.env.ZEE_VERSION || "dev",
       hostname: os.hostname(),
       summary: {
         total: results.length,

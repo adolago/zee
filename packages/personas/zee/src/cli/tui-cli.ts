@@ -21,7 +21,7 @@ export function registerTuiCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/tui", "docs.zee/cli/tui")}\n` +
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/tui", "zee-bot.com/cli/tui")}\n` +
         `${theme.muted("Tip:")} Use ${theme.accent("zee")} directly for the primary TUI.\n`,
     )
     .action(async (opts) => {

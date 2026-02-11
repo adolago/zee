@@ -24,7 +24,7 @@ const discord = config.social.filter(s => s.icon === 'discord')[0];
 
 const command = "curl -fsSL"
 const protocol = "https://"
-const url = "zee.ai/install"
+const url = "raw.githubusercontent.com/adolago/zee/dev/install"
 const bash = "| bash"
 
 let darkImage: ImageMetadata | undefined;
@@ -86,9 +86,9 @@ if (image) {
     <section class="alternatives">
       <div class="col1">
         <h3>npm</h3>
-        <button class="command" data-command="npm install -g @zee/core">
+        <button class="command" data-command="npm install -g zee">
           <code>
-            <span>npm install -g</span> <span class="highlight">@zee/core</span>
+            <span>npm install -g</span> <span class="highlight">zee</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -98,9 +98,9 @@ if (image) {
       </div>
       <div class="col2">
         <h3>Bun</h3>
-        <button class="command" data-command="bun install -g @zee/core">
+        <button class="command" data-command="bun install -g zee">
           <code>
-            <span>bun install -g</span> <span class="highlight">@zee/core</span>
+            <span>bun install -g</span> <span class="highlight">zee</span>
           </code>
           <span class="copy">
             <CopyIcon />
@@ -113,26 +113,26 @@ if (image) {
     <section class="images">
       <div class="left">
         <figure>
-          <figcaption>opencode TUI with the tokyonight theme</figcaption>
+          <figcaption>Zee TUI with Selenized Dark</figcaption>
           <a href="/docs/cli">
-            <Image src={TuiScreenshot} alt="opencode TUI with the tokyonight theme" />
+            <Image src={TuiScreenshot} alt="Zee TUI with Selenized Dark" />
           </a>
         </figure>
       </div>
       <div class="right">
         <div class="row1">
           <figure>
-            <figcaption>opencode in VS Code</figcaption>
+            <figcaption>Zee in VS Code</figcaption>
             <a href="/docs/ide">
-              <Image src={VscodeScreenshot} alt="opencode in VS Code" />
+              <Image src={VscodeScreenshot} alt="Zee in VS Code" />
             </a>
           </figure>
         </div>
         <div class="row2">
           <figure>
-            <figcaption>opencode in GitHub</figcaption>
+            <figcaption>Zee in GitHub</figcaption>
             <a href="/docs/github">
-              <Image src={GithubScreenshot} alt="opencode in GitHub" />
+              <Image src={GithubScreenshot} alt="Zee in GitHub" />
             </a>
           </figure>
         </div>

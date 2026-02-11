@@ -14,7 +14,7 @@ const noopLogger = {
 };
 
 async function makeStorePath() {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-cron-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-cron-"));
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
@@ -331,7 +331,7 @@ describe("CronService", () => {
     const job = jobs.find((j) => j.id === rawJob.id);
     // Legacy delivery fields are migrated to the top-level delivery object
     const delivery = job?.delivery as unknown as Record<string, unknown>;
-    expect(delivery?.channel).toBe("telegram");
+    expect(delivery?.channel).toBe("whatsapp");
     const payload = job?.payload as unknown as Record<string, unknown>;
     expect("provider" in payload).toBe(false);
     expect("channel" in payload).toBe(false);
@@ -358,7 +358,7 @@ describe("CronService", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        channel: "Telegram",
+        channel: "WhatsApp",
         to: "7200373102",
       },
       state: {},
@@ -385,7 +385,7 @@ describe("CronService", () => {
     const job = jobs.find((j) => j.id === rawJob.id);
     // Legacy delivery fields are migrated to the top-level delivery object
     const delivery = job?.delivery as unknown as Record<string, unknown>;
-    expect(delivery?.channel).toBe("telegram");
+    expect(delivery?.channel).toBe("whatsapp");
 
     cron.stop();
     await store.cleanup();

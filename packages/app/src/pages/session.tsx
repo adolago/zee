@@ -50,8 +50,8 @@ import { DialogFork } from "@/components/dialog-fork"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useNavigate, useParams } from "@solidjs/router"
-import { UserMessage } from "@zee/core/pkg/sdk/v2"
-import type { FileDiff } from "@zee/core/pkg/sdk/v2/client"
+import { UserMessage } from "@zee/zee/pkg/sdk/v2"
+import type { FileDiff } from "@zee/zee/pkg/sdk/v2/client"
 import { useSDK } from "@/context/sdk"
 import { usePrompt } from "@/context/prompt"
 import { useComments, type LineComment } from "@/context/comments"
@@ -1458,7 +1458,7 @@ export default function Page() {
   createEffect(() => {
     const sessionID = params.id
     if (!sessionID) return
-    const raw = sessionStorage.getItem("opencode.pendingMessage")
+    const raw = sessionStorage.getItem("zee.pendingMessage") ?? sessionStorage.getItem("opencode.pendingMessage")
     if (!raw) return
     const parts = raw.split("|")
     const pendingSessionID = parts[0]
@@ -1466,6 +1466,7 @@ export default function Page() {
     if (!pendingSessionID || !messageID) return
     if (pendingSessionID !== sessionID) return
 
+    sessionStorage.removeItem("zee.pendingMessage")
     sessionStorage.removeItem("opencode.pendingMessage")
     setUi("pendingMessage", messageID)
   })

@@ -1,29 +1,29 @@
 ---
 summary: "How the installer scripts work (install.sh + install-cli.sh), flags, and automation"
 read_when:
-  - You want to understand `docs.zee/install.sh`
+  - You want to understand `zee-bot.com/install.sh`
   - You want to automate installs (CI / headless)
   - You want to install from a GitHub checkout
 ---
 
 # Installer internals
 
-Zee ships two installer scripts (served from `docs.zee`):
+Zee ships two installer scripts (served from `zee-bot.com`):
 
-- `https://docs.zee/install.sh` — “recommended” installer (global npm install by default; can also install from a GitHub checkout)
-- `https://docs.zee/install-cli.sh` — non-root-friendly CLI installer (installs into a prefix with its own Node)
- - `https://docs.zee/install.ps1` — Windows PowerShell installer (npm by default; optional git install)
+- `https://zee-bot.com/install.sh` — “recommended” installer (global npm install by default; can also install from a GitHub checkout)
+- `https://zee-bot.com/install-cli.sh` — non-root-friendly CLI installer (installs into a prefix with its own Node)
+ - `https://zee-bot.com/install.ps1` — Windows PowerShell installer (npm by default; optional git install)
 
 To see the current flags/behavior, run:
 
 ```bash
-curl -fsSL https://docs.zee/install.sh | bash -s -- --help
+curl -fsSL https://zee-bot.com/install.sh | bash -s -- --help
 ```
 
 Windows (PowerShell) help:
 
 ```powershell
-& ([scriptblock]::Create((iwr -useb https://docs.zee/install.ps1))) -?
+& ([scriptblock]::Create((iwr -useb https://zee-bot.com/install.ps1))) -?
 ```
 
 If the installer completes but `zee` is not found in a new terminal, it’s usually a Node/npm PATH issue. See: [Install](/install#nodejs--npm-path-sanity).
@@ -45,7 +45,7 @@ What it does (high level):
 If you *want* `sharp` to link against a globally-installed libvips (or you’re debugging), set:
 
 ```bash
-SHARP_IGNORE_GLOBAL_LIBVIPS=0 curl -fsSL https://docs.zee/install.sh | bash
+SHARP_IGNORE_GLOBAL_LIBVIPS=0 curl -fsSL https://zee-bot.com/install.sh | bash
 ```
 
 ### Discoverability / “git install” prompt
@@ -78,7 +78,7 @@ This script installs `zee` into a prefix (default: `~/.zee`) and also installs a
 Help:
 
 ```bash
-curl -fsSL https://docs.zee/install-cli.sh | bash -s -- --help
+curl -fsSL https://zee-bot.com/install-cli.sh | bash -s -- --help
 ```
 
 ## install.ps1 (Windows PowerShell)
@@ -94,15 +94,15 @@ What it does (high level):
 Examples:
 
 ```powershell
-iwr -useb https://docs.zee/install.ps1 | iex
+iwr -useb https://zee-bot.com/install.ps1 | iex
 ```
 
 ```powershell
-iwr -useb https://docs.zee/install.ps1 | iex -InstallMethod git
+iwr -useb https://zee-bot.com/install.ps1 | iex -InstallMethod git
 ```
 
 ```powershell
-iwr -useb https://docs.zee/install.ps1 | iex -InstallMethod git -GitDir "C:\\zee"
+iwr -useb https://zee-bot.com/install.ps1 | iex -InstallMethod git -GitDir "C:\\zee"
 ```
 
 Environment variables:

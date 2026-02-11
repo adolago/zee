@@ -1,5 +1,5 @@
 /**
- * Lifecycle Hooks for agent-core daemon
+ * Lifecycle Hooks for Zee daemon
  *
  * Provides hook events for daemon, session, and todo lifecycles.
  */
@@ -38,7 +38,6 @@ export namespace LifecycleHooks {
         services: z.object({
           persistence: z.boolean(),
           whatsapp: z.boolean(),
-          matrix: z.boolean(),
         }),
         sessionsWithIncompleteTodos: z.number(),
       }),
@@ -66,7 +65,7 @@ export namespace LifecycleHooks {
       z.object({
         sessionId: z.string(),
         persona: z.enum(["zee", "stanley", "johny"]),
-        source: z.enum(["daemon", "whatsapp", "matrix", "tui", "cli"]),
+        source: z.enum(["daemon", "whatsapp", "tui", "cli"]),
         chatId: z.number().optional(),
         directory: z.string(),
       }),
@@ -77,7 +76,7 @@ export namespace LifecycleHooks {
       z.object({
         sessionId: z.string(),
         persona: z.enum(["zee", "stanley", "johny"]),
-        source: z.enum(["daemon", "whatsapp", "matrix", "tui", "cli"]),
+        source: z.enum(["daemon", "whatsapp", "tui", "cli"]),
         chatId: z.number().optional(),
         hasTodos: z.boolean(),
         incompleteTodos: z.number(),
@@ -101,8 +100,8 @@ export namespace LifecycleHooks {
       "session.lifecycle.transfer",
       z.object({
         sessionId: z.string(),
-        fromContext: z.enum(["daemon", "matrix", "tui", "cli"]),
-        toContext: z.enum(["daemon", "matrix", "tui", "cli"]),
+        fromContext: z.enum(["daemon", "tui", "cli"]),
+        toContext: z.enum(["daemon", "tui", "cli"]),
         fromDevice: z.string().optional(),
         toDevice: z.string().optional(),
       }),

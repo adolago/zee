@@ -59,10 +59,10 @@ Zee ships with the pi‑ai catalog. These providers require **no**
 }
 ```
 
-### OpenCode Zen
+### Opencode Zen
 
 - Provider: `opencode`
-- Auth: `AGENT_CORE_API_KEY` (or `OPENCODE_ZEN_API_KEY`)
+- Auth: `OPENCODE_ZEN_API_KEY` (or `OPENCODE_ZEN_API_KEY`)
 - Example model: `opencode/claude-opus-4-5`
 - CLI: `zee onboard --auth-choice opencode-zen`
 

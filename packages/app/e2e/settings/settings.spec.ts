@@ -50,7 +50,7 @@ test("changing language updates settings labels", async ({ page, gotoSession }) 
   await expect(heading).toHaveText("General")
 })
 
-test("changing color scheme persists in localStorage", async ({ page, gotoSession }) => {
+test("color scheme remains dark (single-scheme mode)", async ({ page, gotoSession }) => {
   await gotoSession()
 
   const dialog = await openSettings(page)
@@ -60,21 +60,26 @@ test("changing color scheme persists in localStorage", async ({ page, gotoSessio
   await select.locator('[data-slot="select-select-trigger"]').click()
   await page.locator('[data-slot="select-select-item"]').filter({ hasText: "Dark" }).click()
 
-  const colorScheme = await page.evaluate(() => {
+  const darkScheme = await page.evaluate(() => {
     return document.documentElement.getAttribute("data-color-scheme")
   })
-  expect(colorScheme).toBe("dark")
+  expect(darkScheme).toBe("dark")
 
   await select.locator('[data-slot="select-select-trigger"]').click()
   await page.locator('[data-slot="select-select-item"]').filter({ hasText: "Light" }).click()
 
-  const lightColorScheme = await page.evaluate(() => {
+  const forcedDark = await page.evaluate(() => {
     return document.documentElement.getAttribute("data-color-scheme")
   })
-  expect(lightColorScheme).toBe("light")
+  expect(forcedDark).toBe("dark")
+
+  const storedScheme = await page.evaluate(() => {
+    return localStorage.getItem("zee-color-scheme")
+  })
+  expect(storedScheme).toBe("dark")
 })
 
-test("changing theme persists in localStorage", async ({ page, gotoSession }) => {
+test("theme remains selenized dark", async ({ page, gotoSession }) => {
   await gotoSession()
 
   const dialog = await openSettings(page)
@@ -84,27 +89,23 @@ test("changing theme persists in localStorage", async ({ page, gotoSession }) =>
   await select.locator('[data-slot="select-select-trigger"]').click()
 
   const items = page.locator('[data-slot="select-select-item"]')
-  const count = await items.count()
-  expect(count).toBeGreaterThan(1)
+  await expect(items).toHaveCount(1)
 
-  const firstTheme = await items.nth(1).locator('[data-slot="select-select-item-label"]').textContent()
-  expect(firstTheme).toBeTruthy()
+  const themeLabel = await items.first().locator('[data-slot="select-select-item-label"]').textContent()
+  expect(themeLabel?.trim()).toBe("Selenized Dark")
 
-  await items.nth(1).click()
-
+  await items.first().click()
   await page.keyboard.press("Escape")
 
   const storedThemeId = await page.evaluate(() => {
-    return localStorage.getItem("opencode-theme-id")
+    return localStorage.getItem("zee-theme-id")
   })
-
-  expect(storedThemeId).not.toBeNull()
-  expect(storedThemeId).not.toBe("oc-1")
+  expect([null, "selenized-dark"]).toContain(storedThemeId)
 
   const dataTheme = await page.evaluate(() => {
     return document.documentElement.getAttribute("data-theme")
   })
-  expect(dataTheme).toBe(storedThemeId)
+  expect(dataTheme).toBe("selenized-dark")
 })
 
 test("changing font persists in localStorage and updates CSS variable", async ({ page, gotoSession }) => {

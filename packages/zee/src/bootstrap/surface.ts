@@ -166,7 +166,7 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
   try {
     const config = await Config.get();
 
-    // Extract surface configuration from agent-core config
+    // Extract surface configuration from zee config
     const whatsappConfig = config.experimental?.surfaces?.whatsapp;
 
     const surfaceConfig: SurfaceBootstrapConfig = {

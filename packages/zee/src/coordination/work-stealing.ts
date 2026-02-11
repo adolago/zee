@@ -9,7 +9,7 @@
  * - Bus: Emits workstealing:request events for task reassignment
  * - Session: Can be used to balance sessions across workers
  *
- * This is a simplified work-stealing coordinator adapted for the agent-core daemon context.
+ * This is a simplified work-stealing coordinator adapted for the zee daemon context.
  */
 
 import { EventEmitter } from "events"

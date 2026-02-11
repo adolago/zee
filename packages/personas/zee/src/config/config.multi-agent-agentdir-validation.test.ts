@@ -38,7 +38,7 @@ describe("multi-agent agentDir validation", () => {
                 { id: "b", agentDir: "~/.zee/agents/shared/agent" },
               ],
             },
-            bindings: [{ agentId: "a", match: { channel: "matrix" } }],
+            bindings: [{ agentId: "a", match: { channel: "whatsapp" } }],
           },
           null,
           2,

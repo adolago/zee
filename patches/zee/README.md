@@ -5,13 +5,13 @@ This directory contains patch files documenting Zee's divergences from upstream.
 ## Divergence Categories
 
 ### 1. Naming/Branding (`001-naming.patch`)
-- Rename CLI, paths, and docs from agent-core to zee
+- Rename CLI, paths, and docs from legacy naming to Zee
 - Config paths: `~/.config/zee/`, `~/.local/state/zee/`
 
 ### 2. Agent System (`002-agents.patch`)
 - Removed built-in agents (build, plan, general, explore)
 - Single unified persona (zee)
-- Custom themes
+- Single built-in `selenized-dark` theme
 
 ### 3. Provider Transforms (`003-providers.patch`)
 - Custom provider configurations
@@ -29,7 +29,7 @@ This directory contains patch files documenting Zee's divergences from upstream.
 - Cross-persona memory sharing
 
 ### 6. TUI Customizations (`006-tui.patch`)
-- Custom themes (zee.json plus legacy themes)
+- Single built-in `selenized-dark` theme
 - Branch visualization in sidebar
 - Breadcrumb navigation
 - Persona UI affordances (legacy)
@@ -43,7 +43,7 @@ To generate a patch for a specific divergence:
 git diff $(git merge-base HEAD upstream/dev)..HEAD > patches/zee/full-divergence.patch
 
 # Specific file/directory
-git diff $(git merge-base HEAD upstream/dev)..HEAD -- packages/zee-core/src/provider/ > patches/zee/003-providers.patch
+git diff $(git merge-base HEAD upstream/dev)..HEAD -- packages/zee/src/provider/ > patches/zee/003-providers.patch
 ```
 
 ## Applying Patches (for reference)

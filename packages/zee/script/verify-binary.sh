@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-LOCAL_BINARY="$REPO_ROOT/dist/@zee/core-linux-x64/bin/zee"
+LOCAL_BINARY="$REPO_ROOT/dist/@zee/zee-linux-x64/bin/zee"
 INSTALLED_BINARY="$(which zee 2>/dev/null || echo '')"
 
 echo "=== Binary Version Check ==="
@@ -21,7 +21,7 @@ echo
 if [[ ! -f "$LOCAL_BINARY" ]]; then
     echo -e "${RED}ERROR: Local binary not found${NC}"
     echo "  Expected: $LOCAL_BINARY"
-    echo "  Run: cd packages/zee-core && bun run build"
+    echo "  Run: cd packages/zee && bun run build"
     exit 1
 fi
 

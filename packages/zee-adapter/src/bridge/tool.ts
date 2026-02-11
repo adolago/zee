@@ -1,7 +1,7 @@
 /**
  * Tool Bridge
  *
- * Translates OpenCode tool operations to agent-core format.
+ * Translates OpenCode tool operations to zee format.
  */
 
 import type {
@@ -9,7 +9,7 @@ import type {
   Tool,
   ToolResult,
   PermissionContext,
-  AgentCoreToolResult,
+  ZeeToolResultPayload,
 } from "../types"
 
 const TOOL_MAPPING: Record<string, string> = {
@@ -42,7 +42,7 @@ export class ToolBridge {
   private baseUrl: string
 
   constructor(private config: AdapterConfig) {
-    this.baseUrl = config.agentCoreUrl.replace(/\/$/, "")
+    this.baseUrl = config.zeeUrl.replace(/\/$/, "")
   }
 
   async initialize(): Promise<void> {
@@ -64,13 +64,13 @@ export class ToolBridge {
   }
 
   async execute(name: string, params: unknown): Promise<ToolResult> {
-    const agentCoreTool = TOOL_MAPPING[name] || name
+    const zeeTool = TOOL_MAPPING[name] || name
     const transformedParams = this.transformToolParams(name, params)
 
     const response = await this.fetch("/tool/execute", {
       method: "POST",
       body: JSON.stringify({
-        name: agentCoreTool,
+        name: zeeTool,
         params: transformedParams,
       }),
     })
@@ -86,7 +86,7 @@ export class ToolBridge {
       return true
     }
 
-    // Agent-core handles permissions internally
+    // Zee handles permissions internally
     return true
   }
 
@@ -132,7 +132,7 @@ export class ToolBridge {
     }
   }
 
-  private transformToolResult(result: AgentCoreToolResult): ToolResult {
+  private transformToolResult(result: ZeeToolResultPayload): ToolResult {
     return {
       success: result.success,
       output: result.output,

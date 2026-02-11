@@ -3,11 +3,12 @@
   Edit THIS file; the symlink reflects changes automatically.
 -->
 
-# Zee - opencode wrapped in openclaw
+# Zee - The Engine
 
 ## Quick Reference
 
-- Build and test: `cd packages/zee-core && bun run build && bun dev`
+- Build and test: `cd packages/zee && bun run build && bun dev`
+- Repo helper: `./ac dev`, `./ac build`, `./ac reload`
 - Default branch: `dev`
 - PRs target the fork at `origin` (e.g., `adolago/zee`), not upstream.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
@@ -16,17 +17,16 @@
 
 After building, always verify the binary:
 ```bash
-cd packages/zee-core && bun run build
+cd packages/zee && bun run build
 ./script/verify-binary.sh
 ```
 If verification fails:
-- `ln -sf ~/.local/src/zee/packages/zee-core/dist/@zee/core-linux-x64/bin/zee ~/.bun/bin/zee`
-- Optional legacy alias: `ln -sf ~/.bun/bin/zee ~/.bun/bin/agent-core`
+- `ln -sf ~/.local/src/zee/packages/zee/dist/@zee/zee-linux-x64/bin/zee ~/.bun/bin/zee`
 
 ## Naming Convention
 
-The user-facing name is **Zee**. The internal package infrastructure uses `zee`; `agent-core` exists only as an optional compatibility alias.
-- CLI: `zee` (optional legacy alias: `agent-core`), Config: `~/.config/zee/`, State: `~/.local/state/zee/`
+The user-facing name is **Zee**. The internal package infrastructure uses `zee`.
+- CLI: `zee`, Config: `~/.config/zee/`, State: `~/.local/state/zee/`
 
 ## No Emojis Policy
 
@@ -57,14 +57,14 @@ Zee can spawn drones (background workers), uses Qdrant memory, and preserves con
 | Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
 | Persona logic | `src/personas/johny/` (TS), `packages/stanley-core/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |
-| Core engine | `packages/zee-core/` |
+| Engine | `packages/zee/` |
 | Gateway | `packages/personas/zee/` |
 | Memory types | `src/memory/` |
 
 ## Daemon (systemd)
 
 ```bash
-systemctl --user restart zee           # Restart (or agent-core)
+systemctl --user restart zee           # Restart
 systemctl --user status zee            # Status
 journalctl --user -u zee -f            # Logs
 ./scripts/reload.sh                   # Full rebuild + restart

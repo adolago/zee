@@ -17,7 +17,6 @@ const ZEE_CONFIG_FILES = ["zee.json", "zee.jsonc"];
 const GATEWAY_ENV_HINTS = [
   "ZEE_GATEWAY_TOKEN",
   "ZEE_GATEWAY_PASSWORD",
-  "MATRIX_ACCESS_TOKEN",
 ];
 
 function getStateDir(): string {
@@ -339,10 +338,10 @@ async function checkOrphanedProcesses(): Promise<CheckResult> {
     try {
       process.kill(storedPid, 0); // Signal 0 = check if process exists
 
-      // Process exists, verify it's agent-core (Linux only)
+      // Process exists, verify it's zee (Linux only)
       try {
         const cmdline = await fs.readFile(`/proc/${storedPid}/cmdline`, "utf-8");
-        if (cmdline.includes("agent-core") || cmdline.includes("bun")) {
+        if (cmdline.includes("zee") || cmdline.includes("bun")) {
           return {
             id: "integrity.orphan-procs",
             name: "Daemon Process",

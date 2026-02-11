@@ -84,21 +84,21 @@ describe("formatAgentEnvelope", () => {
   });
 
   it("handles missing optional fields", () => {
-    const body = formatAgentEnvelope({ channel: "Matrix", body: "hi" });
-    expect(body).toBe("[Matrix] hi");
+    const body = formatAgentEnvelope({ channel: "WhatsApp", body: "hi" });
+    expect(body).toBe("[WhatsApp] hi");
   });
 });
 
 describe("formatInboundEnvelope", () => {
   it("prefixes sender for non-direct chats", () => {
     const body = formatInboundEnvelope({
-      channel: "Matrix",
+      channel: "WhatsApp",
       from: "Group #general",
       body: "hi",
       chatType: "channel",
       senderLabel: "Alice",
     });
-    expect(body).toBe("[Matrix Group #general] Alice: hi");
+    expect(body).toBe("[WhatsApp Group #general] Alice: hi");
   });
 
   it("uses sender fields when senderLabel is missing", () => {
@@ -127,7 +127,7 @@ describe("formatInboundEnvelope", () => {
     const now = Date.now();
     const twoMinutesAgo = now - 2 * 60 * 1000;
     const body = formatInboundEnvelope({
-      channel: "Matrix",
+      channel: "WhatsApp",
       from: "Alice",
       body: "follow-up message",
       timestamp: now,
@@ -142,7 +142,7 @@ describe("formatInboundEnvelope", () => {
   it("omits elapsed time when disabled", () => {
     const now = Date.now();
     const body = formatInboundEnvelope({
-      channel: "Matrix",
+      channel: "WhatsApp",
       from: "Alice",
       body: "follow-up message",
       timestamp: now,
@@ -150,7 +150,7 @@ describe("formatInboundEnvelope", () => {
       chatType: "direct",
       envelope: { includeElapsed: false, includeTimestamp: false },
     });
-    expect(body).toBe("[Matrix Alice] follow-up message");
+    expect(body).toBe("[WhatsApp Alice] follow-up message");
   });
 
   it("resolves envelope options from config", () => {

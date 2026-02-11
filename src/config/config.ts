@@ -5,7 +5,7 @@
  * 1. Defaults (built-in)
  * 2. Global (~/.config/zee/)
  * 3. Project (.zee/ in project root)
- * 4. Environment (ZEE_* variables; legacy: AGENT_CORE_*, OPENCODE_*)
+ * 4. Environment (ZEE_* variables)
  * 5. Runtime (programmatic overrides)
  *
  * @module config/config
@@ -489,12 +489,7 @@ function loadEnvOverrides(
   }
 
   // Inline JSON config content override.
-  // Prefer ZEE_CONFIG_CONTENT; keep legacy keys for backward compatibility.
-  const inlineConfig =
-    env['ZEE_CONFIG_CONTENT'] ??
-    env['AGENT_CORE_CONFIG_CONTENT'] ??
-    env['OPENCODE_CONFIG_CONTENT'] ??
-    env['AGENT_CORE_CONFIG'];
+  const inlineConfig = env["ZEE_CONFIG_CONTENT"];
   if (inlineConfig) {
     try {
       const parsed = JSON.parse(inlineConfig);

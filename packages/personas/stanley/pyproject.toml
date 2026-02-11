@@ -58,9 +58,9 @@ light = []  # No heavy dependencies (faster install)
 stanley = "stanley.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/agent-core/agent-core"
-Documentation = "https://github.com/agent-core/agent-core/tree/main/packages/personas/stanley"
-Repository = "https://github.com/agent-core/agent-core"
+Homepage = "https://github.com/adolago/zee"
+Documentation = "https://github.com/adolago/zee/tree/main/packages/personas/stanley"
+Repository = "https://github.com/adolago/zee"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/stanley"]

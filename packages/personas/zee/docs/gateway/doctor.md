@@ -59,7 +59,7 @@ cat ~/.zee/zee.json
 - Health check + restart prompt.
 - Skills status summary (eligible/missing/blocked).
 - Config normalization for legacy values.
-- OpenCode Zen provider override warnings (`models.providers.opencode`).
+- Opencode Zen provider override warnings (`models.providers.opencode`).
 - Legacy on-disk state migration (sessions/agent dir/WhatsApp auth).
 - State integrity and permissions checks (sessions, transcripts, state dir).
 - Config file permission checks (chmod 600) when running locally.
@@ -116,9 +116,9 @@ Current migrations:
 - `agent.model`/`allowedModels`/`modelAliases`/`modelFallbacks`/`imageModelFallbacks`
   → `agents.defaults.models` + `agents.defaults.model.primary/fallbacks` + `agents.defaults.imageModel.primary/fallbacks`
 
-### 2b) OpenCode Zen provider overrides
+### 2b) Opencode Zen provider overrides
 If you’ve added `models.providers.opencode` (or `opencode-zen`) manually, it
-overrides the built-in OpenCode Zen catalog from `@mariozechner/pi-ai`. That can
+overrides the built-in Opencode Zen catalog from `@mariozechner/pi-ai`. That can
 force every model onto a single API or zero out costs. Doctor warns so you can
 remove the override and restore per-model API routing + costs.
 

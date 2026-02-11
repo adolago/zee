@@ -11,7 +11,7 @@ import { Accordion } from "@zee/ui/accordion"
 import { StickyAccordionHeader } from "@zee/ui/sticky-accordion-header"
 import { Code } from "@zee/ui/code"
 import { Markdown } from "@zee/ui/markdown"
-import type { AssistantMessage, Message, Part, UserMessage } from "@zee/core/pkg/sdk/v2/client"
+import type { AssistantMessage, Message, Part, UserMessage } from "@zee/zee/pkg/sdk/v2/client"
 import { useLanguage } from "@/context/language"
 
 interface SessionContextTabProps {

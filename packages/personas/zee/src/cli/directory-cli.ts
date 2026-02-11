@@ -39,7 +39,7 @@ export function registerDirectoryCli(program: Command) {
       () =>
         `\n${theme.muted("Docs:")} ${formatDocsLink(
           "/cli/directory",
-          "docs.zee/cli/directory",
+          "zee-bot.com/cli/directory",
         )}\n`,
     )
     .action(() => {

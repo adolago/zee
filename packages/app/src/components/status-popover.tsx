@@ -13,7 +13,7 @@ import { useSDK } from "@/context/sdk"
 import { normalizeServerUrl, serverDisplayName, useServer } from "@/context/server"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
-import { createAgentCoreClient } from "@zee/core/pkg/sdk/v2/client"
+import { createZeeClient } from "@zee/zee/pkg/sdk/v2/client"
 import { DialogSelectServer } from "./dialog-select-server"
 import { showToast } from "@zee/ui/toast"
 
@@ -21,7 +21,7 @@ type ServerStatus = { healthy: boolean; version?: string }
 
 async function checkHealth(url: string, platform: ReturnType<typeof usePlatform>): Promise<ServerStatus> {
   const signal = (AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal }).timeout?.(3000)
-  const sdk = createAgentCoreClient({
+  const sdk = createZeeClient({
     baseUrl: url,
     fetch: platform.fetch,
     signal,

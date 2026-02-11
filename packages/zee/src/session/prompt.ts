@@ -55,6 +55,7 @@ import { Truncate } from "@/tool/truncation"
 import { withTimeout } from "@/util/timeout"
 import { createSafeEnv } from "@/security/env-sanitize"
 import { buildSessionSystemContext } from "./session-context"
+import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -62,6 +63,58 @@ globalThis.AI_SDK_LOG_WARNINGS = false
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
   export const OUTPUT_TOKEN_MAX = Flag.ZEE_OUTPUT_TOKEN_MAX || 32_000
+
+  function daemonSubtasksEnabled(): boolean {
+    const raw = process.env.ZEE_SUBTASK_DAEMON
+    if (!raw) return true
+    const normalized = raw.trim().toLowerCase()
+    return !["0", "false", "off", "no"].includes(normalized)
+  }
+
+  function shouldFallbackToLocalSubtask(error: Error): boolean {
+    const msg = error.message.toLowerCase()
+    return (
+      msg.includes("orchestration daemon not running") ||
+      msg.includes("socket missing") ||
+      msg.includes("refused connection") ||
+      msg.includes("unknown command: run_task")
+    )
+  }
+
+  async function executeSubtaskViaDaemon(input: {
+    persona: "zee" | "stanley" | "johny"
+    description: string
+    prompt: string
+    parentSessionID: string
+    parentMessageID: string
+    timeoutMs?: number
+  }): Promise<{
+    title: string
+    metadata: Record<string, unknown>
+    output: string
+  }> {
+    const response = await runTaskViaDaemon({
+      persona: input.persona,
+      description: input.description,
+      prompt: input.prompt,
+      parentSessionId: input.parentSessionID,
+      parentMessageId: input.parentMessageID,
+      timeoutMs: input.timeoutMs,
+      waitTimeoutMs: input.timeoutMs,
+    })
+
+    return {
+      title: input.description,
+      metadata: {
+        taskId: response.task.id,
+        workerId: response.task.workerId,
+        orchestrator: "daemon",
+        status: response.task.status,
+        attempt: response.task.attempt,
+      },
+      output: response.output,
+    }
+  }
 
   const state = Instance.state(
     () => {
@@ -121,7 +174,6 @@ export namespace SessionPrompt {
     if (client === "cli") return "cli"
     if (client === "daemon") return "daemon"
     if (client === "whatsapp") return "whatsapp"
-    if (client === "matrix") return "matrix"
     if (client === "app" || client === "desktop") return "tui"
     return "daemon"
   }
@@ -271,7 +323,7 @@ export namespace SessionPrompt {
   }
 
   function resolveMemoryMcpName(status: Record<string, MCP.Status>): string {
-    const preferred = process.env.ZEE_MEMORY_MCP || process.env.AGENT_CORE_MEMORY_MCP
+    const preferred = process.env.ZEE_MEMORY_MCP
     if (preferred && status[preferred]) return preferred
     if (status["memory"]) return "memory"
     return preferred ?? "memory"
@@ -434,7 +486,7 @@ export namespace SessionPrompt {
 
       if (requestedMode === "release") {
         const surface = session.surface
-        const isMessagingSurface = surface === "whatsapp" || surface === "matrix"
+        const isMessagingSurface = surface === "whatsapp"
         if (isMessagingSurface && !Flag.ZEE_ALLOW_MESSAGING_RELEASE) {
           allowed = false
           responseText =
@@ -863,6 +915,7 @@ export namespace SessionPrompt {
           { args: taskArgs },
         )
         let executionError: Error | undefined
+        let daemonExecutionError: Error | undefined
         const taskAgent = await Agent.get(resolvedAgent)
         const taskCtx: Tool.Context = {
           agent: resolvedAgent,
@@ -893,11 +946,64 @@ export namespace SessionPrompt {
             })
           },
         }
-        const result = await taskTool.execute(taskArgs, taskCtx).catch((error) => {
-          executionError = error
-          log.error("subtask execution failed", { error, agent: resolvedAgent, originalAgent: task.agent, description: task.description })
-          return undefined
-        })
+        let result:
+          | {
+              title: string
+              metadata: Record<string, unknown>
+              output: string
+              attachments?: MessageV2.FilePart[]
+            }
+          | undefined
+
+        const daemonEligibleAgent =
+          resolvedAgent === "zee" || resolvedAgent === "stanley" || resolvedAgent === "johny"
+
+        if (daemonSubtasksEnabled() && daemonEligibleAgent) {
+          result = await executeSubtaskViaDaemon({
+            persona: resolvedAgent,
+            description: task.description,
+            prompt: task.prompt,
+            parentSessionID: sessionID,
+            parentMessageID: assistantMessage.id,
+            timeoutMs: 300000,
+          }).catch((error) => {
+            daemonExecutionError = error instanceof Error ? error : new Error(String(error))
+            if (shouldFallbackToLocalSubtask(daemonExecutionError)) {
+              log.warn("daemon subtask execution unavailable, falling back to local task tool", {
+                error: daemonExecutionError.message,
+                agent: resolvedAgent,
+                description: task.description,
+              })
+              return undefined
+            }
+            executionError = daemonExecutionError
+            log.error("daemon subtask execution failed", {
+              error: daemonExecutionError.message,
+              agent: resolvedAgent,
+              description: task.description,
+            })
+            return undefined
+          })
+        } else if (daemonSubtasksEnabled() && !daemonEligibleAgent) {
+          log.debug("daemon subtask execution skipped for non-persona agent", {
+            agent: resolvedAgent,
+            description: task.description,
+          })
+        }
+
+        if (!result && !executionError) {
+          result = await taskTool.execute(taskArgs, taskCtx).catch((error) => {
+            executionError = error
+            log.error("subtask execution failed", {
+              error,
+              agent: resolvedAgent,
+              originalAgent: task.agent,
+              description: task.description,
+              daemonFallback: Boolean(daemonExecutionError),
+            })
+            return undefined
+          })
+        }
         await Plugin.trigger(
           "tool.execute.after",
           {

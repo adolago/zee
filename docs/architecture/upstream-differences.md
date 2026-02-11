@@ -1,39 +1,39 @@
-# agent-core vs sst/opencode vs openclaw
+# zee vs sst/opencode vs openclaw
 
-This document maps the high-signal differences between agent-core and:
+This document maps the high-signal differences between zee and:
 
 - `sst/opencode` (OpenCode, `dev` branch)
 - `openclaw/openclaw` (OpenClaw, `main` branch)
 
 Snapshot used for this comparison:
 
-- agent-core: `1942d6fe01bc` (full `1942d6fe01bc4e497856e25af500b05f805d7d98`)
+- zee: `1942d6fe01bc` (full `1942d6fe01bc4e497856e25af500b05f805d7d98`)
 - opencode: `fa20bc2` (cloned `dev`)
 - openclaw: `aaddbdae52d7` (full `aaddbdae52d71bff3a74fa28dd6597816e2d7592`)
 
 ## Summary (what each repo is)
 
-- **agent-core**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, semantic memory (Qdrant), orchestration, and an optional always-on messaging gateway.
+- **zee**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, semantic memory (Qdrant), orchestration, and an optional always-on messaging gateway.
 - **opencode**: an open source AI coding agent (TUI-first) with a client/server architecture and LSP support.
 - **openclaw**: a personal AI assistant with a Gateway WebSocket control plane, multi-channel messaging (WhatsApp/Slack/Discord/etc), device nodes (macOS/iOS/Android), and a large skill catalog.
 
 ## Relationship at a glance
 
-- **agent-core ↔ opencode**: agent-core is a fork of opencode with a rebrand (`opencode` → `agent-core`) plus substantial additions (personas, memory, gateway/daemon workflows) and removals (SST/infra + some hosted/enterprise surfaces).
-- **agent-core ↔ openclaw**: agent-core contains a large, intentionally reduced subset of OpenClaw’s Gateway/channel stack inside `packages/personas/zee/` (Zee’s gateway), but agent-core’s overall architecture is “multi-persona engine” rather than “single-assistant product”.
+- **zee ↔ opencode**: zee is a fork of opencode with a rebrand (`opencode` → `zee`) plus substantial additions (personas, memory, gateway/daemon workflows) and removals (SST/infra + some hosted/enterprise surfaces).
+- **zee ↔ openclaw**: zee contains a large, intentionally reduced subset of OpenClaw’s Gateway/channel stack inside `packages/personas/zee/` (Zee’s gateway), but zee’s overall architecture is “multi-persona engine” rather than “single-assistant product”.
 
 ## Toolchain and runtime
 
-| Dimension | agent-core | opencode | openclaw |
+| Dimension | zee | opencode | openclaw |
 | --- | --- | --- | --- |
 | Package manager | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | pnpm (`pnpm-lock.yaml`, `packageManager: pnpm@10.23.0`) |
 | Primary runtime | Bun (dev/build) | Bun (dev/build) | Node 22+ (runtime); pnpm for builds; Bun optional for TS execution |
-| CLI framework | yargs (in `packages/zee-core`) | yargs (in `packages/opencode`) | commander (`src/commands`) |
+| CLI framework | yargs (in `packages/zee`) | yargs (in `packages/opencode`) | commander (`src/commands`) |
 | Non-TS components | Rust workspace (`Cargo.toml`, `packages/stanley-core`) | none in root | Swift/Kotlin apps (`apps/macos`, `apps/ios`, `apps/android`) |
 
 ## Top-level layout differences
 
-### agent-core (top-level highlights)
+### zee (top-level highlights)
 
 - Persona + memory code at repo root: `src/personas/`, `src/memory/`, `src/swarm/`, `src/domain/`
 - Project-local configuration bundle: `.zee/` (commands/tools/themes/plans)
@@ -54,19 +54,19 @@ Snapshot used for this comparison:
 
 ## Monorepo package layout
 
-### agent-core `packages/`
+### zee `packages/`
 
 Unique packages (vs opencode):
 
-- `agent-core/` (core CLI/TUI/daemon; renamed from `opencode/`)
-- `agent-core-adapter/` (bridge/adapters)
+- `zee/` (core CLI/TUI/daemon; renamed from `opencode/`)
+- `zee-adapter/` (bridge/adapters)
 - `personas/` (persona packages; notably `personas/zee/`)
 - `stanley-core/` (Rust)
-- `hosted/` (agent-core-specific hosted surfaces)
+- `hosted/` (zee-specific hosted surfaces)
 
 ### opencode `packages/`
 
-Unique packages (vs agent-core):
+Unique packages (vs zee):
 
 - `opencode/` (core CLI/TUI/daemon)
 - `console/`, `enterprise/`, `identity/`, `function/`, `containers/`, `script/`, `slack/`, `docs/`
@@ -77,12 +77,12 @@ Unique packages (vs agent-core):
 
 ## CLI command surface
 
-### agent-core vs opencode (core CLI)
+### zee vs opencode (core CLI)
 
-The shared core commands are broadly the same (`agent`, `auth`, `run`, `session`, `tui`, `mcp`, `models`, `serve`, etc.), but agent-core adds several top-level command groups:
+The shared core commands are broadly the same (`agent`, `auth`, `run`, `session`, `tui`, `mcp`, `models`, `serve`, etc.), but zee adds several top-level command groups:
 
-- Present in agent-core, not in opencode: `always-on`, `bug-report`, `check`, `clawhub`, `daemon`, `daemon-install`, `plugin/*`, `provider`, `setup`
-- Present in opencode, not in agent-core: `web`
+- Present in zee, not in opencode: `always-on`, `bug-report`, `check`, `clawhub`, `daemon`, `daemon-install`, `plugin/*`, `provider`, `setup`
+- Present in opencode, not in zee: `web`
 
 ### openclaw (command tree)
 
@@ -91,7 +91,7 @@ The command entrypoints live in `src/commands/`.
 
 ## Config and state model
 
-| Dimension | agent-core | opencode | openclaw |
+| Dimension | zee | opencode | openclaw |
 | --- | --- | --- | --- |
 | Global config | `~/.config/zee/zee.json{,c}` | `~/.config/opencode/opencode.json{,c}` | `~/.openclaw/openclaw.json` (or `$OPENCLAW_STATE_DIR/openclaw.json`) |
 | Project config | `.zee/` in project root | `.opencode/` in project root | not the primary model; uses the state dir + “workspace” repo |
@@ -100,12 +100,12 @@ The command entrypoints live in `src/commands/`.
 
 ## Providers / model backends (practical differences)
 
-### agent-core vs opencode (AI SDK footprint)
+### zee vs opencode (AI SDK footprint)
 
-`packages/zee-core` keeps a smaller provider surface and adds memory + messaging:
+`packages/zee` keeps a smaller provider surface and adds memory + messaging:
 
-- Present in agent-core deps, not in opencode deps: `@qdrant/js-client-rest`, `@whiskeysockets/baileys`, `whatsapp-web.js`, `google-auth-library`, `croner`, `yaml`
-- Present in opencode deps, not in agent-core deps: many additional `@ai-sdk/*` provider packages (Bedrock/Azure/Groq/Mistral/etc), `ai-gateway-provider`, `partial-json`, plus opencode workspace packages (`@opencode-ai/*`)
+- Present in zee deps, not in opencode deps: `@qdrant/js-client-rest`, `@whiskeysockets/baileys`, `whatsapp-web.js`, `google-auth-library`, `croner`, `yaml`
+- Present in opencode deps, not in zee deps: many additional `@ai-sdk/*` provider packages (Bedrock/Azure/Groq/Mistral/etc), `ai-gateway-provider`, `partial-json`, plus opencode workspace packages (`@opencode-ai/*`)
 
 ### openclaw (provider stack)
 
@@ -120,9 +120,9 @@ OpenClaw does not mirror the AI SDK surface; it uses a Pi-based provider/tooling
 - Device nodes (macOS/iOS/Android) for device-local actions and permissions
 - Remote access patterns (Tailscale Serve/Funnel, SSH tunnels)
 
-### agent-core (Zee gateway subset)
+### zee (Zee gateway subset)
 
-agent-core embeds a trimmed “OpenClaw-like” gateway inside the Zee persona package:
+zee embeds a trimmed “OpenClaw-like” gateway inside the Zee persona package:
 
 - Zee gateway code lives in `packages/personas/zee/src/`
 - Compared to `openclaw/src/`, Zee’s copy is missing these top-level subsystems:
@@ -137,7 +137,7 @@ agent-core embeds a trimmed “OpenClaw-like” gateway inside the Zee persona p
   - `signal/`
   - `slack/`
 
-Operationally, Zee’s gateway is launched by agent-core only when explicitly enabled (for example `agent-core daemon --gateway`).
+Operationally, Zee’s gateway is launched by zee only when explicitly enabled (for example `zee daemon --gateway`).
 
 ### opencode (not a messaging product)
 
@@ -145,20 +145,20 @@ OpenCode’s “server mode” is about a client/server split for the coding age
 
 ## Upstream Sync Lanes
 
-This section tracks discrete upstream-delta triage "lanes" between agent-core's Zee gateway subset (`packages/personas/zee/`) and OpenClaw (`openclaw/openclaw`).
+This section tracks discrete upstream-delta triage "lanes" between zee's Zee gateway subset (`packages/personas/zee/`) and OpenClaw (`openclaw/openclaw`).
 
 ### Lane 01: Gateway control plane (WS protocol, auth, events)
 
-Source tracking issue: `adolago/agent-core#224`.
+Source tracking issue: `adolago/zee#224`.
 
 Comparison snapshot used for triage (historical context):
 
-- agent-core: `1942d6fe01bc4e497856e25af500b05f805d7d98`
+- zee: `1942d6fe01bc4e497856e25af500b05f805d7d98`
 - openclaw/openclaw: `aaddbdae52d71bff3a74fa28dd6597816e2d7592`
 
 Triage outcome:
 
-| Upstream PR / commit | Title | Decision | agent-core location |
+| Upstream PR / commit | Title | Decision | zee location |
 | --- | --- | --- | --- |
 | openclaw/openclaw#9858 | Redact credentials from gateway config.get responses | Ported | `packages/personas/zee/src/gateway/server-methods/config.ts`, `packages/personas/zee/src/config/redact-snapshot.ts` |
 | openclaw commit `66d8117d` | Harden WebSocket origin checks | Ported (adapted to Zee gateway) | `packages/personas/zee/src/gateway/server-http.ts`, `packages/personas/zee/src/gateway/origin-check.ts` |
@@ -171,16 +171,16 @@ Notes:
 
 ### Lane 12: Onboarding + daemon install + operational CLI
 
-Source tracking issue: `adolago/agent-core#235`.
+Source tracking issue: `adolago/zee#235`.
 
 Comparison snapshot used for triage (historical context):
 
-- agent-core: `1942d6fe01bc4e497856e25af500b05f805d7d98`
+- zee: `1942d6fe01bc4e497856e25af500b05f805d7d98`
 - openclaw/openclaw: `aaddbdae52d71bff3a74fa28dd6597816e2d7592`
 
 Triage outcome:
 
-| Upstream PR | Title | Decision | agent-core location |
+| Upstream PR | Title | Decision | zee location |
 | --- | --- | --- | --- |
 | openclaw/openclaw#1512 | Linux user bin dirs in systemd PATH | Already ported | `packages/personas/zee/src/daemon/service-env.ts` |
 | openclaw/openclaw#1505 | Prefer symlinked paths over realpath | Already ported | `packages/personas/zee/src/daemon/program-args.ts` |
@@ -192,35 +192,35 @@ Triage outcome:
 
 Notes:
 
-- Token-in-URL support is intentionally not supported in agent-core Zee hooks. Use `Authorization: Bearer <token>` or `X-Zee-Token: <token>`.
+- Token-in-URL support is intentionally not supported in zee Zee hooks. Use `Authorization: Bearer <token>` or `X-Zee-Token: <token>`.
 
 ## Skills system (format + content)
 
 ### Format
 
-Both agent-core and openclaw use `SKILL.md` files with YAML frontmatter and a progressive disclosure style, but the metadata conventions differ:
+Both zee and openclaw use `SKILL.md` files with YAML frontmatter and a progressive disclosure style, but the metadata conventions differ:
 
-- openclaw skills often carry `metadata.openclaw.emoji` (agent-core avoids emojis and uses `metadata.clawhub` identifiers)
-- agent-core stores many skills under `.agents/skills/@zee/`, `.agents/skills/@stanley/`, `.agents/skills/@johny/` to align skills with personas
+- openclaw skills often carry `metadata.openclaw.emoji` (zee avoids emojis and uses `metadata.clawhub` identifiers)
+- zee stores many skills under `.agents/skills/@zee/`, `.agents/skills/@stanley/`, `.agents/skills/@johny/` to align skills with personas
 
 ### Inventory (repo snapshot)
 
 - openclaw: 53 in-repo skills under `skills/*/SKILL.md`
-- agent-core: 64 in-repo skills under `.agents/skills/**/SKILL.md`
+- zee: 64 in-repo skills under `.agents/skills/**/SKILL.md`
 
-Overlap is mostly in “utility” skills (for example `weather`, `wacli`, `spotify-player`), with agent-core adding persona-specific skills (investing/learning/memory patterns) and openclaw including many operational integrations (Notion/Obsidian/Discord/etc).
+Overlap is mostly in “utility” skills (for example `weather`, `wacli`, `spotify-player`), with zee adding persona-specific skills (investing/learning/memory patterns) and openclaw including many operational integrations (Notion/Obsidian/Discord/etc).
 
 ## Memory / persistence
 
-- **agent-core**: semantic memory is a first-class feature (Qdrant-backed vector memory, embedding profiles in config, shared memory types under `src/memory/`).
+- **zee**: semantic memory is a first-class feature (Qdrant-backed vector memory, embedding profiles in config, shared memory types under `src/memory/`).
 - **opencode**: focuses on sessions, project worktrees, and coding workflows; it does not ship a Qdrant-backed semantic memory subsystem in the same way.
 - **openclaw**: treats `~/.openclaw/workspace/` as the canonical “human-readable memory” surface, with optional local indexing (`sqlite-vec`) and extensive operational state (channels, allowlists, pairing, approvals).
 
-## Concrete diff metrics (agent-core vs opencode)
+## Concrete diff metrics (zee vs opencode)
 
 These numbers are intended to size the divergence, not to replace a full code review:
 
-- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1197` (opencode-only) vs `999` (agent-core-only)
+- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1197` (opencode-only) vs `999` (zee-only)
 - File delta (with rename detection raised: `git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD`):
   - Added: `3655`
   - Deleted: `626`
@@ -229,7 +229,7 @@ These numbers are intended to size the divergence, not to replace a full code re
 
 ## How to reproduce / extend this mapping
 
-From the agent-core repo:
+From the zee repo:
 
 ```bash
 # 1) High-level fork delta vs opencode
@@ -237,10 +237,10 @@ git rev-list --left-right --count opencode/dev...HEAD
 git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD > /tmp/opencode.diff.txt
 
 # 2) Compare Zee gateway tree vs OpenClaw src (directory-level)
-diff -ruN packages/personas/zee/src /tmp/agent-core-compare/openclaw/src || true
+diff -ruN packages/personas/zee/src /tmp/zee-compare/openclaw/src || true
 
 # 3) Compare dependency surfaces (core packages)
-jq -r '.dependencies | keys[]' packages/zee-core/package.json | sort > /tmp/agent-core.deps
-jq -r '.dependencies | keys[]' /tmp/agent-core-compare/opencode/packages/opencode/package.json | sort > /tmp/opencode.deps
-comm -3 /tmp/agent-core.deps /tmp/opencode.deps
+jq -r '.dependencies | keys[]' packages/zee/package.json | sort > /tmp/zee.deps
+jq -r '.dependencies | keys[]' /tmp/zee-compare/opencode/packages/opencode/package.json | sort > /tmp/opencode.deps
+comm -3 /tmp/zee.deps /tmp/opencode.deps
 ```

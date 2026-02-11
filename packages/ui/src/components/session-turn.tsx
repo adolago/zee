@@ -7,8 +7,8 @@ import {
   type QuestionRequest,
   TextPart,
   ToolPart,
-} from "@zee/core/pkg/sdk/v2/client"
-import { type FileDiff } from "@zee/core/pkg/sdk/v2"
+} from "@zee/zee/pkg/sdk/v2/client"
+import { type FileDiff } from "@zee/zee/pkg/sdk/v2"
 import { useData } from "../context"
 import { useDiffComponent } from "../context/diff"
 import { type UiI18nKey, type UiI18nParams, useI18n } from "../context/i18n"

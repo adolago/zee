@@ -58,7 +58,7 @@ test("headers are passed to transports when oauth is enabled (default)", async (
       await Bun.write(
         `${dir}/zee.json`,
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           mcp: {
             "test-server": {
               type: "remote",

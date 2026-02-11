@@ -176,5 +176,5 @@ Notes:
 
 - **Text commands** run in the normal chat session (DMs share `main`, groups have their own session).
 - **Native commands** use isolated sessions:
-  - Matrix: `matrix:slash:<userId>` (targets the chat session via `CommandTargetSessionKey`)
+  - WhatsApp: `whatsapp:slash:<userId>` (targets the chat session via `CommandTargetSessionKey`)
 - **`/stop`** targets the active chat session so it can abort the current run.

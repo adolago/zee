@@ -1,6 +1,6 @@
 # Hosted Platform
 
-This directory documents the in-repo hosted platform for agent-core. The hosted service lives in `packages/hosted` and provides the share API, provider vault, analytics, billing endpoints, gateway routing, and telemetry/log ingestion.
+This directory documents the in-repo hosted platform for zee. The hosted service lives in `packages/hosted` and provides the share API, provider vault, analytics, billing endpoints, gateway routing, and telemetry/log ingestion.
 
 ## Quick start
 

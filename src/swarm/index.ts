@@ -39,6 +39,11 @@ export { Queen, runSwarm, fanOut, research } from "./queen";
 export type { QueenConfig, ConsensusConfig, ConsensusResult } from "./queen";
 
 export { Worker } from "./worker";
+export { Orchestrator } from "./orchestrator";
+export type {
+  OrchestratorOptions,
+  OrchestratorSnapshot,
+} from "./orchestrator";
 
 export {
   isWezTermAvailable,
@@ -52,10 +57,31 @@ export type {
   WorkerStatus,
   WorkerConfig,
   WorkerState,
+  Persona,
   SwarmConfig,
   SwarmResult,
   WorkerMessage,
 } from "./types";
+
+export {
+  TaskQueue,
+  elideQueueText,
+  buildQueueSummaryLine,
+} from "./queue";
+export type {
+  QueueSettings,
+  QueueDropPolicy,
+  QueueDedupeMode,
+  QueueMode,
+  QueuedTask,
+  EnqueueResult,
+  QueueState,
+} from "./queue";
+
+export type {
+  OrchestrationEventType,
+  OrchestrationEvent,
+} from "./events";
 
 // SPARC methodology (Johny-only)
 export {

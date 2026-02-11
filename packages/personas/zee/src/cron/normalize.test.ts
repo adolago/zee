@@ -25,7 +25,7 @@ describe("normalizeCronJobCreate", () => {
 
     const delivery = normalized.delivery as Record<string, unknown>;
     expect(delivery.mode).toBe("announce");
-    expect(delivery.channel).toBe("telegram");
+    expect(delivery.channel).toBe("whatsapp");
     expect(delivery.to).toBe("7200373102");
   });
 
@@ -72,7 +72,7 @@ describe("normalizeCronJobCreate", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        channel: "Telegram",
+        channel: "WhatsApp",
         to: "7200373102",
       },
     }) as unknown as Record<string, unknown>;
@@ -83,7 +83,7 @@ describe("normalizeCronJobCreate", () => {
 
     const delivery = normalized.delivery as Record<string, unknown>;
     expect(delivery.mode).toBe("announce");
-    expect(delivery.channel).toBe("telegram");
+    expect(delivery.channel).toBe("whatsapp");
     expect(delivery.to).toBe("7200373102");
   });
 
@@ -159,7 +159,7 @@ describe("normalizeCronJobCreate", () => {
 
     const delivery = normalized.delivery as Record<string, unknown>;
     expect(delivery.mode).toBe("announce");
-    expect(delivery.channel).toBe("telegram");
+    expect(delivery.channel).toBe("whatsapp");
     expect(delivery.to).toBe("7200373102");
   });
 
@@ -187,7 +187,7 @@ describe("normalizeCronJobCreate", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: true,
-        channel: "telegram",
+        channel: "whatsapp",
         to: "7200373102",
         bestEffortDeliver: true,
       },
@@ -195,7 +195,7 @@ describe("normalizeCronJobCreate", () => {
 
     const delivery = normalized.delivery as Record<string, unknown>;
     expect(delivery.mode).toBe("announce");
-    expect(delivery.channel).toBe("telegram");
+    expect(delivery.channel).toBe("whatsapp");
     expect(delivery.to).toBe("7200373102");
     expect(delivery.bestEffort).toBe(true);
   });
@@ -209,7 +209,7 @@ describe("normalizeCronJobCreate", () => {
         kind: "agentTurn",
         message: "hi",
         deliver: false,
-        channel: "telegram",
+        channel: "whatsapp",
         to: "7200373102",
       },
     }) as unknown as Record<string, unknown>;

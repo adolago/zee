@@ -246,7 +246,7 @@ describe("resolveZeeMetadata", () => {
     const content = `---
 name: session-memory
 description: "Save session context to memory when /new command is issued"
-homepage: https://docs.zee.bot/hooks#session-memory
+homepage: https://zee-bot.com/hooks#session-memory
 metadata:
   {
     "zee":

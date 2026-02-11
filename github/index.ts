@@ -6,7 +6,7 @@ import * as core from "@actions/core"
 import * as github from "@actions/github"
 import type { Context as GitHubContext } from "@actions/github/lib/context"
 import type { IssueCommentEvent, PullRequestReviewCommentEvent } from "@octokit/webhooks-types"
-import { createAgentCoreClient } from "@zee/sdk"
+import { createZeeClient } from "@zee/sdk"
 import { spawn, spawnSync } from "node:child_process"
 
 type GitHubAuthor = {
@@ -112,32 +112,22 @@ type IssueQueryResponse = {
   }
 }
 
-const AGENT_BOT = process.env["ZEE_GITHUB_BOT"] ?? process.env["AGENT_CORE_GITHUB_BOT"] ?? "zee[bot]"
+const AGENT_BOT = process.env["ZEE_GITHUB_BOT"] ?? "zee[bot]"
 const OIDC_AUDIENCE =
   process.env["ZEE_OIDC_AUDIENCE"] ?? process.env["OIDC_AUDIENCE"] ?? "zee-github-action"
 
-const TRIGGER_RE = /(?:^|\s)(?:\/zee|\/z|\/agent-core|\/ac)(?=$|\s)/
+const TRIGGER_RE = /(?:^|\s)(?:\/zee|\/z|\/ac)(?=$|\s)/
 
 function isTriggerOnly(body: string): boolean {
   const trimmed = body.trim()
-  return trimmed === "/zee" || trimmed === "/z" || trimmed === "/agent-core" || trimmed === "/ac"
+  return trimmed === "/zee" || trimmed === "/z" || trimmed === "/ac"
 }
 
-function resolveZeeCli(): "zee" | "agent-core" {
-  // Prefer the rebranded binary, but allow legacy fallback for older workflows.
-  const candidates: Array<"zee" | "agent-core"> = ["zee", "agent-core"]
-  for (const candidate of candidates) {
-    try {
-      const res = spawnSync(candidate, ["--version"], { stdio: "ignore" })
-      if (res.status === 0) return candidate
-    } catch {
-      // ignore
-    }
-  }
+function resolveZeeCli(): "zee" {
   return "zee"
 }
 
-const { client, server } = createAgentCore()
+const { client, server } = createZee()
 let accessToken: string
 let octoRest: Octokit
 let octoGraph: typeof graphql
@@ -151,7 +141,7 @@ type PromptFiles = Awaited<ReturnType<typeof getUserPrompt>>["promptFiles"]
 try {
   assertContextEvent("issue_comment", "pull_request_review_comment")
   assertPayloadKeyword()
-  await assertAgentCoreConnected()
+  await assertZeeConnected()
 
   accessToken = await getAccessToken()
   octoRest = new Octokit({ auth: accessToken })
@@ -263,13 +253,13 @@ try {
 }
 process.exit(exitCode)
 
-function createAgentCore() {
+function createZee() {
   const host = "127.0.0.1"
   const port = 4096
   const url = `http://${host}:${port}`
   const cli = resolveZeeCli()
   const proc = spawn(cli, [`serve`, `--hostname=${host}`, `--port=${port}`])
-  const client = createAgentCoreClient({ baseUrl: url })
+  const client = createZeeClient({ baseUrl: url })
 
   return {
     server: { url, close: () => proc.kill() },
@@ -281,7 +271,7 @@ function assertPayloadKeyword() {
   const payload = useContext().payload as IssueCommentEvent | PullRequestReviewCommentEvent
   const body = payload.comment.body.trim()
   if (!TRIGGER_RE.test(body)) {
-    throw new Error("Comments must mention `/zee` or `/z` (legacy: `/agent-core`, `/ac`)")
+    throw new Error("Comments must mention `/zee`, `/z`, or `/ac`")
   }
 }
 
@@ -303,7 +293,7 @@ function getReviewCommentContext() {
   }
 }
 
-async function assertAgentCoreConnected() {
+async function assertZeeConnected() {
   let retry = 0
   let connected = false
   do {
@@ -405,7 +395,7 @@ function useIssueId() {
 }
 
 function useShareUrl() {
-  const value = process.env["SHARE_BASE_URL"] ?? process.env["AGENT_CORE_SHARE_BASE_URL"]
+  const value = process.env["SHARE_BASE_URL"]
   if (!value) return undefined
   return value.replace(/\/+$/, "")
 }
@@ -475,7 +465,7 @@ async function getUserPrompt() {
       }
       return body
     }
-    throw new Error("Comments must mention `/zee` or `/z` (legacy: `/agent-core`, `/ac`)")
+    throw new Error("Comments must mention `/zee`, `/z`, or `/ac`")
   })()
 
   // Handle images

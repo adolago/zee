@@ -67,7 +67,7 @@ Usage:
       const response = await fetch(params.url, {
         signal: AbortSignal.any([controller.signal, ctx.abort]),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; AgentCore/1.0)',
+          'User-Agent': 'Mozilla/5.0 (compatible; Zee/1.0)',
           Accept: acceptHeader,
           'Accept-Language': 'en-US,en;q=0.9',
         },

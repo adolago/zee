@@ -9,8 +9,8 @@ import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types.js";
 import { getTodayEvents, checkCredentialsExist, type CalendarEvent } from "./google/calendar.js";
 import { getMemory } from "../../memory/unified.js";
-import { Global } from "../../../packages/zee-core/src/global/index.js";
-import { Storage } from "../../../packages/zee-core/src/storage/storage.js";
+import { Global } from "../../../packages/zee/src/global/index.js";
+import { Storage } from "../../../packages/zee/src/storage/storage.js";
 import path from "path";
 import fs from "fs/promises";
 

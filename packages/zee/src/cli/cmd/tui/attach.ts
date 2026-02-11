@@ -81,8 +81,6 @@ export const AttachCommand = cmd({
     // Apply password from CLI flag
     if (args.password) {
       process.env.ZEE_SERVER_PASSWORD = args.password
-      process.env.AGENT_CORE_SERVER_PASSWORD = args.password
-      process.env.OPENCODE_SERVER_PASSWORD = args.password
       reloadFlags()
     }
 
@@ -108,8 +106,6 @@ export const AttachCommand = cmd({
         process.exit(1)
       }
       process.env.ZEE_SERVER_PASSWORD = pw
-      process.env.AGENT_CORE_SERVER_PASSWORD = pw
-      process.env.OPENCODE_SERVER_PASSWORD = pw
       reloadFlags()
 
       // Retry health check

@@ -14,7 +14,7 @@
  * 4. Usage examples - makes models more assertive in tool calling
  */
 
-import type { Agent } from "../../packages/zee-core/src/agent/agent"
+import type { Agent } from "../../packages/zee/src/agent/agent"
 import { generateToolCatalog, formatCatalogForPrompt } from "./tool-catalog"
 import { loadKnowledgeFiles, formatKnowledgeForPrompt } from "./knowledge-loader"
 import { getRuntimeState, formatRuntimeStateForPrompt } from "./config-injector"

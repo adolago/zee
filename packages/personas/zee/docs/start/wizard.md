@@ -18,7 +18,7 @@ Primary entrypoint:
 zee onboard
 ```
 
-Fastest first chat: finish the wizard and connect WhatsApp or Matrix.
+Fastest first chat: finish the wizard and connect WhatsApp or WhatsApp.
 
 Follow‑up reconfiguration:
 
@@ -40,7 +40,7 @@ The wizard starts with **QuickStart** (defaults) vs **Advanced** (full control).
 - Gateway port **18789**
 - Gateway auth **Token** (auto‑generated, even on loopback)
 - Tailscale exposure **Off**
-- Matrix + WhatsApp DMs default to **allowlist**
+- WhatsApp + WhatsApp DMs default to **allowlist**
 
 **Advanced** exposes every step (mode, workspace, gateway, channels, daemon, skills).
 
@@ -86,7 +86,7 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
    - **OpenAI Code (Codex) subscription (OAuth)**: browser flow; paste the `code#state`.
      - Sets `agents.defaults.model` to `openai-codex/gpt-5.2` when model is unset or `openai/*`.
   - **OpenAI API key**: uses `OPENAI_API_KEY` if present or prompts for a key, then saves it to `~/.zee/.env` so the service can read it.
-   - **OpenCode Zen (multi-model proxy)**: prompts for `AGENT_CORE_API_KEY` (or `OPENCODE_ZEN_API_KEY`, get it at https://opencode.ai/auth).
+   - **Opencode Zen (multi-model proxy)**: prompts for `OPENCODE_ZEN_API_KEY` (or `OPENCODE_ZEN_API_KEY`, get it at https://zee-bot.com/providers/opencode-zen).
    - **API key**: stores the key for you.
    - **Vercel AI Gateway (multi-model proxy)**: prompts for `AI_GATEWAY_API_KEY`.
    - More detail: [Vercel AI Gateway](/providers/vercel-ai-gateway)
@@ -116,14 +116,14 @@ Tip: `--json` does **not** imply non-interactive mode. Use `--non-interactive` (
 
 5) **Channels**
   - WhatsApp: optional QR login.
-  - Matrix: homeserver + userId + access token.
+  - WhatsApp: homeserver + userId + access token.
   - DM security: default is pairing. First DM sends a code; approve via `zee pairing approve <channel> <code>` or use allowlists.
 
 6) **Daemon install**
    - Linux (and Windows via WSL2): systemd user unit
      - Wizard attempts to enable lingering via `loginctl enable-linger <user>` so the Gateway stays up after logout.
      - May prompt for sudo (writes `/var/lib/systemd/linger`); it tries without sudo first.
-   - **Runtime selection:** Node (recommended; required for WhatsApp/Matrix). Bun is **not recommended**.
+   - **Runtime selection:** Node (recommended; required for WhatsApp/WhatsApp). Bun is **not recommended**.
 
 7) **Health check**
    - Starts the Gateway (if needed) and runs `zee health`.
@@ -239,13 +239,13 @@ zee onboard --non-interactive \
   --gateway-bind loopback
 ```
 
-OpenCode Zen example:
+Opencode Zen example:
 
 ```bash
 zee onboard --non-interactive \
   --mode local \
   --auth-choice opencode-zen \
-  --opencode-zen-api-key "$AGENT_CORE_API_KEY" \
+  --opencode-zen-api-key "$OPENCODE_ZEN_API_KEY" \
   --gateway-port 18789 \
   --gateway-bind loopback
 ```

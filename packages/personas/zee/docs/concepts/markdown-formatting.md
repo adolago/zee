@@ -28,14 +28,14 @@ stay consistent across channels.
    - Chunking happens on the IR text before rendering.
    - Inline formatting does not split across chunks; spans are sliced per chunk.
 3. **Render per channel**
-   - **Matrix:** HTML tags (`<b>`, `<i>`, `<s>`, `<code>`, `<pre><code>`, `<a href>`).
+   - **WhatsApp:** HTML tags (`<b>`, `<i>`, `<s>`, `<code>`, `<pre><code>`, `<a href>`).
 
 ## IR example
 
 Input Markdown:
 
 ```markdown
-Hello **world** — see [docs](https://docs.zee).
+Hello **world** — see [docs](https://zee-bot.com).
 ```
 
 IR (schematic):
@@ -47,7 +47,7 @@ IR (schematic):
     { "start": 6, "end": 11, "style": "bold" }
   ],
   "links": [
-    { "start": 19, "end": 23, "href": "https://docs.zee" }
+    { "start": 19, "end": 23, "href": "https://zee-bot.com" }
   ]
 }
 ```
@@ -93,7 +93,7 @@ If you need more on chunking behavior across channels, see
 ## Link policy
 
   is disabled during parse to avoid double-linking.
-- **Matrix:** `[label](url)` -> `<a href="url">label</a>` (HTML formatted messages).
+- **WhatsApp:** `[label](url)` -> `<a href="url">label</a>` (HTML formatted messages).
 
 ## Spoilers
 
@@ -113,6 +113,6 @@ SPOILER style ranges. Other channels treat them as plain text.
 ## Common gotchas
 
   preserved; escape raw HTML safely.
-- Matrix HTML requires escaping text outside tags to avoid broken markup.
+- WhatsApp HTML requires escaping text outside tags to avoid broken markup.
 - Preserve trailing newlines for fenced code blocks so closing markers land on
   their own line.

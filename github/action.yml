@@ -27,7 +27,7 @@ inputs:
     default: "false"
 
   mentions:
-    description: "Comma-separated list of trigger phrases (case-insensitive). Defaults to '/zee,/z,/agent-core,/ac'"
+    description: "Comma-separated list of trigger phrases (case-insensitive). Defaults to '/zee,/z,/ac'"
     required: false
 
   oidc_base_url:
@@ -48,12 +48,7 @@ runs:
     - name: Run zee
       shell: bash
       id: run_zee
-      run: |
-        if command -v zee >/dev/null 2>&1; then
-          zee github run
-        else
-          agent-core github run
-        fi
+      run: zee github run
       env:
         MODEL: ${{ inputs.model }}
         AGENT: ${{ inputs.agent }}

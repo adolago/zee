@@ -193,7 +193,7 @@ export class GUISurface extends BaseSurface implements Surface {
     const params = {
       version: 1,
       client: {
-        name: 'agent-core',
+        name: 'zee',
         version: '1.0.0',
         platform: process.platform,
       },

@@ -500,7 +500,7 @@ async function maybeRefreshKimiModels(provider: any, auth: Auth.Info | undefined
 }
 
 export async function KimiAuthPlugin(_input: PluginInput): Promise<Hooks> {
-  const redirectDisabled = (process.env.ZEE_KIMI_LOG_STDERR || process.env.AGENT_CORE_KIMI_LOG_STDERR || "")
+  const redirectDisabled = (process.env.ZEE_KIMI_LOG_STDERR || "")
     .trim()
     .toLowerCase()
   installKimiStderrRedirect({ enabled: !["0", "false", "no"].includes(redirectDisabled) })

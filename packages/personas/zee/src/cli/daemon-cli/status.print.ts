@@ -285,5 +285,5 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   }
 
   defaultRuntime.log(`${label("Troubles:")} run ${formatCliCommand("zee status")}`);
-  defaultRuntime.log(`${label("Troubleshooting:")} https://docs.zee/troubleshooting`);
+  defaultRuntime.log(`${label("Troubleshooting:")} https://zee-bot.com/troubleshooting`);
 }

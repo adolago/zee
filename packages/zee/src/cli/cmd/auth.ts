@@ -54,9 +54,9 @@ function normalizeDaemonHost(hostname?: string): string {
 }
 
 function resolveDaemonUrl(config?: Config.Info): string {
-  const direct = process.env.ZEE_URL ?? process.env.AGENT_CORE_URL ?? process.env.OPENCODE_URL
+  const direct = process.env.ZEE_URL
   if (direct && direct.trim().length > 0) return direct.trim()
-  const portEnv = Number(process.env.ZEE_PORT ?? process.env.AGENT_CORE_PORT ?? "")
+  const portEnv = Number(process.env.ZEE_PORT ?? "")
   const port =
     config?.server?.port ??
     (Number.isFinite(portEnv) && portEnv > 0 ? portEnv : DEFAULT_DAEMON_PORT)
@@ -76,7 +76,7 @@ async function notifyDaemonAuthChange(config?: Config.Info) {
     await authorizedFetch(`${url}/instance/dispose`, {
       method: "POST",
       headers: {
-        "x-opencode-directory": process.cwd(),
+        "x-zee-directory": process.cwd(),
       },
     })
   } catch {
@@ -574,7 +574,7 @@ export const AuthLoginCommand = cmd({
         if (rawInput) {
           try {
             const url = new URL(rawInput)
-            const wellknown = await fetch(`${url.toString().replace(/\/$/, "")}/.well-known/opencode`).then(
+            const wellknown = await fetch(`${url.toString().replace(/\/$/, "")}/.well-known/zee`).then(
               (x) => x.json() as any,
             )
             prompts.log.info(`Running \`${wellknown.auth.command.join(" ")}\``)

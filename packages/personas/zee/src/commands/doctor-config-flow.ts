@@ -96,7 +96,7 @@ function noteOpencodeProviderOverrides(cfg: ZeeConfig) {
   const providers = cfg.models?.providers;
   if (!providers) return;
 
-  // 2026-01-10: warn when OpenCode Zen overrides mask built-in routing/costs (8a194b4abc360c6098f157956bb9322576b44d51, 2d105d16f8a099276114173836d46b46cdfbdbae).
+  // 2026-01-10: warn when Opencode Zen overrides mask built-in routing/costs (8a194b4abc360c6098f157956bb9322576b44d51, 2d105d16f8a099276114173836d46b46cdfbdbae).
   const overrides: string[] = [];
   if (providers.opencode) overrides.push("opencode");
   if (providers["opencode-zen"]) overrides.push("opencode-zen");
@@ -109,7 +109,7 @@ function noteOpencodeProviderOverrides(cfg: ZeeConfig) {
         ? providerEntry.api
         : undefined;
     return [
-      `- models.providers.${id} is set; this overrides the built-in OpenCode Zen catalog.`,
+      `- models.providers.${id} is set; this overrides the built-in Opencode Zen catalog.`,
       api ? `- models.providers.${id}.api=${api}` : null,
     ].filter((line): line is string => Boolean(line));
   });
@@ -118,7 +118,7 @@ function noteOpencodeProviderOverrides(cfg: ZeeConfig) {
     "- Remove these entries to restore per-model API routing + costs (then re-run onboarding if needed).",
   );
 
-  note(lines.join("\n"), "OpenCode Zen");
+  note(lines.join("\n"), "Opencode Zen");
 }
 
 function hasExplicitConfigPath(env: NodeJS.ProcessEnv): boolean {

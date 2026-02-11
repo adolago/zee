@@ -322,7 +322,6 @@ const FIELD_LABELS: Record<string, string> = {
   "messages.inbound.debounceMs": "Inbound Message Debounce (ms)",
   "talk.apiKey": "Talk API Key",
   "channels.whatsapp": "WhatsApp",
-  "channels.matrix": "Matrix",
   "channels.whatsapp.dmPolicy": "WhatsApp DM Policy",
   "channels.whatsapp.selfChatMode": "WhatsApp Self-Phone Mode",
   "channels.whatsapp.debounceMs": "WhatsApp Message Debounce (ms)",
@@ -360,7 +359,7 @@ const FIELD_HELP: Record<string, string> = {
   "contacts.*.phone": "Primary phone number (E164).",
   "contacts.*.email": "Primary email address.",
   "contacts.*.channels":
-    "Per-channel identifiers (e.g., { whatsapp: \"+123\", matrix: \"@user:server\" }).",
+    "Per-channel identifiers (e.g., { whatsapp: \"+123\" }).",
   "contacts.*.notes": "Freeform notes for this contact.",
   "update.channel": 'Update channel for git + npm installs ("stable", "beta", or "dev").',
   "update.checkOnStart": "Check for npm updates when the gateway starts (default: true).",
@@ -409,7 +408,7 @@ const FIELD_HELP: Record<string, string> = {
   "nodeHost.browserProxy.allowProfiles":
     "Optional allowlist of browser profile names exposed via the node proxy.",
   "diagnostics.flags":
-    'Enable targeted diagnostics logs by flag (e.g. ["matrix.http"]). Supports wildcards like "matrix.*" or "*".',
+    'Enable targeted diagnostics logs by flag (e.g. ["whatsapp.connect"]). Supports wildcards like "whatsapp.*" or "*".',
   "diagnostics.cacheTrace.enabled":
     "Log cache trace snapshots for embedded agent runs (default: false).",
   "diagnostics.cacheTrace.filePath":
@@ -586,9 +585,7 @@ const FIELD_HELP: Record<string, string> = {
   "session.dmScope":
     'DM session scoping: "main" keeps continuity; "per-peer", "per-channel-peer", or "per-account-channel-peer" isolates DM history (recommended for shared inboxes/multi-account).',
   "session.identityLinks":
-    "Map canonical identities to provider-prefixed peer IDs for DM session linking (example: matrix:@user:server).",
-  "channels.matrix.configWrites":
-    "Allow Matrix to write config in response to channel events/commands (default: true).",
+    "Map canonical identities to provider-prefixed peer IDs for DM session linking (example: whatsapp:+15551234567).",
   "channels.whatsapp.configWrites":
     "Allow WhatsApp to write config in response to channel events/commands (default: true).",
   "session.agentToAgent.maxPingPongTurns":

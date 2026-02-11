@@ -9,7 +9,7 @@ const log = Log.create({ service: "heartbeat:delivery" })
 export const HEARTBEAT_DELIVERY_EVENT = "heartbeat.delivery" as const
 
 export type DeliveryTarget = {
-  /** Base URL for the agent-core server. */
+  /** Base URL for the zee server. */
   serverUrl: string
   /** Persona that ran the heartbeat. */
   persona?: string

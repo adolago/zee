@@ -190,12 +190,12 @@ Use this if you want diagnostics events available to plugins or custom sinks:
 ### Diagnostics flags (targeted logs)
 
 Use flags to turn on extra, targeted debug logs without raising `logging.level`.
-Flags are case-insensitive and support wildcards (e.g. `matrix.*` or `*`).
+Flags are case-insensitive and support wildcards (e.g. `whatsapp.*` or `*`).
 
 ```json
 {
   "diagnostics": {
-    "flags": ["matrix.http"]
+    "flags": ["whatsapp.http"]
   }
 }
 ```
@@ -203,7 +203,7 @@ Flags are case-insensitive and support wildcards (e.g. `matrix.*` or `*`).
 Env override (one-off):
 
 ```
-ZEE_DIAGNOSTICS=matrix.http,matrix.payload
+ZEE_DIAGNOSTICS=whatsapp.http,whatsapp.payload
 ```
 
 Notes:

@@ -1,7 +1,7 @@
 /**
  * Main OpenCode Adapter
  *
- * Orchestrates bridges between OpenCode Web UI and agent-core daemon.
+ * Orchestrates bridges between OpenCode Web UI and zee daemon.
  */
 
 import { SessionBridge } from "./bridge/session"

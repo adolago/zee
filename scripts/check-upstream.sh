@@ -3,7 +3,7 @@
 #
 # Usage: ./scripts/check-upstream.sh [--fetch] [--verbose]
 #
-# This script checks the divergence between agent-core and upstream,
+# This script checks the divergence between Zee and upstream,
 # helping to track when updates are available and what needs to be merged.
 
 set -euo pipefail
@@ -39,7 +39,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo -e "${BLUE}=== Agent-Core Upstream Check ===${NC}"
+echo -e "${BLUE}=== Zee Upstream Check ===${NC}"
 echo ""
 
 # Fetch if requested

@@ -63,7 +63,7 @@ Use these hubs to discover every page, including deep dives and reference docs t
 - [Chat channels hub](/channels)
 - [Model providers hub](/providers/models)
 - [WhatsApp](/channels/whatsapp)
-- [Matrix](/channels/matrix)
+- [WhatsApp](/channels/whatsapp)
 - [Location parsing](/channels/location)
 - [Webhooks](/automation/webhook)
 - [Gmail Pub/Sub](/automation/gmail-pubsub)

@@ -26,7 +26,9 @@ async function tryRealpath(targetPath: string): Promise<string> {
   }
 }
 
-const GLOBAL_PACKAGE_NAMES = ["zee", "zee", "zee"] as const;
+const GLOBAL_PACKAGE_NAMES = Array.from(
+  new Set([process.env.ZEE_NPM_PACKAGE?.trim(), "zee"].filter((name): name is string => Boolean(name))),
+);
 
 function resolveBunGlobalRoot(): string {
   const bunInstall = process.env.BUN_INSTALL?.trim() || path.join(os.homedir(), ".bun");
@@ -53,7 +55,13 @@ export async function resolveGlobalPackageRoot(
 ): Promise<string | null> {
   const root = await resolveGlobalRoot(manager, runCommand, timeoutMs);
   if (!root) return null;
-  return path.join(root, "zee");
+
+  for (const name of GLOBAL_PACKAGE_NAMES) {
+    const candidate = path.join(root, name);
+    if (await pathExists(candidate)) return candidate;
+  }
+
+  return path.join(root, GLOBAL_PACKAGE_NAMES[0] ?? "zee");
 }
 
 export async function detectGlobalInstallManagerForRoot(

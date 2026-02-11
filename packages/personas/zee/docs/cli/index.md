@@ -391,7 +391,7 @@ More detail: [/concepts/oauth](/concepts/oauth)
 
 Examples:
 ```bash
-zee channels add --channel matrix --account alerts --name "Alerts" --use-env
+zee channels add --channel whatsapp --account alerts --name "Alerts" --use-env
 zee channels status --probe
 zee status --deep
 ```

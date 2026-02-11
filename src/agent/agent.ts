@@ -2,10 +2,10 @@
  * Agent Module - Core types and interfaces for agent configuration
  *
  * This module defines the base agent interface and types used throughout
- * the agent-core system. It supports three use cases:
+ * the Zee system. It supports these use cases:
  * - Stanley: Professional financial analysis
  * - Zee: Personal AI assistant
- * - Legacy: Development agent (inherited patterns)
+ * - Custom: User-defined agent variants
  */
 
 import { z } from "zod";
@@ -31,7 +31,7 @@ export type AgentMode = z.infer<typeof AgentMode>;
 /**
  * Use case categories for personas
  */
-export const UseCase = z.enum(["stanley", "zee", "agent-core", "opencode", "custom"]);
+export const UseCase = z.enum(["stanley", "zee", "opencode", "custom"]);
 export type UseCase = z.infer<typeof UseCase>;
 
 /**

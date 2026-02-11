@@ -9,7 +9,7 @@ read_when:
 Zee can use many LLM providers. Pick a provider, authenticate, then set the
 default model as `provider/model`.
 
-Looking for chat channel docs (WhatsApp/Matrix)? See [Channels](/channels).
+Looking for chat channel docs (WhatsApp/WhatsApp)? See [Channels](/channels).
 
 ## Highlight: Venius (Venice AI)
 
@@ -39,7 +39,7 @@ See [Venice AI](/providers/venice).
 - [OpenRouter](/providers/openrouter)
 - [Vercel AI Gateway](/providers/vercel-ai-gateway)
 - [Moonshot AI (Kimi + Kimi Code)](/providers/moonshot)
-- [OpenCode Zen](/providers/opencode)
+- [Opencode Zen](/providers/opencode)
 - [Amazon Bedrock](/bedrock)
 - [Z.AI](/providers/zai)
 - [GLM models](/providers/glm)

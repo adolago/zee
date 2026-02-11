@@ -27,7 +27,7 @@ function getDefaultLogDir(): string {
  * Get the default log level from environment
  */
 function getDefaultLevel(): LogLevel {
-  const envLevel = (process.env.ZEE_LOG_LEVEL || process.env.AGENT_CORE_LOG_LEVEL)?.toLowerCase();
+  const envLevel = (process.env.ZEE_LOG_LEVEL)?.toLowerCase();
   const validLevels: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal"];
   
   if (envLevel && validLevels.includes(envLevel as LogLevel)) {
@@ -35,7 +35,7 @@ function getDefaultLevel(): LogLevel {
   }
 
   // Check for trace mode
-  if (process.env.ZEE_TRACE === "1" || process.env.AGENT_CORE_TRACE === "1") {
+  if (process.env.ZEE_TRACE === "1") {
     return "trace";
   }
 

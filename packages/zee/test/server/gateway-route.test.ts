@@ -86,21 +86,4 @@ describe("gateway routes", () => {
     expect(lastSendParams!.to).toBe("15551234567")
   })
 
-  test("POST /gateway/matrix/send uses Zee gateway RPC", async () => {
-    const app = Server.App()
-    const response = await app.request("/gateway/matrix/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId: "!test:example.org", message: "Hi" }),
-    })
-
-    expect(response.status).toBe(200)
-    const data = await response.json()
-    expect(data.success).toBe(true)
-
-    expect(lastSendParams).not.toBeNull()
-    expect(lastSendParams!.channel).toBe("matrix")
-    expect(lastSendParams!.message).toBe("Hi")
-    expect(lastSendParams!.to).toBe("!test:example.org")
-  })
 })

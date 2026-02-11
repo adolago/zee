@@ -16,7 +16,7 @@ export type HeartbeatRunResult = {
 }
 
 export type HeartbeatRunnerDeps = {
-  /** Base URL for the agent-core server. */
+  /** Base URL for the zee server. */
   serverUrl: string
   /** Working directory to find HEARTBEAT.md in. */
   directory: string

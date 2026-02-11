@@ -16,7 +16,7 @@ import type {
   ToolCategory,
   SurfaceType,
 } from './types';
-import { Log } from '../../packages/zee-core/src/util/log';
+import { Log } from '../../packages/zee/src/util/log';
 
 const log = Log.create({ service: 'mcp-permission' });
 
@@ -82,7 +82,6 @@ export class PermissionChecker {
         web: {},
         api: {},
         whatsapp: {},
-        matrix: {},
       },
       global: permissions?.global ?? {},
       overrides: permissions?.overrides ?? {},
@@ -427,20 +426,6 @@ export class PermissionChecker {
 
       case 'whatsapp':
         // WhatsApp is most restrictive - no file/system operations
-        return {
-          bash: { default: 'deny' },
-          edit: { default: 'deny' },
-          write: { default: 'deny' },
-          read: { default: 'deny' },
-          glob: { default: 'deny' },
-          grep: { default: 'deny' },
-          webfetch: { default: 'allow' },
-          task: { default: 'deny' },
-          skill: { default: 'allow' },
-        };
-
-      case 'matrix':
-        // Matrix is most restrictive - no file/system operations
         return {
           bash: { default: 'deny' },
           edit: { default: 'deny' },

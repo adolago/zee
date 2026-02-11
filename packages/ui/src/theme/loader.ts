@@ -2,7 +2,7 @@ import type { DesktopTheme, ResolvedTheme } from "./types"
 import { resolveThemeVariant, themeToCss } from "./resolve"
 
 let activeTheme: DesktopTheme | null = null
-const THEME_STYLE_ID = "opencode-theme"
+const THEME_STYLE_ID = "zee-theme"
 
 function ensureLoaderStyleElement(): HTMLStyleElement {
   const existing = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
@@ -27,7 +27,7 @@ export function applyTheme(theme: DesktopTheme, themeId?: string): void {
 }
 
 function buildThemeCss(light: ResolvedTheme, dark: ResolvedTheme, themeId: string): string {
-  const isDefaultTheme = themeId === "agent-core" || themeId === "oc-1"
+  const isDefaultTheme = themeId === "selenized-dark"
   const lightCss = themeToCss(light)
   const darkCss = themeToCss(dark)
 

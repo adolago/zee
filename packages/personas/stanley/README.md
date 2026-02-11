@@ -1,6 +1,6 @@
 # Stanley - Financial Research Assistant
 
-Stanley is the financial research and market analysis persona for agent-core. It provides tools for market data retrieval, portfolio analysis, SEC filings research, and algorithmic trading backtesting.
+Stanley is the financial research and market analysis persona for Zee. It provides tools for market data retrieval, portfolio analysis, SEC filings research, and algorithmic trading backtesting.
 
 ## Features
 

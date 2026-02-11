@@ -56,7 +56,7 @@ For the generic Docker flow, see [Docker](/install/docker).
 - Model auth credentials  
 - Optional provider credentials  
   - WhatsApp QR  
-  - Matrix access token
+  - WhatsApp access token
   - Gmail OAuth  
 
 ---

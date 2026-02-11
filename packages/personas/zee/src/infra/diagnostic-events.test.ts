@@ -33,13 +33,13 @@ describe("diagnostic-events", () => {
 
     emitDiagnosticEvent({
       type: "webhook.received",
-      channel: "matrix",
-      updateType: "matrix-post",
+      channel: "whatsapp",
+      updateType: "whatsapp-post",
     });
     emitDiagnosticEvent({
       type: "message.queued",
-      channel: "matrix",
-      source: "matrix",
+      channel: "whatsapp",
+      source: "whatsapp",
       queueDepth: 1,
     });
     emitDiagnosticEvent({

@@ -495,7 +495,7 @@ export type GrammarConfig = {
 }
 
 /**
- * Server configuration for agent-core serve and web commands
+ * Server configuration for Zee serve and web commands
  */
 export type ServerConfig = {
   /**
@@ -1434,7 +1434,7 @@ export type Session = {
     output: number
     reasoning: number
   }
-  surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
+  surface?: "cli" | "web" | "api" | "whatsapp"
   mode?: "hold" | "release"
   systemPrompt?: string
   skills?: Array<string>
@@ -1442,7 +1442,7 @@ export type Session = {
   toolPolicySnapshot?: {
     createdAt: number
     mode: "hold" | "release"
-    surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
+    surface?: "cli" | "web" | "api" | "whatsapp"
     agent?: string
     permission?: PermissionRuleset
   }
@@ -2855,7 +2855,7 @@ export type SessionCreateData = {
     parentID?: string
     title?: string
     permission?: PermissionRuleset
-    surface?: "cli" | "web" | "api" | "whatsapp" | "matrix"
+    surface?: "cli" | "web" | "api" | "whatsapp"
     systemPrompt?: string | null
     skills?: Array<string> | null
     contextFiles?: Array<string> | null
@@ -3147,7 +3147,7 @@ export type SyncDeltaResponse = SyncDeltaResponses[keyof SyncDeltaResponses]
 
 export type SessionHandoffData = {
   body?: {
-    targetSurface: "cli" | "web" | "api" | "whatsapp" | "matrix"
+    targetSurface: "cli" | "web" | "api" | "whatsapp"
   }
   path: {
     sessionID: string
@@ -5924,26 +5924,6 @@ export type GatewayWhatsappSendResponses = {
 }
 
 export type GatewayWhatsappSendResponse = GatewayWhatsappSendResponses[keyof GatewayWhatsappSendResponses]
-
-export type GatewayMatrixSendData = {
-  body?: never
-  path?: never
-  query?: never
-  url: "/gateway/matrix/send"
-}
-
-export type GatewayMatrixSendResponses = {
-  /**
-   * Send result
-   */
-  200: {
-    success: boolean
-    error?: string
-    data?: unknown
-  }
-}
-
-export type GatewayMatrixSendResponse = GatewayMatrixSendResponses[keyof GatewayMatrixSendResponses]
 
 export type OpenapiSpecsData = {
   body?: never

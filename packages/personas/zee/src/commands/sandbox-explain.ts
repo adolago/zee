@@ -30,7 +30,7 @@ type SandboxExplainOptions = {
   json: boolean;
 };
 
-const SANDBOX_DOCS_URL = "https://docs.zee/sandbox";
+const SANDBOX_DOCS_URL = "https://zee-bot.com/sandbox";
 
 function normalizeExplainSessionKey(params: {
   cfg: ZeeConfig;
@@ -307,7 +307,7 @@ export async function sandboxExplainCommand(
   lines.push(heading("Fix-it:"));
   for (const key of payload.fixIt) lines.push(`  - ${key}`);
   lines.push("");
-  lines.push(`${key("Docs:")} ${formatDocsLink("/sandbox", "docs.zee/sandbox")}`);
+  lines.push(`${key("Docs:")} ${formatDocsLink("/sandbox", "zee-bot.com/sandbox")}`);
 
   runtime.log(`${lines.join("\n")}\n`);
 }

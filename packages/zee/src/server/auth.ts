@@ -122,9 +122,7 @@ export function getAuthConfig(): AuthConfig {
   // If not set, default to admin (full access) for backward compatibility.
   const scopeValues = Object.values(AuthScope)
   const rawScopes =
-    process.env.ZEE_SERVER_SCOPES?.trim() ||
-    process.env.AGENT_CORE_SERVER_SCOPES?.trim() ||
-    process.env.OPENCODE_SERVER_SCOPES?.trim()
+    process.env.ZEE_SERVER_SCOPES?.trim()
   let scopes: AuthScopeValue[]
   if (rawScopes) {
     scopes = rawScopes

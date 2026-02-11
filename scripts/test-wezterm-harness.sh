@@ -59,4 +59,4 @@ echo "=== All checks passed! ==="
 echo
 echo "The WezTerm harness should work correctly."
 echo "Run the test suite with:"
-echo "  bun test packages/zee-core/test/tui/wezterm-harness.test.ts"
+echo "  bun test packages/zee/test/tui/wezterm-harness.test.ts"

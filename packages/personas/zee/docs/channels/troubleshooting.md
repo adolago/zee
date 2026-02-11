@@ -1,5 +1,4 @@
----
-summary: "Channel-specific troubleshooting shortcuts (Matrix/WhatsApp)"
+summary: "Channel-specific troubleshooting shortcuts (WhatsApp)"
 read_when:
   - A channel connects but messages don’t flow
   - Investigating channel misconfiguration (intents, permissions, privacy mode)
@@ -16,11 +15,10 @@ zee channels status --probe
 `channels status --probe` prints warnings when it can detect common channel misconfigurations, and includes small live checks (credentials, some permissions/membership).
 
 ## Channels
-- Matrix: [/channels/matrix](/channels/matrix)
-- WhatsApp: [/channels/whatsapp#troubleshooting-quick](/channels/whatsapp#troubleshooting-quick)
+- WhatsApp: [/channels/whatsapp](/channels/whatsapp)
 
-## Matrix quick fixes
+## WhatsApp quick fixes
 
-- `channels status --probe` shows Matrix not configured: check `channels.matrix.homeserver`, `channels.matrix.userId`, and `MATRIX_ACCESS_TOKEN` (or `channels.matrix.accessToken`).
-- Messages send but you see access errors: confirm the token matches the configured `userId` and that the user is joined to the target room.
-- DMs are blocked: check `channels.matrix.dmPolicy` and `channels.matrix.allowFrom`.
+- `channels status --probe` shows WhatsApp not configured: check your `channels.whatsapp` account config and `channels.whatsapp.accessToken` (or `{env:WHATSAPP_ACCESS_TOKEN}` in config).
+- Messages send but you see access errors: confirm credentials are valid and that the target chat/account is reachable.
+- DMs are blocked: check `channels.whatsapp.dmPolicy` and `channels.whatsapp.allowFrom`.

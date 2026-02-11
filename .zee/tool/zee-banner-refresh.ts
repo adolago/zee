@@ -1,13 +1,13 @@
 /**
  * Zee Banner Refresh Tool
  *
- * Refreshes the always-on Zee banner shown at the top of the agent-core TUI.
+ * Refreshes the always-on Zee banner shown at the top of the Zee TUI.
  * Intended to be called by cron (no LLM required).
  */
 
 import { tool } from "@zee/plugin"
 
-import { Storage } from "../../packages/zee-core/src/storage/storage"
+import { Storage } from "../../packages/zee/src/storage/storage"
 
 import {
   DEFAULT_ROTATION_MS,
@@ -162,7 +162,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
 }
 
 export default tool({
-  description: `Refresh the Zee banner shown at the top of the agent-core TUI prompt.
+  description: `Refresh the Zee banner shown at the top of the Zee TUI prompt.
 
 The banner rotates items (reminders, todos, messages) and is shown even when using other personas.`,
   args: {
@@ -219,4 +219,3 @@ The banner rotates items (reminders, todos, messages) and is shown even when usi
     return parts.join("\n")
   },
 })
-

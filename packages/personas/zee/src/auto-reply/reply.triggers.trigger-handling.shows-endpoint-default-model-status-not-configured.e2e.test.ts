@@ -84,7 +84,7 @@ function makeCfg(home: string) {
       whatsapp: {
         allowFrom: ["*"],
       },
-      matrix: {
+      whatsapp: {
         allowFrom: ["*"],
       },
     },
@@ -103,12 +103,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model status",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
-          SessionKey: "matrix:slash:111",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "whatsapp:slash:111",
           CommandAuthorized: true,
         },
         {},
@@ -135,12 +135,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model status",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
-          SessionKey: "matrix:slash:111",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "whatsapp:slash:111",
           CommandAuthorized: true,
         },
         {},

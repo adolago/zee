@@ -21,13 +21,7 @@ export type { NormalizedOutboundPayload } from "./payloads.js";
 export { normalizeOutboundPayloads } from "./payloads.js";
 
 export type OutboundSendDeps = {
-  sendWhatsApp?: typeof sendMessageWhatsApp;
-  sendTelegram?: (
-    to: string,
-    text: string,
-    opts?: Record<string, unknown>,
-  ) => Promise<{ messageId: string; chatId?: string; [key: string]: unknown }>;
-};
+  sendWhatsApp?: typeof sendMessageWhatsApp;};
 
 export type OutboundDeliveryResult = {
   channel: Exclude<OutboundChannel, "none">;

@@ -24,8 +24,8 @@ zee channels logs --channel all
 ## Add / remove accounts
 
 ```bash
-zee channels add --channel matrix
-zee channels remove --channel matrix --delete
+zee channels add --channel whatsapp
+zee channels remove --channel whatsapp --delete
 ```
 
 
@@ -58,7 +58,7 @@ Notes:
 Resolve channel/user names to IDs using the provider directory:
 
 ```bash
-zee channels resolve --channel matrix "Project Room"
+zee channels resolve --channel whatsapp "Project Room"
 ```
 
 Notes:

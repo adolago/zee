@@ -1,7 +1,7 @@
 export type ExecApprovalForwardingMode = "session" | "targets" | "both";
 
 export type ExecApprovalForwardTarget = {
-  /** Channel id (e.g. "whatsapp", "matrix", or plugin channel id). */
+  /** Channel id (e.g. "whatsapp" or plugin channel id). */
   channel: string;
   /** Destination id (channel id, user id, etc. depending on channel). */
   to: string;

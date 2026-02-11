@@ -4,8 +4,8 @@ import { RequestMeta } from "../../src/server/request-meta"
 import { SseLimit } from "../../src/server/sse-limit"
 
 const ORIGINAL_ENV = {
-  AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS: process.env.AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS,
-  AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT: process.env.AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT,
+  ZEE_SERVER_MAX_SSE_CONNECTIONS: process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS,
+  ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT: process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT,
 }
 
 afterEach(() => {
@@ -19,8 +19,8 @@ afterEach(() => {
 
 describe("SseLimit", () => {
   test("enforces per-client and total SSE connection caps", () => {
-    process.env.AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS = "2"
-    process.env.AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT = "1"
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS = "2"
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT = "1"
     reloadFlags()
 
     const reqA1 = new Request("http://localhost/app/event")
@@ -49,8 +49,8 @@ describe("SseLimit", () => {
   })
 
   test("releasing a slot decrements counts and allows reconnect", () => {
-    process.env.AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS = "1"
-    process.env.AGENT_CORE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT = "1"
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS = "1"
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT = "1"
     reloadFlags()
 
     const reqA1 = new Request("http://localhost/app/event")

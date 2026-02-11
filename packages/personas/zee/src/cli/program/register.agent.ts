@@ -63,12 +63,12 @@ ${formatHelpExamples([
   ],
   ['zee agent --to +15555550123 --message "Summon reply" --deliver', "Deliver reply."],
   [
-    'zee agent --agent ops --message "Generate report" --deliver --reply-channel matrix --reply-to "!room:example.com"',
+    'zee agent --agent ops --message "Generate report" --deliver --reply-channel whatsapp --reply-to +15555550123',
     "Send reply to a different channel/target.",
   ],
 ])}
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.zee/cli/agent")}`,
+${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "zee-bot.com/cli/agent")}`,
     )
     .action(async (opts) => {
       const verboseLevel = typeof opts.verbose === "string" ? opts.verbose.toLowerCase() : "";
@@ -86,7 +86,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.zee/cli/agent")}`,
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/agents", "docs.zee/cli/agents")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/agents", "zee-bot.com/cli/agents")}\n`,
     );
 
   agents

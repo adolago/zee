@@ -1,6 +1,6 @@
 # TUI Vim Mode Manual
 
-This document describes the Vim-style keybindings available in the agent-core TUI prompt.
+This document describes the Vim-style keybindings available in the zee TUI prompt.
 
 ## Enable or disable Vim mode
 

@@ -86,7 +86,6 @@ export namespace WeztermOrchestration {
     services: {
       persistence: boolean
       whatsapp: boolean
-      matrix: boolean
     }
     sessions: {
       total: number
@@ -344,11 +343,10 @@ export namespace WeztermOrchestration {
       // Services
       const persistence = cachedStatus.services?.persistence ? "●" : "○"
       const whatsapp = cachedStatus.services?.whatsapp ? "●" : "○"
-      const matrix = cachedStatus.services?.matrix ? "●" : "○"
       const wezterm = isInitialized ? "●" : "○"
 
       lines.push(
-        `║ Services: Persistence ${persistence}  WhatsApp ${whatsapp}  Matrix ${matrix}  WezTerm ${wezterm} ║`,
+        `║ Services: Persistence ${persistence}  WhatsApp ${whatsapp}  WezTerm ${wezterm} ║`,
       )
 
       lines.push("╠════════════════════════════════════════════════════════╣")

@@ -72,11 +72,11 @@ describe("abort detection", () => {
         CommandBody: "/stop",
         RawBody: "/stop",
         CommandAuthorized: true,
-        SessionKey: "matrix:123",
-        Provider: "matrix",
-        Surface: "matrix",
-        From: "matrix:123",
-        To: "matrix:123",
+        SessionKey: "whatsapp:123",
+        Provider: "whatsapp",
+        Surface: "whatsapp",
+        From: "whatsapp:123",
+        To: "whatsapp:123",
       }),
       cfg,
     });
@@ -88,7 +88,7 @@ describe("abort detection", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "zee-abort-"));
     const storePath = path.join(root, "sessions.json");
     const cfg = { session: { store: storePath } } as ZeeConfig;
-    const sessionKey = "matrix:123";
+    const sessionKey = "whatsapp:123";
     const sessionId = "session-123";
     await fs.writeFile(
       storePath,
@@ -111,7 +111,7 @@ describe("abort detection", () => {
         agentDir: path.join(root, "agent"),
         sessionId,
         sessionKey,
-        messageProvider: "matrix",
+        messageProvider: "whatsapp",
         agentAccountId: "acct",
         sessionFile: path.join(root, "session.jsonl"),
         workspaceDir: path.join(root, "workspace"),
@@ -136,10 +136,10 @@ describe("abort detection", () => {
         RawBody: "/stop",
         CommandAuthorized: true,
         SessionKey: sessionKey,
-        Provider: "matrix",
-        Surface: "matrix",
-        From: "matrix:123",
-        To: "matrix:123",
+        Provider: "whatsapp",
+        Surface: "whatsapp",
+        From: "whatsapp:123",
+        To: "whatsapp:123",
       }),
       cfg,
     });
@@ -153,7 +153,7 @@ describe("abort detection", () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "zee-abort-"));
     const storePath = path.join(root, "sessions.json");
     const cfg = { session: { store: storePath } } as ZeeConfig;
-    const sessionKey = "matrix:parent";
+    const sessionKey = "whatsapp:parent";
     const childKey = "agent:main:subagent:child-1";
     const sessionId = "session-parent";
     const childSessionId = "session-child";
@@ -180,7 +180,7 @@ describe("abort detection", () => {
         runId: "run-1",
         childSessionKey: childKey,
         requesterSessionKey: sessionKey,
-        requesterDisplayKey: "matrix:parent",
+        requesterDisplayKey: "whatsapp:parent",
         task: "do work",
         cleanup: "keep",
         createdAt: Date.now(),
@@ -193,10 +193,10 @@ describe("abort detection", () => {
         RawBody: "/stop",
         CommandAuthorized: true,
         SessionKey: sessionKey,
-        Provider: "matrix",
-        Surface: "matrix",
-        From: "matrix:parent",
-        To: "matrix:parent",
+        Provider: "whatsapp",
+        Surface: "whatsapp",
+        From: "whatsapp:parent",
+        To: "whatsapp:parent",
       }),
       cfg,
     });

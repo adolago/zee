@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_URL="${ZEE_INSTALL_URL:-https://docs.zee/install.sh}"
+INSTALL_URL="${ZEE_INSTALL_URL:-https://zee-bot.com/install.sh}"
 SMOKE_PREVIOUS_VERSION="${ZEE_INSTALL_SMOKE_PREVIOUS:-}"
 SKIP_PREVIOUS="${ZEE_INSTALL_SMOKE_SKIP_PREVIOUS:-0}"
 DEFAULT_PACKAGE="zee"

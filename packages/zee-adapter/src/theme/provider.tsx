@@ -6,7 +6,7 @@
 
 import { createSignal, createContext, useContext, onMount, type JSX } from "solid-js"
 
-export type ThemeMode = "tui" | "agent-core" | "auto"
+export type ThemeMode = "tui" | "zee" | "auto"
 
 interface ThemeContextValue {
   mode: () => ThemeMode

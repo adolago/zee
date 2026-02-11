@@ -1,7 +1,7 @@
 import { MESSAGE_ACTION_TARGET_MODE } from "./message-action-spec.js";
 
 export const CHANNEL_TARGET_DESCRIPTION =
-  "Recipient/channel: E.164 for WhatsApp or Matrix room id.";
+  "Recipient/channel: E.164 for WhatsApp.";
 
 export const CHANNEL_TARGETS_DESCRIPTION =
   "Recipient/channel targets (same format as --target); accepts ids or names when the directory is available.";

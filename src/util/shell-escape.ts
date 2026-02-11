@@ -8,7 +8,7 @@
 /**
  * Valid persona identifiers - whitelist for validation
  */
-export const VALID_PERSONAS = ["zee", "stanley", "johny"] as const;
+export const VALID_PERSONAS = ["zee"] as const;
 export type PersonaId = (typeof VALID_PERSONAS)[number];
 
 /**

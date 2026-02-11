@@ -105,14 +105,13 @@ export function formatTargetDisplay(params: {
     ? trimmedTarget.slice(channelPrefix.length)
     : trimmedTarget;
 
-  const withoutPrefix = withoutProvider.replace(/^matrix:/i, "");
-  if (/^channel:/i.test(withoutPrefix)) {
-    return `#${withoutPrefix.replace(/^channel:/i, "")}`;
+  if (/^channel:/i.test(withoutProvider)) {
+    return `#${withoutProvider.replace(/^channel:/i, "")}`;
   }
-  if (/^user:/i.test(withoutPrefix)) {
-    return `@${withoutPrefix.replace(/^user:/i, "")}`;
+  if (/^user:/i.test(withoutProvider)) {
+    return `@${withoutProvider.replace(/^user:/i, "")}`;
   }
-  return withoutPrefix;
+  return withoutProvider;
 }
 
 function detectTargetKind(

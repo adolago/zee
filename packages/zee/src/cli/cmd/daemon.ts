@@ -29,7 +29,6 @@ import {
 const log = Log.create({ service: "daemon" })
 const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
 const ALLOW_RESTART_ENV = "ZEE_ALLOW_RESTART"
-const ALLOW_RESTART_ENV_LEGACY = "AGENT_CORE_ALLOW_RESTART"
 
 export namespace Daemon {
   const STATE_DIR = path.join(Global.Path.state, "daemon")
@@ -78,7 +77,7 @@ export namespace Daemon {
     return raw.filter(Boolean)
   }
 
-  const DAEMON_BASENAMES = new Set(["zee", "agent-core"])
+  const DAEMON_BASENAMES = new Set(["zee"])
 
   function isZeeDaemonArgs(args: string[]): boolean {
     if (args.length === 0) return false
@@ -274,7 +273,6 @@ export namespace GatewaySupervisor {
   const GATEWAY_ENV_HINTS = [
     "ZEE_GATEWAY_TOKEN",
     "ZEE_GATEWAY_PASSWORD",
-    "MATRIX_ACCESS_TOKEN",
   ]
 
   let startInFlight = false
@@ -366,9 +364,9 @@ export namespace GatewaySupervisor {
     if (options.checkPort) {
       const gatewayPort = getGatewayPort()
       const embeddedState = getEmbeddedGatewayState()
-      if (!embeddedState.running && isSystemdUserUnitEnabled(SYSTEMD_ZEE_GATEWAY_UNIT)) {
+        if (!embeddedState.running && isSystemdUserUnitEnabled(SYSTEMD_ZEE_GATEWAY_UNIT)) {
           issues.push(
-          `Systemd unit ${SYSTEMD_ZEE_GATEWAY_UNIT} is enabled. Disable it or start zee daemon with --no-gateway to avoid a port conflict on ${gatewayPort}.`,
+          `Systemd unit ${SYSTEMD_ZEE_GATEWAY_UNIT} is enabled. Disable it to avoid a port conflict on ${gatewayPort}.`,
         )
       } else {
         let portOpen = await isPortOpen("127.0.0.1", gatewayPort)
@@ -627,7 +625,7 @@ function listGatewayProcesses(): Array<{ pid: number; cmd: string }> {
 
 function listDaemonProcesses(): Array<{ pid: number; cmd: string }> {
   try {
-    const output = execSync('pgrep -af "(zee|agent-core|opencode).*daemon([[:space:]]|$)" 2>/dev/null || true', {
+    const output = execSync('pgrep -af "zee.*daemon([[:space:]]|$)" 2>/dev/null || true', {
       encoding: "utf-8",
     })
     const lines = output.trim().split("\n").filter(Boolean)
@@ -783,11 +781,6 @@ export const DaemonCommand = cmd({
         choices: ["horizontal", "vertical", "grid"],
         default: "horizontal",
       })
-      .option("gateway", {
-        describe: "Start zee messaging gateway (WhatsApp/Matrix)",
-        type: "boolean",
-        default: true,
-      })
       .option("gateway-force", {
         describe: "Start zee gateway even if preflight checks fail",
         type: "boolean",
@@ -807,9 +800,8 @@ export const DaemonCommand = cmd({
       UI.warn(`Daemon is already running (PID: ${state?.pid}, Port: ${state?.port})`)
 
       const isInteractive = Boolean(process.stdin.isTTY && process.stdout.isTTY)
-      const headless = process.env.ZEE_HEADLESS === "1" || process.env.AGENT_CORE_HEADLESS === "1" || !isInteractive
-      const allowRestart =
-        process.env[ALLOW_RESTART_ENV] === "1" || process.env[ALLOW_RESTART_ENV_LEGACY] === "1"
+      const headless = process.env.ZEE_HEADLESS === "1" || !isInteractive
+      const allowRestart = process.env[ALLOW_RESTART_ENV] === "1"
 
       if (headless && !allowRestart) {
         UI.info("Headless mode detected; refusing to restart an existing daemon.")
@@ -857,7 +849,7 @@ export const DaemonCommand = cmd({
       hostname: opts.hostname,
       port: opts.port,
       directory,
-      gateway: Boolean(args.gateway),
+      gateway: true,
       gatewayForce: Boolean(args["gateway-force"]),
       wezterm: Boolean(args.wezterm),
       weztermLayout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",

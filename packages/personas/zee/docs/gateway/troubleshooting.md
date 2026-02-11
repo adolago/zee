@@ -486,12 +486,12 @@ upgrades in place and rewrites the gateway service to point at the new install.
 
 Switch **to git install**:
 ```bash
-curl -fsSL https://docs.zee/install.sh | bash -s -- --install-method git --no-onboard
+curl -fsSL https://zee-bot.com/install.sh | bash -s -- --install-method git --no-onboard
 ```
 
 Switch **to npm global**:
 ```bash
-curl -fsSL https://docs.zee/install.sh | bash
+curl -fsSL https://zee-bot.com/install.sh | bash
 ```
 
 Notes:
@@ -512,7 +512,7 @@ Block streaming only sends **completed text blocks**. Common reasons you see a s
 
 Fix checklist:
 1) Put block streaming settings under `agents.defaults`, not the root.
-2) Enable block streaming for the channel (for example `channels.whatsapp.blockStreaming: true` or `channels.matrix.blockStreaming: true`).
+2) Enable block streaming for the channel (for example `channels.whatsapp.blockStreaming: true` or `channels.whatsapp.blockStreaming: true`).
 3) Use smaller chunk/coalesce thresholds while debugging.
 
 See [Streaming](/concepts/streaming).

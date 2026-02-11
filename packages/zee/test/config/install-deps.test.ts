@@ -13,9 +13,9 @@ async function exists(p: string): Promise<boolean> {
   }
 }
 
-test("Config.installDependencies is a no-op when AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1", async () => {
-  const original = process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL
-  process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL = "1"
+test("Config.installDependencies is a no-op when ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL=1", async () => {
+  const original = process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL
+  process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL = "1"
   try {
     await using tmp = await tmpdir()
     const dir = path.join(tmp.path, "config-dir")
@@ -29,9 +29,9 @@ test("Config.installDependencies is a no-op when AGENT_CORE_DISABLE_CONFIG_DEPEN
     expect(await exists(path.join(dir, "bun.lock"))).toBe(false)
   } finally {
     if (typeof original === "string") {
-      process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL = original
+      process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL = original
     } else {
-      delete process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL
+      delete process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL
     }
   }
 })

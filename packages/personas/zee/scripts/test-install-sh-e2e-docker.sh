@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE_NAME="${ZEE_INSTALL_E2E_IMAGE:-zee-install-e2e:local}"
-INSTALL_URL="${ZEE_INSTALL_URL:-https://docs.zee/install.sh}"
+INSTALL_URL="${ZEE_INSTALL_URL:-https://zee-bot.com/install.sh}"
 
 OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"

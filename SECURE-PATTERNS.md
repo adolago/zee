@@ -1,6 +1,6 @@
-# Secure Patterns (agent-core)
+# Secure Patterns (zee)
 
-This document captures secure-by-default patterns to use across `agent-core` when writing tools and infrastructure code.
+This document captures secure-by-default patterns to use across `zee` when writing tools and infrastructure code.
 
 ## Process Execution
 
@@ -70,4 +70,3 @@ Implementation reference:
 
 - `src/mcp/registry.ts`
 - `src/mcp/permission.ts`
-

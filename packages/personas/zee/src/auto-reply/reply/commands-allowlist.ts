@@ -45,20 +45,6 @@ type AllowlistCommand =
 const ACTIONS = new Set(["list", "add", "remove"]);
 const SCOPES = new Set<AllowlistScope>(["dm", "group", "all"]);
 
-function readMatrixAllowlistConfig(cfg: ZeeConfig): { allowFrom: string[]; dmPolicy?: string } {
-  const channels = (cfg.channels as Record<string, unknown> | undefined) ?? {};
-  const matrix = channels.matrix;
-  if (!matrix || typeof matrix !== "object" || Array.isArray(matrix)) {
-    return { allowFrom: [] };
-  }
-  const record = matrix as Record<string, unknown>;
-  const allowFrom = Array.isArray(record.allowFrom)
-    ? record.allowFrom.map((entry) => String(entry))
-    : [];
-  const dmPolicy = typeof record.dmPolicy === "string" ? record.dmPolicy : undefined;
-  return { allowFrom, dmPolicy };
-}
-
 function parseAllowlistCommand(raw: string): AllowlistCommand | null {
   const trimmed = raw.trim();
   if (!trimmed.toLowerCase().startsWith("/allowlist")) return null;
@@ -240,7 +226,7 @@ function resolveChannelAllowFromPaths(
 ): string[] | null {
   if (scope === "all") return null;
   if (scope === "dm") {
-    if (channelId === "whatsapp" || channelId === "matrix") {
+    if (channelId === "whatsapp") {
       return ["allowFrom"];
     }
     return null;
@@ -300,10 +286,6 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
       groupAllowFrom = (account.groupAllowFrom ?? []).map(String);
       dmPolicy = account.dmPolicy;
       groupPolicy = account.groupPolicy;
-    } else if (channelId === "matrix") {
-      const matrixConfig = readMatrixAllowlistConfig(params.cfg);
-      dmAllowFrom = matrixConfig.allowFrom.map(String);
-      dmPolicy = matrixConfig.dmPolicy;
     }
 
     const dmDisplay = normalizeAllowFrom({

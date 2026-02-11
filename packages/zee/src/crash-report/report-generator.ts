@@ -89,7 +89,7 @@ export class ReportGenerator {
       version: REPORT_VERSION,
       generatedAt: new Date().toISOString(),
       id: `crash-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      zeeVersion: process.env.ZEE_VERSION || process.env.AGENT_CORE_VERSION || "dev",
+      zeeVersion: process.env.ZEE_VERSION || "dev",
       anonymization: this.options.anonymization,
     };
   }

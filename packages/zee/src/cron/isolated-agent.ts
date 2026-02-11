@@ -19,7 +19,7 @@ export type IsolatedAgentResult = {
 export async function runIsolatedAgentJob(params: {
   job: CronJob
   message: string
-  /** Base URL for the agent-core server (e.g. http://127.0.0.1:3210). */
+  /** Base URL for the zee server (e.g. http://127.0.0.1:3210). */
   serverUrl: string
 }): Promise<IsolatedAgentResult> {
   const { job, message, serverUrl } = params

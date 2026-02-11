@@ -1,7 +1,7 @@
 ---
 name: session-memory
 description: "Save session context to memory when /new command is issued"
-homepage: https://docs.zee/hooks#session-memory
+homepage: https://zee-bot.com/hooks#session-memory
 metadata:
   {
     "zee":
@@ -37,7 +37,7 @@ Memory files are created with the following format:
 
 - **Session Key**: agent:main:main
 - **Session ID**: abc123def456
-- **Source**: matrix
+- **Source**: whatsapp
 ```
 
 ## Filename Examples

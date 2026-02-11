@@ -134,7 +134,6 @@ process.env["ZEE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
 
 // Server auth breaks most unit tests (they don't send Authorization headers).
 process.env["ZEE_DISABLE_SERVER_AUTH"] = "true"
-process.env["AGENT_CORE_DISABLE_SERVER_AUTH"] = "true"
 
 // Pre-fetch models.json so tests don't need the macro fallback
 // Also write the cache version file to prevent global/index.ts from clearing the cache
@@ -158,17 +157,6 @@ delete process.env["ZEE_PERMISSION"]
 delete process.env["ZEE_CONFIG"]
 delete process.env["ZEE_CONFIG_CONTENT"]
 delete process.env["ZEE_CONFIG_DIR"]
-delete process.env["AGENT_CORE_PERMISSION"]
-delete process.env["AGENT_CORE_CONFIG"]
-delete process.env["AGENT_CORE_CONFIG_CONTENT"]
-delete process.env["AGENT_CORE_CONFIG_DIR"]
-
-// Clear legacy OPENCODE_* env vars that flag.ts reads as fallbacks
-delete process.env["OPENCODE_PERMISSION"]
-delete process.env["OPENCODE_CONFIG"]
-delete process.env["OPENCODE_CONFIG_CONTENT"]
-delete process.env["OPENCODE_CONFIG_DIR"]
-delete process.env["OPENCODE_ENABLE_EXPERIMENTAL_MODELS"]
 
 // Clear provider env vars to ensure clean test state
 delete process.env["ANTHROPIC_API_KEY"]

@@ -35,7 +35,7 @@ Analysis of providers that could be candidates for blacklisting.
 
 ---
 
-### 2. OpenCode Zen (`opencode`) - CONSIDER
+### 2. Opencode Zen (`opencode`) - CONSIDER
 **Why block:**
 - Internal/proxy service with unclear reliability
 - Placeholder base URL (`https://example.invalid/zen/v1`)

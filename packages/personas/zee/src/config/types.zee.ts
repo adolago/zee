@@ -49,7 +49,7 @@ export type ContactConfig = {
   phone?: string;
   /** Primary email address. */
   email?: string;
-  /** Per-channel identifiers (e.g., { whatsapp: "+123", matrix: "@user:server" }). */
+  /** Per-channel identifiers (e.g., { whatsapp: "+123" }). */
   channels?: Record<string, string | number>;
   /** Additional notes about the contact. */
   notes?: string;

@@ -8,7 +8,7 @@ read_when:
 Zee reads an optional **JSON5** config from `~/.zee/zee.json` (comments + trailing commas allowed).
 
 If the file is missing, Zee uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/zee`). You usually only need a config to:
-- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.matrix.allowFrom`, etc.)
+- restrict who can trigger the bot (`channels.whatsapp.allowFrom`, etc.)
 - customize message prefixes (`messages`)
 - set the agent's workspace (`agents.defaults.workspace` or `agents.list[].workspace`)
 - tune the embedded agent defaults (`agents.defaults`) and session behavior (`session`)
@@ -638,10 +638,6 @@ Use `channels.*.groupPolicy` to control whether group/room messages are accepted
     whatsapp: {
       groupPolicy: "allowlist",
       groupAllowFrom: ["+15551234567"]
-    },
-    matrix: {
-      groupPolicy: "allowlist",
-      groupAllowFrom: ["!room:example.com"]
     }
   }
 }
@@ -827,7 +823,6 @@ Controls how inbound messages behave when an agent run is already active.
       drop: "summarize", // old | new | summarize
       byChannel: {
         whatsapp: "collect",
-        matrix: "collect",
       }
     }
   }
@@ -909,20 +904,20 @@ Set `web.enabled: false` to keep it off by default.
 }
 ```
 
-### `channels.matrix` (Matrix channel plugin)
+### `channels.whatsapp` (WhatsApp channel plugin)
 
-Zee starts Matrix only when a `channels.matrix` config section exists.
+Zee starts WhatsApp only when a `channels.whatsapp` config section exists.
 
-The access token is resolved from `channels.matrix.accessToken`, with `MATRIX_ACCESS_TOKEN` as a fallback.
+Set `channels.whatsapp.accessToken` directly, or use env substitution (for example `{env:WHATSAPP_ACCESS_TOKEN}`).
 
 ```json5
 {
   channels: {
-    matrix: {
+    whatsapp: {
       enabled: true,
-      homeserver: "https://matrix.example.com",
+      homeserver: "https://whatsapp.example.com",
       userId: "@zee:example.com",
-      accessToken: "{env:MATRIX_ACCESS_TOKEN}",
+      accessToken: "{env:WHATSAPP_ACCESS_TOKEN}",
       dmPolicy: "pairing",           // pairing | allowlist | open | disabled
       allowFrom: ["@you:example.com"], // optional; "open" requires ["*"]
       encryption: false,             // enable E2EE (optional)
@@ -1466,7 +1461,7 @@ Block streaming:
 - `agents.defaults.blockStreamingCoalesce`: merge streamed blocks before sending.
   Defaults to `{ idleMs: 1000 }` and inherits `minChars` from `blockStreamingChunk`
   to `minChars: 1500` unless overridden.
-  Channel overrides: `channels.whatsapp.blockStreamingCoalesce`, `channels.matrix.blockStreamingCoalesce`,
+  Channel overrides: `channels.whatsapp.blockStreamingCoalesce`,
   (and per-account variants).
 - `agents.defaults.humanDelay`: randomized pause between **block replies** after the first.
   Modes: `off` (default), `natural` (800–2500ms), `custom` (use `minMs`/`maxMs`).
@@ -1499,7 +1494,7 @@ Z.AI models are available as `zai/<model>` (e.g. `zai/glm-4.7`) and require
 - `model`: optional override model for heartbeat runs (`provider/model`).
 - `includeReasoning`: when `true`, heartbeats will also deliver the separate `Reasoning:` message when available (same shape as `/reasoning on`). Default: `false`.
 - `session`: optional session key to control which session the heartbeat runs in. Default: `main`.
-- `to`: optional recipient override (channel-specific id, e.g. E.164 for WhatsApp, room id for Matrix).
+- `to`: optional recipient override (channel-specific id, for example E.164 for WhatsApp).
 - `ackMaxChars`: max chars allowed after `HEARTBEAT_OK` before delivery (default: 300).
 
 Per-agent heartbeats:
@@ -1683,7 +1678,6 @@ Tool groups (shorthands) work in **global** and **per-agent** tool policies:
 - `enabled`: allow elevated mode (default true)
 - `allowFrom`: per-channel allowlists (empty = disabled)
   - `whatsapp`: E.164 numbers
-  - `matrix`: Matrix user ids (e.g. `@user:server`)
 
 Example:
 ```json5
@@ -1906,11 +1900,11 @@ Select the model via `agents.defaults.model.primary` (provider/model).
 }
 ```
 
-### OpenCode Zen (multi-model proxy)
+### Opencode Zen (multi-model proxy)
 
-OpenCode Zen is a multi-model gateway with per-model endpoints. Zee uses
-the built-in `opencode` provider from pi-ai; set `AGENT_CORE_API_KEY` (or
-`OPENCODE_ZEN_API_KEY`) from https://opencode.ai/auth.
+Opencode Zen is a multi-model gateway with per-model endpoints. Zee uses
+the built-in `opencode` provider from pi-ai; set `OPENCODE_ZEN_API_KEY`
+from https://zee-bot.com/providers/opencode-zen.
 
 Notes:
 - Model refs use `opencode/<modelId>` (example: `opencode/claude-opus-4-5`).

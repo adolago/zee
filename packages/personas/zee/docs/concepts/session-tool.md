@@ -104,7 +104,7 @@ Policy-based blocking by channel/chat type (not per session id).
     "sendPolicy": {
       "rules": [
         {
-          "match": { "channel": "matrix", "chatType": "group" },
+          "match": { "channel": "whatsapp", "chatType": "group" },
           "action": "deny"
         }
       ],

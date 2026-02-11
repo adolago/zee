@@ -2,7 +2,7 @@
  * CLI/TUI Surface Adapter
  *
  * Terminal-based interaction with streaming text output and interactive permission prompts.
- * Designed for agent-core and similar terminal-based agent interfaces.
+ * Designed for Zee and similar terminal-based agent interfaces.
  * 
  * NO_COLOR Support:
  * This surface respects the NO_COLOR environment variable (https://no-color.org/).

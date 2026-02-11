@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import z from "zod"
 import { Log } from "../util/log"
 
-export const OAUTH_DUMMY_KEY = "agent-core-oauth-dummy-key"
+export const OAUTH_DUMMY_KEY = "zee-oauth-dummy-key"
 
 // Buffer time before expiry to trigger refresh (10 minutes)
 const REFRESH_BUFFER_MS = 10 * 60 * 1000

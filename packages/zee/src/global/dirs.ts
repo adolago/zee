@@ -4,7 +4,7 @@ import path from "path"
 const APP_NAME = "zee"
 
 function getHomeDir(env: NodeJS.ProcessEnv = process.env): string {
-  return env.ZEE_TEST_HOME || env.AGENT_CORE_TEST_HOME || env.OPENCODE_TEST_HOME || os.homedir()
+  return env.ZEE_TEST_HOME || os.homedir()
 }
 
 export function resolveUserPath(input: string, env: NodeJS.ProcessEnv = process.env): string {
@@ -18,7 +18,7 @@ export function resolveUserPath(input: string, env: NodeJS.ProcessEnv = process.
 }
 
 export function resolveStateDirOverride(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  const override = (env.ZEE_STATE_DIR || env.AGENT_CORE_STATE_DIR || env.OPENCODE_STATE_DIR)?.trim()
+  const override = (env.ZEE_STATE_DIR)?.trim()
   if (!override) return undefined
   return resolveUserPath(override, env)
 }
@@ -44,7 +44,7 @@ export function resolveStateDir(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function resolveConfigDir(env: NodeJS.ProcessEnv = process.env): string {
-  const direct = (env.ZEE_CONFIG_DIR || env.AGENT_CORE_CONFIG_DIR || env.OPENCODE_CONFIG_DIR)?.trim()
+  const direct = (env.ZEE_CONFIG_DIR)?.trim()
   if (direct) return resolveUserPath(direct, env)
   const stateOverride = resolveStateDirOverride(env)
   if (stateOverride) return path.join(stateOverride, "config")
@@ -64,7 +64,7 @@ export function resolveCacheDir(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function resolveLogsDir(env: NodeJS.ProcessEnv = process.env): string {
-  const direct = (env.ZEE_LOG_DIR || env.AGENT_CORE_LOG_DIR)?.trim()
+  const direct = (env.ZEE_LOG_DIR)?.trim()
   if (direct) return resolveUserPath(direct, env)
   const stateOverride = resolveStateDirOverride(env)
   if (stateOverride) return path.join(stateOverride, "logs")
@@ -72,7 +72,7 @@ export function resolveLogsDir(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function resolveWorkspaceDir(env: NodeJS.ProcessEnv = process.env): string {
-  const direct = (env.ZEE_WORKSPACE_DIR || env.AGENT_CORE_WORKSPACE_DIR || env.OPENCODE_WORKSPACE_DIR)?.trim()
+  const direct = (env.ZEE_WORKSPACE_DIR)?.trim()
   if (direct) return resolveUserPath(direct, env)
   const stateOverride = resolveStateDirOverride(env)
   if (stateOverride) return path.join(stateOverride, "workspace")

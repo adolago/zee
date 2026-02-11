@@ -111,7 +111,7 @@ export interface CheckReport {
   /** ISO timestamp of when the check was run */
   timestamp: string;
 
-  /** Agent-core version */
+  /** Zee version */
   version: string;
 
   /** Machine hostname */

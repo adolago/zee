@@ -4,7 +4,7 @@ import { useTerminalDimensions } from "@opentui/solid"
 import type { JSX } from "solid-js"
 
 const themeCount = Object.keys(DEFAULT_THEMES).length
-const themeTip = `Use {highlight}:theme{/highlight} or {highlight}Space T{/highlight} to preview and switch between ${themeCount} built-in themes.`
+const themeTip = `Theme is fixed to {highlight}Selenized Dark{/highlight} (${themeCount} built-in theme).`
 
 type TipPart = { text: string; highlight: boolean }
 
@@ -175,10 +175,6 @@ export const TIPS = [
   "Run {highlight}zee upgrade{/highlight} to update to the latest version.",
   "Run {highlight}zee auth list{/highlight} to see all configured providers.",
   "Run {highlight}zee agent create{/highlight} for guided agent creation.",
-  'Use {highlight}"theme": "system"{/highlight} to match your terminal\'s colors.',
-  "Create JSON theme files in {highlight}.zee/themes/{/highlight} directory.",
-  "Themes support dark/light variants for both modes.",
-  "Reference ANSI colors 0-255 in custom themes.",
   "Use {highlight}{env:VAR_NAME}{/highlight} syntax to reference environment variables in config.",
   "Use {highlight}{file:path}{/highlight} to include file contents in config values.",
   "Use {highlight}instructions{/highlight} in config to load additional rules files.",
@@ -200,7 +196,6 @@ export const TIPS = [
   "Use {highlight}:details{/highlight} to toggle tool execution details visibility.",
   "Use {highlight}:rename{/highlight} to rename the current session.",
   "Press {highlight}Ctrl+Z{/highlight} to suspend the terminal and return to your shell.",
-  "Press {highlight}Tab{/highlight}/{highlight}Shift+Tab{/highlight} to switch between Zee, Stanley, and Johny.",
   "Press {highlight}Space{/highlight} (leader key) to see all available keybindings in a which-key popup.",
   "Press {highlight}Shift+G{/highlight} to jump to the most recent message (vim-style).",
 ]

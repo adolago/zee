@@ -166,14 +166,14 @@ export type QueueDropPolicy = "oldest" | "newest" | "none";
 export type BindMode = "auto" | "lan" | "tailnet" | "loopback";
 
 // =============================================================================
-// Session Entry Primitives (shared between agent-core and zee)
+// Session Entry Primitives (shared between legacy and zee)
 // =============================================================================
 
 /** Chat type for sessions */
 export type SessionChatType = "direct" | "group" | "room";
 
 /** Provider identifiers for messaging platforms */
-export type MessagingProvider = "whatsapp" | "matrix";
+export type MessagingProvider = "whatsapp";
 
 /** Group activation mode */
 export type GroupActivation = "mention" | "always";

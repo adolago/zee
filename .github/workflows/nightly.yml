@@ -70,7 +70,7 @@ jobs:
           DATE=$(date +%Y%m%d)
 
           # Read current version from package.json and increment patch
-          CURRENT=$(jq -r '.version' packages/zee-core/package.json)
+          CURRENT=$(jq -r '.version' packages/zee/package.json)
           # Strip any prerelease suffix (e.g., -alpha, -alpha.nightly.*)
           BASE=$(echo "$CURRENT" | sed 's/-.*//')
           # Parse major.minor.patch
@@ -84,22 +84,22 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
           # Update package.json versions using sed (npm version fails on catalog: refs)
-          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" packages/zee-core/package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" packages/zee/package.json
           sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" package.json
 
           echo "Updated versions to ${VERSION}"
-          grep '"version"' packages/zee-core/package.json
+          grep '"version"' packages/zee/package.json
 
       - name: Build
         if: steps.changes.outputs.has_changes == 'true'
         run: |
-          cd packages/zee-core
+          cd packages/zee
           bun run build
 
       - name: Publish to npm
         if: steps.changes.outputs.has_changes == 'true'
         run: |
-          cd packages/zee-core
+          cd packages/zee
           npm publish --access public --provenance --tag nightly
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -129,9 +129,9 @@ jobs:
 
             ### Install
             \`\`\`bash
-            npm install -g @zee/core@nightly
+            npm install -g @zee/zee@nightly
             # or specific version
-            npm install -g @zee/core@${VERSION}
+            npm install -g @zee/zee@${VERSION}
             \`\`\`
             " \
               --prerelease
@@ -143,4 +143,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zee-nightly-${{ steps.version.outputs.version }}
-          path: packages/zee-core/dist
+          path: packages/zee/dist

@@ -990,11 +990,11 @@
   "opencode": {
     "id": "opencode",
     "env": [
-      "AGENT_CORE_API_KEY"
+      "OPENCODE_ZEN_API_KEY"
     ],
     "npm": "@ai-sdk/openai-compatible",
     "api": "https://example.invalid/zen/v1",
-    "name": "OpenCode Zen",
+    "name": "Opencode Zen",
     "doc": "https://example.invalid/docs/zen",
     "models": {
       "qwen3-coder": {

@@ -1,7 +1,7 @@
 /**
  * Session Bridge
  *
- * Translates OpenCode session operations to agent-core format.
+ * Translates OpenCode session operations to zee format.
  */
 
 import type {
@@ -12,7 +12,7 @@ import type {
   MessageStreamChunk,
   CreateSessionParams,
   SessionFilters,
-  AgentCoreSession,
+  ZeeSessionPayload,
 } from "../types"
 
 export class SessionBridge {
@@ -20,16 +20,16 @@ export class SessionBridge {
   private baseUrl: string
 
   constructor(private config: AdapterConfig) {
-    this.baseUrl = config.agentCoreUrl.replace(/\/$/, "")
+    this.baseUrl = config.zeeUrl.replace(/\/$/, "")
   }
 
   async initialize(): Promise<void> {
-    // Verify connection to agent-core daemon
+    // Verify connection to zee daemon
     await this.list({ limit: 1 })
   }
 
   async create(params: CreateSessionParams): Promise<Session> {
-    const agentCoreParams = {
+    const zeeParams = {
       directory: params.workingDirectory,
       agent: this.mapAgentToPersona(params.agent),
       model: params.model,
@@ -38,7 +38,7 @@ export class SessionBridge {
 
     const response = await this.fetch("/session", {
       method: "POST",
-      body: JSON.stringify(agentCoreParams),
+      body: JSON.stringify(zeeParams),
     })
 
     const session = this.transformSession(response)
@@ -70,7 +70,7 @@ export class SessionBridge {
     const url = `/session${params.toString() ? `?${params}` : ""}`
     const response = await this.fetch(url)
 
-    return response.sessions.map((s: AgentCoreSession) => this.transformSession(s))
+    return response.sessions.map((s: ZeeSessionPayload) => this.transformSession(s))
   }
 
   async delete(id: string): Promise<void> {
@@ -79,7 +79,7 @@ export class SessionBridge {
   }
 
   async sendMessage(sessionId: string, message: Message): Promise<MessageStream> {
-    const agentCoreMessage = {
+    const zeeMessage = {
       role: message.role,
       content: message.content,
       ...(message.tool_calls ? { toolCalls: message.tool_calls } : {}),
@@ -91,7 +91,7 @@ export class SessionBridge {
         "Content-Type": "application/json",
         ...this.config.authHeaders,
       },
-      body: JSON.stringify(agentCoreMessage),
+      body: JSON.stringify(zeeMessage),
     })
 
     if (!response.ok) {
@@ -110,7 +110,7 @@ export class SessionBridge {
     return mapping[agent || ""] || this.config.defaultPersona || "zee"
   }
 
-  private transformSession(info: AgentCoreSession): Session {
+  private transformSession(info: ZeeSessionPayload): Session {
     return {
       id: info.id,
       created_at: info.time.created,

@@ -351,7 +351,7 @@ export async function runPreparedReply(
   const authProfileIdSource = sessionEntry?.authProfileOverrideSource;
   // CRITICAL: Messaging channels must never expose reasoning.
   const providerKey = sessionCtx.Provider?.trim().toLowerCase() ?? "";
-  if (["whatsapp", "matrix"].includes(providerKey)) {
+  if (providerKey === "whatsapp") {
     resolvedReasoningLevel = "off";
   }
   const followupRun = {

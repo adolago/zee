@@ -35,7 +35,7 @@ export async function collectConfig(redactor: PrivacyRedactor): Promise<ConfigSu
     return {
       providers: [],
       features: [],
-      theme: "default",
+      theme: "selenized-dark",
       customKeybinds: 0,
       mcpServerCount: 0,
       skills: [],
@@ -78,7 +78,7 @@ function extractFeatures(config: Record<string, unknown>): string[] {
 
 function extractTheme(config: Record<string, unknown>): string {
   const ui = config.ui as Record<string, unknown> | undefined;
-  return String(ui?.theme || config.theme || "default");
+  return String(ui?.theme || config.theme || "selenized-dark");
 }
 
 function countKeybinds(config: Record<string, unknown>): number {

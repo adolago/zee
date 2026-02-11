@@ -15,7 +15,7 @@ describe("applyJobPatch", () => {
       sessionTarget: "isolated",
       wakeMode: "now",
       payload: { kind: "agentTurn", message: "do it" },
-      delivery: { mode: "announce", channel: "telegram", to: "123" },
+      delivery: { mode: "announce", channel: "whatsapp", to: "123" },
       state: {},
     };
 
@@ -42,7 +42,7 @@ describe("applyJobPatch", () => {
       sessionTarget: "isolated",
       wakeMode: "now",
       payload: { kind: "agentTurn", message: "do it" },
-      delivery: { mode: "announce", channel: "telegram", to: "123" },
+      delivery: { mode: "announce", channel: "whatsapp", to: "123" },
       state: {},
     };
 
@@ -84,7 +84,7 @@ describe("applyJobPatch", () => {
       sessionTarget: "isolated",
       wakeMode: "now",
       payload: { kind: "agentTurn", message: "do it" },
-      delivery: { mode: "none", channel: "telegram" },
+      delivery: { mode: "none", channel: "whatsapp" },
       state: {},
     };
 
@@ -95,7 +95,7 @@ describe("applyJobPatch", () => {
     expect(() => applyJobPatch(job, patch)).not.toThrow();
     expect(job.delivery).toEqual({
       mode: "announce",
-      channel: "telegram",
+      channel: "whatsapp",
       to: "999",
       bestEffort: undefined,
     });

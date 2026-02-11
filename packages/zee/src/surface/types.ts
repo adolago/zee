@@ -1,8 +1,8 @@
 /**
- * Surface Abstraction Layer - Core Types
+ * Surface Abstraction Layer - Types
  *
  * Defines the contracts for surface adapters that connect different UIs
- * (CLI, GUI, messaging platforms) to the unified agent core.
+ * (CLI, GUI, messaging platforms) to the unified Zee engine.
  */
 
 // =============================================================================
@@ -10,7 +10,7 @@
 // =============================================================================
 
 /**
- * Inbound message from any surface to the agent core.
+ * Inbound message from any surface to the Zee engine.
  */
 export type SurfaceMessage = {
   /** Unique message identifier from the surface */
@@ -279,7 +279,7 @@ export const DEFAULT_CAPABILITIES: SurfaceCapabilities = {
 // Surface Type
 // =============================================================================
 
-export type SurfaceType = "cli" | "web" | "api" | "whatsapp" | "matrix";
+export type SurfaceType = "cli" | "web" | "api" | "whatsapp";
 
 // =============================================================================
 // Surface Adapter Interface
@@ -355,20 +355,6 @@ export const WHATSAPP_CAPABILITIES: SurfaceCapabilities = {
   messageEditing: false,
   maxMessageLength: 65536,
   supportedMediaTypes: ["image/*", "audio/*", "video/*", "application/pdf"],
-  showThinking: false,
-};
-
-export const MATRIX_CAPABILITIES: SurfaceCapabilities = {
-  streaming: false,
-  interactivePrompts: false,
-  richText: true,
-  media: true,
-  threading: true,
-  typingIndicators: true,
-  reactions: true,
-  messageEditing: true,
-  maxMessageLength: 65536,
-  supportedMediaTypes: ["image/*", "audio/*", "video/*", "application/*"],
   showThinking: false,
 };
 

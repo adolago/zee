@@ -85,7 +85,7 @@ Details:
   Source: zee-bundled
   Path: /path/to/zee/hooks/bundled/session-memory/HOOK.md
   Handler: /path/to/zee/hooks/bundled/session-memory/handler.ts
-  Homepage: https://docs.zee/hooks#session-memory
+  Homepage: https://zee-bot.com/hooks#session-memory
   Events: command:new
 
 Requirements:

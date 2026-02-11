@@ -27,7 +27,7 @@ When supported by a connector, set retry policy under `channels.<id>.retry` in `
 ```json5
 {
   channels: {
-    matrix: {
+    whatsapp: {
       retry: {
         attempts: 3,
         minDelayMs: 300,

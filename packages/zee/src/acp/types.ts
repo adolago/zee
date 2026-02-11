@@ -1,5 +1,5 @@
 import type { McpServer } from "@agentclientprotocol/sdk"
-import type { AgentCoreClient } from "@zee/sdk/v2"
+import type { ZeeClient } from "@zee/sdk/v2"
 
 export interface ACPSessionState {
   id: string
@@ -16,7 +16,7 @@ export interface ACPSessionState {
 }
 
 export interface ACPConfig {
-  sdk: AgentCoreClient
+  sdk: ZeeClient
   url: string
   defaultModel?: {
     providerID: string

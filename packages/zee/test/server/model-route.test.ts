@@ -42,7 +42,7 @@ describe("model route", () => {
   test("skips defaults for providers without models", async () => {
     await using tmp = await tmpdir({
       config: {
-        $schema: "agent-core",
+        $schema: "zee",
       },
     })
     await Instance.provide({
@@ -59,7 +59,7 @@ describe("model route", () => {
   test("filters blocked providers from provider list", async () => {
     await using tmp = await tmpdir({
       config: {
-        $schema: "agent-core",
+        $schema: "zee",
       },
     })
     await Instance.provide({
@@ -86,7 +86,7 @@ describe("model route", () => {
     })
     await using tmp = await tmpdir({
       config: {
-        $schema: "agent-core",
+        $schema: "zee",
       },
     })
     try {

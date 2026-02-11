@@ -17,7 +17,7 @@
  */
 
 import type { MemorySearchResult, MemorySearchParams } from "./types"
-import { Log } from "../../packages/zee-core/src/util/log"
+import { Log } from "../../packages/zee/src/util/log"
 
 const log = Log.create({ service: "memory:hybrid" })
 

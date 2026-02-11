@@ -73,7 +73,7 @@ describe("createSafeEnv", () => {
     const env = { PATH: "/usr/bin" }
     const safe = createSafeEnv(env, { prependPaths: ["/custom/bin"] })
     expect(safe.PATH).toContain("/custom/bin")
-    expect(safe.AGENT_CORE_PREPEND_PATH).toBe("/custom/bin")
+    expect(safe.ZEE_PREPEND_PATH).toBe("/custom/bin")
   })
 
   test("respects blocklist", () => {

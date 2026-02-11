@@ -1,7 +1,7 @@
 ---
 name: command-logger
 description: "Log all command events to a centralized audit file"
-homepage: https://docs.zee/hooks#command-logger
+homepage: https://zee-bot.com/hooks#command-logger
 metadata:
   {
     "zee":
@@ -30,7 +30,7 @@ Every time you issue a command to the agent:
 Log entries are written in JSONL (JSON Lines) format:
 
 ```json
-{"timestamp":"2026-01-16T14:30:00.000Z","action":"new","sessionKey":"agent:main:main","senderId":"+1234567890","source":"matrix"}
+{"timestamp":"2026-01-16T14:30:00.000Z","action":"new","sessionKey":"agent:main:main","senderId":"+1234567890","source":"whatsapp"}
 {"timestamp":"2026-01-16T15:45:22.000Z","action":"stop","sessionKey":"agent:main:main","senderId":"user@example.com","source":"whatsapp"}
 ```
 

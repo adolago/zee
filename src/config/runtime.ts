@@ -79,9 +79,6 @@ export type ZeeCodexbarConfig = {
 const CONFIG_PATHS = [
   path.join(os.homedir(), ".config", "zee", "zee.jsonc"),
   path.join(os.homedir(), ".config", "zee", "zee.json"),
-  // Legacy locations
-  path.join(os.homedir(), ".config", "agent-core", "zee.jsonc"),
-  path.join(os.homedir(), ".config", "agent-core", "zee.json"),
   Assets.config(),
   path.join(Assets.root(), "zee.json"),
 ];

@@ -56,7 +56,7 @@ import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePlatform } from "@/context/platform"
-import { createAgentCoreClient, type Message, type Part } from "@zee/core/pkg/sdk/v2/client"
+import { createZeeClient, type Message, type Part } from "@zee/zee/pkg/sdk/v2/client"
 import { Binary } from "@zee/util/binary"
 import { showToast } from "@zee/ui/toast"
 import { base64Encode } from "@zee/util/encode"
@@ -1197,7 +1197,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       }
 
       if (sessionDirectory !== projectDirectory) {
-        client = createAgentCoreClient({
+        client = createZeeClient({
           baseUrl: sdk.url,
           fetch: platform.fetch,
           directory: sessionDirectory,

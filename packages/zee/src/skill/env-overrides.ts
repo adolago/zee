@@ -1,7 +1,7 @@
 /**
  * Skill Environment Variable Overrides
  *
- * Applies per-skill environment variable overrides from agent-core config.
+ * Applies per-skill environment variable overrides from zee config.
  * Ported from Zee's env-overrides.ts to unify skill configuration.
  *
  * Skills can declare a `primaryEnv` requirement (e.g., OPENAI_API_KEY).

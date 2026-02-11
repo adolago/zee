@@ -291,6 +291,8 @@ export async function checkDepsStatus(params: {
   };
 }
 
+const DEFAULT_NPM_PACKAGE = process.env.ZEE_NPM_PACKAGE?.trim() || "zee";
+
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), Math.max(250, timeoutMs));
@@ -314,12 +316,14 @@ export async function fetchNpmLatestVersion(params?: {
 export async function fetchNpmTagVersion(params: {
   tag: string;
   timeoutMs?: number;
+  packageName?: string;
 }): Promise<NpmTagStatus> {
   const timeoutMs = params?.timeoutMs ?? 3500;
   const tag = params.tag;
+  const packageName = params.packageName?.trim() || DEFAULT_NPM_PACKAGE;
   try {
     const res = await fetchWithTimeout(
-      `https://registry.npmjs.org/zee/${encodeURIComponent(tag)}`,
+      `https://registry.npmjs.org/${encodeURIComponent(packageName)}/${encodeURIComponent(tag)}`,
       timeoutMs,
     );
     if (!res.ok) {

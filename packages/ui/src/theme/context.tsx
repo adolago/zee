@@ -8,13 +8,13 @@ import { createSimpleContext } from "../context/helper"
 export type ColorScheme = "light" | "dark" | "system"
 
 const STORAGE_KEYS = {
-  THEME_ID: "opencode-theme-id",
-  COLOR_SCHEME: "opencode-color-scheme",
-  THEME_CSS_LIGHT: "opencode-theme-css-light",
-  THEME_CSS_DARK: "opencode-theme-css-dark",
+  THEME_ID: "zee-theme-id",
+  COLOR_SCHEME: "zee-color-scheme",
+  THEME_CSS_LIGHT: "zee-theme-css-light",
+  THEME_CSS_DARK: "zee-theme-css-dark",
 } as const
 
-const THEME_STYLE_ID = "oc-theme"
+const THEME_STYLE_ID = "zee-theme"
 
 function ensureThemeStyleElement(): HTMLStyleElement {
   const existing = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
@@ -35,11 +35,9 @@ function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "da
   const tokens = resolveThemeVariant(variant, isDark)
   const css = themeToCss(tokens)
 
-  if (themeId !== "agent-core" && themeId !== "oc-1") {
-    try {
-      localStorage.setItem(isDark ? STORAGE_KEYS.THEME_CSS_DARK : STORAGE_KEYS.THEME_CSS_LIGHT, css)
-    } catch {}
-  }
+  try {
+    localStorage.setItem(isDark ? STORAGE_KEYS.THEME_CSS_DARK : STORAGE_KEYS.THEME_CSS_LIGHT, css)
+  } catch {}
 
   const fullCss = `:root {
   color-scheme: ${mode};
@@ -47,14 +45,13 @@ function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "da
   ${css}
 }`
 
-  document.getElementById("oc-theme-preload")?.remove()
+  document.getElementById("zee-theme-preload")?.remove()
   ensureThemeStyleElement().textContent = fullCss
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
 }
 
 function cacheThemeVariants(theme: DesktopTheme, themeId: string) {
-  if (themeId === "agent-core" || themeId === "oc-1") return
   for (const mode of ["light", "dark"] as const) {
     const isDark = mode === "dark"
     const variant = isDark ? theme.dark : theme.light
@@ -71,9 +68,9 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   init: (props: { defaultTheme?: string }) => {
     const [store, setStore] = createStore({
       themes: DEFAULT_THEMES as Record<string, DesktopTheme>,
-      themeId: props.defaultTheme ?? "agent-core",
-      colorScheme: "system" as ColorScheme,
-      mode: getSystemMode(),
+      themeId: props.defaultTheme ?? "selenized-dark",
+      colorScheme: "dark" as ColorScheme,
+      mode: "dark" as "light" | "dark",
       previewThemeId: null as string | null,
       previewScheme: null as ColorScheme | null,
     })
@@ -93,12 +90,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       if (savedTheme && store.themes[savedTheme]) {
         setStore("themeId", savedTheme)
       }
-      if (savedScheme) {
-        setStore("colorScheme", savedScheme)
-        if (savedScheme !== "system") {
-          setStore("mode", savedScheme)
-        }
-      }
+      setStore("colorScheme", "dark")
+      setStore("mode", "dark")
       const currentTheme = store.themes[store.themeId]
       if (currentTheme) {
         cacheThemeVariants(currentTheme, store.themeId)
@@ -123,10 +116,10 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       cacheThemeVariants(theme, id)
     }
 
-    const setColorScheme = (scheme: ColorScheme) => {
-      setStore("colorScheme", scheme)
-      localStorage.setItem(STORAGE_KEYS.COLOR_SCHEME, scheme)
-      setStore("mode", scheme === "system" ? getSystemMode() : scheme)
+    const setColorScheme = (_scheme: ColorScheme) => {
+      setStore("colorScheme", "dark")
+      localStorage.setItem(STORAGE_KEYS.COLOR_SCHEME, "dark")
+      setStore("mode", "dark")
     }
 
     return {

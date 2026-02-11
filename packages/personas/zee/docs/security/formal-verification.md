@@ -58,7 +58,7 @@ make <target>
 - Red (expected):
   - `make gateway-exposure-v2-negative`
 
-See also: `docs/gateway-exposure-matrix.md` in the models repo.
+See also: `docs/gateway-exposure-whatsapp.md` in the models repo.
 
 ### Nodes.run pipeline (highest-risk capability)
 

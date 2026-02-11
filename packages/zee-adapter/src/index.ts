@@ -1,7 +1,7 @@
 /**
  * OpenCode Adapter
  *
- * Bridges the OpenCode Web UI with agent-core daemon.
+ * Bridges the OpenCode Web UI with zee daemon.
  * Provides TUI-matching theme and session/tool translation.
  */
 

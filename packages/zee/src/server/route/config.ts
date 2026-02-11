@@ -79,59 +79,13 @@ export const ConfigRoute = new Hono()
       },
     }),
     async (c) => {
-      // Built-in themes from theme.tsx
-      const builtinThemes = [
-        "aura",
-        "ayu",
-        "catppuccin",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "cobalt2",
-        "cursor",
-        "dracula",
-        "everforest",
-        "flexoki",
-        "github",
-        "gruvbox",
-        "kanagawa",
-        "material",
-        "matrix",
-        "mercury",
-        "monokai",
-        "nightowl",
-        "nord",
-        "one-dark",
-        "opencode",
-        "orng",
-        "lucent-orng",
-        "osaka-jade",
-        "palenight",
-        "rosepine",
-        "solarized",
-        "synthwave84",
-        "tokyonight",
-        "vercel",
-        "vesper",
-        "zenburn",
-      ]
-
-      // Persona-specific themes
-      const personaThemes = [
-        { id: "zee", name: "Zee", builtin: true, persona: "zee" },
-        { id: "stanley", name: "Stanley", builtin: true, persona: "stanley" },
-        { id: "johny", name: "Johny", builtin: true, persona: "johny" },
-      ]
-
-      const themes = [
-        ...builtinThemes.map((id) => ({
-          id,
-          name: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, " "),
+      return c.json([
+        {
+          id: "selenized-dark",
+          name: "Selenized Dark",
           builtin: true,
-        })),
-        ...personaThemes,
-      ]
-
-      return c.json(themes)
+        },
+      ])
     },
   )
   .get(
@@ -158,7 +112,7 @@ export const ConfigRoute = new Hono()
     }),
     async (c) => {
       const config = await Config.get()
-      return c.json({ theme: config.theme ?? "opencode" })
+      return c.json({ theme: config.theme ?? "selenized-dark" })
     },
   )
   .patch(

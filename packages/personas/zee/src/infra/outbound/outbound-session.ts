@@ -45,40 +45,6 @@ function buildBaseSessionKey(params: {
   });
 }
 
-function normalizeMatrixTarget(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const withoutPrefix = trimmed.replace(/^matrix:/i, "").trim();
-  return withoutPrefix ? withoutPrefix : null;
-}
-
-function resolveMatrixSession(
-  params: ResolveOutboundSessionRouteParams,
-): OutboundSessionRoute | null {
-  const normalized = normalizeMatrixTarget(params.target);
-  if (!normalized) return null;
-  const isGroup = normalized.startsWith("!") || normalized.startsWith("#");
-  const peer: RoutePeer = {
-    kind: isGroup ? "group" : "dm",
-    id: normalized,
-  };
-  const baseSessionKey = buildBaseSessionKey({
-    cfg: params.cfg,
-    agentId: params.agentId,
-    channel: "matrix",
-    accountId: params.accountId,
-    peer,
-  });
-  return {
-    sessionKey: baseSessionKey,
-    baseSessionKey,
-    peer,
-    chatType: isGroup ? "group" : "direct",
-    from: normalized,
-    to: normalized,
-  };
-}
-
 function resolveWhatsAppSession(
   params: ResolveOutboundSessionRouteParams,
 ): OutboundSessionRoute | null {
@@ -114,8 +80,6 @@ export async function resolveOutboundSessionRoute(
   switch (params.channel) {
     case "whatsapp":
       return resolveWhatsAppSession({ ...params, target });
-    case "matrix":
-      return resolveMatrixSession({ ...params, target });
     default:
       return null;
   }

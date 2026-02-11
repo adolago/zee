@@ -7,17 +7,17 @@
 
 import { tool } from "@zee/plugin"
 
-const AGENT_CORE_ROOT = process.env.AGENT_CORE_ROOT || "/home/artur/.local/src/agent-core"
+const ZEE_ROOT = process.env.ZEE_ROOT || "/home/artur/Repositories/zee"
 
 async function loadMemoryModule() {
   try {
-    return await import(`${AGENT_CORE_ROOT}/src/memory/unified.js`)
+    return await import(`${ZEE_ROOT}/src/memory/unified.js`)
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     if (!errorMsg.includes("Cannot find module") && !errorMsg.includes("ERR_MODULE_NOT_FOUND")) {
       throw error
     }
-    return await import(`${AGENT_CORE_ROOT}/src/memory/unified.ts`)
+    return await import(`${ZEE_ROOT}/src/memory/unified.ts`)
   }
 }
 
@@ -83,7 +83,7 @@ This memory can be recalled later using zee:memory-search.`
 
 The memory was NOT saved. To enable memory:
 1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or configure a different backend in agent-core config
+2. Or configure a different backend in Zee config
 
 Error: ${errorMsg}`
       }
@@ -183,7 +183,7 @@ ${formattedResults}`
 
 To enable memory search:
 1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or configure a different backend in agent-core config
+2. Or configure a different backend in Zee config
 
 Error: ${errorMsg}`
       }

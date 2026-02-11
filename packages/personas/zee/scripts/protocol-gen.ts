@@ -14,7 +14,7 @@ async function writeJsonSchema() {
 
   const rootSchema = {
     $schema: "http://json-schema.org/draft-07/schema#",
-    $id: "https://zee.dev/protocol.schema.json",
+    $id: "https://raw.githubusercontent.com/adolago/zee/dev/packages/personas/zee/dist/protocol.schema.json",
     title: "Zee Gateway Protocol",
     description: "Handshake, request/response, and event frames for the Gateway WebSocket.",
     oneOf: [

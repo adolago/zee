@@ -27,22 +27,6 @@ describe("diffConfigPaths", () => {
 
 describe("buildGatewayReloadPlan", () => {
   const emptyRegistry = createTestRegistry([]);
-  const matrixPlugin: ChannelPlugin = {
-    id: "matrix",
-    meta: {
-      id: "matrix",
-      label: "Matrix",
-      selectionLabel: "Matrix",
-      docsPath: "/channels/matrix",
-      blurb: "test",
-    },
-    capabilities: { chatTypes: ["direct"] },
-    config: {
-      listAccountIds: () => [],
-      resolveAccount: () => ({}),
-    },
-    reload: { configPrefixes: ["channels.matrix"] },
-  };
   const whatsappPlugin: ChannelPlugin = {
     id: "whatsapp",
     meta: {
@@ -57,11 +41,27 @@ describe("buildGatewayReloadPlan", () => {
       listAccountIds: () => [],
       resolveAccount: () => ({}),
     },
-    reload: { configPrefixes: ["web"], noopPrefixes: ["channels.whatsapp"] },
+    reload: { configPrefixes: ["channels.whatsapp"] },
+  };
+  const emailPlugin: ChannelPlugin = {
+    id: "email",
+    meta: {
+      id: "email",
+      label: "Email",
+      selectionLabel: "Email",
+      docsPath: "/channels/email",
+      blurb: "test",
+    },
+    capabilities: { chatTypes: ["direct"] },
+    config: {
+      listAccountIds: () => [],
+      resolveAccount: () => ({}),
+    },
+    reload: { configPrefixes: ["web"] },
   };
   const registry = createTestRegistry([
-    { pluginId: "matrix", plugin: matrixPlugin, source: "test" },
     { pluginId: "whatsapp", plugin: whatsappPlugin, source: "test" },
+    { pluginId: "email", plugin: emailPlugin, source: "test" },
   ]);
 
   beforeEach(() => {
@@ -86,7 +86,7 @@ describe("buildGatewayReloadPlan", () => {
   });
 
   it("restarts providers when provider config prefixes change", () => {
-    const changedPaths = ["web.enabled", "channels.matrix.accessToken"];
+    const changedPaths = ["web.enabled", "channels.whatsapp.accessToken"];
     const plan = buildGatewayReloadPlan(changedPaths);
     expect(plan.restartGateway).toBe(false);
     const expected = new Set(

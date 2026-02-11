@@ -273,13 +273,13 @@ describe("cron tool", () => {
     });
   });
 
-  it("preserves telegram forum topics when inferring delivery", async () => {
+  it("preserves whatsapp forum topics when inferring delivery", async () => {
     callGatewayMock.mockResolvedValueOnce({ ok: true });
 
     const tool = createCronTool({
-      agentSessionKey: "agent:main:telegram:group:-1001234567890:topic:99",
+      agentSessionKey: "agent:main:whatsapp:group:-1001234567890:topic:99",
     });
-    await tool.execute("call-telegram-topic", {
+    await tool.execute("call-whatsapp-topic", {
       action: "add",
       job: {
         name: "reminder",
@@ -293,7 +293,7 @@ describe("cron tool", () => {
     };
     expect(call?.params?.delivery).toEqual({
       mode: "announce",
-      channel: "telegram",
+      channel: "whatsapp",
       to: "-1001234567890:topic:99",
     });
   });

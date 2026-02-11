@@ -137,7 +137,7 @@ export const DEFAULT_ZEE_CONFIG: ZeeSurfaceConfig = {
 
 export const DEFAULT_CLI_CONFIG: CliSurfaceConfig = {
   defaultAgent: 'build',
-  theme: 'default',
+  theme: 'selenized-dark',
   showTimestamps: false,
   scrollSpeed: 1,
   maxHistory: 1000,
@@ -304,15 +304,10 @@ export const SMALL_MODEL_FALLBACK_CHAIN = [
 export const ENV_VAR_MAPPING: Record<string, string> = {
   // Core settings
   'ZEE_MODEL': 'model',
-  'AGENT_CORE_MODEL': 'model', // legacy
   'ZEE_SMALL_MODEL': 'smallModel',
-  'AGENT_CORE_SMALL_MODEL': 'smallModel', // legacy
   'ZEE_DEFAULT_AGENT': 'defaultAgent',
-  'AGENT_CORE_DEFAULT_AGENT': 'defaultAgent', // legacy
   'ZEE_LOG_LEVEL': 'logLevel',
-  'AGENT_CORE_LOG_LEVEL': 'logLevel', // legacy
   'ZEE_THEME': 'theme',
-  'AGENT_CORE_THEME': 'theme', // legacy
 
   // Provider API keys
   'ANTHROPIC_API_KEY': 'provider.anthropic.apiKey',
@@ -322,15 +317,11 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
 
   // Surface-specific
   'ZEE_WHATSAPP_SESSION': 'surface.stanley.sessionName',
-  'AGENT_CORE_WHATSAPP_SESSION': 'surface.stanley.sessionName', // legacy
   'ZEE_PORT': 'surface.web.port',
-  'AGENT_CORE_PORT': 'surface.web.port', // legacy
   'ZEE_HOSTNAME': 'surface.web.hostname',
-  'AGENT_CORE_HOSTNAME': 'surface.web.hostname', // legacy
 
   // Memory
   'ZEE_MEMORY_ENABLED': 'memory.enabled',
-  'AGENT_CORE_MEMORY_ENABLED': 'memory.enabled', // legacy
   'QDRANT_URL': 'memory.vectorDb.url',
   'QDRANT_API_KEY': 'memory.vectorDb.apiKey',
 };
@@ -354,7 +345,6 @@ export const CONFIG_FILE_NAMES = [
  */
 export const CONFIG_DIR_NAMES = [
   '.zee',
-  '.agent-core', // legacy
 ];
 
 /**

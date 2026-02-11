@@ -75,8 +75,8 @@ function resolveDaemonBridgeConfig(cfg: ZeeConfig | undefined): ResolvedDaemonBr
 }
 
 export function isDaemonBridgeEnabled(cfg: ZeeConfig | undefined): boolean {
-  // Auto-enable when running embedded (AGENT_CORE_URL is injected by embedded-gateway.ts)
-  if (process.env.AGENT_CORE_URL?.trim()) return true;
+  // Auto-enable when running embedded (ZEE_URL is injected by embedded-gateway.ts)
+  if (process.env.ZEE_URL?.trim()) return true;
   return resolveDaemonBridgeConfig(cfg).enabled;
 }
 
@@ -371,9 +371,9 @@ export async function getReplyFromDaemonBridge(
   }
   const inputText = resolveInboundText(ctx);
   const surface = ctx.Surface?.trim().toLowerCase() || ctx.Provider?.trim().toLowerCase();
-  const isExternalMessagingSurface = surface === "whatsapp" || surface === "matrix";
+  const isExternalMessagingSurface = surface === "whatsapp";
 
-  // Hub mode: all external inboxes are Zee (WhatsApp + Matrix).
+  // Hub mode: external inboxes are Zee (WhatsApp).
   // Keep the original session "rest" (channel/peer/thread) for continuity, but
   // force the agentId to zee so users only talk to Zee externally.
   const sessionKey = isExternalMessagingSurface

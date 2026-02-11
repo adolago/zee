@@ -1,8 +1,8 @@
 /**
  * Surface Interface
  *
- * The core abstraction that all surface adapters must implement.
- * Surfaces are the bridge between different UIs and the agent core.
+ * Primary abstraction that all surface adapters must implement.
+ * Surfaces are the bridge between different UIs and the Zee engine.
  */
 
 import type {
@@ -22,14 +22,14 @@ import { Log } from '../util/log';
 const log = Log.create({ service: 'surface' });
 
 // =============================================================================
-// Core Surface Interface
+// Surface Interface
 // =============================================================================
 
 /**
  * Surface adapter interface.
  *
  * Each surface implementation (CLI, GUI, messaging) must implement this
- * interface to connect to the agent core.
+ * interface to connect to the Zee engine.
  *
  * @example
  * ```typescript
@@ -142,7 +142,7 @@ export interface Surface {
   /**
    * Register a handler for surface events.
    *
-   * The agent core uses this to receive messages and other events.
+   * The Zee engine uses this to receive messages and other events.
    *
    * @param handler - Event handler function
    * @returns Unsubscribe function

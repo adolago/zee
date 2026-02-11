@@ -135,6 +135,13 @@ function coercePayload(payload: UnknownRecord) {
   return next;
 }
 
+function normalizeDeliveryChannel(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return "";
+  // Zee cron delivery currently supports WhatsApp only.
+  return "whatsapp";
+}
+
 function coerceDelivery(delivery: UnknownRecord) {
   const next: UnknownRecord = { ...delivery };
   if (typeof delivery.mode === "string") {
@@ -150,9 +157,9 @@ function coerceDelivery(delivery: UnknownRecord) {
     delete next.mode;
   }
   if (typeof delivery.channel === "string") {
-    const trimmed = delivery.channel.trim().toLowerCase();
-    if (trimmed) {
-      next.channel = trimmed;
+    const normalized = normalizeDeliveryChannel(delivery.channel);
+    if (normalized) {
+      next.channel = normalized;
     } else {
       delete next.channel;
     }
@@ -185,7 +192,7 @@ function buildDeliveryFromLegacyPayload(payload: UnknownRecord): UnknownRecord {
   const deliver = payload.deliver;
   const mode = deliver === false ? "none" : "announce";
   const channelRaw =
-    typeof payload.channel === "string" ? payload.channel.trim().toLowerCase() : "";
+    typeof payload.channel === "string" ? normalizeDeliveryChannel(payload.channel) : "";
   const toRaw = typeof payload.to === "string" ? payload.to.trim() : "";
   const next: UnknownRecord = { mode };
   if (channelRaw) {

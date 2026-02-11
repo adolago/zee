@@ -3,9 +3,9 @@
  */
 
 export interface AdapterConfig {
-  agentCoreUrl: string
+  zeeUrl: string
   authHeaders?: Record<string, string>
-  defaultPersona?: "zee" | "stanley" | "johny"
+  defaultPersona?: "zee"
   theme?: "tui" | "opencode" | "auto"
 }
 
@@ -72,7 +72,7 @@ export interface PermissionContext {
   workingDirectory: string
 }
 
-export interface AgentCoreSession {
+export interface ZeeSessionPayload {
   id: string
   time: {
     created: string
@@ -84,20 +84,20 @@ export interface AgentCoreSession {
   directory: string
 }
 
-export interface AgentCoreMessage {
+export interface ZeeMessagePayload {
   role: "user" | "assistant"
   content: string
   toolCalls?: ToolCall[]
 }
 
-export interface AgentCoreStreamChunk {
+export interface ZeeStreamChunkPayload {
   type: string
   text?: string
   content?: string
   toolCall?: ToolCall
 }
 
-export interface AgentCoreToolResult {
+export interface ZeeToolResultPayload {
   success: boolean
   output: string
   error?: string

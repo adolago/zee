@@ -27,6 +27,7 @@ import { EOL } from "os"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { DaemonCommand, DaemonStatusCommand, DaemonStopCommand, GatewayStatusCommand } from "./cli/cmd/daemon"
+import { DaemonEventsCommand } from "./cli/cmd/daemon-events"
 import { DaemonInstallCommand, DaemonUninstallCommand, DaemonServiceStatusCommand } from "./cli/cmd/daemon-install"
 import { PluginCommand } from "./cli/cmd/plugin"
 import { SetupCommand } from "./cli/cmd/setup"
@@ -101,11 +102,6 @@ const cli = yargs(hideBin(process.argv))
     choices: ["DEBUG", "INFO", "WARN", "ERROR"],
   })
   .middleware(async (opts) => {
-    // Backward compat: migrate legacy roots to ZEE_ROOT.
-    if (!process.env.ZEE_ROOT && (process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT)) {
-      process.env.ZEE_ROOT = process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
-    }
-
     if (!process.env.ZEE_ROOT) {
       const rootCandidate = path.resolve(path.dirname(process.execPath), "..")
       if (fs.existsSync(path.join(rootCandidate, "vendor", "personas"))) {
@@ -125,11 +121,6 @@ const cli = yargs(hideBin(process.argv))
         // ignore
       }
     }
-
-    // Keep legacy env vars in sync for callers that still read them.
-    if (!process.env.AGENT_CORE_ROOT && process.env.ZEE_ROOT) process.env.AGENT_CORE_ROOT = process.env.ZEE_ROOT
-    if (!process.env.OPENCODE_ROOT && process.env.ZEE_ROOT) process.env.OPENCODE_ROOT = process.env.ZEE_ROOT
-
     await Log.init({
       print: process.argv.includes("--print-logs"),
       dev: Installation.isLocal(),
@@ -142,8 +133,6 @@ const cli = yargs(hideBin(process.argv))
 
     process.env.AGENT = "1"
     process.env.ZEE = "1"
-    process.env.AGENT_CORE = "1" // legacy
-    process.env.OPENCODE = "1" // legacy
 
     Log.Default.info("zee", {
       version: Installation.VERSION,
@@ -174,6 +163,7 @@ const cli = yargs(hideBin(process.argv))
   .command(PrCommand)
   .command(SessionCommand)
   .command(DaemonCommand)
+  .command(DaemonEventsCommand)
   .command(DaemonStatusCommand)
   .command(DaemonStopCommand)
   .command(DaemonInstallCommand)

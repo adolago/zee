@@ -5,14 +5,14 @@ description: Deploy Zee on Fly.io
 
 # Fly.io Deployment
 
-**Goal:** Zee Gateway running on a [Fly.io](https://fly.io) machine with persistent storage, automatic HTTPS, and WhatsApp/Matrix access.
+**Goal:** Zee Gateway running on a [Fly.io](https://fly.io) machine with persistent storage, automatic HTTPS, and WhatsApp access.
 
 ## What you need
 
 - [flyctl CLI](https://fly.io/docs/hands-on/install-flyctl/) installed
 - Fly.io account (free tier works)
 - Model auth: Anthropic API key (or other provider keys)
-- Channel credentials: Matrix access token and WhatsApp pairing
+- Channel credentials: WhatsApp access token and WhatsApp pairing
 
 ## Beginner quick path
 
@@ -25,7 +25,7 @@ description: Deploy Zee on Fly.io
 
 ```bash
 # Clone the repo
-git clone https://github.com/zee/zee.git
+git clone https://github.com/adolago/zee.git
 cd zee
 
 # Create a new Fly app (pick your own name)
@@ -100,7 +100,7 @@ fly secrets set OPENAI_API_KEY=sk-...
 fly secrets set GOOGLE_API_KEY=...
 
 # Channel tokens
-fly secrets set MATRIX_ACCESS_TOKEN=syt_...
+fly secrets set WHATSAPP_ACCESS_TOKEN=token_...
 ```
 
 **Notes:**
@@ -125,7 +125,7 @@ fly logs
 You should see:
 ```
 [gateway] listening on ws://0.0.0.0:3000 (PID xxx)
-[matrix] connected as @zee:example.com
+[whatsapp] connected as @zee:example.com
 ```
 
 ## 5) Create config file
@@ -165,15 +165,15 @@ cat > /data/zee.json << 'EOF'
   "bindings": [
     {
       "agentId": "main",
-      "match": { "channel": "matrix" }
+      "match": { "channel": "whatsapp" }
     }
   ],
   "channels": {
-    "matrix": {
+    "whatsapp": {
       "enabled": true,
-      "homeserver": "https://matrix.example.com",
+      "homeserver": "https://whatsapp.example.com",
       "userId": "@zee:example.com",
-      "accessToken": "{env:MATRIX_ACCESS_TOKEN}",
+      "accessToken": "{env:WHATSAPP_ACCESS_TOKEN}",
       "allowFrom": ["@you:example.com"]
     }
   },
@@ -190,11 +190,11 @@ EOF
 
 **Note:** With `ZEE_STATE_DIR=/data`, the config path is `/data/zee.json`.
 
-**Note:** The Matrix access token can come from either:
-- Environment variable: `MATRIX_ACCESS_TOKEN` (recommended for secrets)
-- Config file: `channels.matrix.accessToken`
+**Note:** The WhatsApp access token can come from either:
+- Environment variable: `WHATSAPP_ACCESS_TOKEN` (recommended for secrets)
+- Config file: `channels.whatsapp.accessToken`
 
-If using env var, no need to add token to config. The gateway reads `MATRIX_ACCESS_TOKEN` automatically.
+If using env var, no need to add token to config. The gateway reads `WHATSAPP_ACCESS_TOKEN` through env substitution in config.
 
 Restart to apply:
 ```bash
@@ -449,7 +449,7 @@ The ngrok tunnel runs inside the container and provides a public webhook URL wit
 
 - Fly.io uses **x86 architecture** (not ARM)
 - The Dockerfile is compatible with both architectures
-- For WhatsApp/Matrix onboarding, use `fly ssh console`
+- For WhatsApp onboarding, use `fly ssh console`
 - Persistent data lives on the volume at `/data`
 
 ## Cost

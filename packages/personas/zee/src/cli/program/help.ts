@@ -21,10 +21,6 @@ const EXAMPLES = [
     'zee agent --to +15555550123 --message "Run summary" --deliver',
     "Talk directly to the agent using the Gateway; optionally send the WhatsApp reply.",
   ],
-  [
-    'zee message send --channel matrix --target "!room:example.com" --message "Hi"',
-    "Send to a Matrix room.",
-  ],
 ] as const;
 
 export function configureProgramHelp(program: Command, ctx: ProgramContext) {
@@ -82,7 +78,7 @@ export function configureProgramHelp(program: Command, ctx: ProgramContext) {
 
   program.addHelpText("afterAll", ({ command }) => {
     if (command !== program) return "";
-    const docs = formatDocsLink("/cli", "docs.zee/cli");
+    const docs = formatDocsLink("/cli", "zee-bot.com/cli");
     return `\n${theme.heading("Examples:")}\n${fmtExamples}\n\n${theme.muted("Docs:")} ${docs}\n`;
   });
 }

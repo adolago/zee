@@ -9,7 +9,7 @@ import {
 // WORKAROUND: This flag is set in preload.ts when running full test suite
 // Skip flaky tests that fail due to Bun native code bugs when multiple test files run together
 // See: https://github.com/oven-sh/bun/issues/XXX (null byte path corruption)
-const isFullSuite = process.env["AGENT_CORE_FULL_TEST_SUITE"] === "true"
+const isFullSuite = process.env["ZEE_FULL_TEST_SUITE"] === "true"
 
 /**
  * Test options that avoid Instance context.

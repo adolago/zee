@@ -7,12 +7,12 @@ ENV BUN_RUNTIME_TRANSPILER_CACHE_PATH=${BUN_RUNTIME_TRANSPILER_CACHE_PATH}
 RUN apk add libgcc libstdc++ ripgrep
 
 FROM base AS build-amd64
-COPY dist/agent-core-linux-x64-baseline-musl/bin/agent-core /usr/local/bin/agent-core
+COPY dist/zee-linux-x64-musl/bin/zee /usr/local/bin/zee
 
 FROM base AS build-arm64
-COPY dist/agent-core-linux-arm64-musl/bin/agent-core /usr/local/bin/agent-core
+COPY dist/zee-linux-arm64-musl/bin/zee /usr/local/bin/zee
 
 ARG TARGETARCH
 FROM build-${TARGETARCH}
-RUN agent-core --version
-ENTRYPOINT ["agent-core"]
+RUN zee --version
+ENTRYPOINT ["zee"]

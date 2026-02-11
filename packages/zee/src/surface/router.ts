@@ -1,13 +1,13 @@
 /**
  * Surface Router
  *
- * Central routing layer that connects surfaces (CLI, GUI, messaging) to the agent core.
+ * Central routing layer that connects surfaces (CLI, GUI, messaging) to the Zee engine.
  * Handles message routing, session management, and surface lifecycle.
  *
  * Architecture:
  * ```
  * +----------------+     +------------------+     +------------------+
- * |  CLI Surface   |---->|                  |---->|   Agent Core     |
+ * |  CLI Surface   |---->|                  |---->|   Zee Engine     |
  * +----------------+     |   Surface Router |     |   (MCP/Session)  |
  * +----------------+---->|                  |<----|                  |
  * |  GUI Surface   |     +------------------+     +------------------+

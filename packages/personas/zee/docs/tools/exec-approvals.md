@@ -165,7 +165,7 @@ Config:
       mode: "session", // "session" | "targets" | "both"
       agentFilter: ["main"],
       targets: [
-        { channel: "matrix", to: "!room:example.com" }
+        { channel: "whatsapp", to: "!room:example.com" }
       ]
     }
   }

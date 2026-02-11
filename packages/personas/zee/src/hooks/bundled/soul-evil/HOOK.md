@@ -1,7 +1,7 @@
 ---
 name: soul-evil
 description: "Swap SOUL.md with SOUL_EVIL.md during a purge window or by random chance"
-homepage: https://docs.zee/hooks/soul-evil
+homepage: https://zee-bot.com/hooks/soul-evil
 metadata:
   {
     "zee":

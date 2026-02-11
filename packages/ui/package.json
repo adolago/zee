@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@kobalte/core": "catalog:",
-    "@zee/core": "workspace:*",
+    "@zee/zee": "workspace:*",
     "@zee/util": "workspace:*",
     "@pierre/diffs": "catalog:",
     "@shikijs/transformers": "3.9.2",

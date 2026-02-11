@@ -1,64 +1,144 @@
 import type { DesktopTheme } from "./types"
-import zeeCoreThemeJson from "./themes/zee.json"
-import oc1ThemeJson from "./themes/oc-1.json"
-import tokyoThemeJson from "./themes/tokyonight.json"
-import draculaThemeJson from "./themes/dracula.json"
-import monokaiThemeJson from "./themes/monokai.json"
-import solarizedThemeJson from "./themes/solarized.json"
-import nordThemeJson from "./themes/nord.json"
-import catppuccinThemeJson from "./themes/catppuccin.json"
-import ayuThemeJson from "./themes/ayu.json"
-import oneDarkProThemeJson from "./themes/onedarkpro.json"
-import shadesOfPurpleThemeJson from "./themes/shadesofpurple.json"
-import nightowlThemeJson from "./themes/nightowl.json"
-import vesperThemeJson from "./themes/vesper.json"
-import carbonfoxThemeJson from "./themes/carbonfox.json"
-import gruvboxThemeJson from "./themes/gruvbox.json"
-import auraThemeJson from "./themes/aura.json"
-import { generateDesktopPersonaTheme } from "../../../../src/theme/rosetta"
-const zeeThemeJson = generateDesktopPersonaTheme("zee")
-const stanleyThemeJson = generateDesktopPersonaTheme("stanley")
-const johnyThemeJson = generateDesktopPersonaTheme("johny")
 
-export const zeeCoreTheme = zeeCoreThemeJson as DesktopTheme
-export const oc1Theme = oc1ThemeJson as DesktopTheme
-export const tokyonightTheme = tokyoThemeJson as DesktopTheme
-export const draculaTheme = draculaThemeJson as DesktopTheme
-export const monokaiTheme = monokaiThemeJson as DesktopTheme
-export const solarizedTheme = solarizedThemeJson as DesktopTheme
-export const nordTheme = nordThemeJson as DesktopTheme
-export const catppuccinTheme = catppuccinThemeJson as DesktopTheme
-export const ayuTheme = ayuThemeJson as DesktopTheme
-export const oneDarkProTheme = oneDarkProThemeJson as DesktopTheme
-export const shadesOfPurpleTheme = shadesOfPurpleThemeJson as DesktopTheme
-export const nightowlTheme = nightowlThemeJson as DesktopTheme
-export const vesperTheme = vesperThemeJson as DesktopTheme
-export const carbonfoxTheme = carbonfoxThemeJson as DesktopTheme
-export const gruvboxTheme = gruvboxThemeJson as DesktopTheme
-export const auraTheme = auraThemeJson as DesktopTheme
-export const zeeTheme = zeeThemeJson as DesktopTheme
-export const stanleyTheme = stanleyThemeJson as DesktopTheme
-export const johnyTheme = johnyThemeJson as DesktopTheme
+export const selenizedDarkTheme: DesktopTheme = {
+  $schema: "https://zee-bot.com/desktop-theme.json",
+  id: "selenized-dark",
+  name: "Selenized Dark",
+  light: {
+    seeds: {
+      neutral: "#72898f",
+      primary: "#4695f7",
+      success: "#41c7b9",
+      warning: "#dbb32d",
+      error: "#fa5750",
+      info: "#4695f7",
+      interactive: "#58a3ff",
+      diffAdd: "#84c747",
+      diffDelete: "#fa5750",
+    },
+    overrides: {
+      "background-base": "#f2f4f4",
+      "background-weak": "#e7ecec",
+      "background-strong": "#dde5e5",
+      "background-stronger": "#d3dddd",
+      "surface-base": "#e7ecec",
+      "surface-base-hover": "#dde5e5",
+      "surface-raised-base": "#dde5e5",
+      "surface-raised-strong": "#f2f4f4",
+      "surface-float-base": "#f2f4f4",
+      "text-base": "#1c1c1c",
+      "text-weak": "#4e6368",
+      "text-strong": "#0f1314",
+      "text-interactive-base": "#2f7ce0",
+      "border-base": "#72898f",
+      "border-weak-base": "#8fa2a6",
+      "border-strong-base": "#4e6368",
+      "icon-base": "#4e6368",
+      "icon-strong-base": "#1c1c1c",
+      "markdown-heading": "#2f7ce0",
+      "markdown-text": "#1c1c1c",
+      "markdown-link": "#2f7ce0",
+      "markdown-link-text": "#2f7ce0",
+      "markdown-code": "#267c74",
+      "markdown-block-quote": "#9a7f1f",
+      "markdown-emph": "#9a7f1f",
+      "markdown-strong": "#2f7ce0",
+      "markdown-horizontal-rule": "#8fa2a6",
+      "markdown-list-item": "#2f7ce0",
+      "markdown-list-enumeration": "#267c74",
+      "markdown-image": "#2f7ce0",
+      "markdown-image-text": "#267c74",
+      "markdown-code-block": "#1c1c1c",
+      "syntax-comment": "#72898f",
+      "syntax-keyword": "#2f7ce0",
+      "syntax-string": "#267c74",
+      "syntax-variable": "#cc403a",
+      "syntax-property": "#2f7ce0",
+      "syntax-type": "#9a7f1f",
+      "syntax-constant": "#267c74",
+      "syntax-punctuation": "#1c1c1c",
+      "syntax-operator": "#267c74",
+      "syntax-primitive": "#9a7f1f",
+      "syntax-success": "#267c74",
+      "syntax-warning": "#9a7f1f",
+      "syntax-critical": "#cc403a",
+      "syntax-info": "#2f7ce0",
+    },
+  },
+  dark: {
+    seeds: {
+      neutral: "#72898f",
+      primary: "#4695f7",
+      success: "#41c7b9",
+      warning: "#dbb32d",
+      error: "#fa5750",
+      info: "#41c7b9",
+      interactive: "#58a3ff",
+      diffAdd: "#84c747",
+      diffDelete: "#fa5750",
+    },
+    overrides: {
+      "background-base": "#1c1c1c",
+      "background-weak": "#141414",
+      "background-strong": "#2a2a2a",
+      "background-stronger": "#2d5b69",
+      "surface-base": "#1c1c1c",
+      "surface-base-hover": "#2a2a2a",
+      "surface-raised-base": "#2a2a2a",
+      "surface-raised-strong": "#141414",
+      "surface-float-base": "#141414",
+      "text-base": "#adbcbc",
+      "text-weak": "#72898f",
+      "text-strong": "#cad8d9",
+      "text-interactive-base": "#58a3ff",
+      "border-base": "#2d5b69",
+      "border-weak-base": "#2a2a2a",
+      "border-strong-base": "#53d6c7",
+      "icon-base": "#72898f",
+      "icon-strong-base": "#adbcbc",
+      "surface-brand-base": "#4695f7",
+      "surface-interactive-base": "#184956",
+      "surface-interactive-hover": "#2d5b69",
+      "surface-success-base": "#1f3a36",
+      "surface-critical-base": "#3a2423",
+      "surface-warning-base": "#3a3318",
+      "surface-info-base": "#184956",
+      "surface-diff-add-base": "#1f3a36",
+      "surface-diff-add-strong": "#84c747",
+      "surface-diff-delete-base": "#3a2423",
+      "surface-diff-delete-strong": "#fa5750",
+      "markdown-heading": "#53d6c7",
+      "markdown-text": "#adbcbc",
+      "markdown-link": "#58a3ff",
+      "markdown-link-text": "#53d6c7",
+      "markdown-code": "#84c747",
+      "markdown-block-quote": "#dbb32d",
+      "markdown-emph": "#dbb32d",
+      "markdown-strong": "#58a3ff",
+      "markdown-horizontal-rule": "#72898f",
+      "markdown-list-item": "#58a3ff",
+      "markdown-list-enumeration": "#53d6c7",
+      "markdown-image": "#58a3ff",
+      "markdown-image-text": "#53d6c7",
+      "markdown-code-block": "#adbcbc",
+      "syntax-comment": "#72898f",
+      "syntax-keyword": "#58a3ff",
+      "syntax-string": "#84c747",
+      "syntax-variable": "#fa5750",
+      "syntax-property": "#58a3ff",
+      "syntax-type": "#dbb32d",
+      "syntax-constant": "#53d6c7",
+      "syntax-punctuation": "#adbcbc",
+      "syntax-operator": "#53d6c7",
+      "syntax-primitive": "#dbb32d",
+      "syntax-success": "#84c747",
+      "syntax-warning": "#dbb32d",
+      "syntax-critical": "#fa5750",
+      "syntax-info": "#53d6c7",
+    },
+  },
+}
 
 export const DEFAULT_THEMES: Record<string, DesktopTheme> = {
-  "oc-1": oc1Theme,
-  "zee-core": zeeCoreTheme,
-  "agent-core": zeeCoreTheme, // legacy alias
-  aura: auraTheme,
-  ayu: ayuTheme,
-  carbonfox: carbonfoxTheme,
-  catppuccin: catppuccinTheme,
-  dracula: draculaTheme,
-  gruvbox: gruvboxTheme,
-  monokai: monokaiTheme,
-  nightowl: nightowlTheme,
-  nord: nordTheme,
-  onedarkpro: oneDarkProTheme,
-  shadesofpurple: shadesOfPurpleTheme,
-  solarized: solarizedTheme,
-  tokyonight: tokyonightTheme,
-  vesper: vesperTheme,
-  zee: zeeTheme,
-  stanley: stanleyTheme,
-  johny: johnyTheme,
+  "selenized-dark": selenizedDarkTheme,
 }

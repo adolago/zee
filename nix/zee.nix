@@ -40,7 +40,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   buildPhase = ''
     runHook preBuild
 
-    cd ./packages/zee-core
+    cd ./packages/zee
     bun --bun ./script/build.ts --single --skip-install
     bun --bun ./script/schema.ts schema.json
 
@@ -50,10 +50,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    cd packages/zee-core
-    dist_dir=$(ls -d dist/@zee/core-* 2>/dev/null | sort | head -n1)
+    cd packages/zee
+    dist_dir=$(ls -d dist/@zee/zee-* 2>/dev/null | sort | head -n1)
     if [ -z "$dist_dir" ]; then
-      echo "ERROR: dist directory not found under packages/zee-core/dist/@zee"
+      echo "ERROR: dist directory not found under packages/zee/dist/@zee"
       find dist -maxdepth 3 -type d -print || true
       exit 1
     fi
@@ -76,12 +76,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
         )
       } \
       --set-default ZEE_ROOT "$out/lib/zee/$dist_base" \
-      --set-default AGENT_CORE_ROOT "$out/lib/zee/$dist_base" \
       --argv0 zee
-
-    # Optional legacy CLI alias.
-    ln -s "$out/bin/zee" "$out/bin/agent-core"
-
     runHook postInstall
   '';
 

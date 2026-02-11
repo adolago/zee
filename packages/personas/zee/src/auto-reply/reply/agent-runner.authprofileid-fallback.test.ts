@@ -37,11 +37,11 @@ import { runReplyAgent } from "./agent-runner.js";
 function createBaseRun(params: { runOverrides?: Partial<FollowupRun["run"]> }) {
   const typing = createMockTypingController();
   const sessionCtx = {
-    Provider: "matrix",
+    Provider: "whatsapp",
     OriginatingTo: "chat",
     AccountId: "primary",
     MessageSid: "msg",
-    Surface: "matrix",
+    Surface: "whatsapp",
   } as unknown as TemplateContext;
 
   const resolvedQueue = { mode: "interrupt" } as unknown as QueueSettings;
@@ -55,7 +55,7 @@ function createBaseRun(params: { runOverrides?: Partial<FollowupRun["run"]> }) {
       agentDir: "/tmp/agent",
       sessionId: "session",
       sessionKey: "main",
-      messageProvider: "matrix",
+      messageProvider: "whatsapp",
       sessionFile: "/tmp/session.jsonl",
       workspaceDir: "/tmp",
       config: {},

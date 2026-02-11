@@ -1,4 +1,4 @@
-import { createAgentCoreClient, type Event } from "@zee/core/pkg/sdk/v2/client"
+import { createZeeClient, type Event } from "@zee/zee/pkg/sdk/v2/client"
 import { createSimpleContext } from "@zee/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { batch, onCleanup } from "solid-js"
@@ -12,7 +12,7 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     const platform = usePlatform()
     const abort = new AbortController()
 
-    const eventSdk = createAgentCoreClient({
+    const eventSdk = createZeeClient({
       baseUrl: server.url,
       signal: abort.signal,
       fetch: platform.fetch,
@@ -97,7 +97,7 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
       flush()
     })
 
-    const sdk = createAgentCoreClient({
+    const sdk = createZeeClient({
       baseUrl: server.url,
       fetch: platform.fetch,
       throwOnError: true,

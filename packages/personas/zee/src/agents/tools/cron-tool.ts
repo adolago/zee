@@ -196,7 +196,7 @@ function inferDeliveryFromSessionKey(agentSessionKey?: string): CronDelivery | n
   // - <channel>:group:<peerId>
   // - <channel>:channel:<peerId>
   // Threaded sessions append :thread:<id>, which we strip so delivery targets the parent peer.
-  // NOTE: Telegram forum topics encode as <chatId>:topic:<topicId> and should be preserved.
+  // Preserve composite peer ids (for example group threads) so inferred delivery stays exact.
   const markerIndex = parts.findIndex(
     (part) => part === "dm" || part === "group" || part === "channel",
   );

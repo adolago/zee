@@ -18,7 +18,7 @@ read_when:
   <a href="/start/zee">Zee assistant setup</a>
 </p>
 
-Zee bridges WhatsApp (via WhatsApp Web / Baileys), Matrix (via matrix-bot-sdk),
+Zee bridges WhatsApp (via WhatsApp Web / Baileys), WhatsApp (via whatsapp-bot-sdk),
 agents like Pi.
 
 ## Start here
@@ -59,7 +59,7 @@ Most operations flow through the **Zee Gateway** (`zee gateway`), a single long-
 ## Features (high level)
 
 - **WhatsApp Integration** — Uses Baileys for WhatsApp Web protocol
-- **Matrix** — DMs + rooms via the Matrix channel plugin
+- **WhatsApp** — DMs + rooms via the WhatsApp channel plugin
 - **Agent bridge** — Pi (RPC mode) with tool streaming
 - **Streaming + chunking** — Block streaming + per-channel chunking details ([/concepts/streaming](/concepts/streaming))
 - **Multi-agent routing** — Route provider accounts/peers to isolated agents (workspace + per-agent sessions)
@@ -162,7 +162,7 @@ Example:
   - [Discovery + transports](/gateway/discovery)
   - [Remote access](/gateway/remote)
 - Providers and UX:
-  - [Matrix](/channels/matrix)
+  - [WhatsApp](/channels/whatsapp)
   - [WhatsApp](/channels/whatsapp)
   - [Groups](/concepts/groups)
   - [WhatsApp group messages](/concepts/group-messages)
@@ -186,7 +186,7 @@ Example:
 ## Core Contributors
 
 - **Maxim Vovshin** (@Hyaxia, 36747317+Hyaxia@users.noreply.github.com) — Blogwatcher skill
-- **Nacho Iacovino** (@nachoiacovino, nacho.iacovino@gmail.com) — Location parsing (Matrix + WhatsApp)
+- **Nacho Iacovino** (@nachoiacovino, nacho.iacovino@gmail.com) — Location parsing (WhatsApp + WhatsApp)
 
 ## License
 

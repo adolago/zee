@@ -4,7 +4,7 @@ import { createSimpleContext } from "@zee/ui/context"
 import { useGlobalSync } from "./global-sync"
 import { useGlobalSDK } from "./global-sdk"
 import { useServer } from "./server"
-import { Project } from "@zee/core/pkg/sdk/v2"
+import { Project } from "@zee/zee/pkg/sdk/v2"
 import { Persist, persisted, removePersisted } from "@/utils/persist"
 import { same } from "@/utils/same"
 import { createScrollPersistence, type SessionScroll } from "./layout-scroll"
@@ -260,7 +260,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         ...(metadata ?? {}),
         ...project,
         commands: {
-          ...(metadata?.commands ?? {}),
+          ...((metadata as any)?.commands ?? {}),
           ...(local?.commands ?? {}),
         },
         icon: {

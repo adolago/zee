@@ -1,6 +1,6 @@
-# OpenCode Desktop
+# Zee Desktop
 
-Native OpenCode desktop app, built with Tauri v2.
+Native Zee desktop app, built with Tauri v2.
 
 ## Development
 

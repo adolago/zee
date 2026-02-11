@@ -3,15 +3,15 @@ import path from "path"
 import { satisfies } from "semver"
 
 // When in src/pkg/script, go up 5 levels to reach the monorepo root
-// src/pkg/script -> src/pkg -> src -> packages -> zee-core -> <repo root>
+// src/pkg/script -> src/pkg -> src -> packages -> zee -> <repo root>
 const rootPkgPath = path.resolve(import.meta.dir, "../../../../../package.json")
 const rootPkg = await Bun.file(rootPkgPath).json()
 const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
 
-// Read version from core package.json as fallback (go up 3 levels to packages/zee-core)
-const corePkgPath = path.resolve(import.meta.dir, "../../../package.json")
-const corePkg = await Bun.file(corePkgPath).json().catch(() => ({}))
-const packageJsonVersion = corePkg.version as string | undefined
+// Read version from the Zee package.json as fallback (go up 3 levels to packages/zee)
+const zeePkgPath = path.resolve(import.meta.dir, "../../../package.json")
+const zeePkg = await Bun.file(zeePkgPath).json().catch(() => ({}))
+const packageJsonVersion = zeePkg.version as string | undefined
 
 if (!expectedBunVersion) {
   throw new Error("packageManager field not found in root package.json")
@@ -23,12 +23,12 @@ if (!satisfies(process.versions.bun, expectedBunVersionRange)) {
 }
 
 const env = {
-  ZEE_CHANNEL: process.env["ZEE_CHANNEL"] ?? process.env["AGENT_CORE_CHANNEL"],
-  ZEE_BUMP: process.env["ZEE_BUMP"] ?? process.env["AGENT_CORE_BUMP"],
-  ZEE_VERSION: process.env["ZEE_VERSION"] ?? process.env["AGENT_CORE_VERSION"],
-  ZEE_NPM_PACKAGE: process.env["ZEE_NPM_PACKAGE"] ?? process.env["AGENT_CORE_NPM_PACKAGE"],
+  ZEE_CHANNEL: process.env["ZEE_CHANNEL"],
+  ZEE_BUMP: process.env["ZEE_BUMP"],
+  ZEE_VERSION: process.env["ZEE_VERSION"],
+  ZEE_NPM_PACKAGE: process.env["ZEE_NPM_PACKAGE"],
 }
-const DEFAULT_NPM_PACKAGE = "@zee/core"
+const DEFAULT_NPM_PACKAGE = "zee"
 const registry = "https://registry.npmjs.org"
 const npmPackage = env.ZEE_NPM_PACKAGE || DEFAULT_NPM_PACKAGE
 const encodedPackage = encodeURIComponent(npmPackage)

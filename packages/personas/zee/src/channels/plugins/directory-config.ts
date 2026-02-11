@@ -19,7 +19,7 @@ function normalizeAliasList(contactId: string, aliases?: string[]): string[] {
 
 function resolveContactChannelTarget(
   contact: ContactConfig,
-  channel: "matrix" | "whatsapp",
+  channel: "whatsapp",
 ): string | null {
   const channels = contact.channels ?? {};
   const direct = channels[channel];
@@ -27,11 +27,8 @@ function resolveContactChannelTarget(
     const trimmed = String(direct).trim();
     return trimmed ? trimmed : null;
   }
-  if (channel === "whatsapp") {
-    const phone = contact.phone?.trim();
-    return phone || null;
-  }
-  return null;
+  const phone = contact.phone?.trim();
+  return phone || null;
 }
 
 function mergeDirectoryEntries(
@@ -109,7 +106,7 @@ function applyQueryAndLimit(
 
 function listContactDirectoryPeersFromConfig(params: {
   cfg: ZeeConfig;
-  channel: "matrix" | "whatsapp";
+  channel: "whatsapp";
   query?: string | null;
   limit?: number | null;
 }): ChannelDirectoryEntry[] {
@@ -122,84 +119,17 @@ function listContactDirectoryPeersFromConfig(params: {
     const aliases = normalizeAliasList(contactId, contact.aliases);
     const target = resolveContactChannelTarget(contact, params.channel);
     if (!target) continue;
-    if (params.channel === "whatsapp") {
-      const normalized = normalizeWhatsAppTarget(target);
-      if (!normalized || isWhatsAppGroupJid(normalized)) continue;
-      entries.push({
-        kind: "user",
-        id: normalized,
-        name: resolvedName,
-        aliases: aliases.length ? aliases : undefined,
-        raw: { contactId },
-      });
-      continue;
-    }
-    const trimmed = target.trim();
-    if (!trimmed) continue;
+    const normalized = normalizeWhatsAppTarget(target);
+    if (!normalized || isWhatsAppGroupJid(normalized)) continue;
     entries.push({
       kind: "user",
-      id: trimmed,
+      id: normalized,
       name: resolvedName,
       aliases: aliases.length ? aliases : undefined,
       raw: { contactId },
     });
   }
   return applyQueryAndLimit(entries, params.query, params.limit);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function readMatrixAllowFrom(cfg: ZeeConfig): string[] {
-  const channels = (cfg.channels as Record<string, unknown> | undefined) ?? {};
-  const matrix = channels.matrix;
-  if (!isRecord(matrix)) return [];
-  const allowFrom = matrix.allowFrom;
-  if (!Array.isArray(allowFrom)) return [];
-  return allowFrom
-    .map((entry) => String(entry).trim())
-    .filter(Boolean)
-    .map((entry) => entry.replace(/^matrix:/i, "").trim())
-    .filter(Boolean);
-}
-
-export async function listMatrixDirectoryPeersFromConfig(
-  params: DirectoryConfigParams,
-): Promise<ChannelDirectoryEntry[]> {
-  const baseEntries = Array.from(new Set(readMatrixAllowFrom(params.cfg)))
-    .filter((entry) => entry.startsWith("@"))
-    .map((id) => ({ kind: "user", id }) as const);
-  const contactEntries = listContactDirectoryPeersFromConfig({
-    cfg: params.cfg,
-    channel: "matrix",
-    query: params.query,
-    limit: params.limit,
-  }).filter((entry) => entry.id.startsWith("@"));
-  return applyQueryAndLimit(
-    mergeDirectoryLists(baseEntries, contactEntries),
-    params.query,
-    params.limit,
-  );
-}
-
-export async function listMatrixDirectoryGroupsFromConfig(
-  params: DirectoryConfigParams,
-): Promise<ChannelDirectoryEntry[]> {
-  const baseEntries = Array.from(new Set(readMatrixAllowFrom(params.cfg)))
-    .filter((entry) => entry.startsWith("!") || entry.startsWith("#"))
-    .map((id) => ({ kind: "group", id }) as const);
-  const contactEntries = listContactDirectoryPeersFromConfig({
-    cfg: params.cfg,
-    channel: "matrix",
-    query: params.query,
-    limit: params.limit,
-  }).filter((entry) => entry.id.startsWith("!") || entry.id.startsWith("#"));
-  return applyQueryAndLimit(
-    mergeDirectoryLists(baseEntries, contactEntries),
-    params.query,
-    params.limit,
-  );
 }
 
 export async function listWhatsAppDirectoryPeersFromConfig(

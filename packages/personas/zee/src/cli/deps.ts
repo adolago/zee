@@ -3,7 +3,6 @@ import type { OutboundSendDeps } from "../infra/outbound/deliver.js";
 
 export type CliDeps = {
   sendMessageWhatsApp: typeof sendMessageWhatsApp;
-  sendMessageTelegram?: NonNullable<OutboundSendDeps["sendTelegram"]>;
 };
 
 export function createDefaultDeps(): CliDeps {
@@ -16,7 +15,6 @@ export function createDefaultDeps(): CliDeps {
 export function createOutboundSendDeps(deps: CliDeps): OutboundSendDeps {
   return {
     sendWhatsApp: deps.sendMessageWhatsApp,
-    sendTelegram: deps.sendMessageTelegram,
   };
 }
 

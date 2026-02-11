@@ -1,7 +1,7 @@
 import { createMemo, onCleanup } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { createSimpleContext } from "@zee/ui/context"
-import type { PermissionRequest } from "@zee/core/pkg/sdk/v2/client"
+import type { PermissionRequest } from "@zee/zee/pkg/sdk/v2/client"
 import { Persist, persisted } from "@/utils/persist"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "./global-sync"

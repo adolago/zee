@@ -1,9 +1,9 @@
 ---
-summary: "Matrix allowlist hardening: prefix + whitespace normalization"
+summary: "WhatsApp allowlist hardening: prefix + whitespace normalization"
 read_when:
-  - Reviewing historical Matrix allowlist changes
+  - Reviewing historical WhatsApp allowlist changes
 ---
-# Matrix Allowlist Hardening
+# WhatsApp Allowlist Hardening
 
 **Date**: 2026-01-05  
 **Status**: Complete  
@@ -11,19 +11,19 @@ read_when:
 
 ## Summary
 
-Matrix allowlists accept an optional `matrix:` prefix case-insensitively, and tolerate accidental
+WhatsApp allowlists accept an optional `whatsapp:` prefix case-insensitively, and tolerate accidental
 whitespace. This aligns inbound allowlist checks with outbound send normalization.
 
 ## What changed
 
-- `matrix:` prefixes are treated as optional (case-insensitive).
+- `whatsapp:` prefixes are treated as optional (case-insensitive).
 - Allowlist entries are trimmed; empty entries are ignored.
 
 ## Examples
 
 All of these are accepted for the same ID:
 
-- `matrix:@alice:example.org`
+- `whatsapp:@alice:example.org`
 - `MATRIX:@alice:example.org`
 - `  @alice:example.org  `
 
@@ -35,4 +35,4 @@ false negatives when deciding whether to respond in DMs or groups.
 ## Related docs
 
 - [Group Chats](/concepts/groups)
-- [Matrix Channel](/channels/matrix)
+- [WhatsApp Channel](/channels/whatsapp)

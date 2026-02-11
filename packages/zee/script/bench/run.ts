@@ -65,8 +65,8 @@ async function runBench(bench: BenchCase, ctx: BenchContext, opts: BenchRunOptio
 
 async function main() {
   // Benchmarks should not modify ~/.config/zee (or other config dirs) by installing plugins/deps.
-  // If you intentionally want that behavior, set AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL=0.
-  process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL ??= "1";
+  // If you intentionally want that behavior, set ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL=0.
+  process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL ??= "1";
 
   const args = parseArgs(process.argv.slice(2));
 

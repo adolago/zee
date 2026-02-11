@@ -261,7 +261,7 @@ Result: Agent A and C respond, Agent B logs error
 
 Broadcast groups currently work with:
 - WhatsApp
-- Matrix
+- WhatsApp
 
 ### Routing
 

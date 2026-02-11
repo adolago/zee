@@ -21,7 +21,6 @@ export const HookMappingSchema = z
       .union([
         z.literal("last"),
         z.literal("whatsapp"),
-        z.literal("matrix"),
       ])
       .optional(),
     to: z.string().optional(),

@@ -19,7 +19,7 @@ Primary surfaces:
 
 - `cli`: local operator at the terminal.
 - `web`/`api`: HTTP clients (may be loopback or LAN depending on configuration).
-- `whatsapp`/`matrix`: inbound messages (treat as untrusted by default).
+- `whatsapp`: inbound messages (treat as untrusted by default).
 
 External components:
 
@@ -83,7 +83,7 @@ Implementation:
 
 The hosted service encrypts provider connection material at rest. The vault key is:
 
-- taken from `HOSTED_VAULT_KEY` / `AGENT_CORE_HOSTED_VAULT_KEY` when provided
+- taken from `HOSTED_VAULT_KEY` when provided
 - otherwise generated per-install and persisted to `HOSTED_DATA_DIR/vault.key`
 - migrated away from the legacy hardcoded dev key when legacy encrypted rows are detected
 

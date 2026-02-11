@@ -186,7 +186,7 @@ export async function dispatchReplyFromConfig(params: {
 
   // Check if we should route replies to originating channel instead of dispatcher.
   // Only route when the originating channel is DIFFERENT from the current surface.
-  // This handles cross-provider routing (e.g., message from Matrix being processed
+  // This handles cross-provider routing (e.g., message from another channel being processed
   // by a shared session that's currently on another channel) while preserving normal
   // dispatcher flow when the provider handles its own messages.
   //

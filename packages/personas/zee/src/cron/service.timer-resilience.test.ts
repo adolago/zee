@@ -19,7 +19,19 @@ async function makeStorePath() {
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
-      await fs.rm(dir, { recursive: true, force: true });
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+          await fs.rm(dir, { recursive: true, force: true });
+          return;
+        } catch (error) {
+          const code =
+            error && typeof error === "object" && "code" in error
+              ? String((error as { code?: unknown }).code)
+              : "";
+          if (!["ENOTEMPTY", "EBUSY", "EPERM"].includes(code) || attempt === 4) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
     },
   };
 }

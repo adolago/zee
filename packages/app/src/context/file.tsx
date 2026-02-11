@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createRoot, onCleanup } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { createSimpleContext } from "@zee/ui/context"
-import type { FileContent, FileNode } from "@zee/core/pkg/sdk/v2"
+import type { FileContent, FileNode } from "@zee/zee/pkg/sdk/v2"
 import { showToast } from "@zee/ui/toast"
 import { useParams } from "@solidjs/router"
 import { getFilename } from "@zee/util/path"

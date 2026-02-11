@@ -52,7 +52,7 @@ If you run `--deep`, Zee also attempts a best-effort live Gateway probe.
 Use this when auditing access or deciding what to back up:
 
 - **WhatsApp**: `~/.zee/credentials/whatsapp/<accountId>/creds.json`
-- **Matrix access token**: config/env or `channels.matrix.accessToken`
+- **WhatsApp access token**: config/env or `channels.whatsapp.accessToken`
 - **Pairing allowlists**: `~/.zee/credentials/<channel>-allowFrom.json`
 - **Model auth profiles**: `~/.zee/agents/<agentId>/agent/auth-profiles.json`
 - **Legacy OAuth import**: `~/.zee/credentials/oauth.json`
@@ -637,7 +637,7 @@ Common use cases:
           workspaceAccess: "none"
         },
         tools: {
-          allow: ["sessions_list", "sessions_history", "sessions_send", "sessions_spawn", "session_status", "whatsapp", "matrix"],
+          allow: ["sessions_list", "sessions_history", "sessions_send", "sessions_spawn", "session_status", "whatsapp", "whatsapp"],
           deny: ["read", "write", "edit", "apply_patch", "exec", "process", "browser", "canvas", "nodes", "cron", "gateway", "image"]
         }
       }
@@ -673,7 +673,7 @@ If your AI does something bad:
 
 1. Rotate Gateway auth (`gateway.auth.token` / `ZEE_GATEWAY_PASSWORD`) and restart.
 2. Rotate remote client secrets (`gateway.remote.token` / `.password`) on any machine that can call the Gateway.
-3. Rotate provider/API credentials (WhatsApp creds, Matrix access tokens, model/API keys in `auth-profiles.json`).
+3. Rotate provider/API credentials (WhatsApp creds, WhatsApp access tokens, model/API keys in `auth-profiles.json`).
 
 ### Audit
 

@@ -54,8 +54,8 @@ export const noopBusPublisher: BusPublisher = () => {}
 
 /**
  * Environment variable configuration for stream health thresholds.
- * These can be overridden via AGENT_CORE_STREAM_STALL_WARNING_MS and
- * AGENT_CORE_STREAM_STALL_TIMEOUT_MS environment variables.
+ * These can be overridden via ZEE_STREAM_STALL_WARNING_MS and
+ * ZEE_STREAM_STALL_TIMEOUT_MS environment variables.
  */
 const DEFAULT_STALL_WARNING_MS = 15_000 // 15s without events = stall warning
 const DEFAULT_STALL_TIMEOUT_MS = 60_000 // 60s without events = hard timeout

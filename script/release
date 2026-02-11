@@ -4,7 +4,7 @@ set -euo pipefail
 
 VERSION_ARG=${1:-}
 if [ -z "$VERSION_ARG" ]; then
-  VERSION_ARG=$(node -p "require('./packages/zee-core/package.json').version")
+  VERSION_ARG=$(node -p "require('./packages/zee/package.json').version")
 fi
 
 if [ -z "$VERSION_ARG" ]; then

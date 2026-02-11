@@ -6,17 +6,17 @@ read_when:
 ---
 # TUI (Terminal UI)
 
-> Note: The TUI now runs via **agent-core**. `zee tui` is a compatibility alias that launches the agent-core TUI.
-> Use `agent-core` directly for the primary experience.
+> Note: The TUI now runs via **zee**. `zee tui` is a compatibility alias that launches the Zee TUI.
+> Use `zee` directly for the primary experience.
 
 ## Quick start
-1) Start agent-core (optionally with the gateway).
+1) Start Zee daemon (gateway is always embedded).
 ```bash
-agent-core daemon --gateway
+zee daemon
 ```
 2) Open the TUI.
 ```bash
-agent-core
+zee
 # or:
 zee tui
 ```
@@ -24,9 +24,9 @@ zee tui
 
 Remote daemon:
 ```bash
-AGENT_CORE_URL=http://<host>:<port> agent-core
+ZEE_URL=http://<host>:<port> zee
 ```
-If daemon auth is enabled, set `AGENT_CORE_SERVER_PASSWORD` before launching the TUI.
+If daemon auth is enabled, set `ZEE_SERVER_PASSWORD` before launching the TUI.
 
 ## What you see
 - Header: connection URL, current agent, current session.

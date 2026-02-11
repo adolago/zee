@@ -9,7 +9,7 @@ export namespace Editor {
     const editor = process.env["VISUAL"] || process.env["EDITOR"]
     if (!editor) return
 
-    const tempDir = await mkdtemp(join(tmpdir(), "agent-core-editor-"))
+    const tempDir = await mkdtemp(join(tmpdir(), "zee-editor-"))
     await using _ = defer(async () => rm(tempDir, { recursive: true, force: true }))
     const filepath = join(tempDir, "draft.md")
 

@@ -5,17 +5,17 @@ ACCEPTED (Design Phase)
 
 ## Context
 
-The agent-core needs to support multiple UI surfaces:
-1. **CLI/TUI** (agent-core native) - Terminal-based interaction
+Zee needs to support multiple UI surfaces:
+1. **CLI/TUI** (Zee native) - Terminal-based interaction
 2. **GUI** (Stanley) - GPUI-based desktop application
-3. **Messaging** (Zee) - WhatsApp and Matrix platforms
+3. **Messaging** (Zee) - WhatsApp channel
 
 Each surface has different capabilities:
 - CLI supports streaming and interactive prompts
 - GUI supports rich visuals and WebSocket streaming
 - Messaging requires batched messages and cannot prompt users
 
-Without abstraction, the agent core would need platform-specific code throughout, leading to duplication and maintenance burden.
+Without abstraction, the Zee engine would need platform-specific code throughout, leading to duplication and maintenance burden.
 
 ### Requirements
 
@@ -34,7 +34,7 @@ Design a Surface Abstraction Layer with the following components:
 
 ```
                     +-----------------+
-                    |   Agent Core    |
+                    |   Zee Engine    |
                     +--------+--------+
                              |
                     +--------v--------+
@@ -48,7 +48,7 @@ Design a Surface Abstraction Layer with the following components:
  +-------------+      +-------------+      +-------------+
         |                    |                    |
     Terminal           WebSocket           Platform APIs
-                                           (WhatsApp/Matrix)
+                                           (WhatsApp)
 ```
 
 ### Core Interface
@@ -111,7 +111,7 @@ Global Config
     |
     +-- Surface Type Config (cli, gui, messaging)
     |       |
-    |       +-- Platform Config (whatsapp, matrix)
+    |       +-- Platform Config (whatsapp)
     |               |
     |               +-- Instance Config
 ```
@@ -144,11 +144,11 @@ src/surface/
 
 **Decision**: Messaging surface uses pluggable platform handlers.
 
-**Rationale**: Each messaging platform (WhatsApp, Matrix) has unique SDKs and APIs. The handler interface abstracts these differences while allowing platform-specific implementation.
+**Rationale**: Each messaging platform has unique SDKs and APIs. The handler interface abstracts these differences while allowing platform-specific implementation.
 
 ```typescript
 interface MessagingPlatformHandler {
-  readonly platform: 'whatsapp' | 'matrix';
+  readonly platform: 'whatsapp';
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   sendMessage(target, text, options?): Promise<void>;
@@ -167,7 +167,7 @@ interface MessagingPlatformHandler {
 
 **Decision**: Messaging surfaces automatically apply configured permissions without prompting.
 
-**Rationale**: Cannot interrupt a WhatsApp/Matrix conversation to ask "Allow file write?". Configuration determines what's allowed for each surface.
+**Rationale**: Cannot interrupt a messaging conversation to ask "Allow file write?". Configuration determines what's allowed for each surface.
 
 ### 5. Surface Context
 
@@ -228,12 +228,12 @@ interface MessagingPlatformHandler {
 
 ### Phase 3: Integration (COMPLETED)
 - [x] Connect to agent core
-  - Surface bootstrap module: `packages/zee-core/src/bootstrap/surface.ts`
+  - Surface bootstrap module: `packages/zee/src/bootstrap/surface.ts`
   - Integrated into daemon startup/shutdown sequence
   - Status output in daemon startup message
-- [x] Implement platform handlers (Baileys, Matrix)
+- [x] Implement platform handlers (Baileys)
   - WhatsApp handler (Baileys)
-  - Matrix handler (matrix-bot-sdk)
+  - WhatsApp handler (Baileys)
   - Both implement `MessagingPlatformHandler` interface
 - [x] Add surface router
   - Router: `src/surface/router.ts`
@@ -251,12 +251,12 @@ interface MessagingPlatformHandler {
   - Per-surface hot-reload support
 - [x] Multi-surface orchestration
   - Register/unregister surfaces at runtime
-  - Multiple concurrent surfaces (CLI + WhatsApp + Matrix)
+  - Multiple concurrent surfaces (CLI + WhatsApp)
   - Surface registry with conflict detection
 
 ## Related ADRs
 
-- ADR-002: Agent Core Architecture
+- ADR-002: Zee Core Architecture
 - ADR-003: Tool System
 - ADR-004: Permission System
 

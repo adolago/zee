@@ -39,8 +39,6 @@ export namespace Config {
 
   const managedConfigDir =
     process.env.ZEE_TEST_MANAGED_CONFIG_DIR ||
-    process.env.AGENT_CORE_TEST_MANAGED_CONFIG_DIR ||
-    process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR ||
     getManagedConfigDir()
 
   // Custom merge function that concatenates array fields instead of replacing them
@@ -64,8 +62,8 @@ export namespace Config {
     for (const [key, value] of Object.entries(auth)) {
       if (value.type === "wellknown") {
         process.env[value.key] = value.token
-        log.debug("fetching remote config", { url: `${key}/.well-known/opencode` })
-        const response = await fetch(`${key}/.well-known/opencode`)
+        log.debug("fetching remote config", { url: `${key}/.well-known/zee` })
+        const response = await fetch(`${key}/.well-known/zee`)
         if (!response.ok) {
           throw new Error(`failed to fetch remote config from ${key}: ${response.status}`)
         }
@@ -75,7 +73,7 @@ export namespace Config {
         if (!remoteConfig.$schema) remoteConfig.$schema = "zee"
         result = mergeConfigConcatArrays(
           result,
-          await load(JSON.stringify(remoteConfig), `${key}/.well-known/opencode`),
+          await load(JSON.stringify(remoteConfig), `${key}/.well-known/zee`),
         )
         log.debug("loaded remote config from well-known", { url: key })
       }
@@ -123,7 +121,7 @@ export namespace Config {
 
     // Support running from any directory via launcher script that sets ZEE_ROOT.
     // Treat packaged config as the lowest-precedence defaults so user/project config can override it.
-    const zeeRoot = process.env.ZEE_ROOT || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
+    const zeeRoot = process.env.ZEE_ROOT
     if (zeeRoot) {
       const rootConfigDir = path.join(zeeRoot, ".zee")
       if (existsSync(rootConfigDir)) {
@@ -257,7 +255,7 @@ export namespace Config {
     // This env var is intentionally read at call time (not via Flag) to avoid stale values
     // when the process sets it after module import.
     const disableInstall = (() => {
-      const v = (process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL || process.env.AGENT_CORE_DISABLE_CONFIG_DEPENDENCY_INSTALL)
+      const v = (process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL)
         ?.toLowerCase()
       return v === "true" || v === "1"
     })()
@@ -283,7 +281,12 @@ export namespace Config {
     if (!hasGitIgnore) await Bun.write(gitignore, ["node_modules", "package.json", "bun.lock", ".gitignore"].join("\n"))
 
     const pluginVersion = Installation.isLocal() || Installation.isPreview() ? "latest" : Installation.VERSION
-    await BunProc.run(["add", "@opencode-ai/plugin@" + pluginVersion, "--exact"], {
+    const localPluginDir = path.join(Global.Path.source, "packages", "plugin")
+    const localPluginSpecifier = `file:${localPluginDir}`
+    const localPluginAvailable = await Filesystem.exists(path.join(localPluginDir, "package.json"))
+    const pluginSpecifier = localPluginAvailable ? localPluginSpecifier : "@zee/plugin@" + pluginVersion
+
+    await BunProc.run(["add", pluginSpecifier, "--exact"], {
       cwd: dir,
     }).catch((err) => {
       log.debug("failed to add plugin package", { error: String(err), dir })
@@ -1078,7 +1081,7 @@ export namespace Config {
         .array(z.string())
         .optional()
         .describe(
-          "Allowlist of directories that can be selected via ?directory=... or x-opencode-directory in server mode. If omitted, non-loopback binds default to the daemon CWD only.",
+          "Allowlist of directories that can be selected via ?directory=... or x-zee-directory in server mode. If omitted, non-loopback binds default to the daemon CWD only.",
         ),
       allowGlobalDirectory: z
         .boolean()

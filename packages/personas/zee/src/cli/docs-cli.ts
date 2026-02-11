@@ -13,7 +13,7 @@ export function registerDocsCli(program: Command) {
     .argument("[query...]", "Search query")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "docs.zee/cli/docs")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "zee-bot.com/cli/docs")}\n`,
     )
     .action(async (queryParts: string[]) => {
       await runCommandWithRuntime(defaultRuntime, async () => {

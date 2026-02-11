@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { ZeeConfig } from "../config/config.js";
 import {
-  applyAgentCoreZenModelDefault,
+  applyOpencodeZenModelDefault,
   OPENCODE_ZEN_DEFAULT_MODEL,
 } from "./opencode-zen-model-default.js";
 
-describe("applyAgentCoreZenModelDefault", () => {
+describe("applyOpencodeZenModelDefault", () => {
   it("sets opencode-zen default when model is unset", () => {
     const cfg: ZeeConfig = { agents: { defaults: {} } };
-    const applied = applyAgentCoreZenModelDefault(cfg);
+    const applied = applyOpencodeZenModelDefault(cfg);
     expect(applied.changed).toBe(true);
     expect(applied.next.agents?.defaults?.model).toEqual({
       primary: OPENCODE_ZEN_DEFAULT_MODEL,
@@ -20,7 +20,7 @@ describe("applyAgentCoreZenModelDefault", () => {
     const cfg = {
       agents: { defaults: { model: "anthropic/claude-opus-4-5" } },
     } as ZeeConfig;
-    const applied = applyAgentCoreZenModelDefault(cfg);
+    const applied = applyOpencodeZenModelDefault(cfg);
     expect(applied.changed).toBe(true);
     expect(applied.next.agents?.defaults?.model).toEqual({
       primary: OPENCODE_ZEN_DEFAULT_MODEL,
@@ -31,7 +31,7 @@ describe("applyAgentCoreZenModelDefault", () => {
     const cfg = {
       agents: { defaults: { model: OPENCODE_ZEN_DEFAULT_MODEL } },
     } as ZeeConfig;
-    const applied = applyAgentCoreZenModelDefault(cfg);
+    const applied = applyOpencodeZenModelDefault(cfg);
     expect(applied.changed).toBe(false);
     expect(applied.next).toEqual(cfg);
   });
@@ -40,7 +40,7 @@ describe("applyAgentCoreZenModelDefault", () => {
     const cfg = {
       agents: { defaults: { model: "opencode-zen/claude-opus-4-5" } },
     } as ZeeConfig;
-    const applied = applyAgentCoreZenModelDefault(cfg);
+    const applied = applyOpencodeZenModelDefault(cfg);
     expect(applied.changed).toBe(false);
     expect(applied.next).toEqual(cfg);
   });
@@ -56,7 +56,7 @@ describe("applyAgentCoreZenModelDefault", () => {
         },
       },
     };
-    const applied = applyAgentCoreZenModelDefault(cfg);
+    const applied = applyOpencodeZenModelDefault(cfg);
     expect(applied.changed).toBe(true);
     expect(applied.next.agents?.defaults?.model).toEqual({
       primary: OPENCODE_ZEN_DEFAULT_MODEL,

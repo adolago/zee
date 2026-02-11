@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/zee-core/src/util/log";
+import { Log } from "../../../packages/zee/src/util/log";
 
 const log = Log.create({ service: "zee-browser" });
 
@@ -85,11 +85,11 @@ const BrowserParams = z.object({
   
   // Profile selection
   profile: z.string().default("zee")
-    .describe("Browser profile name. Defaults to the session's persona profile if available. Built-in: 'zee', 'stanley', 'johny', 'chrome'"),
+    .describe("Browser profile name. Defaults to the session's persona profile if available. Built-in: 'zee', 'chrome'"),
 
   // Persona context (auto-selects the persona's dedicated browser profile)
-  persona: z.enum(["zee", "stanley", "johny"]).optional()
-    .describe("Persona context. When set, routes to the persona's dedicated Chrome profile"),
+  persona: z.enum(["zee"]).optional()
+    .describe("Persona context. Zee uses the dedicated Zee Chrome profile when set"),
   
   // URL for navigation
   url: z.string().optional()
@@ -179,7 +179,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, persona } = args;
       // Resolve persona to its dedicated profile, or use explicit profile
-      const PERSONA_PROFILES: Record<string, string> = { zee: "zee", stanley: "stanley", johny: "johny" };
+      const PERSONA_PROFILES: Record<string, string> = { zee: "zee" };
       const profile = persona && PERSONA_PROFILES[persona] ? PERSONA_PROFILES[persona] : args.profile;
 
       ctx.metadata({ title: `Browser: ${action}` });

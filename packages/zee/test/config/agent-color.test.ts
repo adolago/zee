@@ -12,7 +12,7 @@ test("agent color parsed from project config", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             build: { color: "#FFA500" },
           },
@@ -35,7 +35,7 @@ test("Agent.get includes color from config", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             plan: { color: "#A855F7" },
           },
@@ -58,7 +58,7 @@ test("agent color accepts theme color name 'primary'", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             review: { color: "primary" },
           },
@@ -81,7 +81,7 @@ test("agent color accepts theme color name 'accent'", async () => {
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({
-          $schema: "agent-core",
+          $schema: "zee",
           agent: {
             deploy: { color: "accent" },
           },

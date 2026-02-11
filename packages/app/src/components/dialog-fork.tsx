@@ -7,7 +7,7 @@ import { useDialog } from "@zee/ui/context/dialog"
 import { Dialog } from "@zee/ui/dialog"
 import { List } from "@zee/ui/list"
 import { extractPromptFromParts } from "@/utils/prompt"
-import type { TextPart as SDKTextPart } from "@zee/core/pkg/sdk/v2/client"
+import type { TextPart as SDKTextPart } from "@zee/zee/pkg/sdk/v2/client"
 import { base64Encode } from "@zee/util/encode"
 import { useLanguage } from "@/context/language"
 

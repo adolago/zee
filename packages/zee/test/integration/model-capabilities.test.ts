@@ -30,7 +30,7 @@ const testOptions = {
 }
 
 // Skip in full test mode due to Bun timing issues
-const isFullSuite = process.env["AGENT_CORE_FULL_TEST_SUITE"] === "true"
+const isFullSuite = process.env["ZEE_FULL_TEST_SUITE"] === "true"
 
 describe("Model Tool Calling", () => {
   describe("single tool call", () => {

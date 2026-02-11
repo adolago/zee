@@ -22,15 +22,6 @@ const ORIGINAL_ENV = {
   ZEE_SERVER_SCOPES: process.env.ZEE_SERVER_SCOPES,
   ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY: process.env.ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY,
   ZEE_SERVER_MAX_INSTANCES: process.env.ZEE_SERVER_MAX_INSTANCES,
-  // Legacy fallbacks.
-  AGENT_CORE_CONFIG_DIR: process.env.AGENT_CORE_CONFIG_DIR,
-  AGENT_CORE_ENABLE_SERVER_AUTH: process.env.AGENT_CORE_ENABLE_SERVER_AUTH,
-  AGENT_CORE_DISABLE_SERVER_AUTH: process.env.AGENT_CORE_DISABLE_SERVER_AUTH,
-  AGENT_CORE_SERVER_USERNAME: process.env.AGENT_CORE_SERVER_USERNAME,
-  AGENT_CORE_SERVER_PASSWORD: process.env.AGENT_CORE_SERVER_PASSWORD,
-  AGENT_CORE_SERVER_SCOPES: process.env.AGENT_CORE_SERVER_SCOPES,
-  AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY: process.env.AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY,
-  AGENT_CORE_SERVER_MAX_INSTANCES: process.env.AGENT_CORE_SERVER_MAX_INSTANCES,
 }
 
 let isolatedConfigDir: string | undefined
@@ -38,7 +29,6 @@ let isolatedConfigDir: string | undefined
 beforeAll(async () => {
   isolatedConfigDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-test-config-"))
   process.env.ZEE_CONFIG_DIR = isolatedConfigDir
-  delete process.env.AGENT_CORE_CONFIG_DIR
 
   process.env.ZEE_ENABLE_SERVER_AUTH = "1"
   delete process.env.ZEE_DISABLE_SERVER_AUTH
@@ -46,13 +36,6 @@ beforeAll(async () => {
   process.env.ZEE_SERVER_PASSWORD = "test-password"
   delete process.env.ZEE_SERVER_SCOPES
   delete process.env.ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY
-
-  delete process.env.AGENT_CORE_ENABLE_SERVER_AUTH
-  delete process.env.AGENT_CORE_DISABLE_SERVER_AUTH
-  delete process.env.AGENT_CORE_SERVER_USERNAME
-  delete process.env.AGENT_CORE_SERVER_PASSWORD
-  delete process.env.AGENT_CORE_SERVER_SCOPES
-  delete process.env.AGENT_CORE_SERVER_ALLOW_GLOBAL_DIRECTORY
 
   reloadFlags()
   Config.global.reset()

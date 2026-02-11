@@ -7,7 +7,7 @@ import { useSettings } from "@/context/settings"
 import { persisted } from "@/utils/persist"
 import { DialogReleaseNotes, type Highlight } from "@/components/dialog-release-notes"
 
-const CHANGELOG_URL = "https://opencode.ai/changelog.json"
+const CHANGELOG_URL = import.meta.env.VITE_ZEE_CHANGELOG_URL || "https://zee-bot.com/changelog.json"
 
 type Store = {
   version?: string

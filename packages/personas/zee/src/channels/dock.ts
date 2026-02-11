@@ -121,20 +121,6 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       },
     },
   },
-  matrix: {
-    id: "matrix",
-    capabilities: {
-      chatTypes: ["direct", "group", "channel", "thread"],
-      reactions: true,
-      edit: true,
-      unsend: true,
-      reply: true,
-      threads: true,
-      encryption: true,
-      encryptionProtocol: "olm-megolm",
-    },
-    outbound: { textChunkLimit: 4000 },
-  },
 };
 
 function buildDockFromPlugin(plugin: ChannelPlugin): ChannelDock {

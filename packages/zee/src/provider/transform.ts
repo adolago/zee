@@ -748,7 +748,7 @@ export namespace ProviderTransform {
   }
 
   // Properties that should NOT be sent to provider APIs
-  // These are agent-core metadata fields that may slip through
+  // These are zee metadata fields that may slip through
   const NON_PROVIDER_OPTIONS = new Set([
     "theme",
     "skill",
@@ -992,7 +992,7 @@ export namespace ProviderTransform {
   }
 
   export function providerOptions(model: Provider.Model, options: { [x: string]: any }) {
-    // First sanitize to remove agent-core metadata fields
+    // First sanitize to remove zee metadata fields
     const sanitized = sanitizeOptions(options)
     // Then filter to only include params supported by this provider SDK
     // Use getProviderNpm() to get the ACTUAL provider backend, not model overrides

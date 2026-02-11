@@ -6,12 +6,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@zee/*": ["./packages/zee-core/src/*"],
-      "@log": ["./packages/zee-core/src/util/log"],
-      "@session/*": ["./packages/zee-core/src/session/*"],
-      "@hooks/*": ["./packages/zee-core/src/hooks/*"],
-      "@provider/*": ["./packages/zee-core/src/provider/*"],
-      "@bus/*": ["./packages/zee-core/src/bus/*"]
+      "@zee/*": ["./packages/zee/src/*"],
+      "@log": ["./packages/zee/src/util/log"],
+      "@session/*": ["./packages/zee/src/session/*"],
+      "@hooks/*": ["./packages/zee/src/hooks/*"],
+      "@provider/*": ["./packages/zee/src/provider/*"],
+      "@bus/*": ["./packages/zee/src/bus/*"]
     }
   },
   "include": [

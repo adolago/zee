@@ -92,9 +92,9 @@ export type MsgContext = {
   SenderTag?: string;
   SenderE164?: string;
   Timestamp?: number;
-  /** Provider label (e.g. whatsapp, matrix). */
+  /** Provider label (e.g. whatsapp). */
   Provider?: string;
-  /** Provider surface label (e.g. matrix, whatsapp). Prefer this over `Provider` when available. */
+  /** Provider surface label (e.g. whatsapp). Prefer this over `Provider` when available. */
   Surface?: string;
   WasMentioned?: boolean;
   CommandAuthorized?: boolean;

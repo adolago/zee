@@ -22,8 +22,8 @@ function run(target) {
   process.exit(code)
 }
 
-// Support ZEE_BIN_PATH; also accept legacy AGENT_CORE_BIN_PATH / OPENCODE_BIN_PATH.
-const envPath = process.env.ZEE_BIN_PATH || process.env.AGENT_CORE_BIN_PATH || process.env.OPENCODE_BIN_PATH
+// Support explicit binary override via ZEE_BIN_PATH.
+const envPath = process.env.ZEE_BIN_PATH
 if (envPath) {
   run(envPath)
 }
@@ -69,10 +69,8 @@ if (platform === "linux") {
   }
 }
 
-const zeeBase = "core-" + platform + "-" + arch + libc
-const opencodeBase = "opencode-" + platform + "-" + arch + libc
+const zeeBase = "zee-" + platform + "-" + arch + libc
 const zeeBinary = platform === "windows" ? "zee.exe" : "zee"
-const opencodeBinary = platform === "windows" ? "opencode.exe" : "opencode"
 
 function findBinary(startDir) {
   // First check dist/ folder for development builds.
@@ -86,11 +84,7 @@ function findBinary(startDir) {
     }
   }
 
-  const candidates = [
-    { base: zeeBase, binary: zeeBinary },
-    // Legacy fallback (upstream compatibility).
-    { base: opencodeBase, binary: opencodeBinary },
-  ]
+  const candidates = [{ base: zeeBase, binary: zeeBinary }]
 
   function resolveCandidate(root, entryName) {
     for (const candidate of candidates) {
@@ -143,11 +137,6 @@ if (!resolved) {
 
 const candidateRoot = path.resolve(path.dirname(resolved), "..")
 
-// Backward compat: migrate legacy roots to ZEE_ROOT.
-if (!process.env.ZEE_ROOT && (process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT)) {
-  process.env.ZEE_ROOT = process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT
-}
-
 if (!process.env.ZEE_ROOT) {
   const vendorDir = path.join(candidateRoot, "vendor", "personas")
   if (fs.existsSync(vendorDir)) {
@@ -155,9 +144,4 @@ if (!process.env.ZEE_ROOT) {
   }
 }
 
-// Keep legacy env vars in sync for callers that still read them.
-if (!process.env.AGENT_CORE_ROOT && process.env.ZEE_ROOT) process.env.AGENT_CORE_ROOT = process.env.ZEE_ROOT
-if (!process.env.OPENCODE_ROOT && process.env.ZEE_ROOT) process.env.OPENCODE_ROOT = process.env.ZEE_ROOT
-
 run(resolved)
-

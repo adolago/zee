@@ -12,7 +12,7 @@ const noopLogger = {
 };
 
 async function makeStorePath() {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-cron-delivery-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-cron-delivery-"));
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
@@ -75,7 +75,7 @@ describe("CronService delivery plan consistency", () => {
         kind: "agentTurn",
         message: "hello",
       },
-      delivery: { channel: "telegram", to: "123" } as unknown as {
+      delivery: { channel: "whatsapp", to: "123" } as unknown as {
         mode: "none" | "announce";
         channel?: string;
         to?: string;

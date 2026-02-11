@@ -230,7 +230,7 @@ Notes:
   - API: Zee calls Google’s hosted Gemini API over HTTP (API key / profile auth); this is what most users mean by “Gemini”.
   - CLI: Zee shells out to a local `gemini` binary; it has its own auth and can behave differently (streaming/tool support/version skew).
 
-## Live: model matrix (what we cover)
+## Live: model whatsapp (what we cover)
 
 There is no fixed “CI model list” (live is opt-in), but these are the **recommended** models to cover regularly on a dev machine with keys.
 
@@ -271,9 +271,9 @@ Include at least one image-capable model in `ZEE_LIVE_GATEWAY_MODELS` (Claude/Ge
 
 If you have keys enabled, we also support testing via:
 - OpenRouter: `openrouter/...` (hundreds of models; use `zee models scan` to find tool+image capable candidates)
-- OpenCode Zen: `opencode/...` (auth via `AGENT_CORE_API_KEY` / `OPENCODE_ZEN_API_KEY`)
+- Opencode Zen: `opencode/...` (auth via `OPENCODE_ZEN_API_KEY` / `OPENCODE_ZEN_API_KEY`)
 
-More providers you can include in the live matrix (if you have creds/config):
+More providers you can include in the live whatsapp (if you have creds/config):
 - Built-in: `openai`, `openai-codex`, `anthropic`, `google`, `google-antigravity`, `google-gemini-cli`, `zai`, `openrouter`, `opencode`, `xai`, `groq`, `cerebras`, `mistral`, `github-copilot`
 - Via `models.providers` (custom endpoints): `minimax` (cloud/API), plus any OpenAI/Anthropic-compatible proxy (LM Studio, vLLM, LiteLLM, etc.)
 

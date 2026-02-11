@@ -85,7 +85,7 @@ function makeCfg(home: string) {
       whatsapp: {
         allowFrom: ["*"],
       },
-      matrix: {
+      whatsapp: {
         allowFrom: ["*"],
       },
     },
@@ -104,12 +104,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
-          SessionKey: "matrix:slash:111",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "whatsapp:slash:111",
           CommandAuthorized: true,
         },
         {},
@@ -132,12 +132,12 @@ describe("trigger handling", () => {
       const res = await getReplyFromConfig(
         {
           Body: "/model list",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
-          SessionKey: "matrix:slash:111",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "whatsapp:slash:111",
           CommandAuthorized: true,
         },
         {},
@@ -154,16 +154,16 @@ describe("trigger handling", () => {
   it("selects the exact provider/model pair for openrouter", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "matrix:slash:111";
+      const sessionKey = "whatsapp:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model openrouter/anthropic/claude-opus-4-5",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },
@@ -184,16 +184,16 @@ describe("trigger handling", () => {
   it("rejects invalid /model <#> selections", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "matrix:slash:111";
+      const sessionKey = "whatsapp:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model 99",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },
@@ -215,16 +215,16 @@ describe("trigger handling", () => {
   it("resets to the default model via /model <provider/model>", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "matrix:slash:111";
+      const sessionKey = "whatsapp:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model anthropic/claude-opus-4-5",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },
@@ -246,16 +246,16 @@ describe("trigger handling", () => {
   it("selects a model via /model <provider/model>", async () => {
     await withTempHome(async (home) => {
       const cfg = makeCfg(home);
-      const sessionKey = "matrix:slash:111";
+      const sessionKey = "whatsapp:slash:111";
 
       const res = await getReplyFromConfig(
         {
           Body: "/model openai/gpt-5.2",
-          From: "matrix:111",
-          To: "matrix:111",
+          From: "whatsapp:111",
+          To: "whatsapp:111",
           ChatType: "direct",
-          Provider: "matrix",
-          Surface: "matrix",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
           SessionKey: sessionKey,
           CommandAuthorized: true,
         },

@@ -109,13 +109,12 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
       mode: "collect",
       debounceMs: 1000,
       cap: 20,
-	      drop: "summarize",
-	      byChannel: {
-	        whatsapp: "collect",
-	        matrix: "collect"
-	      }
-	    }
-	  },
+      drop: "summarize",
+      byChannel: {
+        whatsapp: "collect"
+      }
+    }
+  },
 
   // Tooling
   tools: {
@@ -152,25 +151,16 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   },
 
   // Channels
-	  channels: {
-	    whatsapp: {
-	      dmPolicy: "pairing",
-	      allowFrom: ["+15555550123"],
-	      groupPolicy: "allowlist",
-	      groupAllowFrom: ["+15555550123"],
-	      groups: { "*": { requireMention: true } }
-	    },
-
-	    matrix: {
-	      enabled: true,
-	      homeserver: "https://matrix.example.org",
-	      userId: "@zee:example.org",
-	      accessToken: "YOUR_MATRIX_ACCESS_TOKEN",
-	      allowFrom: ["@artur:example.org"],
-	      encryption: true,
-	      threadReplies: "inbound"
-	    }
-	  },
+  channels: {
+    whatsapp: {
+      dmPolicy: "pairing",
+      allowFrom: ["+15555550123"],
+      groupPolicy: "allowlist",
+      groupAllowFrom: ["+15555550123"],
+      groups: { "*": { requireMention: true } },
+      accessToken: "{env:WHATSAPP_ACCESS_TOKEN}"
+    }
+  },
 
   // Agent runtime
   agents: {
@@ -252,14 +242,13 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
       timeoutSec: 1800,
       cleanupMs: 1800000
     },
-	    elevated: {
-	      enabled: true,
-	      allowFrom: {
-	        whatsapp: ["+15555550123"],
-	        matrix: ["@artur:example.org"]
-	      }
-	    }
-	  },
+    elevated: {
+      enabled: true,
+      allowFrom: {
+        whatsapp: ["+15555550123"]
+      }
+    }
+  },
 
   // Custom model providers
   models: {
@@ -376,8 +365,10 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
 {
   agent: { workspace: "~/zee" },
   channels: {
-    whatsapp: { allowFrom: ["+15555550123"] },
-    matrix: { homeserver: "https://matrix.example.org", userId: "@zee:example.org" }
+    whatsapp: {
+      allowFrom: ["+15555550123"],
+      accessToken: "{env:WHATSAPP_ACCESS_TOKEN}"
+    }
   }
 }
 ```
@@ -388,7 +379,7 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
   session: {
     dmScope: "per-peer",
     identityLinks: {
-      "user:artur": ["whatsapp:+15555550123", "matrix:@artur:example.org"]
+      "user:artur": ["whatsapp:+15555550123"]
     },
     reset: { mode: "manual" },
     resetTriggers: ["/new", "/reset"]

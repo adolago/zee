@@ -6,7 +6,10 @@ function readString(value: unknown): string | undefined {
 }
 
 function normalizeChannel(value: string): string {
-  return value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return "";
+  // Zee cron delivery currently supports WhatsApp only.
+  return "whatsapp";
 }
 
 export function migrateLegacyCronPayload(payload: UnknownRecord): boolean {
@@ -15,12 +18,16 @@ export function migrateLegacyCronPayload(payload: UnknownRecord): boolean {
   const channelValue = readString(payload.channel);
   const providerValue = readString(payload.provider);
 
-  const nextChannel =
+  const sourceChannel =
     typeof channelValue === "string" && channelValue.trim().length > 0
-      ? normalizeChannel(channelValue)
+      ? channelValue
       : typeof providerValue === "string" && providerValue.trim().length > 0
-        ? normalizeChannel(providerValue)
+        ? providerValue
         : "";
+
+  const nextChannel = sourceChannel
+    ? normalizeChannel(sourceChannel)
+    : "";
 
   if (nextChannel) {
     if (channelValue !== nextChannel) {

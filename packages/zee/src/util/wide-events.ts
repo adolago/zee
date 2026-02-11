@@ -58,7 +58,7 @@ function hashValue(value: string): string {
 
 function resolveWideEventFile(): string {
   const today = new Date().toISOString().slice(0, 10)
-  return path.join(Global.Path.log, `agent-core-wide-${today}.jsonl`)
+  return path.join(Global.Path.log, `zee-wide-${today}.jsonl`)
 }
 
 async function resolveWideEventSettings(): Promise<{

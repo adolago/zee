@@ -50,7 +50,7 @@ case "$(uname -s)-$(uname -m)" in
     *)             echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
 esac
 
-LOCAL_BINARY="$REPO_ROOT/dist/@zee/core-$PLATFORM/bin/zee"
+LOCAL_BINARY="$REPO_ROOT/dist/@zee/zee-$PLATFORM/bin/zee"
 DAEMON_PORT=3210
 
 # If we temporarily mask the user systemd service (to prevent Restart=always
@@ -307,8 +307,6 @@ DAEMON_ENV_BASE=(
 	    NODE_ENV=production
 	    ZEE_ROOT="$MONOREPO_ROOT"
 	    ZEE_HEADLESS=1
-	    AGENT_CORE_ROOT="$MONOREPO_ROOT" # legacy compatibility
-	    AGENT_CORE_HEADLESS=1 # legacy compatibility
 	)
 # Source daemon.env first, then override ZEE_GATEWAY_TOKEN after so the
 # correct token from zee.json always wins over any stale daemon.env value.
@@ -345,7 +343,7 @@ DAEMON_WATCHER_PID=""
 
 start_test_daemon() {
     echo -e "\033[1;33m[ac] Starting headless daemon for self-test...\033[0m" >&2
-    ("${DAEMON_ENV_PREFIX[@]}" "$LOCAL_BINARY" daemon --directory "$MONOREPO_ROOT") &
+    ("${DAEMON_ENV_PREFIX[@]}" "$LOCAL_BINARY" daemon --directory "$MONOREPO_ROOT" --gateway) &
     TEST_DAEMON_PID=$!
     # Background watcher: report the exit signal if the daemon dies unexpectedly.
     (
@@ -573,8 +571,6 @@ MESSAGING_FAILED=false
 if [[ -f "$AC_TEST_CONFIG" ]]; then
     WA_TO=$(jq -r '.whatsapp.to // empty' "$AC_TEST_CONFIG" 2>/dev/null)
     WA_ACCOUNT=$(jq -r '.whatsapp.account // "default"' "$AC_TEST_CONFIG" 2>/dev/null)
-    MX_ROOM_ID=$(jq -r '.matrix.roomId // empty' "$AC_TEST_CONFIG" 2>/dev/null)
-    MX_ACCOUNT=$(jq -r '.matrix.account // "zee"' "$AC_TEST_CONFIG" 2>/dev/null)
 
     # WhatsApp: "Zee is back on."
     if [[ -n "$WA_TO" ]]; then
@@ -646,23 +642,8 @@ if [[ -f "$AC_TEST_CONFIG" ]]; then
         MESSAGING_FAILED=true
     fi
 
-    # Matrix
-    if [[ -n "$MX_ROOM_ID" ]]; then
-        echo -e "\033[1;33m[ac] Matrix test -> $MX_ROOM_ID ...\033[0m" >&2
-        MX_RESULT=$(curl -sf -m 15 "$DAEMON_URL/gateway/matrix/send" \
-            -H "Content-Type: application/json" \
-            -d "{\"roomId\":\"$MX_ROOM_ID\",\"message\":\"Zee is back on.\",\"accountId\":\"$MX_ACCOUNT\"}" 2>&1) || true
-        if echo "$MX_RESULT" | jq -e '.success' >/dev/null 2>&1; then
-            echo -e "\033[1;32m[ac] Matrix: sent\033[0m" >&2
-        else
-            echo -e "\033[1;31m[ac] Matrix FAILED: ${MX_RESULT:-no response}\033[0m" >&2
-            MESSAGING_FAILED=true
-        fi
-    else
-        echo -e "\033[1;33m[ac] Matrix: skipped (no matrix.roomId in ac-test.json)\033[0m" >&2
-    fi
 else
-    ac_test_fail "no test config at $AC_TEST_CONFIG -- create it with:\n  {\"whatsapp\":{\"to\":\"<jid>@c.us\",\"account\":\"zee\"},\"matrix\":{\"roomId\":\"!roomid:example.org\",\"account\":\"zee\"}}"
+    ac_test_fail "no test config at $AC_TEST_CONFIG -- create it with:\n  {\"whatsapp\":{\"to\":\"<jid>@c.us\",\"account\":\"zee\"}}"
 fi
 
 if [[ "$MESSAGING_FAILED" == "true" ]]; then

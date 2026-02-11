@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "zee",
-  "description": "Zee - opencode wrapped in openclaw. CLI agent engine for life admin, investing, and learning.",
+  "description": "Zee unified assistant engine for life admin, investing, and learning.",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.3.5",
   "scripts": {
-    "dev": "bun run --cwd packages/zee-core --conditions=browser src/index.ts",
-    "boundaries:check": "depcruise --config .dependency-cruiser.cjs --ts-config $(pwd)/packages/zee-core/tsconfig.json --output-type err packages/zee-core/src",
-    "typecheck": "bun run --cwd packages/zee-core typecheck",
+    "dev": "bun run --cwd packages/zee --conditions=browser src/index.ts",
+    "boundaries:check": "depcruise --config .dependency-cruiser.cjs --ts-config $(pwd)/packages/zee/tsconfig.json --output-type err packages/zee/src",
+    "typecheck": "bun run --cwd packages/zee typecheck",
     "prepare": "husky",
     "random": "echo 'Random script'",
     "hello": "echo 'Hello World!'",
@@ -16,8 +16,8 @@
   },
   "workspaces": {
     "packages": [
-      "packages/zee-core",
-      "packages/zee-core-adapter",
+      "packages/zee",
+      "packages/zee-adapter",
       "packages/app",
       "packages/desktop",
       "packages/personas/zee",

@@ -10,14 +10,6 @@ import type { AuthProfileCredential, AuthProfileStore, OAuthCredential } from ".
  * Zee stores auth at ~/.local/share/zee/auth.json
  */
 const ZEE_AUTH_PATH = path.join(os.homedir(), ".local", "share", "zee", "auth.json");
-const LEGACY_AGENT_CORE_AUTH_PATH = path.join(
-  os.homedir(),
-  ".local",
-  "share",
-  "agent-core",
-  "auth.json",
-);
-
 /**
  * Minimum time before expiry to consider a credential "fresh" (10 minutes).
  */
@@ -29,13 +21,13 @@ const NEAR_EXPIRY_MS = 10 * 60 * 1000;
 const SYNC_TTL_MS = 30_000;
 
 let lastSyncAt = 0;
-let cachedAuth: AgentCoreAuth | null = null;
+let cachedAuth: ZeeAuth | null = null;
 
 /**
  * Zee auth.json format.
  * Each key is a provider ID (e.g., "kimi-for-coding", "anthropic").
  */
-type AgentCoreAuthEntry = {
+type ZeeAuthEntry = {
   type: "oauth" | "api" | "wellknown";
   // OAuth fields
   access?: string;
@@ -52,29 +44,25 @@ type AgentCoreAuthEntry = {
   projectId?: string;
 };
 
-type AgentCoreAuth = Record<string, AgentCoreAuthEntry>;
+type ZeeAuth = Record<string, ZeeAuthEntry>;
 
 /**
- * Read Zee auth.json with caching (fallbacks to legacy agent-core path).
+ * Read Zee auth.json with caching.
  */
-function readZeeAuthCached(): AgentCoreAuth | null {
+function readZeeAuthCached(): ZeeAuth | null {
   const now = Date.now();
   if (cachedAuth && now - lastSyncAt < SYNC_TTL_MS) {
     return cachedAuth;
   }
 
   try {
-    const authPath = fs.existsSync(ZEE_AUTH_PATH)
-      ? ZEE_AUTH_PATH
-      : fs.existsSync(LEGACY_AGENT_CORE_AUTH_PATH)
-        ? LEGACY_AGENT_CORE_AUTH_PATH
-        : null;
+    const authPath = fs.existsSync(ZEE_AUTH_PATH) ? ZEE_AUTH_PATH : null;
 
     if (!authPath) {
       return null;
     }
     const raw = fs.readFileSync(authPath, "utf-8");
-    const parsed = JSON.parse(raw) as AgentCoreAuth;
+    const parsed = JSON.parse(raw) as ZeeAuth;
     cachedAuth = parsed;
     lastSyncAt = now;
     return parsed;
@@ -85,11 +73,11 @@ function readZeeAuthCached(): AgentCoreAuth | null {
 }
 
 /**
- * Convert agent-core auth entry to zee AuthProfileCredential.
+ * Convert Zee auth entry to zee AuthProfileCredential.
  */
 function convertToZeeCredential(
   providerId: string,
-  entry: AgentCoreAuthEntry,
+  entry: ZeeAuthEntry,
 ): AuthProfileCredential | null {
   if (entry.type === "oauth") {
     if (!entry.access) return null;
@@ -194,8 +182,7 @@ function makeZeeProfileId(providerId: string): string {
  */
 export function syncZeeAuthCredentials(store: AuthProfileStore): boolean {
   const disabled = (
-    process.env.ZEE_DISABLE_ZEE_AUTH_SYNC ||
-    process.env.ZEE_DISABLE_AGENT_CORE_SYNC
+    process.env.ZEE_DISABLE_ZEE_AUTH_SYNC
   )
     ?.trim()
     .toLowerCase();

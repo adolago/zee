@@ -448,11 +448,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
             </box>
           </Show>
           <text fg={theme.textMuted}>
-            <span style={{ fg: theme.success }}>•</span> <b>agent</b>
-            <span style={{ fg: theme.text }}>
-              <b>-core</b>
-            </span>{" "}
-            <span>{runtimeLabel()}</span>
+            <span style={{ fg: theme.success }}>•</span> <b>zee</b> <span>{runtimeLabel()}</span>
           </text>
         </box>
       </box>

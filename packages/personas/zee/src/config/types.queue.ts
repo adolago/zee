@@ -10,5 +10,4 @@ export type QueueDropPolicy = "old" | "new" | "summarize";
 
 export type QueueModeByProvider = {
   whatsapp?: QueueMode;
-  matrix?: QueueMode;
 };

@@ -12,7 +12,7 @@ import os from "os"
 function findZeeRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
   for (;;) {
-    const packageRoot = path.join(current, "packages", "zee-core")
+    const packageRoot = path.join(current, "packages", "zee")
     const zeeDir = path.join(current, ".zee")
     if (fs.existsSync(packageRoot) || fs.existsSync(zeeDir)) return current
     const parent = path.dirname(current)
@@ -25,15 +25,15 @@ function findZeeRoot(startDir: string): string | undefined {
  * Get the Zee root directory.
  * Order of precedence:
  * 1. ZEE_ROOT env var (set by binary or launcher)
- * 2. ZEE_SOURCE/AGENT_CORE_SOURCE/OPENCODE_SOURCE env vars (backward compat)
+ * 2. ZEE_SOURCE env var
  * 3. Walk up from cwd/argv/exec paths
  */
 export function getZeeRoot(): string {
-  if (process.env.ZEE_ROOT || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT) {
-    return (process.env.ZEE_ROOT || process.env.AGENT_CORE_ROOT || process.env.OPENCODE_ROOT)!
+  if (process.env.ZEE_ROOT) {
+    return process.env.ZEE_ROOT!
   }
 
-  const envSource = process.env.ZEE_SOURCE || process.env.AGENT_CORE_SOURCE || process.env.OPENCODE_SOURCE
+  const envSource = process.env.ZEE_SOURCE
   if (envSource) return envSource
 
   const starts = [process.cwd()]
@@ -47,14 +47,6 @@ export function getZeeRoot(): string {
   }
 
   return process.cwd()
-}
-
-/**
- * Backward-compat alias.
- * Prefer getZeeRoot() for new code.
- */
-export function getAgentCoreRoot(): string {
-  return getZeeRoot()
 }
 
 /**
@@ -172,7 +164,7 @@ export const Zee = {
 }
 
 /**
- * Agent-core assets paths
+ * Zee assets paths
  */
 export const Assets = {
   root(): string {

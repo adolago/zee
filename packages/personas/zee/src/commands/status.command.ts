@@ -545,8 +545,8 @@ export async function statusCommand(
   }
 
   runtime.log("");
-  runtime.log("FAQ: https://docs.zee/faq");
-  runtime.log("Troubleshooting: https://docs.zee/troubleshooting");
+  runtime.log("FAQ: https://zee-bot.com/faq");
+  runtime.log("Troubleshooting: https://zee-bot.com/troubleshooting");
   runtime.log("");
   const updateHint = formatUpdateAvailableHint(update);
   if (updateHint) {

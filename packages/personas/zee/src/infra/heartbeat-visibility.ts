@@ -16,7 +16,7 @@ const DEFAULT_VISIBILITY: ResolvedHeartbeatVisibility = {
 
 /**
  * Resolve heartbeat visibility settings for a channel.
- * Supports both deliverable channels (whatsapp, matrix) and the internal channel.
+ * Supports deliverable channels (whatsapp) and the internal channel.
  * For internal runs, uses channels.defaults.heartbeat since it has no per-channel config.
  */
 export function resolveHeartbeatVisibility(params: {

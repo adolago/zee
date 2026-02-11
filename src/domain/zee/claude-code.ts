@@ -16,7 +16,7 @@ import path from "node:path";
 import os from "node:os";
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/zee-core/src/util/log";
+import { Log } from "../../../packages/zee/src/util/log";
 
 const log = Log.create({ service: "zee-claude-code" });
 
@@ -30,8 +30,7 @@ const MAX_TIMEOUT_MS = 600_000; // 10 minutes
 
 // Zee configuration paths
 const ZEE_CONFIG_DIR = path.join(os.homedir(), ".config", "zee");
-const LEGACY_AGENT_CORE_CONFIG_DIR = path.join(os.homedir(), ".config", "agent-core");
-const CONFIG_DIR = fs.existsSync(ZEE_CONFIG_DIR) ? ZEE_CONFIG_DIR : LEGACY_AGENT_CORE_CONFIG_DIR;
+const CONFIG_DIR = ZEE_CONFIG_DIR;
 const ZEE_MCP_CONFIG = path.join(CONFIG_DIR, "mcp.json");
 const CLAUDE_SKILLS_DIR = path.join(process.cwd(), ".claude", "skills");
 

@@ -1,20 +1,19 @@
 ;(function () {
-  var themeId = localStorage.getItem("opencode-theme-id")
+  var themeId = localStorage.getItem("zee-theme-id")
   if (!themeId) return
 
-  var scheme = localStorage.getItem("opencode-color-scheme") || "system"
+  var scheme = localStorage.getItem("zee-color-scheme") || "dark"
   var isDark = scheme === "dark" || (scheme === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
   var mode = isDark ? "dark" : "light"
 
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
 
-  if (themeId === "oc-1") return
+  var css = localStorage.getItem("zee-theme-css-" + (isDark ? "dark" : "light"))
 
-  var css = localStorage.getItem("opencode-theme-css-" + themeId + "-" + mode)
   if (css) {
     var style = document.createElement("style")
-    style.id = "oc-theme-preload"
+    style.id = "zee-theme-preload"
     style.textContent =
       ":root{color-scheme:" +
       mode +

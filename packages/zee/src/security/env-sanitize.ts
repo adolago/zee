@@ -114,7 +114,7 @@ export function createSafeEnv(
   // This bypasses shell variable expansion by not using $PATH directly
   if (prependPaths.length > 0) {
     const separator = process.platform === "win32" ? ";" : ":"
-    const internalKey = "AGENT_CORE_PREPEND_PATH"
+    const internalKey = "ZEE_PREPEND_PATH"
     result[internalKey] = prependPaths.join(separator)
 
     // Prepend to PATH if present

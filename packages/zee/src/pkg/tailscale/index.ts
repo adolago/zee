@@ -2,7 +2,7 @@
  * Shared Tailscale Utilities
  *
  * Extracted from packages/personas/zee/src/infra/tailscale.ts to be
- * shared between the agent-core daemon and the Zee gateway. Both can
+ * shared between the zee daemon and the Zee gateway. Both can
  * now expose their HTTP servers via Tailscale Serve or Funnel.
  *
  * The Zee-specific tailscale.ts remains as a thin wrapper that imports

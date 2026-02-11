@@ -146,7 +146,7 @@ export async function scanStatus(
       const memoryPlugin = resolveMemoryPluginStatus(cfg);
       const memory = await (async (): Promise<MemoryStatusSnapshot | null> => {
         if (!memoryPlugin.enabled) return null;
-        if (memoryPlugin.slot !== "zee" && memoryPlugin.slot !== "agent-core") return null;
+        if (memoryPlugin.slot !== "zee") return null;
         const agentId = agentStatus.defaultId ?? "main";
         const { MemoryIndexManager } = await import("../memory/manager.js");
         const manager = await MemoryIndexManager.get({ cfg, agentId }).catch(() => null);

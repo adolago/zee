@@ -1,7 +1,7 @@
 ---
 name: boot-md
 description: "Run BOOT.md on gateway startup"
-homepage: https://docs.zee/hooks#boot-md
+homepage: https://zee-bot.com/hooks#boot-md
 metadata:
   {
     "zee":

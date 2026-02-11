@@ -29,8 +29,8 @@ describe("loadGatewayPlugins", () => {
     const diagnostics: PluginDiagnostic[] = [
       {
         level: "error",
-        pluginId: "matrix",
-        source: "/tmp/matrix/index.ts",
+        pluginId: "whatsapp",
+        source: "/tmp/whatsapp/index.ts",
         message: "failed to load plugin: boom",
       },
     ];
@@ -52,7 +52,7 @@ describe("loadGatewayPlugins", () => {
     });
 
     expect(log.error).toHaveBeenCalledWith(
-      "[plugins] failed to load plugin: boom (plugin=matrix, source=/tmp/matrix/index.ts)",
+      "[plugins] failed to load plugin: boom (plugin=whatsapp, source=/tmp/whatsapp/index.ts)",
     );
     expect(log.warn).not.toHaveBeenCalled();
   });

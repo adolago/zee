@@ -155,12 +155,12 @@ export namespace ExperimentalHooks {
         command: hook.command,
         environment: hook.environment,
         extraEnv: {
-          AGENT_CORE_HOOK_EVENT: "file_edited",
-          AGENT_CORE_SESSION_ID: input.sessionID,
-          AGENT_CORE_WORKTREE: Instance.worktree,
-          AGENT_CORE_CWD: Instance.directory,
-          AGENT_CORE_FILE_PATH: input.filePathAbs,
-          AGENT_CORE_FILE_RELATIVE: normalizedRelPath,
+          ZEE_HOOK_EVENT: "file_edited",
+          ZEE_SESSION_ID: input.sessionID,
+          ZEE_WORKTREE: Instance.worktree,
+          ZEE_CWD: Instance.directory,
+          ZEE_FILE_PATH: input.filePathAbs,
+          ZEE_FILE_RELATIVE: normalizedRelPath,
         },
       })
     }
@@ -198,10 +198,10 @@ export namespace ExperimentalHooks {
         command: hook.command,
         environment: hook.environment,
         extraEnv: {
-          AGENT_CORE_HOOK_EVENT: "session_completed",
-          AGENT_CORE_SESSION_ID: input.sessionID,
-          AGENT_CORE_WORKTREE: Instance.worktree,
-          AGENT_CORE_CWD: Instance.directory,
+          ZEE_HOOK_EVENT: "session_completed",
+          ZEE_SESSION_ID: input.sessionID,
+          ZEE_WORKTREE: Instance.worktree,
+          ZEE_CWD: Instance.directory,
         },
       })
     }

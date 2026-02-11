@@ -18,10 +18,10 @@ describe("channel activity", () => {
   });
 
   it("records inbound/outbound separately", () => {
-    recordChannelActivity({ channel: "matrix", direction: "inbound" });
+    recordChannelActivity({ channel: "whatsapp", direction: "inbound" });
     vi.advanceTimersByTime(1000);
-    recordChannelActivity({ channel: "matrix", direction: "outbound" });
-    const res = getChannelActivity({ channel: "matrix" });
+    recordChannelActivity({ channel: "whatsapp", direction: "outbound" });
+    const res = getChannelActivity({ channel: "whatsapp" });
     expect(res.inboundAt).toBe(1767830400000);
     expect(res.outboundAt).toBe(1767830401000);
   });

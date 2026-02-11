@@ -22,20 +22,20 @@ describe("gateway config redaction", () => {
 
     try {
       const gatewayToken = "my-super-secret-gateway-token-value";
-      const matrixToken = "matrix-access-token-value-1234";
+      const whatsappToken = "whatsapp-access-token-value-1234";
 
       const setRes = await rpcReq<{ ok: boolean; path?: string; config?: unknown }>(ws, "config.set", {
         raw: JSON.stringify({
           gateway: { mode: "local", auth: { token: gatewayToken } },
-          channels: { matrix: { accessToken: matrixToken } },
+          channels: { whatsapp: { accessToken: whatsappToken } },
         }),
       });
       expect(setRes.ok).toBe(true);
       const setPayload = setRes.payload as
-        | { path?: string; config?: { gateway?: { auth?: { token?: string } }; channels?: { matrix?: { accessToken?: string } } } }
+        | { path?: string; config?: { gateway?: { auth?: { token?: string } }; channels?: { whatsapp?: { accessToken?: string } } } }
         | undefined;
       expect(setPayload?.config?.gateway?.auth?.token).toBe(REDACTED_SENTINEL);
-      expect(setPayload?.config?.channels?.matrix?.accessToken).toBe(REDACTED_SENTINEL);
+      expect(setPayload?.config?.channels?.whatsapp?.accessToken).toBe(REDACTED_SENTINEL);
 
       const configPath = setPayload?.path;
       expect(typeof configPath).toBe("string");
@@ -48,17 +48,17 @@ describe("gateway config redaction", () => {
       const snapshot = getRes.payload as {
         raw?: unknown;
         hash?: unknown;
-        config?: { gateway?: { auth?: { token?: string } }; channels?: { matrix?: { accessToken?: string } } };
+        config?: { gateway?: { auth?: { token?: string } }; channels?: { whatsapp?: { accessToken?: string } } };
       };
       expect(snapshot.config?.gateway?.auth?.token).toBe(REDACTED_SENTINEL);
-      expect(snapshot.config?.channels?.matrix?.accessToken).toBe(REDACTED_SENTINEL);
+      expect(snapshot.config?.channels?.whatsapp?.accessToken).toBe(REDACTED_SENTINEL);
       expect(typeof snapshot.raw).toBe("string");
       expect(typeof snapshot.hash).toBe("string");
 
       const raw = snapshot.raw as string;
       expect(raw).toContain(REDACTED_SENTINEL);
       expect(raw).not.toContain(gatewayToken);
-      expect(raw).not.toContain(matrixToken);
+      expect(raw).not.toContain(whatsappToken);
 
       const baseHash = snapshot.hash as string;
       const setRes2 = await rpcReq(ws, "config.set", { raw, baseHash });
@@ -67,10 +67,10 @@ describe("gateway config redaction", () => {
       const storedRaw = await fs.readFile(configPath, "utf-8");
       const stored = JSON.parse(storedRaw) as {
         gateway?: { auth?: { token?: string } };
-        channels?: { matrix?: { accessToken?: string } };
+        channels?: { whatsapp?: { accessToken?: string } };
       };
       expect(stored.gateway?.auth?.token).toBe(gatewayToken);
-      expect(stored.channels?.matrix?.accessToken).toBe(matrixToken);
+      expect(stored.channels?.whatsapp?.accessToken).toBe(whatsappToken);
       expect(storedRaw).not.toContain(REDACTED_SENTINEL);
     } finally {
       ws.close();
@@ -78,4 +78,3 @@ describe("gateway config redaction", () => {
     }
   });
 });
-

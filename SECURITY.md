@@ -17,7 +17,7 @@ If you need strong isolation, run `zee` inside a Docker container or VM.
 Server mode can be run on loopback without authentication for personal/local use. If you bind the daemon to a non-loopback interface (for example `--hostname 0.0.0.0` or enabling mDNS), Zee refuses to start unless HTTP auth is enabled and configured.
 
 To enable HTTP Basic Auth:
-- Set `ZEE_ENABLE_SERVER_AUTH=1` (legacy: `AGENT_CORE_ENABLE_SERVER_AUTH`, `OPENCODE_ENABLE_SERVER_AUTH`)
+- Set `ZEE_ENABLE_SERVER_AUTH=1`
 - Set `ZEE_SERVER_PASSWORD` (optionally `ZEE_SERVER_USERNAME`)
 - Optionally set `ZEE_SERVER_SCOPES` (comma-separated, defaults to admin)
 
@@ -35,8 +35,8 @@ Server resource limits (to reduce DoS blast radius):
 
 Zee defaults sessions to HOLD mode (safe-by-default). Switching a session into RELEASE mode removes permission prompts and enables full tool access.
 
-For safety, `/release` is refused on messaging surfaces (WhatsApp/Matrix) unless you explicitly opt in:
-- Set `ZEE_ALLOW_MESSAGING_RELEASE=1` (legacy: `AGENT_CORE_ALLOW_MESSAGING_RELEASE`, `OPENCODE_ALLOW_MESSAGING_RELEASE`)
+For safety, `/release` is refused on messaging surfaces (WhatsApp) unless you explicitly opt in:
+- Set `ZEE_ALLOW_MESSAGING_RELEASE=1`
 
 When HTTP auth is enabled, switching to RELEASE mode requires `operator.admin` scope.
 

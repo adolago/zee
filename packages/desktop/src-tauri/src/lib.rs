@@ -27,7 +27,7 @@ use tokio::sync::oneshot;
 
 use crate::window_customizer::PinchZoomDisablePlugin;
 
-const SETTINGS_STORE: &str = "opencode.settings.dat";
+const SETTINGS_STORE: &str = "zee.settings.dat";
 const DEFAULT_SERVER_URL_KEY: &str = "defaultServerUrl";
 
 #[derive(Clone, serde::Serialize)]
@@ -141,9 +141,9 @@ async fn set_default_server_url(app: AppHandle, url: Option<String>) -> Result<(
 }
 
 fn get_sidecar_port() -> u32 {
-    option_env!("AGENT_CORE_PORT")
+    option_env!("ZEE_PORT")
         .map(|s| s.to_string())
-        .or_else(|| std::env::var("AGENT_CORE_PORT").ok())
+        .or_else(|| std::env::var("ZEE_PORT").ok())
         .or_else(|| std::env::var("OPENCODE_PORT").ok())
         .and_then(|port_str| port_str.parse().ok())
         .unwrap_or_else(|| {
@@ -165,10 +165,10 @@ fn spawn_sidecar(app: &AppHandle, hostname: &str, port: u32, password: &str) -> 
         app,
         format!("serve --hostname {hostname} --port {port}").as_str(),
     )
-    .env("AGENT_CORE_SERVER_USERNAME", "opencode")
-    .env("AGENT_CORE_SERVER_PASSWORD", password)
+    .env("ZEE_SERVER_USERNAME", "zee")
+    .env("ZEE_SERVER_PASSWORD", password)
     .spawn()
-    .expect("Failed to spawn opencode");
+    .expect("Failed to spawn zee");
 
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -240,7 +240,7 @@ async fn check_server_health(url: &str, password: Option<&str>) -> bool {
     let mut req = client.get(health_url);
 
     if let Some(password) = password {
-        req = req.basic_auth("opencode", Some(password));
+        req = req.basic_auth("zee", Some(password));
     }
 
     req.send()
@@ -255,7 +255,7 @@ pub fn run() {
 
     #[cfg(all(target_os = "macos", not(debug_assertions)))]
     let _ = std::process::Command::new("killall")
-        .arg("opencode-cli")
+        .arg("zee-cli")
         .output();
 
     let mut builder = tauri::Builder::default()
@@ -324,8 +324,8 @@ pub fn run() {
                 .inner_size(size.width as f64, size.height as f64)
                 .initialization_script(format!(
                     r#"
-                      window.__AGENT_CORE__ ??= {{}};
-                      window.__AGENT_CORE__.updaterEnabled = {updater_enabled};
+                      window.__ZEE__ ??= {{}};
+                      window.__ZEE__.updaterEnabled = {updater_enabled};
                     "#
                 ));
 
@@ -441,7 +441,7 @@ fn normalize_hostname_for_url(hostname: &str) -> String {
 fn get_server_url_from_config(config: &cli::Config) -> Option<String> {
     let server = config.server.as_ref()?;
     let port = server.port?;
-    println!("server.port found in OC config: {port}");
+    println!("server.port found in Zee config: {port}");
     let hostname = server
         .hostname
         .as_ref()
@@ -529,7 +529,7 @@ async fn spawn_local_server(
         if timestamp.elapsed() > Duration::from_secs(30) {
             let _ = child.kill();
             break Err(format!(
-                "Failed to spawn OpenCode Server. Logs:\n{}",
+                "Failed to spawn Zee Server. Logs:\n{}",
                 get_logs(app.clone()).await.unwrap()
             ));
         }

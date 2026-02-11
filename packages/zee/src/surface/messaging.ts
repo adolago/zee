@@ -1,7 +1,7 @@
 /**
  * Messaging Surface Adapter
  *
- * Unified adapter for messaging platforms (WhatsApp, Matrix).
+ * Unified adapter for messaging platforms (WhatsApp).
  * Handles non-streaming (message batching) and automatic permission resolution.
  */
 
@@ -42,7 +42,7 @@ const log = Log.create({ service: 'messaging-surface' });
  */
 export interface MessagingPlatformHandler {
   /** Platform identifier */
-  readonly platform: 'whatsapp' | 'matrix';
+  readonly platform: 'whatsapp';
 
   /** Connect to the platform */
   connect(): Promise<void>;
@@ -82,7 +82,7 @@ export type PlatformMessage = {
   groupName?: string;
   replyToId?: string;
   wasMentioned?: boolean;
-  platform: 'whatsapp' | 'matrix';
+  platform: 'whatsapp';
 };
 
 // =============================================================================
@@ -111,12 +111,6 @@ const PLATFORM_CAPABILITIES: Record<string, Partial<SurfaceCapabilities>> = {
     reactions: true,
     messageEditing: false,
     showThinking: false, // Locked: never show thinking on WhatsApp (enforced at multiple layers)
-  },
-  matrix: {
-    maxMessageLength: 65536,
-    reactions: true,
-    messageEditing: true,
-    showThinking: false, // Locked: never show thinking on Matrix (enforced at multiple layers)
   },
 };
 
@@ -188,7 +182,7 @@ class MessageBatcher {
 /**
  * Unified messaging surface adapter.
    *
-   * Handles WhatsApp and Matrix with a common interface.
+   * Handles WhatsApp with a common interface.
    */
   export class MessagingSurface extends BaseSurface implements Surface {
   readonly id: string;
@@ -223,7 +217,6 @@ class MessageBatcher {
   private formatPlatformName(platform: string): string {
     const names: Record<string, string> = {
       whatsapp: 'WhatsApp',
-      matrix: 'Matrix',
     };
     return names[platform] || platform;
   }
@@ -472,7 +465,7 @@ class MessageBatcher {
  *
  * Platform handlers must be provided by the application:
  * - WhatsApp: Use whatsapp-web.js (or @whiskeysockets/baileys)
- * - Matrix: Use a Matrix client SDK (e.g. matrix-js-sdk)
+ * - Only WhatsApp is supported
  *
  * @example
  * ```typescript

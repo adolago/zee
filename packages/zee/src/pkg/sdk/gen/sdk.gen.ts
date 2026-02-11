@@ -1154,7 +1154,7 @@ class Event extends _HeyApiClient {
   }
 }
 
-export class AgentCoreClient extends _HeyApiClient {
+export class ZeeClient extends _HeyApiClient {
   /**
    * Respond to a permission request
    */

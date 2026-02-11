@@ -164,14 +164,7 @@ function bundlePersonaSkills(distRoot: string) {
 }
 
 // Fetch and generate models.dev snapshot for bundling
-const modelsUrl =
-  process.env.ZEE_MODELS_URL || process.env.AGENT_CORE_MODELS_URL || process.env.OPENCODE_MODELS_URL || "https://models.dev"
-if (!process.env.ZEE_MODELS_URL && process.env.AGENT_CORE_MODELS_URL) {
-  console.warn("[zee] Deprecated env var AGENT_CORE_MODELS_URL. Use ZEE_MODELS_URL instead.")
-}
-if (!process.env.ZEE_MODELS_URL && !process.env.AGENT_CORE_MODELS_URL && process.env.OPENCODE_MODELS_URL) {
-  console.warn("[zee] Deprecated env var OPENCODE_MODELS_URL. Use ZEE_MODELS_URL instead.")
-}
+const modelsUrl = process.env.ZEE_MODELS_URL || "https://models.dev"
 const modelsData = process.env.MODELS_DEV_API_JSON
   ? await Bun.file(process.env.MODELS_DEV_API_JSON).text()
   : await fetch(`${modelsUrl}/api.json`).then((x) => x.text())
@@ -184,10 +177,9 @@ console.log("Generated models-snapshot.ts")
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
-const binarySuffix = (process.env.ZEE_BINARY_SUFFIX || process.env.AGENT_CORE_BINARY_SUFFIX)?.trim()
+const binarySuffix = process.env.ZEE_BINARY_SUFFIX?.trim()
 const targetsArg =
   process.env.ZEE_TARGETS ??
-  process.env.AGENT_CORE_TARGETS ??
   (() => {
     const idx = process.argv.indexOf("--targets")
     if (idx === -1) return undefined

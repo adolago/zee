@@ -3,7 +3,7 @@ export * from "../pkg/plugin"
 import { Config } from "../config/config"
 import { Bus } from "../bus"
 import { Log } from "../util/log"
-import { createAgentCoreClient } from "@zee/sdk"
+import { createZeeClient } from "@zee/sdk"
 import { BunProc } from "../bun"
 import { Instance } from "../project/instance"
 import { CodexAuthPlugin } from "./codex"
@@ -25,7 +25,7 @@ export namespace Plugin {
 
   const state = Instance.state(async () => {
     const { Server } = await import("../server/server")
-    const client = createAgentCoreClient({
+    const client = createZeeClient({
       baseUrl: Server.url().origin,
       // @ts-ignore - fetch type incompatibility
       fetch: async (...args) => Server.App().fetch(...args),
@@ -56,7 +56,7 @@ export namespace Plugin {
 
     for (let plugin of plugins) {
       // ignore old codex plugin since it is supported first party now
-      if (plugin.includes("opencode-openai-codex-auth") || plugin.includes("agent-core-openai-codex-auth")) continue
+      if (plugin.includes("opencode-openai-codex-auth")) continue
       const pluginName = Config.getPluginName(plugin)
       const isBuiltin = builtinNames.has(pluginName) && !configNames.has(pluginName)
 

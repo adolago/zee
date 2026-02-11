@@ -127,7 +127,7 @@ For debugging “why is this blocked?”, see [Sandbox vs Tool Policy vs Elevate
     "list": [
       {
         "id": "support",
-        "tools": { "profile": "messaging", "allow": ["whatsapp", "matrix"] }
+        "tools": { "profile": "messaging", "allow": ["whatsapp", "whatsapp"] }
       }
     ]
   }
@@ -136,7 +136,7 @@ For debugging “why is this blocked?”, see [Sandbox vs Tool Policy vs Elevate
 
 **Result:**
 - default agents get coding tools
-- `support` agent is messaging-only (+ WhatsApp/Matrix tools)
+- `support` agent is messaging-only (+ WhatsApp/WhatsApp tools)
 
 ---
 

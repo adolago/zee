@@ -1,4 +1,4 @@
-// Cron job scheduling types - ported from OpenClaw, adapted for agent-core.
+// Cron job scheduling types - ported from OpenClaw, adapted for zee.
 
 export type CronSchedule =
   | { kind: "at"; atMs: number }
@@ -25,7 +25,7 @@ export type CronPayload =
     }
   | {
       kind: "toolInvoke"
-      /** Tool id in the agent-core ToolRegistry (built-in or plugin tool). */
+      /** Tool id in the zee ToolRegistry (built-in or plugin tool). */
       tool: string
       /** Tool args (JSON object). */
       args?: Record<string, unknown>

@@ -8,53 +8,14 @@
  * This ensures the TUI remains functional but without any color output.
  */
 
-import { SyntaxStyle, RGBA, type TerminalColors } from "@opentui/core"
-import path from "path"
+import { SyntaxStyle, RGBA } from "@opentui/core"
 import { createEffect, createMemo, onMount } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { createSimpleContext } from "./helper"
-import aura from "./theme/aura.json" with { type: "json" }
-import ayu from "./theme/ayu.json" with { type: "json" }
-import catppuccin from "./theme/catppuccin.json" with { type: "json" }
-import catppuccinFrappe from "./theme/catppuccin-frappe.json" with { type: "json" }
-import catppuccinMacchiato from "./theme/catppuccin-macchiato.json" with { type: "json" }
-import cobalt2 from "./theme/cobalt2.json" with { type: "json" }
-import cursor from "./theme/cursor.json" with { type: "json" }
-import dracula from "./theme/dracula.json" with { type: "json" }
-import everforest from "./theme/everforest.json" with { type: "json" }
-import flexoki from "./theme/flexoki.json" with { type: "json" }
-import github from "./theme/github.json" with { type: "json" }
-import gruvbox from "./theme/gruvbox.json" with { type: "json" }
-import kanagawa from "./theme/kanagawa.json" with { type: "json" }
-import material from "./theme/material.json" with { type: "json" }
-import matrix from "./theme/matrix.json" with { type: "json" }
-import mercury from "./theme/mercury.json" with { type: "json" }
-import monokai from "./theme/monokai.json" with { type: "json" }
-import nightowl from "./theme/nightowl.json" with { type: "json" }
-import nord from "./theme/nord.json" with { type: "json" }
-import osakaJade from "./theme/osaka-jade.json" with { type: "json" }
-import onedark from "./theme/one-dark.json" with { type: "json" }
-import agentCore from "./theme/zee.json" with { type: "json" }
-import orng from "./theme/orng.json" with { type: "json" }
-import lucentOrng from "./theme/lucent-orng.json" with { type: "json" }
-import palenight from "./theme/palenight.json" with { type: "json" }
-import rosepine from "./theme/rosepine.json" with { type: "json" }
-import solarized from "./theme/solarized.json" with { type: "json" }
-import synthwave84 from "./theme/synthwave84.json" with { type: "json" }
-import tokyonight from "./theme/tokyonight.json" with { type: "json" }
-import vercel from "./theme/vercel.json" with { type: "json" }
-import vesper from "./theme/vesper.json" with { type: "json" }
-import zenburn from "./theme/zenburn.json" with { type: "json" }
-import carbonfox from "./theme/carbonfox.json" with { type: "json" }
-import { generateTuiPersonaTheme } from "@root/theme/rosetta"
-const zee = generateTuiPersonaTheme("zee")
-const stanley = generateTuiPersonaTheme("stanley")
-const johny = generateTuiPersonaTheme("johny")
+import selenizedDark from "./theme/selenized-dark.json" with { type: "json" }
 import { useKV } from "./kv"
 import { useRenderer } from "@opentui/solid"
-import { createStore, produce } from "solid-js/store"
-import { Global } from "@/global"
-import { Filesystem } from "@/util/filesystem"
+import { createStore } from "solid-js/store"
 
 type ThemeColors = {
   primary: RGBA
@@ -241,42 +202,7 @@ export function isNoColorEnabled(): boolean {
 }
 
 export const DEFAULT_THEMES: Record<string, ThemeJson> = {
-  aura,
-  ayu,
-  catppuccin,
-  ["catppuccin-frappe"]: catppuccinFrappe,
-  ["catppuccin-macchiato"]: catppuccinMacchiato,
-  cobalt2,
-  cursor,
-  dracula,
-  everforest,
-  flexoki,
-  github,
-  gruvbox,
-  kanagawa,
-  material,
-  matrix,
-  mercury,
-  monokai,
-  nightowl,
-  nord,
-  ["one-dark"]: onedark,
-  ["osaka-jade"]: osakaJade,
-  ["agent-core"]: agentCore,
-  orng,
-  ["lucent-orng"]: lucentOrng,
-  palenight,
-  rosepine,
-  solarized,
-  synthwave84,
-  tokyonight,
-  vesper,
-  vercel,
-  zenburn,
-  carbonfox,
-  zee,
-  stanley,
-  johny,
+  ["selenized-dark"]: selenizedDark as ThemeJson,
 }
 
 export function resolveTheme(theme: ThemeJson, mode: "dark" | "light", terminalBackground?: RGBA | null) {
@@ -408,35 +334,21 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const kv = useKV()
     const [store, setStore] = createStore({
       themes: DEFAULT_THEMES,
-      mode: kv.get("theme_mode", props.mode),
-      active: (sync.data.config.theme ?? kv.get("theme", "agent-core")) as string,
+      mode: "dark" as const,
+      active: "selenized-dark",
       ready: false,
       terminalBackground: props.terminalBackground ?? null,
     })
 
     createEffect(() => {
-      const theme = sync.data.config.theme
-      if (theme) setStore("active", theme)
+      void sync.data.config.theme
+      setStore("active", "selenized-dark")
     })
 
     function init() {
       resolveSystemTheme()
-      getCustomThemes()
-        .then((custom) => {
-          setStore(
-            produce((draft) => {
-              Object.assign(draft.themes, custom)
-            }),
-          )
-        })
-        .catch(() => {
-          setStore("active", "agent-core")
-        })
-        .finally(() => {
-          if (store.active !== "system") {
-            setStore("ready", true)
-          }
-        })
+      setStore("active", "selenized-dark")
+      setStore("ready", true)
     }
 
     onMount(init)
@@ -448,14 +360,6 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
         })
         .then((colors) => {
           if (!colors.palette[0]) {
-            if (store.active === "system") {
-              setStore(
-                produce((draft) => {
-                  draft.active = "agent-core"
-                  draft.ready = true
-                }),
-              )
-            }
             return
           }
           if (!store.terminalBackground) {
@@ -464,14 +368,6 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
               setStore("terminalBackground", RGBA.fromHex(rawBackground))
             }
           }
-          setStore(
-            produce((draft) => {
-              draft.themes.system = generateSystem(colors, store.mode)
-              if (store.active === "system") {
-                draft.ready = true
-              }
-            }),
-          )
         })
     }
 
@@ -487,7 +383,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
         return resolveTheme(generateMonochromeTheme(store.mode), store.mode, store.terminalBackground)
       }
       return resolveTheme(
-        store.themes[store.active] ?? store.themes["agent-core"],
+        store.themes[store.active] ?? store.themes["selenized-dark"],
         store.mode,
         store.terminalBackground,
       )
@@ -514,13 +410,14 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       mode() {
         return store.mode
       },
-      setMode(mode: "dark" | "light") {
-        setStore("mode", mode)
-        kv.set("theme_mode", mode)
+      setMode(_mode: "dark" | "light") {
+        setStore("mode", "dark")
+        kv.set("theme_mode", "dark")
       },
       set(theme: string) {
-        setStore("active", theme)
-        kv.set("theme", theme)
+        const next = theme in store.themes ? theme : "selenized-dark"
+        setStore("active", next)
+        kv.set("theme", next)
       },
       terminalBackground() {
         return store.terminalBackground
@@ -532,237 +429,11 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   },
 })
 
-const CUSTOM_THEME_GLOB = new Bun.Glob("themes/*.json")
-async function getCustomThemes() {
-  const directories = [
-    Global.Path.config,
-    ...(await Array.fromAsync(
-      Filesystem.up({
-        targets: [".zee"],
-        start: process.cwd(),
-      }),
-    )),
-  ]
-
-  const result: Record<string, ThemeJson> = {}
-  for (const dir of directories) {
-    for await (const item of CUSTOM_THEME_GLOB.scan({
-      absolute: true,
-      followSymlinks: true,
-      dot: true,
-      cwd: dir,
-    })) {
-      const name = path.basename(item, ".json")
-      result[name] = await Bun.file(item).json()
-    }
-  }
-  return result
-}
-
 export function tint(base: RGBA, overlay: RGBA, alpha: number): RGBA {
   const r = base.r + (overlay.r - base.r) * alpha
   const g = base.g + (overlay.g - base.g) * alpha
   const b = base.b + (overlay.b - base.b) * alpha
   return RGBA.fromInts(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255))
-}
-
-function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJson {
-  const bg = RGBA.fromHex(colors.defaultBackground ?? colors.palette[0]!)
-  const fg = RGBA.fromHex(colors.defaultForeground ?? colors.palette[7]!)
-  const transparent = RGBA.fromInts(0, 0, 0, 0)
-  const isDark = mode == "dark"
-
-  const col = (i: number) => {
-    const value = colors.palette[i]
-    if (value) return RGBA.fromHex(value)
-    return ansiToRgba(i)
-  }
-
-  // Generate gray scale based on terminal background
-  const grays = generateGrayScale(bg, isDark)
-  const textMuted = generateMutedTextColor(bg, isDark)
-
-  // ANSI color references
-  const ansiColors = {
-    black: col(0),
-    red: col(1),
-    green: col(2),
-    yellow: col(3),
-    blue: col(4),
-    magenta: col(5),
-    cyan: col(6),
-    white: col(7),
-    redBright: col(9),
-    greenBright: col(10),
-  }
-
-  // Softer, more aesthetic diff colors with better differentiation
-  // Additions: teal-green tint, Deletions: rose/coral tint
-  const diffAlpha = isDark ? 0.12 : 0.08
-  const diffLineNumAlpha = isDark ? 0.18 : 0.12
-  const diffAddColor = RGBA.fromValues(0.2, 0.7, 0.5, 1) // teal-green
-  const diffRemoveColor = RGBA.fromValues(0.85, 0.35, 0.4, 1) // rose/coral
-  const diffAddedBg = tint(bg, diffAddColor, diffAlpha)
-  const diffRemovedBg = tint(bg, diffRemoveColor, diffAlpha)
-  const diffAddedLineNumberBg = tint(grays[3], diffAddColor, diffLineNumAlpha)
-  const diffRemovedLineNumberBg = tint(grays[3], diffRemoveColor, diffLineNumAlpha)
-
-  return {
-    theme: {
-      // Primary colors using ANSI
-      primary: ansiColors.cyan,
-      secondary: ansiColors.magenta,
-      accent: ansiColors.cyan,
-
-      // Status colors using ANSI
-      error: ansiColors.red,
-      warning: ansiColors.yellow,
-      success: ansiColors.green,
-      info: ansiColors.cyan,
-
-      // Text colors
-      text: fg,
-      textMuted,
-      selectedListItemText: bg,
-
-      // Background colors
-      background: transparent,
-      backgroundPanel: grays[2],
-      backgroundElement: grays[3],
-      backgroundMenu: grays[3],
-
-      // Border colors
-      borderSubtle: grays[6],
-      border: grays[7],
-      borderActive: grays[8],
-
-      // Diff colors
-      diffAdded: ansiColors.green,
-      diffRemoved: ansiColors.red,
-      diffContext: grays[7],
-      diffHunkHeader: grays[7],
-      diffHighlightAdded: ansiColors.greenBright,
-      diffHighlightRemoved: ansiColors.redBright,
-      diffAddedBg,
-      diffRemovedBg,
-      diffContextBg: grays[1],
-      diffLineNumber: grays[6],
-      diffAddedLineNumberBg,
-      diffRemovedLineNumberBg,
-
-      // Markdown colors
-      markdownText: fg,
-      markdownHeading: fg,
-      markdownLink: ansiColors.blue,
-      markdownLinkText: ansiColors.cyan,
-      markdownCode: ansiColors.green,
-      markdownBlockQuote: ansiColors.yellow,
-      markdownEmph: ansiColors.yellow,
-      markdownStrong: fg,
-      markdownHorizontalRule: grays[7],
-      markdownListItem: ansiColors.blue,
-      markdownListEnumeration: ansiColors.cyan,
-      markdownImage: ansiColors.blue,
-      markdownImageText: ansiColors.cyan,
-      markdownCodeBlock: fg,
-
-      // Syntax colors
-      syntaxComment: textMuted,
-      syntaxKeyword: ansiColors.magenta,
-      syntaxFunction: ansiColors.blue,
-      syntaxVariable: fg,
-      syntaxString: ansiColors.green,
-      syntaxNumber: ansiColors.yellow,
-      syntaxType: ansiColors.cyan,
-      syntaxOperator: ansiColors.cyan,
-      syntaxPunctuation: fg,
-    },
-  }
-}
-
-function generateGrayScale(bg: RGBA, isDark: boolean): Record<number, RGBA> {
-  const grays: Record<number, RGBA> = {}
-
-  // RGBA stores floats in range 0-1, convert to 0-255
-  const bgR = bg.r * 255
-  const bgG = bg.g * 255
-  const bgB = bg.b * 255
-
-  const luminance = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB
-
-  for (let i = 1; i <= 12; i++) {
-    const factor = i / 12.0
-
-    let grayValue: number
-    let newR: number
-    let newG: number
-    let newB: number
-
-    if (isDark) {
-      if (luminance < 10) {
-        grayValue = Math.floor(factor * 0.4 * 255)
-        newR = grayValue
-        newG = grayValue
-        newB = grayValue
-      } else {
-        const newLum = luminance + (255 - luminance) * factor * 0.4
-
-        const ratio = newLum / luminance
-        newR = Math.min(bgR * ratio, 255)
-        newG = Math.min(bgG * ratio, 255)
-        newB = Math.min(bgB * ratio, 255)
-      }
-    } else {
-      if (luminance > 245) {
-        grayValue = Math.floor(255 - factor * 0.4 * 255)
-        newR = grayValue
-        newG = grayValue
-        newB = grayValue
-      } else {
-        const newLum = luminance * (1 - factor * 0.4)
-
-        const ratio = newLum / luminance
-        newR = Math.max(bgR * ratio, 0)
-        newG = Math.max(bgG * ratio, 0)
-        newB = Math.max(bgB * ratio, 0)
-      }
-    }
-
-    grays[i] = RGBA.fromInts(Math.floor(newR), Math.floor(newG), Math.floor(newB))
-  }
-
-  return grays
-}
-
-function generateMutedTextColor(bg: RGBA, isDark: boolean): RGBA {
-  // RGBA stores floats in range 0-1, convert to 0-255
-  const bgR = bg.r * 255
-  const bgG = bg.g * 255
-  const bgB = bg.b * 255
-
-  const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB
-
-  let grayValue: number
-
-  if (isDark) {
-    if (bgLum < 10) {
-      // Very dark/black background
-      grayValue = 180 // #b4b4b4
-    } else {
-      // Scale up for lighter dark backgrounds
-      grayValue = Math.min(Math.floor(160 + bgLum * 0.3), 200)
-    }
-  } else {
-    if (bgLum > 245) {
-      // Very light/white background
-      grayValue = 75 // #4b4b4b
-    } else {
-      // Scale down for darker light backgrounds
-      grayValue = Math.max(Math.floor(100 - (255 - bgLum) * 0.2), 60)
-    }
-  }
-
-  return RGBA.fromInts(grayValue, grayValue, grayValue)
 }
 
 function generateSyntax(theme: Theme) {

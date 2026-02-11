@@ -144,7 +144,7 @@ Example: two agents, only the second agent runs heartbeats.
 - `target`:
   - `last` (default): deliver to the last used external channel.
   - `none`: run the heartbeat but **do not deliver** externally.
-- `to`: optional recipient override (channel-specific id, e.g. E.164 for WhatsApp or a Matrix room id).
+- `to`: optional recipient override (channel-specific id, e.g. E.164 for WhatsApp or a WhatsApp room id).
 - `prompt`: overrides the default prompt body (not merged).
 - `ackMaxChars`: max chars allowed after `HEARTBEAT_OK` before delivery.
 
@@ -173,9 +173,9 @@ channels:
       showOk: false      # Hide HEARTBEAT_OK (default)
       showAlerts: true   # Show alert messages (default)
       useIndicator: true # Emit indicator events (default)
-  matrix:
+  whatsapp:
     heartbeat:
-      showOk: true       # Show OK acknowledgments on Matrix
+      showOk: true       # Show OK acknowledgments on WhatsApp
   whatsapp:
     accounts:
       work:
@@ -207,7 +207,7 @@ channels:
       ops:
         heartbeat:
           showAlerts: false # suppress alerts for the ops account only
-  matrix:
+  whatsapp:
     heartbeat:
       showOk: true
 ```
@@ -219,7 +219,7 @@ channels:
 | Default behavior (silent OKs, alerts on) | *(no config needed)* |
 | Fully silent (no messages, no indicator) | `channels.defaults.heartbeat: { showOk: false, showAlerts: false, useIndicator: false }` |
 | Indicator-only (no messages) | `channels.defaults.heartbeat: { showOk: false, showAlerts: false, useIndicator: true }` |
-| OKs in one channel only | `channels.matrix.heartbeat: { showOk: true }` |
+| OKs in one channel only | `channels.whatsapp.heartbeat: { showOk: true }` |
 
 ## HEARTBEAT.md (optional)
 

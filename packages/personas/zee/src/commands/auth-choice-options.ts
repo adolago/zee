@@ -109,7 +109,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
   },
   {
     value: "opencode-zen",
-    label: "OpenCode Zen",
+    label: "Opencode Zen",
     hint: "API key",
     choices: ["opencode-zen"],
   },
@@ -174,8 +174,8 @@ export function buildAuthChoiceOptions(params: {
   // Token flow is currently Anthropic-only; use CLI for advanced providers.
   options.push({
     value: "opencode-zen",
-    label: "OpenCode Zen (multi-model proxy)",
-    hint: "Claude, GPT, Gemini via opencode.ai/zen",
+    label: "Opencode Zen (multi-model proxy)",
+    hint: "Claude, GPT, Gemini via Opencode Zen",
   });
   options.push({ value: "minimax-api", label: "MiniMax M2.1" });
   options.push({

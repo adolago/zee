@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_URL="${ZEE_INSTALL_URL:-https://docs.zee/install.sh}"
+INSTALL_URL="${ZEE_INSTALL_URL:-https://zee-bot.com/install.sh}"
 DEFAULT_PACKAGE="zee"
 if [[ -z "${ZEE_INSTALL_PACKAGE:-}" && "$INSTALL_URL" == *"zee.bot"* ]]; then
   DEFAULT_PACKAGE="zee"

@@ -1,7 +1,7 @@
 /**
- * Zee Core - Unified AI Agent Foundation
+ * Zee - Unified AI Agent Foundation
  *
- * Powers Stanley (GUI/GPUI), Zee (WhatsApp/Matrix), and zee (CLI/TUI)
+ * Powers Stanley (GUI/GPUI), Zee (WhatsApp), and zee (CLI/TUI)
  * with subscription-based auth support (Claude Max, ChatGPT Plus, GitHub Copilot).
  *
  * ## Architecture Overview
@@ -18,8 +18,8 @@
  */
 
 // Core modules - use subpath exports for detailed access
-// e.g., import { ... } from "@zee/core/provider"
-// e.g., import { ... } from "@zee/core/mcp"
+// e.g., import { ... } from "@zee/zee/provider"
+// e.g., import { ... } from "@zee/zee/mcp"
 
 // Provider System - Multi-LLM support with subscription auth
 export * as Provider from "./provider/types.js";
@@ -64,7 +64,7 @@ export const VERSION = "0.1.0";
 
 /** Package metadata */
 export const PACKAGE = {
-  name: "@zee/core",
+  name: "@zee/zee",
   version: VERSION,
   description: "Unified foundation for AI agent applications",
 } as const;

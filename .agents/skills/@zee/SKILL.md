@@ -14,7 +14,7 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 
 ### Life Admin
 - **Memory**: Remember everything, recall anything (Qdrant-backed)
-- **Messaging**: WhatsApp, Telegram, Matrix (E2EE) coordination
+- **Messaging**: WhatsApp and Telegram coordination
 - **Email**: neomutt + notmuch (search) + msmtp (send) + mbsync (sync)
 - **Calendar**: khal (TUI) + vdirsyncer (CalDAV sync)
 - **Contacts**: khard (TUI) + vdirsyncer (CardDAV sync)
@@ -134,7 +134,7 @@ npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
 | `zee:memory-browse` | Browse context tree: list domains, topics, subtopics, entries |
 | `zee:memory-agentic-search` | Filter-first retrieval by domain/topic with optional semantic refinement |
 | `zee:memory-version` | View version history or rollback a memory to a previous version |
-| `zee:messaging` | Send text/audio/media on WhatsApp, Telegram, and Matrix |
+| `zee:messaging` | Send text/audio/media on WhatsApp and Telegram |
 | `zee:notification` | Proactive alerts and reminders |
 | `zee:banner-refresh` | Refresh the always-on TUI banner (reminders, todos, messages) |
 | `zee:banner-push` | Push a message into the TUI banner |
@@ -200,14 +200,14 @@ Practicing advanced topics gives partial review credit to prerequisites:
 
 When receiving a multi-step request, use `zee:plan-create` to break it into tracked steps. After completing each step, use `zee:plan-advance`. Plans persist in memory and survive session changes.
 
-## Banner (agent-core TUI)
+## Banner (zee TUI)
 
 ```bash
 # Setup (one-time)
-agent-core tool zee:banner-refresh '{"autoSave": true, "setupCron": true}'
+zee tool zee:banner-refresh '{"autoSave": true, "setupCron": true}'
 
 # Push a message
-agent-core tool zee:banner-push '{"message": "Meeting in 10 minutes", "priority": "high"}'
+zee tool zee:banner-push '{"message": "Meeting in 10 minutes", "priority": "high"}'
 ```
 
 ## Enhanced Memory System
@@ -271,7 +271,7 @@ zee:memory-store { content: "Chose OAuth2 over SAML because...", domain: "archit
 - **CLI**: Direct terminal interaction
 - **Web**: Browser-based interface
 - **API**: Programmatic access
-- **WhatsApp/Telegram/Matrix**: Chat interfaces (Matrix with E2EE)
+- **WhatsApp/Telegram**: Chat interfaces
 - **Tailscale**: Secure remote access
 - **Desktop GUI**: GPUI-based portfolio/charts
 
@@ -299,20 +299,19 @@ After completing actions, store relevant results:
 
 ## Integration Points
 
-- **agent-core**: `/src/domain/zee/tools.ts`, `/src/domain/stanley/tools.ts`, `/src/domain/johny/tools.ts`
+- **zee**: `/src/domain/zee/tools.ts`, `/src/domain/stanley/tools.ts`, `/src/domain/johny/tools.ts`
 - **Browser**: `/src/domain/zee/browser.ts`
 - **Memory**: `/src/plugin/builtin/memory-persistence.ts`
 - **Qdrant**: Vector database for semantic memory
 - **Gateway**: `http://127.0.0.1:18791`
-- **Matrix**: `extensions/matrix/` (E2EE via Rust crypto SDK)
-- **ClawHub**: `packages/zee-core/src/pkg/clawhub/`
+- **ClawHub**: `packages/zee/src/pkg/clawhub/`
 - **NautilusTrader**: `vendor/nautilus_trader`
 - **OpenBB**: Market data API integration
 
 ## Configuration
 
 ### Stanley CLI Environment
-- `STANLEY_REPO` (default: `~/.local/src/agent-core/vendor/personas/stanley`)
+- `STANLEY_REPO` (default: `~/.local/src/zee/vendor/personas/stanley`)
 - `STANLEY_PYTHON` (default: `python3`)
 - `STANLEY_OPENBB_PROVIDER` (default: `yfinance`)
 - `STANLEY_PORTFOLIO_FILE` (default: `~/.zee/stanley/portfolio.json`)
@@ -320,8 +319,8 @@ After completing actions, store relevant results:
 - `SEC_IDENTITY` (optional, required by SEC for EDGAR access)
 
 ### Johny CLI Environment
-- `JOHNY_REPO` (default: `~/.local/src/agent-core/vendor/personas/johny`)
-- `JOHNY_CLI` (default: `~/.local/src/agent-core/vendor/personas/johny/scripts/johny_cli.py`)
+- `JOHNY_REPO` (default: `~/.local/src/zee/vendor/personas/johny`)
+- `JOHNY_CLI` (default: `~/.local/src/zee/vendor/personas/johny/scripts/johny_cli.py`)
 
 ## Operating Rules
 

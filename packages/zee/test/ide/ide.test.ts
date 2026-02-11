@@ -62,20 +62,20 @@ describe("ide", () => {
     expect(Ide.ide()).toBe("unknown")
   })
 
-  test("should recognize vscode-insiders AGENT_CORE_CALLER", () => {
-    process.env["AGENT_CORE_CALLER"] = "vscode-insiders"
+  test("should recognize vscode-insiders ZEE_CALLER", () => {
+    process.env["ZEE_CALLER"] = "vscode-insiders"
 
     expect(Ide.alreadyInstalled()).toBe(true)
   })
 
-  test("should recognize vscode AGENT_CORE_CALLER", () => {
-    process.env["AGENT_CORE_CALLER"] = "vscode"
+  test("should recognize vscode ZEE_CALLER", () => {
+    process.env["ZEE_CALLER"] = "vscode"
 
     expect(Ide.alreadyInstalled()).toBe(true)
   })
 
-  test("should return false for unknown AGENT_CORE_CALLER", () => {
-    process.env["AGENT_CORE_CALLER"] = "unknown"
+  test("should return false for unknown ZEE_CALLER", () => {
+    process.env["ZEE_CALLER"] = "unknown"
 
     expect(Ide.alreadyInstalled()).toBe(false)
   })

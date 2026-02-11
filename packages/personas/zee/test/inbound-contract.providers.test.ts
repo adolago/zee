@@ -20,21 +20,6 @@ describe("inbound context contract (providers + extensions)", () => {
         SenderName: "Alice",
       },
     },
-    {
-      name: "matrix room",
-      ctx: {
-        Provider: "matrix",
-        Surface: "matrix",
-        ChatType: "channel",
-        From: "room:!roomid:example.com",
-        To: "matrix:!roomid:example.com",
-        Body: "[Matrix !roomid:example.com] hi",
-        RawBody: "hi",
-        CommandBody: "hi",
-        GroupSubject: "Matrix Room",
-        SenderName: "Alice",
-      },
-    },
   ];
 
   for (const entry of cases) {

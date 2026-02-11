@@ -5,7 +5,7 @@
   "version": "1.1.48",
   "scripts": {
     "dev": "astro dev",
-    "dev:remote": "VITE_API_URL=https://api.zee.ai astro dev",
+    "dev:remote": "VITE_API_URL=http://localhost:4096 astro dev",
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
@@ -34,7 +34,7 @@
     "toolbeam-docs-theme": "0.4.8"
   },
   "devDependencies": {
-    "@zee/core": "workspace:*",
+    "@zee/zee": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:"
   }

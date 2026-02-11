@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun"
-import { createAgentCore } from "@zee/sdk"
+import { createZee } from "@zee/sdk"
 import { parseArgs } from "util"
 
 const CHANGELOG_REPO = process.env.CHANGELOG_REPO
@@ -20,7 +20,6 @@ export const team = [
   "adamdotdevin",
   "iamdavidhill",
   "zee[bot]",
-  "agent-core[bot]", // legacy
 ]
 
 export async function getLatestRelease() {
@@ -55,7 +54,7 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
 
   // Get commits that touch the relevant packages
   const log =
-    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/zee-core packages/stanley-core packages/sdk packages/plugin sdks/vscode packages/extensions github`.text()
+    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/zee packages/stanley-core packages/sdk packages/plugin sdks/vscode packages/extensions github`.text()
   const hashes = log.split("\n").filter(Boolean)
 
   const commits: Commit[] = []
@@ -70,12 +69,12 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
     const areas = new Set<string>()
 
     for (const file of files.split("\n").filter(Boolean)) {
-      if (file.startsWith("packages/zee-core/src/cli/cmd/")) areas.add("tui")
-      else if (file.startsWith("packages/zee-core/")) areas.add("core")
+      if (file.startsWith("packages/zee/src/cli/cmd/")) areas.add("tui")
+      else if (file.startsWith("packages/zee/")) areas.add("core")
       else if (file.startsWith("packages/stanley-core/")) areas.add("desktop")
       else if (file.startsWith("packages/sdk/")) areas.add("sdk")
       else if (file.startsWith("packages/plugin/")) areas.add("plugin")
-      else if (file.startsWith("packages/extensions/")) areas.add("extensions/zed")
+      else if (file.startsWith("packages/extensions/")) areas.add("extensions")
       else if (file.startsWith("sdks/vscode/")) areas.add("extensions/vscode")
       else if (file.startsWith("github/")) areas.add("github")
     }
@@ -121,24 +120,24 @@ const sections = {
   desktop: "Desktop",
   sdk: "SDK",
   plugin: "SDK",
-  "extensions/zed": "Extensions",
+  extensions: "Extensions",
   "extensions/vscode": "Extensions",
   github: "Extensions",
 } as const
 
 function getSection(areas: Set<string>): string {
   // Priority order for multi-area commits
-  const priority = ["core", "tui", "desktop", "sdk", "plugin", "extensions/zed", "extensions/vscode", "github"]
+  const priority = ["core", "tui", "desktop", "sdk", "plugin", "extensions", "extensions/vscode", "github"]
   for (const area of priority) {
     if (areas.has(area)) return sections[area as keyof typeof sections]
   }
   return "Core"
 }
 
-async function summarizeCommit(opencode: Awaited<ReturnType<typeof createAgentCore>>, message: string): Promise<string> {
+async function summarizeCommit(zee: Awaited<ReturnType<typeof createZee>>, message: string): Promise<string> {
   console.log("summarizing commit:", message)
-  const session = await opencode.client.session.create()
-  const result = await opencode.client.session
+  const session = await zee.client.session.create()
+  const result = await zee.client.session
     .prompt({
       path: { id: session.data!.id },
       body: {
@@ -161,13 +160,13 @@ Commit: ${message}`,
   return result.trim()
 }
 
-export async function generateChangelog(commits: Commit[], opencode: Awaited<ReturnType<typeof createAgentCore>>) {
+export async function generateChangelog(commits: Commit[], zee: Awaited<ReturnType<typeof createZee>>) {
   // Summarize commits in parallel with max 10 concurrent requests
   const BATCH_SIZE = 10
   const summaries: string[] = []
   for (let i = 0; i < commits.length; i += BATCH_SIZE) {
     const batch = commits.slice(i, i + BATCH_SIZE)
-    const results = await Promise.all(batch.map((c) => summarizeCommit(opencode, c.message)))
+    const results = await Promise.all(batch.map((c) => summarizeCommit(zee, c.message)))
     summaries.push(...results)
   }
 
@@ -224,11 +223,11 @@ export async function buildNotes(from: string, to: string) {
 
   console.log("generating changelog since " + from)
 
-  const opencode = await createAgentCore({ port: 5044 })
+  const zee = await createZee({ port: 5044 })
   const notes: string[] = []
 
   try {
-    const lines = await generateChangelog(commits, opencode)
+    const lines = await generateChangelog(commits, zee)
     notes.push(...lines)
     console.log("---- Generated Changelog ----")
     console.log(notes.join("\n"))
@@ -244,7 +243,7 @@ export async function buildNotes(from: string, to: string) {
       throw error
     }
   } finally {
-    opencode.server.close()
+    zee.server.close()
   }
 
   const contributors = await getContributors(from, to)

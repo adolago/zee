@@ -12,7 +12,7 @@ const noopLogger = {
 };
 
 async function makeStorePath() {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "agent-core-cron-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-cron-"));
   return {
     storePath: path.join(dir, "cron", "jobs.json"),
     cleanup: async () => {
@@ -58,7 +58,7 @@ describe("CronService store migrations", () => {
               timeoutSeconds: 120,
               allowUnsafeExternalContent: true,
               deliver: true,
-              channel: "telegram",
+              channel: "whatsapp",
               to: "12345",
               bestEffortDeliver: true,
               payload: { kind: "agentTurn", message: "legacy payload fields" },
@@ -99,7 +99,7 @@ describe("CronService store migrations", () => {
     }
     expect(job?.delivery).toEqual({
       mode: "announce",
-      channel: "telegram",
+      channel: "whatsapp",
       to: "12345",
       bestEffort: true,
     });

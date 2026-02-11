@@ -77,13 +77,6 @@ const SAFE_VARS = new Set([
   "ZEE_LOG_LEVEL",
   "ZEE_WEZTERM_ENABLED",
   "ZEE_DISABLE_TERMINAL_TITLE",
-
-  // Legacy
-  "AGENT_CORE_URL",
-  "AGENT_CORE_LOG_LEVEL",
-  "AGENT_CORE_WEZTERM_ENABLED",
-  "AGENT_CORE_DISABLE_TERMINAL_TITLE",
-
   // Persona repos (paths only, not credentials)
   "STANLEY_REPO",
   "JOHNY_REPO",

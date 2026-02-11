@@ -79,8 +79,8 @@ export namespace Provider {
   }
 
   function clientHeaders(options?: { lower?: boolean }) {
-    const referer = Env.getAny("ZEE_HTTP_REFERER", "AGENT_CORE_HTTP_REFERER", "OPENCODE_HTTP_REFERER")
-    const title = Env.getAny("ZEE_CLIENT_TITLE", "AGENT_CORE_CLIENT_TITLE", "OPENCODE_CLIENT_TITLE") ?? "zee"
+    const referer = Env.get("ZEE_HTTP_REFERER")
+    const title = Env.get("ZEE_CLIENT_TITLE") ?? "zee"
     const headers: Record<string, string> = {}
     if (referer) {
       headers[options?.lower ? "http-referer" : "HTTP-Referer"] = referer

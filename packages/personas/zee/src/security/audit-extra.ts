@@ -541,22 +541,15 @@ export async function collectPluginsTrustFindings(params: {
     const isNonEmptyObject = (value: unknown) =>
       Boolean(value && typeof value === "object" && Object.keys(value as Record<string, unknown>).length > 0);
 
-	    const whatsappConfigured = isNonEmptyObject(params.cfg.channels?.whatsapp);
-	    const matrixConfigured = isNonEmptyObject(params.cfg.channels?.matrix);
+    const whatsappConfigured = isNonEmptyObject(params.cfg.channels?.whatsapp);
 
-		    const skillCommandsLikelyExposed =
-		      (whatsappConfigured &&
-		        resolveNativeSkillsEnabled({
-		          providerId: "whatsapp",
-		          providerSetting: undefined,
-	          globalSetting: params.cfg.commands?.nativeSkills,
-	        })) ||
-	      (matrixConfigured &&
-	        resolveNativeSkillsEnabled({
-	          providerId: "matrix",
-	          providerSetting: undefined,
-	          globalSetting: params.cfg.commands?.nativeSkills,
-	        }));
+    const skillCommandsLikelyExposed =
+      whatsappConfigured &&
+      resolveNativeSkillsEnabled({
+        providerId: "whatsapp",
+        providerSetting: undefined,
+        globalSetting: params.cfg.commands?.nativeSkills,
+      });
 
     findings.push({
       checkId: "plugins.extensions_no_allowlist",
@@ -1145,7 +1138,7 @@ function listGroupPolicyOpen(cfg: ZeeConfig): string[] {
   return out;
 }
 
-export function collectExposureMatrixFindings(cfg: ZeeConfig): SecurityAuditFinding[] {
+export function collectExposureChannelFindings(cfg: ZeeConfig): SecurityAuditFinding[] {
   const findings: SecurityAuditFinding[] = [];
   const openGroups = listGroupPolicyOpen(cfg);
   if (openGroups.length === 0) return findings;

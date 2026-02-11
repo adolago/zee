@@ -1,5 +1,5 @@
 {
-  "name": "@zee/core-adapter",
+  "name": "@zee/adapter",
   "version": "0.1.0",
   "description": "Adapter layer between OpenCode Web UI and Zee",
   "type": "module",

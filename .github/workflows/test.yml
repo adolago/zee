@@ -21,10 +21,10 @@ jobs:
         run: bash scripts/bun-audit-ci.sh
 
       - name: Typecheck
-        run: bun run --cwd packages/zee-core typecheck
+        run: bun run --cwd packages/zee typecheck
 
       - name: Test
-        run: bun run --cwd packages/zee-core test
+        run: bun run --cwd packages/zee test
         env:
           CI: true
         timeout-minutes: 10

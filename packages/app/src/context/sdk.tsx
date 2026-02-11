@@ -1,4 +1,4 @@
-import { createAgentCoreClient, type Event } from "@zee/core/pkg/sdk/v2/client"
+import { createZeeClient, type Event } from "@zee/zee/pkg/sdk/v2/client"
 import { createSimpleContext } from "@zee/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { createEffect, createMemo, onCleanup } from "solid-js"
@@ -13,7 +13,7 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
 
     const directory = createMemo(() => props.directory)
     const client = createMemo(() =>
-      createAgentCoreClient({
+      createZeeClient({
         baseUrl: globalSDK.url,
         fetch: platform.fetch,
         directory: directory(),

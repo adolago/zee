@@ -65,7 +65,7 @@ curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs
 
 # Install Zee
-curl -fsSL https://docs.zee/install.sh | bash
+curl -fsSL https://zee-bot.com/install.sh | bash
 
 # Verify
 zee --version
@@ -79,7 +79,7 @@ zee onboard --install-daemon
 
 The wizard will walk you through:
 - Model auth (API keys or OAuth)
-- Channel setup (Matrix, WhatsApp)
+- Channel setup (WhatsApp, WhatsApp)
 - Gateway token (auto-generated)
 - Daemon installation (systemd)
 
@@ -135,9 +135,9 @@ Open: `http://<tailscale-ip>:18789` (token required).
 
 ## 7) Connect Your Channels
 
-### Matrix
+### WhatsApp
 ```bash
-zee channels add --channel matrix
+zee channels add --channel whatsapp
 ```
 
 ### WhatsApp

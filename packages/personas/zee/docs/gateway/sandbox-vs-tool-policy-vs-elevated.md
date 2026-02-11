@@ -37,7 +37,7 @@ Sandboxing is controlled by `agents.defaults.sandbox.mode`:
 - `"non-main"`: only non-main sessions are sandboxed (common “surprise” for groups/channels).
 - `"all"`: everything is sandboxed.
 
-See [Sandboxing](/gateway/sandboxing) for the full matrix (scope, workspace mounts, images).
+See [Sandboxing](/gateway/sandboxing) for the full whatsapp (scope, workspace mounts, images).
 
 ### Bind mounts (security quick check)
 

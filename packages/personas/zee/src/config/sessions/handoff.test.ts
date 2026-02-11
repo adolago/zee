@@ -39,13 +39,13 @@ describe("session handoff", () => {
     process.env.ZEE_STATE_DIR = root;
     try {
       await recordSessionHandoff({
-        channel: "matrix",
-        target: "!roomid:example.com",
+        channel: "email",
+        target: "123456789",
         sessionKey: "agent:main:main",
       });
       const result = await consumeSessionHandoff({
-        channel: "matrix",
-        peerId: "!roomid:example.com",
+        channel: "email",
+        peerId: "123456789",
       });
       expect(result).toBeNull();
     } finally {

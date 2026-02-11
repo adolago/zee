@@ -34,7 +34,7 @@ describe("message tool agent routing", () => {
     mocks.runMessageAction.mockResolvedValue({
       kind: "send",
       action: "send",
-      channel: "matrix",
+      channel: "whatsapp",
       handledBy: "plugin",
       payload: {},
       dryRun: true,
@@ -47,7 +47,7 @@ describe("message tool agent routing", () => {
 
     await tool.execute("1", {
       action: "send",
-      target: "matrix:!roomid:example.com",
+      target: "whatsapp:!roomid:example.com",
       message: "hi",
     });
 
@@ -63,8 +63,8 @@ describe("message tool path passthrough", () => {
     mocks.runMessageAction.mockResolvedValue({
       kind: "send",
       action: "send",
-      channel: "matrix",
-      to: "matrix:!roomid:example.com",
+      channel: "whatsapp",
+      to: "whatsapp:!roomid:example.com",
       handledBy: "plugin",
       payload: {},
       dryRun: true,
@@ -76,7 +76,7 @@ describe("message tool path passthrough", () => {
 
     await tool.execute("1", {
       action: "send",
-      target: "matrix:!roomid:example.com",
+      target: "whatsapp:!roomid:example.com",
       path: "~/Downloads/voice.ogg",
       message: "",
     });
@@ -91,8 +91,8 @@ describe("message tool path passthrough", () => {
     mocks.runMessageAction.mockResolvedValue({
       kind: "send",
       action: "send",
-      channel: "matrix",
-      to: "matrix:!roomid:example.com",
+      channel: "whatsapp",
+      to: "whatsapp:!roomid:example.com",
       handledBy: "plugin",
       payload: {},
       dryRun: true,
@@ -104,7 +104,7 @@ describe("message tool path passthrough", () => {
 
     await tool.execute("1", {
       action: "send",
-      target: "matrix:!roomid:example.com",
+      target: "whatsapp:!roomid:example.com",
       filePath: "./tmp/note.m4a",
       message: "",
     });

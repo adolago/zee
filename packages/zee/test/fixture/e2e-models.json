@@ -1,8 +1,8 @@
 {
   "opencode": {
     "id": "opencode",
-    "name": "OpenCode",
-    "env": ["OPENCODE_API_KEY"],
+    "name": "Opencode Zen",
+    "env": ["OPENCODE_ZEN_API_KEY"],
     "npm": "@ai-sdk/openai-compatible",
     "models": {
       "big-pickle": {

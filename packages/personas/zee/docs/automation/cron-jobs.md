@@ -137,8 +137,8 @@ Delivery notes:
 Target format reminders:
 - WhatsApp DMs: E.164 numbers (example: `+15551234567`)
 - WhatsApp groups: group JIDs (example: `123456789@g.us`)
-- Matrix DMs: user ids (example: `@user:example.org`)
-- Matrix rooms: room ids (example: `!roomid:example.org`)
+- WhatsApp DMs: user ids (example: `@user:example.org`)
+- WhatsApp rooms: room ids (example: `!roomid:example.org`)
 
 ## Storage & history
 - Job store: `~/.zee/cron/jobs.json` (Gateway-managed JSON).
@@ -197,7 +197,7 @@ zee cron add \
   --to "+15551234567"
 ```
 
-Recurring isolated job (deliver to a Matrix room):
+Recurring isolated job (deliver to a WhatsApp room):
 ```bash
 zee cron add \
   --name "Nightly summary (room)" \
@@ -206,7 +206,7 @@ zee cron add \
   --session isolated \
   --message "Summarize today; send to the nightly room." \
   --deliver \
-  --channel matrix \
+  --channel whatsapp \
   --to "!roomid:example.org"
 ```
 
@@ -273,4 +273,4 @@ For immediate system events without a job, use [`zee system event`](/cli/system)
 ### Delivery goes to the wrong place
 - Prefer explicit `--channel` + `--to` targets rather than last-route delivery.
 - If you use last-route delivery, make sure the agent recently spoke in the correct room/chat.
-- Provider-prefixed targets in logs (for example `matrix:...` or `whatsapp:...`) are normal.
+- Provider-prefixed targets in logs (for example `whatsapp:...` or `whatsapp:...`) are normal.

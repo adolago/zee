@@ -10,7 +10,7 @@ read_when:
 Goal: go from **zero** → **first working chat** (with sane defaults) as quickly as possible.
 
 Fastest chat: run the **CLI onboarding wizard** (`zee onboard`) and connect a
-WhatsApp or Matrix channel. It sets up:
+WhatsApp or WhatsApp channel. It sets up:
 - model/auth (OAuth recommended)
 - gateway settings
 - pairing defaults (secure DMs)
@@ -49,7 +49,7 @@ Windows: use **WSL2** (Ubuntu recommended). WSL2 is strongly recommended; native
 ## 1) Install the CLI (recommended)
 
 ```bash
-curl -fsSL https://docs.zee/install.sh | bash
+curl -fsSL https://zee-bot.com/install.sh | bash
 ```
 
 Installer options (install method, non-interactive, from GitHub): [Install](/install).
@@ -57,7 +57,7 @@ Installer options (install method, non-interactive, from GitHub): [Install](/ins
 Windows (PowerShell):
 
 ```powershell
-iwr -useb https://docs.zee/install.ps1 | iex
+iwr -useb https://zee-bot.com/install.ps1 | iex
 ```
 
 Alternative (global install):
@@ -80,7 +80,7 @@ What you’ll choose:
 - **Local vs Remote** gateway
 - **Auth**: OpenAI Code (Codex) subscription (OAuth) or API keys. For Anthropic we recommend an API key; `claude setup-token` is also supported.
 - **Daemon**: background install (systemd; WSL2 uses systemd)
-  - **Runtime**: Node (recommended; required for WhatsApp/Matrix). Bun is **not recommended**.
+  - **Runtime**: Node (recommended; required for WhatsApp/WhatsApp). Bun is **not recommended**.
 - **Gateway token**: the wizard generates one by default (even on loopback) and stores it in `gateway.auth.token`.
 
 Wizard doc: [Wizard](/start/wizard)
@@ -108,8 +108,8 @@ Manual run (foreground):
 zee gateway --port 18789 --verbose
 ```
 
-Warning (WhatsApp + Matrix): Bun has known issues with these
-channels. If you use WhatsApp or Matrix, run the Gateway with **Node**.
+Warning (WhatsApp + WhatsApp): Bun has known issues with these
+channels. If you use WhatsApp or WhatsApp, run the Gateway with **Node**.
 
 ## 3.5) Quick verify (2 min)
 
@@ -133,9 +133,9 @@ WhatsApp doc: [WhatsApp](/channels/whatsapp)
 
 
 The wizard can write tokens/config for you. If you prefer manual config, start with:
-- Matrix: [Matrix](/channels/matrix)
+- WhatsApp: [WhatsApp](/channels/whatsapp)
 
-Matrix DM tip: your first DM may require pairing approval (see next step) or the bot won’t respond.
+WhatsApp DM tip: your first DM may require pairing approval (see next step) or the bot won’t respond.
 
 ## 5) DM safety (pairing approvals)
 

@@ -28,9 +28,9 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `docs/providers/BLACKLIST_CANDIDATES.md` | fallback, model selection | Thinking |
 | `docs/providers/EXTENDED_BLACKLIST.md` | - | thinking |
 | `docs/providers/PROVIDERS_DEEP_DIVE.md` | alias, fallback, fallbacks | thinking |
-| `packages/zee-core-adapter/README.md` | Model selection | - |
-| `packages/zee-core/src/cli/cmd/tui/CLAUDE.md` | Alias | - |
-| `packages/zee-core/src/cli/cmd/tui/ui/CLAUDE.md` | alias | topP |
+| `packages/zee-adapter/README.md` | Model selection | - |
+| `packages/zee/src/cli/cmd/tui/CLAUDE.md` | Alias | - |
+| `packages/zee/src/cli/cmd/tui/ui/CLAUDE.md` | alias | topP |
 | `packages/app/README.md` | - | seed |
 | `packages/personas/zee/.agent/workflows/update_clawdbot.md` | fallback | - |
 | `packages/personas/zee/AGENTS.md` | alias, allowlist | - |
@@ -42,7 +42,6 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `packages/personas/zee/docs/automation/webhook.md` | Model override, agents.defaults.model, alias, model list | Thinking, thinking |
 | `packages/personas/zee/docs/broadcast-groups.md` | allowlist | - |
 | `packages/personas/zee/docs/channels/index.md` | allowlist | - |
-| `packages/personas/zee/docs/channels/matrix.md` | allowlist | - |
 | `packages/personas/zee/docs/channels/whatsapp.md` | allowlist, fallback | - |
 | `packages/personas/zee/docs/cli/agent.md` | - | thinking |
 | `packages/personas/zee/docs/cli/approvals.md` | Allowlist, allowlist | - |

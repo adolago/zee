@@ -146,9 +146,9 @@ export const Terminal = (props: TerminalProps) => {
       const once = { value: false }
 
       const url = new URL(sdk.url + `/pty/${local.pty.id}/connect?directory=${encodeURIComponent(sdk.directory)}`)
-      if (window.__AGENT_CORE__?.serverPassword) {
-        url.username = "opencode"
-        url.password = window.__AGENT_CORE__?.serverPassword
+      if (window.__ZEE__?.serverPassword) {
+        url.username = "zee"
+        url.password = window.__ZEE__?.serverPassword
       }
       const socket = new WebSocket(url)
       cleanups.push(() => {
