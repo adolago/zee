@@ -8,7 +8,7 @@
 ## Quick Reference
 
 - Build and test: `cd packages/zee && bun run build && bun dev`
-- Repo helper: `./ac dev`, `./ac build`, `./ac reload`
+- Repo helper: `./z dev`, `./z build`, `./z reload`
 - Default branch: `dev`
 - PRs target the fork at `origin` (e.g., `adolago/zee`), not upstream.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
@@ -55,10 +55,8 @@ Zee can spawn drones (background workers), uses Qdrant memory, and preserves con
 |------|-------|
 | Skills | `.agents/skills/@zee/`, `.agents/skills/personas/` |
 | Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
-| Persona logic | `src/personas/johny/` (TS), `packages/stanley-core/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |
 | Engine | `packages/zee/` |
-| Gateway | `packages/personas/zee/` |
 | Memory types | `src/memory/` |
 
 ## Daemon (systemd)

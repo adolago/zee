@@ -1,16 +1,16 @@
 ---
 name: codebase-guide
-description: Detailed architecture reference for agent-core - package structure, directory trees, daemon management, gateway architecture, environment variables, and state management.
-version: "1.0.0"
+description: Detailed architecture reference for zee - package structure, directory trees, daemon management, gateway architecture, environment variables, and state management.
+version: "2.0.0"
 tags: [architecture, reference, codebase, daemon, gateway]
 ---
 
-# Agent-Core Architecture Reference
+# Zee Architecture Reference
 
-## Architecture: agent-core -> swarm -> personas
+## Architecture: zee -> swarm -> personas
 
 ```
-agent-core (Engine)
+zee (Engine)
   packages/zee/     Core TUI, daemon, SDK
   ~/.config/zee/    Config, auth, plugins
         |
@@ -23,8 +23,9 @@ agent-core (Engine)
     Memory coordination
         |
         v
-  PERSONAS (The Triad) -- .agents/skills/
-    Zee (Personal) | Stanley (Investing) | Johny (Learning)
+  PERSONAS (Unified) -- .agents/skills/
+    Zee handles all domains: life admin, investing, learning
+    Tool namespaces: zee:*, stanley:*, johny:*
         |
     SHARED LAYER
       personas/    Orchestration, drones
@@ -33,55 +34,62 @@ agent-core (Engine)
 
 ### Flow Summary
 
-1. **agent-core** = Core engine (built-in agents removed, only triad remains)
+1. **zee** = Core engine (CLI, TUI, daemon, gateway)
 2. **swarm** = Orchestration layer (SPARC methodology, queen/worker coordination)
-3. **personas** = The Triad (Zee/Stanley/Johny) + shared capabilities
+3. **personas** = Zee is the single persona, with domain tool namespaces preserved
 
-No generic "build" or "plan" agents. Every interaction goes through a persona with domain expertise.
+No generic "build" or "plan" agents. Every interaction goes through Zee with domain expertise via namespaced tools.
 
 ## Package Structure
 
 ```
 packages/
-  agent-core/          Core TUI, daemon, SDK, utils
-  agent-core-adapter/  Adapter layer
-  app/                 App shell
-  desktop/             Desktop integration
-  extensions/          Extension system
-  hosted/              Hosted deployment
-  personas/            Personas package (Zee gateway)
-  plugin/              Plugin system
-  sdk/                 SDK
-  stanley-core/        Stanley core logic
-  ui/                  UI components
-  util/                Shared utilities
-  web/                 Web interface
+  zee/               Core TUI, daemon, SDK, utils (main binary)
+  zee-adapter/       Adapter layer for OpenCode Web UI
+  app/               SolidJS web app (Vite)
+  desktop/           Tauri desktop application
+  extensions/        VSCode extension
+  hosted/            Hono-based hosted deployment
+  plugin/            Plugin system
+  sdk/               TypeScript SDK (v1 & v2 client/server)
+  stanley-core/      Stanley investing core logic
+  ui/                SolidJS component library (Kobalte)
+  util/              Zod schemas & TypeScript utilities
+  web/               Astro documentation site
 ```
 
-**Personas:**
-- **Zee**: Messaging gateway in `packages/personas/zee/`
-- **Stanley**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
-- **Johny**: TypeScript implementation in `src/personas/johny/`
+**Domain implementations:**
+- **Zee (life admin)**: Tools in `src/domain/zee/`, persona logic in `src/personas/`
+- **Stanley (investing)**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
+- **Johny (learning)**: TypeScript implementation in `src/personas/johny/`
 
 ## Key Directories
 
 ```
-agent-core/
-  .agents/skills/           Agent Skills (Anthropic standard)
-    @johny/                 Study assistant
-    @stanley/               Trading assistant
-    @zee/                   Personal assistant
-    personas/               Persona identities
-    swarm/                  Swarm orchestration
+zee/
+  .agents/skills/           Agent Skills
+    @zee/                   Zee skills (life admin, investing, learning)
+    @codex/                 Codex automation suite
+    @clawhub/               ClawHub marketplace skills
+    personas/               Persona catalog and tool reference
+    codebase-guide/         This architecture reference
+    parallel-orchestration/ Parallel task patterns
   packages/
-    agent-core/             Core engine
-      src/pkg/              Merged packages (sdk, plugin, util, script)
-    personas/zee/           Messaging gateway
+    zee/                    Core engine (CLI, TUI, daemon, gateway)
+      src/
+        cli/cmd/            CLI commands (run, agent, auth, daemon, mcp, etc.)
+        server/             HTTP server (Hono), routes, SSE
+        gateway/            Embedded gateway, token management
+        provider/           LLM provider abstractions, circuit breaker
+        session/            Session management, compaction
+        mcp/                MCP server orchestration
+        orchestration/      Worker orchestration, parallelization
+        skill/              Skill registry
   src/
     domain/                 Domain-specific tools
       johny/                Learning tools
       stanley/              Financial tools (CLI bridge)
-      zee/                  Personal tools
+      zee/                  Life admin tools (memory, messaging, calendar, etc.)
     swarm/                  Swarm orchestration (queen, workers, SPARC)
     personas/
       johny/                TypeScript learning system
@@ -89,7 +97,18 @@ agent-core/
         mastery.ts          Mastery tracking
         review.ts           Spaced repetition
         practice.ts         Practice sessions
-    memory/                 Qdrant vector storage types
+    memory/                 Unified memory system
+      unified.ts            Unified memory API
+      qdrant.ts             Qdrant client integration
+      embedding.ts          Embeddings generation
+      entity-pages.ts       Entity/relationship storage
+      hybrid.ts             Hybrid search (vector + FTS)
+      sqlite-fts.ts         Full-text search fallback
+      reranker.ts           Result reranking
+    provider/               LLM provider abstractions (15+ providers)
+    session/                Session state and lifecycle
+    mcp/                    MCP servers (builtin, domain, security)
+    transport/              Communication protocols
   docs/                     Architecture docs, provider references
 ```
 
@@ -98,21 +117,22 @@ agent-core/
 Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 
 ```
-.agents/skills/@johny/     Johny persona
-.agents/skills/@stanley/   Stanley persona
-.agents/skills/@zee/       Zee persona
-.agents/skills/personas/   Persona identities
-.agents/skills/swarm/      Orchestration (drones, memory, continuity)
+.agents/skills/@zee/                   Zee skills (29+ skills)
+.agents/skills/@codex/                 Codex automation (34 skills)
+.agents/skills/@clawhub/               ClawHub marketplace skills
+.agents/skills/personas/               Persona catalog and tool reference
+.agents/skills/codebase-guide/         Architecture reference
+.agents/skills/parallel-orchestration/ Parallel task patterns
 ```
 
 ## Development Guidelines
 
-1. **Skills go in `.agents/skills/`** - Follow Anthropic Agent Skills standard
+1. **Skills go in `.agents/skills/`** - Follow Agent Skills standard
 2. **Domain tools go in `src/domain/`** - TypeScript implementations
 3. **Persona logic goes in `src/personas/`** - Knowledge graphs, strategies
-4. **No upstream sync** - Standalone monolith for solo development
+4. **Upstream syncs** - Zee syncs from opencode and openclaw upstreams periodically
 
-## Personas Capabilities (ALL Personas Have These)
+## Persona Capabilities
 
 **Spawn Drones**: Background workers that maintain persona identity, execute in parallel, report back, run in WezTerm panes.
 
@@ -127,20 +147,23 @@ Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 | Variable | Description |
 |----------|-------------|
 | `STANLEY_REPO` | Path to external Stanley Python repo (required for Stanley tools) |
-| `JOHNY_DATA_DIR` | Directory for Johny data files (default: `~/.zee/johny`) |
-| `AGENT_CORE_ROOT` | Path to agent-core installation (for bundled binaries) |
+| `JOHNY_DATA_DIR` | Directory for Johny data files (default: `~/.local/state/zee/johny`) |
+| `ZEE_STATE_DIR` | Co-locate all state under a single root |
+| `ZEE_WORKSPACE_DIR` | Override workspace location |
 
 ## State Management
 
+Defaults follow XDG:
+
 | Data | Location |
 |------|----------|
-| Johny knowledge | `~/.zee/johny/knowledge-graph.json` |
-| Johny mastery | `~/.zee/johny/mastery.json` |
-| Johny reviews | `~/.zee/johny/reviews.json` |
-| Johny practice | `~/.zee/johny/practice.json` |
-| Stanley portfolio | `~/.zee/stanley/portfolio.json` |
-| Zee memories | `~/.zee/zee/memories.json` |
-| Credentials | `~/.zee/credentials/` |
+| Config | `~/.config/zee/` |
+| State | `~/.local/state/zee/` |
+| Data | `~/.local/share/zee/` |
+| Cache | `~/.cache/zee/` |
+| Credentials | `~/.config/zee/credentials/` |
+
+Use `zee paths` to print resolved locations.
 
 ## Daemon Management (systemd)
 
@@ -149,15 +172,15 @@ Managed by **systemd user service**. Always use `systemctl --user`. Never use `p
 ### Commands
 
 ```bash
-systemctl --user restart agent-core        # Restart
-systemctl --user stop agent-core           # Stop
-systemctl --user status agent-core         # Status
-journalctl --user -u agent-core -f         # Live logs
-journalctl --user -u agent-core --since "5 min ago"  # Recent logs
-./scripts/reload.sh                        # Full rebuild + restart
-./scripts/reload.sh --no-build             # Restart only
-./scripts/reload.sh --status               # Check status
-./scripts/reload.sh --clean                # Clean rebuild
+systemctl --user restart zee              # Restart
+systemctl --user stop zee                 # Stop
+systemctl --user status zee               # Status
+journalctl --user -u zee -f              # Live logs
+journalctl --user -u zee --since "5 min ago"  # Recent logs
+./scripts/reload.sh                       # Full rebuild + restart
+./scripts/reload.sh --no-build            # Restart only
+./scripts/reload.sh --status              # Check status
+./scripts/reload.sh --clean               # Clean rebuild
 ```
 
 ### Service File
@@ -169,7 +192,7 @@ Location: `~/.config/systemd/user/zee.service`
 
 ### Binary
 
-`~/.bun/bin/agent-core` (symlink to `dist/@zee/zee-linux-x64/bin/agent-core`)
+`~/.bun/bin/zee` (symlink to `dist/@zee/zee-linux-x64/bin/zee`)
 
 Install via `cd packages/zee && bun link`
 
@@ -177,34 +200,36 @@ Install via `cd packages/zee && bun link`
 
 | Process | Description | Managed by |
 |---------|-------------|------------|
-| `agent-core daemon --hostname ...` | Daemon + embedded gateway | systemd |
-| `agent-core --print-logs` | TUI instance | user |
+| `zee daemon --hostname ...` | Daemon + embedded gateway | systemd |
+| `zee --print-logs` | TUI instance | user |
 | `bun run ... src/index.ts` | Dev server | user |
 
 ## Gateway Architecture
 
+The gateway is always embedded in the daemon (no separate `--gateway` flag needed).
+
 ```
-Zee Gateway (Transport) -- packages/personas/zee/
+Zee Gateway (Transport) -- embedded in daemon
   WhatsApp (Baileys) | Telegram (grammY)
         |
   Persona Detection: @stanley->stanley, @johny->johny, default->zee
         |  HTTP POST /session/:id/message + agent: persona
         v
-agent-core daemon (http://127.0.0.1:3210)
-  ZEE Persona | STANLEY Persona | JOHNY Persona
+zee daemon (http://127.0.0.1:3210)
+  ZEE Persona | STANLEY Tools | JOHNY Tools
 ```
 
-- **Zee Gateway** = Transport only (WhatsApp/Telegram/Signal connections)
-- **agent-core daemon** = All agent logic, personas, memory, tools
-- **Persona routing** = Messages mentioning `@stanley` or `@johny` routed accordingly
-- **Daemon-only mode** = Zee REQUIRES agent-core daemon running
+- **Zee Gateway** = Transport only (WhatsApp/Telegram connections)
+- **zee daemon** = All agent logic, memory, tools
+- **Persona routing** = Messages mentioning `@stanley` or `@johny` route to those tool namespaces
+- **Daemon requirement** = Gateway requires zee daemon running
 
 ### Running the Embedded Gateway
 
-1. Daemon starts automatically via systemd. Manual restart: `systemctl --user restart agent-core`
+1. Daemon starts automatically via systemd. Manual restart: `systemctl --user restart zee`
 2. Send messages via WhatsApp/Telegram:
    - "Hello" -> Zee (default)
-   - "@stanley What's the market doing?" -> Stanley
-   - "@johny Help me study" -> Johny
+   - "@stanley What's the market doing?" -> Stanley tools
+   - "@johny Help me study" -> Johny tools
 
-Messaging transport in Zee gateway at `packages/personas/zee/`, managed by daemon.
+Gateway transport managed by the daemon process.

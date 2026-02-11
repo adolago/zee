@@ -53,7 +53,7 @@ Zee is the single assistant handling all domains. The former Stanley (investing)
 
 ### Shared Skills
 - `personas` - This catalog. Skill reference.
-- `auto-updater` - Daily auto-update of agent-core and skills via cron [via clawhub: maximeprades/auto-updater]
+- `auto-updater` - Daily auto-update of zee and skills via cron [via clawhub: maximeprades/auto-updater]
 - `self-improving-agent` - Log learnings, errors, corrections [via clawhub: pskoett/self-improving-agent]
 - `tmux` - Remote-control tmux sessions [via clawhub: steipete/tmux]
 - `humanizer` - Remove AI writing patterns [via clawhub: biostartechnology/humanizer]
