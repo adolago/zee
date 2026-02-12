@@ -1,0 +1,27 @@
+{
+  "name": "@zee/discord",
+  "version": "2026.2.12-beta.1",
+  "type": "module",
+  "description": "Zee Discord channel plugin",
+  "zee": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "discord",
+      "label": "Discord",
+      "selectionLabel": "Discord Bot",
+      "detailLabel": "Discord REST",
+      "docsPath": "/channels/discord",
+      "docsLabel": "discord",
+      "blurb": "bot token + channel id routing; DM/group policy controls and mention gating.",
+      "order": 40,
+      "aliases": [
+        "dc"
+      ],
+      "systemImage": "bubble.left.and.bubble.right",
+      "quickstartAllowFrom": true,
+      "forceAccountBinding": true
+    }
+  }
+}

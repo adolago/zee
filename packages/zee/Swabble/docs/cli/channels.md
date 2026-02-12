@@ -25,6 +25,9 @@ zee channels logs --channel all
 
 ```bash
 zee channels add --channel whatsapp
+zee channels add --channel telegram --botToken <token> --audience <chat_id>
+zee channels add --channel slack --botToken <token> --audience <channel_id>
+zee channels add --channel discord --botToken <token> --audience <channel_id>
 zee channels remove --channel whatsapp --delete
 ```
 
@@ -35,6 +38,8 @@ zee channels remove --channel whatsapp --delete
 zee channels login --channel whatsapp
 zee channels logout --channel whatsapp
 ```
+
+Token-based channels (Telegram/Slack/Discord) are configured with `channels add` and usually do not require a separate login flow.
 
 ## Troubleshooting
 

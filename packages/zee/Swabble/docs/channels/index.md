@@ -6,20 +6,29 @@ read_when:
 ---
 # Chat Channels
 
-Zee can talk to you on any chat app you already use. Each channel connects via the Gateway.
-Text is supported everywhere; media and reactions vary by channel.
+Zee can run multiple channels at the same time via the Gateway.
 
-## Supported channels
+## First-party channels
 
-- [WhatsApp](/channels/whatsapp) — Most popular; uses Baileys and requires QR pairing.
-- [WhatsApp](/channels/whatsapp) — WhatsApp homeserver; supports rooms (and optional E2EE).
+- [WhatsApp](/channels/whatsapp) - QR-linked WhatsApp Web runtime.
+- [Telegram](/channels/telegram) - Telegram Bot API token + target routing.
+- [Slack](/channels/slack) - Slack bot token + channel routing.
+- [Discord](/channels/discord) - Discord bot token + channel routing.
 
-## Notes
+## Security defaults
 
-- Channels can run simultaneously; configure multiple and Zee will route per chat.
-- Fastest setup is usually **WhatsApp** (access token + homeserver). WhatsApp requires QR pairing and
-  stores more state on disk.
-- Group behavior varies by channel; see [Groups](/concepts/groups).
-- DM pairing and allowlists are enforced for safety; see [Security](/gateway/security).
-- Troubleshooting: [Channel troubleshooting](/channels/troubleshooting).
-- Model providers are documented separately; see [Model Providers](/providers/models).
+- DM access defaults to pairing-style controls.
+- `dmPolicy="open"` requires `allowFrom=["*"]`.
+- Group access should normally stay `groupPolicy="allowlist"` with mention gating enabled.
+- Review warnings with `zee security audit` and `zee doctor`.
+
+## Operational commands
+
+```bash
+zee channels list
+zee channels status
+zee security audit
+zee doctor
+```
+
+See [Channel troubleshooting](/channels/troubleshooting) for runtime and auth debugging.

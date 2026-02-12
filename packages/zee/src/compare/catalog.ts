@@ -605,9 +605,9 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Multiple real-world channels (Telegram/Slack/Discord/Signal/etc).",
     support: {
       zee: {
-        level: "partial",
-        notes: "Zee embeds a reduced subset of OpenClaw’s channel stack (focuses on WhatsApp and a small set of surfaces).",
-        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+        level: "yes",
+        notes: "Bundled first-party channels include WhatsApp, Telegram, Slack, and Discord with shared policy/status/audit integration.",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/extensions" }],
       },
       opencode: { level: "no" },
       openclaw: { level: "yes", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
