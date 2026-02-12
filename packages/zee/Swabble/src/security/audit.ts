@@ -304,6 +304,35 @@ function collectGatewayConfigFindings(
     });
   }
 
+  const controlUiEnabled = cfg.gateway?.controlUi?.enabled === true;
+  const controlUiInsecureAuth = cfg.gateway?.controlUi?.allowInsecureAuth === true;
+  const controlUiDeviceAuthBypass =
+    cfg.gateway?.controlUi?.dangerouslyDisableDeviceAuth === true;
+
+  if (controlUiEnabled && controlUiInsecureAuth) {
+    findings.push({
+      checkId: "gateway.control_ui_insecure_auth",
+      severity: "critical",
+      title: "Control UI insecure auth enabled",
+      detail:
+        "gateway.controlUi.allowInsecureAuth=true enables auth downgrade paths for the Control UI.",
+      remediation:
+        "Set gateway.controlUi.allowInsecureAuth=false and serve Control UI over HTTPS or trusted localhost only.",
+    });
+  }
+
+  if (controlUiEnabled && controlUiDeviceAuthBypass) {
+    findings.push({
+      checkId: "gateway.control_ui_device_auth_disabled",
+      severity: "critical",
+      title: "Control UI device auth bypass enabled",
+      detail:
+        "gateway.controlUi.dangerouslyDisableDeviceAuth=true disables Control UI device-auth verification.",
+      remediation:
+        "Set gateway.controlUi.dangerouslyDisableDeviceAuth=false and rotate gateway auth credentials if this was enabled outside local debugging.",
+    });
+  }
+
   if (tailscaleMode === "funnel") {
     findings.push({
       checkId: "gateway.tailscale_funnel",

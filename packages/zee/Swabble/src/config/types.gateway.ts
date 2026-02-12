@@ -232,9 +232,20 @@ export type GatewayConfig = {
   tailscale?: GatewayTailscaleConfig;
   remote?: GatewayRemoteConfig;
   daemonBridge?: GatewayDaemonBridgeConfig;
-  /** Optional control UI config (currently unused). */
+  /** Optional Control UI auth policy controls. */
   controlUi?: {
+    /** Enable Control UI surfaces (default: false). */
     enabled?: boolean;
+    /**
+     * Allow non-HTTPS auth flows for Control UI.
+     * Keep false unless you are on a trusted local/dev path.
+     */
+    allowInsecureAuth?: boolean;
+    /**
+     * Break-glass flag: bypass Control UI device-auth checks.
+     * Dangerous for anything beyond localhost testing.
+     */
+    dangerouslyDisableDeviceAuth?: boolean;
   };
   reload?: GatewayReloadConfig;
   tls?: GatewayTlsConfig;

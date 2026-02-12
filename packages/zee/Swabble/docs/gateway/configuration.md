@@ -2413,6 +2413,12 @@ Notes:
 - The onboarding wizard generates a gateway token by default (even on loopback).
 - `gateway.remote.token` is **only** for remote CLI calls; it does not enable local gateway auth. `gateway.token` is ignored.
 
+Control UI auth guardrails:
+- `gateway.controlUi.enabled`: turn on Control UI surfaces.
+- `gateway.controlUi.allowInsecureAuth` (default `false`): break-glass toggle for non-HTTPS/dev auth flows.
+- `gateway.controlUi.dangerouslyDisableDeviceAuth` (default `false`): break-glass toggle that bypasses Control UI device-auth checks.
+- `zee security audit` reports critical findings when either dangerous toggle is enabled.
+
 Auth and Tailscale:
 - `gateway.auth.mode` sets the handshake requirements (`token` or `password`). When unset, token auth is assumed.
 - `gateway.auth.token` stores the shared token for token auth (used by the CLI on the same machine).

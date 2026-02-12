@@ -386,6 +386,8 @@ export const ZeeSchema = z
         controlUi: z
           .object({
             enabled: z.boolean().optional(),
+            allowInsecureAuth: z.boolean().optional(),
+            dangerouslyDisableDeviceAuth: z.boolean().optional(),
           })
           .strict()
           .optional(),
