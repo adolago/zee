@@ -22,7 +22,7 @@ describe("Config security", () => {
           apiKey: "secret_nested_qdrant_key",
         },
         embedding: {
-          apiKey: "secret_embedding_key",
+          provider: "google",
         },
       },
       zee: {
@@ -51,7 +51,7 @@ describe("Config security", () => {
     expect(redacted.memory?.redisUrl).toBe("********")
     expect(redacted.memory?.qdrantApiKey).toBe("********")
     expect(redacted.memory?.qdrant?.apiKey).toBe("********")
-    expect(redacted.memory?.embedding?.apiKey).toBe("********")
+    expect(redacted.memory?.embedding?.provider).toBe("google")
     expect(redacted.zee?.splitwise?.token).toBe("********")
     expect(redacted.grammar?.apiKey).toBe("********")
     // Check MCP redaction
