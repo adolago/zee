@@ -1608,7 +1608,7 @@ export function Prompt(props: PromptProps) {
           topBorder={showTitleInBorder() ? (
             <box height={1} flexDirection="row" gap={0}>
               <text fg={theme.border} flexShrink={0}>╭</text>
-              <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
+              <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden" attributes={TextAttributes.BOLD}>
                 {titleClamped()}
               </text>
               <text fg={theme.border} flexShrink={0}>─</text>
