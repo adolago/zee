@@ -159,7 +159,11 @@ Low-level RPC helper.
 ```bash
 zee gateway call status
 zee gateway call logs.tail --params '{"sinceMs": 60000}'
+zee gateway call operator.dashboard
 ```
+
+`operator.dashboard` returns an app-friendly operator snapshot (sessions, pairing queues,
+pending exec approvals, and current security warnings) for desktop/web companion clients.
 
 ## Manage the Gateway service
 

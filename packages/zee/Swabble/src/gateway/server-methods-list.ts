@@ -79,6 +79,7 @@ const BASE_METHODS = [
   "agent.identity.get",
   "agent.wait",
   "browser.request",
+  "operator.dashboard",
   // Internal WebSocket-native chat methods
   "chat.history",
   "chat.abort",
