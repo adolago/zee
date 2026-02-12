@@ -144,6 +144,29 @@ describe("loadZeePlugins", () => {
     expect(registry.channels.some((entry) => entry.plugin.id === "whatsapp")).toBe(true);
   });
 
+  it("loads bundled channel plugins enabled by default", () => {
+    const bundledDir = makeTempDir();
+    writePlugin({
+      id: "telegram",
+      body: `export default { id: "telegram", register() {} };`,
+      dir: bundledDir,
+      filename: "telegram.ts",
+    });
+    process.env.ZEE_BUNDLED_PLUGINS_DIR = bundledDir;
+
+    const registry = loadZeePlugins({
+      cache: false,
+      config: {
+        plugins: {
+          allow: ["telegram"],
+        },
+      },
+    });
+
+    const telegram = registry.plugins.find((entry) => entry.id === "telegram");
+    expect(telegram?.status).toBe("loaded");
+  });
+
   it("enables bundled memory plugin when selected by slot", () => {
     const bundledDir = makeTempDir();
     writePlugin({

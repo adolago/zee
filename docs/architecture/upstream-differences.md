@@ -136,14 +136,15 @@ zee embeds a trimmed “OpenClaw-like” gateway inside the Zee persona package:
 - Compared to `openclaw/src/`, Zee’s copy is missing these top-level subsystems:
   - `canvas-host/`
   - `compat/`
-  - `discord/`
   - `extensionAPI.ts`
   - `feishu/`
   - `imessage/`
   - `line/`
   - `macos/`
   - `signal/`
-  - `slack/`
+
+Zee now ships bundled first-party channel plugins for Slack/Discord/Telegram under
+`packages/zee/Swabble/extensions/` (instead of mirroring OpenClaw's original top-level source layout).
 
 Operationally, Zee’s gateway is launched by zee only when explicitly enabled (for example `zee daemon --gateway`).
 
