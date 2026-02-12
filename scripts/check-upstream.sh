@@ -5,7 +5,7 @@
 #
 # Remotes:
 #   opencode  - sst/opencode (kernel)       -> packages/zee/
-#   openclaw  - openclaw/openclaw (gateway)  -> packages/personas/zee/
+#   openclaw  - openclaw/openclaw (gateway)  -> packages/zee/Swabble/
 #   pimono    - badlogic/pi-mono (vendored)  -> npm deps
 #
 # When no --remote is given, checks all three.
@@ -27,7 +27,7 @@ declare -A REMOTE_BRANCH=(
 
 declare -A REMOTE_SCOPE=(
     [opencode]="packages/zee/ (kernel)"
-    [openclaw]="packages/personas/zee/ (gateway)"
+    [openclaw]="packages/zee/Swabble/ (gateway)"
     [pimono]="npm: @mariozechner/pi-* (vendored deps)"
 )
 
@@ -102,7 +102,7 @@ check_pimono() {
     echo ""
 
     # Get installed version from package.json
-    local pkg_json="$REPO_ROOT/packages/personas/zee/package.json"
+    local pkg_json="$REPO_ROOT/packages/zee/Swabble/package.json"
     local installed=""
     if [ -f "$pkg_json" ]; then
         installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$pkg_json" | grep -o '[0-9][0-9.]*' || echo "")

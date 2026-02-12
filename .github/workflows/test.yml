@@ -45,11 +45,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-        working-directory: packages/personas/zee
+        working-directory: packages/zee/Swabble
 
       - name: Test
         run: pnpm test
-        working-directory: packages/personas/zee
+        working-directory: packages/zee/Swabble
         env:
           CI: true
         timeout-minutes: 20

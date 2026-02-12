@@ -42,7 +42,7 @@ ProtectSystem=strict
 PrivateTmp=true
 # Zee needs write access to config, state, logs, and session data
 # Gateway needs access to zee directory for cache and session data
-ReadWritePaths=@HOME@/.config/zee @HOME@/.local/state/zee @HOME@/.local/share/zee @HOME@/.zee @ROOT@/packages/personas
+ReadWritePaths=@HOME@/.config/zee @HOME@/.local/state/zee @HOME@/.local/share/zee @HOME@/.zee @ROOT@/packages/zee/Swabble
 
 # Logging
 StandardOutput=journal

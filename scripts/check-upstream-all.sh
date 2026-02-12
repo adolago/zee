@@ -57,7 +57,7 @@ fi
 # Extract snapshot pins from upstream-differences.md
 UPSTREAM_DIFF="$REPO_ROOT/docs/architecture/upstream-differences.md"
 DELTA_MAP="$REPO_ROOT/docs/architecture/openclaw-delta-map.md"
-GATEWAY_PKG="$REPO_ROOT/packages/personas/zee/package.json"
+GATEWAY_PKG="$REPO_ROOT/packages/zee/Swabble/package.json"
 
 opencode_snapshot_pin=""
 openclaw_snapshot_pin=""

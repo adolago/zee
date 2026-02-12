@@ -41,7 +41,7 @@ log "# Config & repo checks"
 log "config.json: $HOME/.config/zee/config.json"
 log "zee.jsonc: $HOME/.config/zee/zee.jsonc"
 log "skills root: $HOME/.config/zee/skills -> $(readlink -f "$HOME/.config/zee/skills" 2>/dev/null || true)"
-log "personas root: $REPO_ROOT/packages/personas"
+log "Swabble root: $REPO_ROOT/packages/zee/Swabble"
 log ""
 
 log "# Diagnostic check (runtime + config only)"

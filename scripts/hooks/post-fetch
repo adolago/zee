@@ -49,7 +49,7 @@ fi
 
 # Check pimono (version comparison)
 if git rev-parse pimono/main &>/dev/null 2>&1; then
-    pkg_json="$REPO_ROOT/packages/personas/zee/package.json"
+    pkg_json="$REPO_ROOT/packages/zee/Swabble/package.json"
     if [ -f "$pkg_json" ]; then
         installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$pkg_json" | grep -o '[0-9][0-9.]*' || echo "")
         latest_tag=$(git tag -l "v0.*" --sort=-v:refname | while read -r tag; do
