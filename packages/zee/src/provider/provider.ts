@@ -328,9 +328,10 @@ export namespace Provider {
           pdf: model.modalities?.output?.includes("pdf") ?? false,
         },
         interleaved: model.interleaved
-          // Anthropic reasoning models always support interleaved thinking natively
-          // via @ai-sdk/anthropic, even when models.dev hasn't been updated yet
-          ?? (provider.npm === "@ai-sdk/anthropic" && model.reasoning ? true : false),
+          ?? (provider.npm === "@ai-sdk/anthropic" && model.reasoning ? true
+            // Kimi reasoning models require reasoning_content on all assistant messages
+            : provider.id === "kimi-for-coding" && model.reasoning ? { field: "reasoning_content" as const }
+            : false),
       },
       release_date: model.release_date,
       variants: {},
@@ -469,7 +470,9 @@ export namespace Provider {
               video: model.modalities?.output?.includes("video") ?? existingModel?.capabilities.output.video ?? false,
               pdf: model.modalities?.output?.includes("pdf") ?? existingModel?.capabilities.output.pdf ?? false,
             },
-            interleaved: model.interleaved ?? existingModel?.capabilities.interleaved ?? false,
+            interleaved: model.interleaved ?? existingModel?.capabilities.interleaved
+              // Kimi reasoning models require reasoning_content on all assistant messages
+              ?? (providerID === "kimi-for-coding" && model.reasoning ? { field: "reasoning_content" as const } : false),
           },
           cost: {
             input: model?.cost?.input ?? existingModel?.cost?.input ?? 0,
