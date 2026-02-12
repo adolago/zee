@@ -41,7 +41,7 @@ Current upstream pins (refreshed 2026-02-11):
 
 ### zee (top-level highlights)
 
-- Persona + memory code at repo root: `src/personas/`, `src/memory/`, `src/swarm/`, `src/domain/`
+- Zee domain code at repo root: `src/memory/`, `src/swarm/`, `src/domain/`
 - Project-local configuration bundle: `.zee/` (commands/tools/themes/plans)
 - Repo-local skills bundle: `.agents/skills/` (persona-scoped skills)
 - Rust workspace: `Cargo.toml`, `Cargo.lock` (currently `packages/stanley-core`)

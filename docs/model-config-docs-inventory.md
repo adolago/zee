@@ -21,7 +21,6 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `.agents/skills/@zee/provider-monitoring/SKILL.md` | - | max_tokens, thinking |
 | `.agents/skills/@zee/spotify-player/SKILL.md` | fallback | - |
 | `.agents/skills/@zee/weather/SKILL.md` | fallback | - |
-| `.agents/skills/personas/SKILL.md` | /model | - |
 | `TESTING.md` | fallback | - |
 | `docs/PROVIDER_ROSETTA_STONE.md` | - | max_tokens, thinking |
 | `docs/architecture/agent-personas.md` | provider/model | temperature, topP |

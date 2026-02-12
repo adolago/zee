@@ -222,4 +222,3 @@ Task(Explore): "Find deployment and CI/CD setup"
 
 - `@zee/SKILL.md` - Memory tools for coordination
 - `sparc-methodology/SKILL.md` - Structured development phases
-- `personas/SKILL.md` - Cross-persona capabilities

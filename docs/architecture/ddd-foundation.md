@@ -17,12 +17,8 @@ Shared modules consumed by the kernel and bundled into the distributable when re
 - `src/domain/`: persona domain tools (Zee/Stanley/Johny)
 - `src/mcp/`: MCP layer (servers, registry, permission helpers)
 - `src/memory/`: unified memory layer
-- `src/personas/`: persona orchestration/types
 - `src/swarm/`: swarm coordination (queen/workers/SPARC)
 - `src/theme/`: shared theme system
-
-### Gateways / Transports (`packages/personas/*`)
-Persona-specific gateways (e.g., Zee messaging transport). These should integrate via stable/public interfaces and avoid reaching into kernel internals.
 
 ## Boundary Rules
 
@@ -34,8 +30,7 @@ bun run boundaries:check
 
 ### Enforced Today
 
-1. `packages/zee/src/**` must not import from `packages/personas/**`.
-2. Cycles are tolerated for now within the kernel+shared-runtime boundary (tight coupling exists today), but cross-package imports are restricted.
+1. Cycles are tolerated for now within the kernel+shared-runtime boundary (tight coupling exists today), but cross-package imports are restricted.
 
 ### Intent (Follow-Up Work)
 

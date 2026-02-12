@@ -23,12 +23,11 @@ zee (Engine)
     Memory coordination
         |
         v
-  PERSONAS (Unified) -- .agents/skills/
-    Zee handles all domains: life admin, investing, learning
+  ZEE (Unified) -- .agents/skills/@zee/
+    Handles all domains: life admin, investing, learning
     Tool namespaces: zee:*, stanley:*, johny:*
         |
     SHARED LAYER
-      personas/    Orchestration, drones
       swarm/       Queen, workers, SPARC
 ```
 
@@ -36,7 +35,7 @@ zee (Engine)
 
 1. **zee** = Core engine (CLI, TUI, daemon, gateway)
 2. **swarm** = Orchestration layer (SPARC methodology, queen/worker coordination)
-3. **personas** = Zee is the single persona, with domain tool namespaces preserved
+3. **Zee** = The single persona, with domain tool namespaces preserved
 
 No generic "build" or "plan" agents. Every interaction goes through Zee with domain expertise via namespaced tools.
 
@@ -58,10 +57,10 @@ packages/
   web/               Astro documentation site
 ```
 
-**Domain implementations:**
-- **Zee (life admin)**: Tools in `src/domain/zee/`, persona logic in `src/personas/`
-- **Stanley (investing)**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
-- **Johny (learning)**: TypeScript implementation in `src/personas/johny/`
+**Domain implementations (all under Zee):**
+- **Life admin**: Tools in `src/domain/zee/`
+- **Investing (Stanley)**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
+- **Learning (Johny)**: Tools in `src/domain/johny/`, runtime in `src/personas/johny/`
 
 ## Key Directories
 
@@ -71,7 +70,6 @@ zee/
     @zee/                   Zee skills (life admin, investing, learning)
     @codex/                 Codex automation suite
     @clawhub/               ClawHub marketplace skills
-    personas/               Persona catalog and tool reference
     codebase-guide/         This architecture reference
     parallel-orchestration/ Parallel task patterns
   packages/
@@ -91,12 +89,6 @@ zee/
       stanley/              Financial tools (CLI bridge)
       zee/                  Life admin tools (memory, messaging, calendar, etc.)
     swarm/                  Swarm orchestration (queen, workers, SPARC)
-    personas/
-      johny/                TypeScript learning system
-        knowledge-graph.ts  Topic DAG
-        mastery.ts          Mastery tracking
-        review.ts           Spaced repetition
-        practice.ts         Practice sessions
     memory/                 Unified memory system
       unified.ts            Unified memory API
       qdrant.ts             Qdrant client integration
