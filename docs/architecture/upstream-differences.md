@@ -1,6 +1,8 @@
 # zee vs sst/opencode vs openclaw
 
-See also: `docs/architecture/feature-comparison.md` (generated feature matrix across Zee, OpenCode, OpenClaw, and Pi-mono).
+See also:
+- `docs/architecture/feature-comparison.md` (generated feature matrix across Zee, OpenCode, OpenClaw, and Pi-mono)
+- `docs/architecture/zee-opencode-gap-map-top10.md` (canonical OpenCode lane index and ranked backlog)
 
 This document maps the high-signal differences between zee and:
 
