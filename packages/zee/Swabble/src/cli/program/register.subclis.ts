@@ -69,6 +69,14 @@ const entries: SubCliEntry[] = [
     },
   },
   {
+    name: "auth",
+    description: "Auth profiles and OAuth rotation",
+    register: async (program) => {
+      const mod = await import("../auth-cli.js");
+      mod.registerAuthCli(program);
+    },
+  },
+  {
     name: "models",
     description: "Model configuration",
     register: async (program) => {
