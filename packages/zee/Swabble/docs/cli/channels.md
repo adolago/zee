@@ -41,6 +41,8 @@ zee channels logout --channel whatsapp
 
 Token-based channels (Telegram/Slack/Discord) are configured with `channels add` and usually do not require a separate login flow.
 
+For Slack/Discord native action packs, review and tune `channels.<provider>.actions.*` so message actions stay least-privilege.
+
 ## Troubleshooting
 
 - Run `zee status --deep` for a broad probe.

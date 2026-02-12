@@ -20,6 +20,7 @@ Zee can run multiple channels at the same time via the Gateway.
 - DM access defaults to pairing-style controls.
 - `dmPolicy="open"` requires `allowFrom=["*"]`.
 - Group access should normally stay `groupPolicy="allowlist"` with mention gating enabled.
+- Keep channel action packs least-privilege (`channels.<channel>.actions.*`).
 - Review warnings with `zee security audit` and `zee doctor`.
 
 ## Operational commands
