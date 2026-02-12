@@ -11,11 +11,11 @@ Snapshot used for this comparison:
 - opencode: `fa20bc2` (cloned `dev`)
 - openclaw: `aaddbdae52d7` (full `aaddbdae52d71bff3a74fa28dd6597816e2d7592`)
 
-Current upstream pins (refreshed 2026-02-11):
+Current upstream pins (refreshed 2026-02-12):
 
-- opencode: `7e1247c42080` (full `7e1247c4208002eda989b52c9462a2294224e296`, `opencode/dev`)
-- openclaw: `fb84e18bc306` (full `fb84e18bc3061e803b19be581b5354494ba060f9`, `openclaw/main`)
-- pimono: `34878e7cc807` (full `34878e7cc8074f42edff6c2cdcc9828aa9b6afde`, `pimono/main`); installed `@mariozechner/pi-coding-agent@0.49.3`, latest tag `v0.52.9`
+- opencode: `624dd94b5dd8` (full `624dd94b5dd8dca03aa3b246312f8b54fd3331f1`, `opencode/dev`)
+- openclaw: `5c32989f5331` (full `5c32989f5331df0bf760c23fd047e65d1f812b52`, `openclaw/main`)
+- pimono: `34878e7cc807` (full `34878e7cc8074f42edff6c2cdcc9828aa9b6afde`, `pimono/main`); installed `@mariozechner/pi-coding-agent@0.52.9`, latest tag `v0.52.9`
 
 ## Summary (what each repo is)
 
@@ -66,7 +66,7 @@ Unique packages (vs opencode):
 
 - `zee/` (core CLI/TUI/daemon; renamed from `opencode/`)
 - `zee-adapter/` (bridge/adapters)
-- `personas/` (persona packages; notably `personas/zee/`)
+- `extensions/` (Zee extensions; gateway/channel integrations live here and in `packages/zee/Swabble/extensions/`)
 - `stanley-core/` (Rust)
 - `hosted/` (zee-specific hosted surfaces)
 
@@ -226,18 +226,18 @@ Overlap is mostly in “utility” skills (for example `weather`, `wacli`, `spot
 
 These numbers are intended to size the divergence, not to replace a full code review:
 
-- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1466` (opencode-only) vs `1155` (zee-only)
+- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1520` (opencode-only) vs `1179` (zee-only)
 - File delta (with rename detection raised: `git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD`):
-  - Added: `4366`
-  - Deleted: `690`
+  - Added: `4340`
+  - Deleted: `688`
   - Modified: `224`
-  - Renamed: `332`
+  - Renamed: `334`
 
 ### pi-mono dependency tracking
 
 Zee vendors `@mariozechner/pi-*` packages via npm (not git merge):
 
-- Installed: `@mariozechner/pi-coding-agent@0.49.3` (in `packages/zee/Swabble/package.json`)
+- Installed: `@mariozechner/pi-coding-agent@0.52.9` (in `packages/zee/Swabble/package.json`)
 - Latest tag: `v0.52.9` (on `pimono/main`)
 - Update: `cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui`
 

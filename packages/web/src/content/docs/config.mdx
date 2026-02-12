@@ -174,7 +174,8 @@ Available options:
 - `scroll_acceleration.enabled` - Enable macOS-style scroll acceleration. **Takes precedence over `scroll_speed`.**
 - `scroll_speed` - Custom scroll speed multiplier (default: `3`, minimum: `1`). Ignored if `scroll_acceleration.enabled` is `true`.
 - `diff_style` - Control diff rendering. `"auto"` adapts to terminal width, `"stacked"` always shows single column.
-- `busy_submit_behavior` - What happens when you submit a prompt while the session is already running: `"followup"` queues the message, `"steer"` interrupts and immediately starts a new run, `"reject"` refuses to submit.
+
+Note: If you submit a prompt while the session is already running, Zee will steer (interrupt) the active run.
 
 [Learn more about using the TUI here](/docs/tui).
 

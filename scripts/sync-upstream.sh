@@ -98,13 +98,13 @@ if [ "$REMOTE" = "pimono" ]; then
     echo "pi-mono is synced via npm, not git merge."
     echo ""
     echo "Update command:"
-    echo -e "  ${CYAN}cd packages/personas/zee && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui${NC}"
+    echo -e "  ${CYAN}cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui${NC}"
     echo ""
 
     # Show current vs latest
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-    pkg_json="$REPO_ROOT/packages/personas/zee/package.json"
+    pkg_json="$REPO_ROOT/packages/zee/Swabble/package.json"
     if [ -f "$pkg_json" ]; then
         installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$pkg_json" | grep -o '[0-9][0-9.]*' || echo "unknown")
         echo -e "  Installed: ${GREEN}$installed${NC}"
@@ -166,7 +166,7 @@ if [ "$REMOTE" = "openclaw" ]; then
         if [ -f "$DELTA_MAP" ]; then
             # Extract lines with TODO follow-ups, grouped by decision type
             echo -e "${RED}Security ports (port/adapt):${NC}"
-            grep -E "\| (security|reliability) \| (port|adapt) \|.*\| TODO" "$DELTA_MAP" | while read -r line; do
+            (grep -E "\| (security|reliability) \| (port|adapt) \|.*\| TODO" "$DELTA_MAP" || true) | while read -r line; do
                 pr=$(echo "$line" | awk -F'|' '{print $2}' | xargs)
                 cat=$(echo "$line" | awk -F'|' '{print $3}' | xargs)
                 dec=$(echo "$line" | awk -F'|' '{print $4}' | xargs)
@@ -176,7 +176,7 @@ if [ "$REMOTE" = "openclaw" ]; then
 
             echo ""
             echo -e "${YELLOW}Feature ports (adapt/defer):${NC}"
-            grep -E "\| feature \| (adapt|defer) \|.*\| TODO" "$DELTA_MAP" | while read -r line; do
+            (grep -E "\| feature \| (adapt|defer) \|.*\| TODO" "$DELTA_MAP" || true) | while read -r line; do
                 pr=$(echo "$line" | awk -F'|' '{print $2}' | xargs)
                 dec=$(echo "$line" | awk -F'|' '{print $4}' | xargs)
                 title=$(echo "$line" | awk -F'|' '{print $5}' | xargs)

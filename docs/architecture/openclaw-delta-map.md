@@ -250,7 +250,7 @@ Auth gating: see lane 01 (`openclaw/openclaw#9518`).
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | Done (ported: pi streaming agent updates + targeted tool-event routing/caps in gateway) |
 | openclaw/openclaw#2900 | feature | non-goal | Removed-channel quote replies are not in scope for canvas lane. | None |
-| openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to Zee. | TODO (tool policy is profile-based, not per-sender; needs design work) |
+| openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to Zee. | Done (already implemented: channel group toolsBySender + precedence in `src/config/group-policy.ts`, wired via `agents/pi-tools.policy.ts`) |
 | openclaw/openclaw#2455 | reliability | port | Restore A2UI scaffold assets; prevent runtime breakage. | Done (already implemented in canvas-host/a2ui/) |
 | openclaw/openclaw#1882 | security | adapt | Add mDNS discovery config to reduce information disclosure; config surface differs. | Done (already implemented: bonjour-ciao.ts, bonjour.ts with config in zod-schema.ts) |
 | openclaw/openclaw#1621 | feature | non-goal | Discord exec approval forwarding is out of scope (channel not supported). | None |
@@ -271,7 +271,7 @@ Upstream PR triage (OpenClaw):
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#9806 | security | adapt | Skill/plugin safety scanning should exist; integration differs. | Done (already implemented: skill-scanner.ts) |
 | openclaw/openclaw#4001 | security | port | Harden SSH target handling; reduce injection/target spoofing risk. | Done (ported: SSH option injection prevention in ssh-tunnel.ts, ssh-config.ts, gateway-status) |
-| openclaw/openclaw#1757 | security | adapt | Tool group precedence is policy logic; map to Zee permission model. | TODO (tool policy is profile-based, not per-sender) |
+| openclaw/openclaw#1757 | security | adapt | Tool group precedence is policy logic; map to Zee permission model. | Done (already implemented: toolsBySender/group tool policy precedence and tool group expansion in tool-policy layer) |
 | openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix override may be useful; persona routing complicates. | Done (already implemented: response-prefix-template.ts) |
 | openclaw/openclaw#8403 | feature | defer | Removed-channel plugin SDK typing changes not prioritized. | TODO |
 | openclaw/openclaw#1708 | feature | non-goal | iMessage normalization out of scope. | None |
@@ -296,5 +296,5 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#1485 | feature | adapt | Support direct token/provider in auth apply; map to Zee auth UX. | Done (already implemented: auth-choice.apply.openai.ts supports opts.token + opts.tokenProvider) |
 | openclaw/openclaw#10176 | reliability | port | resolveUserPath undefined guard is general hardening. | Done (ported: type guard in utils.ts) |
 | openclaw/openclaw#9436 | reliability | port | Silence unused hook token URL param; low risk. | Done (already implemented: hooks.ts + server-http.ts reject ?token= URLs) |
-| openclaw/openclaw#5370 | chore | defer | Minimum Node bump may be irrelevant (Zee is Bun-first). | TODO |
+| openclaw/openclaw#5370 | chore | defer | Minimum Node bump may be irrelevant (Zee is Bun-first). | Done (already implemented: `infra/runtime-guard.ts` MIN_NODE >=22.12.0 + package engines) |
 | openclaw/openclaw#4873 | chore | non-goal | Upstream-only local updates without clear mapping. | None |
