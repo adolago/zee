@@ -25,6 +25,7 @@ import {
   startTailscaleExposure,
   type TailscaleMode,
 } from "../../pkg/tailscale"
+import { printGatewayStatus } from "./gateway/status"
 
 const log = Log.create({ service: "daemon" })
 const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
@@ -982,44 +983,7 @@ export const GatewayStatusCommand = cmd({
   command: "gateway-status",
   describe: "Check Zee gateway configuration and reachability",
   handler: async () => {
-    const preflight = await GatewaySupervisor.preflight({ force: true })
-    const port = getGatewayPort()
-    const portOpen = await isPortOpen("127.0.0.1", port)
-    const processes = listGatewayProcesses()
-    const gatewayState = GatewaySupervisor.getState()
-    const embeddedState = getEmbeddedGatewayState()
-    const configLabel = preflight.configExists
-      ? preflight.configPath ?? "Configured"
-      : preflight.configPath
-        ? `Not found (${preflight.configPath})`
-        : "Not found"
-
-    Output.log("Zee Gateway Status")
-    Output.log(`  Mode:      embedded`)
-    Output.log(`  Config:    ${configLabel}`)
-    Output.log(`  Port:      ${port} (${portOpen ? "listening" : "closed"})`)
-    Output.log(`  Daemon:    ${gatewayState.daemonUrl ?? "unknown"}`)
-    Output.log(`  Enabled:   ${gatewayState.enabled ? "yes" : "no"}`)
-    Output.log(
-      `  Process:   ${embeddedState.running ? `embedded (pid ${embeddedState.pid ?? process.pid})` : "none"}`,
-    )
-    Output.log(`  Env:       ${preflight.envHints.length ? preflight.envHints.join(", ") : "none"}`)
-
-    if (processes.length > 0) {
-      Output.log("  External:")
-      for (const proc of processes) {
-        Output.log(`    ${proc.pid} ${proc.cmd}`)
-      }
-    } else {
-      Output.log("  External:  none")
-    }
-
-    const issues = [...preflight.issues, ...preflight.warnings]
-    if (issues.length > 0) {
-      Output.log("  Issues:")
-      for (const issue of issues) {
-        Output.log(`    - ${issue}`)
-      }
-    }
+    Output.log("Note: `zee gateway-status` is deprecated. Use: `zee gateway status`.")
+    await printGatewayStatus()
   },
 })

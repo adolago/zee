@@ -36,6 +36,8 @@ import { CheckCommand } from "./cli/cmd/check"
 import { ProviderCommand } from "./cli/cmd/provider"
 import { ClawHubCommand } from "./cli/cmd/clawhub"
 import { CompareCommand } from "./cli/cmd/compare"
+import { ClientCommand } from "./cli/cmd/client"
+import { GatewayCommand } from "./cli/cmd/gateway"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -146,6 +148,7 @@ const cli = yargs(hideBin(process.argv))
   .command(McpCommand)
   .command(TuiThreadCommand)
   .command(AttachCommand)
+  .command(ClientCommand)
   .command(RunCommand)
   .command(CheckCommand)
   .command(GenerateCommand)
@@ -171,6 +174,7 @@ const cli = yargs(hideBin(process.argv))
   .command(DaemonUninstallCommand)
   .command(DaemonServiceStatusCommand)
   .command(GatewayStatusCommand)
+  .command(GatewayCommand)
   .command(PluginCommand)
   .command(ProviderCommand)
   .command(SetupCommand)

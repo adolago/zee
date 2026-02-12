@@ -273,9 +273,15 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "A WebSocket control plane for channels/tools/events and remote clients.",
     support: {
       zee: {
-        level: "partial",
-        notes: "Zee embeds a trimmed OpenClaw-like gateway under Swabble.",
-        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+        level: "yes",
+        notes: "WebSocket gateway control plane (Swabble) for channels/tools/events, with CLI helpers and REST bridging.",
+        evidence: [
+          { kind: "repo_path", ref: "packages/zee/Swabble/src/gateway/server.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/gateway/embedded-gateway.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/server/route/gateway.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/gateway" },
+          { kind: "doc", ref: "docs/architecture/gateway-control-plane.md" },
+        ],
       },
       opencode: { level: "no" },
       openclaw: { level: "yes", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
@@ -288,7 +294,17 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Client/server split",
     description: "Separates a client UI from a server runtime for the agent.",
     support: {
-      zee: { level: "partial", notes: "Zee runs as CLI/TUI with optional daemon; server surfaces exist but aren’t a separate hosted product." },
+      zee: {
+        level: "yes",
+        notes: "Server runtime (`zee daemon`/`zee serve`) and client UI (`zee attach`/`zee client`) are explicitly separated; remote targeting uses ZEE_URL + auth.",
+        evidence: [
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/daemon.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/serve.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/tui/attach.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/client.ts" },
+          { kind: "doc", ref: "README.md" },
+        ],
+      },
       opencode: { level: "yes", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
       openclaw: { level: "yes", notes: "Gateway is the control plane; nodes can be remote." },
       pimono: { level: "partial", notes: "pi-pods and other packages target deployments; not a single end-user client/server split." },
@@ -780,4 +796,3 @@ export function getCatalog(): Feature[] {
     return a.label.localeCompare(b.label)
   })
 }
-

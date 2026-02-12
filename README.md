@@ -175,6 +175,25 @@ See `docs/tui-vim-mode.md` for Vim keybindings.
 zee daemon --hostname 127.0.0.1 --port 3210
 ```
 
+**Remote client/server (explicit):**
+
+```bash
+# On the server
+zee daemon --hostname 0.0.0.0 --port 3210
+
+# On the client machine
+zee client http://server:3210
+# or:
+ZEE_URL=http://server:3210 zee
+```
+
+**Gateway control plane helpers:**
+
+```bash
+zee gateway status
+zee gateway url
+```
+
 ## Architecture
 
 ```

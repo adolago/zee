@@ -92,7 +92,9 @@ function restoreZeeUrl() {
   previousZeeUrl = undefined
 }
 
-const DEFAULT_GATEWAY_PORT = 7860
+// Match Swabble's DEFAULT_GATEWAY_PORT (18789). This value is only used when the
+// full gateway runtime is unavailable.
+const DEFAULT_GATEWAY_PORT = 18789
 
 export function resolveEmbeddedGatewayPort(): number {
   if (!_resolved) return DEFAULT_GATEWAY_PORT

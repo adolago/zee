@@ -111,13 +111,14 @@ export namespace ModelsDev {
   /**
    * Fetch the latest model catalog from models.dev and write to cache.
    */
-  export async function refresh() {
+  export async function refresh(options: { timeoutMs?: number } = {}) {
     const filepath = getFilepath()
     log.info("refreshing models from", { url: `${url()}/api.json` })
     const result = await fetch(`${url()}/api.json`, {
       headers: {
         "User-Agent": Installation.USER_AGENT,
       },
+      signal: AbortSignal.timeout(options.timeoutMs ?? 2000),
     }).catch((e) => {
       log.warn("models refresh error", {
         error: e,
@@ -130,12 +131,21 @@ export namespace ModelsDev {
   }
 }
 
-if (!Flag.ZEE_DISABLE_MODELS_FETCH) {
-  ModelsDev.refresh()
-  setInterval(
-    async () => {
-      await ModelsDev.refresh()
-    },
-    60 * 1000 * 60,
-  ).unref()
+function shouldAutoRefreshModels(): boolean {
+  if (Flag.ZEE_DISABLE_MODELS_FETCH) return false
+
+  // Avoid starting a network request for one-shot commands (e.g. `zee compare`)
+  // which should exit immediately.
+  const argv = process.argv.slice(2).filter(Boolean)
+  const cmd = argv[0]
+  if (cmd === "daemon" || cmd === "serve") return true
+
+  return false
+}
+
+if (shouldAutoRefreshModels()) {
+  void ModelsDev.refresh({ timeoutMs: 2000 })
+  setInterval(async () => {
+    await ModelsDev.refresh({ timeoutMs: 5000 })
+  }, 60 * 1000 * 60).unref()
 }
