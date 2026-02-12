@@ -78,4 +78,13 @@ export class ExecApprovalManager {
     const entry = this.pending.get(recordId);
     return entry?.record ?? null;
   }
+
+  listPending(): ExecApprovalRecord[] {
+    return [...this.pending.values()]
+      .map((entry) => ({
+        ...entry.record,
+        request: { ...entry.record.request },
+      }))
+      .sort((a, b) => a.createdAtMs - b.createdAtMs);
+  }
 }

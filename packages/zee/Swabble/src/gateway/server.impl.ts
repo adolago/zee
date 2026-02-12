@@ -468,6 +468,7 @@ export async function startGatewayServer(
       nodeUnsubscribe,
       nodeUnsubscribeAll,
       nodeRegistry,
+      execApprovalManager,
       agentRunSeq,
       chatAbortControllers,
       chatAbortedRuns: chatRunState.abortedRuns,
