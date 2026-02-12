@@ -160,6 +160,9 @@ const FIELD_LABELS: Record<string, string> = {
   "gateway.auth.token": "Gateway Token",
   "gateway.auth.password": "Gateway Password",
   "gateway.allowedOrigins": "Gateway Allowed Origins",
+  "gateway.controlUi.enabled": "Control UI Enabled",
+  "gateway.controlUi.allowInsecureAuth": "Control UI Insecure Auth",
+  "gateway.controlUi.dangerouslyDisableDeviceAuth": "Control UI Device Auth Override",
   canvasHost: "Canvas Host",
   "canvasHost.enabled": "Canvas Host Enabled",
   "canvasHost.root": "Canvas Root Directory",
@@ -390,6 +393,12 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.auth.token":
     "Required by default for gateway access (unless using Tailscale Serve identity); required for non-loopback binds.",
   "gateway.auth.password": "Required for Tailscale funnel.",
+  "gateway.controlUi.enabled":
+    "Enable the Control UI surface for gateway operators (default: false).",
+  "gateway.controlUi.allowInsecureAuth":
+    "Allow Control UI auth over insecure/non-HTTPS contexts (dangerous outside localhost/dev).",
+  "gateway.controlUi.dangerouslyDisableDeviceAuth":
+    "Break-glass: disable Control UI device-auth checks. Use only for temporary local debugging.",
   "gateway.http.endpoints.chatCompletions.enabled":
     "Enable the OpenAI-compatible `POST /v1/chat/completions` endpoint (default: false).",
   "gateway.reload.mode": 'Hot reload strategy for config changes ("hybrid" recommended).',
@@ -602,6 +611,9 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "gateway.daemonBridge.url": "http://127.0.0.1:3210",
   "gateway.daemonBridge.sessionStore": "~/.zee/gateway/daemon-sessions.json",
   "gateway.allowedOrigins": "http://127.0.0.1:5173",
+  "gateway.controlUi.enabled": true,
+  "gateway.controlUi.allowInsecureAuth": false,
+  "gateway.controlUi.dangerouslyDisableDeviceAuth": false,
   "agents.list[].identity.avatar": "avatars/zee.png",
 };
 

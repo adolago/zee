@@ -40,6 +40,7 @@ Start with the smallest access that still works, then widen it as you gain confi
 - **Inbound access** (DM policies, group policies, allowlists): can strangers trigger the bot?
 - **Tool blast radius** (elevated tools + open rooms): could prompt injection turn into shell/file/network actions?
 - **Network exposure** (Gateway bind/auth, Tailscale Serve/Funnel).
+- **Control UI auth downgrade toggles** (`gateway.controlUi.allowInsecureAuth`, `gateway.controlUi.dangerouslyDisableDeviceAuth`).
 - **Browser control exposure** (remote nodes, relay ports, remote CDP endpoints).
 - **Local disk hygiene** (permissions, symlinks, config includes, “synced folder” paths).
 - **Plugins** (extensions exist without an explicit allowlist).
@@ -72,6 +73,12 @@ When the audit prints findings, treat this as a priority order:
 
 Use HTTPS or localhost for HTTP endpoints. Keep gateway auth enabled and avoid
 public exposure for loopback-only services. Prefer Tailscale Serve for remote access.
+
+If you enable Control UI (`gateway.controlUi.enabled`), keep both break-glass flags disabled:
+- `gateway.controlUi.allowInsecureAuth: false`
+- `gateway.controlUi.dangerouslyDisableDeviceAuth: false`
+
+`zee security audit` marks either toggle as a critical finding.
 
 ## Reverse Proxy Configuration
 
