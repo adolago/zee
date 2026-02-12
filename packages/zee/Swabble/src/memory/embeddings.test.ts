@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
+import { DEFAULT_VOYAGE_EMBEDDING_MODEL } from "./embeddings-voyage.js";
 
 vi.mock("../agents/model-auth.js", () => ({
   resolveApiKeyForProvider: vi.fn(),
@@ -164,6 +165,82 @@ describe("embedding provider remote overrides", () => {
     expect(headers["x-goog-api-key"]).toBe("gemini-key");
     expect(headers["Content-Type"]).toBe("application/json");
   });
+
+  it("builds Voyage embeddings requests with input_type and remote overrides", async () => {
+    const inputTypes: Array<string | undefined> = [];
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { input_type?: string };
+      inputTypes.push(body.input_type);
+
+      const callIndex = inputTypes.length - 1;
+      const data =
+        callIndex === 0
+          ? [{ embedding: [1, 2, 3], index: 0 }]
+          : [
+              { embedding: [1, 2, 3], index: 0 },
+              { embedding: [4, 5, 6], index: 1 },
+            ];
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ data }),
+      };
+    }) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { createEmbeddingProvider } = await import("./embeddings.js");
+    const authModule = await import("../agents/model-auth.js");
+    vi.mocked(authModule.resolveApiKeyForProvider).mockResolvedValue({
+      apiKey: "provider-key",
+      mode: "api-key",
+      source: "test",
+    });
+
+    const cfg = {
+      models: {
+        providers: {
+          voyage: {
+            baseUrl: "https://provider.example/v1",
+            headers: {
+              "X-Provider": "p",
+              "X-Shared": "provider",
+            },
+          },
+        },
+      },
+    };
+
+    const result = await createEmbeddingProvider({
+      config: cfg as never,
+      provider: "voyage",
+      remote: {
+        baseUrl: "https://remote.example/v1",
+        apiKey: "  remote-key  ",
+        headers: {
+          "X-Shared": "remote",
+          "X-Remote": "r",
+        },
+      },
+      model: "voyage-3-large",
+      fallback: "none",
+    });
+
+    await result.provider.embedQuery("hello");
+    await result.provider.embedBatch(["a", "b"]);
+
+    expect(authModule.resolveApiKeyForProvider).not.toHaveBeenCalled();
+    expect(inputTypes).toEqual(["query", "document"]);
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("https://remote.example/v1/embeddings");
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer remote-key");
+    expect(headers["Content-Type"]).toBe("application/json");
+    expect(headers["X-Provider"]).toBe("p");
+    expect(headers["X-Shared"]).toBe("remote");
+    expect(headers["X-Remote"]).toBe("r");
+  });
 });
 
 describe("embedding provider auto selection", () => {
@@ -261,6 +338,47 @@ describe("embedding provider auto selection", () => {
     expect(url).toBe("https://api.openai.com/v1/embeddings");
     const payload = JSON.parse(String(init?.body ?? "{}")) as { model?: string };
     expect(payload.model).toBe("text-embedding-3-small");
+  });
+
+  it("uses voyage when openai and gemini are missing", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ embedding: [1, 2, 3], index: 0 }] }),
+    })) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { createEmbeddingProvider } = await import("./embeddings.js");
+    const authModule = await import("../agents/model-auth.js");
+    vi.mocked(authModule.resolveApiKeyForProvider).mockImplementation(async ({ provider }) => {
+      if (provider === "openai") {
+        throw new Error('No API key found for provider "openai".');
+      }
+      if (provider === "google") {
+        throw new Error('No API key found for provider "google".');
+      }
+      if (provider === "voyage") {
+        return { apiKey: "voyage-key", source: "env: VOYAGE_API_KEY", mode: "api-key" };
+      }
+      throw new Error(`Unexpected provider ${provider}`);
+    });
+
+    const result = await createEmbeddingProvider({
+      config: {} as never,
+      provider: "auto",
+      model: "",
+      fallback: "none",
+    });
+
+    expect(result.requestedProvider).toBe("auto");
+    expect(result.provider.id).toBe("voyage");
+    await result.provider.embedQuery("hello");
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe("https://api.voyageai.com/v1/embeddings");
+    const payload = JSON.parse(String(init?.body ?? "{}")) as { model?: string; input_type?: string };
+    expect(payload.model).toBe(DEFAULT_VOYAGE_EMBEDDING_MODEL);
+    expect(payload.input_type).toBe("query");
   });
 });
 

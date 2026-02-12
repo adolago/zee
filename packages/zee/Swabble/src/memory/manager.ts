@@ -20,9 +20,11 @@ import {
   type EmbeddingProviderResult,
   type GeminiEmbeddingClient,
   type OpenAiEmbeddingClient,
+  type VoyageEmbeddingClient,
 } from "./embeddings.js";
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
 import { DEFAULT_OPENAI_EMBEDDING_MODEL } from "./embeddings-openai.js";
+import { DEFAULT_VOYAGE_EMBEDDING_MODEL } from "./embeddings-voyage.js";
 import {
   OPENAI_BATCH_ENDPOINT,
   type OpenAiBatchRequest,
@@ -123,11 +125,12 @@ export class MemoryIndexManager {
   private readonly workspaceDir: string;
   private readonly settings: ResolvedMemorySearchConfig;
   private provider: EmbeddingProvider;
-  private readonly requestedProvider: "openai" | "local" | "gemini" | "auto";
-  private fallbackFrom?: "openai" | "local" | "gemini";
+  private readonly requestedProvider: "openai" | "local" | "gemini" | "voyage" | "auto";
+  private fallbackFrom?: "openai" | "local" | "gemini" | "voyage";
   private fallbackReason?: string;
   private openAi?: OpenAiEmbeddingClient;
   private gemini?: GeminiEmbeddingClient;
+  private voyage?: VoyageEmbeddingClient;
   private batch: {
     enabled: boolean;
     wait: boolean;
@@ -224,6 +227,7 @@ export class MemoryIndexManager {
     this.fallbackReason = params.providerResult.fallbackReason;
     this.openAi = params.providerResult.openAi;
     this.gemini = params.providerResult.gemini;
+    this.voyage = params.providerResult.voyage;
     this.sources = new Set(params.settings.sources);
     this.db = this.openDatabase();
     this.providerKey = this.computeProviderKey();
@@ -1318,13 +1322,15 @@ export class MemoryIndexManager {
     const fallback = this.settings.fallback;
     if (!fallback || fallback === "none" || fallback === this.provider.id) return false;
     if (this.fallbackFrom) return false;
-    const fallbackFrom = this.provider.id as "openai" | "gemini" | "local";
+    const fallbackFrom = this.provider.id as "openai" | "gemini" | "voyage" | "local";
 
     const fallbackModel =
       fallback === "gemini"
         ? DEFAULT_GEMINI_EMBEDDING_MODEL
         : fallback === "openai"
           ? DEFAULT_OPENAI_EMBEDDING_MODEL
+          : fallback === "voyage"
+            ? DEFAULT_VOYAGE_EMBEDDING_MODEL
           : this.settings.model;
 
     const fallbackResult = await createEmbeddingProvider({
@@ -1342,6 +1348,7 @@ export class MemoryIndexManager {
     this.provider = fallbackResult.provider;
     this.openAi = fallbackResult.openAi;
     this.gemini = fallbackResult.gemini;
+    this.voyage = fallbackResult.voyage;
     this.providerKey = this.computeProviderKey();
     this.batch = this.resolveBatchConfig();
     log.warn(`memory embeddings: switched to fallback provider (${fallback})`, { reason });
@@ -1754,6 +1761,20 @@ export class MemoryIndexManager {
           provider: "gemini",
           baseUrl: this.gemini.baseUrl,
           model: this.gemini.model,
+          headers: entries,
+        }),
+      );
+    }
+    if (this.provider.id === "voyage" && this.voyage) {
+      const entries = Object.entries(this.voyage.headers)
+        .filter(([key]) => key.toLowerCase() !== "authorization")
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => [key, value]);
+      return hashText(
+        JSON.stringify({
+          provider: "voyage",
+          baseUrl: this.voyage.baseUrl,
+          model: this.voyage.model,
           headers: entries,
         }),
       );
