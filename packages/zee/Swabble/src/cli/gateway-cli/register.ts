@@ -1,6 +1,8 @@
 import type { Command } from "commander";
 import { gatewayStatusCommand } from "../../commands/gateway-status.js";
 import { formatHealthChannelLines, type HealthSummary } from "../../commands/health.js";
+import { loadConfig } from "../../config/config.js";
+import { resolveGatewayAuth } from "../../gateway/auth.js";
 import { discoverGatewayBeacons } from "../../infra/bonjour-discovery.js";
 import type { CostUsageSummary } from "../../infra/session-cost-usage.js";
 import { WIDE_AREA_DISCOVERY_DOMAIN } from "../../infra/widearea-dns.js";
@@ -93,6 +95,140 @@ function renderCostUsageSummary(summary: CostUsageSummary, days: number, rich: b
   }
 
   return lines;
+}
+
+type WebWorkflowCheck = {
+  id: string;
+  label: string;
+  method: string;
+  ok: boolean;
+  error?: string;
+};
+
+type GatewayWebSummary = {
+  wsUrl: string;
+  checks: WebWorkflowCheck[];
+  warnings: string[];
+  auth: {
+    mode: "token" | "password";
+    hasSharedSecret: boolean;
+    tailscaleMode: string;
+    allowTailscale: boolean;
+  };
+  proxy: {
+    allowedOrigins: string[];
+    trustedProxies: string[];
+  };
+};
+
+const WEB_WORKFLOW_CHECKS: Array<Pick<WebWorkflowCheck, "id" | "label" | "method">> = [
+  { id: "health", label: "Gateway health", method: "health" },
+  { id: "sessions", label: "Session visibility", method: "sessions.list" },
+  { id: "approvals", label: "Approval controls", method: "exec.approvals.get" },
+  { id: "pairing-nodes", label: "Node pairing", method: "node.pair.list" },
+  { id: "pairing-devices", label: "Device pairing", method: "device.pair.list" },
+  { id: "channels", label: "Channel state", method: "channels.status" },
+];
+
+function resolveGatewayWsUrlFromConfig(): string {
+  const cfg = loadConfig();
+  const remoteUrl = cfg.gateway?.remote?.url?.trim();
+  if (remoteUrl) return remoteUrl;
+  const port = cfg.gateway?.port ?? 18789;
+  return `ws://127.0.0.1:${port}`;
+}
+
+function buildWebOperatorWarnings(params: {
+  auth: GatewayWebSummary["auth"];
+  proxy: GatewayWebSummary["proxy"];
+}): string[] {
+  const warnings: string[] = [];
+  if (
+    !params.auth.hasSharedSecret &&
+    !(params.auth.allowTailscale && params.auth.tailscaleMode === "serve")
+  ) {
+    warnings.push(
+      "Gateway auth secret is missing. Set gateway.auth.token/password before exposing web operator clients.",
+    );
+  }
+  if (params.proxy.allowedOrigins.length === 0) {
+    warnings.push(
+      "gateway.allowedOrigins is empty. Add explicit web UI origins when running Control UI/WebChat on a different host/port.",
+    );
+  }
+  if (params.proxy.trustedProxies.length === 0) {
+    warnings.push(
+      "gateway.trustedProxies is empty. Configure reverse-proxy IPs before relying on X-Forwarded-For/X-Real-IP.",
+    );
+  }
+  return warnings;
+}
+
+async function buildGatewayWebSummary(opts: {
+  url?: string;
+  token?: string;
+  password?: string;
+  timeout?: string;
+  expectFinal?: boolean;
+  json?: boolean;
+}): Promise<GatewayWebSummary> {
+  const cfg = loadConfig();
+  const tailscaleMode = cfg.gateway?.tailscale?.mode ?? "off";
+  const auth = resolveGatewayAuth({
+    authConfig: cfg.gateway?.auth,
+    tailscaleMode,
+    env: process.env,
+  });
+  const hasSharedSecret =
+    (auth.mode === "token" && typeof auth.token === "string" && auth.token.trim().length > 0) ||
+    (auth.mode === "password" &&
+      typeof auth.password === "string" &&
+      auth.password.trim().length > 0);
+  const proxy = {
+    allowedOrigins:
+      cfg.gateway?.allowedOrigins?.map((value) => value.trim()).filter(Boolean) ?? [],
+    trustedProxies:
+      cfg.gateway?.trustedProxies?.map((value) => value.trim()).filter(Boolean) ?? [],
+  };
+
+  const checks: WebWorkflowCheck[] = [];
+  for (const check of WEB_WORKFLOW_CHECKS) {
+    try {
+      const params = check.method === "channels.status" ? { probe: false } : {};
+      await callGatewayCli(check.method, opts, params);
+      checks.push({
+        ...check,
+        ok: true,
+      });
+    } catch (err) {
+      checks.push({
+        ...check,
+        ok: false,
+        error: String(err),
+      });
+    }
+  }
+
+  return {
+    wsUrl: opts.url?.trim() || resolveGatewayWsUrlFromConfig(),
+    checks,
+    warnings: buildWebOperatorWarnings({
+      auth: {
+        mode: auth.mode,
+        hasSharedSecret,
+        tailscaleMode,
+        allowTailscale: auth.allowTailscale === true,
+      },
+      proxy,
+    }),
+    auth: {
+      mode: auth.mode,
+      hasSharedSecret,
+      tailscaleMode,
+      allowTailscale: auth.allowTailscale === true,
+    },
+    proxy,
+  };
 }
 
 export function registerGatewayCli(program: Command) {
@@ -244,6 +380,52 @@ export function registerGatewayCli(program: Command) {
             }
           }
         });
+      }),
+  );
+
+  gatewayCallOpts(
+    gateway
+      .command("web")
+      .description(
+        "Validate web operator readiness (sessions, approvals, pairing, health, channel state)",
+      )
+      .action(async (opts) => {
+        await runGatewayCommand(async () => {
+          const summary = await buildGatewayWebSummary(opts);
+          if (opts.json) {
+            defaultRuntime.log(JSON.stringify(summary, null, 2));
+            return;
+          }
+          const rich = isRich();
+          defaultRuntime.log(colorize(rich, theme.heading, "Gateway Web Operator"));
+          defaultRuntime.log(`${colorize(rich, theme.muted, "WS URL:")} ${summary.wsUrl}`);
+          defaultRuntime.log(
+            `${colorize(rich, theme.muted, "Auth:")} ${summary.auth.mode} · ${
+              summary.auth.hasSharedSecret ? "configured" : "missing secret"
+            }`,
+          );
+          defaultRuntime.log(
+            `${colorize(rich, theme.muted, "Proxy:")} origins=${summary.proxy.allowedOrigins.length} trustedProxies=${summary.proxy.trustedProxies.length}`,
+          );
+          defaultRuntime.log("");
+          defaultRuntime.log(colorize(rich, theme.heading, "Workflow checks"));
+          for (const check of summary.checks) {
+            const status = check.ok
+              ? colorize(rich, theme.success, "ok")
+              : colorize(rich, theme.error, "failed");
+            defaultRuntime.log(`- ${check.label}: ${status}`);
+            if (!check.ok && check.error) {
+              defaultRuntime.log(`  ${colorize(rich, theme.muted, check.error)}`);
+            }
+          }
+          if (summary.warnings.length > 0) {
+            defaultRuntime.log("");
+            defaultRuntime.log(colorize(rich, theme.warn, "Security guidance"));
+            for (const warning of summary.warnings) {
+              defaultRuntime.log(`- ${warning}`);
+            }
+          }
+        }, "Gateway web readiness check failed");
       }),
   );
 
