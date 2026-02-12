@@ -4,6 +4,7 @@ import { logConfigUpdated } from "../../config/logging.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { applyWizardMetadata } from "../onboard-helpers.js";
+import { applyAssistantModePreset } from "../onboard-assistant-mode.js";
 import type { OnboardOptions } from "../onboard-types.js";
 
 export async function runNonInteractiveOnboardingRemote(params: {
@@ -32,6 +33,9 @@ export async function runNonInteractiveOnboardingRemote(params: {
       },
     },
   };
+  if (opts.assistantMode) {
+    nextConfig = applyAssistantModePreset(nextConfig);
+  }
   nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
   await writeConfigFile(nextConfig);
   logConfigUpdated(runtime);

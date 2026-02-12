@@ -20,6 +20,7 @@ import {
 import { promptRemoteGatewayConfig } from "../commands/onboard-remote.js";
 import { setupSkills } from "../commands/onboard-skills.js";
 import { setupInternalHooks } from "../commands/onboard-hooks.js";
+import { applyAssistantModePreset } from "../commands/onboard-assistant-mode.js";
 import type {
   GatewayAuthChoice,
   OnboardMode,
@@ -417,6 +418,19 @@ export async function runOnboardingWizard(
       skipConfirm: flow === "quickstart",
       quickstartDefaults: flow === "quickstart",
     });
+  }
+
+  if (opts.assistantMode) {
+    nextConfig = applyAssistantModePreset(nextConfig);
+    await prompter.note(
+      [
+        "Applied assistant mode preset:",
+        "- session.dmScope=main",
+        "- channels.defaults.groupPolicy=allowlist",
+        "- tools.message.crossContext.allowAcrossProviders=false",
+      ].join("\n"),
+      "Assistant mode",
+    );
   }
 
   await writeConfigFile(nextConfig);
