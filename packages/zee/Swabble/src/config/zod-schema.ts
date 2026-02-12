@@ -54,6 +54,7 @@ const ContactsSchema = z.record(z.string(), ContactSchema).optional();
 
 export const ZeeSchema = z
   .object({
+    $schema: z.string().optional(),
     meta: z
       .object({
         lastTouchedVersion: z.string().optional(),
