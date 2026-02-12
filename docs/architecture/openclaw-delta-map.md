@@ -80,7 +80,7 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#629 | reliability | adapt | Tighten ack reactions + migrate config; Zee migration details differ. | Done (already implemented: ack-reactions.ts with per-channel modes) |
 | openclaw/openclaw#612 | reliability | port | Improve WhatsApp Web listener errors; reduce flakiness. | Done (already implemented in web/outbound.ts) |
 | openclaw/openclaw#537 | reliability | port | Align WhatsApp activity account id; prevent misrouting. | Done (ported: recordChannelActivity in send-api.ts sendReaction) |
-| openclaw/openclaw#1495 | feature | defer | Per-channel markdown table conversion is UX; not correctness critical. | TODO |
+| openclaw/openclaw#1495 | feature | defer | Per-channel markdown table conversion is UX; not correctness critical. | Done (already implemented: convertMarkdownTables + resolveMarkdownTableMode; whatsapp defaults to bullets) |
 | openclaw/openclaw#8415 | docs/feature | non-goal | iMessage/BlueBubbles scope is out for Zee today. | None |
 
 ## Lane 03: Removed channel lane (legacy messaging extensions removed from Zee)
@@ -141,8 +141,8 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9806 | security | adapt | Skill/plugin scanning improves supply-chain safety; integration differs. | Done (already implemented: skill-scanner.ts) |
 | openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix may be useful; persona routing complicates. | Done (already implemented: response-prefix-template.ts, reply-prefix.ts) |
 | openclaw/openclaw#8403 | feature | defer | Removed-channel typing/types refactor not prioritized. | TODO |
-| openclaw/openclaw#4502 | docs | defer | session-logs path fix likely already handled by Zee naming; verify. | TODO |
-| openclaw/openclaw#7737 | docs | defer | Docs-only change; non-critical correctness. | TODO |
+| openclaw/openclaw#4502 | docs | defer | session-logs path fix likely already handled by Zee naming; verify. | Done (already implemented: session-logs skill points at `~/.zee/agents/main/sessions/`) |
+| openclaw/openclaw#7737 | docs | defer | Docs-only change; non-critical correctness. | Done (ported: tmux skill guidance to split send-keys text + Enter for TUIs) |
 | openclaw/openclaw#4729 | docs | non-goal | Canvas URL prefix is OpenClaw-specific (`/__openclaw__/`). | None |
 | openclaw/openclaw#8817 | chore | non-goal | Upstream-only skill catalog churn. | None |
 | openclaw/openclaw#8415 | docs/feature | non-goal | iMessage/BlueBubbles is out of scope. | None |
@@ -186,7 +186,7 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9335 | security | adapt | Windows ACL + command auth hardening impacts permission surfaces. | Done (already implemented: windows-acl.ts, exec-approvals.ts) |
 | openclaw/openclaw#10000 | reliability | adapt | Cap sessions_history payloads; data model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
 | openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts) |
-| openclaw/openclaw#3095 | feature | defer | Per-account dm scope guidance is UX; not correctness critical. | TODO |
+| openclaw/openclaw#3095 | feature | defer | Per-account dm scope guidance is UX; not correctness critical. | Done (already implemented: session.dmScope supports per-account-channel-peer; wired in routing/session-key) |
 | openclaw/openclaw#9911 | chore | non-goal | Workspace-local cleanup. | None |
 | openclaw/openclaw#2455 | chore | non-goal | Build artifact tracking does not translate directly. | None |
 | openclaw/openclaw#2507 | test | non-goal | Upstream-only test stabilization under CLAWDBOT_PROFILE. | None |
@@ -230,7 +230,7 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | Done (already implemented: hasRemoteConfig/includeRemote + embedding provider auto selection tests) |
 | openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
 | openclaw/openclaw#7078 | feature | defer | Full native Voyage support can be revisited after correctness fixes. | TODO |
-| openclaw/openclaw#819 | feature | defer | Memory search remote overrides may not match Zee memory model. | TODO |
+| openclaw/openclaw#819 | feature | defer | Memory search remote overrides may not match Zee memory model. | Done (already implemented: memorySearch.remote.baseUrl/apiKey/headers for OpenAI-compatible endpoints) |
 | openclaw/openclaw#3600 | chore | non-goal | Upstream-only local updates without clear mapping. | None |
 | openclaw/openclaw#1439 | feature | non-goal | BlueBubbles typing behavior out of scope for memory lane. | None |
 
