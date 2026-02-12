@@ -1220,16 +1220,21 @@ export namespace Config {
         .describe("Nested Qdrant configuration"),
       embedding: z
         .object({
-          profile: z.string().optional().describe("Embedding profile (e.g. openai/text-embedding-3-small)"),
-          provider: z.string().optional().describe("Embedding provider ID"),
-          model: z.string().optional().describe("Embedding model name"),
+          profile: z
+            .string()
+            .optional()
+            .describe("Embedding profile (google/gemini-embedding-001)"),
+          provider: z
+            .literal("google")
+            .optional()
+            .describe('Embedding provider ID ("google").'),
+          model: z.string().optional().describe("Embedding model name (Google)"),
           dimensions: z.number().int().positive().optional().describe("Embedding vector dimensions"),
           dimension: z.number().int().positive().optional().describe("Alias for dimensions"),
-          apiKey: z.string().optional().describe("Embedding API key"),
-          baseUrl: z.string().optional().describe("Embedding API base URL"),
+          baseUrl: z.string().optional().describe("Embedding API base URL (Google)"),
         })
         .optional()
-        .describe("Embedding provider configuration"),
+        .describe("Embedding provider configuration (Google-only; API key is read from `zee auth login google`)"),
       reranker: z
         .object({
           enabled: z.boolean().optional().describe("Enable reranking for memory search"),
@@ -1638,6 +1643,11 @@ export namespace Config {
         .describe("Provider/model fallback configuration for automatic failover"),
       gateway: z.unknown().optional(),
       channels: z.unknown().optional(),
+      bridge: z.unknown().optional(),
+      commands: z.unknown().optional(),
+      agents: z.unknown().optional(),
+      plugins: z.unknown().optional(),
+      meta: z.unknown().optional(),
     })
     .strict()
     .meta({
@@ -1756,28 +1766,6 @@ export namespace Config {
 
     let parsed = Info.safeParse(data)
 
-    // Graceful recovery: if the only errors are unrecognized keys (e.g. Swabble-only
-    // fields like "gateway"/"channels"), strip them and retry instead of crashing.
-    if (!parsed.success) {
-      const unrecognizedKeys = parsed.error.issues
-        .filter((i) => i.code === "unrecognized_keys")
-        .flatMap((i) => (i as { keys: string[] }).keys)
-      const otherIssues = parsed.error.issues.filter((i) => i.code !== "unrecognized_keys")
-
-      if (unrecognizedKeys.length > 0 && otherIssues.length === 0) {
-        const stripped = { ...(data as Record<string, unknown>) }
-        for (const key of unrecognizedKeys) delete stripped[key]
-        const retry = Info.safeParse(stripped)
-        if (retry.success) {
-          log.warn("config has unrecognized keys, ignoring", {
-            path: configFilepath,
-            keys: unrecognizedKeys,
-          })
-          parsed = retry
-        }
-      }
-    }
-
     if (parsed.success) {
       if (!parsed.data.$schema) {
         parsed.data.$schema = "zee"
@@ -1870,7 +1858,11 @@ export namespace Config {
       if (copy.memory.redisUrl) copy.memory.redisUrl = "********"
       if (copy.memory.qdrantApiKey) copy.memory.qdrantApiKey = "********"
       if (copy.memory.qdrant?.apiKey) copy.memory.qdrant.apiKey = "********"
-      if (copy.memory.embedding?.apiKey) copy.memory.embedding.apiKey = "********"
+      // Legacy: redact deprecated memory.embedding.apiKey if it exists on unvalidated inputs.
+      const embedding = (copy.memory as unknown as { embedding?: Record<string, unknown> }).embedding
+      if (embedding && typeof embedding.apiKey === "string" && embedding.apiKey.length > 0) {
+        embedding.apiKey = "********"
+      }
       if (copy.memory.reranker?.apiKey) copy.memory.reranker.apiKey = "********"
     }
     // Redact zee secrets
