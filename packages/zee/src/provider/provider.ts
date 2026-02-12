@@ -273,7 +273,7 @@ export namespace Provider {
       family: model.family,
       api: {
         id: model.id,
-        url: provider.api!,
+        url: provider.api ?? "",
         npm: iife(() => {
           // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
           // The models-api.json incorrectly specifies @ai-sdk/anthropic
@@ -1000,7 +1000,7 @@ export namespace Provider {
         options["includeUsage"] = true
       }
 
-      if (!options["baseURL"]) options["baseURL"] = model.api.url
+      if (!options["baseURL"] && model.api.url) options["baseURL"] = model.api.url
       // Check for both undefined AND empty string - some plugins return apiKey: ""
       if ((options["apiKey"] === undefined || options["apiKey"] === "") && provider.key) {
         options["apiKey"] = provider.key

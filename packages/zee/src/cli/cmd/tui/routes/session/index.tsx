@@ -1443,9 +1443,8 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                     : theme.primary,
                 }}
               >●</span>
-              <span style={{ fg: theme.textMuted }}> {props.message.modelID}</span>
               <Show when={duration()}>
-                <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>
+                <span style={{ fg: theme.textMuted }}> Worked for {Locale.duration(duration())}</span>
               </Show>
               <Show when={props.message.error?.name === "MessageAbortedError"}>
                 <span style={{ fg: theme.textMuted }}> interrupted</span>

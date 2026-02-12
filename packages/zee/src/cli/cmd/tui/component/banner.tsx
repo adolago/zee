@@ -113,7 +113,7 @@ export function Banner(props: BannerProps) {
         {props.topBorder}
       </Show>
 
-      <box flexDirection="row" gap={0}>
+      <box flexDirection="row" gap={0} paddingTop={1} paddingBottom={1}>
         <text fg={theme.border} flexShrink={0}>│</text>
         <text flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
           <Show

@@ -1636,6 +1636,8 @@ export namespace Config {
         })
         .optional()
         .describe("Provider/model fallback configuration for automatic failover"),
+      gateway: z.unknown().optional(),
+      channels: z.unknown().optional(),
     })
     .strict()
     .meta({
@@ -1752,7 +1754,30 @@ export namespace Config {
       })
     }
 
-    const parsed = Info.safeParse(data)
+    let parsed = Info.safeParse(data)
+
+    // Graceful recovery: if the only errors are unrecognized keys (e.g. Swabble-only
+    // fields like "gateway"/"channels"), strip them and retry instead of crashing.
+    if (!parsed.success) {
+      const unrecognizedKeys = parsed.error.issues
+        .filter((i) => i.code === "unrecognized_keys")
+        .flatMap((i) => (i as { keys: string[] }).keys)
+      const otherIssues = parsed.error.issues.filter((i) => i.code !== "unrecognized_keys")
+
+      if (unrecognizedKeys.length > 0 && otherIssues.length === 0) {
+        const stripped = { ...(data as Record<string, unknown>) }
+        for (const key of unrecognizedKeys) delete stripped[key]
+        const retry = Info.safeParse(stripped)
+        if (retry.success) {
+          log.warn("config has unrecognized keys, ignoring", {
+            path: configFilepath,
+            keys: unrecognizedKeys,
+          })
+          parsed = retry
+        }
+      }
+    }
+
     if (parsed.success) {
       if (!parsed.data.$schema) {
         parsed.data.$schema = "zee"

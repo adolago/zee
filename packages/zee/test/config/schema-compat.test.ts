@@ -56,7 +56,7 @@ describe("engine (Config.Info) and gateway (ZeeSchema) schema compatibility", ()
     // Keys that happen to exist in both schemas today. If a key is
     // removed from one schema, this test will flag it so the removal
     // is intentional rather than accidental drift.
-    const expectedShared = ["$schema", "cron", "messages", "skills", "tools"]
+    const expectedShared = ["$schema", "channels", "cron", "gateway", "messages", "skills", "tools"]
     const actualShared = [...engineKeys].filter((k) => gatewayKeys.has(k))
     for (const key of expectedShared) {
       expect(actualShared).toContain(key)
