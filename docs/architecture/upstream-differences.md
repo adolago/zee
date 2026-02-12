@@ -226,12 +226,12 @@ Overlap is mostly in “utility” skills (for example `weather`, `wacli`, `spot
 
 These numbers are intended to size the divergence, not to replace a full code review:
 
-- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1520` (opencode-only) vs `1179` (zee-only)
+- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `1520` (opencode-only) vs `1185` (zee-only)
 - File delta (with rename detection raised: `git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD`):
-  - Added: `4340`
-  - Deleted: `688`
+  - Added: `4341`
+  - Deleted: `689`
   - Modified: `224`
-  - Renamed: `334`
+  - Renamed: `333`
 
 ### pi-mono dependency tracking
 
