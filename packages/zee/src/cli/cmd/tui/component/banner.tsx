@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show, type Accessor } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { useTerminalDimensions } from "@opentui/solid"
+import { EmptyBorder } from "@tui/component/border"
 import type { JSX } from "solid-js"
 
 export type BannerItem = {
@@ -113,8 +114,13 @@ export function Banner(props: BannerProps) {
         {props.topBorder}
       </Show>
 
-      <box flexDirection="row" gap={0} paddingTop={1} paddingBottom={1}>
-        <text fg={theme.border} flexShrink={0}>│</text>
+      <box
+        border={["left", "right"]}
+        borderColor={theme.border}
+        customBorderChars={{ ...EmptyBorder, vertical: "│" }}
+        paddingTop={1}
+        paddingBottom={1}
+      >
         <text flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
           <Show
             when={display().label}
@@ -130,7 +136,6 @@ export function Banner(props: BannerProps) {
             )}
           </Show>
         </text>
-        <text fg={theme.border} flexShrink={0}>│</text>
       </box>
 
       <Show

@@ -1646,8 +1646,6 @@ export function Prompt(props: PromptProps) {
               <text fg={theme.border} flexGrow={1} flexShrink={100} wrapMode="none" overflow="hidden">{fill()}</text>
               {/* Right side: agent info (shrinkable to avoid breaking the border) */}
               <text flexShrink={1} wrapMode="none" overflow="hidden">
-                <span style={{ fg: local.agent.color(local.agent.current().name) ?? theme.textMuted }}>{Locale.titlecase(local.agent.current().name)}</span>
-                <span style={{ fg: theme.border }}>─</span>
                 <span style={{ fg: theme.textMuted }}>{sync.data.agent?.length ?? 0} skills</span>
                 <Show when={vim.enabled && store.mode !== "shell"}>
                   <span style={{ fg: theme.border }}>─</span>
@@ -1690,6 +1688,8 @@ export function Prompt(props: PromptProps) {
           }}
           paddingLeft={1}
           paddingRight={1}
+          paddingTop={1}
+          paddingBottom={1}
         >
             <textarea
               placeholder={props.showPlaceholder !== false ? "Ask a question, or type / for commands" : null}

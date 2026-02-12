@@ -1201,7 +1201,7 @@ export function Session() {
               </scrollbox>
             </Show>
 
-            <box flexShrink={0} paddingBottom={headerHeight()}>
+            <box flexShrink={0} paddingBottom={headerHeight()} marginTop={1}>
               <Show when={permissions().length > 0}>
                 <PermissionPrompt request={permissions()[0]} />
               </Show>
