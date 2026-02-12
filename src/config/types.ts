@@ -338,17 +338,17 @@ export const DEFAULT_CONFIG: Partial<ZeeRootConfig> = {
   agents: [],
   personas: [],
   mcp: {},
-  memory: {
-    qdrant: {
-      url: QDRANT_URL,
-      collection: QDRANT_COLLECTION_MEMORY,
-    },
-    embedding: {
-      provider: "openai",
-      model: EMBEDDING_MODEL,
-      dimension: EMBEDDING_DIMENSIONS,
-    },
-    autoLearn: true,
+	  memory: {
+	    qdrant: {
+	      url: QDRANT_URL,
+	      collection: QDRANT_COLLECTION_MEMORY,
+	    },
+	    embedding: {
+	      provider: "google",
+	      model: EMBEDDING_MODEL,
+	      dimension: EMBEDDING_DIMENSIONS,
+	    },
+	    autoLearn: true,
     patternMinObservations: 3,
     defaultTTL: 0,
   },

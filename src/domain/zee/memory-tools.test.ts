@@ -132,12 +132,12 @@ beforeAll(async () => {
   resetMarkdownSync();
 
   // Initialize the singleton with test config
-  const mem = getMemory({
-    qdrant: { url: QDRANT_URL, collection: COLLECTION },
-    embedding: { provider: "openai", dimensions: 384 },
-    namespace: "zee",
-    markdown: { baseDir: testDir, enabled: true },
-  });
+	  const mem = getMemory({
+	    qdrant: { url: QDRANT_URL, collection: COLLECTION },
+	    embedding: { provider: "google", dimensions: 384 },
+	    namespace: "zee",
+	    markdown: { baseDir: testDir, enabled: true },
+	  });
   await mem.init();
 });
 

@@ -285,9 +285,9 @@ export const VectorDbConfigSchema = z.object({
   /** Collection/index name */
   collection: z.string().optional().default('zee'),
   /** Embedding model to use */
-  embeddingModel: z.string().optional().default('text-embedding-3-small'),
+  embeddingModel: z.string().optional().default('gemini-embedding-001'),
   /** Embedding dimensions */
-  dimensions: z.number().int().positive().optional().default(1536),
+  dimensions: z.number().int().positive().optional().default(3072),
 }).strict();
 export type VectorDbConfig = z.infer<typeof VectorDbConfigSchema>;
 

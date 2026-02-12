@@ -1,6 +1,7 @@
 /**
  * Embedding client for generating vector representations of text.
- * Supports OpenAI, Google, Voyage, Ollama, vLLM, and local (OpenAI-compatible) providers.
+ *
+ * Zee currently supports Google (Gemini) embeddings only.
  *
  * Includes LRU caching to avoid redundant API calls.
  *
@@ -8,16 +9,13 @@
  */
 
 import * as crypto from "node:crypto";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import type {
   EmbeddingProvider,
   EmbeddingProviderType,
   MediaType,
   MultimodalContent,
 } from "./types";
-import { getApiKeySync } from "../config/providers";
+import { getAuthApiKeySync } from "../config/providers";
 import { setCurrentEmbeddingModel } from "./stats";
 
 // =============================================================================
@@ -30,8 +28,6 @@ import { setCurrentEmbeddingModel } from "./stats";
 export interface EmbeddingConfig {
   /** Embedding provider type */
   provider?: EmbeddingProviderType;
-  /** API key for the provider */
-  apiKey?: string;
   /** Model name for embeddings */
   model?: string;
   /** Embedding dimensions */
@@ -161,83 +157,6 @@ class EmbeddingCache {
 // =============================================================================
 
 /**
- * OpenAI embedding client using REST API
- */
-class OpenAIEmbeddingProvider implements EmbeddingProvider {
-  readonly id = "openai";
-  readonly model: string;
-  dimension: number;
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-  private readonly dimensionsParam?: number;
-
-  constructor(config: EmbeddingConfig) {
-    this.baseUrl = (config.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
-    this.apiKey = config.apiKey ?? getApiKeySync("openai") ?? "";
-    this.model = config.model ?? "text-embedding-3-small";
-    this.dimensionsParam =
-      typeof config.dimensions === "number" ? config.dimensions : undefined;
-    this.dimension = this.dimensionsParam ?? 1536;
-
-    if (!this.apiKey) {
-      throw new Error(
-        "OpenAI API key required: run `zee auth login openai` or set OPENAI_API_KEY env"
-      );
-    }
-  }
-
-  async embed(text: string): Promise<number[]> {
-    const result = await this.embedBatch([text]);
-    return result[0] ?? [];
-  }
-
-  async embedBatch(texts: string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
-
-    const body: {
-      model: string;
-      input: string[];
-      dimensions?: number;
-    } = {
-      model: this.model,
-      input: texts,
-    };
-
-    if (this.dimensionsParam) {
-      body.dimensions = this.dimensionsParam;
-    }
-
-    const response = await fetch(`${this.baseUrl}/embeddings`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `OpenAI embedding failed (${response.status}): ${errorText}`
-      );
-    }
-
-    const data = (await response.json()) as {
-      data: Array<{ embedding: number[]; index: number }>;
-    };
-
-    // Sort by index to maintain order
-    const sorted = data.data.sort((a, b) => a.index - b.index);
-    if (!this.dimensionsParam && sorted.length > 0) {
-      const length = sorted[0]?.embedding.length ?? 0;
-      if (length > 0) this.dimension = length;
-    }
-    return sorted.map((item) => item.embedding);
-  }
-}
-
-/**
  * Google embedding client using Generative Language API
  */
 class GoogleEmbeddingProvider implements EmbeddingProvider {
@@ -249,9 +168,8 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
   private readonly outputDimensionality?: number;
 
   constructor(config: EmbeddingConfig) {
-    // Check config, then getApiKeySync (which checks GOOGLE_API_KEY + aliases like GEMINI_API_KEY),
-    // then fall back to direct env check for GEMINI_API_KEY
-    this.apiKey = config.apiKey ?? getApiKeySync("google") ?? process.env.GEMINI_API_KEY ?? "";
+    // Single source of truth: global auth store (`zee auth login google`).
+    this.apiKey = getAuthApiKeySync("google") ?? "";
     this.model = config.model ?? "gemini-embedding-001";
     this.outputDimensionality =
       typeof config.dimensions === "number" ? config.dimensions : undefined;
@@ -263,7 +181,7 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
 
     if (!this.apiKey) {
       throw new Error(
-        "Google API key required: run `zee auth login google` or set GOOGLE_API_KEY env"
+        "Google API key required: run `zee auth login google`"
       );
     }
   }
@@ -329,125 +247,6 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
       if (length > 0) this.dimension = length;
     }
     return vectors;
-  }
-}
-
-/**
- * vLLM embedding client using OpenAI-compatible API
- */
-class VLLMEmbeddingProvider implements EmbeddingProvider {
-  readonly id = "vllm";
-  readonly model: string;
-  dimension: number;
-  private readonly baseUrl: string;
-
-  constructor(config: EmbeddingConfig) {
-    this.model = config.model ?? "BAAI/bge-base-en-v1.5";
-    this.dimension = config.dimensions ?? 768;
-    this.baseUrl = config.baseUrl ?? "http://localhost:8000/v1";
-  }
-
-  async embed(text: string): Promise<number[]> {
-    const result = await this.embedBatch([text]);
-    return result[0] ?? [];
-  }
-
-  async embedBatch(texts: string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
-
-    const response = await fetch(`${this.baseUrl}/embeddings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        input: texts,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `vLLM embedding failed (${response.status}): ${errorText}`
-      );
-    }
-
-    const data = (await response.json()) as {
-      data: Array<{ embedding: number[]; index: number }>;
-    };
-
-    const sorted = data.data.sort((a, b) => a.index - b.index);
-    return sorted.map((item) => item.embedding);
-  }
-}
-
-
-
-/**
- * Voyage AI embedding client
- * #1 on MTEB, 200M free tokens, supports query/document input types
- */
-class VoyageEmbeddingProvider implements EmbeddingProvider {
-  readonly id = "voyage";
-  readonly model: string;
-  dimension: number;
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-
-  constructor(config: EmbeddingConfig) {
-    this.apiKey = config.apiKey ?? getApiKeySync("voyage") ?? "";
-    this.model = config.model ?? "voyage-3-large";
-    this.dimension = config.dimensions ?? 1024;
-    this.baseUrl = config.baseUrl ?? "https://api.voyageai.com/v1";
-
-    if (!this.apiKey) {
-      throw new Error(
-        "Voyage API key required: run `zee auth login voyage` or set VOYAGE_API_KEY env"
-      );
-    }
-  }
-
-  private async requestEmbeddings(
-    texts: string[],
-    inputType: "query" | "document",
-  ): Promise<number[][]> {
-    if (texts.length === 0) return [];
-
-    const response = await fetch(`${this.baseUrl}/embeddings`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        input: texts,
-        input_type: inputType,
-        output_dimension: this.dimension,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Voyage embedding failed (${response.status}): ${errorText}`);
-    }
-
-    const data = (await response.json()) as {
-      data: Array<{ embedding: number[]; index: number }>;
-    };
-
-    const sorted = data.data.sort((a, b) => a.index - b.index);
-    return sorted.map((item) => item.embedding);
-  }
-
-  async embed(text: string): Promise<number[]> {
-    const result = await this.requestEmbeddings([text], "query");
-    return result[0] ?? [];
-  }
-
-  async embedBatch(texts: string[]): Promise<number[][]> {
-    return this.requestEmbeddings(texts, "document");
   }
 }
 
@@ -579,32 +378,15 @@ class CachedEmbeddingProvider implements EmbeddingProvider {
 
 /**
  * Create an embedding provider based on configuration.
- * Defaults to OpenAI if provider not specified.
+ *
+ * Zee currently supports Google embeddings only.
  * Includes LRU caching to avoid redundant API calls.
  */
 export function createEmbeddingProvider(
   config: EmbeddingConfig,
   options?: { cacheSize?: number; noCache?: boolean }
 ): EmbeddingProvider {
-  const providerType = config.provider ?? "openai";
-
-  let provider: EmbeddingProvider;
-  switch (providerType) {
-    case "openai":
-      provider = new OpenAIEmbeddingProvider(config);
-      break;
-    case "google":
-      provider = new GoogleEmbeddingProvider(config);
-      break;
-    case "voyage":
-      provider = new VoyageEmbeddingProvider(config);
-      break;
-    case "vllm":
-      provider = new VLLMEmbeddingProvider(config);
-      break;
-    default:
-      throw new Error(`Unknown embedding provider: ${providerType}`);
-  }
+  const provider = new GoogleEmbeddingProvider(config);
 
   // Track current model for max context lookup
   setCurrentEmbeddingModel(provider.model);
@@ -624,25 +406,7 @@ export async function createEmbeddingProviderAsync(
   config: EmbeddingConfig,
   options?: { cacheSize?: number; noCache?: boolean }
 ): Promise<EmbeddingProvider> {
-  const providerType = config.provider ?? "openai";
-
-  let provider: EmbeddingProvider;
-  switch (providerType) {
-    case "openai":
-      provider = new OpenAIEmbeddingProvider(config);
-      break;
-    case "google":
-      provider = new GoogleEmbeddingProvider(config);
-      break;
-    case "voyage":
-      provider = new VoyageEmbeddingProvider(config);
-      break;
-    case "vllm":
-      provider = new VLLMEmbeddingProvider(config);
-      break;
-    default:
-      throw new Error(`Unknown embedding provider: ${providerType}`);
-  }
+  const provider = new GoogleEmbeddingProvider(config);
 
   // Track current model for max context lookup
   setCurrentEmbeddingModel(provider.model);
@@ -660,9 +424,6 @@ export async function createEmbeddingProviderAsync(
 
 export {
   EmbeddingCache,
-  OpenAIEmbeddingProvider,
   GoogleEmbeddingProvider,
-  VoyageEmbeddingProvider,
-  VLLMEmbeddingProvider,
   CachedEmbeddingProvider,
 };

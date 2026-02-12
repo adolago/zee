@@ -1,6 +1,6 @@
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { isTruthyEnvValue } from "../infra/env.js";
-import type { GeminiEmbeddingClient } from "./embeddings-gemini.js";
+import type { GoogleEmbeddingClient } from "./embeddings-gemini.js";
 import { hashText } from "./internal.js";
 
 export type GeminiBatchRequest = {
@@ -34,10 +34,7 @@ export type GeminiBatchOutputLine = {
 };
 
 const GEMINI_BATCH_MAX_REQUESTS = 50000;
-const debugEmbeddings =
-  isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS) ||
-  isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS) ||
-  isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS);
+const debugEmbeddings = isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS);
 const log = createSubsystemLogger("memory/embeddings");
 
 const debugLog = (message: string, meta?: Record<string, unknown>) => {
@@ -46,12 +43,12 @@ const debugLog = (message: string, meta?: Record<string, unknown>) => {
   log.raw(`${message}${suffix}`);
 };
 
-function getGeminiBaseUrl(gemini: GeminiEmbeddingClient): string {
+function getGeminiBaseUrl(gemini: GoogleEmbeddingClient): string {
   return gemini.baseUrl?.replace(/\/$/, "") ?? "";
 }
 
 function getGeminiHeaders(
-  gemini: GeminiEmbeddingClient,
+  gemini: GoogleEmbeddingClient,
   params: { json: boolean },
 ): Record<string, string> {
   const headers = gemini.headers ? { ...gemini.headers } : {};
@@ -108,7 +105,7 @@ function buildGeminiUploadBody(params: { jsonl: string; displayName: string }): 
 }
 
 async function submitGeminiBatch(params: {
-  gemini: GeminiEmbeddingClient;
+  gemini: GoogleEmbeddingClient;
   requests: GeminiBatchRequest[];
   agentId: string;
 }): Promise<GeminiBatchStatus> {
@@ -183,7 +180,7 @@ async function submitGeminiBatch(params: {
 }
 
 async function fetchGeminiBatchStatus(params: {
-  gemini: GeminiEmbeddingClient;
+  gemini: GoogleEmbeddingClient;
   batchName: string;
 }): Promise<GeminiBatchStatus> {
   const baseUrl = getGeminiBaseUrl(params.gemini);
@@ -203,7 +200,7 @@ async function fetchGeminiBatchStatus(params: {
 }
 
 async function fetchGeminiFileContent(params: {
-  gemini: GeminiEmbeddingClient;
+  gemini: GoogleEmbeddingClient;
   fileId: string;
 }): Promise<string> {
   const baseUrl = getGeminiBaseUrl(params.gemini);
@@ -230,7 +227,7 @@ function parseGeminiBatchOutput(text: string): GeminiBatchOutputLine[] {
 }
 
 async function waitForGeminiBatch(params: {
-  gemini: GeminiEmbeddingClient;
+  gemini: GoogleEmbeddingClient;
   batchName: string;
   wait: boolean;
   pollIntervalMs: number;
@@ -302,7 +299,7 @@ async function runWithConcurrency<T>(tasks: Array<() => Promise<T>>, limit: numb
 }
 
 export async function runGeminiEmbeddingBatches(params: {
-  gemini: GeminiEmbeddingClient;
+  gemini: GoogleEmbeddingClient;
   agentId: string;
   requests: GeminiBatchRequest[];
   wait: boolean;

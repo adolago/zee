@@ -34,6 +34,7 @@ import {
   QDRANT_COLLECTION_MEMORY,
   CONTINUITY_MAX_KEY_FACTS,
 } from "../config/constants";
+import { getAuthApiKeySync } from "../config/providers";
 import { getMemoryEmbeddingConfig, getMemoryQdrantConfig, getMemoryRerankerConfig } from "../config/runtime";
 import { Log } from "../../packages/zee/src/util/log";
 import { SqliteFtsStore, type FtsConfig, type FtsEntry } from "./sqlite-fts";
@@ -393,22 +394,18 @@ export class Memory {
     this.rerankerConfig = config.reranker ?? getMemoryRerankerConfig();
 
     const configuredDimensions = config.embedding?.dimensions ?? fileEmbedding.dimensions;
-    const provider = (config.embedding?.provider ?? fileEmbedding.provider ?? "openai") as EmbeddingConfig["provider"];
-    const apiKey =
-      config.embedding?.apiKey ??
-      fileEmbedding.apiKey ??
-      (provider === "openai" ? process.env.OPENAI_API_KEY : undefined);
+    const provider = (config.embedding?.provider ?? fileEmbedding.provider ?? "google") as EmbeddingConfig["provider"];
+    const apiKey = getAuthApiKeySync("google");
     const embeddingConfig: EmbeddingConfig = {
       provider,
       model: config.embedding?.model ?? fileEmbedding.model,
       dimensions: configuredDimensions,
-      apiKey,
       baseUrl: config.embedding?.baseUrl ?? fileEmbedding.baseUrl,
     };
     this.configuredEmbeddingDimensions = configuredDimensions;
 
     // Use mock embeddings if no API key available
-    const usesMock = provider === "openai" && !apiKey;
+    const usesMock = !apiKey;
     if (usesMock) {
       this.embedding = new MockEmbeddingProvider();
       log.debug("Using mock embeddings (no API key)");

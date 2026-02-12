@@ -102,13 +102,13 @@ beforeAll(async () => {
 
   globalThis.fetch = patchedFetch;
   resetMemory();
-  resetMarkdownSync();
-  memory = new Memory({
-    qdrant: { url: QDRANT_URL, collection: COLLECTION },
-    embedding: { provider: "openai", dimensions: 384 },
-    namespace: "test-reflect",
-    markdown: { baseDir: testDir, enabled: true },
-  });
+	  resetMarkdownSync();
+	  memory = new Memory({
+	    qdrant: { url: QDRANT_URL, collection: COLLECTION },
+	    embedding: { provider: "google", dimensions: 384 },
+	    namespace: "test-reflect",
+	    markdown: { baseDir: testDir, enabled: true },
+	  });
   await memory.init();
 });
 

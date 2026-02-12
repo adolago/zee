@@ -520,10 +520,7 @@ export interface EmbeddingProvider {
 
 /** Supported embedding providers */
 export type EmbeddingProviderType =
-  | "openai"
-  | "google"
-  | "voyage"
-  | "vllm";
+  | "google";
 
 // =============================================================================
 // Storage Types

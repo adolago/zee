@@ -1,9 +1,9 @@
-import { requireApiKey, resolveApiKeyForProvider } from "../agents/model-auth.js";
 import { isTruthyEnvValue } from "../infra/env.js";
+import { getZeeAuthApiKeySync } from "../infra/zee-auth-store.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import type { EmbeddingProvider, EmbeddingProviderOptions } from "./embeddings.js";
 
-export type GeminiEmbeddingClient = {
+export type GoogleEmbeddingClient = {
   baseUrl: string;
   headers: Record<string, string>;
   model: string;
@@ -11,11 +11,8 @@ export type GeminiEmbeddingClient = {
 };
 
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
-const debugEmbeddings =
-  isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS) ||
-  isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS) ||
-  isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS);
+export const DEFAULT_GOOGLE_EMBEDDING_MODEL = "gemini-embedding-001";
+const debugEmbeddings = isTruthyEnvValue(process.env.ZEE_DEBUG_MEMORY_EMBEDDINGS);
 const log = createSubsystemLogger("memory/embeddings");
 
 const debugLog = (message: string, meta?: Record<string, unknown>) => {
@@ -24,18 +21,9 @@ const debugLog = (message: string, meta?: Record<string, unknown>) => {
   log.raw(`${message}${suffix}`);
 };
 
-function resolveRemoteApiKey(remoteApiKey?: string): string | undefined {
-  const trimmed = remoteApiKey?.trim();
-  if (!trimmed) return undefined;
-  if (trimmed === "GOOGLE_API_KEY" || trimmed === "GEMINI_API_KEY") {
-    return process.env[trimmed]?.trim();
-  }
-  return trimmed;
-}
-
 function normalizeGeminiModel(model: string): string {
   const trimmed = model.trim();
-  if (!trimmed) return DEFAULT_GEMINI_EMBEDDING_MODEL;
+  if (!trimmed) return DEFAULT_GOOGLE_EMBEDDING_MODEL;
   const withoutPrefix = trimmed.replace(/^models\//, "");
   if (withoutPrefix.startsWith("gemini/")) return withoutPrefix.slice("gemini/".length);
   if (withoutPrefix.startsWith("google/")) return withoutPrefix.slice("google/".length);
@@ -53,10 +41,10 @@ function buildGeminiModelPath(model: string): string {
   return model.startsWith("models/") ? model : `models/${model}`;
 }
 
-export async function createGeminiEmbeddingProvider(
+export async function createGoogleEmbeddingProvider(
   options: EmbeddingProviderOptions,
-): Promise<{ provider: EmbeddingProvider; client: GeminiEmbeddingClient }> {
-  const client = await resolveGeminiEmbeddingClient(options);
+): Promise<{ provider: EmbeddingProvider; client: GoogleEmbeddingClient }> {
+  const client = await resolveGoogleEmbeddingClient(options);
   const baseUrl = client.baseUrl.replace(/\/$/, "");
   const embedUrl = `${baseUrl}/${client.modelPath}:embedContent`;
   const batchUrl = `${baseUrl}/${client.modelPath}:batchEmbedContents`;
@@ -102,7 +90,7 @@ export async function createGeminiEmbeddingProvider(
 
   return {
     provider: {
-      id: "gemini",
+      id: "google",
       model: client.model,
       embedQuery,
       embedBatch,
@@ -111,33 +99,31 @@ export async function createGeminiEmbeddingProvider(
   };
 }
 
-export async function resolveGeminiEmbeddingClient(
+export async function resolveGoogleEmbeddingClient(
   options: EmbeddingProviderOptions,
-): Promise<GeminiEmbeddingClient> {
+): Promise<GoogleEmbeddingClient> {
   const remote = options.remote;
-  const remoteApiKey = resolveRemoteApiKey(remote?.apiKey);
   const remoteBaseUrl = remote?.baseUrl?.trim();
 
-  const apiKey = remoteApiKey
-    ? remoteApiKey
-    : requireApiKey(
-        await resolveApiKeyForProvider({
-          provider: "google",
-          cfg: options.config,
-          agentDir: options.agentDir,
-        }),
-        "google",
-      );
+  const apiKey = getZeeAuthApiKeySync("google");
+  if (!apiKey) {
+    throw new Error("Google API key required: run `zee auth login google`");
+  }
 
   const providerConfig = options.config.models?.providers?.google;
   const rawBaseUrl = remoteBaseUrl || providerConfig?.baseUrl?.trim() || DEFAULT_GEMINI_BASE_URL;
   const baseUrl = normalizeGeminiBaseUrl(rawBaseUrl);
-  const headerOverrides = Object.assign({}, providerConfig?.headers, remote?.headers);
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "x-goog-api-key": apiKey,
-    ...headerOverrides,
-  };
+  const headers = Object.assign({}, providerConfig?.headers, remote?.headers) as Record<
+    string,
+    string
+  >;
+  for (const key of Object.keys(headers)) {
+    if (key.toLowerCase() === "x-goog-api-key") {
+      delete headers[key];
+    }
+  }
+  headers["Content-Type"] = "application/json";
+  headers["x-goog-api-key"] = apiKey;
   const model = normalizeGeminiModel(options.model);
   const modelPath = buildGeminiModelPath(model);
   debugLog("memory embeddings: gemini client", {

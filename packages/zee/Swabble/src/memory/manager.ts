@@ -18,18 +18,8 @@ import {
   createEmbeddingProvider,
   type EmbeddingProvider,
   type EmbeddingProviderResult,
-  type GeminiEmbeddingClient,
-  type OpenAiEmbeddingClient,
-  type VoyageEmbeddingClient,
+  type GoogleEmbeddingClient,
 } from "./embeddings.js";
-import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
-import { DEFAULT_OPENAI_EMBEDDING_MODEL } from "./embeddings-openai.js";
-import { DEFAULT_VOYAGE_EMBEDDING_MODEL } from "./embeddings-voyage.js";
-import {
-  OPENAI_BATCH_ENDPOINT,
-  type OpenAiBatchRequest,
-  runOpenAiEmbeddingBatches,
-} from "./batch-openai.js";
 import { runGeminiEmbeddingBatches, type GeminiBatchRequest } from "./batch-gemini.js";
 import {
   buildFileEntry,
@@ -106,10 +96,8 @@ const EMBEDDING_RETRY_MAX_DELAY_MS = 8000;
 const BATCH_FAILURE_LIMIT = 2;
 const SESSION_DELTA_READ_CHUNK_BYTES = 64 * 1024;
 const VECTOR_LOAD_TIMEOUT_MS = 30_000;
-const EMBEDDING_QUERY_TIMEOUT_REMOTE_MS = 60_000;
-const EMBEDDING_QUERY_TIMEOUT_LOCAL_MS = 5 * 60_000;
-const EMBEDDING_BATCH_TIMEOUT_REMOTE_MS = 2 * 60_000;
-const EMBEDDING_BATCH_TIMEOUT_LOCAL_MS = 10 * 60_000;
+const EMBEDDING_QUERY_TIMEOUT_MS = 60_000;
+const EMBEDDING_BATCH_TIMEOUT_MS = 2 * 60_000;
 
 const log = createSubsystemLogger("memory");
 
@@ -125,12 +113,8 @@ export class MemoryIndexManager {
   private readonly workspaceDir: string;
   private readonly settings: ResolvedMemorySearchConfig;
   private provider: EmbeddingProvider;
-  private readonly requestedProvider: "openai" | "local" | "gemini" | "voyage" | "auto";
-  private fallbackFrom?: "openai" | "local" | "gemini" | "voyage";
-  private fallbackReason?: string;
-  private openAi?: OpenAiEmbeddingClient;
-  private gemini?: GeminiEmbeddingClient;
-  private voyage?: VoyageEmbeddingClient;
+  private readonly requestedProvider: "google";
+  private google?: GoogleEmbeddingClient;
   private batch: {
     enabled: boolean;
     wait: boolean;
@@ -193,8 +177,6 @@ export class MemoryIndexManager {
       provider: settings.provider,
       remote: settings.remote,
       model: settings.model,
-      fallback: settings.fallback,
-      local: settings.local,
     });
     const manager = new MemoryIndexManager({
       cacheKey: key,
@@ -223,11 +205,7 @@ export class MemoryIndexManager {
     this.settings = params.settings;
     this.provider = params.providerResult.provider;
     this.requestedProvider = params.providerResult.requestedProvider;
-    this.fallbackFrom = params.providerResult.fallbackFrom;
-    this.fallbackReason = params.providerResult.fallbackReason;
-    this.openAi = params.providerResult.openAi;
-    this.gemini = params.providerResult.gemini;
-    this.voyage = params.providerResult.voyage;
+    this.google = params.providerResult.google;
     this.sources = new Set(params.settings.sources);
     this.db = this.openDatabase();
     this.providerKey = this.computeProviderKey();
@@ -473,7 +451,6 @@ export class MemoryIndexManager {
     sourceCounts: Array<{ source: MemorySource; files: number; chunks: number }>;
     cache?: { enabled: boolean; entries?: number; maxEntries?: number };
     fts?: { enabled: boolean; available: boolean; error?: string };
-    fallback?: { from: string; reason?: string };
     vector?: {
       enabled: boolean;
       available?: boolean;
@@ -562,9 +539,6 @@ export class MemoryIndexManager {
         available: this.fts.available,
         error: this.fts.loadError,
       },
-      fallback: this.fallbackReason
-        ? { from: this.fallbackFrom ?? "local", reason: this.fallbackReason }
-        : undefined,
       vector: {
         enabled: this.vector.enabled,
         available: this.vector.available ?? undefined,
@@ -1277,23 +1251,8 @@ export class MemoryIndexManager {
         this.sessionsDirty = false;
       }
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      const activated =
-        this.shouldFallbackOnError(reason) && (await this.activateFallbackProvider(reason));
-      if (activated) {
-        await this.runSafeReindex({
-          reason: params?.reason ?? "fallback",
-          force: true,
-          progress: progress ?? undefined,
-        });
-        return;
-      }
       throw err;
     }
-  }
-
-  private shouldFallbackOnError(message: string): boolean {
-    return /embedding|embeddings|batch/i.test(message);
   }
 
   private resolveBatchConfig(): {
@@ -1304,11 +1263,7 @@ export class MemoryIndexManager {
     timeoutMs: number;
   } {
     const batch = this.settings.remote?.batch;
-    const enabled = Boolean(
-      batch?.enabled &&
-      ((this.openAi && this.provider.id === "openai") ||
-        (this.gemini && this.provider.id === "gemini")),
-    );
+    const enabled = Boolean(batch?.enabled && this.google && this.provider.id === "google");
     return {
       enabled,
       wait: batch?.wait ?? true,
@@ -1316,43 +1271,6 @@ export class MemoryIndexManager {
       pollIntervalMs: batch?.pollIntervalMs ?? 2000,
       timeoutMs: (batch?.timeoutMinutes ?? 60) * 60 * 1000,
     };
-  }
-
-  private async activateFallbackProvider(reason: string): Promise<boolean> {
-    const fallback = this.settings.fallback;
-    if (!fallback || fallback === "none" || fallback === this.provider.id) return false;
-    if (this.fallbackFrom) return false;
-    const fallbackFrom = this.provider.id as "openai" | "gemini" | "voyage" | "local";
-
-    const fallbackModel =
-      fallback === "gemini"
-        ? DEFAULT_GEMINI_EMBEDDING_MODEL
-        : fallback === "openai"
-          ? DEFAULT_OPENAI_EMBEDDING_MODEL
-          : fallback === "voyage"
-            ? DEFAULT_VOYAGE_EMBEDDING_MODEL
-          : this.settings.model;
-
-    const fallbackResult = await createEmbeddingProvider({
-      config: this.cfg,
-      agentDir: resolveAgentDir(this.cfg, this.agentId),
-      provider: fallback,
-      remote: this.settings.remote,
-      model: fallbackModel,
-      fallback: "none",
-      local: this.settings.local,
-    });
-
-    this.fallbackFrom = fallbackFrom;
-    this.fallbackReason = reason;
-    this.provider = fallbackResult.provider;
-    this.openAi = fallbackResult.openAi;
-    this.gemini = fallbackResult.gemini;
-    this.voyage = fallbackResult.voyage;
-    this.providerKey = this.computeProviderKey();
-    this.batch = this.resolveBatchConfig();
-    log.warn(`memory embeddings: switched to fallback provider (${fallback})`, { reason });
-    return true;
   }
 
   private async runSafeReindex(params: {
@@ -1734,22 +1652,8 @@ export class MemoryIndexManager {
   }
 
   private computeProviderKey(): string {
-    if (this.provider.id === "openai" && this.openAi) {
-      const entries = Object.entries(this.openAi.headers)
-        .filter(([key]) => key.toLowerCase() !== "authorization")
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, value]) => [key, value]);
-      return hashText(
-        JSON.stringify({
-          provider: "openai",
-          baseUrl: this.openAi.baseUrl,
-          model: this.openAi.model,
-          headers: entries,
-        }),
-      );
-    }
-    if (this.provider.id === "gemini" && this.gemini) {
-      const entries = Object.entries(this.gemini.headers)
+    if (this.provider.id === "google" && this.google) {
+      const entries = Object.entries(this.google.headers)
         .filter(([key]) => {
           const lower = key.toLowerCase();
           return lower !== "authorization" && lower !== "x-goog-api-key";
@@ -1758,23 +1662,9 @@ export class MemoryIndexManager {
         .map(([key, value]) => [key, value]);
       return hashText(
         JSON.stringify({
-          provider: "gemini",
-          baseUrl: this.gemini.baseUrl,
-          model: this.gemini.model,
-          headers: entries,
-        }),
-      );
-    }
-    if (this.provider.id === "voyage" && this.voyage) {
-      const entries = Object.entries(this.voyage.headers)
-        .filter(([key]) => key.toLowerCase() !== "authorization")
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, value]) => [key, value]);
-      return hashText(
-        JSON.stringify({
-          provider: "voyage",
-          baseUrl: this.voyage.baseUrl,
-          model: this.voyage.model,
+          provider: "google",
+          baseUrl: this.google.baseUrl,
+          model: this.google.model,
           headers: entries,
         }),
       );
@@ -1787,95 +1677,19 @@ export class MemoryIndexManager {
     entry: MemoryFileEntry | SessionFileEntry,
     source: MemorySource,
   ): Promise<number[][]> {
-    if (this.provider.id === "openai" && this.openAi) {
-      return this.embedChunksWithOpenAiBatch(chunks, entry, source);
-    }
-    if (this.provider.id === "gemini" && this.gemini) {
-      return this.embedChunksWithGeminiBatch(chunks, entry, source);
+    if (this.provider.id === "google" && this.google) {
+      return this.embedChunksWithGoogleBatch(chunks, entry, source);
     }
     return this.embedChunksInBatches(chunks);
   }
 
-  private async embedChunksWithOpenAiBatch(
+  private async embedChunksWithGoogleBatch(
     chunks: MemoryChunk[],
     entry: MemoryFileEntry | SessionFileEntry,
     source: MemorySource,
   ): Promise<number[][]> {
-    const openAi = this.openAi;
-    if (!openAi) {
-      return this.embedChunksInBatches(chunks);
-    }
-    if (chunks.length === 0) return [];
-    const cached = this.loadEmbeddingCache(chunks.map((chunk) => chunk.hash));
-    const embeddings: number[][] = Array.from({ length: chunks.length }, () => []);
-    const missing: Array<{ index: number; chunk: MemoryChunk }> = [];
-
-    for (let i = 0; i < chunks.length; i += 1) {
-      const chunk = chunks[i];
-      const hit = chunk?.hash ? cached.get(chunk.hash) : undefined;
-      if (hit && hit.length > 0) {
-        embeddings[i] = hit;
-      } else if (chunk) {
-        missing.push({ index: i, chunk });
-      }
-    }
-
-    if (missing.length === 0) return embeddings;
-
-    const requests: OpenAiBatchRequest[] = [];
-    const mapping = new Map<string, { index: number; hash: string }>();
-    for (const item of missing) {
-      const chunk = item.chunk;
-      const customId = hashText(
-        `${source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${item.index}`,
-      );
-      mapping.set(customId, { index: item.index, hash: chunk.hash });
-      requests.push({
-        custom_id: customId,
-        method: "POST",
-        url: OPENAI_BATCH_ENDPOINT,
-        body: {
-          model: this.openAi?.model ?? this.provider.model,
-          input: chunk.text,
-        },
-      });
-    }
-    const batchResult = await this.runBatchWithFallback({
-      provider: "openai",
-      run: async () =>
-        await runOpenAiEmbeddingBatches({
-          openAi,
-          agentId: this.agentId,
-          requests,
-          wait: this.batch.wait,
-          concurrency: this.batch.concurrency,
-          pollIntervalMs: this.batch.pollIntervalMs,
-          timeoutMs: this.batch.timeoutMs,
-          debug: (message, data) => log.debug(message, { ...data, source, chunks: chunks.length }),
-        }),
-      fallback: async () => await this.embedChunksInBatches(chunks),
-    });
-    if (Array.isArray(batchResult)) return batchResult;
-    const byCustomId = batchResult;
-
-    const toCache: Array<{ hash: string; embedding: number[] }> = [];
-    for (const [customId, embedding] of byCustomId.entries()) {
-      const mapped = mapping.get(customId);
-      if (!mapped) continue;
-      embeddings[mapped.index] = embedding;
-      toCache.push({ hash: mapped.hash, embedding });
-    }
-    this.upsertEmbeddingCache(toCache);
-    return embeddings;
-  }
-
-  private async embedChunksWithGeminiBatch(
-    chunks: MemoryChunk[],
-    entry: MemoryFileEntry | SessionFileEntry,
-    source: MemorySource,
-  ): Promise<number[][]> {
-    const gemini = this.gemini;
-    if (!gemini) {
+    const google = this.google;
+    if (!google) {
       return this.embedChunksInBatches(chunks);
     }
     if (chunks.length === 0) return [];
@@ -1911,10 +1725,10 @@ export class MemoryIndexManager {
     }
 
     const batchResult = await this.runBatchWithFallback({
-      provider: "gemini",
+      provider: "google",
       run: async () =>
         await runGeminiEmbeddingBatches({
-          gemini,
+          gemini: google,
           agentId: this.agentId,
           requests,
           wait: this.batch.wait,
@@ -1980,11 +1794,10 @@ export class MemoryIndexManager {
   }
 
   private resolveEmbeddingTimeout(kind: "query" | "batch"): number {
-    const isLocal = this.provider.id === "local";
     if (kind === "query") {
-      return isLocal ? EMBEDDING_QUERY_TIMEOUT_LOCAL_MS : EMBEDDING_QUERY_TIMEOUT_REMOTE_MS;
+      return EMBEDDING_QUERY_TIMEOUT_MS;
     }
-    return isLocal ? EMBEDDING_BATCH_TIMEOUT_LOCAL_MS : EMBEDDING_BATCH_TIMEOUT_REMOTE_MS;
+    return EMBEDDING_BATCH_TIMEOUT_MS;
   }
 
   private async embedQueryWithTimeout(text: string): Promise<number[]> {

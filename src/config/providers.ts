@@ -60,7 +60,7 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
   openai: {
     id: "openai",
     name: "OpenAI",
-    services: ["embedding", "tts", "image"],
+    services: ["tts", "image"],
     envKey: "OPENAI_API_KEY",
     authType: "api",
     validateEndpoint: "https://api.openai.com/v1/models",
@@ -70,7 +70,7 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
   voyage: {
     id: "voyage",
     name: "Voyage AI",
-    services: ["embedding", "reranking"],
+    services: ["reranking"],
     envKey: "VOYAGE_API_KEY",
     authType: "api",
     baseUrl: "https://api.voyageai.com/v1",
@@ -114,7 +114,7 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
   vllm: {
     id: "vllm",
     name: "vLLM (Local)",
-    services: ["embedding", "reranking"],
+    services: ["reranking"],
     envKey: "VLLM_BASE_URL",
     authType: "none",
     baseUrl: "http://localhost:8000",
@@ -199,6 +199,20 @@ function readAuthStoreSync(): Record<string, { type: string; key?: string }> {
   } catch {
     return {};
   }
+}
+
+/**
+ * Get API key for provider from the global Zee auth store only (sync).
+ *
+ * This intentionally ignores environment variables to keep a single source of truth.
+ */
+export function getAuthApiKeySync(providerId: string): string | undefined {
+  const authStore = readAuthStoreSync();
+  const auth = authStore[providerId];
+  if (auth?.type === "api" && auth.key) {
+    return auth.key;
+  }
+  return undefined;
 }
 
 /**

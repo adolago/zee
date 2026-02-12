@@ -17,17 +17,6 @@ export const EMBEDDING_MODEL_LIMITS: Record<string, number> = {
   // Google
   "gemini-embedding-001": 2048,
   "text-embedding-004": 2048,
-  // OpenAI
-  "text-embedding-3-large": 8191,
-  "text-embedding-3-small": 8191,
-  "text-embedding-ada-002": 8191,
-  // Voyage
-  "voyage-3-large": 32000,
-  "voyage-3": 32000,
-  "voyage-3-lite": 32000,
-  // Cohere
-  "embed-english-v3.0": 512,
-  "embed-multilingual-v3.0": 512,
 };
 
 /** Default max context when model is unknown */

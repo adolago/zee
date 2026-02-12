@@ -40,9 +40,9 @@ describe("providers registry", () => {
       const providers = getProvidersForService("embedding");
       const ids = providers.map((p) => p.id);
       expect(ids).toContain("google");
-      expect(ids).toContain("openai");
-      expect(ids).toContain("voyage");
-      expect(ids).toContain("vllm");
+      expect(ids).not.toContain("openai");
+      expect(ids).not.toContain("voyage");
+      expect(ids).not.toContain("vllm");
     });
 
     it("should return reranking providers", () => {
@@ -232,15 +232,13 @@ describe("providers registry", () => {
   });
 
   describe("provider service coverage", () => {
-    it("voyage should support both embedding and reranking", () => {
+    it("voyage should support reranking", () => {
       const voyage = PROVIDERS.voyage;
-      expect(voyage.services).toContain("embedding");
       expect(voyage.services).toContain("reranking");
     });
 
-    it("openai should support embedding, tts, and image", () => {
+    it("openai should support tts and image", () => {
       const openai = PROVIDERS.openai;
-      expect(openai.services).toContain("embedding");
       expect(openai.services).toContain("tts");
       expect(openai.services).toContain("image");
     });

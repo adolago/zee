@@ -104,7 +104,7 @@ beforeAll(async () => {
   resetMarkdownSync();
   memory = new Memory({
     qdrant: { url: QDRANT_URL, collection: COLLECTION },
-    embedding: { provider: "openai", dimensions: 384 },
+    embedding: { provider: "google", dimensions: 384 },
     namespace: "test-entities",
     markdown: { baseDir: testDir, enabled: true },
   });

@@ -168,8 +168,8 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   vectorDb: {
     type: 'qdrant',
     collection: 'zee',
-    embeddingModel: 'text-embedding-3-small',
-    dimensions: 1536,
+    embeddingModel: 'gemini-embedding-001',
+    dimensions: 3072,
   },
   maxRetrieved: 10,
   similarityThreshold: 0.7,

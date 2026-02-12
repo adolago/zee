@@ -27,10 +27,10 @@ export const QDRANT_COLLECTION_PERSONAS_MEMORY = "personas_memory";
 // =============================================================================
 
 /** Default embedding model */
-export const EMBEDDING_MODEL = "text-embedding-3-small";
+export const EMBEDDING_MODEL = "gemini-embedding-001";
 
-/** Default embedding dimensions for OpenAI text-embedding-3-small */
-export const EMBEDDING_DIMENSIONS = 1536;
+/** Default embedding dimensions for gemini-embedding-001 */
+export const EMBEDDING_DIMENSIONS = 3072;
 
 /** Mock embedding dimensions (for testing) */
 export const MOCK_EMBEDDING_DIMENSIONS = 384;

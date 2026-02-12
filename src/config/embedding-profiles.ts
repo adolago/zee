@@ -15,18 +15,6 @@ export const EMBEDDING_PROFILES: Record<string, EmbeddingProfileConfig> = {
     dimensions: 3072,
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
   },
-  // OpenAI large embedding
-  "openai/text-embedding-3-large": {
-    provider: "openai",
-    model: "text-embedding-3-large",
-    dimensions: 3072,
-  },
-  // Voyage AI embedding
-  "voyage/voyage-3-large": {
-    provider: "voyage",
-    model: "voyage-3-large",
-    dimensions: 1024,
-  },
 };
 
 export function resolveEmbeddingProfile(
