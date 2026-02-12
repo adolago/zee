@@ -7,12 +7,15 @@ import {
   addWildcardAllowFrom,
   applyAccountNameToChannelSection,
   buildChannelConfigSchema,
+  createActionGate,
   deleteAccountFromConfigSection,
   formatDocsLink,
   formatPairingApproveHint,
+  jsonResult,
   missingTargetError,
   normalizeAccountId,
   promptAccountId,
+  readStringParam,
   requireOpenAllowFrom,
   setAccountEnabledInConfigSection,
   type ChannelOnboardingAdapter,
@@ -40,6 +43,15 @@ const DISCORD_META = {
 const DISCORD_BOT_TOKEN_ENV = "DISCORD_BOT_TOKEN";
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
+const DiscordActionsSchema = z
+  .object({
+    reactions: z.boolean().optional(),
+    pins: z.boolean().optional(),
+    channelInfo: z.boolean().optional(),
+  })
+  .strict()
+  .optional();
+
 const DiscordAccountSchema = z
   .object({
     name: z.string().trim().min(1).optional(),
@@ -52,6 +64,7 @@ const DiscordAccountSchema = z
     groupPolicy: GroupPolicySchema.optional(),
     groupAllowFrom: z.array(z.string().trim().min(1)).optional(),
     requireMention: z.boolean().optional(),
+    actions: DiscordActionsSchema,
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -77,6 +90,7 @@ const DiscordConfigSchema = z
     groupPolicy: GroupPolicySchema.optional(),
     groupAllowFrom: z.array(z.string().trim().min(1)).optional(),
     requireMention: z.boolean().optional(),
+    actions: DiscordActionsSchema,
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -91,6 +105,7 @@ const DiscordConfigSchema = z
 
 type DiscordConfig = z.infer<typeof DiscordConfigSchema>;
 type DiscordAccountConfig = z.infer<typeof DiscordAccountSchema>;
+type DiscordActionConfig = NonNullable<z.infer<typeof DiscordActionsSchema>>;
 
 type ResolvedDiscordAccount = DiscordAccountConfig & {
   accountId: string;
@@ -104,6 +119,7 @@ type ResolvedDiscordAccount = DiscordAccountConfig & {
   groupPolicy: "allowlist" | "open" | "disabled";
   groupAllowFrom: string[];
   requireMention: boolean;
+  actions: DiscordActionConfig;
 };
 
 function normalizeEntries(list?: Array<string | number> | null): string[] {
@@ -151,6 +167,10 @@ function resolveDiscordAccount(cfg: ZeeConfig, accountId?: string | null): Resol
     ),
     requireMention:
       account.requireMention ?? (useTopLevel ? section.requireMention : undefined) ?? true,
+    actions: {
+      ...(useTopLevel ? (section.actions ?? {}) : {}),
+      ...(account.actions ?? {}),
+    },
   };
 }
 
@@ -281,19 +301,32 @@ function collectDiscordStatusIssues(accounts: Array<Record<string, unknown>>): C
         fix: "Set channels.discord.requireMention=true or channels.discord.groupPolicy=allowlist.",
       });
     }
+
+    const actions =
+      account.actions && typeof account.actions === "object"
+        ? (account.actions as Record<string, unknown>)
+        : {};
+    const hasActionSurface =
+      actions.reactions !== false || actions.pins !== false || actions.channelInfo !== false;
+    if (dmPolicy === "open" && allowFrom.includes("*") && hasActionSurface) {
+      issues.push({
+        channel: "discord",
+        accountId,
+        kind: "permissions",
+        message: "Action surface is enabled while DMs are open to everyone.",
+        fix: "Use dmPolicy=pairing/allowlist or disable channels.discord.actions.* controls.",
+      });
+    }
   }
   return issues;
 }
 
-async function sendDiscordText(params: {
+async function callDiscordApi(params: {
   account: ResolvedDiscordAccount;
-  to: string;
-  text: string;
-}): Promise<{
-  messageId: string;
-  channelId: string;
-  timestamp: number;
-}> {
+  method: string;
+  path: string;
+  body?: Record<string, unknown>;
+}): Promise<Record<string, unknown>> {
   const token = resolveDiscordBotToken(params.account).token;
   if (!token) {
     throw new Error(
@@ -301,8 +334,7 @@ async function sendDiscordText(params: {
     );
   }
 
-  const endpoint = `${DISCORD_API_BASE}/channels/${encodeURIComponent(params.to)}/messages`;
-
+  const endpoint = `${DISCORD_API_BASE}${params.path}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   if (typeof timeout.unref === "function") timeout.unref();
@@ -310,19 +342,23 @@ async function sendDiscordText(params: {
   let response: Response;
   try {
     response = await fetch(endpoint, {
-      method: "POST",
+      method: params.method,
       headers: {
         authorization: `Bot ${token}`,
-        "content-type": "application/json",
+        ...(params.body ? { "content-type": "application/json" } : {}),
       },
-      body: JSON.stringify({ content: params.text }),
+      ...(params.body ? { body: JSON.stringify(params.body) } : {}),
       signal: controller.signal,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Discord send failed: ${message}`);
+    throw new Error(`Discord API request failed (${params.method} ${params.path}): ${message}`);
   } finally {
     clearTimeout(timeout);
+  }
+
+  if (response.status === 204) {
+    return { ok: true };
   }
 
   const raw = await response.text();
@@ -338,8 +374,27 @@ async function sendDiscordText(params: {
       typeof payload.message === "string" && payload.message.trim()
         ? payload.message.trim()
         : `HTTP ${response.status}`;
-    throw new Error(`Discord send failed: ${message}`);
+    throw new Error(`Discord API ${params.method} ${params.path} failed: ${message}`);
   }
+
+  return payload;
+}
+
+async function sendDiscordText(params: {
+  account: ResolvedDiscordAccount;
+  to: string;
+  text: string;
+}): Promise<{
+  messageId: string;
+  channelId: string;
+  timestamp: number;
+}> {
+  const payload = await callDiscordApi({
+    account: params.account,
+    method: "POST",
+    path: `/channels/${encodeURIComponent(params.to)}/messages`,
+    body: { content: params.text },
+  });
 
   const messageId = typeof payload.id === "string" ? payload.id : `${Date.now()}`;
   const channelId = typeof payload.channel_id === "string" ? payload.channel_id : params.to;
@@ -495,6 +550,45 @@ function looksLikeDiscordTargetId(raw: string, normalized?: string): boolean {
   return /^\d{15,20}$/.test(value);
 }
 
+function normalizeDiscordEmoji(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  const custom = /^<a?:([a-zA-Z0-9_]+):(\d+)>$/.exec(trimmed);
+  if (custom) return `${custom[1]}:${custom[2]}`;
+  if (trimmed.startsWith(":") && trimmed.endsWith(":") && trimmed.length > 2) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function resolveDiscordActionTarget(params: Record<string, unknown>): string {
+  const primary = readStringParam(params, "channel");
+  const fallback = readStringParam(params, "channelId") ?? readStringParam(params, "to");
+  const target = primary ?? fallback;
+  if (!target) {
+    throw new Error("channel required");
+  }
+  return target;
+}
+
+function isDiscordActionEnabled(params: {
+  account: ResolvedDiscordAccount;
+  action: "react" | "pin" | "unpin" | "channel-info";
+}): boolean {
+  const gate = createActionGate(params.account.actions);
+  switch (params.action) {
+    case "react":
+      return gate("reactions");
+    case "pin":
+    case "unpin":
+      return gate("pins");
+    case "channel-info":
+      return gate("channelInfo");
+    default:
+      return false;
+  }
+}
+
 export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
   id: "discord",
   meta: DISCORD_META,
@@ -538,6 +632,7 @@ export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
           "groupPolicy",
           "groupAllowFrom",
           "requireMention",
+          "actions",
         ],
       }),
     isEnabled: (account) => account.enabled !== false,
@@ -553,6 +648,7 @@ export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
       allowFrom: account.allowFrom,
       mode: account.groupPolicy,
       allowUnmentionedGroups: account.requireMention === false,
+      actions: account.actions,
       botTokenSource: resolveDiscordBotToken(account).source,
     }),
     resolveAllowFrom: ({ cfg, accountId }) => resolveDiscordAccount(cfg, accountId).allowFrom,
@@ -583,6 +679,13 @@ export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
             '- Discord channels: groupPolicy="open" with requireMention=false allows any member to trigger actions. Set requireMention=true or groupPolicy="allowlist".',
           );
         }
+      }
+      const gate = createActionGate(account.actions);
+      const hasActionSurface = gate("reactions") || gate("pins") || gate("channelInfo");
+      if (account.dmPolicy === "open" && account.allowFrom.includes("*") && hasActionSurface) {
+        warnings.push(
+          '- Discord actions: DM policy is open with wildcard allowFrom while native actions are enabled; this allows broad action triggering from any DM sender.',
+        );
       }
       return warnings;
     },
@@ -653,10 +756,90 @@ export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
       allowFrom: account.allowFrom,
       mode: account.groupPolicy,
       allowUnmentionedGroups: account.requireMention === false,
+      actions: account.actions,
       botTokenSource: resolveDiscordBotToken(account).source,
     }),
     collectStatusIssues: (accounts) =>
       collectDiscordStatusIssues(accounts as Array<Record<string, unknown>>),
+  },
+  actions: {
+    listActions: ({ cfg }) => {
+      const account = resolveDiscordAccount(cfg, resolveDefaultDiscordAccountId(cfg));
+      const actions: Array<"react" | "pin" | "unpin" | "channel-info"> = [];
+      if (isDiscordActionEnabled({ account, action: "react" })) actions.push("react");
+      if (isDiscordActionEnabled({ account, action: "pin" })) actions.push("pin", "unpin");
+      if (isDiscordActionEnabled({ account, action: "channel-info" })) actions.push("channel-info");
+      return actions;
+    },
+    supportsAction: ({ action }) =>
+      action === "react" || action === "pin" || action === "unpin" || action === "channel-info",
+    handleAction: async ({ action, params, cfg, accountId }) => {
+      if (
+        action !== "react" &&
+        action !== "pin" &&
+        action !== "unpin" &&
+        action !== "channel-info"
+      ) {
+        throw new Error(`Action ${action} is not supported for provider discord.`);
+      }
+      const account = resolveDiscordAccount(cfg, accountId);
+      if (!isDiscordActionEnabled({ account, action })) {
+        throw new Error(`Action ${action} is disabled by channels.discord.actions policy.`);
+      }
+
+      if (action === "channel-info") {
+        const channel = resolveDiscordActionTarget(params);
+        const payload = await callDiscordApi({
+          account,
+          method: "GET",
+          path: `/channels/${encodeURIComponent(channel)}`,
+        });
+        return jsonResult({
+          ok: true,
+          action,
+          channel: payload,
+        });
+      }
+
+      const channel = resolveDiscordActionTarget(params);
+      const messageId = readStringParam(params, "messageId", {
+        required: true,
+        label: "messageId",
+      });
+
+      if (action === "react") {
+        const emojiRaw = readStringParam(params, "emoji", { required: true, label: "emoji" });
+        const emoji = normalizeDiscordEmoji(emojiRaw);
+        const remove = params.remove === true;
+        await callDiscordApi({
+          account,
+          method: remove ? "DELETE" : "PUT",
+          path: `/channels/${encodeURIComponent(channel)}/messages/${encodeURIComponent(
+            messageId,
+          )}/reactions/${encodeURIComponent(emoji)}/@me`,
+        });
+        return jsonResult({
+          ok: true,
+          action,
+          channel,
+          messageId,
+          emoji,
+          remove,
+        });
+      }
+
+      await callDiscordApi({
+        account,
+        method: action === "pin" ? "PUT" : "DELETE",
+        path: `/channels/${encodeURIComponent(channel)}/pins/${encodeURIComponent(messageId)}`,
+      });
+      return jsonResult({
+        ok: true,
+        action,
+        channel,
+        messageId,
+      });
+    },
   },
   outbound: {
     deliveryMode: "direct",

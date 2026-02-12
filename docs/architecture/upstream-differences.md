@@ -145,6 +145,7 @@ zee embeds a trimmed “OpenClaw-like” gateway inside the Zee persona package:
 
 Zee now ships bundled first-party channel plugins for Slack/Discord/Telegram under
 `packages/zee/Swabble/extensions/` (instead of mirroring OpenClaw's original top-level source layout).
+Slack and Discord extensions include policy-gated native action packs (reactions, pin/unpin, channel-info).
 
 Operationally, Zee’s gateway is launched by zee only when explicitly enabled (for example `zee daemon --gateway`).
 

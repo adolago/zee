@@ -35,6 +35,7 @@ Minimal config:
 - DM access is controlled by `channels.discord.dmPolicy` + `channels.discord.allowFrom`.
 - `open` requires `allowFrom` to include `"*"`.
 - Channel/group behavior is controlled by `channels.discord.groupPolicy` and `channels.discord.requireMention`.
+- Native action permissions are controlled by `channels.discord.actions` (`reactions`, `pins`, `channelInfo`).
 - Safer defaults: `dmPolicy="pairing"`, `groupPolicy="allowlist"`, `requireMention=true`.
 
 Approve pairing requests:
@@ -42,6 +43,38 @@ Approve pairing requests:
 ```bash
 zee pairing list discord
 zee pairing approve discord <code>
+```
+
+## Native actions
+
+Supported action pack:
+- `react`
+- `pin` / `unpin`
+- `channel-info`
+
+Policy example:
+
+```json5
+{
+  channels: {
+    discord: {
+      actions: {
+        reactions: true,
+        pins: true,
+        channelInfo: true
+      }
+    }
+  }
+}
+```
+
+CLI examples:
+
+```bash
+zee message react --channel discord --target 123456789012345678 --message-id 998877665544332211 --emoji wave
+zee message pin --channel discord --target 123456789012345678 --message-id 998877665544332211
+zee message unpin --channel discord --target 123456789012345678 --message-id 998877665544332211
+zee message channel-info --channel discord --target 123456789012345678
 ```
 
 ## Status and health
@@ -54,4 +87,4 @@ zee security audit
 zee doctor
 ```
 
-These commands surface token/config issues, DM policy mistakes, and risky group policy combinations.
+These commands surface token/config issues, DM policy mistakes, risky group policy combinations, and over-broad action surfaces.

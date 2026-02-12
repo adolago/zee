@@ -7,12 +7,15 @@ import {
   addWildcardAllowFrom,
   applyAccountNameToChannelSection,
   buildChannelConfigSchema,
+  createActionGate,
   deleteAccountFromConfigSection,
   formatDocsLink,
   formatPairingApproveHint,
+  jsonResult,
   missingTargetError,
   normalizeAccountId,
   promptAccountId,
+  readStringParam,
   requireOpenAllowFrom,
   setAccountEnabledInConfigSection,
   type ChannelOnboardingAdapter,
@@ -41,6 +44,15 @@ const SLACK_BOT_TOKEN_ENV = "SLACK_BOT_TOKEN";
 const SLACK_APP_TOKEN_ENV = "SLACK_APP_TOKEN";
 const SLACK_API_BASE = "https://slack.com/api";
 
+const SlackActionsSchema = z
+  .object({
+    reactions: z.boolean().optional(),
+    pins: z.boolean().optional(),
+    channelInfo: z.boolean().optional(),
+  })
+  .strict()
+  .optional();
+
 const SlackAccountSchema = z
   .object({
     name: z.string().trim().min(1).optional(),
@@ -53,6 +65,7 @@ const SlackAccountSchema = z
     groupPolicy: GroupPolicySchema.optional(),
     groupAllowFrom: z.array(z.string().trim().min(1)).optional(),
     requireMention: z.boolean().optional(),
+    actions: SlackActionsSchema,
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -78,6 +91,7 @@ const SlackConfigSchema = z
     groupPolicy: GroupPolicySchema.optional(),
     groupAllowFrom: z.array(z.string().trim().min(1)).optional(),
     requireMention: z.boolean().optional(),
+    actions: SlackActionsSchema,
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -92,6 +106,7 @@ const SlackConfigSchema = z
 
 type SlackConfig = z.infer<typeof SlackConfigSchema>;
 type SlackAccountConfig = z.infer<typeof SlackAccountSchema>;
+type SlackActionConfig = NonNullable<z.infer<typeof SlackActionsSchema>>;
 
 type ResolvedSlackAccount = SlackAccountConfig & {
   accountId: string;
@@ -105,6 +120,7 @@ type ResolvedSlackAccount = SlackAccountConfig & {
   groupPolicy: "allowlist" | "open" | "disabled";
   groupAllowFrom: string[];
   requireMention: boolean;
+  actions: SlackActionConfig;
 };
 
 function normalizeEntries(list?: Array<string | number> | null): string[] {
@@ -152,6 +168,10 @@ function resolveSlackAccount(cfg: ZeeConfig, accountId?: string | null): Resolve
     ),
     requireMention:
       account.requireMention ?? (useTopLevel ? section.requireMention : undefined) ?? true,
+    actions: {
+      ...(useTopLevel ? (section.actions ?? {}) : {}),
+      ...(account.actions ?? {}),
+    },
   };
 }
 
@@ -285,31 +305,36 @@ function collectSlackStatusIssues(accounts: Array<Record<string, unknown>>): Cha
         fix: "Set channels.slack.requireMention=true or channels.slack.groupPolicy=allowlist.",
       });
     }
+
+    const actions =
+      account.actions && typeof account.actions === "object"
+        ? (account.actions as Record<string, unknown>)
+        : {};
+    const hasActionSurface =
+      actions.reactions !== false || actions.pins !== false || actions.channelInfo !== false;
+    if (dmPolicy === "open" && allowFrom.includes("*") && hasActionSurface) {
+      issues.push({
+        channel: "slack",
+        accountId,
+        kind: "permissions",
+        message: "Action surface is enabled while DMs are open to everyone.",
+        fix: "Use dmPolicy=pairing/allowlist or disable channels.slack.actions.* controls.",
+      });
+    }
   }
   return issues;
 }
 
-async function sendSlackText(params: {
+async function callSlackApi(params: {
   account: ResolvedSlackAccount;
-  to: string;
-  text: string;
-  threadId?: string | number | null;
-}): Promise<{
-  messageId: string;
-  channelId: string;
-  meta?: Record<string, unknown>;
-}> {
+  method: string;
+  body: Record<string, unknown>;
+}): Promise<Record<string, unknown>> {
   const tokens = resolveSlackTokens(params.account);
   if (!tokens.botToken) {
-    throw new Error(`Slack bot token is missing. Set channels.slack.botToken or ${SLACK_BOT_TOKEN_ENV}.`);
-  }
-
-  const body: Record<string, unknown> = {
-    channel: params.to,
-    text: params.text,
-  };
-  if (params.threadId !== undefined && params.threadId !== null) {
-    body.thread_ts = String(params.threadId);
+    throw new Error(
+      `Slack bot token is missing. Set channels.slack.botToken or ${SLACK_BOT_TOKEN_ENV}.`,
+    );
   }
 
   const controller = new AbortController();
@@ -318,18 +343,18 @@ async function sendSlackText(params: {
 
   let response: Response;
   try {
-    response = await fetch(`${SLACK_API_BASE}/chat.postMessage`, {
+    response = await fetch(`${SLACK_API_BASE}/${params.method}`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${tokens.botToken}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(params.body),
       signal: controller.signal,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Slack send failed: ${message}`);
+    throw new Error(`Slack API request failed (${params.method}): ${message}`);
   } finally {
     clearTimeout(timeout);
   }
@@ -348,8 +373,34 @@ async function sendSlackText(params: {
       typeof payload.error === "string" && payload.error.trim()
         ? payload.error.trim()
         : `HTTP ${response.status}`;
-    throw new Error(`Slack send failed: ${error}`);
+    throw new Error(`Slack API ${params.method} failed: ${error}`);
   }
+
+  return payload;
+}
+
+async function sendSlackText(params: {
+  account: ResolvedSlackAccount;
+  to: string;
+  text: string;
+  threadId?: string | number | null;
+}): Promise<{
+  messageId: string;
+  channelId: string;
+  meta?: Record<string, unknown>;
+}> {
+  const body: Record<string, unknown> = {
+    channel: params.to,
+    text: params.text,
+  };
+  if (params.threadId !== undefined && params.threadId !== null) {
+    body.thread_ts = String(params.threadId);
+  }
+  const payload = await callSlackApi({
+    account: params.account,
+    method: "chat.postMessage",
+    body,
+  });
 
   const channelId = typeof payload.channel === "string" ? payload.channel : params.to;
   const messageId = typeof payload.ts === "string" ? payload.ts : `${Date.now()}`;
@@ -361,6 +412,15 @@ async function sendSlackText(params: {
       threadTs: typeof payload.ts === "string" ? payload.ts : undefined,
     },
   };
+}
+
+function normalizeSlackEmoji(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith(":") && trimmed.endsWith(":") && trimmed.length > 2) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
 }
 
 const slackOnboardingAdapter: ChannelOnboardingAdapter = {
@@ -500,6 +560,34 @@ function looksLikeSlackTargetId(raw: string, normalized?: string): boolean {
   return /^[CDGU][A-Z0-9]{8,}$/i.test(value) || /^#[a-z0-9._-]+$/i.test(value);
 }
 
+function resolveSlackActionTarget(params: Record<string, unknown>): string {
+  const primary = readStringParam(params, "channel");
+  const fallback = readStringParam(params, "channelId") ?? readStringParam(params, "to");
+  const target = primary ?? fallback;
+  if (!target) {
+    throw new Error("channel required");
+  }
+  return target;
+}
+
+function isSlackActionEnabled(params: {
+  account: ResolvedSlackAccount;
+  action: "react" | "pin" | "unpin" | "channel-info";
+}): boolean {
+  const gate = createActionGate(params.account.actions);
+  switch (params.action) {
+    case "react":
+      return gate("reactions");
+    case "pin":
+    case "unpin":
+      return gate("pins");
+    case "channel-info":
+      return gate("channelInfo");
+    default:
+      return false;
+  }
+}
+
 export const slackPlugin: ChannelPlugin<ResolvedSlackAccount> = {
   id: "slack",
   meta: SLACK_META,
@@ -542,6 +630,7 @@ export const slackPlugin: ChannelPlugin<ResolvedSlackAccount> = {
           "groupPolicy",
           "groupAllowFrom",
           "requireMention",
+          "actions",
         ],
       }),
     isEnabled: (account) => account.enabled !== false,
@@ -559,6 +648,7 @@ export const slackPlugin: ChannelPlugin<ResolvedSlackAccount> = {
         allowFrom: account.allowFrom,
         mode: account.groupPolicy,
         allowUnmentionedGroups: account.requireMention === false,
+        actions: account.actions,
         botTokenSource: tokens.botSource,
         appTokenSource: tokens.appSource,
       };
@@ -591,6 +681,13 @@ export const slackPlugin: ChannelPlugin<ResolvedSlackAccount> = {
             '- Slack groups/channels: groupPolicy="open" with requireMention=false allows any member to trigger actions. Set requireMention=true or groupPolicy="allowlist".',
           );
         }
+      }
+      const gate = createActionGate(account.actions);
+      const hasActionSurface = gate("reactions") || gate("pins") || gate("channelInfo");
+      if (account.dmPolicy === "open" && account.allowFrom.includes("*") && hasActionSurface) {
+        warnings.push(
+          '- Slack actions: DM policy is open with wildcard allowFrom while native actions are enabled; this allows broad action triggering from any DM sender.',
+        );
       }
       return warnings;
     },
@@ -662,11 +759,96 @@ export const slackPlugin: ChannelPlugin<ResolvedSlackAccount> = {
         allowFrom: account.allowFrom,
         mode: account.groupPolicy,
         allowUnmentionedGroups: account.requireMention === false,
+        actions: account.actions,
         botTokenSource: tokens.botSource,
         appTokenSource: tokens.appSource,
       };
     },
     collectStatusIssues: (accounts) => collectSlackStatusIssues(accounts as Array<Record<string, unknown>>),
+  },
+  actions: {
+    listActions: ({ cfg }) => {
+      const account = resolveSlackAccount(cfg, resolveDefaultSlackAccountId(cfg));
+      const actions: Array<"react" | "pin" | "unpin" | "channel-info"> = [];
+      if (isSlackActionEnabled({ account, action: "react" })) actions.push("react");
+      if (isSlackActionEnabled({ account, action: "pin" })) actions.push("pin", "unpin");
+      if (isSlackActionEnabled({ account, action: "channel-info" })) actions.push("channel-info");
+      return actions;
+    },
+    supportsAction: ({ action }) =>
+      action === "react" || action === "pin" || action === "unpin" || action === "channel-info",
+    handleAction: async ({ action, params, cfg, accountId }) => {
+      if (
+        action !== "react" &&
+        action !== "pin" &&
+        action !== "unpin" &&
+        action !== "channel-info"
+      ) {
+        throw new Error(`Action ${action} is not supported for provider slack.`);
+      }
+      const account = resolveSlackAccount(cfg, accountId);
+      if (!isSlackActionEnabled({ account, action })) {
+        throw new Error(`Action ${action} is disabled by channels.slack.actions policy.`);
+      }
+
+      if (action === "channel-info") {
+        const channel = resolveSlackActionTarget(params);
+        const payload = await callSlackApi({
+          account,
+          method: "conversations.info",
+          body: { channel },
+        });
+        return jsonResult({
+          ok: true,
+          action,
+          channel: payload.channel ?? channel,
+        });
+      }
+
+      const channel = resolveSlackActionTarget(params);
+      const messageId = readStringParam(params, "messageId", {
+        required: true,
+        label: "messageId",
+      });
+
+      if (action === "react") {
+        const emojiRaw = readStringParam(params, "emoji", { required: true, label: "emoji" });
+        const emoji = normalizeSlackEmoji(emojiRaw);
+        const remove = params.remove === true;
+        await callSlackApi({
+          account,
+          method: remove ? "reactions.remove" : "reactions.add",
+          body: {
+            channel,
+            timestamp: messageId,
+            name: emoji,
+          },
+        });
+        return jsonResult({
+          ok: true,
+          action,
+          channel,
+          messageId,
+          emoji,
+          remove,
+        });
+      }
+
+      await callSlackApi({
+        account,
+        method: action === "pin" ? "pins.add" : "pins.remove",
+        body: {
+          channel,
+          timestamp: messageId,
+        },
+      });
+      return jsonResult({
+        ok: true,
+        action,
+        channel,
+        messageId,
+      });
+    },
   },
   outbound: {
     deliveryMode: "direct",

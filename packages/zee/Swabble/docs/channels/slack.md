@@ -35,6 +35,7 @@ Minimal config:
 - DM access is controlled by `channels.slack.dmPolicy` + `channels.slack.allowFrom`.
 - `open` requires `allowFrom` to include `"*"`.
 - Channel/group behavior is controlled by `channels.slack.groupPolicy` and `channels.slack.requireMention`.
+- Native action permissions are controlled by `channels.slack.actions` (`reactions`, `pins`, `channelInfo`).
 - Safer defaults: `dmPolicy="pairing"`, `groupPolicy="allowlist"`, `requireMention=true`.
 
 Approve pairing requests:
@@ -42,6 +43,38 @@ Approve pairing requests:
 ```bash
 zee pairing list slack
 zee pairing approve slack <code>
+```
+
+## Native actions
+
+Supported action pack:
+- `react`
+- `pin` / `unpin`
+- `channel-info`
+
+Policy example:
+
+```json5
+{
+  channels: {
+    slack: {
+      actions: {
+        reactions: true,
+        pins: true,
+        channelInfo: true
+      }
+    }
+  }
+}
+```
+
+CLI examples:
+
+```bash
+zee message react --channel slack --target C0123456789 --message-id 1739137646.001 --emoji thumbsup
+zee message pin --channel slack --target C0123456789 --message-id 1739137646.001
+zee message unpin --channel slack --target C0123456789 --message-id 1739137646.001
+zee message channel-info --channel slack --target C0123456789
 ```
 
 ## Status and health
@@ -54,4 +87,4 @@ zee security audit
 zee doctor
 ```
 
-These commands surface token/config issues, DM policy mistakes, and risky group policy combinations.
+These commands surface token/config issues, DM policy mistakes, risky group policy combinations, and over-broad action surfaces.
