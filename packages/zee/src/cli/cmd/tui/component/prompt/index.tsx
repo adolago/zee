@@ -1398,7 +1398,7 @@ export function Prompt(props: PromptProps) {
     } else {
       // While a run is in progress, allow either:
       // - followup: queue message (do not wait for a reply)
-      // - steer: abort the current run and start a new one immediately
+      // - steer: inject at next tool-call boundary without aborting
       // - reject: refuse to submit until user interrupts
       if (busyDecision.submit === "reject") {
         restoreInput()
@@ -1407,9 +1407,6 @@ export function Prompt(props: PromptProps) {
           variant: "warning",
         })
         return
-      }
-      if (busyDecision.shouldAbort && props.sessionID) {
-        sdk.client.session.abort({ sessionID: props.sessionID })
       }
 
       const promptPayload = {
@@ -1434,6 +1431,25 @@ export function Prompt(props: PromptProps) {
           })),
         ],
       } satisfies Parameters<typeof sdk.client.session.prompt>[0]
+
+      if (busyDecision.submit === "steer") {
+        try {
+          await sdk.client.session.steer(promptPayload, { throwOnError: true })
+          toast.show({
+            message: "Steering message sent.",
+            variant: "info",
+            duration: 2000,
+          })
+        } catch (error) {
+          restoreInput()
+          toast.show({
+            message: `Failed to steer: ${formatSubmitError(error)}`,
+            variant: "error",
+            duration: 7000,
+          })
+        }
+        return
+      }
 
       if (busyDecision.submit === "promptAsync") {
         try {

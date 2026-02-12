@@ -22,6 +22,7 @@ import * as UsageTracker from "@/usage/tracker"
 import { StreamHealth } from "./stream-health"
 import { StreamEvents } from "./stream-events"
 import { AppDeps } from "@/app/deps"
+import { SessionSteering } from "./steering"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -42,6 +43,7 @@ export namespace SessionProcessor {
     const toolcalls: Record<string, MessageV2.ToolPart> = {}
     let snapshot: string | undefined
     let blocked = false
+    let steered = false
     let attempt = 0
     let needsCompaction = false
 
@@ -80,6 +82,7 @@ export namespace SessionProcessor {
         return await runWithWideEventContext(baseEvent, async () => {
           log.info("process")
           needsCompaction = false
+          steered = false
           const shouldBreak = (await Config.get()).experimental?.continue_loop_on_deny !== true
           // Initialize stream health monitor - always enabled to detect hanging streams
           // Pass model's reasoning capability for extended timeouts on thinking models
@@ -205,13 +208,14 @@ export namespace SessionProcessor {
 	                removeAbortListener = () => streamAbort.removeEventListener("abort", onAbort)
 	              })
 	              let streamStartTimerCleared = false
+	              let iterator: AsyncIterator<any> | undefined
 	              try {
 	                const stream = await withTimeout(
 	                  Fallback.stream({ ...streamInput, abort: streamAbort }),
 	                  streamStartTimeoutMs + LLM_STREAM_START_TIMEOUT_BUFFER_MS,
 	                )
 
-	                const iterator = stream.fullStream[Symbol.asyncIterator]()
+	                iterator = stream.fullStream[Symbol.asyncIterator]()
 	                while (true) {
 	                  const result = await Promise.race([iterator.next(), abortPromise])
 	                  if (result.done) {
@@ -519,6 +523,9 @@ export namespace SessionProcessor {
                     if (await SessionCompaction.isOverflow({ tokens: usage.tokens, model: input.model })) {
                       needsCompaction = true
                     }
+                    if (finishReason === "tool-calls" && SessionSteering.check(input.sessionID)) {
+                      steered = true
+                    }
                     break
 
                   case "text-start":
@@ -558,10 +565,17 @@ export namespace SessionProcessor {
 	                // Do NOT break the loop early here - extended thinking models (kimi-k2-thinking,
 	                // gpt-5.2 xhigh) produce long reasoning chains that may exceed compaction
 	                // thresholds mid-stream. Breaking early would lose buffered content.
+	                // Exception: steering exits cleanly at step boundaries after all tool results
+	                // are received. The toolcalls map is empty at this point so no work is lost.
+	                if (steered) break
 	                }
 	              } finally {
 	                clearTimeout(streamStartTimer)
 	                removeAbortListener?.()
+	                if (steered) {
+	                  iterator?.return?.()
+	                  healthMonitor.complete()
+	                }
 	              }
 	            } catch (e: any) {
 	              // Record stream failure for diagnostics
@@ -604,6 +618,38 @@ export namespace SessionProcessor {
                 })
               }
               snapshot = undefined
+            }
+            if (steered) {
+              // Steering exit: all tools at this step boundary completed successfully.
+              // Skip marking tools as errors -- the toolcalls map is empty at finish-step.
+              input.assistantMessage.time.completed = Date.now()
+              await Session.updateMessage(input.assistantMessage)
+              const streamReport = healthMonitor.getReport()
+              unsubscribeTimeout()
+              StreamHealth.remove(input.sessionID, input.assistantMessage.id)
+              await finishWideEvent({
+                ok: true,
+                meta: {
+                  blocked,
+                  steered: true,
+                  needsCompaction,
+                  toolCalls: toolStats.calls,
+                  toolErrors: toolStats.errors,
+                  toolNames:
+                    toolStats.names.size <= 12
+                      ? Array.from(toolStats.names)
+                      : Array.from(toolStats.names).slice(0, 12),
+                  streamHealth: streamReport
+                    ? {
+                        status: streamReport.status,
+                        durationMs: streamReport.timing.durationMs,
+                        eventsReceived: streamReport.progress.eventsReceived,
+                        stallWarnings: streamReport.stallWarnings,
+                      }
+                    : undefined,
+                },
+              })
+              return "steered"
             }
             const p = await MessageV2.parts(input.assistantMessage.id)
             for (const part of p) {

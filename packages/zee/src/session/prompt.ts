@@ -48,6 +48,7 @@ import { TaskTool, resolveAgentType } from "@/tool/task"
 import { Tool } from "@/tool/tool"
 import { PermissionNext } from "@/permission/next"
 import { SessionStatus } from "./status"
+import { SessionSteering } from "./steering"
 import { LLM } from "./llm"
 import { iife } from "@/util/iife"
 import { Shell } from "@/shell/shell"
@@ -632,6 +633,7 @@ export namespace SessionPrompt {
 
   export function cancel(sessionID: string) {
     log.info("cancel", { sessionID })
+    SessionSteering.clear(sessionID)
     const s = state()
     const match = s[sessionID]
     if (!match) {
@@ -1240,6 +1242,10 @@ export namespace SessionPrompt {
         }
       }
       if (result === "stop") break
+      if (result === "steered") {
+        SessionSteering.clear(sessionID)
+        continue
+      }
       if (result === "compact") {
         await SessionCompaction.create({
           sessionID,

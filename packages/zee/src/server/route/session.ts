@@ -15,6 +15,7 @@ import { registerSseKeepalive } from "../sse-keepalive"
 import { Config } from "../../config/config"
 import { Storage } from "../../storage/storage"
 import { SessionPrompt } from "../../session/prompt"
+import { SessionSteering } from "../../session/steering"
 import { SessionRevert } from "../../session/revert"
 import { Snapshot } from "@/snapshot"
 import { SessionSummary } from "@/session/summary"
@@ -700,6 +701,47 @@ export const SessionRoute = new Hono()
     async (c) => {
       SessionPrompt.cancel(c.req.valid("param").sessionID)
       return c.json(true)
+    },
+  )
+  .post(
+    "/session/:sessionID/steer",
+    describeRoute({
+      summary: "Steer session",
+      description:
+        "Inject a user message into a running session. If the session is busy, the message is delivered at the next tool-call boundary without aborting the current run. If idle, a new loop is started.",
+      operationId: "session.steer",
+      responses: {
+        204: {
+          description: "Steering message accepted",
+        },
+        ...errors(400, 404),
+      },
+    }),
+    validator("param", z.object({ sessionID: z.string() })),
+    validator("json", SessionPrompt.PromptInput.omit({ sessionID: true })),
+    async (c) => {
+      const sessionID = c.req.valid("param").sessionID
+      const body = c.req.valid("json")
+
+      // Persist the user message without starting a reply
+      await SessionPrompt.prompt({ ...body, sessionID, noReply: true })
+
+      const status = SessionStatus.get(sessionID)
+      if (status.type === "busy") {
+        // Session is running -- mark it for steering so the processor
+        // exits at the next tool-call step boundary.
+        SessionSteering.mark(sessionID)
+      } else {
+        // Session is idle -- start the loop so the model processes the
+        // new message immediately.
+        SessionPrompt.loop(sessionID).catch((err) => {
+          Log.Default.error("session.steer loop error", {
+            error: err instanceof Error ? err.message : String(err),
+            sessionID,
+          })
+        })
+      }
+      return c.body(null, 204)
     },
   )
   .get(

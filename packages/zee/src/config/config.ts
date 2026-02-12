@@ -1044,7 +1044,7 @@ export namespace Config {
         [
           "Behavior when submitting a prompt while a session is already running.",
           '"followup" queues the message to be processed after the current run finishes (uses prompt_async).',
-          '"steer" aborts the current run and immediately starts a new one with your message.',
+          '"steer" injects your message at the next tool-call boundary without aborting.',
           '"reject" refuses to submit until you interrupt/stop the run yourself.',
         ].join(" "),
       ),
@@ -1318,7 +1318,7 @@ export namespace Config {
         .optional()
         .describe("Text-to-speech configuration"),
     })
-    .strict()
+    .passthrough()
     .meta({
       ref: "MessagesConfig",
     })
@@ -1649,7 +1649,7 @@ export namespace Config {
         .optional()
         .describe("Provider/model fallback configuration for automatic failover"),
     })
-    .strict()
+    .passthrough()
     .meta({
       ref: "Config",
     })

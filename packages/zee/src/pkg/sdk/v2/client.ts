@@ -440,6 +440,32 @@ class ExtendedSession extends GeneratedSession {
       },
     })
   }
+
+  // Steer a running session by injecting a user message at the next tool-call boundary
+  steer<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      parts: Array<{ id?: string; type: "text"; text: string } | { id?: string; type: string; [key: string]: any }>
+      model?: { providerID: string; modelID: string }
+      agent?: string
+      variant?: string
+      tools?: { [key: string]: boolean }
+      options?: { [key: string]: unknown }
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>
+  ) {
+    const { directory: _, sessionID, ...body } = parameters
+    return (options?.client ?? this.client).post<void, unknown, ThrowOnError>({
+      url: `/session/${sessionID}/steer`,
+      body,
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    })
+  }
 }
 
 

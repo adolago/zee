@@ -26,10 +26,10 @@ describe("tui busy submit behavior", () => {
     })
   })
 
-  test("steer interrupts then submits normally", () => {
+  test("steer injects at step boundary without aborting", () => {
     expect(decideBusySubmit({ sessionIsBusy: true, hasSessionID: true, behavior: "steer" })).toEqual({
-      submit: "prompt",
-      shouldAbort: true,
+      submit: "steer",
+      shouldAbort: false,
     })
   })
 
@@ -40,4 +40,3 @@ describe("tui busy submit behavior", () => {
     })
   })
 })
-
