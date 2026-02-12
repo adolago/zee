@@ -50,15 +50,15 @@ export function getZeeRoot(): string {
 }
 
 /**
- * Persona paths - resolved from ZEE_ROOT/packages/personas/
+ * Persona paths - resolved from ZEE_ROOT/packages/zee/Swabble/
  */
 export const Personas = {
   root(): string {
-    return path.join(getZeeRoot(), "packages", "personas")
+    return path.join(getZeeRoot(), "packages", "zee", "Swabble")
   },
 
   zee(): string {
-    return path.join(this.root(), "zee")
+    return this.root()
   },
 
   stanley(): string {

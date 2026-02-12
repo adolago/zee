@@ -5,11 +5,11 @@
 module.exports = {
   forbidden: [
     {
-      name: "core-must-not-import-personas-packages",
+      name: "core-must-not-import-swabble",
       severity: "error",
       // Exception: the embedded Zee gateway is intentionally bundled into zee.
       from: { path: "^packages/zee/src/", pathNot: "^packages/zee/src/gateway/embedded-gateway\\.ts$" },
-      to: { path: "^packages/personas/" },
+      to: { path: "^packages/zee/Swabble/" },
     },
   ],
   options: {
