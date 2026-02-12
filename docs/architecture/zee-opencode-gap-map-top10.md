@@ -29,7 +29,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 | 3 | 03 | [#288](https://github.com/adolago/zee/issues/288) | Auth/provider plugin parity and migration ergonomics | adapt | triage-done | `docs/architecture/opencode-lanes/lane-03-auth-provider.md` |
 | 4 | 04 | [#289](https://github.com/adolago/zee/issues/289) | Web/desktop/package topology parity strategy | adapt | triage-done | `docs/architecture/opencode-lanes/lane-04-package-topology.md` |
 | 5 | 05 | [#290](https://github.com/adolago/zee/issues/290) | API/LSP/server workflow parity deltas | adapt | triage-done | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` |
-| 6 | 06 | [#291](https://github.com/adolago/zee/issues/291) | Upstream sync automation and policy | port | open | `docs/architecture/opencode-sync-policy.md` |
+| 6 | 06 | [#291](https://github.com/adolago/zee/issues/291) | Upstream sync automation and policy | port | triage-done | `docs/architecture/opencode-sync-policy.md` |
 | 7 | 07 | `TBD` | Provider breadth parity (extra `@ai-sdk/*` footprint vs Zee policy) | defer | backlog | `docs/architecture/feature-comparison.md` |
 | 8 | 08 | `TBD` | Project-local `.opencode/` migration ergonomics into `.zee/` | adapt | backlog | `docs/architecture/upstream-differences.md` |
 | 9 | 09 | `TBD` | Client/server mode behavior parity (serve flows, remote clients) | adapt | backlog | `docs/architecture/feature-comparison.md` |
@@ -71,6 +71,9 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 - Scope: repeatable triage automation and evidence standards.
 - Current decision: `port` (process and tooling parity).
+- Artifacts:
+  - `docs/architecture/opencode-sync-policy.md`
+  - `docs/architecture/opencode-snapshot-playbook.md`
 
 ## Refresh Process (Pinned to `opencode/dev`)
 
