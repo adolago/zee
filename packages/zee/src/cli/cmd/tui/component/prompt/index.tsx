@@ -1273,15 +1273,9 @@ export function Prompt(props: PromptProps) {
     // Capture mode before it gets reset
     const currentMode = store.mode
     const variant = local.model.variant.current()
-    const busySubmitBehavior =
-      // Config is `zee.json`/`zee.jsonc` -> { "tui": { ... } }
-      ((sync.data?.config as any)?.tui?.busy_submit_behavior as "followup" | "steer" | "reject" | undefined) ??
-      "followup"
-    const sessionIsBusy = status().type !== "idle"
     const busyDecision = decideBusySubmit({
-      sessionIsBusy,
+      sessionIsBusy: status().type !== "idle",
       hasSessionID: Boolean(props.sessionID),
-      behavior: busySubmitBehavior,
     })
 
     // Tool permissions based on hold/release mode
@@ -1396,19 +1390,6 @@ export function Prompt(props: PromptProps) {
         return
       }
     } else {
-      // While a run is in progress, allow either:
-      // - followup: queue message (do not wait for a reply)
-      // - steer: inject at next tool-call boundary without aborting
-      // - reject: refuse to submit until user interrupts
-      if (busyDecision.submit === "reject") {
-        restoreInput()
-        toast.show({
-          message: "Session is running. Interrupt it first (or set tui.busy_submit_behavior).",
-          variant: "warning",
-        })
-        return
-      }
-
       const promptPayload = {
         sessionID,
         messageID,
@@ -1451,35 +1432,16 @@ export function Prompt(props: PromptProps) {
         return
       }
 
-      if (busyDecision.submit === "promptAsync") {
-        try {
-          await sdk.client.session.promptAsync(promptPayload, { throwOnError: true })
-          toast.show({
-            message: "Queued message (follow-up).",
-            variant: "info",
-            duration: 2000,
-          })
-        } catch (error) {
-          restoreInput()
-          toast.show({
-            message: `Failed to queue message: ${formatSubmitError(error)}`,
-            variant: "error",
-            duration: 7000,
-          })
-          return
-        }
-      } else {
-        try {
-          await sdk.client.session.prompt(promptPayload, { throwOnError: true })
-        } catch (error) {
-          restoreInput()
-          toast.show({
-            message: `Failed to send message: ${formatSubmitError(error)}`,
-            variant: "error",
-            duration: 7000,
-          })
-          return
-        }
+      try {
+        await sdk.client.session.prompt(promptPayload, { throwOnError: true })
+      } catch (error) {
+        restoreInput()
+        toast.show({
+          message: `Failed to send message: ${formatSubmitError(error)}`,
+          variant: "error",
+          duration: 7000,
+        })
+        return
       }
     }
   }

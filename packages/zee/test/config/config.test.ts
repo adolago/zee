@@ -70,17 +70,6 @@ test("includes default keybind for toggling scrollbar visibility", async () => {
   })
 })
 
-test("includes default tui.busy_submit_behavior", async () => {
-  await using tmp = await tmpdir()
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const config = await Config.get()
-      expect(config.tui?.busy_submit_behavior).toBe("followup")
-    },
-  })
-})
-
 test("includes default tui scroll settings", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({

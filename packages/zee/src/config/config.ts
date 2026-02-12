@@ -1036,18 +1036,6 @@ export namespace Config {
       .describe(
         "Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work.",
       ),
-    busy_submit_behavior: z
-      .enum(["followup", "steer", "reject"])
-      .optional()
-      .default("followup")
-      .describe(
-        [
-          "Behavior when submitting a prompt while a session is already running.",
-          '"followup" queues the message to be processed after the current run finishes (uses prompt_async).',
-          '"steer" injects your message at the next tool-call boundary without aborting.',
-          '"reject" refuses to submit until you interrupt/stop the run yourself.',
-        ].join(" "),
-      ),
   })
 
   /**

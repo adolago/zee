@@ -1,22 +1,15 @@
-export type BusySubmitBehavior = "followup" | "steer" | "reject"
-
 export type BusySubmitDecision =
-  | { submit: "prompt"; shouldAbort: false }
-  | { submit: "steer"; shouldAbort: false }
-  | { submit: "promptAsync"; shouldAbort: false }
-  | { submit: "reject"; shouldAbort: false }
+  | { submit: "prompt" }
+  | { submit: "steer" }
 
 export function decideBusySubmit(input: {
   sessionIsBusy: boolean
   hasSessionID: boolean
-  behavior: BusySubmitBehavior
 }): BusySubmitDecision {
-  if (!input.sessionIsBusy) return { submit: "prompt", shouldAbort: false }
+  if (!input.sessionIsBusy) return { submit: "prompt" }
 
-  // No active session to abort/queue against (new session flow).
-  if (!input.hasSessionID) return { submit: "prompt", shouldAbort: false }
+  // No active session to steer against (new session flow).
+  if (!input.hasSessionID) return { submit: "prompt" }
 
-  if (input.behavior === "reject") return { submit: "reject", shouldAbort: false }
-  if (input.behavior === "steer") return { submit: "steer", shouldAbort: false }
-  return { submit: "promptAsync", shouldAbort: false }
+  return { submit: "steer" }
 }
