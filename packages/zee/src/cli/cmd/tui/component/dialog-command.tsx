@@ -68,8 +68,11 @@ export function createCommandDialog() {
       if (!isEnabled(option)) continue
       if (option.keybind && keybind.match(option.keybind, evt)) {
         // Skip non-leader keybinds in insert mode to allow typing accented chars etc.
+        // But allow non-printable navigation keys through (they never produce text input).
         if (insertMode && !keybind.leader) {
-          continue
+          const nav = evt.name === "pageup" || evt.name === "pagedown"
+            || evt.name === "home" || evt.name === "end"
+          if (!nav) continue
         }
         evt.preventDefault()
         option.onSelect?.(dialog)
