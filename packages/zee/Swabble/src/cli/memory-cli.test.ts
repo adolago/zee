@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const getMemorySearchManager = vi.fn();
 const loadConfig = vi.fn(() => ({}));
+const writeConfigFile = vi.fn(async () => {});
 const resolveDefaultAgentId = vi.fn(() => "main");
 
 vi.mock("../memory/index.js", () => ({
@@ -11,6 +12,7 @@ vi.mock("../memory/index.js", () => ({
 
 vi.mock("../config/config.js", () => ({
   loadConfig,
+  writeConfigFile,
 }));
 
 vi.mock("../agents/agent-scope.js", () => ({
@@ -20,6 +22,7 @@ vi.mock("../agents/agent-scope.js", () => ({
 afterEach(async () => {
   vi.restoreAllMocks();
   getMemorySearchManager.mockReset();
+  writeConfigFile.mockReset();
   process.exitCode = undefined;
   const { setVerbose } = await import("../globals.js");
   setVerbose(false);
@@ -363,5 +366,57 @@ describe("memory cli", () => {
     expect(close).toHaveBeenCalled();
     expect(error).toHaveBeenCalledWith(expect.stringContaining("Memory search failed: boom"));
     expect(process.exitCode).toBe(1);
+  });
+
+  it("shows local profile state", async () => {
+    const { registerMemoryCli } = await import("./memory-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    loadConfig.mockReturnValueOnce({
+      agents: { defaults: { memorySearch: { enabled: true, store: { driver: "sqlite" } } } },
+      plugins: { slots: { memory: "zee" } },
+    });
+
+    const log = vi.spyOn(defaultRuntime, "log").mockImplementation(() => {});
+    const program = new Command();
+    program.name("test");
+    registerMemoryCli(program);
+    await program.parseAsync(["memory", "profile", "show"], { from: "user" });
+
+    expect(log).toHaveBeenCalledWith("Profile: local-index");
+    expect(log).toHaveBeenCalledWith("Memory slot: zee");
+  });
+
+  it("sets local profile config", async () => {
+    const { registerMemoryCli } = await import("./memory-cli.js");
+    const { defaultRuntime } = await import("../runtime.js");
+    loadConfig.mockReturnValueOnce({
+      agents: {
+        defaults: {
+          memorySearch: {
+            enabled: false,
+            store: {
+              driver: "sqlite",
+              vector: { enabled: false },
+            },
+          },
+        },
+      },
+      plugins: { slots: { memory: "none" } },
+    });
+
+    const log = vi.spyOn(defaultRuntime, "log").mockImplementation(() => {});
+    const program = new Command();
+    program.name("test");
+    registerMemoryCli(program);
+    await program.parseAsync(["memory", "profile", "set", "local"], { from: "user" });
+
+    expect(writeConfigFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plugins: expect.objectContaining({
+          slots: expect.objectContaining({ memory: "zee" }),
+        }),
+      }),
+    );
+    expect(log).toHaveBeenCalledWith("Memory profile set: local-index");
   });
 });

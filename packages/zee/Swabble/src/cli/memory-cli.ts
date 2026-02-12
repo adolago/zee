@@ -6,7 +6,7 @@ import path from "node:path";
 import type { Command } from "commander";
 
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
-import { loadConfig } from "../config/config.js";
+import { loadConfig, type ZeeConfig, writeConfigFile } from "../config/config.js";
 import { resolveSessionTranscriptsDirForAgent } from "../config/sessions/paths.js";
 import { setVerbose } from "../globals.js";
 import { withProgress, withProgressTotals } from "./progress.js";
@@ -30,6 +30,7 @@ type MemoryCommandOptions = {
 type MemoryManager = NonNullable<MemorySearchManagerResult["manager"]>;
 
 type MemorySourceName = "memory" | "sessions";
+type MemoryProfileName = "local" | "local-index";
 
 type SourceScan = {
   source: MemorySourceName;
@@ -76,6 +77,61 @@ function resolveAgentIds(cfg: ReturnType<typeof loadConfig>, agent?: string): st
 
 function formatExtraPaths(workspaceDir: string, extraPaths: string[]): string[] {
   return normalizeExtraMemoryPaths(workspaceDir, extraPaths).map((entry) => shortenHomePath(entry));
+}
+
+function normalizeMemoryProfile(raw: string): MemoryProfileName | null {
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "local" || normalized === "local-index") {
+    return normalized;
+  }
+  return null;
+}
+
+function resolveLocalProfileState(cfg: ZeeConfig): {
+  active: boolean;
+  slot: string;
+  driver: string;
+  enabled: boolean;
+} {
+  const slot = cfg.plugins?.slots?.memory ?? "zee";
+  const driver = cfg.agents?.defaults?.memorySearch?.store?.driver ?? "sqlite";
+  const enabled = cfg.agents?.defaults?.memorySearch?.enabled !== false;
+  const active = enabled && slot !== "none" && driver === "sqlite";
+  return { active, slot, driver, enabled };
+}
+
+function applyLocalMemoryProfile(cfg: ZeeConfig): ZeeConfig {
+  const defaults = cfg.agents?.defaults ?? {};
+  const memorySearch = defaults.memorySearch ?? {};
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...defaults,
+        memorySearch: {
+          ...memorySearch,
+          enabled: true,
+          provider: "google",
+          store: {
+            ...memorySearch.store,
+            driver: "sqlite",
+            vector: {
+              ...memorySearch.store?.vector,
+              enabled: true,
+            },
+          },
+        },
+      },
+    },
+    plugins: {
+      ...cfg.plugins,
+      slots: {
+        ...cfg.plugins?.slots,
+        memory: "zee",
+      },
+    },
+  };
 }
 
 async function checkReadableFile(pathname: string): Promise<{ exists: boolean; issue?: string }> {
@@ -462,6 +518,74 @@ export function registerMemoryCli(program: Command) {
     .option("--verbose", "Verbose logging", false)
     .action(async (opts: MemoryCommandOptions) => {
       await runMemoryStatus(opts);
+    });
+
+  const profile = memory.command("profile").description("Manage memory backend profiles");
+
+  profile
+    .command("show")
+    .description("Show active memory backend profile")
+    .option("--json", "Print JSON")
+    .action(async (opts: { json?: boolean }) => {
+      const cfg = loadConfig();
+      const state = resolveLocalProfileState(cfg);
+      const payload = {
+        profile: state.active ? "local-index" : "custom",
+        localIndex: state.active,
+        details: {
+          enabled: state.enabled,
+          memorySlot: state.slot,
+          storeDriver: state.driver,
+        },
+      };
+      if (opts.json) {
+        defaultRuntime.log(JSON.stringify(payload, null, 2));
+        return;
+      }
+      defaultRuntime.log(`Profile: ${payload.profile}`);
+      defaultRuntime.log(`Enabled: ${state.enabled ? "yes" : "no"}`);
+      defaultRuntime.log(`Memory slot: ${state.slot}`);
+      defaultRuntime.log(`Store driver: ${state.driver}`);
+    });
+
+  profile
+    .command("set")
+    .description("Select memory backend profile")
+    .argument("<name>", "Profile name (local|local-index)")
+    .option("--json", "Print JSON")
+    .action(async (name: string, opts: { json?: boolean }) => {
+      const profileName = normalizeMemoryProfile(name);
+      if (!profileName) {
+        defaultRuntime.error(`Unknown memory profile: ${name}`);
+        defaultRuntime.error("Supported profiles: local, local-index");
+        defaultRuntime.exit(1);
+        return;
+      }
+      const cfg = loadConfig();
+      const next = applyLocalMemoryProfile(cfg);
+      await writeConfigFile(next);
+      const state = resolveLocalProfileState(next);
+      if (opts.json) {
+        defaultRuntime.log(
+          JSON.stringify(
+            {
+              ok: true,
+              profile: "local-index",
+              details: {
+                enabled: state.enabled,
+                memorySlot: state.slot,
+                storeDriver: state.driver,
+              },
+            },
+            null,
+            2,
+          ),
+        );
+        return;
+      }
+      defaultRuntime.log("Memory profile set: local-index");
+      defaultRuntime.log("Local SQLite index is enabled (no external vector DB required).");
+      defaultRuntime.log("Next: run `zee memory index` to build/update the local index.");
     });
 
   memory
