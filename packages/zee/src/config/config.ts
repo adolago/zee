@@ -1637,7 +1637,7 @@ export namespace Config {
         .optional()
         .describe("Provider/model fallback configuration for automatic failover"),
     })
-    .passthrough()
+    .strict()
     .meta({
       ref: "Config",
     })
