@@ -94,6 +94,7 @@ Approve it via:
 ```bash
 zee nodes pending
 zee nodes approve <requestId>
+zee nodes revoke --node <id|name|ip>   # force re-pair / remove a node token
 ```
 
 The node host stores its node id, token, display name, and gateway connection info in

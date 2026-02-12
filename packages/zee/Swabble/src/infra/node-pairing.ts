@@ -47,6 +47,11 @@ export type NodePairingList = {
   paired: NodePairingPairedNode[];
 };
 
+export type NodePairingRevocationResult = {
+  nodeId: string;
+  revokedAtMs: number;
+};
+
 type NodePairingStateFile = {
   pendingById: Record<string, NodePairingPendingRequest>;
   pairedByNodeId: Record<string, NodePairingPairedNode>;
@@ -320,5 +325,30 @@ export async function renamePairedNode(
     state.pairedByNodeId[normalized] = next;
     await persistState(state, baseDir);
     return next;
+  });
+}
+
+export async function revokePairedNode(
+  nodeId: string,
+  baseDir?: string,
+): Promise<NodePairingRevocationResult | null> {
+  return await withLock(async () => {
+    const state = await loadState(baseDir);
+    const normalized = normalizeNodeId(nodeId);
+    const existing = state.pairedByNodeId[normalized];
+    if (!existing) return null;
+
+    delete state.pairedByNodeId[normalized];
+    for (const [requestId, request] of Object.entries(state.pendingById)) {
+      if (request.nodeId !== normalized) continue;
+      delete state.pendingById[requestId];
+    }
+
+    const revokedAtMs = Date.now();
+    await persistState(state, baseDir);
+    return {
+      nodeId: normalized,
+      revokedAtMs,
+    };
   });
 }

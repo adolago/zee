@@ -4,10 +4,12 @@ import type { ChannelId } from "../channels/plugins/types.js";
 import type { ZeeConfig } from "../config/config.js";
 import { resolveBrowserConfig, resolveProfile } from "../browser/config.js";
 import { resolveConfigPath, resolveStateDir } from "../config/paths.js";
+import { listNodePairing } from "../infra/node-pairing.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { buildGatewayConnectionDetails } from "../gateway/call.js";
 import { probeGateway } from "../gateway/probe.js";
+import { resolveNodeCommandAllowlist } from "../gateway/node-command-policy.js";
 import {
   collectAttackSurfaceSummaryFindings,
   collectExposureChannelFindings,
@@ -582,6 +584,110 @@ async function collectChannelSecurityFindings(params: {
   return findings;
 }
 
+const HIGH_RISK_NODE_COMMANDS = [
+  "system.run",
+  "browser.proxy",
+  "camera.snap",
+  "camera.clip",
+  "screen.record",
+  "location.get",
+  "canvas.eval",
+];
+
+function formatNodeAge(ageMs: number | null): string {
+  if (ageMs == null || !Number.isFinite(ageMs) || ageMs < 0) return "never connected";
+  const minutes = Math.floor(ageMs / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+async function collectNodeExposureFindings(params: {
+  cfg: ZeeConfig;
+  stateDir: string;
+  deep: boolean;
+}): Promise<SecurityAuditFinding[]> {
+  if (!params.deep) return [];
+
+  const findings: SecurityAuditFinding[] = [];
+  const pairing = await listNodePairing(params.stateDir).catch(() => null);
+  if (!pairing) {
+    findings.push({
+      checkId: "nodes.pairing.read_failed",
+      severity: "warn",
+      title: "Node pairing state could not be read",
+      detail:
+        "Deep audit could not inspect paired node state. Verify state directory permissions and integrity.",
+    });
+    return findings;
+  }
+
+  if (pairing.pending.length > 0) {
+    findings.push({
+      checkId: "nodes.pairing.pending_requests",
+      severity: "warn",
+      title: "Pending node pairing requests exist",
+      detail: `${pairing.pending.length} node pairing request(s) are pending approval.`,
+      remediation:
+        "Review with `zee nodes pending`; approve only trusted nodes and reject stale requests.",
+    });
+  }
+
+  const now = Date.now();
+  const riskyNodes = pairing.paired
+    .map((node) => {
+      const allowlist = resolveNodeCommandAllowlist(params.cfg, {
+        platform: node.platform,
+        deviceFamily: node.deviceFamily,
+      });
+      const riskyCommands = HIGH_RISK_NODE_COMMANDS.filter((command) => allowlist.has(command));
+      if (riskyCommands.length === 0) return null;
+      const ageMs =
+        typeof node.lastConnectedAtMs === "number"
+          ? Math.max(0, now - node.lastConnectedAtMs)
+          : null;
+      return {
+        nodeId: node.nodeId,
+        displayName: node.displayName,
+        riskyCommands,
+        ageMs,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry != null);
+
+  if (riskyNodes.length === 0) return findings;
+
+  const staleNode = riskyNodes.find(
+    (entry) => entry.ageMs != null && entry.ageMs > 30 * 86_400_000,
+  );
+  const severity: SecurityAuditSeverity = staleNode ? "critical" : "warn";
+  const lines = riskyNodes
+    .slice(0, 10)
+    .map((entry) => {
+      const nodeLabel = entry.displayName?.trim()
+        ? `${entry.displayName} (${entry.nodeId})`
+        : entry.nodeId;
+      const age = formatNodeAge(entry.ageMs);
+      return `- ${nodeLabel}: ${entry.riskyCommands.join(", ")} · lastSeen=${age}`;
+    });
+  const more = riskyNodes.length > 10 ? `\n…${riskyNodes.length - 10} more` : "";
+  findings.push({
+    checkId: "nodes.pairing.high_risk_commands",
+    severity,
+    title: "Paired nodes expose high-risk command surfaces",
+    detail:
+      "Deep audit found paired nodes with high-risk command allowlists:\n" +
+      lines.join("\n") +
+      more,
+    remediation:
+      "Revoke stale/untrusted nodes with `zee nodes revoke --node <id|name|ip>` and tighten gateway.nodes.allowCommands/denyCommands.",
+  });
+
+  return findings;
+}
+
 async function maybeProbeGateway(params: {
   cfg: ZeeConfig;
   timeoutMs: number;
@@ -662,6 +768,13 @@ export async function runSecurityAudit(opts: SecurityAuditOptions): Promise<Secu
   findings.push(...collectModelHygieneFindings(cfg));
   findings.push(...collectSmallModelRiskFindings({ cfg, env }));
   findings.push(...collectExposureChannelFindings(cfg));
+  findings.push(
+    ...(await collectNodeExposureFindings({
+      cfg,
+      stateDir,
+      deep: opts.deep === true,
+    })),
+  );
 
   const configSnapshot =
     opts.includeFilesystem !== false

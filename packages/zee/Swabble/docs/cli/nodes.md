@@ -23,6 +23,7 @@ zee nodes list --connected
 zee nodes list --last-connected 24h
 zee nodes pending
 zee nodes approve <requestId>
+zee nodes revoke --node <id|name|ip>
 zee nodes status
 zee nodes status --connected
 zee nodes status --last-connected 24h
@@ -31,6 +32,9 @@ zee nodes status --last-connected 24h
 `nodes list` prints pending/paired tables. Paired rows include the most recent connect age (Last Connect).
 Use `--connected` to only show currently-connected nodes. Use `--last-connected <duration>` to
 filter to nodes that connected within a duration (e.g. `24h`, `7d`).
+
+`nodes revoke` removes a paired node token from the gateway. The node must re-pair on its next
+connection attempt.
 
 ## Invoke / run
 

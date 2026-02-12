@@ -87,6 +87,27 @@ export function registerNodesPairingCommands(nodes: Command) {
 
   nodesCallOpts(
     nodes
+      .command("revoke")
+      .description("Revoke a paired node and require re-pairing on next connect")
+      .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
+      .action(async (opts: NodesRpcOpts) => {
+        await runNodesCommand("revoke", async () => {
+          const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));
+          const result = await callGatewayCli("node.pair.revoke", opts, {
+            nodeId,
+          });
+          if (opts.json) {
+            defaultRuntime.log(JSON.stringify(result, null, 2));
+            return;
+          }
+          const { ok } = getNodesTheme();
+          defaultRuntime.log(ok(`node revoked: ${nodeId}`));
+        });
+      }),
+  );
+
+  nodesCallOpts(
+    nodes
       .command("rename")
       .description("Rename a paired node (display name override)")
       .requiredOption("--node <idOrNameOrIp>", "Node id, name, or IP")
