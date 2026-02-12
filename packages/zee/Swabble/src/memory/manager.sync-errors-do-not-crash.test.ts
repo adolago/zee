@@ -18,14 +18,20 @@ vi.mock("chokidar", () => ({
 vi.mock("./embeddings.js", () => {
   return {
     createEmbeddingProvider: async () => ({
-      requestedProvider: "openai",
+      requestedProvider: "google",
       provider: {
         id: "mock",
         model: "mock-embed",
         embedQuery: async () => [0, 0, 0],
         embedBatch: async () => {
-          throw new Error("openai embeddings failed: 400 bad request");
+          throw new Error("google embeddings failed: 400 bad request");
         },
+      },
+      google: {
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        headers: { "x-goog-api-key": "test", "Content-Type": "application/json" },
+        model: "gemini-embedding-001",
+        modelPath: "models/gemini-embedding-001",
       },
     }),
   };
@@ -65,7 +71,7 @@ describe("memory manager sync failures", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: true, watchDebounceMs: 1, onSessionStart: false, onSearch: false },

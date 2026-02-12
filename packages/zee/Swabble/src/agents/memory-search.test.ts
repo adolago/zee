@@ -22,7 +22,7 @@ describe("memory search config", () => {
     expect(resolved).toBeNull();
   });
 
-  it("defaults provider to auto when unspecified", () => {
+  it("defaults provider to google when unspecified", () => {
     const cfg = {
       agents: {
         defaults: {
@@ -33,8 +33,7 @@ describe("memory search config", () => {
       },
     };
     const resolved = resolveMemorySearchConfig(cfg, "main");
-    expect(resolved?.provider).toBe("auto");
-    expect(resolved?.fallback).toBe("none");
+    expect(resolved?.provider).toBe("google");
   });
 
   it("merges defaults and overrides", () => {
@@ -42,8 +41,7 @@ describe("memory search config", () => {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "openai",
-            model: "text-embedding-3-small",
+            model: "gemini-embedding-001",
             store: {
               vector: {
                 enabled: false,
@@ -72,8 +70,8 @@ describe("memory search config", () => {
       },
     };
     const resolved = resolveMemorySearchConfig(cfg, "main");
-    expect(resolved?.provider).toBe("openai");
-    expect(resolved?.model).toBe("text-embedding-3-small");
+    expect(resolved?.provider).toBe("google");
+    expect(resolved?.model).toBe("gemini-embedding-001");
     expect(resolved?.chunking.tokens).toBe(320);
     expect(resolved?.chunking.overlap).toBe(100);
     expect(resolved?.query.maxResults).toBe(8);
@@ -105,12 +103,12 @@ describe("memory search config", () => {
     expect(resolved?.extraPaths).toEqual(["/shared/notes", "docs", "../team-notes"]);
   });
 
-  it("includes batch defaults for openai without remote overrides", () => {
+  it("includes batch defaults without remote overrides", () => {
     const cfg = {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "openai",
+            enabled: true,
           },
         },
       },
@@ -125,31 +123,18 @@ describe("memory search config", () => {
     });
   });
 
-  it("keeps remote unset for local provider without overrides", () => {
+  it("always includes remote for google provider", () => {
     const cfg = {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "local",
+            enabled: true,
           },
         },
       },
     };
     const resolved = resolveMemorySearchConfig(cfg, "main");
-    expect(resolved?.remote).toBeUndefined();
-  });
-
-  it("includes remote defaults for gemini without overrides", () => {
-    const cfg = {
-      agents: {
-        defaults: {
-          memorySearch: {
-            provider: "gemini",
-          },
-        },
-      },
-    };
-    const resolved = resolveMemorySearchConfig(cfg, "main");
+    expect(resolved?.remote).toBeDefined();
     expect(resolved?.remote?.batch).toEqual({
       enabled: true,
       wait: true,
@@ -164,7 +149,7 @@ describe("memory search config", () => {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "openai",
+            enabled: true,
           },
         },
       },
@@ -181,10 +166,8 @@ describe("memory search config", () => {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "openai",
             remote: {
               baseUrl: "https://default.example/v1",
-              apiKey: "default-key",
               headers: { "X-Default": "on" },
             },
           },
@@ -205,7 +188,6 @@ describe("memory search config", () => {
     const resolved = resolveMemorySearchConfig(cfg, "main");
     expect(resolved?.remote).toEqual({
       baseUrl: "https://agent.example/v1",
-      apiKey: "default-key",
       headers: { "X-Default": "on" },
       batch: {
         enabled: true,
@@ -222,7 +204,6 @@ describe("memory search config", () => {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "openai",
             sources: ["memory", "sessions"],
           },
         },
@@ -246,7 +227,6 @@ describe("memory search config", () => {
       agents: {
         defaults: {
           memorySearch: {
-            provider: "openai",
             sources: ["memory", "sessions"],
             experimental: { sessionMemory: true },
           },

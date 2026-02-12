@@ -363,9 +363,6 @@ export async function runMemoryStatus(opts: MemoryCommandOptions) {
         lines.push(`  ${accent(entry.source)} ${muted("·")} ${muted(counts)}`);
       }
     }
-    if (status.fallback) {
-      lines.push(`${label("Fallback")} ${warn(status.fallback.from)}`);
-    }
     if (status.vector) {
       const vectorState = status.vector.enabled
         ? status.vector.available === undefined
@@ -430,9 +427,6 @@ export async function runMemoryStatus(opts: MemoryCommandOptions) {
       if (status.batch.lastError) {
         lines.push(`${label("Batch error")} ${warn(status.batch.lastError)}`);
       }
-    }
-    if (status.fallback?.reason) {
-      lines.push(muted(status.fallback.reason));
     }
     if (indexError) {
       lines.push(`${label("Index error")} ${warn(indexError)}`);
@@ -514,9 +508,6 @@ export function registerMemoryCli(program: Command) {
                     ? `${label("Extra paths")} ${info(extraPaths.join(", "))}`
                     : null,
                 ].filter(Boolean) as string[];
-                if (status.fallback) {
-                  lines.push(`${label("Fallback")} ${warn(status.fallback.from)}`);
-                }
                 defaultRuntime.log(lines.join("\n"));
                 defaultRuntime.log("");
               }

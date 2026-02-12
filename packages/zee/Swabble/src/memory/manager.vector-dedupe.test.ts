@@ -10,12 +10,18 @@ import { buildFileEntry } from "./internal.js";
 vi.mock("./embeddings.js", () => {
   return {
     createEmbeddingProvider: async () => ({
-      requestedProvider: "openai",
+      requestedProvider: "google",
       provider: {
         id: "mock",
         model: "mock-embed",
         embedQuery: async () => [0.1, 0.2, 0.3],
         embedBatch: async (texts: string[]) => texts.map((_, index) => [index + 1, 0, 0]),
+      },
+      google: {
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        headers: { "x-goog-api-key": "test", "Content-Type": "application/json" },
+        model: "gemini-embedding-001",
+        modelPath: "models/gemini-embedding-001",
       },
     }),
   };
@@ -47,7 +53,7 @@ describe("memory vector dedupe", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath, vector: { enabled: true } },
             sync: { watch: false, onSessionStart: false, onSearch: false },

@@ -18,7 +18,7 @@ vi.mock("./embeddings.js", () => {
   };
   return {
     createEmbeddingProvider: async (options: { model?: string }) => ({
-      requestedProvider: "openai",
+      requestedProvider: "google",
       provider: {
         id: "mock",
         model: options.model ?? "mock-embed",
@@ -30,6 +30,12 @@ vi.mock("./embeddings.js", () => {
           }
           return texts.map(embedText);
         },
+      },
+      google: {
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        headers: { "x-goog-api-key": "test", "Content-Type": "application/json" },
+        model: "gemini-embedding-001",
+        modelPath: "models/gemini-embedding-001",
       },
     }),
   };
@@ -67,7 +73,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: true },
@@ -103,7 +109,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: true },
             query: { minScore: 0 },
@@ -164,7 +170,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath, vector: { enabled: false } },
             sync: { watch: false, onSessionStart: false, onSearch: false },
@@ -193,7 +199,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath, vector: { enabled: false } },
             sync: { watch: false, onSessionStart: false, onSearch: false },
@@ -230,7 +236,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath, vector: { enabled: false } },
             sync: { watch: false, onSessionStart: false, onSearch: true },
@@ -273,7 +279,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath, vector: { enabled: false } },
             sync: { watch: false, onSessionStart: false, onSearch: true },
@@ -327,7 +333,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath, vector: { enabled: false } },
             sync: { watch: false, onSessionStart: false, onSearch: true },
@@ -371,7 +377,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: false },
@@ -397,7 +403,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: true },
@@ -423,7 +429,7 @@ describe("memory index", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: true },

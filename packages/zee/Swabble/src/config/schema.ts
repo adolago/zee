@@ -257,12 +257,9 @@ const FIELD_LABELS: Record<string, string> = {
     "Memory Search Session Index (Experimental)",
   "agents.defaults.memorySearch.provider": "Memory Search Provider",
   "agents.defaults.memorySearch.remote.baseUrl": "Remote Embedding Base URL",
-  "agents.defaults.memorySearch.remote.apiKey": "Remote Embedding API Key",
   "agents.defaults.memorySearch.remote.headers": "Remote Embedding Headers",
   "agents.defaults.memorySearch.remote.batch.concurrency": "Remote Batch Concurrency",
   "agents.defaults.memorySearch.model": "Memory Search Model",
-  "agents.defaults.memorySearch.fallback": "Memory Search Fallback",
-  "agents.defaults.memorySearch.local.modelPath": "Local Embedding Model Path",
   "agents.defaults.memorySearch.store.path": "Memory Search Index Path",
   "agents.defaults.memorySearch.store.vector.enabled": "Memory Search Vector Index",
   "agents.defaults.memorySearch.store.vector.extensionPath": "Memory Search Vector Extension Path",
@@ -495,14 +492,13 @@ const FIELD_HELP: Record<string, string> = {
   "agents.defaults.memorySearch.experimental.sessionMemory":
     "Enable experimental session transcript indexing for memory search (default: false).",
   "agents.defaults.memorySearch.provider":
-    'Embedding provider ("openai", "gemini", "voyage", or "local").',
+    'Embedding provider ("google").',
   "agents.defaults.memorySearch.remote.baseUrl":
-    "Custom base URL for remote embeddings (OpenAI-compatible proxies or Gemini overrides).",
-  "agents.defaults.memorySearch.remote.apiKey": "Custom API key for the remote embedding provider.",
+    "Custom base URL for Google embeddings (Gemini API).",
   "agents.defaults.memorySearch.remote.headers":
-    "Extra headers for remote embeddings (merged; remote overrides OpenAI headers).",
+    "Extra headers for remote embeddings (merged; remote overrides provider headers).",
   "agents.defaults.memorySearch.remote.batch.enabled":
-    "Enable batch API for memory embeddings (OpenAI/Gemini; default: true).",
+    "Enable batch API for memory embeddings (Google; default: true).",
   "agents.defaults.memorySearch.remote.batch.wait":
     "Wait for batch completion when indexing (default: true).",
   "agents.defaults.memorySearch.remote.batch.concurrency":
@@ -511,10 +507,6 @@ const FIELD_HELP: Record<string, string> = {
     "Polling interval in ms for batch status (default: 2000).",
   "agents.defaults.memorySearch.remote.batch.timeoutMinutes":
     "Timeout in minutes for batch indexing (default: 60).",
-  "agents.defaults.memorySearch.local.modelPath":
-    "Local GGUF model path or hf: URI (node-llama-cpp).",
-  "agents.defaults.memorySearch.fallback":
-    'Fallback provider when embeddings fail ("openai", "gemini", "voyage", "local", or "none").',
   "agents.defaults.memorySearch.store.path":
     "SQLite index path (default: ~/.zee/memory/{agentId}.sqlite).",
   "agents.defaults.memorySearch.store.vector.enabled":

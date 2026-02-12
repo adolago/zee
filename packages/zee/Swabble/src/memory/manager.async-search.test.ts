@@ -11,17 +11,18 @@ const embedQuery = vi.fn(async () => [0.2, 0.2, 0.2]);
 
 vi.mock("./embeddings.js", () => ({
   createEmbeddingProvider: async () => ({
-    requestedProvider: "openai",
+    requestedProvider: "google",
     provider: {
-      id: "openai",
-      model: "text-embedding-3-small",
+      id: "mock",
+      model: "mock-embed",
       embedQuery,
       embedBatch,
     },
-    openAi: {
-      baseUrl: "https://api.openai.com/v1",
-      headers: { Authorization: "Bearer test", "Content-Type": "application/json" },
-      model: "text-embedding-3-small",
+    google: {
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      headers: { "x-goog-api-key": "test", "Content-Type": "application/json" },
+      model: "gemini-embedding-001",
+      modelPath: "models/gemini-embedding-001",
     },
   }),
 }));
@@ -53,8 +54,8 @@ describe("memory search async sync", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
-            model: "text-embedding-3-small",
+            provider: "google",
+            model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: true },
             query: { minScore: 0 },

@@ -11,12 +11,18 @@ const embedQuery = vi.fn(async () => [0, 1, 0]);
 
 vi.mock("./embeddings.js", () => ({
   createEmbeddingProvider: async () => ({
-    requestedProvider: "openai",
+    requestedProvider: "google",
     provider: {
       id: "mock",
       model: "mock-embed",
       embedQuery,
       embedBatch,
+    },
+    google: {
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      headers: { "x-goog-api-key": "test", "Content-Type": "application/json" },
+      model: "gemini-embedding-001",
+      modelPath: "models/gemini-embedding-001",
     },
   }),
 }));
@@ -52,7 +58,7 @@ describe("memory embedding batches", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             chunking: { tokens: 200, overlap: 0 },
@@ -86,7 +92,7 @@ describe("memory embedding batches", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             chunking: { tokens: 200, overlap: 0 },
@@ -117,7 +123,7 @@ describe("memory embedding batches", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             chunking: { tokens: 200, overlap: 0 },
@@ -157,7 +163,7 @@ describe("memory embedding batches", () => {
     embedBatch.mockImplementation(async (texts: string[]) => {
       calls += 1;
       if (calls < 3) {
-        throw new Error("openai embeddings failed: 429 rate limit");
+        throw new Error("google embeddings failed: 429 rate limit");
       }
       return texts.map(() => [0, 1, 0]);
     });
@@ -180,7 +186,7 @@ describe("memory embedding batches", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             chunking: { tokens: 200, overlap: 0 },
@@ -214,7 +220,7 @@ describe("memory embedding batches", () => {
     embedBatch.mockImplementation(async (texts: string[]) => {
       calls += 1;
       if (calls < 3) {
-        throw new Error("openai embeddings failed: 502 Bad Gateway (cloudflare)");
+        throw new Error("google embeddings failed: 502 Bad Gateway (cloudflare)");
       }
       return texts.map(() => [0, 1, 0]);
     });
@@ -237,7 +243,7 @@ describe("memory embedding batches", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             chunking: { tokens: 200, overlap: 0 },
@@ -270,7 +276,7 @@ describe("memory embedding batches", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             sync: { watch: false, onSessionStart: false, onSearch: false },

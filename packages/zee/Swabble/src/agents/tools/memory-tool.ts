@@ -58,7 +58,6 @@ export function createMemorySearchTool(options: {
           results,
           provider: status.provider,
           model: status.model,
-          fallback: status.fallback,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

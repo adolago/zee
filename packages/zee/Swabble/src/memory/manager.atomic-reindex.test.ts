@@ -20,7 +20,7 @@ vi.mock("chokidar", () => ({
 vi.mock("./embeddings.js", () => {
   return {
     createEmbeddingProvider: async () => ({
-      requestedProvider: "openai",
+      requestedProvider: "google",
       provider: {
         id: "mock",
         model: "mock-embed",
@@ -31,6 +31,12 @@ vi.mock("./embeddings.js", () => {
           }
           return texts.map((_, index) => [index + 1, 0, 0]);
         },
+      },
+      google: {
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        headers: { "x-goog-api-key": "test", "Content-Type": "application/json" },
+        model: "gemini-embedding-001",
+        modelPath: "models/gemini-embedding-001",
       },
     }),
   };
@@ -63,7 +69,7 @@ describe("memory manager atomic reindex", () => {
         defaults: {
           workspace: workspaceDir,
           memorySearch: {
-            provider: "openai",
+            provider: "google",
             model: "mock-embed",
             store: { path: indexPath },
             cache: { enabled: false },

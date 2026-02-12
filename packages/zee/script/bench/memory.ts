@@ -96,7 +96,7 @@ export async function createMemoryBenchContext(options: {
   resetMemory();
   const memory = new Memory({
     qdrant: { url: qdrantUrl, apiKey: qdrantApiKey, collection },
-    embedding: { provider: "openai", dimensions: 384, apiKey: "" },
+    embedding: { provider: "google", dimensions: 384 },
     namespace,
     fts: { dbDir: ftsDir, dbName: "fts.sqlite" },
     markdown: { enabled: false },

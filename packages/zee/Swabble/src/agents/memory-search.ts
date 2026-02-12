@@ -10,12 +10,11 @@ export type ResolvedMemorySearchConfig = {
   enabled: boolean;
   sources: Array<"memory" | "sessions">;
   extraPaths: string[];
-  provider: "openai" | "local" | "gemini" | "voyage" | "auto";
-  remote?: {
+  provider: "google";
+  remote: {
     baseUrl?: string;
-    apiKey?: string;
     headers?: Record<string, string>;
-    batch?: {
+    batch: {
       enabled: boolean;
       wait: boolean;
       concurrency: number;
@@ -26,12 +25,7 @@ export type ResolvedMemorySearchConfig = {
   experimental: {
     sessionMemory: boolean;
   };
-  fallback: "openai" | "gemini" | "local" | "voyage" | "none";
   model: string;
-  local: {
-    modelPath?: string;
-    modelCacheDir?: string;
-  };
   store: {
     driver: "sqlite";
     path: string;
@@ -71,9 +65,7 @@ export type ResolvedMemorySearchConfig = {
   };
 };
 
-const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
-const DEFAULT_GEMINI_MODEL = "gemini-embedding-001";
-const DEFAULT_VOYAGE_MODEL = "voyage-3-large";
+const DEFAULT_GOOGLE_MODEL = "gemini-embedding-001";
 const DEFAULT_CHUNK_TOKENS = 400;
 const DEFAULT_CHUNK_OVERLAP = 80;
 const DEFAULT_WATCH_DEBOUNCE_MS = 1500;
@@ -118,23 +110,9 @@ function mergeConfig(
   const enabled = overrides?.enabled ?? defaults?.enabled ?? true;
   const sessionMemory =
     overrides?.experimental?.sessionMemory ?? defaults?.experimental?.sessionMemory ?? false;
-  const provider = overrides?.provider ?? defaults?.provider ?? "auto";
+  const provider = "google" as const;
   const defaultRemote = defaults?.remote;
   const overrideRemote = overrides?.remote;
-  const hasRemoteConfig = Boolean(
-    overrideRemote?.baseUrl ||
-    overrideRemote?.apiKey ||
-    overrideRemote?.headers ||
-    defaultRemote?.baseUrl ||
-    defaultRemote?.apiKey ||
-    defaultRemote?.headers,
-  );
-  const includeRemote =
-    hasRemoteConfig ||
-    provider === "openai" ||
-    provider === "gemini" ||
-    provider === "voyage" ||
-    provider === "auto";
   const batch = {
     enabled: overrideRemote?.batch?.enabled ?? defaultRemote?.batch?.enabled ?? true,
     wait: overrideRemote?.batch?.wait ?? defaultRemote?.batch?.wait ?? true,
@@ -147,28 +125,12 @@ function mergeConfig(
     timeoutMinutes:
       overrideRemote?.batch?.timeoutMinutes ?? defaultRemote?.batch?.timeoutMinutes ?? 60,
   };
-  const remote = includeRemote
-    ? {
-        baseUrl: overrideRemote?.baseUrl ?? defaultRemote?.baseUrl,
-        apiKey: overrideRemote?.apiKey ?? defaultRemote?.apiKey,
-        headers: overrideRemote?.headers ?? defaultRemote?.headers,
-        batch,
-      }
-    : undefined;
-  const fallback = overrides?.fallback ?? defaults?.fallback ?? "none";
-  const modelDefault =
-    provider === "gemini"
-      ? DEFAULT_GEMINI_MODEL
-      : provider === "openai"
-        ? DEFAULT_OPENAI_MODEL
-        : provider === "voyage"
-          ? DEFAULT_VOYAGE_MODEL
-        : undefined;
-  const model = overrides?.model ?? defaults?.model ?? modelDefault ?? "";
-  const local = {
-    modelPath: overrides?.local?.modelPath ?? defaults?.local?.modelPath,
-    modelCacheDir: overrides?.local?.modelCacheDir ?? defaults?.local?.modelCacheDir,
+  const remote = {
+    baseUrl: overrideRemote?.baseUrl ?? defaultRemote?.baseUrl,
+    headers: overrideRemote?.headers ?? defaultRemote?.headers,
+    batch,
   };
+  const model = overrides?.model ?? defaults?.model ?? DEFAULT_GOOGLE_MODEL;
   const sources = normalizeSources(overrides?.sources ?? defaults?.sources, sessionMemory);
   const rawPaths = [...(defaults?.extraPaths ?? []), ...(overrides?.extraPaths ?? [])]
     .map((value) => value.trim())
@@ -254,9 +216,7 @@ function mergeConfig(
     experimental: {
       sessionMemory,
     },
-    fallback,
     model,
-    local,
     store,
     chunking: { tokens: Math.max(1, chunking.tokens), overlap },
     sync: {

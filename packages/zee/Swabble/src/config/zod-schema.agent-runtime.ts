@@ -312,12 +312,11 @@ export const MemorySearchSchema = z
       .strict()
       .optional(),
     provider: z
-      .union([z.literal("openai"), z.literal("local"), z.literal("gemini"), z.literal("voyage")])
+      .union([z.literal("google")])
       .optional(),
     remote: z
       .object({
         baseUrl: z.string().optional(),
-        apiKey: z.string().optional(),
         headers: z.record(z.string(), z.string()).optional(),
         batch: z
           .object({
@@ -332,23 +331,7 @@ export const MemorySearchSchema = z
       })
       .strict()
       .optional(),
-    fallback: z
-      .union([
-        z.literal("openai"),
-        z.literal("gemini"),
-        z.literal("voyage"),
-        z.literal("local"),
-        z.literal("none"),
-      ])
-      .optional(),
     model: z.string().optional(),
-    local: z
-      .object({
-        modelPath: z.string().optional(),
-        modelCacheDir: z.string().optional(),
-      })
-      .strict()
-      .optional(),
     store: z
       .object({
         driver: z.literal("sqlite").optional(),
