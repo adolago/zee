@@ -120,6 +120,7 @@ zee [--dev] [--profile <name>] <command>
     doctor
   memory
     status
+    profile show|set
     index
     search
   message
