@@ -10,7 +10,7 @@ The Zee Gateway is the control plane for sessions, channels, tools, and events.
 
 If you want a single-user assistant that feels local, fast, and always-on, this is it.
 
-- Docs: `packages/personas/zee/docs` (Mintlify config)
+- Docs: `packages/zee/Swabble/docs` (Mintlify config)
 - Upstream policy: `docs/UPSTREAM_POLICY.md`
 
 ## Quick start
@@ -39,7 +39,7 @@ Notes:
 
 ```bash
 git clone <your-fork>
-cd packages/personas/zee
+cd packages/zee/Swabble
 
 pnpm install
 pnpm build

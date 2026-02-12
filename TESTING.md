@@ -13,7 +13,7 @@ cd packages/zee && bun test test/session/compaction.test.ts
 cd packages/zee && bun test --grep "hold mode"
 
 # zee unit/integration (pnpm + Vitest)
-cd packages/personas/zee && pnpm test
+cd packages/zee/Swabble && pnpm test
 
 # app e2e
 cd packages/app && npx playwright test

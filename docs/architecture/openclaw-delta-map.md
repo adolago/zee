@@ -41,8 +41,8 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/gateway`
-- `packages/personas/zee/src/security`
+- `packages/zee/Swabble/src/gateway`
+- `packages/zee/Swabble/src/security`
 
 Upstream PR triage (OpenClaw):
 
@@ -66,9 +66,9 @@ Unmapped commits / PR unknown (selected examples from #224):
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/whatsapp`
-- `packages/personas/zee/src/channels/plugins` (WhatsApp-specific pieces)
-- `packages/personas/zee/src/web` (WhatsApp-specific pieces)
+- `packages/zee/Swabble/src/whatsapp`
+- `packages/zee/Swabble/src/channels/plugins` (WhatsApp-specific pieces)
+- `packages/zee/Swabble/src/web` (WhatsApp-specific pieces)
 
 Upstream PR triage (OpenClaw):
 
@@ -88,8 +88,8 @@ Upstream PR triage (OpenClaw):
 Implementation focus (Zee):
 
 - Legacy messaging extension and config types were removed from Zee.
-- `packages/personas/zee/src/infra/outbound`
-- `packages/personas/zee/src/security`
+- `packages/zee/Swabble/src/infra/outbound`
+- `packages/zee/Swabble/src/security`
 
 Upstream PR triage (OpenClaw):
 
@@ -112,10 +112,10 @@ Unmapped commits / PR unknown:
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/node-host`
-- `packages/personas/zee/src/gateway/server-methods/nodes.ts`
-- `packages/personas/zee/src/gateway/server-methods/devices.ts`
-- `packages/personas/zee/src/infra/exec-approvals.ts`
+- `packages/zee/Swabble/src/node-host`
+- `packages/zee/Swabble/src/gateway/server-methods/nodes.ts`
+- `packages/zee/Swabble/src/gateway/server-methods/devices.ts`
+- `packages/zee/Swabble/src/infra/exec-approvals.ts`
 
 Upstream PR triage (OpenClaw):
 
@@ -130,9 +130,9 @@ Upstream PR triage (OpenClaw):
 Implementation focus (Zee):
 
 - `.agents/skills` (persona-scoped)
-- `packages/personas/zee/skills`
-- `packages/personas/zee/src/agents/skills`
-- `packages/personas/zee/src/gateway/server-methods/skills.ts`
+- `packages/zee/Swabble/skills`
+- `packages/zee/Swabble/src/agents/skills`
+- `packages/zee/Swabble/src/gateway/server-methods/skills.ts`
 
 Upstream PR triage (OpenClaw):
 
@@ -151,8 +151,8 @@ Upstream PR triage (OpenClaw):
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/infra`
-- `packages/personas/zee/src/config`
+- `packages/zee/Swabble/src/infra`
+- `packages/zee/Swabble/src/config`
 - `packages/zee/src/global/dirs.ts`
 - `packages/zee/src/storage`
 
@@ -173,10 +173,10 @@ Upstream PR triage (OpenClaw):
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/security`
-- `packages/personas/zee/src/channels/allowlists`
-- `packages/personas/zee/src/pairing`
-- `packages/personas/zee/src/gateway/auth.ts`
+- `packages/zee/Swabble/src/security`
+- `packages/zee/Swabble/src/channels/allowlists`
+- `packages/zee/Swabble/src/pairing`
+- `packages/zee/Swabble/src/gateway/auth.ts`
 
 Upstream PR triage (OpenClaw):
 
@@ -195,9 +195,9 @@ Upstream PR triage (OpenClaw):
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/cron`
-- `packages/personas/zee/src/infra/heartbeat-wake.ts`
-- `packages/personas/zee/src/agents/tools/cron-tool.ts`
+- `packages/zee/Swabble/src/cron`
+- `packages/zee/Swabble/src/infra/heartbeat-wake.ts`
+- `packages/zee/Swabble/src/agents/tools/cron-tool.ts`
 
 Upstream PR triage (OpenClaw):
 
@@ -217,9 +217,9 @@ Upstream PR triage (OpenClaw):
 Implementation focus (Zee):
 
 - `src/memory` (Qdrant-backed)
-- `packages/personas/zee/src/memory`
-- `packages/personas/zee/extensions/memory-core`
-- `packages/personas/zee/extensions/memory-lancedb`
+- `packages/zee/Swabble/src/memory`
+- `packages/zee/Swabble/extensions/memory-core`
+- `packages/zee/Swabble/extensions/memory-lancedb`
 
 Upstream PR triage (OpenClaw):
 
@@ -238,9 +238,9 @@ Upstream PR triage (OpenClaw):
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/canvas-host`
-- `packages/personas/zee/src/agents/tools/canvas-tool.ts`
-- `packages/personas/zee/src/infra/canvas-host-url.ts`
+- `packages/zee/Swabble/src/canvas-host`
+- `packages/zee/Swabble/src/agents/tools/canvas-tool.ts`
+- `packages/zee/Swabble/src/infra/canvas-host-url.ts`
 
 Upstream PR triage (OpenClaw):
 
@@ -261,9 +261,9 @@ Auth gating: see lane 01 (`openclaw/openclaw#9518`).
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/plugins`
-- `packages/personas/zee/src/plugin-sdk`
-- `packages/personas/zee/extensions`
+- `packages/zee/Swabble/src/plugins`
+- `packages/zee/Swabble/src/plugin-sdk`
+- `packages/zee/Swabble/extensions`
 
 Upstream PR triage (OpenClaw):
 
@@ -282,9 +282,9 @@ Upstream PR triage (OpenClaw):
 
 Implementation focus (Zee):
 
-- `packages/personas/zee/src/wizard`
-- `packages/personas/zee/src/daemon`
-- `packages/personas/zee/src/commands/onboarding`
+- `packages/zee/Swabble/src/wizard`
+- `packages/zee/Swabble/src/daemon`
+- `packages/zee/Swabble/src/commands/onboarding`
 
 Upstream PR triage (OpenClaw):
 

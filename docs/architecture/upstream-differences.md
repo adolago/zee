@@ -26,7 +26,7 @@ Current upstream pins (refreshed 2026-02-11):
 ## Relationship at a glance
 
 - **zee ↔ opencode**: zee is a fork of opencode with a rebrand (`opencode` → `zee`) plus substantial additions (personas, memory, gateway/daemon workflows) and removals (SST/infra + some hosted/enterprise surfaces).
-- **zee ↔ openclaw**: zee contains a large, intentionally reduced subset of OpenClaw’s Gateway/channel stack inside `packages/personas/zee/` (Zee’s gateway), but zee’s overall architecture is “multi-persona engine” rather than “single-assistant product”.
+- **zee ↔ openclaw**: zee contains a large, intentionally reduced subset of OpenClaw’s Gateway/channel stack inside `packages/zee/Swabble/` (Zee’s gateway), but zee’s overall architecture is “multi-persona engine” rather than “single-assistant product”.
 
 ## Toolchain and runtime
 
@@ -130,7 +130,7 @@ OpenClaw does not mirror the AI SDK surface; it uses a Pi-based provider/tooling
 
 zee embeds a trimmed “OpenClaw-like” gateway inside the Zee persona package:
 
-- Zee gateway code lives in `packages/personas/zee/src/`
+- Zee gateway code lives in `packages/zee/Swabble/src/`
 - Compared to `openclaw/src/`, Zee’s copy is missing these top-level subsystems:
   - `canvas-host/`
   - `compat/`
@@ -151,7 +151,7 @@ OpenCode’s “server mode” is about a client/server split for the coding age
 
 ## Upstream Sync Lanes
 
-This section tracks discrete upstream-delta triage "lanes" between zee's Zee gateway subset (`packages/personas/zee/`) and OpenClaw (`openclaw/openclaw`).
+This section tracks discrete upstream-delta triage "lanes" between zee's Zee gateway subset (`packages/zee/Swabble/`) and OpenClaw (`openclaw/openclaw`).
 
 ### Lane 01: Gateway control plane (WS protocol, auth, events)
 
@@ -166,9 +166,9 @@ Triage outcome:
 
 | Upstream PR / commit | Title | Decision | zee location |
 | --- | --- | --- | --- |
-| openclaw/openclaw#9858 | Redact credentials from gateway config.get responses | Ported | `packages/personas/zee/src/gateway/server-methods/config.ts`, `packages/personas/zee/src/config/redact-snapshot.ts` |
-| openclaw commit `66d8117d` | Harden WebSocket origin checks | Ported (adapted to Zee gateway) | `packages/personas/zee/src/gateway/server-http.ts`, `packages/personas/zee/src/gateway/origin-check.ts` |
-| openclaw commit `35eb40a7` | Treat channel/group metadata as untrusted content | Ported | `packages/personas/zee/src/auto-reply/reply/groups.ts`, `packages/personas/zee/src/security/channel-metadata.ts`, `packages/personas/zee/src/security/external-content.ts` |
+| openclaw/openclaw#9858 | Redact credentials from gateway config.get responses | Ported | `packages/zee/Swabble/src/gateway/server-methods/config.ts`, `packages/zee/Swabble/src/config/redact-snapshot.ts` |
+| openclaw commit `66d8117d` | Harden WebSocket origin checks | Ported (adapted to Zee gateway) | `packages/zee/Swabble/src/gateway/server-http.ts`, `packages/zee/Swabble/src/gateway/origin-check.ts` |
+| openclaw commit `35eb40a7` | Treat channel/group metadata as untrusted content | Ported | `packages/zee/Swabble/src/auto-reply/reply/groups.ts`, `packages/zee/Swabble/src/security/channel-metadata.ts`, `packages/zee/Swabble/src/security/external-content.ts` |
 
 Notes:
 
@@ -188,13 +188,13 @@ Triage outcome:
 
 | Upstream PR | Title | Decision | zee location |
 | --- | --- | --- | --- |
-| openclaw/openclaw#1512 | Linux user bin dirs in systemd PATH | Already ported | `packages/personas/zee/src/daemon/service-env.ts` |
-| openclaw/openclaw#1505 | Prefer symlinked paths over realpath | Already ported | `packages/personas/zee/src/daemon/program-args.ts` |
-| openclaw/openclaw#1735 | Propagate config env vars to gateway services | Already ported | `packages/personas/zee/src/commands/daemon-install-helpers.ts` |
-| openclaw/openclaw#1485 | Support direct token + provider in auth apply commands | Already ported | `packages/personas/zee/src/commands/auth-choice.apply.*.ts` |
-| openclaw/openclaw#10176 | Guard `resolveUserPath` against undefined input | Ported | `packages/personas/zee/src/utils.ts`, `packages/personas/zee/src/config/paths.ts`, `packages/personas/zee/src/daemon/paths.ts` (commit `3dad5d25bb`) |
-| openclaw/openclaw#5370 | Bump minimum Node.js to 22.12.0 | Ported | `packages/personas/zee/src/infra/runtime-guard.ts`, `packages/personas/zee/package.json` (commit `3dad5d25bb`) |
-| openclaw/openclaw#9436 | Silence token in URL query parameters | Adapted | `packages/personas/zee/src/gateway/hooks.ts`, `packages/personas/zee/src/gateway/server-http.ts`, `packages/personas/zee/src/hooks/gmail-setup-utils.ts` (commit `3dad5d25bb`) |
+| openclaw/openclaw#1512 | Linux user bin dirs in systemd PATH | Already ported | `packages/zee/Swabble/src/daemon/service-env.ts` |
+| openclaw/openclaw#1505 | Prefer symlinked paths over realpath | Already ported | `packages/zee/Swabble/src/daemon/program-args.ts` |
+| openclaw/openclaw#1735 | Propagate config env vars to gateway services | Already ported | `packages/zee/Swabble/src/commands/daemon-install-helpers.ts` |
+| openclaw/openclaw#1485 | Support direct token + provider in auth apply commands | Already ported | `packages/zee/Swabble/src/commands/auth-choice.apply.*.ts` |
+| openclaw/openclaw#10176 | Guard `resolveUserPath` against undefined input | Ported | `packages/zee/Swabble/src/utils.ts`, `packages/zee/Swabble/src/config/paths.ts`, `packages/zee/Swabble/src/daemon/paths.ts` (commit `3dad5d25bb`) |
+| openclaw/openclaw#5370 | Bump minimum Node.js to 22.12.0 | Ported | `packages/zee/Swabble/src/infra/runtime-guard.ts`, `packages/zee/Swabble/package.json` (commit `3dad5d25bb`) |
+| openclaw/openclaw#9436 | Silence token in URL query parameters | Adapted | `packages/zee/Swabble/src/gateway/hooks.ts`, `packages/zee/Swabble/src/gateway/server-http.ts`, `packages/zee/Swabble/src/hooks/gmail-setup-utils.ts` (commit `3dad5d25bb`) |
 
 Notes:
 
@@ -237,9 +237,9 @@ These numbers are intended to size the divergence, not to replace a full code re
 
 Zee vendors `@mariozechner/pi-*` packages via npm (not git merge):
 
-- Installed: `@mariozechner/pi-coding-agent@0.49.3` (in `packages/personas/zee/package.json`)
+- Installed: `@mariozechner/pi-coding-agent@0.49.3` (in `packages/zee/Swabble/package.json`)
 - Latest tag: `v0.52.9` (on `pimono/main`)
-- Update: `cd packages/personas/zee && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui`
+- Update: `cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui`
 
 ## How to reproduce / extend this mapping
 
@@ -251,7 +251,7 @@ git rev-list --left-right --count opencode/dev...HEAD
 git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD > /tmp/opencode.diff.txt
 
 # 2) Compare Zee gateway tree vs OpenClaw src (directory-level)
-diff -ruN packages/personas/zee/src /tmp/zee-compare/openclaw/src || true
+diff -ruN packages/zee/Swabble/src /tmp/zee-compare/openclaw/src || true
 
 # 3) Compare dependency surfaces (core packages)
 jq -r '.dependencies | keys[]' packages/zee/package.json | sort > /tmp/zee.deps

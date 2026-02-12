@@ -14,7 +14,7 @@
   - Extensions (channel plugins): `extensions/*` (if present)
 
 ## Docs Linking (Mintlify)
-- Docs live in `packages/personas/zee/docs` and are published via Mintlify.
+- Docs live in `packages/zee/Swabble/docs` and are published via Mintlify.
 - Internal doc links in `docs/**/*.md`: root-relative, no `.md`/`.mdx` (example: `[Config](/configuration)`).
 - Section cross-references: use anchors on root-relative paths (example: `[Hooks](/configuration#hooks)`).
 - Doc headings and anchors: avoid em dashes and apostrophes in headings because they break Mintlify anchor links.

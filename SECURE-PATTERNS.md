@@ -57,7 +57,7 @@ Do:
 
 Implementation reference:
 
-- `packages/personas/zee/src/infra/archive.ts`
+- `packages/zee/Swabble/src/infra/archive.ts`
 
 ## Permission Enforcement
 

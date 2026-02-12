@@ -118,7 +118,7 @@ Use the bash tool to run Playwright or Puppeteer scripts directly.
 
 ## Voice Calling (Bonus)
 
-**Location**: `packages/personas/zee/extensions/voice-call/`
+**Location**: `packages/zee/Swabble/extensions/voice-call/`
 
 Full voice calling implementation with:
 - Providers: Twilio, Telnyx, Plivo, Mock

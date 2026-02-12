@@ -63,7 +63,7 @@ Command execution is a primary risk surface. To reduce injection primitives:
 Implementation:
 
 - MCP bash tool: `src/mcp/builtin/bash.ts`
-- Zee local shell runner: `packages/personas/zee/src/tui/tui-local-shell.ts`
+- Zee local shell runner: `packages/zee/Swabble/src/tui/tui-local-shell.ts`
 
 ## Archive Extraction Hardening
 
@@ -77,7 +77,7 @@ The Zee archive extraction utilities reject:
 
 Implementation:
 
-- `packages/personas/zee/src/infra/archive.ts`
+- `packages/zee/Swabble/src/infra/archive.ts`
 
 ## Hosted Vault Key (Per-Install Secret)
 
