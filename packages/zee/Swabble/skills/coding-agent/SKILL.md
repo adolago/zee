@@ -124,7 +124,7 @@ Clone to temp folder or use git worktree.
 REVIEW_DIR=$(mktemp -d)
 git clone https://github.com/user/repo.git $REVIEW_DIR
 cd $REVIEW_DIR && gh pr checkout 130
-bash pty:true workdir:$REVIEW_DIR command:"codex review --base origin/dev"
+bash pty:true workdir:$REVIEW_DIR command:"codex review --base origin/main"
 # Clean up after: trash $REVIEW_DIR
 
 # Or use git worktree (keeps main intact)
@@ -138,8 +138,8 @@ bash pty:true workdir:/tmp/pr-130-review command:"codex review --base main"
 git fetch origin '+refs/pull/*/head:refs/remotes/origin/pr/*'
 
 # Deploy the army - one Codex per PR (all with PTY!)
-bash pty:true workdir:~/project background:true command:"codex exec 'Review PR #86. git diff origin/dev...origin/pr/86'"
-bash pty:true workdir:~/project background:true command:"codex exec 'Review PR #87. git diff origin/dev...origin/pr/87'"
+bash pty:true workdir:~/project background:true command:"codex exec 'Review PR #86. git diff origin/main...origin/pr/86'"
+bash pty:true workdir:~/project background:true command:"codex exec 'Review PR #87. git diff origin/main...origin/pr/87'"
 
 # Monitor all
 process action:list

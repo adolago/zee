@@ -13,7 +13,7 @@ Zee ships three update channels:
 
 - **stable**: npm dist-tag `latest`.
 - **beta**: npm dist-tag `beta` (builds under test).
-- **dev**: moving head of `dev` (git). npm dist-tag: `dev` (when published).
+- **dev**: moving head of `main` (git, via the dev channel). npm dist-tag: `dev` (when published).
 
 We ship builds to **beta**, test them, then **promote a vetted build to `latest`**
 without changing the version number — dist-tags are the source of truth for npm installs.
@@ -29,7 +29,7 @@ zee update --channel dev
 ```
 
 - `stable`/`beta` check out the latest matching tag (often the same tag).
-- `dev` switches to `dev` and rebases on `origin/dev`.
+- `dev` switches to `main` and rebases on `origin/main`.
 
 npm/pnpm global install:
 

@@ -37,7 +37,7 @@ npm install -g @zee/zee@nightly
 ### Install (script)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/adolago/zee/dev/install | bash
+curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | bash
 ```
 
 ### Install from source

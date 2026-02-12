@@ -73,7 +73,7 @@ const STEP_LABELS: Record<string, string> = {
   "origin check": "Origin branch exists",
   "git fetch": "Fetching latest changes",
   "git rebase": "Rebasing onto target commit",
-  "git rev-parse origin/dev": "Resolving origin commit",
+  "git rev-parse origin/main": "Resolving origin commit",
   "git rev-list": "Enumerating candidate commits",
   "git clone": "Cloning git checkout",
   "preflight worktree": "Preparing preflight worktree",

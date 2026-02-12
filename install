@@ -22,8 +22,8 @@ Options:
         --no-modify-path    Don't modify shell config files (.zshrc, .bashrc, etc.)
 
 Examples:
-    curl -fsSL https://raw.githubusercontent.com/adolago/zee/dev/install | bash
-    curl -fsSL https://raw.githubusercontent.com/adolago/zee/dev/install | bash -s -- --version 0.2.11-nightly
+    curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | bash
+    curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | bash -s -- --version 0.2.11-nightly
     ./install --binary /path/to/zee
 EOF
 }

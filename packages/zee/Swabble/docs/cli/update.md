@@ -70,7 +70,7 @@ Channels:
 
 - `stable`: checkout the latest non-beta tag, then build + doctor.
 - `beta`: checkout the latest `-beta` tag, then build + doctor.
-- `dev`: checkout `dev`, then fetch + rebase `origin/dev`.
+- `dev`: checkout `main`, then fetch + rebase `origin/main`.
 
 High-level:
 

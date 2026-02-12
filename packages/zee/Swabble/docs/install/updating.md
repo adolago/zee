@@ -88,7 +88,7 @@ zee update
 It runs a safe-ish update flow:
 - Requires a clean worktree.
 - Switches to the selected channel (tag or branch).
-- Fetches + rebases against `origin/dev` (dev channel).
+- Fetches + rebases against `origin/main` (dev channel).
 - Installs deps, builds, builds the CLI/TUI, and runs `zee doctor`.
 - Restarts the gateway by default (use `--no-restart` to skip).
 
@@ -183,7 +183,7 @@ Pick a commit from a date (example: “state of main as of 2026-01-01”):
 
 ```bash
 git fetch origin
-git checkout "$(git rev-list -n 1 --before=\"2026-01-01\" origin/dev)"
+git checkout "$(git rev-list -n 1 --before=\"2026-01-01\" origin/main)"
 ```
 
 Then reinstall deps + restart:

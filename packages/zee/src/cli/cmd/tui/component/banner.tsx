@@ -43,7 +43,8 @@ function kindLabel(kind: BannerItem["kind"]): string {
 export function Banner(props: BannerProps) {
   const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
-  const fill = createMemo(() => "─".repeat(dimensions().width))
+  const safeWidth = createMemo(() => Math.max(0, dimensions().width))
+  const borderFill = createMemo(() => "─".repeat(safeWidth()))
 
   const items = createMemo(() => props.items?.() ?? [])
   const [index, setIndex] = createSignal(0)
@@ -74,7 +75,7 @@ export function Banner(props: BannerProps) {
     onCleanup(() => clearInterval(timer))
   })
 
-  const maxTextWidth = createMemo(() => Math.max(0, dimensions().width - 2))
+  const maxTextWidth = createMemo(() => Math.max(0, safeWidth() - 2))
   const fallbackText = createMemo(() => props.fallback ?? "Zee banner: no items.")
 
   const display = createMemo(() => {
@@ -105,7 +106,7 @@ export function Banner(props: BannerProps) {
           <box height={1} flexDirection="row" gap={0}>
             <text fg={theme.border} flexShrink={0}>╭</text>
             <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
-              {fill()}
+              {borderFill()}
             </text>
             <text fg={theme.border} flexShrink={0}>╮</text>
           </box>
@@ -144,7 +145,7 @@ export function Banner(props: BannerProps) {
           <box height={1} flexDirection="row" gap={0}>
             <text fg={theme.border} flexShrink={0}>╰</text>
             <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
-              {fill()}
+              {borderFill()}
             </text>
             <text fg={theme.border} flexShrink={0}>╯</text>
           </box>

@@ -1,5 +1,5 @@
 # Repository Guidelines
-- Repo: zee (origin fork). Default branch: `dev`.
+- Repo: zee (origin fork). Default branch: `main`.
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` for real newlines; never embed "\\n".
 
 ## Project Structure & Module Organization
@@ -41,7 +41,7 @@
 ## Release Channels (Naming)
 - stable: tagged releases only (e.g. `vYYYY.M.D`), npm dist-tag `latest`.
 - beta: prerelease tags `vYYYY.M.D-beta.N`, npm dist-tag `beta`.
-- dev: moving head on `dev` (no tag; git checkout dev).
+- dev: moving head on `main` (no tag; git checkout main).
 
 ## Testing Guidelines
 - Framework: Vitest with V8 coverage thresholds (70% lines/branches/functions/statements).

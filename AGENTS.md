@@ -9,7 +9,7 @@
 
 - Build and test: `cd packages/zee && bun run build && bun dev`
 - Repo helper: `./z dev`, `./z build`, `./z reload`
-- Default branch: `dev`
+- Default branch: `main`
 - PRs target the fork at `origin` (e.g., `adolago/zee`), not upstream.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 

@@ -83,9 +83,8 @@ export function Prompt(props: PromptProps) {
   const toast = useToast()
   const dimensions = useTerminalDimensions()
   const layoutWidth = createMemo(() => props.layoutWidth ?? dimensions().width)
-  // Use layout width for horizontal fills so embedded right-side text aligns
-  // with the actual prompt width.
-  const fill = createMemo(() => "─".repeat(Math.max(0, layoutWidth() + 10)))
+  const safeLayoutWidth = createMemo(() => Math.max(0, layoutWidth()))
+  const borderFill = createMemo(() => "─".repeat(safeLayoutWidth()))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
   // Extended type to include new fields until SDK is regenerated
   type StreamHealthExtended = {
@@ -158,6 +157,12 @@ export function Prompt(props: PromptProps) {
       limit: usable,
       percent: Math.min(100, Math.round((count / usable) * 100)),
     }
+  })
+  const contextUsageBorderText = createMemo(() => {
+    const ctx = contextUsage()
+    if (!ctx) return ""
+    const limit = ctx.limit >= 1000000 ? `${(ctx.limit / 1000000).toFixed(1)}M` : ctx.limit >= 1000 ? `${Math.round(ctx.limit / 1000)}k` : `${ctx.limit}`
+    return `${ctx.percent}% of ${limit}`
   })
   const diffStats = createMemo(() => {
     if (!props.sessionID) return null
@@ -297,6 +302,108 @@ export function Prompt(props: PromptProps) {
   // Vim engine for full normal-mode command handling
   const vimEngine = new VimCommands.VimEngine()
   const [vimPending, setVimPending] = createSignal("")
+  const contextUsageColor = createMemo(() => {
+    const ctx = contextUsage()
+    if (!ctx) return theme.textMuted
+    if (ctx.percent >= 80) return theme.error
+    if (ctx.percent >= 60) return theme.warning
+    return theme.textMuted
+  })
+  const releaseStatusLabel = createMemo(() =>
+    local.mode.isHold() ? "HOLD" : releasePolicy() === "no_cuffs" ? "NO CUFFS" : "RELEASE",
+  )
+  const releaseStatusColor = createMemo(() =>
+    local.mode.isHold() ? theme.warning : releasePolicy() === "no_cuffs" ? theme.error : theme.success,
+  )
+  const vimStatusLabel = createMemo(() => (vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"))
+  const vimStatusColor = createMemo(() => (vim.isNormal ? theme.accent : theme.success))
+  const skillsStatusLabel = createMemo(() => `${sync.data.agent?.length ?? 0} skills`)
+  const promptHeaderMetaVisibility = createMemo(() => {
+    let remaining = safeLayoutWidth()
+
+    // Border corners + at least one center fill glyph.
+    remaining -= 4
+    if (showContextUsageInBorder() && contextUsageBorderText()) {
+      remaining -= contextUsageBorderText().length + 1
+    }
+
+    if (remaining <= 0) return { showSkills: false, showVim: false, showRelease: false }
+
+    let showRelease = false
+    let showVim = false
+    let showSkills = false
+
+    const releaseNeed = 1 + releaseStatusLabel().length
+    if (remaining >= releaseNeed) {
+      showRelease = true
+      remaining -= releaseNeed
+    }
+
+    const vimNeed = 1 + vimStatusLabel().length
+    if (vim.enabled && store.mode !== "shell" && remaining >= vimNeed) {
+      showVim = true
+      remaining -= vimNeed
+    }
+
+    const skillsNeed = skillsStatusLabel().length
+    if (remaining >= skillsNeed) {
+      showSkills = true
+    }
+
+    return { showSkills, showVim, showRelease }
+  })
+  const modelBorderText = createMemo(() => {
+    if (!showModelInfoInBorder()) return ""
+    const parsed = local.model.parsed()
+    const base = `${parsed.provider} ${parsed.model}`.trim()
+    if (!base) return ""
+    const variant = local.model.variant.current()
+    return variant ? `${base} ${variant}` : base
+  })
+  const pathBorderText = createMemo(() => {
+    if (!showPathInfoInBorder()) return ""
+    const directory = sync.data.path?.directory
+    const branch = sync.data.vcs?.branch
+    if (!directory && !branch) return ""
+    let text = ""
+    if (directory) {
+      text += ` ~${directory.replace(process.env.HOME ?? "", "")}`
+    }
+    if (branch) {
+      text += ` (${branch})`
+    }
+    return text
+  })
+  const busyIndicatorWidth = createMemo(() => {
+    if (status().type !== "busy") return 1
+    // Reserve enough space for the animated frame plus the abort hint.
+    return 24
+  })
+  const promptFooterMetaVisibility = createMemo(() => {
+    let remaining = safeLayoutWidth()
+
+    // Border corners + at least one center fill glyph.
+    remaining -= 4
+    remaining -= busyIndicatorWidth()
+
+    if (remaining <= 0) return { showModel: false, showPath: false }
+
+    let showModel = false
+    let showPath = false
+
+    const modelText = modelBorderText()
+    if (modelText && remaining >= modelText.length) {
+      showModel = true
+      remaining -= modelText.length
+    }
+
+    const pathText = pathBorderText()
+    if (pathText && remaining >= pathText.length) {
+      showPath = true
+    }
+
+    return { showModel, showPath }
+  })
 
   /** Bridge between the VimEngine and the textarea renderable */
   function createVimContext(): VimCommands.VimCommandContext {
@@ -1612,66 +1719,45 @@ export function Prompt(props: PromptProps) {
                 {titleClamped()}
               </text>
               <text fg={theme.border} flexShrink={0}>─</text>
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{fill()}</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
               <text fg={theme.border} flexShrink={0}>╮</text>
             </box>
           ) : (
             <box height={1} flexDirection="row" gap={0}>
               <text fg={theme.border} flexShrink={0}>╭</text>
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{fill()}</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
               <text fg={theme.border} flexShrink={0}>╮</text>
             </box>
           )}
           bottomBorder={
             <box height={1} flexDirection="row" gap={0}>
               <text fg={theme.border} flexShrink={0}>├</text>
-              {/* Left side: context usage */}
-              <Show when={showContextUsageInBorder() && contextUsage()}>
-                {(ctx) => (
-                  <>
-                    <text
-                      fg={ctx().percent >= 80 ? theme.error : ctx().percent >= 60 ? theme.warning : theme.textMuted}
-                      flexShrink={1}
-                      wrapMode="none"
-                      overflow="hidden"
-                    >
-                      {ctx().percent}% of {ctx().limit >= 1000000 ? `${(ctx().limit / 1000000).toFixed(1)}M` : ctx().limit >= 1000 ? `${Math.round(ctx().limit / 1000)}k` : ctx().limit}
-                    </text>
-                    <text fg={theme.border} flexShrink={0}>─</text>
-                  </>
-                )}
+              <Show when={showContextUsageInBorder() && contextUsageBorderText()}>
+                <>
+                  <text fg={contextUsageColor()} flexShrink={0} wrapMode="none" overflow="hidden">
+                    {contextUsageBorderText()}
+                  </text>
+                  <text fg={theme.border} flexShrink={0}>─</text>
+                </>
               </Show>
-
-              {/* Line fill */}
-              <text fg={theme.border} flexGrow={1} flexShrink={100} wrapMode="none" overflow="hidden">{fill()}</text>
-              {/* Right side: agent info (shrinkable to avoid breaking the border) */}
-              <text flexShrink={1} wrapMode="none" overflow="hidden">
-                <span style={{ fg: theme.textMuted }}>{sync.data.agent?.length ?? 0} skills</span>
-                <Show when={vim.enabled && store.mode !== "shell"}>
-                  <span style={{ fg: theme.border }}>─</span>
-                  <span
-                    style={{
-                      fg: vim.isNormal ? theme.accent : theme.success,
-                      attributes: TextAttributes.BOLD,
-                    }}
-                  >
-                    {vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"}
-                  </span>
-                  <span style={{ fg: theme.border }}>─</span>
-                  <span
-                    style={{
-                      fg: local.mode.isHold()
-                        ? theme.warning
-                        : releasePolicy() === "no_cuffs"
-                          ? theme.error
-                          : theme.success,
-                      attributes: TextAttributes.BOLD,
-                    }}
-                  >
-                    {local.mode.isHold() ? "HOLD" : releasePolicy() === "no_cuffs" ? "NO CUFFS" : "RELEASE"}
-                  </span>
-                </Show>
-              </text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
+              <Show when={promptHeaderMetaVisibility().showSkills}>
+                <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
+                  {skillsStatusLabel()}
+                </text>
+              </Show>
+              <Show when={promptHeaderMetaVisibility().showVim}>
+                <text fg={theme.border} flexShrink={0}>─</text>
+                <text fg={vimStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                  {vimStatusLabel()}
+                </text>
+              </Show>
+              <Show when={promptHeaderMetaVisibility().showRelease}>
+                <text fg={theme.border} flexShrink={0}>─</text>
+                <text fg={releaseStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                  {releaseStatusLabel()}
+                </text>
+              </Show>
               <text fg={theme.border} flexShrink={0}>─┤</text>
             </box>
           }
@@ -1989,35 +2075,15 @@ export function Prompt(props: PromptProps) {
           <Show when={status().type === "busy"}>
             <text fg={theme.textMuted} flexShrink={0}> Esc to cancel</text>
           </Show>
-          {/* Center: line fill */}
-          <text fg={theme.border} flexGrow={1} flexShrink={100} wrapMode="none" overflow="hidden">{fill()}</text>
-          {/* Right: model + path */}
-          <Show when={showModelInfoInBorder() || showPathInfoInBorder()}>
-            <text flexShrink={1} wrapMode="none" overflow="hidden">
-              <Show when={showModelInfoInBorder()}>
-                {(() => {
-                  const parsed = local.model.parsed()
-                  const variant = local.model.variant.current()
-                  return (
-                    <>
-                      <span style={{ fg: theme.textMuted }}>{parsed.provider} {parsed.model}</span>
-                      <Show when={variant}>
-                        <span style={{ fg: theme.accent }}> {variant}</span>
-                      </Show>
-                    </>
-                  )
-                })()}
-              </Show>
-              <Show when={showPathInfoInBorder()}>
-                <span style={{ fg: theme.textMuted }}>
-                  <Show when={sync.data.path?.directory}>
-                    {` ~${sync.data.path!.directory.replace(process.env.HOME ?? "", "")}`}
-                  </Show>
-                  <Show when={sync.data.vcs?.branch}>
-                    {` (${sync.data.vcs?.branch})`}
-                  </Show>
-                </span>
-              </Show>
+          <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
+          <Show when={promptFooterMetaVisibility().showModel}>
+            <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
+              {modelBorderText()}
+            </text>
+          </Show>
+          <Show when={promptFooterMetaVisibility().showPath}>
+            <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
+              {pathBorderText()}
             </text>
           </Show>
           <text fg={theme.border} flexShrink={0}>─╯</text>

@@ -43,7 +43,7 @@ describe("runGatewayUpdate", () => {
     const { runner, calls } = createRunner({
       [`git -C ${tempDir} rev-parse --show-toplevel`]: { stdout: tempDir },
       [`git -C ${tempDir} rev-parse HEAD`]: { stdout: "abc123" },
-      [`git -C ${tempDir} rev-parse --abbrev-ref HEAD`]: { stdout: "dev" },
+      [`git -C ${tempDir} rev-parse --abbrev-ref HEAD`]: { stdout: "main" },
       [`git -C ${tempDir} status --porcelain`]: { stdout: " M README.md" },
     });
 
@@ -68,11 +68,11 @@ describe("runGatewayUpdate", () => {
     const { runner, calls } = createRunner({
       [`git -C ${tempDir} rev-parse --show-toplevel`]: { stdout: tempDir },
       [`git -C ${tempDir} rev-parse HEAD`]: { stdout: "abc123" },
-      [`git -C ${tempDir} rev-parse --abbrev-ref HEAD`]: { stdout: "dev" },
+      [`git -C ${tempDir} rev-parse --abbrev-ref HEAD`]: { stdout: "main" },
       [`git -C ${tempDir} status --porcelain`]: { stdout: "" },
-      [`git -C ${tempDir} rev-parse --verify --quiet origin/dev`]: { stdout: "" },
+      [`git -C ${tempDir} rev-parse --verify --quiet origin/main`]: { stdout: "" },
       [`git -C ${tempDir} fetch origin --prune --tags`]: { stdout: "" },
-      [`git -C ${tempDir} rev-parse origin/dev`]: { stdout: "origin123" },
+      [`git -C ${tempDir} rev-parse origin/main`]: { stdout: "origin123" },
       [`git -C ${tempDir} rev-list --max-count=10 origin123`]: { stdout: "origin123\n" },
       [`git -C ${tempDir} rebase origin123`]: { code: 1, stderr: "conflict" },
       [`git -C ${tempDir} rebase --abort`]: { stdout: "" },
