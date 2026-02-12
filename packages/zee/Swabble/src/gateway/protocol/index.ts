@@ -115,6 +115,8 @@ import {
   NodePairListParamsSchema,
   type NodePairRejectParams,
   NodePairRejectParamsSchema,
+  type NodePairRevokeParams,
+  NodePairRevokeParamsSchema,
   type NodePairRequestParams,
   NodePairRequestParamsSchema,
   type NodePairVerifyParams,
@@ -218,6 +220,9 @@ export const validateNodePairApproveParams = ajv.compile<NodePairApproveParams>(
 );
 export const validateNodePairRejectParams = ajv.compile<NodePairRejectParams>(
   NodePairRejectParamsSchema,
+);
+export const validateNodePairRevokeParams = ajv.compile<NodePairRevokeParams>(
+  NodePairRevokeParamsSchema,
 );
 export const validateNodePairVerifyParams = ajv.compile<NodePairVerifyParams>(
   NodePairVerifyParamsSchema,

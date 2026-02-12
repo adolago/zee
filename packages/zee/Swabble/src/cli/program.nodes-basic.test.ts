@@ -280,6 +280,44 @@ describe("cli program (nodes basics)", () => {
     expect(runtime.log).toHaveBeenCalled();
   });
 
+  it("runs nodes revoke and calls node.pair.revoke", async () => {
+    callGateway.mockImplementation(async (opts: { method?: string }) => {
+      if (opts.method === "node.list") {
+        return {
+          ts: Date.now(),
+          nodes: [
+            {
+              nodeId: "node-1",
+              displayName: "Camera Node",
+              remoteIp: "192.168.0.88",
+              connected: true,
+            },
+          ],
+        };
+      }
+      if (opts.method === "node.pair.revoke") {
+        return {
+          nodeId: "node-1",
+          revokedAtMs: Date.now(),
+        };
+      }
+      return { ok: true };
+    });
+
+    const program = buildProgram();
+    runtime.log.mockClear();
+    await program.parseAsync(["nodes", "revoke", "--node", "node-1"], { from: "user" });
+    expect(callGateway).toHaveBeenCalledWith(
+      expect.objectContaining({ method: "node.list", params: {} }),
+    );
+    expect(callGateway).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "node.pair.revoke",
+        params: { nodeId: "node-1" },
+      }),
+    );
+  });
+
   it("runs nodes invoke and calls node.invoke", async () => {
     callGateway.mockImplementation(async (opts: { method?: string }) => {
       if (opts.method === "node.list") {

@@ -92,6 +92,7 @@ import type {
   NodePairApproveParamsSchema,
   NodePairListParamsSchema,
   NodePairRejectParamsSchema,
+  NodePairRevokeParamsSchema,
   NodePairRequestParamsSchema,
   NodePairVerifyParamsSchema,
   NodeRenameParamsSchema,
@@ -137,6 +138,7 @@ export type NodePairRequestParams = Static<typeof NodePairRequestParamsSchema>;
 export type NodePairListParams = Static<typeof NodePairListParamsSchema>;
 export type NodePairApproveParams = Static<typeof NodePairApproveParamsSchema>;
 export type NodePairRejectParams = Static<typeof NodePairRejectParamsSchema>;
+export type NodePairRevokeParams = Static<typeof NodePairRevokeParamsSchema>;
 export type NodePairVerifyParams = Static<typeof NodePairVerifyParamsSchema>;
 export type NodeRenameParams = Static<typeof NodeRenameParamsSchema>;
 export type NodeListParams = Static<typeof NodeListParamsSchema>;

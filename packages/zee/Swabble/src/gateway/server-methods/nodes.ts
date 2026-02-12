@@ -2,6 +2,7 @@ import {
   approveNodePairing,
   listNodePairing,
   rejectNodePairing,
+  revokePairedNode,
   renamePairedNode,
   requestNodePairing,
   verifyNodeToken,
@@ -18,6 +19,7 @@ import {
   validateNodePairApproveParams,
   validateNodePairListParams,
   validateNodePairRejectParams,
+  validateNodePairRevokeParams,
   validateNodePairRequestParams,
   validateNodePairVerifyParams,
   validateNodeRenameParams,
@@ -173,6 +175,34 @@ export const nodeHandlers: GatewayRequestHandlers = {
         { dropIfSlow: true },
       );
       respond(true, rejected, undefined);
+    });
+  },
+  "node.pair.revoke": async ({ params, respond, context }) => {
+    if (!validateNodePairRevokeParams(params)) {
+      respondInvalidParams({
+        respond,
+        method: "node.pair.revoke",
+        validator: validateNodePairRevokeParams,
+      });
+      return;
+    }
+    const { nodeId } = params as { nodeId: string };
+    await respondUnavailableOnThrow(respond, async () => {
+      const revoked = await revokePairedNode(nodeId);
+      if (!revoked) {
+        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown nodeId"));
+        return;
+      }
+      context.broadcast(
+        "node.pair.resolved",
+        {
+          nodeId: revoked.nodeId,
+          decision: "revoked",
+          ts: revoked.revokedAtMs,
+        },
+        { dropIfSlow: true },
+      );
+      respond(true, revoked, undefined);
     });
   },
   "node.pair.verify": async ({ params, respond }) => {

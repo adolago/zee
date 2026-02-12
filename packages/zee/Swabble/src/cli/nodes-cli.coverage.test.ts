@@ -92,6 +92,27 @@ describe("nodes-cli coverage", () => {
     expect(runtimeErrors).toHaveLength(0);
   });
 
+  it("revokes a paired node via node.pair.revoke", async () => {
+    runtimeLogs.length = 0;
+    runtimeErrors.length = 0;
+    callGateway.mockClear();
+
+    const { registerNodesCli } = await import("./nodes-cli.js");
+    const program = new Command();
+    program.exitOverride();
+    registerNodesCli(program);
+
+    await program.parseAsync(["nodes", "revoke", "--node", "node-1"], { from: "user" });
+
+    const methods = callGateway.mock.calls.map((call) =>
+      String(
+        call[0] && typeof call[0] === "object" ? (call[0] as { method?: string }).method : "",
+      ),
+    );
+    expect(methods).toContain("node.list");
+    expect(methods).toContain("node.pair.revoke");
+  });
+
   it("invokes system.run with parsed params", async () => {
     runtimeLogs.length = 0;
     runtimeErrors.length = 0;
