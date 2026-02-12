@@ -122,7 +122,7 @@ Upstream PR triage (OpenClaw):
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#1425 | security | port | Align node exec approvals; security-critical. | Done (already implemented in infra/exec-approvals.ts) |
-| openclaw/openclaw#1607 | reliability | port | Reduce log noise for node disconnect/late invoke errors. | TODO |
+| openclaw/openclaw#1607 | reliability | port | Reduce log noise for node disconnect/late invoke errors. | Done (already implemented: late invoke ignored in `gateway/server-methods/nodes.ts`, node-unavailable filtering in `infra/skills-remote.ts`, debounce + cleanup in `gateway/server.impl.ts`, tests in `gateway/server.nodes.late-invoke.test.ts`) |
 | openclaw/openclaw#1621 | feature | non-goal | Discord exec approval forwarding not in scope (channel not supported). | None |
 
 ## Lane 05: Skills system (catalogs, plugin-shipped skills, loaders)
@@ -226,7 +226,7 @@ Upstream PR triage (OpenClaw):
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#10818 | performance | adapt | Voyage embedding input_type improves retrieval; provider wiring differs. | Done (already implemented: embedding.ts uses input_type "query" vs "document") |
-| openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | TODO (L2 normalization not found in embedding pipeline) |
+| openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | Done (ported: sanitizeAndNormalizeEmbedding in `src/memory/embeddings.ts` + normalization tests in `src/memory/embeddings.test.ts`) |
 | openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | TODO (needs deeper investigation of auto-provider model selection) |
 | openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
 | openclaw/openclaw#7078 | feature | defer | Full native Voyage support can be revisited after correctness fixes. | TODO |
@@ -254,7 +254,7 @@ Auth gating: see lane 01 (`openclaw/openclaw#9518`).
 | openclaw/openclaw#2455 | reliability | port | Restore A2UI scaffold assets; prevent runtime breakage. | Done (already implemented in canvas-host/a2ui/) |
 | openclaw/openclaw#1882 | security | adapt | Add mDNS discovery config to reduce information disclosure; config surface differs. | Done (already implemented: bonjour-ciao.ts, bonjour.ts with config in zod-schema.ts) |
 | openclaw/openclaw#1621 | feature | non-goal | Discord exec approval forwarding is out of scope (channel not supported). | None |
-| openclaw/openclaw#1607 | reliability | port | Node disconnect/late invoke log noise reduction also applies. | TODO |
+| openclaw/openclaw#1607 | reliability | port | Node disconnect/late invoke log noise reduction also applies. | Done (already implemented: late invoke handling + node-unavailable log filtering + skills refresh debounce) |
 | openclaw/openclaw#1229 | feature | adapt | Expand /v1/responses inputs; may impact adapters/tool routing. | Done (already implemented: openresponses-http.ts + open-responses.schema.ts) |
 
 ## Lane 11: Plugin and extension model (manifests, loader, tool groups, safety scanning)
