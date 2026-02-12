@@ -340,6 +340,141 @@ describe("ProviderTransform.message - interleaved reasoning fields", () => {
   })
 })
 
+describe("ProviderTransform.message - interleaved reasoning_content injection for Kimi", () => {
+  const kimiModel = {
+    id: "kimi-for-coding/kimi-k2.5",
+    providerID: "kimi-for-coding",
+    api: {
+      id: "kimi-k2.5",
+      url: "https://api.kimi.com/coding/v1",
+      npm: "@ai-sdk/openai-compatible",
+    },
+    name: "Kimi K2.5",
+    capabilities: {
+      temperature: true,
+      reasoning: true,
+      attachment: true,
+      toolcall: true,
+      streaming: true,
+      input: { text: true, audio: false, image: true, video: false, pdf: false },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved: { field: "reasoning_content" as const },
+    },
+    cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+    limit: { context: 262144, output: 32768 },
+    status: "active",
+    options: {},
+    headers: {},
+    release_date: "2026-01-26",
+  } as any
+
+  test("tool-call-only assistant message gets empty reasoning_content", () => {
+    const msgs = [
+      { role: "user", content: "search for files" },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "files" } },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, kimiModel, {})
+
+    expect(result[1].providerOptions?.openaiCompatible?.reasoning_content).toBe("")
+    // tool-call parts should be preserved
+    expect(result[1].content).toEqual([
+      { type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "files" } },
+    ])
+  })
+
+  test("assistant message with reasoning extracts reasoning_content", () => {
+    const msgs = [
+      { role: "user", content: "search for files" },
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "I should search for files" },
+          { type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "files" } },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, kimiModel, {})
+
+    expect(result[1].providerOptions?.openaiCompatible?.reasoning_content).toBe("I should search for files")
+    // reasoning parts should be filtered out
+    expect(result[1].content).toEqual([
+      { type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "files" } },
+    ])
+  })
+
+  test("boolean interleaved=true with openai-compatible defaults to reasoning_content", () => {
+    const boolModel = {
+      ...kimiModel,
+      capabilities: { ...kimiModel.capabilities, interleaved: true },
+    }
+
+    const msgs = [
+      { role: "user", content: "hello" },
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "thinking..." },
+          { type: "text", text: "hi" },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, boolModel, {})
+
+    expect(result[1].providerOptions?.openaiCompatible?.reasoning_content).toBe("thinking...")
+    expect(result[1].content).toEqual([{ type: "text", text: "hi" }])
+  })
+
+  test("string content assistant message still gets reasoning_content injected", () => {
+    const msgs = [
+      { role: "user", content: "hello" },
+      { role: "assistant", content: "hi there" },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, kimiModel, {})
+
+    expect(result[1].providerOptions?.openaiCompatible?.reasoning_content).toBe("")
+    expect(result[1].content).toBe("hi there")
+  })
+
+  test("multi-turn with tool calls injects reasoning_content on all assistant messages", () => {
+    const msgs = [
+      { role: "user", content: "search for X" },
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "I should search" },
+          { type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "X" } },
+        ],
+      },
+      {
+        role: "tool",
+        content: [{ type: "tool-result", toolCallId: "tc1", toolName: "search", output: { type: "text", value: "found X" } }],
+      },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool-call", toolCallId: "tc2", toolName: "read", input: { file: "x.txt" } },
+        ],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, kimiModel, {})
+
+    // First assistant: has reasoning text
+    expect(result[1].providerOptions?.openaiCompatible?.reasoning_content).toBe("I should search")
+    // Second assistant: no reasoning -> empty string
+    expect(result[3].providerOptions?.openaiCompatible?.reasoning_content).toBe("")
+  })
+})
+
 describe("ProviderTransform.message - empty image handling", () => {
   const mockModel = {
     id: "anthropic/claude-3-5-sonnet",

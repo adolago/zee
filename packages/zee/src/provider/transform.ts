@@ -117,7 +117,11 @@ export namespace ProviderTransform {
     const interleavedField =
       model.capabilities.interleaved && typeof model.capabilities.interleaved === "object"
         ? model.capabilities.interleaved.field
-        : null
+        // Boolean true for @ai-sdk/openai-compatible defaults to "reasoning_content"
+        // (the standard field for OpenAI-compatible providers like Kimi)
+        : model.capabilities.interleaved === true && model.api.npm === "@ai-sdk/openai-compatible"
+          ? "reasoning_content"
+          : null
 
     if (interleavedField === "reasoning" || interleavedField === "reasoning_content" || interleavedField === "reasoning_details") {
       return msgs.map((msg) => {
@@ -142,6 +146,22 @@ export namespace ProviderTransform {
               openaiCompatible: {
                 ...(existingOptions && typeof existingOptions === "object" ? existingOptions : {}),
                 [interleavedField]: reasoningText || "", // Include even when empty
+              },
+            },
+          }
+        }
+
+        // String content assistant messages still need the interleaved field injected
+        // (no reasoning to extract, but field must be present for providers like Kimi)
+        if (msg.role === "assistant" && typeof msg.content === "string") {
+          const existingOptions = (msg.providerOptions as Record<string, unknown>)?.openaiCompatible
+          return {
+            ...msg,
+            providerOptions: {
+              ...msg.providerOptions,
+              openaiCompatible: {
+                ...(existingOptions && typeof existingOptions === "object" ? existingOptions : {}),
+                [interleavedField]: "",
               },
             },
           }
