@@ -14,6 +14,7 @@ const forceFreePortAndWait = vi.fn(async () => ({
 const serviceIsLoaded = vi.fn().mockResolvedValue(true);
 const discoverGatewayBeacons = vi.fn(async () => []);
 const gatewayStatusCommand = vi.fn(async () => {});
+const loadConfig = vi.fn(() => ({ gateway: {} }));
 
 const runtimeLogs: string[] = [];
 const runtimeErrors: string[] = [];
@@ -99,6 +100,14 @@ vi.mock("../commands/gateway-status.js", () => ({
   gatewayStatusCommand: (opts: unknown) => gatewayStatusCommand(opts),
 }));
 
+vi.mock("../config/config.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../config/config.js")>();
+  return {
+    ...actual,
+    loadConfig: () => loadConfig(),
+  };
+});
+
 describe("gateway-cli coverage", () => {
   it("registers call/health commands and routes to callGateway", async () => {
     runtimeLogs.length = 0;
@@ -132,6 +141,66 @@ describe("gateway-cli coverage", () => {
 
     expect(gatewayStatusCommand).toHaveBeenCalledTimes(1);
   }, 30_000);
+
+  it("registers gateway web and runs readiness checks", async () => {
+    runtimeLogs.length = 0;
+    runtimeErrors.length = 0;
+    callGateway.mockReset();
+    callGateway.mockImplementation(async (opts: unknown) => {
+      const method =
+        opts && typeof opts === "object" ? (opts as { method?: string }).method : undefined;
+      switch (method) {
+        case "health":
+          return { ok: true, durationMs: 8 };
+        case "sessions.list":
+          return { count: 2 };
+        case "exec.approvals.get":
+          return { exists: true };
+        case "node.pair.list":
+          return { pending: [], paired: [] };
+        case "device.pair.list":
+          return { pending: [], paired: [] };
+        case "channels.status":
+          return { channels: {} };
+        default:
+          return {};
+      }
+    });
+    loadConfig.mockReset();
+    loadConfig.mockReturnValueOnce({
+      gateway: {
+        port: 18789,
+        auth: { mode: "token", token: "test-token-123" },
+        allowedOrigins: ["https://ui.example.com"],
+        trustedProxies: ["127.0.0.1"],
+      },
+    });
+
+    const { registerGatewayCli } = await import("./gateway-cli.js");
+    const program = new Command();
+    program.exitOverride();
+    registerGatewayCli(program);
+
+    await program.parseAsync(["gateway", "web", "--json"], { from: "user" });
+
+    const calledMethods = callGateway.mock.calls.map((call) =>
+      String(
+        call[0] && typeof call[0] === "object" ? (call[0] as { method?: string }).method : "",
+      ),
+    );
+    expect(calledMethods).toEqual(
+      expect.arrayContaining([
+        "health",
+        "sessions.list",
+        "exec.approvals.get",
+        "node.pair.list",
+        "device.pair.list",
+        "channels.status",
+      ]),
+    );
+    expect(runtimeLogs.join("\n")).toContain('"checks"');
+    expect(runtimeLogs.join("\n")).toContain('"warnings"');
+  });
 
   it("registers gateway discover and prints JSON", async () => {
     runtimeLogs.length = 0;

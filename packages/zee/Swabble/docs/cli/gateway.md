@@ -79,6 +79,30 @@ Shared options (where supported):
 zee gateway health --url ws://127.0.0.1:18789
 ```
 
+### `gateway web`
+
+`gateway web` is the first-class readiness check for Control UI/WebChat operator flows.
+It validates core workflows (health, sessions, approvals, pairing, channels) and prints
+proxy/auth guidance for secure deployment.
+
+```bash
+zee gateway web
+zee gateway web --json
+```
+
+Checks included:
+- `health`
+- `sessions.list`
+- `exec.approvals.get`
+- `node.pair.list`
+- `device.pair.list`
+- `channels.status`
+
+Security guidance included:
+- Gateway auth secret presence (`gateway.auth.*`)
+- Origin allowlist posture (`gateway.allowedOrigins`)
+- Trusted reverse proxies (`gateway.trustedProxies`)
+
 ### `gateway status`
 
 `gateway status` shows the Gateway service (systemd/schtasks) plus an optional RPC probe.
