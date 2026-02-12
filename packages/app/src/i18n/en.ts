@@ -166,6 +166,7 @@ export const dict = {
   "model.tooltip.context": "Context limit {{limit}}",
 
   "common.search.placeholder": "Search",
+  "common.search.clear": "Clear search",
   "common.goBack": "Navigate back",
   "common.goForward": "Navigate forward",
   "common.loading": "Loading",

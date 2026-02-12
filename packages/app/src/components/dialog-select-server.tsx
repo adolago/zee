@@ -499,6 +499,7 @@ export function DialogSelectServer() {
                         class="shrink-0 size-8 hover:bg-surface-base-hover data-[expanded]:bg-surface-base-active"
                         onClick={(e: MouseEvent) => e.stopPropagation()}
                         onPointerDown={(e: PointerEvent) => e.stopPropagation()}
+                        aria-label={language.t("common.moreOptions")}
                       />
                       <DropdownMenu.Portal>
                         <DropdownMenu.Content class="mt-1">

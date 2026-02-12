@@ -1446,7 +1446,7 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
   return (
     <div data-component="question-prompt">
       <Show when={!single()}>
-        <div data-slot="question-tabs">
+        <div data-slot="question-tabs" role="tablist" aria-label={i18n.t("ui.tool.questions")}>
           <For each={questions()}>
             {(q, index) => {
               const active = () => index() === store.tab
@@ -1457,13 +1457,21 @@ function QuestionPrompt(props: { request: QuestionRequest }) {
                   data-active={active()}
                   data-answered={answered()}
                   onClick={() => selectTab(index())}
+                  role="tab"
+                  aria-selected={active()}
                 >
                   {q.header}
                 </button>
               )
             }}
           </For>
-          <button data-slot="question-tab" data-active={confirm()} onClick={() => selectTab(questions().length)}>
+          <button
+            data-slot="question-tab"
+            data-active={confirm()}
+            onClick={() => selectTab(questions().length)}
+            role="tab"
+            aria-selected={confirm()}
+          >
             {i18n.t("ui.common.confirm")}
           </button>
         </div>
