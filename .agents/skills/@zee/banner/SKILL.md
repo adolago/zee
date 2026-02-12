@@ -1,16 +1,16 @@
 ---
 name: banner
-description: Zee-owned rotating banner in the agent-core TUI (reminders, todos, messages).
+description: Zee-owned rotating banner in the TUI (reminders, todos, messages).
 version: 1.0.0
-author: agent-core
+author: zee
 tags: [tui, zee, banner, reminders, todos]
 ---
 
 # Banner
 
-The `Banner` skill powers an always-on rotating banner shown in the agent-core TUI prompt UI.
+The `Banner` skill powers an always-on rotating banner shown in the zee TUI prompt UI.
 
-- Display surface: agent-core TUI (top box above the prompt input)
+- Display surface: zee TUI (top box above the prompt input)
 - Ownership: Zee (shown even when using other personas)
 - Behavior: rotates items; not dismissible
 
@@ -18,17 +18,17 @@ The `Banner` skill powers an always-on rotating banner shown in the agent-core T
 
 ### Refresh banner items
 
-Auto-refresh is wired into the agent-core daemon cron (every 15 minutes). The cron job name is `zee-banner-refresh`.
+Auto-refresh is wired into the zee daemon cron (every 15 minutes). The cron job name is `zee-banner-refresh`.
 
 Manual refresh (writes to KV so the running TUI updates live):
 ```bash
-agent-core debug agent zee --tool zee-banner-refresh --params '{"autoSave": true}'
+zee debug agent zee --tool zee-banner-refresh --params '{"autoSave": true}'
 ```
 
 ### Push a message into the banner
 
 ```bash
-agent-core debug agent zee --tool zee-banner-push --params '{"message": "Heads up: standup in 10 minutes", "priority": "high"}'
+zee debug agent zee --tool zee-banner-push --params '{"message": "Heads up: standup in 10 minutes", "priority": "high"}'
 ```
 
 Messages are not dismissible in the UI. They expire automatically after `ttlMinutes` (default: 24h).

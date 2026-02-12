@@ -149,7 +149,7 @@ In `~/.config/zee/zee.jsonc`:
    ```
 2. Or start via zee:
    ```bash
-   agent-core tool zee:browser-profiles-start '{"profile": "chrome"}'
+   zee tool zee:browser-profiles-start '{"profile": "chrome"}'
    ```
 
 ### "Session expired during SSO"

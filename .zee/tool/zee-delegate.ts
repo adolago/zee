@@ -69,7 +69,7 @@ and returns their response for you to relay to the user.`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-opencode-directory": directory,
+          "x-zee-directory": directory,
         },
         body: JSON.stringify({ title: sessionTitle }),
       })
@@ -98,7 +98,7 @@ This might mean the daemon is not running. Ensure zee daemon is started.`
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-opencode-directory": directory,
+            "x-zee-directory": directory,
           },
           body: JSON.stringify({
             parts: [{ type: "text", text: fullQuery }],

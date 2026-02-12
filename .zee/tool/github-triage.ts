@@ -1,7 +1,7 @@
 /// <reference path="../env.d.ts" />
 // import { Octokit } from "@octokit/rest"
 import { tool } from "@zee/plugin"
-const DESCRIPTION = `Assign GitHub issues and apply labels in anomalyco/opencode.
+const DESCRIPTION = `Assign GitHub issues and apply labels in adolago/zee.
 
 Requires:
 - ISSUE_NUMBER env var
@@ -44,8 +44,8 @@ export default tool({
   async execute(args) {
     const issue = getIssueNumber()
     // const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN })
-    const owner = "anomalyco"
-    const repo = "opencode"
+    const owner = "adolago"
+    const repo = "zee"
 
     const results: string[] = []
 

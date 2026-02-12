@@ -46,7 +46,7 @@ Detailed documentation for Zee's tools and capabilities.
    ```bash
    chromium --remote-debugging-port=9222
    ```
-2. Zee gateway running (auto-started by `agent-core daemon`)
+2. Zee gateway running (auto-started by `zee daemon`)
 
 **Configuration** (`zee.jsonc`):
 ```json
@@ -239,20 +239,20 @@ Spawn Claude Code CLI as a subprocess with shared skills and MCP servers.
 
 ## Daemon Installation
 
-Install agent-core daemon as a system service:
+Install zee daemon as a system service:
 
 ```bash
 # Interactive wizard
-agent-core daemon-install
+zee daemon-install
 
 # With options
-agent-core daemon-install --port 3210 --gateway
+zee daemon-install --port 3210 --gateway
 
 # Check status
-agent-core daemon-service-status
+zee daemon-service-status
 
 # Uninstall
-agent-core daemon-uninstall
+zee daemon-uninstall
 ```
 
 **Options:**
@@ -263,7 +263,7 @@ agent-core daemon-uninstall
 | `--wezterm` | Enable WezTerm orchestration |
 
 **Service Locations:**
-- Linux: `~/.config/systemd/user/agent-core-daemon.service`
+- Linux: `~/.config/systemd/user/zee-daemon.service`
 
 **Log Locations:**
 - `~/.local/state/zee/logs/daemon.log`

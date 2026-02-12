@@ -3,7 +3,6 @@
     "allow": [
       "Bash(bun run build:*)",
       "Bash(zee:*)",
-      "Bash(agent-core:*)",
       "Bash(bun install:*)",
       "Bash(bun run:*)",
       "Bash(curl:*)",

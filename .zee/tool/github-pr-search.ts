@@ -1,6 +1,6 @@
 /// <reference path="../env.d.ts" />
 import { tool } from "@zee/plugin"
-const DESCRIPTION = `Search open pull requests in anomalyco/opencode.
+const DESCRIPTION = `Search open pull requests in adolago/zee.
 
 Requires:
 - GITHUB_TOKEN env var with repo access.`
@@ -34,8 +34,8 @@ export default tool({
     offset: tool.schema.number().describe("Number of results to skip for pagination").default(0),
   },
   async execute(args) {
-    const owner = "anomalyco"
-    const repo = "opencode"
+    const owner = "adolago"
+    const repo = "zee"
 
     const page = Math.floor(args.offset / args.limit) + 1
     const searchQuery = encodeURIComponent(`${args.query} repo:${owner}/${repo} type:pr state:open`)

@@ -56,25 +56,9 @@ Hook calls are executed sequentially across loaded plugins. Hooks may mutate the
 - This document describes the runtime plugin system used by the kernel.
 - A separate prototype plugin system previously lived under `src/plugin/`; it is not part of the runtime loader.
 
-
-# Domain plugins
-PLAID_CLIENT_ID=...
-PLAID_SECRET=...
-ALPHA_VANTAGE_API_KEY=...
-WHATSAPP_TOKEN=...
-```
-
 ## Security Considerations
 
 1. **Plugin Sandboxing**: Plugins run in the same process but should be isolated from sensitive operations
 2. **Secret Management**: Never hardcode secrets; use environment variables
 3. **Permission System**: Hooks can control permissions via `permission.ask` hook
 4. **Input Validation**: Tool arguments validated via Zod schemas
-
-## Future Enhancements
-
-1. **Plugin Sandboxing**: Run plugins in isolated contexts
-2. **Hot Reloading**: Reload plugins without restart
-3. **Plugin Registry**: Central registry for discovering plugins
-4. **Dependency Resolution**: Automatic dependency ordering
-5. **Plugin Versioning**: Version compatibility checking

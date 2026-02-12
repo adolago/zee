@@ -12,9 +12,9 @@ tags: [finance, news, portfolio, stanley]
 
 Generates comprehensive news digests for your portfolio holdings and watchlist by:
 
-1. **Searching** via agent-core's Exa MCP (no API key needed)
+1. **Searching** via zee's Exa MCP (no API key needed)
 2. **Filtering** for financially relevant content (earnings, filings, analyst ratings, M&A)
-3. **Summarizing** using agent-core's LLM providers (already authenticated)
+3. **Summarizing** using zee's LLM providers (already authenticated)
 4. **Categorizing** news by sentiment and impact level
 5. **Outputting** structured digests in multiple formats (JSON, Markdown, Email)
 
@@ -28,15 +28,15 @@ Generates comprehensive news digests for your portfolio holdings and watchlist b
 ## Architecture
 
 ```
-Stanley -> Agent-Core
+Stanley -> Zee
               │
               ├── WebSearch (Exa MCP)
               ├── WebFetch (content extraction)
               └── 15+ LLM providers (auth.json)
 ```
 
-**No separate API keys required** - leverages agent-core infrastructure:
-- Web search via `mcp.exa.ai` (same as agent-core's websearch.ts)
+**No separate API keys required** - leverages zee infrastructure:
+- Web search via `mcp.exa.ai` (same as zee's websearch.ts)
 - LLM summarization via `~/.zee/auth.json` providers
 - Python 3.10+ with `httpx`
 
@@ -194,15 +194,15 @@ async def get_news_digest(
 
 ### Agent-Core Auth (automatic)
 
-Authentication is handled by agent-core's centralized auth system:
+Authentication is handled by zee's centralized auth system:
 
 ```bash
 # View current auth status
 cat ~/.zee/auth.json
 
-# Auth is managed via agent-core CLI
-agent-core auth login anthropic
-agent-core auth login openai
+# Auth is managed via zee CLI
+zee auth login anthropic
+zee auth login openai
 ```
 
 ### Config File (optional)
