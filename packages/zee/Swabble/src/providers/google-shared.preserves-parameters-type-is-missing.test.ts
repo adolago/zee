@@ -9,6 +9,12 @@ const asRecord = (value: unknown): Record<string, unknown> => {
   return value as Record<string, unknown>;
 };
 
+const toolParams = (converted: unknown): unknown => {
+  const decl = (converted as { 0?: { functionDeclarations?: Array<Record<string, unknown>> } })?.[0]
+    ?.functionDeclarations?.[0];
+  return decl?.parametersJsonSchema ?? decl?.parameters;
+};
+
 const makeModel = (id: string): Model<"google-generative-ai"> =>
   ({
     id,
@@ -53,7 +59,7 @@ describe("google-shared convertTools", () => {
     ] as unknown as Tool[];
 
     const converted = convertTools(tools);
-    const params = asRecord(converted?.[0]?.functionDeclarations?.[0]?.parameters);
+    const params = asRecord(toolParams(converted));
 
     expect(params.type).toBeUndefined();
     expect(params.properties).toBeDefined();
@@ -93,7 +99,7 @@ describe("google-shared convertTools", () => {
     ] as unknown as Tool[];
 
     const converted = convertTools(tools);
-    const params = asRecord(converted?.[0]?.functionDeclarations?.[0]?.parameters);
+    const params = asRecord(toolParams(converted));
     const properties = asRecord(params.properties);
     const mode = asRecord(properties.mode);
     const options = asRecord(properties.options);
@@ -134,7 +140,7 @@ describe("google-shared convertTools", () => {
     ] as unknown as Tool[];
 
     const converted = convertTools(tools);
-    const params = asRecord(converted?.[0]?.functionDeclarations?.[0]?.parameters);
+    const params = asRecord(toolParams(converted));
     const config = asRecord(asRecord(params.properties).config);
     const configProps = asRecord(config.properties);
     const retries = asRecord(configProps.retries);

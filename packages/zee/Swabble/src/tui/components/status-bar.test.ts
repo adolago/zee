@@ -7,6 +7,7 @@ const mockTheme: StatusBarTheme = {
   reminderText: (t) => t,
   statusText: (t) => t,
   accentText: (t) => t,
+  titleText: (t) => t,
   dimText: (t) => t,
 };
 

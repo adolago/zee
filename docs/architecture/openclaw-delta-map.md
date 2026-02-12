@@ -227,7 +227,7 @@ Upstream PR triage (OpenClaw):
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#10818 | performance | adapt | Voyage embedding input_type improves retrieval; provider wiring differs. | Done (already implemented: embedding.ts uses input_type "query" vs "document") |
 | openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | Done (ported: sanitizeAndNormalizeEmbedding in `src/memory/embeddings.ts` + normalization tests in `src/memory/embeddings.test.ts`) |
-| openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | TODO (needs deeper investigation of auto-provider model selection) |
+| openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | Done (already implemented: hasRemoteConfig/includeRemote + embedding provider auto selection tests) |
 | openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
 | openclaw/openclaw#7078 | feature | defer | Full native Voyage support can be revisited after correctness fixes. | TODO |
 | openclaw/openclaw#819 | feature | defer | Memory search remote overrides may not match Zee memory model. | TODO |
@@ -248,7 +248,7 @@ Auth gating: see lane 01 (`openclaw/openclaw#9518`).
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | TODO (canvas/A2UI exists but specific routing fixes need mapping) |
+| openclaw/openclaw#8432 | reliability | adapt | Fix tool routing/model display/msg updates; upstream Pi stack differs. | Done (ported: pi streaming agent updates + targeted tool-event routing/caps in gateway) |
 | openclaw/openclaw#2900 | feature | non-goal | Removed-channel quote replies are not in scope for canvas lane. | None |
 | openclaw/openclaw#1757 | security | adapt | Per-sender group tool policies and precedence; needs mapping to Zee. | TODO (tool policy is profile-based, not per-sender; needs design work) |
 | openclaw/openclaw#2455 | reliability | port | Restore A2UI scaffold assets; prevent runtime breakage. | Done (already implemented in canvas-host/a2ui/) |

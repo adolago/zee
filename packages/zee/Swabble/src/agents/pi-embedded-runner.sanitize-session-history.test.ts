@@ -203,7 +203,16 @@ describe("sanitizeSessionHistory", () => {
       sessionId: "test-session",
     });
 
-    expect(result).toEqual(messages);
+    expect(result).toEqual([
+      {
+        ...messages[0],
+        providerOptions: {
+          openaiCompatible: {
+            reasoning_content: "reasoning",
+          },
+        },
+      },
+    ]);
   });
 
   it("downgrades openai reasoning only when the model changes", async () => {

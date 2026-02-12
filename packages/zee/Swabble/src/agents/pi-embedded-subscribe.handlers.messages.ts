@@ -19,6 +19,14 @@ import {
 } from "./pi-embedded-utils.js";
 import { createInlineCodeState } from "../markdown/code-spans.js";
 
+const stripTrailingDirective = (text: string): string => {
+  const openIndex = text.lastIndexOf("[[");
+  if (openIndex < 0) return text;
+  const closeIndex = text.indexOf("]]", openIndex + 2);
+  if (closeIndex >= 0) return text;
+  return text.slice(0, openIndex);
+};
+
 export function handleMessageStart(
   ctx: EmbeddedPiSubscribeContext,
   evt: AgentEvent & { message: AgentMessage },
@@ -107,20 +115,38 @@ export function handleMessageUpdate(
       inlineCode: createInlineCodeState(),
     })
     .trim();
-  if (next && next !== ctx.state.lastStreamedAssistant) {
-    const previousText = ctx.state.lastStreamedAssistant ?? "";
-    const { text: cleanedText, mediaUrls } = parseReplyDirectives(next);
-    const { text: previousCleanedText } = parseReplyDirectives(previousText);
-    if (cleanedText.startsWith(previousCleanedText)) {
-      const deltaText = cleanedText.slice(previousCleanedText.length);
-      ctx.state.lastStreamedAssistant = next;
+  if (next) {
+    const visibleDelta = chunk ? ctx.stripBlockTags(chunk, ctx.state.partialBlockState) : "";
+    const parsedDelta = visibleDelta ? ctx.consumePartialReplyDirectives(visibleDelta) : null;
+    const parsedFull = parseReplyDirectives(stripTrailingDirective(next));
+    const cleanedText = parsedFull.text;
+    const mediaUrls = parsedDelta?.mediaUrls;
+    const hasMedia = Boolean(mediaUrls && mediaUrls.length > 0);
+    const hasAudio = Boolean(parsedDelta?.audioAsVoice);
+    const previousCleaned = ctx.state.lastStreamedAssistantCleaned ?? "";
+
+    let shouldEmit = false;
+    let deltaText = "";
+    if (!cleanedText && !hasMedia && !hasAudio) {
+      shouldEmit = false;
+    } else if (previousCleaned && !cleanedText.startsWith(previousCleaned)) {
+      shouldEmit = false;
+    } else {
+      deltaText = cleanedText.slice(previousCleaned.length);
+      shouldEmit = Boolean(deltaText || hasMedia || hasAudio);
+    }
+
+    ctx.state.lastStreamedAssistant = next;
+    ctx.state.lastStreamedAssistantCleaned = cleanedText;
+
+    if (shouldEmit) {
       emitAgentEvent({
         runId: ctx.params.runId,
         stream: "assistant",
         data: {
           text: cleanedText,
           delta: deltaText,
-          mediaUrls: mediaUrls?.length ? mediaUrls : undefined,
+          mediaUrls: hasMedia ? mediaUrls : undefined,
         },
       });
       void ctx.params.onAgentEvent?.({
@@ -128,13 +154,14 @@ export function handleMessageUpdate(
         data: {
           text: cleanedText,
           delta: deltaText,
-          mediaUrls: mediaUrls?.length ? mediaUrls : undefined,
+          mediaUrls: hasMedia ? mediaUrls : undefined,
         },
       });
+      ctx.state.emittedAssistantUpdate = true;
       if (ctx.params.onPartialReply && ctx.state.shouldEmitPartialReplies) {
         void ctx.params.onPartialReply({
           text: cleanedText,
-          mediaUrls: mediaUrls?.length ? mediaUrls : undefined,
+          mediaUrls: hasMedia ? mediaUrls : undefined,
         });
       }
     }
@@ -181,6 +208,45 @@ export function handleMessageEnd(
       ? extractAssistantThinking(assistantMessage) || extractThinkingFromTaggedText(rawText)
       : "";
   const formattedReasoning = rawThinking ? formatReasoningMessage(rawThinking) : "";
+
+  const trimmedText = text.trim();
+  const parsedText = trimmedText ? parseReplyDirectives(stripTrailingDirective(trimmedText)) : null;
+  let cleanedText = parsedText?.text ?? "";
+  let mediaUrls = parsedText?.mediaUrls;
+  let hasMedia = Boolean(mediaUrls && mediaUrls.length > 0);
+
+  if (!cleanedText && !hasMedia) {
+    const rawTrimmed = rawText.trim();
+    const rawStrippedFinal = rawTrimmed.replace(/<\s*\/?\s*final\s*>/gi, "").trim();
+    const rawCandidate = rawStrippedFinal || rawTrimmed;
+    if (rawCandidate) {
+      const parsedFallback = parseReplyDirectives(stripTrailingDirective(rawCandidate));
+      cleanedText = parsedFallback.text ?? rawCandidate;
+      mediaUrls = parsedFallback.mediaUrls;
+      hasMedia = Boolean(mediaUrls && mediaUrls.length > 0);
+    }
+  }
+
+  if (!ctx.state.emittedAssistantUpdate && (cleanedText || hasMedia)) {
+    emitAgentEvent({
+      runId: ctx.params.runId,
+      stream: "assistant",
+      data: {
+        text: cleanedText,
+        delta: cleanedText,
+        mediaUrls: hasMedia ? mediaUrls : undefined,
+      },
+    });
+    void ctx.params.onAgentEvent?.({
+      stream: "assistant",
+      data: {
+        text: cleanedText,
+        delta: cleanedText,
+        mediaUrls: hasMedia ? mediaUrls : undefined,
+      },
+    });
+    ctx.state.emittedAssistantUpdate = true;
+  }
 
   const addedDuringMessage = ctx.state.assistantTexts.length > ctx.state.assistantTextBaseline;
   const chunkerHasBuffered = ctx.blockChunker?.hasBuffered() ?? false;
@@ -288,4 +354,5 @@ export function handleMessageEnd(
   ctx.state.blockState.final = false;
   ctx.state.blockState.inlineCode = createInlineCodeState();
   ctx.state.lastStreamedAssistant = undefined;
+  ctx.state.lastStreamedAssistantCleaned = undefined;
 }
