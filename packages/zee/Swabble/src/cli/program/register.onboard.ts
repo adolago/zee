@@ -41,6 +41,11 @@ export function registerOnboardCommand(program: Command) {
         `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/onboard", "zee-bot.com/cli/onboard")}\n`,
     )
     .option("--workspace <dir>", "Agent workspace directory (default: ~/zee)")
+    .option(
+      "--assistant-mode",
+      "Apply assistant-first single-user defaults (channel-first, secure-by-default)",
+      false,
+    )
     .option("--reset", "Reset config + credentials + sessions + workspace before running wizard")
     .option("--non-interactive", "Run without prompts", false)
     .option(
@@ -105,6 +110,7 @@ export function registerOnboardCommand(program: Command) {
         await onboardCommand(
           {
             workspace: opts.workspace as string | undefined,
+            assistantMode: Boolean(opts.assistantMode),
             nonInteractive: Boolean(opts.nonInteractive),
             acceptRisk: Boolean(opts.acceptRisk),
             flow: opts.flow as "quickstart" | "advanced" | "manual" | undefined,

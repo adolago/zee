@@ -12,6 +12,7 @@ import {
   resolveGatewayUrls,
   waitForGatewayReachable,
 } from "../onboard-helpers.js";
+import { applyAssistantModePreset } from "../onboard-assistant-mode.js";
 import type { OnboardOptions } from "../onboard-types.js";
 
 import { applyNonInteractiveAuthChoice } from "./local/auth-choice.js";
@@ -72,6 +73,9 @@ export async function runNonInteractiveOnboardingLocal(params: {
   nextConfig = gatewayResult.nextConfig;
 
   nextConfig = applyNonInteractiveSkillsConfig({ nextConfig, opts, runtime });
+  if (opts.assistantMode) {
+    nextConfig = applyAssistantModePreset(nextConfig);
+  }
 
   nextConfig = applyWizardMetadata(nextConfig, { command: "onboard", mode });
   await writeConfigFile(nextConfig);
