@@ -1,8 +1,23 @@
 import { realpathSync } from "fs"
 import { realpath } from "fs/promises"
-import { dirname, join, relative } from "path"
+import { dirname, isAbsolute, join, relative, sep, win32 } from "path"
 
 export namespace Filesystem {
+  const isContainedByRelative = (parent: string, child: string): boolean => {
+    const rel = relative(parent, child)
+    if (!rel) return true
+
+    // On Windows, relative() returns an absolute path when the drives differ.
+    // On non-Windows platforms, win32.isAbsolute still detects Windows-style absolute paths.
+    if (isAbsolute(rel) || win32.isAbsolute(rel)) return false
+
+    if (rel === "..") return false
+    // Only treat ".." as a path segment; allow names like "..foo".
+    if (rel.startsWith(`..${sep}`) || rel.startsWith("../") || rel.startsWith("..\\")) return false
+
+    return true
+  }
+
   export const sanitizePath = (value: string) => (value.includes("\0") ? value.replace(/\0/g, "") : value)
   export const exists = async (p: string) => {
     p = sanitizePath(p)
@@ -48,7 +63,7 @@ export namespace Filesystem {
     try {
       const resolvedParent = await resolve(parent)
       const resolvedChild = await resolve(child)
-      return !relative(resolvedParent, resolvedChild).startsWith("..")
+      return isContainedByRelative(resolvedParent, resolvedChild)
     } catch {
       return false
     }
@@ -75,7 +90,7 @@ export namespace Filesystem {
     try {
       const resolvedParent = resolve(parent)
       const resolvedChild = resolve(child)
-      return !relative(resolvedParent, resolvedChild).startsWith("..")
+      return isContainedByRelative(resolvedParent, resolvedChild)
     } catch {
       return false
     }
@@ -97,15 +112,13 @@ export namespace Filesystem {
   export function overlaps(a: string, b: string) {
     a = sanitizePath(a)
     b = sanitizePath(b)
-    const relA = relative(a, b)
-    const relB = relative(b, a)
-    return !relA || !relA.startsWith("..") || !relB || !relB.startsWith("..")
+    return isContainedByRelative(a, b) || isContainedByRelative(b, a)
   }
 
   export function contains(parent: string, child: string) {
     parent = sanitizePath(parent)
     child = sanitizePath(child)
-    return !relative(parent, child).startsWith("..")
+    return isContainedByRelative(parent, child)
   }
 
   export async function findUp(target: string, start: string, stop?: string) {
