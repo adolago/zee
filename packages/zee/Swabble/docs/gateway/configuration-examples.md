@@ -208,11 +208,9 @@ Save to `~/.zee/zee.json` and you can DM the bot from that number.
         ackMaxChars: 300
       },
       memorySearch: {
-        provider: "gemini",
+        provider: "google",
         model: "gemini-embedding-001",
-        remote: {
-          apiKey: "${GEMINI_API_KEY}"
-        },
+        // Google API key is resolved via `zee auth login google`.
         extraPaths: ["../team-docs", "/srv/shared-notes"]
       },
       sandbox: {

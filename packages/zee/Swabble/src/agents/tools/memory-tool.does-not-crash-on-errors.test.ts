@@ -6,7 +6,7 @@ vi.mock("../../memory/index.js", () => {
       return {
         manager: {
           search: async () => {
-            throw new Error("openai embeddings failed: 429 insufficient_quota");
+            throw new Error("google embeddings failed: 429 rate limit");
           },
           readFile: async () => {
             throw new Error("path required");
@@ -17,9 +17,9 @@ vi.mock("../../memory/index.js", () => {
             dirty: true,
             workspaceDir: "/tmp",
             dbPath: "/tmp/index.sqlite",
-            provider: "openai",
-            model: "text-embedding-3-small",
-            requestedProvider: "openai",
+            provider: "google",
+            model: "gemini-embedding-001",
+            requestedProvider: "google",
           }),
         },
       };
@@ -40,7 +40,7 @@ describe("memory tools", () => {
     expect(result.details).toEqual({
       results: [],
       disabled: true,
-      error: "openai embeddings failed: 429 insufficient_quota",
+      error: "google embeddings failed: 429 rate limit",
     });
   });
 

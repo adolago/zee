@@ -2286,35 +2286,6 @@
     "name": "OpenAI",
     "doc": "https://platform.openai.com/docs/models",
     "models": {
-      "text-embedding-3-small": {
-        "id": "text-embedding-3-small",
-        "name": "text-embedding-3-small",
-        "family": "text-embedding-3-small",
-        "attachment": false,
-        "reasoning": false,
-        "tool_call": false,
-        "temperature": false,
-        "knowledge": "2024-01",
-        "release_date": "2024-01-25",
-        "last_updated": "2024-01-25",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": false,
-        "cost": {
-          "input": 0.02,
-          "output": 0
-        },
-        "limit": {
-          "context": 8191,
-          "output": 1536
-        }
-      },
       "gpt-5.1-codex": {
         "id": "gpt-5.1-codex",
         "name": "GPT-5.1 Codex",
@@ -2376,35 +2347,6 @@
         "limit": {
           "context": 400000,
           "output": 128000
-        }
-      },
-      "text-embedding-3-large": {
-        "id": "text-embedding-3-large",
-        "name": "text-embedding-3-large",
-        "family": "text-embedding-3-large",
-        "attachment": false,
-        "reasoning": false,
-        "tool_call": false,
-        "temperature": false,
-        "knowledge": "2024-01",
-        "release_date": "2024-01-25",
-        "last_updated": "2024-01-25",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": false,
-        "cost": {
-          "input": 0.13,
-          "output": 0
-        },
-        "limit": {
-          "context": 8191,
-          "output": 3072
         }
       },
       "gpt-5.1-codex-mini": {

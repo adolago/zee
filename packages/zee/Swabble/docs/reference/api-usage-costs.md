@@ -52,12 +52,8 @@ Inbound media can be summarized/transcribed before the reply runs. This uses mod
 
 
 ### 3) Memory embeddings + semantic search
-Semantic memory search uses **embedding APIs** when configured for remote providers:
-- `memorySearch.provider = "openai"` → OpenAI embeddings
-- `memorySearch.provider = "gemini"` → Gemini embeddings
-- Optional fallback to OpenAI if local embeddings fail
-
-You can keep it local with `memorySearch.provider = "local"` (no API usage).
+Semantic memory search uses **Google embeddings (Gemini)** and will incur embedding API usage when enabled.
+Configure the API key via `zee auth login google`.
 
 See [Memory](/concepts/memory).
 

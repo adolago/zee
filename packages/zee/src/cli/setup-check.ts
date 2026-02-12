@@ -26,14 +26,15 @@ export interface SetupCheckResult {
   }
   googleApiKey: {
     available: boolean
-    source?: "env:GEMINI_API_KEY" | "env:GOOGLE_API_KEY" | "auth.json"
+    source?: "auth.json:data" | "auth.json:state"
     error?: string
   }
   warnings: string[]
   errors: string[]
 }
 
-const AUTH_JSON_PATH = path.join(Global.Path.data, "auth.json")
+const AUTH_JSON_DATA_PATH = path.join(Global.Path.data, "auth.json")
+const AUTH_JSON_STATE_PATH = path.join(Global.Path.state, "auth.json")
 const CONFIG_DISPLAY_MAX = 3
 
 async function findProjectConfigDirs(startDir: string): Promise<string[]> {
@@ -178,34 +179,33 @@ async function checkQdrantConnectivity(url: string): Promise<{ available: boolea
 }
 
 /**
- * Check if Google API key is available from any source
+ * Check if Google API key is available from the Zee auth store.
  */
 async function checkGoogleApiKey(): Promise<{
   available: boolean
-  source?: "env:GEMINI_API_KEY" | "env:GOOGLE_API_KEY" | "auth.json"
+  source?: "auth.json:data" | "auth.json:state"
   error?: string
 }> {
-  if (process.env.GEMINI_API_KEY?.trim()) {
-    return { available: true, source: "env:GEMINI_API_KEY" }
-  }
+  const candidates: Array<{ source: "auth.json:data" | "auth.json:state"; path: string }> = [
+    { source: "auth.json:data", path: AUTH_JSON_DATA_PATH },
+    { source: "auth.json:state", path: AUTH_JSON_STATE_PATH },
+  ]
 
-  if (process.env.GOOGLE_API_KEY?.trim()) {
-    return { available: true, source: "env:GOOGLE_API_KEY" }
-  }
-
-  try {
-    const content = await fs.readFile(AUTH_JSON_PATH, "utf-8")
-    const auth = JSON.parse(content)
-    if (auth.google?.key || auth.google?.type === "api") {
-      return { available: true, source: "auth.json" }
+  for (const candidate of candidates) {
+    try {
+      const content = await fs.readFile(candidate.path, "utf-8")
+      const auth = JSON.parse(content)
+      if (auth.google?.type === "api" && typeof auth.google?.key === "string" && auth.google.key.trim()) {
+        return { available: true, source: candidate.source }
+      }
+    } catch {
+      // auth.json doesn't exist or can't be read
     }
-  } catch {
-    // auth.json doesn't exist or can't be read
   }
 
   return {
     available: false,
-    error: "No Google API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY, or store in auth.json",
+    error: "No Google API key found. Run `zee auth login google`",
   }
 }
 
@@ -249,9 +249,8 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
 
   if (!googleCheck.available) {
     errors.push("Google API key not found (required for embeddings)")
-    errors.push("  Set GEMINI_API_KEY or GOOGLE_API_KEY in your environment, or")
-    errors.push(`  Store in: ${AUTH_JSON_PATH}`)
-    errors.push('  Format: {"google":{"type":"api","key":"YOUR_KEY"}}')
+    errors.push("  Run: zee auth login google")
+    errors.push(`  Stores in: ${AUTH_JSON_DATA_PATH} (or ${AUTH_JSON_STATE_PATH})`)
   }
 
   if (missingEnvWarnings.length > 0) {

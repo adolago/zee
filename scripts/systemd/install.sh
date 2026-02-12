@@ -95,8 +95,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
 # OpenAI API key (optional)
 # OPENAI_API_KEY=your-key-here
 
-# Google/Gemini API key (embeddings)
-# GEMINI_API_KEY=your-key-here
+# Google Gemini (required for embeddings)
+# Use: zee auth login google
 
 # =============================================================================
 # Tool API Keys

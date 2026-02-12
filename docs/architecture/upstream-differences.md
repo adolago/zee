@@ -1,5 +1,7 @@
 # zee vs sst/opencode vs openclaw
 
+See also: `docs/architecture/feature-comparison.md` (generated feature matrix across Zee, OpenCode, OpenClaw, and Pi-mono).
+
 This document maps the high-signal differences between zee and:
 
 - `sst/opencode` (OpenCode, `dev` branch)

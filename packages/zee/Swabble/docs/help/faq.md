@@ -1003,25 +1003,15 @@ workspace on every run.
 
 Docs: [Memory](/concepts/memory), [Agent workspace](/concepts/agent-workspace).
 
-### Does semantic memory search require an OpenAI API key
+### Does semantic memory search require an API key
 
-Only if you use **OpenAI embeddings**. Codex OAuth covers chat/completions and
-does **not** grant embeddings access, so **signing in with Codex (OAuth or the
-Codex CLI login)** does not help for semantic memory search. OpenAI embeddings
-still need a real API key (`OPENAI_API_KEY` or `models.providers.openai.apiKey`).
+Yes. Zee semantic memory search uses **Google embeddings** and requires a Google API key.
+Configure it once with `zee auth login google`.
 
-If you don’t set a provider explicitly, Zee auto-selects a provider when it
-can resolve an API key (auth profiles, `models.providers.*.apiKey`, or env vars).
-It prefers OpenAI if an OpenAI key resolves, otherwise Gemini if a Gemini key
-resolves. If neither key is available, memory search stays disabled until you
-configure it. If you have a local model path configured and present, Zee
-prefers `local`.
+The Gateway reads the key from Zee's global auth store and intentionally ignores environment
+variables and config-based embedding API keys to keep a single source of truth.
 
-If you’d rather stay local, set `memorySearch.provider = "local"` (and optionally
-`memorySearch.fallback = "none"`). If you want Gemini embeddings, set
-`memorySearch.provider = "gemini"` and provide `GEMINI_API_KEY` (or
-`memorySearch.remote.apiKey`). We support **OpenAI, Gemini, or local** embedding
-models - see [Memory](/concepts/memory) for the setup details.
+If you don't want semantic memory search, set `memorySearch.enabled = false`.
 
 ### Does memory persist forever What are the limits
 

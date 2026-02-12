@@ -82,20 +82,10 @@ notes even when wording differs.
 Defaults:
 - Enabled by default.
 - Watches memory files for changes (debounced).
-- Uses remote embeddings by default. If `memorySearch.provider` is not set, Zee auto-selects:
-  1. `local` if a `memorySearch.local.modelPath` is configured and the file exists.
-  2. `openai` if an OpenAI key can be resolved.
-  3. `gemini` if a Gemini key can be resolved.
-  4. Otherwise memory search stays disabled until configured.
-- Local mode uses node-llama-cpp and may require `pnpm approve-builds`.
+- Uses Google embeddings (`gemini-embedding-001`).
 - Uses sqlite-vec (when available) to accelerate vector search inside SQLite.
 
-Remote embeddings **require** an API key for the embedding provider. Zee
-resolves keys from auth profiles, `models.providers.*.apiKey`, or environment
-variables. Codex OAuth only covers chat/completions and does **not** satisfy
-embeddings for memory search. For Gemini, use `GEMINI_API_KEY` or
-`models.providers.google.apiKey`. When using a custom OpenAI-compatible endpoint,
-set `memorySearch.remote.apiKey` (and optional `memorySearch.remote.headers`).
+Embeddings require a Google API key. Configure it via `zee auth login google`.
 
 ### Additional memory paths
 
@@ -118,79 +108,24 @@ Notes:
 - Only Markdown files are indexed.
 - Symlinks are ignored (files or directories).
 
-### Gemini embeddings (native)
+### Google embeddings
 
-Set the provider to `gemini` to use the Gemini embeddings API directly:
+Zee memory search uses Google embeddings (`gemini-embedding-001`).
+Configure the API key once via `zee auth login google`.
+
+Optional configuration:
 
 ```json5
 agents: {
   defaults: {
     memorySearch: {
-      provider: "gemini",
+      provider: "google",
       model: "gemini-embedding-001",
       remote: {
-        apiKey: "YOUR_GEMINI_API_KEY"
-      }
-    }
-  }
-}
-```
-
-Notes:
-- `remote.baseUrl` is optional (defaults to the Gemini API base URL).
-- `remote.headers` lets you add extra headers if needed.
-- Default model: `gemini-embedding-001`.
-
-If you want to use a **custom OpenAI-compatible endpoint** (OpenRouter, vLLM, or a proxy),
-you can use the `remote` configuration with the OpenAI provider:
-
-```json5
-agents: {
-  defaults: {
-    memorySearch: {
-      provider: "openai",
-      model: "text-embedding-3-small",
-      remote: {
-        baseUrl: "https://api.example.com/v1/",
-        apiKey: "YOUR_OPENAI_COMPAT_API_KEY",
-        headers: { "X-Custom-Header": "value" }
-      }
-    }
-  }
-}
-```
-
-If you don't want to set an API key, use `memorySearch.provider = "local"` or set
-`memorySearch.fallback = "none"`.
-
-Fallbacks:
-- `memorySearch.fallback` can be `openai`, `gemini`, `local`, or `none`.
-- The fallback provider is only used when the primary embedding provider fails.
-
-Batch indexing (OpenAI + Gemini):
-- Enabled by default for OpenAI and Gemini embeddings. Set `agents.defaults.memorySearch.remote.batch.enabled = false` to disable.
-- Default behavior waits for batch completion; tune `remote.batch.wait`, `remote.batch.pollIntervalMs`, and `remote.batch.timeoutMinutes` if needed.
-- Set `remote.batch.concurrency` to control how many batch jobs we submit in parallel (default: 2).
-- Batch mode applies when `memorySearch.provider = "openai"` or `"gemini"` and uses the corresponding API key.
-- Gemini batch jobs use the async embeddings batch endpoint and require Gemini Batch API availability.
-
-Why OpenAI batch is fast + cheap:
-- For large backfills, OpenAI is typically the fastest option we support because we can submit many embedding requests in a single batch job and let OpenAI process them asynchronously.
-- OpenAI offers discounted pricing for Batch API workloads, so large indexing runs are usually cheaper than sending the same requests synchronously.
-- See the OpenAI Batch API docs and pricing for details:
-  - https://platform.openai.com/docs/api-reference/batch
-  - https://platform.openai.com/pricing
-
-Config example:
-
-```json5
-agents: {
-  defaults: {
-    memorySearch: {
-      provider: "openai",
-      model: "text-embedding-3-small",
-      fallback: "openai",
-      remote: {
+        // Optional override for the embeddings base URL (default: Gemini API base URL)
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        // Optional extra headers (the API key header is managed by Zee)
+        headers: { "X-Custom-Header": "value" },
         batch: { enabled: true, concurrency: 2 }
       },
       sync: { watch: true }
@@ -199,18 +134,19 @@ agents: {
 }
 ```
 
+Batch indexing:
+- Enabled by default for Google embeddings. Set `agents.defaults.memorySearch.remote.batch.enabled = false` to disable.
+- Default behavior waits for batch completion; tune `remote.batch.wait`, `remote.batch.pollIntervalMs`, and `remote.batch.timeoutMinutes` if needed.
+- Set `remote.batch.concurrency` to control how many batch jobs we submit in parallel (default: 2).
+- Batch mode uses the Gemini async embeddings batch endpoint and may not be available on every baseUrl/model combination.
+
 Tools:
 - `memory_search` — returns snippets with file + line ranges.
 - `memory_get` — read memory file content by path.
 
-Local mode:
-- Set `agents.defaults.memorySearch.provider = "local"`.
-- Provide `agents.defaults.memorySearch.local.modelPath` (GGUF or `hf:` URI).
-- Optional: set `agents.defaults.memorySearch.fallback = "none"` to avoid remote fallback.
-
 ### How the memory tools work
 
-- `memory_search` semantically searches Markdown chunks (~400 token target, 80-token overlap) from `MEMORY.md` + `memory/**/*.md`. It returns snippet text (capped ~700 chars), file path, line range, score, provider/model, and whether we fell back from local → remote embeddings. No full file payload is returned.
+- `memory_search` semantically searches Markdown chunks (~400 token target, 80-token overlap) from `MEMORY.md` + `memory/**/*.md`. It returns snippet text (capped ~700 chars), file path, line range, and score. No full file payload is returned.
 - `memory_get` reads a specific memory Markdown file (workspace-relative), optionally from a starting line and for N lines. Paths outside `MEMORY.md` / `memory/` are allowed only when explicitly listed in `memorySearch.extraPaths`.
 - Both tools are enabled only when `memorySearch.enabled` resolves true for the agent.
 
@@ -377,24 +313,16 @@ Notes:
 - `extensionPath` overrides the bundled sqlite-vec path (useful for custom builds
   or non-standard install locations).
 
-### Local embedding auto-download
-
-- Default local embedding model: `hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf` (~0.6 GB).
-- When `memorySearch.provider = "local"`, `node-llama-cpp` resolves `modelPath`; if the GGUF is missing it **auto-downloads** to the cache (or `local.modelCacheDir` if set), then loads it. Downloads resume on retry.
-- Native build requirement: run `pnpm approve-builds`, pick `node-llama-cpp`, then `pnpm rebuild node-llama-cpp`.
-- Fallback: if local setup fails and `memorySearch.fallback = "openai"`, we automatically switch to remote embeddings (`openai/text-embedding-3-small` unless overridden) and record the reason.
-
-### Custom OpenAI-compatible endpoint example
+### Custom embeddings base URL example
 
 ```json5
 agents: {
   defaults: {
     memorySearch: {
-      provider: "openai",
-      model: "text-embedding-3-small",
+      provider: "google",
+      model: "gemini-embedding-001",
       remote: {
-        baseUrl: "https://api.example.com/v1/",
-        apiKey: "YOUR_REMOTE_API_KEY",
+        baseUrl: "https://proxy.example/v1beta",
         headers: {
           "X-Organization": "org-id",
           "X-Project": "project-id"
@@ -406,5 +334,6 @@ agents: {
 ```
 
 Notes:
-- `remote.*` takes precedence over `models.providers.openai.*`.
-- `remote.headers` merge with OpenAI headers; remote wins on key conflicts. Omit `remote.headers` to use the OpenAI defaults.
+- `remote.baseUrl` is optional (defaults to the Gemini API base URL).
+- `remote.headers` are merged with provider headers.
+- The Google API key header is managed by Zee (from the global auth store).

@@ -41,15 +41,14 @@ const RECOMMENDED_CREDENTIALS: RecommendedCredential[] = [
   },
   {
     label: "Google Gemini",
-    envVar: "GOOGLE_API_KEY",
     authProviderId: "google",
-    description: "Google Gemini API key (embeddings)",
+    description: "Google Gemini API key (embeddings; stored via `zee auth login google`)",
   },
   {
     label: "Voyage",
     envVar: "VOYAGE_API_KEY",
     authProviderId: "voyage",
-    description: "Voyage AI (API key)",
+    description: "Voyage reranking (API key)",
   },
 ];
 

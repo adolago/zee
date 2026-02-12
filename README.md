@@ -115,20 +115,20 @@ Example memory + embeddings configuration:
     },
     "embedding": {
       "profile": "google/gemini-embedding-001",
-      "dimensions": 3072,
-      "apiKey": "{env:GEMINI_API_KEY}"
+      "dimensions": 3072
     }
   }
 }
 ```
 
-Set secrets via environment variables:
+Configure Google embeddings credentials (single source of truth):
 
 ```bash
+zee auth login google
+
 export ANTHROPIC_API_KEY="..."
-export OPENAI_API_KEY="..."     # If using OpenAI embeddings
-export GEMINI_API_KEY="..."     # If using Google Gemini embeddings
-export VOYAGE_API_KEY="..."     # If using Voyage embeddings/reranking
+export OPENAI_API_KEY="..."     # Optional if using `zee auth login openai`
+export VOYAGE_API_KEY="..."     # Optional (Voyage reranking)
 ```
 
 Optional: Google Antigravity (plugin-based OAuth):
@@ -150,12 +150,9 @@ docker run -p 6333:6333 qdrant/qdrant
 
 Common profiles you can set in `memory.embedding.profile`:
 
-- `google/gemini-embedding-001` (3072 dims, recommended) + `google/gemini-embedding-001-1536` / `-768`
-- `openai/text-embedding-3-small` (1536 dims) + `openai/text-embedding-3-small-512` / `-1024`
-- `openai/text-embedding-3-large` (3072 dims) + `openai/text-embedding-3-large-1024` / `-1536`
-- `voyage/voyage-3-large` (1024 dims)
+- `google/gemini-embedding-001` (3072 dims, recommended)
 
-You can also override with `provider`, `model`, `dimensions`, `baseUrl`, and `apiKey`.
+Zee supports Google-only embeddings. You can also override with `model`, `dimensions`, and `baseUrl`.
 
 Keep Qdrant collection dimensions aligned with your embedding dimensions by setting
 `memory.embedding.dimensions` to the same value as your collection vectors.

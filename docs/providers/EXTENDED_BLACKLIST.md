@@ -46,14 +46,11 @@ const PROVIDER_BLACKLIST = new Set<string>([
 
 ### Embedding Providers
 
-| Provider ID | Service | Env Var | Models |
-|-------------|---------|---------|--------|
-| `openai` | Embedding | `OPENAI_API_KEY` | text-embedding-3-small/large |
-| `google` | Embedding | `GOOGLE_API_KEY` | gemini-embedding-001 |
-| `voyage` | Embedding/Reranking | `VOYAGE_API_KEY` | voyage-3-large, voyage-3, voyage-3-lite |
-| `vllm` | Embedding/Reranking | `VLLM_BASE_URL` | User-configurable |
+| Provider ID | Service | Auth | Models |
+|-------------|---------|------|--------|
+| `google` | Embedding | `zee auth login google` | gemini-embedding-001 |
 
-**Note:** Voyage is shared between embedding and reranking.
+**Note:** Zee supports Google-only embeddings and reads the API key from the auth store.
 
 ---
 
@@ -94,7 +91,7 @@ Google has **2 distinct provider IDs** that can be blocked separately:
 
 ### 1. `google` - Google AI Studio API
 - **Service:** Main LLM, Embedding, Gemini STT
-- **Env Var:** `GOOGLE_API_KEY` or `GEMINI_API_KEY`
+- **Env Var:** `GOOGLE_API_KEY` or `GEMINI_API_KEY` (optional; embeddings use auth store)
 - **Models:** gemini-3-pro/flash-preview, gemini-embedding-001
 - **Auth:** API Key
 
@@ -122,7 +119,7 @@ Google has **2 distinct provider IDs** that can be blocked separately:
 |----------|-------|------------------------|
 | LLM Providers | 11 | Yes |
 | Google Variants | 2 | Yes (google, google-antigravity) |
-| Embedding | 4 | Yes (openai, google, voyage, vllm) |
+| Embedding | 1 | Yes (google) |
 | Reranking | 2 | Yes (voyage, vllm) |
 | TTS | 4 | Yes (openai, elevenlabs, minimax, edge) |
 | STT | 4 | Yes (google, openai, deepgram, groq) |
@@ -156,8 +153,8 @@ const blockGoogleVariants = ["google-antigravity"];
 ### LLM (11)
 anthropic, openai, google, google-antigravity, xai, deepseek, minimax, zai-coding-plan, kimi-for-coding, opencode, openrouter
 
-### Embedding (4)
-openai, google, voyage, vllm
+### Embedding (1)
+google
 
 ### Reranking (2)
 voyage, vllm

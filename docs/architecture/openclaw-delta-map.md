@@ -164,7 +164,7 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9903 | security | port | Coerce bare-string exec-approval allowlist entries (hardening). | Done (already implemented in infra/exec-approvals.ts) |
 | openclaw/openclaw#10000 | reliability | adapt | Payload caps needed, but storage/session model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
 | openclaw/openclaw#9870 | reliability | adapt | Ollama streaming/config/env fixes may apply, but provider stack differs. | Done (already implemented: Ollama provider in provider stack with streaming) |
-| openclaw/openclaw#7078 | feature | port | Voyage embeddings are useful for memory search and retrieval quality. | Done (implemented: Swabble Voyage embedding provider + config schema support) |
+| openclaw/openclaw#7078 | feature | non-goal | Zee uses Google-only embeddings for semantic memory to keep a single provider and auth source of truth. | None |
 | openclaw/openclaw#10146 | security | non-goal | Control UI asset/update hardening not actionable unless Zee ships those assets. | None |
 | openclaw/openclaw#10072 | feature | defer | Token usage dashboard is UI/product. | TODO |
 | openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts) |
@@ -225,12 +225,12 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#10818 | performance | adapt | Voyage embedding input_type improves retrieval; provider wiring differs. | Done (already implemented: embedding.ts uses input_type "query" vs "document") |
+| openclaw/openclaw#10818 | performance | non-goal | Voyage embeddings are not supported (Google-only embeddings). | None |
 | openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | Done (ported: sanitizeAndNormalizeEmbedding in `src/memory/embeddings.ts` + normalization tests in `src/memory/embeddings.test.ts`) |
-| openclaw/openclaw#2576 | reliability | adapt | modelDefault bug when provider=="auto" may have an Zee analogue. | Done (already implemented: hasRemoteConfig/includeRemote + embedding provider auto selection tests) |
+| openclaw/openclaw#2576 | reliability | non-goal | Zee does not support embedding provider "auto" selection (Google-only embeddings). | None |
 | openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
-| openclaw/openclaw#7078 | feature | port | Native Voyage embeddings support for memory indexing/search. | Done (implemented: Swabble Voyage embedding provider + config schema support) |
-| openclaw/openclaw#819 | feature | defer | Memory search remote overrides may not match Zee memory model. | Done (already implemented: memorySearch.remote.baseUrl/apiKey/headers for OpenAI-compatible endpoints) |
+| openclaw/openclaw#7078 | feature | non-goal | Zee uses Google-only embeddings for semantic memory to keep a single provider and auth source of truth. | None |
+| openclaw/openclaw#819 | feature | adapt | Remote overrides are useful for proxies but Zee enforces Google-only embeddings and auth-store-only API keys. | Done (memorySearch.remote.baseUrl/headers supported; API key comes from `zee auth login google`) |
 | openclaw/openclaw#3600 | chore | non-goal | Upstream-only local updates without clear mapping. | None |
 | openclaw/openclaw#1439 | feature | non-goal | BlueBubbles typing behavior out of scope for memory lane. | None |
 

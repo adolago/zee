@@ -17,7 +17,7 @@ Complete reference for zee providers, authentication, and models.
 | `minimax` | MiniMax (minimax.io) | API key | **200 OK** | **TTS only** |
 | `minimax-coding-plan` | MiniMax Coding Plan | API key | **200 OK** | M2.1 chat (free tier) |
 | `vllm` | vLLM | API key | **200 OK** | Local inference |
-| `voyage` | Voyage AI | API key | **200 OK** | Embeddings, reranking |
+| `voyage` | Voyage AI | API key | **200 OK** | Reranking |
 | `kimi-for-coding` | Kimi For Coding | OAuth | **Agent-only** | K2.5, K2.5-thinking |
 
 ### Providers with Issues
@@ -34,6 +34,7 @@ Complete reference for zee providers, authentication, and models.
 - **anthropic**: OAuth token may need refresh - run `zee auth login anthropic`
 - **openai**: Quota exceeded - check billing at https://platform.openai.com/account/billing
 - **minimax**: Pay-as-you-go account has no chat balance, but TTS works fine
+- **embeddings**: Zee uses Google-only embeddings and reads the API key from the auth store: run `zee auth login google`
 
 ## Authentication Commands
 
@@ -86,7 +87,7 @@ zee auth login zai-coding-plan  # API key prompt
 | Provider ID | SDK | Auth | Use Case |
 |-------------|-----|------|----------|
 | `xai` | @ai-sdk/xai | API key | Grok models |
-| `voyage` | N/A | API key | Embeddings, reranking |
+| `voyage` | N/A | API key | Reranking |
 | `minimax` | @ai-sdk/anthropic | API key | TTS only |
 
 ## SDK Types
@@ -227,7 +228,7 @@ curl -s -X POST "https://api.minimax.io/v1/t2a_v2" \
 
 Google provider supports multiple auth sources:
 
-1. **API Key (AI Studio)**: `GEMINI_API_KEY` or `zee auth login google`
+1. **API Key (AI Studio)**: `zee auth login google`
 2. **OAuth (Antigravity)**: `zee auth login google-antigravity`
 
 Antigravity models (Claude via Google, Gemini 3) require `google-antigravity` OAuth.

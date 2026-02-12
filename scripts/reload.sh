@@ -396,27 +396,41 @@ verify_providers() {
     all_ok=false
   fi
 
-  # Check embedding provider (Google/Voyage)
-  local google_key="${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
+  # Check embedding provider (Google-only; auth store)
+  local auth_data="${XDG_DATA_HOME:-$HOME/.local/share}/zee/auth.json"
+  local auth_state="${XDG_STATE_HOME:-$HOME/.local/state}/zee/auth.json"
+  local auth_path=""
+  if [[ -f "$auth_data" ]]; then
+    auth_path="$auth_data"
+  elif [[ -f "$auth_state" ]]; then
+    auth_path="$auth_state"
+  fi
+
+  local google_key=""
+  if [[ -n "$auth_path" ]]; then
+    google_key="$(jq -r '.google.key // empty' "$auth_path" 2>/dev/null || true)"
+  fi
   if [[ -n "$google_key" ]]; then
     # Test Google embedding API endpoint (lightweight check)
     if curl -sf "https://generativelanguage.googleapis.com/v1/models?key=$google_key" >/dev/null 2>&1; then
-      ok "Embedding:  Google (API key valid)"
+      ok "Embedding:  Google (auth store key valid)"
     else
-      warn "Embedding:  Google (API key invalid or expired)"
+      warn "Embedding:  Google (auth store key invalid or expired)"
       all_ok=false
     fi
-  elif [[ -n "${VOYAGE_API_KEY:-}" ]]; then
-    ok "Embedding:  Voyage (configured)"
   else
-    warn "Embedding:  NOT CONFIGURED (set GEMINI_API_KEY or VOYAGE_API_KEY)"
+    warn "Embedding:  NOT CONFIGURED (run: zee auth login google)"
     all_ok=false
   fi
 
   # Check reranker (Voyage)
-  if [[ -n "${VOYAGE_API_KEY:-}" ]]; then
+  local voyage_key="${VOYAGE_API_KEY:-}"
+  if [[ -z "$voyage_key" && -n "$auth_path" ]]; then
+    voyage_key="$(jq -r '.voyage.key // empty' "$auth_path" 2>/dev/null || true)"
+  fi
+  if [[ -n "$voyage_key" ]]; then
     # Light test - just verify API endpoint reachable
-    local voyage_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $VOYAGE_API_KEY" "https://api.voyageai.com/v1/models" 2>&1)
+    local voyage_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $voyage_key" "https://api.voyageai.com/v1/models" 2>&1)
     if [[ "$voyage_test" == "200" || "$voyage_test" == "401" ]]; then
       ok "Reranker:   Voyage (reachable)"
     else

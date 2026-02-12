@@ -890,15 +890,15 @@ export type MemoryConfig = {
    */
   embedding?: {
     /**
-     * Embedding profile (e.g. openai/text-embedding-3-small)
+     * Embedding profile (google/gemini-embedding-001)
      */
     profile?: string
     /**
-     * Embedding provider ID
+     * Embedding provider ID ("google")
      */
-    provider?: string
+    provider?: "google"
     /**
-     * Embedding model name
+     * Embedding model name (Google)
      */
     model?: string
     /**
@@ -910,11 +910,7 @@ export type MemoryConfig = {
      */
     dimension?: number
     /**
-     * Embedding API key
-     */
-    apiKey?: string
-    /**
-     * Embedding API base URL
+     * Embedding API base URL (Google)
      */
     baseUrl?: string
   }

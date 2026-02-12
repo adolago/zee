@@ -248,7 +248,7 @@ Full setup walkthrough (28m) by VelvetShark.
 <Card title="Karakeep Semantic Search" icon="magnifying-glass" href="https://github.com/jamesbrooksco/karakeep-semantic-search">
   **@jamesbrooksco** • `search` `vector` `bookmarks`
   
-  Adds vector search to Karakeep bookmarks using Qdrant + OpenAI/Ollama embeddings.
+  Adds vector search to Karakeep bookmarks using Qdrant + embeddings.
 </Card>
 
 <Card title="Inside-Out-2 Memory" icon="brain">
