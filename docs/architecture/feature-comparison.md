@@ -10,12 +10,12 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 
 ## Snapshot
 
-- Generated: `2026-02-12T14:55:48.843Z`
+- Generated: `2026-02-12T16:32:06.828Z`
 - Zee: `dev/0.2.13-nightly` (`binary`)
-- Zee git: `69c18061b375ff89af8174e96dc43a3004c36f82`
-- OpenCode pin: `56ad2db02055955f926fda0e4a89055b22ead6f9` (`opencode/dev`)
-- OpenClaw pin: `5554fd23ccaba1a4895e9279b28fbf7b49ff09d9` (`openclaw/main`)
-- Pi-mono pin: `34878e7cc8074f42edff6c2cdcc9828aa9b6afde` (`pimono/main`)
+- Zee git: `77d8e72b8e0a90dc4831c57a2615d006b416f63a`
+- OpenCode pin: `59a323e9a87d315ff5c0e73c4eb5af089aeff87f` (`opencode/dev`)
+- OpenClaw pin: `a2ddcdadebfe0c18dab38816be097a094888d03e` (`openclaw/main`)
+- Pi-mono pin: `28c0991281f70145a030a27782e0a14e3ec2f91c` (`pimono/main`)
 - Pi-mono installed: `@mariozechner/pi-coding-agent@0.52.9`
 - Pi-mono latest tag: `v0.52.9`
 - Skills: `81` (top: @zee=34, @codex=34, @clawhub=11, parallel-orchestration=1, codebase-guide=1)
@@ -47,8 +47,8 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | Terminal UI (TUI) | Interactive terminal UI beyond simple prompts. | Yes | Yes | Partial | Yes |
 | Web UI | Ships a web UI/control surface in the core repo. | Partial | Yes | Yes | Partial |
 | **Architecture** |  |  |  |  |  |
-| Client/server split | Separates a client UI from a server runtime for the agent. | Partial | Yes | Yes | Partial |
-| Gateway WS control plane | A WebSocket control plane for channels/tools/events and remote clients. | Partial | No | Yes | No |
+| Client/server split | Separates a client UI from a server runtime for the agent. | Yes | Yes | Yes | Partial |
+| Gateway WS control plane | A WebSocket control plane for channels/tools/events and remote clients. | Yes | No | Yes | No |
 | Multi-persona routing | First-class persona/domain routing inside the engine. | Yes | No | Partial | Partial |
 | Session system | Persistent sessions with message history and tooling context. | Yes | Yes | Yes | Partial |
 | **Config & State** |  |  |  |  |  |
@@ -202,7 +202,7 @@ Ships a web UI/control surface in the core repo.
 
 Separates a client UI from a server runtime for the agent.
 
-- Zee: Partial | Zee runs as CLI/TUI with optional daemon; server surfaces exist but aren’t a separate hosted product.
+- Zee: Yes | Server runtime (`zee daemon`/`zee serve`) and client UI (`zee attach`/`zee client`) are explicitly separated; remote targeting uses ZEE_URL + auth. | evidence: repo_path:packages/zee/src/cli/cmd/daemon.ts, repo_path:packages/zee/src/cli/cmd/serve.ts, repo_path:packages/zee/src/cli/cmd/tui/attach.ts, repo_path:packages/zee/src/cli/cmd/client.ts, doc:README.md
 - OpenCode: Yes | evidence: doc:docs/architecture/upstream-differences.md
 - OpenClaw: Yes | Gateway is the control plane; nodes can be remote.
 - Pi-mono: Partial | pi-pods and other packages target deployments; not a single end-user client/server split.
@@ -211,7 +211,7 @@ Separates a client UI from a server runtime for the agent.
 
 A WebSocket control plane for channels/tools/events and remote clients.
 
-- Zee: Partial | Zee embeds a trimmed OpenClaw-like gateway under Swabble. | evidence: doc:docs/architecture/upstream-differences.md
+- Zee: Yes | WebSocket gateway control plane (Swabble) for channels/tools/events, with CLI helpers and REST bridging. | evidence: repo_path:packages/zee/Swabble/src/gateway/server.ts, repo_path:packages/zee/src/gateway/embedded-gateway.ts, repo_path:packages/zee/src/server/route/gateway.ts, repo_path:packages/zee/src/cli/cmd/gateway, doc:docs/architecture/gateway-control-plane.md
 - OpenClaw: Yes | evidence: note:openclaw/openclaw README (main)
 
 #### Multi-persona routing
