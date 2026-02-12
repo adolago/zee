@@ -29,6 +29,7 @@ This page describes the current CLI behavior. If commands change, update this do
 - [`gateway`](/cli/gateway)
 - [`logs`](/cli/logs)
 - [`system`](/cli/system)
+- [`auth`](/cli/auth)
 - [`models`](/cli/models)
 - [`memory`](/cli/memory)
 - [`nodes`](/cli/nodes)
@@ -148,6 +149,15 @@ zee [--dev] [--profile <name>] <command>
     event
     heartbeat last|enable|disable
     presence
+  auth
+    status
+    login
+    setup-token
+    paste-token
+    add
+    use
+    rotate
+    order get|set|clear
   models
     list
     status
