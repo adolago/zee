@@ -8,6 +8,10 @@ describe("normalizeVoiceWakeTriggers", () => {
     expect(normalizeVoiceWakeTriggers(null)).toEqual(defaultVoiceWakeTriggers());
   });
 
+  test("allows empty list when requested", () => {
+    expect(normalizeVoiceWakeTriggers([], { allowEmpty: true })).toEqual([]);
+  });
+
   test("trims and limits entries", () => {
     const result = normalizeVoiceWakeTriggers(["  hello  ", "", "world"]);
     expect(result).toEqual(["hello", "world"]);

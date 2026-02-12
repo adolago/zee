@@ -17,7 +17,7 @@ import {
 } from "../../../infra/device-pairing.js";
 import { updatePairedNodeMetadata } from "../../../infra/node-pairing.js";
 import { recordRemoteNodeInfo, refreshRemoteNodeBins } from "../../../infra/skills-remote.js";
-import { loadVoiceWakeConfig } from "../../../infra/voicewake.js";
+import { loadVoiceWakeConfig, resolveEffectiveVoiceWakeTriggers } from "../../../infra/voicewake.js";
 import { upsertPresence } from "../../../infra/system-presence.js";
 import { rawDataToString } from "../../../infra/ws.js";
 import type { createSubsystemLogger } from "../../../logging/subsystem.js";
@@ -855,7 +855,7 @@ export function attachGatewayWsMessageHandler(params: {
           void loadVoiceWakeConfig()
             .then((cfg) => {
               context.nodeRegistry.sendEvent(nodeSession.nodeId, "voicewake.changed", {
-                triggers: cfg.triggers,
+                triggers: resolveEffectiveVoiceWakeTriggers(cfg),
               });
             })
             .catch((err) =>
