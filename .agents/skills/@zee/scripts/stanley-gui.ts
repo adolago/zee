@@ -16,7 +16,7 @@ import { homedir } from "os";
 import { join } from "path";
 
 const STANLEY_REPO =
-  process.env.STANLEY_REPO ?? join(homedir(), ".local/src/agent-core/vendor/personas/stanley");
+  process.env.STANLEY_REPO ?? join(homedir(), "Repositories/zee/vendor/personas/stanley");
 const GUI_DIR = join(STANLEY_REPO, "stanley-gui");
 const GUI_BINARY = join(GUI_DIR, "target/release/stanley-gui");
 const BACKEND_PORT = 8000;
@@ -101,7 +101,7 @@ Usage:
   npx tsx stanley-gui.ts build        Rebuild the GUI from source
 
 Environment:
-  STANLEY_REPO    Path to Stanley repository (default: ~/.local/src/agent-core/vendor/personas/stanley)
+  STANLEY_REPO    Path to Stanley repository (default: ~/Repositories/zee/vendor/personas/stanley)
   STANLEY_PYTHON  Python interpreter (default: .venv/bin/python or python3)
 `);
       break;

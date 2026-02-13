@@ -64,8 +64,8 @@
   },
   "config": {
     "autoStart": false,
-    "logDir": "/home/artur/.local/src/agent-core/.claude-flow/logs",
-    "stateFile": "/home/artur/.local/src/agent-core/.claude-flow/daemon-state.json",
+    "logDir": "/home/artur/Repositories/zee/.claude-flow/logs",
+    "stateFile": "/home/artur/Repositories/zee/.claude-flow/daemon-state.json",
     "maxConcurrent": 2,
     "workerTimeoutMs": 300000,
     "resourceThresholds": {

@@ -19,7 +19,7 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 - **Calendar**: khal (TUI) + vdirsyncer (CalDAV sync)
 - **Contacts**: khard (TUI) + vdirsyncer (CardDAV sync)
 - **Notifications**: Proactive reminders and alerts
-- **Browser**: Chrome profiles (CDP port 18800, isolated data dirs)
+- **Browser**: 5 browser subsystems (see Browser Architecture below)
 - **Nodes**: Control node hosts (camera, location, notifications)
 - **Skills Marketplace**: Discover and install skills from ClawHub
 
@@ -31,13 +31,84 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 - **NautilusTrader**: Algorithmic strategy backtesting and paper trading
 - **Desktop GUI**: GPUI-based portfolio views, charts, agent chat
 
-### Learning (johny: namespace)
+### Learning (zee: learning domain)
 - **Knowledge Graph**: DAG of topics with prerequisite relationships
 - **Mastery System**: Unknown > Introduced > Developing > Proficient > Mastered > Fluent
 - **Spaced Repetition**: Ebbinghaus decay modeling with optimal scheduling
 - **FIRe**: Fractional Implicit Repetition (practicing advanced topics reviews prerequisites)
 - **Deliberate Practice**: Problems at the edge of ability, interleaved
 - **LaTeX Rendering**: Math expressions in terminal (Kitty graphics + Unicode fallback)
+
+## Skill Index
+
+### Life Admin (zee)
+| Skill | Description |
+|-------|-------------|
+| `banner` | Always-on rotating TUI banner (reminders, todos, messages) |
+| `bitwarden` | Bitwarden/Vaultwarden password management via rbw CLI |
+| `browser` | Browser automation via CDP (Chrome profiles, isolated data dirs) |
+| `daily-briefing` | Morning/evening briefings combining calendar, tasks, email, study |
+| `github` | GitHub workflows via gh CLI (issues, PRs, CI runs) |
+| `obsidian-cli` | Obsidian 1.12+ official CLI for vault automation and search |
+| `oracle` | Best practices for oracle CLI (prompt + file bundling, engines) |
+| `pim-classic` | Classic Unix PIM stack (neomutt, khal, khard, vdirsyncer) |
+| `qmd` | Local search/indexing CLI (BM25 + vectors + rerank) |
+| `session-logs` | Search/analyze conversation history from session JSONL files |
+| `skill-builder` | Create new Skills with proper YAML frontmatter |
+
+### Investing (stanley)
+| Skill | Description |
+|-------|-------------|
+| `autonomous-research` | Multi-step iterative financial research with scratchpad logging |
+| `dcf-valuation` | Structured 8-step Discounted Cash Flow analysis |
+| `investment-thesis` | Create and track investment theses with conviction levels |
+| `news-digest` | Generate daily news digests for portfolio holdings |
+| `portfolio` | Portfolio analytics, risk management, performance attribution |
+
+### Learning
+| Skill | Description |
+|-------|-------------|
+| `concept-exploration` | Deep understanding through Socratic questioning and concept mapping |
+| `deliberate-practice` | Structured practice sessions with immediate feedback |
+| `latex-rendering` | LaTeX math expressions in TUI (Kitty graphics + Unicode fallback) |
+| `problem-solving` | Structured problem-solving with scaffolding for math and informatics |
+| `progress-tracking` | Track learning progress, identify gaps, adapt curriculum |
+
+### Meta
+| Skill | Description |
+|-------|-------------|
+| `codebase-guide` | Zee architecture reference (packages, daemon, gateway, env vars) |
+| `coding-agent` | Run Codex/Claude Code/Zee/Pi via background process |
+| `parallel-orchestration` | Parallel task patterns using native Claude Code Task tool |
+
+## Browser Architecture
+
+Zee has 5 browser subsystems for different use cases:
+
+| Subsystem | Location | Description | Port(s) |
+|-----------|----------|-------------|---------|
+| **Gateway-Proxied** | `src/domain/zee/browser.ts` (528 lines) | HTTP client to Swabble browser control server. Used via `zee:browser-*` tools through the gateway. | 18791 (gateway) |
+| **Standalone CDP** | `src/domain/zee/browser-standalone.ts` (676 lines) | Direct Chrome spawning with pure CDP protocol. No gateway dependency. | 19200-19299 |
+| **Swabble Control Service** | `packages/zee/Swabble/src/browser/` (70+ files) | Full Playwright + ARIA snapshots, profile management, extension relay, sandbox isolation. | 18791 (control) |
+| **Chrome Extension Relay** | `packages/zee/Swabble/src/browser/extension-relay.ts` (672 lines) | WebSocket bridge to existing Chrome instances. Connects to user's running browser. | 18792 |
+| **Docker Sandbox** | `agents/sandbox/browser.ts` | Isolated browser in Docker containers with optional noVNC for visual debugging. | 18800-18899 (CDP profiles) |
+
+### Port Map
+
+| Port Range | Purpose |
+|------------|---------|
+| 18791 | Gateway / Swabble browser control |
+| 18792 | Chrome extension relay WebSocket |
+| 18800-18899 | CDP profiles (Docker sandbox) |
+| 19200-19299 | Standalone CDP instances |
+
+### When to Use Which
+
+- **Gateway-Proxied**: Default for most automation. Requires daemon running.
+- **Standalone CDP**: When gateway is unavailable or for isolated scraping.
+- **Extension Relay**: To control the user's existing Chrome session (tabs, cookies preserved).
+- **Docker Sandbox**: For untrusted content or parallel isolated sessions.
+- **Swabble Control**: Internal service powering the gateway-proxied subsystem.
 
 ## References
 
@@ -112,9 +183,9 @@ npx tsx scripts/stanley-research.ts screen --criteria "pe<15,roe>20"
 
 ### Study Sessions
 ```bash
-npx tsx scripts/johny-session.ts start --domain mathematics
-npx tsx scripts/johny-session.ts next-task
-npx tsx scripts/johny-session.ts complete --topic "derivatives" --score 0.9
+npx tsx scripts/zee-study.ts start --domain mathematics
+npx tsx scripts/zee-study.ts next-task
+npx tsx scripts/zee-study.ts complete --topic "derivatives" --score 0.9
 ```
 
 ### NautilusTrader
@@ -159,15 +230,15 @@ npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
 | `stanley:scratchpad` | Research session logging, dedup, and audit trail (JSONL) |
 | `stanley:status` | Check health of the Stanley investment platform |
 
-### Learning Tools (johny: namespace)
+### Learning Tools (zee: learning domain)
 
 | Tool | Purpose |
 |------|---------|
-| `johny:study` | Manage study sessions (start, end, pause, resume, status) |
-| `johny:knowledge` | Knowledge graph: topics, prerequisites, learning paths, search |
-| `johny:mastery` | Track mastery levels, update scores, view history, check decay |
-| `johny:review` | Spaced repetition: due reviews, schedule, complete, stats, optimize |
-| `johny:practice` | Deliberate practice: next problem, generate, complete, skip, hint |
+| `zee:study` | Manage study sessions (start, end, pause, resume, status) |
+| `zee:knowledge` | Knowledge graph: topics, prerequisites, learning paths, search |
+| `zee:mastery` | Track mastery levels, update scores, view history, check decay |
+| `zee:review` | Spaced repetition: due reviews, schedule, complete, stats, optimize |
+| `zee:practice` | Deliberate practice: next problem, generate, complete, skip, hint |
 
 ## Research Context Management
 
@@ -291,7 +362,7 @@ After completing actions, store relevant results:
 - Calendar patterns: domain "routines"
 - Market research findings: domain "research", topic <ticker>
 - Trade decisions: domain "trades"
-- Study session summaries: domain "learning", topic <domain>
+- Study session summaries: domain "learning", topic <subject>
 
 ## MCP Servers
 
@@ -300,19 +371,29 @@ After completing actions, store relevant results:
 - `portfolio` - Portfolio tracking and analytics
 - `context7` - Library documentation search
 
-## Shared Skills
+## Shared Skills (ClawHub)
 
-- `auto-updater` - Daily auto-update of zee and skills via cron
-- `self-improving-agent` - Log learnings, errors, corrections
-- `tmux` - Remote-control tmux sessions
+Active shared skills from `@clawhub/` and `@zee/skills/`:
 - `humanizer` - Remove AI writing patterns
-- `markdown-converter` - Convert PDF/Word/Excel/HTML to Markdown
-- `clawddocs` - Documentation search and navigation
+- `markdown-converter` - Convert PDF/DOCX/PPTX/HTML to Markdown
+- `nano-pdf` - Edit PDFs with natural-language instructions
+- `summarize` - Summarize URLs/files/YouTube
+- `tmux` - Remote-control tmux sessions
+- `video-frames` - Extract frames from videos via ffmpeg
+- `blogwatcher` - Monitor blogs/RSS/Atom feeds
+- `caldav-calendar` - CalDAV sync via vdirsyncer + khal
+- `food-order` - Reorder Foodora orders via ordercli
+- `home-assistant` - Smart home control via HA REST API
+- `spotify-player` - Terminal Spotify playback
+- `stock-market-pro` - Yahoo Finance price, charts, fundamentals
+- `wacli` - WhatsApp CLI (send, search, sync)
+- `weather` - Weather via wttr.in / Open-Meteo
+- `whoopskill` - WHOOP health data (sleep, recovery, HRV)
 
 ## Integration Points
 
-- **zee**: `/src/domain/zee/tools.ts`, `/src/domain/stanley/tools.ts`, `/src/domain/johny/tools.ts`
-- **Browser**: `/src/domain/zee/browser.ts`
+- **zee**: `/src/domain/zee/tools.ts`, `/src/domain/stanley/tools.ts`, `/src/domain/johny/tools.ts` (johny dir preserved for compatibility)
+- **Browser**: `/src/domain/zee/browser.ts`, `/src/domain/zee/browser-standalone.ts`
 - **Memory**: `/src/plugin/builtin/memory-persistence.ts`
 - **Qdrant**: Vector database for semantic memory
 - **Gateway**: `http://127.0.0.1:18791`
@@ -330,9 +411,8 @@ After completing actions, store relevant results:
 - `OPENBB_API_KEY` (optional)
 - `SEC_IDENTITY` (optional, required by SEC for EDGAR access)
 
-### Johny CLI Environment
-- `JOHNY_REPO` (default: `~/.local/src/zee/vendor/personas/johny`)
-- `JOHNY_CLI` (default: `~/.local/src/zee/vendor/personas/johny/scripts/johny_cli.py`)
+### Learning CLI Environment
+- `ZEE_LEARNING_DATA` (default: `~/.local/state/zee/learning/`)
 
 ## Operating Rules
 

@@ -3,7 +3,7 @@ name: latex-rendering
 description: Render LaTeX math expressions in the TUI with Kitty graphics and Unicode fallback
 version: 1.0.0
 author: Artur
-tags: [math, latex, rendering, tui, johny]
+tags: [math, latex, rendering, tui, zee]
 triggers:
   - latex
   - math formula

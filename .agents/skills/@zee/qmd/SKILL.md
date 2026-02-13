@@ -3,7 +3,7 @@ name: qmd
 description: Local search/indexing CLI (BM25 + vectors + rerank) with MCP mode.
 version: 1.0.0
 author: Artur
-tags: [search, indexing, cli, johny]
+tags: [search, indexing, cli, zee]
 homepage: https://tobi.lutke.com
 metadata: {"zee":{"emoji":"📝","requires":{"bins":["qmd"]},"install":[{"id":"node","kind":"node","package":"https://github.com/tobi/qmd","bins":["qmd"],"label":"Install qmd (node)"}]}}
 ---

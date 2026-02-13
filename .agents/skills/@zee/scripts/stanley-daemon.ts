@@ -2,7 +2,7 @@
 /**
  * stanley-daemon CLI
  *
- * Query agent-core daemon status via IPC.
+ * Query zee daemon status via IPC.
  *
  * Usage:
  *   npx tsx stanley-daemon.ts status

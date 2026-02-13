@@ -40,8 +40,8 @@ description: "A documentation tool."
 
 ### Skill Locations
 
-**Personal** (all projects): `~/.claude/skills/[skill-name]/SKILL.md`
-**Project** (team-shared): `<project-root>/.claude/skills/[skill-name]/SKILL.md`
+**Personal** (all projects): `~/.agents/skills/@zee/[skill-name]/SKILL.md`
+**Project** (team-shared): `<project-root>/.agents/skills/[skill-name]/SKILL.md`
 
 Skills MUST be directly under the skills directory -- no nested subdirectories.
 
@@ -126,7 +126,7 @@ Before publishing:
 
 - [ ] Frontmatter has `name` (max 64 chars) and `description` (max 1024 chars)
 - [ ] Description includes "what" and "when"
-- [ ] Directory is directly under `~/.claude/skills/` or `.claude/skills/`
+- [ ] Directory is directly under `~/.agents/skills/@zee/` or `.agents/skills/`
 - [ ] SKILL.md body is 2-5KB (not bloated)
 - [ ] Advanced content is in separate docs/ files
 - [ ] Examples are concrete and runnable

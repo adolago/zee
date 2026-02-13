@@ -3,7 +3,7 @@ name: problem-solving
 description: Structured problem-solving with scaffolding for math and informatics
 version: 1.0.0
 author: Artur
-tags: [learning, problem-solving, math, johny]
+tags: [learning, problem-solving, math, zee]
 triggers:
   - solve
   - problem
@@ -83,23 +83,16 @@ When student makes error:
 ## Memory Integration
 
 Track problem-solving patterns:
-```typescript
-await memory.store({
-  namespace: "johny/problems",
-  key: `${topic}/${problemId}`,
-  value: {
-    problem: "...",
-    topic,
-    difficulty: "medium",
-    attemptCount: 2,
-    solvedIndependently: false,
-    scaffoldingUsed: "level-2",
-    timeToSolve: 480,  // seconds
-    hintsUsed: ["strategic"],
-    errorsEncountered: ["sign-error", "index-off-by-one"],
-    reflection: "Need more practice with boundary conditions"
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "learning",
+  topic: <topic>,
+  subtopic: "problem-solving",
+  kind: "agent",
+  content: "<JSON with problem, difficulty, attemptCount, solvedIndependently, scaffoldingUsed, timeToSolve, hintsUsed, errorsEncountered, reflection>",
+  summary: "Problem <topic>/<problemId>: solved at level-2 scaffolding, 480s, sign-error + off-by-one"
+})
 ```
 
 ## Progression Tracking

@@ -23,7 +23,7 @@ import {
 } from "../../../../src/memory";
 
 // ============================================================================
-// Types (mirrors agent-core memory types)
+// Types (mirrors zee memory types)
 // ============================================================================
 
 interface MemoryEntry {

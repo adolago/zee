@@ -2,7 +2,7 @@
 name: parallel-orchestration
 description: Lightweight parallel task orchestration using native Claude Code capabilities. Patterns for concurrent agent execution, background tasks, and coordinated workflows without external dependencies.
 version: 1.0.0
-author: Agent-Core
+author: zee
 tags: [orchestration, parallel, agents, workflow, coordination]
 ---
 

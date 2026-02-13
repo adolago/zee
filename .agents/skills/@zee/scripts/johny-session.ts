@@ -33,7 +33,7 @@ function getArg(name: string): string | undefined {
 
 function resolveJohnyCli(): { python: string; cliPath: string } {
   const python = process.env.JOHNY_PYTHON || "python3";
-  const repo = process.env.JOHNY_REPO || join(homedir(), ".local", "src", "agent-core", "vendor", "personas", "johny");
+  const repo = process.env.JOHNY_REPO || join(homedir(), "Repositories", "zee", "vendor", "personas", "johny");
   const cliPath = process.env.JOHNY_CLI || join(repo, "scripts", "johny_cli.py");
   return { python, cliPath };
 }

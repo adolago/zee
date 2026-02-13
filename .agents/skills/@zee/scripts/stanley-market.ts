@@ -36,7 +36,7 @@ type StanleyResult = {
 };
 
 function resolveStanleyCli(): { python: string; cliPath: string } {
-  const repo = process.env.STANLEY_REPO || join(homedir(), ".local", "src", "agent-core", "vendor", "personas", "stanley");
+  const repo = process.env.STANLEY_REPO || join(homedir(), "Repositories", "zee", "vendor", "personas", "stanley");
   const cliPath = process.env.STANLEY_CLI || join(repo, "scripts", "stanley_cli.py");
   const venvPython = join(repo, ".venv", "bin", "python");
   const python = process.env.STANLEY_PYTHON || (existsSync(venvPython) ? venvPython : "python3");

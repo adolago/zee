@@ -25,7 +25,7 @@ zee (Engine)
         v
   ZEE (Unified) -- .agents/skills/@zee/
     Handles all domains: life admin, investing, learning
-    Tool namespaces: zee:*, stanley:*, johny:*
+    Tool namespaces: zee:*, stanley:* (johny persona discontinued, learning under zee:*)
         |
     SHARED LAYER
       swarm/       Queen, workers, SPARC
@@ -60,18 +60,17 @@ packages/
 **Domain implementations (all under Zee):**
 - **Life admin**: Tools in `src/domain/zee/`
 - **Investing (Stanley)**: External Python repo (set `STANLEY_REPO` env var), core logic in `packages/stanley-core/`
-- **Learning (Johny)**: Tools in `src/domain/johny/`, runtime in `src/personas/johny/`
+- **Learning**: Tools in `src/domain/johny/` (namespace preserved for compatibility), runtime absorbed into Zee. The Johny persona is discontinued; all learning capabilities are now part of Zee with `zee:*` tool namespace.
 
 ## Key Directories
 
 ```
 zee/
   .agents/skills/           Agent Skills
-    @zee/                   Zee skills (life admin, investing, learning)
-    @codex/                 Codex automation suite
-    @clawhub/               ClawHub marketplace skills
-    codebase-guide/         This architecture reference
-    parallel-orchestration/ Parallel task patterns
+    @zee/                   Zee skills (27 skills: life admin, investing, learning, meta)
+    @zee/skills/            Swabble/OpenClaw-managed skills (13 skills, auto-updated via gateway)
+    @codex/                 Codex automation suite (32 skills, read-only)
+    @clawhub/               ClawHub marketplace skills (11 skills, auto-updated via `zee clawhub update`)
   packages/
     zee/                    Core engine (CLI, TUI, daemon, gateway)
       src/
@@ -104,16 +103,38 @@ zee/
   docs/                     Architecture docs, provider references
 ```
 
+## Browser Architecture
+
+Zee has 5 browser subsystems:
+
+| Subsystem | Location | Description | Port(s) |
+|-----------|----------|-------------|---------|
+| Gateway-Proxied | `src/domain/zee/browser.ts` | HTTP client to Swabble browser control server | 18791 |
+| Standalone CDP | `src/domain/zee/browser-standalone.ts` | Direct Chrome spawning, pure CDP | 19200-19299 |
+| Swabble Control | `packages/zee/Swabble/src/browser/` (70+ files) | Playwright + ARIA snapshots, profiles, extension relay | 18791 |
+| Extension Relay | `packages/zee/Swabble/src/browser/extension-relay.ts` | WebSocket bridge to existing Chrome | 18792 |
+| Docker Sandbox | `agents/sandbox/browser.ts` | Isolated containers, optional noVNC | 18800-18899 |
+
+Port map: 18791 (gateway control), 18792 (extension relay), 18800-18899 (CDP profiles), 19200-19299 (standalone CDP).
+
+## Skill Registries
+
+Two independent registries manage shared skills:
+
+1. **ClawHub** (`packages/zee/src/pkg/clawhub/`): Manages `@clawhub/` skills. Registry at `https://auth.clawdhub.com/api/v1`. Lock file at `@clawhub/.clawhub/lock.json`. Update via `zee clawhub update`.
+2. **Swabble/OpenClaw** (`@zee/skills/`): Manages 13 skills via `_meta.json` files with `ownerId` and `slug`. Updated via gateway `skills.update` RPC method.
+
+Skills by steipete (coding-agent, wacli, food-order, spotify-player, oracle) are in the Swabble/OpenClaw registry, NOT ClawHub.
+
 ## Integration
 
 Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 
 ```
-.agents/skills/@zee/                   Zee skills (20+ skills)
-.agents/skills/@codex/                 Codex automation (31 skills)
-.agents/skills/@clawhub/               ClawHub marketplace skills
-.agents/skills/codebase-guide/         Architecture reference
-.agents/skills/parallel-orchestration/ Parallel task patterns
+.agents/skills/@zee/                   Zee skills (27 skills: life admin, investing, learning, meta)
+.agents/skills/@zee/skills/            Swabble/OpenClaw-managed skills (13 skills, auto-updated)
+.agents/skills/@codex/                 Codex automation (32 skills, read-only)
+.agents/skills/@clawhub/               ClawHub marketplace skills (11 skills, auto-updated)
 ```
 
 ## Development Guidelines
@@ -138,7 +159,7 @@ Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 | Variable | Description |
 |----------|-------------|
 | `STANLEY_REPO` | Path to external Stanley Python repo (required for Stanley tools) |
-| `JOHNY_DATA_DIR` | Directory for Johny data files (default: `~/.local/state/zee/johny`) |
+| `ZEE_LEARNING_DATA` | Directory for learning data files (default: `~/.local/state/zee/learning/`) |
 | `ZEE_STATE_DIR` | Co-locate all state under a single root |
 | `ZEE_WORKSPACE_DIR` | Override workspace location |
 
@@ -212,15 +233,14 @@ zee daemon (http://127.0.0.1:3210)
 
 - **Zee Gateway** = Transport only (WhatsApp/Telegram connections)
 - **zee daemon** = All agent logic, memory, tools
-- **Persona routing** = Messages mentioning `@stanley` or `@johny` route to those tool namespaces
+- **Persona routing** = Messages mentioning `@stanley` route to investing tools; all other messages (including learning) go to Zee
 - **Daemon requirement** = Gateway requires zee daemon running
 
 ### Running the Embedded Gateway
 
 1. Daemon starts automatically via systemd. Manual restart: `systemctl --user restart zee`
 2. Send messages via WhatsApp/Telegram:
-   - "Hello" -> Zee (default)
-   - "@stanley What's the market doing?" -> Stanley tools
-   - "@johny Help me study" -> Johny tools
+   - "Hello" -> Zee (default, handles life admin and learning)
+   - "@stanley What's the market doing?" -> Stanley investing tools
 
 Gateway transport managed by the daemon process.

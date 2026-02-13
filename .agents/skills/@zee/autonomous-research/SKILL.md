@@ -88,7 +88,7 @@ Save the returned `sessionId` for all subsequent scratchpad calls.
 ### Check Memory First
 Before executing the plan, check for previous research:
 ```
-memory.search({ domain: "research", topic: "<ticker>", namespace: "stanley" })
+memory.search({ domain: "research", topic: "<ticker>" })
 ```
 If prior research exists, incorporate known facts and skip redundant data gathering.
 

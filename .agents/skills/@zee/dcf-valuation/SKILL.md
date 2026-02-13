@@ -21,7 +21,7 @@ Structured 8-step Discounted Cash Flow analysis using Stanley tools.
 
 Before starting, search memory for prior valuations:
 ```
-memory.search({ domain: "stanley/valuations", topic: <symbol> })
+memory.search({ domain: "valuations", topic: <symbol> })
 ```
 
 If a prior DCF exists, load it and compare assumptions to current data.
@@ -214,7 +214,7 @@ Store completed valuations:
 ```
 memory.store({
   category: "note",
-  domain: "stanley/valuations",
+  domain: "valuations",
   topic: <symbol>,
   subtopic: "dcf",
   kind: "agent",

@@ -102,30 +102,28 @@ Portfolio Report:
 ## Memory Integration
 
 Store portfolio state:
-```typescript
-await memory.store({
-  namespace: "stanley/portfolio",
-  key: "positions",
-  value: {
-    holdings: [...],
-    lastUpdated: new Date(),
-    totalValue: 125000,
-    dayChange: 1250,
-    dayChangePct: 0.01
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "portfolio",
+  topic: "positions",
+  kind: "agent",
+  priority: "high",
+  memoryId: "portfolio-positions",
+  content: "<holdings JSON with symbols, shares, values, dayChange>",
+  summary: "Portfolio snapshot: $125,000 total, +$1,250 today (+1.0%)"
+})
 
-await memory.store({
-  namespace: "stanley/portfolio",
-  key: "performance",
-  value: {
-    ytdReturn: 0.12,
-    sharpe: 1.25,
-    beta: 1.1,
-    maxDrawdown: -0.08,
-    benchmarkReturn: 0.10
-  }
-});
+memory.store({
+  category: "note",
+  domain: "portfolio",
+  topic: "performance",
+  kind: "agent",
+  priority: "medium",
+  memoryId: "portfolio-performance",
+  content: "<performance JSON with ytdReturn, sharpe, beta, maxDrawdown, benchmarkReturn>",
+  summary: "Portfolio performance: YTD +12%, Sharpe 1.25, Beta 1.1"
+})
 ```
 
 ---

@@ -174,7 +174,31 @@
         "enabled": true
       },
       "brave-search": {
-        "apiKey": "{env:BRAVE_API_KEY}"
+        "disabled": true
+      },
+      "auto-updater": {
+        "disabled": true
+      },
+      "clawddocs": {
+        "disabled": true
+      },
+      "mcporter": {
+        "disabled": true
+      },
+      "hooks-automation": {
+        "enabled": true
+      },
+      "stream-chain": {
+        "disabled": true
+      },
+      "self-improving-agent": {
+        "enabled": true
+      },
+      "obsidian": {
+        "disabled": true
+      },
+      "agent-browser": {
+        "disabled": true
       },
       "home-assistant": {
         "apiKey": "{env:HASS_TOKEN}",
@@ -211,7 +235,6 @@
       "hidden": true
     },
     "compaction": {
-      "model": "cerebras/zai-glm-4.7",
       "temperature": 0.3,
       "hidden": true
     }

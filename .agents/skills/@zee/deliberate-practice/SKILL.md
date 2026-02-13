@@ -3,7 +3,7 @@ name: deliberate-practice
 description: Structured practice sessions with immediate feedback for skill acquisition
 version: 1.0.0
 author: Artur
-tags: [learning, practice, skills, johny]
+tags: [learning, practice, skills, zee]
 triggers:
   - practice
   - drill
@@ -71,19 +71,16 @@ Track error types:
 ## Memory Integration
 
 Store practice data:
-```typescript
-await memory.store({
-  namespace: "johny/practice",
-  key: `session/${date}/${topic}`,
-  value: {
-    topic,
-    problemsAttempted: 15,
-    accuracy: 0.73,
-    timeSpent: 25,
-    errorsBy Type: { conceptual: 2, procedural: 2 },
-    itemsForReview: ["integration-by-parts", "trig-substitution"]
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "learning",
+  topic: <topic>,
+  subtopic: "practice-session",
+  kind: "agent",
+  content: "<JSON with problemsAttempted, accuracy, timeSpent, errorsByType: {conceptual, procedural}, itemsForReview>",
+  summary: "Practice session for <topic>: 15 problems, 73% accuracy, 25 min"
+})
 ```
 
 ## Spaced Repetition Queue

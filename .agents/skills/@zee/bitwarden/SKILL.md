@@ -1,7 +1,7 @@
 ---
 name: bitwarden
 description: Access and manage Bitwarden/Vaultwarden passwords securely using the rbw CLI.
-metadata: {"clawdbot":{"emoji":"🔒","os":["linux","macos"],"requires":{"bins":["rbw"]}}}
+metadata: {"zee":{"os":["linux","macos"],"requires":{"bins":["rbw"]}}}
 ---
 
 # Bitwarden Skill

@@ -91,25 +91,20 @@ results = notes.search("Services growth Technology")
 
 ## Memory Integration
 
-```typescript
-// Store thesis in memory for cross-session access
-await memory.store({
-  namespace: "stanley/theses",
-  key: symbol,
-  value: {
-    symbol,
-    conviction,
-    targetPrice,
-    bullCase: [...],
-    bearCase: [...],
-    catalysts: [...],
-    riskTriggers: [...],
-    lastReviewed: new Date()
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "theses",
+  topic: <symbol>,
+  kind: "agent",
+  priority: "high",
+  memoryId: "thesis-<symbol>",
+  content: "<thesis JSON with conviction, targetPrice, bullCase, bearCase, catalysts, riskTriggers>",
+  summary: "Investment thesis for <SYMBOL>: conviction <level>, target $X"
+})
 
 // Retrieve for quick access
-const thesis = await memory.retrieve("stanley/theses", symbol);
+memory.search({ domain: "theses", topic: <symbol> })
 ```
 
 ## Thesis Review Workflow
@@ -123,17 +118,13 @@ Weekly review checklist:
 
 ## Conviction Changes
 
-Track conviction history:
-```typescript
-await memory.store({
-  namespace: "stanley/theses",
-  key: symbol,
-  value: {
-    // ... existing fields
-    history: [
-      { date: "2024-01-01", conviction: "medium", note: "Initial thesis" },
-      { date: "2024-01-20", conviction: "high", note: "Strong Q4 results" }
-    ]
-  }
-});
+Track conviction history by updating the thesis with the same memoryId (triggers versioning):
+```
+memory.store({
+  domain: "theses",
+  topic: <symbol>,
+  memoryId: "thesis-<symbol>",
+  content: "<updated thesis JSON including conviction history>",
+  summary: "Thesis update for <SYMBOL>: conviction changed to <level> -- <reason>"
+})
 ```

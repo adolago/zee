@@ -3,7 +3,7 @@ name: session-logs
 description: Search and analyze your own conversation history from session log files using jq.
 version: 1.0.0
 author: Artur
-tags: [logs, history, search, johny]
+tags: [logs, history, search, zee]
 metadata: {"zee":{"emoji":"📜","requires":{"bins":["jq"]}}}
 ---
 

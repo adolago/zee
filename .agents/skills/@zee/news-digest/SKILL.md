@@ -192,7 +192,7 @@ async def get_news_digest(
 
 ## Configuration
 
-### Agent-Core Auth (automatic)
+### Zee Auth (automatic)
 
 Authentication is handled by zee's centralized auth system:
 
@@ -207,7 +207,7 @@ zee auth login openai
 
 ### Config File (optional)
 
-Create `~/.stanley/news_digest.toml`:
+Create `~/.config/zee/news_digest.toml`:
 
 ```toml
 [search]
@@ -275,12 +275,12 @@ Impact levels (high/medium/low) are determined by:
 ## Troubleshooting
 
 ### No results returned
-- Check `BRAVE_API_KEY` is set and valid
+- Check `EXA_API_KEY` is set and valid (or that Exa MCP is reachable)
 - Verify ticker symbol is correct (use standard symbols)
 - Try broader time range (`--range 7d`)
 
 ### Rate limiting
-- Brave Search API has rate limits
+- Exa API has rate limits
 - Use `--cache` flag to cache results
 - Reduce `max_results_per_category` in config
 

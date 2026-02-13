@@ -10,7 +10,7 @@ export type ZeeCliResult = {
 };
 
 export function runZeeCli(args: string[]): ZeeCliResult {
-  const repo = process.env.ZEE_REPO || join(homedir(), ".local", "src", "agent-core", "vendor", "personas", "zee");
+  const repo = process.env.ZEE_REPO || join(homedir(), "Repositories", "zee");
   const runtime = process.env.ZEE_RUNTIME || "bun";
   const entry = join(repo, "src", "entry.ts");
 

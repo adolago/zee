@@ -3,7 +3,7 @@ name: concept-exploration
 description: Deep understanding through Socratic questioning and concept mapping
 version: 1.0.0
 author: Artur
-tags: [learning, concepts, understanding, johny]
+tags: [learning, concepts, understanding, zee]
 triggers:
   - explain
   - understand
@@ -68,37 +68,31 @@ A concept is "understood" when student can:
 ## Memory Integration
 
 Track concept mastery:
-```typescript
-await memory.store({
-  namespace: "johny/concepts",
-  key: topic,
-  value: {
-    topic,
-    prerequisites: ["limits", "continuity"],
-    masteryLevel: 0.85,  // 0-1 scale
-    lastAssessed: new Date(),
-    canExplain: true,
-    canApply: true,
-    canGeneralize: false,  // needs more work
-    commonMisconceptions: ["confuses with..."]
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "learning",
+  topic: <topic>,
+  subtopic: "concept-mastery",
+  kind: "agent",
+  memoryId: "concept-<topic>",
+  content: "<JSON with prerequisites, masteryLevel 0-1, canExplain, canApply, canGeneralize, commonMisconceptions>",
+  summary: "Concept mastery for <topic>: 85% -- can explain and apply, needs generalization work"
+})
 ```
 
 ## Knowledge Graph
 
 Build interconnected understanding:
-```typescript
-await memory.store({
-  namespace: "johny/knowledge-graph",
-  key: "edges",
-  value: {
-    edges: [
-      { from: "derivative", to: "limit", relation: "defined-by" },
-      { from: "integral", to: "antiderivative", relation: "inverse-of" },
-      { from: "ftc", to: "derivative", relation: "connects" },
-      { from: "ftc", to: "integral", relation: "connects" }
-    ]
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "learning",
+  topic: "knowledge-graph",
+  subtopic: <subject>,
+  kind: "agent",
+  memoryId: "kg-<subject>",
+  content: "<JSON with edges: [{from, to, relation}] e.g. derivative->limit (defined-by), integral->antiderivative (inverse-of)>",
+  summary: "Knowledge graph for <subject>: <N> concepts, <M> edges"
+})
 ```

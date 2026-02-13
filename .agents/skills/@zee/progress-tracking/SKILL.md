@@ -3,7 +3,7 @@ name: progress-tracking
 description: Track learning progress, identify gaps, and adapt curriculum
 version: 1.0.0
 author: Artur
-tags: [learning, progress, tracking, johny]
+tags: [learning, progress, tracking, zee]
 triggers:
   - progress
   - status
@@ -83,40 +83,31 @@ async function findGaps(targetTopic: string) {
 ## Memory Schema
 
 ### Student Profile
-```typescript
-await memory.store({
-  namespace: "johny/profile",
-  key: "current",
-  value: {
-    currentTopics: ["calculus/integration"],
-    overallProgress: 0.35,  // 35% of curriculum
-    streakDays: 12,
-    totalPracticeHours: 47,
-    strongAreas: ["algebra", "logic"],
-    weakAreas: ["geometry", "probability"],
-    learningStyle: "visual",
-    preferredSessionLength: 25  // minutes
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "learning",
+  topic: "profile",
+  kind: "agent",
+  priority: "high",
+  memoryId: "student-profile",
+  content: "<JSON with currentTopics, overallProgress, streakDays, totalPracticeHours, strongAreas, weakAreas, learningStyle, preferredSessionLength>",
+  summary: "Student profile: 35% curriculum complete, 12-day streak, strong in algebra/logic, weak in geometry/probability"
+})
 ```
 
 ### Topic Progress
-```typescript
-await memory.store({
-  namespace: "johny/topics",
-  key: topic,
-  value: {
-    topic,
-    masteryLevel: 3,
-    accuracy7day: 0.82,
-    accuracy30day: 0.78,
-    lastPracticed: new Date(),
-    nextReview: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    problemsSolved: 45,
-    averageTimePerProblem: 120,  // seconds
-    notes: "Struggles with integration by parts"
-  }
-});
+```
+memory.store({
+  category: "note",
+  domain: "learning",
+  topic: <topic>,
+  subtopic: "progress",
+  kind: "agent",
+  memoryId: "progress-<topic>",
+  content: "<JSON with masteryLevel, accuracy7day, accuracy30day, lastPracticed, nextReview, problemsSolved, averageTimePerProblem, notes>",
+  summary: "Progress for <topic>: mastery level 3, 82% accuracy (7d), 45 problems solved"
+})
 ```
 
 ## Progress Reports
