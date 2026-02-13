@@ -1,6 +1,7 @@
 import { cmd } from "@/cli/cmd/cmd"
 import { tui } from "./app"
 import path from "path"
+import fs from "node:fs"
 import { spawnSync } from "child_process"
 import { UI } from "@/cli/ui"
 import { iife } from "@/util/iife"
@@ -12,6 +13,7 @@ import { createAuthorizedFetch } from "@/server/auth"
 
 const DEFAULT_DAEMON_PORT = 3210
 const DAEMON_HEALTH_PATH = "/global/health"
+const TTY_DETACH_CHECK_INTERVAL_MS = 3000
 
 function normalizeDaemonHost(hostname?: string): string {
   if (!hostname || hostname === "0.0.0.0") return "127.0.0.1"
@@ -20,9 +22,75 @@ function normalizeDaemonHost(hostname?: string): string {
 
 function resolveDaemonUrl(network: ResolvedNetworkOptions, state?: Daemon.DaemonState | null): string {
   if (process.env.ZEE_URL) return process.env.ZEE_URL
-    const hostname = normalizeDaemonHost(state?.hostname ?? network.hostname)
+  const hostname = normalizeDaemonHost(state?.hostname ?? network.hostname)
   const port = state?.port ?? (network.port && network.port !== 0 ? network.port : DEFAULT_DAEMON_PORT)
   return `http://${hostname}:${port}`
+}
+
+function readProcFdTarget(fd: number): string | undefined {
+  if (process.platform !== "linux") return
+  try {
+    return fs.readlinkSync(`/proc/${process.pid}/fd/${fd}`)
+  } catch {
+    return
+  }
+}
+
+function isTTYDetached(fd: number): boolean {
+  const target = readProcFdTarget(fd)
+  if (!target) return false
+  if (!target.startsWith("/dev/pts/")) return false
+  if (target.includes(" (deleted)")) return true
+  return !fs.existsSync(target)
+}
+
+function watchInteractiveTerminal(onDetached: (reason: string) => void): () => void {
+  const watchedFds = [process.stdin.isTTY ? 0 : -1, process.stdout.isTTY ? 1 : -1, process.stderr.isTTY ? 2 : -1]
+    .filter((fd) => fd >= 0)
+
+  if (watchedFds.length === 0) return () => {}
+
+  let closed = false
+  const cleanup: Array<() => void> = []
+
+  const done = (reason: string) => {
+    if (closed) return
+    closed = true
+    for (const fn of cleanup.splice(0)) fn()
+    onDetached(reason)
+  }
+
+  const onSighup = () => done("sighup")
+  process.on("SIGHUP", onSighup)
+  cleanup.push(() => process.off("SIGHUP", onSighup))
+
+  if (process.stdin.isTTY) {
+    const onStdinEnd = () => done("stdin-end")
+    const onStdinClose = () => done("stdin-close")
+    process.stdin.on("end", onStdinEnd)
+    process.stdin.on("close", onStdinClose)
+    cleanup.push(() => process.stdin.off("end", onStdinEnd))
+    cleanup.push(() => process.stdin.off("close", onStdinClose))
+  }
+
+  if (process.platform === "linux") {
+    const timer = setInterval(() => {
+      for (const fd of watchedFds) {
+        if (isTTYDetached(fd)) {
+          done(`fd-${fd}-tty-detached`)
+          return
+        }
+      }
+    }, TTY_DETACH_CHECK_INTERVAL_MS)
+    timer.unref()
+    cleanup.push(() => clearInterval(timer))
+  }
+
+  return () => {
+    if (closed) return
+    closed = true
+    for (const fn of cleanup.splice(0)) fn()
+  }
 }
 
 async function checkDaemonHealth(url: string): Promise<boolean> {
@@ -215,11 +283,20 @@ async function ensureProcessRunning(
   const hostname = normalizeDaemonHost(network.hostname)
   const port = network.port && network.port !== 0 ? network.port : DEFAULT_DAEMON_PORT
 
-  const proc = await startAlwaysOnProcess({
-    hostname,
-    port,
-    directory,
-  })
+  let proc: AlwaysOnProcess
+  try {
+    proc = await startAlwaysOnProcess({
+      hostname,
+      port,
+      directory,
+    })
+  } catch (error) {
+    await Daemon.removePidFile().catch(() => {})
+    await Daemon.releaseLock().catch(() => {})
+    const message = error instanceof Error ? error.message : String(error)
+    UI.error(`Failed to start Zee process: ${message}`)
+    process.exit(1)
+  }
 
   // Setup signal handlers for the process (SIGTERM kills everything)
   await Daemon.setupSignalHandlers(proc.cleanup)
@@ -307,6 +384,26 @@ export const TuiThreadCommand = cmd({
     }
 
     // Start TUI - when TUI exits, process keeps running
+    let exitingForTerminalDetach = false
+    const stopTerminalWatch = watchInteractiveTerminal((reason) => {
+      if (exitingForTerminalDetach) return
+      exitingForTerminalDetach = true
+      Log.Default.warn("interactive terminal detached, exiting tui process", { reason })
+      const shutdown = async () => {
+        if (proc) {
+          await proc.cleanup("SIGHUP")
+        }
+        process.exit(0)
+      }
+      void shutdown().catch((error) => {
+        Log.Default.error("failed to shutdown after terminal detachment", {
+          reason,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        process.exit(1)
+      })
+    })
+
     const tuiPromise = tui({
       url,
       directory: cwd,
@@ -323,7 +420,11 @@ export const TuiThreadCommand = cmd({
         : undefined, // Attached to external process, nothing to clean up
     })
 
-    await tuiPromise
+    try {
+      await tuiPromise
+    } finally {
+      stopTerminalWatch()
+    }
 
     // If we started the process in this invocation and the TUI exits,
     // the process keeps running in the background (PID file + lock).
