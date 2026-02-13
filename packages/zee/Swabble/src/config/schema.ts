@@ -611,9 +611,9 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
   "gateway.daemonBridge.url": "http://127.0.0.1:3210",
   "gateway.daemonBridge.sessionStore": "~/.zee/gateway/daemon-sessions.json",
   "gateway.allowedOrigins": "http://127.0.0.1:5173",
-  "gateway.controlUi.enabled": true,
-  "gateway.controlUi.allowInsecureAuth": false,
-  "gateway.controlUi.dangerouslyDisableDeviceAuth": false,
+  "gateway.controlUi.enabled": "true",
+  "gateway.controlUi.allowInsecureAuth": "false",
+  "gateway.controlUi.dangerouslyDisableDeviceAuth": "false",
   "agents.list[].identity.avatar": "avatars/zee.png",
 };
 
