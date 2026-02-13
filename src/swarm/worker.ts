@@ -5,7 +5,7 @@
 
 import { spawn, ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import { WorkerConfig, WorkerState, WorkerStatus, WorkerMessage } from "./types";
+import type { WorkerConfig, WorkerState, WorkerStatus, WorkerMessage } from "./types";
 
 export class Worker extends EventEmitter {
   readonly id: string;

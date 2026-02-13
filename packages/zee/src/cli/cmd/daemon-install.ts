@@ -94,6 +94,13 @@ function hasSystemd(): boolean {
 // =============================================================================
 
 function resolveZeeBinary(): string | null {
+  const isExecutableZeeBinary = (candidate: string): boolean => {
+    const base = path.basename(candidate).toLowerCase();
+    if (base !== "zee" && base !== "zee.exe") return false;
+    fs.accessSync(candidate, fs.constants.X_OK);
+    return true;
+  };
+
   // Check common locations
   const candidates = [
     // Bun global install
@@ -104,14 +111,12 @@ function resolveZeeBinary(): string | null {
     // npm global
     "/usr/local/bin/zee",
     // Current process (if running from zee)
-    process.argv[1]?.includes("zee") ? process.argv[0] : null,
+    path.basename(process.argv[0] ?? "").toLowerCase() === "zee" ? process.argv[0] : null,
   ].filter(Boolean) as string[];
 
   for (const candidate of candidates) {
     try {
-      if (fs.existsSync(candidate)) {
-        // Verify it's executable
-        fs.accessSync(candidate, fs.constants.X_OK);
+      if (fs.existsSync(candidate) && isExecutableZeeBinary(candidate)) {
         return candidate;
       }
     } catch {
@@ -125,7 +130,7 @@ function resolveZeeBinary(): string | null {
       encoding: "utf-8",
       timeout: 5000,
     });
-    if (result.status === 0 && result.stdout.trim()) {
+    if (result.status === 0 && result.stdout.trim() && isExecutableZeeBinary(result.stdout.trim())) {
       return result.stdout.trim();
     }
   } catch {

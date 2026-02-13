@@ -4,16 +4,11 @@
  */
 
 import { EventEmitter } from "events";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import { Worker } from "./worker";
-import { createWorkerPanes, closeAllPanes, PaneHandle } from "./panes";
-import {
-  SwarmConfig,
-  SwarmResult,
-  WorkerConfig,
-  WorkerMessage,
-  WorkerState,
-} from "./types";
+import { createWorkerPanes, closeAllPanes } from "./panes";
+import type { PaneHandle } from "./panes";
+import type { SwarmConfig, SwarmResult, WorkerConfig, WorkerMessage, WorkerState } from "./types";
 
 export interface QueenConfig extends SwarmConfig {
   id?: string;
@@ -45,7 +40,7 @@ export class Queen extends EventEmitter {
 
   constructor(config: QueenConfig = {}) {
     super();
-    this.id = config.id ?? uuidv4();
+    this.id = config.id ?? randomUUID();
     this.name = config.name ?? `Swarm-${this.id.slice(0, 8)}`;
     this.config = {
       maxWorkers: config.maxWorkers ?? 8,

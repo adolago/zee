@@ -6,7 +6,7 @@
  */
 
 import { Queen } from "./queen";
-import { SwarmResult } from "./types";
+import type { SwarmResult } from "./types";
 
 export interface Pattern {
   id: string;

@@ -18,7 +18,8 @@ import type {
 } from "../daemon/types";
 import type { OrchestrationEvent } from "./events";
 import { Queen } from "./queen";
-import { QueueSettings, QueuedTask, TaskQueue } from "./queue";
+import { TaskQueue } from "./queue";
+import type { QueueSettings, QueuedTask } from "./queue";
 
 interface OrchestratorTask extends QueuedTask {
   persona: Persona;

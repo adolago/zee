@@ -12,7 +12,7 @@
  */
 
 import { Queen } from "./queen";
-import { WorkerConfig, SwarmResult } from "./types";
+import type { WorkerConfig, SwarmResult } from "./types";
 
 export type SparcPhase = "specification" | "pseudocode" | "architecture" | "refinement" | "completion";
 

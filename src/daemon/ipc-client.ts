@@ -42,6 +42,19 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
     timestamp: Date.now(),
   };
 
+  const formatSocketError = (error: unknown): Error => {
+    const err = error as NodeJS.ErrnoException;
+    const code = err.code;
+    if (code === "ENOENT") {
+      return new Error(`Daemon not running (socket not found: ${socketPath})`);
+    }
+    if (code === "ECONNREFUSED" || code === "ENXIO") {
+      return new Error(`Daemon not accepting connections at ${socketPath}`);
+    }
+    if (err instanceof Error) return err;
+    return new Error(String(error));
+  };
+
   return new Promise<TResult>((resolve, reject) => {
     let socket: Socket | null = null;
     let buffer = "";
@@ -121,13 +134,7 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
 
       socket.on("error", (err) => {
         clearTimeout(timer);
-        const msg =
-          (err as NodeJS.ErrnoException).code === "ENOENT"
-            ? `Daemon not running (socket not found: ${socketPath})`
-            : (err as NodeJS.ErrnoException).code === "ECONNREFUSED"
-              ? `Daemon not accepting connections at ${socketPath}`
-              : `Socket error: ${err.message}`;
-        settle(() => reject(new Error(msg)));
+        settle(() => reject(formatSocketError(err)));
       });
 
       socket.on("close", () => {
@@ -136,13 +143,7 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
       });
     } catch (err) {
       clearTimeout(timer);
-      settle(() =>
-        reject(
-          new Error(
-            `Failed to connect to daemon: ${(err as Error).message}`
-          )
-        )
-      );
+      settle(() => reject(formatSocketError(err)));
     }
   });
 }

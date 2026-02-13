@@ -78,6 +78,8 @@ export namespace SessionPrompt {
       msg.includes("orchestration daemon not running") ||
       msg.includes("socket missing") ||
       msg.includes("refused connection") ||
+      msg.includes("no such device or address") ||
+      msg.includes("enxio") ||
       msg.includes("unknown command: run_task")
     )
   }

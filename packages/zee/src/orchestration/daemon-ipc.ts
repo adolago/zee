@@ -112,6 +112,18 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
     timestamp: Date.now(),
   }
 
+  const formatSocketError = (error: unknown): Error => {
+    const err = error as NodeJS.ErrnoException
+    const code = err.code
+    if (code === "ENOENT") {
+      return new Error(`orchestration daemon not running (socket missing: ${socketPath})`)
+    }
+    if (code === "ECONNREFUSED" || code === "ENXIO") {
+      return new Error(`orchestration daemon refused connection: ${socketPath}`)
+    }
+    return err instanceof Error ? err : new Error(String(error))
+  }
+
   return new Promise<TResult>((resolve, reject) => {
     let socket: Socket | null = null
     let settled = false
@@ -166,16 +178,7 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
 
       socket.on("error", (error) => {
         clearTimeout(timer)
-        const code = (error as NodeJS.ErrnoException).code
-        if (code === "ENOENT") {
-          settle(() => reject(new Error(`orchestration daemon not running (socket missing: ${socketPath})`)))
-          return
-        }
-        if (code === "ECONNREFUSED") {
-          settle(() => reject(new Error(`orchestration daemon refused connection: ${socketPath}`)))
-          return
-        }
-        settle(() => reject(error))
+        settle(() => reject(formatSocketError(error)))
       })
 
       socket.on("close", () => {
@@ -184,7 +187,7 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
       })
     } catch (error) {
       clearTimeout(timer)
-      settle(() => reject(error))
+      settle(() => reject(formatSocketError(error)))
     }
   })
 }
