@@ -249,6 +249,8 @@ function generateSystemdDaemonUnit(
   if (options.gatewayForce) args.push("--gateway-force");
   if (options.wezterm === false) args.push("--no-wezterm");
   args.push("--directory", workDir);
+  // Always enable runtime process guard for installed daemon services.
+  args.push("--runtime-guard", "--runtime-guard-interval-ms", "30000");
 
   const execStart = [binaryPath, ...args].join(" ");
   const env = buildServiceEnv(options);
@@ -269,7 +271,9 @@ Restart=always
 RestartSec=5
 RestartPreventExitStatus=100
 SuccessExitStatus=100
-KillMode=process
+KillMode=control-group
+TimeoutStopSec=15
+SendSIGKILL=yes
 
 # Environment
 ${envLines}
@@ -321,7 +325,9 @@ Restart=always
 RestartSec=5
 RestartPreventExitStatus=100
 SuccessExitStatus=100
-KillMode=process
+KillMode=control-group
+TimeoutStopSec=15
+SendSIGKILL=yes
 
 # Environment
 ${envLines}

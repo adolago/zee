@@ -7,6 +7,7 @@ import { Todo } from "../../session/todo"
 import { Instance } from "../../project/instance"
 import { execSync } from "child_process"
 import { startAlwaysOnProcess } from "./always-on"
+import { runRuntimeProcessMaintenance } from "./runtime-process-guard"
 import fs from "fs/promises"
 import path from "path"
 import net from "net"
@@ -792,6 +793,28 @@ export const DaemonCommand = cmd({
         type: "string",
         choices: ["off", "serve", "funnel"],
         default: "off",
+      })
+      .option("runtime-guard", {
+        describe: "Enable periodic runtime process guard and orphan reaping",
+        type: "boolean",
+        default: true,
+      })
+      .option("runtime-guard-interval-ms", {
+        describe: "Runtime process guard interval in milliseconds",
+        type: "number",
+        default: 30_000,
+      })
+      .option("runtime-max-total", {
+        describe: "Maximum Zee-related processes before runtime guard flags violations",
+        type: "number",
+      })
+      .option("runtime-max-mcp-total", {
+        describe: "Maximum MCP server processes",
+        type: "number",
+      })
+      .option("runtime-max-mcp-per-server", {
+        describe: "Maximum MCP server processes per server name",
+        type: "number",
       }),
   describe: "Start zee as a headless daemon for remote access",
   handler: async (args) => {
@@ -845,17 +868,63 @@ export const DaemonCommand = cmd({
 
     const opts = await resolveNetworkOptions(args)
     const directory = args.directory as string
+    const runtimeGuard = Boolean(args["runtime-guard"])
+    const runtimeGuardIntervalMs =
+      typeof args["runtime-guard-interval-ms"] === "number" ? args["runtime-guard-interval-ms"] : 30_000
+    const runtimeLimits = {
+      maxTotal: typeof args["runtime-max-total"] === "number" ? args["runtime-max-total"] : undefined,
+      maxMcpTotal:
+        typeof args["runtime-max-mcp-total"] === "number" ? args["runtime-max-mcp-total"] : undefined,
+      maxMcpPerServer:
+        typeof args["runtime-max-mcp-per-server"] === "number"
+          ? args["runtime-max-mcp-per-server"]
+          : undefined,
+    }
 
-    const proc = await startAlwaysOnProcess({
-      hostname: opts.hostname,
-      port: opts.port,
-      directory,
-      gateway: true,
-      gatewayForce: Boolean(args["gateway-force"]),
-      wezterm: Boolean(args.wezterm),
-      weztermLayout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",
-      restoreSessions: Boolean(args["restore-sessions"]),
-    })
+    if (runtimeGuard) {
+      const preflightReport = await runRuntimeProcessMaintenance({
+        limits: runtimeLimits,
+        reason: "daemon-preflight",
+      }).catch((error) => {
+        log.error("runtime guard preflight failed", {
+          error: error instanceof Error ? error.message : String(error),
+        })
+        return undefined
+      })
+      if (preflightReport?.kills.length) {
+        const byKind = preflightReport.kills.reduce<Record<string, number>>((acc, kill) => {
+          acc[kill.kind] = (acc[kill.kind] ?? 0) + 1
+          return acc
+        }, {})
+        const details = Object.entries(byKind)
+          .map(([kind, count]) => `${kind}=${count}`)
+          .join(" ")
+        UI.info(`Runtime guard cleaned ${preflightReport.kills.length} stale process(es)${details ? ` (${details})` : ""}`)
+      }
+    }
+
+    let proc
+    try {
+      proc = await startAlwaysOnProcess({
+        hostname: opts.hostname,
+        port: opts.port,
+        directory,
+        gateway: true,
+        gatewayForce: Boolean(args["gateway-force"]),
+        wezterm: Boolean(args.wezterm),
+        weztermLayout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",
+        restoreSessions: Boolean(args["restore-sessions"]),
+        runtimeGuard,
+        runtimeGuardIntervalMs,
+        runtimeLimits,
+      })
+    } catch (error) {
+      await Daemon.removePidFile().catch(() => {})
+      await Daemon.releaseLock().catch(() => {})
+      const message = error instanceof Error ? error.message : String(error)
+      UI.error(`Failed to start daemon: ${message}`)
+      process.exit(1)
+    }
 
     // Start Tailscale exposure if requested
     const tailscaleMode = (args.tailscale as TailscaleMode) ?? "off"
