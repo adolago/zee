@@ -78,6 +78,7 @@ async function buildGatewayConnectParams() {
       mode: "backend",
     },
     caps: [],
+    scopes: ["operator.admin"],
     ...(auth ? { auth } : {}),
   }
 }
