@@ -45,10 +45,17 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
   const formatSocketError = (error: unknown): Error => {
     const err = error as NodeJS.ErrnoException;
     const code = err.code;
-    if (code === "ENOENT") {
+    const message = (err instanceof Error ? err.message : String(error)).toLowerCase();
+    if (code === "ENOENT" || message.includes("enoent")) {
       return new Error(`Daemon not running (socket not found: ${socketPath})`);
     }
-    if (code === "ECONNREFUSED" || code === "ENXIO") {
+    if (
+      code === "ECONNREFUSED" ||
+      code === "ENXIO" ||
+      message.includes("econnrefused") ||
+      message.includes("enxio") ||
+      message.includes("no such device or address")
+    ) {
       return new Error(`Daemon not accepting connections at ${socketPath}`);
     }
     if (err instanceof Error) return err;

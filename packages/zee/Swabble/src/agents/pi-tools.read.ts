@@ -1,5 +1,8 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { createEditTool, createReadTool, createWriteTool } from "@mariozechner/pi-coding-agent";
+import fs from "node:fs/promises";
+import type { Dirent, Stats } from "node:fs";
+import path from "node:path";
 
 import { detectMime } from "../media/mime.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
@@ -11,6 +14,9 @@ import { sanitizeToolResultImages } from "./tool-images.js";
 type ToolContentBlock = AgentToolResult<unknown>["content"][number];
 type ImageContentBlock = Extract<ToolContentBlock, { type: "image" }>;
 type TextContentBlock = Extract<ToolContentBlock, { type: "text" }>;
+type DirectoryEntryType = "directory" | "file" | "symlink" | "other";
+
+const READ_DIRECTORY_MAX_ENTRIES = 200;
 
 async function sniffMimeFromBase64(base64: string): Promise<string | undefined> {
   const trimmed = base64.trim();
@@ -88,6 +94,110 @@ async function normalizeReadImageResult(
   });
 
   return { ...result, content: nextContent };
+}
+
+function resolveRequestedPath(filePath: string, root?: string): string {
+  if (path.isAbsolute(filePath)) return path.resolve(filePath);
+  if (root && root.trim()) return path.resolve(root, filePath);
+  return path.resolve(filePath);
+}
+
+function resolveDirentType(entry: Dirent): DirectoryEntryType {
+  if (entry.isDirectory()) return "directory";
+  if (entry.isFile()) return "file";
+  if (entry.isSymbolicLink()) return "symlink";
+  return "other";
+}
+
+function describeNonRegularFile(stat: Stats): string {
+  if (stat.isSocket()) return "socket";
+  if (stat.isFIFO()) return "named pipe";
+  if (stat.isCharacterDevice()) return "character device";
+  if (stat.isBlockDevice()) return "block device";
+  if (stat.isDirectory()) return "directory";
+  return "special file";
+}
+
+function buildDirectoryTreeLines(
+  entries: Array<{ name: string; type: DirectoryEntryType }>,
+): string[] {
+  return entries.map((entry, index) => {
+    const branch = index === entries.length - 1 ? "`--" : "|--";
+    const suffix = entry.type === "directory" ? "/" : "";
+    return `${branch} ${entry.name}${suffix}`;
+  });
+}
+
+async function maybeReadDirectoryResult(params: {
+  filePath: string;
+  root?: string;
+}): Promise<AgentToolResult<unknown> | null> {
+  const resolvedPath = resolveRequestedPath(params.filePath, params.root);
+  let stat: Stats;
+  try {
+    stat = await fs.stat(resolvedPath);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return null;
+    throw err;
+  }
+  if (!stat.isDirectory()) return null;
+
+  const rawEntries = await fs.readdir(resolvedPath, { withFileTypes: true });
+  rawEntries.sort((a, b) => {
+    const aDir = a.isDirectory() ? 0 : 1;
+    const bDir = b.isDirectory() ? 0 : 1;
+    if (aDir !== bDir) return aDir - bDir;
+    return a.name.localeCompare(b.name);
+  });
+
+  const truncated = rawEntries.length > READ_DIRECTORY_MAX_ENTRIES;
+  const visible = rawEntries.slice(0, READ_DIRECTORY_MAX_ENTRIES);
+  const entries = visible.map((entry) => ({
+    name: entry.name,
+    type: resolveDirentType(entry),
+  }));
+  const treeLines = buildDirectoryTreeLines(entries);
+  const hiddenCount = rawEntries.length - visible.length;
+  const text = [
+    `Directory listing for ${params.filePath}`,
+    resolvedPath,
+    ...treeLines,
+    ...(truncated
+      ? [`... ${hiddenCount} more entries omitted (limit ${READ_DIRECTORY_MAX_ENTRIES})`]
+      : []),
+  ].join("\n");
+
+  return {
+    content: [{ type: "text", text }],
+    details: {
+      kind: "directory",
+      path: params.filePath,
+      resolvedPath,
+      totalEntries: rawEntries.length,
+      returnedEntries: entries.length,
+      truncated,
+      limit: READ_DIRECTORY_MAX_ENTRIES,
+      entries,
+    },
+  };
+}
+
+async function assertReadableRegularFile(params: {
+  filePath: string;
+  root?: string;
+}): Promise<void> {
+  const resolvedPath = resolveRequestedPath(params.filePath, params.root);
+  let stat: Stats;
+  try {
+    stat = await fs.stat(resolvedPath);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return;
+    throw err;
+  }
+  if (stat.isFile() || stat.isDirectory()) return;
+  throw new Error(`Cannot read non-regular file (${describeNonRegularFile(stat)}): ${resolvedPath}`);
 }
 
 type RequiredParamGroup = {
@@ -249,7 +359,7 @@ function wrapSandboxPathGuard(tool: AnyAgentTool, root: string): AnyAgentTool {
 
 export function createSandboxedReadTool(root: string) {
   const base = createReadTool(root) as unknown as AnyAgentTool;
-  return wrapSandboxPathGuard(createZeeReadTool(base), root);
+  return wrapSandboxPathGuard(createZeeReadTool(base, { root }), root);
 }
 
 export function createSandboxedWriteTool(root: string) {
@@ -262,7 +372,7 @@ export function createSandboxedEditTool(root: string) {
   return wrapSandboxPathGuard(wrapToolParamNormalization(base, CLAUDE_PARAM_GROUPS.edit), root);
 }
 
-export function createZeeReadTool(base: AnyAgentTool): AnyAgentTool {
+export function createZeeReadTool(base: AnyAgentTool, options?: { root?: string }): AnyAgentTool {
   const patched = patchToolSchemaForClaudeCompatibility(base);
   return {
     ...patched,
@@ -272,12 +382,18 @@ export function createZeeReadTool(base: AnyAgentTool): AnyAgentTool {
         normalized ??
         (params && typeof params === "object" ? (params as Record<string, unknown>) : undefined);
       assertRequiredParams(record, CLAUDE_PARAM_GROUPS.read, base.name);
+      const filePath = typeof record?.path === "string" ? String(record.path) : "<unknown>";
+      const directoryResult = await maybeReadDirectoryResult({
+        filePath,
+        root: options?.root,
+      });
+      if (directoryResult) return directoryResult;
+      await assertReadableRegularFile({ filePath, root: options?.root });
       const result = (await base.execute(
         toolCallId,
         normalized ?? params,
         signal,
       )) as AgentToolResult<unknown>;
-      const filePath = typeof record?.path === "string" ? String(record.path) : "<unknown>";
       const normalizedResult = await normalizeReadImageResult(result, filePath);
       return sanitizeToolResultImages(normalizedResult, `read:${filePath}`);
     },

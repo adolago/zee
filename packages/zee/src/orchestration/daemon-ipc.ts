@@ -115,10 +115,17 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
   const formatSocketError = (error: unknown): Error => {
     const err = error as NodeJS.ErrnoException
     const code = err.code
-    if (code === "ENOENT") {
+    const message = (err instanceof Error ? err.message : String(error)).toLowerCase()
+    if (code === "ENOENT" || message.includes("enoent")) {
       return new Error(`orchestration daemon not running (socket missing: ${socketPath})`)
     }
-    if (code === "ECONNREFUSED" || code === "ENXIO") {
+    if (
+      code === "ECONNREFUSED" ||
+      code === "ENXIO" ||
+      message.includes("econnrefused") ||
+      message.includes("enxio") ||
+      message.includes("no such device or address")
+    ) {
       return new Error(`orchestration daemon refused connection: ${socketPath}`)
     }
     return err instanceof Error ? err : new Error(String(error))

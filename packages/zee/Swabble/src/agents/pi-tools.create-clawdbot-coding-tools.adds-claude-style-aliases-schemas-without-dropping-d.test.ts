@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
@@ -68,6 +69,74 @@ describe("createZeeCodingTools", () => {
       const combinedText = textBlocks?.map((block) => block.text ?? "").join("\n");
       expect(combinedText).toContain(contents);
     } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+  it("returns a directory tree and JSON metadata when path is a directory", async () => {
+    const tools = createZeeCodingTools();
+    const readTool = tools.find((tool) => tool.name === "read");
+    expect(readTool).toBeDefined();
+
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-read-dir-"));
+    try {
+      await fs.writeFile(path.join(tmpDir, "alpha.txt"), "alpha", "utf8");
+      await fs.mkdir(path.join(tmpDir, "nested"));
+
+      const result = await readTool?.execute("tool-dir-1", { path: tmpDir });
+
+      const textBlocks = result?.content?.filter((block) => block.type === "text") as
+        | Array<{ text?: string }>
+        | undefined;
+      const combinedText = textBlocks?.map((block) => block.text ?? "").join("\n") ?? "";
+      expect(combinedText).toContain("Directory listing for");
+      expect(combinedText).toContain("alpha.txt");
+      expect(combinedText).toContain("nested/");
+
+      const details = result?.details as
+        | {
+            kind?: string;
+            entries?: Array<{ name?: string; type?: string }>;
+            truncated?: boolean;
+            totalEntries?: number;
+          }
+        | undefined;
+      expect(details?.kind).toBe("directory");
+      expect(details?.truncated).toBe(false);
+      expect(details?.totalEntries).toBe(2);
+      expect(details?.entries?.some((entry) => entry.name === "alpha.txt" && entry.type === "file")).toBe(
+        true,
+      );
+      expect(
+        details?.entries?.some((entry) => entry.name === "nested" && entry.type === "directory"),
+      ).toBe(true);
+    } finally {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+  it("rejects unix socket paths as non-regular files", async () => {
+    if (process.platform === "win32") return;
+
+    const tools = createZeeCodingTools();
+    const readTool = tools.find((tool) => tool.name === "read");
+    expect(readTool).toBeDefined();
+
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-read-socket-"));
+    const socketPath = path.join(tmpDir, "daemon.sock");
+    const server = createServer();
+
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(socketPath, resolve);
+    });
+
+    try {
+      await expect(readTool!.execute("tool-socket-1", { path: socketPath })).rejects.toThrow(
+        `Cannot read non-regular file (socket): ${socketPath}`,
+      );
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
       await fs.rm(tmpDir, { recursive: true, force: true });
     }
   });
