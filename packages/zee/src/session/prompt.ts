@@ -333,11 +333,12 @@ export namespace SessionPrompt {
   }
 
   async function ensureRequiredMemory(sessionID: string): Promise<void> {
-    // Memory is ALWAYS required - no non-memory mode exists
     const cfg = await Config.get()
+    if (cfg.memory?.required === false) return
 
     const status = await MCP.status()
     const mcpConfig = cfg.mcp ?? {}
+    const explicitMemoryServer = process.env.ZEE_MEMORY_MCP?.trim()
     let memoryServer = resolveMemoryMcpName(status)
 
     if (!status[memoryServer]) {
@@ -345,22 +346,23 @@ export namespace SessionPrompt {
     }
 
     let memoryStatus = status[memoryServer]
-    if (!memoryStatus || memoryStatus.status !== "connected") {
-      const configEntry = mcpConfig[memoryServer]
-      const entryDisabled =
-        typeof configEntry === "object" &&
-        configEntry !== null &&
-        "enabled" in configEntry &&
-        configEntry.enabled === false
-      const hasConfig = Boolean(configEntry)
+    const configEntry = mcpConfig[memoryServer]
+    const entryDisabled =
+      typeof configEntry === "object" &&
+      configEntry !== null &&
+      "enabled" in configEntry &&
+      configEntry.enabled === false
+    const hasConfig = Boolean(configEntry)
+    const requiresMemoryMcp = Boolean(explicitMemoryServer) || (hasConfig && !entryDisabled)
 
+    if (!memoryStatus || memoryStatus.status !== "connected") {
       if (hasConfig && !entryDisabled) {
         await MCP.connect(memoryServer)
         const refreshed = await MCP.status()
         memoryStatus = refreshed[memoryServer]
       }
 
-      if (!memoryStatus || memoryStatus.status !== "connected") {
+      if (requiresMemoryMcp && (!memoryStatus || memoryStatus.status !== "connected")) {
         const reason =
           memoryStatus?.status === "failed"
             ? memoryStatus.error
@@ -376,6 +378,10 @@ export namespace SessionPrompt {
         })
         throw error
       }
+    }
+
+    if (!requiresMemoryMcp && (!memoryStatus || memoryStatus.status === "disabled")) {
+      log.debug("memory MCP not configured; using direct memory backend check", { memoryServer })
     }
 
     const memoryCheck = await checkMemoryAvailability()
