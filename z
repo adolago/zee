@@ -12,6 +12,8 @@ Usage:
   ./z dist [args...]     Run Zee from dist binary (requires build)
   ./z reload [args...]   Rebuild + restart the systemd user service
   ./z build              Build + verify the binary
+  ./z pr <args...>       Run `gh pr` safely for adolago/zee
+  ./z issue <args...>    Run `gh issue` safely for adolago/zee
   ./z <zee args...>      Pass-through to the Zee CLI
 
 Examples:
@@ -19,7 +21,25 @@ Examples:
   ./z reload
   ./z status
   ./z debug status
+  ./z pr list
+  ./z issue list
 USAGE
+}
+
+verify_repo_target() {
+  "$ROOT/scripts/verify-pr-target.sh"
+}
+
+ensure_no_repo_override() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      -R|--repo|--repo=*|-R=*)
+        echo "Refusing to pass a custom repo flag. ./z pr|issue are pinned to adolago/zee." >&2
+        exit 3
+        ;;
+    esac
+  done
 }
 
 cmd="${1:-}"
@@ -43,6 +63,16 @@ case "$cmd" in
   build)
     (cd "$ROOT/packages/zee" && bun run build)
     (cd "$ROOT" && ./script/verify-binary.sh)
+    ;;
+  pr)
+    verify_repo_target
+    ensure_no_repo_override "$@"
+    exec gh pr --repo adolago/zee "$@"
+    ;;
+  issue)
+    verify_repo_target
+    ensure_no_repo_override "$@"
+    exec gh issue --repo adolago/zee "$@"
     ;;
   *)
     exec zee "$cmd" "$@"

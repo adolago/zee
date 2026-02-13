@@ -11,6 +11,8 @@
 - Repo helper: `./z dev`, `./z build`, `./z reload`
 - Default branch: `main`
 - PRs target the fork at `origin` (e.g., `adolago/zee`), not upstream.
+- Always run `./scripts/verify-pr-target.sh` before any `gh pr` or `gh issue` command.
+- Always pass `--repo adolago/zee` to `gh` commands in this repository.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 
 ### Binary Verification (CRITICAL)
