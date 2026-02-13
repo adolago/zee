@@ -27,13 +27,17 @@ const SERVICE_DESCRIPTION = "Zee Daemon - AI Assistant Platform";
 
 // Linux systemd user service
 const SYSTEMD_UNIT_NAME = "zee.service";
+const SYSTEMD_ORCH_UNIT_NAME = "zee-orch.service";
 const SYSTEMD_UNIT_DIR = path.join(os.homedir(), ".config", "systemd", "user");
 const SYSTEMD_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_UNIT_NAME);
+const SYSTEMD_ORCH_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ORCH_UNIT_NAME);
 
 // Log paths
 const LOG_DIR = path.join(Global.Path.state, "logs");
 const STDOUT_LOG = path.join(LOG_DIR, "daemon.log");
 const STDERR_LOG = path.join(LOG_DIR, "daemon.err.log");
+const ORCH_STDOUT_LOG = path.join(LOG_DIR, "daemon-orch.log");
+const ORCH_STDERR_LOG = path.join(LOG_DIR, "daemon-orch.err.log");
 
 // =============================================================================
 // Types
@@ -45,6 +49,12 @@ export interface DaemonInstallOptions {
   gateway?: boolean;
   gatewayForce?: boolean;
   wezterm?: boolean;
+  orchestration?: boolean;
+  orchSocketPath?: string;
+  orchMaxWorkers?: number;
+  orchQueueCap?: number;
+  orchQueueDropPolicy?: "old" | "new" | "summarize";
+  orchQueueDedupeMode?: "task-id" | "prompt" | "none";
   workingDirectory?: string;
   force?: boolean;
   nonInteractive?: boolean;
@@ -54,6 +64,7 @@ export interface DaemonInstallResult {
   success: boolean;
   platform: "linux" | "unsupported";
   servicePath?: string;
+  orchestrationServicePath?: string;
   error?: string;
   hints?: string[];
 }
@@ -124,30 +135,6 @@ function resolveZeeBinary(): string | null {
   return null;
 }
 
-function resolveNodeBinary(): string {
-  // Try bun first (preferred)
-  try {
-    const bunPath = spawnSync("which", ["bun"], { encoding: "utf-8", timeout: 5000 });
-    if (bunPath.status === 0 && bunPath.stdout.trim()) {
-      return bunPath.stdout.trim();
-    }
-  } catch {
-    // Ignore
-  }
-
-  // Fall back to node
-  try {
-    const nodePath = spawnSync("which", ["node"], { encoding: "utf-8", timeout: 5000 });
-    if (nodePath.status === 0 && nodePath.stdout.trim()) {
-      return nodePath.stdout.trim();
-    }
-  } catch {
-    // Ignore
-  }
-
-  return "/usr/bin/node";
-}
-
 // =============================================================================
 // Environment Building
 // =============================================================================
@@ -207,25 +194,58 @@ function buildServicePath(): string {
   return pathParts.join(":");
 }
 
+function resolveOrchSocketPath(options: DaemonInstallOptions): string {
+  if (options.orchSocketPath && options.orchSocketPath.trim()) {
+    return options.orchSocketPath.trim();
+  }
+  if (process.env.ZEE_IPC_SOCKET?.trim()) {
+    return process.env.ZEE_IPC_SOCKET.trim();
+  }
+  const home = os.homedir();
+  const stateHome = process.env.XDG_STATE_HOME || path.join(home, ".local", "state");
+  return path.join(stateHome, "zee", "daemon.sock");
+}
+
+function defaultOrchMaxWorkers(): number {
+  const cores = (() => {
+    try {
+      return typeof os.availableParallelism === "function"
+        ? os.availableParallelism()
+        : os.cpus().length;
+    } catch {
+      return 2;
+    }
+  })();
+  return Math.max(2, Math.min(8, cores - 1));
+}
+
+function resolveServiceWorkingDirectory(options: DaemonInstallOptions): string {
+  if (options.workingDirectory && options.workingDirectory.trim()) {
+    return options.workingDirectory.trim();
+  }
+  // Prefer the detected repository/source root so daemon state and local tools resolve consistently.
+  const source = Global.Path.source;
+  return source && source.trim() ? source : os.homedir();
+}
+
 // =============================================================================
 // Linux systemd
 // =============================================================================
 
-function generateSystemdUnit(
+function generateSystemdDaemonUnit(
   binaryPath: string,
   options: DaemonInstallOptions
 ): string {
   const args = ["daemon"];
+  const workDir = resolveServiceWorkingDirectory(options);
 
   if (options.port) args.push("--port", String(options.port));
   if (options.hostname) args.push("--hostname", options.hostname);
-  args.push("--gateway");
   if (options.gatewayForce) args.push("--gateway-force");
   if (options.wezterm === false) args.push("--no-wezterm");
-  if (options.workingDirectory) args.push("--directory", options.workingDirectory);
+  args.push("--directory", workDir);
 
   const execStart = [binaryPath, ...args].join(" ");
-  const workDir = options.workingDirectory ?? os.homedir();
   const env = buildServiceEnv(options);
   const envLines = Object.entries(env)
     .map(([k, v]) => `Environment="${k}=${v}"`)
@@ -252,6 +272,58 @@ ${envLines}
 # Logging
 StandardOutput=append:${STDOUT_LOG}
 StandardError=append:${STDERR_LOG}
+
+[Install]
+WantedBy=default.target
+`;
+}
+
+function generateSystemdOrchestrationUnit(
+  binaryPath: string,
+  options: DaemonInstallOptions
+): string {
+  const workDir = resolveServiceWorkingDirectory(options);
+  const args = [
+    "daemon-orch",
+    "--ipc-socket",
+    resolveOrchSocketPath(options),
+  ];
+
+  if (options.orchMaxWorkers) args.push("--max-workers", String(options.orchMaxWorkers));
+  if (options.orchQueueCap) args.push("--queue-cap", String(options.orchQueueCap));
+  if (options.orchQueueDropPolicy) args.push("--queue-drop-policy", options.orchQueueDropPolicy);
+  if (options.orchQueueDedupeMode) args.push("--queue-dedupe-mode", options.orchQueueDedupeMode);
+
+  const execStart = [binaryPath, ...args].join(" ");
+  const env = buildServiceEnv(options);
+  if (!options.orchMaxWorkers) {
+    env.ZEE_ORCH_MAX_WORKERS = String(defaultOrchMaxWorkers());
+  }
+  const envLines = Object.entries(env)
+    .map(([k, v]) => `Environment="${k}=${v}"`)
+    .join("\n");
+
+  return `[Unit]
+Description=Zee Orchestration Daemon - Worker Pool
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=${execStart}
+WorkingDirectory=${workDir}
+Restart=always
+RestartSec=5
+RestartPreventExitStatus=100
+SuccessExitStatus=100
+KillMode=process
+
+# Environment
+${envLines}
+
+# Logging
+StandardOutput=append:${ORCH_STDOUT_LOG}
+StandardError=append:${ORCH_STDERR_LOG}
 
 [Install]
 WantedBy=default.target
@@ -307,6 +379,7 @@ async function installSystemdService(
   options: DaemonInstallOptions
 ): Promise<DaemonInstallResult> {
   const hints: string[] = [];
+  const orchestrationEnabled = options.orchestration !== false;
 
   // Check systemd availability
   if (!hasSystemd()) {
@@ -336,9 +409,13 @@ async function installSystemdService(
     hints.push("Enable with: sudo loginctl enable-linger $USER");
   }
 
-  // Stop existing service if running
+  // Stop existing services if running
   try {
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_UNIT_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "stop", SYSTEMD_ORCH_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
     });
@@ -346,11 +423,25 @@ async function installSystemdService(
     // Ignore if not running
   }
 
-  // Generate and write unit file
-  const unit = generateSystemdUnit(binaryPath, options);
+  // Generate and write unit files
+  const unit = generateSystemdDaemonUnit(binaryPath, options);
   try {
     fs.writeFileSync(SYSTEMD_UNIT_PATH, unit, { mode: 0o644 });
     log.info("wrote systemd unit", { path: SYSTEMD_UNIT_PATH });
+
+    if (orchestrationEnabled) {
+      const orchUnit = generateSystemdOrchestrationUnit(binaryPath, options);
+      fs.writeFileSync(SYSTEMD_ORCH_UNIT_PATH, orchUnit, { mode: 0o644 });
+      log.info("wrote systemd unit", { path: SYSTEMD_ORCH_UNIT_PATH });
+    } else {
+      if (fs.existsSync(SYSTEMD_ORCH_UNIT_PATH)) {
+        fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH);
+      }
+      spawnSync("systemctl", ["--user", "disable", SYSTEMD_ORCH_UNIT_NAME], {
+        stdio: "pipe",
+        timeout: 10000,
+      });
+    }
   } catch (err) {
     return {
       success: false,
@@ -370,6 +461,7 @@ async function installSystemdService(
         success: false,
         platform: "linux",
         servicePath: SYSTEMD_UNIT_PATH,
+        orchestrationServicePath: orchestrationEnabled ? SYSTEMD_ORCH_UNIT_PATH : undefined,
         error: `systemctl daemon-reload failed: ${result.stderr?.toString()}`,
       };
     }
@@ -378,11 +470,12 @@ async function installSystemdService(
       success: false,
       platform: "linux",
       servicePath: SYSTEMD_UNIT_PATH,
+      orchestrationServicePath: orchestrationEnabled ? SYSTEMD_ORCH_UNIT_PATH : undefined,
       error: `Failed to reload systemd: ${err}`,
     };
   }
 
-  // Enable and start service
+  // Enable and start services
   try {
     spawnSync("systemctl", ["--user", "enable", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
@@ -395,8 +488,25 @@ async function installSystemdService(
     if (startResult.status !== 0) {
       hints.push(`Service may need manual start: systemctl --user start ${SYSTEMD_UNIT_NAME}`);
     }
+
+    if (orchestrationEnabled) {
+      spawnSync("systemctl", ["--user", "enable", SYSTEMD_ORCH_UNIT_NAME], {
+        stdio: "pipe",
+        timeout: 10000,
+      });
+      const orchStartResult = spawnSync("systemctl", ["--user", "start", SYSTEMD_ORCH_UNIT_NAME], {
+        stdio: "pipe",
+        timeout: 10000,
+      });
+      if (orchStartResult.status !== 0) {
+        hints.push(`Orchestration service may need manual start: systemctl --user start ${SYSTEMD_ORCH_UNIT_NAME}`);
+      }
+    }
   } catch {
     hints.push(`Service may need manual start: systemctl --user start ${SYSTEMD_UNIT_NAME}`);
+    if (orchestrationEnabled) {
+      hints.push(`Orchestration service may need manual start: systemctl --user start ${SYSTEMD_ORCH_UNIT_NAME}`);
+    }
   }
 
   hints.push(`Logs: journalctl --user -u ${SYSTEMD_UNIT_NAME} -f`);
@@ -404,11 +514,19 @@ async function installSystemdService(
   hints.push(`Stop: systemctl --user stop ${SYSTEMD_UNIT_NAME}`);
   hints.push(`Restart: systemctl --user restart ${SYSTEMD_UNIT_NAME}`);
   hints.push(`Status: systemctl --user status ${SYSTEMD_UNIT_NAME}`);
+  if (orchestrationEnabled) {
+    hints.push(`Orch logs: journalctl --user -u ${SYSTEMD_ORCH_UNIT_NAME} -f`);
+    hints.push(`Or: ${ORCH_STDOUT_LOG}`);
+    hints.push(`Orch stop: systemctl --user stop ${SYSTEMD_ORCH_UNIT_NAME}`);
+    hints.push(`Orch restart: systemctl --user restart ${SYSTEMD_ORCH_UNIT_NAME}`);
+    hints.push(`Orch status: systemctl --user status ${SYSTEMD_ORCH_UNIT_NAME}`);
+  }
 
   return {
     success: true,
     platform: "linux",
     servicePath: SYSTEMD_UNIT_PATH,
+    orchestrationServicePath: orchestrationEnabled ? SYSTEMD_ORCH_UNIT_PATH : undefined,
     hints,
   };
 }
@@ -419,7 +537,15 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
       stdio: "pipe",
       timeout: 10000,
     });
+    spawnSync("systemctl", ["--user", "stop", SYSTEMD_ORCH_UNIT_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_UNIT_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "disable", SYSTEMD_ORCH_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
     });
@@ -430,6 +556,9 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
   try {
     if (fs.existsSync(SYSTEMD_UNIT_PATH)) {
       fs.unlinkSync(SYSTEMD_UNIT_PATH);
+    }
+    if (fs.existsSync(SYSTEMD_ORCH_UNIT_PATH)) {
+      fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH);
     }
     spawnSync("systemctl", ["--user", "daemon-reload"], {
       stdio: "pipe",
@@ -446,7 +575,7 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
   return {
     success: true,
     platform: "linux",
-    hints: ["systemd service removed successfully"],
+    hints: ["systemd services removed successfully"],
   };
 }
 
@@ -485,12 +614,14 @@ export async function installDaemon(
 
   // Check if already installed (unless force)
   if (!options.force) {
-    const existingPath = SYSTEMD_UNIT_PATH;
-    if (fs.existsSync(existingPath)) {
+    const daemonInstalled = fs.existsSync(SYSTEMD_UNIT_PATH);
+    const orchInstalled = fs.existsSync(SYSTEMD_ORCH_UNIT_PATH);
+    if (daemonInstalled && orchInstalled) {
       return {
         success: true,
         platform,
-        servicePath: existingPath,
+        servicePath: SYSTEMD_UNIT_PATH,
+        orchestrationServicePath: SYSTEMD_ORCH_UNIT_PATH,
         hints: ["Service already installed. Use --force to reinstall."],
       };
     }
@@ -513,36 +644,101 @@ export async function uninstallDaemon(): Promise<DaemonInstallResult> {
   return uninstallSystemdService();
 }
 
+type UnitStatus = {
+  name: string;
+  path: string;
+  installed: boolean;
+  running: boolean;
+  enabled: boolean;
+}
+
+function getUnitStatus(name: string, servicePath: string): UnitStatus {
+  const installed = fs.existsSync(servicePath);
+  let running = false;
+  let enabled = false;
+
+  if (installed) {
+    try {
+      const activeResult = spawnSync(
+        "systemctl",
+        ["--user", "is-active", name],
+        { stdio: "pipe", timeout: 5000 }
+      );
+      running = activeResult.stdout?.toString().trim() === "active";
+    } catch {
+      running = false;
+    }
+
+    try {
+      const enabledResult = spawnSync(
+        "systemctl",
+        ["--user", "is-enabled", name],
+        { stdio: "pipe", timeout: 5000 }
+      );
+      enabled = enabledResult.stdout?.toString().trim() === "enabled";
+    } catch {
+      enabled = false;
+    }
+  }
+
+  return {
+    name,
+    path: servicePath,
+    installed,
+    running,
+    enabled,
+  };
+}
+
 export function getDaemonServiceStatus(): {
   installed: boolean;
   running: boolean;
   platform: string;
   servicePath?: string;
+  orchestrationServicePath?: string;
+  units: {
+    daemon: UnitStatus;
+    orchestration: UnitStatus;
+  };
 } {
   const platform = getPlatform();
 
   if (platform === "unsupported") {
-    return { installed: false, running: false, platform: os.platform() };
+    const daemon = {
+      name: SYSTEMD_UNIT_NAME,
+      path: SYSTEMD_UNIT_PATH,
+      installed: false,
+      running: false,
+      enabled: false,
+    };
+    const orchestration = {
+      name: SYSTEMD_ORCH_UNIT_NAME,
+      path: SYSTEMD_ORCH_UNIT_PATH,
+      installed: false,
+      running: false,
+      enabled: false,
+    };
+    return {
+      installed: false,
+      running: false,
+      platform: os.platform(),
+      units: { daemon, orchestration },
+    };
   }
 
-  const servicePath = SYSTEMD_UNIT_PATH;
-  const installed = fs.existsSync(servicePath);
+  const daemon = getUnitStatus(SYSTEMD_UNIT_NAME, SYSTEMD_UNIT_PATH);
+  const orchestration = getUnitStatus(SYSTEMD_ORCH_UNIT_NAME, SYSTEMD_ORCH_UNIT_PATH);
+  const installed = daemon.installed && orchestration.installed;
+  const running = daemon.running && orchestration.running;
 
-  let running = false;
-  if (installed) {
-    try {
-      const result = spawnSync(
-        "systemctl",
-        ["--user", "is-active", SYSTEMD_UNIT_NAME],
-        { stdio: "pipe", timeout: 5000 }
-      );
-      running = result.stdout?.toString().trim() === "active";
-    } catch {
-      running = false;
-    }
-  }
-
-  return { installed, running, platform, servicePath };
+  return {
+    installed,
+    running,
+    platform,
+    servicePath: SYSTEMD_UNIT_PATH,
+    orchestrationServicePath: SYSTEMD_ORCH_UNIT_PATH,
+    units: { daemon, orchestration },
+  };
 }
 
 // =============================================================================
@@ -551,7 +747,7 @@ export function getDaemonServiceStatus(): {
 
 export const DaemonInstallCommand = cmd({
   command: "daemon-install",
-  describe: "Install zee daemon as a user systemd service (Linux)",
+  describe: "Install zee daemon + orchestration daemons as user systemd services (Linux)",
   builder: (yargs) =>
     yargs
       .option("port", {
@@ -573,6 +769,28 @@ export const DaemonInstallCommand = cmd({
         describe: "Enable WezTerm visual orchestration",
         type: "boolean",
         default: true,
+      })
+      .option("orch-socket", {
+        describe: "Unix socket path for orchestration daemon IPC",
+        type: "string",
+      })
+      .option("orch-max-workers", {
+        describe: "Maximum orchestration workers (default: CPU-based auto)",
+        type: "number",
+      })
+      .option("orch-queue-cap", {
+        describe: "Orchestration queue capacity",
+        type: "number",
+      })
+      .option("orch-queue-drop-policy", {
+        describe: "Orchestration queue overflow policy",
+        type: "string",
+        choices: ["old", "new", "summarize"],
+      })
+      .option("orch-queue-dedupe-mode", {
+        describe: "Orchestration queue dedupe mode",
+        type: "string",
+        choices: ["task-id", "prompt", "none"],
       })
       .option("directory", {
         describe: "Working directory for daemon",
@@ -600,6 +818,11 @@ export const DaemonInstallCommand = cmd({
       gateway: true,
       gatewayForce: args["gateway-force"] as boolean,
       wezterm: args.wezterm as boolean,
+      orchSocketPath: args["orch-socket"] as string | undefined,
+      orchMaxWorkers: args["orch-max-workers"] as number | undefined,
+      orchQueueCap: args["orch-queue-cap"] as number | undefined,
+      orchQueueDropPolicy: args["orch-queue-drop-policy"] as "old" | "new" | "summarize" | undefined,
+      orchQueueDedupeMode: args["orch-queue-dedupe-mode"] as "task-id" | "prompt" | "none" | undefined,
       workingDirectory: args.directory as string | undefined,
       force: args.force as boolean,
       nonInteractive: args["non-interactive"] as boolean,
@@ -619,9 +842,14 @@ export const DaemonInstallCommand = cmd({
 
       // Check existing installation
       const status = getDaemonServiceStatus();
-      if (status.installed && !options.force) {
+      const anyInstalled = status.units.daemon.installed || status.units.orchestration.installed;
+      if (anyInstalled && !options.force) {
+        const installedUnits = [
+          status.units.daemon.installed ? "daemon" : "",
+          status.units.orchestration.installed ? "orchestration" : "",
+        ].filter(Boolean).join(" + ");
         const reinstall = await prompts.confirm({
-          message: `Service already installed at ${status.servicePath}. Reinstall?`,
+          message: `Service already installed (${installedUnits}). Reinstall?`,
           initialValue: false,
         });
         if (prompts.isCancel(reinstall) || !reinstall) {
@@ -639,8 +867,11 @@ export const DaemonInstallCommand = cmd({
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
     } else if (result.success) {
-      UI.success("Zee daemon installed successfully!");
+      UI.success("Zee services installed successfully!");
       console.log(`\nService: ${result.servicePath}`);
+      if (result.orchestrationServicePath) {
+        console.log(`Orchestration service: ${result.orchestrationServicePath}`);
+      }
       if (result.hints?.length) {
         console.log("\nUseful commands:");
         for (const hint of result.hints) {
@@ -662,7 +893,7 @@ export const DaemonInstallCommand = cmd({
 
 export const DaemonUninstallCommand = cmd({
   command: "daemon-uninstall",
-  describe: "Uninstall zee daemon service",
+  describe: "Uninstall zee daemon services",
   builder: (yargs) =>
     yargs.option("json", {
       describe: "Output as JSON",
@@ -675,7 +906,7 @@ export const DaemonUninstallCommand = cmd({
     if (args.json) {
       console.log(JSON.stringify(result, null, 2));
     } else if (result.success) {
-      UI.success("Zee daemon service removed.");
+      UI.success("Zee daemon services removed.");
       if (result.hints?.length) {
         for (const hint of result.hints) {
           console.log(`  ${hint}`);
@@ -690,7 +921,7 @@ export const DaemonUninstallCommand = cmd({
 
 export const DaemonServiceStatusCommand = cmd({
   command: "daemon-service-status",
-  describe: "Check zee daemon service status",
+  describe: "Check zee daemon services status",
   builder: (yargs) =>
     yargs.option("json", {
       describe: "Output as JSON",
@@ -705,11 +936,19 @@ export const DaemonServiceStatusCommand = cmd({
     } else {
       console.log("Zee Daemon Service Status");
       console.log(`  Platform:  ${status.platform}`);
-      console.log(`  Installed: ${status.installed ? "yes" : "no"}`);
-      if (status.installed) {
-        console.log(`  Running:   ${status.running ? "yes" : "no"}`);
-        console.log(`  Service:   ${status.servicePath}`);
-      }
+      console.log(`  Installed (all required units): ${status.installed ? "yes" : "no"}`);
+      console.log(`  Running (all required units):   ${status.running ? "yes" : "no"}`);
+      console.log("");
+      console.log(`  ${status.units.daemon.name}`);
+      console.log(`    Installed: ${status.units.daemon.installed ? "yes" : "no"}`);
+      console.log(`    Running:   ${status.units.daemon.running ? "yes" : "no"}`);
+      console.log(`    Enabled:   ${status.units.daemon.enabled ? "yes" : "no"}`);
+      console.log(`    Path:      ${status.units.daemon.path}`);
+      console.log(`  ${status.units.orchestration.name}`);
+      console.log(`    Installed: ${status.units.orchestration.installed ? "yes" : "no"}`);
+      console.log(`    Running:   ${status.units.orchestration.running ? "yes" : "no"}`);
+      console.log(`    Enabled:   ${status.units.orchestration.enabled ? "yes" : "no"}`);
+      console.log(`    Path:      ${status.units.orchestration.path}`);
     }
   },
 });

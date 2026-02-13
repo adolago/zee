@@ -956,6 +956,7 @@ export namespace SessionPrompt {
               attachments?: MessageV2.FilePart[]
             }
           | undefined
+        let daemonFallbackToLocal = false
 
         const daemonEligibleAgent =
           resolvedAgent === "zee" || resolvedAgent === "stanley" || resolvedAgent === "johny"
@@ -971,10 +972,12 @@ export namespace SessionPrompt {
           }).catch((error) => {
             daemonExecutionError = error instanceof Error ? error : new Error(String(error))
             if (shouldFallbackToLocalSubtask(daemonExecutionError)) {
+              daemonFallbackToLocal = true
               log.warn("daemon subtask execution unavailable, falling back to local task tool", {
                 error: daemonExecutionError.message,
                 agent: resolvedAgent,
                 description: task.description,
+                subtaskMode: "local_fallback",
               })
               return undefined
             }
@@ -983,13 +986,22 @@ export namespace SessionPrompt {
               error: daemonExecutionError.message,
               agent: resolvedAgent,
               description: task.description,
+              subtaskMode: "daemon",
             })
             return undefined
           })
+          if (result) {
+            log.info("subtask executed via orchestration daemon", {
+              agent: resolvedAgent,
+              description: task.description,
+              subtaskMode: "daemon",
+            })
+          }
         } else if (daemonSubtasksEnabled() && !daemonEligibleAgent) {
           log.debug("daemon subtask execution skipped for non-persona agent", {
             agent: resolvedAgent,
             description: task.description,
+            subtaskMode: "local_direct",
           })
         }
 
@@ -1002,9 +1014,18 @@ export namespace SessionPrompt {
               originalAgent: task.agent,
               description: task.description,
               daemonFallback: Boolean(daemonExecutionError),
+              subtaskMode: daemonFallbackToLocal ? "local_fallback" : "local_direct",
             })
             return undefined
           })
+          if (result) {
+            log.info("subtask executed via local task tool", {
+              agent: resolvedAgent,
+              description: task.description,
+              daemonFallback: daemonFallbackToLocal,
+              subtaskMode: daemonFallbackToLocal ? "local_fallback" : "local_direct",
+            })
+          }
         }
         await Plugin.trigger(
           "tool.execute.after",

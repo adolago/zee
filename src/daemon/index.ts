@@ -8,7 +8,7 @@
 
 import { DaemonServer } from "./ipc-server";
 import { mkdirSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, availableParallelism, cpus } from "node:os";
 import { join } from "node:path";
 import type { QueueDedupeMode, QueueDropPolicy } from "../swarm/queue";
 
@@ -41,6 +41,19 @@ function parseDedupeMode(raw: string | undefined): QueueDedupeMode {
   return "task-id";
 }
 
+function defaultMaxWorkers(): number {
+  const cores = (() => {
+    try {
+      return typeof availableParallelism === "function"
+        ? availableParallelism()
+        : cpus().length;
+    } catch {
+      return 2;
+    }
+  })();
+  return Math.max(2, Math.min(8, cores - 1));
+}
+
 async function main(): Promise<void> {
   console.log(`[daemon] Starting zee daemon (PID: ${process.pid})`);
 
@@ -50,7 +63,7 @@ async function main(): Promise<void> {
 
   const maxWorkers = parsePositiveInt(
     getArg("max-workers") ?? process.env.ZEE_ORCH_MAX_WORKERS,
-    8,
+    defaultMaxWorkers(),
   );
   const queueCap = parsePositiveInt(
     getArg("queue-cap") ?? process.env.ZEE_ORCH_QUEUE_CAP,
