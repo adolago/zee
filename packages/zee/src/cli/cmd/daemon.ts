@@ -815,6 +815,10 @@ export const DaemonCommand = cmd({
       .option("runtime-max-mcp-per-server", {
         describe: "Maximum MCP server processes per server name",
         type: "number",
+      })
+      .option("runtime-max-clients", {
+        describe: "Maximum Zee client processes",
+        type: "number",
       }),
   describe: "Start zee as a headless daemon for remote access",
   handler: async (args) => {
@@ -878,6 +882,10 @@ export const DaemonCommand = cmd({
       maxMcpPerServer:
         typeof args["runtime-max-mcp-per-server"] === "number"
           ? args["runtime-max-mcp-per-server"]
+          : undefined,
+      maxClients:
+        typeof args["runtime-max-clients"] === "number"
+          ? args["runtime-max-clients"]
           : undefined,
     }
 
