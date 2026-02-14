@@ -25,6 +25,7 @@ import {
   type SessionScope,
   updateSessionStore,
 } from "../../config/sessions.js";
+import { archiveSessionTranscripts } from "../../gateway/session-utils.fs.js";
 import { normalizeMainKey } from "../../routing/session-key.js";
 import { resolveCommandAuthorization } from "../command-auth.js";
 import type { MsgContext, TemplateContext } from "../templating.js";
@@ -334,6 +335,15 @@ export async function initSessionState(params: {
     // Preserve per-session overrides while resetting compaction state on /new.
     store[sessionKey] = { ...store[sessionKey], ...sessionEntry };
   });
+  if (previousSessionEntry?.sessionId) {
+    archiveSessionTranscripts({
+      sessionId: previousSessionEntry.sessionId,
+      storePath,
+      sessionFile: previousSessionEntry.sessionFile,
+      agentId,
+      reason: "reset",
+    });
+  }
 
   const sessionCtx: TemplateContext = {
     ...ctx,

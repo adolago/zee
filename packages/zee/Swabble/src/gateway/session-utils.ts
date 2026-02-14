@@ -35,6 +35,7 @@ import type {
 
 export {
   archiveFileOnDisk,
+  archiveSessionTranscripts,
   capArrayByJsonBytes,
   readFirstUserMessageFromTranscript,
   readLastMessagePreviewFromTranscript,
