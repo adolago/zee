@@ -8,6 +8,12 @@ export const TodoWriteTool = Tool.define("todowrite", {
   description: DESCRIPTION_WRITE,
   parameters: z.object({
     todos: z.array(z.object(Todo.InfoInput.shape)).describe("The updated todo list"),
+    sessionId: z
+      .string()
+      .optional()
+      .describe(
+        "Optional session ID to write todos to. When omitted, writes to the current session. Use this to update or clear todos from other sessions (e.g. stale banner items).",
+      ),
   }),
   async execute(params, ctx) {
     const holdMode = ctx.extra?.holdMode === true
@@ -30,8 +36,10 @@ export const TodoWriteTool = Tool.define("todowrite", {
     // Normalize todos - fills in defaults for status/priority and generates ids
     const normalizedTodos = params.todos.map(Todo.normalize)
 
+    const targetSessionID = params.sessionId ?? ctx.sessionID
+
     await Todo.update({
-      sessionID: ctx.sessionID,
+      sessionID: targetSessionID,
       todos: normalizedTodos,
     })
     return {
@@ -39,6 +47,7 @@ export const TodoWriteTool = Tool.define("todowrite", {
       output: JSON.stringify(normalizedTodos, null, 2),
       metadata: {
         todos: normalizedTodos,
+        ...(params.sessionId ? { targetSessionId: params.sessionId } : {}),
       },
     }
   },

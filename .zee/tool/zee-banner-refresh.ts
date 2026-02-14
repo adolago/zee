@@ -95,10 +95,15 @@ async function getReminderItems(now: Date): Promise<{ items: ZeeBannerItem[]; ca
   return { items: reminders, ...(calendarError ? { calendarError } : {}) }
 }
 
+interface TodoEntry {
+  content: string
+  sessionID: string
+}
+
 async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeBannerItem[] }> {
   const nowMs = now.getTime()
-  const inProgress: string[] = []
-  const pending: string[] = []
+  const inProgress: TodoEntry[] = []
+  const pending: TodoEntry[] = []
   let totalOpen = 0
 
   try {
@@ -117,8 +122,8 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
         if (typeof content !== "string" || !content.trim()) continue
         if (status === "completed" || status === "cancelled") continue
         totalOpen++
-        if (status === "in_progress") inProgress.push(content)
-        else pending.push(content)
+        if (status === "in_progress") inProgress.push({ content, sessionID })
+        else pending.push({ content, sessionID })
       }
     }
   } catch {
@@ -136,25 +141,25 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
     })
   }
 
-  for (const content of inProgress.slice(0, 2)) {
+  for (const entry of inProgress.slice(0, 2)) {
     if (items.length >= MAX_TODO_ITEMS) break
     items.push({
       id: uid("todo-ip"),
       kind: "todo",
       priority: "high",
       createdAt: nowMs,
-      text: `In progress: ${sanitizeOneLine(content).slice(0, 120)}`,
+      text: `[TODO] In progress: ${sanitizeOneLine(entry.content).slice(0, 120)} (session: ${entry.sessionID})`,
     })
   }
 
-  for (const content of pending.slice(0, 2)) {
+  for (const entry of pending.slice(0, 2)) {
     if (items.length >= MAX_TODO_ITEMS) break
     items.push({
       id: uid("todo"),
       kind: "todo",
       priority: "normal",
       createdAt: nowMs,
-      text: `Next: ${sanitizeOneLine(content).slice(0, 120)}`,
+      text: `[TODO] Next: ${sanitizeOneLine(entry.content).slice(0, 120)} (session: ${entry.sessionID})`,
     })
   }
 

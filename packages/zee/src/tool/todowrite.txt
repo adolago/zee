@@ -143,6 +143,19 @@ The assistant did not use the todo list because this is a single command executi
 </reasoning>
 </example>
 
+## Cross-Session Todo Management
+
+The `sessionId` parameter allows you to update or clear todos from any session, not just the current one. This is useful when the banner shows stale todos from old sessions.
+
+- The banner displays each todo with its session ID: `(session: ses_xxxx)`
+- To clear a stale todo, call TodoWrite with that `sessionId` and an empty `todos` array
+- When `sessionId` is omitted, todos are written to the current session (default behavior)
+
+Example: Clear all todos from an old session:
+```json
+{ "todos": [], "sessionId": "ses_3a93eef4dffercGAjay7tv67GU" }
+```
+
 ## Task States and Management
 
 1. **Task States**: Use these states to track progress:
