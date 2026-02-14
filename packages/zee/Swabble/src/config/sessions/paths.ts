@@ -33,6 +33,26 @@ export function resolveDefaultSessionStorePath(agentId?: string): string {
   return path.join(resolveAgentSessionsDir(agentId), "sessions.json");
 }
 
+export type SessionFilePathOptions = {
+  agentId?: string;
+  sessionsDir?: string;
+};
+
+export function resolveSessionFilePathOptions(params: {
+  agentId?: string;
+  storePath?: string;
+}): SessionFilePathOptions | undefined {
+  const storePath = params.storePath?.trim();
+  if (storePath) {
+    return { sessionsDir: path.dirname(path.resolve(storePath)) };
+  }
+  const agentId = params.agentId?.trim();
+  if (agentId) {
+    return { agentId };
+  }
+  return undefined;
+}
+
 export function resolveSessionTranscriptPath(
   sessionId: string,
   agentId?: string,
@@ -65,21 +85,28 @@ function normalizeAbsoluteSessionFilePathWithinSessionsDir(params: {
 export function resolveSessionFilePath(
   sessionId: string,
   entry?: SessionEntry,
-  opts?: { agentId?: string },
+  opts?: SessionFilePathOptions,
 ): string {
   const candidate = entry?.sessionFile?.trim();
-  if (!candidate) {
-    return resolveSessionTranscriptPath(sessionId, opts?.agentId);
+  if (candidate) {
+    if (!path.isAbsolute(candidate)) {
+      return candidate;
+    }
+    const normalized = normalizeAbsoluteSessionFilePathWithinSessionsDir({
+      sessionsDir: resolveAgentSessionsDir(opts?.agentId),
+      sessionFile: candidate,
+    });
+    if (normalized) {
+      return normalized;
+    }
   }
-  if (!path.isAbsolute(candidate)) {
-    return candidate;
+
+  const sessionsDir = opts?.sessionsDir?.trim();
+  if (sessionsDir) {
+    return path.join(path.resolve(sessionsDir), `${sessionId}.jsonl`);
   }
-  const sessionsDir = resolveAgentSessionsDir(opts?.agentId);
-  const normalized = normalizeAbsoluteSessionFilePathWithinSessionsDir({
-    sessionsDir,
-    sessionFile: candidate,
-  });
-  return normalized ?? candidate;
+  return resolveSessionTranscriptPath(sessionId, opts?.agentId);
+
 }
 
 export function resolveStorePath(store?: string, opts?: { agentId?: string }) {

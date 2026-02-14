@@ -10,6 +10,7 @@ import type { ZeeConfig } from "../config/config.js";
 import {
   resolveMainSessionKey,
   resolveSessionFilePath,
+  resolveSessionFilePathOptions,
   type SessionEntry,
   type SessionScope,
 } from "../config/sessions.js";
@@ -35,6 +36,7 @@ import {
   type ChatCommandDefinition,
 } from "./commands-registry.js";
 import { listPluginCommands } from "../plugins/commands.js";
+import { resolveAgentIdFromSessionKey } from "../routing/session-key.js";
 import type { SkillCommandSpec } from "../agents/skills.js";
 import type { CommandCategory } from "./commands-registry.types.js";
 import type { ElevatedLevel, ReasoningLevel, ThinkLevel, VerboseLevel } from "./thinking.js";
@@ -58,6 +60,7 @@ type StatusArgs = {
   agent: AgentConfig;
   sessionEntry?: SessionEntry;
   sessionKey?: string;
+  sessionStorePath?: string;
   sessionScope?: SessionScope;
   groupActivation?: "mention" | "always";
   resolvedThink?: ThinkLevel;
@@ -160,6 +163,8 @@ const formatQueueDetails = (queue?: QueueStatus) => {
 const readUsageFromSessionLog = (
   sessionId?: string,
   sessionEntry?: SessionEntry,
+  sessionKey?: string,
+  storePath?: string,
 ):
   | {
       input: number;
@@ -171,7 +176,17 @@ const readUsageFromSessionLog = (
   | undefined => {
   // Transcripts are stored at the session file path (fallback: ~/.zee/sessions/<SessionId>.jsonl)
   if (!sessionId) return undefined;
-  const logPath = resolveSessionFilePath(sessionId, sessionEntry);
+  let logPath: string;
+  try {
+    const agentId = sessionKey ? resolveAgentIdFromSessionKey(sessionKey) : undefined;
+    logPath = resolveSessionFilePath(
+      sessionId,
+      sessionEntry,
+      resolveSessionFilePathOptions({ agentId, storePath }),
+    );
+  } catch {
+    return undefined;
+  }
   if (!fs.existsSync(logPath)) return undefined;
 
   try {
@@ -304,7 +319,12 @@ export function buildStatusMessage(args: StatusArgs): string {
   // Prefer prompt-size tokens from the session transcript when it looks larger
   // (cached prompt tokens are often missing from agent meta/store).
   if (args.includeTranscriptUsage) {
-    const logUsage = readUsageFromSessionLog(entry?.sessionId, entry);
+    const logUsage = readUsageFromSessionLog(
+      entry?.sessionId,
+      entry,
+      args.sessionKey,
+      args.sessionStorePath,
+    );
     if (logUsage) {
       const candidate = logUsage.promptTokens || logUsage.total;
       if (!totalTokens || totalTokens === 0 || candidate > totalTokens) {
