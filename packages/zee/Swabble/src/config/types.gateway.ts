@@ -51,6 +51,19 @@ export type TalkConfig = {
 
 export type GatewayAuthMode = "token" | "password";
 
+export type GatewayAuthRateLimitConfig = {
+  /** Enable auth rate limiting and lockouts (default: true). */
+  enabled?: boolean;
+  /** Sliding window for failed auth attempts in milliseconds (default: 60000). */
+  windowMs?: number;
+  /** Max failed attempts per client IP within the window (default: 20). */
+  maxAttemptsPerIp?: number;
+  /** Max failed attempts per token/password within the window (default: 10). */
+  maxAttemptsPerToken?: number;
+  /** Lockout duration in milliseconds after limit is exceeded (default: 300000). */
+  lockoutMs?: number;
+};
+
 export type GatewayAuthConfig = {
   /** Authentication mode for Gateway connections. Defaults to token when set. */
   mode?: GatewayAuthMode;
@@ -60,6 +73,8 @@ export type GatewayAuthConfig = {
   password?: string;
   /** Allow Tailscale identity headers when serve mode is enabled. */
   allowTailscale?: boolean;
+  /** Optional auth rate limiting controls. */
+  rateLimit?: GatewayAuthRateLimitConfig;
 };
 
 export type GatewayTailscaleMode = "off" | "serve" | "funnel";

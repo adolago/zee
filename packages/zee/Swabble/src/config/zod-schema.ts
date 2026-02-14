@@ -350,6 +350,16 @@ export const ZeeSchema = z
             token: z.string().optional(),
             password: z.string().optional(),
             allowTailscale: z.boolean().optional(),
+            rateLimit: z
+              .object({
+                enabled: z.boolean().optional(),
+                windowMs: z.number().int().positive().optional(),
+                maxAttemptsPerIp: z.number().int().positive().optional(),
+                maxAttemptsPerToken: z.number().int().positive().optional(),
+                lockoutMs: z.number().int().positive().optional(),
+              })
+              .strict()
+              .optional(),
           })
           .strict()
           .optional(),
