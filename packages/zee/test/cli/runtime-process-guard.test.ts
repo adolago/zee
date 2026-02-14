@@ -3,6 +3,7 @@ import {
   classifyRuntimeProcess,
   extractMcpServerName,
   isManagedMcpProcess,
+  isProtectedClientProcess,
   isProtectedDaemonLikeProcess,
   parsePgrepOutput,
   resolveRuntimeProcessLimits,
@@ -13,18 +14,21 @@ const originalEnv = {
   maxTotal: process.env.ZEE_RUNTIME_MAX_PROCESSES_TOTAL,
   maxMcpTotal: process.env.ZEE_RUNTIME_MAX_MCP_PROCESSES,
   maxMcpPerServer: process.env.ZEE_RUNTIME_MAX_MCP_PER_SERVER,
+  maxClients: process.env.ZEE_RUNTIME_MAX_CLIENT_PROCESSES,
 }
 
 afterEach(() => {
   process.env.ZEE_RUNTIME_MAX_PROCESSES_TOTAL = originalEnv.maxTotal
   process.env.ZEE_RUNTIME_MAX_MCP_PROCESSES = originalEnv.maxMcpTotal
   process.env.ZEE_RUNTIME_MAX_MCP_PER_SERVER = originalEnv.maxMcpPerServer
+  process.env.ZEE_RUNTIME_MAX_CLIENT_PROCESSES = originalEnv.maxClients
 })
 
 describe("runtime-process-guard helpers", () => {
   function makeEntry(input: Partial<RuntimeProcessEntry> & Pick<RuntimeProcessEntry, "pid" | "command" | "kind">): RuntimeProcessEntry {
     return {
       ppid: undefined,
+      zeeExecutable: true,
       mcpServerName: undefined,
       taggedMcp: false,
       taggedParentPid: undefined,
@@ -32,6 +36,11 @@ describe("runtime-process-guard helpers", () => {
       systemdUnit: undefined,
       systemdManaged: false,
       descendantOfCurrent: false,
+      exePath: "/home/artur/.bun/bin/zee",
+      exeDeleted: false,
+      binaryPinned: true,
+      hasTty: false,
+      interactiveClient: false,
       ...input,
     }
   }
@@ -53,6 +62,7 @@ describe("runtime-process-guard helpers", () => {
 
   test("classifyRuntimeProcess classifies daemon gateway and mcp", () => {
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee daemon --port 3210")).toBe("daemon")
+    expect(classifyRuntimeProcess("/home/user/.bun/bin/zee daemon-orch --ipc-socket /tmp/daemon.sock")).toBe("daemon")
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee gateway --port 18789")).toBe("gateway")
     expect(classifyRuntimeProcess("bun run /repo/src/mcp/servers/calendar.ts")).toBe("mcp_server")
     expect(classifyRuntimeProcess("zee run \"hello\"")).toBe("zee_other")
@@ -62,12 +72,14 @@ describe("runtime-process-guard helpers", () => {
     process.env.ZEE_RUNTIME_MAX_PROCESSES_TOTAL = "99"
     process.env.ZEE_RUNTIME_MAX_MCP_PROCESSES = "12"
     process.env.ZEE_RUNTIME_MAX_MCP_PER_SERVER = "3"
+    process.env.ZEE_RUNTIME_MAX_CLIENT_PROCESSES = "5"
 
     const limits = resolveRuntimeProcessLimits()
     expect(limits).toEqual({
       maxTotal: 99,
       maxMcpTotal: 12,
       maxMcpPerServer: 3,
+      maxClients: 5,
     })
   })
 
@@ -167,5 +179,47 @@ describe("runtime-process-guard helpers", () => {
     })
 
     expect(isProtectedDaemonLikeProcess({ entry: daemon, currentPid: 9999 })).toBe(false)
+  })
+
+  test("isProtectedClientProcess protects active pinned tty clients", () => {
+    const client = makeEntry({
+      pid: 500,
+      command: "zee",
+      kind: "zee_other",
+      hasTty: true,
+      interactiveClient: true,
+      binaryPinned: true,
+      orphaned: false,
+    })
+
+    expect(isProtectedClientProcess({ entry: client, currentPid: 9999 })).toBe(true)
+  })
+
+  test("isProtectedClientProcess does not protect detached client without tty", () => {
+    const client = makeEntry({
+      pid: 501,
+      command: "zee --print-logs",
+      kind: "zee_other",
+      hasTty: false,
+      interactiveClient: true,
+      binaryPinned: true,
+      orphaned: false,
+    })
+
+    expect(isProtectedClientProcess({ entry: client, currentPid: 9999 })).toBe(false)
+  })
+
+  test("isProtectedClientProcess does not protect binary mismatch clients", () => {
+    const client = makeEntry({
+      pid: 502,
+      command: "zee",
+      kind: "zee_other",
+      hasTty: true,
+      interactiveClient: true,
+      binaryPinned: false,
+      orphaned: false,
+    })
+
+    expect(isProtectedClientProcess({ entry: client, currentPid: 9999 })).toBe(false)
   })
 })
