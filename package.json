@@ -7,6 +7,8 @@
   "packageManager": "bun@1.3.5",
   "scripts": {
     "dev": "bun run --cwd packages/zee --conditions=browser src/index.ts",
+    "build:zee": "bun run --cwd packages/zee build",
+    "verify:binary": "cd packages/zee && bun run build && ./script/verify-binary.sh",
     "boundaries:check": "depcruise --config .dependency-cruiser.cjs --ts-config $(pwd)/packages/zee/tsconfig.json --output-type err packages/zee/src",
     "typecheck": "bun run --cwd packages/zee typecheck",
     "prepare": "husky",
@@ -86,6 +88,10 @@
     "google-auth-library": "9.15.1",
     "jsonc-parser": "3.3.1",
     "typescript": "catalog:"
+  },
+  "engines": {
+    "bun": ">=1.3.5",
+    "node": ">=22.0.0"
   },
   "license": "MIT",
   "prettier": {
