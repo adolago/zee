@@ -36,7 +36,7 @@ describe("session paths", () => {
     expect(resolved).toBe(path.resolve(sessionsDir, "abc-123-topic-42.jsonl"));
   });
 
-  it("leaves absolute sessionFile paths outside the sessions directory unchanged", () => {
+  it("falls back to default session path for absolute sessionFile paths outside the sessions directory", () => {
     const sessionsDir = resolveSessionTranscriptsDirForAgent("main");
     const outsidePath = path.resolve(path.dirname(sessionsDir), "work", "sessions", "abc-123.jsonl");
 
@@ -46,7 +46,7 @@ describe("session paths", () => {
       { agentId: "main" },
     );
 
-    expect(resolved).toBe(outsidePath);
+    expect(resolved).toBe(path.resolve(sessionsDir, "sess-1.jsonl"));
   });
 
   it("prefers storePath when resolving session file options", () => {

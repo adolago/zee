@@ -242,6 +242,8 @@ describe("POST /tools/invoke", () => {
         },
       ],
     } as any;
+    // Let file-backed gateway.auth include rateLimit for this test.
+    testState.gatewayAuth = undefined;
 
     const { writeConfigFile } = await import("../config/config.js");
     await writeConfigFile({

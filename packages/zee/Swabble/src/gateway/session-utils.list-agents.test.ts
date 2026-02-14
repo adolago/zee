@@ -27,7 +27,7 @@ beforeAll(async () => {
 })
 
 describe("listAgentsForGateway", () => {
-  it("does not append phantom main when agents.list excludes main", () => {
+  it("includes mainKey alongside explicit agents", () => {
     const result = listAgentsForGateway({
       agents: {
         list: [{ id: "ops" }],
@@ -36,7 +36,7 @@ describe("listAgentsForGateway", () => {
 
     expect(result.defaultId).toBe("ops")
     expect(result.mainKey).toBe("main")
-    expect(result.agents.map((agent) => agent.id)).toEqual(["ops"])
+    expect(result.agents.map((agent) => agent.id)).toEqual(["ops", "main"])
   })
 
   it("keeps main in listing when no explicit allowlist exists", () => {

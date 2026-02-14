@@ -17,6 +17,7 @@ vi.mock("../../agents/pi-embedded.js", () => ({
 vi.mock("../../config/sessions.js", () => ({
   resolveGroupSessionKey: vi.fn().mockReturnValue(undefined),
   resolveSessionFilePath: vi.fn().mockReturnValue("/tmp/session.jsonl"),
+  resolveSessionFilePathOptions: vi.fn().mockReturnValue({ agentId: "default" }),
   updateSessionStore: vi.fn(),
 }));
 
@@ -169,8 +170,8 @@ describe("runPreparedReply media-only handling", () => {
     expect(call).toBeTruthy();
     expect(call?.followupRun.prompt).toContain("[Thread starter - for context]");
     expect(call?.followupRun.prompt).toContain("Earlier message in this thread");
-    expect(call?.followupRun.prompt).toContain("[User sent media without caption]");
-    expect(call?.commandBody).toContain("[User sent media without caption]");
+    expect(call?.followupRun.prompt).toContain("[media attached: /tmp/input.png]");
+    expect(call?.commandBody).toContain("[media attached: /tmp/input.png]");
   });
 
   it("returns the empty-body reply when there is no text and no media", async () => {
