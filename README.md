@@ -5,13 +5,6 @@
 
 Zee is a unified CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp).
 
-## Ecosystem
-
-| Project | Description |
-|---------|-------------|
-| [**Zee**](https://github.com/adolago/zee) | CLI agent engine (this repo) |
-| [**GMATE**](https://github.com/adolago/gmate) | AI-powered GMAT study platform with adaptive tutor and Socratic pedagogy |
-
 ## Release
 
 - **Version:** see `zee --version`
@@ -23,7 +16,7 @@ Zee is a unified CLI agent engine for life admin, investing, and learning. Seman
 ### Prerequisites
 
 - [Bun](https://bun.sh) (v1.1+)
-- [Qdrant](https://qdrant.tech) (local or cloud) for semantic memory
+- [Qdrant](https://qdrant.tech) (local) for semantic memory
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
 
 ### Install (npm)

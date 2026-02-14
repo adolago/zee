@@ -6,4 +6,3 @@
  */
 
 export * from "./llm-provider"
-export * from "./whatsapp-api"

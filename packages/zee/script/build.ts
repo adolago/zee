@@ -187,7 +187,7 @@ function toBundledExtensionEntry(entry: string): string {
   return `${trimmed.slice(0, -ext.length)}.js`
 }
 
-async function bundleSwabbleExtensions(distRoot: string) {
+async function bundleSwabbleExtensions(distRoot: string, target?: { os: string; arch: string }) {
   if (!fs.existsSync(swabbleExtensionsRoot)) return
 
   const extensionsDestRoot = path.join(distRoot, "bin", "extensions")
@@ -254,14 +254,28 @@ async function bundleSwabbleExtensions(distRoot: string) {
         throw new Error(`Failed to bundle extension "${extensionId}" entry "${entry}": ${errors}`)
       }
 
-      for (const artifact of result.outputs) {
-        const outputPath = artifact.path.replace(/^\.[/\\]/, "")
-        const destination = path.join(extensionDestRoot, outputPath)
-        fs.mkdirSync(path.dirname(destination), { recursive: true })
-        await Bun.write(destination, artifact)
-      }
+      // Bun.build with outdir already writes files to disk; do NOT re-write
+      // artifacts here -- artifact.path can be absolute/deep-relative which
+      // would create nested home/ directories in the output.
 
       bundledEntries.push(`./${bundledEntry.replace(/\\/g, "/").replace(/^\.\//, "")}`)
+    }
+
+    // Clean up any home/ directories that Bun.build may have created
+    // via asset copying with absolute source paths
+    const homeDir = path.join(extensionDestRoot, "home")
+    if (fs.existsSync(homeDir)) {
+      fs.rmSync(homeDir, { recursive: true, force: true })
+    }
+
+    // Strip cross-platform native modules -- keep only the target platform
+    if (target) {
+      const platformPrefix = `${target.os}-${target.arch}`
+      for (const file of fs.readdirSync(extensionDestRoot)) {
+        if (file.endsWith(".node") && !file.includes(platformPrefix)) {
+          fs.unlinkSync(path.join(extensionDestRoot, file))
+        }
+      }
     }
 
     if (bundledEntries.length === 0) {
@@ -472,7 +486,7 @@ for (const item of targets) {
   bundleZeeAssets(path.join(dir, "dist", name))
   bundlePersonaSkills(path.join(dir, "dist", name))
   bundleSrcModules(path.join(dir, "dist", name))
-  await bundleSwabbleExtensions(path.join(dir, "dist", name))
+  await bundleSwabbleExtensions(path.join(dir, "dist", name), { os: item.os, arch: item.arch })
   binaries[name] = Script.version
 }
 

@@ -463,22 +463,8 @@ class MessageBatcher {
 /**
  * Create a messaging surface with a platform handler.
  *
- * Platform handlers must be provided by the application:
- * - WhatsApp: Use whatsapp-web.js (or @whiskeysockets/baileys)
- * - Only WhatsApp is supported
- *
- * @example
- * ```typescript
- * import { createMessagingSurface, MessagingPlatformHandler } from './messaging';
- * import { makeWASocket } from '@whiskeysockets/baileys';
- *
- * class BaileysHandler implements MessagingPlatformHandler {
- *   readonly platform = 'whatsapp' as const;
- *   // ... implement methods using Baileys
- * }
- *
- * const surface = createMessagingSurface(new BaileysHandler(), config);
- * ```
+ * Platform handlers must be provided by the application.
+ * WhatsApp messaging is handled via meta-cli (Business API).
  */
 export function createMessagingSurface(
   platform: MessagingPlatformHandler,

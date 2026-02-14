@@ -22,7 +22,7 @@ import {
 } from "./splitwise.js";
 import { resolveCodexbarConfig, runCodexbar } from "./codexbar.js";
 import { withRetry, suggestRecovery, buildEscalation } from "../../swarm/recovery.js";
-import { sendWhatsAppMessage, type WhatsAppTransport } from "./whatsapp-send.js";
+import { sendWhatsAppMessage, type MetaCliSendErrorCode } from "./whatsapp-send.js";
 
 const log = Log.create({ service: "zee-tools" });
 
@@ -577,26 +577,26 @@ Recent by time: mode=search (or filter), since="7d".`,
 const MessagingParams = z.object({
   channel: z.enum(["whatsapp"])
     .describe("Messaging channel: whatsapp"),
-  to: z.string().describe("Recipient: WhatsApp chatId/JID/E.164"),
+  to: z.string().describe("Recipient: E.164 phone number (e.g., +15551234567)"),
   message: z.string().describe("Message content (text or caption for media)"),
   mediaUrl: z.string().optional()
-    .describe("URL or local file path to media (audio, image, video, document). For voice notes, use audio/ogg with opus codec."),
+    .describe("URL or local file path to media (image, video, document)"),
+  mediaType: z.enum(["image", "video", "document"]).optional()
+    .describe("Media type (auto-detected from extension if omitted)"),
   account: z.string().optional()
     .describe('Account to use (default: "zee")'),
-  transport: z.enum(["auto", "wacli", "gateway"]).optional()
-    .describe("Transport strategy: auto (wacli first), wacli only, or gateway only"),
 });
 
 export const messagingTool: ToolDefinition = {
   id: "zee:messaging",
   category: "domain",
   init: async () => ({
-    description: `Send messages via WhatsApp. Default transport is wacli (direct), with optional gateway fallback. Always search memory for recipient contact info before asking the user.
+    description: `Send messages via WhatsApp (Business API). Always search memory for recipient contact info before asking the user.
 
-WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for images/audio/video.`,
+WhatsApp: to=E.164 phone (e.g., "+15551234567"). Groups not supported. Supports mediaUrl for images/video/documents.`,
     parameters: MessagingParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { channel, to, message, mediaUrl, account, transport } = args;
+      const { channel, to, message, mediaUrl, mediaType, account } = args;
 
       const hasMedia = Boolean(mediaUrl?.trim());
       ctx.metadata({ title: `Sending via ${channel}${hasMedia ? " (media)" : ""}` });
@@ -607,7 +607,7 @@ WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for ima
         try {
           const result = validateMediaPath(validatedMediaUrl, {
             cwd: process.cwd(),
-            permissive: true, // allow paths outside home, but block sensitive dirs
+            permissive: true,
           });
           if (result) {
             validatedMediaUrl = result.resolved;
@@ -626,39 +626,46 @@ WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for ima
 
       try {
         const accountId = account || "zee";
-        const resolvedTransport = (transport ?? "auto") as WhatsAppTransport;
 
         const result = await sendWhatsAppMessage({
           to,
           message,
           mediaUrl: validatedMediaUrl,
-          accountId,
-          transport: resolvedTransport,
+          mediaType: mediaType as "image" | "video" | "document" | undefined,
         });
 
         if (!result.success) {
-          const troubleshooting = result.transport === "wacli"
-            ? `Troubleshooting:
-- Ensure \`~/go/bin/wacli\` is installed
-- If locked, stop \`wacli sync --follow\`
-- If unauthenticated, run \`~/go/bin/wacli auth\``
-            : `Troubleshooting:
-- Ensure \`zee daemon\` is running
-- Check \`zee debug status\` shows Gateway: Active
-- Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`;
+          const troubleshootingMap: Record<MetaCliSendErrorCode, string> = {
+            META_CLI_NOT_FOUND: `Troubleshooting:
+- Install meta-cli: \`bun add -g @anthropic/meta-cli\`
+- Or set ZEE_META_CLI_BIN
+- Verify: \`meta doctor\``,
+            META_CLI_TIMEOUT: `Troubleshooting:
+- Check network connectivity
+- Verify Business API status: \`meta doctor\``,
+            META_CLI_AUTH_FAILED: `Troubleshooting:
+- Run \`meta auth login\` to re-authenticate
+- Verify: \`meta doctor\``,
+            META_CLI_API_ERROR: `Troubleshooting:
+- Verify recipient number is on WhatsApp
+- Check message template compliance (24h window)
+- Run \`meta doctor\``,
+            META_CLI_FAILED: `Troubleshooting:
+- Run \`meta doctor\` to check configuration
+- Verify \`meta wa send\` works manually`,
+          };
 
           return {
             title: `WhatsApp Send Failed`,
             metadata: {
               channel,
               to,
-              transport: result.transport,
               error: result.error,
               errorCode: result.code,
             },
-            output: `Failed to send WhatsApp message via ${result.transport}: ${result.error}
+            output: `Failed to send WhatsApp message: ${result.error}
 
-${troubleshooting}`,
+${troubleshootingMap[result.code]}`,
           };
         }
 
@@ -677,11 +684,11 @@ ${troubleshooting}`,
             account: accountId,
             hasMedia,
             success: true,
-            transport: result.transport,
+            messageId: result.messageId,
           },
           output: `Message sent via ${accountLabel} to ${to}${mediaLabel}
 
-${preview}`,
+${preview}${result.messageId ? `\nMessage ID: ${result.messageId}` : ""}`,
         };
 
       } catch (error) {
@@ -693,8 +700,7 @@ ${preview}`,
           output: `Failed to send message: ${errorMsg}
 
 Troubleshooting:
-- Ensure zee daemon is running
-- Check gateway status with /status command
+- Run \`meta doctor\` to check configuration
 - Verify network connectivity`,
         };
       }
@@ -1174,6 +1180,7 @@ Enable it in zee.jsonc:
 
 // =============================================================================
 // WhatsApp Reaction Tool
+// TODO: migrate to meta-cli when it supports reactions (currently uses gateway)
 // =============================================================================
 
 const WhatsAppReactionParams = z.object({

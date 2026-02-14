@@ -35,13 +35,6 @@ The user-facing name is **Zee**. The internal package infrastructure uses `zee`.
 Do NOT use emojis in commits, PRs, code comments, docs, logs, or user-facing text.
 Exceptions: third-party integrations, user content, skill metadata `emoji` fields.
 
-## Ecosystem
-
-| Project | Repo |
-|---------|------|
-| **Zee** | [adolago/zee](https://github.com/adolago/zee) -- this repo |
-| **GMATE** | [adolago/gmate](https://github.com/adolago/gmate) -- AI-powered GMAT study platform |
-
 ## Zee - Unified Assistant
 
 Zee is the single assistant handling all domains:

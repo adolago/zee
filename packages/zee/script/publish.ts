@@ -18,7 +18,11 @@ const DEFAULT_NPM_PACKAGE = "@zee/zee"
 const NPM_PACKAGE =
   process.env.ZEE_NPM_PACKAGE?.trim() || DEFAULT_NPM_PACKAGE
 const SCOPE_PREFIX = NPM_PACKAGE.startsWith("@") ? NPM_PACKAGE.split("/")[0] : ""
-const scopedName = (name: string) => (SCOPE_PREFIX ? `${SCOPE_PREFIX}/${name}` : name)
+const scopedName = (name: string) => {
+  if (!SCOPE_PREFIX) return name
+  const bare = name.startsWith("@") ? name.replace(/^@[^/]+\//, "") : name
+  return `${SCOPE_PREFIX}/${bare}`
+}
 
 const GITHUB_REPO =
   process.env.ZEE_GITHUB_REPO?.trim() || "adolago/zee"
@@ -111,6 +115,7 @@ console.log(`\n* Preparing npm package ${NPM_PACKAGE}...`)
 
 await $`mkdir -p ./dist/${pkg.name}`
 await $`cp -r ./bin ./dist/${pkg.name}/bin`
+await $`cp ./README.md ./dist/${pkg.name}/README.md`
 await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
 
 await Bun.file(`./dist/${pkg.name}/package.json`).write(

@@ -7,10 +7,6 @@
 
 import { getSurfaceRouter, SurfaceRouter } from '../surface/router';
 import { createCLISurface } from '../surface/cli';
-import { createMessagingSurface } from '../surface/messaging';
-import {
-  createWhatsAppHandler,
-} from '../surface/platforms/index';
 import type { Surface } from '../surface/surface';
 import { Log } from '../util/log';
 import { Config } from '../config/config';
@@ -28,15 +24,6 @@ let router: SurfaceRouter | null = null;
 type SurfaceBootstrapConfig = {
   /** Enable CLI surface (default: true) */
   enableCLI?: boolean;
-  /** Enable WhatsApp surface (default: false) */
-  enableWhatsApp?: boolean;
-  /** WhatsApp configuration */
-  whatsapp?: {
-    sessionName: string;
-    allowedNumbers?: string[];
-    allowedGroups?: string[];
-    requireMention?: boolean;
-  };
   /** Enable analytics collection */
   enableAnalytics?: boolean;
   /** Enable hot-reload of surface configs */
@@ -70,11 +57,6 @@ export async function initSurfaces(): Promise<void> {
   // Register CLI surface (always enabled in daemon mode)
   if (config.enableCLI !== false) {
     await registerCLISurface();
-  }
-
-  // Register WhatsApp surface if configured
-  if (config.enableWhatsApp && config.whatsapp) {
-    await registerWhatsAppSurface(config.whatsapp);
   }
 
   // Initialize router (connects all surfaces)
@@ -126,38 +108,6 @@ async function registerCLISurface(): Promise<void> {
   await router.registerSurface(cliSurface);
 }
 
-async function registerWhatsAppSurface(config: NonNullable<SurfaceBootstrapConfig['whatsapp']>): Promise<void> {
-  if (!router) return;
-
-  log.info('Registering WhatsApp surface');
-
-  try {
-    const handler = createWhatsAppHandler({
-      sessionName: config.sessionName,
-      allowedNumbers: config.allowedNumbers,
-      allowedGroups: config.allowedGroups,
-      requireMention: config.requireMention ?? true,
-    });
-
-    const surface = createMessagingSurface(handler, {
-      groups: {
-        enabled: true,
-        requireMention: config.requireMention ?? true,
-        mentionPatterns: [],
-        allowedGroups: config.allowedGroups ?? [],
-      },
-    });
-
-    await router.registerSurface(surface);
-    log.info('WhatsApp surface registered');
-  } catch (error) {
-    log.error('Failed to register WhatsApp surface', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    // Don't throw - other surfaces can still work
-  }
-}
-
 // =============================================================================
 // Configuration Loading
 // =============================================================================
@@ -166,20 +116,8 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
   try {
     const config = await Config.get();
 
-    // Extract surface configuration from zee config
-    const whatsappConfig = config.experimental?.surfaces?.whatsapp;
-
     const surfaceConfig: SurfaceBootstrapConfig = {
       enableCLI: config.experimental?.surfaces?.cli?.enabled ?? true,
-      enableWhatsApp: whatsappConfig?.enabled ?? false,
-      whatsapp: whatsappConfig?.sessionName
-        ? {
-            sessionName: whatsappConfig.sessionName,
-            allowedNumbers: whatsappConfig.allowedNumbers,
-            allowedGroups: whatsappConfig.allowedGroups,
-            requireMention: whatsappConfig.requireMention,
-          }
-        : undefined,
       enableAnalytics: config.experimental?.surfaces?.analytics?.enabled ?? true,
       enableHotReload: config.experimental?.surfaces?.hotReload?.enabled ?? false,
     };
@@ -193,7 +131,6 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
     // Return defaults
     return {
       enableCLI: true,
-      enableWhatsApp: false,
       enableAnalytics: true,
       enableHotReload: false,
     };
