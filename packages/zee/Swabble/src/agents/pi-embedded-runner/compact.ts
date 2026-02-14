@@ -64,7 +64,8 @@ import { buildEmbeddedSystemPrompt } from "./system-prompt.js";
 import { splitSdkTools } from "./tool-split.js";
 import type { EmbeddedPiCompactResult } from "./types.js";
 import { formatUserTime, resolveUserTimeFormat, resolveUserTimezone } from "../date-time.js";
-import { describeUnknownError, mapThinkingLevel } from "./utils.js";
+import { describeUnknownError, mapThinkingLevel, resolveExecToolDefaults } from "./utils.js";
+import { flushPendingToolResultsAfterIdle } from "./wait-for-idle-before-flush.js";
 import { buildTtsSystemPromptHint } from "../../tts/tts.js";
 
 export type CompactEmbeddedPiSessionParams = {
@@ -412,7 +413,10 @@ export async function compactEmbeddedPiSessionDirect(
           },
         };
       } finally {
-        sessionManager.flushPendingToolResults?.();
+        await flushPendingToolResultsAfterIdle({
+          agent: session?.agent,
+          sessionManager,
+        });
         session.dispose();
       }
     } finally {
