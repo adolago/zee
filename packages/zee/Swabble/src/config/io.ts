@@ -23,6 +23,7 @@ import {
   applySessionDefaults,
   applyTalkApiKey,
 } from "./defaults.js";
+import { restoreEnvVarRefs } from "./env-preserve.js";
 import { VERSION } from "../version.js";
 import { MissingEnvVarError, resolveConfigEnvVars } from "./env-substitution.js";
 import { collectConfigEnvVars } from "./env-vars.js";
@@ -483,9 +484,29 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         .join("\n");
       deps.logger.warn(`Config warnings:\n${details}`);
     }
+
+    let configToWrite: ZeeConfig = validated.config;
+    // Preserve ${VAR} placeholders already present in the on-disk config when
+    // the caller writes back the same resolved value.
+    try {
+      if (deps.fs.existsSync(configPath)) {
+        const currentRaw = await deps.fs.promises.readFile(configPath, "utf-8");
+        const parsedRes = parseConfigJson5(currentRaw, deps.json5);
+        if (parsedRes.ok) {
+          configToWrite = restoreEnvVarRefs(
+            configToWrite,
+            parsedRes.parsed,
+            deps.env as Record<string, string | undefined>,
+          ) as ZeeConfig;
+        }
+      }
+    } catch {
+      // Fall back to writing the validated config as-is.
+    }
+
     const dir = path.dirname(configPath);
     await deps.fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
-    const json = JSON.stringify(applyModelDefaults(stampConfigVersion(cfg)), null, 2)
+    const json = JSON.stringify(applyModelDefaults(stampConfigVersion(configToWrite)), null, 2)
       .trimEnd()
       .concat("\n");
 
