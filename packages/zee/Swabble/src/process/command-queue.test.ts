@@ -17,6 +17,7 @@ vi.mock("../logging/diagnostic.js", () => ({
 }))
 
 import {
+  clearCommandLane,
   enqueueCommand,
   enqueueCommandInLane,
   getActiveTaskCount,
@@ -229,5 +230,41 @@ describe("command queue", () => {
 
     resolve2()
     await Promise.all([first, second])
+  })
+
+  it("rejects queued tasks when a lane is cleared", async () => {
+    const lane = `test-clear-${Date.now()}`
+    let releaseFirst: (() => void) | undefined
+    let firstStarted = false
+
+    const first = enqueueCommandInLane(lane, async () => {
+      firstStarted = true
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve
+      })
+      return "first"
+    })
+
+    await vi.waitFor(() => {
+      expect(firstStarted).toBe(true)
+    })
+
+    const second = enqueueCommandInLane(lane, async () => "second")
+
+    await vi.waitFor(() => {
+      expect(getQueueSize(lane)).toBe(2)
+    })
+
+    const removed = clearCommandLane(lane)
+    expect(removed).toBe(1)
+
+    await expect(second).rejects.toMatchObject({
+      name: "AbortError",
+      message: expect.stringContaining(`command lane cleared: ${lane}`),
+    })
+
+    releaseFirst?.()
+    await expect(first).resolves.toBe("first")
+    expect(getQueueSize(lane)).toBe(0)
   })
 })

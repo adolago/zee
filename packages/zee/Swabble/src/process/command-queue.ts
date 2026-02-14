@@ -27,6 +27,13 @@ type LaneState = {
 const lanes = new Map<string, LaneState>()
 let nextTaskId = 1
 
+function createLaneClearedError(lane: string): Error {
+  const err = new Error(`command lane cleared: ${lane}`);
+  err.name = "AbortError";
+  (err as Error & { code?: string }).code = "ERR_COMMAND_LANE_CLEARED";
+  return err;
+}
+
 function getLaneState(lane: string): LaneState {
   const existing = lanes.get(lane)
   if (existing) return existing
@@ -159,8 +166,14 @@ export function clearCommandLane(lane: string = CommandLane.Main) {
   const cleaned = lane.trim() || CommandLane.Main
   const state = lanes.get(cleaned)
   if (!state) return 0
-  const removed = state.queue.length
-  state.queue.length = 0
+  const pending = state.queue.splice(0)
+  const removed = pending.length
+  if (removed > 0) {
+    const err = createLaneClearedError(cleaned)
+    for (const entry of pending) {
+      entry.reject(err)
+    }
+  }
   return removed
 }
 
