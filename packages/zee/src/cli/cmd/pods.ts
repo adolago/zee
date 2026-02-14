@@ -143,7 +143,8 @@ export const PodsShellCommand = cmd({
       demandOption: false,
     }),
   handler: async (args) => {
-    await openPodShell(args.name ? String(args.name) : undefined)
+    const code = await openPodShell(args.name ? String(args.name) : undefined)
+    if (code !== 0) process.exit(code)
   },
 })
 
@@ -269,11 +270,12 @@ export const PodsLogsCommand = cmd({
         default: 200,
       }),
   handler: async (args) => {
-    await streamModelLogs({
+    const code = await streamModelLogs({
       name: String(args.name),
       follow: !!args.follow,
       lines: Number(args.lines),
     })
+    if (code !== 0) process.exit(code)
   },
 })
 
@@ -297,4 +299,3 @@ export const PodsConfigCommand = cmd({
     UI.println(`Tracked models: ${cfg.models.length}`)
   },
 })
-
