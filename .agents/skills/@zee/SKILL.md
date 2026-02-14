@@ -386,7 +386,7 @@ Active shared skills from `@clawhub/` and `@zee/skills/`:
 - `home-assistant` - Smart home control via HA REST API
 - `spotify-player` - Terminal Spotify playback
 - `stock-market-pro` - Yahoo Finance price, charts, fundamentals
-- `wacli` - WhatsApp CLI (send, search, sync)
+- `meta-cli` - WhatsApp Business API via meta-cli (send, media, accounts)
 - `weather` - Weather via wttr.in / Open-Meteo
 - `whoopskill` - WHOOP health data (sleep, recovery, HRV)
 

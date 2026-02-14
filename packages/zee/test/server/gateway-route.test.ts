@@ -86,4 +86,76 @@ describe("gateway routes", () => {
     expect(lastSendParams!.to).toBe("15551234567")
   })
 
+  // -------------------------------------------------------------------------
+  // Inbound — meta-cli webhook forward
+  // -------------------------------------------------------------------------
+
+  test("POST /gateway/whatsapp/inbound accepts valid message", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/whatsapp/inbound", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "wamid.abc123",
+        senderId: "15559876543",
+        senderName: "Test User",
+        body: "Hello from WhatsApp",
+        timestamp: Date.now(),
+        isGroup: false,
+        platform: "whatsapp",
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+  })
+
+  test("POST /gateway/whatsapp/inbound accepts message with media", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/whatsapp/inbound", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "wamid.media456",
+        senderId: "15559876543",
+        body: "Check this photo",
+        timestamp: Date.now(),
+        isGroup: false,
+        platform: "whatsapp",
+        media: [{ mediaId: "media_123", mimeType: "image/jpeg" }],
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+  })
+
+  test("POST /gateway/whatsapp/inbound rejects invalid payload", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/whatsapp/inbound", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invalid: true }),
+    })
+
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+  })
+
+  test("POST /gateway/whatsapp/inbound rejects non-JSON body", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/whatsapp/inbound", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: "not json",
+    })
+
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+  })
+
 })

@@ -220,7 +220,7 @@ Both zee and openclaw use `SKILL.md` files with YAML frontmatter and a progressi
 - openclaw: 53 in-repo skills under `skills/*/SKILL.md`
 - zee: 64 in-repo skills under `.agents/skills/**/SKILL.md`
 
-Overlap is mostly in “utility” skills (for example `weather`, `wacli`, `spotify-player`), with zee adding persona-specific skills (investing/learning/memory patterns) and openclaw including many operational integrations (Notion/Obsidian/Discord/etc).
+Overlap is mostly in "utility" skills (for example `weather`, `spotify-player`), with zee adding persona-specific skills (investing/learning/memory patterns) and openclaw including many operational integrations (Notion/Obsidian/Discord/etc). WhatsApp is now handled via meta-cli rather than a skill.
 
 ## Memory / persistence
 

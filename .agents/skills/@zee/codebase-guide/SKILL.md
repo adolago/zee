@@ -124,7 +124,7 @@ Two independent registries manage shared skills:
 1. **ClawHub** (`packages/zee/src/pkg/clawhub/`): Manages `@clawhub/` skills. Registry at `https://auth.clawdhub.com/api/v1`. Lock file at `@clawhub/.clawhub/lock.json`. Update via `zee clawhub update`.
 2. **Swabble/OpenClaw** (`@zee/skills/`): Manages 13 skills via `_meta.json` files with `ownerId` and `slug`. Updated via gateway `skills.update` RPC method.
 
-Skills by steipete (coding-agent, wacli, food-order, spotify-player, oracle) are in the Swabble/OpenClaw registry, NOT ClawHub.
+Skills by steipete (coding-agent, food-order, spotify-player, oracle) are in the Swabble/OpenClaw registry, NOT ClawHub. WhatsApp is now handled via meta-cli (see `src/domain/zee/whatsapp-send.ts`).
 
 ## Integration
 

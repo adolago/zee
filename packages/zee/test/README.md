@@ -46,7 +46,7 @@ Root-level test files cover cross-cutting concerns:
 ## Shared Infrastructure
 
 - **`fixture/fixture.ts`** -- `tmpdir()` for isolated temp directories (auto-cleanup)
-- **`mock/`** -- Mock providers (`llm-provider.ts`, `whatsapp-api.ts`)
+- **`mock/`** -- Mock providers (`llm-provider.ts`, `meta-cli.ts`)
 - **`preload.ts`** -- Runs before every test file (configured in `bunfig.toml`). Sets up isolated XDG dirs, clears API keys, resets global state after each test. No import needed.
 
 ## Running Tests
