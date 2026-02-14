@@ -15,6 +15,7 @@ import { VERSION } from "../version.js";
 import { formatCliCommand } from "../cli/command-format.js";
 
 import {
+  enforcePosixCredentialPermissions,
   maybeRestoreCredsFromBackup,
   resolveDefaultWebAuthDir,
   resolveWebCredsBackupPath,
@@ -120,6 +121,7 @@ async function safeSaveCreds(
       try {
         JSON.parse(raw);
         fsSync.copyFileSync(credsPath, backupPath);
+        enforcePosixCredentialPermissions(backupPath);
       } catch {
         // keep existing backup
       }
@@ -129,6 +131,8 @@ async function safeSaveCreds(
   }
   try {
     await Promise.resolve(saveCreds());
+    enforcePosixCredentialPermissions(resolveWebCredsPath(authDir));
+    enforcePosixCredentialPermissions(resolveWebCredsBackupPath(authDir));
   } catch (err) {
     logger.warn({ error: String(err) }, "failed saving WhatsApp creds");
   }

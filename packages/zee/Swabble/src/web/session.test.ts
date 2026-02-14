@@ -227,4 +227,44 @@ describe("web session", () => {
     statSpy.mockRestore();
     readSpy.mockRestore();
   });
+
+  it("enforces strict permissions on creds and backup files after save", async () => {
+    const credsSuffix = path.join(".zee", "credentials", "whatsapp", "default", "creds.json");
+    const backupSuffix = path.join(".zee", "credentials", "whatsapp", "default", "creds.json.bak");
+
+    const chmodSpy = vi.spyOn(fsSync, "chmodSync").mockImplementation(() => {});
+    const copySpy = vi.spyOn(fsSync, "copyFileSync").mockImplementation(() => {});
+    const existsSpy = vi.spyOn(fsSync, "existsSync").mockImplementation((p) => {
+      if (typeof p !== "string") return false;
+      return p.endsWith(credsSuffix);
+    });
+    const statSpy = vi.spyOn(fsSync, "statSync").mockImplementation((p) => {
+      if (typeof p === "string" && (p.endsWith(credsSuffix) || p.endsWith(backupSuffix))) {
+        return { isFile: () => true, size: 12, mode: 0o644 } as never;
+      }
+      throw new Error(`unexpected statSync path: ${String(p)}`);
+    });
+    const readSpy = vi.spyOn(fsSync, "readFileSync").mockImplementation((p) => {
+      if (typeof p === "string" && p.endsWith(credsSuffix)) {
+        return "{}" as never;
+      }
+      throw new Error(`unexpected readFileSync path: ${String(p)}`);
+    });
+
+    await createWaSocket(false, false);
+    const sock = getLastSocket();
+
+    sock.ev.emit("creds.update", {});
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(copySpy).toHaveBeenCalled();
+    expect(chmodSpy).toHaveBeenCalled();
+    expect(chmodSpy.mock.calls.every((args) => args[1] === 0o600)).toBe(true);
+
+    chmodSpy.mockRestore();
+    copySpy.mockRestore();
+    existsSpy.mockRestore();
+    statSpy.mockRestore();
+    readSpy.mockRestore();
+  });
 });
