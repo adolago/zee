@@ -209,6 +209,16 @@ export async function handleToolsInvokeHttpRequest(
     sendInvalidRequest(res, "tools.invoke requires body.tool");
     return true;
   }
+  if (normalizeToolName(toolName) === "sessions_spawn") {
+    sendJson(res, 403, {
+      ok: false,
+      error: {
+        type: "forbidden",
+        message: "Tool not available over HTTP gateway",
+      },
+    });
+    return true;
+  }
 
   const action = typeof body.action === "string" ? body.action.trim() : undefined;
 

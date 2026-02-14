@@ -526,6 +526,8 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
   const artifacts: ReliabilitySnapshotArtifact[] = []
   let sourceHealth: any = null
   let distHealth: any = null
+  let sourceChannels: any = null
+  let distChannels: any = null
 
   const sourceCommand = [
     "bun",
@@ -552,6 +554,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       },
       async (_handle, health) => {
         sourceHealth = health
+        sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
       },
     )),
   )
@@ -579,6 +582,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       },
       async (_handle, health) => {
         distHealth = health
+        distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
       },
     )),
   )
@@ -587,12 +591,30 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
     throw new Error(`health mismatch: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
   }
 
+  if (!sourceChannels?.success || !distChannels?.success) {
+    throw new Error(
+      `gateway channels.status mismatch: source=${JSON.stringify(sourceChannels)} dist=${JSON.stringify(distChannels)}`,
+    )
+  }
+
+  const sourceChannelIds = Object.keys(sourceChannels?.data?.channelAccounts ?? {}).sort()
+  const distChannelIds = Object.keys(distChannels?.data?.channelAccounts ?? {}).sort()
+  const missingInDist = sourceChannelIds.filter((id) => !distChannelIds.includes(id))
+
+  if (missingInDist.length > 0) {
+    throw new Error(
+      `dist channel parity failed: missing channels in dist=${JSON.stringify(missingInDist)} source=${JSON.stringify(sourceChannelIds)} dist=${JSON.stringify(distChannelIds)}`,
+    )
+  }
+
   return {
     summary: "Source and dist runtime parity validated",
     details: [
       `version: ${sourceV}`,
       `source health mode: ${String(sourceHealth.mode ?? "unknown")}`,
       `dist health mode: ${String(distHealth.mode ?? "unknown")}`,
+      `source channels: ${sourceChannelIds.join(",") || "<none>"}`,
+      `dist channels: ${distChannelIds.join(",") || "<none>"}`,
     ],
     artifacts,
   }

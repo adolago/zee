@@ -63,7 +63,6 @@ const STATE_DIR = join(homedir(), ".zee", "zee");
 const MEMORY_PATH = join(STATE_DIR, "memories.json");
 const BACKEND = (process.env.ZEE_MEMORY_BACKEND || "qdrant").toLowerCase();
 const QDRANT_URL = process.env.QDRANT_URL || "http://localhost:6333";
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
 const QDRANT_COLLECTION = process.env.QDRANT_MEMORY_COLLECTION || "personas_memory";
 
 function ensureStateDir() {
@@ -97,7 +96,6 @@ async function createQdrantStore(): Promise<QdrantMemoryStore | null> {
     const store = new QdrantMemoryStore(
       {
         url: QDRANT_URL,
-        apiKey: QDRANT_API_KEY,
         collection: QDRANT_COLLECTION,
       },
       embedder

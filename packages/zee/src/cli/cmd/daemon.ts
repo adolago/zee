@@ -296,6 +296,8 @@ export namespace GatewaySupervisor {
     ok: boolean
     issues: string[]
     warnings: string[]
+    fatal: boolean
+    fatalReason?: string
     configPath?: string
     configExists: boolean
     configValid: boolean
@@ -306,6 +308,7 @@ export namespace GatewaySupervisor {
     running: boolean
     pid?: number
     error?: string
+    fatal?: boolean
     enabled: boolean
     lastExit?: { code?: number | null; signal?: NodeJS.Signals | null }
     configPath?: string
@@ -320,6 +323,15 @@ export namespace GatewaySupervisor {
       if (process.env[key]?.trim()) hints.push(key)
     }
     return hints
+  }
+
+  function detectFatalPreflightIssue(issues: string[]): string | undefined {
+    for (const issue of issues) {
+      if (/plugins\.entries\.[^:]+:\s*plugin not found:/i.test(issue)) {
+        return `${issue}\nAction: rebuild Zee so bundled extensions are present, then verify with ./script/verify-binary.sh`
+      }
+    }
+    return undefined
   }
 
 
@@ -405,11 +417,14 @@ export namespace GatewaySupervisor {
       }
     }
 
+    const fatalReason = detectFatalPreflightIssue(issues)
     const ok = issues.length === 0 && (blockingWarnings.length === 0 || options.force)
     return {
       ok,
       issues,
       warnings,
+      fatal: Boolean(fatalReason),
+      fatalReason,
       configPath,
       configExists,
       configValid,
@@ -479,6 +494,7 @@ export namespace GatewaySupervisor {
       running: embeddedState.running,
       pid: embeddedState.pid,
       error: lastError,
+      fatal: Boolean(lastPreflight?.fatal),
       enabled: gatewayEnabled,
       lastExit,
       configPath: lastPreflight?.configPath,
@@ -508,10 +524,12 @@ export namespace GatewaySupervisor {
     lastPreflight = preflight
     lastError = undefined
     if (!preflight.ok) {
-      lastError = preflight.issues[0] ?? preflight.warnings[0]
+      lastError = preflight.fatalReason ?? preflight.issues[0] ?? preflight.warnings[0]
       if (lastError) log.warn("zee gateway preflight failed", { reason: lastError })
       syncHealthState()
-      startHealthCheck()
+      if (!preflight.fatal) {
+        startHealthCheck()
+      }
       return false
     }
 

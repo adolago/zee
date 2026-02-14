@@ -111,11 +111,11 @@ async function safeSaveCreds(
   saveCreds: () => Promise<void> | void,
   logger: ReturnType<typeof getChildLogger>,
 ): Promise<void> {
+  const credsPath = resolveWebCredsPath(authDir);
+  const backupPath = resolveWebCredsBackupPath(authDir);
   try {
     // Best-effort backup so we can recover after abrupt restarts.
     // Important: don't clobber a good backup with a corrupted/truncated creds.json.
-    const credsPath = resolveWebCredsPath(authDir);
-    const backupPath = resolveWebCredsBackupPath(authDir);
     const raw = readCredsJsonRaw(credsPath);
     if (raw) {
       try {
@@ -135,6 +135,9 @@ async function safeSaveCreds(
     enforcePosixCredentialPermissions(resolveWebCredsBackupPath(authDir));
   } catch (err) {
     logger.warn({ error: String(err) }, "failed saving WhatsApp creds");
+  } finally {
+    enforcePosixCredentialPermissions(credsPath);
+    enforcePosixCredentialPermissions(backupPath);
   }
 }
 
@@ -190,9 +193,7 @@ export async function createWaSocket(
           const status = getStatusCode(lastDisconnect?.error);
           if (status === DisconnectReason.loggedOut) {
             console.error(
-              danger(
-                `WhatsApp session logged out. Run: ${formatCliCommand("zee channels login")}`,
-              ),
+              danger(`WhatsApp session logged out. Run: ${formatCliCommand("zee channels login")}`),
             );
           }
         }

@@ -30,7 +30,7 @@ export type WhatsAppConfig = {
    * Default: `[{agents.list[].identity.name}]` (or `[zee]`) when allowFrom is empty, else `""`.
    */
   messagePrefix?: string;
-  /** Direct message access policy (default: pairing). */
+  /** Direct message access policy (default: allowlist). */
   dmPolicy?: DmPolicy;
   /**
    * Same-phone setup (bot uses your personal WhatsApp number).
@@ -111,7 +111,7 @@ export type WhatsAppAccountConfig = {
   messagePrefix?: string;
   /** Override auth directory (Baileys multi-file auth state). */
   authDir?: string;
-  /** Direct message access policy (default: pairing). */
+  /** Direct message access policy (default: allowlist). */
   dmPolicy?: DmPolicy;
   /** Same-phone setup for this account (bot uses your personal WhatsApp number). */
   selfChatMode?: boolean;

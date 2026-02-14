@@ -183,13 +183,7 @@ describe("web session", () => {
 
   it("rotates creds backup when creds.json is valid JSON", async () => {
     const credsSuffix = path.join(".zee", "credentials", "whatsapp", "default", "creds.json");
-    const backupSuffix = path.join(
-      ".zee",
-      "credentials",
-      "whatsapp",
-      "default",
-      "creds.json.bak",
-    );
+    const backupSuffix = path.join(".zee", "credentials", "whatsapp", "default", "creds.json.bak");
 
     const copySpy = vi.spyOn(fsSync, "copyFileSync").mockImplementation(() => {});
     const existsSpy = vi.spyOn(fsSync, "existsSync").mockImplementation((p) => {
@@ -258,7 +252,9 @@ describe("web session", () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(copySpy).toHaveBeenCalled();
-    expect(chmodSpy).toHaveBeenCalled();
+    const chmodTargets = chmodSpy.mock.calls.map((args) => String(args[0] ?? ""));
+    expect(chmodTargets.some((target) => target.endsWith(credsSuffix))).toBe(true);
+    expect(chmodTargets.some((target) => target.endsWith(backupSuffix))).toBe(true);
     expect(chmodSpy.mock.calls.every((args) => args[1] === 0o600)).toBe(true);
 
     chmodSpy.mockRestore();

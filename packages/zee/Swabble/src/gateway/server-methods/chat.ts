@@ -24,6 +24,7 @@ import {
   resolveChatRunExpiresAtMs,
 } from "../chat-abort.js";
 import { type ChatImageContent, parseMessageWithAttachments } from "../chat-attachments.js";
+import { sanitizeGatewayErrorMessage, sanitizeGatewayUnavailableMessage } from "../error-sanitize.js";
 import {
   ErrorCodes,
   errorShape,
@@ -359,7 +360,14 @@ export const chatHandlers: GatewayRequestHandlers = {
         parsedMessage = parsed.message;
         parsedImages = parsed.images;
       } catch (err) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, String(err)));
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            sanitizeGatewayErrorMessage(err, { fallback: "invalid attachments" }),
+          ),
+        );
         return;
       }
     }
@@ -563,14 +571,15 @@ export const chatHandlers: GatewayRequestHandlers = {
           });
         })
         .catch((err) => {
-          const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
+          const summary = sanitizeGatewayUnavailableMessage(err);
+          const error = errorShape(ErrorCodes.UNAVAILABLE, summary);
           context.dedupe.set(`chat:${clientRunId}`, {
             ts: Date.now(),
             ok: false,
             payload: {
               runId: clientRunId,
               status: "error" as const,
-              summary: String(err),
+              summary,
             },
             error,
           });
@@ -578,18 +587,19 @@ export const chatHandlers: GatewayRequestHandlers = {
             context,
             runId: clientRunId,
             sessionKey: p.sessionKey,
-            errorMessage: String(err),
+            errorMessage: summary,
           });
         })
         .finally(() => {
           context.chatAbortControllers.delete(clientRunId);
         });
     } catch (err) {
-      const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
+      const summary = sanitizeGatewayUnavailableMessage(err);
+      const error = errorShape(ErrorCodes.UNAVAILABLE, summary);
       const payload = {
         runId: clientRunId,
         status: "error" as const,
-        summary: String(err),
+        summary,
       };
       context.dedupe.set(`chat:${clientRunId}`, {
         ts: Date.now(),
@@ -665,11 +675,13 @@ export const chatHandlers: GatewayRequestHandlers = {
     try {
       fs.appendFileSync(transcriptPath, `${JSON.stringify(transcriptEntry)}\n`, "utf-8");
     } catch (err) {
-      const errMessage = err instanceof Error ? err.message : String(err);
       respond(
         false,
         undefined,
-        errorShape(ErrorCodes.UNAVAILABLE, `failed to write transcript: ${errMessage}`),
+        errorShape(
+          ErrorCodes.UNAVAILABLE,
+          `failed to write transcript (${sanitizeGatewayUnavailableMessage(err)})`,
+        ),
       );
       return;
     }

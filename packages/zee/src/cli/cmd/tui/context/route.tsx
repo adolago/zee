@@ -33,6 +33,9 @@ export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
       navigate(route: Route) {
         setStore(route)
       },
+      clearInitialPrompt() {
+        setStore("initialPrompt", undefined)
+      },
     }
   },
 })

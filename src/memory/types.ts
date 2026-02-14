@@ -584,10 +584,9 @@ export interface VectorStorage {
 
 /** Memory system configuration */
 export interface MemoryConfig {
-  /** Qdrant connection settings */
+  /** Qdrant connection settings (local-only, no remote/cloud support) */
   qdrant: {
     url: string;
-    apiKey?: string;
     collection: string;
     /** Default request timeout for Qdrant REST calls (ms). */
     timeoutMs?: number;

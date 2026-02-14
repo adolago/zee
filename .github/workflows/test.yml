@@ -8,6 +8,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  secrets:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -19,6 +30,9 @@ jobs:
 
       - name: Audit (high)
         run: bash scripts/bun-audit-ci.sh
+
+      - name: Validate SKILL metadata
+        run: bash scripts/verify-skills.sh
 
       - name: Typecheck
         run: bun run --cwd packages/zee typecheck

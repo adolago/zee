@@ -24,6 +24,8 @@ import type {
   PluginHookMessageSendingEvent,
   PluginHookMessageSendingResult,
   PluginHookMessageSentEvent,
+  PluginHookToolDefinitionEvent,
+  PluginHookToolDefinitionResult,
   PluginHookName,
   PluginHookRegistration,
   PluginHookSessionContext,
@@ -48,6 +50,8 @@ export type {
   PluginHookMessageSendingEvent,
   PluginHookMessageSendingResult,
   PluginHookMessageSentEvent,
+  PluginHookToolDefinitionEvent,
+  PluginHookToolDefinitionResult,
   PluginHookToolContext,
   PluginHookBeforeToolCallEvent,
   PluginHookBeforeToolCallResult,
@@ -277,6 +281,65 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
   // =========================================================================
 
   /**
+   * Run tool_definition hook.
+   *
+   * This hook is intentionally synchronous: tool definitions are assembled in
+   * a synchronous call path.
+   */
+  function runToolDefinition(
+    event: PluginHookToolDefinitionEvent,
+    ctx: PluginHookToolContext,
+  ): PluginHookToolDefinitionResult | undefined {
+    const hooks = getHooksForName(registry, "tool_definition");
+    if (hooks.length === 0) return undefined;
+
+    let current = event.tool;
+    let exclude = false;
+    let excludeReason: string | undefined;
+
+    for (const hook of hooks) {
+      try {
+        const out = (hook.handler as any)({ ...event, tool: current }, ctx) as
+          | PluginHookToolDefinitionResult
+          | void
+          | Promise<unknown>;
+
+        // Guard against accidental async handlers (this hook is sync-only).
+        if (out && typeof (out as any).then === "function") {
+          const msg =
+            `[hooks] tool_definition handler from ${hook.pluginId} returned a Promise; ` +
+            `this hook is synchronous and the result was ignored.`;
+          if (catchErrors) {
+            logger?.warn?.(msg);
+            continue;
+          }
+          throw new Error(msg);
+        }
+
+        const next = out as PluginHookToolDefinitionResult | undefined;
+        if (next?.tool) current = next.tool;
+        if (typeof next?.exclude === "boolean") exclude = next.exclude;
+        if (typeof next?.excludeReason === "string" && next.excludeReason.trim()) {
+          excludeReason = next.excludeReason;
+        }
+      } catch (err) {
+        const msg = `[hooks] tool_definition handler from ${hook.pluginId} failed: ${String(err)}`;
+        if (catchErrors) {
+          logger?.error(msg);
+        } else {
+          throw new Error(msg);
+        }
+      }
+    }
+
+    return {
+      tool: current,
+      exclude,
+      ...(excludeReason ? { excludeReason } : {}),
+    };
+  }
+
+  /**
    * Run before_tool_call hook.
    * Allows plugins to modify or block tool calls.
    * Runs sequentially.
@@ -442,6 +505,7 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
     runMessageSending,
     runMessageSent,
     // Tool hooks
+    runToolDefinition,
     runBeforeToolCall,
     runAfterToolCall,
     runToolResultPersist,

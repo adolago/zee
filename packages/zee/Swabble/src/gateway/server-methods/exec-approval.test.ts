@@ -65,6 +65,7 @@ describe("exec approval handlers", () => {
         cwd: "/tmp",
         host: "node",
         timeoutMs: 2000,
+        twoPhase: true,
       },
       respond,
       context: context as unknown as Parameters<
@@ -99,6 +100,63 @@ describe("exec approval handlers", () => {
       undefined,
     );
     expect(broadcasts.some((entry) => entry.event === "exec.approval.resolved")).toBe(true);
+  });
+
+  it("waits for decision through exec.approval.waitDecision", async () => {
+    const manager = new ExecApprovalManager();
+    const handlers = createExecApprovalHandlers(manager);
+    const broadcasts: Array<{ event: string; payload: unknown }> = [];
+    const context = {
+      broadcast: (event: string, payload: unknown) => {
+        broadcasts.push({ event, payload });
+      },
+    };
+    const requestRespond = vi.fn();
+
+    const requestPromise = handlers["exec.approval.request"]({
+      params: {
+        id: "approval-xyz",
+        command: "echo ok",
+        timeoutMs: 2000,
+        twoPhase: true,
+      },
+      respond: requestRespond,
+      context: context as unknown as Parameters<
+        (typeof handlers)["exec.approval.request"]
+      >[0]["context"],
+      client: null,
+      req: { id: "req-1", type: "req", method: "exec.approval.request" },
+    });
+
+    const waitRespond = vi.fn();
+    const waitPromise = handlers["exec.approval.waitDecision"]({
+      params: { id: "approval-xyz" },
+      respond: waitRespond,
+      context: context as unknown as Parameters<
+        (typeof handlers)["exec.approval.request"]
+      >[0]["context"],
+      client: null,
+      req: { id: "req-2", type: "req", method: "exec.approval.waitDecision" },
+    });
+
+    await handlers["exec.approval.resolve"]({
+      params: { id: "approval-xyz", decision: "allow-once" },
+      respond: vi.fn(),
+      context: context as unknown as Parameters<
+        (typeof handlers)["exec.approval.resolve"]
+      >[0]["context"],
+      client: { connect: { client: { id: "cli", displayName: "CLI" } } },
+      req: { id: "req-3", type: "req", method: "exec.approval.resolve" },
+    });
+
+    await waitPromise;
+    await requestPromise;
+
+    expect(waitRespond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({ id: "approval-xyz", decision: "allow-once" }),
+      undefined,
+    );
   });
 
   it("accepts resolve during broadcast", async () => {

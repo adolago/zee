@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -18,12 +17,7 @@ import {
   requireRef,
   toAIFriendlyError,
 } from "./pw-tools-core.shared.js";
-
-function buildTempDownloadPath(fileName: string): string {
-  const id = crypto.randomUUID();
-  const safeName = fileName.trim() ? fileName.trim() : "download.bin";
-  return path.join("/tmp/zee/downloads", `${id}-${safeName}`);
-}
+import { resolveBrowserDownloadOutputPath } from "./artifact-paths.js";
 
 function createPageDownloadWaiter(page: Page, timeoutMs: number) {
   let done = false;
@@ -167,7 +161,10 @@ export async function waitForDownloadViaPlaywright(opts: {
       throw new Error("Download was superseded by another waiter");
     }
     const suggested = download.suggestedFilename?.() || "download.bin";
-    const outPath = opts.path?.trim() || buildTempDownloadPath(suggested);
+    const outPath = resolveBrowserDownloadOutputPath({
+      requestedPath: opts.path?.trim(),
+      suggestedFilename: suggested,
+    });
     await fs.mkdir(path.dirname(outPath), { recursive: true });
     await download.saveAs?.(outPath);
     return {
@@ -198,8 +195,8 @@ export async function downloadViaPlaywright(opts: {
   const timeout = normalizeTimeoutMs(opts.timeoutMs, 120_000);
 
   const ref = requireRef(opts.ref);
-  const outPath = String(opts.path ?? "").trim();
-  if (!outPath) throw new Error("path is required");
+  const requestedPath = String(opts.path ?? "").trim();
+  if (!requestedPath) throw new Error("path is required");
 
   state.armIdDownload = bumpDownloadArmId();
   const armId = state.armIdDownload;
@@ -222,6 +219,10 @@ export async function downloadViaPlaywright(opts: {
       throw new Error("Download was superseded by another waiter");
     }
     const suggested = download.suggestedFilename?.() || "download.bin";
+    const outPath = resolveBrowserDownloadOutputPath({
+      requestedPath,
+      suggestedFilename: suggested,
+    });
     await fs.mkdir(path.dirname(outPath), { recursive: true });
     await download.saveAs?.(outPath);
     return {

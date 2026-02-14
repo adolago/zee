@@ -33,7 +33,7 @@ Examples:
 For fast iteration, run the gateway under the file watcher:
 
 ```bash
-pnpm gateway:watch --force
+bun run gateway:watch --force
 ```
 
 This maps to:
@@ -58,11 +58,11 @@ debugging. There are **two** `--dev` flags:
 Recommended flow (dev profile + dev bootstrap):
 
 ```bash
-pnpm gateway:dev
+bun run gateway:dev
 ZEE_PROFILE=dev zee tui
 ```
 
-If you don’t have a global install yet, run the CLI via `pnpm zee ...`.
+If you don’t have a global install yet, run the CLI via `bun run zee ...`.
 
 What this does:
 
@@ -84,7 +84,7 @@ What this does:
 Reset flow (fresh start):
 
 ```bash
-pnpm gateway:dev:reset
+bun run gateway:dev:reset
 ```
 
 Note: `--dev` is a **global** profile flag and gets eaten by some runners.
@@ -112,13 +112,13 @@ This is the best way to see whether reasoning is arriving as plain text deltas
 Enable it via CLI:
 
 ```bash
-pnpm gateway:watch --force --raw-stream
+bun run gateway:watch --force --raw-stream
 ```
 
 Optional path override:
 
 ```bash
-pnpm gateway:watch --force --raw-stream --raw-stream-path ~/.zee/logs/raw-stream.jsonl
+bun run gateway:watch --force --raw-stream --raw-stream-path ~/.zee/logs/raw-stream.jsonl
 ```
 
 Equivalent env vars:

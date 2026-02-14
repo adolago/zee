@@ -1,8 +1,8 @@
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
 import type { BrowserRouteContext } from "../server-context.js";
+import { resolveBrowserTraceOutputPath } from "../artifact-paths.js";
 import { handleRouteError, readBody, requirePwAi, resolveProfileContext } from "./agent.shared.js";
 import { toBoolean, toStringOrEmpty } from "./utils.js";
 import type { BrowserRouteRegistrar } from "./types.js";
@@ -111,10 +111,10 @@ export function registerBrowserAgentDebugRoutes(
       const tab = await profileCtx.ensureTabAvailable(targetId);
       const pw = await requirePwAi(res, "trace stop");
       if (!pw) return;
-      const id = crypto.randomUUID();
-      const dir = "/tmp/zee";
-      await fs.mkdir(dir, { recursive: true });
-      const tracePath = out.trim() || path.join(dir, `browser-trace-${id}.zip`);
+      const tracePath = resolveBrowserTraceOutputPath({
+        requestedPath: out.trim() || undefined,
+      });
+      await fs.mkdir(path.dirname(tracePath), { recursive: true });
       await pw.traceStopViaPlaywright({
         cdpUrl: profileCtx.profile.cdpUrl,
         targetId: tab.targetId,
@@ -123,7 +123,7 @@ export function registerBrowserAgentDebugRoutes(
       res.json({
         ok: true,
         targetId: tab.targetId,
-        path: path.resolve(tracePath),
+        path: tracePath,
       });
     } catch (err) {
       handleRouteError(ctx, res, err);

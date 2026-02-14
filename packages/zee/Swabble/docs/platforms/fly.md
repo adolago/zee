@@ -1,6 +1,7 @@
 ---
 title: Fly.io
 description: Deploy Zee on Fly.io
+summary: "Deploy Zee on Fly.io with secure secret handling and persistent storage."
 ---
 
 # Fly.io Deployment
@@ -117,116 +118,6 @@ fly deploy
 First deploy builds the Docker image (~2-3 minutes). Subsequent deploys are faster.
 
 After deployment, verify:
-```bash
-fly status
-fly logs
-```
-
-You should see:
-```
-[gateway] listening on ws://0.0.0.0:3000 (PID xxx)
-[whatsapp] connected as @zee:example.com
-```
-
-## 5) Create config file
-
-SSH into the machine to create a proper config:
-
-```bash
-fly ssh console
-```
-
-Create the config directory and file:
-```bash
-mkdir -p /data
-cat > /data/zee.json << 'EOF'
-{
-  "agents": {
-    "defaults": {
-      "model": {
-        "primary": "anthropic/claude-opus-4-5",
-        "fallbacks": ["anthropic/claude-sonnet-4-5", "openai/gpt-4o"]
-      },
-      "maxConcurrent": 4
-    },
-    "list": [
-      {
-        "id": "main",
-        "default": true
-      }
-    ]
-  },
-  "auth": {
-    "profiles": {
-      "anthropic:default": { "mode": "token", "provider": "anthropic" },
-      "openai:default": { "mode": "token", "provider": "openai" }
-    }
-  },
-  "bindings": [
-    {
-      "agentId": "main",
-      "match": { "channel": "whatsapp" }
-    }
-  ],
-  "channels": {
-    "whatsapp": {
-      "enabled": true,
-      "homeserver": "https://whatsapp.example.com",
-      "userId": "@zee:example.com",
-      "accessToken": "{env:WHATSAPP_ACCESS_TOKEN}",
-      "allowFrom": ["@you:example.com"]
-    }
-  },
-  "gateway": {
-    "mode": "local",
-    "bind": "auto"
-  },
-  "meta": {
-    "lastTouchedVersion": "2026.1.27-beta.1"
-  }
-}
-EOF
-```
-
-**Note:** With `ZEE_STATE_DIR=/data`, the config path is `/data/zee.json`.
-
-**Note:** The WhatsApp access token can come from either:
-- Environment variable: `WHATSAPP_ACCESS_TOKEN` (recommended for secrets)
-- Config file: `channels.whatsapp.accessToken`
-
-If using env var, no need to add token to config. The gateway reads `WHATSAPP_ACCESS_TOKEN` through env substitution in config.
-
-Restart to apply:
-```bash
-exit
-fly machine restart <machine-id>
-```
-
-## 6) Access the Gateway
-
-### CLI/TUI
-
-Open in browser:
-```bash
-fly open
-```
-
-Or visit `https://my-zee.fly.dev/`
-
-Paste your gateway token (the one from `ZEE_GATEWAY_TOKEN`) to authenticate.
-
-### Logs
-
-```bash
-fly logs              # Live logs
-fly logs --no-tail    # Recent logs
-```
-
-### SSH Console
-
-```bash
-fly ssh console
-```
 
 ## Troubleshooting
 

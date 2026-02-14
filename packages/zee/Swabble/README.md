@@ -41,11 +41,11 @@ Notes:
 git clone <your-fork>
 cd packages/zee/Swabble
 
-pnpm install
-pnpm build
+bun install
+bun run build
 
 # Dev loop (auto-reload on TS changes)
-pnpm gateway:watch
+bun run gateway:watch
 ```
 
 ## Security defaults (DM access)
@@ -53,7 +53,7 @@ pnpm gateway:watch
 Zee connects to real messaging surfaces. Treat inbound DMs as **untrusted input**.
 
 Default behavior on WhatsApp:
-- **DM pairing** (`dmPolicy="pairing"`): unknown senders receive a short pairing code and the bot does not process their message.
+- Unknown senders are gated by DM policy. If `allowFrom` is set and `dmPolicy` is unset, WhatsApp defaults to `allowlist` behavior; set `dmPolicy="pairing"` explicitly to require pairing codes for unknown senders.
 - Approve with: `zee pairing approve <channel> <code>` (then the sender is added to a local allowlist store).
 - Public inbound DMs require an explicit opt-in: set `dmPolicy="open"` and include `"*"` in the channel allowlist (`allowFrom`).
 

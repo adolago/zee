@@ -17,10 +17,7 @@ describe("Config security", () => {
       },
       memory: {
         redisUrl: "redis://:password@localhost:6379",
-        qdrantApiKey: "secret_qdrant_key",
-        qdrant: {
-          apiKey: "secret_nested_qdrant_key",
-        },
+        qdrant: {},
         embedding: {
           provider: "google",
         },
@@ -49,8 +46,6 @@ describe("Config security", () => {
 
     expect(redacted.provider?.openai?.options?.apiKey).toBe("********")
     expect(redacted.memory?.redisUrl).toBe("********")
-    expect(redacted.memory?.qdrantApiKey).toBe("********")
-    expect(redacted.memory?.qdrant?.apiKey).toBe("********")
     expect(redacted.memory?.embedding?.provider).toBe("google")
     expect(redacted.zee?.splitwise?.token).toBe("********")
     expect(redacted.grammar?.apiKey).toBe("********")

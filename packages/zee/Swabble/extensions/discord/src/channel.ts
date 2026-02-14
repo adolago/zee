@@ -18,6 +18,7 @@ import {
   readStringParam,
   requireOpenAllowFrom,
   setAccountEnabledInConfigSection,
+  type ChannelAccountSnapshot,
   type ChannelOnboardingAdapter,
   type ChannelPlugin,
   type ChannelStatusIssue,
@@ -257,7 +258,7 @@ function setDiscordAllowFrom(
   });
 }
 
-function collectDiscordStatusIssues(accounts: Array<Record<string, unknown>>): ChannelStatusIssue[] {
+function collectDiscordStatusIssues(accounts: ChannelAccountSnapshot[]): ChannelStatusIssue[] {
   const issues: ChannelStatusIssue[] = [];
   for (const account of accounts) {
     const accountId =
@@ -302,9 +303,10 @@ function collectDiscordStatusIssues(accounts: Array<Record<string, unknown>>): C
       });
     }
 
+    const accountActions = (account as { actions?: unknown }).actions;
     const actions =
-      account.actions && typeof account.actions === "object"
-        ? (account.actions as Record<string, unknown>)
+      accountActions && typeof accountActions === "object"
+        ? (accountActions as Record<string, unknown>)
         : {};
     const hasActionSurface =
       actions.reactions !== false || actions.pins !== false || actions.channelInfo !== false;
@@ -759,8 +761,7 @@ export const discordPlugin: ChannelPlugin<ResolvedDiscordAccount> = {
       actions: account.actions,
       botTokenSource: resolveDiscordBotToken(account).source,
     }),
-    collectStatusIssues: (accounts) =>
-      collectDiscordStatusIssues(accounts as Array<Record<string, unknown>>),
+    collectStatusIssues: collectDiscordStatusIssues,
   },
   actions: {
     listActions: ({ cfg }) => {

@@ -50,6 +50,7 @@ import {
   stripPluginOnlyAllowlist,
 } from "./tool-policy.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
+import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 import { logWarn } from "../logger.js";
 
 function isOpenAIProvider(provider?: string) {
@@ -108,6 +109,35 @@ export const __testing = {
   wrapToolParamNormalization,
   assertRequiredParams,
 } as const;
+
+function applyToolDefinitionHooks(params: {
+  tools: AnyAgentTool[];
+  agentId?: string;
+  sessionKey?: string;
+}): AnyAgentTool[] {
+  const hookRunner = getGlobalHookRunner();
+  if (!hookRunner?.hasHooks("tool_definition")) return params.tools;
+
+  const out: AnyAgentTool[] = [];
+  for (const tool of params.tools) {
+    const transformed = hookRunner.runToolDefinition(
+      { tool },
+      {
+        toolName: tool.name,
+        agentId: params.agentId,
+        sessionKey: params.sessionKey,
+      },
+    );
+    if (transformed?.exclude) {
+      if (typeof transformed.excludeReason === "string" && transformed.excludeReason.trim()) {
+        logWarn(`tools: plugin excluded ${tool.name}: ${transformed.excludeReason.trim()}`);
+      }
+      continue;
+    }
+    out.push((transformed?.tool ?? tool) as AnyAgentTool);
+  }
+  return out;
+}
 
 export function createZeeCodingTools(options?: {
   exec?: ExecToolDefaults & ProcessToolDefaults;
@@ -237,7 +267,7 @@ export function createZeeCodingTools(options?: {
         return [createSandboxedReadTool(sandboxRoot)];
       }
       const freshReadTool = createReadTool(workspaceRoot);
-      return [createZeeReadTool(freshReadTool)];
+      return [createZeeReadTool(freshReadTool, { root: workspaceRoot })];
     }
     if (tool.name === "bash" || tool.name === execToolName) return [];
     if (tool.name === "write") {
@@ -411,9 +441,14 @@ export function createZeeCodingTools(options?: {
   const subagentFiltered = subagentPolicyExpanded
     ? filterToolsByPolicy(sandboxed, subagentPolicyExpanded)
     : sandboxed;
+  const withDefinitionHooks = applyToolDefinitionHooks({
+    tools: subagentFiltered,
+    agentId,
+    sessionKey: options?.sessionKey,
+  });
   // Always normalize tool JSON Schemas before handing them to pi-agent/pi-ai.
   // Without this, some providers (notably OpenAI) will reject root-level union schemas.
-  const normalized = subagentFiltered.map(normalizeToolParameters);
+  const normalized = withDefinitionHooks.map(normalizeToolParameters);
   const withAbort = options?.abortSignal
     ? normalized.map((tool) => wrapToolWithAbortSignal(tool, options.abortSignal))
     : normalized;

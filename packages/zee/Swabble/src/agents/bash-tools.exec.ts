@@ -74,6 +74,7 @@ const DEFAULT_PATH =
 const DEFAULT_NOTIFY_TAIL_CHARS = 400;
 const DEFAULT_APPROVAL_TIMEOUT_MS = 120_000;
 const DEFAULT_APPROVAL_REQUEST_TIMEOUT_MS = 130_000;
+const DEFAULT_APPROVAL_REGISTRATION_TIMEOUT_MS = 10_000;
 const DEFAULT_APPROVAL_RUNNING_NOTICE_MS = 10_000;
 const APPROVAL_SLUG_LENGTH = 8;
 
@@ -1008,30 +1009,48 @@ export function createExecTool(
         if (requiresAsk) {
           const approvalId = crypto.randomUUID();
           const approvalSlug = createApprovalSlug(approvalId);
-          const expiresAtMs = Date.now() + DEFAULT_APPROVAL_TIMEOUT_MS;
+          let expiresAtMs = Date.now() + DEFAULT_APPROVAL_TIMEOUT_MS;
           const contextKey = `exec:${approvalId}`;
           const noticeSeconds = Math.max(1, Math.round(approvalRunningNoticeMs / 1000));
           const warningText = warnings.length ? `${warnings.join("\n")}\n\n` : "";
 
+          try {
+            const registrationResult = await callGatewayTool<{
+              status?: string;
+              expiresAtMs?: number;
+            }>(
+              "exec.approval.request",
+              { timeoutMs: DEFAULT_APPROVAL_REGISTRATION_TIMEOUT_MS },
+              {
+                id: approvalId,
+                command: commandText,
+                cwd: workdir,
+                host: "node",
+                security: hostSecurity,
+                ask: hostAsk,
+                agentId,
+                resolvedPath: undefined,
+                sessionKey: defaults?.sessionKey,
+                timeoutMs: DEFAULT_APPROVAL_TIMEOUT_MS,
+                twoPhase: true,
+              },
+              { expectFinal: false },
+            );
+            if (typeof registrationResult?.expiresAtMs === "number") {
+              expiresAtMs = registrationResult.expiresAtMs;
+            }
+          } catch (err) {
+            throw new Error(`Exec approval registration failed: ${String(err)}`, { cause: err });
+          }
+
           void (async () => {
             let decision: string | null = null;
             try {
-              const decisionResult = (await callGatewayTool(
-                "exec.approval.request",
+              const decisionResult = await callGatewayTool<{ decision?: string }>(
+                "exec.approval.waitDecision",
                 { timeoutMs: DEFAULT_APPROVAL_REQUEST_TIMEOUT_MS },
-                {
-                  id: approvalId,
-                  command: commandText,
-                  cwd: workdir,
-                  host: "node",
-                  security: hostSecurity,
-                  ask: hostAsk,
-                  agentId,
-                  resolvedPath: undefined,
-                  sessionKey: defaults?.sessionKey,
-                  timeoutMs: DEFAULT_APPROVAL_TIMEOUT_MS,
-                },
-              )) as { decision?: string } | null;
+                { id: approvalId },
+              );
               decision =
                 decisionResult && typeof decisionResult === "object"
                   ? (decisionResult.decision ?? null)
@@ -1185,7 +1204,7 @@ export function createExecTool(
         if (requiresAsk) {
           const approvalId = crypto.randomUUID();
           const approvalSlug = createApprovalSlug(approvalId);
-          const expiresAtMs = Date.now() + DEFAULT_APPROVAL_TIMEOUT_MS;
+          let expiresAtMs = Date.now() + DEFAULT_APPROVAL_TIMEOUT_MS;
           const contextKey = `exec:${approvalId}`;
           const resolvedPath = allowlistEval.segments[0]?.resolution?.resolvedPath;
           const noticeSeconds = Math.max(1, Math.round(approvalRunningNoticeMs / 1000));
@@ -1194,25 +1213,43 @@ export function createExecTool(
             typeof params.timeout === "number" ? params.timeout : defaultTimeoutSec;
           const warningText = warnings.length ? `${warnings.join("\n")}\n\n` : "";
 
+          try {
+            const registrationResult = await callGatewayTool<{
+              status?: string;
+              expiresAtMs?: number;
+            }>(
+              "exec.approval.request",
+              { timeoutMs: DEFAULT_APPROVAL_REGISTRATION_TIMEOUT_MS },
+              {
+                id: approvalId,
+                command: commandText,
+                cwd: workdir,
+                host: "gateway",
+                security: hostSecurity,
+                ask: hostAsk,
+                agentId,
+                resolvedPath,
+                sessionKey: defaults?.sessionKey,
+                timeoutMs: DEFAULT_APPROVAL_TIMEOUT_MS,
+                twoPhase: true,
+              },
+              { expectFinal: false },
+            );
+            if (typeof registrationResult?.expiresAtMs === "number") {
+              expiresAtMs = registrationResult.expiresAtMs;
+            }
+          } catch (err) {
+            throw new Error(`Exec approval registration failed: ${String(err)}`, { cause: err });
+          }
+
           void (async () => {
             let decision: string | null = null;
             try {
-              const decisionResult = (await callGatewayTool(
-                "exec.approval.request",
+              const decisionResult = await callGatewayTool<{ decision?: string }>(
+                "exec.approval.waitDecision",
                 { timeoutMs: DEFAULT_APPROVAL_REQUEST_TIMEOUT_MS },
-                {
-                  id: approvalId,
-                  command: commandText,
-                  cwd: workdir,
-                  host: "gateway",
-                  security: hostSecurity,
-                  ask: hostAsk,
-                  agentId,
-                  resolvedPath,
-                  sessionKey: defaults?.sessionKey,
-                  timeoutMs: DEFAULT_APPROVAL_TIMEOUT_MS,
-                },
-              )) as { decision?: string } | null;
+                { id: approvalId },
+              );
               decision =
                 decisionResult && typeof decisionResult === "object"
                   ? (decisionResult.decision ?? null)

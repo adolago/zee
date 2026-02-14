@@ -1,0 +1,58 @@
+#!/bin/bash
+# Zee Morning Briefing - comprehensive daily review
+# Run at start of day or when opening Zee
+
+echo "================================================"
+echo "  GOOD MORNING, ARTUR"
+echo "  $(date '+%A, %B %d, %Y - %H:%M %Z')"
+echo "================================================"
+echo ""
+
+# Calendar: today + next 3 days
+echo "--- CALENDAR (today + 3 days) ---"
+khal list today 3d 2>/dev/null || echo "  (no events)"
+echo ""
+
+# Taskwarrior: today's focus
+echo "--- TODAY'S TASKS ---"
+task today 2>/dev/null | head -20 || echo "  (no tasks)"
+echo ""
+
+# Overdue tasks
+OVERDUE=$(task +OVERDUE count 2>/dev/null)
+if [ "$OVERDUE" -gt 0 ] 2>/dev/null; then
+  echo "--- OVERDUE ($OVERDUE tasks) ---"
+  task +OVERDUE list 2>/dev/null | head -10
+  echo ""
+fi
+
+# Email briefing (last 24h)
+echo "--- EMAIL HIGHLIGHTS (last 24h) ---"
+echo "  Job alerts:"
+notmuch search --limit=5 \
+  "date:1d.. AND from:linkedin AND (subject:analyst OR subject:manager OR subject:contributor OR subject:researcher OR subject:engineer)" 2>/dev/null | sed 's/^/    /'
+echo "  Euclase/Pareto:"
+notmuch search --limit=3 \
+  "date:1d.. AND (from:pareto OR subject:euclase)" 2>/dev/null | sed 's/^/    /'
+UNREAD=$(notmuch count 'tag:unread AND tag:inbox' 2>/dev/null)
+echo "  Unread: $UNREAD"
+echo ""
+
+# Active projects summary
+echo "--- ACTIVE PROJECTS ---"
+task _projects 2>/dev/null | while read proj; do
+  [ -z "$proj" ] && continue
+  count=$(task project:"$proj" status:pending count 2>/dev/null)
+  echo "  $proj: $count pending"
+done
+echo ""
+
+echo "--- DAILY BLOCKS ---"
+echo "  08:00-09:00  Math Academy"
+echo "  09:00-16:00  Euclase + Job Hunt"
+echo "  16:00-21:00  Coursera + Study"
+echo "  21:00        Evening capture + plan tomorrow"
+echo ""
+echo "================================================"
+echo "  Survival will lead to improvement."
+echo "================================================"

@@ -76,6 +76,22 @@ describe("gateway server health/presence", () => {
     ws.close();
   });
 
+  test("operator with explicit empty scopes cannot access scoped methods", async () => {
+    const ws = await openClient({ scopes: [] });
+    const statusP = onceMessage(ws, (o) => o.type === "res" && o.id === "status-empty-scopes");
+    ws.send(
+      JSON.stringify({
+        type: "req",
+        id: "status-empty-scopes",
+        method: "status",
+      }),
+    );
+    const status = await statusP;
+    expect(status.ok).toBe(false);
+    expect(String(status.error?.message ?? "")).toContain("missing scope");
+    ws.close();
+  });
+
   test("broadcasts heartbeat events and serves last-heartbeat", async () => {
     type HeartbeatPayload = {
       ts: number;
@@ -217,7 +233,7 @@ describe("gateway server health/presence", () => {
     const identityPath = path.join(os.tmpdir(), `zee-device-${randomUUID()}.json`);
     const identity = loadOrCreateDeviceIdentity(identityPath);
     const role = "operator";
-    const scopes: string[] = [];
+    const scopes: string[] = ["operator.read"];
     const signedAtMs = Date.now();
     const payload = buildDeviceAuthPayload({
       deviceId: identity.deviceId,

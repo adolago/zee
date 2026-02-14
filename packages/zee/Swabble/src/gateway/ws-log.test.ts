@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatForLog, shortId, summarizeAgentEventForWsLog } from "./ws-log.js";
+import { formatForLog, sanitizeWsHeaderValue, shortId, summarizeAgentEventForWsLog } from "./ws-log.js";
 
 describe("gateway ws log helpers", () => {
   test("shortId compacts uuids and long strings", () => {
@@ -24,6 +24,16 @@ describe("gateway ws log helpers", () => {
     expect(out).toContain("token");
     expect(out).not.toContain(token);
     expect(out).toContain("…");
+  });
+
+  test("sanitizeWsHeaderValue strips control chars and redacts secrets", () => {
+    const bearer = "Bearer sk-abcdefghijklmnopqrstuvwxyz123456";
+    const value = `  ${bearer}\r\nx-test: 1  `;
+    const out = sanitizeWsHeaderValue(value);
+    expect(out).not.toContain("sk-abcdefghijklmnopqrstuvwxyz123456");
+    expect(out).not.toContain("\r");
+    expect(out).not.toContain("\n");
+    expect(out).toContain("Bearer");
   });
 
   test("summarizeAgentEventForWsLog extracts useful fields", () => {

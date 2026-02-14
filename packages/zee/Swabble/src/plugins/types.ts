@@ -294,6 +294,7 @@ export type PluginHookName =
   | "message_received"
   | "message_sending"
   | "message_sent"
+  | "tool_definition"
   | "before_tool_call"
   | "after_tool_call"
   | "tool_result_persist"
@@ -381,6 +382,17 @@ export type PluginHookToolContext = {
   agentId?: string;
   sessionKey?: string;
   toolName: string;
+};
+
+// tool_definition hook
+export type PluginHookToolDefinitionEvent = {
+  tool: AnyAgentTool;
+};
+
+export type PluginHookToolDefinitionResult = {
+  tool?: AnyAgentTool;
+  exclude?: boolean;
+  excludeReason?: string;
 };
 
 // before_tool_call hook
@@ -489,6 +501,10 @@ export type PluginHookHandlerMap = {
     event: PluginHookMessageSentEvent,
     ctx: PluginHookMessageContext,
   ) => Promise<void> | void;
+  tool_definition: (
+    event: PluginHookToolDefinitionEvent,
+    ctx: PluginHookToolContext,
+  ) => PluginHookToolDefinitionResult | void;
   before_tool_call: (
     event: PluginHookBeforeToolCallEvent,
     ctx: PluginHookToolContext,

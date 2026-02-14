@@ -4,7 +4,6 @@ import {
   collectWhatsAppStatusIssues,
   createActionGate,
   DEFAULT_ACCOUNT_ID,
-  formatPairingApproveHint,
   getChatChannelMeta,
   isWhatsAppGroupJid,
   listWhatsAppAccountIds,
@@ -130,11 +129,11 @@ export const whatsappPlugin: ChannelPlugin<ResolvedWhatsAppAccount> = {
         ? `channels.whatsapp.accounts.${resolvedAccountId}.`
         : "channels.whatsapp.";
       return {
-        policy: account.dmPolicy ?? "pairing",
+        policy: account.dmPolicy ?? "allowlist",
         allowFrom: account.allowFrom ?? [],
         policyPath: `${basePath}dmPolicy`,
         allowFromPath: basePath,
-        approveHint: formatPairingApproveHint("whatsapp"),
+        approveHint: "",
         normalizeEntry: (raw) => normalizeE164(raw),
       };
     },

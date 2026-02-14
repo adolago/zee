@@ -4,14 +4,22 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { buildHistoryContextFromEntries, type HistoryEntry } from "../auto-reply/reply/history.js";
 import { createDefaultDeps } from "../cli/deps.js";
 import { agentCommand } from "../commands/agent.js";
+import { loadConfig } from "../config/config.js";
 import { emitAgentEvent, onAgentEvent } from "../infra/agent-events.js";
 import { logError } from "../logger.js";
 import { defaultRuntime } from "../runtime.js";
 import { authorizeGatewayConnect, type ResolvedGatewayAuth } from "./auth.js";
 import {
+  checkGatewayAuthRateLimit,
+  clearGatewayAuthRateLimit,
+  recordGatewayAuthFailure,
+  resolveGatewayAuthClientIp,
+} from "./auth-rate-limit.js";
+import {
   readJsonBodyOrError,
   sendJson,
   sendMethodNotAllowed,
+  sendTooManyRequests,
   sendUnauthorized,
   setSseHeaders,
   writeDone,
@@ -166,16 +174,41 @@ export async function handleOpenAiHttpRequest(
   }
 
   const token = getBearerToken(req);
+  const cfg = loadConfig();
+  const rateLimitCfg = cfg.gateway?.auth?.rateLimit;
+  const clientIp = resolveGatewayAuthClientIp({
+    req,
+    trustedProxies: opts.trustedProxies ?? cfg.gateway?.trustedProxies,
+  });
+  const preLimit = checkGatewayAuthRateLimit({
+    cfg: rateLimitCfg,
+    ip: clientIp,
+    tokenOrPassword: token,
+  });
+  if (preLimit.limited) {
+    sendTooManyRequests(res, preLimit.retryAfterMs);
+    return true;
+  }
   const authResult = await authorizeGatewayConnect({
     auth: opts.auth,
     connectAuth: { token, password: token },
     req,
-    trustedProxies: opts.trustedProxies,
+    trustedProxies: opts.trustedProxies ?? cfg.gateway?.trustedProxies,
   });
   if (!authResult.ok) {
-    sendUnauthorized(res);
+    const failure = recordGatewayAuthFailure({
+      cfg: rateLimitCfg,
+      ip: clientIp,
+      tokenOrPassword: token,
+    });
+    if (failure.limited) {
+      sendTooManyRequests(res, failure.retryAfterMs);
+    } else {
+      sendUnauthorized(res);
+    }
     return true;
   }
+  clearGatewayAuthRateLimit({ ip: clientIp, tokenOrPassword: token });
 
   const body = await readJsonBodyOrError(req, res, opts.maxBodyBytes ?? 1024 * 1024);
   if (body === undefined) return true;

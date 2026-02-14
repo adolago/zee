@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "registry": "https://clawhub.ai",
+  "registry": "https://auth.clawdhub.com",
   "slug": "humanizer",
   "installedVersion": "1.0.0",
-  "installedAt": 1770865911339
+  "installedAt": 1771054355810
 }

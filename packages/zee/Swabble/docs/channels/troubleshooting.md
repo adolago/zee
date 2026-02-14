@@ -1,3 +1,4 @@
+---
 summary: "Channel-specific troubleshooting shortcuts (WhatsApp)"
 read_when:
   - A channel connects but messages don’t flow

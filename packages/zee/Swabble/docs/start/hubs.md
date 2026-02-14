@@ -11,9 +11,9 @@ Use these hubs to discover every page, including deep dives and reference docs t
 
 - [Index](/)
 - [Getting Started](/start/getting-started)
-- [Onboarding](/start/onboarding)
+- [Onboarding](/start/wizard)
 - [Wizard](/start/wizard)
-- [Setup](/start/setup)
+- [Setup](/cli/setup)
 - [Dashboard (local Gateway)](http://127.0.0.1:18789/)
 - [Help](/help)
 - [Configuration](/gateway/configuration)
@@ -139,4 +139,4 @@ Use these hubs to discover every page, including deep dives and reference docs t
 
 - [Testing](/reference/test)
 - [Release checklist](/reference/RELEASING)
-- [Device models](/reference/device-models)
+- [Models](/concepts/models)

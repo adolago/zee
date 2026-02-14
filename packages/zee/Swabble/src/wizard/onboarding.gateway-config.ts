@@ -1,5 +1,6 @@
 import { randomToken } from "../commands/onboard-helpers.js";
 import type { GatewayAuthChoice } from "../commands/onboard-types.js";
+import { normalizeCredentialInput } from "../commands/credential-input.js";
 import type { ZeeConfig } from "../config/config.js";
 import { findTailscaleBinary } from "../infra/tailscale.js";
 import type { RuntimeEnv } from "../runtime.js";
@@ -173,14 +174,14 @@ export async function configureGatewayForOnboarding(
   let gatewayToken: string | undefined;
   if (authMode === "token") {
     if (flow === "quickstart") {
-      gatewayToken = quickstartGateway.token ?? randomToken();
+      gatewayToken = normalizeCredentialInput(quickstartGateway.token) ?? randomToken();
     } else {
       const tokenInput = await prompter.text({
         message: "Gateway token (blank to generate)",
         placeholder: "Needed for multi-machine or non-loopback access",
         initialValue: quickstartGateway.token ?? "",
       });
-      gatewayToken = String(tokenInput).trim() || randomToken();
+      gatewayToken = normalizeCredentialInput(tokenInput) ?? randomToken();
     }
   }
 
@@ -192,6 +193,12 @@ export async function configureGatewayForOnboarding(
             message: "Gateway password",
             validate: (value) => (value?.trim() ? undefined : "Required"),
           });
+    const gatewayPassword = normalizeCredentialInput(password);
+    if (!gatewayPassword) {
+      opts.runtime.error("Gateway password is required.");
+      opts.runtime.exit(1);
+      throw new Error("Gateway password is required.");
+    }
     nextConfig = {
       ...nextConfig,
       gateway: {
@@ -199,7 +206,7 @@ export async function configureGatewayForOnboarding(
         auth: {
           ...nextConfig.gateway?.auth,
           mode: "password",
-          password: String(password).trim(),
+          password: gatewayPassword,
         },
       },
     };

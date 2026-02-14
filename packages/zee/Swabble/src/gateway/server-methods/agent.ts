@@ -25,6 +25,7 @@ import {
 } from "../../utils/message-channel.js";
 import { normalizeAgentId } from "../../routing/session-key.js";
 import { parseMessageWithAttachments } from "../chat-attachments.js";
+import { sanitizeGatewayErrorMessage, sanitizeGatewayUnavailableMessage } from "../error-sanitize.js";
 import {
   type AgentIdentityParams,
   type AgentWaitParams,
@@ -138,7 +139,14 @@ export const agentHandlers: GatewayRequestHandlers = {
         message = parsed.message.trim();
         images = parsed.images;
       } catch (err) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, String(err)));
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            sanitizeGatewayErrorMessage(err, { fallback: "invalid attachments" }),
+          ),
+        );
         return;
       }
     }
@@ -419,11 +427,12 @@ export const agentHandlers: GatewayRequestHandlers = {
         respond(true, payload, undefined, { runId });
       })
       .catch((err) => {
-        const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
+        const summary = sanitizeGatewayUnavailableMessage(err);
+        const error = errorShape(ErrorCodes.UNAVAILABLE, summary);
         const payload = {
           runId,
           status: "error" as const,
-          summary: String(err),
+          summary,
         };
         context.dedupe.set(`agent:${idem}`, {
           ts: Date.now(),

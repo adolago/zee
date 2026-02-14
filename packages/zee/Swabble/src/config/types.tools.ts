@@ -359,6 +359,8 @@ export type ToolsConfig = {
       maxRedirects?: number;
       /** Override User-Agent header for fetch requests. */
       userAgent?: string;
+      /** Attach image/* responses as image blocks in tool output (default: true). */
+      includeImages?: boolean;
       /** Use Readability to extract main content (default: true). */
       readability?: boolean;
       firecrawl?: {

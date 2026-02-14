@@ -20,6 +20,7 @@ import {
   validatePollParams,
   validateSendParams,
 } from "../protocol/index.js";
+import { sanitizeGatewayUnavailableMessage } from "../error-sanitize.js";
 import { formatForLog } from "../ws-log.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "./types.js";
 
@@ -218,7 +219,7 @@ export const sendHandlers: GatewayRequestHandlers = {
           meta: { channel },
         };
       } catch (err) {
-        const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
+        const error = errorShape(ErrorCodes.UNAVAILABLE, sanitizeGatewayUnavailableMessage(err));
         context.dedupe.set(dedupeKey, {
           ts: Date.now(),
           ok: false,
@@ -337,7 +338,7 @@ export const sendHandlers: GatewayRequestHandlers = {
       });
       respond(true, payload, undefined, { channel });
     } catch (err) {
-      const error = errorShape(ErrorCodes.UNAVAILABLE, String(err));
+      const error = errorShape(ErrorCodes.UNAVAILABLE, sanitizeGatewayUnavailableMessage(err));
       context.dedupe.set(`poll:${idem}`, {
         ts: Date.now(),
         ok: false,

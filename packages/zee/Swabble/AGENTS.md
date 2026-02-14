@@ -22,18 +22,18 @@
 
 ## Build, Test, and Development Commands
 - Runtime baseline: Node **22+** (keep Node + Bun paths working).
-- Install deps: `pnpm install`
+- Install deps: `bun install` (or `pnpm install` if your flow explicitly requires pnpm features)
 - Pre-commit hooks: `prek install` (runs same checks as CI)
 - Also supported: `bun install` (keep `pnpm-lock.yaml` + Bun patching in sync when touching deps/patches).
 - Prefer Bun for TypeScript execution (scripts, dev, tests): `bun <file.ts>` / `bunx <tool>`.
-- Run CLI in dev: `pnpm zee ...` or `pnpm dev`.
-- Type-check/build: `pnpm build` (tsc)
-- Lint/format: `pnpm lint` (oxlint), `pnpm format` (oxfmt)
-- Tests: `pnpm test` (vitest); coverage: `pnpm test:coverage`
+- Run CLI in dev: `bun run zee ...` or `bun run dev`.
+- Type-check/build: `bun run build` (tsc)
+- Lint/format: `bun run lint` (oxlint), `bun run format` (oxfmt)
+- Tests: `bun run test` (vitest); coverage: `bun run test:coverage`
 
 ## Coding Style & Naming Conventions
 - Language: TypeScript (ESM). Prefer strict typing; avoid `any`.
-- Formatting/linting via Oxlint and Oxfmt; run `pnpm lint` before commits.
+- Formatting/linting via Oxlint and Oxfmt; run `bun run lint` before commits.
 - Add brief code comments for tricky or non-obvious logic.
 - Keep files concise; extract helpers instead of “V2” copies. Use existing patterns for CLI options and dependency injection via `createDefaultDeps`.
 - Naming: use **Zee** for product/app/docs headings; use `zee` for CLI command, package/binary, paths, and config keys.
@@ -46,8 +46,8 @@
 ## Testing Guidelines
 - Framework: Vitest with V8 coverage thresholds (70% lines/branches/functions/statements).
 - Naming: match source names with `*.test.ts`; e2e in `*.e2e.test.ts`.
-- Run `pnpm test` (or `pnpm test:coverage`) before pushing when you touch logic.
-- Live tests (real keys): `ZEE_LIVE_TEST=1 pnpm test:live` (gateway + providers) or `LIVE=1 pnpm test:live` (includes provider live tests). Docker: `pnpm test:docker:live-models`, `pnpm test:docker:live-gateway`. Onboarding Docker E2E: `pnpm test:docker:onboard`.
+- Run `bun run test` (or `bun run test:coverage`) before pushing when you touch logic.
+- Live tests (real keys): `ZEE_LIVE_TEST=1 bun run test:live` (gateway + providers) or `LIVE=1 bun run test:live` (includes provider live tests). Docker: `bun run test:docker:live-models`, `bun run test:docker:live-gateway`. Onboarding Docker E2E: `bun run test:docker:onboard`.
 - Full kit + what’s covered: `docs/testing.md`.
 - Pure test additions/fixes generally do **not** need a changelog entry unless they alter user-facing behavior or the user asks for one.
 
@@ -72,7 +72,7 @@
 - Logs: check `~/.local/state/zee/logs/daemon.log` and `~/.local/state/zee/logs/daemon.err.log`.
 - Connection providers: when adding a new connection, update CLI/TUI surfaces and onboarding/overview docs, and add matching status + configuration forms so provider lists and settings stay in sync.
 - Version locations: `package.json` (CLI), `docs/install/updating.md` (pinned npm version).
-- A2UI bundle hash: `src/canvas-host/a2ui/.bundle.hash` is auto-generated; ignore unexpected changes, and only regenerate via `pnpm canvas:a2ui:bundle` (or `scripts/bundle-a2ui.sh`) when needed. Commit the hash as a separate commit.
+- A2UI bundle hash: `src/canvas-host/a2ui/.bundle.hash` is auto-generated; ignore unexpected changes, and only regenerate via `bun run canvas:a2ui:bundle` (or `scripts/bundle-a2ui.sh`) when needed. Commit the hash as a separate commit.
 - Multi-agent safety: do not create/apply/drop `git stash` entries unless explicitly requested. Do not switch branches or modify worktrees unless explicitly requested.
 - Lint/format churn:
   - If staged+unstaged diffs are formatting-only, auto-resolve without asking.

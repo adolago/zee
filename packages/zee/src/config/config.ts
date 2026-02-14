@@ -1208,16 +1208,15 @@ export namespace Config {
       storagePath: z.string().optional().describe("Storage path for file backend"),
       redisUrl: z.string().optional().describe("Redis connection URL"),
       qdrantUrl: z.string().optional().describe("Qdrant endpoint URL"),
-      qdrantApiKey: z.string().optional().describe("Qdrant API key"),
+      // qdrantApiKey removed: Qdrant is local-only, no remote support
       qdrantCollection: z.string().optional().describe("Qdrant collection for memory"),
       qdrant: z
         .object({
-          url: z.string().optional().describe("Qdrant endpoint URL"),
-          apiKey: z.string().optional().describe("Qdrant API key"),
+          url: z.string().optional().describe("Qdrant endpoint URL (must be localhost)"),
           collection: z.string().optional().describe("Qdrant collection for memory"),
         })
         .optional()
-        .describe("Nested Qdrant configuration"),
+        .describe("Nested Qdrant configuration (local-only)"),
       embedding: z
         .object({
           profile: z
@@ -1856,8 +1855,6 @@ export namespace Config {
     // Redact memory secrets
     if (copy.memory) {
       if (copy.memory.redisUrl) copy.memory.redisUrl = "********"
-      if (copy.memory.qdrantApiKey) copy.memory.qdrantApiKey = "********"
-      if (copy.memory.qdrant?.apiKey) copy.memory.qdrant.apiKey = "********"
       // Legacy: redact deprecated memory.embedding.apiKey if it exists on unvalidated inputs.
       const embedding = (copy.memory as unknown as { embedding?: Record<string, unknown> }).embedding
       if (embedding && typeof embedding.apiKey === "string" && embedding.apiKey.length > 0) {

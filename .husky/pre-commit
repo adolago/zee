@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Secret scanning -- block commits containing API keys
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --config .gitleaks.toml --verbose
+else
+  echo "Warning: gitleaks not installed. Run: ./scripts/install-gitleaks.sh"
+fi
+
+./scripts/verify-skills.sh

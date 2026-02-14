@@ -26,7 +26,7 @@ export interface SetupCheckResult {
   }
   googleApiKey: {
     available: boolean
-    source?: "auth.json:data" | "auth.json:state"
+    source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY"
     error?: string
   }
   warnings: string[]
@@ -183,9 +183,14 @@ async function checkQdrantConnectivity(url: string): Promise<{ available: boolea
  */
 async function checkGoogleApiKey(): Promise<{
   available: boolean
-  source?: "auth.json:data" | "auth.json:state"
+  source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY"
   error?: string
 }> {
+  const envKey = process.env.GOOGLE_API_KEY?.trim()
+  if (envKey) {
+    return { available: true, source: "env:GOOGLE_API_KEY" }
+  }
+
   const candidates: Array<{ source: "auth.json:data" | "auth.json:state"; path: string }> = [
     { source: "auth.json:data", path: AUTH_JSON_DATA_PATH },
     { source: "auth.json:state", path: AUTH_JSON_STATE_PATH },
@@ -195,7 +200,19 @@ async function checkGoogleApiKey(): Promise<{
     try {
       const content = await fs.readFile(candidate.path, "utf-8")
       const auth = JSON.parse(content)
-      if (auth.google?.type === "api" && typeof auth.google?.key === "string" && auth.google.key.trim()) {
+      const googleAuth = auth.google as
+        | { type?: string; key?: string; refresh?: string; access?: string }
+        | undefined
+
+      const hasApiKey =
+        googleAuth?.type === "api" && typeof googleAuth.key === "string" && googleAuth.key.trim()
+
+      const hasOauthCredentials =
+        googleAuth?.type === "oauth" &&
+        ((typeof googleAuth.refresh === "string" && googleAuth.refresh.trim()) ||
+          (typeof googleAuth.access === "string" && googleAuth.access.trim()))
+
+      if (hasApiKey || hasOauthCredentials) {
         return { available: true, source: candidate.source }
       }
     } catch {
@@ -248,7 +265,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   }
 
   if (!googleCheck.available) {
-    errors.push("Google API key not found (required for embeddings)")
+    errors.push("Google API key not found (required for memory embeddings, regardless of chat provider)")
     errors.push("  Run: zee auth login google")
     errors.push(`  Stores in: ${AUTH_JSON_DATA_PATH} (or ${AUTH_JSON_STATE_PATH})`)
   }
@@ -309,7 +326,7 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
   if (result.googleApiKey.available) {
     lines.push(`Google:   OK (${result.googleApiKey.source})`)
   } else {
-    lines.push("Google:   MISSING (API key for embeddings)")
+    lines.push("Google:   MISSING (API key for memory embeddings)")
   }
 
   lines.push("")

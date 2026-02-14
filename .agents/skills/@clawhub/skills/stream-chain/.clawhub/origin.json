@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "registry": "https://clawhub.ai",
+  "registry": "https://auth.clawdhub.com",
   "slug": "stream-chain",
   "installedVersion": "1.0.0",
-  "installedAt": 1770866066716
+  "installedAt": 1771054368838
 }

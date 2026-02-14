@@ -49,6 +49,7 @@ async function buildGatewayConnectParams() {
       mode: "cli",
     },
     caps: [],
+    scopes: ["operator.admin"],
     ...(auth ? { auth } : {}),
   }
 }
@@ -140,4 +141,3 @@ export const GatewayStatusCommand = cmd({
     await printGatewayStatus()
   },
 })
-

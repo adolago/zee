@@ -1,4 +1,5 @@
 ---
+summary: "How to integrate external services with Zee through JSON-RPC adapters."
 read_when:
   - Adding or changing external CLI integrations
 ---

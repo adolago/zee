@@ -151,7 +151,7 @@ function use() {
 
 export function Session() {
   const route = useRouteData("session")
-  const { navigate } = useRoute()
+  const { navigate, clearInitialPrompt } = useRoute()
   const sync = useSync()
   const kv = useKV()
   const { theme } = useTheme()
@@ -299,10 +299,12 @@ export function Session() {
     onCleanup(unsub)
   })
 
-  // Handle initial prompt from fork
+  // Handle initial prompt from fork (consume once, then clear so it doesn't
+  // re-apply after the user submits and the prompt is cleared)
   createEffect(() => {
     if (route.initialPrompt && prompt) {
       prompt.set(route.initialPrompt)
+      clearInitialPrompt()
     }
   })
 
@@ -1216,6 +1218,7 @@ export function Session() {
                   // Apply initial prompt when prompt component mounts (e.g., from fork)
                   if (route.initialPrompt) {
                     r.set(route.initialPrompt)
+                    clearInitialPrompt()
                   }
                 }}
                 disabled={permissions().length > 0 || questions().length > 0}

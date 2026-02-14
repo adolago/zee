@@ -49,8 +49,15 @@ describe("exec approvals", () => {
       resolveInvoke = resolve;
     });
 
-    vi.mocked(callGatewayTool).mockImplementation(async (method, _opts, params) => {
+    vi.mocked(callGatewayTool).mockImplementation(async (method, _opts, params, extra) => {
       if (method === "exec.approval.request") {
+        expect(params).toMatchObject({
+          twoPhase: true,
+        });
+        expect(extra).toMatchObject({ expectFinal: false });
+        return { status: "accepted", expiresAtMs: Date.now() + 120_000 };
+      }
+      if (method === "exec.approval.waitDecision") {
         return { decision: "allow-once" };
       }
       if (method === "node.invoke") {
@@ -108,9 +115,6 @@ describe("exec approvals", () => {
       if (method === "node.invoke") {
         return { payload: { success: true, stdout: "ok" } };
       }
-      if (method === "exec.approval.request") {
-        return { decision: "allow-once" };
-      }
       return { ok: true };
     });
 
@@ -163,6 +167,9 @@ describe("exec approvals", () => {
       calls.push(method);
       if (method === "exec.approval.request") {
         resolveApproval?.();
+        return { status: "accepted", expiresAtMs: Date.now() + 120_000 };
+      }
+      if (method === "exec.approval.waitDecision") {
         return { decision: "deny" };
       }
       return { ok: true };
@@ -180,5 +187,6 @@ describe("exec approvals", () => {
     expect(result.details.status).toBe("approval-pending");
     await approvalSeen;
     expect(calls).toContain("exec.approval.request");
+    expect(calls).toContain("exec.approval.waitDecision");
   });
 });

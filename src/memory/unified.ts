@@ -105,11 +105,10 @@ export interface PersonasState {
   };
 }
 
-/** Memory configuration */
+/** Memory configuration (Qdrant is local-only, no remote/cloud support) */
 export interface MemoryConfig {
   qdrant: {
     url?: string;
-    apiKey?: string;
     collection?: string;
   };
   embedding: EmbeddingConfig;
@@ -379,7 +378,6 @@ export class Memory {
     const fileEmbedding = getMemoryEmbeddingConfig();
     const qdrantConfig = {
       url: config.qdrant?.url ?? fileQdrant.url ?? QDRANT_URL,
-      apiKey: config.qdrant?.apiKey ?? fileQdrant.apiKey,
       collection:
         config.qdrant?.collection ??
         fileQdrant.collection ??

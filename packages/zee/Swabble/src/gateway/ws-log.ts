@@ -78,6 +78,13 @@ export function formatForLog(value: unknown): string {
   }
 }
 
+export function sanitizeWsHeaderValue(value: unknown): string {
+  if (typeof value !== "string") return "n/a";
+  const clean = value.replace(/[\r\n\t]+/g, " ").trim();
+  if (!clean) return "n/a";
+  return formatForLog(clean);
+}
+
 function compactPreview(input: string, maxLen = 160): string {
   const oneLine = input.replace(/\s+/g, " ").trim();
   if (oneLine.length <= maxLen) return oneLine;

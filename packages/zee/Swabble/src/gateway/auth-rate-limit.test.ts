@@ -10,14 +10,13 @@ import {
 
 describe("auth rate limiter", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     __testing.reset();
     vi.useRealTimers();
   });
 
   it("locks out by IP after repeated failures and unlocks after lockout", () => {
-    let now = Date.parse("2026-02-13T12:00:00.000Z");
-    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-13T12:00:00.000Z"));
     const cfg = {
       enabled: true,
       windowMs: 60_000,
@@ -32,13 +31,13 @@ describe("auth rate limiter", () => {
     expect((second.retryAfterMs ?? 0) > 0).toBe(true);
 
     expect(checkGatewayAuthRateLimit({ cfg, ip: "10.0.0.1" }).limited).toBe(true);
-    now += 5_100;
+    vi.advanceTimersByTime(5_100);
     expect(checkGatewayAuthRateLimit({ cfg, ip: "10.0.0.1" }).limited).toBe(false);
   });
 
   it("supports token/password-based lockouts independent of IP", () => {
-    const now = Date.parse("2026-02-13T12:00:00.000Z");
-    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-13T12:00:00.000Z"));
     const cfg = {
       enabled: true,
       windowMs: 60_000,
@@ -51,6 +50,7 @@ describe("auth rate limiter", () => {
     const second = recordGatewayAuthFailure({ cfg, tokenOrPassword: "secret-token" });
     expect(second.limited).toBe(true);
 
+    // Different secret is unaffected.
     expect(checkGatewayAuthRateLimit({ cfg, tokenOrPassword: "another-secret" }).limited).toBe(
       false,
     );
@@ -94,3 +94,4 @@ describe("auth rate limiter", () => {
     expect(ip).toBe("203.0.113.7");
   });
 });
+

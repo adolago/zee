@@ -355,7 +355,11 @@ export async function connectReq(
         : process.env.ZEE_GATEWAY_PASSWORD;
   const token = opts?.token ?? defaultToken;
   const password = opts?.password ?? defaultPassword;
-  const requestedScopes = Array.isArray(opts?.scopes) ? opts?.scopes : [];
+  const requestedScopes = Array.isArray(opts?.scopes)
+    ? opts.scopes
+    : role === "operator"
+      ? ["operator.admin"]
+      : [];
   const device = (() => {
     if (opts?.device === null) return undefined;
     if (opts?.device) return opts.device;
@@ -391,7 +395,7 @@ export async function connectReq(
         commands: opts?.commands ?? [],
         permissions: opts?.permissions ?? undefined,
         role,
-        scopes: opts?.scopes,
+        scopes: requestedScopes,
         auth:
           token || password
             ? {

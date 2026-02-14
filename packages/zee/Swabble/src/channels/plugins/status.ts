@@ -2,14 +2,16 @@ import type { ZeeConfig } from "../../config/config.js";
 import type { ChannelAccountSnapshot, ChannelPlugin } from "./types.js";
 
 // Channel docking: status snapshots flow through plugin.status hooks here.
-export async function buildChannelAccountSnapshot<ResolvedAccount>(params: {
-  plugin: ChannelPlugin<ResolvedAccount>;
-  cfg: ZeeConfig;
-  accountId: string;
-  runtime?: ChannelAccountSnapshot;
-  probe?: unknown;
-  audit?: unknown;
-}): Promise<ChannelAccountSnapshot> {
+export async function buildChannelAccountSnapshot<ResolvedAccount, Probe = unknown, Audit = unknown>(
+  params: {
+    plugin: ChannelPlugin<ResolvedAccount, Probe, Audit>;
+    cfg: ZeeConfig;
+    accountId: string;
+    runtime?: ChannelAccountSnapshot;
+    probe?: Probe;
+    audit?: Audit;
+  },
+): Promise<ChannelAccountSnapshot> {
   const account = params.plugin.config.resolveAccount(params.cfg, params.accountId);
   if (params.plugin.status?.buildAccountSnapshot) {
     return await params.plugin.status.buildAccountSnapshot({

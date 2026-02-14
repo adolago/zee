@@ -387,7 +387,18 @@ vi.mock("../config/config.js", async () => {
           ? ({ ...(fileConfig.gateway as Record<string, unknown>) } as Record<string, unknown>)
           : {};
       if (testState.gatewayBind) fileGateway.bind = testState.gatewayBind;
-      if (testState.gatewayAuth) fileGateway.auth = testState.gatewayAuth;
+      if (testState.gatewayAuth) {
+        const fileGatewayAuth =
+          fileGateway.auth &&
+          typeof fileGateway.auth === "object" &&
+          !Array.isArray(fileGateway.auth)
+            ? (fileGateway.auth as Record<string, unknown>)
+            : {};
+        fileGateway.auth = {
+          ...fileGatewayAuth,
+          ...testState.gatewayAuth,
+        };
+      }
       const gateway = Object.keys(fileGateway).length > 0 ? fileGateway : undefined;
 
       const hooks = testState.hooksConfig ?? (fileConfig.hooks as HooksConfig | undefined);

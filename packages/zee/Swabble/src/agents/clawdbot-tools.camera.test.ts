@@ -126,4 +126,103 @@ describe("nodes run", () => {
       invokeTimeoutMs: 45_000,
     });
   });
+
+  it("requests approval and retries when system.run requires approval", async () => {
+    let invokeCount = 0;
+    callGateway.mockImplementation(async ({ method, params }) => {
+      if (method === "node.list") {
+        return { nodes: [{ nodeId: "node-1", commands: ["system.run"] }] };
+      }
+      if (method === "node.invoke") {
+        invokeCount += 1;
+        if (invokeCount === 1) {
+          throw new Error("SYSTEM_RUN_DENIED: approval required");
+        }
+        expect(params).toMatchObject({
+          nodeId: "node-1",
+          command: "system.run",
+          params: {
+            command: ["echo", "approved"],
+            approved: true,
+            approvalDecision: "allow-once",
+          },
+        });
+        return {
+          payload: { stdout: "approved", stderr: "", exitCode: 0, success: true },
+        };
+      }
+      if (method === "exec.approval.request") {
+        expect(params).toMatchObject({
+          command: "echo approved",
+          host: "node",
+          timeoutMs: 120_000,
+        });
+        return { decision: "allow-once" };
+      }
+      throw new Error(`unexpected method: ${String(method)}`);
+    });
+
+    const tool = createZeeTools().find((candidate) => candidate.name === "nodes");
+    if (!tool) throw new Error("missing nodes tool");
+
+    const result = await tool.execute("call2", {
+      action: "run",
+      node: "node-1",
+      command: ["echo", "approved"],
+    });
+    expect(invokeCount).toBe(2);
+    expect(result.details).toMatchObject({ success: true, stdout: "approved" });
+  });
+
+  it("fails with user denied when approval is denied", async () => {
+    callGateway.mockImplementation(async ({ method }) => {
+      if (method === "node.list") {
+        return { nodes: [{ nodeId: "node-1", commands: ["system.run"] }] };
+      }
+      if (method === "node.invoke") {
+        throw new Error("SYSTEM_RUN_DENIED: approval required");
+      }
+      if (method === "exec.approval.request") {
+        return { decision: "deny" };
+      }
+      throw new Error(`unexpected method: ${String(method)}`);
+    });
+
+    const tool = createZeeTools().find((candidate) => candidate.name === "nodes");
+    if (!tool) throw new Error("missing nodes tool");
+
+    await expect(
+      tool.execute("call3", {
+        action: "run",
+        node: "node-1",
+        command: ["echo", "denied"],
+      }),
+    ).rejects.toThrow("exec denied: user denied");
+  });
+
+  it("fails with approval timeout when no approval decision is returned", async () => {
+    callGateway.mockImplementation(async ({ method }) => {
+      if (method === "node.list") {
+        return { nodes: [{ nodeId: "node-1", commands: ["system.run"] }] };
+      }
+      if (method === "node.invoke") {
+        throw new Error("SYSTEM_RUN_DENIED: approval required");
+      }
+      if (method === "exec.approval.request") {
+        return { decision: null };
+      }
+      throw new Error(`unexpected method: ${String(method)}`);
+    });
+
+    const tool = createZeeTools().find((candidate) => candidate.name === "nodes");
+    if (!tool) throw new Error("missing nodes tool");
+
+    await expect(
+      tool.execute("call4", {
+        action: "run",
+        node: "node-1",
+        command: ["echo", "timeout"],
+      }),
+    ).rejects.toThrow("exec denied: approval timed out");
+  });
 });

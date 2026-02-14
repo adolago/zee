@@ -18,6 +18,7 @@ export type AcpClientOptions = {
   serverArgs?: string[];
   serverVerbose?: boolean;
   verbose?: boolean;
+  autoApprovePermissions?: boolean;
 };
 
 export type AcpClientHandle = {
@@ -102,12 +103,21 @@ export async function createAcpClient(opts: AcpClientOptions = {}): Promise<AcpC
       requestPermission: async (params: RequestPermissionRequest) => {
         console.log("\n[permission requested]", params.toolCall?.title ?? "tool");
         const options = params.options ?? [];
-        const allowOnce = options.find((option) => option.kind === "allow_once");
+        const allowOption =
+          options.find((option) => option.kind === "allow_once") ||
+          options.find((option) => option.kind === "allow_always");
+        const rejectOption =
+          options.find((option) => option.kind === "reject_once") ||
+          options.find((option) => option.kind === "reject_always");
         const fallback = options[0];
+        // Default-secure behavior: reject unless explicitly configured to auto-approve.
+        const selected = opts.autoApprovePermissions
+          ? (allowOption?.optionId ?? fallback?.optionId ?? "allow")
+          : (rejectOption?.optionId ?? fallback?.optionId ?? "reject");
         return {
           outcome: {
             outcome: "selected",
-            optionId: allowOnce?.optionId ?? fallback?.optionId ?? "allow",
+            optionId: selected,
           },
         };
       },

@@ -40,10 +40,13 @@ export function createExecApprovalHandlers(
         resolvedPath?: string;
         sessionKey?: string;
         timeoutMs?: number;
+        twoPhase?: boolean;
       };
+      const twoPhase = p.twoPhase === true;
       const timeoutMs = typeof p.timeoutMs === "number" ? p.timeoutMs : 120_000;
       const explicitId = typeof p.id === "string" && p.id.trim().length > 0 ? p.id.trim() : null;
-      if (explicitId && manager.getSnapshot(explicitId)) {
+      const existing = explicitId ? manager.getSnapshot(explicitId) : null;
+      if (existing && existing.resolvedAtMs === undefined) {
         respond(
           false,
           undefined,
@@ -62,7 +65,17 @@ export function createExecApprovalHandlers(
         sessionKey: p.sessionKey ?? null,
       };
       const record = manager.create(request, timeoutMs, explicitId);
-      const decisionPromise = manager.waitForDecision(record, timeoutMs);
+      let decisionPromise: Promise<ExecApprovalDecision | null>;
+      try {
+        decisionPromise = manager.register(record, timeoutMs);
+      } catch (err) {
+        respond(
+          false,
+          undefined,
+          errorShape(ErrorCodes.INVALID_REQUEST, `registration failed: ${String(err)}`),
+        );
+        return;
+      }
       context.broadcast(
         "exec.approval.requested",
         {
@@ -83,6 +96,20 @@ export function createExecApprovalHandlers(
         .catch((err) => {
           context.logGateway?.error?.(`exec approvals: forward request failed: ${String(err)}`);
         });
+
+      if (twoPhase) {
+        respond(
+          true,
+          {
+            status: "accepted",
+            id: record.id,
+            createdAtMs: record.createdAtMs,
+            expiresAtMs: record.expiresAtMs,
+          },
+          undefined,
+        );
+      }
+
       const decision = await decisionPromise;
       respond(
         true,
@@ -91,6 +118,35 @@ export function createExecApprovalHandlers(
           decision,
           createdAtMs: record.createdAtMs,
           expiresAtMs: record.expiresAtMs,
+        },
+        undefined,
+      );
+    },
+    "exec.approval.waitDecision": async ({ params, respond }) => {
+      const p = params as { id?: string };
+      const id = typeof p.id === "string" ? p.id.trim() : "";
+      if (!id) {
+        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "id is required"));
+        return;
+      }
+      const decisionPromise = manager.awaitDecision(id);
+      if (!decisionPromise) {
+        respond(
+          false,
+          undefined,
+          errorShape(ErrorCodes.INVALID_REQUEST, "approval expired or not found"),
+        );
+        return;
+      }
+      const snapshot = manager.getSnapshot(id);
+      const decision = await decisionPromise;
+      respond(
+        true,
+        {
+          id,
+          decision,
+          createdAtMs: snapshot?.createdAtMs,
+          expiresAtMs: snapshot?.expiresAtMs,
         },
         undefined,
       );

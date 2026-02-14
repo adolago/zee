@@ -82,21 +82,24 @@ export async function noteSecurityWarnings(cfg: ZeeConfig) {
     approveHint: string;
     normalizeEntry?: (raw: string) => string;
   }) => {
-    const dmPolicy = params.dmPolicy;
+  const dmPolicy = params.dmPolicy;
     const policyPath = params.policyPath ?? `${params.allowFromPath}policy`;
     const configAllowFrom = (params.allowFrom ?? []).map((v) => String(v).trim());
-    const hasWildcard = configAllowFrom.includes("*");
-    const storeAllowFrom = await readChannelAllowFromStore(params.provider).catch(() => []);
-    const normalizedCfg = configAllowFrom
-      .filter((v) => v !== "*")
-      .map((v) => (params.normalizeEntry ? params.normalizeEntry(v) : v))
-      .map((v) => v.trim())
-      .filter(Boolean);
-    const normalizedStore = storeAllowFrom
-      .map((v) => (params.normalizeEntry ? params.normalizeEntry(v) : v))
-      .map((v) => v.trim())
-      .filter(Boolean);
-    const allowCount = Array.from(new Set([...normalizedCfg, ...normalizedStore])).length;
+  const hasWildcard = configAllowFrom.includes("*");
+  const storeAllowFrom = await readChannelAllowFromStore(params.provider).catch(() => []);
+  const normalizedCfg = configAllowFrom
+    .filter((v) => v !== "*")
+    .map((v) => (params.normalizeEntry ? params.normalizeEntry(v) : v))
+    .map((v) => v.trim())
+    .filter(Boolean);
+  const includePairingStore = params.provider !== "whatsapp";
+  const normalizedStore = includePairingStore
+    ? storeAllowFrom
+        .map((v) => (params.normalizeEntry ? params.normalizeEntry(v) : v))
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : [];
+  const allowCount = Array.from(new Set([...normalizedCfg, ...normalizedStore])).length;
     const dmScope = cfg.session?.dmScope ?? "main";
     const isMultiUserDm = hasWildcard || allowCount > 1;
 
@@ -117,9 +120,11 @@ export async function noteSecurityWarnings(cfg: ZeeConfig) {
 
     if (dmPolicy !== "open" && allowCount === 0) {
       warnings.push(
-        `- ${params.label} DMs: locked (${policyPath}="${dmPolicy}") with no allowlist; unknown senders will be blocked / get a pairing code.`,
+        `- ${params.label} DMs: locked (${policyPath}="${dmPolicy}") with no allowlist; unknown senders will be blocked.`,
       );
-      warnings.push(`  ${params.approveHint}`);
+      if (params.approveHint) {
+        warnings.push(`  ${params.approveHint}`);
+      }
     }
 
     if (dmScope === "main" && isMultiUserDm) {

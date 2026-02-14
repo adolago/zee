@@ -20,7 +20,7 @@ zee gateway --port 18789 --verbose
 # if the port is busy, terminate listeners then start:
 zee gateway --force
 # dev loop (auto-reload on TS changes):
-pnpm gateway:watch
+bun run gateway:watch
 ```
 - Config hot reload watches `~/.zee/zee.json` (or `ZEE_CONFIG_PATH`).
   - Default mode: `gateway.reload.mode="hybrid"` (hot-apply safe changes, restart on critical).
@@ -146,7 +146,7 @@ See also: [Presence](/concepts/presence) for how presence is produced/deduped an
 - Server validates every inbound frame with AJV against JSON Schema emitted from the protocol definitions.
 - Clients (TS) consume generated types from the schema output.
 - Protocol definitions are the source of truth; regenerate schema/models with:
-  - `pnpm protocol:gen`
+  - `bun run protocol:gen`
 
 ## Connection snapshot
 - `hello-ok` includes a `snapshot` with `presence`, `health`, `stateVersion`, and `uptimeMs` plus `policy {maxPayload,maxBufferedBytes,tickIntervalMs}` so clients can render immediately without extra requests.

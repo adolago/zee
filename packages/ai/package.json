@@ -10,10 +10,7 @@
     "build": "tsgo"
   },
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+    ".": "./src/index.ts"
   },
   "files": [
     "dist"
@@ -27,6 +24,9 @@
     "typescript": "catalog:",
     "@typescript/native-preview": "catalog:"
   },
+  "publishConfig": {
+    "directory": "dist"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/adolago/zee.git",
@@ -38,7 +38,5 @@
     "llm",
     "providers",
     "tool-calling"
-  ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  ]
 }

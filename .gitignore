@@ -5,6 +5,14 @@ node_modules
 .worktrees
 .sst
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
 .idea
 .vscode
 *~
@@ -61,6 +69,9 @@ vendor/personas/zee/docs/install/docker.md
 vendor/personas/zee/docs/platforms/linux.md
 vendor/personas/zee/docs/platforms/exe-dev.md
 vendor/personas/zee/docker-compose.yml
+
+# Reliability test artifacts (may contain runtime credentials)
+packages/zee/artifacts/
 
 # Personal reports and archives
 *-report.md

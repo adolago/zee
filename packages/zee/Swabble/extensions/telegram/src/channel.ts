@@ -15,6 +15,7 @@ import {
   promptAccountId,
   requireOpenAllowFrom,
   setAccountEnabledInConfigSection,
+  type ChannelAccountSnapshot,
   type ChannelOnboardingAdapter,
   type ChannelPlugin,
   type ChannelStatusIssue,
@@ -370,7 +371,7 @@ async function sendTelegramText(params: {
   };
 }
 
-function collectTelegramStatusIssues(accounts: Array<Record<string, unknown>>): ChannelStatusIssue[] {
+function collectTelegramStatusIssues(accounts: ChannelAccountSnapshot[]): ChannelStatusIssue[] {
   const issues: ChannelStatusIssue[] = [];
   for (const account of accounts) {
     const accountId =
@@ -719,7 +720,7 @@ export const telegramPlugin: ChannelPlugin<ResolvedTelegramAccount> = {
       allowUnmentionedGroups: account.requireMention === false,
       baseUrl: account.baseUrl,
     }),
-    collectStatusIssues: (accounts) => collectTelegramStatusIssues(accounts as Array<Record<string, unknown>>),
+    collectStatusIssues: collectTelegramStatusIssues,
   },
   outbound: {
     deliveryMode: "direct",

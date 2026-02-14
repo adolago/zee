@@ -216,7 +216,9 @@ async function prepareCanvasRoot(rootDir: string) {
   return rootReal;
 }
 
-export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Promise<CanvasHostHandler> {
+export async function createCanvasHostHandler(
+  opts: CanvasHostHandlerOpts,
+): Promise<CanvasHostHandler> {
   const basePath = normalizeBasePath(opts.basePath);
   const basePaths =
     basePath === CANVAS_HOST_PATH ? [CANVAS_HOST_PATH, AGENT_CANVAS_HOST_PATH] : [basePath];
@@ -386,7 +388,9 @@ export async function createCanvasHostHandler(opts: CanvasHostHandlerOpts): Prom
           res.setHeader("Referrer-Policy", "no-referrer");
           res.setHeader("X-Content-Type-Options", "nosniff");
           res.setHeader("Content-Type", "text/html; charset=utf-8");
-          res.end(`<!doctype html><meta charset="utf-8" /><title>Zee Canvas</title><pre>Missing file.\nCreate ${rootDir}/index.html</pre>`);
+          res.end(
+            `<!doctype html><meta charset="utf-8" /><title>Zee Canvas</title><pre>Missing file.\nCreate ${rootDir}/index.html</pre>`,
+          );
           return true;
         }
         res.statusCode = 404;
@@ -528,7 +532,9 @@ export async function startCanvasHost(opts: CanvasHostServerOpts): Promise<Canva
 
   const addr = server.address();
   const boundPort = typeof addr === "object" && addr ? addr.port : 0;
-  opts.runtime.log(`canvas host listening on http://${bindHost}:${boundPort} (root ${handler.rootDir})`);
+  opts.runtime.log(
+    `canvas host listening on http://${bindHost}:${boundPort} (root ${handler.rootDir})`,
+  );
 
   return {
     port: boundPort,

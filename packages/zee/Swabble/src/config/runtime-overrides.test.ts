@@ -24,7 +24,7 @@ describe("runtime overrides", () => {
 
   it("merges object overrides without clobbering siblings", () => {
     const cfg = {
-      channels: { whatsapp: { dmPolicy: "pairing", allowFrom: ["+1"] } },
+      channels: { whatsapp: { dmPolicy: "allowlist", allowFrom: ["+1"] } },
     } as ZeeConfig;
     setConfigOverride("channels.whatsapp.dmPolicy", "open");
     const next = applyConfigOverrides(cfg);

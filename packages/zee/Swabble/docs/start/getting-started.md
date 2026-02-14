@@ -17,7 +17,7 @@ WhatsApp or WhatsApp channel. It sets up:
 - workspace bootstrap + skills
 - optional background service
 
-If you want the deeper reference pages, jump to: [Wizard](/start/wizard), [Setup](/start/setup), [Pairing](/start/pairing), [Security](/gateway/security).
+If you want the deeper reference pages, jump to: [Wizard](/start/wizard), [Setup](/cli/setup), [Pairing](/start/pairing), [Security](/gateway/security).
 
 Sandboxing note: `agents.defaults.sandbox.mode: "non-main"` uses `session.mainKey` (default `"main"`),
 so group/channel sessions are sandboxed. If you want the main agent to always

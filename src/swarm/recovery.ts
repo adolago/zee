@@ -6,6 +6,7 @@
  */
 
 import { Log } from "../../packages/zee/src/util/log";
+import { classifyError as classifyRetryError } from "../session/retry";
 
 const log = Log.create({ service: "swarm:recovery" });
 
@@ -45,6 +46,11 @@ const DEFAULT_RETRY: Required<RetryOptions> = {
  * Suggest a recovery strategy based on the error type and tool context.
  */
 export function suggestRecovery(error: Error, toolName: string): RecoveryStrategy {
+  const retryClassification = classifyRetryError(error);
+  if (retryClassification.retryable) {
+    return isIdempotent(toolName) ? "retry" : "escalate";
+  }
+
   const msg = error.message.toLowerCase();
 
   // Network errors: retry with backoff

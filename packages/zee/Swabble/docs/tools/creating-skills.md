@@ -1,3 +1,9 @@
+---
+summary: "How to build and register custom Zee skills with SKILL.md instructions."
+read_when:
+  - Creating or shipping a new skill
+---
+
 # Creating Custom Skills 🛠
 
 Zee is designed to be easily extensible. "Skills" are the primary way to add new capabilities to your assistant.

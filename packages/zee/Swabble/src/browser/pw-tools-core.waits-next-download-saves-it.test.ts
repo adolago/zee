@@ -1,5 +1,6 @@
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BROWSER_DOWNLOAD_ROOT } from "./artifact-paths.js";
 
 let currentPage: Record<string, unknown> | null = null;
 let currentRefLocator: Record<string, unknown> | null = null;
@@ -60,7 +61,7 @@ describe("pw-tools-core", () => {
     currentPage = { on, off };
 
     const mod = await importModule();
-    const targetPath = path.resolve("/tmp/file.bin");
+    const targetPath = path.resolve(BROWSER_DOWNLOAD_ROOT, "file.bin");
     const p = mod.waitForDownloadViaPlaywright({
       cdpUrl: "http://127.0.0.1:18792",
       targetId: "T1",
@@ -96,7 +97,7 @@ describe("pw-tools-core", () => {
     currentPage = { on, off };
 
     const mod = await importModule();
-    const targetPath = path.resolve("/tmp/report.pdf");
+    const targetPath = path.resolve(BROWSER_DOWNLOAD_ROOT, "report.pdf");
     const p = mod.downloadViaPlaywright({
       cdpUrl: "http://127.0.0.1:18792",
       targetId: "T1",
@@ -114,6 +115,34 @@ describe("pw-tools-core", () => {
     const res = await p;
     expect(saveAs).toHaveBeenCalledWith(targetPath);
     expect(res.path).toBe(targetPath);
+  });
+  it("rejects download paths outside the controlled root", async () => {
+    let downloadHandler: ((download: unknown) => void) | undefined;
+    const on = vi.fn((event: string, handler: (download: unknown) => void) => {
+      if (event === "download") downloadHandler = handler;
+    });
+    const off = vi.fn();
+
+    const saveAs = vi.fn(async () => {});
+    const download = {
+      url: () => "https://example.com/file.bin",
+      suggestedFilename: () => "file.bin",
+      saveAs,
+    };
+    currentPage = { on, off };
+
+    const mod = await importModule();
+    const p = mod.waitForDownloadViaPlaywright({
+      cdpUrl: "http://127.0.0.1:18792",
+      targetId: "T1",
+      path: "/tmp/file.bin",
+      timeoutMs: 1000,
+    });
+    await Promise.resolve();
+    downloadHandler?.(download);
+
+    await expect(p).rejects.toThrow(/within/i);
+    expect(saveAs).not.toHaveBeenCalled();
   });
   it("waits for a matching response and returns its body", async () => {
     let responseHandler: ((resp: unknown) => void) | undefined;

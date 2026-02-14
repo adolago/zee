@@ -7,11 +7,11 @@
 # 1. Stops daemon via systemctl --user
 # 2. Optionally cleans build artifacts (--clean or --fresh)
 # 3. Rebuilds from source (unless --no-build)
-# 4. Links binary via direct symlink (~/.bun/bin/zee -> dist binary)
+# 4. Links binary via wrapper symlink (~/.bun/bin/zee -> script/zee-cli)
 # 5. Starts daemon via systemctl --user (unless --no-daemon)
 # 6. Verifies everything is working
 #
-# The daemon is managed by systemd user service (zee.service).
+# The runtime is managed by systemd user services (zee.service + zee-orch.service).
 # Never use pkill/kill -9 to manage the daemon -- use systemctl.
 #
 
@@ -20,12 +20,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 PKG_DIR="$REPO_ROOT/packages/zee"
-BINARY_SRC="$PKG_DIR/dist/@zee/zee-linux-x64/bin/zee"
+BINARY_SRC="$PKG_DIR/script/zee-cli"
 BINARY_LINK="$HOME/.bun/bin/zee"
 DAEMON_PORT="${ZEE_PORT:-3210}"
 DAEMON_HOST="${ZEE_HOST:-127.0.0.1}"
 DAEMON_URL="${ZEE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}"
-SYSTEMD_UNIT="zee.service"
+SYSTEMD_DAEMON_UNIT="zee.service"
+SYSTEMD_ORCH_UNIT="zee-orch.service"
 
 # Colors
 RED='\033[0;31m'
@@ -140,16 +141,33 @@ show_status() {
   echo ""
 
   # Systemd service status
-  echo "Systemd service:"
-  if systemctl --user is-active "$SYSTEMD_UNIT" >/dev/null 2>&1; then
-    local svc_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_UNIT" 2>/dev/null)
-    local svc_uptime=$(systemctl --user show -p ActiveEnterTimestamp --value "$SYSTEMD_UNIT" 2>/dev/null)
+  echo "Systemd services:"
+
+  echo "  $SYSTEMD_DAEMON_UNIT:"
+  if systemctl --user is-active "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1; then
+    local svc_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_DAEMON_UNIT" 2>/dev/null)
+    local svc_uptime=$(systemctl --user show -p ActiveEnterTimestamp --value "$SYSTEMD_DAEMON_UNIT" 2>/dev/null)
     ok "Active (PID: $svc_pid, since: $svc_uptime)"
   else
-    local svc_state=$(systemctl --user is-active "$SYSTEMD_UNIT" 2>/dev/null || echo "unknown")
+    local svc_state=$(systemctl --user is-active "$SYSTEMD_DAEMON_UNIT" 2>/dev/null || echo "unknown")
     warn "Not active ($svc_state)"
   fi
-  if systemctl --user is-enabled "$SYSTEMD_UNIT" >/dev/null 2>&1; then
+  if systemctl --user is-enabled "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1; then
+    ok "Enabled (starts on login)"
+  else
+    warn "Not enabled"
+  fi
+
+  echo "  $SYSTEMD_ORCH_UNIT:"
+  if systemctl --user is-active "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
+    local orch_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_ORCH_UNIT" 2>/dev/null)
+    local orch_uptime=$(systemctl --user show -p ActiveEnterTimestamp --value "$SYSTEMD_ORCH_UNIT" 2>/dev/null)
+    ok "Active (PID: $orch_pid, since: $orch_uptime)"
+  else
+    local orch_state=$(systemctl --user is-active "$SYSTEMD_ORCH_UNIT" 2>/dev/null || echo "unknown")
+    warn "Not active ($orch_state)"
+  fi
+  if systemctl --user is-enabled "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
     ok "Enabled (starts on login)"
   else
     warn "Not enabled"
@@ -175,7 +193,7 @@ show_status() {
     err "Not found (run: cd packages/zee && bun run build)"
   fi
   echo ""
-  echo "Native binary: $BINARY_SRC"
+  echo "Wrapper binary: $BINARY_SRC"
   if [[ -f "$BINARY_SRC" ]]; then
     local mod_time=$(stat -c "%Y" "$BINARY_SRC" 2>/dev/null || stat -f "%m" "$BINARY_SRC" 2>/dev/null)
     local mod_date=$(date -d "@$mod_time" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || date -r "$mod_time" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
@@ -250,9 +268,12 @@ show_status() {
 
   # Quick reference
   echo "Quick commands:"
-  echo "  systemctl --user restart zee           # restart daemon"
-  echo "  systemctl --user stop zee              # stop daemon"
-  echo "  journalctl --user -u zee -f            # tail logs"
+  echo "  systemctl --user restart zee           # restart main daemon"
+  echo "  systemctl --user restart zee-orch      # restart orchestration daemon"
+  echo "  systemctl --user stop zee              # stop main daemon"
+  echo "  systemctl --user stop zee-orch         # stop orchestration daemon"
+  echo "  journalctl --user -u zee -f            # tail daemon logs"
+  echo "  journalctl --user -u zee-orch -f       # tail orchestration logs"
   echo "  ./scripts/reload.sh                    # rebuild + restart"
   echo ""
   echo "==============================================================="
@@ -271,11 +292,18 @@ echo ""
 
 # Step 1: Stop daemon via systemd
 log "Stopping daemon via systemctl..."
-if systemctl --user is-active "$SYSTEMD_UNIT" >/dev/null 2>&1; then
-  systemctl --user stop "$SYSTEMD_UNIT"
-  ok "Daemon stopped"
+if systemctl --user is-active "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1; then
+  systemctl --user stop "$SYSTEMD_DAEMON_UNIT"
+  ok "Main daemon stopped"
 else
-  warn "Daemon was not running"
+  warn "Main daemon was not running"
+fi
+
+if systemctl --user is-active "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
+  systemctl --user stop "$SYSTEMD_ORCH_UNIT"
+  ok "Orchestration daemon stopped"
+else
+  warn "Orchestration daemon was not running"
 fi
 
 # Wait for graceful shutdown
@@ -342,12 +370,12 @@ fi
 if ! $NO_DAEMON; then
   log "Starting daemon via systemctl..."
   systemctl --user daemon-reload
-  systemctl --user start "$SYSTEMD_UNIT"
+  systemctl --user start "$SYSTEMD_DAEMON_UNIT"
   sleep 3
 
-  # Verify daemon started
-  if systemctl --user is-active "$SYSTEMD_UNIT" >/dev/null 2>&1; then
-    local_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_UNIT" 2>/dev/null)
+  # Verify main daemon started
+  if systemctl --user is-active "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1; then
+    local_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_DAEMON_UNIT" 2>/dev/null)
     # Check health endpoint
     health=""
     for i in {1..5}; do
@@ -360,18 +388,26 @@ if ! $NO_DAEMON; then
         if [[ -n "$channel" || -n "$mode" ]]; then
           suffix=" (${channel}/${mode})"
         fi
-        ok "Daemon started (PID: $local_pid, version: $version$suffix)"
+        ok "Main daemon started (PID: $local_pid, version: $version$suffix)"
         break
       fi
       sleep 1
     done
     if [[ -z "$health" ]]; then
-      warn "Daemon started but health check failed (may still be initializing)"
+      warn "Main daemon started but health check failed (may still be initializing)"
+    fi
+
+    # Start orchestration daemon (non-fatal if unavailable)
+    if systemctl --user start "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
+      orch_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_ORCH_UNIT" 2>/dev/null)
+      ok "Orchestration daemon started (PID: $orch_pid)"
+    else
+      warn "Orchestration daemon failed to start (or unit not installed). Subtasks will use local fallback."
     fi
   else
-    err "Daemon failed to start! Check logs:"
+    err "Main daemon failed to start! Check logs:"
     echo ""
-    journalctl --user -u "$SYSTEMD_UNIT" --since "1 min ago" --no-pager | tail -20
+    journalctl --user -u "$SYSTEMD_DAEMON_UNIT" --since "1 min ago" --no-pager | tail -20
     exit 1
   fi
 else
@@ -382,6 +418,7 @@ fi
 log "Verifying providers and models..."
 verify_providers() {
   local all_ok=true
+  local critical_ok=true
 
   echo ""
   echo "Provider Health Check:"
@@ -394,6 +431,7 @@ verify_providers() {
   else
     warn "Qdrant:     NOT AVAILABLE ($qdrant_url)"
     all_ok=false
+    critical_ok=false
   fi
 
   # Check embedding provider (Google-only; auth store)
@@ -406,9 +444,13 @@ verify_providers() {
     auth_path="$auth_state"
   fi
 
-  local google_key=""
+  local google_auth_type=""
+  local google_key="${GOOGLE_API_KEY:-}"
   if [[ -n "$auth_path" ]]; then
-    google_key="$(jq -r '.google.key // empty' "$auth_path" 2>/dev/null || true)"
+    google_auth_type="$(jq -r '.google.type // empty' "$auth_path" 2>/dev/null || true)"
+    if [[ -z "$google_key" ]]; then
+      google_key="$(jq -r '.google.key // empty' "$auth_path" 2>/dev/null || true)"
+    fi
   fi
   if [[ -n "$google_key" ]]; then
     # Test Google embedding API endpoint (lightweight check)
@@ -417,10 +459,16 @@ verify_providers() {
     else
       warn "Embedding:  Google (auth store key invalid or expired)"
       all_ok=false
+      critical_ok=false
     fi
+  elif [[ "$google_auth_type" == "oauth" ]]; then
+    warn "Embedding:  Google OAuth configured, but API key missing (embeddings need api key)"
+    all_ok=false
+    critical_ok=false
   else
     warn "Embedding:  NOT CONFIGURED (run: zee auth login google)"
     all_ok=false
+    critical_ok=false
   fi
 
   # Check reranker (Voyage)
@@ -444,26 +492,46 @@ verify_providers() {
   echo ""
   echo "LLM Providers:"
 
-  # Anthropic
-  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
-    local anthropic_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "x-api-key: $ANTHROPIC_API_KEY" "https://api.anthropic.com/v1/messages" -X POST -H "content-type: application/json" -d '{}' 2>&1)
+  # Anthropic (env key, auth-store key, or oauth auth)
+  local anthropic_auth_type=""
+  local anthropic_key="${ANTHROPIC_API_KEY:-}"
+  if [[ -n "$auth_path" ]]; then
+    anthropic_auth_type="$(jq -r '.anthropic.type // empty' "$auth_path" 2>/dev/null || true)"
+    if [[ -z "$anthropic_key" ]]; then
+      anthropic_key="$(jq -r '.anthropic.key // empty' "$auth_path" 2>/dev/null || true)"
+    fi
+  fi
+  if [[ -n "$anthropic_key" ]]; then
+    local anthropic_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "x-api-key: $anthropic_key" "https://api.anthropic.com/v1/messages" -X POST -H "content-type: application/json" -d '{}' 2>&1)
     if [[ "$anthropic_test" == "400" || "$anthropic_test" == "401" ]]; then
       ok "  Anthropic:  Reachable"
     else
       warn "  Anthropic:  Unreachable (HTTP $anthropic_test)"
     fi
+  elif [[ "$anthropic_auth_type" == "oauth" ]]; then
+    ok "  Anthropic:  Configured via OAuth (runtime-managed token)"
   else
     echo "    Anthropic:  Not configured"
   fi
 
-  # OpenAI
-  if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    local openai_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $OPENAI_API_KEY" "https://api.openai.com/v1/models" 2>&1)
+  # OpenAI (env key, auth-store key, or oauth auth)
+  local openai_auth_type=""
+  local openai_key="${OPENAI_API_KEY:-}"
+  if [[ -n "$auth_path" ]]; then
+    openai_auth_type="$(jq -r '.openai.type // empty' "$auth_path" 2>/dev/null || true)"
+    if [[ -z "$openai_key" ]]; then
+      openai_key="$(jq -r '.openai.key // empty' "$auth_path" 2>/dev/null || true)"
+    fi
+  fi
+  if [[ -n "$openai_key" ]]; then
+    local openai_test=$(curl -sf -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $openai_key" "https://api.openai.com/v1/models" 2>&1)
     if [[ "$openai_test" == "200" ]]; then
       ok "  OpenAI:     Reachable"
     else
       warn "  OpenAI:     Unreachable (HTTP $openai_test)"
     fi
+  elif [[ "$openai_auth_type" == "oauth" ]]; then
+    ok "  OpenAI:     Configured via OAuth (runtime-managed token)"
   else
     echo "    OpenAI:     Not configured"
   fi
@@ -471,6 +539,8 @@ verify_providers() {
   # Google Gemini (LLM)
   if [[ -n "$google_key" ]]; then
     ok "  Gemini:     Reachable (uses embedding key)"
+  elif [[ "$google_auth_type" == "oauth" ]]; then
+    ok "  Gemini:     Configured via OAuth (runtime-managed token)"
   fi
 
   # Ollama (local)
@@ -485,6 +555,11 @@ verify_providers() {
 
   echo ""
 
+  if ! $critical_ok; then
+    err "Critical dependencies missing (Qdrant and embedding auth are required)"
+    return 1
+  fi
+
   if $all_ok; then
     ok "All critical providers verified"
   else
@@ -492,7 +567,15 @@ verify_providers() {
   fi
 }
 
-verify_providers
+if ! verify_providers; then
+  err "Reload aborted: required dependencies are unavailable."
+  if ! $NO_DAEMON; then
+    warn "Stopping daemon because startup requirements were not met..."
+    systemctl --user stop "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1 || true
+    systemctl --user stop "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1 || true
+  fi
+  exit 1
+fi
 
 echo ""
 echo "==============================================================="

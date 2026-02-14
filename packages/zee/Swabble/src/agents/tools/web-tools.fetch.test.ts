@@ -9,6 +9,7 @@ type MockResponse = {
   headers?: { get: (key: string) => string | null };
   text?: () => Promise<string>;
   json?: () => Promise<unknown>;
+  arrayBuffer?: () => Promise<ArrayBuffer>;
 };
 
 function makeHeaders(map: Record<string, string>): { get: (key: string) => string | null } {
@@ -46,6 +47,16 @@ function firecrawlError(): MockResponse {
     ok: false,
     status: 403,
     json: async () => ({ success: false, error: "blocked" }),
+  };
+}
+
+function imageResponse(data: Buffer, url = "https://example.com/image.png"): MockResponse {
+  return {
+    ok: true,
+    status: 200,
+    url,
+    headers: makeHeaders({ "content-type": "image/png" }),
+    arrayBuffer: async () => data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
   };
 }
 
@@ -195,6 +206,68 @@ describe("web_fetch extraction fallbacks", () => {
     const details = result?.details as { extractor?: string; text?: string };
     expect(details.extractor).toBe("firecrawl");
     expect(details.text).toContain("firecrawl fallback");
+  });
+  it("attaches image blocks for image responses by default", async () => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+N0cAAAAASUVORK5CYII=",
+      "base64",
+    );
+    const mockFetch = vi.fn((input: RequestInfo) =>
+      Promise.resolve(imageResponse(png, requestUrl(input))) as Promise<Response>,
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebFetchTool({
+      config: {
+        tools: {
+          web: {
+            fetch: { cacheTtlMinutes: 0 },
+          },
+        },
+      },
+      sandboxed: false,
+    });
+
+    const result = await tool?.execute?.("call", { url: "https://example.com/pixel-default.png" });
+    expect(result?.content?.some((block) => block.type === "image")).toBe(true);
+    const details = result?.details as {
+      extractor?: string;
+      image?: { attached?: boolean; mimeType?: string; bytes?: number };
+    };
+    expect(details.extractor).toBe("image");
+    expect(details.image?.attached).toBe(true);
+    expect(details.image?.mimeType).toBe("image/png");
+    expect(details.image?.bytes).toBeGreaterThan(0);
+  });
+
+  it("omits image blocks when includeImages is disabled", async () => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+N0cAAAAASUVORK5CYII=",
+      "base64",
+    );
+    const mockFetch = vi.fn((input: RequestInfo) =>
+      Promise.resolve(imageResponse(png, requestUrl(input))) as Promise<Response>,
+    );
+    // @ts-expect-error mock fetch
+    global.fetch = mockFetch;
+
+    const tool = createWebFetchTool({
+      config: {
+        tools: {
+          web: {
+            fetch: { cacheTtlMinutes: 0, includeImages: false },
+          },
+        },
+      },
+      sandboxed: false,
+    });
+
+    const result = await tool?.execute?.("call", { url: "https://example.com/pixel-no-image.png" });
+    expect(result?.content?.some((block) => block.type === "image")).toBe(false);
+    const details = result?.details as { image?: { attached?: boolean; mimeType?: string } };
+    expect(details.image?.attached).toBe(false);
+    expect(details.image?.mimeType).toBe("image/png");
   });
   it("strips and truncates HTML from error responses", async () => {
     const long = "x".repeat(12_000);

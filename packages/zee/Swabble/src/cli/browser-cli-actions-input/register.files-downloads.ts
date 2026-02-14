@@ -57,7 +57,7 @@ export function registerBrowserFilesAndDownloadsCommands(
   browser
     .command("waitfordownload")
     .description("Wait for the next download (and save it)")
-    .argument("[path]", "Save path (default: /tmp/zee/downloads/...)")
+    .argument("[path]", "Save path (default: /tmp/zee/browser-artifacts/downloads/...)")
     .option("--target-id <id>", "CDP target id (or unique prefix)")
     .option(
       "--timeout-ms <ms>",
@@ -97,7 +97,7 @@ export function registerBrowserFilesAndDownloadsCommands(
     .command("download")
     .description("Click a ref and save the resulting download")
     .argument("<ref>", "Ref id from snapshot to click")
-    .argument("<path>", "Save path")
+    .argument("<path>", "Save path under /tmp/zee/browser-artifacts/downloads")
     .option("--target-id <id>", "CDP target id (or unique prefix)")
     .option(
       "--timeout-ms <ms>",

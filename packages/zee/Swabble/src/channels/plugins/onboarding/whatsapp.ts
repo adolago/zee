@@ -53,8 +53,9 @@ async function promptWhatsAppAllowFrom(
   prompter: WizardPrompter,
   options?: { forceAllowlist?: boolean },
 ): Promise<ZeeConfig> {
-  const existingPolicy = cfg.channels?.whatsapp?.dmPolicy ?? "pairing";
   const existingAllowFrom = cfg.channels?.whatsapp?.allowFrom ?? [];
+  const configuredPolicy = cfg.channels?.whatsapp?.dmPolicy;
+  const existingPolicy = configuredPolicy ?? "allowlist";
   const existingLabel = existingAllowFrom.length > 0 ? existingAllowFrom.join(", ") : "unset";
 
   if (options?.forceAllowlist) {
@@ -96,8 +97,7 @@ async function promptWhatsAppAllowFrom(
   await prompter.note(
     [
       "WhatsApp direct chats are gated by `channels.whatsapp.dmPolicy` + `channels.whatsapp.allowFrom`.",
-      "- pairing (default): unknown senders get a pairing code; owner approves",
-      "- allowlist: unknown senders are blocked",
+      "- allowlist (default): only configured allowFrom numbers can DM you",
       '- open: public inbound DMs (requires allowFrom to include "*")',
       "- disabled: ignore WhatsApp DMs",
       "",
@@ -147,7 +147,7 @@ async function promptWhatsAppAllowFrom(
     await prompter.note(
       [
         "Personal phone mode enabled.",
-        "- dmPolicy set to allowlist (pairing skipped)",
+        "- dmPolicy set to allowlist (unknown callers blocked)",
         `- allowFrom includes ${normalized}`,
       ].join("\n"),
       "WhatsApp personal phone",
@@ -158,7 +158,6 @@ async function promptWhatsAppAllowFrom(
   const policy = (await prompter.select({
     message: "WhatsApp DM policy",
     options: [
-      { value: "pairing", label: "Pairing (recommended)" },
       { value: "allowlist", label: "Allowlist only (block unknown senders)" },
       { value: "open", label: "Open (public inbound DMs)" },
       { value: "disabled", label: "Disabled (ignore WhatsApp DMs)" },
@@ -172,17 +171,17 @@ async function promptWhatsAppAllowFrom(
   }
   if (policy === "disabled") return next;
 
-  const allowOptions =
-    existingAllowFrom.length > 0
-      ? ([
-          { value: "keep", label: "Keep current allowFrom" },
-          {
-            value: "unset",
-            label: "Unset allowFrom (use pairing approvals only)",
-          },
-          { value: "list", label: "Set allowFrom to specific numbers" },
-        ] as const)
-      : ([
+    const allowOptions =
+      existingAllowFrom.length > 0
+        ? ([
+            { value: "keep", label: "Keep current allowFrom" },
+            {
+              value: "unset",
+              label: "Unset allowFrom (block unknown senders)",
+            },
+            { value: "list", label: "Set allowFrom to specific numbers" },
+          ] as const)
+        : ([
           { value: "unset", label: "Unset allowFrom (default)" },
           { value: "list", label: "Set allowFrom to specific numbers" },
         ] as const);

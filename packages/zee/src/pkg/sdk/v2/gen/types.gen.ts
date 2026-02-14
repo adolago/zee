@@ -861,25 +861,17 @@ export type MemoryConfig = {
    */
   qdrantUrl?: string
   /**
-   * Qdrant API key
-   */
-  qdrantApiKey?: string
-  /**
    * Qdrant collection for memory
    */
   qdrantCollection?: string
   /**
-   * Nested Qdrant configuration
+   * Nested Qdrant configuration (local-only)
    */
   qdrant?: {
     /**
-     * Qdrant endpoint URL
+     * Qdrant endpoint URL (must be localhost)
      */
     url?: string
-    /**
-     * Qdrant API key
-     */
-    apiKey?: string
     /**
      * Qdrant collection for memory
      */

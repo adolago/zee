@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "registry": "https://clawhub.ai",
+  "registry": "https://auth.clawdhub.com",
   "slug": "caldav-calendar",
   "installedVersion": "1.0.1",
-  "installedAt": 1770607480202
+  "installedAt": 1771054414832
 }

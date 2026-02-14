@@ -10,22 +10,24 @@
     "build": "tsgo"
   },
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+    ".": "./src/index.ts"
   },
   "files": [
     "dist"
   ],
   "dependencies": {
-    "@mariozechner/pi-web-ui": "0.52.9"
+    "@mariozechner/pi-web-ui": "0.52.9",
+    "@zee/agent-core": "workspace:*",
+    "@zee/ai": "workspace:*"
   },
   "devDependencies": {
     "@tsconfig/node22": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "@typescript/native-preview": "catalog:"
+  },
+  "publishConfig": {
+    "directory": "dist"
   },
   "repository": {
     "type": "git",
@@ -38,7 +40,5 @@
     "chat",
     "components",
     "assistant"
-  ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  ]
 }

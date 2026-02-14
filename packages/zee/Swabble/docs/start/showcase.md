@@ -222,9 +222,6 @@ Full setup walkthrough (28m) by VelvetShark.
   Logs into TradingView via browser automation, screenshots charts, and performs technical analysis on demand. No API needed—just browser control.
 </Card>
 
-
-</Card>
-
 </CardGroup>
 
 ## Knowledge & Memory

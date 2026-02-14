@@ -19,14 +19,14 @@ This doc is a “how we test” guide:
 ## Quick start
 
 Most days:
-- Full gate (expected before push): `pnpm lint && pnpm build && pnpm test`
+- Full gate (expected before push): `bun run lint && bun run build && bun run test`
 
 When you touch tests or want extra confidence:
-- Coverage gate: `pnpm test:coverage`
-- E2E suite: `pnpm test:e2e`
+- Coverage gate: `bun run test:coverage`
+- E2E suite: `bun run test:e2e`
 
 When debugging real providers/models (requires real creds):
-- Live suite (models + gateway tool/image probes): `pnpm test:live`
+- Live suite (models + gateway tool/image probes): `bun run test:live`
 
 Tip: when you only need one failing case, prefer narrowing live tests via the allowlist env vars described below.
 
@@ -36,7 +36,7 @@ Think of the suites as “increasing realism” (and increasing flakiness/cost):
 
 ### Unit / integration (default)
 
-- Command: `pnpm test`
+- Command: `bun run test`
 - Config: `vitest.config.ts`
 - Files: `src/**/*.test.ts`
 - Scope:
@@ -50,7 +50,7 @@ Think of the suites as “increasing realism” (and increasing flakiness/cost):
 
 ### E2E (gateway smoke)
 
-- Command: `pnpm test:e2e`
+- Command: `bun run test:e2e`
 - Config: `vitest.e2e.config.ts`
 - Files: `src/**/*.e2e.test.ts`
 - Scope:
@@ -63,10 +63,10 @@ Think of the suites as “increasing realism” (and increasing flakiness/cost):
 
 ### Live (real providers + real models)
 
-- Command: `pnpm test:live`
+- Command: `bun run test:live`
 - Config: `vitest.live.config.ts`
 - Files: `src/**/*.live.test.ts`
-- Default: **enabled** by `pnpm test:live` (sets `ZEE_LIVE_TEST=1`)
+- Default: **enabled** by `bun run test:live` (sets `ZEE_LIVE_TEST=1`)
 - Scope:
   - “Does this provider/model actually work *today* with real creds?”
   - Catch provider format changes, tool-calling quirks, auth issues, and rate limit behavior
@@ -80,9 +80,9 @@ Think of the suites as “increasing realism” (and increasing flakiness/cost):
 ## Which suite should I run?
 
 Use this decision table:
-- Editing logic/tests: run `pnpm test` (and `pnpm test:coverage` if you changed a lot)
-- Touching gateway networking / WS protocol / pairing: add `pnpm test:e2e`
-- Debugging “my bot is down” / provider-specific failures / tool calling: run a narrowed `pnpm test:live`
+- Editing logic/tests: run `bun run test` (and `bun run test:coverage` if you changed a lot)
+- Touching gateway networking / WS protocol / pairing: add `bun run test:e2e`
+- Debugging “my bot is down” / provider-specific failures / tool calling: run a narrowed `bun run test:live`
 
 ## Live: model smoke (profile keys)
 
@@ -98,8 +98,8 @@ Live tests are split into two layers so we can isolate failures:
   - Use `getApiKeyForModel` to select models you have creds for
   - Run a small completion per model (and targeted regressions where needed)
 - How to enable:
-  - `pnpm test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
-- Set `ZEE_LIVE_MODELS=modern` (or `all`, alias for modern) to actually run this suite; otherwise it skips to keep `pnpm test:live` focused on gateway smoke
+  - `bun run test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
+- Set `ZEE_LIVE_MODELS=modern` (or `all`, alias for modern) to actually run this suite; otherwise it skips to keep `bun run test:live` focused on gateway smoke
 - How to select models:
   - `ZEE_LIVE_MODELS=modern` to run the modern allowlist (Opus/Sonnet/Haiku 4.5, GPT-5.x + Codex, Gemini 3, GLM 4.7, MiniMax M2.1, Grok 4)
   - `ZEE_LIVE_MODELS=all` is an alias for the modern allowlist
@@ -130,7 +130,7 @@ Live tests are split into two layers so we can isolate failures:
   - image probe: the test attaches a generated PNG (cat + randomized code) and expects the model to return `cat <CODE>`.
   - Implementation reference: `src/gateway/gateway-models.profiles.live.test.ts` and `src/gateway/live-image-probe.ts`.
 - How to enable:
-  - `pnpm test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
+  - `bun run test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
 - How to select models:
   - Default: modern allowlist (Opus/Sonnet/Haiku 4.5, GPT-5.x + Codex, Gemini 3, GLM 4.7, MiniMax M2.1, Grok 4)
   - `ZEE_LIVE_GATEWAY_MODELS=all` is an alias for the modern allowlist
@@ -159,7 +159,7 @@ zee models list --json
 - Test: `src/agents/anthropic.setup-token.live.test.ts`
 - Goal: verify Claude Code CLI setup-token (or a pasted setup-token profile) can complete an Anthropic prompt.
 - Enable:
-  - `pnpm test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
+  - `bun run test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
   - `ZEE_LIVE_SETUP_TOKEN=1`
 - Token sources (pick one):
   - Profile: `ZEE_LIVE_SETUP_TOKEN_PROFILE=anthropic:setup-token-test`
@@ -171,7 +171,7 @@ Setup example:
 
 ```bash
 zee models auth paste-token --provider anthropic --profile-id anthropic:setup-token-test
-ZEE_LIVE_SETUP_TOKEN=1 ZEE_LIVE_SETUP_TOKEN_PROFILE=anthropic:setup-token-test pnpm test:live src/agents/anthropic.setup-token.live.test.ts
+ZEE_LIVE_SETUP_TOKEN=1 ZEE_LIVE_SETUP_TOKEN_PROFILE=anthropic:setup-token-test bun run test:live src/agents/anthropic.setup-token.live.test.ts
 ```
 
 ## Live: CLI backend smoke (Claude Code CLI or other local CLIs)
@@ -179,7 +179,7 @@ ZEE_LIVE_SETUP_TOKEN=1 ZEE_LIVE_SETUP_TOKEN_PROFILE=anthropic:setup-token-test p
 - Test: `src/gateway/gateway-cli-backend.live.test.ts`
 - Goal: validate the Gateway + agent pipeline using a local CLI backend, without touching your default config.
 - Enable:
-  - `pnpm test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
+  - `bun run test:live` (or `ZEE_LIVE_TEST=1` if invoking Vitest directly)
   - `ZEE_LIVE_CLI_BACKEND=1`
 - Defaults:
   - Model: `claude-cli/claude-sonnet-4-5`
@@ -202,7 +202,7 @@ Example:
 ```bash
 ZEE_LIVE_CLI_BACKEND=1 \
   ZEE_LIVE_CLI_BACKEND_MODEL="claude-cli/claude-sonnet-4-5" \
-  pnpm test:live src/gateway/gateway-cli-backend.live.test.ts
+  bun run test:live src/gateway/gateway-cli-backend.live.test.ts
 ```
 
 ### Recommended live recipes
@@ -210,17 +210,17 @@ ZEE_LIVE_CLI_BACKEND=1 \
 Narrow, explicit allowlists are fastest and least flaky:
 
 - Single model, direct (no gateway):
-  - `ZEE_LIVE_MODELS="openai/gpt-5.2" pnpm test:live src/agents/models.profiles.live.test.ts`
+  - `ZEE_LIVE_MODELS="openai/gpt-5.2" bun run test:live src/agents/models.profiles.live.test.ts`
 
 - Single model, gateway smoke:
-  - `ZEE_LIVE_GATEWAY_MODELS="openai/gpt-5.2" pnpm test:live src/gateway/gateway-models.profiles.live.test.ts`
+  - `ZEE_LIVE_GATEWAY_MODELS="openai/gpt-5.2" bun run test:live src/gateway/gateway-models.profiles.live.test.ts`
 
 - Tool calling across several providers:
-  - `ZEE_LIVE_GATEWAY_MODELS="openai/gpt-5.2,anthropic/claude-opus-4-5,google/gemini-3-flash-preview,zai/glm-4.7,minimax/minimax-m2.1" pnpm test:live src/gateway/gateway-models.profiles.live.test.ts`
+  - `ZEE_LIVE_GATEWAY_MODELS="openai/gpt-5.2,anthropic/claude-opus-4-5,google/gemini-3-flash-preview,zai/glm-4.7,minimax/minimax-m2.1" bun run test:live src/gateway/gateway-models.profiles.live.test.ts`
 
 - Google focus (Gemini API key + Antigravity):
-  - Gemini (API key): `ZEE_LIVE_GATEWAY_MODELS="google/gemini-3-flash-preview" pnpm test:live src/gateway/gateway-models.profiles.live.test.ts`
-  - Antigravity (OAuth): `ZEE_LIVE_GATEWAY_MODELS="google-antigravity/claude-opus-4-5-thinking,google-antigravity/gemini-3-pro-high" pnpm test:live src/gateway/gateway-models.profiles.live.test.ts`
+- Gemini (API key): `ZEE_LIVE_GATEWAY_MODELS="google/gemini-3-flash-preview" bun run test:live src/gateway/gateway-models.profiles.live.test.ts`
+- Antigravity (OAuth): `ZEE_LIVE_GATEWAY_MODELS="google-antigravity/claude-opus-4-5-thinking,google-antigravity/gemini-3-pro-high" bun run test:live src/gateway/gateway-models.profiles.live.test.ts`
 
 Notes:
 - `google/...` uses the Gemini API (API key).
@@ -246,7 +246,7 @@ This is the “common models” run we expect to keep working:
 - MiniMax: `minimax/minimax-m2.1`
 
 Run gateway smoke with tools + image:
-`ZEE_LIVE_GATEWAY_MODELS="openai/gpt-5.2,openai-codex/gpt-5.2,anthropic/claude-opus-4-5,google/gemini-3-pro-preview,google/gemini-3-flash-preview,google-antigravity/claude-opus-4-5-thinking,google-antigravity/gemini-3-flash,zai/glm-4.7,minimax/minimax-m2.1" pnpm test:live src/gateway/gateway-models.profiles.live.test.ts`
+`ZEE_LIVE_GATEWAY_MODELS="openai/gpt-5.2,openai-codex/gpt-5.2,anthropic/claude-opus-4-5,google/gemini-3-pro-preview,google/gemini-3-flash-preview,google-antigravity/claude-opus-4-5-thinking,google-antigravity/gemini-3-flash,zai/glm-4.7,minimax/minimax-m2.1" bun run test:live src/gateway/gateway-models.profiles.live.test.ts`
 
 ### Baseline: tool calling (Read + optional Exec)
 
@@ -293,17 +293,17 @@ If you want to rely on env keys (e.g. exported in your `~/.profile`), run local 
 ## Deepgram live (audio transcription)
 
 - Test: `src/media-understanding/providers/deepgram/audio.live.test.ts`
-- Enable: `DEEPGRAM_API_KEY=... DEEPGRAM_LIVE_TEST=1 pnpm test:live src/media-understanding/providers/deepgram/audio.live.test.ts`
+- Enable: `DEEPGRAM_API_KEY=... DEEPGRAM_LIVE_TEST=1 bun run test:live src/media-understanding/providers/deepgram/audio.live.test.ts`
 
 ## Docker runners (optional “works in Linux” checks)
 
-These run `pnpm test:live` inside the repo Docker image, mounting your local config dir and workspace (and sourcing `~/.profile` if mounted):
+These run `bun run test:live` inside the repo Docker image, mounting your local config dir and workspace (and sourcing `~/.profile` if mounted):
 
-- Direct models: `pnpm test:docker:live-models` (script: `scripts/test-live-models-docker.sh`)
-- Gateway + dev agent: `pnpm test:docker:live-gateway` (script: `scripts/test-live-gateway-models-docker.sh`)
-- Onboarding wizard (TTY, full scaffolding): `pnpm test:docker:onboard` (script: `scripts/e2e/onboard-docker.sh`)
-- Gateway networking (two containers, WS auth + health): `pnpm test:docker:gateway-network` (script: `scripts/e2e/gateway-network-docker.sh`)
-- Plugins (custom extension load + registry smoke): `pnpm test:docker:plugins` (script: `scripts/e2e/plugins-docker.sh`)
+- Direct models: `bun run test:docker:live-models` (script: `scripts/test-live-models-docker.sh`)
+- Gateway + dev agent: `bun run test:docker:live-gateway` (script: `scripts/test-live-gateway-models-docker.sh`)
+- Onboarding wizard (TTY, full scaffolding): `bun run test:docker:onboard` (script: `scripts/e2e/onboard-docker.sh`)
+- Gateway networking (two containers, WS auth + health): `bun run test:docker:gateway-network` (script: `scripts/e2e/gateway-network-docker.sh`)
+- Plugins (custom extension load + registry smoke): `bun run test:docker:plugins` (script: `scripts/e2e/plugins-docker.sh`)
 
 Useful env vars:
 
@@ -315,7 +315,7 @@ Useful env vars:
 
 ## Docs sanity
 
-Run docs checks after doc edits: `pnpm docs:list`.
+Run docs checks after doc edits: `bun run docs:list`.
 
 ## Offline regression (CI-safe)
 

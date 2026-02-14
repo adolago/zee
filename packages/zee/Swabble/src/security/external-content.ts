@@ -47,10 +47,48 @@ export function detectSuspiciousPatterns(content: string): string[] {
 const EXTERNAL_CONTENT_START = "<<<EXTERNAL_UNTRUSTED_CONTENT>>>";
 const EXTERNAL_CONTENT_END = "<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>";
 
+const DANGEROUS_HOMOGLYPH_MAP: Record<string, string> = {
+  // Fullwidth angle brackets
+  "\uFF1C": "<",
+  "\uFF1E": ">",
+  // Small angle brackets
+  "\uFE64": "<",
+  "\uFE65": ">",
+  // Single angle quotation marks
+  "\u2039": "<",
+  "\u203A": ">",
+  // Mathematical angle brackets
+  "\u27E8": "<",
+  "\u27E9": ">",
+  // CJK angle brackets
+  "\u3008": "<",
+  "\u3009": ">",
+};
+
+const DANGEROUS_HOMOGLYPH_RE = new RegExp(
+  `[${Object.keys(DANGEROUS_HOMOGLYPH_MAP).join("")}]`,
+  "g",
+);
+const DANGEROUS_HOMOGLYPH_TEST_RE = new RegExp(
+  `[${Object.keys(DANGEROUS_HOMOGLYPH_MAP).join("")}]`,
+);
+
+export function containsDangerousHomoglyphs(text: string): boolean {
+  return DANGEROUS_HOMOGLYPH_TEST_RE.test(text);
+}
+
+export function normalizeDangerousHomoglyphs(text: string): string {
+  return text.replace(
+    DANGEROUS_HOMOGLYPH_RE,
+    (ch) => DANGEROUS_HOMOGLYPH_MAP[ch] ?? ch,
+  );
+}
+
 export function sanitizeExternalContent(content: string): string {
+  const normalized = normalizeDangerousHomoglyphs(content);
   // Prevent nested boundary injection inside untrusted content by neutralizing
   // any boundary markers that appear in the payload itself.
-  return content
+  return normalized
     .replaceAll(EXTERNAL_CONTENT_START, "<<EXTERNAL_UNTRUSTED_CONTENT>>")
     .replaceAll(EXTERNAL_CONTENT_END, "<<END_EXTERNAL_UNTRUSTED_CONTENT>>");
 }
@@ -107,8 +145,7 @@ export type WrapExternalContentOptions = {
 
 export function replaceMarkers(text: string): string {
   return text
-    .replaceAll("\uFF1C", "<")
-    .replaceAll("\uFF1E", ">")
+    .replaceAll(DANGEROUS_HOMOGLYPH_RE, (ch) => DANGEROUS_HOMOGLYPH_MAP[ch] ?? ch)
     .replaceAll(EXTERNAL_CONTENT_START, "")
     .replaceAll(EXTERNAL_CONTENT_END, "");
 }
@@ -217,4 +254,3 @@ export function getHookType(sessionKey: string): ExternalContentSource {
   if (sessionKey.startsWith("hook:")) return "webhook";
   return "unknown";
 }
-

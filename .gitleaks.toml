@@ -1,0 +1,85 @@
+# Gitleaks configuration for zee repository
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+
+title = "zee secret scanning"
+
+[extend]
+# Use the default gitleaks ruleset (150+ patterns including xAI, Anthropic,
+# OpenAI, AWS, GitHub tokens, etc.)
+useDefault = true
+
+# Custom rules for providers not covered by the default ruleset
+[[rules]]
+id = "xai-api-key"
+description = "xAI API Key"
+regex = '''xai-[A-Za-z0-9]{20,}'''
+keywords = ["xai-"]
+
+[allowlist]
+description = "Known test/dummy values, public OAuth IDs, and non-secret paths"
+
+paths = [
+  '''dist/''',
+  '''vendor/''',
+  '''node_modules/''',
+  '''\.snap$''',
+  '''bun\.lock$''',
+  '''pnpm-lock\.yaml$''',
+  '''\.secrets\.baseline$''',
+  # Reliability test artifacts (untracked, contain runtime state)
+  '''packages/zee/artifacts/''',
+  # Vendored skill reference docs with example curl commands
+  '''\.agents/skills/@codex/''',
+]
+
+regexTarget = "match"
+regexes = [
+  # -- Test/dummy Anthropic keys used in unit tests --
+  '''sk-ant-api03-real-key''',
+  '''sk-ant-api03-jksd89234''',
+  '''sk-ant-secret''',
+  '''sk-ant-12345678901234567890''',
+  '''sk-ant-api-0123456789abcdef''',
+  '''sk-ant-oat01-ACCESS-TOKEN-1234567890''',
+  '''sk-ant-ort01-REFRESH-TOKEN-1234567890''',
+  '''sk-ant-new-different-key''',
+  # -- Test/dummy OpenAI keys --
+  '''sk-openai-flag''',
+  '''sk-openai-real''',
+  '''sk-vllm-test''',
+  '''sk-1234567890abcdef''',
+  # -- Test/dummy xAI keys --
+  '''xai-test-key''',
+  '''xai-test-\\\\r\\\\nkey''',
+  # -- Test/dummy misc tokens --
+  '''browser-control-secret''',
+  '''from-dotenv''',
+  # -- Public OAuth client IDs/secrets (embedded in desktop CLI apps per spec) --
+  # Google Desktop OAuth client secret (public by design for installed apps)
+  '''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''',
+  # Qwen Portal OAuth client ID (public)
+  '''f0304373b74a44d2b584a3fb70ca9e56''',
+  # -- Documentation placeholders --
+  '''YOUR_API_TOKEN''',
+  '''YOUR_TOKEN''',
+  '''DEEPGRAM_API_KEY=dg_\.\.\.''',
+  '''sk_live_abc123''',
+  '''kL9xQn2VwM8pYrTb4ZcHjF''',
+  '''pR8mNv5KqXzGwY2JtCfL4D''',
+  # -- Regex patterns in source code (key-redactor, external-content, etc.) --
+  '''AIza\[0-9A-Za-z''',
+  '''AIza\[a-zA-Z0-9''',
+  '''sk-ant-api03-\.\.\.''',
+  '''sk-ant-\.\.\.\[REDACTED\]''',
+  '''xai-\.\.\.\[REDACTED\]''',
+  '''AIza\.\.\.\[REDACTED\]''',
+  '''sk-your-''',
+  '''=xai-\.\.\.''',
+  # -- Test file patterns for redaction/logging tests --
+  '''BEGIN PRIVATE KEY-----''',
+  '''abcdef1234567890ghij''',
+  '''sk-test-1234567890''',
+  '''sk-proj-abcdef1234567890''',
+  '''sk-proj-1234567890abcdef''',
+  '''sk-abcdefghijklmnopqrstuvwxyz123456''',
+]

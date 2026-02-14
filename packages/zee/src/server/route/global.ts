@@ -28,6 +28,10 @@ const HealthStatus = z.object({
 })
 const HealthCheck = z.object({
   healthy: z.boolean(),
+  memory: z.object({
+    status: z.enum(["ok", "fail"]),
+    error: z.string().optional(),
+  }),
   version: z.string(),
   channel: z.string(),
   mode: z.enum(["source", "binary"]),
@@ -102,9 +106,11 @@ export const GlobalRoute = new Hono()
     }),
     async (c) => {
       const runtime = Installation.runtimeInfo()
+      const memory = await checkMemoryHealth()
       const gateway = getGatewayHealthState()
       return c.json({
-        healthy: true,
+        healthy: memory.status === "ok",
+        memory,
         ...runtime,
         gateway,
       })

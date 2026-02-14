@@ -323,7 +323,6 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
   // Memory
   'ZEE_MEMORY_ENABLED': 'memory.enabled',
   'QDRANT_URL': 'memory.vectorDb.url',
-  'QDRANT_API_KEY': 'memory.vectorDb.apiKey',
 };
 
 // ============================================================================

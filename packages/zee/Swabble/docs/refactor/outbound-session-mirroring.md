@@ -1,6 +1,7 @@
 ---
 title: Outbound Session Mirroring Refactor (Issue #1520)
 description: Track outbound session mirroring refactor notes, decisions, tests, and open items.
+summary: Notes and decisions for the outbound session mirroring refactor and remaining follow-ups.
 ---
 
 # Outbound Session Mirroring Refactor (Issue #1520)

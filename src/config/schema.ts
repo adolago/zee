@@ -273,15 +273,13 @@ export type SurfaceConfig = z.infer<typeof SurfaceConfigSchema>;
 // ============================================================================
 
 /**
- * Vector database configuration
+ * Vector database configuration (local Qdrant only -- no remote/cloud support)
  */
 export const VectorDbConfigSchema = z.object({
-  /** Vector database type */
-  type: z.enum(['qdrant', 'pinecone', 'weaviate', 'memory']).default('qdrant'),
-  /** Connection URL */
+  /** Vector database type (only local qdrant or in-memory) */
+  type: z.enum(['qdrant', 'memory']).default('qdrant'),
+  /** Connection URL (must be localhost) */
   url: z.string().optional(),
-  /** API key for cloud providers */
-  apiKey: z.string().optional(),
   /** Collection/index name */
   collection: z.string().optional().default('zee'),
   /** Embedding model to use */

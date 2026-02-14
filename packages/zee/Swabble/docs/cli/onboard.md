@@ -9,7 +9,7 @@ read_when:
 Interactive onboarding wizard (local or remote Gateway setup).
 
 Related:
-- Wizard guide: [Onboarding](/start/onboarding)
+- Wizard guide: [Wizard](/start/wizard)
 
 ## Examples
 

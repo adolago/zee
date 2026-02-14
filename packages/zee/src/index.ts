@@ -42,6 +42,7 @@ import { ClawHubCommand } from "./cli/cmd/clawhub"
 import { CompareCommand } from "./cli/cmd/compare"
 import { ClientCommand } from "./cli/cmd/client"
 import { GatewayCommand } from "./cli/cmd/gateway"
+import { ChannelsCommand } from "./cli/cmd/channels"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -183,6 +184,7 @@ const cli = yargs(hideBin(process.argv))
   .command(DaemonServiceStatusCommand)
   .command(GatewayStatusCommand)
   .command(GatewayCommand)
+  .command(ChannelsCommand)
   .command(PluginCommand)
   .command(ProviderCommand)
   .command(SetupCommand)

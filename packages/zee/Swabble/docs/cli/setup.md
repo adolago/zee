@@ -11,7 +11,7 @@ Initialize `~/.zee/zee.json` and the agent workspace.
 
 Related:
 - Getting started: [Getting started](/start/getting-started)
-- Wizard: [Onboarding](/start/onboarding)
+- Wizard: [Wizard](/start/wizard)
 
 ## Examples
 
@@ -25,4 +25,3 @@ To run the wizard via setup:
 ```bash
 zee setup --wizard
 ```
-

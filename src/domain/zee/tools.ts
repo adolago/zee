@@ -22,6 +22,7 @@ import {
 } from "./splitwise.js";
 import { resolveCodexbarConfig, runCodexbar } from "./codexbar.js";
 import { withRetry, suggestRecovery, buildEscalation } from "../../swarm/recovery.js";
+import { sendWhatsAppMessage, type WhatsAppTransport } from "./whatsapp-send.js";
 
 const log = Log.create({ service: "zee-tools" });
 
@@ -582,18 +583,20 @@ const MessagingParams = z.object({
     .describe("URL or local file path to media (audio, image, video, document). For voice notes, use audio/ogg with opus codec."),
   account: z.string().optional()
     .describe('Account to use (default: "zee")'),
+  transport: z.enum(["auto", "wacli", "gateway"]).optional()
+    .describe("Transport strategy: auto (wacli first), wacli only, or gateway only"),
 });
 
 export const messagingTool: ToolDefinition = {
   id: "zee:messaging",
   category: "domain",
   init: async () => ({
-    description: `Send messages via WhatsApp gateway. Always search memory for recipient contact info before asking the user.
+    description: `Send messages via WhatsApp. Default transport is wacli (direct), with optional gateway fallback. Always search memory for recipient contact info before asking the user.
 
 WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for images/audio/video.`,
     parameters: MessagingParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { channel, to, message, mediaUrl, account } = args;
+      const { channel, to, message, mediaUrl, account, transport } = args;
 
       const hasMedia = Boolean(mediaUrl?.trim());
       ctx.metadata({ title: `Sending via ${channel}${hasMedia ? " (media)" : ""}` });
@@ -621,53 +624,41 @@ WhatsApp: to=E164 phone or JID ("num@c.us"/"id@g.us"). Supports mediaUrl for ima
         }
       }
 
-      const rawBaseUrl =
-        process.env.ZEE_URL ||
-        process.env.ZEE_DAEMON_URL ||
-        `http://127.0.0.1:${process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"}`;
-      const baseUrl = rawBaseUrl.replace(/\/$/, "");
-
       try {
-        // Send via WhatsApp gateway (Zee only)
-        // account can be 'zee' (bot number) or 'personal' (your number), or any configured account
         const accountId = account || "zee";
-        const response = await fetch(`${baseUrl}/gateway/whatsapp/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId: to,
-            message,
-            accountId,
-            ...(validatedMediaUrl ? { mediaUrl: validatedMediaUrl } : {}),
-          }),
+        const resolvedTransport = (transport ?? "auto") as WhatsAppTransport;
+
+        const result = await sendWhatsAppMessage({
+          to,
+          message,
+          mediaUrl: validatedMediaUrl,
+          accountId,
+          transport: resolvedTransport,
         });
 
-        const rawResult = await response.json();
-        const parseResult = GatewayResponseSchema.safeParse(rawResult);
-
-        if (!parseResult.success) {
-          log.error("WhatsApp gateway response validation failed", {
-            errors: parseResult.error.flatten().fieldErrors,
-          });
-          return {
-            title: `WhatsApp Send Failed`,
-            metadata: { channel, to, error: "Invalid response from gateway" },
-            output: `Failed to send WhatsApp message: Invalid response from gateway`,
-          };
-        }
-
-        const result = parseResult.data;
-
         if (!result.success) {
-          return {
-            title: `WhatsApp Send Failed`,
-            metadata: { channel, to, error: result.error },
-            output: `Failed to send WhatsApp message: ${result.error || "Unknown error"}
-
-Troubleshooting:
+          const troubleshooting = result.transport === "wacli"
+            ? `Troubleshooting:
+- Ensure \`~/go/bin/wacli\` is installed
+- If locked, stop \`wacli sync --follow\`
+- If unauthenticated, run \`~/go/bin/wacli auth\``
+            : `Troubleshooting:
 - Ensure \`zee daemon\` is running
 - Check \`zee debug status\` shows Gateway: Active
-- Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`,
+- Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`;
+
+          return {
+            title: `WhatsApp Send Failed`,
+            metadata: {
+              channel,
+              to,
+              transport: result.transport,
+              error: result.error,
+              errorCode: result.code,
+            },
+            output: `Failed to send WhatsApp message via ${result.transport}: ${result.error}
+
+${troubleshooting}`,
           };
         }
 
@@ -680,7 +671,14 @@ Troubleshooting:
             : "";
         return {
           title: `WhatsApp Message Sent${mediaLabel}`,
-          metadata: { channel, to, account: accountId, hasMedia, success: true },
+          metadata: {
+            channel,
+            to,
+            account: accountId,
+            hasMedia,
+            success: true,
+            transport: result.transport,
+          },
           output: `Message sent via ${accountLabel} to ${to}${mediaLabel}
 
 ${preview}`,

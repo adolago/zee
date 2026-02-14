@@ -1,0 +1,38 @@
+#!/bin/bash
+# Zee Email Briefing - surfaces actionable emails for morning review
+# Usage: zee-email-briefing [days_back]
+
+DAYS=${1:-1}
+
+echo "=== EMAIL BRIEFING (last ${DAYS} day(s)) ==="
+echo ""
+
+echo "--- JOB ALERTS ---"
+notmuch search --limit=10 --output=summary \
+  "date:${DAYS}d.. AND from:linkedin AND (subject:analyst OR subject:manager OR subject:contributor OR subject:researcher OR subject:engineer OR subject:director) AND tag:inbox" 2>/dev/null
+echo ""
+
+echo "--- EUCLASE / PARETO ---"
+notmuch search --limit=10 --output=summary \
+  "date:${DAYS}d.. AND (from:pareto OR subject:euclase) AND tag:inbox" 2>/dev/null
+echo ""
+
+echo "--- REQUIRES ACTION (flagged/starred) ---"
+notmuch search --limit=10 --output=summary \
+  "date:${DAYS}d.. AND tag:flagged AND tag:inbox" 2>/dev/null
+echo ""
+
+echo "--- UNREAD COUNT ---"
+UNREAD=$(notmuch count 'tag:unread AND tag:inbox' 2>/dev/null)
+TOTAL=$(notmuch count 'tag:inbox' 2>/dev/null)
+echo "Unread: ${UNREAD} | Total inbox: ${TOTAL}"
+echo ""
+
+echo "--- FINANCE / MARKET NEWS ---"
+notmuch search --limit=5 --output=summary \
+  "date:${DAYS}d.. AND (from:biztoc OR from:benzinga OR subject:market OR subject:digest) AND tag:inbox" 2>/dev/null
+echo ""
+
+echo "--- PERSONAL (non-commercial) ---"
+notmuch search --limit=10 --output=summary \
+  "date:${DAYS}d.. AND tag:inbox AND NOT from:linkedin AND NOT from:amazon AND NOT from:google AND NOT from:pareto AND NOT from:apple AND NOT from:ebay AND NOT from:willhaben AND NOT from:treatwell AND NOT from:post.at AND NOT from:biztoc AND NOT from:benzinga AND NOT from:noreply" 2>/dev/null

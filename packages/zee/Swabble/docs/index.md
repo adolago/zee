@@ -6,7 +6,6 @@ read_when:
 # Zee
 
 <p align="center">
-  <img src="whatsapp-zee.jpg" alt="Zee" width="420" />
 </p>
 
 <p align="center">

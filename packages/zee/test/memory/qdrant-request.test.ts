@@ -19,7 +19,7 @@ describe("QdrantVectorStorage.request", () => {
     }) as typeof fetch
 
     const storage = new QdrantVectorStorage({
-      url: "http://qdrant.invalid",
+      url: "http://localhost:6333",
       collection: "test",
       timeoutMs: 25,
       maxRetries: 0,
@@ -44,7 +44,7 @@ describe("QdrantVectorStorage.request", () => {
     }) as typeof fetch
 
     const storage = new QdrantVectorStorage({
-      url: "http://qdrant.invalid",
+      url: "http://localhost:6333",
       collection: "test",
       timeoutMs: 1000,
       maxRetries: 1,
@@ -67,7 +67,7 @@ describe("QdrantVectorStorage.request", () => {
     }) as typeof fetch
 
     const storage = new QdrantVectorStorage({
-      url: "http://qdrant.invalid",
+      url: "http://localhost:6333",
       collection: "test",
       timeoutMs: 1000,
       maxRetries: 2,

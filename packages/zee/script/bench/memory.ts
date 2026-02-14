@@ -8,7 +8,6 @@ export interface MemoryBenchContext {
   memory: Memory;
   namespace: string;
   qdrantUrl: string;
-  qdrantApiKey?: string;
   collection: string;
   ftsDir: string;
   queries: {
@@ -19,12 +18,9 @@ export interface MemoryBenchContext {
   cleanup: () => Promise<void>;
 }
 
-async function checkQdrant(url: string, apiKey?: string): Promise<boolean> {
+async function checkQdrant(url: string): Promise<boolean> {
   try {
-    const headers: Record<string, string> = {};
-    if (apiKey) headers["api-key"] = apiKey;
     const res = await fetch(`${url.replace(/\/$/, "")}/collections`, {
-      headers,
       signal: AbortSignal.timeout(1500),
     });
     return res.ok;
@@ -75,12 +71,10 @@ export async function createMemoryBenchContext(options: {
   seedCount: number;
   concurrency: number;
   qdrantUrl?: string;
-  qdrantApiKey?: string;
   namespace?: string;
 }): Promise<{ ctx: MemoryBenchContext | null; skipReason?: string }> {
   const qdrantUrl = options.qdrantUrl ?? process.env.QDRANT_URL ?? "http://localhost:6333";
-  const qdrantApiKey = options.qdrantApiKey ?? process.env.QDRANT_API_KEY ?? undefined;
-  const ok = await checkQdrant(qdrantUrl, qdrantApiKey);
+  const ok = await checkQdrant(qdrantUrl);
   if (!ok) {
     return {
       ctx: null,
@@ -95,7 +89,7 @@ export async function createMemoryBenchContext(options: {
 
   resetMemory();
   const memory = new Memory({
-    qdrant: { url: qdrantUrl, apiKey: qdrantApiKey, collection },
+    qdrant: { url: qdrantUrl, collection },
     embedding: { provider: "google", dimensions: 384 },
     namespace,
     fts: { dbDir: ftsDir, dbName: "fts.sqlite" },
@@ -157,11 +151,8 @@ export async function createMemoryBenchContext(options: {
       restoreFetch();
 
       try {
-        const headers: Record<string, string> = {};
-        if (qdrantApiKey) headers["api-key"] = qdrantApiKey;
         await fetch(`${qdrantUrl.replace(/\/$/, "")}/collections/${collection}`, {
           method: "DELETE",
-          headers,
           signal: AbortSignal.timeout(5000),
         });
       } catch {
@@ -182,7 +173,6 @@ export async function createMemoryBenchContext(options: {
         memory,
         namespace,
         qdrantUrl,
-        qdrantApiKey,
         collection,
         ftsDir,
         queries: { keyword, semantic, hybrid },

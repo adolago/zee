@@ -24,7 +24,6 @@ import {
 import { resolveMarkdownTableMode } from "../../../config/markdown-tables.js";
 import { logVerbose, shouldLogVerbose } from "../../../globals.js";
 import type { getChildLogger } from "../../../logging.js";
-import { readChannelAllowFromStore } from "../../../pairing/pairing-store.js";
 import type { resolveAgentRoute } from "../../../routing/resolve-route.js";
 import { jidToE164, normalizeE164 } from "../../../utils.js";
 import { newConnectionId } from "../../reconnect.js";
@@ -79,18 +78,14 @@ async function resolveWhatsAppCommandAuthorized(params: {
     return normalizeAllowFromE164(configuredGroupAllowFrom).includes(senderE164);
   }
 
-  const storeAllowFrom = await readChannelAllowFromStore("whatsapp").catch(() => []);
-  const combinedAllowFrom = Array.from(
-    new Set([...(configuredAllowFrom ?? []), ...storeAllowFrom]),
-  );
-  const allowFrom =
-    combinedAllowFrom.length > 0
-      ? combinedAllowFrom
+  const effectiveAllowFrom =
+    configuredAllowFrom.length > 0
+      ? configuredAllowFrom
       : params.msg.selfE164
         ? [params.msg.selfE164]
         : [];
-  if (allowFrom.some((v) => String(v).trim() === "*")) return true;
-  return normalizeAllowFromE164(allowFrom).includes(senderE164);
+  if (effectiveAllowFrom.some((v) => String(v).trim() === "*")) return true;
+  return normalizeAllowFromE164(effectiveAllowFrom).includes(senderE164);
 }
 
 export async function processMessage(params: {

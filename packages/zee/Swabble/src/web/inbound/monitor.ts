@@ -41,7 +41,6 @@ export async function monitorWebInbox(options: {
     authDir: options.authDir,
   });
   await waitForWaConnection(sock);
-  const connectedAtMs = Date.now();
 
   let onCloseResolve: ((reason: WebListenerCloseReason) => void) | null = null;
   const onClose = new Promise<WebListenerCloseReason>((resolve) => {
@@ -185,9 +184,6 @@ export async function monitorWebInbox(options: {
         group,
         pushName: msg.pushName ?? undefined,
         isFromMe: Boolean(msg.key?.fromMe),
-        messageTimestampMs,
-        connectedAtMs,
-        sock: { sendMessage: (jid, content) => sock.sendMessage(jid, content) },
         remoteJid,
       });
       if (!access.allowed) continue;

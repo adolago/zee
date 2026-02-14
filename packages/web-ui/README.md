@@ -5,7 +5,7 @@ Reusable web chat component package for Zee.
 ## Install
 
 ```bash
-npm install @zee/web-ui
+npm install @zee/web-ui @zee/agent-core @zee/ai
 ```
 
 ## Usage

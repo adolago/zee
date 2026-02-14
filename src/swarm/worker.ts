@@ -78,6 +78,7 @@ export class Worker extends EventEmitter {
           ZEE_WORKER_NAME: this.name,
           ZEE_PERSONA: this.persona,
           ZEE_IS_SUBAGENT: "true",
+          ZEE_PARENT_PID: String(process.pid),
           ...(this.permissionScope ? { ZEE_PERMISSION_SCOPE: this.permissionScope } : {}),
           ...(this.taskId ? { ZEE_TASK_ID: this.taskId } : {}),
         },

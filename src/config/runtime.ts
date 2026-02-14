@@ -18,11 +18,9 @@ type RuntimeConfig = {
   memory?: {
     qdrant?: {
       url?: string;
-      apiKey?: string;
       collection?: string;
     };
     qdrantUrl?: string;
-    qdrantApiKey?: string;
     qdrantCollection?: string;
     embedding?: {
       profile?: string;
@@ -49,7 +47,6 @@ type RuntimeConfig = {
 
 export type MemoryQdrantConfig = {
   url?: string;
-  apiKey?: string;
   collection?: string;
 };
 
@@ -156,12 +153,10 @@ function resolveMemoryQdrantConfig(config: RuntimeConfig): MemoryQdrantConfig {
   const memory = config.memory ?? {};
   const qdrant = memory.qdrant ?? {};
   const url = (qdrant.url ?? memory.qdrantUrl)?.trim() || undefined;
-  const apiKey = (qdrant.apiKey ?? memory.qdrantApiKey)?.trim() || undefined;
   const collection = (qdrant.collection ?? memory.qdrantCollection)?.trim() || undefined;
 
   return {
     url,
-    apiKey,
     collection,
   };
 }

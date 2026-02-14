@@ -9,6 +9,7 @@ import { saveMediaBuffer } from "../../media/store.js";
 import { isNodeCommandAllowed, resolveNodeCommandAllowlist } from "../node-command-policy.js";
 import type { NodeSession } from "../node-registry.js";
 import { ErrorCodes, errorShape } from "../protocol/index.js";
+import { sanitizeGatewayErrorMessage, sanitizeGatewayUnavailableMessage } from "../error-sanitize.js";
 import { safeParseJson } from "./nodes.helpers.js";
 import type { GatewayRequestHandlers } from "./types.js";
 
@@ -158,7 +159,11 @@ export const browserHandlers: GatewayRequestHandlers = {
         nodes: context.nodeRegistry.listConnected(),
       });
     } catch (err) {
-      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.UNAVAILABLE, sanitizeGatewayUnavailableMessage(err)),
+      );
       return;
     }
 
@@ -227,7 +232,11 @@ export const browserHandlers: GatewayRequestHandlers = {
     try {
       dispatcher = createBrowserRouteDispatcher(createBrowserControlContext());
     } catch (err) {
-      respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));
+      respond(
+        false,
+        undefined,
+        errorShape(ErrorCodes.UNAVAILABLE, sanitizeGatewayUnavailableMessage(err)),
+      );
       return;
     }
 
@@ -239,11 +248,17 @@ export const browserHandlers: GatewayRequestHandlers = {
     });
 
     if (result.status >= 400) {
-      const message =
+      const messageRaw =
         result.body && typeof result.body === "object" && "error" in result.body
           ? String((result.body as { error?: unknown }).error)
           : `browser request failed (${result.status})`;
       const code = result.status >= 500 ? ErrorCodes.UNAVAILABLE : ErrorCodes.INVALID_REQUEST;
+      const message =
+        code === ErrorCodes.UNAVAILABLE
+          ? sanitizeGatewayUnavailableMessage(messageRaw)
+          : sanitizeGatewayErrorMessage(messageRaw, {
+              fallback: `browser request failed (${result.status})`,
+            });
       respond(false, undefined, errorShape(code, message, { details: result.body }));
       return;
     }

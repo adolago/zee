@@ -56,7 +56,7 @@ export type RuntimeProcessEntry = {
 export type RuntimeSnapshot = {
   generatedAt: string
   currentPid: number
-  expectedExecutablePath?: string
+  expectedExecutablePaths?: string[]
   limits: RuntimeProcessLimits
   counts: RuntimeCounts
   processes: RuntimeProcessEntry[]
@@ -141,7 +141,7 @@ function isLikelyInteractiveClientCommand(command: string): boolean {
   return false
 }
 
-async function resolveExpectedExecutablePath(): Promise<string | undefined> {
+async function resolveExpectedExecutablePaths(): Promise<Set<string>> {
   const configured = process.env.ZEE_EXPECTED_EXE?.trim()
   const candidates = [
     configured,
@@ -149,15 +149,16 @@ async function resolveExpectedExecutablePath(): Promise<string | undefined> {
     process.execPath,
   ].filter((value): value is string => Boolean(value))
 
+  const paths = new Set<string>()
   for (const candidate of candidates) {
     try {
-      return await fs.realpath(candidate)
+      paths.add(await fs.realpath(candidate))
     } catch {
       // Ignore and continue
     }
   }
 
-  return undefined
+  return paths
 }
 
 function runPgrep(pattern: string): Array<{ pid: number; command: string }> {
@@ -392,7 +393,7 @@ export async function collectRuntimeSnapshot(input: {
 } = {}): Promise<RuntimeSnapshot> {
   const currentPid = input.currentPid ?? process.pid
   const limits = resolveRuntimeProcessLimits(input.limits)
-  const expectedExecutablePath = await resolveExpectedExecutablePath()
+  const expectedPaths = await resolveExpectedExecutablePaths()
 
   const raw = [...runPgrep("zee"), ...runPgrep("src/mcp/servers/")]
   const unique = new Map<number, { pid: number; command: string }>()
@@ -425,8 +426,8 @@ export async function collectRuntimeSnapshot(input: {
       const exePath = normalizeExePath(exeRawPath)
       const exeDeleted = Boolean(exeRawPath?.endsWith(" (deleted)"))
       const zeeExecutable = isZeeExecutablePath(exePath)
-      const binaryPinned = expectedExecutablePath
-        ? exePath === expectedExecutablePath
+      const binaryPinned = expectedPaths.size > 0
+        ? expectedPaths.has(exePath ?? "")
         : true
       const hasTty = isTerminalPath(stdinPath)
       const interactiveClient = kind === "zee_other" && isLikelyInteractiveClientCommand(entry.command)
@@ -462,7 +463,7 @@ export async function collectRuntimeSnapshot(input: {
   return {
     generatedAt: new Date().toISOString(),
     currentPid,
-    expectedExecutablePath,
+    expectedExecutablePaths: Array.from(expectedPaths),
     limits,
     counts,
     processes: trackedEntries,

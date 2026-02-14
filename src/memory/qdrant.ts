@@ -22,6 +22,26 @@ const MAX_QDRANT_MAX_RETRIES = 5;
 const QDRANT_RETRY_BASE_DELAY_MS = 100;
 const QDRANT_RETRY_MAX_DELAY_MS = 1_000;
 
+/**
+ * Hard rule: Qdrant must be local. Reject any URL that doesn't resolve to
+ * localhost / 127.0.0.1 / [::1].
+ */
+function assertLocalQdrantUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid Qdrant URL: ${url}`);
+  }
+  const host = parsed.hostname.replace(/^\[|\]$/g, "");
+  const allowed = ["localhost", "127.0.0.1", "::1"];
+  if (!allowed.includes(host)) {
+    throw new Error(
+      `Remote Qdrant is not supported. URL must point to localhost, got: ${parsed.hostname}`,
+    );
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -113,15 +133,15 @@ type QdrantPointResult = {
  */
 export class QdrantVectorStorage implements VectorStorage {
   private readonly baseUrl: string;
-  private readonly apiKey?: string;
   private readonly defaultCollection: string;
   private currentCollection: string;
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
 
   constructor(config: MemoryConfig["qdrant"]) {
-    this.baseUrl = (config.url ?? QDRANT_URL).replace(/\/$/, "");
-    this.apiKey = config.apiKey;
+    const raw = (config.url ?? QDRANT_URL).replace(/\/$/, "");
+    assertLocalQdrantUrl(raw);
+    this.baseUrl = raw;
     this.defaultCollection = config.collection ?? QDRANT_COLLECTION_MEMORY;
     this.currentCollection = this.defaultCollection;
     this.timeoutMs =
@@ -143,9 +163,6 @@ export class QdrantVectorStorage implements VectorStorage {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (this.apiKey) {
-      headers["api-key"] = this.apiKey;
-    }
 
     const url = `${this.baseUrl}${path}`;
     const canRetry = isRetryableQdrantRequest(method, path);
@@ -942,13 +959,8 @@ export class QdrantMemoryStore implements QdrantMemoryStoreInterface {
     // Access private members through storage - this is a bit hacky but works
     const storage = this.storage as unknown as {
       baseUrl: string;
-      apiKey?: string;
       currentCollection: string;
     };
-
-    if (storage.apiKey) {
-      headers["api-key"] = storage.apiKey;
-    }
 
     const response = await fetch(
       `${storage.baseUrl}/collections/${storage.currentCollection}/points/scroll`,

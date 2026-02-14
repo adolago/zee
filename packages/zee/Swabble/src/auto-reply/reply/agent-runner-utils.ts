@@ -21,6 +21,11 @@ export function buildThreadingToolContext(params: {
 }): ChannelThreadingToolContext {
   const { sessionCtx, config, hasRepliedRef } = params;
   if (!config) return {};
+  const sessionThreadRaw =
+    sessionCtx.MessageThreadId !== undefined && sessionCtx.MessageThreadId !== null
+      ? String(sessionCtx.MessageThreadId).trim()
+      : "";
+  const fallbackThreadTs = sessionThreadRaw || undefined;
   const rawProvider = sessionCtx.Provider?.trim().toLowerCase();
   if (!rawProvider) return {};
   const provider = normalizeChannelId(rawProvider) ?? normalizeAnyChannelId(rawProvider);
@@ -30,6 +35,7 @@ export function buildThreadingToolContext(params: {
     return {
       currentChannelId: sessionCtx.To?.trim() || undefined,
       currentChannelProvider: provider ?? (rawProvider as ChannelId),
+      currentThreadTs: fallbackThreadTs,
       hasRepliedRef,
     };
   }
@@ -50,6 +56,7 @@ export function buildThreadingToolContext(params: {
     }) ?? {};
   return {
     ...context,
+    currentThreadTs: context.currentThreadTs ?? fallbackThreadTs,
     currentChannelProvider: provider!, // guaranteed non-null since dock exists
   };
 }

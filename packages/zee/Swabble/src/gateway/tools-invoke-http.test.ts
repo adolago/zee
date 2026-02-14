@@ -59,6 +59,45 @@ describe("POST /tools/invoke", () => {
     await server.close();
   });
 
+  it("blocks sessions_spawn over HTTP even when allowlisted", async () => {
+    testState.agentsConfig = {
+      list: [
+        {
+          id: "main",
+          tools: {
+            allow: ["sessions_spawn"],
+          },
+        },
+      ],
+    } as any;
+
+    const port = await getFreePort();
+    const server = await startGatewayServer(port, {
+      bind: "loopback",
+    });
+    const token = resolveGatewayToken();
+
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/tools/invoke`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          tool: "sessions_spawn",
+          action: "json",
+          args: { prompt: "hello" },
+          sessionKey: "main",
+        }),
+      });
+
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.error?.type).toBe("forbidden");
+    } finally {
+      await server.close();
+    }
+  });
+
   it("supports tools.alsoAllow as additive allowlist (profile stage)", async () => {
     // No explicit tool allowlist; rely on profile + alsoAllow.
     testState.agentsConfig = {
@@ -242,8 +281,6 @@ describe("POST /tools/invoke", () => {
         },
       ],
     } as any;
-    // Let file-backed gateway.auth include rateLimit for this test.
-    testState.gatewayAuth = undefined;
 
     const { writeConfigFile } = await import("../config/config.js");
     await writeConfigFile({

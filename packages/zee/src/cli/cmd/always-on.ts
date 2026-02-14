@@ -30,6 +30,7 @@ import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
 import type { RuntimeProcessLimits } from "./runtime-process-guard"
 import path from "path"
+import { startRuntimeProcessGuard, type RuntimeProcessLimits } from "./runtime-process-guard"
 
 const log = Log.create({ service: "always-on" })
 
@@ -64,10 +65,24 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     wezterm = true,
     weztermLayout = "horizontal",
     restoreSessions = true,
+    runtimeGuard = true,
+    runtimeGuardIntervalMs = 30_000,
+    runtimeLimits,
   } = opts
 
   // Run setup check
   const setupResult = await validateSetup({ exitOnFail: false, verbose: true })
+  if (!setupResult.ok) {
+    log.error("setup validation failed; refusing to start", {
+      errors: setupResult.errors,
+      warnings: setupResult.warnings,
+      qdrantAvailable: setupResult.qdrant.available,
+      googleApiKeyAvailable: setupResult.googleApiKey.available,
+    })
+    throw new Error(
+      `Startup blocked: required dependencies missing.\n${setupResult.errors.join("\n")}`,
+    )
+  }
 
   log.info("starting always-on process", {
     directory,
@@ -112,6 +127,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   let gatewayStarted = false
   let cronService: CronService | null = null
   let heartbeatRunner: HeartbeatRunner | null = null
+  let stopRuntimeGuard: (() => void) | undefined
 
   // Initialize session persistence
   try {
@@ -339,8 +355,21 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       Output.log("Gateway:    Messaging gateway started")
     } else {
       const reason = gatewayState.error ?? "Not available"
+      if (gatewayState.fatal) {
+        throw new Error(`Gateway preflight failed: ${reason}`)
+      }
       Output.log(`Gateway:    Disabled (${reason})`)
     }
+  }
+
+  if (runtimeGuard) {
+    stopRuntimeGuard = startRuntimeProcessGuard({
+      intervalMs: runtimeGuardIntervalMs,
+      limits: runtimeLimits,
+      currentPid: process.pid,
+      reason: "daemon-runtime-guard",
+    })
+    Output.log(`Runtime:    Process guard enabled (${Math.round(runtimeGuardIntervalMs / 1000)}s cadence)`)
   }
 
   // Cleanup function
@@ -368,6 +397,11 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
 
     // Stop skill watcher
     await stopSkillWatcher()
+
+    if (stopRuntimeGuard) {
+      stopRuntimeGuard()
+      stopRuntimeGuard = undefined
+    }
 
     // Shutdown WezTerm
     if (weztermEnabled) {

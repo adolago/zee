@@ -64,12 +64,9 @@ function resolveKeys(params: {
 
 function cleanupExpired(nowMs: number, cfg: ResolvedRateLimitConfig): void {
   const ttl = Math.max(cfg.windowMs, cfg.lockoutMs) * 2;
-  for (const state of keyStates.values()) {
+  for (const [key, state] of keyStates.entries()) {
     if (nowMs - state.touchedAt > ttl && state.lockUntilMs < nowMs) {
-      // Initial implementation clears the whole map once old state is detected.
-      // Follow-up hardening changes this to prune only expired entries.
-      keyStates.clear();
-      return;
+      keyStates.delete(key);
     }
   }
 }
@@ -198,3 +195,4 @@ export const __testing = {
     return Array.from(keyStates.entries()).map(([key, value]) => ({ key, value: { ...value } }));
   },
 };
+

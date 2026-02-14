@@ -130,7 +130,8 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     const snapshot = await readConfigFileSnapshot();
     const baseConfig = resolveConfigWriteBase(snapshot);
-    const redactedBase = redactConfigObject(baseConfig) as ZeeConfig;
+    const redactionPolicy = (baseConfig as ZeeConfig).security?.redaction;
+    const redactedBase = redactConfigObject(baseConfig, redactionPolicy) as ZeeConfig;
     const raw = snapshot.exists ? JSON.stringify(redactedBase, null, 2).trimEnd().concat("\n") : null;
     respond(
       true,
@@ -202,6 +203,7 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
     const baseConfig = resolveConfigWriteBase(snapshot);
+    const redactionPolicy = (baseConfig as ZeeConfig).security?.redaction;
     const rawValue = (params as { raw?: unknown }).raw;
     if (typeof rawValue !== "string") {
       respond(
@@ -229,7 +231,7 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     let restored: ZeeConfig;
     try {
-      restored = restoreRedactedValues(validated.config, baseConfig);
+      restored = restoreRedactedValues(validated.config, baseConfig, redactionPolicy);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, msg));
@@ -241,7 +243,7 @@ export const configHandlers: GatewayRequestHandlers = {
       {
         ok: true,
         path: CONFIG_PATH,
-        config: redactConfigObject(restored),
+        config: redactConfigObject(restored, redactionPolicy),
       },
       undefined,
     );
@@ -271,6 +273,7 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
     const baseConfig = resolveConfigWriteBase(snapshot);
+    const redactionPolicy = (baseConfig as ZeeConfig).security?.redaction;
     const rawValue = (params as { raw?: unknown }).raw;
     if (typeof rawValue !== "string") {
       respond(
@@ -305,7 +308,7 @@ export const configHandlers: GatewayRequestHandlers = {
     const resolved = migrated.next ?? merged;
     let restored: unknown;
     try {
-      restored = restoreRedactedValues(resolved, baseConfig);
+      restored = restoreRedactedValues(resolved, baseConfig, redactionPolicy);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, msg));
@@ -365,7 +368,7 @@ export const configHandlers: GatewayRequestHandlers = {
       {
         ok: true,
         path: CONFIG_PATH,
-        config: redactConfigObject(validated.config),
+        config: redactConfigObject(validated.config, redactionPolicy),
         restart,
         sentinel: {
           path: sentinelPath,
@@ -392,6 +395,7 @@ export const configHandlers: GatewayRequestHandlers = {
       return;
     }
     const baseConfig = resolveConfigWriteBase(snapshot);
+    const redactionPolicy = (baseConfig as ZeeConfig).security?.redaction;
     const rawValue = (params as { raw?: unknown }).raw;
     if (typeof rawValue !== "string") {
       respond(
@@ -422,7 +426,7 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     let restored: ZeeConfig;
     try {
-      restored = restoreRedactedValues(validated.config, baseConfig);
+      restored = restoreRedactedValues(validated.config, baseConfig, redactionPolicy);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, msg));
@@ -471,7 +475,7 @@ export const configHandlers: GatewayRequestHandlers = {
       {
         ok: true,
         path: CONFIG_PATH,
-        config: redactConfigObject(restored),
+        config: redactConfigObject(restored, redactionPolicy),
         restart,
         sentinel: {
           path: sentinelPath,

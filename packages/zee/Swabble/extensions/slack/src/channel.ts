@@ -18,6 +18,7 @@ import {
   readStringParam,
   requireOpenAllowFrom,
   setAccountEnabledInConfigSection,
+  type ChannelAccountSnapshot,
   type ChannelOnboardingAdapter,
   type ChannelPlugin,
   type ChannelStatusIssue,
@@ -261,7 +262,7 @@ function setSlackAllowFrom(cfg: ZeeConfig, accountId: string, allowFrom?: string
   });
 }
 
-function collectSlackStatusIssues(accounts: Array<Record<string, unknown>>): ChannelStatusIssue[] {
+function collectSlackStatusIssues(accounts: ChannelAccountSnapshot[]): ChannelStatusIssue[] {
   const issues: ChannelStatusIssue[] = [];
   for (const account of accounts) {
     const accountId =
@@ -306,9 +307,10 @@ function collectSlackStatusIssues(accounts: Array<Record<string, unknown>>): Cha
       });
     }
 
+    const accountActions = (account as { actions?: unknown }).actions;
     const actions =
-      account.actions && typeof account.actions === "object"
-        ? (account.actions as Record<string, unknown>)
+      accountActions && typeof accountActions === "object"
+        ? (accountActions as Record<string, unknown>)
         : {};
     const hasActionSurface =
       actions.reactions !== false || actions.pins !== false || actions.channelInfo !== false;
@@ -764,7 +766,7 @@ export const slackPlugin: ChannelPlugin<ResolvedSlackAccount> = {
         appTokenSource: tokens.appSource,
       };
     },
-    collectStatusIssues: (accounts) => collectSlackStatusIssues(accounts as Array<Record<string, unknown>>),
+    collectStatusIssues: collectSlackStatusIssues,
   },
   actions: {
     listActions: ({ cfg }) => {

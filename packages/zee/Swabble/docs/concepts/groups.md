@@ -1,4 +1,5 @@
 ---
+summary: "Group session behavior in Zee, including gating, session keys, and sandboxing patterns."
 read_when:
   - Changing group chat behavior or mention gating
 ---

@@ -633,7 +633,12 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
   const bestEffort = readBooleanParam(params, "bestEffort");
 
   const replyToId = readStringParam(params, "replyTo");
-  const threadId = readStringParam(params, "threadId");
+  const explicitThreadId = readStringParam(params, "threadId");
+  const contextualThreadId = input.toolContext?.currentThreadTs?.trim();
+  const threadId = explicitThreadId ?? (contextualThreadId ? contextualThreadId : undefined);
+  if (!explicitThreadId && threadId) {
+    params.threadId = threadId;
+  }
   const outboundRoute =
     agentId && !dryRun
       ? await resolveOutboundSessionRoute({

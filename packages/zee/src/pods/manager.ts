@@ -194,7 +194,7 @@ export async function startModel(input: {
   const state = await readState()
   const pod = requirePod(state, input.pod)
   const port = input.port ?? 8000
-  const logFile = input.logFile ?? `/tmp/zee-vllm-${input.name}.log`
+  const logFile = input.logFile ?? `~/zee-vllm-${input.name}.log`
   const extraArgs = input.extraArgs ?? []
   const extraArgsText = extraArgs.map((arg) => singleQuote(arg)).join(" ")
 

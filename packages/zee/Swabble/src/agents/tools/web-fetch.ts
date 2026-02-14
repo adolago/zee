@@ -10,6 +10,7 @@ import {
 import { logDebug } from "../../logger.js";
 import type { Dispatcher } from "undici";
 import { stringEnum } from "../schema/typebox.js";
+import { sanitizeToolResultImages } from "../tool-images.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
 import type { CacheEntry } from "./web-shared.js";
@@ -43,8 +44,36 @@ const DEFAULT_FIRECRAWL_BASE_URL = "https://api.firecrawl.dev";
 const DEFAULT_FIRECRAWL_MAX_AGE_MS = 172_800_000;
 const DEFAULT_FETCH_USER_AGENT =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const ATTACHABLE_IMAGE_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
 
 const FETCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
+
+type WebFetchImagePayload = {
+  attached: boolean;
+  mimeType: string;
+  bytes: number;
+  data?: string;
+};
+
+type WebFetchPayload = Record<string, unknown> & {
+  image?: WebFetchImagePayload;
+};
+
+function isAttachedImagePayload(
+  image: WebFetchImagePayload | undefined,
+): image is WebFetchImagePayload & { attached: true; data: string } {
+  return Boolean(
+    image &&
+      image.attached === true &&
+      typeof image.data === "string" &&
+      typeof image.mimeType === "string",
+  );
+}
 
 const WebFetchSchema = Type.Object({
   url: Type.String({ description: "HTTP or HTTPS URL to fetch." }),
@@ -92,6 +121,11 @@ function resolveFetchEnabled(params: { fetch?: WebFetchConfig; sandboxed?: boole
 
 function resolveFetchReadabilityEnabled(fetch?: WebFetchConfig): boolean {
   if (typeof fetch?.readability === "boolean") return fetch.readability;
+  return true;
+}
+
+function resolveFetchIncludeImages(fetch?: WebFetchConfig): boolean {
+  if (typeof fetch?.includeImages === "boolean") return fetch.includeImages;
   return true;
 }
 
@@ -156,6 +190,13 @@ function resolveMaxChars(value: unknown, fallback: number): number {
 function resolveMaxRedirects(value: unknown, fallback: number): number {
   const parsed = typeof value === "number" && Number.isFinite(value) ? value : fallback;
   return Math.max(0, Math.floor(parsed));
+}
+
+function normalizeImageMimeType(contentType: string): string | null {
+  const raw = contentType.split(";")[0]?.trim().toLowerCase();
+  if (!raw?.startsWith("image/")) return null;
+  if (raw === "image/jpg") return "image/jpeg";
+  return raw;
 }
 
 function looksLikeHtml(value: string): boolean {
@@ -347,9 +388,10 @@ async function runWebFetch(params: {
   firecrawlProxy: "auto" | "basic" | "stealth";
   firecrawlStoreInCache: boolean;
   firecrawlTimeoutSeconds: number;
-}): Promise<Record<string, unknown>> {
+  includeImages: boolean;
+}): Promise<WebFetchPayload> {
   const cacheKey = normalizeCacheKey(
-    `fetch:${params.url}:${params.extractMode}:${params.maxChars}`,
+    `fetch:${params.url}:${params.extractMode}:${params.maxChars}:${params.includeImages ? "img" : "noimg"}`,
   );
   const cached = readCache(FETCH_CACHE, cacheKey);
   if (cached) return { ...cached.value, cached: true };
@@ -463,6 +505,48 @@ async function runWebFetch(params: {
     }
 
     const contentType = res.headers.get("content-type") ?? "application/octet-stream";
+    const imageMimeType = normalizeImageMimeType(contentType);
+    if (imageMimeType) {
+      const bytes = Buffer.from(await res.arrayBuffer());
+      const imageBytes = bytes.byteLength;
+      const attachImage =
+        params.includeImages && ATTACHABLE_IMAGE_MIME_TYPES.has(imageMimeType) && imageBytes > 0;
+      const imagePayload: WebFetchImagePayload = attachImage
+        ? {
+            attached: true,
+            mimeType: imageMimeType,
+            bytes: imageBytes,
+            data: bytes.toString("base64"),
+          }
+        : {
+            attached: false,
+            mimeType: imageMimeType,
+            bytes: imageBytes,
+          };
+      const payload: WebFetchPayload = {
+        url: params.url,
+        finalUrl,
+        status: res.status,
+        contentType,
+        title: undefined,
+        extractMode: params.extractMode,
+        extractor: "image",
+        truncated: false,
+        length: 0,
+        fetchedAt: new Date().toISOString(),
+        tookMs: Date.now() - start,
+        text: attachImage
+          ? `Fetched image (${imageMimeType}, ${imageBytes} bytes).`
+          : `Fetched image (${imageMimeType}, ${imageBytes} bytes); attachment omitted.`,
+        image: imagePayload,
+      };
+      // Keep cache bounded: avoid storing base64 image payloads in-memory.
+      if (!attachImage) {
+        writeCache(FETCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+      }
+      return payload;
+    }
+
     const body = await readResponseText(res);
 
     let title: string | undefined;
@@ -586,6 +670,7 @@ export function createWebFetchTool(options?: {
   const fetch = resolveFetchConfig(options?.config);
   if (!resolveFetchEnabled({ fetch, sandboxed: options?.sandboxed })) return null;
   const readabilityEnabled = resolveFetchReadabilityEnabled(fetch);
+  const includeImages = resolveFetchIncludeImages(fetch);
   const firecrawl = resolveFirecrawlConfig(fetch);
   const firecrawlApiKey = resolveFirecrawlApiKey(firecrawl);
   const firecrawlEnabled = resolveFirecrawlEnabled({ firecrawl, apiKey: firecrawlApiKey });
@@ -627,8 +712,36 @@ export function createWebFetchTool(options?: {
         firecrawlProxy: "auto",
         firecrawlStoreInCache: true,
         firecrawlTimeoutSeconds,
+        includeImages,
       });
-      return jsonResult(result);
+      const image = isAttachedImagePayload(result.image) ? result.image : null;
+      if (!image) return jsonResult(result);
+
+      const details: WebFetchPayload = {
+        ...result,
+        image: {
+          attached: true,
+          mimeType: image.mimeType,
+          bytes: image.bytes,
+        },
+      };
+      return sanitizeToolResultImages(
+        {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(details, null, 2),
+            },
+            {
+              type: "image",
+              data: image.data,
+              mimeType: image.mimeType,
+            },
+          ],
+          details,
+        },
+        `web_fetch:${url}`,
+      );
     },
   };
 }

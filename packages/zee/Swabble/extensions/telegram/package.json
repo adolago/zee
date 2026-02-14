@@ -1,6 +1,6 @@
 {
   "name": "@zee/telegram",
-  "version": "2026.2.12-beta.1",
+  "version": "0.3.3",
   "type": "module",
   "description": "Zee Telegram channel plugin",
   "zee": {

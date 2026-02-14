@@ -14,7 +14,6 @@ import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
-import { formatCliCommand } from "../cli/command-format.js";
 import { enablePluginInConfig } from "../plugins/enable.js";
 import type { WizardPrompter, WizardSelectOption } from "../wizard/prompts.js";
 import type { ChannelChoice } from "./onboard-types.js";
@@ -187,11 +186,10 @@ async function noteChannelPrimer(
   );
   await prompter.note(
     [
-      "DM security: default is pairing; unknown DMs get a pairing code.",
-      `Approve with: ${formatCliCommand("zee pairing approve <channel> <code>")}`,
+      "DM security: default is allowlist; unknown DMs are blocked unless allowlist/open policy is configured.",
       'Public DMs require dmPolicy="open" + allowFrom=["*"].',
       'Multi-user DMs: set session.dmScope="per-channel-peer" (or "per-account-channel-peer" for multi-account channels) to isolate sessions.',
-      `Docs: ${formatDocsLink("/start/pairing", "start/pairing")}`,
+      `Docs: ${formatDocsLink("/whatsapp", "whatsapp")}`,
       "",
       ...channelLines,
     ].join("\n"),
@@ -225,32 +223,32 @@ async function maybeConfigureDmPolicies(params: {
   if (dmPolicies.length === 0) return params.cfg;
 
   const wants = await prompter.confirm({
-    message: "Configure DM access policies now? (default: pairing)",
+    message: "Configure DM access policies now? (default: allowlist)",
     initialValue: false,
   });
   if (!wants) return params.cfg;
 
   let cfg = params.cfg;
   const selectPolicy = async (policy: ChannelOnboardingDmPolicy) => {
+    const options = [
+      { value: "allowlist", label: "Allowlist (specific users only)" },
+      { value: "open", label: "Open (public inbound DMs)" },
+      { value: "disabled", label: "Disabled (ignore DMs)" },
+    ] as const;
+    const details = [
+      "Default: allowlist (unknown DMs are blocked).",
+      `Allowlist DMs: ${policy.policyKey}="allowlist" + ${policy.allowFromKey} entries.`,
+      `Public DMs: ${policy.policyKey}="open" + ${policy.allowFromKey} includes "*".`,
+      'Multi-user DMs: set session.dmScope="per-channel-peer" (or "per-account-channel-peer" for multi-account channels) to isolate sessions.',
+    ] as string[];
+    details.push(`Docs: ${formatDocsLink("/whatsapp", "whatsapp")}`);
     await prompter.note(
-      [
-        "Default: pairing (unknown DMs get a pairing code).",
-        `Approve: ${formatCliCommand(`zee pairing approve ${policy.channel} <code>`)}`,
-        `Allowlist DMs: ${policy.policyKey}="allowlist" + ${policy.allowFromKey} entries.`,
-        `Public DMs: ${policy.policyKey}="open" + ${policy.allowFromKey} includes "*".`,
-        'Multi-user DMs: set session.dmScope="per-channel-peer" (or "per-account-channel-peer" for multi-account channels) to isolate sessions.',
-        `Docs: ${formatDocsLink("/start/pairing", "start/pairing")}`,
-      ].join("\n"),
+      details.join("\n"),
       `${policy.label} DM access`,
     );
     return (await prompter.select({
       message: `${policy.label} DM policy`,
-      options: [
-        { value: "pairing", label: "Pairing (recommended)" },
-        { value: "allowlist", label: "Allowlist (specific users only)" },
-        { value: "open", label: "Open (public inbound DMs)" },
-        { value: "disabled", label: "Disabled (ignore DMs)" },
-      ],
+      options,
     })) as DmPolicy;
   };
 

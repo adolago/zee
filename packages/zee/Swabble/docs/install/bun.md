@@ -55,4 +55,4 @@ bun pm trust @whiskeysockets/baileys protobufjs
 
 ## Caveats
 
-- Some scripts still hardcode pnpm (e.g. `docs:build`, `ui:*`, `protocol:check`). Run those via pnpm for now.
+- Some workflows intentionally use `pnpm` in non-local install/release docs (for example, Docker/installer examples). For day-to-day local dev, use Bun-native commands as shown above.

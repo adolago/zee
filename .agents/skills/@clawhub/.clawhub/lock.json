@@ -2,47 +2,55 @@
   "skills": {
     "agent-browser": {
       "version": "0.2.0",
-      "installedAt": 1770865900211
+      "installedAt": 1771054342953
     },
     "humanizer": {
       "version": "1.0.0",
-      "installedAt": 1770865911340
+      "installedAt": 1771054355810
     },
     "markdown-converter": {
       "version": "1.0.0",
-      "installedAt": 1770865932760
+      "installedAt": 1771053359890
     },
     "nano-pdf": {
       "version": "1.0.0",
-      "installedAt": 1770865944644
+      "installedAt": 1771054358823
     },
     "obsidian": {
       "version": "1.0.0",
-      "installedAt": 1770865955739
+      "installedAt": 1771054361829
     },
     "self-improving-agent": {
       "version": "1.0.5",
-      "installedAt": 1770865978231
+      "installedAt": 1771054365551
     },
     "summarize": {
       "version": "1.0.0",
-      "installedAt": 1770865994489
+      "installedAt": 1771054371851
     },
     "tmux": {
       "version": "1.0.0",
-      "installedAt": 1770866005298
+      "installedAt": 1771054399236
     },
     "video-frames": {
       "version": "1.0.0",
-      "installedAt": 1770866027326
+      "installedAt": 1771054402397
     },
     "hooks-automation": {
       "version": "1.0.0",
-      "installedAt": 1770866045496
+      "installedAt": 1771054352563
     },
     "stream-chain": {
       "version": "1.0.0",
-      "installedAt": 1770866066717
+      "installedAt": 1771054368839
+    },
+    "gog": {
+      "version": "1.0.0",
+      "installedAt": 1771054345996
+    },
+    "goplaces": {
+      "version": "1.0.0",
+      "installedAt": 1771054349182
     }
   },
   "version": 1

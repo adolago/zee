@@ -185,7 +185,7 @@ updates. Terminal Gateway states map to ACP `done` with stop reasons:
 ## Testing
 
 - Unit: `src/acp/session.test.ts` covers run id lifecycle.
-- Full gate: `pnpm lint && pnpm build && pnpm test && pnpm docs:build`.
+- Full gate: `bun run lint && bun run build && bun run test && bun run docs:build`.
 
 ## Related Docs
 

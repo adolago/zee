@@ -1,0 +1,46 @@
+#!/bin/bash
+# Zee Evening Review - end of day wrap-up
+# Run at end of day to capture and plan
+
+echo "================================================"
+echo "  EVENING REVIEW"
+echo "  $(date '+%A, %B %d, %Y - %H:%M %Z')"
+echo "================================================"
+echo ""
+
+# What was completed today
+echo "--- COMPLETED TODAY ---"
+task end.after:today completed 2>/dev/null | head -15 || echo "  (nothing completed)"
+echo ""
+
+# Still pending for today
+echo "--- STILL PENDING ---"
+task due:today status:pending list 2>/dev/null | head -10 || echo "  (all clear)"
+echo ""
+
+# Tomorrow's calendar
+echo "--- TOMORROW ---"
+khal list tomorrow 1d 2>/dev/null || echo "  (no events)"
+echo ""
+
+# Tasks due tomorrow
+echo "--- DUE TOMORROW ---"
+task due:tomorrow list 2>/dev/null | head -10 || echo "  (nothing due)"
+echo ""
+
+# Weekly progress
+echo "--- WEEKLY PROGRESS ---"
+COMPLETED_WEEK=$(task end.after:monday completed count 2>/dev/null)
+PENDING=$(task status:pending count 2>/dev/null)
+echo "  Completed this week: $COMPLETED_WEEK"
+echo "  Total pending: $PENDING"
+echo ""
+
+echo "--- REMINDERS ---"
+echo "  [ ] Daily capture note"
+echo "  [ ] Habit tracker update"
+echo "  [ ] Plan tomorrow's priorities"
+echo ""
+echo "================================================"
+echo "  Stay in the game."
+echo "================================================"

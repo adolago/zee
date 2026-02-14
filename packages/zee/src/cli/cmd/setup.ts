@@ -102,7 +102,10 @@ services:
     }
 
     if (attempts >= maxAttempts) {
-        UI.warn("Qdrant started but health check timed out. It might still be initializing.")
+        UI.error("Qdrant health check timed out. Setup is incomplete.")
+        UI.info("Run `docker compose ps` and `docker compose logs qdrant` to diagnose startup.")
+        process.exitCode = 1
+        return
     }
 
     UI.success("Setup complete. You can now run 'zee daemon'.")

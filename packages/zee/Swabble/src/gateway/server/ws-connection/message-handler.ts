@@ -24,6 +24,11 @@ import type { createSubsystemLogger } from "../../../logging/subsystem.js";
 import { isGatewayCliClient } from "../../../utils/message-channel.js";
 import type { ResolvedGatewayAuth } from "../../auth.js";
 import { authorizeGatewayConnect, isLocalDirectRequest } from "../../auth.js";
+import {
+  checkGatewayAuthRateLimit,
+  clearGatewayAuthRateLimit,
+  recordGatewayAuthFailure,
+} from "../../auth-rate-limit.js";
 import { loadConfig } from "../../../config/config.js";
 import { buildDeviceAuthPayload } from "../../device-auth.js";
 import { isLoopbackAddress, isTrustedProxyAddress, resolveGatewayClientIp } from "../../net.js";
@@ -42,8 +47,9 @@ import {
 import { MAX_BUFFERED_BYTES, MAX_PAYLOAD_BYTES, TICK_INTERVAL_MS } from "../../server-constants.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "../../server-methods/types.js";
 import { handleGatewayRequest } from "../../server-methods.js";
+import { sanitizeGatewayUnavailableMessage } from "../../error-sanitize.js";
 import { formatError } from "../../server-utils.js";
-import { formatForLog, logWs } from "../../ws-log.js";
+import { formatForLog, logWs, sanitizeWsHeaderValue } from "../../ws-log.js";
 
 import { truncateCloseReason } from "../close-reason.js";
 import {
@@ -183,6 +189,7 @@ export function attachGatewayWsMessageHandler(params: {
 
   const configSnapshot = loadConfig();
   const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
+  const authRateLimitCfg = configSnapshot.gateway?.auth?.rateLimit;
   const clientIp = resolveGatewayClientIp({ remoteAddr, forwardedFor, realIp, trustedProxies });
   const canvasHostUrlNormalized =
     typeof canvasHostUrl === "string" && canvasHostUrl.trim() ? canvasHostUrl.trim() : undefined;
@@ -307,7 +314,7 @@ export function attachGatewayWsMessageHandler(params: {
             });
           } else {
             logWsControl.warn(
-              `invalid handshake conn=${connId} remote=${remoteAddr ?? "?"} fwd=${forwardedFor ?? "n/a"} origin=${requestOrigin ?? "n/a"} host=${requestHost ?? "n/a"} ua=${requestUserAgent ?? "n/a"}`,
+              `invalid handshake conn=${connId} remote=${remoteAddr ?? "?"} fwd=${sanitizeWsHeaderValue(forwardedFor)} origin=${sanitizeWsHeaderValue(requestOrigin)} host=${sanitizeWsHeaderValue(requestHost)} ua=${sanitizeWsHeaderValue(requestUserAgent)}`,
             );
           }
           const closeReason = truncateCloseReason(handshakeError || "invalid handshake");
@@ -371,13 +378,15 @@ export function attachGatewayWsMessageHandler(params: {
           close(1008, "invalid role");
           return;
         }
-        const requestedScopes = Array.isArray(connectParams.scopes) ? connectParams.scopes : [];
+        const rawScopes = Array.isArray(connectParams.scopes) ? connectParams.scopes : [];
+        const hasRequestedScopes = rawScopes.length > 0;
+        const requestedScopes = rawScopes.map((scope) => scope.trim()).filter(Boolean);
         const scopes =
-          requestedScopes.length > 0
-            ? requestedScopes
-            : role === "operator"
-              ? ["operator.admin"]
-              : [];
+          role === "operator"
+            ? hasRequestedScopes
+              ? Array.from(new Set(requestedScopes))
+              : []
+            : [];
         connectParams.role = role;
         connectParams.scopes = scopes;
 
@@ -557,6 +566,33 @@ export function attachGatewayWsMessageHandler(params: {
           }
         }
 
+        const preAuthLimit = checkGatewayAuthRateLimit({
+          cfg: authRateLimitCfg,
+          ip: clientIp,
+          tokenOrPassword: connectParams.auth?.token ?? connectParams.auth?.password,
+        });
+        if (preAuthLimit.limited) {
+          const retryAfterMs = preAuthLimit.retryAfterMs ?? 0;
+          setHandshakeState("failed");
+          setCloseCause("auth-rate-limited", {
+            retryAfterMs,
+            ip: clientIp,
+            client: connectParams.client.id,
+          });
+          send({
+            type: "res",
+            id: frame.id,
+            ok: false,
+            error: errorShape(
+              ErrorCodes.INVALID_REQUEST,
+              "too many authentication attempts; retry later",
+              { details: { retryAfterMs } },
+            ),
+          });
+          close(1008, truncateCloseReason("too many authentication attempts"));
+          return;
+        }
+
         const authResult = await authorizeGatewayConnect({
           auth: resolvedAuth,
           connectAuth: connectParams.auth,
@@ -579,7 +615,34 @@ export function attachGatewayWsMessageHandler(params: {
           }
         }
         if (!authOk) {
+          const rateLimitFailure = recordGatewayAuthFailure({
+            cfg: authRateLimitCfg,
+            ip: clientIp,
+            tokenOrPassword: connectParams.auth?.token ?? connectParams.auth?.password,
+          });
           setHandshakeState("failed");
+          if (rateLimitFailure.limited) {
+            const retryAfterMs = rateLimitFailure.retryAfterMs ?? 0;
+            setCloseCause("auth-rate-limited", {
+              retryAfterMs,
+              ip: clientIp,
+              client: connectParams.client.id,
+            });
+            send({
+              type: "res",
+              id: frame.id,
+              ok: false,
+              error: errorShape(
+                ErrorCodes.INVALID_REQUEST,
+                "too many authentication attempts; retry later",
+                {
+                  details: { retryAfterMs },
+                },
+              ),
+            });
+            close(1008, truncateCloseReason("too many authentication attempts"));
+            return;
+          }
           logWsControl.warn(
             `unauthorized conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version} reason=${authResult.reason ?? "unknown"}`,
           );
@@ -613,6 +676,10 @@ export function attachGatewayWsMessageHandler(params: {
           close(1008, truncateCloseReason(authMessage));
           return;
         }
+        clearGatewayAuthRateLimit({
+          ip: clientIp,
+          tokenOrPassword: connectParams.auth?.token ?? connectParams.auth?.password,
+        });
 
         const allowControlUiBypass =
           configSnapshot.gateway?.controlUi?.enabled === true &&
@@ -958,7 +1025,11 @@ export function attachGatewayWsMessageHandler(params: {
         });
       })().catch((err) => {
         logGateway.error(`request handler failed: ${formatForLog(err)}`);
-        respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatForLog(err)));
+        respond(
+          false,
+          undefined,
+          errorShape(ErrorCodes.UNAVAILABLE, sanitizeGatewayUnavailableMessage(err)),
+        );
       });
     } catch (err) {
       logGateway.error(`parse/handle error: ${String(err)}`);

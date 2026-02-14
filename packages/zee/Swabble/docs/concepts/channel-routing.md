@@ -1,4 +1,5 @@
 ---
+summary: "How Zee routes inbound messages across channels, peers, accounts, and agents."
 read_when:
   - Changing channel routing or inbox behavior
 ---

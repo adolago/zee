@@ -7,24 +7,77 @@
  * - Any other configured accounts
  */
 
-import { z } from "zod";
-import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import { Log } from "../../../packages/zee/src/util/log";
+import { z } from "zod"
+import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types"
+import { sendWhatsAppMessage, type WhatsAppTransport } from "./whatsapp-send.js"
 
-const log = Log.create({ service: "zee-whatsapp" });
+function buildTransportTroubleshooting(transport: "wacli" | "gateway"): string {
+  if (transport === "wacli") {
+    return `Troubleshooting:
+1. Ensure \`~/go/bin/wacli\` is installed
+2. If locked, stop \`wacli sync --follow\`
+3. If unauthenticated, run \`~/go/bin/wacli auth\``
+  }
 
-// Schema for gateway API responses
-const GatewayResponseSchema = z.object({
-  success: z.boolean(),
-  error: z.string().optional(),
-});
+  return `Troubleshooting:
+1. Ensure \`zee daemon\` is running
+2. Check \`zee debug status\` shows Gateway: Active
+3. Verify recipient format (E164 like "+1555..." or JID like "1234567890@c.us")`
+}
 
-function resolveBaseUrl(): string {
-  const rawBaseUrl =
-    process.env.ZEE_URL ||
-    process.env.ZEE_DAEMON_URL ||
-    `http://127.0.0.1:${process.env.ZEE_PORT || process.env.ZEE_DAEMON_PORT || "3210"}`;
-  return rawBaseUrl.replace(/\/$/, "");
+function previewText(message: string): string {
+  return `${message.substring(0, 100)}${message.length > 100 ? "..." : ""}`
+}
+
+async function sendFromAccount(params: {
+  to: string
+  message: string
+  account: string
+  transport?: WhatsAppTransport
+}): Promise<ToolExecutionResult> {
+  const { to, message, account, transport } = params
+  const result = await sendWhatsAppMessage({
+    to,
+    message,
+    accountId: account,
+    transport,
+  })
+
+  if (!result.success) {
+    return {
+      title: `WhatsApp Send Failed`,
+      metadata: {
+        to,
+        account,
+        transport: result.transport,
+        error: result.error,
+        errorCode: result.code,
+      },
+      output: `Failed to send via account "${account}": ${result.error}
+
+${buildTransportTroubleshooting(result.transport)}`,
+    }
+  }
+
+  const accountLabel = account === "zee"
+    ? "Zee's bot number"
+    : account === "personal"
+      ? "your personal number"
+      : `account "${account}"`
+
+  return {
+    title: `Sent via WhatsApp (${account})`,
+    metadata: {
+      to,
+      account,
+      success: true,
+      transport: result.transport,
+    },
+    output: `Message sent via ${accountLabel} to ${to}
+
+Transport: ${result.transport}
+Preview: "${previewText(message)}"`,
+  }
 }
 
 // =============================================================================
@@ -34,7 +87,9 @@ function resolveBaseUrl(): string {
 const ZeeWhatsAppParams = z.object({
   to: z.string().describe("Recipient phone number (E.164 format, e.g., +15551234567) or WhatsApp JID"),
   message: z.string().describe("Message content to send"),
-});
+  transport: z.enum(["auto", "wacli", "gateway"]).optional()
+    .describe("Transport strategy: auto (wacli first), wacli only, or gateway only"),
+})
 
 export const zeeWhatsAppTool: ToolDefinition = {
   id: "zee:whatsapp-zee",
@@ -65,46 +120,17 @@ This uses Zee's own WhatsApp number (the bot line), not your personal number.
 See also: zee:whatsapp-personal for sending from your own number`,
     parameters: ZeeWhatsAppParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { to, message } = args;
-      ctx.metadata({ title: `WhatsApp (Zee) → ${to}` });
-
-      const baseUrl = resolveBaseUrl();
-
-      try {
-        const response = await fetch(`${baseUrl}/gateway/whatsapp/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chatId: to, message, accountId: "zee" }),
-        });
-
-        const rawResult = await response.json();
-        const parseResult = GatewayResponseSchema.safeParse(rawResult);
-
-        if (!parseResult.success || !parseResult.data.success) {
-          const error = parseResult.data?.error || "Unknown error";
-          return {
-            title: `WhatsApp Send Failed`,
-            metadata: { to, error },
-            output: `Failed to send from Zee's number: ${error}`,
-          };
-        }
-
-        return {
-          title: `Sent from Zee's WhatsApp`,
-          metadata: { to, account: "zee", success: true },
-          output: `Message sent from Zee's bot number to ${to}\n\nPreview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        return {
-          title: `WhatsApp Error`,
-          metadata: { to, error: errorMsg },
-          output: `Error sending from Zee's number: ${errorMsg}`,
-        };
-      }
+      const { to, message, transport } = args
+      ctx.metadata({ title: `WhatsApp (Zee) → ${to}` })
+      return await sendFromAccount({
+        to,
+        message,
+        account: "zee",
+        transport: (transport ?? "auto") as WhatsAppTransport,
+      })
     },
   }),
-};
+}
 
 // =============================================================================
 // Send via Personal Number (Your Own WhatsApp)
@@ -113,7 +139,9 @@ See also: zee:whatsapp-personal for sending from your own number`,
 const PersonalWhatsAppParams = z.object({
   to: z.string().describe("Recipient phone number (E.164 format, e.g., +15551234567) or WhatsApp JID"),
   message: z.string().describe("Message content to send"),
-});
+  transport: z.enum(["auto", "wacli", "gateway"]).optional()
+    .describe("Transport strategy: auto (wacli first), wacli only, or gateway only"),
+})
 
 export const personalWhatsAppTool: ToolDefinition = {
   id: "zee:whatsapp-personal",
@@ -148,46 +176,17 @@ This uses your own WhatsApp number, not Zee's bot line.
 See also: zee:whatsapp-zee for sending from Zee's dedicated number`,
     parameters: PersonalWhatsAppParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { to, message } = args;
-      ctx.metadata({ title: `WhatsApp (Personal) → ${to}` });
-
-      const baseUrl = resolveBaseUrl();
-
-      try {
-        const response = await fetch(`${baseUrl}/gateway/whatsapp/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chatId: to, message, accountId: "personal" }),
-        });
-
-        const rawResult = await response.json();
-        const parseResult = GatewayResponseSchema.safeParse(rawResult);
-
-        if (!parseResult.success || !parseResult.data.success) {
-          const error = parseResult.data?.error || "Unknown error";
-          return {
-            title: `WhatsApp Send Failed`,
-            metadata: { to, error },
-            output: `Failed to send from your personal number: ${error}\n\nMake sure:\n1. Your personal WhatsApp is configured (account: "personal")\n2. You've scanned the QR code to link your account\n3. The account is enabled in Zee config`,
-          };
-        }
-
-        return {
-          title: `Sent from Personal WhatsApp`,
-          metadata: { to, account: "personal", success: true },
-          output: `Message sent from YOUR personal number to ${to}\n\nPreview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        return {
-          title: `WhatsApp Error`,
-          metadata: { to, error: errorMsg },
-          output: `Error sending from personal number: ${errorMsg}`,
-        };
-      }
+      const { to, message, transport } = args
+      ctx.metadata({ title: `WhatsApp (Personal) → ${to}` })
+      return await sendFromAccount({
+        to,
+        message,
+        account: "personal",
+        transport: (transport ?? "auto") as WhatsAppTransport,
+      })
     },
   }),
-};
+}
 
 // =============================================================================
 // Generic WhatsApp with Explicit Account
@@ -197,7 +196,9 @@ const WhatsAppAccountParams = z.object({
   to: z.string().describe("Recipient phone number (E.164 format) or WhatsApp JID"),
   message: z.string().describe("Message content to send"),
   account: z.string().default("zee").describe("WhatsApp account ID to use (default: 'zee')"),
-});
+  transport: z.enum(["auto", "wacli", "gateway"]).optional()
+    .describe("Transport strategy: auto (wacli first), wacli only, or gateway only"),
+})
 
 export const whatsAppAccountTool: ToolDefinition = {
   id: "zee:whatsapp-account",
@@ -228,50 +229,17 @@ export const whatsAppAccountTool: ToolDefinition = {
 - Via custom: { to: "+15551234567", message: "Hello!", account: "work" }`,
     parameters: WhatsAppAccountParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { to, message, account } = args;
-      ctx.metadata({ title: `WhatsApp (${account}) → ${to}` });
-
-      const baseUrl = resolveBaseUrl();
-
-      try {
-        const response = await fetch(`${baseUrl}/gateway/whatsapp/send`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chatId: to, message, accountId: account }),
-        });
-
-        const rawResult = await response.json();
-        const parseResult = GatewayResponseSchema.safeParse(rawResult);
-
-        if (!parseResult.success || !parseResult.data.success) {
-          const error = parseResult.data?.error || "Unknown error";
-          return {
-            title: `WhatsApp Send Failed`,
-            metadata: { to, account, error },
-            output: `Failed to send via account "${account}": ${error}`,
-          };
-        }
-
-        const accountLabel = account === "zee" ? "Zee's number" : 
-                            account === "personal" ? "your personal number" : 
-                            `account "${account}"`;
-
-        return {
-          title: `Sent via WhatsApp (${account})`,
-          metadata: { to, account, success: true },
-          output: `Message sent via ${accountLabel} to ${to}\n\nPreview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`,
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        return {
-          title: `WhatsApp Error`,
-          metadata: { to, account, error: errorMsg },
-          output: `Error sending via account "${account}": ${errorMsg}`,
-        };
-      }
+      const { to, message, account, transport } = args
+      ctx.metadata({ title: `WhatsApp (${account}) → ${to}` })
+      return await sendFromAccount({
+        to,
+        message,
+        account,
+        transport: (transport ?? "auto") as WhatsAppTransport,
+      })
     },
   }),
-};
+}
 
 // Export all WhatsApp tools
-export const WHATSAPP_TOOLS = [zeeWhatsAppTool, personalWhatsAppTool, whatsAppAccountTool];
+export const WHATSAPP_TOOLS = [zeeWhatsAppTool, personalWhatsAppTool, whatsAppAccountTool]

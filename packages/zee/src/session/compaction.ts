@@ -220,8 +220,6 @@ When constructing the summary, try to stick to this template:
           created: Date.now(),
         },
         agent: userMessage.agent,
-        // Persist the resolved model used during compaction so follow-up turns
-        // don't inherit stale provider/model metadata from the parent message.
         model: {
           providerID: model.providerID,
           modelID: model.id,
