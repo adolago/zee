@@ -16,6 +16,7 @@
   },
   "workspaces": {
     "packages": [
+      "packages/ai",
       "packages/zee",
       "packages/zee-adapter",
       "packages/app",
