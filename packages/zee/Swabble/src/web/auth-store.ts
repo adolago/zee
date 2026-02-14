@@ -25,9 +25,25 @@ export function resolveWebCredsBackupPath(authDir: string): string {
   return path.join(authDir, "creds.json.bak");
 }
 
+export function enforcePosixCredentialPermissions(filePath: string): void {
+  if (process.platform === "win32") return;
+  try {
+    const stats = fsSync.statSync(filePath);
+    if (!stats.isFile()) return;
+    const mode = stats.mode & 0o777;
+    if ((mode & 0o077) !== 0) {
+      fsSync.chmodSync(filePath, 0o600);
+    }
+  } catch {
+    // Best effort only.
+  }
+}
+
 export function hasWebCredsSync(authDir: string): boolean {
   try {
-    const stats = fsSync.statSync(resolveWebCredsPath(authDir));
+    const credsPath = resolveWebCredsPath(authDir);
+    enforcePosixCredentialPermissions(credsPath);
+    const stats = fsSync.statSync(credsPath);
     return stats.isFile() && stats.size > 1;
   } catch {
     return false;
@@ -57,12 +73,15 @@ export function maybeRestoreCredsFromBackup(authDir: string): void {
       return;
     }
 
+    enforcePosixCredentialPermissions(backupPath);
     const backupRaw = readCredsJsonRaw(backupPath);
     if (!backupRaw) return;
 
     // Ensure backup is parseable before restoring.
     JSON.parse(backupRaw);
     fsSync.copyFileSync(backupPath, credsPath);
+    enforcePosixCredentialPermissions(backupPath);
+    enforcePosixCredentialPermissions(credsPath);
     logger.warn({ credsPath }, "restored corrupted WhatsApp creds.json from backup");
   } catch {
     // ignore
@@ -79,6 +98,7 @@ export async function webAuthExists(authDir: string = resolveDefaultWebAuthDir()
     return false;
   }
   try {
+    enforcePosixCredentialPermissions(credsPath);
     const stats = await fs.stat(credsPath);
     if (!stats.isFile() || stats.size <= 1) return false;
     const raw = await fs.readFile(credsPath, "utf-8");
