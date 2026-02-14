@@ -9,6 +9,11 @@ import {
 import type { SurfaceCapabilities } from "../../surface/types"
 import { readZeeGatewayTokenFromFile } from "@/gateway/token"
 import { GatewayWsClient } from "@/gateway/ws-client"
+import {
+  emitInboundMessage,
+  toPlatformMessage,
+  type ForwardedMessage,
+} from "../../surface/platforms/whatsapp"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -29,6 +34,24 @@ const WhatsAppSendInput = z.object({
   gifPlayback: z.boolean().optional(),
   accountId: z.string().optional(),
   account: z.string().optional(),  // Alias for accountId (backward compatibility)
+})
+
+const WhatsAppInboundInput = z.object({
+  id: z.string(),
+  senderId: z.string(),
+  senderName: z.string().optional(),
+  body: z.string(),
+  timestamp: z.number(),
+  media: z.array(z.object({
+    mediaId: z.string(),
+    mimeType: z.string().optional(),
+    filename: z.string().optional(),
+  })).optional(),
+  isGroup: z.boolean(),
+  groupId: z.string().optional(),
+  groupName: z.string().optional(),
+  replyToId: z.string().optional(),
+  platform: z.literal("whatsapp"),
 })
 
 const PROTOCOL_VERSION = 3
@@ -213,6 +236,54 @@ export const GatewayRoute = new Hono()
         log.warn("whatsapp send failed", { error: message })
         return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
       }
+    },
+  )
+
+  // ---------------------------------------------------------------------------
+  // Inbound — meta-cli webhook forward
+  // ---------------------------------------------------------------------------
+
+  .post(
+    "/whatsapp/inbound",
+    describeRoute({
+      summary: "Receive inbound WhatsApp message",
+      description: "Receive an inbound WhatsApp message forwarded from meta-cli webhook and inject into the messaging surface.",
+      operationId: "gateway.whatsapp.inbound",
+      responses: {
+        200: {
+          description: "Message accepted",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        400: {
+          description: "Invalid payload",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+      },
+    }),
+    async (c) => {
+      let body: unknown
+      try {
+        body = await c.req.json()
+      } catch {
+        return c.json({ success: false, error: "Invalid JSON body" } satisfies GatewayResponse, 400)
+      }
+
+      const parsed = WhatsAppInboundInput.safeParse(body)
+      if (!parsed.success) {
+        log.warn("invalid inbound payload", { errors: parsed.error.issues })
+        return c.json({ success: false, error: "Invalid inbound message" } satisfies GatewayResponse, 400)
+      }
+
+      const platformMsg = toPlatformMessage(parsed.data as ForwardedMessage)
+      emitInboundMessage(platformMsg)
+
+      log.info("inbound whatsapp message", {
+        id: platformMsg.id,
+        sender: platformMsg.senderId,
+        bodyLen: platformMsg.body.length,
+      })
+
+      return c.json({ success: true } satisfies GatewayResponse)
     },
   )
 

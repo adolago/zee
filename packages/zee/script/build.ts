@@ -19,24 +19,8 @@ import { Script } from "../src/pkg/script"
 
 const personasRoot = path.resolve(repoRoot, "packages", "personas")
 const zeeRoot = path.join(personasRoot, "zee")
-const swabbleRoot = path.join(dir, "Swabble")
-const swabbleExtensionsRoot = path.join(swabbleRoot, "extensions")
-const swabblePluginSdkRoot = path.join(swabbleRoot, "src", "plugin-sdk")
-
 const zeeAssetsRoot = path.join(repoRoot, ".zee")
 const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
-
-const BUNDLED_EXTENSION_IDS = ["whatsapp", "telegram", "slack", "discord"] as const
-const EXTENSION_PLUGIN_MANIFEST_FILENAMES = ["zee.plugin.json", "clawdbot.plugin.json"] as const
-
-const extensionPluginSdkAliasPlugin = {
-  name: "extension-plugin-sdk-alias",
-  setup(build: Bun.PluginBuilder) {
-    build.onResolve({ filter: /^zee\/plugin-sdk$/ }, () => ({
-      path: path.join(swabblePluginSdkRoot, "index.ts"),
-    }))
-  },
-}
 
 async function ensureZeeDependencies() {
   const nodeModules = path.join(zeeRoot, "node_modules")
@@ -178,124 +162,6 @@ function bundlePersonaSkills(distRoot: string) {
   }
 }
 
-function toBundledExtensionEntry(entry: string): string {
-  const trimmed = entry.trim().replace(/\\/g, "/")
-  if (!trimmed) return "index.js"
-  const ext = path.extname(trimmed)
-  if (!ext) return `${trimmed}.js`
-  if (ext === ".js" || ext === ".mjs" || ext === ".cjs") return trimmed
-  return `${trimmed.slice(0, -ext.length)}.js`
-}
-
-async function bundleSwabbleExtensions(distRoot: string, target?: { os: string; arch: string }) {
-  if (!fs.existsSync(swabbleExtensionsRoot)) return
-
-  const extensionsDestRoot = path.join(distRoot, "bin", "extensions")
-  fs.mkdirSync(extensionsDestRoot, { recursive: true })
-
-  for (const extensionId of BUNDLED_EXTENSION_IDS) {
-    const extensionSrcRoot = path.join(swabbleExtensionsRoot, extensionId)
-    if (!fs.existsSync(extensionSrcRoot)) continue
-
-    const extensionDestRoot = path.join(extensionsDestRoot, extensionId)
-    fs.mkdirSync(extensionDestRoot, { recursive: true })
-
-    const manifestPath = path.join(extensionSrcRoot, "package.json")
-    let manifest: Record<string, unknown> = {}
-    if (fs.existsSync(manifestPath)) {
-      try {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as Record<string, unknown>
-      } catch {
-        manifest = {}
-      }
-    }
-
-    const rawExtensions = (() => {
-      const zeeMeta = manifest.zee
-      if (!zeeMeta || typeof zeeMeta !== "object") return []
-      const value = (zeeMeta as { extensions?: unknown }).extensions
-      if (!Array.isArray(value)) return []
-      return value.filter((item): item is string => typeof item === "string")
-    })()
-
-    const extensionEntries = rawExtensions.length > 0 ? rawExtensions : ["./index.ts"]
-    const bundledEntries: string[] = []
-    const pluginManifestSource = EXTENSION_PLUGIN_MANIFEST_FILENAMES
-      .map((filename) => path.join(extensionSrcRoot, filename))
-      .find((manifestPath) => fs.existsSync(manifestPath))
-
-    if (!pluginManifestSource) {
-      throw new Error(
-        `Failed to bundle extension "${extensionId}": missing plugin manifest (expected one of ${EXTENSION_PLUGIN_MANIFEST_FILENAMES.join(", ")})`,
-      )
-    }
-
-    for (const entry of extensionEntries) {
-      const sourceEntry = path.resolve(extensionSrcRoot, entry)
-      if (!fs.existsSync(sourceEntry)) {
-        console.warn(`[build] skipped extension entry (missing): ${sourceEntry}`)
-        continue
-      }
-
-      const bundledEntry = toBundledExtensionEntry(entry)
-      const result = await Bun.build({
-        entrypoints: [sourceEntry],
-        outdir: extensionDestRoot,
-        format: "esm",
-        target: "bun",
-        splitting: false,
-        sourcemap: "none",
-        minify: false,
-        external: ["electron"],
-        plugins: [extensionPluginSdkAliasPlugin],
-      })
-      if (!result.success) {
-        const errors = result.logs.map((log) => log.message).join("; ")
-        throw new Error(`Failed to bundle extension "${extensionId}" entry "${entry}": ${errors}`)
-      }
-
-      // Bun.build with outdir already writes files to disk; do NOT re-write
-      // artifacts here -- artifact.path can be absolute/deep-relative which
-      // would create nested home/ directories in the output.
-
-      bundledEntries.push(`./${bundledEntry.replace(/\\/g, "/").replace(/^\.\//, "")}`)
-    }
-
-    // Clean up any home/ directories that Bun.build may have created
-    // via asset copying with absolute source paths
-    const homeDir = path.join(extensionDestRoot, "home")
-    if (fs.existsSync(homeDir)) {
-      fs.rmSync(homeDir, { recursive: true, force: true })
-    }
-
-    // Strip cross-platform native modules -- keep only the target platform
-    if (target) {
-      const platformPrefix = `${target.os}-${target.arch}`
-      for (const file of fs.readdirSync(extensionDestRoot)) {
-        if (file.endsWith(".node") && !file.includes(platformPrefix)) {
-          fs.unlinkSync(path.join(extensionDestRoot, file))
-        }
-      }
-    }
-
-    if (bundledEntries.length === 0) {
-      throw new Error(`Failed to bundle extension "${extensionId}": no valid entries`)
-    }
-
-    const nextManifest = {
-      ...manifest,
-      zee: {
-        ...((manifest.zee && typeof manifest.zee === "object") ? manifest.zee : {}),
-        extensions: bundledEntries,
-      },
-    }
-    fs.writeFileSync(path.join(extensionDestRoot, "package.json"), JSON.stringify(nextManifest, null, 2))
-    fs.copyFileSync(
-      pluginManifestSource,
-      path.join(extensionDestRoot, path.basename(pluginManifestSource)),
-    )
-  }
-}
 
 // Fetch and generate models.dev snapshot for bundling
 const modelsUrl = process.env.ZEE_MODELS_URL || "https://models.dev"
@@ -486,7 +352,6 @@ for (const item of targets) {
   bundleZeeAssets(path.join(dir, "dist", name))
   bundlePersonaSkills(path.join(dir, "dist", name))
   bundleSrcModules(path.join(dir, "dist", name))
-  await bundleSwabbleExtensions(path.join(dir, "dist", name), { os: item.os, arch: item.arch })
   binaries[name] = Script.version
 }
 
