@@ -23,12 +23,19 @@ import { isSubagentSessionKey } from "../routing/session-key.js";
 import { normalizeMessageChannel } from "../utils/message-channel.js";
 
 import { authorizeGatewayConnect, type ResolvedGatewayAuth } from "./auth.js";
+import {
+  checkGatewayAuthRateLimit,
+  clearGatewayAuthRateLimit,
+  recordGatewayAuthFailure,
+  resolveGatewayAuthClientIp,
+} from "./auth-rate-limit.js";
 import { getBearerToken, getHeader } from "./http-utils.js";
 import {
   readJsonBodyOrError,
   sendInvalidRequest,
   sendJson,
   sendMethodNotAllowed,
+  sendTooManyRequests,
   sendUnauthorized,
 } from "./http-common.js";
 
@@ -158,6 +165,20 @@ export async function handleToolsInvokeHttpRequest(
 
   const cfg = loadConfig();
   const token = getBearerToken(req);
+  const rateLimitCfg = cfg.gateway?.auth?.rateLimit;
+  const clientIp = resolveGatewayAuthClientIp({
+    req,
+    trustedProxies: opts.trustedProxies ?? cfg.gateway?.trustedProxies,
+  });
+  const preLimit = checkGatewayAuthRateLimit({
+    cfg: rateLimitCfg,
+    ip: clientIp,
+    tokenOrPassword: token,
+  });
+  if (preLimit.limited) {
+    sendTooManyRequests(res, preLimit.retryAfterMs);
+    return true;
+  }
   const authResult = await authorizeGatewayConnect({
     auth: opts.auth,
     connectAuth: token ? { token, password: token } : null,
@@ -165,9 +186,19 @@ export async function handleToolsInvokeHttpRequest(
     trustedProxies: opts.trustedProxies ?? cfg.gateway?.trustedProxies,
   });
   if (!authResult.ok) {
-    sendUnauthorized(res);
+    const failure = recordGatewayAuthFailure({
+      cfg: rateLimitCfg,
+      ip: clientIp,
+      tokenOrPassword: token,
+    });
+    if (failure.limited) {
+      sendTooManyRequests(res, failure.retryAfterMs);
+    } else {
+      sendUnauthorized(res);
+    }
     return true;
   }
+  clearGatewayAuthRateLimit({ ip: clientIp, tokenOrPassword: token });
 
   const bodyUnknown = await readJsonBodyOrError(req, res, opts.maxBodyBytes ?? DEFAULT_BODY_BYTES);
   if (bodyUnknown === undefined) return true;
