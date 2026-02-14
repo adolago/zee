@@ -35,7 +35,12 @@ import {
   validateAgentParams,
   validateAgentWaitParams,
 } from "../protocol/index.js";
-import { loadSessionEntry } from "../session-utils.js";
+import {
+  canonicalizeSpawnedByForAgent,
+  loadSessionEntry,
+  pruneLegacyStoreKeys,
+  resolveGatewaySessionStoreTarget,
+} from "../session-utils.js";
 import { formatForLog } from "../ws-log.js";
 import { resolveAssistantIdentity } from "../assistant-identity.js";
 import { waitForAgentJob } from "./agent-job.js";
@@ -199,6 +204,7 @@ export const agentHandlers: GatewayRequestHandlers = {
       }
     }
     let resolvedSessionId = request.sessionId?.trim() || undefined;
+    let resolvedSessionKey = requestedSessionKey;
     let sessionEntry: SessionEntry | undefined;
     let bestEffortDeliver = false;
     let cfgForAgent: ReturnType<typeof loadConfig> | undefined;
@@ -209,7 +215,12 @@ export const agentHandlers: GatewayRequestHandlers = {
       const now = Date.now();
       const sessionId = entry?.sessionId ?? randomUUID();
       const labelValue = request.label?.trim() || entry?.label;
-      spawnedByValue = spawnedByValue || entry?.spawnedBy;
+      const sessionAgentId = resolveAgentIdFromSessionKey(canonicalKey);
+      spawnedByValue = canonicalizeSpawnedByForAgent(
+        cfg,
+        sessionAgentId,
+        spawnedByValue || entry?.spawnedBy,
+      );
       let inheritedGroup:
         | { groupId?: string; groupChannel?: string; groupSpace?: string }
         | undefined;
@@ -257,7 +268,7 @@ export const agentHandlers: GatewayRequestHandlers = {
       const sendPolicy = resolveSendPolicy({
         cfg,
         entry,
-        sessionKey: requestedSessionKey,
+        sessionKey: canonicalKey,
         channel: entry?.channel,
         chatType: entry?.chatType,
       });
@@ -275,17 +286,28 @@ export const agentHandlers: GatewayRequestHandlers = {
       const mainSessionKey = resolveAgentMainSessionKey({ cfg, agentId });
       if (storePath) {
         await updateSessionStore(storePath, (store) => {
+          const target = resolveGatewaySessionStoreTarget({
+            cfg,
+            key: requestedSessionKey,
+            store,
+          });
+          pruneLegacyStoreKeys({
+            store,
+            canonicalKey: target.canonicalKey,
+            candidates: target.storeKeys,
+          });
           store[canonicalSessionKey] = nextEntry;
         });
       }
+      resolvedSessionKey = canonicalSessionKey;
       if (canonicalSessionKey === mainSessionKey || canonicalSessionKey === "global") {
         context.addChatRun(idem, {
-          sessionKey: requestedSessionKey,
+          sessionKey: canonicalSessionKey,
           clientRunId: idem,
         });
         bestEffortDeliver = true;
       }
-      registerAgentRunContext(idem, { sessionKey: requestedSessionKey });
+      registerAgentRunContext(idem, { sessionKey: canonicalSessionKey });
     }
 
     const runId = idem;
@@ -351,7 +373,7 @@ export const agentHandlers: GatewayRequestHandlers = {
         images,
         to: resolvedTo,
         sessionId: resolvedSessionId,
-        sessionKey: requestedSessionKey,
+        sessionKey: resolvedSessionKey,
         thinking: request.thinking,
         deliver,
         deliveryTargetMode,

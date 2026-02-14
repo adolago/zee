@@ -11,6 +11,7 @@ import type { ZeeConfig } from "../../config/config.js";
 import {
   resolveGroupSessionKey,
   resolveSessionFilePath,
+  resolveSessionFilePathOptions,
   type SessionEntry,
   updateSessionStore,
 } from "../../config/sessions.js";
@@ -199,7 +200,17 @@ export async function runPreparedReply(
     ((baseBodyTrimmedRaw.length === 0 && rawBodyTrimmed.length > 0) || isBareNewOrReset);
   const baseBodyFinal = isBareSessionReset ? BARE_SESSION_RESET_PROMPT : baseBody;
   const baseBodyTrimmed = baseBodyFinal.trim();
-  if (!baseBodyTrimmed) {
+  const hasMediaAttachment = Boolean(
+    ctx.MediaPath?.trim() ||
+      ctx.MediaUrl?.trim() ||
+      (ctx.MediaPaths?.length ?? 0) > 0 ||
+      (ctx.MediaUrls?.length ?? 0) > 0 ||
+      sessionCtx.MediaPath?.trim() ||
+      sessionCtx.MediaUrl?.trim() ||
+      (sessionCtx.MediaPaths?.length ?? 0) > 0 ||
+      (sessionCtx.MediaUrls?.length ?? 0) > 0,
+  );
+  if (!baseBodyTrimmed && !hasMediaAttachment) {
     await typing.onReplyStart();
     logVerbose("Inbound body empty after normalization; skipping agent run");
     typing.cleanup();
@@ -207,8 +218,11 @@ export async function runPreparedReply(
       text: "I didn't receive any text in your message. Please resend or add a caption.",
     };
   }
+  const effectiveBaseBody = baseBodyTrimmed
+    ? baseBodyFinal
+    : "[User sent media without caption]";
   let prefixedBodyBase = await applySessionHints({
-    baseBody: baseBodyFinal,
+    baseBody: effectiveBaseBody,
     abortedLastRun,
     sessionEntry,
     sessionStore,
@@ -306,7 +320,11 @@ export async function runPreparedReply(
     }
   }
   const sessionIdFinal = sessionId ?? crypto.randomUUID();
-  const sessionFile = resolveSessionFilePath(sessionIdFinal, sessionEntry);
+  const sessionFile = resolveSessionFilePath(
+    sessionIdFinal,
+    sessionEntry,
+    resolveSessionFilePathOptions({ agentId, storePath }),
+  );
   const queueBodyBase = [threadStarterNote, baseBodyFinal].filter(Boolean).join("\n\n");
   const queueMessageId = sessionCtx.MessageSid?.trim();
   const queueMessageIdHint = queueMessageId ? `[message_id: ${queueMessageId}]` : "";

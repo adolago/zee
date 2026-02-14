@@ -802,6 +802,9 @@ export namespace MCP {
         env: {
           ...process.env,
           ZEE_ROOT: process.env.ZEE_ROOT || zeeRoot,
+          ZEE_MCP_SERVER: "1",
+          ZEE_MCP_SERVER_NAME: key,
+          ZEE_PARENT_PID: String(process.pid),
           ...(cmd === "zee" ? { BUN_BE_BUN: "1" } : {}),
           ...mcp.environment,
         },

@@ -49,6 +49,34 @@ describe("canvas host", () => {
     }
   });
 
+  it("defaults standalone bind host to loopback", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-canvas-"));
+    const runtime = {
+      log: vi.fn(),
+      error: vi.fn(),
+      exit: vi.fn((_code: number) => {
+        throw new Error("unexpected exit");
+      }),
+    };
+
+    const server = await startCanvasHost({
+      runtime: runtime as never,
+      auth: TEST_AUTH,
+      rootDir: dir,
+      port: 0,
+      allowInTests: true,
+    });
+
+    try {
+      const res = await fetch(withAuth(`http://127.0.0.1:${server.port}${CANVAS_HOST_PATH}/`));
+      expect(res.status).toBe(200);
+      expect(runtime.log).toHaveBeenCalledWith(expect.stringContaining("http://127.0.0.1:"));
+    } finally {
+      await server.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("creates a default index.html when missing", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-canvas-"));
 

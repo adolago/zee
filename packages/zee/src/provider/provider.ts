@@ -1101,6 +1101,25 @@ export namespace Provider {
     return state().then((s) => s.providers[providerID])
   }
 
+  /**
+   * Normalize model IDs for provider-side aliases/renames.
+   * Keep this narrow and conservative to avoid changing behavior for other providers.
+   */
+  function normalizeRequestedModelID(providerID: string, modelID: string): string {
+    if (providerID !== "google") return modelID
+
+    let normalized = modelID.trim().replace(/^google\//, "").replace(/-+/g, "-")
+
+    // Some clients send Gemini 3 IDs using "3.0" while catalog keys use "3".
+    normalized = normalized.replace(/^gemini-3\.0(?=-)/, "gemini-3")
+
+    // Gemini 3 shorthand aliases should resolve to canonical preview IDs.
+    if (normalized === "gemini-3-pro") return "gemini-3-pro-preview"
+    if (normalized === "gemini-3-flash") return "gemini-3-flash-preview"
+
+    return normalized
+  }
+
   export async function getModel(providerID: string, modelID: string) {
     const s = await state()
     const provider = s.providers[providerID]
@@ -1111,11 +1130,19 @@ export namespace Provider {
       throw new ModelNotFoundError({ providerID, modelID, suggestions })
     }
 
-    const info = provider.models[modelID]
+    const normalizedModelID = normalizeRequestedModelID(providerID, modelID)
+    const requestedModelIDs = normalizedModelID === modelID ? [modelID] : [normalizedModelID, modelID]
+    const info = requestedModelIDs.map((id) => provider.models[id]).find(Boolean)
     if (!info) {
       const availableModels = Object.keys(provider.models)
-      const matches = fuzzysort.go(modelID, availableModels, { limit: 3, threshold: -10000 })
-      const suggestions = matches.map((m) => m.target)
+      const matchedSuggestions = Array.from(
+        new Set(
+          requestedModelIDs.flatMap((id) =>
+            fuzzysort.go(id, availableModels, { limit: 3, threshold: -10000 }).map((match) => match.target),
+          ),
+        ),
+      )
+      const suggestions = matchedSuggestions.length > 0 ? matchedSuggestions : availableModels.slice(0, 3)
       throw new ModelNotFoundError({ providerID, modelID, suggestions })
     }
     return info

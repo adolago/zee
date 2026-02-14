@@ -300,6 +300,10 @@ export function buildVeniceModelDefinition(entry: VeniceCatalogEntry): ModelDefi
     cost: VENICE_DEFAULT_COST,
     contextWindow: entry.contextWindow,
     maxTokens: entry.maxTokens,
+    // Avoid usage-only streaming chunks that can break OpenAI-compatible parsers.
+    compat: {
+      supportsUsageInStreaming: false,
+    },
   };
 }
 
@@ -381,6 +385,10 @@ export async function discoverVeniceModels(): Promise<ModelDefinitionConfig[]> {
           cost: VENICE_DEFAULT_COST,
           contextWindow: apiModel.model_spec.availableContextTokens || 128000,
           maxTokens: 8192,
+          // Avoid usage-only streaming chunks that can break OpenAI-compatible parsers.
+          compat: {
+            supportsUsageInStreaming: false,
+          },
         });
       }
     }

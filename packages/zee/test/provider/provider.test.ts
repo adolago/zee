@@ -346,6 +346,123 @@ test("getModel throws ModelNotFoundError for invalid provider", async () => {
   })
 })
 
+test("getModel normalizes google gemini aliases to canonical preview IDs", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+          provider: {
+            google: {
+              options: {
+                apiKey: "test-google-key",
+              },
+              models: {
+                "gemini-3-pro-preview": {
+                  name: "Gemini 3 Pro Preview",
+                },
+                "gemini-3-flash-preview": {
+                  name: "Gemini 3 Flash Preview",
+                },
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const flashFrom30 = await Provider.getModel("google", "gemini-3.0-flash-preview")
+      expect(flashFrom30.id).toBe("gemini-3-flash-preview")
+
+      const flashFromBase = await Provider.getModel("google", "gemini-3-flash")
+      expect(flashFromBase.id).toBe("gemini-3-flash-preview")
+
+      const proFrom30 = await Provider.getModel("google", "gemini-3.0-pro-preview")
+      expect(proFrom30.id).toBe("gemini-3-pro-preview")
+    },
+  })
+})
+
+test("getModel prefers normalized google alias when both legacy and canonical IDs exist", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+          provider: {
+            google: {
+              options: {
+                apiKey: "test-google-key",
+              },
+              models: {
+                "gemini-3.0-flash-preview": {
+                  name: "Legacy Gemini 3.0 Flash Preview",
+                },
+                "gemini-3-flash-preview": {
+                  name: "Canonical Gemini 3 Flash Preview",
+                },
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const model = await Provider.getModel("google", "gemini-3.0-flash-preview")
+      expect(model.id).toBe("gemini-3-flash-preview")
+    },
+  })
+})
+
+test("getModel keeps helpful suggestions when google normalized model is missing", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+          provider: {
+            google: {
+              options: {
+                apiKey: "test-google-key",
+              },
+              models: {
+                "gemini-3-pro-preview": {
+                  name: "Gemini 3 Pro Preview",
+                },
+                "gemini-3-flash-preview": {
+                  name: "Gemini 3 Flash Preview",
+                },
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      try {
+        await Provider.getModel("google", "gemini-3.0-does-not-exist")
+        expect(true).toBe(false) // Should not reach here
+      } catch (e: any) {
+        expect(e.data.modelID).toBe("gemini-3.0-does-not-exist")
+        expect(e.data.suggestions).toBeDefined()
+        expect(e.data.suggestions.length).toBeGreaterThan(0)
+      }
+    },
+  })
+})
+
 test("parseModel correctly parses provider/model string", () => {
   const result = Provider.parseModel("anthropic/claude-sonnet-4")
   expect(result.providerID).toBe("anthropic")

@@ -4,6 +4,7 @@ import { findTailscaleBinary } from "../infra/tailscale.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { note } from "../terminal/note.js";
 import { buildGatewayAuthConfig } from "./configure.gateway-auth.js";
+import { normalizeCredentialInput } from "./credential-input.js";
 import { confirm, select, text } from "./configure.shared.js";
 import { guardCancel, randomToken } from "./onboard-helpers.js";
 
@@ -175,7 +176,7 @@ export async function promptGatewayConfig(
       }),
       runtime,
     );
-    gatewayToken = String(tokenInput).trim() || randomToken();
+    gatewayToken = normalizeCredentialInput(tokenInput) ?? randomToken();
   }
 
   if (authMode === "password") {
@@ -186,7 +187,12 @@ export async function promptGatewayConfig(
       }),
       runtime,
     );
-    gatewayPassword = String(password).trim();
+    gatewayPassword = normalizeCredentialInput(password);
+    if (!gatewayPassword) {
+      runtime.error("Gateway password is required.");
+      runtime.exit(1);
+      throw new Error("Gateway password is required.");
+    }
   }
 
   const authConfig = buildGatewayAuthConfig({

@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { installGatewayTestHooks, getFreePort, startGatewayServer } from "./test-helpers.server.js";
+import { __testing as authRateLimitTesting } from "./auth-rate-limit.js";
 import { resetTestPluginRegistry, setTestPluginRegistry, testState } from "./test-helpers.mocks.js";
 import { createTestRegistry } from "../test-utils/channel-plugins.js";
 import { CONFIG_PATH } from "../config/config.js";
@@ -15,6 +16,7 @@ beforeEach(() => {
   // Ensure these tests are not affected by host env vars.
   delete process.env.ZEE_GATEWAY_TOKEN;
   delete process.env.ZEE_GATEWAY_PASSWORD;
+  authRateLimitTesting.reset();
 });
 
 const resolveGatewayToken = (): string => {
@@ -227,6 +229,70 @@ describe("POST /tools/invoke", () => {
     expect(res.status).toBe(401);
 
     await server.close();
+  });
+
+  it("rate limits repeated unauthorized requests", async () => {
+    testState.agentsConfig = {
+      list: [
+        {
+          id: "main",
+          tools: {
+            allow: ["sessions_list"],
+          },
+        },
+      ],
+    } as any;
+
+    const { writeConfigFile } = await import("../config/config.js");
+    await writeConfigFile({
+      gateway: {
+        auth: {
+          rateLimit: {
+            enabled: true,
+            windowMs: 60_000,
+            maxAttemptsPerIp: 2,
+            maxAttemptsPerToken: 2,
+            lockoutMs: 60_000,
+          },
+        },
+      },
+    } as any);
+
+    const port = await getFreePort();
+    const server = await startGatewayServer(port, {
+      bind: "loopback",
+      auth: { mode: "token", token: "t" },
+    });
+
+    try {
+      const res1 = await fetch(`http://127.0.0.1:${port}/tools/invoke`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tool: "sessions_list",
+          action: "json",
+          args: {},
+          sessionKey: "main",
+        }),
+      });
+      expect(res1.status).toBe(401);
+
+      const res2 = await fetch(`http://127.0.0.1:${port}/tools/invoke`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tool: "sessions_list",
+          action: "json",
+          args: {},
+          sessionKey: "main",
+        }),
+      });
+      expect(res2.status).toBe(429);
+    } finally {
+      await server.close();
+      await writeConfigFile({} as any);
+      authRateLimitTesting.reset();
+    }
   });
 
   it("returns 404 when tool is not allowlisted", async () => {
