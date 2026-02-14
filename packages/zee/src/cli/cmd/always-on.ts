@@ -28,7 +28,6 @@ import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
 import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
-import type { RuntimeProcessLimits } from "./runtime-process-guard"
 import path from "path"
 import { startRuntimeProcessGuard, type RuntimeProcessLimits } from "./runtime-process-guard"
 

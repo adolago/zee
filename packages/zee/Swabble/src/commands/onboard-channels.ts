@@ -13,6 +13,7 @@ import type { DmPolicy } from "../config/types.js";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 import type { RuntimeEnv } from "../runtime.js";
+import { formatCliCommand } from "../cli/command-format.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { enablePluginInConfig } from "../plugins/enable.js";
 import type { WizardPrompter, WizardSelectOption } from "../wizard/prompts.js";
@@ -234,7 +235,7 @@ async function maybeConfigureDmPolicies(params: {
       { value: "allowlist", label: "Allowlist (specific users only)" },
       { value: "open", label: "Open (public inbound DMs)" },
       { value: "disabled", label: "Disabled (ignore DMs)" },
-    ] as const;
+    ] satisfies WizardSelectOption<DmPolicy>[];
     const details = [
       "Default: allowlist (unknown DMs are blocked).",
       `Allowlist DMs: ${policy.policyKey}="allowlist" + ${policy.allowFromKey} entries.`,
