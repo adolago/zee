@@ -5,27 +5,33 @@ import { agentHandlers } from "./agent.js";
 
 const mocks = vi.hoisted(() => ({
   loadSessionEntry: vi.fn(),
+  canonicalizeSpawnedByForAgent: vi.fn((_cfg, _agentId, spawnedBy) => spawnedBy),
+  pruneLegacyStoreKeys: vi.fn(),
+  resolveGatewaySessionStoreTarget: vi.fn(({ key }: { key: string }) => ({
+    canonicalKey: key,
+    storeKeys: [key],
+  })),
   updateSessionStore: vi.fn(),
   agentCommand: vi.fn(),
   registerAgentRunContext: vi.fn(),
 }));
 
 vi.mock("../session-utils.js", () => ({
+  canonicalizeSpawnedByForAgent: mocks.canonicalizeSpawnedByForAgent,
   loadSessionEntry: mocks.loadSessionEntry,
+  pruneLegacyStoreKeys: mocks.pruneLegacyStoreKeys,
+  resolveGatewaySessionStoreTarget: mocks.resolveGatewaySessionStoreTarget,
 }));
 
-vi.mock("../../config/sessions.js", async () => {
-  const actual = await vi.importActual<typeof import("../../config/sessions.js")>(
-    "../../config/sessions.js",
-  );
-  return {
-    ...actual,
-    updateSessionStore: mocks.updateSessionStore,
-    resolveAgentIdFromSessionKey: () => "main",
-    resolveExplicitAgentSessionKey: () => undefined,
-    resolveAgentMainSessionKey: () => "agent:main:main",
-  };
-});
+vi.mock("../../config/sessions.js", () => ({
+  updateSessionStore: mocks.updateSessionStore,
+  resolveAgentIdFromSessionKey: (key?: string) => {
+    const parts = String(key ?? "").split(":");
+    return parts[1] || "main";
+  },
+  resolveExplicitAgentSessionKey: () => undefined,
+  resolveAgentMainSessionKey: () => "agent:main:main",
+}));
 
 vi.mock("../../commands/agent.js", () => ({
   agentCommand: mocks.agentCommand,
