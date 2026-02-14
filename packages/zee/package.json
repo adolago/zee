@@ -19,7 +19,7 @@
     "README.md"
   ],
   "scripts": {
-    "typecheck": "tsgo --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "typecheck:strict": "tsgo --noEmit -p tsconfig.strict.json",
     "lint": "prettier --check 'src/**/*.ts' 'test/**/*.ts' 'script/**/*.ts' 'package.json'",
     "test": "bun test",

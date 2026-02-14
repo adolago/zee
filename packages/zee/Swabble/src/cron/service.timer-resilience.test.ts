@@ -36,6 +36,14 @@ async function makeStorePath() {
   };
 }
 
+function lastSetTimeoutDelay(spy: ReturnType<typeof vi.spyOn<typeof globalThis, "setTimeout">>): number | null {
+  for (let index = spy.mock.calls.length - 1; index >= 0; index -= 1) {
+    const delay = spy.mock.calls[index]?.[1];
+    if (typeof delay === "number") return delay;
+  }
+  return null;
+}
+
 describe("CronService timer resilience", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -110,6 +118,7 @@ describe("CronService timer resilience", () => {
 
   it("clamps timer delay to 60 seconds (drift guard)", async () => {
     const store = await makeStorePath();
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
     const cron = new CronService({
       storePath: store.storePath,
@@ -121,6 +130,7 @@ describe("CronService timer resilience", () => {
     });
 
     await cron.start();
+    const callsBeforeAdd = setTimeoutSpy.mock.calls.length;
 
     // Add a job 10 minutes in the future.
     const tenMinutesLater = Date.parse("2025-12-13T00:10:00.000Z");
@@ -133,21 +143,14 @@ describe("CronService timer resilience", () => {
       payload: { kind: "systemEvent", text: "hello" },
     });
 
-    // The timer should fire after at most 60 seconds, not 10 minutes.
-    // Advance 61 seconds and verify the timer fires (even though the
-    // job isn't due yet, the scheduler re-evaluates).
-    vi.advanceTimersByTime(61_000);
-    // Allow async callbacks to flush.
-    await vi.runOnlyPendingTimersAsync();
-
-    // The job should not have run yet (not due until T+10min), but the
-    // timer should have ticked (verified by no timeout at 10 min).
-    // Advance to 10 minutes -- the drift guard means the timer will
-    // have re-armed many times by now, eventually catching the due job.
-    vi.setSystemTime(new Date("2025-12-13T00:10:00.000Z"));
-    await vi.runOnlyPendingTimersAsync();
+    // The timer should arm for at most 60 seconds, not 10 minutes.
+    const addPhaseSpy = { mock: { calls: setTimeoutSpy.mock.calls.slice(callsBeforeAdd) } } as typeof setTimeoutSpy;
+    const initialDelay = lastSetTimeoutDelay(addPhaseSpy);
+    expect(initialDelay).not.toBeNull();
+    expect(initialDelay as number).toBeLessThanOrEqual(60_000);
 
     cron.stop();
+    setTimeoutSpy.mockRestore();
     await store.cleanup();
   });
 });
