@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import fs from "fs/promises"
 import path from "path"
+import { createServer } from "node:net"
 import { ReadTool } from "../../src/tool/read"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
@@ -374,5 +375,34 @@ root_type Monster;`
         expect(result.output).toContain("table Monster")
       },
     })
+  })
+
+  test("rejects unix socket paths as non-regular files", async () => {
+    if (process.platform === "win32") return
+
+    await using tmp = await tmpdir({})
+    const socketPath = path.join(tmp.path, "daemon.sock")
+    const server = createServer()
+
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject)
+      server.listen(socketPath, resolve)
+    })
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const read = await ReadTool.init()
+          await expect(read.execute({ filePath: socketPath }, ctx(tmp.path))).rejects.toThrow(
+            `Cannot read non-regular file (socket): ${socketPath}`,
+          )
+        },
+      })
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve())
+      })
+    }
   })
 })
