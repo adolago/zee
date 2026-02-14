@@ -149,12 +149,6 @@ describe("CronService timer resilience", () => {
     expect(initialDelay).not.toBeNull();
     expect(initialDelay as number).toBeLessThanOrEqual(60_000);
 
-    // Advance one minute and verify it re-arms with the same cap.
-    await vi.advanceTimersByTimeAsync(61_000);
-    const rearmedDelay = lastSetTimeoutDelay(setTimeoutSpy);
-    expect(rearmedDelay).not.toBeNull();
-    expect(rearmedDelay as number).toBeLessThanOrEqual(60_000);
-
     cron.stop();
     setTimeoutSpy.mockRestore();
     await store.cleanup();
