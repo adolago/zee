@@ -13,6 +13,7 @@ type DoctorRuntimeArgs = {
   maxTotal?: number
   maxMcpTotal?: number
   maxMcpPerServer?: number
+  maxClients?: number
 }
 
 function parseLimits(args: DoctorRuntimeArgs): Partial<RuntimeProcessLimits> {
@@ -20,6 +21,7 @@ function parseLimits(args: DoctorRuntimeArgs): Partial<RuntimeProcessLimits> {
     maxTotal: typeof args.maxTotal === "number" ? args.maxTotal : undefined,
     maxMcpTotal: typeof args.maxMcpTotal === "number" ? args.maxMcpTotal : undefined,
     maxMcpPerServer: typeof args.maxMcpPerServer === "number" ? args.maxMcpPerServer : undefined,
+    maxClients: typeof args.maxClients === "number" ? args.maxClients : undefined,
   }
 }
 
@@ -36,7 +38,7 @@ const DoctorRuntimeCommand = cmd({
       .option("fix", {
         type: "boolean",
         default: false,
-        describe: "terminate orphaned/unmanaged runtime processes (daemon/gateway/MCP)",
+        describe: "terminate orphaned/unmanaged runtime processes (daemon/gateway/MCP/clients)",
       })
       .option("strict", {
         type: "boolean",
@@ -54,6 +56,10 @@ const DoctorRuntimeCommand = cmd({
       .option("max-mcp-per-server", {
         type: "number",
         describe: "override max MCP processes per server",
+      })
+      .option("max-clients", {
+        type: "number",
+        describe: "override max Zee client processes",
       }),
   handler: async (args: DoctorRuntimeArgs) => {
     const limits = resolveRuntimeProcessLimits(parseLimits(args))
@@ -81,7 +87,7 @@ const DoctorRuntimeCommand = cmd({
       )
     } else {
       console.log(
-        `runtime: total=${snapshot.counts.total} daemons=${snapshot.counts.daemons} gateways=${snapshot.counts.gateways} mcp=${snapshot.counts.mcpServers}`,
+        `runtime: total=${snapshot.counts.total} daemons=${snapshot.counts.daemons} gateways=${snapshot.counts.gateways} mcp=${snapshot.counts.mcpServers} clients=${snapshot.counts.clients}`,
       )
       if (snapshot.violations.length === 0) {
         console.log("runtime: healthy")
