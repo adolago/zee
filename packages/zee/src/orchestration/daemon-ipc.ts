@@ -88,10 +88,16 @@ export interface OrchestrationClientOptions {
   timeoutMs?: number
 }
 
-export function defaultSocketPath(): string {
+function legacySocketPath(): string {
   const home = process.env.HOME || process.env.USERPROFILE || "/tmp"
   const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`
   return `${stateHome}/zee/daemon.sock`
+}
+
+export function defaultSocketPath(): string {
+  const home = process.env.HOME || process.env.USERPROFILE || "/tmp"
+  const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`
+  return `${stateHome}/zee/daemon/daemon.sock`
 }
 
 export async function requestOrchestration<TParams = unknown, TResult = unknown>(
@@ -99,10 +105,14 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
   params?: TParams,
   options: OrchestrationClientOptions = {},
 ): Promise<TResult> {
-  const socketPath =
+  const configuredSocketPath =
     options.socketPath ||
-    process.env.ZEE_IPC_SOCKET ||
-    defaultSocketPath()
+    process.env.ZEE_IPC_SOCKET
+  const socketPath = configuredSocketPath || defaultSocketPath()
+  const legacyPath = legacySocketPath()
+  const allowLegacyFallback =
+    !configuredSocketPath &&
+    legacyPath !== socketPath
   const timeoutMs = options.timeoutMs ?? 30_000
 
   const request: OrchestrationRequest<TParams> = {
@@ -112,12 +122,12 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
     timestamp: Date.now(),
   }
 
-  const formatSocketError = (error: unknown): Error => {
+  const formatSocketError = (error: unknown, targetPath: string): Error => {
     const err = error as NodeJS.ErrnoException
     const code = err.code
     const message = (err instanceof Error ? err.message : String(error)).toLowerCase()
     if (code === "ENOENT" || message.includes("enoent")) {
-      return new Error(`orchestration daemon not running (socket missing: ${socketPath})`)
+      return new Error(`orchestration daemon not running (socket missing: ${targetPath})`)
     }
     if (
       code === "ECONNREFUSED" ||
@@ -126,12 +136,13 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
       message.includes("enxio") ||
       message.includes("no such device or address")
     ) {
-      return new Error(`orchestration daemon refused connection: ${socketPath}`)
+      return new Error(`orchestration daemon refused connection: ${targetPath}`)
     }
     return err instanceof Error ? err : new Error(String(error))
   }
 
-  return new Promise<TResult>((resolve, reject) => {
+  const requestViaSocket = (targetPath: string) =>
+    new Promise<TResult>((resolve, reject) => {
     let socket: Socket | null = null
     let settled = false
     let buffer = ""
@@ -155,7 +166,7 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
     }, timeoutMs)
 
     try {
-      socket = createConnection(socketPath)
+      socket = createConnection(targetPath)
       socket.on("connect", () => {
         socket!.write(JSON.stringify(request) + "\n")
       })
@@ -185,7 +196,7 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
 
       socket.on("error", (error) => {
         clearTimeout(timer)
-        settle(() => reject(formatSocketError(error)))
+        settle(() => reject(formatSocketError(error, targetPath)))
       })
 
       socket.on("close", () => {
@@ -194,9 +205,24 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
       })
     } catch (error) {
       clearTimeout(timer)
-      settle(() => reject(formatSocketError(error)))
+      settle(() => reject(formatSocketError(error, targetPath)))
     }
   })
+
+  try {
+    return await requestViaSocket(socketPath)
+  } catch (error) {
+    if (!allowLegacyFallback) throw error
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+    const shouldFallback =
+      message.includes("socket missing") ||
+      message.includes("refused connection") ||
+      message.includes("enoent") ||
+      message.includes("enxio") ||
+      message.includes("econnrefused")
+    if (!shouldFallback) throw error
+    return await requestViaSocket(legacyPath)
+  }
 }
 
 export async function runTaskViaDaemon(

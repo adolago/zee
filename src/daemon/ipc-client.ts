@@ -6,6 +6,7 @@
 
 import { createConnection, Socket } from "node:net";
 import { randomUUID } from "node:crypto";
+import { DEFAULT_SOCKET_PATH, LEGACY_SOCKET_PATH } from "./types";
 import type {
   DaemonCommand,
   DaemonRequest,
@@ -29,10 +30,13 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
   params?: TParams,
   options: IPCClientOptions = {}
 ): Promise<TResult> {
-  const socketPath =
+  const configuredSocketPath =
     options.socketPath ||
-    process.env.ZEE_IPC_SOCKET ||
-    getDefaultSocketPath();
+    process.env.ZEE_IPC_SOCKET;
+  const socketPath = configuredSocketPath || DEFAULT_SOCKET_PATH;
+  const allowLegacyFallback =
+    !configuredSocketPath &&
+    LEGACY_SOCKET_PATH !== DEFAULT_SOCKET_PATH;
   const timeoutMs = options.timeoutMs ?? 10000;
 
   const request: DaemonRequest<TParams> = {
@@ -42,12 +46,12 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
     timestamp: Date.now(),
   };
 
-  const formatSocketError = (error: unknown): Error => {
+  const formatSocketError = (error: unknown, targetPath: string): Error => {
     const err = error as NodeJS.ErrnoException;
     const code = err.code;
     const message = (err instanceof Error ? err.message : String(error)).toLowerCase();
     if (code === "ENOENT" || message.includes("enoent")) {
-      return new Error(`Daemon not running (socket not found: ${socketPath})`);
+      return new Error(`Daemon not running (socket not found: ${targetPath})`);
     }
     if (
       code === "ECONNREFUSED" ||
@@ -56,13 +60,14 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
       message.includes("enxio") ||
       message.includes("no such device or address")
     ) {
-      return new Error(`Daemon not accepting connections at ${socketPath}`);
+      return new Error(`Daemon not accepting connections at ${targetPath}`);
     }
     if (err instanceof Error) return err;
     return new Error(String(error));
   };
 
-  return new Promise<TResult>((resolve, reject) => {
+  const requestViaSocket = (targetPath: string) =>
+    new Promise<TResult>((resolve, reject) => {
     let socket: Socket | null = null;
     let buffer = "";
     let settled = false;
@@ -91,7 +96,7 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
     }, timeoutMs);
 
     try {
-      socket = createConnection(socketPath);
+      socket = createConnection(targetPath);
 
       socket.on("connect", () => {
         // Send request as newline-delimited JSON
@@ -141,7 +146,7 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
 
       socket.on("error", (err) => {
         clearTimeout(timer);
-        settle(() => reject(formatSocketError(err)));
+        settle(() => reject(formatSocketError(err, targetPath)));
       });
 
       socket.on("close", () => {
@@ -150,14 +155,22 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
       });
     } catch (err) {
       clearTimeout(timer);
-      settle(() => reject(formatSocketError(err)));
+      settle(() => reject(formatSocketError(err, targetPath)));
     }
   });
-}
 
-/** Get default socket path (lazy to avoid top-level process.env access issues) */
-function getDefaultSocketPath(): string {
-  const home = process.env.HOME || process.env.USERPROFILE || "/tmp";
-  const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`;
-  return `${stateHome}/zee/daemon.sock`;
+  try {
+    return await requestViaSocket(socketPath);
+  } catch (error) {
+    if (!allowLegacyFallback) throw error;
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    const shouldFallback =
+      message.includes("socket not found") ||
+      message.includes("not accepting connections") ||
+      message.includes("enoent") ||
+      message.includes("enxio") ||
+      message.includes("econnrefused");
+    if (!shouldFallback) throw error;
+    return await requestViaSocket(LEGACY_SOCKET_PATH);
+  }
 }

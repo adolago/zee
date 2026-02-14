@@ -199,6 +199,19 @@ function buildServicePath(): string {
   return pathParts.join(":");
 }
 
+function resolveStateHome(): string {
+  const home = os.homedir();
+  return process.env.XDG_STATE_HOME || path.join(home, ".local", "state");
+}
+
+function resolveDefaultOrchSocketPath(): string {
+  return path.join(resolveStateHome(), "zee", "daemon", "daemon.sock");
+}
+
+function resolveLegacyOrchSocketPath(): string {
+  return path.join(resolveStateHome(), "zee", "daemon.sock");
+}
+
 function resolveOrchSocketPath(options: DaemonInstallOptions): string {
   if (options.orchSocketPath && options.orchSocketPath.trim()) {
     return options.orchSocketPath.trim();
@@ -206,9 +219,27 @@ function resolveOrchSocketPath(options: DaemonInstallOptions): string {
   if (process.env.ZEE_IPC_SOCKET?.trim()) {
     return process.env.ZEE_IPC_SOCKET.trim();
   }
-  const home = os.homedir();
-  const stateHome = process.env.XDG_STATE_HOME || path.join(home, ".local", "state");
-  return path.join(stateHome, "zee", "daemon.sock");
+  return resolveDefaultOrchSocketPath();
+}
+
+function cleanupLegacySocketIfMigrated(activeSocketPath: string): void {
+  const legacySocketPath = resolveLegacyOrchSocketPath();
+  if (path.resolve(activeSocketPath) === path.resolve(legacySocketPath)) return;
+
+  try {
+    const stat = fs.lstatSync(legacySocketPath);
+    if (!stat.isSocket()) return;
+    fs.unlinkSync(legacySocketPath);
+    log.info("removed legacy orchestration socket", { path: legacySocketPath });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT") {
+      log.warn("failed to cleanup legacy orchestration socket", {
+        path: legacySocketPath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 function defaultOrchMaxWorkers(): number {
@@ -391,6 +422,7 @@ async function installSystemdService(
 ): Promise<DaemonInstallResult> {
   const hints: string[] = [];
   const orchestrationEnabled = options.orchestration !== false;
+  const orchSocketPath = resolveOrchSocketPath(options);
 
   // Check systemd availability
   if (!hasSystemd()) {
@@ -433,6 +465,8 @@ async function installSystemdService(
   } catch {
     // Ignore if not running
   }
+
+  cleanupLegacySocketIfMigrated(orchSocketPath);
 
   // Generate and write unit files
   const unit = generateSystemdDaemonUnit(binaryPath, options);

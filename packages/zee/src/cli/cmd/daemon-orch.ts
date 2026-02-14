@@ -1,7 +1,8 @@
 import { cmd } from "./cmd"
 import { DaemonServer } from "@root/daemon/ipc-server"
-import { DEFAULT_SOCKET_PATH } from "@root/daemon/types"
+import { DEFAULT_SOCKET_PATH, LEGACY_SOCKET_PATH } from "@root/daemon/types"
 import { availableParallelism, cpus } from "node:os"
+import fs from "node:fs/promises"
 import type { QueueDedupeMode, QueueDropPolicy } from "@root/swarm/queue"
 
 function parsePositiveInt(raw: unknown, fallback: number): number {
@@ -34,6 +35,21 @@ function defaultMaxWorkers(): number {
     }
   })()
   return Math.max(2, Math.min(8, cores - 1))
+}
+
+async function cleanupLegacySocket(activeSocketPath: string): Promise<void> {
+  if (activeSocketPath === LEGACY_SOCKET_PATH) return
+  try {
+    const stat = await fs.lstat(LEGACY_SOCKET_PATH)
+    if (!stat.isSocket()) return
+    await fs.unlink(LEGACY_SOCKET_PATH)
+    console.log(`[daemon] Removed legacy socket ${LEGACY_SOCKET_PATH}`)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== "ENOENT") {
+      console.warn(`[daemon] Failed to cleanup legacy socket ${LEGACY_SOCKET_PATH}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
 }
 
 export const DaemonOrchCommand = cmd({
@@ -95,6 +111,7 @@ export const DaemonOrchCommand = cmd({
     )
 
     console.log(`[daemon] Starting zee daemon (PID: ${process.pid})`)
+    await cleanupLegacySocket(socketPath)
 
     const server = new DaemonServer({
       socketPath,
