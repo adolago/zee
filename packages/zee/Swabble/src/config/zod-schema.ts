@@ -150,6 +150,27 @@ export const ZeeSchema = z
       })
       .strict()
       .optional(),
+    security: z
+      .object({
+        redaction: z
+          .object({
+            defaultDeny: z.boolean().optional(),
+            allowlist: z.array(z.string()).optional(),
+            nestedKeyMatchers: z.array(z.string()).optional(),
+          })
+          .strict()
+          .optional(),
+        unicodeSanitization: z
+          .object({
+            enabled: z.boolean().optional(),
+            mode: z.union([z.literal("reject"), z.literal("normalize")]).optional(),
+            homoglyphClasses: z.array(z.string()).optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
     update: z
       .object({
         channel: z.union([z.literal("stable"), z.literal("beta"), z.literal("dev")]).optional(),
