@@ -28,6 +28,7 @@ import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
 import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
+import type { RuntimeProcessLimits } from "./runtime-process-guard"
 import path from "path"
 
 const log = Log.create({ service: "always-on" })
@@ -41,6 +42,9 @@ export interface AlwaysOnOptions {
   wezterm?: boolean
   weztermLayout?: "horizontal" | "vertical" | "grid"
   restoreSessions?: boolean
+  runtimeGuard?: boolean
+  runtimeGuardIntervalMs?: number
+  runtimeLimits?: Partial<RuntimeProcessLimits>
 }
 
 export interface AlwaysOnProcess {
