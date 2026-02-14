@@ -133,11 +133,12 @@ export const ModelRoute = new Hono()
       const auth = await Auth.all()
       const env = Env.all()
       const configProviders = config.provider ?? {}
+      const hasAuthConnections = Object.values(providers).some((provider) => !!auth[provider.id])
       const connectedIds = Object.values(providers)
         .filter((provider) => {
           if (auth[provider.id]) return true
           const envKeys = provider.env ?? []
-          if (envKeys.some((key) => env[key])) return true
+          const hasEnvKey = envKeys.some((key) => env[key])
           const cfg = (configProviders as Record<string, { options?: Record<string, unknown>; api?: string }>)[
             provider.id
           ]
@@ -145,6 +146,10 @@ export const ModelRoute = new Hono()
           if (typeof cfgApiKey === "string" && cfgApiKey.trim()) return true
           const baseURL = cfg?.options?.baseURL ?? cfg?.api ?? provider.options?.baseURL
           if (envKeys.length === 0 && typeof baseURL === "string" && baseURL.trim()) return true
+          // If any provider is explicitly connected via auth, avoid auto-connecting
+          // additional providers from env vars to keep the selector focused.
+          if (hasAuthConnections) return false
+          if (hasEnvKey) return true
           return false
         })
         .map((provider) => provider.id)
