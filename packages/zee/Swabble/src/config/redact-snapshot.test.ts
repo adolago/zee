@@ -44,6 +44,45 @@ describe("redactConfigObject", () => {
     expect(out.whatsapp.tokenSource).toBe("none");
     expect(out.apiKey).toBe(REDACTED_SENTINEL);
   });
+
+  it("supports custom nested key matchers", () => {
+    const input = {
+      plugins: {
+        entries: {
+          alpha: {
+            config: {
+              privateCredential: "s3cr3t",
+              safeValue: "ok",
+            },
+          },
+        },
+      },
+    };
+
+    const out = redactConfigObject(input, {
+      nestedKeyMatchers: ["privatecredential"],
+    }) as typeof input;
+    expect(out.plugins.entries.alpha.config.privateCredential).toBe(REDACTED_SENTINEL);
+    expect(out.plugins.entries.alpha.config.safeValue).toBe("ok");
+  });
+
+  it("supports default-deny under high-risk paths with allowlist overrides", () => {
+    const input = {
+      auth: {
+        mode: "token",
+        username: "ops-user",
+        token: "abc123",
+      },
+    };
+
+    const out = redactConfigObject(input, {
+      defaultDeny: true,
+      allowlist: ["auth.mode"],
+    }) as typeof input;
+    expect(out.auth.mode).toBe("token");
+    expect(out.auth.username).toBe(REDACTED_SENTINEL);
+    expect(out.auth.token).toBe(REDACTED_SENTINEL);
+  });
 });
 
 describe("redactConfigSnapshot", () => {

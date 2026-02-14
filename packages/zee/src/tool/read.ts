@@ -68,6 +68,15 @@ function isBlockedEnvFile(filename: string): boolean {
   return false
 }
 
+function describeNonRegularFile(stat: fs.Stats): string {
+  if (stat.isDirectory()) return "directory"
+  if (stat.isSocket()) return "socket"
+  if (stat.isFIFO()) return "named pipe"
+  if (stat.isCharacterDevice()) return "character device"
+  if (stat.isBlockDevice()) return "block device"
+  return "special file"
+}
+
 export const ReadTool = Tool.define("read", {
   description: DESCRIPTION,
   parameters: z.object({
@@ -102,8 +111,15 @@ export const ReadTool = Tool.define("read", {
       metadata: {},
     })
 
-    const file = Bun.file(filepath)
-    if (!(await file.exists())) {
+    let stat: fs.Stats | null = null
+    try {
+      stat = await fs.promises.stat(filepath)
+    } catch (error) {
+      const errno = error as NodeJS.ErrnoException
+      if (errno.code !== "ENOENT") throw error
+    }
+
+    if (!stat) {
       const dir = path.dirname(filepath)
       const base = path.basename(filepath)
       let suggestions: string[] = []
@@ -126,6 +142,12 @@ export const ReadTool = Tool.define("read", {
 
       throw new Error(`File not found: ${filepath}`)
     }
+
+    if (!stat.isFile()) {
+      throw new Error(`Cannot read non-regular file (${describeNonRegularFile(stat)}): ${filepath}`)
+    }
+
+    const file = Bun.file(filepath)
 
     const instructions = await InstructionPrompt.resolve(ctx.messages, filepath, ctx.messageID)
 

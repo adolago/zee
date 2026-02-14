@@ -42,4 +42,24 @@ describe("runCommandWithTimeout", () => {
       }
     }
   });
+
+  it("coerces env values to strings and omits undefined values", async () => {
+    const result = await runCommandWithTimeout(
+      [
+        process.execPath,
+        "-e",
+        'process.stdout.write((process.env.ZEE_NUM ?? "") + "|" + String(Object.prototype.hasOwnProperty.call(process.env, "ZEE_UNDEF")))',
+      ],
+      {
+        timeoutMs: 5_000,
+        env: {
+          ZEE_NUM: 42 as unknown as string,
+          ZEE_UNDEF: undefined,
+        } as unknown as NodeJS.ProcessEnv,
+      },
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBe("42|false");
+  });
 });

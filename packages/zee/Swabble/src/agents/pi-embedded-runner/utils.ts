@@ -1,18 +1,10 @@
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ReasoningLevel, ThinkLevel } from "../../auto-reply/thinking.js";
-import type { ZeeConfig } from "../../config/config.js";
-import type { ExecToolDefaults } from "../bash-tools.js";
 
 export function mapThinkingLevel(level?: ThinkLevel): ThinkingLevel {
   // pi-agent-core supports "xhigh"; Zee enables it for specific models.
   if (!level) return "off";
   return level;
-}
-
-export function resolveExecToolDefaults(config?: ZeeConfig): ExecToolDefaults | undefined {
-  const tools = config?.tools;
-  if (!tools?.exec) return undefined;
-  return tools.exec;
 }
 
 export function describeUnknownError(error: unknown): string {

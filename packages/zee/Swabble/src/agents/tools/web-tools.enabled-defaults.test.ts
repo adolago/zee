@@ -154,7 +154,7 @@ describe("web_search perplexity baseUrl defaults", () => {
     expect(mockFetch.mock.calls[0]?.[0]).toBe("https://api.perplexity.ai/chat/completions");
   });
 
-  it("rejects freshness for Perplexity provider", async () => {
+  it("passes freshness to Perplexity provider as search_recency_filter", async () => {
     vi.stubEnv("PERPLEXITY_API_KEY", "pplx-test");
     const mockFetch = vi.fn(() =>
       Promise.resolve({
@@ -169,10 +169,11 @@ describe("web_search perplexity baseUrl defaults", () => {
       config: { tools: { web: { search: { provider: "perplexity" } } } },
       sandboxed: true,
     });
-    const result = await tool?.execute?.(1, { query: "test", freshness: "pw" });
+    await tool?.execute?.(1, { query: "perplexity-freshness-test", freshness: "pw" });
 
-    expect(mockFetch).not.toHaveBeenCalled();
-    expect(result?.details).toMatchObject({ error: "unsupported_freshness" });
+    expect(mockFetch).toHaveBeenCalledOnce();
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.search_recency_filter).toBe("week");
   });
 
   it("defaults to OpenRouter when OPENROUTER_API_KEY is set", async () => {

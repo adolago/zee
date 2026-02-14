@@ -7,6 +7,7 @@ import {
   resolvePinnedHostname,
   SsrFBlockedError,
 } from "../../infra/net/ssrf.js";
+import { logDebug } from "../../logger.js";
 import type { Dispatcher } from "undici";
 import { stringEnum } from "../schema/typebox.js";
 import type { AnyAgentTool } from "./common.js";
@@ -197,7 +198,7 @@ async function fetchWithRedirects(params: {
       res = await fetch(parsedUrl.toString(), {
         method: "GET",
         headers: {
-          Accept: "*/*",
+          Accept: "text/markdown, text/html;q=0.9, */*;q=0.1",
           "User-Agent": params.userAgent,
           "Accept-Language": "en-US,en;q=0.9",
         },
@@ -377,6 +378,10 @@ async function runWebFetch(params: {
     res = result.response;
     finalUrl = result.finalUrl;
     dispatcher = result.dispatcher;
+    const markdownTokens = res.headers.get("x-markdown-tokens");
+    if (markdownTokens) {
+      logDebug(`[web-fetch] x-markdown-tokens: ${markdownTokens} (${finalUrl})`);
+    }
   } catch (error) {
     if (error instanceof SsrFBlockedError) {
       throw error;
@@ -463,7 +468,12 @@ async function runWebFetch(params: {
     let title: string | undefined;
     let extractor = "raw";
     let text = body;
-    if (contentType.includes("text/html")) {
+    if (contentType.includes("text/markdown")) {
+      extractor = "cf-markdown";
+      if (params.extractMode === "text") {
+        text = markdownToText(body);
+      }
+    } else if (contentType.includes("text/html")) {
       if (params.readabilityEnabled) {
         const readable = await extractReadableContent({
           html: body,

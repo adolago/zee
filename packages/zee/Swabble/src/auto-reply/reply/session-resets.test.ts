@@ -92,6 +92,52 @@ describe("initSessionState reset triggers in WhatsApp groups", () => {
     expect(result.bodyStripped).toBe("");
   });
 
+  it("archives previous transcript file on /new reset", async () => {
+    const storePath = await createStorePath("zee-group-reset-archive-");
+    const sessionKey = "agent:main:whatsapp:group:120363406150318674@g.us";
+    const existingSessionId = "existing-session-archive";
+    await seedSessionStore({
+      storePath,
+      sessionKey,
+      sessionId: existingSessionId,
+    });
+    const transcriptPath = path.join(path.dirname(storePath), `${existingSessionId}.jsonl`);
+    await fs.writeFile(
+      transcriptPath,
+      `${JSON.stringify({ message: { role: "user", content: "hello" } })}\n`,
+      "utf-8",
+    );
+
+    const cfg = makeCfg({
+      storePath,
+      allowFrom: ["+41796666864"],
+    });
+
+    const result = await initSessionState({
+      ctx: {
+        Body: "/new",
+        RawBody: "/new",
+        CommandBody: "/new",
+        From: "120363406150318674@g.us",
+        To: "+41779241027",
+        ChatType: "group",
+        SessionKey: sessionKey,
+        Provider: "whatsapp",
+        Surface: "whatsapp",
+        SenderName: "Owner",
+        SenderE164: "+41796666864",
+        SenderId: "41796666864:0@s.whatsapp.net",
+      },
+      cfg,
+      commandAuthorized: true,
+    });
+
+    expect(result.isNewSession).toBe(true);
+    expect(result.resetTriggered).toBe(true);
+    const files = await fs.readdir(path.dirname(storePath));
+    expect(files.some((file) => file.startsWith(`${existingSessionId}.jsonl.reset.`))).toBe(true);
+  });
+
   it("Reset trigger /new blocked for unauthorized sender in existing session", async () => {
     const storePath = await createStorePath("zee-group-reset-unauth-");
     const sessionKey = "agent:main:whatsapp:group:120363406150318674@g.us";

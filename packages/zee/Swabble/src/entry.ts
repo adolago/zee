@@ -7,9 +7,11 @@ import { applyCliProfileEnv, parseCliProfileArgs } from "./cli/profile.js";
 import { isTruthyEnvValue } from "./infra/env.js";
 import { installProcessWarningFilter } from "./infra/warnings.js";
 import { attachChildProcessBridge } from "./process/child-process-bridge.js";
+import { installParentProcessGuard, PARENT_PID_ENV } from "./process/parent-guard.js";
 
 process.title = "zee";
 installProcessWarningFilter();
+installParentProcessGuard();
 
 if (process.argv.includes("--no-color")) {
   process.env.NO_COLOR = "1";
@@ -46,7 +48,10 @@ function ensureExperimentalWarningSuppressed(): boolean {
 
   const child = spawn(process.execPath, [...process.execArgv, ...process.argv.slice(1)], {
     stdio: "inherit",
-    env: process.env,
+    env: {
+      ...process.env,
+      [PARENT_PID_ENV]: String(process.pid),
+    },
   });
 
   attachChildProcessBridge(child);

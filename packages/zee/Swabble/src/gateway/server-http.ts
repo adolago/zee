@@ -26,6 +26,12 @@ import { checkBrowserOrigin } from "./origin-check.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
+import {
+  checkGatewayAuthRateLimit,
+  clearGatewayAuthRateLimit,
+  recordGatewayAuthFailure,
+  resolveGatewayAuthClientIp,
+} from "./auth-rate-limit.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
@@ -76,13 +82,46 @@ export function createHooksRequestHandler(
       sendJson(res, 400, { ok: false, error: "token query parameter is not allowed" });
       return true;
     }
+    const configSnapshot = loadConfig();
+    const rateLimitCfg = configSnapshot.gateway?.auth?.rateLimit;
+    const clientIp = resolveGatewayAuthClientIp({
+      req,
+      trustedProxies: configSnapshot.gateway?.trustedProxies,
+    });
     const token = extractHookToken(req);
+    const preLimit = checkGatewayAuthRateLimit({
+      cfg: rateLimitCfg,
+      ip: clientIp,
+      tokenOrPassword: token,
+    });
+    if (preLimit.limited) {
+      sendJson(res, 429, {
+        ok: false,
+        error: "Too many authentication attempts",
+        retryAfterMs: preLimit.retryAfterMs,
+      });
+      return true;
+    }
     if (!token || token !== hooksConfig.token) {
+      const failure = recordGatewayAuthFailure({
+        cfg: rateLimitCfg,
+        ip: clientIp,
+        tokenOrPassword: token,
+      });
+      if (failure.limited) {
+        sendJson(res, 429, {
+          ok: false,
+          error: "Too many authentication attempts",
+          retryAfterMs: failure.retryAfterMs,
+        });
+        return true;
+      }
       res.statusCode = 401;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Unauthorized");
       return true;
     }
+    clearGatewayAuthRateLimit({ ip: clientIp, tokenOrPassword: token });
     if (req.method !== "POST") {
       res.statusCode = 405;
       res.setHeader("Allow", "POST");

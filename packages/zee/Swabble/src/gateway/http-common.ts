@@ -25,6 +25,23 @@ export function sendUnauthorized(res: ServerResponse) {
   });
 }
 
+export function sendTooManyRequests(res: ServerResponse, retryAfterMs?: number) {
+  if (typeof retryAfterMs === "number" && Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+  }
+  sendJson(res, 429, {
+    error: {
+      message: "Too many authentication attempts. Please retry later.",
+      type: "rate_limit_error",
+      retry_after_ms:
+        typeof retryAfterMs === "number" && Number.isFinite(retryAfterMs) && retryAfterMs > 0
+          ? Math.ceil(retryAfterMs)
+          : undefined,
+    },
+  });
+}
+
 export function sendInvalidRequest(res: ServerResponse, message: string) {
   sendJson(res, 400, {
     error: { message, type: "invalid_request_error" },

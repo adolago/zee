@@ -1,8 +1,15 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+vi.mock("../config/sessions.js", () => ({
+  resolveSessionTranscriptPath: (sessionId: string, agentId?: string) =>
+    `/tmp/zee-session/${agentId ?? "main"}/${sessionId}.jsonl`,
+}));
+
 import {
+  archiveSessionTranscripts,
   readFirstUserMessageFromTranscript,
   readLastMessagePreviewFromTranscript,
   readSessionPreviewItemsFromTranscript,
@@ -402,5 +409,63 @@ describe("readSessionPreviewItemsFromTranscript", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.text.length).toBe(24);
     expect(result[0]?.text.endsWith("...")).toBe(true);
+  });
+});
+
+describe("archiveSessionTranscripts", () => {
+  let tmpDir: string;
+  let storePath: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-session-archive-test-"));
+    storePath = path.join(tmpDir, "sessions.json");
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("archives existing transcript file", () => {
+    const sessionId = "archive-session-1";
+    const transcriptPath = path.join(tmpDir, `${sessionId}.jsonl`);
+    fs.writeFileSync(transcriptPath, '{"type":"session"}\n', "utf-8");
+
+    const archived = archiveSessionTranscripts({
+      sessionId,
+      storePath,
+      reason: "reset",
+    });
+
+    expect(archived).toHaveLength(1);
+    expect(archived[0]).toContain(".reset.");
+    expect(fs.existsSync(transcriptPath)).toBe(false);
+    expect(fs.existsSync(archived[0])).toBe(true);
+  });
+
+  test("archives transcript resolved from explicit sessionFile", () => {
+    const sessionId = "archive-session-2";
+    const transcriptPath = path.join(tmpDir, "custom.jsonl");
+    fs.writeFileSync(transcriptPath, '{"type":"session"}\n', "utf-8");
+
+    const archived = archiveSessionTranscripts({
+      sessionId,
+      storePath: undefined,
+      sessionFile: transcriptPath,
+      reason: "reset",
+    });
+
+    expect(archived).toHaveLength(1);
+    expect(fs.existsSync(transcriptPath)).toBe(false);
+    expect(fs.existsSync(archived[0])).toBe(true);
+  });
+
+  test("returns empty array when transcript files are missing", () => {
+    const archived = archiveSessionTranscripts({
+      sessionId: "missing-session",
+      storePath,
+      reason: "reset",
+    });
+
+    expect(archived).toEqual([]);
   });
 });

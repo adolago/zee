@@ -27,6 +27,17 @@ function readZeeAuthStoreCached(env: NodeJS.ProcessEnv = process.env): ZeeAuthSt
   for (const candidate of resolveZeeAuthPaths(env)) {
     try {
       if (!fs.existsSync(candidate)) continue;
+      if (process.platform !== "win32") {
+        try {
+          const stats = fs.statSync(candidate);
+          const mode = stats.mode & 0o777;
+          if (stats.isFile() && (mode & 0o077) !== 0) {
+            fs.chmodSync(candidate, 0o600);
+          }
+        } catch {
+          // Best effort only.
+        }
+      }
       const raw = fs.readFileSync(candidate, "utf-8");
       const parsed = JSON.parse(raw) as ZeeAuthStore;
       cachedStore = parsed;
@@ -51,4 +62,3 @@ export function getZeeAuthApiKeySync(providerId: string): string | undefined {
   if (entry?.type === "api" && key) return key;
   return undefined;
 }
-

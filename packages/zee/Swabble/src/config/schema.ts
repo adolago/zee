@@ -53,6 +53,7 @@ const GROUP_LABELS: Record<string, string> = {
   wizard: "Wizard",
   update: "Update",
   diagnostics: "Diagnostics",
+  security: "Security",
   logging: "Logging",
   gateway: "Gateway",
   canvasHost: "Canvas Host",
@@ -84,6 +85,7 @@ const GROUP_ORDER: Record<string, number> = {
   wizard: 20,
   update: 25,
   diagnostics: 27,
+  security: 28,
   gateway: 30,
   canvasHost: 32,
   nodeHost: 35,
@@ -159,6 +161,17 @@ const FIELD_LABELS: Record<string, string> = {
   "gateway.daemonBridge.createSession": "Daemon Bridge Auto-Create Sessions",
   "gateway.auth.token": "Gateway Token",
   "gateway.auth.password": "Gateway Password",
+  "gateway.auth.rateLimit.enabled": "Gateway Auth Rate Limiting",
+  "gateway.auth.rateLimit.windowMs": "Gateway Auth Rate-Limit Window (ms)",
+  "gateway.auth.rateLimit.maxAttemptsPerIp": "Gateway Auth Max Attempts per IP",
+  "gateway.auth.rateLimit.maxAttemptsPerToken": "Gateway Auth Max Attempts per Token",
+  "gateway.auth.rateLimit.lockoutMs": "Gateway Auth Lockout Duration (ms)",
+  "security.redaction.defaultDeny": "Config Redaction Default Deny",
+  "security.redaction.allowlist": "Config Redaction Allowlist",
+  "security.redaction.nestedKeyMatchers": "Config Redaction Key Matchers",
+  "security.unicodeSanitization.enabled": "Unicode Sanitization Enabled",
+  "security.unicodeSanitization.mode": "Unicode Sanitization Mode",
+  "security.unicodeSanitization.homoglyphClasses": "Unicode Sanitization Classes",
   "gateway.allowedOrigins": "Gateway Allowed Origins",
   "gateway.controlUi.enabled": "Control UI Enabled",
   "gateway.controlUi.allowInsecureAuth": "Control UI Insecure Auth",
@@ -235,6 +248,7 @@ const FIELD_LABELS: Record<string, string> = {
   "tools.web.fetch.cacheTtlMinutes": "Web Fetch Cache TTL (min)",
   "tools.web.fetch.maxRedirects": "Web Fetch Max Redirects",
   "tools.web.fetch.userAgent": "Web Fetch User-Agent",
+  "tools.web.fetch.includeImages": "Web Fetch Attach Images",
   "gateway.http.endpoints.chatCompletions.enabled": "OpenAI Chat Completions Endpoint",
   "gateway.reload.mode": "Config Reload Mode",
   "gateway.reload.debounceMs": "Config Reload Debounce (ms)",
@@ -393,6 +407,28 @@ const FIELD_HELP: Record<string, string> = {
   "gateway.auth.token":
     "Required by default for gateway access (unless using Tailscale Serve identity); required for non-loopback binds.",
   "gateway.auth.password": "Required for Tailscale funnel.",
+  "gateway.auth.rateLimit.enabled":
+    "Enable auth failure throttling and temporary lockouts for gateway HTTP/WS auth.",
+  "gateway.auth.rateLimit.windowMs":
+    "Sliding window size for counting failed auth attempts (milliseconds).",
+  "gateway.auth.rateLimit.maxAttemptsPerIp":
+    "Max failed auth attempts per client IP within the rate-limit window.",
+  "gateway.auth.rateLimit.maxAttemptsPerToken":
+    "Max failed auth attempts per token/password fingerprint within the rate-limit window.",
+  "gateway.auth.rateLimit.lockoutMs":
+    "Lockout duration after exceeding auth attempt limits (milliseconds).",
+  "security.redaction.defaultDeny":
+    "When enabled, redact string values under high-risk auth/credential paths unless explicitly allowlisted.",
+  "security.redaction.allowlist":
+    "Dot-path allowlist that bypasses config redaction checks (supports '*' wildcards).",
+  "security.redaction.nestedKeyMatchers":
+    "Additional case-insensitive snippets used to classify nested keys/paths as sensitive.",
+  "security.unicodeSanitization.enabled":
+    "Enable additional homoglyph sanitization for untrusted external content wrappers.",
+  "security.unicodeSanitization.mode":
+    "Action for dangerous homoglyphs: normalize to ASCII markers or reject.",
+  "security.unicodeSanitization.homoglyphClasses":
+    "Optional class labels to tune homoglyph sanitization behavior.",
   "gateway.controlUi.enabled":
     "Enable the Control UI surface for gateway operators (default: false).",
   "gateway.controlUi.allowInsecureAuth":
@@ -463,6 +499,8 @@ const FIELD_HELP: Record<string, string> = {
   "tools.web.fetch.cacheTtlMinutes": "Cache TTL in minutes for web_fetch results.",
   "tools.web.fetch.maxRedirects": "Maximum redirects allowed for web_fetch (default: 3).",
   "tools.web.fetch.userAgent": "Override User-Agent header for web_fetch requests.",
+  "tools.web.fetch.includeImages":
+    "Attach image responses as image blocks in tool output when possible (default: true).",
   "tools.web.fetch.readability":
     "Use Readability to extract main content from HTML (fallbacks to basic HTML cleanup).",
   "tools.web.fetch.firecrawl.enabled": "Enable Firecrawl fallback for web_fetch (if configured).",

@@ -15,12 +15,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { installMcpParentGuard } from "./parent-guard.js";
 
 // Create server
 const server = new McpServer({
   name: "consciousness",
   version: "1.0.0",
 });
+
+installMcpParentGuard("consciousness");
 
 // =============================================================================
 // Types for IIT calculations

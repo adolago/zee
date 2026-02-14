@@ -60,7 +60,7 @@ const WebSearchSchema = Type.Object({
   freshness: Type.Optional(
     Type.String({
       description:
-        "Filter results by discovery time (Brave only). Values: 'pd' (past 24h), 'pw' (past week), 'pm' (past month), 'py' (past year), or date range 'YYYY-MM-DDtoYYYY-MM-DD'.",
+        "Filter results by discovery time. Values: 'pd' (past 24h), 'pw' (past week), 'pm' (past month), 'py' (past year), or date range 'YYYY-MM-DDtoYYYY-MM-DD' (Brave only; Perplexity supports shortcuts only).",
     }),
   ),
 });
@@ -245,6 +245,19 @@ function normalizeFreshness(value: string | undefined): string | undefined {
   return `${start}to${end}`;
 }
 
+function freshnessToPerplexityRecency(freshness: string | undefined): string | undefined {
+  if (!freshness) {
+    return undefined;
+  }
+  const map: Record<string, string> = {
+    pd: "day",
+    pw: "week",
+    pm: "month",
+    py: "year",
+  };
+  return map[freshness] ?? undefined;
+}
+
 function isValidIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split("-").map((part) => Number.parseInt(part, 10));
@@ -271,8 +284,22 @@ async function runPerplexitySearch(params: {
   baseUrl: string;
   model: string;
   timeoutSeconds: number;
+  freshness?: string;
 }): Promise<{ content: string; citations: string[] }> {
   const endpoint = `${params.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const body: Record<string, unknown> = {
+    model: params.model,
+    messages: [
+      {
+        role: "user",
+        content: params.query,
+      },
+    ],
+  };
+  const recencyFilter = freshnessToPerplexityRecency(params.freshness);
+  if (recencyFilter) {
+    body.search_recency_filter = recencyFilter;
+  }
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -282,15 +309,7 @@ async function runPerplexitySearch(params: {
       "HTTP-Referer": "https://zee-bot.com",
       "X-Title": "Zee Web Search",
     },
-    body: JSON.stringify({
-      model: params.model,
-      messages: [
-        {
-          role: "user",
-          content: params.query,
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
     signal: withTimeout(undefined, params.timeoutSeconds * 1000),
   });
 
@@ -323,7 +342,9 @@ async function runWebSearch(params: {
   const cacheKey = normalizeCacheKey(
     params.provider === "brave"
       ? `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}:${params.freshness || "default"}`
-      : `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}`,
+      : params.provider === "perplexity"
+        ? `${params.provider}:${params.query}:${params.perplexityBaseUrl ?? DEFAULT_PERPLEXITY_BASE_URL}:${params.perplexityModel ?? DEFAULT_PERPLEXITY_MODEL}:${params.freshness || "default"}`
+        : `${params.provider}:${params.query}:${params.count}:${params.country || "default"}:${params.search_lang || "default"}:${params.ui_lang || "default"}`,
   );
   const cached = readCache(SEARCH_CACHE, cacheKey);
   if (cached) return { ...cached.value, cached: true };
@@ -337,6 +358,7 @@ async function runWebSearch(params: {
       baseUrl: params.perplexityBaseUrl ?? DEFAULT_PERPLEXITY_BASE_URL,
       model: params.perplexityModel ?? DEFAULT_PERPLEXITY_MODEL,
       timeoutSeconds: params.timeoutSeconds,
+      freshness: params.freshness,
     });
 
     const payload = {
@@ -443,10 +465,10 @@ export function createWebSearchTool(options?: {
       const search_lang = readStringParam(params, "search_lang");
       const ui_lang = readStringParam(params, "ui_lang");
       const rawFreshness = readStringParam(params, "freshness");
-      if (rawFreshness && provider !== "brave") {
+      if (rawFreshness && provider !== "brave" && provider !== "perplexity") {
         return jsonResult({
           error: "unsupported_freshness",
-          message: "freshness is only supported by the Brave web_search provider.",
+          message: "freshness is only supported by the Brave and Perplexity web_search providers.",
           docs: "https://zee-bot.com/tools/web",
         });
       }
@@ -486,4 +508,5 @@ export const __testing = {
   inferPerplexityBaseUrlFromApiKey,
   resolvePerplexityBaseUrl,
   normalizeFreshness,
+  freshnessToPerplexityRecency,
 } as const;
