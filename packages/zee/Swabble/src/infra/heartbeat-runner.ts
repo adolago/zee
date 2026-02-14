@@ -8,7 +8,6 @@ import { DEFAULT_HEARTBEAT_FILENAME } from "../agents/workspace.js"
 import {
   DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   DEFAULT_HEARTBEAT_EVERY,
-  isHeartbeatContentEffectivelyEmpty,
   resolveHeartbeatPrompt as resolveHeartbeatPromptText,
   stripHeartbeatToken,
 } from "../auto-reply/heartbeat.js"
@@ -38,6 +37,7 @@ import { CommandLane } from "../process/lanes.js"
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js"
 import { normalizeAgentId, toAgentStoreSessionKey } from "../routing/session-key.js"
 import { emitHeartbeatEvent, resolveIndicatorType } from "./heartbeat-events.js"
+import { shouldSkipForEmptyHeartbeatFile } from "./heartbeat-empty-skip.js"
 import { resolveHeartbeatVisibility } from "./heartbeat-visibility.js"
 import {
   type HeartbeatRunResult,
@@ -412,13 +412,12 @@ export async function runHeartbeatOnce(opts: {
 
   // Skip heartbeat if HEARTBEAT.md exists but has no actionable content.
   // This saves API calls/costs when the file is effectively empty (only comments/headers).
-  // EXCEPTION: Don't skip for exec events - they have pending system events to process.
-  const isExecEventReason = opts.reason === "exec-event"
+  // EXCEPTIONS: exec-event, cron:*, wake, and hook:* reasons.
   const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId)
   const heartbeatFilePath = path.join(workspaceDir, DEFAULT_HEARTBEAT_FILENAME)
   try {
     const heartbeatFileContent = await fs.readFile(heartbeatFilePath, "utf-8")
-    if (isHeartbeatContentEffectivelyEmpty(heartbeatFileContent) && !isExecEventReason) {
+    if (shouldSkipForEmptyHeartbeatFile({ heartbeatFileContent, reason: opts.reason })) {
       emitHeartbeatEvent({
         status: "skipped",
         reason: "empty-heartbeat-file",
