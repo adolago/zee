@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { resolveMainSessionKeyFromConfig } from "../config/sessions.js";
 import { drainSystemEvents, peekSystemEvents } from "../infra/system-events.js";
+import { __testing as authRateLimitTesting } from "./auth-rate-limit.js";
 import {
   cronIsolatedRun,
   getFreePort,
@@ -152,6 +153,46 @@ describe("gateway server hooks", () => {
       expect(resBadJson.status).toBe(400);
     } finally {
       await server.close();
+    }
+  });
+
+  test("rate limits repeated unauthorized hook auth attempts", async () => {
+    testState.hooksConfig = { enabled: true, token: "hook-secret" };
+    const { writeConfigFile } = await import("../config/config.js");
+    await writeConfigFile({
+      gateway: {
+        auth: {
+          rateLimit: {
+            enabled: true,
+            windowMs: 60_000,
+            maxAttemptsPerIp: 2,
+            maxAttemptsPerToken: 2,
+            lockoutMs: 60_000,
+          },
+        },
+      },
+    } as any);
+
+    const port = await getFreePort();
+    const server = await startGatewayServer(port);
+    try {
+      const first = await fetch(`http://127.0.0.1:${port}/hooks/wake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Ping" }),
+      });
+      expect(first.status).toBe(401);
+
+      const second = await fetch(`http://127.0.0.1:${port}/hooks/wake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Ping" }),
+      });
+      expect(second.status).toBe(429);
+    } finally {
+      await server.close();
+      await writeConfigFile({} as any);
+      authRateLimitTesting.reset();
     }
   });
 });
