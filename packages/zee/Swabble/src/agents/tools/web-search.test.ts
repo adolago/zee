@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { __testing } from "./web-search.js";
 
-const { inferPerplexityBaseUrlFromApiKey, resolvePerplexityBaseUrl, normalizeFreshness } =
-  __testing;
+const {
+  inferPerplexityBaseUrlFromApiKey,
+  resolvePerplexityBaseUrl,
+  normalizeFreshness,
+  freshnessToPerplexityRecency,
+} = __testing;
 
 describe("web_search perplexity baseUrl defaults", () => {
   it("detects a Perplexity key prefix", () => {
@@ -67,5 +71,23 @@ describe("web_search freshness normalization", () => {
     expect(normalizeFreshness("2024-13-01to2024-01-31")).toBeUndefined();
     expect(normalizeFreshness("2024-02-30to2024-03-01")).toBeUndefined();
     expect(normalizeFreshness("2024-03-10to2024-03-01")).toBeUndefined();
+  });
+});
+
+describe("freshnessToPerplexityRecency", () => {
+  it("maps Brave shortcuts to Perplexity recency values", () => {
+    expect(freshnessToPerplexityRecency("pd")).toBe("day");
+    expect(freshnessToPerplexityRecency("pw")).toBe("week");
+    expect(freshnessToPerplexityRecency("pm")).toBe("month");
+    expect(freshnessToPerplexityRecency("py")).toBe("year");
+  });
+
+  it("returns undefined for date ranges (not supported by Perplexity)", () => {
+    expect(freshnessToPerplexityRecency("2024-01-01to2024-01-31")).toBeUndefined();
+  });
+
+  it("returns undefined for undefined/empty input", () => {
+    expect(freshnessToPerplexityRecency(undefined)).toBeUndefined();
+    expect(freshnessToPerplexityRecency("")).toBeUndefined();
   });
 });
