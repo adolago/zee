@@ -35,6 +35,7 @@ import { SetupCommand } from "./cli/cmd/setup"
 import { PodsCommand } from "./cli/cmd/pods"
 import { BugReportCommand } from "./cli/cmd/bug-report"
 import { CheckCommand } from "./cli/cmd/check"
+import { DoctorCommand } from "./cli/cmd/doctor"
 import { ProviderCommand } from "./cli/cmd/provider"
 import { ClawHubCommand } from "./cli/cmd/clawhub"
 import { CompareCommand } from "./cli/cmd/compare"
@@ -46,6 +47,7 @@ import os from "node:os"
 import { fileURLToPath } from "node:url"
 import { reloadFlags } from "./flag/flag"
 import { resolveConfigDir } from "./global/dirs"
+import { installParentProcessGuard } from "./process/parent-guard"
 
 function loadDaemonEnv(): void {
   const configDir = resolveConfigDir()
@@ -76,6 +78,7 @@ function loadDaemonEnv(): void {
 
 loadDaemonEnv()
 reloadFlags()
+const parentProcessGuard = installParentProcessGuard({ guardName: "zee-cli" })
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -153,6 +156,7 @@ const cli = yargs(hideBin(process.argv))
   .command(ClientCommand)
   .command(RunCommand)
   .command(CheckCommand)
+  .command(DoctorCommand)
   .command(GenerateCommand)
   .command(DebugCommand)
   .command(PathsCommand)
@@ -239,6 +243,7 @@ try {
   }
   process.exitCode = 1
 } finally {
+  parentProcessGuard?.stop()
   // Some subprocesses don't react properly to SIGTERM and similar signals.
   // Most notably, some docker-container-based MCP servers don't handle such signals unless
   // run using `docker run --init`.

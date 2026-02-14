@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process"
 import fs from "node:fs/promises"
+import os from "node:os"
+import path from "node:path"
 import { Log } from "../../util/log"
 
 const log = Log.create({ service: "runtime-process-guard" })
@@ -8,6 +10,7 @@ const DEFAULT_LIMITS = {
   maxTotal: 24,
   maxMcpTotal: 6,
   maxMcpPerServer: 1,
+  maxClients: 4,
 } as const
 
 const DEFAULT_INTERVAL_MS = 30_000
@@ -19,6 +22,7 @@ type RuntimeCounts = {
   daemons: number
   gateways: number
   mcpServers: number
+  clients: number
   otherZee: number
 }
 
@@ -26,6 +30,7 @@ export type RuntimeProcessLimits = {
   maxTotal: number
   maxMcpTotal: number
   maxMcpPerServer: number
+  maxClients: number
 }
 
 export type RuntimeProcessEntry = {
@@ -33,6 +38,7 @@ export type RuntimeProcessEntry = {
   ppid?: number
   command: string
   kind: RuntimeKind
+  zeeExecutable: boolean
   mcpServerName?: string
   taggedMcp: boolean
   taggedParentPid?: number
@@ -40,11 +46,17 @@ export type RuntimeProcessEntry = {
   systemdUnit?: string
   systemdManaged: boolean
   descendantOfCurrent: boolean
+  exePath?: string
+  exeDeleted: boolean
+  binaryPinned: boolean
+  hasTty: boolean
+  interactiveClient: boolean
 }
 
 export type RuntimeSnapshot = {
   generatedAt: string
   currentPid: number
+  expectedExecutablePath?: string
   limits: RuntimeProcessLimits
   counts: RuntimeCounts
   processes: RuntimeProcessEntry[]
@@ -102,7 +114,50 @@ export function resolveRuntimeProcessLimits(
       input.maxMcpPerServer ??
       getEnvInt("ZEE_RUNTIME_MAX_MCP_PER_SERVER") ??
       DEFAULT_LIMITS.maxMcpPerServer,
+    maxClients:
+      input.maxClients ??
+      getEnvInt("ZEE_RUNTIME_MAX_CLIENT_PROCESSES") ??
+      DEFAULT_LIMITS.maxClients,
   }
+}
+
+function normalizeExePath(rawPath: string | undefined): string | undefined {
+  if (!rawPath) return undefined
+  return rawPath.endsWith(" (deleted)") ? rawPath.slice(0, -" (deleted)".length) : rawPath
+}
+
+function isZeeExecutablePath(exePath: string | undefined): boolean {
+  if (!exePath) return false
+  const base = path.basename(exePath).toLowerCase()
+  return base === "zee" || base === "zee.exe"
+}
+
+function isLikelyInteractiveClientCommand(command: string): boolean {
+  const lower = command.toLowerCase()
+  const trimmed = lower.trim()
+  if (trimmed === "zee" || trimmed.endsWith("/zee")) return true
+  if (lower.includes("--print-logs")) return true
+  if (/\bzee\s+attach\b/.test(lower)) return true
+  return false
+}
+
+async function resolveExpectedExecutablePath(): Promise<string | undefined> {
+  const configured = process.env.ZEE_EXPECTED_EXE?.trim()
+  const candidates = [
+    configured,
+    path.join(os.homedir(), ".bun", "bin", "zee"),
+    process.execPath,
+  ].filter((value): value is string => Boolean(value))
+
+  for (const candidate of candidates) {
+    try {
+      return await fs.realpath(candidate)
+    } catch {
+      // Ignore and continue
+    }
+  }
+
+  return undefined
 }
 
 function runPgrep(pattern: string): Array<{ pid: number; command: string }> {
@@ -165,6 +220,27 @@ async function readProcCgroup(pid: number): Promise<string | undefined> {
   }
 }
 
+async function readProcExePath(pid: number): Promise<string | undefined> {
+  try {
+    return await fs.readlink(`/proc/${pid}/exe`)
+  } catch {
+    return undefined
+  }
+}
+
+async function readProcStdinPath(pid: number): Promise<string | undefined> {
+  try {
+    return await fs.readlink(`/proc/${pid}/fd/0`)
+  } catch {
+    return undefined
+  }
+}
+
+function isTerminalPath(fdPath: string | undefined): boolean {
+  if (!fdPath) return false
+  return fdPath.startsWith("/dev/pts/") || fdPath.startsWith("/dev/tty")
+}
+
 function extractSystemdUnit(cgroup: string | undefined): string | undefined {
   if (!cgroup) return undefined
   const matches = Array.from(cgroup.matchAll(/\/([^/\n]+\.service)(?:\/|$)/g))
@@ -201,7 +277,7 @@ export function classifyRuntimeProcess(command: string): RuntimeKind {
   if (extractMcpServerName(command)) return "mcp_server"
 
   const lower = command.toLowerCase()
-  if (lower.includes("zee") && /(^|\s)daemon(\s|$)/.test(lower)) return "daemon"
+  if (lower.includes("zee") && /(^|\s)daemon(?:-orch)?(\s|$)/.test(lower)) return "daemon"
   if (lower.includes("zee") && /(^|\s)gateway(\s|$)/.test(lower)) return "gateway"
   return "zee_other"
 }
@@ -211,12 +287,14 @@ function shouldTrack(command: string): boolean {
 }
 
 function computeCounts(entries: RuntimeProcessEntry[]): RuntimeCounts {
+  const clients = entries.filter((entry) => entry.kind === "zee_other").length
   return {
     total: entries.length,
     daemons: entries.filter((entry) => entry.kind === "daemon").length,
     gateways: entries.filter((entry) => entry.kind === "gateway").length,
     mcpServers: entries.filter((entry) => entry.kind === "mcp_server").length,
-    otherZee: entries.filter((entry) => entry.kind === "zee_other").length,
+    clients,
+    otherZee: clients,
   }
 }
 
@@ -229,6 +307,9 @@ function buildViolations(entries: RuntimeProcessEntry[], limits: RuntimeProcessL
   }
   if (counts.mcpServers > limits.maxMcpTotal) {
     violations.push(`mcp servers ${counts.mcpServers} exceeds maxMcpTotal ${limits.maxMcpTotal}`)
+  }
+  if (counts.clients > limits.maxClients) {
+    violations.push(`clients ${counts.clients} exceeds maxClients ${limits.maxClients}`)
   }
 
   const byServer = new Map<string, number>()
@@ -261,6 +342,39 @@ function buildViolations(entries: RuntimeProcessEntry[], limits: RuntimeProcessL
     violations.push(`found ${orphanedGateways} orphaned gateway process(es)`)
   }
 
+  const orphanedClients = entries.filter((entry) => entry.kind === "zee_other" && entry.orphaned).length
+  if (orphanedClients > 0) {
+    violations.push(`found ${orphanedClients} orphaned client process(es)`)
+  }
+
+  const deletedExecutables = entries.filter((entry) => entry.kind === "zee_other" && entry.exeDeleted).length
+  if (deletedExecutables > 0) {
+    violations.push(`found ${deletedExecutables} client process(es) with deleted executables`)
+  }
+
+  const binaryMismatches = entries.filter(
+    (entry) =>
+      entry.kind === "zee_other" &&
+      !entry.binaryPinned &&
+      !entry.systemdManaged &&
+      !entry.descendantOfCurrent,
+  ).length
+  if (binaryMismatches > 0) {
+    violations.push(`found ${binaryMismatches} client process(es) not using pinned zee binary`)
+  }
+
+  const detachedInteractiveClients = entries.filter(
+    (entry) =>
+      entry.kind === "zee_other" &&
+      entry.interactiveClient &&
+      !entry.hasTty &&
+      !entry.systemdManaged &&
+      !entry.descendantOfCurrent,
+  ).length
+  if (detachedInteractiveClients > 0) {
+    violations.push(`found ${detachedInteractiveClients} detached interactive client process(es)`)
+  }
+
   const unmanagedDaemonLike = entries.filter((entry) => {
     if (entry.kind !== "daemon" && entry.kind !== "gateway") return false
     return !entry.systemdManaged && !entry.descendantOfCurrent
@@ -278,6 +392,7 @@ export async function collectRuntimeSnapshot(input: {
 } = {}): Promise<RuntimeSnapshot> {
   const currentPid = input.currentPid ?? process.pid
   const limits = resolveRuntimeProcessLimits(input.limits)
+  const expectedExecutablePath = await resolveExpectedExecutablePath()
 
   const raw = [...runPgrep("zee"), ...runPgrep("src/mcp/servers/")]
   const unique = new Map<number, { pid: number; command: string }>()
@@ -293,6 +408,8 @@ export async function collectRuntimeSnapshot(input: {
       const kind = classifyRuntimeProcess(entry.command)
       const ppid = await readProcPpid(entry.pid)
       const cgroup = await readProcCgroup(entry.pid)
+      const stdinPath = await readProcStdinPath(entry.pid)
+      const exeRawPath = await readProcExePath(entry.pid)
       const systemdUnit = extractSystemdUnit(cgroup)
       const systemdManaged = Boolean(systemdUnit)
       const env = kind === "mcp_server" ? await readProcEnv(entry.pid) : {}
@@ -301,15 +418,25 @@ export async function collectRuntimeSnapshot(input: {
       const taggedParentParsed = taggedParentRaw ? Number.parseInt(taggedParentRaw, 10) : Number.NaN
       const taggedParentPid = Number.isFinite(taggedParentParsed) ? taggedParentParsed : undefined
       const parentPid = taggedParentPid ?? ppid
-      const orphanable = kind === "mcp_server" || kind === "daemon" || kind === "gateway"
+      const orphanable =
+        kind === "mcp_server" || kind === "daemon" || kind === "gateway" || kind === "zee_other"
       const orphaned = orphanable && (!parentPid || parentPid <= 1 || !isPidAlive(parentPid))
       const descendantOfCurrent = await isDescendantOfPid(entry.pid, currentPid)
+      const exePath = normalizeExePath(exeRawPath)
+      const exeDeleted = Boolean(exeRawPath?.endsWith(" (deleted)"))
+      const zeeExecutable = isZeeExecutablePath(exePath)
+      const binaryPinned = expectedExecutablePath
+        ? exePath === expectedExecutablePath
+        : true
+      const hasTty = isTerminalPath(stdinPath)
+      const interactiveClient = kind === "zee_other" && isLikelyInteractiveClientCommand(entry.command)
 
       return {
         pid: entry.pid,
         ppid,
         command: entry.command,
         kind,
+        zeeExecutable,
         mcpServerName: extractMcpServerName(entry.command),
         taggedMcp,
         taggedParentPid,
@@ -317,20 +444,28 @@ export async function collectRuntimeSnapshot(input: {
         systemdUnit,
         systemdManaged,
         descendantOfCurrent,
+        exePath,
+        exeDeleted,
+        binaryPinned,
+        hasTty,
+        interactiveClient,
       }
     }),
   )
 
-  entries.sort((a, b) => a.pid - b.pid)
-  const counts = computeCounts(entries)
-  const violations = buildViolations(entries, limits)
+  const trackedEntries = entries.filter((entry) => entry.kind === "mcp_server" || entry.zeeExecutable)
+
+  trackedEntries.sort((a, b) => a.pid - b.pid)
+  const counts = computeCounts(trackedEntries)
+  const violations = buildViolations(trackedEntries, limits)
 
   return {
     generatedAt: new Date().toISOString(),
     currentPid,
+    expectedExecutablePath,
     limits,
     counts,
-    processes: entries,
+    processes: trackedEntries,
     violations,
   }
 }
@@ -448,6 +583,19 @@ export function isProtectedDaemonLikeProcess(params: {
   return false
 }
 
+export function isProtectedClientProcess(params: {
+  entry: RuntimeProcessEntry
+  currentPid: number
+}): boolean {
+  const { entry, currentPid } = params
+  if (entry.kind !== "zee_other") return false
+  if (entry.pid === currentPid) return true
+  if (entry.systemdManaged) return true
+  if (entry.descendantOfCurrent) return true
+  if (entry.hasTty && entry.binaryPinned && !entry.orphaned) return true
+  return false
+}
+
 function selectDaemonGatewayKills(
   snapshot: RuntimeSnapshot,
   currentPid: number,
@@ -464,6 +612,75 @@ function selectDaemonGatewayKills(
       entry,
       reason: entry.orphaned ? `orphaned-${entry.kind}` : `unmanaged-${entry.kind}`,
     })
+  }
+
+  return kills
+}
+
+function clientPriority(entry: RuntimeProcessEntry): number {
+  let score = 0
+  if (entry.descendantOfCurrent) score += 500
+  if (entry.systemdManaged) score += 300
+  if (entry.hasTty) score += 200
+  if (entry.interactiveClient) score += 120
+  if (entry.binaryPinned) score += 80
+  if (!entry.orphaned) score += 40
+  if (entry.exeDeleted) score -= 2_000
+  if (!entry.binaryPinned) score -= 1_000
+  if (entry.orphaned) score -= 1_000
+  if (entry.interactiveClient && !entry.hasTty) score -= 700
+  return score
+}
+
+function selectClientKills(
+  snapshot: RuntimeSnapshot,
+  currentPid: number,
+): Array<{ entry: RuntimeProcessEntry; reason: string }> {
+  const kills: Array<{ entry: RuntimeProcessEntry; reason: string }> = []
+  const seen = new Set<number>()
+  const clients = snapshot.processes.filter((entry) => entry.kind === "zee_other")
+
+  const addKill = (entry: RuntimeProcessEntry, reason: string) => {
+    if (seen.has(entry.pid)) return
+    seen.add(entry.pid)
+    kills.push({ entry, reason })
+  }
+
+  for (const entry of clients) {
+    if (isProtectedClientProcess({ entry, currentPid })) continue
+    if (entry.exeDeleted) {
+      addKill(entry, "deleted-executable")
+      continue
+    }
+    if (!entry.binaryPinned) {
+      addKill(entry, "binary-mismatch")
+      continue
+    }
+    if (entry.orphaned) {
+      addKill(entry, "orphaned-client")
+      continue
+    }
+    if (entry.interactiveClient && !entry.hasTty) {
+      addKill(entry, "detached-client")
+      continue
+    }
+  }
+
+  const survivors = clients.filter((entry) => !seen.has(entry.pid))
+  const overflow = Math.max(0, survivors.length - snapshot.limits.maxClients)
+  if (overflow <= 0) return kills
+
+  const byPriority = survivors
+    .filter((entry) => !isProtectedClientProcess({ entry, currentPid }))
+    .sort((a, b) => {
+      const pa = clientPriority(a)
+      const pb = clientPriority(b)
+      if (pa !== pb) return pa - pb
+      return a.pid - b.pid
+    })
+
+  for (const entry of byPriority.slice(0, overflow)) {
+    addKill(entry, "client-over-limit")
   }
 
   return kills
@@ -513,6 +730,7 @@ export async function runRuntimeProcessMaintenance(input: {
   const plannedKills = [
     ...selectDaemonGatewayKills(snapshotBefore, currentPid),
     ...selectMcpKills(snapshotBefore, currentPid),
+    ...selectClientKills(snapshotBefore, currentPid),
   ]
   const seenPlanned = new Set<number>()
   const kills: RuntimeMaintenanceKill[] = []
