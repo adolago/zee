@@ -16,6 +16,7 @@
   },
   "workspaces": {
     "packages": [
+      "packages/agent-core",
       "packages/zee",
       "packages/zee-adapter",
       "packages/app",
