@@ -248,7 +248,6 @@
         "@ai-sdk/xai": "3.0.50",
         "@babel/core": "7.28.0",
         "@clack/prompts": "1.0.0-alpha.1",
-        "@clawhub/registry": "file:../../../claw-registry",
         "@hono/standard-validator": "0.1.5",
         "@hono/zod-validator": "0.4.2",
         "@modelcontextprotocol/sdk": "1.26.0",
@@ -3353,8 +3352,6 @@
     "@zee/web/@shikijs/transformers": ["@shikijs/transformers@3.4.2", "", { "dependencies": { "@shikijs/core": "3.4.2", "@shikijs/types": "3.4.2" } }, "sha512-I5baLVi/ynLEOZoWSAMlACHNnG+yw5HDmse0oe+GW6U1u+ULdEB3UHiVWaHoJSSONV7tlcVxuaMy74sREDkSvg=="],
 
     "@zee/web/ai": ["ai@6.0.35", "", { "dependencies": { "@ai-sdk/gateway": "3.0.14", "@ai-sdk/provider": "3.0.3", "@ai-sdk/provider-utils": "4.0.6", "@opentelemetry/api": "1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-MxgtU6CjnegH1rhRfomM0gptKxP6r+9sxbLvYq36C1l85+o0LacqbXLdNVYzqab+lHN4q7ZP3QS8wZq4YkZahA=="],
-
-    "@zee/zee/@clawhub/registry": ["@clawhub/registry@file:../claw-registry", {}],
 
     "ai/@ai-sdk/provider": ["@ai-sdk/provider@3.0.5", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-2Xmoq6DBJqmSl80U6V9z5jJSJP7ehaJJQMy2iFUqTay06wdCqTnPVBBQbtEL8RCChenL+q5DC5H5WzU3vV3v8w=="],
 
