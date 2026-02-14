@@ -49,13 +49,37 @@ export function resolveSessionTranscriptPath(
   return path.join(resolveAgentSessionsDir(agentId), fileName);
 }
 
+function normalizeAbsoluteSessionFilePathWithinSessionsDir(params: {
+  sessionsDir: string;
+  sessionFile: string;
+}): string | undefined {
+  const resolvedBase = path.resolve(params.sessionsDir);
+  const resolvedCandidate = path.resolve(params.sessionFile);
+  const relative = path.relative(resolvedBase, resolvedCandidate);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    return undefined;
+  }
+  return path.resolve(resolvedBase, relative);
+}
+
 export function resolveSessionFilePath(
   sessionId: string,
   entry?: SessionEntry,
   opts?: { agentId?: string },
 ): string {
   const candidate = entry?.sessionFile?.trim();
-  return candidate ? candidate : resolveSessionTranscriptPath(sessionId, opts?.agentId);
+  if (!candidate) {
+    return resolveSessionTranscriptPath(sessionId, opts?.agentId);
+  }
+  if (!path.isAbsolute(candidate)) {
+    return candidate;
+  }
+  const sessionsDir = resolveAgentSessionsDir(opts?.agentId);
+  const normalized = normalizeAbsoluteSessionFilePathWithinSessionsDir({
+    sessionsDir,
+    sessionFile: candidate,
+  });
+  return normalized ?? candidate;
 }
 
 export function resolveStorePath(store?: string, opts?: { agentId?: string }) {
