@@ -64,7 +64,7 @@ import { buildEmbeddedSystemPrompt } from "./system-prompt.js";
 import { splitSdkTools } from "./tool-split.js";
 import type { EmbeddedPiCompactResult } from "./types.js";
 import { formatUserTime, resolveUserTimeFormat, resolveUserTimezone } from "../date-time.js";
-import { describeUnknownError, mapThinkingLevel, resolveExecToolDefaults } from "./utils.js";
+import { describeUnknownError, mapThinkingLevel } from "./utils.js";
 import { buildTtsSystemPromptHint } from "../../tts/tts.js";
 
 export type CompactEmbeddedPiSessionParams = {
@@ -210,7 +210,6 @@ export async function compactEmbeddedPiSessionDirect(
     const runAbortController = new AbortController();
     const toolsRaw = createZeeCodingTools({
       exec: {
-        ...resolveExecToolDefaults(params.config),
         elevated: params.bashElevated,
       },
       sandbox,
