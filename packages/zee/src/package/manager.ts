@@ -115,17 +115,13 @@ async function linkResourcePaths(input: {
   const pkgSegment = safeSegment(input.packageName)
   const linkedPaths: string[] = []
 
-  const ensureCleanDir = async (dir: string) => {
-    await fs.rm(dir, { recursive: true, force: true }).catch(() => {})
-    await fs.mkdir(dir, { recursive: true })
-  }
-
   for (const kind of ResourceKindSchema.options) {
     const entries = input.manifest[kind]
-    if (!entries.length) continue
 
     const targetRoot = path.join(resourcesRoot, kind, pkgSegment)
-    await ensureCleanDir(targetRoot)
+    await fs.rm(targetRoot, { recursive: true, force: true }).catch(() => {})
+    if (!entries.length) continue
+    await fs.mkdir(targetRoot, { recursive: true })
 
     for (const rel of entries) {
       const sourcePath = path.resolve(input.packageDir, rel)

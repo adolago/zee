@@ -21,6 +21,9 @@ async function withScope<T>(args: ScopeInput, fn: (scope: PackageScope, projectR
   return bootstrap(process.cwd(), async () => {
     const scope: PackageScope = args.local ? "local" : "global"
     const projectRoot = scope === "local" ? Instance.worktree : undefined
+    if (scope === "local" && projectRoot === "/") {
+      throw new Error("Local package scope requires running inside a git worktree")
+    }
     return fn(scope, projectRoot)
   })
 }
@@ -189,4 +192,3 @@ export const PackageConfigCommand = cmd({
     })
   },
 })
-
