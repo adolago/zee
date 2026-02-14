@@ -14,6 +14,7 @@ import { checkEnvironment } from "./check"
 import { GlobalBus } from "../../bus/global"
 import { ExperimentalHooks } from "@/hooks/experimental-hooks"
 import { Instance } from "@/project/instance"
+import { resolveRunMode } from "../run-mode"
 
 // ---------------------------------------------------------------------------
 // Typed tool rendering helpers
@@ -245,6 +246,11 @@ export const RunCommand = cmd({
         type: "boolean",
         describe: "skip all permission checks (no cuffs mode, equivalent to release mode)",
       })
+      .option("mode", {
+        type: "string",
+        choices: ["plan", "build", "review"],
+        describe: "execution mode (plan/review disable file-write tools)",
+      })
       .option("thinking", {
         type: "boolean",
         describe: "show thinking blocks",
@@ -292,6 +298,11 @@ export const RunCommand = cmd({
     if (message.trim().length === 0 && !args.command) {
       UI.error("You must provide a message or a command")
       process.exit(1)
+    }
+
+    const runMode = await resolveRunMode(args.mode as string | undefined)
+    if (args.skipPermissions && runMode !== "build") {
+      UI.warn(`--skip-permissions is ignored in ${runMode} mode`)
     }
 
     const execute = async (
@@ -431,12 +442,15 @@ export const RunCommand = cmd({
         }
       })()
 
-      // Hold mode: first message in new session restricts edit/write tools
-      // This mirrors TUI behavior - agents must plan before executing
+      // Build mode keeps current behavior: first message in a new session starts in hold-like tooling.
+      // Plan/review modes enforce read-only tools for the full run.
       const isNewSession = !args.continue && !args.session
-      const holdModeTools = isNewSession
-        ? { edit: false, write: false, notebook_edit: false }
-        : undefined
+      const readOnlyTools = { edit: false, write: false, notebook_edit: false }
+      const holdModeTools: Record<string, boolean> | undefined =
+        runMode === "build"
+          ? (isNewSession ? readOnlyTools : undefined)
+          : readOnlyTools
+      const skipPermissions = runMode === "build" ? args.skipPermissions : false
 
       if (args.command) {
         await sdk.session.command({
@@ -456,7 +470,7 @@ export const RunCommand = cmd({
           model: modelParam,
           variant: args.variant,
           tools: holdModeTools,
-          options: { skipPermissions: args.skipPermissions },
+          options: { skipPermissions },
           parts: [...fileParts, { type: "text", text: message }],
         })
       }
