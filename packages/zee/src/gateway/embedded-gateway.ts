@@ -19,15 +19,19 @@ let _resolved: {
 } | null = null
 let _resolveAttempted = false
 
+async function importUnchecked(modulePath: string): Promise<any> {
+  return await import(modulePath)
+}
+
 async function resolvePersonaGateway() {
   if (_resolveAttempted) return _resolved
   _resolveAttempted = true
   try {
     const [configMod, authMod, serverMod, lockMod] = await Promise.all([
-      import("../../Swabble/src/config/config"),
-      import("../../Swabble/src/gateway/auth"),
-      import("../../Swabble/src/gateway/server"),
-      import("../../Swabble/src/infra/gateway-lock"),
+      importUnchecked("../../Swabble/src/config/config"),
+      importUnchecked("../../Swabble/src/gateway/auth"),
+      importUnchecked("../../Swabble/src/gateway/server"),
+      importUnchecked("../../Swabble/src/infra/gateway-lock"),
     ])
     _resolved = {
       loadConfig: configMod.loadConfig,

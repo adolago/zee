@@ -36,6 +36,14 @@ async function makeStorePath() {
   };
 }
 
+function lastSetTimeoutDelay(spy: ReturnType<typeof vi.spyOn<typeof globalThis, "setTimeout">>): number | null {
+  for (let index = spy.mock.calls.length - 1; index >= 0; index -= 1) {
+    const delay = spy.mock.calls[index]?.[1];
+    if (typeof delay === "number") return delay;
+  }
+  return null;
+}
+
 describe("CronService timer resilience", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -110,6 +118,7 @@ describe("CronService timer resilience", () => {
 
   it("clamps timer delay to 60 seconds (drift guard)", async () => {
     const store = await makeStorePath();
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
     const cron = new CronService({
       storePath: store.storePath,
@@ -121,6 +130,7 @@ describe("CronService timer resilience", () => {
     });
 
     await cron.start();
+    const callsBeforeAdd = setTimeoutSpy.mock.calls.length;
 
     // Add a job 10 minutes in the future.
     const tenMinutesLater = Date.parse("2025-12-13T00:10:00.000Z");
@@ -133,15 +143,20 @@ describe("CronService timer resilience", () => {
       payload: { kind: "systemEvent", text: "hello" },
     });
 
-    // The timer should fire after at most 60 seconds, not 10 minutes.
-    // Advance 61 seconds to force one clamped timer tick.
-    await vi.advanceTimersByTimeAsync(61_000);
+    // The timer should arm for at most 60 seconds, not 10 minutes.
+    const addPhaseSpy = { mock: { calls: setTimeoutSpy.mock.calls.slice(callsBeforeAdd) } } as typeof setTimeoutSpy;
+    const initialDelay = lastSetTimeoutDelay(addPhaseSpy);
+    expect(initialDelay).not.toBeNull();
+    expect(initialDelay as number).toBeLessThanOrEqual(60_000);
 
-    // Continue advancing until the one-shot job's due time; this should
-    // exercise repeated re-arming without hanging fake timers.
-    await vi.advanceTimersByTimeAsync(9 * 60_000);
+    // Advance one minute and verify it re-arms with the same cap.
+    await vi.advanceTimersByTimeAsync(61_000);
+    const rearmedDelay = lastSetTimeoutDelay(setTimeoutSpy);
+    expect(rearmedDelay).not.toBeNull();
+    expect(rearmedDelay as number).toBeLessThanOrEqual(60_000);
 
     cron.stop();
+    setTimeoutSpy.mockRestore();
     await store.cleanup();
   });
 });

@@ -10,6 +10,29 @@
 
 import type { RGBA } from "@opentui/core"
 
+type CanvasImageLike = {
+  src: Buffer | Uint8Array | string
+  width: number
+  height: number
+}
+
+type CanvasContextLike = {
+  fillStyle: string
+  fillRect: (x: number, y: number, width: number, height: number) => void
+  drawImage: (image: CanvasImageLike, x: number, y: number, width?: number, height?: number) => void
+  getImageData: (x: number, y: number, width: number, height: number) => { data: Uint8ClampedArray }
+}
+
+type CanvasLike = {
+  getContext: (kind: "2d") => CanvasContextLike
+  toBuffer: (format: "image/png") => Buffer
+}
+
+type CanvasModuleLike = {
+  createCanvas: (width: number, height: number) => CanvasLike
+  Image: new () => CanvasImageLike
+}
+
 export namespace LatexRender {
   export interface RenderResult {
     png: Buffer
@@ -21,7 +44,7 @@ export namespace LatexRender {
 
   // Lazy-loaded modules
   let mathjax: any
-  let canvas: typeof import("@napi-rs/canvas") | undefined
+  let canvas: CanvasModuleLike | undefined
 
   // LRU cache: tex+width+colors -> result
   const cache = new Map<string, RenderResult>()
@@ -82,10 +105,11 @@ export namespace LatexRender {
   /**
    * Load @napi-rs/canvas lazily.
    */
-  async function getCanvas(): Promise<typeof import("@napi-rs/canvas")> {
+  async function getCanvas(): Promise<CanvasModuleLike> {
     if (canvas) return canvas
     try {
-      canvas = await import("@napi-rs/canvas")
+      const canvasModule = "@napi-rs/canvas"
+      canvas = (await import(canvasModule)) as CanvasModuleLike
       return canvas
     } catch (e) {
       throw new Error(`Failed to load @napi-rs/canvas: ${e}`)
