@@ -16,7 +16,7 @@ vi.mock("../logging/diagnostic.js", () => ({
   diagnosticLogger: diagnosticMocks.diag,
 }));
 
-import { enqueueCommand, getQueueSize } from "./command-queue.js";
+import { clearCommandLane, enqueueCommand, enqueueCommandInLane, getQueueSize } from "./command-queue.js";
 
 describe("command queue", () => {
   beforeEach(() => {
@@ -84,5 +84,41 @@ describe("command queue", () => {
     expect(waited).not.toBeNull();
     expect(waited as number).toBeGreaterThanOrEqual(5);
     expect(queuedAhead).toBe(0);
+  });
+
+  it("rejects queued tasks when a lane is cleared", async () => {
+    const lane = `test-clear-${Date.now()}`;
+    let releaseFirst: (() => void) | undefined;
+    let firstStarted = false;
+
+    const first = enqueueCommandInLane(lane, async () => {
+      firstStarted = true;
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      return "first";
+    });
+
+    await vi.waitFor(() => {
+      expect(firstStarted).toBe(true);
+    });
+
+    const second = enqueueCommandInLane(lane, async () => "second");
+
+    await vi.waitFor(() => {
+      expect(getQueueSize(lane)).toBe(2);
+    });
+
+    const removed = clearCommandLane(lane);
+    expect(removed).toBe(1);
+
+    await expect(second).rejects.toMatchObject({
+      name: "AbortError",
+      message: expect.stringContaining(`command lane cleared: ${lane}`),
+    });
+
+    releaseFirst?.();
+    await expect(first).resolves.toBe("first");
+    expect(getQueueSize(lane)).toBe(0);
   });
 });

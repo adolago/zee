@@ -14,6 +14,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { getMemory } from "../../memory/unified.js";
 import type { MemoryCategory } from "../../memory/types.js";
+import { installMcpParentGuard } from "./parent-guard.js";
 
 const MEMORY_CATEGORIES = [
   "conversation",
@@ -31,6 +32,8 @@ const server = new McpServer({
   name: "memory",
   version: "1.0.0",
 });
+
+installMcpParentGuard("memory");
 
 // =============================================================================
 // memory_store - Store information in memory

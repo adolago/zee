@@ -19,6 +19,7 @@ import { existsSync } from "node:fs";
 import { delimiter } from "node:path";
 import { getSafeEnv } from "../../util/safe-env.js";
 import { Stanley } from "../../paths.js";
+import { installMcpParentGuard } from "./parent-guard.js";
 
 type StanleyResult = {
   ok: boolean;
@@ -77,6 +78,8 @@ const server = new McpServer({
   name: "portfolio",
   version: "1.0.0",
 });
+
+installMcpParentGuard("portfolio");
 
 // =============================================================================
 // portfolio_status - Get portfolio holdings and performance
