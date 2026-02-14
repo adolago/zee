@@ -161,8 +161,60 @@ export function loadSessionEntry(sessionKey: string) {
   const agentId = resolveSessionStoreAgentId(cfg, canonicalKey);
   const storePath = resolveStorePath(sessionCfg?.store, { agentId });
   const store = loadSessionStore(storePath);
-  const entry = store[canonicalKey];
-  return { cfg, storePath, store, entry, canonicalKey };
+  const match = findStoreMatch(store, canonicalKey, sessionKey.trim());
+  const legacyKey = match?.key !== canonicalKey ? match?.key : undefined;
+  return { cfg, storePath, store, entry: match?.entry, canonicalKey, legacyKey };
+}
+
+function findStoreMatch(
+  store: Record<string, SessionEntry>,
+  ...candidates: string[]
+): { entry: SessionEntry; key: string } | undefined {
+  for (const candidate of candidates) {
+    if (candidate && store[candidate]) {
+      return { entry: store[candidate], key: candidate };
+    }
+  }
+  const loweredSet = new Set(candidates.filter(Boolean).map((candidate) => candidate.toLowerCase()));
+  for (const key of Object.keys(store)) {
+    if (loweredSet.has(key.toLowerCase())) {
+      return { entry: store[key], key };
+    }
+  }
+  return undefined;
+}
+
+export function findStoreKeysIgnoreCase(store: Record<string, unknown>, targetKey: string): string[] {
+  const lowered = targetKey.toLowerCase();
+  const matches: string[] = [];
+  for (const key of Object.keys(store)) {
+    if (key.toLowerCase() === lowered) {
+      matches.push(key);
+    }
+  }
+  return matches;
+}
+
+export function pruneLegacyStoreKeys(params: {
+  store: Record<string, unknown>;
+  canonicalKey: string;
+  candidates?: string[];
+}) {
+  const canonical = params.canonicalKey;
+  const toDelete = new Set<string>();
+  for (const candidate of params.candidates ?? []) {
+    if (candidate && candidate !== canonical) {
+      toDelete.add(candidate);
+    }
+  }
+  for (const variant of findStoreKeysIgnoreCase(params.store, canonical)) {
+    if (variant !== canonical) {
+      toDelete.add(variant);
+    }
+  }
+  for (const candidate of toDelete) {
+    delete params.store[candidate];
+  }
 }
 
 export function classifySessionKey(key: string, entry?: SessionEntry): GatewaySessionRow["kind"] {
@@ -296,9 +348,10 @@ export function listAgentsForGateway(cfg: ZeeConfig): {
 }
 
 function canonicalizeSessionKeyForAgent(agentId: string, key: string): string {
-  if (key === "global" || key === "unknown") return key;
-  if (key.startsWith("agent:")) return key;
-  return `agent:${normalizeAgentId(agentId)}:${key}`;
+  const lowered = key.toLowerCase();
+  if (lowered === "global" || lowered === "unknown") return lowered;
+  if (lowered.startsWith("agent:")) return lowered;
+  return `agent:${normalizeAgentId(agentId)}:${lowered}`;
 }
 
 function resolveDefaultStoreAgentId(cfg: ZeeConfig): string {
@@ -308,26 +361,27 @@ function resolveDefaultStoreAgentId(cfg: ZeeConfig): string {
 export function resolveSessionStoreKey(params: { cfg: ZeeConfig; sessionKey: string }): string {
   const raw = params.sessionKey.trim();
   if (!raw) return raw;
-  if (raw === "global" || raw === "unknown") return raw;
+  const loweredRaw = raw.toLowerCase();
+  if (loweredRaw === "global" || loweredRaw === "unknown") return loweredRaw;
 
-  const parsed = parseAgentSessionKey(raw);
+  const parsed = parseAgentSessionKey(loweredRaw);
   if (parsed) {
     const agentId = normalizeAgentId(parsed.agentId);
     const canonical = canonicalizeMainSessionAlias({
       cfg: params.cfg,
       agentId,
-      sessionKey: raw,
+      sessionKey: loweredRaw,
     });
-    if (canonical !== raw) return canonical;
-    return raw;
+    if (canonical !== loweredRaw) return canonical;
+    return loweredRaw;
   }
 
   const rawMainKey = normalizeMainKey(params.cfg.session?.mainKey);
-  if (raw === "main" || raw === rawMainKey) {
+  if (loweredRaw === "main" || loweredRaw === rawMainKey) {
     return resolveMainSessionKey(params.cfg);
   }
   const agentId = resolveDefaultStoreAgentId(params.cfg);
-  return canonicalizeSessionKeyForAgent(agentId, raw);
+  return canonicalizeSessionKeyForAgent(agentId, loweredRaw);
 }
 
 function resolveSessionStoreAgentId(cfg: ZeeConfig, canonicalKey: string): string {
@@ -339,15 +393,29 @@ function resolveSessionStoreAgentId(cfg: ZeeConfig, canonicalKey: string): strin
   return resolveDefaultStoreAgentId(cfg);
 }
 
-function canonicalizeSpawnedByForAgent(agentId: string, spawnedBy?: string): string | undefined {
+export function canonicalizeSpawnedByForAgent(
+  cfg: ZeeConfig,
+  agentId: string,
+  spawnedBy?: string,
+): string | undefined {
   const raw = spawnedBy?.trim();
   if (!raw) return undefined;
-  if (raw === "global" || raw === "unknown") return raw;
-  if (raw.startsWith("agent:")) return raw;
-  return `agent:${normalizeAgentId(agentId)}:${raw}`;
+  const lowered = raw.toLowerCase();
+  if (lowered === "global" || lowered === "unknown") return lowered;
+  const prefixed = lowered.startsWith("agent:")
+    ? lowered
+    : `agent:${normalizeAgentId(agentId)}:${lowered}`;
+  const parsed = parseAgentSessionKey(prefixed);
+  const resolvedAgent = parsed?.agentId ? normalizeAgentId(parsed.agentId) : normalizeAgentId(agentId);
+  return canonicalizeMainSessionAlias({ cfg, agentId: resolvedAgent, sessionKey: prefixed });
 }
 
-export function resolveGatewaySessionStoreTarget(params: { cfg: ZeeConfig; key: string }): {
+export function resolveGatewaySessionStoreTarget(params: {
+  cfg: ZeeConfig;
+  key: string;
+  scanLegacyKeys?: boolean;
+  store?: Record<string, SessionEntry>;
+}): {
   agentId: string;
   storePath: string;
   canonicalKey: string;
@@ -363,13 +431,23 @@ export function resolveGatewaySessionStoreTarget(params: { cfg: ZeeConfig; key: 
   const storePath = resolveStorePath(storeConfig, { agentId });
 
   if (canonicalKey === "global" || canonicalKey === "unknown") {
-    const storeKeys = key && key !== canonicalKey ? [canonicalKey, key] : [key];
+    const storeKeys = key && key !== canonicalKey ? [canonicalKey, key] : [canonicalKey];
     return { agentId, storePath, canonicalKey, storeKeys };
   }
 
   const storeKeys = new Set<string>();
   storeKeys.add(canonicalKey);
   if (key && key !== canonicalKey) storeKeys.add(key);
+  if (params.scanLegacyKeys !== false) {
+    const store = params.store ?? loadSessionStore(storePath);
+    const scanTargets = new Set(storeKeys);
+    scanTargets.add(`agent:${agentId}:main`);
+    for (const targetKey of scanTargets) {
+      for (const variant of findStoreKeysIgnoreCase(store, targetKey)) {
+        storeKeys.add(variant);
+      }
+    }
+  }
   return {
     agentId,
     storePath,
@@ -380,25 +458,26 @@ export function resolveGatewaySessionStoreTarget(params: { cfg: ZeeConfig; key: 
 
 // Merge with existing entry based on latest timestamp to ensure data consistency and avoid overwriting with less complete data.
 function mergeSessionEntryIntoCombined(params: {
+  cfg: ZeeConfig;
   combined: Record<string, SessionEntry>;
   entry: SessionEntry;
   agentId: string;
   canonicalKey: string;
 }) {
-  const { combined, entry, agentId, canonicalKey } = params;
+  const { cfg, combined, entry, agentId, canonicalKey } = params;
   const existing = combined[canonicalKey];
 
   if (existing && (existing.updatedAt ?? 0) > (entry.updatedAt ?? 0)) {
     combined[canonicalKey] = {
       ...entry,
       ...existing,
-      spawnedBy: canonicalizeSpawnedByForAgent(agentId, existing.spawnedBy ?? entry.spawnedBy),
+      spawnedBy: canonicalizeSpawnedByForAgent(cfg, agentId, existing.spawnedBy ?? entry.spawnedBy),
     };
   } else {
     combined[canonicalKey] = {
       ...existing,
       ...entry,
-      spawnedBy: canonicalizeSpawnedByForAgent(agentId, entry.spawnedBy ?? existing?.spawnedBy),
+      spawnedBy: canonicalizeSpawnedByForAgent(cfg, agentId, entry.spawnedBy ?? existing?.spawnedBy),
     };
   }
 }
@@ -416,6 +495,7 @@ export function loadCombinedSessionStoreForGateway(cfg: ZeeConfig): {
     for (const [key, entry] of Object.entries(store)) {
       const canonicalKey = canonicalizeSessionKeyForAgent(defaultAgentId, key);
       mergeSessionEntryIntoCombined({
+        cfg,
         combined,
         entry,
         agentId: defaultAgentId,
@@ -433,6 +513,7 @@ export function loadCombinedSessionStoreForGateway(cfg: ZeeConfig): {
     for (const [key, entry] of Object.entries(store)) {
       const canonicalKey = canonicalizeSessionKeyForAgent(agentId, key);
       mergeSessionEntryIntoCombined({
+        cfg,
         combined,
         entry,
         agentId,
