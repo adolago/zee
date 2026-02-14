@@ -93,4 +93,26 @@ describe("auth rate limiter", () => {
     });
     expect(ip).toBe("203.0.113.7");
   });
+
+  it("prunes only expired entries without clearing active lock state", () => {
+    let now = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const cfg = {
+      enabled: true,
+      windowMs: 1_000,
+      maxAttemptsPerIp: 1,
+      maxAttemptsPerToken: 1,
+      lockoutMs: 1_000,
+    };
+
+    // Old state that should be pruned.
+    expect(recordGatewayAuthFailure({ cfg, ip: "10.0.0.1" }).limited).toBe(true);
+
+    // Fresh state that must remain after pruning.
+    now = 3_000;
+    expect(recordGatewayAuthFailure({ cfg, ip: "10.0.0.2" }).limited).toBe(true);
+
+    // Cleanup runs during checks.
+    expect(checkGatewayAuthRateLimit({ cfg, ip: "10.0.0.2" }).limited).toBe(true);
+  });
 });
