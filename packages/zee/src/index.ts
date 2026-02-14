@@ -32,6 +32,7 @@ import { DaemonOrchCommand } from "./cli/cmd/daemon-orch"
 import { DaemonInstallCommand, DaemonUninstallCommand, DaemonServiceStatusCommand } from "./cli/cmd/daemon-install"
 import { PluginCommand } from "./cli/cmd/plugin"
 import { SetupCommand } from "./cli/cmd/setup"
+import { PodsCommand } from "./cli/cmd/pods"
 import { BugReportCommand } from "./cli/cmd/bug-report"
 import { CheckCommand } from "./cli/cmd/check"
 import { ProviderCommand } from "./cli/cmd/provider"
@@ -180,6 +181,7 @@ const cli = yargs(hideBin(process.argv))
   .command(PluginCommand)
   .command(ProviderCommand)
   .command(SetupCommand)
+  .command(PodsCommand)
   .command(BugReportCommand)
   .command(ClawHubCommand)
   .command(CompareCommand)
