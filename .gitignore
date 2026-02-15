@@ -34,6 +34,11 @@ opencode.json
 a.out
 target
 .scripts
+
+# Stanley Python backend artifacts
+stanley/.venv/
+stanley/__pycache__/
+stanley/*.egg-info/
 .direnv/
 
 # Local dev files

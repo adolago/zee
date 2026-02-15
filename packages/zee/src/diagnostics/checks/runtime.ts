@@ -9,6 +9,7 @@ import * as os from "os";
 import * as path from "path";
 import type { CheckResult, CheckOptions } from "../types";
 import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs";
+import { Stanley } from "../../paths";
 
 /** Minimum required Bun version */
 const MIN_BUN_VERSION = "1.0.0";
@@ -355,10 +356,63 @@ export async function runRuntimeChecks(
   results.push(await checkDiskSpace());
   results.push(await checkMemory());
 
+  // Stanley Python backend
+  results.push(checkStanleyBackend());
+
   // Extended checks (only in full mode)
   if (options.full) {
     results.push(await checkBinaryMatch());
   }
 
   return results;
+}
+
+/**
+ * Check that the Stanley Python backend is properly set up
+ */
+function checkStanleyBackend(): CheckResult {
+  const start = Date.now();
+  const repo = Stanley.repo();
+
+  const err = Stanley.preflight();
+  if (err) {
+    const isVenvMissing = err.includes("venv not found");
+    return {
+      id: "runtime.stanley-backend",
+      name: "Stanley Backend",
+      category: "runtime",
+      status: "fail",
+      message: "Stanley Python backend not ready",
+      details: err,
+      severity: "critical",
+      durationMs: Date.now() - start,
+      autoFixable: isVenvMissing,
+      ...(isVenvMissing && {
+        fix: async () => {
+          try {
+            execSync(`python3.12 -m venv ${path.join(repo, ".venv")}`, { timeout: 30_000, stdio: "pipe" });
+            execSync(`${path.join(repo, ".venv", "bin", "pip")} install -r ${path.join(repo, "requirements.txt")}`, {
+              timeout: 300_000,
+              stdio: "pipe",
+            });
+            return { success: true, message: "Created venv and installed dependencies" };
+          } catch (e) {
+            return { success: false, message: `Auto-fix failed: ${e instanceof Error ? e.message : String(e)}` };
+          }
+        },
+      }),
+    };
+  }
+
+  return {
+    id: "runtime.stanley-backend",
+    name: "Stanley Backend",
+    category: "runtime",
+    status: "pass",
+    message: `Python backend ready at ${repo}`,
+    severity: "info",
+    durationMs: Date.now() - start,
+    autoFixable: false,
+    metadata: { repo, python: Stanley.python() },
+  };
 }

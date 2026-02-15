@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0 OR GPL-3.0-or-later
+# Based on Zed's editor crate (https://github.com/zed-industries/zed)
+# Original work Copyright 2024 Zed Industries Inc.
+# Modifications Copyright 2024 Zee Contributors
+
+[package]
+name = "zee-editor"
+version.workspace = true
+edition.workspace = true
+license = "Apache-2.0 OR GPL-3.0-or-later"
+description = "Standalone text editor component extracted from Zed's editor crate for Zee GUI"
+repository = "https://github.com/adolago/zee"
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[features]
+default = []
+test-support = ["gpui/test-support"]
+
+[dependencies]
+gpui.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+anyhow.workspace = true
+
+smallvec = { version = "1.11", features = ["union"] }
+parking_lot = "0.12"
+itertools = "0.14"
+unicode-segmentation = "1.10"
+indexmap = "2.13"
+
+[dev-dependencies]
+pretty_assertions = "1.4"

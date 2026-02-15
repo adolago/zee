@@ -30,6 +30,8 @@ paths = [
   '''packages/zee/artifacts/''',
   # Vendored skill reference docs with example curl commands
   '''\.agents/skills/@codex/''',
+  # Stanley Python backend test fixtures (fake API keys, JWT test values)
+  '''stanley/tests/''',
 ]
 
 regexTarget = "match"

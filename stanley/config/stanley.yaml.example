@@ -1,0 +1,137 @@
+# Stanley Core Configuration
+
+# Data Sources
+openbb:
+  api_key: ""  # Your OpenBB PAT from https://my.openbb.co
+  base_url: "https://api.openbb.co"
+  timeout: 30
+  max_retries: 3
+
+# SEC Data
+sec:
+  enabled: true
+  base_url: "https://www.sec.gov"
+  # Identity for SEC EDGAR API (required - use your email)
+  identity: "your-email@example.com"
+  user_agent: "Stanley Investment Research your-email@example.com"
+  rate_limit: 10  # requests per second
+  
+# Options Flow Data
+options_flow:
+  enabled: false
+  provider: ""  # Provider name (e.g., "unusualwhales", "marketdata")
+  api_key: ""
+  base_url: ""
+  
+# Dark Pool Data
+dark_pool:
+  enabled: false
+  provider: ""
+  api_key: ""
+  
+# Database Configuration
+database:
+  postgresql:
+    host: "localhost"
+    port: 5432
+    database: "stanley"
+    username: "stanley"
+    password: ""
+  
+  redis:
+    host: "localhost"
+    port: 6379
+    password: ""
+    db: 0
+
+# Risk Management
+risk:
+  # Position limits
+  max_single_position: 0.10  # 10% max position
+  max_sector_exposure: 0.30  # 30% max sector exposure
+  max_leverage: 1.0  # No leverage by default
+  
+  # VaR parameters
+  var_confidence: 0.95
+  var_time_horizon: 1  # days
+  var_lookback: 252  # days
+  
+  # Stress testing
+  stress_scenarios:
+    - name: "2008 Crisis"
+      market_decline: -0.50
+      vol_shock: 2.0
+    - name: "COVID Crash"
+      market_decline: -0.35
+      vol_shock: 3.0
+    - name: "Interest Rate Shock"
+      rate_change: 0.02  # 200bp increase
+
+# Analytics Configuration
+analytics:
+  # Money flow analysis
+  money_flow:
+    lookback_days: 63  # ~3 months
+    volume_threshold: 1000000  # Min volume for analysis
+    
+  # Institutional holdings
+  institutional:
+    update_frequency: "quarterly"  # Based on 13F filing schedule
+    min_holdings_value: 1000000000  # $1B+ AUM managers only
+    
+  # Options analysis
+  options:
+    min_volume: 100  # Min contract volume
+    min_open_interest: 500
+    unusual_volume_threshold: 2.0  # 2x average volume
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  cors_origins: ["http://localhost:3000", "http://localhost:8050"]
+  
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "stanley.log"
+
+# NautilusTrader Integration
+nautilus:
+  # Data client configuration
+  data_client:
+    default_provider: "openbb"  # Data source for Nautilus
+    cache_ttl: 3600  # Cache duration in seconds
+    rate_limit: 5  # Requests per second
+
+  # Venue configuration
+  venues:
+    - name: "NASDAQ"
+      venue_id: "XNAS"
+    - name: "NYSE"
+      venue_id: "XNYS"
+    - name: "IEX"
+      venue_id: "IEXG"
+
+  # Actor configuration
+  actors:
+    money_flow:
+      lookback_periods: [20, 60, 252]  # Days
+      signal_threshold: 0.7
+
+    institutional:
+      update_frequency: "daily"
+      min_confidence: 0.5
+      smart_money_weight: 0.6
+
+  # Indicator configuration
+  indicators:
+    smart_money:
+      period: 20
+      sensitivity: 1.0
+
+    institutional_momentum:
+      short_period: 20
+      long_period: 60

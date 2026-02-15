@@ -64,6 +64,7 @@ import { HeartbeatRoute } from "./route/heartbeat"
 import { RegistryRoute } from "./route/registry"
 import { SkillsRoute } from "./route/skills"
 import { LlmRoute } from "./route/llm"
+import { StanleyProxyRoute } from "./route/stanley-proxy"
 import { RequestMeta } from "./request-meta"
 
 // Default API port for the daemon
@@ -371,6 +372,9 @@ export namespace Server {
         .route("/stt", SttRoute)
         .route("/", CronRoute)
         .route("/", HeartbeatRoute)
+
+        // Stanley API reverse proxy — forwards /api/* to Python backend
+        .route("/api", StanleyProxyRoute)
 
         // API Documentation
         .get(

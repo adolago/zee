@@ -1,0 +1,97 @@
+# Stanley GUI Dockerfile
+# Multi-stage build for Rust GPUI-based GUI (Wayland-only)
+#
+# NOTE: This GUI requires Wayland display server and GPU access.
+# Running in Docker is primarily for CI/CD builds and testing.
+# For production use, run the native binary directly on host.
+
+# =============================================================================
+# Stage 1: Build stage - Rust compilation
+# =============================================================================
+FROM rust:1.75-bookworm AS builder
+
+# Install build dependencies for GPUI (Wayland)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    libwayland-dev \
+    libxkbcommon-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    cmake \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /build
+
+# Copy Cargo files first for dependency caching
+COPY stanley-gui/Cargo.toml stanley-gui/Cargo.lock* ./
+
+# Create dummy src to cache dependencies
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo fetch
+
+# Copy actual source code
+COPY stanley-gui/src ./src/
+
+# Build release binary
+RUN cargo build --release && \
+    strip target/release/stanley-gui
+
+# =============================================================================
+# Stage 2: Runtime image
+# =============================================================================
+FROM debian:bookworm-slim AS runtime
+
+# Labels
+LABEL maintainer="Stanley Development Team <contact@stanley.com>" \
+    version="0.1.0" \
+    description="Stanley GUI - GPUI-based Investment Analysis Interface"
+
+# Install runtime dependencies for Wayland GUI
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libwayland-client0 \
+    libxkbcommon0 \
+    libfontconfig1 \
+    libfreetype6 \
+    libssl3 \
+    ca-certificates \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd --gid 1000 stanley && \
+    useradd --uid 1000 --gid stanley --shell /bin/bash --create-home stanley
+
+# Copy binary from builder
+COPY --from=builder /build/target/release/stanley-gui /usr/local/bin/stanley-gui
+
+# Set ownership
+RUN chown stanley:stanley /usr/local/bin/stanley-gui
+
+# Switch to non-root user
+USER stanley
+WORKDIR /home/stanley
+
+# Environment variables for Wayland
+ENV XDG_RUNTIME_DIR=/tmp \
+    WAYLAND_DISPLAY=wayland-0 \
+    STANLEY_API_URL=http://api:8000
+
+# The GUI needs display access - typically run with:
+# docker run -e WAYLAND_DISPLAY=$WAYLAND_DISPLAY \
+#   -v $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:/tmp/$WAYLAND_DISPLAY \
+#   stanley-gui
+
+CMD ["stanley-gui"]
+
+# =============================================================================
+# Stage 3: CI/CD Build-only (no runtime, just artifact extraction)
+# =============================================================================
+FROM scratch AS artifact
+
+COPY --from=builder /build/target/release/stanley-gui /stanley-gui

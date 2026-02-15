@@ -8,6 +8,7 @@
 import path from "path"
 import fs from "fs"
 import os from "os"
+import { execSync } from "child_process"
 
 function findZeeRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
@@ -79,7 +80,7 @@ export const Personas = {
  */
 export const Stanley = {
   repo(): string {
-    return process.env.STANLEY_REPO || Personas.stanley()
+    return process.env.STANLEY_REPO || path.join(getZeeRoot(), "stanley")
   },
 
   cli(): string {
@@ -129,6 +130,60 @@ export const Stanley = {
   /** Get the Stanley API base URL from env or default */
   apiUrl(): string {
     return process.env.STANLEY_API_URL || "http://127.0.0.1:8000"
+  },
+
+  /**
+   * Preflight check — verify the Stanley Python backend is ready to run.
+   * Returns null if everything is OK, or an error message string.
+   */
+  preflight(): string | null {
+    const repo = this.repo()
+
+    // 1. Check stanley/ directory exists
+    if (!fs.existsSync(repo)) {
+      return `Stanley backend not found at ${repo}. Run the migration or set STANLEY_REPO.`
+    }
+
+    // 2. Check the Python package exists
+    const packageDir = path.join(repo, "stanley")
+    if (!fs.existsSync(packageDir)) {
+      return `Stanley Python package not found at ${packageDir}.`
+    }
+
+    // 3. Check venv exists
+    const venvDir = path.join(repo, ".venv")
+    if (!fs.existsSync(venvDir)) {
+      return (
+        `Stanley Python venv not found at ${venvDir}.\n` +
+        `Set it up with:\n` +
+        `  cd ${repo}\n` +
+        `  python3.12 -m venv .venv\n` +
+        `  .venv/bin/pip install -r requirements.txt`
+      )
+    }
+
+    // 4. Check venv Python binary exists
+    const venvPython = path.join(venvDir, "bin", "python")
+    if (!fs.existsSync(venvPython)) {
+      return `Stanley venv Python binary missing at ${venvPython}. Recreate the venv.`
+    }
+
+    // 5. Verify key dependency (fastapi) is importable
+    try {
+      execSync(`${venvPython} -c "import fastapi; import uvicorn"`, {
+        timeout: 10_000,
+        stdio: "pipe",
+      })
+    } catch {
+      return (
+        `Stanley Python dependencies not installed.\n` +
+        `Install them with:\n` +
+        `  cd ${repo}\n` +
+        `  .venv/bin/pip install -r requirements.txt`
+      )
+    }
+
+    return null
   },
 }
 

@@ -11,6 +11,7 @@ import { Server } from "../../server/server"
 import { Provider } from "../../provider/provider"
 import { Agent } from "../../agent/agent"
 import { checkEnvironment } from "./check"
+import { Stanley } from "../../paths"
 import { GlobalBus } from "../../bus/global"
 import { ExperimentalHooks } from "@/hooks/experimental-hooks"
 import { Instance } from "@/project/instance"
@@ -259,6 +260,13 @@ export const RunCommand = cmd({
   },
   handler: async (args) => {
     await checkEnvironment()
+
+    // Mandatory: Stanley Python backend must be ready
+    const stanleyErr = Stanley.preflight()
+    if (stanleyErr) {
+      UI.error("Stanley backend is not ready:\n" + stanleyErr)
+      process.exit(1)
+    }
 
     let message = [...args.message, ...(args["--"] || [])]
       .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))

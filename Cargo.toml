@@ -2,6 +2,8 @@
 resolver = "3"
 members = [
     "packages/stanley-core",
+    "packages/zee-gui",
+    "packages/zee-gui/crates/zee-editor",
 ]
 
 [workspace.package]
@@ -32,3 +34,18 @@ tempfile = "3.14"
 
 # Directories
 directories = "6.0"
+
+# GPUI (Zed's UI framework)
+gpui = { git = "https://github.com/zed-industries/zed", rev = "94faaebfec5e46afa6d3aee5372cbbdb33b97c33", default-features = false, features = ["wayland", "font-kit"] }
+
+# HTTP & networking
+reqwest = { version = "0.13", features = ["json", "blocking"] }
+tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
+futures-util = "0.3"
+url = "2.5"
+
+# Logging
+log = "0.4"
+
+# Text processing
+regex = "1.12"

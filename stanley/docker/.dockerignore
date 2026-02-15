@@ -1,0 +1,106 @@
+# Stanley Docker Build Ignore File
+# Excludes files from Docker build context for faster builds
+
+# Version control
+.git
+.gitignore
+.github
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Rust build artifacts (for GUI)
+stanley-gui/target/
+**/*.rs.bk
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Configuration files with secrets
+config/stanley.yaml
+.env
+.env.*
+!.env.example
+secrets/
+
+# Data files (should be mounted as volumes)
+*.csv
+*.json
+*.pkl
+*.pickle
+*.log
+*.db
+*.sqlite
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development tools
+.claude/
+.claude-flow/
+.hive-mind/
+.swarm/
+memory/
+coordination/
+.ruff_cache/
+
+# Examples (not needed in production)
+examples/
+example.py
+
+# Tests (use separate test image if needed)
+tests/
