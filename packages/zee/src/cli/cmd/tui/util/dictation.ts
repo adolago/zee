@@ -2,14 +2,8 @@ import { platform } from "os"
 import { Auth } from "@/auth"
 
 export namespace Dictation {
-  export type Provider = "google" | "wisprflow"
-  export type Model = "default" | "gemini-3-flash" | "gemini-3-flash-preview"
-
   export type Config = {
     enabled?: boolean
-    provider?: Provider
-    model?: Model
-    region?: string
     language?: string
     alternative_languages?: string[]
     sample_rate?: number
@@ -19,21 +13,13 @@ export namespace Dictation {
   }
 
   export type RuntimeConfig = {
-    provider: Provider
-    model: Model
-    region: string
     language: string
     alternativeLanguages: string[]
     sampleRate: number
     autoSubmit: boolean
     maxDuration: number
     recordCommand?: string | string[]
-    google: {
-      apiKey: string
-    }
-    wisprflow: {
-      apiKey: string
-    }
+    apiKey: string
   }
 
   export type TranscribeState = "sending" | "receiving"
@@ -58,35 +44,22 @@ export namespace Dictation {
   const DEFAULT_MAX_DURATION = 30
   const DEFAULT_LANGUAGE = "en-US"
   const DEFAULT_ALTERNATIVE_LANGUAGES = ["pt-BR", "es-ES", "de-DE"]
-  const DEFAULT_REGION = "us-central1"
-  const DEFAULT_GOOGLE_AUDIO_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-  const DEFAULT_GOOGLE_AUDIO_MODEL = "gemini-3-flash-preview"
-  const DEFAULT_GOOGLE_AUDIO_PROMPT = "Transcribe the audio."
   const WISPRFLOW_API_URL = "https://platform-api.wisprflow.ai/api/v1/dash/api"
 
   export async function resolveConfig(input?: Config): Promise<RuntimeConfig | undefined> {
     if (input?.enabled === false) return
-    const provider: Provider = input?.provider ?? "google"
 
-    const model: Model = input?.model ?? "default"
-    const google = await resolveGoogleAuth()
-    const wisprflow = await resolveWisprflowAuth()
-
-    if (provider === "wisprflow" && !wisprflow.apiKey) return
-    if (provider === "google" && !google.apiKey) return
+    const auth = await resolveAuth()
+    if (!auth.apiKey) return
 
     return {
-      provider,
-      model,
-      region: input?.region ?? DEFAULT_REGION,
       language: input?.language ?? DEFAULT_LANGUAGE,
       alternativeLanguages: input?.alternative_languages ?? DEFAULT_ALTERNATIVE_LANGUAGES,
       sampleRate: input?.sample_rate ?? DEFAULT_SAMPLE_RATE,
       autoSubmit: input?.auto_submit ?? false,
       maxDuration: input?.max_duration ?? DEFAULT_MAX_DURATION,
       recordCommand: input?.record_command,
-      google: { apiKey: google.apiKey ?? "" },
-      wisprflow: { apiKey: wisprflow.apiKey ?? "" },
+      apiKey: auth.apiKey,
     }
   }
 
@@ -206,18 +179,6 @@ export namespace Dictation {
     fetcher?: typeof fetch
     onState?: (state: TranscribeState) => void
   }): Promise<string | undefined> {
-    if (input.config.provider === "wisprflow") {
-      return transcribeWisprflow(input)
-    }
-    return transcribeGoogle(input)
-  }
-
-  async function transcribeWisprflow(input: {
-    config: RuntimeConfig
-    audio: Uint8Array
-    fetcher?: typeof fetch
-    onState?: (state: TranscribeState) => void
-  }): Promise<string | undefined> {
     const fetcher = input.fetcher ?? fetch
     input.onState?.("sending")
 
@@ -247,7 +208,7 @@ export namespace Dictation {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${input.config.wisprflow.apiKey}`,
+        Authorization: `Bearer ${input.config.apiKey}`,
       },
       body: JSON.stringify(body),
     })
@@ -262,111 +223,7 @@ export namespace Dictation {
     return payload?.text?.trim() || undefined
   }
 
-  async function transcribeGoogle(input: {
-    config: RuntimeConfig
-    audio: Uint8Array
-    fetcher?: typeof fetch
-    onState?: (state: TranscribeState) => void
-  }): Promise<string | undefined> {
-    const fetcher = input.fetcher ?? fetch
-    input.onState?.("sending")
-
-    const decoded = decodeWavPcm16(input.audio)
-    if (!decoded) {
-      throw new Error("Dictation expects 16-bit PCM WAV audio. Update tui.dictation.record_command to output WAV.")
-    }
-
-    const truncated = truncatePcm16(decoded, input.config.maxDuration)
-    const base64Audio = Buffer.from(truncated.pcm).toString("base64")
-
-    const model = resolveModel(input.config.model)
-    const url = `${DEFAULT_GOOGLE_AUDIO_BASE_URL}/models/${model}:generateContent`
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "x-goog-api-key": input.config.google.apiKey,
-    }
-    const body = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: resolvePrompt(input.config) },
-            {
-              inline_data: {
-                mime_type: "audio/wav",
-                data: base64Audio,
-              },
-            },
-          ],
-        },
-      ],
-    }
-
-    const response = await fetcher(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    })
-
-    input.onState?.("receiving")
-    if (!response.ok) {
-      const text = await response.text().catch(() => "")
-      throw new Error(`Dictation request failed (${response.status}): ${text || response.statusText}`)
-    }
-
-    const payload = await response.json().catch(() => null)
-    return parseGeminiTranscript(payload)
-  }
-
-  function resolveModel(model: Model): string {
-    if (model === "default") return DEFAULT_GOOGLE_AUDIO_MODEL
-    if (model === "gemini-3-flash") return "gemini-3-flash-preview"
-    return model
-  }
-
-  function resolvePrompt(config: RuntimeConfig): string {
-    const primary = config.language?.trim()
-    const alternatives = config.alternativeLanguages?.map((lang) => lang.trim()).filter(Boolean) ?? []
-    const languages = [
-      ...(primary && primary.toLowerCase() !== "auto" ? [primary] : []),
-      ...alternatives,
-    ]
-    if (languages.length > 0) {
-      return `Transcribe the audio. Language may be: ${languages.join(", ")}.`
-    }
-    return DEFAULT_GOOGLE_AUDIO_PROMPT
-  }
-
-  function parseGeminiTranscript(value: unknown): string | undefined {
-    if (!value || typeof value !== "object") return
-    const candidates = (value as Record<string, unknown>).candidates
-    if (!Array.isArray(candidates) || candidates.length === 0) return
-    const parts = (candidates[0] as Record<string, unknown>)?.content
-      ? ((candidates[0] as Record<string, unknown>).content as Record<string, unknown>)?.parts
-      : undefined
-    if (!Array.isArray(parts)) return
-    const text = parts
-      .map((part) => (part && typeof part === "object" ? (part as Record<string, unknown>).text : undefined))
-      .map((part) => (typeof part === "string" ? part.trim() : ""))
-      .filter(Boolean)
-      .join("\n")
-      .trim()
-    return text || undefined
-  }
-
-  async function resolveGoogleAuth(): Promise<{ apiKey?: string }> {
-    const envApiKey = process.env["GOOGLE_API_KEY"] ?? process.env["GEMINI_API_KEY"]
-    if (envApiKey) return { apiKey: envApiKey.trim() }
-
-    const stored = await Auth.get("google")
-    if (stored?.type === "api" && stored.key) {
-      return { apiKey: stored.key }
-    }
-
-    return {}
-  }
-
-  async function resolveWisprflowAuth(): Promise<{ apiKey?: string }> {
+  async function resolveAuth(): Promise<{ apiKey?: string }> {
     const envApiKey = process.env["WISPRFLOW_API_KEY"]
     if (envApiKey) return { apiKey: envApiKey.trim() }
 

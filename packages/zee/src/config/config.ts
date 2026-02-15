@@ -993,18 +993,7 @@ export namespace Config {
       .describe("Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column"),
     dictation: z
       .object({
-        enabled: z.boolean().optional().describe("Enable dictation"),
-        provider: z.enum(["google", "wisprflow"]).optional().default("google").describe("Dictation provider: 'google' (Gemini) or 'wisprflow' (Wispr Flow)"),
-        model: z
-          .enum(["default", "gemini-3-flash", "gemini-3-flash-preview"])
-          .optional()
-          .default("default")
-          .describe("Speech recognition model (Gemini audio): 'default' uses Gemini 3 Flash. Ignored for wisprflow."),
-        region: z
-          .string()
-          .optional()
-          .default("us-central1")
-          .describe("Reserved for future use (ignored by Gemini audio)"),
+        enabled: z.boolean().optional().describe("Enable dictation (requires Wispr Flow API key via zee auth login wisprflow)"),
         language: z.string().optional().default("en-US").describe("Primary language (BCP-47 code)"),
         alternative_languages: z
           .array(z.string())
@@ -1026,7 +1015,7 @@ export namespace Config {
           .describe("Override dictation recording command"),
       })
       .optional()
-      .describe("Dictation settings"),
+      .describe("Dictation settings (uses Wispr Flow)"),
     vim: z
       .object({
         enabled: z.boolean().optional().default(true).describe("Enable vim normal/insert modes"),
