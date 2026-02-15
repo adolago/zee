@@ -30,6 +30,9 @@ import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
 import path from "path"
 import { startRuntimeProcessGuard, type RuntimeProcessLimits } from "./runtime-process-guard"
+import { DaemonServer } from "@root/daemon/ipc-server"
+import { DEFAULT_SOCKET_PATH } from "@root/daemon/types"
+import os from "os"
 
 const log = Log.create({ service: "always-on" })
 
@@ -127,6 +130,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   let cronService: CronService | null = null
   let heartbeatRunner: HeartbeatRunner | null = null
   let stopRuntimeGuard: (() => void) | undefined
+  let ipcServer: DaemonServer | null = null
 
   // Initialize session persistence
   try {
@@ -376,6 +380,38 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     Output.log(`Runtime:    Process guard enabled (${Math.round(runtimeGuardIntervalMs / 1000)}s cadence)`)
   }
 
+  // Start orchestration IPC server (worker pool for drones/background tasks)
+  try {
+    const cores = (() => {
+      try {
+        return typeof os.availableParallelism === "function"
+          ? os.availableParallelism()
+          : os.cpus().length
+      } catch {
+        return 2
+      }
+    })()
+    const maxWorkers = Math.max(2, Math.min(8, cores - 1))
+
+    ipcServer = new DaemonServer({
+      socketPath: process.env.ZEE_IPC_SOCKET || DEFAULT_SOCKET_PATH,
+      orchestration: {
+        maxWorkers,
+        queue: {
+          cap: 20,
+          dropPolicy: "summarize",
+          dedupeMode: "task-id",
+        },
+      },
+    })
+    await ipcServer.start()
+    Output.log(`Orchestration: Worker pool started (workers=${maxWorkers}, socket=${process.env.ZEE_IPC_SOCKET || DEFAULT_SOCKET_PATH})`)
+  } catch (error) {
+    log.error("Failed to start orchestration IPC server", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
   // Cleanup function
   const cleanup = async (signal?: NodeJS.Signals, error?: Error) => {
     log.info("always-on process shutting down", { signal, error: error?.message })
@@ -388,6 +424,12 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       signal,
       error: error?.message,
     })
+
+    // Stop orchestration IPC server
+    if (ipcServer) {
+      await ipcServer.stop().catch((e) => log.error("IPC server shutdown error", { error: String(e) }))
+      ipcServer = null
+    }
 
     // Stop heartbeat
     if (heartbeatRunner) {
@@ -478,6 +520,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     port: state.port,
     services: {
       persistence: persistenceEnabled,
+      orchestration: ipcServer !== null,
       whatsapp: false,
     },
     sessionsWithIncompleteTodos: 0,

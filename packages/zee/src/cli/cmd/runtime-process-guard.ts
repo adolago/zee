@@ -278,7 +278,7 @@ export function classifyRuntimeProcess(command: string): RuntimeKind {
   if (extractMcpServerName(command)) return "mcp_server"
 
   const lower = command.toLowerCase()
-  if (lower.includes("zee") && /(^|\s)daemon(?:-orch)?(\s|$)/.test(lower)) return "daemon"
+  if (lower.includes("zee") && /(^|\s)daemon(\s|$)/.test(lower)) return "daemon"
   if (lower.includes("zee") && /(^|\s)gateway(\s|$)/.test(lower)) return "gateway"
   return "zee_other"
 }

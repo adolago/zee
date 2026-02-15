@@ -111,7 +111,6 @@ export async function collectPlatformSnapshots(
     if (process.platform === "linux") {
       plan.push(
         { name: "systemd-user-status", command: ["systemctl", "--user", "status", "zee", "--no-pager"] },
-        { name: "systemd-user-orch-status", command: ["systemctl", "--user", "status", "zee-orch", "--no-pager"] },
         { name: "journal-zee", command: ["journalctl", "--user", "-u", "zee", "--since", "10 min ago", "--no-pager"] },
       )
     }

@@ -11,7 +11,7 @@
 # 5. Starts daemon via systemctl --user (unless --no-daemon)
 # 6. Verifies everything is working
 #
-# The runtime is managed by systemd user services (zee.service + zee-orch.service).
+# The runtime is managed by a systemd user service (zee.service).
 # Never use pkill/kill -9 to manage the daemon -- use systemctl.
 #
 
@@ -26,7 +26,6 @@ DAEMON_PORT="${ZEE_PORT:-3210}"
 DAEMON_HOST="${ZEE_HOST:-127.0.0.1}"
 DAEMON_URL="${ZEE_URL:-http://$DAEMON_HOST:$DAEMON_PORT}"
 SYSTEMD_DAEMON_UNIT="zee.service"
-SYSTEMD_ORCH_UNIT="zee-orch.service"
 
 # Colors
 RED='\033[0;31m'
@@ -158,20 +157,6 @@ show_status() {
     warn "Not enabled"
   fi
 
-  echo "  $SYSTEMD_ORCH_UNIT:"
-  if systemctl --user is-active "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
-    local orch_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_ORCH_UNIT" 2>/dev/null)
-    local orch_uptime=$(systemctl --user show -p ActiveEnterTimestamp --value "$SYSTEMD_ORCH_UNIT" 2>/dev/null)
-    ok "Active (PID: $orch_pid, since: $orch_uptime)"
-  else
-    local orch_state=$(systemctl --user is-active "$SYSTEMD_ORCH_UNIT" 2>/dev/null || echo "unknown")
-    warn "Not active ($orch_state)"
-  fi
-  if systemctl --user is-enabled "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
-    ok "Enabled (starts on login)"
-  else
-    warn "Not enabled"
-  fi
   echo ""
 
   # Binary info
@@ -268,12 +253,9 @@ show_status() {
 
   # Quick reference
   echo "Quick commands:"
-  echo "  systemctl --user restart zee           # restart main daemon"
-  echo "  systemctl --user restart zee-orch      # restart orchestration daemon"
-  echo "  systemctl --user stop zee              # stop main daemon"
-  echo "  systemctl --user stop zee-orch         # stop orchestration daemon"
+  echo "  systemctl --user restart zee           # restart daemon"
+  echo "  systemctl --user stop zee              # stop daemon"
   echo "  journalctl --user -u zee -f            # tail daemon logs"
-  echo "  journalctl --user -u zee-orch -f       # tail orchestration logs"
   echo "  ./scripts/reload.sh                    # rebuild + restart"
   echo ""
   echo "==============================================================="
@@ -297,13 +279,6 @@ if systemctl --user is-active "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1; then
   ok "Main daemon stopped"
 else
   warn "Main daemon was not running"
-fi
-
-if systemctl --user is-active "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
-  systemctl --user stop "$SYSTEMD_ORCH_UNIT"
-  ok "Orchestration daemon stopped"
-else
-  warn "Orchestration daemon was not running"
 fi
 
 # Wait for graceful shutdown
@@ -397,13 +372,6 @@ if ! $NO_DAEMON; then
       warn "Main daemon started but health check failed (may still be initializing)"
     fi
 
-    # Start orchestration daemon (non-fatal if unavailable)
-    if systemctl --user start "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1; then
-      orch_pid=$(systemctl --user show -p MainPID --value "$SYSTEMD_ORCH_UNIT" 2>/dev/null)
-      ok "Orchestration daemon started (PID: $orch_pid)"
-    else
-      warn "Orchestration daemon failed to start (or unit not installed). Subtasks will use local fallback."
-    fi
   else
     err "Main daemon failed to start! Check logs:"
     echo ""
@@ -426,7 +394,7 @@ verify_providers() {
 
   # Check Qdrant connectivity
   local qdrant_url="${QDRANT_URL:-http://localhost:6333}"
-  if curl -sf "$qdrant_url/health" >/dev/null 2>&1; then
+  if curl -sf "$qdrant_url/healthz" >/dev/null 2>&1; then
     ok "Qdrant:     $qdrant_url"
   else
     warn "Qdrant:     NOT AVAILABLE ($qdrant_url)"
@@ -572,7 +540,6 @@ if ! verify_providers; then
   if ! $NO_DAEMON; then
     warn "Stopping daemon because startup requirements were not met..."
     systemctl --user stop "$SYSTEMD_DAEMON_UNIT" >/dev/null 2>&1 || true
-    systemctl --user stop "$SYSTEMD_ORCH_UNIT" >/dev/null 2>&1 || true
   fi
   exit 1
 fi

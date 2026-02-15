@@ -37,6 +37,7 @@ export namespace LifecycleHooks {
         port: z.number(),
         services: z.object({
           persistence: z.boolean(),
+          orchestration: z.boolean(),
           whatsapp: z.boolean(),
         }),
         sessionsWithIncompleteTodos: z.number(),

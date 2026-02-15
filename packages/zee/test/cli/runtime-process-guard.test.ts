@@ -62,7 +62,6 @@ describe("runtime-process-guard helpers", () => {
 
   test("classifyRuntimeProcess classifies daemon gateway and mcp", () => {
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee daemon --port 3210")).toBe("daemon")
-    expect(classifyRuntimeProcess("/home/user/.bun/bin/zee daemon-orch --ipc-socket /tmp/daemon.sock")).toBe("daemon")
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee gateway --port 18789")).toBe("gateway")
     expect(classifyRuntimeProcess("bun run /repo/src/mcp/servers/calendar.ts")).toBe("mcp_server")
     expect(classifyRuntimeProcess("zee run \"hello\"")).toBe("zee_other")

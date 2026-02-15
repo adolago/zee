@@ -28,7 +28,6 @@ import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
 import { DaemonCommand, DaemonStatusCommand, DaemonStopCommand, GatewayStatusCommand } from "./cli/cmd/daemon"
 import { DaemonEventsCommand } from "./cli/cmd/daemon-events"
-import { DaemonOrchCommand } from "./cli/cmd/daemon-orch"
 import { DaemonInstallCommand, DaemonUninstallCommand, DaemonServiceStatusCommand } from "./cli/cmd/daemon-install"
 import { PluginCommand } from "./cli/cmd/plugin"
 import { SetupCommand } from "./cli/cmd/setup"
@@ -40,6 +39,7 @@ import { DoctorCommand } from "./cli/cmd/doctor"
 import { ProviderCommand } from "./cli/cmd/provider"
 import { ClawHubCommand } from "./cli/cmd/clawhub"
 import { CompareCommand } from "./cli/cmd/compare"
+import { ReliabilityCommand } from "./cli/cmd/reliability"
 import { ClientCommand } from "./cli/cmd/client"
 import { GatewayCommand } from "./cli/cmd/gateway"
 import { ChannelsCommand } from "./cli/cmd/channels"
@@ -175,7 +175,6 @@ const cli = yargs(hideBin(process.argv))
   .command(PrCommand)
   .command(SessionCommand)
   .command(DaemonCommand)
-  .command(DaemonOrchCommand)
   .command(DaemonEventsCommand)
   .command(DaemonStatusCommand)
   .command(DaemonStopCommand)
@@ -194,6 +193,7 @@ const cli = yargs(hideBin(process.argv))
   .command(BugReportCommand)
   .command(ClawHubCommand)
   .command(CompareCommand)
+  .command(ReliabilityCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

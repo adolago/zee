@@ -57,12 +57,9 @@ Zee can spawn drones (background workers), uses Qdrant memory, and preserves con
 ## Daemon (systemd)
 
 ```bash
-systemctl --user restart zee           # Restart main daemon
-systemctl --user restart zee-orch      # Restart orchestration daemon
-systemctl --user status zee            # Main daemon status
-systemctl --user status zee-orch       # Orchestration daemon status
-journalctl --user -u zee -f            # Main daemon logs
-journalctl --user -u zee-orch -f       # Orchestration daemon logs
+systemctl --user restart zee           # Restart daemon
+systemctl --user status zee            # Daemon status
+journalctl --user -u zee -f            # Daemon logs
 ./scripts/reload.sh                    # Full rebuild + restart
 ```
 
