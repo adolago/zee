@@ -265,7 +265,7 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
 
     return surfaceConfig;
   } catch (error) {
-    log.debug('Could not load surface config, using defaults', {
+    log.warn('Could not load surface config, using defaults', {
       error: error instanceof Error ? error.message : String(error),
     });
 

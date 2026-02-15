@@ -168,9 +168,14 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     })
   }
 
-  // Initialize surfaces
+  // Initialize surfaces (needs Instance context for Config.get())
   try {
-    await initSurfaces()
+    await Instance.provide({
+      directory,
+      async fn() {
+        await initSurfaces()
+      },
+    })
     surfacesEnabled = true
     Output.log("Surfaces:   Multi-surface support enabled")
   } catch (error) {

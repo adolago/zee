@@ -296,7 +296,12 @@ class MessageBatcher {
   private isAllowedSender(msg: PlatformMessage): boolean {
     if (this.config.allowedSenders.length === 0) return true;
     if (this.config.allowedSenders.includes('*')) return true;
-    return this.config.allowedSenders.includes(msg.senderId);
+    // Normalize phone numbers: strip leading '+' for comparison
+    // (Cloud API sends bare numbers, configs often use +prefix)
+    const normalized = msg.senderId.replace(/^\+/, '');
+    return this.config.allowedSenders.some(
+      (s) => s === msg.senderId || s.replace(/^\+/, '') === normalized,
+    );
   }
 
   private isAllowedGroup(msg: PlatformMessage): boolean {

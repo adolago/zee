@@ -28,6 +28,11 @@ export function emitInboundMessage(msg: PlatformMessage): void {
   inboundBus.emit("message", msg)
 }
 
+/** Debug helper: check how many listeners are on the inbound bus */
+export function getInboundBusListenerCount(): number {
+  return inboundBus.listenerCount("message")
+}
+
 // ---------------------------------------------------------------------------
 // Forwarded message type (from meta-cli webhook)
 // ---------------------------------------------------------------------------
