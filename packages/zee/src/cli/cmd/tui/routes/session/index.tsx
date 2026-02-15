@@ -1367,14 +1367,6 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const ctx = use()
   const local = useLocal()
   const { theme } = useTheme()
-  const sync = useSync()
-  const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
-
-
-  const final = createMemo(() => {
-    return props.message.finish && !["tool-calls", "unknown"].includes(props.message.finish)
-  })
-
   const hasVisibleText = createMemo(() =>
     props.parts.some((part) => part.type === "text" && part.text.trim()),
   )
@@ -1394,12 +1386,6 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const isStreaming = createMemo(() => !props.message.time.completed && !props.message.error)
 
 
-  const duration = createMemo(() => {
-    if (!props.message.time.completed) return 0
-    const user = messages().find((x) => x.role === "user" && x.id === props.message.parentID)
-    if (!user?.time?.created) return 0
-    return props.message.time.completed - user.time.created
-  })
 
   return (
     <>
@@ -1434,24 +1420,12 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
         </box>
       </Show>
       <Switch>
-        <Match when={final() || props.message.error?.name === "MessageAbortedError"}>
-          {/* Codex-style: all on one line with horizontal line */}
+        <Match when={props.message.error?.name === "MessageAbortedError"}>
           <box marginTop={1} flexDirection="row" height={1}>
             <text fg={theme.border}>─ </text>
             <text flexShrink={0}>
-              <span
-                style={{
-                  fg: props.message.error?.name === "MessageAbortedError"
-                    ? theme.textMuted
-                    : theme.primary,
-                }}
-              >●</span>
-              <Show when={duration()}>
-                <span style={{ fg: theme.textMuted }}> Worked for {Locale.duration(duration())}</span>
-              </Show>
-              <Show when={props.message.error?.name === "MessageAbortedError"}>
-                <span style={{ fg: theme.textMuted }}> interrupted</span>
-              </Show>
+              <span style={{ fg: theme.textMuted }}>●</span>
+              <span style={{ fg: theme.textMuted }}> interrupted</span>
             </text>
             <text fg={theme.border} flexGrow={1} flexShrink={1}> </text>
           </box>
