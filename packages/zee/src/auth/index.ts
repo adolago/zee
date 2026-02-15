@@ -44,6 +44,7 @@ export namespace Auth {
       type: z.literal("api"),
       key: z.string(),
     })
+    .passthrough() // Allow extra fields like username for languagetool
     .meta({ ref: "ApiAuth" })
 
   export const WellKnown = z

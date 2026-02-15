@@ -14,7 +14,6 @@ export interface GrammarError {
 export interface GrammarCheckerOptions {
   debounceMs?: number
   enabled: () => boolean
-  config?: () => { username?: string; apiKey?: string } | undefined
 }
 
 export interface GrammarChecker {
@@ -89,7 +88,7 @@ export function createGrammarChecker(options: GrammarCheckerOptions): GrammarChe
     abortController = new AbortController()
 
     try {
-      const matches = await Grammar.check(text, options.config?.())
+      const matches = await Grammar.check(text)
 
       // Check if aborted or text changed while checking
       if (abortController?.signal.aborted || pendingText !== undefined) {

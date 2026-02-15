@@ -1133,8 +1133,6 @@ export namespace Config {
 
   export const Grammar = z.object({
     provider: z.literal("languagetool").describe("Grammar checking provider"),
-    username: z.string().optional().describe("LanguageTool username/email"),
-    apiKey: z.string().optional().describe("LanguageTool API key"),
   }).meta({
     ref: "GrammarConfig",
   })
@@ -1876,9 +1874,6 @@ export namespace Config {
     }
     // Redact zee secrets
     if (copy.zee?.splitwise?.token) copy.zee.splitwise.token = "********"
-
-    // Redact grammar secrets
-    if (copy.grammar?.apiKey) copy.grammar.apiKey = "********"
 
     // Redact MCP secrets
     if (copy.mcp) {

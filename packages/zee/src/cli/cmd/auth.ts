@@ -48,6 +48,10 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
     name: "Wispr Flow",
     hint: "Wispr Flow dictation API key",
   },
+  languagetool: {
+    name: "LanguageTool",
+    hint: "LanguageTool API key (premium)",
+  },
 }
 
 const DEFAULT_DAEMON_PORT = 3210
@@ -867,6 +871,33 @@ export const AuthLoginCommand = cmd({
           prompts.log.success(`${provider} configured at ${baseURL}`)
           prompts.log.info(`Config updated: ${configPath}`)
           prompts.log.info(`Use models as: ${provider}/<model-name>`)
+          prompts.outro("Done")
+          return
+        }
+
+        // Handle LanguageTool - needs username + API key
+        if (provider === "languagetool") {
+          const username = await prompts.text({
+            message: "Enter your LanguageTool email",
+            placeholder: "user@example.com",
+            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+          })
+          if (prompts.isCancel(username)) throw new UI.CancelledError()
+
+          const apiKey = await prompts.password({
+            message: "Enter your LanguageTool API key",
+            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+          })
+          if (prompts.isCancel(apiKey)) throw new UI.CancelledError()
+
+          await Auth.set(provider, {
+            type: "api",
+            key: apiKey,
+            username,
+          } as Auth.Info)
+          await notifyDaemonAuthChange(config)
+
+          prompts.log.success("LanguageTool configured")
           prompts.outro("Done")
           return
         }

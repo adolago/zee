@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { Auth } from "@/auth"
 
 export namespace Grammar {
   export const Match = z.object({
@@ -21,15 +22,27 @@ export namespace Grammar {
 
   export type Match = z.infer<typeof Match>
 
-  export async function check(text: string, config?: { username?: string; apiKey?: string }): Promise<Match[]> {
+  async function resolveAuth(): Promise<{ username?: string; apiKey?: string }> {
+    const stored = await Auth.get("languagetool").catch(() => undefined)
+    if (stored?.type === "api" && stored.key) {
+      return {
+        username: (stored as { username?: string }).username,
+        apiKey: stored.key,
+      }
+    }
+    return {}
+  }
+
+  export async function check(text: string): Promise<Match[]> {
     try {
+      const auth = await resolveAuth()
       const params = new URLSearchParams()
       params.append("text", text)
       params.append("language", "auto")
-      
-      if (config?.username && config?.apiKey) {
-        params.append("username", config.username)
-        params.append("apiKey", config.apiKey)
+
+      if (auth.username && auth.apiKey) {
+        params.append("username", auth.username)
+        params.append("apiKey", auth.apiKey)
       }
 
       const response = await fetch("https://api.languagetool.org/v2/check", {

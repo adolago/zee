@@ -37,6 +37,9 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
   messages_toggle_thinking: { category: "Messages", description: "th[i]nking" },
   messages_toggle_scrollbar: { category: "Messages", description: "[S]crollbar" },
 
+  // Grammar
+  grammar_menu: { category: "Grammar", description: "[G]rammar check" },
+
   // UI
   mode_toggle: { category: "UI", description: "[h]old mode" },
   mode_release_policy_toggle: { category: "UI", description: "[H] release policy" },
@@ -50,7 +53,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
 }
 
 // Category display order - most used first
-const CATEGORY_ORDER = ["Session", "Agent", "Model", "Messages", "UI", "App"]
+const CATEGORY_ORDER = ["Session", "Agent", "Model", "Messages", "Grammar", "UI", "App"]
 
 export function WhichKey() {
   const { theme } = useTheme()

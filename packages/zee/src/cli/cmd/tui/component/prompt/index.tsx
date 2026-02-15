@@ -748,7 +748,6 @@ export function Prompt(props: PromptProps) {
   const grammarChecker = createGrammarChecker({
     debounceMs: 500,
     enabled: realtimeGrammarEnabled,
-    config: () => (sync.data.config as any).grammar,
   })
 
   function clearGrammarExtmarks() {
@@ -1019,7 +1018,7 @@ export function Prompt(props: PromptProps) {
             duration: 1000,
           })
 
-          const matches = await Grammar.check(store.prompt.input, (sync.data.config as any).grammar)
+          const matches = await Grammar.check(store.prompt.input)
           if (matches.length === 0) {
             toast.show({
               variant: "success",
