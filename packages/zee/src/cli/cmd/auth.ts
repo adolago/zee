@@ -44,6 +44,10 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
     name: "MiniMax TTS",
     hint: "MiniMax TTS API key",
   },
+  wisprflow: {
+    name: "Wispr Flow",
+    hint: "Wispr Flow dictation API key",
+  },
 }
 
 const DEFAULT_DAEMON_PORT = 3210

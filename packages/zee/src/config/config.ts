@@ -994,12 +994,12 @@ export namespace Config {
     dictation: z
       .object({
         enabled: z.boolean().optional().describe("Enable dictation"),
-        provider: z.enum(["google"]).optional().default("google").describe("Dictation provider"),
+        provider: z.enum(["google", "wisprflow"]).optional().default("google").describe("Dictation provider: 'google' (Gemini) or 'wisprflow' (Wispr Flow)"),
         model: z
           .enum(["default", "gemini-3-flash", "gemini-3-flash-preview"])
           .optional()
           .default("default")
-          .describe("Speech recognition model (Gemini audio): 'default' uses Gemini 3 Flash"),
+          .describe("Speech recognition model (Gemini audio): 'default' uses Gemini 3 Flash. Ignored for wisprflow."),
         region: z
           .string()
           .optional()

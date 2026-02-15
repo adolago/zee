@@ -2,7 +2,7 @@ import { platform } from "os"
 import { Auth } from "@/auth"
 
 export namespace Dictation {
-  export type Provider = "google"
+  export type Provider = "google" | "wisprflow"
   export type Model = "default" | "gemini-3-flash" | "gemini-3-flash-preview"
 
   export type Config = {
@@ -29,6 +29,9 @@ export namespace Dictation {
     maxDuration: number
     recordCommand?: string | string[]
     google: {
+      apiKey: string
+    }
+    wisprflow: {
       apiKey: string
     }
   }
@@ -59,16 +62,18 @@ export namespace Dictation {
   const DEFAULT_GOOGLE_AUDIO_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
   const DEFAULT_GOOGLE_AUDIO_MODEL = "gemini-3-flash-preview"
   const DEFAULT_GOOGLE_AUDIO_PROMPT = "Transcribe the audio."
+  const WISPRFLOW_API_URL = "https://platform-api.wisprflow.ai/api/v1/dash/api"
 
   export async function resolveConfig(input?: Config): Promise<RuntimeConfig | undefined> {
     if (input?.enabled === false) return
     const provider: Provider = input?.provider ?? "google"
-    if (provider !== "google") return
 
     const model: Model = input?.model ?? "default"
     const google = await resolveGoogleAuth()
-    if (!google.apiKey) return
-    const googleAuth = { apiKey: google.apiKey }
+    const wisprflow = await resolveWisprflowAuth()
+
+    if (provider === "wisprflow" && !wisprflow.apiKey) return
+    if (provider === "google" && !google.apiKey) return
 
     return {
       provider,
@@ -80,7 +85,8 @@ export namespace Dictation {
       autoSubmit: input?.auto_submit ?? false,
       maxDuration: input?.max_duration ?? DEFAULT_MAX_DURATION,
       recordCommand: input?.record_command,
-      google: googleAuth,
+      google: { apiKey: google.apiKey ?? "" },
+      wisprflow: { apiKey: wisprflow.apiKey ?? "" },
     }
   }
 
@@ -200,6 +206,68 @@ export namespace Dictation {
     fetcher?: typeof fetch
     onState?: (state: TranscribeState) => void
   }): Promise<string | undefined> {
+    if (input.config.provider === "wisprflow") {
+      return transcribeWisprflow(input)
+    }
+    return transcribeGoogle(input)
+  }
+
+  async function transcribeWisprflow(input: {
+    config: RuntimeConfig
+    audio: Uint8Array
+    fetcher?: typeof fetch
+    onState?: (state: TranscribeState) => void
+  }): Promise<string | undefined> {
+    const fetcher = input.fetcher ?? fetch
+    input.onState?.("sending")
+
+    const decoded = decodeWavPcm16(input.audio)
+    if (!decoded) {
+      throw new Error("Dictation expects 16-bit PCM WAV audio. Update tui.dictation.record_command to output WAV.")
+    }
+
+    const truncated = truncatePcm16(decoded, input.config.maxDuration)
+    const wavBytes = encodePcm16ToWav(truncated)
+    const base64Audio = Buffer.from(wavBytes).toString("base64")
+
+    const languages: string[] = []
+    const primary = input.config.language?.split("-")[0]
+    if (primary && primary.toLowerCase() !== "auto") {
+      languages.push(primary)
+    }
+    for (const alt of input.config.alternativeLanguages ?? []) {
+      const code = alt.split("-")[0]
+      if (code && !languages.includes(code)) languages.push(code)
+    }
+
+    const body: Record<string, unknown> = { audio: base64Audio }
+    if (languages.length > 0) body.language = languages
+
+    const response = await fetcher(WISPRFLOW_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${input.config.wisprflow.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    })
+
+    input.onState?.("receiving")
+    if (!response.ok) {
+      const text = await response.text().catch(() => "")
+      throw new Error(`Wispr Flow transcription failed (${response.status}): ${text || response.statusText}`)
+    }
+
+    const payload = (await response.json().catch(() => null)) as { text?: string } | null
+    return payload?.text?.trim() || undefined
+  }
+
+  async function transcribeGoogle(input: {
+    config: RuntimeConfig
+    audio: Uint8Array
+    fetcher?: typeof fetch
+    onState?: (state: TranscribeState) => void
+  }): Promise<string | undefined> {
     const fetcher = input.fetcher ?? fetch
     input.onState?.("sending")
 
@@ -298,6 +366,18 @@ export namespace Dictation {
     return {}
   }
 
+  async function resolveWisprflowAuth(): Promise<{ apiKey?: string }> {
+    const envApiKey = process.env["WISPRFLOW_API_KEY"]
+    if (envApiKey) return { apiKey: envApiKey.trim() }
+
+    const stored = await Auth.get("wisprflow")
+    if (stored?.type === "api" && stored.key) {
+      return { apiKey: stored.key }
+    }
+
+    return {}
+  }
+
   function decodeWavPcm16(input: Uint8Array): DecodedPcm16Wav | undefined {
     if (input.byteLength < 44) return
     const view = new DataView(input.buffer, input.byteOffset, input.byteLength)
@@ -375,6 +455,34 @@ export namespace Dictation {
     const maxBytes = maxSamples * 2
     if (input.pcm.byteLength <= maxBytes) return input
     return { pcm: input.pcm.slice(0, maxBytes), sampleRate: input.sampleRate }
+  }
+
+  function encodePcm16ToWav(input: DecodedPcm16Wav): Uint8Array {
+    const channels = 1
+    const bitsPerSample = 16
+    const byteRate = input.sampleRate * channels * (bitsPerSample / 8)
+    const blockAlign = channels * (bitsPerSample / 8)
+    const dataSize = input.pcm.byteLength
+    const headerSize = 44
+    const buffer = Buffer.allocUnsafe(headerSize + dataSize)
+    // RIFF header
+    buffer.write("RIFF", 0, "ascii")
+    buffer.writeUInt32LE(headerSize - 8 + dataSize, 4)
+    buffer.write("WAVE", 8, "ascii")
+    // fmt sub-chunk
+    buffer.write("fmt ", 12, "ascii")
+    buffer.writeUInt32LE(16, 16) // sub-chunk size
+    buffer.writeUInt16LE(1, 20) // PCM format
+    buffer.writeUInt16LE(channels, 22)
+    buffer.writeUInt32LE(input.sampleRate, 24)
+    buffer.writeUInt32LE(byteRate, 28)
+    buffer.writeUInt16LE(blockAlign, 32)
+    buffer.writeUInt16LE(bitsPerSample, 34)
+    // data sub-chunk
+    buffer.write("data", 36, "ascii")
+    buffer.writeUInt32LE(dataSize, 40)
+    buffer.set(input.pcm, headerSize)
+    return new Uint8Array(buffer)
   }
 
   function readTag(view: DataView, offset: number): string {
