@@ -11,7 +11,7 @@ import EXIT_DESCRIPTION from "./hold-release.txt"
 import ENTER_DESCRIPTION from "./hold-enter.txt"
 
 interface HoldModeMetadata {
-  modeChange?: "hold" | "release"
+  modeChange?: "plan" | "accept"
 }
 
 async function getLastModel(sessionID: string) {
@@ -26,11 +26,11 @@ export const HoldReleaseTool = Tool.define<any, HoldModeMetadata>("hold_release"
   parameters: z.object({}),
   async execute(_params, ctx) {
     const session = await Session.get(ctx.sessionID)
-    const inReleaseMode = ctx.extra?.holdMode === false || session.mode === "release"
-    if (inReleaseMode) {
+    const inAcceptMode = ctx.extra?.holdMode === false || session.mode === "accept" || session.mode === "bypass"
+    if (inAcceptMode) {
       return {
-        title: "Release mode already active",
-        output: "Already in release mode. Continue with the task.",
+        title: "Accept mode already active",
+        output: "Already in accept mode. Continue with the task.",
         metadata: {},
       }
     }
@@ -39,12 +39,12 @@ export const HoldReleaseTool = Tool.define<any, HoldModeMetadata>("hold_release"
       sessionID: ctx.sessionID,
       questions: [
         {
-          question: `Plan at ${plan} is complete. Would you like to switch to the release agent and start implementing?`,
-          header: "Release Agent",
+          question: `Plan at ${plan} is complete. Would you like to switch to accept mode and start implementing?`,
+          header: "Accept Mode",
           custom: false,
           options: [
-            { label: "Yes", description: "Switch to release agent and start implementing the plan" },
-            { label: "No", description: "Stay in hold mode to continue refining the plan" },
+            { label: "Yes", description: "Switch to accept mode and start implementing the plan" },
+            { label: "No", description: "Stay in plan mode to continue refining the plan" },
           ],
         },
       ],
@@ -58,10 +58,10 @@ export const HoldReleaseTool = Tool.define<any, HoldModeMetadata>("hold_release"
 
     // Persist mode change server-side (do not rely on the client to apply metadata).
     await Session.update(ctx.sessionID, (draft) => {
-      draft.mode = "release"
+      draft.mode = "accept"
     })
 
-    // Use current agent - hold/release are modes, not separate agents
+    // Use current agent - plan/accept are modes, not separate agents
     const userMsg: MessageV2.User = {
       id: Identifier.ascending("message"),
       sessionID: ctx.sessionID,
@@ -78,14 +78,14 @@ export const HoldReleaseTool = Tool.define<any, HoldModeMetadata>("hold_release"
       messageID: userMsg.id,
       sessionID: ctx.sessionID,
       type: "text",
-      text: `The plan at ${plan} has been approved. Mode changed to RELEASE - you can now edit files. Execute the plan.`,
+      text: `The plan at ${plan} has been approved. Mode changed to ACCEPT - you can now edit files. Execute the plan.`,
       synthetic: true,
     } satisfies MessageV2.TextPart)
 
     return {
-      title: "Switching to release mode",
-      output: "User approved switching to release mode. You can now edit files. Continue with the plan.",
-      metadata: { modeChange: "release" },
+      title: "Switching to accept mode",
+      output: "User approved switching to accept mode. You can now edit files. Continue with the plan.",
+      metadata: { modeChange: "accept" },
     }
   },
 })
@@ -95,11 +95,11 @@ export const HoldEnterTool = Tool.define<any, HoldModeMetadata>("hold_enter", {
   parameters: z.object({}),
   async execute(_params, ctx) {
     const session = await Session.get(ctx.sessionID)
-    const inHoldMode = ctx.extra?.holdMode === true || session.mode === "hold"
-    if (inHoldMode) {
+    const inPlanMode = ctx.extra?.holdMode === true || session.mode === "plan"
+    if (inPlanMode) {
       return {
-        title: "Hold mode already active",
-        output: "Already in hold mode. Continue planning.",
+        title: "Plan mode already active",
+        output: "Already in plan mode. Continue planning.",
         metadata: {},
       }
     }
@@ -109,12 +109,12 @@ export const HoldEnterTool = Tool.define<any, HoldModeMetadata>("hold_enter", {
       sessionID: ctx.sessionID,
       questions: [
         {
-          question: `Would you like to switch to hold mode and create a plan saved to ${plan}?`,
-          header: "Hold Mode",
+          question: `Would you like to switch to plan mode and create a plan saved to ${plan}?`,
+          header: "Plan Mode",
           custom: false,
           options: [
-            { label: "Yes", description: "Switch to hold mode for research and planning" },
-            { label: "No", description: "Stay with release agent to continue making changes" },
+            { label: "Yes", description: "Switch to plan mode for research and planning" },
+            { label: "No", description: "Stay in current mode to continue making changes" },
           ],
         },
       ],
@@ -129,10 +129,10 @@ export const HoldEnterTool = Tool.define<any, HoldModeMetadata>("hold_enter", {
 
     // Persist mode change server-side (do not rely on the client to apply metadata).
     await Session.update(ctx.sessionID, (draft) => {
-      draft.mode = "hold"
+      draft.mode = "plan"
     })
 
-    // Use current agent - hold/release are modes, not separate agents
+    // Use current agent - plan/accept are modes, not separate agents
     const userMsg: MessageV2.User = {
       id: Identifier.ascending("message"),
       sessionID: ctx.sessionID,
@@ -149,14 +149,14 @@ export const HoldEnterTool = Tool.define<any, HoldModeMetadata>("hold_enter", {
       messageID: userMsg.id,
       sessionID: ctx.sessionID,
       type: "text",
-      text: "Mode changed to HOLD (read-only). Begin planning and research without editing files.",
+      text: "Mode changed to PLAN (read-only). Begin planning and research without editing files.",
       synthetic: true,
     } satisfies MessageV2.TextPart)
 
     return {
-      title: "Switching to hold mode",
-      output: `User confirmed to switch to hold mode. The plan file will be at ${plan}. Begin planning without editing files.`,
-      metadata: { modeChange: "hold" },
+      title: "Switching to plan mode",
+      output: `User confirmed to switch to plan mode. The plan file will be at ${plan}. Begin planning without editing files.`,
+      metadata: { modeChange: "plan" },
     }
   },
 })

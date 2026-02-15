@@ -127,9 +127,15 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
 
   const session = createMemo(() => sync.data.session.find((s) => s.id === props.request.sessionID))
 
-  // RELEASE mode: auto-approve all permissions without prompting
+  // BYPASS mode: auto-approve all permissions without prompting
+  // ACCEPT mode: auto-approve edit permissions only
   onMount(() => {
-    if (local.mode.isRelease()) {
+    if (local.mode.isBypass()) {
+      sdk.client.permission.reply({
+        reply: "once",
+        requestID: props.request.id,
+      })
+    } else if (local.mode.isAccept() && ["edit", "write", "multiedit", "apply_patch"].includes(props.request.permission)) {
       sdk.client.permission.reply({
         reply: "once",
         requestID: props.request.id,

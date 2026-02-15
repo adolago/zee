@@ -424,13 +424,13 @@ class ExtendedSession extends GeneratedSession {
     return super.unshare(rest, options)
   }
 
-  // Set session mode (hold/release) - not yet in auto-generated SDK
+  // Set session mode (plan/accept/bypass)
   mode<ThrowOnError extends boolean = false>(
-    parameters: { sessionID: string; mode: "hold" | "release"; directory?: string },
+    parameters: { sessionID: string; mode: "plan" | "accept" | "bypass"; directory?: string },
     options?: Options<never, ThrowOnError>
   ) {
     const { directory: _, ...rest } = parameters
-    return (options?.client ?? this.client).patch<{ ok: boolean; mode: "hold" | "release" }, unknown, ThrowOnError>({
+    return (options?.client ?? this.client).patch<{ ok: boolean; mode: "plan" | "accept" | "bypass" }, unknown, ThrowOnError>({
       url: `/session/${rest.sessionID}/mode`,
       body: { mode: rest.mode },
       ...options,

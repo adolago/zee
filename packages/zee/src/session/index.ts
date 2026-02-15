@@ -104,7 +104,13 @@ export namespace Session {
         .enum(["cli", "web", "api", "whatsapp"])
         .optional(),
       mode: z
-        .enum(["hold", "release"])
+        .enum(["plan", "accept", "bypass"])
+        .or(z.enum(["hold", "release"]))
+        .transform((v) => {
+          if (v === "hold") return "plan" as const
+          if (v === "release") return "accept" as const
+          return v
+        })
         .optional(),
       systemPrompt: z.string().optional(),
       skills: z.array(z.string()).optional(),
@@ -112,7 +118,11 @@ export namespace Session {
       toolPolicySnapshot: z
         .object({
           createdAt: z.number(),
-          mode: z.enum(["hold", "release"]),
+          mode: z.enum(["plan", "accept", "bypass"]).or(z.enum(["hold", "release"])).transform((v) => {
+            if (v === "hold") return "plan" as const
+            if (v === "release") return "accept" as const
+            return v
+          }),
           surface: z.enum(["cli", "web", "api", "whatsapp"]).optional(),
           agent: z.string().optional(),
           permission: PermissionNext.Ruleset.optional(),

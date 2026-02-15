@@ -857,12 +857,12 @@ export namespace Config {
         .describe("Deprecated (agent switching removed; Zee is the only active persona)"),
       agent_cycle: z.string().optional().default("tab").describe("Deprecated (agent switching removed)"),
       agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Deprecated (agent switching removed)"),
-      mode_toggle: z.string().optional().default("<leader>h").describe("Toggle hold/release mode"),
-      mode_release_policy_toggle: z
+      mode_toggle: z.string().optional().default("<leader>h").describe("Toggle plan/accept mode"),
+      mode_cycle: z
         .string()
         .optional()
-        .default("<leader>shift+h")
-        .describe("Toggle release policy (safe/no cuffs)"),
+        .default("none")
+        .describe("Cycle mode (plan/accept/bypass). Shift-tap is the primary gesture; this keybind is an alternative."),
       variant_cycle: z.string().optional().default("<leader>v").describe("Cycle model variants"),
       input_clear: z.string().optional().default("ctrl+c").describe("Clear input field"),
       input_paste: z.string().optional().default("ctrl+v").describe("Paste from clipboard"),

@@ -42,7 +42,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
 
   // UI
   mode_toggle: { category: "UI", description: "[h]old mode" },
-  mode_release_policy_toggle: { category: "UI", description: "[H] release policy" },
+  mode_cycle: { category: "UI", description: "mode [c]ycle" },
   status_view: { category: "UI", description: "[s]tatus" },
   sidebar_toggle: { category: "UI", description: "side[b]ar" },
 

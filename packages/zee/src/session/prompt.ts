@@ -90,16 +90,16 @@ export namespace SessionPrompt {
             if (evt.properties.sessionID === sessionID && evt.properties.status.type === "idle") {
               unsub()
               Session.update(sessionID, (draft) => {
-                draft.mode = "hold"
-              }).then(() => log.info("auto-reverted to hold (after busy)", { sessionID }))
+                draft.mode = "plan"
+              }).then(() => log.info("auto-reverted to plan (after busy)", { sessionID }))
             }
           })
           return
         }
         await Session.update(sessionID, (draft) => {
-          draft.mode = "hold"
+          draft.mode = "plan"
         })
-        log.info("auto-reverted to hold", { sessionID })
+        log.info("auto-reverted to plan", { sessionID })
       }, timeoutMs),
     )
   }
@@ -234,30 +234,41 @@ export namespace SessionPrompt {
 
   }
 
+  export type Mode = "plan" | "accept" | "bypass"
+
   /**
-   * Resolve whether hold mode is active for a given session and message.
+   * Resolve the session mode (plan/accept/bypass).
    * Priority: per-message tools override > per-session mode > surface default.
    */
-  export function resolveHoldMode(session: Session.Info, messageTools?: Record<string, boolean>): boolean {
-    // Explicit per-message tools override (TUI backward compat)
-    if (messageTools?.edit === false) return true
-    if (messageTools?.edit === true) return false
+  export function resolveMode(session: Session.Info, messageTools?: Record<string, boolean>, messageOptions?: Record<string, any>): Mode {
+    // Explicit per-message options override (from TUI prompt submission)
+    if (messageOptions?.mode === "plan" || messageOptions?.mode === "accept" || messageOptions?.mode === "bypass") {
+      return messageOptions.mode
+    }
+
+    // Per-message tools override (backward compat: edit=false means plan)
+    if (messageTools?.edit === false) return "plan"
+    if (messageTools?.edit === true) return "accept"
 
     // Per-session mode
-    if (session.mode === "hold") return true
-    if (session.mode === "release") return false
+    if (session.mode === "plan") return "plan"
+    if (session.mode === "accept") return "accept"
+    if (session.mode === "bypass") return "bypass"
 
-    // Surface defaults: safe-by-default (hold mode).
-    // Sessions can explicitly opt into release mode via session.mode="release".
-    return true
+    // Surface defaults: safe-by-default (plan mode).
+    return "plan"
   }
 
   /**
-   * Resolve whether permission checks should be skipped ("no cuffs" mode).
-   *
-   * Priority: per-message options override > inferred from hold/release mode.
-   *
-   * Convention: RELEASE mode implies skipPermissions=true by default.
+   * Resolve whether hold mode is active (backward compat helper).
+   */
+  export function resolveHoldMode(session: Session.Info, messageTools?: Record<string, boolean>): boolean {
+    return resolveMode(session, messageTools) === "plan"
+  }
+
+  /**
+   * Resolve whether permission checks should be skipped.
+   * Only bypass mode skips all permissions.
    */
   export function resolveSkipPermissions(
     session: Session.Info,
@@ -266,7 +277,7 @@ export namespace SessionPrompt {
   ): boolean {
     const opt = messageOptions?.skipPermissions
     if (typeof opt === "boolean") return opt
-    return resolveHoldMode(session, messageTools) === false
+    return resolveMode(session, messageTools, messageOptions) === "bypass"
   }
 
   async function hasPlanFile(planPath: string): Promise<boolean> {
@@ -523,23 +534,30 @@ export namespace SessionPrompt {
     await SessionRevert.cleanup(session)
 
     // Reset auto-revert timer on any activity in a released WhatsApp session
-    if (session.surface === "whatsapp" && session.mode === "release" && releaseTimers.has(input.sessionID)) {
+    if (session.surface === "whatsapp" && session.mode !== "plan" && releaseTimers.has(input.sessionID)) {
       const config = await Config.get()
       const timeoutMs = config.experimental?.surfaces?.whatsapp?.releaseTimeoutMs ?? 900_000
       startReleaseTimer(input.sessionID, timeoutMs)
     }
 
-    // Handle /hold and /release commands early so mode switching still works even if
-    // the memory backend/MCP is unavailable.
+    // Handle /hold, /plan, /release, /accept, /bypass commands early so mode switching
+    // still works even if the memory backend/MCP is unavailable.
     const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
-    if (firstText === "/hold" || firstText?.startsWith("/release")) {
+    const modeCommandMap: Record<string, "plan" | "accept" | "bypass"> = {
+      "/hold": "plan",
+      "/plan": "plan",
+      "/accept": "accept",
+      "/bypass": "bypass",
+    }
+    // /release with optional PIN arg maps to accept
+    const requestedMode = modeCommandMap[firstText ?? ""] ?? (firstText?.startsWith("/release") ? "accept" as const : undefined)
+    if (requestedMode) {
       const message = await createUserMessage(input)
-      const requestedMode = firstText === "/hold" ? "hold" : "release"
 
       let allowed = true
       let responseText = ""
 
-      if (requestedMode === "release") {
+      if (requestedMode === "accept" || requestedMode === "bypass") {
         const surface = session.surface
         const isMessagingSurface = surface === "whatsapp"
         if (isMessagingSurface) {
@@ -556,11 +574,11 @@ export namespace SessionPrompt {
 
           if (!isOperator) {
             allowed = false
-            responseText = "Release mode is not available."
+            responseText = `${requestedMode.toUpperCase()} mode is not available.`
           } else if (!pin) {
             allowed = false
             responseText =
-              "Release mode requires a PIN. Configure experimental.surfaces.whatsapp.releasePin."
+              `${requestedMode.toUpperCase()} mode requires a PIN. Configure experimental.surfaces.whatsapp.releasePin.`
           } else {
             const parts = firstText!.split(/\s+/)
             const providedPin = parts[1]
@@ -579,7 +597,7 @@ export namespace SessionPrompt {
             const granted = authConfig.scopes ?? [AuthScope.ADMIN]
             if (!hasScope(granted, AuthScope.ADMIN)) {
               allowed = false
-              responseText = 'Refusing to switch to RELEASE mode: requires scope "operator.admin".'
+              responseText = `Refusing to switch to ${requestedMode.toUpperCase()} mode: requires scope "operator.admin".`
             }
           }
         }
@@ -589,18 +607,19 @@ export namespace SessionPrompt {
         await Session.update(input.sessionID, (draft) => {
           draft.mode = requestedMode
         })
-        if (requestedMode === "hold") {
+        if (requestedMode === "plan") {
           clearReleaseTimer(input.sessionID)
-          responseText = "Switched to HOLD mode. File modifications are restricted."
+          responseText = "Switched to PLAN mode. File modifications are restricted."
         } else {
-          responseText = "Switched to RELEASE mode. Full tool access enabled."
+          const modeLabel = requestedMode === "bypass" ? "BYPASS" : "ACCEPT"
+          responseText = `Switched to ${modeLabel} mode. ${requestedMode === "bypass" ? "All permission checks skipped." : "Edit tools auto-approved."}`
           // Start auto-revert timer for WhatsApp sessions
           if (session.surface === "whatsapp") {
             const config = await Config.get()
             const timeoutMs = config.experimental?.surfaces?.whatsapp?.releaseTimeoutMs ?? 900_000
             startReleaseTimer(input.sessionID, timeoutMs)
             const mins = Math.round(timeoutMs / 60_000)
-            responseText += ` Auto-reverts to hold after ${mins}min of inactivity.`
+            responseText += ` Auto-reverts to plan after ${mins}min of inactivity.`
           }
         }
       }
@@ -863,7 +882,7 @@ export namespace SessionPrompt {
       if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
       if (!session.toolPolicySnapshot) {
         const snapshotAgent = await Agent.get(lastUser.agent)
-        const mode: "hold" | "release" = resolveHoldMode(session, lastUser.tools) ? "hold" : "release"
+        const mode = resolveMode(session, lastUser.tools)
         const ruleset = PermissionNext.merge(snapshotAgent.permission, session.permission ?? [])
         const snapshot: NonNullable<Session.Info["toolPolicySnapshot"]> = {
           createdAt: Date.now(),
@@ -1034,7 +1053,7 @@ export namespace SessionPrompt {
               ...req,
               sessionID: sessionID,
               ruleset: PermissionNext.merge(taskAgent.permission, session.permission ?? []),
-              holdMode: false, // Task tools are always in RELEASE mode (they're system-initiated)
+              mode: "bypass", // Task tools always skip permissions (system-initiated)
             })
           },
         }
@@ -1420,8 +1439,9 @@ export namespace SessionPrompt {
     using _ = log.time("resolveTools")
     const tools: Record<string, AITool> = {}
 
-    const holdMode = resolveHoldMode(input.session, input.tools)
-    const skipPermissions = resolveSkipPermissions(input.session, input.tools, input.options)
+    const mode = resolveMode(input.session, input.tools, input.options)
+    const holdMode = mode === "plan"
+    const skipPermissions = mode === "bypass"
 
     const context = (args: any, options: ToolCallOptions): Tool.Context => ({
       sessionID: input.session.id,
@@ -1461,8 +1481,7 @@ export namespace SessionPrompt {
           sessionID: input.session.id,
           tool: { messageID: input.processor.message.id, callID: options.toolCallId },
           ruleset: PermissionNext.merge(input.agent.permission, input.session.permission ?? []),
-          // skipPermissions ("no cuffs") should bypass permission UX entirely.
-          holdMode: skipPermissions ? false : holdMode,
+          mode,
         })
       },
     })

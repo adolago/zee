@@ -270,7 +270,7 @@ export const SessionRoute = new Hono()
     "/session/:sessionID/mode",
     describeRoute({
       summary: "Update session mode",
-      description: "Set the hold/release mode for a session. Hold mode restricts file modifications; release mode enables full tool access.",
+      description: "Set the session mode. Plan mode restricts file modifications; Accept auto-approves edits; Bypass skips all permission checks.",
       operationId: "session.mode",
       responses: {
         200: {
@@ -280,7 +280,7 @@ export const SessionRoute = new Hono()
               schema: resolver(
                 z.object({
                   ok: z.boolean(),
-                  mode: z.enum(["hold", "release"]),
+                  mode: z.enum(["plan", "accept", "bypass"]),
                 }),
               ),
             },
@@ -298,7 +298,7 @@ export const SessionRoute = new Hono()
     validator(
       "json",
       z.object({
-        mode: z.enum(["hold", "release"]),
+        mode: z.enum(["plan", "accept", "bypass"]),
       }),
     ),
     async (c) => {

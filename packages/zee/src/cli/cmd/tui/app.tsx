@@ -15,7 +15,7 @@ import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogLegend } from "./ui/dialog-legend"
-import { DialogReleaseButton } from "./ui/dialog-release-button"
+// DialogReleaseButton removed -- mode is now a 3-state cycle (plan/accept/bypass)
 import { WhichKey } from "@tui/component/which-key"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
@@ -412,45 +412,25 @@ function App() {
         dialog.clear()
       },
     },
-	    {
-	    title: local.mode.isHold()
-        ? (kv.get("mode_release_policy", "no_cuffs") === "safe" ? "Switch to Release mode" : "Switch to No Cuffs")
-        : "Switch to Hold mode",
-	    value: "mode.toggle",
-	    keybind: "mode_toggle",
-	    category: "Mode",
-	      onSelect: () => {
-	        local.mode.toggle()
-	        // Restore focus to prompt after mode toggle
-	        setTimeout(() => vim.onEnterInsert(), 10)
-	      },
-	    },
     {
-      title: "Release button settings",
-      value: "mode.release_button",
+      title: `Toggle mode (${local.mode.mode().toUpperCase()})`,
+      value: "mode.toggle",
+      keybind: "mode_toggle",
       category: "Mode",
       onSelect: () => {
-        dialog.replace(() => <DialogReleaseButton />)
+        local.mode.toggle()
+        // Restore focus to prompt after mode toggle
+        setTimeout(() => vim.onEnterInsert(), 10)
       },
     },
     {
-      title:
-        kv.get("mode_release_policy", "no_cuffs") === "safe"
-          ? "Release policy: Safe (toggle to No Cuffs)"
-          : "Release policy: No Cuffs (toggle to Safe)",
-      value: "mode.release_policy_toggle",
-      keybind: "mode_release_policy_toggle",
+      title: `Cycle mode (${local.mode.mode().toUpperCase()} -> next)`,
+      value: "mode.cycle",
+      keybind: "mode_cycle",
       category: "Mode",
-      onSelect: (dialog) => {
-        const current = kv.get("mode_release_policy", "no_cuffs")
-        const next = current === "safe" ? "no_cuffs" : "safe"
-        kv.set("mode_release_policy", next)
-        toast.show({
-          variant: "info",
-          message: next === "safe" ? "Release policy set to SAFE" : "Release policy set to NO CUFFS",
-          duration: 2000,
-        })
-        dialog.clear()
+      onSelect: () => {
+        local.mode.cycle()
+        setTimeout(() => vim.onEnterInsert(), 10)
       },
     },
     {

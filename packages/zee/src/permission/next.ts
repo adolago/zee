@@ -127,16 +127,21 @@ export namespace PermissionNext {
   export const ask = fn(
     Request.partial({ id: true }).extend({
       ruleset: Ruleset,
-      holdMode: z.boolean().optional(),
+      mode: z.enum(["plan", "accept", "bypass"]).optional(),
     }),
     async (input) => {
       const s = await state()
-      const { ruleset, holdMode, ...request } = input
+      const { ruleset, mode, ...request } = input
 
-      // RELEASE mode (holdMode: false): auto-approve all permissions
-      // This makes RELEASE mode equivalent to --dangerous / skip-all
-      if (holdMode === false) {
-        log.info("auto-allow in RELEASE mode", { permission: request.permission })
+      // BYPASS mode: auto-approve all permissions
+      if (mode === "bypass") {
+        log.info("auto-allow in BYPASS mode", { permission: request.permission })
+        return
+      }
+
+      // ACCEPT mode: auto-approve edit permissions, prompt for everything else
+      if (mode === "accept" && EDIT_TOOLS.includes(request.permission)) {
+        log.info("auto-allow edit in ACCEPT mode", { permission: request.permission })
         return
       }
 

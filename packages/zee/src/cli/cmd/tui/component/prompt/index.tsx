@@ -220,10 +220,7 @@ export function Prompt(props: PromptProps) {
   const renderer = useRenderer()
   const { theme, syntax } = useTheme()
   const kv = useKV()
-  const releasePolicy = createMemo((): "safe" | "no_cuffs" => {
-    const val = kv.get("mode_release_policy", "no_cuffs")
-    return val === "safe" ? "safe" : "no_cuffs"
-  })
+  // releasePolicy removed -- mode is now a 3-state cycle
   const zeeBanner = createMemo(() => kv.get("zee_banner", undefined) as unknown)
   const bannerRotationMs = createMemo(() => {
     const raw = zeeBanner()
@@ -338,6 +335,31 @@ export function Prompt(props: PromptProps) {
     }
   }, { release: true })
 
+  // Shift-tap detection: quick press+release of Shift cycles mode (plan/accept/bypass)
+  let shiftPressedAt: number | null = null
+  useKeyboard((evt) => {
+    const isShift = evt.name === "leftshift" || evt.name === "rightshift"
+
+    if (isShift && evt.eventType === "press") {
+      shiftPressedAt = Date.now()
+      return
+    }
+
+    // Any non-shift key press while shift is held: cancel the tap
+    if (evt.eventType === "press" && shiftPressedAt !== null) {
+      shiftPressedAt = null
+      return
+    }
+
+    if (isShift && evt.eventType === "release" && shiftPressedAt !== null) {
+      const elapsed = Date.now() - shiftPressedAt
+      shiftPressedAt = null
+      if (elapsed < 300) {
+        local.mode.cycle()
+      }
+    }
+  }, { release: true })
+
   const [store, setStore] = createStore<{
     prompt: PromptInfo
     mode: "normal" | "shell"
@@ -376,11 +398,9 @@ export function Prompt(props: PromptProps) {
     if (ctx.percent >= 60) return theme.warning
     return theme.textMuted
   })
-  const releaseStatusLabel = createMemo(() =>
-    local.mode.isHold() ? "HOLD" : releasePolicy() === "no_cuffs" ? "NO CUFFS" : "RELEASE",
-  )
+  const releaseStatusLabel = createMemo(() => local.mode.mode().toUpperCase())
   const releaseStatusColor = createMemo(() =>
-    local.mode.isHold() ? theme.warning : releasePolicy() === "no_cuffs" ? theme.error : theme.success,
+    local.mode.isPlan() ? theme.warning : local.mode.isBypass() ? theme.error : theme.success,
   )
   const vimStatusLabel = createMemo(() => (vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"))
   const vimStatusColor = createMemo(() => (vim.isNormal ? theme.accent : theme.success))
@@ -1488,8 +1508,8 @@ export function Prompt(props: PromptProps) {
       hasSessionID: Boolean(props.sessionID),
     })
 
-    // Tool permissions based on hold/release mode
-    const holdModeTools = local.mode.isHold()
+    // Tool permissions based on mode
+    const holdModeTools = local.mode.isPlan()
       ? { edit: false, write: false, notebook_edit: false }
       : { edit: true, write: true, notebook_edit: true }
 
@@ -1608,7 +1628,7 @@ export function Prompt(props: PromptProps) {
         variant,
         tools: holdModeTools,
         options: {
-          skipPermissions: local.mode.isRelease() ? releasePolicy() === "no_cuffs" : false,
+          skipPermissions: local.mode.isBypass(),
         },
         parts: [
           {

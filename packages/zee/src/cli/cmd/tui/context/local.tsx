@@ -539,25 +539,29 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       },
     }
 
-    // Hold/Release mode - per-session, controls whether the persona can edit files or only research
+    type SessionMode = "plan" | "accept" | "bypass"
+    const MODE_CYCLE: SessionMode[] = ["plan", "accept", "bypass"]
+
+    // Session mode - per-session, controls permission behavior
     const mode = iife(() => {
       // Track which session we're looking at for mode
       const [activeSessionID, setActiveSessionID] = createSignal<string | null>(null)
       let inflightSync: Promise<void> | null = null
 
-      function resolveHoldFromSession(session: { mode?: "hold" | "release"; surface?: string }): boolean {
-        // Per-session mode
-        if (session.mode === "hold") return true
-        if (session.mode === "release") return false
-        // Surface defaults: messaging surfaces default to release
-        if (session.surface === "whatsapp") return false
-        return true // TUI default to hold
+      function resolveModeFromSession(session: { mode?: string; surface?: string }): SessionMode {
+        // Per-session mode (backward compat: hold->plan, release->accept)
+        if (session.mode === "plan" || session.mode === "hold") return "plan"
+        if (session.mode === "accept" || session.mode === "release") return "accept"
+        if (session.mode === "bypass") return "bypass"
+        // Surface defaults: messaging surfaces default to accept
+        if (session.surface === "whatsapp") return "accept"
+        return "plan" // TUI default to plan
       }
 
       async function ensureSessionLoaded(sessionID: string, options?: { force?: boolean }): Promise<void> {
         if (!options?.force) {
           const existing = sync.session.get(sessionID) as
-            | (ReturnType<typeof sync.session.get> & { mode?: "hold" | "release"; surface?: string })
+            | (ReturnType<typeof sync.session.get> & { mode?: string; surface?: string })
             | undefined
           if (existing) return
         }
@@ -572,15 +576,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             }),
           )
         } catch {
-          // Best-effort; UI will fall back to hold until the session is available.
+          // Best-effort; UI will fall back to plan until the session is available.
         }
       }
 
-      function resolveHold(): boolean {
+      function resolveCurrentMode(): SessionMode {
         const sessionID = activeSessionID()
-        if (!sessionID) return true // Default to hold when no session
+        if (!sessionID) return "plan" // Default to plan when no session
         const session = sync.session.get(sessionID) as
-          | (ReturnType<typeof sync.session.get> & { mode?: "hold" | "release"; surface?: string })
+          | (ReturnType<typeof sync.session.get> & { mode?: string; surface?: string })
           | undefined
         if (!session) {
           if (!inflightSync) {
@@ -588,12 +592,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
               inflightSync = null
             })
           }
-          return true
+          return "plan"
         }
-        return resolveHoldFromSession(session)
+        return resolveModeFromSession(session)
       }
 
-      async function setSessionMode(next: "hold" | "release") {
+      async function setSessionMode(next: SessionMode) {
         const sessionID = activeSessionID()
         if (!sessionID) return false
 
@@ -605,7 +609,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             produce((draft) => {
               const match = Binary.search(draft.session, sessionID, (s) => s.id)
               if (!match.found) return
-              draft.session[match.index].mode = next
+              ;(draft.session[match.index] as any).mode = next
             }),
           )
           // Best-effort refresh to pick up updated timestamps and any server-side changes.
@@ -621,6 +625,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         }
       }
 
+      const MODE_TOAST: Record<SessionMode, { variant: "info" | "success" | "warning"; message: string }> = {
+        plan: { variant: "info", message: "PLAN mode - Research only" },
+        accept: { variant: "success", message: "ACCEPT mode - Edits auto-approved" },
+        bypass: { variant: "warning", message: "BYPASS mode - All permissions skipped" },
+      }
+
       return {
         setSession(sessionID: string | null) {
           setActiveSessionID(sessionID)
@@ -632,25 +642,50 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             }
           }
         },
+        mode() {
+          return resolveCurrentMode()
+        },
+        isPlan() {
+          return resolveCurrentMode() === "plan"
+        },
+        isAccept() {
+          return resolveCurrentMode() === "accept"
+        },
+        isBypass() {
+          return resolveCurrentMode() === "bypass"
+        },
+        // Backward compat helpers
         isHold() {
-          return resolveHold()
+          return resolveCurrentMode() === "plan"
         },
         isRelease() {
-          return !resolveHold()
+          return resolveCurrentMode() !== "plan"
         },
-        toggle() {
+        cycle() {
           void (async () => {
             const sessionID = activeSessionID()
             if (!sessionID) return
             await ensureSessionLoaded(sessionID)
-            const newMode = resolveHold() ? "release" : "hold"
+            const current = resolveCurrentMode()
+            const idx = MODE_CYCLE.indexOf(current)
+            const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length]!
+            const ok = await setSessionMode(next)
+            if (!ok) return
+            const t = MODE_TOAST[next]
+            toast.show({ variant: t.variant, message: t.message, duration: 2000 })
+          })()
+        },
+        toggle() {
+          // Legacy: toggle between plan and accept
+          void (async () => {
+            const sessionID = activeSessionID()
+            if (!sessionID) return
+            await ensureSessionLoaded(sessionID)
+            const newMode: SessionMode = resolveCurrentMode() === "plan" ? "accept" : "plan"
             const ok = await setSessionMode(newMode)
             if (!ok) return
-            toast.show({
-              variant: newMode === "hold" ? "info" : "success",
-              message: newMode === "hold" ? "HOLD mode - Research only" : "RELEASE mode - Can edit files",
-              duration: 2000,
-            })
+            const t = MODE_TOAST[newMode]
+            toast.show({ variant: t.variant, message: t.message, duration: 2000 })
           })()
         },
         setHold() {
@@ -658,8 +693,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             const sessionID = activeSessionID()
             if (!sessionID) return
             await ensureSessionLoaded(sessionID)
-            if (resolveHold()) return
-            await setSessionMode("hold")
+            if (resolveCurrentMode() === "plan") return
+            await setSessionMode("plan")
           })()
         },
         setRelease() {
@@ -667,8 +702,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             const sessionID = activeSessionID()
             if (!sessionID) return
             await ensureSessionLoaded(sessionID)
-            if (!resolveHold()) return
-            await setSessionMode("release")
+            if (resolveCurrentMode() !== "plan") return
+            await setSessionMode("accept")
           })()
         },
       }

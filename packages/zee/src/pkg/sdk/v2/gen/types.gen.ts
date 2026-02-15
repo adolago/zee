@@ -1423,13 +1423,13 @@ export type Session = {
     reasoning: number
   }
   surface?: "cli" | "web" | "api" | "whatsapp"
-  mode?: "hold" | "release"
+  mode?: "plan" | "accept" | "bypass" | "hold" | "release"
   systemPrompt?: string
   skills?: Array<string>
   contextFiles?: Array<string>
   toolPolicySnapshot?: {
     createdAt: number
-    mode: "hold" | "release"
+    mode: "plan" | "accept" | "bypass" | "hold" | "release"
     surface?: "cli" | "web" | "api" | "whatsapp"
     agent?: string
     permission?: PermissionRuleset

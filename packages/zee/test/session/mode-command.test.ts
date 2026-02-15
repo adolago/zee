@@ -4,10 +4,10 @@ import { Instance } from "../../src/project/instance"
 import { Session } from "../../src/session"
 import { SessionPrompt } from "../../src/session/prompt"
 import { MessageV2 } from "../../src/session/message-v2"
+import { Config } from "../../src/config/config"
 import { tmpdir } from "../fixture/fixture"
 
 const ORIGINAL_ENV = {
-  ZEE_ALLOW_MESSAGING_RELEASE: process.env.ZEE_ALLOW_MESSAGING_RELEASE,
   ZEE_ENABLE_SERVER_AUTH: process.env.ZEE_ENABLE_SERVER_AUTH,
   ZEE_DISABLE_SERVER_AUTH: process.env.ZEE_DISABLE_SERVER_AUTH,
   ZEE_SERVER_PASSWORD: process.env.ZEE_SERVER_PASSWORD,
@@ -22,13 +22,12 @@ afterAll(() => {
   reloadFlags()
 })
 
-describe("session /hold and /release commands", () => {
-  test("blocks /release on messaging surfaces by default", async () => {
+describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
+  test("blocks /accept on messaging surfaces by default", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        delete process.env.ZEE_ALLOW_MESSAGING_RELEASE
         delete process.env.ZEE_ENABLE_SERVER_AUTH
         delete process.env.ZEE_SERVER_PASSWORD
         delete process.env.ZEE_SERVER_SCOPES
@@ -43,7 +42,7 @@ describe("session /hold and /release commands", () => {
 
         const parts = await MessageV2.parts(msg.info.id)
         expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain("Refusing to switch to RELEASE mode")
+        expect((parts[0] as any).text).toContain("ACCEPT mode is not available.")
 
         const updated = await Session.get(session.id)
         expect(updated.mode).toBeUndefined()
@@ -51,30 +50,41 @@ describe("session /hold and /release commands", () => {
     })
   })
 
-  test("allows /release on messaging surfaces when explicitly enabled", async () => {
+  test("allows /release (mapped to accept) on messaging surfaces with valid operator and PIN", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        process.env.ZEE_ALLOW_MESSAGING_RELEASE = "1"
         delete process.env.ZEE_ENABLE_SERVER_AUTH
         delete process.env.ZEE_SERVER_PASSWORD
         delete process.env.ZEE_SERVER_SCOPES
         reloadFlags()
 
+        await Config.update({
+          experimental: {
+            surfaces: {
+              whatsapp: {
+                operators: ["+15551234567"],
+                releasePin: "1234",
+              },
+            },
+          },
+        })
+
         const session = await Session.createNext({ directory: tmp.path, surface: "whatsapp" })
         const msg = await SessionPrompt.prompt({
           sessionID: session.id,
           agent: "zee",
-          parts: [{ type: "text", text: "/release" }],
+          parts: [{ type: "text", text: "/release 1234" }],
+          options: { senderId: "+15551234567" },
         })
 
         const parts = await MessageV2.parts(msg.info.id)
         expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain("Switched to RELEASE mode")
+        expect((parts[0] as any).text).toContain("Switched to ACCEPT mode")
 
         const updated = await Session.get(session.id)
-        expect(updated.mode).toBe("release")
+        expect(updated.mode).toBe("accept")
       },
     })
   })

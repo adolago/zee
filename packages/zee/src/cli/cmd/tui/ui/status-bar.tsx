@@ -93,8 +93,8 @@ export function StatusBar() {
           </Match>
           <Match when={connected()}>
             {/* Mode indicator */}
-            <text fg={local.mode.isHold() ? theme.warning : theme.success}>
-              {local.mode.isHold() ? "◼ HOLD" : "◻ RELEASE"}
+            <text fg={local.mode.isPlan() ? theme.warning : local.mode.isBypass() ? theme.error : theme.success}>
+              {local.mode.isPlan() ? "◼ PLAN" : local.mode.isBypass() ? "◻ BYPASS" : "◻ ACCEPT"}
             </text>
             <text fg={theme.border}>{StatusBarStyle.separator}</text>
             <Show when={sessionCostLabel()}>
