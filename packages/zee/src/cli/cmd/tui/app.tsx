@@ -70,11 +70,8 @@ export function tui(input: {
       fn: async () => {
         const cfg = await Config.get()
         if (cfg.tui?.kitty_keyboard === false) return null
-        const holdKey = cfg.keybinds?.input_dictation_hold
-        if (holdKey && holdKey !== "none") {
-          return { events: true, allKeysAsEscapes: true }
-        }
-        return {}
+        // Always enable events + allKeysAsEscapes for PTT hold-to-record
+        return { events: true, allKeysAsEscapes: true }
       },
     }).catch(() => ({}) as Record<string, boolean> | null)
     const onExit = async () => {
@@ -161,6 +158,20 @@ function App() {
   const route = useRoute()
   const dimensions = useTerminalDimensions()
   const renderer = useRenderer()
+  // DEBUG: check kitty keyboard state and force-enable if needed
+  {
+    const fs = require("fs")
+    const flags = (renderer as any).lib?.getKittyKeyboardFlags?.((renderer as any).rendererPtr)
+    const useKitty = (renderer as any).useKittyKeyboard
+    fs.appendFileSync("/tmp/shift-tap-debug.log", `renderer.useKittyKeyboard=${useKitty} flags=${flags}\n`)
+    const caps = (renderer as any)._capabilities
+    fs.appendFileSync("/tmp/shift-tap-debug.log", `capabilities: ${JSON.stringify(caps)}\n`)
+    // Force-enable Kitty keyboard with all flags
+    if (flags > 0) {
+      fs.appendFileSync("/tmp/shift-tap-debug.log", `Calling enableKittyKeyboard(${flags})\n`)
+      ;(renderer as any).enableKittyKeyboard(flags)
+    }
+  }
   // renderer.disableStdoutInterception()
   const dialog = useDialog()
   const local = useLocal()
@@ -410,17 +421,6 @@ function App() {
           toast.show({ message: "No favorite models set", variant: "warning", duration: 2000 })
         }
         dialog.clear()
-      },
-    },
-    {
-      title: `Toggle mode (${local.mode.mode().toUpperCase()})`,
-      value: "mode.toggle",
-      keybind: "mode_toggle",
-      category: "Mode",
-      onSelect: () => {
-        local.mode.toggle()
-        // Restore focus to prompt after mode toggle
-        setTimeout(() => vim.onEnterInsert(), 10)
       },
     },
     {

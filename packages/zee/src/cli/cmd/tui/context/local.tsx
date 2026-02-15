@@ -6,9 +6,9 @@ import { uniqueBy } from "remeda"
 import path from "path"
 import { Global } from "@/global"
 import { iife } from "@/util/iife"
-import { Binary } from "@zee/util/binary"
 import { createSimpleContext } from "./helper"
 import { useToast } from "../ui/toast"
+import { useKV } from "./kv"
 import { Provider } from "@/provider/provider"
 import { Locale } from "@/util/locale"
 import { useArgs } from "./args"
@@ -542,169 +542,43 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     type SessionMode = "plan" | "accept" | "bypass"
     const MODE_CYCLE: SessionMode[] = ["plan", "accept", "bypass"]
 
-    // Session mode - per-session, controls permission behavior
+    const MODE_TOAST: Record<SessionMode, { variant: "info" | "success" | "warning"; message: string }> = {
+      plan: { variant: "info", message: "PLAN mode - Research only" },
+      accept: { variant: "success", message: "ACCEPT mode - Edits auto-approved" },
+      bypass: { variant: "warning", message: "BYPASS mode - All permissions skipped" },
+    }
+
+    // Global mode - KV-backed, persists across sessions
     const mode = iife(() => {
-      // Track which session we're looking at for mode
-      const [activeSessionID, setActiveSessionID] = createSignal<string | null>(null)
-      let inflightSync: Promise<void> | null = null
+      const kv = useKV()
+      const stored = kv.get("mode", "plan")
+      const initial: SessionMode = MODE_CYCLE.includes(stored) ? stored : "plan"
+      const [modeSignal, setModeSignal] = createSignal<SessionMode>(initial)
 
-      function resolveModeFromSession(session: { mode?: string; surface?: string }): SessionMode {
-        // Per-session mode (backward compat: hold->plan, release->accept)
-        if (session.mode === "plan" || session.mode === "hold") return "plan"
-        if (session.mode === "accept" || session.mode === "release") return "accept"
-        if (session.mode === "bypass") return "bypass"
-        // Surface defaults: messaging surfaces default to accept
-        if (session.surface === "whatsapp") return "accept"
-        return "plan" // TUI default to plan
-      }
-
-      async function ensureSessionLoaded(sessionID: string, options?: { force?: boolean }): Promise<void> {
-        if (!options?.force) {
-          const existing = sync.session.get(sessionID) as
-            | (ReturnType<typeof sync.session.get> & { mode?: string; surface?: string })
-            | undefined
-          if (existing) return
-        }
-        try {
-          const res = await sdk.client.session.get({ sessionID })
-          if (!res.data) return
-          sync.set(
-            produce((draft) => {
-              const match = Binary.search(draft.session, sessionID, (s) => s.id)
-              if (match.found) draft.session[match.index] = res.data
-              if (!match.found) draft.session.splice(match.index, 0, res.data)
-            }),
-          )
-        } catch {
-          // Best-effort; UI will fall back to plan until the session is available.
-        }
-      }
-
-      function resolveCurrentMode(): SessionMode {
-        const sessionID = activeSessionID()
-        if (!sessionID) return "plan" // Default to plan when no session
-        const session = sync.session.get(sessionID) as
-          | (ReturnType<typeof sync.session.get> & { mode?: string; surface?: string })
-          | undefined
-        if (!session) {
-          if (!inflightSync) {
-            inflightSync = ensureSessionLoaded(sessionID).finally(() => {
-              inflightSync = null
-            })
-          }
-          return "plan"
-        }
-        return resolveModeFromSession(session)
-      }
-
-      async function setSessionMode(next: SessionMode) {
-        const sessionID = activeSessionID()
-        if (!sessionID) return false
-
-        // Ensure we have a session record so UI indicators can update immediately.
-        await ensureSessionLoaded(sessionID)
-        try {
-          await sdk.client.session.mode({ sessionID, mode: next }, { throwOnError: true })
-          sync.set(
-            produce((draft) => {
-              const match = Binary.search(draft.session, sessionID, (s) => s.id)
-              if (!match.found) return
-              ;(draft.session[match.index] as any).mode = next
-            }),
-          )
-          // Best-effort refresh to pick up updated timestamps and any server-side changes.
-          void ensureSessionLoaded(sessionID, { force: true })
-          return true
-        } catch (e) {
-          toast.show({
-            variant: "error",
-            message: `Failed to switch to ${next.toUpperCase()} mode`,
-            duration: 3000,
-          })
-          return false
-        }
-      }
-
-      const MODE_TOAST: Record<SessionMode, { variant: "info" | "success" | "warning"; message: string }> = {
-        plan: { variant: "info", message: "PLAN mode - Research only" },
-        accept: { variant: "success", message: "ACCEPT mode - Edits auto-approved" },
-        bypass: { variant: "warning", message: "BYPASS mode - All permissions skipped" },
+      function setMode(next: SessionMode) {
+        setModeSignal(next)
+        kv.set("mode", next)
       }
 
       return {
-        setSession(sessionID: string | null) {
-          setActiveSessionID(sessionID)
-          if (sessionID) {
-            if (!inflightSync) {
-              inflightSync = ensureSessionLoaded(sessionID).finally(() => {
-                inflightSync = null
-              })
-            }
-          }
-        },
         mode() {
-          return resolveCurrentMode()
+          return modeSignal()
         },
         isPlan() {
-          return resolveCurrentMode() === "plan"
+          return modeSignal() === "plan"
         },
         isAccept() {
-          return resolveCurrentMode() === "accept"
+          return modeSignal() === "accept"
         },
         isBypass() {
-          return resolveCurrentMode() === "bypass"
-        },
-        // Backward compat helpers
-        isHold() {
-          return resolveCurrentMode() === "plan"
-        },
-        isRelease() {
-          return resolveCurrentMode() !== "plan"
+          return modeSignal() === "bypass"
         },
         cycle() {
-          void (async () => {
-            const sessionID = activeSessionID()
-            if (!sessionID) return
-            await ensureSessionLoaded(sessionID)
-            const current = resolveCurrentMode()
-            const idx = MODE_CYCLE.indexOf(current)
-            const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length]!
-            const ok = await setSessionMode(next)
-            if (!ok) return
-            const t = MODE_TOAST[next]
-            toast.show({ variant: t.variant, message: t.message, duration: 2000 })
-          })()
-        },
-        toggle() {
-          // Legacy: toggle between plan and accept
-          void (async () => {
-            const sessionID = activeSessionID()
-            if (!sessionID) return
-            await ensureSessionLoaded(sessionID)
-            const newMode: SessionMode = resolveCurrentMode() === "plan" ? "accept" : "plan"
-            const ok = await setSessionMode(newMode)
-            if (!ok) return
-            const t = MODE_TOAST[newMode]
-            toast.show({ variant: t.variant, message: t.message, duration: 2000 })
-          })()
-        },
-        setHold() {
-          void (async () => {
-            const sessionID = activeSessionID()
-            if (!sessionID) return
-            await ensureSessionLoaded(sessionID)
-            if (resolveCurrentMode() === "plan") return
-            await setSessionMode("plan")
-          })()
-        },
-        setRelease() {
-          void (async () => {
-            const sessionID = activeSessionID()
-            if (!sessionID) return
-            await ensureSessionLoaded(sessionID)
-            if (resolveCurrentMode() !== "plan") return
-            await setSessionMode("accept")
-          })()
+          const current = modeSignal()
+          const idx = MODE_CYCLE.indexOf(current)
+          const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length]!
+          setMode(next)
+          toast.show({ variant: MODE_TOAST[next].variant, message: MODE_TOAST[next].message, duration: 2000 })
         },
       }
     })

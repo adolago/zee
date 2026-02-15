@@ -419,7 +419,6 @@ export function Session() {
       () => route.sessionID,
       (sessionID) => {
         local.model.setSession(sessionID)
-        local.mode.setSession(sessionID)
       },
     ),
   )
