@@ -19,6 +19,7 @@ export type KeybindsConfig = SDKKeybindsConfig & {
   model_cycle_favorite_reverse?: string
   mode_release_policy_toggle?: string
   input_dictation_toggle?: string
+  input_dictation_hold?: string
   session_delegate?: string
   session_delete?: string
   stash_delete?: string

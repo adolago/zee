@@ -17,7 +17,8 @@ import { DialogStash } from "../dialog-stash"
 import { DialogSkill } from "../dialog-skill"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
-import { useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { useAnimationTick } from "@tui/util/animation-tick"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
@@ -34,6 +35,7 @@ import { DialogAlert } from "../../ui/dialog-alert"
 import { useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv"
 import { useTextareaKeybindings } from "../textarea-keybindings"
+import { Keybind } from "@/util/keybind"
 import { Dictation } from "@tui/util/dictation"
 import { DialogGrammar } from "../dialog-grammar"
 import { Grammar } from "../../util/grammar"
@@ -67,6 +69,17 @@ export type PromptRef = {
   submit(): void
 }
 
+
+function resolveHoldKeyNames(bindings: Keybind.Info[] | undefined): Set<string> {
+  const names = new Set<string>()
+  for (const b of bindings ?? []) {
+    if (b.name !== "") continue
+    if (b.meta) { names.add("leftalt"); names.add("rightalt") }
+    if (b.ctrl) { names.add("leftctrl"); names.add("rightctrl") }
+    if (b.shift) { names.add("leftshift"); names.add("rightshift") }
+  }
+  return names
+}
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -271,6 +284,60 @@ export function Prompt(props: PromptProps) {
     const state = dictationState()
     return state !== "idle" && state !== "listening"
   })
+
+  // Push-to-talk state
+  let pttTimer: ReturnType<typeof setTimeout> | null = null
+  let pttActive = false
+  const pttHoldKeyNames = createMemo(() => resolveHoldKeyNames(keybind.all.input_dictation_hold))
+
+  // Push-to-talk: hold modifier key to record, release to stop
+  useKeyboard((evt) => {
+    const holdKeys = pttHoldKeyNames()
+    if (holdKeys.size === 0) return
+
+    const isHoldKey = holdKeys.has(evt.name)
+
+    if (!isHoldKey) {
+      // Any non-hold key while debouncing = modifier+key combo, cancel PTT
+      if (pttTimer !== null) {
+        clearTimeout(pttTimer)
+        pttTimer = null
+      }
+      return
+    }
+
+    if (evt.eventType === "press") {
+      if (pttTimer !== null) return
+      if (props.disabled || store.mode !== "normal") return
+      if (!dictationConfig()) return
+      if (dictationState() !== "idle") return
+
+      pttTimer = setTimeout(() => {
+        pttTimer = null
+        if (dictationState() === "idle") {
+          pttActive = true
+          startDictation()
+        }
+      }, 150)
+      return
+    }
+
+    if (evt.eventType === "release") {
+      if (pttTimer !== null) {
+        clearTimeout(pttTimer)
+        pttTimer = null
+        return
+      }
+
+      if (pttActive && dictationState() === "listening") {
+        pttActive = false
+        stopDictation()
+        return
+      }
+      pttActive = false
+    }
+  }, { release: true })
+
   const [store, setStore] = createStore<{
     prompt: PromptInfo
     mode: "normal" | "shell"
@@ -317,6 +384,27 @@ export function Prompt(props: PromptProps) {
   )
   const vimStatusLabel = createMemo(() => (vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"))
   const vimStatusColor = createMemo(() => (vim.isNormal ? theme.accent : theme.success))
+
+  // Dictation status indicator with animation
+  const STT_WAVE_FRAMES = ["\u2581\u2583\u2585\u2587\u2585\u2583", "\u2583\u2585\u2587\u2585\u2583\u2581", "\u2585\u2587\u2585\u2583\u2581\u2583", "\u2587\u2585\u2583\u2581\u2583\u2585"]
+  const animTick = useAnimationTick()
+  const dictationStatusLabel = createMemo(() => {
+    const state = dictationState()
+    if (state === "idle") return ""
+    if (state === "listening") {
+      const frame = STT_WAVE_FRAMES[animTick() % STT_WAVE_FRAMES.length]
+      return `${frame} STT`
+    }
+    if (state === "sending") return "STT..."
+    if (state === "receiving") return "STT..."
+    return "STT"
+  })
+  const dictationStatusColor = createMemo(() => {
+    const state = dictationState()
+    if (state === "listening") return theme.error
+    return theme.warning
+  })
+
   const skillsStatusLabel = createMemo(() => `${sync.data.agent?.length ?? 0} skills`)
   const promptHeaderMetaVisibility = createMemo(() => {
     let remaining = safeLayoutWidth()
@@ -327,11 +415,22 @@ export function Prompt(props: PromptProps) {
       remaining -= contextUsageBorderText().length + 1
     }
 
-    if (remaining <= 0) return { showSkills: false, showVim: false, showRelease: false }
+    if (remaining <= 0) return { showSkills: false, showVim: false, showRelease: false, showDictation: false }
 
     let showRelease = false
     let showVim = false
     let showSkills = false
+    let showDictation = false
+
+    // Dictation indicator takes priority when active
+    const dictLabel = dictationStatusLabel()
+    if (dictLabel) {
+      const dictNeed = 1 + dictLabel.length
+      if (remaining >= dictNeed) {
+        showDictation = true
+        remaining -= dictNeed
+      }
+    }
 
     const releaseNeed = 1 + releaseStatusLabel().length
     if (remaining >= releaseNeed) {
@@ -350,7 +449,7 @@ export function Prompt(props: PromptProps) {
       showSkills = true
     }
 
-    return { showSkills, showVim, showRelease }
+    return { showSkills, showVim, showRelease, showDictation }
   })
   const modelBorderText = createMemo(() => {
     if (!showModelInfoInBorder()) return ""
@@ -593,6 +692,7 @@ export function Prompt(props: PromptProps) {
   }
 
   async function toggleDictation() {
+    pttActive = false
     if (dictationState() === "idle") {
       await startDictation()
       return
@@ -622,6 +722,10 @@ export function Prompt(props: PromptProps) {
   })
 
   onCleanup(() => {
+    if (pttTimer !== null) {
+      clearTimeout(pttTimer)
+      pttTimer = null
+    }
     if (dictationRecording) {
       dictationRecording.cancel().catch(() => {})
       dictationRecording = undefined
@@ -1744,6 +1848,12 @@ export function Prompt(props: PromptProps) {
               <Show when={promptHeaderMetaVisibility().showSkills}>
                 <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
                   {skillsStatusLabel()}
+                </text>
+              </Show>
+              <Show when={promptHeaderMetaVisibility().showDictation}>
+                <text fg={theme.border} flexShrink={0}>─</text>
+                <text fg={dictationStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                  {dictationStatusLabel()}
                 </text>
               </Show>
               <Show when={promptHeaderMetaVisibility().showVim}>

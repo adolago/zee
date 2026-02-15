@@ -112,7 +112,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: kittyKeyboardEnabled ? {} : undefined,
+        useKittyKeyboard: kittyKeyboardEnabled ? { events: true, allKeysAsEscapes: true } : undefined,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
