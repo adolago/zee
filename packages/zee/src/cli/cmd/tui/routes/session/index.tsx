@@ -1485,14 +1485,12 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         customBorderChars={SplitBorder.customBorderChars}
         borderColor={theme.backgroundElement}
       >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
+        <markdown
           streaming={true}
           syntaxStyle={subtleSyntax()}
           content={"_Thinking:_ " + content()}
           conceal={ctx.conceal()}
-          fg={theme.textMuted}
+          width="100%"
         />
       </box>
     </Show>
@@ -1525,14 +1523,12 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
             This avoids the <For>/<Index> overhead and prevents component
             destruction/recreation on every streaming text chunk. */}
         <Show when={hasMath()} fallback={
-          <code
-            filetype="markdown"
-            drawUnstyledText={false}
+          <markdown
             streaming={true}
             syntaxStyle={syntax()}
             content={processText(content())}
             conceal={ctx.conceal()}
-            fg={theme.text}
+            width="100%"
           />
         }>
           {/* Math path: use <Index> (tracks by position, not reference) so
@@ -1545,14 +1541,12 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
                 </Match>
                 <Match when={segment().type === "text" && segment()}>
                   {(seg) => (
-                    <code
-                      filetype="markdown"
-                      drawUnstyledText={false}
+                    <markdown
                       streaming={true}
                       syntaxStyle={syntax()}
                       content={processText(seg().content)}
                       conceal={ctx.conceal()}
-                      fg={theme.text}
+                      width="100%"
                     />
                   )}
                 </Match>
@@ -1818,14 +1812,21 @@ function Bash(props: ToolProps<typeof BashTool>) {
           onMouseUp={() => hasOutput() && setExpanded((prev) => !prev)}
         >
           <Show when={title()}>
-            <text fg={theme.textMuted}>{title()}</text>
+            <text fg={theme.textMuted}>
+              {title()}
+              <Show when={hasOutput() && !expanded()}>
+                <span style={{ fg: theme.textMuted }}> ... Click to expand</span>
+              </Show>
+            </text>
           </Show>
-          <text fg={theme.text}>
-            $ {props.input.command}
-            <Show when={hasOutput() && !expanded()}>
-              <span style={{ fg: theme.textMuted }}> ... Click to expand</span>
-            </Show>
-          </text>
+          <Show when={!title() || expanded()}>
+            <text fg={theme.text}>
+              $ {props.input.command}
+              <Show when={!title() && hasOutput() && !expanded()}>
+                <span style={{ fg: theme.textMuted }}> ... Click to expand</span>
+              </Show>
+            </text>
+          </Show>
           <Show when={expanded()}>
             <box paddingLeft={1} border={["left"]} borderColor={theme.backgroundElement} customBorderChars={SplitBorder.customBorderChars}>
               <text fg={theme.textMuted}>{output()}</text>
