@@ -164,6 +164,16 @@
         "typescript": "catalog:",
       },
     },
+    "packages/stanley-sdk": {
+      "name": "@zee/stanley-sdk",
+      "version": "1.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "typescript": "catalog:",
+      },
+    },
     "packages/tui": {
       "name": "@zee/tui",
       "version": "1.0.0",
@@ -318,6 +328,7 @@
         "@solid-primitives/event-bus": "1.1.2",
         "@solid-primitives/scheduled": "1.5.2",
         "@standard-schema/spec": "1.0.0",
+        "@zee/stanley-sdk": "workspace:*",
         "@zip.js/zip.js": "2.7.62",
         "ai": "6.0.49",
         "bonjour-service": "1.3.0",
@@ -395,6 +406,7 @@
     "tree-sitter-bash",
   ],
   "patchedDependencies": {
+    "@opentui/core@0.1.75": "patches/@opentui%2Fcore@0.1.75.patch",
     "ghostty-web@0.3.0": "patches/ghostty-web@0.3.0.patch",
   },
   "overrides": {
@@ -1572,6 +1584,8 @@
     "@zee/plugin": ["@zee/plugin@workspace:packages/plugin"],
 
     "@zee/sdk": ["@zee/sdk@workspace:packages/sdk"],
+
+    "@zee/stanley-sdk": ["@zee/stanley-sdk@workspace:packages/stanley-sdk"],
 
     "@zee/tui": ["@zee/tui@workspace:packages/tui"],
 

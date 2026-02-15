@@ -10,6 +10,7 @@ import { CodexAuthPlugin } from "./codex"
 import { Session } from "../session"
 import { NamedError } from "@zee/util/error"
 import { KimiAuthPlugin } from "./kimi"
+import { StanleyPlugin } from "./stanley"
 
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
@@ -21,7 +22,7 @@ export namespace Plugin {
   ]
 
   // Built-in plugins that are directly imported (not installed from npm)
-  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin]
+  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin, StanleyPlugin]
 
   const state = Instance.state(async () => {
     const { Server } = await import("../server/server")

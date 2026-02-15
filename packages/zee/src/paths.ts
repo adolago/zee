@@ -125,6 +125,11 @@ export const Stanley = {
   portfolioFile(): string {
     return process.env.STANLEY_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "stanley", "portfolio.json")
   },
+
+  /** Get the Stanley API base URL from env or default */
+  apiUrl(): string {
+    return process.env.STANLEY_API_URL || "http://127.0.0.1:8000"
+  },
 }
 
 /**

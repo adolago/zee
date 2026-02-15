@@ -1254,6 +1254,20 @@ export namespace Config {
       ref: "MemoryConfig",
     })
 
+  export const Stanley = z
+    .object({
+      enabled: z.boolean().optional().default(true).describe("Enable Stanley investment tools"),
+      baseUrl: z.string().optional().default("http://127.0.0.1:8000").describe("Stanley API base URL"),
+      apiKey: z.string().optional().describe("Stanley API key"),
+      autoStart: z.boolean().optional().default(true).describe("Auto-start Stanley daemon if not running"),
+      wsEnabled: z.boolean().optional().default(false).describe("Enable WebSocket for real-time data"),
+      repoPath: z.string().optional().describe("Path to Stanley repository"),
+    })
+    .strict()
+    .meta({
+      ref: "StanleyConfig",
+    })
+
   export const Zee = z
     .object({
       splitwise: z
@@ -1451,6 +1465,7 @@ export namespace Config {
         .optional()
         .describe("MCP (Model Context Protocol) server configurations"),
       memory: Memory.optional().describe("Memory and storage configuration"),
+      stanley: Stanley.optional().describe("Stanley investment platform configuration"),
       zee: Zee.optional().describe("Zee integration configuration"),
       messages: Messages.optional().describe("Messaging and TTS configuration"),
       formatter: z

@@ -24,6 +24,7 @@
       "packages/app",
       "packages/desktop",
       "packages/plugin",
+      "packages/stanley-sdk",
       "packages/sdk",
       "packages/tui",
       "packages/ui",
@@ -127,7 +128,8 @@
   },
   "patchedDependencies": {
     "ghostty-web@0.3.0": "patches/ghostty-web@0.3.0.patch",
-    "qrcode-terminal": "patches/qrcode-terminal.patch"
+    "qrcode-terminal": "patches/qrcode-terminal.patch",
+    "@opentui/core@0.1.75": "patches/@opentui%2Fcore@0.1.75.patch"
   },
   "version": "0.3.3"
 }

@@ -1,0 +1,17 @@
+{
+  "name": "@zee/stanley-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for Stanley institutional investment analysis platform",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./types": "./src/types/index.ts"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

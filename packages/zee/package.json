@@ -127,6 +127,7 @@
     "xdg-basedir": "5.1.0",
     "yaml": "2.8.1",
     "yargs": "18.0.0",
+    "@zee/stanley-sdk": "workspace:*",
     "zod": "4.1.8",
     "zod-to-json-schema": "3.24.5"
   }
