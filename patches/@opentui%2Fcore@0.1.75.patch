@@ -1,0 +1,240 @@
+diff --git a/index.js b/index.js
+index 57a205d..db054ea 100644
+--- a/index.js
++++ b/index.js
+@@ -8416,26 +8416,49 @@ class MarkdownRenderable extends Renderable {
+       marginBottom
+     });
+   }
++  _getTableCellBorder(col, colCount, isHeader, isLastRow) {
++    const isFirstCol = col === 0;
++    const isLastCol = col === colCount - 1;
++    const sides = [];
++    if (isHeader) sides.push("top");
++    sides.push("left");
++    sides.push("bottom");
++    if (isLastCol) sides.push("right");
++    let customBorderChars = undefined;
++    const chars = {};
++    if (isHeader) {
++      if (!isFirstCol) chars.topLeft = "\u252C";
++      if (isFirstCol) chars.bottomLeft = "\u251C";
++      else chars.bottomLeft = "\u253C";
++      if (isLastCol) chars.bottomRight = "\u2524";
++    } else if (isLastRow) {
++      if (isFirstCol) chars.bottomLeft = "\u2514";
++      else chars.bottomLeft = "\u2534";
++      if (isLastCol) chars.bottomRight = "\u2518";
++    } else {
++      if (isFirstCol) chars.bottomLeft = "\u251C";
++      else chars.bottomLeft = "\u253C";
++      if (isLastCol) chars.bottomRight = "\u2524";
++    }
++    if (Object.keys(chars).length > 0) customBorderChars = chars;
++    return { sides, customBorderChars };
++  }
+   updateTableRenderable(tableBox, table, marginBottom) {
+     tableBox.marginBottom = marginBottom;
+     const borderColor = this.getStyle("conceal")?.fg ?? "#888888";
+     const headingStyle = this.getStyle("markup.heading") || this.getStyle("default");
+     const rowsToRender = this._streaming && table.rows.length > 0 ? table.rows.slice(0, -1) : table.rows;
+     const colCount = table.header.length;
+-    const columns = tableBox._childrenInLayoutOrder;
+-    for (let col = 0;col < colCount; col++) {
+-      const columnBox = columns[col];
+-      if (!columnBox)
+-        continue;
+-      if (columnBox instanceof BoxRenderable) {
+-        columnBox.borderColor = borderColor;
+-      }
+-      const columnChildren = columnBox._childrenInLayoutOrder;
+-      const headerBox = columnChildren[0];
+-      if (headerBox instanceof BoxRenderable) {
+-        headerBox.borderColor = borderColor;
+-        const headerChildren = headerBox._childrenInLayoutOrder;
+-        const headerText = headerChildren[0];
++    const rows = tableBox._childrenInLayoutOrder;
++    const headerRow = rows[0];
++    if (headerRow) {
++      const headerCells = headerRow._childrenInLayoutOrder;
++      for (let col = 0;col < colCount; col++) {
++        const cellBox = headerCells[col];
++        if (!cellBox || !(cellBox instanceof BoxRenderable)) continue;
++        cellBox.borderColor = borderColor;
++        const cellChildren = cellBox._childrenInLayoutOrder;
++        const headerText = cellChildren[0];
+         if (headerText instanceof TextRenderable) {
+           const headerCell = table.header[col];
+           const headerChunks = [];
+@@ -8454,24 +8477,24 @@ class MarkdownRenderable extends Renderable {
+           headerText.content = new StyledText(styledHeaderChunks);
+         }
+       }
+-      for (let row = 0;row < rowsToRender.length; row++) {
+-        const childIndex = row + 1;
+-        const cellContainer = columnChildren[childIndex];
+-        let cellText;
+-        if (cellContainer instanceof BoxRenderable) {
+-          cellContainer.borderColor = borderColor;
+-          const cellChildren = cellContainer._childrenInLayoutOrder;
+-          cellText = cellChildren[0];
+-        } else if (cellContainer instanceof TextRenderable) {
+-          cellText = cellContainer;
+-        }
+-        if (cellText) {
+-          const cell = rowsToRender[row][col];
+-          const cellChunks = [];
+-          if (cell) {
+-            this.renderInlineContent(cell.tokens, cellChunks);
++    }
++    for (let row = 0;row < rowsToRender.length; row++) {
++      const dataRow = rows[row + 1];
++      if (!dataRow) continue;
++      const dataCells = dataRow._childrenInLayoutOrder;
++      for (let col = 0;col < colCount; col++) {
++        const cellBox = dataCells[col];
++        if (!cellBox) continue;
++        if (cellBox instanceof BoxRenderable) {
++          cellBox.borderColor = borderColor;
++          const cellChildren = cellBox._childrenInLayoutOrder;
++          const cellText = cellChildren[0];
++          if (cellText instanceof TextRenderable) {
++            const cell = rowsToRender[row][col];
++            const cellChunks = [];
++            if (cell) this.renderInlineContent(cell.tokens, cellChunks);
++            cellText.content = new StyledText(cellChunks.length > 0 ? cellChunks : [this.createDefaultChunk(" ")]);
+           }
+-          cellText.content = new StyledText(cellChunks.length > 0 ? cellChunks : [this.createDefaultChunk(" ")]);
+         }
+       }
+     }
+@@ -8484,36 +8507,29 @@ class MarkdownRenderable extends Renderable {
+     }
+     const tableBox = new BoxRenderable(this.ctx, {
+       id,
+-      flexDirection: "row",
++      flexDirection: "column",
+       marginBottom
+     });
+     const borderColor = this.getStyle("conceal")?.fg ?? "#888888";
++    const headingStyle = this.getStyle("markup.heading") || this.getStyle("default");
++    const headerRow = new BoxRenderable(this.ctx, {
++      id: `${id}-hrow`,
++      flexDirection: "row"
++    });
+     for (let col = 0;col < colCount; col++) {
+-      const isFirstCol = col === 0;
+-      const isLastCol = col === colCount - 1;
+-      const columnBox = new BoxRenderable(this.ctx, {
+-        id: `${id}-col-${col}`,
+-        flexDirection: "column",
+-        border: isLastCol ? true : ["top", "bottom", "left"],
++      const { sides, customBorderChars } = this._getTableCellBorder(col, colCount, true, false);
++      const cellBox = new BoxRenderable(this.ctx, {
++        id: `${id}-hcell-${col}`,
++        flexGrow: 1,
++        flexBasis: 0,
++        flexShrink: 1,
++        border: sides,
+         borderColor,
+-        customBorderChars: isFirstCol ? undefined : {
+-          topLeft: "\u252C",
+-          topRight: "\u2510",
+-          bottomLeft: "\u2534",
+-          bottomRight: "\u2518",
+-          horizontal: "\u2500",
+-          vertical: "\u2502",
+-          topT: "\u252C",
+-          bottomT: "\u2534",
+-          leftT: "\u251C",
+-          rightT: "\u2524",
+-          cross: "\u253C"
+-        }
++        customBorderChars
+       });
+       const headerCell = table.header[col];
+       const headerChunks = [];
+       this.renderInlineContent(headerCell.tokens, headerChunks);
+-      const headingStyle = this.getStyle("markup.heading") || this.getStyle("default");
+       const styledHeaderChunks = headerChunks.map((chunk) => ({
+         ...chunk,
+         fg: headingStyle?.fg ?? chunk.fg,
+@@ -8525,48 +8541,46 @@ class MarkdownRenderable extends Renderable {
+           dim: headingStyle.dim
+         }) : chunk.attributes
+       }));
+-      const headerBox = new BoxRenderable(this.ctx, {
+-        id: `${id}-col-${col}-header-box`,
+-        border: ["bottom"],
+-        borderColor
+-      });
+-      headerBox.add(new TextRenderable(this.ctx, {
+-        id: `${id}-col-${col}-header`,
++      cellBox.add(new TextRenderable(this.ctx, {
++        id: `${id}-htxt-${col}`,
+         content: new StyledText(styledHeaderChunks),
+-        height: 1,
+-        overflow: "hidden",
++        wrapMode: "word",
+         paddingLeft: 1,
+         paddingRight: 1
+       }));
+-      columnBox.add(headerBox);
+-      for (let row = 0;row < rowsToRender.length; row++) {
++      headerRow.add(cellBox);
++    }
++    tableBox.add(headerRow);
++    for (let row = 0;row < rowsToRender.length; row++) {
++      const isLastRow = row === rowsToRender.length - 1;
++      const dataRow = new BoxRenderable(this.ctx, {
++        id: `${id}-drow-${row}`,
++        flexDirection: "row"
++      });
++      for (let col = 0;col < colCount; col++) {
++        const { sides, customBorderChars } = this._getTableCellBorder(col, colCount, false, isLastRow);
++        const cellBox = new BoxRenderable(this.ctx, {
++          id: `${id}-dcell-${row}-${col}`,
++          flexGrow: 1,
++          flexBasis: 0,
++          flexShrink: 1,
++          border: sides,
++          borderColor,
++          customBorderChars
++        });
+         const cell = rowsToRender[row][col];
+         const cellChunks = [];
+-        if (cell) {
+-          this.renderInlineContent(cell.tokens, cellChunks);
+-        }
+-        const isLastRow = row === rowsToRender.length - 1;
+-        const cellText = new TextRenderable(this.ctx, {
+-          id: `${id}-col-${col}-row-${row}`,
++        if (cell) this.renderInlineContent(cell.tokens, cellChunks);
++        cellBox.add(new TextRenderable(this.ctx, {
++          id: `${id}-dtxt-${row}-${col}`,
+           content: new StyledText(cellChunks.length > 0 ? cellChunks : [this.createDefaultChunk(" ")]),
+-          height: 1,
+-          overflow: "hidden",
++          wrapMode: "word",
+           paddingLeft: 1,
+           paddingRight: 1
+-        });
+-        if (isLastRow) {
+-          columnBox.add(cellText);
+-        } else {
+-          const cellBox = new BoxRenderable(this.ctx, {
+-            id: `${id}-col-${col}-row-${row}-box`,
+-            border: ["bottom"],
+-            borderColor
+-          });
+-          cellBox.add(cellText);
+-          columnBox.add(cellBox);
+-        }
++        }));
++        dataRow.add(cellBox);
+       }
+-      tableBox.add(columnBox);
++      tableBox.add(dataRow);
+     }
+     return tableBox;
+   }
