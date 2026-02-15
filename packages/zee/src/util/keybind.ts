@@ -50,9 +50,15 @@ export namespace Keybind {
    * Convert OpenTUI's ParsedKey to our Keybind.Info format.
    * This helper ensures all required fields are present and avoids manual object creation.
    */
+  // Kitty allKeysAsEscapes reports Space as codepoint 32 → " " via String.fromCodePoint.
+  // OpenTUI's kittyKeyMap doesn't include 32, so we normalize here.
+  const KEY_NAME_ALIASES: Record<string, string> = {
+    " ": "space",
+  }
+
   export function fromParsedKey(key: ParsedKey, leader = false): Info {
     return {
-      name: key.name,
+      name: KEY_NAME_ALIASES[key.name] ?? key.name,
       ctrl: key.ctrl,
       meta: key.meta,
       shift: key.shift,
