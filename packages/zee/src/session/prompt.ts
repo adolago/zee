@@ -1,6 +1,7 @@
 import path from "path"
 import os from "os"
 import fs from "fs/promises"
+import crypto from "crypto"
 import z from "zod"
 import { Identifier } from "../id/id"
 import { MessageV2 } from "./message-v2"
@@ -563,7 +564,11 @@ export namespace SessionPrompt {
           } else {
             const parts = firstText!.split(/\s+/)
             const providedPin = parts[1]
-            if (!providedPin || providedPin !== pin) {
+            const pinMatch =
+              providedPin != null &&
+              providedPin.length === pin.length &&
+              crypto.timingSafeEqual(Buffer.from(providedPin), Buffer.from(pin))
+            if (!pinMatch) {
               allowed = false
               responseText = "Invalid PIN."
             }
