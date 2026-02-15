@@ -871,7 +871,7 @@ export namespace Config {
       input_dictation_hold: z
         .string()
         .optional()
-        .default("none")
+        .default("alt")
         .describe("Hold to record, release to stop (requires kitty/ghostty/foot terminal). Set to 'alt' to enable."),
       grammar_quickfix: z.string().optional().default("<leader>.").describe("Quick-fix grammar error at cursor"),
       grammar_menu: z.string().optional().default("<leader>shift+g").describe("Open grammar check menu"),
