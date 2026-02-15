@@ -70,16 +70,13 @@ export function tui(input: {
       fn: async () => {
         const cfg = await Config.get()
         if (cfg.tui?.kitty_keyboard === false) return null
-        // Enable extended Kitty flags when PTT dictation is configured (requires
-        // terminal support for flag 2 events + flag 8 allKeysAsEscapes, e.g.
-        // kitty, ghostty, foot). Otherwise use defaults (flag 1 disambiguate only).
         const holdKey = cfg.keybinds?.input_dictation_hold
         if (holdKey && holdKey !== "none") {
           return { events: true, allKeysAsEscapes: true }
         }
         return {}
       },
-    }).catch(() => ({} as Record<string, boolean>))
+    }).catch(() => ({}) as Record<string, boolean> | null)
     const onExit = async () => {
       await input.onExit?.()
       resolve()
