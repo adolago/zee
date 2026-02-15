@@ -65,13 +65,21 @@ export function tui(input: {
   return new Promise<void>(async (resolve) => {
     const terminalBackground = await Terminal.backgroundColor(200)
     const mode = modeFromBackground(terminalBackground)
-    const kittyKeyboardEnabled = await Instance.provide({
+    const kittyKeyboardConfig = await Instance.provide({
       directory: input.directory ?? process.cwd(),
       fn: async () => {
         const cfg = await Config.get()
-        return cfg.tui?.kitty_keyboard !== false
+        if (cfg.tui?.kitty_keyboard === false) return null
+        // Enable extended Kitty flags when PTT dictation is configured (requires
+        // terminal support for flag 2 events + flag 8 allKeysAsEscapes, e.g.
+        // kitty, ghostty, foot). Otherwise use defaults (flag 1 disambiguate only).
+        const holdKey = cfg.keybinds?.input_dictation_hold
+        if (holdKey && holdKey !== "none") {
+          return { events: true, allKeysAsEscapes: true }
+        }
+        return {}
       },
-    }).catch(() => true)
+    }).catch(() => ({} as Record<string, boolean>))
     const onExit = async () => {
       await input.onExit?.()
       resolve()
@@ -112,7 +120,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: kittyKeyboardEnabled ? { events: true, allKeysAsEscapes: true } : undefined,
+        useKittyKeyboard: kittyKeyboardConfig ?? undefined,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
