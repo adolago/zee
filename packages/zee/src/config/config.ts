@@ -1571,6 +1571,9 @@ export namespace Config {
                   allowedNumbers: z.string().array().optional(),
                   allowedGroups: z.string().array().optional(),
                   requireMention: z.boolean().optional(),
+                  operators: z.string().array().optional(),
+                  releasePin: z.string().optional(),
+                  releaseTimeoutMs: z.number().default(900_000),
                 })
                 .optional(),
               analytics: z

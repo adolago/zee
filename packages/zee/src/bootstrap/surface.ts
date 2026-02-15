@@ -38,6 +38,7 @@ type SurfaceBootstrapConfig = {
     allowedNumbers?: string[];
     allowedGroups?: string[];
     requireMention?: boolean;
+    operators?: string[];
   };
   /** Enable analytics collection */
   enableAnalytics?: boolean;
@@ -150,7 +151,10 @@ async function registerWhatsAppSurface(
 
   const surface = createMessagingSurface(handler, {
     platform: 'whatsapp',
-    allowedSenders: waConfig?.allowedNumbers ?? [],
+    allowedSenders: [
+      ...(waConfig?.operators ?? []),
+      ...(waConfig?.allowedNumbers ?? []),
+    ],
     groups: {
       enabled: (waConfig?.allowedGroups?.length ?? 0) > 0,
       requireMention: waConfig?.requireMention ?? true,
@@ -227,6 +231,7 @@ function createEngineMessageHandler(): MessageHandler {
       sessionID: sessionId,
       agent: 'zee',
       parts: [{ type: 'text' as const, text: message.body }],
+      options: { senderId: context.senderId },
     });
 
     // Extract response text from assistant parts
@@ -258,6 +263,7 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
         allowedNumbers: wa.allowedNumbers,
         allowedGroups: wa.allowedGroups,
         requireMention: wa.requireMention,
+        operators: wa.operators,
       } : undefined,
       enableAnalytics: config.experimental?.surfaces?.analytics?.enabled ?? true,
       enableHotReload: config.experimental?.surfaces?.hotReload?.enabled ?? false,

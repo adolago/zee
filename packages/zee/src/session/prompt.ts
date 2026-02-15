@@ -65,6 +65,44 @@ export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
   export const OUTPUT_TOKEN_MAX = Flag.ZEE_OUTPUT_TOKEN_MAX || 32_000
 
+  // ── PIN-release auto-revert timers ──────────────────────────────────
+  const releaseTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  function clearReleaseTimer(sessionID: string) {
+    const timer = releaseTimers.get(sessionID)
+    if (timer) {
+      clearTimeout(timer)
+      releaseTimers.delete(sessionID)
+    }
+  }
+
+  function startReleaseTimer(sessionID: string, timeoutMs: number) {
+    clearReleaseTimer(sessionID)
+    releaseTimers.set(
+      sessionID,
+      setTimeout(async () => {
+        releaseTimers.delete(sessionID)
+        const status = SessionStatus.get(sessionID)
+        if (status.type !== "idle") {
+          // Session is busy — wait for it to go idle, then revert
+          const unsub = Bus.subscribe(SessionStatus.Event.Status, (evt) => {
+            if (evt.properties.sessionID === sessionID && evt.properties.status.type === "idle") {
+              unsub()
+              Session.update(sessionID, (draft) => {
+                draft.mode = "hold"
+              }).then(() => log.info("auto-reverted to hold (after busy)", { sessionID }))
+            }
+          })
+          return
+        }
+        await Session.update(sessionID, (draft) => {
+          draft.mode = "hold"
+        })
+        log.info("auto-reverted to hold", { sessionID })
+      }, timeoutMs),
+    )
+  }
+
   function daemonSubtasksEnabled(): boolean {
     const raw = process.env.ZEE_SUBTASK_DAEMON
     if (!raw) return true
@@ -483,10 +521,17 @@ export namespace SessionPrompt {
     await emitSessionStartOnce(session, input.agent)
     await SessionRevert.cleanup(session)
 
+    // Reset auto-revert timer on any activity in a released WhatsApp session
+    if (session.surface === "whatsapp" && session.mode === "release" && releaseTimers.has(input.sessionID)) {
+      const config = await Config.get()
+      const timeoutMs = config.experimental?.surfaces?.whatsapp?.releaseTimeoutMs ?? 900_000
+      startReleaseTimer(input.sessionID, timeoutMs)
+    }
+
     // Handle /hold and /release commands early so mode switching still works even if
     // the memory backend/MCP is unavailable.
     const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
-    if (firstText === "/hold" || firstText === "/release") {
+    if (firstText === "/hold" || firstText?.startsWith("/release")) {
       const message = await createUserMessage(input)
       const requestedMode = firstText === "/hold" ? "hold" : "release"
 
@@ -496,11 +541,33 @@ export namespace SessionPrompt {
       if (requestedMode === "release") {
         const surface = session.surface
         const isMessagingSurface = surface === "whatsapp"
-        if (isMessagingSurface && !Flag.ZEE_ALLOW_MESSAGING_RELEASE) {
-          allowed = false
-          responseText =
-            "Refusing to switch to RELEASE mode from messaging surfaces by default. " +
-            "Resume this session in the CLI/TUI, or set ZEE_ALLOW_MESSAGING_RELEASE=1 to override."
+        if (isMessagingSurface) {
+          // PIN-protected release for WhatsApp operators
+          const config = await Config.get()
+          const wa = config.experimental?.surfaces?.whatsapp
+          const operators = wa?.operators ?? []
+          const pin = wa?.releasePin
+
+          const senderId = input.options?.senderId as string | undefined
+          const isOperator = senderId != null && operators.some(
+            (op) => op.replace(/^\+/, "") === senderId.replace(/^\+/, ""),
+          )
+
+          if (!isOperator) {
+            allowed = false
+            responseText = "Release mode is not available."
+          } else if (!pin) {
+            allowed = false
+            responseText =
+              "Release mode requires a PIN. Configure experimental.surfaces.whatsapp.releasePin."
+          } else {
+            const parts = firstText!.split(/\s+/)
+            const providedPin = parts[1]
+            if (!providedPin || providedPin !== pin) {
+              allowed = false
+              responseText = "Invalid PIN."
+            }
+          }
         } else {
           const authConfig = getAuthConfig()
           if (!authConfig.disabled) {
@@ -517,10 +584,20 @@ export namespace SessionPrompt {
         await Session.update(input.sessionID, (draft) => {
           draft.mode = requestedMode
         })
-        responseText =
-          requestedMode === "hold"
-            ? "Switched to HOLD mode. File modifications are restricted."
-            : "Switched to RELEASE mode. Full tool access enabled."
+        if (requestedMode === "hold") {
+          clearReleaseTimer(input.sessionID)
+          responseText = "Switched to HOLD mode. File modifications are restricted."
+        } else {
+          responseText = "Switched to RELEASE mode. Full tool access enabled."
+          // Start auto-revert timer for WhatsApp sessions
+          if (session.surface === "whatsapp") {
+            const config = await Config.get()
+            const timeoutMs = config.experimental?.surfaces?.whatsapp?.releaseTimeoutMs ?? 900_000
+            startReleaseTimer(input.sessionID, timeoutMs)
+            const mins = Math.round(timeoutMs / 60_000)
+            responseText += ` Auto-reverts to hold after ${mins}min of inactivity.`
+          }
+        }
       }
       const confirmMsg: MessageV2.Assistant = {
         id: Identifier.ascending("message"),
