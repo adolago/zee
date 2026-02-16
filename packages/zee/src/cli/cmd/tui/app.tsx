@@ -73,7 +73,7 @@ export function tui(input: {
         // Always enable events + allKeysAsEscapes for PTT hold-to-record
         return { events: true, allKeysAsEscapes: true }
       },
-    }).catch(() => ({}) as Record<string, boolean> | null)
+    }).catch(() => ({ events: true, allKeysAsEscapes: true }) as Record<string, boolean> | null)
     const onExit = async () => {
       await input.onExit?.()
       resolve()
@@ -158,20 +158,6 @@ function App() {
   const route = useRoute()
   const dimensions = useTerminalDimensions()
   const renderer = useRenderer()
-  // DEBUG: check kitty keyboard state and force-enable if needed
-  {
-    const fs = require("fs")
-    const flags = (renderer as any).lib?.getKittyKeyboardFlags?.((renderer as any).rendererPtr)
-    const useKitty = (renderer as any).useKittyKeyboard
-    fs.appendFileSync("/tmp/shift-tap-debug.log", `renderer.useKittyKeyboard=${useKitty} flags=${flags}\n`)
-    const caps = (renderer as any)._capabilities
-    fs.appendFileSync("/tmp/shift-tap-debug.log", `capabilities: ${JSON.stringify(caps)}\n`)
-    // Force-enable Kitty keyboard with all flags
-    if (flags > 0) {
-      fs.appendFileSync("/tmp/shift-tap-debug.log", `Calling enableKittyKeyboard(${flags})\n`)
-      ;(renderer as any).enableKittyKeyboard(flags)
-    }
-  }
   // renderer.disableStdoutInterception()
   const dialog = useDialog()
   const local = useLocal()

@@ -2,7 +2,7 @@ diff --git a/index.js b/index.js
 index 57a205d..db054ea 100644
 --- a/index.js
 +++ b/index.js
-@@ -8416,26 +8416,49 @@ class MarkdownRenderable extends Renderable {
+@@ -8416,26 +8416,55 @@ class MarkdownRenderable extends Renderable {
        marginBottom
      });
    }
@@ -14,8 +14,14 @@ index 57a205d..db054ea 100644
 +    sides.push("left");
 +    sides.push("bottom");
 +    if (isLastCol) sides.push("right");
-+    let customBorderChars = undefined;
-+    const chars = {};
++    const chars = {
++      topLeft: "\u250C", topRight: "\u2510",
++      bottomLeft: "\u2514", bottomRight: "\u2518",
++      horizontal: "\u2500", vertical: "\u2502",
++      topT: "\u252C", bottomT: "\u2534",
++      leftT: "\u251C", rightT: "\u2524",
++      cross: "\u253C"
++    };
 +    if (isHeader) {
 +      if (!isFirstCol) chars.topLeft = "\u252C";
 +      if (isFirstCol) chars.bottomLeft = "\u251C";
@@ -30,7 +36,7 @@ index 57a205d..db054ea 100644
 +      else chars.bottomLeft = "\u253C";
 +      if (isLastCol) chars.bottomRight = "\u2524";
 +    }
-+    if (Object.keys(chars).length > 0) customBorderChars = chars;
++    const customBorderChars = chars;
 +    return { sides, customBorderChars };
 +  }
    updateTableRenderable(tableBox, table, marginBottom) {
@@ -66,7 +72,7 @@ index 57a205d..db054ea 100644
          if (headerText instanceof TextRenderable) {
            const headerCell = table.header[col];
            const headerChunks = [];
-@@ -8454,24 +8477,24 @@ class MarkdownRenderable extends Renderable {
+@@ -8454,24 +8483,24 @@ class MarkdownRenderable extends Renderable {
            headerText.content = new StyledText(styledHeaderChunks);
          }
        }
@@ -108,7 +114,7 @@ index 57a205d..db054ea 100644
          }
        }
      }
-@@ -8484,36 +8507,29 @@ class MarkdownRenderable extends Renderable {
+@@ -8484,36 +8513,29 @@ class MarkdownRenderable extends Renderable {
      }
      const tableBox = new BoxRenderable(this.ctx, {
        id,
@@ -159,7 +165,7 @@ index 57a205d..db054ea 100644
        const styledHeaderChunks = headerChunks.map((chunk) => ({
          ...chunk,
          fg: headingStyle?.fg ?? chunk.fg,
-@@ -8525,48 +8541,46 @@ class MarkdownRenderable extends Renderable {
+@@ -8525,48 +8547,46 @@ class MarkdownRenderable extends Renderable {
            dim: headingStyle.dim
          }) : chunk.attributes
        }));

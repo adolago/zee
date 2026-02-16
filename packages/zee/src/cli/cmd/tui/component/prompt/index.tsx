@@ -335,31 +335,6 @@ export function Prompt(props: PromptProps) {
     }
   }, { release: true })
 
-  // Shift-tap detection: quick press+release of Shift cycles mode (plan/accept/bypass)
-  let shiftPressedAt: number | null = null
-  useKeyboard((evt) => {
-    const isShift = evt.name === "leftshift" || evt.name === "rightshift"
-
-    if (isShift && evt.eventType === "press") {
-      shiftPressedAt = Date.now()
-      return
-    }
-
-    // Any non-shift key press while shift is held: cancel the tap
-    if (evt.eventType === "press" && shiftPressedAt !== null) {
-      shiftPressedAt = null
-      return
-    }
-
-    if (isShift && evt.eventType === "release" && shiftPressedAt !== null) {
-      const elapsed = Date.now() - shiftPressedAt
-      shiftPressedAt = null
-      if (elapsed < 300) {
-        local.mode.cycle()
-      }
-    }
-  }, { release: true })
-
   const [store, setStore] = createStore<{
     prompt: PromptInfo
     mode: "normal" | "shell"
@@ -398,8 +373,8 @@ export function Prompt(props: PromptProps) {
     if (ctx.percent >= 60) return theme.warning
     return theme.textMuted
   })
-  const releaseStatusLabel = createMemo(() => local.mode.mode().toUpperCase())
-  const releaseStatusColor = createMemo(() =>
+  const modeStatusLabel = createMemo(() => local.mode.mode().toUpperCase())
+  const modeStatusColor = createMemo(() =>
     local.mode.isPlan() ? theme.warning : local.mode.isBypass() ? theme.error : theme.success,
   )
   const vimStatusLabel = createMemo(() => (vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"))
@@ -435,9 +410,9 @@ export function Prompt(props: PromptProps) {
       remaining -= contextUsageBorderText().length + 1
     }
 
-    if (remaining <= 0) return { showSkills: false, showVim: false, showRelease: false, showDictation: false }
+    if (remaining <= 0) return { showSkills: false, showVim: false, showMode: false, showDictation: false }
 
-    let showRelease = false
+    let showMode = false
     let showVim = false
     let showSkills = false
     let showDictation = false
@@ -452,10 +427,10 @@ export function Prompt(props: PromptProps) {
       }
     }
 
-    const releaseNeed = 1 + releaseStatusLabel().length
-    if (remaining >= releaseNeed) {
-      showRelease = true
-      remaining -= releaseNeed
+    const modeNeed = 1 + modeStatusLabel().length
+    if (remaining >= modeNeed) {
+      showMode = true
+      remaining -= modeNeed
     }
 
     const vimNeed = 1 + vimStatusLabel().length
@@ -469,7 +444,7 @@ export function Prompt(props: PromptProps) {
       showSkills = true
     }
 
-    return { showSkills, showVim, showRelease, showDictation }
+    return { showSkills, showVim, showMode, showDictation }
   })
   const modelBorderText = createMemo(() => {
     if (!showModelInfoInBorder()) return ""
@@ -637,8 +612,7 @@ export function Prompt(props: PromptProps) {
     if (!config) {
       toast.show({
         variant: "warning",
-        message:
-          "Dictation is not configured. Connect google via :connect (AI Studio API key), or set GEMINI_API_KEY/GOOGLE_API_KEY.",
+        message: "Dictation requires a Wispr Flow API key. Run: zee auth login wisprflow",
       })
       return
     }
@@ -1881,10 +1855,10 @@ export function Prompt(props: PromptProps) {
                   {vimStatusLabel()}
                 </text>
               </Show>
-              <Show when={promptHeaderMetaVisibility().showRelease}>
+              <Show when={promptHeaderMetaVisibility().showMode}>
                 <text fg={theme.border} flexShrink={0}>─</text>
-                <text fg={releaseStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
-                  {releaseStatusLabel()}
+                <text fg={modeStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                  {modeStatusLabel()}
                 </text>
               </Show>
               <text fg={theme.border} flexShrink={0}>─┤</text>
@@ -2041,6 +2015,11 @@ export function Prompt(props: PromptProps) {
                 if (keybind.match("grammar_quickfix", e) && realtimeGrammarEnabled() && grammarErrorTypeId) {
                   e.preventDefault()
                   command.trigger("prompt.grammar.quickfix")
+                  return
+                }
+                if (keybind.match("mode_cycle", e)) {
+                  e.preventDefault()
+                  local.mode.cycle()
                   return
                 }
                 if (keybind.match("input_clear", e) && store.prompt.input !== "") {
