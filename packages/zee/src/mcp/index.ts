@@ -461,12 +461,54 @@ export namespace MCP {
     mcp: z.infer<typeof Config.McpLocal>,
     agentCoreRoot: string,
   ): string[] | undefined {
+    const preferNodeTsx =
+      process.env.ZEE_MCP_PREFER_NODE_TSX === "1" ||
+      Boolean(process.env.SYSTEMD_EXEC_PID) ||
+      Boolean(process.env.INVOCATION_ID)
+
+    const hasTsxLoader = () => {
+      const roots = [Instance.directory, Global.Path.source, agentCoreRoot]
+      return roots.some((root) => existsSync(path.join(root, "node_modules", "tsx")))
+    }
+
+    const pickSourceRuntime = (candidate: string): string[] => {
+      // Bun child processes have been observed to abort under some systemd service contexts.
+      // Prefer Node+tsx there, while retaining Bun as the default fallback.
+      if (preferNodeTsx && hasTsxLoader()) {
+        return ["node", "--import", "tsx", candidate]
+      }
+      return ["bun", "run", candidate]
+    }
+
+    const isBunVirtualPath = (value: string) => value.startsWith("/$bunfs/")
+
     // Check if provided command exists (handles bundled __dirname paths that don't exist at runtime)
     if (mcp.command?.length && mcp.command[0]) {
       // For "bun run <file>" or similar, verify the file exists
       const scriptArg = mcp.command.find((arg, i) => i > 0 && arg.endsWith(".ts"))
-      if (!scriptArg || existsSync(scriptArg)) {
-        return mcp.command
+      const normalizedScriptArg = scriptArg?.replace(/\\/g, "/")
+      const bundledPathMismatch =
+        Boolean(scriptArg) &&
+        normalizedScriptArg?.includes("/$bunfs/root/src/") &&
+        !normalizedScriptArg?.includes("/mcp/servers/")
+
+      if (!scriptArg || (existsSync(scriptArg) && !bundledPathMismatch)) {
+        if (
+          preferNodeTsx &&
+          scriptArg &&
+          mcp.command[0] === "bun" &&
+          mcp.command.some((arg) => arg === "run") &&
+          hasTsxLoader() &&
+          !isBunVirtualPath(scriptArg)
+        ) {
+          return ["node", "--import", "tsx", scriptArg]
+        }
+
+        // Bun virtual paths are only resolvable in Bun itself; Node cannot execute them.
+        // In systemd mode we want Node+tsx, so continue into source-path resolution.
+        if (!(preferNodeTsx && scriptArg && isBunVirtualPath(scriptArg))) {
+          return mcp.command
+        }
       }
       // Script doesn't exist, fall through to source resolution
       log.debug("command script not found, trying source paths", { serverName, script: scriptArg })
@@ -483,7 +525,7 @@ export namespace MCP {
         const candidate = path.join(root, "src", "mcp", "servers", `${name}.ts`)
         if (existsSync(candidate)) {
           log.debug("resolved local command", { serverName, path: candidate })
-          return ["bun", "run", candidate]
+          return pickSourceRuntime(candidate)
         }
       }
     }
@@ -902,6 +944,19 @@ export namespace MCP {
       const resolved = resolveMcpConfigEntry(key, mcp)
       if (!resolved) continue
       result[key] = s.status[key] ?? { status: "failed", error: "MCP server not initialized yet" }
+    }
+
+    // Self-heal any lingering disabled states so MCPs remain operational without manual reconnect.
+    for (const [name, current] of Object.entries(result)) {
+      if (current.status !== "disabled") continue
+      try {
+        result[name] = await reconnect(name)
+      } catch (error) {
+        result[name] = {
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        }
+      }
     }
 
     return result

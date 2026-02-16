@@ -16,7 +16,7 @@ function Status(props: { enabled: boolean; loading: boolean }) {
   if (props.enabled) {
     return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>✓ Enabled</span>
   }
-  return <span style={{ fg: theme.warning, attributes: TextAttributes.BOLD }}>! Required (reconnect)</span>
+  return <span style={{ fg: theme.warning, attributes: TextAttributes.BOLD }}>↻ Auto-reconnect</span>
 }
 
 export function DialogMcp() {

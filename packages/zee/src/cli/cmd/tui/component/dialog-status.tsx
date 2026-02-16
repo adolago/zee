@@ -145,7 +145,7 @@ export function DialogStatus() {
                     <Switch fallback={item.status}>
                       <Match when={item.status === "connected"}>Connected</Match>
                       <Match when={item.status === "failed" && item}>{(val) => val().error}</Match>
-                      <Match when={item.status === "disabled"}>Unavailable (reconnect required)</Match>
+                      <Match when={item.status === "disabled"}>Reconnecting...</Match>
                       <Match when={(item.status as string) === "needs_auth"}>
                         Needs authentication (run: zee mcp auth {key})
                       </Match>

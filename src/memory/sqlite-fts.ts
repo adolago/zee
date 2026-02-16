@@ -11,13 +11,37 @@
  * @module memory/sqlite-fts
  */
 
-import { Database } from "bun:sqlite"
 import path from "path"
 import fs from "node:fs"
 import { Log } from "../../packages/zee/src/util/log"
 import { resolveStateDir } from "../../packages/zee/src/global/dirs"
 
 const log = Log.create({ service: "memory:fts" })
+
+type SqliteStatement<Row = unknown> = {
+  all: (...params: unknown[]) => Row[]
+  get: (...params: unknown[]) => Row | undefined
+  run: (...params: unknown[]) => unknown
+}
+
+type SqliteDb = {
+  exec: (sql: string) => unknown
+  run: (sql: string, params?: unknown[]) => unknown
+  query: <Row = unknown, _Params extends unknown[] = unknown[]>(sql: string) => SqliteStatement<Row>
+  transaction: <T extends (...args: unknown[]) => unknown>(fn: T) => T
+  close: () => void
+}
+
+async function createSqliteDatabase(dbPath: string): Promise<SqliteDb> {
+  try {
+    const module = await import("bun:sqlite")
+    const Database = (module as { Database: new (path: string) => SqliteDb }).Database
+    return new Database(dbPath)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new Error(`SQLite FTS requires bun:sqlite (${reason})`)
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -81,7 +105,7 @@ export interface FtsSearchResult {
 // ---------------------------------------------------------------------------
 
 export class SqliteFtsStore {
-  private db: Database | null = null
+  private db: SqliteDb | null = null
   private readonly dbPath: string
   private initialized = false
 
@@ -98,7 +122,7 @@ export class SqliteFtsStore {
     const dir = path.dirname(this.dbPath)
     fs.mkdirSync(dir, { recursive: true })
 
-    this.db = new Database(this.dbPath)
+    this.db = await createSqliteDatabase(this.dbPath)
     this.db.exec("PRAGMA journal_mode = WAL")
     this.db.exec("PRAGMA synchronous = NORMAL")
 

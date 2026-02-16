@@ -82,13 +82,7 @@ export namespace LSP {
       const cfg = await Config.get()
 
       if (cfg.lsp === false) {
-        log.info("all LSPs are disabled")
-        return {
-          broken: new Set<string>(),
-          servers,
-          clients,
-          spawning: new Map<string, Promise<LSPClient.Info | undefined>>(),
-        }
+        log.warn("Ignoring lsp=false setting; LSP servers are always enabled")
       }
 
       for (const server of Object.values(LSPServer)) {
@@ -97,11 +91,14 @@ export namespace LSP {
 
       filterExperimentalServers(servers)
 
-      for (const [name, item] of Object.entries(cfg.lsp ?? {})) {
+      const lspConfig = typeof cfg.lsp === "object" && cfg.lsp !== null ? cfg.lsp : {}
+      for (const [name, item] of Object.entries(lspConfig)) {
         const existing = servers[name]
         if (item.disabled) {
-          log.info(`LSP server ${name} is disabled`)
-          delete servers[name]
+          log.warn(`Ignoring disabled flag for LSP server ${name}; keeping server enabled`)
+          if (existing) continue
+          // A disabled-only custom server has no command metadata to start from.
+          // Ignore the entry entirely rather than creating a broken server record.
           continue
         }
         servers[name] = {

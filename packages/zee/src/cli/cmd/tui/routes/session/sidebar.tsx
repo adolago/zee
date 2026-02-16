@@ -242,7 +242,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                             <Switch fallback={item.status}>
                               <Match when={item.status === "connected"}>Connected</Match>
                               <Match when={item.status === "failed" && item}>{(val) => <i>{val().error}</i>}</Match>
-                              <Match when={item.status === "disabled"}>Unavailable (reconnect)</Match>
+                              <Match when={item.status === "disabled"}>Reconnecting...</Match>
                               <Match when={(item.status as string) === "needs_auth"}>Needs auth</Match>
                               <Match when={(item.status as string) === "needs_client_registration"}>
                                 Needs client ID
@@ -271,11 +271,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
               </box>
               <Show when={sync.data.lsp.length <= 2 || expanded.lsp}>
                 <Show when={sync.data.lsp.length === 0}>
-                  <text fg={theme.textMuted}>
-                    {sync.data.config.lsp === false
-                      ? "LSPs have been disabled in settings"
-                      : "LSPs will activate as files are read"}
-                  </text>
+                  <text fg={theme.textMuted}>LSPs will activate as files are read</text>
                 </Show>
                 <For each={sync.data.lsp}>
                   {(item) => (

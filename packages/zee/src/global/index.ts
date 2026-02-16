@@ -87,9 +87,8 @@ await Promise.all([
 
 const CACHE_VERSION = "18"
 
-const version = await Bun.file(path.join(Global.Path.cache, "version"))
-  .text()
-  .catch(() => "0")
+const cacheVersionPath = path.join(Global.Path.cache, "version")
+const version = await fs.readFile(cacheVersionPath, "utf-8").catch(() => "0")
 
 if (version !== CACHE_VERSION) {
   try {
@@ -109,5 +108,5 @@ if (version !== CACHE_VERSION) {
       console.error("[zee] Cache cleanup failed:", e)
     }
   }
-  await Bun.file(path.join(Global.Path.cache, "version")).write(CACHE_VERSION)
+  await fs.writeFile(cacheVersionPath, CACHE_VERSION, "utf-8")
 }
