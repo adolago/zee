@@ -42,6 +42,8 @@ export namespace MCP {
   // Per-server tool cache -- invalidated on tools/list_changed, reconnect, disconnect, add
   type ToolCacheEntry = { tools: MCPToolDef[]; cachedAt: number }
   const toolCache = new Map<string, ToolCacheEntry>()
+  const STATUS_AUTO_HEAL_COOLDOWN_MS = 15_000
+  const statusAutoHealAttemptAt = new Map<string, number>()
 
   async function withServerMutex<T>(serverName: string, fn: () => T | Promise<T>): Promise<T> {
     const currentMutex = serverMutexes.get(serverName) ?? Promise.resolve()
@@ -427,6 +429,7 @@ export namespace MCP {
   type PromptInfo = Awaited<ReturnType<MCPClient["listPrompts"]>>["prompts"][number]
 
   type ResourceInfo = Awaited<ReturnType<MCPClient["listResources"]>>["resources"][number]
+  type McpConfigMap = NonNullable<Config.Info["mcp"]>
   type McpEntry = NonNullable<Config.Info["mcp"]>[string]
   function isMcpConfigured(entry: McpEntry): entry is Config.Mcp {
     return typeof entry === "object" && entry !== null && "type" in entry
@@ -454,6 +457,28 @@ export namespace MCP {
       command: Array.from(persona.command),
       enabled: (entry as { enabled: boolean }).enabled,
     })
+  }
+
+  function isLocalServer(name: string, config: McpConfigMap): boolean {
+    const configured = resolveMcpConfigEntry(name, config[name])
+    if (configured) return configured.type === "local"
+    const persona = (personaServers as Record<string, PersonaServerConfig>)[name]
+    return persona?.type === "local"
+  }
+
+  function shouldAutoReconnectStatus(name: string, current: Status, config: McpConfigMap): boolean {
+    if (current.status === "disabled") return true
+    if (current.status !== "failed") return false
+    if (!isLocalServer(name, config)) return false
+    const lowered = current.error.toLowerCase()
+    if (
+      lowered.includes("needs auth") ||
+      lowered.includes("oauth") ||
+      lowered.includes("client registration")
+    ) {
+      return false
+    }
+    return true
   }
 
   function resolveLocalCommand(
@@ -931,7 +956,7 @@ export namespace MCP {
   export async function status() {
     const s = await state()
     const cfg = await Config.get()
-    const config = cfg.mcp ?? {}
+    const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
     const result: Record<string, Status> = {}
 
     // Include all known MCP statuses from runtime state first (includes mandatory persona MCPs).
@@ -946,15 +971,23 @@ export namespace MCP {
       result[key] = s.status[key] ?? { status: "failed", error: "MCP server not initialized yet" }
     }
 
-    // Self-heal any lingering disabled states so MCPs remain operational without manual reconnect.
+    // Self-heal retryable states so local MCPs can recover without manual reconnect.
+    const now = Date.now()
     for (const [name, current] of Object.entries(result)) {
-      if (current.status !== "disabled") continue
+      if (!shouldAutoReconnectStatus(name, current, config)) continue
+      const lastAttempt = statusAutoHealAttemptAt.get(name) ?? 0
+      if (now - lastAttempt < STATUS_AUTO_HEAL_COOLDOWN_MS) continue
+      statusAutoHealAttemptAt.set(name, now)
       try {
         result[name] = await reconnect(name)
       } catch (error) {
         result[name] = {
           status: "failed",
           error: error instanceof Error ? error.message : String(error),
+        }
+      } finally {
+        if (result[name]?.status === "connected") {
+          statusAutoHealAttemptAt.delete(name)
         }
       }
     }

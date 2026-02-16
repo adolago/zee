@@ -25,7 +25,7 @@ import { createSimpleContext } from "./helper"
 import type { Snapshot } from "@/snapshot"
 import { useExit } from "./exit"
 import { useArgs } from "./args"
-import { batch, onMount } from "solid-js"
+import { batch, onCleanup, onMount } from "solid-js"
 import { Log } from "@/util/log"
 import type { Path } from "@zee/sdk/v2"
 import { useToast } from "../ui/toast"
@@ -404,6 +404,11 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           break
         }
 
+        case "mcp.tools.changed": {
+          void refreshMcpStatus()
+          break
+        }
+
         case "vcs.branch.updated": {
           setStore("vcs", { branch: event.properties.branch })
           break
@@ -413,6 +418,28 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const exit = useExit()
     const args = useArgs()
+    let mcpRefreshInFlight: Promise<void> | undefined
+    const MCP_STATUS_POLL_MS = 5_000
+
+    async function refreshMcpStatus() {
+      if (mcpRefreshInFlight) return mcpRefreshInFlight
+      mcpRefreshInFlight = sdk.client.mcp
+        .status()
+        .then((x) => {
+          if (x.data) {
+            setStore("mcp", reconcile(x.data))
+          }
+        })
+        .catch((error) => {
+          Log.Default.debug("mcp status refresh failed", {
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
+        .finally(() => {
+          mcpRefreshInFlight = undefined
+        })
+      return mcpRefreshInFlight
+    }
 
     async function bootstrap() {
       const start = Date.now() - 30 * 24 * 60 * 60 * 1000
@@ -488,7 +515,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             ...(args.continue ? [] : [sessionListPromise.then((sessions) => setStore("session", reconcile(sessions)))]),
             sdk.client.command.list().then((x) => setStore("command", reconcile(x.data ?? []))),
             sdk.client.lsp.status().then((x) => setStore("lsp", reconcile(x.data!))),
-            sdk.client.mcp.status().then((x) => setStore("mcp", reconcile(x.data!))),
+            refreshMcpStatus(),
             sdk.client.experimental.resource.list().then((x) => setStore("mcp_resource", reconcile(x.data ?? {}))),
             sdk.client.formatter.status().then((x) => setStore("formatter", reconcile(x.data!))),
             sdk.client.session.status().then((x) => {
@@ -545,7 +572,13 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
     }
 
     onMount(() => {
-      bootstrap()
+      void bootstrap()
+      const mcpPoll = setInterval(() => {
+        void refreshMcpStatus()
+      }, MCP_STATUS_POLL_MS)
+      onCleanup(() => {
+        clearInterval(mcpPoll)
+      })
     })
 
     const fullSyncedSessions = new Set<string>()
