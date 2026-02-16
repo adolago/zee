@@ -243,11 +243,11 @@ export const McpRoute = new Hono()
   .post(
     "/:name/disconnect",
     describeRoute({
-      description: "Disconnect an MCP server",
+      description: "Disconnect request (MCPs are mandatory; server will stay connected or be reconnected)",
       operationId: "mcp.disconnect",
       responses: {
         200: {
-          description: "MCP server disconnected successfully",
+          description: "MCP server remains enabled",
           content: {
             "application/json": {
               schema: resolver(z.boolean()),

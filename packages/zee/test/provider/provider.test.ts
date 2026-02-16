@@ -224,7 +224,7 @@ test("xai provider is limited to grok 4.1 variants", async () => {
   })
 })
 
-test("minimax provider is limited to MiniMax-M2.1", async () => {
+test("minimax provider is limited to MiniMax-M2.5", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -244,9 +244,9 @@ test("minimax provider is limited to MiniMax-M2.1", async () => {
       const providers = await Provider.list()
       expect(providers["minimax"]).toBeDefined()
       const models = Object.keys(providers["minimax"].models)
-      expect(models).toContain("MiniMax-M2.1")
+      expect(models).toContain("MiniMax-M2.5")
       for (const modelID of models) {
-        expect(modelID).toBe("MiniMax-M2.1")
+        expect(modelID).toBe("MiniMax-M2.5")
       }
     },
   })

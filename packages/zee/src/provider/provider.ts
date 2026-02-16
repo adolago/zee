@@ -72,7 +72,7 @@ export namespace Provider {
   const HARDCODED_MODEL_ALLOWLIST: Record<string, Set<string>> = {
     anthropic: new Set(["claude-opus-4-6"]),
     "zai-coding-plan": new Set(["glm-4.7", "glm-4.7-flash", "glm-5"]),
-    minimax: new Set(["MiniMax-M2.1"]),
+    minimax: new Set(["MiniMax-M2.5"]),
     xai: new Set(["grok-4-1", "grok-4-1-fast"]),
     openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"]),
   }

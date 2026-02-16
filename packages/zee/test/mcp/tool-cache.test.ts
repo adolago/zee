@@ -150,3 +150,30 @@ test("getToolCacheEntry returns undefined for uncached server", () => {
   MCP.clearToolCache()
   expect(MCP.getToolCacheEntry("nonexistent")).toBeUndefined()
 })
+
+test("MCP servers remain enabled even when config sets enabled: false", async () => {
+  await using tmp = await tmpdir({
+    config: {
+      mcp: {
+        memory: { enabled: false },
+      },
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      MCP.clearToolCache()
+
+      const before = await MCP.status()
+      expect(before.memory).toBeDefined()
+      expect(before.memory?.status).not.toBe("disabled")
+
+      await MCP.disconnect("memory")
+
+      const after = await MCP.status()
+      expect(after.memory).toBeDefined()
+      expect(after.memory?.status).not.toBe("disabled")
+    },
+  })
+})

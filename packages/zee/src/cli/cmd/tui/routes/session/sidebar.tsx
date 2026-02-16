@@ -242,7 +242,7 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                             <Switch fallback={item.status}>
                               <Match when={item.status === "connected"}>Connected</Match>
                               <Match when={item.status === "failed" && item}>{(val) => <i>{val().error}</i>}</Match>
-                              <Match when={item.status === "disabled"}>Disabled</Match>
+                              <Match when={item.status === "disabled"}>Unavailable (reconnect)</Match>
                               <Match when={(item.status as string) === "needs_auth"}>Needs auth</Match>
                               <Match when={(item.status as string) === "needs_client_registration"}>
                                 Needs client ID

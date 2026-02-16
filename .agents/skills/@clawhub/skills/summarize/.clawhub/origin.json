@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "registry": "https://clawhub.ai",
+  "registry": "https://auth.clawdhub.com",
   "slug": "summarize",
   "installedVersion": "1.0.0",
-  "installedAt": 1771211119571
+  "installedAt": 1771261454735
 }

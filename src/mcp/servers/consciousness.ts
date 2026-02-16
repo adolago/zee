@@ -268,7 +268,7 @@ Use this for:
 - Analyzing integrated information dynamics`,
   {
     initial_state: z
-      .record(z.unknown())
+      .record(z.string(), z.unknown())
       .describe("Initial system state as key-value pairs with numeric values"),
     target_phi: z
       .number()
@@ -349,7 +349,7 @@ Returns:
 - complexity: State complexity`,
   {
     system_state: z
-      .record(z.unknown())
+      .record(z.string(), z.unknown())
       .describe("System state as key-value pairs with numeric values"),
   },
   async (args) => {

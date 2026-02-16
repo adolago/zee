@@ -84,22 +84,20 @@ export const McpListCommand = cmd({
         const mcpServers = config.mcp ?? {}
         const statuses = await MCP.status()
 
-        // Include both fully configured MCPs and shorthand persona configs
-        const servers = Object.entries(mcpServers).filter(
-          (entry): entry is [string, McpConfigured] | [string, { enabled: boolean }] =>
-            isMcpConfigured(entry[1]) || isShorthandConfig(entry[1]),
-        )
+        const serverNames = Array.from(new Set([...Object.keys(mcpServers), ...Object.keys(statuses)])).sort()
 
-        if (servers.length === 0) {
+        if (serverNames.length === 0) {
           prompts.log.warn("No MCP servers configured")
           prompts.outro("Add servers with: zee mcp add")
           return
         }
 
-        for (const [name, serverConfig] of servers) {
+        for (const name of serverNames) {
+          const serverConfig = mcpServers[name]
           const status = statuses[name]
-          const isConfigured = isMcpConfigured(serverConfig)
-          const hasOAuth = isConfigured && isMcpRemote(serverConfig) && !!serverConfig.oauth
+          const configured = serverConfig && isMcpConfigured(serverConfig) ? serverConfig : undefined
+          const shorthand = serverConfig && isShorthandConfig(serverConfig) ? serverConfig : undefined
+          const hasOAuth = configured ? isMcpRemote(configured) && !!configured.oauth : false
           const hasStoredTokens = await MCP.hasStoredTokens(name)
 
           let statusIcon: string
@@ -133,18 +131,20 @@ export const McpListCommand = cmd({
 
           // Build type hint based on config type
           let typeHint: string
-          if (isConfigured) {
-            typeHint = serverConfig.type === "remote" ? serverConfig.url : serverConfig.command.join(" ")
-          } else {
+          if (configured) {
+            typeHint = configured.type === "remote" ? configured.url : configured.command.join(" ")
+          } else if (shorthand) {
             // Shorthand persona config
-            typeHint = `persona builtin (enabled: ${(serverConfig as { enabled: boolean }).enabled})`
+            typeHint = `persona builtin (enabled: ${shorthand.enabled})`
+          } else {
+            typeHint = "persona builtin (auto-enabled)"
           }
           prompts.log.info(
             `${statusIcon} ${name} ${UI.Style.TEXT_DIM}${statusText}${hint}\n    ${UI.Style.TEXT_DIM}${typeHint}`,
           )
         }
 
-        prompts.outro(`${servers.length} server(s)`)
+        prompts.outro(`${serverNames.length} server(s)`)
       },
     })
   },

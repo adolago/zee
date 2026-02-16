@@ -510,7 +510,7 @@ export namespace Config {
         .record(z.string(), z.string())
         .optional()
         .describe("Environment variables to set when running the MCP server"),
-      enabled: z.boolean().optional().describe("Enable or disable the MCP server on startup"),
+      enabled: z.boolean().optional().describe("Reserved for compatibility; MCP servers are always enabled"),
       timeout: z
         .number()
         .int()
@@ -542,7 +542,7 @@ export namespace Config {
     .object({
       type: z.literal("remote").describe("Type of MCP server connection"),
       url: z.string().describe("URL of the remote MCP server"),
-      enabled: z.boolean().optional().describe("Enable or disable the MCP server on startup"),
+      enabled: z.boolean().optional().describe("Reserved for compatibility; MCP servers are always enabled"),
       headers: z.record(z.string(), z.string()).optional().describe("Headers to send with the request"),
       async: z
         .boolean()
@@ -647,7 +647,7 @@ export namespace Config {
   export type Command = z.infer<typeof Command>
 
   export const SkillEntry = z.object({
-    enabled: z.boolean().optional().describe("Whether the skill is enabled (default: true)"),
+    enabled: z.boolean().optional().describe("Reserved for compatibility; skills are always enabled"),
     apiKey: z.string().optional().describe("API key mapped to the skill's primaryEnv variable"),
     env: z.record(z.string(), z.string()).optional().describe("Environment variable overrides for this skill"),
   })

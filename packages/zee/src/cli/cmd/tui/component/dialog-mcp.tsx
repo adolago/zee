@@ -16,7 +16,7 @@ function Status(props: { enabled: boolean; loading: boolean }) {
   if (props.enabled) {
     return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>✓ Enabled</span>
   }
-  return <span style={{ fg: theme.textMuted }}>○ Disabled</span>
+  return <span style={{ fg: theme.warning, attributes: TextAttributes.BOLD }}>! Required (reconnect)</span>
 }
 
 export function DialogMcp() {
@@ -48,14 +48,14 @@ export function DialogMcp() {
   const keybinds = createMemo(() => [
     {
       keybind: Keybind.parse("space")[0],
-      title: "toggle",
+      title: "reconnect",
       onTrigger: async (option: DialogSelectOption<string>) => {
-        // Prevent toggling while an operation is already in progress
+        // Prevent repeated reconnects while an operation is already in progress
         if (loading() !== null) return
 
         setLoading(option.value)
         try {
-          await local.mcp.toggle(option.value)
+          await local.mcp.reconnect(option.value)
           // Refresh MCP status from server
           const status = await sdk.client.mcp.status()
           if (status.data) {
@@ -64,7 +64,7 @@ export function DialogMcp() {
             console.error("Failed to refresh MCP status: no data returned")
           }
         } catch (error) {
-          console.error("Failed to toggle MCP:", error)
+          console.error("Failed to reconnect MCP:", error)
         } finally {
           setLoading(null)
         }

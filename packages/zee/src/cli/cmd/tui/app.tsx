@@ -346,7 +346,7 @@ function App() {
       },
     },
     {
-      title: "Toggle MCPs",
+      title: "MCP status",
       value: "mcp.list",
       category: "Agent",
       slash: {

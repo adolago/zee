@@ -434,17 +434,26 @@ export namespace MCP {
   const personaServers = getAllPersonaMcpServers()
   type PersonaServerConfig = (typeof personaServers)[keyof typeof personaServers]
 
+  function forceMcpEnabled(name: string, mcp: Config.Mcp): Config.Mcp {
+    if (mcp.enabled !== false) return mcp
+    log.warn("Ignoring enabled=false for MCP server; MCP servers are always on", { name })
+    return {
+      ...mcp,
+      enabled: true,
+    }
+  }
+
   function resolveMcpConfigEntry(name: string, entry: McpEntry | undefined): Config.Mcp | undefined {
     if (!entry) return undefined
-    if (isMcpConfigured(entry)) return entry
+    if (isMcpConfigured(entry)) return forceMcpEnabled(name, entry)
     if (typeof entry !== "object" || entry === null || !("enabled" in entry)) return undefined
     const persona = (personaServers as Record<string, PersonaServerConfig>)[name]
     if (!persona) return undefined
-    return {
+    return forceMcpEnabled(name, {
       type: persona.type,
       command: Array.from(persona.command),
       enabled: (entry as { enabled: boolean }).enabled,
-    }
+    })
   }
 
   function resolveLocalCommand(
@@ -501,7 +510,7 @@ export namespace MCP {
         }
       }
 
-      // User config can override defaults. For persona MCPs, disabled shorthand is allowed.
+      // User config can override defaults. Persona shorthand {"enabled": ...} is accepted for compatibility.
       for (const [name, mcp] of Object.entries(userConfig)) {
         const resolved = resolveMcpConfigEntry(name, mcp)
         if (!resolved) {
@@ -635,15 +644,8 @@ export namespace MCP {
     })
   }
 
-  async function create(key: string, mcp: Config.Mcp) {
-    if (mcp.enabled === false) {
-      log.info("mcp server disabled", { key })
-      return {
-        mcpClient: undefined,
-        status: { status: "disabled" as const },
-      }
-    }
-
+  async function create(key: string, inputMcp: Config.Mcp) {
+    const mcp = forceMcpEnabled(key, inputMcp)
     log.info("found", { key, type: mcp.type })
     let mcpClient: MCPClient | undefined
     let status: Status | undefined = undefined
@@ -890,11 +892,16 @@ export namespace MCP {
     const config = cfg.mcp ?? {}
     const result: Record<string, Status> = {}
 
-    // Include all configured MCPs from config, not just connected ones
+    // Include all known MCP statuses from runtime state first (includes mandatory persona MCPs).
+    for (const [key, item] of Object.entries(s.status)) {
+      result[key] = item
+    }
+
+    // Include all configured MCPs from config as well, even if they are not currently in runtime state.
     for (const [key, mcp] of Object.entries(config)) {
       const resolved = resolveMcpConfigEntry(key, mcp)
       if (!resolved) continue
-      result[key] = s.status[key] ?? { status: "disabled" }
+      result[key] = s.status[key] ?? { status: "failed", error: "MCP server not initialized yet" }
     }
 
     return result
@@ -948,19 +955,10 @@ export namespace MCP {
   }
 
   export async function disconnect(name: string) {
-    // Use mutex to prevent concurrent state mutations for the same server
-    return withServerMutex(name, async () => {
-      const s = await state()
-      const client = s.clients[name]
-      if (client) {
-        await client.close().catch((error) => {
-          log.error("Failed to close MCP client", { name, error })
-        })
-        delete s.clients[name]
-      }
-      toolCache.delete(name)
-      s.status[name] = { status: "disabled" }
-    })
+    log.warn("MCP disconnect requested but ignored because MCP servers are mandatory", { name })
+    const s = await state()
+    if (s.status[name]?.status === "connected") return
+    await connect(name)
   }
 
   /**
@@ -1058,7 +1056,7 @@ export namespace MCP {
     const results: Record<string, Status> = {}
 
     for (const [name, currentStatus] of Object.entries(s.status)) {
-      if (currentStatus.status === "failed") {
+      if (currentStatus.status === "failed" || currentStatus.status === "disabled") {
         results[name] = await reconnect(name)
       } else {
         results[name] = currentStatus

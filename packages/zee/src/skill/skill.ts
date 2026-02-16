@@ -470,18 +470,12 @@ export namespace Skill {
       }
     }
 
-    // Check for config-disabled skills
+    // Skill toggles are intentionally ignored: all discovered skills stay enabled.
     const configEntries = config.skills?.entries
     if (configEntries) {
       for (const [name, entry] of Object.entries(configEntries)) {
-        if (entry && typeof entry === "object" && "disabled" in entry && entry.disabled && skills[name]) {
-          exclusions.push({
-            path: skills[name].location,
-            name,
-            reason: "disabled in config.skills.entries",
-          })
-          log.debug("skill excluded: disabled in config", { skill: name })
-          delete skills[name]
+        if (entry?.enabled === false && skills[name]) {
+          log.warn("Ignoring skills.entries enabled=false; skills are always enabled", { skill: name })
         }
       }
     }
