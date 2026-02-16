@@ -2,11 +2,11 @@
   "skills": {
     "agent-browser": {
       "version": "0.2.0",
-      "installedAt": 1771054342953
+      "installedAt": 1771126010337
     },
     "humanizer": {
       "version": "1.0.0",
-      "installedAt": 1771054355810
+      "installedAt": 1771211067162
     },
     "markdown-converter": {
       "version": "1.0.0",
@@ -14,43 +14,123 @@
     },
     "nano-pdf": {
       "version": "1.0.0",
-      "installedAt": 1771054358823
+      "installedAt": 1771211105429
     },
     "obsidian": {
       "version": "1.0.0",
-      "installedAt": 1771054361829
+      "installedAt": 1771126030551
     },
     "self-improving-agent": {
       "version": "1.0.5",
-      "installedAt": 1771054365551
+      "installedAt": 1771126034474
     },
     "summarize": {
       "version": "1.0.0",
-      "installedAt": 1771054371851
+      "installedAt": 1771211119571
     },
     "tmux": {
       "version": "1.0.0",
-      "installedAt": 1771054399236
+      "installedAt": 1771211182851
     },
     "video-frames": {
       "version": "1.0.0",
-      "installedAt": 1771054402397
+      "installedAt": 1771211186496
     },
     "hooks-automation": {
       "version": "1.0.0",
-      "installedAt": 1771054352563
+      "installedAt": 1771126020511
     },
     "stream-chain": {
       "version": "1.0.0",
-      "installedAt": 1771054368839
+      "installedAt": 1771126037975
     },
     "gog": {
       "version": "1.0.0",
-      "installedAt": 1771054345996
+      "installedAt": 1771126013585
     },
     "goplaces": {
       "version": "1.0.0",
-      "installedAt": 1771054349182
+      "installedAt": 1771211059169
+    },
+    "anki": {
+      "version": "1.0.1",
+      "installedAt": 1771210952803
+    },
+    "youtube-transcript-yt-dlp": {
+      "version": "1.0.5",
+      "installedAt": 1771211199563
+    },
+    "atris": {
+      "version": "1.1.0",
+      "installedAt": 1771210956745
+    },
+    "literature-search": {
+      "version": "1.0.3",
+      "installedAt": 1771211071037
+    },
+    "spotify-linux": {
+      "version": "1.1.0",
+      "installedAt": 1771211116110
+    },
+    "sysadmin-toolbox": {
+      "version": "1.1.0",
+      "installedAt": 1771211123818
+    },
+    "tailscale": {
+      "version": "1.0.0",
+      "installedAt": 1771211179098
+    },
+    "oracle": {
+      "version": "1.0.1",
+      "installedAt": 1771211108863
+    },
+    "qmd": {
+      "version": "1.0.0",
+      "installedAt": 1771211112028
+    },
+    "github": {
+      "version": "1.0.0",
+      "installedAt": 1771211005868
+    },
+    "auto-updater": {
+      "version": "1.0.0",
+      "installedAt": 1771210985039
+    },
+    "blogwatcher": {
+      "version": "1.0.0",
+      "installedAt": 1771210988101
+    },
+    "brave-search": {
+      "version": "1.0.1",
+      "installedAt": 1771210991548
+    },
+    "caldav-calendar": {
+      "version": "1.0.1",
+      "installedAt": 1771210994927
+    },
+    "clawddocs": {
+      "version": "1.2.2",
+      "installedAt": 1771210998932
+    },
+    "home-assistant": {
+      "version": "1.0.0",
+      "installedAt": 1771211062663
+    },
+    "mcporter": {
+      "version": "1.0.0",
+      "installedAt": 1771211074256
+    },
+    "meta-business": {
+      "version": "1.2.0",
+      "installedAt": 1771211077225
+    },
+    "weather": {
+      "version": "1.0.0",
+      "installedAt": 1771211190360
+    },
+    "whoopskill": {
+      "version": "1.1.0",
+      "installedAt": 1771211195708
     }
   },
   "version": 1

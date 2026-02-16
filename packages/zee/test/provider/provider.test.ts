@@ -116,7 +116,7 @@ test("model whitelist filters models for provider", async () => {
           $schema: "zee",
           provider: {
             anthropic: {
-              whitelist: ["claude-sonnet-4-5"],
+              whitelist: ["claude-opus-4-6"],
             },
           },
         }),
@@ -132,8 +132,37 @@ test("model whitelist filters models for provider", async () => {
       const providers = await Provider.list()
       expect(providers["anthropic"]).toBeDefined()
       const models = Object.keys(providers["anthropic"].models)
-      expect(models).toContain("claude-sonnet-4-5")
+      expect(models).toContain("claude-opus-4-6")
       expect(models.length).toBe(1)
+    },
+  })
+})
+
+test("anthropic provider is forced to opus 4.6", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("ANTHROPIC_API_KEY", "test-api-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      const modelIDs = Object.keys(providers["anthropic"].models)
+
+      expect(modelIDs).toContain("claude-opus-4-6")
+      expect(modelIDs).toHaveLength(1)
+      expect(modelIDs).not.toContain("claude-sonnet-4-5")
+      expect(modelIDs).not.toContain("claude-opus-4-6@default")
+      expect(modelIDs).not.toContain("claude-opus-4.6")
     },
   })
 })
@@ -168,6 +197,118 @@ test("model blacklist excludes specific models", async () => {
   })
 })
 
+test("xai provider is limited to grok 4.1 variants", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("XAI_API_KEY", "test-xai-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      expect(providers["xai"]).toBeDefined()
+      const allowed = new Set(["grok-4-1", "grok-4-1-fast"])
+      for (const modelID of Object.keys(providers["xai"].models)) {
+        expect(allowed.has(modelID)).toBe(true)
+      }
+    },
+  })
+})
+
+test("minimax provider is limited to MiniMax-M2.1", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("MINIMAX_API_KEY", "test-minimax-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      expect(providers["minimax"]).toBeDefined()
+      const models = Object.keys(providers["minimax"].models)
+      expect(models).toContain("MiniMax-M2.1")
+      for (const modelID of models) {
+        expect(modelID).toBe("MiniMax-M2.1")
+      }
+    },
+  })
+})
+
+test("glm provider keeps only requested model IDs", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("ZHIPU_API_KEY", "test-zai-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      const models = Object.keys(providers["zai-coding-plan"].models)
+      const allowed = new Set(["glm-4.7", "glm-4.7-flash", "glm-5"])
+      expect(models.length).toBeGreaterThan(0)
+      for (const modelID of models) {
+        expect(allowed.has(modelID)).toBe(true)
+      }
+    },
+  })
+})
+
+test("openai provider is limited to 5.2 and 5.3 codex models", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("OPENAI_API_KEY", "test-openai-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      expect(providers["openai"]).toBeDefined()
+      const models = Object.keys(providers["openai"].models)
+      const allowed = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"])
+      expect(models).toContain("gpt-5.2")
+      for (const modelID of models) {
+        expect(allowed.has(modelID)).toBe(true)
+      }
+    },
+  })
+})
+
 test("custom model alias via config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -179,7 +320,7 @@ test("custom model alias via config", async () => {
             anthropic: {
               models: {
                 "my-alias": {
-                  id: "claude-sonnet-4-5",
+                  id: "claude-opus-4-6",
                   name: "My Custom Alias",
                 },
               },
@@ -295,10 +436,10 @@ test("getModel returns model for valid provider/model", async () => {
       Env.set("ANTHROPIC_API_KEY", "test-api-key")
     },
     fn: async () => {
-      const model = await Provider.getModel("anthropic", "claude-sonnet-4-5")
+      const model = await Provider.getModel("anthropic", "claude-opus-4-6")
       expect(model).toBeDefined()
       expect(model.providerID).toBe("anthropic")
-      expect(model.id).toBe("claude-sonnet-4-5")
+      expect(model.id).toBe("claude-opus-4-6")
       const language = await Provider.getLanguage(model)
       expect(language).toBeDefined()
     },
@@ -614,7 +755,7 @@ test("model options are merged from existing model", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   options: {
                     customOption: "custom-value",
                   },
@@ -633,7 +774,7 @@ test("model options are merged from existing model", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.options.customOption).toBe("custom-value")
     },
   })
@@ -684,10 +825,10 @@ test("closest finds model by partial match", async () => {
       Env.set("ANTHROPIC_API_KEY", "test-api-key")
     },
     fn: async () => {
-      const result = await Provider.closest("anthropic", ["sonnet-4"])
+      const result = await Provider.closest("anthropic", ["opus-4-6"])
       expect(result).toBeDefined()
       expect(result?.providerID).toBe("anthropic")
-      expect(result?.modelID).toContain("sonnet-4")
+      expect(result?.modelID).toBe("claude-opus-4-6")
     },
   })
 })
@@ -723,8 +864,8 @@ test("getModel uses realIdByKey for aliased models", async () => {
             anthropic: {
               models: {
                 "my-sonnet": {
-                  id: "claude-sonnet-4-5",
-                  name: "My Sonnet Alias",
+                  id: "claude-opus-4-6",
+                  name: "My Opus Alias",
                 },
               },
             },
@@ -745,7 +886,7 @@ test("getModel uses realIdByKey for aliased models", async () => {
       const model = await Provider.getModel("anthropic", "my-sonnet")
       expect(model).toBeDefined()
       expect(model.id).toBe("my-sonnet")
-      expect(model.name).toBe("My Sonnet Alias")
+      expect(model.name).toBe("My Opus Alias")
     },
   })
 })
@@ -838,8 +979,8 @@ test("model inherits properties from existing database model", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
-                  name: "Custom Name for Sonnet",
+                "claude-opus-4-6": {
+                  name: "Custom Name for Opus",
                 },
               },
             },
@@ -855,8 +996,8 @@ test("model inherits properties from existing database model", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
-      expect(model.name).toBe("Custom Name for Sonnet")
+      const model = providers["anthropic"].models["claude-opus-4-6"]
+      expect(model.name).toBe("Custom Name for Opus")
       expect(model.capabilities.toolcall).toBe(true)
       expect(model.capabilities.attachment).toBe(true)
       expect(model.limit.context).toBeGreaterThan(0)
@@ -899,8 +1040,8 @@ test("whitelist and blacklist can be combined", async () => {
           $schema: "zee",
           provider: {
             anthropic: {
-              whitelist: ["claude-sonnet-4-5", "claude-opus-4-5"],
-              blacklist: ["claude-opus-4-5"],
+              whitelist: ["claude-opus-4-6", "claude-opus-4-6@default"],
+              blacklist: ["claude-opus-4-6@default"],
             },
           },
         }),
@@ -916,8 +1057,8 @@ test("whitelist and blacklist can be combined", async () => {
       const providers = await Provider.list()
       expect(providers["anthropic"]).toBeDefined()
       const models = Object.keys(providers["anthropic"].models)
-      expect(models).toContain("claude-sonnet-4-5")
-      expect(models).not.toContain("claude-opus-4-5")
+      expect(models).toContain("claude-opus-4-6")
+      expect(models).not.toContain("claude-opus-4-6@default")
       expect(models.length).toBe(1)
     },
   })
@@ -1024,7 +1165,7 @@ test("getSmallModel returns appropriate small model", async () => {
     fn: async () => {
       const model = await Provider.getSmallModel("anthropic")
       expect(model).toBeDefined()
-      expect(model?.id).toContain("haiku")
+      expect(model?.id).toBe("claude-opus-4-6")
     },
   })
 })
@@ -1036,7 +1177,7 @@ test("getSmallModel respects config small_model override", async () => {
         path.join(dir, "zee.json"),
         JSON.stringify({
           $schema: "zee",
-          small_model: "anthropic/claude-sonnet-4-5",
+          small_model: "anthropic/claude-opus-4-6",
         }),
       )
     },
@@ -1050,7 +1191,7 @@ test("getSmallModel respects config small_model override", async () => {
       const model = await Provider.getSmallModel("anthropic")
       expect(model).toBeDefined()
       expect(model?.providerID).toBe("anthropic")
-      expect(model?.id).toBe("claude-sonnet-4-5")
+      expect(model?.id).toBe("claude-opus-4-6")
     },
   })
 })
@@ -1157,9 +1298,9 @@ test("model alias name defaults to alias key when id differs", async () => {
           provider: {
             anthropic: {
               models: {
-                sonnet: {
-                  id: "claude-sonnet-4-5",
-                  // no name specified - should default to "sonnet" (the key)
+                opus: {
+                  id: "claude-opus-4-6",
+                  // no name specified - should default to "opus" (the key)
                 },
               },
             },
@@ -1175,7 +1316,7 @@ test("model alias name defaults to alias key when id differs", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["anthropic"].models["sonnet"].name).toBe("sonnet")
+      expect(providers["anthropic"].models["opus"].name).toBe("opus")
     },
   })
 })
@@ -1274,7 +1415,7 @@ test("model cost overrides existing cost values", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   cost: {
                     input: 999,
                     output: 888,
@@ -1294,7 +1435,7 @@ test("model cost overrides existing cost values", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.cost.input).toBe(999)
       expect(model.cost.output).toBe(888)
     },
@@ -1523,8 +1664,8 @@ test("getModel returns consistent results", async () => {
       Env.set("ANTHROPIC_API_KEY", "test-api-key")
     },
     fn: async () => {
-      const model1 = await Provider.getModel("anthropic", "claude-sonnet-4-5")
-      const model2 = await Provider.getModel("anthropic", "claude-sonnet-4-5")
+      const model1 = await Provider.getModel("anthropic", "claude-opus-4-6")
+      const model2 = await Provider.getModel("anthropic", "claude-opus-4-6")
       expect(model1.providerID).toEqual(model2.providerID)
       expect(model1.id).toEqual(model2.id)
       expect(model1).toEqual(model2)
@@ -1708,9 +1849,9 @@ test("closest checks multiple query terms in order", async () => {
     },
     fn: async () => {
       // First term won't match, second will
-      const result = await Provider.closest("anthropic", ["nonexistent", "haiku"])
+      const result = await Provider.closest("anthropic", ["nonexistent", "claude-opus-4-6"])
       expect(result).toBeDefined()
-      expect(result?.modelID).toContain("haiku")
+      expect(result?.modelID).toBe("claude-opus-4-6")
     },
   })
 })
@@ -1801,6 +1942,7 @@ test("custom model inherits npm package from models.dev provider config", async 
               models: {
                 "my-custom-model": {
                   name: "My Custom Model",
+                  id: "gpt-5.2",
                   tool_call: true,
                   limit: { context: 8000, output: 2000 },
                 },
@@ -1887,8 +2029,8 @@ test("model variants are generated for reasoning models", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      // Claude sonnet 4 has reasoning capability
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      // Anthropic Opus 4.6 has reasoning capability
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.capabilities.reasoning).toBe(true)
       expect(model.variants).toBeDefined()
       expect(Object.keys(model.variants!).length).toBeGreaterThan(0)
@@ -1906,7 +2048,7 @@ test("model variants can be disabled via config", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   variants: {
                     high: { disabled: true },
                   },
@@ -1925,7 +2067,7 @@ test("model variants can be disabled via config", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.variants).toBeDefined()
       expect(model.variants!["high"]).toBeUndefined()
       // max variant should still exist
@@ -1944,7 +2086,7 @@ test("model variants can be customized via config", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   variants: {
                     high: {
                       thinking: {
@@ -1968,7 +2110,7 @@ test("model variants can be customized via config", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.variants!["high"]).toBeDefined()
       expect(model.variants!["high"].thinking.budgetTokens).toBe(20000)
     },
@@ -1985,7 +2127,7 @@ test("disabled key is stripped from variant config", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   variants: {
                     max: {
                       disabled: false,
@@ -2007,7 +2149,7 @@ test("disabled key is stripped from variant config", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.variants!["max"]).toBeDefined()
       expect(model.variants!["max"].disabled).toBeUndefined()
       expect(model.variants!["max"].customField).toBe("test")
@@ -2025,7 +2167,7 @@ test("all variants can be disabled via config", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   variants: {
                     low: { disabled: true },
                     medium: { disabled: true },
@@ -2047,7 +2189,7 @@ test("all variants can be disabled via config", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.variants).toBeDefined()
       expect(Object.keys(model.variants!).length).toBe(0)
     },
@@ -2064,7 +2206,7 @@ test("variant config merges with generated variants", async () => {
           provider: {
             anthropic: {
               models: {
-                "claude-sonnet-4-5": {
+                "claude-opus-4-6": {
                   variants: {
                     high: {
                       extraOption: "custom-value",
@@ -2085,7 +2227,7 @@ test("variant config merges with generated variants", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["anthropic"].models["claude-sonnet-4-5"]
+      const model = providers["anthropic"].models["claude-opus-4-6"]
       expect(model.variants!["high"]).toBeDefined()
       // Should have both the generated thinking config and the custom option
       expect(model.variants!["high"].thinking).toBeDefined()
@@ -2104,7 +2246,7 @@ test("variants filtered in second pass for database models", async () => {
           provider: {
             openai: {
               models: {
-                "o3": {
+                "gpt-5.2": {
                   variants: {
                     high: { disabled: true },
                   },
@@ -2123,7 +2265,7 @@ test("variants filtered in second pass for database models", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["openai"].models["o3"]
+      const model = providers["openai"].models["gpt-5.2"]
       expect(model).toBeDefined()
       expect(model.variants).toBeDefined()
       expect(model.variants!["high"]).toBeUndefined()

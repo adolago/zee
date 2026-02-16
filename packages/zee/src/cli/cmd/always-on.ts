@@ -40,6 +40,8 @@ export interface AlwaysOnOptions {
   hostname: string
   port: number
   directory: string
+  alwaysOnProfile?: boolean
+  skipSetupCheck?: boolean
   gateway?: boolean
   gatewayForce?: boolean
   wezterm?: boolean
@@ -62,6 +64,8 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     hostname,
     port,
     directory,
+    alwaysOnProfile = false,
+    skipSetupCheck = false,
     gateway = true,
     gatewayForce = false,
     wezterm = true,
@@ -71,26 +75,34 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     runtimeGuardIntervalMs = 30_000,
     runtimeLimits,
   } = opts
+  const enforceAlwaysOn = alwaysOnProfile || process.env.ZEE_ENFORCE_ALWAYS_ON === "1"
+  const effectiveRuntimeGuard = enforceAlwaysOn ? true : runtimeGuard
+  let setupOk = true
 
-  // Run setup check
-  const setupResult = await validateSetup({ exitOnFail: false, verbose: true })
-  if (!setupResult.ok) {
-    log.error("setup validation failed; refusing to start", {
-      errors: setupResult.errors,
-      warnings: setupResult.warnings,
-      qdrantAvailable: setupResult.qdrant.available,
-      googleApiKeyAvailable: setupResult.googleApiKey.available,
-    })
-    throw new Error(
-      `Startup blocked: required dependencies missing.\n${setupResult.errors.join("\n")}`,
-    )
+  // Run setup check unless explicitly skipped.
+  if (!skipSetupCheck) {
+    const setupResult = await validateSetup({ exitOnFail: false, verbose: true })
+    setupOk = setupResult.ok
+    if (!setupResult.ok) {
+      log.error("setup validation failed; refusing to start", {
+        errors: setupResult.errors,
+        warnings: setupResult.warnings,
+        qdrantAvailable: setupResult.qdrant.available,
+        googleApiKeyAvailable: setupResult.googleApiKey.available,
+      })
+      throw new Error(
+        `Startup blocked: required dependencies missing.\n${setupResult.errors.join("\n")}`,
+      )
+    }
+  } else {
+    log.warn("setup validation skipped via skipSetupCheck")
   }
 
   log.info("starting always-on process", {
     directory,
     hostname,
     port,
-    setupOk: setupResult.ok,
+    setupOk,
   })
 
   // Start the server
@@ -131,6 +143,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   let heartbeatRunner: HeartbeatRunner | null = null
   let stopRuntimeGuard: (() => void) | undefined
   let ipcServer: DaemonServer | null = null
+  let daemonConfig: Config.Info
 
   // Initialize session persistence
   try {
@@ -245,31 +258,56 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     }
   }
 
+  // Load config once for cron + heartbeat + feature gating.
+  try {
+    daemonConfig = await Instance.provide({
+      directory,
+      async fn() {
+        return await Config.get()
+      },
+    })
+  } catch (error) {
+    log.error("Failed to load daemon runtime config", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+    daemonConfig = {} as Config.Info
+  }
+
   // Start skill watcher
   try {
-    startSkillWatcher({ directory })
-    Output.log("Skills:     Hot-reload watcher started")
+    const hotReloadEnabled = enforceAlwaysOn ? true : daemonConfig.experimental?.surfaces?.hotReload?.enabled !== false
+    if (hotReloadEnabled) {
+      startSkillWatcher({ directory })
+      if (enforceAlwaysOn) {
+        Output.log("Skills:     Hot-reload watcher forced on (always-on profile)")
+      } else {
+        Output.log("Skills:     Hot-reload watcher started")
+      }
+    } else {
+      Output.log(enforceAlwaysOn ? "Skills:     Hot-reload watcher forced on (always-on profile)" : "Skills:     Hot-reload watcher disabled by config")
+    }
   } catch (error) {
     log.debug("Skill watcher initialization failed", {
       error: error instanceof Error ? error.message : String(error),
     })
   }
 
-  // Load config once for cron + heartbeat
-  const config = await Config.get().catch(() => ({}) as Config.Info)
-
   // Start heartbeat runner (before cron, since cron may request heartbeats)
   try {
-    const heartbeatEnabled = config.heartbeat?.enabled !== false
+    const heartbeatEnabled = enforceAlwaysOn ? true : daemonConfig.heartbeat?.enabled !== false
     if (heartbeatEnabled) {
       heartbeatRunner = new HeartbeatRunner({
         directory,
         serverUrl: daemonUrl,
-        config: config.heartbeat,
+        config: daemonConfig.heartbeat,
       })
       heartbeatRunner.start()
       setHeartbeatRunner(heartbeatRunner)
-      Output.log(`Heartbeat:  Active (every ${config.heartbeat?.every ?? "30m"})`)
+      if (enforceAlwaysOn) {
+        Output.log("Heartbeat:  Active (forced always-on profile)")
+      } else {
+        Output.log(`Heartbeat:  Active (every ${daemonConfig.heartbeat?.every ?? "30m"})`)
+      }
     } else {
       Output.log("Heartbeat:  Disabled by config")
     }
@@ -281,10 +319,10 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
 
   // Start cron service
   try {
-    const cronEnabled = config.cron?.enabled !== false
+    const cronEnabled = enforceAlwaysOn ? true : daemonConfig.cron?.enabled !== false
     if (cronEnabled) {
       const cronLog = Log.create({ service: "cron" })
-      const storePath = resolveCronStorePath(config.cron?.storeDir)
+      const storePath = resolveCronStorePath(daemonConfig.cron?.storeDir)
       const cronDeps: CronServiceDeps = {
         directory,
         log: cronLog,
@@ -333,7 +371,11 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       cronService = new CronService(cronDeps)
       await cronService.start()
       setCronService(cronService)
-      Output.log("Cron:       Scheduler started")
+      if (enforceAlwaysOn) {
+        Output.log("Cron:       Scheduler started (forced always-on profile)")
+      } else {
+        Output.log("Cron:       Scheduler started")
+      }
 
       // Ensure Zee banner refresh is wired to cron so the rotating TUI banner stays current.
       try {
@@ -370,7 +412,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     }
   }
 
-  if (runtimeGuard) {
+  if (effectiveRuntimeGuard) {
     stopRuntimeGuard = startRuntimeProcessGuard({
       intervalMs: runtimeGuardIntervalMs,
       limits: runtimeLimits,

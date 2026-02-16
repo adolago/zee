@@ -22,6 +22,9 @@ Usage notes:
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent. Tell it how to verify its work if possible (e.g., relevant test commands).
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
+7. Recommended usage:
+   - Use `finder` (`scout`, `searcher`, `finder`) for fast file/path discovery and symbol location.
+   - Use `librarian` (`archive`, `librarian`) for evidence-backed references and reusable implementation examples.
 
 Example usage (NOTE: The agents below are fictional examples for illustration only - use the actual agents listed above):
 
@@ -30,6 +33,16 @@ Example usage (NOTE: The agents below are fictional examples for illustration on
 "greeting-responder": use this agent when to respond to user greetings with a friendly joke
 </example_agent_description>
 
+<example>
+user: "I need to quickly locate where this CLI option is parsed"
+assistant: I'm going to use the Task tool to launch the finder agent
+assistant: "Task(description=\"Locate CLI option parsing\", prompt=\"Find where the '--config' CLI option is parsed and where it's validated\", subagent_type=\"finder\")"
+</example>
+<example>
+user: "Can you gather implementation references for adding a new command prompt format"
+assistant: I'm going to use the Task tool to launch the librarian agent
+assistant: "Task(description=\"Collect command prompt references\", prompt=\"Find reusable command/prompt format examples across src/agent and src/session\", subagent_type=\"librarian\")"
+</example>
 <example>
 user: "Please write a function that checks if a number is prime"
 assistant: Sure let me write a function that checks if a number is prime

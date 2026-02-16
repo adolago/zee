@@ -494,17 +494,22 @@ export namespace MCP {
 
       // Add all 4 persona MCPs first
       for (const [name, server] of Object.entries(personaMcps)) {
-        config[name] = {
+        const resolved = resolveMcpConfigEntry(name, userConfig[name])
+        config[name] = resolved ?? {
           type: server.type,
           command: [...server.command], // Convert readonly to mutable
-        } as Config.Mcp
+        }
       }
 
-      // User config can override but not disable persona MCPs
+      // User config can override defaults. For persona MCPs, disabled shorthand is allowed.
       for (const [name, mcp] of Object.entries(userConfig)) {
-        if (mcp && typeof mcp === "object" && "type" in mcp) {
-          config[name] = mcp as Config.Mcp
+        const resolved = resolveMcpConfigEntry(name, mcp)
+        if (!resolved) {
+          log.error("Ignoring MCP config entry without type", { key: name })
+          continue
         }
+
+        config[name] = resolved
       }
 
       const clients: Record<string, MCPClient> = {}
@@ -515,12 +520,6 @@ export namespace MCP {
           const resolved = resolveMcpConfigEntry(key, mcp)
           if (!resolved) {
             log.error("Ignoring MCP config entry without type", { key })
-            return
-          }
-
-          // Persona MCPs cannot be disabled
-          if (resolved.enabled === false && !personaMcps[key as keyof typeof personaMcps]) {
-            status[key] = { status: "disabled" }
             return
           }
 

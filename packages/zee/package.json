@@ -94,6 +94,7 @@
     "@solid-primitives/event-bus": "1.1.2",
     "@solid-primitives/scheduled": "1.5.2",
     "@standard-schema/spec": "1.0.0",
+    "@zee/stanley-sdk": "workspace:*",
     "@zip.js/zip.js": "2.7.62",
     "ai": "6.0.49",
     "bonjour-service": "1.3.0",
@@ -127,7 +128,6 @@
     "xdg-basedir": "5.1.0",
     "yaml": "2.8.1",
     "yargs": "18.0.0",
-    "@zee/stanley-sdk": "workspace:*",
     "zod": "4.1.8",
     "zod-to-json-schema": "3.24.5"
   }

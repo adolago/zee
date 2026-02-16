@@ -247,6 +247,14 @@ export namespace Daemon {
 
   let isShuttingDown = false
 
+  function resolveShutdownTimeoutMs(): number {
+    const raw = process.env.ZEE_DAEMON_SHUTDOWN_TIMEOUT_MS?.trim()
+    if (!raw) return 12_000
+    const parsed = Number.parseInt(raw, 10)
+    if (!Number.isFinite(parsed) || parsed <= 0) return 12_000
+    return parsed
+  }
+
   export async function setupSignalHandlers(cleanup: (signal?: NodeJS.Signals) => Promise<void>) {
     const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"]
 
@@ -255,6 +263,15 @@ export namespace Daemon {
         if (isShuttingDown) return
         isShuttingDown = true
         log.info("received signal, shutting down", { signal })
+
+        const timer = setTimeout(() => {
+          log.error("shutdown timed out, forcing process exit", {
+            signal,
+            timeoutMs: resolveShutdownTimeoutMs(),
+          })
+          process.exit(1)
+        }, resolveShutdownTimeoutMs())
+
         cleanup(signal)
           .then(() => {
             process.exit(0)
@@ -262,6 +279,9 @@ export namespace Daemon {
           .catch((error) => {
             log.error("error during signal cleanup", { signal, error: error instanceof Error ? error.message : String(error) })
             process.exit(1)
+          })
+          .finally(() => {
+            clearTimeout(timer)
           })
       })
     }
@@ -785,16 +805,6 @@ export const DaemonCommand = cmd({
         type: "boolean",
         default: true, // For now, always run in foreground
       })
-      .option("restore-sessions", {
-        describe: "Restore sessions with incomplete todos on startup",
-        type: "boolean",
-        default: true,
-      })
-      .option("wezterm", {
-        describe: "Enable WezTerm visual orchestration when display available",
-        type: "boolean",
-        default: true,
-      })
       .option("wezterm-layout", {
         describe: "WezTerm pane layout",
         type: "string",
@@ -811,11 +821,6 @@ export const DaemonCommand = cmd({
         type: "string",
         choices: ["off", "serve", "funnel"],
         default: "off",
-      })
-      .option("runtime-guard", {
-        describe: "Enable periodic runtime process guard and orphan reaping",
-        type: "boolean",
-        default: true,
       })
       .option("runtime-guard-interval-ms", {
         describe: "Runtime process guard interval in milliseconds",
@@ -890,7 +895,8 @@ export const DaemonCommand = cmd({
 
     const opts = await resolveNetworkOptions(args)
     const directory = args.directory as string
-    const runtimeGuard = Boolean(args["runtime-guard"])
+    const alwaysOnProfile = true
+    const enforceRuntimeGuard = true
     const runtimeGuardIntervalMs =
       typeof args["runtime-guard-interval-ms"] === "number" ? args["runtime-guard-interval-ms"] : 30_000
     const runtimeLimits = {
@@ -907,7 +913,7 @@ export const DaemonCommand = cmd({
           : undefined,
     }
 
-    if (runtimeGuard) {
+    if (enforceRuntimeGuard) {
       const preflightReport = await runRuntimeProcessMaintenance({
         limits: runtimeLimits,
         reason: "daemon-preflight",
@@ -935,12 +941,14 @@ export const DaemonCommand = cmd({
         hostname: opts.hostname,
         port: opts.port,
         directory,
+        alwaysOnProfile,
+        skipSetupCheck: false,
         gateway: true,
         gatewayForce: Boolean(args["gateway-force"]),
-        wezterm: Boolean(args.wezterm),
+        wezterm: true,
         weztermLayout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",
-        restoreSessions: Boolean(args["restore-sessions"]),
-        runtimeGuard,
+        restoreSessions: true,
+        runtimeGuard: enforceRuntimeGuard,
         runtimeGuardIntervalMs,
         runtimeLimits,
       })

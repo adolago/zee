@@ -29,6 +29,10 @@ const SERVICE_DESCRIPTION = "Zee Daemon - AI Assistant Platform";
 const SYSTEMD_UNIT_NAME = "zee.service";
 const SYSTEMD_UNIT_DIR = path.join(os.homedir(), ".config", "systemd", "user");
 const SYSTEMD_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_UNIT_NAME);
+const SYSTEMD_ASSERT_UNIT_NAME = "zee-assert.service";
+const SYSTEMD_ASSERT_TIMER_NAME = "zee-assert.timer";
+const SYSTEMD_ASSERT_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_UNIT_NAME);
+const SYSTEMD_ASSERT_TIMER_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_TIMER_NAME);
 
 // Legacy orchestration unit (cleaned up during install)
 const SYSTEMD_ORCH_UNIT_NAME = "zee-orch.service";
@@ -48,7 +52,6 @@ export interface DaemonInstallOptions {
   hostname?: string;
   gateway?: boolean;
   gatewayForce?: boolean;
-  wezterm?: boolean;
   workingDirectory?: string;
   force?: boolean;
   nonInteractive?: boolean;
@@ -143,6 +146,7 @@ function buildServiceEnv(options: DaemonInstallOptions): Record<string, string> 
     PATH: buildServicePath(),
     NODE_ENV: "production",
     ZEE_HEADLESS: "1",
+    ZEE_ENFORCE_ALWAYS_ON: "1",
   };
 
   if (options.port) {
@@ -205,6 +209,35 @@ function resolveServiceWorkingDirectory(options: DaemonInstallOptions): string {
 // Linux systemd
 // =============================================================================
 
+function generateSystemdAssertUnit(): string {
+  return `[Unit]
+Description=Zee daemon assertion
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env sh -c "systemctl --user is-active --quiet zee.service || systemctl --user start zee.service"
+
+[Install]
+WantedBy=default.target
+`;
+}
+
+function generateSystemdAssertTimer(): string {
+  return `[Unit]
+Description=Periodic Zee daemon assertion
+After=default.target
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=zee-assert.service
+
+[Install]
+WantedBy=timers.target
+`;
+}
+
 function generateSystemdDaemonUnit(
   binaryPath: string,
   options: DaemonInstallOptions
@@ -215,10 +248,9 @@ function generateSystemdDaemonUnit(
   if (options.port) args.push("--port", String(options.port));
   if (options.hostname) args.push("--hostname", options.hostname);
   if (options.gatewayForce) args.push("--gateway-force");
-  if (options.wezterm === false) args.push("--no-wezterm");
+  args.push("--runtime-guard-interval-ms", "30000");
+
   args.push("--directory", workDir);
-  // Always enable runtime process guard for installed daemon services.
-  args.push("--runtime-guard", "--runtime-guard-interval-ms", "30000");
 
   const execStart = [binaryPath, ...args].join(" ");
   const env = buildServiceEnv(options);
@@ -241,6 +273,7 @@ RestartPreventExitStatus=100
 SuccessExitStatus=100
 KillMode=control-group
 TimeoutStopSec=15
+KillSignal=SIGINT
 SendSIGKILL=yes
 
 # Environment
@@ -374,6 +407,21 @@ async function installSystemdService(
     };
   }
 
+  const assertUnit = generateSystemdAssertUnit();
+  const assertTimer = generateSystemdAssertTimer();
+  try {
+    fs.writeFileSync(SYSTEMD_ASSERT_UNIT_PATH, assertUnit, { mode: 0o644 });
+    fs.writeFileSync(SYSTEMD_ASSERT_TIMER_PATH, assertTimer, { mode: 0o644 });
+    log.info("wrote zee assert units", { unit: SYSTEMD_ASSERT_UNIT_PATH, timer: SYSTEMD_ASSERT_TIMER_PATH });
+  } catch (err) {
+    return {
+      success: false,
+      platform: "linux",
+      servicePath: SYSTEMD_UNIT_PATH,
+      error: `Failed to write assert timer units: ${err}`,
+    };
+  }
+
   // Reload systemd
   try {
     const result = spawnSync("systemctl", ["--user", "daemon-reload"], {
@@ -403,6 +451,14 @@ async function installSystemdService(
       stdio: "pipe",
       timeout: 10000,
     });
+    spawnSync("systemctl", ["--user", "enable", SYSTEMD_ASSERT_UNIT_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "enable", "--now", SYSTEMD_ASSERT_TIMER_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
     const startResult = spawnSync("systemctl", ["--user", "start", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
@@ -419,6 +475,7 @@ async function installSystemdService(
   hints.push(`Stop: systemctl --user stop ${SYSTEMD_UNIT_NAME}`);
   hints.push(`Restart: systemctl --user restart ${SYSTEMD_UNIT_NAME}`);
   hints.push(`Status: systemctl --user status ${SYSTEMD_UNIT_NAME}`);
+  hints.push(`Assert timer: systemctl --user status ${SYSTEMD_ASSERT_TIMER_NAME}`);
 
   return {
     success: true,
@@ -435,6 +492,22 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
       timeout: 10000,
     });
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_UNIT_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "stop", SYSTEMD_ASSERT_TIMER_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "disable", SYSTEMD_ASSERT_TIMER_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "stop", SYSTEMD_ASSERT_UNIT_NAME], {
+      stdio: "pipe",
+      timeout: 10000,
+    });
+    spawnSync("systemctl", ["--user", "disable", SYSTEMD_ASSERT_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
     });
@@ -462,6 +535,12 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
     }
     if (fs.existsSync(SYSTEMD_ORCH_UNIT_PATH)) {
       fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH);
+    }
+    if (fs.existsSync(SYSTEMD_ASSERT_UNIT_PATH)) {
+      fs.unlinkSync(SYSTEMD_ASSERT_UNIT_PATH);
+    }
+    if (fs.existsSync(SYSTEMD_ASSERT_TIMER_PATH)) {
+      fs.unlinkSync(SYSTEMD_ASSERT_TIMER_PATH);
     }
     spawnSync("systemctl", ["--user", "daemon-reload"], {
       stdio: "pipe",
@@ -652,11 +731,6 @@ export const DaemonInstallCommand = cmd({
         type: "boolean",
         default: false,
       })
-      .option("wezterm", {
-        describe: "Enable WezTerm visual orchestration",
-        type: "boolean",
-        default: true,
-      })
       .option("directory", {
         describe: "Working directory for daemon",
         type: "string",
@@ -682,7 +756,6 @@ export const DaemonInstallCommand = cmd({
       hostname: args.hostname as string,
       gateway: true,
       gatewayForce: args["gateway-force"] as boolean,
-      wezterm: args.wezterm as boolean,
       workingDirectory: args.directory as string | undefined,
       force: args.force as boolean,
       nonInteractive: args["non-interactive"] as boolean,

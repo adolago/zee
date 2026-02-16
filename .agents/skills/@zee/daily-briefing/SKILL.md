@@ -39,6 +39,15 @@ After running the script, add context from memory:
 - Note any patterns (e.g., recurring overdue tasks suggest schedule adjustment)
 - Offer to push key items to the Zee banner
 
+Then run daily updates:
+
+```bash
+update
+```
+
+This single command handles paru, Codex wrappers, external repos, and ClawHub skills.
+Report any updated packages or skills in the briefing summary.
+
 ## Evening Review
 
 Run the evening review script:
@@ -93,7 +102,7 @@ Default: last 1 day. Surfaces job alerts, Euclase, flagged items, finance news.
 
 ## WhatsApp Integration
 
-The morning briefing can be sent via WhatsApp using the zee-messaging tool. Format the output concisely for mobile reading -- strip table formatting, use short lines, prioritize actionable items.
+The morning briefing can be sent via WhatsApp using the `meta` CLI (`meta wa send`). Format the output concisely for mobile reading -- strip table formatting, use short lines, prioritize actionable items.
 
 ## Artur's Daily Blocks
 

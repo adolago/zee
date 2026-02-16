@@ -69,6 +69,14 @@ export namespace Provider {
     PROVIDER_BLACKLIST_REASONS[entry.id] = entry.reason
   }
 
+  const HARDCODED_MODEL_ALLOWLIST: Record<string, Set<string>> = {
+    anthropic: new Set(["claude-opus-4-6"]),
+    "zai-coding-plan": new Set(["glm-4.7", "glm-4.7-flash", "glm-5"]),
+    minimax: new Set(["MiniMax-M2.1"]),
+    xai: new Set(["grok-4-1", "grok-4-1-fast"]),
+    openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"]),
+  }
+
   /**
    * Get the reason a model is blacklisted, or undefined if not blacklisted.
    */
@@ -917,6 +925,18 @@ export namespace Provider {
         if (configProvider?.whitelist && !configProvider.whitelist.includes(modelID)) {
           log.debug("model filtered", { providerID, modelID, reason: "not in config whitelist" })
           delete provider.models[modelID]
+        }
+        const allowedModels = HARDCODED_MODEL_ALLOWLIST[providerID]
+        if (allowedModels) {
+          const resolvedModelID = model.api.id ?? model.id ?? modelID
+          if (!allowedModels.has(modelID) && !allowedModels.has(resolvedModelID)) {
+            log.debug("model filtered", {
+              providerID,
+              modelID,
+              reason: `${providerID} hard model allowlist`,
+            })
+            delete provider.models[modelID]
+          }
         }
 
         // Filter out disabled variants from config

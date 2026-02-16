@@ -31,34 +31,21 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     return Agent.defaultAgent()
   }
 
-  // Check if the requested type exists directly
-  const directAgent = await Agent.get(trimmed)
-  if (directAgent) {
-    return trimmed
-  }
-
+  const requested = trimmed.toLowerCase()
   // Map external agent types to personas based on the calling context
   // Each persona spawns its own kind for subtasks
   const personas = ["zee", "stanley", "johny"]
 
-  // If caller is a persona, spawn the same persona type
-  if (callerAgent && personas.includes(callerAgent)) {
-    log.info("mapping external agent type to caller persona", {
-      requestedType: trimmed,
-      callerAgent,
-      resolvedTo: callerAgent,
-    })
-    return callerAgent
-  }
-
-  // Semantic mapping for when there's no caller context
-  // This maps external agent types to the most appropriate persona or scoped subagent
   const semanticMap: Record<string, string> = {
     // Scoped subagent modes (read-only / limited scope)
     explore: "explore",
-    Explore: "explore",
+    finder: "finder",
+    scout: "finder",
+    searcher: "finder",
+    explorer: "finder",
+    librarian: "librarian",
+    archive: "librarian",
     plan: "plan",
-    Plan: "plan",
     general: "general",
     "general-purpose": "general",
 
@@ -82,13 +69,34 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     mentor: "johny",
   }
 
-  const mapped = semanticMap[trimmed.toLowerCase()]
+  // Check requested type against explicit agent names (case-insensitive)
+  const directAgent = await Agent.get(trimmed)
+  if (directAgent) {
+    return trimmed
+  }
+  const directAgentLower = await Agent.get(requested)
+  if (directAgentLower) {
+    return requested
+  }
+
+  const mapped = semanticMap[requested]
   if (mapped) {
     log.info("semantic mapping for agent type", {
       requestedType: trimmed,
+      requestedLower: requested,
       resolvedTo: mapped,
     })
     return mapped
+  }
+
+  // If caller is a persona, spawn the same persona type
+  if (callerAgent && personas.includes(callerAgent)) {
+    log.info("mapping external agent type to caller persona", {
+      requestedType: trimmed,
+      callerAgent,
+      resolvedTo: callerAgent,
+    })
+    return callerAgent
   }
 
   // Default to zee for unknown types

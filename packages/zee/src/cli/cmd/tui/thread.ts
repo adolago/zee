@@ -289,6 +289,7 @@ async function ensureProcessRunning(
       hostname,
       port,
       directory,
+      alwaysOnProfile: true,
     })
   } catch (error) {
     await Daemon.removePidFile().catch(() => {})

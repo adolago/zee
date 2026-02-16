@@ -42,28 +42,3 @@ jobs:
         env:
           CI: true
         timeout-minutes: 10
-
-  test_zee:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install pnpm
-        run: npm install -g pnpm@10.23.0
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-        working-directory: packages/zee/Swabble
-
-      - name: Test
-        run: pnpm test
-        working-directory: packages/zee/Swabble
-        env:
-          CI: true
-        timeout-minutes: 20

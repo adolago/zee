@@ -13,6 +13,8 @@ import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
+import PROMPT_FINDER from "./prompt/finder.txt"
+import PROMPT_LIBRARIAN from "./prompt/librarian.txt"
 import { PermissionNext } from "@/permission/next"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
@@ -270,6 +272,33 @@ export namespace Agent {
       prompt: PROMPT_EXPLORE,
       options: {},
     }
+    result["finder"] = {
+      name: "finder",
+      description: "Focused file and symbol scout for quickly locating relevant code paths",
+      mode: "subagent",
+      native: true,
+      hidden: false,
+      permission: PermissionNext.merge(
+        defaults,
+        PermissionNext.fromConfig({
+          "*": "deny",
+          grep: "allow",
+          glob: "allow",
+          list: "allow",
+          read: "allow",
+          external_directory: { [Truncate.DIR]: "allow", [Truncate.GLOB]: "allow" },
+          bash: {
+            "git log*": "allow",
+            "git diff*": "allow",
+            "git status*": "allow",
+            "ls*": "allow",
+          },
+        }),
+        user,
+      ),
+      prompt: PROMPT_FINDER,
+      options: {},
+    }
     result["plan"] = {
       name: "plan",
       description: "Agent for designing implementation plans - read-only except plan files",
@@ -309,6 +338,35 @@ export namespace Agent {
         }),
         user,
       ),
+      options: {},
+    }
+    result["librarian"] = {
+      name: "librarian",
+      description: "Codebase context specialist for sourcing reusable references and historical snippets",
+      mode: "subagent",
+      native: true,
+      hidden: false,
+      permission: PermissionNext.merge(
+        defaults,
+        PermissionNext.fromConfig({
+          "*": "deny",
+          grep: "allow",
+          glob: "allow",
+          list: "allow",
+          read: "allow",
+          webfetch: "allow",
+          websearch: "allow",
+          codesearch: "allow",
+          external_directory: { [Truncate.DIR]: "allow", [Truncate.GLOB]: "allow" },
+          bash: {
+            "git log*": "allow",
+            "git diff*": "allow",
+            "git status*": "allow",
+          },
+        }),
+        user,
+      ),
+      prompt: PROMPT_LIBRARIAN,
       options: {},
     }
 
