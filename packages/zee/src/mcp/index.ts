@@ -35,6 +35,7 @@ import { normalizeHttpUrl } from "@/util/net"
 export namespace MCP {
   const log = Log.create({ service: "mcp" })
   const DEFAULT_TIMEOUT = 30_000
+  const HEALTH_MONITOR_INTERVAL_MS = 15_000
 
   // Per-server mutex to prevent concurrent state mutations for the same server
   const serverMutexes = new Map<string, Promise<void>>()
@@ -609,12 +610,22 @@ export namespace MCP {
           }
         }),
       )
+      const healthTimer = setInterval(() => {
+        void healthCheckAndReconnect().catch((error) => {
+          log.debug("mcp health monitor check failed", {
+            error: error instanceof Error ? error.message : String(error),
+          })
+        })
+      }, HEALTH_MONITOR_INTERVAL_MS)
+      healthTimer.unref?.()
       return {
         status,
         clients,
+        healthTimer,
       }
     },
     async (state) => {
+      clearInterval(state.healthTimer)
       await Promise.all(
         Object.values(state.clients).map((client) =>
           client.close().catch((error) => {
@@ -1053,7 +1064,7 @@ export namespace MCP {
    * Check if an MCP server connection is healthy by attempting to list tools.
    * Returns true if connected and responsive, false otherwise.
    */
-  export async function isHealthy(name: string): Promise<boolean> {
+  export async function isHealthy(name: string, options?: { bypassCache?: boolean }): Promise<boolean> {
     const s = await state()
     const client = s.clients[name]
 
@@ -1066,14 +1077,17 @@ export namespace MCP {
     }
 
     // Skip listTools() ping if we have a recent cache entry (< 60s old)
-    const cached = toolCache.get(name)
-    if (cached && Date.now() - cached.cachedAt < 60_000) {
-      return true
+    if (!options?.bypassCache) {
+      const cached = toolCache.get(name)
+      if (cached && Date.now() - cached.cachedAt < 60_000) {
+        return true
+      }
     }
 
     try {
       // Attempt a simple operation to verify connection is alive
-      await withTimeout(client.listTools(), 5000)
+      const result = await withTimeout(client.listTools(), 5000)
+      toolCache.set(name, { tools: result.tools, cachedAt: Date.now() })
       return true
     } catch (e) {
       log.warn("MCP health check failed", { name, error: e instanceof Error ? e.message : String(e) })
@@ -1165,7 +1179,7 @@ export namespace MCP {
     for (const [name, currentStatus] of Object.entries(s.status)) {
       if (currentStatus.status === "connected") {
         // Check if still healthy
-        const healthy = await isHealthy(name)
+        const healthy = await isHealthy(name, { bypassCache: true })
         if (!healthy) {
           log.warn("MCP connection unhealthy, attempting reconnect", { name })
           results[name] = await reconnect(name)
