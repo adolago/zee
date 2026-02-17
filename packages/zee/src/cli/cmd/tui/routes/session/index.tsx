@@ -87,8 +87,10 @@ import { formatTranscript } from "../../util/transcript"
 import { Latex } from "@tui/util/latex"
 import { LatexUnicode } from "@tui/util/latex-unicode"
 import { MathBlock } from "@tui/component/math-block"
+import { installMarkdownLinkDedupePatch } from "../../util/markdown-link-dedupe"
 
 addDefaultParsers(parsers.parsers)
+installMarkdownLinkDedupePatch()
 
 class CustomSpeedScroll implements ScrollAcceleration {
   constructor(private speed: number) {}
