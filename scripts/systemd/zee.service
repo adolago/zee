@@ -33,6 +33,7 @@ RestartPreventExitStatus=100
 SuccessExitStatus=100
 TimeoutStopSec=30
 KillMode=control-group
+TasksMax=512
 
 # Security hardening
 NoNewPrivileges=true

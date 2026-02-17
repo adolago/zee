@@ -272,6 +272,7 @@ KillMode=control-group
 TimeoutStopSec=15
 KillSignal=SIGINT
 SendSIGKILL=yes
+TasksMax=512
 
 # Environment
 ${envLines}
