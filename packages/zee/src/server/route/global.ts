@@ -45,6 +45,13 @@ const HealthCheck = z.object({
   entryModifiedTs: z.number().optional(),
 })
 
+const HealthLiveCheck = z.object({
+  alive: z.literal(true),
+  pid: z.number(),
+  version: z.string(),
+  mode: z.enum(["source", "binary"]),
+})
+
 const ServerStats = z.object({
   instances: z.object({
     cached: z.number().int().nonnegative(),
@@ -87,6 +94,33 @@ async function checkMemoryHealth(): Promise<{ status: "ok" | "fail"; error?: str
 }
 
 export const GlobalRoute = new Hono()
+  .get(
+    "/health/live",
+    describeRoute({
+      summary: "Liveness check",
+      description: "Check if the server process is alive without dependency checks.",
+      operationId: "health.live",
+      responses: {
+        200: {
+          description: "Liveness check passed",
+          content: {
+            "application/json": {
+              schema: resolver(HealthLiveCheck),
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const runtime = Installation.runtimeInfo()
+      return c.json({
+        alive: true as const,
+        pid: runtime.pid,
+        version: runtime.version,
+        mode: runtime.mode,
+      })
+    },
+  )
   .get(
     "/health",
     describeRoute({

@@ -114,6 +114,7 @@ export namespace SessionProcessor {
               let currentText: MessageV2.TextPart | undefined
               let currentReasoning: MessageV2.ReasoningPart | undefined
               let reasoningMap: Record<string, MessageV2.ReasoningPart> = {}
+              let currentStepHasToolCalls = false
               const getDelta = (value: { text?: string; textDelta?: string; delta?: string }) => {
                 if (typeof value.text === "string") return value.text
                 if (typeof value.textDelta === "string") return value.textDelta
@@ -313,51 +314,58 @@ export namespace SessionProcessor {
                     case "tool-call": {
                       toolStats.calls += 1
                       toolStats.names.add(value.toolName)
+                      currentStepHasToolCalls = true
                       const match = toolcalls[value.toolCallId]
-                      if (match) {
-                        const part = await Session.updatePart({
-                          ...match,
-                          tool: value.toolName,
-                          state: {
-                            status: "running",
-                            input: value.input ?? match.state.input,
-                            time: {
-                              start: Date.now(),
-                            },
+                      const startedAt = match?.state.status === "running" ? match.state.time.start : Date.now()
+                      const part = await Session.updatePart({
+                        id: match?.id ?? Identifier.ascending("part"),
+                        messageID: input.assistantMessage.id,
+                        sessionID: input.assistantMessage.sessionID,
+                        type: "tool",
+                        callID: value.toolCallId,
+                        tool: value.toolName,
+                        state: {
+                          status: "running",
+                          input: value.input ?? match?.state.input ?? {},
+                          time: {
+                            start: startedAt,
                           },
-                          metadata: value.providerMetadata,
-                        })
-                        toolcalls[value.toolCallId] = part as MessageV2.ToolPart
-                        // Pause stall detection while tool is executing
+                        },
+                        metadata: value.providerMetadata,
+                      })
+                      toolcalls[value.toolCallId] = part as MessageV2.ToolPart
+                      // Pause stall detection while tool is executing.
+                      // Some providers do not emit tool-input-start before tool-call.
+                      if (match?.state.status !== "running") {
                         healthMonitor.toolStarted()
+                      }
 
-                        const parts = await MessageV2.parts(input.assistantMessage.id)
-                        const lastThree = parts.slice(-DOOM_LOOP_THRESHOLD)
+                      const parts = await MessageV2.parts(input.assistantMessage.id)
+                      const lastThree = parts.slice(-DOOM_LOOP_THRESHOLD)
 
-                        if (
-                          lastThree.length === DOOM_LOOP_THRESHOLD &&
-                          lastThree.every(
-                            (p) =>
-                              p.type === "tool" &&
-                              p.tool === value.toolName &&
-                              p.state.status !== "pending" &&
-                              JSON.stringify(p.state.input) === JSON.stringify(value.input),
-                          )
-                        ) {
-                          const agent = await Agent.get(input.assistantMessage.agent)
-                          await PermissionNext.ask({
-                            permission: "doom_loop",
-                            patterns: [value.toolName],
-                            sessionID: input.assistantMessage.sessionID,
-                            metadata: {
-                              tool: value.toolName,
-                              input: value.input,
-                            },
-                            always: [value.toolName],
-                            ruleset: agent.permission,
-                            mode: "plan", // doom_loop check always prompts (safety feature)
-                          })
-                        }
+                      if (
+                        lastThree.length === DOOM_LOOP_THRESHOLD &&
+                        lastThree.every(
+                          (p) =>
+                            p.type === "tool" &&
+                            p.tool === value.toolName &&
+                            p.state.status !== "pending" &&
+                            JSON.stringify(p.state.input) === JSON.stringify(value.input),
+                        )
+                      ) {
+                        const agent = await Agent.get(input.assistantMessage.agent)
+                        await PermissionNext.ask({
+                          permission: "doom_loop",
+                          patterns: [value.toolName],
+                          sessionID: input.assistantMessage.sessionID,
+                          metadata: {
+                            tool: value.toolName,
+                            input: value.input,
+                          },
+                          always: [value.toolName],
+                          ruleset: agent.permission,
+                          mode: "plan", // doom_loop check always prompts (safety feature)
+                        })
                       }
                       break
                     }
@@ -420,6 +428,7 @@ export namespace SessionProcessor {
                       throw value.error
 
                     case "start-step":
+                      currentStepHasToolCalls = false
                       snapshot = await Snapshot.track()
                       await Session.updatePart({
                         id: Identifier.ascending("part"),
@@ -454,10 +463,15 @@ export namespace SessionProcessor {
                       // when finishReason is undefined.
                       let finishReason = value.finishReason
                       if (finishReason === undefined) {
-                        // Check if this looks like a normal completion based on usage
-                        // We can't reliably check parts here as they may not all be persisted yet
-                        const hasUsage = value.usage && (value.usage.outputTokens ?? 0) > 0
-                        finishReason = hasUsage ? "stop" : "other"
+                        const hasToolCallsInStep = currentStepHasToolCalls || Object.keys(toolcalls).length > 0
+                        if (hasToolCallsInStep) {
+                          finishReason = "tool-calls"
+                        } else {
+                          // Check if this looks like a normal completion based on usage
+                          // We can't reliably check parts here as they may not all be persisted yet
+                          const hasUsage = value.usage && (value.usage.outputTokens ?? 0) > 0
+                          finishReason = hasUsage ? "stop" : "other"
+                        }
                       }
                       input.assistantMessage.finish = finishReason
                       input.assistantMessage.cost += usage.cost

@@ -30,6 +30,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
 
   // Model
   model_list: { category: "Model", description: "[m]odels" },
+  variant_cycle: { category: "Model", description: "[v]ariants" },
 
   // Messages
   messages_copy: { category: "Messages", description: "[y]ank" },

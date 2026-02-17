@@ -24,10 +24,49 @@ import {
 import { setGatewayHealthState } from "../../gateway/supervisor-state"
 import { startTailscaleExposure, type TailscaleMode } from "../../pkg/tailscale"
 import { printGatewayStatus } from "./gateway/status"
+import { createAuthorizedFetch } from "../../server/auth"
 
 const log = Log.create({ service: "daemon" })
 const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
 const ALLOW_RESTART_ENV = "ZEE_ALLOW_RESTART"
+const DAEMON_LIVE_PATH = "/global/health/live"
+const DAEMON_HEALTH_PATH = "/global/health"
+const DAEMON_PROBE_TIMEOUT_MS = 2000
+
+async function probeDaemonEndpoint(url: string): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), DAEMON_PROBE_TIMEOUT_MS)
+  try {
+    const authorizedFetch = createAuthorizedFetch(fetch)
+    return await authorizedFetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function probeDaemonLiveness(state: {
+  hostname: string
+  port: number
+}): Promise<{ live: boolean; details?: string }> {
+  const baseUrl = `http://${state.hostname}:${state.port}`
+  try {
+    const liveResponse = await probeDaemonEndpoint(`${baseUrl}${DAEMON_LIVE_PATH}`)
+    if (liveResponse.ok) return { live: true }
+
+    if (liveResponse.status === 404) {
+      const legacyResponse = await probeDaemonEndpoint(`${baseUrl}${DAEMON_HEALTH_PATH}`)
+      if (legacyResponse.ok) return { live: true, details: "Legacy /global/health probe used" }
+      return { live: false, details: `Legacy probe HTTP ${legacyResponse.status}` }
+    }
+
+    return { live: false, details: `HTTP ${liveResponse.status}` }
+  } catch (error) {
+    return {
+      live: false,
+      details: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
 
 export namespace Daemon {
   const STATE_DIR = path.join(Global.Path.state, "daemon")
@@ -998,6 +1037,7 @@ export const DaemonStatusCommand = cmd({
     const state = await Daemon.readPidFile()
 
     if (running && state) {
+      const liveness = await probeDaemonLiveness(state)
       Output.log(`Daemon is running`)
       Output.log(`  PID:       ${state.pid}`)
       Output.log(`  Port:      ${state.port}`)
@@ -1005,6 +1045,10 @@ export const DaemonStatusCommand = cmd({
       Output.log(`  Directory: ${state.directory}`)
       Output.log(`  Started:   ${new Date(state.startTime).toISOString()}`)
       Output.log(`  URL:       http://${state.hostname}:${state.port}`)
+      Output.log(`  Live:      ${liveness.live ? "ok" : "fail"}`)
+      if (!liveness.live && liveness.details) {
+        Output.log(`  LiveInfo:  ${liveness.details}`)
+      }
     } else {
       Output.log(`Daemon is not running`)
       process.exit(1)

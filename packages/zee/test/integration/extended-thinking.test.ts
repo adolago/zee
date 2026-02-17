@@ -180,12 +180,16 @@ describe("Google Gemini Extended Thinking", () => {
     const variants = ProviderTransform.variants(model)
     expect(Object.keys(variants)).toEqual(["low", "high"])
     expect(variants.low).toEqual({
-      includeThoughts: true,
-      thinkingLevel: "low",
+      thinkingConfig: {
+        includeThoughts: true,
+        thinkingLevel: "low",
+      },
     })
     expect(variants.high).toEqual({
-      includeThoughts: true,
-      thinkingLevel: "high",
+      thinkingConfig: {
+        includeThoughts: true,
+        thinkingLevel: "high",
+      },
     })
   })
 })
@@ -301,7 +305,7 @@ describe("xAI Grok Extended Thinking (via openai-compatible)", () => {
 })
 
 describe("OpenRouter Extended Thinking", () => {
-  test("GPT models via OpenRouter get OPENAI_EFFORTS", () => {
+  test("GPT models via OpenRouter get low/medium/high efforts", () => {
     const model = createMockModel({
       id: "openrouter/gpt-5",
       providerID: "openrouter",
@@ -313,12 +317,11 @@ describe("OpenRouter Extended Thinking", () => {
     })
 
     const variants = ProviderTransform.variants(model)
-    expect(Object.keys(variants)).toContain("low")
-    expect(Object.keys(variants)).toContain("high")
+    expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
     expect(variants.low).toEqual({ reasoning: { effort: "low" } })
   })
 
-  test("Gemini 3 via OpenRouter gets OPENAI_EFFORTS", () => {
+  test("Gemini 3 via OpenRouter gets low/medium/high efforts", () => {
     const model = createMockModel({
       id: "openrouter/gemini-3-5-pro",
       providerID: "openrouter",
@@ -330,8 +333,7 @@ describe("OpenRouter Extended Thinking", () => {
     })
 
     const variants = ProviderTransform.variants(model)
-    expect(Object.keys(variants)).toContain("none")
-    expect(Object.keys(variants)).toContain("xhigh")
+    expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
   })
 
   test("Grok 4 via OpenRouter returns empty", () => {

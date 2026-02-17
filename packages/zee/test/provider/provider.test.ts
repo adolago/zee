@@ -252,6 +252,53 @@ test("minimax provider is limited to MiniMax-M2.5", async () => {
   })
 })
 
+test("google provider is limited to gemini 3, latest, and embeddings", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("GOOGLE_GENERATIVE_AI_API_KEY", "test-google-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      expect(providers["google"]).toBeDefined()
+
+      const models = Object.keys(providers["google"].models)
+      const isAllowedGoogleModel = (modelID: string) => {
+        const normalized = modelID
+          .trim()
+          .toLowerCase()
+          .replace(/^google\//, "")
+          .replace(/^models\//, "")
+        return (
+          /^gemini-(?:live-)?3(?:[.-]|$)/.test(normalized) ||
+          normalized.includes("-latest") ||
+          normalized.includes("embedding")
+        )
+      }
+
+      expect(models.length).toBeGreaterThan(0)
+      for (const modelID of models) {
+        expect(isAllowedGoogleModel(modelID)).toBe(true)
+      }
+
+      expect(models.some((modelID) => modelID.startsWith("gemini-3"))).toBe(true)
+      expect(models.some((modelID) => modelID.includes("embedding"))).toBe(true)
+      expect(models).not.toContain("gemini-2.0-flash")
+      expect(models).not.toContain("gemini-1.5-pro")
+    },
+  })
+})
+
 test("glm provider keeps only requested model IDs", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

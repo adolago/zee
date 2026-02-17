@@ -77,6 +77,21 @@ export namespace Provider {
     openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"]),
   }
 
+  const HARDCODED_MODEL_ALLOW_FILTERS: Record<string, (modelID: string) => boolean> = {
+    google: (modelID: string) => {
+      const normalized = modelID
+        .trim()
+        .toLowerCase()
+        .replace(/^google\//, "")
+        .replace(/^models\//, "")
+      return (
+        /^gemini-(?:live-)?3(?:[.-]|$)/.test(normalized) ||
+        normalized.includes("-latest") ||
+        normalized.includes("embedding")
+      )
+    },
+  }
+
   /**
    * Get the reason a model is blacklisted, or undefined if not blacklisted.
    */
@@ -935,6 +950,19 @@ export namespace Provider {
               providerID,
               modelID,
               reason: `${providerID} hard model allowlist`,
+            })
+            delete provider.models[modelID]
+          }
+        }
+
+        const allowFilter = HARDCODED_MODEL_ALLOW_FILTERS[providerID]
+        if (allowFilter) {
+          const resolvedModelID = model.api.id ?? model.id ?? modelID
+          if (!allowFilter(modelID) && !allowFilter(resolvedModelID)) {
+            log.debug("model filtered", {
+              providerID,
+              modelID,
+              reason: `${providerID} hard model filter`,
             })
             delete provider.models[modelID]
           }

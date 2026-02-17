@@ -41,9 +41,26 @@ describe("HTTP auth and scopes", () => {
     expect(res.status).toBe(401)
   })
 
+  test("returns 401 for liveness endpoint when auth header is missing", async () => {
+    const app = Server.App()
+    const res = await app.request("/global/health/live", { method: "GET" })
+    expect(res.status).toBe(401)
+  })
+
   test("allows read-only scopes to access read endpoints", async () => {
     const app = Server.App()
     const res = await app.request("/global/health", {
+      method: "GET",
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+      },
+    })
+    expect(res.status).toBe(200)
+  })
+
+  test("allows read-only scopes to access liveness endpoint", async () => {
+    const app = Server.App()
+    const res = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),

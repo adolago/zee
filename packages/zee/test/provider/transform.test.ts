@@ -128,7 +128,7 @@ describe("ProviderTransform.variants - mapping parity", () => {
     expect(variants.medium.thinking.budget_tokens).toBe(16000)
   })
 
-  test("xai and openai-compatible models return reasoning variants", () => {
+  test("xai sdk models return low/high reasoning variants", () => {
     const grokModel = {
       id: "grok-3",
       providerID: "xai",
@@ -136,7 +136,7 @@ describe("ProviderTransform.variants - mapping parity", () => {
       capabilities: { reasoning: true },
     } as any
 
-    expect(Object.keys(ProviderTransform.variants(grokModel))).toEqual(["low", "medium", "high"])
+    expect(Object.keys(ProviderTransform.variants(grokModel))).toEqual(["low", "high"])
   })
 
   test("adds azure reasoning variants with minimal for gpt-5", () => {
@@ -1192,7 +1192,7 @@ describe("ProviderTransform.variants", () => {
       expect(result).toEqual({})
     })
 
-    test("gpt models return OPENAI_EFFORTS with reasoning", () => {
+    test("gpt models return low/medium/high reasoning efforts", () => {
       const model = createMockModel({
         id: "openrouter/gpt-4",
         providerID: "openrouter",
@@ -1203,12 +1203,12 @@ describe("ProviderTransform.variants", () => {
         },
       })
       const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["none", "minimal", "low", "medium", "high", "xhigh"])
+      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
       expect(result.low).toEqual({ reasoning: { effort: "low" } })
       expect(result.high).toEqual({ reasoning: { effort: "high" } })
     })
 
-    test("gemini-3 returns OPENAI_EFFORTS with reasoning", () => {
+    test("gemini-3 returns low/medium/high reasoning efforts", () => {
       const model = createMockModel({
         id: "openrouter/gemini-3-5-pro",
         providerID: "openrouter",
@@ -1219,7 +1219,7 @@ describe("ProviderTransform.variants", () => {
         },
       })
       const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["none", "minimal", "low", "medium", "high", "xhigh"])
+      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
     })
 
     test("grok-4 returns empty object", () => {
@@ -1424,12 +1424,16 @@ describe("ProviderTransform.variants", () => {
       const result = ProviderTransform.variants(model)
       expect(Object.keys(result)).toEqual(["low", "high"])
       expect(result.low).toEqual({
-        includeThoughts: true,
-        thinkingLevel: "low",
+        thinkingConfig: {
+          includeThoughts: true,
+          thinkingLevel: "low",
+        },
       })
       expect(result.high).toEqual({
-        includeThoughts: true,
-        thinkingLevel: "high",
+        thinkingConfig: {
+          includeThoughts: true,
+          thinkingLevel: "high",
+        },
       })
     })
   })

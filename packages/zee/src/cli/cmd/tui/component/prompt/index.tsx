@@ -71,14 +71,22 @@ export type PromptRef = {
 
 type SubmitTrigger = "enter" | "tab"
 
-
 function resolveHoldKeyNames(bindings: Keybind.Info[] | undefined): Set<string> {
   const names = new Set<string>()
   for (const b of bindings ?? []) {
     if (b.name !== "") continue
-    if (b.meta) { names.add("leftalt"); names.add("rightalt") }
-    if (b.ctrl) { names.add("leftctrl"); names.add("rightctrl") }
-    if (b.shift) { names.add("leftshift"); names.add("rightshift") }
+    if (b.meta) {
+      names.add("leftalt")
+      names.add("rightalt")
+    }
+    if (b.ctrl) {
+      names.add("leftctrl")
+      names.add("rightctrl")
+    }
+    if (b.shift) {
+      names.add("leftshift")
+      names.add("rightshift")
+    }
   }
   return names
 }
@@ -106,7 +114,7 @@ export function Prompt(props: PromptProps) {
     return s.type === "busy" ? s.streamHealth : undefined
   })
   // Session for token counter
-  const session = createMemo(() => props.sessionID ? sync.session.get(props.sessionID) : undefined)
+  const session = createMemo(() => (props.sessionID ? sync.session.get(props.sessionID) : undefined))
   // Cumulative agent work time for COMPLETED assistant responses only
   const completedWorkTime = createMemo(() => {
     if (!props.sessionID) return 0
@@ -122,22 +130,22 @@ export function Prompt(props: PromptProps) {
   // Context usage for token counter and compaction indicator
   const contextUsage = createMemo(() => {
     if (!props.sessionID) return null
-    
+
     // Get current model limits first
     const model = local.model.current()
     if (!model) return null
     const provider = sync.data.provider.find((p) => p.id === model.providerID)
     const modelInfo = provider?.models[model.modelID]
     if (!modelInfo?.limit?.context) return null
-    
+
     const outputLimit = Math.min(modelInfo.limit.output ?? 8192, 16384)
-    const usable = modelInfo.limit.input ?? (modelInfo.limit.context - outputLimit)
+    const usable = modelInfo.limit.input ?? modelInfo.limit.context - outputLimit
     if (usable <= 0) return null
-    
+
     // Check for last assistant message tokens
     const messages = sync.data.message[props.sessionID] ?? []
     const lastAssistant = messages.findLast((m): m is typeof m & { role: "assistant" } => m.role === "assistant")
-    
+
     // If no assistant message yet, show 0% with model limit
     if (!lastAssistant?.tokens) {
       return {
@@ -146,10 +154,10 @@ export function Prompt(props: PromptProps) {
         percent: 0,
       }
     }
-    
+
     // Calculate usage (same formula as compaction.ts)
     const count = lastAssistant.tokens.input + (lastAssistant.tokens.cache?.read ?? 0) + lastAssistant.tokens.output
-    
+
     return {
       count,
       limit: usable,
@@ -159,7 +167,12 @@ export function Prompt(props: PromptProps) {
   const contextUsageBorderText = createMemo(() => {
     const ctx = contextUsage()
     if (!ctx) return ""
-    const limit = ctx.limit >= 1000000 ? `${(ctx.limit / 1000000).toFixed(1)}M` : ctx.limit >= 1000 ? `${Math.round(ctx.limit / 1000)}k` : `${ctx.limit}`
+    const limit =
+      ctx.limit >= 1000000
+        ? `${(ctx.limit / 1000000).toFixed(1)}M`
+        : ctx.limit >= 1000
+          ? `${Math.round(ctx.limit / 1000)}k`
+          : `${ctx.limit}`
     return `${ctx.percent}% of ${limit}`
   })
   const diffStats = createMemo(() => {
@@ -231,7 +244,13 @@ export function Prompt(props: PromptProps) {
             if (typeof expiresAt === "number" && Number.isFinite(expiresAt) && expiresAt <= now) return null
             if (kind !== "reminder" && kind !== "todo" && kind !== "message") return null
             if (typeof text !== "string" || !text.trim()) return null
-            if (priority !== undefined && priority !== "low" && priority !== "normal" && priority !== "high" && priority !== "urgent") {
+            if (
+              priority !== undefined &&
+              priority !== "low" &&
+              priority !== "normal" &&
+              priority !== "high" &&
+              priority !== "urgent"
+            ) {
               return { kind, text: text.trim() }
             }
             return { kind, text: text.trim(), priority: priority as BannerItem["priority"] }
@@ -273,52 +292,55 @@ export function Prompt(props: PromptProps) {
   const pttHoldKeyNames = createMemo(() => resolveHoldKeyNames(keybind.all.input_dictation_hold))
 
   // Push-to-talk: hold modifier key to record, release to stop
-  useKeyboard((evt) => {
-    const holdKeys = pttHoldKeyNames()
-    if (holdKeys.size === 0) return
+  useKeyboard(
+    (evt) => {
+      const holdKeys = pttHoldKeyNames()
+      if (holdKeys.size === 0) return
 
-    const isHoldKey = holdKeys.has(evt.name)
+      const isHoldKey = holdKeys.has(evt.name)
 
-    if (!isHoldKey) {
-      // Any non-hold key while debouncing = modifier+key combo, cancel PTT
-      if (pttTimer !== null) {
-        clearTimeout(pttTimer)
-        pttTimer = null
-      }
-      return
-    }
-
-    if (evt.eventType === "press") {
-      if (pttTimer !== null) return
-      if (props.disabled || store.mode !== "normal") return
-      if (!dictationConfig()) return
-      if (dictationState() !== "idle") return
-
-      pttTimer = setTimeout(() => {
-        pttTimer = null
-        if (dictationState() === "idle") {
-          pttActive = true
-          startDictation()
+      if (!isHoldKey) {
+        // Any non-hold key while debouncing = modifier+key combo, cancel PTT
+        if (pttTimer !== null) {
+          clearTimeout(pttTimer)
+          pttTimer = null
         }
-      }, 150)
-      return
-    }
-
-    if (evt.eventType === "release") {
-      if (pttTimer !== null) {
-        clearTimeout(pttTimer)
-        pttTimer = null
         return
       }
 
-      if (pttActive && dictationState() === "listening") {
+      if (evt.eventType === "press") {
+        if (pttTimer !== null) return
+        if (props.disabled || store.mode !== "normal") return
+        if (!dictationConfig()) return
+        if (dictationState() !== "idle") return
+
+        pttTimer = setTimeout(() => {
+          pttTimer = null
+          if (dictationState() === "idle") {
+            pttActive = true
+            startDictation()
+          }
+        }, 150)
+        return
+      }
+
+      if (evt.eventType === "release") {
+        if (pttTimer !== null) {
+          clearTimeout(pttTimer)
+          pttTimer = null
+          return
+        }
+
+        if (pttActive && dictationState() === "listening") {
+          pttActive = false
+          stopDictation()
+          return
+        }
         pttActive = false
-        stopDictation()
-        return
       }
-      pttActive = false
-    }
-  }, { release: true })
+    },
+    { release: true },
+  )
 
   const [store, setStore] = createStore<{
     prompt: PromptInfo
@@ -366,7 +388,12 @@ export function Prompt(props: PromptProps) {
   const vimStatusColor = createMemo(() => (vim.isNormal ? theme.accent : theme.success))
 
   // Dictation status indicator with animation
-  const STT_WAVE_FRAMES = ["\u2581\u2583\u2585\u2587\u2585\u2583", "\u2583\u2585\u2587\u2585\u2583\u2581", "\u2585\u2587\u2585\u2583\u2581\u2583", "\u2587\u2585\u2583\u2581\u2583\u2585"]
+  const STT_WAVE_FRAMES = [
+    "\u2581\u2583\u2585\u2587\u2585\u2583",
+    "\u2583\u2585\u2587\u2585\u2583\u2581",
+    "\u2585\u2587\u2585\u2583\u2581\u2583",
+    "\u2587\u2585\u2583\u2581\u2583\u2585",
+  ]
   const animTick = useAnimationTick()
   const dictationStatusLabel = createMemo(() => {
     const state = dictationState()
@@ -487,19 +514,33 @@ export function Prompt(props: PromptProps) {
   /** Bridge between the VimEngine and the textarea renderable */
   function createVimContext(): VimCommands.VimCommandContext {
     return {
-      get cursorOffset() { return input.cursorOffset },
-      set cursorOffset(offset: number) { input.cursorOffset = offset },
-      get text() { return input.plainText },
-      setText(text: string) { input.setText(text) },
-      insertText(text: string) { input.insertText(text) },
+      get cursorOffset() {
+        return input.cursorOffset
+      },
+      set cursorOffset(offset: number) {
+        input.cursorOffset = offset
+      },
+      get text() {
+        return input.plainText
+      },
+      setText(text: string) {
+        input.setText(text)
+      },
+      insertText(text: string) {
+        input.insertText(text)
+      },
       deleteRange(start: number, end: number): string {
         const text = input.plainText
         const deleted = text.slice(start, end)
         input.setText(text.slice(0, start) + text.slice(end))
         return deleted
       },
-      gotoBufferStart() { input.cursorOffset = 0 },
-      gotoBufferEnd() { input.gotoBufferEnd() },
+      gotoBufferStart() {
+        input.cursorOffset = 0
+      },
+      gotoBufferEnd() {
+        input.gotoBufferEnd()
+      },
       get cursorLine(): number {
         const text = input.plainText
         const before = text.slice(0, input.cursorOffset)
@@ -745,7 +786,11 @@ export function Prompt(props: PromptProps) {
 
     for (const error of errors) {
       const styleId =
-        error.category === "spelling" ? spellingStyleId : error.category === "style" ? styleErrorStyleId : grammarStyleId
+        error.category === "spelling"
+          ? spellingStyleId
+          : error.category === "style"
+            ? styleErrorStyleId
+            : grammarStyleId
 
       input.extmarks.create({
         start: error.start,
@@ -990,7 +1035,7 @@ export function Prompt(props: PromptProps) {
         onSelect: async (d) => {
           if (!store.prompt.input) return
           d.clear()
-          
+
           toast.show({
             variant: "info",
             message: "Checking grammar...",
@@ -1013,7 +1058,7 @@ export function Prompt(props: PromptProps) {
               matches={matches}
               onApply={(content) => {
                 input.setText(content)
-                
+
                 // Try to preserve parts if possible (similar to editor logic)
                 const nonTextParts = store.prompt.parts.filter((p) => p.type !== "text")
                 const updatedNonTextParts = nonTextParts
@@ -1070,7 +1115,7 @@ export function Prompt(props: PromptProps) {
               }}
             />
           ))
-        }
+        },
       },
       {
         title: realtimeGrammarEnabled() ? "Disable real-time grammar" : "Enable real-time grammar",
@@ -1110,7 +1155,7 @@ export function Prompt(props: PromptProps) {
           const grammarExtmarks = input.extmarks.getAllForTypeId(grammarErrorTypeId)
           const errorAtCursor = grammarExtmarks.find(
             (em: { start: number; end: number; data?: GrammarError }) =>
-              cursorOffset >= em.start && cursorOffset <= em.end && em.data
+              cursorOffset >= em.start && cursorOffset <= em.end && em.data,
           )
 
           if (!errorAtCursor || !errorAtCursor.data) {
@@ -1608,10 +1653,9 @@ export function Prompt(props: PromptProps) {
 
       const queuePrompt = async () => {
         try {
-          await sdk.client.session.prompt(
+          await sdk.client.session.promptAsync(
             {
               ...promptPayload,
-              noReply: true,
             },
             { throwOnError: true },
           )
@@ -1796,13 +1840,7 @@ export function Prompt(props: PromptProps) {
     return [frame]
   })
   const chip = (content: JSX.Element) => (
-    <box
-      flexDirection="row"
-      alignItems="center"
-      gap={1}
-      paddingLeft={1}
-      paddingRight={1}
-    >
+    <box flexDirection="row" alignItems="center" gap={1} paddingLeft={1} paddingRight={1}>
       {content}
     </box>
   )
@@ -1835,395 +1873,458 @@ export function Prompt(props: PromptProps) {
           items={bannerItems}
           rotationMs={bannerRotationMs()}
           fallback="Zee banner: no updates."
-          topBorder={showTitleInBorder() ? (
-            <box height={1} flexDirection="row" gap={0}>
-              <text fg={theme.border} flexShrink={0}>╭</text>
-              <text fg={theme.text} flexShrink={0} wrapMode="none" overflow="hidden" attributes={TextAttributes.BOLD}>
-                {titleClamped()}
-              </text>
-              <text fg={theme.border} flexShrink={0}>─</text>
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
-              <text fg={theme.border} flexShrink={0}>╮</text>
-            </box>
-          ) : (
-            <box height={1} flexDirection="row" gap={0}>
-              <text fg={theme.border} flexShrink={0}>╭</text>
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
-              <text fg={theme.border} flexShrink={0}>╮</text>
-            </box>
-          )}
+          topBorder={
+            showTitleInBorder() ? (
+              <box height={1} flexDirection="row" gap={0}>
+                <text fg={theme.border} flexShrink={0}>
+                  ╭
+                </text>
+                <text fg={theme.text} flexShrink={0} wrapMode="none" overflow="hidden" attributes={TextAttributes.BOLD}>
+                  {titleClamped()}
+                </text>
+                <text fg={theme.border} flexShrink={0}>
+                  ─
+                </text>
+                <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+                  {borderFill()}
+                </text>
+                <text fg={theme.border} flexShrink={0}>
+                  ╮
+                </text>
+              </box>
+            ) : (
+              <box height={1} flexDirection="row" gap={0}>
+                <text fg={theme.border} flexShrink={0}>
+                  ╭
+                </text>
+                <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+                  {borderFill()}
+                </text>
+                <text fg={theme.border} flexShrink={0}>
+                  ╮
+                </text>
+              </box>
+            )
+          }
           bottomBorder={
             <box height={1} flexDirection="row" gap={0}>
-              <text fg={theme.border} flexShrink={0}>├</text>
+              <text fg={theme.border} flexShrink={0}>
+                ├
+              </text>
               <Show when={showContextUsageInBorder() && contextUsageBorderText()}>
                 <>
                   <text fg={contextUsageColor()} flexShrink={0} wrapMode="none" overflow="hidden">
                     {contextUsageBorderText()}
                   </text>
-                  <text fg={theme.border} flexShrink={0}>─</text>
+                  <text fg={theme.border} flexShrink={0}>
+                    ─
+                  </text>
                 </>
               </Show>
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
+              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+                {borderFill()}
+              </text>
               <Show when={promptHeaderMetaVisibility().showSkills}>
                 <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
                   {skillsStatusLabel()}
                 </text>
               </Show>
               <Show when={promptHeaderMetaVisibility().showDictation}>
-                <text fg={theme.border} flexShrink={0}>─</text>
-                <text fg={dictationStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                <text fg={theme.border} flexShrink={0}>
+                  ─
+                </text>
+                <text
+                  fg={dictationStatusColor()}
+                  attributes={TextAttributes.BOLD}
+                  flexShrink={0}
+                  wrapMode="none"
+                  overflow="hidden"
+                >
                   {dictationStatusLabel()}
                 </text>
               </Show>
               <Show when={promptHeaderMetaVisibility().showVim}>
-                <text fg={theme.border} flexShrink={0}>─</text>
-                <text fg={vimStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                <text fg={theme.border} flexShrink={0}>
+                  ─
+                </text>
+                <text
+                  fg={vimStatusColor()}
+                  attributes={TextAttributes.BOLD}
+                  flexShrink={0}
+                  wrapMode="none"
+                  overflow="hidden"
+                >
                   {vimStatusLabel()}
                 </text>
               </Show>
               <Show when={promptHeaderMetaVisibility().showMode}>
-                <text fg={theme.border} flexShrink={0}>─</text>
-                <text fg={modeStatusColor()} attributes={TextAttributes.BOLD} flexShrink={0} wrapMode="none" overflow="hidden">
+                <text fg={theme.border} flexShrink={0}>
+                  ─
+                </text>
+                <text
+                  fg={modeStatusColor()}
+                  attributes={TextAttributes.BOLD}
+                  flexShrink={0}
+                  wrapMode="none"
+                  overflow="hidden"
+                >
                   {modeStatusLabel()}
                 </text>
               </Show>
-              <text fg={theme.border} flexShrink={0}>─┤</text>
+              <text fg={theme.border} flexShrink={0}>
+                ─┤
+              </text>
             </box>
           }
         />
-        
+
         {/* Input area with side borders (stacked box style) */}
         <box
           border={["left", "right"]}
           borderColor={theme.border}
           customBorderChars={{
             vertical: "│",
-            topLeft: "", bottomLeft: "", topRight: "", bottomRight: "",
-            horizontal: "", topT: "", bottomT: "", leftT: "", rightT: "", cross: "",
+            topLeft: "",
+            bottomLeft: "",
+            topRight: "",
+            bottomRight: "",
+            horizontal: "",
+            topT: "",
+            bottomT: "",
+            leftT: "",
+            rightT: "",
+            cross: "",
           }}
           paddingLeft={1}
           paddingRight={1}
           paddingTop={1}
           paddingBottom={1}
         >
-            <textarea
-              placeholder={props.showPlaceholder !== false ? "Ask a question, or type / for commands" : null}
-              textColor={keybind.leader ? theme.textMuted : theme.text}
-              focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
-              minHeight={1}
-              maxHeight={15}
-              onContentChange={() => {
-                const value = input.plainText
-                setStore("prompt", "input", value)
-                autocomplete.onInput(value)
-                syncExtmarksWithPromptParts()
-                // Trigger real-time grammar check
-                if (realtimeGrammarEnabled()) {
-                  grammarChecker.check(value)
-                }
-              }}
-              keyBindings={textareaKeybindings()}
-              onKeyDown={async (e) => {
-                if (props.disabled) {
+          <textarea
+            placeholder={props.showPlaceholder !== false ? "Ask a question, or type / for commands" : null}
+            textColor={keybind.leader ? theme.textMuted : theme.text}
+            focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
+            minHeight={1}
+            maxHeight={15}
+            onContentChange={() => {
+              const value = input.plainText
+              setStore("prompt", "input", value)
+              autocomplete.onInput(value)
+              syncExtmarksWithPromptParts()
+              // Trigger real-time grammar check
+              if (realtimeGrammarEnabled()) {
+                grammarChecker.check(value)
+              }
+            }}
+            keyBindings={textareaKeybindings()}
+            onKeyDown={async (e) => {
+              if (props.disabled) {
+                e.preventDefault()
+                return
+              }
+
+              // Global abort: Ctrl+C always aborts, bypasses all mode/focus checks
+              if (e.ctrl && e.name === "c") {
+                if (status().type !== "idle" && props.sessionID) {
+                  sdk.client.session.abort({ sessionID: props.sessionID })
+                  setStore("interrupt", 0)
                   e.preventDefault()
                   return
                 }
+              }
 
-                // Global abort: Ctrl+C always aborts, bypasses all mode/focus checks
-                if (e.ctrl && e.name === "c") {
-                  if (status().type !== "idle" && props.sessionID) {
-                    sdk.client.session.abort({ sessionID: props.sessionID })
-                    setStore("interrupt", 0)
+              // Esc abort: when session is busy, Esc cancels the response
+              // In insert mode, first Esc exits to normal mode (handled below),
+              // second Esc in normal mode triggers abort
+              if (e.name === "escape" && !keybind.leader && vim.isNormal) {
+                if (status().type !== "idle" && props.sessionID) {
+                  sdk.client.session.abort({ sessionID: props.sessionID })
+                  e.preventDefault()
+                  return
+                }
+              }
+
+              // Vim mode handling
+              if (vim.enabled) {
+                // In insert mode, Escape switches to normal mode
+                if (vim.isInsert && e.name === "escape" && !keybind.leader) {
+                  // Don't switch to vim normal if autocomplete is visible (let autocomplete handle escape)
+                  if (!autocomplete.visible) {
+                    vimEngine.reset()
+                    setVimPending("")
+                    vim.enterNormal()
                     e.preventDefault()
                     return
                   }
                 }
 
-                // Esc abort: when session is busy, Esc cancels the response
-                // In insert mode, first Esc exits to normal mode (handled below),
-                // second Esc in normal mode triggers abort
-                if (e.name === "escape" && !keybind.leader && vim.isNormal) {
-                  if (status().type !== "idle" && props.sessionID) {
-                    sdk.client.session.abort({ sessionID: props.sessionID })
-                    e.preventDefault()
-                    return
-                  }
-                }
+                // In normal mode, handle vim commands
+                if (vim.isNormal && !keybind.leader) {
+                  // Single character commands (no modifiers except shift for uppercase)
+                  if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
+                    const key = e.name
 
-                // Vim mode handling
-                if (vim.enabled) {
-                  // In insert mode, Escape switches to normal mode
-                  if (vim.isInsert && e.name === "escape" && !keybind.leader) {
-                    // Don't switch to vim normal if autocomplete is visible (let autocomplete handle escape)
-                    if (!autocomplete.visible) {
+                    // Allow `!` at position 0 to trigger shell mode
+                    if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
                       vimEngine.reset()
                       setVimPending("")
-                      vim.enterNormal()
+                      vim.enterInsert()
+                      setStore("mode", "shell")
                       e.preventDefault()
                       return
                     }
-                  }
 
-                  // In normal mode, handle vim commands
-                  if (vim.isNormal && !keybind.leader) {
-                    // Single character commands (no modifiers except shift for uppercase)
-                    if (e.name && e.name.length === 1 && !e.ctrl && !e.meta) {
-                      const key = e.name
+                    // Allow leader key to pass through to activate leader mode
+                    if (keybind.match("leader", e)) {
+                      vimEngine.reset()
+                      setVimPending("")
+                      return
+                    }
 
-                      // Allow `!` at position 0 to trigger shell mode
-                      if (key === "!" && input.cursorOffset === 0 && input.plainText === "") {
+                    // Dispatch to VimEngine
+                    const ctx = createVimContext()
+                    const result = vimEngine.handleKey(ctx, key)
+
+                    if (result.handled) {
+                      setVimPending(result.pendingDisplay ?? vimEngine.pendingDisplay)
+                      if (result.enterInsert) {
                         vimEngine.reset()
                         setVimPending("")
                         vim.enterInsert()
-                        setStore("mode", "shell")
-                        e.preventDefault()
-                        return
                       }
-
-                      // Allow leader key to pass through to activate leader mode
-                      if (keybind.match("leader", e)) {
-                        vimEngine.reset()
-                        setVimPending("")
-                        return
-                      }
-
-                      // Dispatch to VimEngine
-                      const ctx = createVimContext()
-                      const result = vimEngine.handleKey(ctx, key)
-
-                      if (result.handled) {
-                        setVimPending(result.pendingDisplay ?? vimEngine.pendingDisplay)
-                        if (result.enterInsert) {
-                          vimEngine.reset()
-                          setVimPending("")
-                          vim.enterInsert()
-                        }
-                        e.preventDefault()
-                        return
-                      }
-
-                      // Block all other character input in normal mode
                       e.preventDefault()
                       return
                     }
 
-                    // Escape resets pending state in normal mode
-                    if (e.name === "escape") {
-                      vimEngine.reset()
-                      setVimPending("")
-                    }
-                  }
-                }
-
-                // Handle clipboard paste (Ctrl+V) - check for images first on Windows
-                // This is needed because Windows terminal doesn't properly send image data
-                // through bracketed paste, so we need to intercept the keypress and
-                // directly read from clipboard before the terminal handles it
-                if (keybind.match("input_paste", e)) {
-                  const content = await Clipboard.read({ imageOnly: true })
-                  if (content?.mime.startsWith("image/")) {
+                    // Block all other character input in normal mode
                     e.preventDefault()
-                    await pasteImage({
-                      filename: "clipboard",
-                      mime: content.mime,
-                      content: content.data,
-                    })
                     return
                   }
-                  // If no image, let the default paste behavior continue
+
+                  // Escape resets pending state in normal mode
+                  if (e.name === "escape") {
+                    vimEngine.reset()
+                    setVimPending("")
+                  }
                 }
-                if (keybind.match("input_dictation_toggle", e)) {
+              }
+
+              // Handle clipboard paste (Ctrl+V) - check for images first on Windows
+              // This is needed because Windows terminal doesn't properly send image data
+              // through bracketed paste, so we need to intercept the keypress and
+              // directly read from clipboard before the terminal handles it
+              if (keybind.match("input_paste", e)) {
+                const content = await Clipboard.read({ imageOnly: true })
+                if (content?.mime.startsWith("image/")) {
                   e.preventDefault()
-                  await toggleDictation()
-                  return
-                }
-                // Handle grammar quick-fix (Ctrl+.)
-                if (keybind.match("grammar_quickfix", e) && realtimeGrammarEnabled() && grammarErrorTypeId) {
-                  e.preventDefault()
-                  command.trigger("prompt.grammar.quickfix")
-                  return
-                }
-                if (keybind.match("mode_cycle", e)) {
-                  e.preventDefault()
-                  local.mode.cycle()
-                  return
-                }
-                if (keybind.match("input_clear", e) && store.prompt.input !== "") {
-                  input.clear()
-                  input.extmarks.clear()
-                  setStore("prompt", {
-                    input: "",
-                    parts: [],
+                  await pasteImage({
+                    filename: "clipboard",
+                    mime: content.mime,
+                    content: content.data,
                   })
-                  setStore("extmarkToPartIndex", new Map())
                   return
                 }
-                if (keybind.match("app_exit", e)) {
-                  if (store.prompt.input === "") {
-                    await exit()
-                    // Don't preventDefault - let textarea potentially handle the event
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (e.name === "!" && input.visualCursor.offset === 0) {
-                  setStore("mode", "shell")
+                // If no image, let the default paste behavior continue
+              }
+              if (keybind.match("input_dictation_toggle", e)) {
+                e.preventDefault()
+                await toggleDictation()
+                return
+              }
+              // Handle grammar quick-fix (Ctrl+.)
+              if (keybind.match("grammar_quickfix", e) && realtimeGrammarEnabled() && grammarErrorTypeId) {
+                e.preventDefault()
+                command.trigger("prompt.grammar.quickfix")
+                return
+              }
+              if (keybind.match("mode_cycle", e)) {
+                e.preventDefault()
+                local.mode.cycle()
+                return
+              }
+              if (keybind.match("input_clear", e) && store.prompt.input !== "") {
+                input.clear()
+                input.extmarks.clear()
+                setStore("prompt", {
+                  input: "",
+                  parts: [],
+                })
+                setStore("extmarkToPartIndex", new Map())
+                return
+              }
+              if (keybind.match("app_exit", e)) {
+                if (store.prompt.input === "") {
+                  await exit()
+                  // Don't preventDefault - let textarea potentially handle the event
                   e.preventDefault()
                   return
                 }
-                if (store.mode === "shell") {
-                  if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
-                    setStore("mode", "normal")
-                    e.preventDefault()
-                    return
-                  }
-                }
-                if (store.mode === "normal") autocomplete.onKeyDown(e)
-                if (!autocomplete.visible) {
-                  if (
-                    e.name === "tab" &&
-                    !e.ctrl &&
-                    !e.meta &&
-                    !e.shift &&
-                    !keybind.leader &&
-                    store.mode !== "shell" &&
-                    !input.plainText.trimStart().startsWith("!")
-                  ) {
-                    e.preventDefault()
-                    await submit("tab")
-                    return
-                  }
-
-                  if (
-                    (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
-                    (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
-                  ) {
-                    const direction = keybind.match("history_previous", e) ? -1 : 1
-                    const item = history.move(direction, input.plainText)
-
-                    if (item) {
-                      input.setText(item.input)
-                      setStore("prompt", item)
-                      setStore("mode", item.mode ?? "normal")
-                      restoreExtmarksFromParts(item.parts)
-                      e.preventDefault()
-                      if (direction === -1) input.cursorOffset = 0
-                      if (direction === 1) input.cursorOffset = input.plainText.length
-                    }
-                    return
-                  }
-
-                  if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0) input.cursorOffset = 0
-                  if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
-                    input.cursorOffset = input.plainText.length
-                }
-              }}
-              onSubmit={() => submit("enter")}
-              onPaste={async (event: PasteEvent) => {
-                if (props.disabled) {
-                  event.preventDefault()
+              }
+              if (e.name === "!" && input.visualCursor.offset === 0) {
+                setStore("mode", "shell")
+                e.preventDefault()
+                return
+              }
+              if (store.mode === "shell") {
+                if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
+                  setStore("mode", "normal")
+                  e.preventDefault()
                   return
                 }
-
-                // Normalize line endings at the boundary
-                // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
-                // Replace CRLF first, then any remaining CR
-                const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-                const pastedContent = normalizedText.trim()
-                if (!pastedContent) {
-                  command.trigger("prompt.paste")
-                  return
-                }
-
-                // trim ' from the beginning and end of the pasted content. just
-                // ' and nothing else
-                const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
-                const isUrl = /^(https?):\/\//.test(filepath)
-                if (!isUrl) {
-                  try {
-                    const file = Bun.file(filepath)
-                    // Handle SVG as raw text content, not as base64 image
-                    if (file.type === "image/svg+xml") {
-                      event.preventDefault()
-                      const content = await file.text().catch(() => {})
-                      if (content) {
-                        pasteText(content, `[SVG: ${file.name ?? "image"}]`)
-                        return
-                      }
-                    }
-                    if (file.type.startsWith("image/")) {
-                      event.preventDefault()
-                      const content = await file
-                        .arrayBuffer()
-                        .then((buffer) => Buffer.from(buffer).toString("base64"))
-                        .catch(() => {})
-                      if (content) {
-                        await pasteImage({
-                          filename: file.name,
-                          mime: file.type,
-                          content,
-                        })
-                        return
-                      }
-                    }
-                  } catch {}
-                }
-
-                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+              }
+              if (store.mode === "normal") autocomplete.onKeyDown(e)
+              if (!autocomplete.visible) {
                 if (
-                  (lineCount >= 3 || pastedContent.length > 150) &&
-                  !sync.data?.config?.experimental?.disable_paste_summary
+                  e.name === "tab" &&
+                  !e.ctrl &&
+                  !e.meta &&
+                  !e.shift &&
+                  !keybind.leader &&
+                  store.mode !== "shell" &&
+                  !input.plainText.trimStart().startsWith("!")
                 ) {
-                  event.preventDefault()
-                  pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                  e.preventDefault()
+                  await submit("tab")
                   return
                 }
 
-                // Force layout update and render for the pasted content
-                setTimeout(() => {
-                  input.getLayoutNode().markDirty()
-                  renderer.requestRender()
-                }, 0)
-              }}
-              ref={(r: TextareaRenderable) => {
-                input = r
-                if (promptPartTypeId === 0) {
-                  promptPartTypeId = input.extmarks.registerType("prompt-part")
+                if (
+                  (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
+                  (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
+                ) {
+                  const direction = keybind.match("history_previous", e) ? -1 : 1
+                  const item = history.move(direction, input.plainText)
+
+                  if (item) {
+                    input.setText(item.input)
+                    setStore("prompt", item)
+                    setStore("mode", item.mode ?? "normal")
+                    restoreExtmarksFromParts(item.parts)
+                    e.preventDefault()
+                    if (direction === -1) input.cursorOffset = 0
+                    if (direction === 1) input.cursorOffset = input.plainText.length
+                  }
+                  return
                 }
-                if (grammarErrorTypeId === 0) {
-                  grammarErrorTypeId = input.extmarks.registerType("grammar-error")
-                }
-                // Register focus callback for vim mode
-                vim.registerFocusCallback(() => input?.focus())
-                props.ref?.(ref)
-                setTimeout(() => {
-                  input.cursorColor = theme.primary
-                }, 0)
-              }}
-              onMouseDown={(r: MouseEvent) => r.target?.focus()}
-              focusedBackgroundColor={RGBA.fromInts(0, 0, 0, 0)}
-              cursorColor={theme.primary}
-              syntaxStyle={syntax()}
-            />
+
+                if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0) input.cursorOffset = 0
+                if (keybind.match("history_next", e) && input.visualCursor.visualRow === input.height - 1)
+                  input.cursorOffset = input.plainText.length
+              }
+            }}
+            onSubmit={() => submit("enter")}
+            onPaste={async (event: PasteEvent) => {
+              if (props.disabled) {
+                event.preventDefault()
+                return
+              }
+
+              // Normalize line endings at the boundary
+              // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
+              // Replace CRLF first, then any remaining CR
+              const normalizedText = event.text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+              const pastedContent = normalizedText.trim()
+              if (!pastedContent) {
+                command.trigger("prompt.paste")
+                return
+              }
+
+              // trim ' from the beginning and end of the pasted content. just
+              // ' and nothing else
+              const filepath = pastedContent.replace(/^'+|'+$/g, "").replace(/\\ /g, " ")
+              const isUrl = /^(https?):\/\//.test(filepath)
+              if (!isUrl) {
+                try {
+                  const file = Bun.file(filepath)
+                  // Handle SVG as raw text content, not as base64 image
+                  if (file.type === "image/svg+xml") {
+                    event.preventDefault()
+                    const content = await file.text().catch(() => {})
+                    if (content) {
+                      pasteText(content, `[SVG: ${file.name ?? "image"}]`)
+                      return
+                    }
+                  }
+                  if (file.type.startsWith("image/")) {
+                    event.preventDefault()
+                    const content = await file
+                      .arrayBuffer()
+                      .then((buffer) => Buffer.from(buffer).toString("base64"))
+                      .catch(() => {})
+                    if (content) {
+                      await pasteImage({
+                        filename: file.name,
+                        mime: file.type,
+                        content,
+                      })
+                      return
+                    }
+                  }
+                } catch {}
+              }
+
+              const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+              if (
+                (lineCount >= 3 || pastedContent.length > 150) &&
+                !sync.data?.config?.experimental?.disable_paste_summary
+              ) {
+                event.preventDefault()
+                pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                return
+              }
+
+              // Force layout update and render for the pasted content
+              setTimeout(() => {
+                input.getLayoutNode().markDirty()
+                renderer.requestRender()
+              }, 0)
+            }}
+            ref={(r: TextareaRenderable) => {
+              input = r
+              if (promptPartTypeId === 0) {
+                promptPartTypeId = input.extmarks.registerType("prompt-part")
+              }
+              if (grammarErrorTypeId === 0) {
+                grammarErrorTypeId = input.extmarks.registerType("grammar-error")
+              }
+              // Register focus callback for vim mode
+              vim.registerFocusCallback(() => input?.focus())
+              props.ref?.(ref)
+              setTimeout(() => {
+                input.cursorColor = theme.primary
+              }, 0)
+            }}
+            onMouseDown={(r: MouseEvent) => r.target?.focus()}
+            focusedBackgroundColor={RGBA.fromInts(0, 0, 0, 0)}
+            cursorColor={theme.primary}
+            syntaxStyle={syntax()}
+          />
         </box>
         {/* Bottom border with embedded status info */}
         <box height={1} flexDirection="row" gap={0}>
-          <text fg={theme.border} flexShrink={0}>╰</text>
+          <text fg={theme.border} flexShrink={0}>
+            ╰
+          </text>
           {/* Left: spinner only */}
           <Show
             when={status().type === "busy"}
-            fallback={<text fg={highlight()} flexShrink={0}>~</text>}
+            fallback={
+              <text fg={highlight()} flexShrink={0}>
+                ~
+              </text>
+            }
           >
-            <spinner
-              color={spinnerDef().color}
-              frames={spinnerDef().frames}
-              interval={120}
-            />
+            <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={120} />
           </Show>
           <Show when={status().type === "busy"}>
-            <text fg={theme.textMuted} flexShrink={0}> Esc to cancel</text>
+            <text fg={theme.textMuted} flexShrink={0}>
+              {" "}
+              Esc to cancel
+            </text>
           </Show>
-          <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">{borderFill()}</text>
+          <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+            {borderFill()}
+          </text>
           <Show when={promptFooterMetaVisibility().showModel}>
             <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
               {modelBorderText()}
@@ -2234,14 +2335,18 @@ export function Prompt(props: PromptProps) {
               {pathBorderText()}
             </text>
           </Show>
-          <text fg={theme.border} flexShrink={0}>─╯</text>
+          <text fg={theme.border} flexShrink={0}>
+            ─╯
+          </text>
         </box>
       </box>
       {/* Diff stats line outside box, below bottom border */}
       <Show when={diffStats()}>
         {(stats) => (
           <box height={1} flexDirection="row" justifyContent="flex-end" paddingRight={1}>
-            <text fg={theme.textMuted}>{stats().files} file{stats().files !== 1 ? "s" : ""} changed </text>
+            <text fg={theme.textMuted}>
+              {stats().files} file{stats().files !== 1 ? "s" : ""} changed{" "}
+            </text>
             <Show when={stats().additions > 0}>
               <text fg={theme.success}>+{stats().additions}</text>
             </Show>

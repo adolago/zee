@@ -10,9 +10,17 @@ import { withNetworkOptions, resolveNetworkOptions, type ResolvedNetworkOptions 
 import { Daemon } from "@/cli/cmd/daemon"
 import { startAlwaysOnProcess, type AlwaysOnProcess } from "@/cli/cmd/always-on"
 import { createAuthorizedFetch } from "@/server/auth"
+import {
+  recoverUnhealthyDaemonForStartup,
+  type RecoveryDependencies,
+  type SystemdScope,
+  type SystemdServiceState,
+} from "./recovery"
 
 const DEFAULT_DAEMON_PORT = 3210
 const DAEMON_HEALTH_PATH = "/global/health"
+const DAEMON_LIVE_PATH = "/global/health/live"
+const DAEMON_LIVE_TIMEOUT_MS = 2000
 const TTY_DETACH_CHECK_INTERVAL_MS = 3000
 
 function normalizeDaemonHost(hostname?: string): string {
@@ -96,18 +104,13 @@ function watchInteractiveTerminal(onDetached: (reason: string) => void): () => v
   }
 }
 
-async function checkDaemonHealth(url: string): Promise<boolean> {
+async function checkLegacyDaemonLiveness(url: string): Promise<boolean> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 1500)
+  const timeout = setTimeout(() => controller.abort(), DAEMON_LIVE_TIMEOUT_MS)
   try {
     const authorizedFetch = createAuthorizedFetch(fetch)
     const response = await authorizedFetch(`${url}${DAEMON_HEALTH_PATH}`, { signal: controller.signal })
-    if (!response.ok) return false
-    const data = await response.json().catch(() => undefined)
-    if (data && typeof data === "object" && "healthy" in data) {
-      return Boolean((data as { healthy?: boolean }).healthy)
-    }
-    return true
+    return response.ok
   } catch {
     return false
   } finally {
@@ -115,23 +118,35 @@ async function checkDaemonHealth(url: string): Promise<boolean> {
   }
 }
 
-async function waitForHealthy(resolveUrl: () => Promise<string>, timeoutMs: number): Promise<string | null> {
+async function checkDaemonLiveness(url: string): Promise<boolean> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), DAEMON_LIVE_TIMEOUT_MS)
+  try {
+    const authorizedFetch = createAuthorizedFetch(fetch)
+    const response = await authorizedFetch(`${url}${DAEMON_LIVE_PATH}`, {
+      signal: controller.signal,
+    })
+    if (response.ok) return true
+    if (response.status === 404) {
+      // Backward compatibility with older daemons that only support /global/health.
+      return await checkLegacyDaemonLiveness(url)
+    }
+    return false
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function waitForLive(resolveUrl: () => Promise<string>, timeoutMs: number): Promise<string | null> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const url = await resolveUrl()
-    if (await checkDaemonHealth(url)) return url
+    if (await checkDaemonLiveness(url)) return url
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   return null
-}
-
-type SystemdScope = "user" | "system"
-
-type SystemdServiceState = {
-  available: boolean
-  installed: boolean
-  active: boolean
-  status?: string
 }
 
 function getSystemdServiceState(scope: SystemdScope): SystemdServiceState {
@@ -163,9 +178,11 @@ function getSystemdServiceState(scope: SystemdScope): SystemdServiceState {
   }
 }
 
-function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: string } {
+type SystemctlAction = "start" | "restart"
+
+function attemptSystemctl(scope: SystemdScope, action: SystemctlAction): { ok: boolean; details?: string } {
   const baseArgs = scope === "user" ? ["--user"] : []
-  const result = spawnSync("systemctl", [...baseArgs, "--no-ask-password", "start", "zee"], { encoding: "utf-8" })
+  const result = spawnSync("systemctl", [...baseArgs, "--no-ask-password", action, "zee"], { encoding: "utf-8" })
   if (result.status === 0) return { ok: true }
 
   const stdout = (result.stdout ?? "").trim()
@@ -176,7 +193,7 @@ function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: st
     return { ok: false, details }
   }
 
-  const sudoResult = spawnSync("sudo", ["-n", "systemctl", "start", "zee"], { encoding: "utf-8" })
+  const sudoResult = spawnSync("sudo", ["-n", "systemctl", action, "zee"], { encoding: "utf-8" })
   if (sudoResult.status === 0) return { ok: true }
 
   const sudoStdout = (sudoResult.stdout ?? "").trim()
@@ -186,12 +203,54 @@ function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: st
   return { ok: false, details: sudoDetails || details }
 }
 
+function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: string } {
+  return attemptSystemctl(scope, "start")
+}
+
+function attemptSystemctlRestart(scope: SystemdScope): { ok: boolean; details?: string } {
+  return attemptSystemctl(scope, "restart")
+}
+
+async function stopPidGracefully(pid: number): Promise<{ ok: boolean; details?: string }> {
+  try {
+    process.kill(pid, "SIGTERM")
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ESRCH") {
+      return { ok: true }
+    }
+    return { ok: false, details: error instanceof Error ? error.message : String(error) }
+  }
+
+  const deadline = Date.now() + 5000
+  while (Date.now() < deadline) {
+    try {
+      process.kill(pid, 0)
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } catch {
+      return { ok: true }
+    }
+  }
+
+  return { ok: false, details: `Process ${pid} did not exit after SIGTERM` }
+}
+
+async function cleanupDaemonStateFiles() {
+  await Daemon.removePidFile().catch(() => {})
+  await Daemon.releaseLock().catch(() => {})
+}
+
+const defaultRecoveryDependencies: RecoveryDependencies = {
+  restartSystemd: attemptSystemctlRestart,
+  stopPid: stopPidGracefully,
+  cleanupState: cleanupDaemonStateFiles,
+}
+
 /**
  * Ensure zee is running. Returns the URL to connect to.
  *
  * Strategy:
  * 1. If ZEE_URL is set, use it directly (external/remote process)
- * 2. If a process is already running (PID file + healthy), attach to it
+ * 2. If a process is already running (PID file + live), attach or recover it
  * 3. If systemd user service is installed, use it
  * 4. If systemd system service is installed, use it
  * 5. Otherwise, start a new always-on process in this process
@@ -204,32 +263,55 @@ async function ensureProcessRunning(
   const explicitUrl = process.env.ZEE_URL?.trim()
   if (explicitUrl) {
     const url = resolveDaemonUrl(network)
-    if (await checkDaemonHealth(url)) return { url }
+    if (await checkDaemonLiveness(url)) return { url }
     UI.error("ZEE_URL is set but the process is unreachable or unauthorized.")
     UI.info("Unset ZEE_URL to use the local process.")
     process.exit(1)
   }
 
   const resolveUrl = async () => resolveDaemonUrl(network, await Daemon.readPidFile())
+  const systemdUser = getSystemdServiceState("user")
+  const systemdSystem = getSystemdServiceState("system")
+
+  if (systemdUser.available && systemdUser.installed && systemdSystem.available && systemdSystem.installed) {
+    UI.warn("Both user and system zee systemd services are installed. Use only one to avoid restarts.")
+  }
 
   // 2. Existing process
   const running = await Daemon.isRunning()
   if (running) {
     let url = await resolveUrl()
-    if (await checkDaemonHealth(url)) return { url }
+    if (await checkDaemonLiveness(url)) return { url }
     url = await resolveUrl()
-    if (await checkDaemonHealth(url)) return { url }
-    UI.error("Process appears to be running but is not healthy. Check `zee daemon-status`.")
-    process.exit(1)
+    if (await checkDaemonLiveness(url)) return { url }
+
+    UI.warn("Process appears to be running but is not responding. Attempting automatic recovery...")
+    const recovery = await recoverUnhealthyDaemonForStartup(
+      {
+        systemdUser,
+        systemdSystem,
+        state: await Daemon.readPidFile(),
+      },
+      defaultRecoveryDependencies,
+    )
+
+    if (!recovery.ok) {
+      UI.error("Failed to recover unhealthy daemon automatically.")
+      UI.info(recovery.details)
+      UI.info("Try: zee daemon-stop && zee")
+      process.exit(1)
+    }
+
+    if (recovery.action === "systemd-user-restart" || recovery.action === "systemd-system-restart") {
+      const recoveredUrl = await waitForLive(resolveUrl, 12_000)
+      if (recoveredUrl) return { url: recoveredUrl }
+      UI.error("Daemon was restarted but is still unreachable.")
+      UI.info("Check: zee daemon-status")
+      process.exit(1)
+    }
   }
 
   // 3. Systemd (prefer user service)
-  const systemdUser = getSystemdServiceState("user")
-  const systemdSystem = getSystemdServiceState("system")
-  if (systemdUser.available && systemdUser.installed && systemdSystem.available && systemdSystem.installed) {
-    UI.warn("Both user and system zee systemd services are installed. Use only one to avoid restarts.")
-  }
-
   if (systemdUser.available && systemdUser.installed) {
     if (!systemdUser.active) {
       UI.info("Starting systemd user service 'zee'...")
@@ -242,10 +324,17 @@ async function ensureProcessRunning(
       }
     }
 
-    const url = await waitForHealthy(resolveUrl, 8000)
+    let url = await waitForLive(resolveUrl, 8000)
     if (url) return { url }
 
-    UI.error("Systemd user service 'zee' is active but unhealthy.")
+    UI.warn("Systemd user service 'zee' is active but unreachable. Attempting restart...")
+    const restarted = attemptSystemctlRestart("user")
+    if (restarted.ok) {
+      url = await waitForLive(resolveUrl, 12_000)
+      if (url) return { url }
+    }
+
+    UI.error("Systemd user service 'zee' is active but unreachable.")
     UI.info("Check: systemctl --user status zee")
     process.exit(1)
   }
@@ -262,10 +351,17 @@ async function ensureProcessRunning(
       }
     }
 
-    const url = await waitForHealthy(resolveUrl, 8000)
+    let url = await waitForLive(resolveUrl, 8000)
     if (url) return { url }
 
-    UI.error("Systemd service 'zee' is active but unhealthy.")
+    UI.warn("Systemd service 'zee' is active but unreachable. Attempting restart...")
+    const restarted = attemptSystemctlRestart("system")
+    if (restarted.ok) {
+      url = await waitForLive(resolveUrl, 12_000)
+      if (url) return { url }
+    }
+
+    UI.error("Systemd service 'zee' is active but unreachable.")
     UI.info("Check: systemctl status zee")
     process.exit(1)
   }
