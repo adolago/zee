@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { getZeeSplitwiseConfig, type ZeeSplitwiseConfig } from "../../config/runtime";
+import { getApiKeySync } from "../../config/providers";
 
 export const SPLITWISE_ACTIONS = [
   "current-user",
@@ -57,7 +58,7 @@ export type SplitwiseConfigResolved = {
   baseUrl: string;
   timeoutMs?: number;
   error?: string;
-  tokenSource?: "config" | "env" | "file";
+  tokenSource?: "config" | "env" | "file" | "auth";
 };
 
 export type SplitwiseResponse = {
@@ -111,6 +112,12 @@ export function resolveSplitwiseConfig(): SplitwiseConfigResolved {
   const envToken = process.env.SPLITWISE_TOKEN?.trim();
   if (envToken) {
     return { enabled, token: envToken, baseUrl, timeoutMs, tokenSource: "env" };
+  }
+
+  // Check Zee auth store (set via `zee auth login splitwise`)
+  const authToken = getApiKeySync("splitwise");
+  if (authToken) {
+    return { enabled, token: authToken, baseUrl, timeoutMs, tokenSource: "auth" };
   }
 
   const tokenFile = config.tokenFile || process.env.SPLITWISE_TOKEN_FILE;

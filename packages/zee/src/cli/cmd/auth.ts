@@ -52,6 +52,10 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
     name: "LanguageTool",
     hint: "LanguageTool API key (premium)",
   },
+  splitwise: {
+    name: "Splitwise",
+    hint: "Splitwise API key (Bearer token)",
+  },
 }
 
 const DEFAULT_DAEMON_PORT = 3210
@@ -1033,6 +1037,7 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   tts: "Text-to-Speech",
   stt: "Speech-to-Text",
   image: "Image Generation",
+  expenses: "Expense Tracking",
 }
 
 export const AuthProvidersCommand = cmd({

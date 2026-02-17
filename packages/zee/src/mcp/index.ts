@@ -45,6 +45,48 @@ export namespace MCP {
   const toolCache = new Map<string, ToolCacheEntry>()
   const STATUS_AUTO_HEAL_COOLDOWN_MS = 15_000
   const statusAutoHealAttemptAt = new Map<string, number>()
+  const BUILTIN_LOCAL_MCP_SERVERS = new Set(["calendar", "consciousness", "memory", "portfolio"])
+
+  type LocalFailureClass =
+    | "connection_closed"
+    | "spawn_failed"
+    | "timeout"
+    | "protocol_error"
+    | "crash_loop"
+    | "unknown"
+
+  type LocalServerHealth = {
+    consecutiveFailures: number
+    firstFailureAt?: number
+    lastFailureAt?: number
+    lastHealthyAt?: number
+    lastFailureClass?: LocalFailureClass
+    lastError?: string
+    cooldownUntil?: number
+  }
+
+  type LocalMcpResilienceConfig = {
+    startupMaxAttempts: number
+    startupBackoffMs: number[]
+    crashLoopThreshold: number
+    crashLoopWindowMs: number
+    crashLoopCooldownMs: number
+  }
+
+  const defaultLocalMcpResilienceConfig: LocalMcpResilienceConfig = {
+    startupMaxAttempts: 4,
+    startupBackoffMs: [250, 1_000, 3_000],
+    crashLoopThreshold: 5,
+    crashLoopWindowMs: 120_000,
+    crashLoopCooldownMs: 60_000,
+  }
+
+  let localMcpResilienceConfig: LocalMcpResilienceConfig = {
+    ...defaultLocalMcpResilienceConfig,
+    startupBackoffMs: [...defaultLocalMcpResilienceConfig.startupBackoffMs],
+  }
+
+  const localServerHealth = new Map<string, LocalServerHealth>()
 
   async function withServerMutex<T>(serverName: string, fn: () => T | Promise<T>): Promise<T> {
     const currentMutex = serverMutexes.get(serverName) ?? Promise.resolve()
@@ -63,6 +105,198 @@ export namespace MCP {
         serverMutexes.delete(serverName)
       }
     }
+  }
+
+  function normalizeBuiltinLocalServerName(serverName: string): string {
+    return serverName.replace(/^personas-/, "")
+  }
+
+  function isBuiltinLocalServer(serverName: string): boolean {
+    return BUILTIN_LOCAL_MCP_SERVERS.has(normalizeBuiltinLocalServerName(serverName))
+  }
+
+  function getOrCreateLocalServerHealth(serverName: string): LocalServerHealth {
+    const existing = localServerHealth.get(serverName)
+    if (existing) return existing
+    const created: LocalServerHealth = {
+      consecutiveFailures: 0,
+    }
+    localServerHealth.set(serverName, created)
+    return created
+  }
+
+  function clearExpiredLocalCooldown(serverName: string, now = Date.now()): LocalServerHealth | undefined {
+    const health = localServerHealth.get(serverName)
+    if (!health?.cooldownUntil) return health
+    if (health.cooldownUntil > now) return health
+
+    health.cooldownUntil = undefined
+    health.consecutiveFailures = 0
+    health.firstFailureAt = undefined
+    health.lastFailureAt = undefined
+    return health
+  }
+
+  function getActiveLocalCooldown(serverName: string, now = Date.now()): LocalServerHealth | undefined {
+    const health = clearExpiredLocalCooldown(serverName, now)
+    if (!health?.cooldownUntil) return undefined
+    if (health.cooldownUntil <= now) return undefined
+    return health
+  }
+
+  function describeCrashLoop(serverName: string, health: LocalServerHealth, now = Date.now()): string {
+    const until = health.cooldownUntil ?? now
+    const remainingSeconds = Math.max(0, Math.ceil((until - now) / 1000))
+    const retryAt = new Date(until).toISOString()
+    const windowSeconds = Math.round(localMcpResilienceConfig.crashLoopWindowMs / 1000)
+    const failureCount = Math.max(health.consecutiveFailures, localMcpResilienceConfig.crashLoopThreshold)
+    const lastClass = health.lastFailureClass ?? "unknown"
+    const lastError = health.lastError ?? "Unknown local MCP failure"
+    return [
+      `Local MCP crash loop [crash_loop]: ${failureCount} failures within ${windowSeconds}s.`,
+      `Cooling down for ${remainingSeconds}s until ${retryAt}.`,
+      `Last failure [${lastClass}]: ${lastError}`,
+      `Server: ${serverName}`,
+    ].join(" ")
+  }
+
+  function buildLocalFailureStatus(
+    serverName: string,
+    failureClass: LocalFailureClass,
+    message: string,
+    options: {
+      attempt?: number
+      totalAttempts?: number
+      cooldownActive?: boolean
+      now?: number
+    } = {},
+  ): Status {
+    if (failureClass === "crash_loop" || options.cooldownActive) {
+      const health = getOrCreateLocalServerHealth(serverName)
+      return {
+        status: "failed",
+        error: describeCrashLoop(serverName, health, options.now),
+      }
+    }
+
+    const attemptPrefix =
+      options.attempt && options.totalAttempts
+        ? `attempt ${options.attempt}/${options.totalAttempts}`
+        : options.attempt
+          ? `attempt ${options.attempt}`
+          : undefined
+    const detail = attemptPrefix ? ` (${attemptPrefix})` : ""
+    return {
+      status: "failed",
+      error: `Local MCP startup failed [${failureClass}]${detail}: ${message}`,
+    }
+  }
+
+  function classifyLocalFailure(error: unknown): { className: LocalFailureClass; message: string } {
+    const message = error instanceof Error ? error.message : String(error)
+    const lowered = message.toLowerCase()
+
+    if (
+      lowered.includes("connection closed") ||
+      lowered.includes("eof") ||
+      lowered.includes("closed before response") ||
+      lowered.includes("socket hang up")
+    ) {
+      return { className: "connection_closed", message }
+    }
+    if (
+      lowered.includes("spawn") ||
+      lowered.includes("enoent") ||
+      lowered.includes("eacces") ||
+      lowered.includes("not found") ||
+      lowered.includes("executable")
+    ) {
+      return { className: "spawn_failed", message }
+    }
+    if (lowered.includes("timeout")) {
+      return { className: "timeout", message }
+    }
+    if (lowered.includes("jsonrpc") || lowered.includes("protocol") || lowered.includes("parse")) {
+      return { className: "protocol_error", message }
+    }
+
+    return { className: "unknown", message }
+  }
+
+  function isRetryableLocalFailure(failureClass: LocalFailureClass): boolean {
+    return (
+      failureClass === "connection_closed" ||
+      failureClass === "timeout" ||
+      failureClass === "protocol_error"
+    )
+  }
+
+  function deterministicJitter(serverName: string, attempt: number, maxJitterMs: number): number {
+    if (maxJitterMs <= 0) return 0
+    let hash = 17
+    const key = `${serverName}:${attempt}`
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+    }
+    const range = maxJitterMs * 2 + 1
+    return (hash % range) - maxJitterMs
+  }
+
+  function getLocalRetryDelayMs(serverName: string, attempt: number): number {
+    const configured = localMcpResilienceConfig.startupBackoffMs[Math.max(0, attempt - 1)] ?? 0
+    if (configured <= 0) return 0
+    const jitterLimit = Math.max(1, Math.floor(configured * 0.15))
+    const jitter = deterministicJitter(serverName, attempt, jitterLimit)
+    return Math.max(0, configured + jitter)
+  }
+
+  async function sleepMs(ms: number): Promise<void> {
+    if (ms <= 0) return
+    await new Promise<void>((resolve) => setTimeout(resolve, ms))
+  }
+
+  function markLocalServerHealthy(serverName: string, now = Date.now()): void {
+    const health = getOrCreateLocalServerHealth(serverName)
+    health.consecutiveFailures = 0
+    health.firstFailureAt = undefined
+    health.lastFailureAt = undefined
+    health.lastFailureClass = undefined
+    health.lastError = undefined
+    health.cooldownUntil = undefined
+    health.lastHealthyAt = now
+  }
+
+  function registerLocalServerFailure(
+    serverName: string,
+    failureClass: LocalFailureClass,
+    message: string,
+    now = Date.now(),
+  ): LocalServerHealth {
+    const health = getOrCreateLocalServerHealth(serverName)
+    const windowMs = Math.max(1, localMcpResilienceConfig.crashLoopWindowMs)
+    const windowExpired =
+      !health.firstFailureAt ||
+      now - health.firstFailureAt > windowMs ||
+      (health.cooldownUntil !== undefined && health.cooldownUntil <= now)
+
+    if (windowExpired) {
+      health.consecutiveFailures = 1
+      health.firstFailureAt = now
+    } else {
+      health.consecutiveFailures += 1
+    }
+
+    health.lastFailureAt = now
+    health.lastFailureClass = failureClass
+    health.lastError = message
+
+    if (health.consecutiveFailures >= localMcpResilienceConfig.crashLoopThreshold) {
+      health.cooldownUntil = now + localMcpResilienceConfig.crashLoopCooldownMs
+    } else {
+      health.cooldownUntil = undefined
+    }
+
+    return health
   }
 
   const AUTH_PLACEHOLDER = /\{auth:([^}]+)\}/g
@@ -483,6 +717,7 @@ export namespace MCP {
     if (current.status === "disabled") return true
     if (current.status !== "failed") return false
     if (!isLocalServer(name, config)) return false
+    if (getActiveLocalCooldown(name)) return false
     const lowered = current.error.toLowerCase()
     if (
       lowered.includes("needs auth") ||
@@ -499,26 +734,12 @@ export namespace MCP {
     mcp: z.infer<typeof Config.McpLocal>,
     agentCoreRoot: string,
   ): string[] | undefined {
-    const preferNodeTsx =
-      process.env.ZEE_MCP_PREFER_NODE_TSX === "1" ||
-      Boolean(process.env.SYSTEMD_EXEC_PID) ||
-      Boolean(process.env.INVOCATION_ID)
-
-    const hasTsxLoader = () => {
-      const roots = [Instance.directory, Global.Path.source, agentCoreRoot]
-      return roots.some((root) => existsSync(path.join(root, "node_modules", "tsx")))
+    const forceBunRuntime = isBuiltinLocalServer(serverName)
+    if (forceBunRuntime) {
+      log.debug("using Bun runtime for built-in local MCP server", { serverName })
     }
 
-    const pickSourceRuntime = (candidate: string): string[] => {
-      // Bun child processes have been observed to abort under some systemd service contexts.
-      // Prefer Node+tsx there, while retaining Bun as the default fallback.
-      if (preferNodeTsx && hasTsxLoader()) {
-        return ["node", "--import", "tsx", candidate]
-      }
-      return ["bun", "run", candidate]
-    }
-
-    const isBunVirtualPath = (value: string) => value.startsWith("/$bunfs/")
+    const pickSourceRuntime = (candidate: string): string[] => ["bun", "run", candidate]
 
     // Check if provided command exists (handles bundled __dirname paths that don't exist at runtime)
     if (mcp.command?.length && mcp.command[0]) {
@@ -531,22 +752,10 @@ export namespace MCP {
         !normalizedScriptArg?.includes("/mcp/servers/")
 
       if (!scriptArg || (existsSync(scriptArg) && !bundledPathMismatch)) {
-        if (
-          preferNodeTsx &&
-          scriptArg &&
-          mcp.command[0] === "bun" &&
-          mcp.command.some((arg) => arg === "run") &&
-          hasTsxLoader() &&
-          !isBunVirtualPath(scriptArg)
-        ) {
-          return ["node", "--import", "tsx", scriptArg]
+        if (forceBunRuntime && scriptArg) {
+          return ["bun", "run", scriptArg]
         }
-
-        // Bun virtual paths are only resolvable in Bun itself; Node cannot execute them.
-        // In systemd mode we want Node+tsx, so continue into source-path resolution.
-        if (!(preferNodeTsx && scriptArg && isBunVirtualPath(scriptArg))) {
-          return mcp.command
-        }
+        return mcp.command
       }
       // Script doesn't exist, fall through to source resolution
       log.debug("command script not found, trying source paths", { serverName, script: scriptArg })
@@ -696,6 +905,160 @@ export namespace MCP {
     return commands
   }
 
+  async function createLocalClientAttempt(
+    key: string,
+    mcp: z.infer<typeof Config.McpLocal>,
+  ): Promise<{ mcpClient?: MCPClient; status: Status; tools?: MCPToolDef[]; error?: unknown }> {
+    const cwd = Instance.directory
+    // Ensure ZEE_ROOT is set for MCP servers that depend on it
+    const zeeRoot = process.env.ZEE_ROOT || getZeeRoot()
+    const resolvedCommand = resolveLocalCommand(key, mcp, zeeRoot)
+    const [cmd, ...args] = resolvedCommand ?? []
+    if (!cmd) {
+      const error = "Missing command for local MCP server"
+      log.error("local mcp startup failed", { key, command: mcp.command, cwd, error })
+      return {
+        mcpClient: undefined,
+        status: { status: "failed", error },
+        error: new Error(error),
+      }
+    }
+
+    const transport = new StdioClientTransport({
+      stderr: "pipe",
+      command: cmd,
+      args,
+      cwd,
+      env: {
+        ...process.env,
+        ZEE_ROOT: process.env.ZEE_ROOT || zeeRoot,
+        ZEE_MCP_SERVER: "1",
+        ZEE_MCP_SERVER_NAME: key,
+        ZEE_PARENT_PID: String(process.pid),
+        ...(cmd === "zee" ? { BUN_BE_BUN: "1" } : {}),
+        ...mcp.environment,
+      },
+    })
+    transport.stderr?.on("data", (chunk: Buffer) => {
+      log.info(`mcp stderr: ${chunk.toString()}`, { key })
+    })
+
+    const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
+    const client = new Client({
+      name: "zee",
+      version: Installation.VERSION,
+    })
+
+    try {
+      await withTimeout(client.connect(transport), connectTimeout)
+      registerNotificationHandlers(client, key)
+      const listed = await withTimeout(client.listTools(), connectTimeout)
+      return {
+        mcpClient: client,
+        status: { status: "connected" },
+        tools: listed.tools,
+      }
+    } catch (error) {
+      await client.close().catch((closeError) => {
+        log.debug("failed to close local MCP client after startup failure", {
+          key,
+          error: closeError instanceof Error ? closeError.message : String(closeError),
+        })
+      })
+      return {
+        mcpClient: undefined,
+        status: {
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        },
+        error,
+      }
+    }
+  }
+
+  async function createLocalClientWithRetries(
+    key: string,
+    mcp: z.infer<typeof Config.McpLocal>,
+  ): Promise<{ mcpClient?: MCPClient; status: Status; tools?: MCPToolDef[] }> {
+    const now = Date.now()
+    if (getActiveLocalCooldown(key, now)) {
+      return {
+        mcpClient: undefined,
+        status: buildLocalFailureStatus(key, "crash_loop", "Local MCP server is cooling down", {
+          cooldownActive: true,
+          now,
+        }),
+      }
+    }
+
+    const totalAttempts = Math.max(1, Math.floor(localMcpResilienceConfig.startupMaxAttempts))
+
+    for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+      const localAttempt = await createLocalClientAttempt(key, mcp)
+      if (localAttempt.mcpClient) {
+        markLocalServerHealthy(key)
+        return localAttempt
+      }
+
+      const statusError =
+        "error" in localAttempt.status ? localAttempt.status.error : "Unknown local MCP startup failure"
+      const classified = classifyLocalFailure(localAttempt.error ?? statusError)
+      const failureNow = Date.now()
+      const health = registerLocalServerFailure(key, classified.className, classified.message, failureNow)
+      const cooldownActive = Boolean(getActiveLocalCooldown(key, failureNow))
+
+      if (cooldownActive) {
+        log.warn("local MCP crash loop detected; entering cooldown", {
+          key,
+          failureClass: classified.className,
+          failures: health.consecutiveFailures,
+          cooldownUntil: health.cooldownUntil,
+        })
+        return {
+          mcpClient: undefined,
+          status: buildLocalFailureStatus(key, "crash_loop", classified.message, {
+            cooldownActive: true,
+            now: failureNow,
+          }),
+        }
+      }
+
+      if (attempt >= totalAttempts || !isRetryableLocalFailure(classified.className)) {
+        log.error("local mcp startup failed", {
+          key,
+          attempt,
+          totalAttempts,
+          failureClass: classified.className,
+          error: classified.message,
+        })
+        return {
+          mcpClient: undefined,
+          status: buildLocalFailureStatus(key, classified.className, classified.message, {
+            attempt,
+            totalAttempts,
+            now: failureNow,
+          }),
+        }
+      }
+
+      const delayMs = getLocalRetryDelayMs(key, attempt)
+      log.warn("local mcp startup retry scheduled", {
+        key,
+        attempt,
+        totalAttempts,
+        delayMs,
+        failureClass: classified.className,
+        error: classified.message,
+      })
+      await sleepMs(delayMs)
+    }
+
+    return {
+      mcpClient: undefined,
+      status: { status: "failed", error: "Local MCP startup failed with unknown error" },
+    }
+  }
+
   export async function add(name: string, mcp: Config.Mcp) {
     // Use mutex to prevent concurrent state mutations for the same server
     return withServerMutex(name, async () => {
@@ -738,6 +1101,7 @@ export namespace MCP {
     const mcp = forceMcpEnabled(key, inputMcp)
     log.info("found", { key, type: mcp.type })
     let mcpClient: MCPClient | undefined
+    let discoveredTools: MCPToolDef[] | undefined
     let status: Status | undefined = undefined
 
     if (mcp.type === "remote") {
@@ -872,62 +1236,10 @@ export namespace MCP {
     }
 
     if (mcp.type === "local") {
-      const cwd = Instance.directory
-      // Ensure ZEE_ROOT is set for MCP servers that depend on it
-      const zeeRoot = process.env.ZEE_ROOT || getZeeRoot()
-      const resolvedCommand = resolveLocalCommand(key, mcp, zeeRoot)
-      const [cmd, ...args] = resolvedCommand ?? []
-      if (!cmd) {
-        const error = "Missing command for local MCP server"
-        log.error("local mcp startup failed", { key, command: mcp.command, cwd, error })
-        return {
-          mcpClient: undefined,
-          status: { status: "failed" as const, error },
-        }
-      }
-      const transport = new StdioClientTransport({
-        stderr: "pipe",
-        command: cmd,
-        args,
-        cwd,
-        env: {
-          ...process.env,
-          ZEE_ROOT: process.env.ZEE_ROOT || zeeRoot,
-          ZEE_MCP_SERVER: "1",
-          ZEE_MCP_SERVER_NAME: key,
-          ZEE_PARENT_PID: String(process.pid),
-          ...(cmd === "zee" ? { BUN_BE_BUN: "1" } : {}),
-          ...mcp.environment,
-        },
-      })
-      transport.stderr?.on("data", (chunk: Buffer) => {
-        log.info(`mcp stderr: ${chunk.toString()}`, { key })
-      })
-
-      const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
-      try {
-        const client = new Client({
-          name: "zee",
-          version: Installation.VERSION,
-        })
-        await withTimeout(client.connect(transport), connectTimeout)
-        registerNotificationHandlers(client, key)
-        mcpClient = client
-        status = {
-          status: "connected",
-        }
-      } catch (error) {
-        log.error("local mcp startup failed", {
-          key,
-          command: mcp.command,
-          cwd,
-          error: error instanceof Error ? error.message : String(error),
-        })
-        status = {
-          status: "failed" as const,
-          error: error instanceof Error ? error.message : String(error),
-        }
-      }
+      const localResult = await createLocalClientWithRetries(key, mcp)
+      mcpClient = localResult.mcpClient
+      status = localResult.status
+      discoveredTools = localResult.tools
     }
 
     if (!status) {
@@ -944,32 +1256,35 @@ export namespace MCP {
       }
     }
 
-    const result = await withTimeout(mcpClient.listTools(), mcp.timeout ?? DEFAULT_TIMEOUT).catch((err) => {
-      log.error("failed to get tools from client", { key, error: err })
-      return undefined
-    })
-    if (!result) {
-      await mcpClient.close().catch((error) => {
-        log.error("Failed to close MCP client", {
-          error,
-        })
+    if (!discoveredTools) {
+      const listed = await withTimeout(mcpClient.listTools(), mcp.timeout ?? DEFAULT_TIMEOUT).catch((err) => {
+        log.error("failed to get tools from client", { key, error: err })
+        return undefined
       })
-      status = {
-        status: "failed",
-        error: "Failed to get tools",
-      }
-      return {
-        mcpClient: undefined,
-        status: {
-          status: "failed" as const,
+      if (!listed) {
+        await mcpClient.close().catch((error) => {
+          log.error("Failed to close MCP client", {
+            error,
+          })
+        })
+        status = {
+          status: "failed",
           error: "Failed to get tools",
-        },
+        }
+        return {
+          mcpClient: undefined,
+          status: {
+            status: "failed" as const,
+            error: "Failed to get tools",
+          },
+        }
       }
+      discoveredTools = listed.tools
     }
 
     // Seed tool cache from the listTools() call we already made
-    toolCache.set(key, { tools: result.tools, cachedAt: Date.now() })
-    log.info("create() successfully created client", { key, toolCount: result.tools.length })
+    toolCache.set(key, { tools: discoveredTools, cachedAt: Date.now() })
+    log.info("create() successfully created client", { key, toolCount: discoveredTools.length })
     return {
       mcpClient,
       status,
@@ -996,6 +1311,16 @@ export namespace MCP {
 
     // Self-heal retryable states so local MCPs can recover without manual reconnect.
     const now = Date.now()
+    for (const [name, current] of Object.entries(result)) {
+      if (current.status !== "failed") continue
+      if (!isLocalServer(name, config)) continue
+      if (!getActiveLocalCooldown(name, now)) continue
+      result[name] = buildLocalFailureStatus(name, "crash_loop", current.error, {
+        cooldownActive: true,
+        now,
+      })
+    }
+
     for (const [name, current] of Object.entries(result)) {
       if (!shouldAutoReconnectStatus(name, current, config)) continue
       const lastAttempt = statusAutoHealAttemptAt.get(name) ?? 0
@@ -1094,6 +1419,9 @@ export namespace MCP {
       // Attempt a simple operation to verify connection is alive
       const result = await withTimeout(client.listTools(), 5000)
       toolCache.set(name, { tools: result.tools, cachedAt: Date.now() })
+      if (localServerHealth.has(name)) {
+        markLocalServerHealthy(name)
+      }
       return true
     } catch (e) {
       log.warn("MCP health check failed", { name, error: e instanceof Error ? e.message : String(e) })
@@ -1114,6 +1442,17 @@ export namespace MCP {
       if (!resolved) {
         log.error("MCP config not found for reconnect", { name })
         return { status: "failed", error: "MCP config not found" }
+      }
+
+      const now = Date.now()
+      if (resolved.type === "local" && getActiveLocalCooldown(name, now)) {
+        const cooldownStatus = buildLocalFailureStatus(name, "crash_loop", "Local MCP server is cooling down", {
+          cooldownActive: true,
+          now,
+        })
+        const s = await state()
+        s.status[name] = cooldownStatus
+        return cooldownStatus
       }
 
       // Close existing client if any
@@ -1155,10 +1494,21 @@ export namespace MCP {
    */
   export async function reconnectAll(): Promise<Record<string, Status>> {
     const s = await state()
+    const cfg = await Config.get()
+    const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
     const results: Record<string, Status> = {}
+    const now = Date.now()
 
     for (const [name, currentStatus] of Object.entries(s.status)) {
       if (currentStatus.status === "failed" || currentStatus.status === "disabled") {
+        if (isLocalServer(name, config) && getActiveLocalCooldown(name, now)) {
+          const previousError = "error" in currentStatus ? currentStatus.error : "Local MCP cooling down"
+          results[name] = buildLocalFailureStatus(name, "crash_loop", previousError, {
+            cooldownActive: true,
+            now,
+          })
+          continue
+        }
         results[name] = await reconnect(name)
       } else {
         results[name] = currentStatus
@@ -1174,7 +1524,10 @@ export namespace MCP {
    */
   export async function healthCheckAndReconnect(): Promise<Record<string, Status>> {
     const s = await state()
+    const cfg = await Config.get()
+    const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
     const results: Record<string, Status> = {}
+    const now = Date.now()
 
     for (const [name, currentStatus] of Object.entries(s.status)) {
       if (currentStatus.status === "connected") {
@@ -1187,6 +1540,13 @@ export namespace MCP {
           results[name] = currentStatus
         }
       } else if (currentStatus.status === "failed") {
+        if (isLocalServer(name, config) && getActiveLocalCooldown(name, now)) {
+          results[name] = buildLocalFailureStatus(name, "crash_loop", currentStatus.error, {
+            cooldownActive: true,
+            now,
+          })
+          continue
+        }
         // Attempt to reconnect failed connections
         results[name] = await reconnect(name)
       } else {
@@ -1676,5 +2036,39 @@ export namespace MCP {
    */
   export function getToolCacheEntry(serverName: string): ToolCacheEntry | undefined {
     return toolCache.get(serverName)
+  }
+
+  /**
+   * Test helper: override local MCP resilience settings.
+   */
+  export function configureLocalMcpResilienceForTests(input: Partial<LocalMcpResilienceConfig>) {
+    if (typeof input.startupMaxAttempts === "number") {
+      localMcpResilienceConfig.startupMaxAttempts = Math.max(1, Math.floor(input.startupMaxAttempts))
+    }
+    if (Array.isArray(input.startupBackoffMs)) {
+      localMcpResilienceConfig.startupBackoffMs = input.startupBackoffMs
+        .map((value) => Math.max(0, Math.floor(value)))
+        .filter((value) => Number.isFinite(value))
+    }
+    if (typeof input.crashLoopThreshold === "number") {
+      localMcpResilienceConfig.crashLoopThreshold = Math.max(1, Math.floor(input.crashLoopThreshold))
+    }
+    if (typeof input.crashLoopWindowMs === "number") {
+      localMcpResilienceConfig.crashLoopWindowMs = Math.max(1, Math.floor(input.crashLoopWindowMs))
+    }
+    if (typeof input.crashLoopCooldownMs === "number") {
+      localMcpResilienceConfig.crashLoopCooldownMs = Math.max(0, Math.floor(input.crashLoopCooldownMs))
+    }
+  }
+
+  /**
+   * Test helper: reset local MCP resilience and health state.
+   */
+  export function resetLocalMcpResilienceForTests() {
+    localMcpResilienceConfig = {
+      ...defaultLocalMcpResilienceConfig,
+      startupBackoffMs: [...defaultLocalMcpResilienceConfig.startupBackoffMs],
+    }
+    localServerHealth.clear()
   }
 }

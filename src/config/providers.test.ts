@@ -20,6 +20,7 @@ describe("providers registry", () => {
       expect(PROVIDERS.elevenlabs).toBeDefined();
       expect(PROVIDERS.minimax).toBeDefined();
       expect(PROVIDERS["minimax-tts"]).toBeDefined();
+      expect(PROVIDERS.splitwise).toBeDefined();
       expect(PROVIDERS.vllm).toBeDefined();
       expect(PROVIDERS.edge).toBeDefined();
     });
@@ -72,6 +73,12 @@ describe("providers registry", () => {
       const providers = getProvidersForService("image");
       const ids = providers.map((p) => p.id);
       expect(ids).toContain("openai");
+    });
+
+    it("should return expenses providers", () => {
+      const providers = getProvidersForService("expenses");
+      const ids = providers.map((p) => p.id);
+      expect(ids).toContain("splitwise");
     });
 
     it("should return empty array for non-existent service", () => {
@@ -176,12 +183,14 @@ describe("providers registry", () => {
       expect(byService.tts).toBeInstanceOf(Array);
       expect(byService.stt).toBeInstanceOf(Array);
       expect(byService.image).toBeInstanceOf(Array);
+      expect(byService.expenses).toBeInstanceOf(Array);
 
       expect(byService.embedding.length).toBeGreaterThan(0);
       expect(byService.reranking.length).toBeGreaterThan(0);
       expect(byService.tts.length).toBeGreaterThan(0);
       expect(byService.stt.length).toBeGreaterThan(0);
       expect(byService.image.length).toBeGreaterThan(0);
+      expect(byService.expenses.length).toBeGreaterThan(0);
     });
   });
 
@@ -194,6 +203,7 @@ describe("providers registry", () => {
       expect(ids).toContain("elevenlabs");
       expect(ids).toContain("minimax");
       expect(ids).toContain("minimax-tts");
+      expect(ids).toContain("splitwise");
       expect(ids).toContain("vllm");
       expect(ids).toContain("edge");
     });
@@ -247,6 +257,11 @@ describe("providers registry", () => {
       const google = PROVIDERS.google;
       expect(google.services).toContain("embedding");
       expect(google.services).toContain("stt");
+    });
+
+    it("splitwise should support expenses", () => {
+      const splitwise = PROVIDERS.splitwise;
+      expect(splitwise.services).toContain("expenses");
     });
   });
 });

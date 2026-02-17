@@ -15,7 +15,7 @@
 // Types
 // =============================================================================
 
-export type ServiceType = "embedding" | "reranking" | "tts" | "stt" | "image";
+export type ServiceType = "embedding" | "reranking" | "tts" | "stt" | "image" | "expenses";
 
 export interface ProviderDefinition {
   /** Unique provider ID (matches auth system) */
@@ -108,6 +108,17 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     authType: "api",
     baseUrl: "https://api.minimax.io/v1",
     website: "https://platform.minimaxi.com/",
+  },
+
+  // --- Integration Providers ---
+  splitwise: {
+    id: "splitwise",
+    name: "Splitwise",
+    services: ["expenses"],
+    envKey: "SPLITWISE_TOKEN",
+    authType: "api",
+    baseUrl: "https://secure.splitwise.com/api/v3.0",
+    website: "https://secure.splitwise.com/oauth_clients",
   },
 
   // --- Local Providers ---
@@ -264,7 +275,7 @@ export async function getApiKey(providerId: string): Promise<string | undefined>
  * List all providers grouped by service
  */
 export function listProvidersByService(): Record<ServiceType, ProviderDefinition[]> {
-  const services: ServiceType[] = ["embedding", "reranking", "tts", "stt", "image"];
+  const services: ServiceType[] = ["embedding", "reranking", "tts", "stt", "image", "expenses"];
   const result = {} as Record<ServiceType, ProviderDefinition[]>;
   for (const service of services) {
     result[service] = getProvidersForService(service);
