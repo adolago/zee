@@ -1,4 +1,4 @@
-import { createZeeClient } from "@zee/zee/pkg/sdk/v2/client"
+import { createZeeClient } from "@adolago/zee/pkg/sdk/v2/client"
 import { createSimpleContext } from "@zee/ui/context"
 import { batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"

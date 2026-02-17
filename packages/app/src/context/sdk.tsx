@@ -1,4 +1,4 @@
-import { createZeeClient, type Event } from "@zee/zee/pkg/sdk/v2/client"
+import { createZeeClient, type Event } from "@adolago/zee/pkg/sdk/v2/client"
 import { createSimpleContext } from "@zee/ui/context"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
 import { createEffect, createMemo, onCleanup } from "solid-js"

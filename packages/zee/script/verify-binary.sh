@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CORE_BINARY="$REPO_ROOT/dist/@zee/zee-linux-x64/bin/zee"
+CORE_BINARY="$REPO_ROOT/dist/@adolago/zee-linux-x64/bin/zee"
 INSTALL_TARGET="$REPO_ROOT/script/zee-cli"
 INSTALLED_BINARY="$(which zee 2>/dev/null || echo '')"
 

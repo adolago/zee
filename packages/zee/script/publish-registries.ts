@@ -92,7 +92,7 @@ if (!Script.preview) {
     '      base="-baseline"',
     "    fi",
     "  fi",
-    '  bin="dist/@zee/zee-linux-${target_arch}${base}${libc}/bin/zee"',
+    '  bin="dist/@adolago/zee-linux-${target_arch}${base}${libc}/bin/zee"',
     '  if [ ! -f "$bin" ]; then',
     '    printf "unable to find binary for %s%s%s\\n" "$target_arch" "$base" "$libc" >&2',
     "    return 1",

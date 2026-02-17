@@ -10,7 +10,7 @@ import { useSettings } from "@/context/settings"
 import { Binary } from "@zee/util/binary"
 import { base64Encode } from "@zee/util/encode"
 import { decode64 } from "@/utils/base64"
-import { EventSessionError } from "@zee/zee/pkg/sdk/v2"
+import { EventSessionError } from "@adolago/zee/pkg/sdk/v2"
 import { Persist, persisted } from "@/utils/persist"
 import { playSound, soundSrc } from "@/utils/sound"
 

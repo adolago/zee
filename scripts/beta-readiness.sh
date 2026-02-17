@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 ZEE_BIN="${ZEE_BIN:-$HOME/.bun/bin/zee}"
-ZEE_BIN_PATH="${ZEE_BIN_PATH:-$REPO_ROOT/packages/zee/dist/@zee/zee-linux-x64/bin/zee}"
+ZEE_BIN_PATH="${ZEE_BIN_PATH:-$REPO_ROOT/packages/zee/dist/@adolago/zee-linux-x64/bin/zee}"
 REPORT_DIR="${REPORT_DIR:-/tmp/zee-beta}"
 REPORT_FILE="$REPORT_DIR/report.txt"
 BUG_REPORT_PATH="$REPORT_DIR/bug-report.tar.gz"

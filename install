@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 APP=zee
-DEFAULT_NPM_PACKAGE="@zee/zee"
+DEFAULT_NPM_PACKAGE="@adolago/zee"
 DEFAULT_GITHUB_REPO="adolago/zee"
 
 MUTED='\033[0;2m'

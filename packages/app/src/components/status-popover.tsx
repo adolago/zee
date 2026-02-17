@@ -13,7 +13,7 @@ import { useSDK } from "@/context/sdk"
 import { normalizeServerUrl, serverDisplayName, useServer } from "@/context/server"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
-import { createZeeClient } from "@zee/zee/pkg/sdk/v2/client"
+import { createZeeClient } from "@adolago/zee/pkg/sdk/v2/client"
 import { DialogSelectServer } from "./dialog-select-server"
 import { showToast } from "@zee/ui/toast"
 

@@ -1,4 +1,4 @@
-import { createZeeClient } from "@zee/zee/pkg/sdk/v2/client"
+import { createZeeClient } from "@adolago/zee/pkg/sdk/v2/client"
 import { base64Encode } from "@zee/util/encode"
 
 export const serverHost = process.env.PLAYWRIGHT_SERVER_HOST ?? "localhost"

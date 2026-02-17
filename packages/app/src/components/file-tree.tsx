@@ -16,7 +16,7 @@ import {
   type ParentProps,
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
-import type { FileNode } from "@zee/zee/pkg/sdk/v2"
+import type { FileNode } from "@adolago/zee/pkg/sdk/v2"
 
 type Kind = "add" | "del" | "mix"
 

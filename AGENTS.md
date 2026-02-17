@@ -23,7 +23,7 @@ cd packages/zee && bun run build
 ./script/verify-binary.sh
 ```
 If verification fails:
-- `ln -sf ~/.local/src/zee/packages/zee/dist/@zee/zee-linux-x64/bin/zee ~/.bun/bin/zee`
+- `ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee`
 
 ## Naming Convention
 

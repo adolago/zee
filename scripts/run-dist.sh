@@ -25,7 +25,7 @@ if [[ -z "$TARGET" ]]; then
   TARGET="${os}-${arch}"
 fi
 
-DIST_DIR="${ZEE_DIST:-$ROOT/packages/zee/dist/@zee/zee-${TARGET}}"
+DIST_DIR="${ZEE_DIST:-$ROOT/packages/zee/dist/@adolago/zee-${TARGET}}"
 BIN_PATH="${ZEE_BIN:-$DIST_DIR/bin/zee}"
 
 if [[ ! -x "$BIN_PATH" ]]; then

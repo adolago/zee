@@ -5,7 +5,7 @@ import { retry } from "@zee/util/retry"
 import { createSimpleContext } from "@zee/ui/context"
 import { useGlobalSync } from "./global-sync"
 import { useSDK } from "./sdk"
-import type { Message, Part } from "@zee/zee/pkg/sdk/v2/client"
+import type { Message, Part } from "@adolago/zee/pkg/sdk/v2/client"
 
 const keyFor = (directory: string, id: string) => `${directory}\n${id}`
 

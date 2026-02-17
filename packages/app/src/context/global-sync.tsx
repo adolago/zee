@@ -18,7 +18,7 @@ import {
   type PermissionRequest,
   type QuestionRequest,
   createZeeClient,
-} from "@zee/zee/pkg/sdk/v2/client"
+} from "@adolago/zee/pkg/sdk/v2/client"
 import { createStore, produce, reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import { Binary } from "@zee/util/binary"
 import { retry } from "@zee/util/retry"

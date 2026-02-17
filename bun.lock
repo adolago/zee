@@ -44,7 +44,7 @@
         "@thisbeyond/solid-dnd": "0.7.5",
         "@zee/ui": "workspace:*",
         "@zee/util": "workspace:*",
-        "@zee/zee": "workspace:*",
+        "@adolago/zee": "workspace:*",
         "diff": "catalog:",
         "fuzzysort": "catalog:",
         "ghostty-web": "0.3.0",
@@ -86,7 +86,7 @@
       "name": "@zee/plugin",
       "version": "1.1.48",
       "dependencies": {
-        "@zee/zee": "workspace:*",
+        "@adolago/zee": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -129,7 +129,7 @@
         "@solidjs/meta": "catalog:",
         "@typescript/native-preview": "catalog:",
         "@zee/util": "workspace:*",
-        "@zee/zee": "workspace:*",
+        "@adolago/zee": "workspace:*",
         "dompurify": "3.3.1",
         "fuzzysort": "catalog:",
         "katex": "0.16.27",
@@ -196,12 +196,12 @@
       },
       "devDependencies": {
         "@types/node": "catalog:",
-        "@zee/zee": "workspace:*",
+        "@adolago/zee": "workspace:*",
         "typescript": "catalog:",
       },
     },
     "packages/zee": {
-      "name": "@zee/zee",
+      "name": "@adolago/zee",
       "version": "0.3.4",
       "bin": {
         "zee": "./bin/zee",
@@ -1362,7 +1362,7 @@
 
     "@zee/web": ["@zee/web@workspace:packages/web"],
 
-    "@zee/zee": ["@zee/zee@workspace:packages/zee"],
+    "@adolago/zee": ["@adolago/zee@workspace:packages/zee"],
 
     "@zip.js/zip.js": ["@zip.js/zip.js@2.7.62", "", {}, "sha512-OaLvZ8j4gCkLn048ypkZu29KX30r8/OfFF2w4Jo5WXFr+J04J+lzJ5TKZBVgFXhlvSkqNFQdfnY1Q8TMTCyBVA=="],
 

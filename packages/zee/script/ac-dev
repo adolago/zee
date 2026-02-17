@@ -50,7 +50,7 @@ case "$(uname -s)-$(uname -m)" in
     *)             echo "Unsupported platform: $(uname -s)-$(uname -m)"; exit 1 ;;
 esac
 
-LOCAL_BINARY="$REPO_ROOT/dist/@zee/zee-$PLATFORM/bin/zee"
+LOCAL_BINARY="$REPO_ROOT/dist/@adolago/zee-$PLATFORM/bin/zee"
 DAEMON_PORT=3210
 
 # If we temporarily mask the user systemd service (to prevent Restart=always

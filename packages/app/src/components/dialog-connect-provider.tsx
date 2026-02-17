@@ -1,4 +1,4 @@
-import type { ProviderAuthAuthorization } from "@zee/zee/pkg/sdk/v2/client"
+import type { ProviderAuthAuthorization } from "@adolago/zee/pkg/sdk/v2/client"
 import { Button } from "@zee/ui/button"
 import { useDialog } from "@zee/ui/context/dialog"
 import { Dialog } from "@zee/ui/dialog"

@@ -51,7 +51,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     runHook preInstall
 
     cd packages/zee
-    dist_dir=$(ls -d dist/@zee/zee-* 2>/dev/null | sort | head -n1)
+    dist_dir=$(ls -d dist/@adolago/zee-* 2>/dev/null | sort | head -n1)
     if [ -z "$dist_dir" ]; then
       echo "ERROR: dist directory not found under packages/zee/dist/@zee"
       find dist -maxdepth 3 -type d -print || true

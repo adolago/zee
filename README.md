@@ -48,7 +48,7 @@ cd packages/zee
 bun run build
 
 # Link the binary
-ln -sf ~/.local/src/zee/packages/zee/dist/@zee/zee-linux-x64/bin/zee ~/.bun/bin/zee
+ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
 ### Install Stanley (optional, for investing features)

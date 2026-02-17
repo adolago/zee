@@ -18,8 +18,8 @@
  */
 
 // Core modules - use subpath exports for detailed access
-// e.g., import { ... } from "@zee/zee/provider"
-// e.g., import { ... } from "@zee/zee/mcp"
+// e.g., import { ... } from "@adolago/zee/provider"
+// e.g., import { ... } from "@adolago/zee/mcp"
 
 // Provider System - Multi-LLM support with subscription auth
 export * as Provider from "./provider/types.js";
@@ -64,7 +64,7 @@ export const VERSION = "0.1.0";
 
 /** Package metadata */
 export const PACKAGE = {
-  name: "@zee/zee",
+  name: "@adolago/zee",
   version: VERSION,
   description: "Unified foundation for AI agent applications",
 } as const;

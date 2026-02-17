@@ -14,7 +14,7 @@ process.chdir(dir)
 // Configuration
 // =============================================================================
 
-const DEFAULT_NPM_PACKAGE = "@zee/zee"
+const DEFAULT_NPM_PACKAGE = "@adolago/zee"
 const NPM_PACKAGE = process.env.ZEE_NPM_PACKAGE?.trim() || DEFAULT_NPM_PACKAGE
 const SCOPE_PREFIX = NPM_PACKAGE.startsWith("@") ? NPM_PACKAGE.split("/")[0] : ""
 const scopedName = (name: string) => {

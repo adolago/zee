@@ -16,7 +16,7 @@
     "dist"
   ],
   "dependencies": {
-    "@zee/zee": "workspace:*",
+    "@adolago/zee": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -7,7 +7,7 @@ import type {
   PermissionRequest,
   QuestionRequest,
   QuestionAnswer,
-} from "@zee/zee/pkg/sdk/v2"
+} from "@adolago/zee/pkg/sdk/v2"
 import { createSimpleContext } from "./helper"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
 

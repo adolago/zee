@@ -3,7 +3,7 @@ import { Tooltip } from "@zee/ui/tooltip"
 import { ProgressCircle } from "@zee/ui/progress-circle"
 import { Button } from "@zee/ui/button"
 import { useParams } from "@solidjs/router"
-import { AssistantMessage } from "@zee/zee/pkg/sdk/v2/client"
+import { AssistantMessage } from "@adolago/zee/pkg/sdk/v2/client"
 import { findLast } from "@zee/util/array"
 
 import { useLayout } from "@/context/layout"

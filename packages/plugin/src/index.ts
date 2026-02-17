@@ -10,7 +10,7 @@ import type {
   Part,
   Auth,
   Config,
-} from "@zee/zee/pkg/sdk"
+} from "@adolago/zee/pkg/sdk"
 
 import type { BunShell } from "./shell"
 import { type ToolDefinition } from "./tool"

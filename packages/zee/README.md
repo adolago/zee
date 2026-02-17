@@ -25,7 +25,7 @@ cd ../..
 If verification fails:
 
 ```bash
-ln -sf ~/.local/src/zee/packages/zee/dist/@zee/zee-linux-x64/bin/zee ~/.bun/bin/zee
+ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
 ## Run

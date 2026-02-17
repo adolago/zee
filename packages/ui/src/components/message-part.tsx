@@ -27,7 +27,7 @@ import {
   QuestionRequest,
   QuestionAnswer,
   QuestionInfo,
-} from "@zee/zee/pkg/sdk/v2"
+} from "@adolago/zee/pkg/sdk/v2"
 import { createStore } from "solid-js/store"
 import { useData } from "../context"
 import { useDiffComponent } from "../context/diff"
