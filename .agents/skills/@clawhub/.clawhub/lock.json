@@ -16,10 +16,6 @@
       "version": "1.0.0",
       "installedAt": 1771211105429
     },
-    "obsidian": {
-      "version": "1.0.0",
-      "installedAt": 1771126030551
-    },
     "self-improving-agent": {
       "version": "1.0.5",
       "installedAt": 1771126034474
@@ -35,18 +31,6 @@
     "video-frames": {
       "version": "1.0.0",
       "installedAt": 1771211186496
-    },
-    "hooks-automation": {
-      "version": "1.0.0",
-      "installedAt": 1771126020511
-    },
-    "stream-chain": {
-      "version": "1.0.0",
-      "installedAt": 1771126037975
-    },
-    "gog": {
-      "version": "1.0.0",
-      "installedAt": 1771126013585
     },
     "goplaces": {
       "version": "1.0.0",
