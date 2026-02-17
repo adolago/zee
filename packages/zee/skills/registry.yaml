@@ -1,0 +1,949 @@
+version: 1
+generated_at: 2026-02-17
+skills:
+  - id: zee
+    canonical_name: zee
+    current_path: .agents/skills/@zee/SKILL.md
+    target_path: .agents/skills/@zee/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party root skill
+  - id: agent-browser
+    canonical_name: agent-browser
+    current_path: .agents/skills/@zee/agent-browser/SKILL.md
+    target_path: .agents/skills/@zee/agent-browser/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: anki
+    canonical_name: anki
+    current_path: .agents/skills/@zee/anki/SKILL.md
+    target_path: .agents/skills/@zee/anki/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: atlas
+    canonical_name: atlas
+    current_path: .agents/skills/@zee/atlas/SKILL.md
+    target_path: .agents/skills/@zee/atlas/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: atris
+    canonical_name: atris
+    current_path: .agents/skills/@zee/atris/SKILL.md
+    target_path: .agents/skills/@zee/atris/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: auto-updater
+    canonical_name: auto-updater
+    current_path: .agents/skills/@zee/auto-updater/SKILL.md
+    target_path: .agents/skills/@zee/auto-updater/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: autonomous-research
+    canonical_name: autonomous-research
+    current_path: .agents/skills/@zee/autonomous-research/SKILL.md
+    target_path: .agents/skills/@zee/autonomous-research/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: banner
+    canonical_name: banner
+    current_path: .agents/skills/@zee/banner/SKILL.md
+    target_path: .agents/skills/@zee/banner/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: bitwarden
+    canonical_name: bitwarden
+    current_path: .agents/skills/@zee/bitwarden/SKILL.md
+    target_path: .agents/skills/@zee/bitwarden/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: blogwatcher
+    canonical_name: blogwatcher
+    current_path: .agents/skills/@zee/blogwatcher/SKILL.md
+    target_path: .agents/skills/@zee/blogwatcher/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: brave-search
+    canonical_name: brave-search
+    current_path: .agents/skills/@zee/brave-search/SKILL.md
+    target_path: .agents/skills/@zee/brave-search/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: browser
+    canonical_name: browser
+    current_path: .agents/skills/@zee/browser/SKILL.md
+    target_path: .agents/skills/@zee/browser/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: caldav-calendar
+    canonical_name: caldav-calendar
+    current_path: .agents/skills/@zee/caldav-calendar/SKILL.md
+    target_path: .agents/skills/@zee/caldav-calendar/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: clawddocs
+    canonical_name: clawddocs
+    current_path: .agents/skills/@zee/clawddocs/SKILL.md
+    target_path: .agents/skills/@zee/clawddocs/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: cloudflare-deploy
+    canonical_name: cloudflare-deploy
+    current_path: .agents/skills/@zee/cloudflare-deploy/SKILL.md
+    target_path: .agents/skills/@zee/cloudflare-deploy/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: codebase-guide
+    canonical_name: codebase-guide
+    current_path: .agents/skills/@zee/codebase-guide/SKILL.md
+    target_path: .agents/skills/@zee/codebase-guide/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: coding-agent
+    canonical_name: coding-agent
+    current_path: .agents/skills/@zee/coding-agent/SKILL.md
+    target_path: .agents/skills/@zee/coding-agent/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: concept-exploration
+    canonical_name: concept-exploration
+    current_path: .agents/skills/@zee/concept-exploration/SKILL.md
+    target_path: .agents/skills/@zee/concept-exploration/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: daily-briefing
+    canonical_name: daily-briefing
+    current_path: .agents/skills/@zee/daily-briefing/SKILL.md
+    target_path: .agents/skills/@zee/daily-briefing/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: dcf-valuation
+    canonical_name: dcf-valuation
+    current_path: .agents/skills/@zee/dcf-valuation/SKILL.md
+    target_path: .agents/skills/@zee/dcf-valuation/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: deliberate-practice
+    canonical_name: deliberate-practice
+    current_path: .agents/skills/@zee/deliberate-practice/SKILL.md
+    target_path: .agents/skills/@zee/deliberate-practice/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: develop-web-game
+    canonical_name: develop-web-game
+    current_path: .agents/skills/@zee/develop-web-game/SKILL.md
+    target_path: .agents/skills/@zee/develop-web-game/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: doc
+    canonical_name: doc
+    current_path: .agents/skills/@zee/doc/SKILL.md
+    target_path: .agents/skills/@zee/doc/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: figma-implement-design
+    canonical_name: figma-implement-design
+    current_path: .agents/skills/@zee/figma-implement-design/SKILL.md
+    target_path: .agents/skills/@zee/figma-implement-design/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: figma
+    canonical_name: figma
+    current_path: .agents/skills/@zee/figma/SKILL.md
+    target_path: .agents/skills/@zee/figma/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: frontend-design
+    canonical_name: frontend-design
+    current_path: .agents/skills/@zee/frontend-design/SKILL.md
+    target_path: .agents/skills/@zee/frontend-design/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: external-local
+    notes: imported from /home/artur/.zee/agents/frontend-design
+  - id: gh-address-comments
+    canonical_name: gh-address-comments
+    current_path: .agents/skills/@zee/gh-address-comments/SKILL.md
+    target_path: .agents/skills/@zee/gh-address-comments/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: gh-fix-ci
+    canonical_name: gh-fix-ci
+    current_path: .agents/skills/@zee/gh-fix-ci/SKILL.md
+    target_path: .agents/skills/@zee/gh-fix-ci/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: github
+    canonical_name: github
+    current_path: .agents/skills/@zee/github/SKILL.md
+    target_path: .agents/skills/@zee/github/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: goplaces
+    canonical_name: goplaces
+    current_path: .agents/skills/@zee/goplaces/SKILL.md
+    target_path: .agents/skills/@zee/goplaces/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: home-assistant
+    canonical_name: home-assistant
+    current_path: .agents/skills/@zee/home-assistant/SKILL.md
+    target_path: .agents/skills/@zee/home-assistant/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: humanizer
+    canonical_name: humanizer
+    current_path: .agents/skills/@zee/humanizer/SKILL.md
+    target_path: .agents/skills/@zee/humanizer/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: imagegen
+    canonical_name: imagegen
+    current_path: .agents/skills/@zee/imagegen/SKILL.md
+    target_path: .agents/skills/@zee/imagegen/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: investment-thesis
+    canonical_name: investment-thesis
+    current_path: .agents/skills/@zee/investment-thesis/SKILL.md
+    target_path: .agents/skills/@zee/investment-thesis/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: jupyter-notebook
+    canonical_name: jupyter-notebook
+    current_path: .agents/skills/@zee/jupyter-notebook/SKILL.md
+    target_path: .agents/skills/@zee/jupyter-notebook/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: latex-rendering
+    canonical_name: latex-rendering
+    current_path: .agents/skills/@zee/latex-rendering/SKILL.md
+    target_path: .agents/skills/@zee/latex-rendering/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: linear
+    canonical_name: linear
+    current_path: .agents/skills/@zee/linear/SKILL.md
+    target_path: .agents/skills/@zee/linear/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: literature-search
+    canonical_name: literature-search
+    current_path: .agents/skills/@zee/literature-search/SKILL.md
+    target_path: .agents/skills/@zee/literature-search/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: markdown-converter
+    canonical_name: markdown-converter
+    current_path: .agents/skills/@zee/markdown-converter/SKILL.md
+    target_path: .agents/skills/@zee/markdown-converter/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: mcporter
+    canonical_name: mcporter
+    current_path: .agents/skills/@zee/mcporter/SKILL.md
+    target_path: .agents/skills/@zee/mcporter/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: meta-business
+    canonical_name: meta-business
+    current_path: .agents/skills/@zee/meta-business/SKILL.md
+    target_path: .agents/skills/@zee/meta-business/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: nano-pdf
+    canonical_name: nano-pdf
+    current_path: .agents/skills/@zee/nano-pdf/SKILL.md
+    target_path: .agents/skills/@zee/nano-pdf/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: netlify-deploy
+    canonical_name: netlify-deploy
+    current_path: .agents/skills/@zee/netlify-deploy/SKILL.md
+    target_path: .agents/skills/@zee/netlify-deploy/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: news-digest
+    canonical_name: news-digest
+    current_path: .agents/skills/@zee/news-digest/SKILL.md
+    target_path: .agents/skills/@zee/news-digest/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: notion-knowledge-capture
+    canonical_name: notion-knowledge-capture
+    current_path: .agents/skills/@zee/notion-knowledge-capture/SKILL.md
+    target_path: .agents/skills/@zee/notion-knowledge-capture/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: notion-meeting-intelligence
+    canonical_name: notion-meeting-intelligence
+    current_path: .agents/skills/@zee/notion-meeting-intelligence/SKILL.md
+    target_path: .agents/skills/@zee/notion-meeting-intelligence/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: notion-research-documentation
+    canonical_name: notion-research-documentation
+    current_path: .agents/skills/@zee/notion-research-documentation/SKILL.md
+    target_path: .agents/skills/@zee/notion-research-documentation/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: notion-spec-to-implementation
+    canonical_name: notion-spec-to-implementation
+    current_path: .agents/skills/@zee/notion-spec-to-implementation/SKILL.md
+    target_path: .agents/skills/@zee/notion-spec-to-implementation/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: obsidian-cli
+    canonical_name: obsidian-cli
+    current_path: .agents/skills/@zee/obsidian-cli/SKILL.md
+    target_path: .agents/skills/@zee/obsidian-cli/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: openai-docs
+    canonical_name: openai-docs
+    current_path: .agents/skills/@zee/openai-docs/SKILL.md
+    target_path: .agents/skills/@zee/openai-docs/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: oracle
+    canonical_name: oracle
+    current_path: .agents/skills/@zee/oracle/SKILL.md
+    target_path: .agents/skills/@zee/oracle/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: parallel-orchestration
+    canonical_name: parallel-orchestration
+    current_path: .agents/skills/@zee/parallel-orchestration/SKILL.md
+    target_path: .agents/skills/@zee/parallel-orchestration/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: pdf
+    canonical_name: pdf
+    current_path: .agents/skills/@zee/pdf/SKILL.md
+    target_path: .agents/skills/@zee/pdf/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: pim-classic
+    canonical_name: pim-classic
+    current_path: .agents/skills/@zee/pim-classic/SKILL.md
+    target_path: .agents/skills/@zee/pim-classic/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: playwright
+    canonical_name: playwright
+    current_path: .agents/skills/@zee/playwright/SKILL.md
+    target_path: .agents/skills/@zee/playwright/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: portfolio
+    canonical_name: portfolio
+    current_path: .agents/skills/@zee/portfolio/SKILL.md
+    target_path: .agents/skills/@zee/portfolio/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: problem-solving
+    canonical_name: problem-solving
+    current_path: .agents/skills/@zee/problem-solving/SKILL.md
+    target_path: .agents/skills/@zee/problem-solving/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: progress-tracking
+    canonical_name: progress-tracking
+    current_path: .agents/skills/@zee/progress-tracking/SKILL.md
+    target_path: .agents/skills/@zee/progress-tracking/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: qmd
+    canonical_name: qmd
+    current_path: .agents/skills/@zee/qmd/SKILL.md
+    target_path: .agents/skills/@zee/qmd/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: render-deploy
+    canonical_name: render-deploy
+    current_path: .agents/skills/@zee/render-deploy/SKILL.md
+    target_path: .agents/skills/@zee/render-deploy/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: screenshot
+    canonical_name: screenshot
+    current_path: .agents/skills/@zee/screenshot/SKILL.md
+    target_path: .agents/skills/@zee/screenshot/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: security-best-practices
+    canonical_name: security-best-practices
+    current_path: .agents/skills/@zee/security-best-practices/SKILL.md
+    target_path: .agents/skills/@zee/security-best-practices/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: security-ownership-map
+    canonical_name: security-ownership-map
+    current_path: .agents/skills/@zee/security-ownership-map/SKILL.md
+    target_path: .agents/skills/@zee/security-ownership-map/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: security-threat-model
+    canonical_name: security-threat-model
+    current_path: .agents/skills/@zee/security-threat-model/SKILL.md
+    target_path: .agents/skills/@zee/security-threat-model/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: self-improvement
+    canonical_name: self-improvement
+    current_path: .agents/skills/@zee/self-improving-agent/SKILL.md
+    target_path: .agents/skills/@zee/self-improving-agent/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: sentry
+    canonical_name: sentry
+    current_path: .agents/skills/@zee/sentry/SKILL.md
+    target_path: .agents/skills/@zee/sentry/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: session-logs
+    canonical_name: session-logs
+    current_path: .agents/skills/@zee/session-logs/SKILL.md
+    target_path: .agents/skills/@zee/session-logs/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: skill-builder
+    canonical_name: skill-builder
+    current_path: .agents/skills/@zee/skill-builder/SKILL.md
+    target_path: .agents/skills/@zee/skill-builder/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: skill-creator
+    canonical_name: skill-creator
+    current_path: .agents/skills/@zee/skill-creator/SKILL.md
+    target_path: .agents/skills/@zee/skill-creator/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: skill-installer
+    canonical_name: skill-installer
+    current_path: .agents/skills/@zee/skill-installer/SKILL.md
+    target_path: .agents/skills/@zee/skill-installer/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: sora
+    canonical_name: sora
+    current_path: .agents/skills/@zee/sora/SKILL.md
+    target_path: .agents/skills/@zee/sora/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: speech
+    canonical_name: speech
+    current_path: .agents/skills/@zee/speech/SKILL.md
+    target_path: .agents/skills/@zee/speech/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: spotify-linux
+    canonical_name: spotify-linux
+    current_path: .agents/skills/@zee/spotify-linux/SKILL.md
+    target_path: .agents/skills/@zee/spotify-linux/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: spreadsheet
+    canonical_name: spreadsheet
+    current_path: .agents/skills/@zee/spreadsheet/SKILL.md
+    target_path: .agents/skills/@zee/spreadsheet/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: stock-market-pro
+    canonical_name: stock-market-pro
+    current_path: .agents/skills/@zee/stock-market-pro/SKILL.md
+    target_path: .agents/skills/@zee/stock-market-pro/SKILL.md
+    owner: zee
+    status: active
+    wave: C
+    requires: frontmatter
+    env: frontmatter
+    source_origin: zee
+    notes: native first-party skill
+  - id: summarize
+    canonical_name: summarize
+    current_path: .agents/skills/@zee/summarize/SKILL.md
+    target_path: .agents/skills/@zee/summarize/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: sysadmin-toolbox
+    canonical_name: sysadmin-toolbox
+    current_path: .agents/skills/@zee/sysadmin-toolbox/SKILL.md
+    target_path: .agents/skills/@zee/sysadmin-toolbox/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: tailscale
+    canonical_name: tailscale
+    current_path: .agents/skills/@zee/tailscale/SKILL.md
+    target_path: .agents/skills/@zee/tailscale/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: tmux
+    canonical_name: tmux
+    current_path: .agents/skills/@zee/tmux/SKILL.md
+    target_path: .agents/skills/@zee/tmux/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: transcribe
+    canonical_name: transcribe
+    current_path: .agents/skills/@zee/transcribe/SKILL.md
+    target_path: .agents/skills/@zee/transcribe/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: vercel-deploy
+    canonical_name: vercel-deploy
+    current_path: .agents/skills/@zee/vercel-deploy/SKILL.md
+    target_path: .agents/skills/@zee/vercel-deploy/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: video-frames
+    canonical_name: video-frames
+    current_path: .agents/skills/@zee/video-frames/SKILL.md
+    target_path: .agents/skills/@zee/video-frames/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: weather
+    canonical_name: weather
+    current_path: .agents/skills/@zee/weather/SKILL.md
+    target_path: .agents/skills/@zee/weather/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: whoopskill
+    canonical_name: whoopskill
+    current_path: .agents/skills/@zee/whoopskill/SKILL.md
+    target_path: .agents/skills/@zee/whoopskill/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub
+  - id: yeet
+    canonical_name: yeet
+    current_path: .agents/skills/@zee/yeet/SKILL.md
+    target_path: .agents/skills/@zee/yeet/SKILL.md
+    owner: zee
+    status: active
+    wave: B
+    requires: frontmatter
+    env: frontmatter
+    source_origin: codex
+    notes: migrated from @codex
+  - id: youtube-transcript-yt-dlp
+    canonical_name: youtube-transcript-yt-dlp
+    current_path: .agents/skills/@zee/youtube-transcript-yt-dlp/SKILL.md
+    target_path: .agents/skills/@zee/youtube-transcript-yt-dlp/SKILL.md
+    owner: zee
+    status: active
+    wave: A
+    requires: frontmatter
+    env: frontmatter
+    source_origin: clawhub
+    notes: migrated from @clawhub

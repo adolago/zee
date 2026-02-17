@@ -12,16 +12,10 @@ import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
 import { Session } from "@/session"
 import { scanDirectoryWithSummary, type SkillScanFinding } from "./scanner"
+import { parse as parseYaml } from "yaml"
 
 export namespace Skill {
   const log = Log.create({ service: "skill" })
-  export const RegistryMeta = z.object({
-    source: z.literal("clawhub"),
-    id: z.string(),
-    version: z.string(),
-    installedAt: z.string(),
-  })
-  export type RegistryMeta = z.infer<typeof RegistryMeta>
 
   export const RequiresMeta = z.object({
     bins: z.array(z.string()).optional(),
@@ -65,8 +59,6 @@ export namespace Skill {
     location: z.string(),
     /** Persona context: undefined = shared, "zee"/"stanley"/"johny" = persona-specific */
     context: z.enum(["zee", "stanley", "johny"]).optional(),
-    /** Registry metadata for marketplace-installed skills. */
-    registry: RegistryMeta.optional(),
     /** Gating requirements for the skill. */
     requires: RequiresMeta.optional(),
     /** Primary environment variable name for API key injection. */
@@ -83,7 +75,7 @@ export namespace Skill {
     author: z.string().optional(),
     /** Skill category for grouping. */
     category: z.string().optional(),
-    /** Source identifier (e.g. "clawhub"). */
+    /** Source identifier (e.g. "zee"). */
     source: z.string().optional(),
     /** Homepage URL. */
     homepage: z.string().optional(),
@@ -159,10 +151,52 @@ export namespace Skill {
     "progressive_disclosure",
   ])
 
+  const AliasConfig = z.object({
+    version: z.number().optional(),
+    aliases: z.record(z.string(), z.string()),
+  })
+
+  function resolveAlias(name: string, aliases: Record<string, string>): string {
+    return aliases[name] ?? aliases[name.toLowerCase()] ?? name
+  }
+
+  async function loadAliases(): Promise<Record<string, string>> {
+    const aliasesPath = path.join(Global.Path.source, "packages", "zee", "skills", "aliases.yaml")
+    const raw = await Bun.file(aliasesPath)
+      .text()
+      .catch(() => "")
+    if (!raw.trim()) return {}
+
+    try {
+      const parsed = AliasConfig.safeParse(parseYaml(raw))
+      if (!parsed.success) {
+        log.warn("invalid skill alias config; ignoring aliases", {
+          aliasesPath,
+          issues: parsed.error.issues.map((issue) => issue.message),
+        })
+        return {}
+      }
+
+      const aliases: Record<string, string> = {}
+      for (const [legacy, canonical] of Object.entries(parsed.data.aliases)) {
+        aliases[legacy] = canonical
+        aliases[legacy.toLowerCase()] = canonical
+      }
+      return aliases
+    } catch (error) {
+      log.warn("failed to parse skill aliases; continuing without alias map", {
+        aliasesPath,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return {}
+    }
+  }
+
   export const state = Instance.state(async () => {
     const skills: Record<string, Info> = {}
     const exclusions: Exclusion[] = []
     const schemaWarnings: SchemaWarning[] = []
+    const aliases = await loadAliases()
 
     const addSkill = async (match: string) => {
       const md = await ConfigMarkdown.parse(match).catch((err) => {
@@ -214,33 +248,8 @@ export namespace Skill {
         }
       }
 
-      // Detect ClawHub registry metadata from manifest
-      let registry: RegistryMeta | undefined
       let requires: RequiresMeta | undefined
       const metadata = parseMetadata(md.data.metadata)
-      if (match.includes("/@clawhub/")) {
-        try {
-          const manifestPath = path.join(path.dirname(match), "..", ".manifest.json")
-          const manifestRaw = await Bun.file(manifestPath)
-            .text()
-            .catch(() => "")
-          if (manifestRaw) {
-            const manifest = JSON.parse(manifestRaw)
-            const skillId = path.basename(path.dirname(match))
-            const entry = manifest?.installed?.[skillId]
-            if (entry) {
-              registry = {
-                source: "clawhub",
-                id: entry.id,
-                version: entry.version,
-                installedAt: entry.installedAt,
-              }
-            }
-          }
-        } catch {
-          // manifest unavailable; continue without registry info
-        }
-      }
       const requiresCandidates = [
         md.data.requires,
         metadata && typeof (metadata as { requires?: unknown }).requires !== "undefined"
@@ -373,7 +382,6 @@ export namespace Skill {
         description: parsed.data.description,
         location: match,
         context: extractContext(match),
-        registry,
         requires,
         primaryEnv,
         ...(tags && tags.length > 0 ? { tags } : {}),
@@ -398,12 +406,6 @@ export namespace Skill {
     const globalAgents = `${Global.Path.home}/.agents`
     if (await Filesystem.isDir(globalAgents)) {
       agentsDirs.push(globalAgents)
-    }
-
-    // Include ClawHub marketplace skills at ~/.agents/skills/@clawhub/
-    const clawhubDir = `${Global.Path.home}/.agents/skills/@clawhub`
-    if (await Filesystem.isDir(clawhubDir)) {
-      agentsDirs.push(clawhubDir)
     }
 
     for (const dir of agentsDirs) {
@@ -499,7 +501,7 @@ export namespace Skill {
       }
     }
 
-    return { skills, exclusions, schemaWarnings }
+    return { skills, exclusions, schemaWarnings, aliases }
   })
 
   /**
@@ -527,9 +529,6 @@ export namespace Skill {
 
     // Global ~/.agents/skills/
     dirs.push(path.join(Global.Path.home, ".agents", "skills"))
-
-    // ClawHub marketplace skills
-    dirs.push(path.join(Global.Path.home, ".agents", "skills", "@clawhub"))
 
     // .claude/skills/ directories (project-level) - Anthropic standard
     const claudeDirs = await Array.fromAsync(
@@ -563,7 +562,12 @@ export namespace Skill {
   }
 
   export async function get(name: string) {
-    return state().then((x) => x.skills[name])
+    const { skills, aliases } = await state()
+    const resolved = resolveAlias(name, aliases)
+    if (resolved !== name) {
+      log.warn("resolved legacy skill alias", { requested: name, canonical: resolved })
+    }
+    return skills[resolved]
   }
 
   /** Get the list of excluded skills with reasons. */

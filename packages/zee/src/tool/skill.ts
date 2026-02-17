@@ -48,8 +48,8 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
 
         await ctx.ask({
           permission: "skill",
-          patterns: [params.name],
-          always: [params.name],
+          patterns: [skill.name],
+          always: [skill.name],
           metadata: {},
         })
         const content = (await ConfigMarkdown.parse(skill.location)).content

@@ -1,11 +1,11 @@
 ---
 name: coding-agent
-description: Run Codex CLI, Claude Code, Zee, or Pi Coding Agent via background process for programmatic control.
+description: Run Zee CLI, Claude Code, Zee, or Pi Coding Agent via background process for programmatic control.
 version: 1.1.0
 author: steipete
 tags: [coding, agents, background]
-source: clawhub
-metadata: {"clawhub":{"id":"steipete/coding-agent","requires":{"anyBins":["claude","codex","zee","pi"]}}}
+source: zee
+metadata: {"zee":{"requires":{"anyBins":["claude","zee","zee","pi"]}}}
 ---
 
 # Coding Agent (background-first)
@@ -41,17 +41,17 @@ process action:kill sessionId:XXX
 
 ---
 
-## Codex CLI
+## Zee CLI
 
-**Model:** `gpt-5.2-codex` is the default (set in ~/.codex/config.toml)
+**Model:** `gpt-5.2` is the default (set in ~/.config/zee/config.toml)
 
 ### Building/Creating (use --full-auto or --yolo)
 ```bash
 # --full-auto: sandboxed but auto-approves in workspace
-bash workdir:~/project background:true command:"codex exec --full-auto \"Build a snake game with dark theme\""
+bash workdir:~/project background:true command:"zee exec --full-auto \"Build a snake game with dark theme\""
 
 # --yolo: NO sandbox, NO approvals (fastest, most dangerous)
-bash workdir:~/project background:true command:"codex --yolo \"Build a snake game with dark theme\""
+bash workdir:~/project background:true command:"zee --yolo \"Build a snake game with dark theme\""
 
 # Note: --yolo is a shortcut for --dangerously-bypass-approvals-and-sandbox
 ```
@@ -64,18 +64,18 @@ bash workdir:~/project background:true command:"codex --yolo \"Build a snake gam
 
 ```bash
 # Option 1: Review in the actual project (if NOT zee)
-bash workdir:~/Projects/some-other-repo background:true command:"codex review --base main"
+bash workdir:~/Projects/some-other-repo background:true command:"zee review --base main"
 
 # Option 2: Clone to temp folder for safe review (REQUIRED for zee PRs!)
 REVIEW_DIR=$(mktemp -d)
 git clone https://github.com/user/repo.git $REVIEW_DIR
 cd $REVIEW_DIR && gh pr checkout 130
-bash workdir:$REVIEW_DIR background:true command:"codex review --base origin/main"
+bash workdir:$REVIEW_DIR background:true command:"zee review --base origin/main"
 # Clean up after: rm -rf $REVIEW_DIR
 
 # Option 3: Use git worktree (keeps main intact)
 git worktree add /tmp/pr-130-review pr-130-branch
-bash workdir:/tmp/pr-130-review background:true command:"codex review --base main"
+bash workdir:/tmp/pr-130-review background:true command:"zee review --base main"
 ```
 
 **Why?** Checking out branches in the running zee repo can break the live instance!
@@ -85,10 +85,10 @@ bash workdir:/tmp/pr-130-review background:true command:"codex review --base mai
 # Fetch all PR refs first
 git fetch origin '+refs/pull/*/head:refs/remotes/origin/pr/*'
 
-# Deploy the army - one Codex per PR!
-bash workdir:~/project background:true command:"codex exec \"Review PR #86. git diff origin/main...origin/pr/86\""
-bash workdir:~/project background:true command:"codex exec \"Review PR #87. git diff origin/main...origin/pr/87\""
-bash workdir:~/project background:true command:"codex exec \"Review PR #95. git diff origin/main...origin/pr/95\""
+# Deploy the army - one Zee per PR!
+bash workdir:~/project background:true command:"zee exec \"Review PR #86. git diff origin/main...origin/pr/86\""
+bash workdir:~/project background:true command:"zee exec \"Review PR #87. git diff origin/main...origin/pr/87\""
+bash workdir:~/project background:true command:"zee exec \"Review PR #95. git diff origin/main...origin/pr/95\""
 # ... repeat for all PRs
 
 # Monitor all
@@ -101,7 +101,7 @@ gh pr comment <PR#> --body "<review content>"
 
 ### Tips for PR Reviews
 - **Fetch refs first:** `git fetch origin '+refs/pull/*/head:refs/remotes/origin/pr/*'`
-- **Use git diff:** Tell Codex to use `git diff origin/main...origin/pr/XX`
+- **Use git diff:** Tell Zee to use `git diff origin/main...origin/pr/XX`
 - **Don't checkout:** Multiple parallel reviews = don't let them change branches
 - **Post results:** Use `gh pr comment` to post reviews to GitHub
 
@@ -175,13 +175,13 @@ git worktree add -b fix/issue-78 /tmp/issue-78 main
 git worktree add -b fix/issue-99 /tmp/issue-99 main
 
 # 3. Set up tmux sessions
-SOCKET="${TMPDIR:-/tmp}/codex-fixes.sock"
+SOCKET="${TMPDIR:-/tmp}/zee-fixes.sock"
 tmux -S "$SOCKET" new-session -d -s fix-78
 tmux -S "$SOCKET" new-session -d -s fix-99
 
-# 4. Launch Codex in each (after pnpm install!)
-tmux -S "$SOCKET" send-keys -t fix-78 "cd /tmp/issue-78 && pnpm install && codex --yolo 'Fix issue #78: <description>. Commit and push.'" Enter
-tmux -S "$SOCKET" send-keys -t fix-99 "cd /tmp/issue-99 && pnpm install && codex --yolo 'Fix issue #99: <description>. Commit and push.'" Enter
+# 4. Launch Zee in each (after pnpm install!)
+tmux -S "$SOCKET" send-keys -t fix-78 "cd /tmp/issue-78 && pnpm install && zee --yolo 'Fix issue #78: <description>. Commit and push.'" Enter
+tmux -S "$SOCKET" send-keys -t fix-99 "cd /tmp/issue-99 && pnpm install && zee --yolo 'Fix issue #99: <description>. Commit and push.'" Enter
 
 # 5. Monitor progress
 tmux -S "$SOCKET" capture-pane -p -t fix-78 -S -30
@@ -200,21 +200,21 @@ git worktree remove /tmp/issue-78
 git worktree remove /tmp/issue-99
 ```
 
-**Why worktrees?** Each Codex works in isolated branch, no conflicts. Can run 5+ parallel fixes!
+**Why worktrees?** Each Zee works in isolated branch, no conflicts. Can run 5+ parallel fixes!
 
-**Why tmux over bash background?** Codex is interactive -- needs TTY for proper output. tmux provides persistent sessions with full history capture.
+**Why tmux over bash background?** Zee is interactive -- needs TTY for proper output. tmux provides persistent sessions with full history capture.
 
 ---
 
 ## Rules
 
-1. **Respect tool choice** -- if user asks for Codex, use Codex. NEVER offer to build it yourself!
+1. **Respect tool choice** -- if user asks for Zee, use Zee. NEVER offer to build it yourself!
 2. **Be patient** -- don't kill sessions because they're "slow"
 3. **Monitor with process:log** -- check progress without interfering
 4. **--full-auto for building** -- auto-approves changes
 5. **vanilla for reviewing** -- no special flags needed
-6. **Parallel is OK** -- run many Codex processes at once for batch work
-7. **NEVER start Codex in ~/Repositories/zee/** -- it'll read your soul docs and get weird ideas about the org chart! Use the target project dir or /tmp for blank slate chats
+6. **Parallel is OK** -- run many Zee processes at once for batch work
+7. **NEVER start Zee in ~/Repositories/zee/** -- it'll read your soul docs and get weird ideas about the org chart! Use the target project dir or /tmp for blank slate chats
 8. **NEVER checkout branches in ~/Repositories/zee/** -- that's the LIVE zee instance! Clone to /tmp or use git worktree for PR reviews
 
 ---
@@ -280,6 +280,6 @@ command example
 1. Human-written description (no AI slop)
 2. Feature intent for maintainers
 3. Timestamped prompt history
-4. Session logs if using Codex/agent
+4. Session logs if using Zee/agent
 
 **Example:** https://github.com/steipete/bird/pull/22

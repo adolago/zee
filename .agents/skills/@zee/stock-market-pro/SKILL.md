@@ -62,5 +62,5 @@ uv run --script scripts/yf history AAPL
 
 ## Notes
 
-- The `scripts/yf` script is managed by ClawHub and uses `uv` inline script metadata for automatic dependency resolution (`yfinance`, `mplfinance`, `rich`).
-- If the script is missing, the ClawHub-managed version at `@zee/skills/stock-market-pro/` may need a sync update, or use Stanley tools directly.
+- The `scripts/yf` script is managed by Zee and uses `uv` inline script metadata for automatic dependency resolution (`yfinance`, `mplfinance`, `rich`).
+- If the script is missing, the Zee-managed version at `@zee/skills/stock-market-pro/` may need a sync update, or use Stanley tools directly.

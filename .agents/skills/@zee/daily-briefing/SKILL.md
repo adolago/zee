@@ -45,7 +45,7 @@ Then run daily updates:
 update
 ```
 
-This single command handles paru, Codex wrappers, external repos, and ClawHub skills.
+This single command handles paru, Zee wrappers, external repos, and Zee skills.
 Report any updated packages or skills in the briefing summary.
 
 ## Evening Review

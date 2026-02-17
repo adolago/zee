@@ -67,10 +67,7 @@ packages/
 ```
 zee/
   .agents/skills/           Agent Skills
-    @zee/                   Zee skills (27 skills: life admin, investing, learning, meta)
-    @zee/skills/            Swabble/OpenClaw-managed skills (13 skills, auto-updated via gateway)
-    @codex/                 Codex automation suite (32 skills, read-only)
-    @clawhub/               ClawHub marketplace skills (11 skills, auto-updated via `zee clawhub update`)
+    @zee/                   First-party Zee skills (single canonical namespace)
   packages/
     zee/                    Core engine (CLI, TUI, daemon, gateway)
       src/
@@ -119,22 +116,19 @@ Port map: 18791 (gateway control), 18792 (extension relay), 18800-18899 (CDP pro
 
 ## Skill Registries
 
-Two independent registries manage shared skills:
+Skills are now managed as first-party assets with manual governance:
 
-1. **ClawHub** (`packages/zee/src/pkg/clawhub/`): Manages `@clawhub/` skills. Registry at `https://auth.clawdhub.com/api/v1`. Lock file at `@clawhub/.clawhub/lock.json`. Update via `zee clawhub update`.
-2. **Swabble/OpenClaw** (`@zee/skills/`): Manages 13 skills via `_meta.json` files with `ownerId` and `slug`. Updated via gateway `skills.update` RPC method.
-
-Skills by steipete (coding-agent, food-order, spotify-player, oracle) are in the Swabble/OpenClaw registry, NOT ClawHub. WhatsApp is now handled via meta-cli (see `src/domain/zee/whatsapp-send.ts`).
+1. **Canonical Skill Registry** (`packages/zee/skills/registry.yaml`): Source-of-truth inventory with ownership and migration metadata.
+2. **Compatibility Alias Registry** (`packages/zee/skills/aliases.yaml`): Legacy-name/path mapping during migration window.
 
 ## Integration
 
 Skills loaded from `.agents/skills/` and `~/.config/zee/skills/`:
 
 ```
-.agents/skills/@zee/                   Zee skills (27 skills: life admin, investing, learning, meta)
-.agents/skills/@zee/skills/            Swabble/OpenClaw-managed skills (13 skills, auto-updated)
-.agents/skills/@codex/                 Codex automation (32 skills, read-only)
-.agents/skills/@clawhub/               ClawHub marketplace skills (11 skills, auto-updated)
+.agents/skills/@zee/                   First-party skills (canonical runtime location)
+packages/zee/skills/registry.yaml      Skill ownership and lifecycle registry
+packages/zee/skills/aliases.yaml       Legacy compatibility aliases
 ```
 
 ## Development Guidelines

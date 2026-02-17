@@ -21,7 +21,7 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 - **Notifications**: Proactive reminders and alerts
 - **Browser**: 5 browser subsystems (see Browser Architecture below)
 - **Nodes**: Control node hosts (camera, location, notifications)
-- **Skills Marketplace**: Discover and install skills from ClawHub
+- **Skills Marketplace**: Discover and install skills from Zee
 
 ### Investing (stanley: namespace)
 - **Market Data**: Real-time quotes, charts, fundamentals via OpenBB
@@ -78,7 +78,7 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 | Skill | Description |
 |-------|-------------|
 | `codebase-guide` | Zee architecture reference (packages, daemon, gateway, env vars) |
-| `coding-agent` | Run Codex/Claude Code/Zee/Pi via background process |
+| `coding-agent` | Run Zee/Claude Code/Zee/Pi via background process |
 | `parallel-orchestration` | Parallel task patterns using native Claude Code Task tool |
 
 ## Browser Architecture
@@ -371,9 +371,9 @@ After completing actions, store relevant results:
 - `portfolio` - Portfolio tracking and analytics
 - `context7` - Library documentation search
 
-## Shared Skills (ClawHub)
+## Shared Skills (First-Party)
 
-Active shared skills from `@clawhub/` and `@zee/skills/`:
+Active shared skills are first-party under `@zee/`:
 - `humanizer` - Remove AI writing patterns
 - `markdown-converter` - Convert PDF/DOCX/PPTX/HTML to Markdown
 - `nano-pdf` - Edit PDFs with natural-language instructions
@@ -397,7 +397,7 @@ Active shared skills from `@clawhub/` and `@zee/skills/`:
 - **Memory**: `/src/plugin/builtin/memory-persistence.ts`
 - **Qdrant**: Vector database for semantic memory
 - **Gateway**: `http://127.0.0.1:18791`
-- **ClawHub**: `packages/zee/src/pkg/clawhub/`
+- **Skill Alias Registry**: `packages/zee/skills/aliases.yaml`
 - **NautilusTrader**: `vendor/nautilus_trader`
 - **OpenBB**: Market data API integration
 

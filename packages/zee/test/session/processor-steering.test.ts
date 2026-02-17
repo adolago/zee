@@ -1,5 +1,7 @@
 import { describe, expect, test, mock, afterAll } from "bun:test"
+import { Bus } from "../../src/bus"
 import { Instance } from "../../src/project/instance"
+import { PermissionNext } from "../../src/permission/next"
 import { tmpdir } from "../fixture/fixture"
 import { Identifier } from "../../src/id/id"
 import { Session } from "../../src/session"
@@ -9,7 +11,7 @@ import { SessionSteering } from "../../src/session/steering"
 // Prevent Config.get() from running slow dependency installs during tests
 process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL = "true"
 
-type StreamScenario = "steering" | "undefined-tool-calls"
+type StreamScenario = "steering" | "undefined-tool-calls" | "doom-loop"
 
 let streamScenario: StreamScenario = "steering"
 let streamFinishStepReached = false
@@ -43,6 +45,37 @@ mock.module("../../src/provider/fallback", () => ({
           }
           yield {
             type: "finish-step",
+            usage: { inputTokens: 10, outputTokens: 5 },
+            providerMetadata: {},
+          }
+          yield { type: "finish", finishReason: "stop" }
+          return
+        }
+
+        if (streamScenario === "doom-loop") {
+          for (let i = 1; i <= 3; i++) {
+            const toolCallId = `call_${i}`
+            const input = { file: "foo.txt" }
+            yield {
+              type: "tool-call",
+              toolCallId,
+              toolName: "read",
+              input,
+            }
+            yield {
+              type: "tool-result",
+              toolCallId,
+              input,
+              output: {
+                title: "Read",
+                metadata: {},
+                output: `tool output ${i}`,
+              },
+            }
+          }
+          yield {
+            type: "finish-step",
+            finishReason: "stop",
             usage: { inputTokens: 10, outputTokens: 5 },
             providerMetadata: {},
           }
@@ -245,4 +278,88 @@ describe("SessionProcessor steering", () => {
       },
     })
   })
+
+  test("doom-loop permission does not prompt in bypass mode", async () => {
+    streamScenario = "doom-loop"
+
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.create({})
+        const askedPermissions: string[] = []
+
+        const user: MessageV2.User = {
+          id: Identifier.ascending("message"),
+          sessionID: session.id,
+          role: "user",
+          time: { created: Date.now() },
+          agent: "zee",
+          model: { providerID: "mock", modelID: "mock-model" },
+          mode: "bypass",
+        }
+        await Session.updateMessage(user)
+
+        const assistant: MessageV2.Assistant = {
+          id: Identifier.ascending("message"),
+          parentID: user.id,
+          sessionID: session.id,
+          role: "assistant",
+          mode: "zee",
+          agent: "zee",
+          path: {
+            cwd: Instance.directory,
+            root: Instance.worktree,
+          },
+          cost: 0,
+          tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+          modelID: "mock-model",
+          providerID: "mock",
+          time: { created: Date.now() },
+        }
+        await Session.updateMessage(assistant)
+
+        const unsubscribe = Bus.subscribe(PermissionNext.Event.Asked, (event) => {
+          if (event.properties.sessionID !== session.id) return
+          askedPermissions.push(event.properties.permission)
+        })
+
+        try {
+          const { SessionProcessor } = await import("../../src/session/processor")
+          const controller = new AbortController()
+          const mockModel = {
+            providerID: "mock",
+            id: "mock-model",
+            name: "mock-model",
+            capabilities: { reasoning: false },
+            api: { npm: "mock" },
+            cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+            limit: { context: 128000, output: 8192 },
+          } as any
+          const processor = SessionProcessor.create({
+            assistantMessage: assistant,
+            sessionID: session.id,
+            model: mockModel,
+            abort: controller.signal,
+          })
+
+          await processor.process({
+            user,
+            sessionID: session.id,
+            model: mockModel,
+            agent: { name: "zee" } as any,
+            system: [],
+            messages: [],
+            tools: {},
+            abort: controller.signal,
+          })
+
+          expect(askedPermissions).toHaveLength(0)
+        } finally {
+          unsubscribe()
+        }
+      },
+    })
+  })
+
 })

@@ -25,6 +25,7 @@
     "test": "bun test",
     "build": "bun run script/build.ts && ln -sf $(pwd)/script/zee-cli ~/.bun/bin/zee",
     "dev": "bun run --conditions=browser ./src/index.ts",
+    "verify:skills": "bun run script/verify-first-party-skills.ts",
     "memory:health": "bun run script/memory-health-check.ts",
     "reliability:alpha": "bun run script/reliability/run.ts --profile alpha",
     "reliability:diag": "bun run script/reliability/run.ts --profile diag",

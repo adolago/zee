@@ -353,6 +353,7 @@ export namespace SessionProcessor {
                             JSON.stringify(p.state.input) === JSON.stringify(value.input),
                         )
                       ) {
+                        const permissionMode = streamInput.user.mode ?? "plan"
                         const agent = await Agent.get(input.assistantMessage.agent)
                         await PermissionNext.ask({
                           permission: "doom_loop",
@@ -364,7 +365,7 @@ export namespace SessionProcessor {
                           },
                           always: [value.toolName],
                           ruleset: agent.permission,
-                          mode: "plan", // doom_loop check always prompts (safety feature)
+                          mode: permissionMode,
                         })
                       }
                       break
