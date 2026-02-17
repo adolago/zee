@@ -1,12 +1,12 @@
 ---
 title: Server
-description: Interact with opencode server over HTTP.
+description: Interact with zee server over HTTP.
 ---
 
 import config from "../../../config.mjs"
 export const typesUrl = `${config.github}/blob/dev/packages/sdk/js/src/gen/types.gen.ts`
 
-The `zee serve` command runs a headless HTTP server that exposes an OpenAPI endpoint that an opencode client can use.
+The `zee serve` command runs a headless HTTP server that exposes an OpenAPI endpoint that a zee client can use.
 
 ---
 
@@ -45,18 +45,18 @@ ZEE_SERVER_PASSWORD=your-password zee serve
 
 ### How it works
 
-When you run `opencode` it starts a TUI and a server. Where the TUI is the
+When you run `zee` it starts a TUI and a server. Where the TUI is the
 client that talks to the server. The server exposes an OpenAPI 3.1 spec
 endpoint. This endpoint is also used to generate an [SDK](/docs/sdk).
 
 :::tip
-Use the opencode server to interact with opencode programmatically.
+Use the zee server to interact with zee programmatically.
 :::
 
-This architecture lets opencode support multiple clients and allows you to interact with opencode programmatically.
+This architecture lets zee support multiple clients and allows you to interact with zee programmatically.
 
 You can run `zee serve` to start a standalone server. If you have the
-opencode TUI running, `zee serve` will start a new server.
+zee TUI running, `zee serve` will start a new server.
 
 ---
 
@@ -64,7 +64,7 @@ opencode TUI running, `zee serve` will start a new server.
 
 When you start the TUI it randomly assigns a port and hostname. You can instead pass in the `--hostname` and `--port` [flags](/docs/cli). Then use this to connect to its server.
 
-The [`/tui`](#tui) endpoint can be used to drive the TUI through the server. For example, you can prefill or run a prompt. This setup is used by the OpenCode [IDE](/docs/ide) plugins.
+The [`/tui`](#tui) endpoint can be used to drive the TUI through the server. For example, you can prefill or run a prompt. This setup is used by the Zee [IDE](/docs/ide) plugins.
 
 ---
 
@@ -82,7 +82,7 @@ For example, `http://localhost:4096/doc`. Use the spec to generate clients or in
 
 ## APIs
 
-The opencode server exposes the following APIs.
+The zee server exposes the following APIs.
 
 ---
 
