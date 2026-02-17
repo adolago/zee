@@ -68,4 +68,3 @@ export const GatewayTokenCommand = cmd({
     Output.log("  Hint:   Use `zee gateway token --print` to print the token.")
   },
 })
-

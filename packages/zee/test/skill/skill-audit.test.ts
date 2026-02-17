@@ -22,10 +22,7 @@ describe("Skill.audit()", () => {
       git: true,
       init: async (dir) => {
         for (const name of ["alpha", "beta"]) {
-          await Bun.write(
-            path.join(dir, ".agents", "skills", name, "SKILL.md"),
-            skill(name, `${name} skill`),
-          )
+          await Bun.write(path.join(dir, ".agents", "skills", name, "SKILL.md"), skill(name, `${name} skill`))
         }
       },
     })
@@ -47,10 +44,7 @@ describe("Skill.audit()", () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "colon-desc", "SKILL.md"),
-          skill("colon-desc", fullDesc),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "colon-desc", "SKILL.md"), skill("colon-desc", fullDesc))
       },
     })
 
@@ -115,14 +109,8 @@ name: bad-skill
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "dir-a", "SKILL.md"),
-          skill("dupe", "first instance"),
-        )
-        await Bun.write(
-          path.join(dir, ".claude", "skills", "dir-b", "SKILL.md"),
-          skill("dupe", "second instance"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "dir-a", "SKILL.md"), skill("dupe", "first instance"))
+        await Bun.write(path.join(dir, ".claude", "skills", "dir-b", "SKILL.md"), skill("dupe", "second instance"))
       },
     })
 
@@ -198,10 +186,7 @@ describe("Skill.all() affinity sorting", () => {
           path.join(dir, ".agents", "skills", "@stanley", "stan-skill", "SKILL.md"),
           skill("stan-skill", "Stanley persona skill"),
         )
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "common", "SKILL.md"),
-          skill("common", "Shared skill"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "common", "SKILL.md"), skill("common", "Shared skill"))
       },
     })
 
@@ -245,18 +230,12 @@ describe("Skill.all() affinity sorting", () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "@zee", "z", "SKILL.md"),
-          skill("z-skill", "Zee skill"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "@zee", "z", "SKILL.md"), skill("z-skill", "Zee skill"))
         await Bun.write(
           path.join(dir, ".agents", "skills", "@stanley", "s", "SKILL.md"),
           skill("s-skill", "Stanley skill"),
         )
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "@johny", "j", "SKILL.md"),
-          skill("j-skill", "Johny skill"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "@johny", "j", "SKILL.md"), skill("j-skill", "Johny skill"))
       },
     })
 
@@ -322,10 +301,7 @@ describe("Skill tags and triggers", () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "plain", "SKILL.md"),
-          skill("plain", "No tags or triggers"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "plain", "SKILL.md"), skill("plain", "No tags or triggers"))
       },
     })
 
@@ -375,10 +351,7 @@ describe("Skill.search()", () => {
           path.join(dir, ".agents", "skills", "portfolio", "SKILL.md"),
           skill("portfolio", "Portfolio tool", "tags:\n  - investing\n"),
         )
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "notes", "SKILL.md"),
-          skill("notes", "Take notes"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "notes", "SKILL.md"), skill("notes", "Take notes"))
       },
     })
 
@@ -417,10 +390,7 @@ describe("Skill.search()", () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "alpha", "SKILL.md"),
-          skill("alpha", "Alpha skill"),
-        )
+        await Bun.write(path.join(dir, ".agents", "skills", "alpha", "SKILL.md"), skill("alpha", "Alpha skill"))
       },
     })
 
@@ -580,7 +550,7 @@ describe("Skill schema warnings", () => {
       init: async (dir) => {
         await Bun.write(
           path.join(dir, ".agents", "skills", "clean", "SKILL.md"),
-          skill("clean", "All known keys", "version: \"1.0.0\"\nauthor: Test\ncategory: tools\n"),
+          skill("clean", "All known keys", 'version: "1.0.0"\nauthor: Test\ncategory: tools\n'),
         )
       },
     })
@@ -603,7 +573,7 @@ describe("Skill extended fields", () => {
       init: async (dir) => {
         await Bun.write(
           path.join(dir, ".agents", "skills", "versioned", "SKILL.md"),
-          skill("versioned", "Has version", "version: \"2.1.0\"\nauthor: Alice\n"),
+          skill("versioned", "Has version", 'version: "2.1.0"\nauthor: Alice\n'),
         )
       },
     })

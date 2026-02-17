@@ -105,15 +105,17 @@ export function createMockSDKClient() {
 
 let permissionIdCounter = 0
 
-export function createPermissionRequest(overrides: Partial<{
-  id: string
-  sessionID: string
-  permission: string
-  metadata: Record<string, unknown>
-  always: string[]
-  tool: { messageID: string; callID: string }
-  patterns: string[]
-}> = {}) {
+export function createPermissionRequest(
+  overrides: Partial<{
+    id: string
+    sessionID: string
+    permission: string
+    metadata: Record<string, unknown>
+    always: string[]
+    tool: { messageID: string; callID: string }
+    patterns: string[]
+  }> = {},
+) {
   permissionIdCounter++
   return {
     id: overrides.id ?? `perm-${permissionIdCounter}`,
@@ -134,17 +136,19 @@ export function resetPermissionIdCounter() {
 
 let questionIdCounter = 0
 
-export function createQuestionRequest(overrides: Partial<{
-  id: string
-  sessionID: string
-  questions: Array<{
-    question: string
-    header: string
-    options: Array<{ label: string; description: string }>
-    multiple?: boolean
-    custom?: boolean
-  }>
-}> = {}) {
+export function createQuestionRequest(
+  overrides: Partial<{
+    id: string
+    sessionID: string
+    questions: Array<{
+      question: string
+      header: string
+      options: Array<{ label: string; description: string }>
+      multiple?: boolean
+      custom?: boolean
+    }>
+  }> = {},
+) {
   questionIdCounter++
   return {
     id: overrides.id ?? `question-${questionIdCounter}`,
@@ -185,11 +189,25 @@ export function setupCommonMocks() {
 
   mock.module("@opentui/core", () => {
     class MockRGBA {
-      r = 0; g = 0; b = 0; a = 0
-      constructor(r = 0, g = 0, b = 0, a = 0) { this.r = r; this.g = g; this.b = b; this.a = a }
-      static fromInts(r: number, g: number, b: number, a: number) { return new MockRGBA(r, g, b, a) }
-      static fromHex(_hex: string) { return new MockRGBA(0, 0, 0, 255) }
-      static fromValues(r: number, g: number, b: number, a: number) { return new MockRGBA(r, g, b, a) }
+      r = 0
+      g = 0
+      b = 0
+      a = 0
+      constructor(r = 0, g = 0, b = 0, a = 0) {
+        this.r = r
+        this.g = g
+        this.b = b
+        this.a = a
+      }
+      static fromInts(r: number, g: number, b: number, a: number) {
+        return new MockRGBA(r, g, b, a)
+      }
+      static fromHex(_hex: string) {
+        return new MockRGBA(0, 0, 0, 255)
+      }
+      static fromValues(r: number, g: number, b: number, a: number) {
+        return new MockRGBA(r, g, b, a)
+      }
     }
     return {
       RGBA: MockRGBA,
@@ -303,24 +321,40 @@ export function setupCommonMocks() {
   mock.module("@/global", () => ({
     Global: {
       Path: {
-        get home() { return home() },
-        get source() { return process.cwd() },
-        get data() { return stateOverride() ? path.join(stateOverride(), "data") : path.join(xdgData(), app) },
-        get bin() { return path.join(this.data, "bin") },
-        get log() { return path.join(this.data, "log") },
-        get cache() { return stateOverride() ? path.join(stateOverride(), "cache") : path.join(xdgCache(), app) },
+        get home() {
+          return home()
+        },
+        get source() {
+          return process.cwd()
+        },
+        get data() {
+          return stateOverride() ? path.join(stateOverride(), "data") : path.join(xdgData(), app)
+        },
+        get bin() {
+          return path.join(this.data, "bin")
+        },
+        get log() {
+          return path.join(this.data, "log")
+        },
+        get cache() {
+          return stateOverride() ? path.join(stateOverride(), "cache") : path.join(xdgCache(), app)
+        },
         get config() {
           if (configOverride()) return configOverride()
           if (stateOverride()) return path.join(stateOverride(), "config")
           return path.join(xdgConfig(), app)
         },
-        get state() { return stateOverride() ? stateOverride() : path.join(xdgState(), app) },
+        get state() {
+          return stateOverride() ? stateOverride() : path.join(xdgState(), app)
+        },
         get workspace() {
           if (workspaceOverride()) return workspaceOverride()
           if (stateOverride()) return path.join(stateOverride(), "workspace")
           return path.join(this.data, "worktree")
         },
-        get tmp() { return path.join(os.tmpdir(), app) },
+        get tmp() {
+          return path.join(os.tmpdir(), app)
+        },
       },
     },
   }))
@@ -328,9 +362,7 @@ export function setupCommonMocks() {
 
 // --- Mock Context Modules ---
 
-export function createMockSDKModule(opts: {
-  client: ReturnType<typeof createMockSDKClient>["client"]
-}) {
+export function createMockSDKModule(opts: { client: ReturnType<typeof createMockSDKClient>["client"] }) {
   const listeners: Array<(e: { details: unknown }) => void> = []
   return {
     useSDK: () => ({
@@ -349,13 +381,15 @@ export function createMockSDKModule(opts: {
   }
 }
 
-export function createMockSyncModule(opts: {
-  permissions?: Record<string, unknown[]>
-  questions?: Record<string, unknown[]>
-  sessions?: Array<{ id: string; parentID?: string; time?: Record<string, unknown> }>
-  config?: Record<string, unknown>
-  parts?: Record<string, unknown[]>
-} = {}) {
+export function createMockSyncModule(
+  opts: {
+    permissions?: Record<string, unknown[]>
+    questions?: Record<string, unknown[]>
+    sessions?: Array<{ id: string; parentID?: string; time?: Record<string, unknown> }>
+    config?: Record<string, unknown>
+    parts?: Record<string, unknown[]>
+  } = {},
+) {
   return {
     useSync: () => ({
       data: {
@@ -385,10 +419,12 @@ export function createMockSyncModule(opts: {
   }
 }
 
-export function createMockLocalModule(opts: {
-  holdMode?: boolean
-  agent?: string
-} = {}) {
+export function createMockLocalModule(
+  opts: {
+    holdMode?: boolean
+    agent?: string
+  } = {},
+) {
   const isHold = opts.holdMode ?? true
   return {
     useLocal: () => ({

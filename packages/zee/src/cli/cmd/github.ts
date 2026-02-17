@@ -137,13 +137,10 @@ const AGENT_USERNAME = process.env["ZEE_GITHUB_BOT"] ?? "zee[bot]"
 const AGENT_REACTION = "eyes"
 const WORKFLOW_FILE = ".github/workflows/zee.yml"
 const DEFAULT_MENTIONS = "/zee,/z,/ac"
-const DEFAULT_ACTION_REF =
-  process.env["ZEE_ACTION_REF"] ?? "adolago/zee/github@dev"
+const DEFAULT_ACTION_REF = process.env["ZEE_ACTION_REF"] ?? "adolago/zee/github@dev"
 const GITHUB_APP_URL =
   process.env["ZEE_GITHUB_APP_URL"] ??
-  ((process.env["ZEE_GITHUB_APP_SLUG"])
-    ? `https://github.com/apps/${process.env["ZEE_GITHUB_APP_SLUG"]}`
-    : "")
+  (process.env["ZEE_GITHUB_APP_SLUG"] ? `https://github.com/apps/${process.env["ZEE_GITHUB_APP_SLUG"]}` : "")
 const OIDC_AUDIENCE = process.env["OIDC_AUDIENCE"] ?? "zee-github-action"
 
 // Event categories for routing
@@ -341,8 +338,7 @@ export const GithubInstallCommand = cmd({
             }
 
             async function getInstallation() {
-              const url =
-                process.env["ZEE_GITHUB_APP_INSTALLATION_URL"]
+              const url = process.env["ZEE_GITHUB_APP_INSTALLATION_URL"]
               if (!url) return undefined
               return fetch(`${url}?owner=${app.owner}&repo=${app.repo}`)
                 .then((res) => res.json())
@@ -354,9 +350,9 @@ export const GithubInstallCommand = cmd({
           async function addWorkflowFiles() {
             const envStr = `\n        env:${providers[provider].env.map((e) => `\n          ${e}: \${{ secrets.${e} }}`).join("")}`
 
-	            await Bun.write(
-	              path.join(app.root, WORKFLOW_FILE),
-	              `name: zee
+            await Bun.write(
+              path.join(app.root, WORKFLOW_FILE),
+              `name: zee
 	
 on:
   issue_comment:
@@ -389,7 +385,7 @@ jobs:
         uses: ${DEFAULT_ACTION_REF}${envStr}
         with:
           model: ${provider}/${model}`,
-	            )
+            )
 
             prompts.log.success(`Added workflow file: "${WORKFLOW_FILE}"`)
           }

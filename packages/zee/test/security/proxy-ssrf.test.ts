@@ -35,17 +35,17 @@ describe("Proxy SSRF Security", () => {
   })
 
   test("should allow access to valid paths", async () => {
-     const app = Server.App()
-     // Valid path that should be proxied (and fail with connection error because localhost:1234 is likely closed)
-     // but NOT 403.
-     const req = new Request("http://localhost/foo", {
-        method: "GET"
-     })
+    const app = Server.App()
+    // Valid path that should be proxied (and fail with connection error because localhost:1234 is likely closed)
+    // but NOT 403.
+    const req = new Request("http://localhost/foo", {
+      method: "GET",
+    })
 
-     const res = await app.fetch(req)
-     // 502 Bad Gateway or 500 Internal Server Error is expected if proxy fails to connect.
-     // 404 Not Found might be returned if proxyBase is invalid.
-     // But definitely NOT 403.
-     expect(res.status).not.toBe(403)
+    const res = await app.fetch(req)
+    // 502 Bad Gateway or 500 Internal Server Error is expected if proxy fails to connect.
+    // 404 Not Found might be returned if proxyBase is invalid.
+    // But definitely NOT 403.
+    expect(res.status).not.toBe(403)
   })
 })

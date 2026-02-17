@@ -244,9 +244,7 @@ export async function stopModel(name: string) {
   if (!model) return undefined
   const pod = requirePod(state, model.pod)
 
-  const remote = model.pid
-    ? `kill ${model.pid}`
-    : `pkill -f ${singleQuote(`vllm serve ${model.model}`)}`
+  const remote = model.pid ? `kill ${model.pid}` : `pkill -f ${singleQuote(`vllm serve ${model.model}`)}`
 
   const result = await runCommand(commandForPod(pod, remote))
   if (result.code !== 0 && !/No such process/i.test(result.stderr)) {

@@ -65,7 +65,7 @@ export function installMcpParentGuard(
     if (stopped) return
     const currentPpid = getPpid()
     const parentAlive = isAlive(expectedParentPid)
-    if (currentPpid <= 1 || currentPpid !== expectedParentPid || !parentAlive) {
+    if (currentPpid <= 1 || !parentAlive) {
       stop()
       logger(
         `[zee-mcp:${serverName}] parent process ${expectedParentPid} is gone; exiting to prevent orphaned MCP workers.`,

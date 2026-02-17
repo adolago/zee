@@ -52,9 +52,7 @@ function normalizePath(input?: string): string {
 }
 
 function fallback(part: ToolPart): ToolResult {
-  const title =
-    part.state.title ||
-    (Object.keys(part.state.input).length > 0 ? JSON.stringify(part.state.input) : "")
+  const title = part.state.title || (Object.keys(part.state.input).length > 0 ? JSON.stringify(part.state.input) : "")
   return inline(part.tool, title)
 }
 
@@ -455,9 +453,7 @@ export const RunCommand = cmd({
       const isNewSession = !args.continue && !args.session
       const readOnlyTools = { edit: false, write: false, notebook_edit: false }
       const holdModeTools: Record<string, boolean> | undefined =
-        runMode === "build"
-          ? (isNewSession ? readOnlyTools : undefined)
-          : readOnlyTools
+        runMode === "build" ? (isNewSession ? readOnlyTools : undefined) : readOnlyTools
       const skipPermissions = runMode === "build" ? args.skipPermissions : false
 
       if (args.command) {
@@ -645,9 +641,7 @@ export const RunCommand = cmd({
             : undefined
 
         const result = await sdk.session.create(
-          title
-            ? { title, permission: RUN_PERMISSION_RULES }
-            : { permission: RUN_PERMISSION_RULES },
+          title ? { title, permission: RUN_PERMISSION_RULES } : { permission: RUN_PERMISSION_RULES },
         )
         return result.data?.id
       })()

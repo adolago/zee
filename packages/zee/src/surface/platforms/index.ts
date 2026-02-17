@@ -11,4 +11,4 @@ export {
   type ForwardedMessage,
   type ForwardedMedia,
   type WhatsAppSendFn,
-} from './whatsapp.js';
+} from "./whatsapp.js"

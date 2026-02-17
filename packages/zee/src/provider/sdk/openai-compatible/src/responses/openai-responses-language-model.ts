@@ -1325,7 +1325,10 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
               // Surface critical incomplete errors to user instead of silently failing
               // Critical errors: server_error, interruption, cancelled, turn_limit
               // Non-critical: max_output_tokens, content_filter (handled by finishReason)
-              if (incompleteReason && ["server_error", "interruption", "cancelled", "turn_limit"].includes(incompleteReason)) {
+              if (
+                incompleteReason &&
+                ["server_error", "interruption", "cancelled", "turn_limit"].includes(incompleteReason)
+              ) {
                 controller.enqueue({
                   type: "error",
                   error: new Error(`Response incomplete: ${incompleteReason}`),
@@ -1397,19 +1400,19 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
 
               if (!hasMinimalContent || (!hasUsageData && suspiciouslyShort)) {
                 console.error(
-                  `[openai] Stream terminated unexpectedly (${chunkCount} chunks, ${totalDurationMs}ms, hasUsage=${hasUsageData})`
+                  `[openai] Stream terminated unexpectedly (${chunkCount} chunks, ${totalDurationMs}ms, hasUsage=${hasUsageData})`,
                 )
                 controller.enqueue({
                   type: "error",
                   error: new Error(
-                    `Stream ended unexpectedly: received ${chunkCount} chunks in ${totalDurationMs}ms without completion event`
+                    `Stream ended unexpectedly: received ${chunkCount} chunks in ${totalDurationMs}ms without completion event`,
                   ),
                 })
                 finishReason = "error"
               } else {
                 // We have content and/or usage data, treat as successful but warn
                 console.warn(
-                  `[openai] Stream ended without completion event (${chunkCount} chunks, ${totalDurationMs}ms) - treating as successful`
+                  `[openai] Stream ended without completion event (${chunkCount} chunks, ${totalDurationMs}ms) - treating as successful`,
                 )
                 finishReason = "stop"
               }

@@ -57,4 +57,3 @@ describe("compare render (md)", () => {
     expect(out).toContain("## Notes (Full)")
   })
 })
-

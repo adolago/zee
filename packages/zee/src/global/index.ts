@@ -19,8 +19,7 @@ function findSourceRoot(startDir: string): string | undefined {
 }
 
 function resolveSourceRoot(): string {
-  const envSource =
-    process.env.ZEE_SOURCE || process.env.ZEE_ROOT
+  const envSource = process.env.ZEE_SOURCE || process.env.ZEE_ROOT
   if (envSource) return envSource
 
   const starts = [process.cwd()]

@@ -373,9 +373,7 @@ describe("ProviderTransform.message - interleaved reasoning_content injection fo
       { role: "user", content: "search for files" },
       {
         role: "assistant",
-        content: [
-          { type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "files" } },
-        ],
+        content: [{ type: "tool-call", toolCallId: "tc1", toolName: "search", input: { q: "files" } }],
       },
     ] as any[]
 
@@ -456,13 +454,13 @@ describe("ProviderTransform.message - interleaved reasoning_content injection fo
       },
       {
         role: "tool",
-        content: [{ type: "tool-result", toolCallId: "tc1", toolName: "search", output: { type: "text", value: "found X" } }],
+        content: [
+          { type: "tool-result", toolCallId: "tc1", toolName: "search", output: { type: "text", value: "found X" } },
+        ],
       },
       {
         role: "assistant",
-        content: [
-          { type: "tool-call", toolCallId: "tc2", toolName: "read", input: { file: "x.txt" } },
-        ],
+        content: [{ type: "tool-call", toolCallId: "tc2", toolName: "read", input: { file: "x.txt" } }],
       },
     ] as any[]
 
@@ -1070,7 +1068,6 @@ describe("ProviderTransform.message - providerOptions key remapping", () => {
       options: {},
       headers: {},
     }) as any
-
 })
 
 describe("ProviderTransform.message - claude w/bedrock custom inference profile", () => {
@@ -1436,7 +1433,6 @@ describe("ProviderTransform.variants", () => {
       })
     })
   })
-
 })
 
 describe("ProviderTransform.options - persona thinking configs", () => {

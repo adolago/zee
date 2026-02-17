@@ -1,7 +1,12 @@
 import type { Argv } from "yargs"
 import { cmd } from "../cmd"
 import { Output } from "../../output"
-import { resolveEmbeddedGatewayPort, startEmbeddedGateway, stopEmbeddedGateway, getEmbeddedGatewayState } from "@/gateway/embedded-gateway"
+import {
+  resolveEmbeddedGatewayPort,
+  startEmbeddedGateway,
+  stopEmbeddedGateway,
+  getEmbeddedGatewayState,
+} from "@/gateway/embedded-gateway"
 type StartArgs = {
   port?: number
   daemonUrl?: string
@@ -22,8 +27,12 @@ export const GatewayStartCommand = cmd({
       }),
   handler: async (args) => {
     const typed = args as unknown as StartArgs
-    const port = Number.isFinite(typed.port as number) && (typed.port as number) > 0 ? (typed.port as number) : resolveEmbeddedGatewayPort()
-    const daemonUrl = typeof (args as any)["daemon-url"] === "string" ? String((args as any)["daemon-url"]).trim() : undefined
+    const port =
+      Number.isFinite(typed.port as number) && (typed.port as number) > 0
+        ? (typed.port as number)
+        : resolveEmbeddedGatewayPort()
+    const daemonUrl =
+      typeof (args as any)["daemon-url"] === "string" ? String((args as any)["daemon-url"]).trim() : undefined
 
     let shuttingDown = false
     const shutdown = async (signal?: NodeJS.Signals) => {
@@ -50,7 +59,9 @@ export const GatewayStartCommand = cmd({
       process.exit(1)
     }
 
-    const effectiveUrl = process.env.ZEE_GATEWAY_URL?.trim() ? String(process.env.ZEE_GATEWAY_URL).trim() : `ws://127.0.0.1:${port}`
+    const effectiveUrl = process.env.ZEE_GATEWAY_URL?.trim()
+      ? String(process.env.ZEE_GATEWAY_URL).trim()
+      : `ws://127.0.0.1:${port}`
 
     Output.log("Gateway started")
     Output.log(`  URL:  ${effectiveUrl}`)

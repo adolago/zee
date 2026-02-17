@@ -364,7 +364,7 @@ class ExtendedSession extends GeneratedSession {
   // Override methods to accept and strip the 'directory' parameter
   override messages<ThrowOnError extends boolean = false>(
     parameters: { sessionID: string; limit?: number; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.messages(rest, options)
@@ -377,7 +377,7 @@ class ExtendedSession extends GeneratedSession {
       time?: { archived?: number }
       directory?: string
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.update(rest as any, options)
@@ -385,7 +385,7 @@ class ExtendedSession extends GeneratedSession {
 
   override delete<ThrowOnError extends boolean = false>(
     parameters: { sessionID: string; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.delete(rest, options)
@@ -400,7 +400,7 @@ class ExtendedSession extends GeneratedSession {
       limit?: number
       roots?: boolean
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { roots: _, ...rest } = parameters ?? {}
     return super.list(rest, options)
@@ -409,7 +409,7 @@ class ExtendedSession extends GeneratedSession {
   // Override share to accept directory parameter
   override share<ThrowOnError extends boolean = false>(
     parameters: { sessionID: string; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.share(rest, options)
@@ -418,7 +418,7 @@ class ExtendedSession extends GeneratedSession {
   // Override unshare to accept directory parameter
   override unshare<ThrowOnError extends boolean = false>(
     parameters: { sessionID: string; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.unshare(rest, options)
@@ -427,10 +427,14 @@ class ExtendedSession extends GeneratedSession {
   // Set session mode (plan/accept/bypass)
   mode<ThrowOnError extends boolean = false>(
     parameters: { sessionID: string; mode: "plan" | "accept" | "bypass"; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
-    return (options?.client ?? this.client).patch<{ ok: boolean; mode: "plan" | "accept" | "bypass" }, unknown, ThrowOnError>({
+    return (options?.client ?? this.client).patch<
+      { ok: boolean; mode: "plan" | "accept" | "bypass" },
+      unknown,
+      ThrowOnError
+    >({
       url: `/session/${rest.sessionID}/mode`,
       body: { mode: rest.mode },
       ...options,
@@ -445,14 +449,12 @@ class ExtendedSession extends GeneratedSession {
   // expectedTurnID must match the current active turn.
   override steer<ThrowOnError extends boolean = false>(
     parameters: Parameters<GeneratedSession["steer"]>[0] & { directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.steer<ThrowOnError>(rest as Parameters<GeneratedSession["steer"]>[0], options)
   }
 }
-
-
 
 // Extended File class that accepts directory parameter
 // Use wrapper pattern since status() has different signature
@@ -467,7 +469,7 @@ class ExtendedFile {
 
   list<ThrowOnError extends boolean = false>(
     parameters: { path: string; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return this.file.list(rest, options)
@@ -475,7 +477,7 @@ class ExtendedFile {
 
   read<ThrowOnError extends boolean = false>(
     parameters: { path: string; directory?: string },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return this.file.read(rest, options)
@@ -484,10 +486,14 @@ class ExtendedFile {
   // Accept optional directory parameter (ignored)
   status<ThrowOnError extends boolean = false>(
     parametersOrOptions?: { directory?: string } | Options<never, ThrowOnError>,
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     // If first arg looks like Options, pass it directly
-    const opts = options ?? (parametersOrOptions && !("directory" in parametersOrOptions) ? parametersOrOptions as Options<never, ThrowOnError> : undefined)
+    const opts =
+      options ??
+      (parametersOrOptions && !("directory" in parametersOrOptions)
+        ? (parametersOrOptions as Options<never, ThrowOnError>)
+        : undefined)
     return this.file.status(opts)
   }
 }
@@ -502,7 +508,7 @@ class ExtendedFind extends GeneratedFind {
       limit?: number
       directory?: string
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return super.files(rest, options)
@@ -523,10 +529,14 @@ class ExtendedPermission {
   // Accept optional directory parameter (ignored)
   list<ThrowOnError extends boolean = false>(
     parametersOrOptions?: { directory?: string } | Options<never, ThrowOnError>,
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     // If first arg looks like Options, pass it directly
-    const opts = options ?? (parametersOrOptions && !("directory" in parametersOrOptions) ? parametersOrOptions as Options<never, ThrowOnError> : undefined)
+    const opts =
+      options ??
+      (parametersOrOptions && !("directory" in parametersOrOptions)
+        ? (parametersOrOptions as Options<never, ThrowOnError>)
+        : undefined)
     return this.permission.list(opts)
   }
 
@@ -537,7 +547,7 @@ class ExtendedPermission {
       message?: string
       directory?: string
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters
     return this.permission.reply(rest, options)
@@ -549,7 +559,7 @@ class ExtendedPermission {
       permissionID: string
       response?: "once" | "always" | "reject"
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     return this.permission.respond(parameters, options)
   }
@@ -569,10 +579,14 @@ class ExtendedInstance {
   // Accept optional directory parameter (ignored)
   dispose<ThrowOnError extends boolean = false>(
     parametersOrOptions?: { directory?: string } | Options<never, ThrowOnError>,
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     // If first arg looks like Options, pass it directly
-    const opts = options ?? (parametersOrOptions && !("directory" in parametersOrOptions) ? parametersOrOptions as Options<never, ThrowOnError> : undefined)
+    const opts =
+      options ??
+      (parametersOrOptions && !("directory" in parametersOrOptions)
+        ? (parametersOrOptions as Options<never, ThrowOnError>)
+        : undefined)
     return this.instance.dispose(opts)
   }
 
@@ -591,7 +605,7 @@ class ExtendedProject extends GeneratedProject {
       directory?: string
       commands?: { start?: string }
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     // Strip directory and commands - not supported by server
     const { directory: _, commands: __, ...rest } = parameters
@@ -607,7 +621,7 @@ class ExtendedWorktree extends GeneratedWorktree {
       worktreeCreateInput?: any
       directory?: string
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     const { directory: _, ...rest } = parameters ?? {}
     return super.create(rest, options)
@@ -616,7 +630,7 @@ class ExtendedWorktree extends GeneratedWorktree {
   // Stub methods that don't exist on the server
   async remove<ThrowOnError extends boolean = false>(
     parameters: { directory?: string; worktreeRemoveInput?: { directory: string } },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ): Promise<{ data: boolean }> {
     // These methods don't exist on the server - return failure
     console.warn("worktree.remove() is not implemented on the server")
@@ -625,7 +639,7 @@ class ExtendedWorktree extends GeneratedWorktree {
 
   async reset<ThrowOnError extends boolean = false>(
     parameters: { directory?: string; worktreeResetInput?: { directory: string } },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ): Promise<{ data: boolean }> {
     console.warn("worktree.reset() is not implemented on the server")
     return { data: false }
@@ -640,7 +654,7 @@ class ExtendedAuth extends GeneratedAuth {
       body?: Auth | { api_key: string }
       auth?: Auth | { type: string; key: string }
     },
-    options?: Options<never, ThrowOnError>
+    options?: Options<never, ThrowOnError>,
   ) {
     // Transform 'auth' to 'body' if provided
     let body = parameters.body
@@ -704,7 +718,7 @@ export class ZeeClient extends GeneratedZeeClient {
     return (this._extPermission ??= new ExtendedPermission({ client: (this as any).client }))
   }
 
-  // @ts-expect-error - Wrapper class has different signature to accept directory param  
+  // @ts-expect-error - Wrapper class has different signature to accept directory param
   override get instance(): ExtendedInstance {
     return (this._extInstance ??= new ExtendedInstance({ client: (this as any).client }))
   }

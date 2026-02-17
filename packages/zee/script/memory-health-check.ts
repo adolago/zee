@@ -55,19 +55,13 @@ async function main(): Promise<void> {
   }
 
   const namespace = typeof args.namespace === "string" ? args.namespace : "codex-healthcheck"
-  const query =
-    typeof args.query === "string" ? args.query : "memory embedding health check"
+  const query = typeof args.query === "string" ? args.query : "memory embedding health check"
   const content =
-    typeof args.content === "string"
-      ? args.content
-      : `Memory embedding health check ${new Date().toISOString()}`
+    typeof args.content === "string" ? args.content : `Memory embedding health check ${new Date().toISOString()}`
   const category = (typeof args.category === "string" ? args.category : "note") as MemoryCategory
   const threshold = readNumber(args.threshold, 0.2)
   const limit = Math.max(1, Math.floor(readNumber(args.limit, 3)))
-  const expectedDim = readNumber(
-    args["expected-dim"],
-    getMemoryEmbeddingConfig().dimensions ?? 0,
-  )
+  const expectedDim = readNumber(args["expected-dim"], getMemoryEmbeddingConfig().dimensions ?? 0)
 
   const memory = new Memory({ namespace })
   await memory.init()

@@ -18,28 +18,49 @@ export namespace HoldMode {
     always_block: z.array(z.string()).default([]),
     hold_allow: z.array(z.string()).default([]),
     release_confirm: z.array(z.string()).default([]),
-    tools: z.object({
-      edit: z.boolean().optional(),
-      write: z.boolean().optional(),
-      apply_patch: z.boolean().optional(),
-      todowrite: z.boolean().optional(),
-    }).default({}),
+    tools: z
+      .object({
+        edit: z.boolean().optional(),
+        write: z.boolean().optional(),
+        apply_patch: z.boolean().optional(),
+        todowrite: z.boolean().optional(),
+      })
+      .default({}),
   })
 
   export type Config = z.infer<typeof ConfigSchema>
 
   const STRICT_ADDITIONS = new Set([
-    "curl", "wget", "nc", "netcat", "ssh", "scp", "rsync",
-    "python", "python3", "node", "ruby", "perl", "php",
-    "eval", "exec", "source", ".",
-    "crontab", "at", "batch",
-    "docker", "podman", "kubectl", "helm",
-    "aws", "gcloud", "az",
+    "curl",
+    "wget",
+    "nc",
+    "netcat",
+    "ssh",
+    "scp",
+    "rsync",
+    "python",
+    "python3",
+    "node",
+    "ruby",
+    "perl",
+    "php",
+    "eval",
+    "exec",
+    "source",
+    ".",
+    "crontab",
+    "at",
+    "batch",
+    "docker",
+    "podman",
+    "kubectl",
+    "helm",
+    "aws",
+    "gcloud",
+    "az",
   ])
 
-  const PERMISSIVE_REMOVALS = new Set([
-    "touch", "mkdir",
-  ])
+  const PERMISSIVE_REMOVALS = new Set(["touch", "mkdir"])
 
   let cachedConfig: Config | null = null
 
@@ -92,7 +113,7 @@ export namespace HoldMode {
   function mergeToolsSecurity(
     userTools: Config["tools"],
     projectTools: Config["tools"],
-    warnings: string[]
+    warnings: string[],
   ): Config["tools"] {
     const result: Config["tools"] = {}
     const toolNames: (keyof Config["tools"])[] = ["edit", "write", "apply_patch", "todowrite"]
@@ -149,17 +170,14 @@ export namespace HoldMode {
       if (projectIdx > userIdx) {
         // Project tried to weaken (e.g., user=strict, project=permissive)
         securityWarnings.push(
-          `project config attempted to weaken profile from '${userProfile}' to '${projectProfile}' - using '${effectiveProfile}'`
+          `project config attempted to weaken profile from '${userProfile}' to '${projectProfile}' - using '${effectiveProfile}'`,
         )
       }
     }
 
     // SECURITY: always_block - additive only (concatenate both)
     // Both user and project can add commands to block - this is correct
-    const always_block = [
-      ...(userConfig.always_block ?? []),
-      ...(projectConfig.always_block ?? []),
-    ]
+    const always_block = [...(userConfig.always_block ?? []), ...(projectConfig.always_block ?? [])]
 
     // SECURITY: hold_allow - user config ONLY
     // These are security exceptions - project should NOT be able to add allowances
@@ -167,24 +185,17 @@ export namespace HoldMode {
     const hold_allow = userConfig.hold_allow ?? []
     if (projectConfig.hold_allow && projectConfig.hold_allow.length > 0) {
       securityWarnings.push(
-        `project config attempted to add hold_allow exceptions: [${projectConfig.hold_allow.join(", ")}] - ignored for security`
+        `project config attempted to add hold_allow exceptions: [${projectConfig.hold_allow.join(", ")}] - ignored for security`,
       )
     }
 
     // SECURITY: release_confirm - additive (project can add confirmations, not remove)
     // Project can require MORE confirmation (more restrictive), never less
     // User's confirmations are always preserved
-    const release_confirm = [
-      ...(userConfig.release_confirm ?? []),
-      ...(projectConfig.release_confirm ?? []),
-    ]
+    const release_confirm = [...(userConfig.release_confirm ?? []), ...(projectConfig.release_confirm ?? [])]
 
     // SECURITY: tools - user blocks always win, project can only restrict
-    const tools = mergeToolsSecurity(
-      userConfig.tools ?? {},
-      projectConfig.tools ?? {},
-      securityWarnings
-    )
+    const tools = mergeToolsSecurity(userConfig.tools ?? {}, projectConfig.tools ?? {}, securityWarnings)
 
     // Log security warnings so users know their preferences were preserved
     for (const warning of securityWarnings) {
@@ -245,31 +256,31 @@ export namespace HoldMode {
   }
 
   // Wrapper commands that should be unwrapped to find the actual command
-  const WRAPPER_COMMANDS = new Set(['sudo', 'doas', 'env', 'command', 'nohup', 'nice', 'timeout'])
-  const SUDO_OPTS_WITH_ARG = new Set(['-u', '-g', '-p', '-r', '-t', '-C', '-h', '-U', '-D', '-T'])
+  const WRAPPER_COMMANDS = new Set(["sudo", "doas", "env", "command", "nohup", "nice", "timeout"])
+  const SUDO_OPTS_WITH_ARG = new Set(["-u", "-g", "-p", "-r", "-t", "-C", "-h", "-U", "-D", "-T"])
   const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/
 
   function unwrapWrapper(parts: string[]): string[] {
     if (!parts.length) return parts
-    const wrapper = parts[0]?.replace(/^.*\//, '')
+    const wrapper = parts[0]?.replace(/^.*\//, "")
     if (!wrapper || !WRAPPER_COMMANDS.has(wrapper)) return parts
 
     let i = 1
     while (i < parts.length) {
       const token = parts[i]
-      if (token === '--') {
+      if (token === "--") {
         i++
         break
       }
-      if (wrapper === 'sudo' && SUDO_OPTS_WITH_ARG.has(token)) {
+      if (wrapper === "sudo" && SUDO_OPTS_WITH_ARG.has(token)) {
         i += 2
         continue
       }
-      if (token.startsWith('-')) {
+      if (token.startsWith("-")) {
         i++
         continue
       }
-      if (wrapper === 'env' && ENV_ASSIGNMENT_RE.test(token)) {
+      if (wrapper === "env" && ENV_ASSIGNMENT_RE.test(token)) {
         i++
         continue
       }
@@ -280,29 +291,43 @@ export namespace HoldMode {
 
   // Git subcommands that modify repository state
   const FILE_MODIFYING_GIT_SUBCOMMANDS = new Set([
-    'add', 'commit', 'push', 'pull', 'merge', 'rebase', 'reset', 'checkout',
-    'branch', 'tag', 'stash', 'cherry-pick', 'revert', 'am', 'apply',
-    'mv', 'rm', 'clean', 'restore', 'switch',
+    "add",
+    "commit",
+    "push",
+    "pull",
+    "merge",
+    "rebase",
+    "reset",
+    "checkout",
+    "branch",
+    "tag",
+    "stash",
+    "cherry-pick",
+    "revert",
+    "am",
+    "apply",
+    "mv",
+    "rm",
+    "clean",
+    "restore",
+    "switch",
   ])
 
   /**
    * Check if a command is blocked based on the effective blocklist.
    * This handles command parsing, wrapper unwrapping, and special cases like git subcommands.
    */
-  function isCommandBlocked(
-    command: string,
-    blocklist: Set<string>
-  ): { blocked: boolean; reason?: string } {
+  function isCommandBlocked(command: string, blocklist: Set<string>): { blocked: boolean; reason?: string } {
     const trimmed = command.trim()
 
     // Block any output redirection to file (>, >>, 2>, &>)
     if (/(?:^|[^\w])(?:\d|&)?>>?\s*[^\s&|;]+/.test(trimmed)) {
-      return { blocked: true, reason: 'output redirection to file' }
+      return { blocked: true, reason: "output redirection to file" }
     }
 
     // Check for pipe to tee
     if (/\|\s*tee\s+/.test(trimmed)) {
-      return { blocked: true, reason: 'pipe to tee (writes to file)' }
+      return { blocked: true, reason: "pipe to tee (writes to file)" }
     }
 
     // Parse commands (handle pipes and &&)
@@ -311,17 +336,17 @@ export namespace HoldMode {
     for (const part of commands) {
       const rawParts = part.trim().split(/\s+/)
       const parts = unwrapWrapper(rawParts)
-      const cmd = parts[0]?.replace(/^.*\//, '')
+      const cmd = parts[0]?.replace(/^.*\//, "")
 
       if (!cmd) continue
 
       // Check sed with -i flag
-      if (cmd === 'sed' && (parts.includes('-i') || parts.some(p => p.startsWith('-i')))) {
-        return { blocked: true, reason: 'sed with in-place edit (-i)' }
+      if (cmd === "sed" && (parts.includes("-i") || parts.some((p) => p.startsWith("-i")))) {
+        return { blocked: true, reason: "sed with in-place edit (-i)" }
       }
 
       // Check git subcommands
-      if (cmd === 'git') {
+      if (cmd === "git") {
         const subcommand = parts[1]
         if (subcommand && FILE_MODIFYING_GIT_SUBCOMMANDS.has(subcommand)) {
           return { blocked: true, reason: `git ${subcommand} modifies repository` }
@@ -340,7 +365,7 @@ export namespace HoldMode {
 
   export async function checkCommand(
     command: string,
-    options: { holdMode: boolean; skipPermissions?: boolean }
+    options: { holdMode: boolean; skipPermissions?: boolean },
   ): Promise<CheckResult> {
     // PERFORMANCE: Check cache first
     const cacheKey = `${command}::${options.holdMode}::${options.skipPermissions ?? false}`
@@ -354,7 +379,7 @@ export namespace HoldMode {
       const result: CheckResult = {
         blocked: false,
         skipPermissions: true,
-        profile: undefined
+        profile: undefined,
       }
       checkCache.set(cacheKey, { result, timestamp: Date.now() })
       return result
@@ -365,7 +390,12 @@ export namespace HoldMode {
     // Always check always_block first (applies in both HOLD and RELEASE modes)
     const blockedPattern = findMatchingPattern(command, config.always_block)
     if (blockedPattern) {
-      const result: CheckResult = { blocked: true, reason: "command in always_block list", matchedPattern: blockedPattern, profile: config.profile }
+      const result: CheckResult = {
+        blocked: true,
+        reason: "command in always_block list",
+        matchedPattern: blockedPattern,
+        profile: config.profile,
+      }
       checkCache.set(cacheKey, { result, timestamp: Date.now() })
       return result
     }
@@ -417,7 +447,7 @@ export namespace HoldMode {
 
   export async function isToolAllowedInHold(
     tool: "edit" | "write" | "apply_patch" | "todowrite",
-    skipPermissions?: boolean
+    skipPermissions?: boolean,
   ): Promise<boolean> {
     // Always allow if skipPermissions is true (no cuffs mode)
     if (skipPermissions === true) {
@@ -432,14 +462,53 @@ export namespace HoldMode {
 
   export async function getEffectiveBlocklist(profile: Profile): Promise<Set<string>> {
     const base = new Set([
-      "rm", "mv", "cp", "mkdir", "rmdir", "touch", "chmod", "chown",
-      "ln", "unlink", "install", "shred", "tee", "dd", "truncate",
-      "patch", "ed", "ex", "chattr",
-      "kill", "pkill", "killall", "renice", "xkill",
-      "systemctl", "service", "shutdown", "reboot", "poweroff", "halt", "init",
-      "loginctl", "timedatectl", "hostnamectl",
-      "mount", "umount", "modprobe", "insmod", "rmmod", "sysctl",
-      "ip", "ifconfig", "nmcli", "iptables", "nft", "ufw", "firewall-cmd",
+      "rm",
+      "mv",
+      "cp",
+      "mkdir",
+      "rmdir",
+      "touch",
+      "chmod",
+      "chown",
+      "ln",
+      "unlink",
+      "install",
+      "shred",
+      "tee",
+      "dd",
+      "truncate",
+      "patch",
+      "ed",
+      "ex",
+      "chattr",
+      "kill",
+      "pkill",
+      "killall",
+      "renice",
+      "xkill",
+      "systemctl",
+      "service",
+      "shutdown",
+      "reboot",
+      "poweroff",
+      "halt",
+      "init",
+      "loginctl",
+      "timedatectl",
+      "hostnamectl",
+      "mount",
+      "umount",
+      "modprobe",
+      "insmod",
+      "rmmod",
+      "sysctl",
+      "ip",
+      "ifconfig",
+      "nmcli",
+      "iptables",
+      "nft",
+      "ufw",
+      "firewall-cmd",
     ])
 
     if (profile === "strict") {

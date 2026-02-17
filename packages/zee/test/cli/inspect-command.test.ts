@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  buildInspectUsageSnapshot,
-  resolveInspectUsagePeriod,
-  resolveInspectUsageTop,
-} from "../../src/cli/cmd/inspect"
+import { buildInspectUsageSnapshot, resolveInspectUsagePeriod, resolveInspectUsageTop } from "../../src/cli/cmd/inspect"
 import type { UsageStats, UsageSummary } from "../../src/usage/types"
 
 function makeSummary(): UsageSummary {
@@ -105,4 +101,3 @@ describe("inspect command helpers", () => {
     expect(usage.topModels[0]?.id).toBe("gpt-4o")
   })
 })
-

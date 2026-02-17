@@ -3,21 +3,21 @@
  * @description CLI entry point for crash report generation
  */
 
-import type { Argv } from "yargs";
-import * as readline from "readline";
-import { ReportGenerator } from "../../crash-report/report-generator";
-import { cmd } from "./cmd";
+import type { Argv } from "yargs"
+import * as readline from "readline"
+import { ReportGenerator } from "../../crash-report/report-generator"
+import { cmd } from "./cmd"
 
-const ANONYMIZATION_LEVELS = ["minimal", "standard", "aggressive"] as const;
+const ANONYMIZATION_LEVELS = ["minimal", "standard", "aggressive"] as const
 
 type BugReportArgs = {
-  includeSession?: boolean;
-  logLines?: number;
-  output?: string;
-  skipDiagnostics?: boolean;
-  anonymization?: (typeof ANONYMIZATION_LEVELS)[number];
-  nonInteractive?: boolean;
-};
+  includeSession?: boolean
+  logLines?: number
+  output?: string
+  skipDiagnostics?: boolean
+  anonymization?: (typeof ANONYMIZATION_LEVELS)[number]
+  nonInteractive?: boolean
+}
 
 export const BugReportCommand = cmd({
   command: "bug-report",
@@ -56,22 +56,20 @@ export const BugReportCommand = cmd({
         type: "boolean",
         default: false,
         describe: "Skip interactive prompts",
-      });
+      })
   },
   handler: async (args) => {
     try {
-      const typedArgs = args as BugReportArgs;
-      const anonymization = typedArgs.anonymization ?? "standard";
+      const typedArgs = args as BugReportArgs
+      const anonymization = typedArgs.anonymization ?? "standard"
       if (!ANONYMIZATION_LEVELS.includes(anonymization)) {
-        console.error(`Invalid anonymization level. Choose: ${ANONYMIZATION_LEVELS.join(", ")}`);
-        process.exit(2);
+        console.error(`Invalid anonymization level. Choose: ${ANONYMIZATION_LEVELS.join(", ")}`)
+        process.exit(2)
       }
 
-      let includeSession = typedArgs.includeSession ?? false;
+      let includeSession = typedArgs.includeSession ?? false
       if (includeSession && !typedArgs.nonInteractive) {
-        includeSession = await promptConsent(
-          "Include session data? This may contain conversation content. (y/N): "
-        );
+        includeSession = await promptConsent("Include session data? This may contain conversation content. (y/N): ")
       }
 
       const generator = new ReportGenerator({
@@ -81,39 +79,36 @@ export const BugReportCommand = cmd({
         skipDiagnostics: typedArgs.skipDiagnostics ?? false,
         anonymization,
         nonInteractive: typedArgs.nonInteractive ?? false,
-      });
+      })
 
-      const { archivePath } = await generator.generate();
+      const { archivePath } = await generator.generate()
 
-      console.log("\n> Next steps:");
-      console.log("   1. Review the report contents for any remaining sensitive data");
-      console.log("   2. Create a GitHub issue at https://github.com/adolago/zee/issues");
-      console.log("   3. Attach the report archive to the issue");
-      console.log(`\n   Archive: ${archivePath}\n`);
+      console.log("\n> Next steps:")
+      console.log("   1. Review the report contents for any remaining sensitive data")
+      console.log("   2. Create a GitHub issue at https://github.com/adolago/zee/issues")
+      console.log("   3. Attach the report archive to the issue")
+      console.log(`\n   Archive: ${archivePath}\n`)
 
-      process.exit(0);
+      process.exit(0)
     } catch (error) {
-      console.error(
-        "Report generation failed:",
-        error instanceof Error ? error.message : String(error)
-      );
-      process.exit(2);
+      console.error("Report generation failed:", error instanceof Error ? error.message : String(error))
+      process.exit(2)
     }
   },
-});
+})
 
 async function promptConsent(question: string): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-  });
+  })
 
   return new Promise((resolve) => {
     rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
-    });
-  });
+      rl.close()
+      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes")
+    })
+  })
 }
 
 // Help examples
@@ -129,4 +124,4 @@ Anonymization Levels:
   minimal    - Only redact API keys
   standard   - Redact keys, credentials, and usernames in paths
   aggressive - Also redact emails, phone numbers, IPs
-`;
+`

@@ -35,10 +35,7 @@ export type UsageBreakdownRow = {
   avgLatencyMs?: number
 }
 
-export function buildUsageBreakdown(
-  summary: UsageSummary,
-  by: UsageBreakdownBy,
-): UsageBreakdownRow[] {
+export function buildUsageBreakdown(summary: UsageSummary, by: UsageBreakdownBy): UsageBreakdownRow[] {
   if (by === "provider") {
     return Object.values(summary.byProvider).map((provider) => ({
       id: provider.providerId,
@@ -143,9 +140,7 @@ function resolveUsagePeriod(raw: string | undefined, fallback: UsagePeriod): Usa
 }
 
 function resolveBreakdownBy(raw: string | undefined): UsageBreakdownBy {
-  return (BREAKDOWN_BY as readonly string[]).includes(raw ?? "")
-    ? (raw as UsageBreakdownBy)
-    : "model"
+  return (BREAKDOWN_BY as readonly string[]).includes(raw ?? "") ? (raw as UsageBreakdownBy) : "model"
 }
 
 function resolveSortBy(raw: string | undefined): UsageSortBy {

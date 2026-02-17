@@ -5,12 +5,7 @@
  * Consume-only: search, get details, download, list versions.
  */
 
-import type {
-  ClawHubSearchParams,
-  ClawHubSearchResult,
-  ClawHubSkillDetail,
-  ClawHubSkillVersion,
-} from "./types"
+import type { ClawHubSearchParams, ClawHubSearchResult, ClawHubSkillDetail, ClawHubSkillVersion } from "./types"
 
 const DEFAULT_BASE_URL = "https://auth.clawdhub.com/api/v1"
 const DEFAULT_TIMEOUT_MS = 15_000

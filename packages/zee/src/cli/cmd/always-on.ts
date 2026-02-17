@@ -90,9 +90,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
         qdrantAvailable: setupResult.qdrant.available,
         googleApiKeyAvailable: setupResult.googleApiKey.available,
       })
-      throw new Error(
-        `Startup blocked: required dependencies missing.\n${setupResult.errors.join("\n")}`,
-      )
+      throw new Error(`Startup blocked: required dependencies missing.\n${setupResult.errors.join("\n")}`)
     }
   } else {
     log.warn("setup validation skipped via skipSetupCheck")
@@ -284,7 +282,11 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
         Output.log("Skills:     Hot-reload watcher started")
       }
     } else {
-      Output.log(enforceAlwaysOn ? "Skills:     Hot-reload watcher forced on (always-on profile)" : "Skills:     Hot-reload watcher disabled by config")
+      Output.log(
+        enforceAlwaysOn
+          ? "Skills:     Hot-reload watcher forced on (always-on profile)"
+          : "Skills:     Hot-reload watcher disabled by config",
+      )
     }
   } catch (error) {
     log.debug("Skill watcher initialization failed", {
@@ -426,9 +428,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   try {
     const cores = (() => {
       try {
-        return typeof os.availableParallelism === "function"
-          ? os.availableParallelism()
-          : os.cpus().length
+        return typeof os.availableParallelism === "function" ? os.availableParallelism() : os.cpus().length
       } catch {
         return 2
       }
@@ -447,7 +447,9 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       },
     })
     await ipcServer.start()
-    Output.log(`Orchestration: Worker pool started (workers=${maxWorkers}, socket=${process.env.ZEE_IPC_SOCKET || DEFAULT_SOCKET_PATH})`)
+    Output.log(
+      `Orchestration: Worker pool started (workers=${maxWorkers}, socket=${process.env.ZEE_IPC_SOCKET || DEFAULT_SOCKET_PATH})`,
+    )
   } catch (error) {
     log.error("Failed to start orchestration IPC server", {
       error: error instanceof Error ? error.message : String(error),

@@ -44,11 +44,7 @@ type KimiModelInfo = {
 }
 
 function resolveOauthHost() {
-  return (
-    process.env.KIMI_CODE_OAUTH_HOST?.trim() ||
-    process.env.KIMI_OAUTH_HOST?.trim() ||
-    DEFAULT_OAUTH_HOST
-  )
+  return process.env.KIMI_CODE_OAUTH_HOST?.trim() || process.env.KIMI_OAUTH_HOST?.trim() || DEFAULT_OAUTH_HOST
 }
 
 function resolveApiBaseUrl() {
@@ -178,11 +174,7 @@ async function loadKimiCliToken(): Promise<Auth.Info | null> {
   const refresh = typeof payload?.refresh_token === "string" ? payload.refresh_token.trim() : ""
   const expiresRaw = payload?.expires_at
   const expiresAtSec =
-    typeof expiresRaw === "number"
-      ? expiresRaw
-      : typeof expiresRaw === "string"
-        ? Number(expiresRaw)
-        : 0
+    typeof expiresRaw === "number" ? expiresRaw : typeof expiresRaw === "string" ? Number(expiresRaw) : 0
   const expiresAt = Number.isFinite(expiresAtSec) ? expiresAtSec * 1000 : 0
 
   const info = {
@@ -232,9 +224,7 @@ async function clearKimiAuth() {
   await deleteKimiCliToken()
 }
 
-async function resolveKimiAuth(
-  getAuth?: () => Promise<Auth.Info | undefined>,
-): Promise<Auth.Info | undefined> {
+async function resolveKimiAuth(getAuth?: () => Promise<Auth.Info | undefined>): Promise<Auth.Info | undefined> {
   const current = getAuth ? await getAuth() : await Auth.get("kimi-for-coding")
   if (current?.type === "oauth" || current?.type === "api") return current
 
@@ -325,9 +315,7 @@ async function refreshKimiToken(auth: Auth.Info): Promise<Auth.Info | null> {
   return refreshInFlight
 }
 
-async function ensureFreshKimiAuth(
-  getAuth?: () => Promise<Auth.Info | undefined>,
-): Promise<Auth.Info | undefined> {
+async function ensureFreshKimiAuth(getAuth?: () => Promise<Auth.Info | undefined>): Promise<Auth.Info | undefined> {
   let info = await resolveKimiAuth(getAuth)
   if (!info || info.type !== "oauth") return info
 
@@ -500,9 +488,7 @@ async function maybeRefreshKimiModels(provider: any, auth: Auth.Info | undefined
 }
 
 export async function KimiAuthPlugin(_input: PluginInput): Promise<Hooks> {
-  const redirectDisabled = (process.env.ZEE_KIMI_LOG_STDERR || "")
-    .trim()
-    .toLowerCase()
+  const redirectDisabled = (process.env.ZEE_KIMI_LOG_STDERR || "").trim().toLowerCase()
   installKimiStderrRedirect({ enabled: !["0", "false", "no"].includes(redirectDisabled) })
   try {
     await resolveKimiAuth()
@@ -658,9 +644,7 @@ export async function KimiAuthPlugin(_input: PluginInput): Promise<Hooks> {
                   }
 
                   if (data.error === "slow_down") {
-                    const newInterval = data.interval
-                      ? data.interval * 1000
-                      : pollInterval + 5000
+                    const newInterval = data.interval ? data.interval * 1000 : pollInterval + 5000
                     await Bun.sleep(newInterval + OAUTH_POLLING_SAFETY_MARGIN_MS)
                     continue
                   }

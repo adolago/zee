@@ -27,6 +27,7 @@ import { LspTool } from "./lsp"
 import { Truncate } from "./truncation"
 import { HoldReleaseTool, HoldEnterTool } from "./plan"
 import { ApplyPatchTool } from "./apply_patch"
+import { ListSessionsTool, SendToSessionTool } from "./session-control"
 
 export namespace ToolRegistry {
   const log = Log.create({ service: "tool.registry" })
@@ -112,6 +113,8 @@ export namespace ToolRegistry {
       WebFetchTool,
       TodoWriteTool,
       TodoReadTool,
+      ListSessionsTool,
+      SendToSessionTool,
       WebSearchTool,
       CodeSearchTool,
       SkillTool,

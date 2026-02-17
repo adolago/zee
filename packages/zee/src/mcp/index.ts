@@ -35,21 +35,24 @@ import { normalizeHttpUrl } from "@/util/net"
 export namespace MCP {
   const log = Log.create({ service: "mcp" })
   const DEFAULT_TIMEOUT = 30_000
+  const LOCAL_STDERR_TAIL_MAX_BYTES = 2_048
   const HEALTH_MONITOR_INTERVAL_MS = 15_000
+  const LOCAL_NODE_FALLBACK_SERVERS = new Set(["portfolio", "consciousness"])
 
   // Per-server mutex to prevent concurrent state mutations for the same server
   const serverMutexes = new Map<string, Promise<void>>()
+  // Global gate for local MCP startup to avoid burst spawning multiple local runtimes at once.
+  let localStartupGate: Promise<void> = Promise.resolve()
 
   // Per-server tool cache -- invalidated on tools/list_changed, reconnect, disconnect, add
   type ToolCacheEntry = { tools: MCPToolDef[]; cachedAt: number }
   const toolCache = new Map<string, ToolCacheEntry>()
-  const STATUS_AUTO_HEAL_COOLDOWN_MS = 15_000
-  const statusAutoHealAttemptAt = new Map<string, number>()
   const BUILTIN_LOCAL_MCP_SERVERS = new Set(["calendar", "consciousness", "memory", "portfolio"])
 
   type LocalFailureClass =
     | "connection_closed"
     | "spawn_failed"
+    | "runtime_crash"
     | "timeout"
     | "protocol_error"
     | "crash_loop"
@@ -104,6 +107,24 @@ export namespace MCP {
       if (serverMutexes.get(serverName) === newMutex) {
         serverMutexes.delete(serverName)
       }
+    }
+  }
+
+  async function withLocalStartupGate<T>(fn: () => T | Promise<T>): Promise<T> {
+    const pending = localStartupGate
+    let release: () => void
+    const next = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    localStartupGate = pending.then(
+      () => next,
+      () => next,
+    )
+    await pending
+    try {
+      return await fn()
+    } finally {
+      release!()
     }
   }
 
@@ -192,9 +213,50 @@ export namespace MCP {
     }
   }
 
+  function isCrashLoopStatusMessage(message: string): boolean {
+    return message.includes("Local MCP crash loop [crash_loop]:")
+  }
+
+  function isBunRuntimeCrashMessage(message: string): boolean {
+    const lowered = message.toLowerCase()
+    return (
+      lowered.includes("oh no: bun has crashed") ||
+      lowered.includes("panic(main thread):") ||
+      lowered.includes("illegal instruction") ||
+      lowered.includes("bun.report/")
+    )
+  }
+
+  function normalizeLocalFailureStatusForRead(serverName: string, current: Status, now = Date.now()): Status {
+    if (current.status !== "failed") return current
+
+    const activeCooldown = getActiveLocalCooldown(serverName, now)
+    if (activeCooldown) {
+      return buildLocalFailureStatus(serverName, "crash_loop", current.error, {
+        cooldownActive: true,
+        now,
+      })
+    }
+
+    if (!isCrashLoopStatusMessage(current.error)) return current
+
+    const health = localServerHealth.get(serverName)
+    if (!health?.lastError) return current
+
+    return buildLocalFailureStatus(serverName, health.lastFailureClass ?? "unknown", health.lastError)
+  }
+
   function classifyLocalFailure(error: unknown): { className: LocalFailureClass; message: string } {
     const message = error instanceof Error ? error.message : String(error)
     const lowered = message.toLowerCase()
+
+    if (lowered.includes("[zee-mcp:") && lowered.includes("parent process") && lowered.includes("exiting")) {
+      return { className: "runtime_crash", message }
+    }
+
+    if (isBunRuntimeCrashMessage(message)) {
+      return { className: "runtime_crash", message }
+    }
 
     if (
       lowered.includes("connection closed") ||
@@ -206,6 +268,9 @@ export namespace MCP {
     }
     if (
       lowered.includes("spawn") ||
+      lowered.includes("eagain") ||
+      lowered.includes("emfile") ||
+      lowered.includes("enfile") ||
       lowered.includes("enoent") ||
       lowered.includes("eacces") ||
       lowered.includes("not found") ||
@@ -223,8 +288,19 @@ export namespace MCP {
     return { className: "unknown", message }
   }
 
-  function isRetryableLocalFailure(failureClass: LocalFailureClass): boolean {
+  function isRetryableLocalFailure(failureClass: LocalFailureClass, message: string): boolean {
+    if (failureClass === "spawn_failed") {
+      const lowered = message.toLowerCase()
+      return (
+        lowered.includes("eagain") ||
+        lowered.includes("emfile") ||
+        lowered.includes("enfile") ||
+        lowered.includes("temporarily unavailable")
+      )
+    }
+
     return (
+      failureClass === "runtime_crash" ||
       failureClass === "connection_closed" ||
       failureClass === "timeout" ||
       failureClass === "protocol_error"
@@ -359,9 +435,7 @@ export namespace MCP {
     return resolved
   }
 
-  async function resolveMcpHeaders(
-    headers?: Record<string, string>,
-  ): Promise<Record<string, string> | undefined> {
+  async function resolveMcpHeaders(headers?: Record<string, string>): Promise<Record<string, string> | undefined> {
     if (!headers) return undefined
     const resolved: Record<string, string> = {}
     for (const [key, value] of Object.entries(headers)) {
@@ -593,10 +667,7 @@ export namespace MCP {
           }
         }
 
-        const statusLine =
-          job.status === "running"
-            ? `Job ${job_id} is running.`
-            : `Job ${job_id} is queued.`
+        const statusLine = job.status === "running" ? `Job ${job_id} is running.` : `Job ${job_id} is queued.`
         return {
           content: [{ type: "text", text: `${statusLine} Try again with ${toolId}.` }],
         }
@@ -713,22 +784,6 @@ export namespace MCP {
     return persona?.type === "local"
   }
 
-  function shouldAutoReconnectStatus(name: string, current: Status, config: McpConfigMap): boolean {
-    if (current.status === "disabled") return true
-    if (current.status !== "failed") return false
-    if (!isLocalServer(name, config)) return false
-    if (getActiveLocalCooldown(name)) return false
-    const lowered = current.error.toLowerCase()
-    if (
-      lowered.includes("needs auth") ||
-      lowered.includes("oauth") ||
-      lowered.includes("client registration")
-    ) {
-      return false
-    }
-    return true
-  }
-
   function resolveLocalCommand(
     serverName: string,
     mcp: z.infer<typeof Config.McpLocal>,
@@ -778,6 +833,66 @@ export namespace MCP {
     }
 
     return undefined
+  }
+
+  function resolveLocalCommandVariants(serverName: string, command: string[] | undefined): string[][] {
+    if (!command || command.length === 0) return []
+    if (!isBuiltinLocalServer(serverName)) return [command]
+
+    const resolveTsxRunner = (): string | undefined => {
+      const roots = [getZeeRoot(), Global.Path.source, process.cwd()]
+      for (const root of roots) {
+        const candidate = path.join(root, "node_modules", ".bin", "tsx")
+        if (existsSync(candidate)) return candidate
+      }
+      return undefined
+    }
+
+    const variants: string[][] = []
+    const pushVariant = (candidate: string[]) => {
+      if (candidate.length === 0) return
+      const exists = variants.some(
+        (existing) =>
+          existing.length === candidate.length && existing.every((segment, index) => segment === candidate[index]),
+      )
+      if (!exists) variants.push(candidate)
+    }
+
+    pushVariant(command)
+
+    const normalizedServerName = normalizeBuiltinLocalServerName(serverName)
+    const supportsNodeFallback = LOCAL_NODE_FALLBACK_SERVERS.has(normalizedServerName)
+    const tsxRunner = supportsNodeFallback ? resolveTsxRunner() : undefined
+
+    // Built-in local MCP servers default to `bun run <script>.ts`; if that
+    // runtime path is unstable, fall back to `bun <script>.ts`.
+    const bunCmd = command[0]
+    const scriptArg = command[2]
+    if (bunCmd === "bun" && command[1] === "run" && typeof scriptArg === "string" && scriptArg.endsWith(".ts")) {
+      pushVariant([bunCmd, ...command.slice(2)])
+
+      // Portfolio has shown Bun runtime panics on some hosts; add a Node+tsx
+      // loader fallback as a last resort while keeping the same server script.
+      if (supportsNodeFallback) {
+        if (tsxRunner) {
+          pushVariant([tsxRunner, scriptArg])
+        }
+        pushVariant(["node", "--import", "tsx", scriptArg])
+      }
+      return variants
+    }
+
+    if (supportsNodeFallback) {
+      const scriptCandidate = command.at(-1)
+      if (typeof scriptCandidate === "string" && scriptCandidate.endsWith(".ts")) {
+        if (tsxRunner) {
+          pushVariant([tsxRunner, scriptCandidate])
+        }
+        pushVariant(["node", "--import", "tsx", scriptCandidate])
+      }
+    }
+
+    return variants
   }
 
   const state = Instance.state(
@@ -908,11 +1023,12 @@ export namespace MCP {
   async function createLocalClientAttempt(
     key: string,
     mcp: z.infer<typeof Config.McpLocal>,
+    commandOverride?: string[],
   ): Promise<{ mcpClient?: MCPClient; status: Status; tools?: MCPToolDef[]; error?: unknown }> {
     const cwd = Instance.directory
     // Ensure ZEE_ROOT is set for MCP servers that depend on it
     const zeeRoot = process.env.ZEE_ROOT || getZeeRoot()
-    const resolvedCommand = resolveLocalCommand(key, mcp, zeeRoot)
+    const resolvedCommand = commandOverride ?? resolveLocalCommand(key, mcp, zeeRoot)
     const [cmd, ...args] = resolvedCommand ?? []
     if (!cmd) {
       const error = "Missing command for local MCP server"
@@ -922,6 +1038,30 @@ export namespace MCP {
         status: { status: "failed", error },
         error: new Error(error),
       }
+    }
+
+    const stderrChunks: string[] = []
+    let stderrBytes = 0
+
+    const pushStderrChunk = (text: string) => {
+      if (!text) return
+      stderrChunks.push(text)
+      stderrBytes += Buffer.byteLength(text)
+      while (stderrBytes > LOCAL_STDERR_TAIL_MAX_BYTES && stderrChunks.length > 0) {
+        const removed = stderrChunks.shift() ?? ""
+        stderrBytes -= Buffer.byteLength(removed)
+      }
+    }
+
+    const getStderrTail = (): string | undefined => {
+      const tail = stderrChunks.join("").trim()
+      return tail.length > 0 ? tail : undefined
+    }
+
+    const enrichLocalStartupError = (baseMessage: string): string => {
+      const stderrTail = getStderrTail()
+      if (!stderrTail) return baseMessage
+      return `${baseMessage}\nMCP stderr: ${stderrTail}`
     }
 
     const transport = new StdioClientTransport({
@@ -940,7 +1080,9 @@ export namespace MCP {
       },
     })
     transport.stderr?.on("data", (chunk: Buffer) => {
-      log.info(`mcp stderr: ${chunk.toString()}`, { key })
+      const text = chunk.toString()
+      pushStderrChunk(text)
+      log.info(`mcp stderr: ${text}`, { key })
     })
 
     const connectTimeout = mcp.timeout ?? DEFAULT_TIMEOUT
@@ -959,6 +1101,8 @@ export namespace MCP {
         tools: listed.tools,
       }
     } catch (error) {
+      const baseMessage = error instanceof Error ? error.message : String(error)
+      const detailedMessage = enrichLocalStartupError(baseMessage)
       await client.close().catch((closeError) => {
         log.debug("failed to close local MCP client after startup failure", {
           key,
@@ -969,9 +1113,9 @@ export namespace MCP {
         mcpClient: undefined,
         status: {
           status: "failed",
-          error: error instanceof Error ? error.message : String(error),
+          error: detailedMessage,
         },
-        error,
+        error: new Error(detailedMessage),
       }
     }
   }
@@ -992,9 +1136,15 @@ export namespace MCP {
     }
 
     const totalAttempts = Math.max(1, Math.floor(localMcpResilienceConfig.startupMaxAttempts))
+    const zeeRoot = process.env.ZEE_ROOT || getZeeRoot()
+    const commandVariants = resolveLocalCommandVariants(key, resolveLocalCommand(key, mcp, zeeRoot))
+    let commandVariantIndex = 0
+    let consecutiveConnectionClosedFailures = 0
 
     for (let attempt = 1; attempt <= totalAttempts; attempt++) {
-      const localAttempt = await createLocalClientAttempt(key, mcp)
+      const localAttempt = await withLocalStartupGate(() =>
+        createLocalClientAttempt(key, mcp, commandVariants[commandVariantIndex]),
+      )
       if (localAttempt.mcpClient) {
         markLocalServerHealthy(key)
         return localAttempt
@@ -1003,14 +1153,24 @@ export namespace MCP {
       const statusError =
         "error" in localAttempt.status ? localAttempt.status.error : "Unknown local MCP startup failure"
       const classified = classifyLocalFailure(localAttempt.error ?? statusError)
+      let failureClass: LocalFailureClass = classified.className
+      if (classified.className === "connection_closed") {
+        consecutiveConnectionClosedFailures += 1
+        if (consecutiveConnectionClosedFailures >= 2) {
+          failureClass = "runtime_crash"
+        }
+      } else {
+        consecutiveConnectionClosedFailures = 0
+      }
       const failureNow = Date.now()
-      const health = registerLocalServerFailure(key, classified.className, classified.message, failureNow)
+      const health = registerLocalServerFailure(key, failureClass, classified.message, failureNow)
       const cooldownActive = Boolean(getActiveLocalCooldown(key, failureNow))
 
       if (cooldownActive) {
         log.warn("local MCP crash loop detected; entering cooldown", {
           key,
-          failureClass: classified.className,
+          failureClass,
+          rawFailureClass: classified.className,
           failures: health.consecutiveFailures,
           cooldownUntil: health.cooldownUntil,
         })
@@ -1023,17 +1183,44 @@ export namespace MCP {
         }
       }
 
-      if (attempt >= totalAttempts || !isRetryableLocalFailure(classified.className)) {
+      const retryable = isRetryableLocalFailure(failureClass, classified.message)
+      const shouldAdvanceVariant =
+        attempt < totalAttempts &&
+        commandVariants.length > 1 &&
+        commandVariantIndex < commandVariants.length - 1 &&
+        (failureClass === "runtime_crash" ||
+          isBunRuntimeCrashMessage(classified.message) ||
+          (retryable && commandVariantIndex === 0))
+      if (shouldAdvanceVariant) {
+        const fromCommand = commandVariants[commandVariantIndex] ?? []
+        commandVariantIndex += 1
+        const toCommand = commandVariants[commandVariantIndex] ?? []
+        log.warn("local mcp startup switching command variant", {
+          key,
+          attempt,
+          totalAttempts,
+          commandVariantIndex,
+          commandVariantCount: commandVariants.length,
+          fromCommand,
+          toCommand,
+          failureClass,
+          rawFailureClass: classified.className,
+          error: classified.message,
+        })
+      }
+
+      if (attempt >= totalAttempts || !retryable) {
         log.error("local mcp startup failed", {
           key,
           attempt,
           totalAttempts,
-          failureClass: classified.className,
+          failureClass,
+          rawFailureClass: classified.className,
           error: classified.message,
         })
         return {
           mcpClient: undefined,
-          status: buildLocalFailureStatus(key, classified.className, classified.message, {
+          status: buildLocalFailureStatus(key, failureClass, classified.message, {
             attempt,
             totalAttempts,
             now: failureNow,
@@ -1047,7 +1234,8 @@ export namespace MCP {
         attempt,
         totalAttempts,
         delayMs,
-        failureClass: classified.className,
+        failureClass,
+        rawFailureClass: classified.className,
         error: classified.message,
       })
       await sleepMs(delayMs)
@@ -1230,7 +1418,9 @@ export namespace MCP {
       for (let i = 0; i < transports.length; i++) {
         if (i !== usedTransportIndex) {
           const { name, transport } = transports[i]
-          transport.close?.().catch((e) => log.debug("failed to close unused transport", { key, transport: name, error: e }))
+          transport
+            .close?.()
+            .catch((e) => log.debug("failed to close unused transport", { key, transport: name, error: e }))
         }
       }
     }
@@ -1309,35 +1499,12 @@ export namespace MCP {
       result[key] = s.status[key] ?? { status: "failed", error: "MCP server not initialized yet" }
     }
 
-    // Self-heal retryable states so local MCPs can recover without manual reconnect.
+    // Normalize local failure statuses for read-only reporting.
     const now = Date.now()
     for (const [name, current] of Object.entries(result)) {
       if (current.status !== "failed") continue
       if (!isLocalServer(name, config)) continue
-      if (!getActiveLocalCooldown(name, now)) continue
-      result[name] = buildLocalFailureStatus(name, "crash_loop", current.error, {
-        cooldownActive: true,
-        now,
-      })
-    }
-
-    for (const [name, current] of Object.entries(result)) {
-      if (!shouldAutoReconnectStatus(name, current, config)) continue
-      const lastAttempt = statusAutoHealAttemptAt.get(name) ?? 0
-      if (now - lastAttempt < STATUS_AUTO_HEAL_COOLDOWN_MS) continue
-      statusAutoHealAttemptAt.set(name, now)
-      try {
-        result[name] = await reconnect(name)
-      } catch (error) {
-        result[name] = {
-          status: "failed",
-          error: error instanceof Error ? error.message : String(error),
-        }
-      } finally {
-        if (result[name]?.status === "connected") {
-          statusAutoHealAttemptAt.delete(name)
-        }
-      }
+      result[name] = normalizeLocalFailureStatusForRead(name, current, now)
     }
 
     return result
@@ -1565,9 +1732,7 @@ export namespace MCP {
     const clientsSnapshot = await clients()
 
     // Identify connected servers
-    const connectedServers = Object.keys(clientsSnapshot).filter(
-      (name) => s.status[name]?.status === "connected",
-    )
+    const connectedServers = Object.keys(clientsSnapshot).filter((name) => s.status[name]?.status === "connected")
 
     // Identify servers that need a fresh listTools() call (no cache entry)
     const uncachedServers = connectedServers.filter((name) => !toolCache.has(name))
@@ -1628,9 +1793,7 @@ export namespace MCP {
 
       for (const mcpTool of cached.tools) {
         const sanitizedToolName = mcpTool.name.replace(/[^a-zA-Z0-9_-]/g, "_")
-        const toolId = sanitizedToolName in result
-          ? sanitizedClientName + "_" + sanitizedToolName
-          : sanitizedToolName
+        const toolId = sanitizedToolName in result ? sanitizedClientName + "_" + sanitizedToolName : sanitizedToolName
         result[toolId] = convertMcpTool(mcpTool, clientName, {
           asyncEnabled,
           pollToolId,
@@ -1685,11 +1848,7 @@ export namespace MCP {
     return result
   }
 
-  export async function callTool(
-    serverName: string,
-    toolName: string,
-    args: Record<string, unknown> = {},
-  ) {
+  export async function callTool(serverName: string, toolName: string, args: Record<string, unknown> = {}) {
     const s = await state()
     let client = s.clients[serverName]
 

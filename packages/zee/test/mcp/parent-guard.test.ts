@@ -35,4 +35,30 @@ describe("mcp parent guard", () => {
     // Ensure callback can be called without throwing
     callback?.()
   })
+
+  test("installMcpParentGuard does not exit when parent is alive even if ppid differs", () => {
+    let exited: number | undefined
+    let callback: (() => void) | undefined
+
+    const guard = installMcpParentGuard("memory", {
+      env: { ZEE_PARENT_PID: "777" },
+      getPpid: () => 999,
+      isAlive: () => true,
+      logger: () => {},
+      exitFn: (code?: number) => {
+        exited = code
+      },
+      setIntervalFn: ((fn: () => void) => {
+        callback = fn
+        return { unref() {} } as unknown as NodeJS.Timeout
+      }) as typeof setInterval,
+      clearIntervalFn: (() => {}) as typeof clearInterval,
+    })
+
+    expect(guard).toBeDefined()
+    expect(exited).toBeUndefined()
+
+    callback?.()
+    expect(exited).toBeUndefined()
+  })
 })

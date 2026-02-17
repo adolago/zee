@@ -12,4 +12,3 @@ describe("Filesystem", () => {
     expect(Filesystem.contains("C:\\parent", "D:\\child")).toBe(false)
   })
 })
-

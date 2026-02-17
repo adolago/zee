@@ -273,7 +273,11 @@ export namespace LLM {
     // Enhanced parameter logging for debugging
     l.info("stream params", {
       temperature: params.temperature,
-      temperatureSource: input.agent.modelParams ? "modelParams" : input.agent.temperature !== undefined ? "agent" : "model",
+      temperatureSource: input.agent.modelParams
+        ? "modelParams"
+        : input.agent.temperature !== undefined
+          ? "agent"
+          : "model",
       topP: params.topP,
       topPSource: input.agent.modelParams ? "modelParams" : input.agent.topP !== undefined ? "agent" : "model",
       topK: params.topK,
@@ -373,21 +377,21 @@ export namespace LLM {
       tools,
       maxOutputTokens,
       abortSignal: input.abort,
-	      headers: {
-	        ...(isCodex
-	          ? {
-	              originator: "zee",
-	              "User-Agent": `zee/${Installation.VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`,
-	              session_id: input.sessionID,
-	            }
-	          : input.model.providerID !== "anthropic"
-	            ? {
-	                "User-Agent": `zee/${Installation.VERSION}`,
-	              }
-	            : undefined),
-	        ...input.model.headers,
-	        ...headers,
-	      },
+      headers: {
+        ...(isCodex
+          ? {
+              originator: "zee",
+              "User-Agent": `zee/${Installation.VERSION} (${os.platform()} ${os.release()}; ${os.arch()})`,
+              session_id: input.sessionID,
+            }
+          : input.model.providerID !== "anthropic"
+            ? {
+                "User-Agent": `zee/${Installation.VERSION}`,
+              }
+            : undefined),
+        ...input.model.headers,
+        ...headers,
+      },
       maxRetries: input.retries ?? 3, // Default to 3 retries for transient failures (timeouts, 503, 429)
       messages: [
         ...(isCodex

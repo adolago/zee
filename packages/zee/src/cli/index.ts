@@ -94,30 +94,24 @@ export {
   // Theme mappings
   themeToAnsi,
   personaColors,
-} from "./style";
+} from "./style"
 
 // =============================================================================
 // Box Drawing Helpers (from box.ts)
 // =============================================================================
 
-export {
-  box,
-  BorderStyle,
-  type BoxOptions,
-  type BorderChars,
-} from "./box";
+export { box, BorderStyle, type BoxOptions, type BorderChars } from "./box"
 
 // =============================================================================
 // UI Namespace (from ui.ts)
 // =============================================================================
 
-export { UI } from "./ui";
+export { UI } from "./ui"
 
 // =============================================================================
 // Re-export types explicitly for convenience
 // =============================================================================
 
-export type {
-  // From style.ts (these are const objects, not types, but re-exported for completeness)
-  // Style, Symbols, Message, StatusBar, themeToAnsi, personaColors
-} from "./style";
+export type {} from // From style.ts (these are const objects, not types, but re-exported for completeness)
+// Style, Symbols, Message, StatusBar, themeToAnsi, personaColors
+"./style"

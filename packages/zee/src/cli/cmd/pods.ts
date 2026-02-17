@@ -246,7 +246,9 @@ export const PodsModelsCommand = cmd({
     }
     for (const model of models) {
       UI.println(`${model.name} (${model.status})`)
-      UI.println(UI.Style.TEXT_DIM + `  pod=${model.pod} port=${model.port} model=${model.model}` + UI.Style.TEXT_NORMAL)
+      UI.println(
+        UI.Style.TEXT_DIM + `  pod=${model.pod} port=${model.port} model=${model.model}` + UI.Style.TEXT_NORMAL,
+      )
     }
   },
 })
@@ -297,4 +299,3 @@ export const PodsConfigCommand = cmd({
     UI.println(`Tracked models: ${cfg.models.length}`)
   },
 })
-

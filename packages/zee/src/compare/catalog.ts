@@ -183,12 +183,25 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: {
         level: "partial",
-        notes: "Zee does not expose the upstream `web` command, but includes web/hosted packages and gateway UI surfaces.",
+        notes:
+          "Zee does not expose the upstream `web` command, but includes web/hosted packages and gateway UI surfaces.",
         evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
       },
-      opencode: { level: "yes", notes: "Includes web/console packages and web surfaces.", evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }] },
-      openclaw: { level: "yes", notes: "Control UI + WebChat.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
-      pimono: { level: "partial", notes: "Provides pi-web-ui components, not a single product web app.", evidence: [{ kind: "note", ref: "badlogic/pi-mono README (main)" }] },
+      opencode: {
+        level: "yes",
+        notes: "Includes web/console packages and web surfaces.",
+        evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }],
+      },
+      openclaw: {
+        level: "yes",
+        notes: "Control UI + WebChat.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
+      pimono: {
+        level: "partial",
+        notes: "Provides pi-web-ui components, not a single product web app.",
+        evidence: [{ kind: "note", ref: "badlogic/pi-mono README (main)" }],
+      },
     },
   },
   {
@@ -205,13 +218,19 @@ export const FEATURE_CATALOG: Feature[] = [
           { kind: "repo_path", ref: "packages/zee/src/cli/cmd/generate.ts" },
         ],
       },
-      opencode: { level: "partial", notes: "Client/server architecture implies an API surface; exact OpenAPI generation varies by version." },
+      opencode: {
+        level: "partial",
+        notes: "Client/server architecture implies an API surface; exact OpenAPI generation varies by version.",
+      },
       openclaw: {
         level: "yes",
         notes: "Gateway control plane includes HTTP + WS endpoints for control surfaces.",
         evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
       },
-      pimono: { level: "partial", notes: "Includes multiple CLIs and packages; not a single documented OpenAPI surface." },
+      pimono: {
+        level: "partial",
+        notes: "Includes multiple CLIs and packages; not a single documented OpenAPI surface.",
+      },
     },
   },
   {
@@ -221,8 +240,15 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Runs as a background service (systemd/launchd) for always-on operation.",
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/daemon.ts" }] },
-      opencode: { level: "partial", notes: "Has client/server and desktop modes; not primarily an always-on messaging daemon." },
-      openclaw: { level: "yes", notes: "Wizard installs a gateway daemon.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
+      opencode: {
+        level: "partial",
+        notes: "Has client/server and desktop modes; not primarily an always-on messaging daemon.",
+      },
+      openclaw: {
+        level: "yes",
+        notes: "Wizard installs a gateway daemon.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -250,8 +276,15 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: { level: "yes", evidence: [{ kind: "doc", ref: "docs/architecture/agent-personas.md" }] },
       opencode: { level: "no" },
-      openclaw: { level: "partial", notes: "Supports multi-agent routing for channels/workspaces; differs from Zee personas.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
-      pimono: { level: "partial", notes: "Provides primitives to build multi-agent systems; not a product-level persona router." },
+      openclaw: {
+        level: "partial",
+        notes: "Supports multi-agent routing for channels/workspaces; differs from Zee personas.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
+      pimono: {
+        level: "partial",
+        notes: "Provides primitives to build multi-agent systems; not a product-level persona router.",
+      },
     },
   },
   {
@@ -262,8 +295,16 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: { level: "yes", evidence: [{ kind: "doc", ref: "docs/architecture/session-system.md" }] },
       opencode: { level: "yes", notes: "Core to OpenCode’s coding workflow." },
-      openclaw: { level: "yes", notes: "Session model is a core concept.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
-      pimono: { level: "partial", notes: "pi-agent-core provides runtime state; session UX depends on the embedding product (pi-coding-agent / consumers)." },
+      openclaw: {
+        level: "yes",
+        notes: "Session model is a core concept.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
+      pimono: {
+        level: "partial",
+        notes:
+          "pi-agent-core provides runtime state; session UX depends on the embedding product (pi-coding-agent / consumers).",
+      },
     },
   },
   {
@@ -274,7 +315,8 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: {
         level: "yes",
-        notes: "WebSocket gateway control plane (Swabble) for channels/tools/events, with CLI helpers and REST bridging.",
+        notes:
+          "WebSocket gateway control plane (Swabble) for channels/tools/events, with CLI helpers and REST bridging.",
         evidence: [
           { kind: "repo_path", ref: "packages/zee/Swabble/src/gateway/server.ts" },
           { kind: "repo_path", ref: "packages/zee/src/gateway/embedded-gateway.ts" },
@@ -296,7 +338,8 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: {
         level: "yes",
-        notes: "Server runtime (`zee daemon`/`zee serve`) and client UI (`zee attach`/`zee client`) are explicitly separated; remote targeting uses ZEE_URL + auth.",
+        notes:
+          "Server runtime (`zee daemon`/`zee serve`) and client UI (`zee attach`/`zee client`) are explicitly separated; remote targeting uses ZEE_URL + auth.",
         evidence: [
           { kind: "repo_path", ref: "packages/zee/src/cli/cmd/daemon.ts" },
           { kind: "repo_path", ref: "packages/zee/src/cli/cmd/serve.ts" },
@@ -307,7 +350,10 @@ export const FEATURE_CATALOG: Feature[] = [
       },
       opencode: { level: "yes", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
       openclaw: { level: "yes", notes: "Gateway is the control plane; nodes can be remote." },
-      pimono: { level: "partial", notes: "pi-pods and other packages target deployments; not a single end-user client/server split." },
+      pimono: {
+        level: "partial",
+        notes: "pi-pods and other packages target deployments; not a single end-user client/server split.",
+      },
     },
   },
 
@@ -321,8 +367,16 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Uses XDG Base Dir paths for config/cache/state on Linux.",
     support: {
       zee: { level: "yes", evidence: [{ kind: "doc", ref: "README.md" }] },
-      opencode: { level: "yes", notes: "OpenCode uses XDG-style config/state for most installs.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
-      openclaw: { level: "no", notes: "OpenClaw uses a dedicated state root (e.g. ~/.openclaw).", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      opencode: {
+        level: "yes",
+        notes: "OpenCode uses XDG-style config/state for most installs.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
+      openclaw: {
+        level: "no",
+        notes: "OpenClaw uses a dedicated state root (e.g. ~/.openclaw).",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "unknown" },
     },
   },
@@ -333,8 +387,16 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Supports a project-local directory bundle (.zee/ or .opencode/) for config/tools/themes/plans.",
     support: {
       zee: { level: "yes", notes: "Uses .zee/ in project root.", evidence: [{ kind: "doc", ref: "README.md" }] },
-      opencode: { level: "yes", notes: "Uses .opencode/ in project root.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
-      openclaw: { level: "no", notes: "OpenClaw prefers the state dir + a workspace repo model.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      opencode: {
+        level: "yes",
+        notes: "Uses .opencode/ in project root.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
+      openclaw: {
+        level: "no",
+        notes: "OpenClaw prefers the state dir + a workspace repo model.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -345,8 +407,16 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Has a primary global config file path for defaults and policies.",
     support: {
       zee: { level: "yes", notes: "~/.config/zee/zee.jsonc", evidence: [{ kind: "doc", ref: "README.md" }] },
-      opencode: { level: "yes", notes: "~/.config/opencode/opencode.jsonc (varies by install)", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
-      openclaw: { level: "yes", notes: "~/.openclaw/openclaw.json (or $OPENCLAW_STATE_DIR)", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      opencode: {
+        level: "yes",
+        notes: "~/.config/opencode/opencode.jsonc (varies by install)",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
+      openclaw: {
+        level: "yes",
+        notes: "~/.openclaw/openclaw.json (or $OPENCLAW_STATE_DIR)",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "partial", notes: "Per-package configuration; not a single global product config." },
     },
   },
@@ -362,8 +432,15 @@ export const FEATURE_CATALOG: Feature[] = [
         evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
       },
       opencode: { level: "partial", notes: "Supports env vars and config-based defaults depending on provider." },
-      openclaw: { level: "yes", notes: "Uses a state-dir .env plus env vars; wizard-driven onboarding.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
-      pimono: { level: "partial", notes: "Depends on the consumer; pi-ai supports multiple providers and key sources." },
+      openclaw: {
+        level: "yes",
+        notes: "Uses a state-dir .env plus env vars; wizard-driven onboarding.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
+      pimono: {
+        level: "partial",
+        notes: "Depends on the consumer; pi-ai supports multiple providers and key sources.",
+      },
     },
   },
   {
@@ -374,7 +451,11 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: { level: "yes", notes: "ZEE_STATE_DIR", evidence: [{ kind: "doc", ref: "README.md" }] },
       opencode: { level: "unknown" },
-      openclaw: { level: "yes", notes: "OPENCLAW_STATE_DIR", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      openclaw: {
+        level: "yes",
+        notes: "OPENCLAW_STATE_DIR",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "unknown" },
     },
   },
@@ -384,9 +465,17 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Workspace/worktree model",
     description: "Has a canonical workspace/worktree location where projects/sessions run.",
     support: {
-      zee: { level: "yes", notes: "Default worktree under XDG data; override via ZEE_WORKSPACE_DIR.", evidence: [{ kind: "doc", ref: "README.md" }] },
+      zee: {
+        level: "yes",
+        notes: "Default worktree under XDG data; override via ZEE_WORKSPACE_DIR.",
+        evidence: [{ kind: "doc", ref: "README.md" }],
+      },
       opencode: { level: "yes", notes: "Project worktree/session model is core to coding workflows." },
-      openclaw: { level: "yes", notes: "~/.openclaw/workspace is the canonical surface.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      openclaw: {
+        level: "yes",
+        notes: "~/.openclaw/workspace is the canonical surface.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "partial", notes: "Depends on the specific CLI (pi-coding-agent) and consumer." },
     },
   },
@@ -400,10 +489,25 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Semantic memory",
     description: "Semantic recall beyond session history (embeddings, retrieval, long-term memory).",
     support: {
-      zee: { level: "yes", notes: "Qdrant-backed semantic memory.", evidence: [{ kind: "repo_path", ref: "src/memory" }] },
-      opencode: { level: "no", notes: "Primarily session/worktree focused; does not ship Qdrant-style semantic memory in the same way.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
-      openclaw: { level: "yes", notes: "Local-first memory and indexing surfaces; differs in storage model.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
-      pimono: { level: "partial", notes: "Provides LLM/runtime primitives; memory layer depends on the embedding product." },
+      zee: {
+        level: "yes",
+        notes: "Qdrant-backed semantic memory.",
+        evidence: [{ kind: "repo_path", ref: "src/memory" }],
+      },
+      opencode: {
+        level: "no",
+        notes: "Primarily session/worktree focused; does not ship Qdrant-style semantic memory in the same way.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
+      openclaw: {
+        level: "yes",
+        notes: "Local-first memory and indexing surfaces; differs in storage model.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
+      pimono: {
+        level: "partial",
+        notes: "Provides LLM/runtime primitives; memory layer depends on the embedding product.",
+      },
     },
   },
   {
@@ -414,7 +518,11 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "src/memory" }] },
       opencode: { level: "no" },
-      openclaw: { level: "no", notes: "Uses local indexing (sqlite-vec) rather than Qdrant by default.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      openclaw: {
+        level: "no",
+        notes: "Uses local indexing (sqlite-vec) rather than Qdrant by default.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -424,9 +532,17 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Local indexing store",
     description: "Local embedding index (e.g. sqlite-vec) and plugin-based memory stores.",
     support: {
-      zee: { level: "partial", notes: "Gateway embeds memory extensions (e.g. LanceDB) in Swabble; primary semantic memory is Qdrant.", evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/extensions" }] },
+      zee: {
+        level: "partial",
+        notes: "Gateway embeds memory extensions (e.g. LanceDB) in Swabble; primary semantic memory is Qdrant.",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/extensions" }],
+      },
       opencode: { level: "no" },
-      openclaw: { level: "yes", notes: "Uses sqlite-vec for local indexing and memory surfaces.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      openclaw: {
+        level: "yes",
+        notes: "Uses sqlite-vec for local indexing and memory surfaces.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -436,7 +552,13 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Session export/import",
     description: "Exports/imports session data for portability and backups.",
     support: {
-      zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/export.ts" }, { kind: "repo_path", ref: "packages/zee/src/cli/cmd/import.ts" }] },
+      zee: {
+        level: "yes",
+        evidence: [
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/export.ts" },
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/import.ts" },
+        ],
+      },
       opencode: { level: "unknown" },
       openclaw: { level: "partial", notes: "Sessions are persisted; export UX differs." },
       pimono: { level: "no" },
@@ -452,9 +574,20 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Skills system (SKILL.md)",
     description: "Skill packaging using SKILL.md files (with metadata and progressive disclosure).",
     support: {
-      zee: { level: "yes", notes: "Persona-scoped skills under .agents/skills.", evidence: [{ kind: "doc", ref: "AGENTS.md" }] },
-      opencode: { level: "no", notes: "OpenCode uses agent modes and extensions; does not ship the same SKILL.md catalog model." },
-      openclaw: { level: "yes", notes: "Skills live under skills/ and user state.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      zee: {
+        level: "yes",
+        notes: "Persona-scoped skills under .agents/skills.",
+        evidence: [{ kind: "doc", ref: "AGENTS.md" }],
+      },
+      opencode: {
+        level: "no",
+        notes: "OpenCode uses agent modes and extensions; does not ship the same SKILL.md catalog model.",
+      },
+      openclaw: {
+        level: "yes",
+        notes: "Skills live under skills/ and user state.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -465,7 +598,11 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Install/search/remove plugins via a first-class CLI.",
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/plugin" }] },
-      opencode: { level: "no", notes: "Zee’s plugin command group is not present in the upstream OpenCode command surface.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      opencode: {
+        level: "no",
+        notes: "Zee’s plugin command group is not present in the upstream OpenCode command surface.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       openclaw: { level: "partial", notes: "Has extensions and skills management; terminology and packaging differ." },
       pimono: { level: "no" },
     },
@@ -478,7 +615,10 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/mcp.ts" }] },
       opencode: { level: "yes", notes: "Core MCP support is part of the OpenCode lineage." },
-      openclaw: { level: "partial", notes: "Has a broad tool system; MCP integration may exist but is not the primary abstraction." },
+      openclaw: {
+        level: "partial",
+        notes: "Has a broad tool system; MCP integration may exist but is not the primary abstraction.",
+      },
       pimono: { level: "unknown" },
     },
   },
@@ -488,9 +628,21 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Tool permissions/approvals",
     description: "Interactive and/or policy-driven permission gating for tools and commands.",
     support: {
-      zee: { level: "yes", notes: "Fine-grained tool policy + sandbox gates.", evidence: [{ kind: "repo_path", ref: "packages/zee/src/permission" }] },
-      opencode: { level: "partial", notes: "Built-in agent modes include a read-only/permissioned mode.", evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }] },
-      openclaw: { level: "yes", notes: "Pairing/allowlists + approvals are core for real channels.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
+      zee: {
+        level: "yes",
+        notes: "Fine-grained tool policy + sandbox gates.",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/src/permission" }],
+      },
+      opencode: {
+        level: "partial",
+        notes: "Built-in agent modes include a read-only/permissioned mode.",
+        evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }],
+      },
+      openclaw: {
+        level: "yes",
+        notes: "Pairing/allowlists + approvals are core for real channels.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
       pimono: { level: "partial", notes: "Runtime and tools exist; approval model depends on consumers." },
     },
   },
@@ -502,7 +654,11 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/skill/scanner.ts" }] },
       opencode: { level: "no" },
-      openclaw: { level: "yes", notes: "Upstream has similar supply-chain scanning patterns (ported/adapted in Zee).", evidence: [{ kind: "doc", ref: "docs/architecture/openclaw-delta-map.md" }] },
+      openclaw: {
+        level: "yes",
+        notes: "Upstream has similar supply-chain scanning patterns (ported/adapted in Zee).",
+        evidence: [{ kind: "doc", ref: "docs/architecture/openclaw-delta-map.md" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -529,7 +685,11 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Language Server Protocol integration for code intelligence in the agent workflow.",
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/lsp" }] },
-      opencode: { level: "yes", notes: "LSP support is a core OpenCode capability.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      opencode: {
+        level: "yes",
+        notes: "LSP support is a core OpenCode capability.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       openclaw: { level: "no", notes: "Not a primary surface for OpenClaw." },
       pimono: { level: "no" },
     },
@@ -541,8 +701,16 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Project worktrees for running tools, reading files, and isolating sessions per repo.",
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/worktree" }] },
-      opencode: { level: "yes", notes: "Worktree/session model is core to OpenCode.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
-      openclaw: { level: "partial", notes: "Has a workspace repo model for assistant context rather than code worktrees.", evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }] },
+      opencode: {
+        level: "yes",
+        notes: "Worktree/session model is core to OpenCode.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
+      openclaw: {
+        level: "partial",
+        notes: "Has a workspace repo model for assistant context rather than code worktrees.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+      },
       pimono: { level: "partial", notes: "Depends on pi-coding-agent behavior; not a universal repo worktree system." },
     },
   },
@@ -553,8 +721,14 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Generates/applies patches and diffs as a core editing primitive.",
     support: {
       zee: { level: "yes", evidence: [{ kind: "repo_path", ref: "packages/zee/src/patch" }] },
-      opencode: { level: "yes", notes: "Patch editing is a typical OpenCode workflow; verify exact implementation in upstream." },
-      openclaw: { level: "partial", notes: "Can do edits via tools/nodes; patch-first workflows are not the primary surface." },
+      opencode: {
+        level: "yes",
+        notes: "Patch editing is a typical OpenCode workflow; verify exact implementation in upstream.",
+      },
+      openclaw: {
+        level: "partial",
+        notes: "Can do edits via tools/nodes; patch-first workflows are not the primary surface.",
+      },
       pimono: { level: "no" },
     },
   },
@@ -564,8 +738,15 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "VS Code extension",
     description: "Editor extension to integrate the agent with VS Code.",
     support: {
-      zee: { level: "yes", notes: "Ships a VS Code SDK/extension in-repo.", evidence: [{ kind: "repo_path", ref: "sdks/vscode" }] },
-      opencode: { level: "yes", notes: "Upstream ships editor/desktop surfaces; VS Code extension exists in the OpenCode ecosystem." },
+      zee: {
+        level: "yes",
+        notes: "Ships a VS Code SDK/extension in-repo.",
+        evidence: [{ kind: "repo_path", ref: "sdks/vscode" }],
+      },
+      opencode: {
+        level: "yes",
+        notes: "Upstream ships editor/desktop surfaces; VS Code extension exists in the OpenCode ecosystem.",
+      },
       openclaw: { level: "no" },
       pimono: { level: "no" },
     },
@@ -576,9 +757,16 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "GitHub automation",
     description: "First-class GitHub workflows (PR/issue automation) via a dedicated command surface.",
     support: {
-      zee: { level: "yes", notes: "Includes `zee github` and `zee pr` flows.", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/github.ts" }] },
+      zee: {
+        level: "yes",
+        notes: "Includes `zee github` and `zee pr` flows.",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/github.ts" }],
+      },
       opencode: { level: "unknown" },
-      openclaw: { level: "partial", notes: "Can act on GitHub via tools, but not necessarily a dedicated agent product surface." },
+      openclaw: {
+        level: "partial",
+        notes: "Can act on GitHub via tools, but not necessarily a dedicated agent product surface.",
+      },
       pimono: { level: "no" },
     },
   },
@@ -592,7 +780,11 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "WhatsApp",
     description: "WhatsApp channel integration for inbound/outbound messaging.",
     support: {
-      zee: { level: "yes", notes: "WhatsApp support exists in Zee’s embedded gateway.", evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/src/web" }] },
+      zee: {
+        level: "yes",
+        notes: "WhatsApp support exists in Zee’s embedded gateway.",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/src/web" }],
+      },
       opencode: { level: "no" },
       openclaw: { level: "yes", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
       pimono: { level: "no" },
@@ -606,7 +798,8 @@ export const FEATURE_CATALOG: Feature[] = [
     support: {
       zee: {
         level: "yes",
-        notes: "Bundled first-party channels include WhatsApp, Telegram, Slack, and Discord with shared policy/status/audit integration.",
+        notes:
+          "Bundled first-party channels include WhatsApp, Telegram, Slack, and Discord with shared policy/status/audit integration.",
         evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/extensions" }],
       },
       opencode: { level: "no" },
@@ -660,10 +853,22 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Multi-provider LLM support",
     description: "Supports multiple LLM providers (OpenAI/Anthropic/Google/etc).",
     support: {
-      zee: { level: "yes", notes: "Uses the AI SDK provider stack and gateway provider integrations.", evidence: [{ kind: "repo_path", ref: "packages/zee/package.json" }] },
+      zee: {
+        level: "yes",
+        notes: "Uses the AI SDK provider stack and gateway provider integrations.",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/package.json" }],
+      },
       opencode: { level: "yes", notes: "Multi-provider support is core to OpenCode deployments." },
-      openclaw: { level: "yes", notes: "Supports any model; recommended subscription-based flows for Anthropic/OpenAI.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
-      pimono: { level: "yes", notes: "pi-ai provides a unified multi-provider API.", evidence: [{ kind: "note", ref: "badlogic/pi-mono README (main)" }] },
+      openclaw: {
+        level: "yes",
+        notes: "Supports any model; recommended subscription-based flows for Anthropic/OpenAI.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
+      pimono: {
+        level: "yes",
+        notes: "pi-ai provides a unified multi-provider API.",
+        evidence: [{ kind: "note", ref: "badlogic/pi-mono README (main)" }],
+      },
     },
   },
   {
@@ -672,7 +877,11 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "OAuth subscriptions",
     description: "OAuth-based auth flows for subscription products (e.g., Claude Pro/Max, ChatGPT).",
     support: {
-      zee: { level: "partial", notes: "Zee supports plugin-based OAuth flows for some providers; coverage depends on installed plugins.", evidence: [{ kind: "repo_path", ref: "plugins/index.json" }] },
+      zee: {
+        level: "partial",
+        notes: "Zee supports plugin-based OAuth flows for some providers; coverage depends on installed plugins.",
+        evidence: [{ kind: "repo_path", ref: "plugins/index.json" }],
+      },
       opencode: { level: "partial", notes: "Auth flows vary by provider; OpenCode ecosystem includes auth helpers." },
       openclaw: { level: "yes", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
       pimono: { level: "no" },
@@ -684,10 +893,17 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Local models",
     description: "Local model backends (e.g., Ollama) as a supported provider.",
     support: {
-      zee: { level: "yes", notes: "Includes an Ollama provider in the provider stack.", evidence: [{ kind: "doc", ref: "docs/architecture/openclaw-delta-map.md" }] },
+      zee: {
+        level: "yes",
+        notes: "Includes an Ollama provider in the provider stack.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/openclaw-delta-map.md" }],
+      },
       opencode: { level: "yes", notes: "Common in OpenCode deployments; verify exact provider set in upstream." },
       openclaw: { level: "yes", notes: "Supports local and remote models; configuration differs." },
-      pimono: { level: "partial", notes: "pi-ai supports multiple deployment targets; local backend coverage depends on package configuration." },
+      pimono: {
+        level: "partial",
+        notes: "pi-ai supports multiple deployment targets; local backend coverage depends on package configuration.",
+      },
     },
   },
   {
@@ -696,7 +912,11 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Embeddings",
     description: "Embeddings support for memory/search.",
     support: {
-      zee: { level: "yes", notes: "Google-only embeddings for semantic memory by default.", evidence: [{ kind: "doc", ref: "docs/architecture/openclaw-delta-map.md" }] },
+      zee: {
+        level: "yes",
+        notes: "Google-only embeddings for semantic memory by default.",
+        evidence: [{ kind: "doc", ref: "docs/architecture/openclaw-delta-map.md" }],
+      },
       opencode: { level: "unknown" },
       openclaw: { level: "yes", notes: "Supports embedding/indexing flows; storage differs." },
       pimono: { level: "unknown" },
@@ -712,9 +932,17 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "systemd/launchd install",
     description: "Installs a user service for always-on operation on supported platforms.",
     support: {
-      zee: { level: "yes", notes: "Includes daemon install helpers and systemd scripts.", evidence: [{ kind: "repo_path", ref: "scripts/systemd" }] },
+      zee: {
+        level: "yes",
+        notes: "Includes daemon install helpers and systemd scripts.",
+        evidence: [{ kind: "repo_path", ref: "scripts/systemd" }],
+      },
       opencode: { level: "unknown" },
-      openclaw: { level: "yes", notes: "Wizard installs launchd/systemd user service.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
+      openclaw: {
+        level: "yes",
+        notes: "Wizard installs launchd/systemd user service.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
       pimono: { level: "no" },
     },
   },
@@ -724,9 +952,17 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Health checks",
     description: "Built-in diagnostics/doctor command for setup and runtime health.",
     support: {
-      zee: { level: "yes", notes: "`zee check`", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/check.ts" }] },
+      zee: {
+        level: "yes",
+        notes: "`zee check`",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/check.ts" }],
+      },
       opencode: { level: "unknown" },
-      openclaw: { level: "yes", notes: "`openclaw doctor`", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
+      openclaw: {
+        level: "yes",
+        notes: "`openclaw doctor`",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
       pimono: { level: "partial", notes: "Monorepo has CI/test scripts; not a single end-user doctor flow." },
     },
   },
@@ -736,7 +972,11 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Crash report generator",
     description: "Generates a structured crash report bundle for issue filing.",
     support: {
-      zee: { level: "yes", notes: "`zee bug-report`", evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/bug-report.ts" }] },
+      zee: {
+        level: "yes",
+        notes: "`zee bug-report`",
+        evidence: [{ kind: "repo_path", ref: "packages/zee/src/cli/cmd/bug-report.ts" }],
+      },
       opencode: { level: "unknown" },
       openclaw: { level: "unknown" },
       pimono: { level: "no" },
@@ -748,7 +988,11 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Upstream sync lanes (maintainers)",
     description: "Maintainer tooling and docs for tracking upstream deltas across multiple repos.",
     support: {
-      zee: { level: "yes", notes: "Tracks OpenCode/OpenClaw/Pi-mono upstream pins and port lanes.", evidence: [{ kind: "repo_path", ref: "docs/architecture/upstream-differences.md" }] },
+      zee: {
+        level: "yes",
+        notes: "Tracks OpenCode/OpenClaw/Pi-mono upstream pins and port lanes.",
+        evidence: [{ kind: "repo_path", ref: "docs/architecture/upstream-differences.md" }],
+      },
       opencode: { level: "no" },
       openclaw: { level: "no" },
       pimono: { level: "no" },
@@ -767,7 +1011,11 @@ export const FEATURE_CATALOG: Feature[] = [
       zee: { level: "yes", evidence: [{ kind: "doc", ref: "README.md" }] },
       opencode: { level: "yes", evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }] },
       openclaw: { level: "yes", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
-      pimono: { level: "yes", notes: "Multiple npm packages published from the monorepo.", evidence: [{ kind: "note", ref: "badlogic/pi-mono README (main)" }] },
+      pimono: {
+        level: "yes",
+        notes: "Multiple npm packages published from the monorepo.",
+        evidence: [{ kind: "note", ref: "badlogic/pi-mono README (main)" }],
+      },
     },
   },
   {
@@ -776,9 +1024,21 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Prebuilt binaries",
     description: "Ships prebuilt binaries (or installers) in addition to source install.",
     support: {
-      zee: { level: "partial", notes: "Prebuilt Linux x64; other platforms build from source.", evidence: [{ kind: "doc", ref: "README.md" }] },
-      opencode: { level: "yes", notes: "Install script + multiple package-manager distributions; desktop releases.", evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }] },
-      openclaw: { level: "partial", notes: "Primary distribution is npm + optional Docker/Nix; companion apps distributed separately.", evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }] },
+      zee: {
+        level: "partial",
+        notes: "Prebuilt Linux x64; other platforms build from source.",
+        evidence: [{ kind: "doc", ref: "README.md" }],
+      },
+      opencode: {
+        level: "yes",
+        notes: "Install script + multiple package-manager distributions; desktop releases.",
+        evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }],
+      },
+      openclaw: {
+        level: "partial",
+        notes: "Primary distribution is npm + optional Docker/Nix; companion apps distributed separately.",
+        evidence: [{ kind: "note", ref: "openclaw/openclaw README (main)" }],
+      },
       pimono: { level: "no" },
     },
   },

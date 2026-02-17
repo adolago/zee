@@ -345,9 +345,7 @@ export namespace WeztermOrchestration {
       const whatsapp = cachedStatus.services?.whatsapp ? "●" : "○"
       const wezterm = isInitialized ? "●" : "○"
 
-      lines.push(
-        `║ Services: Persistence ${persistence}  WhatsApp ${whatsapp}  WezTerm ${wezterm} ║`,
-      )
+      lines.push(`║ Services: Persistence ${persistence}  WhatsApp ${whatsapp}  WezTerm ${wezterm} ║`)
 
       lines.push("╠════════════════════════════════════════════════════════╣")
 

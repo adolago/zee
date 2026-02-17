@@ -145,7 +145,10 @@ function shouldAutoRefreshModels(): boolean {
 
 if (shouldAutoRefreshModels()) {
   void ModelsDev.refresh({ timeoutMs: 2000 })
-  setInterval(async () => {
-    await ModelsDev.refresh({ timeoutMs: 5000 })
-  }, 60 * 1000 * 60).unref()
+  setInterval(
+    async () => {
+      await ModelsDev.refresh({ timeoutMs: 5000 })
+    },
+    60 * 1000 * 60,
+  ).unref()
 }

@@ -5,17 +5,14 @@
  * Handles non-streaming (message batching) and automatic permission resolution.
  */
 
-import {
-  BaseSurface,
-  type Surface,
-} from './surface.js';
+import { BaseSurface, type Surface } from "./surface.js"
 import {
   type MessagingSurfaceConfig,
   resolveMessagingSurfaceConfig,
   DEFAULT_PERMISSION_CONFIG,
   mergePermissionConfig,
   resolvePermission,
-} from './config.js';
+} from "./config.js"
 import {
   DEFAULT_CAPABILITIES,
   type PermissionRequest,
@@ -28,10 +25,10 @@ import {
   type ToolCall,
   type ToolResult,
   type ThreadContext,
-} from './types.js';
-import { Log } from '../util/log';
+} from "./types.js"
+import { Log } from "../util/log"
 
-const log = Log.create({ service: 'messaging-surface' });
+const log = Log.create({ service: "messaging-surface" })
 
 // =============================================================================
 // Messaging Platform Handlers
@@ -42,48 +39,48 @@ const log = Log.create({ service: 'messaging-surface' });
  */
 export interface MessagingPlatformHandler {
   /** Platform identifier */
-  readonly platform: 'whatsapp';
+  readonly platform: "whatsapp"
 
   /** Connect to the platform */
-  connect(): Promise<void>;
+  connect(): Promise<void>
 
   /** Disconnect from the platform */
-  disconnect(): Promise<void>;
+  disconnect(): Promise<void>
 
   /** Send a message */
   sendMessage(
     target: string,
     text: string,
     options?: {
-      replyToId?: string;
-      media?: SurfaceMedia[];
-    }
-  ): Promise<void>;
+      replyToId?: string
+      media?: SurfaceMedia[]
+    },
+  ): Promise<void>
 
   /** Send typing indicator */
-  sendTyping(target: string): Promise<void>;
+  sendTyping(target: string): Promise<void>
 
   /** Register message handler */
-  onMessage(handler: (message: PlatformMessage) => void): () => void;
+  onMessage(handler: (message: PlatformMessage) => void): () => void
 }
 
 /**
  * Message from a messaging platform.
  */
 export type PlatformMessage = {
-  id: string;
-  senderId: string;
-  senderName?: string;
-  body: string;
-  timestamp: number;
-  media?: SurfaceMedia[];
-  isGroup: boolean;
-  groupId?: string;
-  groupName?: string;
-  replyToId?: string;
-  wasMentioned?: boolean;
-  platform: 'whatsapp';
-};
+  id: string
+  senderId: string
+  senderName?: string
+  body: string
+  timestamp: number
+  media?: SurfaceMedia[]
+  isGroup: boolean
+  groupId?: string
+  groupName?: string
+  replyToId?: string
+  wasMentioned?: boolean
+  platform: "whatsapp"
+}
 
 // =============================================================================
 // Messaging Surface Capabilities
@@ -100,9 +97,9 @@ const MESSAGING_CAPABILITIES: SurfaceCapabilities = {
   reactions: true,
   messageEditing: false, // Limited editing support
   maxMessageLength: 4096, // Default, varies by platform
-  supportedMediaTypes: ['image/*', 'video/*', 'audio/*', 'application/pdf'],
+  supportedMediaTypes: ["image/*", "video/*", "audio/*", "application/pdf"],
   showThinking: false, // CRITICAL: Reasoning/thinking output must never be shown on messaging platforms
-};
+}
 
 // Platform-specific capability overrides
 const PLATFORM_CAPABILITIES: Record<string, Partial<SurfaceCapabilities>> = {
@@ -112,7 +109,7 @@ const PLATFORM_CAPABILITIES: Record<string, Partial<SurfaceCapabilities>> = {
     messageEditing: false,
     showThinking: false, // Locked: never show thinking on WhatsApp (enforced at multiple layers)
   },
-};
+}
 
 // =============================================================================
 // Message Batching
@@ -122,56 +119,54 @@ const PLATFORM_CAPABILITIES: Record<string, Partial<SurfaceCapabilities>> = {
  * Batches streaming chunks into complete messages for non-streaming surfaces.
  */
 class MessageBatcher {
-  private buffer = '';
-  private media: SurfaceMedia[] = [];
-  private toolOutputs: string[] = [];
-  private replyToId?: string;
+  private buffer = ""
+  private media: SurfaceMedia[] = []
+  private toolOutputs: string[] = []
+  private replyToId?: string
 
   append(chunk: StreamChunk): void {
-    if (chunk.type === 'text' && chunk.text) {
-      this.buffer += chunk.text;
-    } else if (chunk.type === 'tool_end' && chunk.tool?.output) {
-      const output = typeof chunk.tool.output === 'string'
-        ? chunk.tool.output
-        : JSON.stringify(chunk.tool.output);
-      this.toolOutputs.push(`[${chunk.tool.name}]: ${this.truncate(output, 200)}`);
+    if (chunk.type === "text" && chunk.text) {
+      this.buffer += chunk.text
+    } else if (chunk.type === "tool_end" && chunk.tool?.output) {
+      const output = typeof chunk.tool.output === "string" ? chunk.tool.output : JSON.stringify(chunk.tool.output)
+      this.toolOutputs.push(`[${chunk.tool.name}]: ${this.truncate(output, 200)}`)
     }
   }
 
   setReplyTo(messageId: string): void {
-    this.replyToId = messageId;
+    this.replyToId = messageId
   }
 
   addMedia(media: SurfaceMedia): void {
-    this.media.push(media);
+    this.media.push(media)
   }
 
   flush(): SurfaceResponse | null {
-    const text = this.buffer.trim();
-    const hasContent = text || this.media.length > 0;
+    const text = this.buffer.trim()
+    const hasContent = text || this.media.length > 0
 
     if (!hasContent) {
-      return null;
+      return null
     }
 
     const response: SurfaceResponse = {
       text: text || undefined,
       media: this.media.length > 0 ? this.media : undefined,
       replyToId: this.replyToId,
-    };
+    }
 
     // Reset
-    this.buffer = '';
-    this.media = [];
-    this.toolOutputs = [];
-    this.replyToId = undefined;
+    this.buffer = ""
+    this.media = []
+    this.toolOutputs = []
+    this.replyToId = undefined
 
-    return response;
+    return response
   }
 
   private truncate(text: string, maxLen: number): string {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, maxLen - 3) + '...';
+    if (text.length <= maxLen) return text
+    return text.slice(0, maxLen - 3) + "..."
   }
 }
 
@@ -181,44 +176,41 @@ class MessageBatcher {
 
 /**
  * Unified messaging surface adapter.
-   *
-   * Handles WhatsApp with a common interface.
-   */
-  export class MessagingSurface extends BaseSurface implements Surface {
-  readonly id: string;
-  readonly name: string;
-  readonly capabilities: SurfaceCapabilities;
+ *
+ * Handles WhatsApp with a common interface.
+ */
+export class MessagingSurface extends BaseSurface implements Surface {
+  readonly id: string
+  readonly name: string
+  readonly capabilities: SurfaceCapabilities
 
-  private config: MessagingSurfaceConfig;
-  private platform: MessagingPlatformHandler;
-  private batcher = new MessageBatcher();
-  private typingInterval: NodeJS.Timeout | null = null;
-  private unsubscribe: (() => void) | null = null;
+  private config: MessagingSurfaceConfig
+  private platform: MessagingPlatformHandler
+  private batcher = new MessageBatcher()
+  private typingInterval: NodeJS.Timeout | null = null
+  private unsubscribe: (() => void) | null = null
 
-  constructor(
-    platform: MessagingPlatformHandler,
-    config: Partial<MessagingSurfaceConfig> = {}
-  ) {
-    super();
-    this.platform = platform;
-    this.config = resolveMessagingSurfaceConfig(config, { platform: platform.platform });
-    this.id = `messaging:${platform.platform}`;
-    this.name = this.formatPlatformName(platform.platform);
+  constructor(platform: MessagingPlatformHandler, config: Partial<MessagingSurfaceConfig> = {}) {
+    super()
+    this.platform = platform
+    this.config = resolveMessagingSurfaceConfig(config, { platform: platform.platform })
+    this.id = `messaging:${platform.platform}`
+    this.name = this.formatPlatformName(platform.platform)
 
     // Merge platform-specific capabilities
-    const platformCaps = PLATFORM_CAPABILITIES[platform.platform] || {};
+    const platformCaps = PLATFORM_CAPABILITIES[platform.platform] || {}
     this.capabilities = {
       ...MESSAGING_CAPABILITIES,
       ...platformCaps,
       maxMessageLength: config.maxMessageLength || platformCaps.maxMessageLength || 4096,
-    };
+    }
   }
 
   private formatPlatformName(platform: string): string {
     const names: Record<string, string> = {
-      whatsapp: 'WhatsApp',
-    };
-    return names[platform] || platform;
+      whatsapp: "WhatsApp",
+    }
+    return names[platform] || platform
   }
 
   // ---------------------------------------------------------------------------
@@ -226,28 +218,28 @@ class MessageBatcher {
   // ---------------------------------------------------------------------------
 
   async connect(): Promise<void> {
-    this.setState('connecting');
+    this.setState("connecting")
 
     try {
-      await this.platform.connect();
+      await this.platform.connect()
 
       // Subscribe to platform messages
       this.unsubscribe = this.platform.onMessage((msg) => {
-        this.handlePlatformMessage(msg);
-      });
+        this.handlePlatformMessage(msg)
+      })
 
-      this.setState('connected');
+      this.setState("connected")
     } catch (err) {
-      this.setState('error', err instanceof Error ? err : new Error(String(err)));
-      throw err;
+      this.setState("error", err instanceof Error ? err : new Error(String(err)))
+      throw err
     }
   }
 
   async disconnect(): Promise<void> {
-    this.stopTypingLoop();
-    this.unsubscribe?.();
-    await this.platform.disconnect();
-    this.setState('disconnected');
+    this.stopTypingLoop()
+    this.unsubscribe?.()
+    await this.platform.disconnect()
+    this.setState("disconnected")
   }
 
   // ---------------------------------------------------------------------------
@@ -257,27 +249,27 @@ class MessageBatcher {
   private handlePlatformMessage(msg: PlatformMessage): void {
     // Check if sender is allowed
     if (!this.isAllowedSender(msg)) {
-      return;
+      return
     }
 
     // Check group settings
     if (msg.isGroup && !this.isAllowedGroup(msg)) {
-      return;
+      return
     }
 
     // Check mention requirement
     if (msg.isGroup && this.config.groups.requireMention && !msg.wasMentioned) {
-      return;
+      return
     }
 
     // Convert to surface message
     const thread: ThreadContext = {
-      threadId: msg.isGroup ? (msg.groupId || msg.senderId) : msg.senderId,
+      threadId: msg.isGroup ? msg.groupId || msg.senderId : msg.senderId,
       isGroup: msg.isGroup,
       groupName: msg.groupName,
       replyToId: msg.replyToId,
       wasMentioned: msg.wasMentioned,
-    };
+    }
 
     const message: SurfaceMessage = {
       id: msg.id,
@@ -288,28 +280,26 @@ class MessageBatcher {
       media: msg.media,
       thread,
       metadata: { platform: msg.platform },
-    };
+    }
 
-    this.emit({ type: 'message', message });
+    this.emit({ type: "message", message })
   }
 
   private isAllowedSender(msg: PlatformMessage): boolean {
-    if (this.config.allowedSenders.length === 0) return true;
-    if (this.config.allowedSenders.includes('*')) return true;
+    if (this.config.allowedSenders.length === 0) return true
+    if (this.config.allowedSenders.includes("*")) return true
     // Normalize phone numbers: strip leading '+' for comparison
     // (Cloud API sends bare numbers, configs often use +prefix)
-    const normalized = msg.senderId.replace(/^\+/, '');
-    return this.config.allowedSenders.some(
-      (s) => s === msg.senderId || s.replace(/^\+/, '') === normalized,
-    );
+    const normalized = msg.senderId.replace(/^\+/, "")
+    return this.config.allowedSenders.some((s) => s === msg.senderId || s.replace(/^\+/, "") === normalized)
   }
 
   private isAllowedGroup(msg: PlatformMessage): boolean {
-    if (!this.config.groups.enabled) return false;
-    if (this.config.groups.allowedGroups.length === 0) return true;
-    if (this.config.groups.allowedGroups.includes('*')) return true;
-    if (!msg.groupId) return false;
-    return this.config.groups.allowedGroups.includes(msg.groupId);
+    if (!this.config.groups.enabled) return false
+    if (this.config.groups.allowedGroups.length === 0) return true
+    if (this.config.groups.allowedGroups.includes("*")) return true
+    if (!msg.groupId) return false
+    return this.config.groups.allowedGroups.includes(msg.groupId)
   }
 
   // ---------------------------------------------------------------------------
@@ -318,23 +308,23 @@ class MessageBatcher {
 
   async sendResponse(response: SurfaceResponse, threadId?: string): Promise<void> {
     if (!threadId) {
-      log.warn('No threadId provided, cannot send response');
-      return;
+      log.warn("No threadId provided, cannot send response")
+      return
     }
 
-    this.stopTypingLoop();
+    this.stopTypingLoop()
 
     // Handle text
     if (response.text) {
-      const chunks = this.chunkMessage(response.text);
+      const chunks = this.chunkMessage(response.text)
       for (let i = 0; i < chunks.length; i++) {
         await this.platform.sendMessage(threadId, chunks[i], {
           replyToId: i === 0 ? response.replyToId : undefined,
-        });
+        })
 
         // Small delay between chunks
         if (i < chunks.length - 1 && this.config.chunkDelayMs > 0) {
-          await this.delay(this.config.chunkDelayMs);
+          await this.delay(this.config.chunkDelayMs)
         }
       }
     }
@@ -342,47 +332,47 @@ class MessageBatcher {
     // Handle media
     if (response.media) {
       for (const media of response.media) {
-        await this.platform.sendMessage(threadId, '', { media: [media] });
+        await this.platform.sendMessage(threadId, "", { media: [media] })
       }
     }
   }
 
   override async sendStreamChunk(chunk: StreamChunk, threadId?: string): Promise<void> {
     // Buffer all chunks
-    this.batcher.append(chunk);
+    this.batcher.append(chunk)
 
     // Flush on final chunk
     if (chunk.isFinal) {
-      const response = this.batcher.flush();
+      const response = this.batcher.flush()
       if (response && threadId) {
-        await this.sendResponse(response, threadId);
+        await this.sendResponse(response, threadId)
       }
     }
   }
 
   override async sendTypingIndicator(threadId?: string): Promise<void> {
-    if (!threadId || !this.config.showTyping) return;
+    if (!threadId || !this.config.showTyping) return
 
     // Start typing loop
-    this.startTypingLoop(threadId);
+    this.startTypingLoop(threadId)
   }
 
   private startTypingLoop(threadId: string): void {
-    if (this.typingInterval) return;
+    if (this.typingInterval) return
 
     // Send immediately
-    void this.platform.sendTyping(threadId);
+    void this.platform.sendTyping(threadId)
 
     // Then repeat at interval
     this.typingInterval = setInterval(() => {
-      void this.platform.sendTyping(threadId);
-    }, this.config.typingIntervalMs);
+      void this.platform.sendTyping(threadId)
+    }, this.config.typingIntervalMs)
   }
 
   private stopTypingLoop(): void {
     if (this.typingInterval) {
-      clearInterval(this.typingInterval);
-      this.typingInterval = null;
+      clearInterval(this.typingInterval)
+      this.typingInterval = null
     }
   }
 
@@ -393,18 +383,14 @@ class MessageBatcher {
   async requestPermission(request: PermissionRequest): Promise<PermissionResponse> {
     // Messaging surfaces cannot prompt interactively
     // Always apply automatic resolution based on config
-    const permissionConfig = mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, this.config.permissions);
+    const permissionConfig = mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, this.config.permissions)
 
-    const resolved = resolvePermission(
-      request.type,
-      request.description,
-      permissionConfig
-    );
+    const resolved = resolvePermission(request.type, request.description, permissionConfig)
 
     return {
       requestId: request.id,
       action: resolved.action,
-    };
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -426,38 +412,38 @@ class MessageBatcher {
   // ---------------------------------------------------------------------------
 
   private chunkMessage(text: string): string[] {
-    const maxLen = this.capabilities.maxMessageLength;
+    const maxLen = this.capabilities.maxMessageLength
     if (!maxLen || text.length <= maxLen) {
-      return [text];
+      return [text]
     }
 
-    const chunks: string[] = [];
-    let remaining = text;
+    const chunks: string[] = []
+    let remaining = text
 
     while (remaining.length > 0) {
       if (remaining.length <= maxLen) {
-        chunks.push(remaining);
-        break;
+        chunks.push(remaining)
+        break
       }
 
       // Try to break at a natural point
-      let breakPoint = remaining.lastIndexOf('\n', maxLen);
+      let breakPoint = remaining.lastIndexOf("\n", maxLen)
       if (breakPoint < maxLen * 0.5) {
-        breakPoint = remaining.lastIndexOf(' ', maxLen);
+        breakPoint = remaining.lastIndexOf(" ", maxLen)
       }
       if (breakPoint < maxLen * 0.5) {
-        breakPoint = maxLen;
+        breakPoint = maxLen
       }
 
-      chunks.push(remaining.slice(0, breakPoint));
-      remaining = remaining.slice(breakPoint).trimStart();
+      chunks.push(remaining.slice(0, breakPoint))
+      remaining = remaining.slice(breakPoint).trimStart()
     }
 
-    return chunks;
+    return chunks
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }
 
@@ -473,7 +459,7 @@ class MessageBatcher {
  */
 export function createMessagingSurface(
   platform: MessagingPlatformHandler,
-  config?: Partial<MessagingSurfaceConfig>
+  config?: Partial<MessagingSurfaceConfig>,
 ): MessagingSurface {
-  return new MessagingSurface(platform, config);
+  return new MessagingSurface(platform, config)
 }

@@ -100,24 +100,13 @@ function getEnvInt(key: string): number | undefined {
   return parsed
 }
 
-export function resolveRuntimeProcessLimits(
-  input: Partial<RuntimeProcessLimits> = {},
-): RuntimeProcessLimits {
+export function resolveRuntimeProcessLimits(input: Partial<RuntimeProcessLimits> = {}): RuntimeProcessLimits {
   return {
-    maxTotal:
-      input.maxTotal ?? getEnvInt("ZEE_RUNTIME_MAX_PROCESSES_TOTAL") ?? DEFAULT_LIMITS.maxTotal,
-    maxMcpTotal:
-      input.maxMcpTotal ??
-      getEnvInt("ZEE_RUNTIME_MAX_MCP_PROCESSES") ??
-      DEFAULT_LIMITS.maxMcpTotal,
+    maxTotal: input.maxTotal ?? getEnvInt("ZEE_RUNTIME_MAX_PROCESSES_TOTAL") ?? DEFAULT_LIMITS.maxTotal,
+    maxMcpTotal: input.maxMcpTotal ?? getEnvInt("ZEE_RUNTIME_MAX_MCP_PROCESSES") ?? DEFAULT_LIMITS.maxMcpTotal,
     maxMcpPerServer:
-      input.maxMcpPerServer ??
-      getEnvInt("ZEE_RUNTIME_MAX_MCP_PER_SERVER") ??
-      DEFAULT_LIMITS.maxMcpPerServer,
-    maxClients:
-      input.maxClients ??
-      getEnvInt("ZEE_RUNTIME_MAX_CLIENT_PROCESSES") ??
-      DEFAULT_LIMITS.maxClients,
+      input.maxMcpPerServer ?? getEnvInt("ZEE_RUNTIME_MAX_MCP_PER_SERVER") ?? DEFAULT_LIMITS.maxMcpPerServer,
+    maxClients: input.maxClients ?? getEnvInt("ZEE_RUNTIME_MAX_CLIENT_PROCESSES") ?? DEFAULT_LIMITS.maxClients,
   }
 }
 
@@ -143,11 +132,9 @@ function isLikelyInteractiveClientCommand(command: string): boolean {
 
 async function resolveExpectedExecutablePaths(): Promise<Set<string>> {
   const configured = process.env.ZEE_EXPECTED_EXE?.trim()
-  const candidates = [
-    configured,
-    path.join(os.homedir(), ".bun", "bin", "zee"),
-    process.execPath,
-  ].filter((value): value is string => Boolean(value))
+  const candidates = [configured, path.join(os.homedir(), ".bun", "bin", "zee"), process.execPath].filter(
+    (value): value is string => Boolean(value),
+  )
 
   const paths = new Set<string>()
   for (const candidate of candidates) {
@@ -322,9 +309,7 @@ function buildViolations(entries: RuntimeProcessEntry[], limits: RuntimeProcessL
 
   for (const [server, count] of byServer) {
     if (count > limits.maxMcpPerServer) {
-      violations.push(
-        `mcp server ${server} count ${count} exceeds maxMcpPerServer ${limits.maxMcpPerServer}`,
-      )
+      violations.push(`mcp server ${server} count ${count} exceeds maxMcpPerServer ${limits.maxMcpPerServer}`)
     }
   }
 
@@ -354,11 +339,7 @@ function buildViolations(entries: RuntimeProcessEntry[], limits: RuntimeProcessL
   }
 
   const binaryMismatches = entries.filter(
-    (entry) =>
-      entry.kind === "zee_other" &&
-      !entry.binaryPinned &&
-      !entry.systemdManaged &&
-      !entry.descendantOfCurrent,
+    (entry) => entry.kind === "zee_other" && !entry.binaryPinned && !entry.systemdManaged && !entry.descendantOfCurrent,
   ).length
   if (binaryMismatches > 0) {
     violations.push(`found ${binaryMismatches} client process(es) not using pinned zee binary`)
@@ -387,10 +368,12 @@ function buildViolations(entries: RuntimeProcessEntry[], limits: RuntimeProcessL
   return violations
 }
 
-export async function collectRuntimeSnapshot(input: {
-  limits?: Partial<RuntimeProcessLimits>
-  currentPid?: number
-} = {}): Promise<RuntimeSnapshot> {
+export async function collectRuntimeSnapshot(
+  input: {
+    limits?: Partial<RuntimeProcessLimits>
+    currentPid?: number
+  } = {},
+): Promise<RuntimeSnapshot> {
   const currentPid = input.currentPid ?? process.pid
   const limits = resolveRuntimeProcessLimits(input.limits)
   const expectedPaths = await resolveExpectedExecutablePaths()
@@ -419,16 +402,13 @@ export async function collectRuntimeSnapshot(input: {
       const taggedParentParsed = taggedParentRaw ? Number.parseInt(taggedParentRaw, 10) : Number.NaN
       const taggedParentPid = Number.isFinite(taggedParentParsed) ? taggedParentParsed : undefined
       const parentPid = taggedParentPid ?? ppid
-      const orphanable =
-        kind === "mcp_server" || kind === "daemon" || kind === "gateway" || kind === "zee_other"
+      const orphanable = kind === "mcp_server" || kind === "daemon" || kind === "gateway" || kind === "zee_other"
       const orphaned = orphanable && (!parentPid || parentPid <= 1 || !isPidAlive(parentPid))
       const descendantOfCurrent = await isDescendantOfPid(entry.pid, currentPid)
       const exePath = normalizeExePath(exeRawPath)
       const exeDeleted = Boolean(exeRawPath?.endsWith(" (deleted)"))
       const zeeExecutable = isZeeExecutablePath(exePath)
-      const binaryPinned = expectedPaths.size > 0
-        ? expectedPaths.has(exePath ?? "")
-        : true
+      const binaryPinned = expectedPaths.size > 0 ? expectedPaths.has(exePath ?? "") : true
       const hasTty = isTerminalPath(stdinPath)
       const interactiveClient = kind === "zee_other" && isLikelyInteractiveClientCommand(entry.command)
 
@@ -572,10 +552,7 @@ function selectMcpKills(
   return kills
 }
 
-export function isProtectedDaemonLikeProcess(params: {
-  entry: RuntimeProcessEntry
-  currentPid: number
-}): boolean {
+export function isProtectedDaemonLikeProcess(params: { entry: RuntimeProcessEntry; currentPid: number }): boolean {
   const { entry, currentPid } = params
   if (entry.kind !== "daemon" && entry.kind !== "gateway") return false
   if (entry.pid === currentPid) return true
@@ -584,10 +561,7 @@ export function isProtectedDaemonLikeProcess(params: {
   return false
 }
 
-export function isProtectedClientProcess(params: {
-  entry: RuntimeProcessEntry
-  currentPid: number
-}): boolean {
+export function isProtectedClientProcess(params: { entry: RuntimeProcessEntry; currentPid: number }): boolean {
   const { entry, currentPid } = params
   if (entry.kind !== "zee_other") return false
   if (entry.pid === currentPid) return true
@@ -716,12 +690,14 @@ async function terminatePid(pid: number): Promise<"terminated" | "killed" | "mis
   return isPidAlive(pid) ? "failed" : "killed"
 }
 
-export async function runRuntimeProcessMaintenance(input: {
-  limits?: Partial<RuntimeProcessLimits>
-  dryRun?: boolean
-  currentPid?: number
-  reason?: string
-} = {}): Promise<RuntimeMaintenanceReport> {
+export async function runRuntimeProcessMaintenance(
+  input: {
+    limits?: Partial<RuntimeProcessLimits>
+    dryRun?: boolean
+    currentPid?: number
+    reason?: string
+  } = {},
+): Promise<RuntimeMaintenanceReport> {
   const currentPid = input.currentPid ?? process.pid
   const snapshotBefore = await collectRuntimeSnapshot({
     limits: input.limits,
@@ -773,12 +749,14 @@ export async function runRuntimeProcessMaintenance(input: {
   }
 }
 
-export function startRuntimeProcessGuard(input: {
-  intervalMs?: number
-  limits?: Partial<RuntimeProcessLimits>
-  currentPid?: number
-  reason?: string
-} = {}): () => void {
+export function startRuntimeProcessGuard(
+  input: {
+    intervalMs?: number
+    limits?: Partial<RuntimeProcessLimits>
+    currentPid?: number
+    reason?: string
+  } = {},
+): () => void {
   const intervalMs =
     typeof input.intervalMs === "number" && input.intervalMs >= 1_000
       ? Math.floor(input.intervalMs)

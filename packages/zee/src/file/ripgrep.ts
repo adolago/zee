@@ -6,7 +6,6 @@ import z from "zod"
 import { NamedError } from "@zee/util/error"
 import { lazy } from "../util/lazy"
 
-
 import { ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js"
 import { Log } from "@/util/log"
 
@@ -267,7 +266,7 @@ export namespace Ripgrep {
       if (buffer.length > 0) yield buffer
     } finally {
       reader.releaseLock()
-      
+
       // Kill the process if it's still running to prevent orphaning
       // This happens when consumers break out of the generator early
       try {
@@ -277,18 +276,18 @@ export namespace Ripgrep {
       } catch {
         // Process may already be dead, ignore errors
       }
-      
+
       // Wait for process to exit with timeout protection
       const PROCESS_EXIT_TIMEOUT_MS = 5000
       await Promise.race([
         proc.exited,
-        new Promise<void>((_, reject) => 
-          setTimeout(() => reject(new Error('Process exit timeout')), PROCESS_EXIT_TIMEOUT_MS)
-        )
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("Process exit timeout")), PROCESS_EXIT_TIMEOUT_MS),
+        ),
       ]).catch(() => {
         // Force kill if graceful termination failed
         try {
-          proc.kill('SIGKILL')
+          proc.kill("SIGKILL")
         } catch {
           // Ignore errors - process may already be dead
         }
@@ -403,9 +402,9 @@ export namespace Ripgrep {
     try {
       const stdout = await new Response(proc.stdout).text()
       const exitCode = await proc.exited
-      
+
       input.signal?.removeEventListener("abort", abortHandler)
-      
+
       // Exit code 1 means no matches found, which is fine
       // Exit code 0 means matches found
       // Other non-zero codes indicate an error

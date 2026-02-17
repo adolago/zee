@@ -6,7 +6,6 @@ import { Decimal } from "decimal.js"
 import z from "zod"
 import { type LanguageModelUsage, type ProviderMetadata } from "ai"
 
-
 import { Identifier } from "../id/id"
 import { Installation } from "../installation"
 
@@ -100,9 +99,7 @@ export namespace Session {
           reasoning: z.number(),
         })
         .optional(),
-      surface: z
-        .enum(["cli", "web", "api", "whatsapp"])
-        .optional(),
+      surface: z.enum(["cli", "web", "api", "whatsapp"]).optional(),
       mode: z
         .enum(["plan", "accept", "bypass"])
         .or(z.enum(["hold", "release"]))
@@ -118,11 +115,14 @@ export namespace Session {
       toolPolicySnapshot: z
         .object({
           createdAt: z.number(),
-          mode: z.enum(["plan", "accept", "bypass"]).or(z.enum(["hold", "release"])).transform((v) => {
-            if (v === "hold") return "plan" as const
-            if (v === "release") return "accept" as const
-            return v
-          }),
+          mode: z
+            .enum(["plan", "accept", "bypass"])
+            .or(z.enum(["hold", "release"]))
+            .transform((v) => {
+              if (v === "hold") return "plan" as const
+              if (v === "release") return "accept" as const
+              return v
+            }),
           surface: z.enum(["cli", "web", "api", "whatsapp"]).optional(),
           agent: z.string().optional(),
           permission: PermissionNext.Ruleset.optional(),

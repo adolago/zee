@@ -6,4 +6,3 @@ export function resolveGatewayWsUrl(env: NodeJS.ProcessEnv = process.env): strin
   const port = resolveEmbeddedGatewayPort()
   return `ws://127.0.0.1:${port}`
 }
-

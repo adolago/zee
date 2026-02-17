@@ -9,7 +9,8 @@ import { errors } from "../error"
 import { SseLimit } from "../sse-limit"
 import { registerSseKeepalive } from "../sse-keepalive"
 
-export const AppRoute = new Hono().get(
+export const AppRoute = new Hono()
+  .get(
     "/event",
     describeRoute({
       summary: "Subscribe to events",
@@ -99,10 +100,7 @@ export const AppRoute = new Hono().get(
         service: z.string().meta({ description: "Service name for the log entry" }),
         level: z.enum(["debug", "info", "error", "warn"]).meta({ description: "Log level" }),
         message: z.string().meta({ description: "Log message" }),
-        extra: z
-          .record(z.string(), z.any())
-          .optional()
-          .meta({ description: "Additional metadata for the log entry" }),
+        extra: z.record(z.string(), z.any()).optional().meta({ description: "Additional metadata for the log entry" }),
       }),
     ),
     async (c) => {

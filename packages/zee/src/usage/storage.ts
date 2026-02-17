@@ -503,11 +503,7 @@ function rowToEvent(row: Record<string, unknown>): UsageEvent {
   }
 }
 
-function getPeriodRange(
-  period: UsagePeriod,
-  from?: number,
-  to?: number,
-): { startTime: number; endTime: number } {
+function getPeriodRange(period: UsagePeriod, from?: number, to?: number): { startTime: number; endTime: number } {
   const now = Date.now()
   const endTime = to ?? now
 

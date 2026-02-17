@@ -77,10 +77,7 @@ export const DaemonEventsCommand = cmd({
     }
 
     const fetchOnce = async () => {
-      const payload = await listDaemonEvents(
-        { cursor, limit },
-        { socketPath: args.socketPath },
-      )
+      const payload = await listDaemonEvents({ cursor, limit }, { socketPath: args.socketPath })
       render(payload)
       cursor = payload.nextCursor
       return payload.events.length

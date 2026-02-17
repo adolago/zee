@@ -1,10 +1,7 @@
 import { spawn } from "node:child_process"
 import { type Config } from "./gen/types.gen.js"
 
-async function spawnZeeCli(
-  args: string[],
-  opts: Parameters<typeof spawn>[2],
-): Promise<ReturnType<typeof spawn>> {
+async function spawnZeeCli(args: string[], opts: Parameters<typeof spawn>[2]): Promise<ReturnType<typeof spawn>> {
   const candidates = ["zee"] as const
   let lastError: unknown
 

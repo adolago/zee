@@ -20,17 +20,19 @@ function isPidAlive(pid: number): boolean {
   }
 }
 
-export function installParentProcessGuard(options: {
-  guardName?: string
-  env?: NodeJS.ProcessEnv
-  intervalMs?: number
-  getPpid?: () => number
-  isAlive?: (pid: number) => boolean
-  exitFn?: (code?: number) => never | void
-  logger?: (line: string) => void
-  setIntervalFn?: typeof setInterval
-  clearIntervalFn?: typeof clearInterval
-} = {}): { stop: () => void } | undefined {
+export function installParentProcessGuard(
+  options: {
+    guardName?: string
+    env?: NodeJS.ProcessEnv
+    intervalMs?: number
+    getPpid?: () => number
+    isAlive?: (pid: number) => boolean
+    exitFn?: (code?: number) => never | void
+    logger?: (line: string) => void
+    setIntervalFn?: typeof setInterval
+    clearIntervalFn?: typeof clearInterval
+  } = {},
+): { stop: () => void } | undefined {
   const env = options.env ?? process.env
   const expectedParentPid = parseParentPid(env.ZEE_PARENT_PID)
   if (!expectedParentPid) return undefined
@@ -66,9 +68,7 @@ export function installParentProcessGuard(options: {
     const parentAlive = isAlive(expectedParentPid)
     if (currentPpid <= 1 || currentPpid !== expectedParentPid || !parentAlive) {
       stop()
-      logger(
-        `[${guardName}] parent process ${expectedParentPid} is gone; exiting to prevent stale child processes.`,
-      )
+      logger(`[${guardName}] parent process ${expectedParentPid} is gone; exiting to prevent stale child processes.`)
       exitFn(0)
     }
   }

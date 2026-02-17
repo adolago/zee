@@ -70,14 +70,7 @@ async function commandExists(command: string): Promise<boolean> {
 export async function systemdUserUnitExists(unit: string): Promise<boolean> {
   if (process.platform !== "linux") return false
   const out = await runCommand(
-    [
-      "systemctl",
-      "--user",
-      "list-unit-files",
-      "--type=service",
-      "--no-legend",
-      "--no-pager",
-    ],
+    ["systemctl", "--user", "list-unit-files", "--type=service", "--no-legend", "--no-pager"],
     {
       expectedExitCodes: [0],
       timeoutMs: 10_000,

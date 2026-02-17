@@ -26,4 +26,3 @@ describe("zee client", () => {
     expect(url).toBeUndefined()
   })
 })
-

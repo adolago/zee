@@ -270,10 +270,6 @@ export const ProviderCommand = cmd({
   command: "provider",
   describe: "manage providers and models",
   builder: (yargs) =>
-    yargs
-      .command(ProviderListCommand)
-      .command(ProviderDiagnoseCommand)
-      .command(ProviderRefreshCommand)
-      .demandCommand(),
+    yargs.command(ProviderListCommand).command(ProviderDiagnoseCommand).command(ProviderRefreshCommand).demandCommand(),
   async handler() {},
 })

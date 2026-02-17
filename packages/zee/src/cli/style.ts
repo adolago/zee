@@ -90,8 +90,8 @@
  * @module
  */
 
-import { env } from "node:process";
-import { cliColors, personaCliColors } from "@root/theme/rosetta";
+import { env } from "node:process"
+import { cliColors, personaCliColors } from "@root/theme/rosetta"
 
 // =============================================================================
 // NO_COLOR Detection
@@ -118,11 +118,11 @@ import { cliColors, personaCliColors } from "@root/theme/rosetta";
  */
 export function shouldUseColors(): boolean {
   // NO_COLOR takes precedence - any value disables colors
-  if (env.NO_COLOR !== undefined) return false;
+  if (env.NO_COLOR !== undefined) return false
   // FORCE_COLOR explicitly enables colors
-  if (env.FORCE_COLOR !== undefined) return true;
+  if (env.FORCE_COLOR !== undefined) return true
   // Default to TTY detection
-  return process.stderr.isTTY ?? false;
+  return process.stderr.isTTY ?? false
 }
 
 /**
@@ -147,26 +147,26 @@ export function shouldUseColors(): boolean {
  */
 export function shouldUseUnicode(): boolean {
   // NO_COLOR often indicates desire for plain text - use ASCII
-  if (env.NO_COLOR !== undefined) return false;
+  if (env.NO_COLOR !== undefined) return false
   // Check for explicit Unicode disable
-  if (env.NO_UNICODE || env.ASCII_ONLY) return false;
+  if (env.NO_UNICODE || env.ASCII_ONLY) return false
   // Check for explicit Unicode force
-  if (env.FORCE_UNICODE) return true;
+  if (env.FORCE_UNICODE) return true
   // Check for UTF-8 locale
-  if (env.LANG?.includes("UTF-8") || env.LANG?.includes("utf8")) return true;
+  if (env.LANG?.includes("UTF-8") || env.LANG?.includes("utf8")) return true
   // Check terminal capabilities
-  if (env.TERM?.includes("256color") || env.TERM?.includes("truecolor")) return true;
+  if (env.TERM?.includes("256color") || env.TERM?.includes("truecolor")) return true
   // Default to ASCII on Windows unless in Windows Terminal or VS Code
   if (process.platform === "win32") {
-    return env.WT_SESSION !== undefined || env.TERM_PROGRAM === "vscode";
+    return env.WT_SESSION !== undefined || env.TERM_PROGRAM === "vscode"
   }
-  return true;
+  return true
 }
 
 /** Cached color support flag */
-const _useColors = shouldUseColors();
+const _useColors = shouldUseColors()
 /** Cached Unicode support flag */
-const _useUnicode = shouldUseUnicode();
+const _useUnicode = shouldUseUnicode()
 
 // =============================================================================
 // ANSI Color Codes (Standard 16-color palette)
@@ -236,7 +236,7 @@ const ANSI = _useColors
       brightMagenta: "",
       brightCyan: "",
       brightWhite: "",
-    } as const);
+    } as const)
 
 // =============================================================================
 // Semantic Colors
@@ -320,7 +320,7 @@ export const Style = {
   TEXT_SUCCESS_BOLD: `${ANSI.brightGreen}${ANSI.bold}`,
   TEXT_INFO: ANSI.brightBlue,
   TEXT_INFO_BOLD: `${ANSI.brightBlue}${ANSI.bold}`,
-} as const;
+} as const
 
 // =============================================================================
 // Symbols (Unicode/ASCII variants)
@@ -375,9 +375,7 @@ export const Symbols = {
   cornerBR: _useUnicode ? "┘" : "+",
 
   // Progress indicators
-  spinner: _useUnicode
-    ? ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    : ["|", "/", "-", "\\"],
+  spinner: _useUnicode ? ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] : ["|", "/", "-", "\\"],
 
   // Special
   star: _useUnicode ? "★" : "*",
@@ -390,7 +388,7 @@ export const Symbols = {
   circle: { unicode: "○", ascii: "o" },
   diamond: { unicode: "◆", ascii: "[+]" },
   blocked: { unicode: "⊘", ascii: "[X]" },
-} as const;
+} as const
 
 /**
  * Get the appropriate symbol based on terminal capabilities.
@@ -413,17 +411,17 @@ export const Symbols = {
  * @deprecated Use Symbols.* directly for resolved values
  */
 export function getSymbol(name: keyof typeof Symbols, useUnicode = true): string {
-  const symbol = Symbols[name];
+  const symbol = Symbols[name]
   if (typeof symbol === "string") {
-    return symbol;
+    return symbol
   }
   if (Array.isArray(symbol)) {
-    return symbol[0];
+    return symbol[0]
   }
   if (symbol && typeof symbol === "object" && "unicode" in symbol) {
-    return useUnicode ? symbol.unicode : symbol.ascii;
+    return useUnicode ? symbol.unicode : symbol.ascii
   }
-  return String(symbol);
+  return String(symbol)
 }
 
 // =============================================================================
@@ -446,7 +444,7 @@ export function getSymbol(name: keyof typeof Symbols, useUnicode = true): string
  * ```
  */
 export function color(text: string, colorCode: string): string {
-  return `${colorCode}${text}${Style.reset}`;
+  return `${colorCode}${text}${Style.reset}`
 }
 
 /**
@@ -456,7 +454,7 @@ export function color(text: string, colorCode: string): string {
  * @returns Green-colored text
  */
 export function success(text: string): string {
-  return color(text, Style.success);
+  return color(text, Style.success)
 }
 
 /**
@@ -466,7 +464,7 @@ export function success(text: string): string {
  * @returns Yellow-colored text
  */
 export function warning(text: string): string {
-  return color(text, Style.warning);
+  return color(text, Style.warning)
 }
 
 /**
@@ -476,7 +474,7 @@ export function warning(text: string): string {
  * @returns Red-colored text
  */
 export function error(text: string): string {
-  return color(text, Style.error);
+  return color(text, Style.error)
 }
 
 /**
@@ -486,7 +484,7 @@ export function error(text: string): string {
  * @returns Blue-colored text
  */
 export function info(text: string): string {
-  return color(text, Style.info);
+  return color(text, Style.info)
 }
 
 /**
@@ -496,7 +494,7 @@ export function info(text: string): string {
  * @returns Gray-colored text
  */
 export function muted(text: string): string {
-  return color(text, Style.muted);
+  return color(text, Style.muted)
 }
 
 /**
@@ -506,7 +504,7 @@ export function muted(text: string): string {
  * @returns Dimmed text
  */
 export function dim(text: string): string {
-  return color(text, Style.dim);
+  return color(text, Style.dim)
 }
 
 /**
@@ -516,7 +514,7 @@ export function dim(text: string): string {
  * @returns Bold text
  */
 export function bold(text: string): string {
-  return color(text, Style.bold);
+  return color(text, Style.bold)
 }
 
 /**
@@ -535,7 +533,7 @@ export function bold(text: string): string {
  */
 export function stripAnsi(text: string): string {
   // eslint-disable-next-line no-control-regex
-  return text.replace(/\x1b\[[0-9;]*m/g, "");
+  return text.replace(/\x1b\[[0-9;]*m/g, "")
 }
 
 /**
@@ -553,7 +551,7 @@ export function stripAnsi(text: string): string {
  * ```
  */
 export function visualWidth(text: string): number {
-  return stripAnsi(text).length;
+  return stripAnsi(text).length
 }
 
 /**
@@ -567,9 +565,9 @@ export function visualWidth(text: string): number {
  * @returns Padded string
  */
 export function padEnd(str: string, width: number, fill = " "): string {
-  const strWidth = visualWidth(str);
-  if (strWidth >= width) return str;
-  return str + fill.repeat(width - strWidth);
+  const strWidth = visualWidth(str)
+  if (strWidth >= width) return str
+  return str + fill.repeat(width - strWidth)
 }
 
 // =============================================================================
@@ -593,7 +591,7 @@ export const StatusBar = {
   separator: " │ ",
   /** Inner separator without spaces for tight groupings (│) */
   innerSeparator: "│",
-} as const;
+} as const
 
 // =============================================================================
 // Message Formatting Utilities
@@ -623,7 +621,7 @@ export const Message = {
   warning: (text: string) => color(`${Symbols.warning} ${text}`, Style.warning),
   /** Info message with info icon and blue color */
   info: (text: string) => color(`${Symbols.info} ${text}`, Style.info),
-} as const;
+} as const
 
 // =============================================================================
 // Theme to ANSI Mapping
@@ -637,10 +635,10 @@ export const Message = {
  * @internal
  */
 function rgbToAnsi(r: number, g: number, b: number): string {
-  if (!_useColors) return "";
+  if (!_useColors) return ""
 
   // Use 24-bit color if supported
-  return `\x1b[38;2;${r};${g};${b}m`;
+  return `\x1b[38;2;${r};${g};${b}m`
 }
 
 /**
@@ -651,13 +649,13 @@ function rgbToAnsi(r: number, g: number, b: number): string {
  * @internal
  */
 function _hexToAnsi(hex: string): string {
-  if (!_useColors) return "";
+  if (!_useColors) return ""
 
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  return rgbToAnsi(r, g, b);
+  const clean = hex.replace("#", "")
+  const r = parseInt(clean.substring(0, 2), 16)
+  const g = parseInt(clean.substring(2, 4), 16)
+  const b = parseInt(clean.substring(4, 6), 16)
+  return rgbToAnsi(r, g, b)
 }
 
 /**
@@ -686,7 +684,7 @@ export const themeToAnsi = {
   text: cliColors.text,
   background: "",
   border: cliColors.muted,
-} as const;
+} as const
 
 /**
  * Persona-specific colors for CLI mode.
@@ -710,4 +708,4 @@ export const themeToAnsi = {
  * console.log(`${personaColors.johny.logo}Johny${Style.reset}`);
  * ```
  */
-export const personaColors = personaCliColors;
+export const personaColors = personaCliColors

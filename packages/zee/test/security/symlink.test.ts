@@ -46,25 +46,25 @@ describe("Symlink Vulnerability", () => {
         // Physically it is outside
         // Instance.containsPath uses strict check now, so it returns false
         expect(Instance.containsPath(targetPath)).toBe(false)
-      }
+      },
     })
   })
 
   it("Filesystem.containsResolved returns false for symlink pointing outside (FIX)", async () => {
-      // The target path is inside the symlinked directory
-      const targetPath = path.join(symlinkPath, "new-file.txt")
+    // The target path is inside the symlinked directory
+    const targetPath = path.join(symlinkPath, "new-file.txt")
 
-      // containsResolved should detect this if checking parent
-      const isContained = await Filesystem.containsResolved(projectDir, targetPath)
+    // containsResolved should detect this if checking parent
+    const isContained = await Filesystem.containsResolved(projectDir, targetPath)
 
-      // BUT, what if we check the direct symlink itself?
-      const symlinkFile = path.join(projectDir, "link-to-secret.txt")
-      const isSymlinkContained = await Filesystem.containsResolved(projectDir, symlinkFile)
+    // BUT, what if we check the direct symlink itself?
+    const symlinkFile = path.join(projectDir, "link-to-secret.txt")
+    const isSymlinkContained = await Filesystem.containsResolved(projectDir, symlinkFile)
 
-      // realpath(symlinkFile) -> .../external/secret.txt
-      // relative(projectDir, .../external/secret.txt) -> ../external/secret.txt -> starts with ..
-      // So isSymlinkContained should be FALSE.
-      expect(isSymlinkContained).toBe(false)
+    // realpath(symlinkFile) -> .../external/secret.txt
+    // relative(projectDir, .../external/secret.txt) -> ../external/secret.txt -> starts with ..
+    // So isSymlinkContained should be FALSE.
+    expect(isSymlinkContained).toBe(false)
   })
 
   it("Filesystem.containsResolvedSync returns false for new file in symlink dir (FIX)", async () => {

@@ -89,10 +89,10 @@ function bundleSrcModules(distRoot: string) {
   // These are imported via relative paths like ../../../../../src/memory/unified
   const srcRoot = path.join(repoRoot, "src")
   if (!fs.existsSync(srcRoot)) return
-  
+
   const destRoot = path.join(distRoot, "src")
   fs.mkdirSync(destRoot, { recursive: true })
-  
+
   // Modules needed at runtime (dynamically imported)
   const modules = ["memory", "config"]
   for (const mod of modules) {
@@ -161,7 +161,6 @@ function bundlePersonaSkills(distRoot: string) {
     })
   }
 }
-
 
 // Fetch and generate models.dev snapshot for bundling
 const modelsUrl = process.env.ZEE_MODELS_URL || "https://models.dev"

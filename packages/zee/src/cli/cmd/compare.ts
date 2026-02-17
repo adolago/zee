@@ -74,15 +74,15 @@ export const CompareCommand = cmd({
 
       const features = getCatalog()
 
-      const snapshot = typed.metrics === false
-        ? undefined
-        : await collectSnapshot({
-            fetch: Boolean(typed.fetch),
-          })
+      const snapshot =
+        typed.metrics === false
+          ? undefined
+          : await collectSnapshot({
+              fetch: Boolean(typed.fetch),
+            })
 
-      const snapshotForTextOrMd = (scope === "full" || Boolean(typed.pins)) ? snapshot : undefined
-      const snapshotForRender =
-        format === "json" ? snapshot : snapshotForTextOrMd
+      const snapshotForTextOrMd = scope === "full" || Boolean(typed.pins) ? snapshot : undefined
+      const snapshotForRender = format === "json" ? snapshot : snapshotForTextOrMd
 
       const rendered = renderCompare({
         features,
@@ -91,10 +91,7 @@ export const CompareCommand = cmd({
         format,
       })
 
-      const payload =
-        format === "json"
-          ? JSON.stringify(rendered, null, 2) + "\n"
-          : String(rendered).trimEnd() + "\n"
+      const payload = format === "json" ? JSON.stringify(rendered, null, 2) + "\n" : String(rendered).trimEnd() + "\n"
 
       if (typed.output) {
         const outPath = path.resolve(String(typed.output))

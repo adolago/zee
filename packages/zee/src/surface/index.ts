@@ -82,7 +82,7 @@ export type {
   SurfaceType,
   MessageContext,
   SurfaceAdapter,
-} from './types.js';
+} from "./types.js"
 
 export {
   DEFAULT_CAPABILITIES,
@@ -91,22 +91,15 @@ export {
   WHATSAPP_CAPABILITIES,
   API_CAPABILITIES,
   formatForSurface,
-} from './types.js';
+} from "./types.js"
 
 // =============================================================================
 // Surface Interface
 // =============================================================================
 
-export type {
-  Surface,
-  SurfaceContext,
-} from './surface.js';
+export type { Surface, SurfaceContext } from "./surface.js"
 
-export {
-  BaseSurface,
-  SurfaceRegistry,
-  buildSurfaceContext,
-} from './surface.js';
+export { BaseSurface, SurfaceRegistry, buildSurfaceContext } from "./surface.js"
 
 // =============================================================================
 // Configuration
@@ -120,7 +113,7 @@ export type {
   MessagingSurfaceConfig,
   SurfaceConfig,
   UXAdaptations,
-} from './config.js';
+} from "./config.js"
 
 export {
   DEFAULT_PERMISSION_CONFIG,
@@ -134,70 +127,49 @@ export {
   resolveMessagingSurfaceConfig,
   buildSurfaceConfig,
   resolvePermission,
-} from './config.js';
+} from "./config.js"
 
 // =============================================================================
 // Surface Implementations
 // =============================================================================
 
 // CLI Surface
-export {
-  CLISurface,
-  createCLISurface,
-} from './cli.js';
+export { CLISurface, createCLISurface } from "./cli.js"
 
 // GUI Surface
-export {
-  GUISurface,
-  createGUISurface,
-} from './gui.js';
+export { GUISurface, createGUISurface } from "./gui.js"
 
 // Messaging Surfaces
-export type {
-  MessagingPlatformHandler,
-  PlatformMessage,
-} from './messaging.js';
+export type { MessagingPlatformHandler, PlatformMessage } from "./messaging.js"
 
-export {
-  MessagingSurface,
-  createMessagingSurface,
-} from './messaging.js';
+export { MessagingSurface, createMessagingSurface } from "./messaging.js"
 
 // Platform Handlers
-export * from './platforms/index.js';
+export * from "./platforms/index.js"
 
 // =============================================================================
 // Router
 // =============================================================================
 
-export type {
-  MessageHandler,
-  SurfaceAnalyticsEvent,
-  SurfaceRouterConfig,
-} from './router.js';
+export type { MessageHandler, SurfaceAnalyticsEvent, SurfaceRouterConfig } from "./router.js"
 
-export {
-  SurfaceRouter,
-  getSurfaceRouter,
-  setSurfaceRouter,
-  resetSurfaceRouter,
-} from './router.js';
+export { SurfaceRouter, getSurfaceRouter, setSurfaceRouter, resetSurfaceRouter } from "./router.js"
 
 // =============================================================================
 // Convenience Functions
 // =============================================================================
 
-import { createCLISurface } from './cli.js';
-import { createGUISurface } from './gui.js';
-import type { Surface } from './surface.js';
-import type { SurfaceCapabilities } from './types.js';
+import { createCLISurface } from "./cli.js"
+import { createGUISurface } from "./gui.js"
+import type { Surface } from "./surface.js"
+import type { SurfaceCapabilities } from "./types.js"
 import {
   CLI_CAPABILITIES,
   WEB_CAPABILITIES,
   WHATSAPP_CAPABILITIES,
   API_CAPABILITIES,
   DEFAULT_CAPABILITIES,
-} from './types.js';
+} from "./types.js"
 
 /**
  * Create a surface instance based on type.
@@ -205,36 +177,33 @@ import {
  * For messaging platforms (whatsapp), use createMessagingSurface()
  * with your own platform handler implementation instead.
  */
-export function createSurface(
-  type: 'cli' | 'gui',
-  config?: Record<string, unknown>
-): Surface {
+export function createSurface(type: "cli" | "gui", config?: Record<string, unknown>): Surface {
   switch (type) {
-    case 'cli':
-      return createCLISurface(config);
-    case 'gui':
-      return createGUISurface(config);
+    case "cli":
+      return createCLISurface(config)
+    case "gui":
+      return createGUISurface(config)
     default:
-      throw new Error(`Unknown surface type: ${type}. For messaging platforms, use createMessagingSurface() with your handler.`);
+      throw new Error(
+        `Unknown surface type: ${type}. For messaging platforms, use createMessagingSurface() with your handler.`,
+      )
   }
 }
 
 /**
  * Get default capabilities for a surface type.
  */
-export function getDefaultCapabilities(
-  type: 'cli' | 'gui' | 'whatsapp' | 'api'
-): SurfaceCapabilities {
+export function getDefaultCapabilities(type: "cli" | "gui" | "whatsapp" | "api"): SurfaceCapabilities {
   switch (type) {
-    case 'cli':
-      return CLI_CAPABILITIES;
-    case 'gui':
-      return WEB_CAPABILITIES;
-    case 'whatsapp':
-      return WHATSAPP_CAPABILITIES;
-    case 'api':
-      return API_CAPABILITIES;
+    case "cli":
+      return CLI_CAPABILITIES
+    case "gui":
+      return WEB_CAPABILITIES
+    case "whatsapp":
+      return WHATSAPP_CAPABILITIES
+    case "api":
+      return API_CAPABILITIES
     default:
-      return DEFAULT_CAPABILITIES;
+      return DEFAULT_CAPABILITIES
   }
 }

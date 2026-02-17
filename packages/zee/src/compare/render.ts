@@ -153,12 +153,7 @@ function renderText(
           const pieces: string[] = []
           if (cell.notes) pieces.push(cell.notes)
           if (cell.evidence?.length) {
-            pieces.push(
-              "evidence: " +
-                cell.evidence
-                  .map((e) => `${e.kind}:${e.ref}`)
-                  .join(", "),
-            )
+            pieces.push("evidence: " + cell.evidence.map((e) => `${e.kind}:${e.ref}`).join(", "))
           }
           out.push(`  ${name}: ${pieces.join(" | ")}`)
         }
@@ -191,7 +186,9 @@ function renderMarkdown(
   out.push("Regenerate:")
   out.push("")
   out.push("```bash")
-  out.push("cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format md --scope full --output ../../docs/architecture/feature-comparison.md")
+  out.push(
+    "cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format md --scope full --output ../../docs/architecture/feature-comparison.md",
+  )
   out.push("```")
   out.push("")
 
@@ -201,10 +198,22 @@ function renderMarkdown(
     out.push(`- Generated: \`${snapshot.generatedAt}\``)
     out.push(`- Zee: \`${snapshot.zee.channel}/${snapshot.zee.version}\` (\`${snapshot.zee.runtimeMode}\`)`)
     if (snapshot.zee.gitSha) out.push(`- Zee git: \`${snapshot.zee.gitSha}\``)
-    if (snapshot.upstream.opencode?.head) out.push(`- OpenCode pin: \`${snapshot.upstream.opencode.head}\` (\`${snapshot.upstream.opencode.remote}/${snapshot.upstream.opencode.branch}\`)`)
-    if (snapshot.upstream.openclaw?.head) out.push(`- OpenClaw pin: \`${snapshot.upstream.openclaw.head}\` (\`${snapshot.upstream.openclaw.remote}/${snapshot.upstream.openclaw.branch}\`)`)
-    if (snapshot.upstream.pimono?.head) out.push(`- Pi-mono pin: \`${snapshot.upstream.pimono.head}\` (\`${snapshot.upstream.pimono.remote}/${snapshot.upstream.pimono.branch}\`)`)
-    if (snapshot.pimono.installedPiCodingAgentVersion) out.push(`- Pi-mono installed: \`@mariozechner/pi-coding-agent@${snapshot.pimono.installedPiCodingAgentVersion}\``)
+    if (snapshot.upstream.opencode?.head)
+      out.push(
+        `- OpenCode pin: \`${snapshot.upstream.opencode.head}\` (\`${snapshot.upstream.opencode.remote}/${snapshot.upstream.opencode.branch}\`)`,
+      )
+    if (snapshot.upstream.openclaw?.head)
+      out.push(
+        `- OpenClaw pin: \`${snapshot.upstream.openclaw.head}\` (\`${snapshot.upstream.openclaw.remote}/${snapshot.upstream.openclaw.branch}\`)`,
+      )
+    if (snapshot.upstream.pimono?.head)
+      out.push(
+        `- Pi-mono pin: \`${snapshot.upstream.pimono.head}\` (\`${snapshot.upstream.pimono.remote}/${snapshot.upstream.pimono.branch}\`)`,
+      )
+    if (snapshot.pimono.installedPiCodingAgentVersion)
+      out.push(
+        `- Pi-mono installed: \`@mariozechner/pi-coding-agent@${snapshot.pimono.installedPiCodingAgentVersion}\``,
+      )
     if (snapshot.pimono.latestTag) out.push(`- Pi-mono latest tag: \`${snapshot.pimono.latestTag}\``)
     if (snapshot.skills) {
       const topNamespaces = Object.entries(snapshot.skills.namespaces)
@@ -229,31 +238,16 @@ function renderMarkdown(
 
   out.push("## Feature Matrix")
   out.push("")
-  out.push(
-    [
-      "| Feature | Description |",
-      ...p.map((x) => ` ${x.name} |`),
-    ].join(""),
-  )
-  out.push(
-    [
-      "| --- | --- |",
-      ...p.map(() => " --- |"),
-    ].join(""),
-  )
+  out.push(["| Feature | Description |", ...p.map((x) => ` ${x.name} |`)].join(""))
+  out.push(["| --- | --- |", ...p.map(() => " --- |")].join(""))
 
   const groups = groupByCategory(features)
   for (const g of groups) {
     // Category row as a bold divider inside the table.
-    out.push(
-      `| **${escapeMdTableCell(g.category)}** |  |` +
-        p.map(() => "  |").join(""),
-    )
+    out.push(`| **${escapeMdTableCell(g.category)}** |  |` + p.map(() => "  |").join(""))
     for (const f of g.features) {
       const cells = p.map(({ id }) => escapeMdTableCell(supportLevelLabel(f.support[id].level)))
-      out.push(
-        `| ${escapeMdTableCell(f.label)} | ${escapeMdTableCell(f.description)} | ${cells.join(" | ")} |`,
-      )
+      out.push(`| ${escapeMdTableCell(f.label)} | ${escapeMdTableCell(f.description)} | ${cells.join(" | ")} |`)
     }
   }
 

@@ -115,10 +115,7 @@ const parameters = z.object({
     )
     .optional(),
   command: z.string().describe("The command that triggered this task").optional(),
-  timeout: z
-    .number()
-    .describe("Maximum execution time in milliseconds (default: 300000ms = 5 minutes)")
-    .optional(),
+  timeout: z.number().describe("Maximum execution time in milliseconds (default: 300000ms = 5 minutes)").optional(),
 })
 
 export const TaskTool = Tool.define("task", async (ctx) => {

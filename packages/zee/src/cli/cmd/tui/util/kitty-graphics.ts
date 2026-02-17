@@ -96,14 +96,7 @@ export namespace KittyGraphics {
    * @param rows - Display height in cells
    * @returns Complete escape sequence for positioned image
    */
-  export function placeAt(
-    png: Buffer,
-    id: number,
-    x: number,
-    y: number,
-    cols: number,
-    rows: number,
-  ): string {
+  export function placeAt(png: Buffer, id: number, x: number, y: number, cols: number, rows: number): string {
     // Save cursor, move to position, write image, restore cursor
     const saveCursor = `${ESC}7`
     const moveTo = `${ESC}[${y + 1};${x + 1}H`

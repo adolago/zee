@@ -16,13 +16,15 @@ import { ProviderTransform } from "../../src/provider/transform"
 import type { Provider } from "../../src/provider/provider"
 
 // Helper to create mock model objects
-function createMockModel(overrides: Partial<{
-  id: string
-  providerID: string
-  api: { id: string; url: string; npm: string }
-  capabilities: { reasoning: boolean }
-  release_date: string
-}>): Provider.Model {
+function createMockModel(
+  overrides: Partial<{
+    id: string
+    providerID: string
+    api: { id: string; url: string; npm: string }
+    capabilities: { reasoning: boolean }
+    release_date: string
+  }>,
+): Provider.Model {
   return {
     id: overrides.id ?? "test/test-model",
     providerID: overrides.providerID ?? "test",

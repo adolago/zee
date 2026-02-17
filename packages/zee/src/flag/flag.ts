@@ -72,6 +72,7 @@ function computeFlags() {
 
     // Client identifier
     ZEE_CLIENT: env("ZEE_CLIENT") ?? "cli",
+    ZEE_SESSION_CONTROL: truthy("ZEE_SESSION_CONTROL"),
 
     // Models
     ZEE_MODELS_URL: env("ZEE_MODELS_URL"),

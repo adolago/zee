@@ -56,11 +56,7 @@ describe("shouldContinueAfterTools", () => {
     })
 
     test("text after multiple tools", () => {
-      const parts: MockPart[] = [
-        { type: "tool" },
-        { type: "tool" },
-        { type: "text", text: "Final synthesis" },
-      ]
+      const parts: MockPart[] = [{ type: "tool" }, { type: "tool" }, { type: "text", text: "Final synthesis" }]
       expect(shouldContinueAfterTools(parts)).toBe(false)
     })
 
@@ -73,11 +69,7 @@ describe("shouldContinueAfterTools", () => {
     })
 
     test("empty text after tool does not count as synthesis", () => {
-      const parts: MockPart[] = [
-        { type: "text", text: "Starting" },
-        { type: "tool" },
-        { type: "text", text: "" },
-      ]
+      const parts: MockPart[] = [{ type: "text", text: "Starting" }, { type: "tool" }, { type: "text", text: "" }]
       // Empty text doesn't count, so tool is still "last meaningful" → continue
       expect(shouldContinueAfterTools(parts)).toBe(true)
     })
@@ -104,27 +96,17 @@ describe("shouldContinueAfterTools", () => {
     })
 
     test("text before tool (tool is last)", () => {
-      const parts: MockPart[] = [
-        { type: "text", text: "Let me check that" },
-        { type: "tool" },
-      ]
+      const parts: MockPart[] = [{ type: "text", text: "Let me check that" }, { type: "tool" }]
       expect(shouldContinueAfterTools(parts)).toBe(true)
     })
 
     test("reasoning then tool", () => {
-      const parts: MockPart[] = [
-        { type: "reasoning", text: "I need to look this up" },
-        { type: "tool" },
-      ]
+      const parts: MockPart[] = [{ type: "reasoning", text: "I need to look this up" }, { type: "tool" }]
       expect(shouldContinueAfterTools(parts)).toBe(true)
     })
 
     test("text, tool, tool pattern (common with multi-tool calls)", () => {
-      const parts: MockPart[] = [
-        { type: "text", text: "I'll read multiple files" },
-        { type: "tool" },
-        { type: "tool" },
-      ]
+      const parts: MockPart[] = [{ type: "text", text: "I'll read multiple files" }, { type: "tool" }, { type: "tool" }]
       expect(shouldContinueAfterTools(parts)).toBe(true)
     })
 

@@ -121,8 +121,7 @@ export function getAuthConfig(): AuthConfig {
   // Parse scopes from ZEE_SERVER_SCOPES (comma-separated).
   // If not set, default to admin (full access) for backward compatibility.
   const scopeValues = Object.values(AuthScope)
-  const rawScopes =
-    process.env.ZEE_SERVER_SCOPES?.trim()
+  const rawScopes = process.env.ZEE_SERVER_SCOPES?.trim()
   let scopes: AuthScopeValue[]
   if (rawScopes) {
     scopes = rawScopes
@@ -238,8 +237,7 @@ export function assertSafeServerBind(opts: { hostname: string }) {
   const config = getAuthConfig()
   if (!config.disabled && config.password) return
 
-  const insecureOverrideOk =
-    Flag.ZEE_DISABLE_SERVER_AUTH && Flag.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH
+  const insecureOverrideOk = Flag.ZEE_DISABLE_SERVER_AUTH && Flag.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH
 
   if (insecureOverrideOk) return
 

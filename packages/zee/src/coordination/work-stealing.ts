@@ -240,10 +240,7 @@ export class WorkStealingService extends EventEmitter {
     }
 
     // Calculate how many tasks to steal
-    const tasksToSteal = Math.min(
-      Math.floor(difference / 2),
-      this.config.maxStealBatch
-    )
+    const tasksToSteal = Math.min(Math.floor(difference / 2), this.config.maxStealBatch)
 
     log.info("Initiating work stealing", {
       from: maxLoaded.agentId,
@@ -305,9 +302,10 @@ export class WorkStealingService extends EventEmitter {
     if (workloads.length === 0) return null
 
     // Filter by capabilities if specified
-    const candidates = capabilities.length > 0
-      ? workloads.filter((w) => capabilities.every((cap) => w.capabilities.includes(cap)))
-      : workloads
+    const candidates =
+      capabilities.length > 0
+        ? workloads.filter((w) => capabilities.every((cap) => w.capabilities.includes(cap)))
+        : workloads
 
     if (candidates.length === 0) return null
 

@@ -129,4 +129,3 @@ describe("usage command helpers", () => {
     expect(text).toContain("Top models:")
   })
 })
-

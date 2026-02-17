@@ -1,5 +1,5 @@
 ---
-name: Anki
+name: anki
 slug: anki
 version: 1.0.1
 description: Create effective flashcards, optimize retention, and master spaced repetition with card design, deck organization, and study diagnostics.

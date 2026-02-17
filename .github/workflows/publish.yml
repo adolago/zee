@@ -1,8 +1,8 @@
 name: publish
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -11,20 +11,19 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
+    env:
+      NPM_PACKAGE_NAME: "@adolago/zee"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,21 +31,49 @@ jobs:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install dependencies
-        run: bun install
-
       - name: Update version (if provided)
         if: inputs.version
         run: |
           cd packages/zee
           npm version ${{ inputs.version }} --no-git-tag-version --allow-same-version
 
+      - name: Check if version already exists on npm
+        id: package
+        run: |
+          VERSION=$(node -p "require('./packages/zee/package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          if npm view "${NPM_PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "${NPM_PACKAGE_NAME}@${VERSION} already exists on npm. Skipping publish."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip notice
+        if: steps.package.outputs.already_published == 'true'
+        run: echo "No publish needed for this push."
+
+      - name: Setup Bun
+        if: steps.package.outputs.already_published != 'true'
+        uses: ./.github/actions/setup-bun
+
+      - name: Install dependencies
+        if: steps.package.outputs.already_published != 'true'
+        run: bun install
+
       - name: Build
+        if: steps.package.outputs.already_published != 'true'
         run: |
           cd packages/zee
           bun run build
 
+      - name: Set npm package name
+        if: steps.package.outputs.already_published != 'true'
+        run: npm pkg set name="${NPM_PACKAGE_NAME}" --prefix packages/zee
+
       - name: Publish to npm
+        if: steps.package.outputs.already_published != 'true'
         run: |
           cd packages/zee
           npm publish --access public --provenance
@@ -54,6 +81,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Upload artifacts
+        if: steps.package.outputs.already_published != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: zee-dist

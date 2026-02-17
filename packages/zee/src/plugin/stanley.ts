@@ -591,11 +591,13 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
             )
           }
 
-          if (institutionalRes.status === "fulfilled" && institutionalRes.value.success && institutionalRes.value.data) {
+          if (
+            institutionalRes.status === "fulfilled" &&
+            institutionalRes.value.success &&
+            institutionalRes.value.data
+          ) {
             const i = institutionalRes.value.data as unknown as Record<string, unknown>
-            sections.push(
-              `Ownership: Institutional ${i.institutionalOwnership}% | Insider ${i.insiderOwnership}%`,
-            )
+            sections.push(`Ownership: Institutional ${i.institutionalOwnership}% | Insider ${i.insiderOwnership}%`)
           }
 
           if (accountingRes.status === "fulfilled" && accountingRes.value.success && accountingRes.value.data) {
@@ -613,8 +615,7 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
       }),
 
       stanley_risk_check: tool({
-        description:
-          "Quick portfolio risk snapshot combining VaR, macro regime detection, and correlation analysis.",
+        description: "Quick portfolio risk snapshot combining VaR, macro regime detection, and correlation analysis.",
         args: {
           holdings: tool.schema
             .array(
@@ -661,19 +662,14 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
       }),
 
       stanley_morning_brief: tool({
-        description:
-          "Morning market briefing with macro regime, sector rotation, ETF flows, and watchlist signals.",
+        description: "Morning market briefing with macro regime, sector rotation, ETF flows, and watchlist signals.",
         args: {
           watchlist: tool.schema.array(tool.schema.string()).optional().describe("Optional watchlist symbols"),
         },
         async execute(args) {
           const c = getClient()
 
-          const promises: Promise<unknown>[] = [
-            c.macro.getRegime(),
-            c.etf.getSectorRotation(),
-            c.etf.getFlows(),
-          ]
+          const promises: Promise<unknown>[] = [c.macro.getRegime(), c.etf.getSectorRotation(), c.etf.getFlows()]
           if (args.watchlist?.length) {
             promises.push(c.signals.generate(args.watchlist, 0.5))
           }
@@ -695,8 +691,7 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
       }),
 
       stanley_trade_journal_entry: tool({
-        description:
-          "Create a trade journal entry with automatic thesis linking and context capture.",
+        description: "Create a trade journal entry with automatic thesis linking and context capture.",
         args: {
           symbol: tool.schema.string().describe("Stock ticker symbol"),
           direction: tool.schema.enum(["long", "short"]).describe("Trade direction"),
@@ -735,9 +730,7 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
           if (researchRes.status === "fulfilled" && (researchRes.value as ApiResult).success) {
             const r = (researchRes.value as ApiResult).data as Record<string, unknown> | null
             if (r) {
-              sections.push(
-                `Context: Score ${r.overallScore}/100 | Rating: ${r.valuationRating}`,
-              )
+              sections.push(`Context: Score ${r.overallScore}/100 | Rating: ${r.valuationRating}`)
             }
           }
 

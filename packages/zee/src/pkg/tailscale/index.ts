@@ -68,13 +68,10 @@ export async function getTailnetHostname(binary?: string): Promise<string | null
   try {
     const { stdout } = await execAsync(`${bin} status --json`, { timeout: 5000 })
     const parsed = parsePossiblyNoisyJsonObject(stdout)
-    const self = typeof parsed.Self === "object" && parsed.Self !== null
-      ? (parsed.Self as Record<string, unknown>)
-      : undefined
+    const self =
+      typeof parsed.Self === "object" && parsed.Self !== null ? (parsed.Self as Record<string, unknown>) : undefined
     const dns = typeof self?.DNSName === "string" ? (self.DNSName as string) : undefined
-    const ips = Array.isArray(self?.TailscaleIPs)
-      ? (self.TailscaleIPs as string[])
-      : []
+    const ips = Array.isArray(self?.TailscaleIPs) ? (self.TailscaleIPs as string[]) : []
     if (dns && dns.length > 0) return dns.replace(/\.$/, "")
     if (ips.length > 0) return ips[0]
   } catch {

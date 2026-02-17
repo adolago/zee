@@ -219,7 +219,10 @@ describe("tool.read truncation", () => {
       init: async (dir) => {
         // Create a file with many short lines that exceeds byte limit (50KB)
         // Each line is ~100 chars, need 510+ lines to exceed 50KB
-        const lines = Array.from({ length: 600 }, (_, i) => `line${i.toString().padStart(3, "0")}: ${"x".repeat(90)}`).join("\n")
+        const lines = Array.from(
+          { length: 600 },
+          (_, i) => `line${i.toString().padStart(3, "0")}: ${"x".repeat(90)}`,
+        ).join("\n")
         await Bun.write(path.join(dir, "large.txt"), lines)
       },
     })
@@ -284,7 +287,10 @@ describe("tool.read truncation", () => {
       directory: tmp.path,
       fn: async () => {
         const read = await ReadTool.init()
-        const result = await read.execute({ filePath: path.join(tmp.path, "offset.txt"), offset: 10, limit: 5 }, ctx(tmp.path))
+        const result = await read.execute(
+          { filePath: path.join(tmp.path, "offset.txt"), offset: 10, limit: 5 },
+          ctx(tmp.path),
+        )
         expect(result.output).toContain("line10")
         expect(result.output).toContain("line14")
         expect(result.output).not.toContain("line0")

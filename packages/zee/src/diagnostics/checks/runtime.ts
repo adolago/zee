@@ -3,42 +3,42 @@
  * @description Core runtime environment health checks
  */
 
-import { execSync } from "child_process";
-import * as fs from "fs/promises";
-import * as os from "os";
-import * as path from "path";
-import type { CheckResult, CheckOptions } from "../types";
-import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs";
-import { Stanley } from "../../paths";
+import { execSync } from "child_process"
+import * as fs from "fs/promises"
+import * as os from "os"
+import * as path from "path"
+import type { CheckResult, CheckOptions } from "../types"
+import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs"
+import { Stanley } from "../../paths"
 
 /** Minimum required Bun version */
-const MIN_BUN_VERSION = "1.0.0";
+const MIN_BUN_VERSION = "1.0.0"
 
 /** Minimum required disk space in GB */
-const MIN_DISK_SPACE_GB = 1;
+const MIN_DISK_SPACE_GB = 1
 
 /** Minimum required memory in MB */
-const MIN_MEMORY_MB = 512;
+const MIN_MEMORY_MB = 512
 
 /**
  * Get the config directory path
  */
 function getConfigDir(): string {
-  return resolveConfigDir();
+  return resolveConfigDir()
 }
 
 /**
  * Get the state directory path
  */
 function getStateDir(): string {
-  return resolveStateDir();
+  return resolveStateDir()
 }
 
 /**
  * Get the logs directory path
  */
 function getLogsDir(): string {
-  return resolveLogsDir();
+  return resolveLogsDir()
 }
 
 /**
@@ -46,27 +46,27 @@ function getLogsDir(): string {
  * @returns negative if a < b, 0 if equal, positive if a > b
  */
 function compareVersions(a: string, b: string): number {
-  const partsA = a.split(".").map((p) => parseInt(p, 10) || 0);
-  const partsB = b.split(".").map((p) => parseInt(p, 10) || 0);
+  const partsA = a.split(".").map((p) => parseInt(p, 10) || 0)
+  const partsB = b.split(".").map((p) => parseInt(p, 10) || 0)
 
   for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-    const numA = partsA[i] || 0;
-    const numB = partsB[i] || 0;
-    if (numA !== numB) return numA - numB;
+    const numA = partsA[i] || 0
+    const numB = partsB[i] || 0
+    if (numA !== numB) return numA - numB
   }
-  return 0;
+  return 0
 }
 
 /**
  * Check Bun runtime version
  */
 async function checkBunVersion(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const output = execSync("bun --version", { encoding: "utf-8" }).trim();
-    const version = output.replace(/^v/, "");
-    const meetsMinimum = compareVersions(version, MIN_BUN_VERSION) >= 0;
+    const output = execSync("bun --version", { encoding: "utf-8" }).trim()
+    const version = output.replace(/^v/, "")
+    const meetsMinimum = compareVersions(version, MIN_BUN_VERSION) >= 0
 
     return {
       id: "runtime.bun-version",
@@ -80,7 +80,7 @@ async function checkBunVersion(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { version, minVersion: MIN_BUN_VERSION },
-    };
+    }
   } catch (error) {
     return {
       id: "runtime.bun-version",
@@ -92,24 +92,21 @@ async function checkBunVersion(): Promise<CheckResult> {
       severity: "critical",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
 /**
  * Check a directory exists and is writable
  */
-async function checkDirectory(
-  type: "config" | "state" | "logs",
-  dirPath: string
-): Promise<CheckResult> {
-  const start = Date.now();
-  const names = { config: "Config", state: "State", logs: "Log" };
+async function checkDirectory(type: "config" | "state" | "logs", dirPath: string): Promise<CheckResult> {
+  const start = Date.now()
+  const names = { config: "Config", state: "State", logs: "Log" }
 
   try {
     // Check if exists
     try {
-      await fs.access(dirPath);
+      await fs.access(dirPath)
     } catch {
       // Doesn't exist, can auto-fix
       return {
@@ -122,17 +119,17 @@ async function checkDirectory(
         durationMs: Date.now() - start,
         autoFixable: true,
         fix: async () => {
-          await fs.mkdir(dirPath, { recursive: true });
-          return { success: true, message: `Created ${dirPath}` };
+          await fs.mkdir(dirPath, { recursive: true })
+          return { success: true, message: `Created ${dirPath}` }
         },
-      };
+      }
     }
 
     // Check if writable
-    const testFile = path.join(dirPath, ".write-test");
+    const testFile = path.join(dirPath, ".write-test")
     try {
-      await fs.writeFile(testFile, "test");
-      await fs.unlink(testFile);
+      await fs.writeFile(testFile, "test")
+      await fs.unlink(testFile)
     } catch {
       return {
         id: `runtime.${type}-dir`,
@@ -144,7 +141,7 @@ async function checkDirectory(
         severity: "error",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     return {
@@ -156,7 +153,7 @@ async function checkDirectory(
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   } catch (error) {
     return {
       id: `runtime.${type}-dir`,
@@ -168,7 +165,7 @@ async function checkDirectory(
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -176,32 +173,30 @@ async function checkDirectory(
  * Check available disk space
  */
 async function checkDiskSpace(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const homeDir = os.homedir();
+    const homeDir = os.homedir()
     const output = execSync(`df -BG "${homeDir}" | tail -1`, {
       encoding: "utf-8",
-    });
-    const parts = output.trim().split(/\s+/);
-    const availableStr = parts[3];
-    const available = parseInt(availableStr.replace("G", ""), 10);
+    })
+    const parts = output.trim().split(/\s+/)
+    const availableStr = parts[3]
+    const available = parseInt(availableStr.replace("G", ""), 10)
 
-    const isOk = available >= MIN_DISK_SPACE_GB;
+    const isOk = available >= MIN_DISK_SPACE_GB
 
     return {
       id: "runtime.disk-space",
       name: "Disk Space",
       category: "runtime",
       status: isOk ? "pass" : "warn",
-      message: `${available} GB available${
-        isOk ? "" : ` (need >${MIN_DISK_SPACE_GB} GB)`
-      }`,
+      message: `${available} GB available${isOk ? "" : ` (need >${MIN_DISK_SPACE_GB} GB)`}`,
       severity: isOk ? "info" : "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { availableGB: available, minGB: MIN_DISK_SPACE_GB },
-    };
+    }
   } catch {
     return {
       id: "runtime.disk-space",
@@ -212,7 +207,7 @@ async function checkDiskSpace(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -220,29 +215,27 @@ async function checkDiskSpace(): Promise<CheckResult> {
  * Check available memory
  */
 async function checkMemory(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
-    const freeBytes = os.freemem();
-    const freeMB = Math.round(freeBytes / 1024 / 1024);
-    const totalBytes = os.totalmem();
-    const totalMB = Math.round(totalBytes / 1024 / 1024);
+    const freeBytes = os.freemem()
+    const freeMB = Math.round(freeBytes / 1024 / 1024)
+    const totalBytes = os.totalmem()
+    const totalMB = Math.round(totalBytes / 1024 / 1024)
 
-    const isOk = freeMB >= MIN_MEMORY_MB;
+    const isOk = freeMB >= MIN_MEMORY_MB
 
     return {
       id: "runtime.memory",
       name: "Available Memory",
       category: "runtime",
       status: isOk ? "pass" : "warn",
-      message: `${freeMB} MB free / ${totalMB} MB total${
-        isOk ? "" : ` (need >${MIN_MEMORY_MB} MB)`
-      }`,
+      message: `${freeMB} MB free / ${totalMB} MB total${isOk ? "" : ` (need >${MIN_MEMORY_MB} MB)`}`,
       severity: isOk ? "info" : "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { freeMB, totalMB, minMB: MIN_MEMORY_MB },
-    };
+    }
   } catch {
     return {
       id: "runtime.memory",
@@ -253,7 +246,7 @@ async function checkMemory(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -261,11 +254,11 @@ async function checkMemory(): Promise<CheckResult> {
  * Check if binary is up-to-date with source (extended check only)
  */
 async function checkBinaryMatch(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   try {
     // Get the path to the zee binary
-    const binPath = process.argv[1];
+    const binPath = process.argv[1]
     if (!binPath) {
       return {
         id: "runtime.binary-match",
@@ -276,19 +269,19 @@ async function checkBinaryMatch(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
-    const binStat = await fs.stat(binPath);
-    const binMtime = binStat.mtimeMs;
+    const binStat = await fs.stat(binPath)
+    const binMtime = binStat.mtimeMs
 
     // Try to find package.json in the source
-    const sourceDir = path.dirname(path.dirname(binPath));
-    const packageJsonPath = path.join(sourceDir, "package.json");
+    const sourceDir = path.dirname(path.dirname(binPath))
+    const packageJsonPath = path.join(sourceDir, "package.json")
 
     try {
-      const pkgStat = await fs.stat(packageJsonPath);
-      const sourceMtime = pkgStat.mtimeMs;
+      const pkgStat = await fs.stat(packageJsonPath)
+      const sourceMtime = pkgStat.mtimeMs
 
       if (binMtime < sourceMtime) {
         return {
@@ -301,7 +294,7 @@ async function checkBinaryMatch(): Promise<CheckResult> {
           severity: "warning",
           durationMs: Date.now() - start,
           autoFixable: false,
-        };
+        }
       }
 
       return {
@@ -313,7 +306,7 @@ async function checkBinaryMatch(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     } catch {
       return {
         id: "runtime.binary-match",
@@ -324,7 +317,7 @@ async function checkBinaryMatch(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
   } catch (error) {
     return {
@@ -336,47 +329,45 @@ async function checkBinaryMatch(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
 /**
  * Run all runtime checks
  */
-export async function runRuntimeChecks(
-  options: CheckOptions
-): Promise<CheckResult[]> {
-  const results: CheckResult[] = [];
+export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResult[]> {
+  const results: CheckResult[] = []
 
   // Core checks (always run)
-  results.push(await checkBunVersion());
-  results.push(await checkDirectory("config", getConfigDir()));
-  results.push(await checkDirectory("state", getStateDir()));
-  results.push(await checkDirectory("logs", getLogsDir()));
-  results.push(await checkDiskSpace());
-  results.push(await checkMemory());
+  results.push(await checkBunVersion())
+  results.push(await checkDirectory("config", getConfigDir()))
+  results.push(await checkDirectory("state", getStateDir()))
+  results.push(await checkDirectory("logs", getLogsDir()))
+  results.push(await checkDiskSpace())
+  results.push(await checkMemory())
 
   // Stanley Python backend
-  results.push(checkStanleyBackend());
+  results.push(checkStanleyBackend())
 
   // Extended checks (only in full mode)
   if (options.full) {
-    results.push(await checkBinaryMatch());
+    results.push(await checkBinaryMatch())
   }
 
-  return results;
+  return results
 }
 
 /**
  * Check that the Stanley Python backend is properly set up
  */
 function checkStanleyBackend(): CheckResult {
-  const start = Date.now();
-  const repo = Stanley.repo();
+  const start = Date.now()
+  const repo = Stanley.repo()
 
-  const err = Stanley.preflight();
+  const err = Stanley.preflight()
   if (err) {
-    const isVenvMissing = err.includes("venv not found");
+    const isVenvMissing = err.includes("venv not found")
     return {
       id: "runtime.stanley-backend",
       name: "Stanley Backend",
@@ -390,18 +381,18 @@ function checkStanleyBackend(): CheckResult {
       ...(isVenvMissing && {
         fix: async () => {
           try {
-            execSync(`python3.12 -m venv ${path.join(repo, ".venv")}`, { timeout: 30_000, stdio: "pipe" });
+            execSync(`python3.12 -m venv ${path.join(repo, ".venv")}`, { timeout: 30_000, stdio: "pipe" })
             execSync(`${path.join(repo, ".venv", "bin", "pip")} install -r ${path.join(repo, "requirements.txt")}`, {
               timeout: 300_000,
               stdio: "pipe",
-            });
-            return { success: true, message: "Created venv and installed dependencies" };
+            })
+            return { success: true, message: "Created venv and installed dependencies" }
           } catch (e) {
-            return { success: false, message: `Auto-fix failed: ${e instanceof Error ? e.message : String(e)}` };
+            return { success: false, message: `Auto-fix failed: ${e instanceof Error ? e.message : String(e)}` }
           }
         },
       }),
-    };
+    }
   }
 
   return {
@@ -414,5 +405,5 @@ function checkStanleyBackend(): CheckResult {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { repo, python: Stanley.python() },
-  };
+  }
 }

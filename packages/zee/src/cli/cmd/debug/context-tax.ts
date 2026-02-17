@@ -32,11 +32,7 @@ export const ContextTaxCommand = cmd({
       }),
   async handler(args) {
     await bootstrap(process.cwd(), async () => {
-      const personas = args.all
-        ? PERSONAS
-        : args.persona
-          ? [args.persona as string]
-          : PERSONAS
+      const personas = args.all ? PERSONAS : args.persona ? [args.persona as string] : PERSONAS
 
       const results: ContextTaxBreakdown[] = []
 
@@ -75,13 +71,13 @@ function printDetailed(breakdown: ContextTaxBreakdown) {
   w(`${"=".repeat(60)}${EOL}${EOL}`)
 
   // System prompt section
-  const systemComponents = breakdown.components.filter((c) =>
-    ["system", "awareness", "knowledge"].includes(c.category),
-  )
+  const systemComponents = breakdown.components.filter((c) => ["system", "awareness", "knowledge"].includes(c.category))
   if (systemComponents.length > 0) {
     w(`SYSTEM PROMPT${EOL}`)
     for (const c of systemComponents) {
-      w(`  ${padRight(c.name, 38)} ${padLeft(fmtTokens(c.estimatedTokens), 8)}  ${padLeft(fmtKB(c.bytes), 8)}  ${padLeft(`${c.pct}%`, 4)}${EOL}`)
+      w(
+        `  ${padRight(c.name, 38)} ${padLeft(fmtTokens(c.estimatedTokens), 8)}  ${padLeft(fmtKB(c.bytes), 8)}  ${padLeft(`${c.pct}%`, 4)}${EOL}`,
+      )
     }
     w(`  ${"─".repeat(56)}${EOL}`)
     w(`  ${padRight("Subtotal", 38)} ${padLeft(fmtTokens(breakdown.systemSubtotal), 8)}${EOL}`)
@@ -89,13 +85,13 @@ function printDetailed(breakdown: ContextTaxBreakdown) {
   }
 
   // Tool schemas section
-  const toolComponents = breakdown.components.filter((c) =>
-    ["tools", "skills", "mcp"].includes(c.category),
-  )
+  const toolComponents = breakdown.components.filter((c) => ["tools", "skills", "mcp"].includes(c.category))
   if (toolComponents.length > 0) {
     w(`TOOL SCHEMAS${EOL}`)
     for (const c of toolComponents) {
-      w(`  ${padRight(c.name, 38)} ${padLeft(fmtTokens(c.estimatedTokens), 8)}  ${padLeft(fmtKB(c.bytes), 8)}  ${padLeft(`${c.pct}%`, 4)}${EOL}`)
+      w(
+        `  ${padRight(c.name, 38)} ${padLeft(fmtTokens(c.estimatedTokens), 8)}  ${padLeft(fmtKB(c.bytes), 8)}  ${padLeft(`${c.pct}%`, 4)}${EOL}`,
+      )
     }
     w(`  ${"─".repeat(56)}${EOL}`)
     w(`  ${padRight("Subtotal", 38)} ${padLeft(fmtTokens(breakdown.toolsSubtotal), 8)}${EOL}`)
@@ -121,7 +117,9 @@ function printDetailed(breakdown: ContextTaxBreakdown) {
   if (breakdown.lazyPool.length > 0) {
     w(`LAZY POOL (loaded on skill invoke)${EOL}`)
     for (const pool of breakdown.lazyPool) {
-      w(`  ${padRight(`${pool.persona} skills (${pool.skillCount})`, 38)} ${padLeft(fmtTokens(pool.estimatedTokens), 8)}  ${padLeft(fmtKB(pool.totalBytes), 8)}${EOL}`)
+      w(
+        `  ${padRight(`${pool.persona} skills (${pool.skillCount})`, 38)} ${padLeft(fmtTokens(pool.estimatedTokens), 8)}  ${padLeft(fmtKB(pool.totalBytes), 8)}${EOL}`,
+      )
     }
     w(EOL)
   }

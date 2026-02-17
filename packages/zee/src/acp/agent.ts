@@ -55,10 +55,7 @@ type EventClient = {
   }
 }
 
-const withDirectory = (
-  directory: string,
-  options?: { headers?: Record<string, string>; throwOnError?: boolean },
-) => ({
+const withDirectory = (directory: string, options?: { headers?: Record<string, string>; throwOnError?: boolean }) => ({
   headers: {
     ...options?.headers,
     [HEADER_DIRECTORY]: directory,
@@ -86,13 +83,13 @@ function formatModelId(model: { providerID: string; modelID: string; variant?: s
 type ProviderInfo = {
   id: string
   name: string
-  models: Record<string, { id: string; name: string; providerID: string; variants?: Record<string, { disabled?: boolean }> }>
+  models: Record<
+    string,
+    { id: string; name: string; providerID: string; variants?: Record<string, { disabled?: boolean }> }
+  >
 }
 
-function getModelVariants(
-  providers: ProviderInfo[],
-  model: { providerID: string; modelID: string },
-): string[] {
+function getModelVariants(providers: ProviderInfo[], model: { providerID: string; modelID: string }): string[] {
   const provider = providers.find((p) => p.id === model.providerID)
   if (!provider) return []
   const m = provider.models[model.modelID]
@@ -534,11 +531,7 @@ export namespace ACP {
           if (part.type === "text") {
             const delta = props.delta
             if (delta) {
-              const audience: Role[] | undefined = part.synthetic
-                ? ["assistant"]
-                : part.ignored
-                  ? ["user"]
-                  : undefined
+              const audience: Role[] | undefined = part.synthetic ? ["assistant"] : part.ignored ? ["user"] : undefined
               const annotations: Annotations | undefined = audience ? { audience } : undefined
               await this.connection
                 .sessionUpdate({
@@ -1156,9 +1149,7 @@ export namespace ACP {
       })
       this.sessionManager.setVariant(session.id, model.variant)
 
-      const providers = await this.sdk.config
-        .providers(withDirectory(session.cwd))
-        .then((x) => x.data!.providers)
+      const providers = await this.sdk.config.providers(withDirectory(session.cwd)).then((x) => x.data!.providers)
       const availableVariants = getModelVariants(providers as ProviderInfo[], model)
 
       return {

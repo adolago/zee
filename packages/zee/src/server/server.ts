@@ -190,9 +190,7 @@ export namespace Server {
         })
         .use(
           bodyLimit({
-            maxSize:
-              parseBodyLimitBytes(process.env["ZEE_BODY_LIMIT"]) ??
-              DEFAULT_BODY_LIMIT_BYTES,
+            maxSize: parseBodyLimitBytes(process.env["ZEE_BODY_LIMIT"]) ?? DEFAULT_BODY_LIMIT_BYTES,
             onError: (c) => c.json({ error: "Request body too large" }, 413),
           }),
         )
@@ -280,7 +278,7 @@ export namespace Server {
 
             const root = path.parse(real).root
             const isRoot = path.resolve(real) === path.resolve(root)
-            const globalConfig = await Config.global().catch(() => ({} as Config.Info))
+            const globalConfig = await Config.global().catch(() => ({}) as Config.Info)
             const allowGlobal =
               Flag.ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY || globalConfig?.server?.allowGlobalDirectory === true
             if (isRoot && !allowGlobal) {
@@ -342,7 +340,7 @@ export namespace Server {
             },
           })
         })
-        
+
         // Mount Routes
         .route("/", AppRoute)
         .route("/global", GlobalRoute)
@@ -399,11 +397,9 @@ export namespace Server {
           },
         )
 
-        
         // Proxy Fallback - MUST BE LAST
         .all("/*", async (c) => {
-          const proxyBase = (process.env["ZEE_PROXY_BASE_URL"] ?? "")
-            .replace(/\/+$/, "")
+          const proxyBase = (process.env["ZEE_PROXY_BASE_URL"] ?? "").replace(/\/+$/, "")
           if (!proxyBase) {
             return c.text("Not Found", 404)
           }

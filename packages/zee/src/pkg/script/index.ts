@@ -10,7 +10,9 @@ const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
 
 // Read version from the Zee package.json as fallback (go up 3 levels to packages/zee)
 const zeePkgPath = path.resolve(import.meta.dir, "../../../package.json")
-const zeePkg = await Bun.file(zeePkgPath).json().catch(() => ({}))
+const zeePkg = await Bun.file(zeePkgPath)
+  .json()
+  .catch(() => ({}))
 const packageJsonVersion = zeePkg.version as string | undefined
 
 if (!expectedBunVersion) {
@@ -48,7 +50,9 @@ const VERSION = await (async () => {
     const [major, minor] = (packageJsonVersion?.replace(/-.*$/, "") || "0.2.0").split(".").map(Number)
     // Nightly number = days since Jan 30, 2026 (so Jan 31 = 1)
     const now = new Date()
-    const startYear = 2026, startMonth = 0, startDay = 30 // Jan 30, 2026
+    const startYear = 2026,
+      startMonth = 0,
+      startDay = 30 // Jan 30, 2026
     const startDate = new Date(startYear, startMonth, startDay)
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const nightly = Math.round((today.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000))

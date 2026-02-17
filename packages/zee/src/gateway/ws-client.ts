@@ -34,10 +34,7 @@ function parseGatewayResponseFrame(raw: unknown): GatewayResponseFrame | null {
   if (typeof frame.id !== "string") return null
   if (typeof frame.ok !== "boolean") return null
 
-  const error =
-    frame.error && typeof frame.error === "object"
-      ? (frame.error as Record<string, unknown>)
-      : undefined
+  const error = frame.error && typeof frame.error === "object" ? (frame.error as Record<string, unknown>) : undefined
 
   return {
     type: "res",

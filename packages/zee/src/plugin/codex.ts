@@ -355,11 +355,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
         if (auth.type !== "oauth") return {}
 
         // Filter models to only allowed Codex models for OAuth
-        const allowedModels = new Set([
-          "gpt-5.2",
-          "gpt-5.3-codex",
-          "gpt-5.3-codex-spark",
-        ])
+        const allowedModels = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"])
         for (const modelId of Object.keys(provider.models)) {
           if (!allowedModels.has(modelId)) {
             delete provider.models[modelId]
@@ -516,15 +512,15 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               method: "auto" as const,
               async callback() {
                 while (true) {
-	                  const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
-	                    method: "POST",
-	                    headers: {
-	                      "Content-Type": "application/json",
-	                      "User-Agent": `zee/${Installation.VERSION}`,
-	                    },
-	                    body: JSON.stringify({
-	                      device_auth_id: deviceData.device_auth_id,
-	                      user_code: deviceData.user_code,
+                  const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "User-Agent": `zee/${Installation.VERSION}`,
+                    },
+                    body: JSON.stringify({
+                      device_auth_id: deviceData.device_auth_id,
+                      user_code: deviceData.user_code,
                     }),
                   })
 

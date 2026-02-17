@@ -1,7 +1,4 @@
-export type BusySubmitDecision =
-  | { submit: "prompt" }
-  | { submit: "steer" }
-  | { submit: "queue" }
+export type BusySubmitDecision = { submit: "prompt" } | { submit: "steer" } | { submit: "queue" }
 
 export function decideBusySubmit(input: {
   sessionIsBusy: boolean

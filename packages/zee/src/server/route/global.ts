@@ -283,8 +283,7 @@ export const GlobalRoute = new Hono()
     "/dispose-directory",
     describeRoute({
       summary: "Dispose cached instance by directory",
-      description:
-        "Dispose a cached Zee instance by directory key. Use /global/instances to discover cached keys.",
+      description: "Dispose a cached Zee instance by directory key. Use /global/instances to discover cached keys.",
       operationId: "global.disposeDirectory",
       responses: {
         200: {

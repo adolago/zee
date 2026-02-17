@@ -35,9 +35,7 @@ export interface EnvOverrideEntry {
  * Only sets variables that are not already defined in process.env.
  * Returns a cleanup function that restores the previous values.
  */
-export async function applySkillEnvOverrides(
-  skills?: EnvOverrideEntry[],
-): Promise<() => void> {
+export async function applySkillEnvOverrides(skills?: EnvOverrideEntry[]): Promise<() => void> {
   const config = await Config.get()
   const entries = config.skills?.entries
   if (!entries || !skills?.length) return () => {}

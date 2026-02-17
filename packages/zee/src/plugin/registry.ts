@@ -28,9 +28,7 @@ const RegistrySchema = z.object({
 export type RegistryPlugin = z.infer<typeof RegistryPluginSchema>
 export type Registry = z.infer<typeof RegistrySchema>
 
-const REGISTRY_URLS = [
-  "https://raw.githubusercontent.com/adolago/zee/main/plugins/index.json",
-] as const
+const REGISTRY_URLS = ["https://raw.githubusercontent.com/adolago/zee/main/plugins/index.json"] as const
 const CACHE_TTL = 3600000 // 1 hour
 const CACHE_FILE = "plugin-registry.json"
 

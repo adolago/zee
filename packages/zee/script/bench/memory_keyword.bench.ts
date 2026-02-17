@@ -1,12 +1,12 @@
-import type { BenchCase } from "./types";
-import { runLoad, summarizeLatenciesMs } from "./_util";
+import type { BenchCase } from "./types"
+import { runLoad, summarizeLatenciesMs } from "./_util"
 
 export const bench: BenchCase = {
   id: "memory_keyword",
   name: "Memory search (keyword)",
   group: "memory",
   async run(ctx, opts) {
-    const mem = ctx.memory;
+    const mem = ctx.memory
     if (!mem) {
       return {
         id: this.id,
@@ -14,10 +14,10 @@ export const bench: BenchCase = {
         group: this.group,
         status: "skipped",
         reason: "Memory context unavailable",
-      };
+      }
     }
 
-    const queries = mem.queries.keyword;
+    const queries = mem.queries.keyword
     if (queries.length === 0) {
       return {
         id: this.id,
@@ -25,7 +25,7 @@ export const bench: BenchCase = {
         group: this.group,
         status: "skipped",
         reason: "No keyword queries generated",
-      };
+      }
     }
 
     // Warmup
@@ -36,27 +36,27 @@ export const bench: BenchCase = {
         limit: 10,
         includeSnippets: false,
         includeVectors: false,
-      });
+      })
     }
 
-    let empty = 0;
+    let empty = 0
     const load = await runLoad({
       durationMs: opts.durationSeconds * 1000,
       concurrency: opts.concurrency,
       fn: async (n) => {
-        const q = queries[n % queries.length] as string;
+        const q = queries[n % queries.length] as string
         const res = await mem.memory.search({
           query: q,
           mode: "keyword",
           limit: 10,
           includeSnippets: false,
           includeVectors: false,
-        });
-        if (res.length === 0) empty++;
+        })
+        if (res.length === 0) empty++
       },
-    });
+    })
 
-    const latency = summarizeLatenciesMs(load.latenciesMs);
+    const latency = summarizeLatenciesMs(load.latenciesMs)
     return {
       id: this.id,
       name: this.name,
@@ -70,7 +70,6 @@ export const bench: BenchCase = {
         emptyResults: empty,
         latencyMs: latency,
       },
-    };
+    }
   },
-};
-
+}

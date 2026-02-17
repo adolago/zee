@@ -75,7 +75,7 @@ export const AttachCommand = cmd({
       url = `http://${hostname}:${state.port}`
     }
 
-      // Apply password from CLI flag
+    // Apply password from CLI flag
     await attachTui({
       url,
       directory: cwd,

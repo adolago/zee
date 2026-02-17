@@ -76,7 +76,7 @@ export async function printGatewayStatus(): Promise<void> {
   const config = await readEmbeddedGatewayConfigSnapshot().catch(() => null)
   const configLabel = config
     ? config.exists
-      ? config.path ?? "Configured"
+      ? (config.path ?? "Configured")
       : config.path
         ? `Not found (${config.path})`
         : "Not found"

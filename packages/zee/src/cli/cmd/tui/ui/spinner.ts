@@ -44,11 +44,7 @@ interface CarouselState {
  * 2. Traverse: full group slides left
  * 3. Exit: blocks disappear one-by-one on left edge
  */
-function getCarouselState(
-  frameIndex: number,
-  totalChars: number,
-  activeCount: number,
-): CarouselState {
+function getCarouselState(frameIndex: number, totalChars: number, activeCount: number): CarouselState {
   // Total cycle: enter (activeCount-1) + traverse (totalChars - activeCount + 1) + exit (activeCount-1)
   // Simplified: totalChars + activeCount - 1 frames per cycle
   const cycleLength = totalChars + activeCount - 1
@@ -56,7 +52,7 @@ function getCarouselState(
 
   // Head position (leftmost active block) moves from (totalChars - 1) down to -(activeCount - 1)
   // This keeps the first frame visible at the right edge and exits on the left
-  const head = (totalChars - 1) - cycleFrame
+  const head = totalChars - 1 - cycleFrame
 
   return {
     offset: head, // Now represents head position
@@ -75,11 +71,7 @@ function getCarouselState(
  * - TRAIL extends right from head
  * - Positions outside [0, totalChars) are not displayed
  */
-function getCarouselColorIndex(
-  charIndex: number,
-  totalChars: number,
-  state: CarouselState,
-): number {
+function getCarouselColorIndex(charIndex: number, totalChars: number, state: CarouselState): number {
   const { offset: head, activeCount } = state
 
   // Trail index: how far behind the head is this position?

@@ -37,9 +37,7 @@ export namespace Config {
     }
   }
 
-  const managedConfigDir =
-    process.env.ZEE_TEST_MANAGED_CONFIG_DIR ||
-    getManagedConfigDir()
+  const managedConfigDir = process.env.ZEE_TEST_MANAGED_CONFIG_DIR || getManagedConfigDir()
 
   // Custom merge function that concatenates array fields instead of replacing them
   function mergeConfigConcatArrays(target: Info, source: Info): Info {
@@ -71,10 +69,7 @@ export namespace Config {
         const remoteConfig = wellknown.config ?? {}
         // Add $schema to prevent load() from trying to write back to a non-existent file
         if (!remoteConfig.$schema) remoteConfig.$schema = "zee"
-        result = mergeConfigConcatArrays(
-          result,
-          await load(JSON.stringify(remoteConfig), `${key}/.well-known/zee`),
-        )
+        result = mergeConfigConcatArrays(result, await load(JSON.stringify(remoteConfig), `${key}/.well-known/zee`))
         log.debug("loaded remote config from well-known", { url: key })
       }
     }
@@ -250,13 +245,29 @@ export namespace Config {
     }
   }
 
+  async function isPortableLocalPlugin(localPluginPkgPath: string) {
+    const raw = await fs.readFile(localPluginPkgPath, "utf-8").catch(() => "")
+    if (!raw) return false
+    const parsed = JSON.parse(raw) as {
+      dependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
+      optionalDependencies?: Record<string, string>
+    }
+
+    const specs = [
+      ...Object.values(parsed.dependencies ?? {}),
+      ...Object.values(parsed.peerDependencies ?? {}),
+      ...Object.values(parsed.optionalDependencies ?? {}),
+    ]
+    return !specs.some((spec) => /^(workspace:|catalog:)/.test(spec))
+  }
+
   export async function installDependencies(dir: string) {
     // Benchmarks and certain automation should never mutate user config directories.
     // This env var is intentionally read at call time (not via Flag) to avoid stale values
     // when the process sets it after module import.
     const disableInstall = (() => {
-      const v = (process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL)
-        ?.toLowerCase()
+      const v = process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL?.toLowerCase()
       return v === "true" || v === "1"
     })()
     if (disableInstall) {
@@ -283,14 +294,27 @@ export namespace Config {
     const pluginVersion = Installation.isLocal() || Installation.isPreview() ? "latest" : Installation.VERSION
     const localPluginDir = path.join(Global.Path.source, "packages", "plugin")
     const localPluginSpecifier = `file:${localPluginDir}`
-    const localPluginAvailable = await Filesystem.exists(path.join(localPluginDir, "package.json"))
-    const pluginSpecifier = localPluginAvailable ? localPluginSpecifier : "@zee/plugin@" + pluginVersion
+    const localPluginPkg = path.join(localPluginDir, "package.json")
+    const localPluginAvailable = await Filesystem.exists(localPluginPkg)
+    const localPluginPortable = localPluginAvailable ? await isPortableLocalPlugin(localPluginPkg) : false
+    const pluginSpecifier = localPluginAvailable
+      ? localPluginPortable
+        ? localPluginSpecifier
+        : undefined
+      : "@zee/plugin@" + pluginVersion
 
-    await BunProc.run(["add", pluginSpecifier, "--exact"], {
-      cwd: dir,
-    }).catch((err) => {
-      log.debug("failed to add plugin package", { error: String(err), dir })
-    })
+    if (pluginSpecifier) {
+      await BunProc.run(["add", pluginSpecifier, "--exact"], {
+        cwd: dir,
+      }).catch((err) => {
+        log.debug("failed to add plugin package", { error: String(err), dir })
+      })
+    } else {
+      log.debug("skipping plugin package add; local plugin manifest is not portable outside workspace", {
+        dir,
+        localPluginPkg,
+      })
+    }
 
     // Install any additional dependencies defined in the package.json
     // This allows local plugins and custom tools to use external packages
@@ -511,12 +535,7 @@ export namespace Config {
         .optional()
         .describe("Environment variables to set when running the MCP server"),
       enabled: z.boolean().optional().describe("Reserved for compatibility; MCP servers are always enabled"),
-      timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Timeout in ms for MCP server requests."),
+      timeout: z.number().int().positive().optional().describe("Timeout in ms for MCP server requests."),
     })
     .strict()
     .meta({
@@ -554,12 +573,7 @@ export namespace Config {
         .describe(
           "OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection.",
         ),
-      timeout: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Timeout in ms for MCP server requests."),
+      timeout: z.number().int().positive().optional().describe("Timeout in ms for MCP server requests."),
     })
     .strict()
     .meta({
@@ -682,7 +696,9 @@ export namespace Config {
           z.enum(["primary", "secondary", "accent", "success", "warning", "error", "info"]),
         ])
         .optional()
-        .describe("Hex color code (e.g., #FF5733) or theme color name (primary, secondary, accent, success, warning, error, info)"),
+        .describe(
+          "Hex color code (e.g., #FF5733) or theme color name (primary, secondary, accent, success, warning, error, info)",
+        ),
       steps: z
         .number()
         .int()
@@ -839,6 +855,7 @@ export namespace Config {
         .optional()
         .default("<leader>i")
         .describe("Toggle thinking blocks visibility"),
+      tool_details: z.string().optional().default("none").describe("Toggle tool details visibility"),
       messages_toggle_scrollbar: z
         .string()
         .optional()
@@ -848,7 +865,11 @@ export namespace Config {
       model_fallback_toggle: z.string().optional().default("f3").describe("Toggle between primary and fallback model"),
       model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle current model as favorite"),
       model_cycle_favorite: z.string().optional().default("f2").describe("Cycle to next favorite model"),
-      model_cycle_favorite_reverse: z.string().optional().default("shift+f2").describe("Cycle to previous favorite model"),
+      model_cycle_favorite_reverse: z
+        .string()
+        .optional()
+        .default("shift+f2")
+        .describe("Cycle to previous favorite model"),
       command_list: z.string().optional().default("<leader>c").describe("List available commands"),
       agent_list: z
         .string()
@@ -858,11 +879,7 @@ export namespace Config {
       agent_cycle: z.string().optional().default("tab").describe("Deprecated (agent switching removed)"),
       agent_cycle_reverse: z.string().optional().default("none").describe("Deprecated (agent switching removed)"),
       mode_toggle: z.string().optional().default("<leader>h").describe("Toggle plan/accept mode"),
-      mode_cycle: z
-        .string()
-        .optional()
-        .default("shift+tab")
-        .describe("Cycle mode (plan/accept/bypass)."),
+      mode_cycle: z.string().optional().default("shift+tab").describe("Cycle mode (plan/accept/bypass)."),
       variant_cycle: z.string().optional().default("<leader>v").describe("Cycle model variants"),
       input_clear: z.string().optional().default("ctrl+c").describe("Clear input field"),
       input_paste: z.string().optional().default("ctrl+v").describe("Paste from clipboard"),
@@ -966,7 +983,11 @@ export namespace Config {
       vim_insert_line_start: z.string().optional().default("shift+i").describe("Enter insert mode at line start"),
       vim_insert_line_end: z.string().optional().default("shift+a").describe("Enter insert mode at line end"),
       vim_insert_below: z.string().optional().default("o").describe("Insert new line below and enter insert mode"),
-      vim_insert_above: z.string().optional().default("shift+o").describe("Insert new line above and enter insert mode"),
+      vim_insert_above: z
+        .string()
+        .optional()
+        .default("shift+o")
+        .describe("Insert new line above and enter insert mode"),
     })
     .strict()
     .meta({
@@ -993,7 +1014,10 @@ export namespace Config {
       .describe("Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column"),
     dictation: z
       .object({
-        enabled: z.boolean().optional().describe("Enable dictation (requires Wispr Flow API key via zee auth login wisprflow)"),
+        enabled: z
+          .boolean()
+          .optional()
+          .describe("Enable dictation (requires Wispr Flow API key via zee auth login wisprflow)"),
         language: z.string().optional().default("en-US").describe("Primary language (BCP-47 code)"),
         alternative_languages: z
           .array(z.string())
@@ -1027,9 +1051,7 @@ export namespace Config {
       .boolean()
       .optional()
       .default(true)
-      .describe(
-        "Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work.",
-      ),
+      .describe("Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work."),
   })
 
   /**
@@ -1131,11 +1153,13 @@ export namespace Config {
   })
   export type Layout = z.infer<typeof Layout>
 
-  export const Grammar = z.object({
-    provider: z.literal("languagetool").describe("Grammar checking provider"),
-  }).meta({
-    ref: "GrammarConfig",
-  })
+  export const Grammar = z
+    .object({
+      provider: z.literal("languagetool").describe("Grammar checking provider"),
+    })
+    .meta({
+      ref: "GrammarConfig",
+    })
   export type Grammar = z.infer<typeof Grammar>
 
   export const Provider = ModelsDev.Provider.partial()
@@ -1192,10 +1216,7 @@ export namespace Config {
 
   export const Memory = z
     .object({
-      required: z
-        .boolean()
-        .optional()
-        .describe("Require memory backend availability before prompting"),
+      required: z.boolean().optional().describe("Require memory backend availability before prompting"),
       backend: z.enum(["file", "redis", "qdrant"]).optional().describe("Memory backend"),
       storagePath: z.string().optional().describe("Storage path for file backend"),
       redisUrl: z.string().optional().describe("Redis connection URL"),
@@ -1211,14 +1232,8 @@ export namespace Config {
         .describe("Nested Qdrant configuration (local-only)"),
       embedding: z
         .object({
-          profile: z
-            .string()
-            .optional()
-            .describe("Embedding profile (google/gemini-embedding-001)"),
-          provider: z
-            .literal("google")
-            .optional()
-            .describe('Embedding provider ID ("google").'),
+          profile: z.string().optional().describe("Embedding profile (google/gemini-embedding-001)"),
+          provider: z.literal("google").optional().describe('Embedding provider ID ("google").'),
           model: z.string().optional().describe("Embedding model name (Google)"),
           dimensions: z.number().int().positive().optional().describe("Embedding vector dimensions"),
           dimension: z.number().int().positive().optional().describe("Alias for dimensions"),
@@ -1294,10 +1309,7 @@ export namespace Config {
       tts: z
         .object({
           provider: z.enum(["minimax", "openai"]).optional().describe("TTS provider to use"),
-          auto: z
-            .enum(["always", "never", "on-request"])
-            .optional()
-            .describe("When to automatically speak responses"),
+          auto: z.enum(["always", "never", "on-request"]).optional().describe("When to automatically speak responses"),
           minimax: z
             .object({
               voice: z.string().optional().describe("MiniMax voice ID"),
@@ -1374,10 +1386,7 @@ export namespace Config {
         })
         .optional()
         .describe("Cron job scheduler configuration"),
-      command: z
-        .record(z.string(), Command)
-        .optional()
-        .describe("Command configuration"),
+      command: z.record(z.string(), Command).optional().describe("Command configuration"),
       skills: Skills.optional().describe("Additional skill folder paths"),
       watcher: z
         .object({
@@ -1874,6 +1883,12 @@ export namespace Config {
     }
     // Redact zee secrets
     if (copy.zee?.splitwise?.token) copy.zee.splitwise.token = "********"
+
+    // Legacy: redact grammar.apiKey if present on unvalidated inputs.
+    const grammar = copy.grammar as unknown as { apiKey?: unknown } | undefined
+    if (typeof grammar?.apiKey === "string" && grammar.apiKey.length > 0) {
+      grammar.apiKey = "********"
+    }
 
     // Redact MCP secrets
     if (copy.mcp) {

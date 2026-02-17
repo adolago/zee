@@ -17,8 +17,16 @@ export function StatusBar() {
   const directory = useDirectory()
   const connected = useConnected()
 
-  const mcp = createMemo(() => Object.values(sync.data.mcp).filter((x) => x.status === "connected").length)
-  const mcpError = createMemo(() => Object.values(sync.data.mcp).some((x) => x.status === "failed"))
+  const mcpStatuses = createMemo(() => Object.values(sync.data.mcp))
+  const mcpTotal = createMemo(() => mcpStatuses().length)
+  const mcpConnected = createMemo(() => mcpStatuses().filter((x) => x.status === "connected").length)
+  const mcpDegraded = createMemo(() =>
+    mcpStatuses().filter(
+      (x) =>
+        x.status === "failed" || x.status === "needs_auth" || x.status === "needs_client_registration",
+    ).length,
+  )
+  const mcpLoading = createMemo(() => sync.data.mcp_meta.loading)
   const lsp = createMemo(() => Object.keys(sync.data.lsp))
   const internet = createMemo(() => sync.data.health.internet)
   const connectedProviders = createMemo(() => sync.data.health.providers.filter((p) => p.status === "ok").length)
@@ -176,17 +184,24 @@ export function StatusBar() {
               </Show>
               <text fg={theme.border}>{StatusBarStyle.innerSeparator}</text>
               <text fg={lsp().length > 0 ? theme.success : theme.textMuted}>●{lsp().length}</text>
-              <Show when={mcp() > 0}>
-                <text fg={theme.border}>{StatusBarStyle.innerSeparator}</text>
-                <Switch>
-                  <Match when={mcpError()}>
-                    <text fg={theme.error}>⊘{mcp()}</text>
-                  </Match>
-                  <Match when={true}>
-                    <text fg={theme.success}>⊙{mcp()}</text>
-                  </Match>
-                </Switch>
-              </Show>
+              <text fg={theme.border}>{StatusBarStyle.innerSeparator}</text>
+              <Switch>
+                <Match when={mcpTotal() === 0 && mcpLoading()}>
+                  <text fg={theme.textMuted}>⊙…</text>
+                </Match>
+                <Match when={mcpTotal() === 0}>
+                  <text fg={theme.textMuted}>⊙?</text>
+                </Match>
+                <Match when={mcpDegraded() > 0}>
+                  <text fg={theme.error}>⊘{mcpConnected()}/{mcpTotal()}</text>
+                </Match>
+                <Match when={mcpConnected() < mcpTotal()}>
+                  <text fg={theme.warning}>◐{mcpConnected()}/{mcpTotal()}</text>
+                </Match>
+                <Match when={true}>
+                  <text fg={theme.success}>⊙{mcpConnected()}/{mcpTotal()}</text>
+                </Match>
+              </Switch>
             </box>
             <text fg={theme.border}>{StatusBarStyle.separator}</text>
             <text fg={theme.textMuted}>:help</text>

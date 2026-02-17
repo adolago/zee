@@ -82,8 +82,7 @@ async function main() {
     artifactDir: args.artifactDir,
     failFast: args.failFast,
     json: args.json,
-    longSoakDurationMs:
-      typeof args.longSoakMinutes === "number" ? args.longSoakMinutes * 60_000 : undefined,
+    longSoakDurationMs: typeof args.longSoakMinutes === "number" ? args.longSoakMinutes * 60_000 : undefined,
   })
 
   if (args.json) {

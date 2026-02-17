@@ -3,8 +3,8 @@
  * @description Runs abbreviated health checks for crash reports
  */
 
-import { CheckEngine } from "../../diagnostics/check-engine";
-import type { DiagnosticSummary } from "../types";
+import { CheckEngine } from "../../diagnostics/check-engine"
+import type { DiagnosticSummary } from "../types"
 
 /**
  * Collect diagnostic summary
@@ -16,17 +16,12 @@ export async function collectDiagnostics(): Promise<DiagnosticSummary> {
       fix: false,
       verbose: false,
       timeout: 5000,
-    });
+    })
 
-    const report = await engine.runAll();
+    const report = await engine.runAll()
 
     return {
-      status:
-        report.summary.failed > 0
-          ? "error"
-          : report.summary.warnings > 0
-            ? "warning"
-            : "ok",
+      status: report.summary.failed > 0 ? "error" : report.summary.warnings > 0 ? "warning" : "ok",
       passed: report.summary.passed,
       warnings: report.summary.warnings,
       failed: report.summary.failed,
@@ -35,7 +30,7 @@ export async function collectDiagnostics(): Promise<DiagnosticSummary> {
         status: c.status,
         message: c.message,
       })),
-    };
+    }
   } catch (error) {
     return {
       status: "error",
@@ -49,6 +44,6 @@ export async function collectDiagnostics(): Promise<DiagnosticSummary> {
           message: `Diagnostics failed: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
-    };
+    }
   }
 }

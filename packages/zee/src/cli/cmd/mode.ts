@@ -1,12 +1,6 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
-import {
-  RUN_MODES,
-  defaultRunMode,
-  getSavedRunMode,
-  parseRunMode,
-  setSavedRunMode,
-} from "../run-mode"
+import { RUN_MODES, defaultRunMode, getSavedRunMode, parseRunMode, setSavedRunMode } from "../run-mode"
 
 type ModeSetArgs = {
   mode?: string

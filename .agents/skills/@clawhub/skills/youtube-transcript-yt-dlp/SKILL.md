@@ -1,5 +1,5 @@
 ---
-name: yt_transcript
+name: youtube-transcript-yt-dlp
 description: Extract YouTube video transcripts from existing captions (manual or auto-generated) using yt-dlp, with optional timestamps and local SQLite caching. Use when the user asks for a YouTube transcript, captions, subtitles, or wants to turn a YouTube link into text for summarization/search.
 metadata: {"openclaw":{"requires":{"bins":["python3","yt-dlp"]},"os":["linux","darwin","win32"]}}
 user-invocable: true

@@ -13,7 +13,7 @@ const agents = {
   johny: {},
 }
 
-const asMockAgent = (name: string) => (agents as Record<string, {}>)[name] ? ({ name } as any) : undefined
+const asMockAgent = (name: string) => ((agents as Record<string, {}>)[name] ? ({ name } as any) : undefined)
 
 let getSpy: ReturnType<typeof spyOn> | undefined
 

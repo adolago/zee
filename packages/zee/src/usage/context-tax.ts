@@ -95,7 +95,9 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
         bytes: toolSection.length,
       })
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   try {
     const mcpCatalog = await generateMcpCatalog()
@@ -110,7 +112,9 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
         })
       }
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   try {
     const state = await getRuntimeState(agent.name)
@@ -123,7 +127,9 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
         bytes: configSection.length,
       })
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   try {
     const knowledge = await loadKnowledgeFiles(agent.knowledge)
@@ -136,7 +142,9 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
         bytes: knowledgeSection.length,
       })
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   const envInfo = (await SystemPrompt.environment(model)).join("\n")
   if (envInfo) {
@@ -160,14 +168,31 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
         bytes: inst.length,
       })
     }
-  } catch { /* skip */ }
+  } catch {
+    /* skip */
+  }
 
   const tools = await ToolRegistry.tools(modelRef, agent)
   const coreToolIds = [
-    "bash", "read", "write", "edit", "glob", "grep", "task",
-    "webfetch", "websearch", "codesearch", "invalid", "todowrite",
-    "todoread", "apply_patch", "lsp", "batch", "hold_release",
-    "hold_enter", "question",
+    "bash",
+    "read",
+    "write",
+    "edit",
+    "glob",
+    "grep",
+    "task",
+    "webfetch",
+    "websearch",
+    "codesearch",
+    "invalid",
+    "todowrite",
+    "todoread",
+    "apply_patch",
+    "lsp",
+    "batch",
+    "hold_release",
+    "hold_enter",
+    "question",
   ]
   const coreSeen: typeof tools = []
   const domainSeen: typeof tools = []
@@ -303,7 +328,9 @@ async function measureLazyPool(personaName: string): Promise<ContextTaxBreakdown
         if (exists) {
           totalBytes += file.size
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
 
     pool.push({

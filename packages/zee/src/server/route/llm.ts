@@ -104,7 +104,12 @@ function toUserContent(content: unknown): string | Array<any> {
       parts.push({ type: "text", text })
     } else if (type === "image") {
       const data = typeof item.data === "string" ? item.data : ""
-      const mediaType = typeof item.mimeType === "string" ? item.mimeType : typeof item.mediaType === "string" ? item.mediaType : undefined
+      const mediaType =
+        typeof item.mimeType === "string"
+          ? item.mimeType
+          : typeof item.mediaType === "string"
+            ? item.mediaType
+            : undefined
       parts.push({ type: "image", image: data, ...(mediaType ? { mediaType } : {}) })
     }
   }
@@ -152,7 +157,12 @@ function toToolResultOutput(content: unknown): any {
       value.push({ type: "text", text: typeof item.text === "string" ? item.text : "" })
     } else if (type === "image") {
       const data = typeof item.data === "string" ? item.data : ""
-      const mediaType = typeof item.mimeType === "string" ? item.mimeType : typeof item.mediaType === "string" ? item.mediaType : "application/octet-stream"
+      const mediaType =
+        typeof item.mimeType === "string"
+          ? item.mimeType
+          : typeof item.mediaType === "string"
+            ? item.mediaType
+            : "application/octet-stream"
       value.push({ type: "image-data", data, mediaType })
     }
   }
@@ -264,7 +274,12 @@ type PiAssistantMessageEvent =
   | { type: "thinking_end"; contentIndex: number; content: string; partial: PiAssistantMessage }
   | { type: "toolcall_start"; contentIndex: number; partial: PiAssistantMessage }
   | { type: "toolcall_delta"; contentIndex: number; delta: string; partial: PiAssistantMessage }
-  | { type: "toolcall_end"; contentIndex: number; toolCall: { type: "toolCall"; id: string; name: string; arguments: Record<string, any> }; partial: PiAssistantMessage }
+  | {
+      type: "toolcall_end"
+      contentIndex: number
+      toolCall: { type: "toolCall"; id: string; name: string; arguments: Record<string, any> }
+      partial: PiAssistantMessage
+    }
   | { type: "done"; reason: "stop" | "length" | "toolUse"; message: PiAssistantMessage }
   | { type: "error"; reason: "error" | "aborted"; error: PiAssistantMessage }
 
@@ -290,7 +305,10 @@ function toPiUsage(raw: any): PiAssistantMessage["usage"] {
   }
 }
 
-function mapFinishReason(reason: string | undefined): { doneReason: "stop" | "length" | "toolUse"; stopReason: PiAssistantMessage["stopReason"] } {
+function mapFinishReason(reason: string | undefined): {
+  doneReason: "stop" | "length" | "toolUse"
+  stopReason: PiAssistantMessage["stopReason"]
+} {
   switch (reason) {
     case "length":
       return { doneReason: "length", stopReason: "length" }
@@ -382,7 +400,9 @@ export const LlmRoute = new Hono().post(
         const result = streamText({
           model: language,
           tools: tools as any,
-          ...(typeof (input.options as any)?.toolChoice !== "undefined" ? { toolChoice: (input.options as any).toolChoice } : {}),
+          ...(typeof (input.options as any)?.toolChoice !== "undefined"
+            ? { toolChoice: (input.options as any).toolChoice }
+            : {}),
           system,
           messages,
           abortSignal: abortController.signal,
@@ -473,8 +493,7 @@ export const LlmRoute = new Hono().post(
               const toolName = String((part as any).toolName ?? "")
               const inputObj = (part as any).input
               const index = toolIndexByCallId.get(callId)
-              const args =
-                inputObj && typeof inputObj === "object" ? (inputObj as Record<string, any>) : {}
+              const args = inputObj && typeof inputObj === "object" ? (inputObj as Record<string, any>) : {}
               if (typeof index === "number") {
                 const block = partial.content[index]
                 if (block && block.type === "toolCall") {

@@ -16,4 +16,3 @@ export const GatewayCommand = cmd({
       .demandCommand(1, "Please specify a subcommand"),
   async handler() {},
 })
-

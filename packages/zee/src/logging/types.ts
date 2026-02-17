@@ -4,7 +4,7 @@
  */
 
 /** Log severity levels */
-export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
+export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal"
 
 /** Numeric priority for log levels (higher = more severe) */
 export const LOG_LEVELS: Record<LogLevel, number> = {
@@ -14,38 +14,38 @@ export const LOG_LEVELS: Record<LogLevel, number> = {
   warn: 40,
   error: 50,
   fatal: 60,
-};
+}
 
 /**
  * A single log entry
  */
 export interface LogEntry {
   /** Log level */
-  level: LogLevel;
+  level: LogLevel
 
   /** ISO timestamp */
-  timestamp: string;
+  timestamp: string
 
   /** Log message */
-  message: string;
+  message: string
 
   /** Component/module that produced this log */
-  component?: string;
+  component?: string
 
   /** Correlation ID for request tracing */
-  correlationId?: string;
+  correlationId?: string
 
   /** Session ID if applicable */
-  sessionId?: string;
+  sessionId?: string
 
   /** Additional structured data */
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown>
 
   /** Error information if this is an error log */
-  error?: ErrorInfo;
+  error?: ErrorInfo
 
   /** Duration in ms (for timed operations) */
-  durationMs?: number;
+  durationMs?: number
 }
 
 /**
@@ -53,19 +53,19 @@ export interface LogEntry {
  */
 export interface ErrorInfo {
   /** Error name/type */
-  name: string;
+  name: string
 
   /** Error message */
-  message: string;
+  message: string
 
   /** Stack trace (if available and enabled) */
-  stack?: string;
+  stack?: string
 
   /** Error code (if available) */
-  code?: string;
+  code?: string
 
   /** Cause chain */
-  cause?: ErrorInfo;
+  cause?: ErrorInfo
 }
 
 /**
@@ -73,19 +73,19 @@ export interface ErrorInfo {
  */
 export interface LoggerConfig {
   /** Minimum level to log */
-  level: LogLevel;
+  level: LogLevel
 
   /** Component name for this logger */
-  component?: string;
+  component?: string
 
   /** Include stack traces in error logs */
-  includeStacks: boolean;
+  includeStacks: boolean
 
   /** Transports to write to */
-  transports: ITransport[];
+  transports: ITransport[]
 
   /** Patterns to redact from logs */
-  redactPatterns?: RegExp[];
+  redactPatterns?: RegExp[]
 }
 
 /**
@@ -93,46 +93,46 @@ export interface LoggerConfig {
  */
 export interface TransportConfig {
   /** Transport type */
-  type: "console" | "file" | "rotating-file";
+  type: "console" | "file" | "rotating-file"
 
   /** Minimum level for this transport */
-  level?: LogLevel;
+  level?: LogLevel
 
   /** Formatter to use */
-  format?: "json" | "pretty";
+  format?: "json" | "pretty"
 
   /** File path (for file transports) */
-  path?: string;
+  path?: string
 
   /** Max file size before rotation */
-  maxSize?: string;
+  maxSize?: string
 
   /** Number of rotated files to keep */
-  maxFiles?: number;
+  maxFiles?: number
 
   /** Compress rotated files */
-  compress?: boolean;
+  compress?: boolean
 }
 
 /**
  * Logger interface
  */
 export interface ILogger {
-  trace(message: string, metadata?: Record<string, unknown>): void;
-  debug(message: string, metadata?: Record<string, unknown>): void;
-  info(message: string, metadata?: Record<string, unknown>): void;
-  warn(message: string, metadata?: Record<string, unknown>): void;
-  error(message: string, error?: Error, metadata?: Record<string, unknown>): void;
-  fatal(message: string, error?: Error, metadata?: Record<string, unknown>): void;
+  trace(message: string, metadata?: Record<string, unknown>): void
+  debug(message: string, metadata?: Record<string, unknown>): void
+  info(message: string, metadata?: Record<string, unknown>): void
+  warn(message: string, metadata?: Record<string, unknown>): void
+  error(message: string, error?: Error, metadata?: Record<string, unknown>): void
+  fatal(message: string, error?: Error, metadata?: Record<string, unknown>): void
 
   /** Create a child logger with additional context */
-  child(context: { component?: string; metadata?: Record<string, unknown> }): ILogger;
+  child(context: { component?: string; metadata?: Record<string, unknown> }): ILogger
 
   /** Start a timer that logs duration on end */
-  startTimer(label: string): TimerHandle;
+  startTimer(label: string): TimerHandle
 
   /** Check if a level is enabled */
-  isLevelEnabled(level: LogLevel): boolean;
+  isLevelEnabled(level: LogLevel): boolean
 }
 
 /**
@@ -140,13 +140,13 @@ export interface ILogger {
  */
 export interface ITransport {
   /** Write a log entry */
-  write(entry: LogEntry): void;
+  write(entry: LogEntry): void
 
   /** Flush pending writes */
-  flush(): Promise<void>;
+  flush(): Promise<void>
 
   /** Close the transport */
-  close(): Promise<void>;
+  close(): Promise<void>
 }
 
 /**
@@ -154,7 +154,7 @@ export interface ITransport {
  */
 export interface IFormatter {
   /** Format a log entry to string */
-  format(entry: LogEntry): string;
+  format(entry: LogEntry): string
 }
 
 /**
@@ -162,19 +162,19 @@ export interface IFormatter {
  */
 export interface TimerHandle {
   /** End the timer and log the duration */
-  end(metadata?: Record<string, unknown>): void;
+  end(metadata?: Record<string, unknown>): void
 
   /** Get elapsed time without logging */
-  elapsed(): number;
+  elapsed(): number
 }
 
 /**
  * Log context for async operations
  */
 export interface LogContext {
-  correlationId?: string;
-  sessionId?: string;
-  userId?: string;
-  requestId?: string;
-  [key: string]: unknown;
+  correlationId?: string
+  sessionId?: string
+  userId?: string
+  requestId?: string
+  [key: string]: unknown
 }

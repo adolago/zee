@@ -105,14 +105,10 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
   params?: TParams,
   options: OrchestrationClientOptions = {},
 ): Promise<TResult> {
-  const configuredSocketPath =
-    options.socketPath ||
-    process.env.ZEE_IPC_SOCKET
+  const configuredSocketPath = options.socketPath || process.env.ZEE_IPC_SOCKET
   const socketPath = configuredSocketPath || defaultSocketPath()
   const legacyPath = legacySocketPath()
-  const allowLegacyFallback =
-    !configuredSocketPath &&
-    legacyPath !== socketPath
+  const allowLegacyFallback = !configuredSocketPath && legacyPath !== socketPath
   const timeoutMs = options.timeoutMs ?? 30_000
 
   const request: OrchestrationRequest<TParams> = {
@@ -143,71 +139,71 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
 
   const requestViaSocket = (targetPath: string) =>
     new Promise<TResult>((resolve, reject) => {
-    let socket: Socket | null = null
-    let settled = false
-    let buffer = ""
+      let socket: Socket | null = null
+      let settled = false
+      let buffer = ""
 
-    const cleanup = () => {
-      if (!socket) return
-      socket.removeAllListeners()
-      socket.destroy()
-      socket = null
-    }
+      const cleanup = () => {
+        if (!socket) return
+        socket.removeAllListeners()
+        socket.destroy()
+        socket = null
+      }
 
-    const settle = (cb: () => void) => {
-      if (settled) return
-      settled = true
-      cleanup()
-      cb()
-    }
+      const settle = (cb: () => void) => {
+        if (settled) return
+        settled = true
+        cleanup()
+        cb()
+      }
 
-    const timer = setTimeout(() => {
-      settle(() => reject(new Error(`orchestration request timed out after ${timeoutMs}ms`)))
-    }, timeoutMs)
+      const timer = setTimeout(() => {
+        settle(() => reject(new Error(`orchestration request timed out after ${timeoutMs}ms`)))
+      }, timeoutMs)
 
-    try {
-      socket = createConnection(targetPath)
-      socket.on("connect", () => {
-        socket!.write(JSON.stringify(request) + "\n")
-      })
+      try {
+        socket = createConnection(targetPath)
+        socket.on("connect", () => {
+          socket!.write(JSON.stringify(request) + "\n")
+        })
 
-      socket.on("data", (chunk) => {
-        buffer += chunk.toString()
-        const newlineIdx = buffer.indexOf("\n")
-        if (newlineIdx < 0) return
-        const payload = buffer.slice(0, newlineIdx)
-        clearTimeout(timer)
+        socket.on("data", (chunk) => {
+          buffer += chunk.toString()
+          const newlineIdx = buffer.indexOf("\n")
+          if (newlineIdx < 0) return
+          const payload = buffer.slice(0, newlineIdx)
+          clearTimeout(timer)
 
-        try {
-          const response = JSON.parse(payload) as OrchestrationResponse<TResult>
-          if (response.id !== request.id) {
-            settle(() => reject(new Error(`response id mismatch: expected ${request.id}, got ${response.id}`)))
-            return
+          try {
+            const response = JSON.parse(payload) as OrchestrationResponse<TResult>
+            if (response.id !== request.id) {
+              settle(() => reject(new Error(`response id mismatch: expected ${request.id}, got ${response.id}`)))
+              return
+            }
+            if (!response.success) {
+              settle(() => reject(new Error(response.error || "orchestration daemon error")))
+              return
+            }
+            settle(() => resolve(response.data as TResult))
+          } catch (error) {
+            settle(() => reject(new Error(`failed to parse orchestration response: ${payload}`)))
           }
-          if (!response.success) {
-            settle(() => reject(new Error(response.error || "orchestration daemon error")))
-            return
-          }
-          settle(() => resolve(response.data as TResult))
-        } catch (error) {
-          settle(() => reject(new Error(`failed to parse orchestration response: ${payload}`)))
-        }
-      })
+        })
 
-      socket.on("error", (error) => {
+        socket.on("error", (error) => {
+          clearTimeout(timer)
+          settle(() => reject(formatSocketError(error, targetPath)))
+        })
+
+        socket.on("close", () => {
+          clearTimeout(timer)
+          settle(() => reject(new Error("orchestration daemon connection closed before response")))
+        })
+      } catch (error) {
         clearTimeout(timer)
         settle(() => reject(formatSocketError(error, targetPath)))
-      })
-
-      socket.on("close", () => {
-        clearTimeout(timer)
-        settle(() => reject(new Error("orchestration daemon connection closed before response")))
-      })
-    } catch (error) {
-      clearTimeout(timer)
-      settle(() => reject(formatSocketError(error, targetPath)))
-    }
-  })
+      }
+    })
 
   try {
     return await requestViaSocket(socketPath)

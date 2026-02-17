@@ -3,25 +3,19 @@
  * @description Main crash report generation logic
  */
 
-import * as path from "path";
-import * as os from "os";
-import { PrivacyRedactor } from "./privacy/redactor";
-import { ZipBuilder } from "./archive/zip-builder";
-import {
-  collectSystemInfo,
-  collectConfig,
-  collectLogs,
-  collectSession,
-  collectDiagnostics,
-} from "./collectors";
-import { Output } from "../cli/output";
-import type { CrashReport, CrashReportOptions, ReportMeta } from "./types";
+import * as path from "path"
+import * as os from "os"
+import { PrivacyRedactor } from "./privacy/redactor"
+import { ZipBuilder } from "./archive/zip-builder"
+import { collectSystemInfo, collectConfig, collectLogs, collectSession, collectDiagnostics } from "./collectors"
+import { Output } from "../cli/output"
+import type { CrashReport, CrashReportOptions, ReportMeta } from "./types"
 
-const REPORT_VERSION = "1.0.0";
+const REPORT_VERSION = "1.0.0"
 
 export class ReportGenerator {
-  private options: CrashReportOptions;
-  private redactor: PrivacyRedactor;
+  private options: CrashReportOptions
+  private redactor: PrivacyRedactor
 
   constructor(options: Partial<CrashReportOptions> = {}) {
     this.options = {
@@ -31,36 +25,36 @@ export class ReportGenerator {
       skipDiagnostics: options.skipDiagnostics ?? false,
       anonymization: options.anonymization ?? "standard",
       nonInteractive: options.nonInteractive ?? false,
-    };
-    this.redactor = new PrivacyRedactor(this.options.anonymization);
+    }
+    this.redactor = new PrivacyRedactor(this.options.anonymization)
   }
 
   /**
    * Generate a complete crash report
    */
   async generate(): Promise<{ report: CrashReport; archivePath: string }> {
-    Output.log("Generating crash report...\n");
+    Output.log("Generating crash report...\n")
 
     // Collect all data
-    Output.log("  * Collecting system info...");
-    const system = await collectSystemInfo();
+    Output.log("  * Collecting system info...")
+    const system = await collectSystemInfo()
 
-    Output.log("  * Collecting configuration...");
-    const config = await collectConfig(this.redactor);
+    Output.log("  * Collecting configuration...")
+    const config = await collectConfig(this.redactor)
 
-    Output.log("  * Collecting logs...");
-    const logs = await collectLogs(this.redactor, { lineCount: this.options.logLines });
+    Output.log("  * Collecting logs...")
+    const logs = await collectLogs(this.redactor, { lineCount: this.options.logLines })
 
-    let session;
+    let session
     if (this.options.includeSession) {
-      Output.log("  * Collecting session data...");
-      session = await collectSession(this.redactor);
+      Output.log("  * Collecting session data...")
+      session = await collectSession(this.redactor)
     }
 
-    let diagnostics;
+    let diagnostics
     if (!this.options.skipDiagnostics) {
-      Output.log("  * Running diagnostics...");
-      diagnostics = await collectDiagnostics();
+      Output.log("  * Running diagnostics...")
+      diagnostics = await collectDiagnostics()
     }
 
     // Build report
@@ -72,16 +66,16 @@ export class ReportGenerator {
       diagnostics,
       logs,
       redactionStats: this.redactor.getStats(),
-    };
+    }
 
     // Create archive
-    Output.log("\n  * Creating archive...");
-    const archivePath = await this.createArchive(report);
+    Output.log("\n  * Creating archive...")
+    const archivePath = await this.createArchive(report)
 
-    Output.log(`\n+ Report generated: ${archivePath}`);
-    Output.log(`   Redacted ${report.redactionStats.totalRedactions} sensitive items\n`);
+    Output.log(`\n+ Report generated: ${archivePath}`)
+    Output.log(`   Redacted ${report.redactionStats.totalRedactions} sensitive items\n`)
 
-    return { report, archivePath };
+    return { report, archivePath }
   }
 
   private createMeta(): ReportMeta {
@@ -91,36 +85,34 @@ export class ReportGenerator {
       id: `crash-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       zeeVersion: process.env.ZEE_VERSION || "dev",
       anonymization: this.options.anonymization,
-    };
+    }
   }
 
   private async createArchive(report: CrashReport): Promise<string> {
-    const outputPath =
-      this.options.outputPath ||
-      path.join(os.homedir(), `zee-report-${report.meta.id}.tar.gz`);
+    const outputPath = this.options.outputPath || path.join(os.homedir(), `zee-report-${report.meta.id}.tar.gz`)
 
-    const builder = new ZipBuilder(outputPath);
+    const builder = new ZipBuilder(outputPath)
 
     // Add main report
-    builder.addJson("report.json", report);
+    builder.addJson("report.json", report)
 
     // Add readable summary
-    builder.addText("README.md", this.createReadme(report));
+    builder.addText("README.md", this.createReadme(report))
 
     // Add separate files for large sections
     if (report.logs.length > 0) {
-      builder.addJson("logs.json", report.logs);
+      builder.addJson("logs.json", report.logs)
     }
 
     if (report.session) {
-      builder.addJson("session.json", report.session);
+      builder.addJson("session.json", report.session)
     }
 
     if (report.diagnostics) {
-      builder.addJson("diagnostics.json", report.diagnostics);
+      builder.addJson("diagnostics.json", report.diagnostics)
     }
 
-    return builder.finalize();
+    return builder.finalize()
   }
 
   private createReadme(report: CrashReport): string {
@@ -145,10 +137,14 @@ export class ReportGenerator {
 - **Custom Keybinds**: ${report.config.customKeybinds}
 
 ## Diagnostics
-${report.diagnostics ? `- **Status**: ${report.diagnostics.status}
+${
+  report.diagnostics
+    ? `- **Status**: ${report.diagnostics.status}
 - **Passed**: ${report.diagnostics.passed}
 - **Warnings**: ${report.diagnostics.warnings}
-- **Failed**: ${report.diagnostics.failed}` : "Diagnostics were skipped"}
+- **Failed**: ${report.diagnostics.failed}`
+    : "Diagnostics were skipped"
+}
 
 ## Privacy
 This report has been sanitized:
@@ -165,6 +161,6 @@ This report has been sanitized:
 1. Review the contents for any remaining sensitive data
 2. Attach this archive to a GitHub issue
 3. Describe the problem you encountered
-`;
+`
   }
 }

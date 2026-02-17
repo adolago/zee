@@ -14,12 +14,7 @@
 
 import { describe, expect, test, beforeEach, afterEach } from "bun:test"
 import { createMockProvider, createTrackingMockProvider, type MockResponse } from "../mock/llm-provider"
-import {
-  StreamHealthMonitor,
-  StreamHealth,
-  noopStatusHandler,
-  noopBusPublisher,
-} from "../../src/session/stream-health"
+import { StreamHealthMonitor, StreamHealth, noopStatusHandler, noopBusPublisher } from "../../src/session/stream-health"
 import { tmpdir } from "../fixture/fixture"
 import { Instance } from "../../src/project/instance"
 
@@ -155,9 +150,7 @@ describe("Model Tool Calling", () => {
     test("model provides text before tool call", async () => {
       const response: MockResponse = {
         text: "I'll read that file for you.",
-        toolCalls: [
-          { toolCallId: "call_001", toolName: "Read", args: { file_path: "/test.txt" } },
-        ],
+        toolCalls: [{ toolCallId: "call_001", toolName: "Read", args: { file_path: "/test.txt" } }],
         finishReason: "tool-calls",
       }
 
@@ -176,9 +169,7 @@ describe("Model Tool Calling", () => {
     test("streaming emits text-delta before tool-call", async () => {
       const response: MockResponse = {
         text: "Let me check that.",
-        toolCalls: [
-          { toolCallId: "call_001", toolName: "Grep", args: { pattern: "error" } },
-        ],
+        toolCalls: [{ toolCallId: "call_001", toolName: "Grep", args: { pattern: "error" } }],
         finishReason: "tool-calls",
       }
 
@@ -237,27 +228,17 @@ describe("Tool Continuation Logic", () => {
   })
 
   test("continue when tool is last meaningful part", () => {
-    const parts: MockPart[] = [
-      { type: "text", text: "Let me search" },
-      { type: "tool" },
-    ]
+    const parts: MockPart[] = [{ type: "text", text: "Let me search" }, { type: "tool" }]
     expect(shouldContinueAfterTools(parts)).toBe(true)
   })
 
   test("do not continue when text follows tool (synthesis complete)", () => {
-    const parts: MockPart[] = [
-      { type: "tool" },
-      { type: "text", text: "Based on the search results..." },
-    ]
+    const parts: MockPart[] = [{ type: "tool" }, { type: "text", text: "Based on the search results..." }]
     expect(shouldContinueAfterTools(parts)).toBe(false)
   })
 
   test("ignore empty text after tool", () => {
-    const parts: MockPart[] = [
-      { type: "text", text: "Searching" },
-      { type: "tool" },
-      { type: "text", text: "" },
-    ]
+    const parts: MockPart[] = [{ type: "text", text: "Searching" }, { type: "tool" }, { type: "text", text: "" }]
     expect(shouldContinueAfterTools(parts)).toBe(true)
   })
 })

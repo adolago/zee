@@ -128,10 +128,12 @@ async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
   const extension = process.platform === "win32" ? ".exe" : ""
   const preferred = path.join(packageRoot, "dist", "@zee")
   const glob = new Bun.Glob(`*/bin/zee${extension}`)
-  const candidates = await Array.fromAsync(glob.scan({
-    cwd: preferred,
-    absolute: true,
-  }))
+  const candidates = await Array.fromAsync(
+    glob.scan({
+      cwd: preferred,
+      absolute: true,
+    }),
+  )
 
   if (candidates.length === 0) {
     throw new Error(`No dist binary found in ${preferred}. Run build first.`)
@@ -262,10 +264,7 @@ async function stopDaemon(handle: DaemonHandle): Promise<void> {
       // noop
     }
 
-    const exitedGracefully = await Promise.race([
-      handle.proc.exited.then(() => true),
-      sleep(10_000).then(() => false),
-    ])
+    const exitedGracefully = await Promise.race([handle.proc.exited.then(() => true), sleep(10_000).then(() => false)])
 
     if (!exitedGracefully) {
       try {
@@ -371,19 +370,13 @@ async function runStageCommand(
       expectedExitCodes: options.expectedExitCodes,
     })
 
-    await logCommandExecution(
-      ctx.stageLogPath,
-      label,
-      command,
-      options.cwd ?? ctx.repoRoot,
-      {
-        stdout: output.stdout,
-        stderr: output.stderr,
-        exitCode: output.exitCode,
-        durationMs: output.durationMs,
-        timedOut: output.timedOut,
-      },
-    )
+    await logCommandExecution(ctx.stageLogPath, label, command, options.cwd ?? ctx.repoRoot, {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      exitCode: output.exitCode,
+      durationMs: output.durationMs,
+      timedOut: output.timedOut,
+    })
     await appendText(
       ctx.runtime.commandLogPath,
       [
@@ -424,33 +417,20 @@ async function runStageCommand(
 
 async function stageBuildAndVerify(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
   const details: string[] = []
-  const buildCommand =
-    process.platform === "win32"
-      ? ["bun", "run", "script/build.ts"]
-      : ["bun", "run", "build"]
+  const buildCommand = process.platform === "win32" ? ["bun", "run", "script/build.ts"] : ["bun", "run", "build"]
 
-  await runStageCommand(
-    ctx,
-    "Build",
-    buildCommand,
-    {
-      cwd: ctx.packageRoot,
-      env: ctx.runtimeEnv,
-      timeoutMs: 20 * 60_000,
-    },
-  )
+  await runStageCommand(ctx, "Build", buildCommand, {
+    cwd: ctx.packageRoot,
+    env: ctx.runtimeEnv,
+    timeoutMs: 20 * 60_000,
+  })
 
   if (process.platform !== "win32") {
-    await runStageCommand(
-      ctx,
-      "verify-binary",
-      ["bash", "-lc", "./script/verify-binary.sh"],
-      {
-        cwd: ctx.repoRoot,
-        env: ctx.runtimeEnv,
-        timeoutMs: 60_000,
-      },
-    )
+    await runStageCommand(ctx, "verify-binary", ["bash", "-lc", "./script/verify-binary.sh"], {
+      cwd: ctx.repoRoot,
+      env: ctx.runtimeEnv,
+      timeoutMs: 60_000,
+    })
     details.push("verify-binary.sh passed")
   } else {
     details.push("verify-binary.sh skipped on Windows")
@@ -458,16 +438,11 @@ async function stageBuildAndVerify(ctx: StageInternalContext): Promise<Reliabili
 
   ctx.runtime.distBinaryPath = await resolveDistBinaryPath(ctx.packageRoot)
 
-  const version = await runStageCommand(
-    ctx,
-    "dist-version",
-    [ctx.runtime.distBinaryPath, "--version"],
-    {
-      cwd: ctx.packageRoot,
-      env: ctx.runtimeEnv,
-      timeoutMs: 20_000,
-    },
-  )
+  const version = await runStageCommand(ctx, "dist-version", [ctx.runtime.distBinaryPath, "--version"], {
+    cwd: ctx.packageRoot,
+    env: ctx.runtimeEnv,
+    timeoutMs: 20_000,
+  })
 
   details.push(`dist version: ${version.stdout.trim() || "<empty>"}`)
 
@@ -481,27 +456,17 @@ async function stageBuildAndVerify(ctx: StageInternalContext): Promise<Reliabili
 }
 
 async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
-  const sourceVersion = await runStageCommand(
-    ctx,
-    "source-version",
-    ["bun", "run", "src/index.ts", "--version"],
-    {
-      cwd: ctx.packageRoot,
-      env: ctx.runtimeEnv,
-      timeoutMs: 30_000,
-    },
-  )
+  const sourceVersion = await runStageCommand(ctx, "source-version", ["bun", "run", "src/index.ts", "--version"], {
+    cwd: ctx.packageRoot,
+    env: ctx.runtimeEnv,
+    timeoutMs: 30_000,
+  })
 
-  const distVersion = await runStageCommand(
-    ctx,
-    "dist-version",
-    [ctx.runtime.distBinaryPath, "--version"],
-    {
-      cwd: ctx.packageRoot,
-      env: ctx.runtimeEnv,
-      timeoutMs: 30_000,
-    },
-  )
+  const distVersion = await runStageCommand(ctx, "dist-version", [ctx.runtime.distBinaryPath, "--version"], {
+    cwd: ctx.packageRoot,
+    env: ctx.runtimeEnv,
+    timeoutMs: 30_000,
+  })
 
   const sourceV = sourceVersion.stdout.trim()
   const distV = distVersion.stdout.trim()
@@ -511,9 +476,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
     throw new Error(`source/dist version output missing: source=${sourceV || "<empty>"} dist=${distV || "<empty>"}`)
   }
   if (!sourceMajorMinor || !distMajorMinor || sourceMajorMinor !== distMajorMinor) {
-    throw new Error(
-      `source/dist major.minor mismatch: source=${sourceV || "<empty>"} dist=${distV || "<empty>"}`,
-    )
+    throw new Error(`source/dist major.minor mismatch: source=${sourceV || "<empty>"} dist=${distV || "<empty>"}`)
   }
 
   const sourcePort = stagePort(ctx.daemonPortBase, ctx.stageIndex, 1)
@@ -650,17 +613,12 @@ async function stageDaemonSingletonAndLocking(ctx: StageInternalContext): Promis
   try {
     await waitForDaemonHealth(port, 40_000)
 
-    const second = await runStageCommand(
-      { ...ctx, runtimeEnv: env },
-      "second-daemon-start",
-      command,
-      {
-        cwd: ctx.packageRoot,
-        env,
-        timeoutMs: 15_000,
-        expectedExitCodes: [1, 100],
-      },
-    )
+    const second = await runStageCommand({ ...ctx, runtimeEnv: env }, "second-daemon-start", command, {
+      cwd: ctx.packageRoot,
+      env,
+      timeoutMs: 15_000,
+      expectedExitCodes: [1, 100],
+    })
     secondStartExit = second.exitCode
   } finally {
     await stopDaemon(handle)
@@ -975,9 +933,10 @@ async function stageTuiLifecycleNoOrphans(ctx: StageInternalContext): Promise<Re
   const baseline = await listZeeProcesses()
   const cycles = ctx.profile === "alpha" ? 6 : 2
 
-  const command = process.platform === "win32"
-    ? ["powershell", "-NoProfile", "-Command", `& '${ctx.runtime.distBinaryPath}' --help`]
-    : [ctx.runtime.distBinaryPath, "--help"]
+  const command =
+    process.platform === "win32"
+      ? ["powershell", "-NoProfile", "-Command", `& '${ctx.runtime.distBinaryPath}' --help`]
+      : [ctx.runtime.distBinaryPath, "--help"]
 
   for (let i = 0; i < cycles; i += 1) {
     // eslint-disable-next-line no-await-in-loop
@@ -1015,28 +974,18 @@ async function stageModeSwitchStress(ctx: StageInternalContext): Promise<Reliabi
 
   for (let i = 0; i < cycles; i += 1) {
     // eslint-disable-next-line no-await-in-loop
-    await runStageCommand(
-      ctx,
-      `source-version-cycle-${i + 1}`,
-      ["bun", "run", "src/index.ts", "--version"],
-      {
-        cwd: ctx.packageRoot,
-        env: ctx.runtimeEnv,
-        timeoutMs: 20_000,
-      },
-    )
+    await runStageCommand(ctx, `source-version-cycle-${i + 1}`, ["bun", "run", "src/index.ts", "--version"], {
+      cwd: ctx.packageRoot,
+      env: ctx.runtimeEnv,
+      timeoutMs: 20_000,
+    })
 
     // eslint-disable-next-line no-await-in-loop
-    await runStageCommand(
-      ctx,
-      `dist-version-cycle-${i + 1}`,
-      [ctx.runtime.distBinaryPath, "--version"],
-      {
-        cwd: ctx.packageRoot,
-        env: ctx.runtimeEnv,
-        timeoutMs: 20_000,
-      },
-    )
+    await runStageCommand(ctx, `dist-version-cycle-${i + 1}`, [ctx.runtime.distBinaryPath, "--version"], {
+      cwd: ctx.packageRoot,
+      env: ctx.runtimeEnv,
+      timeoutMs: 20_000,
+    })
 
     if ((i + 1) % 10 === 0) {
       const daemonPort = stagePort(ctx.daemonPortBase, ctx.stageIndex, i + 1)
@@ -1103,16 +1052,11 @@ async function stageProviderHealthLive(ctx: StageInternalContext): Promise<Relia
 }
 
 async function stageMemoryHealthLive(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
-  await runStageCommand(
-    ctx,
-    "memory-health-check",
-    ["bun", "run", "script/memory-health-check.ts"],
-    {
-      cwd: ctx.packageRoot,
-      env: ctx.runtimeEnv,
-      timeoutMs: 5 * 60_000,
-    },
-  )
+  await runStageCommand(ctx, "memory-health-check", ["bun", "run", "script/memory-health-check.ts"], {
+    cwd: ctx.packageRoot,
+    env: ctx.runtimeEnv,
+    timeoutMs: 5 * 60_000,
+  })
 
   return {
     summary: "Memory live health check passed",
@@ -1167,7 +1111,9 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
           failures.push(`Probe ${probes}: daemon unhealthy payload=${JSON.stringify(health)}`)
         }
       } catch (error) {
-        failures.push(`Probe ${probes}: global health failed: ${error instanceof Error ? error.message : String(error)}`)
+        failures.push(
+          `Probe ${probes}: global health failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
       }
 
       try {
@@ -1177,7 +1123,9 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
           failures.push(`Probe ${probes}: memory unavailable payload=${JSON.stringify(mem)}`)
         }
       } catch (error) {
-        failures.push(`Probe ${probes}: memory health failed: ${error instanceof Error ? error.message : String(error)}`)
+        failures.push(
+          `Probe ${probes}: memory health failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
       }
 
       try {
@@ -1187,7 +1135,9 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
           failures.push(`Probe ${probes}: gateway channels status failed payload=${JSON.stringify(channels)}`)
         }
       } catch (error) {
-        failures.push(`Probe ${probes}: gateway channels health failed: ${error instanceof Error ? error.message : String(error)}`)
+        failures.push(
+          `Probe ${probes}: gateway channels health failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
       }
 
       // eslint-disable-next-line no-await-in-loop
@@ -1387,7 +1337,9 @@ async function initializeRuntime(options: ReliabilityRunOptions): Promise<{
       `Package: ${packageRoot}`,
       `Dist binary: ${distBinaryPath}`,
       `Runtime state: ${runtimeStateDir}`,
-      copiedConfig.length > 0 ? `Copied config artifacts:\n${copiedConfig.map((line) => `- ${line}`).join("\n")}` : "Copied config artifacts: <none>",
+      copiedConfig.length > 0
+        ? `Copied config artifacts:\n${copiedConfig.map((line) => `- ${line}`).join("\n")}`
+        : "Copied config artifacts: <none>",
       "",
     ].join("\n"),
   )
@@ -1471,7 +1423,10 @@ export async function runReliabilitySuite(options: ReliabilityRunOptions): Promi
     for (let index = 0; index < stages.length; index += 1) {
       const stage = stages[index]
       const stageStartedAt = Date.now()
-      const stageArtifactDir = path.join(init.artifactDir, `${String(index + 1).padStart(2, "0")}-${sanitizeFileName(stage.id)}`)
+      const stageArtifactDir = path.join(
+        init.artifactDir,
+        `${String(index + 1).padStart(2, "0")}-${sanitizeFileName(stage.id)}`,
+      )
       await ensureDir(stageArtifactDir)
 
       const stageLogPath = path.join(stageArtifactDir, "stage.log")

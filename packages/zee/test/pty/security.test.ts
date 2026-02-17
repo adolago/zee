@@ -17,20 +17,20 @@ describe("Pty Security", () => {
         // Attempt to spawn in outside directory
         let failed = false
         try {
-            const pty = await Pty.create({
-                cwd: outside.path
-            })
-            // If it succeeds, we should kill it
-            await Pty.remove(pty.id)
+          const pty = await Pty.create({
+            cwd: outside.path,
+          })
+          // If it succeeds, we should kill it
+          await Pty.remove(pty.id)
         } catch (err: any) {
-            failed = true
-            // We expect a specific error message
-            expect(err.message).toContain("Access denied")
+          failed = true
+          // We expect a specific error message
+          expect(err.message).toContain("Access denied")
         }
 
         // Assert that it SHOULD have failed
         expect(failed).toBe(true)
-      }
+      },
     })
   })
 })

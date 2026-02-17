@@ -40,4 +40,3 @@ export const SkillsRoute = new Hono().get(
     })
   },
 )
-

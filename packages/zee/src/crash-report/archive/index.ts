@@ -2,4 +2,4 @@
  * @file Archive Index
  */
 
-export { ZipBuilder } from "./zip-builder";
+export { ZipBuilder } from "./zip-builder"

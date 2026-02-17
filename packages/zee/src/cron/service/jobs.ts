@@ -1,13 +1,7 @@
 // Cron job CRUD operations and state management.
 
 import crypto from "crypto"
-import type {
-  CronJob,
-  CronJobCreate,
-  CronJobPatch,
-  CronPayload,
-  CronPayloadPatch,
-} from "../types"
+import type { CronJob, CronJobCreate, CronJobPatch, CronPayload, CronPayloadPatch } from "../types"
 import type { CronServiceState } from "./state"
 import { computeNextRunAtMs } from "../schedule"
 import {
@@ -23,11 +17,7 @@ export function assertSupportedJobSpec(job: Pick<CronJob, "sessionTarget" | "pay
   if (job.sessionTarget === "main" && job.payload.kind !== "systemEvent") {
     throw new Error('main cron jobs require payload.kind="systemEvent"')
   }
-  if (
-    job.sessionTarget === "isolated" &&
-    job.payload.kind !== "agentTurn" &&
-    job.payload.kind !== "toolInvoke"
-  ) {
+  if (job.sessionTarget === "isolated" && job.payload.kind !== "agentTurn" && job.payload.kind !== "toolInvoke") {
     throw new Error('isolated cron jobs require payload.kind="agentTurn" or "toolInvoke"')
   }
 }
@@ -219,10 +209,7 @@ function buildPayloadFromPatch(patch: CronPayloadPatch): CronPayload {
     if (typeof patch.tool !== "string" || patch.tool.trim().length === 0) {
       throw new Error('cron.update payload.kind="toolInvoke" requires tool')
     }
-    if (
-      patch.args !== undefined &&
-      (!patch.args || typeof patch.args !== "object" || Array.isArray(patch.args))
-    ) {
+    if (patch.args !== undefined && (!patch.args || typeof patch.args !== "object" || Array.isArray(patch.args))) {
       throw new Error('cron.update payload.kind="toolInvoke" args must be a JSON object')
     }
     return {

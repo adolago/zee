@@ -28,7 +28,7 @@ describe("Config security", () => {
         },
       },
       grammar: {
-          provider: "languagetool",
+        provider: "languagetool",
         apiKey: "secret_grammar_key",
       },
       mcp: {

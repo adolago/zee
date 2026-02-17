@@ -25,7 +25,9 @@ afterEach(() => {
 })
 
 describe("runtime-process-guard helpers", () => {
-  function makeEntry(input: Partial<RuntimeProcessEntry> & Pick<RuntimeProcessEntry, "pid" | "command" | "kind">): RuntimeProcessEntry {
+  function makeEntry(
+    input: Partial<RuntimeProcessEntry> & Pick<RuntimeProcessEntry, "pid" | "command" | "kind">,
+  ): RuntimeProcessEntry {
     return {
       ppid: undefined,
       zeeExecutable: true,
@@ -64,7 +66,7 @@ describe("runtime-process-guard helpers", () => {
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee daemon --port 3210")).toBe("daemon")
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee gateway --port 18789")).toBe("gateway")
     expect(classifyRuntimeProcess("bun run /repo/src/mcp/servers/calendar.ts")).toBe("mcp_server")
-    expect(classifyRuntimeProcess("zee run \"hello\"")).toBe("zee_other")
+    expect(classifyRuntimeProcess('zee run "hello"')).toBe("zee_other")
   })
 
   test("resolveRuntimeProcessLimits honors env overrides", () => {

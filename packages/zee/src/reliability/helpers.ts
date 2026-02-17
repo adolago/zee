@@ -18,7 +18,10 @@ export async function appendText(filepath: string, content: string): Promise<voi
 }
 
 export function sanitizeFileName(input: string): string {
-  return input.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+  return input
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
 }
 
 export function stringifyCommand(args: string[]): string {
@@ -100,11 +103,7 @@ export async function runCommand(
   return result
 }
 
-export async function waitForPort(
-  host: string,
-  port: number,
-  timeoutMs: number,
-): Promise<boolean> {
+export async function waitForPort(host: string, port: number, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
@@ -137,11 +136,7 @@ export async function isPortOpen(host: string, port: number): Promise<boolean> {
   })
 }
 
-export async function waitForHttpJson(
-  url: string,
-  timeoutMs: number,
-  intervalMs = 500,
-): Promise<any> {
+export async function waitForHttpJson(url: string, timeoutMs: number, intervalMs = 500): Promise<any> {
   const deadline = Date.now() + timeoutMs
   let lastError = "request not attempted"
 
@@ -172,7 +167,12 @@ export async function sleep(ms: number): Promise<void> {
 export async function listZeeProcesses(): Promise<Array<{ pid: number; command: string }>> {
   if (process.platform === "win32") {
     const out = await runCommand(
-      ["powershell", "-NoProfile", "-Command", "Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Depth 3"],
+      [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Depth 3",
+      ],
       {
         timeoutMs: 15_000,
       },

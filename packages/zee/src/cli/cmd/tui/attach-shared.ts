@@ -87,4 +87,3 @@ export async function attachTui(options: AttachTuiOptions): Promise<void> {
     },
   })
 }
-

@@ -7,62 +7,62 @@
  * IMPORTANT: This does NOT install zee gateway separately. Zee gateway runs as a child process of zee daemon.
  */
 
-import { execSync, spawnSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import * as prompts from "@clack/prompts";
-import { cmd } from "./cmd";
-import { Global } from "../../global";
-import { Log } from "../../util/log";
-import { UI } from "../ui";
+import { execSync, spawnSync } from "node:child_process"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
+import * as prompts from "@clack/prompts"
+import { cmd } from "./cmd"
+import { Global } from "../../global"
+import { Log } from "../../util/log"
+import { UI } from "../ui"
 
-const log = Log.create({ service: "daemon-install" });
+const log = Log.create({ service: "daemon-install" })
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const SERVICE_DESCRIPTION = "Zee Daemon - AI Assistant Platform";
+const SERVICE_DESCRIPTION = "Zee Daemon - AI Assistant Platform"
 
 // Linux systemd user service
-const SYSTEMD_UNIT_NAME = "zee.service";
-const SYSTEMD_UNIT_DIR = path.join(os.homedir(), ".config", "systemd", "user");
-const SYSTEMD_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_UNIT_NAME);
-const SYSTEMD_ASSERT_UNIT_NAME = "zee-assert.service";
-const SYSTEMD_ASSERT_TIMER_NAME = "zee-assert.timer";
-const SYSTEMD_ASSERT_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_UNIT_NAME);
-const SYSTEMD_ASSERT_TIMER_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_TIMER_NAME);
+const SYSTEMD_UNIT_NAME = "zee.service"
+const SYSTEMD_UNIT_DIR = path.join(os.homedir(), ".config", "systemd", "user")
+const SYSTEMD_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_UNIT_NAME)
+const SYSTEMD_ASSERT_UNIT_NAME = "zee-assert.service"
+const SYSTEMD_ASSERT_TIMER_NAME = "zee-assert.timer"
+const SYSTEMD_ASSERT_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_UNIT_NAME)
+const SYSTEMD_ASSERT_TIMER_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_TIMER_NAME)
 
 // Legacy orchestration unit (cleaned up during install)
-const SYSTEMD_ORCH_UNIT_NAME = "zee-orch.service";
-const SYSTEMD_ORCH_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ORCH_UNIT_NAME);
+const SYSTEMD_ORCH_UNIT_NAME = "zee-orch.service"
+const SYSTEMD_ORCH_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ORCH_UNIT_NAME)
 
 // Log paths
-const LOG_DIR = path.join(Global.Path.state, "logs");
-const STDOUT_LOG = path.join(LOG_DIR, "daemon.log");
-const STDERR_LOG = path.join(LOG_DIR, "daemon.err.log");
+const LOG_DIR = path.join(Global.Path.state, "logs")
+const STDOUT_LOG = path.join(LOG_DIR, "daemon.log")
+const STDERR_LOG = path.join(LOG_DIR, "daemon.err.log")
 
 // =============================================================================
 // Types
 // =============================================================================
 
 export interface DaemonInstallOptions {
-  port?: number;
-  hostname?: string;
-  gateway?: boolean;
-  gatewayForce?: boolean;
-  workingDirectory?: string;
-  force?: boolean;
-  nonInteractive?: boolean;
+  port?: number
+  hostname?: string
+  gateway?: boolean
+  gatewayForce?: boolean
+  workingDirectory?: string
+  force?: boolean
+  nonInteractive?: boolean
 }
 
 export interface DaemonInstallResult {
-  success: boolean;
-  platform: "linux" | "unsupported";
-  servicePath?: string;
-  error?: string;
-  hints?: string[];
+  success: boolean
+  platform: "linux" | "unsupported"
+  servicePath?: string
+  error?: string
+  hints?: string[]
 }
 
 // =============================================================================
@@ -70,7 +70,7 @@ export interface DaemonInstallResult {
 // =============================================================================
 
 function getPlatform(): "linux" | "unsupported" {
-  return os.platform() === "linux" ? "linux" : "unsupported";
+  return os.platform() === "linux" ? "linux" : "unsupported"
 }
 
 function hasSystemd(): boolean {
@@ -78,10 +78,10 @@ function hasSystemd(): boolean {
     const result = spawnSync("systemctl", ["--user", "--version"], {
       stdio: "pipe",
       timeout: 5000,
-    });
-    return result.status === 0;
+    })
+    return result.status === 0
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -91,11 +91,11 @@ function hasSystemd(): boolean {
 
 function resolveZeeBinary(): string | null {
   const isExecutableZeeBinary = (candidate: string): boolean => {
-    const base = path.basename(candidate).toLowerCase();
-    if (base !== "zee" && base !== "zee.exe") return false;
-    fs.accessSync(candidate, fs.constants.X_OK);
-    return true;
-  };
+    const base = path.basename(candidate).toLowerCase()
+    if (base !== "zee" && base !== "zee.exe") return false
+    fs.accessSync(candidate, fs.constants.X_OK)
+    return true
+  }
 
   // Check common locations
   const candidates = [
@@ -108,15 +108,15 @@ function resolveZeeBinary(): string | null {
     "/usr/local/bin/zee",
     // Current process (if running from zee)
     path.basename(process.argv[0] ?? "").toLowerCase() === "zee" ? process.argv[0] : null,
-  ].filter(Boolean) as string[];
+  ].filter(Boolean) as string[]
 
   for (const candidate of candidates) {
     try {
       if (fs.existsSync(candidate) && isExecutableZeeBinary(candidate)) {
-        return candidate;
+        return candidate
       }
     } catch {
-      continue;
+      continue
     }
   }
 
@@ -125,15 +125,15 @@ function resolveZeeBinary(): string | null {
     const result = spawnSync("which", ["zee"], {
       encoding: "utf-8",
       timeout: 5000,
-    });
+    })
     if (result.status === 0 && result.stdout.trim() && isExecutableZeeBinary(result.stdout.trim())) {
-      return result.stdout.trim();
+      return result.stdout.trim()
     }
   } catch {
     // Ignore
   }
 
-  return null;
+  return null
 }
 
 // =============================================================================
@@ -147,22 +147,22 @@ function buildServiceEnv(options: DaemonInstallOptions): Record<string, string> 
     NODE_ENV: "production",
     ZEE_HEADLESS: "1",
     ZEE_ENFORCE_ALWAYS_ON: "1",
-  };
+  }
 
   if (options.port) {
-    env.ZEE_PORT = String(options.port);
+    env.ZEE_PORT = String(options.port)
   }
 
   if (options.hostname) {
-    env.ZEE_HOSTNAME = options.hostname;
+    env.ZEE_HOSTNAME = options.hostname
   }
 
-  return env;
+  return env
 }
 
 function buildServicePath(): string {
-  const home = os.homedir();
-  const pathParts: string[] = [];
+  const home = os.homedir()
+  const pathParts: string[] = []
 
   // User binary directories (version managers, package managers)
   const userBinDirs = [
@@ -182,27 +182,27 @@ function buildServicePath(): string {
     path.join(home, ".volta", "bin"),
     // asdf
     path.join(home, ".asdf", "shims"),
-  ].filter(Boolean) as string[];
+  ].filter(Boolean) as string[]
 
   for (const dir of userBinDirs) {
     if (fs.existsSync(dir)) {
-      pathParts.push(dir);
+      pathParts.push(dir)
     }
   }
 
   // System paths
-  pathParts.push("/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin");
+  pathParts.push("/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin")
 
-  return pathParts.join(":");
+  return pathParts.join(":")
 }
 
 function resolveServiceWorkingDirectory(options: DaemonInstallOptions): string {
   if (options.workingDirectory && options.workingDirectory.trim()) {
-    return options.workingDirectory.trim();
+    return options.workingDirectory.trim()
   }
   // Prefer the detected repository/source root so daemon state and local tools resolve consistently.
-  const source = Global.Path.source;
-  return source && source.trim() ? source : os.homedir();
+  const source = Global.Path.source
+  return source && source.trim() ? source : os.homedir()
 }
 
 // =============================================================================
@@ -220,7 +220,7 @@ ExecStart=/usr/bin/env sh -c "systemctl --user is-active --quiet zee.service || 
 
 [Install]
 WantedBy=default.target
-`;
+`
 }
 
 function generateSystemdAssertTimer(): string {
@@ -235,28 +235,25 @@ Unit=zee-assert.service
 
 [Install]
 WantedBy=timers.target
-`;
+`
 }
 
-function generateSystemdDaemonUnit(
-  binaryPath: string,
-  options: DaemonInstallOptions
-): string {
-  const args = ["daemon"];
-  const workDir = resolveServiceWorkingDirectory(options);
+function generateSystemdDaemonUnit(binaryPath: string, options: DaemonInstallOptions): string {
+  const args = ["daemon"]
+  const workDir = resolveServiceWorkingDirectory(options)
 
-  if (options.port) args.push("--port", String(options.port));
-  if (options.hostname) args.push("--hostname", options.hostname);
-  if (options.gatewayForce) args.push("--gateway-force");
-  args.push("--runtime-guard-interval-ms", "30000");
+  if (options.port) args.push("--port", String(options.port))
+  if (options.hostname) args.push("--hostname", options.hostname)
+  if (options.gatewayForce) args.push("--gateway-force")
+  args.push("--runtime-guard-interval-ms", "30000")
 
-  args.push("--directory", workDir);
+  args.push("--directory", workDir)
 
-  const execStart = [binaryPath, ...args].join(" ");
-  const env = buildServiceEnv(options);
+  const execStart = [binaryPath, ...args].join(" ")
+  const env = buildServiceEnv(options)
   const envLines = Object.entries(env)
     .map(([k, v]) => `Environment="${k}=${v}"`)
-    .join("\n");
+    .join("\n")
 
   return `[Unit]
 Description=${SERVICE_DESCRIPTION}
@@ -285,26 +282,26 @@ StandardError=append:${STDERR_LOG}
 
 [Install]
 WantedBy=default.target
-`;
+`
 }
 
 async function ensureSystemdLinger(interactive: boolean): Promise<boolean> {
-  const user = os.userInfo().username;
-  const lingerPath = `/var/lib/systemd/linger/${user}`;
+  const user = os.userInfo().username
+  const lingerPath = `/var/lib/systemd/linger/${user}`
 
   // Check if already enabled
   if (fs.existsSync(lingerPath)) {
-    return true;
+    return true
   }
 
   if (interactive) {
     const confirm = await prompts.confirm({
       message: `Enable systemd linger for user '${user}'? (Required for service to run after logout)`,
       initialValue: true,
-    });
+    })
 
     if (prompts.isCancel(confirm) || !confirm) {
-      return false;
+      return false
     }
   }
 
@@ -313,30 +310,27 @@ async function ensureSystemdLinger(interactive: boolean): Promise<boolean> {
     const result = spawnSync("loginctl", ["enable-linger", user], {
       stdio: "pipe",
       timeout: 30000,
-    });
+    })
     if (result.status === 0) {
-      return true;
+      return true
     }
 
     // May need sudo
     if (interactive) {
-      UI.warn("Linger requires sudo. You may be prompted for your password.");
+      UI.warn("Linger requires sudo. You may be prompted for your password.")
     }
     const sudoResult = spawnSync("sudo", ["loginctl", "enable-linger", user], {
       stdio: "inherit",
       timeout: 60000,
-    });
-    return sudoResult.status === 0;
+    })
+    return sudoResult.status === 0
   } catch {
-    return false;
+    return false
   }
 }
 
-async function installSystemdService(
-  binaryPath: string,
-  options: DaemonInstallOptions
-): Promise<DaemonInstallResult> {
-  const hints: string[] = [];
+async function installSystemdService(binaryPath: string, options: DaemonInstallOptions): Promise<DaemonInstallResult> {
+  const hints: string[] = []
 
   // Check systemd availability
   if (!hasSystemd()) {
@@ -344,26 +338,26 @@ async function installSystemdService(
       success: false,
       platform: "linux",
       error: "systemd user services not available. Is systemd running?",
-    };
+    }
   }
 
   // Create directories
   try {
-    fs.mkdirSync(SYSTEMD_UNIT_DIR, { recursive: true });
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.mkdirSync(SYSTEMD_UNIT_DIR, { recursive: true })
+    fs.mkdirSync(LOG_DIR, { recursive: true })
   } catch (err) {
     return {
       success: false,
       platform: "linux",
       error: `Failed to create directories: ${err}`,
-    };
+    }
   }
 
   // Ensure linger is enabled
-  const lingerEnabled = await ensureSystemdLinger(!options.nonInteractive);
+  const lingerEnabled = await ensureSystemdLinger(!options.nonInteractive)
   if (!lingerEnabled) {
-    hints.push("Warning: systemd linger not enabled. Service may stop when you log out.");
-    hints.push("Enable with: sudo loginctl enable-linger $USER");
+    hints.push("Warning: systemd linger not enabled. Service may stop when you log out.")
+    hints.push("Enable with: sudo loginctl enable-linger $USER")
   }
 
   // Stop existing services if running
@@ -371,7 +365,7 @@ async function installSystemdService(
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
   } catch {
     // Ignore if not running
   }
@@ -381,45 +375,45 @@ async function installSystemdService(
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_ORCH_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_ORCH_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     if (fs.existsSync(SYSTEMD_ORCH_UNIT_PATH)) {
-      fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH);
-      log.info("removed legacy orchestration unit", { path: SYSTEMD_ORCH_UNIT_PATH });
+      fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH)
+      log.info("removed legacy orchestration unit", { path: SYSTEMD_ORCH_UNIT_PATH })
     }
   } catch {
     // Ignore
   }
 
   // Generate and write unit file
-  const unit = generateSystemdDaemonUnit(binaryPath, options);
+  const unit = generateSystemdDaemonUnit(binaryPath, options)
   try {
-    fs.writeFileSync(SYSTEMD_UNIT_PATH, unit, { mode: 0o644 });
-    log.info("wrote systemd unit", { path: SYSTEMD_UNIT_PATH });
+    fs.writeFileSync(SYSTEMD_UNIT_PATH, unit, { mode: 0o644 })
+    log.info("wrote systemd unit", { path: SYSTEMD_UNIT_PATH })
   } catch (err) {
     return {
       success: false,
       platform: "linux",
       error: `Failed to write unit file: ${err}`,
-    };
+    }
   }
 
-  const assertUnit = generateSystemdAssertUnit();
-  const assertTimer = generateSystemdAssertTimer();
+  const assertUnit = generateSystemdAssertUnit()
+  const assertTimer = generateSystemdAssertTimer()
   try {
-    fs.writeFileSync(SYSTEMD_ASSERT_UNIT_PATH, assertUnit, { mode: 0o644 });
-    fs.writeFileSync(SYSTEMD_ASSERT_TIMER_PATH, assertTimer, { mode: 0o644 });
-    log.info("wrote zee assert units", { unit: SYSTEMD_ASSERT_UNIT_PATH, timer: SYSTEMD_ASSERT_TIMER_PATH });
+    fs.writeFileSync(SYSTEMD_ASSERT_UNIT_PATH, assertUnit, { mode: 0o644 })
+    fs.writeFileSync(SYSTEMD_ASSERT_TIMER_PATH, assertTimer, { mode: 0o644 })
+    log.info("wrote zee assert units", { unit: SYSTEMD_ASSERT_UNIT_PATH, timer: SYSTEMD_ASSERT_TIMER_PATH })
   } catch (err) {
     return {
       success: false,
       platform: "linux",
       servicePath: SYSTEMD_UNIT_PATH,
       error: `Failed to write assert timer units: ${err}`,
-    };
+    }
   }
 
   // Reload systemd
@@ -427,14 +421,14 @@ async function installSystemdService(
     const result = spawnSync("systemctl", ["--user", "daemon-reload"], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     if (result.status !== 0) {
       return {
         success: false,
         platform: "linux",
         servicePath: SYSTEMD_UNIT_PATH,
         error: `systemctl daemon-reload failed: ${result.stderr?.toString()}`,
-      };
+      }
     }
   } catch (err) {
     return {
@@ -442,7 +436,7 @@ async function installSystemdService(
       platform: "linux",
       servicePath: SYSTEMD_UNIT_PATH,
       error: `Failed to reload systemd: ${err}`,
-    };
+    }
   }
 
   // Enable and start service
@@ -450,39 +444,39 @@ async function installSystemdService(
     spawnSync("systemctl", ["--user", "enable", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "enable", SYSTEMD_ASSERT_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "enable", "--now", SYSTEMD_ASSERT_TIMER_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     const startResult = spawnSync("systemctl", ["--user", "start", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     if (startResult.status !== 0) {
-      hints.push(`Service may need manual start: systemctl --user start ${SYSTEMD_UNIT_NAME}`);
+      hints.push(`Service may need manual start: systemctl --user start ${SYSTEMD_UNIT_NAME}`)
     }
   } catch {
-    hints.push(`Service may need manual start: systemctl --user start ${SYSTEMD_UNIT_NAME}`);
+    hints.push(`Service may need manual start: systemctl --user start ${SYSTEMD_UNIT_NAME}`)
   }
 
-  hints.push(`Logs: journalctl --user -u ${SYSTEMD_UNIT_NAME} -f`);
-  hints.push(`Or: ${STDOUT_LOG}`);
-  hints.push(`Stop: systemctl --user stop ${SYSTEMD_UNIT_NAME}`);
-  hints.push(`Restart: systemctl --user restart ${SYSTEMD_UNIT_NAME}`);
-  hints.push(`Status: systemctl --user status ${SYSTEMD_UNIT_NAME}`);
-  hints.push(`Assert timer: systemctl --user status ${SYSTEMD_ASSERT_TIMER_NAME}`);
+  hints.push(`Logs: journalctl --user -u ${SYSTEMD_UNIT_NAME} -f`)
+  hints.push(`Or: ${STDOUT_LOG}`)
+  hints.push(`Stop: systemctl --user stop ${SYSTEMD_UNIT_NAME}`)
+  hints.push(`Restart: systemctl --user restart ${SYSTEMD_UNIT_NAME}`)
+  hints.push(`Status: systemctl --user status ${SYSTEMD_UNIT_NAME}`)
+  hints.push(`Assert timer: systemctl --user status ${SYSTEMD_ASSERT_TIMER_NAME}`)
 
   return {
     success: true,
     platform: "linux",
     servicePath: SYSTEMD_UNIT_PATH,
     hints,
-  };
+  }
 }
 
 async function uninstallSystemdService(): Promise<DaemonInstallResult> {
@@ -490,27 +484,27 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_ASSERT_TIMER_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_ASSERT_TIMER_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_ASSERT_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_ASSERT_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
   } catch {
     // Ignore if not running
   }
@@ -520,79 +514,74 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
     spawnSync("systemctl", ["--user", "stop", SYSTEMD_ORCH_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
     spawnSync("systemctl", ["--user", "disable", SYSTEMD_ORCH_UNIT_NAME], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
   } catch {
     // Ignore
   }
 
   try {
     if (fs.existsSync(SYSTEMD_UNIT_PATH)) {
-      fs.unlinkSync(SYSTEMD_UNIT_PATH);
+      fs.unlinkSync(SYSTEMD_UNIT_PATH)
     }
     if (fs.existsSync(SYSTEMD_ORCH_UNIT_PATH)) {
-      fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH);
+      fs.unlinkSync(SYSTEMD_ORCH_UNIT_PATH)
     }
     if (fs.existsSync(SYSTEMD_ASSERT_UNIT_PATH)) {
-      fs.unlinkSync(SYSTEMD_ASSERT_UNIT_PATH);
+      fs.unlinkSync(SYSTEMD_ASSERT_UNIT_PATH)
     }
     if (fs.existsSync(SYSTEMD_ASSERT_TIMER_PATH)) {
-      fs.unlinkSync(SYSTEMD_ASSERT_TIMER_PATH);
+      fs.unlinkSync(SYSTEMD_ASSERT_TIMER_PATH)
     }
     spawnSync("systemctl", ["--user", "daemon-reload"], {
       stdio: "pipe",
       timeout: 10000,
-    });
+    })
   } catch (err) {
     return {
       success: false,
       platform: "linux",
       error: `Failed to remove unit file: ${err}`,
-    };
+    }
   }
 
   return {
     success: true,
     platform: "linux",
     hints: ["systemd service removed successfully"],
-  };
+  }
 }
 
 // =============================================================================
 // Main Install/Uninstall Functions
 // =============================================================================
 
-export async function installDaemon(
-  options: DaemonInstallOptions = {}
-): Promise<DaemonInstallResult> {
-  const platform = getPlatform();
+export async function installDaemon(options: DaemonInstallOptions = {}): Promise<DaemonInstallResult> {
+  const platform = getPlatform()
 
   if (platform === "unsupported") {
     return {
       success: false,
       platform: "unsupported",
       error: `Platform '${os.platform()}' is not supported. Only Linux is supported.`,
-    };
+    }
   }
 
   // Find zee binary
-  const binaryPath = resolveZeeBinary();
+  const binaryPath = resolveZeeBinary()
   if (!binaryPath) {
     return {
       success: false,
       platform,
       error: "Could not find zee binary. Ensure it's installed and in PATH.",
-      hints: [
-        "Install with: bun install -g zee",
-        "Or: npm install -g zee",
-      ],
-    };
+      hints: ["Install with: bun install -g zee", "Or: npm install -g zee"],
+    }
   }
 
-  log.info("resolved binary", { path: binaryPath });
+  log.info("resolved binary", { path: binaryPath })
 
   // Check if already installed (unless force)
   if (!options.force) {
@@ -602,61 +591,53 @@ export async function installDaemon(
         platform,
         servicePath: SYSTEMD_UNIT_PATH,
         hints: ["Service already installed. Use --force to reinstall."],
-      };
+      }
     }
   }
 
-  return installSystemdService(binaryPath, options);
+  return installSystemdService(binaryPath, options)
 }
 
 export async function uninstallDaemon(): Promise<DaemonInstallResult> {
-  const platform = getPlatform();
+  const platform = getPlatform()
 
   if (platform === "unsupported") {
     return {
       success: false,
       platform: "unsupported",
       error: `Platform '${os.platform()}' is not supported.`,
-    };
+    }
   }
 
-  return uninstallSystemdService();
+  return uninstallSystemdService()
 }
 
 type UnitStatus = {
-  name: string;
-  path: string;
-  installed: boolean;
-  running: boolean;
-  enabled: boolean;
+  name: string
+  path: string
+  installed: boolean
+  running: boolean
+  enabled: boolean
 }
 
 function getUnitStatus(name: string, servicePath: string): UnitStatus {
-  const installed = fs.existsSync(servicePath);
-  let running = false;
-  let enabled = false;
+  const installed = fs.existsSync(servicePath)
+  let running = false
+  let enabled = false
 
   if (installed) {
     try {
-      const activeResult = spawnSync(
-        "systemctl",
-        ["--user", "is-active", name],
-        { stdio: "pipe", timeout: 5000 }
-      );
-      running = activeResult.stdout?.toString().trim() === "active";
+      const activeResult = spawnSync("systemctl", ["--user", "is-active", name], { stdio: "pipe", timeout: 5000 })
+      running = activeResult.stdout?.toString().trim() === "active"
     } catch {
-      running = false;
+      running = false
     }
 
     try {
-      const enabledResult = spawnSync(
-        "systemctl",
-        ["--user", "is-enabled", name],
-        { stdio: "pipe", timeout: 5000 }
-      );
-      enabled = enabledResult.stdout?.toString().trim() === "enabled";
+      const enabledResult = spawnSync("systemctl", ["--user", "is-enabled", name], { stdio: "pipe", timeout: 5000 })
+      enabled = enabledResult.stdout?.toString().trim() === "enabled"
     } catch {
-      enabled = false;
+      enabled = false
     }
   }
 
@@ -666,19 +647,19 @@ function getUnitStatus(name: string, servicePath: string): UnitStatus {
     installed,
     running,
     enabled,
-  };
+  }
 }
 
 export function getDaemonServiceStatus(): {
-  installed: boolean;
-  running: boolean;
-  platform: string;
-  servicePath?: string;
+  installed: boolean
+  running: boolean
+  platform: string
+  servicePath?: string
   units: {
-    daemon: UnitStatus;
-  };
+    daemon: UnitStatus
+  }
 } {
-  const platform = getPlatform();
+  const platform = getPlatform()
 
   if (platform === "unsupported") {
     const daemon = {
@@ -687,16 +668,16 @@ export function getDaemonServiceStatus(): {
       installed: false,
       running: false,
       enabled: false,
-    };
+    }
     return {
       installed: false,
       running: false,
       platform: os.platform(),
       units: { daemon },
-    };
+    }
   }
 
-  const daemon = getUnitStatus(SYSTEMD_UNIT_NAME, SYSTEMD_UNIT_PATH);
+  const daemon = getUnitStatus(SYSTEMD_UNIT_NAME, SYSTEMD_UNIT_PATH)
 
   return {
     installed: daemon.installed,
@@ -704,7 +685,7 @@ export function getDaemonServiceStatus(): {
     platform,
     servicePath: SYSTEMD_UNIT_PATH,
     units: { daemon },
-  };
+  }
 }
 
 // =============================================================================
@@ -759,62 +740,62 @@ export const DaemonInstallCommand = cmd({
       workingDirectory: args.directory as string | undefined,
       force: args.force as boolean,
       nonInteractive: args["non-interactive"] as boolean,
-    };
+    }
 
     // Interactive wizard (unless non-interactive)
     if (!options.nonInteractive && !args.json) {
-      prompts.intro("Zee Daemon Install Wizard");
+      prompts.intro("Zee Daemon Install Wizard")
 
-      const platform = getPlatform();
+      const platform = getPlatform()
       if (platform === "unsupported") {
-        prompts.cancel(`Platform '${os.platform()}' is not supported.`);
-        process.exit(1);
+        prompts.cancel(`Platform '${os.platform()}' is not supported.`)
+        process.exit(1)
       }
 
-      prompts.log.info("Platform: Linux (systemd)");
+      prompts.log.info("Platform: Linux (systemd)")
 
       // Check existing installation
-      const status = getDaemonServiceStatus();
+      const status = getDaemonServiceStatus()
       if (status.units.daemon.installed && !options.force) {
         const reinstall = await prompts.confirm({
           message: `Service already installed. Reinstall?`,
           initialValue: false,
-        });
+        })
         if (prompts.isCancel(reinstall) || !reinstall) {
-          prompts.outro("Installation cancelled.");
-          process.exit(0);
+          prompts.outro("Installation cancelled.")
+          process.exit(0)
         }
-        options.force = true;
+        options.force = true
       }
 
-      prompts.log.step("Installing service...");
+      prompts.log.step("Installing service...")
     }
 
-    const result = await installDaemon(options);
+    const result = await installDaemon(options)
 
     if (args.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(result, null, 2))
     } else if (result.success) {
-      UI.success("Zee daemon installed successfully!");
-      console.log(`\nService: ${result.servicePath}`);
+      UI.success("Zee daemon installed successfully!")
+      console.log(`\nService: ${result.servicePath}`)
       if (result.hints?.length) {
-        console.log("\nUseful commands:");
+        console.log("\nUseful commands:")
         for (const hint of result.hints) {
-          console.log(`  ${hint}`);
+          console.log(`  ${hint}`)
         }
       }
     } else {
-      UI.error(`Installation failed: ${result.error}`);
+      UI.error(`Installation failed: ${result.error}`)
       if (result.hints?.length) {
-        console.log("\nHints:");
+        console.log("\nHints:")
         for (const hint of result.hints) {
-          console.log(`  ${hint}`);
+          console.log(`  ${hint}`)
         }
       }
-      process.exit(1);
+      process.exit(1)
     }
   },
-});
+})
 
 export const DaemonUninstallCommand = cmd({
   command: "daemon-uninstall",
@@ -826,23 +807,23 @@ export const DaemonUninstallCommand = cmd({
       default: false,
     }),
   handler: async (args) => {
-    const result = await uninstallDaemon();
+    const result = await uninstallDaemon()
 
     if (args.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(result, null, 2))
     } else if (result.success) {
-      UI.success("Zee daemon services removed.");
+      UI.success("Zee daemon services removed.")
       if (result.hints?.length) {
         for (const hint of result.hints) {
-          console.log(`  ${hint}`);
+          console.log(`  ${hint}`)
         }
       }
     } else {
-      UI.error(`Uninstall failed: ${result.error}`);
-      process.exit(1);
+      UI.error(`Uninstall failed: ${result.error}`)
+      process.exit(1)
     }
   },
-});
+})
 
 export const DaemonServiceStatusCommand = cmd({
   command: "daemon-service-status",
@@ -854,21 +835,21 @@ export const DaemonServiceStatusCommand = cmd({
       default: false,
     }),
   handler: async (args) => {
-    const status = getDaemonServiceStatus();
+    const status = getDaemonServiceStatus()
 
     if (args.json) {
-      console.log(JSON.stringify(status, null, 2));
+      console.log(JSON.stringify(status, null, 2))
     } else {
-      console.log("Zee Daemon Service Status");
-      console.log(`  Platform:  ${status.platform}`);
-      console.log(`  Installed: ${status.installed ? "yes" : "no"}`);
-      console.log(`  Running:   ${status.running ? "yes" : "no"}`);
-      console.log("");
-      console.log(`  ${status.units.daemon.name}`);
-      console.log(`    Installed: ${status.units.daemon.installed ? "yes" : "no"}`);
-      console.log(`    Running:   ${status.units.daemon.running ? "yes" : "no"}`);
-      console.log(`    Enabled:   ${status.units.daemon.enabled ? "yes" : "no"}`);
-      console.log(`    Path:      ${status.units.daemon.path}`);
+      console.log("Zee Daemon Service Status")
+      console.log(`  Platform:  ${status.platform}`)
+      console.log(`  Installed: ${status.installed ? "yes" : "no"}`)
+      console.log(`  Running:   ${status.running ? "yes" : "no"}`)
+      console.log("")
+      console.log(`  ${status.units.daemon.name}`)
+      console.log(`    Installed: ${status.units.daemon.installed ? "yes" : "no"}`)
+      console.log(`    Running:   ${status.units.daemon.running ? "yes" : "no"}`)
+      console.log(`    Enabled:   ${status.units.daemon.enabled ? "yes" : "no"}`)
+      console.log(`    Path:      ${status.units.daemon.path}`)
     }
   },
-});
+})

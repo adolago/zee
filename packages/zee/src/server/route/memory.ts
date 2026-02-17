@@ -181,7 +181,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory store failed", { error: errMsg, stack: errStack })
         return c.json({ error: "Failed to store memory", details: errMsg }, 500)
       }
-    }
+    },
   )
 
   // Batch store memories
@@ -222,7 +222,7 @@ export const MemoryRoute = new Hono()
         log.error("Batch memory store failed", { error: err })
         return c.json({ error: "Failed to batch store memories" }, 500)
       }
-    }
+    },
   )
 
   // Semantic search
@@ -257,7 +257,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory search failed", { error: err })
         return c.json({ error: "Failed to search memories" }, 500)
       }
-    }
+    },
   )
 
   // Get memory statistics (must come before /:id to avoid matching "stats" as an ID)
@@ -289,7 +289,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory stats failed", { error: err })
         return c.json({ error: "Failed to get memory statistics" }, 500)
       }
-    }
+    },
   )
 
   // Health check for memory service (must come before /:id)
@@ -309,7 +309,7 @@ export const MemoryRoute = new Hono()
                 z.object({
                   available: z.boolean(),
                   initialized: z.boolean(),
-                })
+                }),
               ),
             },
           },
@@ -329,7 +329,7 @@ export const MemoryRoute = new Hono()
           initialized: false,
         })
       }
-    }
+    },
   )
 
   // Get memory by ID
@@ -368,7 +368,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory get failed", { error: err })
         return c.json({ error: "Failed to get memory" }, 500)
       }
-    }
+    },
   )
 
   // List memories by namespace
@@ -397,7 +397,7 @@ export const MemoryRoute = new Hono()
       z.object({
         category: MemoryCategorySchema.optional(),
         limit: z.coerce.number().min(1).max(500).optional().default(100),
-      })
+      }),
     ),
     async (c) => {
       try {
@@ -410,7 +410,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory list failed", { error: err })
         return c.json({ error: "Failed to list memories" }, 500)
       }
-    }
+    },
   )
 
   // Delete memory by ID
@@ -445,7 +445,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory delete failed", { error: err })
         return c.json({ error: "Failed to delete memory" }, 500)
       }
-    }
+    },
   )
 
   // Delete memories by filter
@@ -474,7 +474,7 @@ export const MemoryRoute = new Hono()
         category: MemoryCategorySchema.optional(),
         namespace: z.string().optional(),
         olderThan: z.number().optional(),
-      })
+      }),
     ),
     async (c) => {
       try {
@@ -487,7 +487,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory deleteWhere failed", { error: err })
         return c.json({ error: "Failed to delete memories" }, 500)
       }
-    }
+    },
   )
 
   // Cleanup expired memories
@@ -520,7 +520,7 @@ export const MemoryRoute = new Hono()
         log.error("Memory cleanup failed", { error: err })
         return c.json({ error: "Failed to cleanup memories" }, 500)
       }
-    }
+    },
   )
 
   // Reset and reinitialize memory service
@@ -541,7 +541,7 @@ export const MemoryRoute = new Hono()
                   success: z.boolean(),
                   available: z.boolean(),
                   error: z.string().optional(),
-                })
+                }),
               ),
             },
           },
@@ -566,7 +566,7 @@ export const MemoryRoute = new Hono()
           error,
         })
       }
-    }
+    },
   )
 
   // Agentic search (filter-first retrieval)
@@ -603,7 +603,7 @@ export const MemoryRoute = new Hono()
         memoryType: MemoryMemoryTypeSchema.optional(),
         limit: z.number().min(1).max(200).optional(),
         threshold: z.number().min(0).max(1).optional(),
-      })
+      }),
     ),
     async (c) => {
       try {
@@ -615,7 +615,7 @@ export const MemoryRoute = new Hono()
         log.error("Agentic search failed", { error: err })
         return c.json({ error: "Agentic search failed" }, 500)
       }
-    }
+    },
   )
 
   // Context tree: list domains
@@ -647,7 +647,7 @@ export const MemoryRoute = new Hono()
         log.error("List domains failed", { error: err })
         return c.json({ error: "Failed to list domains" }, 500)
       }
-    }
+    },
   )
 
   // Context tree: list topics
@@ -681,7 +681,7 @@ export const MemoryRoute = new Hono()
         log.error("List topics failed", { error: err })
         return c.json({ error: "Failed to list topics" }, 500)
       }
-    }
+    },
   )
 
   // Context tree: list subtopics
@@ -715,7 +715,7 @@ export const MemoryRoute = new Hono()
         log.error("List subtopics failed", { error: err })
         return c.json({ error: "Failed to list subtopics" }, 500)
       }
-    }
+    },
   )
 
   // Version history
@@ -749,7 +749,7 @@ export const MemoryRoute = new Hono()
         log.error("Version history failed", { error: err })
         return c.json({ error: "Failed to get version history" }, 500)
       }
-    }
+    },
   )
 
   // Version rollback
@@ -788,7 +788,7 @@ export const MemoryRoute = new Hono()
         log.error("Version rollback failed", { error: err })
         return c.json({ error: "Failed to rollback version" }, 500)
       }
-    }
+    },
   )
 
   // Curated context
@@ -822,5 +822,5 @@ export const MemoryRoute = new Hono()
         log.error("Curated context failed", { error: err })
         return c.json({ error: "Failed to get curated context" }, 500)
       }
-    }
+    },
   )

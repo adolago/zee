@@ -30,4 +30,3 @@ describe("compare render (json)", () => {
     expect((obj as any).projects?.zee?.name).toBe("Zee")
   })
 })
-

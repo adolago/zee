@@ -110,18 +110,18 @@ function formatSessionTreeJSON(nodes: SessionTreeNode[]): string {
     children: node.children.map((child) => simplify(child)),
   })
 
-  return JSON.stringify(nodes.map((node) => simplify(node)), null, 2)
+  return JSON.stringify(
+    nodes.map((node) => simplify(node)),
+    null,
+    2,
+  )
 }
 
 export const SessionCommand = cmd({
   command: "session",
   describe: "manage sessions",
   builder: (yargs: Argv) =>
-    yargs
-      .command(SessionListCommand)
-      .command(SessionTreeCommand)
-      .command(SessionForkCommand)
-      .demandCommand(),
+    yargs.command(SessionListCommand).command(SessionTreeCommand).command(SessionForkCommand).demandCommand(),
   async handler() {},
 })
 

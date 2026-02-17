@@ -45,8 +45,11 @@ function isTTYDetached(fd: number): boolean {
 }
 
 function watchInteractiveTerminal(onDetached: (reason: string) => void): () => void {
-  const watchedFds = [process.stdin.isTTY ? 0 : -1, process.stdout.isTTY ? 1 : -1, process.stderr.isTTY ? 2 : -1]
-    .filter((fd) => fd >= 0)
+  const watchedFds = [
+    process.stdin.isTTY ? 0 : -1,
+    process.stdout.isTTY ? 1 : -1,
+    process.stderr.isTTY ? 2 : -1,
+  ].filter((fd) => fd >= 0)
 
   if (watchedFds.length === 0) return () => {}
 
@@ -162,11 +165,7 @@ function getSystemdServiceState(scope: SystemdScope): SystemdServiceState {
 
 function attemptSystemctlStart(scope: SystemdScope): { ok: boolean; details?: string } {
   const baseArgs = scope === "user" ? ["--user"] : []
-  const result = spawnSync(
-    "systemctl",
-    [...baseArgs, "--no-ask-password", "start", "zee"],
-    { encoding: "utf-8" },
-  )
+  const result = spawnSync("systemctl", [...baseArgs, "--no-ask-password", "start", "zee"], { encoding: "utf-8" })
   if (result.status === 0) return { ok: true }
 
   const stdout = (result.stdout ?? "").trim()

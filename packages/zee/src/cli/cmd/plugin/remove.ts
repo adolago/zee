@@ -23,9 +23,7 @@ export const RemoveCommand = cmd({
           // Check if installed
           if (!(await isInstalled(name))) {
             UI.warn(`Plugin "${name}" is not installed`)
-            UI.println(
-              UI.Style.TEXT_DIM + "Use 'zee plugin list' to see installed plugins" + UI.Style.TEXT_NORMAL,
-            )
+            UI.println(UI.Style.TEXT_DIM + "Use 'zee plugin list' to see installed plugins" + UI.Style.TEXT_NORMAL)
             return
           }
 

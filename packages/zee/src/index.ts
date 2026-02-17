@@ -68,10 +68,7 @@ function loadDaemonEnv(): void {
     const key = line.slice(0, eqIndex).trim()
     if (!key || process.env[key] !== undefined) continue
     let value = line.slice(eqIndex + 1).trim()
-    if (
-      (value.startsWith("\"") && value.endsWith("\"")) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1)
     }
     process.env[key] = value
@@ -111,6 +108,10 @@ const cli = yargs(hideBin(process.argv))
     type: "string",
     choices: ["DEBUG", "INFO", "WARN", "ERROR"],
   })
+  .option("session-control", {
+    describe: "enable cross-session control socket APIs",
+    type: "boolean",
+  })
   .middleware(async (opts) => {
     if (!process.env.ZEE_ROOT) {
       const rootCandidate = path.resolve(path.dirname(process.execPath), "..")
@@ -143,6 +144,10 @@ const cli = yargs(hideBin(process.argv))
 
     process.env.AGENT = "1"
     process.env.ZEE = "1"
+    if (opts.sessionControl === true) {
+      process.env.ZEE_SESSION_CONTROL = "1"
+      reloadFlags()
+    }
 
     Log.Default.info("zee", {
       version: Installation.VERSION,

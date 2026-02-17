@@ -35,6 +35,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
   messages_copy: { category: "Messages", description: "[y]ank" },
   messages_undo: { category: "Messages", description: "[u]ndo" },
   messages_toggle_thinking: { category: "Messages", description: "th[i]nking" },
+  tool_details: { category: "Messages", description: "[d]etails" },
   messages_toggle_scrollbar: { category: "Messages", description: "[S]crollbar" },
 
   // Grammar

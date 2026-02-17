@@ -83,7 +83,22 @@ export namespace Dictation {
       : undefined
 
     const soxCommand = sox
-      ? [sox, "-q", "-d", "-r", String(input.sampleRate), "-c", "1", "-b", "16", "-e", "signed-integer", "-t", "wav", "-"]
+      ? [
+          sox,
+          "-q",
+          "-d",
+          "-r",
+          String(input.sampleRate),
+          "-c",
+          "1",
+          "-b",
+          "16",
+          "-e",
+          "signed-integer",
+          "-t",
+          "wav",
+          "-",
+        ]
       : undefined
 
     if (os === "linux") {
@@ -241,9 +256,7 @@ export namespace Dictation {
     if (readTag(view, 0) !== "RIFF" || readTag(view, 8) !== "WAVE") return
 
     let offset = 12
-    let format:
-      | { audioFormat: number; channels: number; sampleRate: number; bitsPerSample: number }
-      | undefined
+    let format: { audioFormat: number; channels: number; sampleRate: number; bitsPerSample: number } | undefined
     let dataOffset: number | undefined
     let dataSize: number | undefined
 

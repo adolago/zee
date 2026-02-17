@@ -12,6 +12,25 @@ export namespace BunProc {
   const log = Log.create({ service: "bun" })
   const req = createRequire(import.meta.url)
 
+  async function isPortableLocalPlugin(localPluginPkgPath: string) {
+    const raw = await Bun.file(localPluginPkgPath)
+      .text()
+      .catch(() => "")
+    if (!raw) return false
+    const parsed = JSON.parse(raw) as {
+      dependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
+      optionalDependencies?: Record<string, string>
+    }
+
+    const specs = [
+      ...Object.values(parsed.dependencies ?? {}),
+      ...Object.values(parsed.peerDependencies ?? {}),
+      ...Object.values(parsed.optionalDependencies ?? {}),
+    ]
+    return !specs.some((spec) => /^(workspace:|catalog:)/.test(spec))
+  }
+
   export async function run(cmd: string[], options?: Bun.SpawnOptions.OptionsObject<any, any, any>) {
     log.info("running", {
       cmd: [which(), ...cmd],
@@ -79,9 +98,10 @@ export namespace BunProc {
     const localPluginPkg = path.join(localPluginDir, "package.json")
     const localPluginSpecifier = `file:${localPluginDir}`
     const localPluginAvailable = await Filesystem.exists(localPluginPkg)
+    const localPluginPortable = localPluginAvailable ? await isPortableLocalPlugin(localPluginPkg) : false
 
     let requiresInstall = false
-    if (localPluginAvailable && dependencies["@zee/plugin"] !== localPluginSpecifier) {
+    if (localPluginAvailable && localPluginPortable && dependencies["@zee/plugin"] !== localPluginSpecifier) {
       dependencies["@zee/plugin"] = localPluginSpecifier
       requiresInstall = true
     }

@@ -59,6 +59,17 @@ test("includes default keybind for toggling thinking visibility", async () => {
   })
 })
 
+test("includes default keybind for toggling tool details visibility", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.keybinds?.tool_details).toBe("none")
+    },
+  })
+})
+
 test("includes default keybind for toggling scrollbar visibility", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
@@ -1232,7 +1243,7 @@ test("project config can override MCP server enabled status", async () => {
           },
         }),
       )
-        // Project config enables just tracker
+      // Project config enables just tracker
       await Bun.write(
         path.join(dir, "zee.json"),
         JSON.stringify({

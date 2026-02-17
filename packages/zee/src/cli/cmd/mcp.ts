@@ -584,16 +584,10 @@ export const McpResourcesReadCommand = cmd({
 
 async function resolveConfigPath(baseDir: string, global = false) {
   // Check for existing config files (prefer .jsonc over .json, check .zee/ subdirectory too)
-  const candidates = [
-    path.join(baseDir, "zee.jsonc"),
-    path.join(baseDir, "zee.json"),
-  ]
+  const candidates = [path.join(baseDir, "zee.jsonc"), path.join(baseDir, "zee.json")]
 
   if (!global) {
-    candidates.push(
-      path.join(baseDir, ".zee", "zee.jsonc"),
-      path.join(baseDir, ".zee", "zee.json"),
-    )
+    candidates.push(path.join(baseDir, ".zee", "zee.jsonc"), path.join(baseDir, ".zee", "zee.json"))
   }
 
   for (const candidate of candidates) {

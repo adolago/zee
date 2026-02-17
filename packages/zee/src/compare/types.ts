@@ -5,10 +5,7 @@ export type CompareFormat = "text" | "md" | "json"
 
 export type SupportLevel = "yes" | "no" | "partial" | "via_plugin" | "planned" | "n_a" | "unknown"
 
-export type Evidence =
-  | { kind: "repo_path"; ref: string }
-  | { kind: "doc"; ref: string }
-  | { kind: "note"; ref: string }
+export type Evidence = { kind: "repo_path"; ref: string } | { kind: "doc"; ref: string } | { kind: "note"; ref: string }
 
 export type FeatureSupport = {
   level: SupportLevel
@@ -32,4 +29,3 @@ export type Feature = {
   /** Optional ordering hint within a category. Lower first. */
   sort?: number
 }
-

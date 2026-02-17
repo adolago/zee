@@ -1,5 +1,5 @@
 ---
-name: "Skill Builder"
+name: skill-builder
 description: "Create new Skills with proper YAML frontmatter and progressive disclosure structure. Use when building custom skills for specific workflows, generating skill templates, or understanding the Skills specification."
 version: "1.0.0"
 ---

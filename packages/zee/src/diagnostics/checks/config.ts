@@ -3,27 +3,27 @@
  * @description Validates zee configuration files
  */
 
-import * as fs from "fs/promises";
-import * as path from "path";
-import { parse } from "jsonc-parser";
-import type { ParseError } from "jsonc-parser";
-import type { CheckResult, CheckOptions } from "../types";
-import { Auth } from "../../auth";
-import { resolveConfigDir } from "../../global/dirs";
+import * as fs from "fs/promises"
+import * as path from "path"
+import { parse } from "jsonc-parser"
+import type { ParseError } from "jsonc-parser"
+import type { CheckResult, CheckOptions } from "../types"
+import { Auth } from "../../auth"
+import { resolveConfigDir } from "../../global/dirs"
 
 /** Deprecated configuration options that should be migrated */
 const DEPRECATED_OPTIONS = [
   { old: "model", new: "provider.model", since: "0.1.0" },
   { old: "theme", new: "ui.theme", since: "0.1.0" },
   { old: "maxTokens", new: "provider.maxTokens", since: "0.1.0" },
-];
+]
 
 type RecommendedCredential = {
-  label: string;
-  description: string;
-  envVar?: string;
-  authProviderId?: string;
-};
+  label: string
+  description: string
+  envVar?: string
+  authProviderId?: string
+}
 
 /** Recommended credentials for full functionality */
 const RECOMMENDED_CREDENTIALS: RecommendedCredential[] = [
@@ -50,67 +50,67 @@ const RECOMMENDED_CREDENTIALS: RecommendedCredential[] = [
     authProviderId: "voyage",
     description: "Voyage reranking (API key)",
   },
-];
+]
 
 /**
  * Get the config directory path
  */
 function getConfigDir(): string {
-  return resolveConfigDir();
+  return resolveConfigDir()
 }
 
 /**
  * Parse JSONC (JSON with comments) - basic implementation
  */
 function parseJsonc(content: string): unknown {
-  const errors: ParseError[] = [];
+  const errors: ParseError[] = []
   const result = parse(content, errors, {
     allowTrailingComma: true,
     allowEmptyContent: false,
-  });
+  })
   if (errors.length > 0) {
-    const err = errors[0];
-    throw new Error(`JSON Parse error at position ${err.offset}`);
+    const err = errors[0]
+    throw new Error(`JSON Parse error at position ${err.offset}`)
   }
-  return result;
+  return result
 }
 
 /**
  * Find line number for a JSON path in content
  */
 function findLineNumber(content: string, jsonPath: string): number {
-  const lines = content.split("\n");
-  const pathParts = jsonPath.split(".");
-  const searchKey = pathParts[pathParts.length - 1];
+  const lines = content.split("\n")
+  const pathParts = jsonPath.split(".")
+  const searchKey = pathParts[pathParts.length - 1]
 
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes(`"${searchKey}"`)) {
-      return i + 1;
+      return i + 1
     }
   }
-  return 1;
+  return 1
 }
 
 /**
  * Check if object has a key (supports nested paths)
  */
 function hasKey(obj: unknown, key: string): boolean {
-  if (typeof obj !== "object" || obj === null) return false;
-  return key in (obj as Record<string, unknown>);
+  if (typeof obj !== "object" || obj === null) return false
+  return key in (obj as Record<string, unknown>)
 }
 
 /**
  * Validate configuration schema
  */
 async function checkConfigSchema(): Promise<CheckResult> {
-  const start = Date.now();
-  const configPath = path.join(getConfigDir(), "zee.json");
+  const start = Date.now()
+  const configPath = path.join(getConfigDir(), "zee.json")
 
   try {
-    const content = await fs.readFile(configPath, "utf-8");
+    const content = await fs.readFile(configPath, "utf-8")
 
     try {
-      const parsed = parseJsonc(content);
+      const parsed = parseJsonc(content)
 
       // Basic validation - check it's an object
       if (typeof parsed !== "object" || parsed === null) {
@@ -123,7 +123,7 @@ async function checkConfigSchema(): Promise<CheckResult> {
           severity: "error",
           durationMs: Date.now() - start,
           autoFixable: false,
-        };
+        }
       }
 
       return {
@@ -135,17 +135,16 @@ async function checkConfigSchema(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     } catch (parseError) {
-      const errorMsg =
-        parseError instanceof Error ? parseError.message : String(parseError);
+      const errorMsg = parseError instanceof Error ? parseError.message : String(parseError)
       // Try to extract line number from JSON parse error
-      const lineMatch = errorMsg.match(/position (\d+)/);
-      let lineInfo = "";
+      const lineMatch = errorMsg.match(/position (\d+)/)
+      let lineInfo = ""
       if (lineMatch) {
-        const position = parseInt(lineMatch[1], 10);
-        const lines = content.substring(0, position).split("\n");
-        lineInfo = ` at line ${lines.length}`;
+        const position = parseInt(lineMatch[1], 10)
+        const lines = content.substring(0, position).split("\n")
+        lineInfo = ` at line ${lines.length}`
       }
 
       return {
@@ -158,7 +157,7 @@ async function checkConfigSchema(): Promise<CheckResult> {
         severity: "error",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -171,7 +170,7 @@ async function checkConfigSchema(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     return {
@@ -184,7 +183,7 @@ async function checkConfigSchema(): Promise<CheckResult> {
       severity: "error",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -192,17 +191,17 @@ async function checkConfigSchema(): Promise<CheckResult> {
  * Check for deprecated configuration options
  */
 async function checkDeprecatedOptions(): Promise<CheckResult> {
-  const start = Date.now();
-  const configPath = path.join(getConfigDir(), "zee.json");
+  const start = Date.now()
+  const configPath = path.join(getConfigDir(), "zee.json")
 
   try {
-    const content = await fs.readFile(configPath, "utf-8");
-    const config = parseJsonc(content) as Record<string, unknown>;
+    const content = await fs.readFile(configPath, "utf-8")
+    const config = parseJsonc(content) as Record<string, unknown>
 
-    const found: string[] = [];
+    const found: string[] = []
     for (const dep of DEPRECATED_OPTIONS) {
       if (hasKey(config, dep.old)) {
-        found.push(`'${dep.old}' → '${dep.new}' (since ${dep.since})`);
+        found.push(`'${dep.old}' → '${dep.new}' (since ${dep.since})`)
       }
     }
 
@@ -216,7 +215,7 @@ async function checkDeprecatedOptions(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     return {
@@ -231,29 +230,26 @@ async function checkDeprecatedOptions(): Promise<CheckResult> {
       autoFixable: true,
       fix: async () => {
         // Read, migrate, and write back
-        const content = await fs.readFile(configPath, "utf-8");
-        const config = parseJsonc(content) as Record<string, unknown>;
+        const content = await fs.readFile(configPath, "utf-8")
+        const config = parseJsonc(content) as Record<string, unknown>
 
         for (const dep of DEPRECATED_OPTIONS) {
           if (hasKey(config, dep.old)) {
             // Simple migration - would need more sophisticated handling for nested paths
-            const value = config[dep.old];
-            delete config[dep.old];
+            const value = config[dep.old]
+            delete config[dep.old]
             // For now, just note the migration - full path support would require more work
-            console.log(
-              `Migration note: Move '${dep.old}' to '${dep.new}' with value:`,
-              value
-            );
+            console.log(`Migration note: Move '${dep.old}' to '${dep.new}' with value:`, value)
           }
         }
 
-        await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+        await fs.writeFile(configPath, JSON.stringify(config, null, 2))
         return {
           success: true,
           message: `Migrated ${found.length} deprecated option(s)`,
-        };
+        }
       },
-    };
+    }
   } catch {
     return {
       id: "config.deprecated",
@@ -264,7 +260,7 @@ async function checkDeprecatedOptions(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -272,14 +268,14 @@ async function checkDeprecatedOptions(): Promise<CheckResult> {
  * Check for keybind conflicts
  */
 async function checkKeybindConflicts(): Promise<CheckResult> {
-  const start = Date.now();
-  const configPath = path.join(getConfigDir(), "zee.json");
+  const start = Date.now()
+  const configPath = path.join(getConfigDir(), "zee.json")
 
   try {
-    const content = await fs.readFile(configPath, "utf-8");
-    const config = parseJsonc(content) as Record<string, unknown>;
+    const content = await fs.readFile(configPath, "utf-8")
+    const config = parseJsonc(content) as Record<string, unknown>
 
-    const keybinds = config.keybinds as Record<string, string> | undefined;
+    const keybinds = config.keybinds as Record<string, string> | undefined
     if (!keybinds || typeof keybinds !== "object") {
       return {
         id: "config.keybinds",
@@ -290,23 +286,23 @@ async function checkKeybindConflicts(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
-    }
-
-    // Find duplicates
-    const seen = new Map<string, string[]>();
-    for (const [action, binding] of Object.entries(keybinds)) {
-      if (typeof binding === "string") {
-        const existing = seen.get(binding) || [];
-        existing.push(action);
-        seen.set(binding, existing);
       }
     }
 
-    const conflicts: string[] = [];
+    // Find duplicates
+    const seen = new Map<string, string[]>()
+    for (const [action, binding] of Object.entries(keybinds)) {
+      if (typeof binding === "string") {
+        const existing = seen.get(binding) || []
+        existing.push(action)
+        seen.set(binding, existing)
+      }
+    }
+
+    const conflicts: string[] = []
     for (const [binding, actions] of seen) {
       if (actions.length > 1) {
-        conflicts.push(`'${binding}' → ${actions.join(", ")}`);
+        conflicts.push(`'${binding}' → ${actions.join(", ")}`)
       }
     }
 
@@ -320,7 +316,7 @@ async function checkKeybindConflicts(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     return {
@@ -333,7 +329,7 @@ async function checkKeybindConflicts(): Promise<CheckResult> {
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   } catch {
     return {
       id: "config.keybinds",
@@ -344,7 +340,7 @@ async function checkKeybindConflicts(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
@@ -352,33 +348,33 @@ async function checkKeybindConflicts(): Promise<CheckResult> {
  * Check environment variables
  */
 async function checkCredentials(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
-  const missing: string[] = [];
-  const present: string[] = [];
+  const missing: string[] = []
+  const present: string[] = []
 
   for (const credential of RECOMMENDED_CREDENTIALS) {
-    let isPresent = false;
+    let isPresent = false
     if (credential.envVar) {
-      const value = process.env[credential.envVar];
-      isPresent = Boolean(value && value.trim());
+      const value = process.env[credential.envVar]
+      isPresent = Boolean(value && value.trim())
     }
     if (!isPresent && credential.authProviderId) {
-      const auth = await Auth.get(credential.authProviderId);
+      const auth = await Auth.get(credential.authProviderId)
       if (auth?.type === "api") {
-        isPresent = Boolean(auth.key?.trim());
+        isPresent = Boolean(auth.key?.trim())
       } else if (auth?.type === "oauth") {
-        isPresent = Boolean(auth.access?.trim());
+        isPresent = Boolean(auth.access?.trim())
       } else if (auth?.type === "wellknown") {
-        isPresent = Boolean(auth.token?.trim());
+        isPresent = Boolean(auth.token?.trim())
       }
     }
 
-    const label = credential.envVar ?? `${credential.label} (auth login)`;
+    const label = credential.envVar ?? `${credential.label} (auth login)`
     if (isPresent) {
-      present.push(label);
+      present.push(label)
     } else {
-      missing.push(label);
+      missing.push(label)
     }
   }
 
@@ -393,7 +389,7 @@ async function checkCredentials(): Promise<CheckResult> {
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
   if (missing.length > 0) {
@@ -407,7 +403,7 @@ async function checkCredentials(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
   return {
@@ -419,23 +415,21 @@ async function checkCredentials(): Promise<CheckResult> {
     severity: "info",
     durationMs: Date.now() - start,
     autoFixable: false,
-  };
+  }
 }
 
 /**
  * Check MCP server paths (extended check)
  */
 async function checkMCPPaths(): Promise<CheckResult> {
-  const start = Date.now();
-  const configPath = path.join(getConfigDir(), "zee.json");
+  const start = Date.now()
+  const configPath = path.join(getConfigDir(), "zee.json")
 
   try {
-    const content = await fs.readFile(configPath, "utf-8");
-    const config = parseJsonc(content) as Record<string, unknown>;
+    const content = await fs.readFile(configPath, "utf-8")
+    const config = parseJsonc(content) as Record<string, unknown>
 
-    const mcpServers = config.mcpServers as
-      | Record<string, { command?: string; args?: string[] }>
-      | undefined;
+    const mcpServers = config.mcpServers as Record<string, { command?: string; args?: string[] }> | undefined
     if (!mcpServers || typeof mcpServers !== "object") {
       return {
         id: "config.mcp-paths",
@@ -446,26 +440,26 @@ async function checkMCPPaths(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
-    const missing: string[] = [];
-    const found: string[] = [];
+    const missing: string[] = []
+    const found: string[] = []
 
     for (const [name, server] of Object.entries(mcpServers)) {
       if (server && typeof server === "object" && server.command) {
-        const command = server.command;
+        const command = server.command
         // Check if it's an absolute path
         if (path.isAbsolute(command)) {
           try {
-            await fs.access(command);
-            found.push(name);
+            await fs.access(command)
+            found.push(name)
           } catch {
-            missing.push(`${name}: ${command}`);
+            missing.push(`${name}: ${command}`)
           }
         } else {
           // It's likely a command in PATH, assume it's ok
-          found.push(name);
+          found.push(name)
         }
       }
     }
@@ -480,7 +474,7 @@ async function checkMCPPaths(): Promise<CheckResult> {
         severity: "info",
         durationMs: Date.now() - start,
         autoFixable: false,
-      };
+      }
     }
 
     return {
@@ -493,7 +487,7 @@ async function checkMCPPaths(): Promise<CheckResult> {
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   } catch {
     return {
       id: "config.mcp-paths",
@@ -504,28 +498,26 @@ async function checkMCPPaths(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 }
 
 /**
  * Run all configuration checks
  */
-export async function runConfigChecks(
-  options: CheckOptions
-): Promise<CheckResult[]> {
-  const results: CheckResult[] = [];
+export async function runConfigChecks(options: CheckOptions): Promise<CheckResult[]> {
+  const results: CheckResult[] = []
 
   // Core checks
-  results.push(await checkConfigSchema());
-  results.push(await checkDeprecatedOptions());
-  results.push(await checkCredentials());
+  results.push(await checkConfigSchema())
+  results.push(await checkDeprecatedOptions())
+  results.push(await checkCredentials())
 
   // Extended checks
   if (options.full) {
-    results.push(await checkKeybindConflicts());
-    results.push(await checkMCPPaths());
+    results.push(await checkKeybindConflicts())
+    results.push(await checkMCPPaths())
   }
 
-  return results;
+  return results
 }

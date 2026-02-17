@@ -140,10 +140,23 @@ export namespace Skill {
 
   /** Keys recognized in SKILL.md frontmatter (excludes internal-only fields like location). */
   const KNOWN_FRONTMATTER_KEYS = new Set([
-    "name", "description", "context", "requires", "primaryEnv", "tags", "triggers",
-    "version", "author", "category", "source", "homepage",
+    "name",
+    "description",
+    "context",
+    "requires",
+    "primaryEnv",
+    "tags",
+    "triggers",
+    "version",
+    "author",
+    "category",
+    "source",
+    "homepage",
     // Common metadata containers (not in Info but structurally valid)
-    "metadata", "registry", "emoji", "progressive_disclosure",
+    "metadata",
+    "registry",
+    "emoji",
+    "progressive_disclosure",
   ])
 
   export const state = Instance.state(async () => {
@@ -208,7 +221,9 @@ export namespace Skill {
       if (match.includes("/@clawhub/")) {
         try {
           const manifestPath = path.join(path.dirname(match), "..", ".manifest.json")
-          const manifestRaw = await Bun.file(manifestPath).text().catch(() => "")
+          const manifestRaw = await Bun.file(manifestPath)
+            .text()
+            .catch(() => "")
           if (manifestRaw) {
             const manifest = JSON.parse(manifestRaw)
             const skillId = path.basename(path.dirname(match))
@@ -247,14 +262,15 @@ export namespace Skill {
       }
 
       const primaryEnv =
-        typeof md.data.primaryEnv === "string" ? md.data.primaryEnv :
-        metadata && typeof (metadata as { primaryEnv?: unknown }).primaryEnv === "string"
-          ? (metadata as { primaryEnv?: string }).primaryEnv
-          : metadata && typeof (metadata as { clawhub?: { primaryEnv?: unknown } }).clawhub?.primaryEnv === "string"
-            ? (metadata as { clawhub?: { primaryEnv?: string } }).clawhub?.primaryEnv
-            : metadata && typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
-              ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
-              : undefined
+        typeof md.data.primaryEnv === "string"
+          ? md.data.primaryEnv
+          : metadata && typeof (metadata as { primaryEnv?: unknown }).primaryEnv === "string"
+            ? (metadata as { primaryEnv?: string }).primaryEnv
+            : metadata && typeof (metadata as { clawhub?: { primaryEnv?: unknown } }).clawhub?.primaryEnv === "string"
+              ? (metadata as { clawhub?: { primaryEnv?: string } }).clawhub?.primaryEnv
+              : metadata && typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
+                ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
+                : undefined
 
       // Check requires gates
       if (requires) {
@@ -267,7 +283,11 @@ export namespace Skill {
               name: parsed.data.name,
               reason: `OS mismatch: requires ${requires.os.join("|")}, running ${currentOS}`,
             })
-            log.debug("skill excluded: OS mismatch", { skill: parsed.data.name, requires: requires.os, current: currentOS })
+            log.debug("skill excluded: OS mismatch", {
+              skill: parsed.data.name,
+              requires: requires.os,
+              current: currentOS,
+            })
             return
           }
         }
@@ -331,20 +351,19 @@ export namespace Skill {
       }
 
       // Parse tags and triggers from frontmatter
-      const tags = Array.isArray(md.data.tags)
-        ? md.data.tags.filter((t: unknown) => typeof t === "string")
-        : undefined
+      const tags = Array.isArray(md.data.tags) ? md.data.tags.filter((t: unknown) => typeof t === "string") : undefined
       const triggers = Array.isArray(md.data.triggers)
         ? md.data.triggers.filter((t: unknown) => typeof t === "string")
         : undefined
 
       // Extract optional schema fields from frontmatter
       const version = typeof md.data.version === "string" ? md.data.version : undefined
-      const author = typeof md.data.author === "string"
-        ? md.data.author
-        : Array.isArray(md.data.authors) && typeof md.data.authors[0] === "string"
-          ? md.data.authors[0]
-          : undefined
+      const author =
+        typeof md.data.author === "string"
+          ? md.data.author
+          : Array.isArray(md.data.authors) && typeof md.data.authors[0] === "string"
+            ? md.data.authors[0]
+            : undefined
       const category = typeof md.data.category === "string" ? md.data.category : undefined
       const source = typeof md.data.source === "string" ? md.data.source : undefined
       const homepage = typeof md.data.homepage === "string" ? md.data.homepage : undefined
@@ -388,23 +407,23 @@ export namespace Skill {
     }
 
     for (const dir of agentsDirs) {
-        const matches = await Array.fromAsync(
-          CLAUDE_SKILL_GLOB.scan({
-            cwd: dir,
-            absolute: true,
-            onlyFiles: true,
-            followSymlinks: true,
-            dot: true,
-          }),
-        ).catch((error) => {
-          log.error("failed .agents directory scan for skills", { dir, error })
-          return []
-        })
+      const matches = await Array.fromAsync(
+        CLAUDE_SKILL_GLOB.scan({
+          cwd: dir,
+          absolute: true,
+          onlyFiles: true,
+          followSymlinks: true,
+          dot: true,
+        }),
+      ).catch((error) => {
+        log.error("failed .agents directory scan for skills", { dir, error })
+        return []
+      })
 
-        for (const match of matches) {
-          await addSkill(match)
-        }
+      for (const match of matches) {
+        await addSkill(match)
       }
+    }
 
     // Scan .claude/skills/ directories (project-level) - Anthropic standard
     const claudeDirs = await Array.fromAsync(
@@ -566,7 +585,7 @@ export namespace Skill {
     const skills: Info[] = await state().then((x) => Object.values(x.skills))
 
     if (!agent) {
-      return skills.map((s) => ({ ...s, affinity: s.context ? "own" : "shared" as const }))
+      return skills.map((s) => ({ ...s, affinity: s.context ? "own" : ("shared" as const) }))
     }
 
     const normalizedAgent = agent.toLowerCase()

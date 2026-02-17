@@ -35,13 +35,7 @@ export const META_CLI_API_ERROR = "Error: 400 - invalid recipient: not a valid W
  * Build a mock CommandResult for use with sendWhatsAppMessage tests.
  */
 export function mockMetaCliResult(options: MetaCliMockOptions = {}) {
-  const {
-    exitCode = 0,
-    stdout = META_CLI_SUCCESS_RESPONSE,
-    stderr = "",
-    notFound = false,
-    timeout = false,
-  } = options
+  const { exitCode = 0, stdout = META_CLI_SUCCESS_RESPONSE, stderr = "", notFound = false, timeout = false } = options
 
   return {
     ok: exitCode === 0 && !notFound && !timeout,

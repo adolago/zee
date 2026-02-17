@@ -15,8 +15,7 @@ process.chdir(dir)
 // =============================================================================
 
 const DEFAULT_NPM_PACKAGE = "@zee/zee"
-const NPM_PACKAGE =
-  process.env.ZEE_NPM_PACKAGE?.trim() || DEFAULT_NPM_PACKAGE
+const NPM_PACKAGE = process.env.ZEE_NPM_PACKAGE?.trim() || DEFAULT_NPM_PACKAGE
 const SCOPE_PREFIX = NPM_PACKAGE.startsWith("@") ? NPM_PACKAGE.split("/")[0] : ""
 const scopedName = (name: string) => {
   if (!SCOPE_PREFIX) return name
@@ -24,19 +23,11 @@ const scopedName = (name: string) => {
   return `${SCOPE_PREFIX}/${bare}`
 }
 
-const GITHUB_REPO =
-  process.env.ZEE_GITHUB_REPO?.trim() || "adolago/zee"
-const skipDocker = ["1", "true", "yes"].includes(
-  (process.env.ZEE_SKIP_DOCKER ?? "").toLowerCase(),
-)
-const skipGithub = ["1", "true", "yes"].includes(
-  (process.env.ZEE_SKIP_GITHUB ?? "").toLowerCase(),
-)
+const GITHUB_REPO = process.env.ZEE_GITHUB_REPO?.trim() || "adolago/zee"
+const skipDocker = ["1", "true", "yes"].includes((process.env.ZEE_SKIP_DOCKER ?? "").toLowerCase())
+const skipGithub = ["1", "true", "yes"].includes((process.env.ZEE_SKIP_GITHUB ?? "").toLowerCase())
 
-const npmOtp =
-  process.env.ZEE_NPM_OTP?.trim() ||
-  process.env.NPM_OTP?.trim() ||
-  process.env.NPM_CONFIG_OTP?.trim()
+const npmOtp = process.env.ZEE_NPM_OTP?.trim() || process.env.NPM_OTP?.trim() || process.env.NPM_CONFIG_OTP?.trim()
 const otpArgs = npmOtp ? ["--otp", npmOtp] : []
 
 console.log("=== Zee Publish Script ===")
@@ -71,7 +62,6 @@ async function updateVersionAcrossRepos(version: string) {
     fs.writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n")
     console.log(`  Updated ${rootPkgPath}`)
   }
-
 }
 
 async function gitTagAndPush(version: string) {
@@ -91,7 +81,6 @@ async function gitTagAndPush(version: string) {
   await $`git push origin dev`.cwd(repoRoot).quiet().nothrow()
   await $`git push origin v${version}`.cwd(repoRoot).quiet().nothrow()
   console.log(`  Tagged and pushed v${version}`)
-
 }
 
 // =============================================================================
@@ -219,7 +208,9 @@ See [CHANGELOG](https://github.com/${GITHUB_REPO}/blob/dev/CHANGELOG.md) for det
     fs.writeFileSync(releaseNotesFile, releaseNotes)
 
     const archiveFlags = archives.join(" ")
-    await $`gh release create v${Script.version} ${archiveFlags} --repo ${GITHUB_REPO} --title "v${Script.version}" --notes-file ${releaseNotesFile} --prerelease`.cwd(dir).nothrow()
+    await $`gh release create v${Script.version} ${archiveFlags} --repo ${GITHUB_REPO} --title "v${Script.version}" --notes-file ${releaseNotesFile} --prerelease`
+      .cwd(dir)
+      .nothrow()
     console.log(`  Created GitHub release v${Script.version}`)
   }
 

@@ -34,7 +34,7 @@ export const log = Log.create({ service: "bash-tool" })
  */
 export async function isFileModifyingCommand(
   command: string,
-  options?: { blocklist?: Set<string> }
+  options?: { blocklist?: Set<string> },
 ): Promise<{ modifying: boolean; reason?: string }> {
   // If a custom blocklist is provided, use the internal check
   if (options?.blocklist) {
@@ -125,7 +125,10 @@ export const BashTool = Tool.define("bash", async (initCtx) => {
         if (checkResult.matchedPattern) {
           // Blocked by always_block pattern
           const blockedOutput = `BLOCKED: Command "${params.command}" is in always_block list and cannot be executed.`
-          log.info("blocked command from always_block list", { command: params.command, pattern: checkResult.matchedPattern })
+          log.info("blocked command from always_block list", {
+            command: params.command,
+            pattern: checkResult.matchedPattern,
+          })
           return {
             title: "Blocked by config",
             metadata: {
@@ -152,14 +155,14 @@ In HOLD mode (profile: ${checkResult.profile}), you cannot:
 - Modify git state (git add, commit, push, etc.)
 - Control processes (kill, pkill, renice)
 - Modify system state (systemctl, shutdown, mount, iptables, etc.)
-${checkResult.profile === 'strict' ? '- Run interpreters (python, node, etc.)\n- Use network tools (curl, wget, ssh)\n- Schedule tasks (crontab, at)' : ''}
+${checkResult.profile === "strict" ? "- Run interpreters (python, node, etc.)\n- Use network tools (curl, wget, ssh)\n- Schedule tasks (crontab, at)" : ""}
 
 You can:
 - Read files (cat, head, tail)
 - Search (grep, find, rg)
 - View git state (git status, log, diff)
 - Run tests and builds
-${holdConfig.hold_allow.length > 0 ? `- Allowed exceptions: ${holdConfig.hold_allow.join(', ')}` : ''}
+${holdConfig.hold_allow.length > 0 ? `- Allowed exceptions: ${holdConfig.hold_allow.join(", ")}` : ""}
 
 To modify state, the user must switch to RELEASE mode.`
           return {
@@ -361,7 +364,7 @@ To modify state, the user must switch to RELEASE mode.`
       if (killedForSize) {
         resultMetadata.push(
           `SECURITY: Command killed after exceeding ${MAX_OUTPUT_BYTES} bytes output limit. ` +
-            "This prevents memory exhaustion from runaway commands. Use more specific commands or output redirection to files."
+            "This prevents memory exhaustion from runaway commands. Use more specific commands or output redirection to files.",
         )
       }
 

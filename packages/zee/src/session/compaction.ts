@@ -244,9 +244,7 @@ When constructing the summary, try to stick to this template:
     // Feed compaction summary to memory system via event bus
     try {
       const compactionMessages = await Session.messages({ sessionID: input.sessionID })
-      const summaryMsg = compactionMessages.findLast(
-        (m: any) => m.info.role === "assistant" && m.info.summary,
-      )
+      const summaryMsg = compactionMessages.findLast((m: any) => m.info.role === "assistant" && m.info.summary)
       if (summaryMsg) {
         const summaryText = summaryMsg.parts
           .filter((p: any) => p.type === "text")

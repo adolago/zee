@@ -8,4 +8,3 @@ export function throwIfCancelled<T>(value: T): asserts value is Exclude<T, symbo
 export function isNonInteractive(): boolean {
   return !(process.stdin.isTTY && process.stdout.isTTY)
 }
-

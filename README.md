@@ -1,6 +1,6 @@
 # Zee
 
-[![Version](https://img.shields.io/npm/v/%40zee%2Fzee?style=flat-square)](https://www.npmjs.com/package/@zee/zee)
+[![Version](https://img.shields.io/npm/v/%40adolago%2Fzee?style=flat-square)](https://www.npmjs.com/package/@adolago/zee)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 Zee is a unified CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp).
@@ -22,15 +22,15 @@ Zee is a unified CLI agent engine for life admin, investing, and learning. Seman
 ### Install (npm)
 
 ```bash
-npm install -g @zee/zee
+npm install -g @adolago/zee
 # or nightly builds
-npm install -g @zee/zee@nightly
+npm install -g @adolago/zee@nightly
 ```
 
 ### Install (script)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | bash
+curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | ZEE_NPM_PACKAGE=@adolago/zee bash
 ```
 
 ### Install from source

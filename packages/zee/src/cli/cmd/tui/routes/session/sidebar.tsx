@@ -30,10 +30,11 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
 
   // Sort MCP servers alphabetically for consistent display order
   const mcpEntries = createMemo(() => Object.entries(sync.data.mcp).sort(([a], [b]) => a.localeCompare(b)))
+  const mcpMeta = createMemo(() => sync.data.mcp_meta)
 
   // Count connected and error MCP servers for collapsed header display
   const connectedMcpCount = createMemo(() => mcpEntries().filter(([_, item]) => item.status === "connected").length)
-  const errorMcpCount = createMemo(
+  const degradedMcpCount = createMemo(
     () =>
       mcpEntries().filter(
         ([_, item]) =>
@@ -195,28 +196,37 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                 </Show>
               </box>
             </Show>
-            <Show when={mcpEntries().length > 0}>
-              <box>
-                <box
-                  flexDirection="row"
-                  gap={1}
-                  onMouseDown={() => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp)}
-                >
-                  <Show when={mcpEntries().length > 2}>
-                    <text fg={theme.text}>{expanded.mcp ? "▼" : "▶"}</text>
+            <box>
+              <box
+                flexDirection="row"
+                gap={1}
+                onMouseDown={() => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp)}
+              >
+                <Show when={mcpEntries().length > 2}>
+                  <text fg={theme.text}>{expanded.mcp ? "▼" : "▶"}</text>
+                </Show>
+                <text fg={theme.text}>
+                  <b>MCP</b>
+                  <Show when={!expanded.mcp}>
+                    <span style={{ fg: theme.textMuted }}>
+                      {" "}
+                      <Switch>
+                        <Match when={mcpEntries().length > 0}>
+                          ({connectedMcpCount()}/{mcpEntries().length} active
+                          {degradedMcpCount() > 0
+                            ? `, ${degradedMcpCount()} degraded`
+                            : ""})
+                        </Match>
+                        <Match when={mcpMeta().loading}>(loading...)</Match>
+                        <Match when={Boolean(mcpMeta().error)}>(status unavailable)</Match>
+                        <Match when={true}>(no status yet)</Match>
+                      </Switch>
+                    </span>
                   </Show>
-                  <text fg={theme.text}>
-                    <b>MCP</b>
-                    <Show when={!expanded.mcp}>
-                      <span style={{ fg: theme.textMuted }}>
-                        {" "}
-                        ({connectedMcpCount()} active
-                        {errorMcpCount() > 0 ? `, ${errorMcpCount()} error${errorMcpCount() > 1 ? "s" : ""}` : ""})
-                      </span>
-                    </Show>
-                  </text>
-                </box>
-                <Show when={mcpEntries().length <= 2 || expanded.mcp}>
+                </text>
+              </box>
+              <Show when={mcpEntries().length <= 2 || expanded.mcp}>
+                <Show when={mcpEntries().length > 0}>
                   <For each={mcpEntries()}>
                     {([key, item]) => (
                       <box flexDirection="row" gap={1}>
@@ -254,8 +264,19 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                     )}
                   </For>
                 </Show>
-              </box>
-            </Show>
+                <Show when={mcpEntries().length === 0}>
+                  <text fg={theme.textMuted}>
+                    <Switch>
+                      <Match when={mcpMeta().loading}>Fetching MCP status...</Match>
+                      <Match when={Boolean(mcpMeta().error)}>
+                        MCP status unavailable: {mcpMeta().error}
+                      </Match>
+                      <Match when={true}>Waiting for MCP status...</Match>
+                    </Switch>
+                  </text>
+                </Show>
+              </Show>
+            </box>
             <box>
               <box
                 flexDirection="row"

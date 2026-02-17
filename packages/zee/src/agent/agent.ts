@@ -552,17 +552,17 @@ export namespace Agent {
     // Default to zee if no default_agent configured
     const defaultAgentName = cfg.default_agent ?? "zee"
     const agent = agents[defaultAgentName]
-    
+
     if (!agent) throw new Error(`default agent "${defaultAgentName}" not found`)
     if (agent.mode === "subagent") throw new Error(`default agent "${defaultAgentName}" is a subagent`)
     if (agent.hidden === true) throw new Error(`default agent "${defaultAgentName}" is hidden`)
-    
+
     // Persona is REQUIRED - agent name must map to zee, stanley, or johny
     const personaNames = ["zee", "stanley", "johny"]
     if (!personaNames.includes(agent.name)) {
       throw new Error(`default agent "${agent.name}" must be a persona (zee, stanley, or johny)`)
     }
-    
+
     return agent.name
   }
 

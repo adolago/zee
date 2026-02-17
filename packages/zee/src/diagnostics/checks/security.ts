@@ -3,97 +3,93 @@
  * @description Safety-focused configuration and filesystem checks
  */
 
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
-import type { CheckOptions, CheckResult } from "../types";
-import { Config } from "../../config/config";
-import { reloadFlags, Flag } from "../../flag/flag";
-import { resolveConfigDir, resolveStateDir } from "../../global/dirs";
-import { AuthScope, getAuthConfig, isLoopbackHostname } from "../../server/auth";
-import { Skill } from "../../skill";
-import { scanDirectoryWithSummary } from "../../skill/scanner";
-import { Instance } from "../../project/instance";
+import * as fs from "node:fs/promises"
+import * as path from "node:path"
+import type { CheckOptions, CheckResult } from "../types"
+import { Config } from "../../config/config"
+import { reloadFlags, Flag } from "../../flag/flag"
+import { resolveConfigDir, resolveStateDir } from "../../global/dirs"
+import { AuthScope, getAuthConfig, isLoopbackHostname } from "../../server/auth"
+import { Skill } from "../../skill"
+import { scanDirectoryWithSummary } from "../../skill/scanner"
+import { Instance } from "../../project/instance"
 
 function isPosix(): boolean {
-  return process.platform !== "win32";
+  return process.platform !== "win32"
 }
 
 function octal(mode: number): string {
-  return (mode & 0o777).toString(8).padStart(3, "0");
+  return (mode & 0o777).toString(8).padStart(3, "0")
 }
 
 function isGroupWritable(mode: number): boolean {
-  return (mode & 0o020) !== 0;
+  return (mode & 0o020) !== 0
 }
 
 function isWorldWritable(mode: number): boolean {
-  return (mode & 0o002) !== 0;
+  return (mode & 0o002) !== 0
 }
 
 function isGroupReadable(mode: number): boolean {
-  return (mode & 0o040) !== 0;
+  return (mode & 0o040) !== 0
 }
 
 function isWorldReadable(mode: number): boolean {
-  return (mode & 0o004) !== 0;
+  return (mode & 0o004) !== 0
 }
 
 function isSafeTokenMode(mode: number): boolean {
   // Allow 0600 or 0400. Disallow any group/other permissions.
-  const perms = mode & 0o777;
-  return perms === 0o600 || perms === 0o400;
+  const perms = mode & 0o777
+  return perms === 0o600 || perms === 0o400
 }
 
-type LstatResult =
-  | { ok: true; stat: import("node:fs").Stats }
-  | { ok: false; code?: string };
+type LstatResult = { ok: true; stat: import("node:fs").Stats } | { ok: false; code?: string }
 
 async function safeLstat(p: string): Promise<LstatResult> {
   try {
-    const stat = await fs.lstat(p);
-    return { ok: true, stat };
+    const stat = await fs.lstat(p)
+    return { ok: true, stat }
   } catch (error) {
-    return { ok: false, code: (error as NodeJS.ErrnoException).code };
+    return { ok: false, code: (error as NodeJS.ErrnoException).code }
   }
 }
 
 function isMdnsEnabled(mdns: unknown): boolean {
-  if (mdns === undefined || mdns === null) return false;
-  if (typeof mdns === "boolean") return mdns;
+  if (mdns === undefined || mdns === null) return false
+  if (typeof mdns === "boolean") return mdns
   if (typeof mdns === "object") {
-    const enabled = (mdns as { enabled?: unknown }).enabled;
-    if (enabled === undefined) return true;
-    return Boolean(enabled);
+    const enabled = (mdns as { enabled?: unknown }).enabled
+    if (enabled === undefined) return true
+    return Boolean(enabled)
   }
-  return false;
+  return false
 }
 
 async function resolveConfiguredHostname(): Promise<{
-  hostname: string;
-  mdnsEnabled: boolean;
-  source: "config" | "default";
+  hostname: string
+  mdnsEnabled: boolean
+  source: "config" | "default"
 }> {
-  const config = await Config.global().catch(() => undefined);
-  const server = (config as any)?.server;
-  const mdnsEnabled = isMdnsEnabled(server?.mdns);
+  const config = await Config.global().catch(() => undefined)
+  const server = (config as any)?.server
+  const mdnsEnabled = isMdnsEnabled(server?.mdns)
 
-  const configured =
-    typeof server?.hostname === "string" ? server.hostname.trim() : "";
+  const configured = typeof server?.hostname === "string" ? server.hostname.trim() : ""
   if (configured) {
-    return { hostname: configured, mdnsEnabled, source: "config" };
+    return { hostname: configured, mdnsEnabled, source: "config" }
   }
 
-  const hostname = mdnsEnabled ? "0.0.0.0" : "127.0.0.1";
-  return { hostname, mdnsEnabled, source: "default" };
+  const hostname = mdnsEnabled ? "0.0.0.0" : "127.0.0.1"
+  return { hostname, mdnsEnabled, source: "default" }
 }
 
 async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
-  const start = Date.now();
-  const { hostname, mdnsEnabled, source } = await resolveConfiguredHostname();
-  const auth = getAuthConfig();
+  const start = Date.now()
+  const { hostname, mdnsEnabled, source } = await resolveConfiguredHostname()
+  const auth = getAuthConfig()
 
-  const insecureOverrideOk =
-    Flag.ZEE_DISABLE_SERVER_AUTH && Flag.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH;
+  const insecureOverrideOk = Flag.ZEE_DISABLE_SERVER_AUTH && Flag.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH
 
   if (isLoopbackHostname(hostname)) {
     return {
@@ -106,7 +102,7 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { hostname, mdnsEnabled, source },
-    };
+    }
   }
 
   if (insecureOverrideOk) {
@@ -124,7 +120,7 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { hostname, mdnsEnabled, source },
-    };
+    }
   }
 
   if (auth.disabled) {
@@ -142,7 +138,7 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { hostname, mdnsEnabled, source },
-    };
+    }
   }
 
   if (!auth.password) {
@@ -160,7 +156,7 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { hostname, mdnsEnabled, source },
-    };
+    }
   }
 
   return {
@@ -173,12 +169,12 @@ async function checkNonLoopbackBindRequiresAuth(): Promise<CheckResult> {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { hostname, mdnsEnabled, source },
-  };
+  }
 }
 
 async function checkServerScopes(): Promise<CheckResult> {
-  const start = Date.now();
-  const auth = getAuthConfig();
+  const start = Date.now()
+  const auth = getAuthConfig()
 
   if (auth.disabled) {
     return {
@@ -190,15 +186,14 @@ async function checkServerScopes(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const rawScopes =
-    process.env.ZEE_SERVER_SCOPES?.trim();
-  const scopes = auth.scopes ?? [];
+  const rawScopes = process.env.ZEE_SERVER_SCOPES?.trim()
+  const scopes = auth.scopes ?? []
 
   if (scopes.length === 0) {
-    const allowed = Object.values(AuthScope).join(", ");
+    const allowed = Object.values(AuthScope).join(", ")
     return {
       id: "security.server.scopes_sane_defaults",
       name: "Server scopes",
@@ -213,7 +208,7 @@ async function checkServerScopes(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { rawScopes: rawScopes ?? null },
-    };
+    }
   }
 
   return {
@@ -225,13 +220,13 @@ async function checkServerScopes(): Promise<CheckResult> {
     severity: "info",
     durationMs: Date.now() - start,
     autoFixable: false,
-  };
+  }
 }
 
 async function checkStateDirSymlink(): Promise<CheckResult> {
-  const start = Date.now();
-  const stateDir = path.resolve(resolveStateDir());
-  const lst = await safeLstat(stateDir);
+  const start = Date.now()
+  const stateDir = path.resolve(resolveStateDir())
+  const lst = await safeLstat(stateDir)
 
   if (!lst.ok) {
     return {
@@ -244,18 +239,18 @@ async function checkStateDirSymlink(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { stateDir },
-    };
+    }
   }
 
-  let real: string | undefined;
+  let real: string | undefined
   try {
-    real = await fs.realpath(stateDir);
+    real = await fs.realpath(stateDir)
   } catch {
-    real = undefined;
+    real = undefined
   }
 
-  const isSymlink = lst.stat.isSymbolicLink();
-  const resolvesViaSymlink = Boolean(real && real !== stateDir);
+  const isSymlink = lst.stat.isSymbolicLink()
+  const resolvesViaSymlink = Boolean(real && real !== stateDir)
 
   if (isSymlink || resolvesViaSymlink) {
     return {
@@ -264,14 +259,12 @@ async function checkStateDirSymlink(): Promise<CheckResult> {
       category: "security",
       status: "warn",
       message: "State directory involves symlinks (extra trust boundary)",
-      details:
-        (isSymlink ? `Path is a symlink: ${stateDir}\n` : "") +
-        (real ? `Real path: ${real}` : ""),
+      details: (isSymlink ? `Path is a symlink: ${stateDir}\n` : "") + (real ? `Real path: ${real}` : ""),
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { stateDir, real: real ?? null, isSymlink, resolvesViaSymlink },
-    };
+    }
   }
 
   return {
@@ -284,12 +277,12 @@ async function checkStateDirSymlink(): Promise<CheckResult> {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { stateDir },
-  };
+  }
 }
 
 async function checkStateDirPerms(): Promise<CheckResult> {
-  const start = Date.now();
-  const stateDir = path.resolve(resolveStateDir());
+  const start = Date.now()
+  const stateDir = path.resolve(resolveStateDir())
 
   if (!isPosix()) {
     return {
@@ -301,10 +294,10 @@ async function checkStateDirPerms(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const lst = await safeLstat(stateDir);
+  const lst = await safeLstat(stateDir)
   if (!lst.ok) {
     return {
       id: "security.fs.state_dir.perms",
@@ -316,7 +309,7 @@ async function checkStateDirPerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { stateDir },
-    };
+    }
   }
 
   if (!lst.stat.isDirectory() || lst.stat.isSymbolicLink()) {
@@ -333,33 +326,30 @@ async function checkStateDirPerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { stateDir },
-    };
+    }
   }
 
-  const perms = lst.stat.mode & 0o777;
-  const writableByOthers = isGroupWritable(perms) || isWorldWritable(perms);
-  const readableByOthers = isGroupReadable(perms) || isWorldReadable(perms);
+  const perms = lst.stat.mode & 0o777
+  const writableByOthers = isGroupWritable(perms) || isWorldWritable(perms)
+  const readableByOthers = isGroupReadable(perms) || isWorldReadable(perms)
 
-  const status = writableByOthers ? "fail" : readableByOthers ? "warn" : "pass";
-  const severity = writableByOthers ? "critical" : readableByOthers ? "warning" : "info";
+  const status = writableByOthers ? "fail" : readableByOthers ? "warn" : "pass"
+  const severity = writableByOthers ? "critical" : readableByOthers ? "warning" : "info"
 
   const details = writableByOthers
     ? `Mode ${octal(perms)} allows group/other write access.`
     : readableByOthers
       ? `Mode ${octal(perms)} allows group/other read access.`
-      : `Mode ${octal(perms)}.`;
+      : `Mode ${octal(perms)}.`
 
-  const autoFixable = status !== "pass";
+  const autoFixable = status !== "pass"
 
   return {
     id: "security.fs.state_dir.perms",
     name: "State dir permissions",
     category: "security",
     status,
-    message:
-      status === "pass"
-        ? "State directory permissions look safe"
-        : "State directory permissions are too open",
+    message: status === "pass" ? "State directory permissions look safe" : "State directory permissions are too open",
     details,
     severity,
     durationMs: Date.now() - start,
@@ -367,43 +357,40 @@ async function checkStateDirPerms(): Promise<CheckResult> {
     ...(autoFixable
       ? {
           fix: async () => {
-            await fs.chmod(stateDir, 0o700);
-            return { success: true, message: `Set ${stateDir} mode to 0700` };
+            await fs.chmod(stateDir, 0o700)
+            return { success: true, message: `Set ${stateDir} mode to 0700` }
           },
         }
       : {}),
     metadata: { stateDir, mode: octal(perms) },
-  };
+  }
 }
 
 type CheckedFile = {
-  path: string;
-  stat: import("node:fs").Stats;
-};
+  path: string
+  stat: import("node:fs").Stats
+}
 
 async function findConfigFiles(): Promise<CheckedFile[]> {
-  const files: CheckedFile[] = [];
-  const configDir = resolveConfigDir();
-  const candidates = [
-    path.join(configDir, "zee.jsonc"),
-    path.join(configDir, "zee.json"),
-  ];
+  const files: CheckedFile[] = []
+  const configDir = resolveConfigDir()
+  const candidates = [path.join(configDir, "zee.jsonc"), path.join(configDir, "zee.json")]
 
-  const custom = Flag.ZEE_CONFIG?.trim();
-  if (custom) candidates.unshift(path.resolve(custom));
+  const custom = Flag.ZEE_CONFIG?.trim()
+  if (custom) candidates.unshift(path.resolve(custom))
 
   for (const candidate of candidates) {
-    const absolute = path.resolve(candidate);
-    const lst = await safeLstat(absolute);
-    if (!lst.ok) continue;
-    files.push({ path: absolute, stat: lst.stat });
+    const absolute = path.resolve(candidate)
+    const lst = await safeLstat(absolute)
+    if (!lst.ok) continue
+    files.push({ path: absolute, stat: lst.stat })
   }
-  return files;
+  return files
 }
 
 async function checkConfigFileSymlink(): Promise<CheckResult> {
-  const start = Date.now();
-  const files = await findConfigFiles();
+  const start = Date.now()
+  const files = await findConfigFiles()
 
   if (files.length === 0) {
     return {
@@ -415,10 +402,10 @@ async function checkConfigFileSymlink(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const symlinks = files.filter((f) => f.stat.isSymbolicLink());
+  const symlinks = files.filter((f) => f.stat.isSymbolicLink())
   if (symlinks.length > 0) {
     return {
       id: "security.fs.config_file.symlink",
@@ -430,7 +417,7 @@ async function checkConfigFileSymlink(): Promise<CheckResult> {
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
   return {
@@ -443,11 +430,11 @@ async function checkConfigFileSymlink(): Promise<CheckResult> {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { count: files.length },
-  };
+  }
 }
 
 async function checkConfigFilePerms(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   if (!isPosix()) {
     return {
@@ -459,10 +446,10 @@ async function checkConfigFilePerms(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const files = await findConfigFiles();
+  const files = await findConfigFiles()
   if (files.length === 0) {
     return {
       id: "security.fs.config_file.perms",
@@ -473,31 +460,31 @@ async function checkConfigFilePerms(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const issues: string[] = [];
-  let hasFail = false;
-  let hasWarn = false;
-  const fixTargets: string[] = [];
+  const issues: string[] = []
+  let hasFail = false
+  let hasWarn = false
+  const fixTargets: string[] = []
 
   for (const file of files) {
-    if (!file.stat.isFile() || file.stat.isSymbolicLink()) continue;
-    const perms = file.stat.mode & 0o777;
-    const writable = isGroupWritable(perms) || isWorldWritable(perms);
-    const readable = isGroupReadable(perms) || isWorldReadable(perms);
+    if (!file.stat.isFile() || file.stat.isSymbolicLink()) continue
+    const perms = file.stat.mode & 0o777
+    const writable = isGroupWritable(perms) || isWorldWritable(perms)
+    const readable = isGroupReadable(perms) || isWorldReadable(perms)
 
     if (writable) {
-      hasFail = true;
-      issues.push(`${file.path}: mode ${octal(perms)} is writable by others`);
-      fixTargets.push(file.path);
-      continue;
+      hasFail = true
+      issues.push(`${file.path}: mode ${octal(perms)} is writable by others`)
+      fixTargets.push(file.path)
+      continue
     }
 
     if (readable) {
-      hasWarn = true;
-      issues.push(`${file.path}: mode ${octal(perms)} is readable by others`);
-      fixTargets.push(file.path);
+      hasWarn = true
+      issues.push(`${file.path}: mode ${octal(perms)} is readable by others`)
+      fixTargets.push(file.path)
     }
   }
 
@@ -512,20 +499,18 @@ async function checkConfigFilePerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { count: files.length },
-    };
+    }
   }
 
-  const status = hasFail ? "fail" : "warn";
-  const severity = hasFail ? "critical" : "warning";
+  const status = hasFail ? "fail" : "warn"
+  const severity = hasFail ? "critical" : "warning"
 
   return {
     id: "security.fs.config_file.perms",
     name: "Config file permissions",
     category: "security",
     status,
-    message: hasFail
-      ? "Config file is writable by others"
-      : "Config file is readable by others",
+    message: hasFail ? "Config file is writable by others" : "Config file is readable by others",
     details: issues.join("\n"),
     severity,
     durationMs: Date.now() - start,
@@ -534,24 +519,22 @@ async function checkConfigFilePerms(): Promise<CheckResult> {
       ? {
           fix: async () => {
             for (const target of fixTargets) {
-              await fs.chmod(target, 0o600);
+              await fs.chmod(target, 0o600)
             }
-            return { success: true, message: `Set ${fixTargets.length} config file(s) to 0600` };
+            return { success: true, message: `Set ${fixTargets.length} config file(s) to 0600` }
           },
         }
       : {}),
     metadata: { files: files.map((f) => ({ path: f.path, mode: octal(f.stat.mode) })) },
-  };
+  }
 }
 
 async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
-  const start = Date.now();
-  const override = process.env.ZEE_GATEWAY_TOKEN_FILE?.trim();
-  const tokenFile = path.resolve(
-    override ? override : path.join(resolveStateDir(), "zee_gateway_token"),
-  );
+  const start = Date.now()
+  const override = process.env.ZEE_GATEWAY_TOKEN_FILE?.trim()
+  const tokenFile = path.resolve(override ? override : path.join(resolveStateDir(), "zee_gateway_token"))
 
-  const lst = await safeLstat(tokenFile);
+  const lst = await safeLstat(tokenFile)
   if (!lst.ok) {
     return {
       id: "security.fs.gateway_token_file.perms",
@@ -563,7 +546,7 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { tokenFile },
-    };
+    }
   }
 
   if (lst.stat.isSymbolicLink()) {
@@ -577,7 +560,7 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { tokenFile },
-    };
+    }
   }
 
   if (!lst.stat.isFile()) {
@@ -591,7 +574,7 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { tokenFile },
-    };
+    }
   }
 
   if (!isPosix()) {
@@ -605,18 +588,18 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { tokenFile },
-    };
+    }
   }
 
-  const perms = lst.stat.mode & 0o777;
-  const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+  const perms = lst.stat.mode & 0o777
+  const uid = typeof process.getuid === "function" ? process.getuid() : undefined
 
-  const issues: string[] = [];
+  const issues: string[] = []
   if (uid !== undefined && lst.stat.uid !== uid) {
-    issues.push("Not owned by the current user");
+    issues.push("Not owned by the current user")
   }
   if (!isSafeTokenMode(lst.stat.mode)) {
-    issues.push(`Unsafe permissions: ${octal(perms)} (expected 0600)`);
+    issues.push(`Unsafe permissions: ${octal(perms)} (expected 0600)`)
   }
 
   if (issues.length === 0) {
@@ -630,10 +613,10 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { tokenFile, mode: octal(perms) },
-    };
+    }
   }
 
-  const canFix = issues.some((i) => i.startsWith("Unsafe permissions"));
+  const canFix = issues.some((i) => i.startsWith("Unsafe permissions"))
   return {
     id: "security.fs.gateway_token_file.perms",
     name: "Gateway token file",
@@ -647,28 +630,28 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
     ...(canFix
       ? {
           fix: async () => {
-            await fs.chmod(tokenFile, 0o600);
-            return { success: true, message: `Set ${tokenFile} mode to 0600` };
+            await fs.chmod(tokenFile, 0o600)
+            return { success: true, message: `Set ${tokenFile} mode to 0600` }
           },
         }
       : {}),
     metadata: { tokenFile, mode: octal(perms) },
-  };
+  }
 }
 
 async function resolveSkillDirectoriesSafe(): Promise<string[]> {
   try {
-    return await Skill.directories();
+    return await Skill.directories()
   } catch {
     return await Instance.provide({
       directory: process.cwd(),
       fn: () => Skill.directories(),
-    });
+    })
   }
 }
 
 async function checkSkillDirectoriesPerms(): Promise<CheckResult> {
-  const start = Date.now();
+  const start = Date.now()
 
   if (!isPosix()) {
     return {
@@ -680,29 +663,29 @@ async function checkSkillDirectoriesPerms(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const dirs = await resolveSkillDirectoriesSafe().catch(() => []);
-  const issues: string[] = [];
-  let checked = 0;
+  const dirs = await resolveSkillDirectoriesSafe().catch(() => [])
+  const issues: string[] = []
+  let checked = 0
 
   for (const raw of dirs) {
-    const dirPath = path.resolve(raw);
-    const lst = await safeLstat(dirPath);
-    if (!lst.ok) continue;
+    const dirPath = path.resolve(raw)
+    const lst = await safeLstat(dirPath)
+    if (!lst.ok) continue
 
     if (lst.stat.isSymbolicLink()) {
-      checked += 1;
-      issues.push(`${dirPath}: symlink`);
-      continue;
+      checked += 1
+      issues.push(`${dirPath}: symlink`)
+      continue
     }
-    if (!lst.stat.isDirectory()) continue;
-    checked += 1;
+    if (!lst.stat.isDirectory()) continue
+    checked += 1
 
-    const perms = lst.stat.mode & 0o777;
+    const perms = lst.stat.mode & 0o777
     if (isGroupWritable(perms) || isWorldWritable(perms)) {
-      issues.push(`${dirPath}: mode ${octal(perms)} is writable by others`);
+      issues.push(`${dirPath}: mode ${octal(perms)} is writable by others`)
     }
   }
 
@@ -716,7 +699,7 @@ async function checkSkillDirectoriesPerms(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
   if (issues.length > 0) {
@@ -731,7 +714,7 @@ async function checkSkillDirectoriesPerms(): Promise<CheckResult> {
       durationMs: Date.now() - start,
       autoFixable: false,
       metadata: { checked },
-    };
+    }
   }
 
   return {
@@ -744,43 +727,41 @@ async function checkSkillDirectoriesPerms(): Promise<CheckResult> {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { checked },
-  };
+  }
 }
 
 async function checkSkillCodeSafety(): Promise<CheckResult> {
-  const start = Date.now();
-  const dirs = await resolveSkillDirectoriesSafe().catch(() => []);
+  const start = Date.now()
+  const dirs = await resolveSkillDirectoriesSafe().catch(() => [])
 
-  const allDetails: string[] = [];
-  let totalCritical = 0;
-  let totalWarn = 0;
-  let scannedDirs = 0;
+  const allDetails: string[] = []
+  let totalCritical = 0
+  let totalWarn = 0
+  let scannedDirs = 0
 
   for (const raw of dirs) {
-    const dirPath = path.resolve(raw);
-    let isDir = false;
+    const dirPath = path.resolve(raw)
+    let isDir = false
     try {
-      const st = await fs.lstat(dirPath);
-      isDir = st.isDirectory();
+      const st = await fs.lstat(dirPath)
+      isDir = st.isDirectory()
     } catch {
-      continue;
+      continue
     }
-    if (!isDir) continue;
+    if (!isDir) continue
 
     try {
-      const summary = await scanDirectoryWithSummary(dirPath);
-      if (summary.scannedFiles === 0) continue;
-      scannedDirs += 1;
-      totalCritical += summary.critical;
-      totalWarn += summary.warn;
+      const summary = await scanDirectoryWithSummary(dirPath)
+      if (summary.scannedFiles === 0) continue
+      scannedDirs += 1
+      totalCritical += summary.critical
+      totalWarn += summary.warn
 
       for (const finding of summary.findings) {
-        const rel = path.relative(dirPath, finding.file);
-        allDetails.push(
-          `[${finding.severity}] ${rel}:${finding.line} (${finding.ruleId}) ${finding.message}`,
-        );
+        const rel = path.relative(dirPath, finding.file)
+        allDetails.push(`[${finding.severity}] ${rel}:${finding.line} (${finding.ruleId}) ${finding.message}`)
         if (finding.evidence) {
-          allDetails.push(`  ${finding.evidence}`);
+          allDetails.push(`  ${finding.evidence}`)
         }
       }
     } catch {
@@ -798,15 +779,15 @@ async function checkSkillCodeSafety(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-    };
+    }
   }
 
-  const status = totalCritical > 0 ? "fail" : totalWarn > 0 ? "warn" : "pass";
-  const severity = totalCritical > 0 ? "critical" : totalWarn > 0 ? "warning" : "info";
+  const status = totalCritical > 0 ? "fail" : totalWarn > 0 ? "warn" : "pass"
+  const severity = totalCritical > 0 ? "critical" : totalWarn > 0 ? "warning" : "info"
   const message =
     status === "pass"
       ? `Scanned ${scannedDirs} skill dir(s), no dangerous patterns found`
-      : `${totalCritical} critical, ${totalWarn} warning(s) across ${scannedDirs} skill dir(s)`;
+      : `${totalCritical} critical, ${totalWarn} warning(s) across ${scannedDirs} skill dir(s)`
 
   return {
     id: "security.skills.code_safety",
@@ -819,7 +800,7 @@ async function checkSkillCodeSafety(): Promise<CheckResult> {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { scannedDirs, critical: totalCritical, warn: totalWarn },
-  };
+  }
 }
 
 /**
@@ -827,21 +808,21 @@ async function checkSkillCodeSafety(): Promise<CheckResult> {
  */
 export async function runSecurityChecks(options: CheckOptions): Promise<CheckResult[]> {
   // Ensure Flag values reflect current environment (tests may mutate env).
-  reloadFlags();
+  reloadFlags()
 
-  const results: CheckResult[] = [];
-  results.push(await checkNonLoopbackBindRequiresAuth());
-  results.push(await checkServerScopes());
-  results.push(await checkStateDirSymlink());
-  results.push(await checkStateDirPerms());
-  results.push(await checkConfigFileSymlink());
-  results.push(await checkConfigFilePerms());
-  results.push(await checkGatewayTokenFilePerms());
-  results.push(await checkSkillDirectoriesPerms());
+  const results: CheckResult[] = []
+  results.push(await checkNonLoopbackBindRequiresAuth())
+  results.push(await checkServerScopes())
+  results.push(await checkStateDirSymlink())
+  results.push(await checkStateDirPerms())
+  results.push(await checkConfigFileSymlink())
+  results.push(await checkConfigFilePerms())
+  results.push(await checkGatewayTokenFilePerms())
+  results.push(await checkSkillDirectoriesPerms())
 
   if (options.full) {
-    results.push(await checkSkillCodeSafety());
+    results.push(await checkSkillCodeSafety())
   }
 
-  return results;
+  return results
 }

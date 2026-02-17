@@ -4,7 +4,13 @@ import { BunProc } from "@/bun"
 import { Global } from "@/global"
 import { Log } from "@/util/log"
 import { Filesystem } from "@/util/filesystem"
-import { loadPackageMetadata, type ResourceKind, ResourceKindSchema, validateManifestPaths, type ZeeManifest } from "./manifest"
+import {
+  loadPackageMetadata,
+  type ResourceKind,
+  ResourceKindSchema,
+  validateManifestPaths,
+  type ZeeManifest,
+} from "./manifest"
 
 const log = Log.create({ service: "package-manager" })
 
@@ -255,7 +261,10 @@ export async function removePackage(input: {
   return matches
 }
 
-export async function listInstalled(input?: { scope?: PackageScope; projectRoot?: string }): Promise<InstalledPackage[]> {
+export async function listInstalled(input?: {
+  scope?: PackageScope
+  projectRoot?: string
+}): Promise<InstalledPackage[]> {
   const state = await readState()
   return state.installs
     .filter((entry) => {
@@ -268,11 +277,7 @@ export async function listInstalled(input?: { scope?: PackageScope; projectRoot?
     .sort((a, b) => b.installedAt - a.installedAt)
 }
 
-export async function updatePackages(input?: {
-  identifier?: string
-  scope?: PackageScope
-  projectRoot?: string
-}) {
+export async function updatePackages(input?: { identifier?: string; scope?: PackageScope; projectRoot?: string }) {
   const installs = await listInstalled({
     scope: input?.scope,
     projectRoot: input?.projectRoot,

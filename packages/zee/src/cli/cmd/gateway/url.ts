@@ -8,4 +8,3 @@ export const GatewayUrlCommand = cmd({
     process.stdout.write(resolveGatewayWsUrl() + "\n")
   },
 })
-

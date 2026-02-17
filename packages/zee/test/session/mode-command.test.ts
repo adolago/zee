@@ -130,7 +130,9 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
 
         const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
         // First switch to accept so we can verify /plan switches back
-        await Session.update(session.id, (draft) => { draft.mode = "accept" })
+        await Session.update(session.id, (draft) => {
+          draft.mode = "accept"
+        })
 
         const msg = await SessionPrompt.prompt({
           sessionID: session.id,
@@ -213,7 +215,9 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
         reloadFlags()
 
         const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
-        await Session.update(session.id, (draft) => { draft.mode = "accept" })
+        await Session.update(session.id, (draft) => {
+          draft.mode = "accept"
+        })
 
         const msg = await SessionPrompt.prompt({
           sessionID: session.id,
@@ -245,17 +249,23 @@ describe("session mode cycling", () => {
         expect(updated.mode).toBeUndefined()
 
         // Set to accept
-        await Session.update(session.id, (draft) => { draft.mode = "accept" })
+        await Session.update(session.id, (draft) => {
+          draft.mode = "accept"
+        })
         updated = await Session.get(session.id)
         expect(updated.mode).toBe("accept")
 
         // Set to bypass
-        await Session.update(session.id, (draft) => { draft.mode = "bypass" })
+        await Session.update(session.id, (draft) => {
+          draft.mode = "bypass"
+        })
         updated = await Session.get(session.id)
         expect(updated.mode).toBe("bypass")
 
         // Set back to plan
-        await Session.update(session.id, (draft) => { draft.mode = "plan" })
+        await Session.update(session.id, (draft) => {
+          draft.mode = "plan"
+        })
         updated = await Session.get(session.id)
         expect(updated.mode).toBe("plan")
 

@@ -215,39 +215,47 @@ export namespace Persistence {
 
   function setupEventListeners(): void {
     // Listen for session events
-    eventUnsubscribers.push(Bus.subscribe(Session.Event.Created, (event) => {
-      appendToWAL({
-        timestamp: Date.now(),
-        operation: "session_create",
-        data: { session: event.properties.info },
-      })
-    }))
+    eventUnsubscribers.push(
+      Bus.subscribe(Session.Event.Created, (event) => {
+        appendToWAL({
+          timestamp: Date.now(),
+          operation: "session_create",
+          data: { session: event.properties.info },
+        })
+      }),
+    )
 
-    eventUnsubscribers.push(Bus.subscribe(Session.Event.Updated, (event) => {
-      appendToWAL({
-        timestamp: Date.now(),
-        operation: "session_update",
-        data: { session: event.properties.info },
-      })
-    }))
+    eventUnsubscribers.push(
+      Bus.subscribe(Session.Event.Updated, (event) => {
+        appendToWAL({
+          timestamp: Date.now(),
+          operation: "session_update",
+          data: { session: event.properties.info },
+        })
+      }),
+    )
 
     // Listen for message events
-    eventUnsubscribers.push(Bus.subscribe(MessageV2.Event.Updated, (event) => {
-      appendToWAL({
-        timestamp: Date.now(),
-        operation: "message_create",
-        data: { message: event.properties.info },
-      })
-    }))
+    eventUnsubscribers.push(
+      Bus.subscribe(MessageV2.Event.Updated, (event) => {
+        appendToWAL({
+          timestamp: Date.now(),
+          operation: "message_create",
+          data: { message: event.properties.info },
+        })
+      }),
+    )
 
     // Listen for todo events
-    eventUnsubscribers.push(Bus.subscribe(Todo.Event.Updated, (event) => {
-      appendToWAL({
-        timestamp: Date.now(),
-        operation: "todo_update",
-        data: { sessionID: event.properties.sessionID, todos: event.properties.todos },
-      })
-    }))
+    eventUnsubscribers.push(
+      Bus.subscribe(Todo.Event.Updated, (event) => {
+        appendToWAL({
+          timestamp: Date.now(),
+          operation: "todo_update",
+          data: { sessionID: event.properties.sessionID, todos: event.properties.todos },
+        })
+      }),
+    )
   }
 
   function clearEventListeners(): void {

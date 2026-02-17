@@ -98,16 +98,8 @@ export const defaultExec: ExecRunner = async (cmd, opts) => {
   })
 
   const exitCode = await proc.exited
-  const stdout = proc.stdout
-    ? typeof proc.stdout === "number"
-      ? ""
-      : await readableStreamToText(proc.stdout)
-    : ""
-  const stderr = proc.stderr
-    ? typeof proc.stderr === "number"
-      ? ""
-      : await readableStreamToText(proc.stderr)
-    : ""
+  const stdout = proc.stdout ? (typeof proc.stdout === "number" ? "" : await readableStreamToText(proc.stdout)) : ""
+  const stderr = proc.stderr ? (typeof proc.stderr === "number" ? "" : await readableStreamToText(proc.stderr)) : ""
 
   return { exitCode, stdout, stderr }
 }
@@ -271,8 +263,7 @@ export async function collectSnapshot(options: SnapshotOptions = {}): Promise<Co
     latestVersion: latestTag?.startsWith("v") ? latestTag.slice(1) : latestTag,
   }
 
-  const skills =
-    options.includeSkills === false || !sourceRoot ? undefined : await countSkills(sourceRoot)
+  const skills = options.includeSkills === false || !sourceRoot ? undefined : await countSkills(sourceRoot)
 
   return {
     generatedAt: now.toISOString(),
@@ -284,4 +275,3 @@ export async function collectSnapshot(options: SnapshotOptions = {}): Promise<Co
     warnings,
   }
 }
-

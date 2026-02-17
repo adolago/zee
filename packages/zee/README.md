@@ -1,13 +1,13 @@
-# @zee/zee
+# @adolago/zee
 
 Zee engine (CLI + daemon).
 
 ## Install
 
 ```bash
-npm install -g @zee/zee
+npm install -g @adolago/zee
 # or nightly
-npm install -g @zee/zee@nightly
+npm install -g @adolago/zee@nightly
 ```
 
 ## Build From Source

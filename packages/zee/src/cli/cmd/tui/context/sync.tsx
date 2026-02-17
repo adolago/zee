@@ -71,6 +71,11 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       mcp: {
         [key: string]: McpStatus
       }
+      mcp_meta: {
+        loading: boolean
+        lastUpdatedAt?: number
+        error?: string
+      }
       mcp_resource: {
         [key: string]: McpResource
       }
@@ -121,6 +126,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       part: {},
       lsp: [],
       mcp: {},
+      mcp_meta: {
+        loading: true,
+      },
       mcp_resource: {},
       formatter: [],
       vcs: undefined,
@@ -423,17 +431,29 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     async function refreshMcpStatus() {
       if (mcpRefreshInFlight) return mcpRefreshInFlight
+      setStore("mcp_meta", "loading", true)
       mcpRefreshInFlight = sdk.client.mcp
         .status()
         .then((x) => {
           if (x.data) {
             setStore("mcp", reconcile(x.data))
           }
+          setStore("mcp_meta", {
+            loading: false,
+            lastUpdatedAt: Date.now(),
+            error: undefined,
+          })
         })
         .catch((error) => {
+          const message = error instanceof Error ? error.message : String(error)
           Log.Default.debug("mcp status refresh failed", {
-            error: error instanceof Error ? error.message : String(error),
+            error: message,
           })
+          setStore("mcp_meta", (prev) => ({
+            loading: false,
+            lastUpdatedAt: prev.lastUpdatedAt,
+            error: message,
+          }))
         })
         .finally(() => {
           mcpRefreshInFlight = undefined

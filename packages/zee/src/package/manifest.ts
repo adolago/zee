@@ -62,4 +62,3 @@ export function validateManifestPaths(meta: PackageMetadata): string[] {
   }
   return errors
 }
-

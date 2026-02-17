@@ -101,10 +101,10 @@ describe("Dictation.transcribe", () => {
     const fetcher = (async (url: string, init?: RequestInit) => {
       seenUrl = url
       seenInit = init
-      return new Response(
-        JSON.stringify({ text: " hello world " }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      )
+      return new Response(JSON.stringify({ text: " hello world " }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
     }) as typeof fetch
 
     const result = await Dictation.transcribe({

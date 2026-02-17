@@ -65,4 +65,3 @@ describe("compare snapshot", () => {
     expect(snapshot.pimono.latestTag).toBe("v0.52.9")
   })
 })
-

@@ -36,10 +36,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 type ProviderOptions = NonNullable<ModelMessage["providerOptions"]>
 
-function mergeProviderOptions(
-  existing: ProviderOptions | undefined,
-  extra: ProviderOptions,
-): ProviderOptions {
+function mergeProviderOptions(existing: ProviderOptions | undefined, extra: ProviderOptions): ProviderOptions {
   const merged: Record<string, unknown> = {
     ...((existing ?? {}) as Record<string, unknown>),
   }
@@ -117,13 +114,17 @@ export namespace ProviderTransform {
     const interleavedField =
       model.capabilities.interleaved && typeof model.capabilities.interleaved === "object"
         ? model.capabilities.interleaved.field
-        // Boolean true for @ai-sdk/openai-compatible defaults to "reasoning_content"
-        // (the standard field for OpenAI-compatible providers like Kimi)
-        : model.capabilities.interleaved === true && model.api.npm === "@ai-sdk/openai-compatible"
+        : // Boolean true for @ai-sdk/openai-compatible defaults to "reasoning_content"
+          // (the standard field for OpenAI-compatible providers like Kimi)
+          model.capabilities.interleaved === true && model.api.npm === "@ai-sdk/openai-compatible"
           ? "reasoning_content"
           : null
 
-    if (interleavedField === "reasoning" || interleavedField === "reasoning_content" || interleavedField === "reasoning_details") {
+    if (
+      interleavedField === "reasoning" ||
+      interleavedField === "reasoning_content" ||
+      interleavedField === "reasoning_details"
+    ) {
       return msgs.map((msg) => {
         if (msg.role === "assistant" && Array.isArray(msg.content)) {
           const reasoningParts = msg.content.filter((part: any) => part.type === "reasoning")
@@ -647,7 +648,6 @@ export namespace ProviderTransform {
       case "@ai-sdk/perplexity":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/perplexity
         return {}
-
     }
     return {}
   }
@@ -804,7 +804,7 @@ export namespace ProviderTransform {
    * - OpenAI: https://platform.openai.com/docs/api-reference/chat/create
    * - Google: https://ai.google.dev/api/rest/v1beta/models/generateContent
    * - xAI: https://docs.x.ai/api
-     * - OpenRouter: https://openrouter.ai/docs/parameters
+   * - OpenRouter: https://openrouter.ai/docs/parameters
    */
   const PROVIDER_SUPPORTED_PARAMS: Record<string, Set<string> | null> = {
     // ═══════════════════════════════════════════════════════════════════════
@@ -961,10 +961,7 @@ export namespace ProviderTransform {
    * Filter options based on provider's supported parameters.
    * Returns a new object with only the supported parameters.
    */
-  function filterProviderParams(
-    npm: string,
-    options: Record<string, any>,
-  ): Record<string, any> {
+  function filterProviderParams(npm: string, options: Record<string, any>): Record<string, any> {
     const supported = PROVIDER_SUPPORTED_PARAMS[npm]
 
     // If provider not in map or null, allow all params (backward compatible)

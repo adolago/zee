@@ -1012,19 +1012,19 @@ export type Config = {
      * Payload detail policy for wide events
      */
     payloads?: "summary" | "debug" | "full"
-   }
-   /**
-    * TUI specific settings
-    */
-   tui?: {
-      /**
-       * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
-       */
-      diff_style?: "auto" | "stacked"
-      /**
-       * Dictation settings
-       */
-      dictation?: {
+  }
+  /**
+   * TUI specific settings
+   */
+  tui?: {
+    /**
+     * Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column
+     */
+    diff_style?: "auto" | "stacked"
+    /**
+     * Dictation settings
+     */
+    dictation?: {
       /**
        * Enable dictation
        */

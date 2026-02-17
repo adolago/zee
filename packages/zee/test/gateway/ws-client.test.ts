@@ -122,4 +122,3 @@ describe("GatewayWsClient", () => {
     expect(MockWebSocket.created).toBe(1)
   })
 })
-

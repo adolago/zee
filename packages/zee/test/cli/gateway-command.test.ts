@@ -9,4 +9,3 @@ describe("zee gateway", () => {
     expect(url).toBe("ws://example.invalid:18789")
   })
 })
-

@@ -48,7 +48,14 @@ describe("gateway routes", () => {
             return
           }
 
-          ws.send(JSON.stringify({ type: "res", id: frame.id, ok: false, error: { code: "unknown", message: "unknown method" } }))
+          ws.send(
+            JSON.stringify({
+              type: "res",
+              id: frame.id,
+              ok: false,
+              error: { code: "unknown", message: "unknown method" },
+            }),
+          )
         },
       },
     })
@@ -91,11 +98,7 @@ describe("gateway routes", () => {
 
       const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "meta-cli-fallback-"))
       fakeMetaBinPath = path.join(tmpDir, "meta")
-      await fs.writeFile(
-        fakeMetaBinPath,
-        "#!/usr/bin/env bash\nprintf '{}\\n'\n",
-        "utf8",
-      )
+      await fs.writeFile(fakeMetaBinPath, "#!/usr/bin/env bash\nprintf '{}\\n'\n", "utf8")
       await fs.chmod(fakeMetaBinPath, 0o755)
       process.env.ZEE_META_CLI_BIN = fakeMetaBinPath
 
@@ -210,5 +213,4 @@ describe("gateway routes", () => {
     const data = await response.json()
     expect(data.success).toBe(false)
   })
-
 })

@@ -13,10 +13,7 @@ import { Zee } from "../../../paths"
 import { Style, Symbols } from "../../style"
 import { Timestamp } from "../../../util/timestamp"
 
-const GATEWAY_ENV_HINTS = [
-  "ZEE_GATEWAY_TOKEN",
-  "ZEE_GATEWAY_PASSWORD",
-]
+const GATEWAY_ENV_HINTS = ["ZEE_GATEWAY_TOKEN", "ZEE_GATEWAY_PASSWORD"]
 
 export const StatusCommand = cmd({
   command: "status",

@@ -8,7 +8,10 @@ describe("package manifest", () => {
   test("loads manifest from package.json", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        await Bun.write(path.join(dir, "package.json"), JSON.stringify({ name: "@acme/pkg", zee: { skills: ["skills"] } }))
+        await Bun.write(
+          path.join(dir, "package.json"),
+          JSON.stringify({ name: "@acme/pkg", zee: { skills: ["skills"] } }),
+        )
         await fs.mkdir(path.join(dir, "skills"), { recursive: true })
         await Bun.write(path.join(dir, "skills", "SKILL.md"), "# test")
       },
@@ -23,7 +26,10 @@ describe("package manifest", () => {
   test("rejects resource paths escaping package root", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        await Bun.write(path.join(dir, "package.json"), JSON.stringify({ name: "@acme/pkg", zee: { skills: ["../oops"] } }))
+        await Bun.write(
+          path.join(dir, "package.json"),
+          JSON.stringify({ name: "@acme/pkg", zee: { skills: ["../oops"] } }),
+        )
       },
     })
 

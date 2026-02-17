@@ -57,10 +57,7 @@ export function buildInspectUsageSnapshot(params: {
   stats: UsageStats
   top: number
 }): InspectUsageSnapshot {
-  const topProviders = sortUsageBreakdown(buildUsageBreakdown(params.summary, "provider"), "cost").slice(
-    0,
-    params.top,
-  )
+  const topProviders = sortUsageBreakdown(buildUsageBreakdown(params.summary, "provider"), "cost").slice(0, params.top)
   const topModels = sortUsageBreakdown(buildUsageBreakdown(params.summary, "model"), "cost").slice(0, params.top)
 
   return {
@@ -95,10 +92,7 @@ async function gatherSessionQueueSnapshot(): Promise<SessionQueueSnapshot> {
   }
 }
 
-async function gatherUsageSnapshot(params: {
-  period: UsagePeriod
-  top: number
-}): Promise<InspectUsageSnapshot> {
+async function gatherUsageSnapshot(params: { period: UsagePeriod; top: number }): Promise<InspectUsageSnapshot> {
   await UsageStorage.init()
   try {
     const summary = UsageStorage.getSummary({ period: params.period })
@@ -147,9 +141,7 @@ const InspectStateCommand = cmd({
       console.log(
         `sessions total=${payload.sessions.total} roots=${payload.sessions.roots} children=${payload.sessions.children}`,
       )
-      console.log(
-        `queue tracked=${payload.queue.totalTracked} busy=${payload.queue.busy} retry=${payload.queue.retry}`,
-      )
+      console.log(`queue tracked=${payload.queue.totalTracked} busy=${payload.queue.busy} retry=${payload.queue.retry}`)
       if (runtime.violations.length > 0) {
         console.log("violations:")
         for (const violation of runtime.violations) {
@@ -211,9 +203,7 @@ const InspectOpsCommand = cmd({
       console.log(
         `sessions total=${payload.sessions.total} roots=${payload.sessions.roots} children=${payload.sessions.children}`,
       )
-      console.log(
-        `queue tracked=${payload.queue.totalTracked} busy=${payload.queue.busy} retry=${payload.queue.retry}`,
-      )
+      console.log(`queue tracked=${payload.queue.totalTracked} busy=${payload.queue.busy} retry=${payload.queue.retry}`)
       console.log(
         `usage period=${usage.period} requests=${usage.summary.totalRequests} tokens=${formatTokens(usage.summary.totalInputTokens + usage.summary.totalOutputTokens)} cost=${formatCost(usage.summary.totalCost)}`,
       )

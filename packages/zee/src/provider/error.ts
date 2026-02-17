@@ -124,7 +124,8 @@ export namespace ProviderError {
       case "invalid_prompt":
         return {
           type: "api_error",
-          message: typeof (body as any)?.error?.message === "string" ? (body as any)?.error?.message : "Invalid prompt.",
+          message:
+            typeof (body as any)?.error?.message === "string" ? (body as any)?.error?.message : "Invalid prompt.",
           isRetryable: false,
           responseBody,
         }

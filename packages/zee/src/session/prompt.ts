@@ -57,6 +57,7 @@ import { withTimeout } from "@/util/timeout"
 import { createSafeEnv } from "@/security/env-sanitize"
 import { buildSessionSystemContext } from "./session-context"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
+import { SessionControlServer } from "@/session-control/server"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -230,7 +231,6 @@ export namespace SessionPrompt {
       source: resolveSessionSource(),
       directory: session.directory,
     })
-
   }
 
   export type Mode = "plan" | "accept" | "bypass"
@@ -239,7 +239,11 @@ export namespace SessionPrompt {
    * Resolve the session mode (plan/accept/bypass).
    * Priority: per-message tools override > per-session mode > surface default.
    */
-  export function resolveMode(session: Session.Info, messageTools?: Record<string, boolean>, messageOptions?: Record<string, any>): Mode {
+  export function resolveMode(
+    session: Session.Info,
+    messageTools?: Record<string, boolean>,
+    messageOptions?: Record<string, any>,
+  ): Mode {
     // Explicit per-message options override (from TUI prompt submission)
     if (messageOptions?.mode === "plan" || messageOptions?.mode === "accept" || messageOptions?.mode === "bypass") {
       return messageOptions.mode
@@ -350,7 +354,7 @@ export namespace SessionPrompt {
         const reason =
           memoryStatus?.status === "failed"
             ? memoryStatus.error
-            : memoryStatus?.status ?? (hasConfig ? "missing" : "not configured")
+            : (memoryStatus?.status ?? (hasConfig ? "missing" : "not configured"))
         const message =
           reason === "not configured"
             ? `Memory MCP "${memoryServer}" is required but not configured.`
@@ -484,7 +488,8 @@ export namespace SessionPrompt {
       "/bypass": "bypass",
     }
     // /release with optional PIN arg maps to accept
-    const requestedMode = modeCommandMap[firstText ?? ""] ?? (firstText?.startsWith("/release") ? "accept" as const : undefined)
+    const requestedMode =
+      modeCommandMap[firstText ?? ""] ?? (firstText?.startsWith("/release") ? ("accept" as const) : undefined)
     if (requestedMode) {
       const message = await createUserMessage(input)
 
@@ -502,17 +507,15 @@ export namespace SessionPrompt {
           const pin = wa?.releasePin
 
           const senderId = input.options?.senderId as string | undefined
-          const isOperator = senderId != null && operators.some(
-            (op) => op.replace(/^\+/, "") === senderId.replace(/^\+/, ""),
-          )
+          const isOperator =
+            senderId != null && operators.some((op) => op.replace(/^\+/, "") === senderId.replace(/^\+/, ""))
 
           if (!isOperator) {
             allowed = false
             responseText = `${requestedMode.toUpperCase()} mode is not available.`
           } else if (!pin) {
             allowed = false
-            responseText =
-              `${requestedMode.toUpperCase()} mode requires a PIN. Configure experimental.surfaces.whatsapp.releasePin.`
+            responseText = `${requestedMode.toUpperCase()} mode requires a PIN. Configure experimental.surfaces.whatsapp.releasePin.`
           } else {
             const parts = firstText!.split(/\s+/)
             const providedPin = parts[1]
@@ -677,6 +680,7 @@ export namespace SessionPrompt {
   export function cancel(sessionID: string) {
     log.info("cancel", { sessionID })
     SessionSteering.clear(sessionID)
+    void SessionControlServer.stop(sessionID)
     const s = state()
     const match = s[sessionID]
     if (!match) {
@@ -781,6 +785,7 @@ export namespace SessionPrompt {
 
     let step = 0
     const session = await Session.get(sessionID)
+    await SessionControlServer.start(session)
     const sessionSystemContext = await buildSessionSystemContext({
       systemPrompt: session.systemPrompt,
       skills: session.skills,
@@ -860,12 +865,7 @@ export namespace SessionPrompt {
         })
       }
 
-      if (
-        lastAssistant?.finish &&
-        !hasPendingToolCalls &&
-        !hasPendingTasks &&
-        lastUser.id < lastAssistant.id
-      ) {
+      if (lastAssistant?.finish && !hasPendingToolCalls && !hasPendingTasks && lastUser.id < lastAssistant.id) {
         log.info("exiting loop", { sessionID, finish: lastAssistant.finish })
         break
       }
@@ -1001,8 +1001,7 @@ export namespace SessionPrompt {
           | undefined
         let daemonFallbackToLocal = false
 
-        const daemonEligibleAgent =
-          resolvedAgent === "zee" || resolvedAgent === "stanley" || resolvedAgent === "johny"
+        const daemonEligibleAgent = resolvedAgent === "zee" || resolvedAgent === "stanley" || resolvedAgent === "johny"
 
         if (daemonSubtasksEnabled() && daemonEligibleAgent) {
           result = await executeSubtaskViaDaemon({
@@ -2532,18 +2531,24 @@ export namespace SessionPrompt {
           : await MessageV2.toModelMessage(contextMessages, titleModel)),
       ],
     })
-    const text = await Promise.resolve(result.text).catch((err: unknown) => log.error("failed to generate title", { error: err }))
+    const text = await Promise.resolve(result.text).catch((err: unknown) =>
+      log.error("failed to generate title", { error: err }),
+    )
     if (text)
-      return Session.update(input.session.id, (draft) => {
-        const cleaned = text
-          .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
-          .split("\n")
-          .map((line: string) => line.trim())
-          .find((line: string) => line.length > 0)
-        if (!cleaned) return
+      return Session.update(
+        input.session.id,
+        (draft) => {
+          const cleaned = text
+            .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+            .split("\n")
+            .map((line: string) => line.trim())
+            .find((line: string) => line.length > 0)
+          if (!cleaned) return
 
-        const title = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
-        draft.title = title
-      }, { touch: false })
+          const title = cleaned.length > 100 ? cleaned.substring(0, 97) + "..." : cleaned
+          draft.title = title
+        },
+        { touch: false },
+      )
   }
 }

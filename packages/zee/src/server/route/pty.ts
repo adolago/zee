@@ -50,8 +50,7 @@ export const PtyRoute = new Hono()
     validator("json", Pty.CreateInput),
     async (c) => {
       const input = c.req.valid("json")
-      const sanitized =
-        input.command && !Flag.ZEE_PTY_ALLOW_COMMAND_OVERRIDE ? { ...input, command: undefined } : input
+      const sanitized = input.command && !Flag.ZEE_PTY_ALLOW_COMMAND_OVERRIDE ? { ...input, command: undefined } : input
       const info = await Pty.create(sanitized)
       return c.json(info)
     },

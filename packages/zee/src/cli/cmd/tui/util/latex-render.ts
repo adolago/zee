@@ -173,10 +173,7 @@ export namespace LatexRender {
     coloredSvg = coloredSvg.replace(/fill="currentColor"/g, `fill="${fgColor}"`)
     coloredSvg = coloredSvg.replace(/stroke="currentColor"/g, `stroke="${fgColor}"`)
     // Set explicit width/height on root <svg> for Skia
-    coloredSvg = coloredSvg.replace(
-      /<svg([^>]*)>/,
-      `<svg$1 width="${renderWidth}" height="${renderHeight}">`,
-    )
+    coloredSvg = coloredSvg.replace(/<svg([^>]*)>/, `<svg$1 width="${renderWidth}" height="${renderHeight}">`)
 
     const cvs = createCanvas(renderWidth, renderHeight)
     const ctx = cvs.getContext("2d")
@@ -218,12 +215,7 @@ export namespace LatexRender {
    * @param bg - Background color
    * @returns Render result with PNG buffer and cell dimensions
    */
-  export async function render(
-    tex: string,
-    maxWidthCells: number,
-    fg: RGBA,
-    bg: RGBA,
-  ): Promise<RenderResult> {
+  export async function render(tex: string, maxWidthCells: number, fg: RGBA, bg: RGBA): Promise<RenderResult> {
     const fgCss = rgbaToCss(fg)
     const bgCss = rgbaToCss(bg)
     const maxWidthPx = maxWidthCells * CELL_WIDTH_PX

@@ -127,9 +127,7 @@ async function scanMissingEnvPlaceholders(): Promise<string[]> {
   }
 
   for (const [name, files] of missingByVar.entries()) {
-    const locations = Array.from(files)
-      .slice(0, CONFIG_DISPLAY_MAX)
-      .map(formatConfigPath)
+    const locations = Array.from(files).slice(0, CONFIG_DISPLAY_MAX).map(formatConfigPath)
     const suffix = files.size > CONFIG_DISPLAY_MAX ? ` (+${files.size - CONFIG_DISPLAY_MAX} more)` : ""
     const locationText = locations.length > 0 ? ` in ${locations.join(", ")}${suffix}` : ""
     warnings.push(`Missing env var ${name}${locationText}`)
@@ -163,11 +161,12 @@ async function checkQdrantConnectivity(url: string): Promise<{ available: boolea
       socket.once("error", (err) => {
         clearTimeout(timeout)
         const code = (err as NodeJS.ErrnoException).code
-        const errorMsg = code === "ECONNREFUSED"
-          ? "Connection refused"
-          : code === "ENOTFOUND"
-            ? "Host not found"
-            : err.message || code || "Connection failed"
+        const errorMsg =
+          code === "ECONNREFUSED"
+            ? "Connection refused"
+            : code === "ENOTFOUND"
+              ? "Host not found"
+              : err.message || code || "Connection failed"
         resolve({ available: false, error: errorMsg })
       })
 
@@ -200,12 +199,9 @@ async function checkGoogleApiKey(): Promise<{
     try {
       const content = await fs.readFile(candidate.path, "utf-8")
       const auth = JSON.parse(content)
-      const googleAuth = auth.google as
-        | { type?: string; key?: string; refresh?: string; access?: string }
-        | undefined
+      const googleAuth = auth.google as { type?: string; key?: string; refresh?: string; access?: string } | undefined
 
-      const hasApiKey =
-        googleAuth?.type === "api" && typeof googleAuth.key === "string" && googleAuth.key.trim()
+      const hasApiKey = googleAuth?.type === "api" && typeof googleAuth.key === "string" && googleAuth.key.trim()
 
       const hasOauthCredentials =
         googleAuth?.type === "oauth" &&
@@ -359,10 +355,12 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
  * @param exitOnFail - If true, exit process on failure (default: false for graceful degradation)
  * @param verbose - If true, always print status (default: only on failure)
  */
-export async function validateSetup(options: {
-  exitOnFail?: boolean
-  verbose?: boolean
-} = {}): Promise<SetupCheckResult> {
+export async function validateSetup(
+  options: {
+    exitOnFail?: boolean
+    verbose?: boolean
+  } = {},
+): Promise<SetupCheckResult> {
   const result = await runSetupCheck()
 
   if (!result.ok || options.verbose) {

@@ -36,12 +36,7 @@ export namespace Installation {
     }
   })()
   export const NPM_PACKAGES = Array.from(
-    new Set(
-      [
-        process.env.ZEE_NPM_PACKAGE?.trim(),
-        DEFAULT_NPM_PACKAGE,
-      ].filter(Boolean),
-    ),
+    new Set([process.env.ZEE_NPM_PACKAGE?.trim(), DEFAULT_NPM_PACKAGE].filter(Boolean)),
   ) as string[]
 
   function preferredNpmPackage() {
@@ -251,13 +246,13 @@ export namespace Installation {
         })
         break
       case "npm":
-        cmd = $`npm install -g ${(await resolveNpmPackage(method))}@${target}`
+        cmd = $`npm install -g ${await resolveNpmPackage(method)}@${target}`
         break
       case "pnpm":
-        cmd = $`pnpm install -g ${(await resolveNpmPackage(method))}@${target}`
+        cmd = $`pnpm install -g ${await resolveNpmPackage(method)}@${target}`
         break
       case "bun":
-        cmd = $`bun install -g ${(await resolveNpmPackage(method))}@${target}`
+        cmd = $`bun install -g ${await resolveNpmPackage(method)}@${target}`
         break
       case "brew": {
         const formula = await getBrewFormula()
@@ -294,13 +289,8 @@ export namespace Installation {
 
   // Version set at build time; fallback uses package.json or "dev".
   export const VERSION =
-    typeof ZEE_VERSION === "string"
-      ? ZEE_VERSION
-      : PACKAGE_VERSION ?? process.env.ZEE_VERSION ?? "dev"
-  export const CHANNEL =
-    typeof ZEE_CHANNEL === "string"
-      ? ZEE_CHANNEL
-      : process.env.ZEE_CHANNEL ?? "local"
+    typeof ZEE_VERSION === "string" ? ZEE_VERSION : (PACKAGE_VERSION ?? process.env.ZEE_VERSION ?? "dev")
+  export const CHANNEL = typeof ZEE_CHANNEL === "string" ? ZEE_CHANNEL : (process.env.ZEE_CHANNEL ?? "local")
   export const USER_AGENT = `zee/${CHANNEL}/${VERSION}/${Flag.ZEE_CLIENT}`
 
   export function runtimeInfo(): RuntimeInfo {
@@ -338,7 +328,12 @@ export namespace Installation {
       }
     }
 
-    if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm" || detectedMethod === "yarn") {
+    if (
+      detectedMethod === "npm" ||
+      detectedMethod === "bun" ||
+      detectedMethod === "pnpm" ||
+      detectedMethod === "yarn"
+    ) {
       const registry = await iife(async () => {
         const r = (await $`npm config get registry`.quiet().nothrow().text()).trim()
         const reg = r || "https://registry.npmjs.org"

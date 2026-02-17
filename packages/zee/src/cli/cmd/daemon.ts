@@ -22,10 +22,7 @@ import {
   stopEmbeddedGateway,
 } from "../../gateway/embedded-gateway"
 import { setGatewayHealthState } from "../../gateway/supervisor-state"
-import {
-  startTailscaleExposure,
-  type TailscaleMode,
-} from "../../pkg/tailscale"
+import { startTailscaleExposure, type TailscaleMode } from "../../pkg/tailscale"
 import { printGatewayStatus } from "./gateway/status"
 
 const log = Log.create({ service: "daemon" })
@@ -277,7 +274,10 @@ export namespace Daemon {
             process.exit(0)
           })
           .catch((error) => {
-            log.error("error during signal cleanup", { signal, error: error instanceof Error ? error.message : String(error) })
+            log.error("error during signal cleanup", {
+              signal,
+              error: error instanceof Error ? error.message : String(error),
+            })
             process.exit(1)
           })
           .finally(() => {
@@ -292,10 +292,7 @@ export namespace Daemon {
  * Gateway supervisor - manages embedded Zee gateway runtime
  */
 export namespace GatewaySupervisor {
-  const GATEWAY_ENV_HINTS = [
-    "ZEE_GATEWAY_TOKEN",
-    "ZEE_GATEWAY_PASSWORD",
-  ]
+  const GATEWAY_ENV_HINTS = ["ZEE_GATEWAY_TOKEN", "ZEE_GATEWAY_PASSWORD"]
 
   let startInFlight = false
   let isShuttingDown = false
@@ -336,7 +333,6 @@ export namespace GatewaySupervisor {
     daemonUrl?: string
   }
 
-
   function getEnvHints(): string[] {
     const hints: string[] = []
     for (const key of GATEWAY_ENV_HINTS) {
@@ -353,7 +349,6 @@ export namespace GatewaySupervisor {
     }
     return undefined
   }
-
 
   async function runPreflight(options: { force: boolean; checkPort: boolean }): Promise<GatewayPreflight> {
     const issues: string[] = []
@@ -380,7 +375,7 @@ export namespace GatewaySupervisor {
         }
       }
       if (snapshot.legacyIssues.length > 0) {
-        warnings.push("Legacy config entries detected (run \"zee doctor\")")
+        warnings.push('Legacy config entries detected (run "zee doctor")')
       }
     } catch (error) {
       issues.push(`Failed to read Zee config: ${String(error)}`)
@@ -398,8 +393,8 @@ export namespace GatewaySupervisor {
     if (options.checkPort) {
       const gatewayPort = getGatewayPort()
       const embeddedState = getEmbeddedGatewayState()
-        if (!embeddedState.running && isSystemdUserUnitEnabled(SYSTEMD_ZEE_GATEWAY_UNIT)) {
-          issues.push(
+      if (!embeddedState.running && isSystemdUserUnitEnabled(SYSTEMD_ZEE_GATEWAY_UNIT)) {
+        issues.push(
           `Systemd unit ${SYSTEMD_ZEE_GATEWAY_UNIT} is enabled. Disable it to avoid a port conflict on ${gatewayPort}.`,
         )
       } else {
@@ -856,9 +851,7 @@ export const DaemonCommand = cmd({
 
       if (headless && !allowRestart) {
         UI.info("Headless mode detected; refusing to restart an existing daemon.")
-        UI.info(
-          `Stop the running service first, or set ${ALLOW_RESTART_ENV}=1 to force a restart.`,
-        )
+        UI.info(`Stop the running service first, or set ${ALLOW_RESTART_ENV}=1 to force a restart.`)
         process.exit(DAEMON_ALREADY_RUNNING_EXIT_CODE)
       }
 
@@ -878,7 +871,7 @@ export const DaemonCommand = cmd({
       try {
         if (state?.pid) process.kill(state.pid, "SIGTERM")
         await Daemon.removePidFile()
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise((r) => setTimeout(r, 1000))
       } catch (e) {
         UI.error(`Failed to stop daemon: ${e}`)
         process.exit(1)
@@ -901,16 +894,10 @@ export const DaemonCommand = cmd({
       typeof args["runtime-guard-interval-ms"] === "number" ? args["runtime-guard-interval-ms"] : 30_000
     const runtimeLimits = {
       maxTotal: typeof args["runtime-max-total"] === "number" ? args["runtime-max-total"] : undefined,
-      maxMcpTotal:
-        typeof args["runtime-max-mcp-total"] === "number" ? args["runtime-max-mcp-total"] : undefined,
+      maxMcpTotal: typeof args["runtime-max-mcp-total"] === "number" ? args["runtime-max-mcp-total"] : undefined,
       maxMcpPerServer:
-        typeof args["runtime-max-mcp-per-server"] === "number"
-          ? args["runtime-max-mcp-per-server"]
-          : undefined,
-      maxClients:
-        typeof args["runtime-max-clients"] === "number"
-          ? args["runtime-max-clients"]
-          : undefined,
+        typeof args["runtime-max-mcp-per-server"] === "number" ? args["runtime-max-mcp-per-server"] : undefined,
+      maxClients: typeof args["runtime-max-clients"] === "number" ? args["runtime-max-clients"] : undefined,
     }
 
     if (enforceRuntimeGuard) {
@@ -931,7 +918,9 @@ export const DaemonCommand = cmd({
         const details = Object.entries(byKind)
           .map(([kind, count]) => `${kind}=${count}`)
           .join(" ")
-        UI.info(`Runtime guard cleaned ${preflightReport.kills.length} stale process(es)${details ? ` (${details})` : ""}`)
+        UI.info(
+          `Runtime guard cleaned ${preflightReport.kills.length} stale process(es)${details ? ` (${details})` : ""}`,
+        )
       }
     }
 
