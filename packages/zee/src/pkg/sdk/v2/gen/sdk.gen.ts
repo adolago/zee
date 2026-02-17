@@ -942,6 +942,7 @@ export class Session extends HeyApiClient {
       tools?: {
         [key: string]: boolean
       }
+      mode?: "plan" | "accept" | "bypass" | "hold" | "release"
       system?: string
       options?: {
         [key: string]: unknown
@@ -962,6 +963,7 @@ export class Session extends HeyApiClient {
             { in: "body", key: "agent" },
             { in: "body", key: "noReply" },
             { in: "body", key: "tools" },
+            { in: "body", key: "mode" },
             { in: "body", key: "system" },
             { in: "body", key: "options" },
             { in: "body", key: "variant" },
@@ -1239,6 +1241,7 @@ export class Session extends HeyApiClient {
       tools?: {
         [key: string]: boolean
       }
+      mode?: "plan" | "accept" | "bypass" | "hold" | "release"
       system?: string
       options?: {
         [key: string]: unknown
@@ -1260,6 +1263,7 @@ export class Session extends HeyApiClient {
             { in: "body", key: "agent" },
             { in: "body", key: "noReply" },
             { in: "body", key: "tools" },
+            { in: "body", key: "mode" },
             { in: "body", key: "system" },
             { in: "body", key: "options" },
             { in: "body", key: "variant" },
@@ -1455,6 +1459,7 @@ export class Session extends HeyApiClient {
       tools?: {
         [key: string]: boolean
       }
+      mode?: "plan" | "accept" | "bypass" | "hold" | "release"
       system?: string
       options?: {
         [key: string]: unknown
@@ -1475,6 +1480,7 @@ export class Session extends HeyApiClient {
             { in: "body", key: "agent" },
             { in: "body", key: "noReply" },
             { in: "body", key: "tools" },
+            { in: "body", key: "mode" },
             { in: "body", key: "system" },
             { in: "body", key: "options" },
             { in: "body", key: "variant" },
