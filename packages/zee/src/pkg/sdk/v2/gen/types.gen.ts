@@ -2923,6 +2923,7 @@ export type SessionPromptData = {
     }
     agent?: string
     noReply?: boolean
+    mode?: "plan" | "accept" | "bypass" | "hold" | "release"
     /**
      * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
      */
@@ -3308,6 +3309,7 @@ export type SessionSteerData = {
     }
     agent?: string
     noReply?: boolean
+    mode?: "plan" | "accept" | "bypass" | "hold" | "release"
     /**
      * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
      */
@@ -3612,6 +3614,7 @@ export type SessionPromptAsyncData = {
     }
     agent?: string
     noReply?: boolean
+    mode?: "plan" | "accept" | "bypass" | "hold" | "release"
     /**
      * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
      */

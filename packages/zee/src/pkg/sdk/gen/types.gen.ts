@@ -2629,6 +2629,7 @@ export type SessionPromptData = {
     }
     agent?: string
     noReply?: boolean
+    mode?: "plan" | "accept" | "bypass" | "hold" | "release"
     system?: string
     tools?: {
       [key: string]: boolean
@@ -2724,6 +2725,7 @@ export type SessionPromptAsyncData = {
     }
     agent?: string
     noReply?: boolean
+    mode?: "plan" | "accept" | "bypass" | "hold" | "release"
     system?: string
     tools?: {
       [key: string]: boolean

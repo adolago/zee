@@ -340,11 +340,82 @@ describe("resolveMode", () => {
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: false }, { mode: "accept" })).toBe("accept")
   })
 
+  test("explicit message mode overrides options/tools/session", () => {
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { edit: false }, { mode: "bypass" }, "accept")).toBe(
+      "accept",
+    )
+    expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: true }, undefined, "plan")).toBe("plan")
+  })
+
   test("backward compat: hold resolves to plan", () => {
     expect(SessionPrompt.resolveMode({ mode: "hold" } as any)).toBe("plan")
   })
 
   test("backward compat: release resolves to accept", () => {
     expect(SessionPrompt.resolveMode({ mode: "release" } as any)).toBe("accept")
+  })
+})
+
+describe("resolveHoldMode and resolveSkipPermissions", () => {
+  test("resolveHoldMode follows explicit message mode", () => {
+    expect(SessionPrompt.resolveHoldMode({ mode: "plan" } as any, { edit: false }, undefined, "accept")).toBe(false)
+    expect(SessionPrompt.resolveHoldMode({ mode: "accept" } as any, { edit: true }, undefined, "plan")).toBe(true)
+  })
+
+  test("resolveSkipPermissions honors explicit override first", () => {
+    expect(SessionPrompt.resolveSkipPermissions({ mode: "plan" } as any, undefined, { skipPermissions: true })).toBe(
+      true,
+    )
+    expect(SessionPrompt.resolveSkipPermissions({ mode: "accept" } as any, { edit: true }, undefined, "bypass")).toBe(
+      true,
+    )
+    expect(SessionPrompt.resolveSkipPermissions({ mode: "bypass" } as any, { edit: true }, undefined, "accept")).toBe(
+      false,
+    )
+  })
+})
+
+describe("prompt mode ingestion", () => {
+  test("top-level prompt mode wins and options.mode is sanitized", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        const message = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "zee",
+          mode: "accept",
+          noReply: true,
+          options: { mode: "plan", keep: "yes" },
+          parts: [{ type: "text", text: "check mode precedence" }],
+        })
+
+        expect(message.info.role).toBe("user")
+        expect((message.info as any).mode).toBe("accept")
+        expect((message.info as any).options).toEqual({ keep: "yes" })
+      },
+    })
+  })
+
+  test("legacy options.mode still works when top-level mode is absent", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        const message = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "zee",
+          noReply: true,
+          options: { mode: "bypass", keep: "yes" },
+          parts: [{ type: "text", text: "check legacy mode fallback" }],
+        })
+
+        expect(message.info.role).toBe("user")
+        expect((message.info as any).mode).toBe("bypass")
+        expect((message.info as any).options).toEqual({ keep: "yes" })
+      },
+    })
   })
 })

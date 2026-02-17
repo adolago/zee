@@ -1520,6 +1520,7 @@ export function Prompt(props: PromptProps) {
     const holdModeTools = local.mode.isPlan()
       ? { edit: false, write: false, notebook_edit: false }
       : { edit: true, write: true, notebook_edit: true }
+    const selectedMode = local.mode.mode()
 
     // Clear input immediately so the UI feels responsive. Save state to restore
     // on error so the user doesn't lose their message.
@@ -1635,8 +1636,9 @@ export function Prompt(props: PromptProps) {
         model: selectedModel,
         variant,
         tools: holdModeTools,
+        mode: selectedMode,
         options: {
-          skipPermissions: local.mode.isBypass(),
+          skipPermissions: selectedMode === "bypass",
         },
         parts: [
           {
