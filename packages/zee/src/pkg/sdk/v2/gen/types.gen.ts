@@ -1820,6 +1820,7 @@ export type SessionStatus =
     }
   | {
       type: "busy"
+      activeTurnID?: string
       streamHealth?: {
         isStalled: boolean
         isThinking?: boolean
@@ -1829,6 +1830,12 @@ export type SessionStatus =
         stallWarnings: number
         phase?: "starting" | "thinking" | "tool_calling" | "generating"
         charsReceived?: number
+        estimatedTokens?: number
+        requestCount?: number
+        embeddingConfig?: {
+          model: string
+          maxContext: number
+        }
       }
     }
 
@@ -3291,6 +3298,61 @@ export type SessionAbortResponses = {
 }
 
 export type SessionAbortResponse = SessionAbortResponses[keyof SessionAbortResponses]
+
+export type SessionSteerData = {
+  body?: {
+    messageID?: string
+    model?: {
+      providerID: string
+      modelID: string
+    }
+    agent?: string
+    noReply?: boolean
+    /**
+     * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
+     */
+    tools?: {
+      [key: string]: boolean
+    }
+    system?: string
+    options?: {
+      [key: string]: unknown
+    }
+    variant?: string
+    parts: Array<TextPartInput | FilePartInput | AgentPartInput | SubtaskPartInput>
+    /**
+     * Expected active assistant turn ID to steer.
+     */
+    expectedTurnID: string
+  }
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/session/{sessionID}/steer"
+}
+
+export type SessionSteerErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+}
+
+export type SessionSteerError = SessionSteerErrors[keyof SessionSteerErrors]
+
+export type SessionSteerResponses = {
+  /**
+   * Steering message accepted
+   */
+  204: void
+}
+
+export type SessionSteerResponse = SessionSteerResponses[keyof SessionSteerResponses]
 
 export type SessionUnshareData = {
   body?: never

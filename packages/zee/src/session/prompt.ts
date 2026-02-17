@@ -1213,6 +1213,10 @@ export namespace SessionPrompt {
         model,
         abort,
       })
+      SessionStatus.set(sessionID, {
+        type: "busy",
+        activeTurnID: processor.message.id,
+      })
       using _ = defer(() => InstructionPrompt.clear(processor.message.id))
 
       // Check if user explicitly invoked an agent via @ in this turn
@@ -1287,7 +1291,7 @@ export namespace SessionPrompt {
       })
       if (result === "stop") break
       if (result === "steered") {
-        SessionSteering.clear(sessionID)
+        SessionSteering.clear(sessionID, processor.message.id)
         continue
       }
       if (result === "compact") {

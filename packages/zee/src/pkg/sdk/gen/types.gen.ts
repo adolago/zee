@@ -472,6 +472,7 @@ export type SessionStatus =
     }
   | {
       type: "busy"
+      activeTurnID?: string
       streamHealth?: {
         isStalled: boolean
         isThinking?: boolean
@@ -481,6 +482,12 @@ export type SessionStatus =
         stallWarnings: number
         phase?: "starting" | "thinking" | "tool_calling" | "generating"
         charsReceived?: number
+        estimatedTokens?: number
+        requestCount?: number
+        embeddingConfig?: {
+          model: string
+          maxContext: number
+        }
       }
     }
 

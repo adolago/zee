@@ -41,6 +41,10 @@ function buildShareUrl(session: Session.Info) {
   return `${base}/s/${session.slug}`
 }
 
+const SteerInput = SessionPrompt.PromptInput.omit({ sessionID: true }).extend({
+  expectedTurnID: z.string().meta({ description: "Expected active assistant turn ID to steer." }),
+})
+
 export const SessionRoute = new Hono()
   .get(
     "/session",
@@ -708,7 +712,7 @@ export const SessionRoute = new Hono()
     describeRoute({
       summary: "Steer session",
       description:
-        "Inject a user message into a running session. If the session is busy, the message is delivered at the next tool-call boundary without aborting the current run. If idle, a new loop is started.",
+        "Inject a user message into the active assistant turn. Requires a matching expectedTurnID and only works while a session is actively running.",
       operationId: "session.steer",
       responses: {
         204: {
@@ -718,29 +722,33 @@ export const SessionRoute = new Hono()
       },
     }),
     validator("param", z.object({ sessionID: z.string() })),
-    validator("json", SessionPrompt.PromptInput.omit({ sessionID: true })),
+    validator("json", SteerInput),
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const body = c.req.valid("json")
+      const status = SessionStatus.get(sessionID)
+      const activeTurnID = status.type === "busy" ? status.activeTurnID : undefined
+
+      if (!activeTurnID) {
+        return c.json({ error: "No active turn to steer." }, 400)
+      }
+      if (activeTurnID !== body.expectedTurnID) {
+        return c.json(
+          {
+            error: "Steer rejected: expectedTurnID does not match the active turn.",
+            activeTurnID,
+          },
+          400,
+        )
+      }
 
       // Persist the user message without starting a reply
-      await SessionPrompt.prompt({ ...body, sessionID, noReply: true })
+      const { expectedTurnID: _expectedTurnID, ...promptInput } = body
+      await SessionPrompt.prompt({ ...promptInput, sessionID, noReply: true })
 
-      const status = SessionStatus.get(sessionID)
-      if (status.type === "busy") {
-        // Session is running -- mark it for steering so the processor
-        // exits at the next tool-call step boundary.
-        SessionSteering.mark(sessionID)
-      } else {
-        // Session is idle -- start the loop so the model processes the
-        // new message immediately.
-        SessionPrompt.loop(sessionID).catch((err) => {
-          Log.Default.error("session.steer loop error", {
-            error: err instanceof Error ? err.message : String(err),
-            sessionID,
-          })
-        })
-      }
+      // Session is running with a matching active turn -- mark this turn for steering so
+      // the processor exits at the next tool-call step boundary.
+      SessionSteering.mark(sessionID, activeTurnID)
       return c.body(null, 204)
     },
   )

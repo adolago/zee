@@ -441,30 +441,14 @@ class ExtendedSession extends GeneratedSession {
     })
   }
 
-  // Steer a running session by injecting a user message at the next tool-call boundary
-  steer<ThrowOnError extends boolean = false>(
-    parameters: {
-      sessionID: string
-      parts: Array<{ id?: string; type: "text"; text: string } | { id?: string; type: string; [key: string]: any }>
-      model?: { providerID: string; modelID: string }
-      agent?: string
-      variant?: string
-      tools?: { [key: string]: boolean }
-      options?: { [key: string]: unknown }
-      directory?: string
-    },
+  // Steer a running session by injecting a user message into the active turn.
+  // expectedTurnID must match the current active turn.
+  override steer<ThrowOnError extends boolean = false>(
+    parameters: Parameters<GeneratedSession["steer"]>[0] & { directory?: string },
     options?: Options<never, ThrowOnError>
   ) {
-    const { directory: _, sessionID, ...body } = parameters
-    return (options?.client ?? this.client).post<void, unknown, ThrowOnError>({
-      url: `/session/${sessionID}/steer`,
-      body,
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
-    })
+    const { directory: _, ...rest } = parameters
+    return super.steer<ThrowOnError>(rest as Parameters<GeneratedSession["steer"]>[0], options)
   }
 }
 

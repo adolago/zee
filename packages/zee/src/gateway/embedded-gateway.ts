@@ -28,10 +28,10 @@ async function resolvePersonaGateway() {
   _resolveAttempted = true
   try {
     const [configMod, authMod, serverMod, lockMod] = await Promise.all([
-      importUnchecked("../../Swabble/src/config/config"),
-      importUnchecked("../../Swabble/src/gateway/auth"),
-      importUnchecked("../../Swabble/src/gateway/server"),
-      importUnchecked("../../Swabble/src/infra/gateway-lock"),
+      importUnchecked("../../../Swabble/src/config/config"),
+      importUnchecked("../../../Swabble/src/gateway/auth"),
+      importUnchecked("../../../Swabble/src/gateway/server"),
+      importUnchecked("../../../Swabble/src/infra/gateway-lock"),
     ])
     _resolved = {
       loadConfig: configMod.loadConfig,

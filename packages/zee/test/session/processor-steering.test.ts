@@ -83,7 +83,7 @@ describe("SessionProcessor steering", () => {
         await Session.updateMessage(assistant)
 
         // Mark session for steering BEFORE processing starts.
-        SessionSteering.mark(session.id)
+        SessionSteering.mark(session.id, assistant.id)
 
         const { SessionProcessor } = await import("../../src/session/processor")
         const controller = new AbortController()
@@ -124,7 +124,7 @@ describe("SessionProcessor steering", () => {
         expect(streamFinishStepReached).toBe(false)
 
         // Clean up
-        SessionSteering.clear(session.id)
+        SessionSteering.clear(session.id, assistant.id)
       },
     })
   })

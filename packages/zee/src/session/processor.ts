@@ -89,6 +89,7 @@ export namespace SessionProcessor {
           const healthMonitor = StreamHealth.getOrCreate({
             sessionID: input.sessionID,
             messageID: input.assistantMessage.id,
+            activeTurnID: input.assistantMessage.id,
             isReasoningModel: input.model.capabilities.reasoning,
           })
 
@@ -230,10 +231,13 @@ export namespace SessionProcessor {
 	                    streamStartTimerCleared = true
 	                    clearTimeout(streamStartTimer)
 	                  }
-	                  streamAbort.throwIfAborted()
-	                  switch (value.type) {
+                  streamAbort.throwIfAborted()
+                  switch (value.type) {
                   case "start":
-                    SessionStatus.set(input.sessionID, { type: "busy" })
+                    SessionStatus.set(input.sessionID, {
+                      type: "busy",
+                      activeTurnID: input.assistantMessage.id,
+                    })
                     break
 
                   case "reasoning-start":
@@ -523,7 +527,10 @@ export namespace SessionProcessor {
                     if (await SessionCompaction.isOverflow({ tokens: usage.tokens, model: input.model })) {
                       needsCompaction = true
                     }
-                    if (finishReason === "tool-calls" && SessionSteering.check(input.sessionID)) {
+                    if (
+                      finishReason === "tool-calls" &&
+                      SessionSteering.check(input.sessionID, input.assistantMessage.id)
+                    ) {
                       steered = true
                     }
                     break
@@ -622,6 +629,7 @@ export namespace SessionProcessor {
             if (steered) {
               // Steering exit: all tools at this step boundary completed successfully.
               // Skip marking tools as errors -- the toolcalls map is empty at finish-step.
+              SessionSteering.clear(input.sessionID, input.assistantMessage.id)
               input.assistantMessage.time.completed = Date.now()
               await Session.updateMessage(input.assistantMessage)
               const streamReport = healthMonitor.getReport()
@@ -670,6 +678,7 @@ export namespace SessionProcessor {
             }
             input.assistantMessage.time.completed = Date.now()
             await Session.updateMessage(input.assistantMessage)
+            SessionSteering.clear(input.sessionID, input.assistantMessage.id)
             const error = input.assistantMessage.error
             const streamReport = healthMonitor.getReport()
             // Clean up health monitor and timeout subscription

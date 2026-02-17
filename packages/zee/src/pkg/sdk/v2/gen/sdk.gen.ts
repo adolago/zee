@@ -171,6 +171,8 @@ import type {
   SessionShareResponses,
   SessionShellErrors,
   SessionShellResponses,
+  SessionSteerErrors,
+  SessionSteerResponses,
   SessionStatusErrors,
   SessionStatusResponses,
   SessionSummarizeErrors,
@@ -1213,6 +1215,69 @@ export class Session extends HeyApiClient {
       url: "/session/{sessionID}/abort",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Steer session
+   *
+   * Inject a user message into the active assistant turn. Requires a matching expectedTurnID and only works while a session is actively running.
+   */
+  public steer<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      messageID?: string
+      model?: {
+        providerID: string
+        modelID: string
+      }
+      agent?: string
+      noReply?: boolean
+      /**
+       * @deprecated tools and permissions have been merged, you can set permissions on the session itself now
+       */
+      tools?: {
+        [key: string]: boolean
+      }
+      system?: string
+      options?: {
+        [key: string]: unknown
+      }
+      variant?: string
+      parts: Array<TextPartInput | FilePartInput | AgentPartInput | SubtaskPartInput>
+      expectedTurnID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "body", key: "messageID" },
+            { in: "body", key: "model" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "noReply" },
+            { in: "body", key: "tools" },
+            { in: "body", key: "system" },
+            { in: "body", key: "options" },
+            { in: "body", key: "variant" },
+            { in: "body", key: "parts" },
+            { in: "body", key: "expectedTurnID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionSteerResponses, SessionSteerErrors, ThrowOnError>({
+      url: "/session/{sessionID}/steer",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 

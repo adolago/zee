@@ -460,6 +460,18 @@ export namespace MCP {
     })
   }
 
+  function resolveRuntimeMcpConfig(name: string, config: McpConfigMap): Config.Mcp | undefined {
+    const fromConfig = resolveMcpConfigEntry(name, config[name])
+    if (fromConfig) return fromConfig
+
+    const persona = (personaServers as Record<string, PersonaServerConfig>)[name]
+    if (!persona) return undefined
+    return forceMcpEnabled(name, {
+      type: persona.type,
+      command: Array.from(persona.command),
+    })
+  }
+
   function isLocalServer(name: string, config: McpConfigMap): boolean {
     const configured = resolveMcpConfigEntry(name, config[name])
     if (configured) return configured.type === "local"
@@ -1014,16 +1026,10 @@ export namespace MCP {
     // Use mutex to prevent concurrent state mutations for the same server
     return withServerMutex(name, async () => {
       const cfg = await Config.get()
-      const config = cfg.mcp ?? {}
-      const mcp = config[name]
-      if (!mcp) {
-        log.error("MCP config not found", { name })
-        return
-      }
-
-      const resolved = resolveMcpConfigEntry(name, mcp)
+      const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
+      const resolved = resolveRuntimeMcpConfig(name, config)
       if (!resolved) {
-        log.error("Ignoring MCP connect request for config without type", { name })
+        log.error("MCP config not found", { name })
         return
       }
 
@@ -1103,17 +1109,11 @@ export namespace MCP {
     // Use mutex to prevent concurrent state mutations for the same server
     return withServerMutex(name, async () => {
       const cfg = await Config.get()
-      const mcpConfig = cfg.mcp?.[name]
-
-      if (!mcpConfig) {
+      const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
+      const resolved = resolveRuntimeMcpConfig(name, config)
+      if (!resolved) {
         log.error("MCP config not found for reconnect", { name })
         return { status: "failed", error: "MCP config not found" }
-      }
-
-      const resolved = resolveMcpConfigEntry(name, mcpConfig)
-      if (!resolved) {
-        log.error("MCP config invalid for reconnect", { name })
-        return { status: "failed", error: "Invalid MCP configuration" }
       }
 
       // Close existing client if any

@@ -69,6 +69,8 @@ export type PromptRef = {
   submit(): void
 }
 
+type SubmitTrigger = "enter" | "tab"
+
 
 function resolveHoldKeyNames(bindings: Keybind.Info[] | undefined): Set<string> {
   const names = new Set<string>()
@@ -99,26 +101,9 @@ export function Prompt(props: PromptProps) {
   const safeLayoutWidth = createMemo(() => Math.max(0, layoutWidth()))
   const borderFill = createMemo(() => "─".repeat(safeLayoutWidth()))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
-  // Extended type to include new fields until SDK is regenerated
-  type StreamHealthExtended = {
-    isStalled: boolean
-    isThinking?: boolean
-    timeSinceLastEventMs: number
-    timeSinceContentMs?: number
-    eventsReceived: number
-    stallWarnings: number
-    phase?: "starting" | "thinking" | "tool_calling" | "generating"
-    charsReceived?: number
-    estimatedTokens?: number
-    requestCount?: number
-    embeddingConfig?: {
-      model: string
-      maxContext: number
-    }
-  }
-  const streamHealth = createMemo((): StreamHealthExtended | undefined => {
+  const streamHealth = createMemo(() => {
     const s = status()
-    return s.type === "busy" ? (s.streamHealth as StreamHealthExtended | undefined) : undefined
+    return s.type === "busy" ? s.streamHealth : undefined
   })
   // Session for token counter
   const session = createMemo(() => props.sessionID ? sync.session.get(props.sessionID) : undefined)
@@ -674,7 +659,7 @@ export function Prompt(props: PromptProps) {
       insertDictationText(transcript)
       setDictationState("idle")
       if (config.autoSubmit) {
-        setTimeout(() => submit(), 0)
+        setTimeout(() => submit("enter"), 0)
       }
     } catch (error) {
       toast.show({
@@ -1227,7 +1212,7 @@ export function Prompt(props: PromptProps) {
       setStore("extmarkToPartIndex", new Map())
     },
     submit() {
-      submit()
+      submit("enter")
     },
   }
 
@@ -1392,7 +1377,7 @@ export function Prompt(props: PromptProps) {
     },
   ])
 
-  async function submit() {
+  async function submit(trigger: SubmitTrigger = "enter") {
     if (props.disabled) return
     if (autocomplete?.visible) return
     if (!store.prompt.input) return
@@ -1477,9 +1462,13 @@ export function Prompt(props: PromptProps) {
     // Capture mode before it gets reset
     const currentMode = store.mode
     const variant = local.model.variant.current()
+    const sessionStatus = status()
+    const activeTurnID = sessionStatus.type === "busy" ? sessionStatus.activeTurnID : undefined
     const busyDecision = decideBusySubmit({
-      sessionIsBusy: status().type !== "idle",
+      sessionIsBusy: sessionStatus.type !== "idle",
       hasSessionID: Boolean(props.sessionID),
+      hasActiveTurn: Boolean(activeTurnID),
+      trigger,
     })
 
     // Tool permissions based on mode
@@ -1617,9 +1606,41 @@ export function Prompt(props: PromptProps) {
         ],
       } satisfies Parameters<typeof sdk.client.session.prompt>[0]
 
-      if (busyDecision.submit === "steer") {
+      const queuePrompt = async () => {
         try {
-          await sdk.client.session.steer(promptPayload, { throwOnError: true })
+          await sdk.client.session.prompt(
+            {
+              ...promptPayload,
+              noReply: true,
+            },
+            { throwOnError: true },
+          )
+          toast.show({
+            message: "Message queued.",
+            variant: "info",
+            duration: 2000,
+          })
+        } catch (error) {
+          restoreInput()
+          toast.show({
+            message: `Failed to queue message: ${formatSubmitError(error)}`,
+            variant: "error",
+            duration: 7000,
+          })
+        }
+      }
+
+      if (busyDecision.submit === "steer") {
+        if (!activeTurnID) {
+          await queuePrompt()
+          return
+        }
+        try {
+          const steerPayload = {
+            ...promptPayload,
+            expectedTurnID: activeTurnID,
+          } satisfies Parameters<typeof sdk.client.session.steer>[0]
+          await sdk.client.session.steer(steerPayload, { throwOnError: true })
           toast.show({
             message: "Steering message sent.",
             variant: "info",
@@ -1633,6 +1654,11 @@ export function Prompt(props: PromptProps) {
             duration: 7000,
           })
         }
+        return
+      }
+
+      if (busyDecision.submit === "queue") {
+        await queuePrompt()
         return
       }
 
@@ -2055,6 +2081,20 @@ export function Prompt(props: PromptProps) {
                 if (store.mode === "normal") autocomplete.onKeyDown(e)
                 if (!autocomplete.visible) {
                   if (
+                    e.name === "tab" &&
+                    !e.ctrl &&
+                    !e.meta &&
+                    !e.shift &&
+                    !keybind.leader &&
+                    store.mode !== "shell" &&
+                    !input.plainText.trimStart().startsWith("!")
+                  ) {
+                    e.preventDefault()
+                    await submit("tab")
+                    return
+                  }
+
+                  if (
                     (keybind.match("history_previous", e) && input.cursorOffset === 0) ||
                     (keybind.match("history_next", e) && input.cursorOffset === input.plainText.length)
                   ) {
@@ -2078,7 +2118,7 @@ export function Prompt(props: PromptProps) {
                     input.cursorOffset = input.plainText.length
                 }
               }}
-              onSubmit={submit}
+              onSubmit={() => submit("enter")}
               onPaste={async (event: PasteEvent) => {
                 if (props.disabled) {
                   event.preventDefault()

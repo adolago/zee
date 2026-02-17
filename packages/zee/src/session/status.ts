@@ -44,6 +44,7 @@ export namespace SessionStatus {
       }),
       z.object({
         type: z.literal("busy"),
+        activeTurnID: z.string().optional(),
         streamHealth: StreamHealth.optional(),
       }),
     ])

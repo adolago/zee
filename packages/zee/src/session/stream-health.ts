@@ -101,6 +101,10 @@ export interface StreamHealthMonitorOptions {
   sessionID: string
   messageID: string
   /**
+   * Active assistant turn id for this stream, used to preserve strict steering metadata.
+   */
+  activeTurnID?: string
+  /**
    * Whether the model is a reasoning/thinking model.
    * If true, longer timeouts are used to accommodate extended thinking periods.
    */
@@ -142,6 +146,7 @@ export interface StreamHealthMonitorOptions {
 export class StreamHealthMonitor {
   private sessionID: string
   private messageID: string
+  private activeTurnID?: string
   private streamStartedAt: number
   private lastEventAt: number
   private lastEventType: string = ""
@@ -211,6 +216,7 @@ export class StreamHealthMonitor {
   constructor(input: StreamHealthMonitorOptions) {
     this.sessionID = input.sessionID
     this.messageID = input.messageID
+    this.activeTurnID = input.activeTurnID
     this.streamStartedAt = Date.now()
     this.lastEventAt = Date.now()
     this.lastMeaningfulEventAt = Date.now()
@@ -239,6 +245,14 @@ export class StreamHealthMonitor {
     }
 
     this.startStallDetection()
+  }
+
+  private emitBusyStatus(streamHealth: SessionStatus.StreamHealth): void {
+    this.statusHandler(this.sessionID, {
+      type: "busy",
+      activeTurnID: this.activeTurnID,
+      streamHealth,
+    })
   }
 
   /**
@@ -290,28 +304,26 @@ export class StreamHealthMonitor {
       if (!this.thinkingStatusEmitted || now - this.lastThinkingStatusAt >= 1000) {
         this.thinkingStatusEmitted = true
         this.lastThinkingStatusAt = now
-        this.statusHandler(this.sessionID, {
-          type: "busy",
-          streamHealth: this.buildStreamHealth({
+        this.emitBusyStatus(
+          this.buildStreamHealth({
             isStalled: false,
             isThinking: true,
             timeSinceLastEventMs: 0,
             timeSinceContentMs: now - this.lastMeaningfulEventAt,
           }),
-        })
+        )
       }
     }
 
     // Reset stall warning state when we receive events
     // If we were stalled, immediately update status to clear the warning
     if (this.stallWarningEmitted) {
-      this.statusHandler(this.sessionID, {
-        type: "busy",
-        streamHealth: this.buildStreamHealth({
+      this.emitBusyStatus(
+        this.buildStreamHealth({
           isStalled: false,
           timeSinceLastEventMs: 0,
         }),
-      })
+      )
     }
     this.stallWarningEmitted = false
   }
@@ -398,15 +410,14 @@ export class StreamHealthMonitor {
         lastEventType: this.lastEventType,
       })
 
-      this.statusHandler(this.sessionID, {
-        type: "busy",
-        streamHealth: this.buildStreamHealth({
+      this.emitBusyStatus(
+        this.buildStreamHealth({
           isStalled: false,
           isThinking: true,
           timeSinceLastEventMs: elapsed,
           timeSinceContentMs: elapsedSinceMeaningful,
         }),
-      })
+      )
     }
 
     // Check for early warning (no meaningful content after 5s)
@@ -427,13 +438,12 @@ export class StreamHealthMonitor {
       })
 
       // Update session status with early warning
-      this.statusHandler(this.sessionID, {
-        type: "busy",
-        streamHealth: this.buildStreamHealth({
+      this.emitBusyStatus(
+        this.buildStreamHealth({
           isStalled: false,
           timeSinceLastEventMs: elapsed,
         }),
-      })
+      )
     }
 
     // Check for stall warning
@@ -458,13 +468,12 @@ export class StreamHealthMonitor {
       })
 
       // Update session status with stream health warning
-      this.statusHandler(this.sessionID, {
-        type: "busy",
-        streamHealth: this.buildStreamHealth({
+      this.emitBusyStatus(
+        this.buildStreamHealth({
           isStalled: true,
           timeSinceLastEventMs: elapsed,
         }),
-      })
+      )
 
       return true
     }
@@ -472,13 +481,12 @@ export class StreamHealthMonitor {
     // Update session status with healthy stream info on every stall check (every 2s)
     // This ensures UI has fresh eventsReceived count for activity indicator
     if (this.eventsReceived > 0 && !this.stallWarningEmitted) {
-      this.statusHandler(this.sessionID, {
-        type: "busy",
-        streamHealth: this.buildStreamHealth({
+      this.emitBusyStatus(
+        this.buildStreamHealth({
           isStalled: false,
           timeSinceLastEventMs: elapsed,
         }),
-      })
+      )
     }
 
     return false

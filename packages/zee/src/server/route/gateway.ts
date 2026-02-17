@@ -9,6 +9,7 @@ import {
 import type { SurfaceCapabilities } from "../../surface/types"
 import { readZeeGatewayTokenFromFile } from "@/gateway/token"
 import { GatewayWsClient } from "@/gateway/ws-client"
+import { sendWhatsAppMessage } from "@root/domain/zee/whatsapp-send"
 import {
   emitInboundMessage,
   toPlatformMessage,
@@ -137,6 +138,11 @@ async function sendViaGateway(input: {
   mediaUrls?: string[]
   gifPlayback?: boolean
 }): Promise<unknown> {
+  const originalInput = {
+    ...input,
+    mediaUrls: input.mediaUrls ? [...input.mediaUrls] : undefined,
+  }
+
   // Format message for the target platform's capabilities
   const capabilities = PLATFORM_CAPABILITIES[input.provider]
   let messages = [input.message]
@@ -144,23 +150,87 @@ async function sendViaGateway(input: {
     messages = formatForSurface(input.message, capabilities)
   }
 
-  // Send each chunk (for platforms with message length limits)
-  let lastResult: unknown
-  for (const chunk of messages) {
-    lastResult = await callGateway("send", {
-      to: input.to,
-      message: chunk,
-      channel: input.provider,
-      ...(input.accountId ? { accountId: input.accountId } : {}),
-      ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
-      ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
-      ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
-      idempotencyKey: crypto.randomUUID(),
-    }, { timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS })
-    // Only attach media to the first chunk
-    input = { ...input, mediaUrl: undefined, mediaUrls: undefined }
+  try {
+    // Send each chunk (for platforms with message length limits)
+    let lastResult: unknown
+    for (const chunk of messages) {
+      lastResult = await callGateway("send", {
+        to: input.to,
+        message: chunk,
+        channel: input.provider,
+        ...(input.accountId ? { accountId: input.accountId } : {}),
+        ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
+        ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
+        ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
+        idempotencyKey: crypto.randomUUID(),
+      }, { timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS })
+      // Only attach media to the first chunk
+      input = { ...input, mediaUrl: undefined, mediaUrls: undefined }
+    }
+    return lastResult
+  } catch (error) {
+    // Fallback to direct meta-cli send when embedded gateway runtime is unavailable.
+    const message = error instanceof Error ? error.message : String(error)
+    log.warn("gateway send failed; falling back to meta-cli", {
+      error: message,
+      to: originalInput.to,
+    })
+
+    const mediaQueue = originalInput.mediaUrls?.length
+      ? [...originalInput.mediaUrls]
+      : originalInput.mediaUrl
+        ? [originalInput.mediaUrl]
+        : []
+
+    const chunkQueue = [...messages]
+    const fallbackResults: Array<Record<string, unknown>> = []
+
+    // Send the first media item with the first text chunk as caption.
+    if (mediaQueue.length > 0) {
+      const mediaUrl = mediaQueue.shift()!
+      const firstChunk = chunkQueue.shift() ?? ""
+      const mediaRes = await sendWhatsAppMessage({
+        to: originalInput.to,
+        message: firstChunk,
+        mediaUrl,
+      })
+      if (!mediaRes.success) {
+        throw new Error(mediaRes.error)
+      }
+      fallbackResults.push({ mode: "media", mediaUrl, ...mediaRes })
+    }
+
+    // Additional media items are sent without caption.
+    for (const mediaUrl of mediaQueue) {
+      const mediaRes = await sendWhatsAppMessage({
+        to: originalInput.to,
+        message: "",
+        mediaUrl,
+      })
+      if (!mediaRes.success) {
+        throw new Error(mediaRes.error)
+      }
+      fallbackResults.push({ mode: "media", mediaUrl, ...mediaRes })
+    }
+
+    // Remaining text chunks are sent as plain text messages.
+    for (const chunk of chunkQueue) {
+      const textRes = await sendWhatsAppMessage({
+        to: originalInput.to,
+        message: chunk,
+      })
+      if (!textRes.success) {
+        throw new Error(textRes.error)
+      }
+      fallbackResults.push({ mode: "text", ...textRes })
+    }
+
+    return {
+      provider: "meta-cli",
+      accountId: originalInput.accountId,
+      results: fallbackResults,
+    }
   }
-  return lastResult
 }
 
 export const GatewayRoute = new Hono()
