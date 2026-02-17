@@ -20,7 +20,7 @@ export function modelString(spec: PersonaModelSpec): string {
 }
 
 export const personaModels: Record<PersonaId, PersonaModelSpec> = {
-  zee:     { providerId: "cerebras",  modelId: "zai-glm-4.7" },
+  zee:     { providerId: "openai",    modelId: "gpt-5.3-codex" },
   stanley: { providerId: "xai",       modelId: "grok-4-1-fast" },
   johny:   { providerId: "anthropic", modelId: "claude-opus-4-6" },
 };

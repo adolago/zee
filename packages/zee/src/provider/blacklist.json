@@ -88,6 +88,7 @@
     { "id": "nebius", "reason": "Permanently disabled -- use config models on nebius directly" },
     { "id": "venice", "reason": "Privacy proxy removed" },
     { "id": "alibaba", "reason": "Removed per request" },
+    { "id": "cerebras", "reason": "Removed per request" },
     { "id": "synthetic", "reason": "Redundant HuggingFace proxy" },
     { "id": "ollama", "reason": "Local provider -- use vLLM instead" },
     { "id": "github-copilot", "reason": "Subscription-based, limited models" },
