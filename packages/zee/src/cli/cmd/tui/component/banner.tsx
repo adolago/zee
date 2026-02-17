@@ -99,7 +99,7 @@ export function Banner(props: BannerProps) {
   })
 
   return (
-    <box flexDirection="column" backgroundColor={theme.background}>
+    <box flexDirection="column" backgroundColor={theme.backgroundPanel}>
       <Show
         when={props.topBorder}
         fallback={

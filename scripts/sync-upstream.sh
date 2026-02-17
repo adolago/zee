@@ -98,7 +98,7 @@ if [ "$REMOTE" = "pimono" ]; then
     echo "pi-mono is synced via npm, not git merge."
     echo ""
     echo "Update command:"
-    echo -e "  ${CYAN}cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui${NC}"
+    echo -e "  ${CYAN}cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent${NC}"
     echo ""
 
     # Show current vs latest

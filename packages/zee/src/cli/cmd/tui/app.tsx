@@ -43,14 +43,6 @@ import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { normalizeHttpUrl } from "@/util/net"
 import { Terminal } from "./util/terminal"
 
-function modeFromBackground(background: RGBA | null): "dark" | "light" {
-  if (!background) return "dark"
-  const { r, g, b } = background
-  const scale = r > 1 || g > 1 || b > 1 ? 255 : 1
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / scale
-  return luminance > 0.5 ? "light" : "dark"
-}
-
 import type { EventSource } from "./context/sdk"
 
 export function tui(input: {
@@ -64,7 +56,7 @@ export function tui(input: {
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
     const terminalBackground = await Terminal.backgroundColor(200)
-    const mode = modeFromBackground(terminalBackground)
+    const mode = Terminal.modeFromBackground(terminalBackground)
     const kittyKeyboardConfig = await Instance.provide({
       directory: input.directory ?? process.cwd(),
       fn: async () => {

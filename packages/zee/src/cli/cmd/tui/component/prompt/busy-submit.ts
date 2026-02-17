@@ -1,4 +1,36 @@
 export type BusySubmitDecision = { submit: "prompt" } | { submit: "steer" } | { submit: "queue" }
+export type SteerSubmitErrorKind = "steer_race_no_active_turn" | "steer_race_expected_turn_mismatch" | "other"
+
+function normalizeErrorText(error: unknown): string {
+  const raw = (() => {
+    if (!error) return ""
+    if (typeof error === "string") return error
+    if (error instanceof Error) return error.message
+    if (typeof error === "object") {
+      const anyErr = error as any
+      if (typeof anyErr?.error === "string") return anyErr.error
+      if (typeof anyErr?.message === "string") return anyErr.message
+      if (typeof anyErr?.error?.message === "string") return anyErr.error.message
+      try {
+        return JSON.stringify(error)
+      } catch {
+        return String(error)
+      }
+    }
+    return String(error)
+  })()
+  return raw.replace(/\s+/g, " ").trim().toLowerCase()
+}
+
+export function classifySteerSubmitError(error: unknown): SteerSubmitErrorKind {
+  const text = normalizeErrorText(error)
+  if (!text) return "other"
+  if (text.includes("no active turn to steer")) return "steer_race_no_active_turn"
+  if (text.includes("steer rejected: expectedturnid does not match the active turn")) {
+    return "steer_race_expected_turn_mismatch"
+  }
+  return "other"
+}
 
 export function decideBusySubmit(input: {
   sessionIsBusy: boolean

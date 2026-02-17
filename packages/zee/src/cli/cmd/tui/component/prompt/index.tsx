@@ -42,7 +42,7 @@ import { Grammar } from "../../util/grammar"
 import { createGrammarChecker, type GrammarError } from "../../util/grammar-realtime"
 import { Banner, type BannerItem } from "../banner"
 import { VimCommands } from "@tui/util/vim-commands"
-import { decideBusySubmit } from "./busy-submit"
+import { classifySteerSubmitError, decideBusySubmit } from "./busy-submit"
 
 export type PromptProps = {
   sessionID?: string
@@ -1674,6 +1674,10 @@ export function Prompt(props: PromptProps) {
         }
       }
 
+      const sendPromptNow = async () => {
+        await sdk.client.session.prompt(promptPayload, { throwOnError: true })
+      }
+
       if (busyDecision.submit === "steer") {
         if (!activeTurnID) {
           await queuePrompt()
@@ -1691,6 +1695,25 @@ export function Prompt(props: PromptProps) {
             duration: 2000,
           })
         } catch (error) {
+          const classification = classifySteerSubmitError(error)
+          if (classification === "steer_race_no_active_turn" || classification === "steer_race_expected_turn_mismatch") {
+            try {
+              await sendPromptNow()
+              toast.show({
+                message: "Turn changed while steering; sent as a new prompt.",
+                variant: "info",
+                duration: 2500,
+              })
+            } catch (retryError) {
+              restoreInput()
+              toast.show({
+                message: `Failed to send message: ${formatSubmitError(retryError)}`,
+                variant: "error",
+                duration: 7000,
+              })
+            }
+            return
+          }
           restoreInput()
           toast.show({
             message: `Failed to steer: ${formatSubmitError(error)}`,
@@ -1707,7 +1730,7 @@ export function Prompt(props: PromptProps) {
       }
 
       try {
-        await sdk.client.session.prompt(promptPayload, { throwOnError: true })
+        await sendPromptNow()
       } catch (error) {
         restoreInput()
         toast.show({

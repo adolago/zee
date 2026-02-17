@@ -245,7 +245,7 @@ Zee vendors `@mariozechner/pi-*` packages via npm (not git merge):
 
 - Installed: `@mariozechner/pi-coding-agent@0.52.9` (in `packages/zee/Swabble/package.json`)
 - Latest tag: `v0.52.9` (on `pimono/main`)
-- Update: `cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent @mariozechner/pi-agent-core @mariozechner/pi-ai @mariozechner/pi-tui`
+- Update: `cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent`
 
 ## How to reproduce / extend this mapping
 

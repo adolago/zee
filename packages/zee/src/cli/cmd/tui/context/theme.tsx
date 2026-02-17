@@ -9,13 +9,15 @@
  */
 
 import { SyntaxStyle, RGBA } from "@opentui/core"
-import { createEffect, createMemo, onMount } from "solid-js"
+import { batch, createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { createSimpleContext } from "./helper"
 import selenizedDark from "./theme/selenized-dark.json" with { type: "json" }
 import { useKV } from "./kv"
 import { useRenderer } from "@opentui/solid"
 import { createStore } from "solid-js/store"
+import { Terminal } from "@tui/util/terminal"
+import { buildThemeFromTerminalSnapshot } from "@tui/context/terminal-theme"
 
 type ThemeColors = {
   primary: RGBA
@@ -205,6 +207,20 @@ export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   ["selenized-dark"]: selenizedDark as ThemeJson,
 }
 
+const TERMINAL_THEME_SYNC_INTERVAL_MS = 1500
+const TERMINAL_THEME_SIZE = 16
+
+function sameColor(a: RGBA | null, b: RGBA | null): boolean {
+  if (!a && !b) return true
+  if (!a || !b) return false
+  return (
+    Math.abs(a.r - b.r) < 0.0001 &&
+    Math.abs(a.g - b.g) < 0.0001 &&
+    Math.abs(a.b - b.b) < 0.0001 &&
+    Math.abs(a.a - b.a) < 0.0001
+  )
+}
+
 export function resolveTheme(theme: ThemeJson, mode: "dark" | "light", terminalBackground?: RGBA | null) {
   const defs = theme.defs ?? {}
   function resolveColor(c: ColorValue): RGBA {
@@ -334,10 +350,19 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const kv = useKV()
     const [store, setStore] = createStore({
       themes: DEFAULT_THEMES,
-      mode: "dark" as const,
+      mode: props.mode,
       active: "selenized-dark",
       ready: false,
       terminalBackground: props.terminalBackground ?? null,
+      terminalSnapshot:
+        props.terminalBackground
+          ? ({
+              palette: Array.from({ length: TERMINAL_THEME_SIZE }, () => null),
+              foreground: null,
+              background: props.terminalBackground,
+              isCompletePalette: false,
+            } satisfies Terminal.PaletteSnapshot)
+          : (null as Terminal.PaletteSnapshot | null),
     })
 
     createEffect(() => {
@@ -345,42 +370,101 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       setStore("active", "selenized-dark")
     })
 
+    const renderer = useRenderer()
+
+    function updateTerminalAppearance(snapshot: Terminal.PaletteSnapshot | null) {
+      if (!snapshot) return
+      const nextBackground = snapshot.background ?? null
+      const nextMode = nextBackground ? Terminal.modeFromBackground(nextBackground) : null
+      batch(() => {
+        if (!Terminal.samePaletteSnapshot(store.terminalSnapshot, snapshot)) {
+          setStore("terminalSnapshot", snapshot)
+        }
+        if (!sameColor(store.terminalBackground, nextBackground)) {
+          setStore("terminalBackground", nextBackground)
+        }
+        if (nextMode && store.mode !== nextMode) {
+          setStore("mode", nextMode)
+        }
+      })
+    }
+
+    async function refreshTerminalTheme(clearCache = false) {
+      try {
+        if (clearCache) {
+          renderer.clearPaletteCache()
+        }
+
+        let rendererSnapshot: Terminal.PaletteSnapshot | null = null
+        try {
+          const colors = await renderer.getPalette({ size: TERMINAL_THEME_SIZE })
+          rendererSnapshot = Terminal.snapshotFromPaletteProbe(colors, TERMINAL_THEME_SIZE)
+        } catch {
+          // ignore renderer palette probe errors
+        }
+
+        let mergedSnapshot = rendererSnapshot
+        const needsOscFallback =
+          !rendererSnapshot ||
+          !rendererSnapshot.background ||
+          !rendererSnapshot.foreground ||
+          !rendererSnapshot.isCompletePalette
+
+        if (needsOscFallback) {
+          try {
+            const oscColors = await Terminal.colors()
+            const oscSnapshot = Terminal.snapshotFromOscProbe(
+              {
+                background: oscColors.background,
+                foreground: oscColors.foreground,
+                colors: oscColors.colors,
+              },
+              TERMINAL_THEME_SIZE,
+            )
+            mergedSnapshot = Terminal.mergePaletteSnapshots(rendererSnapshot, oscSnapshot, TERMINAL_THEME_SIZE)
+          } catch {
+            // ignore osc probe errors
+          }
+        }
+
+        updateTerminalAppearance(mergedSnapshot)
+      } catch {
+        // ignore terminal palette probe errors
+      }
+    }
+
     function init() {
-      resolveSystemTheme()
+      void refreshTerminalTheme()
       setStore("active", "selenized-dark")
       setStore("ready", true)
     }
 
-    onMount(init)
-
-    function resolveSystemTheme() {
-      renderer
-        .getPalette({
-          size: 16,
-        })
-        .then((colors) => {
-          if (!colors.palette[0]) {
-            return
-          }
-          if (!store.terminalBackground) {
-            const rawBackground = colors.defaultBackground ?? colors.palette[0]
-            if (rawBackground) {
-              setStore("terminalBackground", RGBA.fromHex(rawBackground))
-            }
-          }
-        })
-    }
-
-    const renderer = useRenderer()
-    process.on("SIGUSR2", async () => {
-      renderer.clearPaletteCache()
+    onMount(() => {
       init()
+
+      const handleSigusr2 = () => {
+        void refreshTerminalTheme(true)
+      }
+
+      process.on("SIGUSR2", handleSigusr2)
+      const interval = setInterval(() => {
+        void refreshTerminalTheme(true)
+      }, TERMINAL_THEME_SYNC_INTERVAL_MS)
+
+      onCleanup(() => {
+        clearInterval(interval)
+        process.removeListener("SIGUSR2", handleSigusr2)
+      })
     })
 
     const values = createMemo(() => {
       // Use monochrome theme when NO_COLOR is set
       if (isNoColorEnabled()) {
         return resolveTheme(generateMonochromeTheme(store.mode), store.mode, store.terminalBackground)
+      }
+      const terminalTheme = buildThemeFromTerminalSnapshot(store.terminalSnapshot, store.mode)
+      if (terminalTheme) {
+        return resolveTheme(terminalTheme, store.mode, store.terminalBackground)
       }
       return resolveTheme(
         store.themes[store.active] ?? store.themes["selenized-dark"],
@@ -411,8 +495,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
         return store.mode
       },
       setMode(_mode: "dark" | "light") {
-        setStore("mode", "dark")
-        kv.set("theme_mode", "dark")
+        setStore("mode", _mode)
+        kv.set("theme_mode", _mode)
       },
       set(theme: string) {
         const next = theme in store.themes ? theme : "selenized-dark"

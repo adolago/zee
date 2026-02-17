@@ -19,18 +19,14 @@
   },
   "workspaces": {
     "packages": [
-      "packages/ai",
-      "packages/agent-core",
       "packages/zee",
       "packages/zee-adapter",
       "packages/app",
       "packages/plugin",
       "packages/stanley-sdk",
       "packages/sdk",
-      "packages/tui",
       "packages/ui",
       "packages/util",
-      "packages/web-ui",
       "packages/web",
       "packages/hosted"
     ],
