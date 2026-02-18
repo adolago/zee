@@ -22,7 +22,16 @@ zee auth login home-assistant
 
 This stores `HASS_TOKEN` and `HASS_SERVER` in Zee skill config so they are injected automatically.
 
-### Option 1: Config File (Manual)
+### Credential Precedence (Rosetta)
+
+`ha.sh` resolves credentials in this order:
+1. Environment (`HASS_*` / `HA_*`)
+2. Zee skill config (`skills.entries.home-assistant`) from daemon/user Zee config
+3. Legacy Home Assistant file (`~/.config/home-assistant/config.json`)
+
+This keeps Zee skill config as the canonical source and prevents stale legacy tokens from overriding Zee credentials.
+
+### Option 1: Legacy Config File (Backward Compatibility)
 
 Create `~/.config/home-assistant/config.json`:
 ```json

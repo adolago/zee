@@ -4,26 +4,120 @@
 
 set -euo pipefail
 
-CONFIG_FILE="${HA_CONFIG:-$HOME/.config/home-assistant/config.json}"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+LEGACY_CONFIG_FILE="${HA_CONFIG:-$XDG_CONFIG_HOME/home-assistant/config.json}"
 
-# Load config
-config_url=""
-config_token=""
-if [[ -f "$CONFIG_FILE" ]]; then
-  config_url="$(jq -r '.url // empty' "$CONFIG_FILE")"
-  config_token="$(jq -r '.token // empty' "$CONFIG_FILE")"
+read_legacy_config() {
+  local cfg="$1"
+  [[ -f "$cfg" ]] || return 0
+  local url token
+  url="$(jq -r '.url // empty' "$cfg" 2>/dev/null || true)"
+  token="$(jq -r '.token // empty' "$cfg" 2>/dev/null || true)"
+  [[ -n "$url" ]] && echo "server=$url"
+  [[ -n "$token" ]] && echo "token=$token"
+}
+
+read_zee_skill_config() {
+  local cfg="$1"
+  [[ -f "$cfg" ]] || return 0
+
+  # Prefer JSONC parser from Bun for zee.jsonc files.
+  if command -v bun >/dev/null 2>&1; then
+    bun --silent -e '
+      import { readFileSync } from "node:fs";
+      import { parse } from "jsonc-parser";
+
+      const file = process.argv[1];
+      const raw = readFileSync(file, "utf8");
+      const data = parse(raw) ?? {};
+      const entry = data?.skills?.entries?.["home-assistant"] ?? {};
+      const env = entry?.env ?? {};
+      const server = env.HASS_SERVER ?? env.HA_URL ?? "";
+      const token = env.HASS_TOKEN ?? env.HA_TOKEN ?? entry.apiKey ?? "";
+      if (server) console.log("server=" + server);
+      if (token) console.log("token=" + token);
+    ' "$cfg" 2>/dev/null || true
+    return 0
+  fi
+
+  # Fallback: parse plain JSON files with jq.
+  local server token
+  server="$(jq -r '.skills.entries["home-assistant"].env.HASS_SERVER // .skills.entries["home-assistant"].env.HA_URL // empty' "$cfg" 2>/dev/null || true)"
+  token="$(jq -r '.skills.entries["home-assistant"].env.HASS_TOKEN // .skills.entries["home-assistant"].env.HA_TOKEN // .skills.entries["home-assistant"].apiKey // empty' "$cfg" 2>/dev/null || true)"
+  [[ -n "$server" ]] && echo "server=$server"
+  [[ -n "$token" ]] && echo "token=$token"
+}
+
+declare -a ZEE_CONFIG_CANDIDATES=()
+
+add_cfg_candidate() {
+  local cfg="$1"
+  [[ -n "$cfg" ]] || return 0
+  ZEE_CONFIG_CANDIDATES+=("$cfg")
+}
+
+# Rosetta-style source resolution:
+# env vars > zee skill config (daemon/user) > legacy HA config.
+add_cfg_candidate "${ZEE_CONFIG:-}"
+if [[ -n "${ZEE_CONFIG_DIR:-}" ]]; then
+  add_cfg_candidate "${ZEE_CONFIG_DIR}/zee.jsonc"
+  add_cfg_candidate "${ZEE_CONFIG_DIR}/zee.json"
 fi
+add_cfg_candidate "$XDG_CONFIG_HOME/zee-daemon/zee.jsonc"
+add_cfg_candidate "$XDG_CONFIG_HOME/zee-daemon/zee.json"
+add_cfg_candidate "$XDG_CONFIG_HOME/zee/zee.jsonc"
+add_cfg_candidate "$XDG_CONFIG_HOME/zee/zee.json"
 
-# Accept both legacy (HA_*) and hass-cli-compatible (HASS_*) env vars.
-HASS_SERVER="${HASS_SERVER:-${HA_URL:-$config_url}}"
-HASS_TOKEN="${HASS_TOKEN:-${HA_TOKEN:-$config_token}}"
+# Accept both legacy (HA_*) and hass-cli-compatible (HASS_*) env vars first.
+HASS_SERVER="${HASS_SERVER:-${HA_URL:-}}"
+HASS_TOKEN="${HASS_TOKEN:-${HA_TOKEN:-}}"
+
+for cfg in "${ZEE_CONFIG_CANDIDATES[@]}"; do
+  [[ -f "$cfg" ]] || continue
+  while IFS= read -r kv; do
+    key="${kv%%=*}"
+    value="${kv#*=}"
+    case "$key" in
+      server)
+        if [[ -z "$HASS_SERVER" && -n "$value" ]]; then
+          HASS_SERVER="$value"
+        fi
+        ;;
+      token)
+        if [[ -z "$HASS_TOKEN" && -n "$value" ]]; then
+          HASS_TOKEN="$value"
+        fi
+        ;;
+    esac
+  done < <(read_zee_skill_config "$cfg")
+done
+
+# Backward compatibility fallback for users not migrated to Zee skill config.
+if [[ -z "$HASS_SERVER" || -z "$HASS_TOKEN" ]]; then
+  while IFS= read -r kv; do
+    key="${kv%%=*}"
+    value="${kv#*=}"
+    case "$key" in
+      server)
+        if [[ -z "$HASS_SERVER" && -n "$value" ]]; then
+          HASS_SERVER="$value"
+        fi
+        ;;
+      token)
+        if [[ -z "$HASS_TOKEN" && -n "$value" ]]; then
+          HASS_TOKEN="$value"
+        fi
+        ;;
+    esac
+  done < <(read_legacy_config "$LEGACY_CONFIG_FILE")
+fi
 
 # Keep legacy names available for compatibility.
 HA_URL="${HA_URL:-$HASS_SERVER}"
 HA_TOKEN="${HA_TOKEN:-$HASS_TOKEN}"
 
-: "${HASS_SERVER:?Set HASS_SERVER/HA_URL or configure $CONFIG_FILE}"
-: "${HASS_TOKEN:?Set HASS_TOKEN/HA_TOKEN or configure $CONFIG_FILE}"
+: "${HASS_SERVER:?Set HASS_SERVER/HA_URL or run 'zee auth login home-assistant'}"
+: "${HASS_TOKEN:?Set HASS_TOKEN/HA_TOKEN or run 'zee auth login home-assistant'}"
 
 cmd="${1:-help}"
 shift || true
@@ -173,6 +267,7 @@ Environment:
   HASS_TOKEN   Long-lived access token (required)
   HA_URL       Legacy alias for HASS_SERVER
   HA_TOKEN     Legacy alias for HASS_TOKEN
+  HA_CONFIG    Legacy config file path override (default: ~/.config/home-assistant/config.json)
 
 Examples:
   ha.sh on light.living_room 200
