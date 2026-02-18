@@ -3,8 +3,7 @@ import { useTheme } from "../context/theme"
 import { useKV } from "../context/kv"
 import type { RGBA } from "@opentui/core"
 import { useAnimationTick } from "../util/animation-tick"
-
-const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+import { stackedTildeFrame } from "../ui/tilde-spinner"
 
 export function Spinner(props: { children?: JSX.Element; color?: string | RGBA }) {
   const { theme } = useTheme()
@@ -13,7 +12,7 @@ export function Spinner(props: { children?: JSX.Element; color?: string | RGBA }
   const color = () => props.color ?? theme.textMuted
 
   const tick = useAnimationTick()
-  const frame = () => (animated() ? BRAILLE_FRAMES[tick() % BRAILLE_FRAMES.length] : "...")
+  const frame = () => stackedTildeFrame(tick(), animated())
 
   return (
     <box flexDirection="row" gap={1}>

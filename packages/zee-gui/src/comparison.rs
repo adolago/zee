@@ -38,6 +38,13 @@ pub struct ComparisonSymbol {
     pub market_data: Option<MarketData>,
     pub equity_flow: Option<EquityFlowData>,
     pub research: Option<ResearchData>,
+    pub history: Vec<HistoryPoint>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct HistoryPoint {
+    pub date: String,
+    pub close: f64,
 }
 
 /// Relative performance data point
@@ -149,6 +156,7 @@ impl ComparisonState {
             market_data: None,
             equity_flow: None,
             research: None,
+            history: Vec::new(),
         });
     }
 
@@ -575,7 +583,6 @@ pub fn render_overlay_chart(
     normalized: bool, // If true, show % returns instead of absolute prices
 ) -> impl IntoElement {
     let enabled_symbols: Vec<_> = symbols.iter().filter(|s| s.enabled).collect();
-    let chart_height = px(300.0);
 
     div()
         .flex()
@@ -611,20 +618,18 @@ pub fn render_overlay_chart(
         .child(
             div()
                 .w_full()
-                .h(chart_height)
                 .rounded(px(8.0))
                 .bg(theme.card_bg_elevated)
                 .border_1()
                 .border_color(theme.border_subtle)
+                .p(px(14.0))
                 .flex()
-                .items_center()
-                .justify_center()
-                // Placeholder for actual chart implementation
-                .child(render_chart_placeholder(
-                    theme,
-                    &enabled_symbols,
-                    chart_height,
-                )),
+                .flex_col()
+                .gap(px(10.0))
+                .children(enabled_symbols.iter().map(|sym| {
+                    let series = build_chart_series(sym, normalized);
+                    render_chart_row(theme, sym, &series, normalized)
+                })),
         )
         // Legend below chart
         .child(
@@ -649,52 +654,125 @@ pub fn render_overlay_chart(
         )
 }
 
-/// Placeholder chart rendering (simplified visual representation)
-fn render_chart_placeholder(
+fn render_chart_row(
     theme: &Theme,
-    symbols: &[&ComparisonSymbol],
-    _height: Pixels,
+    symbol: &ComparisonSymbol,
+    series: &[f64],
+    normalized: bool,
 ) -> impl IntoElement {
-    // This is a simplified visual representation
-    // In production, use a proper charting library or custom canvas rendering
+    let latest = series.last().copied().unwrap_or(0.0);
+    let display = if normalized {
+        format!("{:+.2}%", latest)
+    } else {
+        format!("${:.2}", latest)
+    };
+    let color = if latest >= 0.0 {
+        theme.positive
+    } else {
+        theme.negative
+    };
+    let sparkline = build_sparkline(series);
 
     div()
         .w_full()
-        .h_full()
         .flex()
-        .items_end()
-        .justify_around()
-        .px(px(20.0))
-        .pb(px(20.0))
-        .children(symbols.iter().enumerate().map(|(i, sym)| {
-            // Simulate different performance levels
-            let simulated_height = 50.0
-                + (i as f32 * 30.0)
-                + sym
-                    .market_data
-                    .as_ref()
-                    .map(|m| m.change_percent as f32 * 2.0)
-                    .unwrap_or(0.0);
-
+        .items_center()
+        .justify_between()
+        .gap(px(12.0))
+        .child(
             div()
+                .w(px(68.0))
+                .text_size(px(11.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(symbol.color)
+                .child(symbol.symbol.clone()),
+        )
+        .child(
+            div()
+                .flex_grow()
+                .h(px(26.0))
+                .rounded(px(6.0))
+                .bg(theme.background)
+                .border_1()
+                .border_color(theme.border_subtle)
+                .px(px(8.0))
                 .flex()
-                .flex_col()
                 .items_center()
-                .gap(px(4.0))
-                .child(
-                    div()
-                        .w(px(40.0))
-                        .h(px(simulated_height.clamp(20.0, 250.0)))
-                        .rounded_t(px(4.0))
-                        .bg(sym.color.opacity(0.8)),
-                )
-                .child(
-                    div()
-                        .text_size(px(10.0))
-                        .text_color(theme.text_dimmed)
-                        .child(sym.symbol.clone()),
-                )
-        }))
+                .text_size(px(11.0))
+                .text_color(theme.text_secondary)
+                .child(if sparkline.is_empty() {
+                    "No history data".to_string()
+                } else {
+                    sparkline
+                }),
+        )
+        .child(
+            div()
+                .w(px(78.0))
+                .text_size(px(11.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(color)
+                .text_align(gpui::TextAlign::Right)
+                .child(display),
+        )
+}
+
+fn build_chart_series(symbol: &ComparisonSymbol, normalized: bool) -> Vec<f64> {
+    let mut values: Vec<f64> = symbol
+        .history
+        .iter()
+        .filter_map(|point| if point.close.is_finite() { Some(point.close) } else { None })
+        .collect();
+
+    if values.len() < 2 {
+        if let Some(market) = &symbol.market_data {
+            values.push((market.price - market.change).max(0.0));
+            values.push(market.price);
+        }
+    }
+
+    if !normalized {
+        return values;
+    }
+
+    if values.is_empty() {
+        return values;
+    }
+    let first = values[0];
+    if first.abs() < f64::EPSILON {
+        return vec![0.0; values.len()];
+    }
+    values
+        .into_iter()
+        .map(|v| ((v / first) - 1.0) * 100.0)
+        .collect()
+}
+
+fn build_sparkline(values: &[f64]) -> String {
+    if values.is_empty() {
+        return String::new();
+    }
+
+    let palette = ['.', ':', '-', '=', '+', '*', '#'];
+    let min = values
+        .iter()
+        .fold(f64::INFINITY, |acc, v| if *v < acc { *v } else { acc });
+    let max = values
+        .iter()
+        .fold(f64::NEG_INFINITY, |acc, v| if *v > acc { *v } else { acc });
+    let range = (max - min).abs();
+
+    values
+        .iter()
+        .map(|value| {
+            if range < f64::EPSILON {
+                return '=';
+            }
+            let normalized = (value - min) / range;
+            let idx = (normalized * (palette.len() - 1) as f64).round() as usize;
+            palette[idx.min(palette.len() - 1)]
+        })
+        .collect()
 }
 
 // =============================================================================
@@ -719,11 +797,7 @@ pub fn render_relative_performance(
                 .flex()
                 .gap(px(12.0))
                 .children(enabled_symbols.iter().map(|sym| {
-                    let perf = sym
-                        .market_data
-                        .as_ref()
-                        .map(|m| m.change_percent)
-                        .unwrap_or(0.0);
+                    let perf = performance_percent(sym);
                     let is_positive = perf >= 0.0;
                     let color = if is_positive {
                         theme.positive
@@ -767,11 +841,7 @@ fn render_performance_ranking(theme: &Theme, symbols: &[&ComparisonSymbol]) -> i
     let mut sorted: Vec<_> = symbols
         .iter()
         .map(|s| {
-            let perf = s
-                .market_data
-                .as_ref()
-                .map(|m| m.change_percent)
-                .unwrap_or(0.0);
+            let perf = performance_percent(s);
             (*s, perf)
         })
         .collect();
@@ -837,6 +907,29 @@ fn render_performance_ranking(theme: &Theme, symbols: &[&ComparisonSymbol]) -> i
                         .child(format!("{:+.2}%", perf)),
                 )
         }))
+}
+
+fn performance_percent(symbol: &ComparisonSymbol) -> f64 {
+    let history_values: Vec<f64> = symbol
+        .history
+        .iter()
+        .map(|point| point.close)
+        .filter(|value| value.is_finite())
+        .collect();
+
+    if history_values.len() >= 2 {
+        let first = history_values[0];
+        let last = history_values[history_values.len() - 1];
+        if first.abs() >= f64::EPSILON {
+            return ((last / first) - 1.0) * 100.0;
+        }
+    }
+
+    symbol
+        .market_data
+        .as_ref()
+        .map(|market| market.change_percent)
+        .unwrap_or(0.0)
 }
 
 // =============================================================================

@@ -17,6 +17,7 @@ Zee is a unified CLI agent engine for life admin, investing, and learning. Seman
 
 - [Bun](https://bun.sh) (v1.1+)
 - [Qdrant](https://qdrant.tech) (local) for semantic memory
+- Python 3.10-3.13 (3.12 recommended) for Stanley dependencies
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
 
 ### Install (npm)
@@ -32,6 +33,12 @@ npm install -g @adolago/zee@nightly
 ```bash
 curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | ZEE_NPM_PACKAGE=@adolago/zee bash
 ```
+
+The installer now bootstraps Stanley Python dependencies into:
+- `~/.local/share/zee/stanley/.venv`
+
+And configures:
+- `STANLEY_PYTHON=~/.local/share/zee/stanley/.venv/bin/python`
 
 ### Install from source
 
@@ -51,27 +58,25 @@ bun run build
 ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
-### Install Stanley (optional, for investing features)
+### Install Stanley (required for investing module development)
 
-Stanley is the investing persona. Install it from GitHub:
+Stanley is the investing persona. For source development, install full Python dependencies in a venv:
 
 ```bash
-# Clone Stanley
-git clone https://github.com/adolago/stanley ~/.local/src/stanley
-cd ~/.local/src/stanley
+# From zee repo root
+cd stanley
 
-# Install Python dependencies
-pip install -e .
-# Or with all optional dependencies:
-pip install -e ".[all]"
+# Create venv and install all pinned dependencies
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements-lock.txt
 
-# Set environment variable
-export STANLEY_REPO=~/.local/src/stanley
+# Point Zee to this interpreter
+export STANLEY_PYTHON=$PWD/.venv/bin/python
 ```
 
 Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
 ```bash
-export STANLEY_REPO=~/.local/src/stanley
+export STANLEY_PYTHON=~/.local/share/zee/stanley/.venv/bin/python
 ```
 
 ### Configuration

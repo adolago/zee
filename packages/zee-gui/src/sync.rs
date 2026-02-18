@@ -27,7 +27,8 @@ use url::Url;
 // Sync Event Types
 // =============================================================================
 
-const ALLOW_REMOTE_ENV: &str = "STANLEY_ALLOW_REMOTE";
+const ALLOW_REMOTE_ENV: &str = "ZEE_ALLOW_REMOTE";
+const ALLOW_REMOTE_ENV_LEGACY: &str = "STANLEY_ALLOW_REMOTE";
 
 /// Types of sync events
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -123,10 +124,49 @@ impl SyncEventType {
             SyncEventType::SyncError => "sync_error",
         }
     }
+
+    pub fn from_str(value: &str) -> Option<Self> {
+        Some(match value {
+            "portfolio_update" => SyncEventType::PortfolioUpdate,
+            "portfolio_holding_added" => SyncEventType::PortfolioHoldingAdded,
+            "portfolio_holding_removed" => SyncEventType::PortfolioHoldingRemoved,
+            "note_saved" => SyncEventType::NoteSaved,
+            "note_deleted" => SyncEventType::NoteDeleted,
+            "note_updated" => SyncEventType::NoteUpdated,
+            "thesis_created" => SyncEventType::ThesisCreated,
+            "trade_opened" => SyncEventType::TradeOpened,
+            "trade_closed" => SyncEventType::TradeClosed,
+            "research_complete" => SyncEventType::ResearchComplete,
+            "research_started" => SyncEventType::ResearchStarted,
+            "research_progress" => SyncEventType::ResearchProgress,
+            "alert_triggered" => SyncEventType::AlertTriggered,
+            "alert_acknowledged" => SyncEventType::AlertAcknowledged,
+            "price_alert" => SyncEventType::PriceAlert,
+            "flow_alert" => SyncEventType::FlowAlert,
+            "market_data_update" => SyncEventType::MarketDataUpdate,
+            "commodity_update" => SyncEventType::CommodityUpdate,
+            "bar_update" => SyncEventType::BarUpdate,
+            "options_flow_update" => SyncEventType::OptionsFlowUpdate,
+            "dark_pool_activity" => SyncEventType::DarkPoolActivity,
+            "view_opened" => SyncEventType::ViewOpened,
+            "view_closed" => SyncEventType::ViewClosed,
+            "symbol_selected" => SyncEventType::SymbolSelected,
+            "symbol_deselected" => SyncEventType::SymbolDeselected,
+            "agent_query_start" => SyncEventType::AgentQueryStart,
+            "agent_query_complete" => SyncEventType::AgentQueryComplete,
+            "agent_tool_call" => SyncEventType::AgentToolCall,
+            "agent_tool_result" => SyncEventType::AgentToolResult,
+            "agent_error" => SyncEventType::AgentError,
+            "client_connected" | "connected" => SyncEventType::ClientConnected,
+            "client_disconnected" => SyncEventType::ClientDisconnected,
+            "sync_error" => SyncEventType::SyncError,
+            _ => return None,
+        })
+    }
 }
 
 fn allow_remote_env() -> bool {
-    match env::var(ALLOW_REMOTE_ENV) {
+    match env::var(ALLOW_REMOTE_ENV).or_else(|_| env::var(ALLOW_REMOTE_ENV_LEGACY)) {
         Ok(value) => matches!(
             value.to_ascii_lowercase().as_str(),
             "1" | "true" | "yes" | "on"
@@ -171,13 +211,52 @@ fn ensure_safe_ws_url(server_url: &str) -> Result<(), SyncError> {
 
     if !allow_remote_env() {
         return Err(SyncError::UnsafeUrl(
-            "Remote WebSocket URL blocked. Set STANLEY_ALLOW_REMOTE=1 to allow".to_string(),
+            "Remote WebSocket URL blocked. Set ZEE_ALLOW_REMOTE=1 to allow".to_string(),
         ));
     }
 
     if scheme != "wss" {
         return Err(SyncError::UnsafeUrl(
             "Remote WebSocket URL requires wss".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn ensure_safe_http_url(server_url: &str) -> Result<(), SyncError> {
+    let url = Url::parse(server_url)?;
+
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(SyncError::UnsafeUrl(
+            "HTTP URL must not include credentials".to_string(),
+        ));
+    }
+
+    let scheme = url.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err(SyncError::UnsafeUrl(
+            "HTTP URL must use http or https".to_string(),
+        ));
+    }
+
+    let host = url
+        .host_str()
+        .ok_or_else(|| SyncError::UnsafeUrl("HTTP URL must include a host".to_string()))?;
+
+    if is_localhost_host(host) {
+        return Ok(());
+    }
+
+    if !allow_remote_env() {
+        return Err(SyncError::UnsafeUrl(
+            "Remote HTTP URL blocked. Set ZEE_ALLOW_REMOTE=1 to allow".to_string(),
+        ));
+    }
+
+    if scheme != "https" {
+        return Err(SyncError::UnsafeUrl(
+            "Remote HTTP URL requires https".to_string(),
         ));
     }
 
@@ -411,10 +490,18 @@ impl Default for MessageQueue {
 // Sync Client State
 // =============================================================================
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SyncProtocol {
+    LegacyWebSocket,
+    ZeeSse,
+}
+
 /// State for the sync client
 pub struct SyncClientState {
     /// Current connection status
     pub status: ConnectionStatus,
+    /// Active synchronization transport protocol
+    pub protocol: SyncProtocol,
     /// WebSocket server URL
     pub server_url: String,
     /// Message queue for offline periods
@@ -441,6 +528,7 @@ impl Default for SyncClientState {
     fn default() -> Self {
         Self {
             status: ConnectionStatus::Disconnected,
+            protocol: SyncProtocol::LegacyWebSocket,
             server_url: "ws://127.0.0.1:8765/ws".to_string(),
             message_queue: MessageQueue::default(),
             subscriptions: vec![
@@ -467,8 +555,14 @@ impl Default for SyncClientState {
 }
 
 impl SyncClientState {
+    #[cfg(test)]
     pub fn new(server_url: &str) -> Self {
+        Self::new_with_protocol(server_url, SyncProtocol::LegacyWebSocket)
+    }
+
+    pub fn new_with_protocol(server_url: &str, protocol: SyncProtocol) -> Self {
         Self {
+            protocol,
             server_url: server_url.to_string(),
             ..Default::default()
         }
@@ -546,9 +640,24 @@ pub struct SyncClient {
 }
 
 impl SyncClient {
+    #[cfg(test)]
     pub fn new(server_url: &str) -> Self {
+        Self::new_with_protocol(server_url, SyncProtocol::LegacyWebSocket)
+    }
+
+    pub fn new_legacy(server_url: &str) -> Self {
+        Self::new_with_protocol(server_url, SyncProtocol::LegacyWebSocket)
+    }
+
+    pub fn new_zee(base_http_url: &str) -> Self {
+        Self::new_with_protocol(base_http_url, SyncProtocol::ZeeSse)
+    }
+
+    fn new_with_protocol(server_url: &str, protocol: SyncProtocol) -> Self {
         Self {
-            state: Arc::new(tokio::sync::RwLock::new(SyncClientState::new(server_url))),
+            state: Arc::new(tokio::sync::RwLock::new(SyncClientState::new_with_protocol(
+                server_url, protocol,
+            ))),
             command_tx: None,
             event_rx: None,
         }
@@ -651,6 +760,14 @@ impl SyncClient {
     /// Connect to the WebSocket server
     /// Returns a receiver for incoming events
     pub async fn connect(&mut self) -> Result<mpsc::Receiver<SyncEvent>, SyncError> {
+        let protocol = self.state.read().await.protocol;
+        match protocol {
+            SyncProtocol::LegacyWebSocket => self.connect_legacy().await,
+            SyncProtocol::ZeeSse => self.connect_zee_sse().await,
+        }
+    }
+
+    async fn connect_legacy(&mut self) -> Result<mpsc::Receiver<SyncEvent>, SyncError> {
         let server_url = self.state.read().await.server_url.clone();
         ensure_safe_ws_url(&server_url)?;
         info!("Connecting to WebSocket server at {}", server_url);
@@ -676,6 +793,26 @@ impl SyncClient {
         if let Some(tx) = &self.command_tx {
             let _ = tx.send(SyncCommand::Connect).await;
         }
+
+        Ok(event_rx)
+    }
+
+    async fn connect_zee_sse(&mut self) -> Result<mpsc::Receiver<SyncEvent>, SyncError> {
+        let server_url = self.state.read().await.server_url.clone();
+        ensure_safe_http_url(&server_url)?;
+        info!("Connecting to Zee SSE sync at {}", server_url);
+
+        self.state.write().await.status = ConnectionStatus::Connecting;
+
+        let (event_tx, event_rx) = mpsc::channel::<SyncEvent>(100);
+
+        // SSE mode is receive-only for now; outbound view events remain best effort no-op.
+        self.command_tx = None;
+
+        let state = Arc::clone(&self.state);
+        tokio::spawn(async move {
+            zee_sse_loop(state, server_url, event_tx).await;
+        });
 
         Ok(event_rx)
     }
@@ -725,6 +862,224 @@ pub enum SyncError {
 
     #[error("Max reconnection attempts exceeded")]
     MaxReconnectAttemptsExceeded,
+}
+
+// =============================================================================
+// Zee SSE Loop Implementation
+// =============================================================================
+
+fn global_event_url(base_url: &str) -> String {
+    let trimmed = base_url.trim_end_matches('/');
+    if trimmed.ends_with("/global/event") {
+        trimmed.to_string()
+    } else {
+        format!("{}/global/event", trimmed)
+    }
+}
+
+async fn emit_zee_event(
+    event_name: &str,
+    data: &str,
+    state: &Arc<tokio::sync::RwLock<SyncClientState>>,
+    event_tx: &mpsc::Sender<SyncEvent>,
+) {
+    let parsed: serde_json::Value = match serde_json::from_str(data) {
+        Ok(value) => value,
+        Err(err) => {
+            warn!("Failed to parse SSE event payload: {}", err);
+            return;
+        }
+    };
+
+    // Current Zee global event stream wraps payloads as:
+    // { type, properties, payload: { type, properties }, directory }
+    let event_type_name = parsed
+        .get("type")
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            parsed
+                .get("payload")
+                .and_then(|payload| payload.get("type"))
+                .and_then(|v| v.as_str())
+        })
+        .unwrap_or(event_name);
+
+    let normalized_type_name = event_type_name.replace('.', "_");
+    let event_type = match SyncEventType::from_str(&normalized_type_name) {
+        Some(event_type) => event_type,
+        None => return,
+    };
+
+    let source = parsed
+        .get("source")
+        .and_then(|v| v.as_str())
+        .or_else(|| parsed.get("directory").and_then(|v| v.as_str()))
+        .unwrap_or("zee")
+        .to_string();
+
+    let event = SyncEvent {
+        id: generate_event_id(),
+        event_type,
+        timestamp: chrono_now(),
+        source,
+        correlation_id: None,
+        data: parsed.get("properties").cloned().or_else(|| Some(parsed.clone())),
+    };
+
+    {
+        let mut guard = state.write().await;
+        guard.add_event(event.clone());
+    }
+
+    let _ = event_tx.send(event).await;
+}
+
+async fn handle_zee_reconnect(
+    state: &Arc<tokio::sync::RwLock<SyncClientState>>,
+    event_tx: &mpsc::Sender<SyncEvent>,
+    error_message: String,
+) -> bool {
+    error!("{}", error_message);
+
+    let mut state_guard = state.write().await;
+    state_guard.status = ConnectionStatus::Error;
+
+    if !state_guard.increment_reconnect() {
+        error!("Max reconnection attempts exceeded");
+
+        let error_event = SyncEvent::new(
+            SyncEventType::SyncError,
+            Some(serde_json::json!({
+                "error": "Max reconnection attempts exceeded",
+                "lastError": error_message
+            })),
+        );
+        let _ = event_tx.send(error_event).await;
+        return false;
+    }
+
+    let delay = state_guard.get_reconnect_delay();
+    state_guard.status = ConnectionStatus::Reconnecting;
+    drop(state_guard);
+
+    tokio::time::sleep(Duration::from_millis(delay)).await;
+    true
+}
+
+async fn zee_sse_loop(
+    state: Arc<tokio::sync::RwLock<SyncClientState>>,
+    server_url: String,
+    event_tx: mpsc::Sender<SyncEvent>,
+) {
+    let client = reqwest::Client::new();
+    let endpoint = global_event_url(&server_url);
+
+    loop {
+        state.write().await.status = ConnectionStatus::Connecting;
+
+        let mut response = match client
+            .get(&endpoint)
+            .header(reqwest::header::ACCEPT, "text/event-stream")
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(err) => {
+                if !handle_zee_reconnect(
+                    &state,
+                    &event_tx,
+                    format!("Failed to connect to Zee SSE endpoint: {}", err),
+                )
+                .await
+                {
+                    break;
+                }
+                continue;
+            }
+        };
+
+        if !response.status().is_success() {
+            if !handle_zee_reconnect(
+                &state,
+                &event_tx,
+                format!("Zee SSE endpoint returned HTTP {}", response.status()),
+            )
+            .await
+            {
+                break;
+            }
+            continue;
+        }
+
+        {
+            let mut state_guard = state.write().await;
+            state_guard.status = ConnectionStatus::Connected;
+            state_guard.reset_reconnect();
+        }
+
+        let connected = SyncEvent::new(SyncEventType::ClientConnected, None);
+        let _ = event_tx.send(connected).await;
+
+        let mut pending = String::new();
+        let mut current_event = String::new();
+        let mut current_data = String::new();
+        let mut stream_error: Option<String> = None;
+
+        loop {
+            let chunk = match response.chunk().await {
+                Ok(Some(chunk)) => chunk,
+                Ok(None) => break,
+                Err(err) => {
+                    stream_error = Some(format!("SSE stream read error: {}", err));
+                    break;
+                }
+            };
+
+            pending.push_str(&String::from_utf8_lossy(&chunk));
+
+            while let Some(newline_idx) = pending.find('\n') {
+                let line = pending[..newline_idx].trim_end_matches('\r').to_string();
+                pending.drain(..=newline_idx);
+
+                if line.is_empty() {
+                    if !current_data.is_empty() {
+                        emit_zee_event(&current_event, &current_data, &state, &event_tx).await;
+                    }
+                    current_event.clear();
+                    current_data.clear();
+                    continue;
+                }
+
+                if let Some(rest) = line.strip_prefix("event:") {
+                    current_event = rest.trim().to_string();
+                    continue;
+                }
+
+                if let Some(rest) = line.strip_prefix("data:") {
+                    if !current_data.is_empty() {
+                        current_data.push('\n');
+                    }
+                    current_data.push_str(rest.trim_start());
+                }
+            }
+        }
+
+        if !current_data.is_empty() {
+            emit_zee_event(&current_event, &current_data, &state, &event_tx).await;
+        }
+
+        if !handle_zee_reconnect(
+            &state,
+            &event_tx,
+            stream_error.unwrap_or_else(|| "SSE stream ended".to_string()),
+        )
+        .await
+        {
+            break;
+        }
+    }
+
+    info!("Zee SSE loop terminated");
 }
 
 // =============================================================================

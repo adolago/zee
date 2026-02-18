@@ -21,6 +21,8 @@
 #![recursion_limit = "4096"]
 
 #[cfg(not(test))]
+mod accounting;
+#[cfg(not(test))]
 mod agent;
 #[cfg(not(test))]
 mod agent_core;
@@ -38,6 +40,8 @@ mod comparison;
 #[cfg(not(test))]
 mod components;
 #[cfg(not(test))]
+mod etf;
+#[cfg(not(test))]
 mod keyboard;
 #[cfg(not(test))]
 mod notes;
@@ -50,11 +54,15 @@ mod portfolio;
 #[cfg(not(test))]
 mod quick_actions;
 #[cfg(not(test))]
+mod signals;
+#[cfg(not(test))]
 mod suggestions;
 #[cfg(not(test))]
 mod sync;
 #[cfg(not(test))]
 mod theme;
+#[cfg(not(test))]
+mod runtime;
 
 // Tests temporarily disabled - GPUI macro stack overflow in compiler
 // The individual module tests (agent_state, keyboard, etc.) can still run
@@ -91,6 +99,13 @@ fn main() {}
 
 #[cfg(not(test))]
 fn main() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("zee-gui-tokio")
+        .build()
+        .expect("failed to initialize Tokio runtime");
+    let _runtime_guard = runtime.enter();
+
     Application::new().run(|cx: &mut App| {
         // Register keyboard bindings
         register_keyboard_bindings(cx);

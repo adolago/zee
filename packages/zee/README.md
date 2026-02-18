@@ -10,6 +10,15 @@ npm install -g @adolago/zee
 npm install -g @adolago/zee@nightly
 ```
 
+For full Stanley investing-module support, install Python 3.10-3.13 and bootstrap dependencies:
+
+```bash
+python3.12 -m venv ~/.local/share/zee/stanley/.venv
+curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/stanley/requirements-lock.txt | \
+  ~/.local/share/zee/stanley/.venv/bin/pip install -r /dev/stdin
+export STANLEY_PYTHON=~/.local/share/zee/stanley/.venv/bin/python
+```
+
 ## Build From Source
 
 ```bash

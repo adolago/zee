@@ -1,5 +1,6 @@
 //! Main application state and rendering for Stanley GUI
 
+use crate::accounting::{render_accounting, AccountingState};
 use crate::agent::{render_agent_panel, AgentState, AgentStatus};
 use crate::agent_core::{AgentCoreClient, Persona, StreamEvent};
 use crate::api::{
@@ -11,12 +12,17 @@ use crate::commodities::{render_commodities, CommoditiesState};
 use crate::comparison::{
     render_correlation_matrix, render_overlay_chart, render_peer_group_comparison,
     render_relative_performance, render_sector_strength, render_side_by_side_comparison,
-    ComparisonMode, ComparisonState, TimePeriod as ComparisonTimePeriod,
+    ComparisonMode, ComparisonState, HistoryPoint, TimePeriod as ComparisonTimePeriod,
 };
+use crate::etf::{render_etf, EtfState};
 use crate::keyboard::{get_shortcuts_help, search_symbols, KeyboardAction, KeyboardManager};
 use crate::notes_editor::{
     handle_notes_action, load_note_summaries, render_notes_editor, save_note, NotesAction,
     NotesEditorState,
+};
+use crate::signals::{
+    render_signals, BacktestResult as SignalsBacktestResult,
+    PerformanceStats as SignalsPerformanceStats, Signal as UiSignal, SignalsState,
 };
 use crate::components::modals::render_tooltip;
 use crate::observability::{render_observability, ObservabilityState};
@@ -29,6 +35,7 @@ use crate::portfolio::{
     SectorAllocation,
 };
 use crate::quick_actions::QuickActionsState;
+use crate::runtime::{GuiRuntimeConfig, RuntimeMode};
 use crate::suggestions::{
     generate_chart_suggestions, Suggestion, SuggestionContext, SuggestionType, SuggestionsState,
 };
@@ -203,6 +210,17 @@ fn format_probability(value: f64) -> String {
     format!("{:.1}%", value * 100.0)
 }
 
+fn env_flag(name: &str) -> bool {
+    std::env::var(name)
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
+        .unwrap_or(false)
+}
+
 const MONEY_FLOW_SECTORS: [&str; 10] = [
     "XLK", "XLF", "XLE", "XLV", "XLI", "XLU", "XLP", "XLB", "XLRE", "XTL",
 ];
@@ -236,6 +254,12 @@ pub struct ZeeApp {
     trades_loading: LoadingState<()>,
     /// Commodities view state
     commodities_state: CommoditiesState,
+    /// ETF analytics view state
+    etf_state: EtfState,
+    /// Trading signals view state
+    signals_state: SignalsState,
+    /// Accounting/filings view state
+    accounting_state: AccountingState,
     /// Prediction markets view state
     prediction_markets_state: PredictionMarketsState,
     /// Prediction markets health
@@ -277,6 +301,8 @@ pub struct ZeeApp {
     sync_client: Option<SyncClient>,
     /// WebSocket connection status
     sync_status: ConnectionStatus,
+    /// Runtime transport/backend configuration
+    runtime_config: GuiRuntimeConfig,
     /// Last sync event received
     last_sync_event: Option<SyncEvent>,
     /// Sync command sender for emitting events (obtained after connection)
@@ -297,6 +323,8 @@ pub struct ZeeApp {
     observability_state: ObservabilityState,
     /// Whether the sidebar is currently open
     is_sidebar_open: bool,
+    /// Whether Zee sidecar chat panel is open for pair-working
+    is_zee_sidecar_open: bool,
 }
 
 /// Notes panel tabs
@@ -557,6 +585,9 @@ pub enum ActiveView {
     Options,
     Portfolio,
     Research,
+    Etf,
+    Signals,
+    Accounting,
     Commodities,
     Comparison,
     Notes,
@@ -578,6 +609,9 @@ impl ActiveView {
             ActiveView::Options => "options",
             ActiveView::Portfolio => "portfolio",
             ActiveView::Research => "research",
+            ActiveView::Etf => "etf",
+            ActiveView::Signals => "signals",
+            ActiveView::Accounting => "accounting",
             ActiveView::Commodities => "commodities",
             ActiveView::Comparison => "comparison",
             ActiveView::Notes => "notes",
@@ -595,7 +629,10 @@ impl ActiveView {
             ActiveView::MoneyFlow
             | ActiveView::Institutional
             | ActiveView::DarkPool
-            | ActiveView::Comparison => "analysis",
+            | ActiveView::Comparison
+            | ActiveView::Etf
+            | ActiveView::Signals
+            | ActiveView::Accounting => "analysis",
             ActiveView::Options => "trading",
             ActiveView::Portfolio => "portfolio",
             ActiveView::Research => "research",
@@ -642,8 +679,9 @@ impl TimePeriod {
 
 impl ZeeApp {
     pub fn new(cx: &mut Context<Self>) -> Self {
+        let runtime_config = GuiRuntimeConfig::from_env();
         let api_client = Arc::new(ZeeApiClient::new());
-        let agent_core_client = Arc::new(AgentCoreClient::new(None, Persona::Stanley));
+        let agent_core_client = Arc::new(AgentCoreClient::new(None, Persona::Zee));
 
         let mut app = Self {
             active_view: ActiveView::Dashboard,
@@ -667,6 +705,9 @@ impl ZeeApp {
             trades: Vec::new(),
             trades_loading: LoadingState::NotStarted,
             commodities_state: CommoditiesState::default(),
+            etf_state: EtfState::default(),
+            signals_state: SignalsState::default(),
+            accounting_state: AccountingState::default(),
             prediction_markets_state: PredictionMarketsState::default(),
             comparison_state: ComparisonState::new(),
             portfolio_holdings: PortfolioLoadState::NotLoaded,
@@ -695,6 +736,7 @@ impl ZeeApp {
             agent_session_id: None,
             sync_client: None,
             sync_status: ConnectionStatus::Disconnected,
+            runtime_config,
             last_sync_event: None,
             sync_command_tx: None,
             suggestions_state: SuggestionsState::new(),
@@ -705,6 +747,7 @@ impl ZeeApp {
             data_refresh_interval_seconds: 60,
             observability_state: ObservabilityState::new(),
             is_sidebar_open: true,
+            is_zee_sidecar_open: env_flag("ZEE_GUI_SIDECAR"),
         };
 
         // Load notes from disk
@@ -743,7 +786,7 @@ impl ZeeApp {
             let session_id = match session_id {
                 Some(id) => id,
                 None => {
-                    match client.create_session(Some("Stanley GUI".to_string())).await {
+                    match client.create_session(Some("Zee GUI".to_string())).await {
                         Ok(session) => {
                             let id = session.id.clone();
                             // Store session ID
@@ -983,6 +1026,12 @@ impl ZeeApp {
     /// Toggle sidebar visibility
     pub fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
         self.is_sidebar_open = !self.is_sidebar_open;
+        cx.notify();
+    }
+
+    /// Toggle Zee sidecar pair-working panel visibility
+    pub fn toggle_zee_sidecar(&mut self, cx: &mut Context<Self>) {
+        self.is_zee_sidecar_open = !self.is_zee_sidecar_open;
         cx.notify();
     }
 
@@ -1316,8 +1365,10 @@ impl ZeeApp {
                             }
                             Err(e) => {
                                 app.api_connected = LoadingState::Error(format!("{:?}", e));
-                                // Load fallback demo data
-                                app.load_demo_data();
+                                app.theses_loading =
+                                    LoadingState::Error("API unavailable".to_string());
+                                app.trades_loading =
+                                    LoadingState::Error("API unavailable".to_string());
                             }
                         }
                         cx.notify();
@@ -1330,8 +1381,13 @@ impl ZeeApp {
 
     /// Start WebSocket sync connection
     pub fn start_sync_connection(&mut self, cx: &mut Context<Self>) {
-        // Create sync client
-        let mut sync_client = SyncClient::new("ws://127.0.0.1:8765/ws");
+        let runtime_config = self.runtime_config.clone();
+        let mut sync_client = match runtime_config.mode {
+            RuntimeMode::LegacyStanleyWs => {
+                SyncClient::new_legacy(&runtime_config.legacy_sync_ws_url)
+            }
+            RuntimeMode::Zee | RuntimeMode::Dual => SyncClient::new_zee(&runtime_config.zee_http_base),
+        };
 
         // Set initial status to connecting
         self.sync_status = ConnectionStatus::Connecting;
@@ -1372,13 +1428,60 @@ impl ZeeApp {
                         });
                     }
                 }
-                Err(_e) => {
-                    // Update status to error
+                Err(_e) if matches!(runtime_config.mode, RuntimeMode::Dual) => {
+                    let mut fallback_client =
+                        SyncClient::new_legacy(&runtime_config.legacy_sync_ws_url);
+
+                    match fallback_client.connect().await {
+                        Ok(mut event_rx) => {
+                            let command_tx = fallback_client.command_sender();
+
+                            let _ = cx.update(|cx| {
+                                if let Some(entity) = this.upgrade() {
+                                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                                        app.sync_status = ConnectionStatus::Connected;
+                                        app.sync_command_tx = command_tx;
+                                        app.sync_client = Some(fallback_client);
+                                        app.agent_state
+                                            .update_status_from_sync(ConnectionStatus::Connected);
+                                        cx.notify();
+                                    });
+                                }
+                            });
+
+                            while let Some(event) = event_rx.recv().await {
+                                let event_clone = event.clone();
+                                let _ = cx.update(|cx| {
+                                    if let Some(entity) = this.upgrade() {
+                                        entity.update(
+                                            cx,
+                                            |app: &mut Self, cx: &mut Context<Self>| {
+                                                app.handle_sync_event(event_clone, cx);
+                                            },
+                                        );
+                                    }
+                                });
+                            }
+                        }
+                        Err(_) => {
+                            let _ = cx.update(|cx| {
+                                if let Some(entity) = this.upgrade() {
+                                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                                        app.sync_status = ConnectionStatus::Error;
+                                        app.agent_state
+                                            .update_status_from_sync(ConnectionStatus::Error);
+                                        cx.notify();
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+                Err(_) => {
                     let _ = cx.update(|cx| {
                         if let Some(entity) = this.upgrade() {
                             entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
                                 app.sync_status = ConnectionStatus::Error;
-                                // Update agent status widget
                                 app.agent_state
                                     .update_status_from_sync(ConnectionStatus::Error);
                                 cx.notify();
@@ -1905,6 +2008,571 @@ impl ZeeApp {
                 if let Some(entity) = this.upgrade() {
                     entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
                         app.commodities_state.macro_analysis = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+    }
+
+    fn api_signal_to_ui_signal(signal: crate::api::Signal) -> UiSignal {
+        UiSignal {
+            signal_id: signal.signal_id,
+            symbol: signal.symbol,
+            signal_type: signal.signal_type,
+            strength: signal.strength,
+            conviction: signal.conviction,
+            factors: signal.factors,
+            price_at_signal: signal.price_at_signal,
+            target_price: signal.target_price,
+            stop_loss: signal.stop_loss,
+            holding_period_days: None,
+            reasoning: signal.reasoning,
+            timestamp: signal.timestamp,
+        }
+    }
+
+    fn api_backtest_to_ui_backtest(backtest: crate::api::BacktestResult) -> SignalsBacktestResult {
+        SignalsBacktestResult {
+            total_return: backtest.total_return,
+            sharpe_ratio: backtest.sharpe_ratio,
+            max_drawdown: backtest.max_drawdown,
+            win_rate: backtest.win_rate,
+            trades: backtest.trades,
+            profit_factor: backtest.profit_factor,
+            avg_holding_days: backtest.avg_holding_days,
+            equity_curve: backtest
+                .equity_curve
+                .into_iter()
+                .map(|point| crate::signals::EquityCurvePoint {
+                    date: point.date,
+                    value: point.value,
+                })
+                .collect(),
+        }
+    }
+
+    fn api_performance_to_ui_performance(
+        performance: crate::api::PerformanceStats,
+    ) -> SignalsPerformanceStats {
+        SignalsPerformanceStats {
+            total_signals: performance.total_signals,
+            completed_signals: performance.total_signals,
+            win_rate: performance.win_rate,
+            avg_return: performance.avg_return,
+            avg_win: 0.0,
+            avg_loss: 0.0,
+            profit_factor: performance.profit_factor,
+            factor_performance: std::collections::HashMap::new(),
+        }
+    }
+
+    fn comparison_period_days(period: ComparisonTimePeriod) -> u32 {
+        match period {
+            ComparisonTimePeriod::OneDay => 1,
+            ComparisonTimePeriod::OneWeek => 7,
+            ComparisonTimePeriod::OneMonth => 30,
+            ComparisonTimePeriod::ThreeMonths => 90,
+            ComparisonTimePeriod::SixMonths => 180,
+            ComparisonTimePeriod::OneYear => 365,
+            ComparisonTimePeriod::YearToDate => 365,
+        }
+    }
+
+    fn extract_json_f64(value: &serde_json::Value, keys: &[&str]) -> Option<f64> {
+        for key in keys {
+            if let Some(num) = value.get(*key).and_then(|v| v.as_f64()) {
+                return Some(num);
+            }
+        }
+        None
+    }
+
+    fn load_comparison_data(&mut self, cx: &mut Context<Self>) {
+        if self.comparison_state.symbols.is_empty() {
+            if let Some(symbol) = self.selected_symbol.clone() {
+                self.comparison_state.add_symbol(symbol);
+            }
+        }
+
+        let symbols: Vec<String> = self
+            .comparison_state
+            .symbols
+            .iter()
+            .filter(|symbol| symbol.enabled)
+            .map(|symbol| symbol.symbol.clone())
+            .collect();
+
+        if symbols.is_empty() {
+            self.comparison_state.loading = false;
+            cx.notify();
+            return;
+        }
+
+        self.comparison_state.loading = true;
+        cx.notify();
+
+        let period_days = Self::comparison_period_days(self.comparison_state.time_period);
+        let client = self.api_client.clone();
+
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let mut market_map: std::collections::HashMap<String, MarketData> =
+                std::collections::HashMap::new();
+            let mut equity_map: std::collections::HashMap<String, EquityFlowResponse> =
+                std::collections::HashMap::new();
+            let mut history_map: std::collections::HashMap<String, Vec<HistoryPoint>> =
+                std::collections::HashMap::new();
+            let mut research_map: std::collections::HashMap<String, crate::api::ResearchData> =
+                std::collections::HashMap::new();
+            let mut peer_metrics: Vec<crate::comparison::PeerMetrics> = Vec::new();
+            let mut correlation_matrix: std::collections::HashMap<(String, String), f64> =
+                std::collections::HashMap::new();
+
+            for symbol in &symbols {
+                if let Ok(response) = client.get_market_data(symbol).await {
+                    if response.success {
+                        if let Some(data) = response.data {
+                            market_map.insert(symbol.clone(), data);
+                        }
+                    }
+                }
+
+                if let Ok(flow) = client.get_equity_flow(symbol).await {
+                    equity_map.insert(symbol.clone(), flow);
+                }
+
+                if let Ok(response) = client.get_market_history(symbol, period_days, "1d").await {
+                    if response.success {
+                        if let Some(history) = response.data {
+                            let points = history
+                                .data_points
+                                .into_iter()
+                                .map(|point| HistoryPoint {
+                                    date: point.date,
+                                    close: point.close,
+                                })
+                                .collect::<Vec<_>>();
+                            history_map.insert(symbol.clone(), points);
+                        }
+                    }
+                }
+
+                if let Ok(response) = client.get_valuation(symbol).await {
+                    if response.success {
+                        if let Some(payload) = response.data {
+                            let valuation = payload
+                                .get("valuation")
+                                .cloned()
+                                .unwrap_or_else(|| serde_json::Value::Object(Default::default()));
+                            let valuation_data = crate::api::ValuationData {
+                                pe_ratio: Self::extract_json_f64(
+                                    &valuation,
+                                    &["peRatio", "pe_ratio"],
+                                )
+                                .unwrap_or(0.0),
+                                forward_pe: Self::extract_json_f64(
+                                    &valuation,
+                                    &["forwardPe", "forward_pe"],
+                                )
+                                .unwrap_or(0.0),
+                                peg_ratio: Self::extract_json_f64(
+                                    &valuation,
+                                    &["pegRatio", "peg_ratio"],
+                                )
+                                .unwrap_or(0.0),
+                                price_to_sales: Self::extract_json_f64(
+                                    &valuation,
+                                    &["priceToSales", "price_to_sales", "psRatio"],
+                                )
+                                .unwrap_or(0.0),
+                                pb_ratio: Self::extract_json_f64(
+                                    &valuation,
+                                    &["priceToBook", "pbRatio", "pb_ratio"],
+                                )
+                                .unwrap_or(0.0),
+                                ps_ratio: Self::extract_json_f64(
+                                    &valuation,
+                                    &["priceToSales", "psRatio", "ps_ratio"],
+                                )
+                                .unwrap_or(0.0),
+                                ev_ebitda: Self::extract_json_f64(
+                                    &valuation,
+                                    &["evToEbitda", "ev_ebitda"],
+                                )
+                                .unwrap_or(0.0),
+                                dcf_value: Self::extract_json_f64(
+                                    &payload,
+                                    &["fairValue", "dcfValue", "intrinsicValue"],
+                                )
+                                .unwrap_or(0.0),
+                            };
+
+                            research_map.insert(
+                                symbol.clone(),
+                                crate::api::ResearchData {
+                                    symbol: symbol.clone(),
+                                    company_name: symbol.clone(),
+                                    sector: String::new(),
+                                    industry: String::new(),
+                                    analyst_rating: None,
+                                    price_target: None,
+                                    eps_estimate: None,
+                                    revenue_estimate: None,
+                                    valuation: Some(valuation_data.clone()),
+                                },
+                            );
+
+                            let flow = equity_map.get(symbol);
+                            peer_metrics.push(crate::comparison::PeerMetrics {
+                                symbol: symbol.clone(),
+                                pe_ratio: valuation_data.pe_ratio,
+                                forward_pe: valuation_data.forward_pe,
+                                peg_ratio: valuation_data.peg_ratio,
+                                price_to_sales: valuation_data.price_to_sales,
+                                price_to_book: valuation_data.pb_ratio,
+                                ev_to_ebitda: valuation_data.ev_ebitda,
+                                dividend_yield: Self::extract_json_f64(
+                                    &valuation,
+                                    &["dividendYield", "dividend_yield"],
+                                )
+                                .unwrap_or(0.0),
+                                market_cap: Self::extract_json_f64(
+                                    &valuation,
+                                    &["marketCap", "market_cap"],
+                                )
+                                .unwrap_or(0.0),
+                                money_flow_score: flow.map(|f| f.money_flow_score).unwrap_or(0.0),
+                                institutional_sentiment: flow
+                                    .map(|f| f.institutional_sentiment)
+                                    .unwrap_or(0.0),
+                            });
+                        }
+                    }
+                }
+            }
+
+            let correlation_holdings: Vec<crate::api::PortfolioHolding> = symbols
+                .iter()
+                .map(|symbol| crate::api::PortfolioHolding {
+                    symbol: symbol.clone(),
+                    shares: 1.0,
+                    average_cost: None,
+                })
+                .collect();
+
+            if correlation_holdings.len() >= 2 {
+                if let Ok(response) = client
+                    .get_portfolio_correlation(correlation_holdings, period_days.max(30))
+                    .await
+                {
+                    if response.success {
+                        if let Some(data) = response.data {
+                            for (i, left) in data.symbols.iter().enumerate() {
+                                for (j, right) in data.symbols.iter().enumerate() {
+                                    if let Some(row) = data.matrix.get(i) {
+                                        if let Some(value) = row.get(j) {
+                                            correlation_matrix
+                                                .insert((left.clone(), right.clone()), *value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        for item in &mut app.comparison_state.symbols {
+                            if let Some(market) = market_map.get(&item.symbol) {
+                                item.market_data = Some(market.clone());
+                            }
+                            if let Some(flow) = equity_map.get(&item.symbol) {
+                                item.equity_flow = Some(flow.clone());
+                            }
+                            if let Some(history) = history_map.get(&item.symbol) {
+                                item.history = history.clone();
+                            }
+                            if let Some(research) = research_map.get(&item.symbol) {
+                                item.research = Some(research.clone());
+                            }
+                        }
+
+                        app.comparison_state.peer_metrics = peer_metrics;
+                        app.comparison_state.correlation_matrix = correlation_matrix;
+                        app.comparison_state.loading = false;
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// Load ETF analytics data from API
+    pub fn load_etf_data(&mut self, cx: &mut Context<Self>) {
+        let client = self.api_client.clone();
+
+        self.etf_state.flows = LoadState::Loading;
+        let client_clone = client.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone.get_etf_flows().await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.etf_state.flows = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        self.etf_state.sector_rotation = LoadState::Loading;
+        let client_clone = client.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone.get_sector_rotation().await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.etf_state.sector_rotation = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        self.etf_state.smart_beta = LoadState::Loading;
+        let client_clone = client.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone.get_smart_beta_flows().await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.etf_state.smart_beta = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        self.etf_state.thematic = LoadState::Loading;
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client.get_thematic_flows().await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.etf_state.thematic = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// Load signals and backtesting analytics from API
+    pub fn load_signals_data(&mut self, cx: &mut Context<Self>) {
+        let mut symbols = if !self.signals_state.symbol_filter.trim().is_empty() {
+            vec![self.signals_state.symbol_filter.trim().to_uppercase()]
+        } else if let Some(symbol) = self.selected_symbol.clone() {
+            vec![symbol]
+        } else {
+            self.watchlist.clone()
+        };
+        if symbols.is_empty() {
+            symbols.push("AAPL".to_string());
+        }
+
+        self.signals_state.signals = LoadState::Loading;
+        self.signals_state.backtest = LoadState::Loading;
+        self.signals_state.performance = LoadState::Loading;
+
+        let client = self.api_client.clone();
+        let min_conviction = self.signals_state.min_conviction_filter;
+
+        let client_clone = client.clone();
+        let symbols_for_generation = symbols.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone
+                .generate_signals(symbols_for_generation, min_conviction)
+                .await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.signals_state.signals = match result {
+                            Ok(r) if r.success => {
+                                if let Some(data) = r.data {
+                                    LoadState::Loaded(
+                                        data.signals
+                                            .into_iter()
+                                            .map(Self::api_signal_to_ui_signal)
+                                            .collect(),
+                                    )
+                                } else {
+                                    LoadState::Error("No data".into())
+                                }
+                            }
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        let client_clone = client.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone.get_signal_performance().await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.signals_state.performance = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(Self::api_performance_to_ui_performance)
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        let request = crate::api::BacktestRequest {
+            symbols,
+            start_date: None,
+            end_date: None,
+            holding_period_days: 30,
+            initial_capital: 100_000.0,
+        };
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client.backtest_signals(request).await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.signals_state.backtest = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(Self::api_backtest_to_ui_backtest)
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+    }
+
+    /// Load accounting/filings analytics for a symbol
+    pub fn load_accounting_data(&mut self, symbol: String, cx: &mut Context<Self>) {
+        self.accounting_state.symbol = symbol.clone();
+        self.accounting_state.filings = LoadState::Loading;
+        self.accounting_state.quality = LoadState::Loading;
+        self.accounting_state.red_flags = LoadState::Loading;
+
+        let client = self.api_client.clone();
+
+        let client_clone = client.clone();
+        let filings_symbol = symbol.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone.get_filings(&filings_symbol).await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.accounting_state.filings = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        let client_clone = client.clone();
+        let quality_symbol = symbol.clone();
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client_clone.get_earnings_quality(&quality_symbol).await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.accounting_state.quality = match result {
+                            Ok(r) if r.success => r
+                                .data
+                                .map(LoadState::Loaded)
+                                .unwrap_or(LoadState::Error("No data".into())),
+                            Ok(r) => LoadState::Error(r.error.unwrap_or("Unknown error".into())),
+                            Err(e) => LoadState::Error(e.to_string()),
+                        };
+                        cx.notify();
+                    });
+                }
+            });
+        })
+        .detach();
+
+        cx.spawn(async move |this: WeakEntity<Self>, cx: &mut AsyncApp| {
+            let result = client.get_red_flags(&symbol).await;
+            let _ = cx.update(|cx| {
+                if let Some(entity) = this.upgrade() {
+                    entity.update(cx, |app: &mut Self, cx: &mut Context<Self>| {
+                        app.accounting_state.red_flags = match result {
                             Ok(r) if r.success => r
                                 .data
                                 .map(LoadState::Loaded)
@@ -2600,8 +3268,8 @@ impl ZeeApp {
                                 app.portfolio_holdings =
                                     PortfolioLoadState::Error(r.error.unwrap_or("Error".into()));
                             }
-                            Err(_) => {
-                                app.load_portfolio_mock_data();
+                            Err(e) => {
+                                app.portfolio_holdings = PortfolioLoadState::Error(e.to_string());
                             }
                         };
                         cx.notify();
@@ -2641,17 +3309,8 @@ impl ZeeApp {
                                 app.portfolio_risk =
                                     PortfolioLoadState::Error(r.error.unwrap_or("Error".into()));
                             }
-                            Err(_) => {
-                                // Use mock risk metrics on error
-                                app.portfolio_risk = PortfolioLoadState::Loaded(RiskMetrics {
-                                    var_95: -0.0234,
-                                    var_99: -0.0412,
-                                    cvar_95: -0.0356,
-                                    max_drawdown: -0.1245,
-                                    sharpe_ratio: 1.85,
-                                    sortino_ratio: 2.42,
-                                    beta: 1.12,
-                                });
+                            Err(e) => {
+                                app.portfolio_risk = PortfolioLoadState::Error(e.to_string());
                             }
                         };
                         cx.notify();
@@ -2694,31 +3353,8 @@ impl ZeeApp {
                                         r.error.unwrap_or("Error".into()),
                                     );
                                 }
-                                Err(_) => {
-                                    // Use mock sectors on error
-                                    let tv = app.portfolio_total_value.max(100000.0);
-                                    app.portfolio_sectors = PortfolioLoadState::Loaded(vec![
-                                        SectorAllocation {
-                                            sector: "Technology".to_string(),
-                                            weight: 65.4,
-                                            value: tv * 0.654,
-                                        },
-                                        SectorAllocation {
-                                            sector: "Consumer".to_string(),
-                                            weight: 18.2,
-                                            value: tv * 0.182,
-                                        },
-                                        SectorAllocation {
-                                            sector: "Automotive".to_string(),
-                                            weight: 8.8,
-                                            value: tv * 0.088,
-                                        },
-                                        SectorAllocation {
-                                            sector: "Other".to_string(),
-                                            weight: 7.6,
-                                            value: tv * 0.076,
-                                        },
-                                    ]);
+                                Err(e) => {
+                                    app.portfolio_sectors = PortfolioLoadState::Error(e.to_string());
                                 }
                             };
                             cx.notify();
@@ -2728,142 +3364,6 @@ impl ZeeApp {
             });
         })
         .detach();
-    }
-
-    /// Load mock portfolio data when API is unavailable
-    fn load_portfolio_mock_data(&mut self) {
-        let mock = vec![
-            ("AAPL", 100.0, 150.0, 178.50),
-            ("MSFT", 50.0, 280.0, 378.90),
-            ("GOOGL", 25.0, 120.0, 175.30),
-            ("NVDA", 30.0, 450.0, 875.20),
-            ("AMZN", 40.0, 130.0, 186.40),
-            ("META", 35.0, 290.0, 505.75),
-            ("TSLA", 20.0, 200.0, 248.60),
-        ];
-        let total_value: f64 = mock.iter().map(|(_, s, _, p)| s * p).sum();
-        self.portfolio_total_value = total_value;
-        let holdings: Vec<Holding> = mock
-            .into_iter()
-            .map(|(sym, shares, avg, curr)| {
-                Holding::new(sym.to_string(), shares, avg, curr, total_value)
-            })
-            .collect();
-        self.portfolio_holdings = PortfolioLoadState::Loaded(holdings);
-        self.portfolio_risk = PortfolioLoadState::Loaded(RiskMetrics {
-            var_95: -0.0234,
-            var_99: -0.0412,
-            cvar_95: -0.0356,
-            max_drawdown: -0.1245,
-            sharpe_ratio: 1.85,
-            sortino_ratio: 2.42,
-            beta: 1.12,
-        });
-        self.portfolio_sectors = PortfolioLoadState::Loaded(vec![
-            SectorAllocation {
-                sector: "Technology".to_string(),
-                weight: 65.4,
-                value: total_value * 0.654,
-            },
-            SectorAllocation {
-                sector: "Consumer".to_string(),
-                weight: 18.2,
-                value: total_value * 0.182,
-            },
-            SectorAllocation {
-                sector: "Automotive".to_string(),
-                weight: 8.8,
-                value: total_value * 0.088,
-            },
-            SectorAllocation {
-                sector: "Other".to_string(),
-                weight: 7.6,
-                value: total_value * 0.076,
-            },
-        ]);
-    }
-
-    /// Load demo/fallback data when API is unavailable
-    fn load_demo_data(&mut self) {
-        self.theses = vec![
-            ThesisNote {
-                name: "AAPL Investment Thesis".to_string(),
-                symbol: "AAPL".to_string(),
-                status: ThesisStatus::Active,
-                conviction: "High".to_string(),
-                entry_price: Some(175.0),
-                target_price: Some(220.0),
-                modified: "2024-12-20".to_string(),
-            },
-            ThesisNote {
-                name: "NVDA Investment Thesis".to_string(),
-                symbol: "NVDA".to_string(),
-                status: ThesisStatus::Active,
-                conviction: "Very High".to_string(),
-                entry_price: Some(450.0),
-                target_price: Some(600.0),
-                modified: "2024-12-18".to_string(),
-            },
-            ThesisNote {
-                name: "GOOGL Investment Thesis".to_string(),
-                symbol: "GOOGL".to_string(),
-                status: ThesisStatus::Research,
-                conviction: "Medium".to_string(),
-                entry_price: None,
-                target_price: Some(180.0),
-                modified: "2024-12-15".to_string(),
-            },
-            ThesisNote {
-                name: "META Investment Thesis".to_string(),
-                symbol: "META".to_string(),
-                status: ThesisStatus::Watchlist,
-                conviction: "Medium".to_string(),
-                entry_price: None,
-                target_price: Some(650.0),
-                modified: "2024-12-10".to_string(),
-            },
-        ];
-        self.theses_loading = LoadingState::Loaded(());
-
-        self.trades = vec![
-            TradeNote {
-                name: "AAPL Long - 2024-12-15".to_string(),
-                symbol: "AAPL".to_string(),
-                direction: TradeDirection::Long,
-                status: TradeStatus::Open,
-                entry_price: 175.50,
-                exit_price: None,
-                shares: 100.0,
-                pnl: None,
-                pnl_percent: None,
-                entry_date: "2024-12-15".to_string(),
-            },
-            TradeNote {
-                name: "NVDA Long - 2024-11-20".to_string(),
-                symbol: "NVDA".to_string(),
-                direction: TradeDirection::Long,
-                status: TradeStatus::Closed,
-                entry_price: 450.0,
-                exit_price: Some(520.0),
-                shares: 50.0,
-                pnl: Some(3500.0),
-                pnl_percent: Some(15.56),
-                entry_date: "2024-11-20".to_string(),
-            },
-            TradeNote {
-                name: "TSLA Short - 2024-12-01".to_string(),
-                symbol: "TSLA".to_string(),
-                direction: TradeDirection::Short,
-                status: TradeStatus::Closed,
-                entry_price: 380.0,
-                exit_price: Some(350.0),
-                shares: 25.0,
-                pnl: Some(750.0),
-                pnl_percent: Some(7.89),
-                entry_date: "2024-12-01".to_string(),
-            },
-        ];
-        self.trades_loading = LoadingState::Loaded(());
     }
 
     /// Refresh all data from API
@@ -2920,6 +3420,35 @@ impl ZeeApp {
                 self.load_institutional_summary(symbol, cx);
             }
         }
+        if view == ActiveView::Comparison {
+            self.load_comparison_data(cx);
+        }
+        if view == ActiveView::Etf
+            && (matches!(self.etf_state.flows, LoadState::NotLoaded)
+                || matches!(self.etf_state.sector_rotation, LoadState::NotLoaded)
+                || matches!(self.etf_state.smart_beta, LoadState::NotLoaded)
+                || matches!(self.etf_state.thematic, LoadState::NotLoaded))
+        {
+            self.load_etf_data(cx);
+        }
+        if view == ActiveView::Signals
+            && (matches!(self.signals_state.signals, LoadState::NotLoaded)
+                || matches!(self.signals_state.backtest, LoadState::NotLoaded)
+                || matches!(self.signals_state.performance, LoadState::NotLoaded))
+        {
+            self.load_signals_data(cx);
+        }
+        if view == ActiveView::Accounting {
+            if let Some(symbol) = self.selected_symbol.clone() {
+                let symbol_changed = self.accounting_state.symbol != symbol;
+                let needs_load = matches!(self.accounting_state.filings, LoadState::NotLoaded)
+                    || matches!(self.accounting_state.quality, LoadState::NotLoaded)
+                    || matches!(self.accounting_state.red_flags, LoadState::NotLoaded);
+                if symbol_changed || needs_load {
+                    self.load_accounting_data(symbol, cx);
+                }
+            }
+        }
         // Refresh notes list when switching to Notes view
         if view == ActiveView::Notes {
             self.load_notes_from_disk();
@@ -2957,7 +3486,17 @@ impl ZeeApp {
         self.load_market_data(symbol.clone(), cx);
         self.load_equity_flow(symbol.clone(), cx);
         self.load_institutional(symbol.clone(), cx);
-        self.load_institutional_summary(symbol, cx);
+        self.load_institutional_summary(symbol.clone(), cx);
+        self.accounting_state.symbol = symbol.clone();
+        if self.active_view == ActiveView::Accounting {
+            self.load_accounting_data(symbol.clone(), cx);
+        }
+        if self.active_view == ActiveView::Signals {
+            self.load_signals_data(cx);
+        }
+        if self.active_view == ActiveView::Comparison {
+            self.load_comparison_data(cx);
+        }
 
         cx.notify();
     }
@@ -3420,6 +3959,9 @@ impl ZeeApp {
             .child(self.nav_item("Options Flow", ActiveView::Options, cx))
             .child(self.nav_item("Portfolio", ActiveView::Portfolio, cx))
             .child(self.nav_item("Research", ActiveView::Research, cx))
+            .child(self.nav_item("ETF Analytics", ActiveView::Etf, cx))
+            .child(self.nav_item("Signals", ActiveView::Signals, cx))
+            .child(self.nav_item("Accounting", ActiveView::Accounting, cx))
             .child(self.nav_item("Commodities", ActiveView::Commodities, cx))
             .child(self.nav_item("Comparison", ActiveView::Comparison, cx))
             .child(self.nav_item("Notes", ActiveView::Notes, cx))
@@ -3611,7 +4153,7 @@ impl ZeeApp {
             .flex_col()
             .child(self.render_header(cx))
             .child(self.render_quick_actions_bar(cx))
-            .child(self.render_content_area(cx))
+            .child(self.render_workspace_content(cx))
     }
 
     fn render_quick_actions_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -3749,10 +4291,8 @@ impl ZeeApp {
                 (price_str, is_pos, Some(price))
             }
             LoadingState::Loading => ("...".to_string(), true, None),
-            LoadingState::Error(_) | LoadingState::NotStarted => {
-                // Demo data fallback
-                ("+$4.52 (2.41%)".to_string(), true, None)
-            }
+            LoadingState::Error(_) => ("Data unavailable".to_string(), false, None),
+            LoadingState::NotStarted => ("Not loaded".to_string(), false, None),
         };
 
         let (badge_bg, badge_border, badge_text) = if is_positive {
@@ -3812,6 +4352,47 @@ impl ZeeApp {
                                     "sidebar-toggle-tooltip",
                                 ),
                             ),
+                    )
+                    .child(
+                        div()
+                            .id("zee-sidecar-toggle-btn")
+                            .group("zee-sidecar-toggle-tooltip")
+                            .relative()
+                            .h(px(32.0))
+                            .px(px(10.0))
+                            .rounded(px(6.0))
+                            .bg(if self.is_zee_sidecar_open {
+                                theme.accent_subtle
+                            } else {
+                                theme.hover_bg
+                            })
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .cursor_pointer()
+                            .hover(|s| s.bg(theme.hover_bg))
+                            .on_click(cx.listener(|this, _event, _window, cx| {
+                                this.toggle_zee_sidecar(cx);
+                            }))
+                            .child(
+                                div()
+                                    .text_size(px(11.0))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(if self.is_zee_sidecar_open {
+                                        theme.accent
+                                    } else {
+                                        theme.text_secondary
+                                    })
+                                    .child("ZEE"),
+                            )
+                            .child(self.render_tooltip(
+                                if self.is_zee_sidecar_open {
+                                    "Hide Zee Sidecar"
+                                } else {
+                                    "Show Zee Sidecar"
+                                },
+                                "zee-sidecar-toggle-tooltip",
+                            )),
                     )
                     .child(
                         div()
@@ -3905,6 +4486,73 @@ impl ZeeApp {
             .child(period.label())
     }
 
+    fn should_render_zee_sidecar(&self) -> bool {
+        self.is_zee_sidecar_open && self.active_view != ActiveView::Agent
+    }
+
+    fn render_workspace_content(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = &self.theme;
+
+        div()
+            .flex_grow()
+            .min_h_0()
+            .flex()
+            .bg(theme.background)
+            .child(div().flex_grow().min_w_0().child(self.render_content_area(cx)))
+            .when(self.should_render_zee_sidecar(), |el| {
+                el.child(self.render_zee_sidecar(cx))
+            })
+    }
+
+    fn render_zee_sidecar(&self, cx: &mut Context<Self>) -> Div {
+        let theme = &self.theme;
+
+        div()
+            .w(px(420.0))
+            .min_w(px(320.0))
+            .h_full()
+            .flex()
+            .flex_col()
+            .bg(theme.card_bg)
+            .border_l_1()
+            .border_color(theme.border_subtle)
+            .child(
+                div()
+                    .h(px(44.0))
+                    .px(px(14.0))
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .border_b_1()
+                    .border_color(theme.border_subtle)
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(theme.text_secondary)
+                            .child("Zee Sidecar"),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(10.0))
+                            .text_color(theme.text_dimmed)
+                            .child("Pair workspace"),
+                    ),
+            )
+            .child(
+                div().flex_grow().min_h_0().child(render_agent_panel(
+                    &self.theme,
+                    &self.agent_state,
+                    &self.agent_input,
+                    cx.listener(|this, _event, _window, cx| {
+                        this.agent_input.clear();
+                        cx.notify();
+                    }),
+                    cx,
+                )),
+            )
+    }
+
     fn render_content_area(&self, cx: &mut Context<Self>) -> impl IntoElement {
         match self.active_view {
             ActiveView::Market => self.render_market_view(cx).into_any_element(),
@@ -3917,6 +4565,9 @@ impl ZeeApp {
             ActiveView::Commodities => self.render_commodities_view(cx).into_any_element(),
             ActiveView::Portfolio => self.render_portfolio_view().into_any_element(),
             ActiveView::Comparison => self.render_comparison_view(cx).into_any_element(),
+            ActiveView::Etf => self.render_etf_view(cx).into_any_element(),
+            ActiveView::Signals => self.render_signals_view(cx).into_any_element(),
+            ActiveView::Accounting => self.render_accounting_view(cx).into_any_element(),
             ActiveView::Agent => self.render_agent_view(cx).into_any_element(),
             ActiveView::Observability => {
                 render_observability(&self.observability_state, &self.theme).into_any_element()
@@ -5940,6 +6591,7 @@ impl ZeeApp {
                                         })
                                         .on_click(cx.listener(move |this, _event, _window, cx| {
                                             this.comparison_state.time_period = period_clone;
+                                            this.load_comparison_data(cx);
                                             cx.notify();
                                         }))
                                         .child(period.label().to_string())
@@ -5976,6 +6628,7 @@ impl ZeeApp {
                                 .hover(|s| s.bg(theme.hover_bg))
                                 .on_click(cx.listener(move |this, _event, _window, cx| {
                                     this.comparison_state.toggle_symbol(&symbol_for_toggle);
+                                    this.load_comparison_data(cx);
                                     cx.notify();
                                 }))
                                 // Color indicator
@@ -6012,6 +6665,7 @@ impl ZeeApp {
                                         })
                                         .on_click(cx.listener(move |this, _event, _window, cx| {
                                             this.comparison_state.remove_symbol(&symbol_for_remove);
+                                            this.load_comparison_data(cx);
                                             cx.notify();
                                         }))
                                         .child("x"),
@@ -6035,57 +6689,73 @@ impl ZeeApp {
                                 // Add selected symbol from watchlist to comparison
                                 if let Some(symbol) = this.selected_symbol.clone() {
                                     this.comparison_state.add_symbol(symbol);
+                                    this.load_comparison_data(cx);
                                     cx.notify();
                                 }
                             }))
                             .child("+ Add Current Symbol"),
                     )
                     // Content based on mode
-                    .child(match state.mode {
-                        ComparisonMode::SideBySide => {
-                            render_side_by_side_comparison(theme, &state.symbols).into_any_element()
-                        }
-                        ComparisonMode::Overlay => {
-                            render_overlay_chart(theme, &state.symbols, false).into_any_element()
-                        }
-                        ComparisonMode::RelativePerformance => render_relative_performance(
-                            theme,
-                            &state.symbols,
-                            state.base_symbol.as_deref(),
-                        )
-                        .into_any_element(),
-                        ComparisonMode::Correlation => render_correlation_matrix(
-                            theme,
-                            &state.symbols,
-                            &state.correlation_matrix,
-                        )
-                        .into_any_element(),
-                        ComparisonMode::PeerGroup => render_peer_group_comparison(
-                            theme,
-                            &state.peer_metrics,
-                            state.base_symbol.as_deref(),
-                        )
-                        .into_any_element(),
-                        ComparisonMode::SectorStrength => {
-                            let sectors: Vec<_> = state
-                                .symbols
-                                .iter()
-                                .filter(|s| s.enabled)
-                                .map(|s| {
-                                    let strength = s
-                                        .equity_flow
-                                        .as_ref()
-                                        .map(|e| e.money_flow_score)
-                                        .unwrap_or(0.0);
-                                    let momentum = s
-                                        .equity_flow
-                                        .as_ref()
-                                        .map(|e| e.smart_money_activity)
-                                        .unwrap_or(0.0);
-                                    (s.symbol.clone(), strength, momentum)
-                                })
-                                .collect();
-                            render_sector_strength(theme, &sectors).into_any_element()
+                    .child(if state.loading {
+                        div()
+                            .py(px(56.0))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(
+                                div()
+                                    .text_size(px(13.0))
+                                    .text_color(theme.text_muted)
+                                    .child("Loading comparison data..."),
+                            )
+                            .into_any_element()
+                    } else {
+                        match state.mode {
+                            ComparisonMode::SideBySide => {
+                                render_side_by_side_comparison(theme, &state.symbols).into_any_element()
+                            }
+                            ComparisonMode::Overlay => {
+                                render_overlay_chart(theme, &state.symbols, false).into_any_element()
+                            }
+                            ComparisonMode::RelativePerformance => render_relative_performance(
+                                theme,
+                                &state.symbols,
+                                state.base_symbol.as_deref(),
+                            )
+                            .into_any_element(),
+                            ComparisonMode::Correlation => render_correlation_matrix(
+                                theme,
+                                &state.symbols,
+                                &state.correlation_matrix,
+                            )
+                            .into_any_element(),
+                            ComparisonMode::PeerGroup => render_peer_group_comparison(
+                                theme,
+                                &state.peer_metrics,
+                                state.base_symbol.as_deref(),
+                            )
+                            .into_any_element(),
+                            ComparisonMode::SectorStrength => {
+                                let sectors: Vec<_> = state
+                                    .symbols
+                                    .iter()
+                                    .filter(|s| s.enabled)
+                                    .map(|s| {
+                                        let strength = s
+                                            .equity_flow
+                                            .as_ref()
+                                            .map(|e| e.money_flow_score)
+                                            .unwrap_or(0.0);
+                                        let momentum = s
+                                            .equity_flow
+                                            .as_ref()
+                                            .map(|e| e.smart_money_activity)
+                                            .unwrap_or(0.0);
+                                        (s.symbol.clone(), strength, momentum)
+                                    })
+                                    .collect();
+                                render_sector_strength(theme, &sectors).into_any_element()
+                            }
                         }
                     }),
             )
@@ -6217,6 +6887,18 @@ impl ZeeApp {
         render_commodities(&self.theme, &self.commodities_state, cx)
     }
 
+    fn render_etf_view(&self, cx: &mut Context<Self>) -> Div {
+        render_etf(&self.theme, &self.etf_state, cx)
+    }
+
+    fn render_signals_view(&self, cx: &mut Context<Self>) -> Div {
+        render_signals(&self.theme, &self.signals_state, cx)
+    }
+
+    fn render_accounting_view(&self, cx: &mut Context<Self>) -> Div {
+        render_accounting(&self.theme, &self.accounting_state, cx)
+    }
+
     /// Render the portfolio view using data from portfolio state
     fn render_portfolio_view(&self) -> Div {
         render_portfolio_content(
@@ -6299,14 +6981,14 @@ impl ZeeApp {
                 "",
             ),
             LoadingState::Error(_) | LoadingState::NotStarted => (
-                "0.72".to_string(),
-                "Demo",
-                "75.4%".to_string(),
-                "+2.1% QoQ",
-                "34.2%".to_string(),
-                "Above avg",
-                "3.8%".to_string(),
-                "-0.4%",
+                "N/A".to_string(),
+                "Unavailable",
+                "N/A".to_string(),
+                "Unavailable",
+                "N/A".to_string(),
+                "Unavailable",
+                "N/A".to_string(),
+                "Unavailable",
             ),
         };
 
@@ -6518,18 +7200,17 @@ impl ZeeApp {
                         .text_color(theme.negative)
                         .child(format!("Error: {}", msg)),
                 ),
-            LoadingState::NotStarted => {
-                // Show demo data when API not started
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(14.0))
-                    .child(self.sector_row("XLK (Technology)", 0.82, true))
-                    .child(self.sector_row("XLF (Financials)", 0.45, true))
-                    .child(self.sector_row("XLE (Energy)", -0.23, false))
-                    .child(self.sector_row("XLV (Healthcare)", 0.31, true))
-                    .child(self.sector_row("XLI (Industrials)", 0.12, true))
-            }
+            LoadingState::NotStarted => div()
+                .flex()
+                .items_center()
+                .justify_center()
+                .h(px(100.0))
+                .child(
+                    div()
+                        .text_size(px(13.0))
+                        .text_color(theme.text_muted)
+                        .child("Sector flow not loaded yet"),
+                ),
         }
     }
 
@@ -6647,18 +7328,17 @@ impl ZeeApp {
                         .text_color(theme.negative)
                         .child(format!("Error: {}", msg)),
                 ),
-            LoadingState::NotStarted => {
-                // Show demo data when not started
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(0.0))
-                    .child(self.holder_row("Vanguard Group", "8.2%", "+0.3%", true))
-                    .child(self.holder_row("BlackRock", "6.8%", "+0.1%", true))
-                    .child(self.holder_row("State Street", "4.1%", "-0.2%", false))
-                    .child(self.holder_row("Fidelity", "2.9%", "+0.4%", true))
-                    .child(self.holder_row("T. Rowe Price", "1.8%", "+0.1%", true))
-            }
+            LoadingState::NotStarted => div()
+                .flex()
+                .items_center()
+                .justify_center()
+                .py(px(32.0))
+                .child(
+                    div()
+                        .text_size(px(13.0))
+                        .text_color(theme.text_muted)
+                        .child("Institutional holders not loaded yet"),
+                ),
         }
     }
 

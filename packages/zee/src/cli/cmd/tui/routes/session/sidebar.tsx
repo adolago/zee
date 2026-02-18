@@ -132,7 +132,6 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
   return (
     <Show when={session()}>
       <box
-        backgroundColor={theme.backgroundPanel}
         width={40}
         height="100%"
         paddingTop={1}

@@ -49,19 +49,6 @@ impl Default for AccountingState {
     }
 }
 
-impl AccountingState {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_symbol(symbol: String) -> Self {
-        Self {
-            symbol,
-            ..Default::default()
-        }
-    }
-}
-
 // ============================================================================
 // ACCOUNTING VIEW RENDERING
 // ============================================================================
@@ -877,7 +864,7 @@ fn render_red_flags_view(theme: &Theme, state: &AccountingState) -> Div {
                 .child(card(
                     theme,
                     "Detected Red Flags",
-                    render_red_flags_list(theme, &flags.red_flags),
+                    render_red_flags_list(theme, &flags.flags),
                 )),
             _ => loading_indicator(theme),
         })
@@ -892,21 +879,21 @@ fn render_red_flags_header(theme: &Theme, flags: &RedFlagsResponse) -> impl Into
         .child(flag_count_card(
             theme,
             "Total Flags",
-            flags.total_flags,
+            flags.flags.len() as i32,
             theme.text,
         ))
         // Critical count
         .child(flag_count_card(
             theme,
             "Critical",
-            flags.critical_count,
+            flags.flags.iter().filter(|f| f.severity.eq_ignore_ascii_case("critical")).count() as i32,
             theme.negative,
         ))
         // Warning count
         .child(flag_count_card(
             theme,
             "Warnings",
-            flags.warning_count,
+            flags.flags.iter().filter(|f| f.severity.eq_ignore_ascii_case("warning")).count() as i32,
             theme.warning,
         ))
 }
@@ -944,7 +931,7 @@ fn render_red_flags_summary(theme: &Theme, state: &AccountingState) -> Div {
         LoadState::Loading => loading_indicator(theme),
         LoadState::Error(e) => error_message(theme, e),
         LoadState::Loaded(flags) => {
-            if flags.red_flags.is_empty() {
+            if flags.flags.is_empty() {
                 div()
                     .py(px(20.0))
                     .flex()
@@ -976,7 +963,7 @@ fn render_red_flags_summary(theme: &Theme, state: &AccountingState) -> Div {
                     )
             } else {
                 let limited_flags: Vec<RedFlag> =
-                    flags.red_flags.iter().take(5).cloned().collect();
+                    flags.flags.iter().take(5).cloned().collect();
                 div()
                     .flex()
                     .flex_col()
@@ -1078,14 +1065,14 @@ fn render_red_flag_item(theme: &Theme, flag: &RedFlag) -> impl IntoElement {
                                     div()
                                         .text_size(px(11.0))
                                         .text_color(theme.text_dimmed)
-                                        .child(format!("{}:", flag.metric)),
+                                        .child(format!("{}:", flag.metric.clone().unwrap_or_else(|| "Metric".to_string()))),
                                 )
                                 .child(
                                     div()
                                         .text_size(px(12.0))
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .text_color(severity_color)
-                                        .child(format!("{:.2}", flag.value)),
+                                        .child(flag.value.map(|v| format!("{:.2}", v)).unwrap_or_else(|| "--".to_string())),
                                 ),
                         )
                         .child(
@@ -1103,7 +1090,7 @@ fn render_red_flag_item(theme: &Theme, flag: &RedFlag) -> impl IntoElement {
                                     div()
                                         .text_size(px(12.0))
                                         .text_color(theme.text_secondary)
-                                        .child(format!("{:.2}", flag.threshold)),
+                                        .child(format!("{:.2}", flag.value.unwrap_or(0.0))),
                                 ),
                         ),
                 ),
@@ -1137,7 +1124,7 @@ fn m_score_color(theme: &Theme, score: f64) -> Hsla {
 }
 
 /// F-Score interpretation (0-9)
-fn f_score_interpretation(score: u8) -> &'static str {
+fn f_score_interpretation(score: i32) -> &'static str {
     match score {
         8..=9 => "STRONG",
         5..=7 => "MODERATE",
@@ -1147,7 +1134,7 @@ fn f_score_interpretation(score: u8) -> &'static str {
 }
 
 /// F-Score color
-fn f_score_color(theme: &Theme, score: u8) -> Hsla {
+fn f_score_color(theme: &Theme, score: i32) -> Hsla {
     match score {
         8..=9 => theme.positive,
         5..=7 => theme.accent,

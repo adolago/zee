@@ -13,7 +13,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -130,15 +129,11 @@ async def get_market_data(
             logger.warning(
                 "Failed to fetch stock data for %s: %s", sanitize_log_input(symbol), e
             )
-            # Return mock data as fallback
-            stock_data = pd.DataFrame(
-                {
-                    "date": pd.date_range(start=start_date, end=end_date, freq="D"),
-                    "close": [150.0 + np.random.uniform(-5, 5) for _ in range(6)],
-                    "volume": [
-                        np.random.randint(10000000, 100000000) for _ in range(6)
-                    ],
-                }
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"Unable to fetch market data for {symbol}: {sanitize_error(e)}"
+                ),
             )
 
         if stock_data.empty:
@@ -211,17 +206,9 @@ async def get_quote(
             logger.warning(
                 "Failed to fetch quote for %s: %s", sanitize_log_input(symbol), e
             )
-            # Generate mock quote data
-            last_price = 150.0 + np.random.uniform(-10, 10)
-            stock_data = pd.DataFrame(
-                {
-                    "date": [end_date],
-                    "open": [last_price - np.random.uniform(0, 2)],
-                    "high": [last_price + np.random.uniform(0, 3)],
-                    "low": [last_price - np.random.uniform(0, 3)],
-                    "close": [last_price],
-                    "volume": [np.random.randint(10000000, 100000000)],
-                }
+            raise HTTPException(
+                status_code=502,
+                detail=f"Unable to fetch quote for {symbol}: {sanitize_error(e)}",
             )
 
         if stock_data.empty:
@@ -312,22 +299,11 @@ async def get_history(
             logger.warning(
                 "Failed to fetch history for %s: %s", sanitize_log_input(symbol), e
             )
-            # Generate mock historical data
-            dates = pd.date_range(start=start_date, end=end_date, freq="D")
-            base_price = 150.0
-            prices = [base_price]
-            for i in range(1, len(dates)):
-                prices.append(prices[-1] * (1 + np.random.uniform(-0.03, 0.03)))
-
-            stock_data = pd.DataFrame(
-                {
-                    "date": dates,
-                    "open": [p * (1 - np.random.uniform(0, 0.01)) for p in prices],
-                    "high": [p * (1 + np.random.uniform(0, 0.02)) for p in prices],
-                    "low": [p * (1 - np.random.uniform(0, 0.02)) for p in prices],
-                    "close": prices,
-                    "volume": [np.random.randint(10000000, 100000000) for _ in prices],
-                }
+            raise HTTPException(
+                status_code=502,
+                detail=(
+                    f"Unable to fetch historical data for {symbol}: {sanitize_error(e)}"
+                ),
             )
 
         if stock_data.empty:

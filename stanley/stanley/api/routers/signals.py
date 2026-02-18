@@ -8,6 +8,7 @@ and fundamental research.
 
 import importlib.util
 import logging
+import math
 import os
 from datetime import datetime
 from enum import Enum
@@ -15,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from stanley.api.routers.base import get_app_state
 
@@ -170,19 +171,34 @@ class SignalRequest(BaseModel):
 class BacktestRequest(BaseModel):
     """Request for signal backtesting."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     symbols: List[str] = Field(..., description="Symbols to backtest")
     start_date: Optional[str] = Field(
-        default=None, description="Start date (YYYY-MM-DD)"
+        default=None, alias="startDate", description="Start date (YYYY-MM-DD)"
     )
-    end_date: Optional[str] = Field(default=None, description="End date (YYYY-MM-DD)")
+    end_date: Optional[str] = Field(
+        default=None, alias="endDate", description="End date (YYYY-MM-DD)"
+    )
     holding_period_days: int = Field(
-        default=30, ge=1, le=365, description="Holding period in days"
+        default=30,
+        alias="holdingPeriodDays",
+        ge=1,
+        le=365,
+        description="Holding period in days",
     )
     initial_capital: float = Field(
-        default=100000, ge=1000, description="Initial capital for backtest"
+        default=100000,
+        alias="initialCapital",
+        ge=1000,
+        description="Initial capital for backtest",
     )
     position_size_pct: float = Field(
-        default=0.10, ge=0.01, le=1.0, description="Position size as percentage"
+        default=0.10,
+        alias="positionSizePct",
+        ge=0.01,
+        le=1.0,
+        description="Position size as percentage",
     )
 
 
@@ -230,6 +246,7 @@ class BacktestResult(BaseModel):
     trades: int
     profitFactor: Optional[float] = None
     avgHoldingDays: Optional[float] = None
+    equityCurve: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class PerformanceStats(BaseModel):
@@ -276,6 +293,80 @@ def create_response(
         error=error,
         timestamp=get_timestamp(),
     )
+
+
+def _safe_number(value: Any, default: float = 0.0) -> float:
+    """Convert value to finite float."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if math.isfinite(number) else default
+
+
+def _safe_optional_number(value: Any) -> Optional[float]:
+    """Convert value to finite optional float."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _serialize_equity_curve(result: Any) -> List[Dict[str, Any]]:
+    """Serialize equity curve time series for API clients."""
+    series = getattr(result, "equity_curve", None)
+    if series is None or len(series) == 0:
+        return []
+
+    points: List[Dict[str, Any]] = []
+    for index, value in series.items():
+        if hasattr(index, "isoformat"):
+            date = index.isoformat()
+        else:
+            date = str(index)
+        points.append({"date": date, "value": round(_safe_number(value, 0.0), 2)})
+    return points
+
+
+def _flatten_backtest_result(result: Any) -> Dict[str, Any]:
+    """Flatten backtest result into a stable API shape for GUI clients."""
+    payload = result.to_dict() if hasattr(result, "to_dict") else {}
+
+    if "performance" in payload and "risk" in payload and "tradeStats" in payload:
+        performance = payload.get("performance", {})
+        risk = payload.get("risk", {})
+        trade_stats = payload.get("tradeStats", {})
+
+        return {
+            "totalReturn": round(
+                _safe_number(performance.get("totalReturnPercent"), 0.0) * 100.0, 4
+            ),
+            "sharpeRatio": round(_safe_number(risk.get("sharpeRatio"), 0.0), 4),
+            "maxDrawdown": round(
+                _safe_number(risk.get("maxDrawdown"), 0.0) * 100.0, 4
+            ),
+            "winRate": round(_safe_number(trade_stats.get("winRate"), 0.0), 4),
+            "trades": int(
+                _safe_number(
+                    trade_stats.get("totalTrades", len(payload.get("trades", []))), 0.0
+                )
+            ),
+            "profitFactor": _safe_optional_number(trade_stats.get("profitFactor")),
+            "avgHoldingDays": _safe_optional_number(trade_stats.get("avgHoldingDays")),
+            "equityCurve": _serialize_equity_curve(result),
+        }
+
+    return {
+        "totalReturn": _safe_number(payload.get("totalReturn"), 0.0),
+        "sharpeRatio": _safe_number(payload.get("sharpeRatio"), 0.0),
+        "maxDrawdown": _safe_number(payload.get("maxDrawdown"), 0.0),
+        "winRate": _safe_number(payload.get("winRate"), 0.0),
+        "trades": int(_safe_number(payload.get("trades"), 0.0)),
+        "profitFactor": _safe_optional_number(payload.get("profitFactor")),
+        "avgHoldingDays": _safe_optional_number(payload.get("avgHoldingDays")),
+        "equityCurve": payload.get("equityCurve", []),
+    }
 
 
 # =============================================================================
@@ -500,7 +591,7 @@ async def backtest_signals(
             position_size_pct=request.position_size_pct,
         )
 
-        return create_response(data=result.to_dict())
+        return create_response(data=_flatten_backtest_result(result))
 
     except HTTPException:
         raise
@@ -548,7 +639,7 @@ async def quick_backtest(
                     "start": start_date.isoformat(),
                     "end": end_date.isoformat(),
                 },
-                "result": result.to_dict(),
+                "result": _flatten_backtest_result(result),
             }
         )
 

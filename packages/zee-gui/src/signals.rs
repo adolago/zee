@@ -155,6 +155,14 @@ pub struct BacktestResult {
     pub profit_factor: Option<f64>,
     #[serde(rename = "avgHoldingDays")]
     pub avg_holding_days: Option<f64>,
+    #[serde(rename = "equityCurve", default)]
+    pub equity_curve: Vec<EquityCurvePoint>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct EquityCurvePoint {
+    pub date: String,
+    pub value: f64,
 }
 
 /// Performance statistics from API
@@ -176,16 +184,6 @@ pub struct PerformanceStats {
     pub profit_factor: f64,
     #[serde(rename = "factorPerformance")]
     pub factor_performance: std::collections::HashMap<String, f64>,
-}
-
-/// Signals list response wrapper
-#[derive(Debug, Deserialize, Clone)]
-pub struct SignalsResponse {
-    pub signals: Vec<Signal>,
-    #[serde(rename = "totalRequested")]
-    pub total_requested: i32,
-    #[serde(rename = "signalsGenerated")]
-    pub signals_generated: i32,
 }
 
 /// Sub-view within Signals
@@ -421,7 +419,24 @@ fn render_active_signals(
                                     .child("No signals match the current filters")
                             )
                     } else {
-                        render_signals_grid(theme, &filtered)
+                        div()
+                            .flex()
+                            .gap(px(20.0))
+                            .items_start()
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .child(render_signals_grid(theme, &filtered))
+                            )
+                            .child(
+                                div()
+                                    .w(px(260.0))
+                                    .flex()
+                                    .flex_col()
+                                    .gap(px(12.0))
+                                    .child(render_signal_summary(theme, &filtered))
+                                    .child(render_top_signals(theme, &filtered, 6))
+                            )
                     }
                 }
                 _ => render_empty_state(theme),
@@ -541,6 +556,13 @@ fn render_signals_grid(theme: &Theme, signals: &[Signal]) -> Div {
 fn render_signal_card(theme: &Theme, signal: &Signal) -> impl IntoElement {
     let signal_type = signal.get_signal_type();
     let strength = signal.get_strength();
+    let strength_label = if signal.strength.trim().is_empty() {
+        strength.label().to_string()
+    } else {
+        format_strength_label(&signal.strength)
+    };
+    let signal_id_short: String = signal.signal_id.chars().take(10).collect();
+    let timestamp_display: String = signal.timestamp.chars().take(16).collect();
 
     let type_color = match signal_type {
         SignalType::Buy => theme.positive,
@@ -606,7 +628,7 @@ fn render_signal_card(theme: &Theme, signal: &Signal) -> impl IntoElement {
                         .text_size(px(10.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(strength_color)
-                        .child(strength.label())
+                        .child(strength_label)
                 )
         )
         // Confidence meter
@@ -634,10 +656,35 @@ fn render_signal_card(theme: &Theme, signal: &Signal) -> impl IntoElement {
         // Timestamp
         .child(
             div()
-                .text_size(px(10.0))
-                .text_color(theme.text_dimmed)
-                .child(format!("Generated: {}", &signal.timestamp[..16]))
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(8.0))
+                .child(
+                    div()
+                        .text_size(px(10.0))
+                        .text_color(theme.text_dimmed)
+                        .child(format!("Generated: {}", timestamp_display))
+                )
+                .child(
+                    div()
+                        .text_size(px(10.0))
+                        .text_color(theme.text_dimmed)
+                        .child(format!(
+                            "ID: {}{}",
+                            signal_id_short,
+                            if signal.signal_id.len() > 10 { "..." } else { "" }
+                        ))
+                )
         )
+        .when_some(signal.holding_period_days, |d, days| {
+            d.child(
+                div()
+                    .text_size(px(10.0))
+                    .text_color(theme.text_muted)
+                    .child(format!("Suggested hold: {}d", days))
+            )
+        })
 }
 
 /// Render confidence meter bar
@@ -875,7 +922,16 @@ fn render_backtest(
             )
         )
         .child(
-            card(theme, "Equity Curve", render_equity_curve_placeholder(theme))
+            card(
+                theme,
+                "Equity Curve",
+                match &state.backtest {
+                    LoadState::Loading => loading_indicator(theme),
+                    LoadState::Error(e) => error_message(theme, e),
+                    LoadState::Loaded(result) => render_equity_curve(theme, &result.equity_curve),
+                    _ => render_equity_curve_empty(theme),
+                },
+            )
         )
 }
 
@@ -1042,10 +1098,104 @@ fn backtest_metric(theme: &Theme, label: &str, value: &str, color: Hsla) -> impl
         )
 }
 
-/// Equity curve placeholder
-fn render_equity_curve_placeholder(theme: &Theme) -> impl IntoElement {
+fn render_equity_curve(theme: &Theme, points: &[EquityCurvePoint]) -> Div {
+    if points.is_empty() {
+        return render_equity_curve_empty(theme);
+    }
+
+    let values: Vec<f64> = points
+        .iter()
+        .map(|point| point.value)
+        .filter(|value| value.is_finite())
+        .collect();
+    let start = values.first().copied().unwrap_or(0.0);
+    let end = values.last().copied().unwrap_or(0.0);
+    let pnl = end - start;
+    let pnl_pct = if start.abs() < f64::EPSILON {
+        0.0
+    } else {
+        (pnl / start) * 100.0
+    };
+    let pnl_color = if pnl >= 0.0 { theme.positive } else { theme.negative };
+
+    let sparkline = {
+        let palette = ['.', ':', '-', '=', '+', '*', '#'];
+        let min = values
+            .iter()
+            .fold(f64::INFINITY, |acc, v| if *v < acc { *v } else { acc });
+        let max = values
+            .iter()
+            .fold(f64::NEG_INFINITY, |acc, v| if *v > acc { *v } else { acc });
+        let range = (max - min).abs();
+
+        values
+            .iter()
+            .map(|value| {
+                if range < f64::EPSILON {
+                    return '=';
+                }
+                let normalized = (value - min) / range;
+                let idx = (normalized * (palette.len() - 1) as f64).round() as usize;
+                palette[idx.min(palette.len() - 1)]
+            })
+            .collect::<String>()
+    };
+
     div()
-        .h(px(200.0))
+        .p(px(12.0))
+        .flex()
+        .flex_col()
+        .gap(px(10.0))
+        .rounded(px(8.0))
+        .bg(theme.card_bg_elevated)
+        .child(
+            div()
+                .text_size(px(12.0))
+                .text_color(theme.text_muted)
+                .child(format!("{} points", values.len()))
+        )
+        .child(
+            div()
+                .rounded(px(6.0))
+                .bg(theme.background)
+                .border_1()
+                .border_color(theme.border_subtle)
+                .px(px(8.0))
+                .py(px(8.0))
+                .text_size(px(11.0))
+                .text_color(theme.text_secondary)
+                .child(sparkline)
+        )
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(theme.text_muted)
+                        .child(format!("Start ${:.2}", start)),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(theme.text_muted)
+                        .child(format!("End ${:.2}", end)),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(pnl_color)
+                        .child(format!("{:+.2}% ({:+.2})", pnl_pct, pnl)),
+                )
+        )
+}
+
+fn render_equity_curve_empty(theme: &Theme) -> Div {
+    div()
+        .h(px(140.0))
         .flex()
         .items_center()
         .justify_center()
@@ -1053,9 +1203,9 @@ fn render_equity_curve_placeholder(theme: &Theme) -> impl IntoElement {
         .bg(theme.card_bg_elevated)
         .child(
             div()
-                .text_size(px(14.0))
-                .text_color(theme.text_dimmed)
-                .child("[Equity Curve Visualization]")
+                .text_size(px(13.0))
+                .text_color(theme.text_muted)
+                .child("No equity curve data returned"),
         )
 }
 
@@ -1239,6 +1389,24 @@ fn render_performance_placeholder(theme: &Theme) -> Div {
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+
+fn format_strength_label(raw: &str) -> String {
+    raw.split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => {
+                    let mut label = String::new();
+                    label.extend(first.to_uppercase());
+                    label.push_str(chars.as_str());
+                    label
+                }
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
 /// Card wrapper component
 fn card(theme: &Theme, title: &str, content: impl IntoElement) -> impl IntoElement {

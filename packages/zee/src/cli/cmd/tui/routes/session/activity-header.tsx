@@ -3,6 +3,7 @@ import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
 import type { ToolPart, Part } from "@zee/sdk/v2"
 import { useAnimationTick } from "@tui/util/animation-tick"
+import { stackedTildeFrame } from "@tui/ui/tilde-spinner"
 
 type ActivityState = "idle" | "thinking" | "running" | "completed"
 
@@ -12,8 +13,6 @@ interface ActivityInfo {
   toolSummary?: string
   elapsedMs?: number
 }
-
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
 function formatElapsed(ms: number): string {
   const seconds = Math.floor(ms / 1000)
@@ -171,7 +170,7 @@ export function ActivityHeader(props: { sessionID: string }) {
     }
   })
 
-  const spinnerChar = createMemo(() => SPINNER_FRAMES[tick() % SPINNER_FRAMES.length])
+  const spinnerChar = createMemo(() => stackedTildeFrame(tick()))
 
   return (
     <box

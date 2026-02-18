@@ -723,16 +723,16 @@ fn render_detail(theme: &Theme, state: &CommoditiesState, _cx: &mut Context<impl
                     .child(render_detail_header(theme, detail))
                     // Metrics row
                     .child(render_detail_metrics(theme, detail))
-                    // Price chart placeholder
+                    // Data-derived price path proxy (YTD -> now)
                     .child(card(
                         theme,
-                        "Price Chart (30 Days)",
-                        render_price_chart_placeholder(theme),
+                        "Price Path Proxy",
+                        render_price_profile(theme, detail),
                     ))
-                    // Supply/demand factors
+                    // Data-derived market factors
                     .child(card(
                         theme,
-                        "Supply & Demand Factors",
+                        "Market Factors (Data-Derived)",
                         render_supply_demand(theme, detail),
                     ))
             }
@@ -981,29 +981,147 @@ fn strength_metric(theme: &Theme, label: &str, value: f64) -> impl IntoElement {
         )
 }
 
-/// Price chart placeholder
-fn render_price_chart_placeholder(theme: &Theme) -> impl IntoElement {
+fn render_price_profile(theme: &Theme, detail: &CommoditySummary) -> impl IntoElement {
+    let points = price_profile_points(detail);
+    let values: Vec<f64> = points.iter().map(|(_, value)| *value).collect();
+    let sparkline = build_price_profile_sparkline(&values);
+
     div()
-        .h(px(200.0))
         .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(8.0))
-        .bg(theme.card_bg_elevated)
+        .flex_col()
+        .gap(px(12.0))
         .child(
             div()
                 .text_size(px(14.0))
-                .text_color(theme.text_dimmed)
-                .child("[Price Chart - Sparkline visualization]"),
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(theme.text)
+                .child(sparkline),
+        )
+        .child(
+            div()
+                .flex()
+                .gap(px(10.0))
+                .children(points.into_iter().map(|(label, value)| {
+                    div()
+                        .flex_1()
+                        .p(px(10.0))
+                        .rounded(px(6.0))
+                        .bg(theme.card_bg_elevated)
+                        .border_1()
+                        .border_color(theme.border_subtle)
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.0))
+                        .child(
+                            div()
+                                .text_size(px(10.0))
+                                .text_color(theme.text_dimmed)
+                                .child(label),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(12.0))
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(theme.text)
+                                .child(format!("{:.1}", value)),
+                        )
+                })),
         )
 }
 
-/// Supply and demand factors
-fn render_supply_demand(theme: &Theme, _detail: &CommoditySummary) -> impl IntoElement {
+fn price_profile_points(detail: &CommoditySummary) -> Vec<(String, f64)> {
+    fn recover_base(change_percent: f64) -> f64 {
+        let denom = 1.0 + (change_percent / 100.0);
+        if denom.abs() < 1e-6 {
+            100.0
+        } else {
+            100.0 / denom
+        }
+    }
+
+    vec![
+        ("YTD".to_string(), recover_base(detail.change_ytd)),
+        ("1M".to_string(), recover_base(detail.change_1m)),
+        ("1W".to_string(), recover_base(detail.change_1w)),
+        ("1D".to_string(), recover_base(detail.change_1d)),
+        ("Now".to_string(), 100.0),
+    ]
+}
+
+fn build_price_profile_sparkline(values: &[f64]) -> String {
+    if values.is_empty() {
+        return "No data".to_string();
+    }
+
+    let min = values
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, |acc, value| acc.min(value));
+    let max = values
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, |acc, value| acc.max(value));
+
+    if (max - min).abs() < f64::EPSILON {
+        return "-----".to_string();
+    }
+
+    let blocks = ["-", "=", "^", "A", "M", "W", "#", "@"];
+
+    values
+        .iter()
+        .map(|value| {
+            let normalized = ((*value - min) / (max - min)).clamp(0.0, 1.0);
+            let index = (normalized * (blocks.len() as f64 - 1.0)).round() as usize;
+            blocks[index]
+        })
+        .collect::<Vec<&str>>()
+        .join("")
+}
+
+/// Data-derived market factors
+fn render_supply_demand(theme: &Theme, detail: &CommoditySummary) -> impl IntoElement {
+    let trend_signal = match detail.trend.as_str() {
+        "bullish" => ("Bullish", "bullish"),
+        "bearish" => ("Bearish", "bearish"),
+        _ => ("Neutral", "neutral"),
+    };
+
+    let momentum_signal = if detail.change_1m > 1.0 {
+        "bullish"
+    } else if detail.change_1m < -1.0 {
+        "bearish"
+    } else {
+        "neutral"
+    };
+
+    let ytd_signal = if detail.change_ytd > 0.0 {
+        "bullish"
+    } else if detail.change_ytd < 0.0 {
+        "bearish"
+    } else {
+        "neutral"
+    };
+
+    let relative_strength_signal = if detail.relative_strength > 0.0 {
+        "bullish"
+    } else if detail.relative_strength < 0.0 {
+        "bearish"
+    } else {
+        "neutral"
+    };
+
+    let volatility_signal = if detail.volatility_30d >= 30.0 {
+        "bearish"
+    } else if detail.volatility_30d >= 15.0 {
+        "neutral"
+    } else {
+        "bullish"
+    };
+
     div()
         .flex()
         .gap(px(24.0))
-        // Supply factors
         .child(
             div()
                 .flex_1()
@@ -1015,18 +1133,22 @@ fn render_supply_demand(theme: &Theme, _detail: &CommoditySummary) -> impl IntoE
                         .text_size(px(12.0))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(theme.text_secondary)
-                        .child("SUPPLY FACTORS"),
+                        .child("MOMENTUM"),
                 )
-                .child(factor_item(theme, "Production levels", "Normal", "neutral"))
-                .child(factor_item(theme, "Inventory", "Below average", "bullish"))
+                .child(factor_item(theme, "Trend", trend_signal.0, trend_signal.1))
                 .child(factor_item(
                     theme,
-                    "Geopolitical risks",
-                    "Elevated",
-                    "bullish",
+                    "1M Change",
+                    &format!("{:+.2}%", detail.change_1m),
+                    momentum_signal,
+                ))
+                .child(factor_item(
+                    theme,
+                    "YTD Change",
+                    &format!("{:+.2}%", detail.change_ytd),
+                    ytd_signal,
                 )),
         )
-        // Demand factors
         .child(
             div()
                 .flex_1()
@@ -1038,25 +1160,31 @@ fn render_supply_demand(theme: &Theme, _detail: &CommoditySummary) -> impl IntoE
                         .text_size(px(12.0))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(theme.text_secondary)
-                        .child("DEMAND FACTORS"),
+                        .child("RISK / RELATIVE"),
                 )
                 .child(factor_item(
                     theme,
-                    "Industrial demand",
-                    "Growing",
-                    "bullish",
+                    "Relative Strength",
+                    &format!("{:+.2}", detail.relative_strength),
+                    relative_strength_signal,
                 ))
                 .child(factor_item(
                     theme,
-                    "Seasonal patterns",
-                    "Peak season",
-                    "bullish",
+                    "30D Volatility",
+                    &format!("{:.1}%", detail.volatility_30d),
+                    volatility_signal,
                 ))
                 .child(factor_item(
                     theme,
-                    "Economic outlook",
-                    "Uncertain",
-                    "bearish",
+                    "1D Change",
+                    &format!("{:+.2}%", detail.change_1d),
+                    if detail.change_1d > 0.0 {
+                        "bullish"
+                    } else if detail.change_1d < 0.0 {
+                        "bearish"
+                    } else {
+                        "neutral"
+                    },
                 )),
         )
 }

@@ -14,7 +14,6 @@ import {
   Switch,
   useContext,
 } from "solid-js"
-import "opentui-spinner/solid"
 import { Dynamic } from "solid-js/web"
 import path from "path"
 import { useRoute, useRouteData } from "@tui/context/route"
@@ -422,18 +421,12 @@ export function Session() {
 
   const local = useLocal()
 
-  // Persona-based scrollbar colors with transparency (subtle)
-  const personaColor = createMemo(() => local.agent.color(local.agent.current().name))
+  // Theme-based scrollbar colors with transparency (subtle)
   const scrollbarTrackColor = createMemo(() => {
-    const color = personaColor()
-    if (!color)
-      return RGBA.fromValues(theme.backgroundElement.r, theme.backgroundElement.g, theme.backgroundElement.b, 0.1)
-    return RGBA.fromValues(color.r, color.g, color.b, 0.08)
+    return RGBA.fromValues(theme.primary.r, theme.primary.g, theme.primary.b, 0.08)
   })
   const scrollbarThumbColor = createMemo(() => {
-    const color = personaColor()
-    if (!color) return RGBA.fromValues(theme.border.r, theme.border.g, theme.border.b, 0.3)
-    return RGBA.fromValues(color.r, color.g, color.b, 0.3)
+    return RGBA.fromValues(theme.primary.r, theme.primary.g, theme.primary.b, 0.35)
   })
 
   // Track session changes to reset model selection (session-scoped)

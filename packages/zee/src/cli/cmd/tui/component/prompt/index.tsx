@@ -1,6 +1,5 @@
 import { BoxRenderable, TextareaRenderable, MouseEvent, PasteEvent, t, fg, TextAttributes, RGBA } from "@opentui/core"
 import { createEffect, createMemo, type JSX, onMount, createSignal, onCleanup, Show, Switch, Match } from "solid-js"
-import "opentui-spinner/solid"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
 import { EmptyBorder } from "@tui/component/border"
@@ -27,7 +26,7 @@ import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
-import { createColors, createFrames } from "../../ui/spinner.ts"
+import { stackedTildeFrame } from "../../ui/tilde-spinner"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogSelect } from "@tui/ui/dialog-select"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
@@ -1835,35 +1834,6 @@ export function Prompt(props: PromptProps) {
     const current = local.model.variant.current()
     return !!current
   })
-
-  const spinnerDef = createMemo(() => {
-    const color = local.agent.color(local.agent.current().name)
-    return {
-      frames: createFrames({
-        color,
-        style: "blocks",
-        animation: "carousel",
-        width: 10,
-        carouselActiveCount: 5,
-        inactiveFactor: 0.6,
-        minAlpha: 0.3,
-      }),
-      color: createColors({
-        color,
-        style: "blocks",
-        animation: "carousel",
-        width: 10,
-        carouselActiveCount: 5,
-        inactiveFactor: 0.6,
-        minAlpha: 0.3,
-      }),
-    }
-  })
-  const idleFrames = createMemo(() => {
-    const frame = spinnerDef().frames[0]
-    if (!frame) return ["..."]
-    return [frame]
-  })
   const chip = (content: JSX.Element) => (
     <box flexDirection="row" alignItems="center" gap={1} paddingLeft={1} paddingRight={1}>
       {content}
@@ -2339,7 +2309,9 @@ export function Prompt(props: PromptProps) {
               </text>
             }
           >
-            <spinner color={spinnerDef().color} frames={spinnerDef().frames} interval={120} />
+            <text fg={highlight()} flexShrink={0}>
+              {stackedTildeFrame(animTick())}
+            </text>
           </Show>
           <Show when={status().type === "busy"}>
             <text fg={theme.textMuted} flexShrink={0}>

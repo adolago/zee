@@ -15,6 +15,7 @@
 use log::{debug, info};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
@@ -258,7 +259,7 @@ pub struct AgentCoreClient {
 
 impl Default for AgentCoreClient {
     fn default() -> Self {
-        Self::new(None, Persona::Stanley)
+        Self::new(None, Persona::Zee)
     }
 }
 
@@ -399,6 +400,7 @@ impl AgentCoreClient {
         let (tx, rx) = mpsc::channel(100);
 
         let url = format!("{}/session/{}/message", self.base_url, session_id);
+        let events_url = format!("{}/session/{}/events", self.base_url, session_id);
         let persona = persona.unwrap_or(self.default_persona);
 
         let request = PromptRequest {
@@ -411,36 +413,49 @@ impl AgentCoreClient {
         let client = self.client.clone();
 
         tokio::spawn(async move {
-            match client.post(&url).json(&request).send().await {
-                Ok(resp) => {
-                    if !resp.status().is_success() {
-                        let _ = tx
-                            .send(StreamEvent::Error {
-                                message: format!("HTTP {}", resp.status()),
-                            })
-                            .await;
-                        return;
-                    }
-
-                    // For now, just send the final response as done
-                    // TODO: Implement proper SSE streaming when daemon supports it
-                    match resp.json::<Message>().await {
-                        Ok(msg) => {
-                            let _ = tx.send(StreamEvent::Done { message: msg }).await;
-                        }
-                        Err(e) => {
-                            let _ = tx
-                                .send(StreamEvent::Error {
-                                    message: e.to_string(),
-                                })
-                                .await;
-                        }
-                    }
+            let stream_tx = tx.clone();
+            let stream_client = client.clone();
+            let sse_handle = tokio::spawn(async move {
+                if let Err(err) = stream_session_events(stream_client, &events_url, stream_tx).await
+                {
+                    debug!("Session SSE stream ended: {}", err);
                 }
-                Err(e) => {
+            });
+
+            let response = match client.post(&url).json(&request).send().await {
+                Ok(response) => response,
+                Err(err) => {
+                    sse_handle.abort();
                     let _ = tx
                         .send(StreamEvent::Error {
-                            message: e.to_string(),
+                            message: err.to_string(),
+                        })
+                        .await;
+                    return;
+                }
+            };
+
+            if !response.status().is_success() {
+                sse_handle.abort();
+                let _ = tx
+                    .send(StreamEvent::Error {
+                        message: format!("HTTP {}", response.status()),
+                    })
+                    .await;
+                return;
+            }
+
+            let message = response.json::<Message>().await;
+            sse_handle.abort();
+
+            match message {
+                Ok(msg) => {
+                    let _ = tx.send(StreamEvent::Done { message: msg }).await;
+                }
+                Err(err) => {
+                    let _ = tx
+                        .send(StreamEvent::Error {
+                            message: err.to_string(),
                         })
                         .await;
                 }
@@ -464,6 +479,187 @@ impl AgentCoreClient {
 
         let messages: Vec<Message> = resp.json().await?;
         Ok(messages)
+    }
+}
+
+async fn stream_session_events(
+    client: Client,
+    events_url: &str,
+    tx: mpsc::Sender<StreamEvent>,
+) -> Result<()> {
+    let mut response = client
+        .get(events_url)
+        .header(reqwest::header::ACCEPT, "text/event-stream")
+        .send()
+        .await
+        .map_err(AgentCoreError::RequestFailed)?;
+
+    if !response.status().is_success() {
+        return Err(AgentCoreError::InvalidResponse(format!(
+            "Failed to subscribe to session events: HTTP {}",
+            response.status()
+        )));
+    }
+
+    let mut pending = String::new();
+    let mut current_event = String::new();
+    let mut current_data = String::new();
+    let mut message_roles: HashMap<String, String> = HashMap::new();
+
+    loop {
+        let chunk = match response
+            .chunk()
+            .await
+            .map_err(AgentCoreError::RequestFailed)?
+        {
+            Some(chunk) => chunk,
+            None => break,
+        };
+        pending.push_str(&String::from_utf8_lossy(&chunk));
+
+        while let Some(newline_idx) = pending.find('\n') {
+            let line = pending[..newline_idx].trim_end_matches('\r').to_string();
+            pending.drain(..=newline_idx);
+
+            if line.is_empty() {
+                if !current_data.is_empty() {
+                    handle_sse_record(&current_event, &current_data, &mut message_roles, &tx)
+                        .await;
+                }
+                current_event.clear();
+                current_data.clear();
+                continue;
+            }
+
+            if let Some(rest) = line.strip_prefix("event:") {
+                current_event = rest.trim().to_string();
+                continue;
+            }
+
+            if let Some(rest) = line.strip_prefix("data:") {
+                if !current_data.is_empty() {
+                    current_data.push('\n');
+                }
+                current_data.push_str(rest.trim_start());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_sse_record(
+    event_name: &str,
+    data: &str,
+    message_roles: &mut HashMap<String, String>,
+    tx: &mpsc::Sender<StreamEvent>,
+) {
+    let value: serde_json::Value = match serde_json::from_str(data) {
+        Ok(value) => value,
+        Err(_) => return,
+    };
+
+    match event_name {
+        "message.updated" => {
+            if let (Some(message_id), Some(role)) = (
+                value.get("id").and_then(|v| v.as_str()),
+                value.get("role").and_then(|v| v.as_str()),
+            ) {
+                message_roles.insert(message_id.to_string(), role.to_string());
+            }
+        }
+        "message.part.updated" => {
+            let Some(part) = value.get("part") else {
+                return;
+            };
+
+            let Some(message_id) = part.get("messageID").and_then(|v| v.as_str()) else {
+                return;
+            };
+
+            let has_delta = value
+                .get("delta")
+                .and_then(|v| v.as_str())
+                .map(|s| !s.is_empty())
+                .unwrap_or(false);
+            let is_assistant = message_roles
+                .get(message_id)
+                .map(|role| role == "assistant")
+                .unwrap_or(has_delta);
+
+            if !is_assistant {
+                return;
+            }
+
+            match part.get("type").and_then(|v| v.as_str()) {
+                Some("text") => {
+                    if let Some(delta) = value.get("delta").and_then(|v| v.as_str()) {
+                        if !delta.is_empty() {
+                            let _ = tx
+                                .send(StreamEvent::Text {
+                                    text: delta.to_string(),
+                                })
+                                .await;
+                            return;
+                        }
+                    }
+
+                    if let Some(text) = part.get("text").and_then(|v| v.as_str()) {
+                        if !text.is_empty() {
+                            let _ = tx
+                                .send(StreamEvent::Text {
+                                    text: text.to_string(),
+                                })
+                                .await;
+                        }
+                    }
+                }
+                Some("tool") => {
+                    let call_id = part
+                        .get("callID")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    let tool_name = part
+                        .get("tool")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("tool")
+                        .to_string();
+                    let state = part
+                        .get("state")
+                        .cloned()
+                        .unwrap_or_else(|| serde_json::json!({}));
+                    let status = state.get("status").and_then(|v| v.as_str()).unwrap_or("");
+
+                    match status {
+                        "pending" | "running" => {
+                            let input = state
+                                .get("input")
+                                .cloned()
+                                .unwrap_or_else(|| serde_json::json!({}));
+                            let _ = tx
+                                .send(StreamEvent::ToolUse {
+                                    id: call_id,
+                                    name: tool_name,
+                                    input,
+                                })
+                                .await;
+                        }
+                        "completed" | "error" => {
+                            let _ = tx
+                                .send(StreamEvent::ToolResult {
+                                    tool_use_id: call_id,
+                                    content: state,
+                                })
+                                .await;
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
     }
 }
 

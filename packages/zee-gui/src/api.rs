@@ -688,10 +688,35 @@ impl ZeeApiClient {
         holdings: Vec<PortfolioHolding>,
         benchmark: Option<&str>,
     ) -> Result<ApiResponse<PortfolioAnalytics>, ApiError> {
-        let url = self.build_url("/api/portfolio-analytics")?;
+        let url = self.build_url("/api/portfolio/analytics")?;
         let request = PortfolioRequest {
             holdings,
             benchmark: benchmark.unwrap_or("SPY").to_string(),
+        };
+        let response = self
+            .client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+
+        response
+            .json()
+            .await
+            .map_err(|e| ApiError::Parse(e.to_string()))
+    }
+
+    /// Get correlation matrix for a portfolio universe
+    pub async fn get_portfolio_correlation(
+        &self,
+        holdings: Vec<PortfolioHolding>,
+        lookback_days: u32,
+    ) -> Result<ApiResponse<PortfolioCorrelationResponse>, ApiError> {
+        let url = self.build_url("/api/portfolio/correlation")?;
+        let request = CorrelationRequest {
+            holdings,
+            lookback_days,
         };
         let response = self
             .client
@@ -852,6 +877,33 @@ impl ZeeApiClient {
             .map_err(|e| ApiError::Parse(e.to_string()))
     }
 
+    /// Get historical market data for a symbol
+    pub async fn get_market_history(
+        &self,
+        symbol: &str,
+        period_days: u32,
+        interval: &str,
+    ) -> Result<ApiResponse<MarketHistoryResponse>, ApiError> {
+        let base_url = self.build_url(&format!("/api/market/{}/history", symbol))?;
+        let mut url = Url::parse(&base_url).map_err(|e| ApiError::Parse(e.to_string()))?;
+        {
+            let mut pairs = url.query_pairs_mut();
+            pairs.append_pair("period", &period_days.to_string());
+            pairs.append_pair("interval", interval);
+        }
+
+        let response = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+        response
+            .json()
+            .await
+            .map_err(|e| ApiError::Parse(e.to_string()))
+    }
+
     /// Get institutional holders for a symbol
     pub async fn get_institutional(
         &self,
@@ -861,6 +913,30 @@ impl ZeeApiClient {
         let response = self
             .client
             .get(&url)
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+        response
+            .json()
+            .await
+            .map_err(|e| ApiError::Parse(e.to_string()))
+    }
+
+    /// Get valuation data for peer comparison
+    pub async fn get_valuation(
+        &self,
+        symbol: &str,
+    ) -> Result<ApiResponse<serde_json::Value>, ApiError> {
+        let base_url = self.build_url(&format!("/api/valuation/{}", symbol))?;
+        let mut url = Url::parse(&base_url).map_err(|e| ApiError::Parse(e.to_string()))?;
+        {
+            let mut pairs = url.query_pairs_mut();
+            pairs.append_pair("include_dcf", "false");
+        }
+
+        let response = self
+            .client
+            .get(url)
             .send()
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
@@ -1313,6 +1389,30 @@ pub struct MarketData {
     pub timestamp: Option<String>,
 }
 
+/// Historical OHLCV data point
+#[derive(Debug, Clone, Deserialize)]
+pub struct MarketHistoryPoint {
+    pub date: String,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: i64,
+}
+
+/// Historical market response payload
+#[derive(Debug, Clone, Deserialize)]
+pub struct MarketHistoryResponse {
+    pub symbol: String,
+    pub interval: String,
+    #[serde(rename = "dataPoints")]
+    pub data_points: Vec<MarketHistoryPoint>,
+    #[serde(rename = "startDate")]
+    pub start_date: String,
+    #[serde(rename = "endDate")]
+    pub end_date: String,
+}
+
 /// Valuation data for research analysis
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ValuationData {
@@ -1528,6 +1628,13 @@ pub struct RiskRequest {
     pub lookback_days: i32,
 }
 
+/// Request for portfolio correlation analysis
+#[derive(Debug, Clone, Serialize)]
+pub struct CorrelationRequest {
+    pub holdings: Vec<PortfolioHolding>,
+    pub lookback_days: u32,
+}
+
 /// Portfolio analytics response data
 #[derive(Debug, Clone, Deserialize)]
 pub struct PortfolioAnalytics {
@@ -1561,6 +1668,25 @@ pub struct ApiRiskMetrics {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SectorExposureResponse {
     pub portfolio_weights: std::collections::HashMap<String, f64>,
+}
+
+/// Correlation pair entry
+#[derive(Debug, Clone, Deserialize)]
+pub struct CorrelationMatrixEntry {
+    pub symbol1: String,
+    pub symbol2: String,
+    pub correlation: f64,
+}
+
+/// Correlation matrix response
+#[derive(Debug, Clone, Deserialize)]
+pub struct PortfolioCorrelationResponse {
+    pub symbols: Vec<String>,
+    pub matrix: Vec<Vec<f64>>,
+    #[serde(default, alias = "highlyCorrelated")]
+    pub highly_correlated: Vec<CorrelationMatrixEntry>,
+    #[serde(alias = "diversificationScore")]
+    pub diversification_score: f64,
 }
 
 /// Generic API response wrapper
@@ -1945,6 +2071,18 @@ pub struct BacktestResult {
     #[serde(rename = "winRate")]
     pub win_rate: f64,
     pub trades: i32,
+    #[serde(rename = "profitFactor")]
+    pub profit_factor: Option<f64>,
+    #[serde(rename = "avgHoldingDays")]
+    pub avg_holding_days: Option<f64>,
+    #[serde(rename = "equityCurve", default)]
+    pub equity_curve: Vec<EquityCurvePoint>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct EquityCurvePoint {
+    pub date: String,
+    pub value: f64,
 }
 
 /// Performance statistics

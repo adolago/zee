@@ -1,7 +1,7 @@
 // @refresh reload
 import { render } from "solid-js/web"
 import { AppBaseProviders, AppInterface } from "@/app"
-import { Platform, PlatformProvider } from "@/context/platform"
+import { Platform, PlatformProvider, type LaunchZeeGuiOptions } from "@/context/platform"
 import { dict as en } from "@/i18n/en"
 import { dict as zh } from "@/i18n/zh"
 import pkg from "../package.json"
@@ -23,6 +23,46 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   const key = "error.dev.rootNotFound" as const
   const message = locale === "zh" ? (zh[key] ?? en[key]) : en[key]
   throw new Error(message)
+}
+
+async function launchViaTauriShell(opts: LaunchZeeGuiOptions = {}): Promise<boolean> {
+  const tauri = (
+    window as unknown as {
+      __TAURI__?: {
+        shell?: {
+          Command?: {
+            create?: (
+              program: string,
+              args?: string[],
+            ) => { spawn?: () => Promise<unknown>; execute?: () => Promise<unknown> }
+          }
+        }
+      }
+    }
+  ).__TAURI__
+
+  const create = tauri?.shell?.Command?.create
+  if (typeof create !== "function") return false
+
+  const args = ["gui"]
+  if (opts.sidebar) args.push("--sidebar")
+  if (opts.runtimeMode) args.push("--runtime-mode", opts.runtimeMode)
+
+  try {
+    const command = create("zee", args)
+    if (command?.spawn) {
+      await command.spawn()
+      return true
+    }
+    if (command?.execute) {
+      await command.execute()
+      return true
+    }
+  } catch {
+    return false
+  }
+
+  return false
 }
 
 const platform: Platform = {
@@ -90,6 +130,7 @@ const platform: Platform = {
       return
     }
   },
+  launchZeeGui: async (opts) => launchViaTauriShell(opts),
 }
 
 render(

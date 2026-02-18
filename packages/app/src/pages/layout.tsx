@@ -998,6 +998,15 @@ export default function Layout(props: ParentProps) {
         onSelect: () => openSettings(),
       },
       {
+        id: "zee.gui.sidebar",
+        title: "Open Zee pair sidebar",
+        category: "Zee",
+        keybind: "mod+shift+z",
+        onSelect: () => {
+          void openZeeGuiSidebar()
+        },
+      },
+      {
         id: "session.previous",
         title: language.t("command.session.previous"),
         category: language.t("command.category.session"),
@@ -1240,6 +1249,31 @@ export default function Layout(props: ParentProps) {
         () => resolve(null),
       )
     }
+  }
+
+  const zeeGuiRuntimeMode = "dual" as const
+  const zeeGuiSidebarCommand = () => `zee gui --sidebar --runtime-mode ${zeeGuiRuntimeMode}`
+
+  async function openZeeGuiSidebar() {
+    let launched = false
+    try {
+      launched = (await platform.launchZeeGui?.({ sidebar: true, runtimeMode: zeeGuiRuntimeMode })) === true
+    } catch {
+      launched = false
+    }
+
+    if (launched) {
+      showToast({
+        title: "Opening Zee GUI sidebar",
+        description: "Pair workspace launch requested.",
+      })
+      return
+    }
+
+    showToast({
+      title: "Run Zee GUI from terminal",
+      description: zeeGuiSidebarCommand(),
+    })
   }
 
   const errorMessage = (err: unknown) => {
@@ -2784,6 +2818,21 @@ export default function Layout(props: ParentProps) {
             </DragDropProvider>
           </div>
           <div class="shrink-0 w-full pt-3 pb-3 flex flex-col items-center gap-2">
+            <TooltipKeybind
+              placement={sidebarProps.mobile ? "bottom" : "right"}
+              title="Open Zee pair sidebar"
+              keybind={command.keybind("zee.gui.sidebar")}
+            >
+              <Button
+                variant="ghost"
+                size="large"
+                class="size-10 min-w-0 px-0 text-12-medium"
+                onClick={() => void openZeeGuiSidebar()}
+                aria-label="Open Zee pair sidebar"
+              >
+                Z
+              </Button>
+            </TooltipKeybind>
             <TooltipKeybind
               placement={sidebarProps.mobile ? "bottom" : "right"}
               title={language.t("sidebar.settings")}

@@ -15,7 +15,14 @@
 // Types
 // =============================================================================
 
-export type ServiceType = "embedding" | "reranking" | "tts" | "stt" | "image" | "expenses";
+export type ServiceType =
+  | "embedding"
+  | "reranking"
+  | "tts"
+  | "stt"
+  | "image"
+  | "expenses"
+  | "market_data";
 
 export interface ProviderDefinition {
   /** Unique provider ID (matches auth system) */
@@ -119,6 +126,138 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     authType: "api",
     baseUrl: "https://secure.splitwise.com/api/v3.0",
     website: "https://secure.splitwise.com/oauth_clients",
+  },
+
+  // --- Market Data Providers (OpenBB-compatible) ---
+  "alpha-vantage": {
+    id: "alpha-vantage",
+    name: "Alpha Vantage",
+    services: ["market_data"],
+    envKey: "ALPHA_VANTAGE_API_KEY",
+    authType: "api",
+    baseUrl: "https://www.alphavantage.co",
+    website: "https://www.alphavantage.co/support/#api-key",
+  },
+  benzinga: {
+    id: "benzinga",
+    name: "Benzinga",
+    services: ["market_data"],
+    envKey: "BENZINGA_API_KEY",
+    authType: "api",
+    website: "https://www.benzinga.com/apis",
+  },
+  biztoc: {
+    id: "biztoc",
+    name: "Biztoc",
+    services: ["market_data"],
+    envKey: "BIZTOC_API_KEY",
+    authType: "api",
+    website: "https://biztoc.com/",
+  },
+  bls: {
+    id: "bls",
+    name: "BLS",
+    services: ["market_data"],
+    envKey: "BLS_API_KEY",
+    authType: "api",
+    website: "https://www.bls.gov/developers/home.htm",
+  },
+  cftc: {
+    id: "cftc",
+    name: "CFTC",
+    services: ["market_data"],
+    envKey: "CFTC_APP_TOKEN",
+    authType: "api",
+    website: "https://publicreporting.cftc.gov/",
+  },
+  "congress-gov": {
+    id: "congress-gov",
+    name: "Congress.gov",
+    services: ["market_data"],
+    envKey: "CONGRESS_GOV_API_KEY",
+    authType: "api",
+    website: "https://api.congress.gov/sign-up/",
+  },
+  econdb: {
+    id: "econdb",
+    name: "EconDB",
+    services: ["market_data"],
+    envKey: "ECONDB_API_KEY",
+    authType: "api",
+    website: "https://www.econdb.com/",
+  },
+  eia: {
+    id: "eia",
+    name: "EIA",
+    services: ["market_data"],
+    envKey: "EIA_API_KEY",
+    authType: "api",
+    website: "https://www.eia.gov/opendata/",
+  },
+  fmp: {
+    id: "fmp",
+    name: "Financial Modeling Prep",
+    services: ["market_data"],
+    envKey: "FMP_API_KEY",
+    authType: "api",
+    website: "https://site.financialmodelingprep.com/developer/docs",
+  },
+  fred: {
+    id: "fred",
+    name: "FRED",
+    services: ["market_data"],
+    envKey: "FRED_API_KEY",
+    authType: "api",
+    website: "https://fred.stlouisfed.org/docs/api/api_key.html",
+  },
+  intrinio: {
+    id: "intrinio",
+    name: "Intrinio",
+    services: ["market_data"],
+    envKey: "INTRINIO_API_KEY",
+    authType: "api",
+    website: "https://intrinio.com/",
+  },
+  nasdaq: {
+    id: "nasdaq",
+    name: "Nasdaq Data Link",
+    services: ["market_data"],
+    envKey: "NASDAQ_API_KEY",
+    authType: "api",
+    website: "https://data.nasdaq.com/",
+  },
+  sec: {
+    id: "sec",
+    name: "SEC EDGAR",
+    services: ["market_data"],
+    envKey: "SEC_IDENTITY",
+    authType: "api",
+    website: "https://www.sec.gov/edgar/sec-api-documentation",
+  },
+  tiingo: {
+    id: "tiingo",
+    name: "Tiingo",
+    services: ["market_data"],
+    envKey: "TIINGO_TOKEN",
+    authType: "api",
+    website: "https://api.tiingo.com/",
+  },
+  tradier: {
+    id: "tradier",
+    name: "Tradier",
+    services: ["market_data"],
+    envKey: "TRADIER_API_KEY",
+    envAliases: ["TRADIER_TOKEN"],
+    authType: "api",
+    website: "https://developer.tradier.com/",
+  },
+  tradingeconomics: {
+    id: "tradingeconomics",
+    name: "TradingEconomics",
+    services: ["market_data"],
+    envKey: "TRADINGECONOMICS_API_KEY",
+    authType: "api",
+    website: "https://docs.tradingeconomics.com/",
   },
 
   // --- Local Providers ---
@@ -275,7 +414,15 @@ export async function getApiKey(providerId: string): Promise<string | undefined>
  * List all providers grouped by service
  */
 export function listProvidersByService(): Record<ServiceType, ProviderDefinition[]> {
-  const services: ServiceType[] = ["embedding", "reranking", "tts", "stt", "image", "expenses"];
+  const services: ServiceType[] = [
+    "embedding",
+    "reranking",
+    "tts",
+    "stt",
+    "image",
+    "expenses",
+    "market_data",
+  ];
   const result = {} as Record<ServiceType, ProviderDefinition[]>;
   for (const service of services) {
     result[service] = getProvidersForService(service);

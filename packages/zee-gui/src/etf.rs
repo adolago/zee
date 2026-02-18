@@ -58,9 +58,6 @@ pub struct EtfState {
     pub sector_rotation: LoadState<Vec<SectorRotation>>,
     pub smart_beta: LoadState<Vec<SmartBetaFactor>>,
     pub thematic: LoadState<Vec<ThematicEtf>>,
-    pub selected_etf: Option<String>,
-    pub sort_column: Option<String>,
-    pub sort_ascending: bool,
 }
 
 impl Default for EtfState {
@@ -71,9 +68,6 @@ impl Default for EtfState {
             sector_rotation: LoadState::NotLoaded,
             smart_beta: LoadState::NotLoaded,
             thematic: LoadState::NotLoaded,
-            selected_etf: None,
-            sort_column: None,
-            sort_ascending: false,
         }
     }
 }
@@ -808,7 +802,7 @@ fn render_signal_list(theme: &Theme, rotations: &[&SectorRotation], is_overweigh
                                                 div()
                                                     .text_size(px(11.0))
                                                     .text_color(theme.text_muted)
-                                                    .child(format!("Flow: {:+.1}", r.flow_score))
+                                                    .child(format!("Flow: {:+.1}", r.momentum_score))
                                             )
                                     )
                             )
@@ -866,7 +860,7 @@ fn render_rotation_table(theme: &Theme, rotations: &[SectorRotation]) -> impl In
                     _ => theme.text_muted,
                 };
                 let momentum_color = if r.momentum_score >= 0.0 { theme.positive } else { theme.negative };
-                let flow_color = if r.flow_score >= 0.0 { theme.positive } else { theme.negative };
+                let flow_color = if r.momentum_score >= 0.0 { theme.positive } else { theme.negative };
                 let rs_color = if r.relative_strength >= 0.0 { theme.positive } else { theme.negative };
 
                 div()
@@ -906,7 +900,7 @@ fn render_rotation_table(theme: &Theme, rotations: &[SectorRotation]) -> impl In
                             .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(flow_color)
-                            .child(format!("{:+.2}", r.flow_score))
+                            .child(format!("{:+.2}", r.momentum_score))
                     )
                     .child(
                         div()
@@ -971,7 +965,7 @@ fn render_smart_beta_content(theme: &Theme, factors: &[SmartBetaFactor]) -> Div 
 
 fn render_factor_bars(theme: &Theme, factors: &[SmartBetaFactor], is_1m: bool) -> impl IntoElement {
     let max_return = factors.iter()
-        .map(|f| if is_1m { f.return_1m.abs() } else { f.return_ytd.abs() })
+        .map(|f| if is_1m { f.performance.abs() } else { f.performance.abs() })
         .fold(0.0_f64, |a, b| a.max(b));
 
     div()
@@ -980,7 +974,7 @@ fn render_factor_bars(theme: &Theme, factors: &[SmartBetaFactor], is_1m: bool) -
         .gap(px(12.0))
         .children(
             factors.iter().map(|f| {
-                let value = if is_1m { f.return_1m } else { f.return_ytd };
+                let value = if is_1m { f.performance } else { f.performance };
                 let positive = value >= 0.0;
                 let color = if positive { theme.positive } else { theme.negative };
                 let bar_width = if max_return > 0.0 {
@@ -1008,7 +1002,7 @@ fn render_factor_bars(theme: &Theme, factors: &[SmartBetaFactor], is_1m: bool) -
                             .text_size(px(12.0))
                             .text_color(theme.accent)
                             .font_weight(FontWeight::SEMIBOLD)
-                            .child(f.etf.clone())
+                            .child(f.etfs.join(", ").clone())
                     )
                     // Bar
                     .child(
@@ -1045,7 +1039,7 @@ fn render_factor_bars(theme: &Theme, factors: &[SmartBetaFactor], is_1m: bool) -
                     )
                     // Flow trend
                     .child(
-                        render_flow_trend_badge(theme, &f.flow_trend)
+                        render_flow_trend_badge(theme, &(if f.net_flow_1m >= 0.0 { "inflow" } else { "outflow" }))
                     )
             }).collect::<Vec<_>>()
         )
@@ -1096,12 +1090,12 @@ fn render_factor_cards(theme: &Theme, factors: &[SmartBetaFactor]) -> impl IntoE
         .gap(px(16.0))
         .children(
             factors.iter().map(|f| {
-                let return_1m_positive = f.return_1m >= 0.0;
-                let return_ytd_positive = f.return_ytd >= 0.0;
+                let return_1m_positive = f.performance >= 0.0;
+                let return_ytd_positive = f.performance >= 0.0;
                 let color_1m = if return_1m_positive { theme.positive } else { theme.negative };
                 let color_ytd = if return_ytd_positive { theme.positive } else { theme.negative };
 
-                let flow_color = match f.flow_trend.as_str() {
+                let flow_color = match if f.net_flow_1m >= 0.0 { "inflow" } else { "outflow" } {
                     "inflow" => theme.positive,
                     "outflow" => theme.negative,
                     _ => theme.text_muted,
@@ -1140,7 +1134,7 @@ fn render_factor_cards(theme: &Theme, factors: &[SmartBetaFactor]) -> impl IntoE
                                             .text_size(px(12.0))
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(theme.accent)
-                                            .child(f.etf.clone())
+                                            .child(f.etfs.join(", ").clone())
                                     )
                                     .child(
                                         div()
@@ -1158,11 +1152,11 @@ fn render_factor_cards(theme: &Theme, factors: &[SmartBetaFactor]) -> impl IntoE
                                     .text_size(px(10.0))
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .text_color(flow_color)
-                                    .child(f.flow_trend.to_uppercase())
+                                    .child((if f.net_flow_1m >= 0.0 { "inflow" } else { "outflow" }).to_uppercase())
                             )
                     )
                     // Description
-                    .when_some(f.description.as_ref(), |el, desc| {
+                    .when_some(None::<&String>, |el, desc| {
                         el.child(
                             div()
                                 .text_size(px(12.0))
@@ -1192,7 +1186,7 @@ fn render_factor_cards(theme: &Theme, factors: &[SmartBetaFactor]) -> impl IntoE
                                             .text_size(px(20.0))
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(color_1m)
-                                            .child(format!("{:+.2}%", f.return_1m))
+                                            .child(format!("{:+.2}%", f.performance))
                                     )
                             )
                             .child(
@@ -1212,7 +1206,7 @@ fn render_factor_cards(theme: &Theme, factors: &[SmartBetaFactor]) -> impl IntoE
                                             .text_size(px(20.0))
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(color_ytd)
-                                            .child(format!("{:+.2}%", f.return_ytd))
+                                            .child(format!("{:+.2}%", f.performance))
                                     )
                             )
                     )
@@ -1262,7 +1256,7 @@ fn render_thematic_content(theme: &Theme, thematics: &[ThematicEtf]) -> Div {
 
 fn render_theme_section(theme: &Theme, theme_name: &str, etfs: &[&ThematicEtf]) -> impl IntoElement {
     // Calculate theme average
-    let avg_return: f64 = etfs.iter().map(|e| e.return_1m).sum::<f64>() / etfs.len() as f64;
+    let avg_return: f64 = etfs.iter().map(|e| e.momentum).sum::<f64>() / etfs.len() as f64;
     let avg_color = if avg_return >= 0.0 { theme.positive } else { theme.negative };
 
     div()
@@ -1347,16 +1341,22 @@ fn render_theme_section(theme: &Theme, theme_name: &str, etfs: &[&ThematicEtf]) 
 }
 
 fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElement {
-    let return_1m_positive = etf.return_1m >= 0.0;
-    let return_ytd_positive = etf.return_ytd >= 0.0;
-    let flow_positive = etf.flow_1m >= 0.0;
+    let return_1m_positive = etf.momentum >= 0.0;
+    let return_ytd_positive = etf.momentum >= 0.0;
+    let flow_positive = etf.net_flow_1m >= 0.0;
     let color_1m = if return_1m_positive { theme.positive } else { theme.negative };
     let color_ytd = if return_ytd_positive { theme.positive } else { theme.negative };
     let flow_color = if flow_positive { theme.positive } else { theme.negative };
 
-    let momentum_color = match etf.momentum.as_str() {
-        "accelerating" => theme.positive,
-        "decelerating" => theme.negative,
+    let momentum_color = match if etf.momentum > 0.66 {
+        "high"
+    } else if etf.momentum > 0.33 {
+        "medium"
+    } else {
+        "low"
+    } {
+        "high" => theme.positive,
+        "medium" => theme.warning,
         _ => theme.text_muted,
     };
 
@@ -1382,7 +1382,7 @@ fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElemen
                     div()
                         .text_size(px(15.0))
                         .font_weight(FontWeight::BOLD)
-                        .child(etf.symbol.clone())
+                        .child(etf.theme.clone())
                 )
                 .child(
                     div()
@@ -1393,7 +1393,7 @@ fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElemen
                         .text_size(px(9.0))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(momentum_color)
-                        .child(etf.momentum.to_uppercase())
+                        .child(format!("{:+.2}", etf.momentum))
                 )
         )
         // Name
@@ -1403,7 +1403,7 @@ fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElemen
                 .text_color(theme.text_muted)
                 .h(px(32.0))
                 .overflow_hidden()
-                .child(etf.name.clone())
+                .child(etf.theme.clone())
         )
         // Returns
         .child(
@@ -1426,7 +1426,7 @@ fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElemen
                                 .text_size(px(14.0))
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(color_1m)
-                                .child(format!("{:+.1}%", etf.return_1m))
+                                .child(format!("{:+.1}%", etf.momentum))
                         )
                 )
                 .child(
@@ -1445,7 +1445,7 @@ fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElemen
                                 .text_size(px(14.0))
                                 .font_weight(FontWeight::BOLD)
                                 .text_color(color_ytd)
-                                .child(format!("{:+.1}%", etf.return_ytd))
+                                .child(format!("{:+.1}%", etf.momentum))
                         )
                 )
         )
@@ -1474,14 +1474,14 @@ fn render_thematic_etf_card(theme: &Theme, etf: &ThematicEtf) -> impl IntoElemen
                                 .text_size(px(11.0))
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(flow_color)
-                                .child(format_flow(etf.flow_1m))
+                                .child(format_flow(etf.net_flow_1m))
                         )
                 )
                 .child(
                     div()
                         .text_size(px(10.0))
                         .text_color(theme.text_dimmed)
-                        .child(format!("AUM: {}", format_aum(etf.aum)))
+                        .child(format!("AUM: {}", format_aum(etf.total_aum)))
                 )
         )
 }
@@ -1601,106 +1601,4 @@ fn theme_color(theme_name: &str) -> Hsla {
         "fintech" => hsla(45.0 / 360.0, 0.9, 0.5, 1.0), // Gold
         _ => hsla(0.0, 0.0, 0.5, 1.0), // Gray
     }
-}
-
-// ============================================================================
-// ETF SIDEBAR COMPONENT (for main navigation)
-// ============================================================================
-
-/// Render ETF quick summary for sidebar
-pub fn render_etf_summary(
-    theme: &Theme,
-    flows: &[EtfFlow],
-    selected: Option<&str>,
-) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(4.0))
-        .children(
-            flows.iter().take(5).map(|f| {
-                let is_selected = selected.map(|s| s == f.symbol).unwrap_or(false);
-                let positive = f.flow_1d >= 0.0;
-                let color = if positive { theme.positive } else { theme.negative };
-
-                div()
-                    .px(px(12.0))
-                    .py(px(8.0))
-                    .rounded(px(6.0))
-                    .cursor_pointer()
-                    .bg(if is_selected { theme.accent_subtle } else { transparent_black() })
-                    .hover(|s| s.bg(theme.hover_bg))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.0))
-                            .child(
-                                div()
-                                    .text_size(px(13.0))
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(if is_selected { theme.text } else { theme.text_secondary })
-                                    .child(f.symbol.clone())
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(10.0))
-                                    .text_color(theme.text_dimmed)
-                                    .child(format_aum(f.aum))
-                            )
-                    )
-                    .child(
-                        div()
-                            .text_size(px(11.0))
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(color)
-                            .child(format_flow(f.flow_1d))
-                    )
-            }).collect::<Vec<_>>()
-        )
-}
-
-// ============================================================================
-// ETF TICKER COMPONENT (for dashboard)
-// ============================================================================
-
-/// Horizontal ETF flow ticker for dashboard
-pub fn render_etf_ticker(theme: &Theme, flows: &[EtfFlow]) -> impl IntoElement {
-    div()
-        .h(px(36.0))
-        .px(px(16.0))
-        .flex()
-        .items_center()
-        .gap(px(24.0))
-        .bg(theme.card_bg_elevated)
-        .border_b_1()
-        .border_color(theme.border_subtle)
-                .children(
-            flows.iter().take(10).map(|f| {
-                let positive = f.flow_1d >= 0.0;
-                let color = if positive { theme.positive } else { theme.negative };
-
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .text_size(px(11.0))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(theme.text_secondary)
-                            .child(f.symbol.clone())
-                    )
-                    .child(
-                        div()
-                            .text_size(px(10.0))
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(color)
-                            .child(format_flow(f.flow_1d))
-                    )
-            }).collect::<Vec<_>>()
-        )
 }

@@ -1,6 +1,13 @@
 import { createSimpleContext } from "@zee/ui/context"
 import { AsyncStorage, SyncStorage } from "@solid-primitives/storage"
 
+export type ZeeGuiRuntimeMode = "zee" | "legacy" | "dual"
+
+export type LaunchZeeGuiOptions = {
+  sidebar?: boolean
+  runtimeMode?: ZeeGuiRuntimeMode
+}
+
 export type Platform = {
   /** Platform discriminator */
   platform: "web" | "desktop"
@@ -55,6 +62,9 @@ export type Platform = {
 
   /** Parse markdown to HTML using native parser (desktop only, returns unprocessed code blocks) */
   parseMarkdown?(markdown: string): Promise<string>
+
+  /** Launch Rust Zee GUI for pair-working flows (desktop bridge) */
+  launchZeeGui?(opts?: LaunchZeeGuiOptions): Promise<boolean> | boolean
 }
 
 export const { use: usePlatform, provider: PlatformProvider } = createSimpleContext({

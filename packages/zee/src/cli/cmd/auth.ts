@@ -56,6 +56,70 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
     name: "Splitwise",
     hint: "Splitwise API key (Bearer token)",
   },
+  "alpha-vantage": {
+    name: "Alpha Vantage",
+    hint: "ALPHA_VANTAGE_API_KEY",
+  },
+  benzinga: {
+    name: "Benzinga",
+    hint: "BENZINGA_API_KEY",
+  },
+  biztoc: {
+    name: "Biztoc",
+    hint: "BIZTOC_API_KEY",
+  },
+  bls: {
+    name: "BLS",
+    hint: "BLS_API_KEY",
+  },
+  cftc: {
+    name: "CFTC",
+    hint: "CFTC_APP_TOKEN",
+  },
+  "congress-gov": {
+    name: "Congress.gov",
+    hint: "CONGRESS_GOV_API_KEY",
+  },
+  econdb: {
+    name: "EconDB",
+    hint: "ECONDB_API_KEY",
+  },
+  eia: {
+    name: "EIA",
+    hint: "EIA_API_KEY",
+  },
+  fmp: {
+    name: "Financial Modeling Prep",
+    hint: "FMP_API_KEY",
+  },
+  fred: {
+    name: "FRED",
+    hint: "FRED_API_KEY",
+  },
+  intrinio: {
+    name: "Intrinio",
+    hint: "INTRINIO_API_KEY",
+  },
+  nasdaq: {
+    name: "Nasdaq Data Link",
+    hint: "NASDAQ_API_KEY",
+  },
+  sec: {
+    name: "SEC EDGAR",
+    hint: "SEC_IDENTITY",
+  },
+  tiingo: {
+    name: "Tiingo",
+    hint: "TIINGO_TOKEN",
+  },
+  tradier: {
+    name: "Tradier",
+    hint: "TRADIER_API_KEY",
+  },
+  tradingeconomics: {
+    name: "TradingEconomics",
+    hint: "TRADINGECONOMICS_API_KEY",
+  },
 }
 
 const DEFAULT_DAEMON_PORT = 3210
@@ -1028,6 +1092,7 @@ const SERVICE_LABELS: Record<ServiceType, string> = {
   stt: "Speech-to-Text",
   image: "Image Generation",
   expenses: "Expense Tracking",
+  market_data: "Market Data",
 }
 
 export const AuthProvidersCommand = cmd({

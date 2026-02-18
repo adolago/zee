@@ -194,6 +194,114 @@ print_message() {
     echo -e "${color}${message}${NC}"
 }
 
+select_python_for_stanley() {
+    local candidate=""
+    local version=""
+    local major=""
+    local minor=""
+
+    for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
+        if ! command -v "$candidate" >/dev/null 2>&1; then
+            continue
+        fi
+
+        version=$("$candidate" - <<'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)
+        major="${version%%.*}"
+        minor="${version#*.}"
+
+        if [ "$major" = "3" ] && [ "$minor" -ge 10 ] && [ "$minor" -le 13 ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+stanley_python_path=""
+install_stanley_dependencies() {
+    print_message info "\n${MUTED}Installing Stanley Python dependencies${NC}"
+
+    local python_cmd=""
+    python_cmd="$(select_python_for_stanley || true)"
+    if [ -z "$python_cmd" ]; then
+        print_message error "No supported Python interpreter found (requires Python 3.10-3.13)."
+        print_message error "Install Python 3.12 and re-run the installer."
+        exit 1
+    fi
+
+    local requirements_lock_file=""
+    local requirements_main_file=""
+    requirements_lock_file="$(mktemp "${TMPDIR:-/tmp}/zee_stanley_requirements_lock_XXXXXX.txt")"
+    requirements_main_file="$(mktemp "${TMPDIR:-/tmp}/zee_stanley_requirements_main_XXXXXX.txt")"
+
+    if [ -f "./stanley/requirements-lock.txt" ]; then
+        cp "./stanley/requirements-lock.txt" "$requirements_lock_file"
+    fi
+
+    if [ -f "./stanley/requirements.txt" ]; then
+        cp "./stanley/requirements.txt" "$requirements_main_file"
+    fi
+
+    if [ ! -s "$requirements_lock_file" ] && [ ! -s "$requirements_main_file" ]; then
+        local repo="${github_repo:-$DEFAULT_GITHUB_REPO}"
+        local ref="main"
+        if [ -n "${specific_version:-}" ] && [ "$specific_version" != "local" ]; then
+            ref="v${specific_version}"
+        fi
+
+        local base_url="https://raw.githubusercontent.com/${repo}/${ref}/stanley"
+        curl -fsSL "${base_url}/requirements-lock.txt" -o "$requirements_lock_file" || true
+        curl -fsSL "${base_url}/requirements.txt" -o "$requirements_main_file" || true
+    fi
+
+    if [ ! -s "$requirements_lock_file" ] && [ ! -s "$requirements_main_file" ]; then
+        rm -f "$requirements_lock_file" "$requirements_main_file"
+        print_message error "Failed to fetch Stanley requirements."
+        exit 1
+    fi
+
+    local xdg_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    local stanley_root="${xdg_data_home}/zee/stanley"
+    local venv_dir="${stanley_root}/.venv"
+    mkdir -p "$stanley_root"
+
+    if [ ! -x "${venv_dir}/bin/python" ]; then
+        "$python_cmd" -m venv "$venv_dir"
+    fi
+
+    local installed=false
+    local pip_install_cmd=("${venv_dir}/bin/pip" install --retries 8 --timeout 180)
+
+    if [ -s "$requirements_lock_file" ]; then
+        if "${pip_install_cmd[@]}" -r "$requirements_lock_file"; then
+            installed=true
+        else
+            print_message warning "Stanley lockfile install failed; retrying with requirements.txt."
+        fi
+    fi
+
+    if [ "$installed" != "true" ] && [ -s "$requirements_main_file" ]; then
+        if "${pip_install_cmd[@]}" -r "$requirements_main_file"; then
+            installed=true
+        fi
+    fi
+
+    rm -f "$requirements_lock_file" "$requirements_main_file"
+
+    if [ "$installed" != "true" ]; then
+        print_message error "Failed to install Stanley dependencies."
+        exit 1
+    fi
+
+    stanley_python_path="${venv_dir}/bin/python"
+    print_message info "${MUTED}Stanley dependencies installed at ${NC}${venv_dir}"
+}
+
 check_version() {
     if command -v "$APP" >/dev/null 2>&1; then
         ## Check the installed version
@@ -341,8 +449,19 @@ download_and_install() {
 
 install_from_binary() {
     print_message info "\n${MUTED}Installing ${NC}${APP} ${MUTED}from: ${NC}$binary_path"
-    cp "$binary_path" "${INSTALL_DIR}/${APP}"
-    chmod 755 "${INSTALL_DIR}/${APP}"
+    local target_path="${INSTALL_DIR}/${APP}"
+    local source_real
+    local target_real
+
+    source_real="$(readlink -f "$binary_path" 2>/dev/null || echo "$binary_path")"
+    target_real="$(readlink -f "$target_path" 2>/dev/null || echo "$target_path")"
+
+    if [ -e "$target_path" ] && [ "$source_real" = "$target_real" ]; then
+        print_message info "${MUTED}Binary already installed at ${NC}${target_path}${MUTED}; skipping copy${NC}"
+    else
+        cp "$binary_path" "$target_path"
+        chmod 755 "$target_path"
+    fi
 }
 
 if [ -n "$binary_path" ]; then
@@ -351,6 +470,8 @@ else
     check_version
     download_and_install
 fi
+
+install_stanley_dependencies
 
 
 add_to_path() {
@@ -365,6 +486,21 @@ add_to_path() {
         print_message info "${MUTED}Successfully added ${NC}${APP} ${MUTED}to \$PATH in ${NC}$config_file"
     else
         print_message warning "Manually add the directory to $config_file (or similar):"
+        print_message info "  $command"
+    fi
+}
+
+add_export_to_shell() {
+    local config_file=$1
+    local command=$2
+
+    if grep -Fxq "$command" "$config_file"; then
+        print_message info "Command already exists in $config_file, skipping write."
+    elif [[ -w $config_file ]]; then
+        echo "$command" >> "$config_file"
+        print_message info "${MUTED}Successfully added ${NC}${command}${MUTED} to ${NC}$config_file"
+    else
+        print_message warning "Manually add this to $config_file (or similar):"
         print_message info "  $command"
     fi
 }
@@ -394,8 +530,8 @@ case $current_shell in
     ;;
 esac
 
+config_file=""
 if [[ "$no_modify_path" != "true" ]]; then
-    config_file=""
     for file in $config_files; do
         if [[ -f $file ]]; then
             config_file=$file
@@ -429,6 +565,15 @@ if [[ "$no_modify_path" != "true" ]]; then
                 print_message info "  export PATH=$INSTALL_DIR:\$PATH"
             ;;
         esac
+    fi
+fi
+
+if [ -n "$stanley_python_path" ]; then
+    if [[ "$no_modify_path" != "true" ]] && [[ -n "$config_file" ]]; then
+        add_export_to_shell "$config_file" "export STANLEY_PYTHON=$stanley_python_path"
+    else
+        print_message warning "Set Stanley Python manually in your shell profile:"
+        print_message info "  export STANLEY_PYTHON=$stanley_python_path"
     fi
 fi
 
