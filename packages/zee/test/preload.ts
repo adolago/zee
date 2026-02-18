@@ -193,6 +193,7 @@ delete process.env["ZEE_PERMISSION"]
 delete process.env["ZEE_CONFIG"]
 delete process.env["ZEE_CONFIG_CONTENT"]
 delete process.env["ZEE_CONFIG_DIR"]
+delete process.env["ZEE_DISABLE_PROJECT_CONFIG"]
 
 // Clear provider env vars to ensure clean test state
 delete process.env["ANTHROPIC_API_KEY"]
