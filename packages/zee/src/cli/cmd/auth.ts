@@ -186,6 +186,8 @@ interface SkillAuthProvider {
   name: string
   /** Human-friendly label for the selection menu. */
   label: string
+  /** Optional hint shown in selection UIs. */
+  hint?: string
   /** The single primary env var, if any. */
   primaryEnv?: string
   /** All required env vars from requires.env. */
@@ -285,7 +287,8 @@ async function discoverSkillAuthProviders(): Promise<SkillAuthProvider[]> {
 
     providers.push({
       name: skill.name,
-      label: `${skill.description || skill.name} (Requires ${allEnvVars.join(", ")})`,
+      label: skill.name,
+      hint: `Requires ${allEnvVars.join(", ")}`,
       primaryEnv,
       envVars: allEnvVars,
     })
@@ -831,6 +834,12 @@ export const AuthLoginCommand = cmd({
               openrouter: 4,
               kernel: 5,
             }
+            const providerHints: Record<string, string | undefined> = {
+              anthropic: "Recommended - Claude Max or API key",
+              "google-antigravity": "Google OAuth (Antigravity)",
+              openai: "ChatGPT Plus/Pro or API key",
+              kernel: AUTH_ONLY_PROVIDERS.kernel?.hint,
+            }
             const newProvider = await prompts.autocomplete({
               message: "Select provider to add",
               maxItems: 8,
@@ -843,16 +852,16 @@ export const AuthLoginCommand = cmd({
                     (x) => priority[x.id] ?? 99,
                     (x) => x.name ?? x.id,
                   ),
-                  map((x) => ({
-                    label: x.name,
-                    value: x.id,
-                    hint: {
-                      anthropic: "Recommended - Claude Max or API key",
-                      "google-antigravity": "Google OAuth (Antigravity)",
-                      openai: "ChatGPT Plus/Pro or API key",
-                      kernel: AUTH_ONLY_PROVIDERS.kernel?.hint,
-                    }[x.id],
-                  })),
+                  map((x) => {
+                    const skillHint = x.id.startsWith(SKILL_PROVIDER_PREFIX)
+                      ? skillProviderMap.get(x.id)?.hint
+                      : undefined
+                    return {
+                      label: x.name,
+                      value: x.id,
+                      hint: skillHint ?? providerHints[x.id],
+                    }
+                  }),
                 ),
               ],
             })

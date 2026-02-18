@@ -1,6 +1,10 @@
 ---
 name: home-assistant
 description: Control Home Assistant smart home devices, run automations, and receive webhook events. Use when controlling lights, switches, climate, scenes, scripts, or any HA entity. Supports bidirectional communication via REST API (outbound) and webhooks (inbound triggers from HA automations).
+primaryEnv: HASS_TOKEN
+requires:
+  env:
+    - HASS_SERVER
 metadata: {"clawdbot":{"emoji":"🏠","requires":{"bins":["jq","curl"]}}}
 ---
 
@@ -10,7 +14,15 @@ Control your smart home via Home Assistant's REST API and webhooks.
 
 ## Setup
 
-### Option 1: Config File (Recommended)
+### Option 0: Zee Auth Login (Recommended)
+
+```bash
+zee auth login home-assistant
+```
+
+This stores `HASS_TOKEN` and `HASS_SERVER` in Zee skill config so they are injected automatically.
+
+### Option 1: Config File (Manual)
 
 Create `~/.config/home-assistant/config.json`:
 ```json
@@ -23,8 +35,8 @@ Create `~/.config/home-assistant/config.json`:
 ### Option 2: Environment Variables
 
 ```bash
-export HA_URL="http://homeassistant.local:8123"
-export HA_TOKEN="your-long-lived-access-token"
+export HASS_SERVER="http://homeassistant.local:8123"
+export HASS_TOKEN="your-long-lived-access-token"
 ```
 
 ### Getting a Long-Lived Access Token
@@ -39,47 +51,47 @@ export HA_TOKEN="your-long-lived-access-token"
 ### List Entities
 
 ```bash
-curl -s -H "Authorization: Bearer $HA_TOKEN" "$HA_URL/api/states" | jq '.[].entity_id'
+curl -s -H "Authorization: Bearer $HASS_TOKEN" "$HASS_SERVER/api/states" | jq '.[].entity_id'
 ```
 
 ### Get Entity State
 
 ```bash
-curl -s -H "Authorization: Bearer $HA_TOKEN" "$HA_URL/api/states/light.living_room"
+curl -s -H "Authorization: Bearer $HASS_TOKEN" "$HASS_SERVER/api/states/light.living_room"
 ```
 
 ### Control Devices
 
 ```bash
 # Turn on
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" -H "Content-Type: application/json" \
-  "$HA_URL/api/services/light/turn_on" -d '{"entity_id": "light.living_room"}'
+curl -X POST -H "Authorization: Bearer $HASS_TOKEN" -H "Content-Type: application/json" \
+  "$HASS_SERVER/api/services/light/turn_on" -d '{"entity_id": "light.living_room"}'
 
 # Turn off
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" -H "Content-Type: application/json" \
-  "$HA_URL/api/services/light/turn_off" -d '{"entity_id": "light.living_room"}'
+curl -X POST -H "Authorization: Bearer $HASS_TOKEN" -H "Content-Type: application/json" \
+  "$HASS_SERVER/api/services/light/turn_off" -d '{"entity_id": "light.living_room"}'
 
 # Set brightness (0-255)
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" -H "Content-Type: application/json" \
-  "$HA_URL/api/services/light/turn_on" -d '{"entity_id": "light.living_room", "brightness": 128}'
+curl -X POST -H "Authorization: Bearer $HASS_TOKEN" -H "Content-Type: application/json" \
+  "$HASS_SERVER/api/services/light/turn_on" -d '{"entity_id": "light.living_room", "brightness": 128}'
 ```
 
 ### Run Scripts & Automations
 
 ```bash
 # Trigger script
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" "$HA_URL/api/services/script/turn_on" \
+curl -X POST -H "Authorization: Bearer $HASS_TOKEN" "$HASS_SERVER/api/services/script/turn_on" \
   -H "Content-Type: application/json" -d '{"entity_id": "script.goodnight"}'
 
 # Trigger automation
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" "$HA_URL/api/services/automation/trigger" \
+curl -X POST -H "Authorization: Bearer $HASS_TOKEN" "$HASS_SERVER/api/services/automation/trigger" \
   -H "Content-Type: application/json" -d '{"entity_id": "automation.motion_lights"}'
 ```
 
 ### Activate Scenes
 
 ```bash
-curl -X POST -H "Authorization: Bearer $HA_TOKEN" "$HA_URL/api/services/scene/turn_on" \
+curl -X POST -H "Authorization: Bearer $HASS_TOKEN" "$HASS_SERVER/api/services/scene/turn_on" \
   -H "Content-Type: application/json" -d '{"entity_id": "scene.movie_night"}'
 ```
 
@@ -167,7 +179,7 @@ ha.sh call light turn_on '{"entity_id":"light.room","brightness":200}'
 ## Troubleshooting
 
 - **401 Unauthorized**: Token expired or invalid. Generate a new one.
-- **Connection refused**: Check HA_URL, ensure HA is running and accessible.
+- **Connection refused**: Check HASS_SERVER, ensure HA is running and accessible.
 - **Entity not found**: List entities to find the correct entity_id.
 
 ## API Reference

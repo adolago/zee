@@ -26,7 +26,7 @@ import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
-import { stackedTildeFrame } from "../../ui/tilde-spinner"
+import { stackedTildeColumnFrame } from "../../ui/tilde-spinner"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogSelect } from "@tui/ui/dialog-select"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
@@ -108,6 +108,7 @@ export function Prompt(props: PromptProps) {
   const safeLayoutWidth = createMemo(() => Math.max(0, layoutWidth()))
   const borderFill = createMemo(() => "─".repeat(safeLayoutWidth()))
   const status = createMemo(() => sync.data.session_status?.[props.sessionID ?? ""] ?? { type: "idle" })
+  const promptBusy = createMemo(() => status().type === "busy")
   const streamHealth = createMemo(() => {
     const s = status()
     return s.type === "busy" ? s.streamHealth : undefined
@@ -2296,13 +2297,13 @@ export function Prompt(props: PromptProps) {
           />
         </box>
         {/* Bottom border with embedded status info */}
-        <box height={1} flexDirection="row" gap={0}>
+        <box height={promptBusy() ? 3 : 1} flexDirection="row" gap={0} alignItems="flex-end">
           <text fg={theme.border} flexShrink={0}>
             ╰
           </text>
           {/* Left: spinner only */}
           <Show
-            when={status().type === "busy"}
+            when={promptBusy()}
             fallback={
               <text fg={highlight()} flexShrink={0}>
                 ~
@@ -2310,10 +2311,10 @@ export function Prompt(props: PromptProps) {
             }
           >
             <text fg={highlight()} flexShrink={0}>
-              {stackedTildeFrame(animTick())}
+              {stackedTildeColumnFrame(animTick())}
             </text>
           </Show>
-          <Show when={status().type === "busy"}>
+          <Show when={promptBusy()}>
             <text fg={theme.textMuted} flexShrink={0}>
               {" "}
               Esc to cancel

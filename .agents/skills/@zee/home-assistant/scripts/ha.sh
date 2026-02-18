@@ -7,32 +7,42 @@ set -euo pipefail
 CONFIG_FILE="${HA_CONFIG:-$HOME/.config/home-assistant/config.json}"
 
 # Load config
+config_url=""
+config_token=""
 if [[ -f "$CONFIG_FILE" ]]; then
-  HA_URL="${HA_URL:-$(jq -r '.url // empty' "$CONFIG_FILE")}"
-  HA_TOKEN="${HA_TOKEN:-$(jq -r '.token // empty' "$CONFIG_FILE")}"
+  config_url="$(jq -r '.url // empty' "$CONFIG_FILE")"
+  config_token="$(jq -r '.token // empty' "$CONFIG_FILE")"
 fi
 
-: "${HA_URL:?Set HA_URL or configure $CONFIG_FILE}"
-: "${HA_TOKEN:?Set HA_TOKEN or configure $CONFIG_FILE}"
+# Accept both legacy (HA_*) and hass-cli-compatible (HASS_*) env vars.
+HASS_SERVER="${HASS_SERVER:-${HA_URL:-$config_url}}"
+HASS_TOKEN="${HASS_TOKEN:-${HA_TOKEN:-$config_token}}"
+
+# Keep legacy names available for compatibility.
+HA_URL="${HA_URL:-$HASS_SERVER}"
+HA_TOKEN="${HA_TOKEN:-$HASS_TOKEN}"
+
+: "${HASS_SERVER:?Set HASS_SERVER/HA_URL or configure $CONFIG_FILE}"
+: "${HASS_TOKEN:?Set HASS_TOKEN/HA_TOKEN or configure $CONFIG_FILE}"
 
 cmd="${1:-help}"
 shift || true
 
 api() {
-  curl -s -H "Authorization: Bearer $HA_TOKEN" -H "Content-Type: application/json" "$@"
+  curl -s -H "Authorization: Bearer $HASS_TOKEN" -H "Content-Type: application/json" "$@"
 }
 
 case "$cmd" in
   state|get)
     # Get entity state: ha.sh state light.living_room
     entity="${1:?Usage: ha.sh state <entity_id>}"
-    api "$HA_URL/api/states/$entity" | jq -r '.state // "unknown"'
+    api "$HASS_SERVER/api/states/$entity" | jq -r '.state // "unknown"'
     ;;
     
   states)
     # Get full entity state with attributes
     entity="${1:?Usage: ha.sh states <entity_id>}"
-    api "$HA_URL/api/states/$entity" | jq
+    api "$HASS_SERVER/api/states/$entity" | jq
     ;;
 
   on|turn_on)
@@ -41,10 +51,10 @@ case "$cmd" in
     domain="${entity%%.*}"
     brightness="${2:-}"
     if [[ -n "$brightness" ]]; then
-      api -X POST "$HA_URL/api/services/$domain/turn_on" \
+      api -X POST "$HASS_SERVER/api/services/$domain/turn_on" \
         -d "{\"entity_id\": \"$entity\", \"brightness\": $brightness}"
     else
-      api -X POST "$HA_URL/api/services/$domain/turn_on" \
+      api -X POST "$HASS_SERVER/api/services/$domain/turn_on" \
         -d "{\"entity_id\": \"$entity\"}"
     fi
     echo "✓ $entity turned on"
@@ -54,7 +64,7 @@ case "$cmd" in
     # Turn off entity: ha.sh off light.living_room
     entity="${1:?Usage: ha.sh off <entity_id>}"
     domain="${entity%%.*}"
-    api -X POST "$HA_URL/api/services/$domain/turn_off" \
+    api -X POST "$HASS_SERVER/api/services/$domain/turn_off" \
       -d "{\"entity_id\": \"$entity\"}" >/dev/null
     echo "✓ $entity turned off"
     ;;
@@ -63,7 +73,7 @@ case "$cmd" in
     # Toggle entity: ha.sh toggle switch.fan
     entity="${1:?Usage: ha.sh toggle <entity_id>}"
     domain="${entity%%.*}"
-    api -X POST "$HA_URL/api/services/$domain/toggle" \
+    api -X POST "$HASS_SERVER/api/services/$domain/toggle" \
       -d "{\"entity_id\": \"$entity\"}" >/dev/null
     echo "✓ $entity toggled"
     ;;
@@ -72,7 +82,7 @@ case "$cmd" in
     # Activate scene: ha.sh scene movie_night
     scene="${1:?Usage: ha.sh scene <scene_name>}"
     [[ "$scene" == scene.* ]] || scene="scene.$scene"
-    api -X POST "$HA_URL/api/services/scene/turn_on" \
+    api -X POST "$HASS_SERVER/api/services/scene/turn_on" \
       -d "{\"entity_id\": \"$scene\"}" >/dev/null
     echo "✓ Scene $scene activated"
     ;;
@@ -81,7 +91,7 @@ case "$cmd" in
     # Run script: ha.sh script goodnight
     script="${1:?Usage: ha.sh script <script_name>}"
     [[ "$script" == script.* ]] || script="script.$script"
-    api -X POST "$HA_URL/api/services/script/turn_on" \
+    api -X POST "$HASS_SERVER/api/services/script/turn_on" \
       -d "{\"entity_id\": \"$script\"}" >/dev/null
     echo "✓ Script $script executed"
     ;;
@@ -90,7 +100,7 @@ case "$cmd" in
     # Trigger automation: ha.sh automation motion_lights
     auto="${1:?Usage: ha.sh automation <automation_name>}"
     [[ "$auto" == automation.* ]] || auto="automation.$auto"
-    api -X POST "$HA_URL/api/services/automation/trigger" \
+    api -X POST "$HASS_SERVER/api/services/automation/trigger" \
       -d "{\"entity_id\": \"$auto\"}" >/dev/null
     echo "✓ Automation $auto triggered"
     ;;
@@ -99,7 +109,7 @@ case "$cmd" in
     # Set temperature: ha.sh climate climate.thermostat 22
     entity="${1:?Usage: ha.sh climate <entity_id> <temperature>}"
     temp="${2:?Usage: ha.sh climate <entity_id> <temperature>}"
-    api -X POST "$HA_URL/api/services/climate/set_temperature" \
+    api -X POST "$HASS_SERVER/api/services/climate/set_temperature" \
       -d "{\"entity_id\": \"$entity\", \"temperature\": $temp}" >/dev/null
     echo "✓ $entity set to ${temp}°"
     ;;
@@ -108,11 +118,11 @@ case "$cmd" in
     # List entities by domain: ha.sh list lights / ha.sh list all
     filter="${1:-all}"
     if [[ "$filter" == "all" ]]; then
-      api "$HA_URL/api/states" | jq -r '.[].entity_id' | sort
+      api "$HASS_SERVER/api/states" | jq -r '.[].entity_id' | sort
     else
       # Normalize: "lights" -> "light", "switches" -> "switch"
       filter="${filter%s}"
-      api "$HA_URL/api/states" | jq -r --arg d "$filter" \
+      api "$HASS_SERVER/api/states" | jq -r --arg d "$filter" \
         '.[] | select(.entity_id | startswith($d + ".")) | .entity_id' | sort
     fi
     ;;
@@ -120,7 +130,7 @@ case "$cmd" in
   search)
     # Search entities: ha.sh search kitchen
     pattern="${1:?Usage: ha.sh search <pattern>}"
-    api "$HA_URL/api/states" | jq -r --arg p "$pattern" \
+    api "$HASS_SERVER/api/states" | jq -r --arg p "$pattern" \
       '.[] | select(.entity_id | test($p; "i")) | "\(.entity_id): \(.state)"'
     ;;
 
@@ -129,12 +139,12 @@ case "$cmd" in
     domain="${1:?Usage: ha.sh call <domain> <service> [json_data]}"
     service="${2:?Usage: ha.sh call <domain> <service> [json_data]}"
     data="${3:-{}}"
-    api -X POST "$HA_URL/api/services/$domain/$service" -d "$data"
+    api -X POST "$HASS_SERVER/api/services/$domain/$service" -d "$data"
     ;;
 
   info)
     # Get HA instance info
-    api "$HA_URL/api/" | jq
+    api "$HASS_SERVER/api/" | jq
     ;;
 
   help|*)
@@ -159,8 +169,10 @@ Commands:
   info                        Get HA instance info
 
 Environment:
-  HA_URL    Home Assistant URL (required)
-  HA_TOKEN  Long-lived access token (required)
+  HASS_SERVER  Home Assistant URL (required)
+  HASS_TOKEN   Long-lived access token (required)
+  HA_URL       Legacy alias for HASS_SERVER
+  HA_TOKEN     Legacy alias for HASS_TOKEN
 
 Examples:
   ha.sh on light.living_room 200
