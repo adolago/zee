@@ -1,19 +1,16 @@
 # Files to preserve during upstream merges (use "ours" strategy)
 # These are fork-specific customizations that should not be overwritten
-
 # Fork-specific documentation
 README.md merge=ours
 CONTRIBUTING.md merge=ours
 CLAUDE.md merge=ours
-
 # Non-English READMEs (removed from this fork)
 README.zh-CN.md merge=ours
 README.zh-TW.md merge=ours
-
 # Fork-specific configuration
 .zee/zee.jsonc merge=ours
-
 # Fork customizations in docs
 docs/OPS.md merge=ours
 docs/USER_GUIDE.md merge=ours
 docs/PROVIDERS.md merge=ours
+.venv-stanley-py312/lib/python3.12/site-packages/_polars_runtime_32/_polars_runtime.abi3.so filter=lfs diff=lfs merge=lfs -text
