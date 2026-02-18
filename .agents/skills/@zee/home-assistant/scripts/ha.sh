@@ -123,40 +123,98 @@ cmd="${1:-help}"
 shift || true
 
 api() {
-  curl -s -H "Authorization: Bearer $HASS_TOKEN" -H "Content-Type: application/json" "$@"
+  curl -fsS --retry 2 --retry-connrefused --retry-delay 0 \
+    -H "Authorization: Bearer $HASS_TOKEN" \
+    -H "Content-Type: application/json" \
+    "$@"
+}
+
+resolve_entity() {
+  local input="$1"
+  local domain_filter="${2:-}"
+
+  # Fast path for explicit entity IDs like light.office_lights.
+  if [[ "$input" == *.* && "$input" != *" "* ]]; then
+    echo "$input"
+    return 0
+  fi
+
+  local states_json
+  if ! states_json="$(api "$HASS_SERVER/api/states")"; then
+    echo "Failed to read Home Assistant states. Check connection/token." >&2
+    return 1
+  fi
+
+  local -a matches=()
+  mapfile -t matches < <(
+    jq -r --arg q "$input" --arg d "$domain_filter" '
+      def norm: ascii_downcase | gsub("[^a-z0-9]+"; " ") | gsub("^ +| +$"; "");
+      ($q | norm) as $needle
+      | .[]
+      | select(
+          $needle != ""
+          and (
+            (.entity_id | norm | contains($needle))
+            or
+            ((.attributes.friendly_name // "") | norm | contains($needle))
+          )
+          and ($d == "" or (.entity_id | startswith($d + ".")))
+        )
+      | .entity_id
+    ' <<<"$states_json"
+  )
+
+  if [[ ${#matches[@]} -eq 1 ]]; then
+    echo "${matches[0]}"
+    return 0
+  fi
+
+  if [[ ${#matches[@]} -eq 0 ]]; then
+    echo "No entity matched '$input'. Try: ha.sh search \"$input\"" >&2
+    return 1
+  fi
+
+  echo "Ambiguous query '$input'. Multiple entities matched:" >&2
+  printf ' - %s\n' "${matches[@]}" >&2
+  echo "Use an exact entity_id." >&2
+  return 1
 }
 
 case "$cmd" in
   state|get)
-    # Get entity state: ha.sh state light.living_room
-    entity="${1:?Usage: ha.sh state <entity_id>}"
+    # Get entity state: ha.sh state light.living_room (or query like "living room")
+    entity_input="${1:?Usage: ha.sh state <entity_id_or_query>}"
+    entity="$(resolve_entity "$entity_input")" || exit 1
     api "$HASS_SERVER/api/states/$entity" | jq -r '.state // "unknown"'
     ;;
     
   states)
     # Get full entity state with attributes
-    entity="${1:?Usage: ha.sh states <entity_id>}"
+    entity_input="${1:?Usage: ha.sh states <entity_id_or_query>}"
+    entity="$(resolve_entity "$entity_input")" || exit 1
     api "$HASS_SERVER/api/states/$entity" | jq
     ;;
 
   on|turn_on)
-    # Turn on entity: ha.sh on light.living_room [brightness]
-    entity="${1:?Usage: ha.sh on <entity_id> [brightness]}"
+    # Turn on entity: ha.sh on light.living_room [brightness] / ha.sh on "office lights"
+    entity_input="${1:?Usage: ha.sh on <entity_id_or_query> [brightness]}"
+    entity="$(resolve_entity "$entity_input")" || exit 1
     domain="${entity%%.*}"
     brightness="${2:-}"
     if [[ -n "$brightness" ]]; then
       api -X POST "$HASS_SERVER/api/services/$domain/turn_on" \
-        -d "{\"entity_id\": \"$entity\", \"brightness\": $brightness}"
+        -d "{\"entity_id\": \"$entity\", \"brightness\": $brightness}" >/dev/null
     else
       api -X POST "$HASS_SERVER/api/services/$domain/turn_on" \
-        -d "{\"entity_id\": \"$entity\"}"
+        -d "{\"entity_id\": \"$entity\"}" >/dev/null
     fi
     echo "✓ $entity turned on"
     ;;
 
   off|turn_off)
-    # Turn off entity: ha.sh off light.living_room
-    entity="${1:?Usage: ha.sh off <entity_id>}"
+    # Turn off entity: ha.sh off light.living_room / ha.sh off "office lights"
+    entity_input="${1:?Usage: ha.sh off <entity_id_or_query>}"
+    entity="$(resolve_entity "$entity_input")" || exit 1
     domain="${entity%%.*}"
     api -X POST "$HASS_SERVER/api/services/$domain/turn_off" \
       -d "{\"entity_id\": \"$entity\"}" >/dev/null
@@ -164,8 +222,9 @@ case "$cmd" in
     ;;
 
   toggle)
-    # Toggle entity: ha.sh toggle switch.fan
-    entity="${1:?Usage: ha.sh toggle <entity_id>}"
+    # Toggle entity: ha.sh toggle switch.fan / ha.sh toggle "office fan"
+    entity_input="${1:?Usage: ha.sh toggle <entity_id_or_query>}"
+    entity="$(resolve_entity "$entity_input")" || exit 1
     domain="${entity%%.*}"
     api -X POST "$HASS_SERVER/api/services/$domain/toggle" \
       -d "{\"entity_id\": \"$entity\"}" >/dev/null
@@ -200,9 +259,10 @@ case "$cmd" in
     ;;
 
   climate|temp)
-    # Set temperature: ha.sh climate climate.thermostat 22
-    entity="${1:?Usage: ha.sh climate <entity_id> <temperature>}"
-    temp="${2:?Usage: ha.sh climate <entity_id> <temperature>}"
+    # Set temperature: ha.sh climate climate.thermostat 22 / ha.sh climate thermostat 22
+    entity_input="${1:?Usage: ha.sh climate <entity_id_or_query> <temperature>}"
+    entity="$(resolve_entity "$entity_input" "climate")" || exit 1
+    temp="${2:?Usage: ha.sh climate <entity_id_or_query> <temperature>}"
     api -X POST "$HASS_SERVER/api/services/climate/set_temperature" \
       -d "{\"entity_id\": \"$entity\", \"temperature\": $temp}" >/dev/null
     echo "✓ $entity set to ${temp}°"
@@ -225,7 +285,9 @@ case "$cmd" in
     # Search entities: ha.sh search kitchen
     pattern="${1:?Usage: ha.sh search <pattern>}"
     api "$HASS_SERVER/api/states" | jq -r --arg p "$pattern" \
-      '.[] | select(.entity_id | test($p; "i")) | "\(.entity_id): \(.state)"'
+      '.[]
+      | select((.entity_id | test($p; "i")) or ((.attributes.friendly_name // "") | test($p; "i")))
+      | "\(.entity_id): \(.state)"'
     ;;
 
   call)
@@ -248,15 +310,15 @@ Home Assistant CLI
 Usage: ha.sh <command> [args...]
 
 Commands:
-  state <entity>              Get entity state
-  states <entity>             Get full entity state with attributes
-  on <entity> [brightness]    Turn on (optional brightness 0-255)
-  off <entity>                Turn off
-  toggle <entity>             Toggle on/off
+  state <entity|query>        Get entity state
+  states <entity|query>       Get full entity state with attributes
+  on <entity|query> [bright]  Turn on (optional brightness 0-255)
+  off <entity|query>          Turn off
+  toggle <entity|query>       Toggle on/off
   scene <name>                Activate scene
   script <name>               Run script
   automation <name>           Trigger automation
-  climate <entity> <temp>     Set temperature
+  climate <entity|query> <temp> Set temperature
   list [domain]               List entities (lights, switches, all)
   search <pattern>            Search entities by name
   call <domain> <svc> [json]  Call any service
