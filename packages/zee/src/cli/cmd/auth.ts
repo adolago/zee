@@ -7,6 +7,7 @@ import { Provider } from "../../provider/provider"
 import { filter, map, pipe, sortBy, values } from "remeda"
 import path from "path"
 import os from "os"
+import { spawnSync } from "node:child_process"
 import { Config } from "../../config/config"
 import { ConfigMarkdown } from "../../config/markdown"
 import { Global } from "../../global"
@@ -23,6 +24,7 @@ import {
   getProvider,
   type ServiceType,
 } from "../../../../../src/config/providers"
+import { Flag } from "../../flag/flag"
 
 /** Local providers that need host:port instead of API key */
 const LOCAL_PROVIDERS = new Set(["vllm", "ollama", "lmstudio", "llamacpp", "tgi"])
@@ -129,6 +131,55 @@ function normalizeDaemonHost(hostname?: string): string {
   return hostname
 }
 
+function resolveUserPath(input: string): string {
+  const trimmed = input.trim()
+  if (!trimmed) return trimmed
+  if (trimmed === "~") return os.homedir()
+  if (trimmed.startsWith("~/")) return path.join(os.homedir(), trimmed.slice(2))
+  return trimmed
+}
+
+function parseSystemdEnvironment(raw: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  const regex = /([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"]*)"|'([^']*)'|([^ ]+))/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(raw)) !== null) {
+    const key = match[1]
+    const value = match[2] ?? match[3] ?? match[4] ?? ""
+    result[key] = value
+  }
+  return result
+}
+
+function readDaemonConfigPath(): string | undefined {
+  if (process.platform !== "linux") return undefined
+  const result = spawnSync("systemctl", ["--user", "show", "zee", "-p", "Environment", "--value"], {
+    encoding: "utf-8",
+    timeout: 3000,
+    stdio: ["ignore", "pipe", "ignore"],
+  })
+  if (result.status !== 0) return undefined
+  const env = parseSystemdEnvironment(result.stdout || "")
+  const direct = env["ZEE_CONFIG"]?.trim()
+  if (direct) return resolveUserPath(direct)
+  const dir = env["ZEE_CONFIG_DIR"]?.trim()
+  if (dir) return path.join(resolveUserPath(dir), "zee.jsonc")
+  return undefined
+}
+
+function resolveWritableConfigPath(): string {
+  const direct = Flag.ZEE_CONFIG?.trim()
+  if (direct) return path.resolve(resolveUserPath(direct))
+
+  const dir = Flag.ZEE_CONFIG_DIR?.trim()
+  if (dir) return path.resolve(path.join(resolveUserPath(dir), "zee.jsonc"))
+
+  const daemonPath = readDaemonConfigPath()
+  if (daemonPath) return path.resolve(daemonPath)
+
+  return path.join(Global.Path.config, "zee.jsonc")
+}
+
 function resolveDaemonUrl(config?: Config.Info): string {
   const direct = process.env.ZEE_URL
   if (direct && direct.trim().length > 0) return direct.trim()
@@ -162,7 +213,7 @@ async function notifyDaemonAuthChange(config?: Config.Info) {
  * Add a provider to the global config file.
  */
 async function addProviderToConfig(providerId: string, providerConfig: { options: { baseURL: string } }) {
-  const configPath = path.join(Global.Path.config, "zee.jsonc")
+  const configPath = resolveWritableConfigPath()
   const file = Bun.file(configPath)
 
   let text = "{}"
@@ -324,7 +375,7 @@ async function updateSkillConfig(
   skillName: string,
   credentials: { apiKey?: string; env?: Record<string, string> },
 ): Promise<void> {
-  const configPath = path.join(Global.Path.config, "zee.jsonc")
+  const configPath = resolveWritableConfigPath()
   const file = Bun.file(configPath)
 
   let text = "{}"
@@ -353,7 +404,7 @@ async function updateSkillConfig(
  * Remove a skill's credentials from config (skills.entries.<name>).
  */
 async function removeSkillConfig(skillName: string): Promise<void> {
-  const configPath = path.join(Global.Path.config, "zee.jsonc")
+  const configPath = resolveWritableConfigPath()
   const file = Bun.file(configPath)
   if (!(await file.exists())) return
 
