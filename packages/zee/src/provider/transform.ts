@@ -487,8 +487,13 @@ export namespace ProviderTransform {
         if (id === "gpt-5-pro") return {}
         const openaiEfforts = iife(() => {
           if (id.includes("codex")) {
-            if (id.includes("5.2")) return [...WIDELY_SUPPORTED_EFFORTS, "xhigh"]
-            return WIDELY_SUPPORTED_EFFORTS
+            const codexEfforts = [...WIDELY_SUPPORTED_EFFORTS]
+            // OpenAI Codex reasoning uses the four effort levels: low, medium, high, xhigh.
+            // xhigh is supported by the newer Codex line (for example GPT-5.2+ Codex).
+            if (id.includes("codex-max") || model.release_date >= "2025-12-04") {
+              codexEfforts.push("xhigh")
+            }
+            return codexEfforts
           }
           const arr = [...WIDELY_SUPPORTED_EFFORTS]
           if (id.includes("gpt-5-") || id === "gpt-5") {
@@ -835,7 +840,7 @@ export namespace ProviderTransform {
     // ═══════════════════════════════════════════════════════════════════════
     "@ai-sdk/openai": new Set([
       // Reasoning (o1, o3-mini)
-      "reasoningEffort", // "low" | "medium" | "high"
+      "reasoningEffort", // model-dependent (e.g., none|minimal|low|medium|high|xhigh)
       "reasoningSummary", // Include reasoning summary in response
 
       // Response content

@@ -247,6 +247,22 @@ describe("OpenAI GPT Extended Thinking", () => {
     expect(Object.keys(variants)).toContain("xhigh")
   })
 
+  test("GPT-5 Codex models use low/medium/high/xhigh effort levels", () => {
+    const model = createMockModel({
+      id: "openai/gpt-5.3-codex",
+      providerID: "openai",
+      api: {
+        id: "gpt-5.3-codex",
+        url: "https://api.openai.com",
+        npm: "@ai-sdk/openai",
+      },
+      release_date: "2026-01-15",
+    })
+
+    const variants = ProviderTransform.variants(model)
+    expect(Object.keys(variants)).toEqual(["low", "medium", "high", "xhigh"])
+  })
+
   test("GPT-5-pro returns reasoning effort variants", () => {
     // Note: gpt-5-pro is a reasoning model but the special-case check in transform.ts
     // uses id === "gpt-5-pro" which doesn't match "openai/gpt-5-pro"

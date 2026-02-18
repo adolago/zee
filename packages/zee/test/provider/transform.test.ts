@@ -1369,6 +1369,21 @@ describe("ProviderTransform.variants", () => {
       const result = ProviderTransform.variants(model)
       expect(Object.keys(result)).toEqual(["none", "minimal", "low", "medium", "high", "xhigh"])
     })
+
+    test("codex models use low/medium/high/xhigh effort nomenclature", () => {
+      const model = createMockModel({
+        id: "openai/gpt-5.3-codex",
+        providerID: "openai",
+        api: {
+          id: "gpt-5.3-codex",
+          url: "https://api.openai.com",
+          npm: "@ai-sdk/openai",
+        },
+        release_date: "2026-01-15",
+      })
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh"])
+    })
   })
 
   describe("@ai-sdk/anthropic", () => {
