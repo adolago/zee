@@ -2305,14 +2305,14 @@ export function Prompt(props: PromptProps) {
           <Show
             when={promptBusy()}
             fallback={
-              <text fg={highlight()} flexShrink={0}>
-                ~
-              </text>
+              <box width={5} justifyContent="center" flexShrink={0}>
+                <text fg={highlight()}>~</text>
+              </box>
             }
           >
-            <text fg={highlight()} flexShrink={0}>
-              {stackedTildeColumnFrame(animTick())}
-            </text>
+            <box width={5} justifyContent="center" flexShrink={0}>
+              <text fg={highlight()}>{stackedTildeColumnFrame(animTick())}</text>
+            </box>
           </Show>
           <Show when={promptBusy()}>
             <text fg={theme.textMuted} flexShrink={0}>

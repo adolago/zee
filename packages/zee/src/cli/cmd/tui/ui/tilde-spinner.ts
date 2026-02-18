@@ -9,8 +9,12 @@ const CENTERED_TILDE_FRAMES = [
   `~${COMBINING_TILDE_BELOW}`,
 ] as const
 
+// Prompt footer spinner uses plain ASCII tildes so all three glyphs match.
+// The sequence expands from the center tilde out to both sides at equal speed.
+const CENTER_OUT_COLUMN_FRAMES = ["~", "~~~", "~ ~ ~", "~~~"] as const
+
 export const STACKED_TILDE_FRAMES = CENTERED_TILDE_FRAMES
-export const STACKED_TILDE_COLUMN_FRAMES = CENTERED_TILDE_FRAMES
+export const STACKED_TILDE_COLUMN_FRAMES = CENTER_OUT_COLUMN_FRAMES
 
 function frameIndexFromTick(tick: number, frameCount: number): number {
   const heldTick = Math.floor(Math.abs(tick) / TILDE_FRAME_HOLD_TICKS)
