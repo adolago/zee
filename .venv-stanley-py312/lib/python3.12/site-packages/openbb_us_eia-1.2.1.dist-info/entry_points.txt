@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+us_eia=openbb_us_eia:eia_provider
+

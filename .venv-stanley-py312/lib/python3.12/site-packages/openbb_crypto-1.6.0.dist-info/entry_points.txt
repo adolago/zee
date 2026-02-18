@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+crypto=openbb_crypto.crypto_views:CryptoViews
+
+[openbb_core_extension]
+crypto=openbb_crypto.crypto_router:router
+

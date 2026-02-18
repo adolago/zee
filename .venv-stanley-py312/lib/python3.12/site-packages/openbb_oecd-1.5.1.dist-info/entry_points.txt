@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+oecd=openbb_oecd:oecd_provider
+

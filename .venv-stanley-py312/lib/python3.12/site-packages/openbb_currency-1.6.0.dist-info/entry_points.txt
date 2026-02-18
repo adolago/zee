@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+currency=openbb_currency.currency_views:CurrencyViews
+
+[openbb_core_extension]
+currency=openbb_currency.currency_router:router
+

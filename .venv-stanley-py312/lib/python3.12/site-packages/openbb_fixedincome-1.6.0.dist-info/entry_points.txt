@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+fixedincome=openbb_fixedincome.fixedincome_views:FixedIncomeViews
+
+[openbb_core_extension]
+fixedincome=openbb_fixedincome.fixedincome_router:router
+

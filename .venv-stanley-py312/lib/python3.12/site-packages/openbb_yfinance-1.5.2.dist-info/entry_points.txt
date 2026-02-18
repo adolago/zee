@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+yfinance=openbb_yfinance:yfinance_provider
+

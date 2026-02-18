@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+derivatives=openbb_derivatives.derivatives_views:DerivativesViews
+
+[openbb_core_extension]
+derivatives=openbb_derivatives.derivatives_router:router
+

@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+etf=openbb_etf.etf_views:EtfViews
+
+[openbb_core_extension]
+etf=openbb_etf.etf_router:router
+

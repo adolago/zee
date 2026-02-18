@@ -1,0 +1,3 @@
+[openbb_core_extension]
+regulators=openbb_regulators.regulators_router:router
+

@@ -1,0 +1,37 @@
+Metadata-Version: 2.4
+Name: openbb-bls
+Version: 1.2.1
+Summary: The Bureau of Labor Statistics' (BLS) Public Data Application Programming Interface (API) gives the public access to economic data from all BLS programs. It is the Bureau's hope that talented developers and programmers will use the BLS Public Data API to create original, inventive applications with published BLS data.
+License: AGPL-3.0-only
+Author: OpenBB Team
+Author-email: hello@openbb.co
+Requires-Python: >=3.10,<3.14
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: openbb-core (>=1.5.7,<2.0.0)
+Description-Content-Type: text/markdown
+
+# BLS Provider Extension
+
+This extension integrates the BLS data provider into the OpenBB Platform.
+
+## Installation
+
+To install this extension from PyPI:
+
+```console
+pip install openbb-bls
+```
+
+To install the extension locally, run the following command in this folder:
+
+```console
+poetry install
+```
+
+Documentation available [here](https://docs.openbb.co/platform/developer_guide/contributing).
+

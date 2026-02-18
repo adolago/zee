@@ -1,0 +1,3 @@
+[console_scripts]
+edgar-test = tests.harness.cli:cli
+edgartools-mcp = edgar.ai.mcp_server:main

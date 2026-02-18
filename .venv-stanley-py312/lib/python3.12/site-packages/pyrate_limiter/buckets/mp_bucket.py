@@ -1,0 +1,52 @@
+"""multiprocessing In-memory Bucket using a multiprocessing.Manager.ListProxy
+and a multiprocessing.Lock.
+"""
+
+from multiprocessing import Manager, RLock
+from multiprocessing.managers import ListProxy
+from multiprocessing.synchronize import RLock as LockType
+from typing import List, Optional
+
+from ..abstracts import Rate, RateItem
+from ..buckets import InMemoryBucket
+from ..clocks import MonotonicClock
+
+
+class MultiprocessBucket(InMemoryBucket):
+    items: List[RateItem]  # ListProxy
+    mp_lock: LockType
+
+    def __init__(self, rates: List[Rate], items: List[RateItem], mp_lock: LockType):
+        if not isinstance(items, ListProxy):  # pragma: no cover - guard only
+            raise ValueError("items must be a ListProxy")
+
+        self._clock = MonotonicClock()
+
+        self.rates = sorted(rates, key=lambda r: r.interval)
+        self.items = items
+        self.mp_lock = mp_lock
+
+    def put(self, item: RateItem) -> bool:
+        with self.mp_lock:
+            return super().put(item)
+
+    def leak(self, current_timestamp: Optional[int] = None) -> int:
+        with self.mp_lock:
+            return super().leak(current_timestamp)
+
+    def limiter_lock(self):
+        return self.mp_lock
+
+    @classmethod
+    def init(
+        cls,
+        rates: List[Rate],
+    ):
+        """
+        Creates a single ListProxy so that this bucket can be shared across multiple processes.
+        """
+        shared_items: List[RateItem] = Manager().list()  # type: ignore[assignment]
+
+        mp_lock: LockType = RLock()
+
+        return cls(rates=rates, items=shared_items, mp_lock=mp_lock)

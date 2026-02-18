@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+tradingeconomics=openbb_tradingeconomics:tradingeconomics_provider
+

@@ -1,0 +1,2 @@
+[nbdev]
+sec_downloader = sec_downloader._modidx:d

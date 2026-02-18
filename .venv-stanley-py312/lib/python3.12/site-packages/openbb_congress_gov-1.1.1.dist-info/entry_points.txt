@@ -1,0 +1,6 @@
+[openbb_core_extension]
+uscongress=openbb_congress_gov.router.congress_gov_router:router
+
+[openbb_provider_extension]
+congress_gov=openbb_congress_gov:congress_gov_provider
+

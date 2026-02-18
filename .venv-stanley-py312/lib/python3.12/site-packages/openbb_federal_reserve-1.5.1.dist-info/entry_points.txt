@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+federal_reserve=openbb_federal_reserve:federal_reserve_provider
+

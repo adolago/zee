@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+cftc=openbb_cftc:cftc_provider
+

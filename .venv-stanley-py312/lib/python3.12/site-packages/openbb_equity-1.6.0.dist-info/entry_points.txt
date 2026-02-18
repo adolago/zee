@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+equity=openbb_equity.equity_views:EquityViews
+
+[openbb_core_extension]
+equity=openbb_equity.equity_router:router
+

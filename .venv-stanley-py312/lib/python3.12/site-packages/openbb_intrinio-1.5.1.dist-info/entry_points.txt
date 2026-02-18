@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+intrinio=openbb_intrinio:intrinio_provider
+

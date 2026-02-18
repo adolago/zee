@@ -1,0 +1,38 @@
+Metadata-Version: 2.4
+Name: openbb-sec
+Version: 1.5.1
+Summary: SEC extension for OpenBB
+License: AGPL-3.0-only
+Author: OpenBB Team
+Author-email: hello@openbb.co
+Requires-Python: >=3.10,<3.14
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: aiohttp-client-cache (>=0.11.0,<0.12.0)
+Requires-Dist: aiosqlite (>=0.20.0,<0.21.0)
+Requires-Dist: beautifulsoup4 (>=4.12,<5.0)
+Requires-Dist: inscriptis (>=2.5.3,<3.0.0)
+Requires-Dist: lxml (>=5.2.1,<6.0.0)
+Requires-Dist: openbb-core (>=1.5.7,<2.0.0)
+Requires-Dist: trafilatura (>=2.0,<3.0)
+Requires-Dist: xmltodict (>=0.13.0,<0.14.0)
+Description-Content-Type: text/markdown
+
+# OpenBB SEC Provider
+
+This extension integrates the [SEC](https://www.sec.gov/edgar) data provider into the OpenBB Platform.
+
+## Installation
+
+To install the extension:
+
+```bash
+pip install openbb-sec
+```
+
+Documentation available [here](https://docs.openbb.co/platform/developer_guide/contributing).
+

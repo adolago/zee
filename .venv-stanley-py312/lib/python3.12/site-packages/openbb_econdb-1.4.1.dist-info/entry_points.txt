@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+econdb=openbb_econdb:econdb_provider
+

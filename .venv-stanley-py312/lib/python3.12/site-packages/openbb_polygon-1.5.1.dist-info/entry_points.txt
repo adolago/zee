@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+polygon=openbb_polygon:polygon_provider
+

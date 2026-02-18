@@ -1,0 +1,31 @@
+Metadata-Version: 2.4
+Name: openbb-tradingeconomics
+Version: 1.5.1
+Summary: Trading Economics extension for OpenBB
+License: AGPL-3.0-only
+Author: OpenBB Team
+Author-email: hello@openbb.co
+Requires-Python: >=3.10,<3.14
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: openbb-core (>=1.5.7,<2.0.0)
+Description-Content-Type: text/markdown
+
+# OpenBB Trading Economics Provider
+
+This extension integrates the [Trading Economics](https://docs.tradingeconomics.com/) data provider into the OpenBB SDK.
+
+## Installation
+
+To install the extension:
+
+```bash
+pip install openbb-tradingeconomics
+```
+
+Documentation available [here](https://docs.openbb.co/platform/developer_guide/contributing).
+

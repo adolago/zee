@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+tiingo=openbb_tiingo:tiingo_provider
+

@@ -1,0 +1,6 @@
+[openbb_charting_extension]
+index=openbb_index.index_views:IndexViews
+
+[openbb_core_extension]
+index=openbb_index.index_router:router
+

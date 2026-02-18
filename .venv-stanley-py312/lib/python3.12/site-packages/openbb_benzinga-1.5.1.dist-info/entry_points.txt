@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+benzinga=openbb_benzinga:benzinga_provider
+

@@ -1,0 +1,3 @@
+[openbb_provider_extension]
+fmp=openbb_fmp:fmp_provider
+
