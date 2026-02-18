@@ -2297,7 +2297,7 @@ export function Prompt(props: PromptProps) {
           />
         </box>
         {/* Bottom border with embedded status info */}
-        <box height={promptBusy() ? 3 : 1} flexDirection="row" gap={0} alignItems="flex-end">
+        <box height={1} flexDirection="row" gap={0}>
           <text fg={theme.border} flexShrink={0}>
             ╰
           </text>

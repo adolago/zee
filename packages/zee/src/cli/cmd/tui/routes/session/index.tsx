@@ -59,6 +59,7 @@ import { resolvePersonaArt } from "@tui/component/persona-art"
 import { Spinner } from "@tui/component/spinner"
 import { Header } from "./header"
 import { summarizeToolHighlights } from "./tool-highlights-summary"
+import { buildCompactToolTimeline } from "./tool-call-timeline"
 import { parsePatch } from "diff"
 import { useDialog, type DialogContext } from "../../ui/dialog"
 import { TodoItem } from "../../component/todo-item"
@@ -1399,8 +1400,19 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const ctx = use()
   const { theme } = useTheme()
   const showToolDetails = createMemo(() => ctx.showToolDetailsForMessage(props.message, props.parts))
+  const compactMode = createMemo(
+    () => !showToolDetails() && Boolean(props.message.time.completed || props.message.error),
+  )
+  const compactTimeline = createMemo(() => {
+    if (!compactMode()) return []
+    return buildCompactToolTimeline(props.parts)
+  })
+  const visibleParts = createMemo(() => {
+    if (!compactMode()) return props.parts
+    return props.parts.filter((part) => part.type === "text")
+  })
   const toolSummary = createMemo(() => {
-    if (showToolDetails()) return undefined
+    if (showToolDetails() || compactMode()) return undefined
     return summarizeToolHighlights(props.parts)
   })
 
@@ -1412,13 +1424,25 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
         </text>
       </Show>
 
-      <For each={props.parts}>
+      <Show when={compactTimeline().length > 0}>
+        <box flexDirection="column" paddingLeft={1}>
+          <For each={compactTimeline()}>
+            {(line) => (
+              <text fg={theme.textMuted}>
+                {line} <span style={{ fg: theme.textMuted }}>▸</span>
+              </text>
+            )}
+          </For>
+        </box>
+      </Show>
+
+      <For each={visibleParts()}>
         {(part, index) => {
           const component = createMemo(() => PART_MAPPING[part.type as keyof typeof PART_MAPPING])
           return (
             <Show when={component()}>
               <Dynamic
-                last={index() === props.parts.length - 1}
+                last={index() === visibleParts().length - 1}
                 component={component()}
                 part={part as any}
                 message={props.message}
