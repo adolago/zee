@@ -158,6 +158,13 @@ process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
 process.env["XDG_CONFIG_HOME"] = path.join(dir, "config")
 process.env["XDG_STATE_HOME"] = path.join(dir, "state")
 
+await Promise.all([
+  fs.mkdir(path.join(dir, "share", "zee"), { recursive: true }),
+  fs.mkdir(path.join(dir, "cache", "zee"), { recursive: true }),
+  fs.mkdir(path.join(dir, "config", "zee"), { recursive: true }),
+  fs.mkdir(path.join(dir, "state", "zee"), { recursive: true }),
+])
+
 const managedConfigDir = path.join(dir, "managed-config")
 process.env["ZEE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
 
