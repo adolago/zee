@@ -128,18 +128,29 @@ describe("ProviderTransform.variants - mapping parity", () => {
     expect(variants.medium.thinking.budget_tokens).toBe(16000)
   })
 
-  test("xai sdk models return low/high reasoning variants", () => {
+  test("xai sdk non-mini models return no reasoning effort variants", () => {
     const grokModel = {
-      id: "grok-3",
+      id: "grok-4",
       providerID: "xai",
-      api: { id: "grok-3", npm: "@ai-sdk/xai" },
+      api: { id: "grok-4", npm: "@ai-sdk/xai" },
       capabilities: { reasoning: true },
     } as any
 
-    expect(Object.keys(ProviderTransform.variants(grokModel))).toEqual(["low", "high"])
+    expect(ProviderTransform.variants(grokModel)).toEqual({})
   })
 
-  test("adds azure reasoning variants with minimal for gpt-5", () => {
+  test("xai sdk grok-3-mini keeps low/high reasoning variants", () => {
+    const grokMiniModel = {
+      id: "grok-3-mini",
+      providerID: "xai",
+      api: { id: "grok-3-mini", npm: "@ai-sdk/xai" },
+      capabilities: { reasoning: true },
+    } as any
+
+    expect(Object.keys(ProviderTransform.variants(grokMiniModel))).toEqual(["low", "high"])
+  })
+
+  test("azure gpt-5 uses low/medium/high reasoning variants", () => {
     const azureModel = {
       id: "gpt-5",
       providerID: "azure",
@@ -149,8 +160,7 @@ describe("ProviderTransform.variants - mapping parity", () => {
     } as any
 
     const variants = ProviderTransform.variants(azureModel)
-    expect(Object.keys(variants)).toContain("minimal")
-    expect(Object.keys(variants)).toContain("high")
+    expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
   })
 
   test("anthropic thinking budgets match default limits", () => {
@@ -1254,7 +1264,7 @@ describe("ProviderTransform.variants", () => {
   })
 
   describe("xai (via openai-compatible)", () => {
-    test("grok-3 returns WIDELY_SUPPORTED_EFFORTS with reasoningEffort", () => {
+    test("grok-3 returns empty object (no reasoningEffort support)", () => {
       const model = createMockModel({
         id: "xai/grok-3",
         providerID: "xai",
@@ -1265,9 +1275,7 @@ describe("ProviderTransform.variants", () => {
         },
       })
       const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
-      expect(result.low).toEqual({ reasoningEffort: "low" })
-      expect(result.high).toEqual({ reasoningEffort: "high" })
+      expect(result).toEqual({})
     })
 
     test("grok-3-mini returns low and high with reasoningEffort", () => {
@@ -1451,6 +1459,68 @@ describe("ProviderTransform.variants", () => {
         },
       })
     })
+
+    test("gemini-3-flash models return minimal/low/medium/high thinking levels", () => {
+      const model = createMockModel({
+        id: "google/gemini-3-flash-preview",
+        providerID: "google",
+        api: {
+          id: "gemini-3-flash-preview",
+          url: "https://generativelanguage.googleapis.com",
+          npm: "@ai-sdk/google",
+        },
+      })
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["minimal", "low", "medium", "high"])
+      expect(result.minimal).toEqual({
+        thinkingConfig: {
+          includeThoughts: true,
+          thinkingLevel: "minimal",
+        },
+      })
+      expect(result.medium).toEqual({
+        thinkingConfig: {
+          includeThoughts: true,
+          thinkingLevel: "medium",
+        },
+      })
+    })
+  })
+
+  describe("@ai-sdk/groq", () => {
+    test("gpt-oss models use low/medium/high reasoningEffort", () => {
+      const model = createMockModel({
+        id: "groq/openai/gpt-oss-120b",
+        providerID: "groq",
+        api: {
+          id: "openai/gpt-oss-120b",
+          url: "https://api.groq.com/openai/v1",
+          npm: "@ai-sdk/groq",
+        },
+      })
+
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
+      expect(result.low).toEqual({ reasoningEffort: "low" })
+      expect(result.high).toEqual({ reasoningEffort: "high" })
+    })
+
+    test("qwen3 models use none/default reasoningEffort", () => {
+      const model = createMockModel({
+        id: "groq/qwen/qwen3-32b",
+        providerID: "groq",
+        api: {
+          id: "qwen/qwen3-32b",
+          url: "https://api.groq.com/openai/v1",
+          npm: "@ai-sdk/groq",
+        },
+      })
+
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["none", "default"])
+      expect(result.none).toEqual({ reasoningEffort: "none" })
+      expect(result.default).toEqual({ reasoningEffort: "default" })
+    })
   })
 })
 
@@ -1477,7 +1547,7 @@ describe("ProviderTransform.options - persona thinking configs", () => {
   })
 
   describe("Stanley (Grok 4.1 via xAI openai-compatible)", () => {
-    test("grok models return WIDELY_SUPPORTED_EFFORTS with reasoningEffort", () => {
+    test("grok-4.1 returns no reasoningEffort variants", () => {
       const model = {
         id: "x-ai/grok-4.1-fast",
         providerID: "x-ai",
@@ -1492,9 +1562,7 @@ describe("ProviderTransform.options - persona thinking configs", () => {
         release_date: "2025-01-01",
       } as any
       const variants = ProviderTransform.variants(model)
-      expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
-      expect(variants.low).toEqual({ reasoningEffort: "low" })
-      expect(variants.high).toEqual({ reasoningEffort: "high" })
+      expect(variants).toEqual({})
     })
   })
 

@@ -459,17 +459,28 @@ export namespace ProviderTransform {
         if (model.providerID === "minimax") {
           return {}
         }
+        // xAI OpenAI-compatible endpoint only supports reasoning_effort on grok-3-mini.
+        // See: https://docs.x.ai/developers/model-capabilities/text/reasoning
+        if (model.providerID === "xai" || model.providerID === "x-ai") {
+          if (id.includes("grok-3-mini")) {
+            return {
+              low: { reasoningEffort: "low" },
+              high: { reasoningEffort: "high" },
+            }
+          }
+          return {}
+        }
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
       case "@ai-sdk/xai":
+        // xAI native SDK: reasoning_effort is only supported by grok-3-mini.
+        // See: https://docs.x.ai/developers/model-capabilities/text/reasoning
+        if (!id.includes("grok-3-mini")) return {}
         return Object.fromEntries(XAI_CHAT_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
       case "@ai-sdk/azure": {
         if (id === "o1-mini") return {}
         const azureEfforts = ["low", "medium", "high"]
-        if (id.includes("gpt-5-") || id === "gpt-5") {
-          azureEfforts.unshift("minimal")
-        }
         return Object.fromEntries(
           azureEfforts.map((effort) => [
             effort,
@@ -621,6 +632,19 @@ export namespace ProviderTransform {
             },
           }
         }
+        if (id.includes("gemini-3-flash")) {
+          return Object.fromEntries(
+            ["minimal", "low", "medium", "high"].map((effort) => [
+              effort,
+              {
+                thinkingConfig: {
+                  includeThoughts: true,
+                  thinkingLevel: effort,
+                },
+              },
+            ]),
+          )
+        }
         return Object.fromEntries(
           ["low", "high"].map((effort) => [
             effort,
@@ -642,17 +666,20 @@ export namespace ProviderTransform {
         return {}
 
       case "@ai-sdk/groq": {
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/groq
-        const groqEffort = ["none", ...WIDELY_SUPPORTED_EFFORTS]
-        return Object.fromEntries(
-          groqEffort.map((effort) => [
-            effort,
-            {
-              includeThoughts: true,
-              thinkingLevel: effort,
-            },
-          ]),
-        )
+        // https://ai-sdk.dev/providers/ai-sdk-providers/groq
+        // qwen/qwen3-32b supports `none` and `default`.
+        if (id.includes("qwen3-32b")) {
+          return {
+            none: { reasoningEffort: "none" },
+            default: { reasoningEffort: "default" },
+          }
+        }
+        // openai/gpt-oss-* supports low|medium|high.
+        if (id.includes("gpt-oss")) {
+          return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
+        }
+        // Other Groq reasoning models expose reasoning but do not document effort controls.
+        return {}
       }
 
       case "@ai-sdk/perplexity":

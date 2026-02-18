@@ -286,7 +286,7 @@ describe("OpenAI GPT Extended Thinking", () => {
 })
 
 describe("xAI Grok Extended Thinking (via openai-compatible)", () => {
-  test("Grok 3 models get reasoning effort variants via openai-compatible", () => {
+  test("Grok 3 models do not expose reasoning effort variants", () => {
     // xAI now uses openai-compatible instead of dedicated SDK
     const model = createMockModel({
       id: "xai/grok-3",
@@ -299,8 +299,7 @@ describe("xAI Grok Extended Thinking (via openai-compatible)", () => {
     })
 
     const variants = ProviderTransform.variants(model)
-    expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
-    expect(variants.high).toEqual({ reasoningEffort: "high" })
+    expect(variants).toEqual({})
   })
 
   test("Grok 3 Mini gets low/high variants only", () => {
