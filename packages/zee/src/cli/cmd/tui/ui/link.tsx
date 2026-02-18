@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js"
 import type { RGBA } from "@opentui/core"
-import open from "open"
+import { openExternalUrl } from "@/util/open-external-url"
 
 export interface LinkProps {
   href: string
@@ -19,7 +19,7 @@ export function Link(props: LinkProps) {
     <text
       fg={props.fg}
       onMouseUp={() => {
-        open(props.href).catch(() => {})
+        void openExternalUrl(props.href)
       }}
     >
       {displayText}

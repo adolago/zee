@@ -1,5 +1,4 @@
 import path from "path"
-import { exec } from "child_process"
 import * as prompts from "@clack/prompts"
 import { map, pipe, sortBy, values } from "remeda"
 import { Octokit } from "@octokit/rest"
@@ -28,6 +27,7 @@ import { MessageV2 } from "../../session/message-v2"
 import { SessionPrompt } from "@/session/prompt"
 import { $ } from "bun"
 import { normalizeHttpUrl } from "@/util/net"
+import { openExternalUrl } from "@/util/open-external-url"
 import { Output } from "../output"
 
 type GitHubAuthor = {
@@ -320,15 +320,13 @@ export const GithubInstallCommand = cmd({
               s.stop("GitHub app URL invalid or not configured")
               throw new UI.CancelledError()
             }
-            const command = process.platform === "win32" ? `start "" "${url}"` : `xdg-open "${url}"`
-
-            exec(command, (error) => {
-              if (error) {
-                prompts.log.warn(`Could not open browser. Please visit: ${url}`)
-              }
-            })
-
-            s.stop("Opened GitHub app install page")
+            const openResult = await openExternalUrl(url)
+            if (!openResult.ok) {
+              s.stop("Could not open browser automatically")
+              prompts.log.warn(`Please visit manually: ${url}`)
+            } else {
+              s.stop("Opened GitHub app install page")
+            }
             const confirmed = await prompts.confirm({
               message: `Continue after installing the app for ${app.owner}/${app.repo}?`,
               initialValue: true,

@@ -29,8 +29,8 @@ import { TuiEvent } from "@/cli/cmd/tui/event"
 import { getZeeRoot } from "../paths"
 import { Global } from "@/global"
 import { getAllPersonaMcpServers } from "../../../../src/mcp/servers"
-import open from "open"
 import { normalizeHttpUrl } from "@/util/net"
+import { openExternalUrl } from "@/util/open-external-url"
 
 export namespace MCP {
   const log = Log.create({ service: "mcp" })
@@ -2054,30 +2054,11 @@ export namespace MCP {
     // Register the callback BEFORE opening the browser to avoid race conditions
     // when the IdP has an active session and redirects immediately.
     const callbackPromise = McpOAuthCallback.waitForCallback(oauthState)
-    try {
-      const subprocess = await open(safeUrl)
-      // The open package spawns a detached process and returns immediately.
-      // We need to listen for errors which fire asynchronously:
-      // - "error" event: command not found (ENOENT)
-      // - "exit" with non-zero code: command exists but failed (e.g., no display)
-      await new Promise<void>((resolve, reject) => {
-        // Give the process a moment to fail if it's going to
-        const timeout = setTimeout(() => resolve(), 500)
-        subprocess.on("error", (error) => {
-          clearTimeout(timeout)
-          reject(error)
-        })
-        subprocess.on("exit", (code) => {
-          if (code !== null && code !== 0) {
-            clearTimeout(timeout)
-            reject(new Error(`Browser open failed with exit code ${code}`))
-          }
-        })
-      })
-    } catch (error) {
+    const openResult = await openExternalUrl(safeUrl, { errorCheckDelayMs: 500 })
+    if (!openResult.ok) {
       // Browser opening failed (e.g., in remote/headless sessions like SSH, devcontainers)
       // Emit event so CLI can display the URL for manual opening
-      log.warn("failed to open browser, user must open URL manually", { mcpName, error })
+      log.warn("failed to open browser, user must open URL manually", { mcpName, error: openResult.error })
       Bus.publish(BrowserOpenFailed, { mcpName, url: safeUrl })
     }
 

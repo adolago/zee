@@ -38,9 +38,8 @@ import { ArgsProvider, useArgs, type Args } from "./context/args"
 import { VimProvider, useVim } from "./context/vim"
 import { Config } from "@/config/config"
 import { Instance } from "@/project/instance"
-import open from "open"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
-import { normalizeHttpUrl } from "@/util/net"
+import { openExternalUrl } from "@/util/open-external-url"
 import { Terminal } from "./util/terminal"
 
 import type { EventSource } from "./context/sdk"
@@ -485,8 +484,7 @@ function App() {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        const url = normalizeHttpUrl("https://github.com/adolago/zee/tree/dev/docs")
-        if (url) open(url).catch(() => {})
+        void openExternalUrl("https://github.com/adolago/zee/tree/dev/docs")
         dialog.clear()
       },
       category: "System",
