@@ -73,7 +73,7 @@ export namespace Provider {
     anthropic: new Set(["claude-opus-4-6"]),
     "zai-coding-plan": new Set(["glm-4.7", "glm-4.7-flash", "glm-5"]),
     minimax: new Set(["MiniMax-M2.5"]),
-    xai: new Set(["grok-4-1", "grok-4-1-fast"]),
+    xai: new Set(["grok-4-1", "grok-4-1-fast", "grok-4-1-fast-non-reasoning"]),
     openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"]),
   }
 

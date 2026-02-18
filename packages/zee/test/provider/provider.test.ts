@@ -216,7 +216,7 @@ test("xai provider is limited to grok 4.1 variants", async () => {
     fn: async () => {
       const providers = await Provider.list()
       expect(providers["xai"]).toBeDefined()
-      const allowed = new Set(["grok-4-1", "grok-4-1-fast"])
+      const allowed = new Set(["grok-4-1", "grok-4-1-fast", "grok-4-1-fast-non-reasoning"])
       for (const modelID of Object.keys(providers["xai"].models)) {
         expect(allowed.has(modelID)).toBe(true)
       }
