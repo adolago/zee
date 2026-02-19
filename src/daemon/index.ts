@@ -11,6 +11,13 @@ import { mkdirSync } from "node:fs";
 import { homedir, availableParallelism, cpus } from "node:os";
 import { join } from "node:path";
 import type { QueueDedupeMode, QueueDropPolicy } from "../swarm/queue";
+import {
+  TmuxVisualOrchestrationSink,
+} from "../orchestration-visual";
+import type {
+  OrchestrationVisualMode,
+  VisualOrchestrationSink,
+} from "../orchestration-visual";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -41,6 +48,18 @@ function parseDedupeMode(raw: string | undefined): QueueDedupeMode {
   return "task-id";
 }
 
+function parseVisualMode(raw: string | undefined): OrchestrationVisualMode {
+  return raw?.toLowerCase() === "external" ? "external" : "events";
+}
+
+function parseBoolean(raw: string | undefined): boolean | undefined {
+  if (!raw) return undefined;
+  const normalized = raw.toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return undefined;
+}
+
 function defaultMaxWorkers(): number {
   const cores = (() => {
     try {
@@ -69,12 +88,46 @@ async function main(): Promise<void> {
     getArg("queue-cap") ?? process.env.ZEE_ORCH_QUEUE_CAP,
     20,
   );
+  let visualMode = parseVisualMode(
+    getArg("visual-mode") ?? process.env.ZEE_ORCH_VISUAL_MODE,
+  );
+  let visualBackend = (getArg("visual-backend") ?? process.env.ZEE_ORCH_VISUAL_BACKEND)
+    ?.trim()
+    .toLowerCase();
+  let visualSink: VisualOrchestrationSink | undefined;
+
+  if (visualMode === "external") {
+    if (visualBackend === "tmux") {
+      const keepSession = parseBoolean(process.env.ZEE_ORCH_TMUX_KEEP_SESSION) ?? false;
+      visualSink = new TmuxVisualOrchestrationSink({
+        socketPath: process.env.ZEE_ORCH_TMUX_SOCKET,
+        sessionName: process.env.ZEE_ORCH_TMUX_SESSION,
+        baseDir: process.env.ZEE_ORCH_TMUX_BASE_DIR,
+        maxWorkerPanes: parsePositiveInt(process.env.ZEE_ORCH_TMUX_MAX_PANES, 8),
+        cleanupSessionOnClose: !keepSession,
+      });
+    } else {
+      console.warn(
+        `[daemon] Unknown visual backend "${visualBackend ?? "undefined"}"; falling back to event mode`,
+      );
+      visualMode = "events";
+      visualBackend = undefined;
+    }
+  } else {
+    visualBackend = undefined;
+  }
 
   // Start IPC server
   const server = new DaemonServer({
     socketPath: ipcSocket,
     orchestration: {
       maxWorkers,
+      visual: {
+        enabled: true,
+        mode: visualMode,
+        backend: visualBackend,
+      },
+      visualSink,
       queue: {
         cap: queueCap,
         dropPolicy: parseDropPolicy(
@@ -90,6 +143,13 @@ async function main(): Promise<void> {
   server.on("listening", (path: string) => {
     console.log(`[daemon] IPC server listening on ${path}`);
     console.log(`[daemon] Orchestration: workers=${maxWorkers}, queueCap=${queueCap}`);
+    if (visualMode === "external" && visualBackend === "tmux" && visualSink instanceof TmuxVisualOrchestrationSink) {
+      console.log(
+        `[daemon] Visual backend: tmux (socket=${visualSink.socketPath}, session=${visualSink.sessionName})`,
+      );
+    } else {
+      console.log(`[daemon] Visual backend: event stream`);
+    }
   });
 
   server.on("error", (err: Error) => {
@@ -112,6 +172,9 @@ async function main(): Promise<void> {
   const shutdown = async () => {
     console.log("[daemon] Received shutdown signal");
     await server.stop();
+    if (visualSink?.close) {
+      await visualSink.close().catch(() => {});
+    }
     process.exit(0);
   };
 

@@ -2,10 +2,47 @@ import { Flag } from "@/flag/flag"
 import { lazy } from "@/util/lazy"
 import path from "path"
 import { spawn, type ChildProcess } from "child_process"
+import type { SpawnOptions } from "child_process"
+
+const SPAWN_RETRY_CODES = new Set(["EAGAIN", "EMFILE", "ENFILE", "ENOMEM"])
+const SPAWN_RETRY_MAX_ATTEMPTS = 3
+const SPAWN_RETRY_DELAY_MS = 50
 
 const SIGKILL_TIMEOUT_MS = 200
 
 export namespace Shell {
+  function shouldRetrySpawn(error: unknown): boolean {
+    return typeof error === "object" && error !== null && "code" in error && SPAWN_RETRY_CODES.has(error.code as string)
+  }
+
+  export async function spawnWithRetry(command: string, options?: SpawnOptions): Promise<ChildProcess>
+  export async function spawnWithRetry(command: string, args: string[], options?: SpawnOptions): Promise<ChildProcess>
+  export async function spawnWithRetry(
+    command: string,
+    argsOrOptions?: string[] | SpawnOptions,
+    maybeOptions?: SpawnOptions,
+  ): Promise<ChildProcess> {
+    const hasArgs = Array.isArray(argsOrOptions)
+    const args = hasArgs ? (argsOrOptions as string[]) : undefined
+    const options = (hasArgs ? maybeOptions : argsOrOptions) as SpawnOptions | undefined
+
+    let attempt = 0
+    while (true) {
+      try {
+        if (args) {
+          return spawn(command, args, options ?? {})
+        }
+        return spawn(command, options ?? {})
+      } catch (error) {
+        if (!shouldRetrySpawn(error) || attempt >= SPAWN_RETRY_MAX_ATTEMPTS) {
+          throw error
+        }
+        attempt += 1
+        await Bun.sleep((2 ** attempt) * SPAWN_RETRY_DELAY_MS)
+      }
+    }
+  }
+
   export async function killTree(proc: ChildProcess, opts?: { exited?: () => boolean }): Promise<void> {
     const pid = proc.pid
     if (!pid || opts?.exited?.()) return

@@ -6,14 +6,25 @@
 import { EventEmitter } from "events";
 import { randomUUID } from "node:crypto";
 import { Worker } from "./worker";
-import { createWorkerPanes, closeAllPanes } from "./panes";
-import type { PaneHandle } from "./panes";
 import type { SwarmConfig, SwarmResult, WorkerConfig, WorkerMessage, WorkerState } from "./types";
+import {
+  EventStreamVisualOrchestrationSink,
+  NOOP_VISUAL_SINK,
+  resolveVisualConfig,
+} from "../orchestration-visual";
+import type {
+  OrchestrationVisualConfig,
+  OrchestrationVisualEvent,
+  ResolvedOrchestrationVisualConfig,
+  VisualOrchestrationSink,
+} from "../orchestration-visual";
 
 export interface QueenConfig extends SwarmConfig {
   id?: string;
   name?: string;
   consensus?: ConsensusConfig;
+  visual?: OrchestrationVisualConfig;
+  visualSink?: VisualOrchestrationSink;
 }
 
 export interface ConsensusConfig {
@@ -34,9 +45,10 @@ export class Queen extends EventEmitter {
   readonly config: SwarmConfig;
 
   private workers: Map<string, Worker> = new Map();
-  private panes: Map<number, PaneHandle> = new Map();
   private startedAt?: Date;
   private completedAt?: Date;
+  private readonly visualConfig: ResolvedOrchestrationVisualConfig;
+  private readonly visualSink: VisualOrchestrationSink;
 
   constructor(config: QueenConfig = {}) {
     super();
@@ -45,23 +57,74 @@ export class Queen extends EventEmitter {
     this.config = {
       maxWorkers: config.maxWorkers ?? 8,
       timeout: config.timeout ?? 600000, // 10 minutes
-      panes: config.panes ?? true,
+      panes: config.panes ?? true, // Deprecated in visual mode; kept for compatibility.
       sharedMemory: config.sharedMemory ?? true,
     };
+    this.visualConfig = resolveVisualConfig(config.visual);
+    this.visualSink = config.visualSink ?? (
+      this.visualConfig.enabled && this.visualConfig.mode === "events"
+        ? new EventStreamVisualOrchestrationSink({
+            onEvent: (event) => {
+              this.emit("visual:event", event);
+            },
+          })
+        : NOOP_VISUAL_SINK
+    );
   }
 
-  private registerWorker(worker: Worker, pane?: PaneHandle): Worker {
-    if (pane) {
-      worker.on("output", (msg: WorkerMessage) => {
-        pane.send(msg.data);
+  private registerWorker(worker: Worker): Worker {
+    worker.on("output", (msg: WorkerMessage) => {
+      this.emit("worker:output", msg);
+      this.emitVisualEvent("worker_output", {
+        swarmId: this.id,
+        taskId: worker.taskId,
+        workerId: worker.id,
+        details: { data: msg.data },
       });
-    }
-
-    worker.on("output", (msg) => this.emit("worker:output", msg));
-    worker.on("complete", (msg) => this.emit("worker:complete", msg));
-    worker.on("error", (msg) => this.emit("worker:error", msg));
-    worker.on("status", (msg) => this.emit("worker:status", msg));
-    worker.on("heartbeat", (msg) => this.emit("worker:heartbeat", msg));
+    });
+    worker.on("complete", (msg) => {
+      this.emit("worker:complete", msg);
+      this.emitVisualEvent("worker_completed", {
+        swarmId: this.id,
+        taskId: worker.taskId,
+        workerId: worker.id,
+        details: { name: worker.name, persona: worker.persona },
+      });
+    });
+    worker.on("error", (msg) => {
+      this.emit("worker:error", msg);
+      this.emitVisualEvent("worker_failed", {
+        swarmId: this.id,
+        taskId: worker.taskId,
+        workerId: worker.id,
+        details: { error: msg.data },
+      });
+    });
+    worker.on("status", (msg) => {
+      this.emit("worker:status", msg);
+      this.emitVisualEvent("worker_status", {
+        swarmId: this.id,
+        taskId: worker.taskId,
+        workerId: worker.id,
+        details: { status: msg.data },
+      });
+      if (msg.data === "running") {
+        this.emitVisualEvent("worker_started", {
+          swarmId: this.id,
+          taskId: worker.taskId,
+          workerId: worker.id,
+          details: { name: worker.name, persona: worker.persona },
+        });
+      }
+    });
+    worker.on("heartbeat", (msg) => {
+      this.emit("worker:heartbeat", msg);
+      this.emitVisualEvent("worker_heartbeat", {
+        swarmId: this.id,
+        taskId: worker.taskId,
+        workerId: worker.id,
+      });
+    });
 
     this.workers.set(worker.id, worker);
     return worker;
@@ -101,16 +164,14 @@ export class Queen extends EventEmitter {
 
     // Reset state for fresh run (in case Queen is reused)
     this.workers.clear();
-    this.panes.clear();
 
     this.startedAt = new Date();
     this.completedAt = undefined;
     this.emit("start", { swarmId: this.id, workerCount: configs.length });
-
-    // Create WezTerm panes if enabled
-    if (this.config.panes) {
-      this.panes = await createWorkerPanes(configs.length);
-    }
+    this.emitVisualEvent("swarm_started", {
+      swarmId: this.id,
+      details: { workerCount: configs.length, mode: this.visualConfig.mode },
+    });
 
     // Create workers
     const workers: Worker[] = configs.map((cfg, index) =>
@@ -119,7 +180,6 @@ export class Queen extends EventEmitter {
           ...cfg,
           id: cfg.id ?? `${this.id}-worker-${index}`,
         }),
-        this.panes.get(index),
       ),
     );
 
@@ -141,11 +201,8 @@ export class Queen extends EventEmitter {
         timeoutPromise,
       ]);
     } catch (err) {
-      // Timeout - abort all workers and close panes immediately
+      // Timeout - abort all workers immediately.
       await this.abortAll();
-      if (this.config.panes && this.panes.size > 0) {
-        await closeAllPanes(this.panes);
-      }
       throw err;
     } finally {
       if (timeoutTimer) clearTimeout(timeoutTimer);
@@ -154,11 +211,10 @@ export class Queen extends EventEmitter {
     this.completedAt = new Date();
     const result = this.getResult();
     this.emit("complete", result);
-
-    // Close panes after short delay to show final output
-    if (this.config.panes && this.panes.size > 0) {
-      setTimeout(() => closeAllPanes(this.panes), 2000);
-    }
+    this.emitVisualEvent("swarm_completed", {
+      swarmId: this.id,
+      details: { success: result.success, duration: result.duration },
+    });
 
     return result;
   }
@@ -178,6 +234,10 @@ export class Queen extends EventEmitter {
     const promises = Array.from(this.workers.values()).map((w) => w.abort());
     await Promise.all(promises);
     this.emit("aborted", { swarmId: this.id });
+    this.emitVisualEvent("interrupt", {
+      swarmId: this.id,
+      details: { source: "abort_all" },
+    });
   }
 
   /**
@@ -187,7 +247,25 @@ export class Queen extends EventEmitter {
     const worker = this.workers.get(workerId);
     if (worker) {
       await worker.abort();
+      this.emitVisualEvent("interrupt", {
+        swarmId: this.id,
+        taskId: worker.taskId,
+        workerId: worker.id,
+        details: { source: "abort_worker" },
+      });
     }
+  }
+
+  private emitVisualEvent(
+    type: OrchestrationVisualEvent["type"],
+    event: Omit<OrchestrationVisualEvent, "type" | "timestamp">,
+  ): void {
+    if (!this.visualConfig.enabled) return;
+    void this.visualSink.emit({
+      type,
+      timestamp: Date.now(),
+      ...event,
+    }).catch(() => {});
   }
 
   /**

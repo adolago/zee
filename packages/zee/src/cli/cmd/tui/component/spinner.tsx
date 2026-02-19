@@ -3,7 +3,7 @@ import { useTheme } from "../context/theme"
 import { useKV } from "../context/kv"
 import type { RGBA } from "@opentui/core"
 import { useAnimationTick } from "../util/animation-tick"
-import { stackedTildeFrame } from "../ui/tilde-spinner"
+import { promptSpinnerFrame } from "../ui/prompt-spinner"
 
 export function Spinner(props: { children?: JSX.Element; color?: string | RGBA }) {
   const { theme } = useTheme()
@@ -12,7 +12,7 @@ export function Spinner(props: { children?: JSX.Element; color?: string | RGBA }
   const color = () => props.color ?? theme.textMuted
 
   const tick = useAnimationTick()
-  const frame = () => stackedTildeFrame(tick(), animated())
+  const frame = () => promptSpinnerFrame(tick(), animated())
 
   return (
     <box flexDirection="row" gap={1}>

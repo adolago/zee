@@ -20,6 +20,17 @@ import type { OrchestrationEvent } from "./events";
 import { Queen } from "./queen";
 import { TaskQueue } from "./queue";
 import type { QueueSettings, QueuedTask } from "./queue";
+import {
+  EventStreamVisualOrchestrationSink,
+  NOOP_VISUAL_SINK,
+  resolveVisualConfig,
+} from "../orchestration-visual";
+import type {
+  OrchestrationVisualConfig,
+  OrchestrationVisualEvent,
+  ResolvedOrchestrationVisualConfig,
+  VisualOrchestrationSink,
+} from "../orchestration-visual";
 
 interface OrchestratorTask extends QueuedTask {
   persona: Persona;
@@ -42,6 +53,8 @@ export interface OrchestratorOptions {
   queue?: QueueSettings;
   panes?: boolean;
   maxEventHistory?: number;
+  visual?: OrchestrationVisualConfig;
+  visualSink?: VisualOrchestrationSink;
 }
 
 export interface OrchestratorSnapshot {
@@ -58,6 +71,8 @@ export class Orchestrator extends EventEmitter {
   private readonly maxWorkers: number;
   private readonly defaultTimeoutMs: number;
   private readonly maxEventHistory: number;
+  private readonly visualConfig: ResolvedOrchestrationVisualConfig;
+  private readonly visualSink: VisualOrchestrationSink;
 
   private readonly tasks = new Map<string, OrchestratorTask>();
   private readonly workerToTask = new Map<string, string>();
@@ -72,11 +87,23 @@ export class Orchestrator extends EventEmitter {
     this.maxWorkers = options.maxWorkers ?? 8;
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? 300_000;
     this.maxEventHistory = Math.max(200, options.maxEventHistory ?? 2_000);
+    this.visualConfig = resolveVisualConfig(options.visual);
+    this.visualSink = options.visualSink ?? (
+      this.visualConfig.enabled && this.visualConfig.mode === "events"
+        ? new EventStreamVisualOrchestrationSink({
+            onEvent: (event) => {
+              this.emit("visual:event", event);
+            },
+          })
+        : NOOP_VISUAL_SINK
+    );
 
     this.queen = new Queen({
       maxWorkers: this.maxWorkers,
       panes: options.panes ?? false,
       timeout: this.defaultTimeoutMs,
+      visual: this.visualConfig,
+      visualSink: this.visualSink,
     });
     this.queue = new TaskQueue<QueuedTask>({
       mode: options.queue?.mode ?? "parallel",
@@ -197,6 +224,14 @@ export class Orchestrator extends EventEmitter {
           summary: this.queue.consumeSummary("task"),
         },
       });
+      this.emitVisualEvent("queue_overflow", {
+        swarmId: this.queen.id,
+        taskId: task.id,
+        details: {
+          droppedTaskIds: enqueueResult.dropped.map((item) => item.id),
+          droppedCount: enqueueResult.dropped.length,
+        },
+      });
     }
 
     if (!enqueueResult.enqueued && !enqueueResult.deduped) {
@@ -207,12 +242,27 @@ export class Orchestrator extends EventEmitter {
         taskId: task.id,
         details: { reason: "new-task-rejected", cap: this.queue.state.cap },
       });
+      this.emitVisualEvent("queue_overflow", {
+        swarmId: this.queen.id,
+        taskId: task.id,
+        details: { reason: "new-task-rejected", cap: this.queue.state.cap },
+      });
       return this.toTaskInfo(task);
     }
 
     this.emitOrchestrationEvent("message_start", {
       taskId: task.id,
       details: { description: task.description, priority: task.priority },
+    });
+    this.emitVisualEvent("task_enqueued", {
+      swarmId: this.queen.id,
+      taskId: task.id,
+      details: {
+        description: task.description,
+        priority: task.priority,
+        enqueued: enqueueResult.enqueued,
+        deduped: enqueueResult.deduped,
+      },
     });
     this.scheduleDrain();
     return this.toTaskInfo(task);
@@ -266,6 +316,12 @@ export class Orchestrator extends EventEmitter {
       workerId,
       details: { source: "kill_worker" },
     });
+    this.emitVisualEvent("interrupt", {
+      swarmId: this.queen.id,
+      taskId,
+      workerId,
+      details: { source: "kill_worker" },
+    });
     return true;
   }
 
@@ -299,6 +355,10 @@ export class Orchestrator extends EventEmitter {
       task.endedAt = Date.now();
     }
     this.emitOrchestrationEvent("interrupt", { details: { source: "shutdown" } });
+    this.emitVisualEvent("shutdown", {
+      swarmId: this.queen.id,
+      details: { source: "shutdown" },
+    });
   }
 
   private bindQueenEvents(): void {
@@ -327,6 +387,12 @@ export class Orchestrator extends EventEmitter {
         taskId,
         workerId: msg.workerId,
       });
+      this.emitVisualEvent("task_finished", {
+        swarmId: this.queen.id,
+        taskId,
+        workerId: msg.workerId,
+        details: { status: "aborted", error: task.error },
+      });
     });
 
     this.queen.on("worker:error", (msg: { workerId: string; data: string }) => {
@@ -348,6 +414,12 @@ export class Orchestrator extends EventEmitter {
         workerId: msg.workerId,
         details: { status: "failed" },
       });
+      this.emitVisualEvent("task_finished", {
+        swarmId: this.queen.id,
+        taskId,
+        workerId: msg.workerId,
+        details: { status: "failed", error: msg.data },
+      });
       this.scheduleDrain();
     });
 
@@ -368,6 +440,12 @@ export class Orchestrator extends EventEmitter {
         details: { status: task.status },
       });
       this.emitOrchestrationEvent("agent_end", {
+        taskId,
+        workerId: msg.workerId,
+        details: { status: task.status },
+      });
+      this.emitVisualEvent("task_finished", {
+        swarmId: this.queen.id,
         taskId,
         workerId: msg.workerId,
         details: { status: task.status },
@@ -437,6 +515,16 @@ export class Orchestrator extends EventEmitter {
       workerId,
       sessionId: task.parentSessionId,
     });
+    this.emitVisualEvent("task_started", {
+      swarmId: this.queen.id,
+      taskId: task.id,
+      workerId,
+      details: {
+        persona: task.persona,
+        attempt: task.attempt,
+        description: task.description,
+      },
+    });
 
     try {
       const worker = await this.queen.spawnWorker({
@@ -469,6 +557,12 @@ export class Orchestrator extends EventEmitter {
         taskId: task.id,
         workerId,
         details: { status: "failed" },
+      });
+      this.emitVisualEvent("task_finished", {
+        swarmId: this.queen.id,
+        taskId: task.id,
+        workerId,
+        details: { status: "failed", error: task.error },
       });
       throw error;
     }
@@ -636,5 +730,17 @@ export class Orchestrator extends EventEmitter {
       this.events = this.events.slice(-this.maxEventHistory);
     }
     this.emit("event", event);
+  }
+
+  private emitVisualEvent(
+    type: OrchestrationVisualEvent["type"],
+    event: Omit<OrchestrationVisualEvent, "type" | "timestamp">,
+  ): void {
+    if (!this.visualConfig.enabled) return;
+    void this.visualSink.emit({
+      type,
+      timestamp: Date.now(),
+      ...event,
+    }).catch(() => {});
   }
 }

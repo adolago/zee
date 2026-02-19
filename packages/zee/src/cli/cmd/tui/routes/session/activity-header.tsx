@@ -3,7 +3,7 @@ import { useSync } from "@tui/context/sync"
 import { useTheme } from "@tui/context/theme"
 import type { ToolPart, Part } from "@zee/sdk/v2"
 import { useAnimationTick } from "@tui/util/animation-tick"
-import { stackedTildeFrame } from "@tui/ui/tilde-spinner"
+import { promptSpinnerFrame } from "@tui/ui/prompt-spinner"
 
 type ActivityState = "idle" | "thinking" | "running" | "completed"
 
@@ -170,7 +170,7 @@ export function ActivityHeader(props: { sessionID: string }) {
     }
   })
 
-  const spinnerChar = createMemo(() => stackedTildeFrame(tick()))
+  const spinnerChar = createMemo(() => promptSpinnerFrame(tick()))
 
   return (
     <box

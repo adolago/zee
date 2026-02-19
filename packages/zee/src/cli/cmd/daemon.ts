@@ -840,10 +840,21 @@ export const DaemonCommand = cmd({
         default: true, // For now, always run in foreground
       })
       .option("wezterm-layout", {
-        describe: "WezTerm pane layout",
+        describe: "DEPRECATED (no-op): legacy WezTerm pane layout",
         type: "string",
         choices: ["horizontal", "vertical", "grid"],
         default: "horizontal",
+      })
+      .option("visual-mode", {
+        describe: "Orchestration visual mode",
+        type: "string",
+        choices: ["events", "external"],
+        default: process.env.ZEE_ORCH_VISUAL_MODE === "external" ? "external" : "events",
+      })
+      .option("visual-backend", {
+        describe: "Visual backend when --visual-mode=external",
+        type: "string",
+        choices: ["tmux"],
       })
       .option("gateway-force", {
         describe: "Start zee gateway even if preflight checks fail",
@@ -938,6 +949,9 @@ export const DaemonCommand = cmd({
         typeof args["runtime-max-mcp-per-server"] === "number" ? args["runtime-max-mcp-per-server"] : undefined,
       maxClients: typeof args["runtime-max-clients"] === "number" ? args["runtime-max-clients"] : undefined,
     }
+    if (process.argv.includes("--wezterm-layout")) {
+      UI.warn("--wezterm-layout is deprecated and ignored. Visual orchestration now runs in terminal-agnostic event mode.")
+    }
 
     if (enforceRuntimeGuard) {
       const preflightReport = await runRuntimeProcessMaintenance({
@@ -973,8 +987,8 @@ export const DaemonCommand = cmd({
         skipSetupCheck: false,
         gateway: true,
         gatewayForce: Boolean(args["gateway-force"]),
-        wezterm: true,
-        weztermLayout: args["wezterm-layout"] as "horizontal" | "vertical" | "grid",
+        visualMode: args["visual-mode"] as "events" | "external",
+        visualBackend: args["visual-backend"] as string | undefined,
         restoreSessions: true,
         runtimeGuard: enforceRuntimeGuard,
         runtimeGuardIntervalMs,

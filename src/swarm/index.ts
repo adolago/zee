@@ -6,7 +6,7 @@
  * Features:
  * - Queen coordinator spawns N workers in parallel
  * - Workers stream output in real-time
- * - WezTerm panes for visual monitoring
+ * - Terminal-agnostic visual event stream
  * - Shared memory via Memory MCP
  * - Abort/redirect capabilities
  * - Event-driven coordination
@@ -82,6 +82,25 @@ export type {
   OrchestrationEventType,
   OrchestrationEvent,
 } from "./events";
+
+export type {
+  OrchestrationVisualMode,
+  OrchestrationVisualConfig,
+  ResolvedOrchestrationVisualConfig,
+  OrchestrationVisualEvent,
+  VisualOrchestrationSink,
+  EventStreamSinkOptions,
+  TmuxVisualOrchestrationOptions,
+  TmuxCommandResult,
+  TmuxCommandRunner,
+} from "../orchestration-visual";
+export {
+  resolveVisualConfig,
+  NOOP_VISUAL_SINK,
+  NoopVisualOrchestrationSink,
+  EventStreamVisualOrchestrationSink,
+  TmuxVisualOrchestrationSink,
+} from "../orchestration-visual";
 
 // SPARC methodology (Johny-only)
 export {

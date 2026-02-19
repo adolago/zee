@@ -10,6 +10,10 @@ import { ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js"
 import { Log } from "@/util/log"
 
 export namespace Ripgrep {
+  const SPAWN_RETRY_CODES = new Set(["EAGAIN", "EMFILE", "ENFILE", "ENOMEM"])
+  const SPAWN_RETRY_MAX_ATTEMPTS = 3
+  const SPAWN_RETRY_DELAY_MS = 50
+  const PROCESS_EXIT_TIMEOUT_MS = 5000
   const log = Log.create({ service: "ripgrep" })
   const Stats = z.object({
     elapsed: z.object({
@@ -82,6 +86,112 @@ export namespace Ripgrep {
 
   const Result = z.union([Begin, Match, End, Summary])
 
+  function shouldRetrySpawn(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof error.code === "string" &&
+      SPAWN_RETRY_CODES.has(error.code)
+    )
+  }
+
+  async function spawnWithRetry(
+    args: string[],
+    options: Parameters<typeof Bun.spawn>[1] = {},
+  ): Promise<ReturnType<typeof Bun.spawn>> {
+    let attempt = 0
+    while (true) {
+      try {
+        return Bun.spawn(args, options)
+      } catch (error) {
+        if (!shouldRetrySpawn(error) || attempt >= SPAWN_RETRY_MAX_ATTEMPTS) {
+          throw error
+        }
+        attempt += 1
+        await Bun.sleep((2 ** attempt) * SPAWN_RETRY_DELAY_MS)
+      }
+    }
+  }
+
+  type SpawnOptions = Parameters<typeof Bun.spawn>[1]
+  type SpawnedProcess = Awaited<ReturnType<typeof spawnWithRetry>>
+  type SpawnExecutor = (args: string[], options?: SpawnOptions) => Promise<SpawnedProcess>
+  type FilepathResolver = () => Promise<string>
+  type ReadableByteStream = ReadableStream<Uint8Array>
+
+  let commandSpawn: SpawnExecutor = spawnWithRetry
+  let filepathResolver: FilepathResolver | undefined
+
+  /**
+   * Test hook to replace ripgrep command spawning with an in-memory fake.
+   */
+  export function __setCommandSpawnForTesting(spawn?: SpawnExecutor): void {
+    commandSpawn = spawn ?? spawnWithRetry
+  }
+
+  /**
+   * Test hook to avoid touching real ripgrep discovery/download logic.
+   */
+  export function __setFilepathResolverForTesting(resolver?: FilepathResolver): void {
+    filepathResolver = resolver
+  }
+
+  function asReadableByteStream(
+    stream: SpawnedProcess["stdout"] | SpawnedProcess["stderr"],
+    label: "stdout" | "stderr",
+  ): ReadableByteStream {
+    if (typeof stream === "number" || !stream || typeof (stream as ReadableStream<unknown>).getReader !== "function") {
+      throw new Error(`Ripgrep ${label} is not a readable stream`)
+    }
+    return stream as ReadableByteStream
+  }
+
+  async function readStreamTextOrEmpty(
+    stream: SpawnedProcess["stdout"] | SpawnedProcess["stderr"],
+  ): Promise<string> {
+    if (typeof stream === "number" || !stream) return ""
+    return Bun.readableStreamToText(stream as ReadableStream<any>)
+  }
+
+  async function waitForProcessExit(proc: SpawnedProcess, timeoutMs: number): Promise<boolean> {
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        proc.exited,
+        new Promise<void>((_, reject) => {
+          timeout = setTimeout(() => reject(new Error("Process exit timeout")), timeoutMs)
+        }),
+      ])
+      return true
+    } catch {
+      return false
+    } finally {
+      if (timeout) clearTimeout(timeout)
+    }
+  }
+
+  async function terminateRipgrepProcess(proc: SpawnedProcess): Promise<void> {
+    if (proc.exitCode === null) {
+      try {
+        proc.kill()
+      } catch {
+        // Process may already be dead
+      }
+    }
+
+    const exited = await waitForProcessExit(proc, PROCESS_EXIT_TIMEOUT_MS)
+    if (exited || proc.exitCode !== null) return
+
+    try {
+      proc.kill("SIGKILL")
+    } catch {
+      // Process may already be dead
+    }
+
+    await waitForProcessExit(proc, PROCESS_EXIT_TIMEOUT_MS)
+  }
+
   export type Result = z.infer<typeof Result>
   export type Match = z.infer<typeof Match>
   export type Begin = z.infer<typeof Begin>
@@ -145,7 +255,7 @@ export namespace Ripgrep {
 
         if (platformKey.endsWith("-linux")) args.push("--wildcards", "*/rg")
 
-        const proc = Bun.spawn(args, {
+        const proc = await spawnWithRetry(args, {
           cwd: Global.Path.bin,
           stderr: "pipe",
           stdout: "pipe",
@@ -154,7 +264,7 @@ export namespace Ripgrep {
         if (proc.exitCode !== 0)
           throw new ExtractionFailedError({
             filepath,
-            stderr: await Bun.readableStreamToText(proc.stderr),
+            stderr: await readStreamTextOrEmpty(proc.stderr),
           })
       }
       if (config.extension === "zip") {
@@ -195,6 +305,7 @@ export namespace Ripgrep {
   })
 
   export async function filepath() {
+    if (filepathResolver) return filepathResolver()
     const { filepath } = await state()
     return filepath
   }
@@ -229,7 +340,7 @@ export namespace Ripgrep {
       })
     }
 
-    const proc = Bun.spawn(args, {
+    const proc = await commandSpawn(args, {
       cwd: input.cwd,
       stdout: "pipe",
       stderr: "ignore",
@@ -237,7 +348,19 @@ export namespace Ripgrep {
       signal: input.signal,
     })
 
-    const reader = proc.stdout.getReader()
+    let terminatePromise: Promise<void> | undefined
+    const ensureTerminated = (): Promise<void> => {
+      terminatePromise ??= terminateRipgrepProcess(proc)
+      return terminatePromise
+    }
+
+    const abortHandler = () => {
+      void ensureTerminated()
+    }
+
+    input.signal?.addEventListener("abort", abortHandler, { once: true })
+
+    const reader = asReadableByteStream(proc.stdout, "stdout").getReader()
     const decoder = new TextDecoder()
     let buffer = ""
 
@@ -265,33 +388,9 @@ export namespace Ripgrep {
       // Yield remaining buffer content if non-empty
       if (buffer.length > 0) yield buffer
     } finally {
+      input.signal?.removeEventListener("abort", abortHandler)
       reader.releaseLock()
-
-      // Kill the process if it's still running to prevent orphaning
-      // This happens when consumers break out of the generator early
-      try {
-        if (proc.exitCode === null) {
-          proc.kill()
-        }
-      } catch {
-        // Process may already be dead, ignore errors
-      }
-
-      // Wait for process to exit with timeout protection
-      const PROCESS_EXIT_TIMEOUT_MS = 5000
-      await Promise.race([
-        proc.exited,
-        new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error("Process exit timeout")), PROCESS_EXIT_TIMEOUT_MS),
-        ),
-      ]).catch(() => {
-        // Force kill if graceful termination failed
-        try {
-          proc.kill("SIGKILL")
-        } catch {
-          // Ignore errors - process may already be dead
-        }
-      })
+      await ensureTerminated()
     }
 
     input.signal?.throwIfAborted()
@@ -382,28 +481,27 @@ export namespace Ripgrep {
 
     input.signal?.throwIfAborted()
 
-    const proc = Bun.spawn(args, {
+    const proc = await commandSpawn(args, {
       cwd: input.cwd,
       stdout: "pipe",
       stderr: "ignore",
       signal: input.signal,
     })
 
-    // Set up abort handler to kill process if signal is triggered
+    let terminatePromise: Promise<void> | undefined
+    const ensureTerminated = (): Promise<void> => {
+      terminatePromise ??= terminateRipgrepProcess(proc)
+      return terminatePromise
+    }
+
     const abortHandler = () => {
-      try {
-        proc.kill()
-      } catch {
-        // Ignore errors - process may already be dead
-      }
+      void ensureTerminated()
     }
     input.signal?.addEventListener("abort", abortHandler, { once: true })
 
     try {
-      const stdout = await new Response(proc.stdout).text()
+      const stdout = await new Response(asReadableByteStream(proc.stdout, "stdout")).text()
       const exitCode = await proc.exited
-
-      input.signal?.removeEventListener("abort", abortHandler)
 
       // Exit code 1 means no matches found, which is fine
       // Exit code 0 means matches found
@@ -421,10 +519,9 @@ export namespace Ripgrep {
         .map((parsed) => Result.parse(parsed))
         .filter((r) => r.type === "match")
         .map((r) => r.data)
-    } catch (error) {
-      // Clean up abort listener on error
+    } finally {
       input.signal?.removeEventListener("abort", abortHandler)
-      throw error
+      await ensureTerminated()
     }
   }
 }

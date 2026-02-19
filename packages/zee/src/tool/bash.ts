@@ -1,5 +1,4 @@
 import z from "zod"
-import { spawn } from "child_process"
 import { Tool } from "./tool"
 import path from "path"
 import DESCRIPTION from "./bash.txt"
@@ -268,7 +267,7 @@ To modify state, the user must switch to RELEASE mode.`
       const deps = AppDeps.use()
       const shellEnv = await deps.pluginTrigger("shell.env", { cwd }, { env: {} })
       const safeEnv = createSafeEnv(process.env, { validatePath: process.platform !== "win32" })
-      const proc = spawn(params.command, {
+      const proc = await Shell.spawnWithRetry(params.command, {
         shell,
         cwd,
         env: {

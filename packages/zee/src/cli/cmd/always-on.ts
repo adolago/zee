@@ -9,7 +9,6 @@ import { Todo } from "../../session/todo"
 import { Persistence } from "../../session/persistence"
 import { Instance } from "../../project/instance"
 import { LifecycleHooks } from "../../hooks/lifecycle"
-import { WeztermOrchestration } from "../../orchestration/wezterm"
 import { initPersonas } from "../../bootstrap/personas"
 import { initSurfaces, shutdownSurfaces } from "../../bootstrap/surface"
 import { CircuitBreaker } from "../../provider/circuit-breaker"
@@ -32,6 +31,11 @@ import path from "path"
 import { startRuntimeProcessGuard, type RuntimeProcessLimits } from "./runtime-process-guard"
 import { DaemonServer } from "@root/daemon/ipc-server"
 import { DEFAULT_SOCKET_PATH } from "@root/daemon/types"
+import {
+  TmuxVisualOrchestrationSink,
+  type OrchestrationVisualMode,
+  type VisualOrchestrationSink,
+} from "@root/orchestration-visual"
 import os from "os"
 
 const log = Log.create({ service: "always-on" })
@@ -44,7 +48,11 @@ export interface AlwaysOnOptions {
   skipSetupCheck?: boolean
   gateway?: boolean
   gatewayForce?: boolean
+  visualMode?: OrchestrationVisualMode
+  visualBackend?: string
+  /** @deprecated no-op; visual orchestration now uses terminal-agnostic event mode. */
   wezterm?: boolean
+  /** @deprecated no-op; visual orchestration now uses terminal-agnostic event mode. */
   weztermLayout?: "horizontal" | "vertical" | "grid"
   restoreSessions?: boolean
   runtimeGuard?: boolean
@@ -59,6 +67,25 @@ export interface AlwaysOnProcess {
   cleanup: (signal?: NodeJS.Signals, error?: Error) => Promise<void>
 }
 
+function parseVisualMode(raw?: string): OrchestrationVisualMode {
+  return raw?.toLowerCase() === "external" ? "external" : "events"
+}
+
+function parsePositiveInt(raw: string | undefined): number | undefined {
+  if (!raw) return undefined
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value <= 0) return undefined
+  return Math.floor(value)
+}
+
+function parseBoolean(raw: string | undefined): boolean | undefined {
+  if (!raw) return undefined
+  const normalized = raw.toLowerCase()
+  if (["1", "true", "yes", "on"].includes(normalized)) return true
+  if (["0", "false", "no", "off"].includes(normalized)) return false
+  return undefined
+}
+
 export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<AlwaysOnProcess> {
   const {
     hostname,
@@ -68,8 +95,8 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     skipSetupCheck = false,
     gateway = true,
     gatewayForce = false,
-    wezterm = true,
-    weztermLayout = "horizontal",
+    visualMode,
+    visualBackend,
     restoreSessions = true,
     runtimeGuard = true,
     runtimeGuardIntervalMs = 30_000,
@@ -102,6 +129,9 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     port,
     setupOk,
   })
+  if (opts.wezterm !== undefined || opts.weztermLayout !== undefined) {
+    log.warn("Deprecated WezTerm startup options are ignored; using event-stream visual orchestration.")
+  }
 
   // Start the server
   const server = Server.listen({ hostname, port })
@@ -135,11 +165,13 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   let usageEnabled = false
   let workStealingEnabled = false
   let consensusEnabled = false
-  let weztermEnabled = false
   let gatewayStarted = false
   let cronService: CronService | null = null
   let heartbeatRunner: HeartbeatRunner | null = null
   let stopRuntimeGuard: (() => void) | undefined
+  let visualSink: VisualOrchestrationSink | undefined
+  let resolvedVisualMode: OrchestrationVisualMode = "events"
+  let resolvedVisualBackend: string | undefined
   let ipcServer: DaemonServer | null = null
   let daemonConfig: Config.Info
 
@@ -236,24 +268,34 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     })
   }
 
-  // Initialize WezTerm orchestration
-  if (wezterm) {
-    try {
-      weztermEnabled = await WeztermOrchestration.init({
-        enabled: true,
-        layout: weztermLayout,
-        showStatusPane: true,
-        statusPanePercent: 20,
-        statusRefreshInterval: 5000,
+  resolvedVisualMode = parseVisualMode(visualMode ?? process.env.ZEE_ORCH_VISUAL_MODE)
+  resolvedVisualBackend = (visualBackend ?? process.env.ZEE_ORCH_VISUAL_BACKEND)?.trim().toLowerCase()
+
+  if (resolvedVisualMode === "external") {
+    if (resolvedVisualBackend === "tmux") {
+      const keepSession = parseBoolean(process.env.ZEE_ORCH_TMUX_KEEP_SESSION) ?? false
+      const tmuxSink = new TmuxVisualOrchestrationSink({
+        socketPath: process.env.ZEE_ORCH_TMUX_SOCKET,
+        sessionName: process.env.ZEE_ORCH_TMUX_SESSION,
+        baseDir: process.env.ZEE_ORCH_TMUX_BASE_DIR,
+        maxWorkerPanes: parsePositiveInt(process.env.ZEE_ORCH_TMUX_MAX_PANES),
+        cleanupSessionOnClose: !keepSession,
       })
-      if (weztermEnabled) {
-        Output.log("WezTerm:    Visual orchestration enabled")
-      }
-    } catch (error) {
-      log.debug("WezTerm initialization failed", {
-        error: error instanceof Error ? error.message : String(error),
+      visualSink = tmuxSink
+      Output.log(
+        `Visual:     External mode (backend=tmux, socket=${tmuxSink.socketPath}, session=${tmuxSink.sessionName})`,
+      )
+    } else {
+      log.warn("Unknown external visual backend; falling back to event stream mode", {
+        backend: resolvedVisualBackend,
       })
+      resolvedVisualMode = "events"
+      resolvedVisualBackend = undefined
+      Output.log("Visual:     Event stream mode (terminal-agnostic)")
     }
+  } else {
+    resolvedVisualBackend = undefined
+    Output.log("Visual:     Event stream mode (terminal-agnostic)")
   }
 
   // Load config once for cron + heartbeat + feature gating.
@@ -439,6 +481,12 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       socketPath: process.env.ZEE_IPC_SOCKET || DEFAULT_SOCKET_PATH,
       orchestration: {
         maxWorkers,
+        visual: {
+          enabled: true,
+          mode: resolvedVisualMode,
+          backend: resolvedVisualBackend,
+        },
+        visualSink,
         queue: {
           cap: 20,
           dropPolicy: "summarize",
@@ -493,9 +541,8 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       stopRuntimeGuard = undefined
     }
 
-    // Shutdown WezTerm
-    if (weztermEnabled) {
-      await WeztermOrchestration.shutdown()
+    if (visualSink?.close) {
+      await visualSink.close().catch((e) => log.error("Visual sink shutdown error", { error: String(e) }))
     }
 
     // Shutdown usage tracking

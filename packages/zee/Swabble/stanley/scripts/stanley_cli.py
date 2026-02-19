@@ -1,0 +1,1 @@
+/home/artur/Repositories/zee/stanley/scripts/stanley_cli.py

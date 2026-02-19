@@ -34,7 +34,6 @@ import { FileTime } from "../file/time"
 import { Flag } from "../flag/flag"
 import { AuthScope, getAuthConfig, hasScope } from "../server/auth"
 import { ulid } from "ulid"
-import { spawn } from "child_process"
 import { Command } from "../command"
 import { $, fileURLToPath } from "bun"
 import { Config } from "../config/config"
@@ -2196,7 +2195,7 @@ export namespace SessionPrompt {
     const cwd = Instance.directory
     const shellEnv = await Plugin.trigger("shell.env", { cwd }, { env: {} })
     const safeEnv = createSafeEnv(process.env, { validatePath: process.platform !== "win32" })
-    const proc = spawn(shell, args, {
+    const proc = await Shell.spawnWithRetry(shell, args, {
       cwd,
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],

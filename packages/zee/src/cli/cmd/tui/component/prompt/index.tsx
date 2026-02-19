@@ -26,7 +26,7 @@ import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util/locale"
 import { formatDuration } from "@/util/format"
-import { stackedTildeColumnFrame } from "../../ui/tilde-spinner"
+import { promptSpinnerColumnFrame } from "../../ui/prompt-spinner"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogSelect } from "@tui/ui/dialog-select"
 import { DialogProvider as DialogProviderConnect } from "../dialog-provider"
@@ -40,6 +40,7 @@ import { DialogGrammar } from "../dialog-grammar"
 import { Grammar } from "../../util/grammar"
 import { createGrammarChecker, type GrammarError } from "../../util/grammar-realtime"
 import { Banner, type BannerItem } from "../banner"
+import { computePromptHeaderBorderLayout } from "./header-border-layout"
 import { VimCommands } from "@tui/util/vim-commands"
 import { classifySteerSubmitError, decideBusySubmit } from "./busy-submit"
 
@@ -413,51 +414,18 @@ export function Prompt(props: PromptProps) {
   })
 
   const skillsStatusLabel = createMemo(() => `${sync.data.agent?.length ?? 0} skills`)
-  const promptHeaderMetaVisibility = createMemo(() => {
-    let remaining = safeLayoutWidth()
-
-    // Border corners + at least one center fill glyph.
-    remaining -= 4
-    if (showContextUsageInBorder() && contextUsageBorderText()) {
-      remaining -= contextUsageBorderText().length + 1
-    }
-
-    if (remaining <= 0) return { showSkills: false, showVim: false, showMode: false, showDictation: false }
-
-    let showMode = false
-    let showVim = false
-    let showSkills = false
-    let showDictation = false
-
-    // Dictation indicator takes priority when active
-    const dictLabel = dictationStatusLabel()
-    if (dictLabel) {
-      const dictNeed = 1 + dictLabel.length
-      if (remaining >= dictNeed) {
-        showDictation = true
-        remaining -= dictNeed
-      }
-    }
-
-    const modeNeed = 1 + modeStatusLabel().length
-    if (remaining >= modeNeed) {
-      showMode = true
-      remaining -= modeNeed
-    }
-
-    const vimNeed = 1 + vimStatusLabel().length
-    if (vim.enabled && store.mode !== "shell" && remaining >= vimNeed) {
-      showVim = true
-      remaining -= vimNeed
-    }
-
-    const skillsNeed = skillsStatusLabel().length
-    if (remaining >= skillsNeed) {
-      showSkills = true
-    }
-
-    return { showSkills, showVim, showMode, showDictation }
-  })
+  const promptHeaderBorderLayout = createMemo(() =>
+    computePromptHeaderBorderLayout({
+      width: safeLayoutWidth(),
+      showContext: showContextUsageInBorder(),
+      contextText: contextUsageBorderText(),
+      skillsText: skillsStatusLabel(),
+      dictationText: dictationStatusLabel(),
+      vimText: vimStatusLabel(),
+      modeText: modeStatusLabel(),
+      showVim: vim.enabled && store.mode !== "shell",
+    }),
+  )
   const modelBorderText = createMemo(() => {
     if (!showModelInfoInBorder()) return ""
     const parsed = local.model.parsed()
@@ -1907,7 +1875,7 @@ export function Prompt(props: PromptProps) {
               <text fg={theme.border} flexShrink={0}>
                 ├
               </text>
-              <Show when={showContextUsageInBorder() && contextUsageBorderText()}>
+              <Show when={promptHeaderBorderLayout().showContext}>
                 <>
                   <text fg={contextUsageColor()} flexShrink={0} wrapMode="none" overflow="hidden">
                     {contextUsageBorderText()}
@@ -1917,15 +1885,15 @@ export function Prompt(props: PromptProps) {
                   </text>
                 </>
               </Show>
-              <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
-                {borderFill()}
+              <text fg={theme.border} flexShrink={0}>
+                {promptHeaderBorderLayout().fill}
               </text>
-              <Show when={promptHeaderMetaVisibility().showSkills}>
+              <Show when={promptHeaderBorderLayout().showSkills}>
                 <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
                   {skillsStatusLabel()}
                 </text>
               </Show>
-              <Show when={promptHeaderMetaVisibility().showDictation}>
+              <Show when={promptHeaderBorderLayout().showDictation}>
                 <text fg={theme.border} flexShrink={0}>
                   ─
                 </text>
@@ -1939,7 +1907,7 @@ export function Prompt(props: PromptProps) {
                   {dictationStatusLabel()}
                 </text>
               </Show>
-              <Show when={promptHeaderMetaVisibility().showVim}>
+              <Show when={promptHeaderBorderLayout().showVim}>
                 <text fg={theme.border} flexShrink={0}>
                   ─
                 </text>
@@ -1953,7 +1921,7 @@ export function Prompt(props: PromptProps) {
                   {vimStatusLabel()}
                 </text>
               </Show>
-              <Show when={promptHeaderMetaVisibility().showMode}>
+              <Show when={promptHeaderBorderLayout().showMode}>
                 <text fg={theme.border} flexShrink={0}>
                   ─
                 </text>
@@ -2305,14 +2273,14 @@ export function Prompt(props: PromptProps) {
           <Show
             when={promptBusy()}
             fallback={
-              <box width={5} justifyContent="center" flexShrink={0}>
-                <text fg={highlight()}>~</text>
-              </box>
+              <text fg={highlight()} flexShrink={0}>
+                ~
+              </text>
             }
           >
-            <box width={5} justifyContent="center" flexShrink={0}>
-              <text fg={highlight()}>{stackedTildeColumnFrame(animTick())}</text>
-            </box>
+            <text fg={highlight()} flexShrink={0}>
+              {promptSpinnerColumnFrame(animTick())}
+            </text>
           </Show>
           <Show when={promptBusy()}>
             <text fg={theme.textMuted} flexShrink={0}>
