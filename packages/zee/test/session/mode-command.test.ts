@@ -327,12 +327,20 @@ describe("resolveMode", () => {
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any)).toBe("bypass")
   })
 
-  test("messageTools edit=false overrides to plan", () => {
-    expect(SessionPrompt.resolveMode({ mode: "accept" } as any, { edit: false })).toBe("plan")
+  test("session mode takes precedence over messageTools edit=false", () => {
+    expect(SessionPrompt.resolveMode({ mode: "accept" } as any, { edit: false })).toBe("accept")
   })
 
-  test("messageTools edit=true overrides to accept", () => {
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { edit: true })).toBe("accept")
+  test("session mode takes precedence over messageTools edit=true", () => {
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { edit: true })).toBe("plan")
+  })
+
+  test("messageTools edit=false acts as fallback when session mode is unset", () => {
+    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { edit: false })).toBe("plan")
+  })
+
+  test("messageTools edit=true acts as fallback when session mode is unset", () => {
+    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { edit: true })).toBe("accept")
   })
 
   test("messageOptions mode overrides everything", () => {

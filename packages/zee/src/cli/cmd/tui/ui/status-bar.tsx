@@ -8,6 +8,7 @@ import { useDirectory } from "../context/directory"
 import { useConnected } from "../component/dialog-model"
 import { StatusBar as StatusBarStyle } from "../../../style"
 import type { AssistantMessage } from "@zee/sdk/v2"
+import { resolveEffectiveSessionMode } from "../util/session-mode"
 
 export function StatusBar() {
   const { theme } = useTheme()
@@ -20,11 +21,11 @@ export function StatusBar() {
   const mcpStatuses = createMemo(() => Object.values(sync.data.mcp))
   const mcpTotal = createMemo(() => mcpStatuses().length)
   const mcpConnected = createMemo(() => mcpStatuses().filter((x) => x.status === "connected").length)
-  const mcpDegraded = createMemo(() =>
-    mcpStatuses().filter(
-      (x) =>
-        x.status === "failed" || x.status === "needs_auth" || x.status === "needs_client_registration",
-    ).length,
+  const mcpDegraded = createMemo(
+    () =>
+      mcpStatuses().filter(
+        (x) => x.status === "failed" || x.status === "needs_auth" || x.status === "needs_client_registration",
+      ).length,
   )
   const mcpLoading = createMemo(() => sync.data.mcp_meta.loading)
   const lsp = createMemo(() => Object.keys(sync.data.lsp))
@@ -58,6 +59,12 @@ export function StatusBar() {
     if (!status || status.type !== "busy") return undefined
     return status.streamHealth
   })
+  const effectiveMode = createMemo(() =>
+    resolveEffectiveSessionMode({
+      sessionMode: route.data.type === "session" ? sync.session.get(route.data.sessionID)?.mode : undefined,
+      localDefault: local.mode.mode(),
+    }),
+  )
 
   const [store, setStore] = createStore({
     welcome: false,
@@ -101,8 +108,12 @@ export function StatusBar() {
           </Match>
           <Match when={connected()}>
             {/* Mode indicator */}
-            <text fg={local.mode.isPlan() ? theme.warning : local.mode.isBypass() ? theme.error : theme.success}>
-              {local.mode.isPlan() ? "◼ PLAN" : local.mode.isBypass() ? "◻ BYPASS" : "◻ ACCEPT"}
+            <text
+              fg={
+                effectiveMode() === "plan" ? theme.warning : effectiveMode() === "bypass" ? theme.error : theme.success
+              }
+            >
+              {effectiveMode() === "plan" ? "◼ PLAN" : effectiveMode() === "bypass" ? "◻ BYPASS" : "◻ ACCEPT"}
             </text>
             <text fg={theme.border}>{StatusBarStyle.separator}</text>
             <Show when={sessionCostLabel()}>
@@ -110,9 +121,7 @@ export function StatusBar() {
               <text fg={theme.border}>{StatusBarStyle.separator}</text>
             </Show>
             <Show when={permissions().length > 0}>
-              <text fg={theme.warning}>
-                ⚠{permissions().length}
-              </text>
+              <text fg={theme.warning}>⚠{permissions().length}</text>
               <text fg={theme.border}>{StatusBarStyle.separator}</text>
             </Show>
             <Show when={streamHealth()}>
@@ -193,13 +202,19 @@ export function StatusBar() {
                   <text fg={theme.textMuted}>⊙?</text>
                 </Match>
                 <Match when={mcpDegraded() > 0}>
-                  <text fg={theme.error}>⊘{mcpConnected()}/{mcpTotal()}</text>
+                  <text fg={theme.error}>
+                    ⊘{mcpConnected()}/{mcpTotal()}
+                  </text>
                 </Match>
                 <Match when={mcpConnected() < mcpTotal()}>
-                  <text fg={theme.warning}>◐{mcpConnected()}/{mcpTotal()}</text>
+                  <text fg={theme.warning}>
+                    ◐{mcpConnected()}/{mcpTotal()}
+                  </text>
                 </Match>
                 <Match when={true}>
-                  <text fg={theme.success}>⊙{mcpConnected()}/{mcpTotal()}</text>
+                  <text fg={theme.success}>
+                    ⊙{mcpConnected()}/{mcpTotal()}
+                  </text>
                 </Match>
               </Switch>
             </box>

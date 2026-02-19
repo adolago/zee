@@ -2,7 +2,19 @@ import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentu
 import { Clipboard } from "@tui/util/clipboard"
 import { TextAttributes, RGBA } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
-import { Switch, Match, createEffect, untrack, ErrorBoundary, createSignal, onMount, batch, Show, on } from "solid-js"
+import {
+  Switch,
+  Match,
+  createEffect,
+  untrack,
+  ErrorBoundary,
+  createSignal,
+  onMount,
+  batch,
+  Show,
+  on,
+  createMemo,
+} from "solid-js"
 import { Installation } from "@/installation"
 import { Flag } from "@/flag/flag"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
@@ -41,6 +53,7 @@ import { Instance } from "@/project/instance"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { openExternalUrl } from "@/util/open-external-url"
 import { Terminal } from "./util/terminal"
+import { nextSessionMode, resolveEffectiveSessionMode } from "./util/session-mode"
 
 import type { EventSource } from "./context/sdk"
 
@@ -172,7 +185,6 @@ function App() {
   }
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
 
-
   // Update terminal window title based on current route, session, and active persona
   createEffect(() => {
     if (!terminalTitleEnabled()) return
@@ -276,6 +288,43 @@ function App() {
     })()
   })
 
+  const activeSession = createMemo(() =>
+    route.data.type === "session" ? sync.session.get(route.data.sessionID) : undefined,
+  )
+  const effectiveMode = createMemo(() =>
+    resolveEffectiveSessionMode({
+      sessionMode: activeSession()?.mode,
+      localDefault: local.mode.mode(),
+    }),
+  )
+
+  async function cycleModeForActiveSession() {
+    if (route.data.type !== "session") {
+      local.mode.cycle()
+      return
+    }
+
+    const next = nextSessionMode(effectiveMode())
+    try {
+      await sdk.client.session.mode(
+        {
+          sessionID: route.data.sessionID,
+          mode: next,
+        },
+        { throwOnError: true },
+      )
+      // Keep local default aligned with the user's latest explicit choice.
+      local.mode.set(next)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      toast.show({
+        message: `Failed to switch mode: ${message}`,
+        variant: "error",
+        duration: 5000,
+      })
+    }
+  }
+
   command.register(() => [
     {
       title: "Switch session",
@@ -347,15 +396,15 @@ function App() {
         dialog.replace(() => <DialogMcp />)
       },
     },
-	    {
-	      title: "Variant cycle",
-	      value: "variant.cycle",
-	      keybind: "variant_cycle",
-	      category: "Agent",
-	      onSelect: () => {
-	        local.model.variant.cycle()
-	      },
-	    },
+    {
+      title: "Variant cycle",
+      value: "variant.cycle",
+      keybind: "variant_cycle",
+      category: "Agent",
+      onSelect: () => {
+        local.model.variant.cycle()
+      },
+    },
     {
       title: "Toggle model favorite",
       value: "model.favorite_toggle",
@@ -401,12 +450,12 @@ function App() {
       },
     },
     {
-      title: `Cycle mode (${local.mode.mode().toUpperCase()} -> next)`,
+      title: `Cycle mode (${effectiveMode().toUpperCase()} -> next)`,
       value: "mode.cycle",
       keybind: "mode_cycle",
       category: "Mode",
-      onSelect: () => {
-        local.mode.cycle()
+      onSelect: async () => {
+        await cycleModeForActiveSession()
         setTimeout(() => vim.onEnterInsert(), 10)
       },
     },

@@ -43,6 +43,7 @@ import { Banner, type BannerItem } from "../banner"
 import { computePromptHeaderBorderLayout } from "./header-border-layout"
 import { VimCommands } from "@tui/util/vim-commands"
 import { classifySteerSubmitError, decideBusySubmit } from "./busy-submit"
+import { nextSessionMode, resolveEffectiveSessionMode } from "../../util/session-mode"
 
 export type PromptProps = {
   sessionID?: string
@@ -381,9 +382,15 @@ export function Prompt(props: PromptProps) {
     if (ctx.percent >= 60) return theme.warning
     return theme.textMuted
   })
-  const modeStatusLabel = createMemo(() => local.mode.mode().toUpperCase())
+  const effectiveMode = createMemo(() =>
+    resolveEffectiveSessionMode({
+      sessionMode: session()?.mode,
+      localDefault: local.mode.mode(),
+    }),
+  )
+  const modeStatusLabel = createMemo(() => effectiveMode().toUpperCase())
   const modeStatusColor = createMemo(() =>
-    local.mode.isPlan() ? theme.warning : local.mode.isBypass() ? theme.error : theme.success,
+    effectiveMode() === "plan" ? theme.warning : effectiveMode() === "bypass" ? theme.error : theme.success,
   )
   const vimStatusLabel = createMemo(() => (vim.isNormal ? (vimPending() ? `N ${vimPending()}` : "N") : "I"))
   const vimStatusColor = createMemo(() => (vim.isNormal ? theme.accent : theme.success))
@@ -1485,10 +1492,11 @@ export function Prompt(props: PromptProps) {
     })
 
     // Tool permissions based on mode
-    const holdModeTools = local.mode.isPlan()
-      ? { edit: false, write: false, notebook_edit: false }
-      : { edit: true, write: true, notebook_edit: true }
-    const selectedMode = local.mode.mode()
+    const selectedMode = effectiveMode()
+    const holdModeTools =
+      selectedMode === "plan"
+        ? { edit: false, write: false, notebook_edit: false }
+        : { edit: true, write: true, notebook_edit: true }
 
     // Clear input immediately so the UI feels responsive. Save state to restore
     // on error so the user doesn't lose their message.
@@ -1577,6 +1585,7 @@ export function Prompt(props: PromptProps) {
             model: `${selectedModel.providerID}/${selectedModel.modelID}`,
             messageID,
             variant,
+            mode: selectedMode,
             tools: holdModeTools,
             parts: nonTextParts
               .filter((x) => x.type === "file")
@@ -1666,7 +1675,10 @@ export function Prompt(props: PromptProps) {
           })
         } catch (error) {
           const classification = classifySteerSubmitError(error)
-          if (classification === "steer_race_no_active_turn" || classification === "steer_race_expected_turn_mismatch") {
+          if (
+            classification === "steer_race_no_active_turn" ||
+            classification === "steer_race_expected_turn_mismatch"
+          ) {
             try {
               await sendPromptNow()
               toast.show({
@@ -1712,6 +1724,35 @@ export function Prompt(props: PromptProps) {
       }
     }
   }
+
+  async function cycleModeForActiveSession() {
+    const sessionID = props.sessionID
+    if (!sessionID) {
+      local.mode.cycle()
+      return
+    }
+
+    const next = nextSessionMode(effectiveMode())
+    try {
+      await sdk.client.session.mode(
+        {
+          sessionID,
+          mode: next,
+        },
+        { throwOnError: true },
+      )
+      // Keep local default aligned with the user's latest explicit choice.
+      local.mode.set(next)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      toast.show({
+        message: `Failed to switch mode: ${message}`,
+        variant: "error",
+        duration: 5000,
+      })
+    }
+  }
+
   const exit = useExit()
 
   function pasteText(text: string, virtualText: string) {
@@ -2103,7 +2144,7 @@ export function Prompt(props: PromptProps) {
               }
               if (keybind.match("mode_cycle", e)) {
                 e.preventDefault()
-                local.mode.cycle()
+                await cycleModeForActiveSession()
                 return
               }
               if (keybind.match("input_clear", e) && store.prompt.input !== "") {

@@ -243,8 +243,8 @@ export namespace SessionPrompt {
 
   /**
    * Resolve the session mode (plan/accept/bypass).
-   * Priority: per-message explicit mode > legacy options mode > per-message tools
-   * > per-session mode > surface default.
+   * Priority: per-message explicit mode > legacy options mode > per-session mode
+   * > per-message tools > surface default.
    */
   export function resolveMode(
     session: Session.Info,
@@ -259,13 +259,13 @@ export namespace SessionPrompt {
     const legacyMode = normalizeMode(messageOptions?.mode)
     if (legacyMode) return legacyMode
 
-    // Per-message tools override (backward compat: edit=false means plan)
-    if (messageTools?.edit === false) return "plan"
-    if (messageTools?.edit === true) return "accept"
-
     // Per-session mode (includes backward compat: hold->plan, release->accept)
     const sessionMode = normalizeMode(session.mode)
     if (sessionMode) return sessionMode
+
+    // Per-message tools fallback (backward compat: edit=false means plan)
+    if (messageTools?.edit === false) return "plan"
+    if (messageTools?.edit === true) return "accept"
 
     // Surface defaults: safe-by-default (plan mode).
     return "plan"
@@ -1195,9 +1195,7 @@ export namespace SessionPrompt {
 
       // normal processing
       const baseAgent = await Agent.get(lastUser.agent)
-      const optionsForAgent = lastUser.options
-        ? (({ mode: _, ...rest }) => rest)(lastUser.options)
-        : undefined
+      const optionsForAgent = lastUser.options ? (({ mode: _, ...rest }) => rest)(lastUser.options) : undefined
       const agent = optionsForAgent
         ? { ...baseAgent, options: mergeDeep(baseAgent.options, optionsForAgent) }
         : baseAgent
@@ -2285,6 +2283,7 @@ export namespace SessionPrompt {
     sessionID: Identifier.schema("session"),
     agent: z.string().optional(),
     model: z.string().optional(),
+    mode: z.enum(["plan", "accept", "bypass"]).optional(),
     arguments: z.string(),
     command: z.string(),
     variant: z.string().optional(),
@@ -2498,6 +2497,7 @@ export namespace SessionPrompt {
       messageID: input.messageID,
       model: userModel,
       agent: userAgent,
+      mode: input.mode,
       parts,
       variant: input.variant,
       tools: input.tools,

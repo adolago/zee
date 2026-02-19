@@ -15,6 +15,12 @@ import { useArgs } from "./args"
 import { useSDK } from "./sdk"
 import { RGBA } from "@opentui/core"
 import type { Agent as SDKAgent } from "@zee/sdk/v2"
+import {
+  nextSessionMode,
+  resolveEffectiveSessionMode,
+  SESSION_MODE_TOAST,
+  type SessionMode,
+} from "../util/session-mode"
 
 // Extended agent type with fallback model support (internal feature not yet in SDK)
 type AgentWithFallback = SDKAgent & {
@@ -48,9 +54,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const agents = createMemo((): AgentWithFallback[] => {
         const list = sync.data?.agent as AgentWithFallback[] | undefined
         if (!list || !Array.isArray(list)) return []
-        return list
-          .filter((x) => x.mode !== "subagent" && !x.hidden)
-          .sort((a, b) => b.name.localeCompare(a.name)) // Reverse alpha: Zee, Stanley, Johny
+        return list.filter((x) => x.mode !== "subagent" && !x.hidden).sort((a, b) => b.name.localeCompare(a.name)) // Reverse alpha: Zee, Stanley, Johny
       })
       const [agentStore, setAgentStore] = createStore<{
         current: string
@@ -304,9 +308,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         },
         isFavorite(model?: { providerID: string; modelID: string }) {
           if (!model) return false
-          return modelStore.favorite.some(
-            (f) => f.providerID === model.providerID && f.modelID === model.modelID,
-          )
+          return modelStore.favorite.some((f) => f.providerID === model.providerID && f.modelID === model.modelID)
         },
         toggleFavorite(model?: { providerID: string; modelID: string }) {
           if (!model) return
@@ -329,9 +331,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             if (target) setModelStore("sessionModel", agent.current().name, target)
             return true
           }
-          const idx = favorites.findIndex(
-            (f) => f.providerID === current.providerID && f.modelID === current.modelID,
-          )
+          const idx = favorites.findIndex((f) => f.providerID === current.providerID && f.modelID === current.modelID)
           let next = idx + direction
           if (next < 0) next = favorites.length - 1
           if (next >= favorites.length) next = 0
@@ -532,25 +532,23 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       },
     }
 
-    type SessionMode = "plan" | "accept" | "bypass"
-    const MODE_CYCLE: SessionMode[] = ["plan", "accept", "bypass"]
-
-    const MODE_TOAST: Record<SessionMode, { variant: "info" | "success" | "warning"; message: string }> = {
-      plan: { variant: "info", message: "PLAN mode - Research only" },
-      accept: { variant: "success", message: "ACCEPT mode - Edits auto-approved" },
-      bypass: { variant: "warning", message: "BYPASS mode - All permissions skipped" },
-    }
-
     // Global mode - KV-backed, persists across sessions
     const mode = iife(() => {
       const kv = useKV()
       const stored = kv.get("mode", "plan")
-      const initial: SessionMode = MODE_CYCLE.includes(stored) ? stored : "plan"
+      const initial = resolveEffectiveSessionMode({ sessionMode: stored, localDefault: "plan" })
       const [modeSignal, setModeSignal] = createSignal<SessionMode>(initial)
 
-      function setMode(next: SessionMode) {
+      function setMode(next: SessionMode, showToast: boolean) {
         setModeSignal(next)
         kv.set("mode", next)
+        if (showToast) {
+          toast.show({
+            variant: SESSION_MODE_TOAST[next].variant,
+            message: SESSION_MODE_TOAST[next].message,
+            duration: 2000,
+          })
+        }
       }
 
       return {
@@ -566,12 +564,13 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         isBypass() {
           return modeSignal() === "bypass"
         },
-        cycle() {
-          const current = modeSignal()
-          const idx = MODE_CYCLE.indexOf(current)
-          const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length]!
-          setMode(next)
-          toast.show({ variant: MODE_TOAST[next].variant, message: MODE_TOAST[next].message, duration: 2000 })
+        set(next: SessionMode, options?: { toast?: boolean }) {
+          setMode(next, options?.toast ?? true)
+        },
+        cycle(from?: SessionMode) {
+          const next = nextSessionMode(from ?? modeSignal())
+          setMode(next, true)
+          return next
         },
       }
     })
@@ -607,14 +606,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const paramsFile = Bun.file(path.join(Global.Path.state, "params.json"))
 
       function saveParams() {
-        Bun.write(paramsFile, JSON.stringify(paramStore.sessionParams)).catch(
-          () => {
-            toast.show({
-              variant: "warning",
-              message: "Failed to save session parameters",
-            })
-          },
-        )
+        Bun.write(paramsFile, JSON.stringify(paramStore.sessionParams)).catch(() => {
+          toast.show({
+            variant: "warning",
+            message: "Failed to save session parameters",
+          })
+        })
       }
 
       // Load persisted params

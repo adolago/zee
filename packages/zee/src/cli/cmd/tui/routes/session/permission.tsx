@@ -16,6 +16,7 @@ import { Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 import { Global } from "@/global"
 import { useLocal } from "../../context/local"
+import { resolveEffectiveSessionMode } from "../../util/session-mode"
 
 type PermissionStage = "permission" | "always" | "reject"
 
@@ -126,16 +127,23 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
   })
 
   const session = createMemo(() => sync.data.session.find((s) => s.id === props.request.sessionID))
+  const effectiveMode = createMemo(() =>
+    resolveEffectiveSessionMode({
+      sessionMode: session()?.mode,
+      localDefault: local.mode.mode(),
+    }),
+  )
 
   // BYPASS mode: auto-approve all permissions without prompting
   // ACCEPT mode: auto-approve edit permissions only
   onMount(() => {
-    if (local.mode.isBypass()) {
+    const mode = effectiveMode()
+    if (mode === "bypass") {
       sdk.client.permission.reply({
         reply: "once",
         requestID: props.request.id,
       })
-    } else if (local.mode.isAccept() && ["edit", "write", "multiedit", "apply_patch"].includes(props.request.permission)) {
+    } else if (mode === "accept" && ["edit", "write", "multiedit", "apply_patch"].includes(props.request.permission)) {
       sdk.client.permission.reply({
         reply: "once",
         requestID: props.request.id,
@@ -516,21 +524,24 @@ function Prompt<const T extends Record<string, string>>(props: {
   )
 
   return (
-    <Show when={!store.expanded} fallback={
-      <Portal>
-        <box
-          position="absolute"
-          top={0}
-          left={0}
-          width={dimensions().width}
-          height={dimensions().height}
-          backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
-          zIndex={100}
-        >
-          {content()}
-        </box>
-      </Portal>
-    }>
+    <Show
+      when={!store.expanded}
+      fallback={
+        <Portal>
+          <box
+            position="absolute"
+            top={0}
+            left={0}
+            width={dimensions().width}
+            height={dimensions().height}
+            backgroundColor={RGBA.fromInts(0, 0, 0, 0)}
+            zIndex={100}
+          >
+            {content()}
+          </box>
+        </Portal>
+      }
+    >
       {content()}
     </Show>
   )

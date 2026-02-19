@@ -424,6 +424,17 @@ class ExtendedSession extends GeneratedSession {
     return super.unshare(rest, options)
   }
 
+  override command<ThrowOnError extends boolean = false>(
+    parameters: Parameters<GeneratedSession["command"]>[0] & {
+      mode?: "plan" | "accept" | "bypass"
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const { directory: _, ...rest } = parameters
+    return super.command(rest as Parameters<GeneratedSession["command"]>[0], options)
+  }
+
   // Set session mode (plan/accept/bypass)
   mode<ThrowOnError extends boolean = false>(
     parameters: { sessionID: string; mode: "plan" | "accept" | "bypass"; directory?: string },
