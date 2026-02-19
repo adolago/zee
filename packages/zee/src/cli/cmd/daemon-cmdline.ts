@@ -3,7 +3,7 @@
  *
  * - Linux `/proc/<pid>/cmdline` payloads are NUL-separated.
  * - Fallback `ps` output is shell-like text where quoted segments should stay intact.
- * - Backslashes are preserved unless they intentionally escape `"` or `\`.
+ * - Backslashes are preserved unless they intentionally escape `"`.
  */
 export function parseDaemonCommandLineArgs(cmdline: string): string[] {
   if (cmdline.includes("\0")) {
