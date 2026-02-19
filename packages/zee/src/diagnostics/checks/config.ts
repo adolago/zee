@@ -59,6 +59,8 @@ function getConfigDir(): string {
   return resolveConfigDir()
 }
 
+const CONFIG_FILENAME = "zee.jsonc"
+
 /**
  * Parse JSONC (JSON with comments) - basic implementation
  */
@@ -104,7 +106,7 @@ function hasKey(obj: unknown, key: string): boolean {
  */
 async function checkConfigSchema(): Promise<CheckResult> {
   const start = Date.now()
-  const configPath = path.join(getConfigDir(), "zee.json")
+  const configPath = path.join(getConfigDir(), CONFIG_FILENAME)
 
   try {
     const content = await fs.readFile(configPath, "utf-8")
@@ -192,7 +194,7 @@ async function checkConfigSchema(): Promise<CheckResult> {
  */
 async function checkDeprecatedOptions(): Promise<CheckResult> {
   const start = Date.now()
-  const configPath = path.join(getConfigDir(), "zee.json")
+  const configPath = path.join(getConfigDir(), CONFIG_FILENAME)
 
   try {
     const content = await fs.readFile(configPath, "utf-8")
@@ -269,7 +271,7 @@ async function checkDeprecatedOptions(): Promise<CheckResult> {
  */
 async function checkKeybindConflicts(): Promise<CheckResult> {
   const start = Date.now()
-  const configPath = path.join(getConfigDir(), "zee.json")
+  const configPath = path.join(getConfigDir(), CONFIG_FILENAME)
 
   try {
     const content = await fs.readFile(configPath, "utf-8")
@@ -423,7 +425,7 @@ async function checkCredentials(): Promise<CheckResult> {
  */
 async function checkMCPPaths(): Promise<CheckResult> {
   const start = Date.now()
-  const configPath = path.join(getConfigDir(), "zee.json")
+  const configPath = path.join(getConfigDir(), CONFIG_FILENAME)
 
   try {
     const content = await fs.readFile(configPath, "utf-8")

@@ -181,15 +181,15 @@ zee auth list | grep -i minimax
 # ●  MiniMax (minimax.io) api          ← Pay-as-you-go (for TTS)
 # ●  MiniMax Coding Plan (minimax.io) api  ← Coding plan (for chat)
 
-# Disabled providers (in config.json)
-jq '.disabled_providers | map(select(test("minimax")))' ~/.config/zee/config.json
+# Disabled providers (in zee.jsonc)
+jq '.disabled_providers | map(select(test("minimax")))' ~/.config/zee/zee.jsonc
 # ["minimax", "minimax-cn", "minimax-cn-coding-plan"]
 # Note: minimax is disabled for chat but still used for TTS
 ```
 
 ### TTS Configuration
 
-TTS is configured in `~/.config/zee/config.json`:
+TTS is configured in `~/.config/zee/zee.jsonc`:
 
 ```json
 {

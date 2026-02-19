@@ -59,7 +59,6 @@ output/
 # Skills: track all vendored namespaces
 .agents/skills/*
 !.agents/skills/@zee/
-!.agents/skills/@clawhub/
 !.agents/skills/@codex/
 !.agents/skills/codebase-guide/
 !.agents/skills/parallel-orchestration/

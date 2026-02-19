@@ -25,8 +25,10 @@ import { resolveCronStorePath } from "../../cron/store"
 import { HeartbeatRunner } from "../../heartbeat/runner"
 import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
+import { syncBundledSkillsToMachine } from "../../skill/mirror"
 import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
+import { Flag } from "../../flag/flag"
 import path from "path"
 import { startRuntimeProcessGuard, type RuntimeProcessLimits } from "./runtime-process-guard"
 import { DaemonServer } from "@root/daemon/ipc-server"
@@ -311,6 +313,21 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       error: error instanceof Error ? error.message : String(error),
     })
     daemonConfig = {} as Config.Info
+  }
+
+  // Mirror bundled curated skills into machine-level config path on daemon startup.
+  try {
+    const mirrorResult = await syncBundledSkillsToMachine({ reason: "daemon-startup" })
+    if (mirrorResult.status === "synced") {
+      Output.log(`Skills:     Curated bundle synced (${mirrorResult.skillCount})`)
+    } else if (mirrorResult.status === "failed") {
+      log.warn("curated skill mirror failed", { reason: mirrorResult.reason })
+      Output.log(`Skills:     Curated bundle sync failed (${mirrorResult.reason ?? "unknown"})`)
+    }
+  } catch (error) {
+    log.warn("curated skill mirror threw during startup", {
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 
   // Start skill watcher
@@ -636,15 +653,25 @@ URL:       ${daemonUrl}
 }
 
 async function ensureZeeBannerRefreshJob(cron: CronService, directory: string) {
+  const jobs = await cron.list({ includeDisabled: true })
+  const existing = jobs.find((j) => j.name === "zee-banner-refresh")
+
+  // In hardened daemon mode we disable project config loading, which also
+  // disables custom tools from `<project>/.zee/tool`. In that mode, make sure
+  // the auto-wired banner refresh cron job is disabled instead of repeatedly failing.
+  if (Flag.ZEE_DISABLE_PROJECT_CONFIG) {
+    if (existing?.enabled) {
+      await cron.update(existing.id, { enabled: false })
+    }
+    return
+  }
+
   const toolPathTs = path.join(directory, ".zee", "tool", "zee-banner-refresh.ts")
   const toolPathJs = path.join(directory, ".zee", "tool", "zee-banner-refresh.js")
   const hasTool = (await Bun.file(toolPathTs).exists()) || (await Bun.file(toolPathJs).exists())
   if (!hasTool) {
     return
   }
-
-  const jobs = await cron.list({ includeDisabled: true })
-  const existing = jobs.find((j) => j.name === "zee-banner-refresh")
   const now = Date.now()
 
   const desired = {

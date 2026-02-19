@@ -378,7 +378,7 @@ export namespace Agent {
     const personaIdentityPrompts: Record<string, string> = {}
 
     const loadPersonaIdentityPrompt = async (personaConfig: any): Promise<string> => {
-      const identityFiles = personaConfig?.identityFiles
+      const identityFiles = personaConfig?.identityFiles as string[] | undefined
       if (!identityFiles || identityFiles.length === 0) return ""
 
       const personaModule = await loadPersonaModule()

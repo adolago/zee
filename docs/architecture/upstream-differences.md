@@ -91,7 +91,7 @@ Unique packages (vs zee):
 
 The shared core commands are broadly the same (`agent`, `auth`, `run`, `session`, `tui`, `mcp`, `models`, `serve`, etc.), but zee adds several top-level command groups:
 
-- Present in zee, not in opencode: `always-on`, `bug-report`, `check`, `clawhub`, `daemon`, `daemon-install`, `plugin/*`, `provider`, `setup`
+- Present in zee, not in opencode: `always-on`, `bug-report`, `check`, `daemon`, `daemon-install`, `plugin/*`, `provider`, `setup`
 - Present in opencode, not in zee: `web`
 
 ### openclaw (command tree)
@@ -212,7 +212,7 @@ Notes:
 
 Both zee and openclaw use `SKILL.md` files with YAML frontmatter and a progressive disclosure style, but the metadata conventions differ:
 
-- openclaw skills often carry `metadata.openclaw.emoji` (zee avoids emojis and uses `metadata.clawhub` identifiers)
+- openclaw skills often carry `metadata.openclaw.emoji` (zee avoids emojis and uses vendor-neutral identifiers)
 - zee stores many skills under `.agents/skills/@zee/`, `.agents/skills/@stanley/`, `.agents/skills/@johny/` to align skills with personas
 
 ### Inventory (repo snapshot)

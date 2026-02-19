@@ -109,9 +109,7 @@ async function seedRuntimeConfig(runtimeStateDir: string): Promise<string[]> {
 
   const candidates = [
     [path.join(srcConfigDir, "daemon.env"), path.join(dstConfigDir, "daemon.env")],
-    [path.join(srcConfigDir, "zee.json"), path.join(dstConfigDir, "zee.json")],
     [path.join(srcConfigDir, "zee.jsonc"), path.join(dstConfigDir, "zee.jsonc")],
-    [path.join(home, ".zee", "zee.json"), path.join(dstConfigDir, "zee.json")],
     [path.join(home, ".local", "state", "zee", "zee_gateway_token"), path.join(runtimeStateDir, "zee_gateway_token")],
   ] as const
 

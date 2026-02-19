@@ -88,12 +88,6 @@ export interface OrchestrationClientOptions {
   timeoutMs?: number
 }
 
-function legacySocketPath(): string {
-  const home = process.env.HOME || process.env.USERPROFILE || "/tmp"
-  const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`
-  return `${stateHome}/zee/daemon.sock`
-}
-
 export function defaultSocketPath(): string {
   const home = process.env.HOME || process.env.USERPROFILE || "/tmp"
   const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`
@@ -107,8 +101,6 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
 ): Promise<TResult> {
   const configuredSocketPath = options.socketPath || process.env.ZEE_IPC_SOCKET
   const socketPath = configuredSocketPath || defaultSocketPath()
-  const legacyPath = legacySocketPath()
-  const allowLegacyFallback = !configuredSocketPath && legacyPath !== socketPath
   const timeoutMs = options.timeoutMs ?? 30_000
 
   const request: OrchestrationRequest<TParams> = {
@@ -205,20 +197,7 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
       }
     })
 
-  try {
-    return await requestViaSocket(socketPath)
-  } catch (error) {
-    if (!allowLegacyFallback) throw error
-    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
-    const shouldFallback =
-      message.includes("socket missing") ||
-      message.includes("refused connection") ||
-      message.includes("enoent") ||
-      message.includes("enxio") ||
-      message.includes("econnrefused")
-    if (!shouldFallback) throw error
-    return await requestViaSocket(legacyPath)
-  }
+  return await requestViaSocket(socketPath)
 }
 
 export async function runTaskViaDaemon(

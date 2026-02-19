@@ -10,6 +10,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=scripts/lib/upstream-common.sh
+source "$REPO_ROOT/scripts/lib/upstream-common.sh"
+
 # Remote configuration
 declare -A REMOTE_BRANCH=(
     [opencode]="dev"
@@ -97,25 +102,31 @@ if [ "$REMOTE" = "pimono" ]; then
     echo ""
     echo "pi-mono is synced via npm, not git merge."
     echo ""
-    echo "Update command:"
-    echo -e "  ${CYAN}cd packages/zee/Swabble && bun update @mariozechner/pi-coding-agent${NC}"
+    manifest_path="$(find_pimono_dependency_manifest "$REPO_ROOT" || true)"
+    if [ -n "$manifest_path" ]; then
+        manifest_dir="${manifest_path%/package.json}"
+        if [ "$manifest_dir" = "$REPO_ROOT" ]; then
+            manifest_rel="."
+        else
+            manifest_rel="${manifest_dir#$REPO_ROOT/}"
+        fi
+        echo "Update command:"
+        echo -e "  ${CYAN}cd $manifest_rel && bun update @mariozechner/pi-coding-agent${NC}"
+    else
+        echo -e "  ${YELLOW}Installed manifest not found (no @mariozechner/pi-coding-agent dependency in known package.json files).${NC}"
+        echo "  Add/update the dependency in the package that vendors pi-mono, then rerun this command."
+    fi
     echo ""
 
     # Show current vs latest
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-    pkg_json="$REPO_ROOT/packages/zee/Swabble/package.json"
-    if [ -f "$pkg_json" ]; then
-        installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$pkg_json" | grep -o '[0-9][0-9.]*' || echo "unknown")
+    installed="$(resolve_pimono_installed_version "$REPO_ROOT" || true)"
+    if [ -n "$installed" ]; then
         echo -e "  Installed: ${GREEN}$installed${NC}"
+    else
+        echo -e "  Installed: ${YELLOW}unknown${NC}"
     fi
 
-    latest_tag=$(git tag -l "v0.*" --sort=-v:refname | while read -r tag; do
-        if git merge-base --is-ancestor "$tag" pimono/main 2>/dev/null; then
-            echo "$tag"
-            break
-        fi
-    done)
+    latest_tag="$(resolve_latest_pimono_tag "pimono/main")"
     if [ -n "$latest_tag" ]; then
         echo -e "  Latest tag: ${CYAN}$latest_tag${NC}"
     fi
@@ -156,8 +167,6 @@ if [ "$REMOTE" = "openclaw" ]; then
     echo ""
 
     if [ "$MODE" = "preview" ]; then
-        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
         DELTA_MAP="$REPO_ROOT/docs/architecture/openclaw-delta-map.md"
 
         echo -e "${YELLOW}Pending ports from delta-map:${NC}"
@@ -183,7 +192,7 @@ if [ "$REMOTE" = "openclaw" ]; then
                 echo -e "  ${CYAN}[$dec]${NC} $pr -- $title"
             done
 
-            total=$(grep -c "| TODO" "$DELTA_MAP" 2>/dev/null || echo "0")
+            total="$(count_markdown_todos "$DELTA_MAP")"
             echo ""
             echo -e "Total pending: ${YELLOW}$total${NC}"
         else
@@ -258,7 +267,7 @@ case $MODE in
 
         # Show incoming commits
         echo -e "${YELLOW}Incoming commits ($BEHIND):${NC}"
-        git log --oneline "$MERGE_BASE..$REMOTE/$UPSTREAM_BRANCH" | head -20
+        git log --oneline "$MERGE_BASE..$REMOTE/$UPSTREAM_BRANCH" | head -20 || true
         if [ "$BEHIND" -gt 20 ]; then
             echo "  ... and $((BEHIND - 20)) more"
         fi
@@ -346,7 +355,7 @@ Upstream commits: $BEHIND"
             echo "(Dry run - showing what would be rebased)"
             echo ""
             echo "Commits to be rebased:"
-            git log --oneline "$MERGE_BASE..HEAD" | head -20
+            git log --oneline "$MERGE_BASE..HEAD" | head -20 || true
             if [ "$AHEAD" -gt 20 ]; then
                 echo "  ... and $((AHEAD - 20)) more"
             fi

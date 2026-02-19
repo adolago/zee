@@ -314,16 +314,12 @@ export interface ZeeCodexbarConfig {
 /** Configuration file locations (in priority order) */
 export const CONFIG_LOCATIONS = [
   // Project-specific
-  ".zee.json",
-  ".zee.yaml",
-  ".zee/config.json",
-  ".zee/config.yaml",
+  "zee.jsonc",
+  ".zee/zee.jsonc",
   // User-specific
-  "~/.config/zee/config.json",
-  "~/.config/zee/config.yaml",
+  "~/.config/zee/zee.jsonc",
   // Global
-  "/etc/zee/config.json",
-  "/etc/zee/config.yaml",
+  "/etc/zee/zee.jsonc",
 ];
 
 /** Environment variable prefix */

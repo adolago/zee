@@ -423,7 +423,7 @@ export namespace GatewaySupervisor {
     const envHints = getEnvHints()
     const configured = Boolean(configExists || envHints.length)
     if (!configured) {
-      const warning = "Zee gateway not configured (no config in ~/.config/zee/zee.json* or provider env vars)"
+      const warning = "Zee gateway not configured (no config in ~/.config/zee/zee.jsonc or provider env vars)"
       warnings.push(warning)
       // Non-blocking: the embedded gateway can still run on loopback without explicit config.
       // Auth is still required for non-loopback binds / remote exposure.

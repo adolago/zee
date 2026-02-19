@@ -334,9 +334,6 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
  */
 export const CONFIG_FILE_NAMES = [
   'zee.jsonc',
-  'zee.json',
-  '.zee.jsonc',
-  '.zee.json',
 ];
 
 /**

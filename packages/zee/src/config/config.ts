@@ -85,7 +85,7 @@ export namespace Config {
 
     // Project config has highest precedence (overrides global and remote)
     if (!Flag.ZEE_DISABLE_PROJECT_CONFIG) {
-      for (const file of ["zee.jsonc", "zee.json", "config.json"]) {
+      for (const file of ["zee.jsonc"]) {
         const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
         for (const resolved of found.toReversed()) {
           result = mergeConfigConcatArrays(result, await loadFile(resolved))
@@ -136,13 +136,6 @@ export namespace Config {
             }),
           )
         : []),
-      ...(await Array.fromAsync(
-        Filesystem.up({
-          targets: [".zee"],
-          start: Global.Path.home,
-          stop: Global.Path.home,
-        }),
-      )),
     )
 
     if (Flag.ZEE_CONFIG_DIR) {
@@ -153,7 +146,7 @@ export namespace Config {
     for (const dir of unique(directories)) {
       const safeDir = Filesystem.sanitizePath(dir)
       if (safeDir.endsWith(".zee") || safeDir === Flag.ZEE_CONFIG_DIR) {
-        for (const file of ["zee.jsonc", "zee.json"]) {
+        for (const file of ["zee.jsonc"]) {
           log.debug(`loading config from ${path.join(safeDir, file)}`)
           result = mergeConfigConcatArrays(result, await loadFile(path.join(safeDir, file)))
           // to satisfy the type checker
@@ -178,7 +171,7 @@ export namespace Config {
     // requiring elevated permissions.
     const safeManagedConfigDir = Filesystem.sanitizePath(managedConfigDir)
     if (existsSync(safeManagedConfigDir)) {
-      for (const file of ["zee.jsonc", "zee.json"]) {
+      for (const file of ["zee.jsonc"]) {
         result = mergeConfigConcatArrays(result, await loadFile(path.join(safeManagedConfigDir, file)))
         // to satisfy the type checker
         result.agent ??= {}
@@ -499,9 +492,9 @@ export namespace Config {
    * Deduplicates plugins by name, with later entries (higher priority) winning.
    * Priority order (highest to lowest):
    * 1. Local plugin/ directory
-   * 2. Local zee.json
+   * 2. Local zee.jsonc
    * 3. Global plugin/ directory
-   * 4. Global zee.json
+   * 4. Global zee.jsonc
    *
    * Since plugins are added in low-to-high priority order,
    * we reverse, deduplicate (keeping first occurrence), then restore order.
@@ -1677,27 +1670,8 @@ export namespace Config {
   export const global = lazy(async () => {
     let result: Info = pipe(
       {},
-      mergeDeep(await loadFile(path.join(Global.Path.config, "config.json"))),
-      mergeDeep(await loadFile(path.join(Global.Path.config, "zee.json"))),
       mergeDeep(await loadFile(path.join(Global.Path.config, "zee.jsonc"))),
     )
-
-    await import(path.join(Global.Path.config, "config"), {
-      with: {
-        type: "toml",
-      },
-    })
-      .then(async (mod) => {
-        const { provider, model, ...rest } = mod.default
-        if (provider && model) result.model = `${provider}/${model}`
-        result["$schema"] = "zee"
-        result = mergeDeep(result, rest)
-        await Bun.write(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
-        await fs.unlink(path.join(Global.Path.config, "config"))
-      })
-      .catch((err) => {
-        log.debug("failed to migrate TOML config", { error: String(err) })
-      })
 
     return result
   })
@@ -1843,7 +1817,7 @@ export namespace Config {
   }
 
   export async function update(config: Info) {
-    const filepath = path.join(Instance.directory, "config.json")
+    const filepath = path.join(Instance.directory, "zee.jsonc")
     const existing = await loadFile(filepath)
     const merged = mergeDeep(existing, config)
 

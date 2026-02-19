@@ -37,7 +37,6 @@ import { BugReportCommand } from "./cli/cmd/bug-report"
 import { CheckCommand } from "./cli/cmd/check"
 import { DoctorCommand } from "./cli/cmd/doctor"
 import { ProviderCommand } from "./cli/cmd/provider"
-import { ClawHubCommand } from "./cli/cmd/clawhub"
 import { CompareCommand } from "./cli/cmd/compare"
 import { ReliabilityCommand } from "./cli/cmd/reliability"
 import { ClientCommand } from "./cli/cmd/client"
@@ -198,7 +197,6 @@ const cli = yargs(hideBin(process.argv))
   .command(PackageCommand)
   .command(PodsCommand)
   .command(BugReportCommand)
-  .command(ClawHubCommand)
   .command(CompareCommand)
   .command(ReliabilityCommand)
   .fail((msg, err) => {

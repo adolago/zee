@@ -119,7 +119,7 @@ export const ZEE_PERSONA_CONFIG: AgentPersonaConfig = {
   ...ZEE_PERSONA,
   defaultAgent: "zee",
   surfaces: ["cli", "web", "api", "whatsapp"],
-  identityFiles: ["~/.zee/IDENTITY.md", "~/.zee/SOUL.md"],
+  identityFiles: ["~/.config/zee/IDENTITY.md", "~/.config/zee/SOUL.md"],
   systemPromptAdditions: `
 You are Zee, a unified personal assistant handling life admin, investing, and learning.
 
@@ -152,8 +152,8 @@ You are Zee, a unified personal assistant handling life admin, investing, and le
 - Offer follow-up reminders when appropriate
 `,
   knowledge: [
-    "~/.zee/IDENTITY.md",
-    "~/.zee/SOUL.md",
+    "~/.config/zee/IDENTITY.md",
+    "~/.config/zee/SOUL.md",
   ],
   mcpServers: ["calendar", "kernel"],
 };

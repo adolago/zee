@@ -13,7 +13,7 @@ import { Zee } from "../../paths"
 import { resolveStateDir } from "../../global/dirs"
 
 const STALE_THRESHOLD_MS = 30 * 60 * 1000 // 30 minutes
-const ZEE_CONFIG_FILES = ["zee.json", "zee.jsonc"]
+const ZEE_CONFIG_FILES = ["zee.jsonc"]
 const GATEWAY_ENV_HINTS = ["ZEE_GATEWAY_TOKEN", "ZEE_GATEWAY_PASSWORD"]
 
 function getStateDir(): string {
@@ -102,7 +102,7 @@ async function checkGatewayConfig(): Promise<CheckResult> {
       category: "integrity",
       status: "skip",
       message: "Gateway not configured",
-      details: "Add ~/.config/zee/zee.json(c) or provider env vars to enable messaging",
+      details: "Add ~/.config/zee/zee.jsonc or provider env vars to enable messaging",
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,

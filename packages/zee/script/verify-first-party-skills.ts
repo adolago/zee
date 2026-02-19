@@ -59,14 +59,13 @@ for (const file of skillFiles) {
   }
 
   const content = await Bun.file(file).text()
-  if (/^source:\s*(clawhub|codex)\s*$/m.test(content)) {
+  if (/^source:\s*(?:clawd?hub|codex)\s*$/m.test(content)) {
     errors.push(`Legacy source field in ${normalized}`)
   }
 }
 
 const legacyDocPatterns: Array<{ label: string; regex: RegExp }> = [
-  { label: "clawhub", regex: /\bclawhub\b/i },
-  { label: "clawdhub", regex: /\bclawdhub\b/i },
+  { label: "legacy vendor namespace", regex: /\bclawd?hub\b/i },
   { label: "@codex/", regex: /@codex\//i },
   { label: "codex", regex: /\bcodex\b/i },
 ]

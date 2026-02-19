@@ -1,6 +1,22 @@
 ---
 name: home-assistant
 description: Control Home Assistant smart home devices, run automations, and receive webhook events. Use when controlling lights, switches, climate, scenes, scripts, or any HA entity. Supports bidirectional communication via REST API (outbound) and webhooks (inbound triggers from HA automations).
+tags:
+  - home assistant
+  - smart home
+  - lights
+  - scenes
+  - automations
+  - climate
+  - kelvin
+  - brightness
+triggers:
+  - set office lights
+  - set lights to warm
+  - turn on the lights
+  - adjust light brightness
+  - run home assistant scene
+  - call light.turn_on
 primaryEnv: HASS_TOKEN
 requires:
   env:

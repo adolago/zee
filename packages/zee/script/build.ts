@@ -6,6 +6,7 @@ import fs from "fs"
 import { createRequire } from "module"
 import { $ } from "bun"
 import { fileURLToPath } from "url"
+import { parse as parseYaml } from "yaml"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -21,6 +22,128 @@ const personasRoot = path.resolve(repoRoot, "packages", "personas")
 const zeeRoot = path.join(personasRoot, "zee")
 const zeeAssetsRoot = path.join(repoRoot, ".zee")
 const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
+const SKILL_GLOB = new Bun.Glob("**/SKILL.md")
+
+type SkillManifestContext = "zee" | "stanley" | "johny"
+
+type SkillManifestEntry = {
+  id: string
+  path: string
+  context?: SkillManifestContext
+  title: string
+  description: string
+  requires?: Record<string, unknown>
+  curated: true
+}
+
+type SkillManifest = {
+  version: number
+  generatedAt: string
+  skills: SkillManifestEntry[]
+}
+
+function normalizeSkillPath(value: string): string {
+  return value.replaceAll("\\", "/").replace(/^\/+/, "")
+}
+
+function extractFrontmatter(markdown: string): Record<string, unknown> {
+  const match = markdown.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/)
+  if (!match) return {}
+  try {
+    const parsed = parseYaml(match[1])
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    // Ignore malformed frontmatter and keep best-effort defaults.
+  }
+  return {}
+}
+
+function extractSkillContext(skillPath: string): SkillManifestContext | undefined {
+  const match = skillPath.match(/(?:^|\/)@(zee|stanley|johny)(?:\/|$)/)
+  if (!match) return undefined
+  return match[1] as SkillManifestContext
+}
+
+function parseSkillRequires(frontmatter: Record<string, unknown>): Record<string, unknown> | undefined {
+  const direct = frontmatter.requires
+  if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+    return direct as Record<string, unknown>
+  }
+
+  const metadata = frontmatter.metadata
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return undefined
+  }
+
+  const metadataRecord = metadata as Record<string, unknown>
+  const metadataRequires = metadataRecord.requires
+  if (metadataRequires && typeof metadataRequires === "object" && !Array.isArray(metadataRequires)) {
+    return metadataRequires as Record<string, unknown>
+  }
+
+  const metadataZee = metadataRecord.zee
+  if (!metadataZee || typeof metadataZee !== "object" || Array.isArray(metadataZee)) {
+    return undefined
+  }
+
+  const zeeRequires = (metadataZee as Record<string, unknown>).requires
+  if (zeeRequires && typeof zeeRequires === "object" && !Array.isArray(zeeRequires)) {
+    return zeeRequires as Record<string, unknown>
+  }
+
+  return undefined
+}
+
+async function createSkillManifest(skillRoot: string): Promise<SkillManifest> {
+  const matches = await Array.fromAsync(
+    SKILL_GLOB.scan({
+      cwd: skillRoot,
+      absolute: true,
+      onlyFiles: true,
+      followSymlinks: true,
+      dot: true,
+    }),
+  )
+
+  const skills: SkillManifestEntry[] = matches
+    .map((matchPath) => {
+      const relativeSkillFile = normalizeSkillPath(path.relative(skillRoot, matchPath))
+      const relativeSkillDir = normalizeSkillPath(path.dirname(relativeSkillFile))
+      const markdown = fs.readFileSync(matchPath, "utf-8")
+      const frontmatter = extractFrontmatter(markdown)
+
+      const frontmatterName = typeof frontmatter.name === "string" ? frontmatter.name.trim() : ""
+      const title = frontmatterName || path.basename(relativeSkillDir)
+      const description =
+        typeof frontmatter.description === "string" ? frontmatter.description.trim() : "Curated Zee skill"
+      const requires = parseSkillRequires(frontmatter)
+      const context = extractSkillContext(relativeSkillDir)
+      const id = relativeSkillDir.replaceAll("/", ".")
+
+      return {
+        id,
+        path: relativeSkillDir,
+        ...(context ? { context } : {}),
+        title,
+        description,
+        ...(requires ? { requires } : {}),
+        curated: true as const,
+      }
+    })
+    .sort((a, b) => a.path.localeCompare(b.path))
+
+  if (skills.length === 0) {
+    throw new Error(`No SKILL.md files were bundled under ${skillRoot}`)
+  }
+
+  return {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    skills,
+  }
+}
 
 async function ensureZeeDependencies() {
   const nodeModules = path.join(zeeRoot, "node_modules")
@@ -116,7 +239,7 @@ function bundleZeeAssets(distRoot: string) {
   if (!fs.existsSync(zeeAssetsRoot)) return
   const destRoot = path.join(distRoot, ".zee")
   fs.mkdirSync(destRoot, { recursive: true })
-  const entries = ["agent", "command", "themes", "skill", "tool", "plugin"]
+  const entries = ["agent", "command", "themes", "skill", "tool", "plugin", "identity"]
   for (const entry of entries) {
     const src = path.join(zeeAssetsRoot, entry)
     if (!fs.existsSync(src)) continue
@@ -142,11 +265,15 @@ function bundleZeeAssets(distRoot: string) {
   }
 }
 
-function bundlePersonaSkills(distRoot: string) {
+async function bundlePersonaSkills(distRoot: string) {
   if (!fs.existsSync(agentsSkillsRoot)) return
   const destRoot = path.join(distRoot, ".zee", "skill")
   fs.mkdirSync(destRoot, { recursive: true })
-  const skills = ["zee", "stanley", "johny", "personas"]
+  const skills = fs
+    .readdirSync(agentsSkillsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+    .map((entry) => entry.name)
+
   for (const skill of skills) {
     const src = path.join(agentsSkillsRoot, skill)
     if (!fs.existsSync(src)) continue
@@ -160,6 +287,12 @@ function bundlePersonaSkills(distRoot: string) {
       },
     })
   }
+
+  const manifest = await createSkillManifest(destRoot)
+  const manifestPath = path.join(distRoot, ".zee", "skill-manifest.json")
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
+
+  console.log(`Bundled ${manifest.skills.length} curated skills into ${manifestPath}`)
 }
 
 // Fetch and generate models.dev snapshot for bundling
@@ -349,7 +482,7 @@ for (const item of targets) {
   // Bundle personas so standalone installs can resolve them via ZEE_ROOT.
   bundlePersonas(path.join(dir, "dist", name))
   bundleZeeAssets(path.join(dir, "dist", name))
-  bundlePersonaSkills(path.join(dir, "dist", name))
+  await bundlePersonaSkills(path.join(dir, "dist", name))
   bundleSrcModules(path.join(dir, "dist", name))
   binaries[name] = Script.version
 }

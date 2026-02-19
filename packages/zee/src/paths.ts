@@ -210,7 +210,7 @@ export const Zee = {
 
   /**
    * Zee config directory (XDG) - ~/.config/zee/
-   * Used for user configuration such as zee.json(c).
+   * Used for user configuration such as zee.jsonc.
    */
   dataDir(): string {
     const xdgConfigHome = process.env.XDG_CONFIG_HOME?.trim()

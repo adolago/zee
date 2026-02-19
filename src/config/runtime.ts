@@ -1,7 +1,7 @@
 /**
  * Lightweight runtime config loader.
  *
- * Reads zee.json(c) for runtime-only settings (memory)
+ * Reads zee.jsonc for runtime-only settings (memory)
  * without invoking the full CLI config pipeline.
  */
 
@@ -73,9 +73,7 @@ export type ZeeCodexbarConfig = {
 
 const CONFIG_PATHS = [
   path.join(os.homedir(), ".config", "zee", "zee.jsonc"),
-  path.join(os.homedir(), ".config", "zee", "zee.json"),
   Assets.config(),
-  path.join(Assets.root(), "zee.json"),
 ];
 
 let cachedConfig: RuntimeConfig | null = null;

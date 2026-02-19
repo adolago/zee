@@ -326,7 +326,7 @@ function getSuggestedAction(errorType: ErrorCategory, provider: string): string 
     PermissionError: `Re-authenticate: zee auth login ${provider}`,
     ValidationError: "Check model parameters; may need config update",
     NetworkError: "Check internet connection and DNS resolution",
-    ConfigError: "Verify provider configuration in config.json",
+    ConfigError: "Verify provider configuration in zee.jsonc",
     UnknownError: "Check logs for details; may need manual investigation",
   }
   return actions[errorType] || actions.UnknownError

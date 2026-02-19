@@ -127,7 +127,7 @@ name: bad-skill
     })
   })
 
-  test("reports missing binary exclusions", async () => {
+  test("keeps skills loaded when required binary is missing", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -142,14 +142,18 @@ name: bad-skill
       directory: tmp.path,
       fn: async () => {
         const report = await Skill.audit()
-        expect(report.loaded.length).toBe(0)
-        expect(report.excluded.length).toBe(1)
-        expect(report.excluded[0].reason).toContain("missing")
+        expect(report.loaded.length).toBe(1)
+        expect(report.excluded.length).toBe(0)
+        const indexed = await Skill.index("zee")
+        const entry = indexed.find((item) => item.name === "needs-bin")
+        expect(entry).toBeDefined()
+        expect(entry!.readiness.bins).toBe("missing")
+        expect(entry!.readiness.blocked).toBeTrue()
       },
     })
   })
 
-  test("reports OS mismatch exclusions", async () => {
+  test("keeps skills loaded when OS requirement does not match", async () => {
     const wrongOS = process.platform === "win32" ? "darwin" : "win32"
 
     await using tmp = await tmpdir({
@@ -166,8 +170,13 @@ name: bad-skill
       directory: tmp.path,
       fn: async () => {
         const report = await Skill.audit()
-        expect(report.loaded.length).toBe(0)
-        expect(report.excluded.length).toBe(1)
+        expect(report.loaded.length).toBe(1)
+        expect(report.excluded.length).toBe(0)
+        const indexed = await Skill.index("zee")
+        const entry = indexed.find((item) => item.name === "wrong-os")
+        expect(entry).toBeDefined()
+        expect(entry!.readiness.os).toBe("mismatch")
+        expect(entry!.readiness.blocked).toBeTrue()
       },
     })
   })
@@ -618,7 +627,7 @@ describe("Skill gating", () => {
     })
   })
 
-  test("excludes skill when binary missing", async () => {
+  test("marks skill as blocked when binary missing", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -633,8 +642,13 @@ describe("Skill gating", () => {
       directory: tmp.path,
       fn: async () => {
         const report = await Skill.audit()
-        expect(report.loaded.length).toBe(0)
-        expect(report.excluded.length).toBe(1)
+        expect(report.loaded.length).toBe(1)
+        expect(report.excluded.length).toBe(0)
+        const indexed = await Skill.index("zee")
+        const entry = indexed.find((item) => item.name === "missing")
+        expect(entry).toBeDefined()
+        expect(entry!.readiness.bins).toBe("missing")
+        expect(entry!.readiness.blocked).toBeTrue()
       },
     })
   })
@@ -660,7 +674,7 @@ describe("Skill gating", () => {
     })
   })
 
-  test("anyBins excludes skill when no binary found", async () => {
+  test("anyBins marks skill as blocked when no binary found", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -675,9 +689,14 @@ describe("Skill gating", () => {
       directory: tmp.path,
       fn: async () => {
         const report = await Skill.audit()
-        expect(report.loaded.length).toBe(0)
-        expect(report.excluded.length).toBe(1)
-        expect(report.excluded[0].reason).toContain("missing any binary")
+        expect(report.loaded.length).toBe(1)
+        expect(report.excluded.length).toBe(0)
+        const indexed = await Skill.index("zee")
+        const entry = indexed.find((item) => item.name === "any-fail")
+        expect(entry).toBeDefined()
+        expect(entry!.readiness.bins).toBe("missing")
+        expect(entry!.readiness.missingAnyBins).toEqual(["nonexistent-a", "nonexistent-b"])
+        expect(entry!.readiness.blocked).toBeTrue()
       },
     })
   })

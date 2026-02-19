@@ -20,7 +20,7 @@ export type HeartbeatRunnerDeps = {
   serverUrl: string
   /** Working directory to find HEARTBEAT.md in. */
   directory: string
-  /** Raw heartbeat config from zee.json. */
+  /** Raw heartbeat config from zee.jsonc. */
   config?: {
     enabled?: boolean
     every?: string

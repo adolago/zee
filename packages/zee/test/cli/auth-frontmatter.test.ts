@@ -8,13 +8,12 @@ describe("extractAuthFromFrontmatter", () => {
       metadata: {
         primaryEnv: "META_PRIMARY",
         requires: { env: ["META_ENV", "TOP_ENV"] },
-        clawhub: { primaryEnv: "CLAW_PRIMARY", requires: { env: ["CLAW_ENV"] } },
         zee: { primaryEnv: "ZEE_PRIMARY", requires: { env: ["ZEE_ENV"] } },
       },
     })
 
     expect(result.primaryEnv).toBe("META_PRIMARY")
-    expect(result.envVars).toEqual(["TOP_ENV", "META_ENV", "CLAW_ENV", "ZEE_ENV"])
+    expect(result.envVars).toEqual(["TOP_ENV", "META_ENV", "ZEE_ENV"])
   })
 
   test("parses metadata when provided as JSON string", () => {

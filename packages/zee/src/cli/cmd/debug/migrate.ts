@@ -5,6 +5,7 @@ import { cmd } from "../cmd"
 import { UI } from "../../ui"
 import { Symbols } from "../../style"
 import path from "path"
+import { parse as parseJsonc, type ParseError } from "jsonc-parser"
 
 const DEPRECATIONS = [
   {
@@ -45,14 +46,21 @@ export const MigrateCommand = cmd({
 
       // Check each config directory for deprecated fields
       for (const dir of directories) {
-        for (const filename of ["zee.jsonc", "zee.json"]) {
+        for (const filename of ["zee.jsonc"]) {
           const filepath = path.join(dir, filename)
           const file = Bun.file(filepath)
           if (!(await file.exists())) continue
 
           try {
             const content = await file.text()
-            const data = JSON.parse(content.replace(/\/\/.*/g, "")) // Strip comments for JSON
+            const parseErrors: ParseError[] = []
+            const data = parseJsonc(content, parseErrors, {
+              allowTrailingComma: true,
+              allowEmptyContent: false,
+            })
+            if (parseErrors.length > 0 || typeof data !== "object" || data === null) {
+              continue
+            }
 
             const issues: string[] = []
             for (const dep of DEPRECATIONS) {

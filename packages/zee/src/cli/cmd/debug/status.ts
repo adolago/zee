@@ -9,7 +9,6 @@ import fs from "fs/promises"
 import fsSync from "node:fs"
 import path from "path"
 import net from "net"
-import { Zee } from "../../../paths"
 import { Style, Symbols } from "../../style"
 import { Timestamp } from "../../../util/timestamp"
 
@@ -627,10 +626,7 @@ function getGatewayEnvHints(): string[] {
 }
 
 async function findZeeConfig(): Promise<string | undefined> {
-  const candidates = [
-    ...["zee.jsonc", "zee.json"].map((file) => path.join(Global.Path.config, file)),
-    ...["zee.jsonc", "zee.json"].map((file) => path.join(Zee.dataDir(), file)), // legacy
-  ]
+  const candidates = [path.join(Global.Path.config, "zee.jsonc")]
   for (const candidate of candidates) {
     try {
       await fs.access(candidate)

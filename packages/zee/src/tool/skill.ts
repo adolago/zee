@@ -46,6 +46,19 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
           throw new Error(`Skill "${params.name}" not found. Available skills: ${available || "none"}`)
         }
 
+        const readiness = await Skill.readiness(skill, ctx.agent?.permission)
+        if (readiness.permission === "deny") {
+          throw new Error(`Skill "${skill.name}" is blocked by the current permission policy.`)
+        }
+
+        const dependencyReasons = readiness.blockedReasons.filter((reason) => !reason.startsWith("permission denied"))
+        if (dependencyReasons.length > 0) {
+          const lines = dependencyReasons.map((reason) => `- ${reason}`).join("\n")
+          throw new Error(
+            `Skill "${skill.name}" is installed but not ready:\n${lines}\n\nInstall/configure the missing dependencies and retry.`,
+          )
+        }
+
         await ctx.ask({
           permission: "skill",
           patterns: [skill.name],

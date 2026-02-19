@@ -281,15 +281,12 @@ export function extractAuthFromFrontmatter(data: Record<string, unknown>): Skill
     const metaPrimary =
       typeof metadata.primaryEnv === "string"
         ? metadata.primaryEnv
-        : typeof (metadata as { clawhub?: { primaryEnv?: unknown } }).clawhub?.primaryEnv === "string"
-          ? (metadata as { clawhub?: { primaryEnv?: string } }).clawhub?.primaryEnv
-          : typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
-            ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
-            : undefined
+        : typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
+          ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
+          : undefined
 
     const requiresCandidates = [
       (metadata as { requires?: unknown }).requires,
-      (metadata as { clawhub?: { requires?: unknown } }).clawhub?.requires,
       (metadata as { zee?: { requires?: unknown } }).zee?.requires,
     ]
 
@@ -934,7 +931,7 @@ export const AuthLoginCommand = cmd({
             if (handled) return
           }
           prompts.log.warn(
-            `This only stores a credential for ${provider} - you will need configure it in zee.json, check the docs for examples.`,
+            `This only stores a credential for ${provider} - configure it in zee.jsonc; see docs for examples.`,
           )
         }
 

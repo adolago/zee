@@ -10,6 +10,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=scripts/lib/upstream-common.sh
+source "$REPO_ROOT/scripts/lib/upstream-common.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -57,7 +59,6 @@ fi
 # Extract snapshot pins from upstream-differences.md
 UPSTREAM_DIFF="$REPO_ROOT/docs/architecture/upstream-differences.md"
 DELTA_MAP="$REPO_ROOT/docs/architecture/openclaw-delta-map.md"
-GATEWAY_PKG="$REPO_ROOT/packages/zee/Swabble/package.json"
 
 opencode_snapshot_pin=""
 openclaw_snapshot_pin=""
@@ -69,14 +70,11 @@ fi
 # Count pending TODOs from delta-map
 openclaw_todos=0
 if [ -f "$DELTA_MAP" ]; then
-    openclaw_todos=$(grep -c "| TODO" "$DELTA_MAP" 2>/dev/null || echo "0")
+    openclaw_todos=$(count_markdown_todos "$DELTA_MAP")
 fi
 
 # pi-mono installed version
-pimono_installed=""
-if [ -f "$GATEWAY_PKG" ]; then
-    pimono_installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$GATEWAY_PKG" | grep -o '[0-9][0-9.]*' || echo "")
-fi
+pimono_installed="$(resolve_pimono_installed_version "$REPO_ROOT" || true)"
 
 echo -e "${BOLD}=== Zee Upstream Dashboard ===${NC}"
 echo ""
@@ -151,16 +149,7 @@ echo -e "  Remote: https://github.com/badlogic/pi-mono.git"
 echo -e "  Installed: ${CYAN}@mariozechner/pi-coding-agent@${pimono_installed:-unknown}${NC}"
 
 # Get latest pimono tag
-latest_pimono_tag=$(git tag -l "v0.*" --sort=-v:refname | while read -r tag; do
-    if git merge-base --is-ancestor "$tag" pimono/main 2>/dev/null; then
-        echo "$tag"
-        break
-    fi
-done)
-
-if [ -z "$latest_pimono_tag" ]; then
-    latest_pimono_tag=$(git tag -l "v0.5[0-9].*" --sort=-v:refname | head -1)
-fi
+latest_pimono_tag="$(resolve_latest_pimono_tag "pimono/main")"
 
 latest_pimono_version="${latest_pimono_tag#v}"
 echo -e "  Latest tag: ${CYAN}${latest_pimono_tag:-unknown}${NC}"

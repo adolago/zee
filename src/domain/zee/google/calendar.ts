@@ -1,14 +1,14 @@
 /**
  * Google Calendar Client for Zee
  *
- * Uses OAuth2 tokens from ~/.zee/credentials/google/ to fetch calendar events.
+ * Uses OAuth2 tokens from ~/.config/zee/credentials/google/ to fetch calendar events.
  */
 
 import { readFile, writeFile } from "fs/promises";
-import { homedir } from "os";
 import { join } from "path";
+import { Zee } from "../../../paths";
 
-const CREDENTIALS_DIR = join(homedir(), ".zee", "credentials", "google");
+const CREDENTIALS_DIR = join(Zee.credentials(), "google");
 const OAUTH_CLIENT_PATH = join(CREDENTIALS_DIR, "oauth-client.json");
 const TOKENS_PATH = join(CREDENTIALS_DIR, "tokens.json");
 

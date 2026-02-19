@@ -5,6 +5,7 @@
 
 import * as fs from "fs/promises"
 import * as path from "path"
+import { parse as parseJsonc, type ParseError } from "jsonc-parser"
 import { PrivacyRedactor } from "../privacy/redactor"
 import type { ConfigSummary } from "../types"
 import { resolveConfigDir } from "../../global/dirs"
@@ -17,11 +18,19 @@ function getConfigDir(): string {
  * Collect sanitized configuration summary
  */
 export async function collectConfig(redactor: PrivacyRedactor): Promise<ConfigSummary> {
-  const configPath = path.join(getConfigDir(), "zee.json")
+  const configPath = path.join(getConfigDir(), "zee.jsonc")
 
   try {
     const content = await fs.readFile(configPath, "utf-8")
-    const config = JSON.parse(content) as Record<string, unknown>
+    const errors: ParseError[] = []
+    const parsed = parseJsonc(content, errors, {
+      allowTrailingComma: true,
+      allowEmptyContent: false,
+    })
+    if (errors.length > 0 || typeof parsed !== "object" || parsed === null) {
+      throw new Error("Invalid config")
+    }
+    const config = parsed as Record<string, unknown>
 
     return {
       providers: extractProviderNames(config),

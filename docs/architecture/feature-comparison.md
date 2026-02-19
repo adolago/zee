@@ -18,7 +18,7 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 - Pi-mono pin: `28c0991281f70145a030a27782e0a14e3ec2f91c` (`pimono/main`)
 - Pi-mono installed: `@mariozechner/pi-coding-agent@0.52.9`
 - Pi-mono latest tag: `v0.52.9`
-- Skills: `81` (top: @zee=34, @codex=34, @clawhub=11, parallel-orchestration=1, codebase-guide=1)
+- Skills: `81`
 
 ## Legend
 

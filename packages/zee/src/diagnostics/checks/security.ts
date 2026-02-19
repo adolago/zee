@@ -374,7 +374,7 @@ type CheckedFile = {
 async function findConfigFiles(): Promise<CheckedFile[]> {
   const files: CheckedFile[] = []
   const configDir = resolveConfigDir()
-  const candidates = [path.join(configDir, "zee.jsonc"), path.join(configDir, "zee.json")]
+  const candidates = [path.join(configDir, "zee.jsonc")]
 
   const custom = Flag.ZEE_CONFIG?.trim()
   if (custom) candidates.unshift(path.resolve(custom))

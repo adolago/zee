@@ -278,7 +278,7 @@ fi
 
 # Resolve gateway auth token from zee config so daemon<->gateway RPC works.
 # The daemon uses ZEE_GATEWAY_TOKEN or a token file (ZEE_GATEWAY_TOKEN_FILE, default: ~/.local/state/zee/zee_gateway_token).
-ZEE_CONFIG="${HOME}/.zee/zee.json"
+ZEE_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/zee/zee.jsonc"
 if [[ -f "$ZEE_CONFIG" ]] && command -v jq &>/dev/null; then
     # Try direct jq first (standard JSON), fall back to comment-stripped for JSON5.
     # The old sed 's|//.*||' mangled URLs containing // (e.g. ws://...).
@@ -309,7 +309,7 @@ DAEMON_ENV_BASE=(
 	    ZEE_HEADLESS=1
 	)
 # Source daemon.env first, then override ZEE_GATEWAY_TOKEN after so the
-# correct token from zee.json always wins over any stale daemon.env value.
+# correct token from zee.jsonc always wins over any stale daemon.env value.
 if [[ -f "$DAEMON_ENV_FILE" ]] && [[ -n "${ZEE_GATEWAY_TOKEN:-}" ]]; then
     DAEMON_ENV_PREFIX=("${DAEMON_ENV_BASE[@]}" bash -c 'set -a; source "$1"; set +a; export ZEE_GATEWAY_TOKEN="$2"; shift 2; exec "$@"' _ "$DAEMON_ENV_FILE" "$ZEE_GATEWAY_TOKEN")
 elif [[ -f "$DAEMON_ENV_FILE" ]]; then

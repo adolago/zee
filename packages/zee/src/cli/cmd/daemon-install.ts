@@ -16,6 +16,7 @@ import { cmd } from "./cmd"
 import { Global } from "../../global"
 import { Log } from "../../util/log"
 import { UI } from "../ui"
+import { syncBundledSkillsToMachine } from "../../skill/mirror"
 
 const log = Log.create({ service: "daemon-install" })
 
@@ -352,6 +353,18 @@ async function installSystemdService(binaryPath: string, options: DaemonInstallO
       platform: "linux",
       error: `Failed to create directories: ${err}`,
     }
+  }
+
+  // Mirror bundled curated skills to machine-level skill directory.
+  try {
+    const mirror = await syncBundledSkillsToMachine({ reason: "daemon-install" })
+    if (mirror.status === "synced") {
+      hints.push(`Curated skills mirrored: ${mirror.skillCount} -> ${mirror.destination}`)
+    } else if (mirror.status === "failed") {
+      hints.push(`Warning: curated skill mirror failed (${mirror.reason ?? "unknown error"})`)
+    }
+  } catch (error) {
+    hints.push(`Warning: curated skill mirror failed (${error instanceof Error ? error.message : String(error)})`)
   }
 
   // Ensure linger is enabled

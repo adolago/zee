@@ -177,7 +177,7 @@ export const McpAuthCommand = cmd({
 
         if (oauthServers.length === 0) {
           prompts.log.warn("No OAuth-capable MCP servers configured")
-          prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in zee.json:")
+          prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in zee.jsonc:")
           prompts.log.info(`
   "mcp": {
     "my-server": {
@@ -582,13 +582,9 @@ export const McpResourcesReadCommand = cmd({
   },
 })
 
-async function resolveConfigPath(baseDir: string, global = false) {
-  // Check for existing config files (prefer .jsonc over .json, check .zee/ subdirectory too)
-  const candidates = [path.join(baseDir, "zee.jsonc"), path.join(baseDir, "zee.json")]
-
-  if (!global) {
-    candidates.push(path.join(baseDir, ".zee", "zee.jsonc"), path.join(baseDir, ".zee", "zee.json"))
-  }
+async function resolveConfigPath(baseDir: string, _global = false) {
+  // Canonical config path search
+  const candidates = [path.join(baseDir, "zee.jsonc")]
 
   for (const candidate of candidates) {
     if (await Bun.file(candidate).exists()) {

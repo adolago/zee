@@ -764,8 +764,8 @@ Create with { event: { summary, start, end } }. Quick-add with { quickAddText: "
           output: `Google Calendar credentials not found.
 
 Please set up OAuth credentials at:
-  ~/.zee/credentials/google/oauth-client.json
-  ~/.zee/credentials/google/tokens.json
+  ~/.config/zee/credentials/google/oauth-client.json
+  ~/.config/zee/credentials/google/tokens.json
 
 You can create credentials at:
   https://console.cloud.google.com/apis/credentials
@@ -963,7 +963,7 @@ ${eventsList}`,
           return {
             title: `Calendar Auth Error`,
             metadata: { action },
-            output: `Google Calendar authentication failed. Re-authenticate at ~/.zee/credentials/google/`,
+            output: `Google Calendar authentication failed. Re-authenticate at ~/.config/zee/credentials/google/`,
           };
         }
 

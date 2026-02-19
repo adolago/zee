@@ -1,6 +1,7 @@
 import z from "zod"
 import path from "path"
 import os from "os"
+import { spawnSync } from "node:child_process"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
 import { NamedError } from "@zee/util/error"
@@ -91,11 +92,19 @@ export namespace Skill {
 
   export type PermissionReadiness = "allow" | "ask" | "deny"
   export type EnvReadiness = "ready" | "partial" | "missing" | "not-required"
+  export type BinaryReadiness = "ready" | "missing" | "not-required"
+  export type OsReadiness = "ready" | "mismatch" | "not-required"
 
   export interface Readiness {
     permission: PermissionReadiness
     env: EnvReadiness
     missingEnv: string[]
+    bins: BinaryReadiness
+    os: OsReadiness
+    missingBins: string[]
+    missingAnyBins: string[]
+    blocked: boolean
+    blockedReasons: string[]
   }
 
   export type ReadyInfo = AnnotatedInfo & {
@@ -273,6 +282,26 @@ export namespace Skill {
     return pattern.test(text)
   }
 
+  const binaryAvailabilityCache = new Map<string, boolean>()
+
+  function hasBinary(binaryName: string): boolean {
+    if (binaryAvailabilityCache.has(binaryName)) {
+      return binaryAvailabilityCache.get(binaryName)!
+    }
+
+    const command = process.platform === "win32" ? "where" : "which"
+    let found = false
+    try {
+      const result = spawnSync(command, [binaryName], { stdio: "pipe", timeout: 3000 })
+      found = result.status === 0
+    } catch {
+      found = false
+    }
+
+    binaryAvailabilityCache.set(binaryName, found)
+    return found
+  }
+
   function uniqueEnvRequirements(skill: Info): string[] {
     const required = new Set<string>()
     if (skill.primaryEnv) required.add(skill.primaryEnv)
@@ -364,8 +393,16 @@ export namespace Skill {
     ctx?: EnvResolutionContext,
   ): Promise<Readiness> {
     const effectiveContext = ctx ?? (await createEnvResolutionContext())
+    const requires = skill.requires
     const required = uniqueEnvRequirements(skill)
     const missingEnv = required.filter((envName) => !isEnvSatisfied(skill, envName, effectiveContext))
+    const requiredBins = requires?.bins ?? []
+    const missingBins = requiredBins.filter((bin) => !hasBinary(bin))
+    const anyBins = requires?.anyBins ?? []
+    const anyBinsSatisfied = anyBins.length === 0 ? true : anyBins.some((bin) => hasBinary(bin))
+    const missingAnyBins = anyBins.length > 0 && !anyBinsSatisfied ? [...anyBins] : []
+    const requiredOS = requires?.os ?? []
+    const osMismatch = requiredOS.length > 0 && !requiredOS.includes(process.platform)
 
     const env: EnvReadiness =
       required.length === 0
@@ -380,10 +417,42 @@ export namespace Skill {
       ? PermissionNext.evaluate("skill", skill.name, permission).action
       : ("allow" as PermissionReadiness)
 
+    const bins: BinaryReadiness =
+      requiredBins.length === 0 && anyBins.length === 0
+        ? "not-required"
+        : missingBins.length === 0 && missingAnyBins.length === 0
+          ? "ready"
+          : "missing"
+
+    const os: OsReadiness = requiredOS.length === 0 ? "not-required" : osMismatch ? "mismatch" : "ready"
+
+    const blockedReasons: string[] = []
+    if (permissionStatus === "deny") {
+      blockedReasons.push("permission denied by current policy")
+    }
+    if (osMismatch) {
+      blockedReasons.push(`unsupported OS (requires: ${requiredOS.join(", ")}, current: ${process.platform})`)
+    }
+    if (missingBins.length > 0) {
+      blockedReasons.push(`missing binaries: ${missingBins.join(", ")}`)
+    }
+    if (missingAnyBins.length > 0) {
+      blockedReasons.push(`requires at least one binary from: ${missingAnyBins.join(", ")}`)
+    }
+    if (missingEnv.length > 0) {
+      blockedReasons.push(`missing environment variables: ${missingEnv.join(", ")}`)
+    }
+
     return {
       permission: permissionStatus,
       env,
       missingEnv,
+      bins,
+      os,
+      missingBins,
+      missingAnyBins,
+      blocked: blockedReasons.length > 0,
+      blockedReasons,
     }
   }
 
@@ -519,9 +588,6 @@ export namespace Skill {
         metadata && typeof (metadata as { requires?: unknown }).requires !== "undefined"
           ? (metadata as { requires?: unknown }).requires
           : undefined,
-        metadata && typeof (metadata as { clawhub?: { requires?: unknown } }).clawhub?.requires !== "undefined"
-          ? (metadata as { clawhub?: { requires?: unknown } }).clawhub?.requires
-          : undefined,
         metadata && typeof (metadata as { zee?: { requires?: unknown } }).zee?.requires !== "undefined"
           ? (metadata as { zee?: { requires?: unknown } }).zee?.requires
           : undefined,
@@ -539,78 +605,40 @@ export namespace Skill {
           ? md.data.primaryEnv
           : metadata && typeof (metadata as { primaryEnv?: unknown }).primaryEnv === "string"
             ? (metadata as { primaryEnv?: string }).primaryEnv
-            : metadata && typeof (metadata as { clawhub?: { primaryEnv?: unknown } }).clawhub?.primaryEnv === "string"
-              ? (metadata as { clawhub?: { primaryEnv?: string } }).clawhub?.primaryEnv
-              : metadata && typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
-                ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
-                : undefined
+            : metadata && typeof (metadata as { zee?: { primaryEnv?: unknown } }).zee?.primaryEnv === "string"
+              ? (metadata as { zee?: { primaryEnv?: string } }).zee?.primaryEnv
+              : undefined
 
-      // Check requires gates
+      // Parse requires metadata. Runtime availability is evaluated at readiness time.
       if (requires) {
-        // OS check
         if (requires.os && requires.os.length > 0) {
           const currentOS = process.platform
           if (!requires.os.includes(currentOS)) {
-            exclusions.push({
-              path: match,
-              name: parsed.data.name,
-              reason: `OS mismatch: requires ${requires.os.join("|")}, running ${currentOS}`,
-            })
-            log.debug("skill excluded: OS mismatch", {
+            log.debug("skill OS requirement not met; readiness gate will block execution", {
               skill: parsed.data.name,
               requires: requires.os,
               current: currentOS,
             })
-            return
           }
         }
 
-        // Binary check
         if (requires.bins && requires.bins.length > 0) {
-          const missingBins: string[] = []
-          for (const bin of requires.bins) {
-            try {
-              const result = Bun.spawnSync(["which", bin], { stdout: "pipe", stderr: "pipe" })
-              if (result.exitCode !== 0) {
-                missingBins.push(bin)
-              }
-            } catch {
-              missingBins.push(bin)
-            }
-          }
+          const missingBins = requires.bins.filter((bin) => !hasBinary(bin))
           if (missingBins.length > 0) {
-            exclusions.push({
-              path: match,
-              name: parsed.data.name,
-              reason: `missing binary: ${missingBins.join(", ")}`,
+            log.debug("skill missing required binaries; readiness gate will block execution", {
+              skill: parsed.data.name,
+              missing: missingBins,
             })
-            log.debug("skill excluded: missing binaries", { skill: parsed.data.name, missing: missingBins })
-            return
           }
         }
 
-        // anyBins check: at least one of these must be available
         if (requires.anyBins && requires.anyBins.length > 0) {
-          let foundAny = false
-          for (const bin of requires.anyBins) {
-            try {
-              const result = Bun.spawnSync(["which", bin], { stdout: "pipe", stderr: "pipe" })
-              if (result.exitCode === 0) {
-                foundAny = true
-                break
-              }
-            } catch {
-              // continue checking
-            }
-          }
+          const foundAny = requires.anyBins.some((bin) => hasBinary(bin))
           if (!foundAny) {
-            exclusions.push({
-              path: match,
-              name: parsed.data.name,
-              reason: `missing any binary: need one of ${requires.anyBins.join(", ")}`,
+            log.debug("skill missing anyBins requirements; readiness gate will block execution", {
+              skill: parsed.data.name,
+              anyBins: requires.anyBins,
             })
-            log.debug("skill excluded: no matching anyBins", { skill: parsed.data.name, anyBins: requires.anyBins })
-            return
           }
         }
 
@@ -887,6 +915,10 @@ export namespace Skill {
     )
   }
 
+  export async function readiness(skill: Info, permission?: PermissionNext.Ruleset): Promise<Readiness> {
+    return readinessForSkill(skill, permission)
+  }
+
   export async function index(agent?: string, permission?: PermissionNext.Ruleset): Promise<ReadyInfo[]> {
     const skills = await all(agent)
     const envContext = await createEnvResolutionContext()
@@ -938,6 +970,12 @@ export namespace Skill {
       }
       if (readiness.env === "missing" || readiness.env === "partial") {
         reasonParts.push(`env: ${readiness.env}`)
+      }
+      if (readiness.bins === "missing") {
+        reasonParts.push("deps: missing binaries")
+      }
+      if (readiness.os === "mismatch") {
+        reasonParts.push("deps: unsupported OS")
       }
 
       ranked.push({

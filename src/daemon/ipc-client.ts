@@ -6,7 +6,7 @@
 
 import { createConnection, Socket } from "node:net";
 import { randomUUID } from "node:crypto";
-import { DEFAULT_SOCKET_PATH, LEGACY_SOCKET_PATH } from "./types";
+import { DEFAULT_SOCKET_PATH } from "./types";
 import type {
   DaemonCommand,
   DaemonRequest,
@@ -34,9 +34,6 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
     options.socketPath ||
     process.env.ZEE_IPC_SOCKET;
   const socketPath = configuredSocketPath || DEFAULT_SOCKET_PATH;
-  const allowLegacyFallback =
-    !configuredSocketPath &&
-    LEGACY_SOCKET_PATH !== DEFAULT_SOCKET_PATH;
   const timeoutMs = options.timeoutMs ?? 10000;
 
   const request: DaemonRequest<TParams> = {
@@ -159,18 +156,5 @@ export async function requestDaemon<TParams = unknown, TResult = unknown>(
     }
   });
 
-  try {
-    return await requestViaSocket(socketPath);
-  } catch (error) {
-    if (!allowLegacyFallback) throw error;
-    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    const shouldFallback =
-      message.includes("socket not found") ||
-      message.includes("not accepting connections") ||
-      message.includes("enoent") ||
-      message.includes("enxio") ||
-      message.includes("econnrefused");
-    if (!shouldFallback) throw error;
-    return await requestViaSocket(LEGACY_SOCKET_PATH);
-  }
+  return await requestViaSocket(socketPath);
 }

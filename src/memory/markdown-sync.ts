@@ -16,10 +16,8 @@ import {
   readFileSync,
   writeFileSync,
   readdirSync,
-  copyFileSync,
-  statSync,
 } from "node:fs"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
 import { homedir } from "node:os"
 import type { MemoryEntry } from "./types"
 import { Log } from "../../packages/zee/src/util/log"
@@ -41,78 +39,6 @@ export interface MarkdownSyncConfig {
 
 /** Default base directory for markdown memory files */
 const DEFAULT_BASE_DIR = join(homedir(), ".local", "state", "zee", "memory")
-const LEGACY_BASE_DIR = join(homedir(), "zee", "memory")
-
-export interface MarkdownMigrationResult {
-  copied: number
-  skipped: number
-  errors: number
-}
-
-function maybeCopyFile(sourcePath: string, targetPath: string): "copied" | "skipped" {
-  if (existsSync(targetPath)) {
-    const sourceStats = statSync(sourcePath)
-    const targetStats = statSync(targetPath)
-    if (targetStats.mtimeMs >= sourceStats.mtimeMs) {
-      return "skipped"
-    }
-  }
-
-  copyFileSync(sourcePath, targetPath)
-  return "copied"
-}
-
-/**
- * Migrate markdown memory files from legacy location to target location.
- *
- * Copies:
- * - Daily logs: YYYY-MM-DD.md
- * - Entity pages: bank/entities/*.md
- *
- * Existing target files are only replaced when the source file is newer.
- */
-export function migrateLegacyMarkdownMemory(sourceDir: string, targetDir: string): MarkdownMigrationResult {
-  const result: MarkdownMigrationResult = {
-    copied: 0,
-    skipped: 0,
-    errors: 0,
-  }
-
-  if (sourceDir === targetDir) {
-    return result
-  }
-
-  const copy = (relativePath: string) => {
-    const sourcePath = join(sourceDir, relativePath)
-    const targetPath = join(targetDir, relativePath)
-    try {
-      mkdirSync(dirname(targetPath), { recursive: true })
-      const status = maybeCopyFile(sourcePath, targetPath)
-      result[status]++
-    } catch {
-      result.errors++
-    }
-  }
-
-  if (existsSync(sourceDir)) {
-    for (const name of readdirSync(sourceDir)) {
-      if (/^\d{4}-\d{2}-\d{2}\.md$/.test(name)) {
-        copy(name)
-      }
-    }
-  }
-
-  const legacyEntitiesDir = join(sourceDir, "bank", "entities")
-  if (existsSync(legacyEntitiesDir)) {
-    for (const name of readdirSync(legacyEntitiesDir)) {
-      if (name.endsWith(".md")) {
-        copy(join("bank", "entities", name))
-      }
-    }
-  }
-
-  return result
-}
 
 // =============================================================================
 // MarkdownSync Class
@@ -123,7 +49,6 @@ export class MarkdownSync {
   private readonly enabled: boolean
   private readonly includeConfidence: boolean
   private initialized = false
-  private attemptedLegacyMigration = false
 
   constructor(config?: MarkdownSyncConfig) {
     this.baseDir = config?.baseDir ?? DEFAULT_BASE_DIR
@@ -145,32 +70,11 @@ export class MarkdownSync {
         }
       }
 
-      this.migrateLegacyIfNeeded()
       this.initialized = true
     } catch (err) {
       log.warn("Failed to create markdown directories", {
         baseDir: this.baseDir,
         error: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
-
-  private migrateLegacyIfNeeded(): void {
-    if (this.attemptedLegacyMigration) return
-    this.attemptedLegacyMigration = true
-
-    // Only migrate automatically for the default XDG state path.
-    if (this.baseDir !== DEFAULT_BASE_DIR) return
-    if (!existsSync(LEGACY_BASE_DIR)) return
-
-    const result = migrateLegacyMarkdownMemory(LEGACY_BASE_DIR, this.baseDir)
-    if (result.copied > 0 || result.errors > 0) {
-      log.info("migrated legacy markdown memory files", {
-        source: LEGACY_BASE_DIR,
-        target: this.baseDir,
-        copied: result.copied,
-        skipped: result.skipped,
-        errors: result.errors,
       })
     }
   }

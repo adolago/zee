@@ -84,6 +84,31 @@ await Promise.all([
   fs.mkdir(Global.Path.tmp, { recursive: true }),
 ])
 
+async function seedFileIfMissing(source: string, destination: string): Promise<void> {
+  try {
+    await fs.access(destination, fsSync.constants.F_OK)
+    return
+  } catch {
+    // destination missing
+  }
+
+  try {
+    await fs.access(source, fsSync.constants.F_OK)
+  } catch {
+    // source missing; skip silently so local dev without assets still works
+    return
+  }
+
+  await fs.mkdir(path.dirname(destination), { recursive: true })
+  await fs.copyFile(source, destination)
+}
+
+const identityAssetsDir = path.join(Global.Path.source, ".zee", "identity")
+await Promise.all([
+  seedFileIfMissing(path.join(identityAssetsDir, "IDENTITY.md"), path.join(Global.Path.config, "IDENTITY.md")),
+  seedFileIfMissing(path.join(identityAssetsDir, "SOUL.md"), path.join(Global.Path.config, "SOUL.md")),
+])
+
 const CACHE_VERSION = "18"
 
 const cacheVersionPath = path.join(Global.Path.cache, "version")

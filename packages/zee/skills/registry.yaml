@@ -21,8 +21,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: anki
     canonical_name: anki
     current_path: .agents/skills/@zee/anki/SKILL.md
@@ -32,8 +30,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: atlas
     canonical_name: atlas
     current_path: .agents/skills/@zee/atlas/SKILL.md
@@ -54,8 +50,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: auto-updater
     canonical_name: auto-updater
     current_path: .agents/skills/@zee/auto-updater/SKILL.md
@@ -65,8 +59,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: autonomous-research
     canonical_name: autonomous-research
     current_path: .agents/skills/@zee/autonomous-research/SKILL.md
@@ -109,8 +101,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: brave-search
     canonical_name: brave-search
     current_path: .agents/skills/@zee/brave-search/SKILL.md
@@ -120,8 +110,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: browser
     canonical_name: browser
     current_path: .agents/skills/@zee/browser/SKILL.md
@@ -142,8 +130,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: clawddocs
     canonical_name: clawddocs
     current_path: .agents/skills/@zee/clawddocs/SKILL.md
@@ -153,8 +139,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: cloudflare-deploy
     canonical_name: cloudflare-deploy
     current_path: .agents/skills/@zee/cloudflare-deploy/SKILL.md
@@ -318,8 +302,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: goplaces
     canonical_name: goplaces
     current_path: .agents/skills/@zee/goplaces/SKILL.md
@@ -329,8 +311,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: home-assistant
     canonical_name: home-assistant
     current_path: .agents/skills/@zee/home-assistant/SKILL.md
@@ -340,8 +320,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: humanizer
     canonical_name: humanizer
     current_path: .agents/skills/@zee/humanizer/SKILL.md
@@ -351,8 +329,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: imagegen
     canonical_name: imagegen
     current_path: .agents/skills/@zee/imagegen/SKILL.md
@@ -417,8 +393,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: markdown-converter
     canonical_name: markdown-converter
     current_path: .agents/skills/@zee/markdown-converter/SKILL.md
@@ -428,8 +402,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: mcporter
     canonical_name: mcporter
     current_path: .agents/skills/@zee/mcporter/SKILL.md
@@ -439,8 +411,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: meta-business
     canonical_name: meta-business
     current_path: .agents/skills/@zee/meta-business/SKILL.md
@@ -450,8 +420,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: nano-pdf
     canonical_name: nano-pdf
     current_path: .agents/skills/@zee/nano-pdf/SKILL.md
@@ -461,8 +429,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: netlify-deploy
     canonical_name: netlify-deploy
     current_path: .agents/skills/@zee/netlify-deploy/SKILL.md
@@ -560,8 +526,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: parallel-orchestration
     canonical_name: parallel-orchestration
     current_path: .agents/skills/@zee/parallel-orchestration/SKILL.md
@@ -648,8 +612,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: render-deploy
     canonical_name: render-deploy
     current_path: .agents/skills/@zee/render-deploy/SKILL.md
@@ -714,8 +676,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: sentry
     canonical_name: sentry
     current_path: .agents/skills/@zee/sentry/SKILL.md
@@ -802,8 +762,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: spreadsheet
     canonical_name: spreadsheet
     current_path: .agents/skills/@zee/spreadsheet/SKILL.md
@@ -835,8 +793,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: sysadmin-toolbox
     canonical_name: sysadmin-toolbox
     current_path: .agents/skills/@zee/sysadmin-toolbox/SKILL.md
@@ -846,8 +802,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: tailscale
     canonical_name: tailscale
     current_path: .agents/skills/@zee/tailscale/SKILL.md
@@ -857,8 +811,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: tmux
     canonical_name: tmux
     current_path: .agents/skills/@zee/tmux/SKILL.md
@@ -868,8 +820,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: transcribe
     canonical_name: transcribe
     current_path: .agents/skills/@zee/transcribe/SKILL.md
@@ -901,8 +851,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: weather
     canonical_name: weather
     current_path: .agents/skills/@zee/weather/SKILL.md
@@ -912,8 +860,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: whoopskill
     canonical_name: whoopskill
     current_path: .agents/skills/@zee/whoopskill/SKILL.md
@@ -923,8 +869,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub
   - id: yeet
     canonical_name: yeet
     current_path: .agents/skills/@zee/yeet/SKILL.md
@@ -945,5 +889,3 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-    source_origin: clawhub
-    notes: migrated from @clawhub

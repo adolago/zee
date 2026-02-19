@@ -52,10 +52,10 @@ vi.mock("../../packages/zee/src/util/log", () => {
   }
 })
 
-import { mkdtempSync, existsSync, readFileSync, rmSync, mkdirSync, writeFileSync, utimesSync } from "node:fs"
+import { mkdtempSync, existsSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { homedir, tmpdir } from "node:os"
-import { MarkdownSync, migrateLegacyMarkdownMemory } from "./markdown-sync"
+import { MarkdownSync } from "./markdown-sync"
 import type { MemoryEntry } from "./types"
 
 const testDir = mkdtempSync(join(tmpdir(), "memv2-md-sync-"))
@@ -299,64 +299,4 @@ describe("MarkdownSync", () => {
     })
   })
 
-  describe("legacy migration", () => {
-    it("migrates daily logs and entity pages from legacy directory", () => {
-      const legacyDir = mkdtempSync(join(testDir, "legacy-"))
-      const targetDir = mkdtempSync(join(testDir, "target-"))
-      mkdirSync(join(legacyDir, "bank", "entities"), { recursive: true })
-
-      writeFileSync(join(legacyDir, "2025-01-01.md"), "# Legacy daily log", "utf-8")
-      writeFileSync(join(legacyDir, "bank", "entities", "alice.md"), "# Alice", "utf-8")
-
-      const result = migrateLegacyMarkdownMemory(legacyDir, targetDir)
-
-      expect(result.copied).toBe(2)
-      expect(result.skipped).toBe(0)
-      expect(result.errors).toBe(0)
-      expect(readFileSync(join(targetDir, "2025-01-01.md"), "utf-8")).toContain("Legacy daily log")
-      expect(readFileSync(join(targetDir, "bank", "entities", "alice.md"), "utf-8")).toContain("# Alice")
-    })
-
-    it("does not overwrite newer target files", () => {
-      const legacyDir = mkdtempSync(join(testDir, "legacy-newer-target-"))
-      const targetDir = mkdtempSync(join(testDir, "target-newer-target-"))
-      const fileName = "2025-01-02.md"
-      const sourcePath = join(legacyDir, fileName)
-      const targetPath = join(targetDir, fileName)
-
-      writeFileSync(sourcePath, "# legacy", "utf-8")
-      writeFileSync(targetPath, "# target-newer", "utf-8")
-
-      utimesSync(sourcePath, new Date("2025-01-02T00:00:00.000Z"), new Date("2025-01-02T00:00:00.000Z"))
-      utimesSync(targetPath, new Date("2025-01-03T00:00:00.000Z"), new Date("2025-01-03T00:00:00.000Z"))
-
-      const result = migrateLegacyMarkdownMemory(legacyDir, targetDir)
-
-      expect(result.copied).toBe(0)
-      expect(result.skipped).toBe(1)
-      expect(result.errors).toBe(0)
-      expect(readFileSync(targetPath, "utf-8")).toContain("target-newer")
-    })
-
-    it("overwrites older target files with newer legacy files", () => {
-      const legacyDir = mkdtempSync(join(testDir, "legacy-newer-source-"))
-      const targetDir = mkdtempSync(join(testDir, "target-older-target-"))
-      const fileName = "2025-01-03.md"
-      const sourcePath = join(legacyDir, fileName)
-      const targetPath = join(targetDir, fileName)
-
-      writeFileSync(sourcePath, "# legacy-newer", "utf-8")
-      writeFileSync(targetPath, "# target-older", "utf-8")
-
-      utimesSync(sourcePath, new Date("2025-01-04T00:00:00.000Z"), new Date("2025-01-04T00:00:00.000Z"))
-      utimesSync(targetPath, new Date("2025-01-03T00:00:00.000Z"), new Date("2025-01-03T00:00:00.000Z"))
-
-      const result = migrateLegacyMarkdownMemory(legacyDir, targetDir)
-
-      expect(result.copied).toBe(1)
-      expect(result.skipped).toBe(0)
-      expect(result.errors).toBe(0)
-      expect(readFileSync(targetPath, "utf-8")).toContain("legacy-newer")
-    })
-  })
 })

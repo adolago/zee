@@ -31,7 +31,7 @@ The agent persona system provides a unified approach to agent identity and behav
 ### 2. Context Hierarchy
 
 ```
-Global Identity (~/.zee/)
+Global Identity (~/.config/zee/)
     |
     +-- Project Personas (.zee/agent/)
     |       |
@@ -340,21 +340,21 @@ export namespace PermissionEvaluator {
 
 ## Persona Sources
 
-Personas are defined in `.agents/skills/` and loaded at runtime. The core repo does not ship built-in development agents; add or override personas per project under `.zee/agent/` or `~/.zee/agent/` as needed.
+Personas are defined in `.agents/skills/` and loaded at runtime. The core repo does not ship built-in development agents; add or override personas per project under `.zee/agent/` or in user config at `~/.config/zee/agent/`.
 
 ## Configuration Files
 
-### zee.json
+### zee.jsonc
 
 ```json
 {
   "persona": {
     "default": "zee/assistant",
-    "identityPath": "~/.zee/IDENTITY.md",
-    "soulPath": "~/.zee/SOUL.md",
+    "identityPath": "~/.config/zee/IDENTITY.md",
+    "soulPath": "~/.config/zee/SOUL.md",
     "personaDirs": [
       ".zee/agent",
-      "~/.zee/agent"
+      "~/.config/zee/agent"
     ]
   },
   "agent": {

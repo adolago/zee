@@ -60,6 +60,14 @@ export type SnapshotOptions = {
   exec?: ExecRunner
 }
 
+const PI_MONO_PACKAGE_JSON_CANDIDATES = [
+  ["packages", "zee", "Swabble", "package.json"],
+  ["packages", "zee", "package.json"],
+  ["package.json"],
+] as const
+
+const PI_MONO_DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const
+
 function findSourceRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
   for (;;) {
@@ -138,16 +146,22 @@ function parseInstalledPiCodingAgentVersion(raw: unknown): string | undefined {
 }
 
 async function readPiMonoInstalledVersion(sourceRoot: string): Promise<string | undefined> {
-  const pkgPath = path.join(sourceRoot, "packages", "zee", "Swabble", "package.json")
-  if (!fs.existsSync(pkgPath)) return undefined
-  try {
-    const parsed = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as {
-      dependencies?: Record<string, string>
+  for (const segments of PI_MONO_PACKAGE_JSON_CANDIDATES) {
+    const pkgPath = path.join(sourceRoot, ...segments)
+    if (!fs.existsSync(pkgPath)) continue
+    try {
+      const parsed = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as Partial<
+        Record<(typeof PI_MONO_DEPENDENCY_FIELDS)[number], Record<string, string>>
+      >
+      for (const field of PI_MONO_DEPENDENCY_FIELDS) {
+        const parsedVersion = parseInstalledPiCodingAgentVersion(parsed[field]?.["@mariozechner/pi-coding-agent"])
+        if (parsedVersion) return parsedVersion
+      }
+    } catch {
+      // Ignore malformed package json in candidate paths.
     }
-    return parseInstalledPiCodingAgentVersion(parsed.dependencies?.["@mariozechner/pi-coding-agent"])
-  } catch {
-    return undefined
   }
+  return undefined
 }
 
 async function resolveLatestPiMonoTag(exec: ExecRunner, cwd: string, warnings: string[]): Promise<string | undefined> {
@@ -254,6 +268,11 @@ export async function collectSnapshot(options: SnapshotOptions = {}): Promise<Co
 
   const pimonoHead = upstream.pimono?.head
   const installedPiCodingAgentVersion = sourceRoot ? await readPiMonoInstalledVersion(sourceRoot) : undefined
+  if (sourceRoot && !installedPiCodingAgentVersion) {
+    warnings.push(
+      "Installed pi-mono dependency pin not found in known manifests (packages/zee/Swabble/package.json, packages/zee/package.json, package.json).",
+    )
+  }
   const latestTag = await resolveLatestPiMonoTag(exec, cwd, warnings)
 
   const pimono: PiMonoSnapshot = {

@@ -14,7 +14,7 @@ const managedConfigDir = (() => {
 })()
 const xdgConfigHome = process.env["XDG_CONFIG_HOME"]!
 const userConfigDir = path.join(xdgConfigHome, "zee")
-const userConfigJson = path.join(userConfigDir, "zee.json")
+const userConfigJson = path.join(userConfigDir, "zee.jsonc")
 const userConfigJsonc = path.join(userConfigDir, "zee.jsonc")
 
 afterEach(async () => {
@@ -24,16 +24,16 @@ afterEach(async () => {
   Config.global.reset()
 })
 
-async function writeManagedSettings(settings: object, filename = "zee.json") {
+async function writeManagedSettings(settings: object, filename = "zee.jsonc") {
   await fs.mkdir(managedConfigDir, { recursive: true })
   await Bun.write(path.join(managedConfigDir, filename), JSON.stringify(settings))
 }
 
-async function writeProjectConfig(dir: string, config: object, name = "zee.json") {
+async function writeProjectConfig(dir: string, config: object, name = "zee.jsonc") {
   await Bun.write(path.join(dir, name), JSON.stringify(config))
 }
 
-async function writeUserSettings(settings: object, filename = "zee.json") {
+async function writeUserSettings(settings: object, filename = "zee.jsonc") {
   await fs.mkdir(userConfigDir, { recursive: true })
   await Bun.write(path.join(userConfigDir, filename), JSON.stringify(settings))
 }
@@ -96,7 +96,7 @@ test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           model: "test/model",
@@ -140,18 +140,16 @@ test("loads JSONC config file", async () => {
 })
 
 test("merges multiple config files with correct precedence", async () => {
+  await writeUserSettings({
+    $schema: "zee",
+    model: "base",
+    username: "base",
+  })
+
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          model: "base",
-          username: "base",
-        }),
-      )
-      await Bun.write(
-        path.join(dir, "zee.json"),
         JSON.stringify({
           $schema: "zee",
           model: "override",
@@ -250,7 +248,7 @@ test("handles environment variable substitution", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
         await Bun.write(
-          path.join(dir, "zee.json"),
+          path.join(dir, "zee.jsonc"),
           JSON.stringify({
             $schema: "zee",
             theme: "{env:TEST_VAR}",
@@ -283,7 +281,7 @@ test("preserves env variables when adding $schema to config", async () => {
       init: async (dir) => {
         // Config without $schema - should trigger auto-add
         await Bun.write(
-          path.join(dir, "zee.json"),
+          path.join(dir, "zee.jsonc"),
           JSON.stringify({
             theme: "{env:PRESERVE_VAR}",
           }),
@@ -297,7 +295,7 @@ test("preserves env variables when adding $schema to config", async () => {
         expect(config.theme).toBe("secret_value")
 
         // Read the file to verify the env variable was preserved
-        const content = await Bun.file(path.join(tmp.path, "zee.json")).text()
+        const content = await Bun.file(path.join(tmp.path, "zee.jsonc")).text()
         expect(content).toContain("{env:PRESERVE_VAR}")
         expect(content).not.toContain("secret_value")
         expect(content).toContain("$schema")
@@ -317,7 +315,7 @@ test("handles file inclusion substitution", async () => {
     init: async (dir) => {
       await Bun.write(path.join(dir, "included.txt"), "test_theme")
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           theme: "{file:included.txt}",
@@ -338,7 +336,7 @@ test("validates config schema and throws on invalid fields", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           invalid_field: "should cause error",
@@ -358,7 +356,7 @@ test("validates config schema and throws on invalid fields", async () => {
 test("throws error for invalid JSON", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
-      await Bun.write(path.join(dir, "zee.json"), "{ invalid json }")
+      await Bun.write(path.join(dir, "zee.jsonc"), "{ invalid json }")
     },
   })
   await Instance.provide({
@@ -373,7 +371,7 @@ test("handles agent configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -406,7 +404,7 @@ test("handles command configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           command: {
@@ -437,7 +435,7 @@ test("migrates mode field to agent field", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           mode: {
@@ -646,7 +644,7 @@ test("updates config and writes to file", async () => {
       const newConfig = { model: "updated/model" }
       await Config.update(newConfig as any)
 
-      const writtenConfig = JSON.parse(await Bun.file(path.join(tmp.path, "config.json")).text())
+      const writtenConfig = JSON.parse(await Bun.file(path.join(tmp.path, "zee.jsonc")).text())
       expect(writtenConfig.model).toBe("updated/model")
     },
   })
@@ -691,7 +689,7 @@ test("resolves scoped npm plugins in config", async () => {
       await Bun.write(path.join(pluginDir, "index.js"), "export default {}\n")
 
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({ $schema: "zee", plugin: ["@scope/plugin"] }, null, 2),
       )
     },
@@ -703,7 +701,7 @@ test("resolves scoped npm plugins in config", async () => {
       const config = await Config.get()
       const pluginEntries = config.plugin ?? []
 
-      const baseUrl = pathToFileURL(path.join(tmp.path, "zee.json")).href
+      const baseUrl = pathToFileURL(path.join(tmp.path, "zee.jsonc")).href
       const expected = import.meta.resolve("@scope/plugin", baseUrl)
 
       expect(pluginEntries.includes(expected)).toBe(true)
@@ -725,7 +723,7 @@ test("merges plugin arrays from global and local configs", async () => {
 
       // Global config with plugins
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           plugin: ["global-plugin-1", "global-plugin-2"],
@@ -734,7 +732,7 @@ test("merges plugin arrays from global and local configs", async () => {
 
       // Local .zee config with different plugins
       await Bun.write(
-        path.join(opencodeDir, "zee.json"),
+        path.join(opencodeDir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           plugin: ["local-plugin-1"],
@@ -801,7 +799,7 @@ test("merges instructions arrays from global and local configs", async () => {
       await fs.mkdir(opencodeDir, { recursive: true })
 
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           instructions: ["global-instructions.md", "shared-rules.md"],
@@ -809,7 +807,7 @@ test("merges instructions arrays from global and local configs", async () => {
       )
 
       await Bun.write(
-        path.join(opencodeDir, "zee.json"),
+        path.join(opencodeDir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           instructions: ["local-instructions.md"],
@@ -840,7 +838,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
       await fs.mkdir(opencodeDir, { recursive: true })
 
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           instructions: ["duplicate.md", "global-only.md"],
@@ -848,7 +846,7 @@ test("deduplicates duplicate instructions from global and local configs", async 
       )
 
       await Bun.write(
-        path.join(opencodeDir, "zee.json"),
+        path.join(opencodeDir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           instructions: ["duplicate.md", "local-only.md"],
@@ -884,7 +882,7 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
 
       // Global config with plugins
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           plugin: ["duplicate-plugin", "global-plugin-1"],
@@ -893,7 +891,7 @@ test("deduplicates duplicate plugins from global and local configs", async () =>
 
       // Local .zee config with some overlapping plugins
       await Bun.write(
-        path.join(opencodeDir, "zee.json"),
+        path.join(opencodeDir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           plugin: ["duplicate-plugin", "local-plugin-1"],
@@ -932,7 +930,7 @@ test("migrates legacy tools config to permissions - allow", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -963,7 +961,7 @@ test("migrates legacy tools config to permissions - deny", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -994,7 +992,7 @@ test("migrates legacy write tool to edit permission", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -1023,7 +1021,7 @@ test("migrates legacy edit tool to edit permission", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -1052,7 +1050,7 @@ test("migrates legacy patch tool to edit permission", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -1081,7 +1079,7 @@ test("migrates legacy multiedit tool to edit permission", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -1110,7 +1108,7 @@ test("migrates mixed legacy tools config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -1145,7 +1143,7 @@ test("merges legacy tools with existing permission config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           agent: {
@@ -1178,7 +1176,7 @@ test("permission config preserves key order", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           permission: {
@@ -1222,30 +1220,27 @@ test("permission config preserves key order", async () => {
 // MCP config merging tests
 
 test("project config can override MCP server enabled status", async () => {
+  await writeUserSettings({
+    $schema: "zee",
+    mcp: {
+      tracker: {
+        type: "remote",
+        url: "https://tracker.example.com/mcp",
+        enabled: false,
+      },
+      wiki: {
+        type: "remote",
+        url: "https://wiki.example.com/mcp",
+        enabled: false,
+      },
+    },
+  })
+
   await using tmp = await tmpdir({
     init: async (dir) => {
-      // Simulates a base config (like from remote .well-known) with disabled MCP
+      // Project config enables just tracker.
       await Bun.write(
         path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          mcp: {
-            tracker: {
-              type: "remote",
-              url: "https://tracker.example.com/mcp",
-              enabled: false,
-            },
-            wiki: {
-              type: "remote",
-              url: "https://wiki.example.com/mcp",
-              enabled: false,
-            },
-          },
-        }),
-      )
-      // Project config enables just tracker
-      await Bun.write(
-        path.join(dir, "zee.json"),
         JSON.stringify({
           $schema: "zee",
           mcp: {
@@ -1280,28 +1275,25 @@ test("project config can override MCP server enabled status", async () => {
 })
 
 test("MCP config deep merges preserving base config properties", async () => {
+  await writeUserSettings({
+    $schema: "zee",
+    mcp: {
+      myserver: {
+        type: "remote",
+        url: "https://myserver.example.com/mcp",
+        enabled: false,
+        headers: {
+          "X-Custom-Header": "value",
+        },
+      },
+    },
+  })
+
   await using tmp = await tmpdir({
     init: async (dir) => {
-      // Base config with full MCP definition
+      // Override just enables it; should preserve base properties.
       await Bun.write(
         path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          mcp: {
-            myserver: {
-              type: "remote",
-              url: "https://myserver.example.com/mcp",
-              enabled: false,
-              headers: {
-                "X-Custom-Header": "value",
-              },
-            },
-          },
-        }),
-      )
-      // Override just enables it, should preserve other properties
-      await Bun.write(
-        path.join(dir, "zee.json"),
         JSON.stringify({
           $schema: "zee",
           mcp: {
@@ -1336,7 +1328,7 @@ test("local .zee config can override MCP from project config", async () => {
     init: async (dir) => {
       // Project config with disabled MCP
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           mcp: {
@@ -1352,7 +1344,7 @@ test("local .zee config can override MCP from project config", async () => {
       const opencodeDir = path.join(dir, ".zee")
       await fs.mkdir(opencodeDir, { recursive: true })
       await Bun.write(
-        path.join(opencodeDir, "zee.json"),
+        path.join(opencodeDir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           mcp: {
@@ -1420,7 +1412,7 @@ test("project config overrides remote well-known config", async () => {
       init: async (dir) => {
         // Project config enables tracker (overriding remote default)
         await Bun.write(
-          path.join(dir, "zee.json"),
+          path.join(dir, "zee.jsonc"),
           JSON.stringify({
             $schema: "zee",
             mcp: {
@@ -1513,7 +1505,7 @@ describe("deduplicatePlugins", () => {
         await fs.mkdir(pluginDir, { recursive: true })
 
         await Bun.write(
-          path.join(dir, "zee.json"),
+          path.join(dir, "zee.jsonc"),
           JSON.stringify({
             $schema: "zee",
             plugin: ["my-plugin@1.0.0"],

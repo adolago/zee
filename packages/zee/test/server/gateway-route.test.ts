@@ -16,6 +16,14 @@ describe("gateway routes", () => {
 
   let gatewayServer: ReturnType<typeof Bun.serve> | null = null
   let lastSendParams: Record<string, unknown> | null = null
+  let methodResponses: Record<
+    string,
+    {
+      ok: boolean
+      payload?: unknown
+      error?: { code: string; message: string; details?: unknown }
+    }
+  > = {}
   let fakeMetaBinPath: string | null = null
 
   beforeAll(() => {
@@ -37,14 +45,20 @@ describe("gateway routes", () => {
 
           if (frame.type !== "req" || typeof frame.id !== "string" || typeof frame.method !== "string") return
 
-          if (frame.method === "connect") {
-            ws.send(JSON.stringify({ type: "res", id: frame.id, ok: true, payload: { type: "hello-ok", protocol: 2 } }))
-            return
-          }
-
           if (frame.method === "send") {
             lastSendParams = frame.params ?? null
-            ws.send(JSON.stringify({ type: "res", id: frame.id, ok: true, payload: { ok: true } }))
+          }
+
+          const methodResponse = methodResponses[frame.method]
+          if (methodResponse) {
+            ws.send(
+              JSON.stringify({
+                type: "res",
+                id: frame.id,
+                ok: methodResponse.ok,
+                ...(methodResponse.ok ? { payload: methodResponse.payload } : { error: methodResponse.error }),
+              }),
+            )
             return
           }
 
@@ -86,6 +100,36 @@ describe("gateway routes", () => {
 
   beforeEach(() => {
     lastSendParams = null
+    methodResponses = {
+      connect: {
+        ok: true,
+        payload: { type: "hello-ok", protocol: 2 },
+      },
+      send: {
+        ok: true,
+        payload: { ok: true },
+      },
+      "skills.status": {
+        ok: true,
+        payload: {
+          skills: [{ name: "home-assistant", status: "ready" }],
+        },
+      },
+      "channels.status": {
+        ok: true,
+        payload: {
+          channels: [{ name: "whatsapp", status: "connected" }],
+        },
+      },
+      health: {
+        ok: true,
+        payload: { ok: true, uptimeMs: 1200 },
+      },
+      usage: {
+        ok: true,
+        payload: { sent: 12, received: 7 },
+      },
+    }
   })
 
   test("POST /gateway/whatsapp/send falls back to meta-cli when gateway is unavailable", async () => {
@@ -212,5 +256,64 @@ describe("gateway routes", () => {
     expect(response.status).toBe(400)
     const data = await response.json()
     expect(data.success).toBe(false)
+  })
+
+  test("GET /gateway/skills bridges to skills.status", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/skills")
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+    expect(data.data).toEqual({
+      skills: [{ name: "home-assistant", status: "ready" }],
+    })
+  })
+
+  test("GET /gateway/channels/status bridges to channels.status", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/channels/status")
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+    expect(data.data).toEqual({
+      channels: [{ name: "whatsapp", status: "connected" }],
+    })
+  })
+
+  test("GET /gateway/status bridges to health", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/status")
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+    expect(data.data).toEqual({ ok: true, uptimeMs: 1200 })
+  })
+
+  test("GET /gateway/usage bridges to usage", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/usage")
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+    expect(data.data).toEqual({ sent: 12, received: 7 })
+  })
+
+  test("GET /gateway/usage returns 500 when usage method fails", async () => {
+    methodResponses.usage = {
+      ok: false,
+      error: { code: "downstream_error", message: "usage unavailable" },
+    }
+
+    const app = Server.App()
+    const response = await app.request("/gateway/usage")
+
+    expect(response.status).toBe(500)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toContain("usage unavailable")
   })
 })

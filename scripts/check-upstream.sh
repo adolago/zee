@@ -33,6 +33,8 @@ declare -A REMOTE_SCOPE=(
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# shellcheck source=scripts/lib/upstream-common.sh
+source "$REPO_ROOT/scripts/lib/upstream-common.sh"
 
 # Colors
 RED='\033[0;31m'
@@ -101,12 +103,8 @@ check_pimono() {
     echo -e "  Scope: ${CYAN}${REMOTE_SCOPE[$remote_name]}${NC}"
     echo ""
 
-    # Get installed version from package.json
-    local pkg_json="$REPO_ROOT/packages/zee/Swabble/package.json"
-    local installed=""
-    if [ -f "$pkg_json" ]; then
-        installed=$(grep -o '"@mariozechner/pi-coding-agent": "[^"]*"' "$pkg_json" | grep -o '[0-9][0-9.]*' || echo "")
-    fi
+    local installed
+    installed="$(resolve_pimono_installed_version "$REPO_ROOT" || true)"
 
     if [ -z "$installed" ]; then
         echo -e "  ${YELLOW}Installed version: unknown (not found in package.json)${NC}"
@@ -116,18 +114,7 @@ check_pimono() {
 
     # Get latest tag from pimono remote
     local latest_tag
-    latest_tag=$(git tag -l "v0.*" --sort=-v:refname | while read -r tag; do
-        # Only consider tags that exist on pimono remote
-        if git merge-base --is-ancestor "$tag" "$remote_name/$branch" 2>/dev/null; then
-            echo "$tag"
-            break
-        fi
-    done)
-
-    if [ -z "$latest_tag" ]; then
-        # Fallback: just get the latest v0.* tag by version sort
-        latest_tag=$(git tag -l "v0.*" --sort=-v:refname | head -1)
-    fi
+    latest_tag="$(resolve_latest_pimono_tag "$remote_name/$branch")"
 
     local latest_version="${latest_tag#v}"
     echo -e "  Latest tag: ${CYAN}${latest_tag:-unknown}${NC}"
@@ -204,9 +191,9 @@ check_git_remote() {
     if $VERBOSE && [ "$behind" -gt 0 ]; then
         echo ""
         echo -e "  ${YELLOW}Latest upstream commits:${NC}"
-        git log --oneline "$merge_base..$remote_name/$branch" | head -10 | while read -r line; do
+        while read -r line; do
             echo "    $line"
-        done
+        done < <(git log --oneline "$merge_base..$remote_name/$branch" | head -10 || true)
         if [ "$behind" -gt 10 ]; then
             echo "    ... and $((behind - 10)) more"
         fi
@@ -216,9 +203,9 @@ check_git_remote() {
     if $VERBOSE && [ "$ahead" -gt 0 ]; then
         echo ""
         echo -e "  ${GREEN}Our divergent commits:${NC}"
-        git log --oneline "$merge_base..HEAD" | head -10 | while read -r line; do
+        while read -r line; do
             echo "    $line"
-        done
+        done < <(git log --oneline "$merge_base..HEAD" | head -10 || true)
         if [ "$ahead" -gt 10 ]; then
             echo "    ... and $((ahead - 10)) more"
         fi

@@ -146,8 +146,5 @@ function resolveStateHome(): string {
   return process.env.XDG_STATE_HOME || `${home}/.local/state`;
 }
 
-/** Legacy socket path kept for migration/cleanup compatibility. */
-export const LEGACY_SOCKET_PATH = `${resolveStateHome()}/zee/daemon.sock`;
-
 /** Default socket path (moved under daemon/ to avoid state-root file scanners). */
 export const DEFAULT_SOCKET_PATH = `${resolveStateHome()}/zee/daemon/daemon.sock`;
