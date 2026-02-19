@@ -45,6 +45,23 @@ type CommandResult = {
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
+function windowsPathExtensions(pathExt = process.env.PATHEXT): string[] {
+  return (pathExt ?? ".EXE;.CMD;.BAT;.COM")
+    .split(";")
+    .map((value) => value.trim())
+    .filter(Boolean)
+}
+
+export function resolveExecutableCandidates(
+  command: string,
+  options: { platform?: NodeJS.Platform; pathExt?: string } = {},
+): string[] {
+  const platform = options.platform ?? process.platform
+  if (platform !== "win32") return [command]
+  if (path.extname(command)) return [command]
+  return [command, ...windowsPathExtensions(options.pathExt).map((ext) => command + ext)]
+}
+
 /**
  * Normalize a recipient to E.164 format for the Business API.
  * Strips JID suffixes (@s.whatsapp.net, @c.us), ensures leading '+'.
@@ -206,23 +223,49 @@ function classifyMetaCliError(stderr: string, exitCode: number | null): {
 
 export function commandExists(command: string): boolean {
   if (!path.isAbsolute(command)) return true
-  try {
-    fs.accessSync(command, fs.constants.X_OK)
-    return true
-  } catch {
-    return false
+  const mode = process.platform === "win32" ? fs.constants.F_OK : fs.constants.X_OK
+  for (const candidate of resolveExecutableCandidates(command)) {
+    try {
+      fs.accessSync(candidate, mode)
+      return true
+    } catch {
+      // keep scanning candidates
+    }
   }
+  return false
 }
 
 export async function runCommand(
   command: string,
   args: string[],
   timeoutMs: number,
+  envOverrides?: NodeJS.ProcessEnv,
 ): Promise<CommandResult> {
+  const mergedEnv = { ...process.env, ...(envOverrides ?? {}) }
+  const resolvedEnv = Object.fromEntries(
+    Object.entries(mergedEnv)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, String(value)]),
+  )
+
+  const commandMode = process.platform === "win32" ? fs.constants.F_OK : fs.constants.X_OK
+  const resolvedCommand =
+    path.isAbsolute(command)
+      ? (resolveExecutableCandidates(command).find((candidate) => {
+          try {
+            fs.accessSync(candidate, commandMode)
+            return true
+          } catch {
+            return false
+          }
+        }) ?? command)
+      : command
+
   return await new Promise((resolve) => {
-    const child = spawn(command, args, {
+    const child = spawn(resolvedCommand, args, {
       stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
+      env: resolvedEnv,
+      shell: process.platform === "win32",
     })
 
     let stdout = ""

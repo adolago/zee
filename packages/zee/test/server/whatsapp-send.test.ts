@@ -4,6 +4,7 @@ import {
   inferMediaType,
   commandExists,
   sendWhatsAppMessage,
+  resolveExecutableCandidates,
   runCommand,
 } from "../../../../src/domain/zee/whatsapp-send"
 
@@ -84,6 +85,26 @@ describe("commandExists", () => {
   })
 })
 
+describe("resolveExecutableCandidates", () => {
+  test("adds PATHEXT candidates for Windows commands without extension", () => {
+    expect(
+      resolveExecutableCandidates("C:\\tools\\meta", {
+        platform: "win32",
+        pathExt: ".EXE;.CMD",
+      }),
+    ).toEqual(["C:\\tools\\meta", "C:\\tools\\meta.EXE", "C:\\tools\\meta.CMD"])
+  })
+
+  test("keeps Windows commands with extension unchanged", () => {
+    expect(
+      resolveExecutableCandidates("C:\\tools\\meta.cmd", {
+        platform: "win32",
+        pathExt: ".EXE;.CMD",
+      }),
+    ).toEqual(["C:\\tools\\meta.cmd"])
+  })
+})
+
 // ---------------------------------------------------------------------------
 // sendWhatsAppMessage
 // ---------------------------------------------------------------------------
@@ -145,5 +166,23 @@ describe("runCommand", () => {
     const result = await runCommand("sleep", ["60"], 100)
     expect(result.ok).toBe(false)
     expect(result.timedOut).toBe(true)
+  })
+
+  test("coerces env values to strings and omits undefined values", async () => {
+    const result = await runCommand(
+      process.execPath,
+      [
+        "-e",
+        'process.stdout.write((process.env.ZEE_NUM ?? "") + "|" + String(Object.prototype.hasOwnProperty.call(process.env, "ZEE_UNDEF")))',
+      ],
+      5000,
+      {
+        ZEE_NUM: 42 as unknown as string,
+        ZEE_UNDEF: undefined,
+      } as unknown as NodeJS.ProcessEnv,
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe("42|false")
   })
 })
