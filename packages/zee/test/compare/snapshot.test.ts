@@ -96,6 +96,37 @@ describe("compare snapshot", () => {
     ).toBe(false)
   })
 
+  test("falls back to upstream-pins manifest for pi-mono dependency pin", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "zee-compare-"))
+    await fs.mkdir(path.join(tmp, "docs", "architecture"), { recursive: true })
+    await fs.writeFile(
+      path.join(tmp, "docs", "architecture", "upstream-pins.json"),
+      JSON.stringify(
+        {
+          pimono: {
+            piCodingAgentVersion: "0.53.1",
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    )
+
+    const snapshot = await collectSnapshot({
+      rootDir: tmp,
+      exec: makeExec(),
+      fetch: true,
+      includeSkills: false,
+      now: new Date("2026-02-12T00:00:00.000Z"),
+    })
+
+    expect(snapshot.pimono.installedPiCodingAgentVersion).toBe("0.53.1")
+    expect(
+      snapshot.warnings.some((warning) => warning.includes("Installed pi-mono dependency pin not found")),
+    ).toBe(false)
+  })
+
   test("emits warning when pi-mono dependency pin is not discoverable", async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "zee-compare-"))
 
@@ -109,7 +140,7 @@ describe("compare snapshot", () => {
 
     expect(snapshot.pimono.installedPiCodingAgentVersion).toBeUndefined()
     expect(snapshot.warnings).toContain(
-      "Installed pi-mono dependency pin not found in known manifests (packages/zee/Swabble/package.json, packages/zee/package.json, package.json).",
+      "Installed pi-mono dependency pin not found in known manifests (packages/zee/Swabble/package.json, packages/zee/package.json, package.json, docs/architecture/upstream-pins.json).",
     )
   })
 })

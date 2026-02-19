@@ -102,19 +102,28 @@ if [ "$REMOTE" = "pimono" ]; then
     echo ""
     echo "pi-mono is synced via npm, not git merge."
     echo ""
-    manifest_path="$(find_pimono_dependency_manifest "$REPO_ROOT" || true)"
+    manifest_path="$(resolve_pimono_version_source_manifest "$REPO_ROOT" || true)"
     if [ -n "$manifest_path" ]; then
-        manifest_dir="${manifest_path%/package.json}"
-        if [ "$manifest_dir" = "$REPO_ROOT" ]; then
-            manifest_rel="."
-        else
-            manifest_rel="${manifest_dir#$REPO_ROOT/}"
+        manifest_rel="${manifest_path#$REPO_ROOT/}"
+        if [ "$manifest_rel" = "$manifest_path" ]; then
+            manifest_rel="$manifest_path"
         fi
-        echo "Update command:"
-        echo -e "  ${CYAN}cd $manifest_rel && bun update @mariozechner/pi-coding-agent${NC}"
+        if grep -q '"@mariozechner/pi-coding-agent"' "$manifest_path"; then
+            manifest_dir="${manifest_path%/package.json}"
+            if [ "$manifest_dir" = "$REPO_ROOT" ]; then
+                manifest_dir_rel="."
+            else
+                manifest_dir_rel="${manifest_dir#$REPO_ROOT/}"
+            fi
+            echo "Update command:"
+            echo -e "  ${CYAN}cd $manifest_dir_rel && bun update @mariozechner/pi-coding-agent${NC}"
+        else
+            echo "Update command:"
+            echo -e "  ${CYAN}edit $manifest_rel and bump pimono.piCodingAgentVersion${NC}"
+        fi
     else
-        echo -e "  ${YELLOW}Installed manifest not found (no @mariozechner/pi-coding-agent dependency in known package.json files).${NC}"
-        echo "  Add/update the dependency in the package that vendors pi-mono, then rerun this command."
+        echo -e "  ${YELLOW}Installed pin manifest not found.${NC}"
+        echo "  Add @mariozechner/pi-coding-agent in a known package.json or define pimono.piCodingAgentVersion in docs/architecture/upstream-pins.json."
     fi
     echo ""
 

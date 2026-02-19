@@ -66,6 +66,15 @@ const PI_MONO_PACKAGE_JSON_CANDIDATES = [
   ["package.json"],
 ] as const
 
+const PI_MONO_PIN_FILE_CANDIDATES = [["docs", "architecture", "upstream-pins.json"]] as const
+
+const PI_MONO_PIN_MANIFEST_LABELS = [
+  "packages/zee/Swabble/package.json",
+  "packages/zee/package.json",
+  "package.json",
+  "docs/architecture/upstream-pins.json",
+] as const
+
 const PI_MONO_DEPENDENCY_FIELDS = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"] as const
 
 function findSourceRoot(startDir: string): string | undefined {
@@ -161,6 +170,25 @@ async function readPiMonoInstalledVersion(sourceRoot: string): Promise<string | 
       // Ignore malformed package json in candidate paths.
     }
   }
+
+  for (const segments of PI_MONO_PIN_FILE_CANDIDATES) {
+    const pinPath = path.join(sourceRoot, ...segments)
+    if (!fs.existsSync(pinPath)) continue
+    try {
+      const parsed = JSON.parse(fs.readFileSync(pinPath, "utf-8")) as Record<string, unknown>
+      const direct = parseInstalledPiCodingAgentVersion(parsed["piCodingAgentVersion"])
+      if (direct) return direct
+
+      const pimono = parsed["pimono"]
+      if (pimono && typeof pimono === "object") {
+        const nested = parseInstalledPiCodingAgentVersion((pimono as Record<string, unknown>)["piCodingAgentVersion"])
+        if (nested) return nested
+      }
+    } catch {
+      // Ignore malformed pin files in candidate paths.
+    }
+  }
+
   return undefined
 }
 
@@ -269,8 +297,9 @@ export async function collectSnapshot(options: SnapshotOptions = {}): Promise<Co
   const pimonoHead = upstream.pimono?.head
   const installedPiCodingAgentVersion = sourceRoot ? await readPiMonoInstalledVersion(sourceRoot) : undefined
   if (sourceRoot && !installedPiCodingAgentVersion) {
+    const manifests = PI_MONO_PIN_MANIFEST_LABELS.join(", ")
     warnings.push(
-      "Installed pi-mono dependency pin not found in known manifests (packages/zee/Swabble/package.json, packages/zee/package.json, package.json).",
+      `Installed pi-mono dependency pin not found in known manifests (${manifests}).`,
     )
   }
   const latestTag = await resolveLatestPiMonoTag(exec, cwd, warnings)

@@ -107,7 +107,7 @@ check_pimono() {
     installed="$(resolve_pimono_installed_version "$REPO_ROOT" || true)"
 
     if [ -z "$installed" ]; then
-        echo -e "  ${YELLOW}Installed version: unknown (not found in package.json)${NC}"
+        echo -e "  ${YELLOW}Installed version: unknown (not found in known pin manifests)${NC}"
     else
         echo -e "  Installed version: ${GREEN}$installed${NC}"
     fi

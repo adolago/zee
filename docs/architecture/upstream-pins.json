@@ -1,0 +1,6 @@
+{
+  "pimono": {
+    "piCodingAgentVersion": "0.53.1",
+    "notes": "Deliberate pin used by upstream drift tooling when @mariozechner/pi-coding-agent is not declared in package manifests."
+  }
+}

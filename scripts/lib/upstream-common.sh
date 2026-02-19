@@ -7,6 +7,10 @@ PI_MONO_PACKAGE_CANDIDATES=(
   "package.json"
 )
 
+PI_MONO_PIN_FILE_CANDIDATES=(
+  "docs/architecture/upstream-pins.json"
+)
+
 normalize_nonnegative_int() {
   local raw="${1:-0}"
   local normalized
@@ -62,21 +66,67 @@ find_pimono_dependency_manifest() {
   return 1
 }
 
+find_pimono_pin_manifest() {
+  local repo_root="$1"
+  local rel candidate
+
+  for rel in "${PI_MONO_PIN_FILE_CANDIDATES[@]}"; do
+    candidate="$repo_root/$rel"
+    if [ ! -f "$candidate" ]; then
+      continue
+    fi
+    if grep -q '"piCodingAgentVersion"' "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+resolve_pimono_version_source_manifest() {
+  local repo_root="$1"
+  local manifest
+
+  manifest="$(find_pimono_dependency_manifest "$repo_root" || true)"
+  if [ -n "$manifest" ]; then
+    printf '%s\n' "$manifest"
+    return 0
+  fi
+
+  manifest="$(find_pimono_pin_manifest "$repo_root" || true)"
+  if [ -n "$manifest" ]; then
+    printf '%s\n' "$manifest"
+    return 0
+  fi
+
+  return 1
+}
+
 resolve_pimono_installed_version() {
   local repo_root="$1"
   local manifest raw_spec parsed
 
-  manifest="$(find_pimono_dependency_manifest "$repo_root" || true)"
+  manifest="$(resolve_pimono_version_source_manifest "$repo_root" || true)"
   if [ -z "$manifest" ]; then
     return 1
   fi
 
-  raw_spec="$(
-    grep -Eo '"@mariozechner/pi-coding-agent"[[:space:]]*:[[:space:]]*"[^"]+"' "$manifest" \
-      | head -n1 \
-      | sed -E 's/.*:[[:space:]]*"([^"]+)".*/\1/' \
-      || true
-  )"
+  if grep -q '"@mariozechner/pi-coding-agent"' "$manifest"; then
+    raw_spec="$(
+      grep -Eo '"@mariozechner/pi-coding-agent"[[:space:]]*:[[:space:]]*"[^"]+"' "$manifest" \
+        | head -n1 \
+        | sed -E 's/.*:[[:space:]]*"([^"]+)".*/\1/' \
+        || true
+    )"
+  else
+    raw_spec="$(
+      grep -Eo '"piCodingAgentVersion"[[:space:]]*:[[:space:]]*"[^"]+"' "$manifest" \
+        | head -n1 \
+        | sed -E 's/.*:[[:space:]]*"([^"]+)".*/\1/' \
+        || true
+    )"
+  fi
 
   if [ -z "$raw_spec" ]; then
     return 1
