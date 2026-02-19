@@ -46,7 +46,7 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
           throw new Error(`Skill "${params.name}" not found. Available skills: ${available || "none"}`)
         }
 
-        const readiness = await Skill.readiness(skill, ctx.agent?.permission)
+        const readiness = await Skill.readiness(skill, agent?.permission)
         if (readiness.permission === "deny") {
           throw new Error(`Skill "${skill.name}" is blocked by the current permission policy.`)
         }
