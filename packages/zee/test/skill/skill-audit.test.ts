@@ -432,6 +432,170 @@ describe("Skill.search()", () => {
   })
 })
 
+describe("Skill.index() readiness", () => {
+  test("marks env as ready when skill config provides primary env via apiKey", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      config: {
+        skills: {
+          entries: {
+            "needs-api": {
+              apiKey: "test-key",
+            },
+          },
+        },
+      },
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "needs-api", "SKILL.md"),
+          skill("needs-api", "Needs API key", "primaryEnv: TEST_API_KEY\nrequires:\n  env:\n    - TEST_API_KEY\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const indexed = await Skill.index("zee")
+        const match = indexed.find((item) => item.name === "needs-api")
+        expect(match).toBeDefined()
+        expect(match!.readiness.env).toBe("ready")
+        expect(match!.readiness.missingEnv).toEqual([])
+      },
+    })
+  })
+
+  test("marks home-assistant env as ready when legacy config file exists", async () => {
+    const xdgConfig = process.env["XDG_CONFIG_HOME"]!
+    const haConfigPath = path.join(xdgConfig, "home-assistant", "config.json")
+    await Bun.write(haConfigPath, JSON.stringify({ url: "http://ha.local:8123", token: "legacy-token" }))
+
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "home-assistant", "SKILL.md"),
+          skill(
+            "home-assistant",
+            "Control home assistant lights",
+            "primaryEnv: HASS_TOKEN\nrequires:\n  env:\n    - HASS_SERVER\n",
+          ),
+        )
+      },
+    })
+
+    try {
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          const indexed = await Skill.index("zee")
+          const match = indexed.find((item) => item.name === "home-assistant")
+          expect(match).toBeDefined()
+          expect(match!.readiness.env).toBe("ready")
+        },
+      })
+    } finally {
+      await Bun.write(haConfigPath, "")
+    }
+  })
+})
+
+describe("Skill.recommend()", () => {
+  test("ranks smart-home skill first for lighting intents", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "home-assistant", "SKILL.md"),
+          skill(
+            "home-assistant",
+            "Control Home Assistant lights and scenes",
+            "triggers:\n  - set office lights\n  - turn lights on\n",
+          ),
+        )
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "calendar", "SKILL.md"),
+          skill("calendar", "Manage meetings and schedules"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const recommendations = await Skill.recommend("set office lights to 2200k at 50%", "zee", {
+          minScore: 1,
+        })
+        expect(recommendations.length).toBeGreaterThan(0)
+        expect(recommendations[0].name).toBe("home-assistant")
+      },
+    })
+  })
+
+  test("filters denied skills from recommendations", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "blocked", "SKILL.md"),
+          skill("blocked", "Sensitive deployment tool", "triggers:\n  - deploy production\n"),
+        )
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "safe", "SKILL.md"),
+          skill("safe", "Safe deployment helper", "triggers:\n  - deploy production\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const recommendations = await Skill.recommend("deploy production", "zee", {
+          minScore: 1,
+          permission: [
+            { permission: "skill", pattern: "*", action: "allow" },
+            { permission: "skill", pattern: "blocked", action: "deny" },
+          ],
+        })
+
+        expect(recommendations.some((item) => item.name === "blocked")).toBeFalse()
+        expect(recommendations.some((item) => item.name === "safe")).toBeTrue()
+      },
+    })
+  })
+
+  test("uses usage history to boost previously successful skills", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "boost-a", "SKILL.md"),
+          skill("boost-a", "Handle neon panel commands"),
+        )
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "boost-b", "SKILL.md"),
+          skill("boost-b", "Handle neon panel commands"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await Skill.recordUsage({
+          query: "toggle the neon panel",
+          skill: "boost-b",
+          outcome: "success",
+        })
+
+        const recommendations = await Skill.recommend("toggle the neon panel", "zee", { minScore: 1 })
+        expect(recommendations.length).toBeGreaterThan(0)
+        expect(recommendations[0].name).toBe("boost-b")
+      },
+    })
+  })
+})
+
 describe("Skill gating", () => {
   test("loads skill when all requirements met", async () => {
     await using tmp = await tmpdir({

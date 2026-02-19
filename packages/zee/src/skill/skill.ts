@@ -9,9 +9,10 @@ import { Log } from "../util/log"
 import { Global } from "@/global"
 import { Filesystem } from "@/util/filesystem"
 import { Bus } from "@/bus"
-import { TuiEvent } from "@/cli/cmd/tui/event"
 import { Session } from "@/session"
 import { scanDirectoryWithSummary, type SkillScanFinding } from "./scanner"
+import { PermissionNext } from "@/permission/next"
+import { getSkillUsageBoostMap, recordSkillUsage, type SkillUsageOutcome } from "./usage-history"
 import { parse as parseYaml } from "yaml"
 
 export namespace Skill {
@@ -86,6 +87,30 @@ export namespace Skill {
   export type AnnotatedInfo = Info & {
     /** "own" = matches persona, "shared" = no persona context, "cross" = belongs to another persona */
     affinity: "own" | "shared" | "cross"
+  }
+
+  export type PermissionReadiness = "allow" | "ask" | "deny"
+  export type EnvReadiness = "ready" | "partial" | "missing" | "not-required"
+
+  export interface Readiness {
+    permission: PermissionReadiness
+    env: EnvReadiness
+    missingEnv: string[]
+  }
+
+  export type ReadyInfo = AnnotatedInfo & {
+    readiness: Readiness
+  }
+
+  export interface Recommendation {
+    name: string
+    description: string
+    location: string
+    affinity: AnnotatedInfo["affinity"]
+    context?: Info["context"]
+    score: number
+    reason: string
+    readiness: Readiness
   }
 
   /** Extract persona context from skill path (e.g., @zee/ordercli -> "zee") */
@@ -189,6 +214,245 @@ export namespace Skill {
         error: error instanceof Error ? error.message : String(error),
       })
       return {}
+    }
+  }
+
+  function normalizeText(value: string): string {
+    return value.trim().toLowerCase()
+  }
+
+  const STOPWORDS = new Set([
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "that",
+    "this",
+    "then",
+    "into",
+    "onto",
+    "your",
+    "have",
+    "has",
+    "had",
+    "set",
+    "to",
+    "at",
+    "in",
+    "on",
+    "of",
+    "a",
+    "an",
+    "is",
+    "it",
+    "be",
+    "by",
+    "or",
+    "as",
+    "me",
+    "my",
+    "you",
+    "we",
+    "our",
+  ])
+
+  function tokenize(value: string): string[] {
+    return normalizeText(value)
+      .replace(/[^a-z0-9\s]+/g, " ")
+      .split(/\s+/)
+      .filter((token) => token.length >= 3 && !STOPWORDS.has(token))
+  }
+
+  function escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  }
+
+  function containsWord(text: string, word: string): boolean {
+    const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "i")
+    return pattern.test(text)
+  }
+
+  function uniqueEnvRequirements(skill: Info): string[] {
+    const required = new Set<string>()
+    if (skill.primaryEnv) required.add(skill.primaryEnv)
+    for (const env of skill.requires?.env ?? []) {
+      required.add(env)
+    }
+    return [...required]
+  }
+
+  async function loadHomeAssistantLegacyAuth(): Promise<{ server: boolean; token: boolean }> {
+    const xdgConfig = process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config")
+    const configPath = path.join(xdgConfig, "home-assistant", "config.json")
+    const raw = await Bun.file(configPath)
+      .text()
+      .catch(() => "")
+    if (!raw.trim()) {
+      return { server: false, token: false }
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as { url?: unknown; token?: unknown }
+      return {
+        server: typeof parsed.url === "string" && parsed.url.trim().length > 0,
+        token: typeof parsed.token === "string" && parsed.token.trim().length > 0,
+      }
+    } catch {
+      return { server: false, token: false }
+    }
+  }
+
+  type EnvResolutionContext = {
+    config: Awaited<ReturnType<typeof Config.get>>
+    homeAssistantLegacy: { server: boolean; token: boolean }
+  }
+
+  async function createEnvResolutionContext(): Promise<EnvResolutionContext> {
+    return {
+      config: await Config.get(),
+      homeAssistantLegacy: await loadHomeAssistantLegacyAuth(),
+    }
+  }
+
+  function hasConfigEnvValue(
+    skill: Info,
+    envName: string,
+    config: Awaited<ReturnType<typeof Config.get>>,
+    canonicalEnvNames: string[],
+  ): boolean {
+    const entry = config.skills?.entries?.[skill.name]
+    if (!entry) return false
+
+    if (entry.env?.[envName]) return true
+    if (canonicalEnvNames.some((name) => entry.env?.[name])) return true
+
+    if (skill.primaryEnv === envName && entry.apiKey) return true
+    if (skill.primaryEnv && canonicalEnvNames.includes(skill.primaryEnv) && entry.apiKey) return true
+
+    return false
+  }
+
+  function envAliases(skill: Info, envName: string): string[] {
+    if (skill.name === "home-assistant") {
+      if (envName === "HASS_SERVER" || envName === "HA_URL") return ["HASS_SERVER", "HA_URL"]
+      if (envName === "HASS_TOKEN" || envName === "HA_TOKEN") return ["HASS_TOKEN", "HA_TOKEN"]
+    }
+    return [envName]
+  }
+
+  function hasLegacyFallback(skill: Info, envName: string, ctx: EnvResolutionContext): boolean {
+    if (skill.name !== "home-assistant") return false
+    if (envName === "HASS_SERVER" || envName === "HA_URL") return ctx.homeAssistantLegacy.server
+    if (envName === "HASS_TOKEN" || envName === "HA_TOKEN") return ctx.homeAssistantLegacy.token
+    return false
+  }
+
+  function isEnvSatisfied(skill: Info, envName: string, ctx: EnvResolutionContext): boolean {
+    const canonical = envAliases(skill, envName)
+
+    if (canonical.some((name) => process.env[name])) return true
+    if (hasConfigEnvValue(skill, envName, ctx.config, canonical)) return true
+    if (canonical.some((name) => hasLegacyFallback(skill, name, ctx))) return true
+
+    return false
+  }
+
+  async function readinessForSkill(
+    skill: Info,
+    permission?: PermissionNext.Ruleset,
+    ctx?: EnvResolutionContext,
+  ): Promise<Readiness> {
+    const effectiveContext = ctx ?? (await createEnvResolutionContext())
+    const required = uniqueEnvRequirements(skill)
+    const missingEnv = required.filter((envName) => !isEnvSatisfied(skill, envName, effectiveContext))
+
+    const env: EnvReadiness =
+      required.length === 0
+        ? "not-required"
+        : missingEnv.length === 0
+          ? "ready"
+          : missingEnv.length === required.length
+            ? "missing"
+            : "partial"
+
+    const permissionStatus = permission
+      ? PermissionNext.evaluate("skill", skill.name, permission).action
+      : ("allow" as PermissionReadiness)
+
+    return {
+      permission: permissionStatus,
+      env,
+      missingEnv,
+    }
+  }
+
+  function scoreSkill(query: string, skill: AnnotatedInfo): { score: number; reason: string } {
+    const q = normalizeText(query)
+    const tokens = tokenize(query)
+    if (!q) return { score: 0, reason: "empty query" }
+
+    let score = 0
+    const reasons: string[] = []
+    const nameLower = skill.name.toLowerCase()
+    const descriptionLower = skill.description.toLowerCase()
+    const triggerLower = (skill.triggers ?? []).map((item) => item.toLowerCase())
+    const tagsLower = (skill.tags ?? []).map((item) => item.toLowerCase())
+
+    if (nameLower === q) {
+      score += 14
+      reasons.push("exact name")
+    } else if (nameLower.includes(q)) {
+      score += 10
+      reasons.push("name match")
+    }
+
+    if (descriptionLower.includes(q)) {
+      score += 6
+      reasons.push("description phrase")
+    }
+
+    for (const trigger of triggerLower) {
+      if (trigger.includes(q) || q.includes(trigger)) {
+        score += 8
+        reasons.push("trigger phrase")
+        break
+      }
+    }
+
+    for (const token of tokens) {
+      let tokenScored = false
+      if (containsWord(nameLower, token) || nameLower.includes(token)) {
+        score += 3
+        tokenScored = true
+      }
+      if (containsWord(descriptionLower, token)) {
+        score += 3
+        tokenScored = true
+      }
+      if (tagsLower.some((tag) => containsWord(tag, token))) {
+        score += 3
+        tokenScored = true
+      }
+      if (triggerLower.some((trigger) => containsWord(trigger, token))) {
+        score += 4
+        tokenScored = true
+      }
+      if (tokenScored) {
+        reasons.push(`token:${token}`)
+      }
+    }
+
+    if (skill.affinity === "own") {
+      score += 2
+    } else if (skill.affinity === "shared") {
+      score += 1
+    }
+
+    const uniqueReasons = [...new Set(reasons)]
+    return {
+      score,
+      reason: uniqueReasons.slice(0, 3).join(", ") || "weak lexical match",
     }
   }
 
@@ -623,6 +887,83 @@ export namespace Skill {
     )
   }
 
+  export async function index(agent?: string, permission?: PermissionNext.Ruleset): Promise<ReadyInfo[]> {
+    const skills = await all(agent)
+    const envContext = await createEnvResolutionContext()
+
+    return Promise.all(
+      skills.map(async (skill) => ({
+        ...skill,
+        readiness: await readinessForSkill(skill, permission, envContext),
+      })),
+    )
+  }
+
+  export async function recommend(
+    query: string,
+    agent?: string,
+    options?: {
+      limit?: number
+      minScore?: number
+      permission?: PermissionNext.Ruleset
+    },
+  ): Promise<Recommendation[]> {
+    const trimmed = query.trim()
+    if (!trimmed) return []
+
+    const limit = Math.max(1, Math.min(20, options?.limit ?? 3))
+    const minScore = options?.minScore ?? 3
+    const candidates = await all(agent)
+    const envContext = await createEnvResolutionContext()
+    const usageBoost = await getSkillUsageBoostMap(trimmed)
+
+    const ranked: Recommendation[] = []
+
+    for (const skill of candidates) {
+      const readiness = await readinessForSkill(skill, options?.permission, envContext)
+      if (readiness.permission === "deny") continue
+
+      const lexical = scoreSkill(trimmed, skill)
+      if (lexical.score <= 0) continue
+
+      const boost = usageBoost.get(skill.name)
+      const score = lexical.score + (boost?.boost ?? 0)
+
+      const reasonParts = [lexical.reason]
+      if (boost) {
+        reasonParts.push(`memory boost (+${boost.boost.toFixed(1)})`)
+      }
+      if (readiness.permission === "ask") {
+        reasonParts.push("requires permission prompt")
+      }
+      if (readiness.env === "missing" || readiness.env === "partial") {
+        reasonParts.push(`env: ${readiness.env}`)
+      }
+
+      ranked.push({
+        name: skill.name,
+        description: skill.description,
+        location: skill.location,
+        affinity: skill.affinity,
+        context: skill.context,
+        score,
+        reason: reasonParts.join("; "),
+        readiness,
+      })
+    }
+
+    ranked.sort((a, b) => b.score - a.score)
+    return ranked.filter((item) => item.score >= minScore).slice(0, limit)
+  }
+
+  export async function recordUsage(input: {
+    query: string
+    skill: string
+    outcome: SkillUsageOutcome
+  }): Promise<void> {
+    await recordSkillUsage(input)
+  }
+
   /** Audit report for skill health diagnostics. */
   export interface AuditReport {
     /** Successfully loaded skills. */
@@ -664,20 +1005,11 @@ export namespace Skill {
 
     // Check for missing env vars (non-blocking: skill loaded but may not work)
     const missingEnv: AuditReport["missingEnv"] = []
+    const envContext = await createEnvResolutionContext()
     for (const skill of loaded) {
-      const missing: string[] = []
-      if (skill.primaryEnv && !process.env[skill.primaryEnv]) {
-        missing.push(skill.primaryEnv)
-      }
-      if (skill.requires?.env) {
-        for (const env of skill.requires.env) {
-          if (!process.env[env] && !missing.includes(env)) {
-            missing.push(env)
-          }
-        }
-      }
-      if (missing.length > 0) {
-        missingEnv.push({ skill: skill.name, vars: missing })
+      const readiness = await readinessForSkill(skill, undefined, envContext)
+      if (readiness.missingEnv.length > 0) {
+        missingEnv.push({ skill: skill.name, vars: readiness.missingEnv })
       }
     }
 

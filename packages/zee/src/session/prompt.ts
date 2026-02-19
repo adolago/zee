@@ -55,6 +55,7 @@ import { Truncate } from "@/tool/truncation"
 import { withTimeout } from "@/util/timeout"
 import { createSafeEnv } from "@/security/env-sanitize"
 import { buildSessionSystemContext } from "./session-context"
+import { buildSkillRecallContext } from "./skill-recall"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
 import { SessionControlServer } from "@/session-control/server"
 
@@ -1288,6 +1289,20 @@ export namespace SessionPrompt {
 
       await Plugin.trigger("experimental.chat.messages.transform", {}, { messages: sessionMessages })
 
+      const skillRecallContext =
+        step === 1
+          ? await buildSkillRecallContext({
+              agent,
+              messages: sessionMessages,
+            }).catch((error) => {
+              log.debug("failed to build skill recall context", {
+                error: error instanceof Error ? error.message : String(error),
+                sessionID,
+              })
+              return undefined
+            })
+          : undefined
+
       const result = await processor.process({
         user: lastUser,
         agent,
@@ -1297,6 +1312,7 @@ export namespace SessionPrompt {
           ...(await SystemPrompt.environment(model)),
           ...(await InstructionPrompt.system()),
           ...sessionSystemContext,
+          ...(skillRecallContext ? [skillRecallContext] : []),
           ...(resolveHoldMode(session, lastUser.tools, lastUser.options, lastUser.mode) ? [HOLD_MODE_PROMPT] : []),
         ],
         messages: [

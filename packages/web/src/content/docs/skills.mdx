@@ -5,6 +5,7 @@ description: "Define reusable behavior via SKILL.md definitions"
 
 Agent skills let Zee discover reusable instructions from your repo or home directory.
 Skills are loaded on-demand via the native `skill` tool—agents see available skills and can load the full content when needed.
+Zee also recommends relevant skills per turn and can auto-load top matches for high-confidence intents.
 
 ---
 
@@ -13,32 +14,40 @@ Skills are loaded on-demand via the native `skill` tool—agents see available s
 Create one folder per skill name and put a `SKILL.md` inside it.
 Zee searches these locations:
 
-- Project config: `.zee/skills/<name>/SKILL.md`
-- Global config: `~/.config/zee/skills/<name>/SKILL.md`
+- Project primary: `.agents/skills/<name>/SKILL.md`
+- Global primary: `~/.agents/skills/<name>/SKILL.md`
 - Project Claude-compatible: `.claude/skills/<name>/SKILL.md`
 - Global Claude-compatible: `~/.claude/skills/<name>/SKILL.md`
+- Config directories: `.zee/skill/**/SKILL.md` and `.zee/skills/**/SKILL.md`
 
 ---
 
 ## Understand discovery
 
 For project-local paths, Zee walks up from your current working directory until it reaches the git worktree.
-It loads any matching `skills/*/SKILL.md` in `.zee/` and any matching `.claude/skills/*/SKILL.md` along the way.
+It loads matching `skills/**/SKILL.md` in `.agents/` and `.claude/` along the way.
 
-Global definitions are also loaded from `~/.config/zee/skills/*/SKILL.md` and `~/.claude/skills/*/SKILL.md`.
+Global definitions are also loaded from `~/.agents/skills/**/SKILL.md` and `~/.claude/skills/**/SKILL.md`.
 
 ---
 
 ## Write frontmatter
 
 Each `SKILL.md` must start with YAML frontmatter.
-Only these fields are recognized:
+Commonly recognized fields:
 
 - `name` (required)
 - `description` (required)
-- `license` (optional)
-- `compatibility` (optional)
-- `metadata` (optional, string-to-string map)
+- `requires` (optional)
+- `primaryEnv` (optional)
+- `tags` (optional)
+- `triggers` (optional)
+- `version` (optional)
+- `author` (optional)
+- `category` (optional)
+- `source` (optional)
+- `homepage` (optional)
+- `metadata` (optional)
 
 Unknown frontmatter fields are ignored.
 
@@ -71,7 +80,7 @@ Keep it specific enough for the agent to choose correctly.
 
 ## Use an example
 
-Create `.zee/skills/git-release/SKILL.md` like this:
+Create `.agents/skills/git-release/SKILL.md` like this:
 
 ```markdown
 ---
@@ -97,6 +106,18 @@ Ask clarifying questions if the target versioning scheme is unclear.
 ```
 
 ---
+
+## Skill Recommendation API
+
+The skills API exposes:
+
+- `GET /v1/skills/index` for full skill index + readiness metadata
+- `POST /v1/skills/recommend` for ranked recommendations from a query
+
+Readiness includes:
+
+- permission status (`allow` / `ask` / `deny`)
+- environment readiness (`ready` / `partial` / `missing` / `not-required`)
 
 ## Recognize tool description
 

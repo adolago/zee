@@ -84,8 +84,8 @@ const BrowserParams = z.object({
   ]).describe("Browser action to perform"),
   
   // Profile selection
-  profile: z.string().default("zee")
-    .describe("Browser profile name. Defaults to the session's persona profile if available. Built-in: 'zee', 'chrome'"),
+  profile: z.string().optional()
+    .describe("Optional browser profile name. If omitted, the browser server uses its own default profile. Built-in: 'zee', 'chrome'"),
 
   // Persona context (auto-selects the persona's dedicated browser profile)
   persona: z.enum(["zee"]).optional()
@@ -177,10 +177,11 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
 - { action: "type", ref: "e5", text: "hello", submit: true }`,
     parameters: BrowserParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { action, persona } = args;
+      const { action, persona, profile: requestedProfile } = args;
       // Resolve persona to its dedicated profile, or use explicit profile
       const PERSONA_PROFILES: Record<string, string> = { zee: "zee" };
-      const profile = persona && PERSONA_PROFILES[persona] ? PERSONA_PROFILES[persona] : args.profile;
+      const profile = persona && PERSONA_PROFILES[persona] ? PERSONA_PROFILES[persona] : requestedProfile;
+      const profileQuery = profile ? { profile } : undefined;
 
       ctx.metadata({ title: `Browser: ${action}` });
 
@@ -190,7 +191,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
         switch (action) {
           // Status and control
           case "status":
-            result = await browserApi("GET", "/", undefined, { profile });
+            result = await browserApi("GET", "/", undefined, profileQuery);
             return {
               title: "Browser Status",
               metadata: { profile, ...(result as Record<string, unknown>) },
@@ -198,7 +199,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             };
 
           case "start":
-            result = await browserApi("POST", "/start", undefined, { profile });
+            result = await browserApi("POST", "/start", undefined, profileQuery);
             return {
               title: "Browser Started",
               metadata: { profile, ...(result as Record<string, unknown>) },
@@ -206,7 +207,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             };
 
           case "stop":
-            result = await browserApi("POST", "/stop", undefined, { profile });
+            result = await browserApi("POST", "/stop", undefined, profileQuery);
             return {
               title: "Browser Stopped",
               metadata: { profile, ...(result as Record<string, unknown>) },
@@ -223,7 +224,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
 
           // Tab management
           case "tabs":
-            result = await browserApi("GET", "/tabs", undefined, { profile });
+            result = await browserApi("GET", "/tabs", undefined, profileQuery);
             return {
               title: "Browser Tabs",
               metadata: { profile, ...(result as Record<string, unknown>) },
@@ -238,7 +239,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
                 output: "The 'open' action requires a 'url' parameter",
               };
             }
-            result = await browserApi("POST", "/tabs/open", { url: args.url }, { profile });
+            result = await browserApi("POST", "/tabs/open", { url: args.url }, profileQuery);
             return {
               title: "Tab Opened",
               metadata: { profile, url: args.url, ...(result as Record<string, unknown>) },
@@ -254,7 +255,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
                 output: "The 'close' action requires a 'targetId' parameter",
               };
             }
-            result = await browserApi("DELETE", `/tabs/${args.targetId}`, undefined, { profile });
+            result = await browserApi("DELETE", `/tabs/${args.targetId}`, undefined, profileQuery);
             return {
               title: "Tab Closed",
               metadata: { profile, targetId: args.targetId },
@@ -270,7 +271,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
                 output: "The 'focus' action requires a 'targetId' parameter",
               };
             }
-            result = await browserApi("POST", "/tabs/focus", { targetId: args.targetId }, { profile });
+            result = await browserApi("POST", "/tabs/focus", { targetId: args.targetId }, profileQuery);
             return {
               title: "Tab Focused",
               metadata: { profile, targetId: args.targetId },
@@ -286,7 +287,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
             };
             if (args.maxChars) snapshotBody.maxChars = args.maxChars;
             
-            result = await browserApi("POST", "/snapshot", snapshotBody, { profile });
+            result = await browserApi("POST", "/snapshot", snapshotBody, profileQuery);
             return {
               title: "Page Snapshot",
               metadata: { profile, format: args.format },
@@ -308,7 +309,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
               targetId: args.targetId,
               doubleClick: args.doubleClick,
               button: args.button,
-            }, { profile });
+              }, profileQuery);
             return {
               title: "Element Clicked",
               metadata: { profile, ref: args.ref },
@@ -331,7 +332,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
               targetId: args.targetId,
               submit: args.submit,
               slowly: args.slowly,
-            }, { profile });
+            }, profileQuery);
             return {
               title: "Text Typed",
               metadata: { profile, ref: args.ref },
@@ -351,7 +352,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
               kind: "press",
               key: args.key,
               targetId: args.targetId,
-            }, { profile });
+            }, profileQuery);
             return {
               title: "Key Pressed",
               metadata: { profile, key: args.key },
@@ -371,7 +372,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
               kind: "navigate",
               url: args.url,
               targetId: args.targetId,
-            }, { profile });
+            }, profileQuery);
             return {
               title: "Navigated",
               metadata: { profile, url: args.url },
@@ -384,7 +385,7 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
               targetId: args.targetId,
               fullPage: args.fullPage,
             };
-            result = await browserApi("POST", "/screenshot", screenshotBody, { profile });
+            result = await browserApi("POST", "/screenshot", screenshotBody, profileQuery);
             return {
               title: "Screenshot Taken",
               metadata: { profile, fullPage: args.fullPage, ...(result as Record<string, unknown>) },

@@ -57,6 +57,15 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
 
         const output = [`## Skill: ${skill.name}`, "", `**Base directory**: ${dir}`, "", content.trim()].join("\n")
 
+        const userQuery = extractLatestUserText(ctx.messages)
+        if (userQuery) {
+          await Skill.recordUsage({
+            query: userQuery,
+            skill: skill.name,
+            outcome: "success",
+          }).catch(() => {})
+        }
+
         return {
           title: `Loaded skill: ${skill.name}`,
           output,
@@ -124,11 +133,16 @@ function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
     "Skills by persona:",
   ]
 
+  const summarize = (skill: Skill.AnnotatedInfo) => {
+    const desc = skill.description.length > 80 ? skill.description.slice(0, 77) + "..." : skill.description
+    return `${skill.name} (${desc})`
+  }
+
   if (own.length > 0) {
-    lines.push(`  yours: ${own.map((s) => s.name).join(", ")}`)
+    lines.push(`  yours: ${own.map((s) => summarize(s)).join("; ")}`)
   }
   if (shared.length > 0) {
-    lines.push(`  shared: ${shared.map((s) => s.name).join(", ")}`)
+    lines.push(`  shared: ${shared.map((s) => summarize(s)).join("; ")}`)
   }
   if (cross.length > 0) {
     // Group cross-persona skills by context
@@ -136,12 +150,32 @@ function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
     for (const s of cross) {
       const ctx = s.context ?? "other"
       if (!byContext.has(ctx)) byContext.set(ctx, [])
-      byContext.get(ctx)!.push(s.name)
+      byContext.get(ctx)!.push(summarize(s))
     }
     for (const [persona, names] of byContext) {
-      lines.push(`  @${persona}: ${names.join(", ")}`)
+      lines.push(`  @${persona}: ${names.join("; ")}`)
     }
   }
 
   return lines.join("\n")
+}
+
+function extractLatestUserText(messages: unknown): string {
+  if (!Array.isArray(messages)) return ""
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i] as any
+    if (msg?.info?.role !== "user" || !Array.isArray(msg?.parts)) continue
+
+    const text = msg.parts
+      .filter((part: any) => part?.type === "text" && typeof part?.text === "string")
+      .map((part: any) => part.text.trim())
+      .filter(Boolean)
+      .join("\n")
+      .trim()
+
+    if (text) return text
+  }
+
+  return ""
 }
