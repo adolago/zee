@@ -26,6 +26,7 @@ import { setGatewayHealthState } from "../../gateway/supervisor-state"
 import { startTailscaleExposure, type TailscaleMode } from "../../pkg/tailscale"
 import { printGatewayStatus } from "./gateway/status"
 import { createAuthorizedFetch } from "../../server/auth"
+import { parseDaemonCommandLineArgs } from "./daemon-cmdline"
 
 const log = Log.create({ service: "daemon" })
 const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
@@ -111,11 +112,6 @@ export namespace Daemon {
     }
   }
 
-  function parseCmdlineArgs(cmdline: string): string[] {
-    const raw = cmdline.includes("\0") ? cmdline.split("\0") : cmdline.trim().split(/\s+/)
-    return raw.filter(Boolean)
-  }
-
   const DAEMON_BASENAMES = new Set(["zee"])
 
   function isZeeDaemonArgs(args: string[]): boolean {
@@ -144,12 +140,12 @@ export namespace Daemon {
 
   async function isZeeDaemonProcess(pid: number): Promise<boolean> {
     const procCmdline = await readProcessCmdline(pid)
-    if (procCmdline) return isZeeDaemonArgs(parseCmdlineArgs(procCmdline))
+    if (procCmdline) return isZeeDaemonArgs(parseDaemonCommandLineArgs(procCmdline))
     try {
       const psOutput = execSync(`ps -p ${pid} -o command=`, {
         stdio: ["ignore", "pipe", "ignore"],
       }).toString()
-      return isZeeDaemonArgs(parseCmdlineArgs(psOutput))
+      return isZeeDaemonArgs(parseDaemonCommandLineArgs(psOutput))
     } catch {
       return false
     }

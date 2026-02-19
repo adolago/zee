@@ -60,6 +60,16 @@ export interface ForwardedMessage {
 }
 
 /**
+ * Normalize actual newline characters to LF while preserving literal `\n`.
+ *
+ * Windows paths like `C:\Work\nxxx\README.md` contain backslash+n and must not
+ * be rewritten into real line breaks.
+ */
+export function normalizeInboundTextNewlines(input: string): string {
+  return input.replaceAll("\r\n", "\n").replaceAll("\r", "\n")
+}
+
+/**
  * Convert a forwarded message from meta-cli into a PlatformMessage.
  */
 export function toPlatformMessage(fwd: ForwardedMessage): PlatformMessage {
@@ -73,7 +83,7 @@ export function toPlatformMessage(fwd: ForwardedMessage): PlatformMessage {
     id: fwd.id,
     senderId: fwd.senderId,
     senderName: fwd.senderName,
-    body: fwd.body,
+    body: normalizeInboundTextNewlines(fwd.body),
     timestamp: fwd.timestamp,
     media: media?.length ? media : undefined,
     isGroup: fwd.isGroup,
