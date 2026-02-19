@@ -37,7 +37,7 @@ const DAEMON_PROBE_TIMEOUT_MS = 2000
 
 async function probeDaemonEndpoint(url: string): Promise<Response> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), DAEMON_PROBE_TIMEOUT_MS)
+  const timeout = setTimeout(controller.abort.bind(controller), DAEMON_PROBE_TIMEOUT_MS)
   try {
     const authorizedFetch = createAuthorizedFetch(fetch)
     return await authorizedFetch(url, { signal: controller.signal })
