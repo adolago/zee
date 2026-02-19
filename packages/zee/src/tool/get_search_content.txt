@@ -1,0 +1,8 @@
+- Retrieve full stored content from a previous `fetch_content` call
+- Select by `responseId`, optionally narrowing by `url` or `urlIndex`
+- Use this when `fetch_content` response summaries are not enough and you need the full extracted text
+
+Usage notes:
+  - `responseId` is required
+  - At most one selector may be used: `url` or `urlIndex`
+  - Retrieval is session-scoped: only content stored in the current session is available

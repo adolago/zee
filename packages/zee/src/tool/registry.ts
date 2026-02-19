@@ -28,6 +28,8 @@ import { Truncate } from "./truncation"
 import { HoldReleaseTool, HoldEnterTool } from "./plan"
 import { ApplyPatchTool } from "./apply_patch"
 import { ListSessionsTool, SendToSessionTool } from "./session-control"
+import { FetchContentTool } from "./fetch_content"
+import { GetSearchContentTool } from "./get_search_content"
 
 export namespace ToolRegistry {
   const log = Log.create({ service: "tool.registry" })
@@ -110,7 +112,9 @@ export namespace ToolRegistry {
       WriteTool,
       ApplyPatchTool,
       TaskTool,
+      FetchContentTool,
       WebFetchTool,
+      GetSearchContentTool,
       TodoWriteTool,
       TodoReadTool,
       ListSessionsTool,

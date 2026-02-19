@@ -1,0 +1,11 @@
+- Fetch content from URL(s) and store full extracted text in session cache
+- Supports regular web pages, GitHub URLs, and PDF URLs
+- Returns a `responseId` for retrieving full content later
+- Use this when you need normalized extraction across multiple sources and want retrieval by ID
+
+Usage notes:
+  - Provide either `url` (single) or `urls` (multiple), not both
+  - Inputs currently support only http/https URLs
+  - GitHub extraction in this MVP is API-backed (summary + file/directory reads), not full clone mode
+  - PDF extraction is best-effort via reader fallback; some PDFs may return limited text
+  - Full content is stored per session; use `get_search_content` with `responseId` to retrieve
