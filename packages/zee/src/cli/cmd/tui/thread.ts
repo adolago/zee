@@ -106,7 +106,7 @@ function watchInteractiveTerminal(onDetached: (reason: string) => void): () => v
 
 async function checkLegacyDaemonLiveness(url: string): Promise<boolean> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), DAEMON_LIVE_TIMEOUT_MS)
+  const timeout = setTimeout(controller.abort.bind(controller), DAEMON_LIVE_TIMEOUT_MS)
   try {
     const authorizedFetch = createAuthorizedFetch(fetch)
     const response = await authorizedFetch(`${url}${DAEMON_HEALTH_PATH}`, { signal: controller.signal })
@@ -120,7 +120,7 @@ async function checkLegacyDaemonLiveness(url: string): Promise<boolean> {
 
 async function checkDaemonLiveness(url: string): Promise<boolean> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), DAEMON_LIVE_TIMEOUT_MS)
+  const timeout = setTimeout(controller.abort.bind(controller), DAEMON_LIVE_TIMEOUT_MS)
   try {
     const authorizedFetch = createAuthorizedFetch(fetch)
     const response = await authorizedFetch(`${url}${DAEMON_LIVE_PATH}`, {
