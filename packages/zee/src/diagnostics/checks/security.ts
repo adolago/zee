@@ -4,11 +4,12 @@
  */
 
 import * as fs from "node:fs/promises"
+import * as os from "node:os"
 import * as path from "node:path"
 import type { CheckOptions, CheckResult } from "../types"
 import { Config } from "../../config/config"
 import { reloadFlags, Flag } from "../../flag/flag"
-import { resolveConfigDir, resolveStateDir } from "../../global/dirs"
+import { resolveConfigDir, resolveDataDir, resolveStateDir } from "../../global/dirs"
 import { AuthScope, getAuthConfig, isLoopbackHostname } from "../../server/auth"
 import { Skill } from "../../skill"
 import { scanDirectoryWithSummary } from "../../skill/scanner"
@@ -80,7 +81,7 @@ async function resolveConfiguredHostname(): Promise<{
     return { hostname: configured, mdnsEnabled, source: "config" }
   }
 
-  const hostname = mdnsEnabled ? "0.0.0.0" : "127.0.0.1"
+  const hostname = "127.0.0.1"
   return { hostname, mdnsEnabled, source: "default" }
 }
 
@@ -639,6 +640,141 @@ async function checkGatewayTokenFilePerms(): Promise<CheckResult> {
   }
 }
 
+type CredentialTarget = {
+  label: string
+  filePath: string
+}
+
+function resolveCredentialTargets(): CredentialTarget[] {
+  const home = process.env.ZEE_TEST_HOME || os.homedir()
+  const dataDir = resolveDataDir()
+
+  return [
+    {
+      label: "Auth profile store",
+      filePath: path.resolve(path.join(dataDir, "auth.json")),
+    },
+    {
+      label: "MCP auth store",
+      filePath: path.resolve(path.join(dataDir, "mcp-auth.json")),
+    },
+    {
+      label: "Kimi credentials",
+      filePath: path.resolve(path.join(home, ".kimi", "credentials", "kimi-code.json")),
+    },
+  ]
+}
+
+async function checkCredentialFilesPerms(): Promise<CheckResult> {
+  const start = Date.now()
+  const targets = resolveCredentialTargets()
+  const issues: string[] = []
+  const checked: Array<{ label: string; path: string; mode?: string }> = []
+  const fixTargets = new Set<string>()
+  const uid = typeof process.getuid === "function" ? process.getuid() : undefined
+  let existing = 0
+
+  for (const target of targets) {
+    const lst = await safeLstat(target.filePath)
+    if (!lst.ok) continue
+    existing += 1
+
+    if (lst.stat.isSymbolicLink()) {
+      issues.push(`${target.label}: ${target.filePath}: symlink`)
+      checked.push({ label: target.label, path: target.filePath })
+      continue
+    }
+
+    if (!lst.stat.isFile()) {
+      issues.push(`${target.label}: ${target.filePath}: not a file`)
+      checked.push({ label: target.label, path: target.filePath })
+      continue
+    }
+
+    if (!isPosix()) {
+      checked.push({ label: target.label, path: target.filePath })
+      continue
+    }
+
+    const perms = lst.stat.mode & 0o777
+    checked.push({ label: target.label, path: target.filePath, mode: octal(perms) })
+
+    if (uid !== undefined && lst.stat.uid !== uid) {
+      issues.push(`${target.label}: ${target.filePath}: not owned by current user`)
+    }
+    if (!isSafeTokenMode(lst.stat.mode)) {
+      issues.push(`${target.label}: ${target.filePath}: mode ${octal(perms)} (expected 0600)`)
+      fixTargets.add(target.filePath)
+    }
+  }
+
+  if (existing === 0) {
+    return {
+      id: "security.fs.credential_files.perms",
+      name: "Credential files",
+      category: "security",
+      status: "skip",
+      message: "No credential files found",
+      severity: "info",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: { targets: targets.map((target) => target.filePath) },
+    }
+  }
+
+  if (!isPosix()) {
+    return {
+      id: "security.fs.credential_files.perms",
+      name: "Credential files",
+      category: "security",
+      status: issues.length > 0 ? "warn" : "pass",
+      message: issues.length > 0 ? "Credential file paths have safety risks" : "Credential files exist",
+      ...(issues.length > 0 ? { details: issues.join("\n") } : {}),
+      severity: issues.length > 0 ? "warning" : "info",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: { checked },
+    }
+  }
+
+  if (issues.length === 0) {
+    return {
+      id: "security.fs.credential_files.perms",
+      name: "Credential files",
+      category: "security",
+      status: "pass",
+      message: "Credential file permissions look safe",
+      severity: "info",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: { checked },
+    }
+  }
+
+  return {
+    id: "security.fs.credential_files.perms",
+    name: "Credential files",
+    category: "security",
+    status: "warn",
+    message: "Credential file permission risks detected",
+    details: issues.join("\n"),
+    severity: "warning",
+    durationMs: Date.now() - start,
+    autoFixable: fixTargets.size > 0,
+    ...(fixTargets.size > 0
+      ? {
+          fix: async () => {
+            for (const filePath of fixTargets) {
+              await fs.chmod(filePath, 0o600)
+            }
+            return { success: true, message: `Set ${fixTargets.size} credential file(s) to 0600` }
+          },
+        }
+      : {}),
+    metadata: { checked },
+  }
+}
+
 async function resolveSkillDirectoriesSafe(): Promise<string[]> {
   try {
     return await Skill.directories()
@@ -818,6 +954,7 @@ export async function runSecurityChecks(options: CheckOptions): Promise<CheckRes
   results.push(await checkConfigFileSymlink())
   results.push(await checkConfigFilePerms())
   results.push(await checkGatewayTokenFilePerms())
+  results.push(await checkCredentialFilesPerms())
   results.push(await checkSkillDirectoriesPerms())
 
   if (options.full) {

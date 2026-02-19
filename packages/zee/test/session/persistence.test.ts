@@ -139,4 +139,55 @@ describe("Persistence", () => {
       })
     })
   })
+
+  describe("session context persistence", () => {
+    test("serializes concurrent context writes without dropping entries", async () => {
+      await Instance.provide({
+        directory: testDir.path,
+        fn: async () => {
+          const contextPath = path.join(process.env.XDG_STATE_HOME!, "zee", "persistence", "session-contexts.json")
+          await fs.rm(contextPath, { force: true }).catch(() => {})
+
+          await Promise.all([
+            Persistence.setSessionContext("session-a", { timestamp: 1, memories: ["a"] }),
+            Persistence.setSessionContext("session-b", { timestamp: 2, memories: ["b"] }),
+            Persistence.setSessionContext("session-c", { timestamp: 3, memories: ["c"] }),
+            Persistence.setSessionContext("session-d", { timestamp: 4, memories: ["d"] }),
+          ])
+
+          const [a, b, c, d] = await Promise.all([
+            Persistence.getSessionContext("session-a"),
+            Persistence.getSessionContext("session-b"),
+            Persistence.getSessionContext("session-c"),
+            Persistence.getSessionContext("session-d"),
+          ])
+
+          expect(a?.memories).toEqual(["a"])
+          expect(b?.memories).toEqual(["b"])
+          expect(c?.memories).toEqual(["c"])
+          expect(d?.memories).toEqual(["d"])
+        },
+      })
+    })
+
+    test("clear removes only the target context key", async () => {
+      await Instance.provide({
+        directory: testDir.path,
+        fn: async () => {
+          const contextPath = path.join(process.env.XDG_STATE_HOME!, "zee", "persistence", "session-contexts.json")
+          await fs.rm(contextPath, { force: true }).catch(() => {})
+
+          await Persistence.setSessionContext("session-a", { timestamp: 1, memories: ["a"] })
+          await Persistence.setSessionContext("session-b", { timestamp: 2, memories: ["b"] })
+          await Persistence.setSessionContext("session-c", { timestamp: 3, memories: ["c"] })
+
+          await Persistence.clearSessionContext("session-b")
+
+          expect(await Persistence.getSessionContext("session-a")).not.toBeNull()
+          expect(await Persistence.getSessionContext("session-b")).toBeNull()
+          expect(await Persistence.getSessionContext("session-c")).not.toBeNull()
+        },
+      })
+    })
+  })
 })

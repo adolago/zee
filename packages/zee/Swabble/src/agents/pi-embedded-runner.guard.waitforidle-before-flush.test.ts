@@ -58,7 +58,8 @@ describe("flushPendingToolResultsAfterIdle", () => {
       timeoutMs: 30,
     });
 
-    await vi.advanceTimersByTimeAsync(30);
+    vi.advanceTimersByTime(30);
+    await Promise.resolve();
     await flushPromise;
 
     expect(sessionManager.flushed).toBe(1);

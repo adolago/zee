@@ -35,6 +35,11 @@ import {
   isLoopbackHostname,
   resolveRequiredScope,
 } from "./auth"
+import {
+  createAuthRateLimiter,
+  resolveAuthRateLimitConfigFromEnv,
+  type AuthRateLimiter,
+} from "./auth-rate-limit"
 
 // Routes
 import { ProjectRoute } from "./route/project"
@@ -98,6 +103,8 @@ export namespace Server {
 
   let _corsWhitelist: string[] = []
   let _isLoopbackBind = true
+  let _authRateLimiter: AuthRateLimiter | undefined
+  let _authRateLimiterConfigKey: string | undefined
 
   /**
    * Reset in-memory server state. This is mainly used by tests to avoid cross-test leakage.
@@ -105,7 +112,21 @@ export namespace Server {
   export function reset() {
     _corsWhitelist = []
     _isLoopbackBind = true
+    _authRateLimiter?.dispose()
+    _authRateLimiter = undefined
+    _authRateLimiterConfigKey = undefined
     App.reset()
+  }
+
+  function resolveAuthRateLimiter(): AuthRateLimiter | undefined {
+    const config = resolveAuthRateLimitConfigFromEnv()
+    const key = JSON.stringify(config ?? null)
+    if (key !== _authRateLimiterConfigKey) {
+      _authRateLimiter?.dispose()
+      _authRateLimiter = config ? createAuthRateLimiter(config) : undefined
+      _authRateLimiterConfigKey = key
+    }
+    return _authRateLimiter
   }
 
   function parseCommaList(value?: string): string[] {
@@ -222,8 +243,25 @@ export namespace Server {
             const path = c.req.path
             const required = resolveRequiredScope(method, path)
             const authHeader = c.req.header("Authorization")
+            const authRateLimiter = resolveAuthRateLimiter()
+            const rateLimit = authRateLimiter?.check(ip)
+
+            if (rateLimit && !rateLimit.allowed) {
+              log.warn("auth rate limited", {
+                status: 429,
+                ip,
+                method,
+                path,
+                retryAfterMs: rateLimit.retryAfterMs,
+              })
+              if (rateLimit.retryAfterMs > 0) {
+                c.header("Retry-After", String(Math.ceil(rateLimit.retryAfterMs / 1000)))
+              }
+              return c.text("Too Many Requests", 429)
+            }
 
             if (!isAuthorized(authHeader)) {
+              authRateLimiter?.recordFailure(ip)
               log.warn("auth denied", {
                 status: 401,
                 ip,
@@ -234,6 +272,8 @@ export namespace Server {
               c.header("WWW-Authenticate", 'Basic realm="zee"')
               return c.text("Unauthorized", 401)
             }
+
+            authRateLimiter?.reset(ip)
 
             const granted = authConfig.scopes ?? [AuthScope.ADMIN]
             if (!hasScope(granted, required)) {

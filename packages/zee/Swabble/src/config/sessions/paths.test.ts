@@ -35,4 +35,9 @@ describe("session path helpers", () => {
     const resolved = resolveSessionTranscriptPath("sess-1", "main");
     expect(resolved.endsWith(path.join("agents", "main", "sessions", "sess-1.jsonl"))).toBe(true);
   });
+
+  it("normalizes non-default agent ids for transcript paths", () => {
+    const resolved = resolveSessionTranscriptPath("sess-2", "  OPS ");
+    expect(resolved.endsWith(path.join("agents", "ops", "sessions", "sess-2.jsonl"))).toBe(true);
+  });
 });

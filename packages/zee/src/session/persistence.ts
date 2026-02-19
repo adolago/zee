@@ -795,31 +795,50 @@ export namespace Persistence {
     [sessionId: string]: SessionContext
   }
 
+  let sessionContextMutexPromise: Promise<void> = Promise.resolve()
+
+  async function withSessionContextMutex<T>(fn: () => T | Promise<T>): Promise<T> {
+    const currentMutex = sessionContextMutexPromise
+    let release: () => void
+    sessionContextMutexPromise = new Promise((resolve) => {
+      release = resolve
+    })
+    await currentMutex
+    try {
+      return await fn()
+    } finally {
+      release!()
+    }
+  }
+
+  async function readSessionContextStore(): Promise<SessionContextStore> {
+    try {
+      const content = await fs.readFile(SESSION_CONTEXT_FILE, "utf-8")
+      return JSON.parse(content) as SessionContextStore
+    } catch {
+      return {}
+    }
+  }
+
   /**
    * Set cross-session context for a session
    * Used by personas bootstrap to inject memories
    */
   export async function setSessionContext(sessionId: string, context: SessionContext): Promise<void> {
     await fs.mkdir(PERSISTENCE_DIR, { recursive: true })
+    await withSessionContextMutex(async () => {
+      let store = await readSessionContextStore()
+      store[sessionId] = context
 
-    let store: SessionContextStore = {}
-    try {
-      const content = await fs.readFile(SESSION_CONTEXT_FILE, "utf-8")
-      store = JSON.parse(content)
-    } catch {
-      // File doesn't exist yet
-    }
+      // Cleanup old contexts (keep last 100)
+      const entries = Object.entries(store)
+      if (entries.length > 100) {
+        entries.sort((a, b) => b[1].timestamp - a[1].timestamp)
+        store = Object.fromEntries(entries.slice(0, 100))
+      }
 
-    store[sessionId] = context
-
-    // Cleanup old contexts (keep last 100)
-    const entries = Object.entries(store)
-    if (entries.length > 100) {
-      entries.sort((a, b) => b[1].timestamp - a[1].timestamp)
-      store = Object.fromEntries(entries.slice(0, 100))
-    }
-
-    await fs.writeFile(SESSION_CONTEXT_FILE, JSON.stringify(store, null, 2))
+      await atomicWriteJSON(SESSION_CONTEXT_FILE, store)
+    })
   }
 
   /**
@@ -840,13 +859,11 @@ export namespace Persistence {
    * Clear session context after it's been used
    */
   export async function clearSessionContext(sessionId: string): Promise<void> {
-    try {
-      const content = await fs.readFile(SESSION_CONTEXT_FILE, "utf-8")
-      const store: SessionContextStore = JSON.parse(content)
+    await withSessionContextMutex(async () => {
+      const store = await readSessionContextStore()
+      if (!(sessionId in store)) return
       delete store[sessionId]
-      await fs.writeFile(SESSION_CONTEXT_FILE, JSON.stringify(store, null, 2))
-    } catch {
-      // Ignore if file doesn't exist
-    }
+      await atomicWriteJSON(SESSION_CONTEXT_FILE, store)
+    })
   }
 }

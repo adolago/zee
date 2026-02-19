@@ -15,7 +15,7 @@ const options = {
   },
   mdns: {
     type: "boolean" as const,
-    describe: "enable mDNS service discovery (defaults hostname to 0.0.0.0)",
+    describe: "enable mDNS service discovery",
     default: false,
   },
   "mdns-domain": {
@@ -51,15 +51,6 @@ export type ResolvedNetworkOptions = {
   cors: string[]
 }
 
-/**
- * Check if mDNS is enabled from either boolean or object config.
- */
-function isMdnsEnabled(mdns: MdnsConfig | undefined): boolean {
-  if (mdns === undefined) return false
-  if (typeof mdns === "boolean") return mdns
-  return mdns.enabled ?? true
-}
-
 function parseCorsEnv(value?: string): string[] {
   if (!value) return []
   return value
@@ -84,17 +75,12 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
   // mDNS config can be boolean (from CLI) or object (from config file)
   // If CLI flag is set, it overrides config; otherwise use config (preserving object form)
   const mdns: MdnsConfig = mdnsExplicitlySet ? args.mdns : (config?.server?.mdns ?? args.mdns)
-  const mdnsEnabled = isMdnsEnabled(mdns)
   const mdnsDomain = mdnsDomainExplicitlySet
     ? (args["mdns-domain"] as string)
     : ((config?.server?.mdnsDomain as string | undefined) ?? (args["mdns-domain"] as string))
 
   const port = portExplicitlySet ? args.port : (config?.server?.port ?? args.port)
-  const hostname = hostnameExplicitlySet
-    ? args.hostname
-    : mdnsEnabled && !config?.server?.hostname
-      ? "0.0.0.0"
-      : (config?.server?.hostname ?? args.hostname)
+  const hostname = hostnameExplicitlySet ? args.hostname : (config?.server?.hostname ?? args.hostname)
   const configCors = config?.server?.cors ?? []
   const envCors = [
     ...parseCorsEnv(process.env["ZEE_CORS_ALLOWLIST"]),

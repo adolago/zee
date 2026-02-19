@@ -42,6 +42,28 @@ export namespace SessionProcessor {
     return input.isReasoningModel ? REASONING_LLM_STREAM_START_TIMEOUT_MS : DEFAULT_LLM_STREAM_START_TIMEOUT_MS
   }
 
+  export function mergeStreamText(existing: string, incoming: string): string {
+    if (!incoming) return existing
+    if (!existing) return incoming
+    if (incoming === existing) return existing
+
+    // Some providers emit cumulative text snapshots instead of strict deltas.
+    if (incoming.startsWith(existing)) return incoming
+    // Preserve streamed text when a terminal payload regresses to a shorter value.
+    if (existing.startsWith(incoming)) return existing
+    if (existing.endsWith(incoming)) return existing
+
+    // Stitch overlapping chunks to avoid duplicate segments.
+    const maxOverlap = Math.min(existing.length, incoming.length)
+    for (let size = maxOverlap; size > 0; size--) {
+      if (existing.slice(-size) === incoming.slice(0, size)) {
+        return existing + incoming.slice(size)
+      }
+    }
+
+    return existing + incoming
+  }
+
   export function create(input: {
     assistantMessage: MessageV2.Assistant
     sessionID: string
@@ -287,7 +309,7 @@ export namespace SessionProcessor {
                         const part = reasoningMap[value.id]
                         const delta = getDelta(value)
                         if (!delta) break
-                        part.text += delta
+                        part.text = mergeStreamText(part.text, delta)
                         if (value.providerMetadata) part.metadata = value.providerMetadata
                         if (part.text) await Session.updatePart({ part, delta })
                       }
@@ -588,7 +610,7 @@ export namespace SessionProcessor {
                       const delta = getDelta(value)
                       if (!delta) break
                       const part = ensureTextPart(value.providerMetadata)
-                      part.text += delta
+                      part.text = mergeStreamText(part.text, delta)
                       if (value.providerMetadata) part.metadata = value.providerMetadata
                       if (part.text)
                         await Session.updatePart({
@@ -599,6 +621,10 @@ export namespace SessionProcessor {
                     }
 
                     case "text-end":
+                      if (typeof (value as { text?: unknown }).text === "string") {
+                        const part = ensureTextPart(value.providerMetadata)
+                        part.text = mergeStreamText(part.text, (value as { text: string }).text)
+                      }
                       await finalizeTextPart(value.providerMetadata)
                       break
 

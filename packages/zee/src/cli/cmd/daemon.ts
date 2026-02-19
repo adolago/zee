@@ -8,6 +8,7 @@ import { Instance } from "../../project/instance"
 import { execSync } from "child_process"
 import { startAlwaysOnProcess } from "./always-on"
 import { runRuntimeProcessMaintenance } from "./runtime-process-guard"
+import { createRestartIterationHook } from "./restart-recovery"
 import fs from "fs/promises"
 import path from "path"
 import net from "net"
@@ -347,6 +348,25 @@ export namespace GatewaySupervisor {
   const RETRY_BASE_MS = 1000
   const RETRY_MAX_MS = 30000
   const HEALTH_CHECK_INTERVAL_MS = 60_000
+  const createGatewayStartIterationHook = () =>
+    createRestartIterationHook(async () => {
+      const report = await runRuntimeProcessMaintenance({
+        reason: "gateway-restart-iteration",
+      })
+
+      if (report.kills.length === 0) return
+
+      const byReason = report.kills.reduce<Record<string, number>>((acc, kill) => {
+        acc[kill.reason] = (acc[kill.reason] ?? 0) + 1
+        return acc
+      }, {})
+
+      log.warn("gateway restart recovery cleaned stale runtime process(es)", {
+        total: report.kills.length,
+        reasons: byReason,
+      })
+    })
+  let onGatewayStartIteration = createGatewayStartIterationHook()
 
   export interface GatewayPreflight {
     ok: boolean
@@ -563,6 +583,14 @@ export namespace GatewaySupervisor {
     }
     if (startInFlight) return false
 
+    try {
+      await onGatewayStartIteration()
+    } catch (error) {
+      log.warn("gateway restart recovery failed", {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+
     clearRetryTimer()
 
     gatewayEnabled = true
@@ -616,6 +644,7 @@ export namespace GatewaySupervisor {
     isShuttingDown = true
     gatewayEnabled = false
     forceStart = false
+    onGatewayStartIteration = createGatewayStartIterationHook()
     clearRetryTimer()
     stopHealthCheck()
     await stopEmbeddedGateway({ reason: "gateway stopping" })

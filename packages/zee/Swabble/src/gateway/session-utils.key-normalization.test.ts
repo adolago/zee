@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  store: {} as Record<string, unknown>,
-}));
+let mockStore: Record<string, unknown> = {};
 
 vi.mock("../agents/agent-scope.js", () => ({
   resolveAgentWorkspaceDir: () => "/tmp/ops",
@@ -70,7 +68,7 @@ vi.mock("../config/sessions.js", () => ({
     }
     return lowered;
   },
-  loadSessionStore: () => mocks.store,
+  loadSessionStore: () => mockStore,
   resolveMainSessionKey: (cfg: { session?: { mainKey?: string } }) =>
     `agent:ops:${(cfg.session?.mainKey ?? "main").toLowerCase()}`,
   resolveStorePath: (store?: string, opts?: { agentId?: string }) => {
@@ -112,7 +110,7 @@ describe("session key normalization", () => {
   });
 
   it("includes legacy mixed-case keys in gateway target", () => {
-    mocks.store = {
+    mockStore = {
       "agent:ops:MySession": { sessionId: "s1", updatedAt: 1 },
       "agent:ops:mysession": { sessionId: "s2", updatedAt: 2 },
     };
