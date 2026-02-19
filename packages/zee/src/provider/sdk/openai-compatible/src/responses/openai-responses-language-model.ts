@@ -136,6 +136,27 @@ const LOGPROBS_SCHEMA = z.array(
   }),
 )
 
+export const CRITICAL_INCOMPLETE_RESPONSE_REASONS = ["server_error", "interruption", "cancelled", "turn_limit"] as const
+
+export function isCriticalIncompleteResponseReason(reason: string | null | undefined): boolean {
+  return reason != null && (CRITICAL_INCOMPLETE_RESPONSE_REASONS as readonly string[]).includes(reason)
+}
+
+export function shouldEmitTerminalResponseError(input: {
+  responseStatus: string | null | undefined
+  incompleteReason: string | null | undefined
+}): boolean {
+  if (input.responseStatus === "failed") {
+    return true
+  }
+
+  if (input.responseStatus !== "incomplete") {
+    return false
+  }
+
+  return isCriticalIncompleteResponseReason(input.incompleteReason)
+}
+
 export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
   readonly specificationVersion = "v2"
 
@@ -1301,7 +1322,9 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
                 })
               }
             } else if (isResponseFinishedChunk(value)) {
-              const responseStatus = (value.response as unknown as { status?: unknown }).status
+              const chunkStatus = value.type === "response.incomplete" ? "incomplete" : "completed"
+              const rawStatus = (value.response as unknown as { status?: unknown }).status
+              const responseStatus = typeof rawStatus === "string" ? rawStatus : chunkStatus
               const incompleteReason = value.response.incomplete_details?.reason
               debugLog("response finished event", {
                 type: value.type,
@@ -1311,27 +1334,14 @@ export class OpenAIResponsesLanguageModel implements LanguageModelV2 {
                 chunkCount,
               })
 
-              // Surface errors when response status indicates incomplete or failed
-              // GPT-5.2/kimi-k2-thinking: These models can terminate mid-stream with status=incomplete
-              if (responseStatus === "incomplete" || responseStatus === "failed") {
+              // Surface terminal errors when response status indicates failure or
+              // when incomplete reason is critical (e.g. interruption/cancelled).
+              if (shouldEmitTerminalResponseError({ responseStatus, incompleteReason })) {
                 const reason = incompleteReason || responseStatus
                 console.warn(`[openai] Response ${responseStatus}: ${reason}`)
                 controller.enqueue({
                   type: "error",
                   error: new Error(`Response ${responseStatus}: ${reason}`),
-                })
-              }
-
-              // Surface critical incomplete errors to user instead of silently failing
-              // Critical errors: server_error, interruption, cancelled, turn_limit
-              // Non-critical: max_output_tokens, content_filter (handled by finishReason)
-              if (
-                incompleteReason &&
-                ["server_error", "interruption", "cancelled", "turn_limit"].includes(incompleteReason)
-              ) {
-                controller.enqueue({
-                  type: "error",
-                  error: new Error(`Response incomplete: ${incompleteReason}`),
                 })
               }
 

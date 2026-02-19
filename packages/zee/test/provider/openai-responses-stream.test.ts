@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test"
+import {
+  CRITICAL_INCOMPLETE_RESPONSE_REASONS,
+  shouldEmitTerminalResponseError,
+} from "../../src/provider/sdk/openai-compatible/src/responses/openai-responses-language-model"
 
 /**
  * Tests for OpenAI Responses stream edge case handling.
@@ -193,15 +197,42 @@ describe("OpenAI Responses stream finish reason determination", () => {
 })
 
 describe("Incomplete response handling", () => {
-  const criticalReasons = ["server_error", "interruption", "cancelled", "turn_limit"]
+  const criticalReasons = [...CRITICAL_INCOMPLETE_RESPONSE_REASONS]
   const nonCriticalReasons = ["max_output_tokens", "content_filter"]
 
   test.each(criticalReasons)("critical reason '%s' should surface as error", (reason) => {
-    // In the actual implementation, these emit error events
-    expect(criticalReasons.includes(reason)).toBe(true)
+    expect(
+      shouldEmitTerminalResponseError({
+        responseStatus: "incomplete",
+        incompleteReason: reason,
+      }),
+    ).toBe(true)
   })
 
   test.each(nonCriticalReasons)("non-critical reason '%s' should not error", (reason) => {
-    expect(criticalReasons.includes(reason)).toBe(false)
+    expect(
+      shouldEmitTerminalResponseError({
+        responseStatus: "incomplete",
+        incompleteReason: reason,
+      }),
+    ).toBe(false)
+  })
+
+  test("failed response status should surface as error", () => {
+    expect(
+      shouldEmitTerminalResponseError({
+        responseStatus: "failed",
+        incompleteReason: undefined,
+      }),
+    ).toBe(true)
+  })
+
+  test("completed response status should not surface as error", () => {
+    expect(
+      shouldEmitTerminalResponseError({
+        responseStatus: "completed",
+        incompleteReason: "interruption",
+      }),
+    ).toBe(false)
   })
 })

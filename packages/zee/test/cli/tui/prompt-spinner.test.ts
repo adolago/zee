@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { promptSpinnerColumnFrame, promptSpinnerFrame } from "../../../src/cli/cmd/tui/ui/prompt-spinner"
 
-const expectedStackedFrames = ["⠋⠁⠁", "⠙⠂⠁", "⠹⠂⠂", "⠸⠄⠂", "⠼⡀⠄", "⠴⠠⡀", "⠦⠐⠠", "⠧⠈⠐", "⠇⠈⠈", "⠏⠁⠈"]
-const expectedColumnFrames = ["⠋⠁⠁", "⠙⠂⠁", "⠹⠂⠂", "⠸⠄⠂", "⠼⡀⠄", "⠴⠠⡀", "⠦⠐⠠", "⠧⠈⠐", "⠇⠈⠈", "⠏⠁⠈"]
+const expectedStackedFrames = ["⠋⠙⠹", "⠙⠹⠸", "⠹⠸⠼", "⠸⠼⠴", "⠼⠴⠦", "⠴⠦⠧", "⠦⠧⠇", "⠧⠇⠏", "⠇⠏⠋", "⠏⠋⠙"]
+const expectedColumnFrames = ["⠋⠙⠹", "⠙⠹⠸", "⠹⠸⠼", "⠸⠼⠴", "⠼⠴⠦", "⠴⠦⠧", "⠦⠧⠇", "⠧⠇⠏", "⠇⠏⠋", "⠏⠋⠙"]
 const expectedTicksPerFrameInCycle = [3, 2, 3, 2, 2, 3, 2, 3, 2, 2]
 const expectedCycleTicks = expectedTicksPerFrameInCycle.reduce((sum, ticks) => sum + ticks, 0)
 const expectedSingleCycleStackedFrames = expectedStackedFrames.flatMap((frame, i) =>
@@ -18,7 +18,7 @@ describe("promptSpinnerColumnFrame", () => {
     expect(promptSpinnerColumnFrame(999, false)).toBe("~")
   })
 
-  test("cycles through wider braille dot-cluster motion at 25% faster cadence", () => {
+  test("cycles through canonical 3-cell braille motion at 25% faster cadence", () => {
     const cycle = Array.from({ length: expectedCycleTicks }, (_, tick) => promptSpinnerColumnFrame(tick))
     expect(cycle).toEqual(expectedSingleCycleColumnFrames)
     const nextCycle = Array.from({ length: expectedCycleTicks }, (_, i) => promptSpinnerColumnFrame(i + expectedCycleTicks))
@@ -44,7 +44,7 @@ describe("promptSpinnerFrame", () => {
     expect(promptSpinnerFrame(999, false)).toBe("~")
   })
 
-  test("matches the wider braille dot-cluster cycle with faster cadence", () => {
+  test("matches the canonical 3-cell braille cycle with faster cadence", () => {
     const cycle = Array.from({ length: expectedCycleTicks }, (_, tick) => promptSpinnerFrame(tick))
     expect(cycle).toEqual(expectedSingleCycleStackedFrames)
   })

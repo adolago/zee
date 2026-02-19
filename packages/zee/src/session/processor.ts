@@ -27,11 +27,20 @@ import { SessionSteering } from "./steering"
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
   const DEFAULT_LLM_STREAM_START_TIMEOUT_MS = 30_000
+  const REASONING_LLM_STREAM_START_TIMEOUT_MS = 60_000
   const LLM_STREAM_START_TIMEOUT_BUFFER_MS = 250
   const log = Log.create({ service: "session.processor" })
 
   export type Info = Awaited<ReturnType<typeof create>>
   export type Result = Awaited<ReturnType<Info["process"]>>
+
+  export function resolveStreamStartTimeoutMs(input: { isReasoningModel: boolean }): number {
+    if (Flag.ZEE_LLM_STREAM_START_TIMEOUT_MS != null) {
+      return Flag.ZEE_LLM_STREAM_START_TIMEOUT_MS
+    }
+
+    return input.isReasoningModel ? REASONING_LLM_STREAM_START_TIMEOUT_MS : DEFAULT_LLM_STREAM_START_TIMEOUT_MS
+  }
 
   export function create(input: {
     assistantMessage: MessageV2.Assistant
@@ -185,11 +194,23 @@ export namespace SessionProcessor {
                 await Session.updatePart(currentReasoning)
                 currentReasoning = undefined
               }
-              const streamStartTimeoutMs = Flag.ZEE_LLM_STREAM_START_TIMEOUT_MS ?? DEFAULT_LLM_STREAM_START_TIMEOUT_MS
+              const streamStartTimeoutMs = resolveStreamStartTimeoutMs({
+                isReasoningModel: input.model.capabilities.reasoning,
+              })
               const streamStartController = new AbortController()
               const streamStartTimer = setTimeout(() => {
+                log.warn("llm stream start timeout", {
+                  sessionID: input.sessionID,
+                  messageID: input.assistantMessage.id,
+                  modelID: input.model.id,
+                  isReasoningModel: input.model.capabilities.reasoning,
+                  timeoutMs: streamStartTimeoutMs,
+                })
                 streamStartController.abort(
-                  new DOMException(`LLM stream did not start within ${streamStartTimeoutMs}ms`, "AbortError"),
+                  new DOMException(
+                    `LLM stream did not start within ${streamStartTimeoutMs}ms (model=${input.model.id}, reasoning=${input.model.capabilities.reasoning})`,
+                    "AbortError",
+                  ),
                 )
               }, streamStartTimeoutMs)
               const streamAbort = AbortSignal.any([

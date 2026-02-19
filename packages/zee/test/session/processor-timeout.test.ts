@@ -104,3 +104,29 @@ describe("SessionProcessor", () => {
     }
   })
 })
+
+describe("SessionProcessor stream start timeout resolution", () => {
+  test("uses model-aware defaults when env override is not set", async () => {
+    const previousTimeout = Flag.ZEE_LLM_STREAM_START_TIMEOUT_MS
+    ;(Flag as any).ZEE_LLM_STREAM_START_TIMEOUT_MS = undefined
+    try {
+      const { SessionProcessor } = await import("../../src/session/processor")
+      expect(SessionProcessor.resolveStreamStartTimeoutMs({ isReasoningModel: false })).toBe(30_000)
+      expect(SessionProcessor.resolveStreamStartTimeoutMs({ isReasoningModel: true })).toBe(60_000)
+    } finally {
+      ;(Flag as any).ZEE_LLM_STREAM_START_TIMEOUT_MS = previousTimeout
+    }
+  })
+
+  test("env override takes precedence for both reasoning and non-reasoning models", async () => {
+    const previousTimeout = Flag.ZEE_LLM_STREAM_START_TIMEOUT_MS
+    ;(Flag as any).ZEE_LLM_STREAM_START_TIMEOUT_MS = 12_345
+    try {
+      const { SessionProcessor } = await import("../../src/session/processor")
+      expect(SessionProcessor.resolveStreamStartTimeoutMs({ isReasoningModel: false })).toBe(12_345)
+      expect(SessionProcessor.resolveStreamStartTimeoutMs({ isReasoningModel: true })).toBe(12_345)
+    } finally {
+      ;(Flag as any).ZEE_LLM_STREAM_START_TIMEOUT_MS = previousTimeout
+    }
+  })
+})
