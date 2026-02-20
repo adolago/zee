@@ -6,6 +6,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js"
 import path from "node:path"
 import { existsSync } from "node:fs"
+import fs from "node:fs/promises"
 import {
   CallToolResultSchema,
   type Tool as MCPToolDef,
@@ -38,6 +39,8 @@ export namespace MCP {
   const LOCAL_STDERR_TAIL_MAX_BYTES = 2_048
   const HEALTH_MONITOR_INTERVAL_MS = 15_000
   const LOCAL_NODE_FALLBACK_SERVERS = new Set(["portfolio", "consciousness"])
+  const DEFAULT_LAZY_IDLE_TIMEOUT_MINUTES = 10
+  const MCP_TOOL_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
   // Per-server mutex to prevent concurrent state mutations for the same server
   const serverMutexes = new Map<string, Promise<void>>()
@@ -45,8 +48,12 @@ export namespace MCP {
   let localStartupGate: Promise<void> = Promise.resolve()
 
   // Per-server tool cache -- invalidated on tools/list_changed, reconnect, disconnect, add
+  type McpLifecycle = "eager" | "lazy" | "keep-alive"
   type ToolCacheEntry = { tools: MCPToolDef[]; cachedAt: number }
   const toolCache = new Map<string, ToolCacheEntry>()
+  const serverLastUsedAt = new Map<string, number>()
+  const toolCacheFilePath = path.join(Global.Path.state, "mcp", "tool-cache.json")
+  let toolCacheHydratedFromDisk = false
   const BUILTIN_LOCAL_MCP_SERVERS = new Set(["calendar", "consciousness", "memory", "portfolio"])
 
   type LocalFailureClass =
@@ -528,7 +535,7 @@ export namespace MCP {
   function registerNotificationHandlers(client: MCPClient, serverName: string) {
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
       log.info("tools list changed notification received", { server: serverName })
-      toolCache.delete(serverName)
+      deleteToolCacheEntry(serverName)
       Bus.publish(ToolsChanged, { server: serverName })
     })
   }
@@ -784,6 +791,93 @@ export namespace MCP {
     return persona?.type === "local"
   }
 
+  function resolveMcpLifecycle(mcp: Config.Mcp | undefined): McpLifecycle {
+    const value = (mcp as { lifecycle?: unknown } | undefined)?.lifecycle
+    if (value === "lazy" || value === "keep-alive" || value === "eager") return value
+    return "eager"
+  }
+
+  function resolveLazyIdleTimeoutMs(mcp: Config.Mcp | undefined): number {
+    const raw = (mcp as { idleTimeout?: unknown } | undefined)?.idleTimeout
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+      return Math.floor(raw * 60_000)
+    }
+    return DEFAULT_LAZY_IDLE_TIMEOUT_MINUTES * 60_000
+  }
+
+  function isDirectToolsEnabled(mcp: Config.Mcp | undefined): boolean {
+    const raw = (mcp as { directTools?: unknown } | undefined)?.directTools
+    if (typeof raw === "boolean") return raw
+    if (Array.isArray(raw)) return raw.length > 0
+    return true
+  }
+
+  function shouldExposeDirectTool(mcp: Config.Mcp | undefined, toolName: string): boolean {
+    const raw = (mcp as { directTools?: unknown } | undefined)?.directTools
+    if (typeof raw === "boolean") return raw
+    if (Array.isArray(raw)) {
+      return raw.some((value) => value === toolName)
+    }
+    return true
+  }
+
+  function markServerUsed(serverName: string): void {
+    serverLastUsedAt.set(serverName, Date.now())
+  }
+
+  function clearServerUsage(serverName: string): void {
+    serverLastUsedAt.delete(serverName)
+  }
+
+  function pruneToolCache(map: Map<string, ToolCacheEntry>, now = Date.now()) {
+    for (const [key, value] of map.entries()) {
+      if (now - value.cachedAt > MCP_TOOL_CACHE_MAX_AGE_MS) {
+        map.delete(key)
+      }
+    }
+  }
+
+  async function hydrateToolCacheFromDisk() {
+    if (toolCacheHydratedFromDisk) return
+    toolCacheHydratedFromDisk = true
+    try {
+      const text = await fs.readFile(toolCacheFilePath, "utf-8")
+      const parsed = JSON.parse(text) as Record<string, ToolCacheEntry>
+      const now = Date.now()
+      for (const [serverName, entry] of Object.entries(parsed)) {
+        if (!entry || !Array.isArray(entry.tools) || typeof entry.cachedAt !== "number") continue
+        if (now - entry.cachedAt > MCP_TOOL_CACHE_MAX_AGE_MS) continue
+        toolCache.set(serverName, entry)
+      }
+      pruneToolCache(toolCache, now)
+    } catch {
+      // ignore cache hydration failures
+    }
+  }
+
+  async function persistToolCacheToDisk() {
+    try {
+      pruneToolCache(toolCache)
+      const payload = Object.fromEntries(toolCache.entries())
+      await fs.mkdir(path.dirname(toolCacheFilePath), { recursive: true })
+      await fs.writeFile(toolCacheFilePath, JSON.stringify(payload, null, 2), "utf-8")
+    } catch (error) {
+      log.debug("failed to persist MCP tool cache", {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  function setToolCacheEntry(serverName: string, tools: MCPToolDef[]) {
+    toolCache.set(serverName, { tools, cachedAt: Date.now() })
+    void persistToolCacheToDisk()
+  }
+
+  function deleteToolCacheEntry(serverName: string) {
+    toolCache.delete(serverName)
+    void persistToolCacheToDisk()
+  }
+
   function resolveLocalCommand(
     serverName: string,
     mcp: z.infer<typeof Config.McpLocal>,
@@ -927,12 +1021,18 @@ export namespace MCP {
 
       const clients: Record<string, MCPClient> = {}
       const status: Record<string, Status> = {}
+      await hydrateToolCacheFromDisk()
 
       await Promise.all(
         Object.entries(config).map(async ([key, mcp]) => {
           const resolved = resolveMcpConfigEntry(key, mcp)
           if (!resolved) {
             log.error("Ignoring MCP config entry without type", { key })
+            return
+          }
+
+          if (resolveMcpLifecycle(resolved) === "lazy") {
+            status[key] = { status: "disabled" }
             return
           }
 
@@ -943,11 +1043,15 @@ export namespace MCP {
 
           if (result.mcpClient) {
             clients[key] = result.mcpClient
+            markServerUsed(key)
           }
         }),
       )
       const healthTimer = setInterval(() => {
-        void healthCheckAndReconnect().catch((error) => {
+        void (async () => {
+          await healthCheckAndReconnect()
+          await reapIdleLazyServers()
+        })().catch((error) => {
           log.debug("mcp health monitor check failed", {
             error: error instanceof Error ? error.message : String(error),
           })
@@ -1277,7 +1381,10 @@ export namespace MCP {
       }
       s.clients[name] = result.mcpClient
       s.status[name] = result.status
-      toolCache.delete(name)
+      if (result.tools) {
+        setToolCacheEntry(name, result.tools)
+      }
+      markServerUsed(name)
 
       return {
         status: s.status,
@@ -1285,7 +1392,13 @@ export namespace MCP {
     })
   }
 
-  async function create(key: string, inputMcp: Config.Mcp) {
+  type CreateResult = {
+    mcpClient?: MCPClient
+    status: Status
+    tools?: MCPToolDef[]
+  }
+
+  async function create(key: string, inputMcp: Config.Mcp): Promise<CreateResult> {
     const mcp = forceMcpEnabled(key, inputMcp)
     log.info("found", { key, type: mcp.type })
     let mcpClient: MCPClient | undefined
@@ -1473,11 +1586,13 @@ export namespace MCP {
     }
 
     // Seed tool cache from the listTools() call we already made
-    toolCache.set(key, { tools: discoveredTools, cachedAt: Date.now() })
+    setToolCacheEntry(key, discoveredTools)
+    markServerUsed(key)
     log.info("create() successfully created client", { key, toolCount: discoveredTools.length })
     return {
       mcpClient,
       status,
+      tools: discoveredTools,
     }
   }
 
@@ -1547,15 +1662,54 @@ export namespace MCP {
           })
         }
         s.clients[name] = result.mcpClient
+        if (result.tools) {
+          setToolCacheEntry(name, result.tools)
+        }
+        markServerUsed(name)
       }
     })
   }
 
-  export async function disconnect(name: string) {
-    log.warn("MCP disconnect requested but ignored because MCP servers are mandatory", { name })
+  async function disconnectInternal(name: string, reason: "manual" | "idle-timeout" | "reconnect") {
     const s = await state()
-    if (s.status[name]?.status === "connected") return
-    await connect(name)
+    const existingClient = s.clients[name]
+    if (!existingClient) {
+      s.status[name] = { status: "disabled" }
+      clearServerUsage(name)
+      return
+    }
+
+    await existingClient.close().catch((error) => {
+      log.debug("Failed to close MCP client", { name, reason, error })
+    })
+    delete s.clients[name]
+    s.status[name] = { status: "disabled" }
+    clearServerUsage(name)
+  }
+
+  async function reapIdleLazyServers() {
+    const s = await state()
+    const cfg = await Config.get()
+    const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
+    const now = Date.now()
+
+    for (const name of Object.keys(s.clients)) {
+      const resolved = resolveRuntimeMcpConfig(name, config)
+      if (!resolved) continue
+      if (resolveMcpLifecycle(resolved) !== "lazy") continue
+
+      const lastUsedAt = serverLastUsedAt.get(name) ?? 0
+      if (!lastUsedAt) continue
+      const idleTimeoutMs = resolveLazyIdleTimeoutMs(resolved)
+      if (now - lastUsedAt < idleTimeoutMs) continue
+
+      log.info("disconnecting idle lazy MCP server", { name, idleMs: now - lastUsedAt })
+      await disconnectInternal(name, "idle-timeout")
+    }
+  }
+
+  export async function disconnect(name: string) {
+    await disconnectInternal(name, "manual")
   }
 
   /**
@@ -1585,7 +1739,7 @@ export namespace MCP {
     try {
       // Attempt a simple operation to verify connection is alive
       const result = await withTimeout(client.listTools(), 5000)
-      toolCache.set(name, { tools: result.tools, cachedAt: Date.now() })
+      setToolCacheEntry(name, result.tools)
       if (localServerHealth.has(name)) {
         markLocalServerHealthy(name)
       }
@@ -1631,7 +1785,7 @@ export namespace MCP {
         })
         delete s.clients[name]
       }
-      toolCache.delete(name)
+      clearServerUsage(name)
 
       log.info("Attempting MCP reconnection", { name })
 
@@ -1646,6 +1800,10 @@ export namespace MCP {
       s.status[name] = result.status
       if (result.mcpClient) {
         s.clients[name] = result.mcpClient
+        if (result.tools) {
+          setToolCacheEntry(name, result.tools)
+        }
+        markServerUsed(name)
         log.info("MCP reconnection successful", { name })
       } else {
         log.warn("MCP reconnection failed", { name, status: result.status })
@@ -1667,6 +1825,13 @@ export namespace MCP {
     const now = Date.now()
 
     for (const [name, currentStatus] of Object.entries(s.status)) {
+      const resolved = resolveRuntimeMcpConfig(name, config)
+      const lifecycle = resolveMcpLifecycle(resolved)
+      if (lifecycle === "lazy") {
+        results[name] = currentStatus
+        continue
+      }
+
       if (currentStatus.status === "failed" || currentStatus.status === "disabled") {
         if (isLocalServer(name, config) && getActiveLocalCooldown(name, now)) {
           const previousError = "error" in currentStatus ? currentStatus.error : "Local MCP cooling down"
@@ -1697,6 +1862,9 @@ export namespace MCP {
     const now = Date.now()
 
     for (const [name, currentStatus] of Object.entries(s.status)) {
+      const resolved = resolveRuntimeMcpConfig(name, config)
+      const lifecycle = resolveMcpLifecycle(resolved)
+
       if (currentStatus.status === "connected") {
         // Check if still healthy
         const healthy = await isHealthy(name, { bypassCache: true })
@@ -1707,6 +1875,10 @@ export namespace MCP {
           results[name] = currentStatus
         }
       } else if (currentStatus.status === "failed") {
+        if (lifecycle === "lazy") {
+          results[name] = currentStatus
+          continue
+        }
         if (isLocalServer(name, config) && getActiveLocalCooldown(name, now)) {
           results[name] = buildLocalFailureStatus(name, "crash_loop", currentStatus.error, {
             cooldownActive: true,
@@ -1724,12 +1896,208 @@ export namespace MCP {
     return results
   }
 
+  type McpProxyIndexEntry = {
+    id: string
+    serverName: string
+    toolName: string
+    description?: string
+    inputSchema?: unknown
+  }
+
+  function resolveProxyArgs(raw: unknown): Record<string, unknown> {
+    if (!raw) return {}
+    if (typeof raw === "string") {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+      throw new Error("mcp.args must decode to a JSON object")
+    }
+    if (typeof raw === "object" && !Array.isArray(raw)) {
+      return raw as Record<string, unknown>
+    }
+    throw new Error("mcp.args must be an object or JSON string")
+  }
+
+  function createMcpProxyTool(entries: McpProxyIndexEntry[]): Tool {
+    const schema: JSONSchema7 = {
+      type: "object",
+      properties: {
+        status: { type: "boolean", description: "Show MCP server connection status" },
+        connect: { type: "string", description: "Connect/reconnect a server by name" },
+        search: { type: "string", description: "Search available MCP tools by name/description" },
+        describe: { type: "string", description: "Describe one MCP tool (use id from mcp.search output)" },
+        tool: { type: "string", description: "Execute an MCP tool by id or original MCP tool name" },
+        server: { type: "string", description: "Optional server name to disambiguate tool selection" },
+        args: {
+          oneOf: [{ type: "object", additionalProperties: true }, { type: "string" }],
+          description: "Tool arguments as JSON object or JSON string",
+        },
+        limit: { type: "integer", minimum: 1, maximum: 100, description: "Result limit for search output" },
+      },
+      additionalProperties: false,
+    }
+
+    const byId = new Map(entries.map((entry) => [entry.id, entry]))
+
+    return dynamicTool({
+      description: [
+        "MCP proxy adapter. Search, inspect, and call MCP tools without exposing every tool schema directly.",
+        "Use one of:",
+        '- `{ "status": true }`',
+        '- `{ "search": "query words" }`',
+        '- `{ "describe": "tool_id" }`',
+        '- `{ "tool": "tool_id", "args": { ... } }`',
+      ].join("\n"),
+      inputSchema: jsonSchema(schema),
+      execute: async (args: unknown) => {
+        const input = (args ?? {}) as {
+          status?: boolean
+          connect?: string
+          search?: string
+          describe?: string
+          tool?: string
+          server?: string
+          args?: unknown
+          limit?: number
+        }
+
+        if (input.connect) {
+          await connect(input.connect)
+          const statuses = await status()
+          const next = statuses[input.connect]
+          return {
+            content: [
+              {
+                type: "text",
+                text: next
+                  ? `${input.connect}: ${next.status}${"error" in next ? ` (${next.error})` : ""}`
+                  : `${input.connect}: unknown server`,
+              },
+            ],
+          }
+        }
+
+        if (input.status === true || (!input.search && !input.describe && !input.tool)) {
+          const statuses = await status()
+          const lines = Object.entries(statuses).map(([name, value]) => {
+            const detail = "error" in value ? ` (${value.error})` : ""
+            return `${name}: ${value.status}${detail}`
+          })
+          return {
+            content: [{ type: "text", text: lines.length > 0 ? lines.join("\n") : "No MCP servers configured." }],
+          }
+        }
+
+        if (input.search) {
+          const terms = input.search
+            .trim()
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(Boolean)
+          const limit = Math.max(1, Math.min(100, Number.isFinite(input.limit) ? Number(input.limit) : 20))
+          const matches = entries
+            .filter((entry) => {
+              const haystack = `${entry.id} ${entry.serverName} ${entry.toolName} ${entry.description ?? ""}`.toLowerCase()
+              return terms.every((term) => haystack.includes(term))
+            })
+            .slice(0, limit)
+          const lines =
+            matches.length > 0
+              ? matches.map((entry) => `${entry.id} [${entry.serverName}] ${entry.description ?? ""}`.trim())
+              : ["No MCP tools matched the query."]
+          return {
+            content: [{ type: "text", text: lines.join("\n") }],
+          }
+        }
+
+        if (input.describe) {
+          const exact = byId.get(input.describe)
+          const candidates = exact
+            ? [exact]
+            : entries.filter(
+                (entry) =>
+                  entry.toolName === input.describe && (!input.server || entry.serverName === input.server),
+              )
+          if (candidates.length === 0) {
+            return {
+              content: [{ type: "text", text: `Tool not found: ${input.describe}` }],
+              isError: true,
+            }
+          }
+          if (candidates.length > 1) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Ambiguous tool. Use one of: ${candidates.map((entry) => entry.id).join(", ")}`,
+                },
+              ],
+              isError: true,
+            }
+          }
+          const target = candidates[0]
+          return {
+            content: [
+              {
+                type: "text",
+                text: [
+                  `id: ${target.id}`,
+                  `server: ${target.serverName}`,
+                  `name: ${target.toolName}`,
+                  `description: ${target.description ?? "(none)"}`,
+                  `inputSchema:`,
+                  JSON.stringify(target.inputSchema ?? {}, null, 2),
+                ].join("\n"),
+              },
+            ],
+          }
+        }
+
+        if (!input.tool) {
+          return {
+            content: [{ type: "text", text: "Provide one of status/search/describe/tool." }],
+            isError: true,
+          }
+        }
+
+        const candidates = byId.has(input.tool)
+          ? [byId.get(input.tool)!]
+          : entries.filter((entry) => entry.toolName === input.tool && (!input.server || entry.serverName === input.server))
+        if (candidates.length === 0) {
+          return {
+            content: [{ type: "text", text: `Tool not found: ${input.tool}` }],
+            isError: true,
+          }
+        }
+        if (candidates.length > 1) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Ambiguous tool. Use one of: ${candidates.map((entry) => entry.id).join(", ")}`,
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        const target = candidates[0]
+        const parsedArgs = resolveProxyArgs(input.args)
+        return callTool(target.serverName, target.toolName, parsedArgs)
+      },
+    })
+  }
+
   export async function tools() {
+    await hydrateToolCacheFromDisk()
     const result: Record<string, Tool> = {}
     const s = await state()
     const cfg = await Config.get()
-    const config = cfg.mcp ?? {}
+    const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
     const clientsSnapshot = await clients()
+    const proxyIndex: McpProxyIndexEntry[] = []
+    const usedToolIDs = new Set<string>()
 
     // Identify connected servers
     const connectedServers = Object.keys(clientsSnapshot).filter((name) => s.status[name]?.status === "connected")
@@ -1767,7 +2135,8 @@ export namespace MCP {
           }
 
           if (toolsResult) {
-            toolCache.set(clientName, { tools: toolsResult.tools, cachedAt: Date.now() })
+            setToolCacheEntry(clientName, toolsResult.tools)
+            markServerUsed(clientName)
           }
           return { clientName, tools: toolsResult?.tools }
         }),
@@ -1780,29 +2149,60 @@ export namespace MCP {
       }
     }
 
-    // Build tool map from cached entries
-    for (const clientName of connectedServers) {
+    const knownServers = Array.from(new Set([...Object.keys(config), ...Object.keys(s.status), ...toolCache.keys()]))
+
+    // Build tool map from cached entries (connected and lazy-disconnected).
+    for (const clientName of knownServers) {
+      const resolved = resolveRuntimeMcpConfig(clientName, config)
+      if (!resolved) continue
       const cached = toolCache.get(clientName)
       if (!cached) continue
 
-      const mcpConfig = config[clientName]
-      const entry = isMcpConfigured(mcpConfig) ? mcpConfig : undefined
+      const entry = resolved
       const sanitizedClientName = clientName.replace(/[^a-zA-Z0-9_-]/g, "_")
       const asyncEnabled = isAsyncServer(clientName, entry)
       const pollToolId = `${sanitizedClientName}_job_poll`
+      const directToolsEnabled = isDirectToolsEnabled(entry)
+      let hasDirectTools = false
 
       for (const mcpTool of cached.tools) {
         const sanitizedToolName = mcpTool.name.replace(/[^a-zA-Z0-9_-]/g, "_")
-        const toolId = sanitizedToolName in result ? sanitizedClientName + "_" + sanitizedToolName : sanitizedToolName
+        let toolId = sanitizedToolName
+        if (usedToolIDs.has(toolId)) {
+          toolId = `${sanitizedClientName}_${sanitizedToolName}`
+        }
+        let suffix = 2
+        while (usedToolIDs.has(toolId)) {
+          toolId = `${sanitizedClientName}_${sanitizedToolName}_${suffix}`
+          suffix++
+        }
+        usedToolIDs.add(toolId)
+
+        proxyIndex.push({
+          id: toolId,
+          serverName: clientName,
+          toolName: mcpTool.name,
+          description: mcpTool.description,
+          inputSchema: mcpTool.inputSchema,
+        })
+
+        if (!directToolsEnabled || !shouldExposeDirectTool(entry, mcpTool.name)) {
+          continue
+        }
+
         result[toolId] = convertMcpTool(mcpTool, clientName, {
           asyncEnabled,
           pollToolId,
         })
+        hasDirectTools = true
       }
-      if (asyncEnabled) {
+
+      if (asyncEnabled && hasDirectTools) {
         result[pollToolId] = createJobPollTool(clientName, pollToolId)
       }
     }
+
+    result.mcp = createMcpProxyTool(proxyIndex)
     return result
   }
 
@@ -1872,7 +2272,7 @@ export namespace MCP {
       cfg.experimental?.mcp_timeout ??
       DEFAULT_TIMEOUT
     try {
-      return await client.callTool(
+      const result = await client.callTool(
         {
           name: toolName,
           arguments: args ?? {},
@@ -1883,6 +2283,8 @@ export namespace MCP {
           timeout,
         },
       )
+      markServerUsed(serverName)
+      return result
     } catch (error) {
       if (error instanceof UnauthorizedError) {
         s.status[serverName] = { status: "needs_auth" }
@@ -2169,6 +2571,9 @@ export namespace MCP {
    */
   export function clearToolCache() {
     toolCache.clear()
+    serverLastUsedAt.clear()
+    toolCacheHydratedFromDisk = false
+    void persistToolCacheToDisk()
   }
 
   /**

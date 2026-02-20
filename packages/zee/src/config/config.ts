@@ -529,6 +529,22 @@ export namespace Config {
         .describe("Environment variables to set when running the MCP server"),
       enabled: z.boolean().optional().describe("Reserved for compatibility; MCP servers are always enabled"),
       timeout: z.number().int().positive().optional().describe("Timeout in ms for MCP server requests."),
+      lifecycle: z
+        .enum(["eager", "lazy", "keep-alive"])
+        .optional()
+        .describe("Connection lifecycle. eager=connect at startup, lazy=connect on first use, keep-alive=stay connected."),
+      idleTimeout: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Idle timeout in minutes for lazy MCP servers before automatic disconnect."),
+      directTools: z
+        .union([z.boolean(), z.array(z.string())])
+        .optional()
+        .describe(
+          "Control direct tool exposure. true=all tools, false=proxy only, string[]=allowlisted tool names only.",
+        ),
     })
     .strict()
     .meta({
@@ -567,6 +583,22 @@ export namespace Config {
           "OAuth authentication configuration for the MCP server. Set to false to disable OAuth auto-detection.",
         ),
       timeout: z.number().int().positive().optional().describe("Timeout in ms for MCP server requests."),
+      lifecycle: z
+        .enum(["eager", "lazy", "keep-alive"])
+        .optional()
+        .describe("Connection lifecycle. eager=connect at startup, lazy=connect on first use, keep-alive=stay connected."),
+      idleTimeout: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Idle timeout in minutes for lazy MCP servers before automatic disconnect."),
+      directTools: z
+        .union([z.boolean(), z.array(z.string())])
+        .optional()
+        .describe(
+          "Control direct tool exposure. true=all tools, false=proxy only, string[]=allowlisted tool names only.",
+        ),
     })
     .strict()
     .meta({

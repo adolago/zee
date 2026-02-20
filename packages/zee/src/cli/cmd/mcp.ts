@@ -132,7 +132,16 @@ export const McpListCommand = cmd({
           // Build type hint based on config type
           let typeHint: string
           if (configured) {
-            typeHint = configured.type === "remote" ? configured.url : configured.command.join(" ")
+            const lifecycle = "lifecycle" in configured && configured.lifecycle ? configured.lifecycle : "eager"
+            const directTools = "directTools" in configured ? configured.directTools : undefined
+            const directHint =
+              typeof directTools === "boolean"
+                ? `direct=${directTools ? "all" : "proxy"}`
+                : Array.isArray(directTools)
+                  ? `direct=${directTools.length} allowlisted`
+                  : "direct=all"
+            const base = configured.type === "remote" ? configured.url : configured.command.join(" ")
+            typeHint = `${base} (${lifecycle}, ${directHint})`
           } else if (shorthand) {
             // Shorthand persona config
             typeHint = `persona builtin (enabled: ${shorthand.enabled})`

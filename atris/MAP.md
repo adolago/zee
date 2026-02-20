@@ -13,6 +13,7 @@ rg "export const SessionRoute" packages/zee/src/server/route/session.ts  # Sessi
 rg "export const GatewayRoute" packages/zee/src/server/route/gateway.ts  # Gateway/WhatsApp HTTP API root (line 237)
 rg "export async function openapi" packages/zee/src/server/server.ts     # OpenAPI spec generation (line 478)
 rg "export namespace Config|export async function get" packages/zee/src/config/config.ts  # Config loader and merger (lines 24, 1815)
+rg "lifecycle|idleTimeout|directTools" packages/zee/src/config/config.ts  # MCP adapter config knobs (lines 532, 536, 542, 586)
 rg "export namespace Provider|defaultModel|parseModel" packages/zee/src/provider/provider.ts  # Provider/model registry (lines 47, 1296, 1312)
 rg "export namespace Agent|export async function get|list|generate" packages/zee/src/agent/agent.ts  # Agent registry + generation (lines 81, 534, 538, 569)
 rg "export namespace Session|export const create|messages|remove" packages/zee/src/session/index.ts  # Session store APIs (lines 29, 182, 329, 363)
@@ -25,6 +26,9 @@ rg "export async function initializeMcp" src/mcp/index.ts                # MCP i
 rg "export class ToolRegistry" src/mcp/registry.ts                        # Tool registry + permission checks (line 57)
 rg "export class McpServerManager" src/mcp/server.ts                      # MCP remote server manager (line 84)
 rg "export class PermissionChecker" src/mcp/permission.ts                 # MCP permission policy resolver (line 73)
+rg "createMcpProxyTool|resolveMcpLifecycle|reapIdleLazyServers" packages/zee/src/mcp/index.ts  # MCP proxy + lazy lifecycle (lines 1925, 794, 1690)
+rg "command: \"dmux\"|DmuxSpawnCommand|DmuxMergeCommand" packages/zee/src/cli/cmd/dmux.ts  # dmux CLI flow (lines 6, 12, 96)
+rg "export namespace Dmux|export const spawn|export const merge" packages/zee/src/worktree/dmux.ts  # dmux lane orchestration (lines 8, 177, 220)
 rg "export const ZEE_TOOLS|registerZeeTools" src/domain/zee/tools.ts     # Zee domain tools (lines 1884, 1909)
 rg "export const STANLEY_TOOLS|registerStanleyTools" src/domain/stanley/tools.ts  # Stanley tools (lines 456, 469)
 rg "export const JOHNY_TOOLS|registerJohnyTools" src/domain/johny/tools.ts  # Johny tools (lines 502, 504)
@@ -88,6 +92,7 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Global config lazy loader:** `packages/zee/src/config/config.ts:1670`
 - **Config text parser:** `packages/zee/src/config/config.ts:1692`
 - **Final merged config getter:** `packages/zee/src/config/config.ts:1815`
+- **MCP adapter knobs (`lifecycle`, `idleTimeout`, `directTools`):** `packages/zee/src/config/config.ts:532`, `packages/zee/src/config/config.ts:536`, `packages/zee/src/config/config.ts:542`
 - **State override (`ZEE_STATE_DIR`):** `packages/zee/src/global/dirs.ts:21`
 - **Config override (`ZEE_CONFIG_DIR`):** `packages/zee/src/global/dirs.ts:47`
 - **Workspace override (`ZEE_WORKSPACE_DIR`):** `packages/zee/src/global/dirs.ts:75`
@@ -114,6 +119,24 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Permission checker:** `src/mcp/permission.ts:73`, `src/mcp/permission.ts:248`
 - **MCP server manager:** `src/mcp/server.ts:84`
 - **Tool discovery from remote server:** `src/mcp/server.ts:280`
+
+### Feature: MCP Adapter Mode (Proxy + Lazy Lifecycle)
+**Purpose:** Reduce prompt/tool bloat by exposing a proxy tool and loading MCP servers on-demand.
+- **Lifecycle resolver (`eager/lazy/keep-alive`):** `packages/zee/src/mcp/index.ts:794`
+- **Direct-tools gate (`all/proxy/allowlist`):** `packages/zee/src/mcp/index.ts:808`, `packages/zee/src/mcp/index.ts:815`
+- **Persistent MCP tool cache:** `packages/zee/src/mcp/index.ts:840`, `packages/zee/src/mcp/index.ts:858`
+- **Idle lazy disconnect loop:** `packages/zee/src/mcp/index.ts:1690`
+- **Proxy tool implementation (`mcp`):** `packages/zee/src/mcp/index.ts:1925`
+- **Proxy tool registration:** `packages/zee/src/mcp/index.ts:2210`
+
+### Feature: Dmux-Style Lane Workflow
+**Purpose:** Run isolated coding lanes (git worktree + tmux) and merge them back quickly.
+- **CLI entry (`zee dmux`):** `packages/zee/src/cli/cmd/dmux.ts:6`
+- **Spawn lane command:** `packages/zee/src/cli/cmd/dmux.ts:12`
+- **Merge lane command:** `packages/zee/src/cli/cmd/dmux.ts:96`
+- **Lane runtime namespace:** `packages/zee/src/worktree/dmux.ts:8`
+- **Spawn orchestration:** `packages/zee/src/worktree/dmux.ts:177`
+- **Merge orchestration:** `packages/zee/src/worktree/dmux.ts:220`
 
 ### Feature: Domain Tool Packs
 **Purpose:** Provide user-facing capabilities across life admin, investing, and learning.
@@ -173,6 +196,11 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Global config fallback:** `packages/zee/src/config/config.ts:1670`
 - **State/config/workspace env overrides:** `packages/zee/src/global/dirs.ts:21`, `packages/zee/src/global/dirs.ts:47`, `packages/zee/src/global/dirs.ts:75`
 
+### Concern: Source Topology and Cross-Root Imports
+- **Main package TS path aliases:** `packages/zee/tsconfig.json:12`
+- **Repo-root source alias (`@root/*`):** `packages/zee/tsconfig.json:15`
+- **CLI package metadata + build scripts:** `packages/zee/package.json:1`
+
 ## Critical Files
 
 - `packages/zee/src/index.ts`: CLI root; every command path originates here (`loadDaemonEnv`, command registration, parse).
@@ -226,4 +254,3 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 2. `src/memory/unified.ts:606` saves entry (embedding + Qdrant + optional FTS/markdown sync).
 3. `src/memory/unified.ts:779` searches (`semantic`, `keyword`, or `hybrid`).
 4. `src/memory/unified.ts:1089` merges vector + keyword in hybrid mode.
-
