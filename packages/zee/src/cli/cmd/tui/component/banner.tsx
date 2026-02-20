@@ -3,7 +3,7 @@ import { useTheme } from "@tui/context/theme"
 import { useTerminalDimensions } from "@opentui/solid"
 import { EmptyBorder } from "@tui/component/border"
 import type { JSX } from "solid-js"
-import { displayWidth, kindLabel, sanitizeLegacyBannerText, truncateToWidth, type BannerKind } from "./banner-format"
+import { sanitizeLegacyBannerText, truncateToWidth, type BannerKind } from "./banner-format"
 
 export type BannerItem = {
   kind: BannerKind
@@ -60,22 +60,10 @@ export function Banner(props: BannerProps) {
 
   const display = createMemo(() => {
     const item = current()
-    if (!item) return { label: undefined, kind: undefined, text: truncateToWidth(fallbackText(), maxTextWidth()) }
+    if (!item) return { kind: undefined, text: truncateToWidth(fallbackText(), maxTextWidth()) }
 
-    const label = kindLabel(item.kind)
-    const prefix = `[${label}] `
     const safeText = sanitizeLegacyBannerText(item.kind, item.text)
-    const remaining = Math.max(0, maxTextWidth() - displayWidth(prefix))
-    const text = truncateToWidth(safeText, remaining)
-    return { label, kind: item.kind, text }
-  })
-
-  const labelColor = createMemo(() => {
-    const { kind } = display()
-    if (!kind) return theme.textMuted
-    if (kind === "reminder") return theme.accent
-    if (kind === "todo") return theme.warning
-    return theme.textMuted
+    return { kind: item.kind, text: truncateToWidth(safeText, maxTextWidth()) }
   })
 
   return (
@@ -102,20 +90,8 @@ export function Banner(props: BannerProps) {
         paddingTop={1}
         paddingBottom={1}
       >
-        <text flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
-          <Show
-            when={display().label}
-            fallback={<span style={{ fg: theme.textMuted }}>{display().text}</span>}
-          >
-            {(label) => (
-              <>
-                <span style={{ fg: theme.textMuted }}>[</span>
-                <span style={{ fg: labelColor() }}>{label()}</span>
-                <span style={{ fg: theme.textMuted }}>] </span>
-                <span style={{ fg: theme.text }}>{display().text}</span>
-              </>
-            )}
-          </Show>
+        <text fg={display().kind ? theme.text : theme.textMuted} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+          {display().text}
         </text>
       </box>
 

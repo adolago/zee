@@ -26,17 +26,6 @@ export function truncateToWidth(text: string, maxWidth: number): string {
   return cutToWidth(text, maxWidth - 3) + "..."
 }
 
-export function kindLabel(kind: BannerKind): string {
-  switch (kind) {
-    case "reminder":
-      return "REM"
-    case "todo":
-      return "TODO"
-    case "message":
-      return "MSG"
-  }
-}
-
 const LEGACY_SESSION_SUFFIX = /\s*\(session:\s*[^)]+\)\s*$/i
 
 function kindLegacyPrefix(kind: BannerKind): RegExp {
