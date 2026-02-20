@@ -19,8 +19,17 @@ export function modelString(spec: PersonaModelSpec): string {
   return `${spec.providerId}/${spec.modelId}`;
 }
 
+/**
+ * Global standard model for Zee runtime defaults.
+ * Keep this in sync with provider allowlist/model catalog.
+ */
+export const standardModel: PersonaModelSpec = {
+  providerId: "openai",
+  modelId: "gpt-5.2",
+};
+
 export const personaModels: Record<PersonaId, PersonaModelSpec> = {
-  zee:     { providerId: "openai",    modelId: "gpt-5.3-codex" },
+  zee: standardModel,
   stanley: { providerId: "xai",       modelId: "grok-4-1-fast" },
   johny:   { providerId: "anthropic", modelId: "claude-opus-4-6" },
 };

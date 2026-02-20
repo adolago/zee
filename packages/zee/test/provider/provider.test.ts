@@ -687,6 +687,36 @@ test("defaultModel returns first available model when no config set", async () =
   })
 })
 
+test("defaultModel uses rosetta standard model when available", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.json"),
+        JSON.stringify({
+          $schema: "zee",
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("OPENAI_API_KEY", "test-openai-key")
+      Env.set("ANTHROPIC_API_KEY", "test-anthropic-key")
+    },
+    fn: async () => {
+      try {
+        const model = await Provider.defaultModel()
+        expect(model.providerID).toBe("openai")
+        expect(model.modelID).toBe("gpt-5.2")
+      } finally {
+        Env.remove("OPENAI_API_KEY")
+        Env.remove("ANTHROPIC_API_KEY")
+      }
+    },
+  })
+})
+
 test("defaultModel respects config model setting", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

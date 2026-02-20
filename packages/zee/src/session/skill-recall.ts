@@ -3,6 +3,7 @@ import type { Agent } from "@/agent/agent"
 import type { MessageV2 } from "./message-v2"
 import { Skill } from "@/skill/skill"
 import { Log } from "@/util/log"
+import { isShortAffirmativeReply } from "./followup-execution"
 
 const log = Log.create({ service: "session.skill-recall" })
 
@@ -10,32 +11,6 @@ const MAX_QUERY_CHARS = 2000
 const MAX_RECOMMENDATIONS = 3
 const AUTOLOAD_SCORE_THRESHOLD = 12
 const AUTOLOAD_MAX_CHARS = 3000
-
-const AFFIRMATIVE_FOLLOWUPS = new Set([
-  "y",
-  "yes",
-  "yes.",
-  "yes!",
-  "yes please",
-  "yep",
-  "yeah",
-  "sure",
-  "ok",
-  "okay",
-  "ok thanks",
-  "okay thanks",
-  "go ahead",
-  "do it",
-  "please do",
-  "please proceed",
-  "proceed",
-  "confirmed",
-  "confirm",
-  "sounds good",
-  "works",
-  "turn them off",
-  "turn it off",
-])
 
 function extractUserText(msg: MessageV2.WithParts): string {
   return msg.parts
@@ -46,27 +21,15 @@ function extractUserText(msg: MessageV2.WithParts): string {
     .trim()
 }
 
-function normalizeFollowup(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[.,!?;:]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-function isAffirmativeFollowup(text: string): boolean {
-  if (!text) return false
-  const normalized = normalizeFollowup(text)
-  if (!normalized) return false
-  if (normalized.length > 40) return false
-  if (AFFIRMATIVE_FOLLOWUPS.has(normalized)) return true
-  return /^(yes|yep|yeah|sure|ok|okay)\b/.test(normalized)
-}
-
 type NearbyQueryContext = {
   latest: string
   previousUser?: string
   nearbyAssistant?: string
+}
+
+type ResolvedSkillRecallQuery = NearbyQueryContext & {
+  query: string
+  affirmativeFollowup: boolean
 }
 
 function latestQueryContext(messages: MessageV2.WithParts[]): NearbyQueryContext {
@@ -110,12 +73,29 @@ function latestQueryContext(messages: MessageV2.WithParts[]): NearbyQueryContext
   }
 }
 
-function resolveSkillRecallQuery(messages: MessageV2.WithParts[]): string {
+function resolveSkillRecallQuery(messages: MessageV2.WithParts[]): ResolvedSkillRecallQuery {
   const { latest, previousUser, nearbyAssistant } = latestQueryContext(messages)
-  if (!latest) return ""
-  if (!previousUser && !nearbyAssistant) return latest
+  if (!latest) {
+    return {
+      latest,
+      previousUser,
+      nearbyAssistant,
+      query: "",
+      affirmativeFollowup: false,
+    }
+  }
 
-  if (isAffirmativeFollowup(latest)) {
+  if (!previousUser && !nearbyAssistant) {
+    return {
+      latest,
+      previousUser,
+      nearbyAssistant,
+      query: latest,
+      affirmativeFollowup: false,
+    }
+  }
+
+  if (isShortAffirmativeReply(latest)) {
     const parts: string[] = []
     if (previousUser) {
       parts.push(previousUser)
@@ -124,17 +104,39 @@ function resolveSkillRecallQuery(messages: MessageV2.WithParts[]): string {
       parts.push(`Assistant context: ${nearbyAssistant}`)
     }
     parts.push(`Follow-up confirmation: ${latest}`)
-    return parts.join("\n\n").slice(0, MAX_QUERY_CHARS)
+    return {
+      latest,
+      previousUser,
+      nearbyAssistant,
+      query: parts.join("\n\n").slice(0, MAX_QUERY_CHARS),
+      affirmativeFollowup: true,
+    }
   }
 
-  return latest
+  return {
+    latest,
+    previousUser,
+    nearbyAssistant,
+    query: latest,
+    affirmativeFollowup: false,
+  }
 }
 
 export async function buildSkillRecallContext(input: {
   agent: Agent.Info
   messages: MessageV2.WithParts[]
 }): Promise<string | undefined> {
-  const query = resolveSkillRecallQuery(input.messages)
+  const followupHintLines = [
+    "## Follow-Up Execution Hint",
+    "The latest user message is a short confirmation to a pending action.",
+    "Treat it as approval for the previously discussed action and continue execution now.",
+    "Use available tools to execute first; do not ask for the same confirmation again.",
+    "If mode restrictions block execution, ask for mode switch/release instead of claiming integration unavailability.",
+    "Only report integration unavailability after an actual tool call fails with connectivity/auth evidence.",
+  ]
+
+  const resolvedQuery = resolveSkillRecallQuery(input.messages)
+  const query = resolvedQuery.query
   if (!query) return
 
   const recommendations = await Skill.recommend(query, input.agent.name, {
@@ -142,7 +144,10 @@ export async function buildSkillRecallContext(input: {
     permission: input.agent.permission,
   })
 
-  if (recommendations.length === 0) return
+  if (recommendations.length === 0) {
+    if (!resolvedQuery.affirmativeFollowup) return
+    return followupHintLines.join("\n")
+  }
 
   const lines: string[] = [
     "## Recommended Skills For This Turn",
@@ -156,6 +161,17 @@ export async function buildSkillRecallContext(input: {
   }
 
   const top = recommendations[0]
+  if (top) {
+    lines.push(
+      "",
+      `Primary execution path: load skill "${top.name}" first, then execute using that skill's workflow.`,
+    )
+  }
+
+  if (resolvedQuery.affirmativeFollowup) {
+    lines.push("", ...followupHintLines)
+  }
+
   if (top && top.score >= AUTOLOAD_SCORE_THRESHOLD) {
     try {
       const md = await ConfigMarkdown.parse(top.location)

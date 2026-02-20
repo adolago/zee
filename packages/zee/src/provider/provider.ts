@@ -34,7 +34,6 @@ import { createXai } from "@ai-sdk/xai"
 import { createMistral } from "@ai-sdk/mistral"
 import { createGroq } from "@ai-sdk/groq"
 import { createDeepInfra } from "@ai-sdk/deepinfra"
-import { createCerebras } from "@ai-sdk/cerebras"
 import { createCohere } from "@ai-sdk/cohere"
 import { createTogetherAI } from "@ai-sdk/togetherai"
 import { createPerplexity } from "@ai-sdk/perplexity"
@@ -132,7 +131,6 @@ export namespace Provider {
   const BUNDLED_PROVIDERS: Record<string, (options: any) => ProviderSDK> = {
     "@ai-sdk/anthropic": createAnthropic,
     "@ai-sdk/azure": createAzure,
-    "@ai-sdk/cerebras": createCerebras,
     "@ai-sdk/cohere": createCohere,
     "@ai-sdk/deepinfra": createDeepInfra,
     "@ai-sdk/google": createGoogleGenerativeAI,
@@ -1293,9 +1291,56 @@ export namespace Provider {
     )
   }
 
+  let rosettaDefaultModelCache: { providerID: string; modelID: string } | null | undefined
+
+  async function loadRosettaDefaultModel(): Promise<{ providerID: string; modelID: string } | undefined> {
+    if (rosettaDefaultModelCache !== undefined) {
+      return rosettaDefaultModelCache ?? undefined
+    }
+
+    try {
+      const mod = await import("../../../../src/agent/model-rosetta")
+      const candidate = (mod as any).standardModel ?? (mod as any).personaModels?.zee
+      if (
+        candidate &&
+        typeof candidate.providerId === "string" &&
+        candidate.providerId.length > 0 &&
+        typeof candidate.modelId === "string" &&
+        candidate.modelId.length > 0
+      ) {
+        rosettaDefaultModelCache = {
+          providerID: candidate.providerId,
+          modelID: candidate.modelId,
+        }
+        return rosettaDefaultModelCache
+      }
+    } catch (error) {
+      log.debug("failed to load model rosetta default", {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+
+    rosettaDefaultModelCache = null
+    return undefined
+  }
+
   export async function defaultModel() {
     const cfg = await Config.get()
     if (cfg.model) return parseModel(cfg.model)
+
+    const rosettaDefault = await loadRosettaDefaultModel()
+    if (rosettaDefault) {
+      try {
+        await getModel(rosettaDefault.providerID, rosettaDefault.modelID)
+        return rosettaDefault
+      } catch (error) {
+        log.debug("rosetta default model unavailable, falling back to provider list", {
+          providerID: rosettaDefault.providerID,
+          modelID: rosettaDefault.modelID,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
 
     const provider = await list()
       .then((val) => Object.values(val))

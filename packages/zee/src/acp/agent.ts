@@ -101,6 +101,38 @@ function getModelVariants(providers: ProviderInfo[], model: { providerID: string
 
 export namespace ACP {
   const log = Log.create({ service: "acp-agent" })
+  let rosettaDefaultModelCache: { providerID: string; modelID: string } | null | undefined
+
+  async function loadRosettaDefaultModel(): Promise<{ providerID: string; modelID: string } | undefined> {
+    if (rosettaDefaultModelCache !== undefined) {
+      return rosettaDefaultModelCache ?? undefined
+    }
+
+    try {
+      const mod = await import("../../../../src/agent/model-rosetta")
+      const candidate = (mod as any).standardModel ?? (mod as any).personaModels?.zee
+      if (
+        candidate &&
+        typeof candidate.providerId === "string" &&
+        candidate.providerId.length > 0 &&
+        typeof candidate.modelId === "string" &&
+        candidate.modelId.length > 0
+      ) {
+        rosettaDefaultModelCache = {
+          providerID: candidate.providerId,
+          modelID: candidate.modelId,
+        }
+        return rosettaDefaultModelCache
+      }
+    } catch (error) {
+      log.debug("failed to load model rosetta default", {
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+
+    rosettaDefaultModelCache = null
+    return undefined
+  }
 
   async function getContextLimit(
     sdk: ZeeClient,
@@ -1530,6 +1562,16 @@ export namespace ACP {
     }
 
     if (specified && !providers.length) return specified
+
+    const rosettaDefault = await loadRosettaDefaultModel()
+    if (rosettaDefault) {
+      if (!providers.length) return rosettaDefault
+
+      const provider = providers.find((p) => p.id === rosettaDefault.providerID)
+      if (provider?.models?.[rosettaDefault.modelID]) {
+        return rosettaDefault
+      }
+    }
 
     const models = providers.flatMap((p) => Object.values(p.models))
     const [best] = Provider.sort(models)

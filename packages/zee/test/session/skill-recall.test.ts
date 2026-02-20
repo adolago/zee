@@ -106,6 +106,7 @@ describe("session.skill-recall", () => {
         expect(result).toBeDefined()
         expect(result!).toContain("## Recommended Skills For This Turn")
         expect(result!).toContain("home-assistant")
+        expect(result!).toContain('Primary execution path: load skill "home-assistant" first')
         expect(result!).toContain("### Auto-loaded Skill: home-assistant")
         expect(result!).toContain("# Home Assistant")
       },
@@ -153,7 +154,10 @@ describe("session.skill-recall", () => {
 
         expect(result).toBeDefined()
         expect(result!).toContain("home-assistant")
+        expect(result!).toContain('Primary execution path: load skill "home-assistant" first')
         expect(result!).toContain("### Auto-loaded Skill: home-assistant")
+        expect(result!).toContain("## Follow-Up Execution Hint")
+        expect(result!).toContain("Treat it as approval for the previously discussed action")
       },
     })
   })
@@ -198,7 +202,36 @@ describe("session.skill-recall", () => {
 
         expect(result).toBeDefined()
         expect(result!).toContain("home-assistant")
+        expect(result!).toContain('Primary execution path: load skill "home-assistant" first')
         expect(result!).toContain("### Auto-loaded Skill: home-assistant")
+        expect(result!).toContain("## Follow-Up Execution Hint")
+        expect(result!).toContain("Treat it as approval for the previously discussed action")
+      },
+    })
+  })
+
+  test("returns follow-up execution hint even when no skill recommendation is found", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async () => {},
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const result = await buildSkillRecallContext({
+          agent: makeAgent(),
+          messages: [
+            userMessage("do that"),
+            assistantMessage("Before I trigger anything in Home Assistant, should I turn off all living room lights?"),
+            userMessage("Yes"),
+          ],
+        })
+
+        expect(result).toBeDefined()
+        expect(result!).toContain("## Follow-Up Execution Hint")
+        expect(result!).toContain("Use available tools to execute first")
+        expect(result!).not.toContain("## Recommended Skills For This Turn")
       },
     })
   })

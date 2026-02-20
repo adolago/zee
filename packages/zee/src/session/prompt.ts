@@ -56,6 +56,7 @@ import { withTimeout } from "@/util/timeout"
 import { createSafeEnv } from "@/security/env-sanitize"
 import { buildSessionSystemContext } from "./session-context"
 import { buildSkillRecallContext } from "./skill-recall"
+import { buildFollowupExecutionReminder } from "./followup-execution"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
 import { SessionControlServer } from "@/session-control/server"
 
@@ -1202,10 +1203,13 @@ export namespace SessionPrompt {
         : baseAgent
       const maxSteps = agent.steps ?? Infinity
       const isLastStep = step >= maxSteps
+      const turnMode = resolveMode(session, lastUser.tools, lastUser.options, lastUser.mode)
       msgs = await insertReminders({
         messages: msgs,
         agent,
         sessionID,
+        mode: turnMode,
+        surface: session.surface,
       })
 
       const processor = SessionProcessor.create({
@@ -2008,11 +2012,33 @@ export namespace SessionPrompt {
     }
   }
 
-  async function insertReminders(input: { messages: MessageV2.WithParts[]; agent: Agent.Info; sessionID: string }) {
+  async function insertReminders(input: {
+    messages: MessageV2.WithParts[]
+    agent: Agent.Info
+    sessionID: string
+    mode: Mode
+    surface?: string
+  }) {
     const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
     if (!userMessage) return input.messages
 
     // NOTE: Plan/build agent reminders removed - hold/release mode now handles this in the TUI
+
+    const followupExecutionReminder = buildFollowupExecutionReminder({
+      messages: input.messages,
+      mode: input.mode,
+      surface: input.surface,
+    })
+    if (followupExecutionReminder) {
+      userMessage.parts.push({
+        id: Identifier.ascending("part"),
+        messageID: userMessage.info.id,
+        sessionID: userMessage.info.sessionID,
+        type: "text",
+        text: followupExecutionReminder,
+        synthetic: true,
+      })
+    }
 
     // Todo continuation reminder
     const todos = await Todo.get(input.sessionID)

@@ -1,8 +1,6 @@
 {
   "$schema": "zee",
   "default_agent": "zee",
-  "model": "cerebras/zai-glm-4.7",
-  "small_model": "cerebras/zai-glm-4.7",
   "instructions": ["STYLE_GUIDE.md"],
   "mcp": {
     "context7": {
@@ -64,19 +62,6 @@
         }
       }
     },
-    "cerebras": {
-      "options": {
-        "baseURL": "https://api.cerebras.ai/v1"
-      },
-      "models": {
-        "zai-glm-4.7": {
-          "reasoning": true
-        },
-        "qwen-3-235b-a22b-instruct-2507": {
-          "reasoning": true
-        }
-      }
-    },
     "zai-coding-plan": {
       "models": {
         "glm-4.7": {
@@ -119,7 +104,7 @@
       }
     }
   },
-  "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan"],
+  "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan", "cerebras"],
   "fallback": {
     "enabled": true,
     "rules": [
@@ -230,7 +215,6 @@
     },
 
     "title": {
-      "model": "cerebras/zai-glm-4.7",
       "temperature": 0.5,
       "hidden": true
     },
