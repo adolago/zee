@@ -137,6 +137,8 @@ function findOccurrences(input: string, needle: string): Array<{ start: number; 
   return occurrences
 }
 
+type Occurrence = { start: number; end: number }
+
 type PartState =
   | {
       kind: "drop"
@@ -156,6 +158,79 @@ type PartState =
       index: number
       issue: PromptPartIssue
     }
+
+type RemapState = Extract<PartState, { kind: "remap" }>
+
+function assignRemappedOccurrences(
+  input: string,
+  states: RemapState[],
+  reserved: Set<string>,
+  occurrencesByPlaceholder: Map<string, Occurrence[]>,
+): Map<number, Occurrence> {
+  const assignments = new Map<number, Occurrence>()
+  const claimedRanges = new Set<string>(reserved)
+  const groups = new Map<string, RemapState[]>()
+
+  for (const state of states) {
+    const group = groups.get(state.placeholder.value)
+    if (group) {
+      group.push(state)
+      continue
+    }
+    groups.set(state.placeholder.value, [state])
+  }
+
+  for (const [placeholderValue, group] of groups) {
+    let occurrences = occurrencesByPlaceholder.get(placeholderValue)
+    if (!occurrences) {
+      occurrences = findOccurrences(input, placeholderValue)
+      occurrencesByPlaceholder.set(placeholderValue, occurrences)
+    }
+
+    const available = occurrences.filter((occurrence) => !claimedRanges.has(rangeKey(occurrence.start, occurrence.end)))
+    if (available.length === 0) continue
+
+    const candidates = [] as Array<{
+      state: RemapState
+      occurrence: Occurrence
+      distanceStart: number
+      distanceEnd: number
+    }>
+
+    for (const state of group) {
+      for (const occurrence of available) {
+        candidates.push({
+          state,
+          occurrence,
+          distanceStart: Math.abs(occurrence.start - state.placeholder.start),
+          distanceEnd: Math.abs(occurrence.end - state.placeholder.end),
+        })
+      }
+    }
+
+    candidates.sort((a, b) => {
+      if (a.distanceStart !== b.distanceStart) return a.distanceStart - b.distanceStart
+      if (a.distanceEnd !== b.distanceEnd) return a.distanceEnd - b.distanceEnd
+      if (a.occurrence.start !== b.occurrence.start) return a.occurrence.start - b.occurrence.start
+      if (a.occurrence.end !== b.occurrence.end) return a.occurrence.end - b.occurrence.end
+      return a.state.index - b.state.index
+    })
+
+    const assignedStates = new Set<number>()
+
+    for (const candidate of candidates) {
+      const stateIndex = candidate.state.index
+      const occurrenceKey = rangeKey(candidate.occurrence.start, candidate.occurrence.end)
+      if (assignedStates.has(stateIndex) || claimedRanges.has(occurrenceKey)) continue
+
+      assignments.set(stateIndex, candidate.occurrence)
+      assignedStates.add(stateIndex)
+      claimedRanges.add(occurrenceKey)
+    }
+  }
+
+  return assignments
+}
 
 export function sanitizePromptPartsAgainstInput(input: string, parts: PromptInfo["parts"]): PromptPartSanitizationResult {
   const dropped: PromptPartIssue[] = []
@@ -241,6 +316,12 @@ export function sanitizePromptPartsAgainstInput(input: string, parts: PromptInfo
 
   const occurrencesByPlaceholder = new Map<string, Array<{ start: number; end: number }>>()
   const sanitizedParts: PromptInfo["parts"] = []
+  const remapAssignments = assignRemappedOccurrences(
+    input,
+    states.filter((state): state is RemapState => state.kind === "remap"),
+    reserved,
+    occurrencesByPlaceholder,
+  )
 
   for (const state of states) {
     if (state.kind === "keep") {
@@ -253,13 +334,7 @@ export function sanitizePromptPartsAgainstInput(input: string, parts: PromptInfo
       continue
     }
 
-    let occurrences = occurrencesByPlaceholder.get(state.placeholder.value)
-    if (!occurrences) {
-      occurrences = findOccurrences(input, state.placeholder.value)
-      occurrencesByPlaceholder.set(state.placeholder.value, occurrences)
-    }
-
-    const next = occurrences.find((occurrence) => !reserved.has(rangeKey(occurrence.start, occurrence.end)))
+    const next = remapAssignments.get(state.index)
     if (!next) {
       dropped.push({
         ...state.issue,

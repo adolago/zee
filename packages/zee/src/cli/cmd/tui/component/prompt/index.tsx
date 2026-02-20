@@ -51,7 +51,6 @@ import {
   getPromptPartPlaceholder,
   logPromptPartSanitization,
   sanitizePromptPartsAgainstInput,
-  withPromptPartPlaceholderRange,
 } from "./parts"
 
 export type PromptProps = {
@@ -855,6 +854,12 @@ export function Prompt(props: PromptProps) {
         onSelect: (dialog) => {
           input.extmarks.clear()
           input.clear()
+          grammarChecker.clear()
+          setStore("prompt", {
+            input: "",
+            parts: [],
+          })
+          setStore("extmarkToPartIndex", new Map())
           dialog.clear()
         },
       },
@@ -1069,8 +1074,7 @@ export function Prompt(props: PromptProps) {
             const before = store.prompt.input.slice(0, error.start)
             const after = store.prompt.input.slice(error.end)
             const newText = before + replacement + after
-            input.setText(newText)
-            setStore("prompt", "input", newText)
+            setPromptInputAndParts(newText, store.prompt.parts, "prompt.grammar.quickfix.single")
             // Re-trigger grammar check
             grammarChecker.check(newText)
             toast.show({
@@ -1095,8 +1099,7 @@ export function Prompt(props: PromptProps) {
                   const before = store.prompt.input.slice(0, error.start)
                   const after = store.prompt.input.slice(error.end)
                   const newText = before + replacement + after
-                  input.setText(newText)
-                  setStore("prompt", "input", newText)
+                  setPromptInputAndParts(newText, store.prompt.parts, "prompt.grammar.quickfix.select")
                   // Re-trigger grammar check
                   grammarChecker.check(newText)
                 },
@@ -1201,83 +1204,35 @@ export function Prompt(props: PromptProps) {
   }
 
   function syncExtmarksWithPromptParts(currentInput = input.plainText) {
-    const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
-    const dropped = [] as Array<{
-      index: number
-      type: PromptInfo["parts"][number]["type"]
-      reason:
-        | "missing_placeholder_source"
-        | "placeholder_out_of_bounds"
-        | "placeholder_mismatch"
-      placeholder: string
-      start?: number
-      end?: number
-    }>
+    const allExtmarks = input.extmarks
+      .getAllForTypeId(promptPartTypeId)
+      .slice()
+      .sort((a, b) => a.start - b.start || a.end - b.end || a.id - b.id)
+    const sanitized = sanitizePromptPartsAgainstInput(currentInput, store.prompt.parts)
+    logPromptPartSanitization("prompt.sync-extmarks", sanitized)
+
+    const newMap = new Map<number, number>()
+    const usedExtmarkIds = new Set<number>()
+
+    for (const [partIndex, part] of sanitized.parts.entries()) {
+      const placeholder = getPromptPartPlaceholder(part)
+      if (!placeholder || !placeholder.value) continue
+      const match = allExtmarks.find((extmark) => {
+        if (usedExtmarkIds.has(extmark.id)) return false
+        if (extmark.start !== placeholder.start || extmark.end !== placeholder.end) return false
+        return currentInput.slice(extmark.start, extmark.end) === placeholder.value
+      })
+      if (!match) continue
+      usedExtmarkIds.add(match.id)
+      newMap.set(match.id, partIndex)
+    }
 
     setStore(
       produce((draft) => {
-        const newMap = new Map<number, number>()
-        const newParts: typeof draft.prompt.parts = []
-
-        for (const extmark of allExtmarks) {
-          const partIndex = draft.extmarkToPartIndex.get(extmark.id)
-          if (partIndex !== undefined) {
-            const part = draft.prompt.parts[partIndex]
-            if (part) {
-              const placeholder = getPromptPartPlaceholder(part)
-              if (!placeholder || !placeholder.value) {
-                dropped.push({
-                  index: partIndex,
-                  type: part.type,
-                  reason: "missing_placeholder_source",
-                  placeholder: "",
-                })
-                continue
-              }
-
-              if (extmark.start < 0 || extmark.end < extmark.start || extmark.end > currentInput.length) {
-                dropped.push({
-                  index: partIndex,
-                  type: part.type,
-                  reason: "placeholder_out_of_bounds",
-                  placeholder: placeholder.value,
-                  start: extmark.start,
-                  end: extmark.end,
-                })
-                continue
-              }
-
-              const visiblePlaceholder = currentInput.slice(extmark.start, extmark.end)
-              if (visiblePlaceholder !== placeholder.value) {
-                dropped.push({
-                  index: partIndex,
-                  type: part.type,
-                  reason: "placeholder_mismatch",
-                  placeholder: placeholder.value,
-                  start: extmark.start,
-                  end: extmark.end,
-                })
-                continue
-              }
-
-              const updatedPart = withPromptPartPlaceholderRange(part, extmark.start, extmark.end)
-              newMap.set(extmark.id, newParts.length)
-              newParts.push(updatedPart)
-            }
-          }
-        }
-
+        draft.prompt.parts = sanitized.parts
         draft.extmarkToPartIndex = newMap
-        draft.prompt.parts = newParts
       }),
     )
-
-    if (dropped.length > 0) {
-      logPromptPartSanitization("prompt.sync-extmarks", {
-        dropped,
-        remapped: [],
-      })
-    }
   }
 
   command.register(() => [

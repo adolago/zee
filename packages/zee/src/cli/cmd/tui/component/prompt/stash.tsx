@@ -33,7 +33,13 @@ export const { use: usePromptStash, provider: PromptStashProvider } = createSimp
             return null
           }
         })
-        .filter((line): line is StashEntry => line !== null)
+        .filter((line): line is StashEntry => {
+          if (!line || typeof line !== "object") return false
+          if (!("input" in line) || typeof line.input !== "string") return false
+          if (!("parts" in line) || !Array.isArray(line.parts)) return false
+          if (!("timestamp" in line) || typeof line.timestamp !== "number") return false
+          return true
+        })
         .slice(-MAX_STASH_ENTRIES)
         .map((line, index) => {
           const sanitized = sanitizePromptPartsAgainstInput(line.input, line.parts)

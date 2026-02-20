@@ -29,7 +29,12 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
             return null
           }
         })
-        .filter((line): line is PromptInfo => line !== null)
+        .filter((line): line is PromptInfo => {
+          if (!line || typeof line !== "object") return false
+          if (!("input" in line) || typeof line.input !== "string") return false
+          if (!("parts" in line) || !Array.isArray(line.parts)) return false
+          return true
+        })
         .slice(-MAX_HISTORY_ENTRIES)
         .map((line, index) => {
           const sanitized = sanitizePromptPartsAgainstInput(line.input, line.parts)
