@@ -5,25 +5,10 @@ import { createStore, produce } from "solid-js/store"
 import { clone } from "remeda"
 import { createSimpleContext } from "../../context/helper"
 import { appendFile, writeFile } from "fs/promises"
-import type { AgentPart, FilePart, TextPart } from "@zee/sdk/v2"
+import type { PromptInfo } from "./types"
+import { logPromptPartSanitization, sanitizePromptPartsAgainstInput } from "./parts"
 
-export type PromptInfo = {
-  input: string
-  mode?: "normal" | "shell"
-  parts: (
-    | Omit<FilePart, "id" | "messageID" | "sessionID">
-    | Omit<AgentPart, "id" | "messageID" | "sessionID">
-    | (Omit<TextPart, "id" | "messageID" | "sessionID"> & {
-        source?: {
-          text: {
-            start: number
-            end: number
-            value: string
-          }
-        }
-      })
-  )[]
-}
+export type { PromptInfo } from "./types"
 
 const MAX_HISTORY_ENTRIES = 50
 
@@ -33,6 +18,7 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
     const historyFile = Bun.file(path.join(Global.Path.state, "prompt-history.jsonl"))
     onMount(async () => {
       const text = await historyFile.text().catch(() => "")
+      const shouldRewrite = text.trim().length > 0
       const lines = text
         .split("\n")
         .filter(Boolean)
@@ -45,12 +31,20 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
         })
         .filter((line): line is PromptInfo => line !== null)
         .slice(-MAX_HISTORY_ENTRIES)
+        .map((line, index) => {
+          const sanitized = sanitizePromptPartsAgainstInput(line.input, line.parts)
+          logPromptPartSanitization(`prompt-history.load.${index}`, sanitized)
+          return {
+            ...line,
+            parts: sanitized.parts,
+          }
+        })
 
       setStore("history", lines)
 
       // Rewrite file with only valid entries to self-heal corruption
-      if (lines.length > 0) {
-        const content = lines.map((line) => JSON.stringify(line)).join("\n") + "\n"
+      if (shouldRewrite) {
+        const content = lines.length > 0 ? lines.map((line) => JSON.stringify(line)).join("\n") + "\n" : ""
         writeFile(historyFile.name!, content).catch(() => {})
       }
     })
@@ -82,7 +76,9 @@ export const { use: usePromptHistory, provider: PromptHistoryProvider } = create
         return store.history.at(store.index)
       },
       append(item: PromptInfo) {
-        const entry = clone(item)
+        const sanitized = sanitizePromptPartsAgainstInput(item.input, item.parts)
+        logPromptPartSanitization("prompt-history.append", sanitized)
+        const entry = clone({ ...item, parts: sanitized.parts })
         let trimmed = false
         setStore(
           produce((draft) => {

@@ -6,6 +6,7 @@ import { clone } from "remeda"
 import { createSimpleContext } from "../../context/helper"
 import { appendFile, writeFile } from "fs/promises"
 import type { PromptInfo } from "./history"
+import { logPromptPartSanitization, sanitizePromptPartsAgainstInput } from "./parts"
 
 export type StashEntry = {
   input: string
@@ -21,6 +22,7 @@ export const { use: usePromptStash, provider: PromptStashProvider } = createSimp
     const stashFile = Bun.file(path.join(Global.Path.state, "prompt-stash.jsonl"))
     onMount(async () => {
       const text = await stashFile.text().catch(() => "")
+      const shouldRewrite = text.trim().length > 0
       const lines = text
         .split("\n")
         .filter(Boolean)
@@ -33,12 +35,20 @@ export const { use: usePromptStash, provider: PromptStashProvider } = createSimp
         })
         .filter((line): line is StashEntry => line !== null)
         .slice(-MAX_STASH_ENTRIES)
+        .map((line, index) => {
+          const sanitized = sanitizePromptPartsAgainstInput(line.input, line.parts)
+          logPromptPartSanitization(`prompt-stash.load.${index}`, sanitized)
+          return {
+            ...line,
+            parts: sanitized.parts,
+          }
+        })
 
       setStore("entries", lines)
 
       // Rewrite file with only valid entries to self-heal corruption
-      if (lines.length > 0) {
-        const content = lines.map((line) => JSON.stringify(line)).join("\n") + "\n"
+      if (shouldRewrite) {
+        const content = lines.length > 0 ? lines.map((line) => JSON.stringify(line)).join("\n") + "\n" : ""
         writeFile(stashFile.name!, content).catch(() => {})
       }
     })
@@ -52,7 +62,9 @@ export const { use: usePromptStash, provider: PromptStashProvider } = createSimp
         return store.entries
       },
       push(entry: Omit<StashEntry, "timestamp">) {
-        const stash = clone({ ...entry, timestamp: Date.now() })
+        const sanitized = sanitizePromptPartsAgainstInput(entry.input, entry.parts)
+        logPromptPartSanitization("prompt-stash.push", sanitized)
+        const stash = clone({ ...entry, parts: sanitized.parts, timestamp: Date.now() })
         let trimmed = false
         setStore(
           produce((draft) => {

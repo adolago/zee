@@ -10,7 +10,7 @@ import { Identifier } from "@/id/id"
 import { createStore, produce } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
 import { useVim } from "@tui/context/vim"
-import { usePromptHistory, type PromptInfo } from "./history"
+import { usePromptHistory } from "./history"
 import { usePromptStash } from "./stash"
 import { DialogStash } from "../dialog-stash"
 import { DialogSkill } from "../dialog-skill"
@@ -44,6 +44,15 @@ import { computePromptHeaderBorderLayout } from "./header-border-layout"
 import { VimCommands } from "@tui/util/vim-commands"
 import { classifySteerSubmitError, decideBusySubmit } from "./busy-submit"
 import { nextSessionMode, resolveEffectiveSessionMode } from "../../util/session-mode"
+import type { PromptInfo } from "./types"
+import {
+  expandPromptTextParts,
+  expandPromptTextPartsFromSanitized,
+  getPromptPartPlaceholder,
+  logPromptPartSanitization,
+  sanitizePromptPartsAgainstInput,
+  withPromptPartPlaceholderRange,
+} from "./parts"
 
 export type PromptProps = {
   sessionID?: string
@@ -925,79 +934,22 @@ export function Prompt(props: PromptProps) {
         onSelect: async (dialog) => {
           dialog.clear()
 
-          // replace summarized text parts with the actual text
-          const text = store.prompt.parts
-            .filter((p) => p.type === "text")
-            .reduce((acc, p) => {
-              if (!p.source) return acc
-              return acc.replace(p.source.text.value, p.text)
-            }, store.prompt.input)
-
-          const nonTextParts = store.prompt.parts.filter((p) => p.type !== "text")
-
-          const value = text
+          const expanded = expandPromptTextParts(store.prompt.input, store.prompt.parts)
+          logPromptPartSanitization("prompt.editor.expand", expanded)
+          const nonTextParts = expanded.parts.filter((p) => p.type !== "text")
+          const value = expanded.text
           const content = await Editor.open({ value, renderer })
           if (!content) return
 
+          const remapped = sanitizePromptPartsAgainstInput(content, nonTextParts)
+          logPromptPartSanitization("prompt.editor.rewrite", remapped)
           input.setText(content)
-
-          // Update positions for nonTextParts based on their location in new content
-          // Filter out parts whose virtual text was deleted
-          // this handles a case where the user edits the text in the editor
-          // such that the virtual text moves around or is deleted
-          const updatedNonTextParts = nonTextParts
-            .map((part) => {
-              let virtualText = ""
-              if (part.type === "file" && part.source?.text) {
-                virtualText = part.source.text.value
-              } else if (part.type === "agent" && part.source) {
-                virtualText = part.source.value
-              }
-
-              if (!virtualText) return part
-
-              const newStart = content.indexOf(virtualText)
-              // if the virtual text is deleted, remove the part
-              if (newStart === -1) return null
-
-              const newEnd = newStart + virtualText.length
-
-              if (part.type === "file" && part.source?.text) {
-                return {
-                  ...part,
-                  source: {
-                    ...part.source,
-                    text: {
-                      ...part.source.text,
-                      start: newStart,
-                      end: newEnd,
-                    },
-                  },
-                }
-              }
-
-              if (part.type === "agent" && part.source) {
-                return {
-                  ...part,
-                  source: {
-                    ...part.source,
-                    start: newStart,
-                    end: newEnd,
-                  },
-                }
-              }
-
-              return part
-            })
-            .filter((part) => part !== null)
 
           setStore("prompt", {
             input: content,
-            // keep only the non-text parts because the text parts were
-            // already expanded inline
-            parts: updatedNonTextParts,
+            parts: remapped.parts,
           })
-          restoreExtmarksFromParts(updatedNonTextParts)
+          restoreExtmarksFromParts(remapped.parts)
           input.cursorOffset = Bun.stringWidth(content)
         },
       },
@@ -1032,60 +984,16 @@ export function Prompt(props: PromptProps) {
               originalText={store.prompt.input}
               matches={matches}
               onApply={(content) => {
-                input.setText(content)
-
-                // Try to preserve parts if possible (similar to editor logic)
                 const nonTextParts = store.prompt.parts.filter((p) => p.type !== "text")
-                const updatedNonTextParts = nonTextParts
-                  .map((part) => {
-                    let virtualText = ""
-                    if (part.type === "file" && part.source?.text) {
-                      virtualText = part.source.text.value
-                    } else if (part.type === "agent" && part.source) {
-                      virtualText = part.source.value
-                    }
-
-                    if (!virtualText) return part
-
-                    const newStart = content.indexOf(virtualText)
-                    if (newStart === -1) return null
-
-                    const newEnd = newStart + virtualText.length
-
-                    if (part.type === "file" && part.source?.text) {
-                      return {
-                        ...part,
-                        source: {
-                          ...part.source,
-                          text: {
-                            ...part.source.text,
-                            start: newStart,
-                            end: newEnd,
-                          },
-                        },
-                      }
-                    }
-
-                    if (part.type === "agent" && part.source) {
-                      return {
-                        ...part,
-                        source: {
-                          ...part.source,
-                          start: newStart,
-                          end: newEnd,
-                        },
-                      }
-                    }
-
-                    return part
-                  })
-                  .filter((part) => part !== null)
+                const remapped = sanitizePromptPartsAgainstInput(content, nonTextParts)
+                logPromptPartSanitization("prompt.grammar.rewrite", remapped)
+                input.setText(content)
 
                 setStore("prompt", {
                   input: content,
-                  parts: updatedNonTextParts,
+                  parts: remapped.parts,
                 })
-                restoreExtmarksFromParts(updatedNonTextParts)
+                restoreExtmarksFromParts(remapped.parts)
                 input.cursorOffset = Bun.stringWidth(content)
               }}
             />
@@ -1200,6 +1108,14 @@ export function Prompt(props: PromptProps) {
     ]
   })
 
+  function setPromptInputAndParts(inputText: string, parts: PromptInfo["parts"], context: string) {
+    const sanitized = sanitizePromptPartsAgainstInput(inputText, parts)
+    logPromptPartSanitization(context, sanitized)
+    input.setText(inputText)
+    setStore("prompt", { input: inputText, parts: sanitized.parts })
+    restoreExtmarksFromParts(sanitized.parts)
+  }
+
   const ref: PromptRef = {
     get focused() {
       return input.focused
@@ -1216,9 +1132,7 @@ export function Prompt(props: PromptProps) {
       input.blur()
     },
     set(prompt) {
-      input.setText(prompt.input)
-      setStore("prompt", prompt)
-      restoreExtmarksFromParts(prompt.parts)
+      setPromptInputAndParts(prompt.input, prompt.parts, "prompt.ref.set")
       input.gotoBufferEnd()
     },
     reset() {
@@ -1286,8 +1200,20 @@ export function Prompt(props: PromptProps) {
     })
   }
 
-  function syncExtmarksWithPromptParts() {
+  function syncExtmarksWithPromptParts(currentInput = input.plainText) {
     const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
+    const dropped = [] as Array<{
+      index: number
+      type: PromptInfo["parts"][number]["type"]
+      reason:
+        | "missing_placeholder_source"
+        | "placeholder_out_of_bounds"
+        | "placeholder_mismatch"
+      placeholder: string
+      start?: number
+      end?: number
+    }>
+
     setStore(
       produce((draft) => {
         const newMap = new Map<number, number>()
@@ -1298,18 +1224,45 @@ export function Prompt(props: PromptProps) {
           if (partIndex !== undefined) {
             const part = draft.prompt.parts[partIndex]
             if (part) {
-              if (part.type === "agent" && part.source) {
-                part.source.start = extmark.start
-                part.source.end = extmark.end
-              } else if (part.type === "file" && part.source?.text) {
-                part.source.text.start = extmark.start
-                part.source.text.end = extmark.end
-              } else if (part.type === "text" && part.source?.text) {
-                part.source.text.start = extmark.start
-                part.source.text.end = extmark.end
+              const placeholder = getPromptPartPlaceholder(part)
+              if (!placeholder || !placeholder.value) {
+                dropped.push({
+                  index: partIndex,
+                  type: part.type,
+                  reason: "missing_placeholder_source",
+                  placeholder: "",
+                })
+                continue
               }
+
+              if (extmark.start < 0 || extmark.end < extmark.start || extmark.end > currentInput.length) {
+                dropped.push({
+                  index: partIndex,
+                  type: part.type,
+                  reason: "placeholder_out_of_bounds",
+                  placeholder: placeholder.value,
+                  start: extmark.start,
+                  end: extmark.end,
+                })
+                continue
+              }
+
+              const visiblePlaceholder = currentInput.slice(extmark.start, extmark.end)
+              if (visiblePlaceholder !== placeholder.value) {
+                dropped.push({
+                  index: partIndex,
+                  type: part.type,
+                  reason: "placeholder_mismatch",
+                  placeholder: placeholder.value,
+                  start: extmark.start,
+                  end: extmark.end,
+                })
+                continue
+              }
+
+              const updatedPart = withPromptPartPlaceholderRange(part, extmark.start, extmark.end)
               newMap.set(extmark.id, newParts.length)
-              newParts.push(part)
+              newParts.push(updatedPart)
             }
           }
         }
@@ -1318,6 +1271,13 @@ export function Prompt(props: PromptProps) {
         draft.prompt.parts = newParts
       }),
     )
+
+    if (dropped.length > 0) {
+      logPromptPartSanitization("prompt.sync-extmarks", {
+        dropped,
+        remapped: [],
+      })
+    }
   }
 
   command.register(() => [
@@ -1347,9 +1307,7 @@ export function Prompt(props: PromptProps) {
       onSelect: (dialog) => {
         const entry = stash.pop()
         if (entry) {
-          input.setText(entry.input)
-          setStore("prompt", { input: entry.input, parts: entry.parts })
-          restoreExtmarksFromParts(entry.parts)
+          setPromptInputAndParts(entry.input, entry.parts, "prompt.stash.pop")
           input.gotoBufferEnd()
         }
         dialog.clear()
@@ -1364,9 +1322,7 @@ export function Prompt(props: PromptProps) {
         dialog.replace(() => (
           <DialogStash
             onSelect={(entry) => {
-              input.setText(entry.input)
-              setStore("prompt", { input: entry.input, parts: entry.parts })
-              restoreExtmarksFromParts(entry.parts)
+              setPromptInputAndParts(entry.input, entry.parts, "prompt.stash.select")
               input.gotoBufferEnd()
             }}
           />
@@ -1458,26 +1414,12 @@ export function Prompt(props: PromptProps) {
       }
     }
     const messageID = Identifier.ascending("message")
-    let inputText = store.prompt.input
+    syncExtmarksWithPromptParts(store.prompt.input)
+    const sanitizedPrompt = sanitizePromptPartsAgainstInput(store.prompt.input, store.prompt.parts)
+    logPromptPartSanitization("prompt.submit", sanitizedPrompt)
 
-    // Expand pasted text inline before submitting
-    const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
-    const sortedExtmarks = allExtmarks.sort((a: { start: number }, b: { start: number }) => b.start - a.start)
-
-    for (const extmark of sortedExtmarks) {
-      const partIndex = store.extmarkToPartIndex.get(extmark.id)
-      if (partIndex !== undefined) {
-        const part = store.prompt.parts[partIndex]
-        if (part?.type === "text" && part.text) {
-          const before = inputText.slice(0, extmark.start)
-          const after = inputText.slice(extmark.end)
-          inputText = before + part.text + after
-        }
-      }
-    }
-
-    // Filter out text parts (pasted content) since they're now expanded inline
-    const nonTextParts = store.prompt.parts.filter((part) => part.type !== "text")
+    const inputText = expandPromptTextPartsFromSanitized(store.prompt.input, sanitizedPrompt.parts)
+    const nonTextParts = sanitizedPrompt.parts.filter((part) => part.type !== "text")
 
     // Capture mode before it gets reset
     const currentMode = store.mode
@@ -1500,7 +1442,7 @@ export function Prompt(props: PromptProps) {
 
     // Clear input immediately so the UI feels responsive. Save state to restore
     // on error so the user doesn't lose their message.
-    const savedPrompt = { ...store.prompt, mode: currentMode }
+    const savedPrompt = { input: store.prompt.input, parts: sanitizedPrompt.parts, mode: currentMode }
     history.append(savedPrompt)
     try {
       input.extmarks.clear()
@@ -1528,6 +1470,7 @@ export function Prompt(props: PromptProps) {
       setStore("prompt", { input: savedPrompt.input, parts: savedPrompt.parts })
       try {
         input.setText(savedPrompt.input)
+        restoreExtmarksFromParts(savedPrompt.parts)
       } catch {
         // EditBuffer may already be destroyed
       }
@@ -2016,7 +1959,7 @@ export function Prompt(props: PromptProps) {
               const value = input.plainText
               setStore("prompt", "input", value)
               autocomplete.onInput(value)
-              syncExtmarksWithPromptParts()
+              syncExtmarksWithPromptParts(value)
               // Trigger real-time grammar check
               if (realtimeGrammarEnabled()) {
                 grammarChecker.check(value)
@@ -2202,10 +2145,12 @@ export function Prompt(props: PromptProps) {
                   const item = history.move(direction, input.plainText)
 
                   if (item) {
+                    const sanitized = sanitizePromptPartsAgainstInput(item.input, item.parts)
+                    logPromptPartSanitization("prompt.history.move", sanitized)
                     input.setText(item.input)
-                    setStore("prompt", item)
+                    setStore("prompt", { ...item, parts: sanitized.parts })
                     setStore("mode", item.mode ?? "normal")
-                    restoreExtmarksFromParts(item.parts)
+                    restoreExtmarksFromParts(sanitized.parts)
                     e.preventDefault()
                     if (direction === -1) input.cursorOffset = 0
                     if (direction === 1) input.cursorOffset = input.plainText.length
