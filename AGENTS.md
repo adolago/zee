@@ -1,6 +1,5 @@
 <!--
-  CLAUDE.md is a SYMLINK to this file (AGENTS.md).
-  Edit THIS file; the symlink reflects changes automatically.
+  AGENTS.md is the canonical agent instruction file for this repository.
 -->
 
 # Zee - The Engine
@@ -64,3 +63,9 @@ journalctl --user -u zee -f            # Daemon logs
 ```
 
 For detailed architecture, gateway flow, directory trees, and environment variables, use: `skill: { name: "codebase-guide" }`
+
+## Codebase Study Artifacts (2026-02-20)
+
+- Full codebase navigation map with file:line anchors: `atris/MAP.md`
+- Daemon startup dependency graph and failure/degradation matrix:
+  `docs/architecture/runtime-startup-dependency-graph.md`

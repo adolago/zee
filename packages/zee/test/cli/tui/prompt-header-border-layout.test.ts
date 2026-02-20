@@ -40,7 +40,7 @@ describe("computePromptHeaderBorderLayout", () => {
     expect(layout.showContext).toBe(true)
     expect(row.indexOf(input.contextText)).toBeGreaterThanOrEqual(0)
     expect(row.indexOf(input.contextText)).toBeLessThan(row.indexOf(input.skillsText))
-    expect(row.length).toBe(input.width)
+    expect(Bun.stringWidth(row)).toBe(input.width)
   })
 
   test("drops skills before status badges when width is tight", () => {
@@ -51,7 +51,7 @@ describe("computePromptHeaderBorderLayout", () => {
     expect(layout.showDictation).toBe(true)
     expect(layout.showVim).toBe(true)
     expect(layout.showMode).toBe(true)
-    expect(renderRow(layout, input).length).toBe(input.width)
+    expect(Bun.stringWidth(renderRow(layout, input))).toBe(input.width)
   })
 
   test("drops mode before vim and dictation when width tightens further", () => {
@@ -62,7 +62,7 @@ describe("computePromptHeaderBorderLayout", () => {
     expect(layout.showMode).toBe(false)
     expect(layout.showVim).toBe(true)
     expect(layout.showDictation).toBe(true)
-    expect(renderRow(layout, input).length).toBe(input.width)
+    expect(Bun.stringWidth(renderRow(layout, input))).toBe(input.width)
   })
 
   test("hides context if needed to preserve a center fill", () => {
@@ -72,5 +72,17 @@ describe("computePromptHeaderBorderLayout", () => {
     expect(layout.showContext).toBe(false)
     expect(layout.fill.length).toBe(11)
     expect(renderRow(layout, input)).toBe(`├${"─".repeat(11)}─┤`)
+  })
+
+  test("uses display width for fitting when labels include full-width glyphs", () => {
+    const input = makeInput({
+      width: 36,
+      skillsText: "１０ skills",
+      modeText: "ＢＹＰＡＳＳ",
+    })
+    const layout = computePromptHeaderBorderLayout(input)
+    const row = renderRow(layout, input)
+
+    expect(Bun.stringWidth(row)).toBe(input.width)
   })
 })

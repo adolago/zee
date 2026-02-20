@@ -1878,6 +1878,7 @@ export function Prompt(props: PromptProps) {
           items={bannerItems}
           rotationMs={bannerRotationMs()}
           fallback="Zee banner: no updates."
+          layoutWidth={safeLayoutWidth()}
           topBorder={
             showTitleInBorder() ? (
               <box height={1} flexDirection="row" gap={0}>

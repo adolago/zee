@@ -13,6 +13,7 @@ import { usePromptRef } from "../context/prompt"
 import { Installation } from "@/installation"
 import { StatusBar as StatusBarStyle } from "../../../style"
 import { Header as HeaderStyles } from "@tui/ui/header-footer"
+import { useTerminalDimensions } from "@opentui/solid"
 
 // Module-level flag to prevent initial prompt from being set multiple times
 // This ensures the prompt is only auto-filled once per app lifecycle
@@ -23,7 +24,9 @@ export function Home() {
   const { theme } = useTheme()
   const route = useRouteData("home")
   const promptRef = usePromptRef()
+  const dimensions = useTerminalDimensions()
   const keybind = useKeybind()
+  const homePromptWidth = createMemo(() => Math.max(0, Math.min(dimensions().width, 100)))
   const mcp = createMemo(() => Object.keys(sync.data.mcp).length > 0)
   const mcpError = createMemo(() => {
     return Object.values(sync.data.mcp).some((x) => x.status === "failed")
@@ -87,6 +90,7 @@ export function Home() {
               promptRef.set(r)
             }}
             hint={Hint}
+            layoutWidth={homePromptWidth()}
           />
         </box>
         <Toast />

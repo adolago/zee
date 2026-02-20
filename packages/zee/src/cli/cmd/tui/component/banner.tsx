@@ -3,9 +3,10 @@ import { useTheme } from "@tui/context/theme"
 import { useTerminalDimensions } from "@opentui/solid"
 import { EmptyBorder } from "@tui/component/border"
 import type { JSX } from "solid-js"
+import { displayWidth, kindLabel, sanitizeLegacyBannerText, truncateToWidth, type BannerKind } from "./banner-format"
 
 export type BannerItem = {
-  kind: "reminder" | "todo" | "message"
+  kind: BannerKind
   text: string
   priority?: "low" | "normal" | "high" | "urgent"
 }
@@ -16,34 +17,13 @@ export type BannerProps = {
   items?: Accessor<BannerItem[]>
   rotationMs?: number
   fallback?: string
-}
-
-function sanitizeOneLine(text: string): string {
-  return text.replace(/\s+/g, " ").trim()
-}
-
-function truncate(text: string, maxChars: number): string {
-  if (maxChars <= 0) return ""
-  if (text.length <= maxChars) return text
-  if (maxChars <= 3) return text.slice(0, maxChars)
-  return text.slice(0, maxChars - 3) + "..."
-}
-
-function kindLabel(kind: BannerItem["kind"]): string {
-  switch (kind) {
-    case "reminder":
-      return "REM"
-    case "todo":
-      return "TODO"
-    case "message":
-      return "MSG"
-  }
+  layoutWidth?: number
 }
 
 export function Banner(props: BannerProps) {
   const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
-  const safeWidth = createMemo(() => Math.max(0, dimensions().width))
+  const safeWidth = createMemo(() => Math.max(0, Math.floor(props.layoutWidth ?? dimensions().width)))
   const borderFill = createMemo(() => "─".repeat(safeWidth()))
 
   const items = createMemo(() => props.items?.() ?? [])
@@ -80,13 +60,13 @@ export function Banner(props: BannerProps) {
 
   const display = createMemo(() => {
     const item = current()
-    if (!item) return { label: undefined, kind: undefined, text: truncate(fallbackText(), maxTextWidth()) }
+    if (!item) return { label: undefined, kind: undefined, text: truncateToWidth(fallbackText(), maxTextWidth()) }
 
     const label = kindLabel(item.kind)
     const prefix = `[${label}] `
-    const safeText = sanitizeOneLine(item.text)
-    const remaining = Math.max(0, maxTextWidth() - prefix.length)
-    const text = truncate(safeText, remaining)
+    const safeText = sanitizeLegacyBannerText(item.kind, item.text)
+    const remaining = Math.max(0, maxTextWidth() - displayWidth(prefix))
+    const text = truncateToWidth(safeText, remaining)
     return { label, kind: item.kind, text }
   })
 

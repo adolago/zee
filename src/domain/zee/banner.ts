@@ -321,7 +321,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
       kind: "todo",
       priority: inProgress.length > 0 ? "high" : "normal",
       createdAt: nowMs,
-      text: `Todos: ${totalOpen} open`,
+      text: `${totalOpen} open tasks`,
     });
   }
 

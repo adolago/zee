@@ -18,6 +18,10 @@ export type PromptHeaderBorderLayout = {
   fill: string
 }
 
+function textWidth(text: string): number {
+  return Bun.stringWidth(text)
+}
+
 function buildRightClusterText(
   showSkills: boolean,
   showDictation: boolean,
@@ -38,15 +42,15 @@ export function computePromptHeaderBorderLayout(input: PromptHeaderBorderLayoutI
   const innerWidth = Math.max(0, Math.floor(input.width) - 3)
   const minFill = innerWidth > 0 ? 1 : 0
 
-  let showContext = input.showContext && input.contextText.length > 0
-  let showSkills = input.skillsText.length > 0
-  let showDictation = input.dictationText.length > 0
-  let showVim = input.showVim && input.vimText.length > 0
-  let showMode = input.modeText.length > 0
+  let showContext = input.showContext && textWidth(input.contextText) > 0
+  let showSkills = textWidth(input.skillsText) > 0
+  let showDictation = textWidth(input.dictationText) > 0
+  let showVim = input.showVim && textWidth(input.vimText) > 0
+  let showMode = textWidth(input.modeText) > 0
 
   const leftText = () => (showContext ? `${input.contextText}─` : "")
   const rightText = () => buildRightClusterText(showSkills, showDictation, showVim, showMode, input)
-  const fits = () => leftText().length + rightText().length + minFill <= innerWidth
+  const fits = () => textWidth(leftText()) + textWidth(rightText()) + minFill <= innerWidth
 
   // Drop lowest-priority right metadata first.
   if (!fits() && showSkills) showSkills = false
@@ -57,7 +61,7 @@ export function computePromptHeaderBorderLayout(input: PromptHeaderBorderLayoutI
   // Preserve the center fill even if context meter must be hidden.
   if (!fits() && showContext) showContext = false
 
-  const fillLength = Math.max(0, innerWidth - leftText().length - rightText().length)
+  const fillLength = Math.max(0, innerWidth - textWidth(leftText()) - textWidth(rightText()))
 
   return {
     showContext,

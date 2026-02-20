@@ -137,7 +137,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
       kind: "todo",
       priority: inProgress.length > 0 ? "high" : "normal",
       createdAt: nowMs,
-      text: `Todos: ${totalOpen} open`,
+      text: `${totalOpen} open tasks`,
     })
   }
 
@@ -148,7 +148,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
       kind: "todo",
       priority: "high",
       createdAt: nowMs,
-      text: `[TODO] In progress: ${sanitizeOneLine(entry.content).slice(0, 120)} (session: ${entry.sessionID})`,
+      text: `In progress: ${sanitizeOneLine(entry.content).slice(0, 120)}`,
     })
   }
 
@@ -159,7 +159,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
       kind: "todo",
       priority: "normal",
       createdAt: nowMs,
-      text: `[TODO] Next: ${sanitizeOneLine(entry.content).slice(0, 120)} (session: ${entry.sessionID})`,
+      text: `Next: ${sanitizeOneLine(entry.content).slice(0, 120)}`,
     })
   }
 

@@ -31,6 +31,16 @@ function userMessage(text: string): MessageV2.WithParts {
   } as any
 }
 
+function assistantMessage(text: string): MessageV2.WithParts {
+  return {
+    info: {
+      id: "msg_assistant_1",
+      role: "assistant",
+    },
+    parts: [{ type: "text", text }],
+  } as any
+}
+
 describe("session.skill-recall", () => {
   test("returns undefined when there is no user query text", async () => {
     const result = await buildSkillRecallContext({
@@ -98,6 +108,97 @@ describe("session.skill-recall", () => {
         expect(result!).toContain("home-assistant")
         expect(result!).toContain("### Auto-loaded Skill: home-assistant")
         expect(result!).toContain("# Home Assistant")
+      },
+    })
+  })
+
+  test("uses previous intent for short affirmative follow-ups", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        const haDir = path.join(dir, ".agents", "skills", "@zee", "home-assistant")
+        await fs.mkdir(haDir, { recursive: true })
+
+        await Bun.write(
+          path.join(haDir, "SKILL.md"),
+          [
+            "---",
+            "name: home-assistant",
+            "description: Control smart home lights, scenes, and automations.",
+            "triggers:",
+            "  - set office lights to 2200k at 50%",
+            "  - set office lights",
+            "---",
+            "",
+            "# Home Assistant",
+            "",
+            "Use Home Assistant API calls to control smart-home entities.",
+            "",
+          ].join("\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const result = await buildSkillRecallContext({
+          agent: makeAgent(),
+          messages: [
+            userMessage("set office lights to 2200k at 50%"),
+            assistantMessage("Before I trigger this, confirm with: yes"),
+            userMessage("Yes"),
+          ],
+        })
+
+        expect(result).toBeDefined()
+        expect(result!).toContain("home-assistant")
+        expect(result!).toContain("### Auto-loaded Skill: home-assistant")
+      },
+    })
+  })
+
+  test("uses nearby assistant context for affirmative follow-ups", async () => {
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        const haDir = path.join(dir, ".agents", "skills", "@zee", "home-assistant")
+        await fs.mkdir(haDir, { recursive: true })
+
+        await Bun.write(
+          path.join(haDir, "SKILL.md"),
+          [
+            "---",
+            "name: home-assistant",
+            "description: Control smart home lights, scenes, and automations.",
+            "triggers:",
+            "  - turn off the living room lights",
+            "---",
+            "",
+            "# Home Assistant",
+            "",
+            "Use Home Assistant API calls to control smart-home entities.",
+            "",
+          ].join("\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const result = await buildSkillRecallContext({
+          agent: makeAgent(),
+          messages: [
+            userMessage("do that"),
+            assistantMessage("Before I trigger anything in Home Assistant, should I turn off all living room lights?"),
+            userMessage("Yes"),
+          ],
+        })
+
+        expect(result).toBeDefined()
+        expect(result!).toContain("home-assistant")
+        expect(result!).toContain("### Auto-loaded Skill: home-assistant")
       },
     })
   })
