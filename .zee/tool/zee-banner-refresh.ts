@@ -6,8 +6,7 @@
  */
 
 import { tool } from "@zee/plugin"
-
-import { Storage } from "../../packages/zee/src/storage/storage"
+import { spawnSync } from "node:child_process"
 
 import {
   DEFAULT_ROTATION_MS,
@@ -95,40 +94,58 @@ async function getReminderItems(now: Date): Promise<{ items: ZeeBannerItem[]; ca
   return { items: reminders, ...(calendarError ? { calendarError } : {}) }
 }
 
-interface TodoEntry {
-  content: string
-  sessionID: string
-}
-
 async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeBannerItem[] }> {
   const nowMs = now.getTime()
-  const inProgress: TodoEntry[] = []
-  const pending: TodoEntry[] = []
-  let totalOpen = 0
-
-  try {
-    const todoKeys = await Storage.list(["todo"])
-    for (const key of todoKeys) {
-      const sessionID = key.at(1)
-      if (!sessionID) continue
-
-      const todos = await Storage.read<any>(["todo", sessionID]).catch(() => [])
-      if (!Array.isArray(todos)) continue
-
-      for (const todo of todos) {
-        if (!todo || typeof todo !== "object") continue
-        const status = (todo as any).status
-        const content = (todo as any).content
-        if (typeof content !== "string" || !content.trim()) continue
-        if (status === "completed" || status === "cancelled") continue
-        totalOpen++
-        if (status === "in_progress") inProgress.push({ content, sessionID })
-        else pending.push({ content, sessionID })
-      }
-    }
-  } catch {
-    // ignore
+  const result = spawnSync(
+    process.env.ZEE_TASKMASTER_COMMAND || "task",
+    ["rc.verbose=nothing", "rc.recurrence=0", "status:pending", "or", "status:waiting", "export"],
+    {
+      encoding: "utf-8",
+      timeout: 5000,
+    },
+  )
+  if (result.error || result.status !== 0 || !result.stdout) {
+    return { totalOpen: 0, items: [] }
   }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(result.stdout)
+  } catch {
+    return { totalOpen: 0, items: [] }
+  }
+  if (!Array.isArray(parsed)) return { totalOpen: 0, items: [] }
+
+  const inProgress: Array<{ description: string; urgency: number }> = []
+  const pending: Array<{ description: string; urgency: number }> = []
+  const seen = new Set<string>()
+
+  for (const row of parsed) {
+    if (!row || typeof row !== "object") continue
+    const task = row as Record<string, unknown>
+    const description = typeof task.description === "string" ? sanitizeOneLine(task.description) : ""
+    if (!description) continue
+
+    const status = task.status
+    if (status !== "pending" && status !== "waiting") continue
+    const urgency = typeof task.urgency === "number" && Number.isFinite(task.urgency) ? task.urgency : 0
+
+    const project = typeof task.project === "string" ? sanitizeOneLine(task.project) : ""
+    const key = `${project}:${description}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    if (typeof task.start === "string" && task.start.trim().length > 0) {
+      inProgress.push({ description, urgency })
+    } else {
+      pending.push({ description, urgency })
+    }
+  }
+
+  inProgress.sort((a, b) => b.urgency - a.urgency)
+  pending.sort((a, b) => b.urgency - a.urgency)
+
+  const totalOpen = inProgress.length + pending.length
 
   const items: ZeeBannerItem[] = []
   if (totalOpen > 0) {
@@ -148,7 +165,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
       kind: "todo",
       priority: "high",
       createdAt: nowMs,
-      text: `In progress: ${sanitizeOneLine(entry.content).slice(0, 120)}`,
+      text: `In progress: ${sanitizeOneLine(entry.description).slice(0, 120)}`,
     })
   }
 
@@ -159,7 +176,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
       kind: "todo",
       priority: "normal",
       createdAt: nowMs,
-      text: `Next: ${sanitizeOneLine(entry.content).slice(0, 120)}`,
+      text: `Next: ${sanitizeOneLine(entry.description).slice(0, 120)}`,
     })
   }
 

@@ -1,7 +1,7 @@
 /**
  * WhatsApp Platform Handler
  *
- * Implements MessagingPlatformHandler for WhatsApp Cloud API via meta-cli.
+ * Implements MessagingPlatformHandler for WhatsApp via wacli.
  * Inbound messages are injected via emitInboundMessage() (called from the
  * gateway HTTP route). Outbound messages use the gateway WS send method.
  */
@@ -34,17 +34,17 @@ export function getInboundBusListenerCount(): number {
 }
 
 // ---------------------------------------------------------------------------
-// Forwarded message type (from meta-cli webhook)
+// Forwarded message type (from webhook)
 // ---------------------------------------------------------------------------
 
-/** Media attachment as forwarded by meta-cli */
+/** Media attachment as forwarded by webhook */
 export interface ForwardedMedia {
   mediaId: string
   mimeType?: string
   filename?: string
 }
 
-/** Message format from meta-cli's webhook forwarder */
+/** Message format from webhook forwarder */
 export interface ForwardedMessage {
   id: string
   senderId: string
@@ -70,11 +70,11 @@ export function normalizeInboundTextNewlines(input: string): string {
 }
 
 /**
- * Convert a forwarded message from meta-cli into a PlatformMessage.
+ * Convert a forwarded message from webhook into a PlatformMessage.
  */
 export function toPlatformMessage(fwd: ForwardedMessage): PlatformMessage {
   const media: SurfaceMedia[] | undefined = fwd.media?.map((m) => ({
-    path: `meta://media/${m.mediaId}`,
+    path: `wacli://media/${m.mediaId}`,
     mimeType: m.mimeType,
     filename: m.filename,
   }))
@@ -108,7 +108,7 @@ export type WhatsAppSendFn = (
  * WhatsApp platform handler for the MessagingSurface.
  *
  * - Inbound: messages arrive via the HTTP inbound endpoint → emitInboundMessage()
- * - Outbound: messages are sent via the provided sendFn (gateway WS or meta-cli)
+ * - Outbound: messages are sent via the provided sendFn (gateway WS or wacli)
  */
 export class WhatsAppPlatformHandler implements MessagingPlatformHandler {
   readonly platform = "whatsapp" as const

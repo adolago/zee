@@ -2,10 +2,10 @@
  * Zee Messaging Plugin
  *
  * Domain-specific plugin for Zee, the messaging and communication agent.
- * Provides integrations with messaging platforms.
+ * Provides WhatsApp integration via wacli (personal WhatsApp bridge).
  *
  * Features:
- * - WhatsApp integration
+ * - WhatsApp integration via wacli
  * - Message formatting and templating
  * - Contact management
  */
@@ -18,16 +18,17 @@ import type {
   ToolDefinition,
 } from '../../plugin';
 import { z } from 'zod';
+import { spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 
 export interface ZeeMessagingConfig {
-  /** WhatsApp Business API token */
-  whatsappToken?: string;
-  /** WhatsApp phone number ID */
-  whatsappPhoneId?: string;
+  /** wacli binary path */
+  wacliBin?: string;
+  /** wacli store directory */
+  wacliStore?: string;
   /** Default message template */
   defaultTemplate?: string;
-  /** Enable read receipts */
-  readReceipts?: boolean;
   /** Message queue size */
   queueSize?: number;
 }
@@ -41,6 +42,30 @@ interface QueuedMessage {
   status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 }
 
+function resolveWacliBin(): string {
+  const home = os.homedir();
+  return (
+    process.env.ZEE_WACLI_BIN ||
+    process.env.WACLI_BIN ||
+    path.join(home, 'go', 'bin', 'wacli')
+  );
+}
+
+function resolveWacliStore(): string {
+  return process.env.WACLI_STORE || path.join(os.homedir(), '.wacli');
+}
+
+/**
+ * Normalize recipient to wacli JID format.
+ */
+function normalizeToJid(recipient: string): string {
+  const trimmed = recipient.trim();
+  if (trimmed.includes('@')) return trimmed;
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length >= 7) return `${digits}@s.whatsapp.net`;
+  return trimmed;
+}
+
 /**
  * Zee Messaging Plugin Factory
  */
@@ -48,12 +73,9 @@ export const ZeeMessagingPlugin: PluginFactory = async (
   ctx: PluginContext
 ): Promise<PluginInstance> => {
   const config: ZeeMessagingConfig = {
-    whatsappToken:
-      ctx.config.get('zee.whatsapp.token') || process.env.WHATSAPP_TOKEN,
-    whatsappPhoneId:
-      ctx.config.get('zee.whatsapp.phoneId') || process.env.WHATSAPP_PHONE_ID,
+    wacliBin: resolveWacliBin(),
+    wacliStore: resolveWacliStore(),
     defaultTemplate: ctx.config.get('zee.defaultTemplate'),
-    readReceipts: ctx.config.get('zee.readReceipts') ?? true,
     queueSize: ctx.config.get('zee.queueSize') ?? 100,
   };
 
@@ -69,36 +91,44 @@ export const ZeeMessagingPlugin: PluginFactory = async (
   }
 
   /**
-   * Send WhatsApp message
+   * Send WhatsApp message via wacli
    */
   async function sendWhatsApp(recipient: string, content: string): Promise<boolean> {
-    if (!config.whatsappToken || !config.whatsappPhoneId) {
-      ctx.logger.warn('WhatsApp not configured');
-      return false;
-    }
+    const bin = config.wacliBin!;
+    const store = config.wacliStore!;
+    const jid = normalizeToJid(recipient);
 
     try {
-      const response = await fetch(
-        `https://graph.facebook.com/v18.0/${config.whatsappPhoneId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.whatsappToken}`,
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: recipient,
-            type: 'text',
-            text: { body: content },
-          }),
-        }
-      );
+      const result = await new Promise<{ ok: boolean; stdout: string; stderr: string }>((resolve) => {
+        const child = spawn(bin, [
+          'send', 'text',
+          '--to', jid,
+          '--message', content,
+          '--store', store,
+          '--timeout', '2m',
+          '--json',
+        ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
-      if (!response.ok) {
-        const error = await response.text();
-        ctx.logger.error('WhatsApp send failed', { error });
+        let stdout = '';
+        let stderr = '';
+        const timer = setTimeout(() => child.kill('SIGKILL'), 120_000);
+
+        child.stdout?.on('data', (chunk) => { stdout += String(chunk); });
+        child.stderr?.on('data', (chunk) => { stderr += String(chunk); });
+
+        child.on('close', (code) => {
+          clearTimeout(timer);
+          resolve({ ok: code === 0, stdout, stderr });
+        });
+
+        child.on('error', () => {
+          clearTimeout(timer);
+          resolve({ ok: false, stdout, stderr });
+        });
+      });
+
+      if (!result.ok) {
+        ctx.logger.error('WhatsApp send failed via wacli', { stderr: result.stderr });
         return false;
       }
 
@@ -134,74 +164,18 @@ export const ZeeMessagingPlugin: PluginFactory = async (
     }
   }
 
-  // Auth providers
+  // Auth providers -- wacli uses QR pairing, not API tokens
   const authProviders: AuthProvider[] = [];
-
-  if (config.whatsappToken === undefined) {
-    authProviders.push({
-      provider: 'whatsapp',
-      displayName: 'WhatsApp Business',
-      methods: [
-        {
-          type: 'api',
-          label: 'API Token',
-          prompts: [
-            {
-              type: 'text',
-              key: 'token',
-              message: 'Enter WhatsApp Business API token',
-              placeholder: 'EAAxxxxx...',
-            },
-            {
-              type: 'text',
-              key: 'phoneId',
-              message: 'Enter WhatsApp Phone Number ID',
-              placeholder: '123456789...',
-            },
-          ],
-          async authorize(inputs) {
-            if (!inputs?.token || !inputs?.phoneId) {
-              return { type: 'failed' };
-            }
-
-            // Test the token
-            try {
-              const response = await fetch(
-                `https://graph.facebook.com/v18.0/${inputs.phoneId}`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${inputs.token}`,
-                  },
-                }
-              );
-
-              if (!response.ok) {
-                return { type: 'failed' };
-              }
-
-              return {
-                type: 'success',
-                key: inputs.token,
-                provider: 'whatsapp',
-              };
-            } catch {
-              return { type: 'failed' };
-            }
-          },
-        },
-      ],
-    });
-  }
 
   // Tool definitions
   const tools: Record<string, ToolDefinition> = {
     send_message: {
-      description: 'Send a message via WhatsApp',
+      description: 'Send a message via WhatsApp (wacli)',
       args: {
         platform: z
           .enum(['whatsapp'])
           .describe('Messaging platform to use'),
-        recipient: z.string().describe('Recipient phone number (WhatsApp)'),
+        recipient: z.string().describe('Recipient phone number or JID'),
         message: z.string().describe('Message content'),
         template: z.string().optional().describe('Message template to use'),
       },
@@ -261,7 +235,7 @@ export const ZeeMessagingPlugin: PluginFactory = async (
     add_contact: {
       description: 'Add or update a contact',
       args: {
-        id: z.string().describe('Contact identifier (phone/chat ID)'),
+        id: z.string().describe('Contact identifier (phone/JID)'),
         name: z.string().describe('Contact name'),
         platform: z.enum(['whatsapp']).describe('Platform'),
       },
@@ -362,10 +336,10 @@ export const ZeeMessagingPlugin: PluginFactory = async (
   return {
     metadata: {
       name: 'zee-messaging',
-      version: '1.0.0',
-      description: 'Messaging platform integrations for Zee',
+      version: '2.0.0',
+      description: 'Messaging platform integrations for Zee (wacli)',
       author: 'Zee',
-      tags: ['messaging', 'zee', 'domain', 'whatsapp'],
+      tags: ['messaging', 'zee', 'domain', 'whatsapp', 'wacli'],
     },
 
     lifecycle: {
@@ -381,7 +355,7 @@ export const ZeeMessagingPlugin: PluginFactory = async (
         }
 
         ctx.logger.info('Zee Messaging plugin initialized', {
-          hasWhatsApp: !!config.whatsappToken,
+          wacliConfigured: !!config.wacliBin,
           contactCount: contacts.size,
         });
       },

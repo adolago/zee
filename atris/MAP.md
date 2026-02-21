@@ -78,10 +78,13 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Part/message mutation:** `packages/zee/src/session/index.ts:410`, `packages/zee/src/session/index.ts:439`
 
 ### Feature: Gateway and WhatsApp Bridge
-**Purpose:** Send/receive WhatsApp via local gateway WS RPC with meta-cli fallback.
+**Purpose:** Send/receive WhatsApp via local gateway WS RPC with wacli fallback and inbound bridge forwarding.
 - **Gateway route root:** `packages/zee/src/server/route/gateway.ts:237`
 - **Send endpoint:** `packages/zee/src/server/route/gateway.ts:238`
-- **Inbound endpoint:** `packages/zee/src/server/route/gateway.ts:317`
+- **Inbound endpoint:** `packages/zee/src/server/route/gateway.ts:318`
+- **Inbound injection + mapping:** `packages/zee/src/server/route/gateway.ts:349`, `packages/zee/src/server/route/gateway.ts:350`
+- **Platform message transform (`wacli://media/...`):** `packages/zee/src/surface/platforms/whatsapp.ts:75`
+- **wacli inbound bridge daemon:** `scripts/wacli-bridge:87`, `scripts/wacli-bridge:105`, `scripts/wacli-bridge:161`, `scripts/wacli-bridge:228`, `scripts/wacli-bridge:273`
 - **Gateway WS client call path:** `packages/zee/src/gateway/ws-client.ts:126`
 - **Gateway client connect lifecycle:** `packages/zee/src/gateway/ws-client.ts:141`, `packages/zee/src/gateway/ws-client.ts:153`
 - **Embedded gateway start/stop/state:** `packages/zee/src/gateway/embedded-gateway.ts:121`, `packages/zee/src/gateway/embedded-gateway.ts:167`, `packages/zee/src/gateway/embedded-gateway.ts:186`

@@ -1,7 +1,7 @@
 import { cmd } from "./cmd"
 import { Output } from "../output"
 
-const REMOVED_MSG = "Channels commands are not available (Swabble gateway removed). Use meta-cli for WhatsApp."
+const REMOVED_MSG = "Channels commands are not available (Swabble gateway removed). Use wacli for WhatsApp."
 
 const ChannelsListCommand = cmd({
   command: "list",

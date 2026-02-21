@@ -3,22 +3,20 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
-export type MetaCliSendErrorCode =
-  | "META_CLI_NOT_FOUND"
-  | "META_CLI_TIMEOUT"
-  | "META_CLI_AUTH_FAILED"
-  | "META_CLI_API_ERROR"
-  | "META_CLI_FAILED"
+export type WacliSendErrorCode =
+  | "WACLI_NOT_FOUND"
+  | "WACLI_TIMEOUT"
+  | "WACLI_AUTH_FAILED"
+  | "WACLI_SEND_FAILED"
 
-export type MetaCliSendResult =
+export type WacliSendResult =
   | {
       success: true
       messageId?: string
-      waId?: string
     }
   | {
       success: false
-      code: MetaCliSendErrorCode
+      code: WacliSendErrorCode
       error: string
     }
 
@@ -43,72 +41,49 @@ type CommandResult = {
   timedOut?: boolean
 }
 
-const DEFAULT_TIMEOUT_MS = 30_000
-
-function windowsPathExtensions(pathExt = process.env.PATHEXT): string[] {
-  return (pathExt ?? ".EXE;.CMD;.BAT;.COM")
-    .split(";")
-    .map((value) => value.trim())
-    .filter(Boolean)
-}
-
-export function resolveExecutableCandidates(
-  command: string,
-  options: { platform?: NodeJS.Platform; pathExt?: string } = {},
-): string[] {
-  const platform = options.platform ?? process.platform
-  if (platform !== "win32") return [command]
-  if (path.extname(command)) return [command]
-  return [command, ...windowsPathExtensions(options.pathExt).map((ext) => command + ext)]
-}
+const DEFAULT_TIMEOUT_MS = 120_000
 
 /**
- * Normalize a recipient to E.164 format for the Business API.
- * Strips JID suffixes (@s.whatsapp.net, @c.us), ensures leading '+'.
- * Rejects group JIDs (@g.us) since the Business API doesn't support groups.
+ * Normalize a recipient to a wacli JID.
+ * Accepts: E.164 (+436649137379), bare digits (436649137379),
+ * or already-formed JID (436649137379@s.whatsapp.net).
+ * Rejects group JIDs (@g.us).
  */
-export function normalizeRecipientForMetaCli(rawRecipient: string): string | { error: string } {
+export function normalizeRecipientForWacli(rawRecipient: string): string | { error: string } {
   const trimmed = rawRecipient.trim()
   if (!trimmed) return { error: "Empty recipient" }
 
   const withoutPrefix = trimmed.replace(/^whatsapp:/i, "").trim()
 
   if (withoutPrefix.endsWith("@g.us")) {
-    return { error: "Group JIDs (@g.us) are not supported by the Business API. Use individual numbers only." }
+    return { error: "Group JIDs (@g.us) are not supported. Use individual numbers only." }
   }
 
-  // Strip JID suffixes: 1234567890@s.whatsapp.net or 1234567890@c.us → 1234567890
-  const jidMatch = /^(\+?\d+)(?::\d+)?@(?:s\.whatsapp\.net|c\.us)$/i.exec(withoutPrefix)
-  if (jidMatch?.[1]) {
-    const digits = jidMatch[1].replace(/\D/g, "")
-    return `+${digits}`
-  }
-
-  // Already E.164 with +
-  if (/^\+\d{7,15}$/.test(withoutPrefix)) {
+  // Already a full JID
+  if (withoutPrefix.endsWith("@s.whatsapp.net") || withoutPrefix.endsWith("@c.us")) {
     return withoutPrefix
   }
 
-  // Bare digits → add +
+  // Strip leading + and non-digits, form JID
   const digits = withoutPrefix.replace(/\D/g, "")
   if (digits.length >= 7 && digits.length <= 15) {
-    return `+${digits}`
+    return `${digits}@s.whatsapp.net`
   }
 
-  return withoutPrefix
+  return { error: `Invalid phone number: "${rawRecipient}"` }
 }
 
 /**
- * Resolve the meta-cli binary path using candidate list.
- * Priority: ZEE_META_CLI_BIN env → well-known paths → PATH
+ * Resolve the wacli binary path.
+ * Priority: ZEE_WACLI_BIN env > WACLI_BIN env > well-known paths > PATH
  */
-function resolveMetaCliBin(): string[] {
+function resolveWacliBin(): string[] {
   const home = os.homedir()
-  const fromEnv = [process.env.ZEE_META_CLI_BIN]
+  const fromEnv = [process.env.ZEE_WACLI_BIN, process.env.WACLI_BIN]
   const defaults = [
-    path.join(home, ".bun", "bin", "meta"),
-    path.join(home, ".local", "bin", "meta"),
-    "meta",
+    path.join(home, "go", "bin", "wacli"),
+    path.join(home, ".local", "bin", "wacli"),
+    "wacli",
   ]
   const candidates = [...fromEnv, ...defaults]
   const unique = new Set<string>()
@@ -123,8 +98,15 @@ function resolveMetaCliBin(): string[] {
 }
 
 /**
+ * Resolve the wacli store directory.
+ */
+function resolveWacliStore(): string {
+  return process.env.WACLI_STORE || path.join(os.homedir(), ".wacli")
+}
+
+/**
  * Infer media type from file extension.
- * jpg/jpeg/png/webp/gif → image, mp4/3gp → video, else → document
+ * jpg/jpeg/png/webp/gif -> image, mp4/3gp -> video, else -> document
  */
 export function inferMediaType(urlOrPath: string): MediaType {
   const ext = path.extname(urlOrPath).toLowerCase().replace(".", "")
@@ -134,105 +116,77 @@ export function inferMediaType(urlOrPath: string): MediaType {
 }
 
 /**
- * Build meta-cli arguments for a send command.
- * Text: meta wa send <to> --text <msg> --json
- * Media: meta wa send <to> --<type> <url> --caption <msg> --json
+ * Build wacli arguments for a send command.
+ * Text: wacli send text --to <jid> --message <msg> --store <store> --json
+ * Media: wacli send <type> --to <jid> --path <file> --caption <msg> --store <store> --json
  */
-function buildMetaCliArgs(options: {
+function buildWacliArgs(options: {
   to: string
   message: string
   mediaUrl?: string
   mediaType?: MediaType
   caption?: string
 }): string[] {
-  const args = ["wa", "send", options.to]
+  const store = resolveWacliStore()
 
   if (options.mediaUrl) {
     const type = options.mediaType ?? inferMediaType(options.mediaUrl)
-    args.push(`--${type}`, options.mediaUrl)
+    const args = ["send", type, "--to", options.to, "--path", options.mediaUrl, "--store", store]
     const captionText = options.caption ?? options.message
     if (captionText) {
       args.push("--caption", captionText)
     }
-  } else {
-    args.push("--text", options.message)
+    args.push("--timeout", "2m", "--json")
+    return args
   }
 
-  args.push("--json")
-  return args
+  return ["send", "text", "--to", options.to, "--message", options.message, "--store", store, "--timeout", "2m", "--json"]
 }
 
 /**
- * Parse meta-cli JSON stdout on success (exit 0).
- * Extracts messages[0].id and contacts[0].wa_id.
+ * Parse wacli JSON stdout on success (exit 0).
+ * Extracts data.id from the response.
  */
-function parseMetaCliOutput(stdout: string): { messageId?: string; waId?: string } {
+function parseWacliOutput(stdout: string): { messageId?: string } {
   try {
     const data = JSON.parse(stdout)
     return {
-      messageId: data?.messages?.[0]?.id,
-      waId: data?.contacts?.[0]?.wa_id,
+      messageId: data?.data?.id || data?.id,
     }
   } catch {
     return {}
   }
 }
 
-function classifyMetaCliError(stderr: string, exitCode: number | null): {
-  code: MetaCliSendErrorCode
+function classifyWacliError(stderr: string, stdout: string, exitCode: number | null): {
+  code: WacliSendErrorCode
   error: string
 } {
-  const text = stderr.trim()
+  const text = (stderr.trim() || stdout.trim())
   const lower = text.toLowerCase()
 
-  // Auth / credential failures
   if (
-    exitCode === 2 ||
-    lower.includes("unauthorized") ||
-    lower.includes("401") ||
-    lower.includes("invalid token") ||
-    lower.includes("token expired") ||
-    lower.includes("oauth") ||
     lower.includes("not authenticated") ||
-    lower.includes("access token") ||
-    lower.includes("auth")
+    lower.includes("not logged in") ||
+    lower.includes("qr") ||
+    lower.includes("pair") ||
+    lower.includes("session expired")
   ) {
-    return { code: "META_CLI_AUTH_FAILED", error: text || "meta-cli authentication failed" }
+    return { code: "WACLI_AUTH_FAILED", error: text || "wacli not authenticated" }
   }
 
-  // API-level errors (bad request, rate limit, recipient issues)
-  if (
-    lower.includes("400") ||
-    lower.includes("403") ||
-    lower.includes("404") ||
-    lower.includes("429") ||
-    lower.includes("rate limit") ||
-    lower.includes("invalid recipient") ||
-    lower.includes("not a valid whatsapp") ||
-    lower.includes("template") ||
-    lower.includes("messaging limit") ||
-    lower.includes("outside allowed window") ||
-    lower.includes("spam") ||
-    lower.includes("blocked")
-  ) {
-    return { code: "META_CLI_API_ERROR", error: text || "meta-cli API request failed" }
-  }
-
-  return { code: "META_CLI_FAILED", error: text || "meta-cli send failed" }
+  return { code: "WACLI_SEND_FAILED", error: text || "wacli send failed" }
 }
 
 export function commandExists(command: string): boolean {
   if (!path.isAbsolute(command)) return true
   const mode = process.platform === "win32" ? fs.constants.F_OK : fs.constants.X_OK
-  for (const candidate of resolveExecutableCandidates(command)) {
-    try {
-      fs.accessSync(candidate, mode)
-      return true
-    } catch {
-      // keep scanning candidates
-    }
+  try {
+    fs.accessSync(command, mode)
+    return true
+  } catch {
+    return false
   }
-  return false
 }
 
 export async function runCommand(
@@ -248,24 +202,11 @@ export async function runCommand(
       .map(([key, value]) => [key, String(value)]),
   )
 
-  const commandMode = process.platform === "win32" ? fs.constants.F_OK : fs.constants.X_OK
-  const resolvedCommand =
-    path.isAbsolute(command)
-      ? (resolveExecutableCandidates(command).find((candidate) => {
-          try {
-            fs.accessSync(candidate, commandMode)
-            return true
-          } catch {
-            return false
-          }
-        }) ?? command)
-      : command
-
   return await new Promise((resolve) => {
-    const child = spawn(resolvedCommand, args, {
+    const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"],
       env: resolvedEnv,
-      shell: process.platform === "win32",
+      shell: false,
     })
 
     let stdout = ""
@@ -317,20 +258,20 @@ export async function runCommand(
   })
 }
 
-export async function sendWhatsAppMessage(options: SendWhatsAppOptions): Promise<MetaCliSendResult> {
+export async function sendWhatsAppMessage(options: SendWhatsAppOptions): Promise<WacliSendResult> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
 
-  // Normalize recipient to E.164
-  const normalized = normalizeRecipientForMetaCli(options.to)
+  // Normalize recipient to JID
+  const normalized = normalizeRecipientForWacli(options.to)
   if (typeof normalized === "object" && "error" in normalized) {
     return {
       success: false,
-      code: "META_CLI_FAILED",
+      code: "WACLI_SEND_FAILED",
       error: normalized.error,
     }
   }
 
-  const cliArgs = buildMetaCliArgs({
+  const cliArgs = buildWacliArgs({
     to: normalized,
     message: options.message,
     mediaUrl: options.mediaUrl,
@@ -338,7 +279,7 @@ export async function sendWhatsAppMessage(options: SendWhatsAppOptions): Promise
     caption: options.caption,
   })
 
-  const candidates = resolveMetaCliBin()
+  const candidates = resolveWacliBin()
   const attempted: string[] = []
 
   for (const candidate of candidates) {
@@ -352,32 +293,35 @@ export async function sendWhatsAppMessage(options: SendWhatsAppOptions): Promise
     if (result.timedOut) {
       return {
         success: false,
-        code: "META_CLI_TIMEOUT",
-        error: `meta-cli timed out after ${timeoutMs}ms`,
+        code: "WACLI_TIMEOUT",
+        error: `wacli timed out after ${timeoutMs}ms`,
       }
     }
 
     if (result.ok) {
-      const parsed = parseMetaCliOutput(result.stdout)
+      const parsed = parseWacliOutput(result.stdout)
       return {
         success: true,
         messageId: parsed.messageId,
-        waId: parsed.waId,
       }
     }
 
     return {
       success: false,
-      ...classifyMetaCliError(result.stderr, result.exitCode),
+      ...classifyWacliError(result.stderr, result.stdout, result.exitCode),
     }
   }
 
   return {
     success: false,
-    code: "META_CLI_NOT_FOUND",
+    code: "WACLI_NOT_FOUND",
     error:
       attempted.length > 0
-        ? `meta-cli was attempted but unavailable (${attempted.join(", ")})`
-        : "meta binary not found. Install meta-cli or set ZEE_META_CLI_BIN.",
+        ? `wacli was attempted but unavailable (${attempted.join(", ")})`
+        : "wacli binary not found. Install wacli or set ZEE_WACLI_BIN.",
   }
 }
+
+// Legacy type aliases for backward compatibility during migration
+export type MetaCliSendErrorCode = WacliSendErrorCode
+export type MetaCliSendResult = WacliSendResult

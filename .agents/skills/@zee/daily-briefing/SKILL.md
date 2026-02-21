@@ -102,7 +102,7 @@ Default: last 1 day. Surfaces job alerts, Euclase, flagged items, finance news.
 
 ## WhatsApp Integration
 
-The morning briefing can be sent via WhatsApp using the `meta` CLI (`meta wa send`). Format the output concisely for mobile reading -- strip table formatting, use short lines, prioritize actionable items.
+The morning briefing can be sent via WhatsApp using `wacli` (`wacli send text --to <JID> --message <text> --store ~/.wacli --json`). Format the output concisely for mobile reading -- strip table formatting, use short lines, prioritize actionable items.
 
 ## Artur's Daily Blocks
 

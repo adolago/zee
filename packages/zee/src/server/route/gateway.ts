@@ -170,9 +170,9 @@ async function sendViaGateway(input: {
     }
     return lastResult
   } catch (error) {
-    // Fallback to direct meta-cli send when embedded gateway runtime is unavailable.
+    // Fallback to direct wacli send when embedded gateway runtime is unavailable.
     const message = error instanceof Error ? error.message : String(error)
-    log.warn("gateway send failed; falling back to meta-cli", {
+    log.warn("gateway send failed; falling back to wacli", {
       error: message,
       to: originalInput.to,
     })
@@ -227,7 +227,7 @@ async function sendViaGateway(input: {
     }
 
     return {
-      provider: "meta-cli",
+      provider: "wacli",
       accountId: originalInput.accountId,
       results: fallbackResults,
     }
@@ -311,7 +311,7 @@ export const GatewayRoute = new Hono()
   )
 
   // ---------------------------------------------------------------------------
-  // Inbound — meta-cli webhook forward
+   // Inbound — webhook forward
   // ---------------------------------------------------------------------------
 
   .post(
@@ -319,7 +319,7 @@ export const GatewayRoute = new Hono()
     describeRoute({
       summary: "Receive inbound WhatsApp message",
       description:
-        "Receive an inbound WhatsApp message forwarded from meta-cli webhook and inject into the messaging surface.",
+        "Receive an inbound WhatsApp message forwarded from webhook and inject into the messaging surface.",
       operationId: "gateway.whatsapp.inbound",
       responses: {
         200: {

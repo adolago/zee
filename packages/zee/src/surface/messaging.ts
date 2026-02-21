@@ -455,7 +455,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
  * Create a messaging surface with a platform handler.
  *
  * Platform handlers must be provided by the application.
- * WhatsApp messaging is handled via meta-cli (Business API).
+ * WhatsApp messaging is handled via wacli (personal WhatsApp bridge).
  */
 export function createMessagingSurface(
   platform: MessagingPlatformHandler,

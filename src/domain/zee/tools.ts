@@ -22,7 +22,7 @@ import {
 } from "./splitwise.js";
 import { resolveCodexbarConfig, runCodexbar } from "./codexbar.js";
 import { withRetry, suggestRecovery, buildEscalation } from "../../swarm/recovery.js";
-import { sendWhatsAppMessage, type MetaCliSendErrorCode } from "./whatsapp-send.js";
+import { sendWhatsAppMessage, type WacliSendErrorCode } from "./whatsapp-send.js";
 
 const log = Log.create({ service: "zee-tools" });
 
@@ -591,9 +591,9 @@ export const messagingTool: ToolDefinition = {
   id: "zee:messaging",
   category: "domain",
   init: async () => ({
-    description: `Send messages via WhatsApp (Business API). Always search memory for recipient contact info before asking the user.
+    description: `Send messages via WhatsApp (wacli personal bridge). Always search memory for recipient contact info before asking the user.
 
-WhatsApp: to=E.164 phone (e.g., "+15551234567"). Groups not supported. Supports mediaUrl for images/video/documents.`,
+WhatsApp: to=E.164 phone or JID (e.g., "+15551234567" or "15551234567@s.whatsapp.net"). Groups not supported. Supports mediaUrl for images/video/documents.`,
     parameters: MessagingParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { channel, to, message, mediaUrl, mediaType, account } = args;
@@ -635,24 +635,20 @@ WhatsApp: to=E.164 phone (e.g., "+15551234567"). Groups not supported. Supports 
         });
 
         if (!result.success) {
-          const troubleshootingMap: Record<MetaCliSendErrorCode, string> = {
-            META_CLI_NOT_FOUND: `Troubleshooting:
-- Install meta-cli: \`bun add -g @anthropic/meta-cli\`
-- Or set ZEE_META_CLI_BIN
-- Verify: \`meta doctor\``,
-            META_CLI_TIMEOUT: `Troubleshooting:
+          const troubleshootingMap: Record<WacliSendErrorCode, string> = {
+            WACLI_NOT_FOUND: `Troubleshooting:
+- Install wacli (Go binary)
+- Or set ZEE_WACLI_BIN
+- Verify: \`wacli doctor --store ~/.wacli\``,
+            WACLI_TIMEOUT: `Troubleshooting:
 - Check network connectivity
-- Verify Business API status: \`meta doctor\``,
-            META_CLI_AUTH_FAILED: `Troubleshooting:
-- Run \`meta auth login\` to re-authenticate
-- Verify: \`meta doctor\``,
-            META_CLI_API_ERROR: `Troubleshooting:
-- Verify recipient number is on WhatsApp
-- Check message template compliance (24h window)
-- Run \`meta doctor\``,
-            META_CLI_FAILED: `Troubleshooting:
-- Run \`meta doctor\` to check configuration
-- Verify \`meta wa send\` works manually`,
+- Verify wacli session: \`wacli doctor --store ~/.wacli\``,
+            WACLI_AUTH_FAILED: `Troubleshooting:
+- Re-pair wacli: \`wacli auth --store ~/.wacli\`
+- Scan QR from WhatsApp > Linked Devices`,
+            WACLI_SEND_FAILED: `Troubleshooting:
+- Run \`wacli doctor --store ~/.wacli\` to check status
+- Check wacli store lock: remove ~/.wacli/LOCK if stale`,
           };
 
           return {
@@ -700,7 +696,7 @@ ${preview}${result.messageId ? `\nMessage ID: ${result.messageId}` : ""}`,
           output: `Failed to send message: ${errorMsg}
 
 Troubleshooting:
-- Run \`meta doctor\` to check configuration
+- Run \`wacli doctor --store ~/.wacli\` to check status
 - Verify network connectivity`,
         };
       }
@@ -1180,7 +1176,7 @@ Enable it in zee.jsonc:
 
 // =============================================================================
 // WhatsApp Reaction Tool
-// TODO: migrate to meta-cli when it supports reactions (currently uses gateway)
+// TODO: migrate to wacli when it supports reactions (currently uses gateway)
 // =============================================================================
 
 const WhatsAppReactionParams = z.object({

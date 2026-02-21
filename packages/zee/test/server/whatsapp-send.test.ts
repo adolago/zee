@@ -1,50 +1,45 @@
 import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test"
 import {
-  normalizeRecipientForMetaCli,
+  normalizeRecipientForWacli,
   inferMediaType,
   commandExists,
   sendWhatsAppMessage,
-  resolveExecutableCandidates,
   runCommand,
 } from "../../../../src/domain/zee/whatsapp-send"
 
 // ---------------------------------------------------------------------------
-// normalizeRecipientForMetaCli
+// normalizeRecipientForWacli
 // ---------------------------------------------------------------------------
 
-describe("normalizeRecipientForMetaCli", () => {
-  test("strips @c.us JID suffix", () => {
-    expect(normalizeRecipientForMetaCli("15551234567@c.us")).toBe("+15551234567")
+describe("normalizeRecipientForWacli", () => {
+  test("preserves @c.us JID", () => {
+    expect(normalizeRecipientForWacli("15551234567@c.us")).toBe("15551234567@c.us")
   })
 
-  test("strips @s.whatsapp.net JID suffix", () => {
-    expect(normalizeRecipientForMetaCli("15551234567@s.whatsapp.net")).toBe("+15551234567")
+  test("preserves @s.whatsapp.net JID", () => {
+    expect(normalizeRecipientForWacli("15551234567@s.whatsapp.net")).toBe("15551234567@s.whatsapp.net")
   })
 
-  test("strips whatsapp: prefix", () => {
-    expect(normalizeRecipientForMetaCli("whatsapp:+15551234567")).toBe("+15551234567")
+  test("strips whatsapp: prefix and forms JID", () => {
+    expect(normalizeRecipientForWacli("whatsapp:+15551234567")).toBe("15551234567@s.whatsapp.net")
   })
 
-  test("adds + to bare digits", () => {
-    expect(normalizeRecipientForMetaCli("15551234567")).toBe("+15551234567")
+  test("converts bare digits to JID", () => {
+    expect(normalizeRecipientForWacli("15551234567")).toBe("15551234567@s.whatsapp.net")
   })
 
-  test("preserves existing E.164 format", () => {
-    expect(normalizeRecipientForMetaCli("+15551234567")).toBe("+15551234567")
+  test("converts E.164 to JID", () => {
+    expect(normalizeRecipientForWacli("+15551234567")).toBe("15551234567@s.whatsapp.net")
   })
 
   test("rejects group JIDs", () => {
-    const result = normalizeRecipientForMetaCli("120363123456789@g.us")
+    const result = normalizeRecipientForWacli("120363123456789@g.us")
     expect(result).toEqual(expect.objectContaining({ error: expect.stringContaining("Group JIDs") }))
   })
 
   test("rejects empty string", () => {
-    const result = normalizeRecipientForMetaCli("")
+    const result = normalizeRecipientForWacli("")
     expect(result).toEqual(expect.objectContaining({ error: "Empty recipient" }))
-  })
-
-  test("handles JID with device suffix (1234:0@s.whatsapp.net)", () => {
-    expect(normalizeRecipientForMetaCli("15551234567:0@s.whatsapp.net")).toBe("+15551234567")
   })
 })
 
@@ -77,31 +72,11 @@ describe("inferMediaType", () => {
 
 describe("commandExists", () => {
   test("returns true for relative/bare commands (deferred to PATH)", () => {
-    expect(commandExists("meta")).toBe(true)
+    expect(commandExists("wacli")).toBe(true)
   })
 
   test("returns false for nonexistent absolute path", () => {
-    expect(commandExists("/nonexistent/path/to/meta-cli-binary")).toBe(false)
-  })
-})
-
-describe("resolveExecutableCandidates", () => {
-  test("adds PATHEXT candidates for Windows commands without extension", () => {
-    expect(
-      resolveExecutableCandidates("C:\\tools\\meta", {
-        platform: "win32",
-        pathExt: ".EXE;.CMD",
-      }),
-    ).toEqual(["C:\\tools\\meta", "C:\\tools\\meta.EXE", "C:\\tools\\meta.CMD"])
-  })
-
-  test("keeps Windows commands with extension unchanged", () => {
-    expect(
-      resolveExecutableCandidates("C:\\tools\\meta.cmd", {
-        platform: "win32",
-        pathExt: ".EXE;.CMD",
-      }),
-    ).toEqual(["C:\\tools\\meta.cmd"])
+    expect(commandExists("/nonexistent/path/to/wacli-binary")).toBe(false)
   })
 })
 
@@ -118,7 +93,7 @@ describe("sendWhatsAppMessage", () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.code).toBe("META_CLI_FAILED")
+      expect(result.code).toBe("WACLI_SEND_FAILED")
       expect(result.error).toContain("Group JIDs")
     }
   })
@@ -131,7 +106,7 @@ describe("sendWhatsAppMessage", () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.code).toBe("META_CLI_FAILED")
+      expect(result.code).toBe("WACLI_SEND_FAILED")
       expect(result.error).toBe("Empty recipient")
     }
   })

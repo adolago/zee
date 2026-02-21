@@ -411,15 +411,7 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-  - id: meta-business
-    canonical_name: meta-business
-    current_path: .agents/skills/@zee/meta-business/SKILL.md
-    target_path: .agents/skills/@zee/meta-business/SKILL.md
-    owner: zee
-    status: active
-    wave: A
-    requires: frontmatter
-    env: frontmatter
+
   - id: nano-pdf
     canonical_name: nano-pdf
     current_path: .agents/skills/@zee/nano-pdf/SKILL.md

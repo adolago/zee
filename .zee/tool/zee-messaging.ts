@@ -1,7 +1,7 @@
 /**
  * Zee Messaging Tool - Plugin wrapper for cross-platform messaging
  *
- * WhatsApp: sends via meta-cli (Business API)
+ * WhatsApp: sends via wacli (personal WhatsApp bridge)
  * Telegram: sends via zee daemon gateway
  */
 
@@ -11,37 +11,39 @@ import os from "node:os"
 import path from "node:path"
 import { tool } from "@zee/plugin"
 
-type MetaCliResult = {
+type WacliResult = {
   success: boolean
   messageId?: string
   error?: string
-  code?: "not_found" | "timeout" | "auth_failed" | "api_error" | "failed"
+  code?: "not_found" | "timeout" | "auth_failed" | "failed"
 }
 
-function normalizeRecipientForMetaCli(raw: string): string | { error: string } {
+function normalizeRecipientForWacli(raw: string): string | { error: string } {
   const trimmed = raw.trim().replace(/^whatsapp:/i, "")
   if (trimmed.endsWith("@g.us")) {
-    return { error: "Group JIDs (@g.us) are not supported by the Business API." }
+    return { error: "Group JIDs (@g.us) are not supported." }
   }
 
-  const jidMatch = /^(\+?\d+)(?::\d+)?@(?:s\.whatsapp\.net|c\.us)$/i.exec(trimmed)
-  if (jidMatch?.[1]) return `+${jidMatch[1].replace(/\D/g, "")}`
+  // Already a JID
+  if (trimmed.endsWith("@s.whatsapp.net") || trimmed.endsWith("@c.us")) {
+    return trimmed
+  }
 
-  if (/^\+\d{7,15}$/.test(trimmed)) return trimmed
-
+  // Strip to digits, form JID
   const digits = trimmed.replace(/\D/g, "")
-  if (digits.length >= 7 && digits.length <= 15) return `+${digits}`
+  if (digits.length >= 7 && digits.length <= 15) return `${digits}@s.whatsapp.net`
 
   return trimmed
 }
 
-function resolveMetaCliBin(): string[] {
+function resolveWacliBin(): string[] {
   const home = os.homedir()
   const candidates = [
-    process.env.ZEE_META_CLI_BIN,
-    path.join(home, ".bun", "bin", "meta"),
-    path.join(home, ".local", "bin", "meta"),
-    "meta",
+    process.env.ZEE_WACLI_BIN,
+    process.env.WACLI_BIN,
+    path.join(home, "go", "bin", "wacli"),
+    path.join(home, ".local", "bin", "wacli"),
+    "wacli",
   ]
 
   const unique = new Set<string>()
@@ -53,6 +55,10 @@ function resolveMetaCliBin(): string[] {
     resolved.push(value)
   }
   return resolved
+}
+
+function resolveWacliStore(): string {
+  return process.env.WACLI_STORE || path.join(os.homedir(), ".wacli")
 }
 
 function commandExists(command: string): boolean {
@@ -118,62 +124,64 @@ async function runCommand(command: string, args: string[], timeoutMs: number): P
   })
 }
 
-async function sendWhatsAppViaMetaCli(to: string, message: string, mediaUrl?: string, mediaType?: "image" | "video" | "document"): Promise<MetaCliResult> {
-  const normalized = normalizeRecipientForMetaCli(to)
+async function sendWhatsAppViaWacli(to: string, message: string, mediaUrl?: string, mediaType?: "image" | "video" | "document"): Promise<WacliResult> {
+  const normalized = normalizeRecipientForWacli(to)
   if (typeof normalized === "object" && "error" in normalized) {
     return { success: false, code: "failed", error: normalized.error }
   }
 
-  const args = ["wa", "send", normalized]
+  const store = resolveWacliStore()
+  const args: string[] = []
+
   if (mediaUrl) {
     const type = mediaType ?? inferMediaType(mediaUrl)
-    args.push(`--${type}`, mediaUrl)
+    args.push("send", type, "--to", normalized, "--path", mediaUrl, "--store", store)
     if (message) args.push("--caption", message)
   } else {
-    args.push("--text", message)
+    args.push("send", "text", "--to", normalized, "--message", message, "--store", store)
   }
-  args.push("--json")
+  args.push("--timeout", "2m", "--json")
 
-  for (const candidate of resolveMetaCliBin()) {
+  for (const candidate of resolveWacliBin()) {
     if (!commandExists(candidate)) continue
 
-    const result = await runCommand(candidate, args, 30_000)
+    const result = await runCommand(candidate, args, 120_000)
     if (result.notFound) continue
 
     if (result.timedOut) {
-      return { success: false, code: "timeout", error: "meta-cli timed out after 30s" }
+      return { success: false, code: "timeout", error: "wacli timed out after 120s" }
     }
 
     if (result.ok) {
       try {
         const data = JSON.parse(result.stdout)
-        return { success: true, messageId: data?.messages?.[0]?.id }
+        return { success: true, messageId: data?.data?.id || data?.id }
       } catch {
         return { success: true }
       }
     }
 
-    const output = result.stderr.trim()
+    const output = result.stderr.trim() || result.stdout.trim()
     const lower = output.toLowerCase()
-    if (lower.includes("auth") || lower.includes("token") || lower.includes("unauthorized")) {
-      return { success: false, code: "auth_failed", error: output || "meta-cli auth failed" }
+    if (lower.includes("auth") || lower.includes("not logged in") || lower.includes("qr") || lower.includes("pair")) {
+      return { success: false, code: "auth_failed", error: output || "wacli not authenticated" }
     }
 
-    return { success: false, code: "failed", error: output || "meta-cli send failed" }
+    return { success: false, code: "failed", error: output || "wacli send failed" }
   }
 
-  return { success: false, code: "not_found", error: "meta binary not found. Install meta-cli or set ZEE_META_CLI_BIN." }
+  return { success: false, code: "not_found", error: "wacli binary not found. Install wacli or set ZEE_WACLI_BIN." }
 }
 
 export default tool({
-  description: `Send messages via WhatsApp (Business API) or Telegram gateways.
+  description: `Send messages via WhatsApp (wacli) or Telegram gateways.
 
 Channels:
-- **whatsapp**: sends via meta-cli (WhatsApp Business Cloud API)
+- **whatsapp**: sends via wacli (personal WhatsApp bridge)
 - **telegram**: Telegram bots (requires zee daemon with gateway enabled)
 
 WhatsApp:
-- to: E.164 phone (e.g., "+1555..."). Groups not supported.
+- to: E.164 phone or JID (e.g., "+1555..." or "1555...@s.whatsapp.net"). Groups not supported.
 - Supports media: image, video, document via mediaUrl
 
 Telegram:
@@ -188,7 +196,7 @@ Examples:
     channel: tool.schema
       .enum(["whatsapp", "telegram"])
       .describe("Messaging channel: whatsapp or telegram"),
-    to: tool.schema.string().describe("Recipient: WhatsApp E.164 phone or Telegram chatId (numeric)"),
+    to: tool.schema.string().describe("Recipient: WhatsApp E.164 phone/JID or Telegram chatId (numeric)"),
     message: tool.schema.string().describe("Message content"),
     persona: tool.schema
       .enum(["zee", "stanley", "johny"])
@@ -214,23 +222,23 @@ Examples:
 
     try {
       if (channel === "whatsapp") {
-        const result = await sendWhatsAppViaMetaCli(to, message, mediaUrl, mediaType as "image" | "video" | "document" | undefined)
+        const result = await sendWhatsAppViaWacli(to, message, mediaUrl, mediaType as "image" | "video" | "document" | undefined)
 
         if (result.success) {
           const mediaLabel = mediaUrl ? " with media" : ""
-          return `Message sent via WhatsApp (meta-cli)${mediaLabel} to ${to}
+          return `Message sent via WhatsApp (wacli)${mediaLabel} to ${to}
 ${result.messageId ? `Message ID: ${result.messageId}\n` : ""}
 Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`
         }
 
         const troubleshooting = result.code === "not_found"
-          ? `- Install meta-cli: \`bun add -g @anthropic/meta-cli\`
-- Or set ZEE_META_CLI_BIN`
+          ? `- Install wacli (Go binary)
+- Or set ZEE_WACLI_BIN`
           : result.code === "auth_failed"
-            ? `- Run \`meta auth login\` to re-authenticate
-- Verify: \`meta doctor\``
-            : `- Run \`meta doctor\` to check configuration
-- Verify \`meta wa send\` works manually`
+            ? `- Re-pair wacli: \`wacli auth --store ~/.wacli\`
+- Scan QR from WhatsApp > Linked Devices`
+            : `- Run \`wacli doctor --store ~/.wacli\` to check status
+- Check wacli store lock: remove ~/.wacli/LOCK if stale`
 
         return `Failed to send WhatsApp message: ${result.error || "Unknown error"}
 

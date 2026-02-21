@@ -1,11 +1,11 @@
 /**
- * Mock meta-cli for testing
+ * Mock wacli for testing
  *
- * Provides mock responses for the `meta wa send` command to enable testing
- * WhatsApp messaging without a real meta-cli binary or Business API token.
+ * Provides mock responses for the `wacli send text` command to enable testing
+ * WhatsApp messaging without a real wacli binary or authenticated session.
  */
 
-export interface MetaCliMockOptions {
+export interface WacliMockOptions {
   /** Exit code to return (default: 0) */
   exitCode?: number
   /** JSON stdout for successful sends */
@@ -18,24 +18,24 @@ export interface MetaCliMockOptions {
   timeout?: boolean
 }
 
-/** Default success response matching real meta-cli JSON output */
-export const META_CLI_SUCCESS_RESPONSE = JSON.stringify({
-  messaging_product: "whatsapp",
-  contacts: [{ input: "+15551234567", wa_id: "15551234567" }],
-  messages: [{ id: "wamid.HBgNMTU1NTEyMzQ1NjcVAgASGBQzQUY5" }],
+/** Default success response matching real wacli JSON output */
+export const WACLI_SUCCESS_RESPONSE = JSON.stringify({
+  success: true,
+  data: { id: "3EB07708F23B77D53A6C26", sent: true, to: "15551234567@s.whatsapp.net" },
+  error: null,
 })
 
 /** Default auth failure stderr */
-export const META_CLI_AUTH_ERROR = "Error: unauthorized - invalid or expired access token"
+export const WACLI_AUTH_ERROR = "Error: not authenticated -- run wacli auth to pair"
 
-/** Default API error stderr */
-export const META_CLI_API_ERROR = "Error: 400 - invalid recipient: not a valid WhatsApp number"
+/** Default send failure stderr */
+export const WACLI_SEND_ERROR = "Error: failed to send message: context deadline exceeded"
 
 /**
  * Build a mock CommandResult for use with sendWhatsAppMessage tests.
  */
-export function mockMetaCliResult(options: MetaCliMockOptions = {}) {
-  const { exitCode = 0, stdout = META_CLI_SUCCESS_RESPONSE, stderr = "", notFound = false, timeout = false } = options
+export function mockWacliResult(options: WacliMockOptions = {}) {
+  const { exitCode = 0, stdout = WACLI_SUCCESS_RESPONSE, stderr = "", notFound = false, timeout = false } = options
 
   return {
     ok: exitCode === 0 && !notFound && !timeout,
@@ -44,6 +44,13 @@ export function mockMetaCliResult(options: MetaCliMockOptions = {}) {
     stderr: notFound ? "" : stderr,
     notFound,
     timedOut: timeout,
-    error: notFound ? "spawn meta ENOENT" : undefined,
+    error: notFound ? "spawn wacli ENOENT" : undefined,
   }
 }
+
+// Legacy aliases for backward compatibility
+export const META_CLI_SUCCESS_RESPONSE = WACLI_SUCCESS_RESPONSE
+export const META_CLI_AUTH_ERROR = WACLI_AUTH_ERROR
+export const META_CLI_API_ERROR = WACLI_SEND_ERROR
+export const mockMetaCliResult = mockWacliResult
+export type MetaCliMockOptions = WacliMockOptions

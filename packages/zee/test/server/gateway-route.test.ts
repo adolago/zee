@@ -132,19 +132,19 @@ describe("gateway routes", () => {
     }
   })
 
-  test("POST /gateway/whatsapp/send falls back to meta-cli when gateway is unavailable", async () => {
+  test("POST /gateway/whatsapp/send falls back to wacli when gateway is unavailable", async () => {
     const previousGatewayUrl = process.env.ZEE_GATEWAY_URL
-    const previousMetaCliBin = process.env.ZEE_META_CLI_BIN
+    const previousWacliBin = process.env.ZEE_WACLI_BIN
 
     try {
       process.env.ZEE_GATEWAY_URL = "ws://127.0.0.1:1"
       delete process.env.ZEE_GATEWAY_PORT
 
-      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "meta-cli-fallback-"))
-      fakeMetaBinPath = path.join(tmpDir, "meta")
-      await fs.writeFile(fakeMetaBinPath, "#!/usr/bin/env bash\nprintf '{}\\n'\n", "utf8")
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "wacli-fallback-"))
+      fakeMetaBinPath = path.join(tmpDir, "wacli")
+      await fs.writeFile(fakeMetaBinPath, "#!/usr/bin/env bash\nprintf '{\"success\":true,\"data\":{\"id\":\"test\",\"sent\":true}}\\n'\n", "utf8")
       await fs.chmod(fakeMetaBinPath, 0o755)
-      process.env.ZEE_META_CLI_BIN = fakeMetaBinPath
+      process.env.ZEE_WACLI_BIN = fakeMetaBinPath
 
       const app = Server.App()
       const response = await app.request("/gateway/whatsapp/send", {
@@ -156,15 +156,15 @@ describe("gateway routes", () => {
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(data.success).toBe(true)
-      expect(data.data.provider).toBe("meta-cli")
+      expect(data.data.provider).toBe("wacli")
       expect(Array.isArray(data.data.results)).toBe(true)
       expect(data.data.results.length).toBeGreaterThan(0)
     } finally {
       if (previousGatewayUrl === undefined) delete process.env.ZEE_GATEWAY_URL
       else process.env.ZEE_GATEWAY_URL = previousGatewayUrl
 
-      if (previousMetaCliBin === undefined) delete process.env.ZEE_META_CLI_BIN
-      else process.env.ZEE_META_CLI_BIN = previousMetaCliBin
+      if (previousWacliBin === undefined) delete process.env.ZEE_WACLI_BIN
+      else process.env.ZEE_WACLI_BIN = previousWacliBin
     }
   })
 

@@ -386,7 +386,7 @@ Active shared skills are first-party under `@zee/`:
 - `home-assistant` - Smart home control via HA REST API
 - `spotify-player` - Terminal Spotify playback
 - `stock-market-pro` - Yahoo Finance price, charts, fundamentals
-- `meta-cli` - WhatsApp Business API via meta-cli (send, media, accounts)
+- `wacli` - WhatsApp messaging via wacli personal bridge (send, media)
 - `weather` - Weather via wttr.in / Open-Meteo
 - `whoopskill` - WHOOP health data (sleep, recovery, HRV)
 

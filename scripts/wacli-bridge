@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+"""
+wacli-bridge -- Forward inbound WhatsApp messages from wacli to the Zee gateway.
+
+Architecture:
+  1. Starts `wacli sync --follow` as a subprocess to keep the WhatsApp
+     connection alive and store incoming messages into the local DB.
+  2. Polls `wacli messages list --after <cursor> --json` every POLL_INTERVAL
+     seconds to detect new messages.
+  3. Skips messages from self (FromMe=true) and already-forwarded message IDs.
+  4. Transforms each message into the gateway WhatsAppInboundInput schema and
+     POSTs it to the Zee server at /gateway/whatsapp/inbound.
+
+Usage:
+  wacli-bridge [--poll-interval SECONDS] [--gateway-url URL] [--dry-run]
+
+Environment:
+  WACLI_BIN          path to wacli binary  (default: /home/artur/go/bin/wacli)
+  WACLI_STORE        path to wacli store   (default: /home/artur/.wacli)
+  ZEE_GATEWAY_URL    Zee server base URL   (default: http://localhost:3210)
+  ZEE_BRIDGE_POLL    poll interval seconds  (default: 2)
+"""
+
+import argparse
+import datetime as dt
+import json
+import logging
+import os
+import signal
+import subprocess
+import sys
+import time
+import urllib.request
+from collections import deque
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+WACLI_BIN = os.environ.get("WACLI_BIN", "/home/artur/go/bin/wacli")
+WACLI_STORE = os.environ.get("WACLI_STORE", str(Path.home() / ".wacli"))
+GATEWAY_URL = os.environ.get("ZEE_GATEWAY_URL", "http://localhost:3210")
+POLL_INTERVAL = float(os.environ.get("ZEE_BRIDGE_POLL", "2"))
+INBOUND_ENDPOINT = "/gateway/whatsapp/inbound"
+
+# Max message IDs to remember for dedup (ring buffer)
+SEEN_RING_SIZE = 2000
+
+# How far back to look on first startup (seconds)
+INITIAL_LOOKBACK_S = 60
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S%z",
+)
+log = logging.getLogger("wacli-bridge")
+
+# ---------------------------------------------------------------------------
+# Globals
+# ---------------------------------------------------------------------------
+
+sync_proc: subprocess.Popen | None = None
+shutdown_requested = False
+
+
+def handle_signal(signum, _frame):
+    global shutdown_requested
+    name = signal.Signals(signum).name
+    log.info("Received %s, shutting down", name)
+    shutdown_requested = True
+
+
+signal.signal(signal.SIGTERM, handle_signal)
+signal.signal(signal.SIGINT, handle_signal)
+
+# ---------------------------------------------------------------------------
+# wacli helpers
+# ---------------------------------------------------------------------------
+
+
+def start_sync() -> subprocess.Popen:
+    """Start wacli sync --follow as a long-running subprocess."""
+    cmd = [
+        WACLI_BIN, "sync", "--follow",
+        "--store", WACLI_STORE,
+        "--download-media",
+    ]
+    log.info("Starting wacli sync: %s", " ".join(cmd))
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    log.info("wacli sync started (pid=%d)", proc.pid)
+    return proc
+
+
+def poll_messages(after: str, limit: int = 100) -> list[dict]:
+    """
+    Poll wacli messages list --after <timestamp> --json.
+    Returns a list of message dicts, newest first.
+    """
+    cmd = [
+        WACLI_BIN, "messages", "list",
+        "--json",
+        "--after", after,
+        "--limit", str(limit),
+        "--store", WACLI_STORE,
+    ]
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        log.warning("wacli messages list timed out")
+        return []
+
+    if result.returncode != 0:
+        log.warning("wacli messages list failed (rc=%d): %s", result.returncode, result.stderr.strip())
+        return []
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        log.warning("wacli messages list returned invalid JSON")
+        return []
+
+    if not payload.get("success"):
+        log.warning("wacli messages list returned error: %s", payload.get("error"))
+        return []
+
+    messages = payload.get("data", {}).get("messages") or []
+    return messages
+
+
+# ---------------------------------------------------------------------------
+# Message transformation
+# ---------------------------------------------------------------------------
+
+
+def is_group_jid(jid: str) -> bool:
+    """Check if a JID is a group JID."""
+    return "@g.us" in jid
+
+
+def extract_phone_from_jid(jid: str) -> str:
+    """Extract the phone number part from a JID like 436649137379@s.whatsapp.net."""
+    return jid.split("@")[0] if "@" in jid else jid
+
+
+def wacli_to_inbound(msg: dict) -> dict | None:
+    """
+    Transform a wacli message dict into the Zee WhatsAppInboundInput schema.
+
+    Returns None if the message should be skipped.
+    """
+    # Skip messages from self
+    if msg.get("FromMe"):
+        return None
+
+    # Skip messages with no text content (pure status updates, reactions, etc.)
+    text = msg.get("Text", "").strip()
+    display_text = msg.get("DisplayText", "").strip()
+    body = text or display_text
+    if not body and not msg.get("MediaType"):
+        return None
+
+    chat_jid = msg.get("ChatJID", "")
+    sender_jid = msg.get("SenderJID", "")
+    is_group = is_group_jid(chat_jid)
+
+    # For DMs, sender is the chat JID; for groups, sender is SenderJID
+    sender_id = sender_jid if sender_jid else chat_jid
+
+    # Parse timestamp
+    ts_str = msg.get("Timestamp", "")
+    try:
+        ts = dt.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        timestamp = int(ts.timestamp())
+    except (ValueError, AttributeError):
+        timestamp = int(time.time())
+
+    # Build media array if present
+    media = None
+    media_type = msg.get("MediaType", "")
+    if media_type:
+        media = [{
+            "mediaId": msg.get("MsgID", ""),
+            "mimeType": f"{media_type}/*" if "/" not in media_type else media_type,
+            "filename": None,
+        }]
+
+    result = {
+        "id": msg.get("MsgID", ""),
+        "senderId": sender_id,
+        "senderName": msg.get("ChatName") if not is_group else None,
+        "body": body or f"[{media_type}]",
+        "timestamp": timestamp,
+        "isGroup": is_group,
+        "platform": "whatsapp",
+    }
+
+    if is_group:
+        result["groupId"] = chat_jid
+        result["groupName"] = msg.get("ChatName")
+
+    if media:
+        result["media"] = media
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Gateway forwarding
+# ---------------------------------------------------------------------------
+
+
+def forward_to_gateway(inbound: dict, gateway_url: str, dry_run: bool = False) -> bool:
+    """POST an inbound message to the Zee gateway."""
+    url = f"{gateway_url}{INBOUND_ENDPOINT}"
+    body = json.dumps(inbound).encode("utf-8")
+
+    if dry_run:
+        log.info("[DRY RUN] Would POST to %s: %s", url, json.dumps(inbound, indent=2))
+        return True
+
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp_body = resp.read().decode("utf-8")
+            resp_data = json.loads(resp_body)
+            if resp_data.get("success"):
+                log.info(
+                    "Forwarded message %s from %s (status=%d)",
+                    inbound["id"], inbound["senderId"], resp.status,
+                )
+                return True
+            else:
+                log.warning(
+                    "Gateway rejected message %s: %s",
+                    inbound["id"], resp_data.get("error", "unknown"),
+                )
+                return False
+    except urllib.error.URLError as e:
+        log.warning("Failed to forward message %s: %s", inbound["id"], e)
+        return False
+    except Exception as e:
+        log.warning("Unexpected error forwarding message %s: %s", inbound["id"], e)
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Main loop
+# ---------------------------------------------------------------------------
+
+
+def run(poll_interval: float, gateway_url: str, dry_run: bool = False):
+    global sync_proc, shutdown_requested
+
+    # Start wacli sync in background
+    sync_proc = start_sync()
+
+    # Give sync a moment to connect
+    time.sleep(2)
+
+    # Check sync is still running
+    if sync_proc.poll() is not None:
+        stderr = sync_proc.stderr.read() if sync_proc.stderr else ""
+        log.error("wacli sync exited immediately (rc=%d): %s", sync_proc.returncode, stderr)
+        sys.exit(1)
+
+    # Initialize cursor to now minus a small lookback
+    cursor = (
+        dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=INITIAL_LOOKBACK_S)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Ring buffer of seen message IDs for dedup
+    seen_ids: deque[str] = deque(maxlen=SEEN_RING_SIZE)
+
+    log.info(
+        "Bridge running (poll=%.1fs, gateway=%s, cursor=%s, dry_run=%s)",
+        poll_interval, gateway_url, cursor, dry_run,
+    )
+
+    consecutive_errors = 0
+
+    while not shutdown_requested:
+        # Check sync process health
+        if sync_proc.poll() is not None:
+            stderr = sync_proc.stderr.read() if sync_proc.stderr else ""
+            log.warning("wacli sync exited (rc=%d): %s -- restarting", sync_proc.returncode, stderr)
+            time.sleep(3)
+            sync_proc = start_sync()
+            time.sleep(2)
+
+        # Poll for new messages
+        messages = poll_messages(cursor)
+
+        if messages:
+            # Messages come newest-first; reverse to process oldest first
+            messages.reverse()
+
+            new_cursor = cursor
+            forwarded = 0
+
+            for msg in messages:
+                msg_id = msg.get("MsgID", "")
+                if not msg_id or msg_id in seen_ids:
+                    continue
+
+                seen_ids.append(msg_id)
+
+                # Update cursor to the latest message timestamp
+                ts_str = msg.get("Timestamp", "")
+                if ts_str and ts_str > new_cursor:
+                    new_cursor = ts_str
+
+                # Transform and forward
+                inbound = wacli_to_inbound(msg)
+                if inbound is None:
+                    continue
+
+                ok = forward_to_gateway(inbound, gateway_url, dry_run)
+                if ok:
+                    forwarded += 1
+                    consecutive_errors = 0
+                else:
+                    consecutive_errors += 1
+
+            if forwarded > 0:
+                log.info("Forwarded %d/%d messages", forwarded, len(messages))
+
+            cursor = new_cursor
+
+        # Back off if gateway is unreachable
+        sleep_time = poll_interval
+        if consecutive_errors > 5:
+            sleep_time = min(poll_interval * 5, 30)
+            if consecutive_errors % 10 == 0:
+                log.warning("Gateway unreachable (%d consecutive errors), backing off to %.1fs", consecutive_errors, sleep_time)
+
+        # Sleep in small increments so we can respond to signals quickly
+        slept = 0.0
+        while slept < sleep_time and not shutdown_requested:
+            time.sleep(min(0.5, sleep_time - slept))
+            slept += 0.5
+
+    # Cleanup
+    log.info("Shutting down")
+    if sync_proc and sync_proc.poll() is None:
+        log.info("Stopping wacli sync (pid=%d)", sync_proc.pid)
+        sync_proc.terminate()
+        try:
+            sync_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            log.warning("wacli sync did not exit, sending SIGKILL")
+            sync_proc.kill()
+
+    log.info("Bridge stopped")
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Forward inbound WhatsApp messages from wacli to the Zee gateway.",
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=POLL_INTERVAL,
+        help=f"Poll interval in seconds (default: {POLL_INTERVAL})",
+    )
+    parser.add_argument(
+        "--gateway-url",
+        default=GATEWAY_URL,
+        help=f"Zee gateway base URL (default: {GATEWAY_URL})",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Log messages but do not forward to gateway",
+    )
+    args = parser.parse_args()
+
+    run(
+        poll_interval=args.poll_interval,
+        gateway_url=args.gateway_url,
+        dry_run=args.dry_run,
+    )
+
+
+if __name__ == "__main__":
+    main()
