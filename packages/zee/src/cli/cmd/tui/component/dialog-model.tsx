@@ -72,7 +72,7 @@ export function DialogModel(props: { providerID?: string }) {
               category: connected() ? authIndicator + provider.name : undefined,
               onSelect() {
                 dialog.clear()
-                void local.model.setDefault({
+                local.model.set({
                   providerID: provider.id,
                   modelID: model,
                 })
@@ -98,7 +98,7 @@ export function DialogModel(props: { providerID?: string }) {
 
   const title = createMemo(() => {
     if (provider()) return provider()!.name
-    return "Select model"
+    return "Select model (session)"
   })
 
   return (

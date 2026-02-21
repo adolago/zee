@@ -368,6 +368,24 @@ function App() {
       },
     },
     {
+      title: "Set current model as default",
+      value: "model.default_set_current",
+      category: "Agent",
+      slash: {
+        name: "model-default",
+      },
+      onSelect: async (dialog) => {
+        const selectedModel = local.model.current()
+        if (!selectedModel) {
+          toast.show({ message: "No model selected", variant: "warning", duration: 2000 })
+          dialog.clear()
+          return
+        }
+        await local.model.setDefault(selectedModel)
+        dialog.clear()
+      },
+    },
+    {
       title: "Toggle fallback model",
       value: "model.fallback_toggle",
       keybind: "model_fallback_toggle",
