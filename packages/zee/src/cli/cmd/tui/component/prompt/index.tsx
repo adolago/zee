@@ -431,7 +431,8 @@ export function Prompt(props: PromptProps) {
   const skillsStatusLabel = createMemo(() => `${sync.data.agent?.length ?? 0} skills`)
   const promptHeaderBorderLayout = createMemo(() =>
     computePromptHeaderBorderLayout({
-      width: safeLayoutWidth(),
+      // Border row includes leading "├" and trailing "─┤" outside the center fill.
+      width: safeLayoutWidth() + 2,
       showContext: showContextUsageInBorder(),
       contextText: contextUsageBorderText(),
       skillsText: skillsStatusLabel(),
@@ -1815,66 +1816,79 @@ export function Prompt(props: PromptProps) {
               <text fg={theme.border} flexShrink={0}>
                 ├
               </text>
-              <Show when={promptHeaderBorderLayout().showContext}>
-                <>
-                  <text fg={contextUsageColor()} flexShrink={0} wrapMode="none" overflow="hidden">
-                    {contextUsageBorderText()}
-                  </text>
-                  <text fg={theme.border} flexShrink={0}>
-                    ─
-                  </text>
-                </>
-              </Show>
-              <text fg={theme.border} flexShrink={0}>
-                {promptHeaderBorderLayout().fill}
-              </text>
-              <Show when={promptHeaderBorderLayout().showSkills}>
-                <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
-                  {skillsStatusLabel()}
-                </text>
-              </Show>
-              <Show when={promptHeaderBorderLayout().showDictation}>
-                <text fg={theme.border} flexShrink={0}>
-                  ─
-                </text>
-                <text
-                  fg={dictationStatusColor()}
-                  attributes={TextAttributes.BOLD}
-                  flexShrink={0}
-                  wrapMode="none"
-                  overflow="hidden"
-                >
-                  {dictationStatusLabel()}
-                </text>
-              </Show>
-              <Show when={promptHeaderBorderLayout().showVim}>
-                <text fg={theme.border} flexShrink={0}>
-                  ─
-                </text>
-                <text
-                  fg={vimStatusColor()}
-                  attributes={TextAttributes.BOLD}
-                  flexShrink={0}
-                  wrapMode="none"
-                  overflow="hidden"
-                >
-                  {vimStatusLabel()}
-                </text>
-              </Show>
-              <Show when={promptHeaderBorderLayout().showMode}>
-                <text fg={theme.border} flexShrink={0}>
-                  ─
-                </text>
-                <text
-                  fg={modeStatusColor()}
-                  attributes={TextAttributes.BOLD}
-                  flexShrink={0}
-                  wrapMode="none"
-                  overflow="hidden"
-                >
-                  {modeStatusLabel()}
-                </text>
-              </Show>
+              {(() => {
+                const layout = promptHeaderBorderLayout()
+                return (
+                  <>
+                    <Show when={layout.showContext}>
+                      <box flexDirection="row" gap={0} flexShrink={0}>
+                        <text fg={contextUsageColor()} flexShrink={0} wrapMode="none" overflow="hidden">
+                          {contextUsageBorderText()}
+                        </text>
+                        <text fg={theme.border} flexShrink={0}>
+                          ─
+                        </text>
+                      </box>
+                    </Show>
+                    <text fg={theme.border} flexGrow={1} flexShrink={1} wrapMode="none" overflow="hidden">
+                      {borderFill()}
+                    </text>
+                    <Show when={layout.showSkills}>
+                      <text fg={theme.textMuted} flexShrink={0} wrapMode="none" overflow="hidden">
+                        {skillsStatusLabel()}
+                      </text>
+                    </Show>
+                    <Show when={layout.showDictation}>
+                      <box flexDirection="row" gap={0} flexShrink={0}>
+                        <text fg={theme.border} flexShrink={0}>
+                          ─
+                        </text>
+                        <text
+                          fg={dictationStatusColor()}
+                          attributes={TextAttributes.BOLD}
+                          flexShrink={0}
+                          wrapMode="none"
+                          overflow="hidden"
+                        >
+                          {dictationStatusLabel()}
+                        </text>
+                      </box>
+                    </Show>
+                    <Show when={layout.showVim}>
+                      <box flexDirection="row" gap={0} flexShrink={0}>
+                        <text fg={theme.border} flexShrink={0}>
+                          ─
+                        </text>
+                        <text
+                          fg={vimStatusColor()}
+                          attributes={TextAttributes.BOLD}
+                          flexShrink={0}
+                          wrapMode="none"
+                          overflow="hidden"
+                        >
+                          {vimStatusLabel()}
+                        </text>
+                      </box>
+                    </Show>
+                    <Show when={layout.showMode}>
+                      <box flexDirection="row" gap={0} flexShrink={0}>
+                        <text fg={theme.border} flexShrink={0}>
+                          ─
+                        </text>
+                        <text
+                          fg={modeStatusColor()}
+                          attributes={TextAttributes.BOLD}
+                          flexShrink={0}
+                          wrapMode="none"
+                          overflow="hidden"
+                        >
+                          {modeStatusLabel()}
+                        </text>
+                      </box>
+                    </Show>
+                  </>
+                )
+              })()}
               <text fg={theme.border} flexShrink={0}>
                 ─┤
               </text>
