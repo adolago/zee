@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""
+Send a morning or night calendar overview via WhatsApp (wacli).
+
+Morning: today's events.
+Night:   tomorrow's events.
+
+Usage:
+  wa-calendar-overview --period morning [--to JID] [--dry-run]
+  wa-calendar-overview --period night   [--to JID] [--dry-run]
+
+Environment:
+  ZEE_WA_CALENDAR_TO   default recipient JID (e.g. 436649137379@s.whatsapp.net)
+  WACLI_BIN            path to wacli binary  (default: /home/artur/go/bin/wacli)
+  WACLI_STORE          path to wacli store   (default: /home/artur/.wacli)
+"""
+
+import argparse
+import datetime as dt
+import json
+import os
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3"
+
+WACLI_BIN = os.environ.get("WACLI_BIN", "/home/artur/go/bin/wacli")
+WACLI_STORE = os.environ.get("WACLI_STORE", "/home/artur/.wacli")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def fail(message: str, code: int = 1) -> None:
+    print(message, file=sys.stderr)
+    raise SystemExit(code)
+
+
+# ---------------------------------------------------------------------------
+# Google Calendar
+# ---------------------------------------------------------------------------
+
+def find_google_credentials_dir() -> Path:
+    candidates = [
+        Path.home() / ".config" / "zee" / "credentials" / "google",
+        Path.home() / ".zee" / "credentials" / "google",
+    ]
+    for candidate in candidates:
+        if (candidate / "oauth-client.json").exists() and (candidate / "tokens.json").exists():
+            return candidate
+    fail("Google credentials not found in ~/.config/zee/credentials/google or ~/.zee/credentials/google")
+
+
+def load_google_auth() -> tuple[dict, dict, Path]:
+    credentials_dir = find_google_credentials_dir()
+    oauth_path = credentials_dir / "oauth-client.json"
+    tokens_path = credentials_dir / "tokens.json"
+    try:
+        oauth_client = json.loads(oauth_path.read_text(encoding="utf-8"))
+        tokens = json.loads(tokens_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        fail(f"Failed to load Google credentials: {exc}")
+    return oauth_client, tokens, tokens_path
+
+
+def refresh_access_token_if_needed(oauth_client: dict, tokens: dict, tokens_path: Path) -> str:
+    expiry_date = int(tokens.get("expiry_date", 0))
+    now_ms = int(dt.datetime.now(dt.timezone.utc).timestamp() * 1000)
+    if now_ms < expiry_date - 5 * 60 * 1000 and tokens.get("access_token"):
+        return tokens["access_token"]
+
+    installed = oauth_client.get("installed", {})
+    payload = urllib.parse.urlencode({
+        "client_id": installed.get("client_id", ""),
+        "client_secret": installed.get("client_secret", ""),
+        "refresh_token": tokens.get("refresh_token", ""),
+        "grant_type": "refresh_token",
+    }).encode("utf-8")
+
+    request = urllib.request.Request(
+        installed.get("token_uri", "https://oauth2.googleapis.com/token"),
+        data=payload,
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            token_payload = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        fail(f"Failed to refresh Google token: {exc}")
+
+    access_token = token_payload.get("access_token")
+    expires_in = int(token_payload.get("expires_in", 3600))
+    if not access_token:
+        fail("Google token refresh returned no access token")
+
+    tokens["access_token"] = access_token
+    tokens["expiry_date"] = now_ms + expires_in * 1000
+    tokens_path.write_text(json.dumps(tokens, indent=2), encoding="utf-8")
+    return access_token
+
+
+def google_get(endpoint: str, access_token: str, params: dict[str, str] | None = None) -> dict:
+    endpoint_path = endpoint if endpoint.startswith("/") else f"/{endpoint}"
+    url = f"{CALENDAR_API_BASE}{endpoint_path}"
+    if params:
+        url = f"{url}?{urllib.parse.urlencode(params)}"
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {access_token}"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        fail(f"Google Calendar request failed: {exc}")
+
+
+def resolve_calendar_name(calendar_id: str, access_token: str) -> str:
+    if calendar_id != "primary":
+        return calendar_id
+    payload = google_get("/users/me/calendarList", access_token)
+    for item in payload.get("items", []):
+        if item.get("primary"):
+            return item.get("summary", "Primary")
+    return "Primary"
+
+
+def list_events(calendar_id: str, access_token: str, start_iso: str, end_iso: str, max_results: int) -> list[dict]:
+    payload = google_get(
+        f"/calendars/{urllib.parse.quote(calendar_id, safe='')}/events",
+        access_token,
+        {
+            "timeMin": start_iso,
+            "timeMax": end_iso,
+            "singleEvents": "true",
+            "orderBy": "startTime",
+            "maxResults": str(max_results),
+        },
+    )
+    return payload.get("items", [])
+
+
+# ---------------------------------------------------------------------------
+# Message formatting
+# ---------------------------------------------------------------------------
+
+def parse_event_datetime(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    try:
+        return dt.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def format_event_line(event: dict) -> str:
+    title = event.get("summary") or "(No title)"
+    location = event.get("location")
+    start = event.get("start", {})
+    end = event.get("end", {})
+
+    if start.get("date"):
+        line = f"- All day: {title}"
+    else:
+        start_dt = parse_event_datetime(start.get("dateTime"))
+        end_dt = parse_event_datetime(end.get("dateTime"))
+        if start_dt and end_dt:
+            line = f"- {start_dt.astimezone().strftime('%H:%M')}-{end_dt.astimezone().strftime('%H:%M')}: {title}"
+        elif start_dt:
+            line = f"- {start_dt.astimezone().strftime('%H:%M')}: {title}"
+        else:
+            line = f"- {title}"
+
+    if location:
+        line = f"{line} ({location})"
+    return line
+
+
+def build_message(period: str, calendar_name: str, events: list[dict], target_day: dt.date) -> str:
+    header_date = target_day.strftime("%A, %d %b %Y")
+
+    if period == "morning":
+        lead = f"Good morning. Calendar for {header_date} ({calendar_name})."
+    else:
+        lead = f"Good night. Calendar for {header_date} ({calendar_name})."
+
+    if not events:
+        return f"{lead}\nNo events scheduled."
+
+    lines = [lead, f"{len(events)} event(s):"]
+    for event in events:
+        lines.append(format_event_line(event))
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# wacli send
+# ---------------------------------------------------------------------------
+
+def resolve_recipient(explicit_to: str | None) -> str:
+    if explicit_to:
+        return explicit_to
+    env_to = os.environ.get("ZEE_WA_CALENDAR_TO", "").strip()
+    if env_to:
+        return env_to
+    fail("No recipient configured. Pass --to or set ZEE_WA_CALENDAR_TO.")
+
+
+def normalize_wacli_lock() -> None:
+    """Clear stale wacli store lock if present."""
+    try:
+        result = subprocess.run(
+            [WACLI_BIN, "doctor", "--json", "--store", WACLI_STORE],
+            capture_output=True, text=True, timeout=10,
+        )
+        diag = json.loads(result.stdout) if result.stdout.strip() else {}
+        data = diag.get("data", {})
+        if data.get("lock_held"):
+            lock_file = Path(WACLI_STORE) / "LOCK"
+            lock_file.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def send_whatsapp(recipient: str, message: str, dry_run: bool) -> None:
+    if dry_run:
+        print(f"[dry-run] Would send to {recipient}:")
+        print(message)
+        return
+
+    normalize_wacli_lock()
+
+    # Ensure recipient is a JID
+    jid = recipient
+    digits = "".join(c for c in recipient if c.isdigit())
+    if "@" not in jid and digits:
+        jid = f"{digits}@s.whatsapp.net"
+
+    command = [
+        WACLI_BIN, "send", "text",
+        "--to", jid,
+        "--message", message,
+        "--store", WACLI_STORE,
+        "--timeout", "2m",
+        "--json",
+    ]
+
+    max_attempts = 3
+    last_error = ""
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=180)
+            if result.returncode == 0:
+                if result.stdout.strip():
+                    print(result.stdout.strip())
+                return
+            last_error = (result.stderr.strip() or result.stdout.strip() or f"exit code {result.returncode}")
+        except subprocess.TimeoutExpired:
+            last_error = "wacli send timed out after 180s"
+        except Exception as exc:
+            last_error = str(exc)
+
+        if attempt < max_attempts:
+            # Try sync refresh before retry
+            try:
+                subprocess.run(
+                    [WACLI_BIN, "sync", "--once", "--idle-exit", "5s",
+                     "--refresh-contacts", "--store", WACLI_STORE, "--timeout", "30s"],
+                    capture_output=True, timeout=60,
+                )
+            except Exception:
+                pass
+            normalize_wacli_lock()
+
+    fail(f"WhatsApp send failed after {max_attempts} attempts. Last error: {last_error}")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Send morning/night calendar overview via WhatsApp (wacli)")
+    parser.add_argument("--period", choices=["morning", "night"], required=True)
+    parser.add_argument("--to", dest="recipient", default=None, help="Recipient JID or phone number")
+    parser.add_argument("--calendar-id", default="primary")
+    parser.add_argument("--max-events", type=int, default=12)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    now = dt.datetime.now().astimezone()
+
+    if args.period == "morning":
+        target_day = now.date()
+    else:
+        target_day = (now + dt.timedelta(days=1)).date()
+
+    start_dt = dt.datetime.combine(target_day, dt.time.min, tzinfo=now.tzinfo)
+    end_dt = start_dt + dt.timedelta(days=1)
+
+    oauth_client, tokens, tokens_path = load_google_auth()
+    access_token = refresh_access_token_if_needed(oauth_client, tokens, tokens_path)
+
+    calendar_name = resolve_calendar_name(args.calendar_id, access_token)
+    events = list_events(args.calendar_id, access_token, start_dt.isoformat(), end_dt.isoformat(), args.max_events)
+
+    message = build_message(args.period, calendar_name, events, target_day)
+    recipient = resolve_recipient(args.recipient)
+    send_whatsapp(recipient, message, args.dry_run)
+
+
+if __name__ == "__main__":
+    main()

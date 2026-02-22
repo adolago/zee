@@ -5,11 +5,14 @@ Implements the DataProvider interface using OpenBB SDK v4.
 Provides async wrappers around the synchronous OpenBB SDK.
 """
 
+import ast
 import asyncio
+import importlib.util
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -23,6 +26,57 @@ from . import (
 )
 
 logger = logging.getLogger(__name__)
+_OPENBB_COMPAT_PATCHED = False
+
+
+def _apply_openbb_provider_interface_compat() -> None:
+    """Patch missing OBBject_* symbols for OpenBB package compatibility."""
+    global _OPENBB_COMPAT_PATCHED
+
+    if _OPENBB_COMPAT_PATCHED:
+        return
+
+    try:
+        import openbb_core.app.provider_interface as provider_interface
+        from openbb_core.app.model.obbject import OBBject
+
+        spec = importlib.util.find_spec("openbb")
+        if not spec or not spec.origin:
+            _OPENBB_COMPAT_PATCHED = True
+            return
+
+        package_dir = Path(spec.origin).resolve().parent / "package"
+        if not package_dir.exists():
+            _OPENBB_COMPAT_PATCHED = True
+            return
+
+        patched = 0
+        for py_file in package_dir.glob("*.py"):
+            try:
+                tree = ast.parse(py_file.read_text(encoding="utf-8", errors="ignore"))
+            except Exception:
+                continue
+
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ImportFrom):
+                    continue
+                if node.module != "openbb_core.app.provider_interface":
+                    continue
+
+                for alias in node.names:
+                    name = alias.name
+                    if not name.startswith("OBBject_"):
+                        continue
+                    if not hasattr(provider_interface, name):
+                        setattr(provider_interface, name, OBBject)
+                        patched += 1
+
+        if patched:
+            logger.info("Applied OpenBB provider-interface compatibility patch (%d symbols)", patched)
+    except Exception as exc:
+        logger.debug("OpenBB compatibility patch skipped: %s", exc)
+    finally:
+        _OPENBB_COMPAT_PATCHED = True
 
 
 class OpenBBProvider(DataProvider, CachingMixin):
@@ -83,6 +137,10 @@ class OpenBBProvider(DataProvider, CachingMixin):
         logger.info("Initializing OpenBB provider...")
 
         try:
+            # OpenBB 4.6.0 can import package routers that expect generated
+            # OBBject_* symbols in provider_interface.
+            _apply_openbb_provider_interface_compat()
+
             # Import OpenBB (this can take a moment)
             from openbb import obb
 
@@ -336,6 +394,56 @@ class OpenBBProvider(DataProvider, CachingMixin):
 
         return df
 
+    def _yfinance_fundamentals(self, symbol: str) -> Dict[str, Any]:
+        """Get fundamental data directly from yfinance."""
+        try:
+            import yfinance as yf
+
+            ticker = yf.Ticker(symbol)
+            info = ticker.info or {}
+
+            def _num(key: str) -> Optional[float]:
+                value = info.get(key)
+                try:
+                    return float(value) if value is not None else None
+                except (TypeError, ValueError):
+                    return None
+
+            payload: Dict[str, Any] = {
+                "symbol": symbol,
+                "companyName": info.get("longName") or info.get("shortName"),
+                "sector": info.get("sector"),
+                "industry": info.get("industry"),
+                "country": info.get("country"),
+                "website": info.get("website"),
+                "marketCap": info.get("marketCap"),
+                "enterpriseValue": info.get("enterpriseValue"),
+                "trailingPE": _num("trailingPE"),
+                "forwardPE": _num("forwardPE"),
+                "priceToBook": _num("priceToBook"),
+                "pegRatio": _num("pegRatio"),
+                "dividendYield": _num("dividendYield"),
+                "beta": _num("beta"),
+                "fiftyTwoWeekHigh": _num("fiftyTwoWeekHigh"),
+                "fiftyTwoWeekLow": _num("fiftyTwoWeekLow"),
+                "totalRevenue": info.get("totalRevenue"),
+                "grossMargins": _num("grossMargins"),
+                "operatingMargins": _num("operatingMargins"),
+                "profitMargins": _num("profitMargins"),
+                "returnOnEquity": _num("returnOnEquity"),
+                "returnOnAssets": _num("returnOnAssets"),
+                "debtToEquity": _num("debtToEquity"),
+                "currentRatio": _num("currentRatio"),
+                "quickRatio": _num("quickRatio"),
+                "sharesOutstanding": info.get("sharesOutstanding"),
+                "currency": info.get("currency"),
+            }
+
+            return {k: v for k, v in payload.items() if v is not None}
+        except Exception as e:
+            logger.error(f"yfinance fundamentals fetch failed for {symbol}: {e}")
+            return {}
+
     async def get_institutional_holdings(
         self, symbol: str, provider: Optional[str] = None, **kwargs
     ) -> pd.DataFrame:
@@ -467,6 +575,25 @@ class OpenBBProvider(DataProvider, CachingMixin):
         if cached is not None:
             return cached
 
+        if not self._initialized:
+            try:
+                await self.initialize()
+            except Exception as e:
+                logger.warning(
+                    f"OpenBB initialization failed for fundamentals ({e}), trying yfinance"
+                )
+                fallback = self._yfinance_fundamentals(symbol)
+                if fallback:
+                    self._set_cached(cache_key, fallback)
+                    return fallback
+                raise
+
+        if self._obb is None:
+            fallback = self._yfinance_fundamentals(symbol)
+            if fallback:
+                self._set_cached(cache_key, fallback)
+                return fallback
+
         providers_to_try = [provider] if provider else ["fmp", "intrinio", "yfinance"]
 
         def fetch_fundamentals(prov: str):
@@ -493,6 +620,12 @@ class OpenBBProvider(DataProvider, CachingMixin):
                 last_error = e
                 logger.debug(f"Provider {prov} failed for fundamentals: {e}")
                 continue
+
+        # OpenBB can fail from extension mismatch. Fall back to yfinance fundamentals.
+        fallback = self._yfinance_fundamentals(symbol)
+        if fallback:
+            self._set_cached(cache_key, fallback)
+            return fallback
 
         raise DataProviderError(
             f"Failed to fetch fundamentals for {symbol}: {last_error}"
@@ -820,6 +953,7 @@ class OpenBBAdapter:
             return
 
         try:
+            _apply_openbb_provider_interface_compat()
             from openbb import obb
 
             # Test that the equity module loads (this catches version mismatch)
@@ -1014,11 +1148,19 @@ class OpenBBAdapter:
                 return self._yfinance_quote(symbol)
 
             row = df.iloc[0]
+            price = row.get("last")
+            if price in (None, 0):
+                price = row.get("last_price")
+            if price in (None, 0):
+                price = row.get("price")
+            if price in (None, 0):
+                price = row.get("close")
+
             return {
                 "symbol": symbol,
-                "price": float(row.get("last", row.get("price", 0))),
-                "bid": float(row.get("bid", 0)),
-                "ask": float(row.get("ask", 0)),
+                "price": float(price or 0),
+                "bid": float(row.get("bid", row.get("bid_price", 0))),
+                "ask": float(row.get("ask", row.get("ask_price", 0))),
                 "bid_size": int(row.get("bid_size", row.get("bidSize", 0))),
                 "ask_size": int(row.get("ask_size", row.get("askSize", 0))),
                 "volume": int(row.get("volume", 0)),

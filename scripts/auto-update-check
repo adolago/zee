@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+#
+# auto-update-check -- Check upstream remotes and notify via WhatsApp if behind.
+#
+# Runs check-upstream.sh --fetch, parses the output for BEHIND/DRIFT status,
+# and sends a WhatsApp summary via wacli if any remote has new commits.
+#
+# Usage:
+#   auto-update-check [--dry-run] [--always-notify]
+#
+# Environment:
+#   ZEE_WA_UPDATE_TO   recipient JID (default: 436649137379@s.whatsapp.net)
+#   WACLI_BIN          path to wacli (default: /home/artur/go/bin/wacli)
+#   WACLI_STORE        path to wacli store (default: ~/.wacli)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+WACLI_BIN="${WACLI_BIN:-/home/artur/go/bin/wacli}"
+WACLI_STORE="${WACLI_STORE:-$HOME/.wacli}"
+TO="${ZEE_WA_UPDATE_TO:-436649137379@s.whatsapp.net}"
+
+DRY_RUN=false
+ALWAYS_NOTIFY=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --dry-run) DRY_RUN=true; shift ;;
+        --always-notify) ALWAYS_NOTIFY=true; shift ;;
+        *) echo "Unknown: $1"; exit 1 ;;
+    esac
+done
+
+# Run check-upstream with fetch, strip ANSI colors
+output=$(cd "$REPO_ROOT" && bash scripts/check-upstream.sh --fetch --verbose 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
+
+# Parse for behind counts
+has_updates=false
+summary=""
+
+while IFS= read -r line; do
+    # Match lines like "  Behind: 42 (upstream changes)"
+    if [[ "$line" =~ Behind:\ +([0-9]+) ]]; then
+        count="${BASH_REMATCH[1]}"
+        if [[ "$count" -gt 0 ]]; then
+            has_updates=true
+        fi
+    fi
+done <<< "$output"
+
+# Also check for status lines
+behind_remotes=()
+current_remote=""
+
+while IFS= read -r line; do
+    if [[ "$line" =~ ^---\ (.+)\ \( ]]; then
+        current_remote="${BASH_REMATCH[1]}"
+    fi
+    if [[ "$line" =~ Status:\ (MINOR\ DRIFT|SIGNIFICANT\ DRIFT|BEHIND) ]]; then
+        behind_remotes+=("$current_remote")
+    fi
+done <<< "$output"
+
+if ! $has_updates && ! $ALWAYS_NOTIFY; then
+    echo "All remotes up to date. No notification sent."
+    exit 0
+fi
+
+# Build message
+if $has_updates; then
+    msg="Zee upstream updates available."
+    msg+=$'\n'
+    msg+=$'\n'
+
+    # Extract the relevant sections
+    while IFS= read -r line; do
+        # Include remote headers, behind/ahead counts, status, and commit lines
+        if [[ "$line" =~ ^---\ |Behind:|Ahead:|Status:|Latest\ tag:|^\ \ \ \ [a-f0-9] ]]; then
+            msg+="$line"
+            msg+=$'\n'
+        fi
+    done <<< "$output"
+
+    msg+=$'\n'
+    msg+="Sync with: ./scripts/sync-upstream.sh --remote <name> --preview"
+    msg+=$'\n'
+    msg+="Rebuild with: ./scripts/reload.sh"
+else
+    msg="Zee upstream check: all remotes up to date."
+fi
+
+if $DRY_RUN; then
+    echo "=== DRY RUN ==="
+    echo "To: $TO"
+    echo "Message:"
+    echo "$msg"
+    exit 0
+fi
+
+# wacli uses a store lock. The inbound bridge keeps sync running and can hold it.
+# Temporarily stop the bridge while we send this notification, then restore it.
+bridge_was_active=false
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl --user is-active --quiet zee-wacli-bridge.service 2>/dev/null; then
+        bridge_was_active=true
+        systemctl --user stop zee-wacli-bridge.service >/dev/null 2>&1 || true
+        sleep 2
+    fi
+fi
+
+restore_bridge() {
+    if $bridge_was_active; then
+        systemctl --user start zee-wacli-bridge.service >/dev/null 2>&1 || true
+    fi
+}
+
+trap restore_bridge EXIT
+
+# Send via wacli
+"$WACLI_BIN" send text \
+    --to "$TO" \
+    --message "$msg" \
+    --store "$WACLI_STORE" \
+    2>&1
+
+trap - EXIT
+restore_bridge
+
+echo "Notification sent."
