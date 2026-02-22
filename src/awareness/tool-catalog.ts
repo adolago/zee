@@ -32,8 +32,8 @@ export interface ToolCatalog {
 const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
   zee: [
     // Life admin
-    "kernel_create_browser",
-    "kernel_execute_playwright_code",
+    "zee:browser",
+    "zee:browser-standalone",
     "zee:splitwise",
     "zee:calendar",
     "zee:memory-query",
@@ -74,8 +74,9 @@ const CORE_TOOLS = [
 // Usage examples for primary tools - makes models assertive
 const TOOL_EXAMPLES: Record<string, string> = {
   "zee:splitwise": 'Use { action: "create-expense", group: "Apartment", amount: 50, description: "Groceries" }',
-  kernel_create_browser: "Start a Kernel browser session, then run Playwright actions with kernel_execute_playwright_code.",
-  kernel_execute_playwright_code: "Run Playwright code against a Kernel browser session for automation.",
+  "zee:browser": 'Use { action: "open", url: "https://example.com" } then { action: "snapshot", format: "ai" } for read-only web tasks.',
+  "zee:browser-standalone":
+    'Use { action: "start", profile: "default" } then { action: "navigate", url: "https://example.com" } for direct browser control.',
   "zee:calendar": 'Use { action: "list", days: 7 } to see upcoming events',
   "zee:memory": 'Use { action: "search", query: "..." } to recall past conversations',
   bash: "Run commands directly. For git: git status, git diff, git commit",
@@ -123,9 +124,9 @@ export async function generateToolCatalog(agent: Agent.Info): Promise<ToolCatalo
     }
 
     // Add usage example for primary/core tools
-    const exampleKey = Object.keys(TOOL_EXAMPLES).find(
-      (k) => tool.id === k || tool.id.includes(k)
-    )
+    const exampleKey =
+      Object.keys(TOOL_EXAMPLES).find((k) => tool.id === k) ??
+      Object.keys(TOOL_EXAMPLES).find((k) => tool.id.includes(k))
     if (exampleKey && (isPrimary || isCore)) {
       entry.example = TOOL_EXAMPLES[exampleKey]
     }

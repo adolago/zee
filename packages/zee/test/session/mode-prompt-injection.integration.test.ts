@@ -96,6 +96,8 @@ describe("SessionPrompt hold-mode prompt injection", () => {
 
   test("injects hold prompt when explicit mode is plan", async () => {
     const system = await runPromptWithMode("plan", "accept")
-    expect(system.join("\n")).toContain(HOLD_MODE_SENTINEL)
+    const content = system.join("\n")
+    expect(content).toContain(HOLD_MODE_SENTINEL)
+    expect(content).toContain("Execute read-only tasks directly with tools")
   })
 })

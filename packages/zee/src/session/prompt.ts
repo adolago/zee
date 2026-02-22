@@ -57,6 +57,7 @@ import { createSafeEnv } from "@/security/env-sanitize"
 import { buildSessionSystemContext } from "./session-context"
 import { buildSkillRecallContext } from "./skill-recall"
 import { buildFollowupExecutionReminder } from "./followup-execution"
+import { buildPlanWebExecutionReminder } from "./plan-web-execution"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
 import { SessionControlServer } from "@/session-control/server"
 
@@ -2036,6 +2037,22 @@ export namespace SessionPrompt {
         sessionID: userMessage.info.sessionID,
         type: "text",
         text: followupExecutionReminder,
+        synthetic: true,
+      })
+    }
+
+    const planWebExecutionReminder = buildPlanWebExecutionReminder({
+      messages: input.messages,
+      mode: input.mode,
+      surface: input.surface,
+    })
+    if (planWebExecutionReminder) {
+      userMessage.parts.push({
+        id: Identifier.ascending("part"),
+        messageID: userMessage.info.id,
+        sessionID: userMessage.info.sessionID,
+        type: "text",
+        text: planWebExecutionReminder,
         synthetic: true,
       })
     }
