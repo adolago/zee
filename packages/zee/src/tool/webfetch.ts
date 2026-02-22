@@ -4,10 +4,13 @@ import TurndownService from "turndown"
 import DESCRIPTION from "./webfetch.txt"
 import { wrapExternalContent } from "../security/external-content"
 import { abortAfterAny } from "../util/abort"
+import { Log } from "../util/log"
+import { markdownToPlainText, redactUrlForDebugLog } from "./fetch-helpers"
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 const DEFAULT_TIMEOUT = 30 * 1000 // 30 seconds
 const MAX_TIMEOUT = 120 * 1000 // 2 minutes
+const log = Log.create({ service: "tool.webfetch" })
 
 export const WebFetchTool = Tool.define("webfetch", {
   description: DESCRIPTION,
@@ -44,7 +47,7 @@ export const WebFetchTool = Tool.define("webfetch", {
     let acceptHeader = "*/*"
     switch (params.format) {
       case "markdown":
-        acceptHeader = "text/markdown;q=1.0, text/x-markdown;q=0.9, text/plain;q=0.8, text/html;q=0.7, */*;q=0.1"
+        acceptHeader = "text/markdown, text/html;q=0.9, */*;q=0.1"
         break
       case "text":
         acceptHeader = "text/plain;q=1.0, text/markdown;q=0.9, text/html;q=0.8, */*;q=0.1"
@@ -77,6 +80,12 @@ export const WebFetchTool = Tool.define("webfetch", {
       throw new Error(`Request failed with status code: ${response.status}`)
     }
 
+    const responseUrl = response.url || params.url
+    const markdownTokens = response.headers.get("x-markdown-tokens")
+    if (markdownTokens) {
+      log.debug(`[webfetch] x-markdown-tokens: ${markdownTokens} (${redactUrlForDebugLog(responseUrl)})`)
+    }
+
     // Check content length
     const contentLength = response.headers.get("content-length")
     if (contentLength && parseInt(contentLength) > MAX_RESPONSE_SIZE) {
@@ -89,7 +98,7 @@ export const WebFetchTool = Tool.define("webfetch", {
     }
 
     const content = new TextDecoder().decode(arrayBuffer)
-    const contentType = response.headers.get("content-type") || ""
+    const contentType = (response.headers.get("content-type") || "").toLowerCase()
 
     const title = `${params.url} (${contentType})`
     const wrap = (text: string) => wrapExternalContent(text, { source: "web" })
@@ -102,42 +111,72 @@ export const WebFetchTool = Tool.define("webfetch", {
           return {
             output: wrap(markdown),
             title,
-            metadata: {},
+            metadata: {
+              extractor: "html-to-markdown",
+              contentType,
+            },
           }
         }
         return {
           output: wrap(content),
           title,
-          metadata: {},
+          metadata: {
+            extractor: contentType.includes("text/markdown") || contentType.includes("text/x-markdown")
+              ? "cf-markdown"
+              : "raw",
+            contentType,
+          },
         }
 
       case "text":
+        if (contentType.includes("text/markdown") || contentType.includes("text/x-markdown")) {
+          return {
+            output: wrap(markdownToPlainText(content)),
+            title,
+            metadata: {
+              extractor: "cf-markdown",
+              contentType,
+            },
+          }
+        }
         if (contentType.includes("text/html")) {
           const text = await extractTextFromHTML(content)
           return {
             output: wrap(text),
             title,
-            metadata: {},
+            metadata: {
+              extractor: "html-to-text",
+              contentType,
+            },
           }
         }
         return {
           output: wrap(content),
           title,
-          metadata: {},
+          metadata: {
+            extractor: "raw",
+            contentType,
+          },
         }
 
       case "html":
         return {
           output: content,
           title,
-          metadata: {},
+          metadata: {
+            extractor: "raw",
+            contentType,
+          },
         }
 
       default:
         return {
           output: content,
           title,
-          metadata: {},
+          metadata: {
+            extractor: "raw",
+            contentType,
+          },
         }
     }
   },

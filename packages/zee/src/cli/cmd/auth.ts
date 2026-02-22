@@ -231,6 +231,65 @@ async function addProviderToConfig(providerId: string, providerConfig: { options
   return configPath
 }
 
+export function resolveLocalProviderBaseUrl(host: string, port: number): string {
+  const safeHost = host.trim() || "localhost"
+  return `http://${safeHost}:${port}/v1`
+}
+
+export function normalizeLocalProviderBaseUrl(input: string, fallbackPort: number): string {
+  const trimmed = input.trim()
+  if (!trimmed) return `http://localhost:${fallbackPort}/v1`
+  const hasScheme = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed)
+  const withScheme = hasScheme ? trimmed : `http://${trimmed}`
+  const parsed = new URL(withScheme)
+  const hostLooksLocal = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(parsed.hostname)
+  if (!parsed.port && (!hasScheme || hostLooksLocal)) parsed.port = String(fallbackPort)
+  parsed.search = ""
+  parsed.hash = ""
+  const pathname = parsed.pathname.replace(/\/+$/, "")
+  parsed.pathname = pathname.length === 0 ? "/v1" : pathname
+  return parsed.toString().replace(/\/+$/, "")
+}
+
+export function parseOpenAICompatibleModelIds(payload: unknown): string[] {
+  if (!payload || typeof payload !== "object") return []
+  const data = (payload as { data?: unknown }).data
+  if (!Array.isArray(data)) return []
+  const deduped = new Set<string>()
+  for (const item of data) {
+    const id = typeof (item as { id?: unknown })?.id === "string" ? (item as { id: string }).id.trim() : ""
+    if (id) deduped.add(id)
+  }
+  return [...deduped]
+}
+
+export async function discoverOpenAICompatibleModels(params: {
+  baseURL: string
+  apiKey?: string
+  timeoutMs?: number
+  fetchFn?: typeof fetch
+}): Promise<string[]> {
+  const fetchFn = params.fetchFn ?? fetch
+  const baseURL = params.baseURL.replace(/\/+$/, "")
+  const apiKey = params.apiKey?.trim()
+  const headers: Record<string, string> = {}
+  if (apiKey && apiKey !== "local") {
+    headers.Authorization = `Bearer ${apiKey}`
+  }
+
+  try {
+    const response = await fetchFn(`${baseURL}/models`, {
+      headers: Object.keys(headers).length ? headers : undefined,
+      signal: AbortSignal.timeout(params.timeoutMs ?? 3000),
+    })
+    if (!response.ok) return []
+    const payload = await response.json().catch(() => undefined)
+    return parseOpenAICompatibleModelIds(payload)
+  } catch {
+    return []
+  }
+}
+
 /** A skill that requires credentials (env vars or primaryEnv). */
 interface SkillAuthProvider {
   /** Skill name (used as key in skills.entries). */
@@ -950,45 +1009,97 @@ export const AuthLoginCommand = cmd({
         // Handle local providers (vllm, ollama, etc.) - prompt for host:port instead of API key
         if (LOCAL_PROVIDERS.has(provider)) {
           const defaults = LOCAL_PROVIDER_DEFAULTS[provider] ?? { port: 8000, hint: "Local server" }
+          let baseURL = ""
+          let apiKey = "local"
+          let discoveredModels: string[] = []
 
-          const host = await prompts.text({
-            message: "Enter server host",
-            placeholder: "192.168.1.100 or localhost",
-            initialValue: "localhost",
-            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
-          })
-          if (prompts.isCancel(host)) throw new UI.CancelledError()
+          if (provider === "vllm") {
+            const urlInput = await prompts.text({
+              message: "Enter vLLM base URL",
+              placeholder: "http://localhost:8000/v1",
+              initialValue: "http://localhost:8000/v1",
+              validate: (x) => {
+                if (!x || x.length === 0) return "Required"
+                try {
+                  normalizeLocalProviderBaseUrl(x, defaults.port)
+                  return undefined
+                } catch {
+                  return "Invalid URL"
+                }
+              },
+            })
+            if (prompts.isCancel(urlInput)) throw new UI.CancelledError()
+            baseURL = normalizeLocalProviderBaseUrl(urlInput, defaults.port)
 
-          const portStr = await prompts.text({
-            message: "Enter server port",
-            placeholder: defaults.port.toString(),
-            initialValue: defaults.port.toString(),
-            validate: (x) => {
-              if (!x || x.length === 0) return "Required"
-              const num = parseInt(x, 10)
-              if (isNaN(num) || num < 1 || num > 65535) return "Invalid port (1-65535)"
-              return undefined
-            },
-          })
-          if (prompts.isCancel(portStr)) throw new UI.CancelledError()
+            const apiKeyInput = await prompts.password({
+              message: "Enter API key (optional)",
+              validate: () => undefined,
+            })
+            if (prompts.isCancel(apiKeyInput)) throw new UI.CancelledError()
+            apiKey = apiKeyInput.trim() || "local"
 
-          const port = parseInt(portStr, 10)
-          const baseURL = `http://${host}:${port}/v1`
+            const shouldProbe = await prompts.confirm({
+              message: "Probe /models now to discover available model IDs?",
+              initialValue: true,
+            })
+            if (prompts.isCancel(shouldProbe)) throw new UI.CancelledError()
+            if (shouldProbe) {
+              discoveredModels = await discoverOpenAICompatibleModels({
+                baseURL,
+                apiKey,
+              })
+            }
+          } else {
+            const host = await prompts.text({
+              message: "Enter server host",
+              placeholder: "192.168.1.100 or localhost",
+              initialValue: "localhost",
+              validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+            })
+            if (prompts.isCancel(host)) throw new UI.CancelledError()
+
+            const portStr = await prompts.text({
+              message: "Enter server port",
+              placeholder: defaults.port.toString(),
+              initialValue: defaults.port.toString(),
+              validate: (x) => {
+                if (!x || x.length === 0) return "Required"
+                const num = parseInt(x, 10)
+                if (isNaN(num) || num < 1 || num > 65535) return "Invalid port (1-65535)"
+                return undefined
+              },
+            })
+            if (prompts.isCancel(portStr)) throw new UI.CancelledError()
+
+            const port = parseInt(portStr, 10)
+            baseURL = resolveLocalProviderBaseUrl(host, port)
+          }
 
           // Add provider to config
           const configPath = await addProviderToConfig(provider, {
             options: { baseURL },
           })
 
-          // Store a dummy credential to mark as configured
+          // Keep credentials in auth store so local providers show as connected in auth status.
           await Auth.set(provider, {
             type: "api",
-            key: "local",
+            key: apiKey,
           })
           await notifyDaemonAuthChange(config)
 
           prompts.log.success(`${provider} configured at ${baseURL}`)
           prompts.log.info(`Config updated: ${configPath}`)
+          if (provider === "vllm") {
+            if (discoveredModels.length > 0) {
+              const maxItems = 6
+              const listed = discoveredModels.slice(0, maxItems)
+              const suffix = discoveredModels.length > maxItems ? ` (+${discoveredModels.length - maxItems} more)` : ""
+              prompts.log.info(`Discovered models: ${listed.join(", ")}${suffix}`)
+              prompts.log.info(`Set your default model to: vllm/${discoveredModels[0]}`)
+            } else {
+              prompts.log.warn("No models discovered from /models. Verify URL/auth and try again later.")
+            }
+          }
           prompts.log.info(`Use models as: ${provider}/<model-name>`)
           prompts.outro("Done")
           return
