@@ -31,7 +31,7 @@ test("provider loaded from env variable", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -58,7 +58,7 @@ test("provider loaded from config with apiKey option", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -85,7 +85,7 @@ test("disabled_providers excludes provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           disabled_providers: ["anthropic"],
@@ -111,7 +111,7 @@ test("model whitelist filters models for provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -142,7 +142,7 @@ test("anthropic provider is forced to opus 4.6", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -171,7 +171,7 @@ test("model blacklist excludes specific models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -201,7 +201,7 @@ test("xai provider is limited to grok 4.1 variants", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -228,7 +228,7 @@ test("minimax provider is limited to MiniMax-M2.5", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -256,7 +256,7 @@ test("google provider is limited to gemini 3, latest, and embeddings", async () 
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -303,7 +303,7 @@ test("glm provider keeps only requested model IDs", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -331,7 +331,7 @@ test("openai provider is limited to 5.2 and 5.3 codex models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -360,7 +360,7 @@ test("custom model alias via config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -395,7 +395,7 @@ test("custom provider with npm package", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -438,7 +438,7 @@ test("env variable takes precedence, config merges options", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -470,7 +470,7 @@ test("getModel returns model for valid provider/model", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -497,7 +497,7 @@ test("getModel throws ModelNotFoundError for invalid model", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -519,7 +519,7 @@ test("getModel throws ModelNotFoundError for invalid provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -538,7 +538,7 @@ test("getModel normalizes google gemini aliases to canonical preview IDs", async
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -546,6 +546,7 @@ test("getModel normalizes google gemini aliases to canonical preview IDs", async
               options: {
                 apiKey: "test-google-key",
               },
+              whitelist: ["gemini-3-pro-preview", "gemini-3-flash-preview"],
               models: {
                 "gemini-3-pro-preview": {
                   name: "Gemini 3 Pro Preview",
@@ -579,7 +580,7 @@ test("getModel prefers normalized google alias when both legacy and canonical ID
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -614,7 +615,7 @@ test("getModel keeps helpful suggestions when google normalized model is missing
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -667,7 +668,7 @@ test("defaultModel returns first available model when no config set", async () =
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -691,7 +692,7 @@ test("defaultModel uses rosetta standard model when available", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -721,7 +722,7 @@ test("defaultModel respects config model setting", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           model: "anthropic/claude-sonnet-4-5",
@@ -746,7 +747,7 @@ test("provider with baseURL from config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -785,7 +786,7 @@ test("model cost defaults to zero when not specified", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -826,7 +827,7 @@ test("model options are merged from existing model", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -861,7 +862,7 @@ test("provider removed when all models filtered out", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -889,7 +890,7 @@ test("closest finds model by partial match", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -914,7 +915,7 @@ test("closest returns undefined for nonexistent provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -934,7 +935,7 @@ test("getModel uses realIdByKey for aliased models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -972,7 +973,7 @@ test("provider api field sets model api.url", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1011,7 +1012,7 @@ test("explicit baseURL overrides api field", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1050,7 +1051,7 @@ test("model inherits properties from existing database model", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1086,7 +1087,7 @@ test("disabled_providers prevents loading even with env var", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           disabled_providers: ["openai"],
@@ -1112,7 +1113,7 @@ test("whitelist and blacklist can be combined", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1145,7 +1146,7 @@ test("model modalities default correctly", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1182,7 +1183,7 @@ test("model with custom cost values", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1227,7 +1228,7 @@ test("getSmallModel returns appropriate small model", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1251,7 +1252,7 @@ test("getSmallModel respects config small_model override", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           small_model: "anthropic/claude-opus-4-6",
@@ -1292,7 +1293,7 @@ test("multiple providers can be configured simultaneously", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1327,7 +1328,7 @@ test("provider with custom npm package", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1369,7 +1370,7 @@ test("model alias name defaults to alias key when id differs", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1402,7 +1403,7 @@ test("provider with multiple env var options only includes apiKey when single en
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1444,7 +1445,7 @@ test("provider with single env var includes apiKey automatically", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1486,7 +1487,7 @@ test("model cost overrides existing cost values", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1523,7 +1524,7 @@ test("completely new provider not in database can be configured", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1575,7 +1576,7 @@ test("model with tool_call false", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1610,7 +1611,7 @@ test("model defaults tool_call to true when not specified", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1645,7 +1646,7 @@ test("model headers are preserved", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1688,7 +1689,7 @@ test("provider env fallback - second env var used if first missing", async () =>
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1728,7 +1729,7 @@ test("getModel returns consistent results", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1754,7 +1755,7 @@ test("provider name defaults to id when not in database", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1789,7 +1790,7 @@ test("ModelNotFoundError includes suggestions for typos", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1817,7 +1818,7 @@ test("ModelNotFoundError for provider includes suggestions", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1845,7 +1846,7 @@ test("getProvider returns undefined for nonexistent provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1865,7 +1866,7 @@ test("getProvider returns provider info", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1889,7 +1890,7 @@ test("closest returns undefined when no partial match found", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1912,7 +1913,7 @@ test("closest checks multiple query terms in order", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -1937,7 +1938,7 @@ test("model limit defaults to zero when not specified", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -1974,7 +1975,7 @@ test("provider options are deeply merged", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2011,7 +2012,7 @@ test("custom model inherits npm package from models.dev provider config", async 
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2048,7 +2049,7 @@ test("custom model inherits api.url from models.dev provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2092,7 +2093,7 @@ test("model variants are generated for reasoning models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
         }),
@@ -2119,7 +2120,7 @@ test("model variants can be disabled via config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2157,7 +2158,7 @@ test("model variants can be customized via config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2198,7 +2199,7 @@ test("disabled key is stripped from variant config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2238,7 +2239,7 @@ test("all variants can be disabled via config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2277,7 +2278,7 @@ test("variant config merges with generated variants", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2317,7 +2318,7 @@ test("variants filtered in second pass for database models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
@@ -2356,7 +2357,7 @@ test("custom model with variants enabled and disabled", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
-        path.join(dir, "zee.json"),
+        path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
           provider: {
