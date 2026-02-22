@@ -12,6 +12,7 @@ import { defineTool } from '../registry';
 import type { ToolExecutionContext } from '../types';
 import { resolveToolSandbox } from '../security/sandbox';
 import { assertToolPath } from '../security/validate-path';
+import { findMeshConflicts } from '../coordination/mesh-reservations';
 
 // ============================================================================
 // Tool Definition
@@ -52,6 +53,18 @@ Usage:
         cwd: sandbox.cwd,
         root: sandbox.root,
       });
+
+      const conflicts = await findMeshConflicts({
+        requestedPath: filePath,
+        sessionId: ctx.sessionId,
+        cwd: sandbox.cwd,
+      });
+      if (conflicts.length > 0) {
+        const conflict = conflicts[0];
+        throw new Error(
+          `Mesh reservation conflict: ${relative || path.basename(filePath)} is reserved by session ${conflict.ownerSessionId} at ${conflict.reservedPath} until ${new Date(conflict.expiresAt).toISOString()}`
+        );
+      }
 
       // Check file exists
       if (!fs.existsSync(filePath)) {

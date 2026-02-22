@@ -54,6 +54,9 @@ import { PTY_SESSION_TOOLS } from "./pty-sessions.js";
 import { ZEE_BROWSER_TOOLS } from "./browser.js";
 import { ZEE_STANDALONE_BROWSER_TOOLS } from "./browser-standalone.js";
 import { WHATSAPP_TOOLS } from "./whatsapp.js";
+import { GITHUB_LIBRARIAN_TOOLS } from "./github-librarian.js";
+import { MESH_TOOLS } from "./mesh.js";
+import { UX_TOOLS } from "./ux-tools.js";
 // reminder-status merged into banner-refresh
 import { bannerPushTool, bannerRefreshTool } from "./banner.js";
 
@@ -1900,6 +1903,9 @@ export const ZEE_TOOLS = [
   ...ZEE_BROWSER_TOOLS,
   ...ZEE_STANDALONE_BROWSER_TOOLS,
   ...WHATSAPP_TOOLS,
+  ...GITHUB_LIBRARIAN_TOOLS,
+  ...MESH_TOOLS,
+  ...UX_TOOLS,
 ];
 
 export function registerZeeTools(registry: { register: (tool: ToolDefinition, options: { source: string }) => void }): void {

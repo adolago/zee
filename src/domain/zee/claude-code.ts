@@ -25,8 +25,8 @@ const log = Log.create({ service: "zee-claude-code" });
 // =============================================================================
 
 const CLAUDE_CLI_CREDENTIALS_PATH = path.join(os.homedir(), ".claude", ".credentials.json");
-const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes (longer for complex tasks)
-const MAX_TIMEOUT_MS = 600_000; // 10 minutes
+export const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes (longer for complex tasks)
+export const MAX_TIMEOUT_MS = 600_000; // 10 minutes
 
 // Zee configuration paths
 const ZEE_CONFIG_DIR = path.join(os.homedir(), ".config", "zee");
@@ -63,7 +63,7 @@ type ClaudeCredential =
       expiresAt: number;
     };
 
-type ClaudeSpawnResult = {
+export type ClaudeSpawnResult = {
   success: boolean;
   output?: string;
   sessionId?: string;
@@ -72,7 +72,7 @@ type ClaudeSpawnResult = {
   model?: string;
 };
 
-type ClaudeSpawnOptions = {
+export type ClaudeSpawnOptions = {
   prompt: string;
   model?: string;
   sessionId?: string;
@@ -180,11 +180,11 @@ function readCredentialsFromFile(): ClaudeCredential | null {
   }
 }
 
-function readClaudeCredentials(): ClaudeCredential | null {
+export function readClaudeCredentials(): ClaudeCredential | null {
   return readCredentialsFromFile();
 }
 
-function isClaudeCliInstalled(): boolean {
+export function isClaudeCliInstalled(): boolean {
   try {
     execSync("which claude", { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
     return true;
@@ -210,7 +210,7 @@ function getClaudeCliVersion(): string | null {
 // Claude Spawn with Shared Configuration
 // =============================================================================
 
-async function spawnClaudeCli(options: ClaudeSpawnOptions): Promise<ClaudeSpawnResult> {
+export async function spawnClaudeCli(options: ClaudeSpawnOptions): Promise<ClaudeSpawnResult> {
   const startTime = Date.now();
   const {
     prompt,
