@@ -28,6 +28,7 @@ rg "export class McpServerManager" src/mcp/server.ts                      # MCP 
 rg "export class PermissionChecker" src/mcp/permission.ts                 # MCP permission policy resolver (line 73)
 rg "createMcpProxyTool|resolveMcpLifecycle|reapIdleLazyServers" packages/zee/src/mcp/index.ts  # MCP proxy + lazy lifecycle (lines 1925, 794, 1690)
 rg "command: \"dmux\"|DmuxSpawnCommand|DmuxMergeCommand" packages/zee/src/cli/cmd/dmux.ts  # dmux CLI flow (lines 6, 12, 96)
+rg "command: \"web\"|resolveWebBackendUrl|resolveWebBackendTarget" packages/zee/src/cli/cmd/web.ts  # Web UI launcher command + backend wiring helpers (lines 81, 27, 36)
 rg "export namespace Dmux|export const spawn|export const merge" packages/zee/src/worktree/dmux.ts  # dmux lane orchestration (lines 8, 177, 220)
 rg "export const ZEE_TOOLS|registerZeeTools" src/domain/zee/tools.ts     # Zee domain tools (lines 1884, 1909)
 rg "export const STANLEY_TOOLS|registerStanleyTools" src/domain/stanley/tools.ts  # Stanley tools (lines 456, 469)
@@ -89,6 +90,14 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Gateway client connect lifecycle:** `packages/zee/src/gateway/ws-client.ts:141`, `packages/zee/src/gateway/ws-client.ts:153`
 - **Embedded gateway start/stop/state:** `packages/zee/src/gateway/embedded-gateway.ts:121`, `packages/zee/src/gateway/embedded-gateway.ts:167`, `packages/zee/src/gateway/embedded-gateway.ts:186`
 
+### Feature: Telegram Bot Bridge (Long Poll)
+**Purpose:** Run a Telegram bot that forwards inbound chat messages to Zee sessions over HTTP and relays responses back to Telegram.
+- **Bridge entry + polling loop:** `scripts/telegram-bridge:454`, `scripts/telegram-bridge:478`
+- **Chat -> session mapping state:** `scripts/telegram-bridge:83`, `scripts/telegram-bridge:271`
+- **Zee session create + prompt calls:** `scripts/telegram-bridge:285`, `scripts/telegram-bridge:314`
+- **Telegram command handling (`/start`, `/new`, `/session`):** `scripts/telegram-bridge:384`
+- **Ops handoff/setup checklist:** `.agents/tasks/telegram-bridge-setup.md`
+
 ### Feature: Config, Global Paths, and Environment Resolution
 **Purpose:** Resolve layered config and XDG/global paths.
 - **Config namespace:** `packages/zee/src/config/config.ts:24`
@@ -140,6 +149,13 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Lane runtime namespace:** `packages/zee/src/worktree/dmux.ts:8`
 - **Spawn orchestration:** `packages/zee/src/worktree/dmux.ts:177`
 - **Merge orchestration:** `packages/zee/src/worktree/dmux.ts:220`
+
+### Feature: Web UI Launcher
+**Purpose:** Start the in-repo Solid web client (`packages/app`) with backend URL wiring from Zee daemon config/env.
+- **CLI entry (`zee web`):** `packages/zee/src/cli/cmd/web.ts:81`
+- **Backend URL resolution:** `packages/zee/src/cli/cmd/web.ts:27`
+- **Backend host/port extraction:** `packages/zee/src/cli/cmd/web.ts:36`
+- **Web app directory resolution:** `packages/zee/src/cli/cmd/web.ts:56`
 
 ### Feature: Domain Tool Packs
 **Purpose:** Provide user-facing capabilities across life admin, investing, and learning.

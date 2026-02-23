@@ -1,26 +1,33 @@
 #!/usr/bin/env bash
 #
-# auto-update-check -- Check upstream remotes and notify via WhatsApp if behind.
+# auto-update-check -- Check upstream remotes and notify via WhatsApp or Telegram.
 #
 # Runs check-upstream.sh --fetch, parses the output for BEHIND/DRIFT status,
-# and sends a WhatsApp summary via wacli if any remote has new commits.
+# and sends a summary if any remote has new commits.
 #
 # Usage:
 #   auto-update-check [--dry-run] [--always-notify]
 #
 # Environment:
-#   ZEE_WA_UPDATE_TO   recipient JID (default: 436649137379@s.whatsapp.net)
-#   WACLI_BIN          path to wacli (default: /home/artur/go/bin/wacli)
-#   WACLI_STORE        path to wacli store (default: ~/.wacli)
+#   ZEE_NOTIFY_CHANNEL      messaging channel: whatsapp|telegram (default: whatsapp)
+#   ZEE_WA_UPDATE_TO        WhatsApp recipient JID (default: 436649137379@s.whatsapp.net)
+#   WACLI_BIN               path to wacli (default: /home/artur/go/bin/wacli)
+#   WACLI_STORE             path to wacli store (default: ~/.wacli)
+#   ZEE_TELEGRAM_UPDATE_TO  Telegram chat id
+#   TELEGRAM_BOT_TOKEN      Telegram bot token
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+CHANNEL_RAW="${ZEE_NOTIFY_CHANNEL:-whatsapp}"
+CHANNEL="$(printf '%s' "$CHANNEL_RAW" | tr '[:upper:]' '[:lower:]')"
 WACLI_BIN="${WACLI_BIN:-/home/artur/go/bin/wacli}"
 WACLI_STORE="${WACLI_STORE:-$HOME/.wacli}"
-TO="${ZEE_WA_UPDATE_TO:-436649137379@s.whatsapp.net}"
+WA_TO="${ZEE_WA_UPDATE_TO:-436649137379@s.whatsapp.net}"
+TG_TO="${ZEE_TELEGRAM_UPDATE_TO:-}"
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 
 DRY_RUN=false
 ALWAYS_NOTIFY=false
@@ -38,7 +45,6 @@ output=$(cd "$REPO_ROOT" && bash scripts/check-upstream.sh --fetch --verbose 2>&
 
 # Parse for behind counts
 has_updates=false
-summary=""
 
 while IFS= read -r line; do
     # Match lines like "  Behind: 42 (upstream changes)"
@@ -91,41 +97,99 @@ else
     msg="Zee upstream check: all remotes up to date."
 fi
 
+case "$CHANNEL" in
+    whatsapp)
+        notify_to="$WA_TO"
+        ;;
+    telegram)
+        notify_to="$TG_TO"
+        ;;
+    *)
+        echo "Unsupported ZEE_NOTIFY_CHANNEL value: $CHANNEL (expected whatsapp or telegram)" >&2
+        exit 1
+        ;;
+esac
+
 if $DRY_RUN; then
     echo "=== DRY RUN ==="
-    echo "To: $TO"
+    echo "Channel: $CHANNEL"
+    echo "To: $notify_to"
     echo "Message:"
     echo "$msg"
     exit 0
 fi
 
-# wacli uses a store lock. The inbound bridge keeps sync running and can hold it.
-# Temporarily stop the bridge while we send this notification, then restore it.
-bridge_was_active=false
-if command -v systemctl >/dev/null 2>&1; then
-    if systemctl --user is-active --quiet zee-wacli-bridge.service 2>/dev/null; then
-        bridge_was_active=true
-        systemctl --user stop zee-wacli-bridge.service >/dev/null 2>&1 || true
-        sleep 2
-    fi
-fi
+send_whatsapp() {
+    local to="$1"
 
-restore_bridge() {
-    if $bridge_was_active; then
-        systemctl --user start zee-wacli-bridge.service >/dev/null 2>&1 || true
+    # wacli uses a store lock. The inbound bridge keeps sync running and can hold it.
+    # Temporarily stop the bridge while we send this notification, then restore it.
+    local bridge_was_active=false
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl --user is-active --quiet zee-wacli-bridge.service 2>/dev/null; then
+            bridge_was_active=true
+            systemctl --user stop zee-wacli-bridge.service >/dev/null 2>&1 || true
+            sleep 2
+        fi
     fi
+
+    restore_bridge() {
+        if $bridge_was_active; then
+            systemctl --user start zee-wacli-bridge.service >/dev/null 2>&1 || true
+        fi
+    }
+
+    trap restore_bridge EXIT
+
+    "$WACLI_BIN" send text \
+        --to "$to" \
+        --message "$msg" \
+        --store "$WACLI_STORE" \
+        2>&1
+
+    trap - EXIT
+    restore_bridge
 }
 
-trap restore_bridge EXIT
+send_telegram() {
+    local to="$1"
+    local token="$2"
+    if [[ -z "$to" ]]; then
+        echo "ZEE_TELEGRAM_UPDATE_TO is required when ZEE_NOTIFY_CHANNEL=telegram" >&2
+        exit 1
+    fi
+    if [[ -z "$token" ]]; then
+        echo "TELEGRAM_BOT_TOKEN is required when ZEE_NOTIFY_CHANNEL=telegram" >&2
+        exit 1
+    fi
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "curl is required for Telegram delivery" >&2
+        exit 1
+    fi
 
-# Send via wacli
-"$WACLI_BIN" send text \
-    --to "$TO" \
-    --message "$msg" \
-    --store "$WACLI_STORE" \
-    2>&1
+    local remaining="$msg"
+    local max_len=3900
+    while [[ -n "$remaining" ]]; do
+        local chunk="${remaining:0:max_len}"
+        if [[ ${#remaining} -le $max_len ]]; then
+            remaining=""
+        else
+            remaining="${remaining:max_len}"
+        fi
+        curl -fsS -X POST "https://api.telegram.org/bot${token}/sendMessage" \
+            --data-urlencode "chat_id=${to}" \
+            --data-urlencode "text=${chunk}" \
+            --data "allow_sending_without_reply=true" >/dev/null
+    done
+}
 
-trap - EXIT
-restore_bridge
+if [[ "$CHANNEL" == "whatsapp" ]]; then
+    send_whatsapp "$WA_TO"
+elif [[ "$CHANNEL" == "telegram" ]]; then
+    send_telegram "$TG_TO" "$TELEGRAM_BOT_TOKEN"
+else
+    echo "Unsupported channel: $CHANNEL" >&2
+    exit 1
+fi
 
-echo "Notification sent."
+echo "Notification sent via $CHANNEL."

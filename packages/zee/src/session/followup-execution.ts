@@ -86,7 +86,7 @@ export function buildFollowupExecutionReminder(input: {
 
   const previousContext = previousAssistantText.replace(/\s+/g, " ").trim().slice(0, 320)
   const planModeLine =
-    input.surface === "whatsapp"
+    input.surface === "whatsapp" || input.surface === "telegram"
       ? "If PLAN mode blocks this action, ask for operator release with `/release <PIN>` before executing instead of claiming the integration is unavailable."
       : "If PLAN mode blocks this action, ask the user to switch to ACCEPT mode before executing instead of claiming the integration is unavailable."
 

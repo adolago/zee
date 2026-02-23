@@ -1,0 +1,758 @@
+#!/usr/bin/env python3
+"""
+telegram-bridge -- Long-poll Telegram bot bridge for Zee.
+
+Architecture:
+  1. Poll Telegram Bot API (`getUpdates`) for inbound chat messages.
+  2. Map each Telegram chat to a persistent Zee session.
+  3. Forward message text to Zee via `POST /session/:sessionID/message`.
+  4. Send Zee's text response back to Telegram (`sendMessage`).
+
+Key commands:
+  /start   Show usage and bot status
+  /help    Show usage
+  /new     Start a new Zee session for this chat
+  /reset   Alias for /new
+  /session Show current Zee session id
+
+Environment:
+  TELEGRAM_BOT_TOKEN               required (Telegram bot token)
+  ZEE_API_URL                      default: http://127.0.0.1:3210
+  ZEE_TELEGRAM_AGENT               default: zee
+  ZEE_TELEGRAM_SESSION_SURFACE     default: api (api|whatsapp)
+  ZEE_TELEGRAM_STATE               default: ~/.local/state/zee/telegram-bridge.json
+  ZEE_TELEGRAM_POLL_TIMEOUT        default: 30
+  ZEE_TELEGRAM_ALLOWED_CHAT_IDS    optional CSV allowlist of numeric chat IDs
+  ZEE_API_TOKEN                    optional Bearer token for Zee API auth
+"""
+
+import argparse
+import json
+import logging
+import os
+import signal
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+DEFAULT_ZEE_API_URL = os.environ.get("ZEE_API_URL", "http://127.0.0.1:3210").rstrip("/")
+DEFAULT_AGENT = os.environ.get("ZEE_TELEGRAM_AGENT", "zee")
+DEFAULT_SESSION_SURFACE = os.environ.get("ZEE_TELEGRAM_SESSION_SURFACE", "api")
+DEFAULT_MODEL_PROVIDER = os.environ.get("ZEE_TELEGRAM_MODEL_PROVIDER", "").strip()
+DEFAULT_MODEL_ID = os.environ.get("ZEE_TELEGRAM_MODEL_ID", "").strip()
+DEFAULT_STATE_PATH = os.environ.get(
+    "ZEE_TELEGRAM_STATE",
+    str(Path.home() / ".local" / "state" / "zee" / "telegram-bridge.json"),
+)
+DEFAULT_POLL_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_POLL_TIMEOUT", "30"))
+DEFAULT_PROMPT_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_PROMPT_TIMEOUT", "25"))
+DEFAULT_MAX_UPDATE_AGE_SEC = int(os.environ.get("ZEE_TELEGRAM_MAX_UPDATE_AGE_SEC", "1800"))
+DEFAULT_ALLOWED_CHAT_IDS = os.environ.get("ZEE_TELEGRAM_ALLOWED_CHAT_IDS", "")
+DEFAULT_ZEE_API_TOKEN = os.environ.get("ZEE_API_TOKEN", "").strip()
+
+TELEGRAM_MAX_TEXT = 4096
+SIMPLE_GREETINGS = {
+    "hi",
+    "hello",
+    "hey",
+    "good morning",
+    "good afternoon",
+    "good evening",
+    "good night",
+    "yo",
+    "sup",
+    "whats up",
+    "what's up",
+}
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S%z",
+)
+log = logging.getLogger("telegram-bridge")
+
+
+# ---------------------------------------------------------------------------
+# Globals
+# ---------------------------------------------------------------------------
+
+shutdown_requested = False
+
+
+def handle_signal(signum, _frame):
+    global shutdown_requested
+    name = signal.Signals(signum).name
+    log.info("Received %s, shutting down", name)
+    shutdown_requested = True
+
+
+signal.signal(signal.SIGTERM, handle_signal)
+signal.signal(signal.SIGINT, handle_signal)
+
+
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
+
+
+def load_state(path: Path) -> dict:
+    if not path.exists():
+        return {"offset": 0, "sessions": {}}
+
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        log.warning("State file is invalid JSON, resetting: %s", path)
+        return {"offset": 0, "sessions": {}}
+
+    offset = raw.get("offset", 0)
+    sessions = raw.get("sessions", {})
+    if not isinstance(offset, int):
+        offset = 0
+    if not isinstance(sessions, dict):
+        sessions = {}
+
+    return {"offset": offset, "sessions": sessions}
+
+
+def save_state(path: Path, state: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(state, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+# ---------------------------------------------------------------------------
+# HTTP helpers
+# ---------------------------------------------------------------------------
+
+
+def request_json(url: str, payload: dict | None, timeout: int, headers: dict | None = None) -> dict:
+    req_headers = {"Accept": "application/json"}
+    if headers:
+        req_headers.update(headers)
+
+    data = None
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        req_headers["Content-Type"] = "application/json"
+
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers=req_headers,
+        method="POST" if data is not None else "GET",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as err:
+        body = err.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {err.code} {url}: {body.strip()}") from err
+    except urllib.error.URLError as err:
+        raise RuntimeError(f"Request failed for {url}: {err}") from err
+
+    if not body:
+        return {}
+
+    try:
+        parsed = json.loads(body)
+    except json.JSONDecodeError as err:
+        raise RuntimeError(f"Invalid JSON response from {url}: {body[:200]}") from err
+
+    if not isinstance(parsed, dict):
+        raise RuntimeError(f"Unexpected JSON payload from {url}: expected object")
+
+    return parsed
+
+
+def telegram_api(token: str, method: str, payload: dict | None, timeout: int) -> dict | list:
+    url = f"https://api.telegram.org/bot{token}/{method}"
+    data = request_json(url, payload, timeout)
+    if not data.get("ok"):
+        description = data.get("description", "Unknown Telegram API error")
+        raise RuntimeError(f"Telegram API {method} failed: {description}")
+    return data.get("result", {})
+
+
+def zee_request(base_url: str, path: str, payload: dict, timeout: int, auth_token: str | None) -> dict:
+    headers = {}
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+    return request_json(f"{base_url}{path}", payload, timeout, headers=headers)
+
+
+# ---------------------------------------------------------------------------
+# Telegram bridge
+# ---------------------------------------------------------------------------
+
+
+def parse_allowed_chat_ids(raw: str) -> set[int] | None:
+    if not raw.strip():
+        return None
+
+    allowed: set[int] = set()
+    for item in raw.split(","):
+        value = item.strip()
+        if not value:
+            continue
+        try:
+            allowed.add(int(value))
+        except ValueError:
+            log.warning("Ignoring invalid chat id in allowlist: %s", value)
+
+    return allowed if allowed else None
+
+
+def chat_display_name(chat: dict) -> str:
+    chat_id = str(chat.get("id", "unknown"))
+    chat_type = str(chat.get("type", "private"))
+    if chat_type in ("group", "supergroup", "channel"):
+        title = str(chat.get("title", "")).strip()
+        return title or f"{chat_type}:{chat_id}"
+
+    first_name = str(chat.get("first_name", "")).strip()
+    last_name = str(chat.get("last_name", "")).strip()
+    username = str(chat.get("username", "")).strip()
+    full = " ".join(x for x in (first_name, last_name) if x).strip()
+    if full:
+        return full
+    if username:
+        return f"@{username}"
+    return chat_id
+
+
+def command_name(text: str) -> str:
+    token = text.strip().split(" ", 1)[0]
+    if not token.startswith("/"):
+        return ""
+    # /start@MyBot -> /start
+    return token.split("@", 1)[0].lower()
+
+
+def normalize_text_for_match(text: str) -> str:
+    lowered = text.strip().lower()
+    allowed = []
+    for ch in lowered:
+        if ch.isalnum() or ch.isspace() or ch in {"'"}:
+            allowed.append(ch)
+    compact = " ".join("".join(allowed).split())
+    return compact
+
+
+def is_simple_greeting(text: str) -> bool:
+    return normalize_text_for_match(text) in SIMPLE_GREETINGS
+
+
+def chunk_text(text: str, max_len: int = TELEGRAM_MAX_TEXT) -> list[str]:
+    if len(text) <= max_len:
+        return [text]
+
+    chunks: list[str] = []
+    remaining = text
+    while len(remaining) > max_len:
+        idx = remaining.rfind("\n", 0, max_len + 1)
+        if idx == -1 or idx < (max_len // 2):
+            idx = max_len
+        chunk = remaining[:idx].rstrip()
+        if not chunk:
+            chunk = remaining[:max_len]
+            idx = len(chunk)
+        chunks.append(chunk)
+        remaining = remaining[idx:].lstrip("\n")
+
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks
+
+
+def telegram_send_text(token: str, chat_id: int, text: str, reply_to_message_id: int | None = None) -> None:
+    chunks = chunk_text(text)
+    for i, chunk in enumerate(chunks):
+        payload = {
+            "chat_id": chat_id,
+            "text": chunk,
+            "allow_sending_without_reply": True,
+        }
+        if reply_to_message_id is not None and i == 0:
+            payload["reply_to_message_id"] = reply_to_message_id
+        telegram_api(token, "sendMessage", payload, timeout=20)
+
+
+def telegram_send_typing(token: str, chat_id: int) -> None:
+    try:
+        telegram_api(
+            token,
+            "sendChatAction",
+            {"chat_id": chat_id, "action": "typing"},
+            timeout=10,
+        )
+    except Exception as err:
+        log.debug("typing indicator failed: %s", err)
+
+
+def ensure_session(
+    state: dict,
+    chat: dict,
+    base_url: str,
+    agent: str,
+    session_surface: str,
+    auth_token: str | None,
+) -> str:
+    chat_id = str(chat.get("id"))
+    existing = state["sessions"].get(chat_id)
+    if isinstance(existing, str) and existing:
+        return existing
+
+    title = f"Telegram: {chat_display_name(chat)} ({chat_id})"
+    created = zee_request(
+        base_url,
+        "/session",
+        {"title": title, "surface": session_surface},
+        timeout=30,
+        auth_token=auth_token,
+    )
+    session_id = created.get("id")
+    if not isinstance(session_id, str) or not session_id:
+        raise RuntimeError(f"Invalid session.create response: {created}")
+
+    state["sessions"][chat_id] = session_id
+    log.info("Created session %s for chat %s via agent=%s", session_id, chat_id, agent)
+    return session_id
+
+
+def prompt_zee(
+    base_url: str,
+    session_id: str,
+    text: str,
+    sender_id: str,
+    agent: str,
+    model_provider: str | None,
+    model_id: str | None,
+    prompt_timeout: int,
+    auth_token: str | None,
+) -> str:
+    payload = {
+        "agent": agent,
+        "parts": [{"type": "text", "text": text}],
+        "options": {"senderId": sender_id},
+    }
+    if model_provider and model_id:
+        payload["model"] = {"providerID": model_provider, "modelID": model_id}
+    response = zee_request(
+        base_url,
+        f"/session/{session_id}/message",
+        payload,
+        timeout=prompt_timeout,
+        auth_token=auth_token,
+    )
+
+    parts = response.get("parts", [])
+    texts: list[str] = []
+    if isinstance(parts, list):
+        for part in parts:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "text":
+                value = part.get("text")
+                if isinstance(value, str) and value.strip():
+                    texts.append(value.strip())
+
+    combined = "\n".join(texts).strip()
+    if combined:
+        return combined
+
+    info = response.get("info")
+    if isinstance(info, dict):
+        error = info.get("error")
+        if isinstance(error, dict):
+            # NamedError payloads usually look like:
+            # { name: "...", data: { message: "...", ... } }
+            message = error.get("message")
+            if isinstance(message, str) and message.strip():
+                return f"Zee error: {message.strip()}"
+
+            data = error.get("data")
+            if isinstance(data, dict):
+                data_message = data.get("message")
+                if isinstance(data_message, str) and data_message.strip():
+                    return f"Zee error: {data_message.strip()}"
+
+    return "No text response returned."
+
+
+def handle_update(
+    update: dict,
+    *,
+    token: str,
+    base_url: str,
+    state: dict,
+    agent: str,
+    session_surface: str,
+    model_provider: str | None,
+    model_id: str | None,
+    prompt_timeout: int,
+    max_update_age_sec: int,
+    allowed_chat_ids: set[int] | None,
+    auth_token: str | None,
+) -> bool:
+    message = update.get("message")
+    if not isinstance(message, dict):
+        return False
+
+    chat = message.get("chat")
+    if not isinstance(chat, dict):
+        return False
+
+    chat_id = chat.get("id")
+    if not isinstance(chat_id, int):
+        return False
+
+    if allowed_chat_ids is not None and chat_id not in allowed_chat_ids:
+        log.info("Ignoring message from disallowed chat %s", chat_id)
+        return False
+
+    text = message.get("text")
+    if not isinstance(text, str):
+        caption = message.get("caption")
+        text = caption if isinstance(caption, str) else ""
+
+    text = text.strip()
+    if not text:
+        return False
+
+    message_date = message.get("date")
+    if isinstance(message_date, int):
+        age_sec = int(time.time()) - message_date
+        if age_sec > max_update_age_sec:
+            log.info(
+                "Skipping stale message update_id=%s chat=%s age=%ss",
+                update.get("update_id"),
+                chat_id,
+                age_sec,
+            )
+            return False
+
+    cmd = command_name(text)
+    if cmd in {"/start", "/help"}:
+        telegram_send_text(
+            token,
+            chat_id,
+            "Zee Telegram bridge is online.\n\n"
+            "Commands:\n"
+            "/new - start a fresh Zee session\n"
+            "/session - show current session id\n"
+            "/help - show this message",
+            reply_to_message_id=message.get("message_id"),
+        )
+        return False
+
+    if cmd in {"/new", "/reset"}:
+        key = str(chat_id)
+        previous = state["sessions"].pop(key, None)
+        telegram_send_text(
+            token,
+            chat_id,
+            f"Started a new Zee session for this chat."
+            + (f"\nPrevious session: {previous}" if isinstance(previous, str) else ""),
+            reply_to_message_id=message.get("message_id"),
+        )
+        return True
+
+    if cmd == "/session":
+        session_id = ensure_session(
+            state,
+            chat,
+            base_url,
+            agent,
+            session_surface,
+            auth_token,
+        )
+        telegram_send_text(
+            token,
+            chat_id,
+            f"Current Zee session: {session_id}",
+            reply_to_message_id=message.get("message_id"),
+        )
+        return True
+
+    if is_simple_greeting(text):
+        telegram_send_text(
+            token,
+            chat_id,
+            "Good morning. I'm online and ready.",
+            reply_to_message_id=message.get("message_id"),
+        )
+        return False
+
+    sender_id = str(chat_id)
+    session_id = ensure_session(
+        state,
+        chat,
+        base_url,
+        agent,
+        session_surface,
+        auth_token,
+    )
+    log.info("Processing message update_id=%s chat=%s session=%s", update.get("update_id"), chat_id, session_id)
+    telegram_send_typing(token, chat_id)
+    try:
+        reply = prompt_zee(
+            base_url,
+            session_id,
+            text,
+            sender_id,
+            agent,
+            model_provider,
+            model_id,
+            prompt_timeout,
+            auth_token,
+        )
+    except Exception as err:
+        message_text = str(err).lower()
+        is_timeout = "timed out" in message_text or "timeout" in message_text
+        if not is_timeout:
+            raise
+
+        # Session can become wedged after a long-running call. Roll to a fresh one
+        # so users don't get stuck forever.
+        previous = state["sessions"].pop(str(chat_id), None)
+        new_session_id = ensure_session(
+            state,
+            chat,
+            base_url,
+            agent,
+            session_surface,
+            auth_token,
+        )
+        log.warning(
+            "Prompt timed out for chat=%s previous_session=%s new_session=%s; returning fail-fast response",
+            chat_id,
+            previous,
+            new_session_id,
+        )
+        reply = "Zee timed out on that request. I reset the session; please try again."
+    telegram_send_text(
+        token,
+        chat_id,
+        reply,
+        reply_to_message_id=message.get("message_id"),
+    )
+    return True
+
+
+def run(
+    token: str,
+    base_url: str,
+    state_path: Path,
+    poll_timeout: int,
+    prompt_timeout: int,
+    max_update_age_sec: int,
+    agent: str,
+    session_surface: str,
+    model_provider: str | None,
+    model_id: str | None,
+    allowed_chat_ids: set[int] | None,
+    auth_token: str | None,
+) -> None:
+    state = load_state(state_path)
+    save_state(state_path, state)
+
+    log.info(
+        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, model=%s/%s, poll_timeout=%ss, prompt_timeout=%ss, max_update_age=%ss, allowed_chats=%s)",
+        base_url,
+        agent,
+        session_surface,
+        model_provider or "-",
+        model_id or "-",
+        poll_timeout,
+        prompt_timeout,
+        max_update_age_sec,
+        "*" if allowed_chat_ids is None else len(allowed_chat_ids),
+    )
+
+    consecutive_errors = 0
+
+    while not shutdown_requested:
+        dirty = False
+        try:
+            updates = telegram_api(
+                token,
+                "getUpdates",
+                {
+                    "offset": state.get("offset", 0),
+                    "timeout": poll_timeout,
+                    "allowed_updates": ["message"],
+                },
+                timeout=poll_timeout + 15,
+            )
+
+            if not isinstance(updates, list):
+                raise RuntimeError("Telegram getUpdates returned non-list payload")
+
+            for update in updates:
+                if not isinstance(update, dict):
+                    continue
+
+                update_id = update.get("update_id")
+                if isinstance(update_id, int):
+                    next_offset = update_id + 1
+                    if next_offset > state.get("offset", 0):
+                        state["offset"] = next_offset
+                        dirty = True
+
+                try:
+                    changed = handle_update(
+                        update,
+                        token=token,
+                        base_url=base_url,
+                        state=state,
+                        agent=agent,
+                        session_surface=session_surface,
+                        model_provider=model_provider,
+                        model_id=model_id,
+                        prompt_timeout=prompt_timeout,
+                        max_update_age_sec=max_update_age_sec,
+                        allowed_chat_ids=allowed_chat_ids,
+                        auth_token=auth_token,
+                    )
+                    dirty = dirty or changed
+                    consecutive_errors = 0
+                except Exception as err:
+                    consecutive_errors += 1
+                    log.warning("Failed to process update: %s", err)
+
+                    # Best effort error response if we can identify the chat
+                    msg = update.get("message")
+                    chat = msg.get("chat") if isinstance(msg, dict) else None
+                    chat_id = chat.get("id") if isinstance(chat, dict) else None
+                    if isinstance(chat_id, int):
+                        try:
+                            telegram_send_text(
+                                token,
+                                chat_id,
+                                f"Zee bridge error: {err}",
+                                reply_to_message_id=msg.get("message_id") if isinstance(msg, dict) else None,
+                            )
+                        except Exception:
+                            pass
+
+            if dirty:
+                save_state(state_path, state)
+
+        except Exception as err:
+            consecutive_errors += 1
+            log.warning("Polling loop error (%d): %s", consecutive_errors, err)
+            if dirty:
+                save_state(state_path, state)
+
+            # Backoff on repeated failure
+            sleep_s = min(30, 1 + consecutive_errors)
+            slept = 0.0
+            while slept < sleep_s and not shutdown_requested:
+                time.sleep(min(0.5, sleep_s - slept))
+                slept += 0.5
+
+    save_state(state_path, state)
+    log.info("Bridge stopped")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Telegram long-poll bridge for Zee daemon.")
+    parser.add_argument("--token", default=os.environ.get("TELEGRAM_BOT_TOKEN", "").strip(), help="Telegram bot token")
+    parser.add_argument("--zee-api-url", default=DEFAULT_ZEE_API_URL, help=f"Zee API base URL (default: {DEFAULT_ZEE_API_URL})")
+    parser.add_argument("--agent", default=DEFAULT_AGENT, help=f"Agent to use for prompts (default: {DEFAULT_AGENT})")
+    parser.add_argument(
+        "--model-provider",
+        default=DEFAULT_MODEL_PROVIDER,
+        help="Optional model provider override (for session prompt model.providerID)",
+    )
+    parser.add_argument(
+        "--model-id",
+        default=DEFAULT_MODEL_ID,
+        help="Optional model id override (for session prompt model.modelID)",
+    )
+    parser.add_argument(
+        "--session-surface",
+        default=DEFAULT_SESSION_SURFACE,
+        choices=["api", "whatsapp"],
+        help=f"Session surface value (default: {DEFAULT_SESSION_SURFACE})",
+    )
+    parser.add_argument(
+        "--state-path",
+        default=DEFAULT_STATE_PATH,
+        help=f"State file path (default: {DEFAULT_STATE_PATH})",
+    )
+    parser.add_argument(
+        "--poll-timeout",
+        type=int,
+        default=DEFAULT_POLL_TIMEOUT,
+        help=f"Telegram long-poll timeout in seconds (default: {DEFAULT_POLL_TIMEOUT})",
+    )
+    parser.add_argument(
+        "--prompt-timeout",
+        type=int,
+        default=DEFAULT_PROMPT_TIMEOUT,
+        help=f"Zee /session/:id/message timeout in seconds (default: {DEFAULT_PROMPT_TIMEOUT})",
+    )
+    parser.add_argument(
+        "--max-update-age-sec",
+        type=int,
+        default=DEFAULT_MAX_UPDATE_AGE_SEC,
+        help=f"Skip Telegram updates older than this many seconds (default: {DEFAULT_MAX_UPDATE_AGE_SEC})",
+    )
+    parser.add_argument(
+        "--allowed-chat-ids",
+        default=DEFAULT_ALLOWED_CHAT_IDS,
+        help="Optional CSV allowlist of numeric Telegram chat IDs",
+    )
+    parser.add_argument(
+        "--zee-api-token",
+        default=DEFAULT_ZEE_API_TOKEN,
+        help="Optional Bearer token for Zee API auth",
+    )
+    args = parser.parse_args()
+
+    token = args.token.strip()
+    if not token:
+        raise SystemExit("Missing Telegram token. Set TELEGRAM_BOT_TOKEN or pass --token.")
+
+    if args.poll_timeout < 1:
+        raise SystemExit("--poll-timeout must be >= 1")
+    if args.prompt_timeout < 1:
+        raise SystemExit("--prompt-timeout must be >= 1")
+    if args.max_update_age_sec < 1:
+        raise SystemExit("--max-update-age-sec must be >= 1")
+
+    model_provider = args.model_provider.strip() or None
+    model_id = args.model_id.strip() or None
+    if bool(model_provider) ^ bool(model_id):
+        raise SystemExit("Set both --model-provider and --model-id together (or leave both empty).")
+
+    allowed_chat_ids = parse_allowed_chat_ids(args.allowed_chat_ids)
+    run(
+        token=token,
+        base_url=args.zee_api_url.rstrip("/"),
+        state_path=Path(args.state_path).expanduser(),
+        poll_timeout=args.poll_timeout,
+        prompt_timeout=args.prompt_timeout,
+        max_update_age_sec=args.max_update_age_sec,
+        agent=args.agent,
+        session_surface=args.session_surface,
+        model_provider=model_provider,
+        model_id=model_id,
+        allowed_chat_ids=allowed_chat_ids,
+        auth_token=args.zee_api_token.strip() or None,
+    )
+
+
+if __name__ == "__main__":
+    main()

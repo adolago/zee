@@ -99,7 +99,7 @@ export namespace Session {
           reasoning: z.number(),
         })
         .optional(),
-      surface: z.enum(["cli", "web", "api", "whatsapp"]).optional(),
+      surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
       mode: z
         .enum(["plan", "accept", "bypass"])
         .or(z.enum(["hold", "release"]))
@@ -123,7 +123,7 @@ export namespace Session {
               if (v === "release") return "accept" as const
               return v
             }),
-          surface: z.enum(["cli", "web", "api", "whatsapp"]).optional(),
+          surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
           agent: z.string().optional(),
           permission: PermissionNext.Ruleset.optional(),
         })

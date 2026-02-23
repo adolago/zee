@@ -10,6 +10,19 @@ import { deliverHeartbeatResult, type DeliveryTarget } from "./delivery"
 
 const log = Log.create({ service: "heartbeat" })
 
+function resolveHeartbeatModel(raw?: string): { providerID: string; modelID: string } | undefined {
+  const normalized = raw?.trim()
+  if (!normalized) return undefined
+  const [providerID, ...modelParts] = normalized.split("/")
+  if (!providerID || modelParts.length === 0) {
+    return undefined
+  }
+  return {
+    providerID,
+    modelID: modelParts.join("/"),
+  }
+}
+
 export type HeartbeatRunResult = {
   status: "ran" | "skipped" | "error"
   reason?: string
@@ -163,21 +176,43 @@ export class HeartbeatRunner {
 
       const session = (await res.json()) as { id: string }
 
+      const body: Record<string, unknown> = {
+        agent: "zee",
+        parts: [{ type: "text", text: prompt }],
+        options: {
+          senderId: "heartbeat",
+        },
+      }
+      const resolvedModel = resolveHeartbeatModel(this.config.model)
+      if (resolvedModel) {
+        body.model = resolvedModel
+      } else if (this.config.model?.trim()) {
+        log.warn("heartbeat: ignoring invalid model override", { model: this.config.model })
+      }
+
       const msgRes = await fetch(`${this.deps.serverUrl}/session/${session.id}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: prompt,
-          model: this.config.model,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!msgRes.ok) {
         return { status: "error", reason: `message send failed: ${msgRes.status}` }
       }
 
-      const result = (await msgRes.json()) as { content?: string }
-      const responseText = result.content ?? ""
+      const result = (await msgRes.json()) as {
+        content?: string
+        parts?: Array<{ type?: string; text?: string }>
+      }
+
+      let responseText = result.content ?? ""
+      if (!responseText && Array.isArray(result.parts)) {
+        responseText = result.parts
+          .filter((part) => part?.type === "text" && typeof part.text === "string")
+          .map((part) => part.text!.trim())
+          .filter(Boolean)
+          .join("\n")
+      }
 
       // Check for HEARTBEAT_OK
       if (isHeartbeatAck(responseText)) {

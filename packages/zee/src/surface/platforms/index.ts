@@ -12,3 +12,5 @@ export {
   type ForwardedMedia,
   type WhatsAppSendFn,
 } from "./whatsapp.js"
+
+export { TelegramPlatformHandler, type TelegramPlatformConfig } from "./telegram.js"

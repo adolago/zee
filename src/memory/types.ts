@@ -197,6 +197,12 @@ export interface MemoryInput {
 /** Search mode selection. */
 export type MemorySearchMode = "auto" | "semantic" | "keyword" | "hybrid";
 
+/** Local index backend type. */
+export type LocalIndexBackend = "sqlite-fts";
+
+/** Behavior when Qdrant is unavailable but local index exists. */
+export type LocalIndexDegradedReadMode = "off" | "keyword_only";
+
 /** Search parameters for memory retrieval */
 export interface MemorySearchParams {
   /** Search query text */
@@ -260,6 +266,10 @@ export interface MemorySearchResult {
   highlights?: string[];
   /** Keyword snippet with match highlights (if available). */
   snippet?: string;
+  /** Origin of the result payload. */
+  source?: "qdrant" | "local-index";
+  /** True when results are served from local index because Qdrant is unavailable. */
+  degraded?: boolean;
 }
 
 // =============================================================================
@@ -623,6 +633,20 @@ export interface MemoryConfig {
     dbDir?: string;
     /** Database file name */
     dbName?: string;
+  };
+
+  /** Local index configuration (secondary index; Qdrant remains source of truth). */
+  localIndex?: {
+    /** Enable local index (keyword/hybrid acceleration + optional degraded read). */
+    enabled?: boolean;
+    /** Local index backend. */
+    backend?: LocalIndexBackend;
+    /** Directory for backend state. */
+    dbDir?: string;
+    /** Database filename for backend state. */
+    dbName?: string;
+    /** Degraded-read policy when Qdrant is unavailable. */
+    degradedRead?: LocalIndexDegradedReadMode;
   };
 }
 

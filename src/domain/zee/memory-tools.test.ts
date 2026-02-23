@@ -34,6 +34,7 @@ vi.mock("bun:sqlite", () => ({
 vi.mock("../../config/runtime", () => ({
   getMemoryQdrantConfig: () => ({}),
   getMemoryEmbeddingConfig: () => ({}),
+  getMemoryLocalIndexConfig: () => ({ enabled: false, backend: "sqlite-fts", degradedRead: "off" }),
   getMemoryRerankerConfig: () => ({ enabled: false }),
 }));
 

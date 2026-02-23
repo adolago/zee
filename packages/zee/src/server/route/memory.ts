@@ -112,6 +112,8 @@ const MemorySearchResultSchema = z.object({
   score: z.number(),
   highlights: z.array(z.string()).optional(),
   snippet: z.string().optional(),
+  source: z.enum(["qdrant", "local-index"]).optional(),
+  degraded: z.boolean().optional(),
 })
 
 const MemoryStatsSchema = z.object({
@@ -124,6 +126,15 @@ const MemoryStatsSchema = z.object({
       dbSizeBytes: z.number(),
     })
     .optional(),
+  localIndex: z.object({
+    enabled: z.boolean(),
+    backend: z.enum(["sqlite-fts"]),
+    available: z.boolean(),
+    degradedRead: z.enum(["off", "keyword_only"]),
+    initFailed: z.boolean(),
+    totalEntries: z.number().optional(),
+    dbSizeBytes: z.number().optional(),
+  }),
 })
 
 // =============================================================================
@@ -309,6 +320,12 @@ export const MemoryRoute = new Hono()
                 z.object({
                   available: z.boolean(),
                   initialized: z.boolean(),
+                  localIndex: z.object({
+                    enabled: z.boolean(),
+                    backend: z.string().optional(),
+                    available: z.boolean(),
+                    degradedRead: z.enum(["off", "keyword_only"]),
+                  }),
                 }),
               ),
             },
@@ -319,14 +336,32 @@ export const MemoryRoute = new Hono()
     async (c) => {
       try {
         const memory = await getMemoryService()
+        const localIndex = typeof memory.getLocalIndexStatus === "function"
+          ? memory.getLocalIndexStatus()
+          : {
+              enabled: false,
+              available: false,
+              degradedRead: "off",
+            }
         return c.json({
           available: memory.isAvailable(),
           initialized: true,
+          localIndex: {
+            enabled: Boolean(localIndex.enabled),
+            backend: typeof localIndex.backend === "string" ? localIndex.backend : undefined,
+            available: Boolean(localIndex.available),
+            degradedRead: localIndex.degradedRead === "keyword_only" ? "keyword_only" : "off",
+          },
         })
       } catch (err) {
         return c.json({
           available: false,
           initialized: false,
+          localIndex: {
+            enabled: false,
+            available: false,
+            degradedRead: "off",
+          },
         })
       }
     },

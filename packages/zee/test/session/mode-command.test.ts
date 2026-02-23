@@ -177,6 +177,33 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
     })
   })
 
+  test(":accept sets session to accept mode on CLI", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        delete process.env.ZEE_ENABLE_SERVER_AUTH
+        delete process.env.ZEE_SERVER_PASSWORD
+        delete process.env.ZEE_SERVER_SCOPES
+        reloadFlags()
+
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        const msg = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "zee",
+          parts: [{ type: "text", text: ":accept" }],
+        })
+
+        const parts = await MessageV2.parts(msg.info.id)
+        expect(parts[0]?.type).toBe("text")
+        expect((parts[0] as any).text).toContain("Switched to ACCEPT mode")
+
+        const updated = await Session.get(session.id)
+        expect(updated.mode).toBe("accept")
+      },
+    })
+  })
+
   test("/bypass sets session to bypass mode on CLI", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
@@ -192,6 +219,33 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
           sessionID: session.id,
           agent: "zee",
           parts: [{ type: "text", text: "/bypass" }],
+        })
+
+        const parts = await MessageV2.parts(msg.info.id)
+        expect(parts[0]?.type).toBe("text")
+        expect((parts[0] as any).text).toContain("Switched to BYPASS mode")
+
+        const updated = await Session.get(session.id)
+        expect(updated.mode).toBe("bypass")
+      },
+    })
+  })
+
+  test(":bypass sets session to bypass mode on CLI", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        delete process.env.ZEE_ENABLE_SERVER_AUTH
+        delete process.env.ZEE_SERVER_PASSWORD
+        delete process.env.ZEE_SERVER_SCOPES
+        reloadFlags()
+
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        const msg = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "zee",
+          parts: [{ type: "text", text: ":bypass" }],
         })
 
         const parts = await MessageV2.parts(msg.info.id)
@@ -223,6 +277,37 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
           sessionID: session.id,
           agent: "zee",
           parts: [{ type: "text", text: "/hold" }],
+        })
+
+        const parts = await MessageV2.parts(msg.info.id)
+        expect(parts[0]?.type).toBe("text")
+        expect((parts[0] as any).text).toContain("Switched to PLAN mode")
+
+        const updated = await Session.get(session.id)
+        expect(updated.mode).toBe("plan")
+      },
+    })
+  })
+
+  test(":plan is an alias for /plan", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        delete process.env.ZEE_ENABLE_SERVER_AUTH
+        delete process.env.ZEE_SERVER_PASSWORD
+        delete process.env.ZEE_SERVER_SCOPES
+        reloadFlags()
+
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        await Session.update(session.id, (draft) => {
+          draft.mode = "accept"
+        })
+
+        const msg = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "zee",
+          parts: [{ type: "text", text: ":plan" }],
         })
 
         const parts = await MessageV2.parts(msg.info.id)
@@ -346,6 +431,9 @@ describe("resolveMode", () => {
   test("messageOptions mode overrides everything", () => {
     expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { mode: "bypass" })).toBe("bypass")
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: false }, { mode: "accept" })).toBe("accept")
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { mode: "accept", skipPermissions: true })).toBe(
+      "accept",
+    )
   })
 
   test("explicit message mode overrides options/tools/session", () => {
@@ -353,6 +441,14 @@ describe("resolveMode", () => {
       "accept",
     )
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: true }, undefined, "plan")).toBe("plan")
+    expect(
+      SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { skipPermissions: true }, "accept"),
+    ).toBe("accept")
+  })
+
+  test("skipPermissions=true implies bypass when explicit mode is absent", () => {
+    expect(SessionPrompt.resolveMode({ mode: undefined } as any, undefined, { skipPermissions: true })).toBe("bypass")
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { skipPermissions: true })).toBe("bypass")
   })
 
   test("backward compat: hold resolves to plan", () => {

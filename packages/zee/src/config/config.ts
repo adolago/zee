@@ -1276,6 +1276,29 @@ export namespace Config {
         })
         .optional()
         .describe("Reranker configuration for two-stage retrieval"),
+      fts: z
+        .object({
+          dbDir: z.string().optional().describe("SQLite FTS database directory (legacy local index config)"),
+          dbName: z.string().optional().describe("SQLite FTS database filename (legacy local index config)"),
+        })
+        .optional()
+        .describe("Legacy local keyword index config (mapped to memory.localIndex)"),
+      localIndex: z
+        .object({
+          enabled: z.boolean().optional().describe("Enable local keyword index as secondary store"),
+          backend: z
+            .enum(["sqlite-fts"])
+            .optional()
+            .describe("Local index backend (sqlite-fts)"),
+          dbDir: z.string().optional().describe("Local index database directory"),
+          dbName: z.string().optional().describe("Local index database filename"),
+          degradedRead: z
+            .enum(["off", "keyword_only"])
+            .optional()
+            .describe("Allow keyword-only local reads when Qdrant is unavailable"),
+        })
+        .optional()
+        .describe("Secondary local index configuration (Qdrant remains source of truth)"),
       defaultTtl: z.number().int().nonnegative().optional().describe("Default TTL in seconds"),
       autoSaveInterval: z.number().int().nonnegative().optional().describe("Auto-save interval in ms"),
       compression: z.boolean().optional().describe("Enable compression"),
@@ -1613,6 +1636,23 @@ export namespace Config {
                   allowedGroups: z.string().array().optional(),
                   requireMention: z.boolean().optional(),
                   operators: z.string().array().optional(),
+                  releasePin: z.string().optional(),
+                  releaseTimeoutMs: z.number().default(900_000),
+                })
+                .optional(),
+              telegram: z
+                .object({
+                  enabled: z.boolean().optional(),
+                  token: z.string().optional().describe("Telegram bot token (fallbacks to TELEGRAM_BOT_TOKEN env)"),
+                  apiBaseUrl: z.string().optional().describe("Telegram Bot API base URL override"),
+                  pollTimeoutSec: z.number().int().positive().optional(),
+                  allowedChatIds: z.array(z.union([z.string(), z.number()])).optional(),
+                  allowedSenders: z.string().array().optional(),
+                  allowedGroups: z.string().array().optional(),
+                  requireMention: z.boolean().optional(),
+                  operators: z.string().array().optional(),
+                  mediaMaxMb: z.number().positive().optional(),
+                  streamEditIntervalMs: z.number().int().positive().optional(),
                   releasePin: z.string().optional(),
                   releaseTimeoutMs: z.number().default(900_000),
                 })

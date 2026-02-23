@@ -48,7 +48,12 @@ beforeEach(() => {
   ;(SessionSummary as any).summarize = async () => {}
 })
 
-async function runPromptWithMode(mode: "plan" | "accept" | "bypass", sessionMode: "plan" | "accept" | "bypass") {
+async function runPromptWithMode(input: {
+  mode?: "plan" | "accept" | "bypass"
+  sessionMode: "plan" | "accept" | "bypass"
+  options?: Record<string, any>
+  tools?: Record<string, boolean>
+}) {
   process.env.OPENAI_API_KEY = "test-key"
   await using tmp = await tmpdir({
     git: true,
@@ -62,7 +67,7 @@ async function runPromptWithMode(mode: "plan" | "accept" | "bypass", sessionMode
     fn: async () => {
       const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
       await Session.update(session.id, (draft) => {
-        draft.mode = sessionMode
+        draft.mode = input.sessionMode
         // Skip async title generation provider lookups in this integration test.
         draft.title = "Mode Prompt Injection"
       })
@@ -72,10 +77,11 @@ async function runPromptWithMode(mode: "plan" | "accept" | "bypass", sessionMode
         sessionID: session.id,
         agent: "zee",
         model: { providerID: "openai", modelID: "gpt-5.2" },
-        mode,
+        mode: input.mode,
+        options: input.options,
         // Deliberately contradictory legacy flags to ensure explicit mode wins.
-        tools: { edit: false, write: false, notebook_edit: false },
-        parts: [{ type: "text", text: `integration mode check: ${mode}` }],
+        tools: input.tools ?? { edit: false, write: false, notebook_edit: false },
+        parts: [{ type: "text", text: `integration mode check: ${input.mode ?? "implicit"}` }],
       })
     },
   })
@@ -85,19 +91,28 @@ async function runPromptWithMode(mode: "plan" | "accept" | "bypass", sessionMode
 
 describe("SessionPrompt hold-mode prompt injection", () => {
   test("does not inject hold prompt when explicit mode is accept", async () => {
-    const system = await runPromptWithMode("accept", "plan")
+    const system = await runPromptWithMode({ mode: "accept", sessionMode: "plan" })
     expect(system.join("\n")).not.toContain(HOLD_MODE_SENTINEL)
   })
 
   test("does not inject hold prompt when explicit mode is bypass", async () => {
-    const system = await runPromptWithMode("bypass", "plan")
+    const system = await runPromptWithMode({ mode: "bypass", sessionMode: "plan" })
     expect(system.join("\n")).not.toContain(HOLD_MODE_SENTINEL)
   })
 
   test("injects hold prompt when explicit mode is plan", async () => {
-    const system = await runPromptWithMode("plan", "accept")
+    const system = await runPromptWithMode({ mode: "plan", sessionMode: "accept" })
     const content = system.join("\n")
     expect(content).toContain(HOLD_MODE_SENTINEL)
     expect(content).toContain("Execute read-only tasks directly with tools")
+  })
+
+  test("does not inject hold prompt when skipPermissions=true implies bypass", async () => {
+    const system = await runPromptWithMode({
+      sessionMode: "plan",
+      options: { skipPermissions: true },
+      tools: { edit: true, write: true, notebook_edit: true },
+    })
+    expect(system.join("\n")).not.toContain(HOLD_MODE_SENTINEL)
   })
 })

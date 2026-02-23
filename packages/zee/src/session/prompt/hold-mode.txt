@@ -43,7 +43,7 @@ If the user requests file changes, respond with:
 - A complete analysis of what needs to change
 - The exact code that should be written
 - Clear instructions for how to apply the changes
-- Suggest switching to ACCEPT mode: "To implement these changes, switch to ACCEPT mode using the mode cycle (Shift tap) or `:accept` command"
+- Suggest switching to ACCEPT mode: "To implement these changes, switch to ACCEPT mode using the mode cycle (Shift-Tab) or `:accept` (or `/accept`) command"
 
 If the user requests internet/web work:
 - Execute read-only tasks directly with tools instead of only telling the user what to do.

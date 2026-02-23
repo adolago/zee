@@ -218,8 +218,17 @@ export namespace SessionPrompt {
     if (client === "cli") return "cli"
     if (client === "daemon") return "daemon"
     if (client === "whatsapp") return "whatsapp"
+    if (client === "telegram") return "telegram"
     if (client === "app" || client === "desktop") return "tui"
     return "daemon"
+  }
+
+  function isMessagingSurface(surface?: string): surface is "whatsapp" | "telegram" {
+    return surface === "whatsapp" || surface === "telegram"
+  }
+
+  function messagingSurfaceConfig(config: Config.Info, surface: "whatsapp" | "telegram") {
+    return surface === "telegram" ? config.experimental?.surfaces?.telegram : config.experimental?.surfaces?.whatsapp
   }
 
   async function emitSessionStartOnce(session: Session.Info, agentName?: string): Promise<void> {
@@ -246,8 +255,8 @@ export namespace SessionPrompt {
 
   /**
    * Resolve the session mode (plan/accept/bypass).
-   * Priority: per-message explicit mode > legacy options mode > per-session mode
-   * > per-message tools > surface default.
+   * Priority: per-message explicit mode > legacy options mode > explicit skipPermissions
+   * > per-session mode > per-message tools > surface default.
    */
   export function resolveMode(
     session: Session.Info,
@@ -261,6 +270,9 @@ export namespace SessionPrompt {
     // Backward compatibility for older clients that sent mode in options.
     const legacyMode = normalizeMode(messageOptions?.mode)
     if (legacyMode) return legacyMode
+
+    // Explicit skipPermissions=true implies bypass semantics for this turn.
+    if (messageOptions?.skipPermissions === true) return "bypass"
 
     // Per-session mode (includes backward compat: hold->plan, release->accept)
     const sessionMode = normalizeMode(session.mode)
@@ -497,25 +509,30 @@ export namespace SessionPrompt {
     await emitSessionStartOnce(session, input.agent)
     await SessionRevert.cleanup(session)
 
-    // Reset auto-revert timer on any activity in a released WhatsApp session
-    if (session.surface === "whatsapp" && session.mode !== "plan" && releaseTimers.has(input.sessionID)) {
+    // Reset auto-revert timer on any activity in a released messaging session
+    if (isMessagingSurface(session.surface) && session.mode !== "plan" && releaseTimers.has(input.sessionID)) {
       const config = await Config.get()
-      const timeoutMs = config.experimental?.surfaces?.whatsapp?.releaseTimeoutMs ?? 900_000
+      const timeoutMs = messagingSurfaceConfig(config, session.surface)?.releaseTimeoutMs ?? 900_000
       startReleaseTimer(input.sessionID, timeoutMs)
     }
 
-    // Handle /hold, /plan, /release, /accept, /bypass commands early so mode switching
+    // Handle /hold, /plan, /release, /accept, /bypass and : aliases early so mode switching
     // still works even if the memory backend/MCP is unavailable.
     const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
+    const firstToken = firstText?.split(/\s+/)[0]
     const modeCommandMap: Record<string, "plan" | "accept" | "bypass"> = {
       "/hold": "plan",
+      ":hold": "plan",
       "/plan": "plan",
+      ":plan": "plan",
+      "/release": "accept",
+      ":release": "accept",
       "/accept": "accept",
+      ":accept": "accept",
       "/bypass": "bypass",
+      ":bypass": "bypass",
     }
-    // /release with optional PIN arg maps to accept
-    const requestedMode =
-      modeCommandMap[firstText ?? ""] ?? (firstText?.startsWith("/release") ? ("accept" as const) : undefined)
+    const requestedMode = modeCommandMap[firstToken ?? ""]
     if (requestedMode) {
       const message = await createUserMessage(input)
 
@@ -524,13 +541,12 @@ export namespace SessionPrompt {
 
       if (requestedMode === "accept" || requestedMode === "bypass") {
         const surface = session.surface
-        const isMessagingSurface = surface === "whatsapp"
-        if (isMessagingSurface) {
-          // PIN-protected release for WhatsApp operators
+        if (isMessagingSurface(surface)) {
+          // PIN-protected release for messaging operators
           const config = await Config.get()
-          const wa = config.experimental?.surfaces?.whatsapp
-          const operators = wa?.operators ?? []
-          const pin = wa?.releasePin
+          const messagingConfig = messagingSurfaceConfig(config, surface)
+          const operators = messagingConfig?.operators ?? []
+          const pin = messagingConfig?.releasePin
 
           const senderId = input.options?.senderId as string | undefined
           const isOperator =
@@ -541,7 +557,7 @@ export namespace SessionPrompt {
             responseText = `${requestedMode.toUpperCase()} mode is not available.`
           } else if (!pin) {
             allowed = false
-            responseText = `${requestedMode.toUpperCase()} mode requires a PIN. Configure experimental.surfaces.whatsapp.releasePin.`
+            responseText = `${requestedMode.toUpperCase()} mode requires a PIN. Configure experimental.surfaces.${surface}.releasePin.`
           } else {
             const parts = firstText!.split(/\s+/)
             const providedPin = parts[1]
@@ -576,10 +592,10 @@ export namespace SessionPrompt {
         } else {
           const modeLabel = requestedMode === "bypass" ? "BYPASS" : "ACCEPT"
           responseText = `Switched to ${modeLabel} mode. ${requestedMode === "bypass" ? "All permission checks skipped." : "Edit tools auto-approved."}`
-          // Start auto-revert timer for WhatsApp sessions
-          if (session.surface === "whatsapp") {
+          // Start auto-revert timer for messaging sessions
+          if (isMessagingSurface(session.surface)) {
             const config = await Config.get()
-            const timeoutMs = config.experimental?.surfaces?.whatsapp?.releaseTimeoutMs ?? 900_000
+            const timeoutMs = messagingSurfaceConfig(config, session.surface)?.releaseTimeoutMs ?? 900_000
             startReleaseTimer(input.sessionID, timeoutMs)
             const mins = Math.round(timeoutMs / 60_000)
             responseText += ` Auto-reverts to plan after ${mins}min of inactivity.`

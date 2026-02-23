@@ -274,7 +274,7 @@ export const DEFAULT_CAPABILITIES: SurfaceCapabilities = {
 // Surface Type
 // =============================================================================
 
-export type SurfaceType = "cli" | "web" | "api" | "whatsapp"
+export type SurfaceType = "cli" | "web" | "api" | "whatsapp" | "telegram"
 
 // =============================================================================
 // Surface Adapter Interface
@@ -346,6 +346,20 @@ export const WHATSAPP_CAPABILITIES: SurfaceCapabilities = {
   reactions: true,
   messageEditing: false,
   maxMessageLength: 65536,
+  supportedMediaTypes: ["image/*", "audio/*", "video/*", "application/pdf"],
+  showThinking: false,
+}
+
+export const TELEGRAM_CAPABILITIES: SurfaceCapabilities = {
+  streaming: true,
+  interactivePrompts: false,
+  richText: true,
+  media: true,
+  threading: true,
+  typingIndicators: true,
+  reactions: true,
+  messageEditing: true,
+  maxMessageLength: 4096,
   supportedMediaTypes: ["image/*", "audio/*", "video/*", "application/pdf"],
   showThinking: false,
 }

@@ -25,6 +25,10 @@ import {
   type ZeeBannerV1,
 } from "./lib/zee-banner"
 
+const TODO_RECENCY_WINDOW_DAYS = 7
+const TODO_DUE_WINDOW_DAYS = 7
+const TODO_AGENDA_ITEMS = Math.min(MAX_TODO_ITEMS, 3)
+
 async function loadCalendarModule() {
   try {
     return await import("../../src/domain/zee/google/calendar.js")
@@ -50,6 +54,27 @@ function formatTimeUntil(minutes: number): string {
   const mins = Math.round(minutes % 60)
   if (mins === 0) return `${hours} hr`
   return `${hours} hr ${mins} min`
+}
+
+function parseTaskTimestamp(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined
+  const text = value.trim()
+  if (!text) return undefined
+
+  const compactUtc = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(text)
+  if (compactUtc) {
+    const year = Number(compactUtc[1])
+    const monthIndex = Number(compactUtc[2]) - 1
+    const day = Number(compactUtc[3])
+    const hour = Number(compactUtc[4])
+    const minute = Number(compactUtc[5])
+    const second = Number(compactUtc[6])
+    return Date.UTC(year, monthIndex, day, hour, minute, second)
+  }
+
+  const parsed = Date.parse(text)
+  if (!Number.isFinite(parsed)) return undefined
+  return parsed
 }
 
 async function getReminderItems(now: Date): Promise<{ items: ZeeBannerItem[]; calendarError?: string }> {
@@ -94,8 +119,15 @@ async function getReminderItems(now: Date): Promise<{ items: ZeeBannerItem[]; ca
   return { items: reminders, ...(calendarError ? { calendarError } : {}) }
 }
 
-async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeBannerItem[] }> {
+async function getTodoItems(now: Date): Promise<{
+  totalOpen: number
+  actionableCount: number
+  filteredStaleCount: number
+  items: ZeeBannerItem[]
+}> {
   const nowMs = now.getTime()
+  const recentCutoffMs = nowMs - TODO_RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  const dueCutoffMs = nowMs + TODO_DUE_WINDOW_DAYS * 24 * 60 * 60 * 1000
   const result = spawnSync(
     process.env.ZEE_TASKMASTER_COMMAND || "task",
     ["rc.verbose=nothing", "rc.recurrence=0", "status:pending", "or", "status:waiting", "export"],
@@ -105,20 +137,23 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
     },
   )
   if (result.error || result.status !== 0 || !result.stdout) {
-    return { totalOpen: 0, items: [] }
+    return { totalOpen: 0, actionableCount: 0, filteredStaleCount: 0, items: [] }
   }
 
   let parsed: unknown
   try {
     parsed = JSON.parse(result.stdout)
   } catch {
-    return { totalOpen: 0, items: [] }
+    return { totalOpen: 0, actionableCount: 0, filteredStaleCount: 0, items: [] }
   }
-  if (!Array.isArray(parsed)) return { totalOpen: 0, items: [] }
+  if (!Array.isArray(parsed)) return { totalOpen: 0, actionableCount: 0, filteredStaleCount: 0, items: [] }
 
   const inProgress: Array<{ description: string; urgency: number }> = []
+  const dueSoon: Array<{ description: string; urgency: number; dueAt: number }> = []
   const pending: Array<{ description: string; urgency: number }> = []
   const seen = new Set<string>()
+  let totalOpen = 0
+  let filteredStaleCount = 0
 
   for (const row of parsed) {
     if (!row || typeof row !== "object") continue
@@ -129,48 +164,61 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
     const status = task.status
     if (status !== "pending" && status !== "waiting") continue
     const urgency = typeof task.urgency === "number" && Number.isFinite(task.urgency) ? task.urgency : 0
+    const dueAt = parseTaskTimestamp(task.due)
+    const waitAt = parseTaskTimestamp(task.wait)
+    const recencyAt = parseTaskTimestamp(task.modified) ?? parseTaskTimestamp(task.entry)
+    const isInProgress = typeof task.start === "string" && task.start.trim().length > 0
 
     const project = typeof task.project === "string" ? sanitizeOneLine(task.project) : ""
     const key = `${project}:${description}`
     if (seen.has(key)) continue
     seen.add(key)
 
-    if (typeof task.start === "string" && task.start.trim().length > 0) {
+    totalOpen += 1
+
+    if (status === "waiting" && typeof waitAt === "number" && waitAt > nowMs) {
+      filteredStaleCount += 1
+      continue
+    }
+
+    const dueSoonEnough = typeof dueAt === "number" && dueAt <= dueCutoffMs
+    const recentEnough = typeof recencyAt === "number" && recencyAt >= recentCutoffMs
+    if (!isInProgress && !dueSoonEnough && !recentEnough) {
+      filteredStaleCount += 1
+      continue
+    }
+
+    if (isInProgress) {
       inProgress.push({ description, urgency })
+    } else if (dueSoonEnough && typeof dueAt === "number") {
+      dueSoon.push({ description, urgency, dueAt })
     } else {
       pending.push({ description, urgency })
     }
   }
 
   inProgress.sort((a, b) => b.urgency - a.urgency)
+  dueSoon.sort((a, b) => {
+    if (a.dueAt !== b.dueAt) return a.dueAt - b.dueAt
+    return b.urgency - a.urgency
+  })
   pending.sort((a, b) => b.urgency - a.urgency)
-
-  const totalOpen = inProgress.length + pending.length
+  const actionableCount = inProgress.length + dueSoon.length + pending.length
 
   const items: ZeeBannerItem[] = []
-  if (totalOpen > 0) {
-    items.push({
-      id: uid("todo-sum"),
-      kind: "todo",
-      priority: inProgress.length > 0 ? "high" : "normal",
-      createdAt: nowMs,
-      text: `${totalOpen} open tasks`,
-    })
-  }
-
-  for (const entry of inProgress.slice(0, 2)) {
-    if (items.length >= MAX_TODO_ITEMS) break
+  if (inProgress.length > 0) {
     items.push({
       id: uid("todo-ip"),
       kind: "todo",
       priority: "high",
       createdAt: nowMs,
-      text: `In progress: ${sanitizeOneLine(entry.description).slice(0, 120)}`,
+      text: `In progress: ${sanitizeOneLine(inProgress[0]!.description).slice(0, 120)}`,
     })
   }
 
-  for (const entry of pending.slice(0, 2)) {
-    if (items.length >= MAX_TODO_ITEMS) break
+  const nextCandidates = [...dueSoon, ...pending, ...inProgress.slice(1)]
+  for (const entry of nextCandidates) {
+    if (items.length >= TODO_AGENDA_ITEMS) break
     items.push({
       id: uid("todo"),
       kind: "todo",
@@ -180,7 +228,7 @@ async function getTodoItems(now: Date): Promise<{ totalOpen: number; items: ZeeB
     })
   }
 
-  return { totalOpen, items }
+  return { totalOpen, actionableCount, filteredStaleCount, items }
 }
 
 export default tool({
@@ -213,7 +261,7 @@ The banner rotates items (reminders, todos, messages) and is shown even when usi
       .slice(0, MAX_MESSAGE_ITEMS)
 
     const { items: reminderItems, calendarError } = await getReminderItems(now)
-    const { totalOpen, items: todoItems } = await getTodoItems(now)
+    const { totalOpen, actionableCount, filteredStaleCount, items: todoItems } = await getTodoItems(now)
 
     const combined = uniq([...reminderItems, ...todoItems, ...existingMessages]).slice(0, MAX_TOTAL_ITEMS)
 
@@ -233,7 +281,9 @@ The banner rotates items (reminders, todos, messages) and is shown even when usi
     parts.push(`Banner refreshed: ${banner.items.length} item(s)`)
     parts.push(`Rotation: ${rotationMs}ms`)
     if (reminderItems.length > 0) parts.push(`Reminders: ${reminderItems.length}`)
+    if (actionableCount > 0) parts.push(`Todos actionable: ${actionableCount}`)
     if (totalOpen > 0) parts.push(`Todos open: ${totalOpen}`)
+    if (filteredStaleCount > 0) parts.push(`Todos filtered: ${filteredStaleCount}`)
     if (existingMessages.length > 0) parts.push(`Messages: ${existingMessages.length}`)
     if (calendarError) parts.push(`Calendar: ${calendarError}`)
     if (autoSave) parts.push("Saved: kv.zee_banner")

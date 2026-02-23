@@ -10,7 +10,7 @@ import os from "os";
 import path from "path";
 import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 import { Assets } from "../paths";
-import type { EmbeddingProviderType } from "../memory/types";
+import type { EmbeddingProviderType, LocalIndexBackend, LocalIndexDegradedReadMode } from "../memory/types";
 import type { RerankerConfig } from "../memory/reranker";
 import { resolveEmbeddingProfile } from "./embedding-profiles";
 
@@ -19,6 +19,17 @@ type RuntimeConfig = {
     qdrant?: {
       url?: string;
       collection?: string;
+    };
+    fts?: {
+      dbDir?: string;
+      dbName?: string;
+    };
+    localIndex?: {
+      enabled?: boolean;
+      backend?: LocalIndexBackend;
+      dbDir?: string;
+      dbName?: string;
+      degradedRead?: LocalIndexDegradedReadMode;
     };
     qdrantUrl?: string;
     qdrantCollection?: string;
@@ -55,6 +66,14 @@ export type MemoryEmbeddingConfig = {
   model?: string;
   dimensions?: number;
   baseUrl?: string;
+};
+
+export type MemoryLocalIndexConfig = {
+  enabled: boolean;
+  backend: LocalIndexBackend;
+  dbDir?: string;
+  dbName?: string;
+  degradedRead: LocalIndexDegradedReadMode;
 };
 
 export type ZeeSplitwiseConfig = {
@@ -118,6 +137,14 @@ function mergeConfigs(base: RuntimeConfig, override: RuntimeConfig): RuntimeConf
         ...base.memory?.reranker,
         ...override.memory?.reranker,
       },
+      fts: {
+        ...base.memory?.fts,
+        ...override.memory?.fts,
+      },
+      localIndex: {
+        ...base.memory?.localIndex,
+        ...override.memory?.localIndex,
+      },
     },
     zee: {
       ...base.zee,
@@ -179,12 +206,38 @@ function resolveMemoryEmbeddingConfig(config: RuntimeConfig): MemoryEmbeddingCon
   };
 }
 
+function resolveMemoryLocalIndexConfig(config: RuntimeConfig): MemoryLocalIndexConfig {
+  const memory = config.memory ?? {};
+  const localIndex = memory.localIndex ?? {};
+  const legacyFts = memory.fts ?? {};
+  const backend = (localIndex.backend ?? "sqlite-fts") as LocalIndexBackend;
+
+  // Compatibility: `memory.fts` implies local index enabled unless localIndex.enabled is explicitly set.
+  const legacyEnabled = Boolean(legacyFts.dbDir || legacyFts.dbName);
+  const enabled = localIndex.enabled ?? legacyEnabled ?? false;
+  const degradedRead = (localIndex.degradedRead ?? "off") as LocalIndexDegradedReadMode;
+  const dbDir = (localIndex.dbDir ?? legacyFts.dbDir)?.trim() || undefined;
+  const dbName = (localIndex.dbName ?? legacyFts.dbName)?.trim() || undefined;
+
+  return {
+    enabled,
+    backend,
+    dbDir,
+    dbName,
+    degradedRead,
+  };
+}
+
 export function getMemoryQdrantConfig(): MemoryQdrantConfig {
   return resolveMemoryQdrantConfig(loadRuntimeConfig());
 }
 
 export function getMemoryEmbeddingConfig(): MemoryEmbeddingConfig {
   return resolveMemoryEmbeddingConfig(loadRuntimeConfig());
+}
+
+export function getMemoryLocalIndexConfig(): MemoryLocalIndexConfig {
+  return resolveMemoryLocalIndexConfig(loadRuntimeConfig());
 }
 
 export function getMemoryRerankerConfig(): RerankerConfig {

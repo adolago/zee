@@ -4,6 +4,8 @@ import { Tool } from "./tool"
 import DESCRIPTION from "./fetch_content.txt"
 import { abortAfterAny } from "../util/abort"
 import { saveSearchContentResponse, type SearchContentItem, type SearchContentMeta } from "./content-store"
+import { Log } from "../util/log"
+import { redactUrlForDebugLog } from "./fetch-helpers"
 
 const MAX_URLS = 20
 const MAX_STORED_CONTENT_CHARS = 500_000
@@ -14,9 +16,10 @@ const MAX_BINARY_TEXT_BYTES = 2 * 1024 * 1024 // 2MB
 const DEFAULT_HEADERS: Record<string, string> = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7",
+  Accept: "text/markdown, text/html;q=0.9, text/plain;q=0.8, */*;q=0.1",
   "Accept-Language": "en-US,en;q=0.9",
 }
+const log = Log.create({ service: "tool.fetch_content" })
 
 type ExtractedContent = {
   url: string
@@ -429,6 +432,10 @@ async function extractGenericContent(parsedUrl: URL, abort: AbortSignal): Promis
 
   const contentType = (response.headers.get("content-type") || "").toLowerCase()
   const finalUrl = response.url || parsedUrl.toString()
+  const markdownTokens = response.headers.get("x-markdown-tokens")
+  if (markdownTokens) {
+    log.debug(`[fetch_content] x-markdown-tokens: ${markdownTokens} (${redactUrlForDebugLog(finalUrl)})`)
+  }
   const isPdf = contentType.includes("application/pdf") || looksLikePdfUrl(parsedUrl)
 
   if (isPdf) {
@@ -439,6 +446,19 @@ async function extractGenericContent(parsedUrl: URL, abort: AbortSignal): Promis
       contentType: "application/pdf",
       content: extracted.content,
       meta: extracted.meta,
+    }
+  }
+
+  if (contentType.includes("text/markdown") || contentType.includes("text/x-markdown")) {
+    const markdown = await response.text()
+    return {
+      url: finalUrl,
+      title: parsedUrl.hostname,
+      contentType: "text/markdown",
+      content: markdown,
+      meta: {
+        extraction: "cf-markdown",
+      },
     }
   }
 

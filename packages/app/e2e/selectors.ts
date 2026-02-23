@@ -1,5 +1,8 @@
 export const promptSelector = '[data-component="prompt-input"]'
 export const terminalSelector = '[data-component="terminal"]'
+export const sessionScrollerSelector = '[data-component="session-scroller"]'
+export const sessionResumeDockSelector = '[data-component="session-resume-scroll-dock"]'
+export const sessionResumeScrollSelector = '[data-action="session-resume-scroll"]'
 
 export const modelVariantCycleSelector = '[data-action="model-variant-cycle"]'
 export const settingsLanguageSelectSelector = '[data-action="settings-language"]'

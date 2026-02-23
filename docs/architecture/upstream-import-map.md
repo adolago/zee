@@ -80,8 +80,8 @@ Ranking policy:
 | 24 | opencode | Lane 08 (`TBD`) | migration parity | adapt | backlog | `.opencode/` to `.zee/` migration ergonomics remain incomplete. | project-config import/mapping path | fixture-driven migration test |
 | 25 | opencode | Lane 09 (`TBD`) | workflow parity | adapt | backlog | Remote `serve`/client behavior parity still needs explicit closure criteria. | server/client attach + auth lifecycle | remote attach/resume integration test |
 | 26 | opencode | Lane 07 (`TBD`) | provider breadth | defer | backlog | Useful but lower priority versus security/reliability and core migration paths. | provider registry/policy docs | provider policy decision record |
-| 27 | openclaw | `openclaw/openclaw#15376` | feature | adapt | todo | Cloudflare Markdown parity improves fetch-to-markdown quality. | web-fetch toolchain in Swabble/Zee tools | markdown transform fixtures |
-| 28 | openclaw | `openclaw/openclaw#12577` | feature | adapt | todo | vLLM onboarding parity improves local model onboarding ergonomics. | provider onboarding wizard and docs | onboarding flow tests for vLLM path |
+| 27 | openclaw | `openclaw/openclaw#15376` | feature | adapt | done (local) | Cloudflare Markdown parity improves fetch-to-markdown quality. | `packages/zee/src/tool/webfetch.ts`, `packages/zee/src/tool/fetch_content.ts`, `packages/zee/src/tool/fetch-helpers.ts` | `cd packages/zee && bun test test/tool/webfetch.test.ts test/tool/fetch-content.test.ts` |
+| 28 | openclaw | `openclaw/openclaw#12577` | feature | adapt | done (local) | vLLM onboarding parity improves local model onboarding ergonomics. | `packages/zee/src/cli/cmd/auth.ts`, `packages/zee/src/provider/provider.ts`, docs + auth helper tests | `cd packages/zee && bun test test/cli/auth-frontmatter.test.ts` |
 | 29 | pimono | update to `v0.53.1` | dependency maintenance | adapt | blocked by rank 4 | Once pin visibility exists, update and verify compatibility against current Zee gateway usage. | package manifest pin + pi-mono-dependent runtime paths | update command + regression suite |
 
 ## Immediate Execution Batches

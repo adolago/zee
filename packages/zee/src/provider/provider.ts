@@ -842,7 +842,15 @@ export namespace Provider {
 
       try {
         const baseURL = (configProvider.options.baseURL as string).replace(/\/v1\/?$/, "")
+        const key = providers[providerID]?.key
+        const headers =
+          key && key !== "local"
+            ? {
+                Authorization: `Bearer ${key}`,
+              }
+            : undefined
         const response = await fetch(`${baseURL}/v1/models`, {
+          headers,
           signal: AbortSignal.timeout(3000),
         })
         if (!response.ok) continue

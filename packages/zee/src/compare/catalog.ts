@@ -165,7 +165,13 @@ export const FEATURE_CATALOG: Feature[] = [
     label: "Desktop app",
     description: "Ships a desktop application distribution in addition to a CLI.",
     support: {
-      zee: { level: "no" },
+      zee: {
+        level: "yes",
+        evidence: [
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/gui.ts" },
+          { kind: "repo_path", ref: "packages/zee-gui/Cargo.toml" },
+        ],
+      },
       opencode: { level: "yes", evidence: [{ kind: "note", ref: "sst/opencode README (dev)" }] },
       openclaw: {
         level: "yes",
@@ -182,10 +188,12 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Ships a web UI/control surface in the core repo.",
     support: {
       zee: {
-        level: "partial",
-        notes:
-          "Zee does not expose the upstream `web` command, but includes web/hosted packages and gateway UI surfaces.",
-        evidence: [{ kind: "doc", ref: "docs/architecture/upstream-differences.md" }],
+        level: "yes",
+        notes: "Zee ships the Solid web client in-repo and exposes a first-class `zee web` launcher command.",
+        evidence: [
+          { kind: "repo_path", ref: "packages/zee/src/cli/cmd/web.ts" },
+          { kind: "repo_path", ref: "packages/app/src/app.tsx" },
+        ],
       },
       opencode: {
         level: "yes",
@@ -533,9 +541,13 @@ export const FEATURE_CATALOG: Feature[] = [
     description: "Local embedding index (e.g. sqlite-vec) and plugin-based memory stores.",
     support: {
       zee: {
-        level: "partial",
-        notes: "Gateway embeds memory extensions (e.g. LanceDB) in Swabble; primary semantic memory is Qdrant.",
-        evidence: [{ kind: "repo_path", ref: "packages/zee/Swabble/extensions" }],
+        level: "yes",
+        notes:
+          "SQLite local index is built into memory for keyword/hybrid retrieval, while Qdrant remains the source of truth for canonical semantic memory.",
+        evidence: [
+          { kind: "repo_path", ref: "src/memory/unified.ts" },
+          { kind: "repo_path", ref: "src/memory/sqlite-fts.ts" },
+        ],
       },
       opencode: { level: "no" },
       openclaw: {

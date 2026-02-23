@@ -185,6 +185,14 @@ zee client http://server:3210
 ZEE_URL=http://server:3210 zee
 ```
 
+**Web UI (in-repo app):**
+
+```bash
+zee web
+# custom backend URL:
+zee web --server-url http://127.0.0.1:3210
+```
+
 **Gateway control plane helpers:**
 
 ```bash

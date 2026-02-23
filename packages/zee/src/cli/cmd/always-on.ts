@@ -88,6 +88,83 @@ function parseBoolean(raw: string | undefined): boolean | undefined {
   return undefined
 }
 
+type HeartbeatDeliveryChannel = "telegram" | "whatsapp"
+
+type HeartbeatDeliveryTarget = {
+  channel?: HeartbeatDeliveryChannel
+  to?: string
+}
+
+function normalizeDeliveryTarget(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.trunc(value))
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    if (trimmed) return trimmed
+  }
+  return undefined
+}
+
+function firstDeliveryTarget(values: unknown): string | undefined {
+  if (!Array.isArray(values)) return undefined
+  for (const value of values) {
+    const normalized = normalizeDeliveryTarget(value)
+    if (normalized) return normalized
+  }
+  return undefined
+}
+
+function firstCsvValue(raw: string | undefined): string | undefined {
+  if (!raw) return undefined
+  for (const item of raw.split(",")) {
+    const normalized = normalizeDeliveryTarget(item)
+    if (normalized) return normalized
+  }
+  return undefined
+}
+
+function resolveHeartbeatDeliveryTarget(config: Config.Info): HeartbeatDeliveryTarget {
+  const telegramTo =
+    normalizeDeliveryTarget(process.env.ZEE_TELEGRAM_HEARTBEAT_TO) ||
+    normalizeDeliveryTarget(process.env.ZEE_TELEGRAM_UPDATE_TO) ||
+    firstCsvValue(process.env.ZEE_TELEGRAM_ALLOWED_CHAT_IDS) ||
+    firstDeliveryTarget(config.experimental?.surfaces?.telegram?.operators) ||
+    firstDeliveryTarget(config.experimental?.surfaces?.telegram?.allowedChatIds) ||
+    firstDeliveryTarget(config.experimental?.surfaces?.telegram?.allowedSenders)
+
+  const whatsappTo =
+    normalizeDeliveryTarget(process.env.ZEE_WHATSAPP_HEARTBEAT_TO) ||
+    normalizeDeliveryTarget(process.env.ZEE_WA_UPDATE_TO) ||
+    firstDeliveryTarget(config.experimental?.surfaces?.whatsapp?.operators) ||
+    firstDeliveryTarget(config.experimental?.surfaces?.whatsapp?.allowedNumbers)
+
+  const explicitChannelRaw = process.env.ZEE_HEARTBEAT_DELIVERY_CHANNEL?.trim().toLowerCase()
+  const explicitChannel: HeartbeatDeliveryChannel | undefined =
+    explicitChannelRaw === "telegram" || explicitChannelRaw === "whatsapp" ? explicitChannelRaw : undefined
+  const explicitTo = normalizeDeliveryTarget(process.env.ZEE_HEARTBEAT_DELIVERY_TO)
+
+  if (explicitChannel) {
+    return {
+      channel: explicitChannel,
+      to: explicitTo ?? (explicitChannel === "telegram" ? telegramTo : whatsappTo),
+    }
+  }
+
+  const telegramEnabledByConfig = config.experimental?.surfaces?.telegram?.enabled === true
+  const telegramAvailable = telegramEnabledByConfig || Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim())
+  if (telegramAvailable && telegramTo) {
+    return { channel: "telegram", to: telegramTo }
+  }
+
+  const whatsappEnabledByConfig = config.experimental?.surfaces?.whatsapp?.enabled === true
+  if (whatsappEnabledByConfig && whatsappTo) {
+    return { channel: "whatsapp", to: whatsappTo }
+  }
+
+  return {}
+}
+
 export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<AlwaysOnProcess> {
   const {
     hostname,
@@ -357,10 +434,13 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   try {
     const heartbeatEnabled = enforceAlwaysOn ? true : daemonConfig.heartbeat?.enabled !== false
     if (heartbeatEnabled) {
+      const delivery = resolveHeartbeatDeliveryTarget(daemonConfig)
       heartbeatRunner = new HeartbeatRunner({
         directory,
         serverUrl: daemonUrl,
         config: daemonConfig.heartbeat,
+        deliveryChannel: delivery.channel,
+        deliveryTo: delivery.to,
       })
       heartbeatRunner.start()
       setHeartbeatRunner(heartbeatRunner)
@@ -368,6 +448,11 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
         Output.log("Heartbeat:  Active (forced always-on profile)")
       } else {
         Output.log(`Heartbeat:  Active (every ${daemonConfig.heartbeat?.every ?? "30m"})`)
+      }
+      if (delivery.channel && delivery.to) {
+        Output.log(`Heartbeat:  Delivery -> ${delivery.channel}:${delivery.to}`)
+      } else if (delivery.channel) {
+        Output.log(`Heartbeat:  Delivery channel set (${delivery.channel}), recipient unresolved`)
       }
     } else {
       Output.log("Heartbeat:  Disabled by config")

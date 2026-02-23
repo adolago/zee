@@ -1,7 +1,7 @@
 /**
  * Messaging Surface Adapter
  *
- * Unified adapter for messaging platforms (WhatsApp).
+ * Unified adapter for messaging platforms (WhatsApp/Telegram).
  * Handles non-streaming (message batching) and automatic permission resolution.
  */
 
@@ -39,7 +39,7 @@ const log = Log.create({ service: "messaging-surface" })
  */
 export interface MessagingPlatformHandler {
   /** Platform identifier */
-  readonly platform: "whatsapp"
+  readonly platform: "whatsapp" | "telegram"
 
   /** Connect to the platform */
   connect(): Promise<void>
@@ -60,6 +60,20 @@ export interface MessagingPlatformHandler {
   /** Send typing indicator */
   sendTyping(target: string): Promise<void>
 
+  /** Start a live streaming message (optional). */
+  startStreamingMessage?(target: string, text: string, options?: { replyToId?: string }): Promise<string>
+
+  /** Update a live streaming message (optional). */
+  updateStreamingMessage?(target: string, handle: string, text: string): Promise<void>
+
+  /** Finalize a live streaming message (optional). */
+  finalizeStreamingMessage?(
+    target: string,
+    handle: string,
+    text: string,
+    options?: { replyToId?: string },
+  ): Promise<void>
+
   /** Register message handler */
   onMessage(handler: (message: PlatformMessage) => void): () => void
 }
@@ -79,7 +93,7 @@ export type PlatformMessage = {
   groupName?: string
   replyToId?: string
   wasMentioned?: boolean
-  platform: "whatsapp"
+  platform: "whatsapp" | "telegram"
 }
 
 // =============================================================================
@@ -108,6 +122,14 @@ const PLATFORM_CAPABILITIES: Record<string, Partial<SurfaceCapabilities>> = {
     reactions: true,
     messageEditing: false,
     showThinking: false, // Locked: never show thinking on WhatsApp (enforced at multiple layers)
+  },
+  telegram: {
+    streaming: true,
+    richText: true,
+    maxMessageLength: 4096,
+    reactions: true,
+    messageEditing: true,
+    showThinking: false,
   },
 }
 
@@ -170,6 +192,12 @@ class MessageBatcher {
   }
 }
 
+type LiveStreamState = {
+  handle?: string
+  text: string
+  lastUpdateAtMs: number
+}
+
 // =============================================================================
 // Messaging Surface Implementation
 // =============================================================================
@@ -177,7 +205,7 @@ class MessageBatcher {
 /**
  * Unified messaging surface adapter.
  *
- * Handles WhatsApp with a common interface.
+ * Handles messaging channels with a common interface.
  */
 export class MessagingSurface extends BaseSurface implements Surface {
   readonly id: string
@@ -187,6 +215,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
   private config: MessagingSurfaceConfig
   private platform: MessagingPlatformHandler
   private batcher = new MessageBatcher()
+  private liveStream = new Map<string, LiveStreamState>()
   private typingInterval: NodeJS.Timeout | null = null
   private unsubscribe: (() => void) | null = null
 
@@ -209,6 +238,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
   private formatPlatformName(platform: string): string {
     const names: Record<string, string> = {
       whatsapp: "WhatsApp",
+      telegram: "Telegram",
     }
     return names[platform] || platform
   }
@@ -237,6 +267,7 @@ export class MessagingSurface extends BaseSurface implements Surface {
 
   async disconnect(): Promise<void> {
     this.stopTypingLoop()
+    this.liveStream.clear()
     this.unsubscribe?.()
     await this.platform.disconnect()
     this.setState("disconnected")
@@ -338,15 +369,36 @@ export class MessagingSurface extends BaseSurface implements Surface {
   }
 
   override async sendStreamChunk(chunk: StreamChunk, threadId?: string): Promise<void> {
-    // Buffer all chunks
-    this.batcher.append(chunk)
-
-    // Flush on final chunk
-    if (chunk.isFinal) {
-      const response = this.batcher.flush()
-      if (response && threadId) {
-        await this.sendResponse(response, threadId)
+    if (!threadId) {
+      this.batcher.append(chunk)
+      if (chunk.isFinal) {
+        this.batcher.flush()
       }
+      return
+    }
+
+    // Non-streaming platforms still receive a single final message.
+    if (!this.capabilities.streaming) {
+      this.batcher.append(chunk)
+      if (chunk.isFinal) {
+        const response = this.batcher.flush()
+        if (response) await this.sendResponse(response, threadId)
+      }
+      return
+    }
+
+    if (chunk.type === "text" && chunk.text) {
+      const state = this.ensureLiveStreamState(threadId)
+      state.text += chunk.text
+      const now = Date.now()
+      const shouldUpdate = now - state.lastUpdateAtMs >= this.config.streamEditIntervalMs
+      if (shouldUpdate) {
+        await this.upsertLiveStreamMessage(threadId, state)
+      }
+    }
+
+    if (chunk.isFinal) {
+      await this.finalizeLiveStream(threadId)
     }
   }
 
@@ -444,6 +496,60 @@ export class MessagingSurface extends BaseSurface implements Surface {
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private ensureLiveStreamState(threadId: string): LiveStreamState {
+    let state = this.liveStream.get(threadId)
+    if (!state) {
+      state = {
+        text: "",
+        lastUpdateAtMs: 0,
+      }
+      this.liveStream.set(threadId, state)
+    }
+    return state
+  }
+
+  private async upsertLiveStreamMessage(threadId: string, state: LiveStreamState): Promise<void> {
+    const text = state.text.trim() || "..."
+    if (!state.handle) {
+      if (!this.platform.startStreamingMessage) {
+        await this.platform.sendMessage(threadId, text)
+        state.lastUpdateAtMs = Date.now()
+        return
+      }
+      state.handle = await this.platform.startStreamingMessage(threadId, text)
+      state.lastUpdateAtMs = Date.now()
+      return
+    }
+
+    if (this.platform.updateStreamingMessage) {
+      await this.platform.updateStreamingMessage(threadId, state.handle, text)
+      state.lastUpdateAtMs = Date.now()
+    }
+  }
+
+  private async finalizeLiveStream(threadId: string): Promise<void> {
+    const state = this.liveStream.get(threadId)
+    this.liveStream.delete(threadId)
+    const finalText = state?.text?.trim() || "No text response returned."
+
+    if (!state?.handle) {
+      await this.platform.sendMessage(threadId, finalText)
+      return
+    }
+
+    if (this.platform.finalizeStreamingMessage) {
+      await this.platform.finalizeStreamingMessage(threadId, state.handle, finalText)
+      return
+    }
+
+    if (this.platform.updateStreamingMessage) {
+      await this.platform.updateStreamingMessage(threadId, state.handle, finalText)
+      return
+    }
+
+    await this.platform.sendMessage(threadId, finalText)
   }
 }
 

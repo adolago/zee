@@ -273,11 +273,11 @@ export function resolveGUISurfaceConfig(overrides: Partial<GUISurfaceConfig> = {
 }
 
 /**
- * Messaging surface configuration (WhatsApp).
+ * Messaging surface configuration (WhatsApp/Telegram).
  */
 export type MessagingSurfaceConfig = {
   /** Platform identifier */
-  platform: "whatsapp"
+  platform: "whatsapp" | "telegram"
   /** Whether to batch messages instead of streaming */
   batchMessages: boolean
   /** Maximum message length before splitting */
@@ -288,6 +288,8 @@ export type MessagingSurfaceConfig = {
   showTyping: boolean
   /** Typing indicator interval in milliseconds */
   typingIntervalMs: number
+  /** Minimum interval for live stream edit updates (ms) */
+  streamEditIntervalMs: number
   /** Allowed senders (empty = all allowed) */
   allowedSenders: string[]
   /** Group-specific settings */
@@ -315,6 +317,7 @@ export const DEFAULT_MESSAGING_CONFIG: MessagingSurfaceConfig = {
   chunkDelayMs: 100,
   showTyping: true,
   typingIntervalMs: 5000,
+  streamEditIntervalMs: 1000,
   allowedSenders: [],
   groups: {
     enabled: true,
@@ -392,6 +395,7 @@ export type SurfaceConfig = {
   /** Messaging platform configurations */
   messaging: {
     whatsapp?: MessagingSurfaceConfig
+    telegram?: MessagingSurfaceConfig
   }
   /** Tool availability per surface */
   toolAvailability: Record<string, string[]>
@@ -440,6 +444,9 @@ export function buildSurfaceConfig(overrides: Partial<SurfaceConfig> = {}): Surf
     gui: resolveGUISurfaceConfig(overrides.gui),
     messaging: {
       whatsapp: overrides.messaging?.whatsapp ? resolveMessagingSurfaceConfig(overrides.messaging.whatsapp) : undefined,
+      telegram: overrides.messaging?.telegram
+        ? resolveMessagingSurfaceConfig(overrides.messaging.telegram, { platform: "telegram" })
+        : undefined,
     },
     toolAvailability: overrides.toolAvailability ?? {},
     ux: {

@@ -89,6 +89,7 @@ export {
   CLI_CAPABILITIES,
   WEB_CAPABILITIES,
   WHATSAPP_CAPABILITIES,
+  TELEGRAM_CAPABILITIES,
   API_CAPABILITIES,
   formatForSurface,
 } from "./types.js"
@@ -167,6 +168,7 @@ import {
   CLI_CAPABILITIES,
   WEB_CAPABILITIES,
   WHATSAPP_CAPABILITIES,
+  TELEGRAM_CAPABILITIES,
   API_CAPABILITIES,
   DEFAULT_CAPABILITIES,
 } from "./types.js"
@@ -193,7 +195,7 @@ export function createSurface(type: "cli" | "gui", config?: Record<string, unkno
 /**
  * Get default capabilities for a surface type.
  */
-export function getDefaultCapabilities(type: "cli" | "gui" | "whatsapp" | "api"): SurfaceCapabilities {
+export function getDefaultCapabilities(type: "cli" | "gui" | "whatsapp" | "telegram" | "api"): SurfaceCapabilities {
   switch (type) {
     case "cli":
       return CLI_CAPABILITIES
@@ -201,6 +203,8 @@ export function getDefaultCapabilities(type: "cli" | "gui" | "whatsapp" | "api")
       return WEB_CAPABILITIES
     case "whatsapp":
       return WHATSAPP_CAPABILITIES
+    case "telegram":
+      return TELEGRAM_CAPABILITIES
     case "api":
       return API_CAPABILITIES
     default:

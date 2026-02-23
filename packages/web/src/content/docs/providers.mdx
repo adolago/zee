@@ -1260,6 +1260,37 @@ If tool calls aren't working, try increasing `num_ctx` in Ollama. Start around 1
 
 ---
 
+### vLLM
+
+You can configure Zee to use local or self-hosted vLLM through the OpenAI-compatible API.
+
+1. Start a vLLM server exposing `/v1` endpoints (for example `http://localhost:8000/v1`).
+
+2. Run `/connect` and select **vLLM (Local)**.
+
+   ```txt
+   /connect
+   ```
+
+3. Enter your base URL. Optionally enter an API key if your vLLM server requires auth.
+
+4. Zee can probe `/models` to discover available model IDs.
+
+5. Use `/models` to select one, or set one directly in config:
+
+   ```json title="zee.json"
+   {
+     "$schema": "https://zee-bot.com/config.json",
+     "model": "vllm/your-model-id"
+   }
+   ```
+
+:::tip
+If your server does not require authentication, leave the API key blank during setup.
+:::
+
+---
+
 ### Ollama Cloud
 
 To use Ollama Cloud with Zee:

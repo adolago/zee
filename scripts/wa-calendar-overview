@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """
-Send a morning or night calendar overview via WhatsApp (wacli).
+Send a morning or night calendar overview via WhatsApp or Telegram.
 
 Morning: today's events.
 Night:   tomorrow's events.
 
 Usage:
-  wa-calendar-overview --period morning [--to JID] [--dry-run]
-  wa-calendar-overview --period night   [--to JID] [--dry-run]
+  wa-calendar-overview --period morning [--channel whatsapp|telegram] [--to RECIPIENT] [--dry-run]
+  wa-calendar-overview --period night   [--channel whatsapp|telegram] [--to RECIPIENT] [--dry-run]
 
 Environment:
-  ZEE_WA_CALENDAR_TO   default recipient JID (e.g. 436649137379@s.whatsapp.net)
-  WACLI_BIN            path to wacli binary  (default: /home/artur/go/bin/wacli)
-  WACLI_STORE          path to wacli store   (default: /home/artur/.wacli)
+  ZEE_NOTIFY_CHANNEL      default channel (whatsapp|telegram)
+  ZEE_WA_CALENDAR_TO      default WhatsApp recipient JID (e.g. 436649137379@s.whatsapp.net)
+  ZEE_TELEGRAM_CALENDAR_TO default Telegram chat id
+  TELEGRAM_BOT_TOKEN      Telegram bot token
+  WACLI_BIN               path to wacli binary  (default: /home/artur/go/bin/wacli)
+  WACLI_STORE             path to wacli store   (default: /home/artur/.wacli)
 """
 
 import argparse
@@ -26,6 +29,8 @@ import urllib.request
 from pathlib import Path
 
 CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3"
+DEFAULT_NOTIFY_CHANNEL = os.environ.get("ZEE_NOTIFY_CHANNEL", "whatsapp").strip().lower() or "whatsapp"
+TELEGRAM_MAX_TEXT = 4096
 
 WACLI_BIN = os.environ.get("WACLI_BIN", "/home/artur/go/bin/wacli")
 WACLI_STORE = os.environ.get("WACLI_STORE", "/home/artur/.wacli")
@@ -201,12 +206,17 @@ def build_message(period: str, calendar_name: str, events: list[dict], target_da
 # wacli send
 # ---------------------------------------------------------------------------
 
-def resolve_recipient(explicit_to: str | None) -> str:
+def resolve_recipient(explicit_to: str | None, channel: str) -> str:
     if explicit_to:
         return explicit_to
-    env_to = os.environ.get("ZEE_WA_CALENDAR_TO", "").strip()
+    if channel == "telegram":
+        env_to = os.environ.get("ZEE_TELEGRAM_CALENDAR_TO", "").strip()
+    else:
+        env_to = os.environ.get("ZEE_WA_CALENDAR_TO", "").strip()
     if env_to:
         return env_to
+    if channel == "telegram":
+        fail("No recipient configured. Pass --to or set ZEE_TELEGRAM_CALENDAR_TO.")
     fail("No recipient configured. Pass --to or set ZEE_WA_CALENDAR_TO.")
 
 
@@ -280,14 +290,74 @@ def send_whatsapp(recipient: str, message: str, dry_run: bool) -> None:
     fail(f"WhatsApp send failed after {max_attempts} attempts. Last error: {last_error}")
 
 
+def chunk_text(text: str, max_len: int = TELEGRAM_MAX_TEXT) -> list[str]:
+    if len(text) <= max_len:
+        return [text]
+
+    chunks: list[str] = []
+    remaining = text
+    while len(remaining) > max_len:
+        idx = remaining.rfind("\n", 0, max_len + 1)
+        if idx < (max_len // 2):
+            idx = max_len
+        chunk = remaining[:idx].rstrip()
+        if not chunk:
+            chunk = remaining[:max_len]
+            idx = len(chunk)
+        chunks.append(chunk)
+        remaining = remaining[idx:].lstrip("\n")
+    if remaining:
+        chunks.append(remaining)
+    return chunks
+
+
+def send_telegram(recipient: str, message: str, dry_run: bool) -> None:
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        fail("TELEGRAM_BOT_TOKEN is required for Telegram delivery.")
+
+    if dry_run:
+        print(f"[dry-run] Would send to Telegram chat {recipient}:")
+        print(message)
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    for chunk in chunk_text(message):
+        payload = {
+            "chat_id": recipient,
+            "text": chunk,
+            "allow_sending_without_reply": True,
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                raw = response.read().decode("utf-8")
+        except Exception as exc:
+            fail(f"Telegram send failed: {exc}")
+
+        try:
+            data = json.loads(raw)
+        except Exception as exc:
+            fail(f"Telegram returned invalid JSON: {exc}")
+
+        if not data.get("ok"):
+            fail(f"Telegram send failed: {data.get('description', 'unknown error')}")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Send morning/night calendar overview via WhatsApp (wacli)")
+    parser = argparse.ArgumentParser(description="Send morning/night calendar overview via WhatsApp or Telegram")
     parser.add_argument("--period", choices=["morning", "night"], required=True)
-    parser.add_argument("--to", dest="recipient", default=None, help="Recipient JID or phone number")
+    parser.add_argument("--channel", choices=["whatsapp", "telegram"], default=DEFAULT_NOTIFY_CHANNEL)
+    parser.add_argument("--to", dest="recipient", default=None, help="Recipient JID/phone number or Telegram chat id")
     parser.add_argument("--calendar-id", default="primary")
     parser.add_argument("--max-events", type=int, default=12)
     parser.add_argument("--dry-run", action="store_true")
@@ -310,8 +380,11 @@ def main() -> None:
     events = list_events(args.calendar_id, access_token, start_dt.isoformat(), end_dt.isoformat(), args.max_events)
 
     message = build_message(args.period, calendar_name, events, target_day)
-    recipient = resolve_recipient(args.recipient)
-    send_whatsapp(recipient, message, args.dry_run)
+    recipient = resolve_recipient(args.recipient, args.channel)
+    if args.channel == "telegram":
+        send_telegram(recipient, message, args.dry_run)
+    else:
+        send_whatsapp(recipient, message, args.dry_run)
 
 
 if __name__ == "__main__":

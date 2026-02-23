@@ -27,6 +27,8 @@ import type {
   MemoryKind,
   MemoryPriority,
   MemoryMemoryType,
+  LocalIndexBackend,
+  LocalIndexDegradedReadMode,
 } from "./types";
 import type { Reranker, RerankerConfig, RerankResult } from "./reranker";
 import {
@@ -35,9 +37,15 @@ import {
   CONTINUITY_MAX_KEY_FACTS,
 } from "../config/constants";
 import { getAuthApiKeySync } from "../config/providers";
-import { getMemoryEmbeddingConfig, getMemoryQdrantConfig, getMemoryRerankerConfig } from "../config/runtime";
+import {
+  getMemoryEmbeddingConfig,
+  getMemoryLocalIndexConfig,
+  getMemoryQdrantConfig,
+  getMemoryRerankerConfig,
+  type MemoryLocalIndexConfig,
+} from "../config/runtime";
 import { Log } from "../../packages/zee/src/util/log";
-import { SqliteFtsStore, type FtsConfig, type FtsEntry } from "./sqlite-fts";
+import { SqliteFtsStore, type FtsConfig, type FtsSearchResult } from "./sqlite-fts";
 import { mergeHybridResults, type HybridSearchConfig, type HybridSearchResult } from "./hybrid";
 import { getMarkdownSync, type MarkdownSyncConfig } from "./markdown-sync";
 
@@ -118,6 +126,14 @@ export interface MemoryConfig {
   maxKeyFacts?: number;
   /** SQLite FTS configuration for hybrid search */
   fts?: FtsConfig;
+  /** Secondary local index (Qdrant remains source-of-truth). */
+  localIndex?: {
+    enabled?: boolean;
+    backend?: LocalIndexBackend;
+    dbDir?: string;
+    dbName?: string;
+    degradedRead?: LocalIndexDegradedReadMode;
+  };
   /** Markdown sync configuration */
   markdown?: MarkdownSyncConfig;
 }
@@ -365,6 +381,7 @@ export class Memory {
   // SQLite FTS for hybrid keyword search
   private ftsStore?: SqliteFtsStore;
   private readonly ftsConfig?: FtsConfig;
+  private readonly localIndex: MemoryLocalIndexConfig;
   private ftsInitFailed = false;
 
   // Markdown source-of-truth sync
@@ -376,6 +393,7 @@ export class Memory {
   constructor(config: Partial<MemoryConfig> = {}) {
     const fileQdrant = getMemoryQdrantConfig();
     const fileEmbedding = getMemoryEmbeddingConfig();
+    const fileLocalIndex = getMemoryLocalIndexConfig();
     const qdrantConfig = {
       url: config.qdrant?.url ?? fileQdrant.url ?? QDRANT_URL,
       collection:
@@ -411,8 +429,31 @@ export class Memory {
       this.embedding = createEmbeddingProvider(embeddingConfig);
     }
 
-    // FTS config (SQLite hybrid search)
-    this.ftsConfig = config.fts;
+    const explicitLocalIndex = config.localIndex ?? {};
+    const legacyFts = config.fts ?? {};
+    const localIndexEnabled =
+      explicitLocalIndex.enabled ??
+      (config.fts ? true : undefined) ??
+      fileLocalIndex.enabled;
+    const localIndexBackend = (explicitLocalIndex.backend ?? fileLocalIndex.backend) as LocalIndexBackend;
+    const localIndexDbDir = explicitLocalIndex.dbDir ?? legacyFts.dbDir ?? fileLocalIndex.dbDir;
+    const localIndexDbName = explicitLocalIndex.dbName ?? legacyFts.dbName ?? fileLocalIndex.dbName;
+    const localIndexDegradedRead =
+      (explicitLocalIndex.degradedRead ?? fileLocalIndex.degradedRead) as LocalIndexDegradedReadMode;
+
+    this.localIndex = {
+      enabled: localIndexEnabled,
+      backend: localIndexBackend,
+      dbDir: localIndexDbDir,
+      dbName: localIndexDbName,
+      degradedRead: localIndexDegradedRead,
+    };
+
+    // FTS config (SQLite hybrid search / local keyword index)
+    this.ftsConfig =
+      this.localIndex.enabled && this.localIndex.backend === "sqlite-fts"
+        ? { dbDir: this.localIndex.dbDir, dbName: this.localIndex.dbName }
+        : undefined;
 
     // Markdown sync config
     this.markdownConfig = config.markdown;
@@ -466,6 +507,33 @@ export class Memory {
     return probeLength;
   }
 
+  private async initLocalIndex(): Promise<void> {
+    if (!this.localIndex.enabled) return;
+    if (this.localIndex.backend !== "sqlite-fts") {
+      log.warn("Unsupported local index backend, disabling local index", {
+        backend: this.localIndex.backend,
+      });
+      return;
+    }
+    if (this.ftsStore || this.ftsInitFailed) return;
+
+    try {
+      this.ftsStore = new SqliteFtsStore(this.ftsConfig);
+      await this.ftsStore.init();
+      log.info("Local index initialized", {
+        backend: this.localIndex.backend,
+        degradedRead: this.localIndex.degradedRead,
+      });
+    } catch (ftsErr) {
+      this.ftsInitFailed = true;
+      this.ftsStore = undefined;
+      log.warn("Local index initialization failed", {
+        backend: this.localIndex.backend,
+        error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+      });
+    }
+  }
+
   /** Initialize the memory store with retry logic */
   async init(): Promise<void> {
     if (this.initialized) return;
@@ -475,6 +543,9 @@ export class Memory {
       log.warn("Memory init previously failed, skipping", { error: this.initError?.message });
       return;
     }
+
+    // Initialize local keyword index first so degraded reads can work if Qdrant is down.
+    await this.initLocalIndex();
 
     const maxRetries = 3;
     const baseDelay = 1000; // 1 second
@@ -486,27 +557,14 @@ export class Memory {
         this.storage.setCollection(this.collection);
         this.initialized = true;
 
-        // Initialize SQLite FTS for hybrid search
-        if (!this.ftsStore && !this.ftsInitFailed) {
-          try {
-            this.ftsStore = new SqliteFtsStore(this.ftsConfig);
-            await this.ftsStore.init();
-            log.info("SQLite FTS initialized for hybrid search");
-          } catch (ftsErr) {
-            this.ftsInitFailed = true;
-            this.ftsStore = undefined;
-            log.warn("SQLite FTS initialization failed, hybrid search unavailable", {
-              error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
-            });
-          }
-        }
-
         log.info("Memory initialized", {
           collection: this.collection,
           namespace: this.namespace,
           dimension: this.embedding.dimension,
           attempt,
           ftsAvailable: !!this.ftsStore,
+          localIndexEnabled: this.localIndex.enabled,
+          degradedRead: this.localIndex.degradedRead,
         });
         return;
       } catch (err) {
@@ -520,6 +578,7 @@ export class Memory {
             collection: this.collection,
             error: error.message,
             attempts: maxRetries,
+            localIndexAvailable: !!this.ftsStore,
           });
           // Don't throw - allow daemon to continue without memory
           // Operations will be no-ops until memory is available
@@ -778,14 +837,21 @@ export class Memory {
   /** Search memories using semantic, keyword, or hybrid retrieval. */
   async search(params: MemorySearchParams): Promise<MemorySearchResult[]> {
     await this.init();
+    const mode = this.resolveSearchMode(params);
 
     // Graceful degradation if memory unavailable
     if (!this.isAvailable()) {
+      if (this.shouldUseDegradedLocalRead(mode)) {
+        log.warn("Memory search served from local index in degraded mode", {
+          query: params.query.slice(0, 50),
+          requestedMode: params.mode ?? "auto",
+          resolvedMode: mode,
+        });
+        return this.degradedKeywordSearch(params);
+      }
       log.warn("Memory search skipped - storage unavailable", { query: params.query.slice(0, 50) });
       return [];
     }
-
-    const mode = this.resolveSearchMode(params);
 
     if (mode === "keyword") {
       return this.keywordSearch(params);
@@ -835,6 +901,100 @@ export class Memory {
     // Single token or identifier-like patterns.
     if (tokens.length === 1) return true;
     return /[_\d]/.test(q);
+  }
+
+  private shouldUseDegradedLocalRead(mode: MemorySearchMode): boolean {
+    if (mode === "semantic") return false;
+    if (!this.localIndex.enabled) return false;
+    if (this.localIndex.degradedRead !== "keyword_only") return false;
+    return !!this.ftsStore;
+  }
+
+  private runFtsSearch(
+    params: MemorySearchParams,
+    options: {
+      limitMultiplier: number;
+      applyThreshold: boolean;
+    },
+  ): FtsSearchResult[] {
+    if (!this.ftsStore) return [];
+
+    const limit = params.limit ?? 10;
+    const threshold = params.threshold ?? 0.0;
+    const includeSnippets = params.includeSnippets ?? false;
+    const effectiveNamespace = params.namespace === null ? undefined : (params.namespace ?? this.namespace);
+
+    const results = this.ftsStore.search(params.query, {
+      limit: Math.min(limit * options.limitMultiplier, 200),
+      namespace: effectiveNamespace,
+      category: typeof params.category === "string" ? params.category : undefined,
+      domain: params.domain,
+      topic: params.topic,
+      subtopic: params.subtopic,
+      timeRange: params.timeRange,
+      includeSnippets,
+    });
+
+    if (!options.applyThreshold) return results;
+    return results.filter((r) => r.score >= threshold);
+  }
+
+  private normalizeMemoryCategory(category?: string): MemoryCategory {
+    switch (category) {
+      case "conversation":
+      case "fact":
+      case "preference":
+      case "task":
+      case "decision":
+      case "relationship":
+      case "note":
+      case "pattern":
+      case "custom":
+        return category;
+      default:
+        return "note";
+    }
+  }
+
+  private localIndexResultToEntry(result: FtsSearchResult): MemoryEntry {
+    const createdAt = typeof result.createdAt === "number" ? result.createdAt : Date.now();
+    return {
+      id: result.id,
+      category: this.normalizeMemoryCategory(result.category),
+      content: result.content,
+      summary: result.summary,
+      metadata: {},
+      createdAt,
+      accessedAt: createdAt,
+      namespace: result.namespace ?? this.namespace,
+      domain: result.domain,
+      topic: result.topic,
+      subtopic: result.subtopic,
+    };
+  }
+
+  private async degradedKeywordSearch(params: MemorySearchParams): Promise<MemorySearchResult[]> {
+    const includeSnippets = params.includeSnippets ?? false;
+    const limit = params.limit ?? 10;
+    const keywordResults = this.runFtsSearch(params, {
+      limitMultiplier: 5,
+      applyThreshold: true,
+    });
+
+    const out: MemorySearchResult[] = [];
+    for (const row of keywordResults) {
+      const entry = this.localIndexResultToEntry(row);
+      if (!this.matchesSearchParams(entry, params)) continue;
+      out.push({
+        entry,
+        score: row.score,
+        snippet: includeSnippets ? row.snippet : undefined,
+        source: "local-index",
+        degraded: true,
+      });
+      if (out.length >= limit) break;
+    }
+    return out;
   }
 
   private buildSemanticFilter(params: MemorySearchParams): Record<string, unknown> {
@@ -1005,6 +1165,7 @@ export class Memory {
       return results.map((r) => ({
         entry: this.pointToEntry({ id: r.id, payload: r.payload }),
         score: r.score,
+        source: "qdrant",
       }));
     }
 
@@ -1019,6 +1180,7 @@ export class Memory {
       return {
         entry: point ? this.pointToEntry(point) : this.pointToEntry({ id: r.id, payload: r.payload }),
         score: r.score,
+        source: "qdrant",
       };
     });
   }
@@ -1029,20 +1191,11 @@ export class Memory {
     }
 
     const limit = params.limit ?? 10;
-    const threshold = params.threshold ?? 0.0;
     const includeSnippets = params.includeSnippets ?? false;
-    const effectiveNamespace = params.namespace === null ? undefined : (params.namespace ?? this.namespace);
-
-    const keywordResults = this.ftsStore.search(params.query, {
-      limit: Math.min(limit * 5, 200),
-      namespace: effectiveNamespace,
-      category: typeof params.category === "string" ? params.category : undefined,
-      domain: params.domain,
-      topic: params.topic,
-      subtopic: params.subtopic,
-      timeRange: params.timeRange,
-      includeSnippets,
-    }).filter((r) => r.score >= threshold);
+    const keywordResults = this.runFtsSearch(params, {
+      limitMultiplier: 5,
+      applyThreshold: true,
+    });
 
     if (keywordResults.length === 0) return [];
 
@@ -1078,6 +1231,7 @@ export class Memory {
           entry,
           score: meta.score,
           snippet: includeSnippets ? meta.snippet : undefined,
+          source: "qdrant",
         });
         if (out.length >= limit) break;
       }
@@ -1093,8 +1247,6 @@ export class Memory {
 
     const limit = params.limit ?? 10;
     const includeSnippets = params.includeSnippets ?? false;
-    const effectiveNamespace = params.namespace === null ? undefined : (params.namespace ?? this.namespace);
-
     // Vector search (recall) + keyword search (BM25) merged via weights.
     const [vectorResults, keywordResults] = await Promise.all([
       this.semanticSearch({
@@ -1102,18 +1254,7 @@ export class Memory {
         limit: limit * 2,
         threshold: params.threshold ?? 0.5,
       }),
-      Promise.resolve(
-        this.ftsStore.search(params.query, {
-          limit: Math.min(limit * 4, 200),
-          namespace: effectiveNamespace,
-          category: typeof params.category === "string" ? params.category : undefined,
-          domain: params.domain,
-          topic: params.topic,
-          subtopic: params.subtopic,
-          timeRange: params.timeRange,
-          includeSnippets,
-        }),
-      ),
+      Promise.resolve(this.runFtsSearch(params, { limitMultiplier: 4, applyThreshold: false })),
     ]);
 
     const merged = mergeHybridResults(
@@ -1150,6 +1291,7 @@ export class Memory {
         entry,
         score: item.score,
         snippet: includeSnippets ? item.snippet : undefined,
+        source: "qdrant",
       });
 
       if (out.length >= limit) break;
@@ -1431,7 +1573,47 @@ export class Memory {
 
   /** Whether hybrid (FTS) search is available */
   get hybridAvailable(): boolean {
-    return !!this.ftsStore;
+    return this.localIndex.enabled && !!this.ftsStore;
+  }
+
+  getLocalIndexStatus(): {
+    enabled: boolean;
+    backend: LocalIndexBackend;
+    available: boolean;
+    degradedRead: LocalIndexDegradedReadMode;
+    initFailed: boolean;
+    totalEntries?: number;
+    dbSizeBytes?: number;
+  } {
+    const status: {
+      enabled: boolean;
+      backend: LocalIndexBackend;
+      available: boolean;
+      degradedRead: LocalIndexDegradedReadMode;
+      initFailed: boolean;
+      totalEntries?: number;
+      dbSizeBytes?: number;
+    } = {
+      enabled: this.localIndex.enabled,
+      backend: this.localIndex.backend,
+      available: this.hybridAvailable,
+      degradedRead: this.localIndex.degradedRead,
+      initFailed: this.ftsInitFailed,
+    };
+
+    if (this.ftsStore) {
+      try {
+        const ftsStats = this.ftsStore.stats();
+        status.totalEntries = ftsStats.totalEntries;
+        status.dbSizeBytes = ftsStats.dbSizeBytes;
+      } catch (ftsErr) {
+        log.debug("FTS stats failed (non-fatal)", {
+          error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+        });
+      }
+    }
+
+    return status;
   }
 
   // ===========================================================================
@@ -2422,35 +2604,59 @@ export class Memory {
     byType: Record<EntryType, number>;
     byCategory: Record<string, number>;
     fts?: { totalEntries: number; dbSizeBytes: number };
+    localIndex: {
+      enabled: boolean;
+      backend: LocalIndexBackend;
+      available: boolean;
+      degradedRead: LocalIndexDegradedReadMode;
+      initFailed: boolean;
+      totalEntries?: number;
+      dbSizeBytes?: number;
+    };
   }> {
     await this.init();
 
-    const total = await this.storage.count();
-
     const types: EntryType[] = ["memory", "state", "conversation", "session_chain"];
+    const categories: MemoryCategory[] = [
+      "conversation", "fact", "preference", "task",
+      "decision", "relationship", "note", "pattern",
+    ];
+    const localIndex = this.getLocalIndexStatus();
+    const fts =
+      localIndex.available &&
+      typeof localIndex.totalEntries === "number" &&
+      typeof localIndex.dbSizeBytes === "number"
+        ? { totalEntries: localIndex.totalEntries, dbSizeBytes: localIndex.dbSizeBytes }
+        : undefined;
+
+    if (!this.isAvailable()) {
+      const byType = types.reduce(
+        (acc, type) => ({ ...acc, [type]: 0 }),
+        {} as Record<EntryType, number>,
+      );
+      const byCategory = categories.reduce(
+        (acc, category) => ({ ...acc, [category]: 0 }),
+        {} as Record<string, number>,
+      );
+
+      return {
+        total: 0,
+        byType,
+        byCategory,
+        ...(fts ? { fts } : {}),
+        localIndex,
+      };
+    }
+
+    const total = await this.storage.count();
     const byType: Record<string, number> = {};
     for (const type of types) {
       byType[type] = await this.storage.count({ type });
     }
 
-    const categories: MemoryCategory[] = [
-      "conversation", "fact", "preference", "task",
-      "decision", "relationship", "note", "pattern",
-    ];
     const byCategory: Record<string, number> = {};
     for (const cat of categories) {
       byCategory[cat] = await this.storage.count({ type: "memory", category: cat });
-    }
-
-    let fts: { totalEntries: number; dbSizeBytes: number } | undefined;
-    if (this.ftsStore) {
-      try {
-        fts = this.ftsStore.stats();
-      } catch (ftsErr) {
-        log.debug("FTS stats failed (non-fatal)", {
-          error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
-        });
-      }
     }
 
     return {
@@ -2458,6 +2664,7 @@ export class Memory {
       byType: byType as Record<EntryType, number>,
       byCategory,
       ...(fts ? { fts } : {}),
+      localIndex,
     };
   }
 

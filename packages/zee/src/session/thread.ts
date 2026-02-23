@@ -23,7 +23,13 @@ import { Log } from "../util/log"
 import { Timestamp } from "../util/timestamp"
 import { SessionSummary } from "./summary"
 import { Identifier } from "../id/id"
-import { WHATSAPP_CAPABILITIES, CLI_CAPABILITIES, API_CAPABILITIES, type SurfaceCapabilities } from "../surface/types"
+import {
+  WHATSAPP_CAPABILITIES,
+  TELEGRAM_CAPABILITIES,
+  CLI_CAPABILITIES,
+  API_CAPABILITIES,
+  type SurfaceCapabilities,
+} from "../surface/types"
 
 export namespace Thread {
   const log = Log.create({ service: "thread" })
@@ -31,7 +37,7 @@ export namespace Thread {
   /**
    * Thread channels - where the conversation originates
    */
-  export type Channel = "whatsapp" | "tui" | "api"
+  export type Channel = "whatsapp" | "telegram" | "tui" | "api"
 
   /**
    * Thread personas - which persona is handling the conversation
@@ -47,7 +53,7 @@ export namespace Thread {
     /** The persona handling this thread */
     persona: z.enum(["zee", "stanley", "johny"]),
     /** The channel where the conversation happens */
-    channel: z.enum(["whatsapp", "tui", "api"]),
+    channel: z.enum(["whatsapp", "telegram", "tui", "api"]),
     /** User identifier (phone number, chat user ID, etc.) */
     userId: z.string().optional(),
     /** Chat ID for group chats */
@@ -67,7 +73,7 @@ export namespace Thread {
 
   /**
    * Get or create a thread for a persona+channel+user combination.
-   * For WhatsApp, this returns the daily session.
+   * For messaging channels, this returns the daily session.
    */
   export async function getOrCreate(
     persona: Persona,
@@ -84,7 +90,7 @@ export namespace Thread {
     const surface = channelToSurface(channel)
 
     // For gateway channels, use daily session management
-    if (channel === "whatsapp") {
+    if (channel === "whatsapp" || channel === "telegram") {
       const chatIdNum = options?.chatId ? parseInt(options.chatId, 10) : undefined
       const result = await Persistence.getOrCreateDailySession(persona, {
         chatId: Number.isNaN(chatIdNum) ? undefined : chatIdNum,
@@ -180,7 +186,7 @@ export namespace Thread {
    * Get the current daily thread for a persona+channel
    */
   export async function getCurrentDaily(persona: Persona, channel: Channel): Promise<Info | null> {
-    if (channel !== "whatsapp") {
+    if (channel !== "whatsapp" && channel !== "telegram") {
       return null
     }
 
@@ -194,7 +200,7 @@ export namespace Thread {
    * Check if a daily thread exists for today
    */
   export async function hasDailyThread(persona: Persona, channel: Channel): Promise<boolean> {
-    if (channel !== "whatsapp") {
+    if (channel !== "whatsapp" && channel !== "telegram") {
       return false
     }
 
@@ -253,6 +259,8 @@ export namespace Thread {
     let channel: Channel = "tui"
     if (lowerTitle.includes("whatsapp")) {
       channel = "whatsapp"
+    } else if (lowerTitle.includes("telegram")) {
+      channel = "telegram"
     } else if (lowerTitle.includes("api")) {
       channel = "api"
     } else if (persona === "zee" && !lowerTitle.includes("tui")) {
@@ -275,6 +283,7 @@ export namespace Thread {
 
     const channelLabel = {
       whatsapp: "WhatsApp",
+      telegram: "Telegram",
       tui: "TUI",
       api: "API",
     }[thread.channel]
@@ -478,6 +487,8 @@ export namespace Thread {
     switch (channel) {
       case "whatsapp":
         return WHATSAPP_CAPABILITIES
+      case "telegram":
+        return TELEGRAM_CAPABILITIES
       case "tui":
         return CLI_CAPABILITIES
       case "api":
@@ -515,10 +526,12 @@ export namespace Thread {
   /**
    * Map a thread channel to a session surface type.
    */
-  function channelToSurface(channel: Channel): "cli" | "web" | "api" | "whatsapp" {
+  function channelToSurface(channel: Channel): "cli" | "web" | "api" | "whatsapp" | "telegram" {
     switch (channel) {
       case "whatsapp":
         return "whatsapp"
+      case "telegram":
+        return "telegram"
       case "tui":
         return "cli"
       case "api":
@@ -533,7 +546,7 @@ export namespace Thread {
    */
   export async function resume(
     threadId: string,
-    surface: "cli" | "web" | "api" | "whatsapp",
+    surface: "cli" | "web" | "api" | "whatsapp" | "telegram",
     options?: { injectSummary?: boolean },
   ): Promise<Info | null> {
     const thread = await get(threadId)
@@ -590,6 +603,7 @@ export namespace Thread {
       web: "tui",
       api: "api",
       whatsapp: "whatsapp",
+      telegram: "telegram",
     }
 
     return {

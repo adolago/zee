@@ -66,7 +66,7 @@ export namespace LifecycleHooks {
       z.object({
         sessionId: z.string(),
         persona: z.enum(["zee", "stanley", "johny"]),
-        source: z.enum(["daemon", "whatsapp", "tui", "cli"]),
+        source: z.enum(["daemon", "whatsapp", "telegram", "tui", "cli"]),
         chatId: z.number().optional(),
         directory: z.string(),
       }),
@@ -77,7 +77,7 @@ export namespace LifecycleHooks {
       z.object({
         sessionId: z.string(),
         persona: z.enum(["zee", "stanley", "johny"]),
-        source: z.enum(["daemon", "whatsapp", "tui", "cli"]),
+        source: z.enum(["daemon", "whatsapp", "telegram", "tui", "cli"]),
         chatId: z.number().optional(),
         hasTodos: z.boolean(),
         incompleteTodos: z.number(),

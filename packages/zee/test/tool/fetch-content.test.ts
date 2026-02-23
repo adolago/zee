@@ -3,6 +3,7 @@ import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { FetchContentTool } from "../../src/tool/fetch_content"
 import { GetSearchContentTool } from "../../src/tool/get_search_content"
+import { getSearchContentResponse } from "../../src/tool/content-store"
 
 const originalFetch = globalThis.fetch
 
@@ -103,6 +104,46 @@ describe("tool.fetch_content", () => {
         const responseId = String((fetched.metadata as any).responseId)
         const retrieved = await getTool.execute({ responseId }, ctx(tmp.path))
         expect(retrieved.output).toContain("good body")
+      },
+    })
+  })
+
+  test("uses cf-markdown extraction for text/markdown responses", async () => {
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      const url = requestUrl(input)
+      if (url === "https://example.com/cf-markdown") {
+        return new Response("# Heading\n\nCloudflare markdown body.", {
+          status: 200,
+          headers: {
+            "content-type": "text/markdown; charset=utf-8",
+            "x-markdown-tokens": "1234",
+          },
+        })
+      }
+      throw new Error(`unexpected fetch: ${url}`)
+    }) as typeof fetch
+
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const fetchTool = await FetchContentTool.init()
+        const getTool = await GetSearchContentTool.init()
+
+        const fetched = await fetchTool.execute(
+          { url: "https://example.com/cf-markdown", forceClone: false },
+          ctx(tmp.path),
+        )
+        const responseId = String((fetched.metadata as any).responseId)
+        const response = await getSearchContentResponse(baseCtx.sessionID, responseId)
+
+        expect(response.items[0].meta).toMatchObject({
+          extraction: "cf-markdown",
+        })
+
+        const retrieved = await getTool.execute({ responseId }, ctx(tmp.path))
+        expect(retrieved.output).toContain("Heading")
+        expect(retrieved.output).toContain("Cloudflare markdown body.")
       },
     })
   })

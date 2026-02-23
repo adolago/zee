@@ -10,15 +10,15 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 
 ## Snapshot
 
-- Generated: `2026-02-12T16:32:06.828Z`
-- Zee: `dev/0.2.13-nightly` (`binary`)
-- Zee git: `77d8e72b8e0a90dc4831c57a2615d006b416f63a`
-- OpenCode pin: `59a323e9a87d315ff5c0e73c4eb5af089aeff87f` (`opencode/dev`)
-- OpenClaw pin: `a2ddcdadebfe0c18dab38816be097a094888d03e` (`openclaw/main`)
-- Pi-mono pin: `28c0991281f70145a030a27782e0a14e3ec2f91c` (`pimono/main`)
-- Pi-mono installed: `@mariozechner/pi-coding-agent@0.52.9`
-- Pi-mono latest tag: `v0.52.9`
-- Skills: `81`
+- Generated: `2026-02-22T10:48:40.011Z`
+- Zee: `local/0.3.4` (`source`)
+- Zee git: `e43b23f36e742b11d5c78f475ceb6ecf2e9be614`
+- OpenCode pin: `13616e345930b6c9e7cca898fcb98a8c4ff896b5` (`opencode/dev`)
+- OpenClaw pin: `9f0b6a8c92a790fffd0639c89c2d1411ed78b7a8` (`openclaw/main`)
+- Pi-mono pin: `3a3e37d39014acc4269171be2a51518f6a71be1f` (`pimono/main`)
+- Pi-mono installed: `@mariozechner/pi-coding-agent@0.53.1`
+- Pi-mono latest tag: `v0.54.0`
+- Skills: `85` (top: @zee=85)
 
 ## Legend
 
@@ -41,11 +41,11 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | **Surfaces** |  |  |  |  |  |
 | CLI | Command-line interface for interacting with the agent and managing configuration. | Yes | Yes | Yes | Yes |
 | Daemon/service mode | Runs as a background service (systemd/launchd) for always-on operation. | Yes | Partial | Yes | No |
-| Desktop app | Ships a desktop application distribution in addition to a CLI. | No | Yes | Yes | No |
+| Desktop app | Ships a desktop application distribution in addition to a CLI. | Yes | Yes | Yes | No |
 | HTTP API + OpenAPI | Exposes an HTTP API and/or generates OpenAPI specs. | Yes | Partial | Yes | Partial |
 | Shell completion | Built-in shell completion generation. | Yes | Yes | Unknown | Unknown |
 | Terminal UI (TUI) | Interactive terminal UI beyond simple prompts. | Yes | Yes | Partial | Yes |
-| Web UI | Ships a web UI/control surface in the core repo. | Partial | Yes | Yes | Partial |
+| Web UI | Ships a web UI/control surface in the core repo. | Yes | Yes | Yes | Partial |
 | **Architecture** |  |  |  |  |  |
 | Client/server split | Separates a client UI from a server runtime for the agent. | Yes | Yes | Yes | Partial |
 | Gateway WS control plane | A WebSocket control plane for channels/tools/events and remote clients. | Yes | No | Yes | No |
@@ -59,7 +59,7 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | Workspace/worktree model | Has a canonical workspace/worktree location where projects/sessions run. | Yes | Yes | Yes | Partial |
 | XDG directories | Uses XDG Base Dir paths for config/cache/state on Linux. | Yes | Yes | No | Unknown |
 | **Memory** |  |  |  |  |  |
-| Local indexing store | Local embedding index (e.g. sqlite-vec) and plugin-based memory stores. | Partial | No | Yes | No |
+| Local indexing store | Local embedding index (e.g. sqlite-vec) and plugin-based memory stores. | Yes | No | Yes | No |
 | Qdrant integration | First-class Qdrant support for vectors/memory. | Yes | No | No | No |
 | Semantic memory | Semantic recall beyond session history (embeddings, retrieval, long-term memory). | Yes | No | Yes | Partial |
 | Session export/import | Exports/imports session data for portability and backups. | Yes | Unknown | Partial | No |
@@ -79,7 +79,7 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | **Messaging & Channels** |  |  |  |  |  |
 | Device nodes | macOS/iOS/Android nodes for device-local actions (voice, camera, screen). | No | No | Yes | No |
 | DM pairing + allowlists | Pairing codes and allowlists to gate untrusted inbound DMs by default. | Yes | No | Yes | No |
-| Multi-channel inbox | Multiple real-world channels (Telegram/Slack/Discord/Signal/etc). | Partial | No | Yes | No |
+| Multi-channel inbox | Multiple real-world channels (Telegram/Slack/Discord/Signal/etc). | Yes | No | Yes | No |
 | Voice wake/talk mode | Always-on voice interfaces (wake word, talk mode) through device nodes. | No | No | Yes | No |
 | WhatsApp | WhatsApp channel integration for inbound/outbound messaging. | Yes | No | Yes | No |
 | **Providers & Models** |  |  |  |  |  |
@@ -159,6 +159,7 @@ Runs as a background service (systemd/launchd) for always-on operation.
 
 Ships a desktop application distribution in addition to a CLI.
 
+- Zee: Yes | evidence: repo_path:packages/zee/src/cli/cmd/gui.ts, repo_path:packages/zee-gui/Cargo.toml
 - OpenCode: Yes | evidence: note:sst/opencode README (dev)
 - OpenClaw: Yes | macOS app plus iOS/Android nodes. | evidence: note:openclaw/openclaw README (main)
 
@@ -191,7 +192,7 @@ Interactive terminal UI beyond simple prompts.
 
 Ships a web UI/control surface in the core repo.
 
-- Zee: Partial | Zee does not expose the upstream `web` command, but includes web/hosted packages and gateway UI surfaces. | evidence: doc:docs/architecture/upstream-differences.md
+- Zee: Yes | Zee ships the Solid web client in-repo and exposes a first-class `zee web` launcher command. | evidence: repo_path:packages/zee/src/cli/cmd/web.ts, repo_path:packages/app/src/app.tsx
 - OpenCode: Yes | Includes web/console packages and web surfaces. | evidence: note:sst/opencode README (dev)
 - OpenClaw: Yes | Control UI + WebChat. | evidence: note:openclaw/openclaw README (main)
 - Pi-mono: Partial | Provides pi-web-ui components, not a single product web app. | evidence: note:badlogic/pi-mono README (main)
@@ -289,7 +290,7 @@ Uses XDG Base Dir paths for config/cache/state on Linux.
 
 Local embedding index (e.g. sqlite-vec) and plugin-based memory stores.
 
-- Zee: Partial | Gateway embeds memory extensions (e.g. LanceDB) in Swabble; primary semantic memory is Qdrant. | evidence: repo_path:packages/zee/Swabble/extensions
+- Zee: Yes | SQLite local index is built into memory for keyword/hybrid retrieval, while Qdrant remains the source of truth for canonical semantic memory. | evidence: repo_path:src/memory/unified.ts, repo_path:src/memory/sqlite-fts.ts
 - OpenClaw: Yes | Uses sqlite-vec for local indexing and memory surfaces. | evidence: doc:docs/architecture/upstream-differences.md
 
 #### Qdrant integration
@@ -424,7 +425,7 @@ Pairing codes and allowlists to gate untrusted inbound DMs by default.
 
 Multiple real-world channels (Telegram/Slack/Discord/Signal/etc).
 
-- Zee: Partial | Zee embeds a reduced subset of OpenClaw’s channel stack (focuses on WhatsApp and a small set of surfaces). | evidence: doc:docs/architecture/upstream-differences.md
+- Zee: Yes | Bundled first-party channels include WhatsApp, Telegram, Slack, and Discord with shared policy/status/audit integration. | evidence: repo_path:packages/zee/Swabble/extensions
 - OpenClaw: Yes | evidence: note:openclaw/openclaw README (main)
 
 #### Voice wake/talk mode
