@@ -22,6 +22,7 @@ import { SessionSummary } from "@/session/summary"
 import { SessionCompaction } from "../../session/compaction"
 import { Agent } from "../../agent/agent"
 import { PermissionNext } from "@/permission/next"
+import { ExecutionModeInputSchema, ExecutionModeSchema } from "../../session/mode"
 
 const log = Log.create({ service: "server:session" })
 
@@ -289,7 +290,7 @@ export const SessionRoute = new Hono()
               schema: resolver(
                 z.object({
                   ok: z.boolean(),
-                  mode: z.enum(["plan", "accept", "bypass"]),
+                  mode: ExecutionModeSchema,
                 }),
               ),
             },
@@ -307,7 +308,7 @@ export const SessionRoute = new Hono()
     validator(
       "json",
       z.object({
-        mode: z.enum(["plan", "accept", "bypass"]),
+        mode: ExecutionModeInputSchema,
       }),
     ),
     async (c) => {

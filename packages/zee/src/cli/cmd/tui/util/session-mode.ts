@@ -1,4 +1,6 @@
-export type SessionMode = "plan" | "accept" | "bypass"
+import { parseExecutionMode, type ExecutionMode } from "@/session/mode"
+
+export type SessionMode = ExecutionMode
 
 export const SESSION_MODE_CYCLE: SessionMode[] = ["plan", "accept", "bypass"]
 
@@ -9,10 +11,7 @@ export const SESSION_MODE_TOAST: Record<SessionMode, { variant: "info" | "succes
 }
 
 export function normalizeSessionMode(value: unknown): SessionMode | undefined {
-  if (value === "plan" || value === "accept" || value === "bypass") return value
-  if (value === "hold") return "plan"
-  if (value === "release") return "accept"
-  return undefined
+  return parseExecutionMode(value)
 }
 
 export function resolveEffectiveSessionMode(input: { sessionMode?: unknown; localDefault: SessionMode }): SessionMode {

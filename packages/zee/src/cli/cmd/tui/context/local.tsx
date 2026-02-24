@@ -21,6 +21,7 @@ import {
   SESSION_MODE_TOAST,
   type SessionMode,
 } from "../util/session-mode"
+import { parseExecutionMode } from "@/session/mode"
 
 // Extended agent type with fallback model support (internal feature not yet in SDK)
 type AgentWithFallback = SDKAgent & {
@@ -535,8 +536,23 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     // Global mode - KV-backed, persists across sessions
     const mode = iife(() => {
       const kv = useKV()
+
+      const normalizeStoredMode = (value: unknown): SessionMode | undefined => {
+        const canonical = parseExecutionMode(value)
+        if (canonical) return canonical
+        if (typeof value !== "string") return undefined
+        const normalized = value.trim().toLowerCase()
+        if (normalized === "hold") return "plan"
+        if (normalized === "release") return "accept"
+        return undefined
+      }
+
       const stored = kv.get("mode", "plan")
-      const initial = resolveEffectiveSessionMode({ sessionMode: stored, localDefault: "plan" })
+      const migrated = normalizeStoredMode(stored)
+      if (migrated && migrated !== stored) {
+        kv.set("mode", migrated)
+      }
+      const initial = resolveEffectiveSessionMode({ sessionMode: migrated ?? stored, localDefault: "plan" })
       const [modeSignal, setModeSignal] = createSignal<SessionMode>(initial)
 
       function setMode(next: SessionMode, showToast: boolean) {

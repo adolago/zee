@@ -22,6 +22,7 @@ import { Snapshot } from "@/snapshot"
 import type { Provider } from "@/provider/provider"
 import { PermissionNext } from "@/permission/next"
 import { Global } from "@/global"
+import { ExecutionModeSchema, parseExecutionMode, type ExecutionMode } from "./mode"
 
 // Re-export Thread for convenience
 export { Thread } from "./thread"
@@ -53,6 +54,53 @@ export namespace Session {
     return new RegExp(
       `^(${parentTitlePrefix}|${childTitlePrefix})\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$`,
     ).test(title)
+  }
+
+  function normalizeStoredMode(value: unknown): ExecutionMode | undefined {
+    const canonical = parseExecutionMode(value)
+    if (canonical) return canonical
+    if (typeof value !== "string") return undefined
+    const normalized = value.trim().toLowerCase()
+    if (normalized === "hold") return "plan"
+    if (normalized === "release") return "accept"
+    return undefined
+  }
+
+  function canonicalizeSessionInfoModes(info: Info): { session: Info; changed: boolean } {
+    let changed = false
+    let session = info
+
+    const mode = normalizeStoredMode(info.mode)
+    if (mode !== info.mode) {
+      changed = true
+      session = { ...session }
+      if (mode) session.mode = mode
+      else delete session.mode
+    }
+
+    const snapshot = session.toolPolicySnapshot
+    if (snapshot) {
+      const snapshotMode = normalizeStoredMode(snapshot.mode) ?? "plan"
+      if (snapshotMode !== snapshot.mode) {
+        changed = true
+        session = {
+          ...session,
+          toolPolicySnapshot: {
+            ...snapshot,
+            mode: snapshotMode,
+          },
+        }
+      }
+    }
+
+    return { session, changed }
+  }
+
+  async function readSessionInfo(key: string[]): Promise<Info> {
+    const read = await Storage.read<Info>(key)
+    const { session, changed } = canonicalizeSessionInfoModes(read)
+    if (changed) await Storage.write(key, session)
+    return session
   }
 
   export const Info = z
@@ -100,29 +148,14 @@ export namespace Session {
         })
         .optional(),
       surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
-      mode: z
-        .enum(["plan", "accept", "bypass"])
-        .or(z.enum(["hold", "release"]))
-        .transform((v) => {
-          if (v === "hold") return "plan" as const
-          if (v === "release") return "accept" as const
-          return v
-        })
-        .optional(),
+      mode: ExecutionModeSchema.optional(),
       systemPrompt: z.string().optional(),
       skills: z.array(z.string()).optional(),
       contextFiles: z.array(z.string()).optional(),
       toolPolicySnapshot: z
         .object({
           createdAt: z.number(),
-          mode: z
-            .enum(["plan", "accept", "bypass"])
-            .or(z.enum(["hold", "release"]))
-            .transform((v) => {
-              if (v === "hold") return "plan" as const
-              if (v === "release") return "accept" as const
-              return v
-            }),
+          mode: ExecutionModeSchema,
           surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
           agent: z.string().optional(),
           permission: PermissionNext.Ruleset.optional(),
@@ -303,8 +336,7 @@ export namespace Session {
   }
 
   export const get = fn(Identifier.schema("session"), async (id) => {
-    const read = await Storage.read<Info>(["session", Instance.project.id, id])
-    return read as Info
+    return readSessionInfo(["session", Instance.project.id, id])
   })
 
   export async function update(id: string, editor: (session: Info) => void, options?: { touch?: boolean }) {
@@ -345,7 +377,7 @@ export namespace Session {
   export async function* list() {
     const project = Instance.project
     for (const item of await Storage.list(["session", project.id])) {
-      yield Storage.read<Info>(item)
+      yield await readSessionInfo(item)
     }
   }
 
@@ -353,7 +385,7 @@ export namespace Session {
     const project = Instance.project
     const result = [] as Session.Info[]
     for (const item of await Storage.list(["session", project.id])) {
-      const session = await Storage.read<Info>(item)
+      const session = await readSessionInfo(item)
       if (session.parentID !== parentID) continue
       result.push(session)
     }

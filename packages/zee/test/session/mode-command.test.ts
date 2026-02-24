@@ -66,6 +66,7 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
               whatsapp: {
                 operators: ["+15551234567"],
                 releasePin: "1234",
+                releaseTimeoutMs: 900000,
               },
             },
           },
@@ -177,33 +178,6 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
     })
   })
 
-  test(":accept sets session to accept mode on CLI", async () => {
-    await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        delete process.env.ZEE_ENABLE_SERVER_AUTH
-        delete process.env.ZEE_SERVER_PASSWORD
-        delete process.env.ZEE_SERVER_SCOPES
-        reloadFlags()
-
-        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
-        const msg = await SessionPrompt.prompt({
-          sessionID: session.id,
-          agent: "zee",
-          parts: [{ type: "text", text: ":accept" }],
-        })
-
-        const parts = await MessageV2.parts(msg.info.id)
-        expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain("Switched to ACCEPT mode")
-
-        const updated = await Session.get(session.id)
-        expect(updated.mode).toBe("accept")
-      },
-    })
-  })
-
   test("/bypass sets session to bypass mode on CLI", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
@@ -219,33 +193,6 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
           sessionID: session.id,
           agent: "zee",
           parts: [{ type: "text", text: "/bypass" }],
-        })
-
-        const parts = await MessageV2.parts(msg.info.id)
-        expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain("Switched to BYPASS mode")
-
-        const updated = await Session.get(session.id)
-        expect(updated.mode).toBe("bypass")
-      },
-    })
-  })
-
-  test(":bypass sets session to bypass mode on CLI", async () => {
-    await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        delete process.env.ZEE_ENABLE_SERVER_AUTH
-        delete process.env.ZEE_SERVER_PASSWORD
-        delete process.env.ZEE_SERVER_SCOPES
-        reloadFlags()
-
-        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
-        const msg = await SessionPrompt.prompt({
-          sessionID: session.id,
-          agent: "zee",
-          parts: [{ type: "text", text: ":bypass" }],
         })
 
         const parts = await MessageV2.parts(msg.info.id)
@@ -277,37 +224,6 @@ describe("session /hold, /plan, /release, /accept, /bypass commands", () => {
           sessionID: session.id,
           agent: "zee",
           parts: [{ type: "text", text: "/hold" }],
-        })
-
-        const parts = await MessageV2.parts(msg.info.id)
-        expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain("Switched to PLAN mode")
-
-        const updated = await Session.get(session.id)
-        expect(updated.mode).toBe("plan")
-      },
-    })
-  })
-
-  test(":plan is an alias for /plan", async () => {
-    await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        delete process.env.ZEE_ENABLE_SERVER_AUTH
-        delete process.env.ZEE_SERVER_PASSWORD
-        delete process.env.ZEE_SERVER_SCOPES
-        reloadFlags()
-
-        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
-        await Session.update(session.id, (draft) => {
-          draft.mode = "accept"
-        })
-
-        const msg = await SessionPrompt.prompt({
-          sessionID: session.id,
-          agent: "zee",
-          parts: [{ type: "text", text: ":plan" }],
         })
 
         const parts = await MessageV2.parts(msg.info.id)
@@ -359,19 +275,20 @@ describe("session mode cycling", () => {
     })
   })
 
-  test("backward compat: stored 'hold' resolves to plan mode", async () => {
+  test("canonicalizes stored legacy 'hold' to plan mode", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
 
-        // Write old "hold" value -- Storage.read bypasses Zod transforms
+        // Simulate a legacy persisted mode value.
         await Session.update(session.id, (draft) => {
           ;(draft as any).mode = "hold"
         })
+
         const updated = await Session.get(session.id)
-        // resolveMode handles the backward compat mapping
+        expect(updated.mode).toBe("plan")
         expect(SessionPrompt.resolveMode(updated)).toBe("plan")
 
         await Session.remove(session.id)
@@ -379,20 +296,40 @@ describe("session mode cycling", () => {
     })
   })
 
-  test("backward compat: stored 'release' resolves to accept mode", async () => {
+  test("canonicalizes stored legacy 'release' to accept mode", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
 
-        // Write old "release" value -- Storage.read bypasses Zod transforms
+        // Simulate a legacy persisted mode value.
         await Session.update(session.id, (draft) => {
           ;(draft as any).mode = "release"
         })
+
         const updated = await Session.get(session.id)
-        // resolveMode handles the backward compat mapping
+        expect(updated.mode).toBe("accept")
         expect(SessionPrompt.resolveMode(updated)).toBe("accept")
+
+        await Session.remove(session.id)
+      },
+    })
+  })
+
+  test("canonicalizes stored case/whitespace mode values", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+
+        await Session.update(session.id, (draft) => {
+          ;(draft as any).mode = " BYPASS "
+        })
+
+        const updated = await Session.get(session.id)
+        expect(updated.mode).toBe("bypass")
 
         await Session.remove(session.id)
       },
@@ -431,9 +368,6 @@ describe("resolveMode", () => {
   test("messageOptions mode overrides everything", () => {
     expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { mode: "bypass" })).toBe("bypass")
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: false }, { mode: "accept" })).toBe("accept")
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { mode: "accept", skipPermissions: true })).toBe(
-      "accept",
-    )
   })
 
   test("explicit message mode overrides options/tools/session", () => {
@@ -441,22 +375,17 @@ describe("resolveMode", () => {
       "accept",
     )
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: true }, undefined, "plan")).toBe("plan")
-    expect(
-      SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { skipPermissions: true }, "accept"),
-    ).toBe("accept")
   })
 
-  test("skipPermissions=true implies bypass when explicit mode is absent", () => {
-    expect(SessionPrompt.resolveMode({ mode: undefined } as any, undefined, { skipPermissions: true })).toBe("bypass")
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { skipPermissions: true })).toBe("bypass")
+  test("normalizes casing/whitespace for explicit and option modes", () => {
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { mode: " BYPASS " })).toBe("bypass")
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, undefined, " ACCEPT ")).toBe("accept")
+    expect(SessionPrompt.resolveMode({ mode: " PLAN " } as any)).toBe("plan")
   })
 
-  test("backward compat: hold resolves to plan", () => {
-    expect(SessionPrompt.resolveMode({ mode: "hold" } as any)).toBe("plan")
-  })
-
-  test("backward compat: release resolves to accept", () => {
-    expect(SessionPrompt.resolveMode({ mode: "release" } as any)).toBe("accept")
+  test("does not treat legacy aliases as valid runtime modes", () => {
+    expect(SessionPrompt.resolveMode({ mode: "hold" } as any, { edit: true })).toBe("accept")
+    expect(SessionPrompt.resolveMode({ mode: "release" } as any, { edit: false })).toBe("plan")
   })
 })
 
@@ -519,6 +448,45 @@ describe("prompt mode ingestion", () => {
         expect(message.info.role).toBe("user")
         expect((message.info as any).mode).toBe("bypass")
         expect((message.info as any).options).toEqual({ keep: "yes" })
+      },
+    })
+  })
+
+  test("accepts uppercase/whitespace top-level mode and canonicalizes it", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        const message = await SessionPrompt.prompt({
+          sessionID: session.id,
+          agent: "zee",
+          mode: "  ACCEPT " as any,
+          noReply: true,
+          parts: [{ type: "text", text: "check mode normalization" }],
+        })
+
+        expect(message.info.role).toBe("user")
+        expect((message.info as any).mode).toBe("accept")
+      },
+    })
+  })
+
+  test("rejects legacy alias mode values in prompt payloads", async () => {
+    await using tmp = await tmpdir({ git: true })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
+        await expect(
+          SessionPrompt.prompt({
+            sessionID: session.id,
+            agent: "zee",
+            mode: "release" as any,
+            noReply: true,
+            parts: [{ type: "text", text: "invalid mode" }],
+          }),
+        ).rejects.toThrow()
       },
     })
   })

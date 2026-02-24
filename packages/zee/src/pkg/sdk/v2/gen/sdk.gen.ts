@@ -942,7 +942,7 @@ export class Session extends HeyApiClient {
       tools?: {
         [key: string]: boolean
       }
-      mode?: "plan" | "accept" | "bypass" | "hold" | "release"
+      mode?: "plan" | "accept" | "bypass"
       system?: string
       options?: {
         [key: string]: unknown
@@ -1241,7 +1241,7 @@ export class Session extends HeyApiClient {
       tools?: {
         [key: string]: boolean
       }
-      mode?: "plan" | "accept" | "bypass" | "hold" | "release"
+      mode?: "plan" | "accept" | "bypass"
       system?: string
       options?: {
         [key: string]: unknown
@@ -1459,7 +1459,7 @@ export class Session extends HeyApiClient {
       tools?: {
         [key: string]: boolean
       }
-      mode?: "plan" | "accept" | "bypass" | "hold" | "release"
+      mode?: "plan" | "accept" | "bypass"
       system?: string
       options?: {
         [key: string]: unknown

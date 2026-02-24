@@ -6,9 +6,15 @@ import {
 } from "../../../src/cli/cmd/tui/util/session-mode"
 
 describe("TUI session mode helpers", () => {
-  test("normalizes legacy hold/release values", () => {
-    expect(normalizeSessionMode("hold")).toBe("plan")
-    expect(normalizeSessionMode("release")).toBe("accept")
+  test("normalizes case and surrounding whitespace", () => {
+    expect(normalizeSessionMode(" Plan ")).toBe("plan")
+    expect(normalizeSessionMode("ACCEPT")).toBe("accept")
+    expect(normalizeSessionMode(" bypass\t")).toBe("bypass")
+  })
+
+  test("does not normalize legacy aliases", () => {
+    expect(normalizeSessionMode("hold")).toBeUndefined()
+    expect(normalizeSessionMode("release")).toBeUndefined()
   })
 
   test("prefers persisted session mode over local default", () => {

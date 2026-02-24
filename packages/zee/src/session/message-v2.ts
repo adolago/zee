@@ -14,6 +14,7 @@ import { iife } from "@/util/iife"
 import { type SystemError } from "bun"
 import { Log } from "@/util/log"
 import type { Provider } from "@/provider/provider"
+import { ExecutionModeSchema } from "./mode"
 
 export namespace MessageV2 {
   const log = Log.create({ service: "message-v2" })
@@ -331,15 +332,7 @@ export namespace MessageV2 {
     }),
     system: z.string().optional(),
     tools: z.record(z.string(), z.boolean()).optional(),
-    mode: z
-      .enum(["plan", "accept", "bypass"])
-      .or(z.enum(["hold", "release"]))
-      .transform((v) => {
-        if (v === "hold") return "plan" as const
-        if (v === "release") return "accept" as const
-        return v
-      })
-      .optional(),
+    mode: ExecutionModeSchema.optional(),
     options: z.record(z.string(), z.any()).optional(),
     variant: z.string().optional(),
   }).meta({

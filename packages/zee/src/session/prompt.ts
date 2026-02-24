@@ -60,6 +60,7 @@ import { buildFollowupExecutionReminder } from "./followup-execution"
 import { buildPlanWebExecutionReminder } from "./plan-web-execution"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
 import { SessionControlServer } from "@/session-control/server"
+import { ExecutionModeInputSchema, parseExecutionMode, type ExecutionMode } from "./mode"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -244,19 +245,16 @@ export namespace SessionPrompt {
     })
   }
 
-  export type Mode = "plan" | "accept" | "bypass"
+  export type Mode = ExecutionMode
 
   function normalizeMode(value: unknown): Mode | undefined {
-    if (value === "plan" || value === "accept" || value === "bypass") return value
-    if (value === "hold") return "plan"
-    if (value === "release") return "accept"
-    return undefined
+    return parseExecutionMode(value)
   }
 
   /**
    * Resolve the session mode (plan/accept/bypass).
-   * Priority: per-message explicit mode > legacy options mode > explicit skipPermissions
-   * > per-session mode > per-message tools > surface default.
+   * Priority: per-message explicit mode > legacy options mode > per-session mode
+   * > per-message tools > surface default.
    */
   export function resolveMode(
     session: Session.Info,
@@ -271,10 +269,7 @@ export namespace SessionPrompt {
     const legacyMode = normalizeMode(messageOptions?.mode)
     if (legacyMode) return legacyMode
 
-    // Explicit skipPermissions=true implies bypass semantics for this turn.
-    if (messageOptions?.skipPermissions === true) return "bypass"
-
-    // Per-session mode (includes backward compat: hold->plan, release->accept)
+    // Per-session mode
     const sessionMode = normalizeMode(session.mode)
     if (sessionMode) return sessionMode
 
@@ -435,15 +430,7 @@ export namespace SessionPrompt {
       .describe(
         "@deprecated tools and permissions have been merged, you can set permissions on the session itself now",
       ),
-    mode: z
-      .enum(["plan", "accept", "bypass"])
-      .or(z.enum(["hold", "release"]))
-      .transform((v) => {
-        if (v === "hold") return "plan" as const
-        if (v === "release") return "accept" as const
-        return v
-      })
-      .optional(),
+    mode: ExecutionModeInputSchema.optional(),
     system: z.string().optional(),
     options: z.record(z.string(), z.any()).optional(),
     variant: z.string().optional(),
@@ -516,23 +503,18 @@ export namespace SessionPrompt {
       startReleaseTimer(input.sessionID, timeoutMs)
     }
 
-    // Handle /hold, /plan, /release, /accept, /bypass and : aliases early so mode switching
+    // Handle /hold, /plan, /release, /accept, /bypass commands early so mode switching
     // still works even if the memory backend/MCP is unavailable.
     const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
-    const firstToken = firstText?.split(/\s+/)[0]
     const modeCommandMap: Record<string, "plan" | "accept" | "bypass"> = {
       "/hold": "plan",
-      ":hold": "plan",
       "/plan": "plan",
-      ":plan": "plan",
-      "/release": "accept",
-      ":release": "accept",
       "/accept": "accept",
-      ":accept": "accept",
       "/bypass": "bypass",
-      ":bypass": "bypass",
     }
-    const requestedMode = modeCommandMap[firstToken ?? ""]
+    // /release with optional PIN arg maps to accept
+    const requestedMode =
+      modeCommandMap[firstText ?? ""] ?? (firstText?.startsWith("/release") ? ("accept" as const) : undefined)
     if (requestedMode) {
       const message = await createUserMessage(input)
 
@@ -2358,7 +2340,7 @@ export namespace SessionPrompt {
     sessionID: Identifier.schema("session"),
     agent: z.string().optional(),
     model: z.string().optional(),
-    mode: z.enum(["plan", "accept", "bypass"]).optional(),
+    mode: ExecutionModeInputSchema.optional(),
     arguments: z.string(),
     command: z.string(),
     variant: z.string().optional(),
