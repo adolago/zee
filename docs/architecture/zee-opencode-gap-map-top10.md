@@ -26,7 +26,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 | Rank | Lane | Issue | Area | Default decision | Status | Lane artifact |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 01 | [#219](https://github.com/adolago/zee/issues/219) | TUI parity baseline (thinking keybind, remote auth, custom models path) | adapt | open | `docs/architecture/upstream-differences.md` |
+| 1 | 01 | [#219](https://github.com/adolago/zee/issues/219) | TUI parity baseline (thinking keybind, remote auth, custom models path) | adapt | in-progress | `docs/architecture/upstream-differences.md` |
 | 2 | 02 | [#221](https://github.com/adolago/zee/issues/221) | Config parity baseline (models.dev URL, mDNS domain, managed settings) | adapt | in-progress | `docs/architecture/upstream-differences.md` |
 | 3 | 05 | [#290](https://github.com/adolago/zee/issues/290) | API/LSP/server workflow parity deltas | adapt | triage-done | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` |
 | 4 | 03 | [#288](https://github.com/adolago/zee/issues/288) | Auth/provider plugin parity and migration ergonomics | adapt | in-progress | `docs/architecture/opencode-lanes/lane-03-auth-provider.md` |
@@ -49,6 +49,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 - Scope: preserve user-facing parity where it reduces migration surprise for coding-agent users.
 - Current decision: `adapt`.
+- 2026-02-25 progress: added remote attach auth regression coverage for 401 password-prompt retry and explicit-password attach flow (`test/cli/attach-shared-auth.test.ts`).
 - Exit signal: document and implement parity-critical UX deltas only; avoid OpenCode-specific product coupling.
 
 ### Lane 02 (`#221`): Config parity baseline

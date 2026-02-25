@@ -71,7 +71,7 @@ Ranking policy:
 
 | Rank | Upstream | Ref | Category | Decision | Current Zee status | Why bring | Target area | Validation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | opencode | `adolago/zee#219` (Lane 01) | migration parity | adapt | open | Highest migration impact for day-to-day TUI workflows and user-visible parity gaps. | `packages/zee/src/cli/cmd/tui`, auth entrypoints, model selector | TUI parity checklist tests |
+| 1 | opencode | `adolago/zee#219` (Lane 01) | migration parity | adapt | in-progress | Highest migration impact for day-to-day TUI workflows and user-visible parity gaps. | `packages/zee/src/cli/cmd/tui`, auth entrypoints, model selector | TUI parity checklist tests |
 | 2 | opencode | `adolago/zee#221` (Lane 02) | migration parity | adapt | in-progress | Config portability (`models.dev`, mDNS, managed settings) remains a top onboarding blocker. | config schema/defaults + daemon/TUI network plumbing | config migration fixture tests + daemon/TUI mDNS regression coverage |
 | 3 | opencode | `adolago/zee#290` (Lane 05) | API/LSP workflows | adapt | triage-done (harness pending) | Parity harness is required to keep LSP/serve behavior stable while upstream drift grows. | LSP stack, `serve`, attach/resume lifecycle | parity harness (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`) |
 | 4 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | in-progress | Explicit OpenCode-to-Zee auth/provider migration path reduces setup churn. | auth command flow (`zee auth`) + mapping docs | `zee auth import-opencode` fixture test |
@@ -109,6 +109,7 @@ Progress update (2026-02-25):
 - Lane 02 moved to `in-progress`.
 - Implemented slices: config-backed `models.url` / `models.path` support with provider tests; daemon/TUI forwarding of resolved mDNS options into server startup; `Config.reloadManaged()` lifecycle hook with regression coverage.
 - Implemented migration fixture slice: `zee auth import-opencode` reads `.opencode/opencode.jsonc`, maps supported auth/models/server fields into `.zee/zee.jsonc` + auth store, supports `--dry-run`, and reports invalid JSONC with actionable diagnostics.
+- Lane 01 slice implemented: remote attach auth parity coverage for password prompt retry and explicit-password flow (`test/cli/attach-shared-auth.test.ts`).
 - Remaining closure work: broaden mapping coverage for additional OpenCode-only keys and add structured unknown-key guidance output.
 
 ### Batch B: Migration ergonomics + Pi-mono refresh prep (ranks 5-7)
