@@ -521,34 +521,6 @@ export namespace SessionPrompt {
     const firstCommand = firstWords[0]
     const commandArg = firstWords[1]
 
-    if (firstCommand === "/hold" || firstCommand === "/release") {
-      const message = await createUserMessage(input)
-      const confirmMsg: MessageV2.Assistant = {
-        id: Identifier.ascending("message"),
-        sessionID: input.sessionID,
-        parentID: message.info.id,
-        role: "assistant",
-        mode: input.agent ?? "zee",
-        agent: input.agent ?? "zee",
-        path: { cwd: Instance.directory, root: Instance.worktree },
-        cost: 0,
-        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
-        modelID: "system",
-        providerID: "system",
-        finish: "stop",
-        time: { created: Date.now(), completed: Date.now() },
-      }
-      await Session.updateMessage(confirmMsg)
-      await Session.updatePart({
-        id: Identifier.ascending("part"),
-        messageID: confirmMsg.id,
-        sessionID: input.sessionID,
-        type: "text",
-        text: 'Command removed. Use "/plan", "/accept", or "/bypass".',
-      } satisfies MessageV2.TextPart)
-      return { info: confirmMsg, parts: [] } as MessageV2.WithParts
-    }
-
     const modeCommandMap: Record<string, "plan" | "accept" | "bypass"> = {
       "/plan": "plan",
       "/accept": "accept",

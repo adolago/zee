@@ -205,64 +205,6 @@ describe("session /plan, /accept, /bypass commands", () => {
     })
   })
 
-  test("/hold returns migration guidance", async () => {
-    await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        delete process.env.ZEE_ENABLE_SERVER_AUTH
-        delete process.env.ZEE_SERVER_PASSWORD
-        delete process.env.ZEE_SERVER_SCOPES
-        reloadFlags()
-
-        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
-        await Session.update(session.id, (draft) => {
-          draft.mode = "accept"
-        })
-
-        const msg = await SessionPrompt.prompt({
-          sessionID: session.id,
-          agent: "zee",
-          parts: [{ type: "text", text: "/hold" }],
-        })
-
-        const parts = await MessageV2.parts(msg.info.id)
-        expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain('Command removed. Use "/plan", "/accept", or "/bypass".')
-
-        const updated = await Session.get(session.id)
-        expect(updated.mode).toBe("accept")
-      },
-    })
-  })
-
-  test("/release returns migration guidance", async () => {
-    await using tmp = await tmpdir({ git: true })
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        delete process.env.ZEE_ENABLE_SERVER_AUTH
-        delete process.env.ZEE_SERVER_PASSWORD
-        delete process.env.ZEE_SERVER_SCOPES
-        reloadFlags()
-
-        const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
-
-        const msg = await SessionPrompt.prompt({
-          sessionID: session.id,
-          agent: "zee",
-          parts: [{ type: "text", text: "/release 1234" }],
-        })
-
-        const parts = await MessageV2.parts(msg.info.id)
-        expect(parts[0]?.type).toBe("text")
-        expect((parts[0] as any).text).toContain('Command removed. Use "/plan", "/accept", or "/bypass".')
-
-        const updated = await Session.get(session.id)
-        expect(updated.mode).toBeUndefined()
-      },
-    })
-  })
 })
 
 describe("session mode cycling", () => {
