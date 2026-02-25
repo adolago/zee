@@ -31,7 +31,7 @@ Tracking issue: `adolago/zee#288`
 
 ## Concrete Implementation Candidate
 
-### Candidate A: `zee auth import-opencode` (proposed)
+### Candidate A: `zee auth import-opencode` (implemented first slice 2026-02-25)
 
 - Owner: `@adolago`
 - Decision type: `adapt` (Zee-native interface with OpenCode-aware migration)
@@ -39,6 +39,11 @@ Tracking issue: `adolago/zee#288`
   - read `.opencode/opencode.jsonc` in a project
   - map recognized provider/auth defaults into `.zee/` project config
   - emit a migration report showing mapped, skipped, and non-goal keys
+- Current implementation slice:
+  - command added: `zee auth import-opencode [file] [--dry-run]`
+  - supported mappings: provider/auth API keys, OAuth token blobs, provider base URLs, `models.url`, `models.path`, `server.mdns`, `server.mdnsDomain`
+  - test coverage: `packages/zee/test/cli/auth-import-opencode.test.ts`
+  - current gap: broader OpenCode-only key mapping and richer unknown-key remediation hints
 - Minimum test scope:
   - unit tests for mapping rules and unknown-key handling
   - integration test with fixture `.opencode/opencode.jsonc` -> generated `.zee/*`
@@ -49,3 +54,4 @@ Tracking issue: `adolago/zee#288`
 - [x] Delta table with explicit decisions and upstream refs
 - [x] Zee decision recorded for each tracked item
 - [x] Concrete implementation candidate defined with owner and test scope
+- [x] First executable migration slice implemented and fixture-tested

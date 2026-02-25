@@ -74,8 +74,8 @@ Ranking policy:
 | 1 | opencode | `adolago/zee#219` (Lane 01) | migration parity | adapt | open | Highest migration impact for day-to-day TUI workflows and user-visible parity gaps. | `packages/zee/src/cli/cmd/tui`, auth entrypoints, model selector | TUI parity checklist tests |
 | 2 | opencode | `adolago/zee#221` (Lane 02) | migration parity | adapt | in-progress | Config portability (`models.dev`, mDNS, managed settings) remains a top onboarding blocker. | config schema/defaults + daemon/TUI network plumbing | config migration fixture tests + daemon/TUI mDNS regression coverage |
 | 3 | opencode | `adolago/zee#290` (Lane 05) | API/LSP workflows | adapt | triage-done (harness pending) | Parity harness is required to keep LSP/serve behavior stable while upstream drift grows. | LSP stack, `serve`, attach/resume lifecycle | parity harness (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`) |
-| 4 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | triage-done (implementation pending) | Explicit OpenCode-to-Zee auth/provider migration path reduces setup churn. | auth command flow (`zee auth`) + mapping docs | `zee auth import-opencode` fixture test |
-| 5 | opencode | Lane 08 (`TBD`) | migration parity | adapt | backlog | `.opencode/` to `.zee/` migration ergonomics still lack fixture-backed import behavior. | project-config import/mapping path | fixture-driven migration test |
+| 4 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | in-progress | Explicit OpenCode-to-Zee auth/provider migration path reduces setup churn. | auth command flow (`zee auth`) + mapping docs | `zee auth import-opencode` fixture test |
+| 5 | opencode | Lane 08 (`TBD`) | migration parity | adapt | in-progress | `.opencode/` to `.zee/` migration ergonomics now have a first fixture-backed import path; coverage expansion remains. | project-config import/mapping path | fixture-driven migration test |
 | 6 | opencode | Lane 09 (`TBD`) | workflow parity | adapt | backlog | Remote `serve`/client attach-resume parity still has no explicit closure harness. | server/client attach + auth lifecycle | remote attach/resume integration test |
 | 7 | pimono | update to `v0.55.0` | dependency maintenance | adapt | backlog | Installed pin is `0.53.1` while upstream latest is `v0.55.0`; validate compatibility before bumping. | `docs/architecture/upstream-pins.json` + pi-dependent runtime paths | update pin + regression suite |
 | 8 | opencode | `adolago/zee#289` (Lane 04) | package topology | adapt | triage-done (docs/sequence pending) | Adaptation slice is useful after core migration and workflow lanes stabilize. | migration docs + control/auth flow alignment | lane checklist completion + docs verification |
@@ -108,7 +108,8 @@ Progress update (2026-02-25):
 
 - Lane 02 moved to `in-progress`.
 - Implemented slices: config-backed `models.url` / `models.path` support with provider tests; daemon/TUI forwarding of resolved mDNS options into server startup; `Config.reloadManaged()` lifecycle hook with regression coverage.
-- Remaining closure work: explicit migration fixtures for OpenCode-style config imports.
+- Implemented migration fixture slice: `zee auth import-opencode` reads `.opencode/opencode.jsonc`, maps supported auth/models/server fields into `.zee/zee.jsonc` + auth store, supports `--dry-run`, and reports invalid JSONC with actionable diagnostics.
+- Remaining closure work: broaden mapping coverage for additional OpenCode-only keys and add structured unknown-key guidance output.
 
 ### Batch B: Migration ergonomics + Pi-mono refresh prep (ranks 5-7)
 

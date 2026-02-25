@@ -25,6 +25,7 @@ import {
   type ServiceType,
 } from "../../../../../src/config/providers"
 import { Flag } from "../../flag/flag"
+import { AuthImportOpencodeCommand } from "./auth-import-opencode"
 
 /** Local providers that need host:port instead of API key */
 const LOCAL_PROVIDERS = new Set(["vllm", "ollama", "lmstudio", "llamacpp", "tgi"])
@@ -637,6 +638,7 @@ export const AuthCommand = cmd({
       .command(AuthLogoutCommand)
       .command(AuthListCommand)
       .command(AuthProvidersCommand)
+      .command(AuthImportOpencodeCommand)
       .demandCommand(),
   async handler() {},
 })

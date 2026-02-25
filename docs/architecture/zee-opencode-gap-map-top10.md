@@ -29,8 +29,8 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 | 1 | 01 | [#219](https://github.com/adolago/zee/issues/219) | TUI parity baseline (thinking keybind, remote auth, custom models path) | adapt | open | `docs/architecture/upstream-differences.md` |
 | 2 | 02 | [#221](https://github.com/adolago/zee/issues/221) | Config parity baseline (models.dev URL, mDNS domain, managed settings) | adapt | in-progress | `docs/architecture/upstream-differences.md` |
 | 3 | 05 | [#290](https://github.com/adolago/zee/issues/290) | API/LSP/server workflow parity deltas | adapt | triage-done | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` |
-| 4 | 03 | [#288](https://github.com/adolago/zee/issues/288) | Auth/provider plugin parity and migration ergonomics | adapt | triage-done | `docs/architecture/opencode-lanes/lane-03-auth-provider.md` |
-| 5 | 08 | `TBD` | Project-local `.opencode/` migration ergonomics into `.zee/` | adapt | backlog | `docs/architecture/upstream-differences.md` |
+| 4 | 03 | [#288](https://github.com/adolago/zee/issues/288) | Auth/provider plugin parity and migration ergonomics | adapt | in-progress | `docs/architecture/opencode-lanes/lane-03-auth-provider.md` |
+| 5 | 08 | `TBD` | Project-local `.opencode/` migration ergonomics into `.zee/` | adapt | in-progress | `docs/architecture/upstream-differences.md` |
 | 6 | 09 | `TBD` | Client/server mode behavior parity (serve flows, remote clients) | adapt | backlog | `docs/architecture/feature-comparison.md` |
 | 7 | 04 | [#289](https://github.com/adolago/zee/issues/289) | Web/desktop/package topology parity strategy | adapt | triage-done | `docs/architecture/opencode-lanes/lane-04-package-topology.md` |
 | 8 | 06 | [#291](https://github.com/adolago/zee/issues/291) | Upstream sync automation and policy | port | triage-done | `docs/architecture/opencode-sync-policy.md` |
@@ -62,6 +62,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 - Scope: provider/auth plugin surface and migration guidance.
 - Current decision: `adapt`.
+- 2026-02-25 progress: added `zee auth import-opencode` first implementation slice with fixture-backed tests and dry-run diagnostics.
 - Artifact: `docs/architecture/opencode-lanes/lane-03-auth-provider.md`.
 
 ### Lane 04 (`#289`): Web/desktop/package topology
@@ -88,6 +89,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 - Scope: practical import/mapping path from `.opencode/` project defaults into `.zee/`.
 - Current decision: `adapt`.
+- 2026-02-25 progress: baseline import path now implemented through `zee auth import-opencode` (`.opencode/opencode.jsonc` -> `.zee/zee.jsonc` + auth store).
 - Exit signal: fixture-backed import path with explicit diagnostics for unsupported keys.
 
 ### Lane 09 (`TBD`): Client/server mode behavior parity
