@@ -7,7 +7,7 @@ import { tmpdir } from "../fixture/fixture"
 // Prevent Config.get() from running slow dependency installs during tests
 process.env.ZEE_DISABLE_CONFIG_DEPENDENCY_INSTALL = "true"
 
-const HOLD_MODE_SENTINEL = "PLAN MODE - Read-Only Constraint"
+const EXECUTION_MODE_SENTINEL = "[EXECUTION MODE]"
 const capturedSystems: string[][] = []
 const ORIGINAL_OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const originalSummarize = SessionSummary.summarize
@@ -48,12 +48,7 @@ beforeEach(() => {
   ;(SessionSummary as any).summarize = async () => {}
 })
 
-async function runPromptWithMode(input: {
-  mode?: "plan" | "accept" | "bypass"
-  sessionMode: "plan" | "accept" | "bypass"
-  options?: Record<string, any>
-  tools?: Record<string, boolean>
-}) {
+async function runPromptWithMode(mode: "plan" | "accept" | "bypass", sessionMode: "plan" | "accept" | "bypass") {
   process.env.OPENAI_API_KEY = "test-key"
   await using tmp = await tmpdir({
     git: true,
@@ -67,7 +62,7 @@ async function runPromptWithMode(input: {
     fn: async () => {
       const session = await Session.createNext({ directory: tmp.path, surface: "cli" })
       await Session.update(session.id, (draft) => {
-        draft.mode = input.sessionMode
+        draft.mode = sessionMode
         // Skip async title generation provider lookups in this integration test.
         draft.title = "Mode Prompt Injection"
       })
@@ -77,11 +72,10 @@ async function runPromptWithMode(input: {
         sessionID: session.id,
         agent: "zee",
         model: { providerID: "openai", modelID: "gpt-5.2" },
-        mode: input.mode,
-        options: input.options,
+        mode,
         // Deliberately contradictory legacy flags to ensure explicit mode wins.
-        tools: input.tools ?? { edit: false, write: false, notebook_edit: false },
-        parts: [{ type: "text", text: `integration mode check: ${input.mode ?? "implicit"}` }],
+        tools: { edit: false, write: false, notebook_edit: false },
+        parts: [{ type: "text", text: `integration mode check: ${mode}` }],
       })
     },
   })
@@ -89,30 +83,29 @@ async function runPromptWithMode(input: {
   return capturedSystems[capturedSystems.length - 1] ?? []
 }
 
-describe("SessionPrompt hold-mode prompt injection", () => {
-  test("does not inject hold prompt when explicit mode is accept", async () => {
-    const system = await runPromptWithMode({ mode: "accept", sessionMode: "plan" })
-    expect(system.join("\n")).not.toContain(HOLD_MODE_SENTINEL)
-  })
-
-  test("does not inject hold prompt when explicit mode is bypass", async () => {
-    const system = await runPromptWithMode({ mode: "bypass", sessionMode: "plan" })
-    expect(system.join("\n")).not.toContain(HOLD_MODE_SENTINEL)
-  })
-
-  test("injects hold prompt when explicit mode is plan", async () => {
-    const system = await runPromptWithMode({ mode: "plan", sessionMode: "accept" })
+describe("SessionPrompt execution-mode reminder injection", () => {
+  test("injects accept execution-mode reminder when explicit mode is accept", async () => {
+    const system = await runPromptWithMode("accept", "plan")
     const content = system.join("\n")
-    expect(content).toContain(HOLD_MODE_SENTINEL)
-    expect(content).toContain("Execute read-only tasks directly with tools")
+    expect(content).toContain(EXECUTION_MODE_SENTINEL)
+    expect(content).toContain("[EXECUTION MODE] ACCEPT")
+    expect(content).toContain("Do not ask the user to switch to ACCEPT mode")
   })
 
-  test("does not inject hold prompt when skipPermissions=true implies bypass", async () => {
-    const system = await runPromptWithMode({
-      sessionMode: "plan",
-      options: { skipPermissions: true },
-      tools: { edit: true, write: true, notebook_edit: true },
-    })
-    expect(system.join("\n")).not.toContain(HOLD_MODE_SENTINEL)
+  test("injects bypass execution-mode reminder when explicit mode is bypass", async () => {
+    const system = await runPromptWithMode("bypass", "plan")
+    const content = system.join("\n")
+    expect(content).toContain(EXECUTION_MODE_SENTINEL)
+    expect(content).toContain("[EXECUTION MODE] BYPASS")
+    expect(content).toContain("more permissive than ACCEPT")
+    expect(content).toContain("Do not ask the user to switch to ACCEPT mode")
+  })
+
+  test("injects plan execution-mode reminder when explicit mode is plan", async () => {
+    const system = await runPromptWithMode("plan", "accept")
+    const content = system.join("\n")
+    expect(content).toContain(EXECUTION_MODE_SENTINEL)
+    expect(content).toContain("[EXECUTION MODE] PLAN")
+    expect(content).toContain("Do not modify files or external state in PLAN mode")
   })
 })

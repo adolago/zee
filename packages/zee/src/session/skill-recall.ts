@@ -131,7 +131,7 @@ export async function buildSkillRecallContext(input: {
     "The latest user message is a short confirmation to a pending action.",
     "Treat it as approval for the previously discussed action and continue execution now.",
     "Use available tools to execute first; do not ask for the same confirmation again.",
-    "If mode restrictions block execution, ask for mode switch/release instead of claiming integration unavailability.",
+    "If mode restrictions block execution, ask for a mode switch instead of claiming integration unavailability.",
     "Only report integration unavailability after an actual tool call fails with connectivity/auth evidence.",
   ]
 

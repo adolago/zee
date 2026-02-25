@@ -25,7 +25,6 @@ import { Flag } from "@/flag/flag"
 import { Log } from "@/util/log"
 import { LspTool } from "./lsp"
 import { Truncate } from "./truncation"
-import { HoldReleaseTool, HoldEnterTool } from "./plan"
 import { ApplyPatchTool } from "./apply_patch"
 import { ListSessionsTool, SendToSessionTool } from "./session-control"
 import { FetchContentTool } from "./fetch_content"
@@ -124,7 +123,6 @@ export namespace ToolRegistry {
       SkillTool,
       LspTool,
       ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
-      ...(Flag.ZEE_CLIENT === "cli" ? [HoldReleaseTool, HoldEnterTool] : []),
       ...custom,
     ]
   }

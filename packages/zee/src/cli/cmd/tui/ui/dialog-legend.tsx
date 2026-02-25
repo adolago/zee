@@ -41,14 +41,12 @@ export function DialogLegend() {
 
         <box>
           <text attributes={TextAttributes.BOLD} fg={theme.text}>
-            Agent Mode
+            Execution Mode
           </text>
-          <text fg={theme.textMuted}>  HOLD     Agent paused, research only</text>
-          <text fg={theme.textMuted}>  RELEASE  Agent can edit files</text>
-          <text fg={theme.textMuted}>  NO CUFFS Release mode with skipPermissions (allows everything)</text>
-          <text fg={theme.textMuted}>  Space h  Toggle hold/release mode</text>
-          <text fg={theme.textMuted}>  Space H  Toggle release policy (safe/no cuffs)</text>
-          <text fg={theme.textMuted}>  Space c  Commands: "Release button settings"</text>
+          <text fg={theme.textMuted}>  PLAN     Research and read-only actions</text>
+          <text fg={theme.textMuted}>  ACCEPT   Edit tools auto-approved</text>
+          <text fg={theme.textMuted}>  BYPASS   All permissions skipped</text>
+          <text fg={theme.textMuted}>  Shift tap  Cycle PLAN/ACCEPT/BYPASS</text>
         </box>
 
         <box>

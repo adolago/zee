@@ -4,7 +4,6 @@ import { Provider } from "../../src/provider/provider"
 import { ProviderAuth } from "../../src/provider/auth"
 import { Instance } from "../../src/project/instance"
 import { Auth } from "../../src/auth"
-import { tmpdir } from "../fixture/fixture"
 
 const originalModelsGet = ModelsDev.get
 const originalModelsRefresh = ModelsDev.refresh
@@ -37,16 +36,12 @@ afterAll(() => {
 })
 
 const { ModelRoute } = await import("../../src/server/route/model")
+const testDirectory = process.cwd()
 
 describe("model route", () => {
   test("skips defaults for providers without models", async () => {
-    await using tmp = await tmpdir({
-      config: {
-        $schema: "zee",
-      },
-    })
     await Instance.provide({
-      directory: tmp.path,
+      directory: testDirectory,
       fn: async () => {
         const response = await ModelRoute.request("/provider")
         expect(response.status).toBe(200)
@@ -57,13 +52,8 @@ describe("model route", () => {
   })
 
   test("filters blocked providers from provider list", async () => {
-    await using tmp = await tmpdir({
-      config: {
-        $schema: "zee",
-      },
-    })
     await Instance.provide({
-      directory: tmp.path,
+      directory: testDirectory,
       fn: async () => {
         const response = await ModelRoute.request("/provider")
         expect(response.status).toBe(200)
@@ -84,18 +74,13 @@ describe("model route", () => {
         },
       ],
     })
-    await using tmp = await tmpdir({
-      config: {
-        $schema: "zee",
-      },
-    })
     try {
       await Auth.set("gemini-cli", {
         type: "api",
         key: "test-key",
       })
       await Instance.provide({
-        directory: tmp.path,
+        directory: testDirectory,
         fn: async () => {
           const response = await ModelRoute.request("/provider")
           expect(response.status).toBe(200)
@@ -103,9 +88,7 @@ describe("model route", () => {
           const ids = (data.all as Array<{ id: string }>).map((provider) => provider.id)
           expect(ids).toContain("gemini-cli")
           expect(data.connected).toContain("gemini-cli")
-          const entry = (data.all as Array<{ id: string; name?: string }>).find(
-            (provider) => provider.id === "gemini-cli",
-          )
+          const entry = (data.all as Array<{ id: string; name?: string }>).find((provider) => provider.id === "gemini-cli")
           expect(entry?.name).toBe("Gemini CLI")
         },
       })

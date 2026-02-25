@@ -33,6 +33,7 @@ afterAll(() => {
     else process.env[key] = value
   }
   reloadFlags()
+  ModelsDev.configure()
   ModelsDev.Data.reset()
 })
 
@@ -42,5 +43,39 @@ describe("ModelsDev", () => {
     expect(data).toBeDefined()
     expect(Object.keys(data)).toContain("test")
     expect(data.test?.name).toBe("Test Provider")
+  })
+
+  test("reads model catalog from configured path when env path is unset", async () => {
+    const configuredFilepath = path.join(process.env.XDG_CACHE_HOME ?? "/tmp", "zee-test-models-config-path.json")
+    await Bun.write(
+      configuredFilepath,
+      JSON.stringify({
+        configured: {
+          api: "https://example.invalid",
+          name: "Configured Provider",
+          env: [],
+          id: "configured",
+          models: {},
+        },
+      }),
+    )
+
+    const originalPath = process.env.ZEE_MODELS_PATH
+    try {
+      delete process.env.ZEE_MODELS_PATH
+      reloadFlags()
+      ModelsDev.configure({ path: configuredFilepath })
+
+      const data = await ModelsDev.get()
+      expect(data).toBeDefined()
+      expect(Object.keys(data)).toContain("configured")
+      expect(data.configured?.name).toBe("Configured Provider")
+    } finally {
+      if (originalPath === undefined) delete process.env.ZEE_MODELS_PATH
+      else process.env.ZEE_MODELS_PATH = originalPath
+      reloadFlags()
+      ModelsDev.configure()
+      ModelsDev.Data.reset()
+    }
   })
 })

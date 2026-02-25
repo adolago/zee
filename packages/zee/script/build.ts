@@ -309,7 +309,6 @@ console.log("Generated models-snapshot.ts")
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
-const strictInstall = process.env.ZEE_BUILD_STRICT_INSTALL === "1"
 const binarySuffix = process.env.ZEE_BINARY_SUFFIX?.trim()
 const targetsArg =
   process.env.ZEE_TARGETS ??
@@ -406,138 +405,86 @@ const targets = targetsFilter
 
 await $`rm -rf dist`
 
-async function installOptionalBuildDependencies() {
-  const dependencies = [
-    ["@opentui/core", pkg.dependencies["@opentui/core"]],
-    ["@parcel/watcher", pkg.dependencies["@parcel/watcher"]],
-  ] as const
-
-  try {
-    for (const [name, version] of dependencies) {
-      await $`bun install --os="*" --cpu="*" ${`${name}@${version}`}`
-    }
-  } catch (error) {
-    if (strictInstall) {
-      throw error
-    }
-    const message = error instanceof Error ? error.message : String(error)
-    console.warn(
-      "WARNING: optional build dependency install failed; continuing with --skip-install fallback behavior.",
-    )
-    console.warn(`Cause: ${message}`)
-    console.warn("Set ZEE_BUILD_STRICT_INSTALL=1 to fail fast.")
-  }
+const binaries: Record<string, string> = {}
+if (!skipInstall) {
+  await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
+  await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
+}
+if (fs.existsSync(zeeRoot)) {
+  await ensureZeeDependencies()
 }
 
-async function buildTargets(binaries: Record<string, string>) {
-  for (const item of targets) {
-    const baseName = [
-      pkg.name,
-      // changing to win32 flags npm for some reason
-      item.os === "win32" ? "windows" : item.os,
-      item.arch,
-      item.avx2 === false ? "baseline" : undefined,
-      item.abi === undefined ? undefined : item.abi,
-    ]
-      .filter(Boolean)
-      .join("-")
-    const name = [baseName, binarySuffix].filter(Boolean).join("-")
-    console.log(`building ${name}`)
-    await $`mkdir -p dist/${name}/bin`
+for (const item of targets) {
+  const baseName = [
+    pkg.name,
+    // changing to win32 flags npm for some reason
+    item.os === "win32" ? "windows" : item.os,
+    item.arch,
+    item.avx2 === false ? "baseline" : undefined,
+    item.abi === undefined ? undefined : item.abi,
+  ]
+    .filter(Boolean)
+    .join("-")
+  const name = [baseName, binarySuffix].filter(Boolean).join("-")
+  console.log(`building ${name}`)
+  await $`mkdir -p dist/${name}/bin`
 
-    const require = createRequire(import.meta.url)
-    const corePkg = require.resolve("@opentui/core/package.json")
-    const parserWorker = path.join(path.dirname(corePkg), "parser.worker.js")
-    const workerPath = "./src/cli/cmd/tui/worker.ts"
+  const require = createRequire(import.meta.url)
+  const corePkg = require.resolve("@opentui/core/package.json")
+  const parserWorker = path.join(path.dirname(corePkg), "parser.worker.js")
+  const workerPath = "./src/cli/cmd/tui/worker.ts"
 
-    // Use platform-specific bunfs root path based on target OS
-    const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
-    const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
+  // Use platform-specific bunfs root path based on target OS
+  const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
+  const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
-    await Bun.build({
-      conditions: ["browser"],
-      external: ["electron"],
-      tsconfig: "./tsconfig.json",
-      plugins: [solidPlugin],
-      sourcemap: "external",
-      compile: {
-        autoloadBunfig: false,
-        autoloadDotenv: false,
-        //@ts-ignore (bun types aren't up to date)
-        autoloadTsconfig: true,
-        autoloadPackageJson: true,
-        target: baseName.replace(pkg.name, "bun") as any,
-        outfile: `dist/${name}/bin/zee`,
-        execArgv: [`--user-agent=zee/${Script.version}`, "--use-system-ca", "--"],
-        windows: {},
-      },
-      entrypoints: ["./src/index.ts", parserWorker, workerPath],
-      define: {
-        ZEE_VERSION: `'${Script.version}'`,
-        ZEE_CHANNEL: `'${Script.channel}'`,
-        OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
-        ZEE_WORKER_PATH: workerPath,
-        ZEE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
-        __ZEE_VERSION__: `'${Script.version}'`,
-      },
-    })
+  await Bun.build({
+    conditions: ["browser"],
+    external: ["electron"],
+    tsconfig: "./tsconfig.json",
+    plugins: [solidPlugin],
+    sourcemap: "external",
+    compile: {
+      autoloadBunfig: false,
+      autoloadDotenv: false,
+      //@ts-ignore (bun types aren't up to date)
+      autoloadTsconfig: true,
+      autoloadPackageJson: true,
+      target: baseName.replace(pkg.name, "bun") as any,
+      outfile: `dist/${name}/bin/zee`,
+      execArgv: [`--user-agent=zee/${Script.version}`, "--use-system-ca", "--"],
+      windows: {},
+    },
+    entrypoints: ["./src/index.ts", parserWorker, workerPath],
+    define: {
+      ZEE_VERSION: `'${Script.version}'`,
+      ZEE_CHANNEL: `'${Script.channel}'`,
+      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
+      ZEE_WORKER_PATH: workerPath,
+      ZEE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      __ZEE_VERSION__: `'${Script.version}'`,
+    },
+  })
 
-    await $`rm -rf ./dist/${name}/bin/tui`
-    const pkgJson = JSON.stringify(
-      {
-        name,
-        version: Script.version,
-        os: [item.os],
-        cpu: [item.arch],
-      },
-      null,
-      2,
-    )
-    await Bun.file(`dist/${name}/package.json`).write(pkgJson)
-    await Bun.file(`dist/${name}/bin/package.json`).write(pkgJson)
-    // Bundle personas so standalone installs can resolve them via ZEE_ROOT.
-    bundlePersonas(path.join(dir, "dist", name))
-    bundleZeeAssets(path.join(dir, "dist", name))
-    await bundlePersonaSkills(path.join(dir, "dist", name))
-    bundleSrcModules(path.join(dir, "dist", name))
-    binaries[name] = Script.version
-  }
+  await $`rm -rf ./dist/${name}/bin/tui`
+  const pkgJson = JSON.stringify(
+    {
+      name,
+      version: Script.version,
+      os: [item.os],
+      cpu: [item.arch],
+    },
+    null,
+    2,
+  )
+  await Bun.file(`dist/${name}/package.json`).write(pkgJson)
+  await Bun.file(`dist/${name}/bin/package.json`).write(pkgJson)
+  // Bundle personas so standalone installs can resolve them via ZEE_ROOT.
+  bundlePersonas(path.join(dir, "dist", name))
+  bundleZeeAssets(path.join(dir, "dist", name))
+  await bundlePersonaSkills(path.join(dir, "dist", name))
+  bundleSrcModules(path.join(dir, "dist", name))
+  binaries[name] = Script.version
 }
-
-async function buildWithFallback() {
-  const binaries: Record<string, string> = {}
-
-  if (!skipInstall) {
-    await installOptionalBuildDependencies()
-  } else {
-    console.log("Skipping optional dependency install (--skip-install)")
-  }
-  if (fs.existsSync(zeeRoot)) {
-    await ensureZeeDependencies()
-  }
-
-  try {
-    await buildTargets(binaries)
-  } catch (error) {
-    if (skipInstall || strictInstall) {
-      throw error
-    }
-    const message = error instanceof Error ? error.message : String(error)
-    console.warn(
-      "WARNING: build failed after optional install; retrying once with --skip-install fallback behavior.",
-    )
-    console.warn(`Cause: ${message}`)
-    console.warn("Set ZEE_BUILD_STRICT_INSTALL=1 to disable fallback retry.")
-    await $`rm -rf dist`
-    for (const key of Object.keys(binaries)) {
-      delete binaries[key]
-    }
-    await buildTargets(binaries)
-  }
-
-  return binaries
-}
-
-const binaries = await buildWithFallback()
 
 export { binaries }

@@ -12,10 +12,26 @@ import { lazy } from "@/util/lazy"
 
 export namespace ModelsDev {
   const log = Log.create({ service: "models.dev" })
+  let configuredUrl: string | undefined
+  let configuredPath: string | undefined
+
+  function normalizeConfigValue(value: string | undefined): string | undefined {
+    const trimmed = value?.trim()
+    return trimmed ? trimmed : undefined
+  }
+
   // Use getter to ensure path is evaluated at runtime, not module load time
   // This is necessary for test isolation where XDG_CACHE_HOME is set dynamically
   function getFilepath() {
     return path.join(Global.Path.cache, "models.json")
+  }
+
+  function getUrl() {
+    return process.env.ZEE_MODELS_URL || Flag.ZEE_MODELS_URL || configuredUrl || "https://models.dev"
+  }
+
+  function getPath() {
+    return process.env.ZEE_MODELS_PATH || Flag.ZEE_MODELS_PATH || configuredPath || getFilepath()
   }
 
   export const Model = z.object({
@@ -85,12 +101,14 @@ export namespace ModelsDev {
 
   export type Provider = z.infer<typeof Provider>
 
-  function url() {
-    return Flag.ZEE_MODELS_URL || "https://models.dev"
+  export function configure(options: { url?: string; path?: string } = {}) {
+    configuredUrl = normalizeConfigValue(options.url)
+    configuredPath = normalizeConfigValue(options.path)
+    Data.reset()
   }
 
   export const Data = lazy(async () => {
-    const file = Bun.file(Flag.ZEE_MODELS_PATH ?? getFilepath())
+    const file = Bun.file(getPath())
     const result = await file.json().catch(() => {})
     if (result) return result
     // @ts-ignore
@@ -99,7 +117,7 @@ export namespace ModelsDev {
       .catch(() => undefined)
     if (snapshot) return snapshot
     if (Flag.ZEE_DISABLE_MODELS_FETCH) return {}
-    const json = await fetch(`${url()}/api.json`).then((x) => x.text())
+    const json = await fetch(`${getUrl()}/api.json`).then((x) => x.text())
     return JSON.parse(json)
   })
 
@@ -112,9 +130,9 @@ export namespace ModelsDev {
    * Fetch the latest model catalog from models.dev and write to cache.
    */
   export async function refresh(options: { timeoutMs?: number } = {}) {
-    const filepath = getFilepath()
-    log.info("refreshing models from", { url: `${url()}/api.json` })
-    const result = await fetch(`${url()}/api.json`, {
+    const filepath = getPath()
+    log.info("refreshing models from", { url: `${getUrl()}/api.json` })
+    const result = await fetch(`${getUrl()}/api.json`, {
       headers: {
         "User-Agent": Installation.USER_AGENT,
       },

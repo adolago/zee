@@ -190,8 +190,6 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
     "apply_patch",
     "lsp",
     "batch",
-    "hold_release",
-    "hold_enter",
     "question",
   ]
   const coreSeen: typeof tools = []

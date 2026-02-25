@@ -2,7 +2,6 @@ import z from "zod"
 import { Tool } from "./tool"
 import DESCRIPTION_WRITE from "./todowrite.txt"
 import { Todo } from "../session/todo"
-import { HoldMode } from "@/config/hold-mode"
 
 export const TodoWriteTool = Tool.define("todowrite", {
   description: DESCRIPTION_WRITE,
@@ -16,14 +15,8 @@ export const TodoWriteTool = Tool.define("todowrite", {
       ),
   }),
   async execute(params, ctx) {
-    const holdMode = ctx.extra?.holdMode === true
-    const skipPermissions = ctx.extra?.skipPermissions === true
-
-    if (holdMode && !skipPermissions) {
-      const allowed = await HoldMode.isToolAllowedInHold("todowrite", skipPermissions)
-      if (!allowed) {
-        throw new Error("HOLD MODE: Cannot modify todos. Switch to RELEASE mode to update todos.")
-      }
+    if (ctx.extra?.mode === "plan") {
+      throw new Error("PLAN mode: Cannot modify todos. Switch to ACCEPT or BYPASS mode to update todos.")
     }
 
     await ctx.ask({

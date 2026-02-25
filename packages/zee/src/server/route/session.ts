@@ -1031,7 +1031,7 @@ export const SessionRoute = new Hono()
       // clear the prompt optimistically on a background failure.
       const ack = await SessionPrompt.prompt({ ...body, sessionID, noReply: true })
 
-      // Only start the assistant loop for real user prompts (not /hold, /release, etc)
+      // Only start the assistant loop for real user prompts (not mode-switch acknowledgements, etc)
       // and when the caller actually wants a reply.
       const status = SessionStatus.get(sessionID)
       if (status.type !== "busy" && ack.info.role === "user" && body.noReply !== true) {

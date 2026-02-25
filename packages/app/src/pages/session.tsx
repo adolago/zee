@@ -1826,14 +1826,12 @@ export default function Page() {
                     <div class="relative w-full h-full min-w-0">
                       <div
                         class="absolute left-1/2 -translate-x-1/2 bottom-[calc(var(--prompt-height,8rem)+32px)] z-[60] pointer-events-none transition-all duration-200 ease-out"
-                        data-component="session-resume-scroll-dock"
                         classList={{
                           "opacity-100 translate-y-0 scale-100": autoScroll.userScrolled(),
                           "opacity-0 translate-y-2 scale-95 pointer-events-none": !autoScroll.userScrolled(),
                         }}
                       >
                         <button
-                          data-action="session-resume-scroll"
                           class="pointer-events-auto size-8 flex items-center justify-center rounded-full bg-background-base border border-border-base shadow-sm text-text-base hover:bg-background-stronger transition-colors"
                           onClick={resumeScroll}
                         >
@@ -1842,7 +1840,6 @@ export default function Page() {
                       </div>
                       <div
                         ref={setScrollRef}
-                        data-component="session-scroller"
                         onWheel={(e) => {
                           const root = e.currentTarget
                           const target = e.target instanceof Element ? e.target : undefined
@@ -1929,11 +1926,8 @@ export default function Page() {
                           markScrollGesture(e.currentTarget)
                         }}
                         onScroll={(e) => {
-                          autoScroll.handleScroll()
-                          // Always process scroll events for auto-follow state. Some manual
-                          // interactions (for example dragging the scrollbar thumb) won't
-                          // set `scrollGesture`, but should still pause follow mode.
                           if (!hasScrollGesture()) return
+                          autoScroll.handleScroll()
                           markScrollGesture(e.currentTarget)
                           if (isDesktop()) scheduleScrollSpy(e.currentTarget)
                         }}

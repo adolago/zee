@@ -73,7 +73,8 @@ const originalBunWrite = Bun.write
 Bun.write = ((pathLike: any, data: any, ...rest: any[]) =>
   originalBunWrite(sanitizePathInput(pathLike) as any, data, ...rest)) as typeof Bun.write
 
-const hasNullByte = (value: unknown) => typeof value === "string" && value.includes("\0")
+const hasNullByte = (value: unknown) =>
+  typeof value === "string" && (value.includes("\0") || value.includes("\\u0000"))
 const shouldIgnoreNullBytePathError = (error: unknown) => {
   if (!error || typeof error !== "object") return false
   const code = (error as any).code

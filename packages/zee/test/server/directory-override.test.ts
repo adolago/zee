@@ -6,7 +6,6 @@ import path from "path"
 import { Config } from "../../src/config/config"
 import { reloadFlags } from "../../src/flag/flag"
 import { Server } from "../../src/server/server"
-import { tmpdir } from "../fixture/fixture"
 
 function basicAuth(username: string, password: string): string {
   const token = Buffer.from(`${username}:${password}`, "utf-8").toString("base64")
@@ -63,9 +62,9 @@ describe("server directory override security", () => {
     reloadFlags()
     Server.App.reset()
 
-    await using tmp = await tmpdir()
+    const overrideDirectory = path.resolve(process.cwd(), "..")
     const app = Server.App()
-    const res = await app.request(`/global/health?directory=${encodeURIComponent(tmp.path)}`, {
+    const res = await app.request(`/global/health?directory=${encodeURIComponent(overrideDirectory)}`, {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -79,9 +78,9 @@ describe("server directory override security", () => {
     reloadFlags()
     Server.App.reset()
 
-    await using tmp = await tmpdir()
+    const overrideDirectory = path.resolve(process.cwd(), "..")
     const app = Server.App()
-    const res = await app.request(`/global/health?directory=${encodeURIComponent(tmp.path)}`, {
+    const res = await app.request(`/global/health?directory=${encodeURIComponent(overrideDirectory)}`, {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -133,21 +132,21 @@ describe("server directory override security", () => {
     Config.global.reset()
     Server.App.reset()
 
-    await using tmp1 = await tmpdir()
-    await using tmp2 = await tmpdir()
+    const dir1 = path.resolve(process.cwd(), "..")
+    const dir2 = path.resolve(process.cwd(), "../..")
 
     const app = Server.App()
     const headers = {
       Authorization: basicAuth("zee", "test-password"),
     }
 
-    const res1 = await app.request(`/global/health?directory=${encodeURIComponent(tmp1.path)}`, {
+    const res1 = await app.request(`/global/health?directory=${encodeURIComponent(dir1)}`, {
       method: "GET",
       headers,
     })
     expect(res1.status).toBe(200)
 
-    const res2 = await app.request(`/global/health?directory=${encodeURIComponent(tmp2.path)}`, {
+    const res2 = await app.request(`/global/health?directory=${encodeURIComponent(dir2)}`, {
       method: "GET",
       headers,
     })

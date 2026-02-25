@@ -7,7 +7,7 @@ import type { Config } from "../../src/config/config"
 
 // Strip null bytes from paths (defensive fix for CI environment issues)
 function sanitizePath(p: string): string {
-  return p.replace(/\0/g, "")
+  return p.replace(/\0/g, "").replace(/\\u0000/g, "")
 }
 
 type TmpDirOptions<T> = {
@@ -16,8 +16,12 @@ type TmpDirOptions<T> = {
   init?: (dir: string) => Promise<T>
   dispose?: (dir: string) => Promise<T>
 }
-const hasNullByte = (value: unknown) => typeof value === "string" && value.includes("\0")
-const skipNullPathBug = Bun.version === "1.3.5"
+const hasNullByte = (value: unknown) =>
+  typeof value === "string" && (value.includes("\0") || value.includes("\\u0000"))
+// Bun 1.3.x can emit internal null-byte path errors during recursive temp-dir cleanup.
+// Allow opt-out via env for local troubleshooting.
+const skipNullPathBug =
+  process.env["ZEE_TEST_SKIP_TMPDIR_CLEANUP"] === "true" || /^1\.3\./.test(Bun.version)
 const shouldIgnoreNullBytePathError = (error: unknown) => {
   if (!error || typeof error !== "object") return false
   const code = (error as any).code

@@ -313,8 +313,8 @@ describe("Question state management", () => {
   })
 })
 
-describe("Hold/Release mode", () => {
-  test("hold mode defaults to true", () => {
+describe("Plan/Accept mode", () => {
+  test("plan mode defaults to true", () => {
     const result = createRoot((dispose) => {
       const [store] = createStore({ hold: true })
       return { hold: store.hold, dispose }
@@ -323,7 +323,7 @@ describe("Hold/Release mode", () => {
     result.dispose()
   })
 
-  test("toggle switches between hold and release", () => {
+  test("toggle switches between plan and accept", () => {
     const result = createRoot((dispose) => {
       const [store, setStore] = createStore({ hold: true })
 
@@ -340,7 +340,7 @@ describe("Hold/Release mode", () => {
     result.dispose()
   })
 
-  test("release mode: isRelease=true, isHold=false", () => {
+  test("accept mode: isAccept=true, isPlan=false", () => {
     const result = createRoot((dispose) => {
       const [store, setStore] = createStore({ hold: true })
       setStore("hold", false)

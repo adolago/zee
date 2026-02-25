@@ -42,9 +42,14 @@ import os from "os"
 
 const log = Log.create({ service: "always-on" })
 
+type MdnsOption = boolean | { enabled?: boolean; minimal?: boolean }
+
 export interface AlwaysOnOptions {
   hostname: string
   port: number
+  mdns?: MdnsOption
+  mdnsDomain?: string
+  cors?: string[]
   directory: string
   alwaysOnProfile?: boolean
   skipSetupCheck?: boolean
@@ -169,6 +174,9 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   const {
     hostname,
     port,
+    mdns,
+    mdnsDomain,
+    cors,
     directory,
     alwaysOnProfile = false,
     skipSetupCheck = false,
@@ -206,6 +214,9 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     directory,
     hostname,
     port,
+    mdns,
+    mdnsDomain,
+    cors,
     setupOk,
   })
   if (opts.wezterm !== undefined || opts.weztermLayout !== undefined) {
@@ -213,7 +224,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   }
 
   // Start the server
-  const server = Server.listen({ hostname, port })
+  const server = Server.listen({ hostname, port, mdns, mdnsDomain, cors })
   const serverHost = server.hostname ?? hostname
   const daemonHost = serverHost === "0.0.0.0" ? "127.0.0.1" : serverHost
   const daemonPort = server.port ?? port

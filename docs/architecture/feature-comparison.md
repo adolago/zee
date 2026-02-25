@@ -10,14 +10,14 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 
 ## Snapshot
 
-- Generated: `2026-02-22T10:48:40.011Z`
+- Generated: `2026-02-25T10:30:01.414Z`
 - Zee: `local/0.3.4` (`source`)
-- Zee git: `e43b23f36e742b11d5c78f475ceb6ecf2e9be614`
-- OpenCode pin: `13616e345930b6c9e7cca898fcb98a8c4ff896b5` (`opencode/dev`)
-- OpenClaw pin: `9f0b6a8c92a790fffd0639c89c2d1411ed78b7a8` (`openclaw/main`)
-- Pi-mono pin: `3a3e37d39014acc4269171be2a51518f6a71be1f` (`pimono/main`)
+- Zee git: `a141706a7cd86543daae5b393cc1df7fea10cfd4`
+- OpenCode pin: `d848c9b6a32f408e8b9bf6448b83af05629454d0` (`opencode/dev`)
+- OpenClaw pin: `b3f46f0e2891621467061e4c24851882609b2cbd` (`openclaw/main`)
+- Pi-mono pin: `5c0ec26c28c918c5301f218e8c13fcc540d8e3a4` (`pimono/main`)
 - Pi-mono installed: `@mariozechner/pi-coding-agent@0.53.1`
-- Pi-mono latest tag: `v0.54.0`
+- Pi-mono latest tag: `v0.55.0`
 - Skills: `85` (top: @zee=85)
 
 ## Legend

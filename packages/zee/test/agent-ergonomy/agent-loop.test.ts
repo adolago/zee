@@ -362,15 +362,15 @@ describe("Question answer loop", () => {
   })
 })
 
-describe("Release mode auto-approval", () => {
-  test("release mode auto-approves without user interaction", () => {
+describe("Execution mode auto-approval", () => {
+  test("accept mode auto-approves without user interaction", () => {
     const { client, tracker } = createMockSDKClient()
 
     const request = createPermissionRequest({ id: "perm-auto" })
-    const isRelease = true
+    const isAccept = true
 
     // Simulate onMount behavior from permission.tsx
-    if (isRelease) {
+    if (isAccept) {
       client.permission.reply({
         reply: "once",
         requestID: request.id,
@@ -384,14 +384,14 @@ describe("Release mode auto-approval", () => {
     })
   })
 
-  test("hold mode does NOT auto-approve", () => {
+  test("plan mode does NOT auto-approve", () => {
     const { client, tracker } = createMockSDKClient()
 
     const request = createPermissionRequest({ id: "perm-hold" })
-    const isRelease = false
+    const isAccept = false
 
-    // onMount: only auto-approve if release mode
-    if (isRelease) {
+    // onMount: only auto-approve if accept mode
+    if (isAccept) {
       client.permission.reply({
         reply: "once",
         requestID: request.id,
@@ -410,12 +410,12 @@ describe("Release mode auto-approval", () => {
         permission: {} as Record<string, Array<{ id: string; sessionID: string }>>,
       })
 
-      // Permission arrives while in hold mode
+      // Permission arrives while in plan mode
       const request = createPermissionRequest({ id: "perm-pending" })
       setStore("permission", "session-1", [request])
 
-      // onMount already ran with hold=true, so no auto-approve happened
-      // Now switch to release mode
+      // onMount already ran with plan=true, so no auto-approve happened
+      // Now switch to accept mode
       setStore("hold", false)
 
       // The existing permission should NOT be auto-approved just because mode changed

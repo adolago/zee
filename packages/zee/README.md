@@ -146,13 +146,6 @@ cd ../..
 ./script/verify-binary.sh
 ```
 
-`bun run build` now uses `--skip-install` by default for local reliability when Bun crashes in optional install paths.
-For strict CI/release behavior, run:
-
-```bash
-bun run build:strict
-```
-
 If verification fails:
 
 ```bash
@@ -167,7 +160,6 @@ ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/
 `Daemon not running`
 - Run `systemctl --user status zee.service --no-pager`.
 - Restart with `systemctl --user restart zee.service`.
-- If startup is blocked by setup checks, run `docker compose up -d` (Qdrant) or `zee setup`, then restart daemon.
 
 `Skill is visible but blocked`
 - Run `zee debug skill-audit` and check missing env/binary requirements.

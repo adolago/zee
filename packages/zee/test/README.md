@@ -12,7 +12,7 @@ Each subdirectory mirrors a source domain in `src/`:
 | `auth/`          | Authentication and credential handling              |
 | `cli/tui/`       | TUI components (dialog, keybind, layout)            |
 | `compat/`        | Backward compatibility shims                        |
-| `config/`        | Configuration loading, hold mode, settings          |
+| `config/`        | Configuration loading and settings                   |
 | `file/`          | File operations, ripgrep integration                |
 | `format/`        | Output formatting                                   |
 | `gateway/`       | Gateway server and routing                          |
@@ -62,7 +62,7 @@ bun test test/session/
 bun test test/session/compaction.test.ts
 
 # Pattern match
-bun test --grep "hold mode"
+bun test --grep "mode"
 
 # With coverage
 bun test --coverage

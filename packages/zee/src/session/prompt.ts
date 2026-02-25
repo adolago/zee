@@ -20,9 +20,8 @@ import { ProviderTransform } from "../provider/transform"
 import { SystemPrompt } from "./system"
 import { InstructionPrompt } from "./instruction"
 import { Plugin } from "../plugin"
-// NOTE: PROMPT_PLAN and BUILD_SWITCH removed - replaced by hold/release mode in TUI
+// NOTE: PROMPT_PLAN and BUILD_SWITCH removed; execution behavior is controlled by plan/accept/bypass.
 import MAX_STEPS from "../session/prompt/max-steps.txt"
-import HOLD_MODE_PROMPT from "./prompt/hold-mode.txt"
 import { defer } from "../util/defer"
 import { clone, mergeDeep } from "remeda"
 import { ToolRegistry } from "../tool/registry"
@@ -253,7 +252,7 @@ export namespace SessionPrompt {
 
   /**
    * Resolve the session mode (plan/accept/bypass).
-   * Priority: per-message explicit mode > legacy options mode > per-session mode
+   * Priority: per-message explicit mode > per-session mode > legacy options mode
    * > per-message tools > surface default.
    */
   export function resolveMode(
@@ -265,13 +264,13 @@ export namespace SessionPrompt {
     const explicitMode = normalizeMode(messageMode)
     if (explicitMode) return explicitMode
 
-    // Backward compatibility for older clients that sent mode in options.
-    const legacyMode = normalizeMode(messageOptions?.mode)
-    if (legacyMode) return legacyMode
-
     // Per-session mode
     const sessionMode = normalizeMode(session.mode)
     if (sessionMode) return sessionMode
+
+    // Backward compatibility for older clients that sent mode in options.
+    const legacyMode = normalizeMode(messageOptions?.mode)
+    if (legacyMode) return legacyMode
 
     // Per-message tools fallback (backward compat: edit=false means plan)
     if (messageTools?.edit === false) return "plan"
@@ -281,16 +280,28 @@ export namespace SessionPrompt {
     return "plan"
   }
 
-  /**
-   * Resolve whether hold mode is active (backward compat helper).
-   */
-  export function resolveHoldMode(
-    session: Session.Info,
-    messageTools?: Record<string, boolean>,
-    messageOptions?: Record<string, any>,
-    messageMode?: unknown,
-  ): boolean {
-    return resolveMode(session, messageTools, messageOptions, messageMode) === "plan"
+  function buildExecutionModeReminder(mode: Mode): string {
+    const lines = [
+      "<system-reminder>",
+      `[EXECUTION MODE] ${mode.toUpperCase()}`,
+    ]
+
+    if (mode === "plan") {
+      lines.push("PLAN mode is active.")
+      lines.push("Do not modify files or external state in PLAN mode.")
+      lines.push("If a task requires mutations, ask the user to switch to ACCEPT or BYPASS mode first.")
+    } else if (mode === "accept") {
+      lines.push("ACCEPT mode is active.")
+      lines.push("Edit tools are auto-approved according to permission policy.")
+      lines.push("Do not ask the user to switch to ACCEPT mode because it is already active.")
+    } else {
+      lines.push("BYPASS mode is active.")
+      lines.push("BYPASS is more permissive than ACCEPT and skips permission checks.")
+      lines.push("Do not ask the user to switch to ACCEPT mode while BYPASS mode is active.")
+    }
+
+    lines.push("</system-reminder>")
+    return lines.join("\n")
   }
 
   /**
@@ -503,18 +514,47 @@ export namespace SessionPrompt {
       startReleaseTimer(input.sessionID, timeoutMs)
     }
 
-    // Handle /hold, /plan, /release, /accept, /bypass commands early so mode switching
+    // Handle /plan, /accept, /bypass commands early so mode switching
     // still works even if the memory backend/MCP is unavailable.
     const firstText = input.parts.find((p) => p.type === "text")?.text?.trim()
+    const firstWords = firstText?.split(/\s+/) ?? []
+    const firstCommand = firstWords[0]
+    const commandArg = firstWords[1]
+
+    if (firstCommand === "/hold" || firstCommand === "/release") {
+      const message = await createUserMessage(input)
+      const confirmMsg: MessageV2.Assistant = {
+        id: Identifier.ascending("message"),
+        sessionID: input.sessionID,
+        parentID: message.info.id,
+        role: "assistant",
+        mode: input.agent ?? "zee",
+        agent: input.agent ?? "zee",
+        path: { cwd: Instance.directory, root: Instance.worktree },
+        cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+        modelID: "system",
+        providerID: "system",
+        finish: "stop",
+        time: { created: Date.now(), completed: Date.now() },
+      }
+      await Session.updateMessage(confirmMsg)
+      await Session.updatePart({
+        id: Identifier.ascending("part"),
+        messageID: confirmMsg.id,
+        sessionID: input.sessionID,
+        type: "text",
+        text: 'Command removed. Use "/plan", "/accept", or "/bypass".',
+      } satisfies MessageV2.TextPart)
+      return { info: confirmMsg, parts: [] } as MessageV2.WithParts
+    }
+
     const modeCommandMap: Record<string, "plan" | "accept" | "bypass"> = {
-      "/hold": "plan",
       "/plan": "plan",
       "/accept": "accept",
       "/bypass": "bypass",
     }
-    // /release with optional PIN arg maps to accept
-    const requestedMode =
-      modeCommandMap[firstText ?? ""] ?? (firstText?.startsWith("/release") ? ("accept" as const) : undefined)
+    const requestedMode = modeCommandMap[firstCommand ?? ""]
     if (requestedMode) {
       const message = await createUserMessage(input)
 
@@ -541,8 +581,7 @@ export namespace SessionPrompt {
             allowed = false
             responseText = `${requestedMode.toUpperCase()} mode requires a PIN. Configure experimental.surfaces.${surface}.releasePin.`
           } else {
-            const parts = firstText!.split(/\s+/)
-            const providedPin = parts[1]
+            const providedPin = commandArg
             const pinMatch =
               providedPin != null &&
               providedPin.length === pin.length &&
@@ -610,7 +649,11 @@ export namespace SessionPrompt {
       return { info: confirmMsg, parts: [] } as MessageV2.WithParts
     }
 
-    await ensureRequiredMemory(input.sessionID)
+    // noReply calls (for example steer-route injections) should persist user input
+    // without hard-failing on memory backend checks at this point.
+    if (input.noReply !== true) {
+      await ensureRequiredMemory(input.sessionID)
+    }
 
     const message = await createUserMessage(input)
     await Session.touch(input.sessionID)
@@ -1305,6 +1348,7 @@ export namespace SessionPrompt {
               return undefined
             })
           : undefined
+      const executionMode = resolveMode(session, lastUser.tools, lastUser.options, lastUser.mode)
 
       const result = await processor.process({
         user: lastUser,
@@ -1316,7 +1360,7 @@ export namespace SessionPrompt {
           ...(await InstructionPrompt.system()),
           ...sessionSystemContext,
           ...(skillRecallContext ? [skillRecallContext] : []),
-          ...(resolveHoldMode(session, lastUser.tools, lastUser.options, lastUser.mode) ? [HOLD_MODE_PROMPT] : []),
+          buildExecutionModeReminder(executionMode),
         ],
         messages: [
           ...(await MessageV2.toModelMessage(sessionMessages, model)),
@@ -1402,7 +1446,6 @@ export namespace SessionPrompt {
     const tools: Record<string, AITool> = {}
 
     const mode = resolveMode(input.session, input.tools, input.options, input.mode)
-    const holdMode = mode === "plan"
     const skipPermissions = mode === "bypass"
 
     const context = (args: any, options: ToolCallOptions): Tool.Context => ({
@@ -1415,7 +1458,7 @@ export namespace SessionPrompt {
       extra: {
         model: input.model,
         bypassAgentCheck: input.bypassAgentCheck,
-        holdMode,
+        mode,
         skipPermissions,
       },
       agent: input.agent.name,
@@ -2021,7 +2064,7 @@ export namespace SessionPrompt {
     const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
     if (!userMessage) return input.messages
 
-    // NOTE: Plan/build agent reminders removed - hold/release mode now handles this in the TUI
+    // NOTE: Plan/build agent reminders removed; session execution mode is handled by plan/accept/bypass.
 
     const followupExecutionReminder = buildFollowupExecutionReminder({
       messages: input.messages,

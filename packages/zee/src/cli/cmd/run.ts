@@ -243,7 +243,7 @@ export const RunCommand = cmd({
       })
       .option("skip-permissions", {
         type: "boolean",
-        describe: "skip all permission checks (no cuffs mode, equivalent to release mode)",
+        describe: "skip all permission checks (equivalent to BYPASS mode)",
       })
       .option("mode", {
         type: "string",
@@ -448,11 +448,11 @@ export const RunCommand = cmd({
         }
       })()
 
-      // Build mode keeps current behavior: first message in a new session starts in hold-like tooling.
+      // Build mode keeps current behavior: first message in a new session starts read-only.
       // Plan/review modes enforce read-only tools for the full run.
       const isNewSession = !args.continue && !args.session
       const readOnlyTools = { edit: false, write: false, notebook_edit: false }
-      const holdModeTools: Record<string, boolean> | undefined =
+      const modeTools: Record<string, boolean> | undefined =
         runMode === "build" ? (isNewSession ? readOnlyTools : undefined) : readOnlyTools
       const skipPermissions = runMode === "build" ? args.skipPermissions : false
 
@@ -464,7 +464,7 @@ export const RunCommand = cmd({
           command: args.command,
           arguments: message,
           variant: args.variant,
-          tools: holdModeTools,
+          tools: modeTools,
         })
       } else {
         const modelParam = args.model ? Provider.parseModel(args.model) : undefined
@@ -473,7 +473,7 @@ export const RunCommand = cmd({
           agent: resolvedAgent,
           model: modelParam,
           variant: args.variant,
-          tools: holdModeTools,
+          tools: modeTools,
           options: { skipPermissions },
           parts: [...fileParts, { type: "text", text: message }],
         })

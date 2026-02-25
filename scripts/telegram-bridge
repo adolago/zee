@@ -50,25 +50,10 @@ DEFAULT_STATE_PATH = os.environ.get(
     str(Path.home() / ".local" / "state" / "zee" / "telegram-bridge.json"),
 )
 DEFAULT_POLL_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_POLL_TIMEOUT", "30"))
-DEFAULT_PROMPT_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_PROMPT_TIMEOUT", "25"))
-DEFAULT_MAX_UPDATE_AGE_SEC = int(os.environ.get("ZEE_TELEGRAM_MAX_UPDATE_AGE_SEC", "1800"))
 DEFAULT_ALLOWED_CHAT_IDS = os.environ.get("ZEE_TELEGRAM_ALLOWED_CHAT_IDS", "")
 DEFAULT_ZEE_API_TOKEN = os.environ.get("ZEE_API_TOKEN", "").strip()
 
 TELEGRAM_MAX_TEXT = 4096
-SIMPLE_GREETINGS = {
-    "hi",
-    "hello",
-    "hey",
-    "good morning",
-    "good afternoon",
-    "good evening",
-    "good night",
-    "yo",
-    "sup",
-    "whats up",
-    "what's up",
-}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -237,20 +222,6 @@ def command_name(text: str) -> str:
     return token.split("@", 1)[0].lower()
 
 
-def normalize_text_for_match(text: str) -> str:
-    lowered = text.strip().lower()
-    allowed = []
-    for ch in lowered:
-        if ch.isalnum() or ch.isspace() or ch in {"'"}:
-            allowed.append(ch)
-    compact = " ".join("".join(allowed).split())
-    return compact
-
-
-def is_simple_greeting(text: str) -> bool:
-    return normalize_text_for_match(text) in SIMPLE_GREETINGS
-
-
 def chunk_text(text: str, max_len: int = TELEGRAM_MAX_TEXT) -> list[str]:
     if len(text) <= max_len:
         return [text]
@@ -337,7 +308,6 @@ def prompt_zee(
     agent: str,
     model_provider: str | None,
     model_id: str | None,
-    prompt_timeout: int,
     auth_token: str | None,
 ) -> str:
     payload = {
@@ -351,7 +321,7 @@ def prompt_zee(
         base_url,
         f"/session/{session_id}/message",
         payload,
-        timeout=prompt_timeout,
+        timeout=300,
         auth_token=auth_token,
     )
 
@@ -399,8 +369,6 @@ def handle_update(
     session_surface: str,
     model_provider: str | None,
     model_id: str | None,
-    prompt_timeout: int,
-    max_update_age_sec: int,
     allowed_chat_ids: set[int] | None,
     auth_token: str | None,
 ) -> bool:
@@ -428,18 +396,6 @@ def handle_update(
     text = text.strip()
     if not text:
         return False
-
-    message_date = message.get("date")
-    if isinstance(message_date, int):
-        age_sec = int(time.time()) - message_date
-        if age_sec > max_update_age_sec:
-            log.info(
-                "Skipping stale message update_id=%s chat=%s age=%ss",
-                update.get("update_id"),
-                chat_id,
-                age_sec,
-            )
-            return False
 
     cmd = command_name(text)
     if cmd in {"/start", "/help"}:
@@ -484,15 +440,6 @@ def handle_update(
         )
         return True
 
-    if is_simple_greeting(text):
-        telegram_send_text(
-            token,
-            chat_id,
-            "Good morning. I'm online and ready.",
-            reply_to_message_id=message.get("message_id"),
-        )
-        return False
-
     sender_id = str(chat_id)
     session_id = ensure_session(
         state,
@@ -502,44 +449,17 @@ def handle_update(
         session_surface,
         auth_token,
     )
-    log.info("Processing message update_id=%s chat=%s session=%s", update.get("update_id"), chat_id, session_id)
     telegram_send_typing(token, chat_id)
-    try:
-        reply = prompt_zee(
-            base_url,
-            session_id,
-            text,
-            sender_id,
-            agent,
-            model_provider,
-            model_id,
-            prompt_timeout,
-            auth_token,
-        )
-    except Exception as err:
-        message_text = str(err).lower()
-        is_timeout = "timed out" in message_text or "timeout" in message_text
-        if not is_timeout:
-            raise
-
-        # Session can become wedged after a long-running call. Roll to a fresh one
-        # so users don't get stuck forever.
-        previous = state["sessions"].pop(str(chat_id), None)
-        new_session_id = ensure_session(
-            state,
-            chat,
-            base_url,
-            agent,
-            session_surface,
-            auth_token,
-        )
-        log.warning(
-            "Prompt timed out for chat=%s previous_session=%s new_session=%s; returning fail-fast response",
-            chat_id,
-            previous,
-            new_session_id,
-        )
-        reply = "Zee timed out on that request. I reset the session; please try again."
+    reply = prompt_zee(
+        base_url,
+        session_id,
+        text,
+        sender_id,
+        agent,
+        model_provider,
+        model_id,
+        auth_token,
+    )
     telegram_send_text(
         token,
         chat_id,
@@ -554,8 +474,6 @@ def run(
     base_url: str,
     state_path: Path,
     poll_timeout: int,
-    prompt_timeout: int,
-    max_update_age_sec: int,
     agent: str,
     session_surface: str,
     model_provider: str | None,
@@ -567,15 +485,13 @@ def run(
     save_state(state_path, state)
 
     log.info(
-        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, model=%s/%s, poll_timeout=%ss, prompt_timeout=%ss, max_update_age=%ss, allowed_chats=%s)",
+        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, model=%s/%s, poll_timeout=%ss, allowed_chats=%s)",
         base_url,
         agent,
         session_surface,
         model_provider or "-",
         model_id or "-",
         poll_timeout,
-        prompt_timeout,
-        max_update_age_sec,
         "*" if allowed_chat_ids is None else len(allowed_chat_ids),
     )
 
@@ -619,8 +535,6 @@ def run(
                         session_surface=session_surface,
                         model_provider=model_provider,
                         model_id=model_id,
-                        prompt_timeout=prompt_timeout,
-                        max_update_age_sec=max_update_age_sec,
                         allowed_chat_ids=allowed_chat_ids,
                         auth_token=auth_token,
                     )
@@ -698,18 +612,6 @@ def main():
         help=f"Telegram long-poll timeout in seconds (default: {DEFAULT_POLL_TIMEOUT})",
     )
     parser.add_argument(
-        "--prompt-timeout",
-        type=int,
-        default=DEFAULT_PROMPT_TIMEOUT,
-        help=f"Zee /session/:id/message timeout in seconds (default: {DEFAULT_PROMPT_TIMEOUT})",
-    )
-    parser.add_argument(
-        "--max-update-age-sec",
-        type=int,
-        default=DEFAULT_MAX_UPDATE_AGE_SEC,
-        help=f"Skip Telegram updates older than this many seconds (default: {DEFAULT_MAX_UPDATE_AGE_SEC})",
-    )
-    parser.add_argument(
         "--allowed-chat-ids",
         default=DEFAULT_ALLOWED_CHAT_IDS,
         help="Optional CSV allowlist of numeric Telegram chat IDs",
@@ -727,10 +629,6 @@ def main():
 
     if args.poll_timeout < 1:
         raise SystemExit("--poll-timeout must be >= 1")
-    if args.prompt_timeout < 1:
-        raise SystemExit("--prompt-timeout must be >= 1")
-    if args.max_update_age_sec < 1:
-        raise SystemExit("--max-update-age-sec must be >= 1")
 
     model_provider = args.model_provider.strip() or None
     model_id = args.model_id.strip() or None
@@ -743,8 +641,6 @@ def main():
         base_url=args.zee_api_url.rstrip("/"),
         state_path=Path(args.state_path).expanduser(),
         poll_timeout=args.poll_timeout,
-        prompt_timeout=args.prompt_timeout,
-        max_update_age_sec=args.max_update_age_sec,
         agent=args.agent,
         session_surface=args.session_surface,
         model_provider=model_provider,

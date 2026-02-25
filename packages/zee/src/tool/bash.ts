@@ -15,7 +15,6 @@ import { Shell } from "@/shell/shell"
 
 import { BashArity } from "@/permission/arity"
 import { Truncate } from "./truncation"
-import { HoldMode } from "@/config/hold-mode"
 import { createSafeEnv } from "@/security/env-sanitize"
 import { AppDeps } from "@/app/deps"
 
@@ -26,26 +25,136 @@ const MAX_OUTPUT_BYTES = 10 * 1024 * 1024 // 10MB - kills command if exceeded
 
 export const log = Log.create({ service: "bash-tool" })
 
-/**
- * Check if a command would modify state (files, processes, system).
- * This is a compatibility wrapper that uses the unified hold-mode command checking.
- * @deprecated Use HoldMode.checkCommand() instead for full hold-mode integration.
- */
+const WRAPPER_COMMANDS = new Set(["sudo", "doas", "env"])
+const FILE_STATE_COMMANDS = new Set([
+  "rm",
+  "mv",
+  "cp",
+  "mkdir",
+  "rmdir",
+  "touch",
+  "chmod",
+  "chown",
+  "ln",
+  "unlink",
+  "truncate",
+  "install",
+  "dd",
+  "tee",
+])
+const PROCESS_STATE_COMMANDS = new Set(["kill", "pkill", "killall", "renice"])
+const SYSTEM_STATE_COMMANDS = new Set([
+  "systemctl",
+  "service",
+  "shutdown",
+  "reboot",
+  "halt",
+  "poweroff",
+  "mount",
+  "umount",
+  "iptables",
+  "ip6tables",
+  "ufw",
+  "crontab",
+  "at",
+  "launchctl",
+])
+const GIT_MUTATING_SUBCOMMANDS = new Set([
+  "add",
+  "am",
+  "apply",
+  "branch",
+  "checkout",
+  "cherry-pick",
+  "clean",
+  "commit",
+  "merge",
+  "mv",
+  "pull",
+  "push",
+  "rebase",
+  "reset",
+  "restore",
+  "revert",
+  "rm",
+  "stash",
+  "switch",
+  "tag",
+])
+const REDIRECTION_PATTERN = /(^|[\s;|&])(?:\d*>>?|\&>>?)(?=\s|$)/
+
+function tokenize(command: string): string[] {
+  return command.trim().split(/\s+/).filter(Boolean)
+}
+
+function unwrapLeadingWrappers(tokens: string[]): string[] {
+  let idx = 0
+  while (idx < tokens.length) {
+    const token = tokens[idx]?.toLowerCase()
+    if (!token || !WRAPPER_COMMANDS.has(token)) break
+
+    if (token === "env") {
+      idx++
+      while (idx < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=.*/.test(tokens[idx]!)) idx++
+      continue
+    }
+
+    idx++
+    while (idx < tokens.length && tokens[idx]!.startsWith("-")) {
+      const flag = tokens[idx]!
+      idx++
+      if (["-u", "-g", "-h", "-p", "-C", "-D", "-T", "-R", "-U", "-r"].includes(flag) && idx < tokens.length) {
+        idx++
+      }
+    }
+  }
+  return tokens.slice(idx)
+}
+
 export async function isFileModifyingCommand(
   command: string,
   options?: { blocklist?: Set<string> },
 ): Promise<{ modifying: boolean; reason?: string }> {
-  // If a custom blocklist is provided, use the internal check
-  if (options?.blocklist) {
-    const result = await HoldMode.checkCommand(command, { holdMode: true })
-    // The result.blocked indicates if the command is blocked in hold mode
-    // which means it would modify state
-    return { modifying: result.blocked, reason: result.reason }
+  const text = command.trim()
+  if (!text) return { modifying: false }
+
+  if (REDIRECTION_PATTERN.test(text)) {
+    return { modifying: true, reason: "contains output redirection" }
   }
 
-  // Default: use hold mode check which includes all profile-based blocking
-  const result = await HoldMode.checkCommand(command, { holdMode: true })
-  return { modifying: result.blocked, reason: result.reason }
+  const tokens = unwrapLeadingWrappers(tokenize(text))
+  if (tokens.length === 0) return { modifying: false }
+
+  const cmd = tokens[0]!.toLowerCase()
+  const args = tokens.slice(1).map((t) => t.toLowerCase())
+
+  if (options?.blocklist?.has(cmd)) {
+    return { modifying: true, reason: `${cmd} is blocked by policy` }
+  }
+
+  if (cmd === "git") {
+    const sub = args[0]
+    if (sub && GIT_MUTATING_SUBCOMMANDS.has(sub)) {
+      return { modifying: true, reason: `git ${sub} mutates repository state` }
+    }
+    return { modifying: false }
+  }
+
+  if (cmd === "sed" && args.some((arg) => arg === "-i" || arg.startsWith("-i"))) {
+    return { modifying: true, reason: "sed -i edits files in place" }
+  }
+
+  if (FILE_STATE_COMMANDS.has(cmd)) {
+    return { modifying: true, reason: `${cmd} mutates file state` }
+  }
+  if (PROCESS_STATE_COMMANDS.has(cmd)) {
+    return { modifying: true, reason: `${cmd} mutates process state` }
+  }
+  if (SYSTEM_STATE_COMMANDS.has(cmd)) {
+    return { modifying: true, reason: `${cmd} mutates system state` }
+  }
+
+  return { modifying: false }
 }
 
 const resolveWasm = (asset: string) => {
@@ -114,58 +223,12 @@ export const BashTool = Tool.define("bash", async (initCtx) => {
     async execute(params: { command: string; timeout?: number; workdir?: string; description: string }, ctx) {
       const cwd = params.workdir || Instance.directory
 
-      // Use unified checkCommand for all hold-mode checks
-      const holdMode = ctx.extra?.holdMode === true
-      const skipPermissions = ctx.extra?.skipPermissions === true
-      const checkResult = await HoldMode.checkCommand(params.command, { holdMode, skipPermissions })
-
-      if (checkResult.blocked) {
-        // Command is blocked (either always_block or profile-based blocklist in HOLD mode)
-        if (checkResult.matchedPattern) {
-          // Blocked by always_block pattern
-          const blockedOutput = `BLOCKED: Command "${params.command}" is in always_block list and cannot be executed.`
-          log.info("blocked command from always_block list", {
-            command: params.command,
-            pattern: checkResult.matchedPattern,
-          })
+      if (ctx.extra?.mode === "plan") {
+        const check = await isFileModifyingCommand(params.command)
+        if (check.modifying) {
+          const blockedOutput = `PLAN mode: Command blocked because it may modify state (${check.reason ?? "state-changing command"}). Switch to ACCEPT or BYPASS mode to run mutating commands.`
           return {
-            title: "Blocked by config",
-            metadata: {
-              output: blockedOutput,
-              exit: 1 as number | null,
-              description: params.description,
-            },
-            output: blockedOutput,
-          }
-        } else {
-          // Blocked by profile-based blocklist in HOLD mode
-          const holdConfig = await HoldMode.load()
-          log.info("blocked state-modifying command in HOLD mode", {
-            command: params.command,
-            reason: checkResult.reason,
-            profile: checkResult.profile,
-          })
-          const blockedOutput = `HOLD MODE: Command blocked because it would modify state (${checkResult.reason}).
-
-In HOLD mode (profile: ${checkResult.profile}), you cannot:
-- Edit files (sed -i, etc.)
-- Create/delete files (touch, rm, mkdir, etc.)
-- Use output redirection (>, >>, 2>, &>)
-- Modify git state (git add, commit, push, etc.)
-- Control processes (kill, pkill, renice)
-- Modify system state (systemctl, shutdown, mount, iptables, etc.)
-${checkResult.profile === "strict" ? "- Run interpreters (python, node, etc.)\n- Use network tools (curl, wget, ssh)\n- Schedule tasks (crontab, at)" : ""}
-
-You can:
-- Read files (cat, head, tail)
-- Search (grep, find, rg)
-- View git state (git status, log, diff)
-- Run tests and builds
-${holdConfig.hold_allow.length > 0 ? `- Allowed exceptions: ${holdConfig.hold_allow.join(", ")}` : ""}
-
-To modify state, the user must switch to RELEASE mode.`
-          return {
-            title: "Blocked in HOLD mode",
+            title: "Blocked in PLAN mode",
             metadata: {
               output: blockedOutput,
               exit: 1 as number | null,
@@ -175,12 +238,6 @@ To modify state, the user must switch to RELEASE mode.`
           }
         }
       }
-
-      // RELEASE mode: release_confirm checks are handled by HoldMode.checkCommand
-      // In RELEASE mode (holdMode: false), all commands are auto-approved except:
-      // - Commands in always_block (blocked entirely)
-      // - Commands blocked by profile-based blocklist in HOLD mode
-      // The requiresConfirmation flag is no longer used in RELEASE mode
 
       if (params.timeout !== undefined && params.timeout < 0) {
         throw new Error(`Invalid timeout value: ${params.timeout}. Timeout must be a positive number.`)

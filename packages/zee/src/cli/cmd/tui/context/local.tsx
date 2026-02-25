@@ -538,13 +538,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const kv = useKV()
 
       const normalizeStoredMode = (value: unknown): SessionMode | undefined => {
-        const canonical = parseExecutionMode(value)
-        if (canonical) return canonical
-        if (typeof value !== "string") return undefined
-        const normalized = value.trim().toLowerCase()
-        if (normalized === "hold") return "plan"
-        if (normalized === "release") return "accept"
-        return undefined
+        return parseExecutionMode(value)
       }
 
       const stored = kv.get("mode", "plan")

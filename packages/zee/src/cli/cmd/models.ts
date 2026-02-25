@@ -5,6 +5,7 @@ import { ModelsDev } from "../../provider/models"
 import { cmd } from "./cmd"
 import { UI } from "../ui"
 import { EOL } from "os"
+import { Config } from "../../config/config"
 
 export const ModelsCommand = cmd({
   command: "models [provider]",
@@ -24,16 +25,30 @@ export const ModelsCommand = cmd({
         describe: "refresh the models cache from models.dev",
         type: "boolean",
       })
+      .option("models-url", {
+        describe: "override the models catalog base URL for this command",
+        type: "string",
+      })
+      .option("models-path", {
+        describe: "override the models catalog file path for this command",
+        type: "string",
+      })
   },
   handler: async (args) => {
-    if (args.refresh) {
-      await ModelsDev.refresh()
-      UI.println(UI.Style.TEXT_SUCCESS_BOLD + "Models cache refreshed" + UI.Style.TEXT_NORMAL)
-    }
-
     await Instance.provide({
       directory: process.cwd(),
       async fn() {
+        const config = await Config.get()
+        ModelsDev.configure({
+          url: typeof args["models-url"] === "string" ? args["models-url"] : config.models?.url,
+          path: typeof args["models-path"] === "string" ? args["models-path"] : config.models?.path,
+        })
+
+        if (args.refresh) {
+          await ModelsDev.refresh()
+          UI.println(UI.Style.TEXT_SUCCESS_BOLD + "Models cache refreshed" + UI.Style.TEXT_NORMAL)
+        }
+
         const providers = await Provider.list()
 
         function printModels(providerID: string, verbose?: boolean) {

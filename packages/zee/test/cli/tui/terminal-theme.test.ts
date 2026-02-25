@@ -2,6 +2,11 @@ import { describe, expect, test } from "bun:test"
 import { RGBA } from "@opentui/core"
 import { Terminal } from "@tui/util/terminal"
 
+function channelToByte(value: number | undefined): number | undefined {
+  if (value === undefined) return undefined
+  return Math.round(value <= 1 ? value * 255 : value)
+}
+
 function expectColor(
   color: ReturnType<typeof Terminal.parseTerminalColor>,
   expected: { r: number; g: number; b: number; a?: number },
@@ -9,10 +14,10 @@ function expectColor(
   expect(color).not.toBeNull()
   if (!color) return
 
-  expect(Math.round(color.r * 255)).toBe(expected.r)
-  expect(Math.round(color.g * 255)).toBe(expected.g)
-  expect(Math.round(color.b * 255)).toBe(expected.b)
-  expect(Math.round(color.a * 255)).toBe(expected.a ?? 255)
+  expect(channelToByte(color.r)).toBe(expected.r)
+  expect(channelToByte(color.g)).toBe(expected.g)
+  expect(channelToByte(color.b)).toBe(expected.b)
+  expect(channelToByte(color.a)).toBe(expected.a ?? 255)
 }
 
 describe("terminal theme parsing", () => {
@@ -84,8 +89,8 @@ describe("terminal palette snapshots", () => {
 
     expect(snapshot.isCompletePalette).toBe(true)
     expect(snapshot.palette).toHaveLength(16)
-    expect(snapshot.foreground?.r).toBeCloseTo(208 / 255, 5)
-    expect(snapshot.background?.r).toBeCloseTo(16 / 255, 5)
+    expect(channelToByte(snapshot.foreground?.r)).toBe(208)
+    expect(channelToByte(snapshot.background?.r)).toBe(16)
   })
 
   test("normalizes OSC probe with sparse colors", () => {
@@ -99,9 +104,9 @@ describe("terminal palette snapshots", () => {
     })
 
     expect(snapshot.isCompletePalette).toBe(false)
-    expect(snapshot.palette[0]?.r).toBeCloseTo(16 / 255, 5)
+    expect(channelToByte(snapshot.palette[0]?.r)).toBe(16)
     expect(snapshot.palette[2]).toBeNull()
-    expect(snapshot.background?.r).toBeCloseTo(10 / 255, 5)
+    expect(channelToByte(snapshot.background?.r)).toBe(10)
   })
 
   test("merges renderer and OSC snapshots with renderer priority", () => {
@@ -123,11 +128,11 @@ describe("terminal palette snapshots", () => {
     if (!merged) return
 
     // Renderer foreground wins.
-    expect(merged.foreground?.r).toBeCloseTo(170 / 255, 5)
+    expect(channelToByte(merged.foreground?.r)).toBe(170)
     // OSC background fills missing renderer background.
-    expect(merged.background?.r).toBeCloseTo(20 / 255, 5)
+    expect(channelToByte(merged.background?.r)).toBe(20)
     // OSC palette fills missing renderer palette.
-    expect(merged.palette[5]?.r).toBeCloseTo(50 / 255, 5)
+    expect(channelToByte(merged.palette[5]?.r)).toBe(50)
   })
 
   test("compares snapshots", () => {

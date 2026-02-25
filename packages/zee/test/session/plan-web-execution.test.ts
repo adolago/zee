@@ -58,7 +58,7 @@ describe("session.plan-web-execution", () => {
     expect(result!).toContain("switch to ACCEPT mode")
   })
 
-  test("includes release guidance for mutating web actions on whatsapp", () => {
+  test("includes accept-mode guidance for mutating web actions on messaging", () => {
     const result = buildPlanWebExecutionReminder({
       messages: [userMessage("Buy this item online and complete checkout")],
       mode: "plan",
@@ -66,6 +66,6 @@ describe("session.plan-web-execution", () => {
     })
 
     expect(result).toBeDefined()
-    expect(result!).toContain("/release <PIN>")
+    expect(result!).toContain("/accept <PIN>")
   })
 })

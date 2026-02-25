@@ -10,14 +10,14 @@ It tracks only bringable work (`port` / `adapt` / `defer`) and excludes complete
 
 ## Snapshot Metadata
 
-Refresh timestamp (UTC): `2026-02-19T20:14:42.271Z`
+Refresh timestamp (UTC): `2026-02-25`
 
 Current upstream pins:
 
-- OpenCode pin: `1867f1acaa894244086d994c71b47bff8301f747` (`opencode/dev`)
-- OpenClaw pin: `f7a8c2df2c6eea297f2f5e702f23f0ba2fa574d6` (`openclaw/main`)
-- Pi-mono pin: `7207c16c848e1422131236982441d8a310cbcfb7` (`pimono/main`)
-- Pi-mono latest tag: `v0.53.1`
+- OpenCode pin: `d848c9b6a32f408e8b9bf6448b83af05629454d0` (`opencode/dev`)
+- OpenClaw pin: `b3f46f0e2891621467061e4c24851882609b2cbd` (`openclaw/main`)
+- Pi-mono pin: `5c0ec26c28c918c5301f218e8c13fcc540d8e3a4` (`pimono/main`)
+- Pi-mono latest tag: `v0.55.0`
 
 Evidence commands run:
 
@@ -27,13 +27,30 @@ Evidence commands run:
 - `./scripts/check-upstream.sh --remote pimono --fetch --verbose`
 - `./scripts/sync-upstream.sh --remote openclaw --preview`
 - `./scripts/sync-upstream.sh --remote opencode --preview` (blocked by dirty worktree)
+- `./scripts/sync-upstream.sh --remote pimono --preview`
 - `cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format text --scope quick --fetch --pins`
+- `cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format md --scope full --fetch --pins --output ../../docs/architecture/feature-comparison.md`
 
 Observed drift summary:
 
-- OpenCode: Zee is `1907` commits behind and `1417` commits ahead.
-- OpenClaw: unrelated histories; no merge-base sync path. Snapshot TODOs in `openclaw-delta-map` are `0`, but post-snapshot backlog still has actionable items.
-- Pi-mono: latest upstream tag `v0.53.1`; installed pin tracked via `docs/architecture/upstream-pins.json` (`piCodingAgentVersion: 0.53.1`).
+- OpenCode: Zee is `2058` commits behind and `1445` commits ahead.
+- OpenClaw: unrelated histories; no merge-base sync path. Snapshot TODOs in `openclaw-delta-map` are `0`, and `sync-upstream --remote openclaw --preview` reports `0` pending ports.
+- Pi-mono: latest upstream tag `v0.55.0`; installed pin tracked via `docs/architecture/upstream-pins.json` (`piCodingAgentVersion: 0.53.1`).
+
+## Roadmap Progress Rollup (2026-02-25)
+
+| Roadmap artifact | Completed | Remaining |
+| --- | --- | --- |
+| `CVE-REMEDIATION-PLAN.md` | Deliverables checklist is `7/7` complete. | None in current phase scope. |
+| `docs/architecture/adr-002-surface-layer.md` | Implementation plan phases 1-4 are marked complete (`12/12` checklist). | None listed in the phase checklist. |
+| `docs/architecture/openclaw-delta-map.md` + `docs/architecture/openclaw-post-snapshot-backlog.md` | Snapshot triage closed (`Done: 66`, `None: 25`, `TODO: 0`) and post-snapshot ports are marked done/non-goal. | No pending OpenClaw ports in current sync preview. |
+| `docs/architecture/opencode-lanes/lane-03-auth-provider.md` | Acceptance checklist complete (`3/3`). | Implementation candidate still pending execution. |
+| `docs/architecture/opencode-lanes/lane-04-package-topology.md` | Acceptance checklist complete (`3/3`). | Phase 2 adaptation slice still pending. |
+| `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` | Acceptance checklist complete (`3/3`). | Parity harness implementation remains pending. |
+| `docs/architecture/opencode-sync-policy.md` | Lane refresh checklist completed for this cycle. | Continue weekly/monthly cadence. |
+| `docs/architecture/feature-comparison.md` | Full feature matrix regenerated with fresh OpenCode/OpenClaw/Pi-mono pins and drift metadata. | Continue regenerating on each parity refresh. |
+| `docs/plans/rust-memory-boundary.md` | Boundary, migration phases, and verification plan documented. | Implementation has not started. |
+| `docs/architecture/upstream-import-map.md` | Active backlog re-ranked to `9` pending import lanes and grouped into execution batches. | Execute Batch A priorities first. |
 
 ## Decision Policy
 
@@ -50,83 +67,74 @@ Ranking policy:
 2. Migration impact for coding workflows second.
 3. Implementation effort and dependency ordering third.
 
-## Ranked Action Backlog
+## Ranked Action Backlog (Re-ranked 2026-02-25)
 
 | Rank | Upstream | Ref | Category | Decision | Current Zee status | Why bring | Target area | Validation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | openclaw | `openclaw/openclaw#15035` | security/reliability | adapt | done (local) | Brute-force resistance and auth endpoint hardening for gateway control plane. | `packages/zee/src/server/auth-rate-limit.ts`, `packages/zee/src/server/server.ts` | `cd packages/zee && bun test test/server/auth-rate-limit.test.ts` |
-| 2 | openclaw | `openclaw/openclaw#13184` | security | adapt | done (local) | Loopback-by-default binding reduces accidental external exposure in standalone channel/server surfaces. | `packages/zee/src/cli/network.ts`, `packages/zee/src/diagnostics/checks/security.ts` | `cd packages/zee && bun test test/cli/network.test.ts test/diagnostics/security.test.ts` |
-| 3 | openclaw | `openclaw/openclaw#10529` | security | adapt | done (local) | Enforcing strict credential file mode checks prevents local secret disclosure. | `packages/zee/src/diagnostics/checks/security.ts` credential file checks (`auth.json`, `mcp-auth.json`, Kimi credentials) | `cd packages/zee && bun test test/diagnostics/security.test.ts` |
-| 4 | pimono | dependency pin hygiene | security/ops | port | done (local) | Explicit pi-mono pin manifest restores safe update decisions and auditability when no direct dependency is declared. | `scripts/lib/upstream-common.sh`, `packages/zee/src/compare/snapshot.ts`, `docs/architecture/upstream-pins.json` | `./scripts/check-upstream.sh --remote pimono --fetch --verbose`, `cd packages/zee && bun test test/compare/snapshot.test.ts` |
-| 5 | openclaw | `openclaw/openclaw#15195` | reliability | adapt | done (local) | Process guard improvements reduce runtime wedging and orphaned subprocess behavior. | `packages/zee/src/cli/cmd/runtime-process-guard.ts`, `packages/zee/src/cli/cmd/daemon.ts`, `packages/zee/src/cli/cmd/restart-recovery.ts`, `scripts/recover-orphaned-processes.sh`, `packages/zee/Swabble/src/process/parent-guard.ts` | `cd packages/zee && bun test test/cli/runtime-process-guard.test.ts test/cli/restart-recovery.test.ts ./Swabble/src/process/parent-guard.test.ts` |
-| 6 | openclaw | `openclaw/openclaw#13746` | reliability | port | done (local) | Avoid flushing pending tool results before agents are idle to prevent dropped outputs. | `packages/zee/Swabble/src/agents/pi-embedded-runner/wait-for-idle-before-flush.ts` | `cd packages/zee && bun test ./Swabble/src/agents/pi-embedded-runner.guard.waitforidle-before-flush.test.ts` |
-| 7 | openclaw | `openclaw/openclaw#13578` | reliability | port | done (local) | Prevent silent `allowList[0]` fallback misrouting in outbound messaging. | `packages/zee/Swabble/src/channels/outbound/whatsapp-target.ts` fail-closed target resolver | `cd packages/zee && bun test ./Swabble/src/channels/outbound/whatsapp-target.test.ts` |
-| 8 | openclaw | `openclaw/openclaw#14949` | reliability | adapt | done (local) | Transcript archival on `/new` and `/reset` prevents history loss and improves operability. | `packages/zee/Swabble/src/gateway/session-utils.fs.ts`, `packages/zee/Swabble/src/gateway/session-lifecycle.ts` | `cd packages/zee && bun test ./Swabble/src/gateway/session-utils.fs.archive.test.ts ./Swabble/src/gateway/session-lifecycle.reset-archive.test.ts` |
-| 9 | openclaw | `openclaw/openclaw#12846` | reliability | adapt | done (local) | Session-key normalization prevents duplicate/ghost sessions. | `packages/zee/Swabble/src/gateway/session-utils.ts` | `cd packages/zee && bun test ./Swabble/src/gateway/session-utils.key-normalization.test.ts` |
-| 10 | openclaw | `openclaw/openclaw#15323` | reliability | adapt | done (local) | Canonical absolute `sessionFile` handling improves compatibility and deterministic storage. | `packages/zee/Swabble/src/config/sessions/paths.ts` | `cd packages/zee && bun test ./Swabble/src/config/sessions/paths.test.ts` |
-| 11 | openclaw | `openclaw/openclaw#15154` | reliability | adapt | done (local) | Fixing transcript path resolution for non-default agents prevents split or missing logs. | `packages/zee/Swabble/src/config/sessions/paths.ts` transcript resolver | `cd packages/zee && bun test ./Swabble/src/config/sessions/paths.test.ts` |
-| 12 | openclaw | `openclaw/openclaw#15573` | reliability | adapt | done (local) | Preserve streamed text when final payload regresses to avoid output truncation. | `packages/zee/src/session/processor.ts` stream text merge normalization (`SessionProcessor.mergeStreamText`) | `cd packages/zee && bun test test/session/processor-stream-text-merge.test.ts` |
-| 13 | openclaw | `openclaw/openclaw#14498` | reliability | adapt | done (local) | Promise-chain mutex model reduces session-store race conditions. | `packages/zee/src/session/persistence.ts` session-context promise-chain mutex + atomic writes | `cd packages/zee && bun test test/session/persistence.test.ts` |
-| 14 | openclaw | `openclaw/openclaw#15642` | reliability | port | done (local) | Preserve Windows backslashes in command parsing for cross-platform correctness. | `packages/zee/src/cli/cmd/daemon-cmdline.ts`, `packages/zee/src/cli/cmd/daemon.ts` | `cd packages/zee && bun test test/cli/daemon-cmdline.test.ts` |
-| 15 | openclaw | `openclaw/openclaw#11547` | reliability | port | done (local) | Preserve literal `\\n` in inbound Windows path/text flows. | `packages/zee/src/surface/platforms/whatsapp.ts` inbound newline normalization | `cd packages/zee && bun test test/surface/whatsapp-platform.test.ts` |
-| 16 | openclaw | `openclaw/openclaw#4702` | reliability | adapt | done (local) | Harden Windows command execution and binary detection behavior. | `src/domain/zee/whatsapp-send.ts` (Windows executable candidate resolution + spawn env normalization) | `cd packages/zee && bun test test/server/whatsapp-send.test.ts` |
-| 17 | openclaw | `openclaw/openclaw#14976` | reliability | adapt | done (verified local) | Confirm `replyToCurrent` parity path works end-to-end. | reply mode injection and routing paths (`packages/zee/src/surface/router.ts`, `packages/zee/src/surface/messaging.ts`) | `cd packages/zee && bun test test/surface/reply-to-current.test.ts` |
-| 18 | openclaw | `openclaw/openclaw#10774` | performance | adapt | done (verified local) | Verify long-session abort-leak protections are equivalent in Swabble runtime paths. | `packages/zee/src/util/abort.ts`, daemon/TUI liveness probes (`packages/zee/src/cli/cmd/daemon.ts`, `packages/zee/src/cli/cmd/tui/thread.ts`) | `cd packages/zee && bun test test/util/abort.test.ts` |
-| 19 | opencode | `adolago/zee#219` (Lane 01) | migration parity | adapt | open | TUI parity baseline reduces migration friction from OpenCode users. | `packages/zee/src/cli/cmd/tui`, auth entrypoints, model selector | TUI parity checklist tests |
-| 20 | opencode | `adolago/zee#221` (Lane 02) | migration parity | adapt | open | Config parity baseline (`models.dev`, mDNS, managed settings) improves portability. | config schema/defaults + docs migration mapping | config migration fixture tests |
-| 21 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | triage-done (implementation pending) | Implement explicit OpenCode-to-Zee auth/provider migration path. | auth command flow (`zee auth`) + mapping docs | proposed `zee auth import-opencode` fixture test |
-| 22 | opencode | `adolago/zee#290` (Lane 05) | API/LSP workflows | adapt | triage-done (harness pending) | Maintain parity-critical LSP + serve/client workflows. | LSP stack, `serve`, attach/resume session lifecycle | parity harness (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`) |
-| 23 | opencode | `adolago/zee#289` (Lane 04) | package topology | adapt | triage-done (docs/sequence pending) | Map high-value topology deltas without 1:1 package mirroring. | migration docs + control/auth flow alignment | lane checklist completion + docs verification |
-| 24 | opencode | Lane 08 (`TBD`) | migration parity | adapt | backlog | `.opencode/` to `.zee/` migration ergonomics remain incomplete. | project-config import/mapping path | fixture-driven migration test |
-| 25 | opencode | Lane 09 (`TBD`) | workflow parity | adapt | backlog | Remote `serve`/client behavior parity still needs explicit closure criteria. | server/client attach + auth lifecycle | remote attach/resume integration test |
-| 26 | opencode | Lane 07 (`TBD`) | provider breadth | defer | backlog | Useful but lower priority versus security/reliability and core migration paths. | provider registry/policy docs | provider policy decision record |
-| 27 | openclaw | `openclaw/openclaw#15376` | feature | adapt | done (local) | Cloudflare Markdown parity improves fetch-to-markdown quality. | `packages/zee/src/tool/webfetch.ts`, `packages/zee/src/tool/fetch_content.ts`, `packages/zee/src/tool/fetch-helpers.ts` | `cd packages/zee && bun test test/tool/webfetch.test.ts test/tool/fetch-content.test.ts` |
-| 28 | openclaw | `openclaw/openclaw#12577` | feature | adapt | done (local) | vLLM onboarding parity improves local model onboarding ergonomics. | `packages/zee/src/cli/cmd/auth.ts`, `packages/zee/src/provider/provider.ts`, docs + auth helper tests | `cd packages/zee && bun test test/cli/auth-frontmatter.test.ts` |
-| 29 | pimono | update to `v0.53.1` | dependency maintenance | adapt | blocked by rank 4 | Once pin visibility exists, update and verify compatibility against current Zee gateway usage. | package manifest pin + pi-mono-dependent runtime paths | update command + regression suite |
+| 1 | opencode | `adolago/zee#219` (Lane 01) | migration parity | adapt | open | Highest migration impact for day-to-day TUI workflows and user-visible parity gaps. | `packages/zee/src/cli/cmd/tui`, auth entrypoints, model selector | TUI parity checklist tests |
+| 2 | opencode | `adolago/zee#221` (Lane 02) | migration parity | adapt | in-progress | Config portability (`models.dev`, mDNS, managed settings) remains a top onboarding blocker. | config schema/defaults + daemon/TUI network plumbing | config migration fixture tests + daemon/TUI mDNS regression coverage |
+| 3 | opencode | `adolago/zee#290` (Lane 05) | API/LSP workflows | adapt | triage-done (harness pending) | Parity harness is required to keep LSP/serve behavior stable while upstream drift grows. | LSP stack, `serve`, attach/resume lifecycle | parity harness (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`) |
+| 4 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | triage-done (implementation pending) | Explicit OpenCode-to-Zee auth/provider migration path reduces setup churn. | auth command flow (`zee auth`) + mapping docs | `zee auth import-opencode` fixture test |
+| 5 | opencode | Lane 08 (`TBD`) | migration parity | adapt | backlog | `.opencode/` to `.zee/` migration ergonomics still lack fixture-backed import behavior. | project-config import/mapping path | fixture-driven migration test |
+| 6 | opencode | Lane 09 (`TBD`) | workflow parity | adapt | backlog | Remote `serve`/client attach-resume parity still has no explicit closure harness. | server/client attach + auth lifecycle | remote attach/resume integration test |
+| 7 | pimono | update to `v0.55.0` | dependency maintenance | adapt | backlog | Installed pin is `0.53.1` while upstream latest is `v0.55.0`; validate compatibility before bumping. | `docs/architecture/upstream-pins.json` + pi-dependent runtime paths | update pin + regression suite |
+| 8 | opencode | `adolago/zee#289` (Lane 04) | package topology | adapt | triage-done (docs/sequence pending) | Adaptation slice is useful after core migration and workflow lanes stabilize. | migration docs + control/auth flow alignment | lane checklist completion + docs verification |
+| 9 | opencode | Lane 07 (`TBD`) | provider breadth | defer | backlog | Useful, but lower ROI than migration-critical and workflow-critical lanes. | provider registry/policy docs | provider policy decision record |
+
+## Recently Completed Imports (Reference)
+
+- OpenClaw snapshot + post-snapshot security/reliability/feature ports remain closed in current roadmap artifacts (`openclaw-delta-map`, `openclaw-post-snapshot-backlog`).
+- `sync-upstream --remote openclaw --preview` currently reports `0` pending ports.
+- Pi-mono pin discoverability (rank-4 prior cycle) remains done via `docs/architecture/upstream-pins.json` and compare snapshot fallback logic.
 
 ## Immediate Execution Batches
 
-### Batch A: Security and Tracking Foundation
+### Batch A: OpenCode migration-critical parity (ranks 1-4)
 
 Scope:
 
-- `openclaw/openclaw#15035`
-- `openclaw/openclaw#13184`
-- `openclaw/openclaw#10529`
-- Pi-mono dependency pin discoverability (rank 4)
+- Lane 01 (`#219`) TUI parity baseline
+- Lane 02 (`#221`) config parity baseline
+- Lane 05 (`#290`) parity harness (LSP/serve/session)
+- Lane 03 (`#288`) auth/provider migration command flow
 
 Acceptance:
 
-- Gateway auth rate limiting tests pass.
-- Server surfaces default to loopback unless explicitly configured.
-- Credential file mode checks enforce secure permissions.
-- `check-upstream` and `compare` report a concrete installed pi-mono version or a deliberate manifest location.
+- At least one fixture-backed parity harness exists for each of P05-LSP-001 / P05-SRV-001 / P05-SES-001.
+- `.opencode` migration guidance is executable (not docs-only) for key config/auth paths.
+- Top two migration blockers (TUI + config portability) have actionable implementation slices linked to issues.
 
-### Batch B: Reliability Queue Stabilization
+Progress update (2026-02-25):
+
+- Lane 02 moved to `in-progress`.
+- Implemented slices: config-backed `models.url` / `models.path` support with provider tests; daemon/TUI forwarding of resolved mDNS options into server startup; `Config.reloadManaged()` lifecycle hook with regression coverage.
+- Remaining closure work: explicit migration fixtures for OpenCode-style config imports.
+
+### Batch B: Migration ergonomics + Pi-mono refresh prep (ranks 5-7)
 
 Scope:
 
-- ranks 5 through 18
+- Lane 08 `.opencode -> .zee` import path
+- Lane 09 remote serve/client attach-resume closure
+- Pi-mono bump validation path (`0.53.1 -> 0.55.0`)
 
 Acceptance:
 
-- Session-store and transcript regression tests are green.
-- No silent outbound recipient fallback remains.
-- Windows path/command parsing tests pass.
-- Verify-only items are converted to done or reclassified with explicit evidence.
+- `.opencode` import path is fixture-tested end to end.
+- Remote attach/resume integration coverage exists for parity-critical scenarios.
+- Pi-mono bump is either validated and promoted, or blocked with explicit failure evidence.
 
-### Batch C: Migration and Feature Parity
+### Batch C: Deferred topology/provider breadth (ranks 8-9)
 
 Scope:
 
-- ranks 19 through 29
+- Lane 04 package topology adaptation slice
+- Lane 07 provider breadth policy lane
 
 Acceptance:
 
-- OpenCode lane artifacts link to executable tests/harnesses, not only triage docs.
-- `.opencode` migration path is fixture-tested.
-- Pi-mono update path is executable and validated.
-- Deferred provider-breadth lane has explicit revisit criteria and owner.
+- Lane 04 has an implemented adaptation slice (not only planning docs).
+- Lane 07 has explicit revisit criteria and owner with decision record.
 
 ## Exclusions (Non-Goals)
 

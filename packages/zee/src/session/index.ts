@@ -57,13 +57,7 @@ export namespace Session {
   }
 
   function normalizeStoredMode(value: unknown): ExecutionMode | undefined {
-    const canonical = parseExecutionMode(value)
-    if (canonical) return canonical
-    if (typeof value !== "string") return undefined
-    const normalized = value.trim().toLowerCase()
-    if (normalized === "hold") return "plan"
-    if (normalized === "release") return "accept"
-    return undefined
+    return parseExecutionMode(value)
   }
 
   function canonicalizeSessionInfoModes(info: Info): { session: Info; changed: boolean } {

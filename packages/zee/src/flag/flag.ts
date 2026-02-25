@@ -39,7 +39,7 @@ function computeFlags() {
     ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY: truthy("ZEE_SERVER_ALLOW_GLOBAL_DIRECTORY"),
     // Allow HTTP callers to override PTY spawn command (dangerous, usually unnecessary).
     ZEE_PTY_ALLOW_COMMAND_OVERRIDE: truthy("ZEE_PTY_ALLOW_COMMAND_OVERRIDE"),
-    // Allow switching sessions into RELEASE mode from messaging surfaces (dangerous).
+    // Allow switching sessions into ACCEPT/BYPASS modes from messaging surfaces (dangerous).
     ZEE_ALLOW_MESSAGING_RELEASE: truthy("ZEE_ALLOW_MESSAGING_RELEASE"),
 
     // Server network tuning

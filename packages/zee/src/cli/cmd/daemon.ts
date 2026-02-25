@@ -975,7 +975,9 @@ export const DaemonCommand = cmd({
       maxClients: typeof args["runtime-max-clients"] === "number" ? args["runtime-max-clients"] : undefined,
     }
     if (process.argv.includes("--wezterm-layout")) {
-      UI.warn("--wezterm-layout is deprecated and ignored. Visual orchestration now runs in terminal-agnostic event mode.")
+      UI.warn(
+        "--wezterm-layout is deprecated and ignored. Visual orchestration now runs in terminal-agnostic event mode.",
+      )
     }
 
     if (enforceRuntimeGuard) {
@@ -1007,6 +1009,9 @@ export const DaemonCommand = cmd({
       proc = await startAlwaysOnProcess({
         hostname: opts.hostname,
         port: opts.port,
+        mdns: opts.mdns,
+        mdnsDomain: opts.mdnsDomain,
+        cors: opts.cors,
         directory,
         alwaysOnProfile,
         skipSetupCheck: false,

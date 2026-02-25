@@ -2,6 +2,7 @@ import { test, expect, describe, mock, afterEach } from "bun:test"
 import { Config } from "../../src/config/config"
 import { Instance } from "../../src/project/instance"
 import { Auth } from "../../src/auth"
+import { ModelsDev } from "../../src/provider/models"
 import { tmpdir } from "../fixture/fixture"
 import path from "path"
 import fs from "fs/promises"
@@ -22,6 +23,8 @@ afterEach(async () => {
   await fs.rm(userConfigJson, { force: true }).catch(() => {})
   await fs.rm(userConfigJsonc, { force: true }).catch(() => {})
   Config.global.reset()
+  ModelsDev.configure()
+  ModelsDev.Data.reset()
 })
 
 async function writeManagedSettings(settings: object, filename = "zee.jsonc") {
@@ -113,6 +116,57 @@ test("loads JSON config file", async () => {
       expect(config.username).toBe("testuser")
     },
   })
+})
+
+test("loads models catalog settings and applies them to model discovery", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      const modelsPath = path.join(dir, "models-from-config.json")
+      await Bun.write(
+        modelsPath,
+        JSON.stringify({
+          configprovider: {
+            api: "https://example.invalid",
+            name: "Config Provider",
+            env: [],
+            id: "configprovider",
+            models: {},
+          },
+        }),
+      )
+      await writeProjectConfig(dir, {
+        $schema: "zee",
+        models: {
+          url: "https://catalog.example.invalid",
+          path: modelsPath,
+        },
+      })
+    },
+  })
+
+  const originalModelsPath = process.env.ZEE_MODELS_PATH
+  const originalModelsUrl = process.env.ZEE_MODELS_URL
+  try {
+    delete process.env.ZEE_MODELS_PATH
+    delete process.env.ZEE_MODELS_URL
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const config = await Config.get()
+        expect(config.models?.url).toBe("https://catalog.example.invalid")
+        expect(config.models?.path).toBe(path.join(tmp.path, "models-from-config.json"))
+
+        const data = await ModelsDev.get()
+        expect(data.configprovider?.name).toBe("Config Provider")
+      },
+    })
+  } finally {
+    if (originalModelsPath === undefined) delete process.env.ZEE_MODELS_PATH
+    else process.env.ZEE_MODELS_PATH = originalModelsPath
+    if (originalModelsUrl === undefined) delete process.env.ZEE_MODELS_URL
+    else process.env.ZEE_MODELS_URL = originalModelsUrl
+  }
 })
 
 test("loads JSONC config file", async () => {
@@ -236,6 +290,44 @@ test("missing managed settings file is not an error", async () => {
     fn: async () => {
       const config = await Config.get()
       expect(config.model).toBe("test/model")
+    },
+  })
+})
+
+test("reloadManaged picks up managed settings changes within the same instance", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeManagedSettings({
+        $schema: "zee",
+        model: "managed/one",
+      })
+      await Bun.write(
+        path.join(dir, "zee.jsonc"),
+        JSON.stringify({
+          $schema: "zee",
+          model: "project/default",
+        }),
+      )
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const initial = await Config.get()
+      expect(initial.model).toBe("managed/one")
+
+      await writeManagedSettings({
+        $schema: "zee",
+        model: "managed/two",
+      })
+
+      const beforeReload = await Config.get()
+      expect(beforeReload.model).toBe("managed/one")
+
+      await Config.reloadManaged()
+      const afterReload = await Config.get()
+      expect(afterReload.model).toBe("managed/two")
     },
   })
 })

@@ -130,9 +130,9 @@ describe("Config security", () => {
   test("PATCH /config prevents overwriting secrets with redaction placeholder", async () => {
     await using tmp = await tmpdir({
       init: async (dir) => {
-        // Use config.json because Config.update() writes to it
+        // Config.update writes project settings to zee.jsonc.
         await Bun.write(
-          path.join(dir, "config.json"),
+          path.join(dir, "zee.jsonc"),
           JSON.stringify({
             $schema: "zee",
             provider: {
@@ -153,7 +153,7 @@ describe("Config security", () => {
       fn: async () => {
         const app = ConfigRoute
 
-        // We manually construct payload because Config.get() might not read config.json in test env
+        // Send a payload that includes a redacted secret placeholder.
         const patchPayload: Config.Info = {
           provider: {
             openai: {
@@ -172,10 +172,8 @@ describe("Config security", () => {
         })
 
         expect(patchRes.status).toBe(200)
-        // We don't check body content for baseURL because Config.get() might return old config
-
         // Verify file on disk still has the original secret
-        const fileContent = await Bun.file(path.join(tmp.path, "config.json")).text()
+        const fileContent = await Bun.file(path.join(tmp.path, "zee.jsonc")).text()
         const fileJson = JSON.parse(fileContent)
 
         // Secret should be preserved (not overwritten by ******** or undefined)

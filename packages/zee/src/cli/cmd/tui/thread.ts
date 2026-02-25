@@ -383,6 +383,9 @@ async function ensureProcessRunning(
     proc = await startAlwaysOnProcess({
       hostname,
       port,
+      mdns: network.mdns,
+      mdnsDomain: network.mdnsDomain,
+      cors: network.cors,
       directory,
       alwaysOnProfile: true,
     })

@@ -1391,7 +1391,7 @@ export function Prompt(props: PromptProps) {
 
     // Tool permissions based on mode
     const selectedMode = effectiveMode()
-    const holdModeTools =
+    const modeTools =
       selectedMode === "plan"
         ? { edit: false, write: false, notebook_edit: false }
         : { edit: true, write: true, notebook_edit: true }
@@ -1434,7 +1434,7 @@ export function Prompt(props: PromptProps) {
 
     if (store.mode === "shell") {
       // Shell mode executes user-provided commands directly, not AI actions
-      // Hold/release mode doesn't apply since the user is explicitly running the command
+      // Execution mode restrictions do not apply since the user is explicitly running the command
       try {
         await sdk.client.session.shell(
           {
@@ -1485,7 +1485,7 @@ export function Prompt(props: PromptProps) {
             messageID,
             variant,
             mode: selectedMode,
-            tools: holdModeTools,
+            tools: modeTools,
             parts: nonTextParts
               .filter((x) => x.type === "file")
               .map((x) => ({
@@ -1511,7 +1511,7 @@ export function Prompt(props: PromptProps) {
         agent: local.agent.current().name,
         model: selectedModel,
         variant,
-        tools: holdModeTools,
+        tools: modeTools,
         mode: selectedMode,
         options: {
           skipPermissions: selectedMode === "bypass",

@@ -47,7 +47,7 @@ describe("session.followup-execution", () => {
     expect(result).toBeDefined()
     expect(result!).toContain("[FOLLOW-UP EXECUTION]")
     expect(result!).toContain("Treat this as approval and execute the pending action now using available tools.")
-    expect(result!).toContain("/release <PIN>")
+    expect(result!).toContain("/accept <PIN>")
   })
 
   test("does not build reminder when prior assistant text is not an action confirmation", () => {

@@ -23,6 +23,7 @@ import { Bus } from "@/bus"
 
 export namespace Config {
   const log = Log.create({ service: "config" })
+  const CONFIG_FILENAMES = ["zee.json", "zee.jsonc"] as const
 
   // Managed settings directory for enterprise deployments (highest priority, admin-controlled).
   // These settings override all user and project settings.
@@ -85,7 +86,7 @@ export namespace Config {
 
     // Project config has highest precedence (overrides global and remote)
     if (!Flag.ZEE_DISABLE_PROJECT_CONFIG) {
-      for (const file of ["zee.jsonc"]) {
+      for (const file of CONFIG_FILENAMES) {
         const found = await Filesystem.findUp(file, Instance.directory, Instance.worktree)
         for (const resolved of found.toReversed()) {
           result = mergeConfigConcatArrays(result, await loadFile(resolved))
@@ -146,7 +147,7 @@ export namespace Config {
     for (const dir of unique(directories)) {
       const safeDir = Filesystem.sanitizePath(dir)
       if (safeDir.endsWith(".zee") || safeDir === Flag.ZEE_CONFIG_DIR) {
-        for (const file of ["zee.jsonc"]) {
+        for (const file of CONFIG_FILENAMES) {
           log.debug(`loading config from ${path.join(safeDir, file)}`)
           result = mergeConfigConcatArrays(result, await loadFile(path.join(safeDir, file)))
           // to satisfy the type checker
@@ -171,7 +172,7 @@ export namespace Config {
     // requiring elevated permissions.
     const safeManagedConfigDir = Filesystem.sanitizePath(managedConfigDir)
     if (existsSync(safeManagedConfigDir)) {
-      for (const file of ["zee.jsonc"]) {
+      for (const file of CONFIG_FILENAMES) {
         result = mergeConfigConcatArrays(result, await loadFile(path.join(safeManagedConfigDir, file)))
         // to satisfy the type checker
         result.agent ??= {}
@@ -222,6 +223,10 @@ export namespace Config {
     if (!result.tui) result.tui = Info.shape.tui.parse({})
 
     result.plugin = deduplicatePlugins(result.plugin ?? [])
+    ModelsDev.configure({
+      url: result.models?.url,
+      path: result.models?.path,
+    })
 
     return {
       config: result,
@@ -532,7 +537,9 @@ export namespace Config {
       lifecycle: z
         .enum(["eager", "lazy", "keep-alive"])
         .optional()
-        .describe("Connection lifecycle. eager=connect at startup, lazy=connect on first use, keep-alive=stay connected."),
+        .describe(
+          "Connection lifecycle. eager=connect at startup, lazy=connect on first use, keep-alive=stay connected.",
+        ),
       idleTimeout: z
         .number()
         .int()
@@ -586,7 +593,9 @@ export namespace Config {
       lifecycle: z
         .enum(["eager", "lazy", "keep-alive"])
         .optional()
-        .describe("Connection lifecycle. eager=connect at startup, lazy=connect on first use, keep-alive=stay connected."),
+        .describe(
+          "Connection lifecycle. eager=connect at startup, lazy=connect on first use, keep-alive=stay connected.",
+        ),
       idleTimeout: z
         .number()
         .int()
@@ -1286,10 +1295,7 @@ export namespace Config {
       localIndex: z
         .object({
           enabled: z.boolean().optional().describe("Enable local keyword index as secondary store"),
-          backend: z
-            .enum(["sqlite-fts"])
-            .optional()
-            .describe("Local index backend (sqlite-fts)"),
+          backend: z.enum(["sqlite-fts"]).optional().describe("Local index backend (sqlite-fts)"),
           dbDir: z.string().optional().describe("Local index database directory"),
           dbName: z.string().optional().describe("Local index database filename"),
           degradedRead: z
@@ -1457,6 +1463,13 @@ export namespace Config {
         ),
       disabled_providers: z.array(z.string()).optional().describe("Disable providers that are loaded automatically"),
       model: z.string().describe("Model to use in the format of provider/model, eg anthropic/claude-2").optional(),
+      models: z
+        .object({
+          url: z.string().optional().describe("Base URL for model catalog discovery (defaults to https://models.dev)"),
+          path: z.string().optional().describe("Local path to a models catalog JSON file"),
+        })
+        .optional()
+        .describe("Model catalog source settings"),
       small_model: z
         .string()
         .describe("Small model to use for tasks like title generation in the format of provider/model")
@@ -1740,10 +1753,7 @@ export namespace Config {
   export type Info = z.output<typeof Info>
 
   export const global = lazy(async () => {
-    let result: Info = pipe(
-      {},
-      mergeDeep(await loadFile(path.join(Global.Path.config, "zee.jsonc"))),
-    )
+    let result: Info = pipe({}, mergeDeep(await loadFile(path.join(Global.Path.config, "zee.jsonc"))))
 
     return result
   })
@@ -1901,6 +1911,16 @@ export namespace Config {
 
     await Bun.write(filepath, JSON.stringify(merged, null, 2))
     await Instance.dispose()
+  }
+
+  /**
+   * Reload managed settings by invalidating the current instance config cache.
+   * This is useful when enterprise-managed settings change at runtime.
+   */
+  export async function reloadManaged() {
+    global.reset()
+    await Instance.dispose()
+    return get()
   }
 
   export async function directories() {

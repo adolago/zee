@@ -44,7 +44,7 @@ Key function: `createFrames(options)` returns `string[]` of pre-rendered frames.
 
 ## Status Bar (`status-bar.tsx`)
 
-Displays real-time session state: current directory, agent mode (HOLD/RELEASE), active tool name, stream health (stalled/delayed/slow thresholds at 45s/30s), and connectivity indicators for internet, providers, LSP, and MCP.
+Displays real-time session state: current directory, execution mode (PLAN/ACCEPT/BYPASS), active tool name, stream health (stalled/delayed/slow thresholds at 45s/30s), and connectivity indicators for internet, providers, LSP, and MCP.
 
 ## Layout Constants (`header-footer.ts`)
 

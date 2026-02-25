@@ -51,7 +51,7 @@ export function buildPlanWebExecutionReminder(input: {
   const mutating = isWebMutationIntent(text)
   const modeSwitchLine =
     input.surface === "whatsapp" || input.surface === "telegram"
-      ? "If a mutating web action is required, ask for operator release with `/release <PIN>` before executing."
+      ? "If a mutating web action is required, ask the user to switch to ACCEPT mode (for example `/accept <PIN>` when required) before executing."
       : "If a mutating web action is required, ask the user to switch to ACCEPT mode before executing."
 
   return [

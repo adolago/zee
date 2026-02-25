@@ -100,13 +100,13 @@ describe("Permission SDK interactions", () => {
     })
   })
 
-  test("permission.reply with reply: 'once' auto-called in release mode", () => {
+  test("permission.reply with reply: 'once' auto-called in accept mode", () => {
     const { client, tracker } = createMockSDKClient()
     const request = createPermissionRequest({ id: "req-release-auto" })
 
-    // Simulate release mode auto-approve (onMount in PermissionPrompt)
-    const isRelease = true
-    if (isRelease) {
+    // Simulate accept mode auto-approve (onMount in PermissionPrompt)
+    const isAccept = true
+    if (isAccept) {
       client.permission.reply({
         reply: "once",
         requestID: request.id,

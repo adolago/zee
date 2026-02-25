@@ -26,7 +26,7 @@ export interface SetupCheckResult {
   }
   googleApiKey: {
     available: boolean
-    source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY"
+    source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY" | "env:GEMINI_API_KEY"
     error?: string
   }
   warnings: string[]
@@ -182,12 +182,16 @@ async function checkQdrantConnectivity(url: string): Promise<{ available: boolea
  */
 async function checkGoogleApiKey(): Promise<{
   available: boolean
-  source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY"
+  source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY" | "env:GEMINI_API_KEY"
   error?: string
 }> {
-  const envKey = process.env.GOOGLE_API_KEY?.trim()
-  if (envKey) {
+  const googleEnvKey = process.env.GOOGLE_API_KEY?.trim()
+  if (googleEnvKey) {
     return { available: true, source: "env:GOOGLE_API_KEY" }
+  }
+  const geminiEnvKey = process.env.GEMINI_API_KEY?.trim()
+  if (geminiEnvKey) {
+    return { available: true, source: "env:GEMINI_API_KEY" }
   }
 
   const candidates: Array<{ source: "auth.json:data" | "auth.json:state"; path: string }> = [
@@ -203,12 +207,8 @@ async function checkGoogleApiKey(): Promise<{
 
       const hasApiKey = googleAuth?.type === "api" && typeof googleAuth.key === "string" && googleAuth.key.trim()
 
-      const hasOauthCredentials =
-        googleAuth?.type === "oauth" &&
-        ((typeof googleAuth.refresh === "string" && googleAuth.refresh.trim()) ||
-          (typeof googleAuth.access === "string" && googleAuth.access.trim()))
-
-      if (hasApiKey || hasOauthCredentials) {
+      // Embeddings require API-key auth. OAuth access/refresh tokens are insufficient.
+      if (hasApiKey) {
         return { available: true, source: candidate.source }
       }
     } catch {
@@ -218,7 +218,7 @@ async function checkGoogleApiKey(): Promise<{
 
   return {
     available: false,
-    error: "No Google API key found. Run `zee auth login google`",
+    error: "No Google/Gemini API key found. Set GEMINI_API_KEY (or GOOGLE_API_KEY) or run `zee auth login google`",
   }
 }
 
@@ -261,7 +261,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   }
 
   if (!googleCheck.available) {
-    errors.push("Google API key not found (required for memory embeddings, regardless of chat provider)")
+    errors.push("Google/Gemini API key not found (required for memory embeddings, regardless of chat provider)")
     errors.push("  Run: zee auth login google")
     errors.push(`  Stores in: ${AUTH_JSON_DATA_PATH} (or ${AUTH_JSON_STATE_PATH})`)
   }

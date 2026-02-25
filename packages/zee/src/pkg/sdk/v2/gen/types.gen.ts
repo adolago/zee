@@ -278,7 +278,7 @@ export type KeybindsConfig = {
    */
   agent_cycle_reverse?: string
   /**
-   * Toggle hold/release mode
+   * Toggle execution mode (plan/accept/bypass)
    */
   mode_toggle?: string
   /**
