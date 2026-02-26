@@ -9,6 +9,7 @@
 #   auto-update-check [--dry-run] [--always-notify]
 #
 # Environment:
+#   ZEE_UPSTREAM_REPORTS_ENABLED  set true/1/yes/on to enable upstream notifications (default: false)
 #   ZEE_NOTIFY_CHANNEL      messaging channel: whatsapp|telegram (default: whatsapp)
 #   ZEE_WA_UPDATE_TO        WhatsApp recipient JID (default: 436649137379@s.whatsapp.net)
 #   WACLI_BIN               path to wacli (default: /home/artur/go/bin/wacli)
@@ -21,6 +22,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+REPORTS_ENABLED_RAW="${ZEE_UPSTREAM_REPORTS_ENABLED:-false}"
+REPORTS_ENABLED="$(printf '%s' "$REPORTS_ENABLED_RAW" | tr '[:upper:]' '[:lower:]')"
 CHANNEL_RAW="${ZEE_NOTIFY_CHANNEL:-whatsapp}"
 CHANNEL="$(printf '%s' "$CHANNEL_RAW" | tr '[:upper:]' '[:lower:]')"
 WACLI_BIN="${WACLI_BIN:-/home/artur/go/bin/wacli}"
@@ -39,6 +42,19 @@ while [[ $# -gt 0 ]]; do
         *) echo "Unknown: $1"; exit 1 ;;
     esac
 done
+
+case "$REPORTS_ENABLED" in
+    1|true|yes|on)
+        ;;
+    0|false|no|off|"")
+        echo "Upstream notifications are disabled (set ZEE_UPSTREAM_REPORTS_ENABLED=true to enable)."
+        exit 0
+        ;;
+    *)
+        echo "Unsupported ZEE_UPSTREAM_REPORTS_ENABLED value: $REPORTS_ENABLED_RAW (expected true/false)." >&2
+        exit 1
+        ;;
+esac
 
 # Run check-upstream with fetch, strip ANSI colors
 output=$(cd "$REPO_ROOT" && bash scripts/check-upstream.sh --fetch --verbose 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
