@@ -8,10 +8,10 @@ It is intentionally a triage document (`port` / `adapt` / `defer` / `non-goal`),
 
 Use these pins when comparing Zee to OpenCode:
 
-- Zee: `a141706a7cd8` (full `a141706a7cd86543daae5b393cc1df7fea10cfd4`)
-- opencode/dev: `d848c9b6a32f` (full `d848c9b6a32f408e8b9bf6448b83af05629454d0`)
+- Zee: `8e3cc2b2d575` (full `8e3cc2b2d5751c05b36ef78508a562e805dca77f`)
+- opencode/dev: `b4d0090e005e` (full `b4d0090e005e7355b3e8f2594c0ad8538fffe75b`)
 
-Last refreshed: `2026-02-25`
+Last refreshed: `2026-02-26`
 
 Baseline reference: `docs/architecture/upstream-differences.md`.
 
@@ -39,7 +39,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 ## Re-ranking Rationale (2026-02-25)
 
-- Promoted lane 05 ahead of lane 03 because executable LSP/serve/session harness coverage is now the fastest way to control parity regressions while drift is `2076` commits behind.
+- Promoted lane 05 ahead of lane 03 because executable LSP/serve/session harness coverage is now the fastest way to control parity regressions while drift is `2082` commits behind.
 - Promoted lanes 08/09 above lane 04 because migration ergonomics and remote attach behavior directly impact day-one OpenCode portability.
 - Demoted lane 06 (sync policy) because the process lane is operational and currently in maintenance mode.
 

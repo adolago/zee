@@ -27,7 +27,7 @@ test("smoke settings dialog opens, switches tabs, closes", async ({ page, gotoSe
 
 test("changing language updates settings labels", async ({ page, gotoSession }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("opencode.global.dat:language", JSON.stringify({ locale: "en" }))
+    localStorage.setItem("zee.global.dat:language", JSON.stringify({ locale: "en" }))
   })
 
   await gotoSession()

@@ -1,7 +1,7 @@
 import { createSimpleContext } from "@zee/ui/context"
 import { AsyncStorage, SyncStorage } from "@solid-primitives/storage"
 
-export type ZeeGuiRuntimeMode = "zee" | "legacy" | "dual"
+export type ZeeGuiRuntimeMode = "zee"
 
 export type LaunchZeeGuiOptions = {
   sidebar?: boolean

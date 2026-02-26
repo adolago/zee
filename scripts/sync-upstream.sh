@@ -239,8 +239,13 @@ echo ""
 echo -e "${YELLOW}Fetching $REMOTE...${NC}"
 git fetch "$REMOTE" --quiet 2>/dev/null || true
 
-# Check for uncommitted changes
+dirty_worktree=false
 if ! git diff-index --quiet HEAD --; then
+    dirty_worktree=true
+fi
+
+# Allow non-mutating preview mode on dirty trees, but block merge/rebase.
+if [ "$MODE" != "preview" ] && $dirty_worktree; then
     echo -e "${RED}Error: You have uncommitted changes.${NC}"
     echo "Please commit or stash them before syncing."
     exit 1
@@ -271,6 +276,11 @@ CONFLICT_PRONE_OPENCODE=(
 
 case $MODE in
     preview)
+        if $dirty_worktree; then
+            echo -e "${YELLOW}Warning:${NC} preview running with uncommitted changes."
+            echo "Merge/rebase modes remain blocked until the worktree is clean."
+            echo ""
+        fi
         echo -e "${BLUE}=== Changes from Upstream ===${NC}"
         echo ""
 
@@ -284,13 +294,13 @@ case $MODE in
 
         # Show file changes
         echo -e "${YELLOW}Files changed:${NC}"
-        git diff --stat "$MERGE_BASE..$REMOTE/$UPSTREAM_BRANCH" | tail -20
+        git -c diff.renameLimit=50000 diff --stat "$MERGE_BASE..$REMOTE/$UPSTREAM_BRANCH" | tail -20
         echo ""
 
         # Check for conflicts in our customized files
         echo -e "${YELLOW}Potential conflicts in customized files:${NC}"
-        UPSTREAM_CHANGED=$(git diff --name-only "$MERGE_BASE..$REMOTE/$UPSTREAM_BRANCH")
-        OUR_CHANGED=$(git diff --name-only "$MERGE_BASE..HEAD")
+        UPSTREAM_CHANGED=$(git -c diff.renameLimit=50000 diff --name-only "$MERGE_BASE..$REMOTE/$UPSTREAM_BRANCH")
+        OUR_CHANGED=$(git -c diff.renameLimit=50000 diff --name-only "$MERGE_BASE..HEAD")
 
         CONFLICTS=()
         for file in $UPSTREAM_CHANGED; do
@@ -302,9 +312,37 @@ case $MODE in
         if [ ${#CONFLICTS[@]} -eq 0 ]; then
             echo -e "${GREEN}  No obvious conflicts detected.${NC}"
         else
+            conflicts_file="${TMPDIR:-/tmp}/zee-sync-conflicts-$REMOTE.txt"
+            printf "%s\n" "${CONFLICTS[@]}" > "$conflicts_file"
+
+            echo -e "  ${YELLOW}Total overlap:${NC} ${#CONFLICTS[@]} files"
+            echo -e "  ${YELLOW}Top conflict areas:${NC}"
+            printf "%s\n" "${CONFLICTS[@]}" \
+                | awk -F/ '{ if (NF >= 2) print $1 "/" $2; else print $1 }' \
+                | sort \
+                | uniq -c \
+                | sort -nr \
+                | head -10 \
+                | while read -r count area; do
+                    echo "    - $area: $count"
+                done
+            echo ""
+
+            max_conflict_preview=50
+            echo -e "  ${YELLOW}Sample conflict paths (first $max_conflict_preview):${NC}"
+            preview_count=0
             for file in "${CONFLICTS[@]}"; do
+                preview_count=$((preview_count + 1))
+                if [ "$preview_count" -gt "$max_conflict_preview" ]; then
+                    break
+                fi
                 echo -e "  ${RED}!!${NC} $file (modified in both)"
             done
+            if [ ${#CONFLICTS[@]} -gt "$max_conflict_preview" ]; then
+                remaining=$(( ${#CONFLICTS[@]} - max_conflict_preview ))
+                echo -e "  ... and $remaining more"
+            fi
+            echo -e "  Full list: ${CYAN}$conflicts_file${NC}"
         fi
         echo ""
 

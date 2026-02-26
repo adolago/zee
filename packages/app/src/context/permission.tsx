@@ -61,7 +61,7 @@ export const { use: usePermission, provider: PermissionProvider } = createSimple
     })
 
     const [store, setStore, _, ready] = persisted(
-      Persist.global("permission", ["permission.v3"]),
+      Persist.global("permission"),
       createStore({
         autoAcceptEdits: {} as Record<string, boolean>,
       }),

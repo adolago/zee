@@ -503,7 +503,7 @@ function App() {
     {
       title: "View status",
       keybind: "status_view",
-      value: "opencode.status",
+      value: "zee.status",
       slash: {
         name: "status",
       },
@@ -514,7 +514,7 @@ function App() {
     },
     {
       title: "View legend",
-      value: "opencode.legend",
+      value: "zee.legend",
       keybind: "legend_view",
       slash: {
         name: "legend",

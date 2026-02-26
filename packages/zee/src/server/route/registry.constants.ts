@@ -18,8 +18,6 @@ export const PROVIDERS = {
   "amazon-bedrock": { label: "Amazon Bedrock", icon: "amazon-bedrock" },
   openrouter: { label: "OpenRouter", icon: "openrouter" },
   "openai-compatible": { label: "OpenAI Compatible", icon: "openai" },
-  opencode: { label: "Opencode", icon: "opencode" },
-  "agent-core": { label: "Agent-Core", icon: "opencode" },
 } as const
 
 export const SKILL_FRONTMATTER_REQUIRED_KEYS = ["name", "description"] as const

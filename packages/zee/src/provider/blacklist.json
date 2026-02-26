@@ -67,21 +67,6 @@
     ],
     "minimax": [
       { "id": "MiniMax-M2", "reason": "Removed by dedup -- use MiniMax-M2.1" }
-    ],
-    "opencode": [
-      { "id": "claude-3-5-haiku", "reason": "Superseded by claude-haiku-4" },
-      { "id": "claude-opus-4-1", "reason": "Use claude-opus-4-5" },
-      { "id": "claude-sonnet-4", "reason": "Use claude-sonnet-4-5" },
-      { "id": "gpt-5", "reason": "Removed by dedup" },
-      { "id": "gpt-5-codex", "reason": "Removed by dedup" },
-      { "id": "gpt-5-nano", "reason": "Removed by dedup" },
-      { "id": "gpt-5.1", "reason": "Removed by dedup" },
-      { "id": "gpt-5.1-codex", "reason": "Removed by dedup" },
-      { "id": "gpt-5.1-codex-max", "reason": "Removed by dedup" },
-      { "id": "gpt-5.1-codex-mini", "reason": "Removed by dedup" },
-      { "id": "glm-4.6", "reason": "Superseded by glm-4.7" },
-      { "id": "kimi-k2", "reason": "Superseded by kimi-k2.5" },
-      { "id": "kimi-k2-thinking", "reason": "Superseded by kimi-k2.5-thinking" }
     ]
   },
   "providers": [

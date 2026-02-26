@@ -25,7 +25,7 @@ export const DmuxSpawnCommand = cmd({
       })
       .option("agent", {
         type: "string",
-        choices: ["zee", "codex", "claude", "opencode", "terminal"],
+        choices: ["zee", "codex", "claude", "terminal"],
         default: "zee",
         describe: "agent binary to launch in tmux",
       })

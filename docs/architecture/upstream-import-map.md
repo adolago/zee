@@ -10,11 +10,11 @@ It tracks only bringable work (`port` / `adapt` / `defer`) and excludes complete
 
 ## Snapshot Metadata
 
-Refresh timestamp (UTC): `2026-02-26` (execution wave: auth import expansion, parity harness baseline, OpenClaw sentinel, Pi-mono bump)
+Refresh timestamp (UTC): `2026-02-26` (execution wave: OpenCode metadata refresh + preview guardrail update)
 
 Current upstream pins:
 
-- OpenCode pin: `d848c9b6a32f408e8b9bf6448b83af05629454d0` (`opencode/dev`)
+- OpenCode pin: `b4d0090e005e7355b3e8f2594c0ad8538fffe75b` (`opencode/dev`)
 - OpenClaw pin: `b3f46f0e2891621467061e4c24851882609b2cbd` (`openclaw/main`)
 - Pi-mono pin: `5c0ec26c28c918c5301f218e8c13fcc540d8e3a4` (`pimono/main`)
 - Pi-mono latest tag: `v0.55.1`
@@ -30,15 +30,16 @@ Evidence commands run:
 - `cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format text --scope quick --pins`
 - `cd packages/zee && bun test test/compare/snapshot.test.ts`
 - `./scripts/sync-upstream.sh --remote openclaw --preview`
-- `./scripts/sync-upstream.sh --remote opencode --preview` (blocked by dirty worktree)
+- `./scripts/sync-upstream.sh --remote opencode --preview` (preview now allowed on dirty worktree)
 - `./scripts/sync-upstream.sh --remote pimono --preview`
 - `cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format text --scope quick --fetch --pins`
 - `cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format md --scope full --fetch --pins --output ../../docs/architecture/feature-comparison.md`
 
 Observed drift summary:
 
-- OpenCode: Zee is `2076` commits behind and `1450` commits ahead.
-- OpenClaw: unrelated histories; no merge-base sync path. Snapshot TODOs in `openclaw-delta-map` are now `15`; sentinel reports `ACTIONABLE PORTS PENDING` (`133` commits since monitored pin).
+- OpenCode: Zee is `2082` commits behind and `1452` commits ahead.
+- OpenCode preview overlap hotspot snapshot (from `sync-upstream --preview`): `120` overlap files; top areas `packages/ui` (`76`) and `packages/web` (`27`); full path list at `/tmp/zee-sync-conflicts-opencode.txt`.
+- OpenClaw: unrelated histories; no merge-base sync path. Snapshot TODOs in `openclaw-delta-map` are now `15`; sentinel reports `ACTIONABLE PORTS PENDING` (`338` commits since monitored pin).
 - Pi-mono: latest upstream tag `v0.55.1`; installed pin tracked via `docs/architecture/upstream-pins.json` (`piCodingAgentVersion: 0.55.1`).
 
 ### OpenClaw Monitoring Notes

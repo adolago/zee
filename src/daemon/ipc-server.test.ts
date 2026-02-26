@@ -72,7 +72,7 @@ class FakeOrchestrator {
     return {
       task: completed,
       output: [
-        `task_id: ${completed.id} (for resuming to continue this task if needed)`,
+        `session_id: ${completed.id}`,
         "",
         "<task_result>",
         "done",

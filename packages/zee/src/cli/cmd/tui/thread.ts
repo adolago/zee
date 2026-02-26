@@ -18,7 +18,6 @@ import {
 } from "./recovery"
 
 const DEFAULT_DAEMON_PORT = 3210
-const DAEMON_HEALTH_PATH = "/global/health"
 const DAEMON_LIVE_PATH = "/global/health/live"
 const DAEMON_LIVE_TIMEOUT_MS = 2000
 const TTY_DETACH_CHECK_INTERVAL_MS = 3000
@@ -104,20 +103,6 @@ function watchInteractiveTerminal(onDetached: (reason: string) => void): () => v
   }
 }
 
-async function checkLegacyDaemonLiveness(url: string): Promise<boolean> {
-  const controller = new AbortController()
-  const timeout = setTimeout(controller.abort.bind(controller), DAEMON_LIVE_TIMEOUT_MS)
-  try {
-    const authorizedFetch = createAuthorizedFetch(fetch)
-    const response = await authorizedFetch(`${url}${DAEMON_HEALTH_PATH}`, { signal: controller.signal })
-    return response.ok
-  } catch {
-    return false
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
 async function checkDaemonLiveness(url: string): Promise<boolean> {
   const controller = new AbortController()
   const timeout = setTimeout(controller.abort.bind(controller), DAEMON_LIVE_TIMEOUT_MS)
@@ -126,12 +111,7 @@ async function checkDaemonLiveness(url: string): Promise<boolean> {
     const response = await authorizedFetch(`${url}${DAEMON_LIVE_PATH}`, {
       signal: controller.signal,
     })
-    if (response.ok) return true
-    if (response.status === 404) {
-      // Backward compatibility with older daemons that only support /global/health.
-      return await checkLegacyDaemonLiveness(url)
-    }
-    return false
+    return response.ok
   } catch {
     return false
   } finally {

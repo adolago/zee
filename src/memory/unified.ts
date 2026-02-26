@@ -124,8 +124,6 @@ export interface MemoryConfig {
   reranker?: RerankerConfig;
   namespace?: string;
   maxKeyFacts?: number;
-  /** SQLite FTS configuration for hybrid search */
-  fts?: FtsConfig;
   /** Secondary local index (Qdrant remains source-of-truth). */
   localIndex?: {
     enabled?: boolean;
@@ -430,14 +428,11 @@ export class Memory {
     }
 
     const explicitLocalIndex = config.localIndex ?? {};
-    const legacyFts = config.fts ?? {};
     const localIndexEnabled =
-      explicitLocalIndex.enabled ??
-      (config.fts ? true : undefined) ??
-      fileLocalIndex.enabled;
+      explicitLocalIndex.enabled ?? fileLocalIndex.enabled;
     const localIndexBackend = (explicitLocalIndex.backend ?? fileLocalIndex.backend) as LocalIndexBackend;
-    const localIndexDbDir = explicitLocalIndex.dbDir ?? legacyFts.dbDir ?? fileLocalIndex.dbDir;
-    const localIndexDbName = explicitLocalIndex.dbName ?? legacyFts.dbName ?? fileLocalIndex.dbName;
+    const localIndexDbDir = explicitLocalIndex.dbDir ?? fileLocalIndex.dbDir;
+    const localIndexDbName = explicitLocalIndex.dbName ?? fileLocalIndex.dbName;
     const localIndexDegradedRead =
       (explicitLocalIndex.degradedRead ?? fileLocalIndex.degradedRead) as LocalIndexDegradedReadMode;
 

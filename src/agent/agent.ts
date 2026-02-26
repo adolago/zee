@@ -31,7 +31,7 @@ export type AgentMode = z.infer<typeof AgentMode>;
 /**
  * Use case categories for personas
  */
-export const UseCase = z.enum(["stanley", "zee", "opencode", "custom"]);
+export const UseCase = z.enum(["stanley", "zee", "custom"]);
 export type UseCase = z.infer<typeof UseCase>;
 
 /**

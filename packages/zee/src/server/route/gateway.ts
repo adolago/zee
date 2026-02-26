@@ -27,7 +27,6 @@ const WhatsAppSendInput = z.object({
   mediaUrls: z.array(z.string()).optional(),
   gifPlayback: z.boolean().optional(),
   accountId: z.string().optional(),
-  account: z.string().optional(), // Alias for accountId (backward compatibility)
 })
 
 const WhatsAppInboundInput = z.object({
@@ -291,12 +290,11 @@ export const GatewayRoute = new Hono()
 
       try {
         const to = normalizeWhatsAppRecipient(toRaw)
-        const accountId = parsed.data.accountId ?? parsed.data.account
         const data = await sendViaGateway({
           provider: "whatsapp",
           to,
           message: parsed.data.message,
-          accountId,
+          accountId: parsed.data.accountId,
           mediaUrl: parsed.data.mediaUrl,
           mediaUrls: parsed.data.mediaUrls,
           gifPlayback: parsed.data.gifPlayback,

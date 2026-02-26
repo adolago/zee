@@ -121,7 +121,6 @@ const TaskParameters = z.object({
   prompt: z.string().describe('The task for the subagent to perform'),
   subagent_type: z.string().describe('The type of specialized agent to use for this task'),
   session_id: z.string().optional().describe('Existing subagent session to continue'),
-  task_id: z.string().optional().describe('Alias for session_id (backwards compatibility)'),
   timeoutMs: z.number().int().positive().optional().describe(`Timeout in ms (default: ${DEFAULT_TIMEOUT_MS})`),
   workingDir: z.string().optional().describe('Working directory override'),
 });
@@ -134,7 +133,7 @@ ${agentList}
 
 Behavior:
 - Executes a real subagent run through Claude Code CLI
-- Supports session continuation with session_id (or task_id)
+- Supports session continuation with session_id
 - Applies profile-specific tool restrictions for safety`,
 
   parameters: TaskParameters,
@@ -147,7 +146,7 @@ Behavior:
     const sandbox = resolveToolSandbox(execCtx);
     const workingDir = params.workingDir?.trim() || sandbox.cwd;
     const timeoutMs = Math.min(params.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
-    const sessionId = params.session_id || params.task_id;
+    const sessionId = params.session_id;
 
     execCtx.metadata({
       title: params.description,
@@ -228,7 +227,7 @@ Behavior:
 
     const outputSessionId = result.sessionId ?? sessionId ?? `task-${Date.now()}`;
     const output = [
-      `task_id: ${outputSessionId}`,
+      `session_id: ${outputSessionId}`,
       '',
       '<task_result>',
       result.output || '(No output)',

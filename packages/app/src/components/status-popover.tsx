@@ -387,7 +387,7 @@ export function StatusPopover() {
                     <div class="text-14-regular text-text-base text-center my-auto">
                       {(() => {
                         const value = language.t("dialog.plugins.empty")
-                        const file = "opencode.json"
+                        const file = "zee.json"
                         const parts = value.split(file)
                         if (parts.length === 1) return value
                         return (

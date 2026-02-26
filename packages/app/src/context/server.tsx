@@ -32,7 +32,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
     const platform = usePlatform()
 
     const [store, setStore, _, ready] = persisted(
-      Persist.global("server", ["server.v3"]),
+      Persist.global("server"),
       createStore({
         list: [] as string[],
         projects: {} as Record<string, StoredProject[]>,

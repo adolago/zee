@@ -8,7 +8,7 @@ import { fn } from "../util/fn"
 export namespace Dmux {
   const DEFAULT_SESSION_PREFIX = "zee-dmux"
 
-  export const Agent = z.enum(["zee", "codex", "claude", "opencode", "terminal"]).meta({
+  export const Agent = z.enum(["zee", "codex", "claude", "terminal"]).meta({
     ref: "DmuxAgent",
   })
   export type Agent = z.infer<typeof Agent>
@@ -110,8 +110,6 @@ export namespace Dmux {
         return `cd ${JSON.stringify(directory)} && codex ${escapedPrompt}`
       case "claude":
         return `cd ${JSON.stringify(directory)} && claude ${escapedPrompt}`
-      case "opencode":
-        return `cd ${JSON.stringify(directory)} && opencode ${escapedPrompt}`
       case "zee":
       default:
         return `cd ${JSON.stringify(directory)} && zee --full-auto ${escapedPrompt}`

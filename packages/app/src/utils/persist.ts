@@ -10,13 +10,11 @@ type PersistedWithReady<T> = [Store<T>, SetStoreFunction<T>, InitType, Accessor<
 type PersistTarget = {
   storage?: string
   key: string
-  legacy?: string[]
   migrate?: (value: unknown) => unknown
 }
 
-const LEGACY_STORAGE = "default.dat"
-const GLOBAL_STORAGE = "opencode.global.dat"
-const LOCAL_PREFIX = "opencode."
+const GLOBAL_STORAGE = "zee.global.dat"
+const LOCAL_PREFIX = "zee."
 const fallback = { disabled: false }
 
 const CACHE_MAX_ENTRIES = 500
@@ -191,7 +189,7 @@ function parse(value: string) {
 function workspaceStorage(dir: string) {
   const head = dir.slice(0, 12) || "workspace"
   const sum = checksum(dir) ?? "0"
-  return `opencode.workspace.${head}.${sum}.dat`
+  return `zee.workspace.${head}.${sum}.dat`
 }
 
 function localStorageWithPrefix(prefix: string): SyncStorage {
@@ -282,18 +280,18 @@ function localStorageDirect(): SyncStorage {
 }
 
 export const Persist = {
-  global(key: string, legacy?: string[]): PersistTarget {
-    return { storage: GLOBAL_STORAGE, key, legacy }
+  global(key: string): PersistTarget {
+    return { storage: GLOBAL_STORAGE, key }
   },
-  workspace(dir: string, key: string, legacy?: string[]): PersistTarget {
-    return { storage: workspaceStorage(dir), key: `workspace:${key}`, legacy }
+  workspace(dir: string, key: string): PersistTarget {
+    return { storage: workspaceStorage(dir), key: `workspace:${key}` }
   },
-  session(dir: string, session: string, key: string, legacy?: string[]): PersistTarget {
-    return { storage: workspaceStorage(dir), key: `session:${session}:${key}`, legacy }
+  session(dir: string, session: string, key: string): PersistTarget {
+    return { storage: workspaceStorage(dir), key: `session:${session}:${key}` }
   },
-  scoped(dir: string, session: string | undefined, key: string, legacy?: string[]): PersistTarget {
-    if (session) return Persist.session(dir, session, key, legacy)
-    return Persist.workspace(dir, key, legacy)
+  scoped(dir: string, session: string | undefined, key: string): PersistTarget {
+    if (session) return Persist.session(dir, session, key)
+    return Persist.workspace(dir, key)
   },
 }
 
@@ -321,7 +319,6 @@ export function persisted<T>(
   const config: PersistTarget = typeof target === "string" ? { key: target } : target
 
   const defaults = snapshot(store[0])
-  const legacy = config.legacy ?? []
 
   const isDesktop = platform.platform === "desktop" && !!platform.storage
 
@@ -331,16 +328,9 @@ export function persisted<T>(
     return localStorageWithPrefix(config.storage)
   })()
 
-  const legacyStorage = (() => {
-    if (!isDesktop) return localStorageDirect()
-    if (!config.storage) return platform.storage?.()
-    return platform.storage?.(LEGACY_STORAGE)
-  })()
-
   const storage = (() => {
     if (!isDesktop) {
       const current = currentStorage as SyncStorage
-      const legacyStore = legacyStorage as SyncStorage
 
       const api: SyncStorage = {
         getItem: (key) => {
@@ -353,23 +343,6 @@ export function persisted<T>(
             const merged = merge(defaults, migrated)
             const next = JSON.stringify(merged)
             if (raw !== next) current.setItem(key, next)
-            return next
-          }
-
-          for (const legacyKey of legacy) {
-            const legacyRaw = legacyStore.getItem(legacyKey)
-            if (legacyRaw === null) continue
-
-            current.setItem(key, legacyRaw)
-            legacyStore.removeItem(legacyKey)
-
-            const parsed = parse(legacyRaw)
-            if (parsed === undefined) return legacyRaw
-
-            const migrated = config.migrate ? config.migrate(parsed) : parsed
-            const merged = merge(defaults, migrated)
-            const next = JSON.stringify(merged)
-            if (legacyRaw !== next) current.setItem(key, next)
             return next
           }
 
@@ -387,7 +360,6 @@ export function persisted<T>(
     }
 
     const current = currentStorage as AsyncStorage
-    const legacyStore = legacyStorage as AsyncStorage | undefined
 
     const api: AsyncStorage = {
       getItem: async (key) => {
@@ -400,25 +372,6 @@ export function persisted<T>(
           const merged = merge(defaults, migrated)
           const next = JSON.stringify(merged)
           if (raw !== next) await current.setItem(key, next)
-          return next
-        }
-
-        if (!legacyStore) return null
-
-        for (const legacyKey of legacy) {
-          const legacyRaw = await legacyStore.getItem(legacyKey)
-          if (legacyRaw === null) continue
-
-          await current.setItem(key, legacyRaw)
-          await legacyStore.removeItem(legacyKey)
-
-          const parsed = parse(legacyRaw)
-          if (parsed === undefined) return legacyRaw
-
-          const migrated = config.migrate ? config.migrate(parsed) : parsed
-          const merged = merge(defaults, migrated)
-          const next = JSON.stringify(merged)
-          if (legacyRaw !== next) await current.setItem(key, next)
           return next
         }
 

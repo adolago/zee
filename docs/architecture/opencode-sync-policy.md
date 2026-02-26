@@ -63,9 +63,10 @@ Each monthly or event-triggered refresh must include:
 
 ## Latest Refresh Snapshot (2026-02-26)
 
-- `opencode/dev` pin: `d848c9b6a32f408e8b9bf6448b83af05629454d0`
-- Divergence: `2076` behind / `1450` ahead (`git rev-list --left-right --count opencode/dev...HEAD`)
-- Sync preview status: `./scripts/sync-upstream.sh --remote opencode --preview` blocked by dirty worktree
+- `opencode/dev` pin: `b4d0090e005e7355b3e8f2594c0ad8538fffe75b`
+- Divergence: `2082` behind / `1452` ahead (`git rev-list --left-right --count opencode/dev...HEAD`)
+- Sync preview status: `./scripts/sync-upstream.sh --remote opencode --preview` now allowed on dirty worktree (preview-only safety guard)
+- Sync preview artifact: full conflict-overlap list written to `/tmp/zee-sync-conflicts-opencode.txt` with hotspot summary in CLI output
 - Rank/order changes: lane 05 promoted to rank 3, lane 03 moved to rank 4, lanes 08/09 promoted above lane 04, lane 06 moved to maintenance rank.
 
 ## Ownership

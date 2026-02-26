@@ -121,7 +121,7 @@ export class Orchestrator extends EventEmitter {
     const task = this.getOrCreateTask({
       taskId: params.taskId,
       persona: params.persona,
-      description: params.description || params.task,
+      description: params.description,
       prompt: params.prompt,
       parentSessionId: params.parentSessionId,
       parentMessageId: params.parentMessageId,
@@ -697,7 +697,7 @@ export class Orchestrator extends EventEmitter {
 
     const resultBody = workerOutput || task.error || "";
     return [
-      `task_id: ${task.id} (for resuming to continue this task if needed)`,
+      `session_id: ${task.id}`,
       "",
       "<task_result>",
       resultBody,

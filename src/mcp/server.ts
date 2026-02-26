@@ -529,5 +529,4 @@ export function resetMcpServerManager(): void {
   serverManagerInstance = undefined;
 }
 
-// Re-export OAuth types from new module for backwards compatibility
 export { McpOAuthManager, type OAuthTokens, type OAuthClientInfo, type McpOAuthConfig } from './oauth';

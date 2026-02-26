@@ -26,8 +26,6 @@ type TerminalCacheEntry = {
 }
 
 function createTerminalSession(sdk: ReturnType<typeof useSDK>, dir: string, session?: string) {
-  const legacy = session ? [`${dir}/terminal/${session}.v1`, `${dir}/terminal.v1`] : [`${dir}/terminal.v1`]
-
   const numberFromTitle = (title: string) => {
     const match = title.match(/^Terminal (\d+)$/)
     if (!match) return
@@ -37,7 +35,7 @@ function createTerminalSession(sdk: ReturnType<typeof useSDK>, dir: string, sess
   }
 
   const [store, setStore, _, ready] = persisted(
-    Persist.workspace(dir, "terminal", legacy),
+    Persist.workspace(dir, "terminal"),
     createStore<{
       active?: string
       all: LocalPTY[]

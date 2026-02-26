@@ -61,10 +61,6 @@ const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
   "GET /global/instances": AuthScope.ADMIN,
   "POST /global/dispose": AuthScope.ADMIN,
   "POST /instance/dispose": AuthScope.ADMIN,
-  // Legacy (should not be used by current routes)
-  "POST /dispose": AuthScope.ADMIN,
-  "PUT /auth": AuthScope.ADMIN,
-  "DELETE /auth": AuthScope.ADMIN,
 }
 
 /**
