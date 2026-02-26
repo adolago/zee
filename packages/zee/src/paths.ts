@@ -8,7 +8,7 @@
 import path from "path"
 import fs from "fs"
 import os from "os"
-import { execSync } from "child_process"
+import { execFileSync } from "child_process"
 
 function findZeeRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
@@ -150,36 +150,51 @@ export const Stanley = {
       return `Stanley Python package not found at ${packageDir}.`
     }
 
-    // 3. Check venv exists
+    // 3. Resolve Python interpreter
     const venvDir = path.join(repo, ".venv")
-    if (!fs.existsSync(venvDir)) {
-      return (
-        `Stanley Python venv not found at ${venvDir}.\n` +
-        `Set it up with:\n` +
-        `  cd ${repo}\n` +
-        `  python3.12 -m venv .venv\n` +
-        `  .venv/bin/pip install -r requirements.txt`
-      )
-    }
-
-    // 4. Check venv Python binary exists
     const venvPython = path.join(venvDir, "bin", "python")
-    if (!fs.existsSync(venvPython)) {
-      return `Stanley venv Python binary missing at ${venvPython}. Recreate the venv.`
+    const configuredPython = process.env.STANLEY_PYTHON?.trim()
+
+    let pythonBinary: string
+    let installCommand: string
+
+    if (fs.existsSync(venvPython)) {
+      pythonBinary = venvPython
+      installCommand = `  .venv/bin/pip install -r requirements.txt`
+    } else {
+      if (!configuredPython) {
+        return (
+          `Stanley Python venv not found at ${venvDir}.\n` +
+          `Set STANLEY_PYTHON to an explicit Python interpreter with Stanley dependencies installed.\n` +
+          `Example:\n` +
+          `  export STANLEY_PYTHON=/path/to/python3.12\n` +
+          `  $STANLEY_PYTHON -m pip install -r ${path.join(repo, "requirements.txt")}`
+        )
+      }
+      pythonBinary = configuredPython
+      installCommand = `  ${configuredPython} -m pip install -r requirements.txt`
     }
 
-    // 5. Verify key dependency (fastapi) is importable
+    // 4. Verify required dependencies are importable
     try {
-      execSync(`${venvPython} -c "import fastapi; import uvicorn"`, {
+      execFileSync(pythonBinary, ["-c", "import fastapi; import uvicorn; import jwt"], {
+        cwd: repo,
         timeout: 10_000,
         stdio: "pipe",
       })
-    } catch {
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException
+      if (err.code === "ENOENT" || err.code === "EACCES") {
+        return (
+          `Configured Python interpreter is not executable: ${pythonBinary}.\n` +
+          `Set STANLEY_PYTHON to a valid executable Python path.`
+        )
+      }
       return (
-        `Stanley Python dependencies not installed.\n` +
+        `Stanley Python dependencies not installed or incomplete (required: fastapi, uvicorn, PyJWT).\n` +
         `Install them with:\n` +
         `  cd ${repo}\n` +
-        `  .venv/bin/pip install -r requirements.txt`
+        installCommand
       )
     }
 
