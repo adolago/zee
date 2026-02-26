@@ -41,9 +41,10 @@ Tracking issue: `adolago/zee#288`
   - emit a migration report showing mapped, skipped, and non-goal keys
 - Current implementation slice:
   - command added: `zee auth import-opencode [file] [--dry-run]`
-  - supported mappings: provider/auth API keys, OAuth token blobs, provider base URLs, `models.url`, `models.path`, `server.mdns`, `server.mdnsDomain`
+  - supported mappings: provider/auth API keys, OAuth token blobs, provider base URLs, provider options (`timeout`, `setCacheKey`, `enterpriseUrl`), provider allow/deny lists and provider model overrides, `models.url`/`models.baseURL`, `models.path`, `server.mdns`, `server.mdnsDomain`, `server.port`, `server.hostname`, `server.cors`, and selected top-level migration keys (`logLevel`, `model`, `small_model`, `disabled_providers`, `share`, `autoupdate`, `username`)
+  - structured unknown-key diagnostics: category buckets (`topLevel`, `provider`, `models`, `server`) with remediation hints
   - test coverage: `packages/zee/test/cli/auth-import-opencode.test.ts`
-  - current gap: broader OpenCode-only key mapping and richer unknown-key remediation hints
+  - current gap: migration docs/examples still need to mirror the expanded importer behavior
 - Minimum test scope:
   - unit tests for mapping rules and unknown-key handling
   - integration test with fixture `.opencode/opencode.jsonc` -> generated `.zee/*`

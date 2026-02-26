@@ -2,8 +2,8 @@
 #
 # auto-update-check -- Check upstream remotes and notify via WhatsApp or Telegram.
 #
-# Runs check-upstream.sh --fetch, parses the output for BEHIND/DRIFT status,
-# and sends a summary if any remote has new commits.
+# Runs check-upstream.sh --fetch, parses the output for BEHIND/DRIFT status
+# and OpenClaw sentinel states, and sends a summary if any remote has updates.
 #
 # Usage:
 #   auto-update-check [--dry-run] [--always-notify]
@@ -83,6 +83,10 @@ while IFS= read -r line; do
     if [[ "$line" =~ Status:\ (MINOR\ DRIFT|SIGNIFICANT\ DRIFT|BEHIND) ]]; then
         behind_remotes+=("$current_remote")
     fi
+    if [[ "$line" =~ OpenClaw\ sentinel:\ (ACTIONABLE\ PORTS\ PENDING|NET-NEW\ ACTIONABLE\ DELTAS) ]]; then
+        has_updates=true
+        behind_remotes+=("openclaw")
+    fi
 done <<< "$output"
 
 if ! $has_updates && ! $ALWAYS_NOTIFY; then
@@ -99,7 +103,7 @@ if $has_updates; then
     # Extract the relevant sections
     while IFS= read -r line; do
         # Include remote headers, behind/ahead counts, status, and commit lines
-        if [[ "$line" =~ ^---\ |Behind:|Ahead:|Status:|Latest\ tag:|^\ \ \ \ [a-f0-9] ]]; then
+        if [[ "$line" =~ ^---\ |Behind:|Ahead:|Status:|OpenClaw\ sentinel:|Security\ ports\ pending:|Latest\ tag:|^\ \ \ \ [a-f0-9] ]]; then
             msg+="$line"
             msg+=$'\n'
         fi

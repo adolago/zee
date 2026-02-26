@@ -28,10 +28,10 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 01 | [#219](https://github.com/adolago/zee/issues/219) | TUI parity baseline (thinking keybind, remote auth, custom models path) | adapt | in-progress | `docs/architecture/upstream-differences.md` |
 | 2 | 02 | [#221](https://github.com/adolago/zee/issues/221) | Config parity baseline (models.dev URL, mDNS domain, managed settings) | adapt | in-progress | `docs/architecture/upstream-differences.md` |
-| 3 | 05 | [#290](https://github.com/adolago/zee/issues/290) | API/LSP/server workflow parity deltas | adapt | triage-done | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` |
+| 3 | 05 | [#290](https://github.com/adolago/zee/issues/290) | API/LSP/server workflow parity deltas | adapt | in-progress | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` |
 | 4 | 03 | [#288](https://github.com/adolago/zee/issues/288) | Auth/provider plugin parity and migration ergonomics | adapt | in-progress | `docs/architecture/opencode-lanes/lane-03-auth-provider.md` |
 | 5 | 08 | `TBD` | Project-local `.opencode/` migration ergonomics into `.zee/` | adapt | in-progress | `docs/architecture/upstream-differences.md` |
-| 6 | 09 | `TBD` | Client/server mode behavior parity (serve flows, remote clients) | adapt | backlog | `docs/architecture/feature-comparison.md` |
+| 6 | 09 | `TBD` | Client/server mode behavior parity (serve flows, remote clients) | adapt | in-progress | `docs/architecture/feature-comparison.md` |
 | 7 | 04 | [#289](https://github.com/adolago/zee/issues/289) | Web/desktop/package topology parity strategy | adapt | triage-done | `docs/architecture/opencode-lanes/lane-04-package-topology.md` |
 | 8 | 06 | [#291](https://github.com/adolago/zee/issues/291) | Upstream sync automation and policy | port | triage-done | `docs/architecture/opencode-sync-policy.md` |
 | 9 | 07 | `TBD` | Provider breadth parity (extra `@ai-sdk/*` footprint vs Zee policy) | defer | backlog | `docs/architecture/feature-comparison.md` |
@@ -39,7 +39,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 ## Re-ranking Rationale (2026-02-25)
 
-- Promoted lane 05 ahead of lane 03 because executable LSP/serve/session harness coverage is now the fastest way to control parity regressions while drift is `2058` commits behind.
+- Promoted lane 05 ahead of lane 03 because executable LSP/serve/session harness coverage is now the fastest way to control parity regressions while drift is `2076` commits behind.
 - Promoted lanes 08/09 above lane 04 because migration ergonomics and remote attach behavior directly impact day-one OpenCode portability.
 - Demoted lane 06 (sync policy) because the process lane is operational and currently in maintenance mode.
 
@@ -64,6 +64,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 - Scope: provider/auth plugin surface and migration guidance.
 - Current decision: `adapt`.
 - 2026-02-25 progress: added `zee auth import-opencode` first implementation slice with fixture-backed tests and dry-run diagnostics.
+- 2026-02-26 progress: expanded mapping coverage (provider/server/top-level keys) and added structured unknown-key diagnostics with remediation hints.
 - Artifact: `docs/architecture/opencode-lanes/lane-03-auth-provider.md`.
 
 ### Lane 04 (`#289`): Web/desktop/package topology
@@ -76,6 +77,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 - Scope: parity-critical coding workflows and acceptance tests.
 - Current decision: `adapt`.
+- 2026-02-26 progress: shipped parity harness baseline tests for `P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`, and `P05-CFG-001`.
 - Artifact: `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md`.
 
 ### Lane 06 (`#291`): Upstream sync policy
@@ -97,6 +99,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 
 - Scope: remote `serve`/attach/resume behavior and auth lifecycle parity.
 - Current decision: `adapt`.
+- 2026-02-26 progress: attach auth lifecycle and resume continuity now covered by baseline parity tests.
 - Exit signal: integration harness verifies attach/resume parity in remote workflow scenarios.
 
 ## Refresh Process (Pinned to `opencode/dev`)
