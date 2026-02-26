@@ -27,7 +27,6 @@ const WhatsAppSendInput = z.object({
   mediaUrls: z.array(z.string()).optional(),
   gifPlayback: z.boolean().optional(),
   accountId: z.string().optional(),
-  account: z.string().optional(), // Alias for accountId (backward compatibility)
 })
 
 const WhatsAppInboundInput = z.object({
@@ -55,6 +54,45 @@ const WhatsAppInboundInput = z.object({
 const PROTOCOL_VERSION = 3
 const DEFAULT_GATEWAY_PORT = 18789
 const DEFAULT_GATEWAY_SEND_TIMEOUT_MS = 20_000
+
+function secureEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let result = 0
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return result === 0
+}
+
+async function resolveGatewayRouteSecret(): Promise<string | undefined> {
+  const envToken = process.env.ZEE_GATEWAY_TOKEN?.trim()
+  if (envToken) return envToken
+
+  const fileToken = await readZeeGatewayTokenFromFile({ log }).catch(() => undefined)
+  if (fileToken) return fileToken
+
+  const password = process.env.ZEE_GATEWAY_PASSWORD?.trim()
+  if (password) return password
+  return undefined
+}
+
+function resolveProvidedGatewayRouteSecret(req: Request): string | undefined {
+  const directHeader = req.headers.get("x-zee-gateway-token")?.trim()
+  if (directHeader) return directHeader
+
+  const authHeader = req.headers.get("authorization")?.trim()
+  const bearer = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
+  if (bearer) return bearer
+
+  return undefined
+}
+
+function shouldRequireGatewayRouteAuth(req: Request): boolean {
+  const method = req.method.toUpperCase()
+  if (method !== "GET" && method !== "HEAD") return true
+  // Browser-originated reads should authenticate when a gateway secret is configured.
+  return Boolean(req.headers.get("origin"))
+}
 
 function resolveGatewayWsUrl(): string {
   const urlOverride = process.env.ZEE_GATEWAY_URL?.trim()
@@ -235,6 +273,25 @@ async function sendViaGateway(input: {
 }
 
 export const GatewayRoute = new Hono()
+  .use(async (c, next) => {
+    const configuredSecret = await resolveGatewayRouteSecret()
+    if (!configuredSecret) {
+      await next()
+      return
+    }
+
+    if (!shouldRequireGatewayRouteAuth(c.req.raw)) {
+      await next()
+      return
+    }
+
+    const providedSecret = resolveProvidedGatewayRouteSecret(c.req.raw)
+    if (!providedSecret || !secureEqual(providedSecret, configuredSecret)) {
+      return c.json({ success: false, error: "Gateway auth required" } satisfies GatewayResponse, 401)
+    }
+
+    await next()
+  })
   .post(
     "/whatsapp/send",
     describeRoute({
@@ -291,12 +348,11 @@ export const GatewayRoute = new Hono()
 
       try {
         const to = normalizeWhatsAppRecipient(toRaw)
-        const accountId = parsed.data.accountId ?? parsed.data.account
         const data = await sendViaGateway({
           provider: "whatsapp",
           to,
           message: parsed.data.message,
-          accountId,
+          accountId: parsed.data.accountId,
           mediaUrl: parsed.data.mediaUrl,
           mediaUrls: parsed.data.mediaUrls,
           gifPlayback: parsed.data.gifPlayback,

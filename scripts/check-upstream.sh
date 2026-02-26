@@ -35,6 +35,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=scripts/lib/upstream-common.sh
 source "$REPO_ROOT/scripts/lib/upstream-common.sh"
+UPSTREAM_DIFF="$REPO_ROOT/docs/architecture/upstream-differences.md"
+UPSTREAM_IMPORT_MAP="$REPO_ROOT/docs/architecture/upstream-import-map.md"
+OPENCLAW_DELTA_MAP="$REPO_ROOT/docs/architecture/openclaw-delta-map.md"
 
 # Colors
 RED='\033[0;31m'
@@ -131,6 +134,68 @@ check_pimono() {
     echo ""
 }
 
+resolve_openclaw_monitor_pin() {
+    local pin=""
+
+    if [ -f "$UPSTREAM_IMPORT_MAP" ]; then
+        pin="$(grep -oP '^- OpenClaw pin: `\K[a-f0-9]{12,40}' "$UPSTREAM_IMPORT_MAP" | head -1 || true)"
+    fi
+
+    if [ -z "$pin" ] && [ -f "$UPSTREAM_DIFF" ]; then
+        # Prefer the newest "Current upstream pins" entry when multiple matches exist.
+        pin="$(grep -oP '^- openclaw: `\K[a-f0-9]{12,40}' "$UPSTREAM_DIFF" | tail -1 || true)"
+    fi
+
+    printf '%s\n' "$pin"
+}
+
+print_openclaw_sentinel() {
+    local remote_ref="$1"
+    local todos=0
+    local monitor_pin=""
+    local net_new=""
+    local pin_short="unknown"
+
+    if [ -f "$OPENCLAW_DELTA_MAP" ]; then
+        todos="$(count_markdown_todos "$OPENCLAW_DELTA_MAP")"
+    fi
+
+    monitor_pin="$(resolve_openclaw_monitor_pin)"
+    if [ -n "$monitor_pin" ]; then
+        pin_short="${monitor_pin:0:12}"
+    fi
+
+    if [ -n "$monitor_pin" ] && git cat-file -e "${monitor_pin}^{commit}" 2>/dev/null; then
+        if git merge-base --is-ancestor "$monitor_pin" "$remote_ref" 2>/dev/null; then
+            net_new="$(git rev-list --count "$monitor_pin..$remote_ref" 2>/dev/null || true)"
+        fi
+    fi
+
+    if [ "$todos" -gt 0 ]; then
+        if [[ "$net_new" =~ ^[0-9]+$ ]]; then
+            echo -e "  OpenClaw sentinel: ${RED}ACTIONABLE PORTS PENDING${NC} ($todos TODO rows, $net_new commits since pin $pin_short)"
+        else
+            echo -e "  OpenClaw sentinel: ${RED}ACTIONABLE PORTS PENDING${NC} ($todos TODO rows)"
+        fi
+        return 0
+    fi
+
+    if [[ "$net_new" =~ ^[0-9]+$ ]]; then
+        if [ "$net_new" -gt 0 ]; then
+            echo -e "  OpenClaw sentinel: ${YELLOW}NET-NEW ACTIONABLE DELTAS${NC} ($net_new commits since pin $pin_short, 0 TODO rows)"
+        else
+            echo -e "  OpenClaw sentinel: ${GREEN}NO NEW ACTIONABLE PORTS${NC} (0 commits since pin $pin_short, 0 TODO rows)"
+        fi
+        return 0
+    fi
+
+    if [ -z "$monitor_pin" ]; then
+        echo -e "  OpenClaw sentinel: ${YELLOW}UNKNOWN${NC} (monitor pin missing; TODO rows: $todos)"
+    else
+        echo -e "  OpenClaw sentinel: ${YELLOW}UNKNOWN${NC} (monitor pin $pin_short not available locally; TODO rows: $todos)"
+    fi
+}
+
 check_git_remote() {
     local remote_name="$1"
     local branch="${REMOTE_BRANCH[$remote_name]}"
@@ -166,6 +231,14 @@ check_git_remote() {
         echo -e "  ${YELLOW}No common ancestor (unrelated histories).${NC}"
         echo -e "  Remote commits: $(git rev-list --count "$remote_name/$branch")"
         echo -e "  Status: ${YELLOW}UNRELATED HISTORIES${NC}"
+        if [ "$remote_name" = "openclaw" ]; then
+            local openclaw_todos=0
+            if [ -f "$OPENCLAW_DELTA_MAP" ]; then
+                openclaw_todos="$(count_markdown_todos "$OPENCLAW_DELTA_MAP")"
+            fi
+            echo -e "  Security ports pending: ${YELLOW}$openclaw_todos${NC} (from delta-map TODOs)"
+            print_openclaw_sentinel "$remote_name/$branch"
+        fi
         echo ""
         return
     fi
@@ -185,6 +258,15 @@ check_git_remote() {
         echo -e "  Status: ${YELLOW}MINOR DRIFT${NC} ($behind commits behind)"
     else
         echo -e "  Status: ${RED}SIGNIFICANT DRIFT${NC} ($behind commits behind)"
+    fi
+
+    if [ "$remote_name" = "openclaw" ]; then
+        local openclaw_todos=0
+        if [ -f "$OPENCLAW_DELTA_MAP" ]; then
+            openclaw_todos="$(count_markdown_todos "$OPENCLAW_DELTA_MAP")"
+        fi
+        echo -e "  Security ports pending: ${YELLOW}$openclaw_todos${NC} (from delta-map TODOs)"
+        print_openclaw_sentinel "$remote_name/$branch"
     fi
 
     # Show latest upstream commits if verbose and behind

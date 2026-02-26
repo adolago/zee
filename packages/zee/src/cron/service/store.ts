@@ -3,7 +3,7 @@
 import type { CronJob } from "../types"
 import type { CronServiceState } from "./state"
 import { loadCronStore, saveCronStore } from "../store"
-import { inferLegacyName, normalizeOptionalText } from "../normalize"
+import { normalizeOptionalText, normalizeRequiredName } from "../normalize"
 
 const storeCache = new Map<string, { version: 1; jobs: CronJob[] }>()
 
@@ -20,16 +20,7 @@ export async function ensureLoaded(state: CronServiceState) {
   const jobs = (loaded.jobs ?? []) as unknown as Array<Record<string, unknown>>
   let mutated = false
   for (const raw of jobs) {
-    const nameRaw = raw.name
-    if (typeof nameRaw !== "string" || nameRaw.trim().length === 0) {
-      raw.name = inferLegacyName({
-        schedule: raw.schedule as never,
-        payload: raw.payload as never,
-      })
-      mutated = true
-    } else {
-      raw.name = nameRaw.trim()
-    }
+    raw.name = normalizeRequiredName(raw.name)
 
     const desc = normalizeOptionalText(raw.description)
     if (raw.description !== desc) {

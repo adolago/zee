@@ -1003,32 +1003,6 @@ export namespace Provider {
       log.info("found", { providerID })
     }
 
-    // Cross-provider dedup: remove models from proxy providers (opencode) if they
-    // exist in a direct provider with auth. Direct provider always wins.
-    const PROXY_PROVIDERS = ["opencode"]
-    for (const proxyID of PROXY_PROVIDERS) {
-      const proxy = providers[proxyID]
-      if (!proxy) continue
-      const removedFromProxy: string[] = []
-      for (const modelID of Object.keys(proxy.models)) {
-        for (const [directID, directProvider] of Object.entries(providers)) {
-          if (directID === proxyID) continue
-          if (directProvider.models[modelID]) {
-            removedFromProxy.push(modelID)
-            delete proxy.models[modelID]
-            break
-          }
-        }
-      }
-      if (removedFromProxy.length > 0) {
-        log.debug("cross-provider dedup", { proxy: proxyID, removed: removedFromProxy })
-      }
-      if (Object.keys(proxy.models).length === 0) {
-        log.debug("provider removed", { providerID: proxyID, reason: "all models deduped to direct providers" })
-        delete providers[proxyID]
-      }
-    }
-
     return {
       models: languages,
       providers,

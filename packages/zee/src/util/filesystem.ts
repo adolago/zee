@@ -1,5 +1,5 @@
-import { realpathSync } from "fs"
-import { realpath } from "fs/promises"
+import { lstatSync, realpathSync } from "fs"
+import { lstat, realpath } from "fs/promises"
 import { dirname, isAbsolute, join, relative, sep, win32 } from "path"
 
 export namespace Filesystem {
@@ -37,6 +37,30 @@ export namespace Filesystem {
       .stat()
       .then((s) => s.isDirectory())
       .catch(() => false)
+
+  /**
+   * Detect regular files with multiple hard links.
+   * Hardlinked files can bypass lexical workspace boundaries by aliasing external content.
+   */
+  export async function isSuspiciousHardlink(p: string): Promise<boolean> {
+    p = sanitizePath(p)
+    try {
+      const stat = await lstat(p)
+      return stat.isFile() && stat.nlink > 1
+    } catch {
+      return false
+    }
+  }
+
+  export function isSuspiciousHardlinkSync(p: string): boolean {
+    p = sanitizePath(p)
+    try {
+      const stat = lstatSync(p)
+      return stat.isFile() && stat.nlink > 1
+    } catch {
+      return false
+    }
+  }
   /**
    * Check if child path is contained within parent, resolving symlinks.
    * This prevents symlink escape attacks where a symlink inside the project

@@ -12,6 +12,8 @@ describe("gateway routes", () => {
     ZEE_GATEWAY_URL: process.env.ZEE_GATEWAY_URL,
     ZEE_GATEWAY_PORT: process.env.ZEE_GATEWAY_PORT,
     ZEE_META_CLI_BIN: process.env.ZEE_META_CLI_BIN,
+    ZEE_GATEWAY_TOKEN: process.env.ZEE_GATEWAY_TOKEN,
+    ZEE_GATEWAY_PASSWORD: process.env.ZEE_GATEWAY_PASSWORD,
   }
 
   let gatewayServer: ReturnType<typeof Bun.serve> | null = null
@@ -91,6 +93,12 @@ describe("gateway routes", () => {
 
     if (originalEnv.ZEE_META_CLI_BIN === undefined) delete process.env.ZEE_META_CLI_BIN
     else process.env.ZEE_META_CLI_BIN = originalEnv.ZEE_META_CLI_BIN
+
+    if (originalEnv.ZEE_GATEWAY_TOKEN === undefined) delete process.env.ZEE_GATEWAY_TOKEN
+    else process.env.ZEE_GATEWAY_TOKEN = originalEnv.ZEE_GATEWAY_TOKEN
+
+    if (originalEnv.ZEE_GATEWAY_PASSWORD === undefined) delete process.env.ZEE_GATEWAY_PASSWORD
+    else process.env.ZEE_GATEWAY_PASSWORD = originalEnv.ZEE_GATEWAY_PASSWORD
 
     if (fakeMetaBinPath) {
       await fs.rm(fakeMetaBinPath, { force: true }).catch(() => {})
@@ -315,5 +323,59 @@ describe("gateway routes", () => {
     const data = await response.json()
     expect(data.success).toBe(false)
     expect(data.error).toContain("usage unavailable")
+  })
+
+  test("POST /gateway/whatsapp/send requires gateway auth when secret is configured", async () => {
+    const previousToken = process.env.ZEE_GATEWAY_TOKEN
+    try {
+      process.env.ZEE_GATEWAY_TOKEN = "gw-secret"
+      const app = Server.App()
+
+      const denied = await app.request("/gateway/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: "15551234567@c.us", message: "Hello" }),
+      })
+      expect(denied.status).toBe(401)
+
+      const allowed = await app.request("/gateway/whatsapp/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-zee-gateway-token": "gw-secret",
+        },
+        body: JSON.stringify({ chatId: "15551234567@c.us", message: "Hello" }),
+      })
+      expect(allowed.status).toBe(200)
+    } finally {
+      if (previousToken === undefined) delete process.env.ZEE_GATEWAY_TOKEN
+      else process.env.ZEE_GATEWAY_TOKEN = previousToken
+    }
+  })
+
+  test("GET /gateway/status requires gateway auth for browser-originated requests when secret is configured", async () => {
+    const previousToken = process.env.ZEE_GATEWAY_TOKEN
+    try {
+      process.env.ZEE_GATEWAY_TOKEN = "gw-secret"
+      const app = Server.App()
+
+      const denied = await app.request("/gateway/status", {
+        method: "GET",
+        headers: { Origin: "http://localhost:5173" },
+      })
+      expect(denied.status).toBe(401)
+
+      const allowed = await app.request("/gateway/status", {
+        method: "GET",
+        headers: {
+          Origin: "http://localhost:5173",
+          Authorization: "Bearer gw-secret",
+        },
+      })
+      expect(allowed.status).toBe(200)
+    } finally {
+      if (previousToken === undefined) delete process.env.ZEE_GATEWAY_TOKEN
+      else process.env.ZEE_GATEWAY_TOKEN = previousToken
+    }
   })
 })

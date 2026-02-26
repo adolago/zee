@@ -11,15 +11,15 @@ This document maps the high-signal differences between zee and:
 
 Snapshot used for this comparison:
 
-- zee: `a141706a7cd8` (full `a141706a7cd86543daae5b393cc1df7fea10cfd4`)
-- opencode: `d848c9b6a32f` (full `d848c9b6a32f408e8b9bf6448b83af05629454d0`, `opencode/dev`)
+- zee: `8e3cc2b2d575` (full `8e3cc2b2d5751c05b36ef78508a562e805dca77f`)
+- opencode: `b4d0090e005e` (full `b4d0090e005e7355b3e8f2594c0ad8538fffe75b`, `opencode/dev`)
 - openclaw: `b3f46f0e2891` (full `b3f46f0e2891621467061e4c24851882609b2cbd`, `openclaw/main`)
 
-Current upstream pins (refreshed 2026-02-25):
+Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw unchanged from prior snapshot):
 
-- opencode: `d848c9b6a32f` (full `d848c9b6a32f408e8b9bf6448b83af05629454d0`, `opencode/dev`)
+- opencode: `b4d0090e005e` (full `b4d0090e005e7355b3e8f2594c0ad8538fffe75b`, `opencode/dev`)
 - openclaw: `b3f46f0e2891` (full `b3f46f0e2891621467061e4c24851882609b2cbd`, `openclaw/main`)
-- pimono: `5c0ec26c28c9` (full `5c0ec26c28c918c5301f218e8c13fcc540d8e3a4`, `pimono/main`); installed `@mariozechner/pi-coding-agent@0.53.1`, latest tag `v0.55.0`
+- pimono: `5c0ec26c28c9` (full `5c0ec26c28c918c5301f218e8c13fcc540d8e3a4`, `pimono/main`); installed `@mariozechner/pi-coding-agent@0.55.1`, latest tag `v0.55.1`
 
 ## Summary (what each repo is)
 
@@ -232,7 +232,7 @@ Overlap is mostly in "utility" skills (for example `weather`, `spotify-player`),
 
 These numbers are intended to size the divergence, not to replace a full code review:
 
-- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `2058` (opencode-only) vs `1445` (zee-only)
+- Commit divergence (`git rev-list --left-right --count opencode/dev...HEAD`): `2082` (opencode-only) vs `1452` (zee-only)
 - File delta (with rename detection raised: `git -c diff.renameLimit=20000 diff --name-status opencode/dev...HEAD`):
   - Added: `4341`
   - Deleted: `689`
@@ -243,8 +243,8 @@ These numbers are intended to size the divergence, not to replace a full code re
 
 Zee vendors `@mariozechner/pi-*` packages via npm (not git merge):
 
-- Installed pin: `@mariozechner/pi-coding-agent@0.53.1` (tracked in `docs/architecture/upstream-pins.json`)
-- Latest tag: `v0.55.0` (on `pimono/main`)
+- Installed pin: `@mariozechner/pi-coding-agent@0.55.1` (tracked in `docs/architecture/upstream-pins.json`)
+- Latest tag: `v0.55.1` (on `pimono/main`)
 - Update: edit `docs/architecture/upstream-pins.json` and bump `pimono.piCodingAgentVersion`, then run `./scripts/validate-sync.sh`
 
 ## How to reproduce / extend this mapping

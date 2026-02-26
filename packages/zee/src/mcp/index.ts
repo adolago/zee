@@ -136,7 +136,7 @@ export namespace MCP {
   }
 
   function normalizeBuiltinLocalServerName(serverName: string): string {
-    return serverName.replace(/^personas-/, "")
+    return serverName
   }
 
   function isBuiltinLocalServer(serverName: string): boolean {
@@ -912,9 +912,7 @@ export namespace MCP {
 
     // Try to find the server file in source directories
     const roots = [Global.Path.source, agentCoreRoot]
-    // Backwards compat: strip legacy "personas-" prefix if present
-    const baseName = serverName.replace(/^personas-/, "")
-    const candidates = [serverName, baseName]
+    const candidates = [serverName]
 
     for (const root of roots) {
       for (const name of candidates) {

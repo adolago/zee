@@ -32,7 +32,6 @@ const log = Log.create({ service: "daemon" })
 const DAEMON_ALREADY_RUNNING_EXIT_CODE = 100
 const ALLOW_RESTART_ENV = "ZEE_ALLOW_RESTART"
 const DAEMON_LIVE_PATH = "/global/health/live"
-const DAEMON_HEALTH_PATH = "/global/health"
 const DAEMON_PROBE_TIMEOUT_MS = 2000
 
 async function probeDaemonEndpoint(url: string): Promise<Response> {
@@ -54,13 +53,6 @@ async function probeDaemonLiveness(state: {
   try {
     const liveResponse = await probeDaemonEndpoint(`${baseUrl}${DAEMON_LIVE_PATH}`)
     if (liveResponse.ok) return { live: true }
-
-    if (liveResponse.status === 404) {
-      const legacyResponse = await probeDaemonEndpoint(`${baseUrl}${DAEMON_HEALTH_PATH}`)
-      if (legacyResponse.ok) return { live: true, details: "Legacy /global/health probe used" }
-      return { live: false, details: `Legacy probe HTTP ${legacyResponse.status}` }
-    }
-
     return { live: false, details: `HTTP ${liveResponse.status}` }
   } catch (error) {
     return {

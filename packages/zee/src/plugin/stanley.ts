@@ -6,9 +6,16 @@
  * Auto-persists research results to Zee's memory via tool.execute.after hook.
  */
 
-import type { Hooks, PluginInput } from "@zee/plugin"
+import type { Hooks, PluginInput, ToolDefinition } from "@zee/plugin"
 import { tool } from "@zee/plugin"
-import { StanleyClient } from "@zee/stanley-sdk"
+import {
+  StanleyApiError,
+  StanleyClient,
+  StanleyDaemonError,
+  StanleyNetworkError,
+  StanleyNotRunningError,
+  StanleyTimeoutError,
+} from "@zee/stanley-sdk"
 import { Log } from "../util/log"
 import { Stanley } from "../paths"
 
@@ -19,25 +26,259 @@ const log = Log.create({ service: "plugin.stanley" })
 // ---------------------------------------------------------------------------
 
 let client: StanleyClient | null = null
+let clientKey: string | null = null
+let connectPromise: Promise<void> | null = null
+let preflightValidated = false
 
-function getClient(baseUrl?: string, apiKey?: string): StanleyClient {
-  if (!client) {
-    client = new StanleyClient({
-      baseUrl: baseUrl || Stanley.apiUrl(),
-      daemon: {
-        autoStart: true,
-        pythonPath: Stanley.python(),
-        repoPath: process.env.STANLEY_REPO_PATH || Stanley.repo(),
-      },
-      http: {
-        timeoutMs: parseInt(process.env.STANLEY_TIMEOUT || "30000"),
-      },
-      auth: {
-        apiKey: apiKey || process.env.STANLEY_API_KEY,
-      },
-    })
+type StanleyPluginConfig = {
+  enabled?: boolean
+  baseUrl?: string
+  apiKey?: string
+  autoStart?: boolean
+  wsEnabled?: boolean
+  repoPath?: string
+}
+
+type ResolvedStanleyPluginConfig = {
+  baseUrl: string
+  apiKey?: string
+  autoStart: boolean
+  wsEnabled: boolean
+  repoPath: string
+}
+
+let pluginConfig: StanleyPluginConfig = {}
+
+const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "0.0.0.0", "::1"])
+const B3_TICKER_PATTERN = /^[A-Z]{4}\d{1,2}$/
+const SYMBOL_HINTS = ["not found", "no data", "unknown symbol", "invalid symbol", "ticker", "symbol not found"]
+
+const ROUTER_KEYS = [
+  "system",
+  "market",
+  "institutional",
+  "analytics",
+  "portfolio",
+  "research",
+  "commodities",
+  "options",
+  "etf",
+  "macro",
+  "accounting",
+  "signals",
+  "notes",
+] as const
+
+const wrappedTargets = new WeakSet<object>()
+
+function resolveStanleyTimeoutMs(): number {
+  const parsed = parseInt(process.env.STANLEY_TIMEOUT || "30000", 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30_000
+}
+
+function normalizeSymbol(symbol: string): string {
+  return symbol.trim().toUpperCase()
+}
+
+function isBrazilTickerCandidate(symbol: string): boolean {
+  return !symbol.includes(".") && B3_TICKER_PATTERN.test(symbol)
+}
+
+function hasSymbolHint(message: string): boolean {
+  const lower = message.toLowerCase()
+  return SYMBOL_HINTS.some((hint) => lower.includes(hint))
+}
+
+function isSymbolLookupError(error: unknown): boolean {
+  if (error instanceof StanleyApiError) {
+    if (error.statusCode === 404 || error.statusCode === 422) return true
+    return hasSymbolHint(`${error.message} ${error.responseBody ?? ""}`)
   }
+  if (error instanceof Error) {
+    return hasSymbolHint(error.message)
+  }
+  return false
+}
+
+function shouldRetryWithBrazilSuffix(result: ApiResult): boolean {
+  if (result.success) return false
+  return hasSymbolHint(result.error ?? "")
+}
+
+async function withBrazilSymbolFallback(symbol: string, request: (resolvedSymbol: string) => Promise<ApiResult>) {
+  const normalized = normalizeSymbol(symbol)
+  if (!isBrazilTickerCandidate(normalized)) {
+    return request(normalized)
+  }
+
+  const retrySymbol = `${normalized}.SA`
+
+  try {
+    const primary = await request(normalized)
+    if (!shouldRetryWithBrazilSuffix(primary)) return primary
+  } catch (error) {
+    if (!isSymbolLookupError(error)) throw error
+  }
+
+  return request(retrySymbol)
+}
+
+function resolveLocalDaemonEndpoint(baseUrl: string): { host: string; port: number } | null {
+  try {
+    const url = new URL(baseUrl)
+    const host = url.hostname
+    if (!LOCAL_HOSTS.has(host)) return null
+    const port = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80
+    if (!Number.isFinite(port) || port <= 0 || port > 65_535) return null
+    return { host, port }
+  } catch {
+    return null
+  }
+}
+
+function formatStanleyError(error: unknown): string {
+  if (error instanceof StanleyTimeoutError) {
+    return `Stanley request timed out after ${error.timeoutMs}ms.`
+  }
+  if (error instanceof StanleyNotRunningError) {
+    return (
+      `Stanley API is not running at ${error.baseUrl}. ` +
+      `Verify backend setup and set STANLEY_PYTHON when no local stanley/.venv is available.`
+    )
+  }
+  if (error instanceof StanleyDaemonError) {
+    return `Stanley backend is unavailable. ${error.message}`
+  }
+  if (error instanceof StanleyNetworkError) {
+    return `Unable to reach Stanley API. ${error.message}`
+  }
+  if (error instanceof Error) {
+    return error.message
+  }
+  return String(error)
+}
+
+function wrapRouterMethods(target: unknown): void {
+  if (!target || typeof target !== "object") return
+  if (wrappedTargets.has(target)) return
+  wrappedTargets.add(target)
+
+  const proto = Object.getPrototypeOf(target)
+  if (!proto) return
+
+  for (const key of Object.getOwnPropertyNames(proto)) {
+    if (key === "constructor") continue
+    const method = (target as Record<string, unknown>)[key]
+    if (typeof method !== "function") continue
+    ;(target as Record<string, unknown>)[key] = async (...args: unknown[]) => {
+      await ensureConnected()
+      return (method as (...args: unknown[]) => unknown).apply(target, args)
+    }
+  }
+}
+
+function wrapClientMethods(c: StanleyClient): void {
+  for (const key of ROUTER_KEYS) {
+    wrapRouterMethods((c as unknown as Record<string, unknown>)[key])
+  }
+  const rawRequest = c.rawRequest.bind(c)
+  c.rawRequest = (async (...args: Parameters<StanleyClient["rawRequest"]>) => {
+    await ensureConnected()
+    return rawRequest(...args)
+  }) as StanleyClient["rawRequest"]
+}
+
+function wrapToolErrors(tools: Record<string, ToolDefinition>): Record<string, ToolDefinition> {
+  const wrapped: Record<string, ToolDefinition> = {}
+  for (const [name, definition] of Object.entries(tools)) {
+    wrapped[name] = {
+      ...definition,
+      async execute(args, context) {
+        try {
+          return await definition.execute(args as never, context)
+        } catch (error) {
+          log.warn("stanley tool failed", {
+            tool: name,
+            error: error instanceof Error ? error.message : String(error),
+          })
+          return `Error: ${formatStanleyError(error)}`
+        }
+      },
+    }
+  }
+  return wrapped
+}
+
+function getEffectiveConfig(override?: StanleyPluginConfig): ResolvedStanleyPluginConfig {
+  const merged = { ...pluginConfig, ...override }
+  return {
+    baseUrl: merged.baseUrl ?? Stanley.apiUrl(),
+    apiKey: merged.apiKey ?? process.env.STANLEY_API_KEY,
+    autoStart: merged.autoStart ?? true,
+    wsEnabled: merged.wsEnabled ?? false,
+    repoPath: merged.repoPath ?? process.env.STANLEY_REPO_PATH ?? Stanley.repo(),
+  }
+}
+
+function buildClientKey(config: ResolvedStanleyPluginConfig): string {
+  return JSON.stringify(config)
+}
+
+function getClient(override?: StanleyPluginConfig): StanleyClient {
+  const effective = getEffectiveConfig(override)
+  const key = buildClientKey(effective)
+
+  if (client && clientKey === key) return client
+
+  if (client && clientKey !== key) {
+    void client.disconnect().catch(() => {})
+    connectPromise = null
+    preflightValidated = false
+  }
+
+  const daemonEndpoint = resolveLocalDaemonEndpoint(effective.baseUrl)
+  clientKey = key
+  client = new StanleyClient({
+    baseUrl: effective.baseUrl,
+    daemon: {
+      autoStart: effective.autoStart,
+      pythonPath: Stanley.python(),
+      repoPath: effective.repoPath,
+      ...(daemonEndpoint ? { host: daemonEndpoint.host, port: daemonEndpoint.port } : {}),
+    },
+    http: {
+      timeoutMs: resolveStanleyTimeoutMs(),
+    },
+    ws: {
+      enabled: effective.wsEnabled,
+    },
+    auth: {
+      apiKey: effective.apiKey,
+    },
+  })
+  wrapClientMethods(client)
   return client
+}
+
+function ensurePreflight(): void {
+  if (preflightValidated) return
+  const preflightError = Stanley.preflight()
+  if (preflightError) {
+    throw new StanleyDaemonError(preflightError)
+  }
+  preflightValidated = true
+}
+
+async function ensureConnected(): Promise<void> {
+  if (connectPromise) return connectPromise
+  connectPromise = (async () => {
+    ensurePreflight()
+    await getClient().connect()
+  })().catch((error) => {
+    connectPromise = null
+    throw error
+  })
+  return connectPromise
 }
 
 // ---------------------------------------------------------------------------
@@ -76,16 +317,15 @@ const PERSIST_PATTERNS = new Set([
 export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
   return {
     async config(config) {
-      const cfg = (config as Record<string, unknown>).stanley as
-        | { enabled?: boolean; baseUrl?: string; apiKey?: string }
-        | undefined
+      const cfg = (config as Record<string, unknown>).stanley as StanleyPluginConfig | undefined
       if (cfg?.enabled === false) {
         log.info("stanley plugin disabled via config")
         return
       }
+      pluginConfig = { ...pluginConfig, ...cfg }
       // Pre-warm client with config values
-      if (cfg?.baseUrl || cfg?.apiKey) {
-        getClient(cfg.baseUrl, cfg.apiKey)
+      if (cfg) {
+        getClient(cfg)
       }
     },
 
@@ -119,13 +359,16 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
       if ((event as { type?: string }).type === "session.end" && client) {
         await client.disconnect().catch(() => {})
         client = null
+        clientKey = null
+        connectPromise = null
+        preflightValidated = false
       }
     },
 
     // -----------------------------------------------------------------------
     // Tool registrations — all 18 tools
     // -----------------------------------------------------------------------
-    tool: {
+    tool: wrapToolErrors({
       // =====================================================================
       // Tier 1: Domain tools with discriminated action param
       // =====================================================================
@@ -146,11 +389,13 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
           switch (args.action) {
             case "quote": {
               if (!args.symbol) return "Error: symbol is required for quote action"
-              return fmt(await c.market.getData(args.symbol))
+              return fmt(await withBrazilSymbolFallback(args.symbol, (symbol) => c.market.getData(symbol)))
             }
             case "history": {
               if (!args.symbol) return "Error: symbol is required for history action"
-              return fmt(await c.market.getHistory(args.symbol, args.period, args.interval))
+              return fmt(
+                await withBrazilSymbolFallback(args.symbol, (symbol) => c.market.getHistory(symbol, args.period, args.interval)),
+              )
             }
             case "overview":
               return fmt(await c.market.getOverview())
@@ -177,23 +422,25 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
         },
         async execute(args) {
           const c = getClient()
-          const sym = args.symbol.toUpperCase()
+          const sym = normalizeSymbol(args.symbol)
           switch (args.action) {
             case "report":
-              return fmt(await c.research.getReport(sym))
+              return fmt(await withBrazilSymbolFallback(sym, (symbol) => c.research.getReport(symbol)))
             case "valuation":
-              return fmt(await c.research.getValuation(sym, args.include_dcf))
+              return fmt(await withBrazilSymbolFallback(sym, (symbol) => c.research.getValuation(symbol, args.include_dcf)))
             case "earnings":
-              return fmt(await c.research.getEarnings(sym, args.quarters))
+              return fmt(await withBrazilSymbolFallback(sym, (symbol) => c.research.getEarnings(symbol, args.quarters)))
             case "peers":
-              return fmt(await c.research.getPeers(sym, args.peers))
+              return fmt(await withBrazilSymbolFallback(sym, (symbol) => c.research.getPeers(symbol, args.peers)))
             case "dcf":
               return fmt(
-                await c.research.getDCF(sym, {
-                  discountRate: args.discount_rate,
-                  terminalGrowth: args.terminal_growth,
-                  projectionYears: args.projection_years,
-                }),
+                await withBrazilSymbolFallback(sym, (symbol) =>
+                  c.research.getDCF(symbol, {
+                    discountRate: args.discount_rate,
+                    terminalGrowth: args.terminal_growth,
+                    projectionYears: args.projection_years,
+                  }),
+                ),
               )
             default:
               return `Unknown action: ${args.action}`
@@ -834,6 +1081,6 @@ export async function StanleyPlugin(input: PluginInput): Promise<Hooks> {
           return fmt(await c.rawRequest(args.method, args.path, { body }))
         },
       }),
-    },
+    }),
   }
 }

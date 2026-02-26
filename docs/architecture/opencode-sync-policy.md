@@ -54,18 +54,19 @@ Each monthly or event-triggered refresh must include:
 
 ## Lane Update Checklist
 
-- [x] Refresh upstream metadata via playbook commands (`check-upstream-all --fetch`, `check-upstream --remote opencode --fetch --verbose`, 2026-02-25).
+- [x] Refresh upstream metadata via playbook commands (`check-upstream-all --fetch`, `check-upstream --remote opencode --fetch --verbose`, 2026-02-26).
 - [x] Update pinned commit hashes in comparison docs (`upstream-differences.md`, `zee-opencode-gap-map-top10.md`).
 - [x] Re-evaluate top-10 rank ordering in `zee-opencode-gap-map-top10.md` (rank changes applied for implementation prioritization).
 - [x] Update lane artifacts for changed deltas (`zee-opencode-gap-map-top10.md`, `upstream-import-map.md` re-ranked).
 - [x] Open/follow-up lane issues when new items enter top-10 (N/A this cycle; no new entries).
 - [x] Record why each changed item is `port`/`adapt`/`defer`/`non-goal` (rank-only changes documented; no decision reclassifications).
 
-## Latest Refresh Snapshot (2026-02-25)
+## Latest Refresh Snapshot (2026-02-26)
 
-- `opencode/dev` pin: `d848c9b6a32f408e8b9bf6448b83af05629454d0`
-- Divergence: `2058` behind / `1445` ahead (`git rev-list --left-right --count opencode/dev...HEAD`)
-- Sync preview status: `./scripts/sync-upstream.sh --remote opencode --preview` blocked by dirty worktree
+- `opencode/dev` pin: `b4d0090e005e7355b3e8f2594c0ad8538fffe75b`
+- Divergence: `2082` behind / `1452` ahead (`git rev-list --left-right --count opencode/dev...HEAD`)
+- Sync preview status: `./scripts/sync-upstream.sh --remote opencode --preview` now allowed on dirty worktree (preview-only safety guard)
+- Sync preview artifact: full conflict-overlap list written to `/tmp/zee-sync-conflicts-opencode.txt` with hotspot summary in CLI output
 - Rank/order changes: lane 05 promoted to rank 3, lane 03 moved to rank 4, lanes 08/09 promoted above lane 04, lane 06 moved to maintenance rank.
 
 ## Ownership

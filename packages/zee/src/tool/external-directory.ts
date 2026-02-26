@@ -2,6 +2,7 @@ import path from "path"
 import fs from "fs/promises"
 import type { Tool } from "./tool"
 import { Instance } from "../project/instance"
+import { Filesystem } from "../util/filesystem"
 
 type Kind = "file" | "directory"
 
@@ -30,9 +31,15 @@ export async function assertExternalDirectory(ctx: Tool.Context, target?: string
 
   if (options?.bypass) return
 
+  const kind = options?.kind ?? "file"
+
+  // Block hardlinked regular files to prevent workspace alias escapes.
+  if (kind === "file" && (await Filesystem.isSuspiciousHardlink(target))) {
+    throw new Error(`Refusing hardlinked file path outside workspace trust boundary: ${target}`)
+  }
+
   if (Instance.containsPath(target)) return
 
-  const kind = options?.kind ?? "file"
   const parentDir = await resolvePromptParentDir(target, kind)
   const glob = path.join(parentDir, "*")
 

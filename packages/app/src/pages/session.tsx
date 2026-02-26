@@ -1458,7 +1458,7 @@ export default function Page() {
   createEffect(() => {
     const sessionID = params.id
     if (!sessionID) return
-    const raw = sessionStorage.getItem("zee.pendingMessage") ?? sessionStorage.getItem("opencode.pendingMessage")
+    const raw = sessionStorage.getItem("zee.pendingMessage")
     if (!raw) return
     const parts = raw.split("|")
     const pendingSessionID = parts[0]
@@ -1467,7 +1467,6 @@ export default function Page() {
     if (pendingSessionID !== sessionID) return
 
     sessionStorage.removeItem("zee.pendingMessage")
-    sessionStorage.removeItem("opencode.pendingMessage")
     setUi("pendingMessage", messageID)
   })
 

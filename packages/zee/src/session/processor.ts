@@ -23,6 +23,12 @@ import { StreamHealth } from "./stream-health"
 import { StreamEvents } from "./stream-events"
 import { AppDeps } from "@/app/deps"
 import { SessionSteering } from "./steering"
+import {
+  appendStanleyProvenance,
+  extractTextFromParts,
+  isValuationMetricQuery,
+  summarizeStanleyProvenance,
+} from "./stanley-provenance"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -77,6 +83,54 @@ export namespace SessionProcessor {
     let steered = false
     let attempt = 0
     let needsCompaction = false
+
+    async function ensureStanleyProvenanceForValuationAnswer() {
+      if (input.assistantMessage.error) return
+      if (input.assistantMessage.finish === "tool-calls") return
+      if (!input.assistantMessage.parentID) return
+
+      const parent = await MessageV2.get({
+        sessionID: input.sessionID,
+        messageID: input.assistantMessage.parentID,
+      }).catch(() => undefined)
+      if (!parent || parent.info.role !== "user") return
+
+      const queryText = extractTextFromParts(parent.parts)
+      if (!isValuationMetricQuery(queryText)) return
+
+      const allMessages = await Session.messages({ sessionID: input.sessionID })
+      const traces = allMessages
+        .filter(
+          (message) =>
+            message.info.role === "assistant" &&
+            message.info.parentID === input.assistantMessage.parentID &&
+            message.info.time.created <= input.assistantMessage.time.created,
+        )
+        .flatMap((message) =>
+          message.parts
+            .filter((part): part is MessageV2.ToolPart => part.type === "tool")
+            .map((part) => ({
+              tool: part.tool,
+              status: part.state.status,
+              error: part.state.status === "error" ? part.state.error : undefined,
+            })),
+        )
+      const summary = summarizeStanleyProvenance(traces)
+      if (!summary) return
+
+      const parts = await MessageV2.parts(input.assistantMessage.id)
+      const textParts = parts.filter((part): part is MessageV2.TextPart => part.type === "text")
+      const lastTextPart = textParts.at(-1)
+      if (!lastTextPart) return
+
+      const updatedText = appendStanleyProvenance(lastTextPart.text, summary)
+      if (updatedText === lastTextPart.text) return
+
+      await Session.updatePart({
+        ...lastTextPart,
+        text: updatedText,
+      })
+    }
 
     const result = {
       get message() {
@@ -745,6 +799,7 @@ export namespace SessionProcessor {
                 })
               }
             }
+            await ensureStanleyProvenanceForValuationAnswer()
             input.assistantMessage.time.completed = Date.now()
             await Session.updateMessage(input.assistantMessage)
             SessionSteering.clear(input.sessionID, input.assistantMessage.id)

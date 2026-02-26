@@ -43,8 +43,6 @@ export interface SpawnDroneParams {
   persona: Persona;
   /** Short human-readable task description. */
   description?: string;
-  /** Legacy alias retained for compatibility with older clients. */
-  task?: string;
   prompt: string;
   parentSessionId?: string;
   parentMessageId?: string;

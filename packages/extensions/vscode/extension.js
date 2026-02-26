@@ -23,7 +23,7 @@ async function request(context, path, options = {}) {
   const directory = getWorkspaceDirectory();
   const headers = {
     "Accept": "application/json",
-    ...(directory ? { "x-zee-directory": directory, "x-opencode-directory": directory } : {}),
+    ...(directory ? { "x-zee-directory": directory } : {}),
     ...(options.headers || {}),
   };
   const res = await fetch(url, { ...options, headers });

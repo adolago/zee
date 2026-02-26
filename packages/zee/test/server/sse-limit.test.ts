@@ -6,6 +6,8 @@ import { SseLimit } from "../../src/server/sse-limit"
 const ORIGINAL_ENV = {
   ZEE_SERVER_MAX_SSE_CONNECTIONS: process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS,
   ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT: process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT,
+  ZEE_SERVER_TRUST_X_FORWARDED_FOR: process.env.ZEE_SERVER_TRUST_X_FORWARDED_FOR,
+  ZEE_SERVER_TRUSTED_PROXIES: process.env.ZEE_SERVER_TRUSTED_PROXIES,
 }
 
 afterEach(() => {
@@ -71,5 +73,62 @@ describe("SseLimit", () => {
     expect(slotB2.ok).toBe(true)
 
     if (slotB2.ok) slotB2.release()
+  })
+
+  test("does not trust x-forwarded-for unless explicitly enabled", () => {
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS = "2"
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT = "1"
+    delete process.env.ZEE_SERVER_TRUST_X_FORWARDED_FOR
+    delete process.env.ZEE_SERVER_TRUSTED_PROXIES
+    reloadFlags()
+
+    const reqA = new Request("http://localhost/app/event", {
+      headers: {
+        "x-forwarded-for": "203.0.113.10",
+      },
+    })
+    const slotA = SseLimit.acquire(reqA)
+    expect(slotA.ok).toBe(true)
+
+    const reqB = new Request("http://localhost/app/event", {
+      headers: {
+        "x-forwarded-for": "203.0.113.11",
+      },
+    })
+    const slotB = SseLimit.acquire(reqB)
+    // Both requests collapse to "unknown" client key without trusted-proxy mode.
+    expect(slotB.ok).toBe(false)
+
+    if (slotA.ok) slotA.release()
+  })
+
+  test("uses x-forwarded-for only when request comes from a trusted proxy", () => {
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS = "2"
+    process.env.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT = "1"
+    process.env.ZEE_SERVER_TRUST_X_FORWARDED_FOR = "1"
+    process.env.ZEE_SERVER_TRUSTED_PROXIES = "10.10.10.10"
+    reloadFlags()
+
+    const reqA = new Request("http://localhost/app/event", {
+      headers: {
+        "x-forwarded-for": "203.0.113.10",
+      },
+    })
+    RequestMeta.setIp(reqA, "10.10.10.10")
+    const slotA = SseLimit.acquire(reqA)
+    expect(slotA.ok).toBe(true)
+
+    const reqB = new Request("http://localhost/app/event", {
+      headers: {
+        "x-forwarded-for": "203.0.113.11",
+      },
+    })
+    RequestMeta.setIp(reqB, "10.10.10.10")
+    const slotB = SseLimit.acquire(reqB)
+    // Distinct forwarded client IPs should be honored behind a trusted proxy.
+    expect(slotB.ok).toBe(true)
+
+    if (slotA.ok) slotA.release()
+    if (slotB.ok) slotB.release()
   })
 })

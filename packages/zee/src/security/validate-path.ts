@@ -207,6 +207,17 @@ async function assertNoSymlinkEscape(relative: string, root: string): Promise<vo
       throw err
     }
   }
+
+  // Block hardlinked regular files to prevent alias escapes from outside the sandbox.
+  try {
+    const stat = await fs.lstat(current)
+    if (stat.isFile() && stat.nlink > 1) {
+      throw new PathValidationError(`Hardlink not allowed in sandbox path: ${current}`)
+    }
+  } catch (err) {
+    if ((err as { code?: string }).code === "ENOENT") return
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------

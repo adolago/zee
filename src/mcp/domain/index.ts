@@ -141,15 +141,6 @@ export function registerSharedTools(): void {
 }
 
 /**
- * Register all domain tools (sync version for backwards compat)
- */
-export function registerDomainTools(): void {
-  registerStanleyTools();
-  registerZeeTools();
-  registerSharedTools();
-}
-
-/**
  * Register all domain tools unconditionally.
  * All namespaces (zee:*, stanley:*, johny:*) load for the unified Zee persona.
  */

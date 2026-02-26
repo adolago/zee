@@ -5,7 +5,7 @@ import { cmd } from "./cmd"
 import { Global } from "../../global"
 import { UI } from "../ui"
 
-type RuntimeMode = "zee" | "legacy" | "dual"
+type RuntimeMode = "zee"
 
 type GuiArgs = {
   runtimeMode?: RuntimeMode
@@ -61,8 +61,8 @@ export const GuiCommand = cmd({
     yargs
       .option("runtime-mode", {
         type: "string",
-        choices: ["zee", "legacy", "dual"],
-        default: "dual",
+        choices: ["zee"],
+        default: "zee",
         describe: "GUI runtime transport mode",
       })
       .option("sidebar", {
@@ -109,7 +109,7 @@ export const GuiCommand = cmd({
 
     const env: NodeJS.ProcessEnv = {
       ...process.env,
-      ZEE_GUI_RUNTIME_MODE: typed.runtimeMode ?? "dual",
+      ZEE_GUI_RUNTIME_MODE: typed.runtimeMode ?? "zee",
     }
     if (typed.sidebar) env.ZEE_GUI_SIDECAR = "1"
 

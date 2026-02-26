@@ -236,14 +236,14 @@ export function Titlebar() {
             </Tooltip>
           </div>
         </div>
-        <div id="opencode-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" data-tauri-drag-region />
+        <div id="zee-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" data-tauri-drag-region />
       </div>
 
       <div
         class="min-w-0 flex items-center justify-center pointer-events-none lg:absolute lg:inset-0 lg:flex lg:items-center lg:justify-center"
         data-tauri-drag-region
       >
-        <div id="opencode-titlebar-center" class="pointer-events-auto w-full min-w-0 flex justify-center lg:w-fit" />
+        <div id="zee-titlebar-center" class="pointer-events-auto w-full min-w-0 flex justify-center lg:w-fit" />
       </div>
 
       <div
@@ -254,7 +254,7 @@ export function Titlebar() {
         onMouseDown={drag}
         data-tauri-drag-region
       >
-        <div id="opencode-titlebar-right" class="flex items-center gap-3 shrink-0 justify-end" data-tauri-drag-region />
+        <div id="zee-titlebar-right" class="flex items-center gap-3 shrink-0 justify-end" data-tauri-drag-region />
         <Show when={windows()}>
           <div class="w-6 shrink-0" />
           <div data-tauri-decorum-tb class="flex flex-row" />

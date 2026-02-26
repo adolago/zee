@@ -22,7 +22,7 @@ export const { use: useModels, provider: ModelsProvider } = createSimpleContext(
     const providers = useProviders()
 
     const [store, setStore, _, ready] = persisted(
-      Persist.global("model", ["model.v1"]),
+      Persist.global("model"),
       createStore<Store>({
         user: [],
         recent: [],

@@ -202,6 +202,7 @@ export const Instance = {
    * Paths within the worktree but outside the working directory should not trigger external_directory permission.
    */
   containsPath(filepath: string) {
+    if (Filesystem.isSuspiciousHardlinkSync(filepath)) return false
     if (Filesystem.containsResolvedSync(Instance.directory, filepath)) return true
     // Non-git projects set worktree to "/" which would match ANY absolute path.
     // Skip worktree check in this case to preserve external_directory permissions.

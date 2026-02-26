@@ -15,11 +15,7 @@ import { StanleyPlugin } from "./stanley"
 export namespace Plugin {
   const log = Log.create({ service: "plugin" })
 
-  const BUILTIN = [
-    "opencode-anthropic-auth@0.0.11",
-    "opencode-antigravity-auth@1.2.8",
-    "@gitlab/opencode-gitlab-auth@1.3.2",
-  ]
+  const BUILTIN: string[] = []
 
   // Built-in plugins that are directly imported (not installed from npm)
   const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin, StanleyPlugin]
@@ -56,8 +52,6 @@ export namespace Plugin {
     const plugins = Config.deduplicatePlugins([...(BUILTIN ?? []), ...configPlugins])
 
     for (let plugin of plugins) {
-      // ignore old codex plugin since it is supported first party now
-      if (plugin.includes("opencode-openai-codex-auth")) continue
       const pluginName = Config.getPluginName(plugin)
       const isBuiltin = builtinNames.has(pluginName) && !configNames.has(pluginName)
 
@@ -102,14 +96,6 @@ export namespace Plugin {
           }).toObject(),
         })
         continue
-      }
-      if (pluginName === "opencode-antigravity-auth") {
-        const createAntigravityPlugin = (mod as Record<string, unknown>).createAntigravityPlugin
-        if (typeof createAntigravityPlugin === "function") {
-          mod = {
-            antigravity: createAntigravityPlugin("google-antigravity") as PluginInstance,
-          }
-        }
       }
       // Prevent duplicate initialization when plugins export the same function
       // as both a named export and default export (e.g., `export const X` and `export default X`).

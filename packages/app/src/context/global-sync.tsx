@@ -155,7 +155,7 @@ function createGlobalSync() {
   }
 
   const [projectCache, setProjectCache, , projectCacheReady] = persisted(
-    Persist.global("globalSync.project", ["globalSync.project.v1"]),
+    Persist.global("globalSync.project"),
     createStore({ value: [] as Project[] }),
   )
 
@@ -350,7 +350,7 @@ function createGlobalSync() {
     if (!children[directory]) {
       const vcs = runWithOwner(owner, () =>
         persisted(
-          Persist.workspace(directory, "vcs", ["vcs.v1"]),
+          Persist.workspace(directory, "vcs"),
           createStore({ value: undefined as VcsInfo | undefined }),
         ),
       )
@@ -361,7 +361,7 @@ function createGlobalSync() {
 
       const meta = runWithOwner(owner, () =>
         persisted(
-          Persist.workspace(directory, "project", ["project.v1"]),
+          Persist.workspace(directory, "project"),
           createStore({ value: undefined as ProjectMeta | undefined }),
         ),
       )
@@ -370,7 +370,7 @@ function createGlobalSync() {
 
       const icon = runWithOwner(owner, () =>
         persisted(
-          Persist.workspace(directory, "icon", ["icon.v1"]),
+          Persist.workspace(directory, "icon"),
           createStore({ value: undefined as string | undefined }),
         ),
       )

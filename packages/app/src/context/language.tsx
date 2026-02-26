@@ -108,7 +108,7 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
   name: "Language",
   init: () => {
     const [store, setStore, _, ready] = persisted(
-      Persist.global("language", ["language.v1"]),
+      Persist.global("language"),
       createStore({
         locale: detectLocale() as Locale,
       }),

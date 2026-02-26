@@ -38,6 +38,11 @@ Run before any GitHub issue/PR operation:
 ./scripts/sync-upstream.sh --remote opencode --preview
 ```
 
+Notes:
+
+- Preview mode now runs even with a dirty worktree (merge/rebase modes remain blocked).
+- Preview writes full overlap paths to `/tmp/zee-sync-conflicts-opencode.txt` and prints top conflict areas.
+
 4. Capture direct divergence counts (optional but recommended):
 
 ```bash

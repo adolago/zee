@@ -252,12 +252,10 @@ export namespace SessionPrompt {
 
   /**
    * Resolve the session mode (plan/accept/bypass).
-   * Priority: per-message explicit mode > per-session mode > legacy options mode
-   * > per-message tools > surface default.
+   * Priority: per-message explicit mode > per-session mode > surface default.
    */
   export function resolveMode(
     session: Session.Info,
-    messageTools?: Record<string, boolean>,
     messageOptions?: Record<string, any>,
     messageMode?: unknown,
   ): Mode {
@@ -268,13 +266,7 @@ export namespace SessionPrompt {
     const sessionMode = normalizeMode(session.mode)
     if (sessionMode) return sessionMode
 
-    // Backward compatibility for older clients that sent mode in options.
-    const legacyMode = normalizeMode(messageOptions?.mode)
-    if (legacyMode) return legacyMode
-
-    // Per-message tools fallback (backward compat: edit=false means plan)
-    if (messageTools?.edit === false) return "plan"
-    if (messageTools?.edit === true) return "accept"
+    void messageOptions
 
     // Surface defaults: safe-by-default (plan mode).
     return "plan"
@@ -310,13 +302,12 @@ export namespace SessionPrompt {
    */
   export function resolveSkipPermissions(
     session: Session.Info,
-    messageTools?: Record<string, boolean>,
     messageOptions?: Record<string, any>,
     messageMode?: unknown,
   ): boolean {
     const opt = messageOptions?.skipPermissions
     if (typeof opt === "boolean") return opt
-    return resolveMode(session, messageTools, messageOptions, messageMode) === "bypass"
+    return resolveMode(session, messageOptions, messageMode) === "bypass"
   }
 
   const MEMORY_REQUIRED_CHECK_TTL_MS = 30_000
@@ -630,23 +621,6 @@ export namespace SessionPrompt {
     const message = await createUserMessage(input)
     await Session.touch(input.sessionID)
 
-    // this is backwards compatibility for allowing `tools` to be specified when
-    // prompting
-    const permissions: PermissionNext.Ruleset = []
-    for (const [tool, enabled] of Object.entries(input.tools ?? {})) {
-      permissions.push({
-        permission: tool,
-        action: enabled ? "allow" : "deny",
-        pattern: "*",
-      })
-    }
-    if (permissions.length > 0) {
-      session.permission = permissions
-      await Session.update(session.id, (draft) => {
-        draft.permission = permissions
-      })
-    }
-
     if (input.noReply === true) {
       return message
     }
@@ -860,7 +834,7 @@ export namespace SessionPrompt {
       if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
       if (!session.toolPolicySnapshot) {
         const snapshotAgent = await Agent.get(lastUser.agent)
-        const mode = resolveMode(session, lastUser.tools, lastUser.options, lastUser.mode)
+        const mode = resolveMode(session, lastUser.options, lastUser.mode)
         const ruleset = PermissionNext.merge(snapshotAgent.permission, session.permission ?? [])
         const snapshot: NonNullable<Session.Info["toolPolicySnapshot"]> = {
           createdAt: Date.now(),
@@ -1211,13 +1185,13 @@ export namespace SessionPrompt {
 
       // normal processing
       const baseAgent = await Agent.get(lastUser.agent)
-      const optionsForAgent = lastUser.options ? (({ mode: _, ...rest }) => rest)(lastUser.options) : undefined
+      const optionsForAgent = lastUser.options
       const agent = optionsForAgent
         ? { ...baseAgent, options: mergeDeep(baseAgent.options, optionsForAgent) }
         : baseAgent
       const maxSteps = agent.steps ?? Infinity
       const isLastStep = step >= maxSteps
-      const turnMode = resolveMode(session, lastUser.tools, lastUser.options, lastUser.mode)
+      const turnMode = resolveMode(session, lastUser.options, lastUser.mode)
       msgs = await insertReminders({
         messages: msgs,
         agent,
@@ -1320,7 +1294,7 @@ export namespace SessionPrompt {
               return undefined
             })
           : undefined
-      const executionMode = resolveMode(session, lastUser.tools, lastUser.options, lastUser.mode)
+      const executionMode = resolveMode(session, lastUser.options, lastUser.mode)
 
       const result = await processor.process({
         user: lastUser,
@@ -1417,7 +1391,7 @@ export namespace SessionPrompt {
     using _ = log.time("resolveTools")
     const tools: Record<string, AITool> = {}
 
-    const mode = resolveMode(input.session, input.tools, input.options, input.mode)
+    const mode = resolveMode(input.session, input.options, input.mode)
     const skipPermissions = mode === "bypass"
 
     const context = (args: any, options: ToolCallOptions): Tool.Context => ({
@@ -1637,14 +1611,7 @@ export namespace SessionPrompt {
 
   async function createUserMessage(input: PromptInput) {
     const agent = await Agent.get(input.agent ?? (await Agent.defaultAgent()))
-    const legacyMode = normalizeMode(input.options?.mode)
-    const promptMode = normalizeMode(input.mode) ?? legacyMode
-    if (!input.mode && legacyMode) {
-      log.debug("received deprecated prompt options.mode; prefer top-level mode", {
-        sessionID: input.sessionID,
-        mode: legacyMode,
-      })
-    }
+    const promptMode = normalizeMode(input.mode)
     const options = input.options ? { ...input.options } : undefined
     if (options && "mode" in options) delete options.mode
     const sanitizedOptions = options && Object.keys(options).length > 0 ? options : undefined

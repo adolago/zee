@@ -181,16 +181,6 @@ export namespace Config {
       }
     }
 
-    // Migrate deprecated mode field to agent field
-    for (const [name, mode] of Object.entries(result.mode ?? {})) {
-      result.agent = mergeDeep(result.agent ?? {}, {
-        [name]: {
-          ...mode,
-          mode: "primary" as const,
-        },
-      })
-    }
-
     if (Flag.ZEE_PERMISSION) {
       try {
         const parsed = JSON.parse(Flag.ZEE_PERMISSION)
@@ -201,20 +191,6 @@ export namespace Config {
           error: error instanceof Error ? error.message : String(error),
         })
       }
-    }
-
-    // Backwards compatibility: legacy top-level `tools` config
-    if (result.tools) {
-      const perms: Record<string, Config.PermissionAction> = {}
-      for (const [tool, enabled] of Object.entries(result.tools)) {
-        const action: Config.PermissionAction = enabled ? "allow" : "deny"
-        if (tool === "write" || tool === "edit" || tool === "patch" || tool === "multiedit") {
-          perms.edit = action
-          continue
-        }
-        perms[tool] = action
-      }
-      result.permission = mergeDeep(perms, result.permission ?? {})
     }
 
     if (!result.username) result.username = os.userInfo().username
@@ -779,11 +755,9 @@ export namespace Config {
         "hidden",
         "color",
         "steps",
-        "maxSteps",
         "options",
         "permission",
         "disable",
-        "tools",
         // Additional sampling parameters
         "frequency_penalty",
         "presence_penalty",
@@ -804,26 +778,8 @@ export namespace Config {
         if (!knownKeys.has(key)) options[key] = value
       }
 
-      // Convert legacy tools config to permissions
-      const permission: Permission = {}
-      for (const [tool, enabled] of Object.entries(agent.tools ?? {})) {
-        const action = enabled ? "allow" : "deny"
-        // write, edit, patch, multiedit all map to edit permission
-        if (tool === "write" || tool === "edit" || tool === "patch" || tool === "multiedit") {
-          permission.edit = action
-        } else {
-          permission[tool] = action
-        }
-      }
-      Object.assign(permission, agent.permission)
-
-      // Convert legacy maxSteps to steps
-      const steps = agent.steps ?? agent.maxSteps
-
-      return { ...agent, options, permission, steps } as typeof agent & {
+      return { ...agent, options } as typeof agent & {
         options?: Record<string, unknown>
-        permission?: Permission
-        steps?: number
       }
     })
     .meta({
@@ -1285,13 +1241,6 @@ export namespace Config {
         })
         .optional()
         .describe("Reranker configuration for two-stage retrieval"),
-      fts: z
-        .object({
-          dbDir: z.string().optional().describe("SQLite FTS database directory (legacy local index config)"),
-          dbName: z.string().optional().describe("SQLite FTS database filename (legacy local index config)"),
-        })
-        .optional()
-        .describe("Legacy local keyword index config (mapped to memory.localIndex)"),
       localIndex: z
         .object({
           enabled: z.boolean().optional().describe("Enable local keyword index as secondary store"),

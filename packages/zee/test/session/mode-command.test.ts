@@ -277,60 +277,41 @@ describe("resolveMode", () => {
     expect(SessionPrompt.resolveMode({ mode: "bypass" } as any)).toBe("bypass")
   })
 
-  test("session mode takes precedence over messageTools edit=false", () => {
-    expect(SessionPrompt.resolveMode({ mode: "accept" } as any, { edit: false })).toBe("accept")
+  test("session mode takes precedence over options.mode", () => {
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { mode: "bypass" })).toBe("plan")
+    expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { mode: "accept" })).toBe("bypass")
   })
 
-  test("session mode takes precedence over messageTools edit=true", () => {
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { edit: true })).toBe("plan")
+  test("options.mode does not act as fallback when session mode is unset", () => {
+    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { mode: "bypass" })).toBe("plan")
+    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { mode: "accept" })).toBe("plan")
   })
 
-  test("messageTools edit=false acts as fallback when session mode is unset", () => {
-    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { edit: false })).toBe("plan")
+  test("explicit message mode overrides options/session", () => {
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { mode: "bypass" }, "accept")).toBe("accept")
+    expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, undefined, "plan")).toBe("plan")
   })
 
-  test("messageTools edit=true acts as fallback when session mode is unset", () => {
-    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { edit: true })).toBe("accept")
-  })
-
-  test("session mode takes precedence over legacy messageOptions mode", () => {
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, { mode: "bypass" })).toBe("plan")
-    expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: false }, { mode: "accept" })).toBe("bypass")
-  })
-
-  test("messageOptions mode acts as fallback when session mode is unset", () => {
-    expect(SessionPrompt.resolveMode({ mode: undefined } as any, undefined, { mode: "bypass" })).toBe("bypass")
-    expect(SessionPrompt.resolveMode({ mode: undefined } as any, { edit: false }, { mode: "accept" })).toBe("accept")
-  })
-
-  test("explicit message mode overrides options/tools/session", () => {
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, { edit: false }, { mode: "bypass" }, "accept")).toBe(
-      "accept",
-    )
-    expect(SessionPrompt.resolveMode({ mode: "bypass" } as any, { edit: true }, undefined, "plan")).toBe("plan")
-  })
-
-  test("normalizes casing/whitespace for explicit and option modes", () => {
-    expect(SessionPrompt.resolveMode({ mode: undefined } as any, undefined, { mode: " BYPASS " })).toBe("bypass")
-    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, undefined, " ACCEPT ")).toBe("accept")
+  test("normalizes casing/whitespace for explicit and session modes", () => {
+    expect(SessionPrompt.resolveMode({ mode: "plan" } as any, undefined, " ACCEPT ")).toBe("accept")
     expect(SessionPrompt.resolveMode({ mode: " PLAN " } as any)).toBe("plan")
   })
 
   test("does not treat removed legacy aliases as valid runtime modes", () => {
-    expect(SessionPrompt.resolveMode({ mode: "hold" } as any, { edit: true })).toBe("accept")
-    expect(SessionPrompt.resolveMode({ mode: "release" } as any, { edit: false })).toBe("plan")
+    expect(SessionPrompt.resolveMode({ mode: "hold" } as any)).toBe("plan")
+    expect(SessionPrompt.resolveMode({ mode: "release" } as any)).toBe("plan")
   })
 })
 
 describe("resolveSkipPermissions", () => {
   test("resolveSkipPermissions honors explicit override first", () => {
-    expect(SessionPrompt.resolveSkipPermissions({ mode: "plan" } as any, undefined, { skipPermissions: true })).toBe(
+    expect(SessionPrompt.resolveSkipPermissions({ mode: "plan" } as any, { skipPermissions: true })).toBe(
       true,
     )
-    expect(SessionPrompt.resolveSkipPermissions({ mode: "accept" } as any, { edit: true }, undefined, "bypass")).toBe(
+    expect(SessionPrompt.resolveSkipPermissions({ mode: "accept" } as any, undefined, "bypass")).toBe(
       true,
     )
-    expect(SessionPrompt.resolveSkipPermissions({ mode: "bypass" } as any, { edit: true }, undefined, "accept")).toBe(
+    expect(SessionPrompt.resolveSkipPermissions({ mode: "bypass" } as any, undefined, "accept")).toBe(
       false,
     )
   })
@@ -359,7 +340,7 @@ describe("prompt mode ingestion", () => {
     })
   })
 
-  test("legacy options.mode still works when top-level mode is absent", async () => {
+  test("options.mode is ignored when top-level mode is absent", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
@@ -370,11 +351,11 @@ describe("prompt mode ingestion", () => {
           agent: "zee",
           noReply: true,
           options: { mode: "bypass", keep: "yes" },
-          parts: [{ type: "text", text: "check legacy mode fallback" }],
+          parts: [{ type: "text", text: "check options.mode is ignored" }],
         })
 
         expect(message.info.role).toBe("user")
-        expect((message.info as any).mode).toBe("bypass")
+        expect((message.info as any).mode).toBeUndefined()
         expect((message.info as any).options).toEqual({ keep: "yes" })
       },
     })

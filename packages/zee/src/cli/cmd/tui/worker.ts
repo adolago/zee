@@ -75,7 +75,7 @@ const startEventStream = (directory: string) => {
   }) as typeof globalThis.fetch
 
   const sdk = createZeeClient({
-    baseUrl: "http://opencode.internal",
+    baseUrl: "http://zee.internal",
     directory,
     fetch: fetchFn,
     signal,

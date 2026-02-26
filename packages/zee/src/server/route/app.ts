@@ -41,12 +41,10 @@ export const AppRoute = new Hono()
               }
               await stream.writeSSE({
                 event: event.payload.type,
-                // Include legacy and payload shapes for SDK compatibility.
                 data: JSON.stringify({
                   directory: event.directory,
                   type: payload.type,
                   properties: payload.properties,
-                  payload,
                 }),
               })
             }

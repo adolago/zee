@@ -108,11 +108,9 @@ const parameters = z.object({
   description: z.string().describe("A short (3-5 words) description of the task"),
   prompt: z.string().describe("The task for the agent to perform"),
   subagent_type: z.string().describe("The type of specialized agent to use for this task"),
-  task_id: z
+  session_id: z
     .string()
-    .describe(
-      "This should only be set if you mean to resume a previous task (you can pass a prior task_id and the task will continue the same subagent session as before instead of creating a fresh one)",
-    )
+    .describe("Set this to resume a previous subagent session instead of creating a fresh one")
     .optional(),
   command: z.string().describe("The command that triggered this task").optional(),
   timeout: z.number().describe("Maximum execution time in milliseconds (default: 300000ms = 5 minutes)").optional(),
@@ -178,8 +176,8 @@ export const TaskTool = Tool.define("task", async (ctx) => {
       const hasTaskPermission = agent.permission.some((rule) => rule.permission === "task")
 
       const session = await iife(async () => {
-        if (params.task_id) {
-          const found = await Session.get(params.task_id).catch(() => {})
+        if (params.session_id) {
+          const found = await Session.get(params.session_id).catch(() => {})
           if (found) return found
         }
 
@@ -289,7 +287,7 @@ export const TaskTool = Tool.define("task", async (ctx) => {
         const text = result.parts.findLast((x) => x.type === "text")?.text ?? ""
 
         const output = [
-          `task_id: ${session.id} (for resuming to continue this task if needed)`,
+          `session_id: ${session.id}`,
           "",
           "<task_result>",
           text,

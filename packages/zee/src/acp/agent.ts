@@ -1160,7 +1160,7 @@ export namespace ACP {
           currentModeId,
         },
         _meta: {
-          opencode: {
+          zee: {
             modelId: `${currentModel.providerID}/${currentModel.modelID}`,
             variant: currentVariant ?? null,
             availableVariants,
@@ -1186,7 +1186,7 @@ export namespace ACP {
 
       return {
         _meta: {
-          opencode: {
+          zee: {
             modelId: `${model.providerID}/${model.modelID}`,
             variant: model.variant ?? null,
             availableVariants,

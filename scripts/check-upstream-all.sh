@@ -3,7 +3,8 @@
 #
 # Usage: ./scripts/check-upstream-all.sh [--fetch]
 #
-# Reads snapshot pins from docs/architecture/upstream-differences.md
+# Reads snapshot pins from docs/architecture/upstream-differences.md,
+# OpenClaw monitor pin from docs/architecture/upstream-import-map.md,
 # and TODO counts from docs/architecture/openclaw-delta-map.md.
 
 set -euo pipefail
@@ -59,12 +60,22 @@ fi
 # Extract snapshot pins from upstream-differences.md
 UPSTREAM_DIFF="$REPO_ROOT/docs/architecture/upstream-differences.md"
 DELTA_MAP="$REPO_ROOT/docs/architecture/openclaw-delta-map.md"
+UPSTREAM_IMPORT_MAP="$REPO_ROOT/docs/architecture/upstream-import-map.md"
 
 opencode_snapshot_pin=""
 openclaw_snapshot_pin=""
+openclaw_monitor_pin=""
 if [ -f "$UPSTREAM_DIFF" ]; then
-    opencode_snapshot_pin=$(grep -oP 'opencode: `\K[a-f0-9]+' "$UPSTREAM_DIFF" | head -1 || echo "")
-    openclaw_snapshot_pin=$(grep -oP 'openclaw: `\K[a-f0-9]+' "$UPSTREAM_DIFF" | head -1 || echo "")
+    # Prefer the newest "Current upstream pins" entries when multiple matches exist.
+    opencode_snapshot_pin=$(grep -oP '^- opencode: `\K[a-f0-9]{12,40}' "$UPSTREAM_DIFF" | tail -1 || echo "")
+    openclaw_snapshot_pin=$(grep -oP '^- openclaw: `\K[a-f0-9]{12,40}' "$UPSTREAM_DIFF" | tail -1 || echo "")
+fi
+
+if [ -f "$UPSTREAM_IMPORT_MAP" ]; then
+    openclaw_monitor_pin=$(grep -oP '^- OpenClaw pin: `\K[a-f0-9]{12,40}' "$UPSTREAM_IMPORT_MAP" | head -1 || echo "")
+fi
+if [ -z "$openclaw_monitor_pin" ]; then
+    openclaw_monitor_pin="$openclaw_snapshot_pin"
 fi
 
 # Count pending TODOs from delta-map
@@ -119,6 +130,8 @@ echo -e "  Remote: https://github.com/openclaw/openclaw.git"
 if git rev-parse openclaw/main &>/dev/null 2>&1; then
     openclaw_head=$(git rev-parse openclaw/main)
     openclaw_head_short="${openclaw_head:0:12}"
+    openclaw_monitor_pin_short="${openclaw_monitor_pin:0:12}"
+    openclaw_net_new=""
 
     merge_base=$(git merge-base HEAD openclaw/main 2>/dev/null || echo "")
     if [ -n "$merge_base" ]; then
@@ -132,10 +145,31 @@ if git rev-parse openclaw/main &>/dev/null 2>&1; then
     echo -e "  Current upstream HEAD: ${CYAN}${openclaw_head_short}${NC}"
     echo -e "  Security ports pending: ${YELLOW}$openclaw_todos${NC} (from delta-map TODOs)"
 
+    if [ -n "$openclaw_monitor_pin" ] && git cat-file -e "${openclaw_monitor_pin}^{commit}" 2>/dev/null; then
+        if git merge-base --is-ancestor "$openclaw_monitor_pin" openclaw/main 2>/dev/null; then
+            openclaw_net_new="$(git rev-list --count "$openclaw_monitor_pin..openclaw/main" 2>/dev/null || true)"
+        fi
+    fi
+
     if [ "$openclaw_todos" -gt 0 ]; then
+        if [[ "$openclaw_net_new" =~ ^[0-9]+$ ]]; then
+            echo -e "  OpenClaw sentinel: ${RED}ACTIONABLE PORTS PENDING${NC} ($openclaw_todos TODO rows, $openclaw_net_new commits since pin ${openclaw_monitor_pin_short:-unknown})"
+        else
+            echo -e "  OpenClaw sentinel: ${RED}ACTIONABLE PORTS PENDING${NC} ($openclaw_todos TODO rows)"
+        fi
         echo -e "  Status: ${YELLOW}DRIFT (security ports pending)${NC}"
-    else
+    elif [[ "$openclaw_net_new" =~ ^[0-9]+$ ]] && [ "$openclaw_net_new" -gt 0 ]; then
+        echo -e "  OpenClaw sentinel: ${YELLOW}NET-NEW ACTIONABLE DELTAS${NC} ($openclaw_net_new commits since pin ${openclaw_monitor_pin_short:-unknown}, 0 TODO rows)"
+        echo -e "  Status: ${YELLOW}DRIFT (new upstream deltas need triage)${NC}"
+    elif [[ "$openclaw_net_new" =~ ^[0-9]+$ ]]; then
+        echo -e "  OpenClaw sentinel: ${GREEN}NO NEW ACTIONABLE PORTS${NC} (0 commits since pin ${openclaw_monitor_pin_short:-unknown}, 0 TODO rows)"
         echo -e "  Status: ${GREEN}UP TO DATE${NC}"
+    elif [ -z "$openclaw_monitor_pin" ]; then
+        echo -e "  OpenClaw sentinel: ${YELLOW}UNKNOWN${NC} (monitor pin missing; TODO rows: $openclaw_todos)"
+        echo -e "  Status: ${YELLOW}UNABLE TO VERIFY${NC}"
+    else
+        echo -e "  OpenClaw sentinel: ${YELLOW}UNKNOWN${NC} (monitor pin ${openclaw_monitor_pin_short} not available locally; TODO rows: $openclaw_todos)"
+        echo -e "  Status: ${YELLOW}UNABLE TO VERIFY${NC}"
     fi
 else
     echo -e "  ${RED}Remote not fetched. Run: git fetch openclaw${NC}"

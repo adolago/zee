@@ -20,10 +20,6 @@ type RuntimeConfig = {
       url?: string;
       collection?: string;
     };
-    fts?: {
-      dbDir?: string;
-      dbName?: string;
-    };
     localIndex?: {
       enabled?: boolean;
       backend?: LocalIndexBackend;
@@ -137,10 +133,6 @@ function mergeConfigs(base: RuntimeConfig, override: RuntimeConfig): RuntimeConf
         ...base.memory?.reranker,
         ...override.memory?.reranker,
       },
-      fts: {
-        ...base.memory?.fts,
-        ...override.memory?.fts,
-      },
       localIndex: {
         ...base.memory?.localIndex,
         ...override.memory?.localIndex,
@@ -209,15 +201,11 @@ function resolveMemoryEmbeddingConfig(config: RuntimeConfig): MemoryEmbeddingCon
 function resolveMemoryLocalIndexConfig(config: RuntimeConfig): MemoryLocalIndexConfig {
   const memory = config.memory ?? {};
   const localIndex = memory.localIndex ?? {};
-  const legacyFts = memory.fts ?? {};
   const backend = (localIndex.backend ?? "sqlite-fts") as LocalIndexBackend;
-
-  // Compatibility: `memory.fts` implies local index enabled unless localIndex.enabled is explicitly set.
-  const legacyEnabled = Boolean(legacyFts.dbDir || legacyFts.dbName);
-  const enabled = localIndex.enabled ?? legacyEnabled ?? false;
+  const enabled = localIndex.enabled ?? false;
   const degradedRead = (localIndex.degradedRead ?? "off") as LocalIndexDegradedReadMode;
-  const dbDir = (localIndex.dbDir ?? legacyFts.dbDir)?.trim() || undefined;
-  const dbName = (localIndex.dbName ?? legacyFts.dbName)?.trim() || undefined;
+  const dbDir = localIndex.dbDir?.trim() || undefined;
+  const dbName = localIndex.dbName?.trim() || undefined;
 
   return {
     enabled,

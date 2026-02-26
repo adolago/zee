@@ -50,6 +50,13 @@ Tracking issue: `adolago/zee#290`
   - serve/connect/resume integration test
   - regression fixture for migration guidance path (`.opencode/` -> `.zee/`)
 
+### 2026-02-26 Implementation Progress
+
+- `P05-LSP-001` implemented in `packages/zee/test/lsp/p05-parity.test.ts` with diagnostics and completion stability checks against a deterministic fake LSP server.
+- `P05-SRV-001` implemented in `packages/zee/test/cli/attach-shared-auth.test.ts` to verify 401->prompt->authorized retry lifecycle for attach auth.
+- `P05-SES-001` implemented in `packages/zee/test/session/p05-run-detach-resume.test.ts` for run/detach/resume continuity and metadata preservation.
+- `P05-CFG-001` implemented in `packages/zee/test/cli/p05-config-migration.test.ts` to assert explicit remediation guidance for unsupported `.opencode` keys and prevent silent key migration.
+
 ## Acceptance Checklist
 
 - [x] Workflow delta inventory with upstream refs

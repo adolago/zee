@@ -23,22 +23,63 @@ Rolling follow-up after this snapshot is tracked in:
 - Docs + chores: default to `defer` unless they prevent operational mistakes.
 - `non-goal`: OpenClaw-only surfaces that Zee does not intend to ship.
 
+## OpenClaw Sentinel Signal
+
+Weekly upstream checks emit an explicit `OpenClaw sentinel` line:
+
+- `ACTIONABLE PORTS PENDING`: this map still has one or more `TODO` rows.
+- `NET-NEW ACTIONABLE DELTAS`: `openclaw/main` moved ahead of the monitored OpenClaw pin while `TODO` rows are `0`; triage is needed.
+- `NO NEW ACTIONABLE PORTS`: `TODO` rows are `0` and there are `0` commits since the monitored pin.
+- `UNKNOWN`: monitoring pin is missing or not available locally.
+
 ## Lane Index
 
 | Lane | Issue | Area | Status |
 | --- | --- | --- | --- |
-| 01 | #224 | Gateway control plane (WS protocol, auth, events) | triage-done |
-| 02 | #225 | WhatsApp channel (linking, inbound, outbound, allowlists, heartbeat) | triage-done |
+| 01 | #224 | Gateway control plane (WS protocol, auth, events) | in-progress |
+| 02 | #225 | WhatsApp channel (linking, inbound, outbound, allowlists, heartbeat) | in-progress |
 | 03 | #226 | Removed channel lane (legacy messaging extensions removed from Zee) | triage-done |
-| 04 | #227 | Nodes and remote execution (node-host, nodes API, approvals) | triage-done |
+| 04 | #227 | Nodes and remote execution (node-host, nodes API, approvals) | in-progress |
 | 05 | #228 | Skills system (catalogs, plugin-shipped skills, loaders) | triage-done |
 | 06 | #229 | State model and migrations (fs-safe, runtime guards, config and state dirs) | triage-done |
-| 07 | #230 | Permissions, allowlists, DM policy, pairing and approvals | triage-done |
+| 07 | #230 | Permissions, allowlists, DM policy, pairing and approvals | in-progress |
 | 08 | #231 | Cron, wake and heartbeat, background jobs | triage-done |
 | 09 | #232 | Memory + indexing (OpenClaw plugins vs Zee semantic memory) | triage-done |
 | 10 | #233 | Canvas host, A2UI, live workspace surfaces | triage-done |
 | 11 | #234 | Plugin and extension model (manifests, loader, tool groups, safety scanning) | triage-done |
 | 12 | #235 | Onboarding, daemon install, operational CLI | triage-done |
+
+## Net-New Actionable Backlog (2026-02-26)
+
+Triage window:
+
+- Monitor pin: `b3f46f0e2891` (from `docs/architecture/upstream-import-map.md`)
+- Current upstream HEAD: `39d725f4d3e2` (`openclaw/main`)
+- Net-new commits scanned: `133` (`git log --oneline b3f46f0e2891..openclaw/main`)
+
+Selection policy for this section:
+
+- Include only security/reliability deltas likely applicable to Zee's currently shipped gateway/channel surfaces.
+- Leave Android/macOS app-only, provider-specific mobile UX, and unsupported-channel-only changes out of scope.
+- Convert each actionable delta into a lane TODO for maintainers.
+
+| Lane | Upstream ref | Category | Decision | Why actionable for Zee | Zee follow-up |
+| --- | --- | --- | --- | --- | --- |
+| 01 | commit `ec45c317f5` | security | port | Trusted-proxy bypass in gateway control-path is a high-risk auth boundary issue. | Done (ported trusted-proxy-aware SSE client key derivation with trusted-proxy gating + regression tests in `test/server/sse-limit.test.ts`). |
+| 01 | commit `c736f11a16` | security | adapt | Browser WebSocket auth hardening is parity-critical for gateway control-plane exposure. | Done (added gateway route secret enforcement for mutating calls and browser-origin reads; accepts `x-zee-gateway-token` or `Authorization: Bearer`; regression tests in `test/server/gateway-route.test.ts`). |
+| 01 | commit `70e31c6f68` | security | port | Hooks URL parsing hardening reduces malformed/ambiguous auth target handling. | TODO: port hook URL parse/validation guards and add negative-path tests. |
+| 01 | commit `2011edc9e5` | reliability | adapt | Lost `agentId` in gateway send path can break routing and policy attribution. | TODO: verify agentId propagation across gateway send path; add routing regression test. |
+| 04 | commit `f789f880c9` | security | port | Approval-bound node exec cwd handling is an execution-boundary hardening path. | TODO: port node exec cwd approval checks and add exec sandbox boundary tests. |
+| 04 | commit `03e689fc89` | security | adapt | Binding `system.run` approvals to argv identity reduces approval replay abuse. | TODO: map argv-identity binding into Zee exec-approvals and test replay rejection. |
+| 07 | commit `04d91d0319` | security | port | Workspace hardlink alias escapes are filesystem boundary bypasses. | Done (added suspicious hardlink alias detection in filesystem/path policy and blocked hardlinked aliases in instance containment + security validators; tests in `test/security/symlink.test.ts` and `test/tool/read.test.ts`). |
+| 07 | commit `125f4071bc` | security | port | `agents.files` symlink escape blocking is core path-safety hardening. | Done (verified and tightened symlink-path enforcement in `agents.files` path validators plus hardlink boundary checks with fixture coverage). |
+| 07 | commits `61b3246a7f`, `baf656bc6f` | security | port | IPv6 special-use/multicast SSRF bypasses impact network tool safety posture. | TODO: extend SSRF guards for IPv6 special-use + multicast and add explicit IPv6 deny tests. |
+| 07 | commit `8d1481cb4a` | security | adapt | Pairing requirement for operator device auth tightens default trust for gateway operators. | TODO: verify pairing enforcement for operator device auth and close unauthenticated path gaps. |
+| 07 | commits `91a3f0a3fe`, `cf8d01bc5a` | security/reliability | adapt | Account-scoped pairing/allowlist isolation prevents cross-account policy bleed. | TODO: audit pairing state isolation semantics and add cross-account regression coverage. |
+| 02 | commit `c7352f6b3f` | security | adapt | Fail-closed Telegram allowlist behavior maps to multi-channel allowlist policy safety. | TODO: apply equivalent fail-closed allowlist behavior to Zee channel adapters where applicable. |
+| 02 | commits `75dfb71e4e`, `ce8c67c314`, `aedf62ac7e` | security | adapt | Sender-auth gating for Slack interactive/reaction ingress prevents spoofed system-event actions. | TODO: audit Slack ingress auth gates in Zee extensions and add sender-auth parity tests. |
+| 02 | commit `069bbf9741` | reliability | adapt | Case-insensitive allowlist channel ID matching avoids false-deny/false-route failures. | TODO: normalize channel ID matching behavior and add case-variance tests. |
+| 02 | commits `ee594e2fdb`, `95c6b3a912` | reliability | adapt | Telegram webhook/polling outage recovery affects always-on channel stability. | TODO: verify polling recovery semantics and add prolonged-outage recovery test coverage. |
 
 ## Lane 01: Gateway control plane (WS protocol, auth, events)
 

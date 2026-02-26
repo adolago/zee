@@ -1,13 +1,11 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "crypto"
 import fs from "fs"
 import path from "path"
-import { db, initDb } from "./db"
 import { env } from "./env"
 
 const deriveKey = (input: string) => createHash("sha256").update(input).digest()
 
 const KEY_FILE = path.join(env.DATA_DIR, "vault.key")
-const LEGACY_DEV_KEY = "zee-hosted-dev"
 
 function parseVaultKey(value: string): Buffer | null {
   const trimmed = value.trim()
@@ -62,38 +60,6 @@ function decryptStringWithKey(key: Buffer, payload: string) {
   return decrypted.toString("utf8")
 }
 
-function migrateLegacyVaultKey(newKey: Buffer): void {
-  initDb()
-
-  const providerTable = db
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'provider_connections'")
-    .get() as { name?: string } | undefined
-  if (!providerTable?.name) return
-
-  const countRow = db.prepare("SELECT COUNT(*) as c FROM provider_connections").get() as { c: number } | undefined
-  const count = countRow?.c ?? 0
-  if (count <= 0) return
-
-  const legacyKey = deriveKey(LEGACY_DEV_KEY)
-  const rows = db
-    .prepare("SELECT id, encrypted_data FROM provider_connections")
-    .all() as Array<{ id: string; encrypted_data: string }>
-
-  // If any row fails to decrypt, abort rather than corrupting data.
-  const decrypted = rows.map((row) => ({
-    id: row.id,
-    data: decryptStringWithKey(legacyKey, row.encrypted_data),
-  }))
-
-  const update = db.prepare("UPDATE provider_connections SET encrypted_data = ?, updated_at = ? WHERE id = ?")
-  const now = Date.now()
-  db.transaction(() => {
-    for (const row of decrypted) {
-      update.run(encryptStringWithKey(newKey, row.data), now, row.id)
-    }
-  })()
-}
-
 const resolveVaultKey = () => {
   if (env.VAULT_KEY) {
     const trimmed = env.VAULT_KEY.trim()
@@ -103,16 +69,7 @@ const resolveVaultKey = () => {
   const fromFile = loadKeyFile()
   if (fromFile) return fromFile
 
-  // First run: migrate any legacy hardcoded key encryption, otherwise generate a new key.
   const next = randomBytes(32)
-  try {
-    migrateLegacyVaultKey(next)
-  } catch {
-    // If migration fails, refuse to silently lose access to existing encrypted data.
-    throw new Error(
-      "Hosted vault key migration failed. Set HOSTED_VAULT_KEY to the previous value to recover, then rotate.",
-    )
-  }
   writeKeyFile(next)
   return next
 }

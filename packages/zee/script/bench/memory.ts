@@ -87,7 +87,13 @@ export async function createMemoryBenchContext(options: {
     qdrant: { url: qdrantUrl, collection },
     embedding: { provider: "google", dimensions: 384 },
     namespace,
-    fts: { dbDir: ftsDir, dbName: "fts.sqlite" },
+    localIndex: {
+      enabled: true,
+      backend: "sqlite-fts",
+      dbDir: ftsDir,
+      dbName: "fts.sqlite",
+      degradedRead: "off",
+    },
     markdown: { enabled: false },
   })
 

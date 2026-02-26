@@ -76,7 +76,7 @@ import { useLanguage, type Locale } from "@/context/language"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
-    Persist.global("layout.page", ["layout.page.v1"]),
+    Persist.global("layout.page"),
     createStore({
       lastSession: {} as { [directory: string]: string },
       activeProject: undefined as string | undefined,
@@ -1133,10 +1133,9 @@ export default function Layout(props: ParentProps) {
   }
 
   const deepLinkEvent = "zee:deep-link"
-  const legacyDeepLinkEvent = "opencode:deep-link"
 
   const parseDeepLink = (input: string) => {
-    if (!(input.startsWith("zee://") || input.startsWith("opencode://"))) return
+    if (!input.startsWith("zee://")) return
     const url = new URL(input)
     if (url.hostname !== "open-project") return
     const directory = url.searchParams.get("directory")
@@ -1170,10 +1169,8 @@ export default function Layout(props: ParentProps) {
 
     drainDeepLinks()
     window.addEventListener(deepLinkEvent, handler as EventListener)
-    window.addEventListener(legacyDeepLinkEvent, handler as EventListener)
     onCleanup(() => {
       window.removeEventListener(deepLinkEvent, handler as EventListener)
-      window.removeEventListener(legacyDeepLinkEvent, handler as EventListener)
     })
   })
 
@@ -1251,7 +1248,7 @@ export default function Layout(props: ParentProps) {
     }
   }
 
-  const zeeGuiRuntimeMode = "dual" as const
+  const zeeGuiRuntimeMode = "zee" as const
   const zeeGuiSidebarCommand = () => `zee gui --sidebar --runtime-mode ${zeeGuiRuntimeMode}`
 
   async function openZeeGuiSidebar() {
@@ -1678,14 +1675,14 @@ export default function Layout(props: ParentProps) {
     const notifications = createMemo(() => notification.project.unseen(props.project.worktree))
     const hasError = createMemo(() => notifications().some((n) => n.type === "error"))
     const name = createMemo(() => props.project.name || getFilename(props.project.worktree))
-    const opencode = "4b0ea68d7af9a6031a7ffda7ad66e0cb83315750"
+    const builtInProjectId = "4b0ea68d7af9a6031a7ffda7ad66e0cb83315750"
 
     return (
       <div class={`relative size-8 shrink-0 rounded ${props.class ?? ""}`}>
         <div class="size-full rounded overflow-clip">
           <Avatar
             fallback={name()}
-            src={props.project.id === opencode ? "/favicon-v3.svg" : props.project.icon?.override}
+            src={props.project.id === builtInProjectId ? "/favicon-v3.svg" : props.project.icon?.override}
             {...getAvatarColors(props.project.icon?.color)}
             class="size-full rounded"
             classList={{ "badge-mask": notifications().length > 0 && props.notify }}
