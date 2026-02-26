@@ -113,6 +113,33 @@ describe("tool.read external_directory permission", () => {
     })
   })
 
+  test("rejects reading hardlinked file aliases that point outside the project", async () => {
+    await using outerTmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "secret.txt"), "secret data")
+      },
+    })
+    await using tmp = await tmpdir({
+      git: true,
+      init: async (dir) => {
+        await fs.link(path.join(outerTmp.path, "secret.txt"), path.join(dir, "hardlink-secret.txt"))
+      },
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const read = await ReadTool.init()
+        const testCtx = {
+          ...ctx(tmp.path),
+          ask: async () => {},
+        }
+        await expect(read.execute({ filePath: path.join(tmp.path, "hardlink-secret.txt") }, testCtx)).rejects.toThrow(
+          "Refusing hardlinked file path outside workspace trust boundary",
+        )
+      },
+    })
+  })
+
   test("asks for external_directory permission when reading relative path outside project", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({

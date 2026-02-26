@@ -166,6 +166,7 @@ export async function assertToolPath(options: PathValidationOptions): Promise<Pa
   if (!options.permissive) {
     const rootResolved = path.resolve(options.root ?? options.cwd);
     await assertNoSymlinkEscape(result.resolved, rootResolved);
+    await assertNoHardlinkAlias(result.resolved);
   }
 
   return result;
@@ -186,6 +187,17 @@ async function assertNoSymlinkEscape(targetPath: string, rootResolved: string): 
     throw new PathValidationError(
       `Path resolves outside sandbox root (${shortPath(rootReal)}): ${targetPath}`,
     );
+  }
+}
+
+async function assertNoHardlinkAlias(targetPath: string): Promise<void> {
+  const stat = await fs.lstat(targetPath).catch((err) => {
+    if ((err as { code?: string }).code === "ENOENT") return undefined;
+    throw err;
+  });
+  if (!stat) return;
+  if (stat.isFile() && stat.nlink > 1) {
+    throw new PathValidationError(`Hardlink not allowed in sandbox path: ${targetPath}`);
   }
 }
 
@@ -214,4 +226,3 @@ function shortPath(value: string): string {
   if (value.startsWith(home)) return `~${value.slice(home.length)}`;
   return value;
 }
-

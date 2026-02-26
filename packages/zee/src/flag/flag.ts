@@ -47,6 +47,9 @@ function computeFlags() {
     ZEE_SERVER_MAX_SSE_CONNECTIONS: number("ZEE_SERVER_MAX_SSE_CONNECTIONS"),
     ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT: number("ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT"),
     ZEE_SERVER_MAX_INSTANCES: number("ZEE_SERVER_MAX_INSTANCES"),
+    // Trust X-Forwarded-For only when explicitly enabled and the immediate peer is trusted.
+    ZEE_SERVER_TRUST_X_FORWARDED_FOR: truthy("ZEE_SERVER_TRUST_X_FORWARDED_FOR"),
+    ZEE_SERVER_TRUSTED_PROXIES: env("ZEE_SERVER_TRUSTED_PROXIES"),
 
     // Instance cache eviction (optional)
     ZEE_INSTANCE_CACHE_MAX_INSTANCES: number("ZEE_INSTANCE_CACHE_MAX_INSTANCES"),

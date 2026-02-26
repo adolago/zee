@@ -26,6 +26,54 @@ const DEFAULT_MAX_PER_CLIENT = 8
 let activeTotal = 0
 const activeByClient = new Map<string, number>()
 
+function isLoopbackIp(value: string): boolean {
+  return value === "127.0.0.1" || value === "::1" || value === "::ffff:127.0.0.1"
+}
+
+function normalizeIp(value: string): string {
+  return value.trim().replace(/^\[|\]$/g, "")
+}
+
+function stripPort(value: string): string {
+  const normalized = normalizeIp(value)
+  // IPv6 literals usually include ":"; if wrapped in [] we already stripped them.
+  // Keep IPv6 as-is and strip port only for likely IPv4 host:port shapes.
+  if (normalized.includes(":") && !normalized.includes(".")) return normalized
+  return normalized.replace(/:\d+$/, "")
+}
+
+function parseTrustedProxyIps(raw?: string): Set<string> {
+  const set = new Set<string>()
+  if (!raw) return set
+  for (const entry of raw.split(",")) {
+    const candidate = stripPort(entry)
+    if (candidate) set.add(candidate)
+  }
+  return set
+}
+
+function resolveForwardedClientIp(req: Request): string | undefined {
+  if (!Flag.ZEE_SERVER_TRUST_X_FORWARDED_FOR) return undefined
+
+  const remoteIp = RequestMeta.getIp(req)
+  if (!remoteIp) return undefined
+
+  const normalizedRemote = stripPort(remoteIp)
+  const trustedProxyIps = parseTrustedProxyIps(Flag.ZEE_SERVER_TRUSTED_PROXIES)
+  const trustedPeer = isLoopbackIp(normalizedRemote) || trustedProxyIps.has(normalizedRemote)
+  if (!trustedPeer) return undefined
+
+  const forwarded = req.headers.get("x-forwarded-for")
+  if (!forwarded) return undefined
+
+  const firstHop = forwarded.split(",")[0]?.trim()
+  if (!firstHop) return undefined
+
+  const clientIp = stripPort(firstHop)
+  if (!clientIp) return undefined
+  return clientIp
+}
+
 function resolveLimits(): { maxTotal: number; maxPerClient: number } {
   const maxTotal = Flag.ZEE_SERVER_MAX_SSE_CONNECTIONS ?? DEFAULT_MAX_TOTAL
   const maxPerClient = Flag.ZEE_SERVER_MAX_SSE_CONNECTIONS_PER_CLIENT ?? DEFAULT_MAX_PER_CLIENT
@@ -33,12 +81,11 @@ function resolveLimits(): { maxTotal: number; maxPerClient: number } {
 }
 
 function resolveClientKey(req: Request): string {
-  const ip = RequestMeta.getIp(req)
-  if (ip) return ip
+  const forwardedIp = resolveForwardedClientIp(req)
+  if (forwardedIp) return forwardedIp
 
-  // Best-effort fallback when the server isn't providing request IP metadata.
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-  if (forwarded) return forwarded
+  const ip = RequestMeta.getIp(req)
+  if (ip) return stripPort(ip)
 
   return "unknown"
 }

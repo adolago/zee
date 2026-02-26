@@ -10,6 +10,7 @@ describe("Symlink Vulnerability", () => {
   let projectDir: string
   let externalDir: string
   let symlinkPath: string
+  let hardlinkPath: string
 
   beforeAll(async () => {
     tmpBase = await fs.mkdtemp(path.join(tmpdir(), "zee-security-test-"))
@@ -26,6 +27,10 @@ describe("Symlink Vulnerability", () => {
     // Create a symlink inside project pointing to a file in external
     await fs.writeFile(path.join(externalDir, "secret.txt"), "secret data")
     await fs.symlink(path.join(externalDir, "secret.txt"), path.join(projectDir, "link-to-secret.txt"))
+
+    // Create a hardlink inside project pointing to an external file
+    hardlinkPath = path.join(projectDir, "hardlink-to-secret.txt")
+    await fs.link(path.join(externalDir, "secret.txt"), hardlinkPath)
   })
 
   afterAll(async () => {
@@ -79,5 +84,19 @@ describe("Symlink Vulnerability", () => {
     // So if it is currently true, we will fail this test once we implement the fix if we assert false.
     // Let's assert false, so we can verify the fix works later.
     expect(result).toBe(false)
+  })
+
+  it("detects hardlinked files as suspicious and outside instance trust boundary", async () => {
+    const suspiciousAsync = await Filesystem.isSuspiciousHardlink(hardlinkPath)
+    const suspiciousSync = Filesystem.isSuspiciousHardlinkSync(hardlinkPath)
+    expect(suspiciousAsync).toBe(true)
+    expect(suspiciousSync).toBe(true)
+
+    await Instance.provide({
+      directory: projectDir,
+      fn: async () => {
+        expect(Instance.containsPath(hardlinkPath)).toBe(false)
+      },
+    })
   })
 })

@@ -182,28 +182,118 @@ if [ "$REMOTE" = "openclaw" ]; then
         echo ""
 
         if [ -f "$DELTA_MAP" ]; then
-            # Extract lines with TODO follow-ups, grouped by decision type
-            echo -e "${RED}Security ports (port/adapt):${NC}"
-            (grep -E "\| (security|reliability) \| (port|adapt) \|.*\| TODO" "$DELTA_MAP" || true) | while read -r line; do
-                pr=$(echo "$line" | awk -F'|' '{print $2}' | xargs)
-                cat=$(echo "$line" | awk -F'|' '{print $3}' | xargs)
-                dec=$(echo "$line" | awk -F'|' '{print $4}' | xargs)
-                title=$(echo "$line" | awk -F'|' '{print $5}' | xargs)
-                echo -e "  ${YELLOW}[$cat/$dec]${NC} $pr -- $title"
-            done
+            TODO_TSV="/tmp/zee-openclaw-todos.tsv"
+            TODO_JSON="/tmp/zee-openclaw-todos.json"
+            TODO_ROWS_FILE="/tmp/zee-openclaw-todos.rows.tsv"
+
+            awk -F'|' '
+                function trim(s) {
+                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", s)
+                    return s
+                }
+                /^\|/ {
+                    lane = trim($2)
+                    upstream_ref = trim($3)
+                    category = trim($4)
+                    decision = trim($5)
+                    why_actionable = trim($6)
+                    zee_follow_up = trim($7)
+                    if (zee_follow_up ~ /^TODO:/) {
+                        gsub(/\t/, " ", lane)
+                        gsub(/\t/, " ", upstream_ref)
+                        gsub(/\t/, " ", category)
+                        gsub(/\t/, " ", decision)
+                        gsub(/\t/, " ", why_actionable)
+                        gsub(/\t/, " ", zee_follow_up)
+                        printf "%s\t%s\t%s\t%s\t%s\t%s\n", lane, upstream_ref, category, decision, why_actionable, zee_follow_up
+                    }
+                }
+            ' "$DELTA_MAP" > "$TODO_ROWS_FILE"
+
+            {
+                printf "lane\tupstream_ref\tcategory\tdecision\twhy_actionable\tzee_follow_up\n"
+                cat "$TODO_ROWS_FILE"
+            } > "$TODO_TSV"
+
+            awk -F'\t' '
+                function esc(s) {
+                    gsub(/\\/,"\\\\",s)
+                    gsub(/"/,"\\\"",s)
+                    gsub(/\r/,"\\r",s)
+                    gsub(/\n/,"\\n",s)
+                    gsub(/\t/,"\\t",s)
+                    return s
+                }
+                BEGIN {
+                    first = 1
+                    print "["
+                }
+                NR > 1 {
+                    lane = esc($1)
+                    upstream_ref = esc($2)
+                    category = esc($3)
+                    decision = esc($4)
+                    why_actionable = esc($5)
+                    zee_follow_up = esc($6)
+                    if (!first) {
+                        print ","
+                    }
+                    printf "  {\"lane\":\"%s\",\"upstream_ref\":\"%s\",\"category\":\"%s\",\"decision\":\"%s\",\"why_actionable\":\"%s\",\"zee_follow_up\":\"%s\"}", lane, upstream_ref, category, decision, why_actionable, zee_follow_up
+                    first = 0
+                }
+                END {
+                    print ""
+                    print "]"
+                }
+            ' "$TODO_TSV" > "$TODO_JSON"
+
+            rm -f "$TODO_ROWS_FILE"
+
+            echo -e "${RED}Security/reliability ports (port/adapt):${NC}"
+            awk -F'\t' '
+                NR > 1 {
+                    category = tolower($3)
+                    decision = tolower($4)
+                    if ((category ~ /security/ || category ~ /reliability/) && (decision == "port" || decision == "adapt")) {
+                        printf "  [%s/%s] lane %s %s -- %s\n", $3, $4, $1, $2, $5
+                    }
+                }
+            ' "$TODO_TSV"
 
             echo ""
             echo -e "${YELLOW}Feature ports (adapt/defer):${NC}"
-            (grep -E "\| feature \| (adapt|defer) \|.*\| TODO" "$DELTA_MAP" || true) | while read -r line; do
-                pr=$(echo "$line" | awk -F'|' '{print $2}' | xargs)
-                dec=$(echo "$line" | awk -F'|' '{print $4}' | xargs)
-                title=$(echo "$line" | awk -F'|' '{print $5}' | xargs)
-                echo -e "  ${CYAN}[$dec]${NC} $pr -- $title"
+            awk -F'\t' '
+                NR > 1 {
+                    category = tolower($3)
+                    decision = tolower($4)
+                    if (category == "feature" && (decision == "adapt" || decision == "defer")) {
+                        printf "  [%s] lane %s %s -- %s\n", $4, $1, $2, $5
+                    }
+                }
+            ' "$TODO_TSV"
+
+            echo ""
+            echo -e "${CYAN}Top pending lanes:${NC}"
+            awk -F'\t' '
+                NR > 1 {
+                    lane_count[$1] += 1
+                }
+                END {
+                    for (lane in lane_count) {
+                        printf "%s\t%d\n", lane, lane_count[lane]
+                    }
+                }
+            ' "$TODO_TSV" | sort -k2,2nr -k1,1n | while IFS=$'\t' read -r lane count; do
+                [ -n "$lane" ] || continue
+                echo "  lane $lane: $count"
             done
 
             total="$(count_markdown_todos "$DELTA_MAP")"
             echo ""
             echo -e "Total pending: ${YELLOW}$total${NC}"
+            echo -e "Structured exports:"
+            echo "  TSV: $TODO_TSV"
+            echo "  JSON: $TODO_JSON"
         else
             echo -e "  ${RED}Delta map not found: $DELTA_MAP${NC}"
         fi
