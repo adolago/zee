@@ -680,6 +680,7 @@ export namespace SessionPrompt {
   }
 
   function start(sessionID: string) {
+    clearForceKillTimer(sessionID)
     const s = state()
     if (s[sessionID]) return
     const controller = new AbortController()
@@ -700,7 +701,8 @@ export namespace SessionPrompt {
       SessionStatus.set(sessionID, { type: "idle" })
       return
     }
-    match.abort.abort()
+    const targetAbort = match.abort
+    targetAbort.abort()
     for (const item of match.callbacks) {
       item.reject(new DOMException("Aborted", "AbortError"))
     }
@@ -708,30 +710,43 @@ export namespace SessionPrompt {
     SessionStatus.set(sessionID, { type: "idle" })
 
     // Schedule force-kill after grace period
-    forceKillAfterGracePeriod(sessionID)
+    forceKillAfterGracePeriod(sessionID, targetAbort)
     return
   }
 
-  const FORCE_KILL_GRACE_PERIOD_MS = 5000
-  const pendingForceKills = new Map<string, NodeJS.Timeout>()
+  type PendingForceKill = {
+    timer: NodeJS.Timeout
+    token: symbol
+    targetAbort: AbortController
+  }
+  const pendingForceKills = new Map<string, PendingForceKill>()
 
-  function forceKillAfterGracePeriod(sessionID: string) {
+  function forceKillGracePeriodMs() {
+    return Flag.ZEE_SESSION_FORCE_KILL_GRACE_PERIOD_MS ?? 5000
+  }
+
+  function forceKillAfterGracePeriod(sessionID: string, targetAbort: AbortController) {
     // Clear any existing force-kill timer for this session
     const existing = pendingForceKills.get(sessionID)
     if (existing) {
-      clearTimeout(existing)
+      clearTimeout(existing.timer)
     }
+    const gracePeriodMs = forceKillGracePeriodMs()
+    const token = Symbol("force-kill")
 
     // Schedule force-kill after grace period
     const timer = setTimeout(() => {
+      const pending = pendingForceKills.get(sessionID)
+      if (!pending || pending.token !== token) return
+
       // Forcefully clean up session state
       const s = state()
       const match = s[sessionID]
 
-      // Only emit error and force-kill if session actually still exists
-      // (i.e., it didn't clean up properly during the grace period)
-      if (match) {
-        log.warn("force-killing session after grace period", { sessionID, gracePeriodMs: FORCE_KILL_GRACE_PERIOD_MS })
+      // Only emit error and force-kill if this is still the same canceled run.
+      // A new run gets a new AbortController and must not be force-killed by a stale timer.
+      if (match && match.abort === targetAbort) {
+        log.warn("force-killing session after grace period", { sessionID, gracePeriodMs })
 
         // Emit force-killed event for TUI to display
         Bus.publish(Session.Event.Error, {
@@ -755,9 +770,13 @@ export namespace SessionPrompt {
       }
 
       pendingForceKills.delete(sessionID)
-    }, FORCE_KILL_GRACE_PERIOD_MS)
+    }, gracePeriodMs)
 
-    pendingForceKills.set(sessionID, timer)
+    pendingForceKills.set(sessionID, {
+      timer,
+      token,
+      targetAbort,
+    })
   }
 
   async function forceKillChildSessions(parentSessionID: string) {
@@ -775,9 +794,9 @@ export namespace SessionPrompt {
   }
 
   export function clearForceKillTimer(sessionID: string) {
-    const timer = pendingForceKills.get(sessionID)
-    if (timer) {
-      clearTimeout(timer)
+    const pending = pendingForceKills.get(sessionID)
+    if (pending) {
+      clearTimeout(pending.timer)
       pendingForceKills.delete(sessionID)
     }
   }
