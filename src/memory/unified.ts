@@ -1351,6 +1351,52 @@ export class Memory {
     }
   }
 
+  private async deleteByFilterAndMirror(filter: Record<string, unknown>): Promise<number> {
+    const pageSize = 500;
+    const deleteBatchSize = 200;
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    let nextOffset: string | number | undefined;
+
+    while (true) {
+      const page = await this.storage.scroll({
+        filter,
+        limit: pageSize,
+        ...(nextOffset !== undefined ? { offset: nextOffset } : {}),
+        withPayload: false,
+      });
+
+      for (const point of page.points) {
+        if (seen.has(point.id)) continue;
+        seen.add(point.id);
+        ids.push(point.id);
+      }
+
+      if (page.nextOffset === null || page.nextOffset === undefined) {
+        break;
+      }
+      nextOffset = page.nextOffset;
+    }
+
+    if (ids.length === 0) return 0;
+
+    for (let i = 0; i < ids.length; i += deleteBatchSize) {
+      const batch = ids.slice(i, i + deleteBatchSize);
+      await this.storage.delete(batch);
+      if (!this.ftsStore) continue;
+      try {
+        this.ftsStore.deleteBatch(batch);
+      } catch (ftsErr) {
+        log.warn("FTS batch delete failed after Qdrant delete (non-fatal)", {
+          batchSize: batch.length,
+          error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
+        });
+      }
+    }
+
+    return ids.length;
+  }
+
   /** Delete memories matching filter */
   async deleteWhere(filter: {
     category?: MemoryCategory;
@@ -1364,14 +1410,14 @@ export class Memory {
     if (filter.namespace) qdrantFilter.namespace = filter.namespace;
     if (filter.olderThan) qdrantFilter.createdAt = { $lt: filter.olderThan };
 
-    return this.storage.deleteWhere(qdrantFilter);
+    return this.deleteByFilterAndMirror(qdrantFilter);
   }
 
   /** Delete expired memories */
   async deleteExpired(): Promise<number> {
     await this.init();
     const now = Date.now();
-    return this.storage.deleteWhere({
+    return this.deleteByFilterAndMirror({
       type: "memory",
       expiresAt: { $lt: now, $gt: 0 },
     });
