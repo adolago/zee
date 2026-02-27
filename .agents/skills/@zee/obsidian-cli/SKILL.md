@@ -31,6 +31,32 @@ CLI arg parsing. GUI mode includes electron-flags.conf; CLI mode omits them.
 
 **Prerequisite**: Obsidian must be running. If not, launch it first.
 
+## SB_FTL Safe Two-Step Helpers
+
+Use the bundled helper scripts for deterministic vault operations:
+
+```bash
+# Read-only audit for current vault health
+./scripts/study-vault-audit
+
+# Generate dated discovery snapshot in Study/_System/Documentation
+./scripts/generate-boox-snapshot
+
+# Short summary (for briefings)
+./scripts/study-vault-audit --brief
+
+# Safe two-step preview/apply wrapper
+./scripts/obsidian-safe-two-step audit
+./scripts/obsidian-safe-two-step property "Study/Library/Books/Some Book.md" status processing
+./scripts/obsidian-safe-two-step property "Study/Library/Books/Some Book.md" status processing --apply
+```
+
+Rules:
+
+1. Default is preview mode (non-mutating).
+2. Mutations require explicit `--apply`.
+3. Use exact `path=...` targets in all write operations.
+
 ## Complete Command Reference
 
 ### Basics

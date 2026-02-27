@@ -5,8 +5,11 @@ import { Provider } from "../provider/provider"
 import { UI } from "./ui"
 
 export function FormatError(input: unknown) {
-  if (MCP.Failed.isInstance(input))
-    return `MCP server "${input.data.name}" failed. Note, zee does not support MCP authentication yet`
+  if (MCP.Failed.isInstance(input)) {
+    const statusSuffix = input.data.status ? ` (status: ${input.data.status})` : ""
+    const reasonSuffix = input.data.reason ? `: ${input.data.reason}` : ""
+    return `MCP server "${input.data.name}" failed${statusSuffix}${reasonSuffix}`
+  }
   if (Provider.ModelNotFoundError.isInstance(input)) {
     const { providerID, modelID, suggestions } = input.data
     return [

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VAULT_ROOT="${VAULT_ROOT:-/home/artur/SB_FTL}"
+VAULT_NAME="${VAULT_NAME:-SB_FTL}"
+DATE_UTC="$(date +%F)"
+OUT_DIR="$VAULT_ROOT/Study/_System/Documentation"
+OUT_FILE="$OUT_DIR/boox_integration_snapshot_${DATE_UTC}.md"
+
+mkdir -p "$OUT_DIR"
+
+count_ext() {
+  local ext="$1"
+  find "$VAULT_ROOT" -type f -iname "*.${ext}" | wc -l | tr -d ' '
+}
+
+pdf_count="$(count_ext pdf)"
+azw3_count="$(count_ext azw3)"
+epub_count="$(count_ext epub)"
+
+canonical_count="$(find "$VAULT_ROOT/Study/Library/Books" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+inbox_count="$(find "$VAULT_ROOT/Study/Sources/Books" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+dup_count="$(find "$VAULT_ROOT/Study/Sources/Books" -maxdepth 2 -type f -name '*__dup*' 2>/dev/null | wc -l | tr -d ' ')"
+
+vault_stats="unavailable"
+core_plugins="unavailable"
+
+if command -v obsidian >/dev/null 2>&1; then
+  vault_stats="$(obsidian "vault=$VAULT_NAME" vault 2>/dev/null || echo 'unavailable')"
+  core_plugins="$(obsidian "vault=$VAULT_NAME" plugins:enabled filter=core 2>/dev/null || echo 'unavailable')"
+fi
+
+cat > "$OUT_FILE" <<SNAPSHOT
+---
+type: note
+domain: study
+status: active
+tags:
+  - domain/study
+  - type/system
+  - status/active
+  - project/boox-integration
+date: "$DATE_UTC"
+canonical_link: "[[Study/_System/Documentation/boox_integration_snapshot_${DATE_UTC}]]"
+---
+# Boox Integration Snapshot ($DATE_UTC)
+
+## Structure Snapshot
+
+- Vault root: $VAULT_ROOT
+- Canonical books path: Study/Library/Books
+- Inbox books path: Study/Sources/Books
+- Study system path: Study/_System
+
+## Reading Asset Inventory
+
+- pdf: $pdf_count
+- azw3: $azw3_count
+- epub: $epub_count
+
+## Book Note Inventory
+
+- Study/Library/Books markdown notes: $canonical_count
+- Study/Sources/Books markdown notes: $inbox_count
+- Study/Sources/Books duplicate notes (__dup): $dup_count
+
+## Obsidian Runtime Snapshot
+
+$vault_stats
+
+## Enabled Core Plugins
+
+$core_plugins
+SNAPSHOT
+
+echo "$OUT_FILE"

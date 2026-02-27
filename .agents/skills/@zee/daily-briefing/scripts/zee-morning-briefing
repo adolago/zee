@@ -47,6 +47,13 @@ task _projects 2>/dev/null | while read proj; do
 done
 echo ""
 
+STUDY_AUDIT="/home/artur/Repositories/zee/.agents/skills/@zee/obsidian-cli/scripts/study-vault-audit"
+if [ -x "$STUDY_AUDIT" ]; then
+  echo "--- STUDY VAULT AUDIT ---"
+  "$STUDY_AUDIT" --brief 2>/dev/null | sed 's/^/  /'
+  echo ""
+fi
+
 echo "--- DAILY BLOCKS ---"
 echo "  08:00-09:00  Math Academy"
 echo "  09:00-16:00  Euclase + Job Hunt"

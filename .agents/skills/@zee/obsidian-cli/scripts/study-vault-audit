@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VAULT_ROOT="${VAULT_ROOT:-/home/artur/SB_FTL}"
+BOOK_CANONICAL_PATH="${BOOK_CANONICAL_PATH:-Study/Library/Books}"
+BOOK_INBOX_PATH="${BOOK_INBOX_PATH:-Study/Sources/Books}"
+BRIEF=0
+
+if [ "${1:-}" = "--brief" ]; then
+  BRIEF=1
+fi
+
+count_ext() {
+  local ext="$1"
+  find "$VAULT_ROOT" -type f -iname "*.${ext}" | wc -l | tr -d ' '
+}
+
+count_md() {
+  local path="$1"
+  if [ -d "$path" ]; then
+    find "$path" -type f -name '*.md' | wc -l | tr -d ' '
+  else
+    echo 0
+  fi
+}
+
+canonical_dir="$VAULT_ROOT/$BOOK_CANONICAL_PATH"
+inbox_dir="$VAULT_ROOT/$BOOK_INBOX_PATH"
+
+pdf_count="$(count_ext pdf)"
+azw3_count="$(count_ext azw3)"
+epub_count="$(count_ext epub)"
+
+canonical_count="$(count_md "$canonical_dir")"
+inbox_count="$(count_md "$inbox_dir")"
+
+dup_count=0
+if [ -d "$inbox_dir" ]; then
+  dup_count="$(find "$inbox_dir" -maxdepth 2 -type f -name '*__dup*' | wc -l | tr -d ' ')"
+fi
+
+with_book_id=0
+if [ -d "$canonical_dir" ]; then
+  with_book_id="$( (rg -l '^book_id:\s*\S+' "$canonical_dir" -g '*.md' 2>/dev/null || true) | wc -l | tr -d ' ')"
+fi
+
+missing_book_id="$((canonical_count - with_book_id))"
+if [ "$missing_book_id" -lt 0 ]; then
+  missing_book_id=0
+fi
+
+unprocessed_count=0
+processing_count=0
+if [ -d "$canonical_dir" ]; then
+  unprocessed_count="$( (rg -l '^status:\s*unprocessed$' "$canonical_dir" -g '*.md' 2>/dev/null || true) | wc -l | tr -d ' ')"
+  processing_count="$( (rg -l '^status:\s*processing$' "$canonical_dir" -g '*.md' 2>/dev/null || true) | wc -l | tr -d ' ')"
+fi
+
+if [ "$BRIEF" -eq 1 ]; then
+  echo "books(canonical=$canonical_count inbox=$inbox_count dup=$dup_count missing_book_id=$missing_book_id) files(pdf=$pdf_count azw3=$azw3_count epub=$epub_count)"
+  exit 0
+fi
+
+cat <<REPORT
+== study vault audit ==
+vault_root: $VAULT_ROOT
+canonical_books: $BOOK_CANONICAL_PATH
+inbox_books: $BOOK_INBOX_PATH
+
+reading_assets:
+  pdf: $pdf_count
+  azw3: $azw3_count
+  epub: $epub_count
+
+book_notes:
+  canonical_md: $canonical_count
+  inbox_md: $inbox_count
+  duplicate_candidates: $dup_count
+  missing_book_id: $missing_book_id
+  status_unprocessed: $unprocessed_count
+  status_processing: $processing_count
+REPORT
+
+if command -v obsidian >/dev/null 2>&1; then
+  echo
+  echo "obsidian_checks:"
+  obsidian vault=SB_FTL unresolved counts 2>/dev/null || echo "  unresolved: unavailable (Obsidian not running?)"
+fi

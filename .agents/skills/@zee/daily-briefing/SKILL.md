@@ -32,7 +32,8 @@ This aggregates:
 3. **Email** (notmuch): LinkedIn job alerts, Euclase/Pareto announcements, unread count
 4. **Projects**: Active project summary with pending counts
 5. **Obsidian** (CLI): Daily note tasks, recent files (requires Obsidian running)
-6. **Schedule**: Daily time blocks reminder
+6. **Study Vault Audit**: Book queue and duplicate pressure summary
+7. **Schedule**: Daily time blocks reminder
 
 After running the script, add context from memory:
 - Surface any relevant memories (upcoming deadlines, ongoing situations)
@@ -89,6 +90,12 @@ obsidian vault
 ```
 
 Obsidian must be running for CLI to work. The scripts gracefully skip Obsidian sections if it's not available.
+
+For study-focused sessions, also run:
+
+```bash
+/home/artur/Repositories/zee/.agents/skills/@zee/obsidian-cli/scripts/study-vault-audit --brief
+```
 
 ## Email-Only Briefing
 

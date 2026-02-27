@@ -38,6 +38,8 @@ export namespace MCP {
   const DEFAULT_TIMEOUT = 30_000
   const LOCAL_STDERR_TAIL_MAX_BYTES = 2_048
   const HEALTH_MONITOR_INTERVAL_MS = 15_000
+  const TOOL_CALL_CONNECT_ATTEMPTS = 2
+  const TOOL_CALL_CONNECT_RETRY_DELAY_MS = 250
   const LOCAL_NODE_FALLBACK_SERVERS = new Set(["portfolio", "consciousness"])
   const DEFAULT_LAZY_IDLE_TIMEOUT_MINUTES = 10
   const MCP_TOOL_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -481,6 +483,8 @@ export namespace MCP {
     "MCPFailed",
     z.object({
       name: z.string(),
+      status: z.string().optional(),
+      reason: z.string().optional(),
     }),
   )
 
@@ -1917,6 +1921,93 @@ export namespace MCP {
     throw new Error("mcp.args must be an object or JSON string")
   }
 
+  function shouldExposeCachedDirectTools(entry: Config.Mcp, currentStatus: Status | undefined): boolean {
+    if (!currentStatus) return false
+    if (currentStatus.status === "connected") return true
+    if (currentStatus.status === "disabled") {
+      return resolveMcpLifecycle(entry) === "lazy"
+    }
+    return false
+  }
+
+  function describeToolCallConnectionFailure(serverName: string, status: Status | undefined): string {
+    if (!status) return `MCP server "${serverName}" is not connected`
+
+    if (status.status === "connected") {
+      return `MCP server "${serverName}" reported connected but no active client is available`
+    }
+
+    if (status.status === "failed") {
+      return status.error
+    }
+
+    if (status.status === "needs_client_registration") {
+      return status.error
+    }
+
+    if (status.status === "needs_auth") {
+      return `MCP server "${serverName}" requires authentication. Run: zee mcp auth ${serverName}`
+    }
+
+    if (status.status === "disabled") {
+      return `MCP server "${serverName}" is disabled`
+    }
+
+    return `MCP server "${serverName}" is not connected`
+  }
+
+  function failToolCallConnection(serverName: string, status: Status | undefined, reason?: string): never {
+    throw new Failed({
+      name: serverName,
+      status: status?.status ?? "unknown",
+      reason: reason ?? describeToolCallConnectionFailure(serverName, status),
+    })
+  }
+
+  function isTransientToolCallFailure(error: unknown): boolean {
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
+    return (
+      message.includes("connection closed") ||
+      message.includes("closed before response") ||
+      message.includes("socket hang up") ||
+      message.includes("transport closed") ||
+      message.includes("eof")
+    )
+  }
+
+  async function ensureConnectedForToolCall(serverName: string): Promise<{ client?: MCPClient; status?: Status }> {
+    const initialState = await state()
+    const initialClient = initialState.clients[serverName]
+    const initialStatus = initialState.status[serverName]
+    if (initialClient && initialStatus?.status === "connected") {
+      return { client: initialClient, status: initialStatus }
+    }
+
+    let lastStatus: Status | undefined = initialStatus
+    for (let attempt = 1; attempt <= TOOL_CALL_CONNECT_ATTEMPTS; attempt++) {
+      const reconnectStatus = await reconnect(serverName)
+      lastStatus = reconnectStatus
+
+      if (reconnectStatus.status === "connected") {
+        const refreshedState = await state()
+        const refreshedClient = refreshedState.clients[serverName]
+        if (refreshedClient) {
+          return { client: refreshedClient, status: reconnectStatus }
+        }
+        lastStatus = {
+          status: "failed",
+          error: `MCP server "${serverName}" reported connected but no client handle is registered`,
+        }
+      }
+
+      if (attempt < TOOL_CALL_CONNECT_ATTEMPTS) {
+        await sleepMs(TOOL_CALL_CONNECT_RETRY_DELAY_MS)
+      }
+    }
+
+    return { status: lastStatus }
+  }
+
   function createMcpProxyTool(entries: McpProxyIndexEntry[]): Tool {
     const schema: JSONSchema7 = {
       type: "object",
@@ -2161,6 +2252,8 @@ export namespace MCP {
       const asyncEnabled = isAsyncServer(clientName, entry)
       const pollToolId = `${sanitizedClientName}_job_poll`
       const directToolsEnabled = isDirectToolsEnabled(entry)
+      const currentStatus = s.status[clientName]
+      const exposeDirectTools = shouldExposeCachedDirectTools(entry, currentStatus)
       let hasDirectTools = false
 
       for (const mcpTool of cached.tools) {
@@ -2183,6 +2276,10 @@ export namespace MCP {
           description: mcpTool.description,
           inputSchema: mcpTool.inputSchema,
         })
+
+        if (!exposeDirectTools) {
+          continue
+        }
 
         if (!directToolsEnabled || !shouldExposeDirectTool(entry, mcpTool.name)) {
           continue
@@ -2247,19 +2344,10 @@ export namespace MCP {
   }
 
   export async function callTool(serverName: string, toolName: string, args: Record<string, unknown> = {}) {
-    const s = await state()
-    let client = s.clients[serverName]
-
-    if (!client || s.status[serverName]?.status !== "connected") {
-      const reconnectStatus = await reconnect(serverName)
-      if (reconnectStatus.status !== "connected") {
-        throw new Failed({ name: serverName })
-      }
-      client = s.clients[serverName]
-    }
-
+    const initialConnection = await ensureConnectedForToolCall(serverName)
+    let client = initialConnection.client
     if (!client) {
-      throw new Failed({ name: serverName })
+      failToolCallConnection(serverName, initialConnection.status)
     }
 
     const cfg = await Config.get()
@@ -2269,8 +2357,8 @@ export namespace MCP {
       (mcpConfig && isMcpConfigured(mcpConfig) ? mcpConfig.timeout : undefined) ??
       cfg.experimental?.mcp_timeout ??
       DEFAULT_TIMEOUT
-    try {
-      const result = await client.callTool(
+    const invoke = async (target: MCPClient) => {
+      return target.callTool(
         {
           name: toolName,
           arguments: args ?? {},
@@ -2281,13 +2369,53 @@ export namespace MCP {
           timeout,
         },
       )
+    }
+
+    try {
+      const result = await invoke(client)
       markServerUsed(serverName)
       return result
     } catch (error) {
+      const runtimeState = await state()
       if (error instanceof UnauthorizedError) {
-        s.status[serverName] = { status: "needs_auth" }
+        runtimeState.status[serverName] = { status: "needs_auth" }
+        throw error
       }
-      throw error
+      if (!isTransientToolCallFailure(error)) {
+        throw error
+      }
+
+      log.warn("MCP tool call failed with transient connection error; retrying with reconnect", {
+        serverName,
+        toolName,
+        error: error instanceof Error ? error.message : String(error),
+      })
+
+      const reconnectStatus = await reconnect(serverName)
+      if (reconnectStatus.status !== "connected") {
+        failToolCallConnection(serverName, reconnectStatus)
+      }
+
+      const refreshedState = await state()
+      client = refreshedState.clients[serverName]
+      if (!client) {
+        failToolCallConnection(serverName, {
+          status: "failed",
+          error: `MCP server "${serverName}" reconnected but no active client is available`,
+        })
+      }
+
+      try {
+        const retryResult = await invoke(client)
+        markServerUsed(serverName)
+        return retryResult
+      } catch (retryError) {
+        if (retryError instanceof UnauthorizedError) {
+          const latest = await state()
+          latest.status[serverName] = { status: "needs_auth" }
+        }
+        throw retryError
+      }
     }
   }
 

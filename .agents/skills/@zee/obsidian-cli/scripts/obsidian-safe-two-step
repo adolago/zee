@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OBSIDIAN_BIN="${OBSIDIAN_BIN:-obsidian}"
+VAULT_NAME="${VAULT_NAME:-SB_FTL}"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  obsidian-safe-two-step audit
+  obsidian-safe-two-step property <path> <name> <value> [--type text|list|number|checkbox|date|datetime] [--apply]
+  obsidian-safe-two-step append <path> <content> [--inline] [--apply]
+
+Behavior:
+  - Preview by default (no vault writes)
+  - Add --apply to execute the mutation
+  - Targets vault=SB_FTL unless VAULT_NAME is set
+USAGE
+}
+
+run_obsidian() {
+  "$OBSIDIAN_BIN" "vault=$VAULT_NAME" "$@"
+}
+
+assert_obsidian() {
+  if ! command -v "$OBSIDIAN_BIN" >/dev/null 2>&1; then
+    echo "error: obsidian CLI not found: $OBSIDIAN_BIN" >&2
+    exit 1
+  fi
+  if ! run_obsidian vault >/dev/null 2>&1; then
+    echo "error: cannot reach Obsidian IPC for vault '$VAULT_NAME' (is Obsidian running?)" >&2
+    exit 1
+  fi
+}
+
+if [ "$#" -lt 1 ]; then
+  usage
+  exit 1
+fi
+
+cmd="$1"
+shift
+
+assert_obsidian
+
+case "$cmd" in
+  audit)
+    echo "== vault =="
+    run_obsidian vault
+    echo
+    echo "== sync status =="
+    run_obsidian sync:status || true
+    echo
+    echo "== unresolved links =="
+    run_obsidian unresolved counts || true
+    echo
+    echo "== study scan =="
+    run_obsidian search "query=unprocessed" "path=Study/Library/Books" limit=20 || true
+    ;;
+
+  property)
+    if [ "$#" -lt 3 ]; then
+      usage
+      exit 1
+    fi
+
+    path="$1"
+    prop_name="$2"
+    prop_value="$3"
+    shift 3
+
+    prop_type=""
+    apply=0
+
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --type)
+          if [ "$#" -lt 2 ]; then
+            echo "error: --type requires a value" >&2
+            exit 1
+          fi
+          prop_type="$2"
+          shift 2
+          ;;
+        --apply)
+          apply=1
+          shift
+          ;;
+        *)
+          echo "error: unknown option: $1" >&2
+          exit 1
+          ;;
+      esac
+    done
+
+    echo "== preview: current property =="
+    run_obsidian property:read "name=$prop_name" "path=$path" || true
+    echo
+    echo "== preview: proposed command =="
+    if [ -n "$prop_type" ]; then
+      echo "$OBSIDIAN_BIN vault=$VAULT_NAME property:set name=$prop_name value=$prop_value type=$prop_type path=$path"
+    else
+      echo "$OBSIDIAN_BIN vault=$VAULT_NAME property:set name=$prop_name value=$prop_value path=$path"
+    fi
+
+    if [ "$apply" -ne 1 ]; then
+      echo
+      echo "preview mode only. Re-run with --apply to execute."
+      exit 0
+    fi
+
+    echo
+    echo "== apply =="
+    if [ -n "$prop_type" ]; then
+      run_obsidian property:set "name=$prop_name" "value=$prop_value" "type=$prop_type" "path=$path"
+    else
+      run_obsidian property:set "name=$prop_name" "value=$prop_value" "path=$path"
+    fi
+
+    echo
+    echo "== verify: property =="
+    run_obsidian property:read "name=$prop_name" "path=$path"
+    ;;
+
+  append)
+    if [ "$#" -lt 2 ]; then
+      usage
+      exit 1
+    fi
+
+    path="$1"
+    content="$2"
+    shift 2
+
+    inline=0
+    apply=0
+
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --inline)
+          inline=1
+          shift
+          ;;
+        --apply)
+          apply=1
+          shift
+          ;;
+        *)
+          echo "error: unknown option: $1" >&2
+          exit 1
+          ;;
+      esac
+    done
+
+    echo "== preview: current tail (last 20 lines) =="
+    run_obsidian read "path=$path" | tail -n 20 || true
+    echo
+    echo "== preview: proposed append =="
+    printf '%s\n' "$content"
+
+    if [ "$apply" -ne 1 ]; then
+      echo
+      echo "preview mode only. Re-run with --apply to execute."
+      exit 0
+    fi
+
+    echo
+    echo "== apply =="
+    if [ "$inline" -eq 1 ]; then
+      run_obsidian append "path=$path" "content=$content" inline
+    else
+      run_obsidian append "path=$path" "content=$content"
+    fi
+
+    echo
+    echo "== verify: new tail (last 20 lines) =="
+    run_obsidian read "path=$path" | tail -n 20 || true
+    ;;
+
+  *)
+    usage
+    exit 1
+    ;;
+esac

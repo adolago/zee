@@ -8,14 +8,17 @@ afterAll(() => {
 type FailurePlan = {
   connectErrors?: string[]
   listToolsErrors?: string[]
+  callToolErrors?: string[]
   alwaysConnectError?: string
   alwaysListToolsError?: string
+  alwaysCallToolError?: string
   connectDelayMs?: number
 }
 
 const localFailurePlans: Record<string, FailurePlan> = {}
 const connectAttempts: Record<string, number> = {}
 const listToolsAttempts: Record<string, number> = {}
+const callToolAttempts: Record<string, number> = {}
 const commandByServer: Record<string, string> = {}
 const transportRefsByServer: Record<string, unknown[]> = {}
 let activeConnects = 0
@@ -98,6 +101,12 @@ class MockClient {
   }
 
   async callTool(params: { name: string }) {
+    callToolAttempts[this.serverName] = (callToolAttempts[this.serverName] ?? 0) + 1
+    const plan = localFailurePlans[this.serverName]
+    const nextError = consumeError(plan?.callToolErrors) ?? plan?.alwaysCallToolError
+    if (nextError) {
+      throw new Error(nextError)
+    }
     return { content: [{ type: "text", text: `called ${params.name}` }] }
   }
 
@@ -159,6 +168,7 @@ beforeEach(() => {
   for (const key of Object.keys(localFailurePlans)) delete localFailurePlans[key]
   for (const key of Object.keys(connectAttempts)) delete connectAttempts[key]
   for (const key of Object.keys(listToolsAttempts)) delete listToolsAttempts[key]
+  for (const key of Object.keys(callToolAttempts)) delete callToolAttempts[key]
   for (const key of Object.keys(commandByServer)) delete commandByServer[key]
   for (const key of Object.keys(transportRefsByServer)) delete transportRefsByServer[key]
   activeConnects = 0
@@ -191,6 +201,64 @@ test("local MCP retries transient connection_closed failures and recovers", asyn
       expect(connectAttempts.memory).toBe(2)
       expect(transportRefsByServer.memory?.length).toBe(2)
       expect(transportRefsByServer.memory?.[0]).not.toBe(transportRefsByServer.memory?.[1])
+    },
+  })
+})
+
+test("callTool reconnects and retries once after transient connection closure", async () => {
+  localFailurePlans.memory = {
+    callToolErrors: ["Connection closed"],
+  }
+  MCP.configureLocalMcpResilienceForTests({
+    startupMaxAttempts: 2,
+    startupBackoffMs: [0, 0],
+  })
+
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const status = await MCP.status()
+      expect(status.memory?.status).toBe("connected")
+      expect(connectAttempts.memory).toBe(1)
+
+      const result = await MCP.callTool("memory", "memory_tool", {})
+      expect(result.content[0]?.type).toBe("text")
+      expect(String((result.content[0] as { text?: string })?.text ?? "")).toContain("called memory_tool")
+      expect(callToolAttempts.memory).toBe(2)
+      expect(connectAttempts.memory).toBe(2)
+    },
+  })
+})
+
+test("callTool surfaces reconnect failure reason when recovery does not succeed", async () => {
+  MCP.configureLocalMcpResilienceForTests({
+    startupMaxAttempts: 1,
+    startupBackoffMs: [0],
+  })
+
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const status = await MCP.status()
+      expect(status.memory?.status).toBe("connected")
+
+      localFailurePlans.memory = {}
+      localFailurePlans.memory.callToolErrors = ["Connection closed"]
+      localFailurePlans.memory.alwaysConnectError = "Connection closed"
+
+      try {
+        await MCP.callTool("memory", "memory_tool", {})
+        throw new Error("Expected MCP.callTool to throw")
+      } catch (error) {
+        expect(MCP.Failed.isInstance(error)).toBe(true)
+        if (MCP.Failed.isInstance(error)) {
+          expect(error.data.name).toBe("memory")
+          expect(error.data.status).toBe("failed")
+          expect(error.data.reason).toContain("Local MCP startup failed")
+        }
+      }
     },
   })
 })

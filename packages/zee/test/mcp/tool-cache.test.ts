@@ -1,4 +1,4 @@
-import { test, expect, mock, beforeEach, afterAll } from "bun:test"
+import { test, expect, mock, beforeEach, afterEach, afterAll } from "bun:test"
 
 // Restore mock.module mocks after all tests
 afterAll(() => {
@@ -31,6 +31,11 @@ class MockClient {
   async connect(_transport: unknown) {
     if (connectShouldFail) {
       throw new Error("Mock transport cannot connect")
+    }
+    const transport = _transport as { env?: Record<string, string> } | undefined
+    const serverName = transport?.env?.ZEE_MCP_SERVER_NAME
+    if (serverName) {
+      ;(this as any).__serverName = serverName
     }
   }
 
@@ -78,7 +83,13 @@ mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
 
 mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
   StdioClientTransport: class extends MockTransport {
+    env?: Record<string, string>
     stderr = null
+
+    constructor(options?: { env?: Record<string, string> }) {
+      super()
+      this.env = options?.env
+    }
   },
 }))
 
@@ -96,6 +107,10 @@ beforeEach(() => {
 const { MCP } = await import("../../src/mcp/index")
 const { Instance } = await import("../../src/project/instance")
 const { tmpdir } = await import("../fixture/fixture")
+
+afterEach(() => {
+  MCP.resetLocalMcpResilienceForTests()
+})
 
 test("warm cache serves tools without extra listTools() call", async () => {
   await using tmp = await tmpdir()
@@ -173,6 +188,38 @@ test("MCP servers honor config enabled: false and stay disabled", async () => {
       const after = await MCP.status()
       expect(after.memory).toBeDefined()
       expect(after.memory?.status).toBe("disabled")
+    },
+  })
+})
+
+test("tools() hides direct tools for failed eager servers even when cache exists", async () => {
+  await using tmp = await tmpdir()
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      MCP.clearToolCache()
+      MCP.configureLocalMcpResilienceForTests({
+        startupMaxAttempts: 1,
+        startupBackoffMs: [0],
+      })
+      connectShouldFail = false
+      mockToolsByServer = {
+        memory: [{ name: "memory_store", description: "Store memory", inputSchema: { type: "object" } }],
+      }
+
+      const initialTools = await MCP.tools()
+      expect(initialTools.memory_store).toBeDefined()
+
+      connectShouldFail = true
+      const failedReconnect = await MCP.reconnect("memory")
+      expect(failedReconnect.status).toBe("failed")
+      const statusAfterFailure = await MCP.status()
+      expect(statusAfterFailure.memory?.status).toBe("failed")
+
+      const toolsAfterFailure = await MCP.tools()
+      expect(toolsAfterFailure.memory_store).toBeUndefined()
+      expect(toolsAfterFailure.mcp).toBeDefined()
     },
   })
 })
