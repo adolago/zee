@@ -19,10 +19,13 @@ Environment:
   TELEGRAM_BOT_TOKEN               required (Telegram bot token)
   ZEE_API_URL                      default: http://127.0.0.1:3210
   ZEE_TELEGRAM_AGENT               default: zee
-  ZEE_TELEGRAM_SESSION_SURFACE     default: api (api|whatsapp)
+  ZEE_TELEGRAM_SESSION_SURFACE     default: telegram (api|whatsapp|telegram)
+  ZEE_TELEGRAM_SESSION_MODE        default: accept (plan|accept|bypass)
   ZEE_TELEGRAM_STATE               default: ~/.local/state/zee/telegram-bridge.json
   ZEE_TELEGRAM_POLL_TIMEOUT        default: 30
   ZEE_TELEGRAM_ALLOWED_CHAT_IDS    optional CSV allowlist of numeric chat IDs
+  ZEE_TELEGRAM_MAX_REPLY_CHUNKS    default: 4
+  ZEE_TELEGRAM_MAX_REPLY_CHARS     default: 12000
   ZEE_API_TOKEN                    optional Bearer token for Zee API auth
 """
 
@@ -30,6 +33,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import signal
 import time
 import urllib.error
@@ -42,7 +46,8 @@ from pathlib import Path
 
 DEFAULT_ZEE_API_URL = os.environ.get("ZEE_API_URL", "http://127.0.0.1:3210").rstrip("/")
 DEFAULT_AGENT = os.environ.get("ZEE_TELEGRAM_AGENT", "zee")
-DEFAULT_SESSION_SURFACE = os.environ.get("ZEE_TELEGRAM_SESSION_SURFACE", "api")
+DEFAULT_SESSION_SURFACE = os.environ.get("ZEE_TELEGRAM_SESSION_SURFACE", "telegram")
+DEFAULT_SESSION_MODE = os.environ.get("ZEE_TELEGRAM_SESSION_MODE", "accept").strip().lower()
 DEFAULT_MODEL_PROVIDER = os.environ.get("ZEE_TELEGRAM_MODEL_PROVIDER", "").strip()
 DEFAULT_MODEL_ID = os.environ.get("ZEE_TELEGRAM_MODEL_ID", "").strip()
 DEFAULT_STATE_PATH = os.environ.get(
@@ -52,8 +57,13 @@ DEFAULT_STATE_PATH = os.environ.get(
 DEFAULT_POLL_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_POLL_TIMEOUT", "30"))
 DEFAULT_ALLOWED_CHAT_IDS = os.environ.get("ZEE_TELEGRAM_ALLOWED_CHAT_IDS", "")
 DEFAULT_ZEE_API_TOKEN = os.environ.get("ZEE_API_TOKEN", "").strip()
+DEFAULT_MAX_REPLY_CHUNKS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHUNKS", "4"))
+DEFAULT_MAX_REPLY_CHARS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHARS", "12000"))
 
 TELEGRAM_MAX_TEXT = 4096
+THOUGHT_BLOCK_RE = re.compile(r"!\[thought[\s\S]*?\]!", re.IGNORECASE)
+THINK_TAG_RE = re.compile(r"<think(?:ing)?[\s\S]*?</think(?:ing)?>", re.IGNORECASE)
+THOUGHT_PREFIX_RE = re.compile(r"^\s*(?:!\[)?(?:权)?thought\b", re.IGNORECASE)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -174,6 +184,13 @@ def zee_request(base_url: str, path: str, payload: dict, timeout: int, auth_toke
     return request_json(f"{base_url}{path}", payload, timeout, headers=headers)
 
 
+def zee_get(base_url: str, path: str, timeout: int, auth_token: str | None) -> dict:
+    headers = {}
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+    return request_json(f"{base_url}{path}", None, timeout, headers=headers)
+
+
 # ---------------------------------------------------------------------------
 # Telegram bridge
 # ---------------------------------------------------------------------------
@@ -245,8 +262,39 @@ def chunk_text(text: str, max_len: int = TELEGRAM_MAX_TEXT) -> list[str]:
     return chunks
 
 
-def telegram_send_text(token: str, chat_id: int, text: str, reply_to_message_id: int | None = None) -> None:
+def sanitize_assistant_text(text: str) -> str:
+    cleaned = text.strip()
+    if not cleaned:
+        return ""
+
+    cleaned = THOUGHT_BLOCK_RE.sub("", cleaned)
+    cleaned = THINK_TAG_RE.sub("", cleaned)
+    cleaned = cleaned.strip()
+
+    # Defensive guard for providers that occasionally surface thought content
+    # as plain text instead of a structured reasoning part.
+    if THOUGHT_PREFIX_RE.match(cleaned):
+        return ""
+
+    return cleaned
+
+
+def telegram_send_text(
+    token: str,
+    chat_id: int,
+    text: str,
+    reply_to_message_id: int | None = None,
+    *,
+    max_chunks: int = DEFAULT_MAX_REPLY_CHUNKS,
+    max_chars: int = DEFAULT_MAX_REPLY_CHARS,
+) -> None:
+    if max_chars > 0 and len(text) > max_chars:
+        text = text[:max_chars].rstrip() + f"\n\n[Response truncated to {max_chars} characters.]"
     chunks = chunk_text(text)
+    if max_chunks > 0 and len(chunks) > max_chunks:
+        chunks = chunks[:max_chunks]
+        suffix = "\n\n[Response truncated: too many chunks.]"
+        chunks[-1] = (chunks[-1] + suffix)[:TELEGRAM_MAX_TEXT]
     for i, chunk in enumerate(chunks):
         payload = {
             "chat_id": chat_id,
@@ -276,18 +324,43 @@ def ensure_session(
     base_url: str,
     agent: str,
     session_surface: str,
+    session_mode: str,
     auth_token: str | None,
 ) -> str:
     chat_id = str(chat.get("id"))
     existing = state["sessions"].get(chat_id)
     if isinstance(existing, str) and existing:
-        return existing
+        try:
+            session = zee_get(
+                base_url,
+                f"/session/{existing}",
+                timeout=20,
+                auth_token=auth_token,
+            )
+            existing_surface = session.get("surface")
+            if isinstance(existing_surface, str) and existing_surface and existing_surface != session_surface:
+                log.info(
+                    "Replacing session %s for chat %s due to surface mismatch (%s != %s)",
+                    existing,
+                    chat_id,
+                    existing_surface,
+                    session_surface,
+                )
+                state["sessions"].pop(chat_id, None)
+            else:
+                return existing
+        except Exception as err:
+            log.warning("Session %s for chat %s is invalid, creating a new one: %s", existing, chat_id, err)
+            state["sessions"].pop(chat_id, None)
 
     title = f"Telegram: {chat_display_name(chat)} ({chat_id})"
+    payload = {"title": title, "surface": session_surface}
+    if session_mode:
+        payload["mode"] = session_mode
     created = zee_request(
         base_url,
         "/session",
-        {"title": title, "surface": session_surface},
+        payload,
         timeout=30,
         auth_token=auth_token,
     )
@@ -331,10 +404,15 @@ def prompt_zee(
         for part in parts:
             if not isinstance(part, dict):
                 continue
-            if part.get("type") == "text":
-                value = part.get("text")
-                if isinstance(value, str) and value.strip():
-                    texts.append(value.strip())
+            if part.get("type") != "text":
+                continue
+            if part.get("synthetic") is True or part.get("ignored") is True:
+                continue
+            value = part.get("text")
+            if isinstance(value, str) and value.strip():
+                cleaned = sanitize_assistant_text(value)
+                if cleaned:
+                    texts.append(cleaned)
 
     combined = "\n".join(texts).strip()
     if combined:
@@ -367,10 +445,13 @@ def handle_update(
     state: dict,
     agent: str,
     session_surface: str,
+    session_mode: str,
     model_provider: str | None,
     model_id: str | None,
     allowed_chat_ids: set[int] | None,
     auth_token: str | None,
+    max_reply_chunks: int,
+    max_reply_chars: int,
 ) -> bool:
     message = update.get("message")
     if not isinstance(message, dict):
@@ -408,6 +489,8 @@ def handle_update(
             "/session - show current session id\n"
             "/help - show this message",
             reply_to_message_id=message.get("message_id"),
+            max_chunks=max_reply_chunks,
+            max_chars=max_reply_chars,
         )
         return False
 
@@ -420,6 +503,8 @@ def handle_update(
             f"Started a new Zee session for this chat."
             + (f"\nPrevious session: {previous}" if isinstance(previous, str) else ""),
             reply_to_message_id=message.get("message_id"),
+            max_chunks=max_reply_chunks,
+            max_chars=max_reply_chars,
         )
         return True
 
@@ -430,6 +515,7 @@ def handle_update(
             base_url,
             agent,
             session_surface,
+            session_mode,
             auth_token,
         )
         telegram_send_text(
@@ -437,6 +523,8 @@ def handle_update(
             chat_id,
             f"Current Zee session: {session_id}",
             reply_to_message_id=message.get("message_id"),
+            max_chunks=max_reply_chunks,
+            max_chars=max_reply_chars,
         )
         return True
 
@@ -447,6 +535,7 @@ def handle_update(
         base_url,
         agent,
         session_surface,
+        session_mode,
         auth_token,
     )
     telegram_send_typing(token, chat_id)
@@ -465,6 +554,8 @@ def handle_update(
         chat_id,
         reply,
         reply_to_message_id=message.get("message_id"),
+        max_chunks=max_reply_chunks,
+        max_chars=max_reply_chars,
     )
     return True
 
@@ -476,19 +567,23 @@ def run(
     poll_timeout: int,
     agent: str,
     session_surface: str,
+    session_mode: str,
     model_provider: str | None,
     model_id: str | None,
     allowed_chat_ids: set[int] | None,
     auth_token: str | None,
+    max_reply_chunks: int,
+    max_reply_chars: int,
 ) -> None:
     state = load_state(state_path)
     save_state(state_path, state)
 
     log.info(
-        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, model=%s/%s, poll_timeout=%ss, allowed_chats=%s)",
+        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, mode=%s, model=%s/%s, poll_timeout=%ss, allowed_chats=%s)",
         base_url,
         agent,
         session_surface,
+        session_mode,
         model_provider or "-",
         model_id or "-",
         poll_timeout,
@@ -533,10 +628,13 @@ def run(
                         state=state,
                         agent=agent,
                         session_surface=session_surface,
+                        session_mode=session_mode,
                         model_provider=model_provider,
                         model_id=model_id,
                         allowed_chat_ids=allowed_chat_ids,
                         auth_token=auth_token,
+                        max_reply_chunks=max_reply_chunks,
+                        max_reply_chars=max_reply_chars,
                     )
                     dirty = dirty or changed
                     consecutive_errors = 0
@@ -555,6 +653,8 @@ def run(
                                 chat_id,
                                 f"Zee bridge error: {err}",
                                 reply_to_message_id=msg.get("message_id") if isinstance(msg, dict) else None,
+                                max_chunks=max_reply_chunks,
+                                max_chars=max_reply_chars,
                             )
                         except Exception:
                             pass
@@ -597,8 +697,14 @@ def main():
     parser.add_argument(
         "--session-surface",
         default=DEFAULT_SESSION_SURFACE,
-        choices=["api", "whatsapp"],
+        choices=["api", "whatsapp", "telegram"],
         help=f"Session surface value (default: {DEFAULT_SESSION_SURFACE})",
+    )
+    parser.add_argument(
+        "--session-mode",
+        default=DEFAULT_SESSION_MODE,
+        choices=["plan", "accept", "bypass"],
+        help=f"Session mode value (default: {DEFAULT_SESSION_MODE})",
     )
     parser.add_argument(
         "--state-path",
@@ -621,6 +727,18 @@ def main():
         default=DEFAULT_ZEE_API_TOKEN,
         help="Optional Bearer token for Zee API auth",
     )
+    parser.add_argument(
+        "--max-reply-chunks",
+        type=int,
+        default=DEFAULT_MAX_REPLY_CHUNKS,
+        help=f"Maximum Telegram chunks per reply (default: {DEFAULT_MAX_REPLY_CHUNKS})",
+    )
+    parser.add_argument(
+        "--max-reply-chars",
+        type=int,
+        default=DEFAULT_MAX_REPLY_CHARS,
+        help=f"Maximum characters per reply before truncation (default: {DEFAULT_MAX_REPLY_CHARS})",
+    )
     args = parser.parse_args()
 
     token = args.token.strip()
@@ -629,6 +747,10 @@ def main():
 
     if args.poll_timeout < 1:
         raise SystemExit("--poll-timeout must be >= 1")
+    if args.max_reply_chunks < 1:
+        raise SystemExit("--max-reply-chunks must be >= 1")
+    if args.max_reply_chars < 1:
+        raise SystemExit("--max-reply-chars must be >= 1")
 
     model_provider = args.model_provider.strip() or None
     model_id = args.model_id.strip() or None
@@ -643,10 +765,13 @@ def main():
         poll_timeout=args.poll_timeout,
         agent=args.agent,
         session_surface=args.session_surface,
+        session_mode=args.session_mode,
         model_provider=model_provider,
         model_id=model_id,
         allowed_chat_ids=allowed_chat_ids,
         auth_token=args.zee_api_token.strip() or None,
+        max_reply_chunks=args.max_reply_chunks,
+        max_reply_chars=args.max_reply_chars,
     )
 
 

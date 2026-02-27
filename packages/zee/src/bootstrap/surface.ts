@@ -112,6 +112,9 @@ const MINIMAX_TTS_URL = "https://api.minimax.io/v1/t2a_v2"
 const MINIMAX_DEFAULT_VOICE = "Calm_Woman"
 const MINIMAX_DEFAULT_MODEL = "speech-02-hd"
 const MINIMAX_MAX_TEXT_LENGTH = 10_000
+const THOUGHT_BLOCK_REGEX = /!\[thought[\s\S]*?\]!/gi
+const THINK_TAG_REGEX = /<think(?:ing)?[\s\S]*?<\/think(?:ing)?>/gi
+const THOUGHT_PREFIX_REGEX = /^\s*(?:!\[)?(?:权)?thought\b/i
 
 function displaySurface(surface: MessagingSurfaceName): string {
   return surface === "telegram" ? "Telegram" : "WhatsApp"
@@ -371,10 +374,19 @@ async function buildPromptParts(message: SurfaceMessage): Promise<SessionPrompt.
   return parts
 }
 
+function sanitizeAssistantText(text: string): string {
+  let cleaned = text.trim()
+  if (!cleaned) return ""
+  cleaned = cleaned.replace(THOUGHT_BLOCK_REGEX, "").replace(THINK_TAG_REGEX, "").trim()
+  if (!cleaned || THOUGHT_PREFIX_REGEX.test(cleaned)) return ""
+  return cleaned
+}
+
 function extractTextParts(parts: MessageV2.Part[]): string {
   return parts
-    .filter((part): part is MessageV2.TextPart => part.type === "text")
-    .map((part) => part.text)
+    .filter((part): part is MessageV2.TextPart => part.type === "text" && !part.synthetic && !part.ignored)
+    .map((part) => sanitizeAssistantText(part.text))
+    .filter((text) => text.length > 0)
     .join("\n")
     .trim()
 }
