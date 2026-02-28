@@ -61,9 +61,10 @@ DEFAULT_MAX_REPLY_CHUNKS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHUNKS", "
 DEFAULT_MAX_REPLY_CHARS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHARS", "12000"))
 
 TELEGRAM_MAX_TEXT = 4096
-THOUGHT_BLOCK_RE = re.compile(r"!\[thought[\s\S]*?\]!", re.IGNORECASE)
+THOUGHT_BLOCK_RE = re.compile(r"!\[thought[\s\S]*?\](?:!|$)", re.IGNORECASE)
 THINK_TAG_RE = re.compile(r"<think(?:ing)?[\s\S]*?</think(?:ing)?>", re.IGNORECASE)
 THOUGHT_PREFIX_RE = re.compile(r"^\s*(?:!\[)?(?:权)?thought\b", re.IGNORECASE)
+ARTIFACT_ONLY_RE = re.compile(r"^(?:_model|json|\{\})$", re.IGNORECASE)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -275,8 +276,56 @@ def sanitize_assistant_text(text: str) -> str:
     # as plain text instead of a structured reasoning part.
     if THOUGHT_PREFIX_RE.match(cleaned):
         return ""
+    if ARTIFACT_ONLY_RE.match(cleaned):
+        return ""
+    if is_effectively_empty_json_artifact(cleaned):
+        return ""
 
     return cleaned
+
+
+def is_effectively_empty_json_artifact(text: str) -> bool:
+    parsed = parse_loose_json_object(text)
+    if not isinstance(parsed, dict):
+        return False
+    keys = list(parsed.keys())
+    if len(keys) == 0:
+        return True
+    if "content" not in parsed:
+        return False
+    return all(is_empty_json_value(parsed.get(key)) for key in keys)
+
+
+def parse_loose_json_object(text: str) -> dict | None:
+    stripped = strip_code_fence(text.strip())
+    stripped_prefix = re.sub(r"^json\b[:\s]*", "", stripped, flags=re.IGNORECASE).strip()
+    candidate = stripped_prefix if stripped_prefix.startswith("{") else stripped
+    if not (candidate.startswith("{") and candidate.endswith("}")):
+        return None
+    try:
+        parsed = json.loads(candidate)
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def strip_code_fence(text: str) -> str:
+    match = re.match(r"^```(?:json)?\s*([\s\S]*?)\s*```$", text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
+def is_empty_json_value(value: object) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return len(value.strip()) == 0
+    if isinstance(value, list):
+        return len(value) == 0 or all(is_empty_json_value(v) for v in value)
+    if isinstance(value, dict):
+        return len(value) == 0 or all(is_empty_json_value(v) for v in value.values())
+    return False
 
 
 def telegram_send_text(

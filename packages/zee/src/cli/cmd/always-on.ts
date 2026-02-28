@@ -486,23 +486,61 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
         storePath,
         cronEnabled: true,
         enqueueSystemEvent: (text, opts) => {
-          // Post system event to the main session via HTTP
-          fetch(`${daemonUrl}/session`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: `cron:system-event` }),
-          })
-            .then((res) => res.json())
-            .then((session: any) => {
-              if (session?.id) {
-                fetch(`${daemonUrl}/session/${session.id}/message`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ content: text }),
-                }).catch(() => {})
+          const message = text.trim()
+          if (!message) {
+            return
+          }
+
+          // Post system event into a dedicated cron session.
+          void (async () => {
+            try {
+              const createRes = await fetch(`${daemonUrl}/session`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: "cron:system-event" }),
+              })
+              if (!createRes.ok) {
+                const body = await createRes.text().catch(() => "")
+                log.warn("cron: failed to create system-event session", {
+                  status: createRes.status,
+                  body: body.slice(0, 200),
+                })
+                return
               }
-            })
-            .catch(() => {})
+
+              const session = (await createRes.json()) as { id?: string }
+              if (!session?.id) {
+                log.warn("cron: session create response missing id", { response: session })
+                return
+              }
+
+              const promptBody: Record<string, unknown> = {
+                parts: [{ type: "text", text: message }],
+                options: { senderId: "cron" },
+              }
+              if (opts?.agentId?.trim()) {
+                promptBody.agent = opts.agentId.trim()
+              }
+
+              const msgRes = await fetch(`${daemonUrl}/session/${session.id}/message`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(promptBody),
+              })
+              if (!msgRes.ok) {
+                const body = await msgRes.text().catch(() => "")
+                log.warn("cron: failed to enqueue system-event message", {
+                  sessionID: session.id,
+                  status: msgRes.status,
+                  body: body.slice(0, 200),
+                })
+              }
+            } catch (err) {
+              log.warn("cron: enqueueSystemEvent failed", {
+                error: err instanceof Error ? err.message : String(err),
+              })
+            }
+          })()
         },
         requestHeartbeatNow: (opts) => {
           heartbeatRunner?.requestNow(opts)

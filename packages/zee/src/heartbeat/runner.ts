@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import path from "path"
 import { Log } from "../util/log"
 import { isHeartbeatContentEffectivelyEmpty, resolveHeartbeatPrompt } from "./heartbeat"
-import { isHeartbeatAck, stripHeartbeatAck } from "./tokens"
+import { isHeartbeatAck, sanitizeHeartbeatText, stripHeartbeatAck } from "./tokens"
 import { type HeartbeatConfig, isWithinActiveHours, resolveHeartbeatConfig } from "./config"
 import { deliverHeartbeatResult, type DeliveryTarget } from "./delivery"
 
@@ -202,17 +202,22 @@ export class HeartbeatRunner {
 
       const result = (await msgRes.json()) as {
         content?: string
-        parts?: Array<{ type?: string; text?: string }>
+        parts?: Array<{ type?: string; text?: string; synthetic?: boolean; ignored?: boolean }>
       }
 
-      let responseText = result.content ?? ""
-      if (!responseText && Array.isArray(result.parts)) {
-        responseText = result.parts
-          .filter((part) => part?.type === "text" && typeof part.text === "string")
-          .map((part) => part.text!.trim())
-          .filter(Boolean)
-          .join("\n")
-      }
+      const textParts = Array.isArray(result.parts)
+        ? result.parts
+            .filter(
+              (part) =>
+                part?.type === "text" &&
+                typeof part.text === "string" &&
+                part.synthetic !== true &&
+                part.ignored !== true,
+            )
+            .map((part) => part.text!.trim())
+            .filter(Boolean)
+        : []
+      const responseText = [result.content?.trim(), ...textParts].filter(Boolean).join("\n").trim()
 
       // Check for HEARTBEAT_OK
       if (isHeartbeatAck(responseText)) {
@@ -221,7 +226,11 @@ export class HeartbeatRunner {
       }
 
       // Strip any ack tokens from the response
-      const cleanText = stripHeartbeatAck(responseText)
+      const cleanText = sanitizeHeartbeatText(stripHeartbeatAck(responseText))
+      if (!cleanText) {
+        log.info("heartbeat: nothing to report (sanitized-empty)")
+        return { status: "ran", reason: "sanitized-empty" }
+      }
 
       // Deliver to TUI + messaging
       const target: DeliveryTarget = {

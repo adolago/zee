@@ -12,6 +12,40 @@ export type IsolatedAgentResult = {
   error?: string
 }
 
+function resolveModelOverride(modelRaw: string | undefined): { providerID: string; modelID: string } | undefined {
+  const normalized = modelRaw?.trim()
+  if (!normalized) return undefined
+  const [providerID, ...modelParts] = normalized.split("/")
+  if (!providerID || modelParts.length === 0) return undefined
+  return { providerID, modelID: modelParts.join("/") }
+}
+
+function extractResponseText(payload: unknown): string {
+  if (!payload || typeof payload !== "object") {
+    return ""
+  }
+
+  const result = payload as {
+    parts?: Array<{ type?: string; text?: string; synthetic?: boolean; ignored?: boolean }>
+  }
+  if (!Array.isArray(result.parts)) {
+    return ""
+  }
+
+  return result.parts
+    .filter(
+      (part) =>
+        part?.type === "text" &&
+        typeof part.text === "string" &&
+        part.synthetic !== true &&
+        part.ignored !== true,
+    )
+    .map((part) => part.text!.trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim()
+}
+
 /**
  * Run an isolated cron job by creating a temporary session and sending a message.
  * This is the default implementation used when no custom runner is provided.
@@ -46,12 +80,16 @@ export async function runIsolatedAgentJob(params: {
     const session = (await sessionRes.json()) as { id: string }
 
     // Send the message to the session
+    const modelOverride = job.payload.kind === "agentTurn" ? resolveModelOverride(job.payload.model) : undefined
+    const agentOverride = job.payload.kind === "agentTurn" ? job.payload.persona : undefined
     const msgRes = await fetch(`${serverUrl}/session/${session.id}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        content: message,
-        model: job.payload.kind === "agentTurn" ? job.payload.model : undefined,
+        agent: agentOverride,
+        parts: [{ type: "text", text: message }],
+        options: { senderId: "cron" },
+        model: modelOverride,
       }),
     })
 
@@ -63,12 +101,13 @@ export async function runIsolatedAgentJob(params: {
       }
     }
 
-    const result = (await msgRes.json()) as { content?: string }
+    const result = await msgRes.json()
+    const outputText = extractResponseText(result)
 
     return {
       status: "ok",
       summary: `Cron job "${job.name}" completed`,
-      outputText: result.content,
+      outputText,
     }
   } catch (err) {
     log.error("isolated agent job failed", {
