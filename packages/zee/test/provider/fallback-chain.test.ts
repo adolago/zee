@@ -2,13 +2,13 @@ import { describe, expect, test } from "bun:test"
 import { FallbackChain } from "../../src/provider/fallback-chain"
 
 describe("FallbackChain defaults", () => {
-  test("uses anthropic-first fallback order", () => {
+  test("uses openai-first fallback order", () => {
     const firstRule = FallbackChain.DEFAULT_RULES[0]
-    expect(firstRule.fallbacks[0]).toBe("anthropic")
+    expect(firstRule.fallbacks[0]).toBe("openai")
   })
 
-  test("any rule defaults to anthropic", () => {
+  test("any rule defaults to openai", () => {
     const anyRule = FallbackChain.DEFAULT_RULES.find((rule) => rule.condition === "any")
-    expect(anyRule?.fallbacks[0]).toBe("anthropic")
+    expect(anyRule?.fallbacks[0]).toBe("openai")
   })
 })

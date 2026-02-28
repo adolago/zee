@@ -5,6 +5,7 @@ import { streamSSE } from "hono/streaming"
 import { streamText, jsonSchema, type ModelMessage, type ToolSet } from "ai"
 import { Provider } from "../../provider/provider"
 import { Log } from "../../util/log"
+import { Fallback } from "../../provider/fallback"
 
 const log = Log.create({ service: "server:llm" })
 
@@ -46,6 +47,22 @@ const PiStreamOptionsSchema = z
   })
   .passthrough()
 
+const FallbackRuleSchema = z.object({
+  condition: z.enum(["rate_limit", "unavailable", "timeout", "error", "circuit_open", "any"]),
+  fallbacks: z.array(z.string()),
+})
+
+const LlmFallbackSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    maxAttempts: z.number().int().positive().optional(),
+    rules: z.array(FallbackRuleSchema).optional(),
+    costAware: z.boolean().optional(),
+    notifyOnFallback: z.boolean().optional(),
+    skipFallback: z.boolean().optional(),
+  })
+  .passthrough()
+
 const LlmStreamInputSchema = z
   .object({
     provider: z.string(),
@@ -54,6 +71,7 @@ const LlmStreamInputSchema = z
     api: z.string().optional(),
     context: PiContextSchema,
     options: PiStreamOptionsSchema.optional(),
+    fallback: LlmFallbackSchema.optional(),
   })
   .passthrough()
 
@@ -344,9 +362,9 @@ export const LlmRoute = new Hono().post(
     const providerID = input.provider.trim()
     const modelID = input.model.trim()
     const apiId = (input.api ?? "openai-responses").trim() || "openai-responses"
+    const fallbackSessionID = (input.options?.sessionId ?? "").trim() || `llm-bridge:${providerID}/${modelID}`
 
     const model = await Provider.getModel(providerID, modelID)
-    const language = await Provider.getLanguage(model)
 
     const tools = toToolSet(input.context.tools)
     const messages = toModelMessages(input.context.messages)
@@ -397,26 +415,45 @@ export const LlmRoute = new Hono().post(
       let finalFinishReason: string | undefined
 
       try {
-        const result = streamText({
-          model: language,
-          tools: tools as any,
-          ...(typeof (input.options as any)?.toolChoice !== "undefined"
-            ? { toolChoice: (input.options as any).toolChoice }
-            : {}),
-          system,
-          messages,
-          abortSignal: abortController.signal,
-          // Respect caller-provided sampling hints when possible.
-          ...(typeof input.options?.temperature === "number" ? { temperature: input.options.temperature } : {}),
-          ...(typeof input.options?.maxTokens === "number" ? { maxOutputTokens: input.options.maxTokens } : {}),
-          ...(input.options?.headers ? { headers: input.options.headers } : {}),
-          // OpenAI Responses requires `store=false` for most personal/dev use-cases.
-          // Set it explicitly to avoid provider defaults (some SDKs default to store=true).
-          providerOptions: {
-            openai: { store: false },
-            "openai-compatible": { store: false },
+        const result = await Fallback.stream({
+          sessionID: fallbackSessionID,
+          abort: abortController.signal,
+          model,
+          purpose: "bridge_response",
+          fallbackConfig: input.fallback
+            ? {
+                enabled: input.fallback.enabled,
+                maxAttempts: input.fallback.maxAttempts,
+                rules: input.fallback.rules,
+                costAware: input.fallback.costAware,
+                notifyOnFallback: input.fallback.notifyOnFallback,
+              }
+            : undefined,
+          skipFallback: input.fallback?.skipFallback,
+          streamWithModel: async (candidateModel) => {
+            const language = await Provider.getLanguage(candidateModel)
+            return streamText({
+              model: language,
+              tools: tools as any,
+              ...(typeof (input.options as any)?.toolChoice !== "undefined"
+                ? { toolChoice: (input.options as any).toolChoice }
+                : {}),
+              system,
+              messages,
+              abortSignal: abortController.signal,
+              // Respect caller-provided sampling hints when possible.
+              ...(typeof input.options?.temperature === "number" ? { temperature: input.options.temperature } : {}),
+              ...(typeof input.options?.maxTokens === "number" ? { maxOutputTokens: input.options.maxTokens } : {}),
+              ...(input.options?.headers ? { headers: input.options.headers } : {}),
+              // OpenAI Responses requires `store=false` for most personal/dev use-cases.
+              // Set it explicitly to avoid provider defaults (some SDKs default to store=true).
+              providerOptions: {
+                openai: { store: false },
+                "openai-compatible": { store: false },
+              },
+              maxRetries: 2,
+            })
           },
-          maxRetries: 2,
         })
 
         for await (const part of result.fullStream) {

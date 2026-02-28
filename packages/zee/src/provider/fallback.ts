@@ -22,6 +22,9 @@ import type { StreamTextResult, ToolSet, TextStreamPart } from "ai"
 export namespace Fallback {
   const log = Log.create({ service: "fallback" })
 
+  export type Purpose = "primary_response" | "bridge_response" | "auxiliary_generation" | "validation"
+  type Source = "session" | "llm-route" | "auxiliary" | "validation" | "unknown"
+
   // Events
   export const Event = {
     FallbackUsed: BusEvent.define(
@@ -34,6 +37,7 @@ export namespace Fallback {
         fallbackModel: z.string(),
         reason: z.string(),
         attempt: z.number(),
+        source: z.string().optional(),
       }),
     ),
     AllFallbacksExhausted: BusEvent.define(
@@ -44,6 +48,7 @@ export namespace Fallback {
         originalModel: z.string(),
         attempted: z.array(z.string()),
         lastError: z.string(),
+        source: z.string().optional(),
       }),
     ),
   }
@@ -51,11 +56,20 @@ export namespace Fallback {
   /**
    * Extended stream input with fallback configuration.
    */
-  export type StreamInput = LLM.StreamInput & {
+  type RunnerInput = {
+    sessionID: string
+    abort: AbortSignal
+    model: Provider.Model
+    streamWithModel: (model: Provider.Model) => Promise<LLM.StreamOutput>
+  }
+
+  export type StreamInput = (LLM.StreamInput | RunnerInput) & {
     /** Override default fallback config */
     fallbackConfig?: Partial<FallbackChain.Config>
     /** Skip fallback for this request */
     skipFallback?: boolean
+    /** Optional policy hint for fallback behavior */
+    purpose?: Purpose
   }
 
   /**
@@ -68,6 +82,64 @@ export namespace Fallback {
     currentModel: Provider.Model
     originalModel: Provider.Model
     sessionID: string
+    source: Source
+  }
+
+  let tiersConfigKey: string | undefined
+
+  function hasCustomRunner(input: StreamInput): input is RunnerInput & Partial<StreamInput> {
+    return typeof (input as RunnerInput).streamWithModel === "function"
+  }
+
+  function resolveSource(purpose?: Purpose): Source {
+    switch (purpose) {
+      case "primary_response":
+        return "session"
+      case "bridge_response":
+        return "llm-route"
+      case "auxiliary_generation":
+        return "auxiliary"
+      case "validation":
+        return "validation"
+      default:
+        return "unknown"
+    }
+  }
+
+  function resolveSkipFallback(input: StreamInput): boolean {
+    if (input.purpose === "validation") return true
+    if (typeof input.skipFallback === "boolean") return input.skipFallback
+    if (input.purpose === "auxiliary_generation") return true
+    return false
+  }
+
+  function sanitizeLLMInput(input: StreamInput, model: Provider.Model): LLM.StreamInput {
+    const { fallbackConfig: _fallbackConfig, skipFallback: _skipFallback, purpose: _purpose, ...rest } = input as any
+    return {
+      ...(rest as LLM.StreamInput),
+      model,
+    }
+  }
+
+  async function runWithModel(input: StreamInput, model: Provider.Model): Promise<LLM.StreamOutput> {
+    if (hasCustomRunner(input)) {
+      return input.streamWithModel(model)
+    }
+    return LLM.stream(sanitizeLLMInput(input, model))
+  }
+
+  function configureEquivalenceTiers(cfg: Awaited<ReturnType<typeof Config.get>>["fallback"]): void {
+    const tiers = cfg?.tiers
+    const key = JSON.stringify(tiers ?? null)
+    if (key === tiersConfigKey) return
+    tiersConfigKey = key
+
+    if (tiers) {
+      ModelEquivalence.configure(tiers)
+      return
+    }
+
+    ModelEquivalence.reset()
   }
 
   /**
@@ -178,15 +250,13 @@ export namespace Fallback {
         fallbackModel: newModel.id,
         reason: `mid-stream: ${error.message}`,
         attempt: context.attempted.length,
+        source: context.source,
       })
     }
 
     // Get new stream from fallback provider
     try {
-      const newStream = await LLM.stream({
-        ...context.input,
-        model: newModel,
-      })
+      const newStream = await runWithModel(context.input, newModel)
 
       // Recursively wrap the new stream for nested fallbacks
       // We spread first then override fullStream to get proper typing
@@ -209,18 +279,22 @@ export namespace Fallback {
   export async function stream(input: StreamInput): Promise<LLM.StreamOutput> {
     // Get fallback configuration
     const cfg = await Config.get()
+    configureEquivalenceTiers(cfg.fallback)
     const fallbackConfig = FallbackChain.mergeConfig({
       ...cfg.fallback,
       ...input.fallbackConfig,
     })
+    const source = resolveSource(input.purpose)
+    const skipFallback = resolveSkipFallback(input)
 
     // Skip fallback if disabled or explicitly requested
-    if (!fallbackConfig.enabled || input.skipFallback) {
+    if (!fallbackConfig.enabled || skipFallback) {
       log.info("fallback disabled, using direct stream", {
         enabled: fallbackConfig.enabled,
-        skipFallback: input.skipFallback,
+        skipFallback,
+        source,
       })
-      return LLM.stream(input)
+      return runWithModel(input, input.model)
     }
 
     // Configure circuit breaker from config
@@ -278,10 +352,7 @@ export namespace Fallback {
 
       try {
         // Attempt the stream
-        const result = await LLM.stream({
-          ...input,
-          model: currentModel,
-        })
+        const result = await runWithModel(input, currentModel)
 
         // Don't record success immediately - the stream might still error during iteration
         // The circuit breaker will learn from failures; success is the default state
@@ -295,6 +366,7 @@ export namespace Fallback {
             fallbackModel: currentModel.id,
             reason: lastError?.message ?? "unknown",
             attempt,
+            source,
           })
         }
 
@@ -306,6 +378,7 @@ export namespace Fallback {
           currentModel,
           originalModel: input.model,
           sessionID: input.sessionID,
+          source,
         }
 
         // Use Object.assign to maintain proper typing
@@ -358,6 +431,7 @@ export namespace Fallback {
       originalModel: input.model.id,
       attempted,
       lastError: lastError?.message ?? "unknown",
+      source,
     })
 
     throw lastError ?? new Error("All fallbacks exhausted")
@@ -368,6 +442,7 @@ export namespace Fallback {
    */
   export async function isEnabled(): Promise<boolean> {
     const cfg = await Config.get()
+    configureEquivalenceTiers(cfg.fallback)
     return cfg.fallback?.enabled ?? FallbackChain.DEFAULT_CONFIG.enabled
   }
 
@@ -376,6 +451,7 @@ export namespace Fallback {
    */
   export async function getConfig(): Promise<FallbackChain.Config> {
     const cfg = await Config.get()
+    configureEquivalenceTiers(cfg.fallback)
     return FallbackChain.mergeConfig(cfg.fallback)
   }
 

@@ -14,8 +14,8 @@ import { Instance } from "@/project/instance"
 import { Storage } from "@/storage/storage"
 import { Bus } from "@/bus"
 
-import { LLM } from "./llm"
 import { Agent } from "@/agent/agent"
+import { Fallback } from "@/provider/fallback"
 
 export namespace SessionSummary {
   const log = Log.create({ service: "session.summary" })
@@ -78,7 +78,7 @@ export namespace SessionSummary {
     if (textPart && !userMsg.summary?.title) {
       const agent = await Agent.get("title")
       if (!agent) return
-      const stream = await LLM.stream({
+      const stream = await Fallback.stream({
         agent,
         user: userMsg,
         tools: {},
@@ -102,6 +102,8 @@ export namespace SessionSummary {
         sessionID: userMsg.sessionID,
         system: [],
         retries: 3,
+        purpose: "auxiliary_generation",
+        skipFallback: true,
       })
       const result = await stream.text
       log.info("title", { title: result })

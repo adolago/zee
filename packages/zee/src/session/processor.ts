@@ -313,7 +313,7 @@ export namespace SessionProcessor {
               let iterator: AsyncIterator<any> | undefined
               try {
                 const stream = await withTimeout(
-                  Fallback.stream({ ...streamInput, abort: streamAbort }),
+                  Fallback.stream({ ...streamInput, abort: streamAbort, purpose: "primary_response" }),
                   streamStartTimeoutMs + LLM_STREAM_START_TIMEOUT_BUFFER_MS,
                 )
 

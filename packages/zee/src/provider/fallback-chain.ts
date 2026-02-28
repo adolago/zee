@@ -1,5 +1,6 @@
 import { Log } from "@/util/log"
 import { ModelEquivalence } from "./equivalence"
+import { Provider } from "./provider"
 import type { NamedError } from "@zee/util/error"
 
 /**
@@ -48,23 +49,23 @@ export namespace FallbackChain {
   export const DEFAULT_RULES: Rule[] = [
     {
       condition: "rate_limit",
-      fallbacks: ["anthropic", "openai", "google"],
+      fallbacks: ["openai", "anthropic", "google"],
     },
     {
       condition: "unavailable",
-      fallbacks: ["anthropic", "openai", "google"],
+      fallbacks: ["openai", "anthropic", "google"],
     },
     {
       condition: "timeout",
-      fallbacks: ["anthropic", "openai", "google"],
+      fallbacks: ["openai", "anthropic", "google"],
     },
     {
       condition: "circuit_open",
-      fallbacks: ["anthropic", "openai", "google"],
+      fallbacks: ["openai", "anthropic", "google"],
     },
     {
       condition: "any",
-      fallbacks: ["anthropic"],
+      fallbacks: ["openai"],
     },
   ]
 
@@ -204,6 +205,58 @@ export namespace FallbackChain {
     return rules.find((r) => r.condition === "any")
   }
 
+  function modelCostScore(model: Provider.Model): number | undefined {
+    const input = model.cost?.input
+    const output = model.cost?.output
+    if (!Number.isFinite(input) || !Number.isFinite(output)) return undefined
+    return Number(input) + Number(output)
+  }
+
+  async function isCostAllowed(originalModel: string, candidateModel: string, config: Config): Promise<boolean> {
+    if (!config.costAware) return true
+
+    try {
+      const original = ModelEquivalence.parseModel(originalModel)
+      const candidate = ModelEquivalence.parseModel(candidateModel)
+      const [originalInfo, candidateInfo] = await Promise.all([
+        Provider.getModel(original.providerID, original.modelID),
+        Provider.getModel(candidate.providerID, candidate.modelID),
+      ])
+      const originalCost = modelCostScore(originalInfo)
+      const candidateCost = modelCostScore(candidateInfo)
+
+      // Missing cost metadata should not block fallback.
+      if (originalCost === undefined || candidateCost === undefined) {
+        log.debug("cost-aware skipped due to missing metadata", {
+          originalModel,
+          candidateModel,
+          originalCost,
+          candidateCost,
+        })
+        return true
+      }
+
+      if (candidateCost > originalCost) {
+        log.info("skipping fallback candidate (cost-aware)", {
+          originalModel,
+          candidateModel,
+          originalCost,
+          candidateCost,
+        })
+        return false
+      }
+
+      return true
+    } catch (error) {
+      log.debug("cost-aware check failed, allowing candidate", {
+        originalModel,
+        candidateModel,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return true
+    }
+  }
+
   /**
    * Resolve the next fallback model to try.
    *
@@ -257,7 +310,7 @@ export namespace FallbackChain {
       // Check if it's a full model spec or just a provider
       if (fallback.includes("/")) {
         // Full model spec - use directly if not attempted
-        if (!attempted.includes(fallback)) {
+        if (!attempted.includes(fallback) && (await isCostAllowed(originalModel, fallback, config))) {
           log.info("using explicit fallback", { original: originalModel, fallback })
           return fallback
         }
@@ -267,7 +320,7 @@ export namespace FallbackChain {
           fallbackProvider,
         ])
 
-        if (equivalent) {
+        if (equivalent && (await isCostAllowed(originalModel, equivalent, config))) {
           log.info("using equivalent fallback", { original: originalModel, fallback: equivalent })
           return equivalent
         }
@@ -277,7 +330,7 @@ export namespace FallbackChain {
     // No rule-based fallback found, try general equivalence
     const generalFallback = await ModelEquivalence.findFallback(originalModel, Array.from(attemptedProviders))
 
-    if (generalFallback) {
+    if (generalFallback && (await isCostAllowed(originalModel, generalFallback, config))) {
       log.info("using general equivalence fallback", { original: originalModel, fallback: generalFallback })
       return generalFallback
     }

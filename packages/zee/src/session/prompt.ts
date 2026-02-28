@@ -47,7 +47,7 @@ import { Tool } from "@/tool/tool"
 import { PermissionNext } from "@/permission/next"
 import { SessionStatus } from "./status"
 import { SessionSteering } from "./steering"
-import { LLM } from "./llm"
+import { Fallback } from "@/provider/fallback"
 import { iife } from "@/util/iife"
 import { Shell } from "@/shell/shell"
 import { Truncate } from "@/tool/truncation"
@@ -2609,7 +2609,7 @@ export namespace SessionPrompt {
         (await Provider.getSmallModel(input.providerID)) ?? (await Provider.getModel(input.providerID, input.modelID))
       )
     })
-    const result = await LLM.stream({
+    const result = await Fallback.stream({
       agent,
       user: firstRealUser.info as MessageV2.User,
       system: [],
@@ -2619,6 +2619,8 @@ export namespace SessionPrompt {
       abort: new AbortController().signal,
       sessionID: input.session.id,
       retries: 2,
+      purpose: "auxiliary_generation",
+      skipFallback: true,
       messages: [
         {
           role: "user",

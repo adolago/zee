@@ -40,6 +40,7 @@ import { createPerplexity } from "@ai-sdk/perplexity"
 import { createAzure } from "@ai-sdk/azure"
 import { ProviderTransform } from "./transform"
 import { dedup, hasDedupParser } from "./dedup"
+import { loadRosettaDefaultModel, resolveDefaultModel } from "./model-selection"
 
 import blacklistData from "./blacklist.json"
 
@@ -1273,67 +1274,38 @@ export namespace Provider {
     )
   }
 
-  let rosettaDefaultModelCache: { providerID: string; modelID: string } | null | undefined
-
-  async function loadRosettaDefaultModel(): Promise<{ providerID: string; modelID: string } | undefined> {
-    if (rosettaDefaultModelCache !== undefined) {
-      return rosettaDefaultModelCache ?? undefined
-    }
-
-    try {
-      const mod = await import("../../../../src/agent/model-rosetta")
-      const candidate = (mod as any).standardModel ?? (mod as any).personaModels?.zee
-      if (
-        candidate &&
-        typeof candidate.providerId === "string" &&
-        candidate.providerId.length > 0 &&
-        typeof candidate.modelId === "string" &&
-        candidate.modelId.length > 0
-      ) {
-        rosettaDefaultModelCache = {
-          providerID: candidate.providerId,
-          modelID: candidate.modelId,
-        }
-        return rosettaDefaultModelCache
-      }
-    } catch (error) {
-      log.debug("failed to load model rosetta default", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    rosettaDefaultModelCache = null
-    return undefined
-  }
-
   export async function defaultModel() {
     const cfg = await Config.get()
-    if (cfg.model) return parseModel(cfg.model)
-
+    const configured = cfg.model ? parseModel(cfg.model) : undefined
     const rosettaDefault = await loadRosettaDefaultModel()
-    if (rosettaDefault) {
-      try {
-        await getModel(rosettaDefault.providerID, rosettaDefault.modelID)
-        return rosettaDefault
-      } catch (error) {
-        log.debug("rosetta default model unavailable, falling back to provider list", {
-          providerID: rosettaDefault.providerID,
-          modelID: rosettaDefault.modelID,
-          error: error instanceof Error ? error.message : String(error),
-        })
-      }
-    }
 
-    const provider = await list()
+    const filteredProviders = await list()
       .then((val) => Object.values(val))
-      .then((x) => x.find((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id)))
-    if (!provider) throw new Error("no providers found")
-    const [model] = sort(Object.values(provider.models))
-    if (!model) throw new Error("no models found")
-    return {
-      providerID: provider.id,
-      modelID: model.id,
-    }
+      .then((providers) => {
+        if (!cfg.provider) return providers
+        const configuredProviderIDs = new Set(Object.keys(cfg.provider))
+        return providers.filter((provider) => configuredProviderIDs.has(provider.id))
+      })
+
+    const resolved = await resolveDefaultModel({
+      configured,
+      rosetta: rosettaDefault,
+      providers: filteredProviders,
+      sortModels: (models) => sort(models as Model[]).map((model) => ({ id: model.id, providerID: model.providerID })),
+      isModelAvailable: async (target) => {
+        try {
+          await getModel(target.providerID, target.modelID)
+          return true
+        } catch {
+          return false
+        }
+      },
+    })
+
+    if (resolved) return resolved
+
+    if (filteredProviders.length === 0) throw new Error("no providers found")
+    throw new Error("no models found")
   }
 
   export function parseModel(model: string) {

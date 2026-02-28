@@ -1681,6 +1681,14 @@ export namespace Config {
             )
             .optional()
             .describe("Fallback rules in priority order"),
+          tiers: z
+            .object({
+              flagship: z.array(z.string()).optional().describe("Flagship-tier model mappings for equivalence fallback"),
+              standard: z.array(z.string()).optional().describe("Standard-tier model mappings for equivalence fallback"),
+              fast: z.array(z.string()).optional().describe("Fast-tier model mappings for equivalence fallback"),
+            })
+            .optional()
+            .describe("Custom model-equivalence tiers used by fallback provider selection"),
           costAware: z.boolean().default(false).describe("Skip fallbacks that cost more than the original model"),
           notifyOnFallback: z.boolean().default(true).describe("Emit event/notification when fallback is used"),
         })

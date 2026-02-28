@@ -43,6 +43,7 @@ import type { ZeeClient, SessionMessageResponse, AssistantMessage } from "@zee/s
 import { applyPatch } from "diff"
 import { HEADER_DIRECTORY } from "@/gateway/constants"
 import { createAuthorizedFetch } from "@/server/auth"
+import { loadRosettaDefaultModel, resolveDefaultModel } from "@/provider/model-selection"
 
 type AppEvent = {
   type: string
@@ -101,38 +102,6 @@ function getModelVariants(providers: ProviderInfo[], model: { providerID: string
 
 export namespace ACP {
   const log = Log.create({ service: "acp-agent" })
-  let rosettaDefaultModelCache: { providerID: string; modelID: string } | null | undefined
-
-  async function loadRosettaDefaultModel(): Promise<{ providerID: string; modelID: string } | undefined> {
-    if (rosettaDefaultModelCache !== undefined) {
-      return rosettaDefaultModelCache ?? undefined
-    }
-
-    try {
-      const mod = await import("../../../../src/agent/model-rosetta")
-      const candidate = (mod as any).standardModel ?? (mod as any).personaModels?.zee
-      if (
-        candidate &&
-        typeof candidate.providerId === "string" &&
-        candidate.providerId.length > 0 &&
-        typeof candidate.modelId === "string" &&
-        candidate.modelId.length > 0
-      ) {
-        rosettaDefaultModelCache = {
-          providerID: candidate.providerId,
-          modelID: candidate.modelId,
-        }
-        return rosettaDefaultModelCache
-      }
-    } catch (error) {
-      log.debug("failed to load model rosetta default", {
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-
-    rosettaDefaultModelCache = null
-    return undefined
-  }
 
   async function getContextLimit(
     sdk: ZeeClient,
@@ -1527,12 +1496,11 @@ export namespace ACP {
 
   async function defaultModel(config: ACPConfig, cwd?: string) {
     const sdk = config.sdk
-    const configured = config.defaultModel
-    if (configured) return configured
+    const explicit = config.defaultModel
 
     const directory = cwd ?? process.cwd()
 
-    const specified = await sdk.config
+    const configured = await sdk.config
       .get(withDirectory(directory, { throwOnError: true }))
       .then((resp) => {
         const cfg = resp.data
@@ -1548,41 +1516,30 @@ export namespace ACP {
         return undefined
       })
 
-    const providers = await sdk.config
+    const providers = (await sdk.config
       .providers(withDirectory(directory, { throwOnError: true }))
       .then((x) => x.data?.providers ?? [])
       .catch((error) => {
         log.error("failed to list providers for default model", { error })
         return []
-      })
-
-    if (specified && providers.length) {
-      const provider = providers.find((p) => p.id === specified.providerID)
-      if (provider && provider.models[specified.modelID]) return specified
-    }
-
-    if (specified && !providers.length) return specified
+      })) as {
+      id: string
+      models: Record<string, { id: string }>
+    }[]
 
     const rosettaDefault = await loadRosettaDefaultModel()
-    if (rosettaDefault) {
-      if (!providers.length) return rosettaDefault
-
-      const provider = providers.find((p) => p.id === rosettaDefault.providerID)
-      if (provider?.models?.[rosettaDefault.modelID]) {
-        return rosettaDefault
-      }
-    }
-
-    const models = providers.flatMap((p) => Object.values(p.models))
-    const [best] = Provider.sort(models)
-    if (best) {
-      return {
-        providerID: best.providerID,
-        modelID: best.id,
-      }
-    }
-
-    return specified
+    return resolveDefaultModel({
+      explicit,
+      configured,
+      rosetta: rosettaDefault,
+      providers,
+      sortModels: (models) => Provider.sort(models as any).map((model) => ({ id: model.id, providerID: model.providerID })),
+      isModelAvailable: (target) => {
+        if (providers.length === 0) return true
+        const provider = providers.find((item) => item.id === target.providerID)
+        return !!provider?.models?.[target.modelID]
+      },
+    })
   }
 
   function parseUri(
