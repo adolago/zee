@@ -93,6 +93,20 @@ describe("tool.webfetch", () => {
     expect(result.output).not.toContain("# Heading")
     expect(result.output).not.toContain("[a link](https://example.com)")
   })
+
+  test("rejects private and special-use targets before fetching", async () => {
+    let fetchCalled = false
+    globalThis.fetch = (async () => {
+      fetchCalled = true
+      return new Response("should-not-fetch", { status: 200 })
+    }) as typeof fetch
+
+    const tool = await WebFetchTool.init()
+    await expect(tool.execute({ url: "http://[ff02::1]/", format: "markdown" }, ctx)).rejects.toThrow(
+      /Blocked URL target/,
+    )
+    expect(fetchCalled).toBe(false)
+  })
 })
 
 describe("fetch helpers", () => {

@@ -9,6 +9,13 @@ internal notes
     expect(sanitizeHeartbeatText(input)).toBe("")
   })
 
+  test("sanitizes non-ascii prefixed thought leaks", () => {
+    const input = `烂thought
+CRITICAL INSTRUCTION:
+reply HEARTBEAT_OK`
+    expect(sanitizeHeartbeatText(input)).toBe("")
+  })
+
   test("sanitizes empty json artifacts", () => {
     const input = `json
 {"content": ""}`

@@ -316,21 +316,49 @@ export class MessagingSurface extends BaseSurface implements Surface {
     this.emit({ type: "message", message })
   }
 
+  private normalizeAllowlistIdentifier(value: string | undefined): string | undefined {
+    const trimmed = value?.trim()
+    if (!trimmed) return undefined
+
+    // Phone-like IDs: compare without leading "+" for cross-provider consistency.
+    if (/^\+?\d+$/.test(trimmed)) {
+      return trimmed.replace(/^\+/, "")
+    }
+
+    return trimmed.toLowerCase()
+  }
+
   private isAllowedSender(msg: PlatformMessage): boolean {
     if (this.config.allowedSenders.length === 0) return true
     if (this.config.allowedSenders.includes("*")) return true
-    // Normalize phone numbers: strip leading '+' for comparison
-    // (Cloud API sends bare numbers, configs often use +prefix)
-    const normalized = msg.senderId.replace(/^\+/, "")
-    return this.config.allowedSenders.some((s) => s === msg.senderId || s.replace(/^\+/, "") === normalized)
+
+    const senderID = this.normalizeAllowlistIdentifier(msg.senderId)
+    if (!senderID) return false
+
+    for (const configured of this.config.allowedSenders) {
+      const normalized = this.normalizeAllowlistIdentifier(configured)
+      if (!normalized) continue
+      if (normalized === senderID) return true
+    }
+
+    return false
   }
 
   private isAllowedGroup(msg: PlatformMessage): boolean {
     if (!this.config.groups.enabled) return false
     if (this.config.groups.allowedGroups.length === 0) return true
     if (this.config.groups.allowedGroups.includes("*")) return true
-    if (!msg.groupId) return false
-    return this.config.groups.allowedGroups.includes(msg.groupId)
+
+    const groupID = this.normalizeAllowlistIdentifier(msg.groupId)
+    if (!groupID) return false
+
+    for (const configured of this.config.groups.allowedGroups) {
+      const normalized = this.normalizeAllowlistIdentifier(configured)
+      if (!normalized) continue
+      if (normalized === groupID) return true
+    }
+
+    return false
   }
 
   // ---------------------------------------------------------------------------

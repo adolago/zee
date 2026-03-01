@@ -6,6 +6,7 @@ import { wrapExternalContent } from "../security/external-content"
 import { abortAfterAny } from "../util/abort"
 import { Log } from "../util/log"
 import { markdownToPlainText, redactUrlForDebugLog } from "./fetch-helpers"
+import { assertSafeOutboundUrl } from "@/security"
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 const DEFAULT_TIMEOUT = 30 * 1000 // 30 seconds
@@ -23,17 +24,14 @@ export const WebFetchTool = Tool.define("webfetch", {
     timeout: z.number().describe("Optional timeout in seconds (max 120)").optional(),
   }),
   async execute(params, ctx) {
-    // Validate URL
-    if (!params.url.startsWith("http://") && !params.url.startsWith("https://")) {
-      throw new Error("URL must start with http:// or https://")
-    }
+    const targetUrl = assertSafeOutboundUrl(params.url).toString()
 
     await ctx.ask({
       permission: "webfetch",
-      patterns: [params.url],
+      patterns: [targetUrl],
       always: ["*"],
       metadata: {
-        url: params.url,
+        url: targetUrl,
         format: params.format,
         timeout: params.timeout,
       },
@@ -66,12 +64,12 @@ export const WebFetchTool = Tool.define("webfetch", {
       "Accept-Language": "en-US,en;q=0.9",
     }
 
-    const initial = await fetch(params.url, { signal, headers })
+    const initial = await fetch(targetUrl, { signal, headers })
 
     // Retry with honest UA if blocked by Cloudflare bot detection (TLS fingerprint mismatch)
     const response =
       initial.status === 403 && initial.headers.get("cf-mitigated") === "challenge"
-        ? await fetch(params.url, { signal, headers: { ...headers, "User-Agent": "zee" } })
+        ? await fetch(targetUrl, { signal, headers: { ...headers, "User-Agent": "zee" } })
         : initial
 
     clearTimeout()
@@ -80,7 +78,7 @@ export const WebFetchTool = Tool.define("webfetch", {
       throw new Error(`Request failed with status code: ${response.status}`)
     }
 
-    const responseUrl = response.url || params.url
+    const responseUrl = response.url || targetUrl
     const markdownTokens = response.headers.get("x-markdown-tokens")
     if (markdownTokens) {
       log.debug(`[webfetch] x-markdown-tokens: ${markdownTokens} (${redactUrlForDebugLog(responseUrl)})`)
@@ -100,7 +98,7 @@ export const WebFetchTool = Tool.define("webfetch", {
     const content = new TextDecoder().decode(arrayBuffer)
     const contentType = (response.headers.get("content-type") || "").toLowerCase()
 
-    const title = `${params.url} (${contentType})`
+    const title = `${targetUrl} (${contentType})`
     const wrap = (text: string) => wrapExternalContent(text, { source: "web" })
 
     // Handle content based on requested format and actual content type

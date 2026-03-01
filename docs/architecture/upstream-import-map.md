@@ -39,7 +39,7 @@ Observed drift summary:
 
 - OpenCode: Zee is `2082` commits behind and `1452` commits ahead.
 - OpenCode preview overlap hotspot snapshot (from `sync-upstream --preview`): `120` overlap files; top areas `packages/ui` (`76`) and `packages/web` (`27`); full path list at `/tmp/zee-sync-conflicts-opencode.txt`.
-- OpenClaw: unrelated histories; no merge-base sync path. Snapshot TODOs in `openclaw-delta-map` are now `15`; sentinel reports `ACTIONABLE PORTS PENDING` (`338` commits since monitored pin).
+- OpenClaw: unrelated histories; no merge-base sync path. Net-new actionable TODO rows in `openclaw-delta-map` are now `0`; sentinel reports `NET-NEW ACTIONABLE DELTAS` (`338` commits since monitored pin).
 - Pi-mono: latest upstream tag `v0.55.1`; installed pin tracked via `docs/architecture/upstream-pins.json` (`piCodingAgentVersion: 0.55.1`).
 
 ### OpenClaw Monitoring Notes
@@ -50,13 +50,13 @@ Observed drift summary:
   - `NET-NEW ACTIONABLE DELTAS` when upstream moved past the monitored pin and TODO rows are zero.
   - `NO NEW ACTIONABLE PORTS` when both signals are zero.
 
-## Roadmap Progress Rollup (2026-02-26)
+## Roadmap Progress Rollup (2026-03-01)
 
 | Roadmap artifact | Completed | Remaining |
 | --- | --- | --- |
 | `CVE-REMEDIATION-PLAN.md` | Deliverables checklist is `7/7` complete. | None in current phase scope. |
 | `docs/architecture/adr-002-surface-layer.md` | Implementation plan phases 1-4 are marked complete (`12/12` checklist). | None listed in the phase checklist. |
-| `docs/architecture/openclaw-delta-map.md` + `docs/architecture/openclaw-post-snapshot-backlog.md` | Snapshot triage remains closed historically, and a new net-new actionable backlog is now captured (`TODO: 15`) for current upstream drift. | Burn down lane TODO rows from the net-new backlog section. |
+| `docs/architecture/openclaw-delta-map.md` + `docs/architecture/openclaw-post-snapshot-backlog.md` | Snapshot triage remains closed historically; current net-new actionable backlog for the tracked window is `TODO: 0`. | Run next upstream refresh cycle and triage any newly surfaced deltas. |
 | `docs/architecture/opencode-lanes/lane-03-auth-provider.md` | Acceptance checklist complete (`3/3`) and migration importer expanded with richer mapping + unknown-key diagnostics. | Remaining work is migration docs polish and unsupported-key remediation examples. |
 | `docs/architecture/opencode-lanes/lane-04-package-topology.md` | Acceptance checklist complete (`3/3`). | Phase 2 adaptation slice still pending. |
 | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` | Acceptance checklist complete (`3/3`) and parity harness baseline shipped (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`, `P05-CFG-001`). | Remaining work is broader scenario depth and long-run regression stability. |
@@ -64,6 +64,16 @@ Observed drift summary:
 | `docs/architecture/feature-comparison.md` | Full feature matrix regenerated with fresh OpenCode/OpenClaw/Pi-mono pins and drift metadata. | Continue regenerating on each parity refresh. |
 | `docs/plans/rust-memory-boundary.md` | Boundary, migration phases, and verification plan documented. | Implementation has not started. |
 | `docs/architecture/upstream-import-map.md` | Active backlog re-ranked to `9` pending import lanes and grouped into execution batches. | Execute Batch A priorities first. |
+
+## Roadmap Refresh Note (2026-03-01)
+
+- This cycle reconciles roadmap status with completed Zee hardening in gateway attribution, outbound URL policy, and messaging allowlist behavior.
+- Closed OpenClaw net-new actionable rows:
+  - `2011edc9e5` (`agentId` propagation through gateway send path)
+  - `61b3246a7f`, `baf656bc6f` (IPv6 special-use/multicast SSRF blocking)
+  - `c7352f6b3f` (fail-closed allowlist behavior)
+  - `069bbf9741` (case-insensitive allowlist identifier matching)
+- Sentinel state is now `NET-NEW ACTIONABLE DELTAS` because tracked TODO rows are closed while upstream has moved past the monitored pin.
 
 ## Decision Policy
 
@@ -97,7 +107,7 @@ Ranking policy:
 ## Recently Completed Imports (Reference)
 
 - OpenClaw snapshot + post-snapshot security/reliability/feature ports remain closed in current roadmap artifacts (`openclaw-delta-map`, `openclaw-post-snapshot-backlog`).
-- `openclaw-delta-map` now carries `15` lane TODO rows from net-new commit triage; sentinel reports actionable ports pending.
+- `openclaw-delta-map` now carries `0` net-new lane TODO rows after the 2026-03-01 closure pass; sentinel reports net-new actionable deltas on future upstream movement.
 - Pi-mono pin discoverability (rank-4 prior cycle) remains done via `docs/architecture/upstream-pins.json` and compare snapshot fallback logic.
 
 ## Immediate Execution Batches

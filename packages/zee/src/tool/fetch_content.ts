@@ -6,6 +6,7 @@ import { abortAfterAny } from "../util/abort"
 import { saveSearchContentResponse, type SearchContentItem, type SearchContentMeta } from "./content-store"
 import { Log } from "../util/log"
 import { redactUrlForDebugLog } from "./fetch-helpers"
+import { assertSafeOutboundUrl } from "@/security"
 
 const MAX_URLS = 20
 const MAX_STORED_CONTENT_CHARS = 500_000
@@ -63,11 +64,7 @@ function trimStoredContent(content: string): { content: string; truncated: boole
 }
 
 function ensureHttpUrl(raw: string): URL {
-  const parsed = new URL(raw)
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(`Unsupported URL protocol for "${raw}". Only http/https URLs are supported in this tool.`)
-  }
-  return parsed
+  return assertSafeOutboundUrl(raw)
 }
 
 function normalizeTargets(params: { url?: string; urls?: string[] }): string[] {

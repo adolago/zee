@@ -114,7 +114,7 @@ const MINIMAX_DEFAULT_MODEL = "speech-02-hd"
 const MINIMAX_MAX_TEXT_LENGTH = 10_000
 const THOUGHT_BLOCK_REGEX = /!\[thought[\s\S]*?\](?:!|$)/gi
 const THINK_TAG_REGEX = /<think(?:ing)?[\s\S]*?<\/think(?:ing)?>/gi
-const THOUGHT_PREFIX_REGEX = /^\s*(?:!\[)?(?:权)?thought\b/i
+const THOUGHT_PREFIX_REGEX = /^\s*(?:!\[)?(?:[^\x00-\x7F]+)?thought\b/i
 const ASSISTANT_ARTIFACT_ONLY_REGEX = /^(_model|json|\{\})$/i
 
 function displaySurface(surface: MessagingSurfaceName): string {

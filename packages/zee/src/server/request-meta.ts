@@ -3,9 +3,11 @@ type Meta = {
   traceID?: string
   requestID?: string
   sessionID?: string
+  agentID?: string
 }
 
 const META = new WeakMap<Request, Meta>()
+const AGENT_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,63}$/
 
 export namespace RequestMeta {
   export function setIp(req: Request, ip: string | undefined) {
@@ -62,5 +64,26 @@ export namespace RequestMeta {
 
   export function getSessionID(req: Request): string | undefined {
     return META.get(req)?.sessionID
+  }
+
+  export function parseAgentID(value: string | undefined): string | undefined {
+    const trimmed = value?.trim()
+    if (!trimmed) return undefined
+    if (!AGENT_ID_PATTERN.test(trimmed)) return undefined
+    return trimmed
+  }
+
+  export function setAgentID(req: Request, agentID: string | undefined) {
+    if (!agentID) return
+    const existing = META.get(req)
+    if (existing) {
+      existing.agentID = agentID
+      return
+    }
+    META.set(req, { agentID })
+  }
+
+  export function getAgentID(req: Request): string | undefined {
+    return META.get(req)?.agentID
   }
 }

@@ -149,8 +149,15 @@ export class HeartbeatRunner {
     let heartbeatContent: string | null = null
     try {
       heartbeatContent = await fs.readFile(heartbeatPath, "utf-8")
-    } catch {
-      // File doesn't exist - that's fine, let the agent decide
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code
+      if (code === "ENOENT") {
+        log.info("heartbeat: HEARTBEAT.md missing, skipping")
+        return { status: "skipped", reason: "missing-file" }
+      }
+      log.warn("heartbeat: failed to read HEARTBEAT.md", {
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
 
     // Skip if effectively empty

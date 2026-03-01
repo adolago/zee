@@ -10,6 +10,7 @@ import { sendWhatsAppMessage } from "@root/domain/zee/whatsapp-send"
 import { emitInboundMessage, toPlatformMessage, type ForwardedMessage } from "../../surface/platforms/whatsapp"
 import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
+import { extractGatewayRouteSecret, isMatchingSecret } from "@/security"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -57,15 +58,6 @@ const PROTOCOL_VERSION = 3
 const DEFAULT_GATEWAY_PORT = 18789
 const DEFAULT_GATEWAY_SEND_TIMEOUT_MS = 20_000
 
-function secureEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
-}
-
 async function resolveGatewayRouteSecret(): Promise<{ secret: string; source: string } | undefined> {
   const envToken = process.env.ZEE_GATEWAY_TOKEN?.trim()
   if (envToken) return { secret: envToken, source: "env:ZEE_GATEWAY_TOKEN" }
@@ -79,14 +71,7 @@ async function resolveGatewayRouteSecret(): Promise<{ secret: string; source: st
 }
 
 function resolveProvidedGatewayRouteSecret(req: Request): string | undefined {
-  const directHeader = req.headers.get("x-zee-gateway-token")?.trim()
-  if (directHeader) return directHeader
-
-  const authHeader = req.headers.get("authorization")?.trim()
-  const bearer = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
-  if (bearer) return bearer
-
-  return undefined
+  return extractGatewayRouteSecret(req.headers)
 }
 
 function shouldRequireGatewayRouteAuth(req: Request): boolean {
@@ -155,7 +140,7 @@ const gatewayClient = new GatewayWsClient({
 async function callGateway<T = unknown>(
   method: string,
   params?: unknown,
-  options: { timeoutMs?: number; traceID?: string; requestID?: string; sessionID?: string } = {},
+  options: { timeoutMs?: number; traceID?: string; requestID?: string; sessionID?: string; agentID?: string } = {},
 ): Promise<T> {
   log.debug("callGateway started", { method })
   const timeoutMs = options.timeoutMs ?? 10_000
@@ -172,6 +157,7 @@ async function callGateway<T = unknown>(
     metadata: {
       method,
       timeoutMs,
+      ...(options.agentID ? { agentID: options.agentID } : {}),
     },
   })
   try {
@@ -187,6 +173,7 @@ async function callGateway<T = unknown>(
       latencyMs: Date.now() - startedAt,
       metadata: {
         method,
+        ...(options.agentID ? { agentID: options.agentID } : {}),
       },
     })
     return result
@@ -206,6 +193,7 @@ async function callGateway<T = unknown>(
       },
       metadata: {
         method,
+        ...(options.agentID ? { agentID: options.agentID } : {}),
       },
     })
     throw error
@@ -227,6 +215,7 @@ async function sendViaGateway(input: {
   traceID?: string
   requestID?: string
   sessionID?: string
+  agentID?: string
 }): Promise<unknown> {
   const originalInput = {
     ...input,
@@ -254,6 +243,7 @@ async function sendViaGateway(input: {
           ...(input.mediaUrl ? { mediaUrl: input.mediaUrl } : {}),
           ...(input.mediaUrls?.length ? { mediaUrls: input.mediaUrls } : {}),
           ...(input.gifPlayback ? { gifPlayback: input.gifPlayback } : {}),
+          ...(input.agentID ? { agentId: input.agentID } : {}),
           idempotencyKey: crypto.randomUUID(),
         },
         {
@@ -261,6 +251,7 @@ async function sendViaGateway(input: {
           traceID: input.traceID,
           requestID: input.requestID,
           sessionID: input.sessionID,
+          agentID: input.agentID,
         },
       )
       // Only attach media to the first chunk
@@ -334,6 +325,13 @@ async function sendViaGateway(input: {
 
 export const GatewayRoute = new Hono()
   .use(async (c, next) => {
+    const rawAgentID = c.req.header("x-zee-agent-id")
+    const parsedAgentID = RequestMeta.parseAgentID(rawAgentID)
+    if (rawAgentID !== undefined && rawAgentID.trim().length > 0 && !parsedAgentID) {
+      return c.json({ success: false, error: "Invalid x-zee-agent-id header" } satisfies GatewayResponse, 400)
+    }
+    RequestMeta.setAgentID(c.req.raw, parsedAgentID)
+
     const configuredSecret = await resolveGatewayRouteSecret()
     const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
     const requestID = RequestMeta.getRequestID(c.req.raw)
@@ -389,7 +387,7 @@ export const GatewayRoute = new Hono()
     }
 
     const providedSecret = resolveProvidedGatewayRouteSecret(c.req.raw)
-    if (!providedSecret || !secureEqual(providedSecret, configuredSecret.secret)) {
+    if (!isMatchingSecret(providedSecret, configuredSecret.secret)) {
       FluxRecorder.record({
         traceID,
         requestID,
@@ -480,6 +478,7 @@ export const GatewayRoute = new Hono()
         const to = normalizeWhatsAppRecipient(toRaw)
         const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
         const requestID = RequestMeta.getRequestID(c.req.raw)
+        const agentID = RequestMeta.getAgentID(c.req.raw)
         const data = await sendViaGateway({
           provider: "whatsapp",
           to,
@@ -490,6 +489,7 @@ export const GatewayRoute = new Hono()
           gifPlayback: parsed.data.gifPlayback,
           traceID,
           requestID,
+          agentID,
         })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
@@ -577,7 +577,8 @@ export const GatewayRoute = new Hono()
       try {
         const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
         const requestID = RequestMeta.getRequestID(c.req.raw)
-        const data = await callGateway("skills.status", {}, { traceID, requestID })
+        const agentID = RequestMeta.getAgentID(c.req.raw)
+        const data = await callGateway("skills.status", {}, { traceID, requestID, agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -607,7 +608,8 @@ export const GatewayRoute = new Hono()
       try {
         const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
         const requestID = RequestMeta.getRequestID(c.req.raw)
-        const data = await callGateway("channels.status", {}, { traceID, requestID })
+        const agentID = RequestMeta.getAgentID(c.req.raw)
+        const data = await callGateway("channels.status", {}, { traceID, requestID, agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -637,7 +639,8 @@ export const GatewayRoute = new Hono()
       try {
         const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
         const requestID = RequestMeta.getRequestID(c.req.raw)
-        const data = await callGateway("health", {}, { timeoutMs: 5_000, traceID, requestID })
+        const agentID = RequestMeta.getAgentID(c.req.raw)
+        const data = await callGateway("health", {}, { timeoutMs: 5_000, traceID, requestID, agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -666,7 +669,8 @@ export const GatewayRoute = new Hono()
       try {
         const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
         const requestID = RequestMeta.getRequestID(c.req.raw)
-        const data = await callGateway("usage", {}, { traceID, requestID })
+        const agentID = RequestMeta.getAgentID(c.req.raw)
+        const data = await callGateway("usage", {}, { traceID, requestID, agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)

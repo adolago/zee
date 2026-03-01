@@ -6,6 +6,7 @@
 
 import { z } from "zod"
 import { Log } from "./log"
+import { parseHttpTarget } from "@/security"
 
 const log = Log.create({ service: "net-util" })
 
@@ -152,8 +153,7 @@ export async function postJson(
 
 export function normalizeHttpUrl(value: string): string | null {
   try {
-    const url = new URL(value)
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    const url = parseHttpTarget(value)
     return url.toString()
   } catch {
     return null

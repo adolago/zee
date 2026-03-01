@@ -1,4 +1,5 @@
 import { Flag } from "@/flag/flag"
+import { extractBasicCredentials, extractBearerToken, timingSafeEqual } from "@/security"
 
 const DEFAULT_USERNAME = "zee"
 
@@ -165,28 +166,15 @@ export function isAuthorized(authorizationHeader?: string): boolean {
   if (disabled) return true
   if (!password) return false
   if (!authorizationHeader) return false
-  const trimmed = authorizationHeader.trim()
 
   // Allow bearer-token style auth (common for non-browser clients).
   // Token must match the configured server password.
-  const bearer = trimmed.match(/^Bearer\s+(.+)$/i)
-  if (bearer?.[1]) {
-    return secureEqual(bearer[1].trim(), password)
-  }
+  const bearer = extractBearerToken(authorizationHeader)
+  if (bearer) return timingSafeEqual(bearer, password)
 
-  const match = trimmed.match(/^Basic\s+(.+)$/i)
-  if (!match) return false
-  let decoded: string
-  try {
-    decoded = Buffer.from(match[1], "base64").toString("utf-8")
-  } catch {
-    return false
-  }
-  const separatorIndex = decoded.indexOf(":")
-  if (separatorIndex < 0) return false
-  const username = decoded.slice(0, separatorIndex)
-  const providedPassword = decoded.slice(separatorIndex + 1)
-  return secureEqual(username, expectedUsername) && secureEqual(providedPassword, password)
+  const basic = extractBasicCredentials(authorizationHeader)
+  if (!basic) return false
+  return timingSafeEqual(basic.username, expectedUsername) && timingSafeEqual(basic.password, password)
 }
 
 /**
@@ -250,13 +238,4 @@ export function assertSafeServerBind(opts: { hostname: string }) {
     `Refusing to bind zee server to non-loopback hostname "${hostname}" without HTTP auth. ${authDisabledHelp} ` +
       "To override (dangerous), set ZEE_DISABLE_SERVER_AUTH=1 and ZEE_ALLOW_INSECURE_SERVER_NO_AUTH=1.",
   )
-}
-
-function secureEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
 }

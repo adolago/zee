@@ -194,6 +194,25 @@ describe("gateway routes", () => {
     expect(lastSendParams!.to).toBe("15551234567")
   })
 
+  test("POST /gateway/whatsapp/send propagates x-zee-agent-id to gateway send params", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/whatsapp/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-zee-agent-id": "ops.main-1",
+      },
+      body: JSON.stringify({ chatId: "15551234567@c.us", message: "Hello agent" }),
+    })
+
+    expect(response.status).toBe(200)
+    const data = await response.json()
+    expect(data.success).toBe(true)
+
+    expect(lastSendParams).not.toBeNull()
+    expect(lastSendParams!.agentId).toBe("ops.main-1")
+  })
+
   // -------------------------------------------------------------------------
   // Inbound — meta-cli webhook forward
   // -------------------------------------------------------------------------
@@ -377,5 +396,42 @@ describe("gateway routes", () => {
       if (previousToken === undefined) delete process.env.ZEE_GATEWAY_TOKEN
       else process.env.ZEE_GATEWAY_TOKEN = previousToken
     }
+  })
+
+  test("gateway auth does not accept token query parameters", async () => {
+    const previousToken = process.env.ZEE_GATEWAY_TOKEN
+    try {
+      process.env.ZEE_GATEWAY_TOKEN = "gw-secret"
+      const app = Server.App()
+
+      const denied = await app.request("/gateway/status?token=gw-secret", {
+        method: "GET",
+        headers: { Origin: "http://localhost:5173" },
+      })
+      expect(denied.status).toBe(401)
+
+      const deniedAlt = await app.request("/gateway/status?x-zee-gateway-token=gw-secret", {
+        method: "GET",
+        headers: { Origin: "http://localhost:5173" },
+      })
+      expect(deniedAlt.status).toBe(401)
+    } finally {
+      if (previousToken === undefined) delete process.env.ZEE_GATEWAY_TOKEN
+      else process.env.ZEE_GATEWAY_TOKEN = previousToken
+    }
+  })
+
+  test("gateway routes reject invalid x-zee-agent-id header", async () => {
+    const app = Server.App()
+    const response = await app.request("/gateway/status", {
+      headers: {
+        "x-zee-agent-id": "bad value with space",
+      },
+    })
+
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.success).toBe(false)
+    expect(data.error).toContain("x-zee-agent-id")
   })
 })

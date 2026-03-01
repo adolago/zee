@@ -73,6 +73,7 @@ import { SkillsRoute } from "./route/skills"
 import { LlmRoute } from "./route/llm"
 import { StanleyProxyRoute } from "./route/stanley-proxy"
 import { RequestMeta } from "./request-meta"
+import { assertSafeOutboundUrl } from "@/security"
 
 // Default API port for the daemon
 const DEFAULT_API_PORT = 3210
@@ -228,8 +229,10 @@ export namespace Server {
           const skipLogging = c.req.path === "/log"
           const traceID = c.req.header("x-zee-trace-id")?.trim() || crypto.randomUUID()
           const requestID = c.req.header("x-zee-request-id")?.trim() || crypto.randomUUID()
+          const agentID = RequestMeta.parseAgentID(c.req.header("x-zee-agent-id"))
           RequestMeta.setTraceID(c.req.raw, traceID)
           RequestMeta.setRequestID(c.req.raw, requestID)
+          RequestMeta.setAgentID(c.req.raw, agentID)
           c.header("x-zee-trace-id", traceID)
           c.header("x-zee-request-id", requestID)
 
@@ -260,6 +263,7 @@ export namespace Server {
             metadata: {
               ip: RequestMeta.getIp(c.req.raw),
               userAgent: c.req.header("user-agent") ?? "",
+              agentID,
             },
           })
 
@@ -305,6 +309,7 @@ export namespace Server {
               bytesOut,
               metadata: {
                 ip: RequestMeta.getIp(c.req.raw),
+                agentID: RequestMeta.getAgentID(c.req.raw),
               },
             })
             if (!skipLogging) {
@@ -547,17 +552,25 @@ export namespace Server {
           if (!proxyBase) {
             return c.text("Not Found", 404)
           }
+          let proxyBaseUrl: URL
+          try {
+            proxyBaseUrl = assertSafeOutboundUrl(proxyBase, {
+              allowLocalhost: true,
+              allowPrivateNetworks: true,
+            })
+          } catch {
+            return c.text("Not Found", 404)
+          }
           let proxyUrl: URL
           try {
-            proxyUrl = new URL(c.req.path, proxyBase)
+            proxyUrl = new URL(c.req.path, proxyBaseUrl)
           } catch {
             return c.text("Not Found", 404)
           }
 
           // Sentinel: Prevent SSRF by ensuring the proxy target matches the configured origin
           try {
-            const allowed = new URL(proxyBase)
-            if (proxyUrl.origin !== allowed.origin) {
+            if (proxyUrl.origin !== proxyBaseUrl.origin) {
               return c.text("Forbidden", 403)
             }
           } catch {

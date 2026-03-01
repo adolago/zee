@@ -3,7 +3,7 @@
 export const HEARTBEAT_TOKEN = "HEARTBEAT_OK"
 const THOUGHT_BLOCK_RE = /!\[thought[\s\S]*?\](?:!|$)/gi
 const THINK_TAG_RE = /<think(?:ing)?[\s\S]*?<\/think(?:ing)?>/gi
-const THOUGHT_PREFIX_RE = /^\s*(?:!\[)?(?:权)?thought\b/i
+const THOUGHT_PREFIX_RE = /^\s*(?:!\[)?(?:[^\x00-\x7F]+)?thought\b/i
 const HEARTBEAT_ARTIFACT_ONLY_RE = /^(_model|json|\{\})$/i
 
 /**

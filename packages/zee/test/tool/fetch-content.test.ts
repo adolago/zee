@@ -274,4 +274,25 @@ describe("tool.fetch_content", () => {
       },
     })
   })
+
+  test("rejects private and special-use targets before fetching", async () => {
+    let fetchCalled = false
+    globalThis.fetch = (async () => {
+      fetchCalled = true
+      return new Response("should-not-fetch", { status: 200 })
+    }) as typeof fetch
+
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const fetchTool = await FetchContentTool.init()
+        await expect(fetchTool.execute({ url: "http://[ff02::1]/", forceClone: false }, ctx(tmp.path))).rejects.toThrow(
+          /Blocked URL target/,
+        )
+      },
+    })
+
+    expect(fetchCalled).toBe(false)
+  })
 })
