@@ -4,6 +4,8 @@ import { z } from "zod"
 import { Auth } from "../../auth"
 import { Provider } from "../../provider/provider"
 import { errors } from "../error"
+import { FluxRecorder } from "@/flux"
+import { RequestMeta } from "../request-meta"
 
 export const AuthRoute = new Hono()
   .put(
@@ -44,6 +46,8 @@ export const AuthRoute = new Hono()
     async (c) => {
       const providerID = c.req.valid("param").providerID
       const body = c.req.valid("json")
+      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+      const requestID = RequestMeta.getRequestID(c.req.raw)
 
       if (body) {
         const auth =
@@ -58,6 +62,21 @@ export const AuthRoute = new Hono()
 
         if (auth) {
           await Auth.set(providerID, auth)
+          FluxRecorder.record({
+            traceID,
+            requestID,
+            providerID,
+            direction: "internal",
+            domain: "auth",
+            kind: "secret.resolved",
+            status: "ok",
+            route: "/auth/:providerID",
+            method: "PUT",
+            metadata: {
+              source: "api:auth.set",
+              authType: auth.type,
+            },
+          })
         }
       }
       await Provider.reload()
@@ -67,6 +86,21 @@ export const AuthRoute = new Hono()
         await Auth.remove(providerID)
         await Provider.reload()
         const message = error instanceof Error ? error.message : String(error)
+        FluxRecorder.record({
+          traceID,
+          requestID,
+          providerID,
+          direction: "internal",
+          domain: "auth",
+          kind: "event",
+          status: "error",
+          route: "/auth/:providerID",
+          method: "PUT",
+          error: {
+            code: "auth_validation_failed",
+            message,
+          },
+        })
         return c.json({ data: null, errors: [{ message, daemonPid: process.pid }], success: false }, 400)
       }
       return c.json(true)
@@ -98,8 +132,24 @@ export const AuthRoute = new Hono()
     ),
     async (c) => {
       const providerID = c.req.valid("param").providerID
+      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+      const requestID = RequestMeta.getRequestID(c.req.raw)
       await Auth.remove(providerID)
       await Provider.reload()
+      FluxRecorder.record({
+        traceID,
+        requestID,
+        providerID,
+        direction: "internal",
+        domain: "auth",
+        kind: "event",
+        status: "ok",
+        route: "/auth/:providerID",
+        method: "DELETE",
+        metadata: {
+          action: "auth.remove",
+        },
+      })
       return c.json(true)
     },
   )

@@ -1,4 +1,5 @@
 import { Log } from "../util/log"
+import { FluxRecorder } from "@/flux"
 
 const log = Log.create({ service: "gateway:embedded" })
 
@@ -145,6 +146,19 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
       const auth = gw.resolveGatewayAuth({ authConfig: cfg.gateway?.auth })
       if (auth.token) {
         process.env.ZEE_GATEWAY_TOKEN = auth.token
+        FluxRecorder.record({
+          traceID: `gateway:${port}`,
+          requestID: `gateway:${port}`,
+          direction: "internal",
+          domain: "gateway",
+          kind: "secret.resolved",
+          status: "ok",
+          metadata: {
+            source: "embedded-gateway-auth",
+            target: "ZEE_GATEWAY_TOKEN",
+            hasToken: true,
+          },
+        })
       }
 
       log.info("embedded gateway started", { port })

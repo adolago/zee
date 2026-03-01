@@ -15,6 +15,8 @@ export const AuthScope = {
   ADMIN: "operator.admin",
   /** Read-only access (list sessions, view models, read config) */
   READ: "operator.read",
+  /** Observability access (flux events, traces, diagnostics) */
+  OBSERVE: "operator.observe",
   /** Write access (create sessions, send messages, modify config) */
   WRITE: "operator.write",
   /** Approve execution requests and permissions */
@@ -56,6 +58,9 @@ const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
   "POST /session/*/permissions": AuthScope.APPROVALS,
   "POST /permission": AuthScope.APPROVALS,
   "POST /question": AuthScope.APPROVALS,
+
+  // Observability operations
+  "GET /v1/flux": AuthScope.OBSERVE,
 
   // Admin operations
   "GET /global/instances": AuthScope.ADMIN,

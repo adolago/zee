@@ -23,6 +23,8 @@ import { SessionCompaction } from "../../session/compaction"
 import { Agent } from "../../agent/agent"
 import { PermissionNext } from "@/permission/next"
 import { ExecutionModeInputSchema, ExecutionModeSchema } from "../../session/mode"
+import { RequestMeta } from "../request-meta"
+import { FluxRecorder } from "@/flux"
 
 const log = Log.create({ service: "server:session" })
 
@@ -148,10 +150,31 @@ export const SessionRoute = new Hono()
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const body = c.req.valid("json")
+      RequestMeta.setSessionID(c.req.raw, sessionID)
       // Validate session exists so the error surfaces as a proper HTTP 404 (and
       // doesn't get auto-created by SessionPrompt.prompt()).
       await Session.get(sessionID)
       const msg = await SessionPrompt.prompt({ ...body, sessionID })
+      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+      const requestID = RequestMeta.getRequestID(c.req.raw)
+      const textChars = body.parts
+        .filter((part): part is { type: "text"; text: string } => part.type === "text" && typeof part.text === "string")
+        .reduce((sum, part) => sum + part.text.length, 0)
+      FluxRecorder.record({
+        traceID,
+        requestID,
+        sessionID,
+        direction: "internal",
+        domain: "session",
+        kind: "session.message.accepted",
+        status: "ok",
+        route: "/session/:sessionID/message",
+        metadata: {
+          parts: body.parts.length,
+          textChars,
+          hasReply: body.noReply !== true,
+        },
+      })
       return c.json(msg)
     },
   )

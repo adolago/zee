@@ -1138,6 +1138,28 @@ export namespace Config {
       ref: "DaemonConfig",
     })
 
+  export const Flux = z
+    .object({
+      enabled: z.boolean().optional().describe("Enable flux event recording"),
+      retentionHours: z.number().int().positive().optional().describe("Flux event retention period in hours"),
+      redaction: z
+        .enum(["strict", "balanced", "debug"])
+        .optional()
+        .describe("Redaction policy for flux metadata/payloads"),
+      maxEvents: z.number().int().positive().optional().describe("Maximum number of flux events to retain"),
+      maxEventsPerTrace: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum number of flux events kept per trace"),
+      logMirror: z.boolean().optional().describe("Mirror recorded flux events into structured logs"),
+    })
+    .strict()
+    .meta({
+      ref: "FluxConfig",
+    })
+
   export const Layout = z.enum(["auto", "stretch"]).meta({
     ref: "LayoutConfig",
   })
@@ -1359,6 +1381,7 @@ export namespace Config {
       grammar: Grammar.optional().describe("Grammar checking configuration"),
       server: Server.optional().describe("Server configuration for zee serve and web commands"),
       daemon: Daemon.optional().describe("Daemon mode configuration for headless operation"),
+      flux: Flux.optional().describe("Token and API ingress-egress observability configuration"),
       heartbeat: z
         .object({
           enabled: z.boolean().optional().default(true).describe("Enable heartbeat check-ins"),

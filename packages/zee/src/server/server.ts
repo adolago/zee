@@ -1,5 +1,6 @@
 import { BusEvent } from "@/bus/bus-event"
 import { Log } from "../util/log"
+import { FluxRecorder } from "@/flux"
 import { describeRoute, generateSpecs, resolver } from "hono-openapi"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
@@ -67,6 +68,7 @@ import { SttRoute } from "./route/stt"
 import { CronRoute } from "./route/cron"
 import { HeartbeatRoute } from "./route/heartbeat"
 import { RegistryRoute } from "./route/registry"
+import { FluxRoute } from "./route/flux"
 import { SkillsRoute } from "./route/skills"
 import { LlmRoute } from "./route/llm"
 import { StanleyProxyRoute } from "./route/stanley-proxy"
@@ -95,6 +97,13 @@ function parseBodyLimitBytes(value?: string): number | undefined {
   return Math.floor(amount * (multipliers[unit] ?? 1))
 }
 
+function statusFromCode(statusCode: number | undefined, threw: boolean): "ok" | "error" | "denied" {
+  if (typeof statusCode !== "number") return threw ? "error" : "ok"
+  if (statusCode >= 500) return "error"
+  if (statusCode >= 400) return "denied"
+  return "ok"
+}
+
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout
 globalThis.AI_SDK_LOG_WARNINGS = false
 
@@ -105,6 +114,7 @@ export namespace Server {
   let _isLoopbackBind = true
   let _authRateLimiter: AuthRateLimiter | undefined
   let _authRateLimiterConfigKey: string | undefined
+  let _fluxConfigLoaded = false
 
   /**
    * Reset in-memory server state. This is mainly used by tests to avoid cross-test leakage.
@@ -115,7 +125,28 @@ export namespace Server {
     _authRateLimiter?.dispose()
     _authRateLimiter = undefined
     _authRateLimiterConfigKey = undefined
+    _fluxConfigLoaded = false
     App.reset()
+  }
+
+  async function ensureFluxConfigLoaded() {
+    if (_fluxConfigLoaded) return
+    _fluxConfigLoaded = true
+    try {
+      const config = await Config.get()
+      const flux = config.flux
+      if (!flux) return
+      FluxRecorder.configure({
+        ...(typeof flux.enabled === "boolean" ? { enabled: flux.enabled } : {}),
+        ...(typeof flux.retentionHours === "number" ? { retentionMs: flux.retentionHours * 60 * 60 * 1000 } : {}),
+        ...(typeof flux.maxEvents === "number" ? { maxEvents: flux.maxEvents } : {}),
+        ...(typeof flux.maxEventsPerTrace === "number" ? { maxEventsPerTrace: flux.maxEventsPerTrace } : {}),
+        ...(flux.redaction ? { redaction: flux.redaction } : {}),
+        ...(typeof flux.logMirror === "boolean" ? { logMirror: flux.logMirror } : {}),
+      })
+    } catch (error) {
+      log.debug("failed to load flux config", { error: String(error) })
+    }
   }
 
   function resolveAuthRateLimiter(): AuthRateLimiter | undefined {
@@ -193,20 +224,92 @@ export namespace Server {
           })
         })
         .use(async (c, next) => {
+          await ensureFluxConfigLoaded()
           const skipLogging = c.req.path === "/log"
+          const traceID = c.req.header("x-zee-trace-id")?.trim() || crypto.randomUUID()
+          const requestID = c.req.header("x-zee-request-id")?.trim() || crypto.randomUUID()
+          RequestMeta.setTraceID(c.req.raw, traceID)
+          RequestMeta.setRequestID(c.req.raw, requestID)
+          c.header("x-zee-trace-id", traceID)
+          c.header("x-zee-request-id", requestID)
+
+          const method = c.req.method
+          const path = c.req.path
+          const startedAt = Date.now()
+          const bytesIn = (() => {
+            const raw = c.req.header("content-length")
+            if (!raw) return undefined
+            const parsed = Number.parseInt(raw, 10)
+            return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
+          })()
+
+          FluxRecorder.record({
+            traceID,
+            requestID,
+            sessionID: RequestMeta.getSessionID(c.req.raw),
+            direction: "inbound",
+            domain: "server",
+            kind: "api.inbound.request",
+            status: "ok",
+            method,
+            path,
+            route: path,
+            host: c.req.header("host") ?? undefined,
+            url: c.req.url,
+            bytesIn,
+            metadata: {
+              ip: RequestMeta.getIp(c.req.raw),
+              userAgent: c.req.header("user-agent") ?? "",
+            },
+          })
+
           if (!skipLogging) {
             log.info("request", {
-              method: c.req.method,
-              path: c.req.path,
+              method,
+              path,
             })
           }
           const timer = log.time("request", {
-            method: c.req.method,
-            path: c.req.path,
+            method,
+            path,
           })
-          await next()
-          if (!skipLogging) {
-            timer.stop()
+          let thrown = false
+          try {
+            await next()
+          } catch (error) {
+            thrown = true
+            throw error
+          } finally {
+            const statusCode = c.res?.status
+            const bytesOut = (() => {
+              const raw = c.res?.headers?.get("content-length")
+              if (!raw) return undefined
+              const parsed = Number.parseInt(raw, 10)
+              return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
+            })()
+            FluxRecorder.record({
+              traceID,
+              requestID,
+              sessionID: RequestMeta.getSessionID(c.req.raw),
+              direction: "inbound",
+              domain: "server",
+              kind: "api.inbound.response",
+              status: statusFromCode(statusCode, thrown),
+              method,
+              path,
+              route: path,
+              host: c.req.header("host") ?? undefined,
+              url: c.req.url,
+              statusCode,
+              latencyMs: Date.now() - startedAt,
+              bytesOut,
+              metadata: {
+                ip: RequestMeta.getIp(c.req.raw),
+              },
+            })
+            if (!skipLogging) {
+              timer.stop()
+            }
           }
         })
         .use(
@@ -393,6 +496,7 @@ export namespace Server {
         .route("/command", CommandRoute)
         .route("/", ModelRoute)
         .route("/", RegistryRoute)
+        .route("/", FluxRoute)
         .route("/", SkillsRoute)
         .route("/", LlmRoute)
         .route("/mcp", McpRoute)

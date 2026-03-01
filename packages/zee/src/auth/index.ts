@@ -3,6 +3,7 @@ import { Global } from "../global"
 import fs from "fs/promises"
 import z from "zod"
 import { Log } from "../util/log"
+import { FluxRecorder } from "@/flux"
 
 export const OAUTH_DUMMY_KEY = "zee-oauth-dummy-key"
 
@@ -10,7 +11,7 @@ export const OAUTH_DUMMY_KEY = "zee-oauth-dummy-key"
 const REFRESH_BUFFER_MS = 10 * 60 * 1000
 
 // OAuth refresh configurations for known providers
-const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId: string; clientSecret?: string }> = {
+const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId?: string; clientSecret?: string }> = {
   anthropic: {
     url: "https://console.anthropic.com/v1/oauth/token",
     clientId: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
@@ -21,8 +22,8 @@ const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId: string; clie
   },
   "gemini-cli": {
     url: "https://oauth2.googleapis.com/token",
-    clientId: "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
-    clientSecret: "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",
+    clientId: process.env.ZEE_GEMINI_CLI_OAUTH_CLIENT_ID?.trim(),
+    clientSecret: process.env.ZEE_GEMINI_CLI_OAUTH_CLIENT_SECRET?.trim(),
   },
   // Note: kimi-for-coding uses custom refresh in plugin (requires X-Msh-* headers)
 }
@@ -126,6 +127,25 @@ export namespace Auth {
     }
 
     try {
+      if (!config.clientId) {
+        log.warn("oauth refresh requires client_id env var", {
+          providerID,
+          envVar: providerID === "gemini-cli" ? "ZEE_GEMINI_CLI_OAUTH_CLIENT_ID" : undefined,
+        })
+        return false
+      }
+
+      const traceID = `auth:${providerID}`
+      const requestID = crypto.randomUUID()
+      FluxRecorder.record({
+        traceID,
+        requestID,
+        providerID,
+        direction: "outbound",
+        domain: "auth",
+        kind: "oauth.refresh.start",
+        status: "ok",
+      })
       log.info("refreshing token", { providerID, expiresIn: Math.round((auth.expires - Date.now()) / 1000) })
 
       const body: Record<string, string> = {
@@ -145,6 +165,20 @@ export namespace Auth {
 
       if (!response.ok) {
         log.error("token refresh failed", { providerID, status: response.status })
+        FluxRecorder.record({
+          traceID,
+          requestID,
+          providerID,
+          direction: "outbound",
+          domain: "auth",
+          kind: "oauth.refresh.fail",
+          status: "error",
+          statusCode: response.status,
+          error: {
+            code: "refresh_http_error",
+            message: `refresh failed with status ${response.status}`,
+          },
+        })
         return false
       }
 
@@ -163,9 +197,35 @@ export namespace Auth {
       })
 
       log.info("token refreshed", { providerID, expiresIn: json.expires_in })
+      FluxRecorder.record({
+        traceID,
+        requestID,
+        providerID,
+        direction: "outbound",
+        domain: "auth",
+        kind: "oauth.refresh.success",
+        status: "ok",
+        metadata: {
+          expiresIn: json.expires_in,
+          hasRefreshToken: Boolean(json.refresh_token),
+        },
+      })
       return true
     } catch (error) {
       log.error("token refresh error", { providerID, error: String(error) })
+      FluxRecorder.record({
+        traceID: `auth:${providerID}`,
+        requestID: crypto.randomUUID(),
+        providerID,
+        direction: "outbound",
+        domain: "auth",
+        kind: "oauth.refresh.fail",
+        status: "error",
+        error: {
+          code: "refresh_error",
+          message: error instanceof Error ? error.message : String(error),
+        },
+      })
       return false
     }
   }
