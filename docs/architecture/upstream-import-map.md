@@ -57,13 +57,13 @@ Observed drift summary:
 | `CVE-REMEDIATION-PLAN.md` | Deliverables checklist is `7/7` complete. | None in current phase scope. |
 | `docs/architecture/adr-002-surface-layer.md` | Implementation plan phases 1-4 are marked complete (`12/12` checklist). | None listed in the phase checklist. |
 | `docs/architecture/openclaw-delta-map.md` + `docs/architecture/openclaw-post-snapshot-backlog.md` | Snapshot triage remains closed historically; current net-new actionable backlog for the tracked window is `TODO: 0`. | Run next upstream refresh cycle and triage any newly surfaced deltas. |
-| `docs/architecture/opencode-lanes/lane-03-auth-provider.md` | Acceptance checklist complete (`3/3`) and migration importer expanded with richer mapping + unknown-key diagnostics. | Remaining work is migration docs polish and unsupported-key remediation examples. |
+| `docs/architecture/opencode-lanes/lane-03-auth-provider.md` | Acceptance checklist complete (`4/4`) with migration importer coverage and explicit unsupported-key remediation examples. | Continue parity refresh only when new OpenCode auth/provider drift appears. |
 | `docs/architecture/opencode-lanes/lane-04-package-topology.md` | Acceptance checklist complete (`3/3`). | Phase 2 adaptation slice still pending. |
 | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` | Acceptance checklist complete (`3/3`) and parity harness baseline shipped (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`, `P05-CFG-001`). | Remaining work is broader scenario depth and long-run regression stability. |
 | `docs/architecture/opencode-sync-policy.md` | Lane refresh checklist completed for this cycle. | Continue weekly/monthly cadence. |
 | `docs/architecture/feature-comparison.md` | Full feature matrix regenerated with fresh OpenCode/OpenClaw/Pi-mono pins and drift metadata. | Continue regenerating on each parity refresh. |
 | `docs/plans/rust-memory-boundary.md` | Boundary, migration phases, and verification plan documented. | Implementation has not started. |
-| `docs/architecture/upstream-import-map.md` | Active backlog re-ranked to `9` pending import lanes and grouped into execution batches. | Execute Batch A priorities first. |
+| `docs/architecture/upstream-import-map.md` | Active backlog now tracks `8` pending import lanes and grouped execution batches. | Execute Batch A priorities first. |
 
 ## Roadmap Refresh Note (2026-03-01)
 
@@ -97,7 +97,7 @@ Ranking policy:
 | 1 | opencode | `adolago/zee#219` (Lane 01) | migration parity | adapt | in-progress | Highest migration impact for day-to-day TUI workflows and user-visible parity gaps. | `packages/zee/src/cli/cmd/tui`, auth entrypoints, model selector | TUI parity checklist tests |
 | 2 | opencode | `adolago/zee#221` (Lane 02) | migration parity | adapt | in-progress | Config portability (`models.dev`, mDNS, managed settings) remains a top onboarding blocker. | config schema/defaults + daemon/TUI network plumbing | config migration fixture tests + daemon/TUI mDNS regression coverage |
 | 3 | opencode | `adolago/zee#290` (Lane 05) | API/LSP workflows | adapt | in-progress (harness baseline shipped) | Parity harness controls LSP/serve/session regressions while upstream drift grows. | LSP stack, `serve`, attach/resume lifecycle | parity harness (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`, `P05-CFG-001`) |
-| 4 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | in-progress | Explicit OpenCode-to-Zee auth/provider migration path reduces setup churn. | auth command flow (`zee auth`) + mapping docs | `zee auth import-opencode` fixture test |
+| 4 | opencode | `adolago/zee#288` (Lane 03) | auth/provider parity | adapt | done | Explicit OpenCode-to-Zee auth/provider migration path reduces setup churn. | auth command flow (`zee auth`) + mapping docs | `zee auth import-opencode` fixture test + remediation docs |
 | 5 | opencode | Lane 08 (`TBD`) | migration parity | adapt | in-progress | `.opencode/` to `.zee/` migration ergonomics now have a first fixture-backed import path; coverage expansion remains. | project-config import/mapping path | fixture-driven migration test |
 | 6 | opencode | Lane 09 (`TBD`) | workflow parity | adapt | in-progress | Remote auth lifecycle and resume continuity now have baseline harness tests; broaden scenario matrix. | server/client attach + auth lifecycle | remote attach/resume integration test |
 | 7 | pimono | monitor post-`v0.55.1` bump | dependency maintenance | adapt | refreshed | Installed pin is `0.55.1`, matching upstream `v0.55.1`; rerun compatibility checks on the next upstream release. | `docs/architecture/upstream-pins.json` + pi-dependent runtime paths | compare snapshot + targeted regression suite on next bump |
@@ -134,7 +134,7 @@ Progress update (2026-02-26):
 - Expanded migration fixture slice: `zee auth import-opencode` now maps additional provider/server/top-level fields and emits structured unknown-key categories with remediation hints (`packages/zee/test/cli/auth-import-opencode.test.ts`).
 - Lane 01/09 slice expanded: remote attach auth parity now explicitly covers `P05-SRV-001` retry/auth lifecycle (`packages/zee/test/cli/attach-shared-auth.test.ts`).
 - Lane 05 baseline shipped: `P05-LSP-001` and `P05-SES-001` harness tests added (`packages/zee/test/lsp/p05-parity.test.ts`, `packages/zee/test/session/p05-run-detach-resume.test.ts`).
-- Remaining closure work: expand migration docs for unsupported-key remediations and broaden parity scenarios beyond the baseline matrix.
+- Remaining closure work: broaden parity scenarios beyond the baseline matrix.
 
 ### Batch B: Migration ergonomics + Pi-mono refresh prep (ranks 5-7)
 

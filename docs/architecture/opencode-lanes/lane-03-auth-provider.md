@@ -29,6 +29,37 @@ Tracking issue: `adolago/zee#288`
    - API key fallback onboarding
    - safe profile rotation and revocation handling
 
+## Unsupported-Key Remediation Examples
+
+When `zee auth import-opencode` reports unknown keys, use the category and path to apply one of these remediations:
+
+1. `topLevel` keys:
+   - Example input: `theme`, `editor`, `ui`
+   - Remediation: move to Zee TUI/web config docs and remove from `.opencode` migration input; these are not auth/provider keys.
+
+2. `provider` keys:
+   - Example input: `providers.<id>.experimental*`
+   - Remediation: keep provider auth fields (`apiKey`, `baseURL`, token blobs) and move unsupported provider tuning into Zee provider policy docs.
+
+3. `models` keys:
+   - Example input: nested model routing keys not recognized by Zee importer
+   - Remediation: keep `models.url`, `models.path`, and mapped defaults; convert unsupported keys into explicit Zee model selection in project config.
+
+4. `server` keys:
+   - Example input: OpenCode server-only knobs with no Zee equivalent
+   - Remediation: keep `server.port`, `server.hostname`, `server.cors`, `server.mdns*`; drop or re-map non-equivalent keys to Zee daemon flags.
+
+5. Unknown paths with security implications:
+   - Example input: inline secrets under unsupported keys
+   - Remediation: move secrets to env vars or Zee auth store and reference through supported fields only.
+
+### Operator Checklist for Migration Reports
+
+1. Run import in dry-run mode and capture unknown-key categories.
+2. Apply the category remediations above.
+3. Re-run dry-run until unknown categories are expected/non-actionable.
+4. Run import without dry-run and validate auth/provider behavior with `zee auth list`.
+
 ## Concrete Implementation Candidate
 
 ### Candidate A: `zee auth import-opencode` (implemented first slice 2026-02-25)
@@ -56,3 +87,4 @@ Tracking issue: `adolago/zee#288`
 - [x] Zee decision recorded for each tracked item
 - [x] Concrete implementation candidate defined with owner and test scope
 - [x] First executable migration slice implemented and fixture-tested
+- [x] Unsupported-key remediation examples documented with category-specific guidance
