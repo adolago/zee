@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CORE_BINARY="$REPO_ROOT/dist/@adolago/zee-linux-x64/bin/zee"
-INSTALL_TARGET="$REPO_ROOT/script/zee-cli"
+INSTALL_TARGET="$REPO_ROOT/dist/@adolago/zee-linux-x64/bin/zee"
 INSTALLED_BINARY="$(which zee 2>/dev/null || echo '')"
 
 echo "=== Binary Version Check ==="
@@ -27,7 +27,7 @@ if [[ ! -f "$CORE_BINARY" ]]; then
 fi
 
 if [[ ! -f "$INSTALL_TARGET" ]]; then
-    echo -e "${RED}ERROR: Local Zee dispatcher not found${NC}"
+    echo -e "${RED}ERROR: Local Zee binary not found${NC}"
     echo "  Expected: $INSTALL_TARGET"
     echo "  Run: cd packages/zee && bun run build"
     exit 1

@@ -16,7 +16,7 @@ The build script automatically symlinks the compiled binary to `~/.bun/bin/zee`:
 
 ```bash
 # Build outputs to: dist/@adolago/zee-linux-x64/bin/zee
-# Symlink created: ~/.bun/bin/zee -> <build output>
+# Symlink created: ~/.bun/bin/zee -> dist/@adolago/zee-linux-x64/bin/zee
 bun run build
 ```
 

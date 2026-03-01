@@ -7,7 +7,7 @@
 # 1. Stops daemon via systemctl --user
 # 2. Optionally cleans build artifacts (--clean or --fresh)
 # 3. Rebuilds from source (unless --no-build)
-# 4. Links binary via wrapper symlink (~/.bun/bin/zee -> script/zee-cli)
+# 4. Links binary directly (~/.bun/bin/zee -> dist/@adolago/zee-linux-x64/bin/zee)
 # 5. Starts daemon via systemctl --user (unless --no-daemon)
 # 6. Verifies everything is working
 #
@@ -20,7 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 PKG_DIR="$REPO_ROOT/packages/zee"
-BINARY_SRC="$PKG_DIR/script/zee-cli"
+BINARY_SRC="$PKG_DIR/dist/@adolago/zee-linux-x64/bin/zee"
 BINARY_LINK="$HOME/.bun/bin/zee"
 DAEMON_PORT="${ZEE_PORT:-3210}"
 DAEMON_HOST="${ZEE_HOST:-127.0.0.1}"
@@ -178,7 +178,7 @@ show_status() {
     err "Not found (run: cd packages/zee && bun run build)"
   fi
   echo ""
-  echo "Wrapper binary: $BINARY_SRC"
+  echo "Built binary: $BINARY_SRC"
   if [[ -f "$BINARY_SRC" ]]; then
     local mod_time=$(stat -c "%Y" "$BINARY_SRC" 2>/dev/null || stat -f "%m" "$BINARY_SRC" 2>/dev/null)
     local mod_date=$(date -d "@$mod_time" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || date -r "$mod_time" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
