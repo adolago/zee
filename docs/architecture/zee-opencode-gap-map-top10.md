@@ -65,6 +65,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 - Current decision: `adapt`.
 - 2026-02-25 progress: added `zee auth import-opencode` first implementation slice with fixture-backed tests and dry-run diagnostics.
 - 2026-02-26 progress: expanded mapping coverage (provider/server/top-level keys) and added structured unknown-key diagnostics with remediation hints.
+- 2026-03-01 progress: command implementation is now wired in current tree (`packages/zee/src/cli/cmd/auth-import-opencode.ts` + `packages/zee/src/cli/cmd/auth.ts`) with fixture coverage at `packages/zee/test/cli/auth-import-opencode.test.ts`.
 - Artifact: `docs/architecture/opencode-lanes/lane-03-auth-provider.md`.
 
 ### Lane 04 (`#289`): Web/desktop/package topology
@@ -93,6 +94,7 @@ Baseline reference: `docs/architecture/upstream-differences.md`.
 - Scope: practical import/mapping path from `.opencode/` project defaults into `.zee/`.
 - Current decision: `adapt`.
 - 2026-02-25 progress: baseline import path now implemented through `zee auth import-opencode` (`.opencode/opencode.jsonc` -> `.zee/zee.jsonc` + auth store).
+- 2026-03-01 progress: baseline path validated by executable fixture suite (`packages/zee/test/cli/auth-import-opencode.test.ts`), including dry-run safety and invalid-JSONC diagnostics.
 - Exit signal: fixture-backed import path with explicit diagnostics for unsupported keys.
 
 ### Lane 09 (`TBD`): Client/server mode behavior parity

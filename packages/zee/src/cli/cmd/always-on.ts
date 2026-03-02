@@ -129,6 +129,26 @@ function firstCsvValue(raw: string | undefined): string | undefined {
   return undefined
 }
 
+function csvValues(raw: string | undefined): string[] {
+  if (!raw) return []
+  const values: string[] = []
+  for (const item of raw.split(",")) {
+    const normalized = normalizeDeliveryTarget(item)
+    if (normalized) values.push(normalized)
+  }
+  return values
+}
+
+function allDeliveryTargets(values: unknown): string[] {
+  if (!Array.isArray(values)) return []
+  const result: string[] = []
+  for (const value of values) {
+    const normalized = normalizeDeliveryTarget(value)
+    if (normalized) result.push(normalized)
+  }
+  return result
+}
+
 function resolveHeartbeatDeliveryTarget(config: Config.Info): HeartbeatDeliveryTarget {
   const telegramTo =
     normalizeDeliveryTarget(process.env.ZEE_TELEGRAM_HEARTBEAT_TO) ||
@@ -168,6 +188,53 @@ function resolveHeartbeatDeliveryTarget(config: Config.Info): HeartbeatDeliveryT
   }
 
   return {}
+}
+
+function resolveTelegramConversationChatIDs(config: Config.Info): string[] {
+  const ids = new Set<string>()
+  for (const value of csvValues(process.env.ZEE_TELEGRAM_ALLOWED_CHAT_IDS)) {
+    ids.add(value)
+  }
+  for (const value of allDeliveryTargets(config.experimental?.surfaces?.telegram?.allowedChatIds)) {
+    ids.add(value)
+  }
+  for (const value of allDeliveryTargets(config.experimental?.surfaces?.telegram?.allowedSenders)) {
+    ids.add(value)
+  }
+  return [...ids]
+}
+
+function resolveTelegramOpsChatIDs(heartbeatDelivery: HeartbeatDeliveryTarget): string[] {
+  const ids = new Set<string>()
+  const add = (value: unknown) => {
+    const normalized = normalizeDeliveryTarget(value)
+    if (normalized) ids.add(normalized)
+  }
+
+  add(process.env.ZEE_TELEGRAM_UPDATE_TO)
+  add(process.env.ZEE_TELEGRAM_CALENDAR_TO)
+  add(process.env.ZEE_TELEGRAM_HEARTBEAT_TO)
+
+  const explicitChannel = process.env.ZEE_HEARTBEAT_DELIVERY_CHANNEL?.trim().toLowerCase()
+  if (explicitChannel === "telegram") {
+    add(process.env.ZEE_HEARTBEAT_DELIVERY_TO)
+  }
+
+  if (heartbeatDelivery.channel === "telegram") {
+    add(heartbeatDelivery.to)
+  }
+
+  return [...ids]
+}
+
+function resolveTelegramRoutingOverlap(
+  config: Config.Info,
+  heartbeatDelivery: HeartbeatDeliveryTarget,
+): { conversation: string[]; ops: string[]; overlap: string[] } {
+  const conversation = resolveTelegramConversationChatIDs(config)
+  const ops = resolveTelegramOpsChatIDs(heartbeatDelivery)
+  const overlap = conversation.filter((chatID) => ops.includes(chatID))
+  return { conversation, ops, overlap }
 }
 
 export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<AlwaysOnProcess> {
@@ -403,6 +470,25 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     daemonConfig = {} as Config.Info
   }
 
+  const heartbeatDeliveryTarget = resolveHeartbeatDeliveryTarget(daemonConfig)
+  const telegramRouting = resolveTelegramRoutingOverlap(daemonConfig, heartbeatDeliveryTarget)
+  const telegramEnabledByConfig = daemonConfig.experimental?.surfaces?.telegram?.enabled === true
+  const telegramConfigured = telegramEnabledByConfig || Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim())
+  if (telegramConfigured && telegramRouting.conversation.length === 0) {
+    log.warn("telegram routing has no conversation allowlist", {
+      hint: "Set ZEE_TELEGRAM_ALLOWED_CHAT_IDS (or telegram.allowedChatIds) for bridge traffic",
+    })
+    Output.log("Telegram:   WARNING conversation allowlist missing (set ZEE_TELEGRAM_ALLOWED_CHAT_IDS)")
+  }
+  if (telegramRouting.overlap.length > 0) {
+    log.warn("telegram routing overlap detected", {
+      overlap: telegramRouting.overlap,
+      conversation: telegramRouting.conversation,
+      ops: telegramRouting.ops,
+    })
+    Output.log(`Telegram:   WARNING chat overlap conversation/ops -> ${telegramRouting.overlap.join(",")}`)
+  }
+
   // Mirror bundled curated skills into machine-level config path on daemon startup.
   try {
     const mirrorResult = await syncBundledSkillsToMachine({ reason: "daemon-startup" })
@@ -445,7 +531,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   try {
     const heartbeatEnabled = enforceAlwaysOn ? true : daemonConfig.heartbeat?.enabled !== false
     if (heartbeatEnabled) {
-      const delivery = resolveHeartbeatDeliveryTarget(daemonConfig)
+      const delivery = heartbeatDeliveryTarget
       heartbeatRunner = new HeartbeatRunner({
         directory,
         serverUrl: daemonUrl,

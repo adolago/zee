@@ -17,6 +17,7 @@ import type { Hooks } from "@zee/plugin"
 import { modify, applyEdits } from "jsonc-parser"
 import { Skill } from "../../skill"
 import { createAuthorizedFetch } from "@/server/auth"
+import { AuthImportOpenCodeCommand } from "./auth-import-opencode"
 import {
   listProvidersByService,
   hasCredentials,
@@ -635,6 +636,7 @@ export const AuthCommand = cmd({
     yargs
       .command(AuthLoginCommand)
       .command(AuthLogoutCommand)
+      .command(AuthImportOpenCodeCommand)
       .command(AuthListCommand)
       .command(AuthProvidersCommand)
       .demandCommand(),

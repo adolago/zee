@@ -22,6 +22,15 @@ reply HEARTBEAT_OK`
     expect(sanitizeHeartbeatText(input)).toBe("")
   })
 
+  test("sanitizes leaked transcript-style thought/tool payload blocks", () => {
+    const input = `💭thought
+CRITICAL INSTRUCTION 1:
+Use bash commands to inspect the daemon.
+json
+{"command":"systemctl --user status zee","description":"Check daemon status"}`
+    expect(sanitizeHeartbeatText(input)).toBe("")
+  })
+
   test("keeps meaningful text", () => {
     const input = "Good morning. Calendar is clear today."
     expect(sanitizeHeartbeatText(input)).toBe(input)

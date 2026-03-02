@@ -134,6 +134,7 @@ Progress update (2026-02-26):
 - Expanded migration fixture slice: `zee auth import-opencode` now maps additional provider/server/top-level fields and emits structured unknown-key categories with remediation hints (`packages/zee/test/cli/auth-import-opencode.test.ts`).
 - Lane 01/09 slice expanded: remote attach auth parity now explicitly covers `P05-SRV-001` retry/auth lifecycle (`packages/zee/test/cli/attach-shared-auth.test.ts`).
 - Lane 05 baseline shipped: `P05-LSP-001` and `P05-SES-001` harness tests added (`packages/zee/test/lsp/p05-parity.test.ts`, `packages/zee/test/session/p05-run-detach-resume.test.ts`).
+- 2026-03-01 execution wave: command wiring and implementation landed in-tree (`packages/zee/src/cli/cmd/auth-import-opencode.ts` + `packages/zee/src/cli/cmd/auth.ts`) with dry-run, `.opencode -> .zee` config/auth mapping, structured unknown-key buckets, and invalid-JSONC failure diagnostics.
 - Remaining closure work: broaden parity scenarios beyond the baseline matrix.
 
 ### Batch B: Migration ergonomics + Pi-mono refresh prep (ranks 5-7)

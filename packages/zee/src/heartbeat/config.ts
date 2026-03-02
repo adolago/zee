@@ -5,6 +5,7 @@ import { DEFAULT_HEARTBEAT_EVERY } from "./heartbeat"
 export type HeartbeatConfig = {
   enabled: boolean
   everyMs: number
+  path?: string
   prompt?: string
   model?: string
   activeHours?: {
@@ -42,6 +43,7 @@ function parseDuration(raw: string): number {
 export function resolveHeartbeatConfig(raw?: {
   enabled?: boolean
   every?: string
+  path?: string
   prompt?: string
   model?: string
   activeHours?: { start: string; end: string; timezone?: string }
@@ -53,6 +55,7 @@ export function resolveHeartbeatConfig(raw?: {
   return {
     enabled,
     everyMs,
+    path: raw?.path,
     prompt: raw?.prompt,
     model: raw?.model,
     activeHours: raw?.activeHours,

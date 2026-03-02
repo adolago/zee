@@ -59,12 +59,26 @@ DEFAULT_ALLOWED_CHAT_IDS = os.environ.get("ZEE_TELEGRAM_ALLOWED_CHAT_IDS", "")
 DEFAULT_ZEE_API_TOKEN = os.environ.get("ZEE_API_TOKEN", "").strip()
 DEFAULT_MAX_REPLY_CHUNKS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHUNKS", "4"))
 DEFAULT_MAX_REPLY_CHARS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHARS", "12000"))
+DEFAULT_MESSAGE_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_MESSAGE_TIMEOUT", "90"))
 
 TELEGRAM_MAX_TEXT = 4096
 THOUGHT_BLOCK_RE = re.compile(r"!\[thought[\s\S]*?\](?:!|$)", re.IGNORECASE)
 THINK_TAG_RE = re.compile(r"<think(?:ing)?[\s\S]*?</think(?:ing)?>", re.IGNORECASE)
 THOUGHT_PREFIX_RE = re.compile(r"^\s*(?:!\[)?(?:[^\x00-\x7F]+)?thought\b", re.IGNORECASE)
+THOUGHT_LEAK_MARKER_RE = re.compile(r"(?:!\[thought\b|<think(?:ing)?\b|(?:[^\x00-\x7F]+)?thought\b)", re.IGNORECASE)
+CRITICAL_INSTRUCTION_RE = re.compile(r"critical\s+instruction", re.IGNORECASE)
 ARTIFACT_ONLY_RE = re.compile(r"^(?:_model|json|\{\})$", re.IGNORECASE)
+TOOL_PAYLOAD_KEYS = {
+    "command",
+    "description",
+    "recipient_name",
+    "parameters",
+    "tool_uses",
+    "patchText",
+    "threadID",
+    "workdir",
+    "follow",
+}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -272,16 +286,84 @@ def sanitize_assistant_text(text: str) -> str:
     cleaned = THINK_TAG_RE.sub("", cleaned)
     cleaned = cleaned.strip()
 
+    thought_start = re.search(r"!\[thought\b", cleaned, flags=re.IGNORECASE)
+    if thought_start is not None:
+        cleaned = cleaned[:thought_start.start()].rstrip()
+
+    think_start = re.search(r"<think(?:ing)?\b", cleaned, flags=re.IGNORECASE)
+    if think_start is not None:
+        trailing = cleaned[think_start.start():]
+        if re.search(r"</think(?:ing)?>", trailing, flags=re.IGNORECASE) is None:
+            cleaned = cleaned[:think_start.start()].rstrip()
+
+    if not cleaned:
+        return ""
+
+    if contains_critical_instruction_thought_leak(cleaned):
+        return ""
+
     # Defensive guard for providers that occasionally surface thought content
     # as plain text instead of a structured reasoning part.
     if THOUGHT_PREFIX_RE.match(cleaned):
         return ""
     if ARTIFACT_ONLY_RE.match(cleaned):
         return ""
+    if is_likely_dangling_json_artifact(cleaned):
+        return ""
+    if is_likely_tool_call_payload(cleaned):
+        return ""
     if is_effectively_empty_json_artifact(cleaned):
         return ""
 
     return cleaned
+
+
+def contains_critical_instruction_thought_leak(text: str) -> bool:
+    return bool(CRITICAL_INSTRUCTION_RE.search(text) and THOUGHT_LEAK_MARKER_RE.search(text))
+
+
+def classify_bridge_error(err: Exception | str) -> str:
+    message = str(err).strip().lower()
+    if not message:
+        return "unknown"
+    if (
+        "connection refused" in message
+        or "errno 111" in message
+        or "request failed for http://127.0.0.1:3210" in message
+    ):
+        return "daemon_unreachable"
+    if "ai_retryerror" in message or "high demand" in message or "rate limit" in message:
+        return "model_capacity"
+    if "stream timeout" in message or "no response received for 300s" in message:
+        return "upstream_timeout"
+    if "timed out" in message or "timeout" in message:
+        return "upstream_timeout"
+    return "unknown"
+
+
+def format_bridge_error_for_user(err: Exception | str, bucket: str) -> str:
+    if bucket == "daemon_unreachable":
+        return "Zee bridge error: daemon unreachable (local API is offline)."
+    if bucket == "model_capacity":
+        return "Zee bridge error: model is under high demand. Please retry."
+    if bucket == "upstream_timeout":
+        return "Zee bridge error: upstream timeout waiting for model response."
+    return f"Zee bridge error: {err}"
+
+def is_likely_dangling_json_artifact(text: str) -> bool:
+    stripped = strip_code_fence(text.strip())
+    if re.match(r"^json\b", stripped, flags=re.IGNORECASE) is None:
+        return False
+    payload = re.sub(r"^json\b[:\s]*", "", stripped, flags=re.IGNORECASE).strip()
+    if not payload:
+        return True
+    return re.match(r"^[{[]\s*$", payload) is not None
+
+def is_likely_tool_call_payload(text: str) -> bool:
+    parsed = parse_loose_json_object(text)
+    if not isinstance(parsed, dict):
+        return False
+    return any(key in TOOL_PAYLOAD_KEYS for key in parsed.keys())
 
 
 def is_effectively_empty_json_artifact(text: str) -> bool:
@@ -431,6 +513,7 @@ def prompt_zee(
     model_provider: str | None,
     model_id: str | None,
     auth_token: str | None,
+    message_timeout: int,
 ) -> str:
     payload = {
         "agent": agent,
@@ -443,7 +526,7 @@ def prompt_zee(
         base_url,
         f"/session/{session_id}/message",
         payload,
-        timeout=300,
+        timeout=message_timeout,
         auth_token=auth_token,
     )
 
@@ -501,6 +584,7 @@ def handle_update(
     auth_token: str | None,
     max_reply_chunks: int,
     max_reply_chars: int,
+    message_timeout: int,
 ) -> bool:
     message = update.get("message")
     if not isinstance(message, dict):
@@ -597,6 +681,7 @@ def handle_update(
         model_provider,
         model_id,
         auth_token,
+        message_timeout,
     )
     telegram_send_text(
         token,
@@ -623,12 +708,13 @@ def run(
     auth_token: str | None,
     max_reply_chunks: int,
     max_reply_chars: int,
+    message_timeout: int,
 ) -> None:
     state = load_state(state_path)
     save_state(state_path, state)
 
     log.info(
-        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, mode=%s, model=%s/%s, poll_timeout=%ss, allowed_chats=%s)",
+        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, mode=%s, model=%s/%s, poll_timeout=%ss, msg_timeout=%ss, allowed_chats=%s)",
         base_url,
         agent,
         session_surface,
@@ -636,6 +722,7 @@ def run(
         model_provider or "-",
         model_id or "-",
         poll_timeout,
+        message_timeout,
         "*" if allowed_chat_ids is None else len(allowed_chat_ids),
     )
 
@@ -684,12 +771,19 @@ def run(
                         auth_token=auth_token,
                         max_reply_chunks=max_reply_chunks,
                         max_reply_chars=max_reply_chars,
+                        message_timeout=message_timeout,
                     )
                     dirty = dirty or changed
                     consecutive_errors = 0
                 except Exception as err:
                     consecutive_errors += 1
-                    log.warning("Failed to process update: %s", err)
+                    bucket = classify_bridge_error(err)
+                    log.warning(
+                        "Failed to process update (bucket=%s, update_id=%s): %s",
+                        bucket,
+                        update.get("update_id"),
+                        err,
+                    )
 
                     # Best effort error response if we can identify the chat
                     msg = update.get("message")
@@ -700,7 +794,7 @@ def run(
                             telegram_send_text(
                                 token,
                                 chat_id,
-                                f"Zee bridge error: {err}",
+                                format_bridge_error_for_user(err, bucket),
                                 reply_to_message_id=msg.get("message_id") if isinstance(msg, dict) else None,
                                 max_chunks=max_reply_chunks,
                                 max_chars=max_reply_chars,
@@ -713,7 +807,8 @@ def run(
 
         except Exception as err:
             consecutive_errors += 1
-            log.warning("Polling loop error (%d): %s", consecutive_errors, err)
+            bucket = classify_bridge_error(err)
+            log.warning("Polling loop error (%d, bucket=%s): %s", consecutive_errors, bucket, err)
             if dirty:
                 save_state(state_path, state)
 
@@ -788,6 +883,12 @@ def main():
         default=DEFAULT_MAX_REPLY_CHARS,
         help=f"Maximum characters per reply before truncation (default: {DEFAULT_MAX_REPLY_CHARS})",
     )
+    parser.add_argument(
+        "--message-timeout",
+        type=int,
+        default=DEFAULT_MESSAGE_TIMEOUT,
+        help=f"Timeout in seconds for Zee /message calls (default: {DEFAULT_MESSAGE_TIMEOUT})",
+    )
     args = parser.parse_args()
 
     token = args.token.strip()
@@ -800,6 +901,8 @@ def main():
         raise SystemExit("--max-reply-chunks must be >= 1")
     if args.max_reply_chars < 1:
         raise SystemExit("--max-reply-chars must be >= 1")
+    if args.message_timeout < 10:
+        raise SystemExit("--message-timeout must be >= 10")
 
     model_provider = args.model_provider.strip() or None
     model_id = args.model_id.strip() or None
@@ -821,6 +924,7 @@ def main():
         auth_token=args.zee_api_token.strip() or None,
         max_reply_chunks=args.max_reply_chunks,
         max_reply_chars=args.max_reply_chars,
+        message_timeout=args.message_timeout,
     )
 
 

@@ -72,6 +72,7 @@ When `zee auth import-opencode` reports unknown keys, use the category and path 
   - emit a migration report showing mapped, skipped, and non-goal keys
 - Current implementation slice:
   - command added: `zee auth import-opencode [file] [--dry-run]`
+  - implementation path: `packages/zee/src/cli/cmd/auth-import-opencode.ts` (wired via `packages/zee/src/cli/cmd/auth.ts`)
   - supported mappings: provider/auth API keys, OAuth token blobs, provider base URLs, provider options (`timeout`, `setCacheKey`, `enterpriseUrl`), provider allow/deny lists and provider model overrides, `models.url`/`models.baseURL`, `models.path`, `server.mdns`, `server.mdnsDomain`, `server.port`, `server.hostname`, `server.cors`, and selected top-level migration keys (`logLevel`, `model`, `small_model`, `disabled_providers`, `share`, `autoupdate`, `username`)
   - structured unknown-key diagnostics: category buckets (`topLevel`, `provider`, `models`, `server`) with remediation hints
   - test coverage: `packages/zee/test/cli/auth-import-opencode.test.ts`

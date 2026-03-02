@@ -1386,6 +1386,12 @@ export namespace Config {
         .object({
           enabled: z.boolean().optional().default(true).describe("Enable heartbeat check-ins"),
           every: z.string().optional().default("30m").describe("Heartbeat interval (e.g. 30m, 1h, 2h)"),
+          path: z
+            .string()
+            .optional()
+            .describe(
+              "Path to heartbeat instruction file (defaults to ~/.local/state/zee/workspace/HEARTBEAT.md with legacy fallback to <daemon directory>/HEARTBEAT.md)",
+            ),
           prompt: z.string().optional().describe("Custom heartbeat prompt override"),
           model: z.string().optional().describe("Model to use for heartbeat runs"),
           activeHours: z

@@ -2,6 +2,7 @@
 
 import fs from "fs/promises"
 import path from "path"
+import { resolveStateDir, resolveUserPath } from "../global/dirs"
 import { Log } from "../util/log"
 import { isHeartbeatContentEffectivelyEmpty, resolveHeartbeatPrompt } from "./heartbeat"
 import { isHeartbeatAck, sanitizeHeartbeatText, stripHeartbeatAck } from "./tokens"
@@ -23,6 +24,38 @@ function resolveHeartbeatModel(raw?: string): { providerID: string; modelID: str
   }
 }
 
+function resolveHeartbeatPath(directory: string, configuredPath: string): string {
+  const trimmed = configuredPath?.trim()
+  if (trimmed.startsWith("~")) {
+    return resolveUserPath(trimmed)
+  }
+
+  if (path.isAbsolute(trimmed)) {
+    return path.resolve(trimmed)
+  }
+
+  return path.resolve(directory, trimmed)
+}
+
+function resolveDefaultHeartbeatPaths(directory: string): string[] {
+  const runtimeWorkspacePath = path.join(resolveStateDir(), "workspace", "HEARTBEAT.md")
+  const legacyWorkspacePath = path.join(directory, "HEARTBEAT.md")
+
+  if (runtimeWorkspacePath === legacyWorkspacePath) {
+    return [runtimeWorkspacePath]
+  }
+
+  return [runtimeWorkspacePath, legacyWorkspacePath]
+}
+
+function resolveHeartbeatPaths(directory: string, configuredPath?: string): string[] {
+  const trimmed = configuredPath?.trim()
+  if (trimmed) {
+    return [resolveHeartbeatPath(directory, trimmed)]
+  }
+  return resolveDefaultHeartbeatPaths(directory)
+}
+
 export type HeartbeatRunResult = {
   status: "ran" | "skipped" | "error"
   reason?: string
@@ -31,12 +64,13 @@ export type HeartbeatRunResult = {
 export type HeartbeatRunnerDeps = {
   /** Base URL for the zee server. */
   serverUrl: string
-  /** Working directory to find HEARTBEAT.md in. */
+  /** Working directory for relative heartbeat.path and legacy HEARTBEAT fallback. */
   directory: string
   /** Raw heartbeat config from zee.jsonc. */
   config?: {
     enabled?: boolean
     every?: string
+    path?: string
     prompt?: string
     model?: string
     activeHours?: { start: string; end: string; timezone?: string }
@@ -144,25 +178,37 @@ export class HeartbeatRunner {
   private async execute(reason?: string): Promise<HeartbeatRunResult> {
     log.info("heartbeat: running", { reason })
 
-    // Read HEARTBEAT.md
-    const heartbeatPath = path.join(this.deps.directory, "HEARTBEAT.md")
+    // Read heartbeat instruction file
+    const heartbeatPaths = resolveHeartbeatPaths(this.deps.directory, this.config.path)
+    let heartbeatPath: string | undefined
     let heartbeatContent: string | null = null
-    try {
-      heartbeatContent = await fs.readFile(heartbeatPath, "utf-8")
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException | undefined)?.code
-      if (code === "ENOENT") {
-        log.info("heartbeat: HEARTBEAT.md missing, skipping")
-        return { status: "skipped", reason: "missing-file" }
+    for (const candidatePath of heartbeatPaths) {
+      try {
+        heartbeatContent = await fs.readFile(candidatePath, "utf-8")
+        heartbeatPath = candidatePath
+        break
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException | undefined)?.code
+        if (code === "ENOENT") {
+          continue
+        }
+        heartbeatPath = candidatePath
+        log.warn("heartbeat: failed to read instruction file", {
+          path: candidatePath,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        break
       }
-      log.warn("heartbeat: failed to read HEARTBEAT.md", {
-        error: error instanceof Error ? error.message : String(error),
-      })
+    }
+
+    if (!heartbeatPath) {
+      log.info("heartbeat: instruction file missing, skipping", { paths: heartbeatPaths })
+      return { status: "skipped", reason: "missing-file" }
     }
 
     // Skip if effectively empty
     if (heartbeatContent !== null && isHeartbeatContentEffectivelyEmpty(heartbeatContent)) {
-      log.info("heartbeat: HEARTBEAT.md is effectively empty, skipping")
+      log.info("heartbeat: instruction file is effectively empty, skipping", { path: heartbeatPath })
       return { status: "skipped", reason: "effectively-empty" }
     }
 
