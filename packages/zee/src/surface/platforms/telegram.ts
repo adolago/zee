@@ -22,6 +22,7 @@ const DEFAULT_API_BASE_URL = "https://api.telegram.org"
 const DEFAULT_POLL_TIMEOUT_SEC = 30
 const DEFAULT_MEDIA_MAX_MB = 20
 const DEFAULT_CHAT_ACTION = "typing"
+const EMPTY_POLL_YIELD_MS = 50
 
 type TelegramPlatformState = {
   offset: number
@@ -408,6 +409,9 @@ export class TelegramPlatformHandler implements MessagingPlatformHandler {
 
         if (updates.length > 0) {
           await this.saveState()
+        } else {
+          // Guard against hot-looping when upstream responds instantly with no updates.
+          await sleep(EMPTY_POLL_YIELD_MS)
         }
 
         consecutiveErrors = 0

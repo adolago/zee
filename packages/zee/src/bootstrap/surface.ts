@@ -6,6 +6,7 @@
  */
 
 import path from "node:path"
+import os from "node:os"
 import { randomUUID } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
@@ -113,6 +114,19 @@ const MINIMAX_TTS_URL = "https://api.minimax.io/v1/t2a_v2"
 const MINIMAX_DEFAULT_VOICE = "Calm_Woman"
 const MINIMAX_DEFAULT_MODEL = "speech-02-hd"
 const MINIMAX_MAX_TEXT_LENGTH = 10_000
+const TELEGRAM_AUTH_PROVIDER_ID = "telegram-bot"
+const TELEGRAM_LEGACY_IMPORT_FLAG_KEY = ["surface_sessions", "telegram", "_legacy_bridge_import_v1"]
+
+type LegacyTelegramBridgeState = {
+  sessions?: Record<string, unknown>
+}
+
+type LegacyTelegramBridgeImportSummary = {
+  source: string
+  imported: number
+  skipped: number
+  reason?: "already_imported" | "missing_state_file" | "invalid_state"
+}
 
 function displaySurface(surface: MessagingSurfaceName): string {
   return surface === "telegram" ? "Telegram" : "WhatsApp"
@@ -145,6 +159,84 @@ function commandHelpText(surface: MessagingSurfaceName): string {
     "/speak [text] - generate speech with MiniMax TTS",
     "/help - show this message",
   ].join("\n")
+}
+
+function collapseWhitespace(input: string): string {
+  return input.replace(/\s+/g, " ").trim()
+}
+
+export function normalizeTechnicalErrorMessage(error: unknown): string {
+  const fromString = (value: string | undefined): string | undefined => {
+    const collapsed = collapseWhitespace(value ?? "")
+    return collapsed || undefined
+  }
+
+  if (typeof error === "string") {
+    return fromString(error) ?? "Unknown error"
+  }
+
+  if (error instanceof Error) {
+    const fromMessage = fromString(error.message)
+    if (fromMessage) return fromMessage
+    const fromCause = normalizeTechnicalErrorMessage(error.cause)
+    if (fromCause) return fromCause
+    return fromString(error.name) ?? "Unknown error"
+  }
+
+  if (error && typeof error === "object") {
+    const asRecord = error as Record<string, unknown>
+    const direct = typeof asRecord.message === "string" ? fromString(asRecord.message) : undefined
+    if (direct) return direct
+
+    const nestedError = asRecord.error
+    if (nestedError && typeof nestedError === "object" && typeof (nestedError as Record<string, unknown>).message === "string") {
+      const nested = fromString((nestedError as Record<string, unknown>).message as string)
+      if (nested) return nested
+    }
+
+    const nestedData = asRecord.data
+    if (nestedData && typeof nestedData === "object" && typeof (nestedData as Record<string, unknown>).message === "string") {
+      const nested = fromString((nestedData as Record<string, unknown>).message as string)
+      if (nested) return nested
+    }
+
+    try {
+      return fromString(JSON.stringify(error)) ?? "Unknown error"
+    } catch {
+      return "Unknown error"
+    }
+  }
+
+  return fromString(String(error)) ?? "Unknown error"
+}
+
+export function formatDetailedSurfaceError(error: unknown): string {
+  const message = normalizeTechnicalErrorMessage(error)
+  if (message.toLowerCase().startsWith("zee error:")) {
+    return message
+  }
+  return `Zee error: ${message}`
+}
+
+function resolveLegacyTelegramBridgeStatePath(): string {
+  const configured = process.env.ZEE_TELEGRAM_STATE?.trim()
+  if (configured) return configured
+  return path.join(os.homedir(), ".local", "state", "zee", "telegram-bridge.json")
+}
+
+export async function resolveTelegramBotToken(configToken?: string): Promise<string | undefined> {
+  const fromConfig = configToken?.trim()
+  if (fromConfig) return fromConfig
+
+  const fromEnv = process.env.TELEGRAM_BOT_TOKEN?.trim()
+  if (fromEnv) return fromEnv
+
+  const auth = await Auth.get(TELEGRAM_AUTH_PROVIDER_ID).catch(() => undefined)
+  if (auth?.type === "api" && auth.key.trim()) {
+    return auth.key.trim()
+  }
+
+  return
 }
 
 function normalizeBodyForPrompt(body: string): string {
@@ -452,16 +544,120 @@ function buildSessionStorageKey(input: SessionResolveInput): string[] {
   return ["surface_sessions", input.surface, suffix]
 }
 
-async function resolveSessionId(input: SessionResolveInput): Promise<string> {
-  const storageKey = buildSessionStorageKey(input)
+async function readMappedSessionId(input: SessionResolveInput): Promise<string | undefined> {
+  const mapping = await Storage.read<{ sessionId?: string }>(buildSessionStorageKey(input)).catch(() => undefined)
+  const sessionId = mapping?.sessionId?.trim()
+  return sessionId || undefined
+}
 
-  if (!input.forceNew) {
+function buildLegacyTelegramStorageKeyFromChat(chatID: string): string[] {
+  const normalized = chatID.trim()
+  const isGroup = normalized.startsWith("-") || normalized.includes(":topic:")
+  const suffix = isGroup ? `group_${normalized}` : `dm_${normalized.replace(/^\+/, "")}`
+  return ["surface_sessions", "telegram", suffix]
+}
+
+export async function importLegacyTelegramBridgeSessions(): Promise<LegacyTelegramBridgeImportSummary> {
+  const source = resolveLegacyTelegramBridgeStatePath()
+  const alreadyImported = await Storage.read<{ importedAt?: number }>(TELEGRAM_LEGACY_IMPORT_FLAG_KEY).catch(() => undefined)
+  if (alreadyImported) {
+    return {
+      source,
+      imported: 0,
+      skipped: 0,
+      reason: "already_imported",
+    }
+  }
+
+  const file = Bun.file(source)
+  if (!(await file.exists())) {
+    return {
+      source,
+      imported: 0,
+      skipped: 0,
+      reason: "missing_state_file",
+    }
+  }
+
+  let parsed: LegacyTelegramBridgeState
+  try {
+    parsed = JSON.parse(await file.text()) as LegacyTelegramBridgeState
+  } catch {
+    return {
+      source,
+      imported: 0,
+      skipped: 0,
+      reason: "invalid_state",
+    }
+  }
+
+  const sessions = parsed.sessions
+  if (!sessions || typeof sessions !== "object") {
+    await Storage.write(TELEGRAM_LEGACY_IMPORT_FLAG_KEY, {
+      importedAt: Date.now(),
+      source,
+      imported: 0,
+      skipped: 0,
+    })
+    return {
+      source,
+      imported: 0,
+      skipped: 0,
+    }
+  }
+
+  let imported = 0
+  let skipped = 0
+
+  for (const [chatID, rawSessionID] of Object.entries(sessions)) {
+    const sessionId = typeof rawSessionID === "string" ? rawSessionID.trim() : ""
+    if (!sessionId) {
+      skipped += 1
+      continue
+    }
+
+    const storageKey = buildLegacyTelegramStorageKeyFromChat(chatID)
+    const existing = await Storage.read<{ sessionId?: string }>(storageKey).catch(() => undefined)
+    if (existing?.sessionId?.trim()) {
+      skipped += 1
+      continue
+    }
+
     try {
-      const mapping = await Storage.read<{ sessionId: string }>(storageKey)
-      await Session.get(mapping.sessionId)
-      return mapping.sessionId
+      await Session.get(sessionId)
     } catch {
-      // Mapping missing or stale; create a fresh session below.
+      skipped += 1
+      continue
+    }
+
+    await Storage.write(storageKey, { sessionId })
+    imported += 1
+  }
+
+  await Storage.write(TELEGRAM_LEGACY_IMPORT_FLAG_KEY, {
+    importedAt: Date.now(),
+    source,
+    imported,
+    skipped,
+  })
+
+  return {
+    source,
+    imported,
+    skipped,
+  }
+}
+
+async function resolveSessionId(input: SessionResolveInput): Promise<string> {
+  if (!input.forceNew) {
+    const mappedSessionID = await readMappedSessionId(input)
+    if (mappedSessionID) {
+      try {
+        await Session.get(mappedSessionID)
+        return mappedSessionID
+      } catch {
+        // Mapping is stale; create a fresh session below.
+      }
     }
   }
 
@@ -475,7 +671,7 @@ async function resolveSessionId(input: SessionResolveInput): Promise<string> {
     surface: input.surface,
   })
 
-  await Storage.write(storageKey, { sessionId: session.id })
+  await Storage.write(buildSessionStorageKey(input), { sessionId: session.id })
   log.info("Created messaging session", {
     surface: input.surface,
     senderId: input.senderId,
@@ -663,7 +859,7 @@ async function synthesizeMiniMaxSpeech(text: string): Promise<SurfaceMedia> {
   }
 }
 
-async function handleBotCommand(input: {
+export async function handleBotCommand(input: {
   surface: MessagingSurfaceName
   command: SlashCommand
   senderId: string
@@ -679,6 +875,12 @@ async function handleBotCommand(input: {
 
     case "/new":
     case "/reset": {
+      const previousSessionID = await readMappedSessionId({
+        surface,
+        senderId: input.senderId,
+        isGroup: input.isGroup,
+        threadId: input.threadId,
+      })
       const sessionId = await resolveSessionId({
         surface,
         senderId: input.senderId,
@@ -686,7 +888,14 @@ async function handleBotCommand(input: {
         threadId: input.threadId,
         forceNew: true,
       })
-      return { text: `Started new session: ${sessionId}` }
+      const lines = [
+        "Started a new Zee session for this chat.",
+        `Current Zee session: ${sessionId}`,
+      ]
+      if (previousSessionID) {
+        lines.push(`Previous session: ${previousSessionID}`)
+      }
+      return { text: lines.join("\n") }
     }
 
     case "/session": {
@@ -696,7 +905,7 @@ async function handleBotCommand(input: {
         isGroup: input.isGroup,
         threadId: input.threadId,
       })
-      return { text: `Current session: ${sessionId}` }
+      return { text: `Current Zee session: ${sessionId}` }
     }
 
     case "/speak": {
@@ -809,11 +1018,11 @@ function createStreamingPromptResult(input: {
     } catch (error) {
       log.error("Error handling streaming surface message", {
         sessionId: input.sessionId,
-        error: error instanceof Error ? error.message : String(error),
+        error: normalizeTechnicalErrorMessage(error),
       })
       channel.push({
         type: "text",
-        text: "Sorry, I encountered an error processing your message.",
+        text: formatDetailedSurfaceError(error),
         isFinal: true,
       })
     } finally {
@@ -937,9 +1146,9 @@ async function registerWhatsAppSurface(waConfig?: SurfaceBootstrapConfig["whatsA
 async function registerTelegramSurface(tgConfig?: SurfaceBootstrapConfig["telegram"]): Promise<boolean> {
   if (!router) return false
 
-  const token = tgConfig?.token?.trim() || process.env.TELEGRAM_BOT_TOKEN?.trim()
+  const token = await resolveTelegramBotToken(tgConfig?.token)
   if (!token) {
-    log.warn("Telegram surface enabled but TELEGRAM_BOT_TOKEN is not configured")
+    log.warn("Telegram surface enabled but no bot token is configured (config/env/auth)")
     return false
   }
 
@@ -967,6 +1176,33 @@ async function registerTelegramSurface(tgConfig?: SurfaceBootstrapConfig["telegr
     },
   })
 
+  try {
+    const imported = await importLegacyTelegramBridgeSessions()
+    if (imported.reason === "already_imported") {
+      log.debug("Legacy telegram bridge session mapping import already completed", {
+        source: imported.source,
+      })
+    } else if (imported.reason === "missing_state_file") {
+      log.debug("Legacy telegram bridge state file not found; skipping import", {
+        source: imported.source,
+      })
+    } else if (imported.reason === "invalid_state") {
+      log.warn("Legacy telegram bridge state file is invalid JSON; skipping import", {
+        source: imported.source,
+      })
+    } else {
+      log.info("Legacy telegram bridge session mapping import complete", {
+        source: imported.source,
+        imported: imported.imported,
+        skipped: imported.skipped,
+      })
+    }
+  } catch (error) {
+    log.warn("Legacy telegram bridge session mapping import failed", {
+      error: normalizeTechnicalErrorMessage(error),
+    })
+  }
+
   await router.registerSurface(surface)
   return true
 }
@@ -974,52 +1210,64 @@ async function registerTelegramSurface(tgConfig?: SurfaceBootstrapConfig["telegr
 function createEngineMessageHandler(): MessageHandler {
   return async (message, context) => {
     const surface = resolveMessagingSurface(context.surfaceId)
+    try {
+      const command = parseSlashCommand(message.body)
+      if (command && BOT_COMMANDS.has(command.name)) {
+        const commandResponse = await handleBotCommand({
+          surface,
+          command,
+          senderId: context.senderId,
+          isGroup: context.isGroup,
+          threadId: context.threadId,
+        })
+        if (commandResponse) {
+          return commandResponse
+        }
+      }
 
-    const command = parseSlashCommand(message.body)
-    if (command && BOT_COMMANDS.has(command.name)) {
-      const commandResponse = await handleBotCommand({
+      const sessionId = await resolveSessionId({
         surface,
-        command,
         senderId: context.senderId,
         isGroup: context.isGroup,
         threadId: context.threadId,
       })
-      if (commandResponse) {
-        return commandResponse
-      }
-    }
 
-    const sessionId = await resolveSessionId({
-      surface,
-      senderId: context.senderId,
-      isGroup: context.isGroup,
-      threadId: context.threadId,
-    })
-
-    log.info("Routing surface message to engine", {
-      surface: context.surfaceId,
-      senderId: context.senderId,
-      sessionId,
-    })
-
-    if (surface === "telegram" && context.capabilities.streaming) {
-      return createStreamingPromptResult({
-        sessionId,
-        message,
+      log.info("Routing surface message to engine", {
+        surface: context.surfaceId,
         senderId: context.senderId,
+        sessionId,
       })
+
+      if (surface === "telegram" && context.capabilities.streaming) {
+        return createStreamingPromptResult({
+          sessionId,
+          message,
+          senderId: context.senderId,
+        })
+      }
+
+      const parts = await buildPromptParts(message)
+      const result = await SessionPrompt.prompt({
+        sessionID: sessionId,
+        agent: "zee",
+        parts,
+        options: { senderId: context.senderId },
+      })
+
+      const text = await resolveAssistantText(sessionId, result)
+      return { text: text || "No text response returned." }
+    } catch (error) {
+      log.error("Error handling messaging surface message", {
+        surface: context.surfaceId,
+        senderId: context.senderId,
+        messageID: context.messageId,
+        error: normalizeTechnicalErrorMessage(error),
+      })
+      if (surface === "telegram") {
+        return { text: formatDetailedSurfaceError(error) }
+      }
+      throw error
     }
-
-    const parts = await buildPromptParts(message)
-    const result = await SessionPrompt.prompt({
-      sessionID: sessionId,
-      agent: "zee",
-      parts,
-      options: { senderId: context.senderId },
-    })
-
-    const text = await resolveAssistantText(sessionId, result)
-    return { text: text || "No text response returned." }
   }
 }
 
