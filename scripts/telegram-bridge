@@ -30,14 +30,17 @@ Environment:
 """
 
 import argparse
+import contextlib
 import json
 import logging
 import os
 import re
 import signal
+import socket
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -60,6 +63,7 @@ DEFAULT_ZEE_API_TOKEN = os.environ.get("ZEE_API_TOKEN", "").strip()
 DEFAULT_MAX_REPLY_CHUNKS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHUNKS", "4"))
 DEFAULT_MAX_REPLY_CHARS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHARS", "12000"))
 DEFAULT_MESSAGE_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_MESSAGE_TIMEOUT", "90"))
+DEFAULT_PREFER_IPV4 = os.environ.get("ZEE_TELEGRAM_PREFER_IPV4", "1").strip().lower() not in {"0", "false", "no"}
 
 TELEGRAM_MAX_TEXT = 4096
 THOUGHT_BLOCK_RE = re.compile(r"!\[thought[\s\S]*?\](?:!|$)", re.IGNORECASE)
@@ -93,6 +97,26 @@ log = logging.getLogger("telegram-bridge")
 # ---------------------------------------------------------------------------
 
 shutdown_requested = False
+
+
+@contextlib.contextmanager
+def maybe_prefer_ipv4(enabled: bool):
+    if not enabled:
+        yield
+        return
+
+    original_getaddrinfo = socket.getaddrinfo
+
+    def ipv4_first_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        entries = list(original_getaddrinfo(host, port, family, type, proto, flags))
+        entries.sort(key=lambda item: 0 if item[0] == socket.AF_INET else 1)
+        return entries
+
+    socket.getaddrinfo = ipv4_first_getaddrinfo
+    try:
+        yield
+    finally:
+        socket.getaddrinfo = original_getaddrinfo
 
 
 def handle_signal(signum, _frame):
@@ -160,9 +184,13 @@ def request_json(url: str, payload: dict | None, timeout: int, headers: dict | N
         method="POST" if data is not None else "GET",
     )
 
+    parsed = urllib.parse.urlparse(url)
+    prefer_ipv4 = DEFAULT_PREFER_IPV4 and parsed.hostname == "api.telegram.org"
+
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            body = resp.read().decode("utf-8")
+        with maybe_prefer_ipv4(prefer_ipv4):
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = resp.read().decode("utf-8")
     except urllib.error.HTTPError as err:
         body = err.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"HTTP {err.code} {url}: {body.strip()}") from err

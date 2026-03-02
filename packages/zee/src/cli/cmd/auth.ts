@@ -7,6 +7,7 @@ import { Provider } from "../../provider/provider"
 import { filter, map, pipe, sortBy, values } from "remeda"
 import path from "path"
 import os from "os"
+import fs from "node:fs/promises"
 import { spawnSync } from "node:child_process"
 import { Config } from "../../config/config"
 import { ConfigMarkdown } from "../../config/markdown"
@@ -26,6 +27,7 @@ import {
   type ServiceType,
 } from "../../../../../src/config/providers"
 import { Flag } from "../../flag/flag"
+import { unsetEnvVarInText, upsertEnvVarInText } from "../../util/env-file"
 
 /** Local providers that need host:port instead of API key */
 const LOCAL_PROVIDERS = new Set(["vllm", "ollama", "lmstudio", "llamacpp", "tgi"])
@@ -46,6 +48,10 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
   "minimax-tts": {
     name: "MiniMax TTS",
     hint: "MiniMax TTS API key",
+  },
+  "telegram-bot": {
+    name: "Telegram Bot",
+    hint: "TELEGRAM_BOT_TOKEN",
   },
   wisprflow: {
     name: "Wispr Flow",
@@ -126,6 +132,9 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
 }
 
 const DEFAULT_DAEMON_PORT = 3210
+const TELEGRAM_AUTH_PROVIDER_ID = "telegram-bot"
+const TELEGRAM_BOT_ENV_KEY = "TELEGRAM_BOT_TOKEN"
+const TELEGRAM_BRIDGE_ENV_FILE = path.join(Global.Path.config, "telegram-bridge.env")
 
 function normalizeDaemonHost(hostname?: string): string {
   if (!hostname || hostname === "0.0.0.0") return "127.0.0.1"
@@ -188,6 +197,59 @@ function resolveDaemonUrl(config?: Config.Info): string {
   const port = config?.server?.port ?? (Number.isFinite(portEnv) && portEnv > 0 ? portEnv : DEFAULT_DAEMON_PORT)
   const hostname = normalizeDaemonHost(config?.server?.hostname ?? "127.0.0.1")
   return `http://${hostname}:${port}`
+}
+
+async function writeTelegramBotToken(token: string): Promise<string> {
+  await fs.mkdir(path.dirname(TELEGRAM_BRIDGE_ENV_FILE), { recursive: true })
+  const file = Bun.file(TELEGRAM_BRIDGE_ENV_FILE)
+  const text = (await file.exists()) ? await file.text() : ""
+  await Bun.write(TELEGRAM_BRIDGE_ENV_FILE, upsertEnvVarInText(text, TELEGRAM_BOT_ENV_KEY, token))
+  return TELEGRAM_BRIDGE_ENV_FILE
+}
+
+async function removeTelegramBotToken(): Promise<string> {
+  const file = Bun.file(TELEGRAM_BRIDGE_ENV_FILE)
+  if (!(await file.exists())) return TELEGRAM_BRIDGE_ENV_FILE
+  const text = await file.text()
+  await Bun.write(TELEGRAM_BRIDGE_ENV_FILE, unsetEnvVarInText(text, TELEGRAM_BOT_ENV_KEY))
+  return TELEGRAM_BRIDGE_ENV_FILE
+}
+
+function restartZeeDaemonService(): { ok: boolean; message?: string } {
+  if (process.platform !== "linux") {
+    return {
+      ok: false,
+      message: "Automatic restart only supported on Linux systemd user services.",
+    }
+  }
+  const timeoutMs = 60_000
+  const result = spawnSync("systemctl", ["--user", "restart", "zee"], {
+    encoding: "utf-8",
+    timeout: timeoutMs,
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+  if (result.error) {
+    const errorCode = (result.error as NodeJS.ErrnoException).code
+    if (errorCode === "ETIMEDOUT") {
+      return {
+        ok: false,
+        message: `systemctl timed out after ${Math.floor(timeoutMs / 1000)}s`,
+      }
+    }
+    return {
+      ok: false,
+      message: result.error.message,
+    }
+  }
+  if (result.status === 0) return { ok: true }
+  const fallback =
+    result.status !== null
+      ? `systemctl exited with status ${result.status}`
+      : result.signal
+        ? `systemctl terminated by signal ${result.signal}`
+        : "systemctl restart failed"
+  const message = (result.stderr || result.stdout || fallback).trim()
+  return { ok: false, message }
 }
 
 async function notifyDaemonAuthChange(config?: Config.Info) {
@@ -981,6 +1043,10 @@ export const AuthLoginCommand = cmd({
           }
         }
 
+        if (provider === "telegram") {
+          provider = TELEGRAM_AUTH_PROVIDER_ID
+        }
+
         // Check if provider is known (either in LLM models database, unified provider registry, or skill)
         const knownProvider =
           provider in providers || getProvider(provider) !== undefined || skillProviderMap.has(provider)
@@ -1006,6 +1072,40 @@ export const AuthLoginCommand = cmd({
           prompts.log.info(
             "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables.",
           )
+        }
+
+        if (provider === TELEGRAM_AUTH_PROVIDER_ID) {
+          const token = await prompts.password({
+            message: "Enter Telegram bot token",
+            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+          })
+          if (prompts.isCancel(token)) throw new UI.CancelledError()
+
+          const envPath = await writeTelegramBotToken(token)
+          await Auth.set(TELEGRAM_AUTH_PROVIDER_ID, {
+            type: "api",
+            key: token,
+          })
+          await notifyDaemonAuthChange(config)
+          prompts.log.success(`Saved ${TELEGRAM_BOT_ENV_KEY} to ${envPath}`)
+
+          const shouldRestart = await prompts.confirm({
+            message: "Restart Zee daemon now to apply the new Telegram bot token?",
+            initialValue: true,
+          })
+          if (prompts.isCancel(shouldRestart)) throw new UI.CancelledError()
+          if (shouldRestart) {
+            const restart = restartZeeDaemonService()
+            if (restart.ok) {
+              prompts.log.success("Zee daemon restarted")
+            } else {
+              prompts.log.warn(`Could not restart daemon automatically: ${restart.message}`)
+              prompts.log.info("Run: systemctl --user restart zee")
+            }
+          }
+
+          prompts.outro("Done")
+          return
         }
 
         // Handle local providers (vllm, ollama, etc.) - prompt for host:port instead of API key
@@ -1248,6 +1348,13 @@ export const AuthLogoutCommand = cmd({
       await removeSkillConfig(skillName)
       prompts.outro(`Removed credentials for ${skillName}`)
     } else {
+      if (providerID === TELEGRAM_AUTH_PROVIDER_ID) {
+        const envPath = await removeTelegramBotToken()
+        await Auth.remove(providerID)
+        await notifyDaemonAuthChange()
+        prompts.outro(`Removed ${TELEGRAM_BOT_ENV_KEY} from ${envPath}`)
+        return
+      }
       await Auth.remove(providerID)
       await notifyDaemonAuthChange()
       prompts.outro("Logout successful")
