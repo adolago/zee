@@ -359,6 +359,18 @@ export namespace LLM {
         l.error("stream error", {
           error,
         })
+        const streamError = (error as { error?: unknown }).error
+        const streamErrorMessage =
+          streamError instanceof Error
+            ? streamError.message
+            : typeof streamError === "object" &&
+                streamError !== null &&
+                "message" in streamError &&
+                typeof (streamError as { message?: unknown }).message === "string"
+              ? (streamError as { message: string }).message
+              : streamError !== undefined
+                ? String(streamError)
+                : undefined
         FluxRecorder.record({
           traceID,
           requestID,
@@ -372,7 +384,7 @@ export namespace LLM {
           status: "error",
           error: {
             code: "stream_error",
-            message: error.error?.message ?? error.error?.toString?.(),
+            message: streamErrorMessage,
           },
         })
       },
