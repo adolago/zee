@@ -60,6 +60,7 @@ type TelegramGetUpdatesMessage = {
   chat?: {
     id?: number
     type?: string
+    is_forum?: boolean
     title?: string
     first_name?: string
     last_name?: string
@@ -111,6 +112,11 @@ type TelegramGetFileResponse = {
 }
 
 type TelegramStreamHandle = string
+
+type TelegramThreadSpec = {
+  id?: number
+  scope: "dm" | "forum" | "none"
+}
 
 function inferMimeTypeFromFilename(filename?: string): string | undefined {
   if (!filename) return undefined
@@ -167,6 +173,30 @@ function parseReplyToMessageId(replyToId?: string): number | undefined {
   if (!replyToId) return undefined
   const parsed = Number(replyToId.trim())
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function resolveTelegramThreadSpec(params: {
+  isGroup: boolean
+  isForum?: boolean
+  messageThreadId?: number
+}): TelegramThreadSpec {
+  if (params.isGroup) {
+    if (!params.isForum) {
+      // Non-forum group message_thread_id values are reply threads, not stable topics.
+      return { scope: "none" }
+    }
+    return {
+      id: params.messageThreadId,
+      scope: "forum",
+    }
+  }
+  if (params.messageThreadId === undefined) {
+    return { scope: "dm" }
+  }
+  return {
+    id: params.messageThreadId,
+    scope: "dm",
+  }
 }
 
 function isVoiceLikeMedia(media: SurfaceMedia): boolean {
@@ -456,12 +486,16 @@ export class TelegramPlatformHandler implements MessagingPlatformHandler {
 
     const chatType = message.chat?.type ?? "private"
     const isGroup = chatType === "group" || chatType === "supergroup" || chatType === "channel"
-    const messageThreadId = Number.isFinite(message.message_thread_id) ? (message.message_thread_id as number) : undefined
-    const groupId = isGroup
-      ? messageThreadId
-        ? `${chatId}:topic:${messageThreadId}`
-        : String(chatId)
-      : undefined
+    const isForum = chatType === "supergroup" && message.chat?.is_forum === true
+    const inboundMessageThreadId = Number.isFinite(message.message_thread_id) ? (message.message_thread_id as number) : undefined
+    const threadSpec = resolveTelegramThreadSpec({
+      isGroup,
+      isForum,
+      messageThreadId: inboundMessageThreadId,
+    })
+    const threadTarget = threadSpec.id === undefined ? String(chatId) : `${chatId}:topic:${threadSpec.id}`
+    const groupId = isGroup ? threadTarget : undefined
+    const threadId = isGroup || threadSpec.id !== undefined ? threadTarget : undefined
 
     const textForMention = text || ""
     const wasMentioned = !isGroup
@@ -479,6 +513,7 @@ export class TelegramPlatformHandler implements MessagingPlatformHandler {
       body,
       timestamp: Number(message.date) * 1000 || Date.now(),
       media: media.length > 0 ? media : undefined,
+      threadId,
       isGroup,
       groupId,
       groupName: isGroup ? message.chat?.title : undefined,

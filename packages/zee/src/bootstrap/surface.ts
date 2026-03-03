@@ -116,6 +116,8 @@ const MINIMAX_DEFAULT_MODEL = "speech-02-hd"
 const MINIMAX_MAX_TEXT_LENGTH = 10_000
 const TELEGRAM_AUTH_PROVIDER_ID = "telegram-bot"
 const TELEGRAM_LEGACY_IMPORT_FLAG_KEY = ["surface_sessions", "telegram", "_legacy_bridge_import_v1"]
+const TELEGRAM_TOPIC_THREAD_ID_RE = /^-?\d+:topic:\d+$/
+const migratedTelegramGroupChats = new Set<string>()
 
 type LegacyTelegramBridgeState = {
   sessions?: Record<string, unknown>
@@ -538,16 +540,139 @@ function createStreamChannel(): StreamChannel {
 }
 
 function buildSessionStorageKey(input: SessionResolveInput): string[] {
-  const suffix = input.isGroup && input.threadId
-    ? `group_${input.threadId}`
-    : `dm_${input.senderId.replace(/^\+/, "")}`
+  const normalizedSenderId = input.senderId.trim().replace(/^\+/, "")
+  const normalizedThreadID = input.threadId?.trim()
+
+  if (input.surface === "telegram") {
+    if (input.isGroup) {
+      const groupID = normalizedThreadID || normalizedSenderId
+      return ["surface_sessions", "telegram", `group_${groupID}`]
+    }
+
+    if (isTelegramTopicThreadId(normalizedThreadID)) {
+      return ["surface_sessions", "telegram", `dm_topic_${normalizedThreadID}`]
+    }
+
+    return ["surface_sessions", "telegram", `dm_${normalizedSenderId}`]
+  }
+
+  const suffix = input.isGroup && normalizedThreadID
+    ? `group_${normalizedThreadID}`
+    : `dm_${normalizedSenderId}`
   return ["surface_sessions", input.surface, suffix]
 }
 
-async function readMappedSessionId(input: SessionResolveInput): Promise<string | undefined> {
-  const mapping = await Storage.read<{ sessionId?: string }>(buildSessionStorageKey(input)).catch(() => undefined)
+function isTelegramTopicThreadId(value?: string): boolean {
+  return TELEGRAM_TOPIC_THREAD_ID_RE.test(value?.trim() ?? "")
+}
+
+function normalizeTelegramGroupChatId(threadId?: string): string | undefined {
+  const normalized = threadId?.trim()
+  if (!normalized) return undefined
+  if (/^-?\d+$/.test(normalized)) return normalized
+  return undefined
+}
+
+async function readMappedSessionIdByStorageKey(key: string[]): Promise<string | undefined> {
+  const mapping = await Storage.read<{ sessionId?: string }>(key).catch(() => undefined)
   const sessionId = mapping?.sessionId?.trim()
   return sessionId || undefined
+}
+
+async function readMappedSessionId(input: SessionResolveInput): Promise<string | undefined> {
+  return readMappedSessionIdByStorageKey(buildSessionStorageKey(input))
+}
+
+async function migrateLegacyTelegramGroupTopicMappings(groupThreadId?: string): Promise<void> {
+  const groupChatId = normalizeTelegramGroupChatId(groupThreadId)
+  if (!groupChatId) return
+  if (migratedTelegramGroupChats.has(groupChatId)) return
+  migratedTelegramGroupChats.add(groupChatId)
+
+  const canonicalKey = ["surface_sessions", "telegram", `group_${groupChatId}`]
+  const legacyPrefix = `group_${groupChatId}:topic:`
+
+  const allKeys = await Storage.list(["surface_sessions", "telegram"])
+  const legacyTopicKeys = allKeys.filter((key) => {
+    const suffix = key[2]
+    return typeof suffix === "string" && suffix.startsWith(legacyPrefix)
+  })
+  if (legacyTopicKeys.length === 0) return
+
+  const canonicalSessionId = await readMappedSessionIdByStorageKey(canonicalKey)
+  if (canonicalSessionId) {
+    let removed = 0
+    let conflicts = 0
+    for (const key of legacyTopicKeys) {
+      const legacySessionId = await readMappedSessionIdByStorageKey(key)
+      if (legacySessionId && legacySessionId !== canonicalSessionId) conflicts += 1
+      await Storage.remove(key)
+      removed += 1
+    }
+    log.info("Telegram legacy group topic mappings migrated to canonical key", {
+      chatId: groupChatId,
+      canonicalSessionId,
+      removed,
+      conflicts,
+      policy: "prefer_canonical",
+    })
+    return
+  }
+
+  const validLegacyMappings: Array<{ key: string[]; sessionId: string; updatedAt: number }> = []
+  let removed = 0
+  for (const key of legacyTopicKeys) {
+    const sessionId = await readMappedSessionIdByStorageKey(key)
+    if (!sessionId) {
+      await Storage.remove(key)
+      removed += 1
+      continue
+    }
+    try {
+      const session = await Session.get(sessionId)
+      validLegacyMappings.push({
+        key,
+        sessionId,
+        updatedAt: session.time.updated,
+      })
+    } catch {
+      await Storage.remove(key)
+      removed += 1
+    }
+  }
+
+  if (validLegacyMappings.length === 0) {
+    if (removed > 0) {
+      log.info("Telegram legacy group topic mappings removed (no valid sessions)", {
+        chatId: groupChatId,
+        removed,
+      })
+    }
+    return
+  }
+
+  validLegacyMappings.sort((a, b) => {
+    if (b.updatedAt !== a.updatedAt) {
+      return b.updatedAt - a.updatedAt
+    }
+    const left = a.key[2] ?? ""
+    const right = b.key[2] ?? ""
+    return left.localeCompare(right)
+  })
+  const winner = validLegacyMappings[0]
+  await Storage.write(canonicalKey, { sessionId: winner.sessionId })
+  for (const mapping of validLegacyMappings) {
+    await Storage.remove(mapping.key)
+    removed += 1
+  }
+
+  log.info("Telegram legacy group topic mappings migrated to canonical key", {
+    chatId: groupChatId,
+    canonicalSessionId: winner.sessionId,
+    removed,
+    conflicts: Math.max(0, validLegacyMappings.length - 1),
+    policy: "hard_migrate",
+  })
 }
 
 function buildLegacyTelegramStorageKeyFromChat(chatID: string): string[] {
@@ -649,6 +774,13 @@ export async function importLegacyTelegramBridgeSessions(): Promise<LegacyTelegr
 }
 
 async function resolveSessionId(input: SessionResolveInput): Promise<string> {
+  if (input.surface === "telegram" && input.isGroup) {
+    const threadID = input.threadId?.trim()
+    if (threadID && !isTelegramTopicThreadId(threadID)) {
+      await migrateLegacyTelegramGroupTopicMappings(threadID)
+    }
+  }
+
   if (!input.forceNew) {
     const mappedSessionID = await readMappedSessionId(input)
     if (mappedSessionID) {

@@ -26,6 +26,11 @@ function parseCurrentSessionID(text: string): string | undefined {
   return match?.[1]
 }
 
+async function readStoredSessionId(key: string[]): Promise<string | undefined> {
+  const stored = await Storage.read<{ sessionId?: string }>(key).catch(() => undefined)
+  return stored?.sessionId?.trim() || undefined
+}
+
 describe("telegram bootstrap helpers", () => {
   test("resolveTelegramBotToken prefers config, then env, then auth store", async () => {
     await Auth.set(TELEGRAM_AUTH_PROVIDER_ID, {
@@ -109,5 +114,109 @@ describe("telegram bootstrap helpers", () => {
       },
     })
   })
-})
 
+  test("stores DM topics in separate persistent sessions", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      async fn() {
+        const dm = await handleBotCommand({
+          surface: "telegram",
+          command: { name: "/session", args: "" },
+          senderId: "8556876490",
+          isGroup: false,
+        })
+        const dmSession = parseCurrentSessionID(dm?.text ?? "")
+        expect(dmSession).toBeDefined()
+
+        const dmTopic = await handleBotCommand({
+          surface: "telegram",
+          command: { name: "/session", args: "" },
+          senderId: "8556876490",
+          isGroup: false,
+          threadId: "8556876490:topic:42",
+        })
+        const dmTopicSession = parseCurrentSessionID(dmTopic?.text ?? "")
+        expect(dmTopicSession).toBeDefined()
+        expect(dmTopicSession).not.toBe(dmSession)
+
+        const dmTopicAgain = await handleBotCommand({
+          surface: "telegram",
+          command: { name: "/session", args: "" },
+          senderId: "8556876490",
+          isGroup: false,
+          threadId: "8556876490:topic:42",
+        })
+        expect(parseCurrentSessionID(dmTopicAgain?.text ?? "")).toBe(dmTopicSession)
+
+        expect(await readStoredSessionId(["surface_sessions", "telegram", "dm_8556876490"])).toBe(dmSession)
+        expect(await readStoredSessionId(["surface_sessions", "telegram", "dm_topic_8556876490:topic:42"])).toBe(dmTopicSession)
+      },
+    })
+  })
+
+  test("hard-migrates legacy non-forum group topic mapping into canonical group mapping", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      async fn() {
+        const legacySession = await Session.create({
+          title: "Legacy Topic Session",
+          surface: "telegram",
+        })
+        await Storage.write(["surface_sessions", "telegram", "group_-100777:topic:12"], {
+          sessionId: legacySession.id,
+        })
+
+        const response = await handleBotCommand({
+          surface: "telegram",
+          command: { name: "/session", args: "" },
+          senderId: "8556876490",
+          isGroup: true,
+          threadId: "-100777",
+        })
+
+        const currentSession = parseCurrentSessionID(response?.text ?? "")
+        expect(currentSession).toBe(legacySession.id)
+        expect(await readStoredSessionId(["surface_sessions", "telegram", "group_-100777"])).toBe(legacySession.id)
+        expect(await readStoredSessionId(["surface_sessions", "telegram", "group_-100777:topic:12"])).toBeUndefined()
+      },
+    })
+  })
+
+  test("migration conflict keeps canonical group mapping and removes legacy topic mapping", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      async fn() {
+        const canonicalSession = await Session.create({
+          title: "Canonical Group Session",
+          surface: "telegram",
+        })
+        const legacySession = await Session.create({
+          title: "Legacy Topic Session",
+          surface: "telegram",
+        })
+
+        await Storage.write(["surface_sessions", "telegram", "group_-100888"], {
+          sessionId: canonicalSession.id,
+        })
+        await Storage.write(["surface_sessions", "telegram", "group_-100888:topic:21"], {
+          sessionId: legacySession.id,
+        })
+
+        const response = await handleBotCommand({
+          surface: "telegram",
+          command: { name: "/session", args: "" },
+          senderId: "8556876490",
+          isGroup: true,
+          threadId: "-100888",
+        })
+
+        expect(parseCurrentSessionID(response?.text ?? "")).toBe(canonicalSession.id)
+        expect(await readStoredSessionId(["surface_sessions", "telegram", "group_-100888"])).toBe(canonicalSession.id)
+        expect(await readStoredSessionId(["surface_sessions", "telegram", "group_-100888:topic:21"])).toBeUndefined()
+      },
+    })
+  })
+})

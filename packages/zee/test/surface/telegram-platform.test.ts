@@ -95,5 +95,108 @@ describe("telegram platform polling recovery", () => {
     expect(getUpdatesCalls).toBeGreaterThanOrEqual(3)
     expect(inbound).toEqual([{ body: "Recovered from outage", senderId: "123" }])
   })
-})
 
+  test("normalizes thread routing for DM topics and forum/non-forum groups", async () => {
+    let getUpdatesCalls = 0
+    const nowSec = Math.floor(Date.now() / 1000)
+
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      const url = requestUrl(input)
+      if (url.endsWith("/getMe")) {
+        return jsonResponse({ ok: true, result: { username: "zee_test_bot" } })
+      }
+
+      if (url.endsWith("/getUpdates")) {
+        getUpdatesCalls += 1
+        if (getUpdatesCalls === 1) {
+          return jsonResponse({
+            ok: true,
+            result: [
+              {
+                update_id: 2001,
+                message: {
+                  message_id: 101,
+                  date: nowSec,
+                  text: "dm topic message",
+                  message_thread_id: 7,
+                  from: { id: 700, first_name: "Alice" },
+                  chat: { id: 700, type: "private" },
+                },
+              },
+              {
+                update_id: 2002,
+                message: {
+                  message_id: 102,
+                  date: nowSec,
+                  text: "non forum group reply thread",
+                  message_thread_id: 42,
+                  from: { id: 701, first_name: "Bob" },
+                  chat: { id: -100100, type: "supergroup", title: "General Group" },
+                },
+              },
+              {
+                update_id: 2003,
+                message: {
+                  message_id: 103,
+                  date: nowSec,
+                  text: "forum topic message",
+                  message_thread_id: 99,
+                  from: { id: 702, first_name: "Carla" },
+                  chat: { id: -100200, type: "supergroup", is_forum: true, title: "Forum Group" },
+                },
+              },
+            ],
+          })
+        }
+        return jsonResponse({ ok: true, result: [] })
+      }
+
+      throw new Error(`unexpected fetch: ${url}`)
+    }) as typeof fetch
+
+    await using tmp = await tmpdir()
+    const handler = new TelegramPlatformHandler({
+      token: "test-token",
+      pollTimeoutSec: 1,
+      mediaDir: path.join(tmp.path, "media"),
+      stateFile: path.join(tmp.path, "telegram-state.json"),
+    })
+
+    const inbound: Array<{ id: string; isGroup: boolean; groupId?: string; threadId?: string }> = []
+    const unsubscribe = handler.onMessage((msg) => {
+      inbound.push({
+        id: msg.id,
+        isGroup: msg.isGroup,
+        groupId: msg.groupId,
+        threadId: msg.threadId,
+      })
+    })
+
+    try {
+      await handler.connect()
+      await waitFor(() => inbound.length === 3, 7000)
+    } finally {
+      unsubscribe()
+      await handler.disconnect()
+    }
+
+    expect(inbound[0]).toEqual({
+      id: "101",
+      isGroup: false,
+      groupId: undefined,
+      threadId: "700:topic:7",
+    })
+    expect(inbound[1]).toEqual({
+      id: "102",
+      isGroup: true,
+      groupId: "-100100",
+      threadId: "-100100",
+    })
+    expect(inbound[2]).toEqual({
+      id: "103",
+      isGroup: true,
+      groupId: "-100200:topic:99",
+      threadId: "-100200:topic:99",
+    })
+  })
+})

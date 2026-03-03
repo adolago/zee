@@ -88,6 +88,7 @@ export type PlatformMessage = {
   body: string
   timestamp: number
   media?: SurfaceMedia[]
+  threadId?: string
   isGroup: boolean
   groupId?: string
   groupName?: string
@@ -294,8 +295,9 @@ export class MessagingSurface extends BaseSurface implements Surface {
     }
 
     // Convert to surface message
+    const threadID = msg.threadId?.trim() || (msg.isGroup ? msg.groupId || msg.senderId : msg.senderId)
     const thread: ThreadContext = {
-      threadId: msg.isGroup ? msg.groupId || msg.senderId : msg.senderId,
+      threadId: threadID,
       isGroup: msg.isGroup,
       groupName: msg.groupName,
       replyToId: msg.replyToId,
