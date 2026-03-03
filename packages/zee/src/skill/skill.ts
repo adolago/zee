@@ -311,36 +311,13 @@ export namespace Skill {
     return [...required]
   }
 
-  async function loadHomeAssistantLegacyAuth(): Promise<{ server: boolean; token: boolean }> {
-    const xdgConfig = process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config")
-    const configPath = path.join(xdgConfig, "home-assistant", "config.json")
-    const raw = await Bun.file(configPath)
-      .text()
-      .catch(() => "")
-    if (!raw.trim()) {
-      return { server: false, token: false }
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as { url?: unknown; token?: unknown }
-      return {
-        server: typeof parsed.url === "string" && parsed.url.trim().length > 0,
-        token: typeof parsed.token === "string" && parsed.token.trim().length > 0,
-      }
-    } catch {
-      return { server: false, token: false }
-    }
-  }
-
   type EnvResolutionContext = {
     config: Awaited<ReturnType<typeof Config.get>>
-    homeAssistantLegacy: { server: boolean; token: boolean }
   }
 
   async function createEnvResolutionContext(): Promise<EnvResolutionContext> {
     return {
       config: await Config.get(),
-      homeAssistantLegacy: await loadHomeAssistantLegacyAuth(),
     }
   }
 
@@ -362,28 +339,9 @@ export namespace Skill {
     return false
   }
 
-  function envAliases(skill: Info, envName: string): string[] {
-    if (skill.name === "home-assistant") {
-      if (envName === "HASS_SERVER" || envName === "HA_URL") return ["HASS_SERVER", "HA_URL"]
-      if (envName === "HASS_TOKEN" || envName === "HA_TOKEN") return ["HASS_TOKEN", "HA_TOKEN"]
-    }
-    return [envName]
-  }
-
-  function hasLegacyFallback(skill: Info, envName: string, ctx: EnvResolutionContext): boolean {
-    if (skill.name !== "home-assistant") return false
-    if (envName === "HASS_SERVER" || envName === "HA_URL") return ctx.homeAssistantLegacy.server
-    if (envName === "HASS_TOKEN" || envName === "HA_TOKEN") return ctx.homeAssistantLegacy.token
-    return false
-  }
-
   function isEnvSatisfied(skill: Info, envName: string, ctx: EnvResolutionContext): boolean {
-    const canonical = envAliases(skill, envName)
-
-    if (canonical.some((name) => process.env[name])) return true
-    if (hasConfigEnvValue(skill, envName, ctx.config, canonical)) return true
-    if (canonical.some((name) => hasLegacyFallback(skill, name, ctx))) return true
-
+    if (process.env[envName]) return true
+    if (hasConfigEnvValue(skill, envName, ctx.config, [envName])) return true
     return false
   }
 

@@ -311,15 +311,6 @@ skills:
     wave: A
     requires: frontmatter
     env: frontmatter
-  - id: home-assistant
-    canonical_name: home-assistant
-    current_path: .agents/skills/@zee/home-assistant/SKILL.md
-    target_path: .agents/skills/@zee/home-assistant/SKILL.md
-    owner: zee
-    status: active
-    wave: A
-    requires: frontmatter
-    env: frontmatter
   - id: humanizer
     canonical_name: humanizer
     current_path: .agents/skills/@zee/humanizer/SKILL.md

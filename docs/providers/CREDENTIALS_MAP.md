@@ -43,7 +43,6 @@ jq 'keys' ~/.local/share/zee/auth.json
 |---|---|
 | `brave-search` | `BRAVE_API_KEY` |
 | `news-digest` | `BRAVE_API_KEY` |
-| `home-assistant` | `HASS_SERVER`, `HASS_TOKEN` |
 | `whoopskill` | `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, `WHOOP_REDIRECT_URI` |
 | `minimax-tts` | `MINIMAX_API_KEY` |
 

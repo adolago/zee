@@ -963,7 +963,7 @@ export const AuthLoginCommand = cmd({
 
         let provider = providerArg ?? ""
 
-        // If a direct skill name was passed (e.g., "home-assistant"), resolve to skill provider
+        // If a direct skill name was passed, resolve to skill provider
         if (provider && !providers[provider]) {
           const skillId = SKILL_PROVIDER_PREFIX + provider
           if (skillProviderMap.has(skillId)) {

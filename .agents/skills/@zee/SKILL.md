@@ -383,7 +383,6 @@ Active shared skills are first-party under `@zee/`:
 - `blogwatcher` - Monitor blogs/RSS/Atom feeds
 - `caldav-calendar` - CalDAV sync via vdirsyncer + khal
 - `food-order` - Reorder Foodora orders via ordercli
-- `home-assistant` - Smart home control via HA REST API
 - `spotify-player` - Terminal Spotify playback
 - `stock-market-pro` - Yahoo Finance price, charts, fundamentals
 - `wacli` - WhatsApp messaging via wacli personal bridge (send, media)

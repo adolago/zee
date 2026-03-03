@@ -14,7 +14,6 @@ This inventory lists markdown files in the repo that mention model selection or 
 | `.agents/skills/@johny/session-logs/SKILL.md` | - | thinking |
 | `.agents/skills/@zee/brave-search/SKILL.md` | fallback | - |
 | `.agents/skills/@zee/clawddocs/SKILL.md` | - | thinking |
-| `.agents/skills/@zee/home-assistant/SKILL.md` | fallback | Temperature, temperature |
 | `.agents/skills/@zee/news-digest/SKILL.md` | - | max_tokens |
 | `.agents/skills/@zee/pim-classic/references/khard-config.md` | Alias, alias | - |
 | `.agents/skills/@zee/pim-classic/references/notmuch-config.md` | alias | - |
