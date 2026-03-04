@@ -1921,8 +1921,7 @@ export default function Page() {
                           touchGesture = undefined
                         }}
                         onPointerDown={(e) => {
-                          if (e.target !== e.currentTarget) return
-                          markScrollGesture(e.currentTarget)
+                          markScrollGesture(e.target)
                         }}
                         onScroll={(e) => {
                           if (!hasScrollGesture()) return
