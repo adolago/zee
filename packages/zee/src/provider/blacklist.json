@@ -75,7 +75,6 @@
     { "id": "alibaba", "reason": "Removed per request" },
     { "id": "cerebras", "reason": "Removed per request" },
     { "id": "synthetic", "reason": "Redundant HuggingFace proxy" },
-    { "id": "ollama", "reason": "Local provider -- use vLLM instead" },
     { "id": "github-copilot", "reason": "Subscription-based, limited models" },
     { "id": "amazon-bedrock", "reason": "Enterprise AWS only" },
     { "id": "qwen-portal", "reason": "OAuth complexity, limited models" },

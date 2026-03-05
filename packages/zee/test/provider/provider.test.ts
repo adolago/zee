@@ -1364,6 +1364,43 @@ test("provider with custom npm package", async () => {
   })
 })
 
+test("ollama provider defaults configured models to native ollama SDK", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.jsonc"),
+        JSON.stringify({
+          $schema: "zee",
+          provider: {
+            ollama: {
+              name: "Ollama",
+              env: [],
+              models: {
+                "llama3.2": {
+                  name: "Llama 3.2",
+                  tool_call: true,
+                  limit: { context: 8192, output: 2048 },
+                },
+              },
+              options: {
+                baseURL: "http://localhost:11434/api",
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const providers = await Provider.list()
+      expect(providers["ollama"]).toBeDefined()
+      expect(providers["ollama"].models["llama3.2"].api.npm).toBe("@ai-sdk/ollama")
+    },
+  })
+})
+
 // Edge cases for model configuration
 
 test("model alias name defaults to alias key when id differs", async () => {

@@ -4,6 +4,7 @@ import {
   extractAuthFromFrontmatter,
   normalizeLocalProviderBaseUrl,
   parseOpenAICompatibleModelIds,
+  resolveOllamaProviderBaseUrl,
   resolveLocalProviderBaseUrl,
 } from "../../src/cli/cmd/auth"
 
@@ -44,6 +45,7 @@ describe("extractAuthFromFrontmatter", () => {
 
   test("builds and normalizes local provider URLs", () => {
     expect(resolveLocalProviderBaseUrl("localhost", 8000)).toBe("http://localhost:8000/v1")
+    expect(resolveOllamaProviderBaseUrl("localhost", 11434)).toBe("http://localhost:11434/api")
     expect(normalizeLocalProviderBaseUrl("localhost:8000", 8000)).toBe("http://localhost:8000/v1")
     expect(normalizeLocalProviderBaseUrl("http://127.0.0.1", 8000)).toBe("http://127.0.0.1:8000/v1")
     expect(normalizeLocalProviderBaseUrl("https://host.example/v1/", 8000)).toBe("https://host.example/v1")

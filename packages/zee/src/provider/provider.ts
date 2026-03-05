@@ -129,6 +129,11 @@ export namespace Provider {
     return Number(match[1]) >= 5
   }
 
+  function resolveProviderNpm(providerID: string, npm: string): string {
+    if (providerID === "ollama") return "@ai-sdk/ollama"
+    return npm
+  }
+
   const BUNDLED_PROVIDERS: Record<string, (options: any) => ProviderSDK> = {
     "@ai-sdk/anthropic": createAnthropic,
     "@ai-sdk/azure": createAzure,
@@ -296,12 +301,15 @@ export namespace Provider {
       api: {
         id: model.id,
         url: provider.api ?? "",
-        npm: iife(() => {
-          // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
-          // The models-api.json incorrectly specifies @ai-sdk/anthropic
-          if (provider.id === "kimi-for-coding") return "@ai-sdk/openai-compatible"
-          return model.provider?.npm ?? provider.npm ?? "@ai-sdk/openai-compatible"
-        }),
+        npm: resolveProviderNpm(
+          provider.id,
+          iife(() => {
+            // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
+            // The models-api.json incorrectly specifies @ai-sdk/anthropic
+            if (provider.id === "kimi-for-coding") return "@ai-sdk/openai-compatible"
+            return model.provider?.npm ?? provider.npm ?? "@ai-sdk/openai-compatible"
+          }),
+        ),
       },
       status: model.status ?? "active",
       headers: model.headers ?? {},
@@ -460,17 +468,20 @@ export namespace Provider {
           id: modelID,
           api: {
             id: model.id ?? existingModel?.api.id ?? modelID,
-            npm: iife(() => {
-              // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
-              if (providerID === "kimi-for-coding") return "@ai-sdk/openai-compatible"
-              return (
-                model.provider?.npm ??
-                provider.npm ??
-                existingModel?.api.npm ??
-                modelsDev[providerID]?.npm ??
-                "@ai-sdk/openai-compatible"
-              )
-            }),
+            npm: resolveProviderNpm(
+              providerID,
+              iife(() => {
+                // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
+                if (providerID === "kimi-for-coding") return "@ai-sdk/openai-compatible"
+                return (
+                  model.provider?.npm ??
+                  provider.npm ??
+                  existingModel?.api.npm ??
+                  modelsDev[providerID]?.npm ??
+                  "@ai-sdk/openai-compatible"
+                )
+              }),
+            ),
             url: provider?.api ?? existingModel?.api.url ?? modelsDev[providerID]?.api,
           },
           status: model.status ?? existingModel?.status ?? "active",
@@ -842,7 +853,6 @@ export namespace Provider {
       if (blocked.has(providerID)) continue
 
       try {
-        const baseURL = (configProvider.options.baseURL as string).replace(/\/v1\/?$/, "")
         const key = providers[providerID]?.key
         const headers =
           key && key !== "local"
@@ -850,6 +860,87 @@ export namespace Provider {
                 Authorization: `Bearer ${key}`,
               }
             : undefined
+        const configuredBaseURL = String(configProvider.options.baseURL).replace(/\/+$/, "")
+
+        if (providerID === "ollama") {
+          const baseURL = configuredBaseURL.replace(/\/v1\/?$/, "").replace(/\/api\/?$/, "")
+          const response = await fetch(`${baseURL}/api/tags`, {
+            headers,
+            signal: AbortSignal.timeout(3000),
+          })
+          if (!response.ok) continue
+          const data = (await response.json()) as {
+            models?: Array<{
+              name?: string
+              details?: { context_length?: number }
+            }>
+          }
+
+          // Ensure provider exists
+          if (!providers[providerID]) {
+            providers[providerID] = {
+              id: providerID,
+              name: providerID.charAt(0).toUpperCase() + providerID.slice(1),
+              models: {},
+              source: "config",
+              env: configProvider.env ?? [],
+              options: configProvider.options,
+            }
+          }
+
+          for (const apiModel of data.models ?? []) {
+            const modelID = (apiModel.name ?? "").trim()
+            if (!modelID) continue
+            if (providers[providerID].models[modelID]) continue // Don't overwrite existing
+
+            const contextLength =
+              typeof apiModel.details?.context_length === "number" && apiModel.details.context_length > 0
+                ? apiModel.details.context_length
+                : 8192
+
+            providers[providerID].models[modelID] = {
+              id: modelID,
+              name: modelID.split("/").pop() ?? modelID,
+              providerID,
+              api: {
+                id: modelID,
+                url: `${baseURL}/api`,
+                npm: "@ai-sdk/ollama",
+              },
+              status: "active",
+              headers: {},
+              cost: {
+                input: 0,
+                output: 0,
+                cache: { read: 0, write: 0 },
+              },
+              capabilities: {
+                temperature: true,
+                attachment: false,
+                reasoning: modelID.toLowerCase().includes("qwen3"),
+                toolcall: true,
+                streaming: true,
+                input: { text: true, audio: false, image: false, video: false, pdf: false },
+                output: { text: true, audio: false, image: false, video: false, pdf: false },
+                interleaved: false,
+              },
+              limit: {
+                context: contextLength,
+                output: Math.min(contextLength, 4096),
+              },
+              options: {},
+              release_date: "1970-01-01",
+            }
+          }
+
+          log.info("auto-discovered models from local provider", {
+            provider: providerID,
+            count: Object.keys(providers[providerID].models).length,
+          })
+          continue
+        }
+
+        const baseURL = configuredBaseURL.replace(/\/v1\/?$/, "")
         const response = await fetch(`${baseURL}/v1/models`, {
           headers,
           signal: AbortSignal.timeout(3000),
