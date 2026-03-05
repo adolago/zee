@@ -19,3 +19,7 @@ export type {
   Decision,
   ConsensusStats,
 } from "./consensus-gate"
+
+// Hierarchical mesh (v3 swarm coordination)
+export { HierarchicalMeshCoordinator, getHierarchicalMeshCoordinator, loadHierarchicalMeshConfig } from "./hierarchical-mesh"
+export type { HierarchicalMeshConfig, HierarchicalMeshNode, HierarchicalMeshSnapshot } from "./hierarchical-mesh"

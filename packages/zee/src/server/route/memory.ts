@@ -10,6 +10,7 @@ import { describeRoute, resolver, validator } from "hono-openapi"
 import { z } from "zod"
 import { errors } from "../error"
 import { Log } from "../../util/log"
+import { getAgentDbMemory } from "@/memory/agentdb-service"
 
 const log = Log.create({ service: "server:memory" })
 
@@ -141,16 +142,8 @@ const MemoryStatsSchema = z.object({
 // Memory Service (lazy import to avoid circular deps)
 // =============================================================================
 
-let memoryInstance: any = null
-
 async function getMemoryService() {
-  if (!memoryInstance) {
-    // Dynamic import to avoid bundling issues and circular dependencies
-    const { getMemory } = await import("../../../../../src/memory/unified")
-    memoryInstance = getMemory()
-    await memoryInstance.init()
-  }
-  return memoryInstance
+  return getAgentDbMemory()
 }
 
 // =============================================================================

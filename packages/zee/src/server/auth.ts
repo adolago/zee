@@ -37,6 +37,12 @@ const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
   // Write operations
   "POST /session": AuthScope.WRITE,
   "DELETE /session": AuthScope.WRITE,
+  // Node-client lifecycle (pair/reconnect/revoke + tool authorization)
+  "POST /gateway/node/pair": AuthScope.PAIRING,
+  "POST /gateway/node/reconnect": AuthScope.PAIRING,
+  "POST /gateway/node/revoke": AuthScope.PAIRING,
+  "POST /gateway/node/tool/authorize": AuthScope.PAIRING,
+  "GET /gateway/node": AuthScope.READ,
   "POST /gateway/telegram/metadata": AuthScope.READ,
   "POST /gateway/telegram/send": AuthScope.WRITE,
   "POST /gateway/telegram/moderation": AuthScope.ADMIN,

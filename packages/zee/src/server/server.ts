@@ -64,6 +64,7 @@ import { ProcessRoute } from "./route/process"
 import { MemoryRoute } from "./route/memory"
 import { UsageRoute } from "../usage/route"
 import { GatewayRoute } from "./route/gateway"
+import { GatewayNodeRoute } from "./route/gateway-node"
 import { SttRoute } from "./route/stt"
 import { CronRoute } from "./route/cron"
 import { HeartbeatRoute } from "./route/heartbeat"
@@ -516,6 +517,7 @@ export namespace Server {
         .route("/v1", MemoryRoute)
         .route("/usage", UsageRoute)
         .route("/gateway", GatewayRoute)
+        .route("/gateway", GatewayNodeRoute)
         .route("/stt", SttRoute)
         .route("/", CronRoute)
         .route("/", HeartbeatRoute)

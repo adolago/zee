@@ -46,6 +46,7 @@ import { GuiCommand } from "./cli/cmd/gui"
 import { ControlUiCommand } from "./cli/cmd/control-ui"
 import { WebCommand } from "./cli/cmd/web"
 import { DmuxCommand } from "./cli/cmd/dmux"
+import { V3Command } from "./cli/cmd/v3"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -205,6 +206,7 @@ const cli = yargs(hideBin(process.argv))
   .command(PodsCommand)
   .command(BugReportCommand)
   .command(ReliabilityCommand)
+  .command(V3Command)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||
