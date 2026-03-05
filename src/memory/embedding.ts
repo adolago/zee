@@ -156,6 +156,19 @@ class EmbeddingCache {
 // Provider Implementations
 // =============================================================================
 
+export const LEGACY_LOCAL_EMBEDDINGGEMMA_MODEL =
+  "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
+export const PREFERRED_LOCAL_EMBEDDINGGEMMA_QAT_MODEL =
+  "hf:ggml-org/embeddinggemma-300m-qat-q8_0-GGUF/embeddinggemma-300m-qat-Q8_0.gguf";
+
+function normalizeEmbeddingModel(model: string): string {
+  const trimmed = model.trim();
+  if (trimmed === LEGACY_LOCAL_EMBEDDINGGEMMA_MODEL) {
+    return PREFERRED_LOCAL_EMBEDDINGGEMMA_QAT_MODEL;
+  }
+  return trimmed;
+}
+
 /**
  * Google embedding client using Generative Language API
  */
@@ -170,7 +183,7 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
   constructor(config: EmbeddingConfig) {
     // Single source of truth: global auth store (`zee auth login google`).
     this.apiKey = getAuthApiKeySync("google") ?? "";
-    this.model = config.model ?? "gemini-embedding-001";
+    this.model = normalizeEmbeddingModel(config.model ?? "gemini-embedding-001");
     this.outputDimensionality =
       typeof config.dimensions === "number" ? config.dimensions : undefined;
     this.dimension = this.outputDimensionality ?? 3072; // gemini-embedding-001 default

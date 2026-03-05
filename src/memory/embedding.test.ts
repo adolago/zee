@@ -11,6 +11,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   createEmbeddingProvider,
   GoogleEmbeddingProvider,
+  LEGACY_LOCAL_EMBEDDINGGEMMA_MODEL,
+  PREFERRED_LOCAL_EMBEDDINGGEMMA_QAT_MODEL,
 } from "./embedding";
 import { EMBEDDING_PROFILES, resolveEmbeddingProfile } from "../config/embedding-profiles";
 
@@ -72,6 +74,12 @@ describe("GoogleEmbeddingProvider", () => {
     writeAuthStoreGoogleKey({ xdgDataHome, apiKey: "test-key" });
     const provider = new GoogleEmbeddingProvider({ dimensions: 768 });
     expect(provider.dimension).toBe(768);
+  });
+
+  it("normalizes legacy embeddinggemma model to QAT variant", () => {
+    writeAuthStoreGoogleKey({ xdgDataHome, apiKey: "test-key" });
+    const provider = new GoogleEmbeddingProvider({ model: LEGACY_LOCAL_EMBEDDINGGEMMA_MODEL });
+    expect(provider.model).toBe(PREFERRED_LOCAL_EMBEDDINGGEMMA_QAT_MODEL);
   });
 
   it("throws without API key", () => {
