@@ -19,7 +19,7 @@ export function resolveSessionFilePathOptions(
   input: ResolveSessionFilePathOptionsInput,
 ): ResolveSessionFilePathOptions {
   const storePath = typeof input.storePath === "string" ? input.storePath.trim() : "";
-  if (storePath.length > 0) {
+  if (storePath.length > 0 && storePath !== "(multiple)") {
     return { sessionsDir: path.resolve(path.dirname(storePath)) };
   }
 

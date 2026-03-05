@@ -24,6 +24,14 @@ describe("session path helpers", () => {
     expect(opts).toEqual({ agentId: "ops" });
   });
 
+  it("falls back to agentId when storePath is a multi-store marker", () => {
+    const opts = resolveSessionFilePathOptions({
+      storePath: "(multiple)",
+      agentId: "ops",
+    });
+    expect(opts).toEqual({ agentId: "ops" });
+  });
+
   it("uses sessionsDir override for session files", () => {
     const resolved = resolveSessionFilePath("sess-1", undefined, {
       sessionsDir: "/tmp/custom/sessions",
