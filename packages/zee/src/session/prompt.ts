@@ -67,6 +67,16 @@ globalThis.AI_SDK_LOG_WARNINGS = false
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
   export const OUTPUT_TOKEN_MAX = Flag.ZEE_OUTPUT_TOKEN_MAX || 32_000
+  const MCP_EXECUTE_BASE = Symbol.for("zee.mcp.execute.base")
+
+  export function getMcpExecuteBase<T extends (...args: any[]) => any>(execute: T): T {
+    return ((execute as any)[MCP_EXECUTE_BASE] ?? execute) as T
+  }
+
+  export function tagMcpExecuteBase<T extends (...args: any[]) => any>(wrapped: T, base: T): T {
+    ;(wrapped as any)[MCP_EXECUTE_BASE] = base
+    return wrapped
+  }
 
   // ── PIN-release auto-revert timers ──────────────────────────────────
   const releaseTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -1515,13 +1525,15 @@ export namespace SessionPrompt {
     for (const [key, item] of Object.entries(await MCP.tools())) {
       const execute = item.execute
       if (!execute) continue
+      const baseExecute = getMcpExecuteBase(execute)
 
       const inputSchema = asSchema(item.inputSchema)
       const schemaJson = await Promise.resolve(inputSchema.jsonSchema)
       const transformed = ProviderTransform.schema(input.model, schemaJson)
       item.inputSchema = jsonSchema(transformed)
       // Wrap execute to add plugin hooks and format output
-      item.execute = async (args, opts) => {
+      item.execute = tagMcpExecuteBase(
+        async (args, opts) => {
         const ctx = context(args, opts)
 
         await Plugin.trigger(
@@ -1555,7 +1567,7 @@ export namespace SessionPrompt {
           always: ["*"],
         })
 
-        const result = await execute(args, opts)
+        const result = await baseExecute(args, opts)
 
         await Plugin.trigger(
           "tool.execute.after",
@@ -1615,7 +1627,9 @@ export namespace SessionPrompt {
           attachments,
           content: result.content, // directly return content to preserve ordering when outputting to model
         }
-      }
+      },
+        baseExecute,
+      )
       item.toModelOutput = (result) => {
         return {
           type: "text",
