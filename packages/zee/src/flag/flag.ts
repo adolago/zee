@@ -41,6 +41,11 @@ function computeFlags() {
     ZEE_PTY_ALLOW_COMMAND_OVERRIDE: truthy("ZEE_PTY_ALLOW_COMMAND_OVERRIDE"),
     // Allow switching sessions into ACCEPT/BYPASS modes from messaging surfaces (dangerous).
     ZEE_ALLOW_MESSAGING_RELEASE: truthy("ZEE_ALLOW_MESSAGING_RELEASE"),
+    // Control UI security downgrade flags (break-glass only; dangerous).
+    ZEE_CONTROL_UI_DISABLE_AUTH: truthy("ZEE_CONTROL_UI_DISABLE_AUTH"),
+    ZEE_CONTROL_UI_ALLOW_PASSWORD_ONLY: truthy("ZEE_CONTROL_UI_ALLOW_PASSWORD_ONLY"),
+    ZEE_CONTROL_UI_ALLOW_INSECURE_HTTP: truthy("ZEE_CONTROL_UI_ALLOW_INSECURE_HTTP"),
+    ZEE_CONTROL_UI_BREAK_GLASS_ACK: env("ZEE_CONTROL_UI_BREAK_GLASS_ACK"),
 
     // Server network tuning
     ZEE_SERVER_IDLE_TIMEOUT_SECONDS: number("ZEE_SERVER_IDLE_TIMEOUT_SECONDS"),

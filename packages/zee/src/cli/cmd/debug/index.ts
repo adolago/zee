@@ -75,6 +75,10 @@ const FlagsCommand = cmd({
       "CLIENT",
       "EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS",
       "EXPERIMENTAL_OUTPUT_TOKEN_MAX",
+      "CONTROL_UI_DISABLE_AUTH",
+      "CONTROL_UI_ALLOW_PASSWORD_ONLY",
+      "CONTROL_UI_ALLOW_INSECURE_HTTP",
+      "CONTROL_UI_BREAK_GLASS_ACK",
     ]
 
     const flags = flagNames.map((name) => {

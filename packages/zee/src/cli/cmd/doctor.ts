@@ -1,5 +1,7 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
+import { Config } from "../../config/config"
+import { CONTROL_UI_BREAK_GLASS_ACK, auditControlUiSecurity } from "@/security"
 import {
   type RuntimeProcessLimits,
   resolveRuntimeProcessLimits,
@@ -14,6 +16,11 @@ type DoctorRuntimeArgs = {
   maxMcpTotal?: number
   maxMcpPerServer?: number
   maxClients?: number
+}
+
+type DoctorSecurityArgs = {
+  json?: boolean
+  strict?: boolean
 }
 
 function parseLimits(args: DoctorRuntimeArgs): Partial<RuntimeProcessLimits> {
@@ -114,9 +121,61 @@ const DoctorRuntimeCommand = cmd({
   },
 })
 
+const DoctorSecurityCommand = cmd({
+  command: "security",
+  describe: "audit control-plane security guardrails",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      })
+      .option("strict", {
+        type: "boolean",
+        default: false,
+        describe: "exit with code 1 when security errors are present",
+      }),
+  handler: async (args: DoctorSecurityArgs) => {
+    const config = await Config.get()
+    const report = auditControlUiSecurity(config)
+
+    if (args.json) {
+      console.log(
+        JSON.stringify(
+          {
+            mode: "doctor-security",
+            ...report,
+          },
+          null,
+          2,
+        ),
+      )
+    } else {
+      console.log(`security: errors=${report.errors} warnings=${report.warnings}`)
+      if (report.findings.length === 0) {
+        console.log("security: healthy")
+      } else {
+        console.log("security findings:")
+        for (const finding of report.findings) {
+          console.log(`- [${finding.severity}] ${finding.code}: ${finding.message}`)
+          if (finding.remediation) {
+            console.log(`  remediation: ${finding.remediation}`)
+          }
+        }
+      }
+      console.log(`security: break-glass ack value is ${CONTROL_UI_BREAK_GLASS_ACK}`)
+    }
+
+    if (args.strict && !report.ok) {
+      process.exit(1)
+    }
+  },
+})
+
 export const DoctorCommand = cmd({
   command: "doctor",
   describe: "diagnose and repair runtime issues",
-  builder: (yargs: Argv) => yargs.command(DoctorRuntimeCommand).demandCommand(),
+  builder: (yargs: Argv) => yargs.command(DoctorRuntimeCommand).command(DoctorSecurityCommand).demandCommand(),
   async handler() {},
 })

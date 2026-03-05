@@ -44,3 +44,44 @@ The CLI never prints the token unless you pass `--print`:
 zee gateway token --print
 ```
 
+## Control UI Auth Guardrails
+
+Control UI auth defaults should remain strict:
+
+- `gateway.controlUi.auth.required: true`
+- `gateway.controlUi.auth.mode: "token"`
+- `gateway.controlUi.auth.allowPasswordOnly: false`
+- `gateway.controlUi.auth.allowInsecureHttp: false`
+
+Recommended config baseline:
+
+```jsonc
+{
+  "gateway": {
+    "controlUi": {
+      "auth": {
+        "required": true,
+        "mode": "token",
+        "allowPasswordOnly": false,
+        "allowInsecureHttp": false
+      },
+      "trustedOrigins": ["https://control.example.com"]
+    }
+  }
+}
+```
+
+Dangerous downgrade settings (`mode: "none"`, `allowPasswordOnly`, `allowInsecureHttp`) require explicit break-glass acknowledgement:
+
+- config: `gateway.controlUi.auth.breakGlassAck`
+- env: `ZEE_CONTROL_UI_BREAK_GLASS_ACK`
+- required value: `I_UNDERSTAND_CONTROL_UI_AUTH_IS_INSECURE`
+
+Audit commands:
+
+```bash
+zee security audit
+zee doctor security
+```
+
+For non-loopback deployments, terminate TLS at a reverse proxy and keep `trustedOrigins` explicit.
