@@ -92,4 +92,25 @@ describe("extractAuthFromFrontmatter", () => {
     })
     expect(discovered).toEqual([])
   })
+
+  test("does not send bearer auth when apiKey is local placeholder", async () => {
+    const requests: Array<{ auth?: string }> = []
+    const fetchFn = (async (_input: string | URL | Request, init?: RequestInit) => {
+      const headers = init?.headers as Record<string, string> | undefined
+      requests.push({ auth: headers?.Authorization })
+      return new Response(JSON.stringify({ data: [{ id: "qwen3-coder" }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    }) as typeof fetch
+
+    const discovered = await discoverOpenAICompatibleModels({
+      baseURL: "http://localhost:8000/v1",
+      apiKey: "local",
+      fetchFn,
+    })
+
+    expect(discovered).toEqual(["qwen3-coder"])
+    expect(requests[0]).toEqual({ auth: undefined })
+  })
 })
