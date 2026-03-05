@@ -4,6 +4,8 @@ This document is the canonical triage map tracked by #236.
 
 It is intentionally a **triage doc** (port/adapt/defer/non-goal), not an implementation log.
 
+Implementation tracking snapshot: `docs/architecture/openclaw-delta-implementation-tracking.md`.
+
 ## Snapshot Pins
 
 Use these pins when comparing OpenClaw to Zee (lane issues #224-#235 were written against this snapshot):
