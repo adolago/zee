@@ -12,7 +12,7 @@ const DEFAULT_WEB_PORT = 3000
 const DEFAULT_DAEMON_PORT = 3210
 const DEFAULT_READY_TIMEOUT_MS = 15_000
 
-type WebArgs = {
+export type WebArgs = {
   host?: string
   port?: number
   serverUrl?: string
@@ -87,118 +87,124 @@ async function waitForWebReady(url: string, timeoutMs: number): Promise<boolean>
   return false
 }
 
+export function buildWebCommand(yargs: Argv) {
+  return yargs
+    .option("host", {
+      type: "string",
+      default: DEFAULT_WEB_HOST,
+      describe: "host to bind the web UI dev server",
+    })
+    .option("port", {
+      type: "number",
+      default: DEFAULT_WEB_PORT,
+      describe: "port to bind the web UI dev server",
+    })
+    .option("server-url", {
+      type: "string",
+      describe: "Zee daemon base URL for the web app (defaults to ZEE_URL or local daemon URL)",
+    })
+    .option("open", {
+      type: "boolean",
+      default: true,
+      describe: "open the web UI in your default browser",
+    })
+    .option("ready-timeout-ms", {
+      type: "number",
+      default: DEFAULT_READY_TIMEOUT_MS,
+      describe: "time to wait for the web UI dev server before opening browser",
+    })
+}
+
+export async function runWebCommand(args: WebArgs) {
+  const host = (args.host ?? DEFAULT_WEB_HOST).trim()
+  const port = Number.isFinite(args.port) ? Number(args.port) : DEFAULT_WEB_PORT
+  const readyTimeoutMs = Number.isFinite(args.readyTimeoutMs)
+    ? Math.max(500, Math.floor(Number(args.readyTimeoutMs)))
+    : DEFAULT_READY_TIMEOUT_MS
+
+  if (!host) {
+    UI.error("Invalid --host value.")
+    process.exitCode = 1
+    return
+  }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    UI.error("Invalid --port value. Use an integer from 1 to 65535.")
+    process.exitCode = 1
+    return
+  }
+
+  const appDir = resolveWebAppDirectory(Global.Path.source)
+  if (!appDir) {
+    UI.error(`Could not find packages/app from source root: ${Global.Path.source}`)
+    UI.info("Run this command from the Zee repository checkout.")
+    process.exitCode = 1
+    return
+  }
+
+  let backend: BackendTarget
+  try {
+    backend = resolveWebBackendTarget(resolveWebBackendUrl({ serverUrl: args.serverUrl, env: process.env }))
+  } catch (error) {
+    UI.error(error instanceof Error ? error.message : String(error))
+    process.exitCode = 1
+    return
+  }
+
+  const uiUrl = `http://${renderHttpHost(host)}:${port}`
+  const bunBin = Bun.which("bun") ?? "bun"
+  const child = Bun.spawn({
+    cmd: [bunBin, "run", "dev", "--host", host, "--port", String(port)],
+    cwd: appDir,
+    env: {
+      ...process.env,
+      VITE_ZEE_SERVER_HOST: backend.hostForEnv,
+      VITE_ZEE_SERVER_PORT: String(backend.port),
+      VITE_ZEE_SERVER_BASE_PATH: backend.basePath,
+    },
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+  })
+
+  const stop = () => {
+    try {
+      child.kill()
+    } catch {
+      // Child may already be exiting.
+    }
+  }
+  process.once("SIGINT", stop)
+  process.once("SIGTERM", stop)
+
+  UI.success(`Starting Zee Web UI at ${uiUrl}`)
+  UI.info(`Backend URL: ${backend.origin}`)
+
+  if (args.open !== false) {
+    const ready = await waitForWebReady(uiUrl, readyTimeoutMs)
+    if (!ready) {
+      UI.warn(`Web UI did not report ready within ${readyTimeoutMs}ms. Opening browser anyway.`)
+    }
+    const opened = await openExternalUrl(uiUrl)
+    if (!opened.ok) {
+      UI.warn(`Could not open browser automatically (${opened.reason}).`)
+      UI.info(`Open manually: ${uiUrl}`)
+    }
+  }
+
+  const exitCode = await child.exited
+  process.off("SIGINT", stop)
+  process.off("SIGTERM", stop)
+
+  if (exitCode !== 0) {
+    process.exitCode = exitCode
+  }
+}
+
 export const WebCommand = cmd({
   command: "web",
   describe: "run the local Zee web UI from packages/app",
-  builder: (yargs: Argv) =>
-    yargs
-      .option("host", {
-        type: "string",
-        default: DEFAULT_WEB_HOST,
-        describe: "host to bind the web UI dev server",
-      })
-      .option("port", {
-        type: "number",
-        default: DEFAULT_WEB_PORT,
-        describe: "port to bind the web UI dev server",
-      })
-      .option("server-url", {
-        type: "string",
-        describe: "Zee daemon base URL for the web app (defaults to ZEE_URL or local daemon URL)",
-      })
-      .option("open", {
-        type: "boolean",
-        default: true,
-        describe: "open the web UI in your default browser",
-      })
-      .option("ready-timeout-ms", {
-        type: "number",
-        default: DEFAULT_READY_TIMEOUT_MS,
-        describe: "time to wait for the web UI dev server before opening browser",
-      }),
+  builder: (yargs: Argv) => buildWebCommand(yargs),
   handler: async (args) => {
-    const typed = args as WebArgs
-    const host = (typed.host ?? DEFAULT_WEB_HOST).trim()
-    const port = Number.isFinite(typed.port) ? Number(typed.port) : DEFAULT_WEB_PORT
-    const readyTimeoutMs = Number.isFinite(typed.readyTimeoutMs)
-      ? Math.max(500, Math.floor(Number(typed.readyTimeoutMs)))
-      : DEFAULT_READY_TIMEOUT_MS
-
-    if (!host) {
-      UI.error("Invalid --host value.")
-      process.exitCode = 1
-      return
-    }
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      UI.error("Invalid --port value. Use an integer from 1 to 65535.")
-      process.exitCode = 1
-      return
-    }
-
-    const appDir = resolveWebAppDirectory(Global.Path.source)
-    if (!appDir) {
-      UI.error(`Could not find packages/app from source root: ${Global.Path.source}`)
-      UI.info("Run this command from the Zee repository checkout.")
-      process.exitCode = 1
-      return
-    }
-
-    let backend: BackendTarget
-    try {
-      backend = resolveWebBackendTarget(resolveWebBackendUrl({ serverUrl: typed.serverUrl, env: process.env }))
-    } catch (error) {
-      UI.error(error instanceof Error ? error.message : String(error))
-      process.exitCode = 1
-      return
-    }
-
-    const uiUrl = `http://${renderHttpHost(host)}:${port}`
-    const bunBin = Bun.which("bun") ?? "bun"
-    const child = Bun.spawn({
-      cmd: [bunBin, "run", "dev", "--host", host, "--port", String(port)],
-      cwd: appDir,
-      env: {
-        ...process.env,
-        VITE_ZEE_SERVER_HOST: backend.hostForEnv,
-        VITE_ZEE_SERVER_PORT: String(backend.port),
-        VITE_ZEE_SERVER_BASE_PATH: backend.basePath,
-      },
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
-    })
-
-    const stop = () => {
-      try {
-        child.kill()
-      } catch {
-        // Child may already be exiting.
-      }
-    }
-    process.once("SIGINT", stop)
-    process.once("SIGTERM", stop)
-
-    UI.success(`Starting Zee Web UI at ${uiUrl}`)
-    UI.info(`Backend URL: ${backend.origin}`)
-
-    if (typed.open !== false) {
-      const ready = await waitForWebReady(uiUrl, readyTimeoutMs)
-      if (!ready) {
-        UI.warn(`Web UI did not report ready within ${readyTimeoutMs}ms. Opening browser anyway.`)
-      }
-      const opened = await openExternalUrl(uiUrl)
-      if (!opened.ok) {
-        UI.warn(`Could not open browser automatically (${opened.reason}).`)
-        UI.info(`Open manually: ${uiUrl}`)
-      }
-    }
-
-    const exitCode = await child.exited
-    process.off("SIGINT", stop)
-    process.off("SIGTERM", stop)
-
-    if (exitCode !== 0) {
-      process.exitCode = exitCode
-    }
+    await runWebCommand(args as WebArgs)
   },
 })

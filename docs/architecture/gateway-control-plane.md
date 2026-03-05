@@ -2,6 +2,8 @@
 
 Zee includes an optional **Gateway**: a WebSocket (WS) control plane designed for channel integrations (WhatsApp, etc) and remote clients.
 
+Primary web operator guidance: `docs/architecture/control-ui-primary.md`.
+
 At a high level:
 
 - **Zee server/daemon** runs the agent runtime and exposes an HTTP API.

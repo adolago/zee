@@ -43,6 +43,7 @@ import { ClientCommand } from "./cli/cmd/client"
 import { GatewayCommand } from "./cli/cmd/gateway"
 import { ChannelsCommand } from "./cli/cmd/channels"
 import { GuiCommand } from "./cli/cmd/gui"
+import { ControlUiCommand } from "./cli/cmd/control-ui"
 import { WebCommand } from "./cli/cmd/web"
 import { DmuxCommand } from "./cli/cmd/dmux"
 import path from "node:path"
@@ -164,6 +165,7 @@ const cli = yargs(hideBin(process.argv))
   .command(AttachCommand)
   .command(ClientCommand)
   .command(GuiCommand)
+  .command(ControlUiCommand)
   .command(WebCommand)
   .command(DmuxCommand)
   .command(RunCommand)
