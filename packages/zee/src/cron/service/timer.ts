@@ -102,9 +102,11 @@ export async function executeJob(state: CronServiceState, job: CronJob, nowMs: n
       state.activeRuns.set(job.id, prev - 1)
     }
 
-    const shouldDelete = job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true
+    const shouldDelete = status === "ok" && job.deleteAfterRun === true
 
-    if (!shouldDelete) {
+    if (shouldDelete) {
+      job.state.nextRunAtMs = undefined
+    } else {
       if (job.schedule.kind === "at" && status === "ok") {
         // One-shot job completed successfully; disable it.
         job.enabled = false
