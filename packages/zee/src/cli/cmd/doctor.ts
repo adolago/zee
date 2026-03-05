@@ -1,7 +1,7 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
 import { Config } from "../../config/config"
-import { CONTROL_UI_BREAK_GLASS_ACK, auditControlUiSecurity } from "@/security"
+import { CONTROL_UI_BREAK_GLASS_ACK, auditControlUiSecurity, auditControlUiSecurityDeep } from "@/security"
 import {
   type RuntimeProcessLimits,
   resolveRuntimeProcessLimits,
@@ -21,6 +21,7 @@ type DoctorRuntimeArgs = {
 type DoctorSecurityArgs = {
   json?: boolean
   strict?: boolean
+  deep?: boolean
 }
 
 function parseLimits(args: DoctorRuntimeArgs): Partial<RuntimeProcessLimits> {
@@ -135,10 +136,15 @@ const DoctorSecurityCommand = cmd({
         type: "boolean",
         default: false,
         describe: "exit with code 1 when security errors are present",
+      })
+      .option("deep", {
+        type: "boolean",
+        default: false,
+        describe: "include deep checks (paired node exposure/state)",
       }),
   handler: async (args: DoctorSecurityArgs) => {
     const config = await Config.get()
-    const report = auditControlUiSecurity(config)
+    const report = args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
 
     if (args.json) {
       console.log(

@@ -28,8 +28,19 @@ export type GatewayChannelActionPackConfig = {
   metadataActions?: boolean;
 };
 
+export type GatewayNodeClientSecurityMode = "deny" | "allowlist" | "full";
+
+export type GatewayNodeClientConfig = {
+  enabled?: boolean;
+  securityMode?: GatewayNodeClientSecurityMode;
+  allowRemotePairing?: boolean;
+  toolAllowlist?: string[];
+  maxPairedNodes?: number;
+};
+
 export type GatewayConfig = {
   controlUi?: GatewayControlUiConfig;
+  nodeClient?: GatewayNodeClientConfig;
   actionPacks?: {
     telegram?: GatewayChannelActionPackConfig;
     [channel: string]: GatewayChannelActionPackConfig | undefined;

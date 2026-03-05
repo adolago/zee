@@ -1155,6 +1155,22 @@ export namespace Config {
         .catchall(GatewayChannelActionPack)
         .optional()
         .describe("Per-channel action pack policy controls"),
+      nodeClient: z
+        .object({
+          enabled: z.boolean().optional().describe("Enable node-client pairing and command relay"),
+          securityMode: z
+            .enum(["deny", "allowlist", "full"])
+            .optional()
+            .describe("Node tool execution policy mode (`deny`, `allowlist`, `full`)"),
+          allowRemotePairing: z
+            .boolean()
+            .optional()
+            .describe("Allow non-loopback remote pairing requests"),
+          toolAllowlist: z.array(z.string()).optional().describe("Allowed tools when `securityMode=allowlist`"),
+          maxPairedNodes: z.number().int().positive().optional().describe("Maximum active paired nodes"),
+        })
+        .optional()
+        .describe("Reference desktop node-client policy and pairing controls"),
       authRateLimit: z
         .object({
           enabled: z.boolean().optional(),

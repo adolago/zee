@@ -36,11 +36,33 @@ function resolveAuthMode(value: unknown): "token" | "password" | "none" {
   return "token"
 }
 
+function resolveNodeSecurityMode(value: unknown): "deny" | "allowlist" | "full" {
+  if (value === "deny" || value === "allowlist" || value === "full") return value
+  return "deny"
+}
+
+function resolveStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+}
+
 function hasBreakGlassAcknowledgement(configValue: unknown): boolean {
   const configAck = typeof configValue === "string" ? configValue.trim() : ""
   const envAck = Flag.ZEE_CONTROL_UI_BREAK_GLASS_ACK?.trim() ?? ""
   const effective = envAck || configAck
   return effective === CONTROL_UI_BREAK_GLASS_ACK
+}
+
+function summarizeFindings(checked: string[], findings: SecurityAuditFinding[]): SecurityAuditReport {
+  const errors = findings.filter((item) => item.severity === "error").length
+  const warnings = findings.filter((item) => item.severity === "warning").length
+  return {
+    ok: errors === 0,
+    errors,
+    warnings,
+    checked,
+    findings,
+  }
 }
 
 export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
@@ -56,6 +78,11 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
     "gateway.actionPacks.telegram.messageActions",
     "gateway.actionPacks.telegram.moderationActions",
     "gateway.actionPacks.telegram.metadataActions",
+    "gateway.nodeClient.enabled",
+    "gateway.nodeClient.securityMode",
+    "gateway.nodeClient.allowRemotePairing",
+    "gateway.nodeClient.toolAllowlist",
+    "gateway.nodeClient.maxPairedNodes",
     "server.hostname",
   ]
 
@@ -66,6 +93,7 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
   const auth = asObject(controlUi.auth) ?? {}
   const actionPacks = asObject(gateway.actionPacks) ?? {}
   const telegramActionPack = asObject(actionPacks.telegram) ?? {}
+  const nodeClient = asObject(gateway.nodeClient) ?? {}
 
   const hostname = typeof server.hostname === "string" && server.hostname.trim().length > 0 ? server.hostname : "127.0.0.1"
   const nonLoopbackBind = !isLoopbackHostname(hostname)
@@ -84,6 +112,15 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
   const telegramModerationActions = resolveBool(telegramActionPack.moderationActions, false)
   const telegramMetadataActions = resolveBool(telegramActionPack.metadataActions, true)
   const telegramAnyActionEnabled = telegramActionPackEnabled && (telegramMessageActions || telegramModerationActions || telegramMetadataActions)
+
+  const nodeClientEnabled = resolveBool(nodeClient.enabled, false)
+  const nodeClientMode = resolveNodeSecurityMode(nodeClient.securityMode)
+  const nodeClientAllowRemotePairing = resolveBool(nodeClient.allowRemotePairing, false)
+  const nodeClientToolAllowlist = resolveStringArray(nodeClient.toolAllowlist)
+  const nodeClientMaxPairedNodes =
+    typeof nodeClient.maxPairedNodes === "number" && Number.isFinite(nodeClient.maxPairedNodes)
+      ? Math.max(1, Math.floor(nodeClient.maxPairedNodes))
+      : 10
 
   const authDisabled = required === false || mode === "none"
   const passwordDowngrade = mode === "password" || allowPasswordOnly
@@ -174,14 +211,98 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
     })
   }
 
-  const errors = findings.filter((item) => item.severity === "error").length
-  const warnings = findings.filter((item) => item.severity === "warning").length
-
-  return {
-    ok: errors === 0,
-    errors,
-    warnings,
-    checked,
-    findings,
+  if (nodeClientEnabled && authDisabled) {
+    findings.push({
+      severity: "error",
+      code: "node_client_enabled_with_disabled_control_ui_auth",
+      message: "Node client pairing is enabled while Control UI auth is disabled.",
+      remediation: "Re-enable Control UI auth (`required=true`, `mode=token`) before enabling node pairing.",
+    })
   }
+
+  if (nodeClientEnabled && nodeClientMode === "full") {
+    findings.push({
+      severity: nonLoopbackBind ? "error" : "warning",
+      code: "node_client_full_mode",
+      message: "Node client policy is set to `full`, allowing unrestricted tool execution on paired nodes.",
+      remediation: "Set gateway.nodeClient.securityMode=allowlist and configure explicit toolAllowlist.",
+    })
+  }
+
+  if (nodeClientEnabled && nodeClientMode === "allowlist" && nodeClientToolAllowlist.length === 0) {
+    findings.push({
+      severity: "warning",
+      code: "node_client_allowlist_empty",
+      message: "Node client policy mode is `allowlist` but no tools are allowlisted.",
+      remediation: "Set gateway.nodeClient.toolAllowlist with explicit allowed tool IDs.",
+    })
+  }
+
+  if (nodeClientEnabled && nodeClientAllowRemotePairing && nonLoopbackBind) {
+    findings.push({
+      severity: "warning",
+      code: "node_client_remote_pairing_enabled",
+      message: "Node client remote pairing is enabled on a non-loopback bind.",
+      remediation: "Keep pairing local-only (`allowRemotePairing=false`) unless you enforce TLS + scoped auth.",
+    })
+  }
+
+  if (nodeClientEnabled && nodeClientMaxPairedNodes > 100) {
+    findings.push({
+      severity: "warning",
+      code: "node_client_max_pairs_high",
+      message: `Node client maxPairedNodes (${nodeClientMaxPairedNodes}) is unusually high.`,
+      remediation: "Reduce maxPairedNodes to a least-privilege operational value.",
+    })
+  }
+
+  return summarizeFindings(checked, findings)
+}
+
+export async function auditControlUiSecurityDeep(config: unknown): Promise<SecurityAuditReport> {
+  const base = auditControlUiSecurity(config)
+  const checked = [...base.checked, "gateway.nodeClient.state.active", "gateway.nodeClient.state.revoked"]
+  const findings = [...base.findings]
+
+  try {
+    const { getNodeClientRegistry, resolveNodeClientPolicy } = await import("@/gateway/node-client-registry")
+    const policy = resolveNodeClientPolicy(config)
+    const stats = await getNodeClientRegistry().getStats()
+
+    if (stats.active > 0 && !policy.enabled) {
+      findings.push({
+        severity: "warning",
+        code: "node_client_state_present_but_feature_disabled",
+        message: `There are ${stats.active} active paired nodes while gateway.nodeClient.enabled is false.`,
+        remediation: "Reconcile state: either enable nodeClient policy or revoke stale paired nodes.",
+      })
+    }
+
+    if (stats.active > policy.maxPairedNodes) {
+      findings.push({
+        severity: "error",
+        code: "node_client_active_nodes_exceed_limit",
+        message: `Active paired nodes (${stats.active}) exceed maxPairedNodes (${policy.maxPairedNodes}).`,
+        remediation: "Revoke unused nodes or increase maxPairedNodes after explicit risk review.",
+      })
+    }
+
+    if (stats.active > 0 && policy.securityMode === "full") {
+      findings.push({
+        severity: "error",
+        code: "node_client_active_nodes_with_full_mode",
+        message: `There are ${stats.active} active nodes while securityMode=full.`,
+        remediation: "Move to allowlist mode and rotate pair tokens after policy downgrade.",
+      })
+    }
+  } catch (error) {
+    findings.push({
+      severity: "warning",
+      code: "node_client_deep_audit_unavailable",
+      message: `Deep node-client audit could not load registry state: ${error instanceof Error ? error.message : String(error)}`,
+      remediation: "Ensure state directory is readable and retry `zee security audit --deep`.",
+    })
+  }
+
+  return summarizeFindings(checked, findings)
 }

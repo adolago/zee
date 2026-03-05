@@ -1,11 +1,12 @@
 import type { Argv } from "yargs"
 import { Config } from "../../config/config"
-import { CONTROL_UI_BREAK_GLASS_ACK, auditControlUiSecurity } from "@/security"
+import { CONTROL_UI_BREAK_GLASS_ACK, auditControlUiSecurity, auditControlUiSecurityDeep } from "@/security"
 import { cmd } from "./cmd"
 
 type SecurityAuditArgs = {
   json?: boolean
   strict?: boolean
+  deep?: boolean
 }
 
 const SecurityAuditCommand = cmd({
@@ -22,10 +23,15 @@ const SecurityAuditCommand = cmd({
         type: "boolean",
         default: false,
         describe: "exit with code 1 when errors are present",
+      })
+      .option("deep", {
+        type: "boolean",
+        default: false,
+        describe: "include deep checks (paired node exposure/state)",
       }),
   handler: async (args: SecurityAuditArgs) => {
     const config = await Config.get()
-    const report = auditControlUiSecurity(config)
+    const report = args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
 
     if (args.json) {
       console.log(JSON.stringify(report, null, 2))
