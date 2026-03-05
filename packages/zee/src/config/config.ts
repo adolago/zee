@@ -1129,9 +1129,32 @@ export namespace Config {
       ref: "GatewayControlUiConfig",
     })
 
+  export const GatewayChannelActionPack = z
+    .object({
+      enabled: z.boolean().optional().default(true).describe("Enable this channel action pack"),
+      messageActions: z.boolean().optional().default(true).describe("Enable message actions for the channel"),
+      moderationActions: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Enable moderation-safe actions for the channel"),
+      metadataActions: z.boolean().optional().default(true).describe("Enable metadata/status actions for the channel"),
+    })
+    .strict()
+    .meta({
+      ref: "GatewayChannelActionPackConfig",
+    })
+
   export const Gateway = z
     .object({
       controlUi: GatewayControlUi.optional().describe("Control UI security settings"),
+      actionPacks: z
+        .object({
+          telegram: GatewayChannelActionPack.optional(),
+        })
+        .catchall(GatewayChannelActionPack)
+        .optional()
+        .describe("Per-channel action pack policy controls"),
       authRateLimit: z
         .object({
           enabled: z.boolean().optional(),

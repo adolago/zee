@@ -353,6 +353,26 @@ export class TelegramPlatformHandler implements MessagingPlatformHandler {
     })
   }
 
+  async getChatMetadata(targetRaw: string): Promise<Record<string, unknown>> {
+    const target = parseTelegramTarget(targetRaw)
+    const result = await this.callJson<Record<string, unknown>>("getChat", {
+      chat_id: target.chatId,
+    })
+    return result
+  }
+
+  async deleteMessage(targetRaw: string, messageIdRaw: string | number): Promise<void> {
+    const target = parseTelegramTarget(targetRaw)
+    const messageId = Number(typeof messageIdRaw === "string" ? messageIdRaw.trim() : messageIdRaw)
+    if (!Number.isFinite(messageId)) {
+      throw new Error(`Invalid Telegram message id: ${messageIdRaw}`)
+    }
+    await this.callJson("deleteMessage", {
+      chat_id: target.chatId,
+      message_id: messageId,
+    })
+  }
+
   async startStreamingMessage(targetRaw: string, text: string): Promise<TelegramStreamHandle> {
     const target = parseTelegramTarget(targetRaw)
     const response = await this.sendWithMarkdown<{ message_id?: number }>("sendMessage", {

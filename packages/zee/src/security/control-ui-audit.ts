@@ -52,6 +52,10 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
     "gateway.controlUi.auth.allowInsecureHttp",
     "gateway.controlUi.auth.breakGlassAck",
     "gateway.controlUi.trustedOrigins",
+    "gateway.actionPacks.telegram.enabled",
+    "gateway.actionPacks.telegram.messageActions",
+    "gateway.actionPacks.telegram.moderationActions",
+    "gateway.actionPacks.telegram.metadataActions",
     "server.hostname",
   ]
 
@@ -60,6 +64,8 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
   const gateway = asObject(root.gateway) ?? {}
   const controlUi = asObject(gateway.controlUi) ?? {}
   const auth = asObject(controlUi.auth) ?? {}
+  const actionPacks = asObject(gateway.actionPacks) ?? {}
+  const telegramActionPack = asObject(actionPacks.telegram) ?? {}
 
   const hostname = typeof server.hostname === "string" && server.hostname.trim().length > 0 ? server.hostname : "127.0.0.1"
   const nonLoopbackBind = !isLoopbackHostname(hostname)
@@ -73,6 +79,11 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
   const trustedOrigins = Array.isArray(controlUi.trustedOrigins)
     ? controlUi.trustedOrigins.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
     : []
+  const telegramActionPackEnabled = resolveBool(telegramActionPack.enabled, true)
+  const telegramMessageActions = resolveBool(telegramActionPack.messageActions, true)
+  const telegramModerationActions = resolveBool(telegramActionPack.moderationActions, false)
+  const telegramMetadataActions = resolveBool(telegramActionPack.metadataActions, true)
+  const telegramAnyActionEnabled = telegramActionPackEnabled && (telegramMessageActions || telegramModerationActions || telegramMetadataActions)
 
   const authDisabled = required === false || mode === "none"
   const passwordDowngrade = mode === "password" || allowPasswordOnly
@@ -133,6 +144,33 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
       code: "control_ui_non_loopback_without_trusted_origins",
       message: `Server hostname is non-loopback (${hostname}) but gateway.controlUi.trustedOrigins is empty.`,
       remediation: "Set explicit trusted origins and enforce TLS at the reverse proxy.",
+    })
+  }
+
+  if (telegramAnyActionEnabled && authDisabled) {
+    findings.push({
+      severity: "error",
+      code: "telegram_action_pack_with_disabled_control_ui_auth",
+      message: "Telegram action pack is enabled while Control UI auth is disabled.",
+      remediation: "Re-enable Control UI auth before exposing Telegram action endpoints.",
+    })
+  }
+
+  if (telegramModerationActions && !required) {
+    findings.push({
+      severity: "error",
+      code: "telegram_moderation_actions_without_required_auth",
+      message: "Telegram moderation actions are enabled while Control UI auth `required` is false.",
+      remediation: "Set gateway.controlUi.auth.required=true or disable telegram moderation actions.",
+    })
+  }
+
+  if (telegramAnyActionEnabled && nonLoopbackBind && trustedOrigins.length === 0) {
+    findings.push({
+      severity: "warning",
+      code: "telegram_action_pack_non_loopback_without_trusted_origins",
+      message: `Telegram action pack is enabled on non-loopback hostname (${hostname}) without trusted origins.`,
+      remediation: "Configure trusted origins and TLS before exposing action endpoints externally.",
     })
   }
 

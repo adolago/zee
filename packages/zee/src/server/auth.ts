@@ -37,6 +37,9 @@ const ROUTE_SCOPE_MAP: Record<string, AuthScopeValue> = {
   // Write operations
   "POST /session": AuthScope.WRITE,
   "DELETE /session": AuthScope.WRITE,
+  "POST /gateway/telegram/metadata": AuthScope.READ,
+  "POST /gateway/telegram/send": AuthScope.WRITE,
+  "POST /gateway/telegram/moderation": AuthScope.ADMIN,
   "POST /gateway": AuthScope.WRITE,
   "POST /memory/store": AuthScope.WRITE,
   "POST /memory/batch": AuthScope.WRITE,
