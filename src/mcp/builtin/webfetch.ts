@@ -48,7 +48,7 @@ Usage:
       const timeout = Math.min((params.timeout ?? DEFAULT_TIMEOUT / 1000) * 1000, MAX_TIMEOUT);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      const timeoutId = setTimeout(controller.abort.bind(controller), timeout);
 
       // Build Accept header based on format
       let acceptHeader = '*/*';

@@ -171,7 +171,7 @@ export class QdrantVectorStorage implements VectorStorage {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+      const timeoutId = setTimeout(controller.abort.bind(controller), this.timeoutMs);
       let response: Response;
       try {
         response = await fetch(url, {

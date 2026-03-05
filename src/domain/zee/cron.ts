@@ -142,7 +142,7 @@ async function callGatewayRpc<T = unknown>(
   const url = `${baseUrl}/rpc`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeoutId = setTimeout(controller.abort.bind(controller), timeout);
 
   try {
     const response = await fetch(url, {

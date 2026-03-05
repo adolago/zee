@@ -8,6 +8,7 @@ import { Log } from "../../util/log"
 import { Fallback } from "../../provider/fallback"
 import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
+import { bindAbortRelay } from "../../util/net"
 
 const log = Log.create({ service: "server:llm" })
 
@@ -379,7 +380,7 @@ export const LlmRoute = new Hono().post(
     const abortController = new AbortController()
     const requestAbort = c.req.raw.signal
     if (requestAbort?.aborted) abortController.abort()
-    requestAbort?.addEventListener("abort", () => abortController.abort(), { once: true })
+    requestAbort?.addEventListener("abort", bindAbortRelay(abortController), { once: true })
 
     return streamSSE(c, async (stream) => {
       FluxRecorder.record({

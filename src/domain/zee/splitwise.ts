@@ -248,7 +248,7 @@ export async function callSplitwiseApi(
 
   const timeoutMs = request.timeoutMs ?? config.timeoutMs ?? 15000;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(controller.abort.bind(controller), timeoutMs);
 
   let response: Response;
   try {
