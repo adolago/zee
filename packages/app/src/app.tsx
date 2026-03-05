@@ -119,8 +119,13 @@ export function AppInterface(props: { defaultUrl?: string }) {
     if (props.defaultUrl) return props.defaultUrl
     if (stored) return stored
     if (["zee-bot.com"].some((domain) => location.hostname.includes(domain))) return "http://localhost:4096"
-    if (import.meta.env.DEV)
-      return `http://${import.meta.env.VITE_ZEE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_ZEE_SERVER_PORT ?? "4096"}`
+    if (import.meta.env.DEV) {
+      const basePathRaw = import.meta.env.VITE_ZEE_SERVER_BASE_PATH ?? ""
+      const normalizedBasePath = basePathRaw.trim()
+        ? `/${basePathRaw.replace(/^\/+|\/+$/g, "")}`
+        : ""
+      return `http://${import.meta.env.VITE_ZEE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_ZEE_SERVER_PORT ?? "4096"}${normalizedBasePath}`
+    }
 
     return window.location.origin
   }

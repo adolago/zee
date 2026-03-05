@@ -35,6 +35,7 @@ describe("zee web command helpers", () => {
       origin: "http://localhost:3210",
       hostForEnv: "localhost",
       port: 3210,
+      basePath: "/api",
     })
   })
 
@@ -42,6 +43,7 @@ describe("zee web command helpers", () => {
     const target = resolveWebBackendTarget("http://[::1]:3210")
     expect(target.hostForEnv).toBe("[::1]")
     expect(target.port).toBe(3210)
+    expect(target.basePath).toBe("")
   })
 
   test("resolveWebBackendTarget rejects https backend URLs", () => {
