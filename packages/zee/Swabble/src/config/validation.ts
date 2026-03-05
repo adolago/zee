@@ -1,7 +1,11 @@
 type CompatConfig = {
+  supportsStore?: boolean;
+  supportsDeveloperRole?: boolean;
+  supportsReasoningEffort?: boolean;
   supportsUsageInStreaming?: boolean;
   supportsStrictMode?: boolean;
-  thinkingFormat?: string;
+  maxTokensField?: "max_completion_tokens" | "max_tokens";
+  thinkingFormat?: "openai" | "zai" | "qwen";
   requiresToolResultName?: boolean;
   requiresAssistantAfterToolResult?: boolean;
   requiresThinkingAsText?: boolean;
@@ -24,6 +28,9 @@ function validateCompat(compat: unknown, path: string, errors: string[]): void {
   }
 
   const booleanKeys: Array<keyof CompatConfig> = [
+    "supportsStore",
+    "supportsDeveloperRole",
+    "supportsReasoningEffort",
     "supportsUsageInStreaming",
     "supportsStrictMode",
     "requiresToolResultName",
@@ -39,8 +46,21 @@ function validateCompat(compat: unknown, path: string, errors: string[]): void {
     }
   }
 
-  if (compat.thinkingFormat !== undefined && typeof compat.thinkingFormat !== "string") {
-    errors.push(`${path}.thinkingFormat must be a string`);
+  if (
+    compat.maxTokensField !== undefined &&
+    compat.maxTokensField !== "max_completion_tokens" &&
+    compat.maxTokensField !== "max_tokens"
+  ) {
+    errors.push(`${path}.maxTokensField must be one of: max_completion_tokens, max_tokens`);
+  }
+
+  if (
+    compat.thinkingFormat !== undefined &&
+    compat.thinkingFormat !== "openai" &&
+    compat.thinkingFormat !== "zai" &&
+    compat.thinkingFormat !== "qwen"
+  ) {
+    errors.push(`${path}.thinkingFormat must be one of: openai, zai, qwen`);
   }
 }
 
@@ -70,4 +90,3 @@ export function validateConfigObject(config: unknown): ValidationResult {
 
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
-
