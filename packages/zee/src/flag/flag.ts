@@ -79,8 +79,9 @@ function computeFlags() {
     ZEE_SESSION_CONTROL: truthy("ZEE_SESSION_CONTROL"),
 
     // Models
-    ZEE_MODELS_URL: env("ZEE_MODELS_URL"),
-    ZEE_MODELS_PATH: env("ZEE_MODELS_PATH"),
+    // AGENT_CORE_* aliases are accepted for upstream config parity.
+    ZEE_MODELS_URL: env("ZEE_MODELS_URL") ?? env("AGENT_CORE_MODELS_URL"),
+    ZEE_MODELS_PATH: env("ZEE_MODELS_PATH") ?? env("AGENT_CORE_MODELS_PATH"),
     ZEE_DISABLE_MODELS_FETCH: truthy("ZEE_DISABLE_MODELS_FETCH"),
 
     // Testing
