@@ -69,7 +69,7 @@ export namespace Global {
       return path.join(os.tmpdir(), app)
     },
     get modelsDevUrl() {
-      return process.env.ZEE_MODELS_URL || "https://models.dev"
+      return process.env.ZEE_MODELS_URL || process.env.AGENT_CORE_MODELS_URL || "https://models.dev"
     },
   }
 }

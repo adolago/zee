@@ -27,11 +27,23 @@ export namespace ModelsDev {
   }
 
   function getUrl() {
-    return process.env.ZEE_MODELS_URL || Flag.ZEE_MODELS_URL || configuredUrl || "https://models.dev"
+    return (
+      process.env.ZEE_MODELS_URL ||
+      process.env.AGENT_CORE_MODELS_URL ||
+      Flag.ZEE_MODELS_URL ||
+      configuredUrl ||
+      "https://models.dev"
+    )
   }
 
   function getPath() {
-    return process.env.ZEE_MODELS_PATH || Flag.ZEE_MODELS_PATH || configuredPath || getFilepath()
+    return (
+      process.env.ZEE_MODELS_PATH ||
+      process.env.AGENT_CORE_MODELS_PATH ||
+      Flag.ZEE_MODELS_PATH ||
+      configuredPath ||
+      getFilepath()
+    )
   }
 
   export const Model = z.object({
