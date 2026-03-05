@@ -425,4 +425,22 @@ describe("bug fixes", () => {
     })
     expect(result).toBeUndefined()
   })
+
+  test("bug 6: executeJob respects deleteAfterRun for recurring jobs", async () => {
+    const state = makeState({
+      nowMs: () => 1000,
+      runIsolatedAgentJob: async () => ({ status: "ok", summary: "done" }),
+    })
+    const job = makeJob({
+      schedule: { kind: "every", everyMs: 60_000 },
+      deleteAfterRun: true,
+    })
+    state.store = { version: 1, jobs: [job] } as CronStoreFile
+
+    await executeJob(state, job, 1000, { forced: false })
+
+    expect(job.state.lastStatus).toBe("ok")
+    expect(job.state.nextRunAtMs).toBeUndefined()
+    expect(state.store.jobs).toHaveLength(0)
+  })
 })
