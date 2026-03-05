@@ -115,4 +115,30 @@ describe("auth rate limiter", () => {
     // Cleanup runs during checks.
     expect(checkGatewayAuthRateLimit({ cfg, ip: "10.0.0.2" }).limited).toBe(true);
   });
+
+  it("prunes expired entries when at capacity instead of clearing active state", () => {
+    let now = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    __testing.setTrackMaxEntries(3);
+    const cfg = {
+      enabled: true,
+      windowMs: 1_000,
+      maxAttemptsPerIp: 100,
+      maxAttemptsPerToken: 100,
+      lockoutMs: 1_000,
+    };
+
+    expect(recordGatewayAuthFailure({ cfg, ip: "10.0.0.1" }).limited).toBe(false);
+
+    now = 2_000;
+    expect(recordGatewayAuthFailure({ cfg, ip: "10.0.0.2" }).limited).toBe(false);
+    expect(recordGatewayAuthFailure({ cfg, ip: "10.0.0.3" }).limited).toBe(false);
+    expect(recordGatewayAuthFailure({ cfg, ip: "10.0.0.4" }).limited).toBe(false);
+
+    const keys = __testing.snapshot().map((entry) => entry.key);
+    expect(keys).not.toContain("ip:10.0.0.1");
+    expect(keys).toContain("ip:10.0.0.2");
+    expect(keys).toContain("ip:10.0.0.3");
+    expect(keys).toContain("ip:10.0.0.4");
+  });
 });
