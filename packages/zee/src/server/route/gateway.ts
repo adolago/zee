@@ -2,15 +2,17 @@ import { Hono } from "hono"
 import { describeRoute, resolver } from "hono-openapi"
 import { z } from "zod"
 import { Log } from "../../util/log"
-import { formatForSurface, WHATSAPP_CAPABILITIES } from "../../surface/types"
+import { formatForSurface, TELEGRAM_CAPABILITIES, WHATSAPP_CAPABILITIES } from "../../surface/types"
 import type { SurfaceCapabilities } from "../../surface/types"
 import { readZeeGatewayTokenFromFile } from "@/gateway/token"
 import { GatewayWsClient } from "@/gateway/ws-client"
 import { sendWhatsAppMessage } from "@root/domain/zee/whatsapp-send"
 import { emitInboundMessage, toPlatformMessage, type ForwardedMessage } from "../../surface/platforms/whatsapp"
+import { TelegramPlatformHandler } from "../../surface/platforms/telegram"
 import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
 import { extractGatewayRouteSecret, isMatchingSecret } from "@/security"
+import { Config } from "@/config/config"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -30,6 +32,26 @@ const WhatsAppSendInput = z.object({
   mediaUrls: z.array(z.string()).optional(),
   gifPlayback: z.boolean().optional(),
   accountId: z.string().optional(),
+})
+
+const TelegramSendInput = z.object({
+  chatId: z.union([z.string(), z.number()]).optional(),
+  to: z.union([z.string(), z.number()]).optional(),
+  message: z.string(),
+  replyToId: z.string().optional(),
+  mediaUrl: z.string().optional(),
+  mediaUrls: z.array(z.string()).optional(),
+})
+
+const TelegramMetadataInput = z.object({
+  chatId: z.union([z.string(), z.number()]).optional(),
+  to: z.union([z.string(), z.number()]).optional(),
+})
+
+const TelegramModerationDeleteInput = z.object({
+  chatId: z.union([z.string(), z.number()]).optional(),
+  to: z.union([z.string(), z.number()]).optional(),
+  messageId: z.union([z.string(), z.number()]),
 })
 
 const WhatsAppInboundInput = z.object({
@@ -102,6 +124,94 @@ function normalizeWhatsAppRecipient(raw: string): string {
   if (waMatch?.[1]) return waMatch[1]
 
   return withoutPrefix
+}
+
+type TelegramActionCategory = "messageActions" | "moderationActions" | "metadataActions"
+
+type TelegramActionPackPolicy = {
+  enabled: boolean
+  messageActions: boolean
+  moderationActions: boolean
+  metadataActions: boolean
+}
+
+const DEFAULT_TELEGRAM_ACTION_PACK_POLICY: TelegramActionPackPolicy = {
+  enabled: true,
+  messageActions: true,
+  moderationActions: false,
+  metadataActions: true,
+}
+
+function resolveBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback
+}
+
+function resolveTelegramTarget(chatIdOrTo: string | number | undefined): string {
+  if (chatIdOrTo === undefined || chatIdOrTo === null) {
+    throw new Error('Missing "chatId" (or "to")')
+  }
+  const target = String(chatIdOrTo).trim()
+  if (!target) throw new Error('Missing "chatId" (or "to")')
+  return target
+}
+
+async function resolveTelegramActionPackPolicy(): Promise<TelegramActionPackPolicy> {
+  const config = await Config.get().catch(() => undefined)
+  const gateway =
+    config && typeof config.gateway === "object" && config.gateway && !Array.isArray(config.gateway)
+      ? (config.gateway as Record<string, unknown>)
+      : {}
+  const actionPacks =
+    typeof gateway.actionPacks === "object" && gateway.actionPacks && !Array.isArray(gateway.actionPacks)
+      ? (gateway.actionPacks as Record<string, unknown>)
+      : {}
+  const telegram =
+    typeof actionPacks.telegram === "object" && actionPacks.telegram && !Array.isArray(actionPacks.telegram)
+      ? (actionPacks.telegram as Record<string, unknown>)
+      : {}
+
+  return {
+    enabled: resolveBoolean(telegram.enabled, DEFAULT_TELEGRAM_ACTION_PACK_POLICY.enabled),
+    messageActions: resolveBoolean(telegram.messageActions, DEFAULT_TELEGRAM_ACTION_PACK_POLICY.messageActions),
+    moderationActions: resolveBoolean(telegram.moderationActions, DEFAULT_TELEGRAM_ACTION_PACK_POLICY.moderationActions),
+    metadataActions: resolveBoolean(telegram.metadataActions, DEFAULT_TELEGRAM_ACTION_PACK_POLICY.metadataActions),
+  }
+}
+
+async function enforceTelegramActionPolicy(
+  category: TelegramActionCategory,
+): Promise<{ allowed: true } | { allowed: false; reason: string }> {
+  const policy = await resolveTelegramActionPackPolicy()
+  if (!policy.enabled) {
+    return { allowed: false, reason: "Telegram action pack is disabled by policy." }
+  }
+  if (!policy[category]) {
+    return { allowed: false, reason: `Telegram ${category} is disabled by policy.` }
+  }
+  return { allowed: true }
+}
+
+async function createTelegramPlatformHandler(): Promise<TelegramPlatformHandler> {
+  const config = await Config.get().catch(() => undefined)
+  const telegramSurface = config?.experimental?.surfaces?.telegram
+  const tokenFromConfig = typeof telegramSurface?.token === "string" ? telegramSurface.token.trim() : ""
+  const tokenFromEnv = process.env.TELEGRAM_BOT_TOKEN?.trim() ?? ""
+  const token = tokenFromConfig || tokenFromEnv
+  if (!token) {
+    throw new Error("Telegram bot token is not configured (set experimental.surfaces.telegram.token or TELEGRAM_BOT_TOKEN).")
+  }
+
+  const allowedChatIds = Array.isArray(telegramSurface?.allowedChatIds)
+    ? telegramSurface.allowedChatIds.filter((entry): entry is string | number => typeof entry === "string" || typeof entry === "number")
+    : undefined
+
+  return new TelegramPlatformHandler({
+    token,
+    apiBaseUrl: typeof telegramSurface?.apiBaseUrl === "string" ? telegramSurface.apiBaseUrl : undefined,
+    pollTimeoutSec: typeof telegramSurface?.pollTimeoutSec === "number" ? telegramSurface.pollTimeoutSec : undefined,
+    allowedChatIds,
+    mediaMaxMb: typeof telegramSurface?.mediaMaxMb === "number" ? telegramSurface.mediaMaxMb : undefined,
+  })
 }
 
 async function buildGatewayConnectParams() {
@@ -202,10 +312,11 @@ async function callGateway<T = unknown>(
 
 const PLATFORM_CAPABILITIES: Record<string, SurfaceCapabilities> = {
   whatsapp: WHATSAPP_CAPABILITIES,
+  telegram: TELEGRAM_CAPABILITIES,
 }
 
 async function sendViaGateway(input: {
-  provider: "whatsapp"
+  provider: "whatsapp" | "telegram"
   to: string
   message: string
   accountId?: string
@@ -259,6 +370,9 @@ async function sendViaGateway(input: {
     }
     return lastResult
   } catch (error) {
+    if (input.provider !== "whatsapp") {
+      throw error
+    }
     // Fallback to direct wacli send when embedded gateway runtime is unavailable.
     const message = error instanceof Error ? error.message : String(error)
     log.warn("gateway send failed; falling back to wacli", {
@@ -495,6 +609,201 @@ export const GatewayRoute = new Hono()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         log.warn("whatsapp send failed", { error: message })
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+
+  .post(
+    "/telegram/send",
+    describeRoute({
+      summary: "Send Telegram message (channel-native action)",
+      description: "Send a Telegram message via the Telegram action pack with policy checks.",
+      operationId: "gateway.telegram.send",
+      responses: {
+        200: {
+          description: "Send result",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        400: {
+          description: "Invalid request",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        403: {
+          description: "Policy denied",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Server error",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+      },
+    }),
+    async (c) => {
+      const policy = await enforceTelegramActionPolicy("messageActions")
+      if (!policy.allowed) {
+        return c.json({ success: false, error: policy.reason } satisfies GatewayResponse, 403)
+      }
+
+      let body: unknown
+      try {
+        body = await c.req.json()
+      } catch {
+        return c.json({ success: false, error: "Invalid JSON body" } satisfies GatewayResponse, 400)
+      }
+
+      const parsed = TelegramSendInput.safeParse(body)
+      if (!parsed.success) {
+        return c.json({ success: false, error: "Invalid request body" } satisfies GatewayResponse, 400)
+      }
+
+      try {
+        const target = resolveTelegramTarget(parsed.data.chatId ?? parsed.data.to)
+        const handler = await createTelegramPlatformHandler()
+        const mediaUrls = parsed.data.mediaUrls?.length
+          ? parsed.data.mediaUrls
+          : parsed.data.mediaUrl
+            ? [parsed.data.mediaUrl]
+            : []
+        const media = mediaUrls.map((url, index) => ({
+          path: url,
+          filename: `telegram-media-${index + 1}`,
+        }))
+        await handler.sendMessage(target, parsed.data.message, {
+          replyToId: parsed.data.replyToId,
+          ...(media.length > 0 ? { media } : {}),
+        })
+        return c.json({
+          success: true,
+          data: {
+            channel: "telegram",
+            action: "send",
+            target,
+          },
+        } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn("telegram send failed", { error: message })
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+
+  .post(
+    "/telegram/metadata/chat",
+    describeRoute({
+      summary: "Fetch Telegram chat metadata (channel-native action)",
+      description: "Fetch Telegram chat metadata via the Telegram action pack with policy checks.",
+      operationId: "gateway.telegram.metadata.chat",
+      responses: {
+        200: {
+          description: "Metadata result",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        400: {
+          description: "Invalid request",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        403: {
+          description: "Policy denied",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Server error",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+      },
+    }),
+    async (c) => {
+      const policy = await enforceTelegramActionPolicy("metadataActions")
+      if (!policy.allowed) {
+        return c.json({ success: false, error: policy.reason } satisfies GatewayResponse, 403)
+      }
+
+      let body: unknown
+      try {
+        body = await c.req.json()
+      } catch {
+        return c.json({ success: false, error: "Invalid JSON body" } satisfies GatewayResponse, 400)
+      }
+
+      const parsed = TelegramMetadataInput.safeParse(body)
+      if (!parsed.success) {
+        return c.json({ success: false, error: "Invalid request body" } satisfies GatewayResponse, 400)
+      }
+
+      try {
+        const target = resolveTelegramTarget(parsed.data.chatId ?? parsed.data.to)
+        const handler = await createTelegramPlatformHandler()
+        const data = await handler.getChatMetadata(target)
+        return c.json({ success: true, data } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn("telegram metadata failed", { error: message })
+        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
+      }
+    },
+  )
+
+  .post(
+    "/telegram/moderation/delete",
+    describeRoute({
+      summary: "Delete Telegram message (moderation-safe action)",
+      description: "Delete a Telegram message using policy-gated moderation actions.",
+      operationId: "gateway.telegram.moderation.delete",
+      responses: {
+        200: {
+          description: "Delete result",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        400: {
+          description: "Invalid request",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        403: {
+          description: "Policy denied",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+        500: {
+          description: "Server error",
+          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
+        },
+      },
+    }),
+    async (c) => {
+      const policy = await enforceTelegramActionPolicy("moderationActions")
+      if (!policy.allowed) {
+        return c.json({ success: false, error: policy.reason } satisfies GatewayResponse, 403)
+      }
+
+      let body: unknown
+      try {
+        body = await c.req.json()
+      } catch {
+        return c.json({ success: false, error: "Invalid JSON body" } satisfies GatewayResponse, 400)
+      }
+
+      const parsed = TelegramModerationDeleteInput.safeParse(body)
+      if (!parsed.success) {
+        return c.json({ success: false, error: "Invalid request body" } satisfies GatewayResponse, 400)
+      }
+
+      try {
+        const target = resolveTelegramTarget(parsed.data.chatId ?? parsed.data.to)
+        const handler = await createTelegramPlatformHandler()
+        await handler.deleteMessage(target, parsed.data.messageId)
+        return c.json({
+          success: true,
+          data: {
+            channel: "telegram",
+            action: "moderation.delete",
+            target,
+            messageId: String(parsed.data.messageId),
+          },
+        } satisfies GatewayResponse)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        log.warn("telegram moderation delete failed", { error: message })
         return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
       }
     },

@@ -85,3 +85,39 @@ zee doctor security
 ```
 
 For non-loopback deployments, terminate TLS at a reverse proxy and keep `trustedOrigins` explicit.
+
+## Telegram Channel-Native Action Pack
+
+Zee now ships a non-WhatsApp channel-native action pack for Telegram with per-category policy toggles:
+
+- `gateway.actionPacks.telegram.messageActions`
+- `gateway.actionPacks.telegram.metadataActions`
+- `gateway.actionPacks.telegram.moderationActions`
+
+Example policy config:
+
+```jsonc
+{
+  "gateway": {
+    "actionPacks": {
+      "telegram": {
+        "enabled": true,
+        "messageActions": true,
+        "metadataActions": true,
+        "moderationActions": false
+      }
+    }
+  }
+}
+```
+
+Action endpoints:
+
+- `POST /gateway/telegram/send`
+- `POST /gateway/telegram/metadata/chat`
+- `POST /gateway/telegram/moderation/delete`
+
+Security notes:
+
+- moderation actions are intended for tightly controlled operator use.
+- run `zee security audit` or `zee doctor security` to surface risky action-pack exposures.

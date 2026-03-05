@@ -21,7 +21,18 @@ export type GatewayControlUiConfig = {
   trustedOrigins?: string[];
 };
 
+export type GatewayChannelActionPackConfig = {
+  enabled?: boolean;
+  messageActions?: boolean;
+  moderationActions?: boolean;
+  metadataActions?: boolean;
+};
+
 export type GatewayConfig = {
   controlUi?: GatewayControlUiConfig;
+  actionPacks?: {
+    telegram?: GatewayChannelActionPackConfig;
+    [channel: string]: GatewayChannelActionPackConfig | undefined;
+  };
   authRateLimit?: GatewayAuthRateLimitConfig;
 };
