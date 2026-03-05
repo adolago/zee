@@ -37,12 +37,9 @@ export class ConsoleTransport implements ITransport {
 
     const output = this.formatter.format(entry)
 
-    // Use stderr for errors, stdout for everything else
-    if (entry.level === "error" || entry.level === "fatal") {
-      console.error(output)
-    } else {
-      console.log(output)
-    }
+    // Route all logger output to stderr so stdout stays machine-readable
+    // (for example: shell completion script generation and JSON outputs).
+    console.error(output)
   }
 
   async flush(): Promise<void> {
