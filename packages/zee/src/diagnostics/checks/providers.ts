@@ -49,7 +49,7 @@ async function checkInternetConnectivity(): Promise<CheckResult> {
   for (const url of testUrls) {
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
+      const timeout = setTimeout(controller.abort.bind(controller), 5000)
       const response = await fetch(url, { method: "HEAD", signal: controller.signal })
       clearTimeout(timeout)
 
@@ -121,7 +121,7 @@ async function checkProvider(provider: ProviderConfig): Promise<CheckResult> {
 
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), provider.timeout)
+    const timeout = setTimeout(controller.abort.bind(controller), provider.timeout)
     const response = await fetch(provider.endpoint, { method: "HEAD", signal: controller.signal })
     clearTimeout(timeout)
     const latency = Date.now() - start
@@ -161,7 +161,7 @@ async function checkOllama(): Promise<CheckResult> {
 
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
+    const timeout = setTimeout(controller.abort.bind(controller), 3000)
     const response = await fetch(ollamaUrl, { signal: controller.signal })
     clearTimeout(timeout)
     const latency = Date.now() - start

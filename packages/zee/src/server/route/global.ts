@@ -172,7 +172,7 @@ export const GlobalRoute = new Hono()
       let internet: "ok" | "fail" | "checking" = "checking"
       try {
         const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 3000)
+        const timeout = setTimeout(controller.abort.bind(controller), 3000)
         const response = await fetch("https://cloudflare.com/cdn-cgi/trace", {
           method: "HEAD",
           signal: controller.signal,

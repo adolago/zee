@@ -10,6 +10,14 @@ import { parseHttpTarget } from "@/security"
 
 const log = Log.create({ service: "net-util" })
 
+function relayAbort(this: AbortController): void {
+  this.abort()
+}
+
+export function bindAbortRelay(controller: AbortController): () => void {
+  return relayAbort.bind(controller)
+}
+
 /**
  * Fetch with timeout using AbortController
  *
@@ -24,7 +32,7 @@ export async function fetchWithTimeout(
   timeoutMs: number = 10000,
 ): Promise<Response | null> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  const timeoutId = setTimeout(controller.abort.bind(controller), timeoutMs)
 
   try {
     const response = await fetch(url, {

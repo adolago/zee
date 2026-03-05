@@ -704,7 +704,7 @@ export class TelegramPlatformHandler implements MessagingPlatformHandler {
   ): Promise<T> {
     const url = `${this.apiBaseUrl}/bot${this.token}/${method}`
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? 30_000)
+    const timeout = setTimeout(controller.abort.bind(controller), options?.timeoutMs ?? 30_000)
     const signal = options?.signal
       ? AbortSignal.any([controller.signal, options.signal])
       : controller.signal
