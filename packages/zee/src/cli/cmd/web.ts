@@ -24,6 +24,7 @@ type BackendTarget = {
   origin: string
   hostForEnv: string
   port: number
+  basePath: string
 }
 
 export function resolveWebBackendUrl(input: { serverUrl?: unknown; env?: NodeJS.ProcessEnv } = {}): string {
@@ -47,10 +48,13 @@ export function resolveWebBackendTarget(rawUrl: string): BackendTarget {
   const port = url.port ? Number(url.port) : 80
   const normalizedHostname = url.hostname.replace(/^\[(.*)\]$/, "$1")
   const hostForEnv = normalizedHostname.includes(":") ? `[${normalizedHostname}]` : normalizedHostname
+  const pathname = url.pathname.replace(/\/+$/, "")
+  const basePath = pathname && pathname !== "/" ? pathname : ""
   return {
     origin: url.origin,
     hostForEnv,
     port,
+    basePath,
   }
 }
 
@@ -157,6 +161,7 @@ export const WebCommand = cmd({
         ...process.env,
         VITE_ZEE_SERVER_HOST: backend.hostForEnv,
         VITE_ZEE_SERVER_PORT: String(backend.port),
+        VITE_ZEE_SERVER_BASE_PATH: backend.basePath,
       },
       stdin: "inherit",
       stdout: "inherit",
