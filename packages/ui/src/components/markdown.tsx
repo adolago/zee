@@ -27,9 +27,10 @@ if (typeof window !== "undefined" && DOMPurify.isSupported) {
   })
 }
 
-const config = {
+export const markdownSanitizeConfig = {
   USE_PROFILES: { html: true, mathMl: true },
   SANITIZE_NAMED_PROPS: true,
+  ADD_TAGS: ["img"],
   FORBID_TAGS: ["style"],
   FORBID_CONTENTS: ["style", "script"],
 }
@@ -41,7 +42,7 @@ const iconPaths = {
 
 function sanitize(html: string) {
   if (!DOMPurify.isSupported) return ""
-  return DOMPurify.sanitize(html, config)
+  return DOMPurify.sanitize(html, markdownSanitizeConfig)
 }
 
 type CopyLabels = {
