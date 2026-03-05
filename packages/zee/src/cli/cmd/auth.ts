@@ -299,6 +299,11 @@ export function resolveLocalProviderBaseUrl(host: string, port: number): string 
   return `http://${safeHost}:${port}/v1`
 }
 
+export function resolveOllamaProviderBaseUrl(host: string, port: number): string {
+  const safeHost = host.trim() || "localhost"
+  return `http://${safeHost}:${port}/api`
+}
+
 export function normalizeLocalProviderBaseUrl(input: string, fallbackPort: number): string {
   const trimmed = input.trim()
   if (!trimmed) return `http://localhost:${fallbackPort}/v1`
@@ -1174,7 +1179,8 @@ export const AuthLoginCommand = cmd({
             if (prompts.isCancel(portStr)) throw new UI.CancelledError()
 
             const port = parseInt(portStr, 10)
-            baseURL = resolveLocalProviderBaseUrl(host, port)
+            baseURL =
+              provider === "ollama" ? resolveOllamaProviderBaseUrl(host, port) : resolveLocalProviderBaseUrl(host, port)
           }
 
           // Add provider to config
