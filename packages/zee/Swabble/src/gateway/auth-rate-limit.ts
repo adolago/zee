@@ -22,6 +22,8 @@ const DEFAULT_RATE_LIMIT: ResolvedRateLimitConfig = {
 };
 
 const keyStates = new Map<string, RateLimitState>();
+const DEFAULT_TRACK_MAX_ENTRIES = 1024;
+let trackMaxEntries = DEFAULT_TRACK_MAX_ENTRIES;
 
 function resolveRateLimitConfig(
   cfg?: GatewayAuthRateLimitConfig,
@@ -71,6 +73,24 @@ function cleanupExpired(nowMs: number, cfg: ResolvedRateLimitConfig): void {
   }
 }
 
+function pruneOrEvictWhenFull(nowMs: number, cfg: ResolvedRateLimitConfig): void {
+  for (const [key, state] of keyStates.entries()) {
+    const windowExpired = nowMs - state.windowStartedAt >= cfg.windowMs;
+    if (windowExpired && state.lockUntilMs <= nowMs) {
+      keyStates.delete(key);
+    }
+  }
+
+  if (keyStates.size < trackMaxEntries) return;
+
+  let toRemove = Math.max(1, Math.floor(keyStates.size / 2));
+  for (const key of keyStates.keys()) {
+    keyStates.delete(key);
+    toRemove -= 1;
+    if (toRemove <= 0) break;
+  }
+}
+
 function checkKeyLocked(key: string, nowMs: number): number {
   const state = keyStates.get(key);
   if (!state) return 0;
@@ -86,6 +106,9 @@ function noteFailure(params: {
 }): number {
   const { key, nowMs, cfg, limit } = params;
   if (limit <= 0) return 0;
+  if (!keyStates.has(key) && keyStates.size >= trackMaxEntries) {
+    pruneOrEvictWhenFull(nowMs, cfg);
+  }
   const state = keyStates.get(key) ?? {
     failures: 0,
     windowStartedAt: nowMs,
@@ -109,6 +132,9 @@ function noteFailure(params: {
   if (state.failures >= limit) {
     state.lockUntilMs = nowMs + cfg.lockoutMs;
     state.failures = 0;
+  }
+  if (keyStates.has(key)) {
+    keyStates.delete(key);
   }
   keyStates.set(key, state);
   return state.lockUntilMs > nowMs ? state.lockUntilMs - nowMs : 0;
@@ -190,6 +216,10 @@ export function clearGatewayAuthRateLimit(params: {
 export const __testing = {
   reset(): void {
     keyStates.clear();
+    trackMaxEntries = DEFAULT_TRACK_MAX_ENTRIES;
+  },
+  setTrackMaxEntries(maxEntries: number): void {
+    trackMaxEntries = Math.max(1, Math.floor(maxEntries));
   },
   snapshot(): Array<{ key: string; value: RateLimitState }> {
     return Array.from(keyStates.entries()).map(([key, value]) => ({ key, value: { ...value } }));
