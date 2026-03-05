@@ -108,6 +108,8 @@ Unmapped commits / PR unknown (selected examples from #224):
 
 ## Lane 02: WhatsApp channel (linking, inbound, outbound, allowlists, heartbeat)
 
+Lane artifact: `docs/architecture/openclaw-lanes/lane-02-whatsapp-channel.md`.
+
 Implementation focus (Zee):
 
 - `packages/zee/Swabble/src/whatsapp`
@@ -128,6 +130,8 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#8415 | docs/feature | non-goal | iMessage/BlueBubbles scope is out for Zee today. | None |
 
 ## Lane 03: Removed channel lane (legacy messaging extensions removed from Zee)
+
+Lane artifact: `docs/architecture/openclaw-lanes/lane-03-matrix-channel.md`.
 
 Implementation focus (Zee):
 
@@ -237,6 +241,8 @@ Upstream PR triage (OpenClaw):
 
 ## Lane 08: Cron, wake and heartbeat, background jobs
 
+Lane artifact: `docs/architecture/openclaw-lanes/lane-08-cron-heartbeat-background-jobs.md`.
+
 Implementation focus (Zee):
 
 - `packages/zee/Swabble/src/cron`
@@ -257,6 +263,8 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#8392 | reliability | adapt | Cron delivery guard relevant; removed-channel forward metadata is not. | Done (already implemented: delivery-target.ts with channel/recipient validation) |
 
 ## Lane 09: Memory + indexing (OpenClaw plugins vs Zee semantic memory)
+
+Lane artifact: `docs/architecture/openclaw-lanes/lane-09-memory-indexing.md`.
 
 Implementation focus (Zee):
 
@@ -280,6 +288,8 @@ Upstream PR triage (OpenClaw):
 
 ## Lane 10: Canvas host, A2UI, live workspace surfaces
 
+Lane artifact: `docs/architecture/openclaw-lanes/lane-10-canvas-a2ui-live-workspace.md`.
+
 Implementation focus (Zee):
 
 - `packages/zee/Swabble/src/canvas-host`
@@ -302,6 +312,8 @@ Auth gating: see lane 01 (`openclaw/openclaw#9518`).
 | openclaw/openclaw#1229 | feature | adapt | Expand /v1/responses inputs; may impact adapters/tool routing. | Done (already implemented: openresponses-http.ts + open-responses.schema.ts) |
 
 ## Lane 11: Plugin and extension model (manifests, loader, tool groups, safety scanning)
+
+Lane artifact: `docs/architecture/openclaw-lanes/lane-11-plugin-extension-model.md`.
 
 Implementation focus (Zee):
 
