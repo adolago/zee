@@ -1095,6 +1095,59 @@ export namespace Config {
       ref: "ServerConfig",
     })
 
+  export const GatewayControlUiAuth = z
+    .object({
+      required: z.boolean().optional().default(true).describe("Require authentication for Control UI endpoints"),
+      mode: z
+        .enum(["token", "password", "none"])
+        .optional()
+        .default("token")
+        .describe("Control UI auth mode; `none` is dangerous break-glass mode"),
+      allowPasswordOnly: z.boolean().optional().default(false).describe("Dangerous: allow password-only Control UI auth"),
+      allowInsecureHttp: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Dangerous: allow Control UI auth over insecure HTTP"),
+      breakGlassAck: z.string().optional().describe("Break-glass acknowledgement string for dangerous auth downgrades"),
+    })
+    .strict()
+    .meta({
+      ref: "GatewayControlUiAuthConfig",
+    })
+
+  export const GatewayControlUi = z
+    .object({
+      auth: GatewayControlUiAuth.optional().describe("Control UI authentication and downgrade guardrails"),
+      trustedOrigins: z
+        .array(z.string())
+        .optional()
+        .describe("Allowlist of trusted browser origins for Control UI"),
+    })
+    .strict()
+    .meta({
+      ref: "GatewayControlUiConfig",
+    })
+
+  export const Gateway = z
+    .object({
+      controlUi: GatewayControlUi.optional().describe("Control UI security settings"),
+      authRateLimit: z
+        .object({
+          enabled: z.boolean().optional(),
+          windowMs: z.number().int().positive().optional(),
+          maxAttemptsPerIp: z.number().int().positive().optional(),
+          maxAttemptsPerToken: z.number().int().positive().optional(),
+          lockoutMs: z.number().int().positive().optional(),
+        })
+        .optional()
+        .describe("Gateway auth rate limiting configuration"),
+    })
+    .passthrough()
+    .meta({
+      ref: "GatewayConfig",
+    })
+
   export const Daemon = z
     .object({
       enabled: z.boolean().optional().default(false).describe("Enable daemon mode"),
@@ -1723,7 +1776,10 @@ export namespace Config {
         })
         .optional()
         .describe("Provider/model fallback configuration for automatic failover"),
-      gateway: z.unknown().optional(),
+      gateway: z
+        .union([Gateway, z.unknown()])
+        .optional()
+        .describe("Gateway configuration including controlUi auth guardrails"),
       channels: z.unknown().optional(),
       bridge: z.unknown().optional(),
       commands: z.unknown().optional(),

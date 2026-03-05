@@ -6,3 +6,22 @@ export type GatewayAuthRateLimitConfig = {
   lockoutMs?: number;
 };
 
+export type GatewayControlUiAuthMode = "token" | "password" | "none";
+
+export type GatewayControlUiAuthConfig = {
+  required?: boolean;
+  mode?: GatewayControlUiAuthMode;
+  allowPasswordOnly?: boolean;
+  allowInsecureHttp?: boolean;
+  breakGlassAck?: string;
+};
+
+export type GatewayControlUiConfig = {
+  auth?: GatewayControlUiAuthConfig;
+  trustedOrigins?: string[];
+};
+
+export type GatewayConfig = {
+  controlUi?: GatewayControlUiConfig;
+  authRateLimit?: GatewayAuthRateLimitConfig;
+};

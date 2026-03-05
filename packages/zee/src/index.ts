@@ -36,6 +36,7 @@ import { PackageCommand } from "./cli/cmd/package"
 import { BugReportCommand } from "./cli/cmd/bug-report"
 import { CheckCommand } from "./cli/cmd/check"
 import { DoctorCommand } from "./cli/cmd/doctor"
+import { SecurityCommand } from "./cli/cmd/security"
 import { ProviderCommand } from "./cli/cmd/provider"
 import { ReliabilityCommand } from "./cli/cmd/reliability"
 import { ClientCommand } from "./cli/cmd/client"
@@ -168,6 +169,7 @@ const cli = yargs(hideBin(process.argv))
   .command(RunCommand)
   .command(CheckCommand)
   .command(DoctorCommand)
+  .command(SecurityCommand)
   .command(GenerateCommand)
   .command(DebugCommand)
   .command(PathsCommand)
