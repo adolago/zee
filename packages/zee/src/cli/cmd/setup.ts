@@ -4,12 +4,134 @@ import { Global } from "../../global"
 import path from "path"
 import fs from "fs"
 import { Log } from "../../util/log"
+import * as prompts from "@clack/prompts"
+
+type SetupProfile = "assistant" | "engine"
+
+type SetupArgs = {
+  profile?: SetupProfile
+  "skip-profile"?: boolean
+}
+
+function buildOnboardingProfileConfig(profile: SetupProfile) {
+  const secureControlUiAuth = {
+    required: true,
+    mode: "token",
+    allowPasswordOnly: false,
+    allowInsecureHttp: false,
+  } as const
+
+  if (profile === "assistant") {
+    return {
+      $schema: "zee",
+      profile,
+      server: {
+        hostname: "127.0.0.1",
+      },
+      gateway: {
+        controlUi: {
+          auth: secureControlUiAuth,
+        },
+      },
+      experimental: {
+        surfaces: {
+          cli: { enabled: true },
+          whatsapp: { enabled: false },
+          telegram: { enabled: false },
+        },
+      },
+      memory: {
+        required: false,
+      },
+    }
+  }
+
+  return {
+    $schema: "zee",
+    profile,
+    server: {
+      hostname: "127.0.0.1",
+    },
+    gateway: {
+      controlUi: {
+        auth: secureControlUiAuth,
+      },
+    },
+  }
+}
+
+async function maybeApplyOnboardingProfile(args: SetupArgs): Promise<boolean> {
+  if (args["skip-profile"]) return true
+
+  const configPath = path.join(Global.Path.config, "zee.jsonc")
+  if (fs.existsSync(configPath)) {
+    if (args.profile) {
+      UI.warn(`Config already exists at ${configPath}; keeping existing profile settings.`)
+    } else {
+      UI.info(`Existing config detected at ${configPath}; skipping onboarding profile prompt.`)
+    }
+    return true
+  }
+
+  let profile = args.profile
+  if (!profile) {
+    const selected = await prompts.select({
+      message: "Choose onboarding profile",
+      options: [
+        {
+          value: "assistant",
+          label: "Assistant mode",
+          hint: "single-user defaults, channel-first safety posture",
+        },
+        {
+          value: "engine",
+          label: "Engine mode",
+          hint: "full multi-domain flexibility and advanced workflows",
+        },
+      ],
+      initialValue: "assistant",
+    })
+    if (prompts.isCancel(selected)) {
+      UI.warn("Setup cancelled during onboarding profile selection.")
+      process.exitCode = 1
+      return false
+    }
+    profile = selected as SetupProfile
+  }
+
+  fs.mkdirSync(Global.Path.config, { recursive: true })
+  fs.writeFileSync(configPath, JSON.stringify(buildOnboardingProfileConfig(profile), null, 2) + "\n")
+
+  UI.success(`Onboarding profile '${profile}' written to ${configPath}`)
+  if (profile === "assistant") {
+    UI.info("Assistant mode applied secure single-user defaults and disabled messaging channels by default.")
+  } else {
+    UI.info("Engine mode applied secure defaults while preserving advanced multi-domain flexibility.")
+  }
+  UI.info("Mode tradeoffs: docs/architecture/assistant-mode.md")
+  return true
+}
 
 export const SetupCommand = cmd({
   command: "setup",
-  describe: "prepare the environment (Docker, Qdrant)",
-  async handler() {
+  describe: "prepare onboarding profile and local environment (Docker, Qdrant)",
+  builder: (yargs) =>
+    yargs
+      .option("profile", {
+        type: "string",
+        choices: ["assistant", "engine"],
+        describe: "onboarding profile preset for first-time setup",
+      })
+      .option("skip-profile", {
+        type: "boolean",
+        default: false,
+        describe: "skip onboarding profile prompt/write",
+      }),
+  async handler(args: SetupArgs) {
     UI.header("Zee Setup")
+
+    const onboardingApplied = await maybeApplyOnboardingProfile(args)
+    if (!onboardingApplied) return
 
     // 1. Check Docker
     UI.info("Checking Docker availability...")

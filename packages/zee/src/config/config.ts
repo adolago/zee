@@ -1415,6 +1415,10 @@ export namespace Config {
     .object({
       $schema: z.string().optional().describe("JSON schema reference for configuration validation"),
       theme: z.string().optional().describe("Theme name to use for the interface"),
+      profile: z
+        .enum(["assistant", "engine"])
+        .optional()
+        .describe("Onboarding profile preset (assistant = single-user/channel-first, engine = full flexibility)"),
       keybinds: Keybinds.optional().describe("Custom keybind configurations"),
       logLevel: Log.Level.optional().describe("Log level"),
       wideEvents: z
