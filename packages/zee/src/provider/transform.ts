@@ -503,6 +503,19 @@ export namespace ProviderTransform {
       case "@ai-sdk/openai":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/openai
         if (id === "gpt-5-pro") return {}
+        if (model.api.id === "gpt-5.4-pro") {
+          const proEfforts = ["medium", "high", "xhigh"]
+          return Object.fromEntries(
+            proEfforts.map((effort) => [
+              effort,
+              {
+                reasoningEffort: effort,
+                reasoningSummary: "auto",
+                include: ["reasoning.encrypted_content"],
+              },
+            ]),
+          )
+        }
         const openaiEfforts = iife(() => {
           if (id.includes("codex")) {
             const codexEfforts = [...WIDELY_SUPPORTED_EFFORTS]

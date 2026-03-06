@@ -5,7 +5,7 @@ const providers: ProviderCatalog[] = [
   {
     id: "openai",
     models: {
-      "gpt-5.2": { id: "gpt-5.2" },
+      "gpt-5.4": { id: "gpt-5.4" },
       "gpt-5.3-codex": { id: "gpt-5.3-codex" },
     },
   },
@@ -20,13 +20,13 @@ const providers: ProviderCatalog[] = [
 describe("model selection", () => {
   test("prefers configured model when available", async () => {
     const result = await resolveDefaultModel({
-      configured: { providerID: "openai", modelID: "gpt-5.2" },
+      configured: { providerID: "openai", modelID: "gpt-5.4" },
       rosetta: { providerID: "anthropic", modelID: "claude-opus-4-6" },
       providers,
       sortModels: (models) => models,
     })
 
-    expect(result).toEqual({ providerID: "openai", modelID: "gpt-5.2" })
+    expect(result).toEqual({ providerID: "openai", modelID: "gpt-5.4" })
   })
 
   test("falls back to sorted best model when configured/rosetta are unavailable", async () => {

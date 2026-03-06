@@ -331,7 +331,7 @@ test("glm provider keeps only requested model IDs", async () => {
   })
 })
 
-test("openai provider is limited to 5.2 and 5.3 codex models", async () => {
+test("openai provider is limited to the approved GPT-5 catalog", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -351,8 +351,9 @@ test("openai provider is limited to 5.2 and 5.3 codex models", async () => {
       const providers = await Provider.list()
       expect(providers["openai"]).toBeDefined()
       const models = Object.keys(providers["openai"].models)
-      const allowed = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"])
-      expect(models).toContain("gpt-5.2")
+      const allowed = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-pro"])
+      expect(models).toContain("gpt-5.4")
+      expect(models).toContain("gpt-5.4-pro")
       for (const modelID of models) {
         expect(allowed.has(modelID)).toBe(true)
       }
@@ -713,7 +714,7 @@ test("defaultModel uses rosetta standard model when available", async () => {
       try {
         const model = await Provider.defaultModel()
         expect(model.providerID).toBe("openai")
-        expect(model.modelID).toBe("gpt-5.2")
+        expect(model.modelID).toBe("gpt-5.4")
       } finally {
         Env.remove("OPENAI_API_KEY")
         Env.remove("ANTHROPIC_API_KEY")
@@ -2368,7 +2369,7 @@ test("variants filtered in second pass for database models", async () => {
           provider: {
             openai: {
               models: {
-                "gpt-5.2": {
+                "gpt-5.4": {
                   variants: {
                     high: { disabled: true },
                   },
@@ -2387,7 +2388,7 @@ test("variants filtered in second pass for database models", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["openai"].models["gpt-5.2"]
+      const model = providers["openai"].models["gpt-5.4"]
       expect(model).toBeDefined()
       expect(model.variants).toBeDefined()
       expect(model.variants!["high"]).toBeUndefined()

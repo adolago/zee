@@ -25,7 +25,7 @@ export function modelString(spec: PersonaModelSpec): string {
  */
 export const standardModel: PersonaModelSpec = {
   providerId: "openai",
-  modelId: "gpt-5.2",
+  modelId: "gpt-5.4",
 };
 
 export const personaModels: Record<PersonaId, PersonaModelSpec> = {

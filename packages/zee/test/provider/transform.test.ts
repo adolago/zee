@@ -1390,19 +1390,34 @@ describe("ProviderTransform.variants", () => {
       expect(Object.keys(result)).toEqual(["none", "minimal", "low", "medium", "high"])
     })
 
-    test("models after 2025-12-04 include 'xhigh' effort", () => {
+    test("gpt-5.4 exposes none/low/medium/high/xhigh efforts", () => {
       const model = createMockModel({
-        id: "openai/gpt-5-chat",
+        id: "openai/gpt-5.4",
         providerID: "openai",
         api: {
-          id: "gpt-5-chat",
+          id: "gpt-5.4",
           url: "https://api.openai.com",
           npm: "@ai-sdk/openai",
         },
-        release_date: "2025-12-05",
+        release_date: "2026-03-05",
       })
       const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["none", "minimal", "low", "medium", "high", "xhigh"])
+      expect(Object.keys(result)).toEqual(["none", "low", "medium", "high", "xhigh"])
+    })
+
+    test("gpt-5.4-pro uses medium/high/xhigh effort levels", () => {
+      const model = createMockModel({
+        id: "openai/gpt-5.4-pro",
+        providerID: "openai",
+        api: {
+          id: "gpt-5.4-pro",
+          url: "https://api.openai.com",
+          npm: "@ai-sdk/openai",
+        },
+        release_date: "2026-03-05",
+      })
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["medium", "high", "xhigh"])
     })
 
     test("codex models use low/medium/high/xhigh effort nomenclature", () => {
