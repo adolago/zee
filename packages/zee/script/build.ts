@@ -406,9 +406,17 @@ const targets = targetsFilter
 await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
-if (!skipInstall) {
+const shouldInstallBuildDeps = !skipInstall && process.env.CI === "true"
+if (shouldInstallBuildDeps) {
+  console.log("CI build: installing platform build dependencies")
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
+} else {
+  if (skipInstall) {
+    console.log("Skipping build dependency install (--skip-install).")
+  } else {
+    console.log("Skipping build dependency install (local build; CI installs only).")
+  }
 }
 if (fs.existsSync(zeeRoot)) {
   await ensureZeeDependencies()

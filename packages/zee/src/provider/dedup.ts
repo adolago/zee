@@ -71,7 +71,12 @@ function parseOpenAIModel(id: string): ParsedModel | null {
   const withMinorVariant = cleanID.match(/^gpt-(\d+)\.(\d+)-(.+)$/)
   if (withMinorVariant) {
     const [, major, minor, variant] = withMinorVariant
-    return { family: `gpt-${variant}`, version: parseFloat(`${major}.${minor}`), dated, isLatest }
+    // Preserve GPT Pro as its own family so gpt-5.4 and gpt-5.4-pro can coexist.
+    // Treat codex/codex-spark/etc. as variant families, but collapse generic suffixes
+    // like "pro" into the base GPT family only when explicitly desired. Here we keep
+    // pro separate because Zee intentionally exposes both ids.
+    const family = variant === "pro" ? "gpt-pro" : `gpt-${variant}`
+    return { family, version: parseFloat(`${major}.${minor}`), dated, isLatest }
   }
 
   // gpt-{major}-{variant} (e.g., gpt-5-codex, gpt-5-nano, gpt-5-pro)
