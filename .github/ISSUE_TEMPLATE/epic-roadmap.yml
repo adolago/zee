@@ -1,0 +1,126 @@
+name: Epic (Roadmap)
+description: Create a roadmap-aligned execution epic
+title: "epic: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for roadmap execution epics tied to OpenClaw alignment, OpenCode migration, and financial research.
+
+  - type: input
+    id: epic_slug
+    attributes:
+      label: Epic slug
+      description: Stable identifier (example: epic/opencode-runtime-core)
+      placeholder: epic/...
+    validations:
+      required: true
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: Exact milestone name this epic belongs to
+      placeholder: "M2: OpenCode substrate and compatibility layer"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Primary domain
+      options:
+        - platform-runtime
+        - control-plane-security
+        - financial-research-data
+        - financial-research-automation
+        - release-readiness
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What gap does this epic close?
+      placeholder: Current state and concrete gaps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Target outcome
+      description: What will be true when this epic is complete?
+      placeholder: Concrete target state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: In-scope deliverables only
+      placeholder: |
+        - deliverable A
+        - deliverable B
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Explicitly excluded work
+      placeholder: |
+        - excluded item A
+        - excluded item B
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and sequencing
+      description: Required predecessor epics/issues and ordering constraints
+      placeholder: |
+        - Depends on #...
+        - Blocks #...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Objective checks for done state
+      placeholder: |
+        - [ ] criterion A
+        - [ ] criterion B
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Metrics
+      description: Quantitative measures for this epic
+      placeholder: |
+        - metric A (target)
+        - metric B (target)
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and mitigations
+      description: Main delivery and security risks with mitigation strategy
+      placeholder: |
+        - risk A -> mitigation
+        - risk B -> mitigation
+    validations:
+      required: true
+

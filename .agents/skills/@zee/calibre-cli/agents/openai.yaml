@@ -1,0 +1,4 @@
+interface:
+  display_name: "Calibre CLI"
+  short_description: "Manage Calibre libraries and metadata via terminal"
+  default_prompt: "Use $calibre-cli to audit my Calibre library and fix metadata issues."

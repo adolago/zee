@@ -1,5 +1,5 @@
 ---
-name: zee
+name: "@zee"
 description: Unified personal assistant for life admin, investing, and learning. Handles memory, messaging, calendar, contacts, browser, market analysis, portfolio management, SEC filings, knowledge graphs, spaced repetition, and deliberate practice.
 version: 3.0.0
 author: Artur

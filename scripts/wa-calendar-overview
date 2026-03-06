@@ -8,28 +8,48 @@ Night:   tomorrow's events.
 Usage:
   wa-calendar-overview --period morning [--channel whatsapp|telegram] [--to RECIPIENT] [--dry-run]
   wa-calendar-overview --period night   [--channel whatsapp|telegram] [--to RECIPIENT] [--dry-run]
+  wa-calendar-overview --period morning --print-only
+  wa-calendar-overview --period night   --print-only
 
 Environment:
   ZEE_NOTIFY_CHANNEL      default channel (whatsapp|telegram)
   ZEE_WA_CALENDAR_TO      default WhatsApp recipient JID (e.g. 436649137379@s.whatsapp.net)
   ZEE_TELEGRAM_CALENDAR_TO default Telegram chat id
+  ZEE_GOOGLE_CALENDAR_IDS comma-separated Google calendar IDs (default: primary)
+  ZEE_CALENDAR_INCLUDE_TUWEL include TUWEL events by default (1/0)
   TELEGRAM_BOT_TOKEN      Telegram bot token
   WACLI_BIN               path to wacli binary  (default: /home/artur/go/bin/wacli)
   WACLI_STORE             path to wacli store   (default: /home/artur/.wacli)
+  TUWEL_EMAIL             TUWEL login email/username
+  TUWEL_PASSWORD          TUWEL login password
+  TUWEL_BASE_URL          TUWEL base URL (default: https://tuwel.tuwien.ac.at)
 """
 
 import argparse
 import datetime as dt
+import html
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.parse
+import urllib.error
 import urllib.request
+from http.cookiejar import CookieJar
 from pathlib import Path
+from urllib.parse import urljoin
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # pragma: no cover - zoneinfo exists in modern Python but keep fallback
+    ZoneInfo = None  # type: ignore[assignment]
 
 CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3"
 DEFAULT_NOTIFY_CHANNEL = os.environ.get("ZEE_NOTIFY_CHANNEL", "whatsapp").strip().lower() or "whatsapp"
+DEFAULT_TUWEL_BASE_URL = os.environ.get("TUWEL_BASE_URL", "https://tuwel.tuwien.ac.at").strip().rstrip("/")
+DEFAULT_GOOGLE_CALENDAR_IDS = os.environ.get("ZEE_GOOGLE_CALENDAR_IDS", "").strip()
+DEFAULT_INCLUDE_TUWEL = os.environ.get("ZEE_CALENDAR_INCLUDE_TUWEL", "").strip().lower() in {"1", "true", "yes", "on"}
 TELEGRAM_MAX_TEXT = 4096
 
 WACLI_BIN = os.environ.get("WACLI_BIN", "/home/artur/go/bin/wacli")
@@ -45,6 +65,24 @@ def fail(message: str, code: int = 1) -> None:
     raise SystemExit(code)
 
 
+def csv_values(raw: str) -> list[str]:
+    values: list[str] = []
+    for item in raw.split(","):
+        value = item.strip()
+        if value:
+            values.append(value)
+    return values
+
+
+def local_timezone() -> dt.tzinfo:
+    return dt.datetime.now().astimezone().tzinfo or dt.timezone.utc
+
+
+def format_error_message(exc: Exception) -> str:
+    message = str(exc).strip()
+    return message if message else exc.__class__.__name__
+
+
 # ---------------------------------------------------------------------------
 # Google Calendar
 # ---------------------------------------------------------------------------
@@ -57,7 +95,7 @@ def find_google_credentials_dir() -> Path:
     for candidate in candidates:
         if (candidate / "oauth-client.json").exists() and (candidate / "tokens.json").exists():
             return candidate
-    fail("Google credentials not found in ~/.config/zee/credentials/google or ~/.zee/credentials/google")
+    raise RuntimeError("Google credentials not found in ~/.config/zee/credentials/google or ~/.zee/credentials/google")
 
 
 def load_google_auth() -> tuple[dict, dict, Path]:
@@ -68,7 +106,7 @@ def load_google_auth() -> tuple[dict, dict, Path]:
         oauth_client = json.loads(oauth_path.read_text(encoding="utf-8"))
         tokens = json.loads(tokens_path.read_text(encoding="utf-8"))
     except Exception as exc:
-        fail(f"Failed to load Google credentials: {exc}")
+        raise RuntimeError(f"Failed to load Google credentials: {exc}") from exc
     return oauth_client, tokens, tokens_path
 
 
@@ -96,16 +134,19 @@ def refresh_access_token_if_needed(oauth_client: dict, tokens: dict, tokens_path
         with urllib.request.urlopen(request, timeout=30) as response:
             token_payload = json.loads(response.read().decode("utf-8"))
     except Exception as exc:
-        fail(f"Failed to refresh Google token: {exc}")
+        raise RuntimeError(f"Failed to refresh Google token: {exc}") from exc
 
     access_token = token_payload.get("access_token")
     expires_in = int(token_payload.get("expires_in", 3600))
     if not access_token:
-        fail("Google token refresh returned no access token")
+        raise RuntimeError("Google token refresh returned no access token")
 
     tokens["access_token"] = access_token
     tokens["expiry_date"] = now_ms + expires_in * 1000
-    tokens_path.write_text(json.dumps(tokens, indent=2), encoding="utf-8")
+    try:
+        tokens_path.write_text(json.dumps(tokens, indent=2), encoding="utf-8")
+    except Exception as exc:
+        raise RuntimeError(f"Failed to persist refreshed Google token: {exc}") from exc
     return access_token
 
 
@@ -119,16 +160,30 @@ def google_get(endpoint: str, access_token: str, params: dict[str, str] | None =
         with urllib.request.urlopen(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8"))
     except Exception as exc:
-        fail(f"Google Calendar request failed: {exc}")
+        raise RuntimeError(f"Google Calendar request failed: {exc}") from exc
 
 
 def resolve_calendar_name(calendar_id: str, access_token: str) -> str:
     if calendar_id != "primary":
+        try:
+            payload = google_get(f"/calendars/{urllib.parse.quote(calendar_id, safe='')}", access_token)
+            summary = payload.get("summary")
+            if isinstance(summary, str) and summary.strip():
+                return summary.strip()
+        except Exception:
+            pass
         return calendar_id
-    payload = google_get("/users/me/calendarList", access_token)
-    for item in payload.get("items", []):
-        if item.get("primary"):
-            return item.get("summary", "Primary")
+
+    try:
+        payload = google_get("/users/me/calendarList", access_token)
+        for item in payload.get("items", []):
+            if item.get("primary"):
+                summary = item.get("summary")
+                if isinstance(summary, str) and summary.strip():
+                    return summary.strip()
+                return "Primary"
+    except Exception:
+        pass
     return "Primary"
 
 
@@ -148,6 +203,402 @@ def list_events(calendar_id: str, access_token: str, start_iso: str, end_iso: st
 
 
 # ---------------------------------------------------------------------------
+# TUWEL
+# ---------------------------------------------------------------------------
+
+def http_get_text(
+    opener: urllib.request.OpenerDirector,
+    url: str,
+    *,
+    timeout: int = 30,
+    headers: dict[str, str] | None = None,
+) -> tuple[str, str]:
+    request = urllib.request.Request(url, headers=headers or {})
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8", errors="replace")
+            return body, response.geturl()
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} for {url}: {body[:240]}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"GET failed for {url}: {exc}") from exc
+
+
+def http_post_form_text(
+    opener: urllib.request.OpenerDirector,
+    url: str,
+    payload: dict[str, str],
+    *,
+    timeout: int = 30,
+) -> tuple[str, str]:
+    encoded = urllib.parse.urlencode(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=encoded,
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8", errors="replace")
+            return body, response.geturl()
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} for {url}: {body[:240]}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"POST failed for {url}: {exc}") from exc
+
+
+def http_post_json(
+    opener: urllib.request.OpenerDirector,
+    url: str,
+    payload: list[dict],
+    *,
+    timeout: int = 30,
+) -> list | dict:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
+    )
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} for {url}: {body[:240]}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"POST JSON failed for {url}: {exc}") from exc
+
+
+def extract_attr(tag: str, attr: str) -> str | None:
+    match = re.search(rf'{attr}\s*=\s*["\']([^"\']*)["\']', tag, flags=re.IGNORECASE)
+    if match:
+        return html.unescape(match.group(1))
+    match = re.search(rf"{attr}\s*=\s*([^\s>]+)", tag, flags=re.IGNORECASE)
+    if match:
+        return html.unescape(match.group(1).strip())
+    return None
+
+
+def extract_hidden_inputs(page_html: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for match in re.finditer(r"<input\b[^>]*>", page_html, flags=re.IGNORECASE):
+        tag = match.group(0)
+        name = extract_attr(tag, "name")
+        if not name:
+            continue
+        input_type = (extract_attr(tag, "type") or "").strip().lower()
+        if input_type and input_type != "hidden":
+            continue
+        value = extract_attr(tag, "value") or ""
+        fields[name] = value
+    return fields
+
+
+def extract_first_group(pattern: str, text: str) -> str | None:
+    match = re.search(pattern, text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    value = match.group(1).strip()
+    return html.unescape(value) if value else None
+
+
+def extract_tuwel_export_url(page_html: str, base_url: str) -> str | None:
+    raw_match = extract_first_group(r'(calendar/export_execute\.php[^"\'>\s]+)', page_html)
+    if not raw_match:
+        return None
+    return urljoin(base_url + "/", raw_match)
+
+
+def extract_tuwel_user_id(page_html: str) -> str | None:
+    for pattern in (
+        r'name=["\']userid["\']\s+value=["\'](\d+)["\']',
+        r"/user/profile\.php\?id=(\d+)",
+        r'"userid"\s*:\s*(\d+)',
+    ):
+        value = extract_first_group(pattern, page_html)
+        if value:
+            return value
+    return None
+
+
+def extract_tuwel_sesskey(page_html: str) -> str | None:
+    return extract_first_group(r'sesskey["\']?\s*[:=]\s*["\']([a-zA-Z0-9]+)["\']', page_html)
+
+
+def extract_tuwel_token(page_html: str) -> str | None:
+    for pattern in (
+        r'name=["\']authtoken["\']\s+value=["\']([^"\']+)["\']',
+        r'"authtoken"\s*:\s*"([^"]+)"',
+    ):
+        value = extract_first_group(pattern, page_html)
+        if value:
+            return value
+    return None
+
+
+def build_tuwel_ics_url(base_url: str, user_id: str, token: str) -> str:
+    query = urllib.parse.urlencode(
+        {
+            "userid": user_id,
+            "authtoken": token,
+            "preset_what": "all",
+            "preset_time": "recentupcoming",
+        }
+    )
+    return f"{base_url}/calendar/export_execute.php?{query}"
+
+
+def get_tuwel_export_token(opener: urllib.request.OpenerDirector, base_url: str, sesskey: str) -> str:
+    ajax_url = f"{base_url}/lib/ajax/service.php?sesskey={urllib.parse.quote(sesskey)}&info=core_calendar_get_calendar_export_token"
+    payload = [{"index": 0, "methodname": "core_calendar_get_calendar_export_token", "args": {}}]
+    response = http_post_json(opener, ajax_url, payload)
+    if isinstance(response, list):
+        for item in response:
+            if not isinstance(item, dict):
+                continue
+            data = item.get("data")
+            if isinstance(data, dict):
+                token = data.get("token")
+                if isinstance(token, str) and token.strip():
+                    return token.strip()
+            if item.get("error") and isinstance(item.get("exception"), dict):
+                message = item["exception"].get("message")
+                if isinstance(message, str) and message.strip():
+                    raise RuntimeError(f"TUWEL token request failed: {message.strip()}")
+    raise RuntimeError("TUWEL token request returned no token")
+
+
+def obtain_tuwel_ics_url(opener: urllib.request.OpenerDirector, base_url: str, dashboard_html: str) -> str:
+    export_html, _ = http_get_text(opener, f"{base_url}/calendar/export.php")
+    export_url = extract_tuwel_export_url(export_html, base_url)
+    if export_url:
+        return export_url
+
+    user_id = extract_tuwel_user_id(export_html) or extract_tuwel_user_id(dashboard_html)
+    token = extract_tuwel_token(export_html)
+    if user_id and token:
+        return build_tuwel_ics_url(base_url, user_id, token)
+
+    sesskey = extract_tuwel_sesskey(export_html) or extract_tuwel_sesskey(dashboard_html)
+    if user_id and sesskey:
+        token = get_tuwel_export_token(opener, base_url, sesskey)
+        return build_tuwel_ics_url(base_url, user_id, token)
+
+    raise RuntimeError("Unable to locate TUWEL calendar export URL/token")
+
+
+def fetch_tuwel_ics(base_url: str, email: str, password: str) -> str:
+    if not email.strip():
+        raise RuntimeError("TUWEL_EMAIL is empty")
+    if not password.strip():
+        raise RuntimeError("TUWEL_PASSWORD is empty")
+
+    cookie_jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+    login_url = f"{base_url}/login/index.php"
+
+    login_page, _ = http_get_text(opener, login_url)
+    form_data = extract_hidden_inputs(login_page)
+    form_data["username"] = email
+    form_data["password"] = password
+    _, post_url = http_post_form_text(opener, login_url, form_data)
+
+    dashboard_html, dashboard_url = http_get_text(opener, f"{base_url}/my/")
+    if "/login/index.php" in dashboard_url or "/login/index.php" in post_url:
+        raise RuntimeError("TUWEL login failed (redirected back to login)")
+
+    ics_url = obtain_tuwel_ics_url(opener, base_url, dashboard_html)
+    ics_text, final_ics_url = http_get_text(opener, ics_url)
+    if "/login/index.php" in final_ics_url:
+        raise RuntimeError("TUWEL calendar export redirected to login")
+    if "BEGIN:VCALENDAR" not in ics_text:
+        snippet = ics_text.strip()[:200]
+        raise RuntimeError(f"TUWEL calendar export did not return ICS data: {snippet}")
+    return ics_text
+
+
+def unfold_ics_lines(ics_text: str) -> list[str]:
+    unfolded: list[str] = []
+    for raw_line in ics_text.splitlines():
+        line = raw_line.rstrip("\r\n")
+        if (line.startswith(" ") or line.startswith("\t")) and unfolded:
+            unfolded[-1] += line[1:]
+        else:
+            unfolded.append(line)
+    return unfolded
+
+
+def parse_ics_field(field_name: str) -> tuple[str, dict[str, str]]:
+    parts = field_name.split(";")
+    key = parts[0].upper()
+    params: dict[str, str] = {}
+    for part in parts[1:]:
+        if "=" not in part:
+            continue
+        name, value = part.split("=", 1)
+        params[name.upper()] = value.strip().strip('"')
+    return key, params
+
+
+def parse_ics_datetime(value: str, params: dict[str, str], local_tz: dt.tzinfo) -> dt.datetime | dt.date | None:
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+
+    if re.fullmatch(r"\d{8}", trimmed):
+        try:
+            return dt.datetime.strptime(trimmed, "%Y%m%d").date()
+        except ValueError:
+            return None
+
+    is_utc = trimmed.endswith("Z")
+    body = trimmed[:-1] if is_utc else trimmed
+
+    parsed: dt.datetime | None = None
+    for fmt in ("%Y%m%dT%H%M%S", "%Y%m%dT%H%M"):
+        try:
+            parsed = dt.datetime.strptime(body, fmt)
+            break
+        except ValueError:
+            continue
+    if parsed is None:
+        return None
+
+    if is_utc:
+        return parsed.replace(tzinfo=dt.timezone.utc)
+
+    tzid = params.get("TZID")
+    if tzid and ZoneInfo is not None:
+        try:
+            tz = ZoneInfo(tzid)
+            return parsed.replace(tzinfo=tz)
+        except Exception:
+            pass
+    return parsed.replace(tzinfo=local_tz)
+
+
+def decode_ics_text(value: str) -> str:
+    decoded = value
+    decoded = decoded.replace(r"\n", "\n").replace(r"\N", "\n")
+    decoded = decoded.replace(r"\,", ",").replace(r"\;", ";").replace(r"\\", "\\")
+    return decoded.strip()
+
+
+def parse_ics_events(ics_text: str, local_tz: dt.tzinfo) -> list[dict]:
+    events: list[dict] = []
+    current: dict[str, tuple[str, dict[str, str]]] | None = None
+
+    for line in unfold_ics_lines(ics_text):
+        if line == "BEGIN:VEVENT":
+            current = {}
+            continue
+        if line == "END:VEVENT":
+            if current is not None:
+                event = event_from_ics_component(current, local_tz)
+                if event is not None:
+                    events.append(event)
+            current = None
+            continue
+        if current is None:
+            continue
+        if ":" not in line:
+            continue
+        field_name, raw_value = line.split(":", 1)
+        key, params = parse_ics_field(field_name)
+        current[key] = (raw_value, params)
+
+    return events
+
+
+def event_from_ics_component(component: dict[str, tuple[str, dict[str, str]]], local_tz: dt.tzinfo) -> dict | None:
+    start_raw = component.get("DTSTART")
+    if not start_raw:
+        return None
+
+    start_value = parse_ics_datetime(start_raw[0], start_raw[1], local_tz)
+    if start_value is None:
+        return None
+
+    end_raw = component.get("DTEND")
+    end_value = parse_ics_datetime(end_raw[0], end_raw[1], local_tz) if end_raw else None
+    summary_raw = component.get("SUMMARY", ("(No title)", {}))[0]
+    location_raw = component.get("LOCATION", ("", {}))[0]
+
+    summary = decode_ics_text(summary_raw) or "(No title)"
+    location = decode_ics_text(location_raw)
+    event: dict = {"summary": summary, "start": {}, "end": {}}
+
+    if location:
+        event["location"] = location
+
+    if isinstance(start_value, dt.date) and not isinstance(start_value, dt.datetime):
+        start_date = start_value
+        if isinstance(end_value, dt.date) and not isinstance(end_value, dt.datetime):
+            end_date = end_value
+        else:
+            end_date = start_date + dt.timedelta(days=1)
+        event["start"]["date"] = start_date.isoformat()
+        event["end"]["date"] = end_date.isoformat()
+        return event
+
+    if not isinstance(start_value, dt.datetime):
+        return None
+    if isinstance(end_value, dt.datetime):
+        end_dt = end_value
+    else:
+        end_dt = start_value + dt.timedelta(hours=1)
+    event["start"]["dateTime"] = start_value.isoformat()
+    event["end"]["dateTime"] = end_dt.isoformat()
+    return event
+
+
+def event_overlaps_day(event: dict, day_start: dt.datetime, day_end: dt.datetime, target_day: dt.date) -> bool:
+    start = event.get("start", {})
+    end = event.get("end", {})
+
+    if isinstance(start, dict) and start.get("date"):
+        try:
+            start_date = dt.date.fromisoformat(start["date"])
+        except Exception:
+            return False
+        end_date_raw = end.get("date") if isinstance(end, dict) else None
+        try:
+            end_date = dt.date.fromisoformat(end_date_raw) if isinstance(end_date_raw, str) else start_date + dt.timedelta(days=1)
+        except Exception:
+            end_date = start_date + dt.timedelta(days=1)
+        return start_date < (target_day + dt.timedelta(days=1)) and end_date > target_day
+
+    start_dt = parse_event_datetime(start.get("dateTime") if isinstance(start, dict) else None)
+    end_dt = parse_event_datetime(end.get("dateTime") if isinstance(end, dict) else None)
+    if start_dt is None:
+        return False
+    if end_dt is None:
+        end_dt = start_dt + dt.timedelta(hours=1)
+    return start_dt < day_end and end_dt > day_start
+
+
+def fetch_tuwel_events_for_day(
+    *,
+    base_url: str,
+    email: str,
+    password: str,
+    day_start: dt.datetime,
+    day_end: dt.datetime,
+    target_day: dt.date,
+    max_events: int,
+) -> list[dict]:
+    ics_text = fetch_tuwel_ics(base_url, email, password)
+    events = parse_ics_events(ics_text, day_start.tzinfo or local_timezone())
+    filtered = [event for event in events if event_overlaps_day(event, day_start, day_end, target_day)]
+    filtered.sort(key=event_sort_key)
+    return filtered[:max_events]
+
+
+# ---------------------------------------------------------------------------
 # Message formatting
 # ---------------------------------------------------------------------------
 
@@ -160,6 +611,21 @@ def parse_event_datetime(value: str | None) -> dt.datetime | None:
         return dt.datetime.fromisoformat(value)
     except ValueError:
         return None
+
+
+def event_sort_key(event: dict) -> tuple[int, dt.datetime, str]:
+    title = str(event.get("summary", "")).lower()
+    start = event.get("start", {})
+    if isinstance(start, dict) and start.get("date"):
+        try:
+            day = dt.date.fromisoformat(start["date"])
+        except Exception:
+            day = dt.date.today()
+        return (0, dt.datetime.combine(day, dt.time.min).replace(tzinfo=local_timezone()), title)
+    start_dt = parse_event_datetime(start.get("dateTime") if isinstance(start, dict) else None)
+    if start_dt is None:
+        return (2, dt.datetime.now(tz=local_timezone()), title)
+    return (1, start_dt, title)
 
 
 def format_event_line(event: dict) -> str:
@@ -185,20 +651,40 @@ def format_event_line(event: dict) -> str:
     return line
 
 
-def build_message(period: str, calendar_name: str, events: list[dict], target_day: dt.date) -> str:
+def build_message(period: str, sources: list[dict], target_day: dt.date, source_errors: list[str]) -> str:
     header_date = target_day.strftime("%A, %d %b %Y")
 
     if period == "morning":
-        lead = f"Good morning. Calendar for {header_date} ({calendar_name})."
+        lead = f"Good morning. Calendar for {header_date}."
     else:
-        lead = f"Good night. Calendar for {header_date} ({calendar_name})."
+        lead = f"Good night. Calendar for {header_date}."
 
-    if not events:
-        return f"{lead}\nNo events scheduled."
+    lines = [lead]
 
-    lines = [lead, f"{len(events)} event(s):"]
-    for event in events:
-        lines.append(format_event_line(event))
+    total = sum(len(source.get("events", [])) for source in sources)
+    if sources:
+        lines.append(f"Total: {total} event(s) across {len(sources)} source(s).")
+    else:
+        lines.append("No events scheduled.")
+
+    for source in sources:
+        label = str(source.get("label", "Calendar")).strip() or "Calendar"
+        events = source.get("events", [])
+        lines.append("")
+        lines.append(f"{label}:")
+        if not events:
+            lines.append("No events scheduled.")
+            continue
+        lines.append(f"{len(events)} event(s):")
+        for event in events:
+            lines.append(format_event_line(event))
+
+    if source_errors:
+        lines.append("")
+        lines.append("Source status:")
+        for error in source_errors:
+            lines.append(f"- {error}")
+
     return "\n".join(lines)
 
 
@@ -358,8 +844,15 @@ def main() -> None:
     parser.add_argument("--period", choices=["morning", "night"], required=True)
     parser.add_argument("--channel", choices=["whatsapp", "telegram"], default=DEFAULT_NOTIFY_CHANNEL)
     parser.add_argument("--to", dest="recipient", default=None, help="Recipient JID/phone number or Telegram chat id")
-    parser.add_argument("--calendar-id", default="primary")
+    parser.add_argument("--calendar-id", default=None, help="Deprecated alias for a single Google calendar id")
+    parser.add_argument("--google-calendar-id", action="append", dest="google_calendar_ids", default=[], help="Google calendar id (repeatable)")
     parser.add_argument("--max-events", type=int, default=12)
+    parser.add_argument("--tuwel-max-events", type=int, default=None)
+    parser.add_argument("--include-tuwel", dest="include_tuwel", action="store_true", default=DEFAULT_INCLUDE_TUWEL)
+    parser.add_argument("--no-include-tuwel", dest="include_tuwel", action="store_false")
+    parser.add_argument("--tu-only", action="store_true", help="Only include TUWEL events in the digest")
+    parser.add_argument("--tuwel-base-url", default=DEFAULT_TUWEL_BASE_URL)
+    parser.add_argument("--print-only", action="store_true", help="Print message to stdout and skip delivery")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -372,14 +865,62 @@ def main() -> None:
 
     start_dt = dt.datetime.combine(target_day, dt.time.min, tzinfo=now.tzinfo)
     end_dt = start_dt + dt.timedelta(days=1)
+    tuwel_max_events = args.tuwel_max_events if args.tuwel_max_events is not None else args.max_events
 
-    oauth_client, tokens, tokens_path = load_google_auth()
-    access_token = refresh_access_token_if_needed(oauth_client, tokens, tokens_path)
+    google_ids: list[str]
+    if args.google_calendar_ids:
+        google_ids = [value.strip() for value in args.google_calendar_ids if value.strip()]
+    elif isinstance(args.calendar_id, str) and args.calendar_id.strip():
+        google_ids = [args.calendar_id.strip()]
+    elif DEFAULT_GOOGLE_CALENDAR_IDS:
+        google_ids = csv_values(DEFAULT_GOOGLE_CALENDAR_IDS)
+    else:
+        google_ids = ["primary"]
 
-    calendar_name = resolve_calendar_name(args.calendar_id, access_token)
-    events = list_events(args.calendar_id, access_token, start_dt.isoformat(), end_dt.isoformat(), args.max_events)
+    include_tuwel = bool(args.include_tuwel or args.tu_only)
+    source_errors: list[str] = []
+    sources: list[dict] = []
 
-    message = build_message(args.period, calendar_name, events, target_day)
+    if not args.tu_only:
+        try:
+            oauth_client, tokens, tokens_path = load_google_auth()
+            access_token = refresh_access_token_if_needed(oauth_client, tokens, tokens_path)
+            for calendar_id in google_ids:
+                try:
+                    calendar_name = resolve_calendar_name(calendar_id, access_token)
+                    events = list_events(calendar_id, access_token, start_dt.isoformat(), end_dt.isoformat(), args.max_events)
+                    events.sort(key=event_sort_key)
+                    sources.append({"label": f"Google ({calendar_name})", "events": events})
+                except Exception as exc:
+                    source_errors.append(f"Google ({calendar_id}) unavailable: {format_error_message(exc)}")
+        except Exception as exc:
+            source_errors.append(f"Google unavailable: {format_error_message(exc)}")
+
+    if include_tuwel:
+        tuwel_email = os.environ.get("TUWEL_EMAIL", "")
+        tuwel_password = os.environ.get("TUWEL_PASSWORD", "")
+        try:
+            tuwel_events = fetch_tuwel_events_for_day(
+                base_url=args.tuwel_base_url.strip().rstrip("/"),
+                email=tuwel_email,
+                password=tuwel_password,
+                day_start=start_dt,
+                day_end=end_dt,
+                target_day=target_day,
+                max_events=tuwel_max_events,
+            )
+            sources.append({"label": "TUWEL", "events": tuwel_events})
+        except Exception as exc:
+            source_errors.append(f"TUWEL unavailable: {format_error_message(exc)}")
+
+    if not sources and source_errors:
+        fail(f"All calendar sources failed: {' | '.join(source_errors)}")
+
+    message = build_message(args.period, sources, target_day, source_errors)
+    if args.print_only:
+        print(message)
+        return
+
     recipient = resolve_recipient(args.recipient, args.channel)
     if args.channel == "telegram":
         send_telegram(recipient, message, args.dry_run)

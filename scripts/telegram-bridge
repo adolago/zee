@@ -14,6 +14,10 @@ Key commands:
   /new     Start a new Zee session for this chat
   /reset   Alias for /new
   /session Show current Zee session id
+  /calendar_today     Render today's combined calendar digest
+  /calendar_tomorrow  Render tomorrow's combined calendar digest
+  /calendar_morning   Alias for /calendar_today
+  /calendar_night     Alias for /calendar_tomorrow
 
 Environment:
   TELEGRAM_BOT_TOKEN               required (Telegram bot token)
@@ -26,6 +30,9 @@ Environment:
   ZEE_TELEGRAM_ALLOWED_CHAT_IDS    optional CSV allowlist of numeric chat IDs
   ZEE_TELEGRAM_MAX_REPLY_CHUNKS    default: 4
   ZEE_TELEGRAM_MAX_REPLY_CHARS     default: 12000
+  ZEE_TELEGRAM_CALENDAR_SCRIPT     default: scripts/wa-calendar-overview
+  ZEE_TELEGRAM_CALENDAR_TIMEOUT    default: 75
+  ZEE_TELEGRAM_CALENDAR_PYTHON     default: current python executable
   ZEE_API_TOKEN                    optional Bearer token for Zee API auth
 """
 
@@ -37,6 +44,8 @@ import os
 import re
 import signal
 import socket
+import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -64,6 +73,12 @@ DEFAULT_MAX_REPLY_CHUNKS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHUNKS", "
 DEFAULT_MAX_REPLY_CHARS = int(os.environ.get("ZEE_TELEGRAM_MAX_REPLY_CHARS", "12000"))
 DEFAULT_MESSAGE_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_MESSAGE_TIMEOUT", "90"))
 DEFAULT_PREFER_IPV4 = os.environ.get("ZEE_TELEGRAM_PREFER_IPV4", "1").strip().lower() not in {"0", "false", "no"}
+DEFAULT_CALENDAR_SCRIPT = os.environ.get(
+    "ZEE_TELEGRAM_CALENDAR_SCRIPT",
+    str(Path(__file__).resolve().with_name("wa-calendar-overview")),
+).strip()
+DEFAULT_CALENDAR_TIMEOUT = int(os.environ.get("ZEE_TELEGRAM_CALENDAR_TIMEOUT", "75"))
+DEFAULT_CALENDAR_PYTHON = os.environ.get("ZEE_TELEGRAM_CALENDAR_PYTHON", sys.executable or "python3").strip()
 
 TELEGRAM_MAX_TEXT = 4096
 THOUGHT_BLOCK_RE = re.compile(r"!\[thought[\s\S]*?\](?:!|$)", re.IGNORECASE)
@@ -82,6 +97,13 @@ TOOL_PAYLOAD_KEYS = {
     "threadID",
     "workdir",
     "follow",
+}
+
+CALENDAR_COMMAND_PERIODS: dict[str, str] = {
+    "/calendar_today": "morning",
+    "/calendar_morning": "morning",
+    "/calendar_tomorrow": "night",
+    "/calendar_night": "night",
 }
 
 logging.basicConfig(
@@ -280,6 +302,73 @@ def command_name(text: str) -> str:
         return ""
     # /start@MyBot -> /start
     return token.split("@", 1)[0].lower()
+
+
+def command_args(text: str) -> list[str]:
+    parts = text.strip().split()
+    if len(parts) <= 1:
+        return []
+    return parts[1:]
+
+
+def parse_calendar_request(text: str) -> dict | None:
+    cmd = command_name(text)
+    if cmd in CALENDAR_COMMAND_PERIODS:
+        flags = {value.strip().lower() for value in command_args(text)}
+        tu_only = bool({"--tu-only", "tu-only", "--tu", "tu"} & flags)
+        return {"period": CALENDAR_COMMAND_PERIODS[cmd], "tu_only": tu_only, "mode": "command", "command": cmd}
+
+    if cmd:
+        return None
+
+    normalized = re.sub(r"\s+", " ", text.strip().lower())
+    if not re.search(r"\b(calendar|schedule|agenda)\b", normalized):
+        return None
+
+    if re.search(r"\b(tomorrow|night|tonight)\b", normalized):
+        period = "night"
+    elif re.search(r"\b(today|morning|now)\b", normalized):
+        period = "morning"
+    else:
+        return None
+
+    tu_only = bool(re.search(r"\b(tuwel|tu|technische universitaet|technische universität)\b", normalized))
+    return {"period": period, "tu_only": tu_only, "mode": "natural"}
+
+
+def run_calendar_overview(period: str, tu_only: bool) -> str:
+    if period not in {"morning", "night"}:
+        raise RuntimeError(f"Unsupported calendar period: {period}")
+    if DEFAULT_CALENDAR_TIMEOUT < 10:
+        raise RuntimeError("ZEE_TELEGRAM_CALENDAR_TIMEOUT must be >= 10")
+
+    command = [
+        DEFAULT_CALENDAR_PYTHON,
+        DEFAULT_CALENDAR_SCRIPT,
+        "--period",
+        period,
+        "--print-only",
+        "--include-tuwel",
+    ]
+    if tu_only:
+        command.append("--tu-only")
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        timeout=DEFAULT_CALENDAR_TIMEOUT,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.strip()
+        stdout = result.stdout.strip()
+        detail = stderr or stdout or f"exit code {result.returncode}"
+        raise RuntimeError(f"calendar overview failed: {detail}")
+
+    output = result.stdout.strip()
+    if not output:
+        raise RuntimeError("calendar overview returned no text")
+    return output
 
 
 def chunk_text(text: str, max_len: int = TELEGRAM_MAX_TEXT) -> list[str]:
@@ -648,7 +737,24 @@ def handle_update(
             "Commands:\n"
             "/new - start a fresh Zee session\n"
             "/session - show current session id\n"
+            "/calendar_today - show today's combined digest\n"
+            "/calendar_tomorrow - show tomorrow's combined digest\n"
+            "/calendar_today --tu-only - TUWEL only\n"
             "/help - show this message",
+            reply_to_message_id=message.get("message_id"),
+            max_chunks=max_reply_chunks,
+            max_chars=max_reply_chars,
+        )
+        return False
+
+    calendar_request = parse_calendar_request(text)
+    if calendar_request is not None:
+        telegram_send_typing(token, chat_id)
+        digest = run_calendar_overview(calendar_request["period"], calendar_request["tu_only"])
+        telegram_send_text(
+            token,
+            chat_id,
+            digest,
             reply_to_message_id=message.get("message_id"),
             max_chunks=max_reply_chunks,
             max_chars=max_reply_chars,
@@ -742,7 +848,7 @@ def run(
     save_state(state_path, state)
 
     log.info(
-        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, mode=%s, model=%s/%s, poll_timeout=%ss, msg_timeout=%ss, allowed_chats=%s)",
+        "Telegram bridge running (base_url=%s, agent=%s, surface=%s, mode=%s, model=%s/%s, poll_timeout=%ss, msg_timeout=%ss, allowed_chats=%s, calendar_script=%s)",
         base_url,
         agent,
         session_surface,
@@ -752,6 +858,7 @@ def run(
         poll_timeout,
         message_timeout,
         "*" if allowed_chat_ids is None else len(allowed_chat_ids),
+        DEFAULT_CALENDAR_SCRIPT,
     )
 
     consecutive_errors = 0
