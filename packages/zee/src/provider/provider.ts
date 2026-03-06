@@ -78,7 +78,7 @@ export namespace Provider {
       "grok-4.20-experimental-beta-0304-non-reasoning",
       "grok-4.20-multi-agent-experimental-beta-0304",
     ]),
-    openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-pro"]),
+    openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"]),
   }
 
   const HARDCODED_MODEL_ALLOW_FILTERS: Record<string, (modelID: string) => boolean> = {

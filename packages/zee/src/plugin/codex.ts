@@ -355,7 +355,7 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
         if (auth.type !== "oauth") return {}
 
         // Filter models to the OpenAI OAuth-supported set.
-        const allowedModels = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-pro"])
+        const allowedModels = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"])
         for (const modelId of Object.keys(provider.models)) {
           if (!allowedModels.has(modelId)) {
             delete provider.models[modelId]
