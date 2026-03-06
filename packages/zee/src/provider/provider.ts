@@ -73,7 +73,11 @@ export namespace Provider {
     anthropic: new Set(["claude-opus-4-6"]),
     "zai-coding-plan": new Set(["glm-4.7", "glm-4.7-flash", "glm-5"]),
     minimax: new Set(["MiniMax-M2.5"]),
-    xai: new Set(["grok-4-1", "grok-4-1-fast", "grok-4-1-fast-non-reasoning"]),
+    xai: new Set([
+      "grok-4.20-experimental-beta-0304-reasoning",
+      "grok-4.20-experimental-beta-0304-non-reasoning",
+      "grok-4.20-multi-agent-experimental-beta-0304",
+    ]),
     openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark"]),
   }
 
@@ -291,6 +295,118 @@ export namespace Provider {
       ref: "Provider",
     })
   export type Info = z.infer<typeof Info>
+
+  const XAI_GROK_420_BETA_FALLBACK_MODELS: Record<string, ModelsDev.Model> = {
+    "grok-4.20-experimental-beta-0304-reasoning": {
+      id: "grok-4.20-experimental-beta-0304-reasoning",
+      name: "Grok 4.20 Experimental Beta (Reasoning)",
+      family: "grok-4.20",
+      release_date: "2026-03-04",
+      attachment: false,
+      reasoning: true,
+      temperature: true,
+      tool_call: true,
+      status: "beta",
+      cost: {
+        input: 2,
+        output: 6,
+        cache_read: 0.2,
+        context_over_200k: {
+          input: 4,
+          output: 12,
+          cache_read: 0.4,
+        },
+      },
+      limit: {
+        context: 2_000_000,
+        output: 30_000,
+      },
+      modalities: {
+        input: ["text"],
+        output: ["text"],
+      },
+      options: {},
+    },
+    "grok-4.20-experimental-beta-0304-non-reasoning": {
+      id: "grok-4.20-experimental-beta-0304-non-reasoning",
+      name: "Grok 4.20 Experimental Beta (Non-Reasoning)",
+      family: "grok-4.20",
+      release_date: "2026-03-04",
+      attachment: false,
+      reasoning: false,
+      temperature: true,
+      tool_call: true,
+      status: "beta",
+      cost: {
+        input: 2,
+        output: 6,
+        cache_read: 0.2,
+        context_over_200k: {
+          input: 4,
+          output: 12,
+          cache_read: 0.4,
+        },
+      },
+      limit: {
+        context: 2_000_000,
+        output: 30_000,
+      },
+      modalities: {
+        input: ["text"],
+        output: ["text"],
+      },
+      options: {},
+    },
+    "grok-4.20-multi-agent-experimental-beta-0304": {
+      id: "grok-4.20-multi-agent-experimental-beta-0304",
+      name: "Grok 4.20 Multi-Agent Experimental Beta",
+      family: "grok-4.20-multi-agent",
+      release_date: "2026-03-04",
+      attachment: false,
+      reasoning: true,
+      temperature: true,
+      // Multi-agent beta currently does not support client-side custom tools.
+      tool_call: false,
+      status: "beta",
+      cost: {
+        input: 2,
+        output: 6,
+        cache_read: 0.2,
+        context_over_200k: {
+          input: 4,
+          output: 12,
+          cache_read: 0.4,
+        },
+      },
+      limit: {
+        context: 2_000_000,
+        output: 30_000,
+      },
+      modalities: {
+        input: ["text"],
+        output: ["text"],
+      },
+      options: {},
+    },
+  }
+
+  function injectXaiGrok420FallbackModels(provider: Info | undefined) {
+    if (!provider || provider.id !== "xai") return
+
+    const xaiProviderForTransform: ModelsDev.Provider = {
+      id: "xai",
+      name: "xAI",
+      env: ["XAI_API_KEY"],
+      api: "https://api.x.ai/v1",
+      npm: "@ai-sdk/xai",
+      models: XAI_GROK_420_BETA_FALLBACK_MODELS,
+    }
+
+    for (const [modelID, fallback] of Object.entries(XAI_GROK_420_BETA_FALLBACK_MODELS)) {
+      if (provider.models[modelID]) continue
+      provider.models[modelID] = fromModelsDevModel(xaiProviderForTransform, fallback)
+    }
+  }
 
   function fromModelsDevModel(provider: ModelsDev.Provider, model: ModelsDev.Model): Model {
     const m: Model = {
@@ -1009,6 +1125,10 @@ export namespace Provider {
     }
 
     for (const [providerID, provider] of Object.entries(providers)) {
+      if (providerID === "xai") {
+        injectXaiGrok420FallbackModels(provider)
+      }
+
       if (blocked.has(providerID)) {
         delete providers[providerID]
         continue

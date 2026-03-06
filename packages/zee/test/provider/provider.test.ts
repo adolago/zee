@@ -197,7 +197,7 @@ test("model blacklist excludes specific models", async () => {
   })
 })
 
-test("xai provider is limited to grok 4.1 variants", async () => {
+test("xai provider is limited to grok 4.20 beta variants", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -216,7 +216,11 @@ test("xai provider is limited to grok 4.1 variants", async () => {
     fn: async () => {
       const providers = await Provider.list()
       expect(providers["xai"]).toBeDefined()
-      const allowed = new Set(["grok-4-1", "grok-4-1-fast", "grok-4-1-fast-non-reasoning"])
+      const allowed = new Set([
+        "grok-4.20-experimental-beta-0304-reasoning",
+        "grok-4.20-experimental-beta-0304-non-reasoning",
+        "grok-4.20-multi-agent-experimental-beta-0304",
+      ])
       for (const modelID of Object.keys(providers["xai"].models)) {
         expect(allowed.has(modelID)).toBe(true)
       }
@@ -725,7 +729,10 @@ test("defaultModel respects config model setting", async () => {
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
-          model: "anthropic/claude-sonnet-4-5",
+          model: "anthropic/claude-opus-4-6",
+          provider: {
+            anthropic: {},
+          },
         }),
       )
     },
@@ -738,7 +745,7 @@ test("defaultModel respects config model setting", async () => {
     fn: async () => {
       const model = await Provider.defaultModel()
       expect(model.providerID).toBe("anthropic")
-      expect(model.modelID).toBe("claude-sonnet-4-5")
+      expect(model.modelID).toBe("claude-opus-4-6")
     },
   })
 })

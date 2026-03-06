@@ -30,6 +30,6 @@ export const standardModel: PersonaModelSpec = {
 
 export const personaModels: Record<PersonaId, PersonaModelSpec> = {
   zee: standardModel,
-  stanley: { providerId: "xai",       modelId: "grok-4-1-fast" },
+  stanley: { providerId: "xai",       modelId: "grok-4.20-experimental-beta-0304-reasoning" },
   johny:   { providerId: "anthropic", modelId: "claude-opus-4-6" },
 };

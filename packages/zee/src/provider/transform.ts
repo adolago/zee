@@ -374,6 +374,7 @@ export namespace ProviderTransform {
 
   const WIDELY_SUPPORTED_EFFORTS = ["low", "medium", "high"]
   const XAI_CHAT_EFFORTS = ["low", "high"]
+  const XAI_MULTI_AGENT_EFFORTS = [...WIDELY_SUPPORTED_EFFORTS, "xhigh"]
   const OPENAI_EFFORTS = ["none", "minimal", ...WIDELY_SUPPORTED_EFFORTS, "xhigh"]
 
   export function variants(model: Provider.Model): Record<string, Record<string, any>> {
@@ -460,8 +461,11 @@ export namespace ProviderTransform {
           return {}
         }
         // xAI OpenAI-compatible endpoint only supports reasoning_effort on grok-3-mini.
-        // See: https://docs.x.ai/developers/model-capabilities/text/reasoning
+        // Grok 4.20 multi-agent beta also supports low/medium/high/xhigh.
         if (model.providerID === "xai" || model.providerID === "x-ai") {
+          if (id.includes("grok-4.20-multi-agent-experimental-beta-0304")) {
+            return Object.fromEntries(XAI_MULTI_AGENT_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
+          }
           if (id.includes("grok-3-mini")) {
             return {
               low: { reasoningEffort: "low" },
@@ -473,8 +477,11 @@ export namespace ProviderTransform {
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
       case "@ai-sdk/xai":
-        // xAI native SDK: reasoning_effort is only supported by grok-3-mini.
-        // See: https://docs.x.ai/developers/model-capabilities/text/reasoning
+        // xAI native SDK: grok-3-mini supports low/high and grok-4.20 multi-agent beta
+        // supports low/medium/high/xhigh.
+        if (id.includes("grok-4.20-multi-agent-experimental-beta-0304")) {
+          return Object.fromEntries(XAI_MULTI_AGENT_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
+        }
         if (!id.includes("grok-3-mini")) return {}
         return Object.fromEntries(XAI_CHAT_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 

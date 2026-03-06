@@ -150,6 +150,17 @@ describe("ProviderTransform.variants - mapping parity", () => {
     expect(Object.keys(ProviderTransform.variants(grokMiniModel))).toEqual(["low", "high"])
   })
 
+  test("xai sdk grok-4.20 multi-agent supports low/medium/high/xhigh", () => {
+    const grokMultiAgentModel = {
+      id: "grok-4.20-multi-agent-experimental-beta-0304",
+      providerID: "xai",
+      api: { id: "grok-4.20-multi-agent-experimental-beta-0304", npm: "@ai-sdk/xai" },
+      capabilities: { reasoning: true },
+    } as any
+
+    expect(Object.keys(ProviderTransform.variants(grokMultiAgentModel))).toEqual(["low", "medium", "high", "xhigh"])
+  })
+
   test("azure gpt-5 uses low/medium/high reasoning variants", () => {
     const azureModel = {
       id: "gpt-5",
@@ -1293,6 +1304,22 @@ describe("ProviderTransform.variants", () => {
       expect(result.low).toEqual({ reasoningEffort: "low" })
       expect(result.high).toEqual({ reasoningEffort: "high" })
     })
+
+    test("grok-4.20 multi-agent returns low/medium/high/xhigh with reasoningEffort", () => {
+      const model = createMockModel({
+        id: "xai/grok-4.20-multi-agent-experimental-beta-0304",
+        providerID: "xai",
+        api: {
+          id: "grok-4.20-multi-agent-experimental-beta-0304",
+          url: "https://api.x.ai",
+          npm: "@ai-sdk/openai-compatible",
+        },
+      })
+      const result = ProviderTransform.variants(model)
+      expect(Object.keys(result)).toEqual(["low", "medium", "high", "xhigh"])
+      expect(result.low).toEqual({ reasoningEffort: "low" })
+      expect(result.xhigh).toEqual({ reasoningEffort: "xhigh" })
+    })
   })
 
   describe("@ai-sdk/openai-compatible", () => {
@@ -1546,23 +1573,23 @@ describe("ProviderTransform.options - persona thinking configs", () => {
     })
   })
 
-  describe("Stanley (Grok 4.1 via xAI openai-compatible)", () => {
-    test("grok-4.1 returns no reasoningEffort variants", () => {
+  describe("Stanley (Grok 4.20 via xAI openai-compatible)", () => {
+    test("grok-4.20 multi-agent returns low/medium/high/xhigh reasoningEffort variants", () => {
       const model = {
-        id: "x-ai/grok-4.1-fast",
+        id: "x-ai/grok-4.20-multi-agent-experimental-beta-0304",
         providerID: "x-ai",
         api: {
-          id: "grok-4.1-fast",
+          id: "grok-4.20-multi-agent-experimental-beta-0304",
           url: "https://api.x.ai",
           npm: "@ai-sdk/openai-compatible",
         },
         capabilities: {
           reasoning: true,
         },
-        release_date: "2025-01-01",
+        release_date: "2026-03-04",
       } as any
       const variants = ProviderTransform.variants(model)
-      expect(variants).toEqual({})
+      expect(Object.keys(variants)).toEqual(["low", "medium", "high", "xhigh"])
     })
   })
 

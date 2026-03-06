@@ -32,7 +32,7 @@ describe("model selection", () => {
   test("falls back to sorted best model when configured/rosetta are unavailable", async () => {
     const result = await resolveDefaultModel({
       configured: { providerID: "google", modelID: "gemini-3-pro-preview" },
-      rosetta: { providerID: "xai", modelID: "grok-4-1-fast" },
+      rosetta: { providerID: "xai", modelID: "grok-4.20-experimental-beta-0304-reasoning" },
       providers,
       sortModels: (models) => [...models].sort((a, b) => `${a.providerID}/${a.id}`.localeCompare(`${b.providerID}/${b.id}`)),
     })
