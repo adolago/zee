@@ -329,8 +329,21 @@ export const MemoryRoute = new Hono()
     async (c) => {
       try {
         const memory = await getMemoryService()
-        const localIndex = typeof memory.getLocalIndexStatus === "function"
-          ? memory.getLocalIndexStatus()
+        const localIndex: {
+          enabled: boolean
+          backend?: string
+          available: boolean
+          degradedRead: "off" | "keyword_only"
+        } = typeof memory.getLocalIndexStatus === "function"
+          ? {
+              enabled: Boolean(memory.getLocalIndexStatus().enabled),
+              backend:
+                typeof memory.getLocalIndexStatus().backend === "string"
+                  ? memory.getLocalIndexStatus().backend
+                  : undefined,
+              available: Boolean(memory.getLocalIndexStatus().available),
+              degradedRead: memory.getLocalIndexStatus().degradedRead === "keyword_only" ? "keyword_only" : "off",
+            }
           : {
               enabled: false,
               available: false,

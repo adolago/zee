@@ -1,19 +1,16 @@
 import { Log } from "@/util/log"
+import type { Memory } from "../../../../src/memory/unified"
 
 const log = Log.create({ service: "memory:agentdb" })
 
-type AgentDbMemory = {
-  init: () => Promise<void>
-  stats: () => Promise<unknown>
-  [key: string]: unknown
-}
+type AgentDbMemory = Memory
 
 let memoryInstance: AgentDbMemory | null = null
 let initPromise: Promise<AgentDbMemory> | null = null
 
 async function createAgentDbMemory(): Promise<AgentDbMemory> {
   const { getMemory } = await import("../../../../src/memory/unified")
-  const memory = getMemory() as AgentDbMemory
+  const memory = getMemory()
   await memory.init()
   return memory
 }

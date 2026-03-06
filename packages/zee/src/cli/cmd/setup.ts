@@ -127,10 +127,11 @@ export const SetupCommand = cmd({
         default: false,
         describe: "skip onboarding profile prompt/write",
       }),
-  async handler(args: SetupArgs) {
+  async handler(args) {
+    const typedArgs = args as SetupArgs
     UI.header("Zee Setup")
 
-    const onboardingApplied = await maybeApplyOnboardingProfile(args)
+    const onboardingApplied = await maybeApplyOnboardingProfile(typedArgs)
     if (!onboardingApplied) return
 
     // 1. Check Docker
