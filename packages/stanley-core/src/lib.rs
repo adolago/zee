@@ -27,6 +27,10 @@
 pub mod indicators;
 pub mod paper_trade;
 pub mod portfolio;
+pub mod research;
+pub mod runtime;
+pub mod server;
+pub mod surface;
 pub mod types;
 
 // Re-export commonly used types
@@ -44,6 +48,12 @@ pub use portfolio::{
     calculate_max_drawdown, calculate_risk_metrics, sharpe_ratio, sortino_ratio, value_at_risk,
     volatility, PortfolioPerformance, PortfolioTracker,
 };
+pub use runtime::{
+    CloseTradeRequest, CreateEventRequest, CreatePersonRequest, CreateSectorRequest,
+    CreateThesisRequest, CreateTradeRequest, GraphResponse, NoteResponse, SearchResult,
+    StanleyRuntime, TradeStatsResponse,
+};
+pub use server::{serve, ServerOptions};
 
 /// Error types for stanley-core operations.
 #[derive(Debug, thiserror::Error)]
@@ -65,6 +75,9 @@ pub enum Error {
 
     #[error("Unknown strategy: {0}")]
     UnknownStrategy(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
 }
 
 /// Result type for stanley-core operations.

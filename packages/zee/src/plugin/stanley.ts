@@ -36,6 +36,7 @@ type StanleyPluginConfig = {
   apiKey?: string
   autoStart?: boolean
   wsEnabled?: boolean
+  coreBin?: string
   repoPath?: string
 }
 
@@ -44,6 +45,7 @@ type ResolvedStanleyPluginConfig = {
   apiKey?: string
   autoStart: boolean
   wsEnabled: boolean
+  coreBin?: string
   repoPath: string
 }
 
@@ -143,7 +145,7 @@ function formatStanleyError(error: unknown): string {
   if (error instanceof StanleyNotRunningError) {
     return (
       `Stanley API is not running at ${error.baseUrl}. ` +
-      `Verify backend setup and set STANLEY_PYTHON when no local stanley/.venv is available.`
+      `Verify backend setup and set STANLEY_CORE_BIN to the Stanley core executable when the default backend is unavailable.`
     )
   }
   if (error instanceof StanleyDaemonError) {
@@ -211,11 +213,14 @@ function wrapToolErrors(tools: Record<string, ToolDefinition>): Record<string, T
 
 function getEffectiveConfig(override?: StanleyPluginConfig): ResolvedStanleyPluginConfig {
   const merged = { ...pluginConfig, ...override }
+  const baseUrl = merged.baseUrl ?? Stanley.apiUrl()
+  const explicitApiUrl = Boolean(process.env.STANLEY_API_URL?.trim())
   return {
-    baseUrl: merged.baseUrl ?? Stanley.apiUrl(),
+    baseUrl,
     apiKey: merged.apiKey ?? process.env.STANLEY_API_KEY,
-    autoStart: merged.autoStart ?? true,
+    autoStart: merged.autoStart ?? (!explicitApiUrl && resolveLocalDaemonEndpoint(baseUrl) !== null),
     wsEnabled: merged.wsEnabled ?? false,
+    coreBin: merged.coreBin ?? Stanley.coreBin(),
     repoPath: merged.repoPath ?? process.env.STANLEY_REPO_PATH ?? Stanley.repo(),
   }
 }
@@ -242,7 +247,7 @@ function getClient(override?: StanleyPluginConfig): StanleyClient {
     baseUrl: effective.baseUrl,
     daemon: {
       autoStart: effective.autoStart,
-      pythonPath: Stanley.python(),
+      coreBin: effective.coreBin,
       repoPath: effective.repoPath,
       ...(daemonEndpoint ? { host: daemonEndpoint.host, port: daemonEndpoint.port } : {}),
     },
@@ -261,6 +266,7 @@ function getClient(override?: StanleyPluginConfig): StanleyClient {
 }
 
 function ensurePreflight(): void {
+  if (!getEffectiveConfig().autoStart) return
   if (preflightValidated) return
   const preflightError = Stanley.preflight()
   if (preflightError) {

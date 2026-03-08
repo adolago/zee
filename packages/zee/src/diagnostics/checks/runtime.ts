@@ -347,7 +347,7 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
   results.push(await checkDiskSpace())
   results.push(await checkMemory())
 
-  // Stanley Python backend
+  // Stanley runtime
   results.push(checkStanleyBackend())
 
   // Extended checks (only in full mode)
@@ -359,39 +359,25 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
 }
 
 /**
- * Check that the Stanley Python backend is properly set up
+ * Check that the Stanley runtime is properly configured
  */
 function checkStanleyBackend(): CheckResult {
   const start = Date.now()
-  const repo = Stanley.repo()
+  const apiUrl = Stanley.apiUrl()
+  const coreBin = Stanley.coreBin()
 
   const err = Stanley.preflight()
   if (err) {
-    const isVenvMissing = err.includes("venv not found")
     return {
       id: "runtime.stanley-backend",
       name: "Stanley Backend",
       category: "runtime",
       status: "fail",
-      message: "Stanley Python backend not ready",
+      message: "Stanley runtime not ready",
       details: err,
       severity: "critical",
       durationMs: Date.now() - start,
-      autoFixable: isVenvMissing,
-      ...(isVenvMissing && {
-        fix: async () => {
-          try {
-            execSync(`python3.12 -m venv ${path.join(repo, ".venv")}`, { timeout: 30_000, stdio: "pipe" })
-            execSync(`${path.join(repo, ".venv", "bin", "pip")} install -r ${path.join(repo, "requirements.txt")}`, {
-              timeout: 300_000,
-              stdio: "pipe",
-            })
-            return { success: true, message: "Created venv and installed dependencies" }
-          } catch (e) {
-            return { success: false, message: `Auto-fix failed: ${e instanceof Error ? e.message : String(e)}` }
-          }
-        },
-      }),
+      autoFixable: false,
     }
   }
 
@@ -400,10 +386,12 @@ function checkStanleyBackend(): CheckResult {
     name: "Stanley Backend",
     category: "runtime",
     status: "pass",
-    message: `Python backend ready at ${repo}`,
+    message: coreBin
+      ? `Rust runtime ready via ${coreBin}`
+      : `External Stanley runtime configured at ${apiUrl}`,
     severity: "info",
     durationMs: Date.now() - start,
     autoFixable: false,
-    metadata: { repo, python: Stanley.python() },
+    metadata: { apiUrl, coreBin: coreBin ?? null },
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Stanley Daemon Lifecycle Manager
  *
- * Manages the Stanley FastAPI server process:
+ * Manages the Stanley runtime process:
  * - Auto-start if not running
  * - Health polling during startup
  * - Auto-restart on crash
@@ -35,28 +35,25 @@ export class StanleyDaemon {
     await this.start();
   }
 
-  /** Start the Stanley API server */
+  /** Start the Stanley runtime */
   async start(): Promise<void> {
     if (this.process) {
       throw new StanleyDaemonError("Daemon already started");
     }
 
-    const pythonPath = this.config.pythonPath;
-    const args = [
-      "-m", "uvicorn",
-      "stanley.api.main_new:app",
-      "--host", this.config.host,
-      "--port", String(this.config.port),
-    ];
+    const runtimeBin = this.config.coreBin?.trim();
+    if (!runtimeBin) {
+      throw new StanleyDaemonError(
+        "Stanley core binary is not configured. Set daemon.coreBin or STANLEY_CORE_BIN to a built `stanley` executable.",
+      );
+    }
+
+    const args = ["serve", "--host", this.config.host, "--port", String(this.config.port)];
 
     const env: Record<string, string> = { ...process.env as Record<string, string> };
 
-    // Set working directory to Stanley repo if specified
-    const cwd = this.config.repoPath;
-
     try {
-      this.process = Bun.spawn([pythonPath, ...args], {
-        cwd,
+      this.process = Bun.spawn([runtimeBin, ...args], {
         env,
         stdout: "pipe",
         stderr: "pipe",
@@ -71,7 +68,7 @@ export class StanleyDaemon {
     } catch (error) {
       this.process = null;
       throw new StanleyDaemonError(
-        `Failed to start Stanley API: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to start Stanley runtime: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined,
       );
     }

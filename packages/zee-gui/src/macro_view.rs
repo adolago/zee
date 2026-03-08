@@ -3,12 +3,12 @@
 //! Displays economic indicators, market regime, yield curve, and recession probability.
 //! Provides a comprehensive macro-economic dashboard for investment analysis.
 
-use crate::api::{ApiResponse, ZeeApiClient};
+use crate::api::ZeeApiClient;
 use crate::app::LoadState;
 use crate::theme::Theme;
 use gpui::prelude::*;
 use gpui::*;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 use std::sync::Arc;
 
 // =============================================================================
@@ -174,12 +174,12 @@ pub struct IndicatorApiData {
     pub code: String,
     pub name: String,
     pub value: f64,
-    #[serde(rename = "previousValue")]
+    #[serde(rename = "previousValue", alias = "previous_value")]
     pub previous_value: Option<f64>,
     pub change: Option<f64>,
     pub unit: String,
     pub frequency: String,
-    #[serde(rename = "lastUpdate")]
+    #[serde(rename = "lastUpdate", alias = "last_update")]
     pub last_update: String,
     pub source: String,
 }
@@ -187,13 +187,13 @@ pub struct IndicatorApiData {
 #[derive(Debug, Deserialize, Clone)]
 pub struct SnapshotApiData {
     pub country: String,
-    #[serde(rename = "gdpGrowth")]
+    #[serde(rename = "gdpGrowth", alias = "gdp_growth")]
     pub gdp_growth: Option<f64>,
     pub inflation: Option<f64>,
     pub unemployment: Option<f64>,
-    #[serde(rename = "policyRate")]
+    #[serde(rename = "policyRate", alias = "policy_rate")]
     pub policy_rate: Option<f64>,
-    #[serde(rename = "currentAccount")]
+    #[serde(rename = "currentAccount", alias = "current_account")]
     pub current_account: Option<f64>,
     pub regime: Option<String>,
     pub timestamp: String,
@@ -201,16 +201,16 @@ pub struct SnapshotApiData {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RegimeApiResponse {
-    #[serde(rename = "currentRegime")]
+    #[serde(rename = "currentRegime", alias = "current_regime")]
     pub current_regime: String,
     pub confidence: String,
-    #[serde(rename = "regimeScore")]
+    #[serde(rename = "regimeScore", alias = "regime_score")]
     pub regime_score: f64,
     pub components: std::collections::HashMap<String, String>,
     pub metrics: std::collections::HashMap<String, Option<f64>>,
     pub positioning: PositioningApiData,
     pub signals: Vec<SignalApiData>,
-    #[serde(rename = "regimeDurationDays")]
+    #[serde(rename = "regimeDurationDays", alias = "regime_duration_days")]
     pub regime_duration_days: i32,
     pub timestamp: String,
 }
@@ -235,15 +235,18 @@ pub struct SignalApiData {
 pub struct YieldCurveApiResponse {
     pub country: String,
     pub shape: String,
-    #[serde(rename = "spread2y10y")]
+    #[serde(rename = "spread2y10y", alias = "spread_2y10y")]
     pub spread_2y10y: Option<f64>,
-    #[serde(rename = "spread3m10y")]
+    #[serde(rename = "spread3m10y", alias = "spread_3m10y")]
     pub spread_3m10y: Option<f64>,
-    #[serde(rename = "recessionSignal")]
+    #[serde(rename = "recessionSignal", alias = "recession_signal")]
     pub recession_signal: String,
-    #[serde(rename = "recessionProbability12m")]
+    #[serde(
+        rename = "recessionProbability12m",
+        alias = "recession_probability_12m"
+    )]
     pub recession_probability_12m: Option<f64>,
-    #[serde(rename = "inversionDurationDays")]
+    #[serde(rename = "inversionDurationDays", alias = "inversion_duration_days")]
     pub inversion_duration_days: i32,
     pub curve: Vec<YieldPointApiData>,
     pub dynamic: String,
@@ -253,9 +256,9 @@ pub struct YieldCurveApiResponse {
 #[derive(Debug, Deserialize, Clone)]
 pub struct YieldPointApiData {
     pub tenor: String,
-    #[serde(rename = "yield")]
+    #[serde(rename = "yield", alias = "yield_pct")]
     pub yield_pct: f64,
-    #[serde(rename = "priorYield")]
+    #[serde(rename = "priorYield", alias = "prior_yield")]
     pub prior_yield: Option<f64>,
     pub change: Option<f64>,
 }
@@ -263,16 +266,16 @@ pub struct YieldPointApiData {
 #[derive(Debug, Deserialize, Clone)]
 pub struct RecessionApiResponse {
     pub country: String,
-    #[serde(rename = "probability12m")]
+    #[serde(rename = "probability12m", alias = "probability_12m")]
     pub probability_12m: f64,
-    #[serde(rename = "probability6m")]
+    #[serde(rename = "probability6m", alias = "probability_6m")]
     pub probability_6m: f64,
-    #[serde(rename = "riskLevel")]
+    #[serde(rename = "riskLevel", alias = "risk_level")]
     pub risk_level: String,
-    #[serde(rename = "riskScore")]
+    #[serde(rename = "riskScore", alias = "risk_score")]
     pub risk_score: f64,
     pub factors: Vec<RecessionFactorApiData>,
-    #[serde(rename = "modelVersion")]
+    #[serde(rename = "modelVersion", alias = "model_version")]
     pub model_version: String,
     pub confidence: f64,
     pub timestamp: String,
@@ -290,108 +293,66 @@ pub struct RecessionFactorApiData {
 // API Helper Functions
 // =============================================================================
 
-/// Fetch macro indicators from API
-pub async fn fetch_macro_indicators(
-    country: &str,
-) -> Result<IndicatorsApiResponse, String> {
-    let url = format!(
-        "http://localhost:8000/api/macro/indicators?country={}",
-        country
-    );
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let api_response: ApiResponse<IndicatorsApiResponse> = response
-        .json()
+async fn fetch_macro_payload<T: DeserializeOwned>(
+    api_client: &ZeeApiClient,
+    path: String,
+) -> Result<T, String> {
+    let api_response = api_client
+        .get_enveloped::<T>(&path)
         .await
         .map_err(|e| e.to_string())?;
 
     if api_response.success {
         api_response.data.ok_or_else(|| "No data".to_string())
     } else {
-        Err(api_response.error.unwrap_or_else(|| "Unknown error".to_string()))
+        Err(api_response
+            .error
+            .unwrap_or_else(|| "Unknown error".to_string()))
     }
+}
+
+/// Fetch macro indicators from API
+pub async fn fetch_macro_indicators(
+    api_client: &ZeeApiClient,
+    country: &str,
+) -> Result<IndicatorsApiResponse, String> {
+    fetch_macro_payload(
+        api_client,
+        format!("/api/macro/indicators?country={country}"),
+    )
+    .await
 }
 
 /// Fetch market regime from API
 pub async fn fetch_macro_regime(
+    api_client: &ZeeApiClient,
     country: &str,
 ) -> Result<RegimeApiResponse, String> {
-    let url = format!(
-        "http://localhost:8000/api/macro/regime?country={}",
-        country
-    );
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let api_response: ApiResponse<RegimeApiResponse> = response
-        .json()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if api_response.success {
-        api_response.data.ok_or_else(|| "No data".to_string())
-    } else {
-        Err(api_response.error.unwrap_or_else(|| "Unknown error".to_string()))
-    }
+    fetch_macro_payload(api_client, format!("/api/macro/regime?country={country}")).await
 }
 
 /// Fetch yield curve from API
 pub async fn fetch_yield_curve(
+    api_client: &ZeeApiClient,
     country: &str,
 ) -> Result<YieldCurveApiResponse, String> {
-    let url = format!(
-        "http://localhost:8000/api/macro/yield-curve?country={}",
-        country
-    );
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let api_response: ApiResponse<YieldCurveApiResponse> = response
-        .json()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if api_response.success {
-        api_response.data.ok_or_else(|| "No data".to_string())
-    } else {
-        Err(api_response.error.unwrap_or_else(|| "Unknown error".to_string()))
-    }
+    fetch_macro_payload(
+        api_client,
+        format!("/api/macro/yield-curve?country={country}"),
+    )
+    .await
 }
 
 /// Fetch recession probability from API
 pub async fn fetch_recession_probability(
+    api_client: &ZeeApiClient,
     country: &str,
 ) -> Result<RecessionApiResponse, String> {
-    let url = format!(
-        "http://localhost:8000/api/macro/recession-probability?country={}",
-        country
-    );
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let api_response: ApiResponse<RecessionApiResponse> = response
-        .json()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if api_response.success {
-        api_response.data.ok_or_else(|| "No data".to_string())
-    } else {
-        Err(api_response.error.unwrap_or_else(|| "Unknown error".to_string()))
-    }
+    fetch_macro_payload(
+        api_client,
+        format!("/api/macro/recession-probability?country={country}"),
+    )
+    .await
 }
 
 // =============================================================================
@@ -452,10 +413,11 @@ impl MacroView {
 
     fn load_indicators(&mut self, cx: &mut Context<Self>) {
         self.indicators = LoadState::Loading;
+        let api_client = self.api_client.clone();
         let country = self.selected_country.clone();
 
         cx.spawn(async move |this, cx: &mut AsyncApp| {
-            let result = fetch_macro_indicators(&country).await;
+            let result = fetch_macro_indicators(api_client.as_ref(), &country).await;
 
             let _ = cx.update(|cx| {
                 if let Some(entity) = this.upgrade() {
@@ -496,10 +458,11 @@ impl MacroView {
 
     fn load_regime(&mut self, cx: &mut Context<Self>) {
         self.regime = LoadState::Loading;
+        let api_client = self.api_client.clone();
         let country = self.selected_country.clone();
 
         cx.spawn(async move |this, cx: &mut AsyncApp| {
-            let result = fetch_macro_regime(&country).await;
+            let result = fetch_macro_regime(api_client.as_ref(), &country).await;
 
             let _ = cx.update(|cx| {
                 if let Some(entity) = this.upgrade() {
@@ -546,10 +509,11 @@ impl MacroView {
 
     fn load_yield_curve(&mut self, cx: &mut Context<Self>) {
         self.yield_curve = LoadState::Loading;
+        let api_client = self.api_client.clone();
         let country = self.selected_country.clone();
 
         cx.spawn(async move |this, cx: &mut AsyncApp| {
-            let result = fetch_yield_curve(&country).await;
+            let result = fetch_yield_curve(api_client.as_ref(), &country).await;
 
             let _ = cx.update(|cx| {
                 if let Some(entity) = this.upgrade() {
@@ -582,10 +546,11 @@ impl MacroView {
 
     fn load_recession(&mut self, cx: &mut Context<Self>) {
         self.recession = LoadState::Loading;
+        let api_client = self.api_client.clone();
         let country = self.selected_country.clone();
 
         cx.spawn(async move |this, cx: &mut AsyncApp| {
-            let result = fetch_recession_probability(&country).await;
+            let result = fetch_recession_probability(api_client.as_ref(), &country).await;
 
             let _ = cx.update(|cx| {
                 if let Some(entity) = this.upgrade() {
@@ -726,7 +691,8 @@ impl MacroView {
             LoadState::Loaded(regime) => {
                 let color = regime.current_regime.color();
                 let equity_color = self.get_positioning_color(&regime.positioning.equity, theme);
-                let duration_color = self.get_positioning_color(&regime.positioning.duration, theme);
+                let duration_color =
+                    self.get_positioning_color(&regime.positioning.duration, theme);
                 let credit_color = self.get_positioning_color(&regime.positioning.credit, theme);
 
                 div()
@@ -950,11 +916,7 @@ impl MacroView {
                         div()
                             .text_size(px(10.0))
                             .text_color(theme.text_dimmed)
-                            .child(if self.show_country_selector {
-                                "^"
-                            } else {
-                                "v"
-                            }),
+                            .child(if self.show_country_selector { "^" } else { "v" }),
                     ),
             )
             .when(self.show_country_selector, |el| {
@@ -1193,7 +1155,11 @@ impl MacroView {
             .iter()
             .map(|p| p.yield_value)
             .fold(0.0_f64, |a, b| a.max(b));
-        let scale = if max_yield > 0.0 { 200.0 / max_yield } else { 1.0 };
+        let scale = if max_yield > 0.0 {
+            200.0 / max_yield
+        } else {
+            1.0
+        };
 
         // Determine curve shape color
         let shape_color = match self.yield_curve_shape.to_lowercase().as_str() {
@@ -1373,17 +1339,9 @@ impl MacroView {
                     .flex()
                     .gap(px(20.0))
                     // 6-month probability
-                    .child(self.probability_gauge(
-                        "6 Month",
-                        data.probability_6m,
-                        theme,
-                    ))
+                    .child(self.probability_gauge("6 Month", data.probability_6m, theme))
                     // 12-month probability
-                    .child(self.probability_gauge(
-                        "12 Month",
-                        data.probability_12m,
-                        theme,
-                    ))
+                    .child(self.probability_gauge("12 Month", data.probability_12m, theme))
                     // Risk level badge
                     .child(
                         div()
@@ -1439,12 +1397,7 @@ impl MacroView {
                                 .items_center()
                                 .gap(px(12.0))
                                 .py(px(6.0))
-                                .child(
-                                    div()
-                                        .size(px(8.0))
-                                        .rounded_full()
-                                        .bg(severity_color),
-                                )
+                                .child(div().size(px(8.0)).rounded_full().bg(severity_color))
                                 .child(
                                     div()
                                         .flex_grow()

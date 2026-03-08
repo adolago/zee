@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
+import { FluxRecorder } from "../../src/flux"
 import { Log } from "../../src/util/log"
 import { Server } from "../../src/server/server"
 
@@ -145,6 +146,7 @@ describe("gateway routes", () => {
     const previousWacliBin = process.env.ZEE_WACLI_BIN
 
     try {
+      const before = FluxRecorder.list({ kind: "gateway.fallback.invoked" }).total
       process.env.ZEE_GATEWAY_URL = "ws://127.0.0.1:1"
       delete process.env.ZEE_GATEWAY_PORT
 
@@ -167,6 +169,7 @@ describe("gateway routes", () => {
       expect(data.data.provider).toBe("wacli")
       expect(Array.isArray(data.data.results)).toBe(true)
       expect(data.data.results.length).toBeGreaterThan(0)
+      expect(FluxRecorder.list({ kind: "gateway.fallback.invoked" }).total).toBe(before + 1)
     } finally {
       if (previousGatewayUrl === undefined) delete process.env.ZEE_GATEWAY_URL
       else process.env.ZEE_GATEWAY_URL = previousGatewayUrl

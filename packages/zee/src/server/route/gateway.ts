@@ -13,6 +13,7 @@ import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
 import { extractGatewayRouteSecret, isMatchingSecret } from "@/security"
 import { Config } from "@/config/config"
+import { getServerRuntimeConfig, isTrustedControlOrigin } from "../auth"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -375,6 +376,21 @@ async function sendViaGateway(input: {
     }
     // Fallback to direct wacli send when embedded gateway runtime is unavailable.
     const message = error instanceof Error ? error.message : String(error)
+    FluxRecorder.record({
+      traceID: input.traceID ?? crypto.randomUUID(),
+      requestID: input.requestID,
+      sessionID: input.sessionID,
+      direction: "internal",
+      domain: "gateway",
+      kind: "gateway.fallback.invoked",
+      status: "ok",
+      metadata: {
+        provider: input.provider,
+        fallback: "wacli",
+        reason: message,
+        ...(input.agentID ? { agentID: input.agentID } : {}),
+      },
+    })
     log.warn("gateway send failed; falling back to wacli", {
       error: message,
       to: originalInput.to,
@@ -446,9 +462,30 @@ export const GatewayRoute = new Hono()
     }
     RequestMeta.setAgentID(c.req.raw, parsedAgentID)
 
-    const configuredSecret = await resolveGatewayRouteSecret()
+    const runtimeConfig = await getServerRuntimeConfig()
+    const origin = c.req.header("Origin")
     const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
     const requestID = RequestMeta.getRequestID(c.req.raw)
+    if (origin && !isTrustedControlOrigin(origin, runtimeConfig)) {
+      FluxRecorder.record({
+        traceID,
+        requestID,
+        direction: "internal",
+        domain: "gateway",
+        kind: "gateway.auth.denied",
+        status: "denied",
+        route: c.req.path,
+        method: c.req.method,
+        metadata: {
+          authRequired: true,
+          denialReason: "untrusted_origin",
+          origin,
+        },
+      })
+      return c.json({ success: false, error: "Origin is not trusted" } satisfies GatewayResponse, 403)
+    }
+
+    const configuredSecret = await resolveGatewayRouteSecret()
     if (!configuredSecret) {
       FluxRecorder.record({
         traceID,

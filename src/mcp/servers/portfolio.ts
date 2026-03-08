@@ -14,10 +14,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { delimiter } from "node:path";
-import { getSafeEnv } from "../../util/safe-env.js";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { Stanley } from "../../paths.js";
 import { installMcpParentGuard } from "./parent-guard.js";
 
@@ -28,49 +26,364 @@ type StanleyResult = {
   error?: string;
 };
 
-function resolveStanleyCli(): { python: string; cliPath: string; pythonPath?: string } {
-  return {
-    python: Stanley.python(),
-    cliPath: Stanley.cli(),
-    pythonPath: Stanley.pythonPath(),
-  };
+type StanleyEnvelope<T> = {
+  success: boolean;
+  data: T | null;
+  error: string | null;
+  timestamp: string;
+};
+
+type PortfolioPosition = {
+  symbol: string;
+  shares: number;
+  averageCost: number;
+};
+
+type PortfolioState = {
+  cash: number;
+  positions: PortfolioPosition[];
+};
+
+function apiBaseUrl(): string {
+  return Stanley.apiUrl().replace(/\/+$/, "");
 }
 
-function runStanleyCli(args: string[]): StanleyResult {
-  const { python, cliPath, pythonPath } = resolveStanleyCli();
-  if (!existsSync(cliPath)) {
+async function requestStanley(pathname: string, init?: RequestInit): Promise<StanleyResult> {
+  try {
+    const response = await fetch(`${apiBaseUrl()}${pathname}`, {
+      ...init,
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    const text = await response.text();
+    const payload = text ? JSON.parse(text) as StanleyEnvelope<unknown> | unknown : null;
+
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "success" in payload &&
+      "data" in payload
+    ) {
+      const envelope = payload as StanleyEnvelope<unknown>;
+      if (!response.ok || !envelope.success) {
+        return {
+          ok: false,
+          error: envelope.error || `Stanley request failed with status ${response.status}`,
+        };
+      }
+      return { ok: true, data: envelope.data };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: text || `Stanley request failed with status ${response.status}`,
+      };
+    }
+
+    return { ok: true, data: payload };
+  } catch (error) {
     return {
       ok: false,
-      error: `Stanley CLI not found at ${cliPath}. Set STANLEY_REPO or STANLEY_CLI.`,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
+}
 
-  const env = getSafeEnv(["STANLEY_REPO", "STANLEY_CLI", "STANLEY_PYTHON", "STANLEY_PYTHONPATH", "PYTHONPATH"]);
-  if (pythonPath) {
-    env.PYTHONPATH = env.PYTHONPATH ? `${pythonPath}${delimiter}${env.PYTHONPATH}` : pythonPath;
-  }
+function flagValue(args: string[], flag: string): string | undefined {
+  const index = args.indexOf(flag);
+  if (index === -1 || index + 1 >= args.length) return undefined;
+  return args[index + 1];
+}
 
-  const result = spawnSync(python, [cliPath, ...args], {
-    encoding: "utf-8",
-    env,
-    timeout: 60000, // 60 second timeout
-  });
+function hasFlag(args: string[], flag: string): boolean {
+  return args.includes(flag);
+}
 
-  if (result.error) {
-    return { ok: false, error: result.error.message };
-  }
+function normalizeSymbol(symbol: string): string {
+  return symbol.trim().toUpperCase();
+}
 
-  const stdout = result.stdout.trim();
-  if (!stdout) {
-    const stderr = result.stderr.trim();
-    return { ok: false, error: stderr || "Stanley CLI returned no output." };
+function portfolioFilePath(): string {
+  return Stanley.portfolioFile();
+}
+
+function loadPortfolioState(): PortfolioState {
+  const file = portfolioFilePath();
+  if (!existsSync(file)) {
+    return { cash: 0, positions: [] };
   }
 
   try {
-    return JSON.parse(stdout) as StanleyResult;
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as any;
+    if (Array.isArray(parsed)) {
+      return {
+        cash: 0,
+        positions: parsed.map(normalizePosition).filter(Boolean) as PortfolioPosition[],
+      };
+    }
+    return {
+      cash: typeof parsed?.cash === "number" ? parsed.cash : 0,
+      positions: Array.isArray(parsed?.positions)
+        ? parsed.positions.map(normalizePosition).filter(Boolean) as PortfolioPosition[]
+        : [],
+    };
   } catch {
-    return { ok: false, error: stdout };
+    return { cash: 0, positions: [] };
   }
+}
+
+function normalizePosition(raw: any): PortfolioPosition | null {
+  const symbol = typeof raw?.symbol === "string" ? normalizeSymbol(raw.symbol) : "";
+  const shares = Number(raw?.shares ?? 0);
+  const averageCost = Number(
+    raw?.averageCost ??
+      raw?.average_cost ??
+      raw?.avg_cost ??
+      raw?.entryPrice ??
+      raw?.entry_price ??
+      raw?.price ??
+      0,
+  );
+  if (!symbol || !Number.isFinite(shares) || shares <= 0) return null;
+  return {
+    symbol,
+    shares,
+    averageCost: Number.isFinite(averageCost) && averageCost > 0 ? averageCost : 0,
+  };
+}
+
+function savePortfolioState(state: PortfolioState): void {
+  const file = portfolioFilePath();
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify(state, null, 2));
+}
+
+function portfolioHoldings(state: PortfolioState) {
+  return state.positions.map((position) => ({
+    symbol: position.symbol,
+    shares: position.shares,
+    average_cost: position.averageCost,
+  }));
+}
+
+async function enrichPositions(state: PortfolioState) {
+  return Promise.all(
+    state.positions.map(async (position) => {
+      const quote = await requestStanley(`/api/market/${position.symbol}/quote`);
+      const quoteData = quote.ok && quote.data && typeof quote.data === "object"
+        ? quote.data as Record<string, unknown>
+        : {};
+      const currentPrice = Number(quoteData.price ?? position.averageCost);
+      const marketValue = currentPrice * position.shares;
+      const costBasis = position.averageCost * position.shares;
+      const pnl = marketValue - costBasis;
+      return {
+        ...position,
+        currentPrice,
+        marketValue,
+        costBasis,
+        pnl,
+        pnlPercent: costBasis > 0 ? (pnl / costBasis) * 100 : 0,
+      };
+    }),
+  );
+}
+
+async function runStanleyCli(args: string[]): Promise<StanleyResult> {
+  const [domain, action] = args;
+
+  if (domain === "status") {
+    return requestStanley("/api/health");
+  }
+
+  if (domain === "portfolio") {
+    const state = loadPortfolioState();
+    if (action === "status") {
+      const positions = await enrichPositions(state);
+      const analytics = state.positions.length > 0
+        ? await requestStanley("/api/portfolio/analytics", {
+            method: "POST",
+            body: JSON.stringify({ holdings: portfolioHoldings(state), benchmark: "SPY" }),
+          })
+        : { ok: true, data: null };
+      const risk = hasFlag(args, "--risk") && state.positions.length > 0
+        ? await requestStanley("/api/portfolio/risk", {
+            method: "POST",
+            body: JSON.stringify({
+              holdings: portfolioHoldings(state),
+              confidence_level: 0.95,
+              method: "historical",
+            }),
+          })
+        : { ok: true, data: null };
+
+      if (!analytics.ok) return analytics;
+      if (!risk.ok) return risk;
+
+      return {
+        ok: true,
+        data: {
+          cash: state.cash,
+          positions,
+          totalValue: positions.reduce((sum, item) => sum + Number(item.marketValue ?? 0), state.cash),
+          analytics: analytics.data,
+          risk: risk.data,
+        },
+      };
+    }
+
+    const symbol = normalizeSymbol(flagValue(args, "--symbol") || "");
+    if (!symbol) {
+      return { ok: false, error: "A --symbol value is required for portfolio position commands." };
+    }
+
+    if (action === "get") {
+      const position = state.positions.find((entry) => entry.symbol === symbol);
+      return position
+        ? { ok: true, data: position }
+        : { ok: false, error: `Position ${symbol} not found.` };
+    }
+
+    const shares = Number(flagValue(args, "--shares") ?? 0);
+    const price = Number(flagValue(args, "--price") ?? 0);
+    const index = state.positions.findIndex((entry) => entry.symbol === symbol);
+
+    if (action === "close") {
+      if (index === -1) return { ok: false, error: `Position ${symbol} not found.` };
+      const [closed] = state.positions.splice(index, 1);
+      savePortfolioState(state);
+      return { ok: true, data: { action, closed, remainingPositions: state.positions } };
+    }
+
+    if (!Number.isFinite(shares) || shares <= 0) {
+      return { ok: false, error: "A positive --shares value is required." };
+    }
+
+    if (action === "add") {
+      if (index === -1) {
+        state.positions.push({
+          symbol,
+          shares,
+          averageCost: Number.isFinite(price) && price > 0 ? price : 0,
+        });
+      } else {
+        const existing = state.positions[index];
+        const totalShares = existing.shares + shares;
+        const weightedCost = totalShares > 0
+          ? ((existing.averageCost * existing.shares) + ((Number.isFinite(price) ? price : existing.averageCost) * shares)) / totalShares
+          : existing.averageCost;
+        state.positions[index] = {
+          symbol,
+          shares: totalShares,
+          averageCost: weightedCost,
+        };
+      }
+      savePortfolioState(state);
+      return { ok: true, data: { action, position: state.positions.find((entry) => entry.symbol === symbol) } };
+    }
+
+    if (action === "reduce") {
+      if (index === -1) return { ok: false, error: `Position ${symbol} not found.` };
+      const remainingShares = state.positions[index].shares - shares;
+      if (remainingShares < 0) {
+        return { ok: false, error: `Cannot reduce ${symbol} below zero shares.` };
+      }
+      if (remainingShares === 0) {
+        state.positions.splice(index, 1);
+      } else {
+        state.positions[index] = { ...state.positions[index], shares: remainingShares };
+      }
+      savePortfolioState(state);
+      return { ok: true, data: { action, position: state.positions.find((entry) => entry.symbol === symbol) ?? null } };
+    }
+
+    return { ok: false, error: `Unsupported portfolio action: ${action}` };
+  }
+
+  if (domain === "market") {
+    const symbols = (flagValue(args, "--symbols") || "")
+      .split(",")
+      .map((symbol) => normalizeSymbol(symbol))
+      .filter(Boolean);
+    if (action === "quote" && symbols.length > 0) {
+      const quotes = await Promise.all(symbols.map(async (symbol) => {
+        const result = await requestStanley(`/api/market/${symbol}/quote`);
+        return { symbol, result };
+      }));
+      const failure = quotes.find((item) => !item.result.ok);
+      if (failure) return failure.result;
+      return {
+        ok: true,
+        data: {
+          quotes: Object.fromEntries(
+            quotes.map((item) => [item.symbol, item.result.data]),
+          ),
+        },
+      };
+    }
+
+    const symbol = normalizeSymbol(symbols[0] || args[2] || "");
+    if (!symbol) {
+      return { ok: false, error: "A symbol is required for market commands." };
+    }
+    if (action === "historical" || action === "chart") {
+      const period = flagValue(args, "--period") || "1mo";
+      const interval = flagValue(args, "--interval") || "1d";
+      return requestStanley(`/api/market/${symbol}/history?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`);
+    }
+    if (action === "fundamentals" || action === "indicators") {
+      return requestStanley(`/api/market/${symbol}`);
+    }
+    return requestStanley(`/api/market/${symbol}/quote`);
+  }
+
+  if (domain === "sec" && action === "filings") {
+    const symbol = normalizeSymbol(flagValue(args, "--ticker") || "");
+    const filingType = (flagValue(args, "--type") || "10-K").toUpperCase();
+    const limit = Number(flagValue(args, "--limit") || 5);
+    const result = await requestStanley(`/api/accounting/${symbol}/filings`);
+    if (!result.ok) return result;
+    const filings = Array.isArray(result.data)
+      ? result.data as Record<string, unknown>[]
+      : [];
+    return {
+      ok: true,
+      data: {
+        filings: filings
+          .filter((item) => filingType === "ALL" || String(item.formType || "").toUpperCase() === filingType)
+          .slice(0, Number.isFinite(limit) && limit > 0 ? limit : 5),
+        analyzed: hasFlag(args, "--analyze"),
+      },
+    };
+  }
+
+  if (domain === "research" && action === "analyze") {
+    const symbol = normalizeSymbol(flagValue(args, "--ticker") || args[2] || "");
+    return requestStanley(`/api/research/${symbol}`);
+  }
+
+  if (domain === "nautilus" && action === "backtest") {
+    const symbol = normalizeSymbol(flagValue(args, "--symbol") || "");
+    return requestStanley("/api/signals/backtest", {
+      method: "POST",
+      body: JSON.stringify({
+        symbol,
+        strategy: flagValue(args, "--strategy") || "momentum",
+        start_date: flagValue(args, "--start") || "2025-01-01",
+        end_date: flagValue(args, "--end") || "2025-12-31",
+        holding_period_days: 10,
+        initial_capital: Number(flagValue(args, "--capital") || 100000),
+      }),
+    });
+  }
+
+  return {
+    ok: false,
+    error: `Unsupported Stanley command: ${args.join(" ")}`,
+  };
 }
 
 // Create server
@@ -104,7 +417,7 @@ Returns:
       cliArgs.push("--risk");
     }
 
-    const result = runStanleyCli(cliArgs);
+    const result = await runStanleyCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -161,7 +474,7 @@ Actions:
       cliArgs.push("--price", String(price));
     }
 
-    const result = runStanleyCli(cliArgs);
+    const result = await runStanleyCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -215,7 +528,7 @@ Supports:
       "market",
       dataType ?? "quote",
       "--symbols",
-      symbols.map((s) => s.toUpperCase()).join(","),
+      symbols.map((s: string) => s.toUpperCase()).join(","),
     ];
 
     if (dataType === "historical") {
@@ -223,7 +536,7 @@ Supports:
       cliArgs.push("--interval", interval ?? "1d");
     }
 
-    const result = runStanleyCli(cliArgs);
+    const result = await runStanleyCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -244,7 +557,7 @@ Supports:
         text: JSON.stringify({
           success: true,
           dataType: dataType ?? "quote",
-          symbols: symbols.map((s) => s.toUpperCase()),
+          symbols: symbols.map((s: string) => s.toUpperCase()),
           ...result.data as object,
         }, null, 2),
       }],
@@ -290,7 +603,7 @@ Supports:
       cliArgs.push("--analyze");
     }
 
-    const result = runStanleyCli(cliArgs);
+    const result = await runStanleyCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -348,7 +661,7 @@ Includes:
       (sections ?? ["overview", "financials"]).join(","),
     ];
 
-    const result = runStanleyCli(cliArgs);
+    const result = await runStanleyCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -419,7 +732,7 @@ Returns performance metrics, trade history, and equity curve.`,
       cliArgs.push("--params", JSON.stringify(params));
     }
 
-    const result = runStanleyCli(cliArgs);
+    const result = await runStanleyCli(cliArgs);
 
     if (!result.ok) {
       return {

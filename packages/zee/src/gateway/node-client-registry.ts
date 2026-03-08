@@ -289,3 +289,7 @@ export function getNodeClientRegistry(): NodeClientRegistry {
   }
   return registrySingleton
 }
+
+export function resetNodeClientRegistry(): void {
+  registrySingleton = undefined
+}

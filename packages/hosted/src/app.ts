@@ -210,14 +210,14 @@ const validateWorkspaceKey = (workspaceId: string, key: string | undefined) => {
 }
 
 const getOauthConfig = (providerId: string) => {
-  const key = providerId.toUpperCase().replace(/[^A-Z0-9]/g, \"_\")
+  const key = providerId.toUpperCase().replace(/[^A-Z0-9]/g, "_")
   const prefix = `HOSTED_OAUTH_${key}_`
   const authorizeUrl = process.env[`${prefix}AUTHORIZE_URL`]
   const tokenUrl = process.env[`${prefix}TOKEN_URL`]
   const clientId = process.env[`${prefix}CLIENT_ID`]
   const clientSecret = process.env[`${prefix}CLIENT_SECRET`]
-  const scopes = process.env[`${prefix}SCOPES`] ?? \"\"
-  const baseUrl = process.env[`${prefix}BASE_URL`] ?? \"https://api.openai.com\"
+  const scopes = process.env[`${prefix}SCOPES`] ?? ""
+  const baseUrl = process.env[`${prefix}BASE_URL`] ?? "https://api.openai.com"
   if (!authorizeUrl || !clientId) return null
   return { authorizeUrl, tokenUrl, clientId, clientSecret, scopes, baseUrl }
 }

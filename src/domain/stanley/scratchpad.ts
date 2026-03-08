@@ -64,7 +64,7 @@ const LogAction = z.object({
   iteration: z.number().describe("Current iteration number (1-based)"),
   phase: z.string().describe("Current phase: decomposition, execution, validation, synthesis"),
   toolId: z.string().describe("Tool that was called (e.g., stanley:market-data)"),
-  args: z.record(z.unknown()).describe("Arguments passed to the tool"),
+  args: z.record(z.string(), z.unknown()).describe("Arguments passed to the tool"),
   resultOk: z.boolean().describe("Whether the tool call succeeded"),
   resultSummary: z.string().describe("Brief summary of the result (max 2000 chars)"),
   notes: z.string().optional().describe("Assessment of the result quality/relevance"),
@@ -74,7 +74,7 @@ const CheckDuplicateAction = z.object({
   action: z.literal("check_duplicate"),
   sessionId: z.string().describe("Session ID from init"),
   toolId: z.string().describe("Tool to check"),
-  args: z.record(z.unknown()).describe("Arguments to check"),
+  args: z.record(z.string(), z.unknown()).describe("Arguments to check"),
 });
 
 const ReadAction = z.object({

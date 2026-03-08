@@ -8,11 +8,8 @@
  */
 
 import { z } from "zod";
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { delimiter } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
 import type { ToolDefinition, ToolRuntime, ToolExecutionContext, ToolExecutionResult } from "../../mcp/types";
-import { getSafeEnv } from "../../util/safe-env";
 import { Stanley } from "../../paths";
 import { scratchpadTool } from "./scratchpad";
 import { getResearchContextManager, resetResearchContextManager } from "./research-context";
@@ -24,52 +21,238 @@ type StanleyResult = {
   error?: string;
 };
 
-function resolveStanleyCli(): { python: string; cliPath: string; pythonPath?: string } {
-  // Use centralized path resolution from paths.ts
-  const python = Stanley.python();
-  const cliPath = Stanley.cli();
-  const pythonPath = Stanley.pythonPath();
-  return { python, cliPath, pythonPath };
+type StanleyEnvelope<T> = {
+  success: boolean;
+  data: T | null;
+  error: string | null;
+  timestamp: string;
+};
+
+type PortfolioPosition = {
+  symbol: string;
+  shares: number;
+  averageCost: number;
+};
+
+function normalizeSymbol(symbol: string): string {
+  return symbol.trim().toUpperCase();
 }
 
-function runStanleyCli(args: string[]): StanleyResult {
-  const { python, cliPath, pythonPath } = resolveStanleyCli();
-  if (!existsSync(cliPath)) {
+function flagValue(args: string[], flag: string): string | undefined {
+  const index = args.indexOf(flag);
+  if (index === -1 || index + 1 >= args.length) return undefined;
+  return args[index + 1];
+}
+
+function loadPortfolioHoldings(): Array<{ symbol: string; shares: number; average_cost: number }> {
+  const portfolioFile = Stanley.portfolioFile();
+  if (!existsSync(portfolioFile)) return [];
+
+  try {
+    const parsed = JSON.parse(readFileSync(portfolioFile, "utf8")) as any;
+    const positions = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.positions)
+        ? parsed.positions
+        : [];
+
+    return positions
+      .map((position: any): PortfolioPosition | null => {
+        const symbol = typeof position?.symbol === "string" ? normalizeSymbol(position.symbol) : "";
+        const shares = Number(position?.shares ?? 0);
+        const averageCost = Number(
+          position?.averageCost ??
+            position?.average_cost ??
+            position?.avg_cost ??
+            position?.entryPrice ??
+            position?.entry_price ??
+            position?.price ??
+            0,
+        );
+        if (!symbol || !Number.isFinite(shares) || shares <= 0) return null;
+        return { symbol, shares, averageCost };
+      })
+      .filter((position: PortfolioPosition | null): position is PortfolioPosition => Boolean(position))
+      .map((position: PortfolioPosition) => ({
+        symbol: position.symbol,
+        shares: position.shares,
+        average_cost: position.averageCost,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+async function requestStanley(pathname: string, init?: RequestInit): Promise<StanleyResult> {
+  try {
+    const baseUrl = Stanley.apiUrl().replace(/\/+$/, "");
+    const response = await fetch(`${baseUrl}${pathname}`, {
+      ...init,
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    const text = await response.text();
+    const payload = text ? JSON.parse(text) as StanleyEnvelope<unknown> | unknown : null;
+
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "success" in payload &&
+      "data" in payload
+    ) {
+      const envelope = payload as StanleyEnvelope<unknown>;
+      if (!response.ok || !envelope.success) {
+        return {
+          ok: false,
+          error: envelope.error || `Stanley request failed with status ${response.status}`,
+        };
+      }
+      return { ok: true, data: envelope.data };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: text || `Stanley request failed with status ${response.status}`,
+      };
+    }
+
+    return { ok: true, data: payload };
+  } catch (error) {
     return {
       ok: false,
-      error: `Stanley CLI not found at ${cliPath}. Set STANLEY_REPO or STANLEY_CLI.`,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function runStanleyCli(args: string[]): Promise<StanleyResult> {
+  const [domain, action] = args;
+
+  if (domain === "status") {
+    return requestStanley("/api/health");
+  }
+
+  if (domain === "market") {
+    const symbol = normalizeSymbol(args[2] || "");
+    if (!symbol) {
+      return { ok: false, error: "A market symbol is required." };
+    }
+    if (action === "chart") {
+      const period = flagValue(args, "--period") || "1mo";
+      return requestStanley(`/api/market/${symbol}/history?period=${encodeURIComponent(period)}&interval=1d`);
+    }
+    if (action === "segments") {
+      return {
+        ok: true,
+        data: {
+          symbol,
+          segmentType: flagValue(args, "--type") || "business",
+          note: "Segment detail is not yet exposed on the Rust Stanley HTTP surface.",
+        },
+      };
+    }
+    if (action === "fundamentals") {
+      return requestStanley(`/api/market/${symbol}`);
+    }
+    return requestStanley(`/api/market/${symbol}/quote`);
+  }
+
+  if (domain === "portfolio") {
+    const holdings = loadPortfolioHoldings();
+    if (action === "status") {
+      return {
+        ok: true,
+        data: {
+          holdings,
+          totalValue: holdings.reduce(
+            (total, holding) => total + holding.shares * holding.average_cost,
+            0,
+          ),
+        },
+      };
+    }
+    if (action === "risk") {
+      return requestStanley("/api/portfolio/risk", {
+        method: "POST",
+        body: JSON.stringify({
+          holdings,
+          confidence_level: 0.95,
+          method: "historical",
+        }),
+      });
+    }
+    if (action === "performance") {
+      return requestStanley("/api/portfolio/analytics", {
+        method: "POST",
+        body: JSON.stringify({ holdings, benchmark: "SPY" }),
+      });
+    }
+  }
+
+  if (domain === "research") {
+    if (action === "analyze") {
+      const symbol = normalizeSymbol(flagValue(args, "--ticker") || args[2] || "");
+      return requestStanley(`/api/research/${symbol}`);
+    }
+    if (action === "sec") {
+      const symbol = normalizeSymbol(args[2] || "");
+      return requestStanley(`/api/accounting/${symbol}/filings`);
+    }
+    if (action === "screen") {
+      const query = flagValue(args, "--criteria") || "";
+      if (/^[A-Za-z.\-]{1,12}$/.test(query.trim())) {
+        return requestStanley(`/api/research/${normalizeSymbol(query)}`);
+      }
+      return {
+        ok: true,
+        data: {
+          query,
+          results: [],
+          note: "Broad research screening is not yet exposed on the Rust Stanley HTTP surface.",
+        },
+      };
+    }
+    if (action === "estimates") {
+      const symbol = normalizeSymbol(args[2] || "");
+      return requestStanley(`/api/valuation/${symbol}`);
+    }
+    if (action === "insider-trades") {
+      const symbol = normalizeSymbol(args[2] || "");
+      return requestStanley(`/api/institutional/${symbol}/smart-money-flow`);
+    }
+  }
+
+  if (domain === "nautilus") {
+    if (action === "backtest") {
+      const symbol = normalizeSymbol((flagValue(args, "--symbols") || "").split(",")[0] || "SPY");
+      return requestStanley("/api/signals/backtest", {
+        method: "POST",
+        body: JSON.stringify({
+          symbol,
+          strategy: args[2] || "momentum",
+          start_date: flagValue(args, "--start") || "2025-01-01",
+          end_date: flagValue(args, "--end") || "2025-12-31",
+          holding_period_days: 10,
+          initial_capital: 100000,
+        }),
+      });
+    }
+    return {
+      ok: true,
+      data: {
+        action,
+        note: "This Nautilus action is not yet exposed on the Rust Stanley HTTP surface.",
+      },
     };
   }
 
-  const env = getSafeEnv(["STANLEY_REPO", "STANLEY_CLI", "STANLEY_PYTHON", "STANLEY_PYTHONPATH", "PYTHONPATH"]);
-  if (pythonPath) {
-    env.PYTHONPATH = env.PYTHONPATH ? `${pythonPath}${delimiter}${env.PYTHONPATH}` : pythonPath;
-  }
-
-  const result = spawnSync(python, [cliPath, ...args], {
-    encoding: "utf-8",
-    env,
-    timeout: 30000, // 30s timeout
-  });
-
-  if (result.error) {
-    if ((result.error as any).code === 'ETIMEDOUT') {
-        return { ok: false, error: "Stanley CLI timed out (30s). The backend might be overloaded or hanging." };
-    }
-    return { ok: false, error: `Stanley execution failed: ${result.error.message}` };
-  }
-
-  const stdout = result.stdout.trim();
-  if (!stdout) {
-    const stderr = result.stderr.trim();
-    return { ok: false, error: stderr || "Stanley CLI returned no output." };
-  }
-
-  try {
-    return JSON.parse(stdout) as StanleyResult;
-  } catch {
-    return { ok: false, error: stdout };
-  }
+  return {
+    ok: false,
+    error: `Unsupported Stanley command: ${args.join(" ")}`,
+  };
 }
 
 function renderOutput(title: string, result: StanleyResult): ToolExecutionResult {
@@ -159,7 +342,7 @@ export const marketDataTool: ToolDefinition = {
           : dataType === "fundamentals"
             ? ["market", "fundamentals", symbol]
             : ["market", "quote", symbol];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       return renderOutput(`Market Data: ${symbol}`, result);
     }),
   }),
@@ -213,7 +396,7 @@ export const portfolioTool: ToolDefinition = {
           : riskMetrics
             ? ["portfolio", "risk", "--var", "0.95"]
             : ["portfolio", "performance", "--period", "ytd"];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       return renderOutput("Portfolio Analysis", result);
     }),
   }),
@@ -247,7 +430,7 @@ export const secFilingsTool: ToolDefinition = {
       const cliArgs = summarize
         ? ["research", "analyze", ticker, "--filing", formType]
         : ["research", "sec", ticker, "--type", formType];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       const response = renderOutput(`SEC Filing: ${ticker} ${formType}`, result);
       response.metadata = { ...response.metadata, ticker, formType, year };
       return response;
@@ -280,7 +463,7 @@ export const researchTool: ToolDefinition = {
 
       ctx.metadata({ title: `Researching: ${query}` });
 
-      const result = runStanleyCli(["research", "screen", "--criteria", query]);
+      const result = await runStanleyCli(["research", "screen", "--criteria", query]);
       const response = renderOutput(`Research: ${query}`, result);
       response.metadata = { ...response.metadata, sources, dateRange, limit };
       return response;
@@ -339,7 +522,7 @@ export const nautilusTool: ToolDefinition = {
           : action === "strategy_info"
             ? ["nautilus", "strategy-info", strategy]
             : ["nautilus", "backtest", strategy, "--symbols", symbolArg, "--start", startDate || ""];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       const response = renderOutput(`NautilusTrader: ${action}`, result);
       response.metadata = { ...response.metadata, action, strategy, symbols, startDate, endDate };
       return response;
@@ -354,7 +537,7 @@ export const statusTool: ToolDefinition = {
     description: "Check the health and connection status of the Stanley investment platform.",
     parameters: z.object({}),
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-       const result = runStanleyCli(["status"]); // Assuming stanley_cli.py supports 'status' or just running it with no args checks env
+       const result = await runStanleyCli(["status"]);
        // If 'status' isn't supported by CLI, we can try a lightweight command like checking version or help
        // Let's assume we just want to verify CLI is runnable.
        
@@ -392,7 +575,7 @@ export const estimatesTool: ToolDefinition = {
       const { symbol, estimateType } = args;
       ctx.metadata({ title: `Estimates: ${symbol} (${estimateType})` });
       const cliArgs = ["research", "estimates", symbol, "--type", estimateType];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       return renderOutput(`Estimates: ${symbol}`, result);
     }),
   }),
@@ -417,7 +600,7 @@ export const insiderTradesTool: ToolDefinition = {
       const { symbol, limit } = args;
       ctx.metadata({ title: `Insider Trades: ${symbol}` });
       const cliArgs = ["research", "insider-trades", symbol, "--limit", String(limit)];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       return renderOutput(`Insider Trades: ${symbol}`, result);
     }),
   }),
@@ -443,7 +626,7 @@ export const segmentsTool: ToolDefinition = {
       const { symbol, segmentType } = args;
       ctx.metadata({ title: `Segments: ${symbol} (${segmentType})` });
       const cliArgs = ["market", "segments", symbol, "--type", segmentType];
-      const result = runStanleyCli(cliArgs);
+      const result = await runStanleyCli(cliArgs);
       return renderOutput(`Segments: ${symbol}`, result);
     }),
   }),

@@ -197,7 +197,7 @@ pub enum SignalsSubView {
 
 // Note: API fetch methods for signals should be added to api.rs ZeeApiClient
 // when the backend integration is implemented. These types align with the
-// Python backend API endpoints in stanley/api/routers/signals.py
+// Stanley runtime signals HTTP endpoints.
 
 // ============================================================================
 // SIGNALS VIEW STATE

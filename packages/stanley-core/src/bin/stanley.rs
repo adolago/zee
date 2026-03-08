@@ -7,8 +7,9 @@ use serde_json::json;
 use stanley_core::{
     paper_trade::{get_strategy, list_strategies, PaperTradingState},
     portfolio::PortfolioTracker,
-    ApiResponse,
+    serve, ApiResponse, ServerOptions, StanleyRuntime,
 };
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "stanley")]
@@ -21,6 +22,18 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Run the Stanley HTTP runtime
+    Serve {
+        /// Interface to bind the HTTP server to
+        #[arg(long)]
+        host: Option<String>,
+        /// Port to bind the HTTP server to
+        #[arg(long)]
+        port: Option<u16>,
+        /// Override the Stanley runtime data directory
+        #[arg(long)]
+        data_dir: Option<PathBuf>,
+    },
     /// Portfolio management commands
     Portfolio {
         #[command(subcommand)]
@@ -135,14 +148,29 @@ enum StrategyAction {
 fn main() {
     let cli = Cli::parse();
 
-    let output = match cli.command {
-        Commands::Portfolio { action } => handle_portfolio(action),
-        Commands::Paper { action } => handle_paper(action),
-        Commands::Strategy { action } => handle_strategy(action),
-        Commands::Risk { confidence } => handle_risk(confidence),
-    };
+    match cli.command {
+        Commands::Serve {
+            host,
+            port,
+            data_dir,
+        } => {
+            let defaults = ServerOptions::default();
+            let options = ServerOptions {
+                host: host.unwrap_or(defaults.host),
+                port: port.unwrap_or(defaults.port),
+                data_dir: data_dir.unwrap_or_else(StanleyRuntime::default_data_dir),
+            };
 
-    println!("{}", output);
+            if let Err(error) = serve(options) {
+                eprintln!("{error}");
+                std::process::exit(1);
+            }
+        }
+        Commands::Portfolio { action } => println!("{}", handle_portfolio(action)),
+        Commands::Paper { action } => println!("{}", handle_paper(action)),
+        Commands::Strategy { action } => println!("{}", handle_strategy(action)),
+        Commands::Risk { confidence } => println!("{}", handle_risk(confidence)),
+    }
 }
 
 fn handle_portfolio(action: PortfolioAction) -> String {
@@ -224,7 +252,8 @@ fn handle_paper(action: PaperAction) -> String {
             let strategy_info = match get_strategy(&strategy) {
                 Some(s) => s,
                 None => {
-                    let available: Vec<_> = list_strategies().iter().map(|s| s.id.clone()).collect();
+                    let available: Vec<_> =
+                        list_strategies().iter().map(|s| s.id.clone()).collect();
                     return serde_json::to_string_pretty(&ApiResponse::<()>::err(format!(
                         "Unknown strategy: {}. Available: {:?}",
                         strategy, available
@@ -239,8 +268,10 @@ fn handle_paper(action: PaperAction) -> String {
             match state.start(&strategy_info.id, &strategy_info.name, symbols_vec, capital) {
                 Ok(()) => {
                     if let Err(e) = state.save() {
-                        return serde_json::to_string_pretty(&ApiResponse::<()>::err(e.to_string()))
-                            .unwrap();
+                        return serde_json::to_string_pretty(&ApiResponse::<()>::err(
+                            e.to_string(),
+                        ))
+                        .unwrap();
                     }
                     serde_json::to_string_pretty(&ApiResponse::ok(json!({
                         "message": "Paper trading started",

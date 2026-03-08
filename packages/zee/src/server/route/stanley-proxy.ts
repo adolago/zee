@@ -6,7 +6,8 @@ const app = new Hono()
 app.all("/*", async (c) => {
   const baseUrl = Stanley.apiUrl()
   const path = c.req.path
-  const target = `${baseUrl}${path}`
+  const search = new URL(c.req.url).search
+  const target = `${baseUrl}${path}${search}`
 
   const headers = new Headers(c.req.raw.headers)
   // Remove hop-by-hop headers

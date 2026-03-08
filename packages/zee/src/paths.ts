@@ -83,46 +83,14 @@ export const Stanley = {
     return process.env.STANLEY_REPO || path.join(getZeeRoot(), "stanley")
   },
 
-  cli(): string {
-    return process.env.STANLEY_CLI || path.join(this.repo(), "scripts", "stanley_cli.py")
+  coreProject(): string {
+    return path.join(getZeeRoot(), "packages", "stanley-core")
   },
 
-  /**
-   * Resolve Python binary for Stanley.
-   * Order: STANLEY_PYTHON env > bundled runtime > venv > system python3
-   */
-  python(): string {
-    if (process.env.STANLEY_PYTHON) {
-      return process.env.STANLEY_PYTHON
-    }
-
-    const repo = this.repo()
-
-    // Check for bundled runtime (dist builds)
-    const runtimeBin = path.join(repo, ".python-runtime", "bin")
-    for (const bin of ["python3.13", "python3.12", "python3"]) {
-      const candidate = path.join(runtimeBin, bin)
-      if (fs.existsSync(candidate)) return candidate
-    }
-
-    // Check for venv (dev builds)
-    const venvPython = path.join(repo, ".venv", "bin", "python")
-    if (fs.existsSync(venvPython)) return venvPython
-
-    // Fallback to system
-    return "python3"
+  coreBin(): string | undefined {
+    const configured = process.env.STANLEY_CORE_BIN?.trim()
+    return configured || undefined
   },
-
-  /**
-   * Get PYTHONPATH for Stanley dependencies
-   */
-  pythonPath(): string | undefined {
-    const repo = this.repo()
-    const bundledDeps = path.join(repo, ".python")
-    if (fs.existsSync(bundledDeps)) return bundledDeps
-    return process.env.STANLEY_PYTHONPATH
-  },
-
   portfolioFile(): string {
     return process.env.STANLEY_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "stanley", "portfolio.json")
   },
@@ -133,72 +101,52 @@ export const Stanley = {
   },
 
   /**
-   * Preflight check — verify the Stanley Python backend is ready to run.
+   * Preflight check — verify the Stanley core runtime is ready to run.
    * Returns null if everything is OK, or an error message string.
    */
   preflight(): string | null {
-    const repo = this.repo()
-
-    // 1. Check stanley/ directory exists
-    if (!fs.existsSync(repo)) {
-      return `Stanley backend not found at ${repo}. Run the migration or set STANLEY_REPO.`
-    }
-
-    // 2. Check the Python package exists
-    const packageDir = path.join(repo, "stanley")
-    if (!fs.existsSync(packageDir)) {
-      return `Stanley Python package not found at ${packageDir}.`
-    }
-
-    // 3. Resolve Python interpreter
-    const venvDir = path.join(repo, ".venv")
-    const venvPython = path.join(venvDir, "bin", "python")
-    const configuredPython = process.env.STANLEY_PYTHON?.trim()
-
-    let pythonBinary: string
-    let installCommand: string
-
-    if (fs.existsSync(venvPython)) {
-      pythonBinary = venvPython
-      installCommand = `  .venv/bin/pip install -r requirements.txt`
-    } else {
-      if (!configuredPython) {
+    const configuredApiUrl = process.env.STANLEY_API_URL?.trim()
+    if (configuredApiUrl) {
+      try {
+        new URL(configuredApiUrl)
+        return null
+      } catch {
         return (
-          `Stanley Python venv not found at ${venvDir}.\n` +
-          `Set STANLEY_PYTHON to an explicit Python interpreter with Stanley dependencies installed.\n` +
-          `Example:\n` +
-          `  export STANLEY_PYTHON=/path/to/python3.12\n` +
-          `  $STANLEY_PYTHON -m pip install -r ${path.join(repo, "requirements.txt")}`
+          `Configured STANLEY_API_URL is invalid: ${configuredApiUrl}.\n` +
+          `Set STANLEY_API_URL to a valid Stanley base URL or configure STANLEY_CORE_BIN for local autostart.`
         )
       }
-      pythonBinary = configuredPython
-      installCommand = `  ${configuredPython} -m pip install -r requirements.txt`
     }
 
-    // 4. Verify required dependencies are importable
+    const coreBin = this.coreBin()
+    if (!coreBin) {
+      return (
+        `Stanley core binary is not configured.\n` +
+        `Set STANLEY_CORE_BIN to a built Stanley executable path, or set STANLEY_API_URL to an existing Stanley runtime.\n` +
+        `Example:\n` +
+        `  export STANLEY_CORE_BIN=${path.join(this.coreProject(), "target", "release", "stanley")}`
+      )
+    }
+
     try {
-      execFileSync(pythonBinary, ["-c", "import fastapi; import uvicorn; import jwt"], {
-        cwd: repo,
+      execFileSync(coreBin, ["--version"], {
         timeout: 10_000,
         stdio: "pipe",
       })
+      return null
     } catch (error) {
       const err = error as NodeJS.ErrnoException
       if (err.code === "ENOENT" || err.code === "EACCES") {
         return (
-          `Configured Python interpreter is not executable: ${pythonBinary}.\n` +
-          `Set STANLEY_PYTHON to a valid executable Python path.`
+          `Configured Stanley core binary is not executable: ${coreBin}.\n` +
+          `Set STANLEY_CORE_BIN to a valid Stanley executable path.`
         )
       }
       return (
-        `Stanley Python dependencies not installed or incomplete (required: fastapi, uvicorn, PyJWT).\n` +
-        `Install them with:\n` +
-        `  cd ${repo}\n` +
-        installCommand
+        `Configured Stanley core binary failed its startup probe: ${coreBin}.\n` +
+        `Run it manually to inspect the failure or rebuild packages/stanley-core.`
       )
     }
-
-    return null
   },
 }
 

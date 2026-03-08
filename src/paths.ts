@@ -8,6 +8,7 @@
 import path from "path"
 import fs from "fs"
 import os from "os"
+import { execFileSync } from "child_process"
 
 function findZeeRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
@@ -82,48 +83,66 @@ export const Stanley = {
     return process.env.STANLEY_REPO || Personas.stanley()
   },
 
-  cli(): string {
-    return process.env.STANLEY_CLI || path.join(this.repo(), "scripts", "stanley_cli.py")
+  coreProject(): string {
+    return path.join(getZeeRoot(), "packages", "stanley-core")
   },
 
-  /**
-   * Resolve Python binary for Stanley.
-   * Order: STANLEY_PYTHON env > bundled runtime > venv > system python3
-   */
-  python(): string {
-    if (process.env.STANLEY_PYTHON) {
-      return process.env.STANLEY_PYTHON
-    }
-
-    const repo = this.repo()
-
-    // Check for bundled runtime (dist builds)
-    const runtimeBin = path.join(repo, ".python-runtime", "bin")
-    for (const bin of ["python3.13", "python3.12", "python3"]) {
-      const candidate = path.join(runtimeBin, bin)
-      if (fs.existsSync(candidate)) return candidate
-    }
-
-    // Check for venv (dev builds)
-    const venvPython = path.join(repo, ".venv", "bin", "python")
-    if (fs.existsSync(venvPython)) return venvPython
-
-    // Fallback to system
-    return "python3"
-  },
-
-  /**
-   * Get PYTHONPATH for Stanley dependencies
-   */
-  pythonPath(): string | undefined {
-    const repo = this.repo()
-    const bundledDeps = path.join(repo, ".python")
-    if (fs.existsSync(bundledDeps)) return bundledDeps
-    return process.env.STANLEY_PYTHONPATH
+  coreBin(): string | undefined {
+    const configured = process.env.STANLEY_CORE_BIN?.trim()
+    return configured || undefined
   },
 
   portfolioFile(): string {
     return process.env.STANLEY_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "stanley", "portfolio.json")
+  },
+
+  apiUrl(): string {
+    return process.env.STANLEY_API_URL || "http://127.0.0.1:8000"
+  },
+
+  preflight(): string | null {
+    const configuredApiUrl = process.env.STANLEY_API_URL?.trim()
+    if (configuredApiUrl) {
+      try {
+        new URL(configuredApiUrl)
+        return null
+      } catch {
+        return (
+          `Configured STANLEY_API_URL is invalid: ${configuredApiUrl}.\n` +
+          `Set STANLEY_API_URL to a valid Stanley base URL or configure STANLEY_CORE_BIN for local autostart.`
+        )
+      }
+    }
+
+    const coreBin = this.coreBin()
+    if (!coreBin) {
+      return (
+        `Stanley core binary is not configured.\n` +
+        `Set STANLEY_CORE_BIN to a built Stanley executable path, or set STANLEY_API_URL to an existing Stanley runtime.\n` +
+        `Example:\n` +
+        `  export STANLEY_CORE_BIN=${path.join(this.coreProject(), "target", "release", "stanley")}`
+      )
+    }
+
+    try {
+      execFileSync(coreBin, ["--version"], {
+        timeout: 10_000,
+        stdio: "pipe",
+      })
+      return null
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException
+      if (err.code === "ENOENT" || err.code === "EACCES") {
+        return (
+          `Configured Stanley core binary is not executable: ${coreBin}.\n` +
+          `Set STANLEY_CORE_BIN to a valid Stanley executable path.`
+        )
+      }
+      return (
+        `Configured Stanley core binary failed its startup probe: ${coreBin}.\n` +
+        `Run it manually to inspect the failure or rebuild packages/stanley-core.`
+      )
+    }
   },
 }
 

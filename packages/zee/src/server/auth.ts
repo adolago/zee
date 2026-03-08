@@ -1,7 +1,10 @@
 import { Flag } from "@/flag/flag"
 import { extractBasicCredentials, extractBearerToken, timingSafeEqual } from "@/security"
+import { Config } from "../config/config"
+import { Instance } from "../project/instance"
 
 const DEFAULT_USERNAME = "zee"
+const DEFAULT_CONTROL_UI_AUTH_MODE = "token"
 
 // ---------------------------------------------------------------------------
 // Scoped Permissions
@@ -123,9 +126,80 @@ type AuthConfig = {
   scopes?: AuthScopeValue[]
 }
 
-export function getAuthConfig(): AuthConfig {
+export type ControlUiAuthMode = "token" | "password" | "none"
+
+export type ControlUiPolicy = {
+  required: boolean
+  mode: ControlUiAuthMode
+  allowPasswordOnly: boolean
+  allowInsecureHttp: boolean
+  trustedOrigins: string[]
+}
+
+function asObject(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
+  return value as Record<string, unknown>
+}
+
+function resolveBool(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback
+}
+
+function resolveControlUiAuthMode(value: unknown): ControlUiAuthMode {
+  if (value === "token" || value === "password" || value === "none") return value
+  if (Flag.ZEE_CONTROL_UI_DISABLE_AUTH) return "none"
+  if (Flag.ZEE_CONTROL_UI_ALLOW_PASSWORD_ONLY) return "password"
+  return DEFAULT_CONTROL_UI_AUTH_MODE
+}
+
+export function resolveControlUiPolicy(config?: unknown): ControlUiPolicy {
+  const root = asObject(config) ?? {}
+  const gateway = asObject(root.gateway) ?? {}
+  const controlUi = asObject(gateway.controlUi) ?? {}
+  const auth = asObject(controlUi.auth) ?? {}
+
+  const mode = resolveControlUiAuthMode(auth.mode)
+  const required = resolveBool(auth.required, mode !== "none")
+  const trustedOrigins = Array.isArray(controlUi.trustedOrigins)
+    ? controlUi.trustedOrigins.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : []
+
+  return {
+    required,
+    mode,
+    allowPasswordOnly: resolveBool(auth.allowPasswordOnly, false) || Flag.ZEE_CONTROL_UI_ALLOW_PASSWORD_ONLY,
+    allowInsecureHttp: resolveBool(auth.allowInsecureHttp, false) || Flag.ZEE_CONTROL_UI_ALLOW_INSECURE_HTTP,
+    trustedOrigins,
+  }
+}
+
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin)
+    return isLoopbackHostname(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+export function isTrustedControlOrigin(origin: string | undefined, config?: unknown): boolean {
+  if (!origin) return true
+  if (isLoopbackOrigin(origin)) return true
+
+  const policy = resolveControlUiPolicy(config)
+  if (policy.trustedOrigins.length === 0) return true
+  return policy.trustedOrigins.includes(origin)
+}
+
+export function getAuthConfig(runtimeConfig?: unknown): AuthConfig {
   // Auth is disabled by default for personal use. Set ZEE_ENABLE_SERVER_AUTH=1 to enable.
-  const disabled = !Flag.ZEE_ENABLE_SERVER_AUTH || Flag.ZEE_DISABLE_SERVER_AUTH
+  const policy = resolveControlUiPolicy(runtimeConfig)
+  const runtimeRoot = asObject(runtimeConfig) ?? {}
+  const runtimeGateway = asObject(runtimeRoot.gateway) ?? {}
+  const controlUiConfigured = Boolean(asObject(runtimeGateway.controlUi))
+  const envDisabled = !Flag.ZEE_ENABLE_SERVER_AUTH || Flag.ZEE_DISABLE_SERVER_AUTH
+  const controlUiRequiresAuth = controlUiConfigured && policy.required && policy.mode !== "none"
+  const disabled = controlUiRequiresAuth ? false : envDisabled
   const password = Flag.ZEE_SERVER_PASSWORD
   const username = Flag.ZEE_SERVER_USERNAME ?? DEFAULT_USERNAME
 
@@ -144,6 +218,17 @@ export function getAuthConfig(): AuthConfig {
   }
 
   return { disabled, password, username, scopes }
+}
+
+export async function getServerRuntimeConfig(directory = process.cwd()): Promise<unknown | undefined> {
+  try {
+    return await Instance.provide({
+      directory,
+      fn: () => Config.get(),
+    })
+  } catch {
+    return undefined
+  }
 }
 
 export function getAuthorizationHeader(): string | undefined {
@@ -170,8 +255,8 @@ export function createAuthorizedFetch(fetchFn: typeof fetch): typeof fetch {
   return wrapped as typeof fetch
 }
 
-export function isAuthorized(authorizationHeader?: string): boolean {
-  const { disabled, password, username: expectedUsername } = getAuthConfig()
+export function isAuthorized(authorizationHeader?: string, runtimeConfig?: unknown): boolean {
+  const { disabled, password, username: expectedUsername } = getAuthConfig(runtimeConfig)
   if (disabled) return true
   if (!password) return false
   if (!authorizationHeader) return false
@@ -194,14 +279,15 @@ export function authorizeRequestScoped(
   authHeader: string | undefined,
   method: string,
   path: string,
+  runtimeConfig?: unknown,
 ): { authorized: true } | { authorized: false; reason: string } {
-  const config = getAuthConfig()
+  const config = getAuthConfig(runtimeConfig)
 
   // Auth disabled = everything allowed
   if (config.disabled) return { authorized: true }
 
   // Check authentication
-  if (!isAuthorized(authHeader)) {
+  if (!isAuthorized(authHeader, runtimeConfig)) {
     return { authorized: false, reason: "Authentication required" }
   }
 
@@ -228,11 +314,11 @@ export function isLoopbackHostname(hostname: string): boolean {
  * Guardrail: Refuse non-loopback binds unless server auth is enabled and configured.
  * This prevents accidental LAN exposure of privileged endpoints.
  */
-export function assertSafeServerBind(opts: { hostname: string }) {
+export function assertSafeServerBind(opts: { hostname: string; config?: unknown }) {
   const hostname = opts.hostname
   if (isLoopbackHostname(hostname)) return
 
-  const config = getAuthConfig()
+  const config = getAuthConfig(opts.config)
   if (!config.disabled && config.password) return
 
   const insecureOverrideOk = Flag.ZEE_DISABLE_SERVER_AUTH && Flag.ZEE_ALLOW_INSECURE_SERVER_NO_AUTH

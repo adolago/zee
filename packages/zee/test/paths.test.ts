@@ -4,14 +4,8 @@ import path from "path"
 import { tmpdir } from "./fixture/fixture"
 import { Stanley } from "../src/paths"
 
-const ORIGINAL_STANLEY_REPO = process.env.STANLEY_REPO
-const ORIGINAL_STANLEY_PYTHON = process.env.STANLEY_PYTHON
-
-async function createStanleyRepo(root: string): Promise<string> {
-  const repo = path.join(root, "stanley-repo")
-  await fs.mkdir(path.join(repo, "stanley"), { recursive: true })
-  return repo
-}
+const ORIGINAL_STANLEY_CORE_BIN = process.env.STANLEY_CORE_BIN
+const ORIGINAL_STANLEY_API_URL = process.env.STANLEY_API_URL
 
 async function writeExecutable(filePath: string, body: string): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true })
@@ -20,74 +14,73 @@ async function writeExecutable(filePath: string, body: string): Promise<void> {
 }
 
 beforeEach(() => {
-  delete process.env.STANLEY_REPO
-  delete process.env.STANLEY_PYTHON
+  delete process.env.STANLEY_CORE_BIN
+  delete process.env.STANLEY_API_URL
 })
 
 afterEach(() => {
-  if (ORIGINAL_STANLEY_REPO === undefined) delete process.env.STANLEY_REPO
-  else process.env.STANLEY_REPO = ORIGINAL_STANLEY_REPO
+  if (ORIGINAL_STANLEY_CORE_BIN === undefined) delete process.env.STANLEY_CORE_BIN
+  else process.env.STANLEY_CORE_BIN = ORIGINAL_STANLEY_CORE_BIN
 
-  if (ORIGINAL_STANLEY_PYTHON === undefined) delete process.env.STANLEY_PYTHON
-  else process.env.STANLEY_PYTHON = ORIGINAL_STANLEY_PYTHON
+  if (ORIGINAL_STANLEY_API_URL === undefined) delete process.env.STANLEY_API_URL
+  else process.env.STANLEY_API_URL = ORIGINAL_STANLEY_API_URL
 })
 
 describe("Stanley.preflight", () => {
-  test("requires STANLEY_PYTHON when stanley/.venv is missing", async () => {
+  test("accepts explicit STANLEY_CORE_BIN without Python setup", async () => {
     await using tmp = await tmpdir()
-    const repo = await createStanleyRepo(tmp.path)
-    process.env.STANLEY_REPO = repo
-
-    const err = Stanley.preflight()
-    expect(err).toBeDefined()
-    expect(err).toContain("venv not found")
-    expect(err).toContain("STANLEY_PYTHON")
-  })
-
-  test("accepts explicit STANLEY_PYTHON when venv is missing", async () => {
-    await using tmp = await tmpdir()
-    const repo = await createStanleyRepo(tmp.path)
-    process.env.STANLEY_REPO = repo
-
-    const python = path.join(tmp.path, "bin", "python-ok")
+    const coreBin = path.join(tmp.path, "bin", "stanley")
     await writeExecutable(
-      python,
+      coreBin,
       "#!/usr/bin/env sh\n" +
-        "# Simulate a healthy interpreter for preflight checks\n" +
+        "if [ \"$1\" = \"--version\" ]; then\n" +
+        "  exit 0\n" +
+        "fi\n" +
         "exit 0\n",
     )
-    process.env.STANLEY_PYTHON = python
+    process.env.STANLEY_CORE_BIN = coreBin
 
     const err = Stanley.preflight()
     expect(err).toBeNull()
   })
 
-  test("fails with a clear error when STANLEY_PYTHON is invalid", async () => {
+  test("requires STANLEY_CORE_BIN when unset", () => {
+    const err = Stanley.preflight()
+    expect(err).toBeDefined()
+    expect(err).toContain("STANLEY_CORE_BIN")
+    expect(err).toContain("not configured")
+  })
+
+  test("accepts explicit STANLEY_API_URL without local binary setup", () => {
+    process.env.STANLEY_API_URL = "http://127.0.0.1:8000"
+
+    const err = Stanley.preflight()
+    expect(err).toBeNull()
+  })
+
+  test("fails with a clear error when STANLEY_CORE_BIN is invalid", async () => {
     await using tmp = await tmpdir()
-    const repo = await createStanleyRepo(tmp.path)
-    process.env.STANLEY_REPO = repo
-    process.env.STANLEY_PYTHON = path.join(tmp.path, "missing-python")
+    process.env.STANLEY_CORE_BIN = path.join(tmp.path, "missing-stanley")
 
     const err = Stanley.preflight()
     expect(err).toBeDefined()
     expect(err).toContain("not executable")
-    expect(err).toContain("STANLEY_PYTHON")
+    expect(err).toContain("STANLEY_CORE_BIN")
   })
 
-  test("uses stanley/.venv/bin/python when available", async () => {
+  test("fails with a clear error when the configured core binary probe fails", async () => {
     await using tmp = await tmpdir()
-    const repo = await createStanleyRepo(tmp.path)
-    process.env.STANLEY_REPO = repo
-
-    const venvPython = path.join(repo, ".venv", "bin", "python")
+    const coreBin = path.join(tmp.path, "bin", "stanley-fail")
     await writeExecutable(
-      venvPython,
+      coreBin,
       "#!/usr/bin/env sh\n" +
-        "# Simulate a valid venv interpreter for import checks\n" +
-        "exit 0\n",
+        "exit 7\n",
     )
+    process.env.STANLEY_CORE_BIN = coreBin
 
     const err = Stanley.preflight()
-    expect(err).toBeNull()
+    expect(err).toBeDefined()
+    expect(err).toContain("startup probe")
+    expect(err).toContain(coreBin)
   })
 })

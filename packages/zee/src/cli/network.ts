@@ -82,15 +82,18 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
   const port = portExplicitlySet ? args.port : (config?.server?.port ?? args.port)
   const hostname = hostnameExplicitlySet ? args.hostname : (config?.server?.hostname ?? args.hostname)
   const configCors = config?.server?.cors ?? []
+  const trustedOrigins = Array.isArray(config?.gateway?.controlUi?.trustedOrigins)
+    ? config.gateway.controlUi.trustedOrigins.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : []
   const envCors = [
     ...parseCorsEnv(process.env["ZEE_CORS_ALLOWLIST"]),
     ...parseCorsEnv(process.env["ZEE_HOSTED_ORIGINS"]),
     ...parseCorsEnv(process.env["ZEE_CORS_ORIGINS"]),
   ]
   const argsCors = Array.isArray(args.cors) ? args.cors : args.cors ? [args.cors] : []
-  const cors = [...configCors, ...envCors, ...argsCors]
+  const cors = [...configCors, ...trustedOrigins, ...envCors, ...argsCors]
 
-  assertSafeServerBind({ hostname })
+  assertSafeServerBind({ hostname, config })
 
   return { hostname, port, mdns, mdnsDomain, cors }
 }

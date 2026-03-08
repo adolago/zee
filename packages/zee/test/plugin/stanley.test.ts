@@ -188,7 +188,7 @@ mock.module("../../src/paths", () => ({
   Stanley: {
     preflight: () => state.preflightError,
     apiUrl: () => "http://127.0.0.1:8000",
-    python: () => "/mock/python",
+    coreBin: () => "/mock/stanley-core",
     repo: () => "/mock/repo",
   },
 }))
@@ -262,7 +262,7 @@ describe("plugin.stanley", () => {
 
   test("returns preflight guidance when backend is not ready", async () => {
     state.preflightError =
-      "Stanley Python venv not found at /mock/repo/.venv. Set STANLEY_PYTHON to an explicit interpreter."
+      "Stanley core binary is not configured. Set STANLEY_CORE_BIN to /mock/stanley-core."
 
     await withPlugin(async (hooks) => {
       const research = hooks.tool?.stanley_research
@@ -270,7 +270,7 @@ describe("plugin.stanley", () => {
       if (!research) throw new Error("stanley_research tool missing")
 
       const result = await research.execute({ action: "report", symbol: "AAPL" }, toolContext() as any)
-      expect(result).toContain("STANLEY_PYTHON")
+      expect(result).toContain("STANLEY_CORE_BIN")
       expect(state.connectCalls).toBe(0)
     })
   })

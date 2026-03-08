@@ -24,8 +24,8 @@ export interface DaemonConfig {
   autoStart: boolean;
   /** Auto-restart on crash (default: true) */
   autoRestart: boolean;
-  /** Python executable path (default: "python") */
-  pythonPath: string;
+  /** Stanley core executable path used for local daemon startup */
+  coreBin?: string;
   /** Path to Stanley repo (auto-detected if not set) */
   repoPath?: string;
   /** Startup timeout in ms (default: 30000) */
@@ -102,7 +102,7 @@ export const DEFAULT_CONFIG: StanleySDKConfig = {
   daemon: {
     autoStart: true,
     autoRestart: true,
-    pythonPath: "python",
+    coreBin: undefined,
     startupTimeoutMs: 30_000,
     healthPollIntervalMs: 500,
     port: 8000,

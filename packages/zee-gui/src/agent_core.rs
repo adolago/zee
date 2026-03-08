@@ -1,7 +1,7 @@
 //! Agent-Core Daemon Client
 //!
 //! HTTP/SSE client for communicating with the agent-core daemon.
-//! Replaces direct Python backend agent calls with unified daemon API.
+//! Replaces legacy direct Stanley backend calls with the unified daemon API.
 //!
 //! Endpoints:
 //!   POST /session - Create session

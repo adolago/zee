@@ -125,14 +125,14 @@ Use this as your onboarding completion checklist:
 
 ## Optional: Stanley investing module setup
 
-For full Stanley support, install Python 3.10-3.13 and bootstrap dependencies:
+For local Stanley autostart, build the Rust runtime and point Zee at the binary:
 
 ```bash
-python3.12 -m venv ~/.local/share/zee/stanley/.venv
-curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/stanley/requirements-lock.txt | \
-  ~/.local/share/zee/stanley/.venv/bin/pip install -r /dev/stdin
-export STANLEY_PYTHON=~/.local/share/zee/stanley/.venv/bin/python
+cargo build --manifest-path packages/stanley-core/Cargo.toml --release --features cli
+export STANLEY_CORE_BIN=$PWD/packages/stanley-core/target/release/stanley
 ```
+
+Alternatively, point `STANLEY_API_URL` at an already-running Stanley runtime.
 
 ## Build from source
 

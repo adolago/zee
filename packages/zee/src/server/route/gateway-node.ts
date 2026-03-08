@@ -145,6 +145,10 @@ export const GatewayNodeRoute = new Hono()
     validator("json", NodeReconnectRequestSchema),
     async (c) => {
       const input = c.req.valid("json")
+      const policy = resolveNodeClientPolicy(await Config.get())
+      if (!policy.enabled) {
+        return c.json({ error: "Node-client pairing is disabled by policy (gateway.nodeClient.enabled=false)." }, 403)
+      }
       const registry = getNodeClientRegistry()
       try {
         const node = await registry.reconnect({ nodeId: input.nodeId, token: input.token })
@@ -212,6 +216,9 @@ export const GatewayNodeRoute = new Hono()
       const input = c.req.valid("json")
       const cfg = await Config.get()
       const policy = resolveNodeClientPolicy(cfg)
+      if (!policy.enabled) {
+        return c.json({ error: "Node-client pairing is disabled by policy (gateway.nodeClient.enabled=false)." }, 403)
+      }
       try {
         const result = await getNodeClientRegistry().authorizeTool({
           nodeId: input.nodeId,

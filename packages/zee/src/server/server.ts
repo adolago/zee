@@ -31,8 +31,10 @@ import {
   AuthScope,
   assertSafeServerBind,
   getAuthConfig,
+  getServerRuntimeConfig,
   hasScope,
   isAuthorized,
+  isTrustedControlOrigin,
   isLoopbackHostname,
   resolveRequiredScope,
 } from "./auth"
@@ -135,7 +137,8 @@ export namespace Server {
     if (_fluxConfigLoaded) return
     _fluxConfigLoaded = true
     try {
-      const config = await Config.get()
+      const config = await getServerRuntimeConfig()
+      if (!config) return
       const flux = config.flux
       if (!flux) return
       FluxRecorder.configure({
@@ -345,7 +348,19 @@ export namespace Server {
             return
           }
 
-          const authConfig = getAuthConfig()
+          const runtimeConfig = await getServerRuntimeConfig()
+          const origin = c.req.header("Origin")
+          if (origin && !isTrustedControlOrigin(origin, runtimeConfig)) {
+            log.warn("origin denied", {
+              status: 403,
+              method: c.req.method,
+              path: c.req.path,
+              origin,
+            })
+            return c.text("Forbidden", 403)
+          }
+
+          const authConfig = getAuthConfig(runtimeConfig)
           if (!authConfig.disabled) {
             const ip = RequestMeta.getIp(c.req.raw)
             const method = c.req.method
@@ -369,7 +384,7 @@ export namespace Server {
               return c.text("Too Many Requests", 429)
             }
 
-            if (!isAuthorized(authHeader)) {
+            if (!isAuthorized(authHeader, runtimeConfig)) {
               authRateLimiter?.recordFailure(ip)
               log.warn("auth denied", {
                 status: 401,
@@ -408,7 +423,7 @@ export namespace Server {
           let directory = baseDir
 
           if (requestedDirectory) {
-            const authConfig = getAuthConfig()
+            const authConfig = getAuthConfig(await getServerRuntimeConfig())
             const expanded = expandHome(requestedDirectory)
             const absolute = path.isAbsolute(expanded) ? path.resolve(expanded) : path.resolve(baseDir, expanded)
             const real = await fs.realpath(absolute).catch(() => absolute)
@@ -522,7 +537,7 @@ export namespace Server {
         .route("/", CronRoute)
         .route("/", HeartbeatRoute)
 
-        // Stanley API reverse proxy — forwards /api/* to Python backend
+        // Stanley API reverse proxy — forwards /api/* to the canonical Stanley runtime
         .route("/api", StanleyProxyRoute)
 
         // API Documentation

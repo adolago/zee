@@ -259,7 +259,7 @@ export const RunCommand = cmd({
   handler: async (args) => {
     await checkEnvironment()
 
-    // Mandatory: Stanley Python backend must be ready
+    // Mandatory: Stanley runtime must be reachable or ready for autostart
     const stanleyErr = Stanley.preflight()
     if (stanleyErr) {
       UI.error("Stanley backend is not ready:\n" + stanleyErr)

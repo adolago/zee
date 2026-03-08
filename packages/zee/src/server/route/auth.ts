@@ -50,6 +50,7 @@ export const AuthRoute = new Hono()
       const requestID = RequestMeta.getRequestID(c.req.raw)
 
       if (body) {
+        const usedLegacyPayload = !("type" in body) && "api_key" in body
         const auth =
           "type" in body
             ? body
@@ -77,6 +78,22 @@ export const AuthRoute = new Hono()
               authType: auth.type,
             },
           })
+          if (usedLegacyPayload) {
+            FluxRecorder.record({
+              traceID,
+              requestID,
+              providerID,
+              direction: "internal",
+              domain: "auth",
+              kind: "auth.legacy_payload.accepted",
+              status: "ok",
+              route: "/auth/:providerID",
+              method: "PUT",
+              metadata: {
+                payloadShape: "api_key",
+              },
+            })
+          }
         }
       }
       await Provider.reload()

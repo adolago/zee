@@ -1,10 +1,11 @@
-//! API client for communicating with Stanley Python backend
+//! API client for communicating with Zee's Stanley-backed API surface.
 //!
 //! Provides async methods for fetching money flow data, institutional
-//! holdings, and other analytics from the Stanley backend service.
+//! holdings, and other analytics from the Stanley runtime service.
 
 #![allow(dead_code)]
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
@@ -20,10 +21,10 @@ pub struct ZeeApiClient {
 }
 
 impl ZeeApiClient {
-    /// Create a new client, connecting to Zee's Hono server which proxies /api/* to Python
+    /// Create a new client, connecting to Zee's API server.
     pub fn new() -> Self {
-        let base_url = std::env::var("ZEE_SERVER_URL")
-            .unwrap_or_else(|_| "http://localhost:3210".to_string());
+        let base_url =
+            std::env::var("ZEE_SERVER_URL").unwrap_or_else(|_| "http://localhost:3210".to_string());
         Self::with_url(base_url)
     }
 
@@ -96,7 +97,7 @@ impl ZeeApiClient {
 
         if !Self::allow_remote_env() {
             return Err(ApiError::Safety(
-                "Remote base URL blocked. Set STANLEY_ALLOW_REMOTE=1 to allow".to_string(),
+                "Remote base URL blocked. Set ZEE_ALLOW_REMOTE=1 to allow".to_string(),
             ));
         }
 
@@ -114,6 +115,59 @@ impl ZeeApiClient {
         let base = self.base_url.trim_end_matches('/');
         let path = path.trim_start_matches('/');
         Ok(format!("{}/{}", base, path))
+    }
+
+    async fn decode_api_response<T: DeserializeOwned>(
+        response: reqwest::Response,
+    ) -> Result<ApiResponse<T>, ApiError> {
+        let body = response
+            .text()
+            .await
+            .map_err(|e| ApiError::Parse(e.to_string()))?;
+
+        match serde_json::from_str::<EnvelopeOrRaw<T>>(&body)
+            .map_err(|e| ApiError::Parse(e.to_string()))?
+        {
+            EnvelopeOrRaw::Envelope(envelope) => Ok(envelope),
+            EnvelopeOrRaw::Raw(data) => Ok(ApiResponse {
+                success: true,
+                data: Some(data),
+                error: None,
+                timestamp: String::new(),
+            }),
+        }
+    }
+
+    async fn decode_payload<T: DeserializeOwned>(
+        response: reqwest::Response,
+    ) -> Result<T, ApiError> {
+        let envelope = Self::decode_api_response(response).await?;
+        if !envelope.success {
+            return Err(ApiError::Server(
+                envelope
+                    .error
+                    .unwrap_or_else(|| "Unknown server error".to_string()),
+            ));
+        }
+
+        envelope
+            .data
+            .ok_or_else(|| ApiError::Server("Missing response data".to_string()))
+    }
+
+    pub async fn get_enveloped<T: DeserializeOwned>(
+        &self,
+        path: &str,
+    ) -> Result<ApiResponse<T>, ApiError> {
+        let url = self.build_url(path)?;
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+
+        Self::decode_api_response(response).await
     }
 
     /// Get money flow analysis for selected sectors
@@ -165,10 +219,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Get dark pool activity
@@ -181,10 +232,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Health check
@@ -197,10 +245,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Prediction markets health check
@@ -380,10 +425,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Create a new thesis
@@ -400,10 +442,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Get list of trades
@@ -431,10 +470,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Create a new trade
@@ -451,10 +487,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Close a trade
@@ -472,10 +505,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Get trade statistics
@@ -488,10 +518,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Search notes
@@ -510,10 +537,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Get notes graph
@@ -526,10 +550,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     // Events API methods
@@ -563,10 +584,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Create a new event
@@ -583,10 +601,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     // People API methods
@@ -616,10 +631,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Create a new person profile
@@ -636,10 +648,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     // Sectors API methods
@@ -654,10 +663,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     /// Create a new sector overview
@@ -674,10 +680,7 @@ impl ZeeApiClient {
             .await
             .map_err(|e| ApiError::Network(e.to_string()))?;
 
-        response
-            .json()
-            .await
-            .map_err(|e| ApiError::Parse(e.to_string()))
+        Self::decode_payload(response).await
     }
 
     // Portfolio API methods
@@ -1354,10 +1357,15 @@ pub struct InstitutionalHolder {
 #[derive(Debug, Clone, Deserialize)]
 pub struct EquityFlowResponse {
     pub symbol: String,
+    #[serde(alias = "moneyFlowScore")]
     pub money_flow_score: f64,
+    #[serde(alias = "institutionalSentiment")]
     pub institutional_sentiment: f64,
+    #[serde(alias = "smartMoneyActivity")]
     pub smart_money_activity: f64,
+    #[serde(alias = "shortPressure")]
     pub short_pressure: f64,
+    #[serde(alias = "accumulationDistribution")]
     pub accumulation_distribution: f64,
     pub confidence: f64,
 }
@@ -1449,9 +1457,13 @@ pub struct DarkPoolResponse {
 #[derive(Debug, Deserialize)]
 pub struct DarkPoolData {
     pub date: String,
+    #[serde(alias = "darkPoolVolume")]
     pub dark_pool_volume: u64,
+    #[serde(alias = "totalVolume")]
     pub total_volume: u64,
+    #[serde(alias = "darkPoolPercentage")]
     pub dark_pool_percentage: f64,
+    #[serde(alias = "darkPoolSignal")]
     pub dark_pool_signal: i8,
 }
 
@@ -1528,12 +1540,16 @@ pub struct NoteFrontmatter {
 pub struct ThesisFrontmatter {
     pub title: String,
     pub symbol: String,
+    #[serde(alias = "companyName")]
     pub company_name: Option<String>,
     pub sector: Option<String>,
     pub status: String,
     pub conviction: String,
+    #[serde(alias = "entryPrice")]
     pub entry_price: Option<f64>,
+    #[serde(alias = "targetPrice")]
     pub target_price: Option<f64>,
+    #[serde(alias = "stopLoss")]
     pub stop_loss: Option<f64>,
 }
 
@@ -1543,10 +1559,13 @@ pub struct TradeFrontmatter {
     pub symbol: String,
     pub direction: String,
     pub status: String,
+    #[serde(alias = "entryPrice")]
     pub entry_price: f64,
+    #[serde(alias = "exitPrice")]
     pub exit_price: Option<f64>,
     pub shares: f64,
     pub pnl: Option<f64>,
+    #[serde(alias = "pnlPercent")]
     pub pnl_percent: Option<f64>,
 }
 
@@ -1570,13 +1589,19 @@ pub struct SearchResult {
 
 #[derive(Debug, Deserialize)]
 pub struct TradeStatsResponse {
+    #[serde(alias = "totalTrades")]
     pub total_trades: u32,
     pub winners: u32,
     pub losers: u32,
+    #[serde(alias = "winRate")]
     pub win_rate: f64,
+    #[serde(alias = "totalPnl")]
     pub total_pnl: f64,
+    #[serde(alias = "avgWin")]
     pub avg_win: f64,
+    #[serde(alias = "avgLoss")]
     pub avg_loss: f64,
+    #[serde(alias = "profitFactor")]
     pub profit_factor: f64,
 }
 
@@ -1638,8 +1663,11 @@ pub struct CorrelationRequest {
 /// Portfolio analytics response data
 #[derive(Debug, Clone, Deserialize)]
 pub struct PortfolioAnalytics {
+    #[serde(alias = "totalValue")]
     pub total_value: f64,
+    #[serde(alias = "sectorExposure")]
     pub sector_exposure: std::collections::HashMap<String, f64>,
+    #[serde(alias = "topHoldings")]
     pub top_holdings: Vec<HoldingInfo>,
 }
 
@@ -1649,17 +1677,24 @@ pub struct HoldingInfo {
     pub symbol: String,
     pub weight: f64,
     pub value: f64,
+    #[serde(alias = "returnPct")]
     pub return_pct: Option<f64>,
 }
 
 /// Risk metrics from API
 #[derive(Debug, Clone, Deserialize)]
 pub struct ApiRiskMetrics {
+    #[serde(alias = "var95")]
     pub var_95: f64,
+    #[serde(alias = "var99")]
     pub var_99: f64,
+    #[serde(alias = "cvar95")]
     pub cvar_95: f64,
+    #[serde(alias = "maxDrawdown")]
     pub max_drawdown: f64,
+    #[serde(alias = "sharpeRatio")]
     pub sharpe_ratio: f64,
+    #[serde(alias = "sortinoRatio")]
     pub sortino_ratio: f64,
     pub beta: f64,
 }
@@ -1667,6 +1702,7 @@ pub struct ApiRiskMetrics {
 /// Sector exposure response
 #[derive(Debug, Clone, Deserialize)]
 pub struct SectorExposureResponse {
+    #[serde(alias = "portfolioWeights")]
     pub portfolio_weights: std::collections::HashMap<String, f64>,
 }
 
@@ -1698,12 +1734,19 @@ pub struct ApiResponse<T> {
     pub timestamp: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+enum EnvelopeOrRaw<T> {
+    Envelope(ApiResponse<T>),
+    Raw(T),
+}
+
 // Prediction Markets API types
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MarketPricePoint {
     pub price: f64,
-    #[serde(rename = "at_time")]
+    #[serde(rename = "at_time", alias = "atTime")]
     pub at_time: i64,
 }
 
@@ -1761,7 +1804,7 @@ pub struct KalshiMarketPrice {
 pub struct PredictionMarketsHealth {
     pub status: String,
     pub provider: String,
-    #[serde(rename = "polymarket_sample_size")]
+    #[serde(rename = "polymarket_sample_size", alias = "polymarketSampleSize")]
     pub polymarket_sample_size: Option<usize>,
 }
 
