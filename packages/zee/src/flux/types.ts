@@ -31,6 +31,8 @@ export type FluxKind =
   | "oauth.refresh.start"
   | "oauth.refresh.success"
   | "oauth.refresh.fail"
+  | "auth.legacy_payload.accepted"
+  | "gateway.fallback.invoked"
   | "provider.fallback.used"
   | "provider.fallback.exhausted"
   | "session.message.accepted"

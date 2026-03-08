@@ -59,12 +59,27 @@ function parseCorsEnv(value?: string): string[] {
     .filter((entry) => entry.length > 0)
 }
 
+function getControlUiTrustedOrigins(config: Config.Info | undefined): string[] {
+  const gateway = config?.gateway
+  if (!gateway || typeof gateway !== "object" || Array.isArray(gateway)) return []
+
+  const controlUi = (gateway as { controlUi?: { trustedOrigins?: unknown } }).controlUi
+  if (!controlUi || typeof controlUi !== "object") return []
+
+  const trustedOrigins = controlUi.trustedOrigins
+  if (!Array.isArray(trustedOrigins)) return []
+
+  return trustedOrigins.filter(
+    (entry: unknown): entry is string => typeof entry === "string" && entry.trim().length > 0,
+  )
+}
+
 export function withNetworkOptions<T>(yargs: Argv<T>) {
   return yargs.options(options)
 }
 
 export async function resolveNetworkOptions(args: NetworkOptions) {
-  const config = await Config.global()
+  const config = (await Config.global()) as Config.Info | undefined
   const portExplicitlySet = process.argv.includes("--port")
   const hostnameExplicitlySet = process.argv.includes("--hostname")
   const mdnsExplicitlySet = process.argv.includes("--mdns")
@@ -82,9 +97,7 @@ export async function resolveNetworkOptions(args: NetworkOptions) {
   const port = portExplicitlySet ? args.port : (config?.server?.port ?? args.port)
   const hostname = hostnameExplicitlySet ? args.hostname : (config?.server?.hostname ?? args.hostname)
   const configCors = config?.server?.cors ?? []
-  const trustedOrigins = Array.isArray(config?.gateway?.controlUi?.trustedOrigins)
-    ? config.gateway.controlUi.trustedOrigins.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
-    : []
+  const trustedOrigins = getControlUiTrustedOrigins(config)
   const envCors = [
     ...parseCorsEnv(process.env["ZEE_CORS_ALLOWLIST"]),
     ...parseCorsEnv(process.env["ZEE_HOSTED_ORIGINS"]),

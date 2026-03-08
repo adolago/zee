@@ -220,7 +220,7 @@ export function getAuthConfig(runtimeConfig?: unknown): AuthConfig {
   return { disabled, password, username, scopes }
 }
 
-export async function getServerRuntimeConfig(directory = process.cwd()): Promise<unknown | undefined> {
+export async function getServerRuntimeConfig(directory = process.cwd()): Promise<Config.Info | undefined> {
   try {
     return await Instance.provide({
       directory,
