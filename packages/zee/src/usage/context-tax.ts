@@ -27,13 +27,13 @@ export interface ContextComponent {
 }
 
 export interface ContextTaxBreakdown {
-  persona: string
+  agent: string
   components: ContextComponent[]
   systemSubtotal: number
   toolsSubtotal: number
   totalEstimated: number
   lazyPool: {
-    persona: string
+    scope: string
     skillCount: number
     totalBytes: number
     estimatedTokens: number
@@ -44,10 +44,10 @@ export interface ContextTaxBreakdown {
   }
 }
 
-export async function measureContextTax(personaName: string): Promise<ContextTaxBreakdown> {
-  const agent = await Agent.get(personaName)
+export async function measureContextTax(agentName = "zee"): Promise<ContextTaxBreakdown> {
+  const agent = await Agent.get(agentName)
   if (!agent) {
-    throw new Error("Agent not found: " + personaName)
+    throw new Error("Agent not found: " + agentName)
   }
 
   const modelRef = agent.model ?? (await Provider.defaultModel())
@@ -77,7 +77,7 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
 
   if (agent.systemPromptAdditions) {
     components.push({
-      name: "Persona additions",
+      name: "Agent additions",
       category: "system",
       estimatedTokens: estimateTokens(agent.systemPromptAdditions),
       bytes: agent.systemPromptAdditions.length,
@@ -202,7 +202,7 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
       skillSeen.push(t)
     } else if (coreToolIds.includes(t.id)) {
       coreSeen.push(t)
-    } else if (t.id.includes(":") || t.id.startsWith(personaName)) {
+    } else if (t.id.includes(":") || t.id.startsWith(agentName)) {
       domainSeen.push(t)
     } else if (t.id.includes("_")) {
       mcpSeen.push(t)
@@ -297,7 +297,7 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
   const lazyPool = await measureLazyPool(agent.name)
 
   return {
-    persona: personaName,
+    agent: agentName,
     components,
     systemSubtotal,
     toolsSubtotal,
@@ -306,18 +306,18 @@ export async function measureContextTax(personaName: string): Promise<ContextTax
   }
 }
 
-async function measureLazyPool(personaName: string): Promise<ContextTaxBreakdown["lazyPool"]> {
-  const allSkills = await Skill.all(personaName)
+async function measureLazyPool(agentName: string): Promise<ContextTaxBreakdown["lazyPool"]> {
+  const allSkills = await Skill.all(agentName)
   const pool: ContextTaxBreakdown["lazyPool"] = []
 
-  const byPersona = new Map<string, Skill.Info[]>()
+  const byScope = new Map<string, Skill.Info[]>()
   for (const skill of allSkills) {
     const ctx = skill.context ?? "shared"
-    if (!byPersona.has(ctx)) byPersona.set(ctx, [])
-    byPersona.get(ctx)!.push(skill)
+    if (!byScope.has(ctx)) byScope.set(ctx, [])
+    byScope.get(ctx)!.push(skill)
   }
 
-  for (const [persona, skills] of byPersona) {
+  for (const [scope, skills] of byScope) {
     let totalBytes = 0
     for (const skill of skills) {
       try {
@@ -332,7 +332,7 @@ async function measureLazyPool(personaName: string): Promise<ContextTaxBreakdown
     }
 
     pool.push({
-      persona: persona === "shared" ? "shared" : "@" + persona,
+      scope: scope === "shared" ? "shared" : "@" + scope,
       skillCount: skills.length,
       totalBytes,
       estimatedTokens: Math.ceil(totalBytes / 4),

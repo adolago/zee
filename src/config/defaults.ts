@@ -14,7 +14,6 @@ import type {
   ProviderConfig,
   MemoryConfig,
   SurfaceConfig,
-  StanleySurfaceConfig,
   ZeeSurfaceConfig,
   CliSurfaceConfig,
   WebSurfaceConfig,
@@ -121,17 +120,13 @@ Focus on:
 // Surface Defaults
 // ============================================================================
 
-export const DEFAULT_STANLEY_CONFIG: StanleySurfaceConfig = {
-  sessionName: 'stanley',
+export const DEFAULT_ZEE_CONFIG: ZeeSurfaceConfig = {
+  sessionName: 'zee',
   defaultAgent: 'build',
   autoReconnect: true,
   syncHistory: true,
   maxMediaSize: 16 * 1024 * 1024, // 16MB
   allowedChatTypes: ['private', 'group'],
-};
-
-export const DEFAULT_ZEE_CONFIG: ZeeSurfaceConfig = {
-  defaultAgent: 'build',
   defaultChannel: 'whatsapp',
 };
 
@@ -153,7 +148,6 @@ export const DEFAULT_WEB_CONFIG: WebSurfaceConfig = {
 };
 
 export const DEFAULT_SURFACE_CONFIG: SurfaceConfig = {
-  stanley: DEFAULT_STANLEY_CONFIG,
   zee: DEFAULT_ZEE_CONFIG,
   cli: DEFAULT_CLI_CONFIG,
   web: DEFAULT_WEB_CONFIG,
@@ -240,18 +234,14 @@ export const DEFAULT_CONFIG: Config = {
 /**
  * Get default configuration for a specific surface
  */
-export function getDefaultsForSurface(surface: 'stanley' | 'zee' | 'cli' | 'web'): Partial<Config> {
+export function getDefaultsForSurface(surface: 'zee' | 'cli' | 'web'): Partial<Config> {
   const overrides: Record<string, Partial<Config>> = {
-    stanley: {
-      // WhatsApp-specific defaults
+    zee: {
+      // Messaging-surface defaults
       defaultAgent: 'build',
       experimental: {
         continueOnDeny: true, // More forgiving in chat contexts
       },
-    },
-    zee: {
-      // Messaging-surface defaults
-      defaultAgent: 'build',
     },
     cli: {
       // CLI-specific defaults
@@ -316,7 +306,7 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
   'GROQ_API_KEY': 'provider.groq.apiKey',
 
   // Surface-specific
-  'ZEE_WHATSAPP_SESSION': 'surface.stanley.sessionName',
+  'ZEE_WHATSAPP_SESSION': 'surface.zee.sessionName',
   'ZEE_PORT': 'surface.web.port',
   'ZEE_HOSTNAME': 'surface.web.hostname',
 

@@ -158,7 +158,7 @@ export type KeybindsConfig = {
    */
   session_unshare?: string
   /**
-   * Delegate to another persona
+   * Deprecated delegation selector
    */
   session_delegate?: string
   /**
@@ -647,7 +647,7 @@ export type AgentConfig = {
    */
   min_p?: number
   /**
-   * Additional system prompt content to inject for this agent/persona
+   * Additional system prompt content to inject for this agent
    */
   systemPromptAdditions?: string
   /**
@@ -2542,7 +2542,7 @@ export type ThemesListResponses = {
     id: string
     name: string
     builtin: boolean
-    persona?: string
+    agent?: string
   }>
 }
 
@@ -3902,28 +3902,6 @@ export type SessionEventsResponses = {
    */
   200: unknown
 }
-
-export type PersonasListData = {
-  body?: never
-  path?: never
-  query?: never
-  url: "/personas"
-}
-
-export type PersonasListResponses = {
-  /**
-   * List of personas
-   */
-  200: Array<{
-    id: string
-    name: string
-    description: string
-    domain: string
-    capabilities: Array<string>
-  }>
-}
-
-export type PersonasListResponse = PersonasListResponses[keyof PersonasListResponses]
 
 export type EventsGlobalData = {
   body?: never

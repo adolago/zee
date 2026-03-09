@@ -6,28 +6,28 @@
  */
 
 /**
- * Valid persona identifiers - whitelist for validation
+ * Valid assistant identifiers - whitelist for validation
  */
 export const VALID_PERSONAS = ["zee"] as const;
-export type PersonaId = (typeof VALID_PERSONAS)[number];
+export type AssistantId = (typeof VALID_PERSONAS)[number];
 
 /**
- * Check if a string is a valid persona ID
+ * Check if a string is a valid assistant ID
  */
-export function isValidPersona(persona: string): persona is PersonaId {
-  return VALID_PERSONAS.includes(persona as PersonaId);
+export function isValidAssistant(assistant: string): assistant is AssistantId {
+  return VALID_PERSONAS.includes(assistant as AssistantId);
 }
 
 /**
- * Validate and sanitize a persona parameter
+ * Validate and sanitize an assistant parameter
  * Throws if invalid to prevent injection
  */
-export function validatePersona(persona: string | undefined): PersonaId | undefined {
-  if (persona === undefined) return undefined;
-  const normalized = persona.toLowerCase().trim();
-  if (!isValidPersona(normalized)) {
+export function validateAssistant(assistant: string | undefined): AssistantId | undefined {
+  if (assistant === undefined) return undefined;
+  const normalized = assistant.toLowerCase().trim();
+  if (!isValidAssistant(normalized)) {
     throw new Error(
-      `Invalid persona: "${persona}". Valid personas: ${VALID_PERSONAS.join(", ")}`
+      `Invalid assistant: "${assistant}". Valid assistants: ${VALID_PERSONAS.join(", ")}`
     );
   }
   return normalized;

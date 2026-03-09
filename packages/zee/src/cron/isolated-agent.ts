@@ -65,7 +65,7 @@ export async function runIsolatedAgentJob(params: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: `cron:${job.id}:${job.name}`,
-        agent: job.payload.kind === "agentTurn" ? job.payload.persona : undefined,
+        agent: job.payload.kind === "agentTurn" ? job.payload.agent : undefined,
       }),
     })
 
@@ -81,7 +81,7 @@ export async function runIsolatedAgentJob(params: {
 
     // Send the message to the session
     const modelOverride = job.payload.kind === "agentTurn" ? resolveModelOverride(job.payload.model) : undefined
-    const agentOverride = job.payload.kind === "agentTurn" ? job.payload.persona : undefined
+    const agentOverride = job.payload.kind === "agentTurn" ? job.payload.agent : undefined
     const msgRes = await fetch(`${serverUrl}/session/${session.id}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

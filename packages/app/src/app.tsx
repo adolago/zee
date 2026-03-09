@@ -22,7 +22,7 @@ import { FileProvider } from "@/context/file"
 import { CommentsProvider } from "@/context/comments"
 import { NotificationProvider } from "@/context/notification"
 import { ModelsProvider } from "@/context/models"
-import { PersonaProvider, usePersona, isPersonaId } from "@/context/persona"
+import { AssistantProvider, useAssistant, isAssistantId } from "@/context/assistant"
 import { DialogProvider } from "@zee/ui/context/dialog"
 import { CommandProvider } from "@/context/command"
 import { LanguageProvider, useLanguage } from "@/context/language"
@@ -48,18 +48,18 @@ declare global {
   }
 }
 
-const PERSONA_THEME_OVERRIDE_KEY = "zee.persona-theme-override"
+const ASSISTANT_THEME_OVERRIDE_KEY = "zee.theme-override"
 
-function PersonaThemeBridge(props: ParentProps) {
-  const persona = usePersona()
+function AssistantThemeBridge(props: ParentProps) {
+  const assistant = useAssistant()
   const theme = useTheme()
 
   createEffect(() => {
-    const id = persona.id()
+    const id = assistant.id()
     const override =
-      localStorage.getItem(PERSONA_THEME_OVERRIDE_KEY)
+      localStorage.getItem(ASSISTANT_THEME_OVERRIDE_KEY)
     if (override === "true") return
-    if (isPersonaId(id) && theme.themes()[id]) {
+    if (isAssistantId(id) && theme.themes()[id]) {
       theme.setTheme(id)
     }
   })
@@ -135,8 +135,8 @@ export function AppInterface(props: { defaultUrl?: string }) {
       <ServerKey>
         <GlobalSDKProvider>
           <GlobalSyncProvider>
-          <PersonaProvider>
-          <PersonaThemeBridge>
+          <AssistantProvider>
+          <AssistantThemeBridge>
             <Router
               root={(props) => (
                 <SettingsProvider>
@@ -186,8 +186,8 @@ export function AppInterface(props: { defaultUrl?: string }) {
                 />
               </Route>
             </Router>
-          </PersonaThemeBridge>
-          </PersonaProvider>
+          </AssistantThemeBridge>
+          </AssistantProvider>
           </GlobalSyncProvider>
         </GlobalSDKProvider>
       </ServerKey>

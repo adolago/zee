@@ -25,11 +25,11 @@ import { AppDeps } from "@/app/deps"
 import { SessionSteering } from "./steering"
 import { FluxRecorder } from "@/flux"
 import {
-  appendStanleyProvenance,
+  appendInvestingProvenance,
   extractTextFromParts,
   isValuationMetricQuery,
-  summarizeStanleyProvenance,
-} from "./stanley-provenance"
+  summarizeInvestingProvenance,
+} from "./investing-provenance"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -85,7 +85,7 @@ export namespace SessionProcessor {
     let attempt = 0
     let needsCompaction = false
 
-    async function ensureStanleyProvenanceForValuationAnswer() {
+    async function ensureInvestingProvenanceForValuationAnswer() {
       if (input.assistantMessage.error) return
       if (input.assistantMessage.finish === "tool-calls") return
       if (!input.assistantMessage.parentID) return
@@ -116,7 +116,7 @@ export namespace SessionProcessor {
               error: part.state.status === "error" ? part.state.error : undefined,
             })),
         )
-      const summary = summarizeStanleyProvenance(traces)
+      const summary = summarizeInvestingProvenance(traces)
       if (!summary) return
 
       const parts = await MessageV2.parts(input.assistantMessage.id)
@@ -124,7 +124,7 @@ export namespace SessionProcessor {
       const lastTextPart = textParts.at(-1)
       if (!lastTextPart) return
 
-      const updatedText = appendStanleyProvenance(lastTextPart.text, summary)
+      const updatedText = appendInvestingProvenance(lastTextPart.text, summary)
       if (updatedText === lastTextPart.text) return
 
       await Session.updatePart({
@@ -452,7 +452,7 @@ export namespace SessionProcessor {
                         )
                       ) {
                         const permissionMode = streamInput.user.mode ?? "plan"
-                        const agent = await Agent.get(input.assistantMessage.agent)
+                        const agent = await Agent.mustGet(input.assistantMessage.agent)
                         await PermissionNext.ask({
                           permission: "doom_loop",
                           patterns: [value.toolName],
@@ -874,7 +874,7 @@ export namespace SessionProcessor {
                 })
               }
             }
-            await ensureStanleyProvenanceForValuationAnswer()
+            await ensureInvestingProvenanceForValuationAnswer()
             input.assistantMessage.time.completed = Date.now()
             await Session.updateMessage(input.assistantMessage)
             SessionSteering.clear(input.sessionID, input.assistantMessage.id)

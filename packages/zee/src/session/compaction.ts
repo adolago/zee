@@ -9,12 +9,12 @@ import z from "zod"
 
 import { Token } from "../util/token"
 import { Log } from "../util/log"
-import { SessionProcessor } from "./processor"
 import { fn } from "@/util/fn"
 import { Agent } from "@/agent/agent"
 import { Plugin } from "@/plugin"
 import { Config } from "@/config/config"
 import { ProviderTransform } from "@/provider/transform"
+import { createSessionRuntimeProcessor } from "@/runtime/session"
 
 export namespace SessionCompaction {
   const log = Log.create({ service: "session.compaction" })
@@ -120,7 +120,7 @@ export namespace SessionCompaction {
       return "stop"
     }
     const userMessage = userMessageEntry.info as MessageV2.User
-    const agent = await Agent.get("compaction")
+    const agent = await Agent.mustGet("compaction")
     const model = agent.model
       ? await Provider.getModel(agent.model.providerID, agent.model.modelID)
       : await Provider.getModel(userMessage.model.providerID, userMessage.model.modelID)
@@ -149,7 +149,7 @@ export namespace SessionCompaction {
         created: Date.now(),
       },
     })) as MessageV2.Assistant
-    const processor = SessionProcessor.create({
+    const processor = await createSessionRuntimeProcessor({
       assistantMessage: msg,
       sessionID: input.sessionID,
       model,

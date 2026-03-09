@@ -44,7 +44,7 @@ function isMcpConfigured(config: McpEntry): config is McpConfigured {
   return typeof config === "object" && config !== null && "type" in config
 }
 
-// Check if this is a shorthand persona MCP config like { enabled: true }
+// Check if this is a shorthand built-in MCP config like { enabled: true }
 function isShorthandConfig(config: McpEntry): config is { enabled: boolean } {
   return typeof config === "object" && config !== null && "enabled" in config && !("type" in config)
 }
@@ -143,10 +143,10 @@ export const McpListCommand = cmd({
             const base = configured.type === "remote" ? configured.url : configured.command.join(" ")
             typeHint = `${base} (${lifecycle}, ${directHint})`
           } else if (shorthand) {
-            // Shorthand persona config
-            typeHint = `persona builtin (enabled: ${shorthand.enabled})`
+            // Shorthand built-in config
+            typeHint = `builtin (enabled: ${shorthand.enabled})`
           } else {
-            typeHint = "persona builtin (auto-enabled)"
+            typeHint = "builtin (auto-enabled)"
           }
           prompts.log.info(
             `${statusIcon} ${name} ${UI.Style.TEXT_DIM}${statusText}${hint}\n    ${UI.Style.TEXT_DIM}${typeHint}`,

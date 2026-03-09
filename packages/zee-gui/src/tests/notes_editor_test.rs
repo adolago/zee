@@ -112,7 +112,7 @@ fn test_note_buffer_file_path() {
     let path = buffer.file_path();
 
     assert!(path.to_string_lossy().ends_with("my_note.md"));
-    assert!(path.to_string_lossy().contains(".stanley/notes"));
+    assert!(path.to_string_lossy().contains(".investing/notes"));
 }
 
 // ============================================================================

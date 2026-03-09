@@ -3,8 +3,6 @@ import { bootstrap } from "../../bootstrap"
 import { cmd } from "../cmd"
 import { measureContextTax, type ContextTaxBreakdown } from "../../../usage/context-tax"
 
-const PERSONAS = ["zee", "stanley", "johny"]
-
 // Pricing per million tokens
 const PRICING: Record<string, { input: number; output: number }> = {
   opus: { input: 15, output: 75 },
@@ -13,17 +11,13 @@ const PRICING: Record<string, { input: number; output: number }> = {
 
 export const ContextTaxCommand = cmd({
   command: "context-tax",
-  describe: "measure per-turn token cost of system prompt and tool schemas",
+  describe: "measure per-turn token cost of Zee system prompt and tool schemas",
   builder: (yargs) =>
     yargs
-      .option("persona", {
+      .option("agent", {
         type: "string",
-        description: "Persona to measure (zee, stanley, johny)",
-      })
-      .option("all", {
-        type: "boolean",
-        default: false,
-        description: "Measure all three personas side-by-side",
+        default: "zee",
+        description: "Agent to measure",
       })
       .option("json", {
         type: "boolean",
@@ -32,33 +26,16 @@ export const ContextTaxCommand = cmd({
       }),
   async handler(args) {
     await bootstrap(process.cwd(), async () => {
-      const personas = args.all ? PERSONAS : args.persona ? [args.persona as string] : PERSONAS
-
-      const results: ContextTaxBreakdown[] = []
-
-      for (const persona of personas) {
-        try {
-          const breakdown = await measureContextTax(persona)
-          results.push(breakdown)
-        } catch (e) {
-          process.stderr.write(`Failed to measure ${persona}: ${e instanceof Error ? e.message : String(e)}${EOL}`)
+      try {
+        const breakdown = await measureContextTax(args.agent as string)
+        if (args.json) {
+          process.stdout.write(JSON.stringify(breakdown, null, 2) + EOL)
+          return
         }
-      }
-
-      if (results.length === 0) {
-        process.stderr.write(`No results to display${EOL}`)
+        printDetailed(breakdown)
+      } catch (e) {
+        process.stderr.write(`Failed to measure ${args.agent}: ${e instanceof Error ? e.message : String(e)}${EOL}`)
         process.exit(1)
-      }
-
-      if (args.json) {
-        process.stdout.write(JSON.stringify(results, null, 2) + EOL)
-        return
-      }
-
-      if (results.length > 1) {
-        printComparison(results)
-      } else {
-        printDetailed(results[0])
       }
     })
   },
@@ -67,7 +44,7 @@ export const ContextTaxCommand = cmd({
 function printDetailed(breakdown: ContextTaxBreakdown) {
   const w = process.stdout.write.bind(process.stdout)
 
-  w(`Context Tax Report - Persona: ${breakdown.persona}${EOL}`)
+  w(`Context Tax Report - Agent: ${breakdown.agent}${EOL}`)
   w(`${"=".repeat(60)}${EOL}${EOL}`)
 
   // System prompt section
@@ -118,7 +95,7 @@ function printDetailed(breakdown: ContextTaxBreakdown) {
     w(`LAZY POOL (loaded on skill invoke)${EOL}`)
     for (const pool of breakdown.lazyPool) {
       w(
-        `  ${padRight(`${pool.persona} skills (${pool.skillCount})`, 38)} ${padLeft(fmtTokens(pool.estimatedTokens), 8)}  ${padLeft(fmtKB(pool.totalBytes), 8)}${EOL}`,
+        `  ${padRight(`${pool.scope} skills (${pool.skillCount})`, 38)} ${padLeft(fmtTokens(pool.estimatedTokens), 8)}  ${padLeft(fmtKB(pool.totalBytes), 8)}${EOL}`,
       )
     }
     w(EOL)
@@ -131,99 +108,6 @@ function printDetailed(breakdown: ContextTaxBreakdown) {
   for (let i = 0; i < top.length; i++) {
     const c = top[i]
     w(`  ${i + 1}. ${padRight(c.name, 36)} ${padLeft(fmtTokens(c.estimatedTokens), 8)} (${c.pct}%)${EOL}`)
-  }
-  w(EOL)
-}
-
-function printComparison(breakdowns: ContextTaxBreakdown[]) {
-  const w = process.stdout.write.bind(process.stdout)
-
-  w(`Context Tax Comparison${EOL}`)
-  w(`${"=".repeat(72)}${EOL}${EOL}`)
-
-  // Header
-  const nameWidth = 30
-  const colWidth = 12
-  w(`${padRight("Component", nameWidth)}`)
-  for (const b of breakdowns) {
-    w(`${padLeft(b.persona, colWidth)}`)
-  }
-  w(EOL)
-  w(`${"─".repeat(nameWidth + colWidth * breakdowns.length)}${EOL}`)
-
-  // Collect all unique component names
-  const allNames = new Set<string>()
-  for (const b of breakdowns) {
-    for (const c of b.components) {
-      // Normalize domain tool names for comparison
-      const name = c.name.startsWith("Domain tools")
-        ? "Domain tools"
-        : c.name.startsWith("MCP tools")
-          ? "MCP tools"
-          : c.name.startsWith("Core tools")
-            ? "Core tools"
-            : c.name
-      allNames.add(name)
-    }
-  }
-
-  for (const name of allNames) {
-    w(`${padRight(name, nameWidth)}`)
-    for (const b of breakdowns) {
-      const match = b.components.find((c) => {
-        if (c.name === name) return true
-        if (name === "Domain tools" && c.name.startsWith("Domain tools")) return true
-        if (name === "MCP tools" && c.name.startsWith("MCP tools")) return true
-        if (name === "Core tools" && c.name.startsWith("Core tools")) return true
-        return false
-      })
-      w(`${padLeft(match ? fmtTokens(match.estimatedTokens) : "-", colWidth)}`)
-    }
-    w(EOL)
-  }
-
-  w(`${"─".repeat(nameWidth + colWidth * breakdowns.length)}${EOL}`)
-
-  // Subtotals
-  w(`${padRight("System subtotal", nameWidth)}`)
-  for (const b of breakdowns) {
-    w(`${padLeft(fmtTokens(b.systemSubtotal), colWidth)}`)
-  }
-  w(EOL)
-
-  w(`${padRight("Tools subtotal", nameWidth)}`)
-  for (const b of breakdowns) {
-    w(`${padLeft(fmtTokens(b.toolsSubtotal), colWidth)}`)
-  }
-  w(EOL)
-
-  w(`${"─".repeat(nameWidth + colWidth * breakdowns.length)}${EOL}`)
-
-  w(`${padRight("TOTAL per turn", nameWidth)}`)
-  for (const b of breakdowns) {
-    w(`${padLeft(fmtTokens(b.totalEstimated), colWidth)}`)
-  }
-  w(EOL)
-  w(EOL)
-
-  // Cost comparison
-  w(`Cost per turn (input)${EOL}`)
-  for (const [tier, price] of Object.entries(PRICING)) {
-    w(`  ${padRight(tier.charAt(0).toUpperCase() + tier.slice(1), nameWidth - 2)}`)
-    for (const b of breakdowns) {
-      const cost = (b.totalEstimated / 1_000_000) * price.input
-      w(`${padLeft(`$${cost.toFixed(4)}`, colWidth)}`)
-    }
-    w(EOL)
-  }
-  w(EOL)
-
-  // Lazy pools
-  w(`Lazy pool (on skill invoke)${EOL}`)
-  for (const b of breakdowns) {
-    const total = b.lazyPool.reduce((sum, p) => sum + p.estimatedTokens, 0)
-    const count = b.lazyPool.reduce((sum, p) => sum + p.skillCount, 0)
-    w(`  ${padRight(b.persona, 10)} ${count} skills, ~${fmtTokens(total)} if all loaded${EOL}`)
   }
   w(EOL)
 }

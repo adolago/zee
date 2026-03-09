@@ -55,7 +55,7 @@ export interface ConfigLoadOptions {
   /** Runtime configuration overrides */
   overrides?: Partial<Config>;
   /** Active surface for surface-specific defaults */
-  surface?: 'stanley' | 'zee' | 'cli' | 'web';
+  surface?: 'zee' | 'cli' | 'web';
   /** Whether to throw on validation errors */
   strict?: boolean;
   /** Custom environment variables */

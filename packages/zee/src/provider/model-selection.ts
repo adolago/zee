@@ -39,7 +39,7 @@ export async function loadRosettaDefaultModel(): Promise<ModelReference | undefi
 
   try {
     const mod = await import("../../../../src/agent/model-rosetta")
-    const candidate = (mod as any).standardModel ?? (mod as any).personaModels?.zee
+    const candidate = (mod as any).standardModel ?? (mod as any).assistantModels?.zee
     if (
       candidate &&
       typeof candidate.providerId === "string" &&

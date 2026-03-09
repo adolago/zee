@@ -35,10 +35,13 @@ a.out
 target
 .scripts
 
-# Stanley Python backend artifacts
+# Investing Python backend artifacts
 stanley/.venv/
 stanley/__pycache__/
 stanley/*.egg-info/
+investing/.venv/
+investing/__pycache__/
+investing/*.egg-info/
 .direnv/
 
 # Local dev files

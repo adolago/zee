@@ -9,7 +9,7 @@ import { Todo } from "../../session/todo"
 import { Persistence } from "../../session/persistence"
 import { Instance } from "../../project/instance"
 import { LifecycleHooks } from "../../hooks/lifecycle"
-import { initPersonas } from "../../bootstrap/personas"
+import { initZeeBootstrap } from "../../bootstrap/zee"
 import { initSurfaces, shutdownSurfaces } from "../../bootstrap/surface"
 import { CircuitBreaker } from "../../provider/circuit-breaker"
 import * as UsageTracker from "../../usage/tracker"
@@ -362,12 +362,12 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     })
   }
 
-  // Initialize persona hooks
+  // Initialize Zee bootstrap hooks
   try {
-    await initPersonas()
-    Output.log("Personas:   Hooks initialized")
+    await initZeeBootstrap()
+    Output.log("Zee Hooks:  Initialized")
   } catch (error) {
-    log.debug("Personas initialization skipped", {
+    log.debug("Zee bootstrap initialization skipped", {
       error: error instanceof Error ? error.message : String(error),
     })
   }

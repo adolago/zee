@@ -2936,6 +2936,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "investing-core"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "chrono",
+ "clap",
+ "directories",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "io-surface"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5376,20 +5390,6 @@ dependencies = [
  "proc-macro-error2",
  "quote",
  "syn 2.0.114",
-]
-
-[[package]]
-name = "stanley-core"
-version = "0.1.0"
-dependencies = [
- "approx",
- "chrono",
- "clap",
- "directories",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
 ]
 
 [[package]]

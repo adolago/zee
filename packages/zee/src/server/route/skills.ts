@@ -6,7 +6,7 @@ import { getSkillsVersion } from "../../skill/watcher"
 import { Agent } from "../../agent/agent"
 
 const SkillsIndexQuery = z.object({
-  agent: z.string().optional().meta({ description: "Optional agent/persona id to sort by affinity" }),
+  agent: z.string().optional().meta({ description: "Optional agent id used for permission and readiness context" }),
 })
 
 const SkillReadinessSchema = z.object({
@@ -41,8 +41,8 @@ export const SkillsRoute = new Hono()
                       name: z.string(),
                       description: z.string(),
                       location: z.string(),
-                      context: z.enum(["zee", "stanley", "johny"]).optional(),
-                      affinity: z.enum(["own", "shared", "cross"]),
+                      context: z.literal("zee").optional(),
+                      affinity: z.literal("shared"),
                       readiness: SkillReadinessSchema,
                     }),
                   ),
@@ -83,8 +83,8 @@ export const SkillsRoute = new Hono()
                       name: z.string(),
                       description: z.string(),
                       location: z.string(),
-                      affinity: z.enum(["own", "shared", "cross"]),
-                      context: z.enum(["zee", "stanley", "johny"]).optional(),
+                      affinity: z.literal("shared"),
+                      context: z.literal("zee").optional(),
                       score: z.number(),
                       reason: z.string(),
                       readiness: SkillReadinessSchema,

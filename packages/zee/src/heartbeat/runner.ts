@@ -288,6 +288,7 @@ export class HeartbeatRunner {
       // Deliver to TUI + messaging
       const target: DeliveryTarget = {
         serverUrl: this.deps.serverUrl,
+        agent: "zee",
         channel: this.deps.deliveryChannel,
         to: this.deps.deliveryTo,
       }

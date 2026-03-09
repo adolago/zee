@@ -102,7 +102,7 @@ export {
   TmuxVisualOrchestrationSink,
 } from "../orchestration-visual";
 
-// SPARC methodology (Johny-only)
+// SPARC methodology (Learning-only)
 export {
   runPhase,
   runSparcPipeline,
@@ -110,7 +110,7 @@ export {
 } from "./sparc";
 export type { SparcPhase, SparcTask, SparcConfig } from "./sparc";
 
-// Neural pattern training (Johny-only)
+// Neural pattern training (Learning-only)
 export {
   learnFromSuccess,
   learnFromFailure,

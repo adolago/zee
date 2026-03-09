@@ -18,13 +18,11 @@ process.chdir(dir)
 import pkg from "../package.json"
 import { Script } from "../src/pkg/script"
 
-const personasRoot = path.resolve(repoRoot, "packages", "personas")
-const zeeRoot = path.join(personasRoot, "zee")
 const zeeAssetsRoot = path.join(repoRoot, ".zee")
 const agentsSkillsRoot = path.join(repoRoot, ".agents", "skills")
 const SKILL_GLOB = new Bun.Glob("**/SKILL.md")
 
-type SkillManifestContext = "zee" | "stanley" | "johny"
+type SkillManifestContext = "zee"
 
 type SkillManifestEntry = {
   id: string
@@ -61,9 +59,7 @@ function extractFrontmatter(markdown: string): Record<string, unknown> {
 }
 
 function extractSkillContext(skillPath: string): SkillManifestContext | undefined {
-  const match = skillPath.match(/(?:^|\/)@(zee|stanley|johny)(?:\/|$)/)
-  if (!match) return undefined
-  return match[1] as SkillManifestContext
+  return /(?:^|\/)@zee(?:\/|$)/.test(skillPath) ? "zee" : undefined
 }
 
 function parseSkillRequires(frontmatter: Record<string, unknown>): Record<string, unknown> | undefined {
@@ -142,68 +138,6 @@ async function createSkillManifest(skillRoot: string): Promise<SkillManifest> {
     version: 1,
     generatedAt: new Date().toISOString(),
     skills,
-  }
-}
-
-async function ensureZeeDependencies() {
-  const nodeModules = path.join(zeeRoot, "node_modules")
-  if (fs.existsSync(nodeModules)) return
-  if (!fs.existsSync(path.join(zeeRoot, "package.json"))) return
-  console.log("installing zee dependencies for bundling")
-  await $`pnpm install --prod --ignore-scripts`.cwd(zeeRoot)
-}
-
-function bundlePersonas(distRoot: string) {
-  if (!fs.existsSync(personasRoot)) return
-  const destRoot = path.join(distRoot, "packages", "personas")
-  fs.mkdirSync(destRoot, { recursive: true })
-  // Only bundle Zee. Other personas are legacy UI affordances, not separate runtimes.
-  const src = path.join(personasRoot, "zee")
-  if (!fs.existsSync(src)) return
-  const dest = path.join(destRoot, "zee")
-  fs.cpSync(src, dest, {
-    recursive: true,
-    dereference: true,
-    filter: (srcPath) => {
-      const base = path.basename(srcPath)
-      if (base === ".git" || base === ".venv" || base === "venv") return false
-      // Avoid recursive symlink loop in extensions
-      if (srcPath.includes("/extensions/") && base === "node_modules") return false
-      // Avoid recursive symlink loop in pnpm structure
-      if (srcPath.includes("node_modules/zee")) return false
-      // Skip .pnpm store - has complex internal symlinks that break rm -rf on rebuild
-      if (base === ".pnpm") return false
-      // Skip broken symlinks (e.g., skills -> absolute path that doesn't exist in CI)
-      try {
-        const stats = fs.lstatSync(srcPath)
-        if (stats.isSymbolicLink()) {
-          const target = fs.readlinkSync(srcPath)
-          // Skip absolute symlinks (they won't work in dist)
-          if (path.isAbsolute(target)) return false
-          // Check if relative symlink target exists
-          const resolvedTarget = path.resolve(path.dirname(srcPath), target)
-          if (!fs.existsSync(resolvedTarget)) return false
-        }
-      } catch {
-        return false
-      }
-      return true
-    },
-  })
-
-  // Also copy extensions to bin/extensions so bundled-dir.ts can find them
-  // as a sibling of the executable (process.execPath/../extensions)
-  const extensionsSrc = path.join(src, "extensions")
-  const extensionsDest = path.join(distRoot, "bin", "extensions")
-  if (fs.existsSync(extensionsSrc)) {
-    fs.cpSync(extensionsSrc, extensionsDest, {
-      recursive: true,
-      dereference: true,
-      filter: (srcPath) => {
-        const base = path.basename(srcPath)
-        return base !== ".git" && base !== "node_modules"
-      },
-    })
   }
 }
 
@@ -418,10 +352,6 @@ if (shouldInstallBuildDeps) {
     console.log("Skipping build dependency install (local build; CI installs only).")
   }
 }
-if (fs.existsSync(zeeRoot)) {
-  await ensureZeeDependencies()
-}
-
 for (const item of targets) {
   const baseName = [
     pkg.name,
@@ -487,8 +417,7 @@ for (const item of targets) {
   )
   await Bun.file(`dist/${name}/package.json`).write(pkgJson)
   await Bun.file(`dist/${name}/bin/package.json`).write(pkgJson)
-  // Bundle personas so standalone installs can resolve them via ZEE_ROOT.
-  bundlePersonas(path.join(dir, "dist", name))
+  // Bundle Zee-owned assets so standalone installs can resolve them via ZEE_ROOT.
   bundleZeeAssets(path.join(dir, "dist", name))
   await bundlePersonaSkills(path.join(dir, "dist", name))
   bundleSrcModules(path.join(dir, "dist", name))

@@ -39,7 +39,7 @@ Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw uncha
 | Package manager | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | pnpm (`pnpm-lock.yaml`, `packageManager: pnpm@10.23.0`) |
 | Primary runtime | Bun (dev/build) | Bun (dev/build) | Node 22+ (runtime); pnpm for builds; Bun optional for TS execution |
 | CLI framework | yargs (in `packages/zee`) | yargs (in `packages/opencode`) | commander (`src/commands`) |
-| Non-TS components | Rust workspace (`Cargo.toml`, `packages/stanley-core`) | none in root | Swift/Kotlin apps (`apps/macos`, `apps/ios`, `apps/android`) |
+| Non-TS components | Rust workspace (`Cargo.toml`, `packages/investing-core`) | none in root | Swift/Kotlin apps (`apps/macos`, `apps/ios`, `apps/android`) |
 
 ## Top-level layout differences
 
@@ -48,7 +48,7 @@ Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw uncha
 - Zee domain code at repo root: `src/memory/`, `src/swarm/`, `src/domain/`
 - Project-local configuration bundle: `.zee/` (commands/tools/themes/plans)
 - Repo-local skills bundle: `.agents/skills/` (persona-scoped skills)
-- Rust workspace: `Cargo.toml`, `Cargo.lock` (currently `packages/stanley-core`)
+- Rust workspace: `Cargo.toml`, `Cargo.lock` (currently `packages/investing-core`)
 
 ### opencode (top-level highlights)
 
@@ -71,7 +71,7 @@ Unique packages (vs opencode):
 - `zee/` (core CLI/TUI/daemon; renamed from `opencode/`)
 - `zee-adapter/` (bridge/adapters)
 - `extensions/` (Zee extensions; gateway/channel integrations live here and in `packages/zee/Swabble/extensions/`)
-- `stanley-core/` (Rust)
+- `investing-core/` (Rust)
 - `hosted/` (zee-specific hosted surfaces)
 
 ### opencode `packages/`
@@ -213,7 +213,7 @@ Notes:
 Both zee and openclaw use `SKILL.md` files with YAML frontmatter and a progressive disclosure style, but the metadata conventions differ:
 
 - openclaw skills often carry `metadata.openclaw.emoji` (zee avoids emojis and uses vendor-neutral identifiers)
-- zee stores many skills under `.agents/skills/@zee/`, `.agents/skills/@stanley/`, `.agents/skills/@johny/` to align skills with personas
+- zee stores many skills under `.agents/skills/@zee/`, `.agents/skills/@investing/`, `.agents/skills/@johny/` to align skills with personas
 
 ### Inventory (repo snapshot)
 

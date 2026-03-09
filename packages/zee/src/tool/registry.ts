@@ -136,8 +136,8 @@ export namespace ToolRegistry {
     return tools.find((t) => t.id === id)
   }
 
-  // Tools excluded for native persona agents (zee, stanley, johny).
-  // Currently empty -- personas run in TUI, CLI, and daemon, and need
+  // Tools excluded for native Zee agents.
+  // Currently empty -- Zee runs in TUI, CLI, and daemon, and needs
   // the full tool set. The `all()` function already gates tools by client type.
   const PERSONA_EXCLUDED_TOOLS = new Set<string>([])
 

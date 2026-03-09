@@ -7,25 +7,21 @@
     "matteText": "#eeeeee",
     "matteMuted": "#808080",
     
-    "johnyRed": "#9E4D42",
-    "johnyAccent": "#E87D6E",
-    
-    "stanleyGreen": "#458A5C",
-    "stanleyAccent": "#78E89C",
-    
     "zeeBlue": "#3F5E99",
     "zeeAccent": "#6995E8",
+    "zeeSuccess": "#458A5C",
+    "zeeError": "#9E4D42",
     
     "gold": "#EBCB8B"
   },
   "theme": {
     "primary": { "dark": "zeeBlue", "light": "zeeBlue" },
-    "secondary": { "dark": "stanleyGreen", "light": "stanleyGreen" },
-    "accent": { "dark": "johnyAccent", "light": "johnyAccent" },
+    "secondary": { "dark": "zeeSuccess", "light": "zeeSuccess" },
+    "accent": { "dark": "zeeAccent", "light": "zeeAccent" },
     
-    "error": { "dark": "johnyRed", "light": "johnyRed" },
+    "error": { "dark": "zeeError", "light": "zeeError" },
     "warning": { "dark": "gold", "light": "gold" },
-    "success": { "dark": "stanleyGreen", "light": "stanleyGreen" },
+    "success": { "dark": "zeeSuccess", "light": "zeeSuccess" },
     "info": { "dark": "zeeBlue", "light": "zeeBlue" },
     
     "text": { "dark": "matteText", "light": "#1a1a1a" },
@@ -40,20 +36,20 @@
     "borderActive": { "dark": "zeeAccent", "light": "zeeBlue" },
     "borderSubtle": { "dark": "#222222", "light": "#f0f0f0" },
     
-    "diffAdded": { "dark": "stanleyGreen", "light": "stanleyGreen" },
-    "diffRemoved": { "dark": "johnyRed", "light": "johnyRed" },
+    "diffAdded": { "dark": "zeeSuccess", "light": "zeeSuccess" },
+    "diffRemoved": { "dark": "zeeError", "light": "zeeError" },
     "diffContext": { "dark": "matteMuted", "light": "#999999" },
     
     "markdownHeading": { "dark": "zeeAccent", "light": "zeeBlue" },
-    "markdownLink": { "dark": "stanleyAccent", "light": "stanleyGreen" },
-    "markdownLinkText": { "dark": "stanleyAccent", "light": "stanleyGreen" },
-    "markdownCode": { "dark": "johnyAccent", "light": "johnyRed" },
+    "markdownLink": { "dark": "zeeAccent", "light": "zeeBlue" },
+    "markdownLinkText": { "dark": "zeeAccent", "light": "zeeBlue" },
+    "markdownCode": { "dark": "zeeAccent", "light": "zeeError" },
     "markdownStrong": { "dark": "zeeAccent", "light": "zeeBlue" },
     
     "syntaxKeyword": { "dark": "zeeAccent", "light": "zeeBlue" },
     "syntaxFunction": { "dark": "zeeBlue", "light": "zeeBlue" },
-    "syntaxString": { "dark": "stanleyAccent", "light": "stanleyGreen" },
-    "syntaxVariable": { "dark": "johnyAccent", "light": "johnyRed" },
+    "syntaxString": { "dark": "zeeAccent", "light": "zeeBlue" },
+    "syntaxVariable": { "dark": "zeeAccent", "light": "zeeError" },
     "syntaxComment": { "dark": "matteMuted", "light": "#999999" },
     "syntaxType": { "dark": "gold", "light": "gold" }
   }

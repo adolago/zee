@@ -5,8 +5,8 @@
  *
  * Design:
  * - Solarized Dark base palette (professional, WCAG AA compliant)
- * - Persona-specific primaries (Zee=Blue, Stanley=Green, Johny=Red)
- * - Unified semantic colors across all personas
+ * - Zee primary palette
+ * - Unified semantic colors across the single-Zee runtime
  *
  * Import from here, not from scattered theme files.
  */
@@ -46,7 +46,7 @@ export const solarized = {
 } as const satisfies Record<string, ColorSpec>;
 
 // =============================================================================
-// Unified Semantic Colors (SAME for all personas)
+// Unified Semantic Colors (shared across Zee and legacy aliases)
 // =============================================================================
 
 export const semantic = {
@@ -66,12 +66,12 @@ export const semantic = {
 } as const satisfies Record<string, ColorSpec>;
 
 // =============================================================================
-// Persona-Specific Primary Colors
+// Zee Primary Colors
 // =============================================================================
 
-export type PersonaId = "zee" | "stanley" | "johny";
+export type AssistantId = "zee";
 
-export interface PersonaPalette {
+export interface AssistantPalette {
   primary: ColorSpec;
   primaryBright: ColorSpec;
   primaryDim: ColorSpec;
@@ -81,34 +81,18 @@ export interface PersonaPalette {
   glow: ColorSpec;
 }
 
-export const personaPalettes: Record<PersonaId, PersonaPalette> = {
-  zee: {
-    primary: solarized.blue,
-    primaryBright: { hex: "#69c3ff", rgb: [105, 195, 255], ansi: "bright_blue", color256: 111 },
-    primaryDim: { hex: "#1a6094", rgb: [26, 96, 148], ansi: "blue", color256: 24 },
-    secondary: { hex: "#5078c2", rgb: [80, 120, 194], ansi: "blue", color256: 68 },
-    accent: { hex: "#4d8aff", rgb: [77, 138, 255], ansi: "bright_blue", color256: 111 },
-    border: { hex: "#1a6094", rgb: [26, 96, 148], ansi: "blue", color256: 24 },
-    glow: { hex: "#69c3ff", rgb: [105, 195, 255], ansi: "bright_blue", color256: 111 },
-  },
-  stanley: {
-    primary: solarized.green,
-    primaryBright: { hex: "#b3d900", rgb: [179, 217, 0], ansi: "bright_green", color256: 148 },
-    primaryDim: { hex: "#5a6600", rgb: [90, 102, 0], ansi: "green", color256: 58 },
-    secondary: { hex: "#6a7a00", rgb: [106, 122, 0], ansi: "green", color256: 58 },
-    accent: { hex: "#9acd00", rgb: [154, 205, 0], ansi: "bright_green", color256: 148 },
-    border: { hex: "#5a6600", rgb: [90, 102, 0], ansi: "green", color256: 58 },
-    glow: { hex: "#b3d900", rgb: [179, 217, 0], ansi: "bright_green", color256: 148 },
-  },
-  johny: {
-    primary: solarized.red,
-    primaryBright: { hex: "#ff6b6b", rgb: [255, 107, 107], ansi: "bright_red", color256: 203 },
-    primaryDim: { hex: "#9a2422", rgb: [154, 36, 34], ansi: "red", color256: 124 },
-    secondary: { hex: "#b52b28", rgb: [181, 43, 40], ansi: "red", color256: 160 },
-    accent: { hex: "#ff4d4d", rgb: [255, 77, 77], ansi: "bright_red", color256: 203 },
-    border: { hex: "#9a2422", rgb: [154, 36, 34], ansi: "red", color256: 124 },
-    glow: { hex: "#ff6b6b", rgb: [255, 107, 107], ansi: "bright_red", color256: 203 },
-  },
+const zeePalette: AssistantPalette = {
+  primary: solarized.blue,
+  primaryBright: { hex: "#69c3ff", rgb: [105, 195, 255], ansi: "bright_blue", color256: 111 },
+  primaryDim: { hex: "#1a6094", rgb: [26, 96, 148], ansi: "blue", color256: 24 },
+  secondary: { hex: "#5078c2", rgb: [80, 120, 194], ansi: "blue", color256: 68 },
+  accent: { hex: "#4d8aff", rgb: [77, 138, 255], ansi: "bright_blue", color256: 111 },
+  border: { hex: "#1a6094", rgb: [26, 96, 148], ansi: "blue", color256: 24 },
+  glow: { hex: "#69c3ff", rgb: [105, 195, 255], ansi: "bright_blue", color256: 111 },
+};
+
+export const assistantPalettes: Record<AssistantId, AssistantPalette> = {
+  zee: zeePalette,
 } as const;
 
 // =============================================================================
@@ -138,36 +122,22 @@ export const cliColors = {
   muted: ansiFromRgb(semantic.textMuted.rgb),
   text: ansiFromRgb(semantic.text.rgb),
 
-  // Persona primaries
-  zee: ansiFromRgb(personaPalettes.zee.primary.rgb),
-  stanley: ansiFromRgb(personaPalettes.stanley.primary.rgb),
-  johny: ansiFromRgb(personaPalettes.johny.primary.rgb),
+  // Zee primary palette
+  zee: ansiFromRgb(assistantPalettes.zee.primary.rgb),
 
-  // Persona brights (for highlights)
-  zeeBright: ansiFromRgb(personaPalettes.zee.primaryBright.rgb),
-  stanleyBright: ansiFromRgb(personaPalettes.stanley.primaryBright.rgb),
-  johnyBright: ansiFromRgb(personaPalettes.johny.primaryBright.rgb),
+  // Zee bright palette
+  zeeBright: ansiFromRgb(assistantPalettes.zee.primaryBright.rgb),
 
   // Background
   bg: ansiBgFromRgb(semantic.background.rgb),
 } as const;
 
-/** Persona CLI colors (compatible with existing personaColors export) */
-export const personaCliColors = {
+/** Assistant CLI colors */
+export const assistantCliColors = {
   zee: {
     logo: cliColors.zee,
     primary: cliColors.zee,
     bright: cliColors.zeeBright,
-  },
-  stanley: {
-    logo: cliColors.stanley,
-    primary: cliColors.stanley,
-    bright: cliColors.stanleyBright,
-  },
-  johny: {
-    logo: cliColors.johny,
-    primary: cliColors.johny,
-    bright: cliColors.johnyBright,
   },
 } as const;
 
@@ -176,14 +146,14 @@ export const personaCliColors = {
 // =============================================================================
 
 export interface FullTheme {
-  persona: PersonaPalette;
+  assistant: AssistantPalette;
   semantic: typeof semantic;
   solarized: typeof solarized;
 }
 
-export function getTheme(personaId: PersonaId): FullTheme {
+export function getTheme(assistantId: AssistantId = "zee"): FullTheme {
   return {
-    persona: personaPalettes[personaId],
+    assistant: assistantPalettes[assistantId],
     semantic,
     solarized,
   };
@@ -222,7 +192,7 @@ const lightColors = {
 } as const;
 
 // =============================================================================
-// TUI Persona Theme Generator (for theme.tsx consumption)
+// TUI Theme Generator
 // =============================================================================
 
 type DarkLight = { dark: string; light: string };
@@ -230,22 +200,19 @@ function dl(dark: string, light: string): DarkLight {
   return { dark, light };
 }
 
-export function generateTuiPersonaTheme(personaId: PersonaId) {
-  const p = personaPalettes[personaId];
+export function generateTuiAssistantTheme(assistantId: AssistantId = "zee") {
+  const id = assistantId;
+  const p = assistantPalettes[id];
   const d = darkColors;
   const l = lightColors;
 
-  // Per-persona personality overrides
-  const isStanley = personaId === "stanley";
-  const isJohny = personaId === "johny";
-
   return {
     defs: {
-      [`${personaId}Primary`]: p.primary.hex,
-      [`${personaId}PrimaryBright`]: p.primaryBright.hex,
-      [`${personaId}PrimaryDim`]: p.primaryDim.hex,
-      [`${personaId}Secondary`]: p.secondary.hex,
-      [`${personaId}Accent`]: p.accent.hex,
+      [`${id}Primary`]: p.primary.hex,
+      [`${id}PrimaryBright`]: p.primaryBright.hex,
+      [`${id}PrimaryDim`]: p.primaryDim.hex,
+      [`${id}Secondary`]: p.secondary.hex,
+      [`${id}Accent`]: p.accent.hex,
       darkText: d.text,
       darkTextMuted: d.textMuted,
       darkRed: d.red,
@@ -270,9 +237,9 @@ export function generateTuiPersonaTheme(personaId: PersonaId) {
       lightSyntaxGreen: l.syntaxGreen,
     },
     theme: {
-      primary: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
-      secondary: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
-      accent: dl(`${personaId}Accent`, `${personaId}Primary`),
+      primary: dl(`${id}Primary`, `${id}PrimaryDim`),
+      secondary: dl(`${id}Secondary`, `${id}PrimaryDim`),
+      accent: dl(`${id}Accent`, `${id}Primary`),
       error: dl("darkRed", "lightRed"),
       warning: dl("darkYellow", "lightYellow"),
       success: dl("darkGreen", "lightGreen"),
@@ -284,23 +251,14 @@ export function generateTuiPersonaTheme(personaId: PersonaId) {
       backgroundElement: dl("transparent", "transparent"),
       backgroundMenu: dl("transparent", "transparent"),
       border: dl("darkBorder", "lightBorder"),
-      borderActive: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
+      borderActive: dl(`${id}Primary`, `${id}PrimaryDim`),
       borderSubtle: dl("darkBorderSubtle", "lightBorderSubtle"),
       diffAdded: dl("darkGreen", "lightGreen"),
-      diffRemoved: dl(
-        isJohny ? `${personaId}Primary` : "darkRed",
-        isJohny ? `${personaId}PrimaryDim` : "lightRed",
-      ),
+      diffRemoved: dl("darkRed", "lightRed"),
       diffContext: dl("darkTextMuted", "lightTextMuted"),
       diffHunkHeader: dl("darkTextMuted", "lightTextMuted"),
-      diffHighlightAdded: dl(
-        isStanley ? `${personaId}Accent` : "darkSyntaxGreen",
-        isStanley ? `${personaId}Primary` : "lightSyntaxGreen",
-      ),
-      diffHighlightRemoved: dl(
-        isJohny ? `${personaId}Accent` : "darkRed",
-        isJohny ? `${personaId}Primary` : "lightRed",
-      ),
+      diffHighlightAdded: dl("darkSyntaxGreen", "lightSyntaxGreen"),
+      diffHighlightRemoved: dl("darkRed", "lightRed"),
       diffAddedBg: dl("transparent", "transparent"),
       diffRemovedBg: dl("transparent", "transparent"),
       diffContextBg: dl("transparent", "transparent"),
@@ -308,47 +266,26 @@ export function generateTuiPersonaTheme(personaId: PersonaId) {
       diffAddedLineNumberBg: dl("transparent", "transparent"),
       diffRemovedLineNumberBg: dl("transparent", "transparent"),
       markdownText: dl("darkText", "lightText"),
-      markdownHeading: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
-      markdownLink: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
-      markdownLinkText: dl(`${personaId}Accent`, `${personaId}Primary`),
-      markdownCode: dl(
-        isStanley ? `${personaId}Accent` : "darkSyntaxGreen",
-        isStanley ? `${personaId}Primary` : "lightSyntaxGreen",
-      ),
-      markdownBlockQuote: dl(
-        isJohny ? `${personaId}PrimaryDim` : "darkTextMuted",
-        isJohny ? `${personaId}PrimaryDim` : "lightYellow",
-      ),
-      markdownEmph: dl(
-        isJohny ? `${personaId}Accent` : "darkYellow",
-        isJohny ? `${personaId}PrimaryDim` : "lightYellow",
-      ),
-      markdownStrong: dl(`${personaId}Accent`, `${personaId}Primary`),
+      markdownHeading: dl(`${id}Primary`, `${id}PrimaryDim`),
+      markdownLink: dl(`${id}Secondary`, `${id}PrimaryDim`),
+      markdownLinkText: dl(`${id}Accent`, `${id}Primary`),
+      markdownCode: dl("darkSyntaxGreen", "lightSyntaxGreen"),
+      markdownBlockQuote: dl("darkTextMuted", "lightYellow"),
+      markdownEmph: dl("darkYellow", "lightYellow"),
+      markdownStrong: dl(`${id}Accent`, `${id}Primary`),
       markdownHorizontalRule: dl("darkTextMuted", "lightTextMuted"),
-      markdownListItem: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
-      markdownListEnumeration: dl(`${personaId}Accent`, `${personaId}Primary`),
-      markdownImage: dl(`${personaId}Secondary`, `${personaId}PrimaryDim`),
-      markdownImageText: dl(`${personaId}Accent`, `${personaId}Primary`),
+      markdownListItem: dl(`${id}Secondary`, `${id}PrimaryDim`),
+      markdownListEnumeration: dl(`${id}Accent`, `${id}Primary`),
+      markdownImage: dl(`${id}Secondary`, `${id}PrimaryDim`),
+      markdownImageText: dl(`${id}Accent`, `${id}Primary`),
       markdownCodeBlock: dl("darkText", "lightText"),
       syntaxComment: dl("darkTextMuted", "lightTextMuted"),
-      syntaxKeyword: dl(`${personaId}Primary`, `${personaId}PrimaryDim`),
-      syntaxFunction: dl(`${personaId}Accent`, `${personaId}Primary`),
-      syntaxVariable: dl(
-        isJohny ? `${personaId}Accent` : "darkRed",
-        isJohny ? `${personaId}Primary` : "lightRed",
-      ),
-      syntaxString: dl(
-        isStanley ? `${personaId}Accent` : "darkSyntaxGreen",
-        isStanley ? `${personaId}Primary` : "lightSyntaxGreen",
-      ),
-      syntaxNumber: dl(
-        isJohny ? `${personaId}PrimaryDim` : "darkOrange",
-        isJohny ? `${personaId}PrimaryDim` : "lightOrange",
-      ),
-      syntaxType: dl(
-        isJohny ? `${personaId}Accent` : "darkYellow",
-        isJohny ? `${personaId}Primary` : "lightYellow",
-      ),
+      syntaxKeyword: dl(`${id}Primary`, `${id}PrimaryDim`),
+      syntaxFunction: dl(`${id}Accent`, `${id}Primary`),
+      syntaxVariable: dl("darkRed", "lightRed"),
+      syntaxString: dl("darkSyntaxGreen", "lightSyntaxGreen"),
+      syntaxNumber: dl("darkOrange", "lightOrange"),
+      syntaxType: dl("darkYellow", "lightYellow"),
       syntaxOperator: dl("darkCyan", "lightCyan"),
       syntaxPunctuation: dl("darkText", "lightText"),
     },
@@ -356,7 +293,7 @@ export function generateTuiPersonaTheme(personaId: PersonaId) {
 }
 
 // =============================================================================
-// Desktop (Web UI) Persona Theme Generator
+// Desktop (Web UI) Theme Generator
 // =============================================================================
 
 interface DesktopThemeVariant {
@@ -382,19 +319,13 @@ interface DesktopTheme {
   dark: DesktopThemeVariant;
 }
 
-const personaNames: Record<PersonaId, string> = {
-  zee: "Zee",
-  stanley: "Stanley",
-  johny: "Johny",
-};
+const assistantNames: Record<AssistantId, string> = { zee: "Zee" };
 
-export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme {
-  const p = personaPalettes[personaId];
+export function generateDesktopAssistantTheme(assistantId: AssistantId = "zee"): DesktopTheme {
+  const id = assistantId;
+  const p = assistantPalettes[id];
   const d = darkColors;
   const l = lightColors;
-
-  const isStanley = personaId === "stanley";
-  const isJohny = personaId === "johny";
 
   const lightOverrides: Record<string, string> = {
     "text-base": l.text,
@@ -405,9 +336,9 @@ export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme 
     "markdown-text": "var(--text-base)",
     "markdown-link": "var(--text-interactive-base)",
     "markdown-link-text": "var(--text-interactive-base)",
-    "markdown-code": isStanley ? l.syntaxGreen : l.syntaxGreen,
+    "markdown-code": l.syntaxGreen,
     "markdown-block-quote": "var(--text-weak)",
-    "markdown-emph": isJohny ? "var(--text-interactive-base)" : "var(--syntax-type)",
+    "markdown-emph": "var(--syntax-type)",
     "markdown-strong": "var(--text-interactive-base)",
     "markdown-horizontal-rule": "var(--text-weak)",
     "markdown-list-item": "var(--text-interactive-base)",
@@ -418,9 +349,9 @@ export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme 
     "syntax-comment": "var(--text-weak)",
     "syntax-keyword": "var(--text-interactive-base)",
     "syntax-string": l.syntaxGreen,
-    "syntax-variable": isJohny ? "var(--syntax-critical)" : "var(--syntax-critical)",
+    "syntax-variable": "var(--syntax-critical)",
     "syntax-property": "var(--text-interactive-base)",
-    "syntax-type": isJohny ? "var(--text-interactive-base)" : l.yellow,
+    "syntax-type": l.yellow,
     "syntax-constant": l.cyan,
     "syntax-punctuation": "var(--text-base)",
     "syntax-operator": l.cyan,
@@ -450,9 +381,9 @@ export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme 
     "markdown-text": "var(--text-base)",
     "markdown-link": "var(--surface-brand-base)",
     "markdown-link-text": "var(--text-interactive-base)",
-    "markdown-code": isStanley ? "var(--text-interactive-base)" : d.syntaxGreen,
+    "markdown-code": d.syntaxGreen,
     "markdown-block-quote": "var(--text-weak)",
-    "markdown-emph": isJohny ? "var(--text-interactive-base)" : "var(--syntax-type)",
+    "markdown-emph": "var(--syntax-type)",
     "markdown-strong": "var(--text-interactive-base)",
     "markdown-horizontal-rule": "var(--text-weak)",
     "markdown-list-item": "var(--surface-brand-base)",
@@ -462,20 +393,20 @@ export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme 
     "markdown-code-block": "var(--text-base)",
     "syntax-comment": "var(--text-weak)",
     "syntax-keyword": "var(--surface-brand-base)",
-    "syntax-string": isStanley ? "var(--text-interactive-base)" : d.syntaxGreen,
-    "syntax-variable": isJohny ? "var(--text-interactive-base)" : "var(--syntax-critical)",
+    "syntax-string": d.syntaxGreen,
+    "syntax-variable": "var(--syntax-critical)",
     "syntax-property": "var(--text-interactive-base)",
-    "syntax-type": isJohny ? "var(--text-interactive-base)" : d.yellow,
+    "syntax-type": d.yellow,
     "syntax-constant": d.cyan,
     "syntax-punctuation": "var(--text-base)",
     "syntax-operator": d.cyan,
-    "syntax-primitive": isJohny ? "var(--text-interactive-base)" : d.orange,
+    "syntax-primitive": d.orange,
   };
 
   return {
     $schema: "https://zee-bot.com/desktop-theme.json",
-    name: personaNames[personaId],
-    id: personaId,
+    name: assistantNames[id],
+    id,
     light: {
       seeds: {
         neutral: "#8a8a8a",
@@ -513,14 +444,14 @@ export function generateDesktopPersonaTheme(personaId: PersonaId): DesktopTheme 
 
 export const migrationMap = {
   // Old Zee orange/yellow (WRONG) -> New blue (CORRECT)
-  "#FF5A2D": personaPalettes.zee.primary.hex,
-  "#FF7A3D": personaPalettes.zee.primaryBright.hex,
+  "#FF5A2D": assistantPalettes.zee.primary.hex,
+  "#FF7A3D": assistantPalettes.zee.primaryBright.hex,
   "#F6C453": semantic.highlight.hex,
 
-  // Old "Stealth Matte" persona colors -> Solarized equivalents
-  "#3F5E99": personaPalettes.zee.primary.hex,
-  "#458A5C": personaPalettes.stanley.primary.hex,
-  "#9E4D42": personaPalettes.johny.primary.hex,
+  // Legacy palette values mapped onto Zee's palette
+  "#3F5E99": assistantPalettes.zee.primary.hex,
+  "#458A5C": assistantPalettes.zee.primary.hex,
+  "#9E4D42": assistantPalettes.zee.primary.hex,
 
   // Old backgrounds -> Unified Solarized
   "#0A0A0A": semantic.background.hex,

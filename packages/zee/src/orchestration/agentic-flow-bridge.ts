@@ -56,24 +56,24 @@ export class AgenticFlowBridge {
   async runPlan(
     plan: AgenticFlowPlan,
     opts: {
-      persona?: "zee" | "stanley" | "johny"
+      agent?: "zee"
       orchestrator?: any
     } = {},
   ): Promise<AgenticFlowRunResult> {
-    const persona = opts.persona ?? "zee"
+    const agent = opts.agent ?? "zee"
     const orchestrator = opts.orchestrator ?? (await this.createOrchestrator())
     const submitted: AgenticFlowRunResult["submitted"] = []
 
     const mesh = getHierarchicalMeshCoordinator()
     mesh.routeCrossDomainMessage({
       sourceDomain: "zee",
-      targetDomain: persona,
+      targetDomain: agent,
       topic: `agentic-flow:${plan.id}`,
     })
 
     for (const step of plan.steps) {
       const task = await orchestrator.submitTask({
-        persona,
+        agent,
         description: `${plan.objective}: ${step.title}`,
         prompt: step.prompt,
         priority: "normal",
@@ -92,9 +92,9 @@ export class AgenticFlowBridge {
         await save({
           category: "task",
           content: `Agentic flow ${plan.id}: ${plan.objective}`,
-          summary: `Submitted ${submitted.length} steps for persona ${persona}`,
+          summary: `Submitted ${submitted.length} steps for agent ${agent}`,
           metadata: {
-            tags: ["agentic-flow", "v3", persona],
+            tags: ["agentic-flow", "v3", agent],
           },
         })
       }

@@ -23,9 +23,9 @@ export {
 } from "./unified";
 export type {
   MemoryConfig,
-  PersonaId,
+  AgentId,
   ConversationState,
-  PersonasState,
+  AgentsState,
   EntryType,
 } from "./unified";
 

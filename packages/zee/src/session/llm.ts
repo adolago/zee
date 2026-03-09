@@ -191,7 +191,7 @@ export namespace LLM {
 
     const system = SystemPrompt.header(input.model.providerID)
 
-    // Generate awareness section for persona (tool catalog, config state, knowledge)
+    // Generate awareness section for the active agent (tool catalog, config state, knowledge)
     let awarenessSection = ""
     try {
       awarenessSection = await generateAwarenessSection(input.agent)
@@ -204,7 +204,7 @@ export namespace LLM {
         // use agent prompt otherwise provider prompt
         // For Codex sessions, skip SystemPrompt.provider() since it's sent via options.instructions
         ...(input.agent.prompt ? [input.agent.prompt] : isCodex ? [] : SystemPrompt.provider(input.model)),
-        // persona-specific system prompt additions (from AgentPersonaConfig)
+        // Agent-specific system prompt additions from bootstrap/config
         ...(input.agent.systemPromptAdditions ? [input.agent.systemPromptAdditions] : []),
         // Dynamic awareness section (tool catalog, enabled services)
         ...(awarenessSection ? [awarenessSection] : []),
@@ -222,7 +222,7 @@ export namespace LLM {
     // For Anthropic: system[0] is header, system[1] is content
     // For others: system[0] is content (no separate header)
     const mainContent = system.length > 1 ? system[1] : system[0]
-    // Enhanced logging for persona debugging - log at info level for visibility
+    // Enhanced logging for agent prompt debugging.
     l.info("system prompt constructed", {
       systemParts: system.length,
       headerLength: header?.length ?? 0,

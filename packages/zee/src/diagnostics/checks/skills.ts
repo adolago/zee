@@ -29,7 +29,7 @@ async function getAuditReport(): Promise<Skill.AuditReport> {
 }
 
 /**
- * Check total loaded skills and per-persona distribution
+ * Check total loaded skills and Zee/shared distribution
  */
 async function checkLoadedSkills(): Promise<CheckResult> {
   const start = Date.now()
@@ -52,14 +52,12 @@ async function checkLoadedSkills(): Promise<CheckResult> {
       }
     }
 
-    const byPersona = {
+    const byContext = {
       zee: loaded.filter((s) => s.context === "zee").length,
-      stanley: loaded.filter((s) => s.context === "stanley").length,
-      johny: loaded.filter((s) => s.context === "johny").length,
       shared: loaded.filter((s) => !s.context).length,
     }
 
-    const distribution = `zee(${byPersona.zee}), stanley(${byPersona.stanley}), johny(${byPersona.johny}), shared(${byPersona.shared})`
+    const distribution = `zee(${byContext.zee}), shared(${byContext.shared})`
 
     return {
       id: "skills.loaded",
@@ -70,7 +68,7 @@ async function checkLoadedSkills(): Promise<CheckResult> {
       severity: "info",
       durationMs: Date.now() - start,
       autoFixable: false,
-      metadata: { total: loaded.length, byPersona },
+      metadata: { total: loaded.length, byContext },
     }
   } catch (error) {
     return {

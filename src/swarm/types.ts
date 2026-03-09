@@ -4,13 +4,13 @@
  */
 
 export type WorkerStatus = "idle" | "running" | "completed" | "failed" | "aborted";
-export type Persona = "zee" | "stanley" | "johny";
+export type WorkerAgent = "zee";
 
 export interface WorkerConfig {
   id: string;
   name: string;
   prompt: string;
-  persona?: Persona;
+  agent?: WorkerAgent;
   taskId?: string;
   timeoutMs?: number;
   attempt?: number;
@@ -24,7 +24,7 @@ export interface WorkerConfig {
 export interface WorkerState {
   id: string;
   name: string;
-  persona: Persona;
+  agent: WorkerAgent;
   taskId?: string;
   pid?: number;
   attempt: number;

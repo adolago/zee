@@ -13,11 +13,11 @@
  * ```typescript
  * // Register capabilities for an agent
  * CapabilityRegistry.register('zee', ['memory', 'messaging', 'calendar']);
- * CapabilityRegistry.register('stanley', ['market_data', 'sec_filings', 'portfolio']);
+ * CapabilityRegistry.register('investing', ['market_data', 'sec_filings', 'portfolio']);
  *
  * // Check if handoff is needed
  * const result = shouldHandoff('market_data', 'zee');
- * // => { targetAgent: 'stanley', capability: 'market_data' }
+ * // => { targetAgent: 'investing', capability: 'market_data' }
  *
  * // Find agent with capability
  * const agent = findAgentWithCapability('messaging');
@@ -355,7 +355,7 @@ export function shouldHandoff(
  *
  * @example
  * ```typescript
- * const match = findAgentWithCapability('messaging', 'stanley');
+ * const match = findAgentWithCapability('messaging', 'investing');
  * if (match) {
  *   console.log(`${match.agentName} can handle messaging`);
  * }

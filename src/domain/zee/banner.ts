@@ -2,7 +2,7 @@
  * Zee Banner Tools
  *
  * Maintains an always-on rotating banner in the zee TUI.
- * The banner is global (Zee-owned) and is shown even when using other personas.
+ * The banner is global (Zee-owned) and is shown even when using other contexts.
  */
 
 import { z } from "zod";
@@ -426,7 +426,7 @@ export const bannerRefreshTool: ToolDefinition = {
   init: async () => ({
     description: `Refresh the Zee banner shown at the top of the zee TUI prompt.
 
-The banner rotates items and is displayed even when using other personas.
+The banner rotates items and is displayed even when using other contexts.
 
 Parameters:
 - format: "full" (default, rebuild all banner items) or "short" (one-line status: "3 reminders today" or "Next: Meeting in 15 min")

@@ -1,5 +1,5 @@
 /**
- * Neural Pattern Training for Johny
+ * Neural Pattern Training for Learning
  *
  * Learns from successful task completions to improve future performance.
  * Stores patterns in memory MCP for retrieval during similar tasks.
@@ -166,11 +166,11 @@ export async function enhanceWithPatterns(
 }
 
 /**
- * Run a task with neural enhancement (Johny-only)
+ * Run a task with neural enhancement (Learning-only)
  */
 export async function runWithLearning(
   task: string,
-  persona: "johny" = "johny"
+  agent: "learning" = "learning"
 ): Promise<SwarmResult> {
   // Enhance task with learned patterns
   const enhancedTask = await enhanceWithPatterns(task);
@@ -182,7 +182,7 @@ export async function runWithLearning(
       id: "neural-task",
       name: "Neural-Enhanced",
       prompt: enhancedTask,
-      persona,
+      agent,
     },
   ]);
 

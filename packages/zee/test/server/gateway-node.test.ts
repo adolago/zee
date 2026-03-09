@@ -44,7 +44,7 @@ beforeEach(async () => {
       nodeClient: {
         enabled: true,
         securityMode: "allowlist",
-        toolAllowlist: ["stanley_research"],
+        toolAllowlist: ["zee_invest_research"],
         allowRemotePairing: false,
         maxPairedNodes: 3,
       },
@@ -95,7 +95,7 @@ describe("gateway node routes", () => {
       body: JSON.stringify({
         nodeId: paired.node.id,
         token: paired.token,
-        tool: "stanley_research",
+        tool: "zee_invest_research",
       }),
     })
 
@@ -114,7 +114,7 @@ describe("gateway node routes", () => {
       body: JSON.stringify({
         nodeId: paired.node.id,
         token: paired.token,
-        tool: "stanley_api",
+        tool: "zee_invest_api",
       }),
     })
 
@@ -169,7 +169,7 @@ describe("gateway node routes", () => {
       body: JSON.stringify({
         nodeId: paired.node.id,
         token: paired.token,
-        tool: "stanley_research",
+        tool: "zee_invest_research",
       }),
     })
 

@@ -2,8 +2,8 @@
  * Domain Tools Index
  *
  * All domain tools (life admin, investing, learning) are registered
- * unconditionally under the unified Zee persona. Tool namespaces
- * (stanley:*, johny:*) are preserved for clarity.
+ * unconditionally under the unified Zee assistant. Tool namespaces
+ * (zee:invest-*, zee:learn-*) are preserved for clarity.
  *
  * This module bridges the MCP registry with the actual domain tool
  * implementations located in src/domain/.
@@ -14,7 +14,7 @@ import { getToolRegistry } from '../registry';
 import { Log } from '../../../packages/zee/src/util/log';
 
 // MCP layer stubs (fallback implementations)
-import { StanleyMarketDataTool, StanleyResearchTool, StanleyPortfolioTool, StanleySecFilingTool, StanleyEstimatesTool, StanleyInsiderTradesTool, StanleySegmentsTool } from './stanley';
+import { InvestingMarketDataTool, InvestingResearchTool, InvestingPortfolioTool, InvestingSecFilingTool, InvestingEstimatesTool, InvestingInsiderTradesTool, InvestingSegmentsTool } from './investing';
 import { ZeeMemoryStoreTool, ZeeMemorySearchTool, ZeeMessagingTool, ZeeNotificationTool } from './zee';
 
 const log = Log.create({ service: 'domain-tools' });
@@ -24,16 +24,16 @@ const log = Log.create({ service: 'domain-tools' });
 // ============================================================================
 
 /**
- * Investing domain tools (stanley: namespace)
+ * Investing domain tools (zee:invest-* namespace)
  */
-export const stanleyTools: ToolDefinition[] = [
-  StanleyMarketDataTool,
-  StanleyResearchTool,
-  StanleyPortfolioTool,
-  StanleySecFilingTool,
-  StanleyEstimatesTool,
-  StanleyInsiderTradesTool,
-  StanleySegmentsTool,
+export const investingTools: ToolDefinition[] = [
+  InvestingMarketDataTool,
+  InvestingResearchTool,
+  InvestingPortfolioTool,
+  InvestingSecFilingTool,
+  InvestingEstimatesTool,
+  InvestingInsiderTradesTool,
+  InvestingSegmentsTool,
 ];
 
 /**
@@ -47,9 +47,9 @@ export const zeeTools: ToolDefinition[] = [
 ];
 
 /**
- * Learning domain tools (johny: namespace) - dynamically loaded
+ * Learning domain tools (zee:learn-* namespace) - dynamically loaded
  */
-export let johnyTools: ToolDefinition[] = [];
+export let learningTools: ToolDefinition[] = [];
 
 /**
  * Full Zee domain tools (from src/domain/zee) - dynamically loaded
@@ -64,19 +64,19 @@ export const sharedTools: ToolDefinition[] = [];
 /**
  * All domain tools (static)
  */
-export const domainTools: ToolDefinition[] = [...stanleyTools, ...zeeTools, ...sharedTools];
+export const domainTools: ToolDefinition[] = [...investingTools, ...zeeTools, ...sharedTools];
 
 // ============================================================================
 // Registration Functions
 // ============================================================================
 
 /**
- * Register investing tools (stanley: namespace)
+ * Register investing tools (zee:invest-* namespace)
  */
-export function registerStanleyTools(): void {
+export function registerInvestingTools(): void {
   const registry = getToolRegistry();
-  registry.registerAll(stanleyTools, { source: 'domain', enabled: true });
-  log.debug('Registered investing domain tools (stanley:*)', { count: stanleyTools.length });
+  registry.registerAll(investingTools, { source: 'domain', enabled: true });
+  log.debug('Registered investing domain tools (zee:invest-*)', { count: investingTools.length });
 }
 
 /**
@@ -111,22 +111,22 @@ export async function registerZeeFullTools(): Promise<void> {
 }
 
 /**
- * Register learning tools (johny: namespace) from src/domain/johny
+ * Register learning tools (zee:learn-* namespace) from src/domain/learning
  * Includes study sessions, knowledge graph, mastery tracking, spaced repetition.
  */
-export async function registerJohnyTools(): Promise<void> {
+export async function registerLearningTools(): Promise<void> {
   try {
-    const johnyDomain = await import('../../domain/johny/tools.js');
-    johnyTools = johnyDomain.JOHNY_TOOLS as unknown as ToolDefinition[];
+    const learningDomain = await import('../../domain/learning/tools.js');
+    learningTools = learningDomain.LEARNING_TOOLS as unknown as ToolDefinition[];
     
     const registry = getToolRegistry();
-    registry.registerAll(johnyTools, { source: 'domain', enabled: true });
-    log.info('Registered learning domain tools (johny:*)', { 
-      count: johnyTools.length,
-      tools: johnyTools.map(t => t.id).join(', ')
+    registry.registerAll(learningTools, { source: 'domain', enabled: true });
+    log.info('Registered learning domain tools (zee:learn-*)', { 
+      count: learningTools.length,
+      tools: learningTools.map(t => t.id).join(', ')
     });
   } catch (error) {
-    log.warn('Could not load Johny domain tools', {
+    log.warn('Could not load learning domain tools', {
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -142,25 +142,25 @@ export function registerSharedTools(): void {
 
 /**
  * Register all domain tools unconditionally.
- * All namespaces (zee:*, stanley:*, johny:*) load for the unified Zee persona.
+ * All namespaces (zee:*, zee:invest-*, zee:learn-*) load for the unified Zee assistant.
  */
 export async function registerAllDomainTools(): Promise<void> {
-  registerStanleyTools();
+  registerInvestingTools();
   registerZeeTools();
   registerSharedTools();
   
   // Register full implementations (async)
   await Promise.all([
     registerZeeFullTools(),
-    registerJohnyTools(),
+    registerLearningTools(),
   ]);
   
-  log.info('All domain tools registered (unified Zee persona)');
+  log.info('All domain tools registered (unified Zee assistant)');
 }
 
 // ============================================================================
 // Re-exports
 // ============================================================================
 
-export * from './stanley';
+export * from './investing';
 export * from './zee';

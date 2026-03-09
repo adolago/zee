@@ -58,6 +58,7 @@ import { buildSkillRecallContext } from "./skill-recall"
 import { buildFollowupExecutionReminder } from "./followup-execution"
 import { buildPlanWebExecutionReminder } from "./plan-web-execution"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
+import { createSessionRuntimeProcessor } from "@/runtime/session"
 import { SessionControlServer } from "@/session-control/server"
 import { ExecutionModeInputSchema, parseExecutionMode, type ExecutionMode } from "./mode"
 
@@ -136,7 +137,7 @@ export namespace SessionPrompt {
   }
 
   async function executeSubtaskViaDaemon(input: {
-    persona: "zee" | "stanley" | "johny"
+    agent: "zee"
     description: string
     prompt: string
     parentSessionID: string
@@ -148,7 +149,7 @@ export namespace SessionPrompt {
     output: string
   }> {
     const response = await runTaskViaDaemon({
-      persona: input.persona,
+      agent: input.agent,
       description: input.description,
       prompt: input.prompt,
       parentSessionId: input.parentSessionID,
@@ -196,30 +197,17 @@ export namespace SessionPrompt {
 
   const sessionLifecycleEmitted = new Set<string>()
 
-  function normalizePersona(value?: string): LifecycleHooks.SessionLifecycle.StartPayload["persona"] | null {
-    switch ((value ?? "").toLowerCase()) {
-      case "zee":
-        return "zee"
-      case "stanley":
-        return "stanley"
-      case "johny":
-        return "johny"
-      default:
-        return null
-    }
+  function normalizeAgent(value?: string): LifecycleHooks.SessionLifecycle.StartPayload["agent"] | null {
+    const resolved = Agent.resolveName(value)
+    return resolved === "zee" ? "zee" : null
   }
 
-  async function resolvePersona(agentName?: string): Promise<LifecycleHooks.SessionLifecycle.StartPayload["persona"]> {
-    // Persona is ALWAYS required - no non-persona mode exists
-    const fromInput = normalizePersona(agentName)
+  async function resolveAgent(agentName?: string): Promise<LifecycleHooks.SessionLifecycle.StartPayload["agent"]> {
+    const fromInput = normalizeAgent(agentName)
     if (fromInput) return fromInput
 
-    const defaultAgent = await Agent.defaultAgent()
-    const persona = normalizePersona(defaultAgent)
-    if (!persona) {
-      throw new Error(`Agent "${defaultAgent}" must map to a persona (zee, stanley, or johny)`)
-    }
-    return persona
+    await Agent.defaultAgent()
+    return "zee"
   }
 
   function resolveSessionSource(): LifecycleHooks.SessionLifecycle.StartPayload["source"] {
@@ -248,7 +236,7 @@ export namespace SessionPrompt {
     const resolvedAgentName = agentName ?? (await Agent.defaultAgent())
     await LifecycleHooks.emitSessionStart({
       sessionId: session.id,
-      persona: await resolvePersona(resolvedAgentName),
+      agent: await resolveAgent(resolvedAgentName),
       source: resolveSessionSource(),
       directory: session.directory,
     })
@@ -596,13 +584,14 @@ export namespace SessionPrompt {
           }
         }
       }
+      const responseAgent = (await Agent.get(input.agent ?? "zee"))?.name ?? "zee"
       const confirmMsg: MessageV2.Assistant = {
         id: Identifier.ascending("message"),
         sessionID: input.sessionID,
         parentID: message.info.id,
         role: "assistant",
-        mode: input.agent ?? "zee",
-        agent: input.agent ?? "zee",
+        mode: responseAgent,
+        agent: responseAgent,
         path: { cwd: Instance.directory, root: Instance.worktree },
         cost: 0,
         tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
@@ -862,7 +851,7 @@ export namespace SessionPrompt {
 
       if (!lastUser) throw new Error("No user message found in stream. This should never happen.")
       if (!session.toolPolicySnapshot) {
-        const snapshotAgent = await Agent.get(lastUser.agent)
+        const snapshotAgent = await Agent.mustGet(lastUser.agent)
         const mode = resolveMode(session, lastUser.options, lastUser.mode)
         const ruleset = PermissionNext.merge(snapshotAgent.permission, session.permission ?? [])
         const snapshot: NonNullable<Session.Info["toolPolicySnapshot"]> = {
@@ -928,8 +917,7 @@ export namespace SessionPrompt {
       // FUTURE: Consider centralizing tool invocation logic in a dedicated module
       // Currently, tool calls are handled here and in processor.ts
       if (task?.type === "subtask") {
-        // Resolve the agent type - maps external types to personas
-        // Each persona spawns its own kind: zee→zee, stanley→stanley, johny→johny
+        // Resolve the requested type to a canonical Zee runtime agent/subagent.
         const resolvedAgent = await resolveAgentType(task.agent, lastUser.agent)
         const taskTool = await TaskTool.init()
         const taskModel = task.model ? await Provider.getModel(task.model.providerID, task.model.modelID) : model
@@ -1003,7 +991,7 @@ export namespace SessionPrompt {
         )
         let executionError: Error | undefined
         let daemonExecutionError: Error | undefined
-        const taskAgent = await Agent.get(resolvedAgent)
+        const taskAgent = await Agent.mustGet(resolvedAgent)
         const taskCtx: Tool.Context = {
           agent: resolvedAgent,
           messageID: assistantMessage.id,
@@ -1043,11 +1031,11 @@ export namespace SessionPrompt {
           | undefined
         let daemonFallbackToLocal = false
 
-        const daemonEligibleAgent = resolvedAgent === "zee" || resolvedAgent === "stanley" || resolvedAgent === "johny"
+        const daemonEligibleAgent = resolvedAgent === "zee"
 
         if (daemonSubtasksEnabled() && daemonEligibleAgent) {
           result = await executeSubtaskViaDaemon({
-            persona: resolvedAgent,
+            agent: resolvedAgent,
             description: task.description,
             prompt: task.prompt,
             parentSessionID: sessionID,
@@ -1082,7 +1070,7 @@ export namespace SessionPrompt {
             })
           }
         } else if (daemonSubtasksEnabled() && !daemonEligibleAgent) {
-          log.debug("daemon subtask execution skipped for non-persona agent", {
+          log.debug("daemon subtask execution skipped for non-Zee agent", {
             agent: resolvedAgent,
             description: task.description,
             subtaskMode: "local_direct",
@@ -1213,7 +1201,7 @@ export namespace SessionPrompt {
       }
 
       // normal processing
-      const baseAgent = await Agent.get(lastUser.agent)
+      const baseAgent = await Agent.mustGet(lastUser.agent)
       const optionsForAgent = lastUser.options
       const agent = optionsForAgent
         ? { ...baseAgent, options: mergeDeep(baseAgent.options, optionsForAgent) }
@@ -1229,7 +1217,7 @@ export namespace SessionPrompt {
         surface: session.surface,
       })
 
-      const processor = SessionProcessor.create({
+      const processor = await createSessionRuntimeProcessor({
         assistantMessage: (await Session.updateMessage({
           id: Identifier.ascending("message"),
           parentID: lastUser.id,
@@ -1643,7 +1631,8 @@ export namespace SessionPrompt {
   }
 
   async function createUserMessage(input: PromptInput) {
-    const agent = await Agent.get(input.agent ?? (await Agent.defaultAgent()))
+    const agent = await Agent.mustGet(input.agent ?? (await Agent.defaultAgent()))
+    const agentName = agent.name
     const promptMode = normalizeMode(input.mode)
     const options = input.options ? { ...input.options } : undefined
     if (options && "mode" in options) delete options.mode
@@ -1657,7 +1646,7 @@ export namespace SessionPrompt {
       },
       tools: input.tools,
       mode: promptMode,
-      agent: agent.name,
+      agent: agentName,
       model: input.model ?? agent.model ?? (await lastModel(input.sessionID)),
       system: input.system,
       options: sanitizedOptions,
@@ -1837,7 +1826,7 @@ export namespace SessionPrompt {
                     const readCtx: Tool.Context = {
                       sessionID: input.sessionID,
                       abort: new AbortController().signal,
-                      agent: input.agent!,
+                      agent: agentName,
                       messageID: info.id,
                       directory: Instance.directory,
                       worktree: Instance.worktree,
@@ -1901,7 +1890,7 @@ export namespace SessionPrompt {
                 const listCtx: Tool.Context = {
                   sessionID: input.sessionID,
                   abort: new AbortController().signal,
-                  agent: input.agent!,
+                  agent: agentName,
                   messageID: info.id,
                   directory: Instance.directory,
                   worktree: Instance.worktree,
@@ -2004,7 +1993,7 @@ export namespace SessionPrompt {
       "chat.message",
       {
         sessionID: input.sessionID,
-        agent: input.agent,
+        agent: agentName,
         model: input.model,
         messageID: input.messageID,
         variant: input.variant,
@@ -2138,7 +2127,8 @@ export namespace SessionPrompt {
     if (session.revert) {
       await SessionRevert.cleanup(session)
     }
-    const agent = await Agent.get(input.agent)
+    const agent = await Agent.mustGet(input.agent)
+    const agentName = agent.name
     const model = input.model ?? agent.model ?? (await lastModel(input.sessionID))
     const userMsg: MessageV2.User = {
       id: Identifier.ascending("message"),
@@ -2147,7 +2137,7 @@ export namespace SessionPrompt {
         created: Date.now(),
       },
       role: "user",
-      agent: input.agent,
+      agent: agentName,
       model: {
         providerID: model.providerID,
         modelID: model.modelID,
@@ -2168,8 +2158,8 @@ export namespace SessionPrompt {
       id: Identifier.ascending("message"),
       sessionID: input.sessionID,
       parentID: userMsg.id,
-      mode: input.agent,
-      agent: input.agent,
+      mode: agentName,
+      agent: agentName,
       cost: 0,
       path: {
         cwd: Instance.directory,

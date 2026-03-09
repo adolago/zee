@@ -234,7 +234,7 @@ async function getTodoItems(now: Date): Promise<{
 export default tool({
   description: `Refresh the Zee banner shown at the top of the Zee TUI prompt.
 
-The banner rotates items (reminders, todos, messages) and is shown even when using other personas.`,
+The banner rotates items (reminders, todos, messages) across the unified Zee runtime.`,
   args: {
     autoSave: tool.schema
       .boolean()

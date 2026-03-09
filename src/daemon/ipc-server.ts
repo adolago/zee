@@ -8,6 +8,7 @@ import { createServer, Server, Socket } from "node:net";
 import { mkdirSync, unlinkSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
 import { EventEmitter } from "node:events";
+import { DEFAULT_SOCKET_PATH, resolveDaemonAgent } from "./types";
 import type {
   DaemonCommand,
   DaemonRequest,
@@ -23,7 +24,6 @@ import type {
   RunTaskParams,
   TaskRunResult,
 } from "./types";
-import { DEFAULT_SOCKET_PATH } from "./types";
 import { Orchestrator, type OrchestratorOptions } from "../swarm/orchestrator";
 
 type CommandHandler<TParams = unknown, TResult = unknown> = (
@@ -264,24 +264,36 @@ export class DaemonServer extends EventEmitter {
     });
 
     this.handle<SpawnDroneParams, WorkerInfo>("spawn_drone", async (params) => {
-      if (!params?.persona || !params?.prompt) {
-        throw new Error("spawn_drone requires persona and prompt");
+      const agent = resolveDaemonAgent(params);
+      if (!agent || !params?.prompt) {
+        throw new Error("spawn_drone requires agent and prompt");
       }
-      return this.orchestrator.spawnDrone(params);
+      return this.orchestrator.spawnDrone({
+        ...params,
+        agent,
+      });
     });
 
     this.handle<SubmitTaskParams, TaskInfo>("submit_task", async (params) => {
-      if (!params?.persona || !params?.description || !params?.prompt) {
-        throw new Error("submit_task requires persona, description, and prompt");
+      const agent = resolveDaemonAgent(params);
+      if (!agent || !params?.description || !params?.prompt) {
+        throw new Error("submit_task requires agent, description, and prompt");
       }
-      return this.orchestrator.submitTask(params);
+      return this.orchestrator.submitTask({
+        ...params,
+        agent,
+      });
     });
 
     this.handle<RunTaskParams, TaskRunResult>("run_task", async (params) => {
-      if (!params?.persona || !params?.prompt) {
-        throw new Error("run_task requires persona and prompt");
+      const agent = resolveDaemonAgent(params);
+      if (!agent || !params?.prompt) {
+        throw new Error("run_task requires agent and prompt");
       }
-      return this.orchestrator.runTask(params);
+      return this.orchestrator.runTask({
+        ...params,
+        agent,
+      });
     });
 
     this.handle<undefined, WorkerInfo[]>("list_workers", async () => {

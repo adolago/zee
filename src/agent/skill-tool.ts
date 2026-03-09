@@ -2,7 +2,7 @@
  * Skill Tool Module - Unified tool interface for skill invocation
  *
  * This module provides a standardized tool schema for invoking skills
- * in a multi-agent persona system.
+ * in a multi-agent assistant system.
  *
  * @example
  * ```typescript
@@ -34,7 +34,7 @@ import { z } from "zod";
  * Actions:
  * - invoke: Execute a specific skill
  * - list: List available skills
- * - handoff: Legacy handoff action (unused in single-persona runtime)
+ * - handoff: Legacy handoff action (unused in single-assistant runtime)
  * - status: Get current agent status
  */
 export const SkillToolSchema = z.object({

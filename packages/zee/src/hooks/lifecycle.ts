@@ -65,7 +65,7 @@ export namespace LifecycleHooks {
       "session.lifecycle.start",
       z.object({
         sessionId: z.string(),
-        persona: z.enum(["zee", "stanley", "johny"]),
+        agent: z.literal("zee"),
         source: z.enum(["daemon", "whatsapp", "telegram", "tui", "cli"]),
         chatId: z.number().optional(),
         directory: z.string(),
@@ -76,7 +76,7 @@ export namespace LifecycleHooks {
       "session.lifecycle.restore",
       z.object({
         sessionId: z.string(),
-        persona: z.enum(["zee", "stanley", "johny"]),
+        agent: z.literal("zee"),
         source: z.enum(["daemon", "whatsapp", "telegram", "tui", "cli"]),
         chatId: z.number().optional(),
         hasTodos: z.boolean(),
@@ -89,7 +89,7 @@ export namespace LifecycleHooks {
       "session.lifecycle.end",
       z.object({
         sessionId: z.string(),
-        persona: z.enum(["zee", "stanley", "johny"]).optional(),
+        agent: z.literal("zee").optional(),
         reason: z.enum(["completed", "suspended", "timeout", "error"]),
         duration: z.number(),
         todosCompleted: z.number(),
@@ -287,7 +287,7 @@ export namespace LifecycleHooks {
     sessionStartTimes.set(payload.sessionId, now)
     log.info("Emitting session.start hook", {
       sessionId: payload.sessionId,
-      persona: payload.persona,
+      agent: payload.agent,
       source: payload.source,
     })
 
@@ -297,7 +297,7 @@ export namespace LifecycleHooks {
     // Update last active in persistence
     if (payload.chatId !== undefined) {
       try {
-        await Persistence.setLastActive(payload.persona, payload.sessionId, payload.chatId)
+        await Persistence.setLastActive(payload.agent, payload.sessionId, payload.chatId)
       } catch (e) {
         log.warn("Failed to set last active", { error: String(e) })
       }
@@ -310,7 +310,7 @@ export namespace LifecycleHooks {
     sessionStartTimes.set(payload.sessionId, now)
     log.info("Emitting session.restore hook", {
       sessionId: payload.sessionId,
-      persona: payload.persona,
+      agent: payload.agent,
       hasTodos: payload.hasTodos,
       incompleteTodos: payload.incompleteTodos,
     })
@@ -320,13 +320,13 @@ export namespace LifecycleHooks {
 
     // If there are incomplete todos and continuation is triggered, emit continuation hook
     if (payload.triggerContinuation && payload.incompleteTodos > 0) {
-      await emitTodoContinuation(payload.sessionId, payload.persona)
+      await emitTodoContinuation(payload.sessionId, payload.agent)
     }
 
     // Update last active in persistence
     if (payload.chatId !== undefined) {
       try {
-        await Persistence.setLastActive(payload.persona, payload.sessionId, payload.chatId)
+        await Persistence.setLastActive(payload.agent, payload.sessionId, payload.chatId)
       } catch (e) {
         log.warn("Failed to set last active", { error: String(e) })
       }
@@ -366,9 +366,10 @@ export namespace LifecycleHooks {
 
   export async function emitTodoContinuation(
     sessionId: string,
-    persona?: "zee" | "stanley" | "johny",
+    agent?: "zee",
   ): Promise<TodoLifecycle.ContinuationPayload | null> {
     try {
+      void agent
       const todos = await Todo.get(sessionId)
       const completedTodos = todos.filter((t) => t.status === "completed").length
       const remainingTodos = todos.filter((t) => t.status !== "completed" && t.status !== "cancelled").length

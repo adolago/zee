@@ -28,11 +28,11 @@ Show the user available vim-style commands:
 | `<leader>a` | List agents |
 | `<leader>h` | Toggle tips |
 
-## Persona Switching
+## Agent Switching
 
 | Keybind | Action |
 |---------|--------|
-| `Tab` | Next persona |
-| `Shift+Tab` | Previous persona |
+| `Tab` | Next agent |
+| `Shift+Tab` | Previous agent |
 
 Press any key to continue...

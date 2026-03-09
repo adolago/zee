@@ -75,23 +75,21 @@
  * console.log(`${Style.ansi.cyan}Custom${Style.reset}`);
  * ```
  *
- * ## Persona Colors
+ * ## Brand Colors
  *
- * Each persona has themed colors:
+ * Zee exposes themed CLI colors:
  *
  * ```typescript
- * import { personaColors } from "@/cli";
+ * import { assistantColors } from "@/cli";
  *
- * console.log(`${personaColors.zee.logo}Zee${Style.reset}`);
- * console.log(`${personaColors.stanley.logo}Stanley${Style.reset}`);
- * console.log(`${personaColors.johny.logo}Johny${Style.reset}`);
+ * console.log(`${assistantColors.zee.logo}Zee${Style.reset}`);
  * ```
  *
  * @module
  */
 
 import { env } from "node:process"
-import { cliColors, personaCliColors } from "@root/theme/rosetta"
+import { cliColors, assistantCliColors } from "@root/theme/rosetta"
 
 // =============================================================================
 // NO_COLOR Detection
@@ -687,25 +685,17 @@ export const themeToAnsi = {
 } as const
 
 /**
- * Persona-specific colors for CLI mode.
+ * Brand colors for CLI mode.
  *
- * Each persona (Zee, Stanley, Johny) has unique brand colors
- * that map to the closest ANSI equivalent.
+ * Zee exposes a stable color palette that maps to the closest ANSI equivalents.
  *
  * When NO_COLOR is set, all values are empty strings.
  *
  * @example
  * ```typescript
- * import { personaColors, Style } from "@/cli";
+ * import { assistantColors, Style } from "@/cli";
  *
- * // Zee blue
- * console.log(`${personaColors.zee.logo}Zee${Style.reset}`);
- *
- * // Stanley green
- * console.log(`${personaColors.stanley.logo}Stanley${Style.reset}`);
- *
- * // Johny orange
- * console.log(`${personaColors.johny.logo}Johny${Style.reset}`);
+ * console.log(`${assistantColors.zee.logo}Zee${Style.reset}`);
  * ```
  */
-export const personaColors = personaCliColors
+export const assistantColors = assistantCliColors

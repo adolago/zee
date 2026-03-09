@@ -13,8 +13,8 @@ export const HEARTBEAT_DELIVERY_EVENT = "heartbeat.delivery" as const
 export type DeliveryTarget = {
   /** Base URL for the zee server. */
   serverUrl: string
-  /** Persona that ran the heartbeat. */
-  persona?: string
+  /** Agent that ran the heartbeat. */
+  agent?: string
   /** Messaging channel to deliver to. */
   channel?: string
   /** Recipient address for messaging. */
@@ -57,7 +57,7 @@ export async function deliverHeartbeatResult(text: string, target: DeliveryTarge
   GlobalBus.emit("event", {
     payload: {
       type: HEARTBEAT_DELIVERY_EVENT,
-      properties: { text, persona: target.persona, channel: target.channel },
+      properties: { text, agent: target.agent, channel: target.channel },
     },
   })
 

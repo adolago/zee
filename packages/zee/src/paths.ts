@@ -1,8 +1,8 @@
 /**
  * Centralized Path Resolution
  *
- * All persona and asset paths are resolved from ZEE_ROOT.
- * No need for env vars like STANLEY_REPO, ZEE_REPO, etc.
+ * All assistant and asset paths are resolved from ZEE_ROOT.
+ * No need for env vars like ZEE_INVESTING_REPO, ZEE_REPO, etc.
  */
 
 import path from "path"
@@ -51,69 +51,69 @@ export function getZeeRoot(): string {
 }
 
 /**
- * Persona paths - resolved from ZEE_ROOT/packages/zee/Swabble/
+ * Domain paths resolved from the repo root.
  */
-export const Personas = {
+export const Domains = {
   root(): string {
-    return path.join(getZeeRoot(), "packages", "zee", "Swabble")
+    return getZeeRoot()
   },
 
   zee(): string {
-    return this.root()
+    return path.join(this.root(), "src", "domain", "zee")
   },
 
-  stanley(): string {
-    return path.join(this.root(), "stanley")
+  investing(): string {
+    return path.join(this.root(), "src", "domain", "investing")
   },
 
-  johny(): string {
-    return path.join(this.root(), "johny")
+  learning(): string {
+    return path.join(this.root(), "src", "domain", "learning")
   },
 
-  exists(name: "zee" | "stanley" | "johny"): boolean {
+  exists(name: "zee" | "investing" | "learning"): boolean {
     return fs.existsSync(this[name]())
   },
 }
 
 /**
- * Stanley-specific paths
+ * Investing-specific paths
  */
-export const Stanley = {
+export const Investing = {
   repo(): string {
-    return process.env.STANLEY_REPO || path.join(getZeeRoot(), "stanley")
+    return process.env.ZEE_INVESTING_REPO || path.join(getZeeRoot(), "investing")
   },
 
   coreProject(): string {
-    return path.join(getZeeRoot(), "packages", "stanley-core")
+    return path.join(getZeeRoot(), "packages", "investing-core")
   },
 
   coreBin(): string | undefined {
-    const configured = process.env.STANLEY_CORE_BIN?.trim()
+    const configured = process.env.ZEE_INVESTING_CORE_BIN?.trim()
     return configured || undefined
   },
   portfolioFile(): string {
-    return process.env.STANLEY_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "stanley", "portfolio.json")
+    return process.env.ZEE_INVESTING_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "investing", "portfolio.json")
   },
 
-  /** Get the Stanley API base URL from env or default */
+  /** Get the investing API base URL from env or default. */
   apiUrl(): string {
-    return process.env.STANLEY_API_URL || "http://127.0.0.1:8000"
+    return process.env.ZEE_INVESTING_API_URL || "http://127.0.0.1:8000"
   },
 
   /**
-   * Preflight check — verify the Stanley core runtime is ready to run.
+   * Preflight check — verify the investing core runtime is ready to run.
    * Returns null if everything is OK, or an error message string.
    */
   preflight(): string | null {
-    const configuredApiUrl = process.env.STANLEY_API_URL?.trim()
+    const configuredApiUrl = process.env.ZEE_INVESTING_API_URL?.trim()
     if (configuredApiUrl) {
       try {
         new URL(configuredApiUrl)
         return null
       } catch {
         return (
-          `Configured STANLEY_API_URL is invalid: ${configuredApiUrl}.\n` +
-          `Set STANLEY_API_URL to a valid Stanley base URL or configure STANLEY_CORE_BIN for local autostart.`
+          `Configured ZEE_INVESTING_API_URL is invalid: ${configuredApiUrl}.\n` +
+          `Set ZEE_INVESTING_API_URL to a valid investing base URL or configure ZEE_INVESTING_CORE_BIN for local autostart.`
         )
       }
     }
@@ -121,10 +121,10 @@ export const Stanley = {
     const coreBin = this.coreBin()
     if (!coreBin) {
       return (
-        `Stanley core binary is not configured.\n` +
-        `Set STANLEY_CORE_BIN to a built Stanley executable path, or set STANLEY_API_URL to an existing Stanley runtime.\n` +
+        `Investing core binary is not configured.\n` +
+        `Set ZEE_INVESTING_CORE_BIN to a built investing executable path, or set ZEE_INVESTING_API_URL to an existing investing runtime.\n` +
         `Example:\n` +
-        `  export STANLEY_CORE_BIN=${path.join(this.coreProject(), "target", "release", "stanley")}`
+        `  export ZEE_INVESTING_CORE_BIN=${path.join(this.coreProject(), "target", "release", "investing")}`
       )
     }
 
@@ -138,28 +138,28 @@ export const Stanley = {
       const err = error as NodeJS.ErrnoException
       if (err.code === "ENOENT" || err.code === "EACCES") {
         return (
-          `Configured Stanley core binary is not executable: ${coreBin}.\n` +
-          `Set STANLEY_CORE_BIN to a valid Stanley executable path.`
+          `Configured investing core binary is not executable: ${coreBin}.\n` +
+          `Set ZEE_INVESTING_CORE_BIN to a valid investing executable path.`
         )
       }
       return (
-        `Configured Stanley core binary failed its startup probe: ${coreBin}.\n` +
-        `Run it manually to inspect the failure or rebuild packages/stanley-core.`
+        `Configured investing core binary failed its startup probe: ${coreBin}.\n` +
+        `Run it manually to inspect the failure or rebuild packages/investing-core.`
       )
     }
   },
 }
 
 /**
- * Johny-specific paths
+ * Learning-specific paths
  */
-export const Johny = {
+export const Learning = {
   repo(): string {
-    return process.env.JOHNY_REPO || Personas.johny()
+    return process.env.ZEE_LEARNING_REPO || Domains.learning()
   },
 
   cli(): string {
-    return process.env.JOHNY_CLI || path.join(this.repo(), "scripts", "johny_cli.py")
+    return process.env.ZEE_LEARNING_CLI || path.join(this.repo(), "scripts", "learning_cli.py")
   },
 }
 
@@ -168,7 +168,7 @@ export const Johny = {
  */
 export const Zee = {
   repo(): string {
-    return process.env.ZEE_REPO || Personas.zee()
+    return process.env.ZEE_REPO || Domains.zee()
   },
 
   /**

@@ -1,7 +1,7 @@
 /**
  * Zee Domain Tools
  *
- * Personal assistant tools for the Zee agent persona.
+ * Personal assistant tools for the Zee assistant.
  * Provides memory, messaging, and notification functionality.
  */
 

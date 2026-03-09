@@ -17,7 +17,7 @@ Zee is a unified CLI agent engine for life admin, investing, and learning. Seman
 
 - [Bun](https://bun.sh) (v1.1+)
 - [Qdrant](https://qdrant.tech) (local) for semantic memory
-- Python 3.10-3.13 (3.12 recommended) for Stanley dependencies
+- Python 3.10-3.13 (3.12 recommended) for Investing dependencies
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
 
 ### Install (npm)
@@ -34,11 +34,11 @@ npm install -g @adolago/zee@nightly
 curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | ZEE_NPM_PACKAGE=@adolago/zee bash
 ```
 
-The installer now bootstraps Stanley Python dependencies into:
-- `~/.local/share/zee/stanley/.venv`
+The installer now bootstraps Investing Python dependencies into:
+- `~/.local/share/zee/investing/.venv`
 
 And configures:
-- `STANLEY_PYTHON=~/.local/share/zee/stanley/.venv/bin/python`
+- `ZEE_INVESTING_PYTHON=~/.local/share/zee/investing/.venv/bin/python`
 
 ### Install from source
 
@@ -58,25 +58,25 @@ bun run build
 ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
-### Install Stanley (required for investing module development)
+### Install Investing (required for investing module development)
 
-Stanley is the investing persona. For source development, install full Python dependencies in a venv:
+Investing is a Zee-owned capability pack. For source development, install full Python dependencies in a venv:
 
 ```bash
 # From zee repo root
-cd stanley
+cd investing
 
 # Create venv and install all pinned dependencies
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements-lock.txt
 
 # Point Zee to this interpreter
-export STANLEY_PYTHON=$PWD/.venv/bin/python
+export ZEE_INVESTING_PYTHON=$PWD/.venv/bin/python
 ```
 
 Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
 ```bash
-export STANLEY_PYTHON=~/.local/share/zee/stanley/.venv/bin/python
+export ZEE_INVESTING_PYTHON=~/.local/share/zee/investing/.venv/bin/python
 ```
 
 ### Configuration
@@ -109,7 +109,7 @@ Example memory + embeddings configuration:
   "memory": {
     "qdrant": {
       "url": "http://localhost:6333",
-      "collection": "personas_memory"
+      "collection": "agent_memory"
     },
     "embedding": {
       "profile": "google/gemini-embedding-001",
@@ -206,24 +206,24 @@ zee gateway url
 zee/
 ├── packages/zee/    # Main CLI/TUI/daemon
 ├── src/
-│   ├── personas/           # Persona logic and routing
+│   ├── agent/              # Assistant profiles and wiring
 │   ├── memory/             # Qdrant semantic memory
-│   └── domain/             # Domain tools (zee/, stanley/)
+│   └── domain/             # Domain tools (zee/, investing/)
 └── .agents/skills/         # Skills
 ```
 
-### Persona Model
+### Assistant Model
 
-Zee is the only active persona. The engine still exposes domain toolsets under namespaces:
+Zee is the only active assistant. The engine still exposes domain toolsets under namespaces:
 
 - `zee:*` for life admin
-- `stanley:*` for investing
-- `johny:*` for learning
+- `zee:invest-*` for investing
+- `zee:learn-*` for learning
 
 ### Key Features
 
 - **Semantic Memory**: Vector-based memory with Qdrant for context persistence
-- **Single Persona Runtime**: No persona switching or delegation required
+- **Single Assistant Runtime**: No assistant switching or delegation required
 - **Embedded Gateway**: Zee messaging gateway launched and supervised by the daemon
 
 ## Usage with Zee Gateway

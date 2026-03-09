@@ -379,7 +379,7 @@ export namespace Config {
         ...md.data,
         prompt: md.content.trim(),
       }
-      // Log at info level for persona debugging visibility
+      // Log at info level for agent prompt debugging visibility
       log.info("loading agent from markdown", {
         name: agentName,
         file: item,
@@ -732,11 +732,11 @@ export namespace Config {
         .describe("Presence penalty for diversity control (-2 to 2)"),
       seed: z.number().int().optional().describe("Seed for reproducible outputs"),
       min_p: z.number().min(0).max(1).optional().describe("Min-p sampling threshold (0 to 1)"),
-      // Persona-specific fields (from AgentPersonaConfig)
+      // Agent bootstrap fields
       systemPromptAdditions: z
         .string()
         .optional()
-        .describe("Additional system prompt content to inject for this agent/persona"),
+        .describe("Additional system prompt content to inject for this agent"),
       knowledge: z.array(z.string()).optional().describe("File paths to knowledge files to include in context"),
       mcpServers: z.array(z.string()).optional().describe("MCP server names to auto-start for this agent"),
     })
@@ -763,7 +763,7 @@ export namespace Config {
         "presence_penalty",
         "seed",
         "min_p",
-        // Persona-specific fields
+        // Agent bootstrap fields
         "systemPromptAdditions",
         "knowledge",
         "mcpServers",
@@ -810,7 +810,7 @@ export namespace Config {
         .string()
         .optional()
         .default("<leader>shift+d")
-        .describe("Deprecated (persona delegation removed; Zee is the only active persona)"),
+        .describe("Deprecated (delegation selector removed; Zee is the only assistant)"),
       session_interrupt: z.string().optional().default("escape").describe("Interrupt current session"),
       session_compact: z.string().optional().default("<leader>shift+c").describe("Compact the session"),
       messages_page_up: z.string().optional().default("pageup,ctrl+alt+b").describe("Scroll messages up by one page"),
@@ -865,7 +865,7 @@ export namespace Config {
         .string()
         .optional()
         .default("<leader>a")
-        .describe("Deprecated (agent switching removed; Zee is the only active persona)"),
+        .describe("Deprecated (agent switching removed; Zee is the only assistant)"),
       agent_cycle: z.string().optional().default("tab").describe("Deprecated (agent switching removed)"),
       agent_cycle_reverse: z.string().optional().default("none").describe("Deprecated (agent switching removed)"),
       mode_toggle: z.string().optional().default("<leader>h").describe("Toggle plan/accept mode"),
@@ -1378,18 +1378,18 @@ export namespace Config {
       ref: "MemoryConfig",
     })
 
-  export const Stanley = z
+  export const Investing = z
     .object({
-      enabled: z.boolean().optional().default(true).describe("Enable Stanley investment tools"),
-      baseUrl: z.string().optional().default("http://127.0.0.1:8000").describe("Stanley API base URL"),
-      apiKey: z.string().optional().describe("Stanley API key"),
-      autoStart: z.boolean().optional().default(true).describe("Auto-start Stanley daemon if not running"),
+      enabled: z.boolean().optional().default(true).describe("Enable investing tools"),
+      baseUrl: z.string().optional().default("http://127.0.0.1:8000").describe("Investing API base URL"),
+      apiKey: z.string().optional().describe("Investing API key"),
+      autoStart: z.boolean().optional().default(true).describe("Auto-start investing daemon if not running"),
       wsEnabled: z.boolean().optional().default(false).describe("Enable WebSocket for real-time data"),
-      repoPath: z.string().optional().describe("Path to Stanley repository"),
+      repoPath: z.string().optional().describe("Path to investing repository"),
     })
     .strict()
     .meta({
-      ref: "StanleyConfig",
+      ref: "InvestingConfig",
     })
 
   export const Zee = z
@@ -1601,7 +1601,7 @@ export namespace Config {
         .optional()
         .describe("MCP (Model Context Protocol) server configurations"),
       memory: Memory.optional().describe("Memory and storage configuration"),
-      stanley: Stanley.optional().describe("Stanley investment platform configuration"),
+      investing: Investing.optional().describe("Investing platform configuration"),
       zee: Zee.optional().describe("Zee integration configuration"),
       messages: Messages.optional().describe("Messaging and TTS configuration"),
       formatter: z

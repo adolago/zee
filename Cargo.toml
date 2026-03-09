@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-    "packages/stanley-core",
+    "packages/investing-core",
     "packages/zee-gui",
     "packages/zee-gui/crates/zee-editor",
 ]

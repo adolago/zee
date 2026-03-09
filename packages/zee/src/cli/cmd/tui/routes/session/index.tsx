@@ -55,7 +55,7 @@ import { useKeyboard, useRenderer, useTerminalDimensions, type JSX } from "@open
 import { useSDK } from "@tui/context/sdk"
 import { useCommandDialog } from "@tui/component/dialog-command"
 import { useKeybind } from "@tui/context/keybind"
-import { resolvePersonaArt } from "@tui/component/persona-art"
+import { resolveAssistantArt } from "@tui/component/assistant-art"
 import { Spinner } from "@tui/component/spinner"
 import { Header } from "./header"
 import { summarizeToolHighlights } from "./tool-highlights-summary"
@@ -110,7 +110,7 @@ function AgentBanner() {
   const dimensions = useTerminalDimensions()
   const agent = createMemo(() => local.agent.current())
   const color = createMemo(() => local.agent.color(agent().name))
-  const fullArt = createMemo(() => resolvePersonaArt(agent().name))
+  const fullArt = createMemo(() => resolveAssistantArt())
   const submitKey = createMemo(() => keybind.print("input_submit"))
   // Trim art from edges to fit available height (hint=1, gap=1, borders~4)
   const art = createMemo(() => {

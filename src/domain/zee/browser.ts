@@ -87,9 +87,9 @@ const BrowserParams = z.object({
   profile: z.string().optional()
     .describe("Optional browser profile name. If omitted, the browser server uses its own default profile. Built-in: 'zee', 'chrome'"),
 
-  // Persona context (auto-selects the persona's dedicated browser profile)
-  persona: z.enum(["zee"]).optional()
-    .describe("Persona context. Zee uses the dedicated Zee Chrome profile when set"),
+  // Assistant context (auto-selects Zee's dedicated browser profile)
+  assistant: z.enum(["zee"]).optional()
+    .describe("Assistant context. Zee uses the dedicated Zee Chrome profile when set"),
   
   // URL for navigation
   url: z.string().optional()
@@ -177,10 +177,10 @@ After a snapshot, use the ref IDs (e.g., "e12", "a5") to interact with elements:
 - { action: "type", ref: "e5", text: "hello", submit: true }`,
     parameters: BrowserParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const { action, persona, profile: requestedProfile } = args;
-      // Resolve persona to its dedicated profile, or use explicit profile
-      const PERSONA_PROFILES: Record<string, string> = { zee: "zee" };
-      const profile = persona && PERSONA_PROFILES[persona] ? PERSONA_PROFILES[persona] : requestedProfile;
+      const { action, assistant, profile: requestedProfile } = args;
+      // Resolve assistant to its dedicated profile, or use explicit profile
+      const ASSISTANT_PROFILES: Record<string, string> = { zee: "zee" };
+      const profile = assistant && ASSISTANT_PROFILES[assistant] ? ASSISTANT_PROFILES[assistant] : requestedProfile;
       const profileQuery = profile ? { profile } : undefined;
 
       ctx.metadata({ title: `Browser: ${action}` });

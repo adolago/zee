@@ -74,7 +74,7 @@ import { RegistryRoute } from "./route/registry"
 import { FluxRoute } from "./route/flux"
 import { SkillsRoute } from "./route/skills"
 import { LlmRoute } from "./route/llm"
-import { StanleyProxyRoute } from "./route/stanley-proxy"
+import { InvestingProxyRoute } from "./route/investing-proxy"
 import { RequestMeta } from "./request-meta"
 import { assertSafeOutboundUrl } from "@/security"
 
@@ -537,8 +537,8 @@ export namespace Server {
         .route("/", CronRoute)
         .route("/", HeartbeatRoute)
 
-        // Stanley API reverse proxy — forwards /api/* to the canonical Stanley runtime
-        .route("/api", StanleyProxyRoute)
+        // Investing API reverse proxy — forwards /api/* to the canonical Investing runtime
+        .route("/api", InvestingProxyRoute)
 
         // API Documentation
         .get(

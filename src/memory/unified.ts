@@ -3,7 +3,7 @@
  *
  * Single class that handles all memory operations:
  * - Semantic memory storage and search
- * - Persona state persistence
+ * - Agent state persistence
  * - Conversation continuity (fact extraction, session chaining)
  * - Cross-session context injection
  *
@@ -58,17 +58,17 @@ const log = Log.create({ service: "memory" });
 /** Entry types stored in unified collection */
 export type EntryType =
   | "memory"           // Regular memories (facts, preferences, etc.)
-  | "state"            // Personas orchestration state
+  | "state"            // Agent orchestration state
   | "conversation"     // Conversation continuity state
   | "session_chain";   // Session chain index
 
-/** Persona identifiers */
-export type PersonaId = "zee" | "stanley" | "johny";
+/** Agent identifiers */
+export type AgentId = "zee";
 
 /** Conversation state for continuity */
 export interface ConversationState {
   sessionId: string;
-  leadPersona: PersonaId;
+  leadAgent: AgentId;
   summary: string;
   plan: string;
   objectives: string[];
@@ -77,12 +77,12 @@ export interface ConversationState {
   updatedAt: number;
 }
 
-/** Personas orchestration state */
-export interface PersonasState {
+/** Agent orchestration state */
+export interface AgentsState {
   version: string;
   workers: Array<{
     id: string;
-    persona: PersonaId;
+    agent: AgentId;
     role: "queen" | "drone";
     status: string;
     paneId?: string;
@@ -93,7 +93,7 @@ export interface PersonasState {
   }>;
   tasks: Array<{
     id: string;
-    persona: PersonaId;
+    agent: AgentId;
     description: string;
     prompt: string;
     status: "pending" | "assigned" | "running" | "completed" | "failed";
@@ -267,12 +267,12 @@ export function mergeFacts(existing: string[], newFacts: string[], max: number):
 /** Create a new conversation state */
 export function createConversationState(
   sessionId: string,
-  leadPersona: PersonaId,
+  leadAgent: AgentId,
   previousSessionId?: string
 ): ConversationState {
   return {
     sessionId,
-    leadPersona,
+    leadAgent,
     summary: "",
     plan: "",
     objectives: [],
@@ -2171,15 +2171,15 @@ export class Memory {
   }
 
   // ===========================================================================
-  // State Persistence (Personas orchestration state)
+  // State Persistence (agent orchestration state)
   // ===========================================================================
 
   private getStateId(): string {
     return stringToUUID(`state-${this.instanceId}`);
   }
 
-  /** Save personas state */
-  async saveState(state: PersonasState): Promise<void> {
+  /** Save agent state */
+  async saveState(state: AgentsState): Promise<void> {
     await this.init();
 
     const stateJson = JSON.stringify(state);
@@ -2207,8 +2207,8 @@ export class Memory {
     }
   }
 
-  /** Load personas state */
-  async loadState(): Promise<PersonasState | null> {
+  /** Load agent state */
+  async loadState(): Promise<AgentsState | null> {
     await this.init();
 
     const stateId = this.getStateId();
@@ -2218,24 +2218,24 @@ export class Memory {
     if (!result?.payload?.state) return null;
 
     try {
-      return JSON.parse(result.payload.state as string) as PersonasState;
+      return JSON.parse(result.payload.state as string) as AgentsState;
     } catch {
       return null;
     }
   }
 
-  private generateStateSummary(state: PersonasState): string {
-    const parts: string[] = [`Personas state v${state.version}`];
+  private generateStateSummary(state: AgentsState): string {
+    const parts: string[] = [`Agent state v${state.version}`];
 
     if (state.workers.length > 0) {
-      const workersByPersona = state.workers.reduce(
+      const workersByAgent = state.workers.reduce(
         (acc, w) => {
-          acc[w.persona] = (acc[w.persona] ?? 0) + 1;
+          acc[w.agent] = (acc[w.agent] ?? 0) + 1;
           return acc;
         },
         {} as Record<string, number>
       );
-      parts.push(`Workers: ${JSON.stringify(workersByPersona)}`);
+      parts.push(`Workers: ${JSON.stringify(workersByAgent)}`);
     }
 
     if (state.tasks.length > 0) {
@@ -2245,7 +2245,7 @@ export class Memory {
     }
 
     if (state.conversation) {
-      parts.push(`Lead: ${state.conversation.leadPersona}`);
+      parts.push(`Lead: ${state.conversation.leadAgent}`);
       parts.push(`Summary: ${state.conversation.summary.slice(0, 200)}`);
     }
 
@@ -2280,7 +2280,7 @@ export class Memory {
       payload: {
         type: "conversation" as EntryType,
         sessionId: state.sessionId,
-        leadPersona: state.leadPersona,
+        leadAgent: state.leadAgent,
         summary: state.summary,
         plan: state.plan,
         objectives: state.objectives,
@@ -2317,7 +2317,7 @@ export class Memory {
     const p = result.payload as Record<string, unknown>;
     return {
       sessionId: p.sessionId as string,
-      leadPersona: p.leadPersona as PersonaId,
+      leadAgent: p.leadAgent as AgentId,
       summary: p.summary as string,
       plan: (p.plan as string) ?? "",
       objectives: (p.objectives as string[]) ?? [],
@@ -2327,17 +2327,17 @@ export class Memory {
     };
   }
 
-  /** Find most recent conversation (optionally for specific persona) */
-  async findRecentConversation(persona?: PersonaId): Promise<ConversationState | null> {
+  /** Find most recent conversation (optionally for specific agent) */
+  async findRecentConversation(agent?: AgentId): Promise<ConversationState | null> {
     await this.init();
 
-    const query = persona
-      ? `Recent conversation with ${persona}`
+    const query = agent
+      ? `Recent conversation with ${agent}`
       : "Recent conversation state";
 
     const embedding = await this.embedding.embed(query);
     const filter: Record<string, unknown> = { type: "conversation" };
-    if (persona) filter.leadPersona = persona;
+    if (agent) filter.leadAgent = agent;
 
     const results = await this.storage.search(embedding, {
       limit: 1,
@@ -2349,7 +2349,7 @@ export class Memory {
     const p = results[0].payload as Record<string, unknown>;
     return {
       sessionId: p.sessionId as string,
-      leadPersona: p.leadPersona as PersonaId,
+      leadAgent: p.leadAgent as AgentId,
       summary: p.summary as string,
       plan: (p.plan as string) ?? "",
       objectives: (p.objectives as string[]) ?? [],
@@ -2362,7 +2362,7 @@ export class Memory {
   /** Start a new conversation session (with continuity from previous) */
   async startSession(
     sessionId: string,
-    leadPersona: PersonaId,
+    leadAgent: AgentId,
     previousSessionId?: string
   ): Promise<ConversationState> {
     // Try to load previous session
@@ -2370,13 +2370,13 @@ export class Memory {
     if (previousSessionId) {
       previousState = await this.loadConversation(previousSessionId);
     } else {
-      previousState = await this.findRecentConversation(leadPersona);
+      previousState = await this.findRecentConversation(leadAgent);
     }
 
     // Create new state
     this.currentConversation = {
       sessionId,
-      leadPersona,
+      leadAgent,
       summary: "",
       plan: previousState?.plan ?? "",
       objectives: previousState?.objectives ?? [],
@@ -2423,12 +2423,12 @@ export class Memory {
     // Save to Qdrant
     await this.saveConversation(this.currentConversation);
 
-    // Store individual facts as memories (persona-isolated)
+    // Store individual facts as memories (agent-isolated)
     if (newFacts.length > 0) {
       await this.storeKeyFacts(
         newFacts,
         this.currentConversation.sessionId,
-        this.currentConversation.leadPersona
+        this.currentConversation.leadAgent
       );
     }
 
@@ -2436,7 +2436,7 @@ export class Memory {
   }
 
   /** Store key facts as searchable memories */
-  async storeKeyFacts(facts: string[], sessionId: string, persona: PersonaId): Promise<void> {
+  async storeKeyFacts(facts: string[], sessionId: string, agent: AgentId): Promise<void> {
     await this.init();
 
     for (const fact of facts) {
@@ -2445,10 +2445,10 @@ export class Memory {
         content: fact,
         metadata: {
           sessionId,
-          agent: persona,
+          agent: agent,
           extra: { extractedAt: Date.now() },
         },
-        namespace: `personas:${persona}`,
+        namespace: `agents:${agent}`,
       });
     }
   }
@@ -2539,29 +2539,29 @@ export class Memory {
   }
 
   // ===========================================================================
-  // Cross-Session Memory Injection (for bootstrap/personas.ts)
+  // Cross-session memory injection (for Zee bootstrap)
   // ===========================================================================
 
-  /** Search memories for a specific persona */
-  async searchPersonaMemories(
+  /** Search memories for a specific agent */
+  async searchAgentMemories(
     query: string,
-    persona: PersonaId,
+    agent: AgentId,
     options?: { limit?: number; categories?: MemoryCategory[] }
   ): Promise<MemorySearchResult[]> {
     return this.search({
       query,
-      namespace: `personas:${persona}`,
+      namespace: `agents:${agent}`,
       category: options?.categories,
       limit: options?.limit ?? 5,
       threshold: 0.6,
     });
   }
 
-  /** Search memories across all personas */
-  async searchAllPersonaMemories(
+  /** Search memories across all agents */
+  async searchAllAgentMemories(
     query: string,
     limit = 10
-  ): Promise<Array<{ id: string; content: string; score: number; persona?: string }>> {
+  ): Promise<Array<{ id: string; content: string; score: number; agent?: string }>> {
     await this.init();
 
     // Search without namespace filter to get all memories
@@ -2575,7 +2575,7 @@ export class Memory {
       id: r.id,
       content: r.payload.content as string,
       score: r.score,
-      persona: r.payload.namespace?.toString().replace("personas:", ""),
+      agent: r.payload.namespace?.toString().replace("agents:", ""),
     }));
   }
 
@@ -2599,7 +2599,7 @@ export class Memory {
     options?: {
       limit?: number;
       sessionId?: string;
-      persona?: PersonaId;
+      agent?: AgentId;
     }
   ): Promise<{
     relevantMemories: Array<{ content: string; score: number }>;
@@ -2610,9 +2610,9 @@ export class Memory {
     const limit = options?.limit ?? 5;
 
     // Search for relevant memories
-    const results = await this.searchPersonaMemories(
+    const results = await this.searchAgentMemories(
       taskDescription,
-      options?.persona ?? "zee",
+      options?.agent ?? "zee",
       { limit }
     );
 
@@ -2622,7 +2622,7 @@ export class Memory {
       const state = await this.loadConversation(options.sessionId);
       if (state) conversationState = state;
     } else {
-      const recent = await this.findRecentConversation(options?.persona);
+      const recent = await this.findRecentConversation(options?.agent);
       if (recent) conversationState = recent;
     }
 

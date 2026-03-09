@@ -1,7 +1,7 @@
 /**
  * Lightweight Planning Module
  *
- * Allows personas to decompose complex requests into tracked steps,
+ * Allows agents to decompose complex requests into tracked steps,
  * persist plan state across sessions, and proactively continue work.
  */
 
@@ -23,7 +23,7 @@ export interface PlanStep {
 
 export interface Plan {
   id: string;
-  persona: string;
+  agent: string;
   objective: string;
   steps: PlanStep[];
   status: "active" | "completed" | "abandoned";
@@ -46,14 +46,14 @@ const planCache = new Map<string, Plan>();
  * Create a new plan and persist it to memory.
  */
 export async function createPlan(
-  persona: string,
+  agent: string,
   objective: string,
   steps: string[],
   sessionId?: string,
 ): Promise<Plan> {
   const plan: Plan = {
     id: randomUUID(),
-    persona,
+    agent,
     objective,
     steps: steps.map((description) => ({
       description,
@@ -68,7 +68,7 @@ export async function createPlan(
   planCache.set(plan.id, plan);
   await persistPlan(plan);
 
-  log.info("Plan created", { id: plan.id, persona, steps: steps.length });
+  log.info("Plan created", { id: plan.id, agent, steps: steps.length });
   return plan;
 }
 
@@ -181,17 +181,17 @@ export async function getPlan(planId: string): Promise<Plan | null> {
 }
 
 /**
- * List active plans for a persona.
+ * List active plans for an agent.
  */
 export async function listPlans(
-  persona: string,
+  agent: string,
   options?: { status?: Plan["status"]; limit?: number },
 ): Promise<Plan[]> {
   const plans: Plan[] = [];
 
   // Check cache first
   for (const plan of planCache.values()) {
-    if (plan.persona === persona) {
+    if (plan.agent === agent) {
       if (!options?.status || plan.status === options.status) {
         plans.push(plan);
       }
@@ -211,7 +211,7 @@ export async function listPlans(
     for (const r of results) {
       try {
         const plan = JSON.parse(r.entry.content) as Plan;
-        if (plan.persona !== persona) continue;
+        if (plan.agent !== agent) continue;
         if (options?.status && plan.status !== options.status) continue;
         if (!planCache.has(plan.id)) {
           planCache.set(plan.id, plan);
@@ -256,12 +256,12 @@ async function persistPlan(plan: Plan): Promise<void> {
       namespace: "zee",
       domain: "system",
       topic: "plans",
-      subtopic: plan.persona,
+      subtopic: plan.agent,
       memoryId: `plan-${plan.id}`,
       kind: "agent",
       priority: plan.status === "active" ? "high" : "normal",
       metadata: {
-        agent: plan.persona,
+        agent: plan.agent,
         tags: ["plan", plan.status],
         extra: {
           planId: plan.id,
@@ -299,7 +299,7 @@ export function formatPlan(plan: Plan): string {
 
   return `Plan: ${plan.objective} (${plan.status})
 ID: ${plan.id}
-Persona: ${plan.persona}
+Agent: ${plan.agent}
 Steps:
 ${steps}`;
 }

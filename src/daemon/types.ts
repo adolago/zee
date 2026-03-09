@@ -6,7 +6,14 @@
 
 import type { OrchestrationEvent } from "../swarm/events";
 
-export type Persona = "zee" | "stanley" | "johny";
+export type DaemonAgent = "zee";
+interface AgentSelector {
+  agent?: DaemonAgent;
+}
+
+export function resolveDaemonAgent(input?: AgentSelector): DaemonAgent | undefined {
+  return input?.agent;
+}
 
 /** Available daemon commands */
 export type DaemonCommand =
@@ -39,8 +46,7 @@ export interface DaemonResponse<T = unknown> {
 
 // Command-specific parameter types
 
-export interface SpawnDroneParams {
-  persona: Persona;
+export interface SpawnDroneParams extends AgentSelector {
   /** Short human-readable task description. */
   description?: string;
   prompt: string;
@@ -51,8 +57,7 @@ export interface SpawnDroneParams {
   taskId?: string;
 }
 
-export interface SubmitTaskParams {
-  persona: Persona;
+export interface SubmitTaskParams extends AgentSelector {
   description: string;
   prompt: string;
   parentSessionId?: string;
@@ -96,7 +101,7 @@ export interface DaemonStatus {
 export interface WorkerInfo {
   id: string;
   name: string;
-  persona: Persona;
+  agent: DaemonAgent;
   taskId?: string;
   pid?: number;
   attempt: number;
@@ -109,7 +114,7 @@ export interface WorkerInfo {
 export interface TaskInfo {
   id: string;
   description: string;
-  persona: Persona;
+  agent: DaemonAgent;
   status: "pending" | "running" | "completed" | "failed" | "aborted";
   priority: number;
   attempt: number;

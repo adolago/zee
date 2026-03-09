@@ -1,7 +1,7 @@
 /**
  * Knowledge File Loader
  *
- * Loads persona knowledge files defined in PERSONAS config
+ * Loads assistant knowledge files defined in Zee config
  * and injects them into the system prompt.
  */
 
@@ -16,7 +16,7 @@ export interface LoadedKnowledge {
 }
 
 /**
- * Load knowledge files for a persona
+ * Load knowledge files for an assistant
  */
 export async function loadKnowledgeFiles(knowledgePaths: string[] | undefined): Promise<LoadedKnowledge[]> {
   if (!knowledgePaths || knowledgePaths.length === 0) {

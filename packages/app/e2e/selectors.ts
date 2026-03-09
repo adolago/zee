@@ -47,4 +47,4 @@ export const listItemKeySelector = (key: string) => `${listItemSelector}[data-ke
 
 export const keybindButtonSelector = (id: string) => `[data-keybind-id="${id}"]`
 
-export const personaSelectorCompactSelector = '[data-component="persona-selector-compact"]'
+export const assistantSelectorCompactSelector = '[data-component="assistant-selector-compact"]'

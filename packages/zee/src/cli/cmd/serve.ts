@@ -1,5 +1,5 @@
 import { Server } from "../../server/server"
-import { Stanley } from "../../paths"
+import { Investing } from "../../paths"
 import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 
@@ -8,10 +8,10 @@ export const ServeCommand = cmd({
   builder: (yargs) => withNetworkOptions(yargs),
   describe: "starts a headless zee server",
   handler: async (args) => {
-    // Mandatory: Stanley runtime must be reachable or ready for autostart
-    const err = Stanley.preflight()
+    // Mandatory: Investing runtime must be reachable or ready for autostart
+    const err = Investing.preflight()
     if (err) {
-      console.error(`\n  Stanley backend is not ready:\n`)
+      console.error(`\n  Investing backend is not ready:\n`)
       for (const line of err.split("\n")) {
         console.error(`  ${line}`)
       }

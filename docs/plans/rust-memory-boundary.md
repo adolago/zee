@@ -6,7 +6,7 @@ Embedding and reranking are TypeScript implementations in `src/memory/embedding.
 Memory is consumed by server routes `packages/zee/src/server/route/memory.ts (1-200)`, MCP server `src/mcp/servers/memory.ts (1-200)`, Zee tools `src/domain/zee/tools.ts (1-240)`, persona bootstrap hooks `packages/zee/src/bootstrap/personas.ts (1-200)`, and required-memory checks in `packages/zee/src/session/prompt.ts (91-290)`.
 Runtime configuration is loaded from `src/config/runtime.ts (1-200)` with defaults in `src/config/constants.ts (1-120)`; the broader config schema and defaults are in `src/config/schema.ts (271-470)` and `src/config/defaults.ts (96-295)`.
 There was a legacy memory persistence plugin prototype for key/value caching; the active runtime plugin loader is `packages/zee/src/plugin/index.ts`.
-Rust workspace currently includes only `packages/stanley-core` as per `Cargo.toml (1-34)`.
+Rust workspace currently includes only `packages/investing-core` as per `Cargo.toml (1-34)`.
 ## Proposed changes
 ### 1) Define the Rust boundary and contract
 Keep the public TypeScript API (`Memory`, `getMemory`, and related exports) stable, and formalize a contract based on `MemoryInput`, `MemoryEntry`, `MemorySearchParams`, and conversation/state payloads from `src/memory/unified.ts` and `src/memory/types.ts`.

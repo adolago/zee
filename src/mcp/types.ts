@@ -115,7 +115,7 @@ export interface ToolRuntime<
 
 export type ToolCategory =
   | 'builtin'    // Core built-in tools (bash, read, write, etc.)
-  | 'domain'     // Domain-specific tools (Stanley, Zee)
+  | 'domain'     // Domain-specific tools (Investing, Zee)
   | 'mcp'        // External MCP server tools
   | 'plugin'     // User-defined plugin tools
   | 'skill';     // Skill-based tools
@@ -242,13 +242,13 @@ export type McpServerStatus =
   | { status: 'needs_client_registration'; error: string };
 
 // ============================================================================
-// Domain Tool Types (Stanley & Zee)
+// Domain Tool Types (Investing & Zee)
 // ============================================================================
 
 /**
- * Stanley domain tools - Financial market data and research
+ * Investing domain tools - Financial market data and research
  */
-export namespace StanleyTools {
+export namespace InvestingTools {
   export interface MarketDataParams {
     symbol: string;
     period?: '1d' | '5d' | '1m' | '3m' | '6m' | '1y' | 'ytd';

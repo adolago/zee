@@ -115,8 +115,30 @@ describe("Persistence", () => {
 
           const all = await Persistence.getAllLastActive()
           expect(all.zee?.sessionId).toBe("session-1")
-          expect(all.stanley).toBeUndefined()
-          expect(all.johny).toBeUndefined()
+
+          await Persistence.shutdown()
+        },
+      })
+    })
+
+    test("ignores removed legacy last-active entries on read", async () => {
+      await Instance.provide({
+        directory: testDir.path,
+        fn: async () => {
+          await Persistence.init()
+
+          const stateDir = path.join(process.env.XDG_STATE_HOME!, "zee", "persistence")
+          await fs.mkdir(stateDir, { recursive: true })
+          await fs.writeFile(
+            path.join(stateDir, "last-active.json"),
+            JSON.stringify({
+              stanley: { sessionId: "session-stanley", updatedAt: 10 },
+              johny: { sessionId: "session-johny", updatedAt: 20 },
+            }),
+          )
+
+          const lastActive = await Persistence.getLastActive("zee")
+          expect(lastActive).toBeNull()
 
           await Persistence.shutdown()
         },

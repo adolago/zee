@@ -1,7 +1,7 @@
 /**
  * Agent System Types
  *
- * Configurable agent personas with permission system and mode switching
+ * Configurable agent profiles with permission system and mode switching
  */
 
 /** Permission level for agent actions */
@@ -106,8 +106,8 @@ export interface AgentConfig {
   maxSteps?: number;
 }
 
-/** UI theme colors for persona */
-export interface PersonaTheme {
+/** UI theme colors for the assistant */
+export interface AssistantTheme {
   /** Primary color (hex) */
   primaryColor: string;
   /** Accent color for highlights (hex) */
@@ -118,9 +118,9 @@ export interface PersonaTheme {
   bgGradient: string;
 }
 
-/** Agent persona for identity management */
-export interface AgentPersona {
-  /** Display name (e.g., "Zee", "Stanley") */
+/** Assistant profile for identity management */
+export interface AssistantProfile {
+  /** Display name (e.g., "Zee") */
   displayName: string;
 
   /** Short identifier */
@@ -142,7 +142,7 @@ export interface AgentPersona {
   signature?: string;
 
   /** UI theme colors */
-  theme?: PersonaTheme;
+  theme?: AssistantTheme;
 
   /** Default session key */
   defaultSession?: string;
@@ -156,8 +156,8 @@ export interface AgentInstance {
   /** Agent configuration */
   config: AgentConfig;
 
-  /** Agent persona */
-  persona: AgentPersona;
+  /** Active assistant profile */
+  assistant: AssistantProfile;
 
   /** Current session ID */
   sessionId: string;

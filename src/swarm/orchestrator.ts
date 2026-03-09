@@ -6,9 +6,10 @@
 
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
+import { resolveDaemonAgent } from "../daemon/types";
 import type {
+  DaemonAgent,
   ListEventsResult,
-  Persona,
   RunTaskParams,
   SpawnDroneParams,
   SubmitTaskParams,
@@ -33,7 +34,7 @@ import type {
 } from "../orchestration-visual";
 
 interface OrchestratorTask extends QueuedTask {
-  persona: Persona;
+  agent: DaemonAgent;
   status: "pending" | "running" | "completed" | "failed" | "aborted";
   workerId?: string;
   timeoutMs: number;
@@ -120,7 +121,7 @@ export class Orchestrator extends EventEmitter {
     const existingTask = params.taskId ? this.tasks.get(params.taskId.trim()) : undefined;
     const task = this.getOrCreateTask({
       taskId: params.taskId,
-      persona: params.persona,
+      agent: resolveDaemonAgent(params) ?? "zee",
       description: params.description,
       prompt: params.prompt,
       parentSessionId: params.parentSessionId,
@@ -180,7 +181,7 @@ export class Orchestrator extends EventEmitter {
     const existingTask = params.taskId ? this.tasks.get(params.taskId.trim()) : undefined;
     const task = this.getOrCreateTask({
       taskId: params.taskId,
-      persona: params.persona,
+      agent: resolveDaemonAgent(params) ?? "zee",
       description: params.description,
       prompt: params.prompt,
       parentSessionId: params.parentSessionId,
@@ -508,7 +509,7 @@ export class Orchestrator extends EventEmitter {
       taskId: task.id,
       workerId,
       sessionId: task.parentSessionId,
-      details: { persona: task.persona, attempt: task.attempt },
+      details: { agent: task.agent, attempt: task.attempt },
     });
     this.emitOrchestrationEvent("turn_start", {
       taskId: task.id,
@@ -520,7 +521,7 @@ export class Orchestrator extends EventEmitter {
       taskId: task.id,
       workerId,
       details: {
-        persona: task.persona,
+        agent: task.agent,
         attempt: task.attempt,
         description: task.description,
       },
@@ -529,9 +530,9 @@ export class Orchestrator extends EventEmitter {
     try {
       const worker = await this.queen.spawnWorker({
         id: workerId,
-        name: `${task.persona}-${task.description}`,
+        name: `${task.agent}-${task.description}`,
         prompt: task.prompt,
-        persona: task.persona,
+        agent: task.agent,
         taskId: task.id,
         timeoutMs: task.timeoutMs,
         attempt: task.attempt,
@@ -570,7 +571,7 @@ export class Orchestrator extends EventEmitter {
 
   private getOrCreateTask(input: {
     taskId?: string;
-    persona: Persona;
+    agent: DaemonAgent;
     description?: string;
     prompt: string;
     parentSessionId?: string;
@@ -591,7 +592,7 @@ export class Orchestrator extends EventEmitter {
       }
       existing.description = description || existing.description;
       existing.prompt = input.prompt || existing.prompt;
-      existing.persona = input.persona ?? existing.persona;
+      existing.agent = input.agent ?? existing.agent;
       existing.parentSessionId = input.parentSessionId ?? existing.parentSessionId;
       existing.parentMessageId = input.parentMessageId ?? existing.parentMessageId;
       existing.priority = priority;
@@ -604,7 +605,7 @@ export class Orchestrator extends EventEmitter {
 
     const created: OrchestratorTask = {
       id: taskId,
-      persona: input.persona,
+      agent: input.agent,
       description,
       prompt: input.prompt,
       priority,
@@ -638,8 +639,8 @@ export class Orchestrator extends EventEmitter {
       task.status === "pending" ? "idle" : task.status;
     return {
       id: workerId,
-      name: worker?.name ?? `${task.persona}-${task.description}`,
-      persona: task.persona,
+      name: worker?.name ?? `${task.agent}-${task.description}`,
+      agent: task.agent,
       taskId: task.id,
       pid,
       attempt: task.attempt,
@@ -656,7 +657,7 @@ export class Orchestrator extends EventEmitter {
     return {
       id: task.id,
       description: task.description,
-      persona: task.persona,
+      agent: task.agent,
       status: task.status,
       priority: task.priority,
       attempt: task.attempt,

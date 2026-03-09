@@ -1713,8 +1713,8 @@ const PlanCreateParams = z.object({
   objective: z.string().describe("What the plan aims to achieve"),
   steps: z.array(z.string()).min(1).max(20)
     .describe("Ordered list of step descriptions"),
-  persona: z.enum(["zee"]).optional()
-    .describe("Persona owning this plan (default: current persona)"),
+  agent: z.enum(["zee"]).optional()
+    .describe("Agent owning this plan (default: Zee)"),
 });
 
 export const planCreateTool: ToolDefinition = {
@@ -1724,13 +1724,13 @@ export const planCreateTool: ToolDefinition = {
     description: `Create a multi-step plan for complex requests. Plans persist in memory and can be resumed across sessions.`,
     parameters: PlanCreateParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const persona = "zee";
+      const agent = "zee";
       const sessionId = ctx.extra?.sessionId as string | undefined;
 
       ctx.metadata({ title: `Creating plan: ${args.objective.slice(0, 40)}...` });
 
       try {
-        const plan = await createPlan(persona, args.objective, args.steps, sessionId);
+        const plan = await createPlan(agent, args.objective, args.steps, sessionId);
 
         // Auto-start the first step
         const advanced = await advancePlan(plan.id);
@@ -1815,8 +1815,8 @@ Next: ${nextStep?.description ?? "No more steps"}`,
 
 const PlanStatusParams = z.object({
   planId: z.string().optional().describe("Specific plan ID to check"),
-  persona: z.enum(["zee"]).optional()
-    .describe("List plans for a persona"),
+  agent: z.enum(["zee"]).optional()
+    .describe("List plans for an agent"),
   status: z.enum(["active", "completed", "abandoned"]).optional()
     .describe("Filter by plan status"),
 });
@@ -1825,7 +1825,7 @@ export const planStatusTool: ToolDefinition = {
   id: "zee:plan-status",
   category: "domain",
   init: async () => ({
-    description: `Check plan status. View a specific plan by planId or list all plans for a persona filtered by status.`,
+    description: `Check plan status. View a specific plan by planId or list all plans for Zee filtered by status.`,
     parameters: PlanStatusParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       ctx.metadata({ title: `Plan status` });
@@ -1847,21 +1847,21 @@ export const planStatusTool: ToolDefinition = {
           };
         }
 
-        const persona = "zee";
-        const plans = await listPlans(persona, { status: args.status });
+        const agent = "zee";
+        const plans = await listPlans(agent, { status: args.status });
 
         if (plans.length === 0) {
           return {
             title: `No Plans`,
-            metadata: { persona, status: args.status },
-            output: `No ${args.status ?? ""} plans found for ${persona}.`,
+            metadata: { agent, status: args.status },
+            output: `No ${args.status ?? ""} plans found for ${agent}.`,
           };
         }
 
         const list = plans.map((p) => formatPlan(p)).join("\n\n---\n\n");
         return {
           title: `${plans.length} Plans`,
-          metadata: { persona, count: plans.length },
+          metadata: { agent, count: plans.length },
           output: list,
         };
       } catch (error) {

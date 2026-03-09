@@ -185,29 +185,28 @@ function App() {
   }
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
 
-  // Update terminal window title based on current route, session, and active persona
+  // Update terminal window title based on current route, session, and active agent.
   createEffect(() => {
     if (!terminalTitleEnabled()) return
 
-    // Get the current persona name (titlecased)
-    const persona = local.agent.current().name
-    const personaTitle = persona.charAt(0).toUpperCase() + persona.slice(1).toLowerCase()
+    const agentName = local.agent.current().name
+    const agentTitle = agentName.charAt(0).toUpperCase() + agentName.slice(1).toLowerCase()
 
     if (route.data.type === "home") {
-      renderer.setTerminalTitle(personaTitle)
+      renderer.setTerminalTitle(agentTitle)
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
       if (!session || SessionApi.isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle(personaTitle)
+        renderer.setTerminalTitle(agentTitle)
         return
       }
 
       // Truncate title to 40 chars max
       const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
-      renderer.setTerminalTitle(`${personaTitle} | ${title}`)
+      renderer.setTerminalTitle(`${agentTitle} | ${title}`)
     }
   })
 

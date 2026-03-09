@@ -44,7 +44,7 @@ const CronPayloadSchema = z.discriminatedUnion("kind", [
     deliver: z.boolean().optional(),
     channel: z.string().optional(),
     to: z.string().optional(),
-    persona: z.string().optional(),
+    agent: z.string().optional(),
   }),
   z.object({
     kind: z.literal("toolInvoke"),

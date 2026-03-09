@@ -11,7 +11,7 @@ import { Server } from "../../server/server"
 import { Provider } from "../../provider/provider"
 import { Agent } from "../../agent/agent"
 import { checkEnvironment } from "./check"
-import { Stanley } from "../../paths"
+import { Investing } from "../../paths"
 import { GlobalBus } from "../../bus/global"
 import { ExperimentalHooks } from "@/hooks/experimental-hooks"
 import { Instance } from "@/project/instance"
@@ -259,10 +259,10 @@ export const RunCommand = cmd({
   handler: async (args) => {
     await checkEnvironment()
 
-    // Mandatory: Stanley runtime must be reachable or ready for autostart
-    const stanleyErr = Stanley.preflight()
-    if (stanleyErr) {
-      UI.error("Stanley backend is not ready:\n" + stanleyErr)
+    // Mandatory: Investing runtime must be reachable or ready for autostart
+    const investingErr = Investing.preflight()
+    if (investingErr) {
+      UI.error("Investing backend is not ready:\n" + investingErr)
       process.exit(1)
     }
 

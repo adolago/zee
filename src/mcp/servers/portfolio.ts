@@ -2,7 +2,7 @@
 /**
  * Portfolio MCP Server
  *
- * Exposes Stanley's financial tools via MCP protocol:
+ * Exposes Investing's financial tools via MCP protocol:
  * - portfolio_status: Get portfolio holdings and performance
  * - portfolio_position: Get/update individual positions
  * - market_data: Get market data for symbols
@@ -16,17 +16,17 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { Stanley } from "../../paths.js";
+import { Investing } from "../../paths.js";
 import { installMcpParentGuard } from "./parent-guard.js";
 
-type StanleyResult = {
+type InvestingResult = {
   ok: boolean;
   command?: string;
   data?: unknown;
   error?: string;
 };
 
-type StanleyEnvelope<T> = {
+type InvestingEnvelope<T> = {
   success: boolean;
   data: T | null;
   error: string | null;
@@ -45,10 +45,10 @@ type PortfolioState = {
 };
 
 function apiBaseUrl(): string {
-  return Stanley.apiUrl().replace(/\/+$/, "");
+  return Investing.apiUrl().replace(/\/+$/, "");
 }
 
-async function requestStanley(pathname: string, init?: RequestInit): Promise<StanleyResult> {
+async function requestInvesting(pathname: string, init?: RequestInit): Promise<InvestingResult> {
   try {
     const response = await fetch(`${apiBaseUrl()}${pathname}`, {
       ...init,
@@ -58,7 +58,7 @@ async function requestStanley(pathname: string, init?: RequestInit): Promise<Sta
       },
     });
     const text = await response.text();
-    const payload = text ? JSON.parse(text) as StanleyEnvelope<unknown> | unknown : null;
+    const payload = text ? JSON.parse(text) as InvestingEnvelope<unknown> | unknown : null;
 
     if (
       payload &&
@@ -66,11 +66,11 @@ async function requestStanley(pathname: string, init?: RequestInit): Promise<Sta
       "success" in payload &&
       "data" in payload
     ) {
-      const envelope = payload as StanleyEnvelope<unknown>;
+      const envelope = payload as InvestingEnvelope<unknown>;
       if (!response.ok || !envelope.success) {
         return {
           ok: false,
-          error: envelope.error || `Stanley request failed with status ${response.status}`,
+          error: envelope.error || `Investing request failed with status ${response.status}`,
         };
       }
       return { ok: true, data: envelope.data };
@@ -79,7 +79,7 @@ async function requestStanley(pathname: string, init?: RequestInit): Promise<Sta
     if (!response.ok) {
       return {
         ok: false,
-        error: text || `Stanley request failed with status ${response.status}`,
+        error: text || `Investing request failed with status ${response.status}`,
       };
     }
 
@@ -107,7 +107,7 @@ function normalizeSymbol(symbol: string): string {
 }
 
 function portfolioFilePath(): string {
-  return Stanley.portfolioFile();
+  return Investing.portfolioFile();
 }
 
 function loadPortfolioState(): PortfolioState {
@@ -172,7 +172,7 @@ function portfolioHoldings(state: PortfolioState) {
 async function enrichPositions(state: PortfolioState) {
   return Promise.all(
     state.positions.map(async (position) => {
-      const quote = await requestStanley(`/api/market/${position.symbol}/quote`);
+      const quote = await requestInvesting(`/api/market/${position.symbol}/quote`);
       const quoteData = quote.ok && quote.data && typeof quote.data === "object"
         ? quote.data as Record<string, unknown>
         : {};
@@ -192,11 +192,11 @@ async function enrichPositions(state: PortfolioState) {
   );
 }
 
-async function runStanleyCli(args: string[]): Promise<StanleyResult> {
+async function runInvestingCli(args: string[]): Promise<InvestingResult> {
   const [domain, action] = args;
 
   if (domain === "status") {
-    return requestStanley("/api/health");
+    return requestInvesting("/api/health");
   }
 
   if (domain === "portfolio") {
@@ -204,13 +204,13 @@ async function runStanleyCli(args: string[]): Promise<StanleyResult> {
     if (action === "status") {
       const positions = await enrichPositions(state);
       const analytics = state.positions.length > 0
-        ? await requestStanley("/api/portfolio/analytics", {
+        ? await requestInvesting("/api/portfolio/analytics", {
             method: "POST",
             body: JSON.stringify({ holdings: portfolioHoldings(state), benchmark: "SPY" }),
           })
         : { ok: true, data: null };
       const risk = hasFlag(args, "--risk") && state.positions.length > 0
-        ? await requestStanley("/api/portfolio/risk", {
+        ? await requestInvesting("/api/portfolio/risk", {
             method: "POST",
             body: JSON.stringify({
               holdings: portfolioHoldings(state),
@@ -310,7 +310,7 @@ async function runStanleyCli(args: string[]): Promise<StanleyResult> {
       .filter(Boolean);
     if (action === "quote" && symbols.length > 0) {
       const quotes = await Promise.all(symbols.map(async (symbol) => {
-        const result = await requestStanley(`/api/market/${symbol}/quote`);
+        const result = await requestInvesting(`/api/market/${symbol}/quote`);
         return { symbol, result };
       }));
       const failure = quotes.find((item) => !item.result.ok);
@@ -332,19 +332,19 @@ async function runStanleyCli(args: string[]): Promise<StanleyResult> {
     if (action === "historical" || action === "chart") {
       const period = flagValue(args, "--period") || "1mo";
       const interval = flagValue(args, "--interval") || "1d";
-      return requestStanley(`/api/market/${symbol}/history?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`);
+      return requestInvesting(`/api/market/${symbol}/history?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`);
     }
     if (action === "fundamentals" || action === "indicators") {
-      return requestStanley(`/api/market/${symbol}`);
+      return requestInvesting(`/api/market/${symbol}`);
     }
-    return requestStanley(`/api/market/${symbol}/quote`);
+    return requestInvesting(`/api/market/${symbol}/quote`);
   }
 
   if (domain === "sec" && action === "filings") {
     const symbol = normalizeSymbol(flagValue(args, "--ticker") || "");
     const filingType = (flagValue(args, "--type") || "10-K").toUpperCase();
     const limit = Number(flagValue(args, "--limit") || 5);
-    const result = await requestStanley(`/api/accounting/${symbol}/filings`);
+    const result = await requestInvesting(`/api/accounting/${symbol}/filings`);
     if (!result.ok) return result;
     const filings = Array.isArray(result.data)
       ? result.data as Record<string, unknown>[]
@@ -362,12 +362,12 @@ async function runStanleyCli(args: string[]): Promise<StanleyResult> {
 
   if (domain === "research" && action === "analyze") {
     const symbol = normalizeSymbol(flagValue(args, "--ticker") || args[2] || "");
-    return requestStanley(`/api/research/${symbol}`);
+    return requestInvesting(`/api/research/${symbol}`);
   }
 
   if (domain === "nautilus" && action === "backtest") {
     const symbol = normalizeSymbol(flagValue(args, "--symbol") || "");
-    return requestStanley("/api/signals/backtest", {
+    return requestInvesting("/api/signals/backtest", {
       method: "POST",
       body: JSON.stringify({
         symbol,
@@ -382,7 +382,7 @@ async function runStanleyCli(args: string[]): Promise<StanleyResult> {
 
   return {
     ok: false,
-    error: `Unsupported Stanley command: ${args.join(" ")}`,
+    error: `Unsupported Investing command: ${args.join(" ")}`,
   };
 }
 
@@ -417,7 +417,7 @@ Returns:
       cliArgs.push("--risk");
     }
 
-    const result = await runStanleyCli(cliArgs);
+    const result = await runInvestingCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -474,7 +474,7 @@ Actions:
       cliArgs.push("--price", String(price));
     }
 
-    const result = await runStanleyCli(cliArgs);
+    const result = await runInvestingCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -536,7 +536,7 @@ Supports:
       cliArgs.push("--interval", interval ?? "1d");
     }
 
-    const result = await runStanleyCli(cliArgs);
+    const result = await runInvestingCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -603,7 +603,7 @@ Supports:
       cliArgs.push("--analyze");
     }
 
-    const result = await runStanleyCli(cliArgs);
+    const result = await runInvestingCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -661,7 +661,7 @@ Includes:
       (sections ?? ["overview", "financials"]).join(","),
     ];
 
-    const result = await runStanleyCli(cliArgs);
+    const result = await runInvestingCli(cliArgs);
 
     if (!result.ok) {
       return {
@@ -732,7 +732,7 @@ Returns performance metrics, trade history, and equity curve.`,
       cliArgs.push("--params", JSON.stringify(params));
     }
 
-    const result = await runStanleyCli(cliArgs);
+    const result = await runInvestingCli(cliArgs);
 
     if (!result.ok) {
       return {

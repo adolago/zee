@@ -2,14 +2,14 @@ import { TextAttributes } from "@opentui/core"
 import { For, createMemo } from "solid-js"
 import { useLocal } from "@tui/context/local"
 import { useTheme } from "@tui/context/theme"
-import { resolvePersonaArt } from "./persona-art"
+import { resolveAssistantArt } from "./assistant-art"
 
 export function Logo() {
   const local = useLocal()
   const { theme } = useTheme()
 
   const agent = createMemo(() => local.agent.current())
-  const art = createMemo(() => resolvePersonaArt(agent().name))
+  const art = createMemo(() => resolveAssistantArt())
   const color = createMemo(() => theme.text)
 
   return (

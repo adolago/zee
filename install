@@ -194,7 +194,7 @@ print_message() {
     echo -e "${color}${message}${NC}"
 }
 
-select_python_for_stanley() {
+select_python_for_investing() {
     local candidate=""
     local version=""
     local major=""
@@ -222,12 +222,12 @@ PY
     return 1
 }
 
-stanley_python_path=""
-install_stanley_dependencies() {
-    print_message info "\n${MUTED}Installing Stanley Python dependencies${NC}"
+investing_python_path=""
+install_investing_dependencies() {
+    print_message info "\n${MUTED}Installing Investing Python dependencies${NC}"
 
     local python_cmd=""
-    python_cmd="$(select_python_for_stanley || true)"
+    python_cmd="$(select_python_for_investing || true)"
     if [ -z "$python_cmd" ]; then
         print_message error "No supported Python interpreter found (requires Python 3.10-3.13)."
         print_message error "Install Python 3.12 and re-run the installer."
@@ -236,15 +236,15 @@ install_stanley_dependencies() {
 
     local requirements_lock_file=""
     local requirements_main_file=""
-    requirements_lock_file="$(mktemp "${TMPDIR:-/tmp}/zee_stanley_requirements_lock_XXXXXX.txt")"
-    requirements_main_file="$(mktemp "${TMPDIR:-/tmp}/zee_stanley_requirements_main_XXXXXX.txt")"
+    requirements_lock_file="$(mktemp "${TMPDIR:-/tmp}/zee_investing_requirements_lock_XXXXXX.txt")"
+    requirements_main_file="$(mktemp "${TMPDIR:-/tmp}/zee_investing_requirements_main_XXXXXX.txt")"
 
-    if [ -f "./stanley/requirements-lock.txt" ]; then
-        cp "./stanley/requirements-lock.txt" "$requirements_lock_file"
+    if [ -f "./investing/requirements-lock.txt" ]; then
+        cp "./investing/requirements-lock.txt" "$requirements_lock_file"
     fi
 
-    if [ -f "./stanley/requirements.txt" ]; then
-        cp "./stanley/requirements.txt" "$requirements_main_file"
+    if [ -f "./investing/requirements.txt" ]; then
+        cp "./investing/requirements.txt" "$requirements_main_file"
     fi
 
     if [ ! -s "$requirements_lock_file" ] && [ ! -s "$requirements_main_file" ]; then
@@ -254,21 +254,21 @@ install_stanley_dependencies() {
             ref="v${specific_version}"
         fi
 
-        local base_url="https://raw.githubusercontent.com/${repo}/${ref}/stanley"
+        local base_url="https://raw.githubusercontent.com/${repo}/${ref}/investing"
         curl -fsSL "${base_url}/requirements-lock.txt" -o "$requirements_lock_file" || true
         curl -fsSL "${base_url}/requirements.txt" -o "$requirements_main_file" || true
     fi
 
     if [ ! -s "$requirements_lock_file" ] && [ ! -s "$requirements_main_file" ]; then
         rm -f "$requirements_lock_file" "$requirements_main_file"
-        print_message error "Failed to fetch Stanley requirements."
+        print_message error "Failed to fetch Investing requirements."
         exit 1
     fi
 
     local xdg_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-    local stanley_root="${xdg_data_home}/zee/stanley"
-    local venv_dir="${stanley_root}/.venv"
-    mkdir -p "$stanley_root"
+    local investing_root="${xdg_data_home}/zee/investing"
+    local venv_dir="${investing_root}/.venv"
+    mkdir -p "$investing_root"
 
     if [ ! -x "${venv_dir}/bin/python" ]; then
         "$python_cmd" -m venv "$venv_dir"
@@ -281,7 +281,7 @@ install_stanley_dependencies() {
         if "${pip_install_cmd[@]}" -r "$requirements_lock_file"; then
             installed=true
         else
-            print_message warning "Stanley lockfile install failed; retrying with requirements.txt."
+            print_message warning "Investing lockfile install failed; retrying with requirements.txt."
         fi
     fi
 
@@ -294,12 +294,12 @@ install_stanley_dependencies() {
     rm -f "$requirements_lock_file" "$requirements_main_file"
 
     if [ "$installed" != "true" ]; then
-        print_message error "Failed to install Stanley dependencies."
+        print_message error "Failed to install Investing dependencies."
         exit 1
     fi
 
-    stanley_python_path="${venv_dir}/bin/python"
-    print_message info "${MUTED}Stanley dependencies installed at ${NC}${venv_dir}"
+    investing_python_path="${venv_dir}/bin/python"
+    print_message info "${MUTED}Investing dependencies installed at ${NC}${venv_dir}"
 }
 
 check_version() {
@@ -471,7 +471,7 @@ else
     download_and_install
 fi
 
-install_stanley_dependencies
+install_investing_dependencies
 
 
 add_to_path() {
@@ -568,12 +568,12 @@ if [[ "$no_modify_path" != "true" ]]; then
     fi
 fi
 
-if [ -n "$stanley_python_path" ]; then
+if [ -n "$investing_python_path" ]; then
     if [[ "$no_modify_path" != "true" ]] && [[ -n "$config_file" ]]; then
-        add_export_to_shell "$config_file" "export STANLEY_PYTHON=$stanley_python_path"
+        add_export_to_shell "$config_file" "export ZEE_INVESTING_PYTHON=$investing_python_path"
     else
-        print_message warning "Set Stanley Python manually in your shell profile:"
-        print_message info "  export STANLEY_PYTHON=$stanley_python_path"
+        print_message warning "Set Investing Python manually in your shell profile:"
+        print_message info "  export ZEE_INVESTING_PYTHON=$investing_python_path"
     fi
 fi
 

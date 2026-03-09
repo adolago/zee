@@ -10,7 +10,7 @@
  * - permission.ts: Permission checking system
  * - server.ts: MCP server management
  * - builtin/: Built-in tool implementations
- * - domain/: Domain-specific tools (Stanley, Zee)
+ * - domain/: Domain-specific tools (investing, learning, Zee)
  */
 
 // ============================================================================
@@ -52,7 +52,7 @@ export * from './domain';
 import { getToolRegistry } from './registry';
 import { getMcpServerManager, resetMcpServerManager } from './server';
 import { registerBuiltinTools } from './builtin';
-import { registerStanleyTools, registerZeeTools, registerJohnyTools, registerZeeFullTools, registerAllDomainTools } from './domain';
+import { registerInvestingTools, registerZeeTools, registerLearningTools, registerZeeFullTools, registerAllDomainTools } from './domain';
 import type { McpServerConfig, SurfaceType, AgentInfo } from './types';
 
 /**
@@ -64,12 +64,12 @@ import type { McpServerConfig, SurfaceType, AgentInfo } from './types';
 export async function initializeMcp(options?: {
   /** MCP server configurations */
   mcpServers?: Record<string, McpServerConfig>;
-  /** Enable Stanley domain tools */
-  enableStanley?: boolean;
+  /** Enable investing domain tools */
+  enableInvesting?: boolean;
   /** Enable Zee domain tools */
   enableZee?: boolean;
-  /** Enable Johny domain tools */
-  enableJohny?: boolean;
+  /** Enable learning domain tools */
+  enableLearning?: boolean;
   /** Enable full domain tools (async load from src/domain/) */
   enableFullDomainTools?: boolean;
   /** Permission configuration */
@@ -92,7 +92,7 @@ export async function initializeMcp(options?: {
   // Register built-in tools
   registerBuiltinTools();
 
-  // Register all domain tools unconditionally (unified Zee persona)
+  // Register all domain tools unconditionally (unified Zee assistant)
   await registerAllDomainTools();
 
   // Initialize MCP servers if configured
@@ -158,7 +158,7 @@ export type {
   McpRemoteConfig,
   McpServerStatus,
   McpOAuthConfig,
-  StanleyTools,
+  InvestingTools,
   ZeeTools,
   FileAttachment,
 } from './types';

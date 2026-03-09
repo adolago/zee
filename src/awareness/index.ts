@@ -1,10 +1,10 @@
 /**
  * Awareness Module - Enhanced for Assertive Tool Use
  *
- * Generates runtime awareness information for personas including:
+ * Generates runtime awareness information for agents including:
  * - Tiered tool catalog with examples (primary → secondary → available)
  * - MCP server tools with concise summaries
- * - Knowledge files from persona configuration
+ * - Knowledge files from assistant configuration
  * - Runtime configuration state (enabled services)
  *
  * Key improvements:
@@ -42,11 +42,11 @@ const TOKEN_BUDGETS = {
  * Generate complete awareness section for system prompt
  *
  * Order of sections (most actionable first):
- * 1. Your Primary Tools - persona-specific tools with examples
+ * 1. Your Primary Tools - assistant-specific tools with examples
  * 2. Core Tools - essential tools in compact format
  * 3. MCP Servers - external tools available via MCP
  * 4. Active Configuration - enabled services
- * 5. Knowledge Context - persona knowledge files
+ * 5. Knowledge Context - assistant knowledge files
  */
 export async function generateAwarenessSection(agent: Agent.Info): Promise<string> {
   const sections: string[] = []
@@ -88,7 +88,7 @@ export async function generateAwarenessSection(agent: Agent.Info): Promise<strin
   }
 
   // 4. Knowledge Files
-  // Load persona-specific knowledge (IDENTITY.md, SOUL.md, etc.)
+  // Load assistant-specific knowledge (IDENTITY.md, SOUL.md, etc.)
   try {
     const knowledge = await loadKnowledgeFiles(agent.knowledge)
     const knowledgeSection = formatKnowledgeForPrompt(knowledge, TOKEN_BUDGETS.knowledge)

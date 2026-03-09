@@ -9,10 +9,10 @@
  *
  * @example
  * ```typescript
- * // Execute a handoff from zee to stanley
+ * // Execute a handoff from zee to investing
  * const result = await executeHandoff({
  *   sourceAgent: 'zee',
- *   targetAgent: 'stanley',
+ *   targetAgent: 'investing',
  *   capability: 'market_data',
  *   reason: 'User requested financial analysis',
  *   context: {

@@ -119,7 +119,7 @@ const cli = yargs(hideBin(process.argv))
   .middleware(async (opts) => {
     if (!process.env.ZEE_ROOT) {
       const rootCandidate = path.resolve(path.dirname(process.execPath), "..")
-      if (fs.existsSync(path.join(rootCandidate, "vendor", "personas"))) {
+      if (fs.existsSync(path.join(rootCandidate, ".zee"))) {
         process.env.ZEE_ROOT = rootCandidate
       }
     }

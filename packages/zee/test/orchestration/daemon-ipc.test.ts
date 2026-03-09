@@ -32,7 +32,7 @@ describe("daemon orchestration IPC client", () => {
             task: {
               id: "task-1",
               description: "demo",
-              persona: "zee",
+              agent: "zee",
               status: "completed",
               priority: 0,
               attempt: 1,
@@ -91,7 +91,7 @@ describe("daemon orchestration IPC client", () => {
   test("runTaskViaDaemon sends run_task request and parses response", async () => {
     const result = await runTaskViaDaemon(
       {
-        persona: "zee",
+        agent: "zee",
         description: "quick check",
         prompt: "say hi",
       },
@@ -99,6 +99,7 @@ describe("daemon orchestration IPC client", () => {
     )
 
     expect(result.task.id).toBe("task-1")
+    expect(result.task.agent).toBe("zee")
     expect(result.task.status).toBe("completed")
     expect(result.output).toContain("task_result")
   })

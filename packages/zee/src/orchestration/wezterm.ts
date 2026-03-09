@@ -382,7 +382,7 @@ export namespace WeztermOrchestration {
   export async function createSessionPane(
     sessionId: string,
     title: string,
-    persona: "zee" | "stanley" | "johny",
+    agent: "zee",
   ): Promise<string | null> {
     if (!isInitialized) return null
 
@@ -393,13 +393,12 @@ export namespace WeztermOrchestration {
       const { stdout } = await execAsync(`wezterm cli split-pane ${direction} --percent ${percent}`)
       const paneId = stdout.trim()
 
-      // Set title with persona icon
-      const icon = getPersonaIcon(persona)
+      const icon = getAgentIcon(agent)
       await setPaneTitle(paneId, `${icon} ${title}`)
 
       sessionPanes.set(sessionId, paneId)
 
-      log.info("Created session pane", { sessionId, paneId, persona })
+      log.info("Created session pane", { sessionId, paneId, agent })
       return paneId
     } catch (error) {
       log.warn("Failed to create session pane", {
@@ -477,15 +476,8 @@ export namespace WeztermOrchestration {
     return `${hours}h ${mins}m`
   }
 
-  function getPersonaIcon(persona: "zee" | "stanley" | "johny"): string {
-    switch (persona) {
-      case "zee":
-        return "★"
-      case "stanley":
-        return "♦"
-      case "johny":
-        return "◎"
-    }
+  function getAgentIcon(_agent: "zee"): string {
+    return "★"
   }
 
   // -------------------------------------------------------------------------

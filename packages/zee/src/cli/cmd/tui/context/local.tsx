@@ -55,7 +55,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const agents = createMemo((): AgentWithFallback[] => {
         const list = sync.data?.agent as AgentWithFallback[] | undefined
         if (!list || !Array.isArray(list)) return []
-        return list.filter((x) => x.mode !== "subagent" && !x.hidden).sort((a, b) => b.name.localeCompare(a.name)) // Reverse alpha: Zee, Stanley, Johny
+        return list.filter((x) => x.mode !== "subagent" && !x.hidden).sort((a, b) => b.name.localeCompare(a.name))
       })
       const [agentStore, setAgentStore] = createStore<{
         current: string

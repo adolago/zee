@@ -186,22 +186,17 @@ WhatsApp:
 
 Telegram:
 - to: Chat ID (numeric) or @username
-- persona: Which bot/account to use - "stanley" (default) or "johny"
 
 Examples:
 - WhatsApp: { channel: "whatsapp", to: "+15551234567", message: "Hello!" }
 - WhatsApp media: { channel: "whatsapp", to: "+15551234567", message: "Check this", mediaUrl: "/tmp/photo.jpg" }
-- Telegram via Stanley: { channel: "telegram", to: "123456789", message: "Market update!", persona: "stanley" }`,
+- Telegram: { channel: "telegram", to: "123456789", message: "Market update!" }`,
   args: {
     channel: tool.schema
       .enum(["whatsapp", "telegram"])
       .describe("Messaging channel: whatsapp or telegram"),
     to: tool.schema.string().describe("Recipient: WhatsApp E.164 phone/JID or Telegram chatId (numeric)"),
     message: tool.schema.string().describe("Message content"),
-    persona: tool.schema
-      .enum(["zee", "stanley", "johny"])
-      .optional()
-      .describe("For Telegram: which persona's bot to use (default: stanley)"),
     mediaUrl: tool.schema
       .string()
       .optional()
@@ -212,7 +207,7 @@ Examples:
       .describe("For WhatsApp: media type (auto-detected from extension if omitted)"),
   },
   async execute(args) {
-    const { channel, to, message, persona, mediaUrl, mediaType } = args
+    const { channel, to, message, mediaUrl, mediaType } = args
 
     const rawBaseUrl =
       process.env.ZEE_URL ||
@@ -246,8 +241,6 @@ Troubleshooting:
 ${troubleshooting}`
 
       } else if (channel === "telegram") {
-        // Send via Telegram gateway (Stanley/Johny bots)
-        const selectedPersona = persona || "stanley"
         const chatId = parseInt(to, 10)
 
         if (isNaN(chatId)) {
@@ -259,12 +252,12 @@ Chat ID must be a numeric value (e.g., 123456789).`
         const response = await fetch(`${baseUrl}/gateway/telegram/send`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ persona: selectedPersona, chatId, message }),
+          body: JSON.stringify({ chatId, message }),
         })
 
         if (!response.ok) {
           const error = await response.text()
-          return `Failed to send Telegram message via ${selectedPersona}: ${error}
+          return `Failed to send Telegram message: ${error}
 
 Troubleshooting:
 - Ensure \`zee daemon\` is running
@@ -274,10 +267,10 @@ Troubleshooting:
 
         const result = await response.json()
         if (!result.success) {
-          return `Failed to send Telegram message via ${selectedPersona}: ${result.error || "Unknown error"}`
+          return `Failed to send Telegram message: ${result.error || "Unknown error"}`
         }
 
-        return `Message sent via Telegram (${selectedPersona} bot) to chat ${to}
+        return `Message sent via Telegram to chat ${to}
 
 Preview: "${message.substring(0, 100)}${message.length > 100 ? "..." : ""}"`
       }

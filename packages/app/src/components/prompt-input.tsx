@@ -44,8 +44,8 @@ import { useDialog } from "@zee/ui/context/dialog"
 import { ImagePreview } from "@zee/ui/image-preview"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaid } from "@/components/dialog-select-model-unpaid"
-import { PersonaSelectorCompact } from "@/components/persona-selector"
-import { usePersona } from "@/context/persona"
+import { AssistantSelectorCompact } from "@/components/assistant-selector"
+import { useAssistant } from "@/context/assistant"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
 import { Persist, persisted } from "@/utils/persist"
@@ -134,7 +134,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const command = useCommand()
   const permission = usePermission()
   const language = useLanguage()
-  const persona = usePersona()
+  const assistant = useAssistant()
   let editorRef!: HTMLDivElement
   let fileInputRef!: HTMLInputElement
   let scrollRef!: HTMLDivElement
@@ -1940,10 +1940,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
               </Match>
               <Match when={store.mode === "normal"}>
-                <PersonaSelectorCompact
-                  value={persona.id()}
+                <AssistantSelectorCompact
+                  value={assistant.id()}
                   onChange={(id) => {
-                    persona.set(id)
+                    assistant.set(id)
                     local.agent.set(id)
                   }}
                 />

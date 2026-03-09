@@ -103,10 +103,7 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
         }
 
         const shown = results.slice(0, maxResults)
-        const lines = shown.map((s) => {
-          const crossTag = s.affinity === "cross" ? ` [via @${s.context}]` : ""
-          return `- **${s.name}**: ${s.description}${crossTag}`
-        })
+        const lines = shown.map((s) => `- **${s.name}**: ${s.description}`)
         if (results.length > maxResults) {
           lines.push(`\n...and ${results.length - maxResults} more. Refine your search to narrow results.`)
         }
@@ -126,7 +123,7 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
 })
 
 /**
- * Build a compact description that groups skills by affinity.
+ * Build a compact description for shared single-Zee skills.
  * Saves ~650 tokens compared to verbose XML listing.
  */
 function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
@@ -134,16 +131,14 @@ function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
     return "Load a skill to get detailed instructions for a specific task. No skills are currently available."
   }
 
-  const own = skills.filter((s) => s.affinity === "own")
   const shared = skills.filter((s) => s.affinity === "shared")
-  const cross = skills.filter((s) => s.affinity === "cross")
 
   const lines: string[] = [
     "Load a skill for detailed instructions on a specific task.",
     'Search with { query: "keyword" } to find skills by name, tag, or trigger phrase.',
     'Load with { name: "skill-name" } to get full instructions.',
     "",
-    "Skills by persona:",
+    "Available skills:",
   ]
 
   const summarize = (skill: Skill.AnnotatedInfo) => {
@@ -151,23 +146,8 @@ function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
     return `${skill.name} (${desc})`
   }
 
-  if (own.length > 0) {
-    lines.push(`  yours: ${own.map((s) => summarize(s)).join("; ")}`)
-  }
   if (shared.length > 0) {
-    lines.push(`  shared: ${shared.map((s) => summarize(s)).join("; ")}`)
-  }
-  if (cross.length > 0) {
-    // Group cross-persona skills by context
-    const byContext = new Map<string, string[]>()
-    for (const s of cross) {
-      const ctx = s.context ?? "other"
-      if (!byContext.has(ctx)) byContext.set(ctx, [])
-      byContext.get(ctx)!.push(summarize(s))
-    }
-    for (const [persona, names] of byContext) {
-      lines.push(`  @${persona}: ${names.join("; ")}`)
-    }
+    lines.push(`  ${shared.map((s) => summarize(s)).join("; ")}`)
   }
 
   return lines.join("\n")

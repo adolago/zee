@@ -4,7 +4,7 @@
 //! - Multi-note tab management
 //! - Markdown syntax highlighting (visual styling)
 //! - Markdown preview toggle
-//! - File persistence to ~/.stanley/notes/
+//! - File persistence to ~/.investing/notes/
 //! - Keyboard shortcuts (Ctrl+S, Ctrl+B, Ctrl+I, Ctrl+P, Ctrl+N)
 //! - Auto-save with debouncing
 //! - Dirty state tracking

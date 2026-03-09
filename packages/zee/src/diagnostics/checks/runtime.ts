@@ -9,7 +9,7 @@ import * as os from "os"
 import * as path from "path"
 import type { CheckResult, CheckOptions } from "../types"
 import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs"
-import { Stanley } from "../../paths"
+import { Investing } from "../../paths"
 
 /** Minimum required Bun version */
 const MIN_BUN_VERSION = "1.0.0"
@@ -347,8 +347,8 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
   results.push(await checkDiskSpace())
   results.push(await checkMemory())
 
-  // Stanley runtime
-  results.push(checkStanleyBackend())
+  // Investing runtime
+  results.push(checkInvestingBackend())
 
   // Extended checks (only in full mode)
   if (options.full) {
@@ -359,21 +359,21 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
 }
 
 /**
- * Check that the Stanley runtime is properly configured
+ * Check that the Investing runtime is properly configured
  */
-function checkStanleyBackend(): CheckResult {
+function checkInvestingBackend(): CheckResult {
   const start = Date.now()
-  const apiUrl = Stanley.apiUrl()
-  const coreBin = Stanley.coreBin()
+  const apiUrl = Investing.apiUrl()
+  const coreBin = Investing.coreBin()
 
-  const err = Stanley.preflight()
+  const err = Investing.preflight()
   if (err) {
     return {
-      id: "runtime.stanley-backend",
-      name: "Stanley Backend",
+      id: "runtime.investing-backend",
+      name: "Investing Backend",
       category: "runtime",
       status: "fail",
-      message: "Stanley runtime not ready",
+      message: "Investing runtime not ready",
       details: err,
       severity: "critical",
       durationMs: Date.now() - start,
@@ -382,13 +382,13 @@ function checkStanleyBackend(): CheckResult {
   }
 
   return {
-    id: "runtime.stanley-backend",
-    name: "Stanley Backend",
+    id: "runtime.investing-backend",
+    name: "Investing Backend",
     category: "runtime",
     status: "pass",
     message: coreBin
       ? `Rust runtime ready via ${coreBin}`
-      : `External Stanley runtime configured at ${apiUrl}`,
+      : `External Investing runtime configured at ${apiUrl}`,
     severity: "info",
     durationMs: Date.now() - start,
     autoFixable: false,

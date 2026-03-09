@@ -5,13 +5,19 @@
 
 import { spawn, ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import type { WorkerConfig, WorkerState, WorkerStatus, WorkerMessage } from "./types";
+import type {
+  WorkerAgent,
+  WorkerConfig,
+  WorkerState,
+  WorkerStatus,
+  WorkerMessage,
+} from "./types";
 
 export class Worker extends EventEmitter {
   readonly id: string;
   readonly name: string;
   readonly prompt: string;
-  readonly persona: "zee" | "stanley" | "johny";
+  readonly agent: WorkerAgent;
   readonly taskId?: string;
   readonly timeoutMs?: number;
   readonly attempt: number;
@@ -33,7 +39,7 @@ export class Worker extends EventEmitter {
     this.id = config.id;
     this.name = config.name;
     this.prompt = config.prompt;
-    this.persona = config.persona ?? "zee";
+    this.agent = config.agent ?? "zee";
     this.taskId = config.taskId;
     this.timeoutMs = config.timeoutMs;
     this.attempt = Math.max(1, config.attempt ?? 1);
@@ -57,12 +63,12 @@ export class Worker extends EventEmitter {
 
     // Spawn zee with the prompt
     // Uses daemon API to create a session and stream output
-    // Persona identity flows to subagent (mini-persona pattern)
+    // Assistant identity is always Zee for daemon-managed workers.
     this.process = spawn(
       "zee",
       [
         "prompt",
-        "--agent", this.persona,
+        "--agent", this.agent,
         ...(this.permissionScope && this.permissionScope !== "full"
           ? ["--permission-scope", this.permissionScope]
           : []),
@@ -76,7 +82,7 @@ export class Worker extends EventEmitter {
           ...(this.env ?? {}),
           ZEE_WORKER_ID: this.id,
           ZEE_WORKER_NAME: this.name,
-          ZEE_PERSONA: this.persona,
+          ZEE_AGENT: this.agent,
           ZEE_IS_SUBAGENT: "true",
           ZEE_PARENT_PID: String(process.pid),
           ...(this.permissionScope ? { ZEE_PERMISSION_SCOPE: this.permissionScope } : {}),
@@ -193,7 +199,7 @@ export class Worker extends EventEmitter {
     return {
       id: this.id,
       name: this.name,
-      persona: this.persona,
+      agent: this.agent,
       taskId: this.taskId,
       pid: this.process?.pid,
       attempt: this.attempt,

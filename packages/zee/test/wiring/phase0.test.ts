@@ -23,15 +23,15 @@ describe("wiring.phase0", () => {
   describe("johny tools", () => {
     test(" Johny domain exports expected tools", async () => {
       // Read the Johny tools source file to verify structure
-      const johnyToolsPath = path.join(process.cwd(), "../../src/domain/johny/tools.ts")
+      const johnyToolsPath = path.join(process.cwd(), "../../src/domain/learning/tools.ts")
       const content = await fs.readFile(johnyToolsPath, "utf-8")
 
       // Should export the expected tool IDs
-      expect(content).toContain('id: "johny:study"')
-      expect(content).toContain('id: "johny:knowledge"')
-      expect(content).toContain('id: "johny:mastery"')
-      expect(content).toContain('id: "johny:review"')
-      expect(content).toContain('id: "johny:practice"')
+      expect(content).toContain('id: "zee:learn-study"')
+      expect(content).toContain('id: "zee:learn-knowledge"')
+      expect(content).toContain('id: "zee:learn-mastery"')
+      expect(content).toContain('id: "zee:learn-review"')
+      expect(content).toContain('id: "zee:learn-practice"')
 
       // Should export JOHNY_TOOLS array
       expect(content).toContain("export const JOHNY_TOOLS")

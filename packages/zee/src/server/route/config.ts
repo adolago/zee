@@ -69,7 +69,7 @@ export const ConfigRoute = new Hono()
                     id: z.string(),
                     name: z.string(),
                     builtin: z.boolean(),
-                    persona: z.string().optional(),
+                    agent: z.literal("zee").optional(),
                   }),
                 ),
               ),

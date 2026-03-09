@@ -193,7 +193,7 @@ function mergeCronPayload(existing: CronPayload, patch: CronPayloadPatch): CronP
   if (typeof patch.deliver === "boolean") next.deliver = patch.deliver
   if (typeof patch.channel === "string") next.channel = patch.channel
   if (typeof patch.to === "string") next.to = patch.to
-  if (typeof patch.persona === "string") next.persona = patch.persona
+  if (typeof patch.agent === "string") next.agent = patch.agent
   return next
 }
 
@@ -232,7 +232,7 @@ function buildPayloadFromPatch(patch: CronPayloadPatch): CronPayload {
     deliver: patch.deliver,
     channel: patch.channel,
     to: patch.to,
-    persona: patch.persona,
+    agent: patch.agent,
   }
 }
 

@@ -1,9 +1,9 @@
 /**
  * Conversation Thread Abstraction
  *
- * Provides a high-level interface for managing persona conversations across channels.
+ * Provides a high-level interface for managing Zee conversations across channels.
  * Threads map to sessions but add:
- * - Daily session management (one session per persona per day)
+ * - Daily session management (one session per day)
  * - User/channel identification
  * - Thread metadata (message counts, last activity)
  * - Cross-thread memory injection
@@ -40,9 +40,14 @@ export namespace Thread {
   export type Channel = "whatsapp" | "telegram" | "tui" | "api"
 
   /**
-   * Thread personas - which persona is handling the conversation
+   * Thread agents - Zee is the only primary assistant identity.
    */
-  export type Persona = "zee" | "stanley" | "johny"
+  export type Agent = "zee"
+  export type AgentInput = Agent
+
+  function normalizeAgent(_agent: AgentInput): Agent {
+    return "zee"
+  }
 
   /**
    * Thread info - metadata about a conversation thread
@@ -50,8 +55,8 @@ export namespace Thread {
   export const Info = z.object({
     /** Thread ID (maps to session ID) */
     id: z.string(),
-    /** The persona handling this thread */
-    persona: z.enum(["zee", "stanley", "johny"]),
+    /** The agent handling this thread */
+    agent: z.literal("zee"),
     /** The channel where the conversation happens */
     channel: z.enum(["whatsapp", "telegram", "tui", "api"]),
     /** User identifier (phone number, chat user ID, etc.) */
@@ -72,11 +77,11 @@ export namespace Thread {
   export type Info = z.output<typeof Info>
 
   /**
-   * Get or create a thread for a persona+channel+user combination.
+   * Get or create a thread for an agent+channel+user combination.
    * For messaging channels, this returns the daily session.
    */
   export async function getOrCreate(
-    persona: Persona,
+    agent: AgentInput,
     channel: Channel,
     options?: {
       userId?: string
@@ -85,6 +90,7 @@ export namespace Thread {
     },
   ): Promise<Info> {
     const directory = options?.directory ?? Instance.directory
+    const canonicalAgent = normalizeAgent(agent)
 
     // Map channel to surface type
     const surface = channelToSurface(channel)
@@ -92,7 +98,7 @@ export namespace Thread {
     // For gateway channels, use daily session management
     if (channel === "whatsapp" || channel === "telegram") {
       const chatIdNum = options?.chatId ? parseInt(options.chatId, 10) : undefined
-      const result = await Persistence.getOrCreateDailySession(persona, {
+      const result = await Persistence.getOrCreateDailySession(canonicalAgent, {
         chatId: Number.isNaN(chatIdNum) ? undefined : chatIdNum,
       })
 
@@ -111,7 +117,7 @@ export namespace Thread {
 
       return {
         id: result.sessionId,
-        persona,
+        agent: canonicalAgent,
         channel,
         userId: options?.userId,
         chatId: options?.chatId,
@@ -125,14 +131,14 @@ export namespace Thread {
 
     // For TUI/API, create a new session
     const session = await Session.createNext({
-      title: `${persona.charAt(0).toUpperCase() + persona.slice(1)} - ${channel.toUpperCase()} - ${new Date().toISOString()}`,
+      title: `${canonicalAgent.charAt(0).toUpperCase() + canonicalAgent.slice(1)} - ${channel.toUpperCase()} - ${new Date().toISOString()}`,
       directory,
       surface,
     })
 
     return {
       id: session.id,
-      persona,
+      agent: canonicalAgent,
       channel,
       userId: options?.userId,
       chatId: options?.chatId,
@@ -155,11 +161,11 @@ export namespace Thread {
       const messages = await Session.messages({ sessionID: threadId })
 
       // Parse thread info from session title
-      const { persona, channel } = parseSessionTitle(session.title)
+      const { agent, channel } = parseSessionTitle(session.title)
 
       return {
         id: session.id,
-        persona,
+        agent,
         channel,
         createdAt: session.time.created,
         lastActiveAt: session.time.updated,
@@ -183,14 +189,14 @@ export namespace Thread {
   }
 
   /**
-   * Get the current daily thread for a persona+channel
+   * Get the current daily thread for an agent+channel.
    */
-  export async function getCurrentDaily(persona: Persona, channel: Channel): Promise<Info | null> {
+  export async function getCurrentDaily(agent: AgentInput, channel: Channel): Promise<Info | null> {
     if (channel !== "whatsapp" && channel !== "telegram") {
       return null
     }
 
-    const dailySession = await Persistence.getDailySession(persona)
+    const dailySession = await Persistence.getDailySession(normalizeAgent(agent))
     if (!dailySession) return null
 
     return get(dailySession.sessionId)
@@ -199,32 +205,33 @@ export namespace Thread {
   /**
    * Check if a daily thread exists for today
    */
-  export async function hasDailyThread(persona: Persona, channel: Channel): Promise<boolean> {
+  export async function hasDailyThread(agent: AgentInput, channel: Channel): Promise<boolean> {
     if (channel !== "whatsapp" && channel !== "telegram") {
       return false
     }
 
-    return Persistence.hasDailySession(persona)
+    return Persistence.hasDailySession(normalizeAgent(agent))
   }
 
   /**
-   * List recent threads for a persona
+   * List recent threads for an agent.
    */
-  export async function listRecent(persona: Persona, options?: { limit?: number }): Promise<Info[]> {
+  export async function listRecent(agent: AgentInput, options?: { limit?: number }): Promise<Info[]> {
     const threads: Info[] = []
     const limit = options?.limit ?? 10
+    const canonicalAgent = normalizeAgent(agent)
 
     for await (const session of Session.list()) {
       if (threads.length >= limit) break
 
-      const { persona: sessionPersona, channel } = parseSessionTitle(session.title)
-      if (sessionPersona !== persona) continue
+      const { agent: sessionAgent, channel } = parseSessionTitle(session.title)
+      if (sessionAgent !== canonicalAgent) continue
 
       const messages = await Session.messages({ sessionID: session.id, limit: 1 })
 
       threads.push({
         id: session.id,
-        persona: sessionPersona,
+        agent: sessionAgent,
         channel,
         createdAt: session.time.created,
         lastActiveAt: session.time.updated,
@@ -237,23 +244,13 @@ export namespace Thread {
   }
 
   /**
-   * Parse session title to extract persona and channel
+   * Parse session title to extract agent and channel.
    * Expected formats:
    * - "Zee - 2026-01-11" (WhatsApp daily)
-   * - "Johny - TUI - 2026-01-11T12:00:00.000Z"
+   * - "Zee - TUI - 2026-01-11T12:00:00.000Z"
    */
-  function parseSessionTitle(title: string): { persona: Persona; channel: Channel } {
+  function parseSessionTitle(title: string): { agent: Agent; channel: Channel } {
     const lowerTitle = title.toLowerCase()
-
-    // Determine persona
-    let persona: Persona = "zee"
-    if (lowerTitle.includes("stanley")) {
-      persona = "stanley"
-    } else if (lowerTitle.includes("johny")) {
-      persona = "johny"
-    } else if (lowerTitle.includes("zee")) {
-      persona = "zee"
-    }
 
     // Determine channel
     let channel: Channel = "tui"
@@ -263,23 +260,19 @@ export namespace Thread {
       channel = "telegram"
     } else if (lowerTitle.includes("api")) {
       channel = "api"
-    } else if (persona === "zee" && !lowerTitle.includes("tui")) {
+    } else if (!lowerTitle.includes("tui")) {
       // Zee daily sessions without explicit channel are WhatsApp
       channel = "whatsapp"
     }
 
-    return { persona, channel }
+    return { agent: "zee", channel }
   }
 
   /**
    * Get thread summary for display
    */
   export function getSummary(thread: Info): string {
-    const personaIcon = {
-      zee: "★",
-      stanley: "♦",
-      johny: "◎",
-    }[thread.persona]
+    const agentIcon = "★"
 
     const channelLabel = {
       whatsapp: "WhatsApp",
@@ -290,7 +283,7 @@ export namespace Thread {
 
     const lastActive = Timestamp.pretty(new Date(thread.lastActiveAt))
 
-    return `${personaIcon} ${thread.persona.charAt(0).toUpperCase() + thread.persona.slice(1)} via ${channelLabel} (${thread.messageCount} msgs, last: ${lastActive})`
+    return `${agentIcon} Zee via ${channelLabel} (${thread.messageCount} msgs, last: ${lastActive})`
   }
 
   // =========================================================================
@@ -302,8 +295,8 @@ export namespace Thread {
     keyword?: string
     /** Search by files touched (edited/read) */
     files?: string[]
-    /** Filter by persona */
-    persona?: Persona
+    /** Filter by agent */
+    agent?: AgentInput
     /** Filter by channel */
     channel?: Channel
     /** Filter by date range */
@@ -334,11 +327,11 @@ export namespace Thread {
     for await (const session of Session.list()) {
       if (results.length >= limit) break
 
-      // Parse persona/channel from title
-      const { persona, channel } = parseSessionTitle(session.title)
+      // Parse agent/channel from title
+      const { agent, channel } = parseSessionTitle(session.title)
 
-      // Filter by persona
-      if (options.persona && persona !== options.persona) continue
+      // Filter by agent
+      if (options.agent && agent !== normalizeAgent(options.agent)) continue
 
       // Filter by channel
       if (options.channel && channel !== options.channel) continue
@@ -375,7 +368,7 @@ export namespace Thread {
       // Build thread info
       const thread: Info = {
         id: session.id,
-        persona,
+        agent,
         channel,
         createdAt: session.time.created,
         lastActiveAt: session.time.updated,
@@ -481,7 +474,7 @@ export namespace Thread {
 
   /**
    * Get the surface capabilities for a thread's channel.
-   * Useful for including in system prompts so the persona adapts its response style.
+   * Useful for including in system prompts so the assistant adapts its response style.
    */
   export function getCapabilities(channel: Channel): SurfaceCapabilities {
     switch (channel) {
@@ -497,7 +490,7 @@ export namespace Thread {
   }
 
   /**
-   * Get a concise hint string describing surface constraints for persona prompts.
+   * Get a concise hint string describing surface constraints for assistant prompts.
    */
   export function getSurfaceHint(channel: Channel): string {
     const caps = getCapabilities(channel)
@@ -542,7 +535,7 @@ export namespace Thread {
   /**
    * Resume a thread on a different surface.
    * Updates the session surface and injects a handoff summary as a system
-   * message so the persona has context from the previous surface.
+   * message so the assistant has context from the previous surface.
    */
   export async function resume(
     threadId: string,
@@ -565,7 +558,7 @@ export namespace Thread {
       })
     }
 
-    // Inject handoff summary as a synthetic system message so the persona
+    // Inject handoff summary as a synthetic system message so the assistant
     // has context from the previous conversation on the other surface.
     if (options?.injectSummary !== false) {
       try {

@@ -45,8 +45,8 @@ export interface SentinelSessionState {
   pendingTasks: string[];
   /** Delivery context for message routing */
   deliveryContext?: SentinelDeliveryContext;
-  /** Persona that was active (zee) */
-  persona?: string;
+  /** Agent that was active (zee) */
+  agent?: string;
   /** Working directory */
   workingDir?: string;
   /** Custom metadata */
@@ -671,9 +671,9 @@ export const sentinelSaveTool: Tool = {
         items: { type: "string" },
         description: "Pending tasks",
       },
-      persona: {
+      agent: {
         type: "string",
-        description: "Active persona (zee)",
+        description: "Active agent (zee)",
       },
       reason: {
         type: "string",
@@ -692,7 +692,7 @@ export const sentinelSaveTool: Tool = {
         keyFacts?: string[];
         objectives?: string[];
         pendingTasks?: string[];
-        persona?: string;
+        agent?: string;
         reason?: "manual" | "update" | "restart";
       };
 
@@ -707,7 +707,7 @@ export const sentinelSaveTool: Tool = {
             keyFacts: params.keyFacts ?? [],
             objectives: params.objectives ?? [],
             pendingTasks: params.pendingTasks ?? [],
-            persona: params.persona,
+            agent: params.agent,
             workingDir: process.cwd(),
           },
         ],
@@ -782,7 +782,7 @@ export const sentinelRestoreTool: Tool = {
           sessions: record.payload.sessions.map((s) => ({
             sessionKey: s.sessionKey,
             title: s.title,
-            persona: s.persona,
+            agent: s.agent,
             workingDir: s.workingDir,
             keyFacts: s.keyFacts,
             objectives: s.objectives,
@@ -835,7 +835,7 @@ export const sentinelSearchTool: Tool = {
           sessions: r.payload.sessions.map((s) => ({
             sessionKey: s.sessionKey,
             title: s.title,
-            persona: s.persona,
+            agent: s.agent,
           })),
         })),
       };

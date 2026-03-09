@@ -1,13 +1,13 @@
 /**
  * Zee - Unified AI Agent Foundation
  *
- * Powers Stanley (GUI/GPUI), Zee (WhatsApp), and zee (CLI/TUI)
+ * Powers Zee across messaging, CLI/TUI, and GUI surfaces
  * with subscription-based auth support (Claude Max, ChatGPT Plus, GitHub Copilot).
  *
  * ## Architecture Overview
  *
  * - **Provider System**: 15+ LLM providers with models.dev integration
- * - **Agent System**: Configurable personas, permissions, and mode switching
+ * - **Agent System**: Configurable assistant profiles, permissions, and mode switching
  * - **Tool System**: Built-in tools with MCP integration
  * - **Memory Layer**: Qdrant vector storage with semantic search
  * - **Surface Abstraction**: CLI/TUI, GUI, and Messaging adapters
@@ -24,7 +24,7 @@
 // Provider System - Multi-LLM support with subscription auth
 export * as Provider from "./provider/types.js";
 
-// Agent System - Configurable personas and permissions
+// Agent System - Configurable assistant profiles and permissions
 export * as Agent from "./agent/types.js";
 
 // Tool System - Built-in tools and MCP integration

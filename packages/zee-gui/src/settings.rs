@@ -467,7 +467,7 @@ impl SettingsView {
         }
     }
 
-    /// Get the config file path (~/.config/stanley/settings.json)
+    /// Get the config file path (~/.config/investing/settings.json)
     fn config_path() -> Option<std::path::PathBuf> {
         dirs::config_dir().map(|p| p.join("stanley").join("settings.json"))
     }

@@ -2,7 +2,7 @@
  * Tool Catalog Generator - Enhanced for Assertive Tool Use
  *
  * Generates a tiered, concise catalog of available tools that:
- * 1. Prioritizes persona-specific tools with full details + examples
+ * 1. Prioritizes assistant-specific tools with full details + examples
  * 2. Shows core tools in compact format
  * 3. Lists available MCP tools briefly
  * 4. Stays within token budget to avoid context bloat
@@ -22,14 +22,14 @@ export interface ToolCatalogEntry {
 }
 
 export interface ToolCatalog {
-  persona: string
+  agent: string
   tools: ToolCatalogEntry[]
   enabledServices: string[]
   generatedAt: number
 }
 
-// Primary tools - all available to the unified Zee persona
-const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
+// Primary tools - all available to the unified Zee assistant
+const AGENT_PRIMARY_TOOLS: Record<string, string[]> = {
   zee: [
     // Life admin
     "zee:browser",
@@ -40,21 +40,21 @@ const PERSONA_PRIMARY_TOOLS: Record<string, string[]> = {
     "zee:email",
     "zee:memory",
     "whatsapp",
-    // Investing (stanley: namespace)
-    "stanley:portfolio",
-    "stanley:market",
-    "stanley:backtest",
-    "stanley:sec",
-    "stanley:analysis",
-    "stanley:estimates",
-    "stanley:insider-trades",
-    "stanley:segments",
-    // Learning (johny: namespace)
-    "johny:knowledge",
-    "johny:mastery",
-    "johny:review",
-    "johny:practice",
-    "johny:study",
+    // Investing (zee:invest-* namespace)
+    "zee:invest-portfolio",
+    "zee:invest-market-data",
+    "zee:invest-nautilus",
+    "zee:invest-sec-filings",
+    "zee:invest-research",
+    "zee:invest-estimates",
+    "zee:invest-insider-trades",
+    "zee:invest-segments",
+    // Learning (zee:learn-* namespace)
+    "zee:learn-knowledge",
+    "zee:learn-mastery",
+    "zee:learn-review",
+    "zee:learn-practice",
+    "zee:learn-study",
   ],
 }
 
@@ -94,8 +94,8 @@ const TOOL_EXAMPLES: Record<string, string> = {
  */
 export async function generateToolCatalog(agent: Agent.Info): Promise<ToolCatalog> {
   const registry = await ToolRegistry.tools({ providerID: "", modelID: "" }, agent)
-  const personaName = agent.name.toLowerCase()
-  const primaryToolIds = PERSONA_PRIMARY_TOOLS[personaName] ?? []
+  const agentName = agent.name.toLowerCase()
+  const primaryToolIds = AGENT_PRIMARY_TOOLS[agentName] ?? []
 
   const tools: ToolCatalogEntry[] = []
 
@@ -104,12 +104,12 @@ export async function generateToolCatalog(agent: Agent.Info): Promise<ToolCatalo
 
     const isPrimary = primaryToolIds.some((p) => tool.id.includes(p) || tool.id === p)
     const isCore = CORE_TOOLS.includes(tool.id)
-    const isPersonaTool = tool.id.startsWith(`${personaName}:`)
+    const isAgentTool = tool.id.startsWith(`${agentName}:`)
 
     const entry: ToolCatalogEntry = {
       id: tool.id,
-      description: extractDescription(tool.description ?? "", isPrimary || isPersonaTool),
-      priority: isPrimary || isPersonaTool ? "primary" : isCore ? "secondary" : "available",
+      description: extractDescription(tool.description ?? "", isPrimary || isAgentTool),
+      priority: isPrimary || isAgentTool ? "primary" : isCore ? "secondary" : "available",
     }
 
     // Add actions for multi-action tools
@@ -141,7 +141,7 @@ export async function generateToolCatalog(agent: Agent.Info): Promise<ToolCatalo
   })
 
   return {
-    persona: agent.name,
+    agent: agent.name,
     tools,
     enabledServices: getEnabledServices(agent.name),
     generatedAt: Date.now(),
@@ -299,7 +299,7 @@ function groupByCategory(tools: ToolCatalogEntry[]): Record<string, ToolCatalogE
   return grouped
 }
 
-function getEnabledServices(_persona: string): string[] {
+function getEnabledServices(_agentName: string): string[] {
   const services: string[] = []
 
   try {

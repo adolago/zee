@@ -78,8 +78,8 @@ const SAFE_VARS = new Set([
   "ZEE_WEZTERM_ENABLED",
   "ZEE_DISABLE_TERMINAL_TITLE",
   // Persona repos (paths only, not credentials)
-  "STANLEY_REPO",
-  "JOHNY_REPO",
+  "ZEE_INVESTING_REPO",
+  "ZEE_LEARNING_REPO",
   "ZEE_REPO",
 ]);
 

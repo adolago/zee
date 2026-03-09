@@ -29,7 +29,7 @@ import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
 import { getZeeRoot } from "../paths"
 import { Global } from "@/global"
-import { getAllPersonaMcpServers } from "../../../../src/mcp/servers"
+import { getAllBuiltinMcpServers } from "../../../../src/mcp/servers"
 import { normalizeHttpUrl } from "@/util/net"
 import { openExternalUrl } from "@/util/open-external-url"
 
@@ -751,8 +751,8 @@ export namespace MCP {
   function isMcpConfigured(entry: McpEntry): entry is Config.Mcp {
     return typeof entry === "object" && entry !== null && "type" in entry
   }
-  const personaServers = getAllPersonaMcpServers()
-  type PersonaServerConfig = (typeof personaServers)[keyof typeof personaServers]
+  const builtinServers = getAllBuiltinMcpServers()
+  type BuiltinServerConfig = (typeof builtinServers)[keyof typeof builtinServers]
 
   function forceMcpEnabled(name: string, mcp: Config.Mcp): Config.Mcp {
     if (mcp.enabled !== false) return mcp
@@ -767,11 +767,11 @@ export namespace MCP {
     if (!entry) return undefined
     if (isMcpConfigured(entry)) return forceMcpEnabled(name, entry)
     if (typeof entry !== "object" || entry === null || !("enabled" in entry)) return undefined
-    const persona = (personaServers as Record<string, PersonaServerConfig>)[name]
-    if (!persona) return undefined
+    const builtin = (builtinServers as Record<string, BuiltinServerConfig>)[name]
+    if (!builtin) return undefined
     return forceMcpEnabled(name, {
-      type: persona.type,
-      command: Array.from(persona.command),
+      type: builtin.type,
+      command: Array.from(builtin.command),
       enabled: (entry as { enabled: boolean }).enabled,
     })
   }
@@ -780,19 +780,19 @@ export namespace MCP {
     const fromConfig = resolveMcpConfigEntry(name, config[name])
     if (fromConfig) return fromConfig
 
-    const persona = (personaServers as Record<string, PersonaServerConfig>)[name]
-    if (!persona) return undefined
+    const builtin = (builtinServers as Record<string, BuiltinServerConfig>)[name]
+    if (!builtin) return undefined
     return forceMcpEnabled(name, {
-      type: persona.type,
-      command: Array.from(persona.command),
+      type: builtin.type,
+      command: Array.from(builtin.command),
     })
   }
 
   function isLocalServer(name: string, config: McpConfigMap): boolean {
     const configured = resolveMcpConfigEntry(name, config[name])
     if (configured) return configured.type === "local"
-    const persona = (personaServers as Record<string, PersonaServerConfig>)[name]
-    return persona?.type === "local"
+    const builtin = (builtinServers as Record<string, BuiltinServerConfig>)[name]
+    return builtin?.type === "local"
   }
 
   function resolveMcpLifecycle(mcp: Config.Mcp | undefined): McpLifecycle {
@@ -994,15 +994,14 @@ export namespace MCP {
   const state = Instance.state(
     async () => {
       const cfg = await Config.get()
-      // ALWAYS include all 4 persona MCP servers (required)
-      const personaMcps = getAllPersonaMcpServers()
+      // Always include the built-in MCP servers required by Zee.
+      const builtinMcps = getAllBuiltinMcpServers()
       const userConfig = cfg.mcp ?? {}
 
-      // Merge: user config overrides persona defaults, but all 4 must exist
+      // Merge: user config overrides built-in defaults, but the built-ins always exist.
       const config: Record<string, Config.Mcp> = {}
 
-      // Add all 4 persona MCPs first
-      for (const [name, server] of Object.entries(personaMcps)) {
+      for (const [name, server] of Object.entries(builtinMcps)) {
         const resolved = resolveMcpConfigEntry(name, userConfig[name])
         config[name] = resolved ?? {
           type: server.type,
@@ -1010,7 +1009,7 @@ export namespace MCP {
         }
       }
 
-      // User config can override defaults. Persona shorthand {"enabled": ...} is accepted for compatibility.
+      // User config can override defaults. Built-in shorthand {"enabled": ...} is accepted.
       for (const [name, mcp] of Object.entries(userConfig)) {
         const resolved = resolveMcpConfigEntry(name, mcp)
         if (!resolved) {
@@ -1604,7 +1603,7 @@ export namespace MCP {
     const config: McpConfigMap = (cfg.mcp ?? {}) as McpConfigMap
     const result: Record<string, Status> = {}
 
-    // Include all known MCP statuses from runtime state first (includes mandatory persona MCPs).
+    // Include all known MCP statuses from runtime state first (includes mandatory built-in MCPs).
     for (const [key, item] of Object.entries(s.status)) {
       result[key] = item
     }

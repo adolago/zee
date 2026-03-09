@@ -31,8 +31,8 @@ rg "command: \"dmux\"|DmuxSpawnCommand|DmuxMergeCommand" packages/zee/src/cli/cm
 rg "command: \"web\"|resolveWebBackendUrl|resolveWebBackendTarget" packages/zee/src/cli/cmd/web.ts  # Web UI launcher command + backend wiring helpers (lines 81, 27, 36)
 rg "export namespace Dmux|export const spawn|export const merge" packages/zee/src/worktree/dmux.ts  # dmux lane orchestration (lines 8, 177, 220)
 rg "export const ZEE_TOOLS|registerZeeTools" src/domain/zee/tools.ts     # Zee domain tools (lines 1884, 1909)
-rg "export const STANLEY_TOOLS|registerStanleyTools" src/domain/stanley/tools.ts  # Stanley tools (lines 456, 469)
-rg "export const JOHNY_TOOLS|registerJohnyTools" src/domain/johny/tools.ts  # Johny tools (lines 502, 504)
+rg "export const STANLEY_TOOLS|registerStanleyTools" src/domain/investing/tools.ts  # Stanley tools (lines 456, 469)
+rg "export const JOHNY_TOOLS|registerJohnyTools" src/domain/learning/tools.ts  # Johny tools (lines 502, 504)
 rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unified memory system (lines 352, 2506, 2521)
 ```
 
@@ -161,10 +161,10 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 **Purpose:** Provide user-facing capabilities across life admin, investing, and learning.
 - **Zee tools collection:** `src/domain/zee/tools.ts:1884`
 - **Zee tool registration:** `src/domain/zee/tools.ts:1909`
-- **Stanley tools collection:** `src/domain/stanley/tools.ts:456`
-- **Stanley registration:** `src/domain/stanley/tools.ts:469`
-- **Johny tools collection:** `src/domain/johny/tools.ts:502`
-- **Johny registration:** `src/domain/johny/tools.ts:504`
+- **Stanley tools collection:** `src/domain/investing/tools.ts:456`
+- **Stanley registration:** `src/domain/investing/tools.ts:469`
+- **Johny tools collection:** `src/domain/learning/tools.ts:502`
+- **Johny registration:** `src/domain/learning/tools.ts:504`
 
 ### Feature: Memory (Qdrant + Hybrid Search + Markdown Sync)
 **Purpose:** Store and retrieve semantic/keyword/hybrid memories with local Qdrant.

@@ -21,64 +21,89 @@ import { Log } from "../util/log"
 
 const log = Log.create({ service: "agent" })
 
-// Persona bootstrap cache (lazy loaded)
-let personaBootstrapCache: { PERSONAS: any; AGENT_CONFIGS: any } | null = null
-type PersonaModule = typeof import("../../../../src/agent/persona")
-let personaModuleCache: PersonaModule | null = null
-let personaModuleLoadAttempted = false
+const LEGACY_EDIT_TOOLS = new Set(["edit", "write", "patch", "multiedit", "apply_patch"])
 
-async function loadPersonaModule(): Promise<PersonaModule | null> {
-  if (personaModuleLoadAttempted) {
-    return personaModuleCache
+function legacyToolsToPermissionConfig(tools?: Record<string, boolean>) {
+  if (!tools) return {}
+
+  const permissionConfig: Record<string, "allow" | "deny"> = {}
+  for (const [tool, enabled] of Object.entries(tools)) {
+    const permission = LEGACY_EDIT_TOOLS.has(tool) ? "edit" : tool
+    const action = enabled ? "allow" : "deny"
+    const previous = permissionConfig[permission]
+
+    if (previous === "deny") continue
+    if (previous === "allow" && action === "allow") continue
+    permissionConfig[permission] = action
   }
-  personaModuleLoadAttempted = true
+
+  return permissionConfig
+}
+
+// Agent bootstrap cache (lazy loaded)
+let agentBootstrapCache: { ASSISTANTS: any; AGENT_CONFIGS: any } | null = null
+type IdentityModule = typeof import("../../../../src/agent/profile")
+let identityModuleCache: IdentityModule | null = null
+let identityModuleLoadAttempted = false
+
+async function loadIdentityModule(): Promise<IdentityModule | null> {
+  if (identityModuleLoadAttempted) {
+    return identityModuleCache
+  }
+  identityModuleLoadAttempted = true
 
   try {
-    const mod = await import("../../../../src/agent/persona")
-    if (!mod.Persona) {
-      throw new Error("Missing export Persona")
+    const mod = await import("../../../../src/agent/profile")
+    if (!mod.Profile) {
+      throw new Error("Missing export Profile")
     }
-    personaModuleCache = mod as PersonaModule
-    return personaModuleCache
+    identityModuleCache = mod as IdentityModule
+    return identityModuleCache
   } catch (e) {
-    log.warn("Failed to load persona module, identity wiring disabled", {
+    log.warn("Failed to load agent identity module, identity wiring disabled", {
       error: e instanceof Error ? e.message : String(e),
     })
-    personaModuleCache = null
+    identityModuleCache = null
     return null
   }
 }
 
 /**
- * Load persona bootstrap data from src/agent/personas.
+ * Load built-in agent bootstrap data from src/agent/assistants.
  * Uses dynamic import to handle different build scenarios gracefully.
- * Falls back to empty personas if load fails (allows Zee to start without personas).
+ * Falls back to empty bootstrap data if loading fails.
  */
-async function loadPersonaBootstrap(): Promise<{ PERSONAS: any; AGENT_CONFIGS: any }> {
-  if (personaBootstrapCache) {
-    return personaBootstrapCache
+async function loadAgentBootstrap(): Promise<{ ASSISTANTS: any; AGENT_CONFIGS: any }> {
+  if (agentBootstrapCache) {
+    return agentBootstrapCache
   }
 
   try {
     // Dynamic import to handle different build/runtime scenarios
-    const mod = await import("../../../../src/agent/personas")
-    if (!mod.PERSONAS || !mod.AGENT_CONFIGS) {
-      throw new Error("Missing exports PERSONAS or AGENT_CONFIGS")
+    const mod = await import("../../../../src/agent/assistants")
+    if (!mod.ASSISTANTS || !mod.AGENT_CONFIGS) {
+      throw new Error("Missing exports ASSISTANTS or AGENT_CONFIGS")
     }
-    personaBootstrapCache = { PERSONAS: mod.PERSONAS, AGENT_CONFIGS: mod.AGENT_CONFIGS }
-    log.debug("Loaded persona bootstrap", { personas: Object.keys(mod.PERSONAS) })
-    return personaBootstrapCache
+    agentBootstrapCache = { ASSISTANTS: mod.ASSISTANTS, AGENT_CONFIGS: mod.AGENT_CONFIGS }
+    log.debug("Loaded agent bootstrap", { agents: Object.keys(mod.ASSISTANTS) })
+    return agentBootstrapCache
   } catch (e) {
-    log.warn("Failed to load persona bootstrap, personas will not have custom configs", {
+    log.warn("Failed to load agent bootstrap, built-in agent configs unavailable", {
       error: e instanceof Error ? e.message : String(e),
     })
     // Return empty to allow graceful degradation
-    personaBootstrapCache = { PERSONAS: {}, AGENT_CONFIGS: {} }
-    return personaBootstrapCache
+    agentBootstrapCache = { ASSISTANTS: {}, AGENT_CONFIGS: {} }
+    return agentBootstrapCache
   }
 }
 
 export namespace Agent {
+  export function resolveName(agent?: string): string | undefined {
+    const trimmed = agent?.trim()
+    if (!trimmed) return undefined
+    return trimmed.toLowerCase()
+  }
+
   export const Info = z
     .object({
       name: z.string(),
@@ -130,7 +155,7 @@ export namespace Agent {
       prompt: z.string().optional(),
       options: z.record(z.string(), z.any()),
       steps: z.number().int().positive().optional(),
-      // Persona-specific fields (from AgentPersonaConfig)
+      // Agent bootstrap fields
       systemPromptAdditions: z.string().optional(),
       knowledge: z.array(z.string()).optional(),
       mcpServers: z.array(z.string()).optional(),
@@ -243,7 +268,7 @@ export namespace Agent {
       },
     }
 
-    // Scoped subagent modes - available to all personas
+    // Scoped subagent modes available to all agents.
     // These provide read-only or limited-scope variants for task spawning
     result["explore"] = {
       name: "explore",
@@ -368,51 +393,51 @@ export namespace Agent {
       options: {},
     }
 
-    // Bootstrap personas from src/agent/personas.ts
+    // Bootstrap built-in agents from src/agent/assistants.ts
     // This provides the base layer with systemPromptAdditions, knowledge, mcpServers
     // Config file settings will be merged on top
-    const { PERSONAS, AGENT_CONFIGS } = await loadPersonaBootstrap()
+    const { ASSISTANTS, AGENT_CONFIGS } = await loadAgentBootstrap()
 
-    const personaIdentityPrompts: Record<string, string> = {}
+    const agentIdentityPrompts: Record<string, string> = {}
 
-    const loadPersonaIdentityPrompt = async (personaConfig: any): Promise<string> => {
-      const identityFiles = personaConfig?.identityFiles as string[] | undefined
+    const loadAgentIdentityPrompt = async (agentConfig: any): Promise<string> => {
+      const identityFiles = agentConfig?.identityFiles as string[] | undefined
       if (!identityFiles || identityFiles.length === 0) return ""
 
-      const personaModule = await loadPersonaModule()
-      if (!personaModule?.Persona?.loadIdentityContext || !personaModule?.Persona?.composeIdentityPrompt) return ""
+      const identityModule = await loadIdentityModule()
+      if (!identityModule?.Profile?.loadIdentityContext || !identityModule?.Profile?.composeIdentityPrompt) return ""
 
       try {
-        const identity = await personaModule.Persona.loadIdentityContext(identityFiles, { cwd: Instance.directory })
-        return personaModule.Persona.composeIdentityPrompt(identity)
+        const identity = await identityModule.Profile.loadIdentityContext(identityFiles, { cwd: Instance.directory })
+        return identityModule.Profile.composeIdentityPrompt(identity)
       } catch (e) {
-        log.warn("Failed to load persona identity context", {
+        log.warn("Failed to load agent identity context", {
           error: e instanceof Error ? e.message : String(e),
         })
         return ""
       }
     }
 
-    for (const [personaId, personaConfig] of Object.entries(PERSONAS) as [string, any][]) {
-      const agentConfig = AGENT_CONFIGS[personaId] as any
+    for (const [agentId, agentProfile] of Object.entries(ASSISTANTS) as [string, any][]) {
+      const agentConfig = AGENT_CONFIGS[agentId] as any
       if (!agentConfig) {
-        log.warn("Persona missing agent config, skipping", { personaId })
+        log.warn("Built-in agent missing config, skipping", { agentId })
         continue
       }
 
-      const identityPrompt = await loadPersonaIdentityPrompt(personaConfig)
+      const identityPrompt = await loadAgentIdentityPrompt(agentProfile)
       if (identityPrompt) {
-        personaIdentityPrompts[personaId] = identityPrompt
+        agentIdentityPrompts[agentId] = identityPrompt
       }
-      const systemPromptAdditions = [identityPrompt, personaConfig.systemPromptAdditions].filter(Boolean).join("\n\n")
+      const systemPromptAdditions = [identityPrompt, agentProfile.systemPromptAdditions].filter(Boolean).join("\n\n")
 
       // Use permissionRuleset (PermissionNext format) directly when available.
-      // Permission chain: base -> persona -> user -> security defaults
-      // This ensures user config always overrides persona defaults,
+      // Permission chain: base -> built-in agent -> user -> security defaults
+      // This ensures user config always overrides built-in defaults,
       // and security defaults are applied last for unconfigured permissions.
-      const personaPermission: PermissionNext.Ruleset = agentConfig.permissionRuleset ?? []
-      const personaDefaults = (() => {
-        const result = [...basePermissions, ...personaPermission, ...user]
+      const agentPermissionDefaults: PermissionNext.Ruleset = agentConfig.permissionRuleset ?? []
+      const mergedDefaults = (() => {
+        const result = [...basePermissions, ...agentPermissionDefaults, ...user]
         if (!userHasPermission("doom_loop")) {
           result.push(...securityDefaults.filter((r) => r.permission === "doom_loop"))
         }
@@ -422,8 +447,8 @@ export namespace Agent {
         return result
       })()
 
-      result[personaId] = {
-        name: personaId,
+      result[agentId] = {
+        name: agentId,
         description: agentConfig.description,
         mode: (agentConfig.mode ?? "primary") as "primary" | "subagent" | "all",
         native: agentConfig.native ?? false,
@@ -435,12 +460,12 @@ export namespace Agent {
         temperature: agentConfig.temperature,
         modelParams: agentConfig.modelParams,
         color: agentConfig.color,
-        permission: personaDefaults,
+        permission: mergedDefaults,
         options: agentConfig.options ?? {},
-        // Persona-specific fields
+        // Agent bootstrap fields
         systemPromptAdditions,
-        knowledge: personaConfig.knowledge,
-        mcpServers: personaConfig.mcpServers,
+        knowledge: agentProfile.knowledge,
+        mcpServers: agentProfile.mcpServers,
       }
     }
 
@@ -470,21 +495,25 @@ export namespace Agent {
       item.color = value.color ?? item.color
       item.hidden = value.hidden ?? item.hidden
       item.name = value.name ?? item.name
-      item.steps = value.steps ?? item.steps
+      item.steps = value.steps ?? value.maxSteps ?? item.steps
       item.options = mergeDeep(item.options, value.options ?? {})
-      item.permission = PermissionNext.merge(item.permission, PermissionNext.fromConfig(value.permission ?? {}))
+      item.permission = PermissionNext.merge(
+        item.permission,
+        PermissionNext.fromConfig(legacyToolsToPermissionConfig(value.tools)),
+        PermissionNext.fromConfig(value.permission ?? {}),
+      )
       // Additional sampling parameters
       item.frequencyPenalty = value.frequency_penalty ?? item.frequencyPenalty
       item.presencePenalty = value.presence_penalty ?? item.presencePenalty
       item.seed = value.seed ?? item.seed
       item.minP = value.min_p ?? item.minP
       item.modelParams = value.model_params ?? item.modelParams
-      // Persona-specific fields - config can override persona defaults
+      // Agent bootstrap fields - config can override built-in defaults
       item.systemPromptAdditions = value.systemPromptAdditions ?? item.systemPromptAdditions
       item.knowledge = value.knowledge ?? item.knowledge
       item.mcpServers = value.mcpServers ?? item.mcpServers
 
-      const identityPrompt = personaIdentityPrompts[key]
+      const identityPrompt = agentIdentityPrompts[key]
       if (identityPrompt && value.systemPromptAdditions !== undefined) {
         item.systemPromptAdditions = [identityPrompt, item.systemPromptAdditions].filter(Boolean).join("\n\n")
       }
@@ -530,16 +559,27 @@ export namespace Agent {
   })
 
   export async function get(agent: string) {
-    return state().then((x) => x[agent])
+    const resolved = resolveName(agent)
+    if (!resolved) return undefined
+    return state().then((x) => x[resolved])
+  }
+
+  export async function mustGet(agent: string): Promise<Info> {
+    const resolved = resolveName(agent)
+    if (!resolved) throw new Error(`agent "${agent}" not found`)
+
+    const info = await state().then((x) => x[resolved])
+    if (!info) throw new Error(`agent "${agent}" not found`)
+    return info
   }
 
   export async function list() {
     const cfg = await Config.get()
+    const preferredAgent = resolveName(cfg.default_agent)
     return pipe(
       await state(),
       values(),
-      // Sort by default_agent config, no hardcoded fallback
-      sortBy([(x) => (cfg.default_agent ? x.name === cfg.default_agent : false), "desc"]),
+      sortBy([(x) => (preferredAgent ? x.name === preferredAgent : false), "desc"]),
     )
   }
 
@@ -548,18 +588,13 @@ export namespace Agent {
     const agents = await state()
 
     // Default to zee if no default_agent configured
-    const defaultAgentName = cfg.default_agent ?? "zee"
+    const requestedDefaultAgent = cfg.default_agent ?? "zee"
+    const defaultAgentName = resolveName(requestedDefaultAgent) ?? "zee"
     const agent = agents[defaultAgentName]
 
-    if (!agent) throw new Error(`default agent "${defaultAgentName}" not found`)
-    if (agent.mode === "subagent") throw new Error(`default agent "${defaultAgentName}" is a subagent`)
-    if (agent.hidden === true) throw new Error(`default agent "${defaultAgentName}" is hidden`)
-
-    // Persona is REQUIRED - agent name must map to zee, stanley, or johny
-    const personaNames = ["zee", "stanley", "johny"]
-    if (!personaNames.includes(agent.name)) {
-      throw new Error(`default agent "${agent.name}" must be a persona (zee, stanley, or johny)`)
-    }
+    if (!agent) throw new Error(`default agent "${requestedDefaultAgent}" not found`)
+    if (agent.mode === "subagent") throw new Error(`default agent "${requestedDefaultAgent}" is a subagent`)
+    if (agent.hidden === true) throw new Error(`default agent "${requestedDefaultAgent}" is hidden`)
 
     return agent.name
   }

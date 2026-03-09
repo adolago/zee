@@ -151,15 +151,10 @@ export namespace SessionSummary {
       .join(" ")
       .slice(0, 500)
 
-    // Detect active persona from session info
     const session = await Session.get(sessionID)
-    const lowerTitle = session.title.toLowerCase()
-    let persona = "zee"
-    if (lowerTitle.includes("stanley")) persona = "stanley"
-    else if (lowerTitle.includes("johny")) persona = "johny"
 
     // Build the summary block
-    const parts: string[] = [`[Handoff Context - Session ${sessionID.slice(0, 12)}...]`, `Persona: ${persona}`]
+    const parts: string[] = [`[Handoff Context - Session ${sessionID.slice(0, 12)}...]`, `Agent: zee`]
 
     if (recentUserMessages.length > 0) {
       parts.push("")

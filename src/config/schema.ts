@@ -2,7 +2,7 @@
  * Configuration Schema Definitions
  *
  * Zod-based validation schemas for the unified configuration system.
- * Supports all surfaces: Stanley (WhatsApp), Zee (WhatsApp), CLI, and Web.
+ * Supports Zee, its messaging surface, CLI, and Web.
  *
  * @module config/schema
  */
@@ -81,7 +81,7 @@ export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 // ============================================================================
 
 /**
- * Agent persona definition
+ * Agent definition
  */
 export const AgentConfigSchema = z.object({
   /** Model to use (provider/model format) */
@@ -182,11 +182,11 @@ export type McpConfig = z.infer<typeof McpConfigSchema>;
 // ============================================================================
 
 /**
- * Stanley (WhatsApp) surface-specific settings
+ * Zee messaging surface-specific settings
  */
-export const StanleySurfaceConfigSchema = z.object({
+export const ZeeSurfaceConfigSchema = z.object({
   /** WhatsApp session name */
-  sessionName: z.string().optional().default('stanley'),
+  sessionName: z.string().optional().default('zee'),
   /** Default agent for this surface */
   defaultAgent: z.string().optional(),
   /** Whether to auto-reconnect on disconnect */
@@ -199,15 +199,6 @@ export const StanleySurfaceConfigSchema = z.object({
   maxMediaSize: z.number().int().positive().optional(),
   /** Allowed chat types */
   allowedChatTypes: z.array(z.enum(['private', 'group'])).optional(),
-}).strict();
-export type StanleySurfaceConfig = z.infer<typeof StanleySurfaceConfigSchema>;
-
-/**
- * Zee (WhatsApp) surface-specific settings
- */
-export const ZeeSurfaceConfigSchema = z.object({
-  /** Default agent for this surface */
-  defaultAgent: z.string().optional(),
   /** Default outbound channel */
   defaultChannel: z.enum(['whatsapp']).optional(),
   /** Allowlist of sender identifiers (channel-specific) */
@@ -261,7 +252,6 @@ export type WebSurfaceConfig = z.infer<typeof WebSurfaceConfigSchema>;
  * Combined surface configuration
  */
 export const SurfaceConfigSchema = z.object({
-  stanley: StanleySurfaceConfigSchema.optional(),
   zee: ZeeSurfaceConfigSchema.optional(),
   cli: CliSurfaceConfigSchema.optional(),
   web: WebSurfaceConfigSchema.optional(),
@@ -352,7 +342,7 @@ export const ConfigSchema = z.object({
   enabledProviders: z.array(z.string()).optional(),
 
   // --- Agent Configuration ---
-  /** Agent persona definitions */
+  /** Agent definitions */
   agent: z.record(z.string(), AgentConfigSchema).optional(),
   /** Default agent to use */
   defaultAgent: z.string().optional(),
@@ -485,7 +475,7 @@ function getSuggestion(issue: z.ZodIssue): string | undefined {
 export const SchemaMetadata = {
   version: '1.0.0',
   description: 'Unified configuration schema for zee',
-  surfaces: ['stanley', 'zee', 'cli', 'web'] as const,
+  surfaces: ['zee', 'cli', 'web'] as const,
   configLocations: {
     global: '~/.config/zee/',
     project: '.zee/',

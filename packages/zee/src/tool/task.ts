@@ -15,8 +15,8 @@ import { Log } from "../util/log"
 const log = Log.create({ service: "task" })
 
 /**
- * Maps external agent types (e.g., from orchestration) to personas.
- * Each persona spawns its own kind: zee spawns zees, stanley spawns stanleys, johny spawns johnys.
+ * Maps external agent types to canonical Zee runtime agents.
+ * Scoped subagents remain distinct while domain-specialty aliases route to Zee.
  * @exported for use in prompt.ts subtask handling
  */
 export async function resolveAgentType(requestedType: string, callerAgent?: string): Promise<string> {
@@ -32,9 +32,6 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
   }
 
   const requested = trimmed.toLowerCase()
-  // Map external agent types to personas based on the calling context
-  // Each persona spawns its own kind for subtasks
-  const personas = ["zee", "stanley", "johny"]
 
   const semanticMap: Record<string, string> = {
     // Scoped subagent modes (read-only / limited scope)
@@ -49,10 +46,14 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     general: "general",
     "general-purpose": "general",
 
-    // Research/analysis → Stanley
-    researcher: "stanley",
-    analyst: "stanley",
-    analyzer: "stanley",
+    // Unified assistant handles research and learning directly now.
+    researcher: "zee",
+    analyst: "zee",
+    analyzer: "zee",
+    investing: "zee",
+    investor: "zee",
+    learning: "zee",
+    learner: "zee",
 
     // Coding/development → Zee (general purpose)
     coder: "zee",
@@ -63,20 +64,20 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     optimizer: "zee",
     coordinator: "zee",
 
-    // Learning/teaching → Johny
-    tutor: "johny",
-    teacher: "johny",
-    mentor: "johny",
+    // Learning/teaching also routes through Zee.
+    tutor: "zee",
+    teacher: "zee",
+    mentor: "zee",
   }
 
   // Check requested type against explicit agent names (case-insensitive)
   const directAgent = await Agent.get(trimmed)
   if (directAgent) {
-    return trimmed
+    return directAgent.name
   }
   const directAgentLower = await Agent.get(requested)
   if (directAgentLower) {
-    return requested
+    return directAgentLower.name
   }
 
   const mapped = semanticMap[requested]
@@ -89,14 +90,14 @@ export async function resolveAgentType(requestedType: string, callerAgent?: stri
     return mapped
   }
 
-  // If caller is a persona, spawn the same persona type
-  if (callerAgent && personas.includes(callerAgent)) {
-    log.info("mapping external agent type to caller persona", {
+  const caller = callerAgent ? await Agent.get(callerAgent) : undefined
+  if (caller && caller.mode === "primary") {
+    log.info("mapping external agent type to caller agent", {
       requestedType: trimmed,
       callerAgent,
-      resolvedTo: callerAgent,
+      resolvedTo: caller.name,
     })
-    return callerAgent
+    return caller.name
   }
 
   // Default to zee for unknown types
@@ -146,8 +147,7 @@ export const TaskTool = Tool.define("task", async (ctx) => {
     async execute(params: z.infer<typeof parameters>, ctx) {
       const config = await Config.get()
 
-      // Resolve the agent type - maps external types to personas
-      // Each persona spawns its own kind: zee→zee, stanley→stanley, johny→johny
+      // Resolve the requested type to a canonical Zee runtime agent/subagent.
       const resolvedAgentType = await resolveAgentType(params.subagent_type, ctx.agent)
 
       // Skip permission check when user explicitly invoked via @ or command subtask

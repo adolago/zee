@@ -2,7 +2,7 @@
 /**
  * zee Memory CLI
  *
- * Wraps memory capabilities for the zee persona.
+ * Wraps memory capabilities for Zee.
  * Uses Qdrant-backed vector storage for semantic memory.
  *
  * Usage:
@@ -63,7 +63,7 @@ const STATE_DIR = join(homedir(), ".zee", "zee");
 const MEMORY_PATH = join(STATE_DIR, "memories.json");
 const BACKEND = (process.env.ZEE_MEMORY_BACKEND || "qdrant").toLowerCase();
 const QDRANT_URL = process.env.QDRANT_URL || "http://localhost:6333";
-const QDRANT_COLLECTION = process.env.QDRANT_MEMORY_COLLECTION || "personas_memory";
+const QDRANT_COLLECTION = process.env.QDRANT_MEMORY_COLLECTION || "agent_memory";
 
 function ensureStateDir() {
   if (!existsSync(STATE_DIR)) {

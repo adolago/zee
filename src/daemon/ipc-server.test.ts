@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { requestDaemon } from "./ipc-client";
 import { DaemonServer } from "./ipc-server";
+import { resolveDaemonAgent } from "./types";
 import type {
   ListEventsResult,
   RunTaskParams,
@@ -27,7 +28,7 @@ class FakeOrchestrator {
     const worker: WorkerInfo = {
       id: "worker-1",
       name: "zee-test",
-      persona: params.persona,
+      agent: resolveDaemonAgent(params) ?? "zee",
       taskId: params.taskId ?? "task-1",
       pid: 12345,
       attempt: 1,
@@ -44,7 +45,7 @@ class FakeOrchestrator {
     const task: TaskInfo = {
       id: params.taskId ?? "task-1",
       description: params.description,
-      persona: params.persona,
+      agent: resolveDaemonAgent(params) ?? "zee",
       status: "pending",
       priority: params.priority ?? 0,
       attempt: 0,
@@ -186,7 +187,7 @@ describe("DaemonServer IPC orchestration handlers", () => {
     const worker = await requestDaemon<SpawnDroneParams, WorkerInfo>(
       "spawn_drone",
       {
-        persona: "zee",
+        agent: "zee",
         description: "Run a quick check",
         prompt: "Say hello",
       },
@@ -202,7 +203,7 @@ describe("DaemonServer IPC orchestration handlers", () => {
     const task = await requestDaemon<SubmitTaskParams, TaskInfo>(
       "submit_task",
       {
-        persona: "stanley",
+        agent: "zee",
         description: "Portfolio check",
         prompt: "Analyze holdings",
         priority: 5,
@@ -211,6 +212,7 @@ describe("DaemonServer IPC orchestration handlers", () => {
     );
     expect(task.description).toBe("Portfolio check");
     expect(task.priority).toBe(5);
+    expect(task.agent).toBe("zee");
 
     const tasks = await requestDaemon<undefined, TaskInfo[]>(
       "list_tasks",
@@ -218,12 +220,12 @@ describe("DaemonServer IPC orchestration handlers", () => {
       { socketPath },
     );
     expect(tasks).toHaveLength(1);
-    expect(tasks[0].persona).toBe("stanley");
+    expect(tasks[0].agent).toBe("zee");
 
     await requestDaemon<SpawnDroneParams, WorkerInfo>(
       "spawn_drone",
       {
-        persona: "stanley",
+        agent: "zee",
         description: "Spawn for kill test",
         prompt: "noop",
       },
@@ -257,7 +259,7 @@ describe("DaemonServer IPC orchestration handlers", () => {
     const run = await requestDaemon<RunTaskParams, TaskRunResult>(
       "run_task",
       {
-        persona: "johny",
+        agent: "zee",
         description: "Teach concept",
         prompt: "Explain compounding",
       },

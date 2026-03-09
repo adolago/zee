@@ -233,7 +233,7 @@ export async function findSkill(
   skillsDirs: Map<string, string>,
   currentAgent?: string
 ): Promise<SkillEntry | undefined> {
-  // Handle cross-agent reference (e.g., "stanley:research")
+  // Handle cross-agent reference (e.g., "zee:invest-research")
   if (skillName.includes(":")) {
     const [agentName, name] = skillName.split(":");
     const dir = skillsDirs.get(agentName);

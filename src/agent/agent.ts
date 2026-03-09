@@ -3,7 +3,7 @@
  *
  * This module defines the base agent interface and types used throughout
  * the Zee system. It supports these use cases:
- * - Stanley: Professional financial analysis
+ * - Investing: Financial analysis capability pack
  * - Zee: Personal AI assistant
  * - Custom: User-defined agent variants
  */
@@ -29,9 +29,9 @@ export const AgentMode = z.enum(["primary", "subagent", "all"]);
 export type AgentMode = z.infer<typeof AgentMode>;
 
 /**
- * Use case categories for personas
+ * Use case categories for assistants
  */
-export const UseCase = z.enum(["stanley", "zee", "custom"]);
+export const UseCase = z.enum(["investing", "zee", "custom"]);
 export type UseCase = z.infer<typeof UseCase>;
 
 /**

@@ -59,8 +59,8 @@ export namespace Skill {
     name: z.string(),
     description: z.string(),
     location: z.string(),
-    /** Persona context: undefined = shared, "zee"/"stanley"/"johny" = persona-specific */
-    context: z.enum(["zee", "stanley", "johny"]).optional(),
+    /** Assistant context: "zee" for Zee-owned skills; undefined for shared capability packs. */
+    context: z.literal("zee").optional(),
     /** Gating requirements for the skill. */
     requires: RequiresMeta.optional(),
     /** Primary environment variable name for API key injection. */
@@ -84,10 +84,9 @@ export namespace Skill {
   })
   export type Info = z.infer<typeof Info>
 
-  /** Skill with annotation about its relationship to the requesting persona. */
+  /** Skill with annotation about its relationship to the requesting assistant. */
   export type AnnotatedInfo = Info & {
-    /** "own" = matches persona, "shared" = no persona context, "cross" = belongs to another persona */
-    affinity: "own" | "shared" | "cross"
+    affinity: "shared"
   }
 
   export type PermissionReadiness = "allow" | "ask" | "deny"
@@ -122,9 +121,9 @@ export namespace Skill {
     readiness: Readiness
   }
 
-  /** Extract persona context from skill path (e.g., @zee/ordercli -> "zee") */
+  /** Extract Zee-owned context from skill path. Legacy domain folders are treated as shared skills. */
   function extractContext(skillPath: string): Info["context"] {
-    const match = skillPath.match(/[/\\]@(zee|stanley|johny)[/\\]/)
+    const match = skillPath.match(/[/\\]@(zee)[/\\]/)
     return match ? (match[1] as Info["context"]) : undefined
   }
 
@@ -468,12 +467,6 @@ export namespace Skill {
       if (tokenScored) {
         reasons.push(`token:${token}`)
       }
-    }
-
-    if (skill.affinity === "own") {
-      score += 2
-    } else if (skill.affinity === "shared") {
-      score += 1
     }
 
     const uniqueReasons = [...new Set(reasons)]
@@ -826,40 +819,23 @@ export namespace Skill {
   }
 
   /**
-   * Get all skills, sorted by affinity to the requesting persona.
+   * Get all skills for the single-Zee runtime.
    *
-   * Persona context is advisory, not exclusive: every persona can see every
-   * skill. Skills are sorted so the persona's own skills come first, then
-   * shared skills, then skills from other personas. This ensures the persona
-   * system never blocks access to a capability.
-   *
-   * @param agent - If provided, sorts by affinity. Without it, returns all unsorted.
+   * Skill context is advisory, not exclusive: every assistant entry point can
+   * see every capability pack. The optional agent parameter remains for
+   * compatibility and permission/readiness lookups, but no longer affects
+   * ordering or affinity.
    */
-  export async function all(agent?: string): Promise<AnnotatedInfo[]> {
+  export async function all(_agent?: string): Promise<AnnotatedInfo[]> {
     const skills: Info[] = await state().then((x) => Object.values(x.skills))
-
-    if (!agent) {
-      return skills.map((s) => ({ ...s, affinity: s.context ? "own" : ("shared" as const) }))
-    }
-
-    const normalizedAgent = agent.toLowerCase()
-
-    const annotated: AnnotatedInfo[] = skills.map((skill) => {
-      if (!skill.context) return { ...skill, affinity: "shared" as const }
-      if (skill.context === normalizedAgent) return { ...skill, affinity: "own" as const }
-      return { ...skill, affinity: "cross" as const }
-    })
-
-    // Sort: own first, shared second, cross-persona last
-    const affinityOrder = { own: 0, shared: 1, cross: 2 }
-    annotated.sort((a, b) => affinityOrder[a.affinity] - affinityOrder[b.affinity])
-
-    return annotated
+    return [...skills]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((skill) => ({ ...skill, affinity: "shared" as const }))
   }
 
   /**
    * Search skills by keyword across name, description, tags, and triggers.
-   * Results are sorted by affinity when an agent is provided.
+   * Results use the shared single-Zee skill ordering.
    */
   export async function search(query: string, agent?: string): Promise<AnnotatedInfo[]> {
     const skills = await all(agent)

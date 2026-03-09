@@ -23,7 +23,7 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 - **Nodes**: Control node hosts (camera, location, notifications)
 - **Skills Marketplace**: Discover and install skills from Zee
 
-### Investing (stanley: namespace)
+### Investing (investing: namespace)
 - **Market Data**: Real-time quotes, charts, fundamentals via OpenBB
 - **Portfolio**: Tracking, performance analysis, risk metrics (Sharpe, Sortino, VaR)
 - **Research**: Company analysis, analyst ratings, insider trades, business segments
@@ -56,7 +56,7 @@ zee is the single assistant handling all domains: life admin, investing, and lea
 | `session-logs` | Search/analyze conversation history from session JSONL files |
 | `skill-builder` | Create new Skills with proper YAML frontmatter |
 
-### Investing (stanley)
+### Investing (investing)
 | Skill | Description |
 |-------|-------------|
 | `autonomous-research` | Multi-step iterative financial research with scratchpad logging |
@@ -162,23 +162,23 @@ khard show "John Doe"           # Details
 
 ### Market Data
 ```bash
-npx tsx scripts/stanley-market.ts quote AAPL MSFT GOOGL
-npx tsx scripts/stanley-market.ts chart AAPL --period 6mo --indicators sma,rsi
-npx tsx scripts/stanley-market.ts fundamentals AAPL --metrics pe,pb,roe
+npx tsx scripts/investing-market.ts quote AAPL MSFT GOOGL
+npx tsx scripts/investing-market.ts chart AAPL --period 6mo --indicators sma,rsi
+npx tsx scripts/investing-market.ts fundamentals AAPL --metrics pe,pb,roe
 ```
 
 ### Portfolio
 ```bash
-npx tsx scripts/stanley-portfolio.ts status
-npx tsx scripts/stanley-portfolio.ts performance --period ytd
-npx tsx scripts/stanley-portfolio.ts risk --var 0.95
+npx tsx scripts/investing-portfolio.ts status
+npx tsx scripts/investing-portfolio.ts performance --period ytd
+npx tsx scripts/investing-portfolio.ts risk --var 0.95
 ```
 
 ### Research & SEC Filings
 ```bash
-npx tsx scripts/stanley-research.ts sec AAPL --type 10-K
-npx tsx scripts/stanley-research.ts analyze AAPL --filing 10-K
-npx tsx scripts/stanley-research.ts screen --criteria "pe<15,roe>20"
+npx tsx scripts/investing-research.ts sec AAPL --type 10-K
+npx tsx scripts/investing-research.ts analyze AAPL --filing 10-K
+npx tsx scripts/investing-research.ts screen --criteria "pe<15,roe>20"
 ```
 
 ### Study Sessions
@@ -190,8 +190,8 @@ npx tsx scripts/zee-study.ts complete --topic "derivatives" --score 0.9
 
 ### NautilusTrader
 ```bash
-npx tsx scripts/stanley-nautilus.ts backtest momentum --symbols AAPL,MSFT --start 2023-01-01
-npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
+npx tsx scripts/investing-nautilus.ts backtest momentum --symbols AAPL,MSFT --start 2023-01-01
+npx tsx scripts/investing-nautilus.ts paper-trade mean-reversion --capital 100000
 ```
 
 ## All Tools
@@ -215,20 +215,20 @@ npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
 | `zee:plan-advance` | Complete current step and move to next |
 | `zee:plan-status` | Check plan progress or list active plans |
 
-### Investing Tools (stanley: namespace)
+### Investing Tools (investing: namespace)
 
 | Tool | Purpose |
 |------|---------|
-| `stanley:market-data` | Real-time quotes, charts, fundamentals via OpenBB |
-| `stanley:portfolio` | Portfolio tracking, performance, risk metrics |
-| `stanley:research` | Company research, news, analyst ratings |
-| `stanley:sec-filings` | SEC EDGAR filings (10-K, 10-Q, 8-K, 13F) |
-| `stanley:nautilus` | Algorithmic strategies via NautilusTrader |
-| `stanley:estimates` | Analyst consensus, forward EPS, price targets, revision history |
-| `stanley:insider-trades` | Insider buy/sell transactions with net sentiment summary |
-| `stanley:segments` | Revenue by business segment or geography with growth rates |
-| `stanley:scratchpad` | Research session logging, dedup, and audit trail (JSONL) |
-| `stanley:status` | Check health of the Stanley investment platform |
+| `investing:market-data` | Real-time quotes, charts, fundamentals via OpenBB |
+| `investing:portfolio` | Portfolio tracking, performance, risk metrics |
+| `investing:research` | Company research, news, analyst ratings |
+| `investing:sec-filings` | SEC EDGAR filings (10-K, 10-Q, 8-K, 13F) |
+| `investing:nautilus` | Algorithmic strategies via NautilusTrader |
+| `investing:estimates` | Analyst consensus, forward EPS, price targets, revision history |
+| `investing:insider-trades` | Insider buy/sell transactions with net sentiment summary |
+| `investing:segments` | Revenue by business segment or geography with growth rates |
+| `investing:scratchpad` | Research session logging, dedup, and audit trail (JSONL) |
+| `investing:status` | Check health of the Investing investment platform |
 
 ### Learning Tools (zee: learning domain)
 
@@ -244,8 +244,8 @@ npx tsx scripts/stanley-nautilus.ts paper-trade mean-reversion --capital 100000
 
 When conducting multi-step financial research:
 
-1. **Tool call deduplication**: All stanley: data tools are wrapped with automatic dedup. Same tool + same args = cached result.
-2. **Scratchpad logging**: Use `stanley:scratchpad` for JSONL audit trail of research steps. Files at `~/.local/state/zee/stanley/scratchpad/`.
+1. **Tool call deduplication**: All investing: data tools are wrapped with automatic dedup. Same tool + same args = cached result.
+2. **Scratchpad logging**: Use `investing:scratchpad` for JSONL audit trail of research steps. Files at `~/.local/state/zee/investing/scratchpad/`.
 3. **Efficient patterns**: Check memory for prior research before starting. Summarize findings as you go. Use autonomous-research skill for structured investigations. Use dcf-valuation skill for intrinsic value analysis.
 
 ## Learning System Details
@@ -391,7 +391,7 @@ Active shared skills are first-party under `@zee/`:
 
 ## Integration Points
 
-- **zee**: `/src/domain/zee/tools.ts`, `/src/domain/stanley/tools.ts`, `/src/domain/johny/tools.ts` (johny dir preserved for compatibility)
+- **zee**: `/src/domain/zee/tools.ts`, `/src/domain/investing/tools.ts`, `/src/domain/learning/tools.ts` (learning dir preserved for compatibility)
 - **Browser**: `/src/domain/zee/browser.ts`, `/src/domain/zee/browser-standalone.ts`
 - **Memory**: `/src/plugin/builtin/memory-persistence.ts`
 - **Qdrant**: Vector database for semantic memory
@@ -402,11 +402,11 @@ Active shared skills are first-party under `@zee/`:
 
 ## Configuration
 
-### Stanley CLI Environment
-- `STANLEY_REPO` (default: `~/.local/src/zee/vendor/personas/stanley`)
-- `STANLEY_PYTHON` (default: `python3`)
-- `STANLEY_OPENBB_PROVIDER` (default: `yfinance`)
-- `STANLEY_PORTFOLIO_FILE` (default: `~/.zee/stanley/portfolio.json`)
+### Investing CLI Environment
+- `ZEE_INVESTING_REPO` (default: `~/.local/src/zee/vendor/personas/investing`)
+- `ZEE_INVESTING_PYTHON` (default: `python3`)
+- `ZEE_INVESTING_OPENBB_PROVIDER` (default: `yfinance`)
+- `ZEE_INVESTING_PORTFOLIO_FILE` (default: `~/.zee/investing/portfolio.json`)
 - `OPENBB_API_KEY` (optional)
 - `SEC_IDENTITY` (optional, required by SEC for EDGAR access)
 

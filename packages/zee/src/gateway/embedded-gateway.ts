@@ -24,7 +24,7 @@ async function importUnchecked(modulePath: string): Promise<any> {
   return await import(modulePath)
 }
 
-async function resolvePersonaGateway() {
+async function resolveGatewayRuntime() {
   if (_resolveAttempted) return _resolved
   _resolveAttempted = true
   try {
@@ -43,7 +43,7 @@ async function resolvePersonaGateway() {
       acquireGatewayLock: lockMod.acquireGatewayLock,
     }
   } catch {
-    log.warn("persona gateway runtime not available; embedded gateway disabled")
+    log.warn("gateway runtime not available; embedded gateway disabled")
     _resolved = null
   }
   return _resolved
@@ -112,7 +112,7 @@ export function resolveEmbeddedGatewayPort(): number {
 }
 
 export async function readEmbeddedGatewayConfigSnapshot(): Promise<EmbeddedGatewayConfigSnapshot> {
-  const gw = await resolvePersonaGateway()
+  const gw = await resolveGatewayRuntime()
   if (!gw) {
     return { exists: false, valid: true, issues: [], warnings: [], legacyIssues: [] }
   }
@@ -123,9 +123,9 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
   if (gatewayServer) return
   if (startPromise) return startPromise
 
-  const gw = await resolvePersonaGateway()
+  const gw = await resolveGatewayRuntime()
   if (!gw) {
-    log.warn("cannot start embedded gateway: persona runtime not available")
+    log.warn("cannot start embedded gateway: gateway runtime not available")
     return
   }
 

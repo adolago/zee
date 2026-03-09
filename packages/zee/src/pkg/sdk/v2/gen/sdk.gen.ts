@@ -90,7 +90,6 @@ import type {
   PermissionRespondErrors,
   PermissionRespondResponses,
   PermissionRuleset,
-  PersonasListResponses,
   PreferencesThemeGetResponses,
   PreferencesThemeSetErrors,
   PreferencesThemeSetResponses,
@@ -1887,20 +1886,6 @@ export class Permission extends HeyApiClient {
   }
 }
 
-export class Personas extends HeyApiClient {
-  /**
-   * List available personas
-   *
-   * Get list of available personas (Zee, Stanley, Johny) with their status and capabilities.
-   */
-  public list<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
-    return (options?.client ?? this.client).get<PersonasListResponses, unknown, ThrowOnError>({
-      url: "/personas",
-      ...options,
-    })
-  }
-}
-
 export class Events extends HeyApiClient {
   /**
    * Global event stream (SSE)
@@ -3550,11 +3535,6 @@ export class ZeeClient extends HeyApiClient {
   private _permission?: Permission
   get permission(): Permission {
     return (this._permission ??= new Permission({ client: this.client }))
-  }
-
-  private _personas?: Personas
-  get personas(): Personas {
-    return (this._personas ??= new Personas({ client: this.client }))
   }
 
   private _events?: Events

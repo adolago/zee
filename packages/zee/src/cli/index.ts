@@ -93,7 +93,7 @@ export {
 
   // Theme mappings
   themeToAnsi,
-  personaColors,
+  assistantColors,
 } from "./style"
 
 // =============================================================================
@@ -113,5 +113,5 @@ export { UI } from "./ui"
 // =============================================================================
 
 export type {} from // From style.ts (these are const objects, not types, but re-exported for completeness)
-// Style, Symbols, Message, StatusBar, themeToAnsi, personaColors
+// Style, Symbols, Message, StatusBar, themeToAnsi, assistantColors
 "./style"

@@ -571,7 +571,7 @@ export const SessionRoute = new Hono()
                       }),
                     ),
                     previousSurface: z.string().optional(),
-                    persona: z.string().optional(),
+                    agent: z.literal("zee").optional(),
                   }),
                   resumeUrl: z.string(),
                 }),
@@ -619,14 +619,8 @@ export const SessionRoute = new Hono()
         recentMessages: recentUserMessages,
         activeTodos: activeTodos.map((t) => ({ id: t.id, content: t.content, status: t.status })),
         previousSurface: session.surface,
-        persona: undefined as string | undefined,
+        agent: "zee" as const,
       }
-
-      // Try to detect persona from session title
-      const lowerTitle = session.title.toLowerCase()
-      if (lowerTitle.includes("stanley")) context.persona = "stanley"
-      else if (lowerTitle.includes("johny")) context.persona = "johny"
-      else if (lowerTitle.includes("zee")) context.persona = "zee"
 
       const resumeUrl = `zee://session/${sessionID}`
 
@@ -1377,61 +1371,6 @@ export const SessionRoute = new Hono()
         slot.release()
         throw err
       }
-    },
-  )
-  .get(
-    "/personas",
-    describeRoute({
-      summary: "List available personas",
-      tags: ["Personas"],
-      description: "Get list of available personas (Zee, Stanley, Johny) with their status and capabilities.",
-      operationId: "personas.list",
-      responses: {
-        200: {
-          description: "List of personas",
-          content: {
-            "application/json": {
-              schema: resolver(
-                z.array(
-                  z.object({
-                    id: z.string(),
-                    name: z.string(),
-                    description: z.string(),
-                    domain: z.string(),
-                    capabilities: z.array(z.string()),
-                  }),
-                ),
-              ),
-            },
-          },
-        },
-      },
-    }),
-    async (c) => {
-      const personas = [
-        {
-          id: "zee",
-          name: "Zee",
-          description: "Personal assistant for life admin",
-          domain: "personal",
-          capabilities: ["memory", "messaging", "calendar", "contacts", "notifications", "splitwise", "codexbar"],
-        },
-        {
-          id: "stanley",
-          name: "Stanley",
-          description: "Investing and financial research assistant",
-          domain: "finance",
-          capabilities: ["market-data", "portfolio", "sec-filings", "research", "backtesting"],
-        },
-        {
-          id: "johny",
-          name: "Johny",
-          description: "Study assistant for learning and knowledge management",
-          domain: "learning",
-          capabilities: ["study", "knowledge-graph", "spaced-repetition", "mastery-tracking"],
-        },
-      ]
-      return c.json(personas)
     },
   )
   .get(

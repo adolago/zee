@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { createConnection, type Socket } from "node:net"
 
-export type Persona = "zee" | "stanley" | "johny"
+export type RuntimeAgent = "zee"
 
 export type OrchestrationCommand = "run_task" | "list_events"
 
@@ -21,7 +21,7 @@ interface OrchestrationResponse<T = unknown> {
 }
 
 export interface RunTaskParams {
-  persona: Persona
+  agent?: RuntimeAgent
   description?: string
   prompt: string
   parentSessionId?: string
@@ -35,7 +35,7 @@ export interface RunTaskParams {
 export interface TaskInfo {
   id: string
   description: string
-  persona: Persona
+  agent: RuntimeAgent
   status: "pending" | "running" | "completed" | "failed" | "aborted"
   priority: number
   attempt: number

@@ -358,7 +358,7 @@ Personas are defined in `.agents/skills/` and loaded at runtime. The core repo d
     ]
   },
   "agent": {
-    "stanley/analyst": {
+    "investing/analyst": {
       "model": "anthropic/claude-sonnet-4",
       "temperature": 0.3
     }

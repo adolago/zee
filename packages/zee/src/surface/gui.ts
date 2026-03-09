@@ -1,7 +1,7 @@
 /**
  * GUI Surface Adapter
  *
- * WebSocket-based connection to desktop GUI applications like Stanley.
+ * WebSocket-based connection to desktop GUI applications like Investing.
  * Supports GPUI-based visual data presentation and real-time streaming.
  */
 
@@ -82,7 +82,7 @@ type PendingRequest = {
 /**
  * GUI surface adapter for desktop applications.
  *
- * Connects via WebSocket to GPUI-based clients like Stanley.
+ * Connects via WebSocket to GPUI-based clients like Investing.
  */
 export class GUISurface extends BaseSurface implements Surface {
   readonly id = "gui"

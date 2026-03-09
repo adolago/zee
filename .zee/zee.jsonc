@@ -14,7 +14,7 @@
   "memory": {
     "qdrant": {
       "url": "http://localhost:6333",
-      "collection": "personas_memory"
+      "collection": "agent_memory"
     },
     "embedding": {
       "profile": "google/gemini-embedding-001",

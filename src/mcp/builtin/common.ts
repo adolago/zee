@@ -2,7 +2,7 @@
  * Common Tool Utilities
  *
  * Shared utilities for tool parameter parsing and result formatting.
- * Ported from zee's tools/common.ts for cross-persona reuse.
+ * Ported from zee's tools/common.ts for cross-context reuse.
  */
 
 import type { ToolExecutionResult, ToolMetadata } from '../types';

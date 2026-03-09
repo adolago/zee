@@ -38,8 +38,8 @@ Exceptions: third-party integrations, user content, skill metadata `emoji` field
 
 Zee is the single assistant handling all domains:
 - **Life admin** (zee:* tools): Memory, messaging, calendar, contacts, browser, expenses
-- **Investing** (stanley:* tools): Market data, portfolio, SEC filings, NautilusTrader
-- **Learning** (johny:* tools): Knowledge graph, mastery tracking, spaced repetition
+- **Investing** (zee:invest-* tools): Market data, portfolio, SEC filings, NautilusTrader
+- **Learning** (zee:learn-* tools): Knowledge graph, mastery tracking, spaced repetition
 
 Zee can spawn drones (background workers), uses Qdrant memory, and preserves continuity across sessions.
 
@@ -47,8 +47,8 @@ Zee can spawn drones (background workers), uses Qdrant memory, and preserves con
 
 | What | Where |
 |------|-------|
-| Skills | `.agents/skills/@zee/`, `.agents/skills/personas/` |
-| Domain tools | `src/domain/zee/`, `stanley/`, `johny/` |
+| Skills | `.agents/skills/@zee/` |
+| Domain tools | `src/domain/zee/`, `investing/`, `learning/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |
 | Engine | `packages/zee/` |
 | Memory types | `src/memory/` |

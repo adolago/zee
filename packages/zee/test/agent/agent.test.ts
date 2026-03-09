@@ -10,7 +10,7 @@ function evalPerm(agent: Agent.Info | undefined, permission: string): Permission
   return PermissionNext.evaluate(permission, "*", agent.permission).action
 }
 
-// Zee is the only active persona. Other domains remain available via tool namespaces (stanley:*, johny:*).
+// Zee is the only active persona. Other domains remain available via tool namespaces (zee:invest-*, zee:learn-*).
 
 describe("agent config", () => {
   test("returns default persona agents when no config", async () => {
@@ -358,6 +358,19 @@ describe("agent config", () => {
     })
   })
 
+  test("legacy persona ids are not registered as agents", async () => {
+    await using tmp = await tmpdir()
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const stanley = await Agent.get("stanley")
+        const johny = await Agent.get("johny")
+        expect(stanley).toBeUndefined()
+        expect(johny).toBeUndefined()
+      },
+    })
+  })
+
   test("default permission includes doom_loop and external_directory as ask", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
@@ -517,13 +530,28 @@ describe("agent config", () => {
     })
   })
 
-  test("defaultAgent throws when default_agent points to non-persona", async () => {
+  test("defaultAgent rejects removed legacy persona ids", async () => {
+    await using tmp = await tmpdir({
+      config: {
+        default_agent: "stanley",
+      },
+    })
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        await expect(Agent.defaultAgent()).rejects.toThrow('default agent "stanley" not found')
+      },
+    })
+  })
+
+  test("defaultAgent allows custom primary agents", async () => {
     await using tmp = await tmpdir({
       config: {
         default_agent: "my_custom",
         agent: {
           my_custom: {
             description: "My custom agent",
+            mode: "primary",
           },
         },
       },
@@ -531,7 +559,8 @@ describe("agent config", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        await expect(Agent.defaultAgent()).rejects.toThrow("must be a persona")
+        const agent = await Agent.defaultAgent()
+        expect(agent).toBe("my_custom")
       },
     })
   })

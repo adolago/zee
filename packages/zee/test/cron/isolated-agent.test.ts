@@ -18,7 +18,7 @@ function makeJob(overrides?: Partial<CronJob>): CronJob {
       kind: "agentTurn",
       message: "run",
       model: "openai/gpt-5",
-      persona: "zee",
+      agent: "zee",
     },
     state: { nextRunAtMs: 500 },
     ...overrides,
@@ -81,7 +81,7 @@ describe("runIsolatedAgentJob", () => {
         kind: "agentTurn",
         message: "run",
         model: "gpt-5",
-        persona: "zee",
+        agent: "zee",
       },
     })
     let messageBody: any

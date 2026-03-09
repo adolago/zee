@@ -138,8 +138,8 @@ if (!resolved) {
 const candidateRoot = path.resolve(path.dirname(resolved), "..")
 
 if (!process.env.ZEE_ROOT) {
-  const vendorDir = path.join(candidateRoot, "vendor", "personas")
-  if (fs.existsSync(vendorDir)) {
+  const zeeAssetsDir = path.join(candidateRoot, ".zee")
+  if (fs.existsSync(zeeAssetsDir)) {
     process.env.ZEE_ROOT = candidateRoot
   }
 }

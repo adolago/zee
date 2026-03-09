@@ -1,9 +1,9 @@
 /**
  * Agent Module - Public API
  *
- * This module exports the agent persona system for zee.
+ * This module exports Zee's agent profile system.
  * It supports three use cases:
- * - Stanley: Professional financial analysis
+ * - Investing: Financial analysis capability pack
  * - Zee: Personal AI assistant
  * - Legacy: Development agent (inherited patterns)
  */
@@ -11,8 +11,8 @@
 // Core agent types and utilities
 export * from "./agent.js";
 
-// Persona system
-export * from "./persona.js";
+// Assistant profile system
+export * from "./profile.js";
 
 // Permission evaluation
 export * from "./permission.js";
@@ -29,5 +29,5 @@ export * from "./skill-discovery.js";
 // Skill tool interface
 export * from "./skill-tool.js";
 
-// Re-export built-in persona definitions
-export * as Personas from "./personas.js";
+// Re-export built-in assistant definitions
+export * as Assistants from "./assistants.js";

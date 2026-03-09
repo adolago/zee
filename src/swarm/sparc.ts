@@ -1,5 +1,5 @@
 /**
- * SPARC Phases for Johny
+ * SPARC Phases for Learning
  *
  * Enforced development methodology:
  * - Specification: Define requirements clearly
@@ -8,7 +8,7 @@
  * - Refinement: Iterate on implementation
  * - Completion: Test and document
  *
- * Only Johny uses this for development tasks.
+ * Only Learning uses this for development tasks.
  */
 
 import { Queen } from "./queen";
@@ -132,7 +132,7 @@ export async function runPhase(
       id: `sparc-${phase}`,
       name: `SPARC-${phase.charAt(0).toUpperCase() + phase.slice(1)}`,
       prompt,
-      persona: "johny",
+      agent: "learning",
     },
   ]);
 }
@@ -197,7 +197,7 @@ export async function runSparcParallel(
     id: `sparc-${phase}`,
     name: `SPARC-${phase.charAt(0).toUpperCase() + phase.slice(1)}`,
     prompt: PHASE_PROMPTS[phase](task),
-    persona: "johny" as const,
+    agent: "learning" as const,
   }));
 
   const earlyResult = await queen.spawn(earlyConfigs);

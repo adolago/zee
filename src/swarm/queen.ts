@@ -88,7 +88,7 @@ export class Queen extends EventEmitter {
         swarmId: this.id,
         taskId: worker.taskId,
         workerId: worker.id,
-        details: { name: worker.name, persona: worker.persona },
+        details: { name: worker.name, agent: worker.agent },
       });
     });
     worker.on("error", (msg) => {
@@ -113,7 +113,7 @@ export class Queen extends EventEmitter {
           swarmId: this.id,
           taskId: worker.taskId,
           workerId: worker.id,
-          details: { name: worker.name, persona: worker.persona },
+          details: { name: worker.name, agent: worker.agent },
         });
       }
     });
@@ -369,7 +369,7 @@ Your vote:`.trim();
           id: `vote-${worker.id}`,
           name: `Vote-${worker.name}`,
           prompt: votePrompt,
-          persona: "zee",
+          agent: "zee",
         });
 
         const output = result.output.join("").trim().toLowerCase();
@@ -402,7 +402,11 @@ Your vote:`.trim();
  * Convenience function to run a parallel swarm
  */
 export async function runSwarm(
-  tasks: Array<{ name: string; prompt: string; persona?: "zee" | "stanley" | "johny" }>,
+  tasks: Array<{
+    name: string;
+    prompt: string;
+    agent?: "zee";
+  }>,
   config?: QueenConfig
 ): Promise<SwarmResult> {
   const queen = new Queen(config);
@@ -411,7 +415,7 @@ export async function runSwarm(
     id: `worker-${i}`,
     name: task.name,
     prompt: task.prompt,
-    persona: task.persona,
+    agent: task.agent,
   }));
 
   return queen.spawn(workerConfigs);

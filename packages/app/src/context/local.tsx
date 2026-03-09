@@ -6,7 +6,7 @@ import { useSync } from "./sync"
 import { base64Encode } from "@zee/util/encode"
 import { useProviders } from "@/hooks/use-providers"
 import { useModels } from "@/context/models"
-import { getStoredPersona, isPersonaId } from "@/context/persona"
+import { getStoredAssistant } from "@/context/assistant"
 
 export type ModelKey = { providerID: string; modelID: string }
 
@@ -40,10 +40,10 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const list = createMemo(() => sync.data.agent.filter((x) => x.mode !== "subagent" && !x.hidden))
       
       const getInitialAgent = () => {
-        const storedPersona = getStoredPersona()
+        const storedAssistant = getStoredAssistant()
         const available = list()
-        if (available.some((x) => x.name === storedPersona)) {
-          return storedPersona
+        if (available.some((x) => x.name === storedAssistant)) {
+          return storedAssistant
         }
         return available[0]?.name
       }
@@ -58,9 +58,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         const current = store.current
         const available = list()
         if (current && available.some((x) => x.name === current)) return
-        const storedPersona = getStoredPersona()
-        if (available.some((x) => x.name === storedPersona)) {
-          setStore("current", storedPersona)
+        const storedAssistant = getStoredAssistant()
+        if (available.some((x) => x.name === storedAssistant)) {
+          setStore("current", storedAssistant)
         } else if (available.length > 0) {
           setStore("current", available[0].name)
         }

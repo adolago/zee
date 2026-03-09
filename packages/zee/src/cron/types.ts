@@ -20,8 +20,8 @@ export type CronPayload =
       deliver?: boolean
       channel?: string
       to?: string
-      /** Persona to run as (zee, stanley, johny). */
-      persona?: string
+      /** Agent to run as. */
+      agent?: string
     }
   | {
       kind: "toolInvoke"
@@ -42,7 +42,7 @@ export type CronPayloadPatch =
       deliver?: boolean
       channel?: string
       to?: string
-      persona?: string
+      agent?: string
     }
   | {
       kind: "toolInvoke"

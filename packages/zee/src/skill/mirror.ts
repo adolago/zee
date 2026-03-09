@@ -12,10 +12,14 @@ const BUNDLED_SKILLS_DIR = path.join(Global.Path.source, ".zee", "skill")
 const MIRROR_DESTINATION = path.join(Global.Path.config, "skills")
 const MIRROR_STATE_PATH = path.join(Global.Path.config, "skill-mirror-state.json")
 
+function normalizeManifestContext(value?: string): "zee" | undefined {
+  return value === "zee" ? "zee" : undefined
+}
+
 const SkillManifestEntrySchema = z.object({
   id: z.string(),
   path: z.string(),
-  context: z.enum(["zee", "stanley", "johny"]).optional(),
+  context: z.literal("zee").optional().transform(normalizeManifestContext),
   title: z.string(),
   description: z.string(),
   requires: z.record(z.string(), z.unknown()).optional(),

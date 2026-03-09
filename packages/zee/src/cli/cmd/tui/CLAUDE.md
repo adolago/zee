@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-The TUI is the interactive terminal interface for Zee. It renders a full-screen app in the terminal using **SolidJS** for reactive state and **@opentui/solid** for terminal rendering. Users select an agent (Zee is the only active persona by default) on the home screen, then enter a session to chat.
+The TUI is the interactive terminal interface for Zee. It renders a full-screen app in the terminal using **SolidJS** for reactive state and **@opentui/solid** for terminal rendering. Users select an agent (Zee is the only active assistant by default) on the home screen, then enter a session to chat.
 
 ## Build and Dev
 
@@ -27,7 +27,6 @@ Defined in `packages/zee/tsconfig.json`:
 - `@/*` -> `src/*` (package root)
 - `@zee/sdk` -> `src/pkg/sdk/client`
 - `@root/*` -> `../../src/*` (monorepo src root)
-- `@personas/*` -> `../../src/personas/*`
 
 ## Architecture
 
@@ -75,4 +74,4 @@ The prompt system in `component/prompt/` includes autocomplete, frecency-ranked 
 - No emojis in code, comments, or user-facing text
 - Use `createSimpleContext` for new context providers
 - Keybinds are string-encoded (e.g., `"ctrl+k"`) and parsed by `@/util/keybind`
-- Themes are JSON files in `context/theme/`; persona-specific themes exist (zee.json, stanley.json, johny.json)
+- Themes are JSON files in `context/theme/`; Zee is the only assistant identity.

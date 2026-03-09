@@ -3,23 +3,23 @@ import { Skill } from "../../../skill"
 import { bootstrap } from "../../bootstrap"
 import { cmd } from "../cmd"
 
-const PERSONAS = ["zee", "stanley", "johny"] as const
+const SKILL_CONTEXTS = ["zee", "shared"] as const
 
 type SkillAuditArgs = {
-  persona?: string
+  context?: string
   json?: boolean
   verbose?: boolean
 }
 
 export const SkillAuditCommand = cmd({
   command: "skill-audit",
-  describe: "comprehensive skill health audit with per-persona breakdown",
+  describe: "comprehensive skill health audit with Zee/shared breakdown",
   builder: (yargs) =>
     yargs
-      .option("persona", {
+      .option("context", {
         type: "string",
-        choices: PERSONAS,
-        describe: "filter by persona",
+        choices: SKILL_CONTEXTS,
+        describe: "filter by skill context",
       })
       .option("json", {
         type: "boolean",
@@ -37,7 +37,7 @@ export const SkillAuditCommand = cmd({
       const report = await Skill.audit()
 
       if (args.json) {
-        const output = args.persona ? filterByPersona(report, args.persona) : report
+        const output = args.context ? filterByContext(report, args.context) : report
         process.stdout.write(JSON.stringify(output, null, 2) + EOL)
         return
       }
@@ -47,13 +47,13 @@ export const SkillAuditCommand = cmd({
   },
 })
 
-function filterByPersona(report: Skill.AuditReport, persona: string) {
+function filterByContext(report: Skill.AuditReport, context: string) {
   return {
     ...report,
-    loaded: report.loaded.filter((s) => s.context === persona || !s.context),
+    loaded: report.loaded.filter((s) => (context === "shared" ? !s.context : s.context === context)),
     missingEnv: report.missingEnv.filter((m) => {
       const skill = report.loaded.find((s) => s.name === m.skill)
-      return skill && (skill.context === persona || !skill.context)
+      return skill && (context === "shared" ? !skill.context : skill.context === context)
     }),
   }
 }
@@ -88,15 +88,15 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
     console.log(warn(`${report.schemaWarnings.length} skills with unknown frontmatter keys`))
   }
 
-  // Per-persona breakdown
+  // Context breakdown
   console.log("")
-  console.log(`${bold}Per-Persona Breakdown${reset}`)
-  for (const persona of PERSONAS) {
-    if (args.persona && args.persona !== persona) continue
+  console.log(`${bold}Skill Context Breakdown${reset}`)
+  for (const context of SKILL_CONTEXTS) {
+    if (args.context && args.context !== context) continue
 
-    const skills = report.loaded.filter((s) => s.context === persona)
+    const skills = report.loaded.filter((s) => (context === "shared" ? !s.context : s.context === context))
     console.log("")
-    console.log(`  ${cyan}@${persona}${reset} (${skills.length} skills)`)
+    console.log(`  ${cyan}${context === "shared" ? "shared" : "@" + context}${reset} (${skills.length} skills)`)
 
     if (args.verbose) {
       for (const skill of skills) {
@@ -108,17 +108,6 @@ function printAudit(report: Skill.AuditReport, args: SkillAuditArgs) {
   }
 
   // Shared skills
-  const shared = report.loaded.filter((s) => !s.context)
-  if (shared.length > 0 && !args.persona) {
-    console.log("")
-    console.log(`  ${cyan}shared${reset} (${shared.length} skills)`)
-    if (args.verbose) {
-      for (const skill of shared) {
-        console.log(`    ${dim}-${reset} ${skill.name}`)
-      }
-    }
-  }
-
   // Exclusions
   if (report.excluded.length > 0) {
     console.log("")

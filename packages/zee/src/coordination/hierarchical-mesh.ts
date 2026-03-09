@@ -42,12 +42,12 @@ function resolveDomain(process: ProcessInfo): string {
   }
 
   for (const capability of process.capabilities) {
-    if (capability.startsWith("stanley:")) return "stanley"
-    if (capability.startsWith("johny:")) return "johny"
-    if (capability.startsWith("zee:")) return "zee"
+    if (capability.startsWith("zee:invest-")) return "investing"
+    if (capability.startsWith("zee:learn-")) return "learning"
+    if (capability.startsWith("zee:")) return "life"
   }
 
-  if (process.type === "daemon" || process.type === "queen") return "zee"
+  if (process.type === "daemon" || process.type === "queen") return "life"
   return "unclassified"
 }
 

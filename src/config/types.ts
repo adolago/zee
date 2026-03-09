@@ -3,14 +3,14 @@
  *
  * Unified configuration for zee, supporting:
  * - Provider selection and auth
- * - Agent personas
+ * - Assistant profiles
  * - MCP servers
  * - Memory settings
  * - Surface-specific options
  */
 
 import type { AuthMethod, SubscriptionProvider } from "../provider/types";
-import type { AgentConfig, AgentPersona } from "../agent/types";
+import type { AgentConfig, AssistantProfile } from "../agent/types";
 import type { McpServerConfig as MCPConfig } from "../mcp/types";
 import type { MemoryConfig } from "../memory/types";
 import type { SurfaceType } from "../../packages/zee/src/surface/types";
@@ -37,8 +37,8 @@ export interface ZeeRootConfig {
   /** Agent configurations */
   agents: AgentConfig[];
 
-  /** Agent personas */
-  personas: AgentPersonaConfig[];
+  /** Assistant profiles */
+  assistants: AssistantProfileConfig[];
 
   /** MCP server configurations */
   mcp: Record<string, MCPConfig>;
@@ -128,18 +128,18 @@ export interface SubscriptionConfig {
 }
 
 // =============================================================================
-// Agent Persona Configuration
+// Assistant Profile Configuration
 // =============================================================================
 
-/** Extended persona config with associated settings */
-export interface AgentPersonaConfig extends AgentPersona {
+/** Extended assistant config with associated settings */
+export interface AssistantProfileConfig extends AssistantProfile {
   /** Default agent config to use */
   defaultAgent: string;
 
-  /** Surfaces this persona appears on */
+  /** Surfaces this assistant appears on */
   surfaces: SurfaceType[];
 
-  /** Identity and soul files to load for persona wiring */
+  /** Identity and soul files to load for assistant wiring */
   identityFiles?: string[];
 
   /** Custom system prompt additions */
@@ -148,7 +148,7 @@ export interface AgentPersonaConfig extends AgentPersona {
   /** Knowledge file paths to include */
   knowledge?: string[];
 
-  /** MCP servers enabled for this persona */
+  /** MCP servers enabled for this assistant */
   mcpServers?: string[];
 }
 
@@ -332,7 +332,7 @@ export const DEFAULT_CONFIG: Partial<ZeeRootConfig> = {
     providers: {},
   },
   agents: [],
-  personas: [],
+  assistants: [],
   mcp: {},
 	  memory: {
 	    qdrant: {

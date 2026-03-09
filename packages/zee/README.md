@@ -128,11 +128,11 @@ Use this as your onboarding completion checklist:
 For local Stanley autostart, build the Rust runtime and point Zee at the binary:
 
 ```bash
-cargo build --manifest-path packages/stanley-core/Cargo.toml --release --features cli
-export STANLEY_CORE_BIN=$PWD/packages/stanley-core/target/release/stanley
+cargo build --manifest-path packages/investing-core/Cargo.toml --release --features cli
+export ZEE_INVESTING_CORE_BIN=$PWD/packages/investing-core/target/release/stanley
 ```
 
-Alternatively, point `STANLEY_API_URL` at an already-running Stanley runtime.
+Alternatively, point `ZEE_INVESTING_API_URL` at an already-running Investing runtime.
 
 ## Build from source
 

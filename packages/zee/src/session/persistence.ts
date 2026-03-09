@@ -5,7 +5,7 @@
  * - Periodic checkpoints of session state
  * - Write-ahead logging for in-progress operations
  * - Crash recovery on daemon startup
- * - Last active session tracking per persona
+ * - Last active session tracking for Zee
  */
 
 import { Log } from "../util/log"
@@ -21,6 +21,8 @@ import path from "path"
 const log = Log.create({ service: "session-persistence" })
 
 export namespace Persistence {
+  type Agent = "zee"
+
   // -------------------------------------------------------------------------
   // Configuration
   // -------------------------------------------------------------------------
@@ -54,10 +56,14 @@ export namespace Persistence {
   const DAILY_SESSIONS_FILE = path.join(PERSISTENCE_DIR, "daily-sessions.json")
   const RECOVERY_MARKER = path.join(PERSISTENCE_DIR, "recovery-needed")
 
+  interface LastActiveEntry {
+    sessionId: string
+    chatId?: number
+    updatedAt: number
+  }
+
   interface LastActiveState {
-    zee?: { sessionId: string; chatId?: number; updatedAt: number }
-    stanley?: { sessionId: string; chatId?: number; updatedAt: number }
-    johny?: { sessionId: string; chatId?: number; updatedAt: number }
+    zee?: LastActiveEntry
   }
 
   interface WALEntry {
@@ -100,6 +106,32 @@ export namespace Persistence {
   // Mutex for state file operations (last-active.json, daily-sessions.json)
   // Prevents read-modify-write race conditions
   let stateMutexPromise: Promise<void> = Promise.resolve()
+
+  function normalizeAgent(_value?: unknown): Agent {
+    return "zee"
+  }
+
+  function isLastActiveEntry(value: unknown): value is LastActiveEntry {
+    return !!value && typeof value === "object" && typeof (value as LastActiveEntry).sessionId === "string"
+  }
+
+  function normalizeLastActiveState(raw: unknown): LastActiveState {
+    if (!raw || typeof raw !== "object") return {}
+
+    const candidates = ["zee"]
+      .map((key) => (raw as Record<string, unknown>)[key])
+      .filter(isLastActiveEntry)
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+
+    const latest = candidates[0]
+    return latest ? { zee: latest } : {}
+  }
+
+  function normalizeDailyKey(key: string): string | undefined {
+    const match = key.match(/^[^-]+-(\d{4}-\d{2}-\d{2})$/)
+    if (!match) return undefined
+    return `zee-${match[1]}`
+  }
 
   async function withStateMutex<T>(fn: () => T | Promise<T>): Promise<T> {
     const currentMutex = stateMutexPromise
@@ -344,12 +376,12 @@ export namespace Persistence {
         break
       case "session_activate":
         // Re-apply last active session
-        const { persona, sessionId, chatId } = entry.data as {
-          persona: keyof LastActiveState
+        const { agent, sessionId, chatId } = entry.data as {
+          agent?: Agent
           sessionId: string
           chatId?: number
         }
-        await setLastActive(persona, sessionId, chatId)
+        await setLastActive(agent ?? "zee", sessionId, chatId)
         break
     }
   }
@@ -514,15 +546,17 @@ export namespace Persistence {
   // -------------------------------------------------------------------------
 
   export async function setLastActive(
-    persona: "zee" | "stanley" | "johny",
+    agent: Agent,
     sessionId: string,
     chatId?: number,
   ): Promise<void> {
+    const canonicalAgent = normalizeAgent(agent)
+
     // Use mutex to prevent read-modify-write race conditions
     await withStateMutex(async () => {
       const state = await getLastActiveState()
 
-      state[persona] = {
+      state[canonicalAgent] = {
         sessionId,
         chatId,
         updatedAt: Date.now(),
@@ -536,25 +570,25 @@ export namespace Persistence {
     appendToWAL({
       timestamp: Date.now(),
       operation: "session_activate",
-      data: { persona, sessionId, chatId },
+      data: { agent: canonicalAgent, sessionId, chatId },
     })
 
-    log.debug("Set last active session", { persona, sessionId, chatId })
+    log.debug("Set last active session", { agent: canonicalAgent, sessionId, chatId })
   }
 
-  export async function getLastActive(persona: "zee" | "stanley" | "johny"): Promise<{
+  export async function getLastActive(agent: Agent): Promise<{
     sessionId: string
     chatId?: number
     updatedAt: number
   } | null> {
     const state = await getLastActiveState()
-    return state[persona] || null
+    return state[normalizeAgent(agent)] || null
   }
 
   async function getLastActiveState(): Promise<LastActiveState> {
     try {
       const content = await fs.readFile(LAST_ACTIVE_FILE, "utf-8")
-      return JSON.parse(content) as LastActiveState
+      return normalizeLastActiveState(JSON.parse(content))
     } catch {
       return {}
     }
@@ -565,7 +599,7 @@ export namespace Persistence {
   }
 
   // -------------------------------------------------------------------------
-  // Daily Session Tracking (One session per persona per day)
+  // Daily Session Tracking (one session for Zee per day)
   // -------------------------------------------------------------------------
 
   interface DailySessionEntry {
@@ -579,43 +613,55 @@ export namespace Persistence {
     [key: string]: DailySessionEntry
   }
 
-  function getDailyKey(persona: "zee" | "stanley" | "johny", date?: Date): string {
+  function getDailyKey(agent: Agent, date?: Date): string {
     const d = date || new Date()
     const dateStr = d.toISOString().split("T")[0] // YYYY-MM-DD
-    return `${persona}-${dateStr}`
+    return `${normalizeAgent(agent)}-${dateStr}`
   }
 
   async function getDailySessionsState(): Promise<DailySessionsState> {
     try {
       const content = await fs.readFile(DAILY_SESSIONS_FILE, "utf-8")
-      return JSON.parse(content) as DailySessionsState
+      const parsed = JSON.parse(content) as Record<string, DailySessionEntry>
+      const normalized: DailySessionsState = {}
+      for (const [key, entry] of Object.entries(parsed)) {
+        if (!entry || typeof entry.sessionId !== "string") continue
+        const normalizedKey = normalizeDailyKey(key)
+        if (!normalizedKey) continue
+        const current = normalized[normalizedKey]
+        if (!current || (entry.createdAt ?? 0) >= (current.createdAt ?? 0)) {
+          normalized[normalizedKey] = entry
+        }
+      }
+      return normalized
     } catch {
       return {}
     }
   }
 
   /**
-   * Get today's session for a persona (or specific date)
+   * Get today's session for Zee .
    */
   export async function getDailySession(
-    persona: "zee" | "stanley" | "johny",
+    agent: Agent,
     date?: Date,
   ): Promise<DailySessionEntry | null> {
-    const key = getDailyKey(persona, date)
+    const key = getDailyKey(agent, date)
     const state = await getDailySessionsState()
     return state[key] || null
   }
 
   /**
-   * Set today's session for a persona (or specific date)
+   * Set today's session for Zee .
    */
   export async function setDailySession(
-    persona: "zee" | "stanley" | "johny",
+    agent: Agent,
     sessionId: string,
     chatId?: number,
     date?: Date,
   ): Promise<void> {
-    const key = getDailyKey(persona, date)
+    const canonicalAgent = normalizeAgent(agent)
+    const key = getDailyKey(canonicalAgent, date)
 
     // Use mutex to prevent read-modify-write race conditions
     await withStateMutex(async () => {
@@ -643,17 +689,17 @@ export namespace Persistence {
     appendToWAL({
       timestamp: Date.now(),
       operation: "session_activate",
-      data: { persona, sessionId, chatId, daily: true, date: getDailyKey(persona, date) },
+      data: { agent: canonicalAgent, sessionId, chatId, daily: true, date: getDailyKey(canonicalAgent, date) },
     })
 
-    log.debug("Set daily session", { persona, sessionId, chatId, key })
+    log.debug("Set daily session", { agent: canonicalAgent, sessionId, chatId, key })
   }
 
   /**
    * Check if a daily session exists and is still valid
    */
-  export async function hasDailySession(persona: "zee" | "stanley" | "johny", date?: Date): Promise<boolean> {
-    const entry = await getDailySession(persona, date)
+  export async function hasDailySession(agent: Agent, date?: Date): Promise<boolean> {
+    const entry = await getDailySession(agent, date)
     if (!entry) return false
 
     // Verify session still exists
@@ -669,38 +715,39 @@ export namespace Persistence {
   const pendingReservations = new Map<string, Promise<{ sessionId: string; isNew: boolean }>>()
 
   /**
-   * Get or create a daily session for a persona
+   * Get or create a daily session for Zee.
    * Returns the session ID to use
    *
    * Uses mutex to prevent TOCTOU race where multiple callers both see isNew:true
    */
   export async function getOrCreateDailySession(
-    persona: "zee" | "stanley" | "johny",
+    agent: Agent,
     options: {
       chatId?: number
       title?: string
     } = {},
   ): Promise<{ sessionId: string; isNew: boolean }> {
-    const key = getDailyKey(persona)
+    const canonicalAgent = normalizeAgent(agent)
+    const key = getDailyKey(canonicalAgent)
 
     // Check if there's already an in-progress reservation for this key
     const pending = pendingReservations.get(key)
     if (pending) {
       // Wait for the pending reservation to complete, then re-check
       await pending
-      return getOrCreateDailySession(persona, options)
+      return getOrCreateDailySession(canonicalAgent, options)
     }
 
     // Use mutex to ensure atomic check-and-reserve
     const reservationPromise = withStateMutex(async () => {
       // Check for existing daily session
-      const existing = await getDailySession(persona)
+      const existing = await getDailySession(canonicalAgent)
       if (existing) {
         // Verify it still exists
         try {
           const session = await Session.get(existing.sessionId)
           if (session) {
-            log.debug("Reusing daily session", { persona, sessionId: existing.sessionId })
+            log.debug("Reusing daily session", { agent: canonicalAgent, sessionId: existing.sessionId })
             return { sessionId: existing.sessionId, isNew: false }
           }
         } catch {
@@ -759,12 +806,12 @@ export namespace Persistence {
   }
 
   /**
-   * Get the last active session for a persona with its todos
+   * Get the last active session for Zee with its todos.
    */
   export async function getLastActiveSessionWithTodos(
-    persona: "zee" | "stanley" | "johny",
+    agent: Agent,
   ): Promise<SessionWithTodos | null> {
-    const lastActive = await getLastActive(persona)
+    const lastActive = await getLastActive(agent)
     if (!lastActive) return null
 
     try {
@@ -822,7 +869,7 @@ export namespace Persistence {
 
   /**
    * Set cross-session context for a session
-   * Used by personas bootstrap to inject memories
+   * Used by Zee bootstrap to inject memories
    */
   export async function setSessionContext(sessionId: string, context: SessionContext): Promise<void> {
     await fs.mkdir(PERSISTENCE_DIR, { recursive: true })

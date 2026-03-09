@@ -182,8 +182,8 @@ name: bad-skill
   })
 })
 
-describe("Skill.all() affinity sorting", () => {
-  test("sorts skills by affinity: own > shared > cross", async () => {
+describe("Skill.all() shared metadata", () => {
+  test("returns all skills with shared affinity in a stable order", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -204,20 +204,20 @@ describe("Skill.all() affinity sorting", () => {
       fn: async () => {
         const zeeSkills = await Skill.all("zee")
         expect(zeeSkills.length).toBe(3)
-        expect(zeeSkills[0].name).toBe("zee-skill")
-        expect(zeeSkills[0].affinity).toBe("own")
-        expect(zeeSkills[1].name).toBe("common")
-        expect(zeeSkills[1].affinity).toBe("shared")
-        expect(zeeSkills[2].name).toBe("stan-skill")
-        expect(zeeSkills[2].affinity).toBe("cross")
+        expect(zeeSkills.map((item) => item.name)).toEqual(["common", "stan-skill", "zee-skill"])
+        expect(zeeSkills.every((item) => item.affinity === "shared")).toBeTrue()
       },
     })
   })
 
-  test("persona context extracted from path", async () => {
+  test("only @zee paths retain assistant context", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
+        await Bun.write(
+          path.join(dir, ".agents", "skills", "@zee", "coordination", "SKILL.md"),
+          skill("coordination", "Zee skill"),
+        )
         await Bun.write(
           path.join(dir, ".agents", "skills", "@johny", "study", "SKILL.md"),
           skill("study", "Study skill"),
@@ -229,13 +229,14 @@ describe("Skill.all() affinity sorting", () => {
       directory: tmp.path,
       fn: async () => {
         const skills = await Skill.all()
-        expect(skills.length).toBe(1)
-        expect(skills[0].context).toBe("johny")
+        expect(skills.length).toBe(2)
+        expect(skills.find((item) => item.name === "coordination")?.context).toBe("zee")
+        expect(skills.find((item) => item.name === "study")?.context).toBeUndefined()
       },
     })
   })
 
-  test("all skills accessible to all personas", async () => {
+  test("all skills remain accessible through Zee and legacy agent aliases", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -251,12 +252,10 @@ describe("Skill.all() affinity sorting", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        for (const persona of ["zee", "stanley", "johny"]) {
-          const skills = await Skill.all(persona)
+        for (const agent of ["zee", "stanley", "johny"]) {
+          const skills = await Skill.all(agent)
           expect(skills.length).toBe(3)
-          expect(skills[0].affinity).toBe("own")
-          expect(skills[1].affinity).toBe("cross")
-          expect(skills[2].affinity).toBe("cross")
+          expect(skills.every((item) => item.affinity === "shared")).toBeTrue()
         }
       },
     })
@@ -412,7 +411,7 @@ describe("Skill.search()", () => {
     })
   })
 
-  test("respects persona affinity sorting in results", async () => {
+  test("returns shared results without persona affinity sorting", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -432,10 +431,10 @@ describe("Skill.search()", () => {
       fn: async () => {
         const results = await Skill.search("keyword", "zee")
         expect(results.length).toBe(2)
-        expect(results[0].name).toBe("zee-tool")
-        expect(results[0].affinity).toBe("own")
-        expect(results[1].name).toBe("stan-tool")
-        expect(results[1].affinity).toBe("cross")
+        expect(results.map((item) => item.name)).toEqual(["stan-tool", "zee-tool"])
+        expect(results.every((item) => item.affinity === "shared")).toBeTrue()
+        expect(results.find((item) => item.name === "zee-tool")?.context).toBe("zee")
+        expect(results.find((item) => item.name === "stan-tool")?.context).toBeUndefined()
       },
     })
   })
@@ -474,13 +473,21 @@ describe("Skill.index() readiness", () => {
     })
   })
 
-  test("marks home-assistant env as ready when legacy config file exists", async () => {
-    const xdgConfig = process.env["XDG_CONFIG_HOME"]!
-    const haConfigPath = path.join(xdgConfig, "home-assistant", "config.json")
-    await Bun.write(haConfigPath, JSON.stringify({ url: "http://ha.local:8123", token: "legacy-token" }))
-
+  test("marks home-assistant env as ready when skill config provides env entries", async () => {
     await using tmp = await tmpdir({
       git: true,
+      config: {
+        skills: {
+          entries: {
+            "home-assistant": {
+              env: {
+                HASS_SERVER: "http://ha.local:8123",
+                HASS_TOKEN: "legacy-token",
+              },
+            },
+          },
+        },
+      },
       init: async (dir) => {
         await Bun.write(
           path.join(dir, ".agents", "skills", "home-assistant", "SKILL.md"),
@@ -493,19 +500,15 @@ describe("Skill.index() readiness", () => {
       },
     })
 
-    try {
-      await Instance.provide({
-        directory: tmp.path,
-        fn: async () => {
-          const indexed = await Skill.index("zee")
-          const match = indexed.find((item) => item.name === "home-assistant")
-          expect(match).toBeDefined()
-          expect(match!.readiness.env).toBe("ready")
-        },
-      })
-    } finally {
-      await Bun.write(haConfigPath, "")
-    }
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const indexed = await Skill.index("zee")
+        const match = indexed.find((item) => item.name === "home-assistant")
+        expect(match).toBeDefined()
+        expect(match!.readiness.env).toBe("ready")
+      },
+    })
   })
 })
 

@@ -16,11 +16,11 @@ export const QDRANT_URL = "http://localhost:6333";
 /** Default collection for agent memory */
 export const QDRANT_COLLECTION_MEMORY = "agent_memory";
 
-/** Default collection for personas state */
-export const QDRANT_COLLECTION_PERSONAS_STATE = "personas_state";
+/** Default collection for agent state */
+export const QDRANT_COLLECTION_AGENT_STATE = "agent_state";
 
-/** Default collection for personas memory */
-export const QDRANT_COLLECTION_PERSONAS_MEMORY = "personas_memory";
+/** Default collection for agent memory */
+export const QDRANT_COLLECTION_AGENT_MEMORY = "agent_memory";
 
 // =============================================================================
 // Embedding Configuration

@@ -19,16 +19,16 @@ export interface RuntimeState {
 }
 
 /**
- * Get current runtime state for a persona
+ * Get current runtime state for an assistant
  */
-export async function getRuntimeState(persona: string): Promise<RuntimeState> {
+export async function getRuntimeState(agentName: string): Promise<RuntimeState> {
   const state: RuntimeState = {
     enabledServices: [],
     integrations: [],
   }
 
   // Zee-specific services
-  if (persona === "zee") {
+  if (agentName === "zee") {
     // Splitwise
     try {
       const splitwise = getZeeSplitwiseConfig()

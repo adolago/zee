@@ -8,7 +8,7 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useSync } from "@/context/sync"
 import { useGlobalSDK } from "@/context/global-sdk"
-import { usePersona } from "@/context/persona"
+import { useAssistant } from "@/context/assistant"
 import { useLocal } from "@/context/local"
 import { getFilename } from "@zee/util/path"
 import { decode64 } from "@/utils/base64"
@@ -21,7 +21,7 @@ import { Popover } from "@zee/ui/popover"
 import { TextField } from "@zee/ui/text-field"
 import { Keybind } from "@zee/ui/keybind"
 import { StatusPopover } from "../status-popover"
-import { PersonaSelector } from "../persona-selector"
+import { AssistantSelector } from "../assistant-selector"
 
 export function SessionHeader() {
   const globalSDK = useGlobalSDK()
@@ -31,7 +31,7 @@ export function SessionHeader() {
   const sync = useSync()
   const platform = usePlatform()
   const language = useLanguage()
-  const persona = usePersona()
+  const assistant = useAssistant()
   const local = useLocal()
 
   const projectDirectory = createMemo(() => decode64(params.dir) ?? "")
@@ -173,10 +173,10 @@ export function SessionHeader() {
         {(mount) => (
           <Portal mount={mount()}>
             <div class="flex items-center gap-3">
-              <PersonaSelector
-                value={persona.id()}
+              <AssistantSelector
+                value={assistant.id()}
                 onChange={(id) => {
-                  persona.set(id)
+                  assistant.set(id)
                   local.agent.set(id)
                 }}
               />

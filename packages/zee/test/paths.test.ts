@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import fs from "fs/promises"
 import path from "path"
 import { tmpdir } from "./fixture/fixture"
-import { Stanley } from "../src/paths"
+import { Investing } from "../src/paths"
 
-const ORIGINAL_STANLEY_CORE_BIN = process.env.STANLEY_CORE_BIN
-const ORIGINAL_STANLEY_API_URL = process.env.STANLEY_API_URL
+const ORIGINAL_ZEE_INVESTING_CORE_BIN = process.env.ZEE_INVESTING_CORE_BIN
+const ORIGINAL_ZEE_INVESTING_API_URL = process.env.ZEE_INVESTING_API_URL
 
 async function writeExecutable(filePath: string, body: string): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true })
@@ -14,20 +14,20 @@ async function writeExecutable(filePath: string, body: string): Promise<void> {
 }
 
 beforeEach(() => {
-  delete process.env.STANLEY_CORE_BIN
-  delete process.env.STANLEY_API_URL
+  delete process.env.ZEE_INVESTING_CORE_BIN
+  delete process.env.ZEE_INVESTING_API_URL
 })
 
 afterEach(() => {
-  if (ORIGINAL_STANLEY_CORE_BIN === undefined) delete process.env.STANLEY_CORE_BIN
-  else process.env.STANLEY_CORE_BIN = ORIGINAL_STANLEY_CORE_BIN
+  if (ORIGINAL_ZEE_INVESTING_CORE_BIN === undefined) delete process.env.ZEE_INVESTING_CORE_BIN
+  else process.env.ZEE_INVESTING_CORE_BIN = ORIGINAL_ZEE_INVESTING_CORE_BIN
 
-  if (ORIGINAL_STANLEY_API_URL === undefined) delete process.env.STANLEY_API_URL
-  else process.env.STANLEY_API_URL = ORIGINAL_STANLEY_API_URL
+  if (ORIGINAL_ZEE_INVESTING_API_URL === undefined) delete process.env.ZEE_INVESTING_API_URL
+  else process.env.ZEE_INVESTING_API_URL = ORIGINAL_ZEE_INVESTING_API_URL
 })
 
-describe("Stanley.preflight", () => {
-  test("accepts explicit STANLEY_CORE_BIN without Python setup", async () => {
+describe("Investing.preflight", () => {
+  test("accepts explicit ZEE_INVESTING_CORE_BIN without Python setup", async () => {
     await using tmp = await tmpdir()
     const coreBin = path.join(tmp.path, "bin", "stanley")
     await writeExecutable(
@@ -38,34 +38,34 @@ describe("Stanley.preflight", () => {
         "fi\n" +
         "exit 0\n",
     )
-    process.env.STANLEY_CORE_BIN = coreBin
+    process.env.ZEE_INVESTING_CORE_BIN = coreBin
 
-    const err = Stanley.preflight()
+    const err = Investing.preflight()
     expect(err).toBeNull()
   })
 
-  test("requires STANLEY_CORE_BIN when unset", () => {
-    const err = Stanley.preflight()
+  test("requires ZEE_INVESTING_CORE_BIN when unset", () => {
+    const err = Investing.preflight()
     expect(err).toBeDefined()
-    expect(err).toContain("STANLEY_CORE_BIN")
+    expect(err).toContain("ZEE_INVESTING_CORE_BIN")
     expect(err).toContain("not configured")
   })
 
-  test("accepts explicit STANLEY_API_URL without local binary setup", () => {
-    process.env.STANLEY_API_URL = "http://127.0.0.1:8000"
+  test("accepts explicit ZEE_INVESTING_API_URL without local binary setup", () => {
+    process.env.ZEE_INVESTING_API_URL = "http://127.0.0.1:8000"
 
-    const err = Stanley.preflight()
+    const err = Investing.preflight()
     expect(err).toBeNull()
   })
 
-  test("fails with a clear error when STANLEY_CORE_BIN is invalid", async () => {
+  test("fails with a clear error when ZEE_INVESTING_CORE_BIN is invalid", async () => {
     await using tmp = await tmpdir()
-    process.env.STANLEY_CORE_BIN = path.join(tmp.path, "missing-stanley")
+    process.env.ZEE_INVESTING_CORE_BIN = path.join(tmp.path, "missing-stanley")
 
-    const err = Stanley.preflight()
+    const err = Investing.preflight()
     expect(err).toBeDefined()
     expect(err).toContain("not executable")
-    expect(err).toContain("STANLEY_CORE_BIN")
+    expect(err).toContain("ZEE_INVESTING_CORE_BIN")
   })
 
   test("fails with a clear error when the configured core binary probe fails", async () => {
@@ -76,9 +76,9 @@ describe("Stanley.preflight", () => {
       "#!/usr/bin/env sh\n" +
         "exit 7\n",
     )
-    process.env.STANLEY_CORE_BIN = coreBin
+    process.env.ZEE_INVESTING_CORE_BIN = coreBin
 
-    const err = Stanley.preflight()
+    const err = Investing.preflight()
     expect(err).toBeDefined()
     expect(err).toContain("startup probe")
     expect(err).toContain(coreBin)

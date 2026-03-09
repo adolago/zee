@@ -264,12 +264,12 @@ zee:cron-add {
 
 | Need | Delegate To | Example |
 |------|-------------|---------|
-| Market analysis | @stanley | "What's AAPL doing?" |
-| Learning/study | @johny | "Help me understand X" |
-| Financial question | @stanley | Domain expertise |
-| Code implementation | @johny | Oracle protocol |
+| Market analysis | @investing | "What's AAPL doing?" |
+| Learning/study | @learning | "Help me understand X" |
+| Financial question | @investing | Domain expertise |
+| Code implementation | @learning | Oracle protocol |
 
 ```bash
 # Delegate via CLI
-npx tsx scripts/zee-delegate-cli.ts --to stanley --task "Analyze AAPL" --context "User interested in tech sector"
+npx tsx scripts/zee-delegate-cli.ts --to investing --task "Analyze AAPL" --context "User interested in tech sector"
 ```

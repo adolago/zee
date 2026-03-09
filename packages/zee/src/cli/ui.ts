@@ -36,7 +36,7 @@ import {
   Symbols as SymbolsImpl,
   Message as MessageImpl,
   themeToAnsi as themeToAnsiImpl,
-  personaColors as personaColorsImpl,
+  assistantColors as assistantColorsImpl,
   shouldUseColors as shouldUseColorsImpl,
 } from "./style"
 
@@ -46,7 +46,7 @@ export {
   Symbols,
   Message,
   themeToAnsi,
-  personaColors,
+  assistantColors,
   shouldUseColors,
   shouldUseUnicode,
   color,
@@ -69,7 +69,7 @@ export {
  *
  * This namespace provides:
  * - Formatted output methods (success, error, warn, info)
- * - Logo rendering with persona theming
+ * - Logo rendering with Zee branding
  * - User input handling
  * - Access to Style, Symbols, and Message through properties
  *
@@ -91,7 +91,7 @@ export {
  * ```
  */
 export namespace UI {
-  // Default persona logo (Zee - the default gateway)
+  // Default Zee logo.
   const LOGO = [
     "███████╗███████╗███████╗",
     "╚══███╔╝██╔════╝██╔════╝",
@@ -136,9 +136,9 @@ export namespace UI {
 
   /**
    * Persona-specific colors
-   * @deprecated Use direct import: `import { personaColors } from "@/cli"`
+   * @deprecated Use direct import: `import { assistantColors } from "@/cli"`
    */
-  export const personaColors = personaColorsImpl
+  export const assistantColors = assistantColorsImpl
 
   /**
    * Check if colors should be used
@@ -233,32 +233,27 @@ export namespace UI {
   // =============================================================================
 
   /**
-   * Get the logo color for a persona.
+   * Get the Zee logo color.
    *
    * Maps to the closest ANSI color for CLI mode.
    * In TUI mode, full RGB theme colors are used instead.
    *
    * When NO_COLOR is set, returns empty string (no color).
    *
-   * @param persona - The persona name ('zee', 'stanley', 'johny', or 'default')
+   * @param variant - The logo variant ("zee" or "default")
    * @returns ANSI color code for the logo
    *
    * @example
    * ```typescript
    * const zeeColor = UI.getLogoColor("zee");
-   * const stanleyColor = UI.getLogoColor("stanley");
    * ```
    */
-  export function getLogoColor(persona: "zee" | "stanley" | "johny" | "default" = "default"): string {
-    switch (persona) {
-      case "stanley":
-        return personaColorsImpl.stanley.logo
-      case "johny":
-        return personaColorsImpl.johny.logo
+  export function getLogoColor(variant: "zee" | "default" = "default"): string {
+    switch (variant) {
       case "zee":
       case "default":
       default:
-        return personaColorsImpl.zee.logo
+        return assistantColorsImpl.zee.logo
     }
   }
 
@@ -271,7 +266,7 @@ export namespace UI {
    * When NO_COLOR is set, the logo renders without any color codes.
    *
    * @param pad - Optional padding string to prepend to each line
-   * @param persona - Optional persona to theme the logo for
+   * @param variant - Optional Zee logo variant
    * @returns Logo string with color codes
    *
    * @example
@@ -279,18 +274,15 @@ export namespace UI {
    * // Default logo (Zee)
    * console.log(UI.logo());
    *
-   * // Stanley-themed logo
-   * console.log(UI.logo(undefined, "stanley"));
-   *
    * // With padding
    * console.log(UI.logo("  "));
    * ```
    */
-  export function logo(pad?: string, persona?: "zee" | "stanley" | "johny" | "default"): string {
+  export function logo(pad?: string, variant?: "zee" | "default"): string {
     const result = []
     // Use theme-aware logo color instead of hardcoded cyan
     // Style.reset and colors are automatically empty when NO_COLOR is set
-    const color = getLogoColor(persona)
+    const color = getLogoColor(variant)
     for (const row of LOGO) {
       if (pad) result.push(pad)
       result.push(color)
