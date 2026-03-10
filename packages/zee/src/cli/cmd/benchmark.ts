@@ -19,6 +19,10 @@ export type BenchmarkAppEvent = {
   properties: any
 }
 
+export interface BenchmarkEventSource {
+  subscribe(handler: (event: BenchmarkAppEvent) => void): void | (() => void)
+}
+
 export type BenchmarkRunStatus = "ok" | "invalid" | "error"
 export type BenchmarkTokenSource = "reported" | "estimated_chars" | "missing"
 
@@ -146,6 +150,18 @@ const BENCHMARK_PERMISSION_RULES = [
 
 function modelLabel(model: BenchmarkModelRef): string {
   return `${model.providerID}/${model.modelID}`
+}
+
+export const BENCHMARK_DEFAULTS = {
+  agent: DEFAULT_AGENT,
+  runs: DEFAULT_RUNS,
+  warmup: DEFAULT_WARMUP,
+  prompt: DEFAULT_BENCHMARK_PROMPT,
+  system: BENCHMARK_SYSTEM_PROMPT,
+} as const
+
+export function benchmarkModelLabel(model: BenchmarkModelRef) {
+  return modelLabel(model)
 }
 
 function round(value: number, places = 2): number {
@@ -365,6 +381,26 @@ async function observeAttempt(attempt: BenchmarkAttempt, startedAt: number): Pro
   let totalMs = 0
   let textChars = 0
 
+  const finalize = (): BenchmarkObservation => {
+    if (outputTokens === null) {
+      outputTokens = estimateTokensFromChars(textChars)
+      tokenSource = outputTokens === null ? "missing" : "estimated_chars"
+    }
+    if (!error && !invalidReason && ttftMs === null && outputTokens === null) {
+      invalidReason = "assistant produced no benchmark output"
+    }
+    return {
+      firstActivityMs,
+      ttftMs,
+      totalMs,
+      outputTokens,
+      reasoningTokens,
+      tokenSource,
+      invalidReason,
+      error,
+    }
+  }
+
   for await (const event of attempt.events) {
     switch (event.type) {
       case "message.part.updated": {
@@ -420,40 +456,13 @@ async function observeAttempt(attempt: BenchmarkAttempt, startedAt: number): Pro
         const props = event.properties
         if (!props || props.sessionID !== attempt.sessionID) break
         totalMs = round(performance.now() - startedAt)
-        if (outputTokens === null) {
-          outputTokens = estimateTokensFromChars(textChars)
-          tokenSource = outputTokens === null ? "missing" : "estimated_chars"
-        }
-        return {
-          firstActivityMs,
-          ttftMs,
-          totalMs,
-          outputTokens,
-          reasoningTokens,
-          tokenSource,
-          invalidReason,
-          error,
-        }
+        return finalize()
       }
     }
   }
 
   totalMs = round(performance.now() - startedAt)
-  if (outputTokens === null) {
-    outputTokens = estimateTokensFromChars(textChars)
-    tokenSource = outputTokens === null ? "missing" : "estimated_chars"
-  }
-
-  return {
-    firstActivityMs,
-    ttftMs,
-    totalMs,
-    outputTokens,
-    reasoningTokens,
-    tokenSource,
-    invalidReason,
-    error,
-  }
+  return finalize()
 }
 
 export async function runBenchmarkAttempt(input: {
@@ -626,7 +635,7 @@ export async function executeBenchmarkCommand(
   return { report, exitCode }
 }
 
-function resolveLocalAppEvent(input: any): BenchmarkAppEvent | undefined {
+function resolveBenchmarkAppEvent(input: any): BenchmarkAppEvent | undefined {
   if (!input || typeof input !== "object") return
   if (input.payload && typeof input.payload === "object") {
     const payload = input.payload as BenchmarkAppEvent
@@ -637,23 +646,21 @@ function resolveLocalAppEvent(input: any): BenchmarkAppEvent | undefined {
   }
 }
 
-function createLocalEventStream() {
+function createEventStream(source: BenchmarkEventSource) {
   const queue: BenchmarkAppEvent[] = []
   let resolver: ((value: IteratorResult<BenchmarkAppEvent>) => void) | null = null
   let done = false
 
-  const handler = (event: { payload: any }) => {
-    const payload = resolveLocalAppEvent(event.payload)
-    if (!payload) return
+  const handler = (event: BenchmarkAppEvent) => {
     if (resolver) {
-      resolver({ value: payload, done: false })
+      resolver({ value: event, done: false })
       resolver = null
       return
     }
-    queue.push(payload)
+    queue.push(event)
   }
 
-  GlobalBus.on("event", handler)
+  const unsubscribe = source.subscribe(handler)
 
   const iterator = {
     async next(): Promise<IteratorResult<BenchmarkAppEvent>> {
@@ -667,8 +674,9 @@ function createLocalEventStream() {
       })
     },
     async return(): Promise<IteratorResult<BenchmarkAppEvent>> {
+      if (done) return { value: undefined, done: true }
       done = true
-      GlobalBus.off("event", handler)
+      unsubscribe?.()
       if (resolver) {
         resolver({ value: undefined, done: true })
         resolver = null
@@ -689,7 +697,10 @@ function createLocalEventStream() {
   }
 }
 
-function createLocalRuntime(sdk: ZeeClient): BenchmarkRuntime {
+export function createSdkBenchmarkRuntime(
+  sdk: Pick<ZeeClient, "session" | "permission">,
+  eventSource: BenchmarkEventSource,
+): BenchmarkRuntime {
   return {
     async beginAttempt(input) {
       const session = await sdk.session.create({
@@ -701,20 +712,24 @@ function createLocalRuntime(sdk: ZeeClient): BenchmarkRuntime {
         throw new Error("Failed to create benchmark session")
       }
 
-      const stream = createLocalEventStream()
+      const stream = createEventStream(eventSource)
 
       return {
         sessionID,
         events: stream.events,
         async prompt() {
-          await sdk.session.prompt({
-            sessionID,
-            agent: input.agent,
-            model: input.model,
-            variant: input.variant,
-            system: input.system,
-            parts: [{ type: "text", text: input.prompt }],
-          })
+          await sdk.session.promptAsync(
+            {
+              sessionID,
+              agent: input.agent,
+              model: input.model,
+              variant: input.variant,
+              tools: {},
+              system: input.system,
+              parts: [{ type: "text", text: input.prompt }],
+            },
+            { throwOnError: true },
+          )
         },
         async rejectPermission(permissionID: string) {
           await sdk.permission.respond({
@@ -730,6 +745,20 @@ function createLocalRuntime(sdk: ZeeClient): BenchmarkRuntime {
       }
     },
   }
+}
+
+export function createLocalRuntime(sdk: ZeeClient): BenchmarkRuntime {
+  return createSdkBenchmarkRuntime(sdk, {
+    subscribe(handler) {
+      const wrapped = (event: { payload: any }) => {
+        const payload = resolveBenchmarkAppEvent(event.payload)
+        if (!payload) return
+        handler(payload)
+      }
+      GlobalBus.on("event", wrapped)
+      return () => GlobalBus.off("event", wrapped)
+    },
+  })
 }
 
 async function validateAgent(agentName: string): Promise<string> {

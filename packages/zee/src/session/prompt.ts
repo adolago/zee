@@ -1408,6 +1408,16 @@ export namespace SessionPrompt {
     using _ = log.time("resolveTools")
     const tools: Record<string, AITool> = {}
 
+    // An explicit empty or fully-disabled tool map means the caller wants a
+    // tool-free turn. Skip registry initialization entirely so broken or slow
+    // tool modules do not affect non-tool flows like benchmarking.
+    if (
+      input.tools &&
+      (Object.keys(input.tools).length === 0 || Object.values(input.tools).every((enabled) => enabled === false))
+    ) {
+      return tools
+    }
+
     const mode = resolveMode(input.session, input.options, input.mode)
     const skipPermissions = mode === "bypass"
 

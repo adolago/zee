@@ -34,6 +34,7 @@ import type { Reranker, RerankerConfig, RerankResult } from "./reranker";
 import {
   QDRANT_URL,
   QDRANT_COLLECTION_MEMORY,
+  QDRANT_COLLECTION_PERSONAS_MEMORY,
   CONTINUITY_MAX_KEY_FACTS,
 } from "../config/constants";
 import { getAuthApiKeySync } from "../config/providers";
@@ -42,6 +43,7 @@ import {
   getMemoryLocalIndexConfig,
   getMemoryQdrantConfig,
   getMemoryRerankerConfig,
+  isMemoryQdrantCollectionConfiguredByUser,
   type MemoryLocalIndexConfig,
 } from "../config/runtime";
 import { Log } from "../../packages/zee/src/util/log";
@@ -367,10 +369,11 @@ export class Memory {
   private readonly storage: QdrantVectorStorage;
   private readonly embedding: EmbeddingProvider;
   private readonly namespace: string;
-  private readonly collection: string;
+  private collection: string;
   private readonly instanceId: string;
   private readonly maxKeyFacts: number;
   private readonly configuredEmbeddingDimensions?: number;
+  private readonly collectionExplicitlyConfigured: boolean;
   private readonly rerankerConfig?: RerankerConfig;
   private embeddingDimension?: number;
   private initialized = false;
@@ -401,6 +404,8 @@ export class Memory {
     };
 
     this.collection = qdrantConfig.collection;
+    this.collectionExplicitlyConfigured =
+      Boolean(config.qdrant?.collection) || isMemoryQdrantCollectionConfiguredByUser();
     this.storage = new QdrantVectorStorage(qdrantConfig);
     this.namespace = config.namespace ?? "default";
     this.instanceId = generateInstanceId();
@@ -466,8 +471,15 @@ export class Memory {
       return this.embeddingDimension;
     }
 
-    const existingDimension = await this.storage.getCollectionDimension(this.collection);
+    let existingDimension = await this.storage.getCollectionDimension(this.collection);
     if (this.configuredEmbeddingDimensions && this.configuredEmbeddingDimensions > 0) {
+      if (
+        existingDimension &&
+        existingDimension !== this.configuredEmbeddingDimensions &&
+        (await this.adoptLegacyCollectionIfCompatible(this.configuredEmbeddingDimensions))
+      ) {
+        existingDimension = await this.storage.getCollectionDimension(this.collection);
+      }
       if (existingDimension && existingDimension !== this.configuredEmbeddingDimensions) {
         throw new Error(
           `Qdrant collection "${this.collection}" uses dimension ${existingDimension}, but embedding dimensions are configured as ${this.configuredEmbeddingDimensions}. Update memory.qdrant.collection or memory.embedding.dimensions.`,
@@ -481,14 +493,30 @@ export class Memory {
     if (existingDimension && existingDimension > 0) {
       const probe = await this.embedding.embed("dimension-probe");
       const probeLength = probe.length;
+      if (
+        probeLength &&
+        probeLength !== existingDimension &&
+        (await this.adoptLegacyCollectionIfCompatible(probeLength))
+      ) {
+        existingDimension = await this.storage.getCollectionDimension(this.collection);
+      }
+      if (existingDimension && probeLength && probeLength === existingDimension) {
+        this.embeddingDimension = probeLength;
+        this.embedding.dimension = probeLength;
+        return probeLength;
+      }
       if (probeLength && probeLength !== existingDimension) {
         throw new Error(
           `Embedding dimension ${probeLength} does not match Qdrant collection ${existingDimension} for "${this.collection}". Create a new collection or set memory.embedding.dimensions to match.`,
         );
       }
-      this.embeddingDimension = probeLength || existingDimension;
-      this.embedding.dimension = this.embeddingDimension;
-      return this.embeddingDimension;
+      const resolvedDimension = probeLength || existingDimension;
+      if (!resolvedDimension) {
+        throw new Error(`Unable to resolve embedding dimension for "${this.collection}".`);
+      }
+      this.embeddingDimension = resolvedDimension;
+      this.embedding.dimension = resolvedDimension;
+      return resolvedDimension;
     }
 
     const probe = await this.embedding.embed("dimension-probe");
@@ -500,6 +528,30 @@ export class Memory {
     this.embeddingDimension = probeLength;
     this.embedding.dimension = probeLength;
     return probeLength;
+  }
+
+  private async adoptLegacyCollectionIfCompatible(expectedDimension: number): Promise<boolean> {
+    if (this.collectionExplicitlyConfigured) return false;
+    if (this.collection !== QDRANT_COLLECTION_MEMORY) return false;
+
+    const legacyCollection = QDRANT_COLLECTION_PERSONAS_MEMORY;
+    const legacyDimension = await this.storage.getCollectionDimension(legacyCollection);
+    if (!legacyDimension || legacyDimension !== expectedDimension) return false;
+
+    const currentPoints = await this.storage.getCollectionPointCount(this.collection);
+    const legacyPoints = await this.storage.getCollectionPointCount(legacyCollection);
+    if ((currentPoints ?? 0) > 0) return false;
+    if ((legacyPoints ?? 0) <= 0) return false;
+
+    this.collection = legacyCollection;
+    this.storage.setCollection(legacyCollection);
+    log.warn("Using legacy Qdrant memory collection for compatibility", {
+      requestedCollection: QDRANT_COLLECTION_MEMORY,
+      legacyCollection,
+      dimension: expectedDimension,
+      legacyPoints,
+    });
+    return true;
   }
 
   private async initLocalIndex(): Promise<void> {

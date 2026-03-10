@@ -22,6 +22,9 @@ export const QDRANT_COLLECTION_AGENT_STATE = "agent_state";
 /** Default collection for agent memory */
 export const QDRANT_COLLECTION_AGENT_MEMORY = "agent_memory";
 
+/** Legacy collection used before the persona-collapse refactor. */
+export const QDRANT_COLLECTION_PERSONAS_MEMORY = "personas_memory";
+
 // =============================================================================
 // Embedding Configuration
 // =============================================================================

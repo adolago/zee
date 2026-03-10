@@ -456,6 +456,36 @@ class ExtendedSession extends GeneratedSession {
     })
   }
 
+  note<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      role?: "user" | "assistant"
+      text: string
+      ignored?: boolean
+      metadata?: Record<string, unknown>
+      directory?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const { directory: _, sessionID, ...body } = parameters
+    return (options?.client ?? this.client).post<
+      {
+        info: Message
+        parts: Part[]
+      },
+      unknown,
+      ThrowOnError
+    >({
+      url: `/session/${sessionID}/note`,
+      body,
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    })
+  }
+
   // Steer a running session by injecting a user message into the active turn.
   // expectedTurnID must match the current active turn.
   override steer<ThrowOnError extends boolean = false>(

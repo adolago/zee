@@ -270,6 +270,7 @@ export class QdrantVectorStorage implements VectorStorage {
     try {
       const info = await this.request<{
         config?: { params?: { vectors?: unknown } };
+        points_count?: unknown;
       }>("GET", `/collections/${name}`);
       const vectors = info?.config?.params?.vectors;
       if (!vectors || typeof vectors !== "object") return null;
@@ -287,6 +288,22 @@ export class QdrantVectorStorage implements VectorStorage {
       }
     } catch (error) {
       log.debug("Failed to read Qdrant collection dimension", {
+        collection: name,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return null;
+  }
+
+  async getCollectionPointCount(name: string): Promise<number | null> {
+    try {
+      const info = await this.request<{
+        points_count?: unknown;
+      }>("GET", `/collections/${name}`);
+      const count = info?.points_count;
+      return typeof count === "number" ? count : null;
+    } catch (error) {
+      log.debug("Failed to read Qdrant collection point count", {
         collection: name,
         reason: error instanceof Error ? error.message : String(error),
       });

@@ -36,6 +36,7 @@ vi.mock("../config/runtime", () => ({
   getMemoryEmbeddingConfig: () => ({}),
   getMemoryLocalIndexConfig: () => ({ enabled: false, backend: "sqlite-fts", degradedRead: "off" }),
   getMemoryRerankerConfig: () => ({ enabled: false }),
+  isMemoryQdrantCollectionConfiguredByUser: () => false,
 }));
 
 vi.mock("../../packages/zee/src/util/log", () => {

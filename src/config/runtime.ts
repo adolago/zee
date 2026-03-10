@@ -86,12 +86,15 @@ export type ZeeCodexbarConfig = {
   timeoutMs?: number;
 };
 
+const USER_CONFIG_PATH = path.join(os.homedir(), ".config", "zee", "zee.jsonc");
+
 const CONFIG_PATHS = [
-  path.join(os.homedir(), ".config", "zee", "zee.jsonc"),
+  USER_CONFIG_PATH,
   Assets.config(),
 ];
 
 let cachedConfig: RuntimeConfig | null = null;
+let cachedUserConfig: RuntimeConfig | null | undefined;
 
 function parseConfigFile(filePath: string): RuntimeConfig | null {
   let contents: string;
@@ -166,6 +169,15 @@ function loadRuntimeConfig(): RuntimeConfig {
   return merged;
 }
 
+function loadUserRuntimeConfig(): RuntimeConfig {
+  if (cachedUserConfig !== undefined) {
+    return cachedUserConfig ?? {};
+  }
+
+  cachedUserConfig = parseConfigFile(USER_CONFIG_PATH);
+  return cachedUserConfig ?? {};
+}
+
 function resolveMemoryQdrantConfig(config: RuntimeConfig): MemoryQdrantConfig {
   const memory = config.memory ?? {};
   const qdrant = memory.qdrant ?? {};
@@ -220,6 +232,12 @@ export function getMemoryQdrantConfig(): MemoryQdrantConfig {
   return resolveMemoryQdrantConfig(loadRuntimeConfig());
 }
 
+export function isMemoryQdrantCollectionConfiguredByUser(): boolean {
+  const memory = loadUserRuntimeConfig().memory ?? {};
+  const qdrant = memory.qdrant ?? {};
+  return Boolean((qdrant.collection ?? memory.qdrantCollection)?.trim());
+}
+
 export function getMemoryEmbeddingConfig(): MemoryEmbeddingConfig {
   return resolveMemoryEmbeddingConfig(loadRuntimeConfig());
 }
@@ -264,4 +282,5 @@ export function getZeeCodexbarConfig(): ZeeCodexbarConfig {
  */
 export function clearRuntimeConfigCache(): void {
   cachedConfig = null;
+  cachedUserConfig = undefined;
 }

@@ -1,5 +1,6 @@
 import { describeRoute, resolver, validator } from "hono-openapi"
 import { Hono } from "hono"
+import { HTTPException } from "hono/http-exception"
 import { z } from "zod"
 import { streamSSE } from "hono/streaming"
 import { Session } from "../../session"
@@ -25,6 +26,8 @@ import { PermissionNext } from "@/permission/next"
 import { ExecutionModeInputSchema, ExecutionModeSchema } from "../../session/mode"
 import { RequestMeta } from "../request-meta"
 import { FluxRecorder } from "@/flux"
+import { Identifier } from "@/id/id"
+import { Instance } from "@/project/instance"
 
 const log = Log.create({ service: "server:session" })
 
@@ -46,6 +49,13 @@ function buildShareUrl(session: Session.Info) {
 
 const SteerInput = SessionPrompt.PromptInput.omit({ sessionID: true }).extend({
   expectedTurnID: z.string().meta({ description: "Expected active assistant turn ID to steer." }),
+})
+
+const SessionNoteInput = z.object({
+  role: z.enum(["user", "assistant"]).default("user"),
+  text: z.string().min(1).meta({ description: "Plain-text note content to append to the session." }),
+  ignored: z.boolean().optional().meta({ description: "Exclude this note from future model context serialization." }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: "Optional structured metadata for the note." }),
 })
 
 export const SessionRoute = new Hono()
@@ -1060,6 +1070,106 @@ export const SessionRoute = new Hono()
         })
       }
       return c.body(null, 204)
+    },
+  )
+  .post(
+    "/session/:sessionID/note",
+    describeRoute({
+      summary: "Append note",
+      description: "Append a persisted note to the current session timeline without starting an assistant loop.",
+      operationId: "session.note",
+      responses: {
+        200: {
+          description: "Created note message",
+          content: {
+            "application/json": {
+              schema: resolver(MessageV2.WithParts),
+            },
+          },
+        },
+        ...errors(400, 404),
+      },
+    }),
+    validator(
+      "param",
+      z.object({
+        sessionID: z.string().meta({ description: "Session ID" }),
+      }),
+    ),
+    validator("json", SessionNoteInput),
+    async (c) => {
+      const sessionID = c.req.valid("param").sessionID
+      const body = c.req.valid("json")
+      const session = await Session.get(sessionID)
+      const timestamp = Date.now()
+
+      const info =
+        body.role === "assistant"
+          ? await (async () => {
+              const history = await Session.messages({ sessionID })
+              const parentID = history.findLast((message) => message.info.role === "user")?.info.id ?? history.at(-1)?.info.id
+              if (!parentID) {
+                throw new HTTPException(400, {
+                  message: "Assistant notes require at least one existing message in the session.",
+                })
+              }
+              return Session.updateMessage({
+                id: Identifier.ascending("message"),
+                sessionID,
+                role: "assistant",
+                parentID,
+                mode: "note",
+                agent: "note",
+                path: {
+                  cwd: session.directory || Instance.directory,
+                  root: Instance.worktree,
+                },
+                time: {
+                  created: timestamp,
+                  completed: timestamp,
+                },
+                cost: 0,
+                tokens: {
+                  input: 0,
+                  output: 0,
+                  reasoning: 0,
+                  cache: { read: 0, write: 0 },
+                },
+                providerID: "zee",
+                modelID: "note",
+                finish: "note",
+              })
+            })()
+          : await Session.updateMessage({
+              id: Identifier.ascending("message"),
+              sessionID,
+              role: "user",
+              agent: "note",
+              model: {
+                providerID: "zee",
+                modelID: "note",
+              },
+              time: {
+                created: timestamp,
+              },
+            })
+
+      const part = await Session.updatePart({
+        id: Identifier.ascending("part"),
+        sessionID,
+        messageID: info.id,
+        type: "text",
+        text: body.text,
+        ignored: body.ignored,
+        metadata: body.metadata,
+      })
+
+      await Session.touch(sessionID)
+
+      return c.json({
+        info,
+        parts: [part],
+      })
     },
   )
   .post(

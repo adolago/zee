@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
+  createLocalRuntime,
+  createSdkBenchmarkRuntime,
   executeBenchmarkCommand,
   runBenchmarkAttempt,
   summarizeBenchmarkRuns,
@@ -10,6 +12,7 @@ import {
   type BenchmarkRunReport,
   type BenchmarkRuntime,
 } from "../../src/cli/cmd/benchmark"
+import { GlobalBus } from "../../src/bus/global"
 
 type Scenario = {
   events: BenchmarkAppEvent[]
@@ -151,6 +154,171 @@ function sessionIdle(sessionID: string): BenchmarkAppEvent {
 }
 
 describe("benchmark command helpers", () => {
+  test("createSdkBenchmarkRuntime works with a generic event subscription source", async () => {
+    const sessionID = "ses_sdk_runtime"
+    const promptAsyncCalls: Array<{ parameters: Record<string, unknown>; options: Record<string, unknown> | undefined }> =
+      []
+    const deletedSessionIDs: string[] = []
+    const listeners = new Set<(event: BenchmarkAppEvent) => void>()
+    let unsubscribeCount = 0
+
+    const runtime = createSdkBenchmarkRuntime(
+      {
+        session: {
+          async create() {
+            return { data: { id: sessionID } }
+          },
+          async promptAsync(parameters: Record<string, unknown>, options?: Record<string, unknown>) {
+            promptAsyncCalls.push({ parameters, options })
+            queueMicrotask(() => {
+              for (const listener of listeners) {
+                listener(partUpdated(sessionID, { type: "text", text: "" }, "Hello benchmark"))
+                listener(
+                  partUpdated(sessionID, {
+                    type: "step-finish",
+                    reason: "stop",
+                    cost: 0,
+                    tokens: {
+                      input: 12,
+                      output: 18,
+                      reasoning: 4,
+                      cache: { read: 0, write: 0 },
+                    },
+                  }),
+                )
+                listener(sessionIdle(sessionID))
+              }
+            })
+            return { data: undefined }
+          },
+          async delete(input: { sessionID: string }) {
+            deletedSessionIDs.push(input.sessionID)
+            return { data: undefined }
+          },
+        },
+        permission: {
+          async respond() {
+            return { data: undefined }
+          },
+        },
+      } as any,
+      {
+        subscribe(handler) {
+          listeners.add(handler)
+          return () => {
+            unsubscribeCount += 1
+            listeners.delete(handler)
+          }
+        },
+      },
+    )
+
+    const run = await runBenchmarkAttempt({
+      runtime,
+      title: "bench",
+      index: 1,
+      warmup: false,
+      agent: "zee",
+      model: { providerID: "openai", modelID: "gpt-test" },
+      prompt: "Hello",
+      system: "Benchmark system",
+    })
+
+    expect(promptAsyncCalls).toHaveLength(1)
+    expect(run.status).toBe("ok")
+    expect(run.outputTokens).toBe(18)
+    expect(run.reasoningTokens).toBe(4)
+    expect(deletedSessionIDs).toEqual([sessionID])
+    expect(unsubscribeCount).toBe(1)
+  })
+
+  test("createLocalRuntime uses promptAsync and streams benchmark events", async () => {
+    const sessionID = "ses_local_runtime"
+    const promptAsyncCalls: Array<{ parameters: Record<string, unknown>; options: Record<string, unknown> | undefined }> =
+      []
+    const deletedSessionIDs: string[] = []
+
+    const runtime = createLocalRuntime({
+      session: {
+        async create() {
+          return { data: { id: sessionID } }
+        },
+        async prompt() {
+          throw new Error("sync prompt should not be used")
+        },
+        async promptAsync(parameters: Record<string, unknown>, options?: Record<string, unknown>) {
+          promptAsyncCalls.push({ parameters, options })
+          queueMicrotask(() => {
+            GlobalBus.emit("event", {
+              payload: partUpdated(sessionID, { type: "reasoning", text: "" }, "Thinking"),
+            })
+            GlobalBus.emit("event", {
+              payload: partUpdated(sessionID, { type: "text", text: "" }, "Hello benchmark"),
+            })
+            GlobalBus.emit("event", {
+              payload: partUpdated(sessionID, {
+                type: "step-finish",
+                reason: "stop",
+                cost: 0,
+                tokens: {
+                  input: 12,
+                  output: 18,
+                  reasoning: 6,
+                  cache: { read: 0, write: 0 },
+                },
+              }),
+            })
+            GlobalBus.emit("event", {
+              payload: sessionIdle(sessionID),
+            })
+          })
+          return { data: undefined }
+        },
+        async delete(input: { sessionID: string }) {
+          deletedSessionIDs.push(input.sessionID)
+          return { data: undefined }
+        },
+      },
+      permission: {
+        async respond() {
+          return { data: undefined }
+        },
+      },
+    } as any)
+
+    const run = await runBenchmarkAttempt({
+      runtime,
+      title: "bench",
+      index: 1,
+      warmup: false,
+      agent: "zee",
+      model: { providerID: "openai", modelID: "gpt-test" },
+      prompt: "Hello",
+      system: "Benchmark system",
+    })
+
+    expect(promptAsyncCalls).toHaveLength(1)
+    expect(promptAsyncCalls[0]).toEqual({
+      parameters: {
+        sessionID,
+        agent: "zee",
+        model: { providerID: "openai", modelID: "gpt-test" },
+        variant: undefined,
+        tools: {},
+        system: "Benchmark system",
+        parts: [{ type: "text", text: "Hello" }],
+      },
+      options: { throwOnError: true },
+    })
+    expect(run.status).toBe("ok")
+    expect(run.firstActivityMs).not.toBeNull()
+    expect(run.ttftMs).not.toBeNull()
+    expect(run.outputTokens).toBe(18)
+    expect(run.reasoningTokens).toBe(6)
+    expect(run.tokenSource).toBe("reported")
+    expect(deletedSessionIDs).toEqual([sessionID])
+  })
+
   test("runBenchmarkAttempt captures first activity before TTFT when reasoning arrives first", async () => {
     const fake = createFakeRuntime([
       {
@@ -251,6 +419,28 @@ describe("benchmark command helpers", () => {
     expect(run.status).toBe("ok")
     expect(run.outputTokens).toBeGreaterThan(0)
     expect(run.tokenSource).toBe("estimated_chars")
+  })
+
+  test("runBenchmarkAttempt invalidates runs with no assistant output", async () => {
+    const fake = createFakeRuntime([
+      {
+        events: [sessionIdle("ses_1")],
+      },
+    ])
+
+    const run = await runBenchmarkAttempt({
+      runtime: fake.runtime,
+      title: "bench",
+      index: 1,
+      warmup: false,
+      agent: "zee",
+      model: { providerID: "openai", modelID: "gpt-test" },
+      prompt: "Hello",
+      system: "Benchmark system",
+    })
+
+    expect(run.status).toBe("invalid")
+    expect(run.invalidReason).toContain("no benchmark output")
   })
 
   test("summarizeBenchmarkRuns excludes warmups and invalid runs from metrics", () => {

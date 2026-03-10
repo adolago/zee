@@ -68,6 +68,7 @@ import type { PromptInfo } from "../../component/prompt/history"
 import { DialogConfirm } from "@tui/ui/dialog-confirm"
 import { DialogTimeline } from "./dialog-timeline"
 import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
+import { createSessionBenchmarkCommand } from "./benchmark"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
@@ -201,6 +202,7 @@ export function Session() {
   const [showAssistantMetadata, setShowAssistantMetadata] = kv.signal("assistant_metadata_visibility", true)
   const [showScrollbar, setShowScrollbar] = kv.signal("scrollbar_visible", true)
   const [diffWrapMode, setDiffWrapMode] = createSignal<"word" | "none">("word")
+  const [benchmarkRunning, setBenchmarkRunning] = createSignal(false)
 
   const sessionStatus = createMemo(() => sync.data.session_status?.[route.sessionID])
   const showToolDetailsForMessage = (message: AssistantMessage, parts?: Part[]) => {
@@ -539,6 +541,29 @@ export function Session() {
         dialog.clear()
       },
     },
+    createSessionBenchmarkCommand({
+      sessionID: () => route.sessionID,
+      cwd: () => session()?.directory ?? process.cwd(),
+      agent: () => local.agent.current().name,
+      model: () => local.model.current(),
+      variant: () => local.model.variant.current(),
+      sdk: sdk.client,
+      eventSource: {
+        subscribe(handler) {
+          return sdk.event.listen((event) => {
+            const payload = event.details as { type?: string; properties?: unknown }
+            if (typeof payload?.type !== "string") return
+            handler({
+              type: payload.type,
+              properties: payload.properties,
+            })
+          })
+        },
+      },
+      toast,
+      isRunning: benchmarkRunning,
+      setRunning: setBenchmarkRunning,
+    }),
     {
       title: "Delete session",
       value: "session.delete",
