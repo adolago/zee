@@ -332,6 +332,36 @@ function getSuggestedAction(errorType: ErrorCategory, provider: string): string 
   return actions[errorType] || actions.UnknownError
 }
 
+function getCriticalProvider(config: Awaited<ReturnType<typeof Config.get>> | undefined): string | undefined {
+  if (!config) return undefined
+  const defaultAgent = config.default_agent ?? "zee"
+  const agentConfig = (config.agent as Record<string, { model?: string } | undefined>)?.[defaultAgent]
+  const agentModel = agentConfig?.model
+  return agentModel?.split("/")[0]
+}
+
+function determineExitCode(
+  results: TestResult[],
+  config: Awaited<ReturnType<typeof Config.get>> | undefined,
+  criticalOnlyMode: boolean,
+): number {
+  const failed = results.filter((r) => r.status === "error")
+  if (failed.length === 0) {
+    return 0
+  }
+
+  if (!criticalOnlyMode) {
+    return 1
+  }
+
+  const criticalProvider = getCriticalProvider(config)
+  if (!criticalProvider) {
+    return 1
+  }
+
+  return failed.some((r) => r.provider === criticalProvider) ? 1 : 0
+}
+
 async function main() {
   const results: TestResult[] = []
   let config: Awaited<ReturnType<typeof Config.get>> | undefined
@@ -438,10 +468,12 @@ async function main() {
     },
   })
 
+  const exitCode = determineExitCode(results, config, criticalOnly)
+
   // Output results
   if (outputJson) {
     console.log(JSON.stringify(results, null, 2))
-    return
+    process.exit(exitCode)
   }
 
   // Summary
@@ -503,38 +535,21 @@ async function main() {
   // Exit with error code if any failures
   if (failed.length > 0) {
     if (criticalOnly) {
-      // In --critical-only mode, only exit(1) if the active agent model's provider failed.
-      // Read agent model from config to determine the critical provider.
-      if (!config) {
+      const criticalProvider = getCriticalProvider(config)
+      if (!criticalProvider) {
         console.log(`${COLORS.yellow}Could not determine critical provider (no config)${COLORS.reset}`)
-        process.exit(1)
+      } else if (failed.some((r) => r.provider === criticalProvider)) {
+        console.log(`${COLORS.red}${COLORS.bold}CRITICAL: Agent model provider "${criticalProvider}" failed${COLORS.reset}`)
+      } else {
+        console.log(
+          `${COLORS.yellow}Non-critical provider failures (agent model provider "${criticalProvider}" is OK)${COLORS.reset}`,
+        )
       }
-      const defaultAgent = config.default_agent ?? "zee"
-      const agentConfig = (config.agent as Record<string, { model?: string } | undefined>)?.[defaultAgent]
-      const agentModel = agentConfig?.model
-      const criticalProvider = agentModel?.split("/")[0]
-
-      if (criticalProvider) {
-        const criticalFailures = failed.filter((r) => r.provider === criticalProvider)
-        if (criticalFailures.length > 0) {
-          console.log(
-            `${COLORS.red}${COLORS.bold}CRITICAL: Agent model provider "${criticalProvider}" failed${COLORS.reset}`,
-          )
-          process.exit(1)
-        } else {
-          console.log(
-            `${COLORS.yellow}Non-critical provider failures (agent model provider "${criticalProvider}" is OK)${COLORS.reset}`,
-          )
-          process.exit(0)
-        }
-      }
-      // If we can't determine the critical provider, fall through to exit(1)
     }
-    process.exit(1)
   }
 
   // Explicit exit: Instance/Provider/Config leave async handles open
-  process.exit(0)
+  process.exit(exitCode)
 }
 
 main().catch((e) => {

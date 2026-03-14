@@ -52,8 +52,46 @@ type StageInternalContext = ReliabilityStageContext & {
   stageLogPath: string
 }
 
+type ProviderHealthResult = {
+  provider: string
+  model: string
+  status: "success" | "error" | "skipped" | "warning"
+  error?: string
+  errorType?: string
+}
+
 const activeDaemonHandles = new Set<DaemonHandle>()
 let daemonCleanupInFlight: Promise<void> | null = null
+const PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_TYPES = new Set([
+  "ai_nooutputgeneratederror",
+  "autherror",
+  "configerror",
+  "networkerror",
+  "permissionerror",
+  "quotaerror",
+  "ratelimiterror",
+  "servererror",
+  "timeouterror",
+])
+const PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_MARKERS = [
+  "api key",
+  "authentication",
+  "authorization",
+  "incorrect api key",
+  "invalid_api_key",
+  "invalid x-api-key",
+  "missing auth",
+  "no auth configured",
+  "no output generated",
+  "quota",
+  "rate limit",
+  "re-authenticate",
+  "service unavailable",
+  "timed out",
+  "timeout",
+  "unable to authenticate",
+  "unauthorized",
+]
 
 function nowTag(): string {
   return new Date().toISOString().replace(/[:.]/g, "-")
@@ -363,6 +401,57 @@ function isMemoryBackendUnavailable(text: string): boolean {
     normalized.includes("memory initialization failed after all retries") ||
     normalized.includes("unable to connect. is the computer able to access the url?")
   )
+}
+
+function parseProviderHealthResults(text: string): ProviderHealthResult[] | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+
+  const candidates = [trimmed]
+  const jsonStart = trimmed.indexOf("[")
+  const jsonEnd = trimmed.lastIndexOf("]")
+  if (jsonStart >= 0 && jsonEnd >= jsonStart) {
+    candidates.push(trimmed.slice(jsonStart, jsonEnd + 1))
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate)
+      if (!Array.isArray(parsed)) {
+        continue
+      }
+      return parsed.filter((item): item is ProviderHealthResult => {
+        return (
+          item &&
+          typeof item === "object" &&
+          typeof item.provider === "string" &&
+          typeof item.model === "string" &&
+          typeof item.status === "string"
+        )
+      })
+    } catch {
+      // keep trying candidates
+    }
+  }
+
+  return null
+}
+
+function isExternalProviderFailure(result: ProviderHealthResult): boolean {
+  if (result.status === "skipped") return true
+
+  const type = (result.errorType ?? "").toLowerCase()
+  if (PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_TYPES.has(type)) {
+    return true
+  }
+
+  const normalized = `${result.errorType ?? ""} ${result.error ?? ""}`.toLowerCase()
+  return PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_MARKERS.some((marker) => normalized.includes(marker))
+}
+
+function summarizeProviderHealthResult(result: ProviderHealthResult): string {
+  const suffix = result.error ? `: ${result.error.split(/\r?\n/, 1)[0]}` : ""
+  return `${result.provider}/${result.model}${suffix}`.slice(0, 220)
 }
 
 async function withDaemon(
@@ -1170,20 +1259,66 @@ async function stageModeSwitchStress(ctx: StageInternalContext): Promise<Reliabi
 }
 
 async function stageProviderHealthLive(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
-  await runStageCommand(
+  const result = await runStageCommand(
     ctx,
     "provider-health-check",
     ["bun", "run", "script/provider-health-check.ts", "--errors-only", "--critical-only", "--json"],
     {
       cwd: ctx.packageRoot,
       env: ctx.runtimeEnv,
-      timeoutMs: 20 * 60_000,
+      timeoutMs: 4 * 60_000,
+      expectedExitCodes: [0, 1],
     },
   )
 
-  return {
-    summary: "Provider live health checks passed",
+  const parsed = parseProviderHealthResults(result.stdout)
+  if (parsed) {
+    const failed = parsed.filter((item) => item.status === "error")
+    const skipped = parsed.filter((item) => item.status === "skipped")
+
+    if (failed.length === 0 && skipped.length === 0) {
+      return {
+        summary: "Provider live health checks passed",
+      }
+    }
+
+    if (failed.length === 0) {
+      return {
+        summary: "Provider credentials unavailable; live checks skipped",
+        details: skipped.slice(0, 5).map(summarizeProviderHealthResult),
+        metrics: {
+          providerSkipped: skipped.length,
+        },
+      }
+    }
+
+    if (failed.every(isExternalProviderFailure)) {
+      return {
+        summary: "External provider availability prevented live checks; stage degraded",
+        details: failed.slice(0, 5).map(summarizeProviderHealthResult),
+        metrics: {
+          providerFailed: failed.length,
+          providerSkipped: skipped.length,
+        },
+      }
+    }
   }
+
+  if (result.exitCode === 0) {
+    return {
+      summary: "Provider live health checks passed",
+    }
+  }
+
+  throw new Error(
+    [
+      `provider-health-check failed with exit code ${result.exitCode}`,
+      result.stdout ? `stdout:\n${result.stdout}` : "",
+      result.stderr ? `stderr:\n${result.stderr}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  )
 }
 
 async function stageMemoryHealthLive(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
