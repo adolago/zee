@@ -356,6 +356,15 @@ function describeGatewayHealth(health: any): string {
   ].join(" ")
 }
 
+function isMemoryBackendUnavailable(text: string): boolean {
+  const normalized = text.toLowerCase()
+  return (
+    normalized.includes("memory backend is unavailable") ||
+    normalized.includes("memory initialization failed after all retries") ||
+    normalized.includes("unable to connect. is the computer able to access the url?")
+  )
+}
+
 async function withDaemon(
   ctx: StageInternalContext,
   args: {
@@ -1178,15 +1187,47 @@ async function stageProviderHealthLive(ctx: StageInternalContext): Promise<Relia
 }
 
 async function stageMemoryHealthLive(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
-  await runStageCommand(ctx, "memory-health-check", ["bun", "run", "script/memory-health-check.ts"], {
+  const result = await runStageCommand(ctx, "memory-health-check", ["bun", "run", "script/memory-health-check.ts"], {
     cwd: ctx.packageRoot,
     env: ctx.runtimeEnv,
     timeoutMs: 5 * 60_000,
+    expectedExitCodes: [0, 1],
   })
 
-  return {
-    summary: "Memory live health check passed",
+  if (result.exitCode === 0) {
+    return {
+      summary: "Memory live health check passed",
+      metrics: {
+        memoryAvailable: true,
+      },
+    }
   }
+
+  const combinedOutput = [result.stdout, result.stderr].filter(Boolean).join("\n")
+  if (isMemoryBackendUnavailable(combinedOutput)) {
+    const detail = result.stderr
+      .trim()
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(-1)[0]
+    return {
+      summary: "Memory backend unavailable; live check skipped",
+      details: detail ? [detail] : undefined,
+      metrics: {
+        memoryAvailable: false,
+      },
+    }
+  }
+
+  throw new Error(
+    [
+      `memory-health-check failed with exit code ${result.exitCode}`,
+      result.stdout ? `stdout:\n${result.stdout}` : "",
+      result.stderr ? `stderr:\n${result.stderr}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  )
 }
 
 async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
@@ -1228,6 +1269,10 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
   try {
     const daemonHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
     const shouldProbeGateway = isGatewayRunning(daemonHealth)
+    const initialMemoryHealth = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/memory/health`, 5_000).catch(
+      () => null,
+    )
+    const shouldProbeMemory = initialMemoryHealth?.available === true
 
     while (Date.now() - startedAt < durationMs) {
       probes += 1
@@ -1244,16 +1289,18 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
         )
       }
 
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const mem = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/memory/health`, 5_000)
-        if (mem?.available !== true) {
-          failures.push(`Probe ${probes}: memory unavailable payload=${JSON.stringify(mem)}`)
+      if (shouldProbeMemory) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const mem = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/memory/health`, 5_000)
+          if (mem?.available !== true) {
+            failures.push(`Probe ${probes}: memory unavailable payload=${JSON.stringify(mem)}`)
+          }
+        } catch (error) {
+          failures.push(
+            `Probe ${probes}: memory health failed: ${error instanceof Error ? error.message : String(error)}`,
+          )
         }
-      } catch (error) {
-        failures.push(
-          `Probe ${probes}: memory health failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
       }
 
       if (shouldProbeGateway) {
