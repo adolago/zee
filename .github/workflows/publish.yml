@@ -87,10 +87,24 @@ jobs:
           bun run script/prepare-release.ts
 
       - name: Publish dist packages to npm
+        id: publish
         if: steps.package.outputs.already_published != 'true'
         run: |
+          set -o pipefail
           cd packages/zee
-          bun run script/publish-dist.ts
+          LOG_FILE="$(mktemp)"
+          if bun run script/publish-dist.ts 2>&1 | tee "$LOG_FILE"; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if grep -Eiq 'npm error code E(401|403|404)|Not found - PUT https://registry.npmjs.org/@adolago%2fzee|authentication|unauthorized|forbidden|one-time password' "$LOG_FILE"; then
+            echo "Publish skipped because npm credentials cannot publish ${NPM_PACKAGE_NAME}."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          exit 1
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           ZEE_PUBLISH_TAG: latest
