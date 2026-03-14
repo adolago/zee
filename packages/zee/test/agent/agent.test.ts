@@ -4,7 +4,7 @@ import { Instance } from "../../src/project/instance"
 import { Agent } from "../../src/agent/agent"
 import { FluxRecorder } from "../../src/flux"
 import { PermissionNext } from "../../src/permission/next"
-import { FluxRecorder } from "../../src/flux"
+import { reloadFlags } from "../../src/flag/flag"
 
 // Helper to evaluate permission for a tool with wildcard pattern
 function evalPerm(agent: Agent.Info | undefined, permission: string): PermissionNext.Action | undefined {
@@ -442,6 +442,38 @@ describe("agent config", () => {
         expect(evalPerm(zee, "edit")).toBe("deny")
       },
     })
+  })
+
+  test("rejects legacy tools config when no-new-legacy flag is enabled", async () => {
+    const previousEnv = process.env.ZEE_NO_NEW_LEGACY
+    process.env.ZEE_NO_NEW_LEGACY = "1"
+    reloadFlags()
+    try {
+      await using tmp = await tmpdir({
+        config: {
+          agent: {
+            zee: {
+              tools: {
+                bash: false,
+              },
+            },
+          },
+        },
+      })
+      await Instance.provide({
+        directory: tmp.path,
+        fn: async () => {
+          await expect(Agent.get("zee")).rejects.toThrowError(/ZEE_NO_NEW_LEGACY/)
+        },
+      })
+    } finally {
+      if (previousEnv === undefined) {
+        delete process.env.ZEE_NO_NEW_LEGACY
+      } else {
+        process.env.ZEE_NO_NEW_LEGACY = previousEnv
+      }
+      reloadFlags()
+    }
   })
 
   test("Truncate.DIR is allowed when user denies external_directory globally", async () => {

@@ -7,6 +7,7 @@ import { errors } from "../error"
 import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
 import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
+import { Flag } from "@/flag/flag"
 
 export const AuthRoute = new Hono()
   .put(
@@ -52,6 +53,30 @@ export const AuthRoute = new Hono()
 
       if (body) {
         const usedLegacyPayload = !("type" in body) && "api_key" in body
+        if (usedLegacyPayload && Flag.ZEE_NO_NEW_LEGACY) {
+          FluxRecorder.record({
+            traceID,
+            requestID,
+            providerID,
+            direction: "internal",
+            domain: "auth",
+            kind: "auth.legacy_payload.rejected",
+            status: "denied",
+            route: "/auth/:providerID",
+            method: "PUT",
+            metadata: {
+              payloadShape: "api_key",
+              reason: "legacy_interface_disabled",
+            },
+          })
+          return c.json(
+            {
+              success: false,
+              error: "Legacy auth payloads are disabled. Use the modern auth payload schema.",
+            },
+            403,
+          )
+        }
         const auth =
           "type" in body
             ? body

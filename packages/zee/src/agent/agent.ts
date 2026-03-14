@@ -20,6 +20,7 @@ import { FluxRecorder } from "@/flux"
 import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
+import { Flag } from "@/flag/flag"
 
 const log = Log.create({ service: "agent" })
 
@@ -530,6 +531,11 @@ export namespace Agent {
       item.hidden = value.hidden ?? item.hidden
       item.name = value.name ?? item.name
       item.steps = value.steps ?? value.maxSteps ?? item.steps
+      if (Flag.ZEE_NO_NEW_LEGACY && value.tools !== undefined) {
+        throw new Error(
+          `agent "${key}" uses deprecated 'tools' config, but ZEE_NO_NEW_LEGACY is enabled; use permission instead`,
+        )
+      }
       item.options = mergeDeep(item.options, value.options ?? {})
       recordLegacyToolsAliasUsage(key, value.tools)
       if (value.tools) {
