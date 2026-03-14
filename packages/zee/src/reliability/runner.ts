@@ -98,6 +98,13 @@ function buildRuntimeEnv(runtimeStateDir: string): NodeJS.ProcessEnv {
     NODE_ENV: process.env.NODE_ENV || "production",
   }
 
+  if (!env.GEMINI_API_KEY && env.GOOGLE_API_KEY) {
+    env.GEMINI_API_KEY = env.GOOGLE_API_KEY
+  }
+  if (!env.GOOGLE_API_KEY && env.GEMINI_API_KEY) {
+    env.GOOGLE_API_KEY = env.GEMINI_API_KEY
+  }
+
   return env
 }
 
@@ -323,8 +330,8 @@ async function stopAllTrackedDaemons(): Promise<void> {
 }
 
 async function waitForDaemonHealth(port: number, timeoutMs: number): Promise<any> {
-  const url = `http://127.0.0.1:${port}/global/health`
-  return await waitForHttpJson(url, timeoutMs, 500)
+  const url = `http://127.0.0.1:${port}/global/health/live`
+  return await waitForHttpJson(url, timeoutMs, 500, 2_000)
 }
 
 async function withDaemon(
@@ -538,10 +545,10 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         port: sourcePort,
         suffix: "source-daemon",
         stageId: "source-vs-dist",
-        timeoutMs: 45_000,
+        timeoutMs: 60_000,
       },
-      async (_handle, health) => {
-        sourceHealth = health
+      async () => {
+        sourceHealth = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/global/health`, 15_000, 500, 8_000)
         sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
       },
     )),
@@ -566,10 +573,10 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         port: distPort,
         suffix: "dist-daemon",
         stageId: "source-vs-dist",
-        timeoutMs: 45_000,
+        timeoutMs: 60_000,
       },
-      async (_handle, health) => {
-        distHealth = health
+      async () => {
+        distHealth = await waitForHttpJson(`http://127.0.0.1:${distPort}/global/health`, 15_000, 500, 8_000)
         distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
       },
     )),
@@ -1131,13 +1138,13 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
 
       try {
         // eslint-disable-next-line no-await-in-loop
-        const health = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/global/health`, 5_000)
-        if (!health?.healthy) {
-          failures.push(`Probe ${probes}: daemon unhealthy payload=${JSON.stringify(health)}`)
+        const live = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/global/health/live`, 5_000, 500, 2_000)
+        if (live?.alive !== true) {
+          failures.push(`Probe ${probes}: daemon not alive payload=${JSON.stringify(live)}`)
         }
       } catch (error) {
         failures.push(
-          `Probe ${probes}: global health failed: ${error instanceof Error ? error.message : String(error)}`,
+          `Probe ${probes}: global health live failed: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
 

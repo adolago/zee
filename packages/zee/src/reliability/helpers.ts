@@ -136,14 +136,22 @@ export async function isPortOpen(host: string, port: number): Promise<boolean> {
   })
 }
 
-export async function waitForHttpJson(url: string, timeoutMs: number, intervalMs = 500): Promise<any> {
+export async function waitForHttpJson(
+  url: string,
+  timeoutMs: number,
+  intervalMs = 500,
+  requestTimeoutMs = Math.max(intervalMs, 5_000),
+): Promise<any> {
   const deadline = Date.now() + timeoutMs
   let lastError = "request not attempted"
 
   while (Date.now() < deadline) {
     try {
+      const remainingMs = Math.max(1, deadline - Date.now())
       // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(url, { signal: AbortSignal.timeout(Math.min(intervalMs, 5_000)) })
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, remainingMs)),
+      })
       if (res.ok) {
         // eslint-disable-next-line no-await-in-loop
         return await res.json()

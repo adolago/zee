@@ -13,6 +13,8 @@ afterEach(() => {
 
 describe("FallbackChain costAware", () => {
   test("skips more expensive explicit fallback candidates", async () => {
+    const actualProviderModule = await import("../../src/provider/provider")
+
     mock.module("../../src/provider/equivalence", () => ({
       ModelEquivalence: {
         parseModel(model: string) {
@@ -26,7 +28,9 @@ describe("FallbackChain costAware", () => {
     }))
 
     mock.module("../../src/provider/provider", () => ({
+      ...actualProviderModule,
       Provider: {
+        ...actualProviderModule.Provider,
         async getModel(providerID: string, modelID: string) {
           const key = `${providerID}/${modelID}`
           if (key === "openai/gpt-5.2") {
