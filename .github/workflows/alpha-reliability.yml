@@ -40,6 +40,7 @@ jobs:
           bun run --cwd packages/zee src/index.ts reliability run \
             --profile alpha \
             --json \
+            --long-soak-minutes 5 \
             --artifact-dir artifacts/reliability/${{ runner.os }}
         env:
           CI: true
