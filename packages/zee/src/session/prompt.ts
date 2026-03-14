@@ -271,10 +271,7 @@ export namespace SessionPrompt {
   }
 
   function buildExecutionModeReminder(mode: Mode): string {
-    const lines = [
-      "<system-reminder>",
-      `[EXECUTION MODE] ${mode.toUpperCase()}`,
-    ]
+    const lines = ["<system-reminder>", `[EXECUTION MODE] ${mode.toUpperCase()}`]
 
     if (mode === "plan") {
       lines.push("PLAN mode is active.")
@@ -792,11 +789,38 @@ export namespace SessionPrompt {
     }
   }
 
-  export function clearForceKillTimer(sessionID: string) {
+  export function clearForceKillTimer(sessionID: string, abortSignal?: AbortSignal) {
     const pending = pendingForceKills.get(sessionID)
-    if (pending) {
+    if (pending && (!abortSignal || pending.targetAbort.signal === abortSignal)) {
       clearTimeout(pending.timer)
       pendingForceKills.delete(sessionID)
+    }
+  }
+
+  function cleanupRun(sessionID: string, abortSignal: AbortSignal) {
+    clearForceKillTimer(sessionID, abortSignal)
+    const current = state()[sessionID]
+    if (current?.abort.signal === abortSignal) {
+      cancel(sessionID)
+    }
+  }
+
+  async function withAbort<T>(abort: AbortSignal, operation: Promise<T>): Promise<T> {
+    if (abort.aborted) {
+      throw abort.reason ?? new DOMException("Aborted", "AbortError")
+    }
+
+    let removeAbortListener: (() => void) | undefined
+    const abortPromise = new Promise<never>((_, reject) => {
+      const onAbort = () => reject(abort.reason ?? new DOMException("Aborted", "AbortError"))
+      abort.addEventListener("abort", onAbort, { once: true })
+      removeAbortListener = () => abort.removeEventListener("abort", onAbort)
+    })
+
+    try {
+      return await Promise.race([operation, abortPromise])
+    } finally {
+      removeAbortListener?.()
     }
   }
 
@@ -809,10 +833,7 @@ export namespace SessionPrompt {
       })
     }
 
-    using _ = defer(() => {
-      clearForceKillTimer(sessionID)
-      cancel(sessionID)
-    })
+    using _ = defer(() => cleanupRun(sessionID, abort))
 
     let step = 0
     const session = await Session.get(sessionID)
@@ -910,7 +931,7 @@ export namespace SessionPrompt {
           history: msgs,
         })
 
-      const model = await Provider.getModel(lastUser.model.providerID, lastUser.model.modelID)
+      const model = await withAbort(abort, Provider.getModel(lastUser.model.providerID, lastUser.model.modelID))
       const task = tasks.pop()
 
       // pending subtask
@@ -1355,6 +1376,9 @@ export namespace SessionPrompt {
       continue
     }
     SessionCompaction.prune({ sessionID })
+    if (abort.aborted) {
+      throw abort.reason ?? new DOMException("Aborted", "AbortError")
+    }
     for await (const item of MessageV2.stream(sessionID)) {
       if (item.info.role === "user") continue
       const queued = state()[sessionID]?.callbacks ?? []
@@ -1530,8 +1554,7 @@ export namespace SessionPrompt {
       const transformed = ProviderTransform.schema(input.model, schemaJson)
       item.inputSchema = jsonSchema(transformed)
       // Wrap execute to add plugin hooks and format output
-      item.execute = tagMcpExecuteBase(
-        async (args, opts) => {
+      item.execute = tagMcpExecuteBase(async (args, opts) => {
         const ctx = context(args, opts)
 
         await Plugin.trigger(
@@ -1625,9 +1648,7 @@ export namespace SessionPrompt {
           attachments,
           content: result.content, // directly return content to preserve ordering when outputting to model
         }
-      },
-        baseExecute,
-      )
+      }, baseExecute)
       item.toModelOutput = (result) => {
         return {
           type: "text",

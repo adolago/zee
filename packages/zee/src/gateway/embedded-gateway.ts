@@ -76,7 +76,7 @@ let gatewayLock: GatewayLockLike | null = null
 let gatewayPort: number | undefined
 let injectedZeeUrl = false
 let previousZeeUrl: string | undefined
-let startPromise: Promise<void> | null = null
+let startPromise: Promise<boolean> | null = null
 
 function maybeInjectZeeUrl(daemonUrl?: string) {
   if (!daemonUrl) return
@@ -119,14 +119,14 @@ export async function readEmbeddedGatewayConfigSnapshot(): Promise<EmbeddedGatew
   return await gw.readConfigFileSnapshot()
 }
 
-export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions = {}): Promise<void> {
-  if (gatewayServer) return
-  if (startPromise) return startPromise
+export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions = {}): Promise<boolean> {
+  if (gatewayServer) return true
+  if (startPromise) return await startPromise
 
   const gw = await resolveGatewayRuntime()
   if (!gw) {
     log.warn("cannot start embedded gateway: gateway runtime not available")
-    return
+    return false
   }
 
   const port = options.port ?? resolveEmbeddedGatewayPort()
@@ -162,6 +162,7 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
       }
 
       log.info("embedded gateway started", { port })
+      return true
     } catch (error) {
       await gatewayLock?.release().catch(() => undefined)
       gatewayLock = null
@@ -172,7 +173,7 @@ export async function startEmbeddedGateway(options: EmbeddedGatewayStartOptions 
   })()
 
   try {
-    await startPromise
+    return await startPromise
   } finally {
     startPromise = null
   }

@@ -57,6 +57,7 @@ type EventClient = {
 }
 
 const withDirectory = (directory: string, options?: { headers?: Record<string, string>; throwOnError?: boolean }) => ({
+  ...options,
   headers: {
     ...options?.headers,
     [HEADER_DIRECTORY]: directory,
@@ -66,9 +67,32 @@ const withDirectory = (directory: string, options?: { headers?: Record<string, s
 const VARIANT_SEPARATOR = "#"
 const DEFAULT_VARIANT_VALUE = "default"
 
+const MODEL_SORT_PRIORITY = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"]
+
+function parseProviderModelRef(value: string) {
+  const [providerID, ...modelParts] = value.split("/")
+  return {
+    providerID,
+    modelID: modelParts.join("/"),
+  }
+}
+
+function sortProviderModels<T extends { id: string }>(models: T[]) {
+  const priorityIndex = (id: string) => MODEL_SORT_PRIORITY.findIndex((filter) => id.includes(filter))
+  return [...models].sort((a, b) => {
+    const priorityDiff = priorityIndex(b.id) - priorityIndex(a.id)
+    if (priorityDiff !== 0) return priorityDiff
+
+    const latestDiff = Number(a.id.includes("latest")) - Number(b.id.includes("latest"))
+    if (latestDiff !== 0) return latestDiff
+
+    return b.id.localeCompare(a.id)
+  })
+}
+
 function parseModelId(modelId: string): { providerID: string; modelID: string; variant?: string } {
   const [base, variant] = modelId.split(VARIANT_SEPARATOR)
-  const parsed = Provider.parseModel(base)
+  const parsed = parseProviderModelRef(base)
   return {
     providerID: parsed.providerID,
     modelID: parsed.modelID,
@@ -1019,7 +1043,7 @@ export namespace ACP {
         return 0
       })
       const availableModels = entries.flatMap((provider) => {
-        const models = Provider.sort(Object.values(provider.models))
+        const models = sortProviderModels(Object.values(provider.models))
         return models.flatMap((model) => {
           const baseId = `${provider.id}/${model.id}`
           const baseName = `${provider.name}/${model.name}`
@@ -1500,22 +1524,6 @@ export namespace ACP {
 
     const directory = cwd ?? process.cwd()
 
-    const configured = await sdk.config
-      .get(withDirectory(directory, { throwOnError: true }))
-      .then((resp) => {
-        const cfg = resp.data
-        if (!cfg || !cfg.model) return undefined
-        const parsed = Provider.parseModel(cfg.model)
-        return {
-          providerID: parsed.providerID,
-          modelID: parsed.modelID,
-        }
-      })
-      .catch((error) => {
-        log.error("failed to load user config for default model", { error })
-        return undefined
-      })
-
     const providers = (await sdk.config
       .providers(withDirectory(directory, { throwOnError: true }))
       .then((x) => x.data?.providers ?? [])
@@ -1527,18 +1535,50 @@ export namespace ACP {
       models: Record<string, { id: string }>
     }[]
 
-    const rosettaDefault = await loadRosettaDefaultModel()
+    const isModelAvailable = (target: { providerID: string; modelID: string }) => {
+      if (providers.length === 0) return true
+      const provider = providers.find((item) => item.id === target.providerID)
+      return !!provider?.models?.[target.modelID]
+    }
+
+    if (explicit && isModelAvailable(explicit)) return explicit
+
+    const configured =
+      typeof sdk.config?.get === "function"
+        ? await sdk.config
+            .get(withDirectory(directory, { throwOnError: true }))
+            .then((resp) => {
+              const cfg = resp.data
+              if (!cfg || !cfg.model) return undefined
+              const parsed = parseProviderModelRef(cfg.model)
+              return {
+                providerID: parsed.providerID,
+                modelID: parsed.modelID,
+              }
+            })
+            .catch((error) => {
+              log.error("failed to load user config for default model", { error })
+              return undefined
+            })
+        : undefined
+
+    if (configured && isModelAvailable(configured)) return configured
+
+    const rosettaDefault = await loadRosettaDefaultModel().catch((error) => {
+      log.error("failed to load rosetta default model", { error })
+      return undefined
+    })
     return resolveDefaultModel({
-      explicit,
-      configured,
+      explicit: undefined,
+      configured: undefined,
       rosetta: rosettaDefault,
       providers,
-      sortModels: (models) => Provider.sort(models as any).map((model) => ({ id: model.id, providerID: model.providerID })),
-      isModelAvailable: (target) => {
-        if (providers.length === 0) return true
-        const provider = providers.find((item) => item.id === target.providerID)
-        return !!provider?.models?.[target.modelID]
-      },
+      sortModels: (models) =>
+        sortProviderModels(models as Array<{ id: string; providerID: string }>).map((model) => ({
+          id: model.id,
+          providerID: model.providerID,
+        })),
+      isModelAvailable,
     })
   }
 

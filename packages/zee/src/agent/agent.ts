@@ -23,6 +23,14 @@ const log = Log.create({ service: "agent" })
 
 const LEGACY_EDIT_TOOLS = new Set(["edit", "write", "patch", "multiedit", "apply_patch"])
 
+function parseProviderModelRef(value: string) {
+  const [providerID, ...modelParts] = value.split("/")
+  return {
+    providerID,
+    modelID: modelParts.join("/"),
+  }
+}
+
 function legacyToolsToPermissionConfig(tools?: Record<string, boolean>) {
   if (!tools) return {}
 
@@ -484,8 +492,8 @@ export namespace Agent {
           options: {},
           native: false,
         }
-      if (value.model) item.model = Provider.parseModel(value.model)
-      if (value.fallback) item.fallback = Provider.parseModel(value.fallback)
+      if (value.model) item.model = parseProviderModelRef(value.model)
+      if (value.fallback) item.fallback = parseProviderModelRef(value.fallback)
       item.prompt = value.prompt ?? item.prompt
       item.description = value.description ?? item.description
       item.temperature = value.temperature ?? item.temperature

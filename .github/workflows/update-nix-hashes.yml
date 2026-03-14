@@ -5,24 +5,19 @@ permissions:
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "bun.lock"
-      - "package.json"
-      - "packages/*/package.json"
-      - "flake.lock"
-      - ".github/workflows/update-nix-hashes.yml"
   pull_request:
     paths:
       - "bun.lock"
       - "package.json"
       - "packages/*/package.json"
+      - "flake.nix"
       - "flake.lock"
+      - "nix/**"
       - ".github/workflows/update-nix-hashes.yml"
 
 jobs:
   update-node-modules-hashes:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
       TITLE: node_modules hashes

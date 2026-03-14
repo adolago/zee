@@ -125,7 +125,7 @@ export namespace Installation {
   }
 
   export function runtimeMode(execPath: string = process.execPath): RuntimeMode {
-    const exec = path.basename(execPath).toLowerCase()
+    const exec = (execPath.split(/[\\/]/).pop() ?? execPath).replace(/\.(exe|cmd|bat)$/i, "").toLowerCase()
     if (exec === "bun" || exec === "node" || exec === "deno") return "source"
     return "binary"
   }

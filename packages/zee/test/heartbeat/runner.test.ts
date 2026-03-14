@@ -26,7 +26,7 @@ describe("HeartbeatRunner", () => {
   test("skips when HEARTBEAT.md is missing and does not call API", async () => {
     await using tmp = await tmpdir()
     const directory = tmp.path
-    setStateDir(directory)
+    const stateDir = setStateDir(directory)
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
 
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -40,6 +40,7 @@ describe("HeartbeatRunner", () => {
     const runner = new HeartbeatRunner({
       serverUrl: "http://127.0.0.1:3210",
       directory,
+      stateDir,
       config: { enabled: true },
     })
 
@@ -69,6 +70,7 @@ describe("HeartbeatRunner", () => {
     const runner = new HeartbeatRunner({
       serverUrl: "http://127.0.0.1:3210",
       directory,
+      stateDir,
       config: { enabled: true },
     })
 
@@ -80,7 +82,7 @@ describe("HeartbeatRunner", () => {
   test("falls back to legacy daemon HEARTBEAT.md when runtime workspace file is missing", async () => {
     await using tmp = await tmpdir()
     const directory = tmp.path
-    setStateDir(directory)
+    const stateDir = setStateDir(directory)
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
 
     await fs.writeFile(path.join(directory, "HEARTBEAT.md"), "# comment only\n")
@@ -96,6 +98,7 @@ describe("HeartbeatRunner", () => {
     const runner = new HeartbeatRunner({
       serverUrl: "http://127.0.0.1:3210",
       directory,
+      stateDir,
       config: { enabled: true },
     })
 
@@ -107,7 +110,7 @@ describe("HeartbeatRunner", () => {
   test("uses heartbeat.path override relative to daemon directory", async () => {
     await using tmp = await tmpdir()
     const directory = tmp.path
-    setStateDir(directory)
+    const stateDir = setStateDir(directory)
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
 
     await fs.writeFile(path.join(directory, "HEARTBEAT.md"), "check inbox")
@@ -125,6 +128,7 @@ describe("HeartbeatRunner", () => {
     const runner = new HeartbeatRunner({
       serverUrl: "http://127.0.0.1:3210",
       directory,
+      stateDir,
       config: { enabled: true, path: ".runtime/HEARTBEAT.md" },
     })
 
@@ -136,7 +140,7 @@ describe("HeartbeatRunner", () => {
   test("does not fall back to default HEARTBEAT.md when heartbeat.path is missing", async () => {
     await using tmp = await tmpdir()
     const directory = tmp.path
-    setStateDir(directory)
+    const stateDir = setStateDir(directory)
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
 
     await fs.writeFile(path.join(directory, "HEARTBEAT.md"), "check inbox")
@@ -153,6 +157,7 @@ describe("HeartbeatRunner", () => {
     const runner = new HeartbeatRunner({
       serverUrl: "http://127.0.0.1:3210",
       directory,
+      stateDir,
       config: { enabled: true, path: heartbeatPath },
     })
 

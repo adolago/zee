@@ -85,7 +85,7 @@ describe("control UI trusted origins", () => {
 
     const app = Server.App()
 
-    const denied = await app.request("/global/health", {
+    const denied = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "https://control.example.com",
@@ -93,7 +93,7 @@ describe("control UI trusted origins", () => {
     })
     expect(denied.status).toBe(401)
 
-    const allowed = await app.request("/global/health", {
+    const allowed = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "https://control.example.com",
@@ -105,7 +105,7 @@ describe("control UI trusted origins", () => {
 
   test("forbids browser-originated requests from untrusted origins", async () => {
     const app = Server.App()
-    const res = await app.request("/global/health", {
+    const res = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "https://evil.example.com",
@@ -119,7 +119,7 @@ describe("control UI trusted origins", () => {
   test("allows trusted browser origins and loopback origins", async () => {
     const app = Server.App()
 
-    const trusted = await app.request("/global/health", {
+    const trusted = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "https://control.example.com",
@@ -128,7 +128,7 @@ describe("control UI trusted origins", () => {
     })
     expect(trusted.status).toBe(200)
 
-    const local = await app.request("/global/health", {
+    const local = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "http://localhost:5173",

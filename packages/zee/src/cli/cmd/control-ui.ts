@@ -51,7 +51,7 @@ const CORE_WORKFLOW_PROBES: readonly ControlUiProbe[] = [
   {
     id: "health",
     method: "GET",
-    path: "/health/status",
+    path: "/global/health/status",
     description: "Core system health",
   },
   {

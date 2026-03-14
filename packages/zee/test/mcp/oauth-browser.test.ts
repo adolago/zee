@@ -1,5 +1,23 @@
 import { test, expect, mock, beforeEach, afterAll } from "bun:test"
 
+function detectBunServeSupport() {
+  try {
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response("ok")
+      },
+    })
+    server.stop()
+    return true
+  } catch {
+    return false
+  }
+}
+
+const bunServeSupported = detectBunServeSupport()
+const oauthBrowserTest = bunServeSupported ? test : test.skip
+
 // Restore mock.module mocks after all tests to avoid polluting other test files
 afterAll(() => {
   mock.restore()
@@ -109,7 +127,7 @@ const { McpOAuthCallback } = await import("../../src/mcp/oauth-callback")
 const { Instance } = await import("../../src/project/instance")
 const { tmpdir } = await import("../fixture/fixture")
 
-test("BrowserOpenFailed event is published when open() throws", async () => {
+oauthBrowserTest("BrowserOpenFailed event is published when open() throws", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -163,7 +181,7 @@ test("BrowserOpenFailed event is published when open() throws", async () => {
   })
 })
 
-test("BrowserOpenFailed event is NOT published when open() succeeds", async () => {
+oauthBrowserTest("BrowserOpenFailed event is NOT published when open() succeeds", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -217,7 +235,7 @@ test("BrowserOpenFailed event is NOT published when open() succeeds", async () =
   })
 })
 
-test("open() is called with the authorization URL", async () => {
+oauthBrowserTest("open() is called with the authorization URL", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(

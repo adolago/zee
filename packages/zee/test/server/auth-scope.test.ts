@@ -49,7 +49,7 @@ describe("HTTP auth and scopes", () => {
 
   test("allows read-only scopes to access read endpoints", async () => {
     const app = Server.App()
-    const res = await app.request("/global/health", {
+    const res = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
