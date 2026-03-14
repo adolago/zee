@@ -125,7 +125,9 @@ async function seedRuntimeConfig(runtimeStateDir: string): Promise<string[]> {
 async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
   const extension = process.platform === "win32" ? ".exe" : ""
   const preferred = path.join(packageRoot, "dist", "@adolago")
-  const glob = new Bun.Glob(`*/bin/zee${extension}`)
+  const platformName = process.platform === "win32" ? "windows" : process.platform
+  const hostSegment = `zee-${platformName}-${process.arch}`
+  const glob = new Bun.Glob(`zee-*/bin/zee${extension}`)
   const candidates = await Array.fromAsync(
     glob.scan({
       cwd: preferred,
@@ -137,9 +139,21 @@ async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
     throw new Error(`No dist binary found in ${preferred}. Run build first.`)
   }
 
-  const lowerPlatform = process.platform.toLowerCase()
-  const match = candidates.find((candidate) => candidate.toLowerCase().includes(lowerPlatform))
-  return match ?? candidates[0]
+  const exactMatch = candidates.find((candidate) => candidate.includes(`${hostSegment}${path.sep}`))
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  const fallbackMatch = candidates.find((candidate) => candidate.includes(hostSegment))
+  if (fallbackMatch) {
+    return fallbackMatch
+  }
+
+  throw new Error(
+    `No dist binary found for host target ${hostSegment} in ${preferred}. Found: ${candidates
+      .map((candidate) => path.relative(preferred, candidate))
+      .join(", ")}`,
+  )
 }
 
 async function writeStageLogHeader(
@@ -415,7 +429,7 @@ async function runStageCommand(
 
 async function stageBuildAndVerify(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
   const details: string[] = []
-  const buildCommand = process.platform === "win32" ? ["bun", "run", "script/build.ts", "--single"] : ["bun", "run", "build"]
+  const buildCommand = ["bun", "run", "script/build.ts", "--single"]
 
   await runStageCommand(ctx, "Build", buildCommand, {
     cwd: ctx.packageRoot,

@@ -38,7 +38,7 @@ jobs:
         run: bun run --cwd packages/zee typecheck
 
       - name: Test
-        run: bun run --cwd packages/zee test
+        run: cd packages/zee && bun test --reporter=dots --coverage-reporter=lcov
         env:
           CI: true
         timeout-minutes: 10

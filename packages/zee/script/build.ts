@@ -329,12 +329,14 @@ const targetsArg =
     return process.argv[idx + 1]
   })()
 
-const allTargets: {
+type BuildTarget = {
   os: string
   arch: "arm64" | "x64"
   abi?: "musl"
   avx2?: false
-}[] = [
+}
+
+const allTargets: BuildTarget[] = [
   {
     os: "linux",
     arch: "arm64",
@@ -375,6 +377,35 @@ const allTargets: {
   },
 ]
 
+function resolveSingleTargets(): BuildTarget[] {
+  const exact = allTargets.filter((item) => {
+    if (item.os !== process.platform || item.arch !== process.arch) {
+      return false
+    }
+    if (item.abi !== undefined) {
+      return false
+    }
+    if (item.avx2 === false) {
+      return baselineFlag
+    }
+    return !baselineFlag
+  })
+  if (exact.length > 0) {
+    return exact
+  }
+
+  if (process.platform === "darwin" && (process.arch === "x64" || process.arch === "arm64")) {
+    return [
+      {
+        os: process.platform,
+        arch: process.arch,
+      },
+    ]
+  }
+
+  throw new Error(`Unsupported --single build target for ${process.platform}-${process.arch}`)
+}
+
 const targetsFilter = (() => {
   if (!targetsArg) return undefined
   const requested = targetsArg
@@ -403,18 +434,7 @@ const targetsFilter = (() => {
 const targets = targetsFilter
   ? allTargets.filter(targetsFilter)
   : singleFlag
-    ? allTargets.filter((item) => {
-        if (item.os !== process.platform || item.arch !== process.arch) {
-          return false
-        }
-        if (item.avx2 === false) {
-          return baselineFlag
-        }
-        if (item.abi !== undefined) {
-          return false
-        }
-        return true
-      })
+    ? resolveSingleTargets()
     : releaseBuild
       ? allTargets
       : allTargets.filter((item) => {
