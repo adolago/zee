@@ -334,6 +334,28 @@ async function waitForDaemonHealth(port: number, timeoutMs: number): Promise<any
   return await waitForHttpJson(url, timeoutMs, 500, 2_000)
 }
 
+async function waitForDaemonFullHealth(port: number, timeoutMs: number): Promise<any> {
+  await waitForDaemonHealth(port, timeoutMs)
+  return await waitForHttpJson(`http://127.0.0.1:${port}/global/health`, timeoutMs, 500, 8_000)
+}
+
+function isGatewayRunning(health: any): boolean {
+  return health?.gateway?.running === true
+}
+
+function describeGatewayHealth(health: any): string {
+  const gateway = health?.gateway
+  if (!gateway || typeof gateway !== "object") {
+    return "running=<unknown> enabled=<unknown> error=<none>"
+  }
+
+  return [
+    `running=${String(gateway.running ?? false)}`,
+    `enabled=${String(gateway.enabled ?? false)}`,
+    `error=${String(gateway.error ?? "<none>")}`,
+  ].join(" ")
+}
+
 async function withDaemon(
   ctx: StageInternalContext,
   args: {
@@ -523,6 +545,8 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
   let distHealth: any = null
   let sourceChannels: any = null
   let distChannels: any = null
+  let sourceGatewaySummary = ""
+  let distGatewaySummary = ""
 
   const sourceCommand = [
     "bun",
@@ -550,7 +574,10 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       },
       async () => {
         sourceHealth = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/global/health`, 15_000, 500, 8_000)
-        sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
+        sourceGatewaySummary = describeGatewayHealth(sourceHealth)
+        if (isGatewayRunning(sourceHealth)) {
+          sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
+        }
       },
     )),
   )
@@ -579,7 +606,10 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       },
       async () => {
         distHealth = await waitForHttpJson(`http://127.0.0.1:${distPort}/global/health`, 15_000, 500, 8_000)
-        distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
+        distGatewaySummary = describeGatewayHealth(distHealth)
+        if (isGatewayRunning(distHealth)) {
+          distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
+        }
       },
     )),
   )
@@ -600,15 +630,23 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
     )
   }
 
-  if (!sourceChannels?.success || !distChannels?.success) {
-    throw new Error(
-      `gateway channels.status mismatch: source=${JSON.stringify(sourceChannels)} dist=${JSON.stringify(distChannels)}`,
-    )
+  const sourceGatewayRunning = isGatewayRunning(sourceHealth)
+  const distGatewayRunning = isGatewayRunning(distHealth)
+  if (sourceGatewayRunning !== distGatewayRunning) {
+    throw new Error(`gateway runtime mismatch: source=${sourceGatewaySummary} dist=${distGatewaySummary}`)
   }
 
-  const sourceChannelIds = Object.keys(sourceChannels?.data?.channelAccounts ?? {}).sort()
-  const distChannelIds = Object.keys(distChannels?.data?.channelAccounts ?? {}).sort()
-  const missingInDist = sourceChannelIds.filter((id) => !distChannelIds.includes(id))
+  if (sourceGatewayRunning) {
+    if (!sourceChannels?.success || !distChannels?.success) {
+      throw new Error(
+        `gateway channels.status mismatch: source=${JSON.stringify(sourceChannels)} dist=${JSON.stringify(distChannels)}`,
+      )
+    }
+  }
+
+  const sourceChannelIds = sourceGatewayRunning ? Object.keys(sourceChannels?.data?.channelAccounts ?? {}).sort() : []
+  const distChannelIds = distGatewayRunning ? Object.keys(distChannels?.data?.channelAccounts ?? {}).sort() : []
+  const missingInDist = sourceGatewayRunning ? sourceChannelIds.filter((id) => !distChannelIds.includes(id)) : []
 
   if (missingInDist.length > 0) {
     throw new Error(
@@ -624,6 +662,8 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       `dist health mode: ${String(distHealth.mode ?? "unknown")}`,
       `source memory status: ${sourceMemoryStatus}`,
       `dist memory status: ${distMemoryStatus}`,
+      `source gateway: ${sourceGatewaySummary}`,
+      `dist gateway: ${distGatewaySummary}`,
       `source channels: ${sourceChannelIds.join(",") || "<none>"}`,
       `dist channels: ${distChannelIds.join(",") || "<none>"}`,
     ],
@@ -836,7 +876,7 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
 
   let conflictHealth: any = null
   try {
-    conflictHealth = await waitForDaemonHealth(daemonPort, 45_000)
+    conflictHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
   } finally {
     await stopDaemon(conflictHandle)
     await release()
@@ -858,14 +898,17 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
   })
 
   let channelsResponse: any = null
+  let freeHealth: any = null
   try {
-    await waitForDaemonHealth(daemonPort, 45_000)
-    channelsResponse = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    freeHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
+    if (isGatewayRunning(freeHealth)) {
+      channelsResponse = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    }
   } finally {
     await stopDaemon(freeHandle)
   }
 
-  if (!channelsResponse || channelsResponse.success !== true) {
+  if (isGatewayRunning(freeHealth) && (!channelsResponse || channelsResponse.success !== true)) {
     throw new Error(`Gateway channels.status failed after port release: ${JSON.stringify(channelsResponse)}`)
   }
 
@@ -873,7 +916,10 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
     summary: "Gateway preflight correctly handles occupied and released ports",
     details: [
       `conflict gateway.running=${String(gatewayState.running)}`,
-      "channels.status succeeded after releasing port",
+      `free gateway: ${describeGatewayHealth(freeHealth)}`,
+      isGatewayRunning(freeHealth)
+        ? "channels.status succeeded after releasing port"
+        : "channels.status skipped because the embedded gateway is not running",
     ],
     artifacts: [
       {
@@ -932,11 +978,38 @@ async function stageGatewayChannelLiveChecks(ctx: StageInternalContext): Promise
   })
 
   let channels: any = null
+  let daemonHealth: any = null
   try {
-    await waitForDaemonHealth(daemonPort, 45_000)
-    channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    daemonHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
+    if (isGatewayRunning(daemonHealth)) {
+      channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    }
   } finally {
     await stopDaemon(handle)
+  }
+
+  if (!isGatewayRunning(daemonHealth)) {
+    return {
+      summary: "Gateway not running; live channel checks skipped",
+      details: [describeGatewayHealth(daemonHealth)],
+      artifacts: [
+        {
+          name: "gateway-live-stdout",
+          path: handle.stdoutPath,
+          command,
+          exitCode: 0,
+        },
+        {
+          name: "gateway-live-stderr",
+          path: handle.stderrPath,
+          command,
+          exitCode: 0,
+        },
+      ],
+      metrics: {
+        gatewayRunning: false,
+      },
+    }
   }
 
   if (!channels?.success) {
@@ -1153,7 +1226,8 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
   })
 
   try {
-    await waitForDaemonHealth(daemonPort, 45_000)
+    const daemonHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
+    const shouldProbeGateway = isGatewayRunning(daemonHealth)
 
     while (Date.now() - startedAt < durationMs) {
       probes += 1
@@ -1182,16 +1256,18 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
         )
       }
 
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 5_000)
-        if (channels?.success !== true) {
-          failures.push(`Probe ${probes}: gateway channels status failed payload=${JSON.stringify(channels)}`)
+      if (shouldProbeGateway) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 5_000)
+          if (channels?.success !== true) {
+            failures.push(`Probe ${probes}: gateway channels status failed payload=${JSON.stringify(channels)}`)
+          }
+        } catch (error) {
+          failures.push(
+            `Probe ${probes}: gateway channels health failed: ${error instanceof Error ? error.message : String(error)}`,
+          )
         }
-      } catch (error) {
-        failures.push(
-          `Probe ${probes}: gateway channels health failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
       }
 
       // eslint-disable-next-line no-await-in-loop

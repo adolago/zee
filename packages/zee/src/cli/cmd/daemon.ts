@@ -610,7 +610,12 @@ export namespace GatewaySupervisor {
 
     try {
       const gatewayPort = getGatewayPort()
-      await startEmbeddedGateway({ port: gatewayPort, daemonUrl: gatewayDaemonUrl })
+      const started = await startEmbeddedGateway({ port: gatewayPort, daemonUrl: gatewayDaemonUrl })
+      if (!started || !getEmbeddedGatewayState().running) {
+        lastError = "Embedded gateway runtime unavailable"
+        syncHealthState()
+        return false
+      }
       lastExit = undefined
       retryCount = 0
       log.info("embedded zee gateway started", { port: gatewayPort })
