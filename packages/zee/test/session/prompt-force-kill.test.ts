@@ -78,6 +78,7 @@ describe("SessionPrompt force-kill timer", () => {
             sessionID: session.id,
             agent: "zee",
             model: { providerID: "openai", modelID: "gpt-5.4" },
+            tools: {},
             parts: [{ type: "text", text: "first run" }],
           }).catch((error) => error)
           await waitFor(() => SessionStatus.get(session.id).type === "busy", 1500, "first run to be busy")
@@ -89,6 +90,7 @@ describe("SessionPrompt force-kill timer", () => {
             sessionID: session.id,
             agent: "zee",
             model: { providerID: "openai", modelID: "gpt-5.4" },
+            tools: {},
             parts: [{ type: "text", text: "second run" }],
           }).catch((error) => error)
           await waitFor(() => SessionStatus.get(session.id).type === "busy", 1500, "second run to be busy")

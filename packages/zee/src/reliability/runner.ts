@@ -124,7 +124,7 @@ async function seedRuntimeConfig(runtimeStateDir: string): Promise<string[]> {
 
 async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
   const extension = process.platform === "win32" ? ".exe" : ""
-  const preferred = path.join(packageRoot, "dist", "@zee")
+  const preferred = path.join(packageRoot, "dist", "@adolago")
   const glob = new Bun.Glob(`*/bin/zee${extension}`)
   const candidates = await Array.fromAsync(
     glob.scan({
@@ -415,7 +415,7 @@ async function runStageCommand(
 
 async function stageBuildAndVerify(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
   const details: string[] = []
-  const buildCommand = process.platform === "win32" ? ["bun", "run", "script/build.ts"] : ["bun", "run", "build"]
+  const buildCommand = process.platform === "win32" ? ["bun", "run", "script/build.ts", "--single"] : ["bun", "run", "build"]
 
   await runStageCommand(ctx, "Build", buildCommand, {
     cwd: ctx.packageRoot,
@@ -1322,7 +1322,14 @@ async function initializeRuntime(options: ReliabilityRunOptions): Promise<{
     const targetOS = process.platform === "win32" ? "windows" : process.platform
     const targetArch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : process.arch
     const extension = process.platform === "win32" ? ".exe" : ""
-    distBinaryPath = path.join(packageRoot, "dist", "@zee", `zee-${targetOS}-${targetArch}`, "bin", `zee${extension}`)
+    distBinaryPath = path.join(
+      packageRoot,
+      "dist",
+      "@adolago",
+      `zee-${targetOS}-${targetArch}`,
+      "bin",
+      `zee${extension}`,
+    )
   }
 
   const commandLogPath = path.join(artifactDir, "command-log.md")

@@ -19,6 +19,11 @@ permissions:
 jobs:
   check-and-publish:
     runs-on: ubuntu-latest
+    env:
+      NPM_PACKAGE_NAME: "@adolago/zee"
+      ZEE_CHANNEL: nightly
+      ZEE_NPM_PACKAGE: "@adolago/zee"
+      ZEE_TARGETS: linux-arm64,linux-x64,linux-x64-baseline,linux-arm64-musl,linux-x64-musl,linux-x64-musl-baseline,win32-x64,win32-x64-baseline
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -80,7 +85,7 @@ jobs:
           # Increment patch
           PATCH=$((PATCH + 1))
 
-          VERSION="${MAJOR}.${MINOR}.${PATCH}-alpha.nightly.${DATE}"
+          VERSION="${MAJOR}.${MINOR}.${PATCH}-alpha.nightly.${DATE}.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
           # Update package.json versions using sed (npm version fails on catalog: refs)
@@ -90,22 +95,50 @@ jobs:
           echo "Updated versions to ${VERSION}"
           grep '"version"' packages/zee/package.json
 
-      - name: Build
+      - name: Check if nightly version already exists on npm
         if: steps.changes.outputs.has_changes == 'true'
+        id: package
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if npm view "${NPM_PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "${NPM_PACKAGE_NAME}@${VERSION} already exists on npm. Skipping publish."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Export release metadata
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
+        run: |
+          echo "ZEE_VERSION=${{ steps.version.outputs.version }}" >> "$GITHUB_ENV"
+
+      - name: Build
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
         run: |
           cd packages/zee
           bun run build
 
-      - name: Publish to npm
-        if: steps.changes.outputs.has_changes == 'true'
+      - name: Verify built binary
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
+        run: packages/zee/dist/@adolago/zee-linux-x64/bin/zee --version
+
+      - name: Prepare release package
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
         run: |
           cd packages/zee
-          npm publish --access public --provenance --tag nightly
+          bun run script/prepare-release.ts
+
+      - name: Publish dist packages to npm
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
+        run: |
+          cd packages/zee
+          bun run script/publish-dist.ts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          ZEE_PUBLISH_TAG: nightly
 
       - name: Create GitHub Release
-        if: steps.changes.outputs.has_changes == 'true'
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
@@ -129,9 +162,9 @@ jobs:
 
             ### Install
             \`\`\`bash
-            npm install -g @zee/zee@nightly
+            npm install -g @adolago/zee@nightly
             # or specific version
-            npm install -g @zee/zee@${VERSION}
+            npm install -g @adolago/zee@${VERSION}
             \`\`\`
             " \
               --prerelease
@@ -139,7 +172,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Upload artifacts
-        if: steps.changes.outputs.has_changes == 'true'
+        if: steps.changes.outputs.has_changes == 'true' && steps.package.outputs.already_published != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: zee-nightly-${{ steps.version.outputs.version }}

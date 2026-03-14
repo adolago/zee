@@ -53,7 +53,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     cd packages/zee
     dist_dir=$(ls -d dist/@adolago/zee-* 2>/dev/null | sort | head -n1)
     if [ -z "$dist_dir" ]; then
-      echo "ERROR: dist directory not found under packages/zee/dist/@zee"
+      echo "ERROR: dist directory not found under packages/zee/dist/@adolago"
       find dist -maxdepth 3 -type d -print || true
       exit 1
     fi

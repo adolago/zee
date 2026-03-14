@@ -6,6 +6,7 @@ import fs from "fs/promises"
 import fsSync from "fs"
 import { threadId } from "worker_threads"
 import { afterAll, afterEach } from "bun:test"
+import { normalizeModelsCatalogJson } from "./fixture/models-catalog"
 
 const sanitizePathInput = (value: unknown) => (typeof value === "string" ? value.replace(/\0/g, "") : value)
 const wrapAsync =
@@ -171,22 +172,17 @@ process.env["ZEE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
 
 // Server auth breaks most unit tests (they don't send Authorization headers).
 process.env["ZEE_DISABLE_SERVER_AUTH"] = "true"
+// Keep tests hermetic and avoid any network dependency while loading model catalogs.
+process.env["ZEE_DISABLE_MODELS_FETCH"] = "true"
 
-// Pre-fetch models.json so tests don't need the macro fallback
-// Also write the cache version file to prevent global/index.ts from clearing the cache
+// Seed models.json from a checked-in fixture so tests don't depend on models.dev.
+// The raw fixture can contain duplicate provider keys, so normalize it before caching.
 const cacheDir = path.join(dir, "cache", "zee")
 await fs.mkdir(cacheDir, { recursive: true })
 await fs.writeFile(path.join(cacheDir, "version"), "18")
-const { Global } = await import("../src/global")
-const modelsDevUrl = Global.Path.modelsDevUrl
-const response = await fetch(`${modelsDevUrl}/api.json`)
-if (response.ok) {
-  await fs.writeFile(path.join(cacheDir, "models.json"), await response.text())
-} else {
-  console.error(`[preload] Failed to fetch models.dev: ${response.status}`)
-}
-// Disable models.dev refresh to avoid race conditions during tests
-process.env["ZEE_DISABLE_MODELS_FETCH"] = "true"
+const modelsFixturePath = path.join(import.meta.dir, "tool", "fixtures", "models-api.json")
+const normalizedModelsFixture = normalizeModelsCatalogJson(await fs.readFile(modelsFixturePath, "utf8"))
+await fs.writeFile(path.join(cacheDir, "models.json"), normalizedModelsFixture)
 
 // Clear config override env vars to ensure clean test state
 // These flags can override project config and interfere with permission tests
