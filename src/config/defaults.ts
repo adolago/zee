@@ -161,8 +161,8 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   enabled: true,
   vectorDb: {
     type: 'qdrant',
-    collection: 'zee',
-    embeddingModel: 'gemini-embedding-001',
+    collection: 'agent_memory',
+    embeddingModel: 'gemini-embedding-2-preview',
     dimensions: 3072,
   },
   maxRetrieved: 10,
@@ -269,7 +269,6 @@ export const MODEL_FALLBACK_CHAIN = [
   'anthropic/claude-sonnet-4-20250514',
   'anthropic/claude-3-5-sonnet-20241022',
   'openai/gpt-4o',
-  'google/gemini-2.0-flash-exp',
   'groq/llama-3.3-70b-versatile',
 ];
 
@@ -280,7 +279,6 @@ export const SMALL_MODEL_FALLBACK_CHAIN = [
   'anthropic/claude-haiku-4-20250514',
   'anthropic/claude-3-5-haiku-20241022',
   'openai/gpt-4o-mini',
-  'google/gemini-2.0-flash-exp',
   'groq/llama-3.1-8b-instant',
 ];
 

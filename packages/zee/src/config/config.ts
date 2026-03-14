@@ -1355,21 +1355,35 @@ export namespace Config {
       redisUrl: z.string().optional().describe("Redis connection URL"),
       qdrantUrl: z.string().optional().describe("Qdrant endpoint URL"),
       // qdrantApiKey removed: Qdrant is local-only, no remote support
-      qdrantCollection: z.string().optional().describe("Qdrant collection for memory"),
+      qdrantCollection: z.string().optional().describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
       qdrant: z
         .object({
           url: z.string().optional().describe("Qdrant endpoint URL (must be localhost)"),
-          collection: z.string().optional().describe("Qdrant collection for memory"),
+          collection: z.string().optional().describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
         })
         .optional()
         .describe("Nested Qdrant configuration (local-only)"),
       embedding: z
         .object({
-          profile: z.string().optional().describe("Embedding profile (google/gemini-embedding-001)"),
+          profile: z.string().optional().describe("Deprecated migration hint. Zee always uses google/gemini-embedding-2-preview."),
           provider: z.literal("google").optional().describe('Embedding provider ID ("google").'),
-          model: z.string().optional().describe("Embedding model name (Google)"),
-          dimensions: z.number().int().positive().optional().describe("Embedding vector dimensions"),
-          dimension: z.number().int().positive().optional().describe("Alias for dimensions"),
+          model: z.string().optional().describe("Deprecated migration hint. Zee ignores custom memory embedding models."),
+          dimensions: z.number().int().positive().optional().describe("Deprecated migration hint. Zee always uses 3072 dimensions."),
+          dimension: z.number().int().positive().optional().describe("Deprecated alias for dimensions. Zee always uses 3072."),
+          taskType: z
+            .enum([
+              "SEMANTIC_SIMILARITY",
+              "CLASSIFICATION",
+              "CLUSTERING",
+              "RETRIEVAL_DOCUMENT",
+              "RETRIEVAL_QUERY",
+              "QUESTION_ANSWERING",
+              "FACT_VERIFICATION",
+              "CODE_RETRIEVAL_QUERY",
+            ])
+            .optional()
+            .describe("Google embedding task type override"),
+          title: z.string().optional().describe("Optional title for Google document embeddings"),
           baseUrl: z.string().optional().describe("Embedding API base URL (Google)"),
         })
         .optional()

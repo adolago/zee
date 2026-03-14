@@ -17,8 +17,6 @@ import { useToast } from "../ui/toast"
 const PROVIDER_PRIORITY: Record<string, number> = {
   anthropic: 0,
   openai: 1,
-  "gemini-cli": 2,
-  google: 3,
 }
 
 // Services that aren't AI model providers but can be configured
@@ -83,7 +81,6 @@ export function createDialogProviderOptions() {
           value: provider.id,
           description: {
             anthropic: "(Recommended - Claude Max or API key)",
-            "gemini-cli": "(Google OAuth via Antigravity)",
             openai: "(ChatGPT Plus/Pro or API key)",
           }[provider.id],
           category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",

@@ -3,6 +3,7 @@ import { useTheme } from "../context/theme"
 import { useSync } from "@tui/context/sync"
 import { For, Match, Switch, Show, createMemo } from "solid-js"
 import { Installation } from "@/installation"
+import { getDaemonRuntimeMismatchWarning, hasDaemonRuntimeMismatch } from "@tui/util/runtime-mismatch"
 
 export type DialogStatusProps = {}
 
@@ -19,11 +20,8 @@ export function DialogStatus() {
     const status = daemon.healthy ? "healthy" : "unhealthy"
     return `${daemon.version} (${daemon.channel}/${daemon.mode}, ${status})`
   })
-  const mismatch = createMemo(() => {
-    const daemon = daemonRuntime()
-    if (!daemon) return false
-    return daemon.version !== tuiRuntime.version || daemon.execPath !== tuiRuntime.execPath
-  })
+  const mismatch = createMemo(() => hasDaemonRuntimeMismatch(daemonRuntime(), tuiRuntime))
+  const mismatchWarning = createMemo(() => getDaemonRuntimeMismatchWarning(daemonRuntime(), tuiRuntime))
 
   const plugins = createMemo(() => {
     const list = sync.data.config.plugin ?? []
@@ -87,7 +85,7 @@ export function DialogStatus() {
           </text>
         </Show>
         <Show when={mismatch()}>
-          <text fg={theme.warning}>TUI and daemon are different builds. Restart both from the same install.</text>
+          <text fg={theme.warning}>{mismatchWarning() ?? "TUI and daemon are different builds."}</text>
         </Show>
         <box flexDirection="row" gap={1}>
           <text fg={theme.textMuted}>Gateway</text>

@@ -13,14 +13,11 @@
 /** Default Qdrant server URL */
 export const QDRANT_URL = "http://localhost:6333";
 
-/** Default collection for agent memory */
-export const QDRANT_COLLECTION_MEMORY = "agent_memory";
+/** Canonical active collection for Zee memory. */
+export const QDRANT_COLLECTION_AGENT_MEMORY = "agent_memory";
 
 /** Default collection for agent state */
 export const QDRANT_COLLECTION_AGENT_STATE = "agent_state";
-
-/** Default collection for agent memory */
-export const QDRANT_COLLECTION_AGENT_MEMORY = "agent_memory";
 
 /** Legacy collection used before the persona-collapse refactor. */
 export const QDRANT_COLLECTION_PERSONAS_MEMORY = "personas_memory";
@@ -30,10 +27,17 @@ export const QDRANT_COLLECTION_PERSONAS_MEMORY = "personas_memory";
 // =============================================================================
 
 /** Default embedding model */
-export const EMBEDDING_MODEL = "gemini-embedding-001";
+export const EMBEDDING_MODEL = "gemini-embedding-2-preview";
 
-/** Default embedding dimensions for gemini-embedding-001 */
+/** Default embedding dimensions for the current embedding model */
 export const EMBEDDING_DIMENSIONS = 3072;
+
+/** Default collection for the current embedding model. */
+export const QDRANT_COLLECTION_MEMORY = QDRANT_COLLECTION_AGENT_MEMORY;
+
+/** Legacy preview-specific collection name kept only for migration. */
+export const QDRANT_COLLECTION_MEMORY_PREVIEW_LEGACY =
+  "agent_memory_gemini_embedding_2_preview_3072";
 
 /** Mock embedding dimensions (for testing) */
 export const MOCK_EMBEDDING_DIMENSIONS = 384;

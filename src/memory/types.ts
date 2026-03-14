@@ -96,6 +96,10 @@ export interface MemoryEntry {
   summary?: string;
   /** Embedding vector (generated) */
   embedding?: number[];
+  /** Embedding model used to create the vector */
+  embeddingModel?: string;
+  /** Embedding vector dimensions */
+  embeddingDimensions?: number;
   /** Associated metadata */
   metadata: MemoryMetadata;
   /** Media metadata for multimodal entries */
@@ -157,6 +161,8 @@ export interface MemoryInput {
   category: MemoryCategory;
   content: string;
   summary?: string;
+  /** Optional title passed to the embedding provider for document-style retrieval. */
+  embeddingTitle?: string;
   metadata?: Partial<MemoryMetadata>;
   /** Media metadata for multimodal entries */
   media?: MediaMetadata;
@@ -436,7 +442,7 @@ export interface RelationshipService {
 // =============================================================================
 
 /** Media types for multimodal embeddings */
-export type MediaType = "text" | "image" | "video";
+export type MediaType = "text" | "image" | "video" | "audio" | "pdf";
 
 /** Image input for multimodal embeddings */
 export interface ImageInput {
@@ -446,7 +452,7 @@ export interface ImageInput {
   /** Base64-encoded image data */
   base64?: string;
   /** MIME type of the image */
-  mimeType?: "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "image/bmp";
+  mimeType?: string;
 }
 
 /** Video input for multimodal embeddings */
@@ -454,10 +460,34 @@ export interface VideoInput {
   type: "video";
   /** URL of the video */
   url: string;
+  /** MIME type of the video */
+  mimeType?: string;
   /** Start time in seconds for frame extraction */
   startTime?: number;
   /** End time in seconds for frame extraction */
   endTime?: number;
+}
+
+/** Audio input for multimodal embeddings */
+export interface AudioInput {
+  type: "audio";
+  /** URL of the audio (http/https or data:) */
+  url?: string;
+  /** Base64-encoded audio data */
+  base64?: string;
+  /** MIME type of the audio */
+  mimeType?: string;
+}
+
+/** PDF input for multimodal embeddings */
+export interface PdfInput {
+  type: "pdf";
+  /** URL of the PDF (http/https or data:) */
+  url?: string;
+  /** Base64-encoded PDF data */
+  base64?: string;
+  /** MIME type of the PDF */
+  mimeType?: "application/pdf" | string;
 }
 
 /** Text input for multimodal embeddings */
@@ -468,11 +498,11 @@ export interface TextInput {
 }
 
 /** Union of all multimodal input types */
-export type MultimodalInput = TextInput | ImageInput | VideoInput;
+export type MultimodalInput = TextInput | ImageInput | VideoInput | AudioInput | PdfInput;
 
 /** Container for multimodal content */
 export interface MultimodalContent {
-  /** Array of content items (text, images, videos) */
+  /** Array of content items (text, images, videos, audio, PDFs) */
   contents: MultimodalInput[];
 }
 
@@ -482,9 +512,9 @@ export interface MediaMetadata {
   mediaType: MediaType;
   /** Source URL of the media */
   sourceUrl?: string;
-  /** Width in pixels (for images/video) */
+  /** Width in pixels (for images/video/PDF renders) */
   width?: number;
-  /** Height in pixels (for images/video) */
+  /** Height in pixels (for images/video/PDF renders) */
   height?: number;
   /** Duration in seconds (for video/audio) */
   duration?: number;
@@ -497,6 +527,23 @@ export interface MediaMetadata {
 // =============================================================================
 // Embedding Types
 // =============================================================================
+
+export type EmbeddingTaskType =
+  | "SEMANTIC_SIMILARITY"
+  | "CLASSIFICATION"
+  | "CLUSTERING"
+  | "RETRIEVAL_DOCUMENT"
+  | "RETRIEVAL_QUERY"
+  | "QUESTION_ANSWERING"
+  | "FACT_VERIFICATION"
+  | "CODE_RETRIEVAL_QUERY";
+
+export interface EmbeddingRequestOptions {
+  /** Optional provider-specific task type. */
+  taskType?: EmbeddingTaskType;
+  /** Optional provider-specific document title. */
+  title?: string;
+}
 
 /** Embedding provider interface */
 export interface EmbeddingProvider {
@@ -516,16 +563,16 @@ export interface EmbeddingProvider {
   supportedMediaTypes?: MediaType[];
 
   /** Generate embedding for a single text */
-  embed(text: string): Promise<number[]>;
+  embed(text: string, options?: EmbeddingRequestOptions): Promise<number[]>;
 
   /** Generate embeddings for multiple texts */
-  embedBatch(texts: string[]): Promise<number[][]>;
+  embedBatch(texts: string[], options?: EmbeddingRequestOptions): Promise<number[][]>;
 
   /** Generate embedding for multimodal content (optional) */
-  embedMultimodal?(content: MultimodalContent): Promise<number[]>;
+  embedMultimodal?(content: MultimodalContent, options?: EmbeddingRequestOptions): Promise<number[]>;
 
   /** Generate embeddings for multiple multimodal contents (optional) */
-  embedMultimodalBatch?(contents: MultimodalContent[]): Promise<number[][]>;
+  embedMultimodalBatch?(contents: MultimodalContent[], options?: EmbeddingRequestOptions): Promise<number[][]>;
 }
 
 /** Supported embedding providers */
@@ -610,6 +657,9 @@ export interface MemoryConfig {
     model?: string;
     apiKey?: string;
     dimension?: number;
+    dimensions?: number;
+    taskType?: EmbeddingTaskType;
+    title?: string;
   };
 
   /** Default namespace for isolation */

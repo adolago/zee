@@ -12,8 +12,9 @@
 
 import { randomUUID } from "node:crypto";
 import { QdrantVectorStorage } from "./qdrant";
-import { createEmbeddingProvider, createEmbeddingProviderAsync, type EmbeddingConfig } from "./embedding";
+import { createEmbeddingProvider, type EmbeddingConfig } from "./embedding";
 import type {
+  EmbeddingRequestOptions,
   MemoryEntry,
   MemoryInput,
   MemorySearchMode,
@@ -33,21 +34,24 @@ import type {
 import type { Reranker, RerankerConfig, RerankResult } from "./reranker";
 import {
   QDRANT_URL,
-  QDRANT_COLLECTION_MEMORY,
+  QDRANT_COLLECTION_AGENT_MEMORY,
+  QDRANT_COLLECTION_MEMORY_PREVIEW_LEGACY,
   QDRANT_COLLECTION_PERSONAS_MEMORY,
   CONTINUITY_MAX_KEY_FACTS,
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
 } from "../config/constants";
 import { getAuthApiKeySync } from "../config/providers";
 import {
   getMemoryEmbeddingConfig,
   getMemoryLocalIndexConfig,
+  getMemoryMigrationHints,
   getMemoryQdrantConfig,
   getMemoryRerankerConfig,
-  isMemoryQdrantCollectionConfiguredByUser,
   type MemoryLocalIndexConfig,
 } from "../config/runtime";
 import { Log } from "../../packages/zee/src/util/log";
-import { SqliteFtsStore, type FtsConfig, type FtsSearchResult } from "./sqlite-fts";
+import { SqliteFtsStore, type FtsConfig, type FtsEntry, type FtsSearchResult } from "./sqlite-fts";
 import { mergeHybridResults, type HybridSearchConfig, type HybridSearchResult } from "./hybrid";
 import { getMarkdownSync, type MarkdownSyncConfig } from "./markdown-sync";
 
@@ -147,10 +151,10 @@ export interface MemoryConfig {
  */
 class MockEmbeddingProvider implements EmbeddingProvider {
   readonly id = "mock";
-  readonly model = "mock-embedding";
-  readonly dimension = 384;
+  readonly model = EMBEDDING_MODEL;
+  dimension = EMBEDDING_DIMENSIONS;
 
-  async embed(text: string): Promise<number[]> {
+  async embed(text: string, _options?: EmbeddingRequestOptions): Promise<number[]> {
     const vector: number[] = new Array(this.dimension).fill(0);
     for (let i = 0; i < text.length && i < this.dimension; i++) {
       vector[i] = (text.charCodeAt(i) % 100) / 100;
@@ -159,8 +163,8 @@ class MockEmbeddingProvider implements EmbeddingProvider {
     return vector.map((v) => v / (mag || 1));
   }
 
-  async embedBatch(texts: string[]): Promise<number[][]> {
-    return Promise.all(texts.map((t) => this.embed(t)));
+  async embedBatch(texts: string[], options?: EmbeddingRequestOptions): Promise<number[][]> {
+    return Promise.all(texts.map((t) => this.embed(t, options)));
   }
 }
 
@@ -370,10 +374,9 @@ export class Memory {
   private readonly embedding: EmbeddingProvider;
   private readonly namespace: string;
   private collection: string;
+  private readonly migrationSourceCollections: string[];
   private readonly instanceId: string;
   private readonly maxKeyFacts: number;
-  private readonly configuredEmbeddingDimensions?: number;
-  private readonly collectionExplicitlyConfigured: boolean;
   private readonly rerankerConfig?: RerankerConfig;
   private embeddingDimension?: number;
   private initialized = false;
@@ -392,36 +395,66 @@ export class Memory {
   private currentConversation?: ConversationState;
 
   constructor(config: Partial<MemoryConfig> = {}) {
-    const fileQdrant = getMemoryQdrantConfig();
     const fileEmbedding = getMemoryEmbeddingConfig();
+    const fileQdrant = getMemoryQdrantConfig();
     const fileLocalIndex = getMemoryLocalIndexConfig();
+    const migrationHints = getMemoryMigrationHints();
+    const explicitCollection = config.qdrant?.collection?.trim() || undefined;
+    const allowTestCollectionOverride =
+      Boolean(explicitCollection) &&
+      (process.env.NODE_ENV === "test" ||
+        process.env.VITEST === "true" ||
+        process.env.BUN_TEST === "1");
+    const activeCollection =
+      allowTestCollectionOverride && explicitCollection
+        ? explicitCollection
+        : QDRANT_COLLECTION_AGENT_MEMORY;
     const qdrantConfig = {
       url: config.qdrant?.url ?? fileQdrant.url ?? QDRANT_URL,
-      collection:
-        config.qdrant?.collection ??
-        fileQdrant.collection ??
-        QDRANT_COLLECTION_MEMORY,
+      collection: activeCollection,
     };
 
-    this.collection = qdrantConfig.collection;
-    this.collectionExplicitlyConfigured =
-      Boolean(config.qdrant?.collection) || isMemoryQdrantCollectionConfiguredByUser();
+    this.collection = activeCollection;
+    this.migrationSourceCollections = allowTestCollectionOverride
+      ? [activeCollection]
+      : Array.from(
+          new Set(
+            [
+              QDRANT_COLLECTION_AGENT_MEMORY,
+              QDRANT_COLLECTION_MEMORY_PREVIEW_LEGACY,
+              QDRANT_COLLECTION_PERSONAS_MEMORY,
+              explicitCollection,
+              migrationHints.configuredCollection,
+            ].filter((value): value is string => Boolean(value && value.trim()))
+          )
+        );
     this.storage = new QdrantVectorStorage(qdrantConfig);
     this.namespace = config.namespace ?? "default";
     this.instanceId = generateInstanceId();
     this.maxKeyFacts = config.maxKeyFacts ?? CONTINUITY_MAX_KEY_FACTS;
     this.rerankerConfig = config.reranker ?? getMemoryRerankerConfig();
 
-    const configuredDimensions = config.embedding?.dimensions ?? fileEmbedding.dimensions;
-    const provider = (config.embedding?.provider ?? fileEmbedding.provider ?? "google") as EmbeddingConfig["provider"];
+    const provider = "google" as EmbeddingConfig["provider"];
     const apiKey = getAuthApiKeySync("google");
     const embeddingConfig: EmbeddingConfig = {
       provider,
-      model: config.embedding?.model ?? fileEmbedding.model,
-      dimensions: configuredDimensions,
+      model: EMBEDDING_MODEL,
+      dimensions: EMBEDDING_DIMENSIONS,
+      taskType: config.embedding?.taskType ?? fileEmbedding.taskType,
+      title: config.embedding?.title ?? fileEmbedding.title,
       baseUrl: config.embedding?.baseUrl ?? fileEmbedding.baseUrl,
     };
-    this.configuredEmbeddingDimensions = configuredDimensions;
+    this.embeddingDimension = EMBEDDING_DIMENSIONS;
+
+    this.warnIgnoredEmbeddingHints(
+      config.embedding?.model,
+      config.embedding?.dimensions,
+      migrationHints.configuredEmbeddingProfile,
+      migrationHints.configuredEmbeddingModel,
+      migrationHints.configuredEmbeddingDimensions,
+      allowTestCollectionOverride ? undefined : explicitCollection,
+      migrationHints.configuredCollection,
+    );
 
     // Use mock embeddings if no API key available
     const usesMock = !apiKey;
@@ -431,6 +464,7 @@ export class Memory {
     } else {
       this.embedding = createEmbeddingProvider(embeddingConfig);
     }
+    this.embedding.dimension = EMBEDDING_DIMENSIONS;
 
     const explicitLocalIndex = config.localIndex ?? {};
     const localIndexEnabled =
@@ -467,91 +501,11 @@ export class Memory {
   private initError?: Error;
 
   private async resolveEmbeddingDimension(): Promise<number> {
-    if (this.embeddingDimension && this.embeddingDimension > 0) {
-      return this.embeddingDimension;
+    if (!this.embeddingDimension || this.embeddingDimension <= 0) {
+      this.embeddingDimension = EMBEDDING_DIMENSIONS;
+      this.embedding.dimension = EMBEDDING_DIMENSIONS;
     }
-
-    let existingDimension = await this.storage.getCollectionDimension(this.collection);
-    if (this.configuredEmbeddingDimensions && this.configuredEmbeddingDimensions > 0) {
-      if (
-        existingDimension &&
-        existingDimension !== this.configuredEmbeddingDimensions &&
-        (await this.adoptLegacyCollectionIfCompatible(this.configuredEmbeddingDimensions))
-      ) {
-        existingDimension = await this.storage.getCollectionDimension(this.collection);
-      }
-      if (existingDimension && existingDimension !== this.configuredEmbeddingDimensions) {
-        throw new Error(
-          `Qdrant collection "${this.collection}" uses dimension ${existingDimension}, but embedding dimensions are configured as ${this.configuredEmbeddingDimensions}. Update memory.qdrant.collection or memory.embedding.dimensions.`,
-        );
-      }
-      this.embeddingDimension = this.configuredEmbeddingDimensions;
-      this.embedding.dimension = this.embeddingDimension;
-      return this.embeddingDimension;
-    }
-
-    if (existingDimension && existingDimension > 0) {
-      const probe = await this.embedding.embed("dimension-probe");
-      const probeLength = probe.length;
-      if (
-        probeLength &&
-        probeLength !== existingDimension &&
-        (await this.adoptLegacyCollectionIfCompatible(probeLength))
-      ) {
-        existingDimension = await this.storage.getCollectionDimension(this.collection);
-      }
-      if (existingDimension && probeLength && probeLength === existingDimension) {
-        this.embeddingDimension = probeLength;
-        this.embedding.dimension = probeLength;
-        return probeLength;
-      }
-      if (probeLength && probeLength !== existingDimension) {
-        throw new Error(
-          `Embedding dimension ${probeLength} does not match Qdrant collection ${existingDimension} for "${this.collection}". Create a new collection or set memory.embedding.dimensions to match.`,
-        );
-      }
-      const resolvedDimension = probeLength || existingDimension;
-      if (!resolvedDimension) {
-        throw new Error(`Unable to resolve embedding dimension for "${this.collection}".`);
-      }
-      this.embeddingDimension = resolvedDimension;
-      this.embedding.dimension = resolvedDimension;
-      return resolvedDimension;
-    }
-
-    const probe = await this.embedding.embed("dimension-probe");
-    const probeLength = probe.length;
-    if (!probeLength) {
-      throw new Error("Embedding provider returned empty vector for dimension probe");
-    }
-
-    this.embeddingDimension = probeLength;
-    this.embedding.dimension = probeLength;
-    return probeLength;
-  }
-
-  private async adoptLegacyCollectionIfCompatible(expectedDimension: number): Promise<boolean> {
-    if (this.collectionExplicitlyConfigured) return false;
-    if (this.collection !== QDRANT_COLLECTION_MEMORY) return false;
-
-    const legacyCollection = QDRANT_COLLECTION_PERSONAS_MEMORY;
-    const legacyDimension = await this.storage.getCollectionDimension(legacyCollection);
-    if (!legacyDimension || legacyDimension !== expectedDimension) return false;
-
-    const currentPoints = await this.storage.getCollectionPointCount(this.collection);
-    const legacyPoints = await this.storage.getCollectionPointCount(legacyCollection);
-    if ((currentPoints ?? 0) > 0) return false;
-    if ((legacyPoints ?? 0) <= 0) return false;
-
-    this.collection = legacyCollection;
-    this.storage.setCollection(legacyCollection);
-    log.warn("Using legacy Qdrant memory collection for compatibility", {
-      requestedCollection: QDRANT_COLLECTION_MEMORY,
-      legacyCollection,
-      dimension: expectedDimension,
-      legacyPoints,
-    });
-    return true;
+    return this.embeddingDimension;
   }
 
   private async initLocalIndex(): Promise<void> {
@@ -600,8 +554,10 @@ export class Memory {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const dimension = await this.resolveEmbeddingDimension();
+        await this.migrateToCanonicalCollectionIfNeeded();
         await this.storage.createCollection(this.collection, dimension);
         this.storage.setCollection(this.collection);
+        await this.assertCollectionEmbeddingSignature();
         this.initialized = true;
 
         log.info("Memory initialized", {
@@ -660,6 +616,698 @@ export class Memory {
   // Helpers
   // ===========================================================================
 
+  private warnIgnoredEmbeddingHints(
+    explicitModel?: string,
+    explicitDimensions?: number,
+    configuredProfile?: string,
+    configuredModel?: string,
+    configuredDimensions?: number,
+    explicitCollection?: string,
+    configuredCollection?: string,
+  ): void {
+    const ignored: string[] = [];
+
+    if (configuredProfile) {
+      ignored.push(`memory.embedding.profile=${configuredProfile}`);
+    }
+    if (explicitModel && explicitModel.trim() !== EMBEDDING_MODEL) {
+      ignored.push(`constructor embedding.model=${explicitModel.trim()}`);
+    }
+    if (configuredModel && configuredModel.trim() !== EMBEDDING_MODEL) {
+      ignored.push(`memory.embedding.model=${configuredModel.trim()}`);
+    }
+    if (
+      typeof explicitDimensions === "number" &&
+      Number.isFinite(explicitDimensions) &&
+      explicitDimensions !== EMBEDDING_DIMENSIONS
+    ) {
+      ignored.push(`constructor embedding.dimensions=${explicitDimensions}`);
+    }
+    if (
+      typeof configuredDimensions === "number" &&
+      Number.isFinite(configuredDimensions) &&
+      configuredDimensions !== EMBEDDING_DIMENSIONS
+    ) {
+      ignored.push(`memory.embedding.dimensions=${configuredDimensions}`);
+    }
+    if (explicitCollection && explicitCollection.trim() !== QDRANT_COLLECTION_AGENT_MEMORY) {
+      ignored.push(`constructor qdrant.collection=${explicitCollection.trim()}`);
+    }
+    if (configuredCollection && configuredCollection.trim() !== QDRANT_COLLECTION_AGENT_MEMORY) {
+      ignored.push(`memory.qdrant.collection=${configuredCollection.trim()}`);
+    }
+
+    if (ignored.length === 0) return;
+
+    log.warn("Ignoring deprecated memory embedding configuration", {
+      enforcedModel: EMBEDDING_MODEL,
+      enforcedDimensions: EMBEDDING_DIMENSIONS,
+      enforcedCollection: QDRANT_COLLECTION_AGENT_MEMORY,
+      ignored,
+    });
+  }
+
+  private getEmbeddingSignature(): { model: string; dimensions: number } {
+    return {
+      model: this.embedding.model,
+      dimensions: this.embeddingDimension ?? this.embedding.dimension ?? EMBEDDING_DIMENSIONS,
+    };
+  }
+
+  private embeddingSignaturePayload(): {
+    embeddingModel: string;
+    embeddingDimensions: number;
+  } {
+    const signature = this.getEmbeddingSignature();
+    return {
+      embeddingModel: signature.model,
+      embeddingDimensions: signature.dimensions,
+    };
+  }
+
+  private buildDocumentEmbeddingOptions(input?: Pick<MemoryInput, "embeddingTitle" | "summary">): EmbeddingRequestOptions {
+    const title = input?.embeddingTitle?.trim() || input?.summary?.trim() || undefined;
+    return title
+      ? { taskType: "RETRIEVAL_DOCUMENT", title }
+      : { taskType: "RETRIEVAL_DOCUMENT" };
+  }
+
+  private buildQueryEmbeddingOptions(): EmbeddingRequestOptions {
+    return { taskType: "RETRIEVAL_QUERY" };
+  }
+
+  private normalizeStoredEmbeddingModel(model?: string): string | undefined {
+    if (!model) return undefined;
+    return model.trim().replace(/^models\//, "").toLowerCase();
+  }
+
+  private isCanonicalEmbeddingPayload(payload: Record<string, unknown>): boolean {
+    const payloadModel =
+      typeof payload.embeddingModel === "string"
+        ? this.normalizeStoredEmbeddingModel(payload.embeddingModel)
+        : undefined;
+    const payloadDimensions =
+      typeof payload.embeddingDimensions === "number" ? payload.embeddingDimensions : undefined;
+
+    return (
+      payloadModel === this.normalizeStoredEmbeddingModel(EMBEDDING_MODEL) &&
+      payloadDimensions === EMBEDDING_DIMENSIONS
+    );
+  }
+
+  private getStoredEntryType(payload: Record<string, unknown>): string {
+    return typeof payload.type === "string" ? payload.type : "memory";
+  }
+
+  private asStringArray(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  }
+
+  private getReusableMigrationVector(point: {
+    payload: Record<string, unknown>;
+    vector?: number[];
+  }): number[] | undefined {
+    if (!this.isCanonicalEmbeddingPayload(point.payload)) return undefined;
+    return Array.isArray(point.vector) && point.vector.length === EMBEDDING_DIMENSIONS
+      ? point.vector
+      : undefined;
+  }
+
+  private buildConversationEmbeddingSource(state: ConversationState): {
+    text: string;
+    title?: string;
+  } {
+    const summaryParts = [
+      state.summary,
+      `Plan: ${state.plan}`,
+      `Objectives: ${state.objectives.join(", ")}`,
+      `Key facts: ${state.keyFacts.join("; ")}`,
+    ];
+    return {
+      text: summaryParts.filter(Boolean).join("\n"),
+      title: state.summary || `Conversation ${state.sessionId}`,
+    };
+  }
+
+  private conversationStateFromPayload(payload: Record<string, unknown>): ConversationState | null {
+    const sessionId = typeof payload.sessionId === "string" ? payload.sessionId : undefined;
+    if (!sessionId) return null;
+
+    return {
+      sessionId,
+      leadAgent: (typeof payload.leadAgent === "string" ? payload.leadAgent : "zee") as AgentId,
+      summary: typeof payload.summary === "string" ? payload.summary : "",
+      plan: typeof payload.plan === "string" ? payload.plan : "",
+      objectives: this.asStringArray(payload.objectives),
+      keyFacts: this.asStringArray(payload.keyFacts),
+      sessionChain: this.asStringArray(payload.sessionChain),
+      updatedAt: typeof payload.updatedAt === "number" ? payload.updatedAt : Date.now(),
+    };
+  }
+
+  private parseAgentsState(payload: Record<string, unknown>): AgentsState | null {
+    const raw = payload.state;
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw) as AgentsState;
+      } catch {
+        return null;
+      }
+    }
+    if (raw && typeof raw === "object") {
+      return raw as AgentsState;
+    }
+    return null;
+  }
+
+  private fallbackAgentsState(payload: Record<string, unknown>): AgentsState {
+    return {
+      version: typeof payload.version === "string" ? payload.version : "migrated",
+      workers: [],
+      tasks: [],
+      lastSyncAt: typeof payload.updatedAt === "number" ? payload.updatedAt : Date.now(),
+      stats: {
+        totalTasksCompleted: 0,
+        totalDronesSpawned: 0,
+        totalTokensUsed: 0,
+      },
+    };
+  }
+
+  private async withStorageCollection<T>(collection: string, fn: () => Promise<T>): Promise<T> {
+    const previousCollection = this.storage.getCollection();
+    this.storage.setCollection(collection);
+    try {
+      return await fn();
+    } finally {
+      this.storage.setCollection(previousCollection);
+    }
+  }
+
+  private async scrollCollection(
+    collection: string,
+    options: Parameters<QdrantVectorStorage["scroll"]>[0] = {},
+  ): Promise<Awaited<ReturnType<QdrantVectorStorage["scroll"]>>> {
+    return this.withStorageCollection(collection, async () => this.storage.scroll(options));
+  }
+
+  private async insertIntoCollection(
+    collection: string,
+    entries: Array<{ id: string; vector: number[]; payload: Record<string, unknown> }>,
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    await this.withStorageCollection(collection, async () => {
+      await this.storage.insert(entries);
+    });
+  }
+
+  private async collectionInspection(collection: string): Promise<{
+    collection: string;
+    dimension: number | null;
+    pointCount: number;
+    requiresMigration: boolean;
+  }> {
+    const [dimension, pointCountValue] = await Promise.all([
+      this.storage.getCollectionDimension(collection),
+      this.storage.getCollectionPointCount(collection),
+    ]);
+    const pointCount = pointCountValue ?? 0;
+
+    if (!dimension && pointCount === 0) {
+      return { collection, dimension, pointCount, requiresMigration: false };
+    }
+
+    if (dimension !== EMBEDDING_DIMENSIONS) {
+      return { collection, dimension, pointCount, requiresMigration: true };
+    }
+
+    if (collection !== this.collection) {
+      return { collection, dimension, pointCount, requiresMigration: pointCount > 0 };
+    }
+
+    let requiresMigration = false;
+    let offset: string | number | undefined;
+    while (pointCount > 0) {
+      const page = await this.scrollCollection(collection, {
+        limit: 256,
+        offset,
+        withPayload: true,
+        withVector: false,
+      });
+
+      if (page.points.some((point) => !this.isCanonicalEmbeddingPayload(point.payload))) {
+        requiresMigration = true;
+        break;
+      }
+
+      if (page.nextOffset === undefined || page.nextOffset === null) {
+        break;
+      }
+      offset = page.nextOffset;
+    }
+
+    return { collection, dimension, pointCount, requiresMigration };
+  }
+
+  private async buildMigratedPrimaryEntries(point: {
+    id: string;
+    payload: Record<string, unknown>;
+    vector?: number[];
+  }): Promise<Array<{ id: string; vector: number[]; payload: Record<string, unknown> }>> {
+    const entryType = this.getStoredEntryType(point.payload);
+    const reusableVector = this.getReusableMigrationVector(point);
+
+    if (entryType === "tree_index" || entryType === "session_chain") {
+      return [];
+    }
+
+    if (entryType === "memory") {
+      const summary =
+        typeof point.payload.summary === "string" ? point.payload.summary : undefined;
+      const content =
+        typeof point.payload.content === "string" && point.payload.content.trim()
+          ? point.payload.content
+          : summary || `Migrated memory ${point.id}`;
+      const vector =
+        reusableVector ??
+        (await this.embedding.embed(
+          content,
+          this.buildDocumentEmbeddingOptions({ summary }),
+        ));
+      const createdAt =
+        typeof point.payload.createdAt === "number" ? point.payload.createdAt : Date.now();
+      const accessedAt =
+        typeof point.payload.accessedAt === "number" ? point.payload.accessedAt : createdAt;
+
+      return [{
+        id: point.id,
+        vector,
+        payload: {
+          ...point.payload,
+          type: "memory",
+          content,
+          summary,
+          metadata:
+            point.payload.metadata &&
+            typeof point.payload.metadata === "object" &&
+            !Array.isArray(point.payload.metadata)
+              ? point.payload.metadata
+              : {},
+          createdAt,
+          accessedAt,
+          ...this.embeddingSignaturePayload(),
+        },
+      }];
+    }
+
+    if (entryType === "conversation") {
+      const conversation = this.conversationStateFromPayload(point.payload);
+      if (!conversation) {
+        log.warn("Skipping conversation memory during migration without sessionId", {
+          id: point.id,
+        });
+        return [];
+      }
+
+      const source = this.buildConversationEmbeddingSource(conversation);
+      const vector =
+        reusableVector ??
+        (await this.embedding.embed(source.text, {
+          taskType: "RETRIEVAL_DOCUMENT",
+          title: source.title,
+        }));
+      return [
+        {
+          id: stringToUUID(`conversation-${conversation.sessionId}`),
+          vector,
+          payload: {
+            type: "conversation",
+            ...this.embeddingSignaturePayload(),
+            sessionId: conversation.sessionId,
+            leadAgent: conversation.leadAgent,
+            summary: conversation.summary,
+            plan: conversation.plan,
+            objectives: conversation.objectives,
+            keyFacts: conversation.keyFacts,
+            sessionChain: conversation.sessionChain,
+            updatedAt: conversation.updatedAt,
+          },
+        },
+        {
+          id: stringToUUID(`session-chain-${conversation.sessionId}`),
+          vector,
+          payload: {
+            type: "session_chain",
+            ...this.embeddingSignaturePayload(),
+            sessionId: conversation.sessionId,
+            previousSessions: conversation.sessionChain,
+            updatedAt: conversation.updatedAt,
+          },
+        },
+      ];
+    }
+
+    if (entryType === "state") {
+      const state = this.parseAgentsState(point.payload) ?? this.fallbackAgentsState(point.payload);
+      const summary = this.generateStateSummary(state);
+      const vector =
+        reusableVector ??
+        (await this.embedding.embed(summary, {
+          taskType: "RETRIEVAL_DOCUMENT",
+        }));
+      return [{
+        id: this.getStateId(),
+        vector,
+        payload: {
+          type: "state",
+          ...this.embeddingSignaturePayload(),
+          state: JSON.stringify(state),
+          summary,
+          version: state.version,
+          updatedAt:
+            typeof point.payload.updatedAt === "number"
+              ? point.payload.updatedAt
+              : state.lastSyncAt,
+        },
+      }];
+    }
+
+    if (reusableVector) {
+      return [{
+        id: point.id,
+        vector: reusableVector,
+        payload: {
+          ...point.payload,
+          ...this.embeddingSignaturePayload(),
+        },
+      }];
+    }
+
+    log.warn("Skipping unsupported legacy memory entry during migration", {
+      id: point.id,
+      type: entryType,
+    });
+    return [];
+  }
+
+  private async copyCollection(source: string, destination: string): Promise<void> {
+    let offset: string | number | undefined;
+
+    while (true) {
+      const page = await this.scrollCollection(source, {
+        limit: 128,
+        offset,
+        withPayload: true,
+        withVector: true,
+      });
+      await this.insertIntoCollection(
+        destination,
+        page.points
+          .filter(
+            (point): point is { id: string; payload: Record<string, unknown>; vector: number[] } =>
+              Array.isArray(point.vector),
+          )
+          .map((point) => ({
+            id: point.id,
+            vector: point.vector,
+            payload: point.payload,
+          })),
+      );
+
+      if (page.nextOffset === undefined || page.nextOffset === null) {
+        return;
+      }
+      offset = page.nextOffset;
+    }
+  }
+
+  private async rebuildFtsFromCanonicalCollection(): Promise<void> {
+    if (!this.ftsStore) return;
+
+    this.ftsStore.clear();
+
+    let offset: string | number | undefined;
+    const batch: FtsEntry[] = [];
+    while (true) {
+      const page = await this.scrollCollection(this.collection, {
+        filter: { type: "memory" },
+        limit: 256,
+        offset,
+        withPayload: true,
+        withVector: false,
+      });
+
+      for (const point of page.points) {
+        batch.push({
+          id: point.id,
+          content: typeof point.payload.content === "string" ? point.payload.content : "",
+          summary:
+            typeof point.payload.summary === "string" ? point.payload.summary : undefined,
+          category:
+            typeof point.payload.category === "string" ? point.payload.category : undefined,
+          namespace:
+            typeof point.payload.namespace === "string" ? point.payload.namespace : undefined,
+          domain:
+            typeof point.payload.domain === "string" ? point.payload.domain : undefined,
+          topic:
+            typeof point.payload.topic === "string" ? point.payload.topic : undefined,
+          subtopic:
+            typeof point.payload.subtopic === "string" ? point.payload.subtopic : undefined,
+          createdAt:
+            typeof point.payload.createdAt === "number"
+              ? point.payload.createdAt
+              : undefined,
+        });
+      }
+
+      if (batch.length >= 256) {
+        this.ftsStore.indexBatch(batch.splice(0, batch.length));
+      }
+
+      if (page.nextOffset === undefined || page.nextOffset === null) {
+        break;
+      }
+      offset = page.nextOffset;
+    }
+
+    if (batch.length > 0) {
+      this.ftsStore.indexBatch(batch);
+    }
+  }
+
+  private async rebuildTreeIndexesFromCanonicalCollection(): Promise<void> {
+    const nodes = new Map<string, Record<string, unknown>>();
+    let offset: string | number | undefined;
+
+    while (true) {
+      const page = await this.scrollCollection(this.collection, {
+        filter: { type: "memory" },
+        limit: 256,
+        offset,
+        withPayload: true,
+        withVector: false,
+      });
+
+      for (const point of page.points) {
+        const payload = point.payload;
+        const domain = typeof payload.domain === "string" ? payload.domain : undefined;
+        const topic = typeof payload.topic === "string" ? payload.topic : undefined;
+        const subtopic = typeof payload.subtopic === "string" ? payload.subtopic : undefined;
+        const createdAt =
+          typeof payload.createdAt === "number" ? payload.createdAt : Date.now();
+        const updatedAt =
+          typeof payload.accessedAt === "number" ? payload.accessedAt : createdAt;
+
+        if (!domain) continue;
+
+        nodes.set(this.treePointId(domain), {
+          ...this.embeddingSignaturePayload(),
+          type: "tree_index",
+          level: "domain",
+          domain,
+          createdAt,
+          updatedAt,
+        });
+
+        if (topic) {
+          nodes.set(this.treePointId(`${domain}/${topic}`), {
+            ...this.embeddingSignaturePayload(),
+            type: "tree_index",
+            level: "topic",
+            domain,
+            topic,
+            createdAt,
+            updatedAt,
+          });
+        }
+
+        if (topic && subtopic) {
+          nodes.set(this.treePointId(`${domain}/${topic}/${subtopic}`), {
+            ...this.embeddingSignaturePayload(),
+            type: "tree_index",
+            level: "subtopic",
+            domain,
+            topic,
+            subtopic,
+            createdAt,
+            updatedAt,
+          });
+        }
+      }
+
+      if (page.nextOffset === undefined || page.nextOffset === null) {
+        break;
+      }
+      offset = page.nextOffset;
+    }
+
+    if (nodes.size === 0) return;
+
+    const dummyVector = new Array(EMBEDDING_DIMENSIONS).fill(0);
+    const entries = Array.from(nodes.entries()).map(([id, payload]) => ({
+      id,
+      vector: dummyVector,
+      payload,
+    }));
+
+    for (let i = 0; i < entries.length; i += 128) {
+      await this.insertIntoCollection(this.collection, entries.slice(i, i + 128));
+    }
+  }
+
+  private async migrateToCanonicalCollectionIfNeeded(): Promise<void> {
+    const inspections = await Promise.all(
+      this.migrationSourceCollections.map((collection) => this.collectionInspection(collection)),
+    );
+    const canonicalInspection = inspections.find((inspection) => inspection.collection === this.collection);
+    const nonCanonicalSources = inspections.filter(
+      (inspection) => inspection.collection !== this.collection && inspection.pointCount > 0,
+    );
+    const needsMigration =
+      Boolean(canonicalInspection?.requiresMigration) || nonCanonicalSources.length > 0;
+
+    if (!needsMigration) {
+      return;
+    }
+
+    const tempCollection = `${this.collection}_migration_${Date.now()}`;
+    const sourceCollections = inspections
+      .filter((inspection) => inspection.pointCount > 0)
+      .map((inspection) => inspection.collection);
+    const orderedSourceCollections = sourceCollections
+      .filter((collection) => collection !== this.collection)
+      .concat(sourceCollections.includes(this.collection) ? [this.collection] : []);
+
+    log.warn("Migrating memory collections to canonical embedding space", {
+      enforcedCollection: this.collection,
+      enforcedModel: EMBEDDING_MODEL,
+      enforcedDimensions: EMBEDDING_DIMENSIONS,
+      sources: orderedSourceCollections,
+      canonicalRequiresRewrite: canonicalInspection?.requiresMigration ?? false,
+    });
+
+    await this.storage.deleteCollection(tempCollection);
+    await this.storage.createCollection(tempCollection, EMBEDDING_DIMENSIONS);
+
+    const stagedPriorities = new Map<string, number>();
+    let migratedPoints = 0;
+
+    for (const sourceCollection of orderedSourceCollections) {
+      let offset: string | number | undefined;
+
+      while (true) {
+        const page = await this.scrollCollection(sourceCollection, {
+          limit: 128,
+          offset,
+          withPayload: true,
+          withVector: true,
+        });
+
+        const batch: Array<{ id: string; vector: number[]; payload: Record<string, unknown> }> = [];
+        for (const point of page.points) {
+          const priority = this.isCanonicalEmbeddingPayload(point.payload) ? 2 : 1;
+          const migratedEntries = await this.buildMigratedPrimaryEntries(point);
+          for (const entry of migratedEntries) {
+            const previousPriority = stagedPriorities.get(entry.id) ?? 0;
+            if (previousPriority > priority) continue;
+            stagedPriorities.set(entry.id, priority);
+            batch.push(entry);
+          }
+        }
+
+        if (batch.length > 0) {
+          migratedPoints += batch.length;
+          await this.insertIntoCollection(tempCollection, batch);
+        }
+
+        if (page.nextOffset === undefined || page.nextOffset === null) {
+          break;
+        }
+        offset = page.nextOffset;
+      }
+    }
+
+    await this.storage.deleteCollection(this.collection);
+    await this.storage.createCollection(this.collection, EMBEDDING_DIMENSIONS);
+    await this.copyCollection(tempCollection, this.collection);
+    await this.storage.deleteCollection(tempCollection);
+    this.storage.setCollection(this.collection);
+    await this.rebuildTreeIndexesFromCanonicalCollection();
+    await this.rebuildFtsFromCanonicalCollection();
+
+    log.info("Memory migration complete", {
+      collection: this.collection,
+      migratedPoints,
+    });
+  }
+
+  private async assertCollectionEmbeddingSignature(): Promise<void> {
+    const signature = this.getEmbeddingSignature();
+    let offset: string | number | undefined;
+
+    while (true) {
+      const page = await this.storage.scroll({
+        limit: 256,
+        offset,
+        withPayload: true,
+        withVector: false,
+      });
+
+      for (const point of page.points) {
+        const payload = point.payload;
+        const payloadModel =
+          typeof payload.embeddingModel === "string" ? payload.embeddingModel : undefined;
+        const payloadDimensions =
+          typeof payload.embeddingDimensions === "number" ? payload.embeddingDimensions : undefined;
+
+        if (!payloadModel || !payloadDimensions) {
+          throw new Error(
+            `Qdrant collection "${this.collection}" contains points without embedding signature metadata. Re-run memory migration or re-embed the collection.`,
+          );
+        }
+
+        if (this.normalizeStoredEmbeddingModel(payloadModel) !== this.normalizeStoredEmbeddingModel(signature.model)) {
+          throw new Error(
+            `Qdrant collection "${this.collection}" contains embeddings for model "${payloadModel}", but Zee memory requires "${signature.model}". Re-run memory migration or re-embed the collection.`,
+          );
+        }
+
+        if (payloadDimensions !== signature.dimensions) {
+          throw new Error(
+            `Qdrant collection "${this.collection}" contains embeddings with dimension ${payloadDimensions}, but Zee memory requires ${signature.dimensions}. Re-run memory migration or re-embed the collection.`,
+          );
+        }
+      }
+
+      if (page.nextOffset === undefined || page.nextOffset === null) {
+        return;
+      }
+      offset = page.nextOffset;
+    }
+  }
+
   /** Convert a Qdrant point payload to a MemoryEntry */
   private pointToEntry(point: {
     id: string;
@@ -673,6 +1321,8 @@ export class Memory {
       content: p.content as string,
       summary: p.summary as string | undefined,
       embedding: point.vector,
+      embeddingModel: p.embeddingModel as string | undefined,
+      embeddingDimensions: p.embeddingDimensions as number | undefined,
       metadata: (p.metadata as MemoryEntry["metadata"]) ?? {},
       media: p.media as MediaMetadata | undefined,
       createdAt: p.createdAt as number,
@@ -733,7 +1383,10 @@ export class Memory {
 
     const id = randomUUID();
     const now = Date.now();
-    const vector = await this.embedding.embed(input.content);
+    const vector = await this.embedding.embed(
+      input.content,
+      this.buildDocumentEmbeddingOptions(input),
+    );
 
     // Version control: if memoryId provided, look for existing current version
     let memoryId = input.memoryId ?? randomUUID();
@@ -782,6 +1435,7 @@ export class Memory {
       content: input.content,
       summary: input.summary,
       embedding: vector,
+      ...this.embeddingSignaturePayload(),
       metadata: input.metadata ?? {},
       createdAt: now,
       accessedAt: now,
@@ -814,6 +1468,8 @@ export class Memory {
         category: entry.category,
         content: entry.content,
         summary: entry.summary,
+        embeddingModel: entry.embeddingModel,
+        embeddingDimensions: entry.embeddingDimensions,
         metadata: entry.metadata,
         createdAt: entry.createdAt,
         accessedAt: entry.accessedAt,
@@ -1196,7 +1852,10 @@ export class Memory {
   }
 
   private async semanticSearch(params: MemorySearchParams): Promise<MemorySearchResult[]> {
-    const queryVector = await this.embedding.embed(params.query);
+    const queryVector = await this.embedding.embed(
+      params.query,
+      this.buildQueryEmbeddingOptions(),
+    );
     const filter = this.buildSemanticFilter(params);
 
     const limit = params.limit ?? 10;
@@ -1491,6 +2150,7 @@ export class Memory {
     // Domain-level index
     const domainId = this.treePointId(domain);
     await this.upsertTreeNode(domainId, dummyVector, {
+      ...this.embeddingSignaturePayload(),
       type: "tree_index",
       level: "domain",
       domain,
@@ -1502,6 +2162,7 @@ export class Memory {
     if (topic) {
       const topicId = this.treePointId(`${domain}/${topic}`);
       await this.upsertTreeNode(topicId, dummyVector, {
+        ...this.embeddingSignaturePayload(),
         type: "tree_index",
         level: "topic",
         domain,
@@ -1515,6 +2176,7 @@ export class Memory {
     if (topic && subtopic) {
       const subtopicId = this.treePointId(`${domain}/${topic}/${subtopic}`);
       await this.upsertTreeNode(subtopicId, dummyVector, {
+        ...this.embeddingSignaturePayload(),
         type: "tree_index",
         level: "subtopic",
         domain,
@@ -1757,7 +2419,10 @@ export class Memory {
 
     if (params.query) {
       // Semantic search within filtered set
-      const queryVector = await this.embedding.embed(params.query);
+      const queryVector = await this.embedding.embed(
+        params.query,
+        this.buildQueryEmbeddingOptions(),
+      );
       const results = await this.storage.search(queryVector, {
         limit,
         threshold: params.threshold ?? 0.3,
@@ -2024,10 +2689,16 @@ export class Memory {
     let vector: number[];
     if (input.multimodal && this.embedding.supportsMultimodal && this.embedding.embedMultimodal) {
       // Use multimodal embedding
-      vector = await this.embedding.embedMultimodal(input.multimodal);
+      vector = await this.embedding.embedMultimodal(
+        input.multimodal,
+        this.buildDocumentEmbeddingOptions(input),
+      );
     } else {
       // Fallback to text embedding
-      vector = await this.embedding.embed(input.content);
+      vector = await this.embedding.embed(
+        input.content,
+        this.buildDocumentEmbeddingOptions(input),
+      );
       if (input.multimodal) {
         log.debug("Multimodal content provided but provider does not support it, using text embedding");
       }
@@ -2039,6 +2710,7 @@ export class Memory {
       content: input.content,
       summary: input.summary,
       embedding: vector,
+      ...this.embeddingSignaturePayload(),
       metadata: input.metadata ?? {},
       media: input.media,
       createdAt: now,
@@ -2055,6 +2727,8 @@ export class Memory {
         category: entry.category,
         content: entry.content,
         summary: entry.summary,
+        embeddingModel: entry.embeddingModel,
+        embeddingDimensions: entry.embeddingDimensions,
         metadata: entry.metadata,
         media: entry.media,
         createdAt: entry.createdAt,
@@ -2076,7 +2750,7 @@ export class Memory {
     query: string | MultimodalContent,
     params?: Omit<MemorySearchParams, "query"> & {
       /** Filter by media type */
-      mediaType?: "text" | "image" | "video";
+      mediaType?: "text" | "image" | "video" | "audio" | "pdf";
     }
   ): Promise<MemorySearchResult[]> {
     await this.init();
@@ -2090,16 +2764,19 @@ export class Memory {
     // Generate query vector
     let queryVector: number[];
     if (typeof query === "string") {
-      queryVector = await this.embedding.embed(query);
+      queryVector = await this.embedding.embed(query, this.buildQueryEmbeddingOptions());
     } else if (this.embedding.supportsMultimodal && this.embedding.embedMultimodal) {
-      queryVector = await this.embedding.embedMultimodal(query);
+      queryVector = await this.embedding.embedMultimodal(query, this.buildQueryEmbeddingOptions());
     } else {
       // Fallback: extract text from multimodal content
       const textContent = query.contents
         .filter((c): c is { type: "text"; content: string } => c.type === "text")
         .map((c) => c.content)
         .join(" ");
-      queryVector = await this.embedding.embed(textContent || "search");
+      queryVector = await this.embedding.embed(
+        textContent || "search",
+        this.buildQueryEmbeddingOptions(),
+      );
       log.debug("Multimodal query provided but provider does not support it, using text embedding");
     }
 
@@ -2135,18 +2812,7 @@ export class Memory {
     });
 
     return results.map((r) => ({
-      entry: {
-        id: r.id,
-        category: r.payload.category as MemoryCategory,
-        content: r.payload.content as string,
-        summary: r.payload.summary as string | undefined,
-        metadata: r.payload.metadata as MemoryEntry["metadata"],
-        media: r.payload.media as MediaMetadata | undefined,
-        createdAt: r.payload.createdAt as number,
-        accessedAt: r.payload.accessedAt as number,
-        ttl: r.payload.ttl as number | undefined,
-        namespace: r.payload.namespace as string | undefined,
-      },
+      entry: this.pointToEntry({ id: r.id, payload: r.payload }),
       score: r.score,
     }));
   }
@@ -2163,7 +2829,7 @@ export class Memory {
       /** Recall multiplier: how many extra candidates to fetch for reranking */
       recallMultiplier?: number;
       /** Filter by media type */
-      mediaType?: "text" | "image" | "video";
+      mediaType?: "text" | "image" | "video" | "audio" | "pdf";
     }
   ): Promise<MemorySearchResult[]> {
     const limit = params?.limit ?? 10;
@@ -2239,13 +2905,16 @@ export class Memory {
 
     // Generate summary for embedding
     const summary = this.generateStateSummary(state);
-    const embedding = await this.embedding.embed(summary);
+    const embedding = await this.embedding.embed(summary, {
+      taskType: "RETRIEVAL_DOCUMENT",
+    });
 
     await this.storage.insert([{
       id: stateId,
       vector: embedding,
       payload: {
         type: "state" as EntryType,
+        ...this.embeddingSignaturePayload(),
         state: stateJson,
         summary,
         version: state.version,
@@ -2324,13 +2993,17 @@ export class Memory {
       `Key facts: ${state.keyFacts.join("; ")}`,
     ];
     const fullSummary = summaryParts.filter(Boolean).join("\n");
-    const embedding = await this.embedding.embed(fullSummary);
+    const embedding = await this.embedding.embed(fullSummary, {
+      taskType: "RETRIEVAL_DOCUMENT",
+      title: state.summary || `Conversation ${state.sessionId}`,
+    });
 
     await this.storage.insert([{
       id: conversationId,
       vector: embedding,
       payload: {
         type: "conversation" as EntryType,
+        ...this.embeddingSignaturePayload(),
         sessionId: state.sessionId,
         leadAgent: state.leadAgent,
         summary: state.summary,
@@ -2349,6 +3022,7 @@ export class Memory {
       vector: embedding,
       payload: {
         type: "session_chain" as EntryType,
+        ...this.embeddingSignaturePayload(),
         sessionId: state.sessionId,
         previousSessions: state.sessionChain,
         updatedAt: state.updatedAt,
@@ -2387,7 +3061,7 @@ export class Memory {
       ? `Recent conversation with ${agent}`
       : "Recent conversation state";
 
-    const embedding = await this.embedding.embed(query);
+    const embedding = await this.embedding.embed(query, this.buildQueryEmbeddingOptions());
     const filter: Record<string, unknown> = { type: "conversation" };
     if (agent) filter.leadAgent = agent;
 
@@ -2617,7 +3291,7 @@ export class Memory {
     await this.init();
 
     // Search without namespace filter to get all memories
-    const queryVector = await this.embedding.embed(query);
+    const queryVector = await this.embedding.embed(query, this.buildQueryEmbeddingOptions());
     const results = await this.storage.search(queryVector, {
       limit,
       filter: { type: "memory" },

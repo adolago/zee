@@ -861,7 +861,7 @@ export type MemoryConfig = {
    */
   qdrantUrl?: string
   /**
-   * Qdrant collection for memory
+   * Deprecated migration hint. Zee always uses the canonical agent_memory collection.
    */
   qdrantCollection?: string
   /**
@@ -873,7 +873,7 @@ export type MemoryConfig = {
      */
     url?: string
     /**
-     * Qdrant collection for memory
+     * Deprecated migration hint. Zee always uses the canonical agent_memory collection.
      */
     collection?: string
   }
@@ -882,7 +882,7 @@ export type MemoryConfig = {
    */
   embedding?: {
     /**
-     * Embedding profile (google/gemini-embedding-001)
+     * Deprecated migration hint. Zee always uses google/gemini-embedding-2-preview.
      */
     profile?: string
     /**
@@ -890,15 +890,15 @@ export type MemoryConfig = {
      */
     provider?: "google"
     /**
-     * Embedding model name (Google)
+     * Deprecated migration hint. Zee ignores custom memory embedding models.
      */
     model?: string
     /**
-     * Embedding vector dimensions
+     * Deprecated migration hint. Zee always uses 3072 dimensions.
      */
     dimensions?: number
     /**
-     * Alias for dimensions
+     * Deprecated alias for dimensions. Zee always uses 3072.
      */
     dimension?: number
     /**

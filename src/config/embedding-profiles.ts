@@ -1,17 +1,19 @@
-import type { EmbeddingProviderType } from "../memory/types";
+import type { EmbeddingProviderType, EmbeddingTaskType } from "../memory/types";
 
 export type EmbeddingProfileConfig = {
   provider: EmbeddingProviderType;
   model: string;
   dimensions?: number;
   baseUrl?: string;
+  taskType?: EmbeddingTaskType;
+  title?: string;
 };
 
 export const EMBEDDING_PROFILES: Record<string, EmbeddingProfileConfig> = {
-  // Google Gemini embedding (recommended)
-  "google/gemini-embedding-001": {
+  // Google Gemini embedding 2 (default)
+  "google/gemini-embedding-2-preview": {
     provider: "google",
-    model: "gemini-embedding-001",
+    model: "gemini-embedding-2-preview",
     dimensions: 3072,
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
   },

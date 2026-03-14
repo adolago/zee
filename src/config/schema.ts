@@ -270,11 +270,11 @@ export const VectorDbConfigSchema = z.object({
   type: z.enum(['qdrant', 'memory']).default('qdrant'),
   /** Connection URL (must be localhost) */
   url: z.string().optional(),
-  /** Collection/index name */
-  collection: z.string().optional().default('zee'),
-  /** Embedding model to use */
-  embeddingModel: z.string().optional().default('gemini-embedding-001'),
-  /** Embedding dimensions */
+  /** Canonical active collection for Zee memory */
+  collection: z.string().optional().default('agent_memory'),
+  /** Fixed memory embedding model for Zee */
+  embeddingModel: z.string().optional().default('gemini-embedding-2-preview'),
+  /** Fixed memory embedding dimensions for Zee */
   dimensions: z.number().int().positive().optional().default(3072),
 }).strict();
 export type VectorDbConfig = z.infer<typeof VectorDbConfigSchema>;

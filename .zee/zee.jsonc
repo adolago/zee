@@ -13,12 +13,9 @@
   },
   "memory": {
     "qdrant": {
-      "url": "http://localhost:6333",
-      "collection": "agent_memory"
+      "url": "http://localhost:6333"
     },
     "embedding": {
-      "profile": "google/gemini-embedding-001",
-      "dimensions": 3072,
       "apiKey": "{env:GEMINI_API_KEY}"
     }
   },
@@ -32,36 +29,6 @@
     }
   },
   "provider": {
-    "kimi-for-coding": {
-      "options": {
-        "baseURL": "https://api.kimi.com/coding/v1"
-      },
-      "models": {
-        "kimi-k2.5-thinking": {
-          "id": "kimi-k2.5-thinking",
-          "name": "Kimi K2.5 Thinking",
-          "family": "kimi-thinking",
-          "release_date": "2026-01",
-          "attachment": false,
-          "reasoning": true,
-          "temperature": true,
-          "tool_call": true,
-          "limit": { "context": 262144, "output": 32768 },
-          "modalities": { "input": ["text", "image", "video"], "output": ["text"] },
-          "options": {}
-        }
-      }
-    },
-    "google-antigravity": {
-      "models": {
-        "antigravity-gemini-3-pro": {
-          "options": { "thinkingLevel": "high" }
-        },
-        "antigravity-gemini-3-flash": {
-          "options": { "thinkingLevel": "high" }
-        }
-      }
-    },
     "zai-coding-plan": {
       "models": {
         "glm-4.7": {
@@ -104,17 +71,17 @@
       }
     }
   },
-  "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan", "cerebras"],
+  "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan", "cerebras", "kimi-for-coding"],
   "fallback": {
     "enabled": true,
     "rules": [
       {
         "condition": "rate_limit",
-        "fallbacks": ["google-antigravity/antigravity-gemini-3-flash"]
+        "fallbacks": ["openai/gpt-5.4"]
       },
       {
         "condition": "error",
-        "fallbacks": ["google-antigravity/antigravity-gemini-3-flash"]
+        "fallbacks": ["openai/gpt-5.4"]
       }
     ]
   },

@@ -6,18 +6,68 @@ import { DialogSelect, type DialogSelectRef } from "@tui/ui/dialog-select"
 import { useDialog } from "@tui/ui/dialog"
 import { DialogProvider } from "./dialog-provider"
 import { useKeybind } from "../context/keybind"
+import {
+  hasVisibleSessionModelProviders,
+  listVisibleSessionModelProviders,
+  type SessionModelPickerAuthStatus,
+} from "@tui/util/session-model-picker"
 import * as fuzzysort from "fuzzysort"
 
-/** Get auth status indicator for a provider (placeholder for future implementation) */
-function getAuthIndicator(_providerID: string): string {
-  // FUTURE: Will show lock/key icons when provider_auth_status is added to sync store
-  // For now, returns empty string (no indicator)
-  return ""
+function getAuthIndicator(providerID: string, authStatus: Record<string, SessionModelPickerAuthStatus>): string {
+  const status = authStatus[providerID]
+  if (!status?.expiringSoon) return ""
+  return "! "
+}
+
+function getVisibleSessionProviders(
+  providers: ReturnType<typeof useSync>["data"]["provider"],
+  connectedProviderIDs: Iterable<string>,
+  authStatus: Record<string, SessionModelPickerAuthStatus>,
+) {
+  return listVisibleSessionModelProviders(providers, {
+    connectedProviderIDs,
+    authStatus,
+  })
+}
+
+function getPreferredVisibleProviders(
+  providers: ReturnType<typeof useSync>["data"]["provider"],
+  preferredProviderID?: string,
+) {
+  const isMiniMax = (provider: { name: string }) => provider.name.toLowerCase().startsWith("minimax")
+  const minimaxProviders = providers.filter(isMiniMax)
+  if (minimaxProviders.length <= 1) return providers
+
+  const sortedMiniMax = [...minimaxProviders].sort((a, b) => a.name.localeCompare(b.name))
+  const preferred =
+    (preferredProviderID && sortedMiniMax.find((provider) => provider.id === preferredProviderID)?.id) ||
+    sortedMiniMax[0]?.id
+  if (!preferred) return providers
+
+  return providers.filter((provider) => !isMiniMax(provider) || provider.id === preferred)
+}
+
+function getConnectedSessionProviderState(sync: ReturnType<typeof useSync>) {
+  return {
+    connectedProviderIDs: sync.data.provider_next.connected,
+    authStatus: sync.data.provider_auth_status,
+  }
+}
+
+function getProviderCategory(
+  providerID: string,
+  providerName: string,
+  authStatus: Record<string, SessionModelPickerAuthStatus>,
+) {
+  return getAuthIndicator(providerID, authStatus) + providerName
 }
 
 export function useConnected() {
   const sync = useSync()
-  return createMemo(() => sync.data.provider.length > 0)
+  return createMemo(() => {
+    const state = getConnectedSessionProviderState(sync)
+    return hasVisibleSessionModelProviders(sync.data.provider, state)
+  })
 }
 
 export function DialogModel(props: { providerID?: string }) {
@@ -30,32 +80,21 @@ export function DialogModel(props: { providerID?: string }) {
 
   const connected = useConnected()
 
+  const visibleProviders = createMemo(() => {
+    const preferredProviderID = props.providerID ?? local.model.current()?.providerID
+    const state = getConnectedSessionProviderState(sync)
+    const providers = getVisibleSessionProviders(sync.data.provider, state.connectedProviderIDs, state.authStatus)
+    return getPreferredVisibleProviders(providers, preferredProviderID)
+  })
+
   const options = createMemo(() => {
     const q = query()
 
-    // Filter to only show providers with credentials (connected providers)
-    const connectedProviderIds = new Set(sync.data.provider_next.connected)
-    const isMiniMax = (provider: { name: string }) => provider.name.toLowerCase().startsWith("minimax")
-    const connectedProviders = sync.data.provider.filter((provider) => connectedProviderIds.has(provider.id))
-    const preferredProviderID = props.providerID ?? local.model.current()?.providerID
-    const minimaxProviders = connectedProviders.filter(isMiniMax)
-    let filteredProviders = connectedProviders
-    if (minimaxProviders.length > 1) {
-      const sortedMiniMax = [...minimaxProviders].sort((a, b) => a.name.localeCompare(b.name))
-      const preferred =
-        (preferredProviderID && sortedMiniMax.find((p) => p.id === preferredProviderID)?.id) ||
-        sortedMiniMax[0]?.id
-      if (preferred) {
-        filteredProviders = connectedProviders.filter((provider) => !isMiniMax(provider) || provider.id === preferred)
-      }
-    }
-
     const providerOptions = pipe(
-      filteredProviders,
+      visibleProviders(),
       sortBy((provider) => provider.name),
-      flatMap((provider) => {
-        const authIndicator = getAuthIndicator(provider.id)
-        return pipe(
+      flatMap((provider) =>
+        pipe(
           provider.models,
           entries(),
           filter(([_, info]) => info.status !== "deprecated"),
@@ -69,7 +108,9 @@ export function DialogModel(props: { providerID?: string }) {
             return {
               value,
               title: (isFav ? "* " : "") + (info.name ?? model),
-              category: connected() ? authIndicator + provider.name : undefined,
+              category: connected()
+                ? getProviderCategory(provider.id, provider.name, sync.data.provider_auth_status)
+                : undefined,
               onSelect() {
                 dialog.clear()
                 local.model.set({
@@ -80,8 +121,8 @@ export function DialogModel(props: { providerID?: string }) {
             }
           }),
           sortBy((x) => x.title),
-        )
-      }),
+        ),
+      ),
     )
 
     // Apply fuzzy filtering
@@ -93,7 +134,7 @@ export function DialogModel(props: { providerID?: string }) {
   })
 
   const provider = createMemo(() =>
-    props.providerID ? sync.data.provider.find((x) => x.id === props.providerID) : null,
+    props.providerID ? visibleProviders().find((x) => x.id === props.providerID) ?? null : null,
   )
 
   const title = createMemo(() => {

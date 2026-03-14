@@ -334,6 +334,15 @@ export class SqliteFtsStore {
   }
 
   /**
+   * Remove all indexed entries.
+   */
+  clear(): void {
+    if (!this.db) throw new Error("FTS not initialized")
+    this.db.run("DELETE FROM memory_fts")
+    this.db.run("DELETE FROM memory_meta")
+  }
+
+  /**
    * Get FTS index statistics.
    */
   stats(): { totalEntries: number; dbSizeBytes: number } {

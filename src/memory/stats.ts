@@ -15,8 +15,7 @@
  */
 export const EMBEDDING_MODEL_LIMITS: Record<string, number> = {
   // Google
-  "gemini-embedding-001": 2048,
-  "text-embedding-004": 2048,
+  "gemini-embedding-2-preview": 2048,
 };
 
 /** Default max context when model is unknown */

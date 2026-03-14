@@ -10,12 +10,16 @@
 
 import * as crypto from "node:crypto";
 import type {
+  EmbeddingRequestOptions,
   EmbeddingProvider,
   EmbeddingProviderType,
+  EmbeddingTaskType,
   MediaType,
   MultimodalContent,
+  MultimodalInput,
 } from "./types";
 import { getAuthApiKeySync } from "../config/providers";
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from "../config/constants";
 import { setCurrentEmbeddingModel } from "./stats";
 
 // =============================================================================
@@ -32,6 +36,10 @@ export interface EmbeddingConfig {
   model?: string;
   /** Embedding dimensions */
   dimensions?: number;
+  /** Default Google embedding task type */
+  taskType?: EmbeddingTaskType;
+  /** Optional title for document embeddings */
+  title?: string;
   /** Base URL for the embedding API */
   baseUrl?: string;
 }
@@ -53,16 +61,24 @@ class EmbeddingCache {
     this.maxSize = maxSize;
   }
 
-  /** Hash text to create cache key */
-  private hash(text: string): string {
-    return crypto.createHash("sha256").update(text).digest("hex").slice(0, 16);
+  /** Hash cache input to create a stable key */
+  private hash(value: string): string {
+    return crypto.createHash("sha256").update(value).digest("hex").slice(0, 16);
+  }
+
+  private optionsKey(options?: EmbeddingRequestOptions): string {
+    if (!options?.taskType && !options?.title) return "";
+    return JSON.stringify({
+      taskType: options.taskType ?? null,
+      title: options.title ?? null,
+    });
   }
 
   /**
    * Hash multimodal content to create cache key.
    * Includes text content, image URLs/base64, video URLs+timerange.
    */
-  hashMultimodal(content: MultimodalContent): string {
+  hashMultimodal(content: MultimodalContent, options?: EmbeddingRequestOptions): string {
     const parts: string[] = [];
 
     for (const input of content.contents) {
@@ -82,14 +98,32 @@ class EmbeddingCache {
         case "video":
           parts.push(`video:${input.url}:${input.startTime ?? 0}:${input.endTime ?? "end"}`);
           break;
+        case "audio":
+          if (input.url) {
+            parts.push(`audio:url:${input.url}`);
+          } else if (input.base64) {
+            const hash = crypto.createHash("sha256").update(input.base64).digest("hex").slice(0, 16);
+            parts.push(`audio:base64:${hash}`);
+          }
+          break;
+        case "pdf":
+          if (input.url) {
+            parts.push(`pdf:url:${input.url}`);
+          } else if (input.base64) {
+            const hash = crypto.createHash("sha256").update(input.base64).digest("hex").slice(0, 16);
+            parts.push(`pdf:base64:${hash}`);
+          }
+          break;
       }
     }
 
+    const optionsKey = this.optionsKey(options);
+    if (optionsKey) parts.push(`options:${optionsKey}`);
     return this.hash(parts.join("|"));
   }
 
-  get(text: string): number[] | undefined {
-    const key = this.hash(text);
+  get(text: string, options?: EmbeddingRequestOptions): number[] | undefined {
+    const key = this.hash(`${text}|${this.optionsKey(options)}`);
     const value = this.cache.get(key);
     if (value !== undefined) {
       // Move to end (most recently used)
@@ -103,8 +137,8 @@ class EmbeddingCache {
   }
 
   /** Get cached embedding for multimodal content */
-  getMultimodal(content: MultimodalContent): number[] | undefined {
-    const key = this.hashMultimodal(content);
+  getMultimodal(content: MultimodalContent, options?: EmbeddingRequestOptions): number[] | undefined {
+    const key = this.hashMultimodal(content, options);
     const value = this.cache.get(key);
     if (value !== undefined) {
       this.cache.delete(key);
@@ -116,8 +150,8 @@ class EmbeddingCache {
     return undefined;
   }
 
-  set(text: string, embedding: number[]): void {
-    const key = this.hash(text);
+  set(text: string, embedding: number[], options?: EmbeddingRequestOptions): void {
+    const key = this.hash(`${text}|${this.optionsKey(options)}`);
     // Delete first to update insertion order
     this.cache.delete(key);
     this.cache.set(key, embedding);
@@ -130,8 +164,8 @@ class EmbeddingCache {
   }
 
   /** Set cached embedding for multimodal content */
-  setMultimodal(content: MultimodalContent, embedding: number[]): void {
-    const key = this.hashMultimodal(content);
+  setMultimodal(content: MultimodalContent, embedding: number[], options?: EmbeddingRequestOptions): void {
+    const key = this.hashMultimodal(content, options);
     this.cache.delete(key);
     this.cache.set(key, embedding);
 
@@ -156,17 +190,147 @@ class EmbeddingCache {
 // Provider Implementations
 // =============================================================================
 
-export const LEGACY_LOCAL_EMBEDDINGGEMMA_MODEL =
-  "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
-export const PREFERRED_LOCAL_EMBEDDINGGEMMA_QAT_MODEL =
-  "hf:ggml-org/embeddinggemma-300m-qat-q8_0-GGUF/embeddinggemma-300m-qat-Q8_0.gguf";
+const GOOGLE_EMBEDDING_TASK_TYPES = new Set<EmbeddingTaskType>([
+  "SEMANTIC_SIMILARITY",
+  "CLASSIFICATION",
+  "CLUSTERING",
+  "RETRIEVAL_DOCUMENT",
+  "RETRIEVAL_QUERY",
+  "QUESTION_ANSWERING",
+  "FACT_VERIFICATION",
+  "CODE_RETRIEVAL_QUERY",
+]);
 
-function normalizeEmbeddingModel(model: string): string {
-  const trimmed = model.trim();
-  if (trimmed === LEGACY_LOCAL_EMBEDDINGGEMMA_MODEL) {
-    return PREFERRED_LOCAL_EMBEDDINGGEMMA_QAT_MODEL;
+const GOOGLE_MULTIMODAL_MEDIA_TYPES: MediaType[] = ["text", "image", "video", "audio", "pdf"];
+
+function isGeminiEmbedding2Model(model: string): boolean {
+  return model.trim().replace(/^models\//, "").toLowerCase() === "gemini-embedding-2-preview";
+}
+
+function assertSupportedEmbeddingModel(model?: string): string {
+  const resolved = (model ?? EMBEDDING_MODEL).trim();
+  if (!isGeminiEmbedding2Model(resolved)) {
+    throw new Error(
+      `Unsupported embedding model "${resolved}". Zee memory always uses "${EMBEDDING_MODEL}".`,
+    );
   }
-  return trimmed;
+  return EMBEDDING_MODEL;
+}
+
+function assertSupportedEmbeddingDimensions(dimensions?: number): number {
+  if (dimensions !== undefined && dimensions !== EMBEDDING_DIMENSIONS) {
+    throw new Error(
+      `Unsupported embedding dimensions "${dimensions}". Zee memory always uses ${EMBEDDING_DIMENSIONS}.`,
+    );
+  }
+  return EMBEDDING_DIMENSIONS;
+}
+
+function normalizeTaskType(taskType?: string): EmbeddingTaskType | undefined {
+  if (!taskType) return undefined;
+  const normalized = taskType.trim().toUpperCase() as EmbeddingTaskType;
+  if (!GOOGLE_EMBEDDING_TASK_TYPES.has(normalized)) {
+    throw new Error(`Unsupported Google embedding task type: ${taskType}`);
+  }
+  return normalized;
+}
+
+function stripBase64Prefix(data: string): string {
+  const trimmed = data.trim();
+  const marker = ";base64,";
+  const idx = trimmed.indexOf(marker);
+  return idx >= 0 ? trimmed.slice(idx + marker.length) : trimmed;
+}
+
+function parseDataUrl(url: string): { mimeType: string; data: string } | null {
+  const match = url.match(/^data:([^;,]+)?;base64,(.+)$/i);
+  if (!match) return null;
+  return {
+    mimeType: match[1] || "application/octet-stream",
+    data: match[2],
+  };
+}
+
+function defaultMimeType(input: Exclude<MultimodalInput, { type: "text" }>): string {
+  switch (input.type) {
+    case "image":
+      return "image/jpeg";
+    case "video":
+      return "video/mp4";
+    case "audio":
+      return "audio/mpeg";
+    case "pdf":
+      return "application/pdf";
+  }
+}
+
+function resolveMimeType(input: Exclude<MultimodalInput, { type: "text" }>): string {
+  if (input.mimeType?.trim()) return input.mimeType.trim();
+  if ("url" in input && input.url) {
+    const parsed = parseDataUrl(input.url);
+    if (parsed) return parsed.mimeType;
+  }
+  return defaultMimeType(input);
+}
+
+function toGooglePart(input: Exclude<MultimodalInput, { type: "text" }>): Record<string, unknown> {
+  const mimeType = resolveMimeType(input);
+  if ("base64" in input && typeof input.base64 === "string" && input.base64.trim()) {
+    return {
+      inlineData: {
+        mimeType,
+        data: stripBase64Prefix(input.base64),
+      },
+    };
+  }
+
+  if ("url" in input && typeof input.url === "string" && input.url.trim()) {
+    const parsed = parseDataUrl(input.url);
+    if (parsed) {
+      return {
+        inlineData: {
+          mimeType: parsed.mimeType,
+          data: parsed.data,
+        },
+      };
+    }
+
+    return {
+      fileData: {
+        mimeType,
+        fileUri: input.url,
+      },
+    };
+  }
+
+  throw new Error(`Multimodal ${input.type} input requires either url or base64 data`);
+}
+
+function multimodalToGoogleParts(content: MultimodalContent): Array<Record<string, unknown>> {
+  const parts: Array<Record<string, unknown>> = [];
+
+  for (const input of content.contents) {
+    if (input.type === "text") {
+      parts.push({ text: input.content });
+      continue;
+    }
+
+    parts.push(toGooglePart(input));
+
+    if (input.type === "video" && (input.startTime !== undefined || input.endTime !== undefined)) {
+      const timeRange = [
+        input.startTime !== undefined ? `start=${input.startTime}s` : undefined,
+        input.endTime !== undefined ? `end=${input.endTime}s` : undefined,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      if (timeRange) {
+        parts.push({ text: `Focus on video segment (${timeRange}).` });
+      }
+    }
+  }
+
+  return parts;
 }
 
 /**
@@ -175,22 +339,29 @@ function normalizeEmbeddingModel(model: string): string {
 class GoogleEmbeddingProvider implements EmbeddingProvider {
   readonly id = "google";
   readonly model: string;
+  readonly supportsMultimodal?: boolean;
+  readonly supportedMediaTypes?: MediaType[];
   dimension: number;
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly outputDimensionality?: number;
+  private readonly taskType?: EmbeddingTaskType;
+  private readonly title?: string;
 
   constructor(config: EmbeddingConfig) {
     // Single source of truth: global auth store (`zee auth login google`).
     this.apiKey = getAuthApiKeySync("google") ?? "";
-    this.model = normalizeEmbeddingModel(config.model ?? "gemini-embedding-001");
-    this.outputDimensionality =
-      typeof config.dimensions === "number" ? config.dimensions : undefined;
-    this.dimension = this.outputDimensionality ?? 3072; // gemini-embedding-001 default
+    this.model = assertSupportedEmbeddingModel(config.model);
+    this.outputDimensionality = assertSupportedEmbeddingDimensions(config.dimensions);
+    this.dimension = this.outputDimensionality;
+    this.taskType = normalizeTaskType(config.taskType);
+    this.title = config.title?.trim() || undefined;
     this.baseUrl = (config.baseUrl ?? "https://generativelanguage.googleapis.com/v1beta").replace(
       /\/$/,
       ""
     );
+    this.supportsMultimodal = true;
+    this.supportedMediaTypes = GOOGLE_MULTIMODAL_MEDIA_TYPES;
 
     if (!this.apiKey) {
       throw new Error(
@@ -203,30 +374,58 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
     return this.model.startsWith("models/") ? this.model : `models/${this.model}`;
   }
 
-  async embed(text: string): Promise<number[]> {
-    const result = await this.embedBatch([text]);
-    return result[0] ?? [];
+  private resolveOptions(options?: EmbeddingRequestOptions): EmbeddingRequestOptions {
+    return {
+      taskType: normalizeTaskType(options?.taskType ?? this.taskType),
+      title: options?.title?.trim() || this.title,
+    };
   }
 
-  async embedBatch(texts: string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
+  private buildRequest(
+    parts: Array<Record<string, unknown>>,
+    options?: EmbeddingRequestOptions,
+  ): {
+    model: string;
+    content: { role: "user"; parts: Array<Record<string, unknown>> };
+    outputDimensionality?: number;
+    taskType?: EmbeddingTaskType;
+    title?: string;
+  } {
+    const request: {
+      model: string;
+      content: { role: "user"; parts: Array<Record<string, unknown>> };
+      outputDimensionality?: number;
+      taskType?: EmbeddingTaskType;
+      title?: string;
+    } = {
+      model: this.resolveModel(),
+      content: { role: "user", parts },
+    };
+    const resolved = this.resolveOptions(options);
+    if (this.outputDimensionality) {
+      request.outputDimensionality = this.outputDimensionality;
+    }
+    if (resolved.taskType) {
+      request.taskType = resolved.taskType;
+    }
+    if (resolved.title) {
+      request.title = resolved.title;
+    }
+    return request;
+  }
+
+  private async requestEmbeddings(
+    requests: Array<{
+      model: string;
+      content: { role: "user"; parts: Array<Record<string, unknown>> };
+      outputDimensionality?: number;
+      taskType?: EmbeddingTaskType;
+      title?: string;
+    }>,
+  ): Promise<number[][]> {
+    if (requests.length === 0) return [];
 
     const model = this.resolveModel();
-    const requests = texts.map((text) => {
-      const request: {
-        model: string;
-        content: { parts: Array<{ text: string }> };
-        outputDimensionality?: number;
-      } = {
-        model,
-        content: { parts: [{ text }] },
-      };
-      if (this.outputDimensionality) {
-        request.outputDimensionality = this.outputDimensionality;
-      }
-      return request;
-    });
-
     const response = await fetch(
       `${this.baseUrl}/${model}:batchEmbedContents?key=${encodeURIComponent(
         this.apiKey
@@ -255,11 +454,36 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
     if (vectors.length === 0) {
       throw new Error("Google embedding returned no vectors");
     }
-    if (!this.outputDimensionality && vectors.length > 0) {
-      const length = vectors[0]?.length ?? 0;
-      if (length > 0) this.dimension = length;
-    }
     return vectors;
+  }
+
+  async embed(text: string, options?: EmbeddingRequestOptions): Promise<number[]> {
+    const result = await this.embedBatch([text], options);
+    return result[0] ?? [];
+  }
+
+  async embedBatch(texts: string[], options?: EmbeddingRequestOptions): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const requests = texts.map((text) => this.buildRequest([{ text }], options));
+    return this.requestEmbeddings(requests);
+  }
+
+  async embedMultimodal(
+    content: MultimodalContent,
+    options?: EmbeddingRequestOptions,
+  ): Promise<number[]> {
+    const result = await this.embedMultimodalBatch([content], options);
+    return result[0] ?? [];
+  }
+
+  async embedMultimodalBatch(
+    contents: MultimodalContent[],
+    options?: EmbeddingRequestOptions,
+  ): Promise<number[][]> {
+    if (contents.length === 0) return [];
+
+    const requests = contents.map((content) => this.buildRequest(multimodalToGoogleParts(content), options));
+    return this.requestEmbeddings(requests);
   }
 }
 
@@ -273,7 +497,7 @@ class GoogleEmbeddingProvider implements EmbeddingProvider {
 class CachedEmbeddingProvider implements EmbeddingProvider {
   readonly id: string;
   readonly model: string;
-  readonly dimension: number;
+  dimension: number;
   readonly supportsMultimodal?: boolean;
   readonly supportedMediaTypes?: MediaType[];
   private readonly inner: EmbeddingProvider;
@@ -289,22 +513,23 @@ class CachedEmbeddingProvider implements EmbeddingProvider {
     this.supportedMediaTypes = inner.supportedMediaTypes;
   }
 
-  async embed(text: string): Promise<number[]> {
-    const cached = this.cache.get(text);
+  async embed(text: string, options?: EmbeddingRequestOptions): Promise<number[]> {
+    const cached = this.cache.get(text, options);
     if (cached !== undefined) return cached;
 
-    const embedding = await this.inner.embed(text);
-    this.cache.set(text, embedding);
+    const embedding = await this.inner.embed(text, options);
+    this.dimension = this.inner.dimension;
+    this.cache.set(text, embedding, options);
 
     return embedding;
   }
 
-  async embedBatch(texts: string[]): Promise<number[][]> {
+  async embedBatch(texts: string[], options?: EmbeddingRequestOptions): Promise<number[][]> {
     if (texts.length === 0) return [];
 
     // Check cache for each text
     const results: (number[] | null)[] = texts.map(
-      (t) => this.cache.get(t) ?? null
+      (t) => this.cache.get(t, options) ?? null
     );
     const uncachedIndices = results
       .map((r, i) => (r === null ? i : -1))
@@ -317,32 +542,37 @@ class CachedEmbeddingProvider implements EmbeddingProvider {
 
     // Fetch uncached embeddings
     const uncachedTexts = uncachedIndices.map((i) => texts[i]);
-    const fetched = await this.inner.embedBatch(uncachedTexts);
+    const fetched = await this.inner.embedBatch(uncachedTexts, options);
+    this.dimension = this.inner.dimension;
 
     // Merge results and update cache
     for (let j = 0; j < uncachedIndices.length; j++) {
       const i = uncachedIndices[j];
       results[i] = fetched[j];
-      this.cache.set(texts[i], fetched[j]);
+      this.cache.set(texts[i], fetched[j], options);
     }
 
     return results as number[][];
   }
 
-  async embedMultimodal(content: MultimodalContent): Promise<number[]> {
+  async embedMultimodal(content: MultimodalContent, options?: EmbeddingRequestOptions): Promise<number[]> {
     if (!this.inner.embedMultimodal) {
       throw new Error(`Provider ${this.id} does not support multimodal embeddings`);
     }
 
-    const cached = this.cache.getMultimodal(content);
+    const cached = this.cache.getMultimodal(content, options);
     if (cached !== undefined) return cached;
 
-    const embedding = await this.inner.embedMultimodal(content);
-    this.cache.setMultimodal(content, embedding);
+    const embedding = await this.inner.embedMultimodal(content, options);
+    this.dimension = this.inner.dimension;
+    this.cache.setMultimodal(content, embedding, options);
     return embedding;
   }
 
-  async embedMultimodalBatch(contents: MultimodalContent[]): Promise<number[][]> {
+  async embedMultimodalBatch(
+    contents: MultimodalContent[],
+    options?: EmbeddingRequestOptions,
+  ): Promise<number[][]> {
     if (!this.inner.embedMultimodalBatch) {
       throw new Error(`Provider ${this.id} does not support multimodal batch embeddings`);
     }
@@ -351,7 +581,7 @@ class CachedEmbeddingProvider implements EmbeddingProvider {
 
     // Check cache for each content
     const results: (number[] | null)[] = contents.map(
-      (c) => this.cache.getMultimodal(c) ?? null
+      (c) => this.cache.getMultimodal(c, options) ?? null
     );
     const uncachedIndices = results
       .map((r, i) => (r === null ? i : -1))
@@ -363,13 +593,14 @@ class CachedEmbeddingProvider implements EmbeddingProvider {
 
     // Fetch uncached embeddings
     const uncachedContents = uncachedIndices.map((i) => contents[i]);
-    const fetched = await this.inner.embedMultimodalBatch(uncachedContents);
+    const fetched = await this.inner.embedMultimodalBatch(uncachedContents, options);
+    this.dimension = this.inner.dimension;
 
     // Merge results and update cache
     for (let j = 0; j < uncachedIndices.length; j++) {
       const i = uncachedIndices[j];
       results[i] = fetched[j];
-      this.cache.setMultimodal(contents[i], fetched[j]);
+      this.cache.setMultimodal(contents[i], fetched[j], options);
     }
 
     return results as number[][];

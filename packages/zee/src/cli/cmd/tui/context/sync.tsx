@@ -16,6 +16,7 @@ import type {
   SessionStatus,
   ProviderListResponse,
   ProviderAuthMethod,
+  ProviderAuthStatusResponse,
   VcsInfo,
 } from "@zee/sdk/v2"
 import { createStore, produce, reconcile } from "solid-js/store"
@@ -31,6 +32,8 @@ import type { Path } from "@zee/sdk/v2"
 import { useToast } from "../ui/toast"
 import { createAuthorizedFetch } from "@/server/auth"
 import { createBufferedUpdater } from "./buffered-updater"
+import { Installation } from "@/installation"
+import { getDaemonRuntimeMismatchWarning } from "@tui/util/runtime-mismatch"
 
 export const { use: useSync, provider: SyncProvider } = createSimpleContext({
   name: "Sync",
@@ -42,6 +45,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
       provider_default: Record<string, string>
       provider_next: ProviderListResponse
       provider_auth: Record<string, ProviderAuthMethod[]>
+      provider_auth_status: ProviderAuthStatusResponse
       agent: Agent[]
       command: CommandItem[]
       permission: {
@@ -109,6 +113,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
         connected: [],
       },
       provider_auth: {},
+      provider_auth_status: {},
       config: {},
       status: "loading",
       agent: [],
@@ -170,6 +175,8 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
 
     const sdk = useSDK()
     const toast = useToast()
+    const tuiRuntime = Installation.runtimeInfo()
+    let warnedDaemonMismatchKey: string | undefined
 
     const bufferedPartUpdates = createBufferedUpdater<Part>({
       key: (p) => `${p.messageID}:${p.id}`,
@@ -534,6 +541,9 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
               setStore("session_status", reconcile(x.data!))
             }),
             sdk.client.provider.auth().then((x) => setStore("provider_auth", reconcile(x.data ?? {}))),
+            sdk.client.provider.auth2
+              .status()
+              .then((response) => setStore("provider_auth_status", reconcile(response.data ?? {}))),
             sdk.client.vcs.get().then((x) => setStore("vcs", reconcile(x.data))),
             sdk.client.path.get().then((x) => {
               if (x.data) {
@@ -545,8 +555,24 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
               .then((data) => {
                 const normalized = normalizeDaemonHealth(data)
                 setStore("daemon", normalized ? reconcile(normalized) : undefined)
+                const warning = getDaemonRuntimeMismatchWarning(normalized, tuiRuntime)
+                if (!warning || !normalized) {
+                  warnedDaemonMismatchKey = undefined
+                  return
+                }
+                const key = `${normalized.version ?? ""}:${normalized.execPath ?? ""}:${tuiRuntime.version}:${tuiRuntime.execPath}`
+                if (warnedDaemonMismatchKey === key) return
+                warnedDaemonMismatchKey = key
+                toast.show({
+                  variant: "warning",
+                  message: warning,
+                  duration: 7000,
+                })
               })
-              .catch(() => setStore("daemon", undefined)),
+              .catch(() => {
+                warnedDaemonMismatchKey = undefined
+                setStore("daemon", undefined)
+              }),
             // Fetch health status (internet + providers)
             createAuthorizedFetch(fetch)(`${sdk.url}/global/health/status`)
               .then((res) => res.json())

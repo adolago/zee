@@ -10,8 +10,18 @@ import os from "os";
 import path from "path";
 import { parse as parseJsonc, type ParseError } from "jsonc-parser";
 import { Assets } from "../paths";
-import type { EmbeddingProviderType, LocalIndexBackend, LocalIndexDegradedReadMode } from "../memory/types";
+import type {
+  EmbeddingProviderType,
+  EmbeddingTaskType,
+  LocalIndexBackend,
+  LocalIndexDegradedReadMode,
+} from "../memory/types";
 import type { RerankerConfig } from "../memory/reranker";
+import {
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  QDRANT_COLLECTION_AGENT_MEMORY,
+} from "./constants";
 import { resolveEmbeddingProfile } from "./embedding-profiles";
 
 type RuntimeConfig = {
@@ -35,6 +45,8 @@ type RuntimeConfig = {
       model?: string;
       dimensions?: number;
       dimension?: number;
+      taskType?: string;
+      title?: string;
       apiKey?: string;
       baseUrl?: string;
     };
@@ -61,7 +73,16 @@ export type MemoryEmbeddingConfig = {
   provider?: EmbeddingProviderType;
   model?: string;
   dimensions?: number;
+  taskType?: EmbeddingTaskType;
+  title?: string;
   baseUrl?: string;
+};
+
+export type MemoryMigrationHints = {
+  configuredCollection?: string;
+  configuredEmbeddingProfile?: string;
+  configuredEmbeddingModel?: string;
+  configuredEmbeddingDimensions?: number;
 };
 
 export type MemoryLocalIndexConfig = {
@@ -193,20 +214,39 @@ function resolveMemoryQdrantConfig(config: RuntimeConfig): MemoryQdrantConfig {
 function resolveMemoryEmbeddingConfig(config: RuntimeConfig): MemoryEmbeddingConfig {
   const embedding = config.memory?.embedding ?? {};
   const profileConfig = resolveEmbeddingProfile(embedding.profile?.trim());
-  const rawDimensions =
-    embedding.dimensions ?? embedding.dimension ?? profileConfig?.dimensions;
+  const provider = "google";
+  const rawTaskType = embedding.taskType?.trim() || profileConfig?.taskType;
+  const taskType = rawTaskType ? rawTaskType.toUpperCase() : undefined;
+
+  return {
+    provider: provider as EmbeddingProviderType | undefined,
+    model: EMBEDDING_MODEL,
+    dimensions: EMBEDDING_DIMENSIONS,
+    taskType: taskType as EmbeddingTaskType | undefined,
+    title: embedding.title?.trim() || profileConfig?.title,
+    baseUrl: embedding.baseUrl?.trim() || profileConfig?.baseUrl,
+  };
+}
+
+function resolveMemoryMigrationHints(config: RuntimeConfig): MemoryMigrationHints {
+  const memory = config.memory ?? {};
+  const qdrant = memory.qdrant ?? {};
+  const embedding = memory.embedding ?? {};
+  const rawDimensions = embedding.dimensions ?? embedding.dimension;
   const dimensions =
     typeof rawDimensions === "string"
       ? Number.parseInt(rawDimensions, 10)
       : rawDimensions;
 
-  const provider = "google";
-
   return {
-    provider: provider as EmbeddingProviderType | undefined,
-    model: embedding.model?.trim() || profileConfig?.model,
-    dimensions: Number.isFinite(dimensions as number) ? (dimensions as number) : undefined,
-    baseUrl: embedding.baseUrl?.trim() || profileConfig?.baseUrl,
+    configuredCollection:
+      (qdrant.collection ?? memory.qdrantCollection)?.trim() || undefined,
+    configuredEmbeddingProfile: embedding.profile?.trim() || undefined,
+    configuredEmbeddingModel: embedding.model?.trim() || undefined,
+    configuredEmbeddingDimensions:
+      typeof dimensions === "number" && Number.isFinite(dimensions)
+        ? dimensions
+        : undefined,
   };
 }
 
@@ -229,17 +269,19 @@ function resolveMemoryLocalIndexConfig(config: RuntimeConfig): MemoryLocalIndexC
 }
 
 export function getMemoryQdrantConfig(): MemoryQdrantConfig {
-  return resolveMemoryQdrantConfig(loadRuntimeConfig());
-}
-
-export function isMemoryQdrantCollectionConfiguredByUser(): boolean {
-  const memory = loadUserRuntimeConfig().memory ?? {};
-  const qdrant = memory.qdrant ?? {};
-  return Boolean((qdrant.collection ?? memory.qdrantCollection)?.trim());
+  const config = resolveMemoryQdrantConfig(loadRuntimeConfig());
+  return {
+    ...config,
+    collection: QDRANT_COLLECTION_AGENT_MEMORY,
+  };
 }
 
 export function getMemoryEmbeddingConfig(): MemoryEmbeddingConfig {
   return resolveMemoryEmbeddingConfig(loadRuntimeConfig());
+}
+
+export function getMemoryMigrationHints(): MemoryMigrationHints {
+  return resolveMemoryMigrationHints(loadRuntimeConfig());
 }
 
 export function getMemoryLocalIndexConfig(): MemoryLocalIndexConfig {

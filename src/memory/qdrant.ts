@@ -361,6 +361,11 @@ export class QdrantVectorStorage implements VectorStorage {
       { field: "media.mediaType", schema: "keyword" },
       { field: "media.sourceUrl", schema: "keyword" },
       { field: "media.contentHash", schema: "keyword" },
+      { field: "embeddingModel", schema: "keyword" },
+      {
+        field: "embeddingDimensions",
+        schema: { type: "integer", lookup: true, range: true },
+      },
       // Context Tree indexes
       { field: "domain", schema: "keyword" },
       { field: "topic", schema: "keyword" },
@@ -829,7 +834,7 @@ export class QdrantMemoryStore implements QdrantMemoryStoreInterface {
   ) {
     this.storage = new QdrantVectorStorage(config);
     this.embedder = embedder;
-    this.collection = config.collection ?? "agent_memories";
+    this.collection = config.collection ?? QDRANT_COLLECTION_MEMORY;
   }
 
   async init(): Promise<void> {
@@ -861,13 +866,19 @@ export class QdrantMemoryStore implements QdrantMemoryStoreInterface {
       metadata: input.metadata,
     };
 
-    const embedding = await this.embedder.embed(memory.content);
+    const embedding = await this.embedder.embed(memory.content, {
+      taskType: "RETRIEVAL_DOCUMENT",
+    });
 
     await this.storage.insert([
       {
         id,
         vector: embedding,
-        payload: memory as unknown as Record<string, unknown>,
+        payload: {
+          ...(memory as unknown as Record<string, unknown>),
+          embeddingModel: this.embedder.model,
+          embeddingDimensions: this.embedder.dimension,
+        },
       },
     ]);
 
@@ -880,7 +891,9 @@ export class QdrantMemoryStore implements QdrantMemoryStoreInterface {
   ): Promise<QdrantMemorySearchResult[]> {
     await this.init();
 
-    const embedding = await this.embedder.embed(query);
+    const embedding = await this.embedder.embed(query, {
+      taskType: "RETRIEVAL_QUERY",
+    });
     const filter: Record<string, unknown> = {};
 
     if (opts?.category) filter.category = opts.category;
