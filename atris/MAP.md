@@ -31,6 +31,8 @@ rg "command: \"dmux\"|DmuxSpawnCommand|DmuxMergeCommand" packages/zee/src/cli/cm
 rg "command: \"web\"|resolveWebBackendUrl|resolveWebBackendTarget" packages/zee/src/cli/cmd/web.ts  # Web UI launcher command + backend wiring helpers (lines 81, 27, 36)
 rg "buildOpenCodeRuntimeContractReport|emitOpenCodeRuntimeContractTelemetry" packages/zee/src/runtime/opencode-contract.ts  # OpenCode runtime inventory + adapter contract source of truth
 rg "command: \"runtime-contract\"" packages/zee/src/cli/cmd/inspect.ts  # CLI report for OpenCode runtime contract
+rg "buildOpenCodeRuntimeRolloutReport|recordOpenCodeRuntimeRoute" packages/zee/src/runtime/opencode-rollout.ts  # OpenCode primary runtime rollout controls + route telemetry
+rg "command: \"runtime-rollout\"" packages/zee/src/cli/cmd/inspect.ts  # CLI report for OpenCode runtime rollout state
 rg "buildPiMonoCompatReport|emitPiMonoCompatTelemetry" packages/zee/src/runtime/pimono-compat.ts  # pi-mono shim boundary inventory + telemetry
 rg "command: \"shim-boundaries\"" packages/zee/src/cli/cmd/inspect.ts  # CLI report for pi-mono compatibility shims
 rg "export namespace Dmux|export const spawn|export const merge" packages/zee/src/worktree/dmux.ts  # dmux lane orchestration (lines 8, 177, 220)
@@ -167,6 +169,13 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Telemetry event:** `packages/zee/src/runtime/opencode-contract.ts:72`
 - **CLI report (`zee inspect runtime-contract`):** `packages/zee/src/cli/cmd/inspect.ts:249`
 - **Operator doc:** `docs/architecture/opencode-runtime-inventory.md:1`
+
+### Feature: OpenCode Primary Runtime Rollout
+**Purpose:** Stage OpenCode as the primary runtime across CLI, orchestration, and gateway surfaces while preserving an explicit legacy fallback path.
+- **Rollout source:** `packages/zee/src/runtime/opencode-rollout.ts:1`
+- **Session runtime seam:** `packages/zee/src/runtime/session.ts:1`
+- **CLI report (`zee inspect runtime-rollout`):** `packages/zee/src/cli/cmd/inspect.ts:302`
+- **Operator doc:** `docs/architecture/opencode-runtime-rollout.md:1`
 
 ### Feature: pi-mono Compatibility Shim Inventory
 **Purpose:** Catalog the remaining pi-mono-shaped shim boundaries, their deprecation status, and existing telemetry coverage during the OpenCode migration.

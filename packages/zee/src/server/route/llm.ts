@@ -11,6 +11,7 @@ import { RequestMeta } from "../request-meta"
 import { bindAbortRelay } from "../../util/net"
 import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { Flag } from "@/flag/flag"
+import { recordOpenCodeRuntimeRoute } from "@/runtime/opencode-rollout"
 
 const log = Log.create({ service: "server:llm" })
 
@@ -403,12 +404,26 @@ export const LlmRoute = new Hono().post(
     if (sessionID) RequestMeta.setSessionID(c.req.raw, sessionID)
     recordPiMonoShimUsage({
       boundaryID: "server.llm.pi-ai-bridge",
+    recordOpenCodeRuntimeRoute({
+      surface: "gateway",
       traceID,
       requestID,
       sessionID,
       providerID,
       modelID,
       dedupeKey: requestID ?? traceID,
+      metadata: {
+        route: "/v1/llm/stream",
+        apiId,
+      },
+    })
+    recordOpenCodeRuntimeRoute({
+      surface: "gateway",
+      traceID,
+      requestID,
+      sessionID,
+      providerID,
+      modelID,
       metadata: {
         route: "/v1/llm/stream",
         apiId,

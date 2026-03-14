@@ -1270,6 +1270,8 @@ export namespace SessionPrompt {
         sessionID: sessionID,
         model,
         abort,
+        sessionSurface: session.surface,
+        source: "prompt",
       })
       SessionStatus.set(sessionID, {
         type: "busy",

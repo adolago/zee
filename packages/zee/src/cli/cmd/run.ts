@@ -537,14 +537,18 @@ export const RunCommand = cmd({
             : undefined
 
         const result = await sdk.session.create(
-          title
-            ? {
-                title,
-                permission: RUN_PERMISSION_RULES,
-              }
-            : {
-                permission: RUN_PERMISSION_RULES,
-              },
+          (
+            title
+              ? {
+                  title,
+                  permission: RUN_PERMISSION_RULES,
+                  surface: "cli",
+                }
+              : {
+                  permission: RUN_PERMISSION_RULES,
+                  surface: "cli",
+                }
+          ) as any,
         )
         return result.data?.id
       })()
@@ -641,7 +645,11 @@ export const RunCommand = cmd({
             : undefined
 
         const result = await sdk.session.create(
-          title ? { title, permission: RUN_PERMISSION_RULES } : { permission: RUN_PERMISSION_RULES },
+          (
+            title
+              ? { title, permission: RUN_PERMISSION_RULES, surface: "cli" }
+              : { permission: RUN_PERMISSION_RULES, surface: "cli" }
+          ) as any,
         )
         return result.data?.id
       })()

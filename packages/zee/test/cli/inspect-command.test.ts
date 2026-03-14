@@ -4,8 +4,21 @@ import {
   buildOpenCodeRuntimeContractReport,
   summarizeOpenCodeRuntimeContract,
 } from "../../src/runtime/opencode-contract"
+import {
+  buildOpenCodeRuntimeRolloutReport,
+  summarizeOpenCodeRuntimeRollout,
+} from "../../src/runtime/opencode-rollout"
 import { buildPiMonoCompatReport, summarizePiMonoCompatReport } from "../../src/runtime/pimono-compat"
+import { reloadFlags } from "../../src/flag/flag"
 import type { UsageStats, UsageSummary } from "../../src/usage/types"
+
+function setEnv(name: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[name]
+    return
+  }
+  process.env[name] = value
+}
 
 function makeSummary(): UsageSummary {
   return {
@@ -78,6 +91,30 @@ function makeStats(): UsageStats {
   }
 }
 
+async function withRolloutEnv<T>(
+  env: Partial<Record<"ZEE_RUNTIME_OPENCODE_SURFACES" | "ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES", string | undefined>>,
+  fn: () => Promise<T> | T,
+): Promise<T> {
+  const originalEnable = process.env.ZEE_RUNTIME_OPENCODE_SURFACES
+  const originalLegacy = process.env.ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES
+  const originalFallback = process.env.ZEE_RUNTIME_OPENCODE_ALLOW_LEGACY_FALLBACK
+
+  if ("ZEE_RUNTIME_OPENCODE_SURFACES" in env) setEnv("ZEE_RUNTIME_OPENCODE_SURFACES", env.ZEE_RUNTIME_OPENCODE_SURFACES)
+  if ("ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES" in env) {
+    setEnv("ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES", env.ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES)
+  }
+  reloadFlags()
+
+  try {
+    return await fn()
+  } finally {
+    setEnv("ZEE_RUNTIME_OPENCODE_SURFACES", originalEnable)
+    setEnv("ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES", originalLegacy)
+    setEnv("ZEE_RUNTIME_OPENCODE_ALLOW_LEGACY_FALLBACK", originalFallback)
+    reloadFlags()
+  }
+}
+
 describe("inspect command helpers", () => {
   test("resolveInspectUsagePeriod falls back for invalid values", () => {
     expect(resolveInspectUsagePeriod("day", "week")).toBe("day")
@@ -131,6 +168,46 @@ describe("inspect command helpers", () => {
     expect(summary).toContain("- orchestration:")
     expect(summary).toContain("- gateway:")
     expect(summary).toContain("runtime.opencode-contract.inspected")
+  })
+
+  test("OpenCode runtime rollout report defaults all contract surfaces to the primary route", async () => {
+    await withRolloutEnv(
+      {
+        ZEE_RUNTIME_OPENCODE_SURFACES: undefined,
+        ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES: undefined,
+      },
+      () => {
+        const report = buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:15:00.000Z"))
+
+        expect(report.reportId).toBe("opencode-runtime-rollout")
+        expect(report.defaultRoute).toBe("opencode_primary")
+        expect(report.surfaces.map((surface) => surface.route)).toEqual([
+          "opencode_primary",
+          "opencode_primary",
+          "opencode_primary",
+        ])
+        expect(report.telemetry.metrics.primarySurfaceCount).toBe(3)
+        expect(report.telemetry.metrics.legacySurfaceCount).toBe(0)
+      },
+    )
+  })
+
+  test("OpenCode runtime rollout summary reflects forced legacy surfaces and flux kinds", async () => {
+    await withRolloutEnv(
+      {
+        ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES: "gateway",
+      },
+      () => {
+        const summary = summarizeOpenCodeRuntimeRollout(
+          buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:20:00.000Z")),
+        )
+
+        expect(summary).toContain("OpenCode runtime rollout v1")
+        expect(summary).toContain("gateway: legacy_fallback (forced_legacy)")
+        expect(summary).toContain("runtime.opencode.route.selected")
+        expect(summary).toContain("runtime.opencode.route.fallback")
+      },
+    )
   })
 
   test("pi-mono compatibility report inventories explicit shim boundaries and statuses", () => {

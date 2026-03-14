@@ -11,6 +11,11 @@ import {
   emitPiMonoCompatTelemetry,
   summarizePiMonoCompatReport,
 } from "@/runtime/pimono-compat"
+import {
+  buildOpenCodeRuntimeRolloutReport,
+  emitOpenCodeRuntimeRolloutTelemetry,
+  summarizeOpenCodeRuntimeRollout,
+} from "@/runtime/opencode-rollout"
 import { Session } from "../../session"
 import { SessionStatus } from "../../session/status"
 import { collectRuntimeSnapshot } from "./runtime-process-guard"
@@ -34,6 +39,10 @@ type InspectRuntimeContractArgs = {
 }
 
 type InspectShimBoundariesArgs = {
+  json?: boolean
+}
+
+type InspectRuntimeRolloutArgs = {
   json?: boolean
 }
 
@@ -303,6 +312,30 @@ const InspectShimBoundariesCommand = cmd({
   },
 })
 
+const InspectRuntimeRolloutCommand = cmd({
+  command: "runtime-rollout",
+  describe: "print the OpenCode primary runtime rollout status, fallback controls, and telemetry contract",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: true,
+      describe: "output as JSON",
+    }),
+  handler: async (args: InspectRuntimeRolloutArgs) => {
+    await bootstrap(process.cwd(), async () => {
+      const report = buildOpenCodeRuntimeRolloutReport()
+      await emitOpenCodeRuntimeRolloutTelemetry(report)
+
+      if (args.json !== false) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+
+      console.log(summarizeOpenCodeRuntimeRollout(report))
+    })
+  },
+})
+
 export const InspectCommand = cmd({
   command: "inspect",
   describe: "inspect runtime state",
@@ -311,6 +344,7 @@ export const InspectCommand = cmd({
       .command(InspectStateCommand)
       .command(InspectOpsCommand)
       .command(InspectRuntimeContractCommand)
+      .command(InspectRuntimeRolloutCommand)
       .command(InspectShimBoundariesCommand)
       .demandCommand(),
   async handler() {},
