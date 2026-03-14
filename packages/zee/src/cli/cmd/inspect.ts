@@ -6,6 +6,11 @@ import {
   emitOpenCodeRuntimeContractTelemetry,
   summarizeOpenCodeRuntimeContract,
 } from "@/runtime/opencode-contract"
+import {
+  buildPiMonoCompatReport,
+  emitPiMonoCompatTelemetry,
+  summarizePiMonoCompatReport,
+} from "@/runtime/pimono-compat"
 import { Session } from "../../session"
 import { SessionStatus } from "../../session/status"
 import { collectRuntimeSnapshot } from "./runtime-process-guard"
@@ -25,6 +30,10 @@ type InspectOpsArgs = {
 }
 
 type InspectRuntimeContractArgs = {
+  json?: boolean
+}
+
+type InspectShimBoundariesArgs = {
   json?: boolean
 }
 
@@ -270,6 +279,30 @@ const InspectRuntimeContractCommand = cmd({
   },
 })
 
+const InspectShimBoundariesCommand = cmd({
+  command: "shim-boundaries",
+  describe: "print the pi-mono compatibility shim inventory and deprecation boundaries",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: true,
+      describe: "output as JSON",
+    }),
+  handler: async (args: InspectShimBoundariesArgs) => {
+    await bootstrap(process.cwd(), async () => {
+      const report = buildPiMonoCompatReport()
+      await emitPiMonoCompatTelemetry(report)
+
+      if (args.json !== false) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+
+      console.log(summarizePiMonoCompatReport(report))
+    })
+  },
+})
+
 export const InspectCommand = cmd({
   command: "inspect",
   describe: "inspect runtime state",
@@ -278,6 +311,7 @@ export const InspectCommand = cmd({
       .command(InspectStateCommand)
       .command(InspectOpsCommand)
       .command(InspectRuntimeContractCommand)
+      .command(InspectShimBoundariesCommand)
       .demandCommand(),
   async handler() {},
 })
