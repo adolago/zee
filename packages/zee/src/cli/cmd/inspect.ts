@@ -1,6 +1,11 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
 import { bootstrap } from "../bootstrap"
+import {
+  buildOpenCodeRuntimeContractReport,
+  emitOpenCodeRuntimeContractTelemetry,
+  summarizeOpenCodeRuntimeContract,
+} from "@/runtime/opencode-contract"
 import { Session } from "../../session"
 import { SessionStatus } from "../../session/status"
 import { collectRuntimeSnapshot } from "./runtime-process-guard"
@@ -17,6 +22,10 @@ type InspectOpsArgs = {
   json?: boolean
   usagePeriod?: string
   usageTop?: number
+}
+
+type InspectRuntimeContractArgs = {
+  json?: boolean
 }
 
 const USAGE_PERIODS = ["hour", "day", "week", "month", "all"] as const
@@ -237,9 +246,38 @@ const InspectOpsCommand = cmd({
   },
 })
 
+const InspectRuntimeContractCommand = cmd({
+  command: "runtime-contract",
+  describe: "print the OpenCode runtime inventory and adapter contract for CLI, orchestration, and gateway flows",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: true,
+      describe: "output as JSON",
+    }),
+  handler: async (args: InspectRuntimeContractArgs) => {
+    await bootstrap(process.cwd(), async () => {
+      const report = buildOpenCodeRuntimeContractReport()
+      await emitOpenCodeRuntimeContractTelemetry(report)
+
+      if (args.json !== false) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+
+      console.log(summarizeOpenCodeRuntimeContract(report))
+    })
+  },
+})
+
 export const InspectCommand = cmd({
   command: "inspect",
   describe: "inspect runtime state",
-  builder: (yargs: Argv) => yargs.command(InspectStateCommand).command(InspectOpsCommand).demandCommand(),
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InspectStateCommand)
+      .command(InspectOpsCommand)
+      .command(InspectRuntimeContractCommand)
+      .demandCommand(),
   async handler() {},
 })

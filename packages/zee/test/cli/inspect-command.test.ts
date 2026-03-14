@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import { buildInspectUsageSnapshot, resolveInspectUsagePeriod, resolveInspectUsageTop } from "../../src/cli/cmd/inspect"
+import {
+  buildOpenCodeRuntimeContractReport,
+  summarizeOpenCodeRuntimeContract,
+} from "../../src/runtime/opencode-contract"
 import type { UsageStats, UsageSummary } from "../../src/usage/types"
 
 function makeSummary(): UsageSummary {
@@ -99,5 +103,32 @@ describe("inspect command helpers", () => {
     expect(usage.topProviders[0]?.id).toBe("openai")
     expect(usage.topModels).toHaveLength(1)
     expect(usage.topModels[0]?.id).toBe("gpt-4o")
+  })
+
+  test("OpenCode runtime contract report inventories CLI, orchestration, and gateway surfaces", () => {
+    const report = buildOpenCodeRuntimeContractReport(new Date("2026-03-14T12:00:00.000Z"))
+
+    expect(report.contractId).toBe("opencode-runtime-core")
+    expect(report.contractVersion).toBe(1)
+    expect(report.generatedAt).toBe("2026-03-14T12:00:00.000Z")
+    expect(report.surfaces.map((surface) => surface.surface)).toEqual(["cli", "orchestration", "gateway"])
+    expect(report.telemetry.eventType).toBe("runtime.opencode-contract.inspected")
+    expect(report.telemetry.metrics.surfaceCount).toBe(3)
+    expect(report.telemetry.metrics.entryPointCount).toBe(11)
+    expect(report.telemetry.metrics.transportCount).toBe(5)
+    expect(report.telemetry.metrics.gatewayPresent).toBe(true)
+    expect(report.telemetry.metrics.orchestrationPresent).toBe(true)
+  })
+
+  test("OpenCode runtime contract summary mentions all surfaces and telemetry", () => {
+    const summary = summarizeOpenCodeRuntimeContract(
+      buildOpenCodeRuntimeContractReport(new Date("2026-03-14T12:00:00.000Z")),
+    )
+
+    expect(summary).toContain("OpenCode runtime contract v1")
+    expect(summary).toContain("- cli:")
+    expect(summary).toContain("- orchestration:")
+    expect(summary).toContain("- gateway:")
+    expect(summary).toContain("runtime.opencode-contract.inspected")
   })
 })
