@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
+  CodexAuthPlugin,
   parseJwtClaims,
   extractAccountIdFromClaims,
   extractAccountId,
@@ -12,7 +13,86 @@ function createTestJwt(payload: object): string {
   return `${header}.${body}.sig`
 }
 
+function createPluginInput() {
+  return {
+    client: {
+      auth: {
+        set: async () => true,
+      },
+    },
+    project: {} as any,
+    directory: process.cwd(),
+    worktree: process.cwd(),
+    serverUrl: new URL("http://localhost:3000"),
+    $: Bun.$,
+  } as any
+}
+
+function createProvider() {
+  return {
+    models: {
+      "gpt-5.2": {
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.4": {
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+    },
+  } as any
+}
+
 describe("plugin.codex", () => {
+  describe("CodexAuthPlugin", () => {
+    test("loader returns no options when OpenAI auth is missing", async () => {
+      const hooks = await CodexAuthPlugin(createPluginInput())
+      const provider = createProvider()
+
+      const result = await hooks.auth!.loader!(async () => undefined, provider)
+
+      expect(result).toEqual({})
+      expect(Object.keys(provider.models)).toEqual(["gpt-5.2", "gpt-5.4"])
+      expect(provider.models["gpt-5.4"].cost.input).toBe(1)
+    })
+
+    test("wrapped fetch throws a readable error when OpenAI oauth disappears", async () => {
+      let authCalls = 0
+      const getAuth = async () => {
+        authCalls += 1
+        if (authCalls === 1) {
+          return {
+            type: "oauth" as const,
+            access: "access-token",
+            refresh: "refresh-token",
+            expires: Date.now() + 60_000,
+          }
+        }
+        return undefined
+      }
+
+      const hooks = await CodexAuthPlugin(createPluginInput())
+      const provider = createProvider()
+      const options = await hooks.auth!.loader!(getAuth, provider)
+
+      await expect(
+        options.fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: {
+            authorization: "Bearer dummy",
+          },
+          body: JSON.stringify({ input: [] }),
+        }),
+      ).rejects.toThrow("OpenAI OAuth session is no longer available")
+    })
+  })
+
   describe("parseJwtClaims", () => {
     test("parses valid JWT with claims", () => {
       const payload = { email: "test@example.com", chatgpt_account_id: "acc-123" }

@@ -30,6 +30,12 @@ import {
   isValuationMetricQuery,
   summarizeInvestingProvenance,
 } from "./investing-provenance"
+import {
+  detectMalformedToolText,
+  extractVisibleText,
+  MALFORMED_TOOL_TEXT_FINISH,
+  MAX_MALFORMED_TOOL_TEXT_RECOVERIES,
+} from "./malformed-tool-text"
 
 export namespace SessionProcessor {
   const DOOM_LOOP_THRESHOLD = 3
@@ -84,10 +90,12 @@ export namespace SessionProcessor {
     let steered = false
     let attempt = 0
     let needsCompaction = false
+    let recoveredMalformedToolText = false
 
     async function ensureInvestingProvenanceForValuationAnswer() {
       if (input.assistantMessage.error) return
       if (input.assistantMessage.finish === "tool-calls") return
+      if (input.assistantMessage.finish === MALFORMED_TOOL_TEXT_FINISH) return
       if (!input.assistantMessage.parentID) return
 
       const parent = await MessageV2.get({
@@ -133,6 +141,69 @@ export namespace SessionProcessor {
       })
     }
 
+    async function maybeRecoverMalformedToolText() {
+      if (input.assistantMessage.error) return false
+      if (input.assistantMessage.finish === "tool-calls") return false
+      if (!input.assistantMessage.parentID) return false
+
+      const recoveryCount = await Session.messages({ sessionID: input.sessionID }).then((messages) =>
+        messages.filter(
+          (message) =>
+            message.info.role === "assistant" &&
+            message.info.parentID === input.assistantMessage.parentID &&
+            message.info.id !== input.assistantMessage.id &&
+            message.info.finish === MALFORMED_TOOL_TEXT_FINISH,
+        ).length,
+      )
+      if (recoveryCount >= MAX_MALFORMED_TOOL_TEXT_RECOVERIES) return false
+
+      const parent = await MessageV2.get({
+        sessionID: input.sessionID,
+        messageID: input.assistantMessage.parentID,
+      }).catch(() => undefined)
+      if (!parent || parent.info.role !== "user") return false
+
+      const parts = await MessageV2.parts(input.assistantMessage.id)
+      const detected = detectMalformedToolText({
+        parts,
+        userText: extractVisibleText(parent.parts),
+        model: input.model,
+      })
+      if (!detected.matched) return false
+
+      for (const part of parts) {
+        if (part.type === "text" && !part.ignored) {
+          await Session.updatePart({
+            ...part,
+            ignored: true,
+            metadata: {
+              ...part.metadata,
+              malformedToolText: true,
+            },
+          })
+        }
+        if (part.type === "reasoning") {
+          await Session.removePart({
+            sessionID: input.sessionID,
+            messageID: part.messageID,
+            partID: part.id,
+          })
+        }
+      }
+
+      input.assistantMessage.finish = MALFORMED_TOOL_TEXT_FINISH
+      recoveredMalformedToolText = true
+      log.warn("recovering malformed tool text", {
+        sessionID: input.sessionID,
+        messageID: input.assistantMessage.id,
+        parentID: input.assistantMessage.parentID,
+        recoveriesUsed: recoveryCount + 1,
+        reason: detected.reason,
+        excerpt: detected.excerpt,
+      })
+      return true
+    }
+
     const result = {
       get message() {
         return input.assistantMessage
@@ -169,6 +240,7 @@ export namespace SessionProcessor {
           log.info("process")
           needsCompaction = false
           steered = false
+          recoveredMalformedToolText = false
           const shouldBreak = (await Config.get()).experimental?.continue_loop_on_deny !== true
           // Initialize stream health monitor - always enabled to detect hanging streams
           // Pass model's reasoning capability for extended timeouts on thinking models
@@ -874,6 +946,7 @@ export namespace SessionProcessor {
                 })
               }
             }
+            await maybeRecoverMalformedToolText()
             await ensureInvestingProvenanceForValuationAnswer()
             input.assistantMessage.time.completed = Date.now()
             await Session.updateMessage(input.assistantMessage)
@@ -894,6 +967,7 @@ export namespace SessionProcessor {
               meta: {
                 blocked,
                 needsCompaction,
+                malformedToolTextRecovered: recoveredMalformedToolText,
                 toolCalls: toolStats.calls,
                 toolErrors: toolStats.errors,
                 toolNames:

@@ -36,7 +36,7 @@ export type Plugin = (input: PluginInput) => Promise<Hooks>
 
 export type AuthHook = {
   provider: string
-  loader?: (auth: () => Promise<Auth>, provider: Provider) => Promise<Record<string, any>>
+  loader?: (auth: () => Promise<Auth | undefined>, provider: Provider) => Promise<Record<string, any>>
   methods: (
     | {
         type: "oauth"
