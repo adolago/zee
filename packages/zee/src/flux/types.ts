@@ -70,6 +70,7 @@ export type FluxKind =
   | "llm.bridge.stream.done"
   | "llm.bridge.stream.error"
   | "orchestration.pi_agent_event_schema.used"
+  | "compat.shim.used"
   | "event"
 
 export type FluxRedaction = "strict" | "balanced" | "debug"

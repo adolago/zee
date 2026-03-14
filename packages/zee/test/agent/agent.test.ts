@@ -4,6 +4,7 @@ import { Instance } from "../../src/project/instance"
 import { Agent } from "../../src/agent/agent"
 import { FluxRecorder } from "../../src/flux"
 import { PermissionNext } from "../../src/permission/next"
+import { FluxRecorder } from "../../src/flux"
 
 // Helper to evaluate permission for a tool with wildcard pattern
 function evalPerm(agent: Agent.Info | undefined, permission: string): PermissionNext.Action | undefined {
@@ -397,6 +398,7 @@ describe("agent config", () => {
 
   test("legacy tools config converts to permissions", async () => {
     const before = FluxRecorder.list({ kind: "agent.legacy_tools_alias.used" }).total
+    const shimBefore = FluxRecorder.list({ kind: "compat.shim.used" }).total
     await using tmp = await tmpdir({
       config: {
         agent: {
@@ -415,6 +417,7 @@ describe("agent config", () => {
         const zee = await Agent.get("zee")
         expect(evalPerm(zee, "bash")).toBe("deny")
         expect(evalPerm(zee, "read")).toBe("deny")
+        expect(FluxRecorder.list({ kind: "compat.shim.used" }).total).toBe(shimBefore + 1)
       },
     })
     expect(FluxRecorder.list({ kind: "agent.legacy_tools_alias.used" }).total).toBe(before + 1)

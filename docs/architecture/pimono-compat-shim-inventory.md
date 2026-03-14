@@ -29,6 +29,12 @@ bun run --conditions=browser ./src/index.ts inspect shim-boundaries --json
 
 Use `--no-json` for a compact operator summary.
 
+## Warning And Telemetry Contract
+
+- Live shim call sites emit a deprecation warning once per process when they are exercised.
+- Shim usage is recorded in flux as `compat.shim.used` with `boundaryID`, `surface`, `boundaryKind`, and `boundaryStatus` metadata.
+- The legacy auth payload and pi-ai bridge still emit their route-specific events in addition to the shared shim usage marker.
+
 ## Status Vocabulary
 
 - `active_temporary`: live shim boundary that still carries legacy request/event semantics and must be removed or hidden behind the OpenCode adapter.
@@ -46,7 +52,7 @@ Use `--no-json` for a compact operator summary.
 - Current boundary:
   `/v1/llm/stream` still accepts pi-ai/OpenClaw-shaped request payloads and emits pi-style `AssistantMessageEvent` SSE frames while normalizing execution through Zee's provider and AI SDK stack.
 - Telemetry:
-  `llm.bridge.stream.start`, `llm.bridge.stream.done`, `llm.bridge.stream.error`
+  `llm.bridge.stream.start`, `llm.bridge.stream.done`, `llm.bridge.stream.error`, `compat.shim.used`
 - Exit path:
   Replace this route-level bridge once the OpenCode primary execution path lands and downstream callers stop depending on pi-ai event shapes.
 
@@ -59,7 +65,7 @@ Use `--no-json` for a compact operator summary.
 - Current boundary:
   The auth route still accepts `{ "api_key": "..." }` and rewrites it into Zee's `Auth.Info` model; SDK-generated client types preserve that shape for compatibility.
 - Telemetry:
-  `auth.legacy_payload.accepted`
+  `auth.legacy_payload.accepted`, `compat.shim.used`
 - Exit path:
   Remove the alias once operator and SDK clients are migrated to `Auth.Info`.
 
@@ -72,7 +78,7 @@ Use `--no-json` for a compact operator summary.
 - Current boundary:
   `agent.<name>.tools` booleans still translate into `PermissionNext` rules so pre-permission config continues to run during migration.
 - Telemetry:
-  `agent.legacy_tools_alias.used`
+  `agent.legacy_tools_alias.used`, `compat.shim.used`
 - Exit path:
   Delete the alias after operators migrate to permission-native agent config.
 
@@ -85,7 +91,7 @@ Use `--no-json` for a compact operator summary.
 - Current boundary:
   daemon IPC and orchestration visuals still expose lifecycle event names inherited from the old pi-agent vocabulary.
 - Telemetry:
-  `orchestration.pi_agent_event_schema.used`
+  `orchestration.pi_agent_event_schema.used`, `compat.shim.used`
 - Exit path:
   Keep the schema stable until OpenCode is primary, then either version it as a Zee-owned contract or translate it behind an adapter.
 

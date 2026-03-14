@@ -37,6 +37,7 @@ describe("auth.set endpoint", () => {
 
   test("accepts legacy api_key payload", async () => {
     const before = FluxRecorder.list({ kind: "auth.legacy_payload.accepted" }).total
+    const shimBefore = FluxRecorder.list({ kind: "compat.shim.used" }).total
     const response = await AuthRoute.request("/openrouter", {
       method: "PUT",
       headers: {
@@ -54,5 +55,6 @@ describe("auth.set endpoint", () => {
     expect(stored?.type).toBe("api")
     expect(stored && "key" in stored ? stored.key : undefined).toBe("legacy-key")
     expect(FluxRecorder.list({ kind: "auth.legacy_payload.accepted" }).total).toBe(before + 1)
+    expect(FluxRecorder.list({ kind: "compat.shim.used" }).total).toBe(shimBefore + 1)
   })
 })

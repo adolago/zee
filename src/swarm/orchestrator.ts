@@ -27,6 +27,7 @@ import {
   NOOP_VISUAL_SINK,
   resolveVisualConfig,
 } from "../orchestration-visual";
+import { recordPiMonoShimUsage } from "../../packages/zee/src/runtime/pimono-shim";
 import type {
   OrchestrationVisualConfig,
   OrchestrationVisualEvent,
@@ -718,6 +719,17 @@ export class Orchestrator extends EventEmitter {
     type: OrchestrationEvent["type"],
     input: Omit<OrchestrationEvent, "id" | "type" | "timestamp"> = {},
   ): void {
+    recordPiMonoShimUsage({
+      boundaryID: "orchestration.pi-agent-event-schema",
+      sessionID: input.sessionId,
+      dedupeKey: input.runId ?? input.taskId ?? input.sessionId ?? type,
+      metadata: {
+        eventType: type,
+        runId: input.runId,
+        taskId: input.taskId,
+      },
+    });
+
     const event: OrchestrationEvent = {
       id: ++this.eventID,
       type,

@@ -17,6 +17,7 @@ import PROMPT_FINDER from "./prompt/finder.txt"
 import PROMPT_LIBRARIAN from "./prompt/librarian.txt"
 import { PermissionNext } from "@/permission/next"
 import { FluxRecorder } from "@/flux"
+import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
 
@@ -524,6 +525,17 @@ export namespace Agent {
       item.name = value.name ?? item.name
       item.steps = value.steps ?? value.maxSteps ?? item.steps
       item.options = mergeDeep(item.options, value.options ?? {})
+      recordLegacyToolsAliasUsage(key, value.tools)
+      if (value.tools) {
+        recordPiMonoShimUsage({
+          boundaryID: "agent.config.tools-alias",
+          dedupeKey: key,
+          metadata: {
+            agent: key,
+            legacyToolKeys: Object.keys(value.tools).sort(),
+          },
+        })
+      }
       recordLegacyToolsAliasUsage(key, value.tools)
       item.permission = PermissionNext.merge(
         item.permission,
