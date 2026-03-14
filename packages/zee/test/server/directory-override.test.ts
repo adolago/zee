@@ -64,7 +64,7 @@ describe("server directory override security", () => {
 
     const overrideDirectory = path.resolve(process.cwd(), "..")
     const app = Server.App()
-    const res = await app.request(`/global/health?directory=${encodeURIComponent(overrideDirectory)}`, {
+    const res = await app.request(`/global/health/live?directory=${encodeURIComponent(overrideDirectory)}`, {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -80,7 +80,7 @@ describe("server directory override security", () => {
 
     const overrideDirectory = path.resolve(process.cwd(), "..")
     const app = Server.App()
-    const res = await app.request(`/global/health?directory=${encodeURIComponent(overrideDirectory)}`, {
+    const res = await app.request(`/global/health/live?directory=${encodeURIComponent(overrideDirectory)}`, {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -98,7 +98,7 @@ describe("server directory override security", () => {
 
     const root = path.parse(process.cwd()).root
     const app = Server.App()
-    const res = await app.request(`/global/health?directory=${encodeURIComponent(root)}`, {
+    const res = await app.request(`/global/health/live?directory=${encodeURIComponent(root)}`, {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -116,7 +116,7 @@ describe("server directory override security", () => {
 
     const root = path.parse(process.cwd()).root
     const app = Server.App()
-    const res = await app.request(`/global/health?directory=${encodeURIComponent(root)}`, {
+    const res = await app.request(`/global/health/live?directory=${encodeURIComponent(root)}`, {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -140,13 +140,13 @@ describe("server directory override security", () => {
       Authorization: basicAuth("zee", "test-password"),
     }
 
-    const res1 = await app.request(`/global/health?directory=${encodeURIComponent(dir1)}`, {
+    const res1 = await app.request(`/global/health/live?directory=${encodeURIComponent(dir1)}`, {
       method: "GET",
       headers,
     })
     expect(res1.status).toBe(200)
 
-    const res2 = await app.request(`/global/health?directory=${encodeURIComponent(dir2)}`, {
+    const res2 = await app.request(`/global/health/live?directory=${encodeURIComponent(dir2)}`, {
       method: "GET",
       headers,
     })

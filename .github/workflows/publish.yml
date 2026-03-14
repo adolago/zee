@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NPM_PACKAGE_NAME: "@adolago/zee"
+      ZEE_CHANNEL: latest
+      ZEE_NPM_PACKAGE: "@adolago/zee"
+      ZEE_TARGETS: linux-arm64,linux-x64,linux-x64-baseline,linux-arm64-musl,linux-x64-musl,linux-x64-musl-baseline,win32-x64,win32-x64-baseline
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -62,23 +65,49 @@ jobs:
         if: steps.package.outputs.already_published != 'true'
         run: bun install
 
+      - name: Export release metadata
+        if: steps.package.outputs.already_published != 'true'
+        run: |
+          echo "ZEE_VERSION=${{ steps.package.outputs.version }}" >> "$GITHUB_ENV"
+
       - name: Build
         if: steps.package.outputs.already_published != 'true'
         run: |
           cd packages/zee
           bun run build
 
-      - name: Set npm package name
+      - name: Verify built binary
         if: steps.package.outputs.already_published != 'true'
-        run: npm pkg set name="${NPM_PACKAGE_NAME}" --prefix packages/zee
+        run: packages/zee/dist/@adolago/zee-linux-x64/bin/zee --version
 
-      - name: Publish to npm
+      - name: Prepare release package
         if: steps.package.outputs.already_published != 'true'
         run: |
           cd packages/zee
-          npm publish --access public --provenance
+          bun run script/prepare-release.ts
+
+      - name: Publish dist packages to npm
+        id: publish
+        if: steps.package.outputs.already_published != 'true'
+        run: |
+          set -o pipefail
+          cd packages/zee
+          LOG_FILE="$(mktemp)"
+          if bun run script/publish-dist.ts 2>&1 | tee "$LOG_FILE"; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if grep -Eiq 'npm error code E(401|403|404)|Not found - PUT https://registry.npmjs.org/@adolago%2fzee|authentication|unauthorized|forbidden|one-time password' "$LOG_FILE"; then
+            echo "Publish skipped because npm credentials cannot publish ${NPM_PACKAGE_NAME}."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          exit 1
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          ZEE_PUBLISH_TAG: latest
 
       - name: Upload artifacts
         if: steps.package.outputs.already_published != 'true'

@@ -30,7 +30,7 @@ const env = {
   ZEE_VERSION: process.env["ZEE_VERSION"],
   ZEE_NPM_PACKAGE: process.env["ZEE_NPM_PACKAGE"],
 }
-const DEFAULT_NPM_PACKAGE = "zee"
+const DEFAULT_NPM_PACKAGE = "@adolago/zee"
 const registry = "https://registry.npmjs.org"
 const npmPackage = env.ZEE_NPM_PACKAGE || DEFAULT_NPM_PACKAGE
 const encodedPackage = encodeURIComponent(npmPackage)

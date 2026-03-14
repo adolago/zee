@@ -81,13 +81,13 @@ describe("server auth rate limiter", () => {
 
     const app = Server.App()
 
-    const first = await app.request("/global/health", { method: "GET" })
+    const first = await app.request("/global/health/live", { method: "GET" })
     expect(first.status).toBe(401)
 
-    const second = await app.request("/global/health", { method: "GET" })
+    const second = await app.request("/global/health/live", { method: "GET" })
     expect(second.status).toBe(401)
 
-    const third = await app.request("/global/health", { method: "GET" })
+    const third = await app.request("/global/health/live", { method: "GET" })
     expect(third.status).toBe(429)
     expect(third.headers.get("Retry-After")).toBeTruthy()
   })
@@ -109,10 +109,10 @@ describe("server auth rate limiter", () => {
 
     const app = Server.App()
 
-    const failBefore = await app.request("/global/health", { method: "GET" })
+    const failBefore = await app.request("/global/health/live", { method: "GET" })
     expect(failBefore.status).toBe(401)
 
-    const success = await app.request("/global/health", {
+    const success = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
@@ -120,7 +120,7 @@ describe("server auth rate limiter", () => {
     })
     expect(success.status).toBe(200)
 
-    const failAfter = await app.request("/global/health", { method: "GET" })
+    const failAfter = await app.request("/global/health/live", { method: "GET" })
     expect(failAfter.status).toBe(401)
   })
 })

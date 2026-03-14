@@ -610,7 +610,12 @@ export namespace GatewaySupervisor {
 
     try {
       const gatewayPort = getGatewayPort()
-      await startEmbeddedGateway({ port: gatewayPort, daemonUrl: gatewayDaemonUrl })
+      const started = await startEmbeddedGateway({ port: gatewayPort, daemonUrl: gatewayDaemonUrl })
+      if (!started || !getEmbeddedGatewayState().running) {
+        lastError = "Embedded gateway runtime unavailable"
+        syncHealthState()
+        return false
+      }
       lastExit = undefined
       retryCount = 0
       log.info("embedded zee gateway started", { port: gatewayPort })
@@ -878,6 +883,11 @@ export const DaemonCommand = cmd({
         type: "boolean",
         default: false,
       })
+      .option("skip-setup-check", {
+        describe: "Skip always-on setup validation before binding the daemon port",
+        type: "boolean",
+        default: process.env.ZEE_SKIP_SETUP_CHECK === "1",
+      })
       .option("tailscale", {
         describe: "Expose daemon via Tailscale (off, serve, funnel)",
         type: "string",
@@ -1006,7 +1016,7 @@ export const DaemonCommand = cmd({
         cors: opts.cors,
         directory,
         alwaysOnProfile,
-        skipSetupCheck: false,
+        skipSetupCheck: Boolean(args["skip-setup-check"]),
         gateway: true,
         gatewayForce: Boolean(args["gateway-force"]),
         visualMode: args["visual-mode"] as "events" | "external",

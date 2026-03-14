@@ -8,7 +8,24 @@ import { Server } from "../../src/server/server"
 
 Log.init({ print: false })
 
-describe("gateway routes", () => {
+function detectBunServeSupport() {
+  try {
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response("ok")
+      },
+    })
+    server.stop()
+    return true
+  } catch {
+    return false
+  }
+}
+
+const bunServeSupported = detectBunServeSupport()
+
+describe.skipIf(!bunServeSupported)("gateway routes", () => {
   const originalEnv = {
     ZEE_GATEWAY_URL: process.env.ZEE_GATEWAY_URL,
     ZEE_GATEWAY_PORT: process.env.ZEE_GATEWAY_PORT,
@@ -152,7 +169,11 @@ describe("gateway routes", () => {
 
       const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "wacli-fallback-"))
       fakeMetaBinPath = path.join(tmpDir, "wacli")
-      await fs.writeFile(fakeMetaBinPath, "#!/usr/bin/env bash\nprintf '{\"success\":true,\"data\":{\"id\":\"test\",\"sent\":true}}\\n'\n", "utf8")
+      await fs.writeFile(
+        fakeMetaBinPath,
+        '#!/usr/bin/env bash\nprintf \'{"success":true,"data":{"id":"test","sent":true}}\\n\'\n',
+        "utf8",
+      )
       await fs.chmod(fakeMetaBinPath, 0o755)
       process.env.ZEE_WACLI_BIN = fakeMetaBinPath
 

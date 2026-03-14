@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
+import fsNative from "node:fs"
 import fs from "fs/promises"
 import path from "path"
-import { createServer } from "node:net"
 import { ReadTool } from "../../src/tool/read"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
@@ -415,12 +415,22 @@ root_type Monster;`
 
     await using tmp = await tmpdir({})
     const socketPath = path.join(tmp.path, "daemon.sock")
-    const server = createServer()
+    const originalStat = fsNative.promises.stat
 
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject)
-      server.listen(socketPath, resolve)
-    })
+    fsNative.promises.stat = (async (filepath: fsNative.PathLike) => {
+      if (filepath === socketPath) {
+        return {
+          isFile: () => false,
+          isSocket: () => true,
+          isDirectory: () => false,
+          isBlockDevice: () => false,
+          isCharacterDevice: () => false,
+          isFIFO: () => false,
+          isSymbolicLink: () => false,
+        } as fsNative.Stats
+      }
+      return originalStat(filepath)
+    }) as typeof fsNative.promises.stat
 
     try {
       await Instance.provide({
@@ -433,9 +443,7 @@ root_type Monster;`
         },
       })
     } finally {
-      await new Promise<void>((resolve) => {
-        server.close(() => resolve())
-      })
+      fsNative.promises.stat = originalStat
     }
   })
 })

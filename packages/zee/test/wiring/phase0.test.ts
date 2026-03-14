@@ -18,13 +18,12 @@ import { ToolRegistry } from "../../src/tool/registry"
 
 describe("wiring.phase0", () => {
   // ============================================================================
-  // Test 1: Johny tools are properly exported
+  // Test 1: Learning tools are properly exported
   // ============================================================================
-  describe("johny tools", () => {
-    test(" Johny domain exports expected tools", async () => {
-      // Read the Johny tools source file to verify structure
-      const johnyToolsPath = path.join(process.cwd(), "../../src/domain/learning/tools.ts")
-      const content = await fs.readFile(johnyToolsPath, "utf-8")
+  describe("learning tools", () => {
+    test(" learning domain exports expected tools", async () => {
+      const learningToolsPath = path.join(process.cwd(), "../../src/domain/learning/tools.ts")
+      const content = await fs.readFile(learningToolsPath, "utf-8")
 
       // Should export the expected tool IDs
       expect(content).toContain('id: "zee:learn-study"')
@@ -33,19 +32,15 @@ describe("wiring.phase0", () => {
       expect(content).toContain('id: "zee:learn-review"')
       expect(content).toContain('id: "zee:learn-practice"')
 
-      // Should export JOHNY_TOOLS array
-      expect(content).toContain("export const JOHNY_TOOLS")
+      expect(content).toContain("export const LEARNING_TOOLS")
     })
 
-    test(" Johny tools are registered via MCP domain", async () => {
-      // Read the MCP domain index to verify registration
+    test(" learning tools are registered via MCP domain", async () => {
       const mcpDomainPath = path.join(process.cwd(), "../../src/mcp/domain/index.ts")
       const content = await fs.readFile(mcpDomainPath, "utf-8")
 
-      // Should have registerJohnyTools function
-      expect(content).toContain("export async function registerJohnyTools()")
-      // Should import from domain
-      expect(content).toContain("../../domain/johny/tools")
+      expect(content).toContain("export async function registerLearningTools()")
+      expect(content).toContain("../../domain/learning/tools")
     })
   })
 

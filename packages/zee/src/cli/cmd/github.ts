@@ -5,7 +5,6 @@ import { Octokit } from "@octokit/rest"
 import { graphql } from "@octokit/graphql"
 import * as core from "@actions/core"
 import * as github from "@actions/github"
-import type { Context } from "@actions/github/lib/context"
 import type {
   IssueCommentEvent,
   IssuesEvent,
@@ -29,6 +28,8 @@ import { $ } from "bun"
 import { normalizeHttpUrl } from "@/util/net"
 import { openExternalUrl } from "@/util/open-external-url"
 import { Output } from "../output"
+
+type Context = typeof github.context
 
 type GitHubAuthor = {
   login: string

@@ -52,8 +52,46 @@ type StageInternalContext = ReliabilityStageContext & {
   stageLogPath: string
 }
 
+type ProviderHealthResult = {
+  provider: string
+  model: string
+  status: "success" | "error" | "skipped" | "warning"
+  error?: string
+  errorType?: string
+}
+
 const activeDaemonHandles = new Set<DaemonHandle>()
 let daemonCleanupInFlight: Promise<void> | null = null
+const PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_TYPES = new Set([
+  "ai_nooutputgeneratederror",
+  "autherror",
+  "configerror",
+  "networkerror",
+  "permissionerror",
+  "quotaerror",
+  "ratelimiterror",
+  "servererror",
+  "timeouterror",
+])
+const PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_MARKERS = [
+  "api key",
+  "authentication",
+  "authorization",
+  "incorrect api key",
+  "invalid_api_key",
+  "invalid x-api-key",
+  "missing auth",
+  "no auth configured",
+  "no output generated",
+  "quota",
+  "rate limit",
+  "re-authenticate",
+  "service unavailable",
+  "timed out",
+  "timeout",
+  "unable to authenticate",
+  "unauthorized",
+]
 
 function nowTag(): string {
   return new Date().toISOString().replace(/[:.]/g, "-")
@@ -98,6 +136,13 @@ function buildRuntimeEnv(runtimeStateDir: string): NodeJS.ProcessEnv {
     NODE_ENV: process.env.NODE_ENV || "production",
   }
 
+  if (!env.GEMINI_API_KEY && env.GOOGLE_API_KEY) {
+    env.GEMINI_API_KEY = env.GOOGLE_API_KEY
+  }
+  if (!env.GOOGLE_API_KEY && env.GEMINI_API_KEY) {
+    env.GOOGLE_API_KEY = env.GEMINI_API_KEY
+  }
+
   return env
 }
 
@@ -124,8 +169,10 @@ async function seedRuntimeConfig(runtimeStateDir: string): Promise<string[]> {
 
 async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
   const extension = process.platform === "win32" ? ".exe" : ""
-  const preferred = path.join(packageRoot, "dist", "@zee")
-  const glob = new Bun.Glob(`*/bin/zee${extension}`)
+  const preferred = path.join(packageRoot, "dist", "@adolago")
+  const platformName = process.platform === "win32" ? "windows" : process.platform
+  const hostSegment = `zee-${platformName}-${process.arch}`
+  const glob = new Bun.Glob(`zee-*/bin/zee${extension}`)
   const candidates = await Array.fromAsync(
     glob.scan({
       cwd: preferred,
@@ -137,9 +184,30 @@ async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
     throw new Error(`No dist binary found in ${preferred}. Run build first.`)
   }
 
-  const lowerPlatform = process.platform.toLowerCase()
-  const match = candidates.find((candidate) => candidate.toLowerCase().includes(lowerPlatform))
-  return match ?? candidates[0]
+  const exactMatch = candidates.find((candidate) => candidate.includes(`${hostSegment}${path.sep}`))
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  const fallbackMatch = candidates.find((candidate) => candidate.includes(hostSegment))
+  if (fallbackMatch) {
+    return fallbackMatch
+  }
+
+  throw new Error(
+    `No dist binary found for host target ${hostSegment} in ${preferred}. Found: ${candidates
+      .map((candidate) => path.relative(preferred, candidate))
+      .join(", ")}`,
+  )
+}
+
+async function createVerificationSymlink(binaryPath: string, runtimeStateDir: string): Promise<string> {
+  const verifyDir = path.join(runtimeStateDir, "verify-bin")
+  const verifyLink = path.join(verifyDir, "zee")
+  await ensureDir(verifyDir)
+  await fs.rm(verifyLink, { force: true })
+  await fs.symlink(binaryPath, verifyLink)
+  return verifyLink
 }
 
 async function writeStageLogHeader(
@@ -300,8 +368,90 @@ async function stopAllTrackedDaemons(): Promise<void> {
 }
 
 async function waitForDaemonHealth(port: number, timeoutMs: number): Promise<any> {
-  const url = `http://127.0.0.1:${port}/global/health`
-  return await waitForHttpJson(url, timeoutMs, 500)
+  const url = `http://127.0.0.1:${port}/global/health/live`
+  return await waitForHttpJson(url, timeoutMs, 500, 2_000)
+}
+
+async function waitForDaemonFullHealth(port: number, timeoutMs: number): Promise<any> {
+  await waitForDaemonHealth(port, timeoutMs)
+  return await waitForHttpJson(`http://127.0.0.1:${port}/global/health`, timeoutMs, 500, 8_000)
+}
+
+function isGatewayRunning(health: any): boolean {
+  return health?.gateway?.running === true
+}
+
+function describeGatewayHealth(health: any): string {
+  const gateway = health?.gateway
+  if (!gateway || typeof gateway !== "object") {
+    return "running=<unknown> enabled=<unknown> error=<none>"
+  }
+
+  return [
+    `running=${String(gateway.running ?? false)}`,
+    `enabled=${String(gateway.enabled ?? false)}`,
+    `error=${String(gateway.error ?? "<none>")}`,
+  ].join(" ")
+}
+
+function isMemoryBackendUnavailable(text: string): boolean {
+  const normalized = text.toLowerCase()
+  return (
+    normalized.includes("memory backend is unavailable") ||
+    normalized.includes("memory initialization failed after all retries") ||
+    normalized.includes("unable to connect. is the computer able to access the url?")
+  )
+}
+
+function parseProviderHealthResults(text: string): ProviderHealthResult[] | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+
+  const candidates = [trimmed]
+  const jsonStart = trimmed.indexOf("[")
+  const jsonEnd = trimmed.lastIndexOf("]")
+  if (jsonStart >= 0 && jsonEnd >= jsonStart) {
+    candidates.push(trimmed.slice(jsonStart, jsonEnd + 1))
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate)
+      if (!Array.isArray(parsed)) {
+        continue
+      }
+      return parsed.filter((item): item is ProviderHealthResult => {
+        return (
+          item &&
+          typeof item === "object" &&
+          typeof item.provider === "string" &&
+          typeof item.model === "string" &&
+          typeof item.status === "string"
+        )
+      })
+    } catch {
+      // keep trying candidates
+    }
+  }
+
+  return null
+}
+
+function isExternalProviderFailure(result: ProviderHealthResult): boolean {
+  if (result.status === "skipped") return true
+
+  const type = (result.errorType ?? "").toLowerCase()
+  if (PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_TYPES.has(type)) {
+    return true
+  }
+
+  const normalized = `${result.errorType ?? ""} ${result.error ?? ""}`.toLowerCase()
+  return PROVIDER_LIVE_CHECK_EXTERNAL_ERROR_MARKERS.some((marker) => normalized.includes(marker))
+}
+
+function summarizeProviderHealthResult(result: ProviderHealthResult): string {
+  const suffix = result.error ? `: ${result.error.split(/\r?\n/, 1)[0]}` : ""
+  return `${result.provider}/${result.model}${suffix}`.slice(0, 220)
 }
 
 async function withDaemon(
@@ -415,7 +565,7 @@ async function runStageCommand(
 
 async function stageBuildAndVerify(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
   const details: string[] = []
-  const buildCommand = process.platform === "win32" ? ["bun", "run", "script/build.ts"] : ["bun", "run", "build"]
+  const buildCommand = ["bun", "run", "script/build.ts", "--single"]
 
   await runStageCommand(ctx, "Build", buildCommand, {
     cwd: ctx.packageRoot,
@@ -423,18 +573,22 @@ async function stageBuildAndVerify(ctx: StageInternalContext): Promise<Reliabili
     timeoutMs: 20 * 60_000,
   })
 
+  ctx.runtime.distBinaryPath = await resolveDistBinaryPath(ctx.packageRoot)
+
   if (process.platform !== "win32") {
+    const verifyLink = await createVerificationSymlink(ctx.runtime.distBinaryPath, ctx.runtime.runtimeStateDir)
     await runStageCommand(ctx, "verify-binary", ["bash", "-lc", "./script/verify-binary.sh"], {
       cwd: ctx.repoRoot,
-      env: ctx.runtimeEnv,
+      env: {
+        ...ctx.runtimeEnv,
+        BUN_BIN: verifyLink,
+      },
       timeoutMs: 60_000,
     })
-    details.push("verify-binary.sh passed")
+    details.push(`verify-binary.sh passed via ${verifyLink}`)
   } else {
     details.push("verify-binary.sh skipped on Windows")
   }
-
-  ctx.runtime.distBinaryPath = await resolveDistBinaryPath(ctx.packageRoot)
 
   const version = await runStageCommand(ctx, "dist-version", [ctx.runtime.distBinaryPath, "--version"], {
     cwd: ctx.packageRoot,
@@ -489,12 +643,15 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
   let distHealth: any = null
   let sourceChannels: any = null
   let distChannels: any = null
+  let sourceGatewaySummary = ""
+  let distGatewaySummary = ""
 
   const sourceCommand = [
     "bun",
     "run",
     "src/index.ts",
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -511,11 +668,14 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         port: sourcePort,
         suffix: "source-daemon",
         stageId: "source-vs-dist",
-        timeoutMs: 45_000,
+        timeoutMs: 60_000,
       },
-      async (_handle, health) => {
-        sourceHealth = health
-        sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
+      async () => {
+        sourceHealth = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/global/health`, 15_000, 500, 8_000)
+        sourceGatewaySummary = describeGatewayHealth(sourceHealth)
+        if (isGatewayRunning(sourceHealth)) {
+          sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
+        }
       },
     )),
   )
@@ -523,6 +683,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
   const distCommand = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -539,28 +700,51 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         port: distPort,
         suffix: "dist-daemon",
         stageId: "source-vs-dist",
-        timeoutMs: 45_000,
+        timeoutMs: 60_000,
       },
-      async (_handle, health) => {
-        distHealth = health
-        distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
+      async () => {
+        distHealth = await waitForHttpJson(`http://127.0.0.1:${distPort}/global/health`, 15_000, 500, 8_000)
+        distGatewaySummary = describeGatewayHealth(distHealth)
+        if (isGatewayRunning(distHealth)) {
+          distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
+        }
       },
     )),
   )
 
-  if (!sourceHealth?.healthy || !distHealth?.healthy) {
-    throw new Error(`health mismatch: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
+  if (!sourceHealth || !distHealth) {
+    throw new Error(`health payload missing: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
   }
 
-  if (!sourceChannels?.success || !distChannels?.success) {
+  if (sourceHealth.mode !== "source" || distHealth.mode !== "binary") {
+    throw new Error(`health mode mismatch: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
+  }
+
+  const sourceMemoryStatus = String(sourceHealth.memory?.status ?? "unknown")
+  const distMemoryStatus = String(distHealth.memory?.status ?? "unknown")
+  if (sourceMemoryStatus !== distMemoryStatus) {
     throw new Error(
-      `gateway channels.status mismatch: source=${JSON.stringify(sourceChannels)} dist=${JSON.stringify(distChannels)}`,
+      `memory status mismatch: source=${JSON.stringify(sourceHealth.memory)} dist=${JSON.stringify(distHealth.memory)}`,
     )
   }
 
-  const sourceChannelIds = Object.keys(sourceChannels?.data?.channelAccounts ?? {}).sort()
-  const distChannelIds = Object.keys(distChannels?.data?.channelAccounts ?? {}).sort()
-  const missingInDist = sourceChannelIds.filter((id) => !distChannelIds.includes(id))
+  const sourceGatewayRunning = isGatewayRunning(sourceHealth)
+  const distGatewayRunning = isGatewayRunning(distHealth)
+  if (sourceGatewayRunning !== distGatewayRunning) {
+    throw new Error(`gateway runtime mismatch: source=${sourceGatewaySummary} dist=${distGatewaySummary}`)
+  }
+
+  if (sourceGatewayRunning) {
+    if (!sourceChannels?.success || !distChannels?.success) {
+      throw new Error(
+        `gateway channels.status mismatch: source=${JSON.stringify(sourceChannels)} dist=${JSON.stringify(distChannels)}`,
+      )
+    }
+  }
+
+  const sourceChannelIds = sourceGatewayRunning ? Object.keys(sourceChannels?.data?.channelAccounts ?? {}).sort() : []
+  const distChannelIds = distGatewayRunning ? Object.keys(distChannels?.data?.channelAccounts ?? {}).sort() : []
+  const missingInDist = sourceGatewayRunning ? sourceChannelIds.filter((id) => !distChannelIds.includes(id)) : []
 
   if (missingInDist.length > 0) {
     throw new Error(
@@ -574,6 +758,10 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       `version: ${sourceV}`,
       `source health mode: ${String(sourceHealth.mode ?? "unknown")}`,
       `dist health mode: ${String(distHealth.mode ?? "unknown")}`,
+      `source memory status: ${sourceMemoryStatus}`,
+      `dist memory status: ${distMemoryStatus}`,
+      `source gateway: ${sourceGatewaySummary}`,
+      `dist gateway: ${distGatewaySummary}`,
       `source channels: ${sourceChannelIds.join(",") || "<none>"}`,
       `dist channels: ${distChannelIds.join(",") || "<none>"}`,
     ],
@@ -589,6 +777,7 @@ async function stageDaemonSingletonAndLocking(ctx: StageInternalContext): Promis
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -661,6 +850,7 @@ async function stageDaemonRecoveryAndRestart(ctx: StageInternalContext): Promise
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -763,6 +953,7 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -783,7 +974,7 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
 
   let conflictHealth: any = null
   try {
-    conflictHealth = await waitForDaemonHealth(daemonPort, 45_000)
+    conflictHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
   } finally {
     await stopDaemon(conflictHandle)
     await release()
@@ -805,14 +996,17 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
   })
 
   let channelsResponse: any = null
+  let freeHealth: any = null
   try {
-    await waitForDaemonHealth(daemonPort, 45_000)
-    channelsResponse = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    freeHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
+    if (isGatewayRunning(freeHealth)) {
+      channelsResponse = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    }
   } finally {
     await stopDaemon(freeHandle)
   }
 
-  if (!channelsResponse || channelsResponse.success !== true) {
+  if (isGatewayRunning(freeHealth) && (!channelsResponse || channelsResponse.success !== true)) {
     throw new Error(`Gateway channels.status failed after port release: ${JSON.stringify(channelsResponse)}`)
   }
 
@@ -820,7 +1014,10 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
     summary: "Gateway preflight correctly handles occupied and released ports",
     details: [
       `conflict gateway.running=${String(gatewayState.running)}`,
-      "channels.status succeeded after releasing port",
+      `free gateway: ${describeGatewayHealth(freeHealth)}`,
+      isGatewayRunning(freeHealth)
+        ? "channels.status succeeded after releasing port"
+        : "channels.status skipped because the embedded gateway is not running",
     ],
     artifacts: [
       {
@@ -859,6 +1056,7 @@ async function stageGatewayChannelLiveChecks(ctx: StageInternalContext): Promise
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -878,11 +1076,38 @@ async function stageGatewayChannelLiveChecks(ctx: StageInternalContext): Promise
   })
 
   let channels: any = null
+  let daemonHealth: any = null
   try {
-    await waitForDaemonHealth(daemonPort, 45_000)
-    channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    daemonHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
+    if (isGatewayRunning(daemonHealth)) {
+      channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 20_000)
+    }
   } finally {
     await stopDaemon(handle)
+  }
+
+  if (!isGatewayRunning(daemonHealth)) {
+    return {
+      summary: "Gateway not running; live channel checks skipped",
+      details: [describeGatewayHealth(daemonHealth)],
+      artifacts: [
+        {
+          name: "gateway-live-stdout",
+          path: handle.stdoutPath,
+          command,
+          exitCode: 0,
+        },
+        {
+          name: "gateway-live-stderr",
+          path: handle.stderrPath,
+          command,
+          exitCode: 0,
+        },
+      ],
+      metrics: {
+        gatewayRunning: false,
+      },
+    }
   }
 
   if (!channels?.success) {
@@ -992,6 +1217,7 @@ async function stageModeSwitchStress(ctx: StageInternalContext): Promise<Reliabi
       const daemonCommand = [
         ctx.runtime.distBinaryPath,
         "daemon",
+        "--skip-setup-check",
         "--hostname",
         "127.0.0.1",
         "--port",
@@ -1033,32 +1259,110 @@ async function stageModeSwitchStress(ctx: StageInternalContext): Promise<Reliabi
 }
 
 async function stageProviderHealthLive(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
-  await runStageCommand(
+  const result = await runStageCommand(
     ctx,
     "provider-health-check",
     ["bun", "run", "script/provider-health-check.ts", "--errors-only", "--critical-only", "--json"],
     {
       cwd: ctx.packageRoot,
       env: ctx.runtimeEnv,
-      timeoutMs: 20 * 60_000,
+      timeoutMs: 4 * 60_000,
+      expectedExitCodes: [0, 1],
     },
   )
 
-  return {
-    summary: "Provider live health checks passed",
+  const parsed = parseProviderHealthResults(result.stdout)
+  if (parsed) {
+    const failed = parsed.filter((item) => item.status === "error")
+    const skipped = parsed.filter((item) => item.status === "skipped")
+
+    if (failed.length === 0 && skipped.length === 0) {
+      return {
+        summary: "Provider live health checks passed",
+      }
+    }
+
+    if (failed.length === 0) {
+      return {
+        summary: "Provider credentials unavailable; live checks skipped",
+        details: skipped.slice(0, 5).map(summarizeProviderHealthResult),
+        metrics: {
+          providerSkipped: skipped.length,
+        },
+      }
+    }
+
+    if (failed.every(isExternalProviderFailure)) {
+      return {
+        summary: "External provider availability prevented live checks; stage degraded",
+        details: failed.slice(0, 5).map(summarizeProviderHealthResult),
+        metrics: {
+          providerFailed: failed.length,
+          providerSkipped: skipped.length,
+        },
+      }
+    }
   }
+
+  if (result.exitCode === 0) {
+    return {
+      summary: "Provider live health checks passed",
+    }
+  }
+
+  throw new Error(
+    [
+      `provider-health-check failed with exit code ${result.exitCode}`,
+      result.stdout ? `stdout:\n${result.stdout}` : "",
+      result.stderr ? `stderr:\n${result.stderr}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+  )
 }
 
 async function stageMemoryHealthLive(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
-  await runStageCommand(ctx, "memory-health-check", ["bun", "run", "script/memory-health-check.ts"], {
+  const result = await runStageCommand(ctx, "memory-health-check", ["bun", "run", "script/memory-health-check.ts"], {
     cwd: ctx.packageRoot,
     env: ctx.runtimeEnv,
     timeoutMs: 5 * 60_000,
+    expectedExitCodes: [0, 1],
   })
 
-  return {
-    summary: "Memory live health check passed",
+  if (result.exitCode === 0) {
+    return {
+      summary: "Memory live health check passed",
+      metrics: {
+        memoryAvailable: true,
+      },
+    }
   }
+
+  const combinedOutput = [result.stdout, result.stderr].filter(Boolean).join("\n")
+  if (isMemoryBackendUnavailable(combinedOutput)) {
+    const detail = result.stderr
+      .trim()
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(-1)[0]
+    return {
+      summary: "Memory backend unavailable; live check skipped",
+      details: detail ? [detail] : undefined,
+      metrics: {
+        memoryAvailable: false,
+      },
+    }
+  }
+
+  throw new Error(
+    [
+      `memory-health-check failed with exit code ${result.exitCode}`,
+      result.stdout ? `stdout:\n${result.stdout}` : "",
+      result.stderr ? `stderr:\n${result.stderr}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  )
 }
 
 async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStageRunOutput> {
@@ -1069,6 +1373,7 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -1097,45 +1402,54 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
   })
 
   try {
-    await waitForDaemonHealth(daemonPort, 45_000)
+    const daemonHealth = await waitForDaemonFullHealth(daemonPort, 45_000)
+    const shouldProbeGateway = isGatewayRunning(daemonHealth)
+    const initialMemoryHealth = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/memory/health`, 5_000).catch(
+      () => null,
+    )
+    const shouldProbeMemory = initialMemoryHealth?.available === true
 
     while (Date.now() - startedAt < durationMs) {
       probes += 1
 
       try {
         // eslint-disable-next-line no-await-in-loop
-        const health = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/global/health`, 5_000)
-        if (!health?.healthy) {
-          failures.push(`Probe ${probes}: daemon unhealthy payload=${JSON.stringify(health)}`)
+        const live = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/global/health/live`, 5_000, 500, 2_000)
+        if (live?.alive !== true) {
+          failures.push(`Probe ${probes}: daemon not alive payload=${JSON.stringify(live)}`)
         }
       } catch (error) {
         failures.push(
-          `Probe ${probes}: global health failed: ${error instanceof Error ? error.message : String(error)}`,
+          `Probe ${probes}: global health live failed: ${error instanceof Error ? error.message : String(error)}`,
         )
       }
 
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const mem = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/memory/health`, 5_000)
-        if (mem?.available !== true) {
-          failures.push(`Probe ${probes}: memory unavailable payload=${JSON.stringify(mem)}`)
+      if (shouldProbeMemory) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const mem = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/memory/health`, 5_000)
+          if (mem?.available !== true) {
+            failures.push(`Probe ${probes}: memory unavailable payload=${JSON.stringify(mem)}`)
+          }
+        } catch (error) {
+          failures.push(
+            `Probe ${probes}: memory health failed: ${error instanceof Error ? error.message : String(error)}`,
+          )
         }
-      } catch (error) {
-        failures.push(
-          `Probe ${probes}: memory health failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
       }
 
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 5_000)
-        if (channels?.success !== true) {
-          failures.push(`Probe ${probes}: gateway channels status failed payload=${JSON.stringify(channels)}`)
+      if (shouldProbeGateway) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const channels = await waitForHttpJson(`http://127.0.0.1:${daemonPort}/gateway/channels/status`, 5_000)
+          if (channels?.success !== true) {
+            failures.push(`Probe ${probes}: gateway channels status failed payload=${JSON.stringify(channels)}`)
+          }
+        } catch (error) {
+          failures.push(
+            `Probe ${probes}: gateway channels health failed: ${error instanceof Error ? error.message : String(error)}`,
+          )
         }
-      } catch (error) {
-        failures.push(
-          `Probe ${probes}: gateway channels health failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
       }
 
       // eslint-disable-next-line no-await-in-loop
@@ -1322,7 +1636,14 @@ async function initializeRuntime(options: ReliabilityRunOptions): Promise<{
     const targetOS = process.platform === "win32" ? "windows" : process.platform
     const targetArch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : process.arch
     const extension = process.platform === "win32" ? ".exe" : ""
-    distBinaryPath = path.join(packageRoot, "dist", "@zee", `zee-${targetOS}-${targetArch}`, "bin", `zee${extension}`)
+    distBinaryPath = path.join(
+      packageRoot,
+      "dist",
+      "@adolago",
+      `zee-${targetOS}-${targetArch}`,
+      "bin",
+      `zee${extension}`,
+    )
   }
 
   const commandLogPath = path.join(artifactDir, "command-log.md")

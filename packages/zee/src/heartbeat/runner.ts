@@ -37,8 +37,8 @@ function resolveHeartbeatPath(directory: string, configuredPath: string): string
   return path.resolve(directory, trimmed)
 }
 
-function resolveDefaultHeartbeatPaths(directory: string): string[] {
-  const runtimeWorkspacePath = path.join(resolveStateDir(), "workspace", "HEARTBEAT.md")
+function resolveDefaultHeartbeatPaths(directory: string, stateDir: string): string[] {
+  const runtimeWorkspacePath = path.join(stateDir, "workspace", "HEARTBEAT.md")
   const legacyWorkspacePath = path.join(directory, "HEARTBEAT.md")
 
   if (runtimeWorkspacePath === legacyWorkspacePath) {
@@ -48,12 +48,12 @@ function resolveDefaultHeartbeatPaths(directory: string): string[] {
   return [runtimeWorkspacePath, legacyWorkspacePath]
 }
 
-function resolveHeartbeatPaths(directory: string, configuredPath?: string): string[] {
+function resolveHeartbeatPaths(directory: string, stateDir: string, configuredPath?: string): string[] {
   const trimmed = configuredPath?.trim()
   if (trimmed) {
     return [resolveHeartbeatPath(directory, trimmed)]
   }
-  return resolveDefaultHeartbeatPaths(directory)
+  return resolveDefaultHeartbeatPaths(directory, stateDir)
 }
 
 export type HeartbeatRunResult = {
@@ -66,6 +66,8 @@ export type HeartbeatRunnerDeps = {
   serverUrl: string
   /** Working directory for relative heartbeat.path and legacy HEARTBEAT fallback. */
   directory: string
+  /** Optional state directory override for runtime workspace heartbeat resolution. */
+  stateDir?: string
   /** Raw heartbeat config from zee.jsonc. */
   config?: {
     enabled?: boolean
@@ -86,10 +88,12 @@ export class HeartbeatRunner {
   private wakeTimer: ReturnType<typeof setTimeout> | null = null
   private readonly config: HeartbeatConfig
   private readonly deps: HeartbeatRunnerDeps
+  private readonly stateDir: string
 
   constructor(deps: HeartbeatRunnerDeps) {
     this.deps = deps
     this.config = resolveHeartbeatConfig(deps.config)
+    this.stateDir = deps.stateDir ?? resolveStateDir()
   }
 
   start() {
@@ -179,7 +183,7 @@ export class HeartbeatRunner {
     log.info("heartbeat: running", { reason })
 
     // Read heartbeat instruction file
-    const heartbeatPaths = resolveHeartbeatPaths(this.deps.directory, this.config.path)
+    const heartbeatPaths = resolveHeartbeatPaths(this.deps.directory, this.stateDir, this.config.path)
     let heartbeatPath: string | undefined
     let heartbeatContent: string | null = null
     for (const candidatePath of heartbeatPaths) {

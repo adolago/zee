@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { createServer, type Server } from "node:net"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -10,15 +10,39 @@ import {
   type TaskRunResult,
 } from "@/orchestration/daemon-ipc"
 
-describe("daemon orchestration IPC client", () => {
-  let socketDir = ""
-  let socketPath = ""
-  let server: Server
+async function detectUnixSocketSupport() {
+  const socketDir = await mkdtemp(join(tmpdir(), "zee-orch-ipc-probe-"))
+  const socketPath = join(socketDir, "daemon.sock")
+  const server = createServer()
 
-  beforeEach(async () => {
-    socketDir = await mkdtemp(join(tmpdir(), "zee-orch-ipc-"))
-    socketPath = join(socketDir, "daemon.sock")
-    server = createServer((socket) => {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject)
+      server.listen(socketPath, () => {
+        server.removeListener("error", reject)
+        resolve()
+      })
+    })
+    return true
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === "EPERM") return false
+    throw error
+  } finally {
+    await new Promise<void>((resolve) => {
+      server.close(() => resolve())
+    })
+    await rm(socketDir, { recursive: true, force: true })
+  }
+}
+
+const unixSocketSupported = await detectUnixSocketSupport()
+
+describe.skipIf(!unixSocketSupported)("daemon orchestration IPC client", () => {
+  async function withTestServer<T>(fn: (input: { socketPath: string }) => Promise<T>) {
+    const socketDir = await mkdtemp(join(tmpdir(), "zee-orch-ipc-"))
+    const socketPath = join(socketDir, "daemon.sock")
+    const server = createServer((socket) => {
       let buffer = ""
       socket.on("data", (chunk) => {
         buffer += chunk.toString()
@@ -76,38 +100,49 @@ describe("daemon orchestration IPC client", () => {
         )
       })
     })
-    await new Promise<void>((resolve) => {
-      server.listen(socketPath, resolve)
-    })
-  })
 
-  afterEach(async () => {
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve())
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject)
+      server.listen(socketPath, () => {
+        server.removeListener("error", reject)
+        resolve()
+      })
     })
-    await rm(socketDir, { recursive: true, force: true })
-  })
+
+    try {
+      return await fn({ socketPath })
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve())
+      })
+      await rm(socketDir, { recursive: true, force: true })
+    }
+  }
 
   test("runTaskViaDaemon sends run_task request and parses response", async () => {
-    const result = await runTaskViaDaemon(
-      {
-        agent: "zee",
-        description: "quick check",
-        prompt: "say hi",
-      },
-      { socketPath },
-    )
+    await withTestServer(async ({ socketPath }) => {
+      const result = await runTaskViaDaemon(
+        {
+          agent: "zee",
+          description: "quick check",
+          prompt: "say hi",
+        },
+        { socketPath },
+      )
 
-    expect(result.task.id).toBe("task-1")
-    expect(result.task.agent).toBe("zee")
-    expect(result.task.status).toBe("completed")
-    expect(result.output).toContain("task_result")
+      expect(result.task.id).toBe("task-1")
+      expect(result.task.agent).toBe("zee")
+      expect(result.task.status).toBe("completed")
+      expect(result.output).toContain("task_result")
+    })
   })
 
   test("listDaemonEvents requests list_events and parses response", async () => {
-    const result = await listDaemonEvents({ cursor: 0, limit: 10 }, { socketPath })
-    expect(result.events).toHaveLength(1)
-    expect(result.events[0].type).toBe("agent_start")
-    expect(result.nextCursor).toBe(1)
+    await withTestServer(async ({ socketPath }) => {
+      const result = await listDaemonEvents({ cursor: 0, limit: 10 }, { socketPath })
+      expect(result.events).toHaveLength(1)
+      expect(result.events[0].type).toBe("agent_start")
+      expect(result.nextCursor).toBe(1)
+    })
   })
 })

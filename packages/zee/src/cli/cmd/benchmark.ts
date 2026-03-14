@@ -14,6 +14,14 @@ export type BenchmarkModelRef = {
   modelID: string
 }
 
+function parseBenchmarkModelRef(value: string): BenchmarkModelRef {
+  const [providerID, ...modelParts] = value.split("/")
+  return {
+    providerID,
+    modelID: modelParts.join("/"),
+  }
+}
+
 export type BenchmarkAppEvent = {
   type: string
   properties: any
@@ -200,7 +208,7 @@ function resolveModels(input: string[] | undefined, fallback: BenchmarkModelRef)
   const result: BenchmarkModelRef[] = []
   const seen = new Set<string>()
   for (const item of raw) {
-    const parsed = Provider.parseModel(item)
+    const parsed = parseBenchmarkModelRef(item)
     const label = modelLabel(parsed)
     if (seen.has(label)) continue
     seen.add(label)
