@@ -529,6 +529,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
     "run",
     "src/index.ts",
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -557,6 +558,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
   const distCommand = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -582,8 +584,20 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
     )),
   )
 
-  if (!sourceHealth?.healthy || !distHealth?.healthy) {
-    throw new Error(`health mismatch: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
+  if (!sourceHealth || !distHealth) {
+    throw new Error(`health payload missing: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
+  }
+
+  if (sourceHealth.mode !== "source" || distHealth.mode !== "binary") {
+    throw new Error(`health mode mismatch: source=${JSON.stringify(sourceHealth)} dist=${JSON.stringify(distHealth)}`)
+  }
+
+  const sourceMemoryStatus = String(sourceHealth.memory?.status ?? "unknown")
+  const distMemoryStatus = String(distHealth.memory?.status ?? "unknown")
+  if (sourceMemoryStatus !== distMemoryStatus) {
+    throw new Error(
+      `memory status mismatch: source=${JSON.stringify(sourceHealth.memory)} dist=${JSON.stringify(distHealth.memory)}`,
+    )
   }
 
   if (!sourceChannels?.success || !distChannels?.success) {
@@ -608,6 +622,8 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
       `version: ${sourceV}`,
       `source health mode: ${String(sourceHealth.mode ?? "unknown")}`,
       `dist health mode: ${String(distHealth.mode ?? "unknown")}`,
+      `source memory status: ${sourceMemoryStatus}`,
+      `dist memory status: ${distMemoryStatus}`,
       `source channels: ${sourceChannelIds.join(",") || "<none>"}`,
       `dist channels: ${distChannelIds.join(",") || "<none>"}`,
     ],
@@ -623,6 +639,7 @@ async function stageDaemonSingletonAndLocking(ctx: StageInternalContext): Promis
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -695,6 +712,7 @@ async function stageDaemonRecoveryAndRestart(ctx: StageInternalContext): Promise
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -797,6 +815,7 @@ async function stageGatewayPreflightConflict(ctx: StageInternalContext): Promise
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -893,6 +912,7 @@ async function stageGatewayChannelLiveChecks(ctx: StageInternalContext): Promise
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",
@@ -1026,6 +1046,7 @@ async function stageModeSwitchStress(ctx: StageInternalContext): Promise<Reliabi
       const daemonCommand = [
         ctx.runtime.distBinaryPath,
         "daemon",
+        "--skip-setup-check",
         "--hostname",
         "127.0.0.1",
         "--port",
@@ -1103,6 +1124,7 @@ async function stageLongSoak(ctx: StageInternalContext): Promise<ReliabilityStag
   const command = [
     ctx.runtime.distBinaryPath,
     "daemon",
+    "--skip-setup-check",
     "--hostname",
     "127.0.0.1",
     "--port",

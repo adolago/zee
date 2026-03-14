@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
+import path from "path"
+import { tmpdir } from "../fixture/fixture"
+import { Instance } from "../../src/project/instance"
+import { Env } from "../../src/env"
 
 const FALLBACK_RULES = [
   {
@@ -13,54 +17,73 @@ afterEach(() => {
 
 describe("FallbackChain costAware", () => {
   test("skips more expensive explicit fallback candidates", async () => {
-    const actualProviderModule = await import("../../src/provider/provider")
-
-    mock.module("../../src/provider/equivalence", () => ({
-      ModelEquivalence: {
-        parseModel(model: string) {
-          const [providerID, ...rest] = model.split("/")
-          return { providerID, modelID: rest.join("/") }
-        },
-        async findFallback() {
-          return undefined
-        },
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(
+          path.join(dir, "zee.jsonc"),
+          JSON.stringify({
+            $schema: "zee",
+            provider: {
+              openai: {
+                models: {
+                  "gpt-5.4": {
+                    cost: {
+                      input: 1,
+                      output: 2,
+                    },
+                  },
+                },
+              },
+              anthropic: {
+                models: {
+                  "claude-opus-4-6": {
+                    cost: {
+                      input: 5,
+                      output: 5,
+                    },
+                  },
+                },
+              },
+              groq: {
+                models: {
+                  "openai/gpt-oss-120b": {
+                    cost: {
+                      input: 0.8,
+                      output: 0.8,
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        )
       },
-    }))
+    })
 
-    mock.module("../../src/provider/provider", () => ({
-      ...actualProviderModule,
-      Provider: {
-        ...actualProviderModule.Provider,
-        async getModel(providerID: string, modelID: string) {
-          const key = `${providerID}/${modelID}`
-          if (key === "openai/gpt-5.2") {
-            return { cost: { input: 1, output: 2 } }
-          }
-          if (key === "anthropic/claude-opus-4-6") {
-            return { cost: { input: 5, output: 5 } }
-          }
-          if (key === "groq/openai/gpt-oss-120b") {
-            return { cost: { input: 0.8, output: 0.8 } }
-          }
-          throw new Error(`Unknown model: ${key}`)
-        },
+    await Instance.provide({
+      directory: tmp.path,
+      init: async () => {
+        Env.set("OPENAI_API_KEY", "test-openai-key")
+        Env.set("ANTHROPIC_API_KEY", "test-anthropic-key")
+        Env.set("GROQ_API_KEY", "test-groq-key")
       },
-    }))
+      fn: async () => {
+        const { FallbackChain } = await import("../../src/provider/fallback-chain")
+        const result = await FallbackChain.resolve(
+          "openai/gpt-5.4",
+          new Error("rate limit"),
+          ["openai/gpt-5.4"],
+          {
+            enabled: true,
+            maxAttempts: 3,
+            rules: FALLBACK_RULES,
+            costAware: true,
+            notifyOnFallback: false,
+          },
+        )
 
-    const { FallbackChain } = await import("../../src/provider/fallback-chain")
-    const result = await FallbackChain.resolve(
-      "openai/gpt-5.2",
-      new Error("rate limit"),
-      ["openai/gpt-5.2"],
-      {
-        enabled: true,
-        maxAttempts: 3,
-        rules: FALLBACK_RULES,
-        costAware: true,
-        notifyOnFallback: false,
+        expect(result).toBe("groq/openai/gpt-oss-120b")
       },
-    )
-
-    expect(result).toBe("groq/openai/gpt-oss-120b")
+    })
   })
 })
