@@ -88,8 +88,12 @@ export function detectMalformedToolText(input: {
 }
 
 export function buildMalformedToolTextRetryReminder(input: { messages: MessageV2.WithParts[] }): string | undefined {
-  const latestUser = input.messages.findLast((msg) => msg.info.role === "user")
-  const latestAssistant = input.messages.findLast((msg) => msg.info.role === "assistant")
+  const latestUser = input.messages.findLast(
+    (msg): msg is MessageV2.WithParts & { info: MessageV2.User } => msg.info.role === "user",
+  )
+  const latestAssistant = input.messages.findLast(
+    (msg): msg is MessageV2.WithParts & { info: MessageV2.Assistant } => msg.info.role === "assistant",
+  )
   if (!latestUser || !latestAssistant) return
   if (latestAssistant.info.parentID !== latestUser.info.id) return
   if (latestAssistant.info.finish !== MALFORMED_TOOL_TEXT_FINISH) return

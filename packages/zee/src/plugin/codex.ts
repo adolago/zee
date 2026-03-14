@@ -115,15 +115,28 @@ type CodexOauthAuth = {
   accountId?: string
 }
 
+type RawCodexOauthAuth = {
+  type: string
+  access?: unknown
+  refresh?: unknown
+  expires?: unknown
+}
+
 function requireCodexOauthAuth(
-  auth: CodexOauthAuth | { type: string } | undefined,
+  auth: RawCodexOauthAuth | undefined,
   reason: "loader" | "request",
 ): CodexOauthAuth | undefined {
   if (!auth || auth.type !== "oauth") {
     if (reason === "loader") return undefined
     throw new Error(CODEX_AUTH_MISSING_MESSAGE)
   }
-  return auth
+
+  if (typeof auth.access !== "string" || typeof auth.refresh !== "string" || typeof auth.expires !== "number") {
+    if (reason === "loader") return undefined
+    throw new Error(CODEX_AUTH_MISSING_MESSAGE)
+  }
+
+  return auth as CodexOauthAuth
 }
 
 async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: PkceCodes): Promise<TokenResponse> {
