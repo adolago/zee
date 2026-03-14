@@ -901,8 +901,7 @@ export namespace MCP {
       const normalizedScriptArg = scriptArg?.replace(/\\/g, "/")
       const bundledPathMismatch =
         Boolean(scriptArg) &&
-        normalizedScriptArg?.includes("/$bunfs/root/src/") &&
-        !normalizedScriptArg?.includes("/mcp/servers/")
+        normalizedScriptArg?.includes("/$bunfs/")
 
       if (!scriptArg || (existsSync(scriptArg) && !bundledPathMismatch)) {
         if (forceBunRuntime && scriptArg) {

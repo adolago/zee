@@ -2,7 +2,7 @@
 description: Personal assistant - memory, peronal, work, study, messaging, calendar, contacts, finances (including digital resources management), routine, health, and agent orchestration.
 color: "#2563EB"
 theme: zee
-fallback: google-antigravity/antigravity-gemini-3-flash
+fallback: openai/gpt-5.4
 temperature: 1.0
 top_p: 0.95
 skill: zee

@@ -13,6 +13,9 @@ import { errors } from "../error"
 
 const log = Log.create({ service: "server:model" })
 
+const HIDDEN_MODEL_PROVIDER_IDS = new Set(["google", "google-antigravity", "gemini-cli"])
+const HIDDEN_AUTH_PROVIDER_IDS = new Set(["google-antigravity", "gemini-cli"])
+
 const SERVICE_PROVIDER_NAMES: Record<string, string> = {
   "gemini-cli": "Gemini CLI",
 }
@@ -86,7 +89,8 @@ export const ModelRoute = new Hono()
     async (c) => {
       const config = await Config.get()
       const disabled = new Set(config.disabled_providers ?? [])
-      const isBlocked = (providerID: string) => disabled.has(providerID) || Provider.isProviderBlocked(providerID)
+      const isBlocked = (providerID: string) =>
+        HIDDEN_MODEL_PROVIDER_IDS.has(providerID) || disabled.has(providerID) || Provider.isProviderBlocked(providerID)
 
       const allProviders = await ModelsDev.get()
       const filteredProviders: Record<string, (typeof allProviders)[string]> = {}
@@ -178,7 +182,10 @@ export const ModelRoute = new Hono()
       },
     }),
     async (c) => {
-      return c.json(await ProviderAuth.methods())
+      const methods = await ProviderAuth.methods()
+      return c.json(
+        Object.fromEntries(Object.entries(methods).filter(([providerID]) => !HIDDEN_AUTH_PROVIDER_IDS.has(providerID))),
+      )
     },
   )
   .get(
@@ -213,7 +220,10 @@ export const ModelRoute = new Hono()
       },
     }),
     async (c) => {
-      return c.json(await Auth.status())
+      const status = await Auth.status()
+      return c.json(
+        Object.fromEntries(Object.entries(status).filter(([providerID]) => !HIDDEN_AUTH_PROVIDER_IDS.has(providerID))),
+      )
     },
   )
   .post(

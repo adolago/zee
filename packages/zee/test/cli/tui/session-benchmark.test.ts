@@ -5,7 +5,9 @@ import {
   type BenchmarkModelRef,
 } from "../../../src/cli/cmd/benchmark"
 import {
+  createHomeBenchmarkCommand,
   createSessionBenchmarkCommand,
+  ensureBenchmarkTargetSession,
   runSessionBenchmark,
 } from "../../../src/cli/cmd/tui/routes/session/benchmark"
 
@@ -266,5 +268,58 @@ describe("session benchmark helpers", () => {
         variant: "warning",
       },
     ])
+  })
+
+  test("ensureBenchmarkTargetSession creates and returns a session when none is active", async () => {
+    const harness = createHarness()
+    const created: string[] = []
+
+    const sessionID = await ensureBenchmarkTargetSession({
+      sdk: harness.sdk,
+      onCreate(next) {
+        created.push(next)
+      },
+    })
+
+    expect(sessionID).toBe("bench_1")
+    expect(created).toEqual(["bench_1"])
+    expect(harness.createCalls).toEqual([{}])
+  })
+
+  test("createHomeBenchmarkCommand is visible on the home route and auto-creates a session", async () => {
+    const harness = createHarness()
+    const clear = mock(() => {})
+    const navigated: string[] = []
+    let running = false
+
+    const command = createHomeBenchmarkCommand({
+      sessionID: () => undefined,
+      cwd: () => "/tmp/bench",
+      agent: () => "zee",
+      model: () => harness.model,
+      variant: () => undefined,
+      sdk: harness.sdk,
+      eventSource: harness.eventSource,
+      toast: harness.toast,
+      isRunning: () => running,
+      setRunning(next) {
+        running = next
+      },
+      onSessionCreated(sessionID) {
+        navigated.push(sessionID)
+      },
+    })
+
+    expect(command.hidden).toBe(false)
+    command.onSelect?.({ clear } as any)
+    await Bun.sleep(10)
+
+    expect(clear).toHaveBeenCalledTimes(1)
+    expect(navigated).toEqual(["bench_1"])
+    expect(harness.createCalls).toHaveLength(BENCHMARK_DEFAULTS.runs + BENCHMARK_DEFAULTS.warmup + 1)
+    expect(harness.notes).toHaveLength(1)
+    expect(harness.notes[0]?.parameters.sessionID).toBe("bench_1")
+    expect(harness.deletedSessionIDs).toEqual(["bench_2", "bench_3", "bench_4", "bench_5"])
+    expect(running).toBe(false)
   })
 })

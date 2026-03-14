@@ -41,8 +41,12 @@ const LOCAL_PROVIDER_DEFAULTS: Record<string, { port: number; hint: string }> = 
   tgi: { port: 8080, hint: "Text Generation Inference" },
 }
 
+const HIDDEN_LLM_AUTH_PROVIDERS = new Set(["gemini-cli", "google-antigravity"])
+const EMBEDDING_ONLY_PROVIDERS = new Set(["google"])
+
 /** Providers that only need auth storage (not LLM model providers) */
 const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
+  google: { name: "Google AI", hint: "Google AI Studio API key (embeddings only)" },
   kernel: { name: "Kernel", hint: "Kernel MCP API key" },
   voyage: { name: "Voyage AI", hint: "Reranking API key" },
   "minimax-tts": {
@@ -866,19 +870,15 @@ export const AuthLoginCommand = cmd({
         })
 
         // Inject plugin-provided auth providers.
-        const pluginDisplayNames: Record<string, string> = {
-          "gemini-cli": "Gemini CLI",
-          "google-antigravity": "Google Antigravity",
-        }
         const pluginHooks = await Plugin.list()
         for (const hooks of pluginHooks) {
           if (hooks.auth?.provider) {
             const id = hooks.auth.provider
-            if (!isBlocked(id) && !providers[id]) {
+            if (!isBlocked(id) && !HIDDEN_LLM_AUTH_PROVIDERS.has(id) && !providers[id]) {
               // Add minimal provider entry for auth display
               providers[id] = {
                 id,
-                name: pluginDisplayNames[id] ?? id,
+                name: id,
                 env: [],
                 models: {},
               } as (typeof providers)[string]
@@ -920,7 +920,7 @@ export const AuthLoginCommand = cmd({
         // Inject custom providers from config
         if (config.provider) {
           for (const id of Object.keys(config.provider)) {
-            if (!isBlocked(id) && !providers[id]) {
+            if (!isBlocked(id) && !HIDDEN_LLM_AUTH_PROVIDERS.has(id) && !providers[id]) {
               providers[id] = {
                 id,
                 name: id,
@@ -1003,17 +1003,15 @@ export const AuthLoginCommand = cmd({
             // Show all providers for adding new credential
             const priority: Record<string, number> = {
               anthropic: 0,
-              "gemini-cli": 1,
-              openai: 2,
-              google: 3,
-              "google-antigravity": 4,
-              openrouter: 4,
-              kernel: 5,
+              openai: 1,
+              google: 2,
+              openrouter: 3,
+              kernel: 4,
             }
             const providerHints: Record<string, string | undefined> = {
               anthropic: "Recommended - Claude Max or API key",
-              "google-antigravity": "Google OAuth (Antigravity)",
               openai: "ChatGPT Plus/Pro or API key",
+              google: AUTH_ONLY_PROVIDERS.google?.hint,
               kernel: AUTH_ONLY_PROVIDERS.kernel?.hint,
             }
             const newProvider = await prompts.autocomplete({
@@ -1050,6 +1048,12 @@ export const AuthLoginCommand = cmd({
 
         if (provider === "telegram") {
           provider = TELEGRAM_AUTH_PROVIDER_ID
+        }
+
+        if (HIDDEN_LLM_AUTH_PROVIDERS.has(provider)) {
+          prompts.log.error(`${provider} is no longer available for LLM auth`)
+          prompts.outro("Done")
+          return
         }
 
         // Check if provider is known (either in LLM models database, unified provider registry, or skill)
@@ -1300,7 +1304,7 @@ export const AuthLoginCommand = cmd({
         if (registryProvider && registryProvider.services.length > 0) {
           const serviceNames: string[] = [...registryProvider.services]
           const modelRegistry = await ModelsDev.get().catch(() => undefined)
-          if (modelRegistry?.[provider]) serviceNames.push("LLM models")
+          if (modelRegistry?.[provider] && !EMBEDDING_ONLY_PROVIDERS.has(provider)) serviceNames.push("LLM models")
           prompts.log.success(`${registryProvider.name} configured for: ${serviceNames.join(", ")}`)
         }
 

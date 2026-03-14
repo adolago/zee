@@ -25,16 +25,12 @@ export namespace ModelEquivalence {
       "anthropic/claude-opus-4",
       "openai/gpt-5",
       "openai/o3",
-      "google/gemini-2.5-pro",
-      "google/gemini-2.0-pro",
     ],
     standard: [
       "anthropic/claude-sonnet-4",
       "anthropic/claude-sonnet-3-5",
       "openai/gpt-4.1",
       "openai/gpt-4o",
-      "google/gemini-2.5-flash",
-      "google/gemini-2.0-flash",
     ],
     fast: [
       "anthropic/claude-haiku-4",
@@ -42,7 +38,6 @@ export namespace ModelEquivalence {
       "anthropic/claude-haiku-3",
       "openai/gpt-4.1-mini",
       "openai/gpt-4o-mini",
-      "google/gemini-2.0-flash-lite",
     ],
   }
 

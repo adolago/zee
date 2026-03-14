@@ -4,13 +4,14 @@
  * Persists session context to Qdrant on daemon shutdown and restores
  * it on startup, ensuring conversation continuity across restarts.
  *
- * Uses Google Gemini embeddings (3072 dimensions) for semantic context.
+ * Uses the default Google embedding profile for semantic context.
  */
 
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import type { Tool } from "../../tool";
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from "../../config/constants";
 import { getMemoryQdrantConfig, getMemoryEmbeddingConfig } from "../../config/runtime";
 import { createEmbeddingProvider, type EmbeddingConfig } from "../../memory/embedding";
 import type { EmbeddingProvider } from "../../memory/types";
@@ -102,8 +103,8 @@ const SENTINEL_FILE_PATH = path.join(
 // Default embedding config (Google Gemini)
 const DEFAULT_EMBEDDING_CONFIG: EmbeddingConfig = {
   provider: "google",
-  model: "gemini-embedding-001",
-  dimensions: 3072,
+  model: EMBEDDING_MODEL,
+  dimensions: EMBEDDING_DIMENSIONS,
 };
 
 // =============================================================================

@@ -56,12 +56,22 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
   google: {
     id: "google",
     name: "Google AI",
-    services: ["embedding", "stt"],
+    services: ["embedding"],
     envKey: "GOOGLE_API_KEY",
     envAliases: ["GEMINI_API_KEY"],
     authType: "api",
     validateEndpoint: "https://generativelanguage.googleapis.com/v1/models",
     website: "https://aistudio.google.com/apikey",
+  },
+
+  wisprflow: {
+    id: "wisprflow",
+    name: "Wispr Flow",
+    services: ["stt"],
+    envKey: "WISPRFLOW_API_KEY",
+    authType: "api",
+    baseUrl: "https://platform-api.wisprflow.ai/api/v1/dash/api",
+    website: "https://wisprflow.ai/",
   },
 
   openai: {

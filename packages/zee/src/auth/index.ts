@@ -20,11 +20,6 @@ const OAUTH_REFRESH_CONFIG: Record<string, { url: string; clientId?: string; cli
     url: "https://auth.openai.com/oauth/token",
     clientId: "pdlLIX2Y72MgDktxw22rHpPdJKmlMVBi", // ChatGPT client ID
   },
-  "gemini-cli": {
-    url: "https://oauth2.googleapis.com/token",
-    clientId: process.env.ZEE_GEMINI_CLI_OAUTH_CLIENT_ID?.trim(),
-    clientSecret: process.env.ZEE_GEMINI_CLI_OAUTH_CLIENT_SECRET?.trim(),
-  },
   // Note: kimi-for-coding uses custom refresh in plugin (requires X-Msh-* headers)
 }
 
@@ -128,10 +123,7 @@ export namespace Auth {
 
     try {
       if (!config.clientId) {
-        log.warn("oauth refresh requires client_id env var", {
-          providerID,
-          envVar: providerID === "gemini-cli" ? "ZEE_GEMINI_CLI_OAUTH_CLIENT_ID" : undefined,
-        })
+        log.warn("oauth refresh requires client_id env var", { providerID })
         return false
       }
 

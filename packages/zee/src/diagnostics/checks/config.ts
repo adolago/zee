@@ -40,9 +40,9 @@ const RECOMMENDED_CREDENTIALS: RecommendedCredential[] = [
     description: "OpenAI (OAuth or API key)",
   },
   {
-    label: "Google Gemini",
+    label: "Google AI",
     authProviderId: "google",
-    description: "Google Gemini API key (embeddings; stored via `zee auth login google`)",
+    description: "Google AI Studio API key for embeddings (stored via `zee auth login google`)",
   },
   {
     label: "Voyage",

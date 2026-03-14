@@ -49,19 +49,19 @@ export namespace FallbackChain {
   export const DEFAULT_RULES: Rule[] = [
     {
       condition: "rate_limit",
-      fallbacks: ["openai", "anthropic", "google"],
+      fallbacks: ["openai", "anthropic"],
     },
     {
       condition: "unavailable",
-      fallbacks: ["openai", "anthropic", "google"],
+      fallbacks: ["openai", "anthropic"],
     },
     {
       condition: "timeout",
-      fallbacks: ["openai", "anthropic", "google"],
+      fallbacks: ["openai", "anthropic"],
     },
     {
       condition: "circuit_open",
-      fallbacks: ["openai", "anthropic", "google"],
+      fallbacks: ["openai", "anthropic"],
     },
     {
       condition: "any",

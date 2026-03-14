@@ -504,13 +504,6 @@ verify_providers() {
     echo "    OpenAI:     Not configured"
   fi
 
-  # Google Gemini (LLM)
-  if [[ -n "$google_key" ]]; then
-    ok "  Gemini:     Reachable (uses embedding key)"
-  elif [[ "$google_auth_type" == "oauth" ]]; then
-    ok "  Gemini:     Configured via OAuth (runtime-managed token)"
-  fi
-
   # Ollama (local)
   local ollama_url="${OLLAMA_HOST:-http://localhost:11434}"
   local ollama_test=$(curl -sf "$ollama_url/api/tags" 2>&1)

@@ -32,14 +32,6 @@ const PROVIDERS: ProviderConfig[] = [
     timeout: 5000,
     authProviderId: "openai",
   },
-  {
-    name: "Google Gemini",
-    id: "gemini",
-    endpoint: "https://generativelanguage.googleapis.com/v1/models",
-    envKey: "GOOGLE_API_KEY",
-    timeout: 5000,
-    authProviderId: "google",
-  },
 ]
 
 async function checkInternetConnectivity(): Promise<CheckResult> {

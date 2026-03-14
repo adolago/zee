@@ -24,6 +24,25 @@ type ToastLike = {
 
 type SessionNoteClient = Pick<ZeeClient, "session" | "permission">
 
+type BenchmarkTargetSessionInput = {
+  sessionID?: string
+  sdk: Pick<ZeeClient, "session">
+  onCreate?(sessionID: string): void | Promise<void>
+}
+
+export async function ensureBenchmarkTargetSession(input: BenchmarkTargetSessionInput): Promise<string> {
+  if (input.sessionID) return input.sessionID
+
+  const created = await input.sdk.session.create({}, { throwOnError: true })
+  const sessionID = created.data?.id
+  if (!sessionID) {
+    throw new Error("Failed to create session for benchmark")
+  }
+
+  await input.onCreate?.(sessionID)
+  return sessionID
+}
+
 export function formatBenchmarkSessionNote(input: {
   agent: string
   model: BenchmarkModelRef
@@ -214,6 +233,75 @@ export function createSessionBenchmarkCommand(input: {
       }).finally(() => {
         input.setRunning(false)
       })
+    },
+  }
+}
+
+export function createHomeBenchmarkCommand(input: {
+  sessionID: () => string | undefined
+  cwd: () => string
+  agent: () => string
+  model: () => BenchmarkModelRef | undefined
+  variant: () => string | undefined
+  sdk: SessionNoteClient
+  eventSource: BenchmarkEventSource
+  toast: ToastLike
+  isRunning: () => boolean
+  setRunning(next: boolean): void
+  onSessionCreated(sessionID: string): void | Promise<void>
+}): CommandOption {
+  return {
+    title: input.isRunning() ? "Benchmark current model (running)" : "Benchmark current model",
+    value: "home.benchmark",
+    category: "Session",
+    slash: {
+      name: "benchmark",
+    },
+    hidden: !!input.sessionID(),
+    enabled: !!input.model(),
+    onSelect: (dialog) => {
+      dialog.clear()
+
+      if (input.isRunning()) {
+        input.toast.show({
+          variant: "warning",
+          message: "Benchmark already running",
+          duration: 3000,
+        })
+        return
+      }
+
+      const model = input.model()
+      if (!model) {
+        input.toast.show({
+          variant: "warning",
+          message: "No model selected for benchmark",
+          duration: 3000,
+        })
+        return
+      }
+
+      input.setRunning(true)
+      void ensureBenchmarkTargetSession({
+        sessionID: input.sessionID(),
+        sdk: input.sdk,
+        onCreate: input.onSessionCreated,
+      })
+        .then((sessionID) =>
+          runSessionBenchmark({
+            cwd: input.cwd(),
+            sessionID,
+            agent: input.agent(),
+            model,
+            variant: input.variant(),
+            sdk: input.sdk,
+            eventSource: input.eventSource,
+            toast: input.toast,
+          }),
+        )
+        .finally(() => {
+          input.setRunning(false)
+        })
     },
   }
 }

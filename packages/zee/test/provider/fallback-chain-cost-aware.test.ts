@@ -3,7 +3,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test"
 const FALLBACK_RULES = [
   {
     condition: "rate_limit" as const,
-    fallbacks: ["anthropic/claude-opus-4-6", "google/gemini-3-pro-preview"],
+    fallbacks: ["anthropic/claude-opus-4-6", "groq/openai/gpt-oss-120b"],
   },
 ]
 
@@ -35,7 +35,7 @@ describe("FallbackChain costAware", () => {
           if (key === "anthropic/claude-opus-4-6") {
             return { cost: { input: 5, output: 5 } }
           }
-          if (key === "google/gemini-3-pro-preview") {
+          if (key === "groq/openai/gpt-oss-120b") {
             return { cost: { input: 0.8, output: 0.8 } }
           }
           throw new Error(`Unknown model: ${key}`)
@@ -57,6 +57,6 @@ describe("FallbackChain costAware", () => {
       },
     )
 
-    expect(result).toBe("google/gemini-3-pro-preview")
+    expect(result).toBe("groq/openai/gpt-oss-120b")
   })
 })

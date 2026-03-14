@@ -21,11 +21,9 @@ import { Env } from "../env"
 import { Instance } from "../project/instance"
 import { State } from "../project/state"
 import { iife } from "@/util/iife"
-import { THINKING_BUDGETS } from "./constants"
 
 // Direct imports for bundled providers
 import { createAnthropic } from "@ai-sdk/anthropic"
-import { createGoogleGenerativeAI } from "@ai-sdk/google"
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
@@ -69,6 +67,9 @@ export namespace Provider {
     PROVIDER_BLACKLIST_REASONS[entry.id] = entry.reason
   }
 
+  const RUNTIME_DISABLED_PROVIDER_IDS = new Set(["google", "google-antigravity", "gemini-cli"])
+  const RUNTIME_DISABLED_MODEL_NPMS = new Set(["@ai-sdk/google"])
+
   const HARDCODED_MODEL_ALLOWLIST: Record<string, Set<string>> = {
     anthropic: new Set(["claude-opus-4-6"]),
     "zai-coding-plan": new Set(["glm-4.7", "glm-4.7-flash", "glm-5"]),
@@ -81,20 +82,7 @@ export namespace Provider {
     openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"]),
   }
 
-  const HARDCODED_MODEL_ALLOW_FILTERS: Record<string, (modelID: string) => boolean> = {
-    google: (modelID: string) => {
-      const normalized = modelID
-        .trim()
-        .toLowerCase()
-        .replace(/^google\//, "")
-        .replace(/^models\//, "")
-      return (
-        /^gemini-(?:live-)?3(?:[.-]|$)/.test(normalized) ||
-        normalized.includes("-latest") ||
-        normalized.includes("embedding")
-      )
-    },
-  }
+  const HARDCODED_MODEL_ALLOW_FILTERS: Record<string, (modelID: string) => boolean> = {}
 
   /**
    * Get the reason a model is blacklisted, or undefined if not blacklisted.
@@ -143,7 +131,6 @@ export namespace Provider {
     "@ai-sdk/azure": createAzure,
     "@ai-sdk/cohere": createCohere,
     "@ai-sdk/deepinfra": createDeepInfra,
-    "@ai-sdk/google": createGoogleGenerativeAI,
     "@ai-sdk/groq": createGroq,
     "@ai-sdk/mistral": createMistral,
     // Use custom OpenAI wrapper with GPT-5 stream completion fix
@@ -507,15 +494,9 @@ export namespace Provider {
     const config = await Config.get()
     const modelsDev = await ModelsDev.get()
     const database = mapValues(modelsDev, fromModelsDevProvider)
-    if (database.google && !database["google-antigravity"]) {
-      database["google-antigravity"] = {
-        ...database.google,
-        id: "google-antigravity",
-        name: "Google Antigravity",
-        env: [],
-        options: {},
-        models: {},
-      }
+
+    for (const providerID of RUNTIME_DISABLED_PROVIDER_IDS) {
+      delete database[providerID]
     }
 
     const disabled = new Set(config.disabled_providers ?? [])
@@ -541,7 +522,9 @@ export namespace Provider {
     // Proactively refresh OAuth tokens that are expiring soon
     await Auth.refreshAllExpiring()
 
-    const configProviders = Object.entries(config.provider ?? {}).filter(([providerID]) => !blocked.has(providerID))
+    const configProviders = Object.entries(config.provider ?? {}).filter(
+      ([providerID]) => !blocked.has(providerID) && !RUNTIME_DISABLED_PROVIDER_IDS.has(providerID),
+    )
 
     function mergeProvider(providerID: string, provider: Partial<Info>) {
       const existing = providers[providerID]
@@ -687,7 +670,7 @@ export namespace Provider {
     for (const plugin of await Plugin.list()) {
       if (!plugin.auth) continue
       const providerID = plugin.auth.provider
-      if (blocked.has(providerID)) continue
+      if (blocked.has(providerID) || RUNTIME_DISABLED_PROVIDER_IDS.has(providerID)) continue
 
       let hasAuth = false
       const auth = await Auth.get(providerID)
@@ -703,235 +686,6 @@ export namespace Provider {
         const opts = options ?? {}
         const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
-
-        // If this is antigravity plugin, set up the provider properly
-        // The plugin's fetch interceptor handles Claude/Gemini models via Google Cloud Code API
-        // The plugin returns apiKey: "" because it uses OAuth via custom fetch
-        if (providerID === "google-antigravity") {
-          // Force-create antigravity provider if it doesn't exist (no env/api key configured)
-          if (!providers["google-antigravity"] && database["google-antigravity"]) {
-            providers["google-antigravity"] = {
-              ...database["google-antigravity"],
-              source: "custom",
-              options: {},
-            }
-            log.info("created google-antigravity provider for antigravity plugin")
-          }
-
-          if (providers["google-antigravity"]) {
-            // Wrap the plugin's custom fetch to remove x-goog-api-key header
-            // The plugin uses OAuth Bearer token but @ai-sdk/google adds x-goog-api-key
-            const pluginFetch = options?.fetch
-            const wrappedFetch = pluginFetch
-              ? async (input: RequestInfo | URL, init?: RequestInit) => {
-                  if (init?.headers) {
-                    const headers = new Headers(init.headers)
-                    headers.delete("x-goog-api-key")
-                    return pluginFetch(input, { ...init, headers })
-                  }
-                  return pluginFetch(input, init)
-                }
-              : undefined
-
-            // Set placeholder API key (required by @ai-sdk/google) and preserve custom fetch
-            providers["google-antigravity"].options = {
-              ...providers["google-antigravity"].options,
-              apiKey: "antigravity-oauth-placeholder",
-              fetch: wrappedFetch,
-            }
-            log.info("configured google-antigravity provider with antigravity auth", {
-              hasApiKey: !!providers["google-antigravity"].options.apiKey,
-              hasFetch: typeof providers["google-antigravity"].options.fetch === "function",
-            })
-
-            // Add Antigravity models - Claude and Gemini via Google Cloud Code API
-            const antigravityModels: Record<string, Model> = {
-              "antigravity-claude-opus-4-5-thinking": {
-                id: "antigravity-claude-opus-4-5-thinking",
-                providerID: "google-antigravity",
-                name: "Claude Opus 4.5 Thinking",
-                family: "claude",
-                api: {
-                  id: "antigravity-claude-opus-4-5-thinking",
-                  url: "https://generativelanguage.googleapis.com/v1beta",
-                  npm: "@ai-sdk/google",
-                },
-                status: "active",
-                headers: {},
-                options: {}, // topP unset - Claude thinking requires topP >= 0.95 or unset
-                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-                limit: { context: 200000, output: 64000 },
-                capabilities: {
-                  temperature: true,
-                  reasoning: true,
-                  attachment: true,
-                  toolcall: true,
-                  streaming: true,
-                  input: { text: true, audio: false, image: true, video: false, pdf: true },
-                  output: { text: true, audio: false, image: false, video: false, pdf: false },
-                  interleaved: false,
-                },
-                release_date: "2025-02-24",
-                variants: {
-                  low: { name: "Low Thinking", options: { thinkingBudget: THINKING_BUDGETS.low } },
-                  max: { name: "Max Thinking", options: { thinkingBudget: THINKING_BUDGETS.high } },
-                },
-              },
-              "antigravity-claude-sonnet-4-5": {
-                id: "antigravity-claude-sonnet-4-5",
-                providerID: "google-antigravity",
-                name: "Claude Sonnet 4.5",
-                family: "claude",
-                api: {
-                  id: "antigravity-claude-sonnet-4-5",
-                  url: "https://generativelanguage.googleapis.com/v1beta",
-                  npm: "@ai-sdk/google",
-                },
-                status: "active",
-                headers: {},
-                options: {},
-                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-                limit: { context: 200000, output: 64000 },
-                capabilities: {
-                  temperature: true,
-                  reasoning: false,
-                  attachment: true,
-                  toolcall: true,
-                  streaming: true,
-                  input: { text: true, audio: false, image: true, video: false, pdf: true },
-                  output: { text: true, audio: false, image: false, video: false, pdf: false },
-                  interleaved: false,
-                },
-                release_date: "2025-02-24",
-              },
-              "antigravity-claude-sonnet-4-5-thinking": {
-                id: "antigravity-claude-sonnet-4-5-thinking",
-                providerID: "google-antigravity",
-                name: "Claude Sonnet 4.5 Thinking",
-                family: "claude",
-                api: {
-                  id: "antigravity-claude-sonnet-4-5-thinking",
-                  url: "https://generativelanguage.googleapis.com/v1beta",
-                  npm: "@ai-sdk/google",
-                },
-                status: "active",
-                headers: {},
-                options: {}, // topP unset - Claude thinking requires topP >= 0.95 or unset
-                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-                limit: { context: 200000, output: 64000 },
-                capabilities: {
-                  temperature: true,
-                  reasoning: true,
-                  attachment: true,
-                  toolcall: true,
-                  streaming: true,
-                  input: { text: true, audio: false, image: true, video: false, pdf: true },
-                  output: { text: true, audio: false, image: false, video: false, pdf: false },
-                  interleaved: false,
-                },
-                release_date: "2025-02-24",
-                variants: {
-                  low: { name: "Low Thinking", options: { thinkingBudget: THINKING_BUDGETS.low } },
-                  max: { name: "Max Thinking", options: { thinkingBudget: THINKING_BUDGETS.high } },
-                },
-              },
-              "antigravity-gemini-3-pro": {
-                id: "antigravity-gemini-3-pro",
-                providerID: "google-antigravity",
-                name: "Gemini 3 Pro",
-                family: "gemini",
-                api: {
-                  id: "antigravity-gemini-3-pro",
-                  url: "https://generativelanguage.googleapis.com/v1beta",
-                  npm: "@ai-sdk/google",
-                },
-                status: "active",
-                headers: {},
-                options: {},
-                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-                limit: { context: 1048576, output: 65535 },
-                capabilities: {
-                  temperature: true,
-                  reasoning: true,
-                  attachment: true,
-                  toolcall: true,
-                  streaming: true,
-                  input: { text: true, audio: false, image: true, video: false, pdf: true },
-                  output: { text: true, audio: false, image: false, video: false, pdf: false },
-                  interleaved: false,
-                },
-                release_date: "2025-06-01",
-                variants: {
-                  low: { name: "Low Thinking", options: { thinkingLevel: "low" } },
-                  high: { name: "High Thinking", options: { thinkingLevel: "high" } },
-                },
-              },
-              "antigravity-gemini-3-flash": {
-                id: "antigravity-gemini-3-flash",
-                providerID: "google-antigravity",
-                name: "Gemini 3 Flash",
-                family: "gemini",
-                api: {
-                  id: "antigravity-gemini-3-flash",
-                  url: "https://generativelanguage.googleapis.com/v1beta",
-                  npm: "@ai-sdk/google",
-                },
-                status: "active",
-                headers: {},
-                options: {},
-                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-                limit: { context: 1048576, output: 65536 },
-                capabilities: {
-                  temperature: true,
-                  reasoning: true,
-                  attachment: true,
-                  toolcall: true,
-                  streaming: true,
-                  input: { text: true, audio: false, image: true, video: false, pdf: true },
-                  output: { text: true, audio: false, image: false, video: false, pdf: false },
-                  interleaved: false,
-                },
-                release_date: "2025-06-01",
-                variants: {
-                  minimal: { name: "Minimal Thinking", options: { thinkingLevel: "minimal" } },
-                  low: { name: "Low Thinking", options: { thinkingLevel: "low" } },
-                  medium: { name: "Medium Thinking", options: { thinkingLevel: "medium" } },
-                  high: { name: "High Thinking", options: { thinkingLevel: "high" } },
-                },
-              },
-            }
-
-            // Add models to google-antigravity provider
-            for (const [modelID, model] of Object.entries(antigravityModels)) {
-              const existing = providers["google-antigravity"].models[modelID]
-              if (!existing) {
-                providers["google-antigravity"].models[modelID] = model
-                continue
-              }
-
-              // Config often provides partial overrides (e.g., options) for these models.
-              // Ensure canonical API wiring from the plugin model definition always wins.
-              const merged = mergeDeep(model, existing) as Model
-              merged.id = modelID
-              merged.providerID = "google-antigravity"
-              merged.api = {
-                ...merged.api,
-                id: model.api.id,
-                npm: model.api.npm,
-                url: model.api.url,
-              }
-              merged.options = mergeDeep(model.options ?? {}, existing.options ?? {})
-              merged.variants = mergeDeep(model.variants ?? {}, existing.variants ?? {})
-
-              providers["google-antigravity"].models[modelID] = merged
-            }
-
-            log.info("added antigravity models to google-antigravity provider", {
-              count: Object.keys(antigravityModels).length,
-              models: Object.keys(antigravityModels).join(", "),
-            })
-          }
-        }
       }
     }
 
@@ -1138,6 +892,15 @@ export namespace Provider {
 
       for (const [modelID, model] of Object.entries(provider.models)) {
         model.api.id = model.api.id ?? model.id ?? modelID
+        if (RUNTIME_DISABLED_MODEL_NPMS.has(model.api.npm)) {
+          log.debug("model filtered", {
+            providerID,
+            modelID,
+            reason: `${model.api.npm} disabled for runtime`,
+          })
+          delete provider.models[modelID]
+          continue
+        }
         if (modelID === "gpt-5-chat-latest" || (providerID === "openrouter" && modelID === "openai/gpt-5-chat")) {
           log.debug("model filtered", { providerID, modelID, reason: "gpt-5-chat exclusion" })
           delete provider.models[modelID]
@@ -1259,6 +1022,10 @@ export namespace Provider {
       const existing = s.sdk.get(key)
       if (existing) return existing
 
+      if (RUNTIME_DISABLED_MODEL_NPMS.has(model.api.npm)) {
+        throw new Error(`${model.api.npm} is disabled for Zee LLM runtime`)
+      }
+
       const customFetch = options["fetch"]
 
       options["fetch"] = async (input: any, init?: BunFetchRequestInit) => {
@@ -1342,26 +1109,9 @@ export namespace Provider {
     return state().then((s) => s.providers[providerID])
   }
 
-  /**
-   * Normalize model IDs for provider-side aliases/renames.
-   * Keep this narrow and conservative to avoid changing behavior for other providers.
-   */
   function normalizeRequestedModelID(providerID: string, modelID: string): string {
-    if (providerID !== "google") return modelID
-
-    let normalized = modelID
-      .trim()
-      .replace(/^google\//, "")
-      .replace(/-+/g, "-")
-
-    // Some clients send Gemini 3 IDs using "3.0" while catalog keys use "3".
-    normalized = normalized.replace(/^gemini-3\.0(?=-)/, "gemini-3")
-
-    // Gemini 3 shorthand aliases should resolve to canonical preview IDs.
-    if (normalized === "gemini-3-pro") return "gemini-3-pro-preview"
-    if (normalized === "gemini-3-flash") return "gemini-3-flash-preview"
-
-    return normalized
+    void providerID
+    return modelID
   }
 
   export async function getModel(providerID: string, modelID: string) {

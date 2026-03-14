@@ -69,7 +69,8 @@ describe("providers registry", () => {
     it("should return stt providers", () => {
       const providers = getProvidersForService("stt");
       const ids = providers.map((p) => p.id);
-      expect(ids).toContain("google");
+      expect(ids).toContain("wisprflow");
+      expect(ids).not.toContain("google");
     });
 
     it("should return image providers", () => {
@@ -269,10 +270,15 @@ describe("providers registry", () => {
       expect(openai.services).toContain("image");
     });
 
-    it("google should support embedding and stt", () => {
+    it("google should support embedding only", () => {
       const google = PROVIDERS.google;
       expect(google.services).toContain("embedding");
-      expect(google.services).toContain("stt");
+      expect(google.services).not.toContain("stt");
+    });
+
+    it("wisprflow should support stt", () => {
+      const wisprflow = PROVIDERS.wisprflow;
+      expect(wisprflow.services).toContain("stt");
     });
 
     it("splitwise should support expenses", () => {

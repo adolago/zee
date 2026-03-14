@@ -2,7 +2,7 @@
   "$schema": "zee",
   "agent": {
     "zee": {
-      "model": "google/gemini-3.1-pro-preview-customtools",
+      "model": "anthropic/claude-opus-4-6",
       "options": {},
       "permission": {}
     }

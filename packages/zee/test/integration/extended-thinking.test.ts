@@ -5,7 +5,6 @@
  * - Claude Opus 4.5 (Anthropic)
  * - GPT-5.2 (OpenAI)
  * - Kimi K2 Thinking (Moonshot)
- * - Gemini 3 (Google)
  *
  * Verifies thinking budget configurations, interleaved reasoning,
  * and provider-specific parameter transforms.
@@ -119,77 +118,6 @@ describe("Anthropic Claude Extended Thinking", () => {
     expect(variants.max.thinking).toEqual({
       type: "enabled",
       budgetTokens: 64000,
-    })
-  })
-})
-
-describe("Google Gemini Extended Thinking", () => {
-  const sessionID = "test-session"
-
-  test("Gemini 2.5 models get thinkingConfig with budget", () => {
-    const model = createMockModel({
-      id: "google/gemini-2.5-pro",
-      providerID: "google",
-      api: {
-        id: "gemini-2.5-pro",
-        url: "https://generativelanguage.googleapis.com",
-        npm: "@ai-sdk/google",
-      },
-    })
-
-    const variants = ProviderTransform.variants(model)
-    expect(Object.keys(variants)).toContain("high")
-    expect(Object.keys(variants)).toContain("max")
-    expect(variants.high).toEqual({
-      thinkingConfig: {
-        includeThoughts: true,
-        thinkingBudget: 32000,
-      },
-    })
-  })
-
-  test("Gemini 3 models get thinkingLevel", () => {
-    const model = createMockModel({
-      id: "google/gemini-3-pro",
-      providerID: "google",
-      api: {
-        id: "gemini-3-pro",
-        url: "https://generativelanguage.googleapis.com",
-        npm: "@ai-sdk/google",
-      },
-    })
-
-    const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-    expect(result.thinkingConfig).toEqual({
-      includeThoughts: true,
-      thinkingLevel: "high",
-    })
-  })
-
-  test("Gemini models get low/high thinkingLevel variants", () => {
-    const model = createMockModel({
-      id: "google/gemini-2.0-pro",
-      providerID: "google",
-      api: {
-        id: "gemini-2.0-pro",
-        url: "https://generativelanguage.googleapis.com",
-        npm: "@ai-sdk/google",
-      },
-    })
-
-    const variants = ProviderTransform.variants(model)
-    expect(Object.keys(variants)).toEqual(["low", "high"])
-    expect(variants.low).toEqual({
-      thinkingConfig: {
-        includeThoughts: true,
-        thinkingLevel: "low",
-      },
-    })
-    expect(variants.high).toEqual({
-      thinkingConfig: {
-        includeThoughts: true,
-        thinkingLevel: "high",
-      },
     })
   })
 })
@@ -441,21 +369,21 @@ describe("Persona Thinking Configs", () => {
     })
   })
 
-  describe("Johny (Google Antigravity)", () => {
-    test("Google Antigravity provider gets thinkingConfig", () => {
+  describe("OpenRouter Gemini", () => {
+    test("Gemini 3 models get high reasoning by default", () => {
       const model = createMockModel({
-        id: "google-antigravity/antigravity-claude-opus-4-5-thinking",
-        providerID: "google-antigravity",
+        id: "openrouter/gemini-3-5-pro",
+        providerID: "openrouter",
         api: {
-          id: "antigravity-claude-opus-4-5-thinking",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
+          id: "gemini-3-5-pro",
+          url: "https://openrouter.ai/api/v1",
+          npm: "@openrouter/ai-sdk-provider",
         },
       })
 
       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-      expect(result.thinkingConfig).toEqual({
-        includeThoughts: true,
+      expect(result.reasoning).toEqual({
+        effort: "high",
       })
     })
   })

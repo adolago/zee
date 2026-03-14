@@ -256,13 +256,25 @@ test("minimax provider is limited to MiniMax-M2.5", async () => {
   })
 })
 
-test("google provider is limited to gemini 3, latest, and embeddings", async () => {
+test("google provider is removed from runtime provider list", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
+          provider: {
+            google: {
+              options: {
+                apiKey: "test-google-key",
+              },
+              models: {
+                "gemini-3-pro-preview": {
+                  name: "Gemini 3 Pro Preview",
+                },
+              },
+            },
+          },
         }),
       )
     },
@@ -270,35 +282,52 @@ test("google provider is limited to gemini 3, latest, and embeddings", async () 
   await Instance.provide({
     directory: tmp.path,
     init: async () => {
-      Env.set("GOOGLE_GENERATIVE_AI_API_KEY", "test-google-key")
+      Env.set("GOOGLE_API_KEY", "test-google-key")
     },
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["google"]).toBeDefined()
+      expect(providers["google"]).toBeUndefined()
+    },
+  })
+})
 
-      const models = Object.keys(providers["google"].models)
-      const isAllowedGoogleModel = (modelID: string) => {
-        const normalized = modelID
-          .trim()
-          .toLowerCase()
-          .replace(/^google\//, "")
-          .replace(/^models\//, "")
-        return (
-          /^gemini-(?:live-)?3(?:[.-]|$)/.test(normalized) ||
-          normalized.includes("-latest") ||
-          normalized.includes("embedding")
-        )
-      }
+test("custom providers using @ai-sdk/google are filtered from runtime", async () => {
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await Bun.write(
+        path.join(dir, "zee.jsonc"),
+        JSON.stringify({
+          $schema: "zee",
+          provider: {
+            "custom-google": {
+              npm: "@ai-sdk/google",
+              api: "https://generativelanguage.googleapis.com/v1beta",
+              env: ["GOOGLE_API_KEY"],
+              models: {
+                "gemini-3-pro-preview": {
+                  name: "Gemini 3 Pro Preview",
+                  tool_call: true,
+                  limit: {
+                    context: 1048576,
+                    output: 65536,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      )
+    },
+  })
 
-      expect(models.length).toBeGreaterThan(0)
-      for (const modelID of models) {
-        expect(isAllowedGoogleModel(modelID)).toBe(true)
-      }
-
-      expect(models.some((modelID) => modelID.startsWith("gemini-3"))).toBe(true)
-      expect(models.some((modelID) => modelID.includes("embedding"))).toBe(true)
-      expect(models).not.toContain("gemini-2.0-flash")
-      expect(models).not.toContain("gemini-1.5-pro")
+  await Instance.provide({
+    directory: tmp.path,
+    init: async () => {
+      Env.set("GOOGLE_API_KEY", "test-google-key")
+    },
+    fn: async () => {
+      const providers = await Provider.list()
+      expect(providers["custom-google"]).toBeUndefined()
     },
   })
 })
@@ -351,9 +380,8 @@ test("openai provider is limited to the approved GPT-5 catalog", async () => {
       const providers = await Provider.list()
       expect(providers["openai"]).toBeDefined()
       const models = Object.keys(providers["openai"].models)
-      const allowed = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-pro"])
+      const allowed = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"])
       expect(models).toContain("gpt-5.4")
-      expect(models).toContain("gpt-5.4-pro")
       for (const modelID of models) {
         expect(allowed.has(modelID)).toBe(true)
       }
@@ -539,29 +567,13 @@ test("getModel throws ModelNotFoundError for invalid provider", async () => {
   })
 })
 
-test("getModel normalizes google gemini aliases to canonical preview IDs", async () => {
+test("getModel reports google as unavailable after runtime removal", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
-          provider: {
-            google: {
-              options: {
-                apiKey: "test-google-key",
-              },
-              whitelist: ["gemini-3-pro-preview", "gemini-3-flash-preview"],
-              models: {
-                "gemini-3-pro-preview": {
-                  name: "Gemini 3 Pro Preview",
-                },
-                "gemini-3-flash-preview": {
-                  name: "Gemini 3 Flash Preview",
-                },
-              },
-            },
-          },
         }),
       )
     },
@@ -569,90 +581,7 @@ test("getModel normalizes google gemini aliases to canonical preview IDs", async
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const flashFrom30 = await Provider.getModel("google", "gemini-3.0-flash-preview")
-      expect(flashFrom30.id).toBe("gemini-3-flash-preview")
-
-      const flashFromBase = await Provider.getModel("google", "gemini-3-flash")
-      expect(flashFromBase.id).toBe("gemini-3-flash-preview")
-
-      const proFrom30 = await Provider.getModel("google", "gemini-3.0-pro-preview")
-      expect(proFrom30.id).toBe("gemini-3-pro-preview")
-    },
-  })
-})
-
-test("getModel prefers normalized google alias when both legacy and canonical IDs exist", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await Bun.write(
-        path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          provider: {
-            google: {
-              options: {
-                apiKey: "test-google-key",
-              },
-              models: {
-                "gemini-3.0-flash-preview": {
-                  name: "Legacy Gemini 3.0 Flash Preview",
-                },
-                "gemini-3-flash-preview": {
-                  name: "Canonical Gemini 3 Flash Preview",
-                },
-              },
-            },
-          },
-        }),
-      )
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const model = await Provider.getModel("google", "gemini-3.0-flash-preview")
-      expect(model.id).toBe("gemini-3-flash-preview")
-    },
-  })
-})
-
-test("getModel keeps helpful suggestions when google normalized model is missing", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await Bun.write(
-        path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          provider: {
-            google: {
-              options: {
-                apiKey: "test-google-key",
-              },
-              models: {
-                "gemini-3-pro-preview": {
-                  name: "Gemini 3 Pro Preview",
-                },
-                "gemini-3-flash-preview": {
-                  name: "Gemini 3 Flash Preview",
-                },
-              },
-            },
-          },
-        }),
-      )
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      try {
-        await Provider.getModel("google", "gemini-3.0-does-not-exist")
-        expect(true).toBe(false) // Should not reach here
-      } catch (e: any) {
-        expect(e.data.modelID).toBe("gemini-3.0-does-not-exist")
-        expect(e.data.suggestions).toBeDefined()
-        expect(e.data.suggestions.length).toBeGreaterThan(0)
-      }
+      await expect(Provider.getModel("google", "gemini-3-pro-preview")).rejects.toThrow()
     },
   })
 })

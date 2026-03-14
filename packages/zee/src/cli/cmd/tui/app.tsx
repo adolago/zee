@@ -54,6 +54,7 @@ import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { openExternalUrl } from "@/util/open-external-url"
 import { Terminal } from "./util/terminal"
 import { nextSessionMode, resolveEffectiveSessionMode } from "./util/session-mode"
+import { createHomeBenchmarkCommand } from "./routes/session/benchmark"
 
 import type { EventSource } from "./context/sdk"
 
@@ -173,6 +174,7 @@ function App() {
   const exit = useExit()
   const promptRef = usePromptRef()
   const vim = useVim()
+  const [homeBenchmarkRunning, setHomeBenchmarkRunning] = createSignal(false)
 
   // Wire up console copy-to-clipboard via opentui's onCopySelection callback
   renderer.console.onCopySelection = async (text: string) => {
@@ -354,6 +356,32 @@ function App() {
         dialog.clear()
       },
     },
+    createHomeBenchmarkCommand({
+      sessionID: () => (route.data.type === "session" ? route.data.sessionID : undefined),
+      cwd: () => process.cwd(),
+      agent: () => local.agent.current().name,
+      model: () => local.model.current(),
+      variant: () => local.model.variant.current(),
+      sdk: sdk.client,
+      eventSource: {
+        subscribe(handler) {
+          return sdk.event.listen((event) => {
+            const payload = event.details as { type?: string; properties?: unknown }
+            if (typeof payload?.type !== "string") return
+            handler({
+              type: payload.type,
+              properties: payload.properties,
+            })
+          })
+        },
+      },
+      toast,
+      isRunning: homeBenchmarkRunning,
+      setRunning: setHomeBenchmarkRunning,
+      onSessionCreated(sessionID) {
+        route.navigate({ type: "session", sessionID })
+      },
+    }),
     {
       title: "Switch model",
       value: "model.list",
