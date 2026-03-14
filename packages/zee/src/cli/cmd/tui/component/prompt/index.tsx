@@ -747,6 +747,29 @@ export function Prompt(props: PromptProps) {
   let promptPartTypeId = 0
   let grammarErrorTypeId = 0
 
+  // Convert visual-cell offsets to JS string indices so wide glyphs and CJK text
+  // do not corrupt extmark-based prompt part replacement.
+  function toIndex(text: string, col: number) {
+    if (col <= 0) return 0
+    let width = 0
+    let idx = 0
+
+    for (const ch of text) {
+      if (width >= col) return idx
+      width += Bun.stringWidth(ch)
+      idx += ch.length
+      if (width >= col) return idx
+    }
+
+    return text.length
+  }
+
+  function sliceByVisualOffset(text: string, start: number, end: number) {
+    const from = toIndex(text, start)
+    const to = toIndex(text, end)
+    return text.slice(from, to)
+  }
+
   // Real-time grammar checking - enabled by default
   const [realtimeGrammarEnabled, setRealtimeGrammarEnabled] = createSignal(kv.get("realtime_grammar_enabled", true))
   const grammarChecker = createGrammarChecker({
@@ -1221,7 +1244,7 @@ export function Prompt(props: PromptProps) {
       const match = allExtmarks.find((extmark) => {
         if (usedExtmarkIds.has(extmark.id)) return false
         if (extmark.start !== placeholder.start || extmark.end !== placeholder.end) return false
-        return currentInput.slice(extmark.start, extmark.end) === placeholder.value
+        return sliceByVisualOffset(currentInput, extmark.start, extmark.end) === placeholder.value
       })
       if (!match) continue
       usedExtmarkIds.add(match.id)
@@ -1657,7 +1680,7 @@ export function Prompt(props: PromptProps) {
   function pasteText(text: string, virtualText: string) {
     const currentOffset = input.visualCursor.offset
     const extmarkStart = currentOffset
-    const extmarkEnd = extmarkStart + virtualText.length
+    const extmarkEnd = extmarkStart + Bun.stringWidth(virtualText)
 
     input.insertText(virtualText + " ")
 
@@ -1693,7 +1716,7 @@ export function Prompt(props: PromptProps) {
     const extmarkStart = currentOffset
     const count = store.prompt.parts.filter((x) => x.type === "file").length
     const virtualText = `[Image ${count + 1}]`
-    const extmarkEnd = extmarkStart + virtualText.length
+    const extmarkEnd = extmarkStart + Bun.stringWidth(virtualText)
     const textToInsert = virtualText + " "
 
     input.insertText(textToInsert)

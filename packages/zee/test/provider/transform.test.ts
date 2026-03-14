@@ -282,9 +282,10 @@ describe("ProviderTransform.maxOutputTokens", () => {
 describe("ProviderTransform.schema - gemini array items", () => {
   test("adds missing items for array properties", () => {
     const geminiModel = {
-      providerID: "google",
+      providerID: "openrouter",
       api: {
         id: "gemini-3-pro",
+        npm: "@openrouter/ai-sdk-provider",
       },
     } as any
 
@@ -1063,6 +1064,82 @@ describe("ProviderTransform.message - strip openai metadata when store=false", (
   })
 })
 
+const customAnthropicModel = {
+  id: "myrelay/claude-sonnet-4-5",
+  providerID: "myrelay",
+  api: {
+    id: "claude-sonnet-4-5-20250929",
+    url: "https://my-relay.example.com",
+    npm: "@ai-sdk/anthropic",
+  },
+  name: "Claude via relay",
+  capabilities: {
+    temperature: true,
+    reasoning: false,
+    attachment: true,
+    toolcall: true,
+    input: { text: true, audio: false, image: true, video: false, pdf: true },
+    output: { text: true, audio: false, image: false, video: false, pdf: false },
+    interleaved: false,
+  },
+  cost: { input: 0.003, output: 0.015, cache: { read: 0.0003, write: 0.00375 } },
+  limit: { context: 200000, output: 8192 },
+  status: "active",
+  options: {},
+  headers: {},
+} as any
+
+describe("ProviderTransform.message - anthropic relay compatibility", () => {
+  test("replaces empty string tool-result content with a placeholder", () => {
+    const msgs = [
+      { role: "user", content: "Run the bash tool" },
+      {
+        role: "assistant",
+        content: [{ type: "tool-call", toolCallId: "call_1", toolName: "bash", input: { command: "echo hi" } }],
+      },
+      {
+        role: "tool",
+        content: [{ type: "tool-result", toolCallId: "call_1", toolName: "bash", content: "" }],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, customAnthropicModel, {})
+    const toolMsg = result.find((msg: any) => msg.role === "tool") as any
+    const toolResult = (toolMsg.content as any[]).find((part: any) => part.type === "tool-result")
+    expect(toolResult.content).toBe("(empty)")
+  })
+
+  test("replaces empty array tool-result content with a placeholder part", () => {
+    const msgs = [
+      { role: "user", content: "Run the read tool" },
+      {
+        role: "assistant",
+        content: [{ type: "tool-call", toolCallId: "call_2", toolName: "read", input: {} }],
+      },
+      {
+        role: "tool",
+        content: [{ type: "tool-result", toolCallId: "call_2", toolName: "read", content: [] }],
+      },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, customAnthropicModel, {})
+    const toolMsg = result.find((msg: any) => msg.role === "tool") as any
+    const toolResult = (toolMsg.content as any[]).find((part: any) => part.type === "tool-result")
+    expect(toolResult.content).toEqual([{ type: "text", text: "(empty)" }])
+  })
+
+  test("applies caching at message level for custom anthropic providers", () => {
+    const msgs = [
+      { role: "system", content: "You are a helpful assistant." },
+      { role: "user", content: "Hello" },
+    ] as any[]
+
+    const result = ProviderTransform.message(msgs, customAnthropicModel, {})
+    const systemMsg = result.find((msg: any) => msg.role === "system")
+    expect(systemMsg?.providerOptions?.anthropic?.cacheControl).toBeDefined()
+  })
+})
+
 describe("ProviderTransform.message - providerOptions key remapping", () => {
   const createModel = (providerID: string, npm: string) =>
     ({
@@ -1454,81 +1531,6 @@ describe("ProviderTransform.variants", () => {
     })
   })
 
-  describe("@ai-sdk/google", () => {
-    test("gemini-2.5 returns high and max with thinkingConfig and thinkingBudget", () => {
-      const model = createMockModel({
-        id: "google/gemini-2.5-pro",
-        providerID: "google",
-        api: {
-          id: "gemini-2.5-pro",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
-        },
-      })
-      const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["low", "medium", "high", "max"])
-      expect(result.high.thinkingConfig.thinkingBudget).toBe(32000)
-      expect(result.max).toEqual({
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingBudget: 64000,
-        },
-      })
-    })
-
-    test("other gemini models return low and high with thinkingLevel", () => {
-      const model = createMockModel({
-        id: "google/gemini-2.0-pro",
-        providerID: "google",
-        api: {
-          id: "gemini-2.0-pro",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
-        },
-      })
-      const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["low", "high"])
-      expect(result.low).toEqual({
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingLevel: "low",
-        },
-      })
-      expect(result.high).toEqual({
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingLevel: "high",
-        },
-      })
-    })
-
-    test("gemini-3-flash models return minimal/low/medium/high thinking levels", () => {
-      const model = createMockModel({
-        id: "google/gemini-3-flash-preview",
-        providerID: "google",
-        api: {
-          id: "gemini-3-flash-preview",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
-        },
-      })
-      const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["minimal", "low", "medium", "high"])
-      expect(result.minimal).toEqual({
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingLevel: "minimal",
-        },
-      })
-      expect(result.medium).toEqual({
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingLevel: "medium",
-        },
-      })
-    })
-  })
-
   describe("@ai-sdk/groq", () => {
     test("gpt-oss models use low/medium/high reasoningEffort", () => {
       const model = createMockModel({
@@ -1608,73 +1610,20 @@ describe("ProviderTransform.options - persona thinking configs", () => {
     })
   })
 
-  describe("Johny (Claude Opus 4.5 via Antigravity/Google)", () => {
-    test("should enable thinkingConfig for Google Antigravity provider models", () => {
+  describe("OpenRouter Gemini fallbacks", () => {
+    test("gemini-3 models get high reasoning by default", () => {
       const model = {
-        id: "google-antigravity/antigravity-claude-opus-4-5-thinking",
-        providerID: "google-antigravity",
+        id: "openrouter/gemini-3-5-pro",
+        providerID: "openrouter",
         api: {
-          id: "antigravity-claude-opus-4-5-thinking",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
+          id: "gemini-3-5-pro",
+          url: "https://openrouter.ai/api/v1",
+          npm: "@openrouter/ai-sdk-provider",
         },
       } as any
       const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-      expect(result.thinkingConfig).toEqual({
-        includeThoughts: true,
-      })
-    })
-
-    test("should set thinkingLevel high for Gemini 3 models", () => {
-      const model = {
-        id: "google/gemini-3-pro",
-        providerID: "google",
-        api: {
-          id: "gemini-3-pro",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
-        },
-      } as any
-      const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-      expect(result.thinkingConfig).toEqual({
-        includeThoughts: true,
-        thinkingLevel: "high",
-      })
-    })
-  })
-
-  describe("Fallback models (Gemini 3)", () => {
-    test("gemini-3-flash-preview gets thinkingLevel high", () => {
-      const model = {
-        id: "google/gemini-3-flash-preview",
-        providerID: "google",
-        api: {
-          id: "gemini-3-flash-preview",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
-        },
-      } as any
-      const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-      expect(result.thinkingConfig).toEqual({
-        includeThoughts: true,
-        thinkingLevel: "high",
-      })
-    })
-
-    test("gemini-3-pro-preview gets thinkingLevel high", () => {
-      const model = {
-        id: "google/gemini-3-pro-preview",
-        providerID: "google",
-        api: {
-          id: "gemini-3-pro-preview",
-          url: "https://generativelanguage.googleapis.com",
-          npm: "@ai-sdk/google",
-        },
-      } as any
-      const result = ProviderTransform.options({ model, sessionID, providerOptions: {} })
-      expect(result.thinkingConfig).toEqual({
-        includeThoughts: true,
-        thinkingLevel: "high",
+      expect(result.reasoning).toEqual({
+        effort: "high",
       })
     })
   })

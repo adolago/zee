@@ -77,7 +77,7 @@ describe("SessionPrompt force-kill timer", () => {
           const firstRun = SessionPrompt.prompt({
             sessionID: session.id,
             agent: "zee",
-            model: { providerID: "openai", modelID: "gpt-5.2" },
+            model: { providerID: "openai", modelID: "gpt-5.4" },
             parts: [{ type: "text", text: "first run" }],
           }).catch((error) => error)
           await waitFor(() => SessionStatus.get(session.id).type === "busy", 1500, "first run to be busy")
@@ -88,7 +88,7 @@ describe("SessionPrompt force-kill timer", () => {
           const secondRun = SessionPrompt.prompt({
             sessionID: session.id,
             agent: "zee",
-            model: { providerID: "openai", modelID: "gpt-5.2" },
+            model: { providerID: "openai", modelID: "gpt-5.4" },
             parts: [{ type: "text", text: "second run" }],
           }).catch((error) => error)
           await waitFor(() => SessionStatus.get(session.id).type === "busy", 1500, "second run to be busy")

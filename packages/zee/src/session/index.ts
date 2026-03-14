@@ -277,6 +277,7 @@ export namespace Session {
   export const touch = fn(Identifier.schema("session"), async (sessionID) => {
     await update(sessionID, (draft) => {
       draft.time.updated = Date.now()
+      delete draft.time.archived
     })
   })
 

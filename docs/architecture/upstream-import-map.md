@@ -110,6 +110,15 @@ Ranking policy:
 - `openclaw-delta-map` now carries `0` net-new lane TODO rows after the 2026-03-01 closure pass; sentinel reports net-new actionable deltas on future upstream movement.
 - Pi-mono pin discoverability (rank-4 prior cycle) remains done via `docs/architecture/upstream-pins.json` and compare snapshot fallback logic.
 
+### OpenCode mergeable catch-up (2026-03-14)
+
+- Imported the current low-risk kernel/TUI/config/session parity slices from mergeable upstream OpenCode PRs without widening Zee's provider surface area.
+- Landed parity imports:
+  - TUI/input/rendering: `#17459`, `#17460`, `#17446`, `#17403`, `#17390`, `#17034`, `#17170`
+  - instruction/config/session/runtime: `#17438`, `#17409`, `#16031`, `#16791`, `#12856`, `#5092`, `#5134`, `#4917`
+  - provider correctness only, no provider breadth expansion: `#17404`, `#17363`, `#17401`
+- Deferred provider-breadth work remains in Lane 07; this wave intentionally did not restore or expand additional provider families beyond Zee's current policy.
+
 ## Immediate Execution Batches
 
 ### Batch A: OpenCode migration-critical parity (ranks 1-4)

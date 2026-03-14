@@ -480,7 +480,10 @@ export namespace Server {
               Flag.ZEE_SERVER_MAX_INSTANCES ??
               globalConfig?.server?.maxInstances ??
               (!_isLoopbackBind ? DEFAULT_MAX_INSTANCES_NON_LOOPBACK : undefined)
-            if (maxInstances && !Instance.isCached(real) && Instance.cacheSize() >= maxInstances) {
+            const baselineDirectory = Filesystem.sanitizePath(process.cwd())
+            const overrideInstanceCount =
+              Instance.cacheSize() - (Instance.isCached(baselineDirectory) ? 1 : 0)
+            if (maxInstances && !Instance.isCached(real) && overrideInstanceCount >= maxInstances) {
               return c.json(
                 {
                   error:
@@ -488,7 +491,7 @@ export namespace Server {
                     "Dispose unused instances (POST /instance/dispose?directory=...) or increase server.maxInstances / ZEE_SERVER_MAX_INSTANCES.",
                   directory: real,
                   maxInstances,
-                  currentInstances: Instance.cacheSize(),
+                  currentInstances: overrideInstanceCount,
                 },
                 429,
               )

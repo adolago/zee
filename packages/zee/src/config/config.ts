@@ -20,6 +20,7 @@ import { Installation } from "@/installation"
 import { ConfigMarkdown } from "./markdown"
 import { constants, existsSync } from "fs"
 import { Bus } from "@/bus"
+import type { ThemeJson } from "../cli/cmd/tui/context/theme"
 
 export namespace Config {
   const log = Log.create({ service: "config" })
@@ -50,6 +51,38 @@ export namespace Config {
       merged.instructions = Array.from(new Set([...target.instructions, ...source.instructions]))
     }
     return merged
+  }
+
+  function formatJsoncErrors(text: string, errors: JsoncParseError[]) {
+    const lines = text.split("\n")
+    const errorDetails = errors
+      .map((e) => {
+        const beforeOffset = text.substring(0, e.offset).split("\n")
+        const line = beforeOffset.length
+        const column = beforeOffset[beforeOffset.length - 1].length + 1
+        const problemLine = lines[line - 1]
+        const error = `${printParseErrorCode(e.error)} at line ${line}, column ${column}`
+
+        if (!problemLine) return error
+        return `${error}\n   Line ${line}: ${problemLine}\n${"".padStart(column + 9)}^`
+      })
+      .join("\n")
+
+    return `\n--- JSONC Input ---\n${text}\n--- Errors ---\n${errorDetails}\n--- End ---`
+  }
+
+  function getPackageName(plugin: string) {
+    const lastAt = plugin.lastIndexOf("@")
+    const specifier = lastAt > 0 ? plugin.substring(0, lastAt) : plugin
+
+    if (specifier.startsWith("@")) {
+      const parts = specifier.split("/")
+      return parts.slice(0, 2).join("/")
+    }
+
+    const slashIndex = specifier.indexOf("/")
+    if (slashIndex > 0) return specifier.substring(0, slashIndex)
+    return specifier
   }
 
   export const state = Instance.state(async () => {
@@ -462,11 +495,7 @@ export namespace Config {
     if (plugin.startsWith("file://")) {
       return path.parse(new URL(plugin).pathname).name
     }
-    const lastAt = plugin.lastIndexOf("@")
-    if (lastAt > 0) {
-      return plugin.substring(0, lastAt)
-    }
-    return plugin
+    return getPackageName(plugin)
   }
 
   /**
@@ -1522,7 +1551,7 @@ export namespace Config {
         })
         .optional(),
       plugin: z.string().array().optional(),
-      snapshot: z.boolean().optional(),
+      snapshot: z.union([z.boolean(), z.number().int().nonnegative()]).optional(),
       share: z
         .enum(["manual", "auto", "disabled"])
         .optional()
@@ -1902,24 +1931,9 @@ export namespace Config {
     const errors: JsoncParseError[] = []
     const data = parseJsonc(text, errors, { allowTrailingComma: true })
     if (errors.length) {
-      const lines = text.split("\n")
-      const errorDetails = errors
-        .map((e) => {
-          const beforeOffset = text.substring(0, e.offset).split("\n")
-          const line = beforeOffset.length
-          const column = beforeOffset[beforeOffset.length - 1].length + 1
-          const problemLine = lines[line - 1]
-
-          const error = `${printParseErrorCode(e.error)} at line ${line}, column ${column}`
-          if (!problemLine) return error
-
-          return `${error}\n   Line ${line}: ${problemLine}\n${"".padStart(column + 9)}^`
-        })
-        .join("\n")
-
       throw new JsonError({
         path: configFilepath,
-        message: `\n--- JSONC Input ---\n${text}\n--- Errors ---\n${errorDetails}\n--- End ---`,
+        message: formatJsoncErrors(text, errors),
       })
     }
 
@@ -1953,6 +1967,26 @@ export namespace Config {
       issues: parsed.error.issues,
     })
   }
+
+  export async function loadThemeFile(filepath: string): Promise<ThemeJson> {
+    const text = await Bun.file(filepath)
+      .text()
+      .catch((err) => {
+        throw new JsonError({ path: filepath }, { cause: err })
+      })
+
+    const errors: JsoncParseError[] = []
+    const data = parseJsonc(text, errors, { allowTrailingComma: true })
+    if (errors.length) {
+      throw new JsonError({
+        path: filepath,
+        message: formatJsoncErrors(text, errors),
+      })
+    }
+
+    return data as ThemeJson
+  }
+
   export const JsonError = NamedError.create(
     "ConfigJsonError",
     z.object({

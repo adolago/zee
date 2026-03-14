@@ -3,6 +3,8 @@ import { lstat, realpath } from "fs/promises"
 import { dirname, isAbsolute, join, relative, sep, win32 } from "path"
 
 export namespace Filesystem {
+  const DEFAULT_UPWARD_SEARCH_DEPTH = 10
+
   const isContainedByRelative = (parent: string, child: string): boolean => {
     const rel = relative(parent, child)
     if (!rel) return true
@@ -145,12 +147,12 @@ export namespace Filesystem {
     return isContainedByRelative(parent, child)
   }
 
-  export async function findUp(target: string, start: string, stop?: string) {
+  export async function findUp(target: string, start: string, stop?: string, maxDepth = DEFAULT_UPWARD_SEARCH_DEPTH) {
     let current = sanitizePath(start)
     const sanitizedStop = stop ? sanitizePath(stop) : undefined
     target = sanitizePath(target)
     const result = []
-    while (true) {
+    for (let depth = 0; depth < maxDepth; depth++) {
       const search = join(current, target)
       if (await exists(search)) result.push(search)
       if (sanitizedStop === current) break
@@ -161,11 +163,16 @@ export namespace Filesystem {
     return result
   }
 
-  export async function findFirstUp(target: string, start: string, stop?: string): Promise<string | undefined> {
+  export async function findFirstUp(
+    target: string,
+    start: string,
+    stop?: string,
+    maxDepth = DEFAULT_UPWARD_SEARCH_DEPTH,
+  ): Promise<string | undefined> {
     let current = sanitizePath(start)
     const sanitizedStop = stop ? sanitizePath(stop) : undefined
     target = sanitizePath(target)
-    while (true) {
+    for (let depth = 0; depth < maxDepth; depth++) {
       const search = join(current, target)
       if (await exists(search)) return search
       if (sanitizedStop === current) break
@@ -176,12 +183,12 @@ export namespace Filesystem {
     return undefined
   }
 
-  export async function* up(options: { targets: string[]; start: string; stop?: string }) {
-    const { targets, start, stop } = options
+  export async function* up(options: { targets: string[]; start: string; stop?: string; maxDepth?: number }) {
+    const { targets, start, stop, maxDepth = DEFAULT_UPWARD_SEARCH_DEPTH } = options
     let current = sanitizePath(start)
     const sanitizedStop = stop ? sanitizePath(stop) : undefined
     const sanitizedTargets = targets.map((target) => sanitizePath(target))
-    while (true) {
+    for (let depth = 0; depth < maxDepth; depth++) {
       for (const target of sanitizedTargets) {
         const search = join(current, target)
         if (await exists(search)) yield search
@@ -193,12 +200,17 @@ export namespace Filesystem {
     }
   }
 
-  export async function globUp(pattern: string, start: string, stop?: string) {
+  export async function globUp(
+    pattern: string,
+    start: string,
+    stop?: string,
+    maxDepth = DEFAULT_UPWARD_SEARCH_DEPTH,
+  ) {
     let current = sanitizePath(start)
     const sanitizedStop = stop ? sanitizePath(stop) : undefined
     pattern = sanitizePath(pattern)
     const result = []
-    while (true) {
+    for (let depth = 0; depth < maxDepth; depth++) {
       try {
         const glob = new Bun.Glob(pattern)
         for await (const match of glob.scan({

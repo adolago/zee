@@ -11,7 +11,12 @@ import { Scheduler } from "../scheduler"
 export namespace Snapshot {
   const log = Log.create({ service: "snapshot" })
   const hour = 60 * 60 * 1000
-  const prune = "7.days"
+
+  export function retentionDays(value: boolean | number | undefined) {
+    if (value === false || value === 0) return
+    if (value === undefined || value === true) return 7
+    return value
+  }
 
   export function init() {
     Scheduler.register({
@@ -25,13 +30,15 @@ export namespace Snapshot {
   export async function cleanup() {
     if (Instance.project.vcs !== "git") return
     const cfg = await Config.get()
-    if (cfg.snapshot === false) return
+    const retention = retentionDays(cfg.snapshot)
+    if (!retention) return
     const git = gitdir()
     const exists = await fs
       .stat(git)
       .then(() => true)
       .catch(() => false)
     if (!exists) return
+    const prune = `${retention}.days`
     const result = await $`git --git-dir ${git} --work-tree ${Instance.worktree} gc --prune=${prune}`
       .quiet()
       .cwd(Instance.directory)
@@ -50,7 +57,7 @@ export namespace Snapshot {
   export async function track() {
     if (Instance.project.vcs !== "git") return
     const cfg = await Config.get()
-    if (cfg.snapshot === false) return
+    if (!retentionDays(cfg.snapshot)) return
     const git = gitdir()
     if (await fs.mkdir(git, { recursive: true })) {
       await $`git init`

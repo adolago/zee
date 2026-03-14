@@ -1,6 +1,10 @@
 import { isDeepEqual } from "remeda"
 import type { ParsedKey } from "@opentui/core"
 
+export function isReturn(name: string | undefined) {
+  return name === "return" || name === "kpenter"
+}
+
 export namespace Keybind {
   /**
    * Keybind info derived from OpenTUI's ParsedKey with our custom `leader` field.

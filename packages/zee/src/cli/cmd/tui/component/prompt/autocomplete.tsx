@@ -9,6 +9,7 @@ import { useTheme, selectedForeground } from "@tui/context/theme"
 import { SplitBorder } from "@tui/component/border"
 import { useCommandDialog } from "@tui/component/dialog-command"
 import { useTerminalDimensions } from "@opentui/solid"
+import { isReturn } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 import type { PromptInfo } from "./history"
 import { useFrecency } from "./frecency"
@@ -551,7 +552,7 @@ export function Autocomplete(props: {
             e.preventDefault()
             return
           }
-          if (name === "return") {
+          if (isReturn(name)) {
             select()
             e.preventDefault()
             return

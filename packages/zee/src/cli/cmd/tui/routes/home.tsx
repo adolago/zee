@@ -77,6 +77,16 @@ export function Home() {
     }
   })
   const directory = useDirectory()
+  const dirParts = createMemo(() => {
+    const dir = directory()
+    const [path, ...rest] = dir.split(":")
+    const parts = path.split("/")
+    return {
+      parent: parts.slice(0, -1).join("/"),
+      repo: parts.at(-1) ?? "",
+      branch: rest.length > 0 ? rest.join(":") : null,
+    }
+  })
 
   return (
     <>
@@ -104,7 +114,13 @@ export function Home() {
         flexShrink={HeaderStyles.flexShrink}
         gap={0}
       >
-        <text fg={theme.textMuted}>{directory()}</text>
+        <text>
+          <span style={{ fg: theme.textMuted }}>{dirParts().parent ? `${dirParts().parent}/` : ""}</span>
+          <span style={{ fg: theme.text }}>
+            {dirParts().repo}
+            {dirParts().branch ? `:${dirParts().branch}` : ""}
+          </span>
+        </text>
         <Show when={mcp()}>
           <text fg={theme.border}>{StatusBarStyle.separator}</text>
           <box gap={0} flexDirection="row" flexShrink={0}>

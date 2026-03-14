@@ -25,6 +25,23 @@ type CacheEntry = {
 const cache = new Map<string, CacheEntry>()
 let useSeq = 0
 let evictionInFlight: Promise<number> | null = null
+const BOOTSTRAP_CONCURRENCY = 3
+let bootstrapActive = 0
+const bootstrapQueue: Array<() => void> = []
+
+async function withBootstrapLimit<T>(fn: () => Promise<T>) {
+  if (bootstrapActive >= BOOTSTRAP_CONCURRENCY) {
+    await new Promise<void>((resolve) => bootstrapQueue.push(resolve))
+  }
+
+  bootstrapActive++
+  try {
+    return await fn()
+  } finally {
+    bootstrapActive--
+    bootstrapQueue.shift()?.()
+  }
+}
 
 function touch(entry: CacheEntry) {
   entry.lastUsedAt = Date.now()
@@ -47,18 +64,20 @@ export const Instance = {
     let entry = cache.get(directory)
     if (!entry) {
       Log.Default.info("creating instance", { directory })
-      const promise = iife(async () => {
-        const { project, sandbox } = await Project.fromDirectory(directory)
-        const ctx = {
-          directory,
-          worktree: sandbox,
-          project,
-        }
-        await context.provide(ctx, async () => {
-          await input.init?.()
-        })
-        return ctx
-      }).catch((err) => {
+      const promise = withBootstrapLimit(async () =>
+        iife(async () => {
+          const { project, sandbox } = await Project.fromDirectory(directory)
+          const ctx = {
+            directory,
+            worktree: sandbox,
+            project,
+          }
+          await context.provide(ctx, async () => {
+            await input.init?.()
+          })
+          return ctx
+        }),
+      ).catch((err) => {
         // If initialization fails, don't poison the cache with a rejected promise.
         cache.delete(directory)
         throw err

@@ -363,6 +363,109 @@ describe("session.message-v2.toModelMessage", () => {
     ])
   })
 
+  test("keeps PDF tool attachments out of tool results by emitting a user attachment message", async () => {
+    const userID = "m-user-pdf"
+    const assistantID = "m-assistant-pdf"
+
+    const input: MessageV2.WithParts[] = [
+      {
+        info: userInfo(userID),
+        parts: [{ ...basePart(userID, "u1"), type: "text", text: "run tool" }] as MessageV2.Part[],
+      },
+      {
+        info: assistantInfo(assistantID, userID, undefined, {
+          providerID: "bedrock",
+          modelID: "anthropic.claude-3-7-sonnet",
+        }),
+        parts: [
+          { ...basePart(assistantID, "a1"), type: "text", text: "done" },
+          {
+            ...basePart(assistantID, "a2"),
+            type: "tool",
+            callID: "call-pdf",
+            tool: "read",
+            state: {
+              status: "completed",
+              input: { file: "doc.pdf" },
+              output: "ok",
+              title: "Read",
+              metadata: {},
+              time: { start: 0, end: 1 },
+              attachments: [
+                {
+                  ...basePart(assistantID, "file-pdf"),
+                  type: "file",
+                  mime: "application/pdf",
+                  filename: "attachment.pdf",
+                  url: "https://example.com/attachment.pdf",
+                },
+              ],
+            },
+            metadata: {},
+          },
+        ] as MessageV2.Part[],
+      },
+    ]
+
+    const bedrockModel = {
+      ...model,
+      providerID: "bedrock",
+      api: {
+        ...model.api,
+        id: "anthropic.claude-3-7-sonnet",
+        npm: "@ai-sdk/amazon-bedrock",
+      },
+      capabilities: {
+        ...model.capabilities,
+        attachment: true,
+        input: { ...model.capabilities.input, pdf: true },
+      },
+    } as Provider.Model
+
+    expect(await MessageV2.toModelMessage(input, bedrockModel)).toStrictEqual([
+      {
+        role: "user",
+        content: [{ type: "text", text: "run tool" }],
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "The tool read returned the following attachments:" },
+          {
+            type: "file",
+            mediaType: "application/pdf",
+            filename: "attachment.pdf",
+            data: "https://example.com/attachment.pdf",
+          },
+        ],
+      },
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "done" },
+          {
+            type: "tool-call",
+            toolCallId: "call-pdf",
+            toolName: "read",
+            input: { file: "doc.pdf" },
+            providerExecuted: undefined,
+          },
+        ],
+      },
+      {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: "call-pdf",
+            toolName: "read",
+            output: { type: "text", value: "ok" },
+          },
+        ],
+      },
+    ])
+  })
+
   test("omits provider metadata when assistant model differs", async () => {
     const userID = "m-user"
     const assistantID = "m-assistant"

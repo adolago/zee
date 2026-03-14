@@ -937,3 +937,18 @@ test("diffFull with whitespace changes", async () => {
     },
   })
 })
+
+test("snapshot config with boolean true uses default 7-day retention", () => {
+  expect(Snapshot.retentionDays(true)).toBe(7)
+  expect(Snapshot.retentionDays(undefined)).toBe(7)
+})
+
+test("snapshot config with integer values uses explicit retention days", () => {
+  expect(Snapshot.retentionDays(3)).toBe(3)
+  expect(Snapshot.retentionDays(30)).toBe(30)
+})
+
+test("snapshot config disables tracking when set to false or zero", () => {
+  expect(Snapshot.retentionDays(false)).toBeUndefined()
+  expect(Snapshot.retentionDays(0)).toBeUndefined()
+})

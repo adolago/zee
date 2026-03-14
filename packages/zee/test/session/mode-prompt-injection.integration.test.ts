@@ -71,7 +71,7 @@ async function runPromptWithMode(mode: "plan" | "accept" | "bypass", sessionMode
       await SessionPrompt.prompt({
         sessionID: session.id,
         agent: "zee",
-        model: { providerID: "openai", modelID: "gpt-5.2" },
+        model: { providerID: "openai", modelID: "gpt-5.4" },
         mode,
         // Deliberately contradictory legacy flags to ensure explicit mode wins.
         tools: { edit: false, write: false, notebook_edit: false },

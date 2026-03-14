@@ -31,6 +31,83 @@ export namespace LLM {
   const log = Log.create({ service: "llm" })
 
   export const OUTPUT_TOKEN_MAX = Flag.ZEE_OUTPUT_TOKEN_MAX || 32_000
+  const XAI_SCHEMA_MAX = 20_000
+  const XAI_TOOL_MAX = 40
+
+  function isXaiModel(model: Provider.Model) {
+    const id = `${model.providerID}/${model.id}`.toLowerCase()
+    return model.providerID === "xai" || model.api.npm === "@ai-sdk/xai" || id.includes("grok")
+  }
+
+  function xaiToolBytes(id: string, tool: Tool) {
+    const schema = tool.inputSchema as { jsonSchema?: unknown }
+    return new TextEncoder().encode(
+      JSON.stringify({
+        type: "function",
+        function: {
+          name: id,
+          description: tool.description,
+          parameters: schema.jsonSchema ?? {},
+        },
+      }),
+    ).length
+  }
+
+  export function prepareTools(input: {
+    model: Provider.Model
+    tools: Record<string, Tool>
+    toolChoice?: "auto" | "required"
+  }) {
+    const all = Object.keys(input.tools).filter((id) => id !== "invalid" && id !== "_noop")
+    const cap = (() => {
+      const value = (input.model.limit as Record<string, unknown>)["tools"]
+      return typeof value === "number" ? value : undefined
+    })()
+
+    let active = all
+    if (cap && active.length > cap) {
+      active = active.slice(0, cap)
+    }
+
+    if (isXaiModel(input.model) && active.length > 0) {
+      if (active.length > XAI_TOOL_MAX) {
+        active = active.slice(0, XAI_TOOL_MAX)
+      }
+
+      const sized = active.map((id) => ({ id, bytes: xaiToolBytes(id, input.tools[id]!) }))
+      let total = sized.reduce((sum, item) => sum + item.bytes, 0)
+      if (total > XAI_SCHEMA_MAX) {
+        const keep = [...sized]
+        for (const item of [...sized].sort((a, b) => b.bytes - a.bytes)) {
+          if (total <= XAI_SCHEMA_MAX || keep.length <= 1) break
+          const index = keep.findIndex((entry) => entry.id === item.id)
+          if (index < 0) continue
+          keep.splice(index, 1)
+          total -= item.bytes
+        }
+        active = keep.map((item) => item.id)
+        if (total > XAI_SCHEMA_MAX && input.toolChoice !== "required") {
+          active = []
+        }
+      }
+    }
+
+    if (!isXaiModel(input.model)) {
+      return {
+        active,
+        tools: input.tools,
+      }
+    }
+
+    const keep = new Set(active)
+    if (input.tools["invalid"]) keep.add("invalid")
+    if (input.tools["_noop"] && active.length > 0) keep.add("_noop")
+
+    return {
+      active,
+      tools: Object.fromEntries(Object.entries(input.tools).filter(([id]) => keep.has(id))),
+    }
+  }
 
   function isUsageV3Shape(usage: any): boolean {
     return (
@@ -143,6 +220,7 @@ export namespace LLM {
     small?: boolean
     tools: Record<string, Tool>
     retries?: number
+    toolChoice?: "auto" | "required"
   }
 
   export type StreamOutput = StreamTextResult<ToolSet, any>
@@ -354,6 +432,12 @@ export namespace LLM {
       },
     )
 
+    const preparedTools = prepareTools({
+      model: input.model,
+      tools,
+      toolChoice: input.toolChoice,
+    })
+
     return streamText({
       onError(error) {
         l.error("stream error", {
@@ -392,7 +476,11 @@ export namespace LLM {
         const trimmed = failed.toolCall.toolName.trim()
         const normalized = trimmed.toLowerCase()
         // Try trimmed original case first, then trimmed+lowered
-        const repaired = tools[trimmed] ? trimmed : tools[normalized] ? normalized : undefined
+          const repaired = preparedTools.tools[trimmed]
+            ? trimmed
+            : preparedTools.tools[normalized]
+              ? normalized
+              : undefined
         if (repaired && repaired !== failed.toolCall.toolName) {
           l.info("repairing tool call", {
             tool: failed.toolCall.toolName,
@@ -420,8 +508,8 @@ export namespace LLM {
       ...(params.presencePenalty !== undefined && { presencePenalty: params.presencePenalty }),
       ...(params.seed !== undefined && { seed: params.seed }),
       providerOptions: ProviderTransform.providerOptions(input.model, params.options),
-      activeTools: Object.keys(tools).filter((x) => x !== "invalid" && x !== "_noop"),
-      tools,
+      activeTools: preparedTools.active,
+      tools: preparedTools.tools,
       maxOutputTokens,
       abortSignal: input.abort,
       headers: {

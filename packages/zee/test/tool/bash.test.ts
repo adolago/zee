@@ -69,6 +69,23 @@ describe("tool.bash", () => {
       },
     })
   })
+
+  test("description reports the active shell and uses shell-specific wording", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const bash = await BashTool.init()
+        const match = bash.description.match(/You are executing commands in `([^`]+)`/)
+
+        expect(match).toBeTruthy()
+        const detectedShell = match?.[1]
+        expect(detectedShell).toBeTruthy()
+        expect(bash.description).toContain(`Executes a given ${detectedShell} command`)
+        expect(bash.description).toContain(`following ${detectedShell} commands in parallel`)
+        expect(bash.description).not.toContain("${shellName}")
+      },
+    })
+  })
 })
 
 describe("tool.bash permissions", () => {

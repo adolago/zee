@@ -5,6 +5,7 @@ import { z } from "zod"
 export namespace ConfigMarkdown {
   export const FILE_REGEX = /(?<![\w`])@(\.?[^\s`,.]*(?:\.[^\s`,.]+)*)/g
   export const SHELL_REGEX = /!`([^`]+)`/g
+  const ENV_REGEX = /\{env:([^}]+)\}/g
 
   export function files(template: string) {
     return Array.from(template.matchAll(FILE_REGEX))
@@ -12,6 +13,19 @@ export namespace ConfigMarkdown {
 
   export function shell(template: string) {
     return Array.from(template.matchAll(SHELL_REGEX))
+  }
+
+  function interpolateData(value: unknown): unknown {
+    if (typeof value === "string") {
+      return value.replace(ENV_REGEX, (_match, variableName: string) => process.env[variableName] ?? "")
+    }
+    if (Array.isArray(value)) {
+      return value.map(interpolateData)
+    }
+    if (value && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, interpolateData(nested)]))
+    }
+    return value
   }
 
   // Sanitize frontmatter values that contain colon-space patterns which YAML
@@ -75,7 +89,9 @@ export namespace ConfigMarkdown {
     // fires for the most common misparse case.
     const sanitized = fallbackSanitization(template)
     try {
-      return matter(sanitized)
+      const parsed = matter(sanitized)
+      parsed.data = interpolateData(parsed.data) as typeof parsed.data
+      return parsed
     } catch (err) {
       throw new FrontmatterError(
         {

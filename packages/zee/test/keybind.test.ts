@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test"
 import type { ParsedKey } from "@opentui/core"
-import { Keybind } from "../src/util/keybind"
+import { isReturn, Keybind } from "../src/util/keybind"
 
 const createParsedKey = (name: string, overrides: Partial<ParsedKey> = {}): ParsedKey => ({
   name,
@@ -252,6 +252,20 @@ describe("Keybind.parse", () => {
     ])
   })
 
+  test("should parse kpenter as key name", () => {
+    const result = Keybind.parse("kpenter")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: false,
+        shift: false,
+        super: false,
+        leader: false,
+        name: "kpenter",
+      },
+    ])
+  })
+
   test("should parse multiple modifiers", () => {
     const result = Keybind.parse("ctrl+alt+u")
     expect(result).toEqual([
@@ -467,6 +481,22 @@ describe("Keybind.parse", () => {
         name: "z",
       },
     ])
+  })
+})
+
+describe("isReturn", () => {
+  test("matches return", () => {
+    expect(isReturn("return")).toBe(true)
+  })
+
+  test("matches keypad enter", () => {
+    expect(isReturn("kpenter")).toBe(true)
+  })
+
+  test("rejects other keys", () => {
+    expect(isReturn("enter")).toBe(false)
+    expect(isReturn("escape")).toBe(false)
+    expect(isReturn(undefined)).toBe(false)
   })
 })
 

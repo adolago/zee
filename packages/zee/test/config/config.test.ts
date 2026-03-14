@@ -1272,6 +1272,13 @@ describe("getPluginName", () => {
     expect(Config.getPluginName("@zee/plugin@2.0.0")).toBe("@zee/plugin")
   })
 
+  test("extracts package name from subpath plugin specifiers", () => {
+    expect(Config.getPluginName("websxa/opencode")).toBe("websxa")
+    expect(Config.getPluginName("websxa/opencode@1.0.0")).toBe("websxa")
+    expect(Config.getPluginName("@scope/pkg/sub")).toBe("@scope/pkg")
+    expect(Config.getPluginName("@scope/pkg/sub@2.0.0")).toBe("@scope/pkg")
+  })
+
   test("returns full string for package without version", () => {
     expect(Config.getPluginName("some-plugin")).toBe("some-plugin")
     expect(Config.getPluginName("@scope/pkg")).toBe("@scope/pkg")
@@ -1306,6 +1313,12 @@ describe("deduplicatePlugins", () => {
     const result = Config.deduplicatePlugins(plugins)
 
     expect(result).toEqual(["a-plugin@1.0.0", "b-plugin@1.0.0", "c-plugin@1.0.0"])
+  })
+
+  test("deduplicates package subpaths by canonical package name", () => {
+    const plugins = ["websxa/opencode@1.0.0", "websxa@2.0.0"]
+    const result = Config.deduplicatePlugins(plugins)
+    expect(result).toEqual(["websxa@2.0.0"])
   })
 
   test("local plugin directory overrides global zee.json plugin", async () => {

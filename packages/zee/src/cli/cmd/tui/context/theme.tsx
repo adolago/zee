@@ -9,6 +9,7 @@
  */
 
 import { SyntaxStyle, RGBA } from "@opentui/core"
+import path from "path"
 import { batch, createEffect, createMemo, onCleanup, onMount } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { createSimpleContext } from "./helper"
@@ -18,6 +19,9 @@ import { useRenderer } from "@opentui/solid"
 import { createStore } from "solid-js/store"
 import { Terminal } from "@tui/util/terminal"
 import { buildThemeFromTerminalSnapshot } from "@tui/context/terminal-theme"
+import { Config } from "@/config/config"
+import { Global } from "@/global"
+import { Instance } from "@/project/instance"
 
 type ThemeColors = {
   primary: RGBA
@@ -104,7 +108,7 @@ type Variant = {
   light: HexColor | RefName
 }
 type ColorValue = HexColor | RefName | Variant | RGBA
-type ThemeJson = {
+export type ThemeJson = {
   $schema?: string
   defs?: Record<string, HexColor | RefName>
   theme: Omit<Record<keyof ThemeColors, ColorValue>, "selectedListItemText" | "backgroundMenu"> & {
@@ -206,9 +210,35 @@ export function isNoColorEnabled(): boolean {
 export const DEFAULT_THEMES: Record<string, ThemeJson> = {
   ["selenized-dark"]: selenizedDark as ThemeJson,
 }
+const CUSTOM_THEME_GLOB = new Bun.Glob("themes/*.{json,jsonc}")
 
 const TERMINAL_THEME_SYNC_INTERVAL_MS = 1500
 const TERMINAL_THEME_SIZE = 16
+
+async function getCustomThemes() {
+  const directories = new Set<string>([Global.Path.config])
+  try {
+    directories.add(path.join(Instance.directory, ".zee"))
+  } catch {
+    // Theme context can be created outside an instance in tests or early bootstrap.
+  }
+
+  const result: Record<string, ThemeJson> = {}
+  for (const dir of directories) {
+    for await (const item of CUSTOM_THEME_GLOB.scan({
+      absolute: true,
+      cwd: dir,
+      followSymlinks: true,
+      dot: true,
+      onlyFiles: true,
+    })) {
+      const ext = path.extname(item)
+      const name = path.basename(item, ext)
+      result[name] = await Config.loadThemeFile(item)
+    }
+  }
+  return result
+}
 
 function sameColor(a: RGBA | null, b: RGBA | null): boolean {
   if (!a && !b) return true
@@ -433,14 +463,18 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       }
     }
 
-    function init() {
+    async function init() {
+      const customThemes = await getCustomThemes().catch(() => ({} as Record<string, ThemeJson>))
+      if (Object.keys(customThemes).length > 0) {
+        setStore("themes", { ...DEFAULT_THEMES, ...customThemes })
+      }
       void refreshTerminalTheme()
       setStore("active", "selenized-dark")
       setStore("ready", true)
     }
 
     onMount(() => {
-      init()
+      void init()
 
       const handleSigusr2 = () => {
         void refreshTerminalTheme(true)

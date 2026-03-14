@@ -9,6 +9,7 @@ import { useSDK } from "../../context/sdk"
 import { SplitBorder } from "../../component/border"
 import { useTextareaKeybindings } from "../../component/textarea-keybindings"
 import { useDialog } from "../../ui/dialog"
+import { isReturn } from "@/util/keybind"
 
 type QuestionAnswer = string[]
 type QuestionInfo = SDKQuestionRequest["questions"][number] & { multiple?: boolean; custom?: boolean }
@@ -147,7 +148,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
         textarea?.setText("")
         return
       }
-      if (evt.name === "return") {
+      if (isReturn(evt.name)) {
         evt.preventDefault()
         const text = textarea?.plainText?.trim() ?? ""
         const prev = store.custom[store.tab]
@@ -210,7 +211,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
     }
 
     if (confirm()) {
-      if (evt.name === "return") {
+      if (isReturn(evt.name)) {
         evt.preventDefault()
         submit()
       }
@@ -242,7 +243,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
         moveTo((store.selected + 1) % total)
       }
 
-      if (evt.name === "return") {
+      if (isReturn(evt.name)) {
         evt.preventDefault()
         selectOption()
       }

@@ -164,6 +164,15 @@ const resolveWasm = (asset: string) => {
   return fileURLToPath(url)
 }
 
+function shellName(shell: string) {
+  let name = path.basename(shell)
+  if (shell.includes("\\") || shell.includes("/")) {
+    const parts = shell.split(/[\\/]/)
+    name = parts[parts.length - 1] || name
+  }
+  return name.toLowerCase().endsWith(".exe") ? name.slice(0, -4) : name
+}
+
 export const parser = lazy(async () => {
   const { Parser } = await import("web-tree-sitter")
   const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
@@ -189,11 +198,17 @@ export const parser = lazy(async () => {
 // preferred shell (detected by Shell.acceptable()). Renaming would break existing prompts.
 export const BashTool = Tool.define("bash", async (initCtx) => {
   const shell = Shell.acceptable()
-  log.info("bash tool using shell", { shell })
+  const actualShell = shellName(shell)
+  log.info("bash tool using shell", { shell, actualShell })
 
-  let description = DESCRIPTION.replaceAll("${directory}", Instance.directory)
+  let description = DESCRIPTION.replaceAll("${shellName}", actualShell)
+    .replaceAll("${directory}", Instance.directory)
     .replaceAll("${maxLines}", String(Truncate.MAX_LINES))
     .replaceAll("${maxBytes}", String(Truncate.MAX_BYTES))
+
+  description = `**Shell**: You are executing commands in \`${actualShell}\`. Ensure your command syntax is compatible with this shell.
+
+${description}`
 
   // Persona agents don't need git commit/PR workflow instructions
   if (initCtx?.agent?.native === true) {

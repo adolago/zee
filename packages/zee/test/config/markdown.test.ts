@@ -1,6 +1,16 @@
 import { expect, test, describe } from "bun:test"
 import { ConfigMarkdown } from "../../src/config/markdown"
 
+async function parseMarkdownWithEnv(markdown: string) {
+  const tempFile = `/tmp/test-agent-${Date.now()}-${Math.random().toString(16).slice(2)}.md`
+  await Bun.write(tempFile, markdown)
+  try {
+    return await ConfigMarkdown.parse(tempFile)
+  } finally {
+    await Bun.file(tempFile).delete().catch(() => {})
+  }
+}
+
 describe("ConfigMarkdown: normal template", () => {
   const template = `This is a @valid/path/to/a/file and it should also match at
   the beginning of a line:
@@ -224,5 +234,58 @@ describe("ConfigMarkdown: frontmatter has weird model id", async () => {
     expect(result.data["stuff"]).toBe("This is some stuff\n")
 
     expect(result.content.trim()).toBe("Strictly follow da rules")
+  })
+})
+
+describe("ConfigMarkdown: frontmatter env interpolation", () => {
+  test("interpolates env vars in frontmatter strings", async () => {
+    process.env.TEST_DESCRIPTION = "Test agent description"
+    process.env.TEST_MODEL = "gpt-4.1"
+
+    const result = await parseMarkdownWithEnv(`---
+description: "{env:TEST_DESCRIPTION}"
+model: "{env:TEST_MODEL}"
+mode: primary
+---
+
+# Agent Content
+
+This stays unchanged.`)
+
+    expect(result.data.description).toBe("Test agent description")
+    expect(result.data.model).toBe("gpt-4.1")
+    expect(result.data.mode).toBe("primary")
+  })
+
+  test("interpolates env vars recursively and leaves body content untouched", async () => {
+    process.env.TEST_ARRAY_VALUE = "search"
+    process.env.TEST_NESTED_VALUE = "required"
+    process.env.BODY_VAR = "should not appear"
+
+    const result = await parseMarkdownWithEnv(`---
+description: "Nested config"
+tools:
+  - "{env:TEST_ARRAY_VALUE}"
+settings:
+  approval: "{env:TEST_NESTED_VALUE}"
+---
+
+Body keeps {env:BODY_VAR}.`)
+
+    expect(result.data.tools).toEqual(["search"])
+    expect(result.data.settings).toEqual({ approval: "required" })
+    expect(result.content).toContain("{env:BODY_VAR}")
+  })
+
+  test("uses empty strings for missing env vars", async () => {
+    delete process.env.MISSING_FRONTMATTER_VAR
+
+    const result = await parseMarkdownWithEnv(`---
+description: "Description with {env:MISSING_FRONTMATTER_VAR} missing"
+---
+
+Body`)
+
+    expect(result.data.description).toBe("Description with  missing")
   })
 })

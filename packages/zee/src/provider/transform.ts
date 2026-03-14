@@ -61,8 +61,6 @@ export namespace ProviderTransform {
         return "openai"
       case "@ai-sdk/anthropic":
         return "anthropic"
-      case "@ai-sdk/google":
-        return "google"
       case "@openrouter/ai-sdk-provider":
         return "openrouter"
     }
@@ -70,9 +68,12 @@ export namespace ProviderTransform {
   }
 
   function normalizeMessages(msgs: ModelMessage[], model: Provider.Model): ModelMessage[] {
+    const isAnthropicSdk =
+      model.api.npm === "@ai-sdk/anthropic" || model.api.npm === "@ai-sdk/google-vertex/anthropic"
+
     // Anthropic rejects messages with empty content - filter out empty string messages
     // and remove empty text/reasoning parts from array content
-    if (model.api.npm === "@ai-sdk/anthropic") {
+    if (isAnthropicSdk) {
       msgs = msgs
         .map((msg) => {
           if (typeof msg.content === "string") {
@@ -80,12 +81,24 @@ export namespace ProviderTransform {
             return msg
           }
           if (!Array.isArray(msg.content)) return msg
-          const filtered = msg.content.filter((part) => {
-            if (part.type === "text" || part.type === "reasoning") {
-              return part.text !== ""
-            }
-            return true
-          })
+          const filtered = msg.content
+            .map((part) => {
+              if (part.type !== "tool-result") return part
+              const result = part as typeof part & { content?: unknown }
+              if (typeof result.content === "string" && result.content === "") {
+                return { ...part, content: "(empty)" } as typeof part
+              }
+              if (Array.isArray(result.content) && result.content.length === 0) {
+                return { ...part, content: [{ type: "text", text: "(empty)" }] } as typeof part
+              }
+              return part
+            })
+            .filter((part) => {
+              if (part.type === "text" || part.type === "reasoning") {
+                return part.text !== ""
+              }
+              return true
+            })
           if (filtered.length === 0) return undefined
           return { ...msg, content: filtered }
         })
@@ -176,7 +189,7 @@ export namespace ProviderTransform {
     // - @ai-sdk/anthropic: handles reasoning parts natively (handled above)
     // - @ai-sdk/openai-compatible, @ai-sdk/cerebras: SDK converts reasoning parts to
     //   reasoning_content field in the API request body -- leave them intact
-    // - @ai-sdk/google, @ai-sdk/google-vertex, @openrouter/ai-sdk-provider: do NOT
+    // - @ai-sdk/google-vertex, @openrouter/ai-sdk-provider: do NOT
     //   understand reasoning content parts and will error or silently drop them
     const REASONING_AWARE_SDKS = new Set([
       "@ai-sdk/anthropic",
@@ -203,9 +216,11 @@ export namespace ProviderTransform {
     return msgs
   }
 
-  function applyCaching(msgs: ModelMessage[], providerID: string): ModelMessage[] {
+  function applyCaching(msgs: ModelMessage[], model: Provider.Model): ModelMessage[] {
     const system = msgs.filter((msg) => msg.role === "system").slice(0, 2)
     const final = msgs.filter((msg) => msg.role !== "system").slice(-2)
+    const isAnthropicSdk =
+      model.api.npm === "@ai-sdk/anthropic" || model.api.npm === "@ai-sdk/google-vertex/anthropic"
 
     const providerOptions: ProviderOptions = {
       anthropic: {
@@ -223,7 +238,7 @@ export namespace ProviderTransform {
     }
 
     for (const msg of unique([...system, ...final])) {
-      const useMessageLevelOptions = providerID === "anthropic" || providerID.includes("bedrock")
+      const useMessageLevelOptions = isAnthropicSdk || model.providerID.includes("bedrock")
       const shouldUseContentOptions = !useMessageLevelOptions && Array.isArray(msg.content) && msg.content.length > 0
 
       if (shouldUseContentOptions) {
@@ -295,7 +310,7 @@ export namespace ProviderTransform {
       model.id.includes("claude") ||
       model.api.npm === "@ai-sdk/anthropic"
     ) {
-      msgs = applyCaching(msgs, model.providerID)
+      msgs = applyCaching(msgs, model)
     }
 
     // Remap providerOptions keys from stored providerID to expected SDK key
@@ -622,7 +637,6 @@ export namespace ProviderTransform {
         )
 
       case "@ai-sdk/google-vertex":
-      case "@ai-sdk/google":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
         if (id.includes("2.5")) {
           return {
@@ -752,7 +766,7 @@ export namespace ProviderTransform {
       result["promptCacheKey"] = cacheKey
     }
 
-    if (input.model.api.npm === "@ai-sdk/google" || input.model.api.npm === "@ai-sdk/google-vertex") {
+    if (input.model.api.npm === "@ai-sdk/google-vertex") {
       result["thinkingConfig"] = {
         includeThoughts: true,
       }
@@ -811,13 +825,6 @@ export namespace ProviderTransform {
       }
       return { store: false }
     }
-    if (model.providerID === "google" || model.providerID === "google-antigravity") {
-      // gemini-3 uses thinkingLevel, gemini-2.5 uses thinkingBudget
-      if (model.api.id.includes("gemini-3")) {
-        return { thinkingConfig: { thinkingLevel: "minimal" } }
-      }
-      return { thinkingConfig: { thinkingBudget: 0 } }
-    }
     if (model.providerID === "openrouter") {
       if (model.api.id.includes("google")) {
         return { reasoning: { enabled: false } }
@@ -859,7 +866,6 @@ export namespace ProviderTransform {
    * Provider Parameter Reference:
    * - Anthropic: https://docs.anthropic.com/en/api/messages
    * - OpenAI: https://platform.openai.com/docs/api-reference/chat/create
-   * - Google: https://ai.google.dev/api/rest/v1beta/models/generateContent
    * - xAI: https://docs.x.ai/api
    * - OpenRouter: https://openrouter.ai/docs/parameters
    */
@@ -919,34 +925,6 @@ export namespace ProviderTransform {
 
       // Codex API (ChatGPT Pro/Plus OAuth)
       "instructions", // System instructions for Codex models
-    ]),
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // GOOGLE AI (Gemini via ai.google.dev)
-    // ═══════════════════════════════════════════════════════════════════════
-    "@ai-sdk/google": new Set([
-      // Thinking/reasoning (Gemini 2.0+ with thinking)
-      "thinkingConfig", // { thinkingBudget: number }
-      "thinkingLevel", // "none" | "low" | "medium" | "high"
-      "thinkingBudget", // Direct budget number
-
-      // Safety
-      "safetySettings", // Array of safety category settings
-
-      // Caching
-      "cachedContent", // Cache name for context caching
-
-      // Output
-      "structuredOutputs", // Enable structured JSON outputs
-
-      // Search grounding (Gemini 2.0+)
-      "useSearchGrounding", // Enable Google Search grounding
-
-      // Response modalities
-      "responseModalities", // ["text"] | ["audio"] | ["text", "audio"]
-
-      // Speech config
-      "speechConfig", // { voiceConfig: { prebuiltVoiceConfig: { voiceName: string } } }
     ]),
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1173,8 +1151,8 @@ export namespace ProviderTransform {
     }
     */
 
-    // Convert integer enums to string enums for Google/Gemini
-    if (model.providerID === "google" || model.providerID === "google-antigravity" || model.api.id.includes("gemini")) {
+    // Convert integer enums to string enums for Gemini-family APIs.
+    if (model.api.id.includes("gemini")) {
       const sanitizeGemini = (obj: any): any => {
         if (obj === null || typeof obj !== "object") {
           return obj
