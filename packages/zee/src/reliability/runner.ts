@@ -156,6 +156,15 @@ async function resolveDistBinaryPath(packageRoot: string): Promise<string> {
   )
 }
 
+async function createVerificationSymlink(binaryPath: string, runtimeStateDir: string): Promise<string> {
+  const verifyDir = path.join(runtimeStateDir, "verify-bin")
+  const verifyLink = path.join(verifyDir, "zee")
+  await ensureDir(verifyDir)
+  await fs.rm(verifyLink, { force: true })
+  await fs.symlink(binaryPath, verifyLink)
+  return verifyLink
+}
+
 async function writeStageLogHeader(
   stageLogPath: string,
   stage: Pick<ReliabilityStage<any>, "id" | "name" | "description">,
@@ -437,18 +446,22 @@ async function stageBuildAndVerify(ctx: StageInternalContext): Promise<Reliabili
     timeoutMs: 20 * 60_000,
   })
 
+  ctx.runtime.distBinaryPath = await resolveDistBinaryPath(ctx.packageRoot)
+
   if (process.platform !== "win32") {
+    const verifyLink = await createVerificationSymlink(ctx.runtime.distBinaryPath, ctx.runtime.runtimeStateDir)
     await runStageCommand(ctx, "verify-binary", ["bash", "-lc", "./script/verify-binary.sh"], {
       cwd: ctx.repoRoot,
-      env: ctx.runtimeEnv,
+      env: {
+        ...ctx.runtimeEnv,
+        BUN_BIN: verifyLink,
+      },
       timeoutMs: 60_000,
     })
-    details.push("verify-binary.sh passed")
+    details.push(`verify-binary.sh passed via ${verifyLink}`)
   } else {
     details.push("verify-binary.sh skipped on Windows")
   }
-
-  ctx.runtime.distBinaryPath = await resolveDistBinaryPath(ctx.packageRoot)
 
   const version = await runStageCommand(ctx, "dist-version", [ctx.runtime.distBinaryPath, "--version"], {
     cwd: ctx.packageRoot,
