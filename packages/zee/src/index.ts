@@ -50,6 +50,7 @@ import { WebCommand } from "./cli/cmd/web"
 import { DmuxCommand } from "./cli/cmd/dmux"
 import { V3Command } from "./cli/cmd/v3"
 import { BenchmarkCommand } from "./cli/cmd/benchmark"
+import { InspectCommand } from "./cli/cmd/inspect"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -178,6 +179,7 @@ const cli = yargs(hideBin(process.argv))
   .command(DoctorCommand)
   .command(InspectCommand)
   .command(SecurityCommand)
+  .command(InspectCommand)
   .command(GenerateCommand)
   .command(DebugCommand)
   .command(PathsCommand)
