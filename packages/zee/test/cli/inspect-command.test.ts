@@ -4,6 +4,7 @@ import {
   buildOpenCodeRuntimeContractReport,
   summarizeOpenCodeRuntimeContract,
 } from "../../src/runtime/opencode-contract"
+import { buildPiMonoCompatReport, summarizePiMonoCompatReport } from "../../src/runtime/pimono-compat"
 import type { UsageStats, UsageSummary } from "../../src/usage/types"
 
 function makeSummary(): UsageSummary {
@@ -130,5 +131,38 @@ describe("inspect command helpers", () => {
     expect(summary).toContain("- orchestration:")
     expect(summary).toContain("- gateway:")
     expect(summary).toContain("runtime.opencode-contract.inspected")
+  })
+
+  test("pi-mono compatibility report inventories explicit shim boundaries and statuses", () => {
+    const report = buildPiMonoCompatReport(new Date("2026-03-14T12:30:00.000Z"))
+
+    expect(report.reportId).toBe("pimono-compat-shim-boundaries")
+    expect(report.reportVersion).toBe(1)
+    expect(report.generatedAt).toBe("2026-03-14T12:30:00.000Z")
+    expect(report.boundaries.map((boundary) => boundary.id)).toEqual([
+      "server.llm.pi-ai-bridge",
+      "server.auth.api-key-payload",
+      "agent.config.tools-alias",
+      "orchestration.pi-agent-event-schema",
+      "agent.persona-ids",
+      "server.personas-endpoint",
+    ])
+    expect(report.telemetry.eventType).toBe("runtime.pimono-compat.inspected")
+    expect(report.telemetry.metrics.boundaryCount).toBe(6)
+    expect(report.telemetry.metrics.activeTemporaryCount).toBe(2)
+    expect(report.telemetry.metrics.deprecatedLiveCount).toBe(2)
+    expect(report.telemetry.metrics.retiredBlockedCount).toBe(2)
+    expect(report.telemetry.metrics.telemetryBackedCount).toBe(2)
+    expect(report.telemetry.metrics.missingTelemetryCount).toBe(2)
+  })
+
+  test("pi-mono compatibility summary includes statuses and telemetry event", () => {
+    const summary = summarizePiMonoCompatReport(buildPiMonoCompatReport(new Date("2026-03-14T12:30:00.000Z")))
+
+    expect(summary).toContain("pi-mono compatibility shim inventory v1")
+    expect(summary).toContain("server.llm.pi-ai-bridge [active_temporary]")
+    expect(summary).toContain("agent.config.tools-alias [deprecated_live]")
+    expect(summary).toContain("server.personas-endpoint [retired_blocked]")
+    expect(summary).toContain("runtime.pimono-compat.inspected")
   })
 })

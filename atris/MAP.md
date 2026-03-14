@@ -31,6 +31,8 @@ rg "command: \"dmux\"|DmuxSpawnCommand|DmuxMergeCommand" packages/zee/src/cli/cm
 rg "command: \"web\"|resolveWebBackendUrl|resolveWebBackendTarget" packages/zee/src/cli/cmd/web.ts  # Web UI launcher command + backend wiring helpers (lines 81, 27, 36)
 rg "buildOpenCodeRuntimeContractReport|emitOpenCodeRuntimeContractTelemetry" packages/zee/src/runtime/opencode-contract.ts  # OpenCode runtime inventory + adapter contract source of truth
 rg "command: \"runtime-contract\"" packages/zee/src/cli/cmd/inspect.ts  # CLI report for OpenCode runtime contract
+rg "buildPiMonoCompatReport|emitPiMonoCompatTelemetry" packages/zee/src/runtime/pimono-compat.ts  # pi-mono shim boundary inventory + telemetry
+rg "command: \"shim-boundaries\"" packages/zee/src/cli/cmd/inspect.ts  # CLI report for pi-mono compatibility shims
 rg "export namespace Dmux|export const spawn|export const merge" packages/zee/src/worktree/dmux.ts  # dmux lane orchestration (lines 8, 177, 220)
 rg "export const ZEE_TOOLS|registerZeeTools" src/domain/zee/tools.ts     # Zee domain tools (lines 1884, 1909)
 rg "export const STANLEY_TOOLS|registerStanleyTools" src/domain/investing/tools.ts  # Stanley tools (lines 456, 469)
@@ -165,6 +167,13 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Telemetry event:** `packages/zee/src/runtime/opencode-contract.ts:72`
 - **CLI report (`zee inspect runtime-contract`):** `packages/zee/src/cli/cmd/inspect.ts:249`
 - **Operator doc:** `docs/architecture/opencode-runtime-inventory.md:1`
+
+### Feature: pi-mono Compatibility Shim Inventory
+**Purpose:** Catalog the remaining pi-mono-shaped shim boundaries, their deprecation status, and existing telemetry coverage during the OpenCode migration.
+- **Inventory source:** `packages/zee/src/runtime/pimono-compat.ts:227`
+- **Telemetry event:** `packages/zee/src/runtime/pimono-compat.ts:56`
+- **CLI report (`zee inspect shim-boundaries`):** `packages/zee/src/cli/cmd/inspect.ts:283`
+- **Operator doc:** `docs/architecture/pimono-compat-shim-inventory.md:1`
 
 ### Feature: Domain Tool Packs
 **Purpose:** Provide user-facing capabilities across life admin, investing, and learning.
