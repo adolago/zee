@@ -29,6 +29,8 @@ rg "export class PermissionChecker" src/mcp/permission.ts                 # MCP 
 rg "createMcpProxyTool|resolveMcpLifecycle|reapIdleLazyServers" packages/zee/src/mcp/index.ts  # MCP proxy + lazy lifecycle (lines 1925, 794, 1690)
 rg "command: \"dmux\"|DmuxSpawnCommand|DmuxMergeCommand" packages/zee/src/cli/cmd/dmux.ts  # dmux CLI flow (lines 6, 12, 96)
 rg "command: \"web\"|resolveWebBackendUrl|resolveWebBackendTarget" packages/zee/src/cli/cmd/web.ts  # Web UI launcher command + backend wiring helpers (lines 81, 27, 36)
+rg "buildOpenCodeRuntimeContractReport|emitOpenCodeRuntimeContractTelemetry" packages/zee/src/runtime/opencode-contract.ts  # OpenCode runtime inventory + adapter contract source of truth
+rg "command: \"runtime-contract\"" packages/zee/src/cli/cmd/inspect.ts  # CLI report for OpenCode runtime contract
 rg "export namespace Dmux|export const spawn|export const merge" packages/zee/src/worktree/dmux.ts  # dmux lane orchestration (lines 8, 177, 220)
 rg "export const ZEE_TOOLS|registerZeeTools" src/domain/zee/tools.ts     # Zee domain tools (lines 1884, 1909)
 rg "export const STANLEY_TOOLS|registerStanleyTools" src/domain/investing/tools.ts  # Stanley tools (lines 456, 469)
@@ -156,6 +158,13 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Backend URL resolution:** `packages/zee/src/cli/cmd/web.ts:27`
 - **Backend host/port extraction:** `packages/zee/src/cli/cmd/web.ts:36`
 - **Web app directory resolution:** `packages/zee/src/cli/cmd/web.ts:56`
+
+### Feature: OpenCode Runtime Contract Inventory
+**Purpose:** Lock the current Zee runtime entry points and adapter responsibilities for the OpenCode migration across CLI, orchestration, and gateway flows.
+- **Contract source:** `packages/zee/src/runtime/opencode-contract.ts:470`
+- **Telemetry event:** `packages/zee/src/runtime/opencode-contract.ts:72`
+- **CLI report (`zee inspect runtime-contract`):** `packages/zee/src/cli/cmd/inspect.ts:249`
+- **Operator doc:** `docs/architecture/opencode-runtime-inventory.md:1`
 
 ### Feature: Domain Tool Packs
 **Purpose:** Provide user-facing capabilities across life admin, investing, and learning.

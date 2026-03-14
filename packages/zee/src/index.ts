@@ -33,6 +33,7 @@ import { PluginCommand } from "./cli/cmd/plugin"
 import { SetupCommand } from "./cli/cmd/setup"
 import { PodsCommand } from "./cli/cmd/pods"
 import { PackageCommand } from "./cli/cmd/package"
+import { InspectCommand } from "./cli/cmd/inspect"
 import { BugReportCommand } from "./cli/cmd/bug-report"
 import { CheckCommand } from "./cli/cmd/check"
 import { DoctorCommand } from "./cli/cmd/doctor"
@@ -173,6 +174,7 @@ const cli = yargs(hideBin(process.argv))
   .command(RunCommand)
   .command(CheckCommand)
   .command(DoctorCommand)
+  .command(InspectCommand)
   .command(SecurityCommand)
   .command(GenerateCommand)
   .command(DebugCommand)
