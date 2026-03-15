@@ -18,6 +18,7 @@ Thresholds:
 - `timeliness >= 80`
 
 The profile is persisted on every eval run so later CI gates can enforce the same standard without guessing which rubric was used.
+That strict enforcement now happens in the `#517` eval-gate slice.
 
 ## Scorer rules
 
@@ -76,4 +77,4 @@ This slice emits:
   - one event per case score
   - one aggregate event per eval run
 
-That gives the next CI-gate slice enough signal to route regressions and fail builds on explicit score thresholds.
+That gives the CI gate enough signal to route regressions and fail builds on explicit score thresholds.

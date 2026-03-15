@@ -50,6 +50,7 @@ import {
   listInvestingEvalDatasets,
   listInvestingEvalRuns,
   runInvestingEvalDataset,
+  type InvestingEvalRun,
   type InvestingEvalRunStatus,
   type InvestingEvalSourceKind,
 } from "@root/domain/investing/evals"
@@ -545,6 +546,25 @@ const InvestingEvalDatasetCommand = cmd({
   async handler() {},
 })
 
+function printInvestingEvalRun(run: InvestingEvalRun): void {
+  console.log(`${run.id}`)
+  console.log(
+    `- owner=${run.owner} gate=${run.gate.ok ? "PASS" : "FAIL"} status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural} factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness}`,
+  )
+  console.log(
+    `- thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} regressions=${run.regression?.regressionCount ?? 0} alerts=${run.alerts.length} route=${run.gate.routingKey} profile=${run.scoreProfile}`,
+  )
+  console.log(`- summary=${run.summary}`)
+
+  if (run.gate.blockedBy.length > 0) {
+    console.log(`- blockedBy=${run.gate.blockedBy.join(" | ")}`)
+  }
+
+  for (const alert of run.alerts) {
+    console.log(`- alert[${alert.severity}] ${alert.code} route=${alert.routingKey}: ${alert.message}`)
+  }
+}
+
 const InvestingEvalRunCreateCommand = cmd({
   command: "create <datasetId>",
   describe: "run the persisted eval harness for one dataset",
@@ -559,23 +579,26 @@ const InvestingEvalRunCreateCommand = cmd({
         type: "boolean",
         default: false,
         describe: "output as JSON",
+      })
+      .option("strict", {
+        type: "boolean",
+        default: false,
+        describe: "exit with code 1 when the eval gate is blocked",
       }),
-  handler: async (args: { datasetId?: string; json?: boolean }) => {
+  handler: async (args: { datasetId?: string; json?: boolean; strict?: boolean }) => {
     if (!args.datasetId) {
       throw new Error("datasetId is required")
     }
     const run = runInvestingEvalDataset({ datasetId: args.datasetId })
     if (args.json) {
       console.log(JSON.stringify(run, null, 2))
-      return
+    } else {
+      printInvestingEvalRun(run)
     }
 
-    console.log(`${run.id}`)
-    console.log(
-      `- status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural} factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness}`,
-    )
-    console.log(`- thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} profile=${run.scoreProfile}`)
-    console.log(`- summary=${run.summary}`)
+    if (args.strict && !run.gate.ok) {
+      process.exit(1)
+    }
   },
 })
 
@@ -605,12 +628,7 @@ const InvestingEvalRunReadCommand = cmd({
       return
     }
 
-    console.log(`${run.id}`)
-    console.log(
-      `- datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural} factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness}`,
-    )
-    console.log(`- thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} profile=${run.scoreProfile}`)
-    console.log(`- summary=${run.summary}`)
+    printInvestingEvalRun(run)
   },
 })
 
@@ -650,7 +668,7 @@ const InvestingEvalRunListCommand = cmd({
     }
     for (const run of runs) {
       console.log(
-        `- ${run.id}: datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}% factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness} thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} summary=${run.summary}`,
+        `- ${run.id}: datasetId=${run.datasetId} owner=${run.owner} gate=${run.gate.ok ? "PASS" : "FAIL"} status=${run.status} passRate=${run.totals.passRate}% factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness} thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} regressions=${run.regression?.regressionCount ?? 0} alerts=${run.alerts.length} summary=${run.summary}`,
       )
     }
   },

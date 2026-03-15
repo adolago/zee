@@ -28,6 +28,7 @@
     "verify:skills": "bun run script/verify-first-party-skills.ts",
     "audit:skills": "bun run script/skills-audit.ts",
     "memory:health": "bun run script/memory-health-check.ts",
+    "eval:gate": "bun run script/investing-eval-gate.ts",
     "reliability:alpha": "bun run script/reliability/run.ts --profile alpha",
     "reliability:diag": "bun run script/reliability/run.ts --profile diag",
     "bench": "bun run script/bench/run.ts",

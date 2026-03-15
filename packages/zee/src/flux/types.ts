@@ -78,6 +78,8 @@ export type FluxKind =
   | "investing.eval.dataset"
   | "investing.eval.run"
   | "investing.eval.score"
+  | "investing.eval.gate"
+  | "investing.eval.alert"
   | "investing.portfolio.briefing"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"

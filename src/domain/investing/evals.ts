@@ -21,6 +21,14 @@ import {
   type InvestingEvalCaseScores,
   type InvestingEvalThresholdProfile,
 } from "./eval-scoring"
+import {
+  buildInvestingEvalRunAlerts,
+  buildInvestingEvalRunGate,
+  buildInvestingEvalRunRegression,
+  type InvestingEvalRunAlert,
+  type InvestingEvalRunGate,
+  type InvestingEvalRunRegression,
+} from "./eval-gates"
 import { getInvestingEarningsPacket, type InvestingEarningsPacket } from "./earnings-packets"
 
 const log = Log.create({ service: "investing:evals" })
@@ -121,13 +129,18 @@ export interface InvestingEvalRun {
   id: string
   schemaVersion: "investing-eval-run.v1"
   datasetId: string
+  owner: string
   createdAt: string
   status: InvestingEvalRunStatus
   summary: string
+  baselineRunId: string | null
   scoreProfile: typeof INVESTING_EVAL_SCORE_PROFILE
   thresholds: InvestingEvalThresholdProfile
   scores: InvestingEvalRunScores
   thresholdBreaches: Array<keyof InvestingEvalRunScores>
+  regression: InvestingEvalRunRegression | null
+  alerts: InvestingEvalRunAlert[]
+  gate: InvestingEvalRunGate
   totals: {
     totalCases: number
     passCount: number
@@ -215,7 +228,7 @@ function stringList(items: string[]): string {
 }
 
 function telemetry(input: {
-  kind: "investing.eval.dataset" | "investing.eval.run" | "investing.eval.score"
+  kind: "investing.eval.dataset" | "investing.eval.run" | "investing.eval.score" | "investing.eval.gate" | "investing.eval.alert"
   traceID: string
   method: string
   path?: string
@@ -585,6 +598,7 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
   }
 
   const results = dataset.cases.map((evalCase) => checkEvalCase(dataset, evalCase))
+  const previousRun = state.runs.find((entry) => entry.datasetId === dataset.id) ?? null
   const passCount = results.filter((result) => result.status === "pass").length
   const failCount = results.filter((result) => result.status === "fail").length
   const errorCount = results.filter((result) => result.status === "error").length
@@ -599,20 +613,59 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
     consistency: averageScore("consistency"),
     timeliness: averageScore("timeliness"),
   }
+  const status: InvestingEvalRunStatus = errorCount > 0 ? "error" : failCount > 0 ? "fail" : "pass"
   const thresholdBreaches = (Object.keys(scores) as Array<keyof InvestingEvalRunScores>).filter(
     (dimension) => (scores[dimension] ?? 0) < INVESTING_EVAL_THRESHOLDS[dimension],
   )
-  const run: InvestingEvalRun = {
+  const runCore: Pick<
+    InvestingEvalRun,
+    | "id"
+    | "schemaVersion"
+    | "datasetId"
+    | "owner"
+    | "createdAt"
+    | "status"
+    | "baselineRunId"
+    | "scoreProfile"
+    | "thresholds"
+    | "scores"
+    | "thresholdBreaches"
+    | "results"
+  > = {
     id: `investing-eval-run-${randomUUID().slice(0, 12)}`,
     schemaVersion: "investing-eval-run.v1",
     datasetId: dataset.id,
+    owner: dataset.owner,
     createdAt: new Date().toISOString(),
-    status: errorCount > 0 ? "error" : failCount > 0 ? "fail" : "pass",
-    summary: `Eval dataset ${dataset.name} finished with ${passCount}/${totalCases} passing case(s), ${failCount} failing case(s), and ${errorCount} error case(s). Threshold breaches: ${thresholdBreaches.join(", ") || "none"}.`,
+    status,
+    baselineRunId: previousRun?.id ?? null,
     scoreProfile: INVESTING_EVAL_SCORE_PROFILE,
     thresholds: INVESTING_EVAL_THRESHOLDS,
     scores,
     thresholdBreaches,
+    results,
+  }
+  const regression = buildInvestingEvalRunRegression({
+    previousRun,
+    currentRun: runCore,
+  })
+  const alerts = buildInvestingEvalRunAlerts({
+    dataset,
+    run: runCore,
+    regression,
+  })
+  const gate = buildInvestingEvalRunGate({
+    dataset,
+    run: runCore,
+    regression,
+  })
+  const regressionCount = regression?.regressionCount ?? 0
+  const run: InvestingEvalRun = {
+    ...runCore,
+    summary: `Eval dataset ${dataset.name} finished with ${passCount}/${totalCases} passing case(s), ${failCount} failing case(s), and ${errorCount} error case(s). Threshold breaches: ${thresholdBreaches.join(", ") || "none"}. Regressions: ${regressionCount}. Alerts routed: ${alerts.length}.`,
+    regression,
+    alerts,
+    gate,
     totals: {
       totalCases,
       passCount,
@@ -620,7 +673,6 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
       errorCount,
       passRate,
     },
-    results,
   }
 
   dataset.audit.lastRunId = run.id
@@ -638,15 +690,21 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
     status: run.status === "error" ? "error" : "ok",
     metadata: {
       datasetId: dataset.id,
+      owner: run.owner,
       totalCases,
       passCount,
       failCount,
       errorCount,
+      baselineRunId: run.baselineRunId,
       structural: run.scores.structural,
       factuality: run.scores.factuality,
       consistency: run.scores.consistency,
       timeliness: run.scores.timeliness,
       thresholdBreaches: run.thresholdBreaches,
+      regressionCount,
+      alertCount: run.alerts.length,
+      gateOk: run.gate.ok,
+      routingKey: run.gate.routingKey,
     },
   })
 
@@ -660,6 +718,7 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
       status: result.thresholdBreaches.length > 0 ? "error" : "ok",
       metadata: {
         caseId: result.caseId,
+        owner: run.owner,
         sourceKind: result.sourceKind,
         structural: result.scores.structural,
         factuality: result.scores.factuality,
@@ -678,6 +737,7 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
     route: dataset.id,
     status: run.thresholdBreaches.length > 0 ? "error" : "ok",
     metadata: {
+      owner: run.owner,
       scoreProfile: run.scoreProfile,
       structural: run.scores.structural,
       factuality: run.scores.factuality,
@@ -686,6 +746,41 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
       thresholdBreaches: run.thresholdBreaches,
     },
   })
+
+  telemetry({
+    kind: "investing.eval.gate",
+    traceID: run.id,
+    method: "evaluate",
+    path: dataset.name,
+    route: dataset.id,
+    status: run.gate.ok ? "ok" : "error",
+    metadata: {
+      owner: run.owner,
+      routingKey: run.gate.routingKey,
+      baselineRunId: run.baselineRunId,
+      blockedBy: run.gate.blockedBy,
+      regressionCount,
+      alertCount: run.alerts.length,
+      strictCommand: run.gate.strictCommand,
+    },
+  })
+
+  for (const alert of run.alerts) {
+    telemetry({
+      kind: "investing.eval.alert",
+      traceID: `${run.id}:${alert.code}`,
+      method: "route",
+      path: alert.routingKey,
+      route: dataset.id,
+      status: alert.severity === "error" ? "error" : "ok",
+      metadata: {
+        owner: alert.owner,
+        code: alert.code,
+        message: alert.message,
+        runbookSteps: alert.runbook.length,
+      },
+    })
+  }
 
   return run
 }
