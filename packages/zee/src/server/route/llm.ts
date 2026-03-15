@@ -404,8 +404,6 @@ export const LlmRoute = new Hono().post(
     if (sessionID) RequestMeta.setSessionID(c.req.raw, sessionID)
     recordPiMonoShimUsage({
       boundaryID: "server.llm.pi-ai-bridge",
-    recordOpenCodeRuntimeRoute({
-      surface: "gateway",
       traceID,
       requestID,
       sessionID,
