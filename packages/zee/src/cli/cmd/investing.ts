@@ -1,5 +1,6 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
+import { getInvestingEntityCatalogStatus } from "@/investing/entities"
 import {
   INVESTING_CONNECTOR_KINDS,
   getInvestingIngestionStatus,
@@ -32,7 +33,7 @@ const InvestingIngestStatusCommand = cmd({
           ? new Date(connector.lastFinishedAt).toISOString()
           : "never"
       console.log(
-        `- ${connector.connector}: enabled=${connector.enabled} every=${connector.scheduleMinutes}m lastStatus=${connector.lastStatus} items=${connector.itemCount} requests=${connector.requestCount} lastRun=${lastRun}`,
+        `- ${connector.connector}: enabled=${connector.enabled} every=${connector.scheduleMinutes}m lastStatus=${connector.lastStatus} items=${connector.itemCount} requests=${connector.requestCount} normalized=${connector.normalizedEntityCount} lastRun=${lastRun}`,
       )
     }
   },
@@ -61,10 +62,40 @@ const InvestingIngestRunCommand = cmd({
     }
     for (const result of results) {
       console.log(
-        `- ${result.connector}: status=${result.lastStatus} items=${result.itemCount} requests=${result.requestCount} durationMs=${result.lastDurationMs}${result.error ? ` error=${result.error}` : ""}`,
+        `- ${result.connector}: status=${result.lastStatus} items=${result.itemCount} requests=${result.requestCount} normalized=${result.normalizedEntityCount} durationMs=${result.lastDurationMs}${result.error ? ` error=${result.error}` : ""}`,
       )
     }
   },
+})
+
+const InvestingEntityStatusCommand = cmd({
+  command: "status",
+  describe: "show normalized investing entity catalog status",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: false,
+      describe: "output as JSON",
+    }),
+  handler: async (args: { json?: boolean }) => {
+    const status = await getInvestingEntityCatalogStatus()
+    if (args.json) {
+      console.log(JSON.stringify(status, null, 2))
+      return
+    }
+
+    const updatedAt = status.updatedAt > 0 ? new Date(status.updatedAt).toISOString() : "never"
+    console.log(`entities: total=${status.totalEntities} updatedAt=${updatedAt}`)
+    console.log(`- by kind: ${JSON.stringify(status.countsByKind)}`)
+    console.log(`- by lineage source: ${JSON.stringify(status.countsByLineageSource)}`)
+  },
+})
+
+const InvestingEntityCommand = cmd({
+  command: "entity",
+  describe: "normalized financial entity catalog",
+  builder: (yargs: Argv) => yargs.command(InvestingEntityStatusCommand).demandCommand(),
+  async handler() {},
 })
 
 const InvestingIngestScheduleCommand = cmd({
@@ -103,6 +134,6 @@ const InvestingIngestCommand = cmd({
 export const InvestingCommand = cmd({
   command: "investing",
   describe: "investing platform operations",
-  builder: (yargs: Argv) => yargs.command(InvestingIngestCommand).demandCommand(),
+  builder: (yargs: Argv) => yargs.command(InvestingIngestCommand).command(InvestingEntityCommand).demandCommand(),
   async handler() {},
 })

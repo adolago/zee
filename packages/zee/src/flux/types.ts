@@ -42,6 +42,7 @@ export type FluxKind =
   | "security.audit.checked"
   | "security.audit.finding"
   | "security.audit.alert"
+  | "investing.entity.normalized"
   | "investing.ingestion.run"
   | "investing.ingestion.schedule"
   | "agent.legacy_tools_alias.used"

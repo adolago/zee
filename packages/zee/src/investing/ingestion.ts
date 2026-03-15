@@ -8,6 +8,11 @@ import { Investing as InvestingPaths } from "@/paths"
 import { Instance } from "@/project/instance"
 import { Scheduler } from "@/scheduler"
 import { Log } from "@/util/log"
+import {
+  normalizeInvestingConnectorEntities,
+  upsertInvestingEntities,
+  type NormalizedInvestingEntity,
+} from "@/investing/entities"
 
 const log = Log.create({ service: "investing:ingestion" })
 
@@ -36,6 +41,8 @@ export type InvestingConnectorRunRecord = {
   lastStatus: InvestingConnectorRunStatus
   itemCount: number
   requestCount: number
+  normalizedEntityCount: number
+  normalizedKinds: string[]
   details: string[]
   error?: string
 }
@@ -68,6 +75,7 @@ export type InvestingIngestionStatus = {
 type ConnectorRunSummary = {
   itemCount: number
   requestCount: number
+  entities?: NormalizedInvestingEntity[]
   details?: string[]
 }
 
@@ -172,6 +180,7 @@ async function createInvestingClient(config: unknown): Promise<InvestingClient> 
 
 async function runRawListEndpoint(
   client: InvestingClient,
+  connector: "transcripts" | "news",
   endpointPath: string,
   lookbackDays: number,
 ): Promise<ConnectorRunSummary> {
@@ -184,6 +193,10 @@ async function runRawListEndpoint(
     itemCount: countItems(response.data),
     requestCount: 1,
     details: [endpointPath],
+    entities: normalizeInvestingConnectorEntities({
+      connector,
+      data: response.data,
+    }),
   }
 }
 
@@ -191,49 +204,78 @@ const BUILTIN_CONNECTORS: Record<InvestingConnectorKind, InvestingConnectorExecu
   filings: async ({ client, config }) => {
     let itemCount = 0
     let requestCount = 0
+    const entities: NormalizedInvestingEntity[] = []
     for (const symbol of config.symbols) {
       const response = await client.accounting.getFilings(symbol)
       requestCount += 1
       if (!response.success) throw new Error(response.error ?? `filings connector failed for ${symbol}`)
       itemCount += Array.isArray(response.data) ? response.data.length : 0
+      entities.push(
+        ...normalizeInvestingConnectorEntities({
+          connector: "filings",
+          symbol,
+          data: response.data,
+        }),
+      )
     }
     return {
       itemCount,
       requestCount,
+      entities,
       details: config.symbols,
     }
   },
   earnings: async ({ client, config }) => {
     let itemCount = 0
     let requestCount = 0
+    const entities: NormalizedInvestingEntity[] = []
     const quarters = config.quarters ?? 8
     for (const symbol of config.symbols) {
       const response = await client.research.getEarnings(symbol, quarters)
       requestCount += 1
       if (!response.success) throw new Error(response.error ?? `earnings connector failed for ${symbol}`)
       itemCount += Array.isArray(response.data?.quarters) ? response.data.quarters.length : 0
+      entities.push(
+        ...normalizeInvestingConnectorEntities({
+          connector: "earnings",
+          symbol,
+          data: response.data,
+        }),
+      )
     }
     return {
       itemCount,
       requestCount,
+      entities,
       details: config.symbols,
     }
   },
   transcripts: async ({ client, config }) => {
-    return runRawListEndpoint(client, config.endpointPath ?? DEFAULT_ENDPOINT_PATHS.transcripts!, config.lookbackDays ?? 7)
+    return runRawListEndpoint(client, "transcripts", config.endpointPath ?? DEFAULT_ENDPOINT_PATHS.transcripts!, config.lookbackDays ?? 7)
   },
   market: async ({ client, config }) => {
     let itemCount = 0
     let requestCount = 0
+    const entities: NormalizedInvestingEntity[] = []
     for (const symbol of config.symbols) {
       const response = await client.market.getData(symbol)
       requestCount += 1
       if (!response.success) throw new Error(response.error ?? `market connector failed for ${symbol}`)
       itemCount += response.data ? 1 : 0
+      if (response.data) {
+        entities.push(
+          ...normalizeInvestingConnectorEntities({
+            connector: "market",
+            symbol,
+            data: response.data,
+          }),
+        )
+      }
     }
     return {
       itemCount,
       requestCount,
+      entities,
       details: config.symbols,
     }
   },
@@ -243,11 +285,15 @@ const BUILTIN_CONNECTORS: Record<InvestingConnectorKind, InvestingConnectorExecu
     return {
       itemCount: Array.isArray(response.data) ? response.data.length : 0,
       requestCount: 1,
+      entities: normalizeInvestingConnectorEntities({
+        connector: "macro",
+        data: response.data,
+      }),
       details: ["calendar"],
     }
   },
   news: async ({ client, config }) => {
-    return runRawListEndpoint(client, config.endpointPath ?? DEFAULT_ENDPOINT_PATHS.news!, config.lookbackDays ?? 3)
+    return runRawListEndpoint(client, "news", config.endpointPath ?? DEFAULT_ENDPOINT_PATHS.news!, config.lookbackDays ?? 3)
   },
 }
 
@@ -291,6 +337,7 @@ export async function executeInvestingConnectorRun(input: {
   client: InvestingClient
   executor?: InvestingConnectorExecutor
   stateFile?: string
+  entityStateFile?: string
   now?: number
 }): Promise<InvestingConnectorRunRecord> {
   const startedAt = input.now ?? Date.now()
@@ -302,6 +349,12 @@ export async function executeInvestingConnectorRun(input: {
       client: input.client,
       config: input.config,
     })
+    const normalized = summary.entities?.length
+      ? await upsertInvestingEntities({
+          entities: summary.entities,
+          stateFile: input.entityStateFile,
+        })
+      : undefined
     const finishedAt = Date.now()
     const record: InvestingConnectorRunRecord = {
       connector: input.connector,
@@ -315,6 +368,8 @@ export async function executeInvestingConnectorRun(input: {
       lastStatus: "ok",
       itemCount: summary.itemCount,
       requestCount: summary.requestCount,
+      normalizedEntityCount: normalized?.batchCount ?? 0,
+      normalizedKinds: normalized?.batchKinds ?? [],
       details: summary.details ?? [],
     }
     state.connectors[input.connector] = record
@@ -333,6 +388,8 @@ export async function executeInvestingConnectorRun(input: {
         connector: input.connector,
         itemCount: record.itemCount,
         requestCount: record.requestCount,
+        normalizedEntityCount: record.normalizedEntityCount,
+        normalizedKinds: record.normalizedKinds,
         scheduleMinutes: record.scheduleMinutes,
         coverageSymbols: record.coverageSymbols,
         endpointPath: record.endpointPath,
@@ -354,6 +411,8 @@ export async function executeInvestingConnectorRun(input: {
       lastStatus: "error",
       itemCount: 0,
       requestCount: 0,
+      normalizedEntityCount: 0,
+      normalizedKinds: [],
       details: [],
       error: message,
     }
@@ -388,6 +447,7 @@ export async function runInvestingConnector(
   options: {
     config?: unknown
     stateFile?: string
+    entityStateFile?: string
   } = {},
 ): Promise<InvestingConnectorRunRecord> {
   const rawConfig = options.config ?? (await Config.get())
@@ -400,6 +460,7 @@ export async function runInvestingConnector(
       config: connectorConfig,
       client,
       stateFile: options.stateFile,
+      entityStateFile: options.entityStateFile,
     })
   } finally {
     await client.disconnect().catch(() => {})
@@ -409,6 +470,7 @@ export async function runInvestingConnector(
 export async function runEnabledInvestingConnectors(options: {
   config?: unknown
   stateFile?: string
+  entityStateFile?: string
   connectors?: InvestingConnectorKind[]
 } = {}): Promise<InvestingConnectorRunRecord[]> {
   const rawConfig = options.config ?? (await Config.get())
@@ -427,6 +489,7 @@ export async function runEnabledInvestingConnectors(options: {
           config: resolved.connectors[connector],
           client,
           stateFile: options.stateFile,
+          entityStateFile: options.entityStateFile,
         }),
       )
     }
@@ -459,6 +522,8 @@ export async function getInvestingIngestionStatus(options: {
         lastStatus: "ok",
         itemCount: 0,
         requestCount: 0,
+        normalizedEntityCount: 0,
+        normalizedKinds: [],
         details: [],
       }
       return {
@@ -478,6 +543,7 @@ export function registerInvestingIngestionSchedules(input: {
   directory?: string
   rawConfig?: unknown
   stateFile?: string
+  entityStateFile?: string
   register?: RegisterTask
   runConnector?: (connector: InvestingConnectorKind) => Promise<unknown>
 }): Array<{ connector: InvestingConnectorKind; taskId: string; scheduleMinutes: number }> {
@@ -490,6 +556,7 @@ export function registerInvestingIngestionSchedules(input: {
         await runInvestingConnector(connector, {
           config: input.rawConfig,
           stateFile: input.stateFile,
+          entityStateFile: input.entityStateFile,
         })
       if (input.directory) {
         return await Instance.provide({
