@@ -181,4 +181,83 @@ describe("investing research executor", () => {
       expect(listed.executions.some((entry) => entry.id === execution.id)).toBe(true)
     })
   })
+
+  test("can execute valuation-aware workflow steps with the valuation kernel", async () => {
+    await withExecutorState(async () => {
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith("/api/valuation/NVDA?include_dcf=true")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: { symbol: "NVDA", fairValue: 140, currentPrice: 100, upsidePercent: 40 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.endsWith("/api/research/NVDA/dcf")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                symbol: "NVDA",
+                dcf: { intrinsicValue: 150, currentPrice: 100, upsidePercentage: 50 },
+                assumptions: {},
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.includes("/api/peers/NVDA")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                fairValueRange: { low: 90, high: 130 },
+                target: { currentPrice: 100 },
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.endsWith("/api/market/NVDA")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: { symbol: "NVDA", price: 100, marketCap: 1_000_000_000 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        if (url.endsWith("/api/valuation/NVDA")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: { symbol: "NVDA", fairValue: 140, currentPrice: 100, upsidePercent: 40 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        }
+        throw new Error(`Unexpected URL ${url}`)
+      }) as typeof fetch
+
+      const plan = createInvestingResearchPlan({
+        objective: "Refresh the thesis on NVDA",
+      })
+      updateInvestingResearchTask({ planId: plan.id, taskId: "coverage-check", status: "completed" })
+      updateInvestingResearchTask({ planId: plan.id, taskId: "source-refresh", status: "completed" })
+      updateInvestingResearchTask({ planId: plan.id, taskId: "thesis-delta", status: "completed" })
+
+      const execution = await runInvestingResearchExecution({ planId: plan.id })
+
+      expect(execution.taskId).toBe("valuation-check")
+      expect(execution.evidence.some((item) => item.toolId === "zee:invest-valuation")).toBe(true)
+      const valuationEvidence = execution.evidence.find((item) => item.toolId === "zee:invest-valuation")
+      expect(valuationEvidence?.status).toBe("completed")
+      expect((valuationEvidence?.data as { blendedFairValue?: number } | undefined)?.blendedFairValue).toBeCloseTo(
+        (140 + 150 + 110) / 3,
+        5,
+      )
+    })
+  })
 })

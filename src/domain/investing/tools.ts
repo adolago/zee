@@ -33,6 +33,11 @@ import {
   getInvestingResearchArtifact,
   listInvestingResearchArtifacts,
 } from "./artifacts";
+import {
+  getInvestingValuationKernel,
+  listInvestingValuationKernels,
+  runInvestingValuationKernel,
+} from "./valuation";
 
 type InvestingResult = {
   ok: boolean;
@@ -766,6 +771,73 @@ export const researchArtifactsTool: ToolDefinition = {
   }),
 };
 
+const ValuationKernelParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("run"),
+    symbol: z.string().describe("Ticker symbol to value"),
+    peers: z.array(z.string()).optional().describe("Optional peer set override"),
+    discountRate: z.number().optional().describe("Optional DCF discount rate override"),
+    terminalGrowth: z.number().optional().describe("Optional terminal growth rate override"),
+    projectionYears: z.number().int().positive().optional().describe("Optional DCF projection horizon"),
+    bearMultiplier: z.number().positive().optional().describe("Optional bear-case multiplier for scenario valuation"),
+    bullMultiplier: z.number().positive().optional().describe("Optional bull-case multiplier for scenario valuation"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    runId: z.string().describe("Persisted valuation kernel run identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    status: z.enum(["ok", "error"]).optional().describe("Optional valuation run status filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of valuation runs to return"),
+  }),
+]);
+
+export const valuationKernelTool: ToolDefinition = {
+  id: "zee:invest-valuation",
+  category: "domain",
+  init: async () => ({
+    description: `Run a reproducible valuation kernel across DCF, comparables, and bull/base/bear scenarios for a covered symbol.`,
+    parameters: ValuationKernelParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "run": {
+          ctx.metadata({ title: `Running valuation kernel for ${args.symbol}` });
+          const run = await runInvestingValuationKernel(args);
+          return {
+            title: "Investing Valuation Kernel",
+            metadata: { action: args.action, runId: run.id, symbol: run.symbol, status: run.status },
+            output: JSON.stringify(run, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading valuation kernel run ${args.runId}` });
+          const run = getInvestingValuationKernel(args.runId);
+          return {
+            title: "Investing Valuation Kernel",
+            metadata: { action: args.action, runId: args.runId, found: Boolean(run) },
+            output: JSON.stringify(run ?? { error: `Valuation run not found: ${args.runId}` }, null, 2),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing valuation kernel runs" });
+          const runs = listInvestingValuationKernels({
+            symbol: args.symbol,
+            status: args.status,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Valuation Kernel",
+            metadata: { action: args.action, count: runs.length, symbol: args.symbol, status: args.status },
+            output: JSON.stringify({ runs, count: runs.length }, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -937,6 +1009,7 @@ export const INVESTING_TOOLS = [
   portfolioTool,
   secFilingsTool,
   researchTool,
+  valuationKernelTool,
   researchPlannerTool,
   researchExecutorTool,
   researchArtifactsTool,
