@@ -81,6 +81,7 @@ export const CONTROL_PLANE_SCOPE_MATRIX: ControlPlaneRouteScopeEntry[] = [
   entry("GET", "/gateway/node", AuthScope.PAIRING, "Paired node inventory."),
   entry("POST", "/gateway/node/pair", AuthScope.PAIRING, "Pair new node client."),
   entry("POST", "/gateway/node/reconnect", AuthScope.PAIRING, "Reconnect paired node client."),
+  entry("POST", "/gateway/node/rotate", AuthScope.PAIRING, "Rotate paired node credential."),
   entry("POST", "/gateway/node/revoke", AuthScope.PAIRING, "Revoke paired node."),
   entry("POST", "/gateway/node/tool/authorize", AuthScope.PAIRING, "Authorize paired node tool request."),
 

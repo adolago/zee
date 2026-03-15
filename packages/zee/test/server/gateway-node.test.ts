@@ -3,6 +3,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { Config } from "../../src/config/config"
+import { FluxRecorder } from "../../src/flux"
 import { resetNodeClientRegistry } from "../../src/gateway/node-client-registry"
 import { Instance } from "../../src/project/instance"
 import { Server } from "../../src/server/server"
@@ -28,6 +29,22 @@ async function writeGlobalConfig(contents: Record<string, unknown>) {
   resetNodeClientRegistry()
 }
 
+async function mutateNodeClientState(
+  updater: (state: {
+    version: number
+    nodes: Record<string, Record<string, unknown>>
+  }) => void,
+) {
+  const stateFile = path.join(isolatedStateDir, "gateway-node-clients.json")
+  const state = JSON.parse(await fs.readFile(stateFile, "utf8")) as {
+    version: number
+    nodes: Record<string, Record<string, unknown>>
+  }
+  updater(state)
+  await fs.writeFile(stateFile, JSON.stringify(state, null, 2), "utf8")
+  resetNodeClientRegistry()
+}
+
 beforeAll(async () => {
   isolatedConfigDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gateway-node-config-"))
   isolatedStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-gateway-node-state-"))
@@ -39,6 +56,8 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await fs.rm(path.join(isolatedStateDir, "gateway-node-clients.json"), { force: true }).catch(() => {})
+  resetNodeClientRegistry()
   await writeGlobalConfig({
     gateway: {
       nodeClient: {
@@ -47,6 +66,7 @@ beforeEach(async () => {
         toolAllowlist: ["zee_invest_research"],
         allowRemotePairing: false,
         maxPairedNodes: 3,
+        credentialMaxAgeHours: 24,
       },
     },
   })
@@ -86,6 +106,7 @@ describe("gateway node routes", () => {
     const paired = await pairResponse.json()
     expect(paired.node.label).toBe("Desk")
     expect(typeof paired.token).toBe("string")
+    expect(paired.policy.credentialMaxAgeHours).toBe(24)
 
     const allowed = await app.request("/gateway/node/tool/authorize", {
       method: "POST",
@@ -126,6 +147,160 @@ describe("gateway node routes", () => {
     })
   })
 
+  test("rotates node credentials, invalidates the old token, and emits lifecycle telemetry", async () => {
+    const app = Server.App()
+    const before = FluxRecorder.list({ kind: "gateway.node.lifecycle" }).total
+
+    const pairResponse = await app.request("/gateway/node/pair", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ label: "Desk", platform: "linux" }),
+    })
+
+    expect(pairResponse.status).toBe(200)
+    const paired = await pairResponse.json()
+
+    const rotateResponse = await app.request("/gateway/node/rotate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: paired.token,
+      }),
+    })
+
+    expect(rotateResponse.status).toBe(200)
+    const rotated = await rotateResponse.json()
+    expect(rotated.node.tokenVersion).toBe(2)
+    expect(rotated.token).not.toBe(paired.token)
+
+    const staleReconnect = await app.request("/gateway/node/reconnect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: paired.token,
+      }),
+    })
+
+    expect(staleReconnect.status).toBe(401)
+
+    const refreshedReconnect = await app.request("/gateway/node/reconnect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: rotated.token,
+      }),
+    })
+
+    expect(refreshedReconnect.status).toBe(200)
+    expect(await refreshedReconnect.json()).toMatchObject({
+      id: paired.node.id,
+      tokenVersion: 2,
+    })
+    expect(FluxRecorder.list({ kind: "gateway.node.lifecycle" }).total).toBe(before + 4)
+  })
+
+  test("requires credential rotation before reconnect or tool authorization when a token ages out", async () => {
+    await writeGlobalConfig({
+      gateway: {
+        nodeClient: {
+          enabled: true,
+          securityMode: "allowlist",
+          toolAllowlist: ["zee_invest_research"],
+          allowRemotePairing: false,
+          maxPairedNodes: 3,
+          credentialMaxAgeHours: 1,
+        },
+      },
+    })
+
+    const app = Server.App()
+    const pairResponse = await app.request("/gateway/node/pair", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ label: "Desk", platform: "linux" }),
+    })
+
+    expect(pairResponse.status).toBe(200)
+    const paired = await pairResponse.json()
+
+    await mutateNodeClientState((state) => {
+      state.nodes[paired.node.id]!.tokenIssuedAt = Date.now() - 2 * 60 * 60 * 1000
+    })
+
+    const expiredReconnect = await app.request("/gateway/node/reconnect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: paired.token,
+      }),
+    })
+
+    expect(expiredReconnect.status).toBe(401)
+    expect(await expiredReconnect.json()).toMatchObject({
+      error: `Node token expired: ${paired.node.id}`,
+    })
+
+    const expiredAuthorize = await app.request("/gateway/node/tool/authorize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: paired.token,
+        tool: "zee_invest_research",
+      }),
+    })
+
+    expect(expiredAuthorize.status).toBe(401)
+    expect(await expiredAuthorize.json()).toMatchObject({
+      error: `Node token expired: ${paired.node.id}`,
+    })
+
+    const rotateResponse = await app.request("/gateway/node/rotate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: paired.token,
+      }),
+    })
+
+    expect(rotateResponse.status).toBe(200)
+    const rotated = await rotateResponse.json()
+
+    const refreshedReconnect = await app.request("/gateway/node/reconnect", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        nodeId: paired.node.id,
+        token: rotated.token,
+      }),
+    })
+
+    expect(refreshedReconnect.status).toBe(200)
+  })
+
   test("rejects reconnect and tool authorization when node-client policy is disabled", async () => {
     const app = Server.App()
     const pairResponse = await app.request("/gateway/node/pair", {
@@ -135,6 +310,7 @@ describe("gateway node routes", () => {
       },
       body: JSON.stringify({ label: "Desk", platform: "linux" }),
     })
+    expect(pairResponse.status).toBe(200)
     const paired = await pairResponse.json()
 
     await writeGlobalConfig({
@@ -185,6 +361,7 @@ describe("gateway node routes", () => {
       },
       body: JSON.stringify({ label: "Desk", platform: "linux" }),
     })
+    expect(pairResponse.status).toBe(200)
     const paired = await pairResponse.json()
 
     await writeGlobalConfig({

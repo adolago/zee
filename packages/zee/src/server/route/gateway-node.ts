@@ -1,10 +1,12 @@
-import { Hono } from "hono"
+import { Hono, type Context } from "hono"
 import { describeRoute, resolver, validator } from "hono-openapi"
 import { z } from "zod"
+import { FluxRecorder } from "@/flux"
 import { Config } from "../../config/config"
 import { errors } from "../error"
 import { isLoopbackHostname } from "../auth"
 import { Log } from "../../util/log"
+import { RequestMeta } from "../request-meta"
 import { getNodeClientRegistry, resolveNodeClientPolicy } from "@/gateway/node-client-registry"
 
 const log = Log.create({ service: "server:gateway-node" })
@@ -17,6 +19,9 @@ const NodePublicRecordSchema = z.object({
   platform: NodePlatformSchema,
   createdAt: z.number(),
   updatedAt: z.number(),
+  tokenIssuedAt: z.number(),
+  tokenVersion: z.number(),
+  tokenRotatedAt: z.number().optional(),
   lastSeenAt: z.number().optional(),
   status: z.enum(["paired", "revoked"]),
   revokedAt: z.number().optional(),
@@ -38,10 +43,16 @@ const NodePairResponseSchema = z.object({
   policy: z.object({
     securityMode: z.enum(["deny", "allowlist", "full"]),
     maxPairedNodes: z.number(),
+    credentialMaxAgeHours: z.number(),
   }),
 })
 
 const NodeReconnectRequestSchema = z.object({
+  nodeId: z.string().min(1),
+  token: z.string().min(1),
+})
+
+const NodeRotateRequestSchema = z.object({
   nodeId: z.string().min(1),
   token: z.string().min(1),
 })
@@ -56,6 +67,57 @@ const NodeToolAuthorizeRequestSchema = z.object({
   token: z.string().min(1),
   tool: z.string().min(1),
 })
+
+const NodeRotateResponseSchema = z.object({
+  node: NodePublicRecordSchema,
+  token: z.string(),
+  policy: z.object({
+    securityMode: z.enum(["deny", "allowlist", "full"]),
+    maxPairedNodes: z.number(),
+    credentialMaxAgeHours: z.number(),
+  }),
+})
+
+type NodeLifecycleAction = "pair" | "reconnect" | "rotate" | "revoke"
+
+function isUnauthorizedNodeLifecycleError(message: string): boolean {
+  return message.includes("Invalid node token") || message.includes("Node token expired")
+}
+
+function recordNodeLifecycle(
+  c: Context,
+  input: {
+    action: NodeLifecycleAction
+    status: "ok" | "error" | "denied"
+    nodeId?: string
+    reason?: string
+    tokenVersion?: number
+    policy?: ReturnType<typeof resolveNodeClientPolicy>
+  },
+) {
+  const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+  const requestID = RequestMeta.getRequestID(c.req.raw)
+  FluxRecorder.record({
+    traceID,
+    requestID,
+    direction: "internal",
+    domain: "gateway",
+    kind: "gateway.node.lifecycle",
+    status: input.status,
+    method: c.req.method,
+    path: c.req.path,
+    route: c.req.path,
+    metadata: {
+      action: input.action,
+      nodeId: input.nodeId,
+      reason: input.reason,
+      tokenVersion: input.tokenVersion,
+      securityMode: input.policy?.securityMode,
+      maxPairedNodes: input.policy?.maxPairedNodes,
+      credentialMaxAgeHours: input.policy?.credentialMaxAgeHours,
+    },
+  })
+}
 
 export const GatewayNodeRoute = new Hono()
   .post(
@@ -82,11 +144,23 @@ export const GatewayNodeRoute = new Hono()
       const cfg = await Config.get()
       const policy = resolveNodeClientPolicy(cfg)
       if (!policy.enabled) {
+        recordNodeLifecycle(c, {
+          action: "pair",
+          status: "denied",
+          reason: "node-client pairing disabled by policy",
+          policy,
+        })
         return c.json({ error: "Node-client pairing is disabled by policy (gateway.nodeClient.enabled=false)." }, 403)
       }
 
       const hostname = typeof cfg?.server?.hostname === "string" ? cfg.server.hostname : "127.0.0.1"
       if (!policy.allowRemotePairing && !isLoopbackHostname(hostname)) {
+        recordNodeLifecycle(c, {
+          action: "pair",
+          status: "denied",
+          reason: "remote pairing disabled on non-loopback bind",
+          policy,
+        })
         return c.json(
           {
             error:
@@ -108,17 +182,31 @@ export const GatewayNodeRoute = new Hono()
           },
           policy,
         )
+        recordNodeLifecycle(c, {
+          action: "pair",
+          status: "ok",
+          nodeId: paired.node.id,
+          tokenVersion: paired.node.tokenVersion,
+          policy,
+        })
         return c.json({
           node: paired.node,
           token: paired.token,
           policy: {
             securityMode: policy.securityMode,
             maxPairedNodes: policy.maxPairedNodes,
+            credentialMaxAgeHours: policy.credentialMaxAgeHours,
           },
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         log.warn("Node pairing denied", { message })
+        recordNodeLifecycle(c, {
+          action: "pair",
+          status: "error",
+          reason: message,
+          policy,
+        })
         return c.json({ error: message }, 400)
       }
     },
@@ -147,15 +235,104 @@ export const GatewayNodeRoute = new Hono()
       const input = c.req.valid("json")
       const policy = resolveNodeClientPolicy(await Config.get())
       if (!policy.enabled) {
+        recordNodeLifecycle(c, {
+          action: "reconnect",
+          status: "denied",
+          nodeId: input.nodeId,
+          reason: "node-client pairing disabled by policy",
+          policy,
+        })
         return c.json({ error: "Node-client pairing is disabled by policy (gateway.nodeClient.enabled=false)." }, 403)
       }
       const registry = getNodeClientRegistry()
       try {
-        const node = await registry.reconnect({ nodeId: input.nodeId, token: input.token })
+        const node = await registry.reconnect({ nodeId: input.nodeId, token: input.token, policy })
+        recordNodeLifecycle(c, {
+          action: "reconnect",
+          status: "ok",
+          nodeId: node.id,
+          tokenVersion: node.tokenVersion,
+          policy,
+        })
         return c.json(node)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        return c.json({ error: message }, message.includes("Invalid node token") ? 401 : 400)
+        recordNodeLifecycle(c, {
+          action: "reconnect",
+          status: isUnauthorizedNodeLifecycleError(message) ? "denied" : "error",
+          nodeId: input.nodeId,
+          reason: message,
+          policy,
+        })
+        return c.json({ error: message }, isUnauthorizedNodeLifecycleError(message) ? 401 : 400)
+      }
+    },
+  )
+  .post(
+    "/node/rotate",
+    describeRoute({
+      summary: "Rotate paired node credential",
+      description: "Validate the current node credential and issue a replacement reconnect token.",
+      operationId: "gateway.node.rotate",
+      tags: ["Gateway"],
+      responses: {
+        200: {
+          description: "Node credential rotated",
+          content: {
+            "application/json": {
+              schema: resolver(NodeRotateResponseSchema),
+            },
+          },
+        },
+        ...errors(400, 401, 403),
+      },
+    }),
+    validator("json", NodeRotateRequestSchema),
+    async (c) => {
+      const input = c.req.valid("json")
+      const policy = resolveNodeClientPolicy(await Config.get())
+      if (!policy.enabled) {
+        recordNodeLifecycle(c, {
+          action: "rotate",
+          status: "denied",
+          nodeId: input.nodeId,
+          reason: "node-client pairing disabled by policy",
+          policy,
+        })
+        return c.json({ error: "Node-client pairing is disabled by policy (gateway.nodeClient.enabled=false)." }, 403)
+      }
+      try {
+        const rotated = await getNodeClientRegistry().rotateToken({
+          nodeId: input.nodeId,
+          token: input.token,
+          policy,
+        })
+        recordNodeLifecycle(c, {
+          action: "rotate",
+          status: "ok",
+          nodeId: rotated.node.id,
+          tokenVersion: rotated.node.tokenVersion,
+          policy,
+        })
+        return c.json({
+          node: rotated.node,
+          token: rotated.token,
+          policy: {
+            securityMode: policy.securityMode,
+            maxPairedNodes: policy.maxPairedNodes,
+            credentialMaxAgeHours: policy.credentialMaxAgeHours,
+          },
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        recordNodeLifecycle(c, {
+          action: "rotate",
+          status: isUnauthorizedNodeLifecycleError(message) ? "denied" : "error",
+          nodeId: input.nodeId,
+          reason: message,
+          policy,
+        })
+        return c.json({ error: message }, isUnauthorizedNodeLifecycleError(message) ? 401 : 400)
       }
     },
   )
@@ -181,8 +358,29 @@ export const GatewayNodeRoute = new Hono()
     validator("json", NodeRevokeRequestSchema),
     async (c) => {
       const input = c.req.valid("json")
-      const node = await getNodeClientRegistry().revoke({ nodeId: input.nodeId, reason: input.reason })
-      return c.json(node)
+      const policy = resolveNodeClientPolicy(await Config.get())
+      try {
+        const node = await getNodeClientRegistry().revoke({ nodeId: input.nodeId, reason: input.reason })
+        recordNodeLifecycle(c, {
+          action: "revoke",
+          status: "ok",
+          nodeId: node.id,
+          tokenVersion: node.tokenVersion,
+          reason: node.revokeReason,
+          policy,
+        })
+        return c.json(node)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        recordNodeLifecycle(c, {
+          action: "revoke",
+          status: "error",
+          nodeId: input.nodeId,
+          reason: message,
+          policy,
+        })
+        return c.json({ error: message }, 400)
+      }
     },
   )
   .post(
@@ -229,7 +427,7 @@ export const GatewayNodeRoute = new Hono()
         return c.json(result)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        return c.json({ error: message }, message.includes("Invalid node token") ? 401 : 400)
+        return c.json({ error: message }, isUnauthorizedNodeLifecycleError(message) ? 401 : 400)
       }
     },
   )

@@ -15,6 +15,7 @@ export type NodeClientPolicy = {
   allowRemotePairing: boolean
   toolAllowlist: string[]
   maxPairedNodes: number
+  credentialMaxAgeHours: number
 }
 
 export type NodeClientAuditSnapshot = {
@@ -35,6 +36,9 @@ export type NodeClientRecord = {
   platform: NodeClientPlatform
   createdAt: number
   updatedAt: number
+  tokenIssuedAt: number
+  tokenVersion: number
+  tokenRotatedAt?: number
   lastSeenAt?: number
   status: "paired" | "revoked"
   revokedAt?: number
@@ -55,6 +59,7 @@ const DEFAULT_POLICY: NodeClientPolicy = {
   allowRemotePairing: false,
   toolAllowlist: [],
   maxPairedNodes: 10,
+  credentialMaxAgeHours: 24 * 30,
 }
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
@@ -82,6 +87,29 @@ function sanitizeLabel(label: string): string {
 
 function hasFiniteTimestamp(value: unknown): boolean {
   return typeof value === "number" && Number.isFinite(value)
+}
+
+function credentialAgeExceeded(record: NodeClientRecord, policy: NodeClientPolicy, now = Date.now()): boolean {
+  return now - record.tokenIssuedAt > policy.credentialMaxAgeHours * 60 * 60 * 1000
+}
+
+function normalizeRecord(record: NodeClientRecord): NodeClientRecord {
+  const fallbackIssuedAt = hasFiniteTimestamp(record.updatedAt)
+    ? record.updatedAt
+    : hasFiniteTimestamp(record.createdAt)
+      ? record.createdAt
+      : Date.now()
+  const tokenIssuedAt = hasFiniteTimestamp(record.tokenIssuedAt) ? record.tokenIssuedAt : fallbackIssuedAt
+  const tokenVersion =
+    typeof record.tokenVersion === "number" && Number.isFinite(record.tokenVersion) && record.tokenVersion > 0
+      ? Math.floor(record.tokenVersion)
+      : 1
+
+  return {
+    ...record,
+    tokenIssuedAt,
+    tokenVersion,
+  }
 }
 
 function hashToken(token: string): string {
@@ -112,12 +140,19 @@ export function resolveNodeClientPolicy(config: unknown): NodeClientPolicy {
       ? Math.max(1, Math.floor(maxPairedNodesRaw))
       : DEFAULT_POLICY.maxPairedNodes
 
+  const credentialMaxAgeHoursRaw = nodeClient.credentialMaxAgeHours
+  const credentialMaxAgeHours =
+    typeof credentialMaxAgeHoursRaw === "number" && Number.isFinite(credentialMaxAgeHoursRaw)
+      ? Math.max(1, Math.floor(credentialMaxAgeHoursRaw))
+      : DEFAULT_POLICY.credentialMaxAgeHours
+
   return {
     enabled: resolveBool(nodeClient.enabled, DEFAULT_POLICY.enabled),
     securityMode: resolveSecurityMode(nodeClient.securityMode),
     allowRemotePairing: resolveBool(nodeClient.allowRemotePairing, DEFAULT_POLICY.allowRemotePairing),
     toolAllowlist: resolveStringArray(nodeClient.toolAllowlist),
     maxPairedNodes,
+    credentialMaxAgeHours,
   }
 }
 
@@ -129,9 +164,12 @@ export class NodeClientRegistry {
     if (!raw) return { version: 1, nodes: {} }
     try {
       const parsed = JSON.parse(raw) as NodeClientState
+      const nodes = Object.fromEntries(
+        Object.entries(parsed?.nodes ?? {}).map(([nodeId, record]) => [nodeId, normalizeRecord(record as NodeClientRecord)]),
+      )
       return {
         version: 1,
-        nodes: parsed?.nodes ?? {},
+        nodes,
       }
     } catch {
       return { version: 1, nodes: {} }
@@ -151,13 +189,23 @@ export class NodeClientRegistry {
     return record
   }
 
-  private assertToken(record: NodeClientRecord, token: string): void {
+  private assertToken(
+    record: NodeClientRecord,
+    token: string,
+    policy: NodeClientPolicy,
+    options: {
+      allowExpired?: boolean
+    } = {},
+  ): void {
     const tokenHash = hashToken(token)
     if (!tokenEquals(record.tokenHash, tokenHash)) {
       throw new Error("Invalid node token")
     }
     if (record.status === "revoked") {
       throw new Error(`Node is revoked: ${record.id}`)
+    }
+    if (!options.allowExpired && credentialAgeExceeded(record, policy)) {
+      throw new Error(`Node token expired: ${record.id}`)
     }
   }
 
@@ -185,6 +233,8 @@ export class NodeClientRegistry {
       id,
       label: sanitizeLabel(input.label) || "unnamed-node",
       platform: input.platform,
+      tokenIssuedAt: now,
+      tokenVersion: 1,
       status: "paired",
       createdAt: now,
       updatedAt: now,
@@ -201,10 +251,10 @@ export class NodeClientRegistry {
     return { node: sanitizeRecord(record), token }
   }
 
-  async reconnect(input: { nodeId: string; token: string }): Promise<ReturnType<typeof sanitizeRecord>> {
+  async reconnect(input: { nodeId: string; token: string; policy: NodeClientPolicy }): Promise<ReturnType<typeof sanitizeRecord>> {
     const state = await this.readState()
     const record = this.findRecord(state, input.nodeId)
-    this.assertToken(record, input.token)
+    this.assertToken(record, input.token, input.policy)
 
     const now = Date.now()
     record.lastSeenAt = now
@@ -213,6 +263,30 @@ export class NodeClientRegistry {
     await this.writeState(state)
 
     return sanitizeRecord(record)
+  }
+
+  async rotateToken(
+    input: { nodeId: string; token: string; policy: NodeClientPolicy },
+  ): Promise<{ node: ReturnType<typeof sanitizeRecord>; token: string }> {
+    const state = await this.readState()
+    const record = this.findRecord(state, input.nodeId)
+    this.assertToken(record, input.token, input.policy, { allowExpired: true })
+
+    const now = Date.now()
+    const nextToken = randomBytes(24).toString("hex")
+    record.tokenHash = hashToken(nextToken)
+    record.tokenIssuedAt = now
+    record.tokenRotatedAt = now
+    record.tokenVersion += 1
+    record.updatedAt = now
+    state.nodes[record.id] = record
+    await this.writeState(state)
+    log.info("Node token rotated", { id: record.id, tokenVersion: record.tokenVersion })
+
+    return {
+      node: sanitizeRecord(record),
+      token: nextToken,
+    }
   }
 
   async revoke(input: { nodeId: string; reason?: string }): Promise<ReturnType<typeof sanitizeRecord>> {
@@ -253,7 +327,7 @@ export class NodeClientRegistry {
   }> {
     const state = await this.readState()
     const record = this.findRecord(state, input.nodeId)
-    this.assertToken(record, input.token)
+    this.assertToken(record, input.token, input.policy)
 
     const mode = input.policy.securityMode
     if (mode === "deny") {
