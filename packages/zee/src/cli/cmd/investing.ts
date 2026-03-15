@@ -24,6 +24,14 @@ import {
   type InvestingConnectorKind,
 } from "@/investing/ingestion"
 import { getInvestingThesisLedgerStatus } from "@root/domain/investing/thesis"
+import {
+  INVESTING_PORTFOLIO_BRIEFING_KINDS,
+  createInvestingPortfolioBriefing,
+  getInvestingPortfolioBriefing,
+  listInvestingPortfolioBriefings,
+  type InvestingPortfolioBriefingAudience,
+  type InvestingPortfolioBriefingKind,
+} from "@root/domain/investing/briefings"
 
 const InvestingIngestStatusCommand = cmd({
   command: "status",
@@ -347,6 +355,137 @@ const InvestingThesisCommand = cmd({
   async handler() {},
 })
 
+const InvestingBriefingCreateCommand = cmd({
+  command: "create",
+  describe: "create a persisted daily portfolio briefing",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("kind", {
+        type: "string",
+        choices: [...INVESTING_PORTFOLIO_BRIEFING_KINDS],
+        default: "daily-portfolio-brief",
+        describe: "briefing kind to create",
+      })
+      .option("watchlist-symbol", {
+        type: "array",
+        string: true,
+        describe: "optional explicit watchlist symbol override",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { kind?: string; watchlistSymbol?: string[]; json?: boolean }) => {
+    const briefing = await createInvestingPortfolioBriefing({
+      watchlistSymbols: args.watchlistSymbol,
+    })
+    if (args.json) {
+      console.log(JSON.stringify(briefing, null, 2))
+      return
+    }
+
+    console.log(`${briefing.id}`)
+    console.log(`- kind=${briefing.kind} createdAt=${briefing.createdAt}`)
+    console.log(`- summary=${briefing.summary}`)
+    console.log(
+      `- coverage holdings=${briefing.coverage.holdingsCount} watchlist=${briefing.coverage.watchlistCount} theses=${briefing.coverage.thesisTrackedCount} deltas=${briefing.coverage.eventDeltaCount}`,
+    )
+  },
+})
+
+const InvestingBriefingReadCommand = cmd({
+  command: "read <briefingId>",
+  describe: "read one persisted portfolio briefing",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("briefingId", {
+        type: "string",
+        demandOption: true,
+        describe: "portfolio briefing identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { briefingId?: string; json?: boolean }) => {
+    if (!args.briefingId) {
+      throw new Error("briefingId is required")
+    }
+    const briefing = getInvestingPortfolioBriefing(args.briefingId)
+    const payload = briefing ?? { error: `Portfolio briefing not found: ${args.briefingId}` }
+    if (args.json || !briefing) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${briefing.id}`)
+    console.log(`- kind=${briefing.kind} createdAt=${briefing.createdAt}`)
+    console.log(`- summary=${briefing.summary}`)
+    for (const section of briefing.sections) {
+      console.log(`\n${section.title}`)
+      console.log(section.body)
+    }
+  },
+})
+
+const InvestingBriefingListCommand = cmd({
+  command: "list",
+  describe: "list persisted portfolio briefings",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("kind", {
+        type: "string",
+        choices: [...INVESTING_PORTFOLIO_BRIEFING_KINDS],
+        describe: "optional briefing kind filter",
+      })
+      .option("symbol", {
+        type: "string",
+        describe: "optional symbol filter",
+      })
+      .option("audience", {
+        type: "string",
+        choices: ["holding", "watchlist"],
+        describe: "optional audience filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 10,
+        describe: "maximum number of briefings to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { kind?: string; symbol?: string; audience?: string; limit?: number; json?: boolean }) => {
+    const briefings = listInvestingPortfolioBriefings({
+      kind: args.kind as InvestingPortfolioBriefingKind | undefined,
+      symbol: args.symbol,
+      audience: args.audience as InvestingPortfolioBriefingAudience | undefined,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ briefings, count: briefings.length }, null, 2))
+      return
+    }
+    for (const briefing of briefings) {
+      console.log(
+        `- ${briefing.id}: kind=${briefing.kind} holdings=${briefing.coverage.holdingsCount} watchlist=${briefing.coverage.watchlistCount} theses=${briefing.coverage.thesisTrackedCount} deltas=${briefing.coverage.eventDeltaCount} summary=${briefing.summary}`,
+      )
+    }
+  },
+})
+
+const InvestingBriefingCommand = cmd({
+  command: "briefing",
+  describe: "persisted daily portfolio briefings",
+  builder: (yargs: Argv) =>
+    yargs.command(InvestingBriefingCreateCommand).command(InvestingBriefingReadCommand).command(InvestingBriefingListCommand).demandCommand(),
+  async handler() {},
+})
+
 const InvestingIngestScheduleCommand = cmd({
   command: "schedule",
   describe: "register connector schedules in the current always-on process",
@@ -394,6 +533,7 @@ export const InvestingCommand = cmd({
       .command(InvestingEntityCommand)
       .command(InvestingEventCommand)
       .command(InvestingThesisCommand)
+      .command(InvestingBriefingCommand)
       .demandCommand(),
   async handler() {},
 })
