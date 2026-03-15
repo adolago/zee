@@ -26,6 +26,7 @@ zee v3 rollout status
 zee v3 rollout apply canary --actor release-manager --reason "Start CLI canary"
 zee v3 rollout apply internal --actor release-manager --reason "Promote daemon traffic"
 zee v3 rollout rollback --actor sre-owner --reason "Rollback after parity breach"
+zee v3 launch status
 ```
 
 ## Automation contract

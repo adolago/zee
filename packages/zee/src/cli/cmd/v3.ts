@@ -14,6 +14,16 @@ import {
   V3_ROLLOUT_STAGES,
   type V3RolloutStage,
 } from "@/runtime/v3-rollout"
+import {
+  getV3LaunchReport,
+  goLiveV3Launch,
+  recordV3LaunchSignoff,
+  summarizeV3LaunchReport,
+  V3_LAUNCH_DECISIONS,
+  V3_LAUNCH_OWNERS,
+  type V3LaunchDecision,
+  type V3LaunchOwner,
+} from "@/runtime/v3-launch"
 
 type V3StatusArgs = {
   json?: boolean
@@ -43,6 +53,24 @@ type V3RolloutApplyArgs = {
 }
 
 type V3RolloutRollbackArgs = {
+  actor?: string
+  reason?: string
+  json?: boolean
+}
+
+type V3LaunchStatusArgs = {
+  json?: boolean
+}
+
+type V3LaunchSignoffArgs = {
+  owner?: V3LaunchOwner
+  actor?: string
+  decision?: string
+  note?: string
+  json?: boolean
+}
+
+type V3LaunchGoLiveArgs = {
   actor?: string
   reason?: string
   json?: boolean
@@ -264,10 +292,144 @@ const V3RolloutCommand = cmd({
   async handler() {},
 })
 
+const V3LaunchStatusCommand = cmd({
+  command: "status",
+  describe: "show the v3 launch checklist and current owner signoffs",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: false,
+      describe: "output JSON",
+    }),
+  handler: async (args: V3LaunchStatusArgs) => {
+    await bootstrap(process.cwd(), async () => {
+      const report = await getV3LaunchReport({ emitTelemetry: true })
+      if (args.json) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+      console.log(summarizeV3LaunchReport(report))
+    })
+  },
+})
+
+const V3LaunchSignoffCommand = cmd({
+  command: "signoff <owner>",
+  describe: "record an owner signoff or block on the v3 launch checklist",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("owner", {
+        type: "string",
+        demandOption: true,
+        choices: [...V3_LAUNCH_OWNERS],
+        describe: "owner role to record",
+      })
+      .option("actor", {
+        type: "string",
+        demandOption: true,
+        describe: "operator recording the signoff",
+      })
+      .option("decision", {
+        type: "string",
+        choices: [...V3_LAUNCH_DECISIONS],
+        default: "approve",
+        describe: "whether the owner approves or blocks launch",
+      })
+      .option("note", {
+        type: "string",
+        demandOption: true,
+        describe: "signoff note",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output JSON",
+      }),
+  handler: async (args: V3LaunchSignoffArgs) => {
+    if (!args.owner || !args.actor || !args.note) {
+      throw new Error("owner, actor, and note are required")
+    }
+    const owner = args.owner
+    const actor = args.actor
+    const note = args.note
+    const decision = args.decision
+    if (decision && !V3_LAUNCH_DECISIONS.includes(decision as V3LaunchDecision)) {
+      throw new Error(`decision must be one of: ${V3_LAUNCH_DECISIONS.join(", ")}`)
+    }
+    await bootstrap(process.cwd(), async () => {
+      const report = await recordV3LaunchSignoff({
+        owner,
+        actor,
+        decision: decision as V3LaunchDecision | undefined,
+        note,
+      })
+      if (args.json) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+      console.log(summarizeV3LaunchReport(report))
+    })
+  },
+})
+
+const V3LaunchGoLiveCommand = cmd({
+  command: "go-live",
+  describe: "record final launch approval and emit the go-live playbook",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("actor", {
+        type: "string",
+        demandOption: true,
+        describe: "operator executing go-live",
+      })
+      .option("reason", {
+        type: "string",
+        demandOption: true,
+        describe: "reason for go-live approval",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output JSON",
+      }),
+  handler: async (args: V3LaunchGoLiveArgs) => {
+    if (!args.actor || !args.reason) {
+      throw new Error("actor and reason are required")
+    }
+    const actor = args.actor
+    const reason = args.reason
+    await bootstrap(process.cwd(), async () => {
+      const report = await goLiveV3Launch({
+        actor,
+        reason,
+      })
+      if (args.json) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+      console.log(summarizeV3LaunchReport(report))
+    })
+  },
+})
+
+const V3LaunchCommand = cmd({
+  command: "launch",
+  describe: "manage launch checklist state, signoffs, and go-live approval",
+  builder: (yargs: Argv) =>
+    yargs.command(V3LaunchStatusCommand).command(V3LaunchSignoffCommand).command(V3LaunchGoLiveCommand).demandCommand(),
+  async handler() {},
+})
+
 export const V3Command = cmd({
   command: "v3",
   describe: "v3 modernization and release workflows",
   builder: (yargs: Argv) =>
-    yargs.command(V3StatusCommand).command(V3PlanCommand).command(V3ReleaseCommand).command(V3RolloutCommand).demandCommand(),
+    yargs
+      .command(V3StatusCommand)
+      .command(V3PlanCommand)
+      .command(V3ReleaseCommand)
+      .command(V3RolloutCommand)
+      .command(V3LaunchCommand)
+      .demandCommand(),
   async handler() {},
 })

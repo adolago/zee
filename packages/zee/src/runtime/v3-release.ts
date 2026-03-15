@@ -47,6 +47,11 @@ const REQUIRED_V3_RELEASE_DOCS = [
     path: "docs/architecture/v3-rollout-plan.md",
     label: "V3 rollout plan",
   },
+  {
+    id: "v3-launch-playbook",
+    path: "docs/architecture/v3-launch-playbook.md",
+    label: "V3 launch playbook",
+  },
 ] as const
 
 export type V3ReleaseCategory = "reliability" | "security" | "performance" | "docs"
