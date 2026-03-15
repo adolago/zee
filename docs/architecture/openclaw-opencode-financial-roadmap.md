@@ -67,6 +67,7 @@ Exit criteria:
 - Implement thesis generation/update loops, valuation packs, catalyst and risk tracking.
 - Add portfolio-linked daily and earnings briefing pipelines.
 - Add quality evaluation harness (factuality, consistency, timeliness).
+- Research workflow planner and task decomposition runbook: `docs/architecture/investing-research-planner.md`.
 
 Exit criteria:
 - End-to-end automated research run produces usable analyst packet.

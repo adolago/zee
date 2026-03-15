@@ -48,6 +48,8 @@ export type FluxKind =
   | "investing.ingestion.backfill"
   | "investing.ingestion.run"
   | "investing.ingestion.schedule"
+  | "investing.research.plan"
+  | "investing.research.plan.task"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"

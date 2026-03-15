@@ -13,8 +13,8 @@ import type { ToolDefinition } from '../types';
 import { getToolRegistry } from '../registry';
 import { Log } from '../../../packages/zee/src/util/log';
 
-// MCP layer stubs (fallback implementations)
-import { InvestingMarketDataTool, InvestingResearchTool, InvestingPortfolioTool, InvestingSecFilingTool, InvestingEstimatesTool, InvestingInsiderTradesTool, InvestingSegmentsTool } from './investing';
+// Full domain implementations
+import { INVESTING_TOOLS as FULL_INVESTING_TOOLS } from '../../domain/investing/tools.js';
 import { ZeeMemoryStoreTool, ZeeMemorySearchTool, ZeeMessagingTool, ZeeNotificationTool } from './zee';
 
 const log = Log.create({ service: 'domain-tools' });
@@ -27,13 +27,7 @@ const log = Log.create({ service: 'domain-tools' });
  * Investing domain tools (zee:invest-* namespace)
  */
 export const investingTools: ToolDefinition[] = [
-  InvestingMarketDataTool,
-  InvestingResearchTool,
-  InvestingPortfolioTool,
-  InvestingSecFilingTool,
-  InvestingEstimatesTool,
-  InvestingInsiderTradesTool,
-  InvestingSegmentsTool,
+  ...(FULL_INVESTING_TOOLS as unknown as ToolDefinition[]),
 ];
 
 /**
