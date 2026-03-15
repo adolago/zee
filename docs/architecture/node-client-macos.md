@@ -31,6 +31,15 @@ This document captures the reference node-client product path introduced for gat
   - `allowlist`: require tool in merged allowlist (global + node-local)
   - `full`: allow all tools (flagged by security audit)
 
+## Deterministic policy matrix
+| `securityMode` | Authorization result | Reason |
+| --- | --- | --- |
+| `deny` | deny every tool request | `Node policy is deny` |
+| `allowlist` + global match | allow | `Tool is allowlisted` |
+| `allowlist` + node-local match | allow | `Tool is allowlisted` |
+| `allowlist` + no match | deny | `Tool is not allowlisted` |
+| `full` | allow every tool request | `Node policy is full` |
+
 ## Audit integration
 - `zee security audit --deep` and `zee doctor security --deep` now include:
   - config-level node-client exposure checks
@@ -41,6 +50,7 @@ This document captures the reference node-client product path introduced for gat
   - `security.audit.checked`
   - `security.audit.finding`
 - Node lifecycle routes emit Flux `gateway.node.lifecycle` events for pair, reconnect, rotate, and revoke transitions.
+- Node tool authorization emits Flux `gateway.node.authorization` events with the tool name, decision, mode, reason, and allowlist match source (`global`, `node`, `global+node`, `none`, or `policy`).
 
 ## Follow-up hooks (iOS/Android)
 - Data model keeps `platform` as `macos|ios|android|linux|windows|unknown`.
