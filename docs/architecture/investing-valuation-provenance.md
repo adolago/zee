@@ -55,6 +55,11 @@ That is the forward-compatible handoff for the thesis lifecycle epic:
 - thesis systems can link a thesis record to a valuation case without re-deriving IDs
 - valuation signal changes can be diffed against later thesis revisions
 
+The thesis ledger now consumes that handoff directly:
+
+- valuation packet creation keeps the base thesis record warm
+- `thesisKey`, `valuationCaseId`, and the valuation signal are copied into the persisted thesis ledger for later refreshes
+
 ## Telemetry
 
 This slice emits:

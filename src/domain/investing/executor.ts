@@ -23,6 +23,11 @@ import {
 import { Log } from "../../../packages/zee/src/util/log";
 import { Investing } from "../../paths";
 import { createInvestingResearchArtifact } from "./artifacts";
+import {
+  buildInvestingThesisDraft,
+  recordInvestingThesisRevisionFromExecution,
+  renderInvestingThesisSnapshot,
+} from "./thesis";
 import { runInvestingValuationKernel } from "./valuation";
 import {
   getInvestingResearchPlan,
@@ -376,6 +381,17 @@ async function buildSynthesis(input: {
     sections.push("", renderInvestingEventDeltaBrief(eventDeltaBrief));
   }
 
+  if (input.plan.workflow === "thesis-refresh") {
+    const primarySymbol = normalizeSymbol(input.plan.symbols[0]);
+    if (primarySymbol) {
+      const thesisDraft = buildInvestingThesisDraft({
+        symbol: primarySymbol,
+        evidence: input.evidence,
+      });
+      sections.push("", renderInvestingThesisSnapshot(thesisDraft));
+    }
+  }
+
   const synthesis = sections.join("\n");
 
   return input.provenance ? appendInvestingProvenance(synthesis, input.provenance) : synthesis;
@@ -542,6 +558,21 @@ export async function runInvestingResearchExecution(
       executionId: execution.id,
       error: error instanceof Error ? error.message : String(error),
     });
+  }
+
+  if (execution.status === "ok" && updatedPlan.workflow === "thesis-refresh" && updatedTask.id === "thesis-refresh-brief") {
+    try {
+      recordInvestingThesisRevisionFromExecution({
+        plan: updatedPlan,
+        task: updatedTask,
+        execution,
+      });
+    } catch (error) {
+      log.warn("failed to record thesis revision", {
+        executionId: execution.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   return execution;

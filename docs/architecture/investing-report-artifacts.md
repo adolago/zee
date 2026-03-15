@@ -32,6 +32,8 @@ Each artifact includes:
 
 For earnings-oriented workflows, the `Synthesis` section now carries the briefing-ready event delta block generated from scored event intelligence.
 
+For `thesis-refresh`, the generated artifact ID is also written into the thesis ledger so later revisions can trace back to the exact synthesized packet that produced the change log entry.
+
 Artifact kinds map to workflow phases:
 
 - `scope-note`

@@ -12,6 +12,7 @@ import path from "node:path";
 import { FluxRecorder } from "../../../packages/zee/src/flux";
 import { Log } from "../../../packages/zee/src/util/log";
 import { Investing } from "../../paths";
+import { syncInvestingThesisContext } from "./thesis";
 import type {
   InvestingValuationKernelRun,
   InvestingValuationMethodResult,
@@ -274,6 +275,28 @@ export function createInvestingValuationPacket(
       schemaVersion: packet.schemaVersion,
     },
   });
+
+  try {
+    syncInvestingThesisContext({
+      thesisKey: packet.thesisContext.thesisKey,
+      symbol: packet.symbol,
+      summary: packet.summary,
+      valuation: {
+        valuationCaseId: packet.valuationCaseId,
+        packetId: packet.id,
+        runId: packet.runId,
+        signal: packet.thesisContext.signal,
+        fairValue: packet.verdict.fairValue,
+        currentPrice: packet.verdict.currentPrice,
+        upsidePercent: packet.verdict.upsidePercent,
+      },
+    });
+  } catch (error) {
+    log.warn("failed to sync thesis context from valuation packet", {
+      packetId: packet.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   return packet;
 }
