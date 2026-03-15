@@ -72,6 +72,22 @@ describe("investing thesis ledger", () => {
           currentPrice: 100,
           upsidePercent: 40,
         },
+        evidence: [
+          {
+            kind: "research-evidence",
+            id: "evidence-1",
+            label: "[E1] Research endpoint",
+            link: "evidence:execution-1:E1",
+            toolId: "zee:invest-research",
+          },
+          {
+            kind: "valuation-packet",
+            id: "valuation-packet-1",
+            label: "Valuation packet for NVDA",
+            link: "valuation-packet:valuation-packet-1",
+            toolId: "zee:invest-valuation",
+          },
+        ],
       })
 
       const updated = recordInvestingThesisRevision({
@@ -80,7 +96,7 @@ describe("investing thesis ledger", () => {
         changeType: "refresh",
         summary: "NVDA thesis moved back to a neutral stance after estimate volatility.",
         thesis: "The setup is intact, but the margin of safety is narrower than the prior refresh.",
-        conviction: "medium",
+        conviction: "high",
         posture: "neutral",
         watchpoints: ["Monitor estimate volatility before increasing exposure."],
         valuation: {
@@ -92,6 +108,15 @@ describe("investing thesis ledger", () => {
           currentPrice: 105,
           upsidePercent: 6.7,
         },
+        evidence: [
+          {
+            kind: "research-evidence",
+            id: "evidence-2",
+            label: "[E1] Analyst estimates",
+            link: "evidence:execution-2:E1",
+            toolId: "zee:invest-estimates",
+          },
+        ],
       })
 
       expect(updated.currentVersion).toBe(2)
@@ -110,6 +135,24 @@ describe("investing thesis ledger", () => {
       expect(await Bun.file(getInvestingThesisStateFile()).exists()).toBe(true)
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.thesis.record")).toBe(true)
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.thesis.revision")).toBe(true)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.thesis.confidence")).toBe(true)
+      expect(updated.confidence?.appliedConviction).toBe("medium")
+      expect(updated.revisions[0]?.confidence.appliedConviction).toBe("medium")
+      expect(updated.revisions[0]?.confidence.reasons.some((reason) => reason.includes("downshifted"))).toBe(true)
+    })
+  })
+
+  test("rejects thesis revisions that do not carry evidence links", async () => {
+    await withThesisState(async () => {
+      expect(() =>
+        recordInvestingThesisRevision({
+          thesisKey: thesisKeyForSymbol("MSFT"),
+          symbol: "MSFT",
+          changeType: "initialize",
+          summary: "MSFT thesis without evidence.",
+          thesis: "This should fail because no evidence references were provided.",
+        }),
+      ).toThrow("Thesis revisions require at least one evidence link.")
     })
   })
 
@@ -214,9 +257,12 @@ describe("investing thesis ledger", () => {
       expect(thesis?.currentVersion).toBe(1)
       expect(thesis?.summary).toContain("NVDA thesis")
       expect(thesis?.valuation?.valuationCaseId).toContain("valuation_case:equity:nvda:")
+      expect(thesis?.confidence?.ruleVersion).toBe("thesis-confidence.v1")
       expect(thesis?.revisions[0]?.source.executionId).toBe(thesisExecution.id)
       expect(thesis?.revisions[0]?.source.artifactId).toBe(thesisExecution.artifactId)
       expect(thesis?.revisions[0]?.evidence.some((item) => item.kind === "valuation-packet")).toBe(true)
+      expect(thesis?.revisions[0]?.confidence.evidenceCount).toBeGreaterThan(0)
+      expect(thesisExecution.synthesis).toContain("confidenceRule=thesis-confidence.v1")
     })
   })
 })

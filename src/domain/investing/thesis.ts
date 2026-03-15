@@ -42,6 +42,18 @@ export interface InvestingThesisEvidenceReference {
   id: string;
   label: string;
   link?: string;
+  toolId?: string;
+}
+
+export interface InvestingThesisConfidenceAssessment {
+  ruleVersion: "thesis-confidence.v1";
+  requestedConviction: InvestingThesisConviction;
+  appliedConviction: InvestingThesisConviction;
+  maxAllowedConviction: InvestingThesisConviction;
+  score: number;
+  evidenceCount: number;
+  uniqueTools: string[];
+  reasons: string[];
 }
 
 export interface InvestingThesisRevision {
@@ -56,6 +68,7 @@ export interface InvestingThesisRevision {
   watchpoints: string[];
   valuation: InvestingThesisValuationSnapshot | null;
   evidence: InvestingThesisEvidenceReference[];
+  confidence: InvestingThesisConfidenceAssessment;
   source: {
     workflow?: string;
     planId?: string;
@@ -80,6 +93,7 @@ export interface InvestingThesisRecord {
   thesis: string;
   watchpoints: string[];
   valuation: InvestingThesisValuationSnapshot | null;
+  confidence: InvestingThesisConfidenceAssessment | null;
   revisions: InvestingThesisRevision[];
 }
 
@@ -160,7 +174,14 @@ export interface InvestingThesisDraft {
   posture: InvestingThesisPosture;
   watchpoints: string[];
   valuation: InvestingThesisValuationSnapshot | null;
+  confidence: InvestingThesisConfidenceAssessment;
 }
+
+const CONVICTION_ORDER: Record<InvestingThesisConviction, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
 
 function getThesisStateDir(): string {
   const stateDir = process.env.XDG_STATE_HOME
@@ -261,6 +282,73 @@ function defaultWatchpoints(symbol: string, valuation: InvestingThesisValuationS
   ];
 }
 
+function lowerConviction(
+  left: InvestingThesisConviction,
+  right: InvestingThesisConviction,
+): InvestingThesisConviction {
+  return CONVICTION_ORDER[left] <= CONVICTION_ORDER[right] ? left : right;
+}
+
+function unique(items: string[]): string[] {
+  return [...new Set(items.filter(Boolean))];
+}
+
+function evaluateInvestingThesisConfidence(input: {
+  requestedConviction?: InvestingThesisConviction;
+  priorConviction?: InvestingThesisConviction;
+  evidence: InvestingThesisEvidenceReference[];
+  valuation: InvestingThesisValuationSnapshot | null;
+}): InvestingThesisConfidenceAssessment {
+  if (input.evidence.length === 0) {
+    throw new Error("Thesis revisions require at least one evidence link.");
+  }
+
+  const requestedConviction = input.requestedConviction ?? input.priorConviction ?? "medium";
+  const uniqueTools = unique(input.evidence.map((item) => item.toolId ?? item.kind));
+  let score = 0;
+
+  if (input.evidence.length >= 1) score += 1;
+  if (uniqueTools.length >= 2) score += 1;
+  if (input.valuation?.valuationCaseId && input.valuation.signal) score += 1;
+
+  let maxAllowedConviction: InvestingThesisConviction =
+    score >= 3 ? "high" : score >= 2 ? "medium" : "low";
+
+  const reasons = [
+    `Linked ${input.evidence.length} evidence reference(s).`,
+    `Coverage spans ${uniqueTools.length} tool path(s): ${uniqueTools.join(", ") || "none"}.`,
+  ];
+
+  if (input.valuation?.valuationCaseId && input.valuation.signal) {
+    reasons.push(`Valuation signal ${input.valuation.signal} is linked via ${input.valuation.valuationCaseId}.`);
+  } else {
+    reasons.push("No linked valuation signal was available for this revision.");
+  }
+
+  if (input.valuation?.signal === "balanced" && maxAllowedConviction === "high") {
+    maxAllowedConviction = "medium";
+    reasons.push("Balanced valuation signal caps conviction at medium until the setup breaks directionally.");
+  }
+
+  const appliedConviction = lowerConviction(requestedConviction, maxAllowedConviction);
+  if (appliedConviction !== requestedConviction) {
+    reasons.push(
+      `Requested conviction ${requestedConviction} was downshifted to ${appliedConviction} by thesis-confidence.v1.`,
+    );
+  }
+
+  return {
+    ruleVersion: "thesis-confidence.v1",
+    requestedConviction,
+    appliedConviction,
+    maxAllowedConviction,
+    score,
+    evidenceCount: input.evidence.length,
+    uniqueTools,
+    reasons,
+  };
+}
+
 function buildEmptyRecord(input: {
   thesisKey: string;
   symbol: string;
@@ -285,6 +373,7 @@ function buildEmptyRecord(input: {
     thesis: input.summary,
     watchpoints: defaultWatchpoints(input.symbol, input.valuation ?? null),
     valuation: input.valuation ?? null,
+    confidence: null,
     revisions: [],
   };
 }
@@ -326,7 +415,33 @@ export function buildInvestingThesisDraft(input: {
   const symbol = normalizeSymbol(input.symbol);
   const valuation = valuationSnapshotFromEvidence(input.evidence);
   const posture = postureFromSignal(valuation?.signal);
-  const conviction = input.conviction ?? "medium";
+  const evidence = input.evidence
+    .filter((item) => item.status === "completed")
+    .map<InvestingThesisEvidenceReference>((item) => ({
+      kind: "research-evidence",
+      id: item.id,
+      label: `[${item.citation}] ${item.sourceLabel}`,
+      link: item.link,
+      toolId: item.toolId,
+    }));
+
+  if (valuation?.packetId) {
+    evidence.push({
+      kind: "valuation-packet",
+      id: valuation.packetId,
+      label: `Valuation packet for ${symbol}`,
+      link: `valuation-packet:${valuation.packetId}`,
+      toolId: "zee:invest-valuation",
+    });
+  }
+
+  const confidence = evaluateInvestingThesisConfidence({
+    requestedConviction: input.conviction,
+    priorConviction: input.conviction,
+    evidence,
+    valuation,
+  });
+  const conviction = confidence.appliedConviction;
 
   const summary = valuation?.signal
     ? `${symbol} thesis remains ${posture} with ${valuation.signal} valuation signal.`
@@ -340,6 +455,7 @@ export function buildInvestingThesisDraft(input: {
     posture,
     watchpoints: defaultWatchpoints(symbol, valuation),
     valuation,
+    confidence,
   };
 }
 
@@ -349,8 +465,10 @@ export function renderInvestingThesisSnapshot(draft: InvestingThesisDraft): stri
     `- thesisKey=${draft.thesisKey}`,
     `- posture=${draft.posture}`,
     `- conviction=${draft.conviction}`,
+    `- confidenceRule=${draft.confidence.ruleVersion}:${draft.confidence.appliedConviction}`,
     `- valuationSignal=${draft.valuation?.signal ?? "n/a"}`,
     `- valuationCaseId=${draft.valuation?.valuationCaseId ?? "n/a"}`,
+    `- confidenceReasons=${draft.confidence.reasons.join(" ")}`,
     `- watchpoints=${draft.watchpoints.join("; ") || "n/a"}`,
   ].join("\n");
 }
@@ -372,6 +490,7 @@ export function syncInvestingThesisContext(input: SyncInvestingThesisContextInpu
             ? existing.watchpoints
             : defaultWatchpoints(input.symbol, input.valuation ?? existing.valuation ?? null),
         valuation: input.valuation ?? existing.valuation,
+        confidence: existing.confidence,
       }
     : buildEmptyRecord({
         thesisKey: input.thesisKey,
@@ -409,6 +528,13 @@ export function syncInvestingThesisContext(input: SyncInvestingThesisContextInpu
 export function recordInvestingThesisRevision(input: RecordInvestingThesisRevisionInput): InvestingThesisRecord {
   const state = readThesisState();
   const existing = state.records.find((record) => record.id === input.thesisKey);
+  const evidence = input.evidence ?? [];
+  const confidence = evaluateInvestingThesisConfidence({
+    requestedConviction: input.conviction,
+    priorConviction: existing?.conviction,
+    evidence,
+    valuation: input.valuation ?? existing?.valuation ?? null,
+  });
   const base =
     existing ??
     buildEmptyRecord({
@@ -429,11 +555,12 @@ export function recordInvestingThesisRevision(input: RecordInvestingThesisRevisi
     createdAt: new Date().toISOString(),
     summary: input.summary,
     thesis: input.thesis,
-    conviction: input.conviction ?? base.conviction,
+    conviction: confidence.appliedConviction,
     posture: input.posture ?? base.posture,
     watchpoints: input.watchpoints ?? base.watchpoints,
     valuation: input.valuation ?? base.valuation,
-    evidence: input.evidence ?? [],
+    evidence,
+    confidence,
     source: input.source ?? {},
   };
 
@@ -449,6 +576,7 @@ export function recordInvestingThesisRevision(input: RecordInvestingThesisRevisi
     thesis: revision.thesis,
     watchpoints: revision.watchpoints,
     valuation: revision.valuation,
+    confidence: revision.confidence,
     revisions: [...base.revisions.filter((entry) => entry.id !== revision.id), revision].sort((a, b) => b.version - a.version),
   };
 
@@ -474,6 +602,31 @@ export function recordInvestingThesisRevision(input: RecordInvestingThesisRevisi
       artifactId: revision.source.artifactId,
       valuationCaseId: revision.valuation?.valuationCaseId,
       evidenceCount: revision.evidence.length,
+      ruleVersion: revision.confidence.ruleVersion,
+      requestedConviction: revision.confidence.requestedConviction,
+      appliedConviction: revision.confidence.appliedConviction,
+    },
+  });
+
+  FluxRecorder.record({
+    traceID: revision.id,
+    direction: "internal",
+    domain: "investing",
+    kind: "investing.thesis.confidence",
+    status: "ok",
+    method: "evaluate",
+    path: record.symbol,
+    route: record.id,
+    metadata: {
+      version: revision.version,
+      ruleVersion: revision.confidence.ruleVersion,
+      requestedConviction: revision.confidence.requestedConviction,
+      appliedConviction: revision.confidence.appliedConviction,
+      maxAllowedConviction: revision.confidence.maxAllowedConviction,
+      score: revision.confidence.score,
+      evidenceCount: revision.confidence.evidenceCount,
+      uniqueTools: revision.confidence.uniqueTools,
+      reasons: revision.confidence.reasons,
     },
   });
 
@@ -492,6 +645,7 @@ export function recordInvestingThesisRevision(input: RecordInvestingThesisRevisi
       posture: record.posture,
       latestRevisionId: record.latestRevisionId,
       valuationCaseId: record.valuation?.valuationCaseId,
+      ruleVersion: record.confidence?.ruleVersion,
     },
   });
 
@@ -522,6 +676,7 @@ export function recordInvestingThesisRevisionFromExecution(
       id: item.id,
       label: `[${item.citation}] ${item.sourceLabel}`,
       link: item.link,
+      toolId: item.toolId,
     }));
 
   if (draft.valuation?.packetId) {
@@ -530,6 +685,7 @@ export function recordInvestingThesisRevisionFromExecution(
       id: draft.valuation.packetId,
       label: `Valuation packet for ${symbol}`,
       link: `valuation-packet:${draft.valuation.packetId}`,
+      toolId: "zee:invest-valuation",
     });
   }
 
@@ -541,6 +697,8 @@ export function recordInvestingThesisRevisionFromExecution(
     `Task: ${input.task.title}`,
     `Posture: ${draft.posture}`,
     `Conviction: ${draft.conviction}`,
+    `Confidence rule: ${draft.confidence.ruleVersion}`,
+    `Confidence reasons: ${draft.confidence.reasons.join(" ")}`,
     `Valuation case: ${draft.valuation?.valuationCaseId ?? "n/a"}`,
     `Valuation signal: ${draft.valuation?.signal ?? "n/a"}`,
     "",
