@@ -23,7 +23,24 @@ import {
   runInvestingConnector,
   type InvestingConnectorKind,
 } from "@/investing/ingestion"
-import { getInvestingThesisLedgerStatus } from "@root/domain/investing/thesis"
+import {
+  INVESTING_THESIS_CONVICTIONS,
+  INVESTING_THESIS_POSTURES,
+  INVESTING_THESIS_RECORD_STATUSES,
+  getInvestingThesisLedgerStatus,
+  type InvestingThesisConviction,
+  type InvestingThesisPosture,
+  type InvestingThesisRecordStatus,
+} from "@root/domain/investing/thesis"
+import {
+  INVESTING_THESIS_PORTFOLIO_ROLLUP_AUDIENCES,
+  buildInvestingThesisPortfolioRollup,
+  diffInvestingThesisHistory,
+  getInvestingThesisHistory,
+  queryInvestingThesisRecord,
+  queryInvestingTheses,
+  type InvestingThesisPortfolioRollupAudience,
+} from "@root/domain/investing/thesis-queries"
 import {
   INVESTING_PORTFOLIO_BRIEFING_KINDS,
   createInvestingPortfolioBriefing,
@@ -74,10 +91,7 @@ const InvestingIngestStatusCommand = cmd({
 
     console.log(`ingestion: enabled=${status.enabled}`)
     for (const connector of status.connectors) {
-      const lastRun =
-        connector.lastFinishedAt > 0
-          ? new Date(connector.lastFinishedAt).toISOString()
-          : "never"
+      const lastRun = connector.lastFinishedAt > 0 ? new Date(connector.lastFinishedAt).toISOString() : "never"
       console.log(
         `- ${connector.connector}: enabled=${connector.enabled} every=${connector.scheduleMinutes}m freshness=${connector.freshnessStatus} slo=${connector.freshnessSloMinutes}m lastStatus=${connector.lastStatus} items=${connector.itemCount} requests=${connector.requestCount} normalized=${connector.normalizedEntityCount} lastRun=${lastRun}`,
       )
@@ -101,7 +115,9 @@ const InvestingIngestRunCommand = cmd({
         describe: "output as JSON",
       }),
   handler: async (args: { connector?: InvestingConnectorKind; json?: boolean }) => {
-    const results = args.connector ? [await runInvestingConnector(args.connector)] : await runEnabledInvestingConnectors()
+    const results = args.connector
+      ? [await runInvestingConnector(args.connector)]
+      : await runEnabledInvestingConnectors()
     if (args.json) {
       console.log(JSON.stringify(results, null, 2))
       return
@@ -329,7 +345,9 @@ const InvestingEventReadCommand = cmd({
 
     console.log(`${event.id}`)
     console.log(`- classification=${event.classification} connector=${event.connector} direction=${event.direction}`)
-    console.log(`- materiality=${event.materiality.band} score=${event.materiality.score} audience=${event.entityLinks.audience}`)
+    console.log(
+      `- materiality=${event.materiality.band} score=${event.materiality.score} audience=${event.entityLinks.audience}`,
+    )
     console.log(`- confidence=${event.confidence.toFixed(2)} symbol=${event.symbol ?? "n/a"} asOf=${event.asOf}`)
     console.log(`- sectors=${event.entityLinks.sectorLabels.join(", ") || "n/a"}`)
     console.log(`- holding=${event.entityLinks.holdingId ?? "n/a"} watchlist=${event.entityLinks.watchlistId ?? "n/a"}`)
@@ -344,9 +362,17 @@ const InvestingEventCommand = cmd({
   command: "event",
   describe: "classified news and earnings event intelligence",
   builder: (yargs: Argv) =>
-    yargs.command(InvestingEventStatusCommand).command(InvestingEventListCommand).command(InvestingEventReadCommand).demandCommand(),
+    yargs
+      .command(InvestingEventStatusCommand)
+      .command(InvestingEventListCommand)
+      .command(InvestingEventReadCommand)
+      .demandCommand(),
   async handler() {},
 })
+
+function thesisLookup(value: string): string {
+  return value.startsWith("thesis:") ? value : value.toUpperCase()
+}
 
 const InvestingThesisStatusCommand = cmd({
   command: "status",
@@ -371,10 +397,281 @@ const InvestingThesisStatusCommand = cmd({
   },
 })
 
+const InvestingThesisReadCommand = cmd({
+  command: "read <thesis>",
+  describe: "read one persisted thesis record by thesis key or symbol",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("thesis", {
+        type: "string",
+        demandOption: true,
+        describe: "thesis key such as thesis:nvda or a symbol such as NVDA",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { thesis?: string; json?: boolean }) => {
+    if (!args.thesis) {
+      throw new Error("thesis is required")
+    }
+    const thesis = queryInvestingThesisRecord(args.thesis)
+    const payload = thesis ?? { error: `Thesis not found: ${args.thesis}` }
+    if (args.json || !thesis) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${thesis.id}`)
+    console.log(`- symbol=${thesis.symbol} status=${thesis.status} version=${thesis.currentVersion}`)
+    console.log(`- conviction=${thesis.conviction} posture=${thesis.posture}`)
+    console.log(`- summary=${thesis.summary}`)
+    console.log(`- updatedAt=${thesis.updatedAt} revisions=${thesis.revisions.length}`)
+    console.log(
+      `- valuationCaseId=${thesis.valuation?.valuationCaseId ?? "n/a"} signal=${thesis.valuation?.signal ?? "n/a"}`,
+    )
+  },
+})
+
+const InvestingThesisListCommand = cmd({
+  command: "list",
+  describe: "list persisted thesis records",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("symbol", {
+        type: "string",
+        describe: "optional symbol filter",
+      })
+      .option("status", {
+        type: "string",
+        choices: [...INVESTING_THESIS_RECORD_STATUSES],
+        describe: "optional thesis status filter",
+      })
+      .option("conviction", {
+        type: "string",
+        choices: [...INVESTING_THESIS_CONVICTIONS],
+        describe: "optional conviction filter",
+      })
+      .option("posture", {
+        type: "string",
+        choices: [...INVESTING_THESIS_POSTURES],
+        describe: "optional posture filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 20,
+        describe: "maximum number of thesis records to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    symbol?: string
+    status?: string
+    conviction?: string
+    posture?: string
+    limit?: number
+    json?: boolean
+  }) => {
+    const theses = queryInvestingTheses({
+      symbol: args.symbol,
+      status: args.status as InvestingThesisRecordStatus | undefined,
+      conviction: args.conviction as InvestingThesisConviction | undefined,
+      posture: args.posture as InvestingThesisPosture | undefined,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ theses, count: theses.length }, null, 2))
+      return
+    }
+    for (const thesis of theses) {
+      console.log(
+        `- ${thesis.id}: symbol=${thesis.symbol} status=${thesis.status} version=${thesis.currentVersion} conviction=${thesis.conviction} posture=${thesis.posture} summary=${thesis.summary}`,
+      )
+    }
+  },
+})
+
+const InvestingThesisHistoryCommand = cmd({
+  command: "history <thesis>",
+  describe: "list revision history for one thesis key or symbol",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("thesis", {
+        type: "string",
+        demandOption: true,
+        describe: "thesis key such as thesis:nvda or a symbol such as NVDA",
+      })
+      .option("limit", {
+        type: "number",
+        default: 10,
+        describe: "maximum number of revisions to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { thesis?: string; limit?: number; json?: boolean }) => {
+    if (!args.thesis) {
+      throw new Error("thesis is required")
+    }
+    const history = getInvestingThesisHistory({
+      thesis: args.thesis,
+      limit: args.limit,
+    })
+    const payload = history ?? { error: `Thesis not found: ${args.thesis}` }
+    if (args.json || !history) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${history.thesisKey}`)
+    console.log(
+      `- symbol=${history.symbol} currentVersion=${history.currentVersion} revisions=${history.revisionCount}`,
+    )
+    for (const revision of history.revisions) {
+      console.log(
+        `- v${revision.version}: changeType=${revision.changeType} conviction=${revision.conviction} posture=${revision.posture} evidence=${revision.evidence.length} summary=${revision.summary}`,
+      )
+    }
+  },
+})
+
+const InvestingThesisDiffCommand = cmd({
+  command: "diff <thesis>",
+  describe: "diff two thesis versions for one thesis key or symbol",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("thesis", {
+        type: "string",
+        demandOption: true,
+        describe: "thesis key such as thesis:nvda or a symbol such as NVDA",
+      })
+      .option("from-version", {
+        type: "number",
+        describe: "prior version, defaults to the previous revision",
+      })
+      .option("to-version", {
+        type: "number",
+        describe: "target version, defaults to the latest revision",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { thesis?: string; fromVersion?: number; toVersion?: number; json?: boolean }) => {
+    if (!args.thesis) {
+      throw new Error("thesis is required")
+    }
+    try {
+      const diff = diffInvestingThesisHistory({
+        thesis: args.thesis,
+        fromVersion: args.fromVersion,
+        toVersion: args.toVersion,
+      })
+      const payload = diff ?? { error: `Thesis not found: ${args.thesis}` }
+      if (args.json || !diff) {
+        console.log(JSON.stringify(payload, null, 2))
+        return
+      }
+
+      console.log(`${thesisLookup(args.thesis)} diff`)
+      console.log(`- ${diff.summary}`)
+      console.log(`- from=v${diff.fromRevision.version} to=v${diff.toRevision.version}`)
+      console.log(`- changedFields=${diff.changedFields.join(", ") || "none"}`)
+      console.log(
+        `- conviction=${diff.changes.conviction.from}->${diff.changes.conviction.to} posture=${diff.changes.posture.from}->${diff.changes.posture.to}`,
+      )
+      console.log(
+        `- watchpoints added=${diff.changes.watchpoints.added.length} removed=${diff.changes.watchpoints.removed.length} evidence added=${diff.changes.evidence.added.length} removed=${diff.changes.evidence.removed.length}`,
+      )
+    } catch (error) {
+      console.log(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }, null, 2))
+    }
+  },
+})
+
+const InvestingThesisRollupCommand = cmd({
+  command: "rollup",
+  describe: "build a portfolio-level thesis rollup view",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("audience", {
+        type: "string",
+        choices: [...INVESTING_THESIS_PORTFOLIO_ROLLUP_AUDIENCES],
+        default: "all",
+        describe: "roll up all tracked names, holdings only, or watchlist only",
+      })
+      .option("conviction", {
+        type: "string",
+        choices: [...INVESTING_THESIS_CONVICTIONS],
+        describe: "optional conviction filter",
+      })
+      .option("posture", {
+        type: "string",
+        choices: [...INVESTING_THESIS_POSTURES],
+        describe: "optional posture filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 50,
+        describe: "maximum number of rollup entries to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    audience?: string
+    conviction?: string
+    posture?: string
+    limit?: number
+    json?: boolean
+  }) => {
+    const rollup = buildInvestingThesisPortfolioRollup({
+      audience: args.audience as InvestingThesisPortfolioRollupAudience | undefined,
+      conviction: args.conviction as InvestingThesisConviction | undefined,
+      posture: args.posture as InvestingThesisPosture | undefined,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify(rollup, null, 2))
+      return
+    }
+
+    console.log(rollup.summary)
+    console.log(`- by posture: ${JSON.stringify(rollup.countsByPosture)}`)
+    console.log(`- by conviction: ${JSON.stringify(rollup.countsByConviction)}`)
+    for (const entry of rollup.entries) {
+      if (!entry.thesis) {
+        console.log(`- ${entry.symbol} [${entry.audience}]: missing thesis record`)
+        continue
+      }
+      console.log(
+        `- ${entry.symbol} [${entry.audience}]: version=${entry.thesis.currentVersion} conviction=${entry.thesis.conviction} posture=${entry.thesis.posture} summary=${entry.thesis.summary}`,
+      )
+    }
+  },
+})
+
 const InvestingThesisCommand = cmd({
   command: "thesis",
-  describe: "persisted thesis ledger and version history",
-  builder: (yargs: Argv) => yargs.command(InvestingThesisStatusCommand).demandCommand(),
+  describe: "persisted thesis ledger, diffs, and portfolio rollup views",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingThesisStatusCommand)
+      .command(InvestingThesisReadCommand)
+      .command(InvestingThesisListCommand)
+      .command(InvestingThesisHistoryCommand)
+      .command(InvestingThesisDiffCommand)
+      .command(InvestingThesisRollupCommand)
+      .demandCommand(),
   async handler() {},
 })
 
@@ -411,7 +708,9 @@ const InvestingEarningsPacketCreateCommand = cmd({
     const plan = getInvestingResearchPlan(execution.planId)
     const task = plan?.tasks.find((entry) => entry.id === execution.taskId)
     if (!plan || !task) {
-      console.log(JSON.stringify({ error: `Research plan context not found for execution: ${args.executionId}` }, null, 2))
+      console.log(
+        JSON.stringify({ error: `Research plan context not found for execution: ${args.executionId}` }, null, 2),
+      )
       return
     }
 
@@ -828,7 +1127,9 @@ const InvestingOpsScheduleRunCommand = cmd({
 
     console.log(`${delivery.id}`)
     console.log(`- workflow=${delivery.workflow} status=${delivery.status} target=${delivery.deliveryTarget}`)
-    console.log(`- artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"}`)
+    console.log(
+      `- artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"}`,
+    )
     console.log(`- summary=${delivery.summary}`)
     if (delivery.content) {
       console.log(`\n${delivery.content}`)
@@ -878,7 +1179,9 @@ const InvestingOpsDeliveryReadCommand = cmd({
 
     console.log(`${delivery.id}`)
     console.log(`- workflow=${delivery.workflow} status=${delivery.status} target=${delivery.deliveryTarget}`)
-    console.log(`- artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"}`)
+    console.log(
+      `- artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"}`,
+    )
     console.log(`- summary=${delivery.summary}`)
     if (delivery.error) {
       console.log(`- error=${delivery.error}`)
@@ -953,10 +1256,7 @@ const InvestingOpsDeliveryCommand = cmd({
   command: "delivery",
   describe: "research ops delivery audit trail",
   builder: (yargs: Argv) =>
-    yargs
-      .command(InvestingOpsDeliveryReadCommand)
-      .command(InvestingOpsDeliveryListCommand)
-      .demandCommand(),
+    yargs.command(InvestingOpsDeliveryReadCommand).command(InvestingOpsDeliveryListCommand).demandCommand(),
   async handler() {},
 })
 
@@ -964,10 +1264,7 @@ const InvestingOpsCommand = cmd({
   command: "ops",
   describe: "unattended research ops schedules and delivery audit trail",
   builder: (yargs: Argv) =>
-    yargs
-      .command(InvestingOpsScheduleCommand)
-      .command(InvestingOpsDeliveryCommand)
-      .demandCommand(),
+    yargs.command(InvestingOpsScheduleCommand).command(InvestingOpsDeliveryCommand).demandCommand(),
   async handler() {},
 })
 
@@ -1098,7 +1395,11 @@ const InvestingBriefingCommand = cmd({
   command: "briefing",
   describe: "persisted daily portfolio briefings",
   builder: (yargs: Argv) =>
-    yargs.command(InvestingBriefingCreateCommand).command(InvestingBriefingReadCommand).command(InvestingBriefingListCommand).demandCommand(),
+    yargs
+      .command(InvestingBriefingCreateCommand)
+      .command(InvestingBriefingReadCommand)
+      .command(InvestingBriefingListCommand)
+      .demandCommand(),
   async handler() {},
 })
 
