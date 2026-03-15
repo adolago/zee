@@ -62,6 +62,7 @@ The consolidated report now verifies the presence of these operator-facing docs:
 - `docs/architecture/v3-release-readiness.md`
 - `docs/architecture/investing-eval-gates.md`
 - `docs/architecture/v3-rollout-plan.md`
+- `docs/architecture/v3-launch-playbook.md`
 
 ## Telemetry
 

@@ -72,6 +72,7 @@ function makeDocs(): V3ReleaseDocCheck[] {
     { id: "v3-release-readiness", label: "V3 release readiness", path: "docs/architecture/v3-release-readiness.md", exists: true },
     { id: "investing-eval-gates", label: "Investing eval gates", path: "docs/architecture/investing-eval-gates.md", exists: true },
     { id: "v3-rollout-plan", label: "V3 rollout plan", path: "docs/architecture/v3-rollout-plan.md", exists: true },
+    { id: "v3-launch-playbook", label: "V3 launch playbook", path: "docs/architecture/v3-launch-playbook.md", exists: true },
   ]
 }
 

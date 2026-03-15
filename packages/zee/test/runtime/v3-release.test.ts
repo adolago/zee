@@ -101,6 +101,12 @@ function makeDocs(overrides: Array<Partial<V3ReleaseDocCheck>> = []): V3ReleaseD
       path: "docs/architecture/v3-rollout-plan.md",
       exists: true,
     },
+    {
+      id: "v3-launch-playbook",
+      label: "V3 launch playbook",
+      path: "docs/architecture/v3-launch-playbook.md",
+      exists: true,
+    },
   ]
 
   return base.map((doc, index) => ({
