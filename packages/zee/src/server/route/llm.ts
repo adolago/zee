@@ -10,6 +10,7 @@ import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
 import { bindAbortRelay } from "../../util/net"
 import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
+import { Flag } from "@/flag/flag"
 
 const log = Log.create({ service: "server:llm" })
 
@@ -362,6 +363,35 @@ export const LlmRoute = new Hono().post(
   validator("json", LlmStreamInputSchema),
   async (c) => {
     const input = c.req.valid("json")
+
+    if (Flag.ZEE_NO_NEW_LEGACY) {
+      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+      const requestID = RequestMeta.getRequestID(c.req.raw)
+      FluxRecorder.record({
+        traceID,
+        requestID,
+        direction: "internal",
+        domain: "session",
+        kind: "llm.bridge.stream.denied",
+        status: "denied",
+        route: "/v1/llm/stream",
+        method: "POST",
+        error: {
+          code: "legacy_bridge_disabled",
+          message: "Legacy LLM bridge endpoint is disabled.",
+        },
+        metadata: {
+          reason: "legacy_interface_disabled",
+        },
+      })
+      return c.json(
+        {
+          success: false,
+          error: "Legacy LLM bridge endpoint is disabled.",
+        },
+        403,
+      )
+    }
 
     const providerID = input.provider.trim()
     const modelID = input.model.trim()

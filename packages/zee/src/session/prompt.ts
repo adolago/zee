@@ -57,6 +57,7 @@ import { buildSessionSystemContext } from "./session-context"
 import { buildSkillRecallContext } from "./skill-recall"
 import { buildFollowupExecutionReminder } from "./followup-execution"
 import { buildPlanWebExecutionReminder } from "./plan-web-execution"
+import { buildMalformedToolTextRetryReminder, MALFORMED_TOOL_TEXT_FINISH } from "./malformed-tool-text"
 import { runTaskViaDaemon } from "@/orchestration/daemon-ipc"
 import { createSessionRuntimeProcessor } from "@/runtime/session"
 import { SessionControlServer } from "@/session-control/server"
@@ -892,13 +893,15 @@ export namespace SessionPrompt {
       // Continue if: pending tool calls OR pending tasks (subtask/compaction)
       // Exit if: no pending work, even if finish reason is "unknown"
       const needsToolFollowup = lastAssistantParts ? shouldContinueAfterTools(lastAssistantParts) : false
+      const needsMalformedToolRecovery = lastAssistant?.finish === MALFORMED_TOOL_TEXT_FINISH
       if (needsToolFollowup && lastAssistant) {
         log.info("tool-only response detected; continuing loop", {
           sessionID,
           messageID: lastAssistant.id,
         })
       }
-      const hasPendingToolCalls = lastAssistant?.finish === "tool-calls" || needsToolFollowup
+      const hasPendingToolCalls =
+        lastAssistant?.finish === "tool-calls" || needsToolFollowup || needsMalformedToolRecovery
       const hasPendingTasks = tasks.length > 0
 
       // Debug logging to diagnose tool followup issues
@@ -909,6 +912,7 @@ export namespace SessionPrompt {
           sessionID,
           finish: lastAssistant.finish,
           needsToolFollowup,
+          needsMalformedToolRecovery,
           hasPendingToolCalls,
           hasPendingTasks,
           toolCount: toolParts.length,
@@ -2086,6 +2090,20 @@ export namespace SessionPrompt {
         sessionID: userMessage.info.sessionID,
         type: "text",
         text: planWebExecutionReminder,
+        synthetic: true,
+      })
+    }
+
+    const malformedToolTextRetryReminder = buildMalformedToolTextRetryReminder({
+      messages: input.messages,
+    })
+    if (malformedToolTextRetryReminder) {
+      userMessage.parts.push({
+        id: Identifier.ascending("part"),
+        messageID: userMessage.info.id,
+        sessionID: userMessage.info.sessionID,
+        type: "text",
+        text: malformedToolTextRetryReminder,
         synthetic: true,
       })
     }

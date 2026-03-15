@@ -152,6 +152,42 @@ describe("session.message-v2.toModelMessage", () => {
     expect(await MessageV2.toModelMessage(input, model)).toStrictEqual([])
   })
 
+  test("omits ignored assistant text from future model context", async () => {
+    const userMessageID = "m-user"
+    const assistantMessageID = "m-assistant"
+
+    const input: MessageV2.WithParts[] = [
+      {
+        info: userInfo(userMessageID),
+        parts: [
+          {
+            ...basePart(userMessageID, "u1"),
+            type: "text",
+            text: "hello",
+          },
+        ] as MessageV2.Part[],
+      },
+      {
+        info: assistantInfo(assistantMessageID, userMessageID),
+        parts: [
+          {
+            ...basePart(assistantMessageID, "a1"),
+            type: "text",
+            text: "discard me",
+            ignored: true,
+          },
+        ] as MessageV2.Part[],
+      },
+    ]
+
+    expect(await MessageV2.toModelMessage(input, model)).toStrictEqual([
+      {
+        role: "user",
+        content: [{ type: "text", text: "hello" }],
+      },
+    ])
+  })
+
   test("includes synthetic text parts", async () => {
     const messageID = "m-user"
 

@@ -1,8 +1,10 @@
 import { describe, expect, test, afterAll } from "bun:test"
 import { Auth } from "../../src/auth"
+import { reloadFlags } from "../../src/flag/flag"
 import { FluxRecorder } from "../../src/flux"
 import { Provider } from "../../src/provider/provider"
 
+const originalEnvNoNewLegacy = process.env.ZEE_NO_NEW_LEGACY
 const originalReload = Provider.reload
 const originalValidateAuth = Provider.validateAuth
 Provider.reload = async () => {}
@@ -10,6 +12,12 @@ Provider.validateAuth = async () => {}
 afterAll(() => {
   Provider.reload = originalReload
   Provider.validateAuth = originalValidateAuth
+  if (originalEnvNoNewLegacy === undefined) {
+    delete process.env.ZEE_NO_NEW_LEGACY
+  } else {
+    process.env.ZEE_NO_NEW_LEGACY = originalEnvNoNewLegacy
+  }
+  reloadFlags()
 })
 
 const { AuthRoute } = await import("../../src/server/route/auth")
@@ -56,5 +64,34 @@ describe("auth.set endpoint", () => {
     expect(stored && "key" in stored ? stored.key : undefined).toBe("legacy-key")
     expect(FluxRecorder.list({ kind: "auth.legacy_payload.accepted" }).total).toBe(before + 1)
     expect(FluxRecorder.list({ kind: "compat.shim.used" }).total).toBe(shimBefore + 1)
+  })
+
+  test("blocks legacy api_key payload when no-new-legacy flag is enabled", async () => {
+    const before = FluxRecorder.list({ kind: "auth.legacy_payload.rejected" }).total
+    try {
+      process.env.ZEE_NO_NEW_LEGACY = "1"
+      reloadFlags()
+      const response = await AuthRoute.request("/openrouter", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_key: "legacy-key",
+        }),
+      })
+
+      expect(response.status).toBe(403)
+      const body = (await response.json()) as { error?: string }
+      expect(body.error).toBe("Legacy auth payloads are disabled. Use the modern auth payload schema.")
+      expect(FluxRecorder.list({ kind: "auth.legacy_payload.rejected" }).total).toBe(before + 1)
+    } finally {
+      if (originalEnvNoNewLegacy === undefined) {
+        delete process.env.ZEE_NO_NEW_LEGACY
+      } else {
+        process.env.ZEE_NO_NEW_LEGACY = originalEnvNoNewLegacy
+      }
+      reloadFlags()
+    }
   })
 })

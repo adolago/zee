@@ -8,6 +8,7 @@ const log = Log.create({ service: "plugin.codex" })
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const ISSUER = "https://auth.openai.com"
 const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses"
+const CODEX_AUTH_MISSING_MESSAGE = "OpenAI OAuth session is no longer available. Run `zee auth login openai` and retry."
 const OAUTH_PORT = 1455
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3000
 
@@ -104,6 +105,38 @@ interface TokenResponse {
   access_token: string
   refresh_token: string
   expires_in?: number
+}
+
+type CodexOauthAuth = {
+  type: "oauth"
+  access: string
+  refresh: string
+  expires: number
+  accountId?: string
+}
+
+type RawCodexOauthAuth = {
+  type: string
+  access?: unknown
+  refresh?: unknown
+  expires?: unknown
+}
+
+function requireCodexOauthAuth(
+  auth: RawCodexOauthAuth | undefined,
+  reason: "loader" | "request",
+): CodexOauthAuth | undefined {
+  if (!auth || auth.type !== "oauth") {
+    if (reason === "loader") return undefined
+    throw new Error(CODEX_AUTH_MISSING_MESSAGE)
+  }
+
+  if (typeof auth.access !== "string" || typeof auth.refresh !== "string" || typeof auth.expires !== "number") {
+    if (reason === "loader") return undefined
+    throw new Error(CODEX_AUTH_MISSING_MESSAGE)
+  }
+
+  return auth as CodexOauthAuth
 }
 
 async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: PkceCodes): Promise<TokenResponse> {
@@ -351,8 +384,8 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
     auth: {
       provider: "openai",
       async loader(getAuth, provider) {
-        const auth = await getAuth()
-        if (auth.type !== "oauth") return {}
+        const auth = requireCodexOauthAuth((await getAuth()) as CodexOauthAuth | undefined, "loader")
+        if (!auth) return {}
 
         // Filter models to the OpenAI OAuth-supported set.
         const allowedModels = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"])
@@ -387,8 +420,10 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
               }
             }
 
-            const currentAuth = await getAuth()
-            if (currentAuth.type !== "oauth") return fetch(requestInput, init)
+            const currentAuth = requireCodexOauthAuth(
+              (await getAuth()) as CodexOauthAuth | undefined,
+              "request",
+            ) as CodexOauthAuth
 
             // Cast to include accountId field
             const authWithAccount = currentAuth as typeof currentAuth & { accountId?: string }
