@@ -17,6 +17,18 @@ export type NodeClientPolicy = {
   maxPairedNodes: number
 }
 
+export type NodeClientAuditSnapshot = {
+  active: number
+  revoked: number
+  total: number
+  unknownStatus: number
+  duplicateTokenHashes: number
+  missingTokenHashes: number
+  activeMissingLastSeen: number
+  revokedMissingTimestamp: number
+  revokedMissingReason: number
+}
+
 export type NodeClientRecord = {
   id: string
   label: string
@@ -66,6 +78,10 @@ function resolveSecurityMode(value: unknown): NodeClientSecurityMode {
 
 function sanitizeLabel(label: string): string {
   return label.trim().slice(0, 120)
+}
+
+function hasFiniteTimestamp(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value)
 }
 
 function hashToken(token: string): string {
@@ -277,6 +293,67 @@ export class NodeClientRegistry {
       active,
       revoked,
       total: nodes.length,
+    }
+  }
+
+  async getAuditSnapshot(): Promise<NodeClientAuditSnapshot> {
+    const state = await this.readState()
+    const nodes = Object.values(state.nodes)
+    const tokenHashCounts = new Map<string, number>()
+
+    let active = 0
+    let revoked = 0
+    let unknownStatus = 0
+    let missingTokenHashes = 0
+    let activeMissingLastSeen = 0
+    let revokedMissingTimestamp = 0
+    let revokedMissingReason = 0
+
+    for (const record of nodes) {
+      const tokenHash = typeof record.tokenHash === "string" ? record.tokenHash.trim() : ""
+      if (tokenHash) {
+        tokenHashCounts.set(tokenHash, (tokenHashCounts.get(tokenHash) ?? 0) + 1)
+      } else {
+        missingTokenHashes++
+      }
+
+      if (record.status === "paired") {
+        active++
+        if (!hasFiniteTimestamp(record.lastSeenAt)) {
+          activeMissingLastSeen++
+        }
+        continue
+      }
+
+      if (record.status === "revoked") {
+        revoked++
+        if (!hasFiniteTimestamp(record.revokedAt)) {
+          revokedMissingTimestamp++
+        }
+        if (typeof record.revokeReason !== "string" || record.revokeReason.trim().length === 0) {
+          revokedMissingReason++
+        }
+        continue
+      }
+
+      unknownStatus++
+    }
+
+    let duplicateTokenHashes = 0
+    for (const count of tokenHashCounts.values()) {
+      duplicateTokenHashes += Math.max(0, count - 1)
+    }
+
+    return {
+      active,
+      revoked,
+      total: nodes.length,
+      unknownStatus,
+      duplicateTokenHashes,
+      missingTokenHashes,
+      activeMissingLastSeen,
+      revokedMissingTimestamp,
+      revokedMissingReason,
     }
   }
 }

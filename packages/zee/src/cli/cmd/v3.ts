@@ -1,7 +1,7 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
 import { Config } from "../../config/config"
-import { auditControlUiSecurityDeep } from "@/security"
+import { auditControlUiSecurityDeep, emitSecurityAuditTelemetry } from "@/security"
 import { getAgentDbMemoryStats } from "@/memory/agentdb-service"
 import { getHierarchicalMeshCoordinator } from "@/coordination/hierarchical-mesh"
 import { AgenticFlowBridge } from "@/orchestration/agentic-flow-bridge"
@@ -23,9 +23,16 @@ type V3ReleaseArgs = {
   strict?: boolean
 }
 
-async function collectV3Status() {
+async function collectV3Status(options: { emitSecurityTelemetry?: boolean } = {}) {
   const [config, memoryStats] = await Promise.all([Config.get(), getAgentDbMemoryStats()])
   const security = await auditControlUiSecurityDeep(config)
+  if (options.emitSecurityTelemetry) {
+    emitSecurityAuditTelemetry({
+      source: "v3.release",
+      deep: true,
+      report: security,
+    })
+  }
   const mesh = getHierarchicalMeshCoordinator().snapshot()
   const nodePolicy = resolveNodeClientPolicy(config)
   const nodeStats = await getNodeClientRegistry().getStats()
@@ -161,7 +168,7 @@ const V3ReleaseCommand = cmd({
         describe: "exit 1 when release is blocked",
       }),
   handler: async (args: V3ReleaseArgs) => {
-    const status = await collectV3Status()
+    const status = await collectV3Status({ emitSecurityTelemetry: true })
     if (args.json) {
       console.log(JSON.stringify(status, null, 2))
     } else {

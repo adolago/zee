@@ -46,5 +46,7 @@ These workflows are covered by API-surface tests to keep the web operator path s
 - Terminate TLS at the reverse proxy and keep trusted origins explicit (`gateway.controlUi.trustedOrigins`).
 - Use:
   - `zee security audit`
-  - `zee doctor security`
+  - `zee security audit --deep --strict`
+  - `zee doctor security --deep --strict`
   to validate control-plane and action-surface guardrails before production exposure.
+- Deep audit now reports paired-node state drift (`lastSeenAt`, revoke metadata, token-hash integrity) and emits Flux telemetry for operator dashboards.

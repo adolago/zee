@@ -31,6 +31,11 @@ This document captures the reference node-client product path introduced for gat
 - `zee security audit --deep` and `zee doctor security --deep` now include:
   - config-level node-client exposure checks
   - state-level checks on active/revoked pair counts and policy mismatch
+  - state integrity checks for unknown statuses, missing or duplicate token hashes
+  - audit trail checks for missing `lastSeenAt`, `revokedAt`, or `revokeReason`
+- Both deep-audit commands emit Flux events:
+  - `security.audit.checked`
+  - `security.audit.finding`
 
 ## Follow-up hooks (iOS/Android)
 - Data model keeps `platform` as `macos|ios|android|linux|windows|unknown`.

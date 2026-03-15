@@ -1,6 +1,11 @@
 import type { Argv } from "yargs"
 import { Config } from "../../config/config"
-import { CONTROL_UI_BREAK_GLASS_ACK, auditControlUiSecurity, auditControlUiSecurityDeep } from "@/security"
+import {
+  CONTROL_UI_BREAK_GLASS_ACK,
+  auditControlUiSecurity,
+  auditControlUiSecurityDeep,
+  emitSecurityAuditTelemetry,
+} from "@/security"
 import { cmd } from "./cmd"
 
 type SecurityAuditArgs = {
@@ -32,11 +37,34 @@ const SecurityAuditCommand = cmd({
   handler: async (args: SecurityAuditArgs) => {
     const config = await Config.get()
     const report = args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
+    emitSecurityAuditTelemetry({
+      source: "security.audit",
+      deep: Boolean(args.deep),
+      strict: Boolean(args.strict),
+      report,
+    })
 
     if (args.json) {
       console.log(JSON.stringify(report, null, 2))
     } else {
       console.log(`security: errors=${report.errors} warnings=${report.warnings}`)
+      if (typeof report.metrics.totalPairedNodes === "number") {
+        console.log(
+          `security node-state: active=${report.metrics.activePairedNodes ?? 0} revoked=${report.metrics.revokedPairedNodes ?? 0} total=${report.metrics.totalPairedNodes}`,
+        )
+      }
+      if (
+        (report.metrics.unknownStatusNodes ?? 0) > 0 ||
+        (report.metrics.duplicateTokenHashes ?? 0) > 0 ||
+        (report.metrics.missingTokenHashes ?? 0) > 0 ||
+        (report.metrics.activeNodesMissingLastSeen ?? 0) > 0 ||
+        (report.metrics.revokedNodesMissingTimestamp ?? 0) > 0 ||
+        (report.metrics.revokedNodesMissingReason ?? 0) > 0
+      ) {
+        console.log(
+          `security node-state anomalies: unknownStatus=${report.metrics.unknownStatusNodes ?? 0} duplicateTokenHashes=${report.metrics.duplicateTokenHashes ?? 0} missingTokenHashes=${report.metrics.missingTokenHashes ?? 0} activeMissingLastSeen=${report.metrics.activeNodesMissingLastSeen ?? 0} revokedMissingTimestamp=${report.metrics.revokedNodesMissingTimestamp ?? 0} revokedMissingReason=${report.metrics.revokedNodesMissingReason ?? 0}`,
+        )
+      }
       if (report.findings.length === 0) {
         console.log("security: no findings")
       } else {

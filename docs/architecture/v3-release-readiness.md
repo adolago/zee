@@ -30,3 +30,4 @@ This document defines the executable v3 gate introduced by `zee v3`.
 ## Security tie-in
 - v3 release gate consumes deep security audit output.
 - Node-client exposure is included in release readiness decisions.
+- `zee v3 release` emits the same `security.audit.checked` / `security.audit.finding` telemetry as the deep audit commands.
