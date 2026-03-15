@@ -87,6 +87,14 @@ zee security audit
 zee doctor security
 ```
 
+Header semantics:
+
+- token mode: use `Authorization: Bearer <token>` or `X-Zee-Token: <token>` for browser-originated Control UI requests.
+- password downgrade: Basic auth is only accepted for browser-originated Control UI requests when `mode: "password"` or `allowPasswordOnly: true`.
+- denial challenge follows policy:
+  - token mode returns `WWW-Authenticate: Bearer realm="zee"`
+  - password mode returns `WWW-Authenticate: Basic realm="zee"`
+
 For non-loopback deployments, terminate TLS at a reverse proxy and keep `trustedOrigins` explicit.
 
 ## Telegram Channel-Native Action Pack

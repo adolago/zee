@@ -9,7 +9,7 @@ import { Config } from "@/config/config"
 import { GlobalBus } from "@/bus/global"
 import { createZeeClient } from "@zee/sdk"
 import type { BunWebSocketData } from "hono/bun"
-import { Flag } from "@/flag/flag"
+import { getAuthorizationHeaderFor as getServerAuthorizationHeader } from "@/server/auth"
 
 await Log.init({
   print: process.argv.includes("--print-logs"),
@@ -160,8 +160,5 @@ export const rpc = {
 Rpc.listen(rpc)
 
 function getAuthorizationHeader(): string | undefined {
-  const password = Flag.ZEE_SERVER_PASSWORD
-  if (!password) return undefined
-  const username = Flag.ZEE_SERVER_USERNAME ?? "zee"
-  return `Basic ${btoa(`${username}:${password}`)}`
+  return getServerAuthorizationHeader()
 }

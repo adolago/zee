@@ -3,6 +3,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { Config } from "../../src/config/config"
+import { FluxRecorder } from "../../src/flux"
 import { reloadFlags } from "../../src/flag/flag"
 import { Instance } from "../../src/project/instance"
 import { Server } from "../../src/server/server"
@@ -75,7 +76,7 @@ afterAll(async () => {
 })
 
 describe("control UI trusted origins", () => {
-  test("enforces control UI auth from config for browser requests even without env auth enablement", async () => {
+  test("enforces token auth from config for browser requests even without env auth enablement", async () => {
     delete process.env.ZEE_ENABLE_SERVER_AUTH
     delete process.env.ZEE_DISABLE_SERVER_AUTH
     process.env.ZEE_SERVER_PASSWORD = "test-password"
@@ -84,23 +85,40 @@ describe("control UI trusted origins", () => {
     Server.reset()
 
     const app = Server.App()
+    const before = FluxRecorder.list({ kind: "auth.policy.checked" }).total
 
     const denied = await app.request("/global/health/live", {
-      method: "GET",
-      headers: {
-        Origin: "https://control.example.com",
-      },
-    })
-    expect(denied.status).toBe(401)
-
-    const allowed = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "https://control.example.com",
         Authorization: basicAuth("zee", "test-password"),
       },
     })
+    expect(denied.status).toBe(401)
+    expect(denied.headers.get("WWW-Authenticate")).toBe('Bearer realm="zee"')
+
+    const allowed = await app.request("/global/health/live", {
+      method: "GET",
+      headers: {
+        Origin: "https://control.example.com",
+        Authorization: "Bearer test-password",
+      },
+    })
     expect(allowed.status).toBe(200)
+    expect(FluxRecorder.list({ kind: "auth.policy.checked" }).total).toBe(before + 2)
+  })
+
+  test("accepts X-Zee-Token for trusted browser origins in token mode", async () => {
+    const app = Server.App()
+    const res = await app.request("/global/health/live", {
+      method: "GET",
+      headers: {
+        Origin: "https://control.example.com",
+        "x-zee-token": "test-password",
+      },
+    })
+
+    expect(res.status).toBe(200)
   })
 
   test("forbids browser-originated requests from untrusted origins", async () => {
@@ -116,14 +134,14 @@ describe("control UI trusted origins", () => {
     expect(res.status).toBe(403)
   })
 
-  test("allows trusted browser origins and loopback origins", async () => {
+  test("allows trusted browser origins and loopback origins with token auth", async () => {
     const app = Server.App()
 
     const trusted = await app.request("/global/health/live", {
       method: "GET",
       headers: {
         Origin: "https://control.example.com",
-        Authorization: basicAuth("zee", "test-password"),
+        Authorization: "Bearer test-password",
       },
     })
     expect(trusted.status).toBe(200)
@@ -132,7 +150,7 @@ describe("control UI trusted origins", () => {
       method: "GET",
       headers: {
         Origin: "http://localhost:5173",
-        Authorization: basicAuth("zee", "test-password"),
+        Authorization: "Bearer test-password",
       },
     })
     expect(local.status).toBe(200)

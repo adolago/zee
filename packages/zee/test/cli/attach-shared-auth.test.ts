@@ -65,7 +65,7 @@ describe("attachTui remote auth flow", () => {
     expect(calls.length).toBe(2)
     expect(promptPasswordMock).toHaveBeenCalledTimes(1)
     expect(calls[0]!.headers.get("Authorization")).toBeNull()
-    expect(calls[1]!.headers.get("Authorization")).toBe(`Basic ${Buffer.from("zee:secret-password").toString("base64")}`)
+    expect(calls[1]!.headers.get("Authorization")).toBe("Bearer secret-password")
     expect(tuiMock).toHaveBeenCalledTimes(1)
   })
 
@@ -89,7 +89,7 @@ describe("attachTui remote auth flow", () => {
     })
 
     expect(calls.length).toBe(1)
-    expect(calls[0]!.headers.get("Authorization")).toBe(`Basic ${Buffer.from("zee:from-flag").toString("base64")}`)
+    expect(calls[0]!.headers.get("Authorization")).toBe("Bearer from-flag")
     expect(promptPasswordMock).toHaveBeenCalledTimes(0)
     expect(tuiMock).toHaveBeenCalledTimes(1)
   })
@@ -102,7 +102,7 @@ describe("attachTui remote auth flow", () => {
     reloadFlags()
 
     const expectedPassword = "p05-parity-password"
-    const expectedAuth = `Basic ${Buffer.from(`zee:${expectedPassword}`).toString("base64")}`
+    const expectedAuth = `Bearer ${expectedPassword}`
     promptPasswordMock.mockImplementation(async () => expectedPassword)
 
     const calls: Request[] = []

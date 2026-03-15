@@ -38,6 +38,23 @@ export type ControlUiPolicy = {
   trustedOrigins: string[]
 }
 
+export type ServerAuthScheme = "none" | "basic" | "bearer" | "x-zee-token" | "unsupported"
+export type ServerAuthReason =
+  | "missing_credentials"
+  | "missing_server_password"
+  | "invalid_credentials"
+  | "password_required"
+  | "token_required"
+  | "unsupported_scheme"
+
+export type ServerAuthDecision = {
+  authorized: boolean
+  challenge: string
+  scheme: ServerAuthScheme
+  reason?: ServerAuthReason
+  policy: ControlUiPolicy
+}
+
 function asObject(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
   return value as Record<string, unknown>
@@ -134,10 +151,95 @@ export async function getServerRuntimeConfig(directory = process.cwd()): Promise
 }
 
 export function getAuthorizationHeader(): string | undefined {
-  const { disabled, password, username } = getAuthConfig()
-  if (disabled || !password) return undefined
+  return getAuthorizationHeaderFor()
+}
+
+function buildBasicAuthorizationHeader(username: string, password: string): string {
   const token = Buffer.from(`${username}:${password}`, "utf-8").toString("base64")
   return `Basic ${token}`
+}
+
+function buildBearerAuthorizationHeader(password: string): string {
+  return `Bearer ${password}`
+}
+
+function resolvePreferredAuthScheme(policy: ControlUiPolicy): Exclude<ServerAuthScheme, "none" | "x-zee-token" | "unsupported"> {
+  return policy.mode === "password" ? "basic" : "bearer"
+}
+
+function resolveAuthChallenge(policy: ControlUiPolicy): string {
+  return resolvePreferredAuthScheme(policy) === "basic" ? 'Basic realm="zee"' : 'Bearer realm="zee"'
+}
+
+function resolveTokenHeader(tokenHeader: string | undefined): string | undefined {
+  const value = tokenHeader?.trim()
+  return value ? value : undefined
+}
+
+function resolveServerAuthInput(
+  authorizationHeader: string | undefined,
+  tokenHeader: string | undefined,
+): {
+  scheme: ServerAuthScheme
+  username?: string
+  secret?: string
+} {
+  const explicitToken = resolveTokenHeader(tokenHeader)
+  if (explicitToken) {
+    return {
+      scheme: "x-zee-token",
+      secret: explicitToken,
+    }
+  }
+
+  const bearer = extractBearerToken(authorizationHeader)
+  if (bearer) {
+    return {
+      scheme: "bearer",
+      secret: bearer,
+    }
+  }
+
+  const basic = extractBasicCredentials(authorizationHeader)
+  if (basic) {
+    return {
+      scheme: "basic",
+      username: basic.username,
+      secret: basic.password,
+    }
+  }
+
+  if (!authorizationHeader) {
+    return {
+      scheme: "none",
+    }
+  }
+
+  return {
+    scheme: "unsupported",
+  }
+}
+
+function isBrowserOrigin(origin: string | undefined): boolean {
+  return typeof origin === "string" && origin.trim().length > 0
+}
+
+function requiresTokenScheme(policy: ControlUiPolicy, origin: string | undefined): boolean {
+  return isBrowserOrigin(origin) && policy.required && policy.mode === "token" && !policy.allowPasswordOnly
+}
+
+function requiresPasswordScheme(policy: ControlUiPolicy, origin: string | undefined): boolean {
+  return isBrowserOrigin(origin) && policy.required && policy.mode === "password"
+}
+
+export function getAuthorizationHeaderFor(runtimeConfig?: unknown): string | undefined {
+  const { disabled, password, username } = getAuthConfig(runtimeConfig)
+  if (disabled || !password) return undefined
+
+  const policy = resolveControlUiPolicy(runtimeConfig)
+  return resolvePreferredAuthScheme(policy) === "basic"
+    ? buildBasicAuthorizationHeader(username, password)
+    : buildBearerAuthorizationHeader(password)
 }
 
 export function authorizeRequest(request: Request): Request {
@@ -158,19 +260,106 @@ export function createAuthorizedFetch(fetchFn: typeof fetch): typeof fetch {
 }
 
 export function isAuthorized(authorizationHeader?: string, runtimeConfig?: unknown): boolean {
-  const { disabled, password, username: expectedUsername } = getAuthConfig(runtimeConfig)
-  if (disabled) return true
-  if (!password) return false
-  if (!authorizationHeader) return false
+  return resolveServerAuthDecision({
+    authorizationHeader,
+    runtimeConfig,
+  }).authorized
+}
 
-  // Allow bearer-token style auth (common for non-browser clients).
-  // Token must match the configured server password.
-  const bearer = extractBearerToken(authorizationHeader)
-  if (bearer) return timingSafeEqual(bearer, password)
+export function resolveServerAuthDecision(input: {
+  authorizationHeader?: string
+  tokenHeader?: string
+  origin?: string
+  runtimeConfig?: unknown
+}): ServerAuthDecision {
+  const { disabled, password, username: expectedUsername } = getAuthConfig(input.runtimeConfig)
+  const policy = resolveControlUiPolicy(input.runtimeConfig)
+  const challenge = resolveAuthChallenge(policy)
 
-  const basic = extractBasicCredentials(authorizationHeader)
-  if (!basic) return false
-  return timingSafeEqual(basic.username, expectedUsername) && timingSafeEqual(basic.password, password)
+  if (disabled) {
+    return {
+      authorized: true,
+      challenge,
+      scheme: "none",
+      policy,
+    }
+  }
+
+  if (!password) {
+    return {
+      authorized: false,
+      challenge,
+      scheme: "none",
+      reason: "missing_server_password",
+      policy,
+    }
+  }
+
+  const candidate = resolveServerAuthInput(input.authorizationHeader, input.tokenHeader)
+
+  if (candidate.scheme === "none") {
+    return {
+      authorized: false,
+      challenge,
+      scheme: candidate.scheme,
+      reason: "missing_credentials",
+      policy,
+    }
+  }
+
+  if (requiresTokenScheme(policy, input.origin) && candidate.scheme === "basic") {
+    return {
+      authorized: false,
+      challenge,
+      scheme: candidate.scheme,
+      reason: "token_required",
+      policy,
+    }
+  }
+
+  if (
+    requiresPasswordScheme(policy, input.origin) &&
+    (candidate.scheme === "bearer" || candidate.scheme === "x-zee-token")
+  ) {
+    return {
+      authorized: false,
+      challenge,
+      scheme: candidate.scheme,
+      reason: "password_required",
+      policy,
+    }
+  }
+
+  if (candidate.scheme === "unsupported") {
+    return {
+      authorized: false,
+      challenge,
+      scheme: candidate.scheme,
+      reason: "unsupported_scheme",
+      policy,
+    }
+  }
+
+  if (candidate.scheme === "basic") {
+    const authorized =
+      timingSafeEqual(candidate.username ?? "", expectedUsername) && timingSafeEqual(candidate.secret ?? "", password)
+    return {
+      authorized,
+      challenge,
+      scheme: candidate.scheme,
+      ...(authorized ? {} : { reason: "invalid_credentials" as const }),
+      policy,
+    }
+  }
+
+  const authorized = timingSafeEqual(candidate.secret ?? "", password)
+  return {
+    authorized,
+    challenge,
+    scheme: candidate.scheme,
+    ...(authorized ? {} : { reason: "invalid_credentials" as const }),
+    policy,
+  }
 }
 
 /**
@@ -189,7 +378,7 @@ export function authorizeRequestScoped(
   if (config.disabled) return { authorized: true }
 
   // Check authentication
-  if (!isAuthorized(authHeader, runtimeConfig)) {
+  if (!resolveServerAuthDecision({ authorizationHeader: authHeader, runtimeConfig }).authorized) {
     return { authorized: false, reason: "Authentication required" }
   }
 

@@ -39,6 +39,9 @@ These workflows are covered by API-surface tests to keep the web operator path s
 ## Security Guidance (Proxied Deployment)
 
 - Keep server auth enabled for non-loopback binds (`ZEE_ENABLE_SERVER_AUTH=1`, `ZEE_SERVER_PASSWORD`).
+- Use token-mode Control UI auth by default for browser clients:
+  - `Authorization: Bearer <token>`
+  - `X-Zee-Token: <token>`
 - Keep Control UI auth downgrade flags disabled unless explicitly break-glass acknowledged.
 - Terminate TLS at the reverse proxy and keep trusted origins explicit (`gateway.controlUi.trustedOrigins`).
 - Use:
