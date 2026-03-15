@@ -81,6 +81,7 @@ export type FluxKind =
   | "investing.eval.gate"
   | "investing.eval.alert"
   | "investing.portfolio.briefing"
+  | "release.v3.report"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"
