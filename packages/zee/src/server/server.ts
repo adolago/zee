@@ -36,7 +36,7 @@ import {
   isAuthorized,
   isTrustedControlOrigin,
   isLoopbackHostname,
-  resolveRequiredScope,
+  resolveRequiredScopeInfo,
 } from "./auth"
 import {
   createAuthRateLimiter,
@@ -365,7 +365,8 @@ export namespace Server {
             const ip = RequestMeta.getIp(c.req.raw)
             const method = c.req.method
             const path = c.req.path
-            const required = resolveRequiredScope(method, path)
+            const scopeResolution = resolveRequiredScopeInfo(method, path)
+            const required = scopeResolution.required
             const authHeader = c.req.header("Authorization")
             const authRateLimiter = resolveAuthRateLimiter()
             const rateLimit = authRateLimiter?.check(ip)
@@ -400,6 +401,44 @@ export namespace Server {
             authRateLimiter?.reset(ip)
 
             const granted = authConfig.scopes ?? [AuthScope.ADMIN]
+            const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+            const requestID = RequestMeta.getRequestID(c.req.raw)
+            if (scopeResolution.controlPlane) {
+              FluxRecorder.record({
+                traceID,
+                requestID,
+                direction: "internal",
+                domain: "auth",
+                kind: "auth.scope.checked",
+                status: hasScope(granted, required) ? "ok" : "denied",
+                method,
+                path,
+                route: scopeResolution.matchedEntry?.path ?? path,
+                metadata: {
+                  requiredScope: required,
+                  grantedScopes: granted,
+                  matchedPattern: scopeResolution.matchedEntry?.path,
+                  controlPlane: true,
+                  fallback: scopeResolution.fallback,
+                },
+              })
+            }
+            if (scopeResolution.controlPlane && scopeResolution.fallback) {
+              FluxRecorder.record({
+                traceID,
+                requestID,
+                direction: "internal",
+                domain: "auth",
+                kind: "auth.scope.fallback",
+                status: "error",
+                method,
+                path,
+                route: path,
+                metadata: {
+                  requiredScope: required,
+                },
+              })
+            }
             if (!hasScope(granted, required)) {
               log.warn("authz denied", {
                 status: 403,

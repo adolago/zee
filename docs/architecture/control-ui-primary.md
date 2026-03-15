@@ -2,6 +2,8 @@
 
 This document defines the first-class operator path for Zee web control and webchat workflows (issue `#268`).
 
+Explicit HTTP operator scope assignments live in `docs/architecture/control-plane-scope-matrix.md`.
+
 ## Stable Entrypoints
 
 Primary commands:
@@ -23,7 +25,7 @@ Compatibility:
 - session visibility: `GET /session`
 - approvals queue: `GET /question`
 - pairing/gateway reachability: `GET /gateway/status`
-- system health: `GET /health/status`
+- system health: `GET /global/health/status`
 - channel state: `GET /gateway/channels/status`
 
 These workflows are covered by API-surface tests to keep the web operator path stable.

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { afterAll, beforeEach, describe, expect, test } from "bun:test"
 import { reloadFlags } from "../../src/flag/flag"
 import { Server } from "../../src/server/server"
 
@@ -15,7 +15,7 @@ const ORIGINAL_ENV = {
   ZEE_SERVER_SCOPES: process.env.ZEE_SERVER_SCOPES,
 }
 
-beforeAll(() => {
+beforeEach(() => {
   process.env.ZEE_ENABLE_SERVER_AUTH = "1"
   delete process.env.ZEE_DISABLE_SERVER_AUTH
   delete process.env.ZEE_SERVER_USERNAME
@@ -82,6 +82,45 @@ describe("HTTP auth and scopes", () => {
     expect(res.status).toBe(403)
   })
 
+  test("allows approvals scope to inspect question queue", async () => {
+    process.env.ZEE_SERVER_SCOPES = "operator.approvals"
+    reloadFlags()
+    Server.App.reset()
+    const app = Server.App()
+    const res = await app.request("/question", {
+      method: "GET",
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+      },
+    })
+    expect(res.status).toBe(200)
+  })
+
+  test("forbids read-only scope from paired-node inventory", async () => {
+    const app = Server.App()
+    const res = await app.request("/gateway/node", {
+      method: "GET",
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+      },
+    })
+    expect(res.status).toBe(403)
+  })
+
+  test("allows pairing scope to inspect paired-node inventory", async () => {
+    process.env.ZEE_SERVER_SCOPES = "operator.pairing"
+    reloadFlags()
+    Server.App.reset()
+    const app = Server.App()
+    const res = await app.request("/gateway/node", {
+      method: "GET",
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+      },
+    })
+    expect(res.status).toBe(200)
+  })
+
   test("forbids non-admin scopes from listing cached instances (GET /global/instances)", async () => {
     const app = Server.App()
     const res = await app.request("/global/instances", {
@@ -108,6 +147,33 @@ describe("HTTP auth and scopes", () => {
     const app = Server.App()
     const res = await app.request("/global/dispose", {
       method: "POST",
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+      },
+    })
+    expect(res.status).toBe(403)
+  })
+
+  test("forbids read-only scopes from mutating provider auth credentials", async () => {
+    const app = Server.App()
+    const res = await app.request("/auth/openai", {
+      method: "PUT",
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "api",
+        key: "test-key",
+      }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  test("forbids read-only scopes from control-plane observability streams", async () => {
+    const app = Server.App()
+    const res = await app.request("/global/event", {
+      method: "GET",
       headers: {
         Authorization: basicAuth("zee", "test-password"),
       },
