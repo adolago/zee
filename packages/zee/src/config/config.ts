@@ -1435,6 +1435,65 @@ export namespace Config {
       autoStart: z.boolean().optional().default(true).describe("Auto-start investing daemon if not running"),
       wsEnabled: z.boolean().optional().default(false).describe("Enable WebSocket for real-time data"),
       repoPath: z.string().optional().describe("Path to investing repository"),
+      ingestion: z
+        .object({
+          enabled: z.boolean().optional().default(true).describe("Enable research data connector scheduling"),
+          coverageSymbols: z
+            .array(z.string())
+            .optional()
+            .describe("Default symbol universe for filings, earnings, and market ingestion"),
+          connectors: z
+            .object({
+              filings: z
+                .object({
+                  enabled: z.boolean().optional().describe("Enable filings connector"),
+                  scheduleMinutes: z.number().int().positive().optional().describe("Filings connector cadence in minutes"),
+                  symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
+                })
+                .optional(),
+              earnings: z
+                .object({
+                  enabled: z.boolean().optional().describe("Enable earnings connector"),
+                  scheduleMinutes: z.number().int().positive().optional().describe("Earnings connector cadence in minutes"),
+                  symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
+                  quarters: z.number().int().positive().optional().describe("How many quarters of earnings history to ingest"),
+                })
+                .optional(),
+              transcripts: z
+                .object({
+                  enabled: z.boolean().optional().describe("Enable transcripts connector"),
+                  scheduleMinutes: z.number().int().positive().optional().describe("Transcripts connector cadence in minutes"),
+                  endpointPath: z.string().optional().describe("Raw API path for transcript ingestion"),
+                  lookbackDays: z.number().int().positive().optional().describe("Transcript lookback window in days"),
+                })
+                .optional(),
+              market: z
+                .object({
+                  enabled: z.boolean().optional().describe("Enable market connector"),
+                  scheduleMinutes: z.number().int().positive().optional().describe("Market connector cadence in minutes"),
+                  symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
+                })
+                .optional(),
+              macro: z
+                .object({
+                  enabled: z.boolean().optional().describe("Enable macro connector"),
+                  scheduleMinutes: z.number().int().positive().optional().describe("Macro connector cadence in minutes"),
+                })
+                .optional(),
+              news: z
+                .object({
+                  enabled: z.boolean().optional().describe("Enable news connector"),
+                  scheduleMinutes: z.number().int().positive().optional().describe("News connector cadence in minutes"),
+                  endpointPath: z.string().optional().describe("Raw API path for news ingestion"),
+                  lookbackDays: z.number().int().positive().optional().describe("News lookback window in days"),
+                })
+                .optional(),
+            })
+            .optional()
+            .describe("Per-connector ingestion overrides"),
+        })
+        .optional()
+        .describe("Research data ingestion connector scheduler"),
     })
     .strict()
     .meta({
