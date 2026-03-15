@@ -40,6 +40,7 @@ export type FluxKind =
   | "auth.scope.fallback"
   | "security.audit.checked"
   | "security.audit.finding"
+  | "security.audit.alert"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"

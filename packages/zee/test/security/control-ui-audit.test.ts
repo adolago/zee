@@ -115,6 +115,78 @@ describe("auditControlUiSecurityDeep", () => {
     expect(codes).toContain("node_client_duplicate_token_hash")
     expect(codes).toContain("node_client_active_nodes_missing_last_seen")
     expect(codes).toContain("node_client_revoked_metadata_incomplete")
+    expect(report.alerts).toHaveLength(0)
+  })
+
+  test("builds node exposure alerts with incident runbooks for deep drift conditions", async () => {
+    await writeNodeRegistryState({
+      version: 1,
+      nodes: {
+        active_one: {
+          id: "active_one",
+          label: "Desk",
+          platform: "linux",
+          createdAt: 1,
+          updatedAt: 2,
+          status: "paired",
+          metadata: {},
+          toolAllowlist: [],
+          tokenHash: "hash-one",
+          lastSeenAt: 2,
+        },
+        active_two: {
+          id: "active_two",
+          label: "Laptop",
+          platform: "macos",
+          createdAt: 1,
+          updatedAt: 3,
+          status: "paired",
+          metadata: {},
+          toolAllowlist: [],
+          tokenHash: "hash-two",
+          lastSeenAt: 3,
+        },
+      },
+    })
+
+    const report = await auditControlUiSecurityDeep({
+      gateway: {
+        nodeClient: {
+          enabled: false,
+          securityMode: "full",
+          maxPairedNodes: 1,
+        },
+      },
+    })
+
+    expect(report.metrics).toMatchObject({
+      activePairedNodes: 2,
+      totalPairedNodes: 2,
+      alertCount: 3,
+      nodeExposureAlertCount: 3,
+      nodeClientEnabled: false,
+      nodeClientSecurityMode: "full",
+    })
+
+    expect(report.alerts).toHaveLength(3)
+    expect(report.alerts.map((alert) => alert.code)).toEqual([
+      "node_client_exposure_feature_disabled",
+      "node_client_exposure_limit_drift",
+      "node_client_exposure_full_mode",
+    ])
+    expect(report.alerts[0]).toMatchObject({
+      severity: "warning",
+      findingCodes: ["node_client_state_present_but_feature_disabled"],
+    })
+    expect(report.alerts[1]).toMatchObject({
+      severity: "error",
+      findingCodes: ["node_client_active_nodes_exceed_limit"],
+    })
+    expect(report.alerts[2]).toMatchObject({
+      severity: "error",
+      findingCodes: ["node_client_active_nodes_with_full_mode"],
+    })
+    expect(report.alerts.every((alert) => alert.runbook.length >= 3)).toBe(true)
   })
 
   test("emits flux telemetry for audit summaries and findings", async () => {
@@ -159,6 +231,7 @@ describe("auditControlUiSecurityDeep", () => {
 
     const beforeChecked = FluxRecorder.list({ kind: "security.audit.checked" }).total
     const beforeFindings = FluxRecorder.list({ kind: "security.audit.finding" }).total
+    const beforeAlerts = FluxRecorder.list({ kind: "security.audit.alert" }).total
 
     const { traceID } = emitSecurityAuditTelemetry({
       source: "security.audit",
@@ -169,9 +242,10 @@ describe("auditControlUiSecurityDeep", () => {
 
     expect(FluxRecorder.list({ kind: "security.audit.checked" }).total).toBe(beforeChecked + 1)
     expect(FluxRecorder.list({ kind: "security.audit.finding" }).total).toBe(beforeFindings + report.findings.length)
+    expect(FluxRecorder.list({ kind: "security.audit.alert" }).total).toBe(beforeAlerts + report.alerts.length)
 
     const events = FluxRecorder.trace(traceID)
-    expect(events).toHaveLength(report.findings.length + 1)
+    expect(events).toHaveLength(report.findings.length + report.alerts.length + 1)
     expect(events[0]).toMatchObject({
       kind: "security.audit.checked",
       domain: "security",
@@ -191,5 +265,16 @@ describe("auditControlUiSecurityDeep", () => {
         code: report.findings[0]?.code,
       },
     })
+    if (report.alerts.length > 0) {
+      expect(events.at(-1)).toMatchObject({
+        kind: "security.audit.alert",
+        domain: "security",
+        metadata: {
+          source: "security.audit",
+          deep: true,
+          code: report.alerts.at(-1)?.code,
+        },
+      })
+    }
   })
 })
