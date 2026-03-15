@@ -55,7 +55,21 @@ The current run contract includes:
 - `scores.consistency`
 - `scores.timeliness`
 
-Those three quality dimensions are intentionally `null` in this slice and become concrete in `#516`.
+Those three quality dimensions are now scored by the deterministic `research-leads.v1` profile:
+
+- `structural >= 100`
+- `factuality >= 85`
+- `consistency >= 85`
+- `timeliness >= 80`
+
+The current scorer rules are:
+
+- factuality
+  - weights citation coverage, diagnostic budget, summary alignment, and status alignment
+- consistency
+  - weights summary alignment, section-title stability, symbol coverage, and workflow alignment
+- timeliness
+  - scores the live source age against either `freshnessWithinHours` or a source-type default window
 
 ## Operator surfaces
 
@@ -106,5 +120,7 @@ This slice emits:
   - dataset creation and dataset read/list activity
 - `investing.eval.run`
   - harness execution totals, pass/fail/error counts, and structural score
+- `investing.eval.score`
+  - per-case and aggregate factuality, consistency, and timeliness scores plus threshold breaches
 
 That gives the evaluation epic a persisted baseline before the scorer and CI-gate slices land.

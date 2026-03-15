@@ -14,6 +14,13 @@ import { FluxRecorder } from "../../../packages/zee/src/flux"
 import { Log } from "../../../packages/zee/src/util/log"
 import { getInvestingResearchArtifact, type InvestingResearchArtifact } from "./artifacts"
 import { getInvestingPortfolioBriefing, type InvestingPortfolioBriefing } from "./briefings"
+import {
+  INVESTING_EVAL_SCORE_PROFILE,
+  INVESTING_EVAL_THRESHOLDS,
+  scoreInvestingEvalCase,
+  type InvestingEvalCaseScores,
+  type InvestingEvalThresholdProfile,
+} from "./eval-scoring"
 import { getInvestingEarningsPacket, type InvestingEarningsPacket } from "./earnings-packets"
 
 const log = Log.create({ service: "investing:evals" })
@@ -94,6 +101,13 @@ export interface InvestingEvalCaseResult {
   live: InvestingEvalGoldenSnapshot | null
   passCount: number
   failCount: number
+  scores: InvestingEvalCaseScores
+  thresholdBreaches: Array<keyof InvestingEvalCaseScores>
+  reasons: {
+    factuality: string[]
+    consistency: string[]
+    timeliness: string[]
+  }
 }
 
 export interface InvestingEvalRunScores {
@@ -110,7 +124,10 @@ export interface InvestingEvalRun {
   createdAt: string
   status: InvestingEvalRunStatus
   summary: string
+  scoreProfile: typeof INVESTING_EVAL_SCORE_PROFILE
+  thresholds: InvestingEvalThresholdProfile
   scores: InvestingEvalRunScores
+  thresholdBreaches: Array<keyof InvestingEvalRunScores>
   totals: {
     totalCases: number
     passCount: number
@@ -198,7 +215,7 @@ function stringList(items: string[]): string {
 }
 
 function telemetry(input: {
-  kind: "investing.eval.dataset" | "investing.eval.run"
+  kind: "investing.eval.dataset" | "investing.eval.run" | "investing.eval.score"
   traceID: string
   method: string
   path?: string
@@ -358,6 +375,18 @@ function checkEvalCase(dataset: InvestingEvalDataset, evalCase: InvestingEvalDat
       ],
       passCount: 0,
       failCount: 1,
+      scores: {
+        structural: 0,
+        factuality: 0,
+        consistency: 0,
+        timeliness: 0,
+      },
+      thresholdBreaches: ["structural", "factuality", "consistency", "timeliness"],
+      reasons: {
+        factuality: ["Live source could not be loaded."],
+        consistency: ["Live source could not be loaded."],
+        timeliness: ["Live source could not be loaded."],
+      },
     }
   }
 
@@ -430,6 +459,34 @@ function checkEvalCase(dataset: InvestingEvalDataset, evalCase: InvestingEvalDat
 
   const failCount = checks.filter((check) => !check.passed).length
   const passCount = checks.length - failCount
+  const scoring = scoreInvestingEvalCase({
+    evalCase,
+    result: {
+      caseId: evalCase.id,
+      label: evalCase.label,
+      sourceKind: evalCase.sourceKind,
+      sourceId: evalCase.sourceId,
+      status: failCount === 0 ? "pass" : "fail",
+      summary: "",
+      checks,
+      live,
+      passCount,
+      failCount,
+      scores: {
+        structural: 0,
+        factuality: 0,
+        consistency: 0,
+        timeliness: 0,
+      },
+      thresholdBreaches: [],
+      reasons: {
+        factuality: [],
+        consistency: [],
+        timeliness: [],
+      },
+    },
+  })
+
   return {
     caseId: evalCase.id,
     label: evalCase.label,
@@ -444,6 +501,9 @@ function checkEvalCase(dataset: InvestingEvalDataset, evalCase: InvestingEvalDat
     live,
     passCount,
     failCount,
+    scores: scoring.scores,
+    thresholdBreaches: scoring.thresholdBreaches,
+    reasons: scoring.reasons,
   }
 }
 
@@ -530,19 +590,29 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
   const errorCount = results.filter((result) => result.status === "error").length
   const totalCases = results.length
   const passRate = totalCases > 0 ? round((passCount / totalCases) * 100) : 0
+  const averageScore = (dimension: keyof InvestingEvalCaseScores): number =>
+    totalCases > 0 ? round(results.reduce((sum, result) => sum + result.scores[dimension], 0) / totalCases) : 0
+
+  const scores: InvestingEvalRunScores = {
+    structural: passRate,
+    factuality: averageScore("factuality"),
+    consistency: averageScore("consistency"),
+    timeliness: averageScore("timeliness"),
+  }
+  const thresholdBreaches = (Object.keys(scores) as Array<keyof InvestingEvalRunScores>).filter(
+    (dimension) => (scores[dimension] ?? 0) < INVESTING_EVAL_THRESHOLDS[dimension],
+  )
   const run: InvestingEvalRun = {
     id: `investing-eval-run-${randomUUID().slice(0, 12)}`,
     schemaVersion: "investing-eval-run.v1",
     datasetId: dataset.id,
     createdAt: new Date().toISOString(),
     status: errorCount > 0 ? "error" : failCount > 0 ? "fail" : "pass",
-    summary: `Eval dataset ${dataset.name} finished with ${passCount}/${totalCases} passing case(s), ${failCount} failing case(s), and ${errorCount} error case(s).`,
-    scores: {
-      structural: passRate,
-      factuality: null,
-      consistency: null,
-      timeliness: null,
-    },
+    summary: `Eval dataset ${dataset.name} finished with ${passCount}/${totalCases} passing case(s), ${failCount} failing case(s), and ${errorCount} error case(s). Threshold breaches: ${thresholdBreaches.join(", ") || "none"}.`,
+    scoreProfile: INVESTING_EVAL_SCORE_PROFILE,
+    thresholds: INVESTING_EVAL_THRESHOLDS,
+    scores,
+    thresholdBreaches,
     totals: {
       totalCases,
       passCount,
@@ -573,6 +643,47 @@ export function runInvestingEvalDataset(input: { datasetId: string }): Investing
       failCount,
       errorCount,
       structural: run.scores.structural,
+      factuality: run.scores.factuality,
+      consistency: run.scores.consistency,
+      timeliness: run.scores.timeliness,
+      thresholdBreaches: run.thresholdBreaches,
+    },
+  })
+
+  for (const result of results) {
+    telemetry({
+      kind: "investing.eval.score",
+      traceID: `${run.id}:${result.caseId}`,
+      method: "case",
+      path: result.sourceId,
+      route: dataset.id,
+      status: result.thresholdBreaches.length > 0 ? "error" : "ok",
+      metadata: {
+        caseId: result.caseId,
+        sourceKind: result.sourceKind,
+        structural: result.scores.structural,
+        factuality: result.scores.factuality,
+        consistency: result.scores.consistency,
+        timeliness: result.scores.timeliness,
+        thresholdBreaches: result.thresholdBreaches,
+      },
+    })
+  }
+
+  telemetry({
+    kind: "investing.eval.score",
+    traceID: run.id,
+    method: "aggregate",
+    path: dataset.name,
+    route: dataset.id,
+    status: run.thresholdBreaches.length > 0 ? "error" : "ok",
+    metadata: {
+      scoreProfile: run.scoreProfile,
+      structural: run.scores.structural,
+      factuality: run.scores.factuality,
+      consistency: run.scores.consistency,
+      timeliness: run.scores.timeliness,
+      thresholdBreaches: run.thresholdBreaches,
     },
   })
 

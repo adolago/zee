@@ -571,7 +571,10 @@ const InvestingEvalRunCreateCommand = cmd({
     }
 
     console.log(`${run.id}`)
-    console.log(`- status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural}`)
+    console.log(
+      `- status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural} factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness}`,
+    )
+    console.log(`- thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} profile=${run.scoreProfile}`)
     console.log(`- summary=${run.summary}`)
   },
 })
@@ -603,7 +606,10 @@ const InvestingEvalRunReadCommand = cmd({
     }
 
     console.log(`${run.id}`)
-    console.log(`- datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}%`)
+    console.log(
+      `- datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural} factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness}`,
+    )
+    console.log(`- thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} profile=${run.scoreProfile}`)
     console.log(`- summary=${run.summary}`)
   },
 })
@@ -644,7 +650,7 @@ const InvestingEvalRunListCommand = cmd({
     }
     for (const run of runs) {
       console.log(
-        `- ${run.id}: datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}% summary=${run.summary}`,
+        `- ${run.id}: datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}% factuality=${run.scores.factuality} consistency=${run.scores.consistency} timeliness=${run.scores.timeliness} thresholdBreaches=${run.thresholdBreaches.join(", ") || "none"} summary=${run.summary}`,
       )
     }
   },

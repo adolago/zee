@@ -1284,6 +1284,11 @@ export const evalsTool: ToolDefinition = {
                 datasetId: args.datasetId,
                 runId: run.id,
                 status: run.status,
+                structural: run.scores.structural,
+                factuality: run.scores.factuality,
+                consistency: run.scores.consistency,
+                timeliness: run.scores.timeliness,
+                thresholdBreaches: run.thresholdBreaches,
               },
               output: JSON.stringify(run, null, 2),
             }
