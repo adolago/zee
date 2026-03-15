@@ -3,6 +3,7 @@
 Zee includes an optional **Gateway**: a WebSocket (WS) control plane designed for channel integrations (WhatsApp, etc) and remote clients.
 
 Primary web operator guidance: `docs/architecture/control-ui-primary.md`.
+Explicit HTTP operator scope assignments: `docs/architecture/control-plane-scope-matrix.md`.
 
 At a high level:
 

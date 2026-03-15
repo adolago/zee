@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test"
+import { FluxRecorder } from "../../src/flux"
 import { reloadFlags } from "../../src/flag/flag"
 import { Server } from "../../src/server/server"
 
@@ -49,6 +50,7 @@ describe("flux route scopes", () => {
   test("allows observe scope for flux endpoints", async () => {
     process.env.ZEE_SERVER_SCOPES = "operator.observe"
     reloadFlags()
+    const before = FluxRecorder.list({ kind: "auth.scope.checked" }).total
     const app = Server.App()
     const res = await app.request("/v1/flux/schema", {
       headers: {
@@ -56,5 +58,20 @@ describe("flux route scopes", () => {
       },
     })
     expect(res.status).toBe(200)
+    expect(FluxRecorder.list({ kind: "auth.scope.checked" }).total).toBe(before + 1)
+  })
+
+  test("emits fallback telemetry when a control-plane prefix misses the explicit matrix", async () => {
+    process.env.ZEE_SERVER_SCOPES = "operator.admin"
+    reloadFlags()
+    const before = FluxRecorder.list({ kind: "auth.scope.fallback" }).total
+    const app = Server.App()
+    const res = await app.request("/global/not-real", {
+      headers: {
+        Authorization: basicAuth("zee", "test-password"),
+      },
+    })
+    expect(res.status).toBe(404)
+    expect(FluxRecorder.list({ kind: "auth.scope.fallback" }).total).toBe(before + 1)
   })
 })
