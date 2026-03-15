@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
 import { getInvestingEntityCatalogStatus } from "@/investing/entities"
@@ -41,6 +42,17 @@ import {
   queryInvestingTheses,
   type InvestingThesisPortfolioRollupAudience,
 } from "@root/domain/investing/thesis-queries"
+import {
+  createInvestingEvalDataset,
+  getInvestingEvalDataset,
+  getInvestingEvalRun,
+  INVESTING_EVAL_RUN_STATUSES,
+  listInvestingEvalDatasets,
+  listInvestingEvalRuns,
+  runInvestingEvalDataset,
+  type InvestingEvalRunStatus,
+  type InvestingEvalSourceKind,
+} from "@root/domain/investing/evals"
 import {
   INVESTING_PORTFOLIO_BRIEFING_KINDS,
   createInvestingPortfolioBriefing,
@@ -370,9 +382,292 @@ const InvestingEventCommand = cmd({
   async handler() {},
 })
 
+function readEvalCasesFile(filePath: string): Array<{
+  label: string
+  sourceKind: InvestingEvalSourceKind
+  sourceId: string
+  expectations?: {
+    requiredSectionTitles?: string[]
+    minCitationCount?: number
+    maxDiagnosticCount?: number
+    freshnessWithinHours?: number
+  }
+}> {
+  const parsed = JSON.parse(readFileSync(filePath, "utf8")) as unknown
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Eval case file must contain a JSON array: ${filePath}`)
+  }
+  return parsed as Array<{
+    label: string
+    sourceKind: InvestingEvalSourceKind
+    sourceId: string
+    expectations?: {
+      requiredSectionTitles?: string[]
+      minCitationCount?: number
+      maxDiagnosticCount?: number
+      freshnessWithinHours?: number
+    }
+  }>
+}
+
 function thesisLookup(value: string): string {
   return value.startsWith("thesis:") ? value : value.toUpperCase()
 }
+
+const InvestingEvalDatasetCreateCommand = cmd({
+  command: "create",
+  describe: "create a golden-set eval dataset from persisted investing outputs",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("name", {
+        type: "string",
+        demandOption: true,
+        describe: "dataset name",
+      })
+      .option("description", {
+        type: "string",
+        demandOption: true,
+        describe: "dataset description",
+      })
+      .option("owner", {
+        type: "string",
+        demandOption: true,
+        describe: "owning team or operator",
+      })
+      .option("case-file", {
+        type: "string",
+        demandOption: true,
+        describe: "path to a JSON array of eval case definitions",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { name?: string; description?: string; owner?: string; caseFile?: string; json?: boolean }) => {
+    if (!args.name || !args.description || !args.owner || !args.caseFile) {
+      throw new Error("name, description, owner, and case-file are required")
+    }
+    const dataset = createInvestingEvalDataset({
+      name: args.name,
+      description: args.description,
+      owner: args.owner,
+      cases: readEvalCasesFile(args.caseFile),
+    })
+    if (args.json) {
+      console.log(JSON.stringify(dataset, null, 2))
+      return
+    }
+
+    console.log(`${dataset.id}`)
+    console.log(`- owner=${dataset.owner} cases=${dataset.cases.length} runCount=${dataset.audit.runCount}`)
+    console.log(`- description=${dataset.description}`)
+  },
+})
+
+const InvestingEvalDatasetReadCommand = cmd({
+  command: "read <datasetId>",
+  describe: "read one persisted eval dataset",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("datasetId", {
+        type: "string",
+        demandOption: true,
+        describe: "eval dataset identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { datasetId?: string; json?: boolean }) => {
+    if (!args.datasetId) {
+      throw new Error("datasetId is required")
+    }
+    const dataset = getInvestingEvalDataset(args.datasetId)
+    const payload = dataset ?? { error: `Eval dataset not found: ${args.datasetId}` }
+    if (args.json || !dataset) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${dataset.id}`)
+    console.log(`- owner=${dataset.owner} cases=${dataset.cases.length} lastRunId=${dataset.audit.lastRunId ?? "n/a"}`)
+    console.log(`- description=${dataset.description}`)
+  },
+})
+
+const InvestingEvalDatasetListCommand = cmd({
+  command: "list",
+  describe: "list persisted eval datasets",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("owner", {
+        type: "string",
+        describe: "optional owner filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 20,
+        describe: "maximum number of datasets to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { owner?: string; limit?: number; json?: boolean }) => {
+    const datasets = listInvestingEvalDatasets({
+      owner: args.owner,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ datasets, count: datasets.length }, null, 2))
+      return
+    }
+    for (const dataset of datasets) {
+      console.log(
+        `- ${dataset.id}: owner=${dataset.owner} cases=${dataset.cases.length} runCount=${dataset.audit.runCount} description=${dataset.description}`,
+      )
+    }
+  },
+})
+
+const InvestingEvalDatasetCommand = cmd({
+  command: "dataset",
+  describe: "golden-set eval datasets",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingEvalDatasetCreateCommand)
+      .command(InvestingEvalDatasetReadCommand)
+      .command(InvestingEvalDatasetListCommand)
+      .demandCommand(),
+  async handler() {},
+})
+
+const InvestingEvalRunCreateCommand = cmd({
+  command: "create <datasetId>",
+  describe: "run the persisted eval harness for one dataset",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("datasetId", {
+        type: "string",
+        demandOption: true,
+        describe: "eval dataset identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { datasetId?: string; json?: boolean }) => {
+    if (!args.datasetId) {
+      throw new Error("datasetId is required")
+    }
+    const run = runInvestingEvalDataset({ datasetId: args.datasetId })
+    if (args.json) {
+      console.log(JSON.stringify(run, null, 2))
+      return
+    }
+
+    console.log(`${run.id}`)
+    console.log(`- status=${run.status} passRate=${run.totals.passRate}% structural=${run.scores.structural}`)
+    console.log(`- summary=${run.summary}`)
+  },
+})
+
+const InvestingEvalRunReadCommand = cmd({
+  command: "read <runId>",
+  describe: "read one persisted eval run",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("runId", {
+        type: "string",
+        demandOption: true,
+        describe: "eval run identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { runId?: string; json?: boolean }) => {
+    if (!args.runId) {
+      throw new Error("runId is required")
+    }
+    const run = getInvestingEvalRun(args.runId)
+    const payload = run ?? { error: `Eval run not found: ${args.runId}` }
+    if (args.json || !run) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${run.id}`)
+    console.log(`- datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}%`)
+    console.log(`- summary=${run.summary}`)
+  },
+})
+
+const InvestingEvalRunListCommand = cmd({
+  command: "list",
+  describe: "list persisted eval runs",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("dataset-id", {
+        type: "string",
+        describe: "optional dataset filter",
+      })
+      .option("status", {
+        type: "string",
+        choices: [...INVESTING_EVAL_RUN_STATUSES],
+        describe: "optional run-status filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 20,
+        describe: "maximum number of eval runs to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { datasetId?: string; status?: string; limit?: number; json?: boolean }) => {
+    const runs = listInvestingEvalRuns({
+      datasetId: args.datasetId,
+      status: args.status as InvestingEvalRunStatus | undefined,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ runs, count: runs.length }, null, 2))
+      return
+    }
+    for (const run of runs) {
+      console.log(
+        `- ${run.id}: datasetId=${run.datasetId} status=${run.status} passRate=${run.totals.passRate}% summary=${run.summary}`,
+      )
+    }
+  },
+})
+
+const InvestingEvalRunCommand = cmd({
+  command: "run",
+  describe: "golden-set eval runs",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingEvalRunCreateCommand)
+      .command(InvestingEvalRunReadCommand)
+      .command(InvestingEvalRunListCommand)
+      .demandCommand(),
+  async handler() {},
+})
+
+const InvestingEvalCommand = cmd({
+  command: "eval",
+  describe: "research-output evaluation datasets and harness runs",
+  builder: (yargs: Argv) => yargs.command(InvestingEvalDatasetCommand).command(InvestingEvalRunCommand).demandCommand(),
+  async handler() {},
+})
 
 const InvestingThesisStatusCommand = cmd({
   command: "status",
@@ -1449,6 +1744,7 @@ export const InvestingCommand = cmd({
       .command(InvestingIngestCommand)
       .command(InvestingEntityCommand)
       .command(InvestingEventCommand)
+      .command(InvestingEvalCommand)
       .command(InvestingThesisCommand)
       .command(InvestingEarningsPacketCommand)
       .command(InvestingOpsCommand)

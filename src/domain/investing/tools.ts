@@ -48,6 +48,16 @@ import {
   listInvestingEarningsPackets,
 } from "./earnings-packets"
 import {
+  createInvestingEvalDataset,
+  getInvestingEvalDataset,
+  getInvestingEvalRun,
+  INVESTING_EVAL_RUN_STATUSES,
+  INVESTING_EVAL_SOURCE_KINDS,
+  listInvestingEvalDatasets,
+  listInvestingEvalRuns,
+  runInvestingEvalDataset,
+} from "./evals"
+import {
   INVESTING_PORTFOLIO_BRIEFING_KINDS,
   createInvestingPortfolioBriefing,
   getInvestingPortfolioBriefing,
@@ -1164,6 +1174,159 @@ export const earningsPacketTool: ToolDefinition = {
   }),
 }
 
+const EvalCaseParams = z.object({
+  label: z.string().describe("Operator-facing case label"),
+  sourceKind: z.enum(INVESTING_EVAL_SOURCE_KINDS).describe("Persisted source type to capture as a golden snapshot"),
+  sourceId: z.string().describe("Persisted source identifier"),
+  expectations: z
+    .object({
+      requiredSectionTitles: z.array(z.string()).optional().describe("Override the required section-title list"),
+      minCitationCount: z.number().min(0).optional().describe("Minimum citation count expected at run time"),
+      maxDiagnosticCount: z.number().min(0).optional().describe("Maximum diagnostic count allowed at run time"),
+      freshnessWithinHours: z.number().min(0).optional().describe("Optional freshness window for the live source"),
+    })
+    .optional(),
+})
+
+const EvalParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create-dataset"),
+    name: z.string().describe("Dataset name"),
+    description: z.string().describe("Dataset description"),
+    owner: z.string().describe("Owning team or operator"),
+    cases: z.array(EvalCaseParams).min(1).describe("Cases to capture into the golden-set dataset"),
+  }),
+  z.object({
+    action: z.literal("read-dataset"),
+    datasetId: z.string().describe("Persisted eval dataset identifier"),
+  }),
+  z.object({
+    action: z.literal("list-datasets"),
+    owner: z.string().optional().describe("Optional owner filter"),
+    limit: z.number().min(1).max(100).default(20).describe("Maximum number of datasets to return"),
+  }),
+  z.object({
+    action: z.literal("run-dataset"),
+    datasetId: z.string().describe("Persisted eval dataset identifier"),
+  }),
+  z.object({
+    action: z.literal("read-run"),
+    runId: z.string().describe("Persisted eval run identifier"),
+  }),
+  z.object({
+    action: z.literal("list-runs"),
+    datasetId: z.string().optional().describe("Optional dataset filter"),
+    status: z.enum(INVESTING_EVAL_RUN_STATUSES).optional().describe("Optional run-status filter"),
+    limit: z.number().min(1).max(100).default(20).describe("Maximum number of eval runs to return"),
+  }),
+])
+
+export const evalsTool: ToolDefinition = {
+  id: "zee:invest-evals",
+  category: "domain",
+  init: async () => ({
+    description: `Create investing evaluation datasets from golden snapshots, inspect them, and run the repeatable harness against current research outputs.`,
+    parameters: EvalParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create-dataset": {
+          ctx.metadata({ title: `Creating eval dataset ${args.name}` })
+          const dataset = createInvestingEvalDataset({
+            name: args.name,
+            description: args.description,
+            owner: args.owner,
+            cases: args.cases,
+          })
+          return {
+            title: "Investing Evals",
+            metadata: {
+              action: args.action,
+              datasetId: dataset.id,
+              owner: dataset.owner,
+              caseCount: dataset.cases.length,
+            },
+            output: JSON.stringify(dataset, null, 2),
+          }
+        }
+        case "read-dataset": {
+          ctx.metadata({ title: `Loading eval dataset ${args.datasetId}` })
+          const dataset = getInvestingEvalDataset(args.datasetId)
+          return {
+            title: "Investing Evals",
+            metadata: { action: args.action, datasetId: args.datasetId, found: Boolean(dataset) },
+            output: JSON.stringify(dataset ?? { error: `Eval dataset not found: ${args.datasetId}` }, null, 2),
+          }
+        }
+        case "list-datasets": {
+          ctx.metadata({ title: "Listing eval datasets" })
+          const datasets = listInvestingEvalDatasets({
+            owner: args.owner,
+            limit: args.limit,
+          })
+          return {
+            title: "Investing Evals",
+            metadata: {
+              action: args.action,
+              owner: args.owner,
+              count: datasets.length,
+            },
+            output: JSON.stringify({ datasets, count: datasets.length }, null, 2),
+          }
+        }
+        case "run-dataset": {
+          ctx.metadata({ title: `Running eval dataset ${args.datasetId}` })
+          try {
+            const run = runInvestingEvalDataset({ datasetId: args.datasetId })
+            return {
+              title: "Investing Evals",
+              metadata: {
+                action: args.action,
+                datasetId: args.datasetId,
+                runId: run.id,
+                status: run.status,
+              },
+              output: JSON.stringify(run, null, 2),
+            }
+          } catch (error) {
+            return {
+              title: "Investing Evals",
+              metadata: { action: args.action, datasetId: args.datasetId, found: false },
+              output: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }, null, 2),
+            }
+          }
+        }
+        case "read-run": {
+          ctx.metadata({ title: `Loading eval run ${args.runId}` })
+          const run = getInvestingEvalRun(args.runId)
+          return {
+            title: "Investing Evals",
+            metadata: { action: args.action, runId: args.runId, found: Boolean(run) },
+            output: JSON.stringify(run ?? { error: `Eval run not found: ${args.runId}` }, null, 2),
+          }
+        }
+        case "list-runs": {
+          ctx.metadata({ title: "Listing eval runs" })
+          const runs = listInvestingEvalRuns({
+            datasetId: args.datasetId,
+            status: args.status,
+            limit: args.limit,
+          })
+          return {
+            title: "Investing Evals",
+            metadata: {
+              action: args.action,
+              datasetId: args.datasetId,
+              status: args.status,
+              count: runs.length,
+            },
+            output: JSON.stringify({ runs, count: runs.length }, null, 2),
+          }
+        }
+      }
+    },
+  }),
+}
+
 const ThesisQueryParams = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("read"),
@@ -1746,6 +1909,7 @@ export const INVESTING_TOOLS = [
   valuationKernelTool,
   valuationPacketTool,
   earningsPacketTool,
+  evalsTool,
   thesisTool,
   portfolioBriefingsTool,
   opsAutomationTool,
