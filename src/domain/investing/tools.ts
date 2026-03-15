@@ -44,6 +44,14 @@ import {
   getInvestingValuationPacket,
   listInvestingValuationPackets,
 } from "./valuation-packet";
+import {
+  INVESTING_EVENT_CLASSIFICATIONS,
+  INVESTING_EVENT_CONNECTORS,
+  INVESTING_EVENT_DIRECTIONS,
+  getInvestingEvent,
+  getInvestingEventCatalogStatus,
+  listInvestingEvents,
+} from "../../../packages/zee/src/investing/events";
 
 type InvestingResult = {
   ok: boolean;
@@ -777,6 +785,77 @@ export const researchArtifactsTool: ToolDefinition = {
   }),
 };
 
+const EventIntelligenceParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("status"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    connector: z.enum(INVESTING_EVENT_CONNECTORS).optional().describe("Optional connector filter"),
+    classification: z.enum(INVESTING_EVENT_CLASSIFICATIONS).optional().describe("Optional classification filter"),
+    direction: z.enum(INVESTING_EVENT_DIRECTIONS).optional().describe("Optional direction filter"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of events to return"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    eventId: z.string().describe("Persisted classified event identifier"),
+  }),
+]);
+
+export const eventIntelligenceTool: ToolDefinition = {
+  id: "zee:invest-events",
+  category: "domain",
+  init: async () => ({
+    description: `Inspect classified earnings and news events produced by Zee's event-intelligence ingestion layer.`,
+    parameters: EventIntelligenceParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "status": {
+          ctx.metadata({ title: "Loading investing event intelligence status" });
+          const status = await getInvestingEventCatalogStatus();
+          return {
+            title: "Investing Event Intelligence",
+            metadata: { action: args.action, totalEvents: status.totalEvents },
+            output: JSON.stringify(status, null, 2),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing investing event intelligence records" });
+          const events = await listInvestingEvents({
+            connector: args.connector,
+            classification: args.classification,
+            direction: args.direction,
+            symbol: args.symbol,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Event Intelligence",
+            metadata: {
+              action: args.action,
+              count: events.length,
+              connector: args.connector,
+              classification: args.classification,
+              direction: args.direction,
+              symbol: args.symbol,
+            },
+            output: JSON.stringify({ events, count: events.length }, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading investing event ${args.eventId}` });
+          const event = await getInvestingEvent(args.eventId);
+          return {
+            title: "Investing Event Intelligence",
+            metadata: { action: args.action, eventId: args.eventId, found: Boolean(event) },
+            output: JSON.stringify(event ?? { error: `Event not found: ${args.eventId}` }, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 const ValuationKernelParams = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("run"),
@@ -1116,6 +1195,7 @@ export const INVESTING_TOOLS = [
   researchPlannerTool,
   researchExecutorTool,
   researchArtifactsTool,
+  eventIntelligenceTool,
   nautilusTool,
   estimatesTool,
   insiderTradesTool,

@@ -50,6 +50,7 @@ export type FluxKind =
   | "investing.ingestion.backfill"
   | "investing.ingestion.run"
   | "investing.ingestion.schedule"
+  | "investing.event.classified"
   | "investing.research.plan"
   | "investing.research.plan.task"
   | "investing.research.execution"

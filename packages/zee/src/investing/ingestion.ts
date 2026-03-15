@@ -13,6 +13,7 @@ import {
   upsertInvestingEntities,
   type NormalizedInvestingEntity,
 } from "@/investing/entities"
+import { classifyInvestingConnectorEvents, upsertInvestingEvents } from "@/investing/events"
 
 const log = Log.create({ service: "investing:ingestion" })
 
@@ -476,6 +477,7 @@ export async function executeInvestingConnectorRun(input: {
   executor?: InvestingConnectorExecutor
   stateFile?: string
   entityStateFile?: string
+  eventStateFile?: string
   now?: number
 }): Promise<InvestingConnectorRunRecord> {
   const startedAt = input.now ?? Date.now()
@@ -494,6 +496,21 @@ export async function executeInvestingConnectorRun(input: {
         })
       : undefined
     const finishedAt = Date.now()
+    const classifiedEvents =
+      summary.entities?.length && (input.connector === "earnings" || input.connector === "news")
+        ? classifyInvestingConnectorEvents({
+            connector: input.connector,
+            entities: summary.entities,
+            capturedAt: new Date(finishedAt).toISOString(),
+          })
+        : []
+    const eventUpdate =
+      classifiedEvents.length > 0
+        ? await upsertInvestingEvents({
+            events: classifiedEvents,
+            stateFile: input.eventStateFile,
+          })
+        : undefined
     const record: InvestingConnectorRunRecord = {
       connector: input.connector,
       enabled: input.config.enabled,
@@ -537,6 +554,10 @@ export async function executeInvestingConnectorRun(input: {
         requestCount: record.requestCount,
         normalizedEntityCount: record.normalizedEntityCount,
         normalizedKinds: record.normalizedKinds,
+        classifiedEventCount: classifiedEvents.length,
+        classifiedEventTypes: [...new Set(classifiedEvents.map((event) => event.classification))],
+        eventInserted: eventUpdate?.inserted ?? 0,
+        eventUpdated: eventUpdate?.updated ?? 0,
         freshnessStatus: record.freshnessStatus,
         freshnessSloMinutes: record.freshnessSloMinutes,
         retryAttempts: record.retryAttempts,
@@ -611,6 +632,7 @@ export async function executeInvestingConnectorRunWithRetry(input: {
   executor?: InvestingConnectorExecutor
   stateFile?: string
   entityStateFile?: string
+  eventStateFile?: string
   now?: number
   sleep?: (ms: number) => Promise<void>
 }): Promise<InvestingConnectorRunRecord> {
@@ -626,6 +648,7 @@ export async function executeInvestingConnectorRunWithRetry(input: {
         executor: input.executor,
         stateFile: input.stateFile,
         entityStateFile: input.entityStateFile,
+        eventStateFile: input.eventStateFile,
         now: attempt === 0 ? input.now : undefined,
       })
     } catch (error) {
@@ -663,6 +686,7 @@ export async function runInvestingConnector(
     config?: unknown
     stateFile?: string
     entityStateFile?: string
+    eventStateFile?: string
   } = {},
 ): Promise<InvestingConnectorRunRecord> {
   const rawConfig = options.config ?? (await Config.get())
@@ -676,6 +700,7 @@ export async function runInvestingConnector(
       client,
       stateFile: options.stateFile,
       entityStateFile: options.entityStateFile,
+      eventStateFile: options.eventStateFile,
     })
   } finally {
     await client.disconnect().catch(() => {})
@@ -686,6 +711,7 @@ export async function runEnabledInvestingConnectors(options: {
   config?: unknown
   stateFile?: string
   entityStateFile?: string
+  eventStateFile?: string
   connectors?: InvestingConnectorKind[]
 } = {}): Promise<InvestingConnectorRunRecord[]> {
   const rawConfig = options.config ?? (await Config.get())
@@ -705,6 +731,7 @@ export async function runEnabledInvestingConnectors(options: {
           client,
           stateFile: options.stateFile,
           entityStateFile: options.entityStateFile,
+          eventStateFile: options.eventStateFile,
         }),
       )
     }
@@ -816,6 +843,7 @@ async function runBackfillWithConnectorConfig(input: {
   rawConfig: unknown
   stateFile?: string
   entityStateFile?: string
+  eventStateFile?: string
 }): Promise<InvestingConnectorRunRecord> {
   const client = await createInvestingClient(input.rawConfig)
   try {
@@ -825,6 +853,7 @@ async function runBackfillWithConnectorConfig(input: {
       client,
       stateFile: input.stateFile,
       entityStateFile: input.entityStateFile,
+      eventStateFile: input.eventStateFile,
     })
   } finally {
     await client.disconnect().catch(() => {})
@@ -873,6 +902,7 @@ export async function runInvestingConnectorBackfill(input: {
   config?: unknown
   stateFile?: string
   entityStateFile?: string
+  eventStateFile?: string
   operationsFile?: string
   symbols?: string[]
   lookbackDays?: number
@@ -921,6 +951,7 @@ export async function runInvestingConnectorBackfill(input: {
           rawConfig,
           stateFile: input.stateFile,
           entityStateFile: input.entityStateFile,
+          eventStateFile: input.eventStateFile,
         })
 
     record.finishedAt = Date.now()
