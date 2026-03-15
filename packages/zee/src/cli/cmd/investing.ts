@@ -23,6 +23,7 @@ import {
   runInvestingConnector,
   type InvestingConnectorKind,
 } from "@/investing/ingestion"
+import { getInvestingThesisLedgerStatus } from "@root/domain/investing/thesis"
 
 const InvestingIngestStatusCommand = cmd({
   command: "status",
@@ -316,6 +317,36 @@ const InvestingEventCommand = cmd({
   async handler() {},
 })
 
+const InvestingThesisStatusCommand = cmd({
+  command: "status",
+  describe: "show persisted thesis ledger status",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: false,
+      describe: "output as JSON",
+    }),
+  handler: async (args: { json?: boolean }) => {
+    const status = getInvestingThesisLedgerStatus()
+    if (args.json) {
+      console.log(JSON.stringify(status, null, 2))
+      return
+    }
+
+    const updatedAt = status.updatedAt > 0 ? new Date(status.updatedAt).toISOString() : "never"
+    console.log(`theses: total=${status.totalTheses} revisions=${status.totalRevisions} updatedAt=${updatedAt}`)
+    console.log(`- by status: ${JSON.stringify(status.countsByStatus)}`)
+    console.log(`- by conviction: ${JSON.stringify(status.countsByConviction)}`)
+  },
+})
+
+const InvestingThesisCommand = cmd({
+  command: "thesis",
+  describe: "persisted thesis ledger and version history",
+  builder: (yargs: Argv) => yargs.command(InvestingThesisStatusCommand).demandCommand(),
+  async handler() {},
+})
+
 const InvestingIngestScheduleCommand = cmd({
   command: "schedule",
   describe: "register connector schedules in the current always-on process",
@@ -358,6 +389,11 @@ export const InvestingCommand = cmd({
   command: "investing",
   describe: "investing platform operations",
   builder: (yargs: Argv) =>
-    yargs.command(InvestingIngestCommand).command(InvestingEntityCommand).command(InvestingEventCommand).demandCommand(),
+    yargs
+      .command(InvestingIngestCommand)
+      .command(InvestingEntityCommand)
+      .command(InvestingEventCommand)
+      .command(InvestingThesisCommand)
+      .demandCommand(),
   async handler() {},
 })

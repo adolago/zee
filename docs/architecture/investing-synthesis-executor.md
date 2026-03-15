@@ -8,7 +8,8 @@ This slice sits directly after the research planner:
 
 - planner: decide what should be done
 - executor: run the current task across relevant sources
-- later slices: richer analyst packets and thesis artifacts
+- thesis ledger: capture versioned thesis revisions from completed refreshes
+- later slices: richer thesis diff/query and portfolio views
 
 Persisted execution packets live at `~/.local/state/zee/investing/research-executions.json`.
 
@@ -35,8 +36,10 @@ When `run` is called, Zee:
 4. Assigns stable evidence citations such as `E1`, `E2`, and stable links such as `evidence:<executionId>:E1`.
 5. Produces a synthesis note that embeds those evidence links.
 6. For `earnings-preview` and `earnings-review`, appends the highest-signal scored event deltas for the symbol scope.
-7. Appends the standard investing provenance block.
-8. Persists the execution packet and advances the task in the planner.
+7. For `thesis-refresh`, appends a structured thesis snapshot derived from the latest valuation evidence.
+8. Appends the standard investing provenance block.
+9. Persists the execution packet and advances the task in the planner.
+10. After the execution artifact is written, records a new thesis revision for `thesis-refresh-brief`.
 
 If a task has no directly executable source tools, the executor reuses the latest evidence from dependency tasks so synthesis steps can still cite prior evidence.
 
@@ -89,6 +92,8 @@ The executor emits Flux events under `domain=investing`:
   - one event per evidence item with citation, source label, and summary
 
 For earnings-oriented workflows, the executor also consumes `investing.event.delta` telemetry emitted by the event-delta builder when it materializes briefing-ready deltas.
+
+For thesis-refresh workflows, the executor also triggers `investing.thesis.revision` once the versioned thesis change log is updated.
 
 The executor also relies on the planner's `investing.research.plan.task` telemetry when it marks a task `completed` or `blocked` after execution.
 

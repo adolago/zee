@@ -204,6 +204,15 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Daily brief integration:** `packages/zee/src/plugin/investing.ts:918`
 - **Operator doc:** `docs/architecture/investing-event-intelligence.md:1`
 
+### Feature: Investing Thesis Ledger
+**Purpose:** Persist canonical thesis records, sync valuation context, and append versioned thesis revisions from thesis-refresh workflows.
+- **Thesis draft + snapshot builder:** `src/domain/investing/thesis.ts:320`
+- **Record sync + revision store:** `src/domain/investing/thesis.ts:358`, `src/domain/investing/thesis.ts:409`
+- **Executor thesis-refresh integration:** `src/domain/investing/executor.ts:384`, `src/domain/investing/executor.ts:563`
+- **Valuation packet sync hook:** `src/domain/investing/valuation-packet.ts:280`
+- **CLI surface (`zee investing thesis status`):** `packages/zee/src/cli/cmd/investing.ts:320`
+- **Operator doc:** `docs/architecture/investing-thesis-ledger.md:1`
+
 ### Feature: Memory (Qdrant + Hybrid Search + Markdown Sync)
 **Purpose:** Store and retrieve semantic/keyword/hybrid memories with local Qdrant.
 - **Memory class:** `src/memory/unified.ts:352`

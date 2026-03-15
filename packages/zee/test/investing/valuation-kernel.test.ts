@@ -107,11 +107,21 @@ describe("investing valuation kernel", () => {
       expect(run.thesisContext.thesisKey).toBe("thesis:nvda")
       expect(getInvestingValuationKernel(run.id)?.id).toBe(run.id)
       expect(getInvestingValuationPacket(run.packetId!)?.runId).toBe(run.id)
-      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.kernel")).toBe(true)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.method")).toHaveLength(3)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.scenario")).toHaveLength(3)
-      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.assumption")).toBe(true)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.sensitivity")).toHaveLength(3)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.kernel" && call[0]?.traceID === run.id)).toBe(
+        true,
+      )
+      expect(
+        recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.method" && call[0]?.traceID === run.id),
+      ).toHaveLength(3)
+      expect(
+        recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.scenario" && call[0]?.traceID === run.id),
+      ).toHaveLength(3)
+      expect(
+        recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.assumption" && call[0]?.traceID === run.id),
+      ).toBe(true)
+      expect(
+        recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.sensitivity" && call[0]?.traceID === run.id),
+      ).toHaveLength(3)
       expect(await Bun.file(getInvestingValuationKernelStateFile()).exists()).toBe(true)
     })
   })

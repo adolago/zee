@@ -15,7 +15,7 @@ The schema supports these entity kinds:
 - `risk`
 - `valuation_case`
 
-Current ingestion connectors emit `company`, `instrument`, `filing`, and `event`. The valuation kernel now also mints canonical `valuation_case` identifiers for downstream thesis linkage. The remaining kinds are reserved for later research-orchestration issues.
+Current ingestion connectors emit `company`, `instrument`, `filing`, and `event`. The valuation kernel now also mints canonical `valuation_case` identifiers for downstream thesis linkage, and the thesis ledger persists records keyed by the canonical `thesisKey`. `catalyst` and `risk` remain reserved for later research-orchestration issues.
 
 ## Identifier strategy
 
