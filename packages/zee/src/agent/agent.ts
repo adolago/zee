@@ -24,6 +24,7 @@ import { Log } from "../util/log"
 const log = Log.create({ service: "agent" })
 
 const LEGACY_EDIT_TOOLS = new Set(["edit", "write", "patch", "multiedit", "apply_patch"])
+const recordedLegacyToolsAliasKeys = new Set<string>()
 
 function parseProviderModelRef(value: string) {
   const [providerID, ...modelParts] = value.split("/")
@@ -53,6 +54,11 @@ function legacyToolsToPermissionConfig(tools?: Record<string, boolean>) {
 function recordLegacyToolsAliasUsage(agentName: string, tools?: Record<string, boolean>) {
   if (!tools || Object.keys(tools).length === 0) return
 
+  const legacyToolIds = Object.keys(tools).sort()
+  const recordKey = `${agentName}:${legacyToolIds.join(",")}`
+  if (recordedLegacyToolsAliasKeys.has(recordKey)) return
+  recordedLegacyToolsAliasKeys.add(recordKey)
+
   const translatedPermissions = Object.keys(legacyToolsToPermissionConfig(tools)).sort()
   FluxRecorder.record({
     traceID: crypto.randomUUID(),
@@ -62,7 +68,7 @@ function recordLegacyToolsAliasUsage(agentName: string, tools?: Record<string, b
     status: "ok",
     metadata: {
       agent: agentName,
-      legacyToolIds: Object.keys(tools).sort(),
+      legacyToolIds,
       translatedPermissions,
     },
   })
