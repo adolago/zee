@@ -8,7 +8,7 @@ This slice sits directly after the research planner:
 
 - planner: decide what should be done
 - executor: run the current task across relevant sources
-- later slices: richer analyst packets, event deltas, and thesis artifacts
+- later slices: richer analyst packets and thesis artifacts
 
 Persisted execution packets live at `~/.local/state/zee/investing/research-executions.json`.
 
@@ -34,8 +34,9 @@ When `run` is called, Zee:
 3. Collects evidence items from each source.
 4. Assigns stable evidence citations such as `E1`, `E2`, and stable links such as `evidence:<executionId>:E1`.
 5. Produces a synthesis note that embeds those evidence links.
-6. Appends the standard investing provenance block.
-7. Persists the execution packet and advances the task in the planner.
+6. For `earnings-preview` and `earnings-review`, appends the highest-signal scored event deltas for the symbol scope.
+7. Appends the standard investing provenance block.
+8. Persists the execution packet and advances the task in the planner.
 
 If a task has no directly executable source tools, the executor reuses the latest evidence from dependency tasks so synthesis steps can still cite prior evidence.
 
@@ -86,6 +87,8 @@ The executor emits Flux events under `domain=investing`:
   - one event per execution run with workflow, task, and evidence counts
 - `investing.research.evidence`
   - one event per evidence item with citation, source label, and summary
+
+For earnings-oriented workflows, the executor also consumes `investing.event.delta` telemetry emitted by the event-delta builder when it materializes briefing-ready deltas.
 
 The executor also relies on the planner's `investing.research.plan.task` telemetry when it marks a task `completed` or `blocked` after execution.
 

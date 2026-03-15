@@ -7,7 +7,10 @@ import { Global } from "@/global"
 import type { NormalizedInvestingEntity } from "./entities"
 
 const EVENT_SCHEMA_VERSION = 1 as const
-const EVENT_STATE_FILE = path.join(Global.Path.state, "investing-event-intelligence.json")
+
+function defaultEventStateFile(): string {
+  return path.join(Global.Path.state, "investing-event-intelligence.json")
+}
 
 export const INVESTING_EVENT_CONNECTORS = ["earnings", "news"] as const
 export const INVESTING_EVENT_CLASSIFICATIONS = [
@@ -535,7 +538,7 @@ function defaultCatalog(): InvestingEventCatalog {
   }
 }
 
-async function readCatalog(stateFile = EVENT_STATE_FILE): Promise<InvestingEventCatalog> {
+async function readCatalog(stateFile = defaultEventStateFile()): Promise<InvestingEventCatalog> {
   const raw = await fs.readFile(stateFile, "utf8").catch(() => "")
   if (!raw) return defaultCatalog()
   try {
@@ -545,7 +548,7 @@ async function readCatalog(stateFile = EVENT_STATE_FILE): Promise<InvestingEvent
   }
 }
 
-async function writeCatalog(catalog: InvestingEventCatalog, stateFile = EVENT_STATE_FILE): Promise<void> {
+async function writeCatalog(catalog: InvestingEventCatalog, stateFile = defaultEventStateFile()): Promise<void> {
   await fs.mkdir(path.dirname(stateFile), { recursive: true })
   await fs.writeFile(stateFile, JSON.stringify(catalog, null, 2) + "\n", "utf8")
 }
@@ -925,7 +928,7 @@ export async function upsertInvestingEvents(input: {
   }
 }
 
-export async function getInvestingEventCatalogStatus(stateFile = EVENT_STATE_FILE): Promise<InvestingEventCatalogStatus> {
+export async function getInvestingEventCatalogStatus(stateFile = defaultEventStateFile()): Promise<InvestingEventCatalogStatus> {
   return buildStatus(await readCatalog(stateFile))
 }
 
@@ -961,7 +964,10 @@ export async function listInvestingEvents(options: {
     .slice(0, limit)
 }
 
-export async function getInvestingEvent(eventId: string, stateFile = EVENT_STATE_FILE): Promise<InvestingEventRecord | undefined> {
+export async function getInvestingEvent(
+  eventId: string,
+  stateFile = defaultEventStateFile(),
+): Promise<InvestingEventRecord | undefined> {
   const catalog = await readCatalog(stateFile)
   return catalog.events[eventId]
 }

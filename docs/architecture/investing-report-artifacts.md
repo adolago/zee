@@ -30,6 +30,8 @@ Each artifact includes:
 - `nextActions[]`
 - `diagnostics[]`
 
+For earnings-oriented workflows, the `Synthesis` section now carries the briefing-ready event delta block generated from scored event intelligence.
+
 Artifact kinds map to workflow phases:
 
 - `scope-note`

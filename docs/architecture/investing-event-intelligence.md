@@ -7,7 +7,7 @@ This document now covers:
 - issue `#506`: ingestion and classification
 - issue `#507`: materiality scoring and entity-linking
 
-Briefing deltas remain the follow-on work for `#508`.
+This document also covers issue `#508`: integrating event deltas into current briefing outputs.
 
 ## Source Of Truth
 
@@ -83,13 +83,19 @@ Domain tool:
   - `list`
   - `read`
 
+Briefing outputs now consume event deltas in two places:
+
+- earnings workflow synthesis and artifact outputs for `earnings-preview` and `earnings-review`
+- the existing `zee_invest_morning_brief` plugin output for daily watchlist/coverage monitoring
+
 ## Ingestion Flow
 
 1. Connector payloads are normalized into canonical entities.
 2. `earnings` and `news` event entities are classified into the event ledger.
 3. Each classified record is enriched with materiality and coverage links using the configured holdings/watchlist context.
 4. Each enriched record is upserted by stable ID (`classified:<entity-id>`).
-5. Connector run telemetry includes classified-event counts, materiality-band counts, and coverage-link counts for that batch.
+5. Briefing builders select the highest-signal scored events and render stable event-delta summaries for daily and earnings-oriented outputs.
+6. Connector run telemetry includes classified-event counts, materiality-band counts, and coverage-link counts for that batch.
 
 ## Telemetry
 
@@ -101,6 +107,9 @@ Flux events emitted for this slice:
 - `investing.event.scored`
   - one event per inserted or updated scored record
   - metadata includes `eventId`, `materialityScore`, `materialityBand`, `audience`, and holding/watchlist linkage flags
+- `investing.event.delta`
+  - one event per generated briefing delta payload
+  - metadata includes `mode`, `symbols`, `itemCount`, `audiences`, and the selected `eventIds`
 - `investing.ingestion.run`
   - now includes `classifiedEventCount`, `classifiedEventTypes`, `eventInserted`, `eventUpdated`, `materialityBands`, `holdingLinkedCount`, and `watchlistLinkedCount` when the connector produces classified events
 
@@ -109,4 +118,4 @@ Flux events emitted for this slice:
 - News classification is heuristic and keyword-driven in this slice.
 - Earnings classification is deterministic from the normalized earnings connector event shape.
 - Materiality scoring is intentionally heuristic in this slice; calibration and precision tuning remain follow-on work.
-- Briefing/thesis integration remains follow-on work.
+- Event deltas currently power the existing daily and earnings-oriented briefing outputs; full portfolio research workflows remain follow-on work.
