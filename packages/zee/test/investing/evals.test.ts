@@ -210,12 +210,18 @@ describe("investing eval harness", () => {
 
       const run = runInvestingEvalDataset({ datasetId: dataset.id })
       expect(run.status).toBe("pass")
+      expect(run.owner).toBe("research-qa")
       expect(run.totals.passCount).toBe(2)
       expect(run.scores.structural).toBe(100)
       expect(run.scores.factuality).toBeGreaterThanOrEqual(85)
       expect(run.scores.consistency).toBeGreaterThanOrEqual(85)
       expect(run.scores.timeliness).toBeGreaterThanOrEqual(80)
       expect(run.thresholdBreaches).toEqual([])
+      expect(run.baselineRunId).toBeNull()
+      expect(run.regression).toBeNull()
+      expect(run.alerts).toEqual([])
+      expect(run.gate.ok).toBe(true)
+      expect(run.gate.routingKey).toBe("owner:research-qa")
 
       const tool = await evalsTool.init()
       const result = await tool.execute(
@@ -233,11 +239,13 @@ describe("investing eval harness", () => {
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.dataset")).toBe(true)
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.run")).toBe(true)
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.score")).toBe(true)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.gate")).toBe(true)
     })
   })
 
   test("flags drift when a golden-set source changes after capture", async () => {
     await withEvalState(async () => {
+      const recordSpy = spyOn(FluxRecorder, "record")
       const artifact = makeResearchArtifact("NVDA")
       const dataset = createInvestingEvalDataset({
         name: "artifact-drift",
@@ -251,6 +259,8 @@ describe("investing eval harness", () => {
           },
         ],
       })
+      const baselineRun = runInvestingEvalDataset({ datasetId: dataset.id })
+      expect(baselineRun.gate.ok).toBe(true)
 
       const state = JSON.parse(readFileSync(getInvestingResearchArtifactStateFile(), "utf8")) as {
         version: number
@@ -272,12 +282,23 @@ describe("investing eval harness", () => {
       )
       const payload = JSON.parse(result.output)
       expect(payload.status).toBe("fail")
+      expect(payload.owner).toBe("research-qa")
+      expect(payload.baselineRunId).toBe(baselineRun.id)
       expect(payload.results[0].checks.find((check: { id: string }) => check.id === "summary-match")?.passed).toBe(
         false,
       )
       expect(payload.scores.structural).toBe(0)
       expect(payload.scores.consistency).toBeLessThan(85)
       expect(payload.thresholdBreaches).toContain("structural")
+      expect(payload.regression.regressionCount).toBeGreaterThan(0)
+      expect(payload.regression.caseRegressions[0].lostChecks).toContain("summary-match")
+      expect(payload.alerts.some((alert: { code: string }) => alert.code === "investing.eval.regression")).toBe(true)
+      expect(payload.alerts.some((alert: { routingKey: string }) => alert.routingKey === "owner:research-qa")).toBe(
+        true,
+      )
+      expect(payload.gate.ok).toBe(false)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.alert")).toBe(true)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.gate")).toBe(true)
     })
   })
 })

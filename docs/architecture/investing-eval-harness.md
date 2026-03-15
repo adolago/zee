@@ -54,6 +54,11 @@ The current run contract includes:
 - `scores.factuality`
 - `scores.consistency`
 - `scores.timeliness`
+- `owner`
+- `baselineRunId`
+- `regression`
+- `alerts[]`
+- `gate`
 
 Those three quality dimensions are now scored by the deterministic `research-leads.v1` profile:
 
@@ -92,7 +97,7 @@ CLI:
 zee investing eval dataset create --name daily-goldens --description "Daily research goldens" --owner research-qa --case-file ./cases.json
 zee investing eval dataset list
 zee investing eval dataset read <datasetId>
-zee investing eval run create <datasetId>
+zee investing eval run create <datasetId> --strict
 zee investing eval run read <runId>
 zee investing eval run list --dataset-id <datasetId>
 ```
@@ -119,8 +124,12 @@ This slice emits:
 - `investing.eval.dataset`
   - dataset creation and dataset read/list activity
 - `investing.eval.run`
-  - harness execution totals, pass/fail/error counts, and structural score
+  - harness execution totals, scores, ownership, and gate metadata
 - `investing.eval.score`
   - per-case and aggregate factuality, consistency, and timeliness scores plus threshold breaches
+- `investing.eval.gate`
+  - strict gate outcome, blocked reasons, and owner routing key
+- `investing.eval.alert`
+  - routed regression and threshold-breach alerts for the owning team
 
-That gives the evaluation epic a persisted baseline before the scorer and CI-gate slices land.
+That gives the evaluation epic a persisted baseline plus an enforceable gate before the v3 launch workflow consumes it.
