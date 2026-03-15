@@ -32,6 +32,7 @@ export type FluxKind =
   | "oauth.refresh.success"
   | "oauth.refresh.fail"
   | "auth.legacy_payload.accepted"
+  | "auth.policy.checked"
   | "auth.scope.checked"
   | "auth.scope.fallback"
   | "agent.legacy_tools_alias.used"

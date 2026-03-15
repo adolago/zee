@@ -33,9 +33,9 @@ import {
   getAuthConfig,
   getServerRuntimeConfig,
   hasScope,
-  isAuthorized,
   isTrustedControlOrigin,
   isLoopbackHostname,
+  resolveServerAuthDecision,
   resolveRequiredScopeInfo,
 } from "./auth"
 import {
@@ -368,8 +368,17 @@ export namespace Server {
             const scopeResolution = resolveRequiredScopeInfo(method, path)
             const required = scopeResolution.required
             const authHeader = c.req.header("Authorization")
+            const tokenHeader = c.req.header("x-zee-token")
             const authRateLimiter = resolveAuthRateLimiter()
             const rateLimit = authRateLimiter?.check(ip)
+            const authDecision = resolveServerAuthDecision({
+              authorizationHeader: authHeader,
+              tokenHeader,
+              origin,
+              runtimeConfig,
+            })
+            const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+            const requestID = RequestMeta.getRequestID(c.req.raw)
 
             if (rateLimit && !rateLimit.allowed) {
               log.warn("auth rate limited", {
@@ -385,7 +394,29 @@ export namespace Server {
               return c.text("Too Many Requests", 429)
             }
 
-            if (!isAuthorized(authHeader, runtimeConfig)) {
+            if (scopeResolution.controlPlane) {
+              FluxRecorder.record({
+                traceID,
+                requestID,
+                direction: "internal",
+                domain: "auth",
+                kind: "auth.policy.checked",
+                status: authDecision.authorized ? "ok" : "denied",
+                method,
+                path,
+                route: scopeResolution.matchedEntry?.path ?? path,
+                metadata: {
+                  authMode: authDecision.policy.mode,
+                  allowPasswordOnly: authDecision.policy.allowPasswordOnly,
+                  challenge: authDecision.challenge,
+                  scheme: authDecision.scheme,
+                  reason: authDecision.reason,
+                  trustedOrigin: Boolean(origin),
+                },
+              })
+            }
+
+            if (!authDecision.authorized) {
               authRateLimiter?.recordFailure(ip)
               log.warn("auth denied", {
                 status: 401,
@@ -393,16 +424,16 @@ export namespace Server {
                 method,
                 path,
                 required,
+                scheme: authDecision.scheme,
+                reason: authDecision.reason,
               })
-              c.header("WWW-Authenticate", 'Basic realm="zee"')
+              c.header("WWW-Authenticate", authDecision.challenge)
               return c.text("Unauthorized", 401)
             }
 
             authRateLimiter?.reset(ip)
 
             const granted = authConfig.scopes ?? [AuthScope.ADMIN]
-            const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-            const requestID = RequestMeta.getRequestID(c.req.raw)
             if (scopeResolution.controlPlane) {
               FluxRecorder.record({
                 traceID,
