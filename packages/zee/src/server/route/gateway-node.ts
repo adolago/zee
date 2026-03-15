@@ -79,6 +79,7 @@ const NodeRotateResponseSchema = z.object({
 })
 
 type NodeLifecycleAction = "pair" | "reconnect" | "rotate" | "revoke"
+type NodeAuthorizationMatch = "policy" | "global" | "node" | "global+node" | "none"
 
 function isUnauthorizedNodeLifecycleError(message: string): boolean {
   return message.includes("Invalid node token") || message.includes("Node token expired")
@@ -112,6 +113,61 @@ function recordNodeLifecycle(
       nodeId: input.nodeId,
       reason: input.reason,
       tokenVersion: input.tokenVersion,
+      securityMode: input.policy?.securityMode,
+      maxPairedNodes: input.policy?.maxPairedNodes,
+      credentialMaxAgeHours: input.policy?.credentialMaxAgeHours,
+    },
+  })
+}
+
+function resolveNodeAuthorizationMatch(
+  tool: string,
+  nodeAllowlist: string[],
+  policy: ReturnType<typeof resolveNodeClientPolicy>,
+): NodeAuthorizationMatch {
+  if (policy.securityMode !== "allowlist") return "policy"
+  const globalMatch = policy.toolAllowlist.includes(tool)
+  const nodeMatch = nodeAllowlist.includes(tool)
+  if (globalMatch && nodeMatch) return "global+node"
+  if (globalMatch) return "global"
+  if (nodeMatch) return "node"
+  return "none"
+}
+
+function recordNodeAuthorization(
+  c: Context,
+  input: {
+    status: "ok" | "error" | "denied"
+    nodeId?: string
+    tool: string
+    authorized?: boolean
+    reason: string
+    mode?: "deny" | "allowlist" | "full"
+    tokenVersion?: number
+    matchedBy?: NodeAuthorizationMatch
+    policy?: ReturnType<typeof resolveNodeClientPolicy>
+  },
+) {
+  const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
+  const requestID = RequestMeta.getRequestID(c.req.raw)
+  FluxRecorder.record({
+    traceID,
+    requestID,
+    direction: "internal",
+    domain: "gateway",
+    kind: "gateway.node.authorization",
+    status: input.status,
+    method: c.req.method,
+    path: c.req.path,
+    route: c.req.path,
+    metadata: {
+      nodeId: input.nodeId,
+      tool: input.tool,
+      authorized: input.authorized,
+      reason: input.reason,
+      mode: input.mode,
+      tokenVersion: input.tokenVersion,
+      matchedBy: input.matchedBy,
       securityMode: input.policy?.securityMode,
       maxPairedNodes: input.policy?.maxPairedNodes,
       credentialMaxAgeHours: input.policy?.credentialMaxAgeHours,
@@ -406,7 +462,7 @@ export const GatewayNodeRoute = new Hono()
             },
           },
         },
-        ...errors(400, 401),
+        ...errors(400, 401, 403),
       },
     }),
     validator("json", NodeToolAuthorizeRequestSchema),
@@ -415,6 +471,16 @@ export const GatewayNodeRoute = new Hono()
       const cfg = await Config.get()
       const policy = resolveNodeClientPolicy(cfg)
       if (!policy.enabled) {
+        recordNodeAuthorization(c, {
+          status: "denied",
+          nodeId: input.nodeId,
+          tool: input.tool,
+          authorized: false,
+          reason: "node-client pairing disabled by policy",
+          mode: policy.securityMode,
+          matchedBy: "none",
+          policy,
+        })
         return c.json({ error: "Node-client pairing is disabled by policy (gateway.nodeClient.enabled=false)." }, 403)
       }
       try {
@@ -424,9 +490,30 @@ export const GatewayNodeRoute = new Hono()
           tool: input.tool,
           policy,
         })
+        recordNodeAuthorization(c, {
+          status: result.authorized ? "ok" : "denied",
+          nodeId: result.node.id,
+          tool: input.tool,
+          authorized: result.authorized,
+          reason: result.reason,
+          mode: result.mode,
+          tokenVersion: result.node.tokenVersion,
+          matchedBy: resolveNodeAuthorizationMatch(input.tool, result.node.toolAllowlist, policy),
+          policy,
+        })
         return c.json(result)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
+        recordNodeAuthorization(c, {
+          status: isUnauthorizedNodeLifecycleError(message) ? "denied" : "error",
+          nodeId: input.nodeId,
+          tool: input.tool,
+          authorized: false,
+          reason: message,
+          mode: policy.securityMode,
+          matchedBy: "none",
+          policy,
+        })
         return c.json({ error: message }, isUnauthorizedNodeLifecycleError(message) ? 401 : 400)
       }
     },
