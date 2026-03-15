@@ -7,6 +7,7 @@ This document captures the reference node-client product path introduced for gat
 - API lifecycle:
   - `POST /gateway/node/pair`
   - `POST /gateway/node/reconnect`
+  - `POST /gateway/node/rotate`
   - `POST /gateway/node/revoke`
   - `POST /gateway/node/tool/authorize`
   - `GET /gateway/node`
@@ -16,11 +17,14 @@ This document captures the reference node-client product path introduced for gat
   - `gateway.nodeClient.allowRemotePairing`
   - `gateway.nodeClient.toolAllowlist`
   - `gateway.nodeClient.maxPairedNodes`
+  - `gateway.nodeClient.credentialMaxAgeHours`
 
 ## Security behavior
 - Pairing is blocked when `gateway.nodeClient.enabled=false`.
 - On non-loopback server bind, pairing requires `allowRemotePairing=true`.
 - Tokens are stored hashed (SHA-256), never in plaintext.
+- Active node credentials expire after `credentialMaxAgeHours` and must be refreshed via `POST /gateway/node/rotate`.
+- Credential rotation increments `tokenVersion` and records `tokenIssuedAt` / `tokenRotatedAt` for operator auditability.
 - Revoked nodes cannot reconnect or authorize tools.
 - Tool authorization enforces policy mode:
   - `deny`: always deny
@@ -36,6 +40,7 @@ This document captures the reference node-client product path introduced for gat
 - Both deep-audit commands emit Flux events:
   - `security.audit.checked`
   - `security.audit.finding`
+- Node lifecycle routes emit Flux `gateway.node.lifecycle` events for pair, reconnect, rotate, and revoke transitions.
 
 ## Follow-up hooks (iOS/Android)
 - Data model keeps `platform` as `macos|ios|android|linux|windows|unknown`.

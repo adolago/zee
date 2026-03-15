@@ -50,6 +50,7 @@ Approved in-repo on `2026-03-15`.
   - `GET /gateway/node`
   - `POST /gateway/node/pair`
   - `POST /gateway/node/reconnect`
+  - `POST /gateway/node/rotate`
   - `POST /gateway/node/revoke`
   - `POST /gateway/node/tool/authorize`
 - Privileged remote execution stays `operator.admin`:

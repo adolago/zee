@@ -11,6 +11,7 @@ describe("resolveRequiredScope", () => {
   test("maps gateway node pairing routes to pairing scope", () => {
     expect(resolveRequiredScope("POST", "/gateway/node/pair")).toBe(AuthScope.PAIRING)
     expect(resolveRequiredScope("POST", "/gateway/node/reconnect")).toBe(AuthScope.PAIRING)
+    expect(resolveRequiredScope("POST", "/gateway/node/rotate")).toBe(AuthScope.PAIRING)
     expect(resolveRequiredScope("POST", "/gateway/node/revoke")).toBe(AuthScope.PAIRING)
     expect(resolveRequiredScope("POST", "/gateway/node/tool/authorize")).toBe(AuthScope.PAIRING)
   })

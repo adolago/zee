@@ -28,6 +28,7 @@ export type FluxKind =
   | "gateway.auth.denied"
   | "gateway.rpc.request"
   | "gateway.rpc.response"
+  | "gateway.node.lifecycle"
   | "secret.resolved"
   | "oauth.refresh.start"
   | "oauth.refresh.success"

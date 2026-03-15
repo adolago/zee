@@ -1197,6 +1197,12 @@ export namespace Config {
             .describe("Allow non-loopback remote pairing requests"),
           toolAllowlist: z.array(z.string()).optional().describe("Allowed tools when `securityMode=allowlist`"),
           maxPairedNodes: z.number().int().positive().optional().describe("Maximum active paired nodes"),
+          credentialMaxAgeHours: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Maximum credential age before paired nodes must rotate their reconnect token"),
         })
         .optional()
         .describe("Reference desktop node-client policy and pairing controls"),
