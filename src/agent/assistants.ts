@@ -99,6 +99,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     "zee:invest-portfolio": true,
     "zee:invest-research": true,
     "zee:invest-valuation": true,
+    "zee:invest-valuation-packets": true,
     "zee:invest-planner": true,
     "zee:invest-executor": true,
     "zee:invest-artifacts": true,

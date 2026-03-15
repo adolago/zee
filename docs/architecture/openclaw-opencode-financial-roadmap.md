@@ -72,6 +72,7 @@ Exit criteria:
 - Structured report artifacts and diagnostics runbook: `docs/architecture/investing-report-artifacts.md`.
 - Valuation model kernel runbook: `docs/architecture/investing-valuation-kernel.md`.
 - Valuation assumption provenance and sensitivity runbook: `docs/architecture/investing-valuation-provenance.md`.
+- Valuation packet schema and export runbook: `docs/architecture/investing-valuation-packets.md`.
 
 Exit criteria:
 - End-to-end automated research run produces usable analyst packet.
