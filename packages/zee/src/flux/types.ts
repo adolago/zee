@@ -50,6 +50,8 @@ export type FluxKind =
   | "investing.ingestion.schedule"
   | "investing.research.plan"
   | "investing.research.plan.task"
+  | "investing.research.execution"
+  | "investing.research.evidence"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"
