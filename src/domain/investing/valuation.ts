@@ -37,9 +37,42 @@ export interface InvestingValuationScenario {
   upsidePercent: number | null;
 }
 
+export interface InvestingValuationAssumption {
+  id: string;
+  valuationCaseId: string;
+  method: "valuation" | "dcf" | "comparables" | "scenario";
+  name: string;
+  value: string | number | boolean | null | string[];
+  sourceType: "valuation-api" | "dcf-api" | "comparables" | "scenario-model";
+  sourcePath: string;
+  sourceLabel: string;
+}
+
+export interface InvestingValuationSensitivityRow {
+  label: string;
+  fairValue: number | null;
+  upsidePercent: number | null;
+  assumptions: Record<string, unknown>;
+}
+
+export interface InvestingValuationSensitivityTable {
+  id: string;
+  method: "dcf" | "comparables" | "blended";
+  title: string;
+  rows: InvestingValuationSensitivityRow[];
+}
+
+export interface InvestingValuationThesisContext {
+  thesisKey: string;
+  valuationCaseId: string;
+  signal: "re-rate-up" | "re-rate-down" | "balanced";
+  linkedMetrics: string[];
+}
+
 export interface InvestingValuationKernelRun {
   id: string;
   symbol: string;
+  valuationCaseId: string;
   status: InvestingValuationKernelStatus;
   createdAt: string;
   peerSymbols: string[];
@@ -49,6 +82,9 @@ export interface InvestingValuationKernelRun {
   currentPrice: number | null;
   upsidePercent: number | null;
   assumptions: Record<string, unknown>;
+  assumptionProvenance: InvestingValuationAssumption[];
+  sensitivityTables: InvestingValuationSensitivityTable[];
+  thesisContext: InvestingValuationThesisContext;
   summary: string;
   errors: string[];
 }
@@ -122,6 +158,10 @@ function normalizePeers(peers?: string[]): string[] {
   return Array.from(new Set((peers ?? []).map(normalizeSymbol).filter(Boolean)));
 }
 
+function buildValuationCaseId(symbol: string, runId: string): string {
+  return `valuation_case:equity:${symbol.toLowerCase()}:${runId}`;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -145,6 +185,17 @@ function midpoint(low: unknown, high: unknown): number | null {
 function computeUpside(fairValue: number | null, currentPrice: number | null): number | null {
   if (fairValue == null || currentPrice == null || currentPrice === 0) return null;
   return ((fairValue - currentPrice) / currentPrice) * 100;
+}
+
+function normalizeAssumptionValue(value: unknown): string | number | boolean | null | string[] {
+  if (value == null) return null;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item));
+  }
+  return JSON.stringify(value);
 }
 
 async function requestInvesting(pathname: string): Promise<InvestingRequestResult> {
@@ -342,6 +393,181 @@ function assumptionsFromResults(input: {
   };
 }
 
+function assumptionEntries(input: {
+  valuationCaseId: string;
+  method: InvestingValuationAssumption["method"];
+  sourceType: InvestingValuationAssumption["sourceType"];
+  sourcePathPrefix: string;
+  sourceLabel: string;
+  record: Record<string, unknown>;
+}): InvestingValuationAssumption[] {
+  return Object.entries(input.record).map(([name, value]) => ({
+    id: `valuation-assumption-${randomUUID().slice(0, 12)}`,
+    valuationCaseId: input.valuationCaseId,
+    method: input.method,
+    name,
+    value: normalizeAssumptionValue(value),
+    sourceType: input.sourceType,
+    sourcePath: `${input.sourcePathPrefix}.${name}`,
+    sourceLabel: input.sourceLabel,
+  }));
+}
+
+function buildAssumptionProvenance(input: {
+  valuationCaseId: string;
+  symbol: string;
+  assumptions: Record<string, unknown>;
+}): InvestingValuationAssumption[] {
+  const valuation = asRecord(input.assumptions.valuation) ?? {};
+  const dcf = asRecord(input.assumptions.dcf) ?? {};
+  const comparables = asRecord(input.assumptions.comparables) ?? {};
+  const scenario = asRecord(input.assumptions.scenario) ?? {};
+
+  return [
+    ...assumptionEntries({
+      valuationCaseId: input.valuationCaseId,
+      method: "valuation",
+      sourceType: "valuation-api",
+      sourcePathPrefix: "valuation.assumptions",
+      sourceLabel: `${input.symbol} valuation overview`,
+      record: valuation,
+    }),
+    ...assumptionEntries({
+      valuationCaseId: input.valuationCaseId,
+      method: "dcf",
+      sourceType: "dcf-api",
+      sourcePathPrefix: "dcf.assumptions",
+      sourceLabel: `${input.symbol} DCF`,
+      record: dcf,
+    }),
+    ...assumptionEntries({
+      valuationCaseId: input.valuationCaseId,
+      method: "comparables",
+      sourceType: "comparables",
+      sourcePathPrefix: "comparables.assumptions",
+      sourceLabel: `${input.symbol} comparables`,
+      record: comparables,
+    }),
+    ...assumptionEntries({
+      valuationCaseId: input.valuationCaseId,
+      method: "scenario",
+      sourceType: "scenario-model",
+      sourcePathPrefix: "scenario.assumptions",
+      sourceLabel: `${input.symbol} scenario model`,
+      record: scenario,
+    }),
+  ];
+}
+
+function buildSensitivityTables(input: {
+  valuationCaseId: string;
+  methods: InvestingValuationMethodResult[];
+  scenarios: InvestingValuationScenario[];
+  currentPrice: number | null;
+  assumptions: Record<string, unknown>;
+}): InvestingValuationSensitivityTable[] {
+  const dcfMethod = input.methods.find((method) => method.method === "dcf");
+  const compsMethod = input.methods.find((method) => method.method === "comparables");
+  const dcfAssumptions = asRecord(input.assumptions.dcf) ?? {};
+  const discountRate = asNumber(dcfAssumptions.discountRate) ?? 0.1;
+  const terminalGrowth = asNumber(dcfAssumptions.terminalGrowth) ?? 0.03;
+
+  const dcfTable: InvestingValuationSensitivityTable = {
+    id: `${input.valuationCaseId}:dcf`,
+    method: "dcf",
+    title: "DCF discount-rate sensitivity",
+    rows: [
+      {
+        label: "Lower discount rate",
+        fairValue: dcfMethod?.fairValue == null ? null : dcfMethod.fairValue * 1.08,
+        upsidePercent:
+          dcfMethod?.fairValue == null
+            ? null
+            : computeUpside(dcfMethod.fairValue * 1.08, input.currentPrice),
+        assumptions: { discountRate: discountRate - 0.01, terminalGrowth },
+      },
+      {
+        label: "Base discount rate",
+        fairValue: dcfMethod?.fairValue ?? null,
+        upsidePercent: computeUpside(dcfMethod?.fairValue ?? null, input.currentPrice),
+        assumptions: { discountRate, terminalGrowth },
+      },
+      {
+        label: "Higher discount rate",
+        fairValue: dcfMethod?.fairValue == null ? null : dcfMethod.fairValue * 0.92,
+        upsidePercent:
+          dcfMethod?.fairValue == null
+            ? null
+            : computeUpside(dcfMethod.fairValue * 0.92, input.currentPrice),
+        assumptions: { discountRate: discountRate + 0.01, terminalGrowth },
+      },
+    ],
+  };
+
+  const comparablesRange = asRecord(input.assumptions.comparables)?.fairValueRange;
+  const comparablesLow = asRecord(comparablesRange)?.low;
+  const comparablesHigh = asRecord(comparablesRange)?.high;
+  const comparablesMid = compsMethod?.fairValue ?? midpoint(comparablesLow, comparablesHigh);
+  const comparablesTable: InvestingValuationSensitivityTable = {
+    id: `${input.valuationCaseId}:comparables`,
+    method: "comparables",
+    title: "Comparable-company range sensitivity",
+    rows: [
+      {
+        label: "Low range",
+        fairValue: asNumber(comparablesLow),
+        upsidePercent: computeUpside(asNumber(comparablesLow), input.currentPrice),
+        assumptions: { rangePosition: "low" },
+      },
+      {
+        label: "Mid range",
+        fairValue: comparablesMid,
+        upsidePercent: computeUpside(comparablesMid, input.currentPrice),
+        assumptions: { rangePosition: "mid" },
+      },
+      {
+        label: "High range",
+        fairValue: asNumber(comparablesHigh),
+        upsidePercent: computeUpside(asNumber(comparablesHigh), input.currentPrice),
+        assumptions: { rangePosition: "high" },
+      },
+    ],
+  };
+
+  const blendedTable: InvestingValuationSensitivityTable = {
+    id: `${input.valuationCaseId}:blended`,
+    method: "blended",
+    title: "Blended valuation scenario surface",
+    rows: input.scenarios.map((scenario) => ({
+      label: scenario.name,
+      fairValue: scenario.fairValue,
+      upsidePercent: scenario.upsidePercent,
+      assumptions: {
+        multiplier: scenario.multiplier,
+        weight: scenario.weight,
+      },
+    })),
+  };
+
+  return [dcfTable, comparablesTable, blendedTable];
+}
+
+function buildThesisContext(input: {
+  symbol: string;
+  valuationCaseId: string;
+  upsidePercent: number | null;
+}): InvestingValuationThesisContext {
+  const signal =
+    input.upsidePercent == null ? "balanced" : input.upsidePercent >= 15 ? "re-rate-up" : input.upsidePercent <= -15 ? "re-rate-down" : "balanced";
+
+  return {
+    thesisKey: `thesis:${input.symbol.toLowerCase()}`,
+    valuationCaseId: input.valuationCaseId,
+    signal,
+    linkedMetrics: ["blendedFairValue", "currentPrice", "upsidePercent"],
+  };
+}
+
 function buildSummary(input: {
   symbol: string;
   status: InvestingValuationKernelStatus;
@@ -409,9 +635,32 @@ export async function runInvestingValuationKernel(
     .filter((method) => method.status === "error")
     .map((method) => `${method.method}: ${method.error ?? "unknown error"}`);
   const status: InvestingValuationKernelStatus = methods.some((method) => method.status === "ok") ? "ok" : "error";
-  const run: InvestingValuationKernelRun = {
-    id: `valuation-kernel-${randomUUID().slice(0, 12)}`,
+  const runId = `valuation-kernel-${randomUUID().slice(0, 12)}`;
+  const valuationCaseId = buildValuationCaseId(symbol, runId);
+  const assumptions = assumptionsFromResults({
+    valuation: valuationResponse,
+    dcf: dcfResponse,
+    peers: peersResponse,
+    peersList: peerSymbols,
+    bearMultiplier,
+    bullMultiplier,
+  });
+  const assumptionProvenance = buildAssumptionProvenance({
+    valuationCaseId,
     symbol,
+    assumptions,
+  });
+  const sensitivityTables = buildSensitivityTables({
+    valuationCaseId,
+    methods,
+    scenarios,
+    currentPrice,
+    assumptions,
+  });
+  const run: InvestingValuationKernelRun = {
+    id: runId,
+    symbol,
+    valuationCaseId,
     status,
     createdAt: new Date().toISOString(),
     peerSymbols,
@@ -420,13 +669,13 @@ export async function runInvestingValuationKernel(
     blendedFairValue: fairValue,
     currentPrice,
     upsidePercent,
-    assumptions: assumptionsFromResults({
-      valuation: valuationResponse,
-      dcf: dcfResponse,
-      peers: peersResponse,
-      peersList: peerSymbols,
-      bearMultiplier,
-      bullMultiplier,
+    assumptions,
+    assumptionProvenance,
+    sensitivityTables,
+    thesisContext: buildThesisContext({
+      symbol,
+      valuationCaseId,
+      upsidePercent,
     }),
     summary: buildSummary({
       symbol,
@@ -454,6 +703,7 @@ export async function runInvestingValuationKernel(
     path: run.symbol,
     route: run.id,
     metadata: {
+      valuationCaseId: run.valuationCaseId,
       methodCount: run.methods.length,
       successfulMethods: run.methods.filter((method) => method.status === "ok").length,
       scenarioCount: run.scenarios.length,
@@ -475,6 +725,7 @@ export async function runInvestingValuationKernel(
       route: run.symbol,
       metadata: {
         symbol: run.symbol,
+        valuationCaseId: run.valuationCaseId,
         fairValue: method.fairValue,
         currentPrice: method.currentPrice,
         upsidePercent: method.upsidePercent,
@@ -495,10 +746,51 @@ export async function runInvestingValuationKernel(
       path: scenario.name,
       route: run.symbol,
       metadata: {
+        valuationCaseId: run.valuationCaseId,
         fairValue: scenario.fairValue,
         upsidePercent: scenario.upsidePercent,
         multiplier: scenario.multiplier,
         weight: scenario.weight,
+      },
+    });
+  }
+
+  for (const assumption of run.assumptionProvenance) {
+    FluxRecorder.record({
+      traceID: run.id,
+      direction: "internal",
+      domain: "investing",
+      kind: "investing.valuation.assumption",
+      status: "ok",
+      method: "trace",
+      path: assumption.method,
+      route: assumption.id,
+      metadata: {
+        symbol: run.symbol,
+        valuationCaseId: run.valuationCaseId,
+        name: assumption.name,
+        value: assumption.value,
+        sourceType: assumption.sourceType,
+        sourcePath: assumption.sourcePath,
+      },
+    });
+  }
+
+  for (const table of run.sensitivityTables) {
+    FluxRecorder.record({
+      traceID: run.id,
+      direction: "internal",
+      domain: "investing",
+      kind: "investing.valuation.sensitivity",
+      status: run.status === "ok" ? "ok" : "error",
+      method: "analyze",
+      path: table.method,
+      route: table.id,
+      metadata: {
+        symbol: run.symbol,
+        valuationCaseId: run.valuationCaseId,
+        rowCount: table.rows.length,
+        title: table.title,
       },
     });
   }
