@@ -1,11 +1,17 @@
 import type { Argv } from "yargs"
 import { cmd } from "./cmd"
+import { bootstrap } from "../bootstrap"
 import { Config } from "../../config/config"
 import { auditControlUiSecurityDeep, emitSecurityAuditTelemetry } from "@/security"
 import { getAgentDbMemoryStats } from "@/memory/agentdb-service"
 import { getHierarchicalMeshCoordinator } from "@/coordination/hierarchical-mesh"
 import { AgenticFlowBridge } from "@/orchestration/agentic-flow-bridge"
 import { getNodeClientRegistry, resolveNodeClientPolicy } from "@/gateway/node-client-registry"
+import {
+  buildOpenCodeRuntimeReleaseGate,
+  buildOpenCodeRuntimeRolloutReport,
+  emitOpenCodeRuntimeRolloutTelemetry,
+} from "@/runtime/opencode-rollout"
 
 type V3StatusArgs = {
   json?: boolean
@@ -38,6 +44,11 @@ async function collectV3Status(options: { emitSecurityTelemetry?: boolean } = {}
   const nodeStats = await getNodeClientRegistry().getStats()
   const flowBridge = new AgenticFlowBridge()
   const samplePlan = flowBridge.decomposeObjective("memory sync; swarm routing; release gate", { maxSteps: 3 })
+  const runtimeRollout = buildOpenCodeRuntimeRolloutReport()
+  if (options.emitSecurityTelemetry) {
+    await emitOpenCodeRuntimeRolloutTelemetry(runtimeRollout)
+  }
+  const runtimeGate = buildOpenCodeRuntimeReleaseGate(runtimeRollout)
 
   const gates = [
     { id: "memory.agentdb", ok: true, details: "Unified AgentDB memory service is wired through server routes." },
@@ -56,6 +67,7 @@ async function collectV3Status(options: { emitSecurityTelemetry?: boolean } = {}
       ok: true,
       details: "v3 status/plan/release command surface available for operator workflows.",
     },
+    runtimeGate,
     {
       id: "release.security",
       ok: security.ok,
@@ -78,6 +90,7 @@ async function collectV3Status(options: { emitSecurityTelemetry?: boolean } = {}
       policy: nodePolicy,
       stats: nodeStats,
     },
+    runtimeRollout,
     security,
     gates,
     readyForRelease: gates.every((gate) => gate.ok),
@@ -94,16 +107,18 @@ const V3StatusCommand = cmd({
       describe: "output JSON",
     }),
   handler: async (args: V3StatusArgs) => {
-    const status = await collectV3Status()
-    if (args.json) {
-      console.log(JSON.stringify(status, null, 2))
-      return
-    }
+    await bootstrap(process.cwd(), async () => {
+      const status = await collectV3Status()
+      if (args.json) {
+        console.log(JSON.stringify(status, null, 2))
+        return
+      }
 
-    console.log(`v3 release readiness: ${status.readyForRelease ? "ready" : "blocked"}`)
-    for (const gate of status.gates) {
-      console.log(`- ${gate.ok ? "ok" : "fail"} ${gate.id}: ${gate.details}`)
-    }
+      console.log(`v3 release readiness: ${status.readyForRelease ? "ready" : "blocked"}`)
+      for (const gate of status.gates) {
+        console.log(`- ${gate.ok ? "ok" : "fail"} ${gate.id}: ${gate.details}`)
+      }
+    })
   },
 })
 
@@ -133,22 +148,24 @@ const V3PlanCommand = cmd({
         describe: "output JSON",
       }),
   handler: async (args: V3PlanArgs) => {
-    const bridge = new AgenticFlowBridge()
-    const plan = bridge.decomposeObjective(args.objective, { maxSteps: args.steps })
-    const result = args.execute ? await bridge.runPlan(plan) : undefined
+    await bootstrap(process.cwd(), async () => {
+      const bridge = new AgenticFlowBridge()
+      const plan = bridge.decomposeObjective(args.objective, { maxSteps: args.steps })
+      const result = args.execute ? await bridge.runPlan(plan) : undefined
 
-    if (args.json) {
-      console.log(JSON.stringify({ plan, result }, null, 2))
-      return
-    }
+      if (args.json) {
+        console.log(JSON.stringify({ plan, result }, null, 2))
+        return
+      }
 
-    console.log(`flow: ${plan.id}`)
-    for (const step of plan.steps) {
-      console.log(`- ${step.id}: ${step.prompt}`)
-    }
-    if (result) {
-      console.log(`submitted: ${result.submitted.length} step(s)`)
-    }
+      console.log(`flow: ${plan.id}`)
+      for (const step of plan.steps) {
+        console.log(`- ${step.id}: ${step.prompt}`)
+      }
+      if (result) {
+        console.log(`submitted: ${result.submitted.length} step(s)`)
+      }
+    })
   },
 })
 
@@ -168,19 +185,21 @@ const V3ReleaseCommand = cmd({
         describe: "exit 1 when release is blocked",
       }),
   handler: async (args: V3ReleaseArgs) => {
-    const status = await collectV3Status({ emitSecurityTelemetry: true })
-    if (args.json) {
-      console.log(JSON.stringify(status, null, 2))
-    } else {
-      console.log(`v3 release gate: ${status.readyForRelease ? "PASS" : "FAIL"}`)
-      for (const gate of status.gates) {
-        console.log(`- ${gate.ok ? "ok" : "fail"} ${gate.id}: ${gate.details}`)
+    await bootstrap(process.cwd(), async () => {
+      const status = await collectV3Status({ emitSecurityTelemetry: true })
+      if (args.json) {
+        console.log(JSON.stringify(status, null, 2))
+      } else {
+        console.log(`v3 release gate: ${status.readyForRelease ? "PASS" : "FAIL"}`)
+        for (const gate of status.gates) {
+          console.log(`- ${gate.ok ? "ok" : "fail"} ${gate.id}: ${gate.details}`)
+        }
       }
-    }
 
-    if (args.strict && !status.readyForRelease) {
-      process.exit(1)
-    }
+      if (args.strict && !status.readyForRelease) {
+        process.exit(1)
+      }
+    })
   },
 })
 

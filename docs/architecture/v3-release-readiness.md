@@ -17,7 +17,7 @@ This document defines the executable v3 gate introduced by `zee v3`.
   - `zee v3 plan <objective> [--execute]`
   - `zee v3 release [--strict]`
 - Release gate:
-  - combines memory, swarm mesh, agentic-flow, and deep security audit checks
+  - combines memory, swarm mesh, agentic-flow, OpenCode runtime parity, and deep security audit checks
 
 ## Operational usage
 - Inspect readiness:
@@ -26,6 +26,14 @@ This document defines the executable v3 gate introduced by `zee v3`.
   - `zee v3 plan "objective text" --steps 6 --execute`
 - Enforce CI-like strict gate:
   - `zee v3 release --strict`
+
+## Runtime parity tie-in
+- `zee v3 status` and `zee v3 release` both embed the `inspect runtime-rollout` parity verdict.
+- The runtime gate is `runtime.opencode-parity`.
+- `zee v3 release` emits the same `runtime.opencode-rollout.inspected` bus telemetry used by the inspect command.
+- The gate blocks release when:
+  - any tracked surface is still pinned to legacy
+  - any `runtime.opencode.route.fallback` traffic appears in the trailing `24h` parity window
 
 ## Security tie-in
 - v3 release gate consumes deep security audit output.

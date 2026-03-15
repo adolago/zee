@@ -6,10 +6,12 @@ import {
 } from "../../src/runtime/opencode-contract"
 import {
   buildOpenCodeRuntimeRolloutReport,
+  buildOpenCodeRuntimeReleaseGate,
   summarizeOpenCodeRuntimeRollout,
 } from "../../src/runtime/opencode-rollout"
 import { buildPiMonoCompatReport, summarizePiMonoCompatReport } from "../../src/runtime/pimono-compat"
 import { reloadFlags } from "../../src/flag/flag"
+import type { FluxEvent } from "../../src/flux"
 import type { UsageStats, UsageSummary } from "../../src/usage/types"
 
 function setEnv(name: string, value: string | undefined) {
@@ -73,6 +75,28 @@ function makeSummary(): UsageSummary {
     errorCount: 0,
     errorRate: 0,
     cacheHitRate: 0.3,
+  }
+}
+
+function makeRouteEvent(params: {
+  timestamp: string
+  surface: "cli" | "orchestration" | "gateway"
+  kind: "runtime.opencode.route.selected" | "runtime.opencode.route.fallback"
+  reason?: "default_primary" | "surface_disabled" | "forced_legacy"
+}): FluxEvent {
+  return {
+    id: `${params.surface}-${params.kind}-${params.timestamp}`,
+    timestamp: new Date(params.timestamp).getTime(),
+    traceID: `trace-${params.surface}-${params.kind}-${params.timestamp}`,
+    direction: "internal",
+    domain: "runtime",
+    kind: params.kind,
+    status: "ok",
+    metadata: {
+      surface: params.surface,
+      route: params.kind === "runtime.opencode.route.selected" ? "opencode_primary" : "legacy_fallback",
+      reason: params.reason ?? (params.kind === "runtime.opencode.route.selected" ? "default_primary" : "forced_legacy"),
+    },
   }
 }
 
@@ -177,37 +201,86 @@ describe("inspect command helpers", () => {
         ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES: undefined,
       },
       () => {
-        const report = buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:15:00.000Z"))
+        const report = buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:15:00.000Z"), {
+          routeEvents: [],
+        })
 
         expect(report.reportId).toBe("opencode-runtime-rollout")
+        expect(report.roadmapIssue).toBe(487)
         expect(report.defaultRoute).toBe("opencode_primary")
         expect(report.surfaces.map((surface) => surface.route)).toEqual([
           "opencode_primary",
           "opencode_primary",
           "opencode_primary",
         ])
+        expect(report.parityWindow.hours).toBe(24)
+        expect(report.parity.routeEvents).toBe(0)
+        expect(report.parity.breaches).toHaveLength(0)
+        expect(report.parity.releaseReady).toBe(true)
         expect(report.telemetry.metrics.primarySurfaceCount).toBe(3)
         expect(report.telemetry.metrics.legacySurfaceCount).toBe(0)
+        expect(report.telemetry.metrics.routeEventCount).toBe(0)
+        expect(report.telemetry.metrics.breachCount).toBe(0)
       },
     )
   })
 
-  test("OpenCode runtime rollout summary reflects forced legacy surfaces and flux kinds", async () => {
+  test("OpenCode runtime rollout summary reflects parity breaches and rollback guidance", async () => {
     await withRolloutEnv(
       {
-        ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES: "gateway",
+        ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES: undefined,
       },
       () => {
         const summary = summarizeOpenCodeRuntimeRollout(
-          buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:20:00.000Z")),
+          buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:20:00.000Z"), {
+            routeEvents: [
+              makeRouteEvent({
+                timestamp: "2026-03-14T11:45:00.000Z",
+                surface: "cli",
+                kind: "runtime.opencode.route.selected",
+              }),
+              makeRouteEvent({
+                timestamp: "2026-03-14T11:50:00.000Z",
+                surface: "gateway",
+                kind: "runtime.opencode.route.fallback",
+              }),
+            ],
+          }),
         )
 
         expect(summary).toContain("OpenCode runtime rollout v1")
-        expect(summary).toContain("gateway: legacy_fallback (forced_legacy)")
+        expect(summary).toContain("parity: window=24h route-events=2 fallback=1")
+        expect(summary).toContain("gateway: opencode_primary (default_primary) selected=0 fallback=1")
+        expect(summary).toContain("status=breach")
+        expect(summary).toContain("rollback: recommended")
         expect(summary).toContain("runtime.opencode.route.selected")
         expect(summary).toContain("runtime.opencode.route.fallback")
       },
     )
+  })
+
+  test("OpenCode runtime release gate blocks when parity breaches are present", () => {
+    const report = buildOpenCodeRuntimeRolloutReport(new Date("2026-03-14T12:20:00.000Z"), {
+      routeEvents: [
+        makeRouteEvent({
+          timestamp: "2026-03-14T11:45:00.000Z",
+          surface: "cli",
+          kind: "runtime.opencode.route.selected",
+        }),
+        makeRouteEvent({
+          timestamp: "2026-03-14T11:50:00.000Z",
+          surface: "gateway",
+          kind: "runtime.opencode.route.fallback",
+        }),
+      ],
+    })
+    const gate = buildOpenCodeRuntimeReleaseGate(report)
+
+    expect(gate.id).toBe("runtime.opencode-parity")
+    expect(gate.ok).toBe(false)
+    expect(gate.breachCount).toBe(1)
+    expect(gate.details).toContain("breaches=1")
+    expect(gate.details).toContain("forced-legacy=0")
   })
 
   test("pi-mono compatibility report inventories explicit shim boundaries and statuses", () => {
