@@ -3,6 +3,7 @@ import path from "node:path"
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { FluxRecorder } from "../../src/flux"
 import { normalizeInvestingConnectorEntities } from "../../src/investing/entities"
+import { getInvestingEventCatalogStatus } from "../../src/investing/events"
 import {
   executeInvestingConnectorRun,
   executeInvestingConnectorRunWithRetry,
@@ -84,6 +85,7 @@ describe("executeInvestingConnectorRun", () => {
     await using dir = await tmpdir()
     const stateFile = path.join(dir.path, "investing-ingestion.json")
     const entityStateFile = path.join(dir.path, "investing-entities.json")
+    const eventStateFile = path.join(dir.path, "investing-events.json")
     const recordSpy = spyOn(FluxRecorder, "record")
     const startedAt = 1_700_000_000_000
 
@@ -124,6 +126,7 @@ describe("executeInvestingConnectorRun", () => {
           },
         }),
       }),
+      eventStateFile,
     })
 
     expect(result).toMatchObject({
@@ -141,8 +144,10 @@ describe("executeInvestingConnectorRun", () => {
     })
     expect(result.lastStartedAt).toBe(startedAt)
     expect(result.lastFinishedAt).toBeGreaterThanOrEqual(startedAt)
-    expect(recordSpy).toHaveBeenCalledTimes(2)
-    expect(recordSpy.mock.calls[0]?.[0]).toMatchObject({
+    expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.entity.normalized")).toBe(true)
+    expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.event.classified")).toBe(true)
+    expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.ingestion.run")).toBe(true)
+    expect(recordSpy.mock.calls.find((call) => call[0]?.kind === "investing.entity.normalized")?.[0]).toMatchObject({
       domain: "investing",
       kind: "investing.entity.normalized",
       status: "ok",
@@ -151,7 +156,7 @@ describe("executeInvestingConnectorRun", () => {
         inserted: 3,
       },
     })
-    expect(recordSpy.mock.calls[1]?.[0]).toMatchObject({
+    expect(recordSpy.mock.calls.find((call) => call[0]?.kind === "investing.ingestion.run")?.[0]).toMatchObject({
       domain: "investing",
       kind: "investing.ingestion.run",
       status: "ok",
@@ -161,6 +166,7 @@ describe("executeInvestingConnectorRun", () => {
         itemCount: 4,
         requestCount: 1,
         normalizedEntityCount: 3,
+        classifiedEventCount: 1,
         freshnessStatus: "fresh",
       },
     })
@@ -177,6 +183,10 @@ describe("executeInvestingConnectorRun", () => {
       normalizedEntityCount: 3,
       coverageSymbols: ["AAPL"],
     })
+
+    const eventStatus = await getInvestingEventCatalogStatus(eventStateFile)
+    expect(eventStatus.totalEvents).toBe(1)
+    expect(eventStatus.countsByConnector.earnings).toBe(1)
   })
 
   test("persists failed runs and emits error telemetry", async () => {

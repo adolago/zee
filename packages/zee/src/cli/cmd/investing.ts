@@ -2,6 +2,17 @@ import type { Argv } from "yargs"
 import { cmd } from "./cmd"
 import { getInvestingEntityCatalogStatus } from "@/investing/entities"
 import {
+  INVESTING_EVENT_CLASSIFICATIONS,
+  INVESTING_EVENT_CONNECTORS,
+  INVESTING_EVENT_DIRECTIONS,
+  getInvestingEvent,
+  getInvestingEventCatalogStatus,
+  listInvestingEvents,
+  type InvestingEventClassification,
+  type InvestingEventConnector,
+  type InvestingEventDirection,
+} from "@/investing/events"
+import {
   INVESTING_CONNECTOR_KINDS,
   getInvestingIngestionStatus,
   registerInvestingIngestionScheduler,
@@ -148,6 +159,134 @@ const InvestingEntityCommand = cmd({
   async handler() {},
 })
 
+const InvestingEventStatusCommand = cmd({
+  command: "status",
+  describe: "show classified investing event intelligence status",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: false,
+      describe: "output as JSON",
+    }),
+  handler: async (args: { json?: boolean }) => {
+    const status = await getInvestingEventCatalogStatus()
+    if (args.json) {
+      console.log(JSON.stringify(status, null, 2))
+      return
+    }
+
+    const updatedAt = status.updatedAt > 0 ? new Date(status.updatedAt).toISOString() : "never"
+    console.log(`events: total=${status.totalEvents} updatedAt=${updatedAt}`)
+    console.log(`- by connector: ${JSON.stringify(status.countsByConnector)}`)
+    console.log(`- by classification: ${JSON.stringify(status.countsByClassification)}`)
+    console.log(`- by direction: ${JSON.stringify(status.countsByDirection)}`)
+  },
+})
+
+const InvestingEventListCommand = cmd({
+  command: "list",
+  describe: "list classified earnings and news events",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("connector", {
+        type: "string",
+        choices: [...INVESTING_EVENT_CONNECTORS],
+        describe: "optional connector filter",
+      })
+      .option("classification", {
+        type: "string",
+        choices: [...INVESTING_EVENT_CLASSIFICATIONS],
+        describe: "optional classification filter",
+      })
+      .option("direction", {
+        type: "string",
+        choices: [...INVESTING_EVENT_DIRECTIONS],
+        describe: "optional direction filter",
+      })
+      .option("symbol", {
+        type: "string",
+        describe: "optional symbol filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 10,
+        describe: "maximum number of events to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    connector?: InvestingEventConnector
+    classification?: InvestingEventClassification
+    direction?: InvestingEventDirection
+    symbol?: string
+    limit?: number
+    json?: boolean
+  }) => {
+    const events = await listInvestingEvents({
+      connector: args.connector,
+      classification: args.classification,
+      direction: args.direction,
+      symbol: args.symbol,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ events, count: events.length }, null, 2))
+      return
+    }
+    for (const event of events) {
+      console.log(
+        `- ${event.id}: ${event.classification} connector=${event.connector} direction=${event.direction} confidence=${event.confidence.toFixed(2)} symbol=${event.symbol ?? "n/a"} asOf=${event.asOf} title=${event.title}`,
+      )
+    }
+  },
+})
+
+const InvestingEventReadCommand = cmd({
+  command: "read <eventId>",
+  describe: "read one classified event record",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("eventId", {
+        type: "string",
+        demandOption: true,
+        describe: "classified event identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { eventId?: string; json?: boolean }) => {
+    if (!args.eventId) {
+      throw new Error("eventId is required")
+    }
+    const event = await getInvestingEvent(args.eventId)
+    const payload = event ?? { error: `Event not found: ${args.eventId}` }
+    if (args.json || !event) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${event.id}`)
+    console.log(`- classification=${event.classification} connector=${event.connector} direction=${event.direction}`)
+    console.log(`- confidence=${event.confidence.toFixed(2)} symbol=${event.symbol ?? "n/a"} asOf=${event.asOf}`)
+    console.log(`- title=${event.title}`)
+    console.log(`- summary=${event.summary}`)
+    console.log(`- reasons=${event.reasons.join("; ") || "n/a"}`)
+  },
+})
+
+const InvestingEventCommand = cmd({
+  command: "event",
+  describe: "classified news and earnings event intelligence",
+  builder: (yargs: Argv) =>
+    yargs.command(InvestingEventStatusCommand).command(InvestingEventListCommand).command(InvestingEventReadCommand).demandCommand(),
+  async handler() {},
+})
+
 const InvestingIngestScheduleCommand = cmd({
   command: "schedule",
   describe: "register connector schedules in the current always-on process",
@@ -189,6 +328,7 @@ const InvestingIngestCommand = cmd({
 export const InvestingCommand = cmd({
   command: "investing",
   describe: "investing platform operations",
-  builder: (yargs: Argv) => yargs.command(InvestingIngestCommand).command(InvestingEntityCommand).demandCommand(),
+  builder: (yargs: Argv) =>
+    yargs.command(InvestingIngestCommand).command(InvestingEntityCommand).command(InvestingEventCommand).demandCommand(),
   async handler() {},
 })
