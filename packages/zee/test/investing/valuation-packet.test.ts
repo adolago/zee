@@ -1,13 +1,12 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { FluxRecorder } from "../../src/flux"
 import { tmpdir } from "../fixture/fixture"
+import { runInvestingValuationKernel } from "../../../../src/domain/investing/valuation"
 import {
-  getInvestingValuationKernel,
-  getInvestingValuationKernelStateFile,
-  runInvestingValuationKernel,
-} from "../../../../src/domain/investing/valuation"
-import { getInvestingValuationPacket } from "../../../../src/domain/investing/valuation-packet"
-import { valuationKernelTool } from "../../../../src/domain/investing/tools"
+  getInvestingValuationPacket,
+  getInvestingValuationPacketStateFile,
+} from "../../../../src/domain/investing/valuation-packet"
+import { valuationPacketTool } from "../../../../src/domain/investing/tools"
 
 function makeToolContext() {
   return {
@@ -19,11 +18,20 @@ function makeToolContext() {
   }
 }
 
-async function withValuationState<T>(fn: () => Promise<T>): Promise<T> {
+async function withPacketState<T>(fn: () => Promise<T>): Promise<T> {
   await using dir = await tmpdir()
   const originalStateHome = process.env.XDG_STATE_HOME
+  const originalPortfolioFile = process.env.ZEE_INVESTING_PORTFOLIO_FILE
   const originalFetch = globalThis.fetch
   process.env.XDG_STATE_HOME = dir.path
+  process.env.ZEE_INVESTING_PORTFOLIO_FILE = `${dir.path}/portfolio.json`
+  await Bun.write(
+    process.env.ZEE_INVESTING_PORTFOLIO_FILE,
+    JSON.stringify({
+      positions: [{ symbol: "NVDA", shares: 10, average_cost: 95 }],
+    }),
+  )
+
   try {
     return await fn()
   } finally {
@@ -33,12 +41,17 @@ async function withValuationState<T>(fn: () => Promise<T>): Promise<T> {
     } else {
       process.env.XDG_STATE_HOME = originalStateHome
     }
+    if (originalPortfolioFile === undefined) {
+      delete process.env.ZEE_INVESTING_PORTFOLIO_FILE
+    } else {
+      process.env.ZEE_INVESTING_PORTFOLIO_FILE = originalPortfolioFile
+    }
   }
 }
 
-describe("investing valuation kernel", () => {
-  test("runs DCF, comps, and scenario analysis into a persisted kernel", async () => {
-    await withValuationState(async () => {
+describe("investing valuation packets", () => {
+  test("auto-generates a standardized valuation packet from a kernel run", async () => {
+    await withPacketState(async () => {
       const recordSpy = spyOn(FluxRecorder, "record")
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url = String(input)
@@ -46,13 +59,7 @@ describe("investing valuation kernel", () => {
           return new Response(
             JSON.stringify({
               success: true,
-              data: {
-                symbol: "NVDA",
-                fairValue: 140,
-                currentPrice: 100,
-                upsidePercent: 40,
-                assumptions: { revenueGrowth: 0.18 },
-              },
+              data: { symbol: "NVDA", fairValue: 140, currentPrice: 100, upsidePercent: 40 },
             }),
             { status: 200, headers: { "content-type": "application/json" } },
           )
@@ -63,11 +70,7 @@ describe("investing valuation kernel", () => {
               success: true,
               data: {
                 symbol: "NVDA",
-                dcf: {
-                  intrinsicValue: 150,
-                  currentPrice: 100,
-                  upsidePercentage: 50,
-                },
+                dcf: { intrinsicValue: 150, currentPrice: 100, upsidePercentage: 50 },
                 assumptions: { discountRate: 0.1, terminalGrowth: 0.03 },
               },
             }),
@@ -89,35 +92,24 @@ describe("investing valuation kernel", () => {
         throw new Error(`Unexpected URL ${url}`)
       }) as typeof fetch
 
-      const run = await runInvestingValuationKernel({
-        symbol: "NVDA",
-        peers: ["AMD", "AVGO"],
-      })
+      const run = await runInvestingValuationKernel({ symbol: "NVDA" })
+      const packet = getInvestingValuationPacket(run.packetId!)
 
-      expect(run.symbol).toBe("NVDA")
-      expect(run.status).toBe("ok")
-      expect(run.valuationCaseId).toContain("valuation_case:equity:nvda:")
-      expect(run.packetId).toBeDefined()
-      expect(run.methods).toHaveLength(3)
-      expect(run.blendedFairValue).toBeCloseTo((140 + 150 + 110) / 3, 5)
-      expect(run.scenarios.map((scenario) => scenario.name)).toEqual(["bear", "base", "bull"])
-      expect(run.scenarios[1]?.fairValue).toBeCloseTo(run.blendedFairValue!, 5)
-      expect(run.assumptionProvenance.some((item) => item.name === "discountRate")).toBe(true)
-      expect(run.sensitivityTables.map((table) => table.method)).toEqual(["dcf", "comparables", "blended"])
-      expect(run.thesisContext.thesisKey).toBe("thesis:nvda")
-      expect(getInvestingValuationKernel(run.id)?.id).toBe(run.id)
-      expect(getInvestingValuationPacket(run.packetId!)?.runId).toBe(run.id)
-      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.kernel")).toBe(true)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.method")).toHaveLength(3)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.scenario")).toHaveLength(3)
-      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.assumption")).toBe(true)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.valuation.sensitivity")).toHaveLength(3)
-      expect(await Bun.file(getInvestingValuationKernelStateFile()).exists()).toBe(true)
+      expect(packet).toBeDefined()
+      if (!packet) throw new Error("packet should be defined")
+
+      expect(packet.schemaVersion).toBe("valuation-packet.v1")
+      expect(packet.portfolioContext.positionStatus).toBe("holding")
+      expect(packet.operationsContext.consumer).toBe("portfolio-ops")
+      expect(packet.audit.exportCount).toBe(0)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.packet")).toBe(true)
+      expect(await Bun.file(getInvestingValuationPacketStateFile()).exists()).toBe(true)
     })
   })
 
-  test("tool surface can run, read, and list valuation kernels", async () => {
-    await withValuationState(async () => {
+  test("tool surface can read, list, and export valuation packets", async () => {
+    await withPacketState(async () => {
+      const recordSpy = spyOn(FluxRecorder, "record")
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url = String(input)
         if (url.endsWith("/api/valuation/NVDA?include_dcf=true")) {
@@ -136,7 +128,7 @@ describe("investing valuation kernel", () => {
               data: {
                 symbol: "NVDA",
                 dcf: { intrinsicValue: 145, currentPrice: 100, upsidePercentage: 45 },
-                assumptions: {},
+                assumptions: { discountRate: 0.1, terminalGrowth: 0.03 },
               },
             }),
             { status: 200, headers: { "content-type": "application/json" } },
@@ -157,27 +149,19 @@ describe("investing valuation kernel", () => {
         throw new Error(`Unexpected URL ${url}`)
       }) as typeof fetch
 
-      const runtime = await valuationKernelTool.init()
+      const run = await runInvestingValuationKernel({ symbol: "NVDA" })
+      const runtime = await valuationPacketTool.init()
       const ctx = makeToolContext()
-      const runResult = await runtime.execute(
-        {
-          action: "run",
-          symbol: "NVDA",
-        },
-        ctx,
-      )
-      const run = JSON.parse(runResult.output) as { id: string; symbol: string }
-      expect(run.symbol).toBe("NVDA")
 
       const readResult = await runtime.execute(
         {
           action: "read",
-          runId: run.id,
+          packetId: run.packetId!,
         },
         ctx,
       )
       expect(JSON.parse(readResult.output)).toMatchObject({
-        id: run.id,
+        id: run.packetId,
       })
 
       const listResult = await runtime.execute(
@@ -190,10 +174,25 @@ describe("investing valuation kernel", () => {
       )
       const listed = JSON.parse(listResult.output) as {
         count: number
-        runs: Array<{ id: string }>
+        packets: Array<{ id: string }>
       }
       expect(listed.count).toBeGreaterThan(0)
-      expect(listed.runs.some((entry) => entry.id === run.id)).toBe(true)
+      expect(listed.packets.some((entry) => entry.id === run.packetId)).toBe(true)
+
+      const exportResult = await runtime.execute(
+        {
+          action: "export",
+          packetId: run.packetId!,
+          format: "markdown",
+        },
+        ctx,
+      )
+      expect(exportResult.output).toContain("# Valuation Packet: NVDA")
+      expect(exportResult.output).toContain("Audit key:")
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.valuation.packet.export")).toBe(true)
+
+      const packet = getInvestingValuationPacket(run.packetId!)
+      expect(packet?.audit.exportCount).toBe(1)
     })
   })
 })

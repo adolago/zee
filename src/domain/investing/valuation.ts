@@ -12,6 +12,7 @@ import path from "node:path";
 import { FluxRecorder } from "../../../packages/zee/src/flux";
 import { Log } from "../../../packages/zee/src/util/log";
 import { Investing } from "../../paths";
+import { createInvestingValuationPacket } from "./valuation-packet";
 
 const log = Log.create({ service: "investing:valuation-kernel" });
 
@@ -73,6 +74,7 @@ export interface InvestingValuationKernelRun {
   id: string;
   symbol: string;
   valuationCaseId: string;
+  packetId?: string;
   status: InvestingValuationKernelStatus;
   createdAt: string;
   peerSymbols: string[];
@@ -792,6 +794,18 @@ export async function runInvestingValuationKernel(
         rowCount: table.rows.length,
         title: table.title,
       },
+    });
+  }
+
+  try {
+    const packet = createInvestingValuationPacket({ run });
+    run.packetId = packet.id;
+    state.runs = state.runs.map((entry) => (entry.id === run.id ? run : entry));
+    writeValuationState(state);
+  } catch (error) {
+    log.warn("failed to create valuation packet", {
+      runId: run.id,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 

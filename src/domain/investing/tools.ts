@@ -38,6 +38,12 @@ import {
   listInvestingValuationKernels,
   runInvestingValuationKernel,
 } from "./valuation";
+import {
+  createInvestingValuationPacket,
+  exportInvestingValuationPacket,
+  getInvestingValuationPacket,
+  listInvestingValuationPackets,
+} from "./valuation-packet";
 
 type InvestingResult = {
   ok: boolean;
@@ -838,6 +844,102 @@ export const valuationKernelTool: ToolDefinition = {
   }),
 };
 
+const ValuationPacketParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    runId: z.string().describe("Persisted valuation kernel run identifier"),
+    overwrite: z.boolean().optional().default(false).describe("Regenerate the packet even if one already exists"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    packetId: z.string().describe("Persisted valuation packet identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    runId: z.string().optional().describe("Optional valuation run filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of packets to return"),
+  }),
+  z.object({
+    action: z.literal("export"),
+    packetId: z.string().describe("Persisted valuation packet identifier"),
+    format: z.enum(["json", "markdown"]).default("json").describe("Export format"),
+  }),
+]);
+
+export const valuationPacketTool: ToolDefinition = {
+  id: "zee:invest-valuation-packets",
+  category: "domain",
+  init: async () => ({
+    description: `Create, inspect, list, and export standardized valuation packets for downstream portfolio operations.`,
+    parameters: ValuationPacketParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create": {
+          ctx.metadata({ title: `Creating valuation packet for ${args.runId}` });
+          const run = getInvestingValuationKernel(args.runId);
+          if (!run) {
+            return {
+              title: "Investing Valuation Packets",
+              metadata: { action: args.action, runId: args.runId, found: false },
+              output: JSON.stringify({ error: `Valuation run not found: ${args.runId}` }, null, 2),
+            };
+          }
+
+          const packet = createInvestingValuationPacket({
+            run,
+            overwrite: args.overwrite,
+          });
+          return {
+            title: "Investing Valuation Packets",
+            metadata: { action: args.action, packetId: packet.id, runId: packet.runId },
+            output: JSON.stringify(packet, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading valuation packet ${args.packetId}` });
+          const packet = getInvestingValuationPacket(args.packetId);
+          return {
+            title: "Investing Valuation Packets",
+            metadata: { action: args.action, packetId: args.packetId, found: Boolean(packet) },
+            output: JSON.stringify(packet ?? { error: `Valuation packet not found: ${args.packetId}` }, null, 2),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing valuation packets" });
+          const packets = listInvestingValuationPackets({
+            symbol: args.symbol,
+            runId: args.runId,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Valuation Packets",
+            metadata: { action: args.action, count: packets.length, symbol: args.symbol, runId: args.runId },
+            output: JSON.stringify({ packets, count: packets.length }, null, 2),
+          };
+        }
+        case "export": {
+          ctx.metadata({ title: `Exporting valuation packet ${args.packetId}` });
+          const exported = exportInvestingValuationPacket({
+            packetId: args.packetId,
+            format: args.format,
+          });
+          return {
+            title: "Investing Valuation Packets",
+            metadata: {
+              action: args.action,
+              packetId: args.packetId,
+              format: args.format,
+              exportCount: exported.packet.audit.exportCount,
+            },
+            output: exported.content,
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -1010,6 +1112,7 @@ export const INVESTING_TOOLS = [
   secFilingsTool,
   researchTool,
   valuationKernelTool,
+  valuationPacketTool,
   researchPlannerTool,
   researchExecutorTool,
   researchArtifactsTool,
