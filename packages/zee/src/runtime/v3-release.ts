@@ -42,6 +42,11 @@ const REQUIRED_V3_RELEASE_DOCS = [
     path: "docs/architecture/investing-eval-gates.md",
     label: "Investing eval gates",
   },
+  {
+    id: "v3-rollout-plan",
+    path: "docs/architecture/v3-rollout-plan.md",
+    label: "V3 rollout plan",
+  },
 ] as const
 
 export type V3ReleaseCategory = "reliability" | "security" | "performance" | "docs"
