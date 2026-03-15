@@ -33,7 +33,13 @@ function normalizeToolName(name: string): string {
 }
 
 function isInvestingTool(name: string): boolean {
-  return normalizeToolName(name).startsWith("zee_invest_")
+  const normalized = normalizeToolName(name)
+  return normalized.startsWith("zee_invest_") || normalized.startsWith("zee:invest-")
+}
+
+function isResearchTool(name: string): boolean {
+  const normalized = normalizeToolName(name)
+  return normalized === "zee_invest_research" || normalized === "zee:invest-research"
 }
 
 function isWebTool(name: string): boolean {
@@ -81,9 +87,7 @@ export function summarizeInvestingProvenance(toolTraces: ToolTrace[]): Investing
   const errorInvesting = toolTraces.filter((trace) => isInvestingTool(trace.tool) && trace.status === "error")
   const completedWeb = toolTraces.filter((trace) => isWebTool(trace.tool) && trace.status === "completed")
 
-  const primaryInvesting =
-    completedInvesting.find((trace) => normalizeToolName(trace.tool) === "zee_invest_research")?.tool ??
-    completedInvesting[0]?.tool
+  const primaryInvesting = completedInvesting.find((trace) => isResearchTool(trace.tool))?.tool ?? completedInvesting[0]?.tool
   const primaryWeb = completedWeb[0]?.tool
   const primarySource = primaryInvesting ?? primaryWeb ?? orderedToolCalls[0]
   if (!primarySource) return null

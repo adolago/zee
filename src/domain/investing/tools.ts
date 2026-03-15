@@ -22,6 +22,11 @@ import {
   listInvestingResearchPlans,
   updateInvestingResearchTask,
 } from "./planner";
+import {
+  getInvestingResearchExecution,
+  listInvestingResearchExecutions,
+  runInvestingResearchExecution,
+} from "./executor";
 
 type InvestingResult = {
   ok: boolean;
@@ -576,6 +581,75 @@ export const researchPlannerTool: ToolDefinition = {
   }),
 };
 
+const ResearchExecutorParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("run"),
+    planId: z.string().describe("Persisted research plan identifier"),
+    taskId: z.string().optional().describe("Optional task override; defaults to the active task"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    executionId: z.string().describe("Persisted execution identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    planId: z.string().optional().describe("Optional plan filter"),
+    taskId: z.string().optional().describe("Optional task filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of executions to return"),
+  }),
+]);
+
+export const researchExecutorTool: ToolDefinition = {
+  id: "zee:invest-executor",
+  category: "domain",
+  init: async () => ({
+    description: `Execute investing research workflow steps across multiple sources, persist evidence-linked synthesis packets, and advance the underlying planner state.`,
+    parameters: ResearchExecutorParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "run": {
+          ctx.metadata({ title: `Running research execution for ${args.planId}` });
+          const execution = await runInvestingResearchExecution({
+            planId: args.planId,
+            taskId: args.taskId,
+          });
+          return {
+            title: "Investing Research Executor",
+            metadata: { action: args.action, executionId: execution.id, planId: execution.planId, status: execution.status },
+            output: JSON.stringify(execution, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading research execution ${args.executionId}` });
+          const execution = getInvestingResearchExecution(args.executionId);
+          return {
+            title: "Investing Research Executor",
+            metadata: { action: args.action, executionId: args.executionId, found: Boolean(execution) },
+            output: JSON.stringify(
+              execution ?? { error: `Research execution not found: ${args.executionId}` },
+              null,
+              2,
+            ),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing research executions" });
+          const executions = listInvestingResearchExecutions({
+            planId: args.planId,
+            taskId: args.taskId,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Research Executor",
+            metadata: { action: args.action, count: executions.length, planId: args.planId, taskId: args.taskId },
+            output: JSON.stringify({ executions, count: executions.length }, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -748,6 +822,7 @@ export const INVESTING_TOOLS = [
   secFilingsTool,
   researchTool,
   researchPlannerTool,
+  researchExecutorTool,
   nautilusTool,
   estimatesTool,
   insiderTradesTool,

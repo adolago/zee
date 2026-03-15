@@ -40,6 +40,21 @@ describe("session.investing-provenance", () => {
     expect(summary.toolCalls).toEqual(["zee_invest_market", "zee_invest_research", "websearch", "webfetch"])
   })
 
+  test("supports colon-namespaced investing tools", () => {
+    const summary = summarizeInvestingProvenance([
+      { tool: "zee:invest-market-data", status: "completed" },
+      { tool: "zee:invest-research", status: "completed" },
+      { tool: "websearch", status: "completed" },
+    ])
+
+    expect(summary).toBeDefined()
+    if (!summary) throw new Error("summary should be defined")
+
+    expect(summary.primarySource).toBe("zee:invest-research")
+    expect(summary.fallbackUsed).toBe(true)
+    expect(summary.toolCalls).toEqual(["zee:invest-market-data", "zee:invest-research", "websearch"])
+  })
+
   test("summarizes web fallback when investing fails", () => {
     const summary = summarizeInvestingProvenance([
       { tool: "zee_invest_research", status: "error", error: "connection refused" },
