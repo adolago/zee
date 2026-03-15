@@ -194,11 +194,14 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 - **Johny registration:** `src/domain/learning/tools.ts:504`
 
 ### Feature: Investing Event Intelligence
-**Purpose:** Classify, score, and link normalized earnings and news entities into a persistent event ledger for downstream research automation.
+**Purpose:** Classify, score, link, and render briefing-ready deltas from normalized earnings and news entities.
 - **Event catalog + classifier:** `packages/zee/src/investing/events.ts:1`
+- **Briefing delta builder:** `packages/zee/src/investing/briefing-deltas.ts:212`
 - **Ingestion hook + telemetry:** `packages/zee/src/investing/ingestion.ts:473`
 - **CLI surface (`zee investing event ...`):** `packages/zee/src/cli/cmd/investing.ts:164`
 - **Stanley tool (`zee:invest-events`):** `src/domain/investing/tools.ts:810`
+- **Earnings workflow synthesis integration:** `src/domain/investing/executor.ts:348`
+- **Daily brief integration:** `packages/zee/src/plugin/investing.ts:918`
 - **Operator doc:** `docs/architecture/investing-event-intelligence.md:1`
 
 ### Feature: Memory (Qdrant + Hybrid Search + Markdown Sync)

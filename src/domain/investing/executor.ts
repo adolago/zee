@@ -11,6 +11,10 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { FluxRecorder } from "../../../packages/zee/src/flux";
 import {
+  buildInvestingEventDeltaBrief,
+  renderInvestingEventDeltaBrief,
+} from "../../../packages/zee/src/investing/briefing-deltas";
+import {
   appendInvestingProvenance,
   summarizeInvestingProvenance,
   type InvestingProvenanceSummary,
@@ -341,12 +345,12 @@ async function collectToolEvidence(input: {
   }
 }
 
-function buildSynthesis(input: {
+async function buildSynthesis(input: {
   plan: InvestingResearchPlan;
   task: InvestingResearchTask;
   evidence: InvestingResearchEvidence[];
   provenance: InvestingProvenanceSummary | null;
-}): string {
+}): Promise<string> {
   const evidenceLines =
     input.evidence.length > 0
       ? input.evidence
@@ -354,7 +358,7 @@ function buildSynthesis(input: {
           .join("\n")
       : "- No evidence items were collected."
 
-  const synthesis = [
+  const sections = [
     `${input.task.title}`,
     `Objective: ${input.plan.objective}`,
     `Workflow: ${input.plan.workflow}`,
@@ -362,7 +366,17 @@ function buildSynthesis(input: {
     "",
     "Evidence Links:",
     evidenceLines,
-  ].join("\n");
+  ];
+
+  if (input.plan.workflow === "earnings-preview" || input.plan.workflow === "earnings-review") {
+    const eventDeltaBrief = await buildInvestingEventDeltaBrief({
+      mode: input.plan.workflow === "earnings-preview" ? "pre-earnings" : "post-earnings",
+      symbols: input.plan.symbols,
+    });
+    sections.push("", renderInvestingEventDeltaBrief(eventDeltaBrief));
+  }
+
+  const synthesis = sections.join("\n");
 
   return input.provenance ? appendInvestingProvenance(synthesis, input.provenance) : synthesis;
 }
@@ -471,7 +485,7 @@ export async function runInvestingResearchExecution(
     status,
     startedAt,
     finishedAt,
-    synthesis: buildSynthesis({
+    synthesis: await buildSynthesis({
       plan,
       task,
       evidence,

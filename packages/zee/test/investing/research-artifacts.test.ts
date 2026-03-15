@@ -1,5 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { FluxRecorder } from "../../src/flux"
+import { normalizeInvestingConnectorEntities } from "../../src/investing/entities"
+import { classifyInvestingConnectorEvents, upsertInvestingEvents } from "../../src/investing/events"
 import { tmpdir } from "../fixture/fixture"
 import {
   createInvestingResearchPlan,
@@ -19,6 +21,27 @@ function makeToolContext() {
     abort: new AbortController().signal,
     metadata: () => {},
   }
+}
+
+async function seedEventDelta(symbol: string) {
+  const events = classifyInvestingConnectorEvents({
+    connector: "news",
+    entities: normalizeInvestingConnectorEntities({
+      connector: "news",
+      collectedAt: "2026-03-15T10:00:00.000Z",
+      data: [
+        {
+          symbol,
+          articleId: `${symbol.toLowerCase()}-guidance`,
+          publishedAt: "2026-03-15T09:30:00.000Z",
+          title: `${symbol} raises guidance after a strong quarter`,
+          summary: `Management raised guidance for ${symbol} after a strong quarter.`,
+          sector: "Technology",
+        },
+      ],
+    }),
+  })
+  await upsertInvestingEvents({ events })
 }
 
 async function withArtifactState<T>(fn: () => Promise<T>): Promise<T> {
@@ -68,6 +91,7 @@ describe("investing research artifacts", () => {
       const plan = createInvestingResearchPlan({
         objective: "Prepare a pre-earnings preview for NVDA",
       })
+      await seedEventDelta("NVDA")
       updateInvestingResearchTask({
         planId: plan.id,
         taskId: "coverage-check",
@@ -84,6 +108,7 @@ describe("investing research artifacts", () => {
       expect(artifact.kind).toBe("source-delta")
       expect(artifact.status).toBe("ready")
       expect(artifact.sections.map((section) => section.title)).toEqual(["Overview", "Synthesis", "Evidence"])
+      expect(artifact.sections.find((section) => section.title === "Synthesis")?.body).toContain("Event Deltas:")
       expect(artifact.citations.map((item) => item.citation)).toEqual(["E1", "E2"])
       expect(artifact.nextActions).toContain("Run the next task: Map consensus and management setup.")
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.research.artifact")).toBe(true)
@@ -100,6 +125,7 @@ describe("investing research artifacts", () => {
       const plan = createInvestingResearchPlan({
         objective: "Prepare a pre-earnings preview for NVDA",
       })
+      await seedEventDelta("NVDA")
       updateInvestingResearchTask({
         planId: plan.id,
         taskId: "coverage-check",
@@ -150,6 +176,7 @@ describe("investing research artifacts", () => {
       const plan = createInvestingResearchPlan({
         objective: "Prepare a pre-earnings preview for NVDA",
       })
+      await seedEventDelta("NVDA")
       updateInvestingResearchTask({
         planId: plan.id,
         taskId: "coverage-check",
