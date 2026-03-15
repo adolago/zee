@@ -141,6 +141,7 @@ describe("investing research planner", () => {
 
       expect(registry.has("zee:invest-market-data")).toBe(true)
       expect(registry.has("zee:invest-scratchpad")).toBe(true)
+      expect(registry.has("zee:invest-valuation")).toBe(true)
       expect(registry.has("zee:invest-planner")).toBe(true)
       expect(registry.has("zee:invest-executor")).toBe(true)
       expect(registry.has("zee:invest-artifacts")).toBe(true)

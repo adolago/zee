@@ -19,6 +19,7 @@ import {
 import { Log } from "../../../packages/zee/src/util/log";
 import { Investing } from "../../paths";
 import { createInvestingResearchArtifact } from "./artifacts";
+import { runInvestingValuationKernel } from "./valuation";
 import {
   getInvestingResearchPlan,
   updateInvestingResearchTask,
@@ -217,6 +218,8 @@ function sourceLabelForTool(toolId: string): string {
       return "Market data";
     case "zee:invest-estimates":
       return "Analyst estimates";
+    case "zee:invest-valuation":
+      return "Valuation kernel";
     case "zee:invest-insider-trades":
       return "Insider trades";
     case "zee:invest-segments":
@@ -288,6 +291,20 @@ async function collectToolEvidence(input: {
       return {
         args: { symbol: primarySymbol, estimateType: "consensus" },
         result: await requestInvesting(`/api/valuation/${primarySymbol}`),
+      };
+    case "zee:invest-valuation":
+      if (!primarySymbol) {
+        return {
+          args: {},
+          result: { ok: false, error: "A symbol is required for valuation execution." },
+        };
+      }
+      return {
+        args: { symbol: primarySymbol },
+        result: {
+          ok: true,
+          data: await runInvestingValuationKernel({ symbol: primarySymbol }),
+        },
       };
     case "zee:invest-insider-trades":
       if (!primarySymbol) {

@@ -98,6 +98,7 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     "zee:invest-market-data": true,
     "zee:invest-portfolio": true,
     "zee:invest-research": true,
+    "zee:invest-valuation": true,
     "zee:invest-planner": true,
     "zee:invest-executor": true,
     "zee:invest-artifacts": true,
