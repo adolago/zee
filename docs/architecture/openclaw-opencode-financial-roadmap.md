@@ -54,6 +54,7 @@ Exit criteria:
 - Persist unified research memory graph with queryable lineage.
 - Standardize identifier strategy across instruments and sources.
 - Operator runbook for connector scheduling and telemetry: `docs/architecture/investing-ingestion-platform.md`.
+- Canonical entity and lineage contract: `docs/architecture/investing-entity-schema.md`.
 
 Exit criteria:
 - Data freshness SLAs defined and monitored.

@@ -2,6 +2,7 @@ import fs from "node:fs/promises"
 import path from "node:path"
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 import { FluxRecorder } from "../../src/flux"
+import { normalizeInvestingConnectorEntities } from "../../src/investing/entities"
 import {
   executeInvestingConnectorRun,
   getInvestingIngestionStatus,
@@ -70,6 +71,7 @@ describe("executeInvestingConnectorRun", () => {
   test("persists successful runs and emits telemetry", async () => {
     await using dir = await tmpdir()
     const stateFile = path.join(dir.path, "investing-ingestion.json")
+    const entityStateFile = path.join(dir.path, "investing-entities.json")
     const recordSpy = spyOn(FluxRecorder, "record")
     const startedAt = 1_700_000_000_000
 
@@ -83,11 +85,28 @@ describe("executeInvestingConnectorRun", () => {
         quarters: 8,
       },
       stateFile,
+      entityStateFile,
       now: startedAt,
       executor: async () => ({
         itemCount: 4,
         requestCount: 1,
         details: ["AAPL"],
+        entities: normalizeInvestingConnectorEntities({
+          connector: "earnings",
+          symbol: "AAPL",
+          collectedAt: "2026-03-15T10:00:00.000Z",
+          data: {
+            symbol: "AAPL",
+            quarters: [{ quarter: "Q4 2025", reportDate: "2026-01-28" }],
+            epsGrowthYoy: 12,
+            epsGrowth3yrCagr: 8,
+            avgEpsSurprisePercent: 5,
+            beatRate: 0.8,
+            consecutiveBeats: 4,
+            earningsVolatility: 0.1,
+            earningsConsistency: 0.9,
+          },
+        }),
       }),
     })
 
@@ -97,12 +116,23 @@ describe("executeInvestingConnectorRun", () => {
       itemCount: 4,
       requestCount: 1,
       coverageSymbols: ["AAPL"],
+      normalizedEntityCount: 3,
+      normalizedKinds: ["company", "event", "instrument"],
       details: ["AAPL"],
     })
     expect(result.lastStartedAt).toBe(startedAt)
     expect(result.lastFinishedAt).toBeGreaterThanOrEqual(startedAt)
-    expect(recordSpy).toHaveBeenCalledTimes(1)
+    expect(recordSpy).toHaveBeenCalledTimes(2)
     expect(recordSpy.mock.calls[0]?.[0]).toMatchObject({
+      domain: "investing",
+      kind: "investing.entity.normalized",
+      status: "ok",
+      metadata: {
+        batchCount: 3,
+        inserted: 3,
+      },
+    })
+    expect(recordSpy.mock.calls[1]?.[0]).toMatchObject({
       domain: "investing",
       kind: "investing.ingestion.run",
       status: "ok",
@@ -111,6 +141,7 @@ describe("executeInvestingConnectorRun", () => {
         connector: "earnings",
         itemCount: 4,
         requestCount: 1,
+        normalizedEntityCount: 3,
       },
     })
 
@@ -122,6 +153,7 @@ describe("executeInvestingConnectorRun", () => {
       lastStatus: "ok",
       itemCount: 4,
       requestCount: 1,
+      normalizedEntityCount: 3,
       coverageSymbols: ["AAPL"],
     })
   })
@@ -174,6 +206,7 @@ describe("executeInvestingConnectorRun", () => {
       lastStatus: "error",
       itemCount: 0,
       requestCount: 0,
+      normalizedEntityCount: 0,
       error: "news endpoint unavailable",
     })
   })
@@ -200,6 +233,8 @@ describe("getInvestingIngestionStatus", () => {
               lastStatus: "ok",
               itemCount: 7,
               requestCount: 2,
+              normalizedEntityCount: 5,
+              normalizedKinds: ["company", "filing", "instrument"],
               details: ["OLD"],
             },
           },
@@ -241,6 +276,7 @@ describe("getInvestingIngestionStatus", () => {
       lastStatus: "ok",
       itemCount: 7,
       requestCount: 2,
+      normalizedEntityCount: 5,
     })
     expect(market).toMatchObject({
       connector: "market",
@@ -250,6 +286,7 @@ describe("getInvestingIngestionStatus", () => {
       lastFinishedAt: 0,
       itemCount: 0,
       requestCount: 0,
+      normalizedEntityCount: 0,
     })
   })
 })
