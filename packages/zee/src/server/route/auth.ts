@@ -6,6 +6,7 @@ import { Provider } from "../../provider/provider"
 import { errors } from "../error"
 import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
+import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 
 export const AuthRoute = new Hono()
   .put(
@@ -79,6 +80,18 @@ export const AuthRoute = new Hono()
             },
           })
           if (usedLegacyPayload) {
+            recordPiMonoShimUsage({
+              boundaryID: "server.auth.api-key-payload",
+              traceID,
+              requestID,
+              providerID,
+              dedupeKey: requestID ?? traceID,
+              metadata: {
+                route: "/auth/:providerID",
+                method: "PUT",
+                payloadShape: "api_key",
+              },
+            })
             FluxRecorder.record({
               traceID,
               requestID,

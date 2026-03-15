@@ -94,7 +94,7 @@ export const PiMonoCompatInspected = BusEvent.define(
   }),
 )
 
-const BOUNDARIES: PiMonoCompatBoundary[] = [
+export const PIMONO_COMPAT_BOUNDARIES: PiMonoCompatBoundary[] = [
   {
     id: "server.llm.pi-ai-bridge",
     surface: "server",
@@ -107,7 +107,7 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
       "Replace this bridge with the OpenCode-primary execution path once #486 lands and downstream callers move off pi-ai event shapes.",
     telemetry: {
       state: "emitted",
-      eventKinds: ["llm.bridge.stream.start", "llm.bridge.stream.done", "llm.bridge.stream.error"],
+      eventKinds: ["llm.bridge.stream.start", "llm.bridge.stream.done", "llm.bridge.stream.error", "compat.shim.used"],
     },
     references: [
       { file: "packages/zee/src/server/route/llm.ts", symbol: "LlmRoute" },
@@ -128,7 +128,7 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
       "Keep accepting the payload until operator clients are migrated, then require Auth.Info-only requests and delete the alias path.",
     telemetry: {
       state: "emitted",
-      eventKinds: ["auth.legacy_payload.accepted"],
+      eventKinds: ["auth.legacy_payload.accepted", "compat.shim.used"],
     },
     references: [
       { file: "packages/zee/src/server/route/auth.ts", symbol: "AuthRoute" },
@@ -150,7 +150,7 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
       "Add per-call-site shim telemetry in #489, then remove the alias once operators are on permission-native config.",
     telemetry: {
       state: "emitted",
-      eventKinds: ["agent.legacy_tools_alias.used"],
+      eventKinds: ["agent.legacy_tools_alias.used", "compat.shim.used"],
     },
     references: [
       { file: "packages/zee/src/config/config.ts", symbol: "agent.tools" },
@@ -171,7 +171,7 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
       "Hold the schema stable until OpenCode becomes the primary execution path, then either version it as Zee-owned or translate it behind a dedicated adapter.",
     telemetry: {
       state: "emitted",
-      eventKinds: ["orchestration.pi_agent_event_schema.used"],
+      eventKinds: ["orchestration.pi_agent_event_schema.used", "compat.shim.used"],
     },
     references: [
       { file: "src/swarm/events.ts", symbol: "OrchestrationEventType" },
@@ -313,7 +313,7 @@ function buildTelemetry(boundaries: PiMonoCompatBoundary[]): PiMonoCompatReportT
 }
 
 export function buildPiMonoCompatReport(now: Date = new Date()): PiMonoCompatReport {
-  const boundaries = BOUNDARIES.map((boundary) => ({
+  const boundaries = PIMONO_COMPAT_BOUNDARIES.map((boundary) => ({
     ...boundary,
     references: boundary.references.map((reference) => ({ ...reference })),
     telemetry: {

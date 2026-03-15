@@ -17,12 +17,14 @@ import PROMPT_FINDER from "./prompt/finder.txt"
 import PROMPT_LIBRARIAN from "./prompt/librarian.txt"
 import { PermissionNext } from "@/permission/next"
 import { FluxRecorder } from "@/flux"
+import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
 
 const log = Log.create({ service: "agent" })
 
 const LEGACY_EDIT_TOOLS = new Set(["edit", "write", "patch", "multiedit", "apply_patch"])
+const recordedLegacyToolsAliasKeys = new Set<string>()
 
 function parseProviderModelRef(value: string) {
   const [providerID, ...modelParts] = value.split("/")
@@ -52,6 +54,11 @@ function legacyToolsToPermissionConfig(tools?: Record<string, boolean>) {
 function recordLegacyToolsAliasUsage(agentName: string, tools?: Record<string, boolean>) {
   if (!tools || Object.keys(tools).length === 0) return
 
+  const legacyToolIds = Object.keys(tools).sort()
+  const recordKey = `${agentName}:${legacyToolIds.join(",")}`
+  if (recordedLegacyToolsAliasKeys.has(recordKey)) return
+  recordedLegacyToolsAliasKeys.add(recordKey)
+
   const translatedPermissions = Object.keys(legacyToolsToPermissionConfig(tools)).sort()
   FluxRecorder.record({
     traceID: crypto.randomUUID(),
@@ -61,7 +68,7 @@ function recordLegacyToolsAliasUsage(agentName: string, tools?: Record<string, b
     status: "ok",
     metadata: {
       agent: agentName,
-      legacyToolIds: Object.keys(tools).sort(),
+      legacyToolIds,
       translatedPermissions,
     },
   })
@@ -524,6 +531,17 @@ export namespace Agent {
       item.name = value.name ?? item.name
       item.steps = value.steps ?? value.maxSteps ?? item.steps
       item.options = mergeDeep(item.options, value.options ?? {})
+      recordLegacyToolsAliasUsage(key, value.tools)
+      if (value.tools) {
+        recordPiMonoShimUsage({
+          boundaryID: "agent.config.tools-alias",
+          dedupeKey: key,
+          metadata: {
+            agent: key,
+            legacyToolKeys: Object.keys(value.tools).sort(),
+          },
+        })
+      }
       recordLegacyToolsAliasUsage(key, value.tools)
       item.permission = PermissionNext.merge(
         item.permission,
