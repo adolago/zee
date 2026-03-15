@@ -40,6 +40,19 @@ import {
   listInvestingEarningsPackets,
   type InvestingEarningsPacketWorkflow,
 } from "@root/domain/investing/earnings-packets"
+import {
+  createInvestingOpsSchedule,
+  getInvestingOpsDeliveryRecord,
+  getInvestingOpsSchedule,
+  INVESTING_OPS_DELIVERY_TARGETS,
+  INVESTING_OPS_FORMATS,
+  INVESTING_OPS_WORKFLOWS,
+  listInvestingOpsDeliveryRecords,
+  listInvestingOpsSchedules,
+  runInvestingOpsSchedule,
+  updateInvestingOpsSchedule,
+  type InvestingOpsWorkflow,
+} from "@root/domain/investing/ops-automation"
 import { getInvestingResearchExecution } from "@root/domain/investing/executor"
 import { getInvestingResearchPlan } from "@root/domain/investing/planner"
 
@@ -552,6 +565,412 @@ const InvestingEarningsPacketCommand = cmd({
   async handler() {},
 })
 
+const InvestingOpsScheduleCreateCommand = cmd({
+  command: "create",
+  describe: "create a persisted research ops schedule",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("workflow", {
+        type: "string",
+        choices: [...INVESTING_OPS_WORKFLOWS],
+        demandOption: true,
+        describe: "automation workflow to schedule",
+      })
+      .option("schedule-minutes", {
+        type: "number",
+        demandOption: true,
+        describe: "recurring cadence in minutes",
+      })
+      .option("enabled", {
+        type: "boolean",
+        describe: "whether the schedule should be active",
+      })
+      .option("symbol", {
+        type: "string",
+        describe: "required symbol for earnings workflows",
+      })
+      .option("watchlist-symbol", {
+        type: "array",
+        string: true,
+        describe: "optional watchlist override for daily portfolio briefs",
+      })
+      .option("format", {
+        type: "string",
+        choices: [...INVESTING_OPS_FORMATS],
+        default: "markdown",
+        describe: "delivery format",
+      })
+      .option("delivery-target", {
+        type: "string",
+        choices: [...INVESTING_OPS_DELIVERY_TARGETS],
+        default: "audit-log",
+        describe: "delivery destination",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    workflow?: string
+    scheduleMinutes?: number
+    enabled?: boolean
+    symbol?: string
+    watchlistSymbol?: string[]
+    format?: string
+    deliveryTarget?: string
+    json?: boolean
+  }) => {
+    if (!args.workflow || !args.scheduleMinutes) {
+      throw new Error("workflow and scheduleMinutes are required")
+    }
+    const schedule = createInvestingOpsSchedule({
+      workflow: args.workflow as InvestingOpsWorkflow,
+      scheduleMinutes: args.scheduleMinutes,
+      enabled: args.enabled,
+      symbol: args.symbol,
+      watchlistSymbols: args.watchlistSymbol,
+      format: (args.format as "json" | "markdown" | undefined) ?? "markdown",
+      deliveryTarget: (args.deliveryTarget as "audit-log" | undefined) ?? "audit-log",
+    })
+    if (args.json) {
+      console.log(JSON.stringify(schedule, null, 2))
+      return
+    }
+
+    console.log(`${schedule.id}`)
+    console.log(`- workflow=${schedule.workflow} every=${schedule.scheduleMinutes}m enabled=${schedule.enabled}`)
+    console.log(`- symbol=${schedule.symbol ?? "n/a"} format=${schedule.format} target=${schedule.deliveryTarget}`)
+  },
+})
+
+const InvestingOpsScheduleReadCommand = cmd({
+  command: "read <scheduleId>",
+  describe: "read one persisted research ops schedule",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("scheduleId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted ops schedule identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { scheduleId?: string; json?: boolean }) => {
+    if (!args.scheduleId) {
+      throw new Error("scheduleId is required")
+    }
+    const schedule = getInvestingOpsSchedule(args.scheduleId)
+    const payload = schedule ?? { error: `Ops schedule not found: ${args.scheduleId}` }
+    if (args.json || !schedule) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${schedule.id}`)
+    console.log(`- workflow=${schedule.workflow} every=${schedule.scheduleMinutes}m enabled=${schedule.enabled}`)
+    console.log(`- symbol=${schedule.symbol ?? "n/a"} format=${schedule.format} target=${schedule.deliveryTarget}`)
+    console.log(`- lastStatus=${schedule.audit.lastStatus ?? "never"} lastRunAt=${schedule.audit.lastRunAt ?? "n/a"}`)
+  },
+})
+
+const InvestingOpsScheduleListCommand = cmd({
+  command: "list",
+  describe: "list persisted research ops schedules",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("workflow", {
+        type: "string",
+        choices: [...INVESTING_OPS_WORKFLOWS],
+        describe: "optional workflow filter",
+      })
+      .option("enabled", {
+        type: "boolean",
+        describe: "optional enabled filter",
+      })
+      .option("symbol", {
+        type: "string",
+        describe: "optional symbol filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 10,
+        describe: "maximum number of schedules to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { workflow?: string; enabled?: boolean; symbol?: string; limit?: number; json?: boolean }) => {
+    const schedules = listInvestingOpsSchedules({
+      workflow: args.workflow as InvestingOpsWorkflow | undefined,
+      enabled: args.enabled,
+      symbol: args.symbol,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ schedules, count: schedules.length }, null, 2))
+      return
+    }
+    for (const schedule of schedules) {
+      console.log(
+        `- ${schedule.id}: workflow=${schedule.workflow} every=${schedule.scheduleMinutes}m enabled=${schedule.enabled} symbol=${schedule.symbol ?? "n/a"} target=${schedule.deliveryTarget} format=${schedule.format}`,
+      )
+    }
+  },
+})
+
+const InvestingOpsScheduleUpdateCommand = cmd({
+  command: "update <scheduleId>",
+  describe: "update a persisted research ops schedule",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("scheduleId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted ops schedule identifier",
+      })
+      .option("enabled", {
+        type: "boolean",
+        describe: "updated enabled state",
+      })
+      .option("schedule-minutes", {
+        type: "number",
+        describe: "updated recurring cadence in minutes",
+      })
+      .option("symbol", {
+        type: "string",
+        describe: "updated symbol for earnings workflows",
+      })
+      .option("watchlist-symbol", {
+        type: "array",
+        string: true,
+        describe: "updated watchlist override for daily briefs",
+      })
+      .option("format", {
+        type: "string",
+        choices: [...INVESTING_OPS_FORMATS],
+        describe: "updated delivery format",
+      })
+      .option("delivery-target", {
+        type: "string",
+        choices: [...INVESTING_OPS_DELIVERY_TARGETS],
+        describe: "updated delivery destination",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    scheduleId?: string
+    enabled?: boolean
+    scheduleMinutes?: number
+    symbol?: string
+    watchlistSymbol?: string[]
+    format?: string
+    deliveryTarget?: string
+    json?: boolean
+  }) => {
+    if (!args.scheduleId) {
+      throw new Error("scheduleId is required")
+    }
+    const schedule = updateInvestingOpsSchedule({
+      scheduleId: args.scheduleId,
+      enabled: args.enabled,
+      scheduleMinutes: args.scheduleMinutes,
+      symbol: args.symbol,
+      watchlistSymbols: args.watchlistSymbol,
+      format: args.format as "json" | "markdown" | undefined,
+      deliveryTarget: args.deliveryTarget as "audit-log" | undefined,
+    })
+    if (args.json) {
+      console.log(JSON.stringify(schedule, null, 2))
+      return
+    }
+
+    console.log(`${schedule.id}`)
+    console.log(`- workflow=${schedule.workflow} every=${schedule.scheduleMinutes}m enabled=${schedule.enabled}`)
+    console.log(`- symbol=${schedule.symbol ?? "n/a"} format=${schedule.format} target=${schedule.deliveryTarget}`)
+  },
+})
+
+const InvestingOpsScheduleRunCommand = cmd({
+  command: "run <scheduleId>",
+  describe: "run one persisted research ops schedule immediately",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("scheduleId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted ops schedule identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { scheduleId?: string; json?: boolean }) => {
+    if (!args.scheduleId) {
+      throw new Error("scheduleId is required")
+    }
+    const delivery = await runInvestingOpsSchedule({
+      scheduleId: args.scheduleId,
+    })
+    if (args.json) {
+      console.log(JSON.stringify(delivery, null, 2))
+      return
+    }
+
+    console.log(`${delivery.id}`)
+    console.log(`- workflow=${delivery.workflow} status=${delivery.status} target=${delivery.deliveryTarget}`)
+    console.log(`- artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"}`)
+    console.log(`- summary=${delivery.summary}`)
+    if (delivery.content) {
+      console.log(`\n${delivery.content}`)
+    }
+  },
+})
+
+const InvestingOpsScheduleCommand = cmd({
+  command: "schedule",
+  describe: "persisted research ops schedules",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingOpsScheduleCreateCommand)
+      .command(InvestingOpsScheduleReadCommand)
+      .command(InvestingOpsScheduleListCommand)
+      .command(InvestingOpsScheduleUpdateCommand)
+      .command(InvestingOpsScheduleRunCommand)
+      .demandCommand(),
+  async handler() {},
+})
+
+const InvestingOpsDeliveryReadCommand = cmd({
+  command: "read <deliveryId>",
+  describe: "read one research ops delivery record",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("deliveryId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted ops delivery identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { deliveryId?: string; json?: boolean }) => {
+    if (!args.deliveryId) {
+      throw new Error("deliveryId is required")
+    }
+    const delivery = getInvestingOpsDeliveryRecord(args.deliveryId)
+    const payload = delivery ?? { error: `Ops delivery not found: ${args.deliveryId}` }
+    if (args.json || !delivery) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${delivery.id}`)
+    console.log(`- workflow=${delivery.workflow} status=${delivery.status} target=${delivery.deliveryTarget}`)
+    console.log(`- artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"}`)
+    console.log(`- summary=${delivery.summary}`)
+    if (delivery.error) {
+      console.log(`- error=${delivery.error}`)
+    }
+    if (delivery.content) {
+      console.log(`\n${delivery.content}`)
+    }
+  },
+})
+
+const InvestingOpsDeliveryListCommand = cmd({
+  command: "list",
+  describe: "list research ops delivery records",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("schedule-id", {
+        type: "string",
+        describe: "optional schedule filter",
+      })
+      .option("workflow", {
+        type: "string",
+        choices: [...INVESTING_OPS_WORKFLOWS],
+        describe: "optional workflow filter",
+      })
+      .option("status", {
+        type: "string",
+        choices: ["ok", "error"],
+        describe: "optional run status filter",
+      })
+      .option("symbol", {
+        type: "string",
+        describe: "optional symbol filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 10,
+        describe: "maximum number of delivery records to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    scheduleId?: string
+    workflow?: string
+    status?: string
+    symbol?: string
+    limit?: number
+    json?: boolean
+  }) => {
+    const deliveries = listInvestingOpsDeliveryRecords({
+      scheduleId: args.scheduleId,
+      workflow: args.workflow as InvestingOpsWorkflow | undefined,
+      status: args.status as "ok" | "error" | undefined,
+      symbol: args.symbol,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ deliveries, count: deliveries.length }, null, 2))
+      return
+    }
+    for (const delivery of deliveries) {
+      console.log(
+        `- ${delivery.id}: workflow=${delivery.workflow} status=${delivery.status} artifact=${delivery.artifactKind}:${delivery.artifactId ?? "n/a"} symbol=${delivery.symbol ?? "n/a"} summary=${delivery.summary}`,
+      )
+    }
+  },
+})
+
+const InvestingOpsDeliveryCommand = cmd({
+  command: "delivery",
+  describe: "research ops delivery audit trail",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingOpsDeliveryReadCommand)
+      .command(InvestingOpsDeliveryListCommand)
+      .demandCommand(),
+  async handler() {},
+})
+
+const InvestingOpsCommand = cmd({
+  command: "ops",
+  describe: "unattended research ops schedules and delivery audit trail",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingOpsScheduleCommand)
+      .command(InvestingOpsDeliveryCommand)
+      .demandCommand(),
+  async handler() {},
+})
+
 const InvestingBriefingCreateCommand = cmd({
   command: "create",
   describe: "create a persisted daily portfolio briefing",
@@ -731,6 +1150,7 @@ export const InvestingCommand = cmd({
       .command(InvestingEventCommand)
       .command(InvestingThesisCommand)
       .command(InvestingEarningsPacketCommand)
+      .command(InvestingOpsCommand)
       .command(InvestingBriefingCommand)
       .demandCommand(),
   async handler() {},

@@ -68,6 +68,8 @@ export type FluxKind =
   | "investing.valuation.packet.export"
   | "investing.earnings.packet"
   | "investing.earnings.packet.export"
+  | "investing.ops.schedule"
+  | "investing.ops.delivery"
   | "investing.thesis.record"
   | "investing.thesis.revision"
   | "investing.thesis.confidence"
