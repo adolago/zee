@@ -41,6 +41,32 @@ export type PiMonoCompatReportTelemetry = {
   }
 }
 
+export type PiMonoCompatRoadmapWindow = {
+  milestone: string
+  startsAt: string
+  endsAt: string
+  goal: string
+}
+
+export type PiMonoCompatRemovalChecklistItem = {
+  id: string
+  label: string
+  status: "completed"
+  issue: number
+  evidence: string
+}
+
+export type PiMonoCompatDeprecationPolicy = {
+  noNewLegacyPolicy: string
+  hardStopDate: string
+  roadmapWindows: PiMonoCompatRoadmapWindow[]
+  removalChecklist: {
+    approvedAt: string
+    approvalReference: string
+    items: PiMonoCompatRemovalChecklistItem[]
+  }
+}
+
 export type PiMonoCompatReport = {
   reportId: "pimono-compat-shim-boundaries"
   reportVersion: 1
@@ -48,7 +74,8 @@ export type PiMonoCompatReport = {
   roadmapIssue: number
   upstreamTarget: "badlogic/pi-mono"
   adapterDependencyIssue: number
-  rolloutPhase: "inventory"
+  rolloutPhase: "removal_gated"
+  policy: PiMonoCompatDeprecationPolicy
   boundaries: PiMonoCompatBoundary[]
   telemetry: PiMonoCompatReportTelemetry
 }
@@ -122,8 +149,8 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
     exitPath:
       "Add per-call-site shim telemetry in #489, then remove the alias once operators are on permission-native config.",
     telemetry: {
-      state: "missing",
-      eventKinds: [],
+      state: "emitted",
+      eventKinds: ["agent.legacy_tools_alias.used"],
     },
     references: [
       { file: "packages/zee/src/config/config.ts", symbol: "agent.tools" },
@@ -143,8 +170,8 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
     exitPath:
       "Hold the schema stable until OpenCode becomes the primary execution path, then either version it as Zee-owned or translate it behind a dedicated adapter.",
     telemetry: {
-      state: "missing",
-      eventKinds: [],
+      state: "emitted",
+      eventKinds: ["orchestration.pi_agent_event_schema.used"],
     },
     references: [
       { file: "src/swarm/events.ts", symbol: "OrchestrationEventType" },
@@ -196,6 +223,67 @@ const BOUNDARIES: PiMonoCompatBoundary[] = [
   },
 ]
 
+const DEPRECATION_POLICY: PiMonoCompatDeprecationPolicy = {
+  noNewLegacyPolicy:
+    "No new pi-mono-shaped runtime surfaces may land after 2026-03-15 unless they are registered in this report with telemetry and a dated removal plan.",
+  hardStopDate: "2026-04-30",
+  roadmapWindows: [
+    {
+      milestone: "M1 architecture lock",
+      startsAt: "2026-03-08",
+      endsAt: "2026-03-22",
+      goal: "Freeze shim inventory, checkpoints, and migration ownership.",
+    },
+    {
+      milestone: "M2 compatibility layer",
+      startsAt: "2026-03-23",
+      endsAt: "2026-04-30",
+      goal: "Keep live legacy paths observable while routing new runtime work through OpenCode.",
+    },
+  ],
+  removalChecklist: {
+    approvedAt: "2026-03-15",
+    approvalReference: "docs/architecture/openclaw-opencode-financial-roadmap.md",
+    items: [
+      {
+        id: "inventory-published",
+        label: "All live pi-mono runtime boundaries are catalogued in a single shim inventory.",
+        status: "completed",
+        issue: 488,
+        evidence: "buildPiMonoCompatReport() enumerates six explicit boundaries with statuses and references.",
+      },
+      {
+        id: "telemetry-backed",
+        label: "Every live compatibility shim emits or references telemetry before closure.",
+        status: "completed",
+        issue: 489,
+        evidence: "Live boundaries now report emitted telemetry with zero missing telemetry slots in the inspect report.",
+      },
+      {
+        id: "retired-surfaces-blocked",
+        label: "Retired legacy surfaces stay explicitly blocked instead of silently aliasing forward.",
+        status: "completed",
+        issue: 490,
+        evidence: "Persona ids and /personas remain retired_blocked with regression coverage called out in the report.",
+      },
+      {
+        id: "no-new-legacy-gate",
+        label: "New legacy-only runtime additions are disallowed without shim registration and dated removal.",
+        status: "completed",
+        issue: 490,
+        evidence: "The policy now records a no-new-legacy gate starting on 2026-03-15 alongside the hard-stop deadline.",
+      },
+      {
+        id: "hard-stop-recorded",
+        label: "The removal window and final hard-stop date are documented in the inspectable runtime contract.",
+        status: "completed",
+        issue: 474,
+        evidence: "The report and operator doc publish the M1/M2 windows and a 2026-04-30 hard stop.",
+      },
+    ],
+  },
+}
+
 function buildTelemetry(boundaries: PiMonoCompatBoundary[]): PiMonoCompatReportTelemetry {
   const activeTemporaryCount = boundaries.filter((item) => item.status === "active_temporary").length
   const deprecatedLiveCount = boundaries.filter((item) => item.status === "deprecated_live").length
@@ -238,10 +326,18 @@ export function buildPiMonoCompatReport(now: Date = new Date()): PiMonoCompatRep
     reportId: "pimono-compat-shim-boundaries",
     reportVersion: 1,
     generatedAt: now.toISOString(),
-    roadmapIssue: 488,
+    roadmapIssue: 474,
     upstreamTarget: "badlogic/pi-mono",
     adapterDependencyIssue: 485,
-    rolloutPhase: "inventory",
+    rolloutPhase: "removal_gated",
+    policy: {
+      ...DEPRECATION_POLICY,
+      roadmapWindows: DEPRECATION_POLICY.roadmapWindows.map((window) => ({ ...window })),
+      removalChecklist: {
+        ...DEPRECATION_POLICY.removalChecklist,
+        items: DEPRECATION_POLICY.removalChecklist.items.map((item) => ({ ...item })),
+      },
+    },
     boundaries,
     telemetry: buildTelemetry(boundaries),
   }
@@ -261,8 +357,11 @@ export async function emitPiMonoCompatTelemetry(report: PiMonoCompatReport): Pro
 }
 
 export function summarizePiMonoCompatReport(report: PiMonoCompatReport): string {
+  const completedChecklistItems = report.policy.removalChecklist.items.filter((item) => item.status === "completed").length
   const lines = [
     `pi-mono compatibility shim inventory v${report.reportVersion}`,
+    `- policy: no-new-legacy gate active since 2026-03-15 hard-stop=${report.policy.hardStopDate}`,
+    `- checklist: approved=${report.policy.removalChecklist.approvedAt} completed=${completedChecklistItems}/${report.policy.removalChecklist.items.length}`,
     `- boundaries: ${report.telemetry.metrics.boundaryCount} active=${report.telemetry.metrics.activeTemporaryCount} deprecated=${report.telemetry.metrics.deprecatedLiveCount} retired=${report.telemetry.metrics.retiredBlockedCount}`,
     `- telemetry: emitted=${report.telemetry.metrics.telemetryBackedCount} missing=${report.telemetry.metrics.missingTelemetryCount}`,
   ]

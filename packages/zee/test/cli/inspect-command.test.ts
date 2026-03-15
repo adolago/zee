@@ -139,6 +139,11 @@ describe("inspect command helpers", () => {
     expect(report.reportId).toBe("pimono-compat-shim-boundaries")
     expect(report.reportVersion).toBe(1)
     expect(report.generatedAt).toBe("2026-03-14T12:30:00.000Z")
+    expect(report.roadmapIssue).toBe(474)
+    expect(report.rolloutPhase).toBe("removal_gated")
+    expect(report.policy.hardStopDate).toBe("2026-04-30")
+    expect(report.policy.removalChecklist.approvedAt).toBe("2026-03-15")
+    expect(report.policy.removalChecklist.items).toHaveLength(5)
     expect(report.boundaries.map((boundary) => boundary.id)).toEqual([
       "server.llm.pi-ai-bridge",
       "server.auth.api-key-payload",
@@ -152,14 +157,16 @@ describe("inspect command helpers", () => {
     expect(report.telemetry.metrics.activeTemporaryCount).toBe(2)
     expect(report.telemetry.metrics.deprecatedLiveCount).toBe(2)
     expect(report.telemetry.metrics.retiredBlockedCount).toBe(2)
-    expect(report.telemetry.metrics.telemetryBackedCount).toBe(2)
-    expect(report.telemetry.metrics.missingTelemetryCount).toBe(2)
+    expect(report.telemetry.metrics.telemetryBackedCount).toBe(4)
+    expect(report.telemetry.metrics.missingTelemetryCount).toBe(0)
   })
 
   test("pi-mono compatibility summary includes statuses and telemetry event", () => {
     const summary = summarizePiMonoCompatReport(buildPiMonoCompatReport(new Date("2026-03-14T12:30:00.000Z")))
 
     expect(summary).toContain("pi-mono compatibility shim inventory v1")
+    expect(summary).toContain("hard-stop=2026-04-30")
+    expect(summary).toContain("checklist: approved=2026-03-15 completed=5/5")
     expect(summary).toContain("server.llm.pi-ai-bridge [active_temporary]")
     expect(summary).toContain("agent.config.tools-alias [deprecated_live]")
     expect(summary).toContain("server.personas-endpoint [retired_blocked]")

@@ -1,8 +1,24 @@
 # pi-mono Compatibility Shim Inventory
 
-Issue: `#488`
+Issue: `#474` (`#488`, `#489`, `#490`)
 
 This inventory is the source of truth for the remaining pi-mono-shaped compatibility boundaries that still exist in Zee while the runtime migrates toward OpenCode.
+
+## Deprecation Policy
+
+- No new pi-mono-shaped runtime surfaces may land after `2026-03-15` unless they are registered in this inventory with telemetry and a dated removal plan.
+- Roadmap window `M1 architecture lock`: `2026-03-08` through `2026-03-22`.
+- Roadmap window `M2 compatibility layer`: `2026-03-23` through `2026-04-30`.
+- Hard stop date: `2026-04-30`.
+  By that date, every remaining `active_temporary` or `deprecated_live` boundary must either be removed or moved behind a Zee-owned versioned adapter.
+
+## Approved Removal Checklist
+
+- [x] `#488` published a single inventory of live pi-mono runtime boundaries.
+- [x] `#489` added emitted telemetry for each live compatibility shim.
+- [x] `#490` kept retired surfaces explicitly blocked instead of silently aliasing them forward.
+- [x] `#490` established the no-new-legacy gate starting on `2026-03-15`.
+- [x] `#474` records the roadmap windows and the `2026-04-30` hard stop in the inspectable runtime contract.
 
 ## Inspection Command
 
@@ -56,7 +72,7 @@ Use `--no-json` for a compact operator summary.
 - Current boundary:
   `agent.<name>.tools` booleans still translate into `PermissionNext` rules so pre-permission config continues to run during migration.
 - Telemetry:
-  missing today; `#489` should add shim call-site metrics before removal sequencing starts.
+  `agent.legacy_tools_alias.used`
 - Exit path:
   Delete the alias after operators migrate to permission-native agent config.
 
@@ -69,7 +85,7 @@ Use `--no-json` for a compact operator summary.
 - Current boundary:
   daemon IPC and orchestration visuals still expose lifecycle event names inherited from the old pi-agent vocabulary.
 - Telemetry:
-  missing today; the schema itself is still a compatibility contract.
+  `orchestration.pi_agent_event_schema.used`
 - Exit path:
   Keep the schema stable until OpenCode is primary, then either version it as a Zee-owned contract or translate it behind an adapter.
 
