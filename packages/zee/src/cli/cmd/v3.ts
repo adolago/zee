@@ -6,6 +6,14 @@ import {
   collectV3ReleaseReport,
   summarizeV3ReleaseReport,
 } from "@/runtime/v3-release"
+import {
+  applyV3RolloutStage,
+  getV3RolloutReport,
+  rollbackV3Rollout,
+  summarizeV3RolloutReport,
+  V3_ROLLOUT_STAGES,
+  type V3RolloutStage,
+} from "@/runtime/v3-rollout"
 
 type V3StatusArgs = {
   json?: boolean
@@ -21,6 +29,23 @@ type V3PlanArgs = {
 type V3ReleaseArgs = {
   json?: boolean
   strict?: boolean
+}
+
+type V3RolloutStatusArgs = {
+  json?: boolean
+}
+
+type V3RolloutApplyArgs = {
+  stage?: V3RolloutStage
+  actor?: string
+  reason?: string
+  json?: boolean
+}
+
+type V3RolloutRollbackArgs = {
+  actor?: string
+  reason?: string
+  json?: boolean
 }
 
 const V3StatusCommand = cmd({
@@ -122,9 +147,127 @@ const V3ReleaseCommand = cmd({
   },
 })
 
+const V3RolloutStatusCommand = cmd({
+  command: "status",
+  describe: "show the current staged rollout plan and managed daemon env settings",
+  builder: (yargs: Argv) =>
+    yargs.option("json", {
+      type: "boolean",
+      default: false,
+      describe: "output JSON",
+    }),
+  handler: async (args: V3RolloutStatusArgs) => {
+    await bootstrap(process.cwd(), async () => {
+      const report = await getV3RolloutReport({ emitTelemetry: true })
+      if (args.json) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+      console.log(summarizeV3RolloutReport(report))
+    })
+  },
+})
+
+const V3RolloutApplyCommand = cmd({
+  command: "apply <stage>",
+  describe: "apply the next rollout stage and write managed runtime flags into daemon.env",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("stage", {
+        type: "string",
+        demandOption: true,
+        choices: [...V3_ROLLOUT_STAGES],
+        describe: "rollout stage to apply",
+      })
+      .option("actor", {
+        type: "string",
+        demandOption: true,
+        describe: "operator or owner applying the stage",
+      })
+      .option("reason", {
+        type: "string",
+        demandOption: true,
+        describe: "reason for the rollout change",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output JSON",
+      }),
+  handler: async (args: V3RolloutApplyArgs) => {
+    if (!args.stage || !args.actor || !args.reason) {
+      throw new Error("stage, actor, and reason are required")
+    }
+    const stage = args.stage
+    const actor = args.actor
+    const reason = args.reason
+    await bootstrap(process.cwd(), async () => {
+      const report = await applyV3RolloutStage({
+        stage,
+        actor,
+        reason,
+      })
+      if (args.json) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+      console.log(summarizeV3RolloutReport(report))
+    })
+  },
+})
+
+const V3RolloutRollbackCommand = cmd({
+  command: "rollback",
+  describe: "roll back to the paused stage and pin all tracked surfaces to legacy",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("actor", {
+        type: "string",
+        demandOption: true,
+        describe: "operator or owner triggering rollback",
+      })
+      .option("reason", {
+        type: "string",
+        demandOption: true,
+        describe: "reason for the rollback",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output JSON",
+      }),
+  handler: async (args: V3RolloutRollbackArgs) => {
+    if (!args.actor || !args.reason) {
+      throw new Error("actor and reason are required")
+    }
+    const actor = args.actor
+    const reason = args.reason
+    await bootstrap(process.cwd(), async () => {
+      const report = await rollbackV3Rollout({
+        actor,
+        reason,
+      })
+      if (args.json) {
+        console.log(JSON.stringify(report, null, 2))
+        return
+      }
+      console.log(summarizeV3RolloutReport(report))
+    })
+  },
+})
+
+const V3RolloutCommand = cmd({
+  command: "rollout",
+  describe: "manage staged rollout progression and rollback automation for v3 launch",
+  builder: (yargs: Argv) =>
+    yargs.command(V3RolloutStatusCommand).command(V3RolloutApplyCommand).command(V3RolloutRollbackCommand).demandCommand(),
+  async handler() {},
+})
+
 export const V3Command = cmd({
   command: "v3",
   describe: "v3 modernization and release workflows",
-  builder: (yargs: Argv) => yargs.command(V3StatusCommand).command(V3PlanCommand).command(V3ReleaseCommand).demandCommand(),
+  builder: (yargs: Argv) =>
+    yargs.command(V3StatusCommand).command(V3PlanCommand).command(V3ReleaseCommand).command(V3RolloutCommand).demandCommand(),
   async handler() {},
 })

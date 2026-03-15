@@ -18,6 +18,12 @@ cd packages/zee
 bun run --conditions=browser ./src/index.ts inspect runtime-rollout --no-json
 ```
 
+The staged rollout controller now lives in:
+
+```bash
+zee v3 rollout status
+```
+
 ## Control Flags
 
 - `ZEE_RUNTIME_OPENCODE_SURFACES`
@@ -59,6 +65,12 @@ To stage only CLI on the OpenCode primary route while keeping other surfaces on 
 ```bash
 export ZEE_RUNTIME_OPENCODE_SURFACES=cli
 export ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES=orchestration,gateway
+```
+
+The same flag transitions can now be written automatically through:
+
+```bash
+zee v3 rollout apply canary --actor release-manager --reason "Start CLI canary"
 ```
 
 Recommended rollback runbook when `inspect runtime-rollout` reports a breach:

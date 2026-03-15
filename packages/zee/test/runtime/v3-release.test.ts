@@ -95,6 +95,12 @@ function makeDocs(overrides: Array<Partial<V3ReleaseDocCheck>> = []): V3ReleaseD
       path: "docs/architecture/investing-eval-gates.md",
       exists: true,
     },
+    {
+      id: "v3-rollout-plan",
+      label: "V3 rollout plan",
+      path: "docs/architecture/v3-rollout-plan.md",
+      exists: true,
+    },
   ]
 
   return base.map((doc, index) => ({
