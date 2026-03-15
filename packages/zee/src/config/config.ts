@@ -1448,6 +1448,9 @@ export namespace Config {
                 .object({
                   enabled: z.boolean().optional().describe("Enable filings connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("Filings connector cadence in minutes"),
+                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable filing staleness in minutes"),
+                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient filings failures"),
+                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for filings failures in milliseconds"),
                   symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
                 })
                 .optional(),
@@ -1455,22 +1458,43 @@ export namespace Config {
                 .object({
                   enabled: z.boolean().optional().describe("Enable earnings connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("Earnings connector cadence in minutes"),
+                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable earnings staleness in minutes"),
+                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient earnings failures"),
+                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for earnings failures in milliseconds"),
                   symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
                   quarters: z.number().int().positive().optional().describe("How many quarters of earnings history to ingest"),
+                  backfillMaxQuarters: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum quarter window allowed for operator-triggered earnings backfills"),
                 })
                 .optional(),
               transcripts: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable transcripts connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("Transcripts connector cadence in minutes"),
+                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable transcript staleness in minutes"),
+                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient transcript failures"),
+                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for transcript failures in milliseconds"),
                   endpointPath: z.string().optional().describe("Raw API path for transcript ingestion"),
                   lookbackDays: z.number().int().positive().optional().describe("Transcript lookback window in days"),
+                  backfillMaxLookbackDays: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum historical lookback allowed for transcript backfills"),
                 })
                 .optional(),
               market: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable market connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("Market connector cadence in minutes"),
+                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable market staleness in minutes"),
+                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient market failures"),
+                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for market failures in milliseconds"),
                   symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
                 })
                 .optional(),
@@ -1478,14 +1502,26 @@ export namespace Config {
                 .object({
                   enabled: z.boolean().optional().describe("Enable macro connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("Macro connector cadence in minutes"),
+                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable macro staleness in minutes"),
+                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient macro failures"),
+                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for macro failures in milliseconds"),
                 })
                 .optional(),
               news: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable news connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("News connector cadence in minutes"),
+                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable news staleness in minutes"),
+                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient news failures"),
+                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for news failures in milliseconds"),
                   endpointPath: z.string().optional().describe("Raw API path for news ingestion"),
                   lookbackDays: z.number().int().positive().optional().describe("News lookback window in days"),
+                  backfillMaxLookbackDays: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum historical lookback allowed for news backfills"),
                 })
                 .optional(),
             })

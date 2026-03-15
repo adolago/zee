@@ -55,6 +55,7 @@ Exit criteria:
 - Standardize identifier strategy across instruments and sources.
 - Operator runbook for connector scheduling and telemetry: `docs/architecture/investing-ingestion-platform.md`.
 - Canonical entity and lineage contract: `docs/architecture/investing-entity-schema.md`.
+- Reliability and backfill runbook: `docs/architecture/investing-data-reliability.md`.
 
 Exit criteria:
 - Data freshness SLAs defined and monitored.

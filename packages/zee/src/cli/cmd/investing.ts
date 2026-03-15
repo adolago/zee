@@ -5,6 +5,7 @@ import {
   INVESTING_CONNECTOR_KINDS,
   getInvestingIngestionStatus,
   registerInvestingIngestionScheduler,
+  runInvestingConnectorBackfill,
   runEnabledInvestingConnectors,
   runInvestingConnector,
   type InvestingConnectorKind,
@@ -33,7 +34,7 @@ const InvestingIngestStatusCommand = cmd({
           ? new Date(connector.lastFinishedAt).toISOString()
           : "never"
       console.log(
-        `- ${connector.connector}: enabled=${connector.enabled} every=${connector.scheduleMinutes}m lastStatus=${connector.lastStatus} items=${connector.itemCount} requests=${connector.requestCount} normalized=${connector.normalizedEntityCount} lastRun=${lastRun}`,
+        `- ${connector.connector}: enabled=${connector.enabled} every=${connector.scheduleMinutes}m freshness=${connector.freshnessStatus} slo=${connector.freshnessSloMinutes}m lastStatus=${connector.lastStatus} items=${connector.itemCount} requests=${connector.requestCount} normalized=${connector.normalizedEntityCount} lastRun=${lastRun}`,
       )
     }
   },
@@ -65,6 +66,55 @@ const InvestingIngestRunCommand = cmd({
         `- ${result.connector}: status=${result.lastStatus} items=${result.itemCount} requests=${result.requestCount} normalized=${result.normalizedEntityCount} durationMs=${result.lastDurationMs}${result.error ? ` error=${result.error}` : ""}`,
       )
     }
+  },
+})
+
+const InvestingIngestBackfillCommand = cmd({
+  command: "backfill <connector>",
+  describe: "run a controlled connector backfill with operator-specified overrides",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("connector", {
+        type: "string",
+        choices: [...INVESTING_CONNECTOR_KINDS],
+        demandOption: true,
+        describe: "connector to backfill",
+      })
+      .option("symbol", {
+        type: "array",
+        string: true,
+        describe: "optional symbol override for symbol-scoped connectors",
+      })
+      .option("lookback-days", {
+        type: "number",
+        describe: "historical lookback window for transcripts/news",
+      })
+      .option("quarters", {
+        type: "number",
+        describe: "historical quarter window for earnings backfills",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args) => {
+    if (!args.connector) {
+      throw new Error("connector is required")
+    }
+    const result = await runInvestingConnectorBackfill({
+      connector: args.connector,
+      symbols: args.symbol?.map(String),
+      lookbackDays: args.lookbackDays,
+      quarters: args.quarters,
+    })
+    if (args.json) {
+      console.log(JSON.stringify(result, null, 2))
+      return
+    }
+    console.log(
+      `- ${result.connector}: status=${result.status} items=${result.itemCount} normalized=${result.normalizedEntityCount} retryAttempts=${result.retryAttempts} lookbackDays=${result.lookbackDays ?? "n/a"} quarters=${result.quarters ?? "n/a"}`,
+    )
   },
 })
 
@@ -127,7 +177,12 @@ const InvestingIngestCommand = cmd({
   command: "ingest",
   describe: "research data ingestion connectors and schedules",
   builder: (yargs: Argv) =>
-    yargs.command(InvestingIngestStatusCommand).command(InvestingIngestRunCommand).command(InvestingIngestScheduleCommand).demandCommand(),
+    yargs
+      .command(InvestingIngestStatusCommand)
+      .command(InvestingIngestRunCommand)
+      .command(InvestingIngestScheduleCommand)
+      .command(InvestingIngestBackfillCommand)
+      .demandCommand(),
   async handler() {},
 })
 

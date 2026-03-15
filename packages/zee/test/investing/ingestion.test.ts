@@ -5,9 +5,11 @@ import { FluxRecorder } from "../../src/flux"
 import { normalizeInvestingConnectorEntities } from "../../src/investing/entities"
 import {
   executeInvestingConnectorRun,
+  executeInvestingConnectorRunWithRetry,
   getInvestingIngestionStatus,
   registerInvestingIngestionSchedules,
   resolveInvestingIngestionConfig,
+  runInvestingConnectorBackfill,
 } from "../../src/investing/ingestion"
 import { tmpdir } from "../fixture/fixture"
 
@@ -44,24 +46,34 @@ describe("resolveInvestingIngestionConfig", () => {
     expect(config.connectors.filings).toMatchObject({
       enabled: true,
       scheduleMinutes: 24 * 60,
+      retryAttempts: 3,
+      freshnessSloMinutes: 2 * 24 * 60,
       symbols: ["AAPL", "MSFT"],
     })
     expect(config.connectors.earnings).toMatchObject({
       enabled: true,
       scheduleMinutes: 12 * 60,
+      retryAttempts: 3,
+      freshnessSloMinutes: 24 * 60,
       symbols: ["AAPL", "MSFT"],
       quarters: 12,
+      backfillMaxQuarters: 16,
     })
     expect(config.connectors.market).toMatchObject({
       enabled: false,
       scheduleMinutes: 15,
+      retryAttempts: 4,
+      freshnessSloMinutes: 2 * 60,
       symbols: ["NVDA"],
     })
     expect(config.connectors.transcripts).toMatchObject({
       enabled: true,
       scheduleMinutes: 6 * 60,
+      retryAttempts: 4,
+      freshnessSloMinutes: 12 * 60,
       endpointPath: "/api/transcripts/custom",
       lookbackDays: 14,
+      backfillMaxLookbackDays: 30,
     })
     expect(config.connectors.news.endpointPath).toBe("/api/news/recent")
   })
@@ -81,8 +93,12 @@ describe("executeInvestingConnectorRun", () => {
       config: {
         enabled: true,
         scheduleMinutes: 30,
+        retryAttempts: 3,
+        retryDelayMs: 500,
+        freshnessSloMinutes: 120,
         symbols: ["AAPL"],
         quarters: 8,
+        backfillMaxQuarters: 16,
       },
       stateFile,
       entityStateFile,
@@ -116,6 +132,9 @@ describe("executeInvestingConnectorRun", () => {
       itemCount: 4,
       requestCount: 1,
       coverageSymbols: ["AAPL"],
+      retryAttempts: 3,
+      freshnessSloMinutes: 120,
+      freshnessStatus: "fresh",
       normalizedEntityCount: 3,
       normalizedKinds: ["company", "event", "instrument"],
       details: ["AAPL"],
@@ -142,6 +161,7 @@ describe("executeInvestingConnectorRun", () => {
         itemCount: 4,
         requestCount: 1,
         normalizedEntityCount: 3,
+        freshnessStatus: "fresh",
       },
     })
 
@@ -153,6 +173,7 @@ describe("executeInvestingConnectorRun", () => {
       lastStatus: "ok",
       itemCount: 4,
       requestCount: 1,
+      freshnessStatus: "fresh",
       normalizedEntityCount: 3,
       coverageSymbols: ["AAPL"],
     })
@@ -171,9 +192,13 @@ describe("executeInvestingConnectorRun", () => {
         config: {
           enabled: true,
           scheduleMinutes: 5,
+          retryAttempts: 4,
+          retryDelayMs: 500,
+          freshnessSloMinutes: 30,
           symbols: [],
           endpointPath: "/api/news/recent",
           lookbackDays: 3,
+          backfillMaxLookbackDays: 30,
         },
         stateFile,
         now: 1_700_000_100_000,
@@ -204,6 +229,7 @@ describe("executeInvestingConnectorRun", () => {
     expect(state.connectors.news).toMatchObject({
       connector: "news",
       lastStatus: "error",
+      freshnessStatus: "stale",
       itemCount: 0,
       requestCount: 0,
       normalizedEntityCount: 0,
@@ -226,11 +252,14 @@ describe("getInvestingIngestionStatus", () => {
               connector: "filings",
               enabled: true,
               scheduleMinutes: 999,
+              retryAttempts: 3,
+              freshnessSloMinutes: 120,
               coverageSymbols: ["OLD"],
               lastStartedAt: 10,
               lastFinishedAt: 20,
               lastDurationMs: 10,
               lastStatus: "ok",
+              freshnessStatus: "fresh",
               itemCount: 7,
               requestCount: 2,
               normalizedEntityCount: 5,
@@ -272,6 +301,9 @@ describe("getInvestingIngestionStatus", () => {
       connector: "filings",
       scheduledTaskId: "investing.ingestion.filings",
       scheduleMinutes: 120,
+      retryAttempts: 3,
+      freshnessSloMinutes: 2 * 24 * 60,
+      freshnessStatus: "stale",
       coverageSymbols: ["AAPL", "MSFT"],
       lastStatus: "ok",
       itemCount: 7,
@@ -282,6 +314,7 @@ describe("getInvestingIngestionStatus", () => {
       connector: "market",
       scheduledTaskId: "investing.ingestion.market",
       enabled: false,
+      freshnessStatus: "disabled",
       lastStartedAt: 0,
       lastFinishedAt: 0,
       itemCount: 0,
@@ -336,14 +369,119 @@ describe("registerInvestingIngestionSchedules", () => {
       "investing.ingestion.transcripts",
       "investing.ingestion.market",
       "investing.ingestion.news",
+      "investing.ingestion.freshness.monitor",
     ])
-    expect(registered.map((task) => task.scope)).toEqual(["global", "global", "global", "global", "global"])
+    expect(registered.map((task) => task.scope)).toEqual(["global", "global", "global", "global", "global", "global"])
     expect(registered.find((task) => task.id === "investing.ingestion.news")?.interval).toBe(5 * 60 * 1000)
+    expect(registered.find((task) => task.id === "investing.ingestion.freshness.monitor")?.interval).toBe(60 * 60 * 1000)
     expect(recordSpy).toHaveBeenCalledTimes(5)
     expect(recordSpy.mock.calls[0]?.[0]).toMatchObject({
       domain: "investing",
       kind: "investing.ingestion.schedule",
       status: "ok",
     })
+  })
+})
+
+describe("executeInvestingConnectorRunWithRetry", () => {
+  test("retries transient connector failures before succeeding", async () => {
+    const recordSpy = spyOn(FluxRecorder, "record")
+    let attempts = 0
+
+    const result = await executeInvestingConnectorRunWithRetry({
+      connector: "market",
+      client: {} as any,
+      config: {
+        enabled: true,
+        scheduleMinutes: 60,
+        retryAttempts: 3,
+        retryDelayMs: 1,
+        freshnessSloMinutes: 120,
+        symbols: ["NVDA"],
+      },
+      executor: async () => {
+        attempts += 1
+        if (attempts < 3) throw new Error("network request failed")
+        return {
+          itemCount: 1,
+          requestCount: 1,
+          details: ["NVDA"],
+        }
+      },
+      sleep: async () => {},
+    })
+
+    expect(result.lastStatus).toBe("ok")
+    expect(attempts).toBe(3)
+    expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.ingestion.retry")).toHaveLength(2)
+  })
+})
+
+describe("runInvestingConnectorBackfill", () => {
+  test("applies validated backfill overrides and persists the operation record", async () => {
+    await using dir = await tmpdir()
+    const operationsFile = path.join(dir.path, "investing-backfills.json")
+    const recordSpy = spyOn(FluxRecorder, "record")
+    let seenConfig: Record<string, unknown> | undefined
+
+    const result = await runInvestingConnectorBackfill({
+      connector: "news",
+      operationsFile,
+      lookbackDays: 14,
+      config: {
+        investing: {
+          ingestion: {
+            connectors: {
+              news: {
+                lookbackDays: 3,
+                backfillMaxLookbackDays: 30,
+              },
+            },
+          },
+        },
+      },
+      runConnector: async ({ config }) => {
+        seenConfig = config
+        return {
+          connector: "news",
+          enabled: true,
+          scheduleMinutes: 120,
+          retryAttempts: 4,
+          freshnessSloMinutes: 240,
+          coverageSymbols: [],
+          endpointPath: "/api/news/recent",
+          lastStartedAt: 1,
+          lastFinishedAt: 2,
+          lastDurationMs: 1,
+          lastStatus: "ok",
+          freshnessStatus: "fresh",
+          itemCount: 6,
+          requestCount: 1,
+          normalizedEntityCount: 4,
+          normalizedKinds: ["event"],
+          details: ["news"],
+        }
+      },
+    })
+
+    expect(seenConfig).toMatchObject({
+      lookbackDays: 14,
+    })
+    expect(result).toMatchObject({
+      connector: "news",
+      status: "ok",
+      lookbackDays: 14,
+      itemCount: 6,
+      normalizedEntityCount: 4,
+    })
+    const persisted = JSON.parse(await fs.readFile(operationsFile, "utf8")) as {
+      operations: Array<Record<string, unknown>>
+    }
+    expect(persisted.operations[0]).toMatchObject({
+      connector: "news",
+      status: "ok",
+      lookbackDays: 14,
+    })
+    expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.ingestion.backfill")).toBe(true)
   })
 })
