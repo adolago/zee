@@ -39,6 +39,7 @@ import {
   type OrchestrationVisualMode,
   type VisualOrchestrationSink,
 } from "@root/orchestration-visual"
+import { registerInvestingOpsSchedules } from "@root/domain/investing/ops-automation"
 import os from "os"
 
 const log = Log.create({ service: "always-on" })
@@ -691,6 +692,22 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     }
   } catch (error) {
     log.error("Failed to initialize investing ingestion scheduler", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
+  // Start investing portfolio and earnings research-op schedules inside the resident daemon process.
+  try {
+    const registrations = registerInvestingOpsSchedules({
+      directory,
+    })
+    if (registrations.length === 0) {
+      Output.log("Investing:  Research ops scheduler disabled")
+    } else {
+      Output.log(`Investing:  Research ops scheduler active (${registrations.length} workflows)`)
+    }
+  } catch (error) {
+    log.error("Failed to initialize investing research ops scheduler", {
       error: error instanceof Error ? error.message : String(error),
     })
   }

@@ -59,6 +59,18 @@ import {
   listInvestingPortfolioBriefings,
 } from "./briefings";
 import {
+  createInvestingOpsSchedule,
+  getInvestingOpsDeliveryRecord,
+  getInvestingOpsSchedule,
+  INVESTING_OPS_DELIVERY_TARGETS,
+  INVESTING_OPS_FORMATS,
+  INVESTING_OPS_WORKFLOWS,
+  listInvestingOpsDeliveryRecords,
+  listInvestingOpsSchedules,
+  runInvestingOpsSchedule,
+  updateInvestingOpsSchedule,
+} from "./ops-automation";
+import {
   INVESTING_EVENT_CLASSIFICATIONS,
   INVESTING_EVENT_CONNECTORS,
   INVESTING_EVENT_DIRECTIONS,
@@ -1246,6 +1258,179 @@ export const portfolioBriefingsTool: ToolDefinition = {
   }),
 };
 
+const OpsAutomationParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create-schedule"),
+    workflow: z.enum(INVESTING_OPS_WORKFLOWS).describe("Ops workflow to automate"),
+    scheduleMinutes: z.number().min(1).describe("Recurring cadence in minutes"),
+    enabled: z.boolean().optional().default(true).describe("Whether the schedule is active"),
+    symbol: z.string().optional().describe("Required for earnings packet workflows"),
+    watchlistSymbols: z.array(z.string()).optional().describe("Optional watchlist override for daily briefs"),
+    format: z.enum(INVESTING_OPS_FORMATS).optional().default("markdown").describe("Delivery format"),
+    deliveryTarget: z.enum(INVESTING_OPS_DELIVERY_TARGETS).optional().default("audit-log").describe("Delivery destination"),
+  }),
+  z.object({
+    action: z.literal("update-schedule"),
+    scheduleId: z.string().describe("Persisted ops schedule identifier"),
+    enabled: z.boolean().optional().describe("Updated enabled state"),
+    scheduleMinutes: z.number().min(1).optional().describe("Updated cadence in minutes"),
+    symbol: z.string().optional().describe("Updated symbol for earnings workflows"),
+    watchlistSymbols: z.array(z.string()).optional().describe("Updated watchlist override"),
+    format: z.enum(INVESTING_OPS_FORMATS).optional().describe("Updated delivery format"),
+    deliveryTarget: z.enum(INVESTING_OPS_DELIVERY_TARGETS).optional().describe("Updated delivery destination"),
+  }),
+  z.object({
+    action: z.literal("read-schedule"),
+    scheduleId: z.string().describe("Persisted ops schedule identifier"),
+  }),
+  z.object({
+    action: z.literal("list-schedules"),
+    workflow: z.enum(INVESTING_OPS_WORKFLOWS).optional().describe("Optional workflow filter"),
+    enabled: z.boolean().optional().describe("Optional enabled filter"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of schedules to return"),
+  }),
+  z.object({
+    action: z.literal("run-schedule"),
+    scheduleId: z.string().describe("Persisted ops schedule identifier"),
+  }),
+  z.object({
+    action: z.literal("read-delivery"),
+    deliveryId: z.string().describe("Persisted ops delivery identifier"),
+  }),
+  z.object({
+    action: z.literal("list-deliveries"),
+    scheduleId: z.string().optional().describe("Optional schedule filter"),
+    workflow: z.enum(INVESTING_OPS_WORKFLOWS).optional().describe("Optional workflow filter"),
+    status: z.enum(["ok", "error"]).optional().describe("Optional run status filter"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of delivery records to return"),
+  }),
+]);
+
+export const opsAutomationTool: ToolDefinition = {
+  id: "zee:invest-ops",
+  category: "domain",
+  init: async () => ({
+    description: `Manage unattended investing research-op schedules and inspect their delivery audit trail.`,
+    parameters: OpsAutomationParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create-schedule": {
+          ctx.metadata({ title: `Creating ops schedule for ${args.workflow}` });
+          const schedule = createInvestingOpsSchedule({
+            workflow: args.workflow,
+            scheduleMinutes: args.scheduleMinutes,
+            enabled: args.enabled,
+            symbol: args.symbol,
+            watchlistSymbols: args.watchlistSymbols,
+            format: args.format,
+            deliveryTarget: args.deliveryTarget,
+          });
+          return {
+            title: "Investing Ops Automation",
+            metadata: { action: args.action, scheduleId: schedule.id, workflow: schedule.workflow },
+            output: JSON.stringify(schedule, null, 2),
+          };
+        }
+        case "update-schedule": {
+          ctx.metadata({ title: `Updating ops schedule ${args.scheduleId}` });
+          const schedule = updateInvestingOpsSchedule({
+            scheduleId: args.scheduleId,
+            enabled: args.enabled,
+            scheduleMinutes: args.scheduleMinutes,
+            symbol: args.symbol,
+            watchlistSymbols: args.watchlistSymbols,
+            format: args.format,
+            deliveryTarget: args.deliveryTarget,
+          });
+          return {
+            title: "Investing Ops Automation",
+            metadata: { action: args.action, scheduleId: schedule.id, workflow: schedule.workflow },
+            output: JSON.stringify(schedule, null, 2),
+          };
+        }
+        case "read-schedule": {
+          ctx.metadata({ title: `Loading ops schedule ${args.scheduleId}` });
+          const schedule = getInvestingOpsSchedule(args.scheduleId);
+          return {
+            title: "Investing Ops Automation",
+            metadata: { action: args.action, scheduleId: args.scheduleId, found: Boolean(schedule) },
+            output: JSON.stringify(schedule ?? { error: `Ops schedule not found: ${args.scheduleId}` }, null, 2),
+          };
+        }
+        case "list-schedules": {
+          ctx.metadata({ title: "Listing ops schedules" });
+          const schedules = listInvestingOpsSchedules({
+            workflow: args.workflow,
+            enabled: args.enabled,
+            symbol: args.symbol,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Ops Automation",
+            metadata: {
+              action: args.action,
+              count: schedules.length,
+              workflow: args.workflow,
+              enabled: args.enabled,
+              symbol: args.symbol,
+            },
+            output: JSON.stringify({ schedules, count: schedules.length }, null, 2),
+          };
+        }
+        case "run-schedule": {
+          ctx.metadata({ title: `Running ops schedule ${args.scheduleId}` });
+          const delivery = await runInvestingOpsSchedule({
+            scheduleId: args.scheduleId,
+          });
+          return {
+            title: "Investing Ops Automation",
+            metadata: {
+              action: args.action,
+              scheduleId: args.scheduleId,
+              deliveryId: delivery.id,
+              status: delivery.status,
+            },
+            output: JSON.stringify(delivery, null, 2),
+          };
+        }
+        case "read-delivery": {
+          ctx.metadata({ title: `Loading ops delivery ${args.deliveryId}` });
+          const delivery = getInvestingOpsDeliveryRecord(args.deliveryId);
+          return {
+            title: "Investing Ops Automation",
+            metadata: { action: args.action, deliveryId: args.deliveryId, found: Boolean(delivery) },
+            output: JSON.stringify(delivery ?? { error: `Ops delivery not found: ${args.deliveryId}` }, null, 2),
+          };
+        }
+        case "list-deliveries": {
+          ctx.metadata({ title: "Listing ops deliveries" });
+          const deliveries = listInvestingOpsDeliveryRecords({
+            scheduleId: args.scheduleId,
+            workflow: args.workflow,
+            status: args.status,
+            symbol: args.symbol,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Ops Automation",
+            metadata: {
+              action: args.action,
+              count: deliveries.length,
+              scheduleId: args.scheduleId,
+              workflow: args.workflow,
+              status: args.status,
+              symbol: args.symbol,
+            },
+            output: JSON.stringify({ deliveries, count: deliveries.length }, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -1421,6 +1606,7 @@ export const INVESTING_TOOLS = [
   valuationPacketTool,
   earningsPacketTool,
   portfolioBriefingsTool,
+  opsAutomationTool,
   researchPlannerTool,
   researchExecutorTool,
   researchArtifactsTool,
