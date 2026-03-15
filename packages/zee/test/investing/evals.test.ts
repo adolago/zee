@@ -212,6 +212,10 @@ describe("investing eval harness", () => {
       expect(run.status).toBe("pass")
       expect(run.totals.passCount).toBe(2)
       expect(run.scores.structural).toBe(100)
+      expect(run.scores.factuality).toBeGreaterThanOrEqual(85)
+      expect(run.scores.consistency).toBeGreaterThanOrEqual(85)
+      expect(run.scores.timeliness).toBeGreaterThanOrEqual(80)
+      expect(run.thresholdBreaches).toEqual([])
 
       const tool = await evalsTool.init()
       const result = await tool.execute(
@@ -228,6 +232,7 @@ describe("investing eval harness", () => {
 
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.dataset")).toBe(true)
       expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.run")).toBe(true)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.eval.score")).toBe(true)
     })
   })
 
@@ -271,6 +276,8 @@ describe("investing eval harness", () => {
         false,
       )
       expect(payload.scores.structural).toBe(0)
+      expect(payload.scores.consistency).toBeLessThan(85)
+      expect(payload.thresholdBreaches).toContain("structural")
     })
   })
 })
