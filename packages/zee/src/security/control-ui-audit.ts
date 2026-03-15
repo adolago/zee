@@ -13,12 +13,21 @@ export type SecurityAuditFinding = {
   remediation?: string
 }
 
+export type SecurityAuditAlert = {
+  severity: SecurityAuditSeverity
+  code: string
+  message: string
+  findingCodes: string[]
+  runbook: string[]
+}
+
 export type SecurityAuditReport = {
   ok: boolean
   errors: number
   warnings: number
   checked: string[]
   findings: SecurityAuditFinding[]
+  alerts: SecurityAuditAlert[]
   metrics: SecurityAuditMetrics
 }
 
@@ -36,6 +45,8 @@ export type SecurityAuditMetrics = {
   revokedNodesMissingReason?: number
   nodeClientEnabled?: boolean
   nodeClientSecurityMode?: "deny" | "allowlist" | "full"
+  alertCount?: number
+  nodeExposureAlertCount?: number
 }
 
 export type SecurityAuditTelemetrySource = "security.audit" | "doctor.security" | "v3.release"
@@ -83,6 +94,7 @@ function hasBreakGlassAcknowledgement(configValue: unknown): boolean {
 function summarizeFindings(
   checked: string[],
   findings: SecurityAuditFinding[],
+  alerts: SecurityAuditAlert[] = [],
   metrics: Partial<SecurityAuditMetrics> = {},
 ): SecurityAuditReport {
   const errors = findings.filter((item) => item.severity === "error").length
@@ -93,10 +105,12 @@ function summarizeFindings(
     warnings,
     checked,
     findings,
+    alerts,
     metrics: {
+      ...metrics,
       checkedCount: checked.length,
       findingCount: findings.length,
-      ...metrics,
+      alertCount: alerts.length,
     },
   }
 }
@@ -141,6 +155,27 @@ export function emitSecurityAuditTelemetry(input: SecurityAuditTelemetryInput): 
         severity: finding.severity,
         code: finding.code,
         hasRemediation: Boolean(finding.remediation),
+      },
+    })
+  }
+
+  for (const alert of input.report.alerts) {
+    FluxRecorder.record({
+      traceID,
+      direction: "internal",
+      domain: "security",
+      kind: "security.audit.alert",
+      status: alert.severity === "error" ? "error" : "denied",
+      method: "CLI",
+      path: input.source,
+      route: input.source,
+      metadata: {
+        source: input.source,
+        deep: input.deep,
+        severity: alert.severity,
+        code: alert.code,
+        findingCodes: alert.findingCodes,
+        runbookSteps: alert.runbook.length,
       },
     })
   }
@@ -355,6 +390,7 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
     "gateway.nodeClient.state.revokeMetadata",
   ]
   const findings = [...base.findings]
+  const alerts: SecurityAuditAlert[] = []
 
   try {
     const { getNodeClientRegistry, resolveNodeClientPolicy } = await import("@/gateway/node-client-registry")
@@ -368,6 +404,17 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
         message: `There are ${snapshot.active} active paired nodes while gateway.nodeClient.enabled is false.`,
         remediation: "Reconcile state: either enable nodeClient policy or revoke stale paired nodes.",
       })
+      alerts.push({
+        severity: "warning",
+        code: "node_client_exposure_feature_disabled",
+        message: `Active paired nodes remain present while gateway.nodeClient.enabled is false (${snapshot.active} active).`,
+        findingCodes: ["node_client_state_present_but_feature_disabled"],
+        runbook: [
+          "Run `zee security audit --deep --strict` and save the current alert output.",
+          "List paired nodes with `GET /gateway/node?includeRevoked=true` from an authenticated operator session.",
+          "Either re-enable `gateway.nodeClient.enabled` or revoke the stale paired nodes before closing the incident.",
+        ],
+      })
     }
 
     if (snapshot.active > policy.maxPairedNodes) {
@@ -377,6 +424,17 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
         message: `Active paired nodes (${snapshot.active}) exceed maxPairedNodes (${policy.maxPairedNodes}).`,
         remediation: "Revoke unused nodes or increase maxPairedNodes after explicit risk review.",
       })
+      alerts.push({
+        severity: "error",
+        code: "node_client_exposure_limit_drift",
+        message: `Active paired nodes exceed the configured ceiling (${snapshot.active}/${policy.maxPairedNodes}).`,
+        findingCodes: ["node_client_active_nodes_exceed_limit"],
+        runbook: [
+          "Identify stale nodes via `GET /gateway/node?includeRevoked=true` and compare with the approved inventory.",
+          "Revoke unexpected nodes first, then decide whether `maxPairedNodes` needs a reviewed increase.",
+          "Repeat `zee doctor security --deep --strict` until the active-node count is back within policy.",
+        ],
+      })
     }
 
     if (snapshot.active > 0 && policy.securityMode === "full") {
@@ -385,6 +443,17 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
         code: "node_client_active_nodes_with_full_mode",
         message: `There are ${snapshot.active} active nodes while securityMode=full.`,
         remediation: "Move to allowlist mode and rotate pair tokens after policy downgrade.",
+      })
+      alerts.push({
+        severity: "error",
+        code: "node_client_exposure_full_mode",
+        message: `Active paired nodes are operating under unrestricted full mode (${snapshot.active} active).`,
+        findingCodes: ["node_client_active_nodes_with_full_mode"],
+        runbook: [
+          "Downgrade `gateway.nodeClient.securityMode` from `full` to `allowlist` with an explicit tool allowlist.",
+          "Rotate each active node credential with `POST /gateway/node/rotate` after the policy downgrade.",
+          "Re-run the deep security audit and confirm no active nodes remain under `securityMode=full`.",
+        ],
       })
     }
 
@@ -435,7 +504,7 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
       })
     }
 
-    return summarizeFindings(checked, findings, {
+    return summarizeFindings(checked, findings, alerts, {
       ...base.metrics,
       activePairedNodes: snapshot.active,
       revokedPairedNodes: snapshot.revoked,
@@ -448,6 +517,7 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
       revokedNodesMissingReason: snapshot.revokedMissingReason,
       nodeClientEnabled: policy.enabled,
       nodeClientSecurityMode: policy.securityMode,
+      nodeExposureAlertCount: alerts.length,
     })
   } catch (error) {
     findings.push({
@@ -458,5 +528,5 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
     })
   }
 
-  return summarizeFindings(checked, findings, base.metrics)
+  return summarizeFindings(checked, findings, alerts, base.metrics)
 }

@@ -49,8 +49,10 @@ This document captures the reference node-client product path introduced for gat
 - Both deep-audit commands emit Flux events:
   - `security.audit.checked`
   - `security.audit.finding`
+  - `security.audit.alert`
 - Node lifecycle routes emit Flux `gateway.node.lifecycle` events for pair, reconnect, rotate, and revoke transitions.
 - Node tool authorization emits Flux `gateway.node.authorization` events with the tool name, decision, mode, reason, and allowlist match source (`global`, `node`, `global+node`, `none`, or `policy`).
+- Node exposure drift alerts point operators to `docs/architecture/node-exposure-incident-runbook.md`.
 
 ## Follow-up hooks (iOS/Android)
 - Data model keeps `platform` as `macos|ios|android|linux|windows|unknown`.

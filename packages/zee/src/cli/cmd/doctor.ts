@@ -182,10 +182,19 @@ const DoctorSecurityCommand = cmd({
         (report.metrics.activeNodesMissingLastSeen ?? 0) > 0 ||
         (report.metrics.revokedNodesMissingTimestamp ?? 0) > 0 ||
         (report.metrics.revokedNodesMissingReason ?? 0) > 0
-      ) {
+        ) {
         console.log(
           `security node-state anomalies: unknownStatus=${report.metrics.unknownStatusNodes ?? 0} duplicateTokenHashes=${report.metrics.duplicateTokenHashes ?? 0} missingTokenHashes=${report.metrics.missingTokenHashes ?? 0} activeMissingLastSeen=${report.metrics.activeNodesMissingLastSeen ?? 0} revokedMissingTimestamp=${report.metrics.revokedNodesMissingTimestamp ?? 0} revokedMissingReason=${report.metrics.revokedNodesMissingReason ?? 0}`,
         )
+      }
+      if (report.alerts.length > 0) {
+        console.log("security alerts:")
+        for (const alert of report.alerts) {
+          console.log(`- [${alert.severity}] ${alert.code}: ${alert.message}`)
+          for (const [index, step] of alert.runbook.entries()) {
+            console.log(`  ${index + 1}. ${step}`)
+          }
+        }
       }
       if (report.findings.length === 0) {
         console.log("security: healthy")
