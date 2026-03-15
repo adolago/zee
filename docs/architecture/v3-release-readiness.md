@@ -1,6 +1,7 @@
 # V3 Release Readiness
 
 This document defines the executable v3 gate introduced by `zee v3`.
+The consolidated release report now closes `#518`.
 
 ## Implemented slices
 - Memory unification:
@@ -17,7 +18,7 @@ This document defines the executable v3 gate introduced by `zee v3`.
   - `zee v3 plan <objective> [--execute]`
   - `zee v3 release [--strict]`
 - Release gate:
-  - combines memory, swarm mesh, agentic-flow, OpenCode runtime parity, and deep security audit checks
+  - combines reliability, security, performance, and documentation checks into one report
 
 ## Operational usage
 - Inspect readiness:
@@ -26,6 +27,8 @@ This document defines the executable v3 gate introduced by `zee v3`.
   - `zee v3 plan "objective text" --steps 6 --execute`
 - Enforce CI-like strict gate:
   - `zee v3 release --strict`
+- Emit the full consolidated report:
+  - `zee v3 release --json`
 
 ## Runtime parity tie-in
 - `zee v3 status` and `zee v3 release` both embed the `inspect runtime-rollout` parity verdict.
@@ -39,3 +42,12 @@ This document defines the executable v3 gate introduced by `zee v3`.
 - v3 release gate consumes deep security audit output.
 - Node-client exposure is included in release readiness decisions.
 - `zee v3 release` emits the same `security.audit.checked` / `security.audit.finding` telemetry as the deep audit commands.
+
+## Consolidated Report Tie-in
+- `zee v3 status` and `zee v3 release` now render the same `v3-release-gate` report.
+- The report groups gates into:
+  - `reliability`
+  - `security`
+  - `performance`
+  - `docs`
+- `zee v3 release` emits `release.v3.report` telemetry with failure counts and performance/doc metrics.
