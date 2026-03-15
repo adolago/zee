@@ -16,6 +16,7 @@ import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_FINDER from "./prompt/finder.txt"
 import PROMPT_LIBRARIAN from "./prompt/librarian.txt"
 import { PermissionNext } from "@/permission/next"
+import { FluxRecorder } from "@/flux"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
 
@@ -46,6 +47,24 @@ function legacyToolsToPermissionConfig(tools?: Record<string, boolean>) {
   }
 
   return permissionConfig
+}
+
+function recordLegacyToolsAliasUsage(agentName: string, tools?: Record<string, boolean>) {
+  if (!tools || Object.keys(tools).length === 0) return
+
+  const translatedPermissions = Object.keys(legacyToolsToPermissionConfig(tools)).sort()
+  FluxRecorder.record({
+    traceID: crypto.randomUUID(),
+    direction: "internal",
+    domain: "domain",
+    kind: "agent.legacy_tools_alias.used",
+    status: "ok",
+    metadata: {
+      agent: agentName,
+      legacyToolIds: Object.keys(tools).sort(),
+      translatedPermissions,
+    },
+  })
 }
 
 // Agent bootstrap cache (lazy loaded)
@@ -505,6 +524,7 @@ export namespace Agent {
       item.name = value.name ?? item.name
       item.steps = value.steps ?? value.maxSteps ?? item.steps
       item.options = mergeDeep(item.options, value.options ?? {})
+      recordLegacyToolsAliasUsage(key, value.tools)
       item.permission = PermissionNext.merge(
         item.permission,
         PermissionNext.fromConfig(legacyToolsToPermissionConfig(value.tools)),

@@ -32,6 +32,7 @@ export type FluxKind =
   | "oauth.refresh.success"
   | "oauth.refresh.fail"
   | "auth.legacy_payload.accepted"
+  | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"
   | "provider.fallback.exhausted"
@@ -39,6 +40,7 @@ export type FluxKind =
   | "llm.bridge.stream.start"
   | "llm.bridge.stream.done"
   | "llm.bridge.stream.error"
+  | "orchestration.pi_agent_event_schema.used"
   | "event"
 
 export type FluxRedaction = "strict" | "balanced" | "debug"

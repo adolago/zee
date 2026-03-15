@@ -6,6 +6,7 @@
 
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
+import { FluxRecorder } from "../../packages/zee/src/flux";
 import { resolveDaemonAgent } from "../daemon/types";
 import type {
   DaemonAgent,
@@ -77,6 +78,7 @@ export class Orchestrator extends EventEmitter {
 
   private readonly tasks = new Map<string, OrchestratorTask>();
   private readonly workerToTask = new Map<string, string>();
+  private readonly legacySchemaTelemetry = new Set<OrchestrationEvent["type"]>();
   private events: OrchestrationEvent[] = [];
   private eventID = 0;
 
@@ -729,6 +731,22 @@ export class Orchestrator extends EventEmitter {
     this.events.push(event);
     if (this.events.length > this.maxEventHistory) {
       this.events = this.events.slice(-this.maxEventHistory);
+    }
+    if (!this.legacySchemaTelemetry.has(type)) {
+      this.legacySchemaTelemetry.add(type)
+      FluxRecorder.record({
+        traceID: crypto.randomUUID(),
+        sessionID: input.sessionId,
+        direction: "internal",
+        domain: "domain",
+        kind: "orchestration.pi_agent_event_schema.used",
+        status: "ok",
+        metadata: {
+          eventType: type,
+          taskId: input.taskId,
+          workerId: input.workerId,
+        },
+      })
     }
     this.emit("event", event);
   }

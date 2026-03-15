@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test"
 import { tmpdir } from "../fixture/fixture"
 import { Instance } from "../../src/project/instance"
 import { Agent } from "../../src/agent/agent"
+import { FluxRecorder } from "../../src/flux"
 import { PermissionNext } from "../../src/permission/next"
 
 // Helper to evaluate permission for a tool with wildcard pattern
@@ -395,6 +396,7 @@ describe("agent config", () => {
   })
 
   test("legacy tools config converts to permissions", async () => {
+    const before = FluxRecorder.list({ kind: "agent.legacy_tools_alias.used" }).total
     await using tmp = await tmpdir({
       config: {
         agent: {
@@ -415,6 +417,7 @@ describe("agent config", () => {
         expect(evalPerm(zee, "read")).toBe("deny")
       },
     })
+    expect(FluxRecorder.list({ kind: "agent.legacy_tools_alias.used" }).total).toBe(before + 1)
   })
 
   test("legacy tools config maps write/edit/patch/multiedit to edit permission", async () => {
