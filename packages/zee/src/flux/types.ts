@@ -75,6 +75,8 @@ export type FluxKind =
   | "investing.thesis.confidence"
   | "investing.thesis.query"
   | "investing.thesis.rollup"
+  | "investing.eval.dataset"
+  | "investing.eval.run"
   | "investing.portfolio.briefing"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
