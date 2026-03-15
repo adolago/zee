@@ -27,6 +27,12 @@ import {
   listInvestingResearchExecutions,
   runInvestingResearchExecution,
 } from "./executor";
+import {
+  INVESTING_RESEARCH_ARTIFACT_STATUSES,
+  createInvestingResearchArtifact,
+  getInvestingResearchArtifact,
+  listInvestingResearchArtifacts,
+} from "./artifacts";
 
 type InvestingResult = {
   ok: boolean;
@@ -650,6 +656,116 @@ export const researchExecutorTool: ToolDefinition = {
   }),
 };
 
+const ResearchArtifactsParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    executionId: z.string().describe("Persisted execution identifier"),
+    overwrite: z.boolean().optional().default(false).describe("Regenerate the artifact even if one already exists"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    artifactId: z.string().describe("Persisted artifact identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    planId: z.string().optional().describe("Optional plan filter"),
+    taskId: z.string().optional().describe("Optional task filter"),
+    executionId: z.string().optional().describe("Optional execution filter"),
+    status: z.enum(INVESTING_RESEARCH_ARTIFACT_STATUSES).optional().describe("Optional artifact status filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of artifacts to return"),
+  }),
+]);
+
+export const researchArtifactsTool: ToolDefinition = {
+  id: "zee:invest-artifacts",
+  category: "domain",
+  init: async () => ({
+    description: `Create, read, and list structured investing research artifacts with failure diagnostics for operator review and future evals.`,
+    parameters: ResearchArtifactsParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create": {
+          ctx.metadata({ title: `Creating research artifact for ${args.executionId}` });
+          const execution = getInvestingResearchExecution(args.executionId);
+          if (!execution) {
+            return {
+              title: "Investing Research Artifacts",
+              metadata: { action: args.action, executionId: args.executionId, found: false },
+              output: JSON.stringify({ error: `Research execution not found: ${args.executionId}` }, null, 2),
+            };
+          }
+
+          const plan = getInvestingResearchPlan(execution.planId);
+          const task = plan?.tasks.find((entry) => entry.id === execution.taskId);
+          if (!plan || !task) {
+            return {
+              title: "Investing Research Artifacts",
+              metadata: { action: args.action, executionId: args.executionId, found: false },
+              output: JSON.stringify(
+                { error: `Research plan context not found for execution: ${args.executionId}` },
+                null,
+                2,
+              ),
+            };
+          }
+
+          const artifact = createInvestingResearchArtifact({
+            execution,
+            plan,
+            task,
+            overwrite: args.overwrite,
+          });
+          return {
+            title: "Investing Research Artifacts",
+            metadata: {
+              action: args.action,
+              artifactId: artifact.id,
+              executionId: artifact.executionId,
+              status: artifact.status,
+            },
+            output: JSON.stringify(artifact, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading research artifact ${args.artifactId}` });
+          const artifact = getInvestingResearchArtifact(args.artifactId);
+          return {
+            title: "Investing Research Artifacts",
+            metadata: { action: args.action, artifactId: args.artifactId, found: Boolean(artifact) },
+            output: JSON.stringify(
+              artifact ?? { error: `Research artifact not found: ${args.artifactId}` },
+              null,
+              2,
+            ),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing research artifacts" });
+          const artifacts = listInvestingResearchArtifacts({
+            planId: args.planId,
+            taskId: args.taskId,
+            executionId: args.executionId,
+            status: args.status,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Research Artifacts",
+            metadata: {
+              action: args.action,
+              count: artifacts.length,
+              planId: args.planId,
+              taskId: args.taskId,
+              executionId: args.executionId,
+              status: args.status,
+            },
+            output: JSON.stringify({ artifacts, count: artifacts.length }, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -823,6 +939,7 @@ export const INVESTING_TOOLS = [
   researchTool,
   researchPlannerTool,
   researchExecutorTool,
+  researchArtifactsTool,
   nautilusTool,
   estimatesTool,
   insiderTradesTool,

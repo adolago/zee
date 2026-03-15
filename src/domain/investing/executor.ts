@@ -18,6 +18,7 @@ import {
 } from "../../../packages/zee/src/session/investing-provenance";
 import { Log } from "../../../packages/zee/src/util/log";
 import { Investing } from "../../paths";
+import { createInvestingResearchArtifact } from "./artifacts";
 import {
   getInvestingResearchPlan,
   updateInvestingResearchTask,
@@ -55,6 +56,7 @@ export interface InvestingResearchExecution {
   synthesis: string;
   evidence: InvestingResearchEvidence[];
   provenance: InvestingProvenanceSummary | null;
+  artifactId?: string;
 }
 
 type ExecutionState = {
@@ -491,6 +493,25 @@ export async function runInvestingResearchExecution(
         ? `Execution ${execution.id} collected ${evidence.length} evidence item(s).`
         : `Execution ${execution.id} failed to collect usable evidence.`,
   });
+
+  const updatedPlan = getInvestingResearchPlan(plan.id) ?? plan;
+  const updatedTask = updatedPlan.tasks.find((entry) => entry.id === task.id) ?? task;
+
+  try {
+    const artifact = createInvestingResearchArtifact({
+      execution,
+      plan: updatedPlan,
+      task: updatedTask,
+    });
+    execution.artifactId = artifact.id;
+    state.executions = state.executions.map((entry) => (entry.id === execution.id ? execution : entry));
+    writeExecutionState(state);
+  } catch (error) {
+    log.warn("failed to create research artifact", {
+      executionId: execution.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   return execution;
 }
