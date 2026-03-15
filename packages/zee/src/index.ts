@@ -41,6 +41,7 @@ import { SecurityCommand } from "./cli/cmd/security"
 import { ProviderCommand } from "./cli/cmd/provider"
 import { ReliabilityCommand } from "./cli/cmd/reliability"
 import { ClientCommand } from "./cli/cmd/client"
+import { InvestingCommand } from "./cli/cmd/investing"
 import { GatewayCommand } from "./cli/cmd/gateway"
 import { ChannelsCommand } from "./cli/cmd/channels"
 import { GuiCommand } from "./cli/cmd/gui"
@@ -167,6 +168,7 @@ const cli = yargs(hideBin(process.argv))
   .command(TuiThreadCommand)
   .command(AttachCommand)
   .command(ClientCommand)
+  .command(InvestingCommand)
   .command(GuiCommand)
   .command(ControlUiCommand)
   .command(WebCommand)

@@ -26,6 +26,7 @@ import { HeartbeatRunner } from "../../heartbeat/runner"
 import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
 import { syncBundledSkillsToMachine } from "../../skill/mirror"
+import { registerInvestingIngestionSchedules, resolveInvestingIngestionConfig } from "../../investing/ingestion"
 import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
 import { Flag } from "../../flag/flag"
@@ -671,6 +672,25 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     }
   } catch (error) {
     log.error("Failed to initialize cron service", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
+  // Start investing ingestion scheduler inside the resident daemon process.
+  try {
+    const ingestionConfig = resolveInvestingIngestionConfig(daemonConfig)
+    const registrations = registerInvestingIngestionSchedules({
+      config: ingestionConfig,
+      directory,
+      rawConfig: daemonConfig,
+    })
+    if (!ingestionConfig.enabled || registrations.length === 0) {
+      Output.log("Investing:  Ingestion scheduler disabled")
+    } else {
+      Output.log(`Investing:  Ingestion scheduler active (${registrations.length} connectors)`)
+    }
+  } catch (error) {
+    log.error("Failed to initialize investing ingestion scheduler", {
       error: error instanceof Error ? error.message : String(error),
     })
   }

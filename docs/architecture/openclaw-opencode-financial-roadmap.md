@@ -53,6 +53,7 @@ Exit criteria:
 - Build ingestion and normalization for filings, earnings, transcripts, price/volume, macro, and news.
 - Persist unified research memory graph with queryable lineage.
 - Standardize identifier strategy across instruments and sources.
+- Operator runbook for connector scheduling and telemetry: `docs/architecture/investing-ingestion-platform.md`.
 
 Exit criteria:
 - Data freshness SLAs defined and monitored.
@@ -108,4 +109,3 @@ Exit criteria:
 - Security audit failures (strict mode).
 - Research freshness SLA adherence.
 - Research factuality/consistency score.
-
