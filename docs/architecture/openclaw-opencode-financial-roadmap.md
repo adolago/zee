@@ -71,6 +71,7 @@ Exit criteria:
 - Multi-source synthesis executor runbook: `docs/architecture/investing-synthesis-executor.md`.
 - Structured report artifacts and diagnostics runbook: `docs/architecture/investing-report-artifacts.md`.
 - Valuation model kernel runbook: `docs/architecture/investing-valuation-kernel.md`.
+- Valuation assumption provenance and sensitivity runbook: `docs/architecture/investing-valuation-provenance.md`.
 
 Exit criteria:
 - End-to-end automated research run produces usable analyst packet.

@@ -57,6 +57,8 @@ export type FluxKind =
   | "investing.valuation.kernel"
   | "investing.valuation.method"
   | "investing.valuation.scenario"
+  | "investing.valuation.assumption"
+  | "investing.valuation.sensitivity"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"
