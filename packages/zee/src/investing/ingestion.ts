@@ -28,17 +28,21 @@ export const INVESTING_CONNECTOR_KINDS = [
 export type InvestingConnectorKind = (typeof INVESTING_CONNECTOR_KINDS)[number]
 
 export type InvestingConnectorRunStatus = "ok" | "error"
+export type InvestingConnectorFreshnessStatus = "fresh" | "stale" | "missing" | "disabled"
 
 export type InvestingConnectorRunRecord = {
   connector: InvestingConnectorKind
   enabled: boolean
   scheduleMinutes: number
+  retryAttempts: number
+  freshnessSloMinutes: number
   coverageSymbols: string[]
   endpointPath?: string
   lastStartedAt: number
   lastFinishedAt: number
   lastDurationMs: number
   lastStatus: InvestingConnectorRunStatus
+  freshnessStatus: InvestingConnectorFreshnessStatus
   itemCount: number
   requestCount: number
   normalizedEntityCount: number
@@ -55,10 +59,15 @@ type InvestingIngestionState = {
 export type InvestingConnectorConfig = {
   enabled: boolean
   scheduleMinutes: number
+  retryAttempts: number
+  retryDelayMs: number
+  freshnessSloMinutes: number
   symbols: string[]
   endpointPath?: string
   quarters?: number
   lookbackDays?: number
+  backfillMaxLookbackDays?: number
+  backfillMaxQuarters?: number
 }
 
 export type InvestingIngestionConfig = {
@@ -70,6 +79,22 @@ export type InvestingIngestionConfig = {
 export type InvestingIngestionStatus = {
   enabled: boolean
   connectors: Array<InvestingConnectorRunRecord & { scheduledTaskId: string }>
+}
+
+export type InvestingBackfillOperationRecord = {
+  id: string
+  connector: InvestingConnectorKind
+  requestedAt: number
+  startedAt: number
+  finishedAt: number
+  status: InvestingConnectorRunStatus
+  symbols: string[]
+  lookbackDays?: number
+  quarters?: number
+  itemCount: number
+  normalizedEntityCount: number
+  retryAttempts: number
+  error?: string
 }
 
 type ConnectorRunSummary = {
@@ -100,7 +125,44 @@ const DEFAULT_ENDPOINT_PATHS: Partial<Record<InvestingConnectorKind, string>> = 
   news: "/api/news/recent",
 }
 
+const DEFAULT_RETRY_ATTEMPTS: Record<InvestingConnectorKind, number> = {
+  filings: 3,
+  earnings: 3,
+  transcripts: 4,
+  market: 4,
+  macro: 3,
+  news: 4,
+}
+
+const DEFAULT_RETRY_DELAY_MS: Record<InvestingConnectorKind, number> = {
+  filings: 1_000,
+  earnings: 1_000,
+  transcripts: 1_000,
+  market: 500,
+  macro: 1_000,
+  news: 1_000,
+}
+
+const DEFAULT_FRESHNESS_SLO_MINUTES: Record<InvestingConnectorKind, number> = {
+  filings: 2 * 24 * 60,
+  earnings: 24 * 60,
+  transcripts: 12 * 60,
+  market: 2 * 60,
+  macro: 6 * 60,
+  news: 4 * 60,
+}
+
+const DEFAULT_BACKFILL_LOOKBACK_DAYS: Partial<Record<InvestingConnectorKind, number>> = {
+  transcripts: 30,
+  news: 30,
+}
+
+const DEFAULT_BACKFILL_QUARTERS: Partial<Record<InvestingConnectorKind, number>> = {
+  earnings: 16,
+}
+
 const STATE_FILE = path.join(Global.Path.state, "investing-ingestion.json")
+const BACKFILL_STATE_FILE = path.join(Global.Path.state, "investing-ingestion-backfills.json")
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
@@ -119,6 +181,11 @@ function resolveStringArray(value: unknown): string[] {
 function resolvePositiveInt(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback
   return Math.max(1, Math.floor(value))
+}
+
+function resolvePositiveOptionalInt(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined
+  return Math.floor(value)
 }
 
 function countItems(value: unknown): number {
@@ -155,6 +222,66 @@ async function readState(stateFile = STATE_FILE): Promise<InvestingIngestionStat
 async function writeState(state: InvestingIngestionState, stateFile = STATE_FILE): Promise<void> {
   await fs.mkdir(path.dirname(stateFile), { recursive: true })
   await fs.writeFile(stateFile, JSON.stringify(state, null, 2) + "\n", "utf8")
+}
+
+async function readBackfillOperations(stateFile = BACKFILL_STATE_FILE): Promise<InvestingBackfillOperationRecord[]> {
+  const raw = await fs.readFile(stateFile, "utf8").catch(() => "")
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw) as { operations?: InvestingBackfillOperationRecord[] }
+    return Array.isArray(parsed.operations) ? parsed.operations : []
+  } catch {
+    return []
+  }
+}
+
+async function writeBackfillOperations(
+  operations: InvestingBackfillOperationRecord[],
+  stateFile = BACKFILL_STATE_FILE,
+): Promise<void> {
+  await fs.mkdir(path.dirname(stateFile), { recursive: true })
+  await fs.writeFile(
+    stateFile,
+    JSON.stringify(
+      {
+        version: 1,
+        operations,
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  )
+}
+
+function computeFreshnessStatus(input: {
+  enabled: boolean
+  lastFinishedAt: number
+  lastStatus: InvestingConnectorRunStatus
+  freshnessSloMinutes: number
+  now?: number
+}): InvestingConnectorFreshnessStatus {
+  if (!input.enabled) return "disabled"
+  if (input.lastFinishedAt <= 0) return "missing"
+  if (input.lastStatus === "error") return "stale"
+  const now = input.now ?? Date.now()
+  const maxAgeMs = input.freshnessSloMinutes * 60 * 1000
+  return now - input.lastFinishedAt > maxAgeMs ? "stale" : "fresh"
+}
+
+function isRetryableConnectorError(error: unknown): boolean {
+  const message = String(error instanceof Error ? error.message : error).toLowerCase()
+  return [
+    "timed out",
+    "timeout",
+    "network",
+    "socket hang up",
+    "econnreset",
+    "econnrefused",
+    "etimedout",
+    "request failed",
+    "failed to fetch",
+  ].some((marker) => message.includes(marker))
 }
 
 async function createInvestingClient(config: unknown): Promise<InvestingClient> {
@@ -312,6 +439,9 @@ export function resolveInvestingIngestionConfig(config: unknown): InvestingInges
         {
           enabled: resolveBool(raw.enabled, true),
           scheduleMinutes: resolvePositiveInt(raw.scheduleMinutes, DEFAULT_SCHEDULE_MINUTES[kind]),
+          retryAttempts: resolvePositiveInt(raw.retryAttempts, DEFAULT_RETRY_ATTEMPTS[kind]),
+          retryDelayMs: resolvePositiveInt(raw.retryDelayMs, DEFAULT_RETRY_DELAY_MS[kind]),
+          freshnessSloMinutes: resolvePositiveInt(raw.freshnessSloMinutes, DEFAULT_FRESHNESS_SLO_MINUTES[kind]),
           symbols: resolveStringArray(raw.symbols).length > 0 ? resolveStringArray(raw.symbols) : coverageSymbols,
           endpointPath:
             typeof raw.endpointPath === "string" && raw.endpointPath.trim().length > 0
@@ -319,6 +449,14 @@ export function resolveInvestingIngestionConfig(config: unknown): InvestingInges
               : DEFAULT_ENDPOINT_PATHS[kind],
           quarters: typeof raw.quarters === "number" ? resolvePositiveInt(raw.quarters, 8) : undefined,
           lookbackDays: typeof raw.lookbackDays === "number" ? resolvePositiveInt(raw.lookbackDays, 7) : undefined,
+          backfillMaxLookbackDays:
+            typeof raw.backfillMaxLookbackDays === "number"
+              ? resolvePositiveOptionalInt(raw.backfillMaxLookbackDays)
+              : DEFAULT_BACKFILL_LOOKBACK_DAYS[kind],
+          backfillMaxQuarters:
+            typeof raw.backfillMaxQuarters === "number"
+              ? resolvePositiveOptionalInt(raw.backfillMaxQuarters)
+              : DEFAULT_BACKFILL_QUARTERS[kind],
         } satisfies InvestingConnectorConfig,
       ]
     }),
@@ -360,12 +498,21 @@ export async function executeInvestingConnectorRun(input: {
       connector: input.connector,
       enabled: input.config.enabled,
       scheduleMinutes: input.config.scheduleMinutes,
+      retryAttempts: input.config.retryAttempts,
+      freshnessSloMinutes: input.config.freshnessSloMinutes,
       coverageSymbols: input.config.symbols,
       endpointPath: input.config.endpointPath,
       lastStartedAt: startedAt,
       lastFinishedAt: finishedAt,
       lastDurationMs: finishedAt - startedAt,
       lastStatus: "ok",
+      freshnessStatus: computeFreshnessStatus({
+        enabled: input.config.enabled,
+        lastFinishedAt: finishedAt,
+        lastStatus: "ok",
+        freshnessSloMinutes: input.config.freshnessSloMinutes,
+        now: finishedAt,
+      }),
       itemCount: summary.itemCount,
       requestCount: summary.requestCount,
       normalizedEntityCount: normalized?.batchCount ?? 0,
@@ -390,6 +537,9 @@ export async function executeInvestingConnectorRun(input: {
         requestCount: record.requestCount,
         normalizedEntityCount: record.normalizedEntityCount,
         normalizedKinds: record.normalizedKinds,
+        freshnessStatus: record.freshnessStatus,
+        freshnessSloMinutes: record.freshnessSloMinutes,
+        retryAttempts: record.retryAttempts,
         scheduleMinutes: record.scheduleMinutes,
         coverageSymbols: record.coverageSymbols,
         endpointPath: record.endpointPath,
@@ -403,12 +553,21 @@ export async function executeInvestingConnectorRun(input: {
       connector: input.connector,
       enabled: input.config.enabled,
       scheduleMinutes: input.config.scheduleMinutes,
+      retryAttempts: input.config.retryAttempts,
+      freshnessSloMinutes: input.config.freshnessSloMinutes,
       coverageSymbols: input.config.symbols,
       endpointPath: input.config.endpointPath,
       lastStartedAt: startedAt,
       lastFinishedAt: finishedAt,
       lastDurationMs: finishedAt - startedAt,
       lastStatus: "error",
+      freshnessStatus: computeFreshnessStatus({
+        enabled: input.config.enabled,
+        lastFinishedAt: finishedAt,
+        lastStatus: "error",
+        freshnessSloMinutes: input.config.freshnessSloMinutes,
+        now: finishedAt,
+      }),
       itemCount: 0,
       requestCount: 0,
       normalizedEntityCount: 0,
@@ -433,12 +592,68 @@ export async function executeInvestingConnectorRun(input: {
       },
       metadata: {
         connector: input.connector,
+        retryAttempts: record.retryAttempts,
+        freshnessStatus: record.freshnessStatus,
+        freshnessSloMinutes: record.freshnessSloMinutes,
         scheduleMinutes: record.scheduleMinutes,
         coverageSymbols: record.coverageSymbols,
         endpointPath: record.endpointPath,
       },
     })
     throw error
+  }
+}
+
+export async function executeInvestingConnectorRunWithRetry(input: {
+  connector: InvestingConnectorKind
+  config: InvestingConnectorConfig
+  client: InvestingClient
+  executor?: InvestingConnectorExecutor
+  stateFile?: string
+  entityStateFile?: string
+  now?: number
+  sleep?: (ms: number) => Promise<void>
+}): Promise<InvestingConnectorRunRecord> {
+  const sleep = input.sleep ?? (async (ms: number) => await new Promise((resolve) => setTimeout(resolve, ms)))
+  let attempt = 0
+
+  while (true) {
+    try {
+      return await executeInvestingConnectorRun({
+        connector: input.connector,
+        config: input.config,
+        client: input.client,
+        executor: input.executor,
+        stateFile: input.stateFile,
+        entityStateFile: input.entityStateFile,
+        now: attempt === 0 ? input.now : undefined,
+      })
+    } catch (error) {
+      attempt += 1
+      if (attempt >= input.config.retryAttempts || !isRetryableConnectorError(error)) {
+        throw error
+      }
+
+      const delayMs = input.config.retryDelayMs * attempt
+      FluxRecorder.record({
+        traceID: crypto.randomUUID(),
+        direction: "internal",
+        domain: "investing",
+        kind: "investing.ingestion.retry",
+        status: "ok",
+        method: "scheduler",
+        path: input.connector,
+        route: input.connector,
+        metadata: {
+          connector: input.connector,
+          attempt,
+          retryAttempts: input.config.retryAttempts,
+          delayMs,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      })
+      await sleep(delayMs)
+    }
   }
 }
 
@@ -455,7 +670,7 @@ export async function runInvestingConnector(
   const connectorConfig = resolved.connectors[connector]
   const client = await createInvestingClient(rawConfig)
   try {
-    return await executeInvestingConnectorRun({
+    return await executeInvestingConnectorRunWithRetry({
       connector,
       config: connectorConfig,
       client,
@@ -484,7 +699,7 @@ export async function runEnabledInvestingConnectors(options: {
     const results: InvestingConnectorRunRecord[] = []
     for (const connector of enabled) {
       results.push(
-        await executeInvestingConnectorRun({
+        await executeInvestingConnectorRunWithRetry({
           connector,
           config: resolved.connectors[connector],
           client,
@@ -502,10 +717,12 @@ export async function runEnabledInvestingConnectors(options: {
 export async function getInvestingIngestionStatus(options: {
   config?: unknown
   stateFile?: string
+  now?: number
 } = {}): Promise<InvestingIngestionStatus> {
   const rawConfig = options.config ?? (await Config.get())
   const resolved = resolveInvestingIngestionConfig(rawConfig)
   const state = await readState(options.stateFile)
+  const now = options.now ?? Date.now()
   return {
     enabled: resolved.enabled,
     connectors: INVESTING_CONNECTOR_KINDS.map((connector) => {
@@ -514,28 +731,253 @@ export async function getInvestingIngestionStatus(options: {
         connector,
         enabled: resolved.connectors[connector].enabled,
         scheduleMinutes: resolved.connectors[connector].scheduleMinutes,
+        retryAttempts: resolved.connectors[connector].retryAttempts,
+        freshnessSloMinutes: resolved.connectors[connector].freshnessSloMinutes,
         coverageSymbols: resolved.connectors[connector].symbols,
         endpointPath: resolved.connectors[connector].endpointPath,
         lastStartedAt: 0,
         lastFinishedAt: 0,
         lastDurationMs: 0,
         lastStatus: "ok",
+        freshnessStatus: computeFreshnessStatus({
+          enabled: resolved.connectors[connector].enabled,
+          lastFinishedAt: 0,
+          lastStatus: "ok",
+          freshnessSloMinutes: resolved.connectors[connector].freshnessSloMinutes,
+          now,
+        }),
         itemCount: 0,
         requestCount: 0,
         normalizedEntityCount: 0,
         normalizedKinds: [],
         details: [],
       }
+      const base = current ?? fallback
       return {
-        ...(current ?? fallback),
+        ...base,
         enabled: resolved.connectors[connector].enabled,
         scheduleMinutes: resolved.connectors[connector].scheduleMinutes,
+        retryAttempts: resolved.connectors[connector].retryAttempts,
+        freshnessSloMinutes: resolved.connectors[connector].freshnessSloMinutes,
         coverageSymbols: resolved.connectors[connector].symbols,
         endpointPath: resolved.connectors[connector].endpointPath,
+        freshnessStatus: computeFreshnessStatus({
+          enabled: resolved.connectors[connector].enabled,
+          lastFinishedAt: base.lastFinishedAt,
+          lastStatus: base.lastStatus,
+          freshnessSloMinutes: resolved.connectors[connector].freshnessSloMinutes,
+          now,
+        }),
         scheduledTaskId: scheduleTaskId(connector),
       }
     }),
   }
+}
+
+export async function recordInvestingIngestionFreshness(options: {
+  config?: unknown
+  stateFile?: string
+  now?: number
+} = {}): Promise<InvestingIngestionStatus> {
+  const status = await getInvestingIngestionStatus(options)
+  const now = options.now ?? Date.now()
+
+  for (const connector of status.connectors) {
+    const maxAgeMs = connector.freshnessSloMinutes * 60 * 1000
+    const latenessMs =
+      connector.lastFinishedAt > 0 ? Math.max(0, now - connector.lastFinishedAt - maxAgeMs) : maxAgeMs
+    FluxRecorder.record({
+      traceID: crypto.randomUUID(),
+      direction: "internal",
+      domain: "investing",
+      kind: "investing.ingestion.freshness",
+      status: connector.freshnessStatus === "fresh" || connector.freshnessStatus === "disabled" ? "ok" : "error",
+      method: "monitor",
+      path: connector.connector,
+      route: connector.scheduledTaskId,
+      metadata: {
+        connector: connector.connector,
+        enabled: connector.enabled,
+        freshnessStatus: connector.freshnessStatus,
+        freshnessSloMinutes: connector.freshnessSloMinutes,
+        latenessMs,
+        lastFinishedAt: connector.lastFinishedAt,
+        lastStatus: connector.lastStatus,
+      },
+    })
+  }
+
+  return status
+}
+
+async function runBackfillWithConnectorConfig(input: {
+  connector: InvestingConnectorKind
+  connectorConfig: InvestingConnectorConfig
+  rawConfig: unknown
+  stateFile?: string
+  entityStateFile?: string
+}): Promise<InvestingConnectorRunRecord> {
+  const client = await createInvestingClient(input.rawConfig)
+  try {
+    return await executeInvestingConnectorRunWithRetry({
+      connector: input.connector,
+      config: input.connectorConfig,
+      client,
+      stateFile: input.stateFile,
+      entityStateFile: input.entityStateFile,
+    })
+  } finally {
+    await client.disconnect().catch(() => {})
+  }
+}
+
+function resolveBackfillConnectorConfig(input: {
+  connector: InvestingConnectorKind
+  config: InvestingConnectorConfig
+  symbols?: string[]
+  lookbackDays?: number
+  quarters?: number
+}): InvestingConnectorConfig {
+  const next: InvestingConnectorConfig = {
+    ...input.config,
+    symbols: input.symbols?.length ? input.symbols : input.config.symbols,
+  }
+
+  if (input.lookbackDays !== undefined) {
+    if (!["transcripts", "news"].includes(input.connector)) {
+      throw new Error(`${input.connector} backfill does not support lookbackDays overrides`)
+    }
+    const maxLookback = input.config.backfillMaxLookbackDays
+    if (maxLookback && input.lookbackDays > maxLookback) {
+      throw new Error(`${input.connector} backfill lookbackDays exceeds configured max of ${maxLookback}`)
+    }
+    next.lookbackDays = input.lookbackDays
+  }
+
+  if (input.quarters !== undefined) {
+    if (input.connector !== "earnings") {
+      throw new Error(`${input.connector} backfill does not support quarters overrides`)
+    }
+    const maxQuarters = input.config.backfillMaxQuarters
+    if (maxQuarters && input.quarters > maxQuarters) {
+      throw new Error(`${input.connector} backfill quarters exceeds configured max of ${maxQuarters}`)
+    }
+    next.quarters = input.quarters
+  }
+
+  return next
+}
+
+export async function runInvestingConnectorBackfill(input: {
+  connector: InvestingConnectorKind
+  config?: unknown
+  stateFile?: string
+  entityStateFile?: string
+  operationsFile?: string
+  symbols?: string[]
+  lookbackDays?: number
+  quarters?: number
+  now?: number
+  runConnector?: (input: { connector: InvestingConnectorKind; config: InvestingConnectorConfig }) => Promise<InvestingConnectorRunRecord>
+}): Promise<InvestingBackfillOperationRecord> {
+  const rawConfig = input.config ?? (await Config.get())
+  const resolved = resolveInvestingIngestionConfig(rawConfig)
+  const connectorConfig = resolveBackfillConnectorConfig({
+    connector: input.connector,
+    config: resolved.connectors[input.connector],
+    symbols: input.symbols,
+    lookbackDays: input.lookbackDays,
+    quarters: input.quarters,
+  })
+  const operations = await readBackfillOperations(input.operationsFile)
+  const startedAt = input.now ?? Date.now()
+  const record: InvestingBackfillOperationRecord = {
+    id: `investing-backfill:${input.connector}:${startedAt}`,
+    connector: input.connector,
+    requestedAt: startedAt,
+    startedAt,
+    finishedAt: 0,
+    status: "ok",
+    symbols: connectorConfig.symbols,
+    lookbackDays: connectorConfig.lookbackDays,
+    quarters: connectorConfig.quarters,
+    itemCount: 0,
+    normalizedEntityCount: 0,
+    retryAttempts: connectorConfig.retryAttempts,
+  }
+
+  operations.unshift(record)
+  await writeBackfillOperations(operations.slice(0, 50), input.operationsFile)
+
+  try {
+    const result = input.runConnector
+      ? await input.runConnector({
+          connector: input.connector,
+          config: connectorConfig,
+        })
+      : await runBackfillWithConnectorConfig({
+          connector: input.connector,
+          connectorConfig,
+          rawConfig,
+          stateFile: input.stateFile,
+          entityStateFile: input.entityStateFile,
+        })
+
+    record.finishedAt = Date.now()
+    record.status = result.lastStatus
+    record.itemCount = result.itemCount
+    record.normalizedEntityCount = result.normalizedEntityCount
+    FluxRecorder.record({
+      traceID: crypto.randomUUID(),
+      direction: "internal",
+      domain: "investing",
+      kind: "investing.ingestion.backfill",
+      status: "ok",
+      method: "backfill",
+      path: input.connector,
+      route: record.id,
+      latencyMs: record.finishedAt - record.startedAt,
+      metadata: {
+        connector: input.connector,
+        symbols: record.symbols,
+        lookbackDays: record.lookbackDays,
+        quarters: record.quarters,
+        itemCount: record.itemCount,
+        normalizedEntityCount: record.normalizedEntityCount,
+      },
+    })
+  } catch (error) {
+    record.finishedAt = Date.now()
+    record.status = "error"
+    record.error = error instanceof Error ? error.message : String(error)
+    FluxRecorder.record({
+      traceID: crypto.randomUUID(),
+      direction: "internal",
+      domain: "investing",
+      kind: "investing.ingestion.backfill",
+      status: "error",
+      method: "backfill",
+      path: input.connector,
+      route: record.id,
+      latencyMs: record.finishedAt - record.startedAt,
+      error: {
+        message: record.error,
+      },
+      metadata: {
+        connector: input.connector,
+        symbols: record.symbols,
+        lookbackDays: record.lookbackDays,
+        quarters: record.quarters,
+      },
+    })
+    throw error
+  } finally {
+    const nextOperations = await readBackfillOperations(input.operationsFile)
+    const updatedOperations = nextOperations.map((operation) => (operation.id === record.id ? record : operation))
+    await writeBackfillOperations(updatedOperations.slice(0, 50), input.operationsFile)
+  }
+
+  return record
 }
 
 export function registerInvestingIngestionSchedules(input: {
@@ -549,6 +991,15 @@ export function registerInvestingIngestionSchedules(input: {
 }): Array<{ connector: InvestingConnectorKind; taskId: string; scheduleMinutes: number }> {
   if (!input.config.enabled) return []
   const register = input.register ?? Scheduler.register
+  const withDirectory = async <T>(fn: () => Promise<T>) => {
+    if (input.directory) {
+      return await Instance.provide({
+        directory: input.directory,
+        fn,
+      })
+    }
+    return await fn()
+  }
   const runConnector =
     input.runConnector ??
     (async (connector: InvestingConnectorKind) => {
@@ -558,13 +1009,7 @@ export function registerInvestingIngestionSchedules(input: {
           stateFile: input.stateFile,
           entityStateFile: input.entityStateFile,
         })
-      if (input.directory) {
-        return await Instance.provide({
-          directory: input.directory,
-          fn: run,
-        })
-      }
-      return await run()
+      return await withDirectory(run)
     })
 
   const registrations: Array<{ connector: InvestingConnectorKind; taskId: string; scheduleMinutes: number }> = []
@@ -609,6 +1054,38 @@ export function registerInvestingIngestionSchedules(input: {
       scheduleMinutes: connectorConfig.scheduleMinutes,
     })
   }
+
+  const enabledConnectors = registrations.length > 0 ? registrations : []
+  if (enabledConnectors.length > 0) {
+    const monitorMinutes = Math.max(
+      5,
+      Math.min(
+        ...enabledConnectors.map(({ connector }) =>
+          Math.max(5, Math.floor(input.config.connectors[connector].freshnessSloMinutes / 2)),
+        ),
+      ),
+    )
+    register({
+      id: "investing.ingestion.freshness.monitor",
+      interval: monitorMinutes * 60 * 1000,
+      scope: "global",
+      run: async () => {
+        try {
+          await withDirectory(async () =>
+            await recordInvestingIngestionFreshness({
+              config: input.rawConfig ?? { investing: { ingestion: input.config } },
+              stateFile: input.stateFile,
+            }),
+          )
+        } catch (error) {
+          log.warn("freshness monitor failed", {
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      },
+    })
+  }
+
   return registrations
 }
 
